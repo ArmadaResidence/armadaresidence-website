@@ -85,7 +85,7 @@
       "breakfast_addon": "الإفطار {price} ريال للشخص في اليوم",
       "extra_person": "الشخص الإضافي {price} ريال لليلة",
       "final_note": "يؤكد الاستقبال السعر النهائي عند الحجز.",
-      "rate_plan": "الغرفة فقط"
+      "rate_plan": "خطة السعر"
     },
     "cta": {
       "whatsapp": "واتساب",
@@ -280,7 +280,7 @@
       "breakfast_addon": "Breakfast SAR {price} per person per day",
       "extra_person": "Extra guest SAR {price} per night",
       "final_note": "Reception confirms the final price on booking.",
-      "rate_plan": "Room only"
+      "rate_plan": "Rate plan"
     },
     "cta": {
       "whatsapp": "WhatsApp",

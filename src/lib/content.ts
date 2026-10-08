@@ -265,7 +265,7 @@ const tidy = (s: string) => s.replace(/\s{2,}/g, ' ').replace(/\s+([،,.])/g, '$
 /**
  * Room page title/description from seo.json → room_templates, filled from rooms.json.
  * Keeps within max_title_chars / max_description_chars by dropping, in order,
- * the size clause (title) and the features clause then the size clause (description).
+ * the size clause (title) and the size clause then the features clause (description).
  */
 export function roomSeo(locale: Locale, room: Room): PageSeo {
   const t = seo.room_templates as unknown as Record<string, string | number>;
@@ -297,9 +297,10 @@ export function roomSeo(locale: Locale, room: Room): PageSeo {
   if (title.length > maxT) title = tidy(fill(titleTpl, { ...vars, size_clause_short: '' }));
   if (title.length > maxT) title = tidy(`${name} – ${short}`);
 
+  // Over the limit: drop the size clause first (the size is already in the title), then the features clause.
   let description = tidy(fill(descTpl, vars));
-  if (description.length > maxD) description = tidy(fill(descTpl, { ...vars, features_clause: '' }));
-  if (description.length > maxD) description = tidy(fill(descTpl, { ...vars, features_clause: '', size_clause: '' }));
+  if (description.length > maxD) description = tidy(fill(descTpl, { ...vars, size_clause: '' }));
+  if (description.length > maxD) description = tidy(fill(descTpl, { ...vars, size_clause: '', features_clause: '' }));
 
   return { title, description, noindex: room.availability === 'sold_out' };
 }
