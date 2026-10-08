@@ -1,0 +1,166 @@
+---
+import Base from '@layouts/Base.astro';
+import Placeholder from '@components/Placeholder.astro';
+import PriceBlock from '@components/PriceBlock.astro';
+import RoomCard from '@components/RoomCard.astro';
+import Icon from '@components/Icon.astro';
+import { langPaths } from '@lib/paths';
+import { hotelRoom } from '@lib/jsonld';
+import {
+  branchBySlug,
+  branchPath,
+  fill,
+  guestsWord,
+  inRoomAmenityLabels,
+  L,
+  localePath,
+  paragraphs,
+  roomFeatureLabels,
+  rooms,
+  roomSeo,
+  roomsFor,
+  ui,
+  type Locale,
+  type Room,
+} from '@lib/content';
+
+export function getStaticPaths() {
+  return langPaths().flatMap(({ params, props }) =>
+    rooms.map((r) => ({ params: { ...params, branch: r.branch, room: r.slug }, props: { ...props, room: r } })),
+  );
+}
+
+interface Props {
+  locale: Locale;
+  room: Room;
+}
+const { locale, room } = Astro.props;
+const t = ui(locale);
+const branch = branchBySlug(room.branch);
+const s = roomSeo(locale, room);
+const name = L(locale, room, 'name');
+const branchName = L(locale, branch, 'name');
+const path = `/${room.branch}/${room.slug}/`;
+const others = roomsFor(room.branch).filter((r) => r.slug !== room.slug);
+const features = roomFeatureLabels(locale, room);
+const inRoom = inRoomAmenityLabels(locale, room);
+const laundry = locale === 'ar' ? room.features.laundry_ar : room.features.laundry_en;
+
+const details: { label: string; value: string }[] = [
+  { label: t.room.size, value: fill(t.room.size_value, { size: room.size_m2 }) },
+  { label: t.room.bed, value: L(locale, room, 'bed') },
+  { label: t.room.included_guests, value: guestsWord(locale, room.included_guests) },
+  { label: t.room.capacity, value: guestsWord(locale, room.capacity) },
+];
+---
+
+<Base
+  locale={locale}
+  path={path}
+  title={s.title}
+  description={s.description}
+  noindex={s.noindex}
+  jsonld={[hotelRoom(locale, room, branch)]}
+  whatsapp={branch.slug}
+>
+  <article class="mx-auto max-w-6xl px-4 pt-10 pb-14">
+    <nav aria-label="breadcrumb" class="text-sm text-ink-muted">
+      <a href={localePath(locale, '/')} class="hover:text-midnight">{t.nav.home}</a>
+      <span aria-hidden="true" class="mx-2">/</span>
+      <a href={branchPath(locale, branch.slug)} class="hover:text-midnight">{branchName}</a>
+      <span aria-hidden="true" class="mx-2">/</span>
+      <span class="text-midnight">{name}</span>
+    </nav>
+
+    <h1 class="mt-6 text-3xl md:text-4xl font-bold text-midnight">{name}</h1>
+    <p class="mt-2 text-ink-muted">
+      <a href={branchPath(locale, branch.slug)} class="hover:text-midnight">{fill(t.room.in_branch, { branch: branchName })}</a>
+      <span aria-hidden="true" class="mx-1">·</span>
+      <span>{L(locale, branch, 'type')}</span>
+    </p>
+
+    <div class="mt-8 grid gap-8 lg:grid-cols-5">
+      <div class="lg:col-span-3">
+        {/* TODO(photo): approved room photo (WebP, srcset, width/height). legacy_main_image is reference only. */}
+        <Placeholder label={fill(t.photo_pending_alt, { subject: `${name} — ${branchName}` })} />
+        <div class="mt-8 prose-armada leading-relaxed">
+          {paragraphs(L(locale, room, 'description')).map((p) => <p>{p}</p>)}
+        </div>
+
+        <h2 class="mt-10 text-sm font-semibold uppercase tracking-wide text-bronze">{t.room.details_heading}</h2>
+        <dl class="mt-3 grid gap-3 sm:grid-cols-2 text-sm">
+          {
+            details.map((d) => (
+              <div class="bg-white border border-line rounded-card px-4 py-3">
+                <dt class="text-ink-muted">{d.label}</dt>
+                <dd class="font-semibold text-midnight mt-0.5">{d.value}</dd>
+              </div>
+            ))
+          }
+        </dl>
+
+        {
+          features.length > 0 && (
+            <>
+              <h2 class="mt-8 text-sm font-semibold uppercase tracking-wide text-bronze">{t.room.features_heading}</h2>
+              <ul class="mt-3 flex flex-wrap gap-2">
+                {features.map((f) => (
+                  <li class="inline-flex items-center gap-1.5 text-sm bg-white border border-line px-3 py-1.5 rounded">
+                    <Icon name="check" size={14} class="text-bronze" />
+                    <span>{f}</span>
+                  </li>
+                ))}
+              </ul>
+            </>
+          )
+        }
+
+        {
+          inRoom.length > 0 && (
+            <>
+              <h2 class="mt-8 text-sm font-semibold uppercase tracking-wide text-bronze">{t.room.in_room_heading}</h2>
+              <ul class="mt-3 grid gap-2 sm:grid-cols-2 text-sm">
+                {inRoom.map((a) => (
+                  <li class="flex items-center gap-2">
+                    <Icon name="check" size={14} class="text-bronze shrink-0" />
+                    <span>{a}</span>
+                  </li>
+                ))}
+              </ul>
+            </>
+          )
+        }
+        {
+          laundry && (
+            <p class="mt-4 text-sm text-ink-muted">
+              {t.room.laundry}: {laundry}
+            </p>
+          )
+        }
+      </div>
+
+      <div class="lg:col-span-2 lg:sticky lg:top-24 self-start">
+        <PriceBlock locale={locale} room={room} mode="full" />
+        <a href={branchPath(locale, branch.slug)} class="mt-4 inline-flex items-center gap-1 text-sm text-ink-muted hover:text-midnight">
+          <Icon name="arrow" size={16} class="rotate-180 rtl:rotate-0" />
+          <span>{t.room.back_to_branch}</span>
+        </a>
+      </div>
+    </div>
+  </article>
+
+  {
+    others.length > 0 && (
+      <section class="bg-white border-t border-line">
+        <div class="mx-auto max-w-6xl px-4 py-14">
+          <h2 class="text-2xl font-bold text-midnight">{fill(t.room.other_rooms, { branch: branchName })}</h2>
+          <div class="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+            {others.map((r) => (
+              <RoomCard locale={locale} room={r} />
+            ))}
+          </div>
+        </div>
+      </section>
+    )
+  }
+</Base>

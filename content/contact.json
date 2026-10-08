@@ -1,0 +1,50 @@
+{
+  "_note": "Updated 8 Oct 2026 from reception answers. Per-branch phone/WhatsApp confirmed; sales line confirmed. E.164 in href, spaced for display. Legal entity moved to legal.json.",
+  "branches": {
+    "airport-road": {
+      "phone": "+966536622277",
+      "phone_display": "+966 53 662 2277",
+      "whatsapp": "+966536622277"
+    },
+    "shafa-road": {
+      "phone": "+966536663030",
+      "phone_display": "+966 53 666 3030",
+      "whatsapp": "+966536663030"
+    }
+  },
+  "sales": {
+    "phone": "+966536622288",
+    "phone_display": "+966 53 662 2288",
+    "whatsapp": "+966536622288",
+    "scope_ar": "المجموعات والقاعة وطلبات الشركات",
+    "scope_en": "Groups, hall and B2B requests",
+    "email": "sales-marketing@armadaresidence.com"
+  },
+  "emails": {
+    "reservations": "reservation@armadaresidence.com",
+    "info": "info@armadaresidence.com",
+    "booking_notification_emails": [
+      "reservation@armadaresidence.com",
+      "info@armadaresidence.com"
+    ],
+    "sales": "sales-marketing@armadaresidence.com"
+  },
+  "working_hours_ar": "الاستقبال على مدار الساعة",
+  "working_hours_en": "Reception 24 hours",
+  "check_in": "16:00",
+  "check_out": "12:00",
+  "social": {
+    "facebook": "https://www.facebook.com/profile.php?id=61586163807495",
+    "instagram": "https://www.instagram.com/ArmadaR25",
+    "snapchat": "https://www.snapchat.com/@armadar25",
+    "tiktok": "https://www.tiktok.com/@armadar25",
+    "youtube": "https://www.youtube.com/@ArmadR25",
+    "google_business": {
+      "airport-road": "https://share.google/P346csOpeuQzwvJA0",
+      "shafa-road": "https://share.google/vKuS4FTE8h1Iq9XHS"
+    }
+  },
+  "menu_url": "https://armadaresidence.github.io/armada-residence-menu/",
+  "gtm_container": "GTM-MFV9WL38",
+  "verified": true
+}

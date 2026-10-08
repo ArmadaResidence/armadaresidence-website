@@ -1,0 +1,24 @@
+{
+  "_note": "DECISIONS 8 Oct 2026: the Umrah 1448 '50%' offer was removed; there is no current offer. /offers carries a quote-on-request line for Umrah operators and groups via the sales line (contact.json → sales), plus corporate / hall requests. Any future discount must show the base price or be phrased as 'special rates — request a quote'. Copy below is draft 1 for Ahmed's review.",
+  "current_offers": [],
+  "no_offers_ar": "لا توجد عروض موسمية حاليًا. الأسعار المعروضة في صفحات الغرف أسعار لليلة الواحدة شاملة الضريبة.",
+  "no_offers_en": "There are no seasonal offers at the moment. Prices on the room pages are per night and include VAT.",
+  "groups": {
+    "heading_ar": "أسعار خاصة لشركات العمرة والمجموعات",
+    "heading_en": "Special rates for Umrah operators and groups",
+    "body_ar": "نقدّم أسعارًا خاصة لشركات العمرة والمجموعات في فرعي طريق المطار وطريق الشفا. أرسلوا عدد الغرف وتواريخ الإقامة وعدد الأشخاص إلى فريق المبيعات، ليصلكم عرض سعر مكتوب.",
+    "body_en": "We offer special rates for Umrah operators and groups at both the Airport Road and Shafa Road properties. Send the number of rooms, the stay dates and the number of guests to the sales team to receive a written quote.",
+    "cta_ar": "اطلب عرض سعر",
+    "cta_en": "Request a quote"
+  },
+  "corporate": {
+    "heading_ar": "الشركات والإقامات الطويلة وقاعة الاجتماعات",
+    "heading_en": "Corporate bookings, long stays and the meeting hall",
+    "body_ar": "للشركات وطلبات الإقامة الطويلة، ولحجز قاعة الاجتماعات في فرع طريق المطار التي تتسع حتى 50 شخصًا، يتواصل معكم فريق المبيعات مباشرة لترتيب التفاصيل.",
+    "body_en": "For corporate bookings, long-stay requests and the meeting hall at the Airport Road property, which seats up to 50 people, the sales team will contact you directly to arrange the details."
+  },
+  "sales_note_ar": "خط المبيعات مخصص للمجموعات والقاعة وطلبات الشركات. للحجوزات الفردية استخدموا رقم الفرع أو نموذج طلب الحجز.",
+  "sales_note_en": "The sales line is for groups, the hall and corporate requests. For individual bookings use the property number or the booking-request form.",
+  "verified": false,
+  "pending": ["Ahmed's approval of copy"]
+}

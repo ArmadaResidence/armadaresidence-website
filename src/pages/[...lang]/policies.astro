@@ -1,0 +1,54 @@
+---
+import Base from '@layouts/Base.astro';
+import { langPaths } from '@lib/paths';
+import { pageSeo, paragraphs, policies, ui, type Locale } from '@lib/content';
+
+export const getStaticPaths = langPaths;
+
+interface Props {
+  locale: Locale;
+}
+const { locale } = Astro.props;
+const t = ui(locale);
+const s = pageSeo(locale, 'policies');
+const page = policies.page;
+const sections = page.sections;
+---
+
+<Base locale={locale} path="/policies/" title={s.title} description={s.description}>
+  <section class="mx-auto max-w-6xl px-4 pt-10 pb-14 grid gap-10 lg:grid-cols-4">
+    <div class="lg:col-span-3">
+      <h1 class="text-3xl md:text-4xl font-bold text-midnight">{locale === 'ar' ? page.title_ar : page.title_en}</h1>
+      <p class="mt-3 text-ink-muted">{locale === 'ar' ? page.intro_ar : page.intro_en}</p>
+
+      <div class="mt-10 space-y-10">
+        {
+          sections.map((sec) => (
+            <section id={sec.id} class="scroll-mt-24">
+              <h2 class="text-xl font-semibold text-midnight">{locale === 'ar' ? sec.heading_ar : sec.heading_en}</h2>
+              <div class="mt-3 prose-armada leading-relaxed text-ink">
+                {paragraphs(locale === 'ar' ? sec.body_ar : sec.body_en).map((p) => (
+                  <p>{p}</p>
+                ))}
+              </div>
+            </section>
+          ))
+        }
+      </div>
+    </div>
+    <nav class="lg:col-span-1 lg:sticky lg:top-24 self-start bg-white border border-line rounded-card p-5" aria-label={t.policies.toc}>
+      <h2 class="text-sm font-semibold uppercase tracking-wide text-bronze">{t.policies.toc}</h2>
+      <ol class="mt-3 space-y-2 text-sm">
+        {
+          sections.map((sec) => (
+            <li>
+              <a href={`#${sec.id}`} class="text-ink-muted hover:text-midnight">
+                {locale === 'ar' ? sec.heading_ar : sec.heading_en}
+              </a>
+            </li>
+          ))
+        }
+      </ol>
+    </nav>
+  </section>
+</Base>

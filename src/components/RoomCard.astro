@@ -1,0 +1,66 @@
+---
+import {
+  branchBySlug,
+  fill,
+  guestsWord,
+  L,
+  roomFeatureLabels,
+  roomPath,
+  ui,
+  type Locale,
+  type Room,
+} from '@lib/content';
+import Placeholder from './Placeholder.astro';
+import PriceBlock from './PriceBlock.astro';
+import Icon from './Icon.astro';
+
+interface Props {
+  locale: Locale;
+  room: Room;
+  showBranch?: boolean;
+}
+const { locale, room, showBranch = false } = Astro.props;
+const t = ui(locale);
+const branch = branchBySlug(room.branch);
+const name = L(locale, room, 'name');
+const href = roomPath(locale, room);
+// TODO(photo): approved room photo replaces the placeholder (legacy_main_image is reference only, never rendered).
+const photoLabel = fill(t.photo_pending_alt, { subject: `${name} — ${L(locale, branch, 'name')}` });
+const features = roomFeatureLabels(locale, room);
+const meta = [
+  fill(t.room.size_value, { size: room.size_m2 }),
+  L(locale, room, 'bed'),
+  `${t.room.included_guests} ${guestsWord(locale, room.included_guests)}`,
+];
+---
+
+<article class="bg-white border border-line rounded-card overflow-hidden flex flex-col">
+  <a href={href} tabindex="-1" aria-hidden="true">
+    <Placeholder label={photoLabel} class="rounded-b-none" />
+  </a>
+  <div class="p-5 flex flex-col gap-3 flex-1">
+    <div>
+      {showBranch && <p class="text-xs text-bronze font-semibold mb-1">{L(locale, branch, 'name')}</p>}
+      <h3 class="text-lg font-semibold text-midnight">
+        <a href={href} class="hover:text-bronze">{name}</a>
+      </h3>
+      <p class="text-sm text-ink-muted mt-1">{meta.join(' · ')}</p>
+    </div>
+    {
+      features.length > 0 && (
+        <ul class="flex flex-wrap gap-1.5">
+          {features.map((f) => (
+            <li class="text-xs bg-porcelain text-ink px-2 py-1 rounded">{f}</li>
+          ))}
+        </ul>
+      )
+    }
+    <div class="mt-auto pt-2 border-t border-line">
+      <PriceBlock locale={locale} room={room} mode="card" />
+      <a href={href} class="mt-3 inline-flex items-center gap-1 text-sm font-semibold text-bronze hover:text-bronze-deep">
+        <span>{t.branch.view_room}</span>
+        <Icon name="arrow" size={16} class="rtl:rotate-180" />
+      </a>
+    </div>
+  </div>
+</article>

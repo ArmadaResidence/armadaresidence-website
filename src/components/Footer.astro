@@ -1,0 +1,132 @@
+---
+import {
+  branchContact,
+  branchPath,
+  branches,
+  contact,
+  footerLine,
+  L,
+  localePath,
+  mailHref,
+  otherLocale,
+  siteName,
+  siteTexts,
+  telHref,
+  ui,
+  type Locale,
+} from '@lib/content';
+import Icon from './Icon.astro';
+
+interface Props {
+  locale: Locale;
+  switchPath: string;
+}
+const { locale, switchPath } = Astro.props;
+const t = ui(locale);
+const other = otherLocale(locale);
+const slogan = locale === 'ar' ? siteTexts.slogan_ar : siteTexts.slogan_en;
+
+const siteLinks: { key: keyof typeof t.nav; path: string }[] = [
+  { key: 'offers', path: '/offers/' },
+  { key: 'contact', path: '/contact/' },
+  { key: 'policies', path: '/policies/' },
+  { key: 'book', path: '/booking/' },
+];
+
+const social: { name: string; url: string }[] = [
+  { name: 'Instagram', url: contact.social.instagram },
+  { name: 'Facebook', url: contact.social.facebook },
+  { name: 'TikTok', url: contact.social.tiktok },
+  { name: 'Snapchat', url: contact.social.snapchat },
+  { name: 'YouTube', url: contact.social.youtube },
+];
+---
+
+<footer class="bg-midnight text-porcelain mt-16">
+  <div class="mx-auto max-w-6xl px-4 py-12 grid gap-10 md:grid-cols-4">
+    <div class="md:col-span-1">
+      <img src="/brand/logo-stacked.svg" alt={siteName(locale)} width="140" height="89" class="h-20 w-auto" />
+      <p class="mt-4 text-sm text-porcelain/80">{slogan}</p>
+      <p class="mt-4 text-sm text-porcelain/80 flex items-center gap-2">
+        <Icon name="clock" size={16} />
+        <span>{locale === 'ar' ? contact.working_hours_ar : contact.working_hours_en}</span>
+      </p>
+    </div>
+
+    <div>
+      <h2 class="text-sm font-semibold uppercase tracking-wide text-bronze mb-3">{t.footer.branches}</h2>
+      <ul class="space-y-3 text-sm">
+        {
+          branches.map((b) => {
+            const c = branchContact(b.slug);
+            return (
+              <li>
+                <a href={branchPath(locale, b.slug)} class="font-medium hover:text-bronze">
+                  {L(locale, b, 'name')}
+                </a>
+                <br />
+                <a href={telHref(c.phone)} class="latin text-porcelain/80 hover:text-bronze" dir="ltr">
+                  {c.phone_display}
+                </a>
+              </li>
+            );
+          })
+        }
+      </ul>
+    </div>
+
+    <div>
+      <h2 class="text-sm font-semibold uppercase tracking-wide text-bronze mb-3">{t.footer.site}</h2>
+      <ul class="space-y-2 text-sm">
+        {
+          siteLinks.map((n) => (
+            <li>
+              <a href={localePath(locale, n.path)} class="hover:text-bronze">
+                {t.nav[n.key]}
+              </a>
+            </li>
+          ))
+        }
+        <li>
+          <a href={localePath(other, switchPath)} hreflang={other} lang={other} class="hover:text-bronze">
+            {t.switch_to}
+          </a>
+        </li>
+      </ul>
+    </div>
+
+    <div>
+      <h2 class="text-sm font-semibold uppercase tracking-wide text-bronze mb-3">{t.footer.contact}</h2>
+      <ul class="space-y-2 text-sm">
+        <li>
+          <a href={mailHref(contact.emails.reservations)} class="latin hover:text-bronze" dir="ltr">
+            {contact.emails.reservations}
+          </a>
+        </li>
+        <li>
+          <a href={mailHref(contact.emails.info)} class="latin hover:text-bronze" dir="ltr">
+            {contact.emails.info}
+          </a>
+        </li>
+        <li>
+          <a href={contact.menu_url} class="hover:text-bronze" rel="noopener">{t.cta.menu_link}</a>
+        </li>
+      </ul>
+      <h2 class="text-sm font-semibold uppercase tracking-wide text-bronze mt-6 mb-3">{t.contact.social_heading}</h2>
+      <ul class="flex flex-wrap gap-x-4 gap-y-2 text-sm">
+        {
+          social.map((s) => (
+            <li>
+              <a href={s.url} class="latin hover:text-bronze" rel="noopener">
+                {s.name}
+              </a>
+            </li>
+          ))
+        }
+      </ul>
+    </div>
+  </div>
+  <div class="border-t border-porcelain/15">
+    <p class="mx-auto max-w-6xl px-4 py-5 text-xs text-porcelain/70">{footerLine(locale)}</p>
+  </div>
+</footer>

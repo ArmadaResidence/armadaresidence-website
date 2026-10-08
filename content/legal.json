@@ -1,0 +1,12 @@
+{
+  "_note": "Confirmed 8 Oct 2026 (DECISIONS). Legal entity as in the commercial registration; CR main registration in Riyadh. Used in the footer and the /policies operator section. {year} is replaced at build time.",
+  "brand_ar": "أرمادا ريزيدنس",
+  "brand_en": "Armada Residence",
+  "entity_ar": "شركة أرمادا ريزيدنس لتشغيل الفنادق",
+  "entity_en": "Armada Residence Company To Operate Hotels",
+  "cr": "1010874796",
+  "vat": "312154414400003",
+  "footer_line_ar": "© {year} شركة أرمادا ريزيدنس لتشغيل الفنادق — السجل التجاري 1010874796 — الرقم الضريبي 312154414400003",
+  "footer_line_en": "© {year} Armada Residence Company To Operate Hotels — CR 1010874796 — VAT 312154414400003",
+  "verified": true
+}

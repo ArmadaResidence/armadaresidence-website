@@ -1,0 +1,200 @@
+---
+import Base from '@layouts/Base.astro';
+import Placeholder from '@components/Placeholder.astro';
+import RoomCard from '@components/RoomCard.astro';
+import Icon from '@components/Icon.astro';
+import { langPaths } from '@lib/paths';
+import { lodging } from '@lib/jsonld';
+import {
+  amenityLabel,
+  branchContact,
+  branchPath,
+  branches,
+  fill,
+  L,
+  localePath,
+  mailHref,
+  pageSeo,
+  paragraphs,
+  policies,
+  roomsFor,
+  telHref,
+  ui,
+  waHref,
+  type Branch,
+  type Locale,
+} from '@lib/content';
+
+export function getStaticPaths() {
+  return langPaths().flatMap(({ params, props }) =>
+    branches.map((b) => ({ params: { ...params, branch: b.slug }, props: { ...props, branch: b } })),
+  );
+}
+
+interface Props {
+  locale: Locale;
+  branch: Branch;
+}
+const { locale, branch } = Astro.props;
+const t = ui(locale);
+const s = pageSeo(locale, branch.slug);
+const c = branchContact(branch.slug);
+const name = L(locale, branch, 'name');
+const rooms = roomsFor(branch.slug);
+const other = branches.find((b) => b.slug !== branch.slug);
+const path = `/${branch.slug}/`;
+const bookHref = `${localePath(locale, '/booking/')}?branch=${branch.slug}`;
+const na = branch.national_address;
+---
+
+<Base locale={locale} path={path} title={s.title} description={s.description} jsonld={[lodging(locale, branch)]} whatsapp={branch.slug}>
+  <section class="mx-auto max-w-6xl px-4 pt-10">
+    <nav aria-label="breadcrumb" class="text-sm text-ink-muted">
+      <a href={localePath(locale, '/')} class="hover:text-midnight">{t.nav.home}</a>
+      <span aria-hidden="true" class="mx-2">/</span>
+      <span class="text-midnight">{name}</span>
+    </nav>
+    <p class="mt-6 text-xs font-semibold uppercase tracking-wide text-bronze">{L(locale, branch, 'type')}</p>
+    <h1 class="mt-1 text-3xl md:text-4xl font-bold text-midnight">{name}</h1>
+    <p class="mt-2 text-lg text-ink-muted">{L(locale, branch, 'tagline')}</p>
+    <div class="mt-8">
+      <Placeholder label={fill(t.photo_pending_alt, { subject: name })} />
+    </div>
+  </section>
+
+  <section class="mx-auto max-w-6xl px-4 py-12 grid gap-10 lg:grid-cols-5">
+    <div class="lg:col-span-3 prose-armada leading-relaxed">
+      {paragraphs(L(locale, branch, 'description')).map((p) => <p>{p}</p>)}
+      <a
+        href={bookHref}
+        class="mt-8 inline-flex items-center gap-2 bg-bronze text-white font-semibold px-5 py-3 rounded hover:bg-bronze-deep transition-colors"
+      >
+        <span>{t.branch.book_branch}</span>
+        <Icon name="arrow" size={18} class="rtl:rotate-180" />
+      </a>
+    </div>
+    <aside class="lg:col-span-2 bg-white border border-line rounded-card p-6">
+      <h2 class="text-sm font-semibold uppercase tracking-wide text-bronze">{t.branch.at_a_glance}</h2>
+      <dl class="mt-4 space-y-4 text-sm">
+        <div class="flex gap-3">
+          <Icon name="clock" size={18} class="text-bronze shrink-0 mt-0.5" />
+          <div>
+            <dt class="font-semibold text-midnight">{t.branch.check_in} / {t.branch.check_out}</dt>
+            <dd class="text-ink-muted">
+              {locale === 'ar' ? policies.check_in_ar : policies.check_in_en}
+              <br />
+              {locale === 'ar' ? policies.check_out_ar : policies.check_out_en}
+            </dd>
+          </div>
+        </div>
+        <div class="flex gap-3">
+          <Icon name="car" size={18} class="text-bronze shrink-0 mt-0.5" />
+          <div>
+            <dt class="font-semibold text-midnight">{t.branch.parking}</dt>
+            <dd class="text-ink-muted">{L(locale, branch, 'parking')}</dd>
+          </div>
+        </div>
+        <div class="flex gap-3">
+          <Icon name="star" size={18} class="text-bronze shrink-0 mt-0.5" />
+          <div>
+            <dt class="font-semibold text-midnight">{t.branch.breakfast}</dt>
+            <dd class="text-ink-muted">{L(locale, branch, 'breakfast')}</dd>
+          </div>
+        </div>
+        <div class="flex gap-3">
+          <Icon name="check" size={18} class="text-bronze shrink-0 mt-0.5" />
+          <div>
+            <dt class="font-semibold text-midnight">{t.branch.amenities}</dt>
+            <dd>
+              <ul class="mt-1 flex flex-wrap gap-1.5">
+                {branch.amenities.map((a) => <li class="text-xs bg-porcelain text-ink px-2 py-1 rounded">{amenityLabel(locale, a)}</li>)}
+              </ul>
+            </dd>
+          </div>
+        </div>
+      </dl>
+    </aside>
+  </section>
+
+  <section id="rooms" class="bg-white border-y border-line">
+    <div class="mx-auto max-w-6xl px-4 py-14">
+      <h2 class="text-2xl md:text-3xl font-bold text-midnight">{t.branch.rooms_heading}</h2>
+      <p class="mt-2 text-ink-muted">{t.branch.rooms_intro}</p>
+      <div class="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+        {rooms.map((r) => <RoomCard locale={locale} room={r} />)}
+      </div>
+    </div>
+  </section>
+
+  <section class="mx-auto max-w-6xl px-4 py-14 grid gap-8 md:grid-cols-2">
+    <div>
+      <h2 class="text-2xl font-bold text-midnight">{t.branch.location_heading}</h2>
+      <dl class="mt-5 space-y-4 text-sm">
+        <div class="flex gap-3">
+          <Icon name="map" size={18} class="text-bronze shrink-0 mt-0.5" />
+          <div>
+            <dt class="font-semibold text-midnight">{t.branch.address}</dt>
+            <dd class="text-ink-muted">
+              {L(locale, branch, 'address')}
+              <br />
+              <span class="latin" dir="ltr">
+                {t.contact.short_code}: {na.short_code} · {t.contact.additional_number}: {na.additional_number}
+              </span>
+            </dd>
+            <dd class="mt-2 flex flex-wrap gap-x-4 gap-y-1">
+              <a href={branch.maps_url} rel="noopener" target="_blank" class="font-semibold text-bronze hover:text-bronze-deep">
+                {t.cta.maps}
+              </a>
+              <a href={branch.google_business_url} rel="noopener" target="_blank" class="font-semibold text-bronze hover:text-bronze-deep">
+                {t.cta.google_reviews}
+              </a>
+            </dd>
+          </div>
+        </div>
+        <div class="flex gap-3">
+          <Icon name="phone" size={18} class="text-bronze shrink-0 mt-0.5" />
+          <div>
+            <dt class="font-semibold text-midnight">{t.contact.phone} / {t.cta.whatsapp}</dt>
+            <dd class="flex flex-wrap gap-x-4 gap-y-1">
+              <a href={telHref(c.phone)} class="latin text-ink-muted hover:text-midnight" dir="ltr">
+                {c.phone_display}
+              </a>
+              <a href={waHref(c.whatsapp)} rel="noopener" target="_blank" class="font-semibold text-bronze hover:text-bronze-deep">
+                {t.cta.whatsapp_title}
+              </a>
+            </dd>
+          </div>
+        </div>
+        <div class="flex gap-3">
+          <Icon name="mail" size={18} class="text-bronze shrink-0 mt-0.5" />
+          <div>
+            <dt class="font-semibold text-midnight">{t.cta.email}</dt>
+            <dd>
+              <a href={mailHref(branch.email)} class="latin text-ink-muted hover:text-midnight" dir="ltr">
+                {branch.email}
+              </a>
+            </dd>
+          </div>
+        </div>
+      </dl>
+    </div>
+    <div class="bg-white border border-line rounded-card p-6 self-start">
+      <h2 class="text-sm font-semibold uppercase tracking-wide text-bronze">{t.branch.other_branch}</h2>
+      {
+        other && (
+          <>
+            <p class="mt-2 text-lg font-semibold text-midnight">{L(locale, other, 'name')}</p>
+            <p class="text-sm text-ink-muted">{L(locale, other, 'tagline')}</p>
+            <a
+              href={branchPath(locale, other.slug)}
+              class="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-bronze hover:text-bronze-deep"
+            >
+              <span>{t.home.view_branch}</span>
+              <Icon name="arrow" size={16} class="rtl:rotate-180" />
+            </a>
+          </>
+        )
+      }
+    </div>
+  </section>
+</Base>

@@ -1,0 +1,27 @@
+---
+/**
+ * Phase-1 photo slot: neutral grey, 3:2, with the brand symbol at low opacity.
+ * TODO(photo): replace with approved Armada photos from content/images/ (WebP, srcset, width/height, lazy).
+ * `label` must describe what the photo will show, in the page language.
+ */
+interface Props {
+  label: string;
+  class?: string;
+  priority?: boolean;
+}
+const { label, class: className = '' } = Astro.props;
+---
+
+<div class:list={['photo-placeholder rounded-card', className]} role="img" aria-label={label}>
+  <svg viewBox="0 0 1841.6 1985.194" xmlns="http://www.w3.org/2000/svg" class="text-midnight" aria-hidden="true" focusable="false">
+    <g fill="currentColor">
+      <path d="M 0 1985.194 L 0 766.244 A 240 240 0 0 1 96.456 573.903 L 425 328.71 L 425 1985.194 Z"></path>
+      <path d="M 475.5 1985.194 L 475.5 291.022 L 645.5 164.151 L 645.5 1985.194 Z"></path>
+      <path
+        d="M 696 1985.194 L 696 126.463 L 821.097 33.103 A 166.7 166.7 0 0 1 1020.503 33.103 L 1145.6 126.463 L 1145.6 1985.194 L 1010.2 1985.194 L 1010.2 1538.194 A 89.4 74.7 0 0 0 831.4 1538.194 L 831.4 1985.194 Z"
+      ></path>
+      <path d="M 1196.1 1985.194 L 1196.1 164.151 L 1366.1 291.022 L 1366.1 1985.194 Z"></path>
+      <path d="M 1841.6 1985.194 L 1841.6 766.244 A 240 240 0 0 0 1745.144 573.903 L 1416.6 328.71 L 1416.6 1985.194 Z"></path>
+    </g>
+  </svg>
+</div>

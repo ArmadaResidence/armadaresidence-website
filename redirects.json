@@ -1,0 +1,10 @@
+{
+  "_note": "301 redirects from old Hostinger-Horizons URLs to the new slugs (CLAUDE.md §7). GitHub Pages has no server-side redirects, so Astro renders a static redirect page per entry (trailing-slash variants are normalised by Astro, list each path once without the slash). Real 301s and www→apex happen at DNS switch (phase 4). Entries with `to: null` need the mapping from Ahmed — they are skipped at build.",
+  "canonical_host": "armadaresidence.com",
+  "www_to_apex": "301 at Hostinger DNS / GitHub Pages custom domain — not part of the static build",
+  "redirects": [
+    { "from": "/armada-residence-airport-rood", "to": "/airport-road/" },
+    { "from": "/our-rooms", "to": "/" },
+    { "from": "/branches/[uuid]", "to": null, "pending": "old branch UUIDs → airport-road / shafa-road mapping from Ahmed" }
+  ]
+}

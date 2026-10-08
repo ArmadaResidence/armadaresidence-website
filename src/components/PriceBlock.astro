@@ -1,0 +1,75 @@
+---
+/**
+ * Renders a room's price exactly as pricing.json dictates, once per rate plan with show_on_site: true
+ * (phase 1: room_only only): «يبدأ من {base_price} ريال / الليلة — شامل الضريبة» + breakfast add-on line
+ * (+ extra person in full mode). Sold-out rooms show «غير متاح حاليًا» and no booking CTA.
+ */
+import {
+  breakfastLine,
+  extraPersonLine,
+  localePath,
+  priceLine,
+  ratePlanMeta,
+  soldOutLabel,
+  ui,
+  visibleRatePlans,
+  type Locale,
+  type Room,
+} from '@lib/content';
+import Icon from './Icon.astro';
+
+interface Props {
+  locale: Locale;
+  room: Room;
+  mode?: 'card' | 'full';
+}
+const { locale, room, mode = 'card' } = Astro.props;
+const t = ui(locale);
+const soldOut = room.availability === 'sold_out';
+const bookHref = `${localePath(locale, '/booking/')}?branch=${room.branch}&room=${room.slug}`;
+const plans = visibleRatePlans(room);
+---
+
+<div class:list={[mode === 'full' ? 'bg-white border border-line rounded-card p-6' : '']}>
+  {mode === 'full' && <h2 class="text-sm font-semibold uppercase tracking-wide text-bronze mb-3">{t.room.price_heading}</h2>}
+  {
+    soldOut && (
+      <p class="inline-block bg-line text-ink text-xs font-semibold px-2.5 py-1 rounded mb-2">{soldOutLabel(locale, room)}</p>
+    )
+  }
+  {
+    plans.map((plan) => {
+      const meta = ratePlanMeta(plan.code);
+      return (
+        <div>
+          <p class:list={['font-semibold text-midnight', mode === 'full' ? 'text-2xl' : 'text-lg']}>
+            {priceLine(locale, room, plan.base_price ?? room.base_price)}
+          </p>
+          {mode === 'full' && (
+            <p class="text-xs text-ink-muted mt-1">
+              {t.price.rate_plan}: {locale === 'ar' ? meta.name_ar : meta.name_en}
+            </p>
+          )}
+        </div>
+      );
+    })
+  }
+  <p class="text-sm text-ink-muted mt-1">{breakfastLine(locale)}</p>
+  {
+    mode === 'full' && (
+      <>
+        <p class="text-sm text-ink-muted mt-1">{extraPersonLine(locale)}</p>
+        <p class="text-xs text-ink-muted mt-3">{t.price.final_note}</p>
+        {!soldOut && (
+          <a
+            href={bookHref}
+            class="mt-5 inline-flex items-center gap-2 bg-bronze text-white font-semibold px-5 py-3 rounded hover:bg-bronze-deep transition-colors"
+          >
+            <span>{t.room.book_room}</span>
+            <Icon name="arrow" size={18} class="rtl:rotate-180" />
+          </a>
+        )}
+      </>
+    )
+  }
+</div>

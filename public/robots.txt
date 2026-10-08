@@ -1,0 +1,5 @@
+User-agent: *
+Allow: /
+Disallow: /booking/success/
+
+Sitemap: https://armadaresidence.com/sitemap-index.xml

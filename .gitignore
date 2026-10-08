@@ -1,0 +1,26 @@
+# build
+dist/
+.astro/
+node_modules/
+__pycache__/
+*.pyc
+
+# secrets — never commit
+.env
+.env.*
+!.env.example
+supabase/.temp/
+supabase/functions/booking-request/content.generated.json
+
+# local tooling
+.claude/settings.local.json
+
+# source material kept outside the website repo (knowledge base, brand identity with videos/PDFs)
+Armada Residence Knowledge Base/
+الهوية النهائية لفنادق أرمادا ريزدنس/
+DECISIONS_append_*.md
+
+# os / editors
+.DS_Store
+Thumbs.db
+*.log

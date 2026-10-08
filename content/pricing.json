@@ -1,0 +1,99 @@
+{
+  "_note": "Confirmed by management 8 Oct 2026 (sales & pricing policy Oct 2026). Site-wide pricing rules; per-room base_price lives in rooms.json.",
+  "currency": "SAR",
+  "price_basis": "board rate — per night, incl. VAT; room-only plan unless the rate plan says breakfast is included",
+  "display_mode": "from",
+  "display_reason": "price varies by season and by day of week; a daily rate calendar comes in phase 2 (pricing_mode: calendar)",
+  "display_ar": "يبدأ من {price} ريال / الليلة — شامل الضريبة",
+  "display_en": "from SAR {price} / night — incl. VAT",
+  "included_guests": {
+    "rooms_studio_one_bedroom": 2,
+    "two_bedroom_suites": 4
+  },
+  "breakfast": {
+    "buffet_daily": true,
+    "feature_line_ar": "بوفيه إفطار يومي",
+    "feature_line_en": "Daily breakfast buffet",
+    "hours": "07:00–10:30 (both branches)",
+    "where_ar": "المطعم — في الفرعين",
+    "where_en": "Restaurant — both branches",
+    "addon_price_per_person": 20,
+    "addon_unit": "per person per day",
+    "available_at": {
+      "airport-road": true,
+      "shafa-road": true
+    },
+    "display_rule": "next to the price show «شامل الإفطار» if the rate plan includes it, else «الإفطار 20 ريال»",
+    "children": {
+      "up_to_5": "free",
+      "6_to_12": "50% (SAR 10)",
+      "13_plus": "adult (SAR 20)",
+      "ar": "الأطفال حتى 5 سنوات مجانًا، ومن 6 إلى 12 سنة بنصف السعر (10 ريالات)، وفوق 12 سنة بسعر البالغ.",
+      "en": "Children up to 5 eat free; ages 6 to 12 at half price (SAR 10); over 12 at the adult rate."
+    }
+  },
+  "extra_person_per_night": 25,
+  "reduction_per_guest_below_included": 20,
+  "verified": true,
+  "pricing_phases": {
+    "1_starting_from": {
+      "status": "current",
+      "rule": "site shows base_price as «يبدأ من»; reception confirms the final price on booking",
+      "site_reads_from": "rooms.json base_price"
+    },
+    "2_rate_calendar": {
+      "status": "next",
+      "rule": "admin rate calendar: reception sets price per day per room type; site reads price for the selected dates",
+      "site_reads_from": "Supabase `rates` (room_type_id, date, price, available)"
+    },
+    "3_channel_manager": {
+      "status": "later",
+      "rule": "channel manager syncs rates + availability with Booking.com and other platforms; «يبدأ من» dropped, real price per date shown",
+      "site_reads_from": "Supabase `rates`, written by channel-manager sync"
+    }
+  },
+  "pricing_mode_values": [
+    "starting_from",
+    "calendar"
+  ],
+  "rate_plans": {
+    "_note": "Breakfast lives on the rate plan, never on the room. Each room lists which plans it sells with that plan's base_price. Phase 2 `rates` rows carry rate_plan_code. Phase 1: only room_only is rendered; breakfast shown as an add-on «الإفطار 20 ريال للشخص في اليوم». bed_and_breakfast is defined for phase 2 (rate calendar) and carries no prices yet.",
+    "room_only": {
+      "code": "room_only",
+      "name_ar": "الغرفة فقط",
+      "name_en": "Room only",
+      "breakfast": {
+        "included": false,
+        "addon_price_per_person": 20,
+        "addon_label_ar": "الإفطار 20 ريال للشخص",
+        "addon_label_en": "Breakfast SAR 20 per person"
+      },
+      "show_on_site": true
+    },
+    "bed_and_breakfast": {
+      "code": "bed_and_breakfast",
+      "name_ar": "شامل الإفطار",
+      "name_en": "Breakfast included",
+      "breakfast": {
+        "included": true,
+        "label_ar": "شامل الإفطار",
+        "label_en": "Breakfast included"
+      },
+      "phase": "2 — not shown in phase 1",
+      "show_on_site": false
+    }
+  },
+  "children": {
+    "counted_in_included_guests": false,
+    "extra_person": {
+      "up_to_5": 0,
+      "6_to_12": "50% (12.5 — confirm rounding)",
+      "13_plus": 25
+    },
+    "breakfast": {
+      "up_to_5": 0,
+      "6_to_12": 10,
+      "13_plus": 20
+    }
+  }
+}

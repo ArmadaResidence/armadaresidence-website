@@ -1,0 +1,123 @@
+---
+import Base from '@layouts/Base.astro';
+import BranchCard from '@components/BranchCard.astro';
+import Icon from '@components/Icon.astro';
+import { langPaths } from '@lib/paths';
+import { organization } from '@lib/jsonld';
+import {
+  branches,
+  fill,
+  localePath,
+  pageSeo,
+  paragraphs,
+  policies,
+  siteTexts,
+  ui,
+  type Locale,
+} from '@lib/content';
+
+export const getStaticPaths = langPaths;
+
+interface Props {
+  locale: Locale;
+}
+const { locale } = Astro.props;
+const t = ui(locale);
+const s = pageSeo(locale, 'home');
+const hero = siteTexts.hero;
+const about = siteTexts.about;
+const why = siteTexts.why_armada;
+const slogan = locale === 'ar' ? siteTexts.slogan_ar : siteTexts.slogan_en;
+const quickFacts = fill(t.home.quick_facts, {
+  check_in: locale === 'ar' ? policies.check_in_ar : policies.check_in_en,
+  check_out: locale === 'ar' ? policies.check_out_ar : policies.check_out_en,
+  hours: policies.cancellation.free_until_hours_before_arrival,
+});
+---
+
+<Base locale={locale} path="/" title={s.title} description={s.description} jsonld={[organization(locale)]}>
+  <section class="relative bg-midnight text-porcelain overflow-hidden">
+    <div class="absolute inset-0 pattern-bg opacity-[0.07]" aria-hidden="true"></div>
+    <div class="relative mx-auto max-w-6xl px-4 py-20 md:py-28">
+      <p class="text-bronze font-semibold tracking-wide mb-4">{slogan}</p>
+      <h1 class="text-3xl md:text-5xl font-bold leading-tight max-w-3xl">{locale === 'ar' ? hero.title_ar : hero.title_en}</h1>
+      <p class="mt-5 text-lg md:text-xl text-porcelain/85 max-w-2xl leading-relaxed">
+        {locale === 'ar' ? hero.subtitle_ar : hero.subtitle_en}
+      </p>
+      <div class="mt-8 flex flex-wrap gap-3">
+        <a
+          href={localePath(locale, '/booking/')}
+          class="inline-flex items-center gap-2 bg-bronze text-white font-semibold px-6 py-3 rounded hover:bg-bronze-deep transition-colors"
+        >
+          <span>{locale === 'ar' ? hero.cta_primary_ar : hero.cta_primary_en}</span>
+          <Icon name="arrow" size={18} class="rtl:rotate-180" />
+        </a>
+        <a
+          href="#branches"
+          class="inline-flex items-center gap-2 border border-porcelain/50 text-porcelain font-semibold px-6 py-3 rounded hover:bg-porcelain hover:text-midnight transition-colors"
+        >
+          {locale === 'ar' ? hero.cta_secondary_ar : hero.cta_secondary_en}
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <section class="bg-white border-b border-line">
+    <p class="mx-auto max-w-6xl px-4 py-4 text-sm text-ink-muted flex items-center gap-2">
+      <Icon name="clock" size={16} class="text-bronze shrink-0" />
+      <span>{quickFacts}</span>
+    </p>
+  </section>
+
+  <section id="branches" class="mx-auto max-w-6xl px-4 py-16">
+    <h2 class="text-2xl md:text-3xl font-bold text-midnight">{t.home.branches_heading}</h2>
+    <p class="mt-3 text-ink-muted max-w-2xl">{t.home.branches_intro}</p>
+    <div class="mt-8 grid gap-6 md:grid-cols-2">
+      {branches.map((b) => <BranchCard locale={locale} branch={b} />)}
+    </div>
+  </section>
+
+  <section class="bg-white border-y border-line">
+    <div class="mx-auto max-w-6xl px-4 py-16">
+      <h2 class="text-2xl md:text-3xl font-bold text-midnight">{locale === 'ar' ? why.heading_ar : why.heading_en}</h2>
+      <ul class="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+        {
+          why.items.map((item) => (
+            <li class="flex gap-3">
+              <span class="mt-1 shrink-0 w-8 h-8 rounded-full bg-porcelain text-bronze grid place-items-center">
+                <Icon name="check" size={18} />
+              </span>
+              <div>
+                <h3 class="font-semibold text-midnight">{locale === 'ar' ? item.title_ar : item.title_en}</h3>
+                <p class="text-sm text-ink-muted mt-1 leading-relaxed">{locale === 'ar' ? item.body_ar : item.body_en}</p>
+              </div>
+            </li>
+          ))
+        }
+      </ul>
+    </div>
+  </section>
+
+  <section class="mx-auto max-w-6xl px-4 py-16 grid gap-10 md:grid-cols-5">
+    <div class="md:col-span-2">
+      <h2 class="text-2xl md:text-3xl font-bold text-midnight">{locale === 'ar' ? about.heading_ar : about.heading_en}</h2>
+    </div>
+    <div class="md:col-span-3 prose-armada leading-relaxed">
+      {paragraphs(locale === 'ar' ? about.body_ar : about.body_en).map((p) => <p>{p}</p>)}
+    </div>
+  </section>
+
+  <section class="bg-midnight text-porcelain">
+    <div class="mx-auto max-w-6xl px-4 py-12 flex flex-wrap items-center justify-between gap-6">
+      <p class="text-xl font-semibold">{slogan}</p>
+      <div class="flex flex-wrap gap-3">
+        <a href={localePath(locale, '/booking/')} class="bg-bronze text-white font-semibold px-6 py-3 rounded hover:bg-bronze-deep transition-colors">
+          {t.nav.book}
+        </a>
+        <a href="#branches" class="border border-porcelain/50 font-semibold px-6 py-3 rounded hover:bg-porcelain hover:text-midnight transition-colors">
+          {t.home.rooms_cta}
+        </a>
+      </div>
+    </div>
+  </section>
+</Base>

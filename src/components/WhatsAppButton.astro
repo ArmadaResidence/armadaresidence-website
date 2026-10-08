@@ -1,0 +1,91 @@
+---
+/**
+ * Sticky WhatsApp button. On branch/room pages it links straight to that branch's number;
+ * on home and shared pages it opens a two-branch chooser. Numbers come from content/contact.json.
+ */
+import { branchContact, branchShort, branches, fill, ui, waHref, type Locale } from '@lib/content';
+import Icon from './Icon.astro';
+
+interface Props {
+  locale: Locale;
+  branch?: string;
+}
+const { locale, branch } = Astro.props;
+const t = ui(locale);
+const single = branch ? branchContact(branch) : null;
+---
+
+{
+  single ? (
+    <a
+      href={waHref(single.whatsapp)}
+      class="wa-fab inline-flex items-center gap-2 bg-midnight text-white rounded-full shadow-lg px-4 py-3 hover:bg-bronze transition-colors"
+      rel="noopener"
+      target="_blank"
+      title={t.cta.whatsapp_title}
+    >
+      <Icon name="whatsapp" size={22} />
+      <span class="text-sm font-semibold">{t.cta.whatsapp}</span>
+    </a>
+  ) : (
+    <div class="wa-fab" data-wa-chooser>
+      <div
+        class="hidden mb-3 bg-white rounded-card shadow-xl border border-line p-3 w-80 max-w-[calc(100vw-2.5rem)]"
+        data-wa-panel
+        role="dialog"
+        aria-label={t.cta.whatsapp_choose}
+      >
+        <p class="text-xs text-ink-muted mb-2">{t.cta.whatsapp_choose}</p>
+        <ul class="space-y-2">
+          {branches.map((b) => {
+            const c = branchContact(b.slug);
+            return (
+              <li>
+                <a
+                  href={waHref(c.whatsapp)}
+                  class="flex items-center justify-between gap-2 rounded px-3 py-2 bg-porcelain hover:bg-bronze hover:text-white transition-colors"
+                  rel="noopener"
+                  target="_blank"
+                >
+                  <span class="text-sm font-medium">{fill(t.cta.whatsapp_branch, { branch: branchShort(locale, b.slug) })}</span>
+                  <span class="latin text-xs whitespace-nowrap" dir="ltr">
+                    {c.phone_display}
+                  </span>
+                </a>
+              </li>
+            );
+          })}
+        </ul>
+      </div>
+      <button
+        type="button"
+        class="inline-flex items-center gap-2 bg-midnight text-white rounded-full shadow-lg px-4 py-3 hover:bg-bronze transition-colors"
+        aria-expanded="false"
+        data-wa-toggle
+        title={t.cta.whatsapp_title}
+      >
+        <Icon name="whatsapp" size={22} />
+        <span class="text-sm font-semibold">{t.cta.whatsapp}</span>
+      </button>
+    </div>
+  )
+}
+
+<script>
+  const root = document.querySelector('[data-wa-chooser]');
+  const btn = root?.querySelector<HTMLButtonElement>('[data-wa-toggle]');
+  const panel = root?.querySelector<HTMLElement>('[data-wa-panel]');
+  if (btn && panel) {
+    btn.addEventListener('click', () => {
+      const open = btn.getAttribute('aria-expanded') === 'true';
+      btn.setAttribute('aria-expanded', String(!open));
+      panel.classList.toggle('hidden', open);
+    });
+    document.addEventListener('click', (e) => {
+      if (root && !root.contains(e.target as Node)) {
+        btn.setAttribute('aria-expanded', 'false');
+        panel.classList.add('hidden');
+      }
+    });
+  }
+</script>

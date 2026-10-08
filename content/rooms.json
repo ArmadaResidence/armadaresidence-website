@@ -1,0 +1,769 @@
+{
+  "_note": "Updated 8 Oct 2026 (second batch). All prices incl. VAT, sizes/capacities approved. `base_price` = starting-from price of the room_only plan; breakfast is a rate-plan attribute (see rate_plans here and in pricing.json), never a room attribute. pricing_mode starting_from now → calendar in phase 2. Accessible rooms are shown with availability: sold_out. Features confirmed: fridge (Airport all rooms), kettle (both branches), kitchen (Airport suites only), no washers (central laundry), balcony (Shafa balcony room only). In-room: Wi-Fi, TV, safe, AC confirmed in all rooms (8 Oct).",
+  "rooms": [
+    {
+      "slug": "twin-room",
+      "branch": "airport-road",
+      "name_ar": "غرفة سريرين منفصلين",
+      "name_en": "Twin Room",
+      "category": "standard",
+      "base_price": 185,
+      "currency": "SAR",
+      "pricing_mode": "starting_from",
+      "price_verified": true,
+      "vat_included": true,
+      "weekend_price_sar": "same as base (website)",
+      "in_room_amenities": [
+        "wifi",
+        "tv",
+        "safe",
+        "air_conditioning",
+        "kettle",
+        "fridge"
+      ],
+      "size_m2": 57,
+      "capacity": 2,
+      "included_guests": 2,
+      "bed_ar": "سريران مفردان",
+      "bed_en": "Two single beds",
+      "features": {
+        "kitchen": false,
+        "living_room": false,
+        "balcony": false,
+        "jacuzzi": false,
+        "washer": false,
+        "fridge": true,
+        "kettle": true,
+        "laundry_ar": "مغسلة مركزية في الفندق",
+        "laundry_en": "Central laundry service"
+      },
+      "active": true,
+      "show_on_site": true,
+      "legacy_main_image": "https://sbgfhlecdkgjhhxfhyrt.supabase.co/storage/v1/object/public/images/1768684056952-ti602zw0il.jpg",
+      "legacy_description_ar": "غرفة بتصميم عصري وعملي بسريرين منفصلين، مساحة معيشة واسعة، مكتب، خزنة، تلفاز، إنترنت عالي السرعة، تكييف مركزي.",
+      "legacy_description_en": "Modern, practical room with two separate beds, spacious living area, desk, safe, TV, high-speed internet, central AC.",
+      "description_ar": "غرفة بسريرين مفردين بمساحة 57 مترًا مربعًا، وهي أوسع غرفة فردية في فرع طريق المطار. تناسب الزميلين في رحلة عمل أو الصديقين، وتوفّر مساحة جلوس مريحة إلى جانب السريرين.\n\nتتوفر في الغرفة شبكة واي فاي وتلفاز وخزنة وتكييف. الغرفة مزوّدة بثلاجة وغلاية. السعر يشمل شخصين، والإفطار يُضاف للشخص حسب خطة السعر.",
+      "description_en": "A 57 m² room with two single beds, the largest single room at Airport Road. Suited to colleagues on a business trip or two friends, with comfortable sitting space alongside the beds.\n\nThe room has Wi-Fi, a TV, a safe and air conditioning. The room has a fridge and a kettle. The price covers two guests; breakfast is per person according to the rate plan.",
+      "description_note": "draft 1 — 8 Oct 2026, awaiting Ahmed's approval",
+      "flags": [],
+      "verified": true,
+      "rate_plans": [
+        {
+          "code": "room_only",
+          "base_price": 185,
+          "breakfast_included": false,
+          "show_on_site": true
+        },
+        {
+          "code": "bed_and_breakfast",
+          "breakfast_included": true,
+          "show_on_site": false,
+          "phase": 2
+        }
+      ],
+      "availability": "available",
+      "in_room_amenities_confirmed": "8 Oct 2026 — Ahmed"
+    },
+    {
+      "slug": "king-room",
+      "branch": "airport-road",
+      "name_ar": "غرفة بسرير كينج",
+      "name_en": "King Room",
+      "category": "standard",
+      "base_price": 185,
+      "currency": "SAR",
+      "pricing_mode": "starting_from",
+      "price_verified": true,
+      "vat_included": true,
+      "weekend_price_sar": "same as base (website)",
+      "in_room_amenities": [
+        "wifi",
+        "tv",
+        "safe",
+        "air_conditioning",
+        "kettle",
+        "fridge"
+      ],
+      "size_m2": 50,
+      "capacity": 2,
+      "included_guests": 2,
+      "bed_ar": "سرير كينج",
+      "bed_en": "King bed",
+      "features": {
+        "kitchen": false,
+        "living_room": false,
+        "balcony": false,
+        "jacuzzi": false,
+        "washer": false,
+        "fridge": true,
+        "kettle": true,
+        "laundry_ar": "مغسلة مركزية في الفندق",
+        "laundry_en": "Central laundry service"
+      },
+      "active": true,
+      "show_on_site": true,
+      "legacy_main_image": "https://sbgfhlecdkgjhhxfhyrt.supabase.co/storage/v1/object/public/images/1769166009019-ux2jyvm3az.jpg",
+      "legacy_description_ar": "غرفة أنيقة بسرير كينج، مساحة معيشة واسعة، مكتب، خزنة، تلفاز، إنترنت، تكييف مركزي.",
+      "legacy_description_en": "Elegant room with a king bed, spacious living area, desk, safe, TV, internet, central AC.",
+      "description_ar": "غرفة بسرير كينج بمساحة 50 مترًا مربعًا في فرع طريق المطار، تناسب الفرد أو الزوجين في إقامة قصيرة قرب المطار أو إقامة أطول في الطائف.\n\nتتوفر في الغرفة شبكة واي فاي وتلفاز وخزنة وتكييف. الغرفة مزوّدة بثلاجة وغلاية. السعر يشمل شخصين، والإفطار يُضاف للشخص حسب خطة السعر.",
+      "description_en": "A 50 m² room with a king bed at Airport Road, for a single guest or a couple on a short stay near the airport or a longer stay in Taif.\n\nThe room has Wi-Fi, a TV, a safe and air conditioning. The room has a fridge and a kettle. The price covers two guests; breakfast is per person according to the rate plan.",
+      "description_note": "draft 1 — 8 Oct 2026, awaiting Ahmed's approval",
+      "flags": [],
+      "verified": true,
+      "rate_plans": [
+        {
+          "code": "room_only",
+          "base_price": 185,
+          "breakfast_included": false,
+          "show_on_site": true
+        },
+        {
+          "code": "bed_and_breakfast",
+          "breakfast_included": true,
+          "show_on_site": false,
+          "phase": 2
+        }
+      ],
+      "availability": "available",
+      "in_room_amenities_confirmed": "8 Oct 2026 — Ahmed"
+    },
+    {
+      "slug": "one-bedroom-suite",
+      "branch": "airport-road",
+      "name_ar": "جناح بغرفة وصالة",
+      "name_en": "One-Bedroom Suite",
+      "category": "suite",
+      "base_price": 200,
+      "currency": "SAR",
+      "pricing_mode": "starting_from",
+      "price_verified": true,
+      "vat_included": true,
+      "weekend_price_sar": "same as base (website)",
+      "in_room_amenities": [
+        "wifi",
+        "tv",
+        "safe",
+        "air_conditioning",
+        "kettle",
+        "fridge"
+      ],
+      "size_m2": 65,
+      "capacity": 2,
+      "included_guests": 2,
+      "bed_ar": "سرير كينج",
+      "bed_en": "King bed",
+      "features": {
+        "kitchen": true,
+        "living_room": true,
+        "balcony": false,
+        "jacuzzi": false,
+        "washer": false,
+        "fridge": true,
+        "kettle": true,
+        "laundry_ar": "مغسلة مركزية في الفندق",
+        "laundry_en": "Central laundry service"
+      },
+      "active": true,
+      "show_on_site": true,
+      "legacy_main_image": "https://sbgfhlecdkgjhhxfhyrt.supabase.co/storage/v1/object/public/images/1768684341178-oz2ij66ia4.jpg",
+      "legacy_description_ar": "جناح واسع بغرفة نوم وصالة جلوس فسيحة، مكتب، خزنة، تلفاز، إنترنت.",
+      "legacy_description_en": "Spacious suite with a bedroom and large living area, desk, safe, TV, internet.",
+      "description_ar": "جناح بمساحة 65 مترًا مربعًا يضم غرفة نوم بسرير كينج وصالة منفصلة، وهو الخيار المناسب لمن يحتاج إلى مكان للعمل أو الجلوس بعيدًا عن غرفة النوم.\n\nتتوفر في الغرفة شبكة واي فاي وتلفاز وخزنة وتكييف. الجناح مزوّد بمطبخ، إلى جانب الثلاجة والغلاية، ما يجعله مناسبًا للإقامات الطويلة. السعر يشمل شخصين، ويمكن إضافة شخص ثالث برسوم.",
+      "description_en": "A 65 m² suite with a king bedroom and a separate living room, the right choice for guests who need a place to work or sit apart from the bedroom.\n\nThe room has Wi-Fi, a TV, a safe and air conditioning. The suite has a kitchen, as well as a fridge and a kettle, which makes it suitable for longer stays. The price covers two guests; a third guest can be added for a fee.",
+      "description_note": "draft 1 — 8 Oct 2026, awaiting Ahmed's approval",
+      "flags": [
+        "bed corrected 8 Oct: king (legacy said 'king or twin on request')"
+      ],
+      "verified": true,
+      "rate_plans": [
+        {
+          "code": "room_only",
+          "base_price": 200,
+          "breakfast_included": false,
+          "show_on_site": true
+        },
+        {
+          "code": "bed_and_breakfast",
+          "breakfast_included": true,
+          "show_on_site": false,
+          "phase": 2
+        }
+      ],
+      "availability": "available",
+      "in_room_amenities_confirmed": "8 Oct 2026 — Ahmed"
+    },
+    {
+      "slug": "two-bedroom-suite",
+      "branch": "airport-road",
+      "name_ar": "جناح بغرفتي نوم وصالة",
+      "name_en": "Two-Bedroom Suite",
+      "category": "suite",
+      "base_price": 240,
+      "currency": "SAR",
+      "pricing_mode": "starting_from",
+      "price_verified": true,
+      "vat_included": true,
+      "weekend_price_sar": "same as base (website)",
+      "in_room_amenities": [
+        "wifi",
+        "tv",
+        "safe",
+        "air_conditioning",
+        "kettle",
+        "fridge"
+      ],
+      "size_m2": 75,
+      "capacity": 4,
+      "included_guests": 4,
+      "bed_ar": "سرير كينج + سريران مفردان",
+      "bed_en": "King bed + two single beds",
+      "features": {
+        "kitchen": true,
+        "living_room": true,
+        "balcony": false,
+        "jacuzzi": false,
+        "washer": false,
+        "fridge": true,
+        "kettle": true,
+        "laundry_ar": "مغسلة مركزية في الفندق",
+        "laundry_en": "Central laundry service"
+      },
+      "active": true,
+      "show_on_site": true,
+      "legacy_main_image": "https://sbgfhlecdkgjhhxfhyrt.supabase.co/storage/v1/object/public/images/1769165982836-ndg0dqcf0b9.jpg",
+      "legacy_description_ar": "جناح بغرفتي نوم وصالة جلوس فسيحة، مكتب، خزنة، تلفاز، إنترنت؛ مناسب للعائلات والإقامات الطويلة.",
+      "legacy_description_en": "Two bedrooms and a large living room, desk, safe, TV, internet; ideal for families and long stays.",
+      "description_ar": "جناح بمساحة 75 مترًا مربعًا، وهو الأكبر في فرع طريق المطار: غرفة نوم بسرير كينج، وغرفة ثانية بسريرين مفردين، وصالة تجمع الجميع.\n\nتتوفر في الغرفة شبكة واي فاي وتلفاز وخزنة وتكييف. مزوّد بمطبخ وثلاجة وغلاية، ويناسب العائلة أو مجموعة من أربعة أشخاص، سواء لليلة أو لإقامة طويلة. السعر يشمل أربعة أشخاص.",
+      "description_en": "A 75 m² suite, the largest at Airport Road: a king bedroom, a second bedroom with two single beds, and a living room shared by all.\n\nThe room has Wi-Fi, a TV, a safe and air conditioning. With a kitchen, fridge and kettle, it suits a family or a group of four, for a night or a long stay. The price covers four guests.",
+      "description_note": "draft 1 — 8 Oct 2026, awaiting Ahmed's approval",
+      "flags": [],
+      "verified": true,
+      "rate_plans": [
+        {
+          "code": "room_only",
+          "base_price": 240,
+          "breakfast_included": false,
+          "show_on_site": true
+        },
+        {
+          "code": "bed_and_breakfast",
+          "breakfast_included": true,
+          "show_on_site": false,
+          "phase": 2
+        }
+      ],
+      "availability": "available",
+      "in_room_amenities_confirmed": "8 Oct 2026 — Ahmed"
+    },
+    {
+      "slug": "accessible-room",
+      "branch": "airport-road",
+      "name_ar": "غرفة مهيأة لذوي الاحتياجات الخاصة",
+      "name_en": "Accessible Room",
+      "category": "standard",
+      "base_price": 185,
+      "currency": "SAR",
+      "pricing_mode": "starting_from",
+      "price_verified": true,
+      "vat_included": true,
+      "weekend_price_sar": "same as base (website)",
+      "in_room_amenities": [
+        "wifi",
+        "tv",
+        "safe",
+        "air_conditioning",
+        "kettle",
+        "fridge"
+      ],
+      "size_m2": 50,
+      "capacity": 2,
+      "included_guests": 2,
+      "bed_ar": "سرير كينج",
+      "bed_en": "King bed",
+      "features": {
+        "kitchen": false,
+        "living_room": false,
+        "balcony": false,
+        "jacuzzi": false,
+        "washer": false,
+        "fridge": true,
+        "kettle": true,
+        "laundry_ar": "مغسلة مركزية في الفندق",
+        "laundry_en": "Central laundry service"
+      },
+      "active": false,
+      "show_on_site": true,
+      "legacy_main_image": "",
+      "legacy_description_ar": "غرفة مصممة لذوي الإعاقة وكبار السن: مداخل مهيأة، مقابض دعم، دُش سهل الاستخدام.",
+      "legacy_description_en": "Designed for guests with disabilities and the elderly: accessible entrances, grab bars, accessible shower.",
+      "description_ar": "غرفة مهيأة لذوي الاحتياجات الخاصة. غير متاحة حاليًا — للاستفسار يرجى التواصل مع الاستقبال.",
+      "description_en": "Accessible room. Not available at the moment — please contact reception to enquire.",
+      "description_note": "accessible room — short note only, written when activated",
+      "flags": [
+        "no image",
+        "shown on site as sold out (decision 8 Oct)"
+      ],
+      "verified": true,
+      "rate_plans": [
+        {
+          "code": "room_only",
+          "base_price": 185,
+          "breakfast_included": false,
+          "show_on_site": true
+        },
+        {
+          "code": "bed_and_breakfast",
+          "breakfast_included": true,
+          "show_on_site": false,
+          "phase": 2
+        }
+      ],
+      "availability": "sold_out",
+      "availability_ar": "غير متاح حاليًا",
+      "availability_en": "Not available at the moment",
+      "in_room_amenities_confirmed": "8 Oct 2026 — Ahmed"
+    },
+    {
+      "slug": "king-room",
+      "branch": "shafa-road",
+      "name_ar": "غرفة كينج",
+      "name_en": "King Room",
+      "category": "standard",
+      "base_price": 185,
+      "currency": "SAR",
+      "pricing_mode": "starting_from",
+      "price_verified": true,
+      "vat_included": true,
+      "weekend_price_sar": "same as base (website)",
+      "in_room_amenities": [
+        "wifi",
+        "tv",
+        "safe",
+        "air_conditioning",
+        "kettle"
+      ],
+      "size_m2": 35,
+      "capacity": 2,
+      "included_guests": 2,
+      "bed_ar": "سرير كينج",
+      "bed_en": "King bed",
+      "features": {
+        "kitchen": false,
+        "living_room": false,
+        "balcony": false,
+        "jacuzzi": false,
+        "washer": false,
+        "fridge": false,
+        "kettle": true,
+        "laundry_ar": "مغسلة مركزية في الفندق",
+        "laundry_en": "Central laundry service"
+      },
+      "active": true,
+      "show_on_site": true,
+      "legacy_main_image": "https://sbgfhlecdkgjhhxfhyrt.supabase.co/storage/v1/object/public/images/1769166060437-kq74rdswfk.jpg",
+      "legacy_description_ar": "غرفة بتصميم أنيق وسرير كينج واسع، تناسب الإقامات القصيرة والطويلة.",
+      "legacy_description_en": "Elegant room with a spacious king bed, for short and long stays.",
+      "description_ar": "غرفة بسرير كينج بمساحة 35 مترًا مربعًا في فندق طريق الشفا، تناسب الفرد أو الزوجين في زيارة قصيرة للطائف أو في الطريق إلى مرتفعات الشفا.\n\nتتوفر في الغرفة شبكة واي فاي وتلفاز وخزنة وتكييف. الغرفة مزوّدة بغلاية. السعر يشمل شخصين، والإفطار يُضاف للشخص حسب خطة السعر.",
+      "description_en": "A 35 m² room with a king bed at the Shafa Road hotel, for a single guest or a couple on a short visit to Taif or on the way to the Al-Shafa highlands.\n\nThe room has Wi-Fi, a TV, a safe and air conditioning. The room has a kettle. The price covers two guests; breakfast is per person according to the rate plan.",
+      "description_note": "draft 1 — 8 Oct 2026, awaiting Ahmed's approval",
+      "flags": [],
+      "verified": true,
+      "rate_plans": [
+        {
+          "code": "room_only",
+          "base_price": 185,
+          "breakfast_included": false,
+          "show_on_site": true
+        },
+        {
+          "code": "bed_and_breakfast",
+          "breakfast_included": true,
+          "show_on_site": false,
+          "phase": 2
+        }
+      ],
+      "availability": "available",
+      "in_room_amenities_confirmed": "8 Oct 2026 — Ahmed"
+    },
+    {
+      "slug": "balcony-room",
+      "branch": "shafa-road",
+      "name_ar": "غرفة مع بلكونة",
+      "name_en": "Room with Balcony",
+      "category": "standard",
+      "base_price": 185,
+      "currency": "SAR",
+      "pricing_mode": "starting_from",
+      "price_verified": true,
+      "vat_included": true,
+      "weekend_price_sar": "same as base (website)",
+      "in_room_amenities": [
+        "wifi",
+        "tv",
+        "safe",
+        "air_conditioning",
+        "kettle"
+      ],
+      "size_m2": 45,
+      "capacity": 2,
+      "included_guests": 2,
+      "bed_ar": "سرير كينج",
+      "bed_en": "King bed",
+      "features": {
+        "kitchen": false,
+        "living_room": false,
+        "balcony": true,
+        "jacuzzi": false,
+        "washer": false,
+        "fridge": false,
+        "kettle": true,
+        "laundry_ar": "مغسلة مركزية في الفندق",
+        "laundry_en": "Central laundry service"
+      },
+      "active": true,
+      "show_on_site": true,
+      "legacy_main_image": "https://sbgfhlecdkgjhhxfhyrt.supabase.co/storage/v1/object/public/images/1769167490803-e1z92qup188.jpg",
+      "legacy_description_ar": "غرفة مريحة ببلكونة خاصة وإطلالة.",
+      "legacy_description_en": "Comfortable room with a private balcony and view.",
+      "description_ar": "غرفة بسرير كينج بمساحة 45 مترًا مربعًا مع بلكونة خاصة، وهي الغرفة الوحيدة ببلكونة في الفرعين. تناسب من يفضّل جلسة في الهواء الطلق صباحًا أو مساءً.\n\nتتوفر في الغرفة شبكة واي فاي وتلفاز وخزنة وتكييف. الغرفة مزوّدة بغلاية. السعر يشمل شخصين.",
+      "description_en": "A 45 m² room with a king bed and a private balcony, the only balcony room across both properties. For guests who like to sit outside in the morning or evening.\n\nThe room has Wi-Fi, a TV, a safe and air conditioning. The room has a kettle. The price covers two guests.",
+      "description_note": "draft 1 — 8 Oct 2026, awaiting Ahmed's approval",
+      "flags": [],
+      "verified": true,
+      "rate_plans": [
+        {
+          "code": "room_only",
+          "base_price": 185,
+          "breakfast_included": false,
+          "show_on_site": true
+        },
+        {
+          "code": "bed_and_breakfast",
+          "breakfast_included": true,
+          "show_on_site": false,
+          "phase": 2
+        }
+      ],
+      "availability": "available",
+      "in_room_amenities_confirmed": "8 Oct 2026 — Ahmed"
+    },
+    {
+      "slug": "jacuzzi-studio",
+      "branch": "shafa-road",
+      "name_ar": "استديو بجاكوزي",
+      "name_en": "Studio with Jacuzzi",
+      "category": "deluxe",
+      "base_price": 200,
+      "currency": "SAR",
+      "pricing_mode": "starting_from",
+      "price_verified": true,
+      "vat_included": true,
+      "weekend_price_sar": "same as base (website)",
+      "in_room_amenities": [
+        "wifi",
+        "tv",
+        "safe",
+        "air_conditioning",
+        "kettle"
+      ],
+      "size_m2": 40,
+      "capacity": 2,
+      "included_guests": 2,
+      "bed_ar": "سرير كينج",
+      "bed_en": "King bed",
+      "features": {
+        "kitchen": false,
+        "living_room": false,
+        "balcony": false,
+        "jacuzzi": true,
+        "washer": false,
+        "fridge": false,
+        "kettle": true,
+        "laundry_ar": "مغسلة مركزية في الفندق",
+        "laundry_en": "Central laundry service"
+      },
+      "active": true,
+      "show_on_site": true,
+      "legacy_main_image": "https://sbgfhlecdkgjhhxfhyrt.supabase.co/storage/v1/object/public/images/1769167773997-sfp840h3rw.jpg",
+      "legacy_description_ar": "استديو بتصميم مفتوح وجاكوزي خاص، مثالي للأزواج.",
+      "legacy_description_en": "Open-plan studio with a private jacuzzi, ideal for couples.",
+      "description_ar": "استديو بمساحة 40 مترًا مربعًا بتصميم مفتوح، يضم سرير كينج وجاكوزي خاصًا داخل الوحدة. خيار مناسب للزوجين في إقامة هادئة.\n\nتتوفر في الغرفة شبكة واي فاي وتلفاز وخزنة وتكييف. الاستديو مزوّد بغلاية. السعر يشمل شخصين.",
+      "description_en": "A 40 m² open-plan studio with a king bed and a private in-room jacuzzi. A good choice for a couple on a quiet stay.\n\nThe room has Wi-Fi, a TV, a safe and air conditioning. The studio has a kettle. The price covers two guests.",
+      "description_note": "draft 1 — 8 Oct 2026, awaiting Ahmed's approval",
+      "flags": [],
+      "verified": true,
+      "rate_plans": [
+        {
+          "code": "room_only",
+          "base_price": 200,
+          "breakfast_included": false,
+          "show_on_site": true
+        },
+        {
+          "code": "bed_and_breakfast",
+          "breakfast_included": true,
+          "show_on_site": false,
+          "phase": 2
+        }
+      ],
+      "availability": "available",
+      "in_room_amenities_confirmed": "8 Oct 2026 — Ahmed"
+    },
+    {
+      "slug": "one-bedroom-suite",
+      "branch": "shafa-road",
+      "name_ar": "جناح غرفة وصالة",
+      "name_en": "One-Bedroom Suite",
+      "category": "suite",
+      "base_price": 200,
+      "currency": "SAR",
+      "pricing_mode": "starting_from",
+      "price_verified": true,
+      "vat_included": true,
+      "weekend_price_sar": "same as base (website)",
+      "in_room_amenities": [
+        "wifi",
+        "tv",
+        "safe",
+        "air_conditioning",
+        "kettle"
+      ],
+      "size_m2": 45,
+      "capacity": 2,
+      "included_guests": 2,
+      "bed_ar": "سرير كينج",
+      "bed_en": "King bed",
+      "features": {
+        "kitchen": false,
+        "living_room": true,
+        "balcony": false,
+        "jacuzzi": false,
+        "washer": false,
+        "fridge": false,
+        "kettle": true,
+        "laundry_ar": "مغسلة مركزية في الفندق",
+        "laundry_en": "Central laundry service"
+      },
+      "active": true,
+      "show_on_site": true,
+      "legacy_main_image": "https://sbgfhlecdkgjhhxfhyrt.supabase.co/storage/v1/object/public/images/1769167797413-u2hqqmhkr5.jpg",
+      "legacy_description_ar": "جناح بغرفة نوم وصالة جلوس منفصلة.",
+      "legacy_description_en": "Suite with a bedroom and a separate living area.",
+      "description_ar": "جناح بمساحة 45 مترًا مربعًا يضم غرفة نوم بسرير كينج وصالة جلوس منفصلة، لمن يفضّل الفصل بين النوم والجلوس في إقامة قصيرة أو طويلة.\n\nتتوفر في الغرفة شبكة واي فاي وتلفاز وخزنة وتكييف. الجناح مزوّد بغلاية. السعر يشمل شخصين، ويمكن إضافة شخص ثالث برسوم.",
+      "description_en": "A 45 m² suite with a king bedroom and a separate living room, for guests who prefer to keep sleeping and sitting areas apart on a short or long stay.\n\nThe room has Wi-Fi, a TV, a safe and air conditioning. The suite has a kettle. The price covers two guests; a third guest can be added for a fee.",
+      "description_note": "draft 1 — 8 Oct 2026, awaiting Ahmed's approval",
+      "flags": [],
+      "verified": true,
+      "rate_plans": [
+        {
+          "code": "room_only",
+          "base_price": 200,
+          "breakfast_included": false,
+          "show_on_site": true
+        },
+        {
+          "code": "bed_and_breakfast",
+          "breakfast_included": true,
+          "show_on_site": false,
+          "phase": 2
+        }
+      ],
+      "availability": "available",
+      "in_room_amenities_confirmed": "8 Oct 2026 — Ahmed"
+    },
+    {
+      "slug": "two-bedroom-suite",
+      "branch": "shafa-road",
+      "name_ar": "جناح بغرفتي نوم وصالة",
+      "name_en": "Two-Bedroom Suite",
+      "category": "suite",
+      "base_price": 240,
+      "currency": "SAR",
+      "pricing_mode": "starting_from",
+      "price_verified": true,
+      "vat_included": true,
+      "weekend_price_sar": "same as base (website)",
+      "in_room_amenities": [
+        "wifi",
+        "tv",
+        "safe",
+        "air_conditioning",
+        "kettle"
+      ],
+      "size_m2": 65,
+      "capacity": 4,
+      "included_guests": 4,
+      "bed_ar": "سرير كينج + سريران مفردان",
+      "bed_en": "King bed + two single beds",
+      "features": {
+        "kitchen": false,
+        "living_room": true,
+        "balcony": false,
+        "jacuzzi": false,
+        "washer": false,
+        "fridge": false,
+        "kettle": true,
+        "laundry_ar": "مغسلة مركزية في الفندق",
+        "laundry_en": "Central laundry service"
+      },
+      "active": true,
+      "show_on_site": true,
+      "legacy_main_image": "https://sbgfhlecdkgjhhxfhyrt.supabase.co/storage/v1/object/public/images/1769167820938-7nsvqeafdfo.jpg",
+      "legacy_description_ar": "جناح بغرفة بسرير كينج وغرفة بسريرين منفصلين وصالة جلوس.",
+      "legacy_description_en": "One king bedroom, one twin bedroom and a living room.",
+      "description_ar": "جناح بمساحة 65 مترًا مربعًا، وهو الأكبر في فندق طريق الشفا: غرفة نوم بسرير كينج، وغرفة ثانية بسريرين مفردين، وصالة جلوس مشتركة. يناسب العائلة أو مجموعة من أربعة.\n\nتتوفر في الغرفة شبكة واي فاي وتلفاز وخزنة وتكييف. الجناح مزوّد بغلاية. السعر يشمل أربعة أشخاص.",
+      "description_en": "A 65 m² suite, the largest at Shafa Road: a king bedroom, a second bedroom with two single beds, and a shared living room. Suits a family or a group of four.\n\nThe room has Wi-Fi, a TV, a safe and air conditioning. The suite has a kettle. The price covers four guests.",
+      "description_note": "draft 1 — 8 Oct 2026, awaiting Ahmed's approval",
+      "flags": [],
+      "verified": true,
+      "rate_plans": [
+        {
+          "code": "room_only",
+          "base_price": 240,
+          "breakfast_included": false,
+          "show_on_site": true
+        },
+        {
+          "code": "bed_and_breakfast",
+          "breakfast_included": true,
+          "show_on_site": false,
+          "phase": 2
+        }
+      ],
+      "availability": "available",
+      "in_room_amenities_confirmed": "8 Oct 2026 — Ahmed"
+    },
+    {
+      "slug": "two-bedroom-jacuzzi-suite",
+      "branch": "shafa-road",
+      "name_ar": "جناح بغرفتي نوم وجاكوزي",
+      "name_en": "Two-Bedroom Suite with Jacuzzi",
+      "category": "suite",
+      "base_price": 240,
+      "currency": "SAR",
+      "pricing_mode": "starting_from",
+      "price_verified": true,
+      "vat_included": true,
+      "weekend_price_sar": "same as base (website)",
+      "in_room_amenities": [
+        "wifi",
+        "tv",
+        "safe",
+        "air_conditioning",
+        "kettle"
+      ],
+      "size_m2": 45,
+      "capacity": 4,
+      "included_guests": 4,
+      "bed_ar": "سرير كينج + سريران مفردان",
+      "bed_en": "King bed + two single beds",
+      "features": {
+        "kitchen": false,
+        "living_room": false,
+        "balcony": false,
+        "jacuzzi": true,
+        "washer": false,
+        "fridge": false,
+        "kettle": true,
+        "laundry_ar": "مغسلة مركزية في الفندق",
+        "laundry_en": "Central laundry service"
+      },
+      "active": true,
+      "show_on_site": true,
+      "legacy_main_image": "https://sbgfhlecdkgjhhxfhyrt.supabase.co/storage/v1/object/public/images/1769167728456-dgjer1xpb2e.jpg",
+      "legacy_description_ar": "جناح بغرفتي نوم وجاكوزي خاص، مناسب للعائلات.",
+      "legacy_description_en": "Two-bedroom suite with a private jacuzzi, for families.",
+      "description_ar": "جناح بمساحة 45 مترًا مربعًا بغرفتي نوم: الأولى بسرير كينج، والثانية بسريرين مفردين، مع جاكوزي خاص. الجناح بلا صالة، فالمساحة كلها لغرفتي النوم والجاكوزي.\n\nتتوفر في الغرفة شبكة واي فاي وتلفاز وخزنة وتكييف. يناسب العائلة الصغيرة التي تريد غرفتين وجاكوزي بسعر الجناح العائلي. مزوّد بغلاية، والسعر يشمل أربعة أشخاص.",
+      "description_en": "A 45 m² suite with two bedrooms, one with a king bed and one with two single beds, plus a private jacuzzi. There is no living room; the space goes to the two bedrooms and the jacuzzi.\n\nThe room has Wi-Fi, a TV, a safe and air conditioning. For a small family that wants two bedrooms and a jacuzzi at the family-suite price. It has a kettle, and the price covers four guests.",
+      "description_note": "draft 1 — 8 Oct 2026, awaiting Ahmed's approval",
+      "flags": [
+        "size 45 m² confirmed 8 Oct — correct because there is no living room; say so in the description"
+      ],
+      "verified": true,
+      "rate_plans": [
+        {
+          "code": "room_only",
+          "base_price": 240,
+          "breakfast_included": false,
+          "show_on_site": true
+        },
+        {
+          "code": "bed_and_breakfast",
+          "breakfast_included": true,
+          "show_on_site": false,
+          "phase": 2
+        }
+      ],
+      "availability": "available",
+      "in_room_amenities_confirmed": "8 Oct 2026 — Ahmed"
+    },
+    {
+      "slug": "accessible-room",
+      "branch": "shafa-road",
+      "name_ar": "غرفة ذوي الاحتياجات الخاصة",
+      "name_en": "Accessible Room",
+      "category": "standard",
+      "base_price": 185,
+      "currency": "SAR",
+      "pricing_mode": "starting_from",
+      "price_verified": true,
+      "vat_included": true,
+      "weekend_price_sar": "same as base (website)",
+      "in_room_amenities": [
+        "wifi",
+        "tv",
+        "safe",
+        "air_conditioning",
+        "kettle"
+      ],
+      "size_m2": 45,
+      "capacity": 2,
+      "included_guests": 2,
+      "bed_ar": "سرير كينج",
+      "bed_en": "King bed",
+      "features": {
+        "kitchen": false,
+        "living_room": false,
+        "balcony": false,
+        "jacuzzi": false,
+        "washer": false,
+        "fridge": false,
+        "kettle": true,
+        "laundry_ar": "مغسلة مركزية في الفندق",
+        "laundry_en": "Central laundry service"
+      },
+      "active": false,
+      "show_on_site": true,
+      "legacy_main_image": "",
+      "legacy_description_ar": "غرفة مهيأة لذوي الاحتياجات الخاصة بحمام مجهز بالكامل.",
+      "legacy_description_en": "Accessible room with a fully equipped bathroom.",
+      "description_ar": "غرفة مهيأة لذوي الاحتياجات الخاصة. غير متاحة حاليًا — للاستفسار يرجى التواصل مع الاستقبال.",
+      "description_en": "Accessible room. Not available at the moment — please contact reception to enquire.",
+      "description_note": "accessible room — short note only, written when activated",
+      "flags": [
+        "price corrected 8 Oct: 185 (legacy 450 was a typo)",
+        "no image",
+        "shown on site as sold out (decision 8 Oct)"
+      ],
+      "verified": true,
+      "rate_plans": [
+        {
+          "code": "room_only",
+          "base_price": 185,
+          "breakfast_included": false,
+          "show_on_site": true
+        },
+        {
+          "code": "bed_and_breakfast",
+          "breakfast_included": true,
+          "show_on_site": false,
+          "phase": 2
+        }
+      ],
+      "availability": "sold_out",
+      "availability_ar": "غير متاح حاليًا",
+      "availability_en": "Not available at the moment",
+      "in_room_amenities_confirmed": "8 Oct 2026 — Ahmed"
+    }
+  ]
+}

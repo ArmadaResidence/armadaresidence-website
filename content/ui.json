@@ -1,0 +1,393 @@
+{
+  "_note": "Interface strings only (navigation, labels, buttons, form, success page). No prices, times, phone numbers or addresses live here — those come from the other content files and are injected into the {placeholders}. Added 8 Oct 2026 so site-texts.json stays Ahmed's marketing copy. Draft for review.",
+  "ar": {
+    "lang_name": "العربية",
+    "switch_to": "English",
+    "skip_to_content": "تخطَّ إلى المحتوى",
+    "nav": {
+      "home": "الرئيسية",
+      "airport-road": "طريق المطار",
+      "shafa-road": "طريق الشفا",
+      "offers": "العروض",
+      "contact": "التواصل",
+      "policies": "السياسات",
+      "book": "اطلب حجزًا",
+      "menu": "القائمة",
+      "close": "إغلاق"
+    },
+    "home": {
+      "branches_heading": "فرعانا في الطائف",
+      "branches_intro": "اختر الفرع الأقرب إلى وجهتك: طريق المطار للمسافرين وأصحاب الأعمال، وطريق الشفا للعائلات ومن يقصد المرتفعات.",
+      "view_branch": "عرض الفرع",
+      "quick_facts": "{check_in} · {check_out} · إلغاء مجاني حتى {hours} ساعة قبل الوصول",
+      "rooms_cta": "تصفّح الغرف والأسعار"
+    },
+    "branch": {
+      "rooms_heading": "الغرف والأجنحة",
+      "rooms_intro": "الأسعار لليلة الواحدة شاملة الضريبة، ويؤكد الاستقبال السعر النهائي عند الحجز.",
+      "at_a_glance": "في لمحة",
+      "check_in": "الوصول",
+      "check_out": "المغادرة",
+      "parking": "المواقف",
+      "breakfast": "الإفطار",
+      "amenities": "الخدمات",
+      "address": "العنوان",
+      "location_heading": "الموقع والتواصل",
+      "view_room": "تفاصيل الغرفة",
+      "book_branch": "اطلب حجزًا في هذا الفرع",
+      "other_branch": "الفرع الآخر"
+    },
+    "room": {
+      "size": "المساحة",
+      "size_value": "{size} م²",
+      "bed": "السرير",
+      "included_guests": "يشمل السعر",
+      "capacity": "تتسع حتى",
+      "guests": { "1": "شخصًا واحدًا", "2": "شخصين", "3": "ثلاثة أشخاص", "4": "أربعة أشخاص", "5": "خمسة أشخاص", "6": "ستة أشخاص" },
+      "features_heading": "المميزات",
+      "features": {
+        "kitchen": "مطبخ",
+        "balcony": "بلكونة خاصة",
+        "jacuzzi": "جاكوزي",
+        "fridge": "ثلاجة",
+        "kettle": "غلاية",
+        "living_room": "صالة منفصلة",
+        "washer": "غسالة ملابس"
+      },
+      "in_room_heading": "تجهيزات الغرفة",
+      "in_room": {
+        "wifi": "واي فاي",
+        "tv": "تلفاز",
+        "safe": "خزنة",
+        "air_conditioning": "تكييف",
+        "kettle": "غلاية",
+        "fridge": "ثلاجة"
+      },
+      "laundry": "المغسلة",
+      "details_heading": "التفاصيل",
+      "price_heading": "السعر",
+      "book_room": "اطلب حجز هذه الغرفة",
+      "sold_out": "غير متاح حاليًا",
+      "other_rooms": "غرف أخرى في {branch}",
+      "back_to_branch": "العودة إلى صفحة الفرع",
+      "in_branch": "في {branch}"
+    },
+    "amenities": {
+      "breakfast_buffet_daily": "بوفيه إفطار يومي",
+      "coffee_shop": "مقهى",
+      "events_hall": "قاعة اجتماعات",
+      "free_parking": "مواقف مجانية",
+      "restaurant": "مطعم",
+      "room_service_24h": "خدمة غرف على مدار الساعة",
+      "wifi": "واي فاي"
+    },
+    "price": {
+      "breakfast_addon": "الإفطار {price} ريال للشخص في اليوم",
+      "extra_person": "الشخص الإضافي {price} ريال لليلة",
+      "final_note": "يؤكد الاستقبال السعر النهائي عند الحجز.",
+      "rate_plan": "الغرفة فقط"
+    },
+    "cta": {
+      "whatsapp": "واتساب",
+      "whatsapp_title": "تواصل عبر واتساب",
+      "whatsapp_branch": "واتساب {branch}",
+      "whatsapp_choose": "اختر الفرع للتواصل عبر واتساب",
+      "call": "اتصال",
+      "email": "البريد الإلكتروني",
+      "maps": "عرض على خرائط Google",
+      "menu_link": "قائمة المطعم والمقهى",
+      "google_reviews": "صفحة الفرع على Google"
+    },
+    "contact": {
+      "heading": "التواصل والعناوين",
+      "intro": "فريق الاستقبال في كل فرع متاح على مدار الساعة عبر الهاتف والواتساب. للمجموعات والقاعة وطلبات الشركات تواصلوا مع فريق المبيعات.",
+      "hours": "ساعات العمل",
+      "phone": "الهاتف",
+      "reservations_email": "بريد الحجوزات",
+      "general_email": "البريد العام",
+      "sales_heading": "المبيعات",
+      "sales_email": "بريد المبيعات",
+      "social_heading": "تابعونا",
+      "national_address": "العنوان الوطني",
+      "short_code": "الرمز المختصر",
+      "additional_number": "الرقم الإضافي",
+      "postal_code": "الرمز البريدي"
+    },
+    "offers": {
+      "heading": "العروض والمجموعات",
+      "no_offers_heading": "العروض الحالية",
+      "contact_sales": "تواصل مع فريق المبيعات",
+      "sales_scope": "النطاق"
+    },
+    "policies": {
+      "toc": "المحتويات"
+    },
+    "form": {
+      "heading": "طلب حجز",
+      "intro": "املأ النموذج وسيتواصل معك فريق الاستقبال لتأكيد التوافر والسعر النهائي. الطلب عبر الموقع ليس حجزًا مؤكدًا حتى يصلك التأكيد.",
+      "branch": "الفرع",
+      "choose_branch": "اختر الفرع",
+      "check_in": "تاريخ الوصول",
+      "check_out": "تاريخ المغادرة",
+      "adults": "البالغون",
+      "children": "الأطفال",
+      "room_type": "نوع الغرفة (اختياري)",
+      "any_room": "أي غرفة متاحة",
+      "full_name": "الاسم الكامل",
+      "phone": "رقم الجوال",
+      "phone_hint": "بالصيغة الدولية، مثل ‎+966 5X XXX XXXX",
+      "email": "البريد الإلكتروني",
+      "notes": "ملاحظات (اختياري)",
+      "notes_hint": "وقت الوصول المتوقع، طلبات خاصة، أو أي استفسار.",
+      "submit": "أرسل الطلب",
+      "sending": "جارٍ الإرسال…",
+      "consent": "بإرسال الطلب توافق على",
+      "consent_link": "الشروط والسياسات",
+      "errors": {
+        "required": "هذا الحقل مطلوب.",
+        "dates": "تاريخ المغادرة يجب أن يكون بعد تاريخ الوصول.",
+        "past": "تاريخ الوصول لا يمكن أن يكون في الماضي.",
+        "phone": "أدخل رقم جوال صحيحًا بالصيغة الدولية.",
+        "email": "أدخل بريدًا إلكترونيًا صحيحًا.",
+        "server": "تعذّر إرسال الطلب الآن. يمكنكم إرسال الطلب عبر الواتساب مباشرة من الزر أدناه."
+      },
+      "whatsapp_fallback": "أرسل الطلب عبر واتساب",
+      "whatsapp_message": "السلام عليكم، أرغب في طلب حجز في {branch}.\nالوصول: {check_in}\nالمغادرة: {check_out}\nالبالغون: {adults} · الأطفال: {children}\nنوع الغرفة: {room}\nالاسم: {name}\nالجوال: {phone}\nملاحظات: {notes}"
+    },
+    "success": {
+      "heading": "طلبك وصلنا",
+      "body": "سنؤكد التوافر خلال ساعات.",
+      "ref_label": "رقم الطلب",
+      "next_heading": "ماذا يحدث الآن؟",
+      "steps": [
+        "يراجع فريق الاستقبال طلبك ويتحقق من توافر الغرفة في التواريخ المطلوبة.",
+        "نتواصل معك عبر الهاتف أو الواتساب أو البريد الإلكتروني لتأكيد السعر النهائي وإتمام الحجز.",
+        "تصلك رسالة تأكيد على بريدك الإلكتروني بعد التأكيد."
+      ],
+      "policies_note": "يمكنك مراجعة سياسات الحجز والإلغاء والوصول والمغادرة في",
+      "whatsapp_cta": "تواصل مع الفرع عبر واتساب",
+      "back_home": "العودة إلى الرئيسية"
+    },
+    "footer": {
+      "branches": "الفرعان",
+      "site": "الموقع",
+      "contact": "تواصل",
+      "reception": "الاستقبال على مدار الساعة"
+    },
+    "not_found": {
+      "heading": "الصفحة غير موجودة",
+      "body": "ربما تغيّر عنوان الصفحة أو حُذفت. يمكنك العودة إلى الرئيسية أو تصفّح الفرعين.",
+      "home": "العودة إلى الرئيسية"
+    },
+    "photo_pending_alt": "{subject} — الصورة قيد الإعداد",
+    "email": {
+      "hotel_subject": "طلب حجز جديد — {branch} — {ref}",
+      "hotel_intro": "وصل طلب حجز جديد عبر الموقع. التفاصيل:",
+      "hotel_footer": "أُرسلت هذه الرسالة تلقائيًا من نموذج طلب الحجز على armadaresidence.com.",
+      "guest_subject": "طلبك وصلنا — أرمادا ريزيدنس ({ref})",
+      "guest_greeting": "أهلًا {name}،",
+      "guest_body": "طلبك وصلنا، سنؤكد التوافر خلال ساعات. يتواصل معك فريق استقبال {branch} عبر الهاتف أو الواتساب أو البريد الإلكتروني لتأكيد السعر النهائي.",
+      "guest_summary": "ملخص الطلب",
+      "guest_whatsapp": "للتواصل المباشر مع الفرع عبر واتساب:",
+      "guest_footer": "طلب الحجز عبر الموقع ليس حجزًا مؤكدًا حتى يصلك التأكيد من الاستقبال.",
+      "ref": "رقم الطلب",
+      "language": "لغة الضيف",
+      "received_at": "وقت الاستلام"
+    }
+  },
+  "en": {
+    "lang_name": "English",
+    "switch_to": "العربية",
+    "skip_to_content": "Skip to content",
+    "nav": {
+      "home": "Home",
+      "airport-road": "Airport Road",
+      "shafa-road": "Shafa Road",
+      "offers": "Offers",
+      "contact": "Contact",
+      "policies": "Policies",
+      "book": "Request a booking",
+      "menu": "Menu",
+      "close": "Close"
+    },
+    "home": {
+      "branches_heading": "Our two properties in Taif",
+      "branches_intro": "Choose the property closest to your plans: Airport Road for travellers and business guests, Al-Shafa Road for families and visitors heading to the highlands.",
+      "view_branch": "View property",
+      "quick_facts": "{check_in} · {check_out} · Free cancellation up to {hours} hours before arrival",
+      "rooms_cta": "Browse rooms and prices"
+    },
+    "branch": {
+      "rooms_heading": "Rooms and suites",
+      "rooms_intro": "Prices are per night and include VAT. Reception confirms the final price on booking.",
+      "at_a_glance": "At a glance",
+      "check_in": "Check-in",
+      "check_out": "Check-out",
+      "parking": "Parking",
+      "breakfast": "Breakfast",
+      "amenities": "Facilities",
+      "address": "Address",
+      "location_heading": "Location and contact",
+      "view_room": "Room details",
+      "book_branch": "Request a booking at this property",
+      "other_branch": "The other property"
+    },
+    "room": {
+      "size": "Size",
+      "size_value": "{size} m²",
+      "bed": "Bed",
+      "included_guests": "Price covers",
+      "capacity": "Sleeps up to",
+      "guests": { "1": "one guest", "2": "two guests", "3": "three guests", "4": "four guests", "5": "five guests", "6": "six guests" },
+      "features_heading": "Features",
+      "features": {
+        "kitchen": "Kitchen",
+        "balcony": "Private balcony",
+        "jacuzzi": "Jacuzzi",
+        "fridge": "Fridge",
+        "kettle": "Kettle",
+        "living_room": "Separate living room",
+        "washer": "Washing machine"
+      },
+      "in_room_heading": "In-room amenities",
+      "in_room": {
+        "wifi": "Wi-Fi",
+        "tv": "TV",
+        "safe": "Safe",
+        "air_conditioning": "Air conditioning",
+        "kettle": "Kettle",
+        "fridge": "Fridge"
+      },
+      "laundry": "Laundry",
+      "details_heading": "Details",
+      "price_heading": "Price",
+      "book_room": "Request this room",
+      "sold_out": "Currently unavailable",
+      "other_rooms": "Other rooms at {branch}",
+      "back_to_branch": "Back to the property page",
+      "in_branch": "at {branch}"
+    },
+    "amenities": {
+      "breakfast_buffet_daily": "Daily breakfast buffet",
+      "coffee_shop": "Café",
+      "events_hall": "Meeting hall",
+      "free_parking": "Free parking",
+      "restaurant": "Restaurant",
+      "room_service_24h": "24-hour room service",
+      "wifi": "Wi-Fi"
+    },
+    "price": {
+      "breakfast_addon": "Breakfast SAR {price} per person per day",
+      "extra_person": "Extra guest SAR {price} per night",
+      "final_note": "Reception confirms the final price on booking.",
+      "rate_plan": "Room only"
+    },
+    "cta": {
+      "whatsapp": "WhatsApp",
+      "whatsapp_title": "Chat on WhatsApp",
+      "whatsapp_branch": "WhatsApp {branch}",
+      "whatsapp_choose": "Choose a property to chat on WhatsApp",
+      "call": "Call",
+      "email": "Email",
+      "maps": "Open in Google Maps",
+      "menu_link": "Restaurant and café menu",
+      "google_reviews": "Property page on Google"
+    },
+    "contact": {
+      "heading": "Contact and locations",
+      "intro": "Each property's reception team is available around the clock by phone and WhatsApp. For groups, the hall and corporate requests, contact the sales team.",
+      "hours": "Hours",
+      "phone": "Phone",
+      "reservations_email": "Reservations email",
+      "general_email": "General email",
+      "sales_heading": "Sales",
+      "sales_email": "Sales email",
+      "social_heading": "Follow us",
+      "national_address": "National address",
+      "short_code": "Short code",
+      "additional_number": "Additional number",
+      "postal_code": "Postal code"
+    },
+    "offers": {
+      "heading": "Offers and groups",
+      "no_offers_heading": "Current offers",
+      "contact_sales": "Contact the sales team",
+      "sales_scope": "Scope"
+    },
+    "policies": {
+      "toc": "Contents"
+    },
+    "form": {
+      "heading": "Request a booking",
+      "intro": "Fill in the form and the reception team will contact you to confirm availability and the final price. A request on the website is not a confirmed booking until you receive the confirmation.",
+      "branch": "Property",
+      "choose_branch": "Choose a property",
+      "check_in": "Check-in date",
+      "check_out": "Check-out date",
+      "adults": "Adults",
+      "children": "Children",
+      "room_type": "Room type (optional)",
+      "any_room": "Any available room",
+      "full_name": "Full name",
+      "phone": "Mobile number",
+      "phone_hint": "International format, e.g. +966 5X XXX XXXX",
+      "email": "Email",
+      "notes": "Notes (optional)",
+      "notes_hint": "Expected arrival time, special requests or any question.",
+      "submit": "Send request",
+      "sending": "Sending…",
+      "consent": "By sending the request you agree to the",
+      "consent_link": "terms and policies",
+      "errors": {
+        "required": "This field is required.",
+        "dates": "Check-out must be after check-in.",
+        "past": "Check-in cannot be in the past.",
+        "phone": "Enter a valid mobile number in international format.",
+        "email": "Enter a valid email address.",
+        "server": "The request could not be sent right now. You can send it directly on WhatsApp using the button below."
+      },
+      "whatsapp_fallback": "Send the request on WhatsApp",
+      "whatsapp_message": "Hello, I would like to request a booking at {branch}.\nCheck-in: {check_in}\nCheck-out: {check_out}\nAdults: {adults} · Children: {children}\nRoom type: {room}\nName: {name}\nMobile: {phone}\nNotes: {notes}"
+    },
+    "success": {
+      "heading": "We have received your request",
+      "body": "We will confirm availability within hours.",
+      "ref_label": "Request number",
+      "next_heading": "What happens next?",
+      "steps": [
+        "The reception team reviews your request and checks room availability for the dates requested.",
+        "We contact you by phone, WhatsApp or email to confirm the final price and complete the booking.",
+        "A confirmation email reaches you once the booking is confirmed."
+      ],
+      "policies_note": "You can review the booking, cancellation, check-in and check-out policies on the",
+      "whatsapp_cta": "Chat with the property on WhatsApp",
+      "back_home": "Back to the home page"
+    },
+    "footer": {
+      "branches": "Properties",
+      "site": "Site",
+      "contact": "Contact",
+      "reception": "Reception 24 hours"
+    },
+    "not_found": {
+      "heading": "Page not found",
+      "body": "The page address may have changed or the page was removed. You can go back to the home page or browse the two properties.",
+      "home": "Back to the home page"
+    },
+    "photo_pending_alt": "{subject} — photo coming soon",
+    "email": {
+      "hotel_subject": "New booking request — {branch} — {ref}",
+      "hotel_intro": "A new booking request arrived from the website. Details:",
+      "hotel_footer": "This message was sent automatically by the booking-request form on armadaresidence.com.",
+      "guest_subject": "We have received your request — Armada Residence ({ref})",
+      "guest_greeting": "Hello {name},",
+      "guest_body": "We have received your request and will confirm availability within hours. The {branch} reception team will contact you by phone, WhatsApp or email to confirm the final price.",
+      "guest_summary": "Request summary",
+      "guest_whatsapp": "To reach the property directly on WhatsApp:",
+      "guest_footer": "A booking request on the website is not a confirmed booking until reception confirms it.",
+      "ref": "Request number",
+      "language": "Guest language",
+      "received_at": "Received at"
+    }
+  }
+}

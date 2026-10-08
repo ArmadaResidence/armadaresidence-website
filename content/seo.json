@@ -1,0 +1,94 @@
+{
+  "_note": "Per-page <title> (≤60 chars) and <meta description> (≤155). Room pages use room_templates with placeholders filled from rooms.json. Accessible rooms noindex while sold_out. Updated 8 Oct 2026 (evening) — titles shortened to fit SERP limits.",
+  "site_url": "https://armadaresidence.com",
+  "site_name_ar": "أرمادا ريزيدنس",
+  "site_name_en": "Armada Residence",
+  "default_og_image": "/og/armada-residence.png",
+  "twitter_card": "summary_large_image",
+  "branch_short": {
+    "airport-road": {
+      "ar": "طريق المطار",
+      "en": "Airport Road"
+    },
+    "shafa-road": {
+      "ar": "طريق الشفا",
+      "en": "Shafa Road"
+    }
+  },
+  "pages": {
+    "home": {
+      "title_ar": "أرمادا ريزيدنس | فنادق وشقق فندقية في الطائف",
+      "description_ar": "فرعان في الطائف: شقق فندقية على طريق المطار وفندق على طريق الشفا. غرف وأجنحة واسعة، أسعار شاملة الضريبة، مواقف مجانية، واستقبال على مدار الساعة.",
+      "title_en": "Armada Residence | Hotel & Hotel Apartments in Taif",
+      "description_en": "Hotel apartments on Airport Road and a hotel on Al-Shafa Road, Taif. Spacious rooms and suites, VAT-inclusive prices, free parking, 24-hour reception."
+    },
+    "airport-road": {
+      "title_ar": "شقق فندقية على طريق المطار بالطائف | أرمادا ريزيدنس",
+      "description_ar": "شقق فندقية من 50 إلى 75 م² على طريق المطار بالطائف. أجنحة بمطبخ، بوفيه إفطار يومي، مواقف مجانية وقاعة اجتماعات. تبدأ من 185 ريالًا شاملة الضريبة.",
+      "title_en": "Hotel Apartments on Airport Road, Taif | Armada Residence",
+      "description_en": "Hotel apartments from 50 to 75 m² on Airport Road, Taif. Suites with kitchens, daily breakfast buffet, free parking, meeting hall. From SAR 185 incl. VAT."
+    },
+    "shafa-road": {
+      "title_ar": "فندق على طريق الشفا بالطائف | أرمادا ريزيدنس",
+      "description_ar": "فندق هادئ على طريق الشفا بالطائف: غرف كينج، غرفة ببلكونة، استديو بجاكوزي وأجنحة عائلية حتى 4 أشخاص. إفطار يومي ومواقف مجانية. من 185 ريالًا.",
+      "title_en": "Hotel on Al-Shafa Road, Taif | Armada Residence",
+      "description_en": "Quiet hotel on Al-Shafa Road, Taif: king rooms, a balcony room, a jacuzzi studio and family suites for up to 4. Daily breakfast, free parking. From SAR 185"
+    },
+    "offers": {
+      "title_ar": "عروض المجموعات وشركات العمرة | أرمادا ريزيدنس الطائف",
+      "description_ar": "أسعار خاصة لشركات العمرة والمجموعات والشركات في فرعي أرمادا ريزيدنس بالطائف. اطلب عرض سعر من فريق المبيعات.",
+      "title_en": "Group & Umrah Operator Rates | Armada Residence Taif",
+      "description_en": "Special rates for Umrah operators, groups and corporate bookings at both Armada Residence properties in Taif. Request a quote from the sales team."
+    },
+    "contact": {
+      "title_ar": "التواصل والعناوين | أرمادا ريزيدنس",
+      "description_ar": "أرقام الهاتف والواتساب والعناوين وروابط الخرائط لفرعي أرمادا ريزيدنس في الطائف: طريق المطار وطريق الشفا. الاستقبال على مدار الساعة.",
+      "title_en": "Contact & Locations | Armada Residence",
+      "description_en": "Phone, WhatsApp, addresses and map links for both Armada Residence properties in Taif: Airport Road and Al-Shafa Road. Reception is open 24 hours."
+    },
+    "policies": {
+      "title_ar": "الشروط والسياسات | أرمادا ريزيدنس",
+      "description_ar": "سياسات الحجز والإلغاء والوصول والمغادرة والخصوصية في فرعي أرمادا ريزيدنس بالطائف. إلغاء مجاني حتى 24 ساعة قبل الوصول.",
+      "title_en": "Terms & Policies | Armada Residence",
+      "description_en": "Booking, cancellation, check-in/out and privacy policies for both Armada Residence properties in Taif. Free cancellation up to 24 hours before arrival."
+    },
+    "booking": {
+      "title_ar": "طلب حجز | أرمادا ريزيدنس",
+      "description_ar": "اطلب حجزًا في أرمادا ريزيدنس – طريق المطار أو طريق الشفا بالطائف. يؤكد فريق الاستقبال التوافر والسعر النهائي خلال ساعات.",
+      "title_en": "Request a Booking | Armada Residence",
+      "description_en": "Request a booking at Armada Residence – Airport Road or Shafa Road in Taif. Reception confirms availability and the final price within hours."
+    },
+    "booking-success": {
+      "title_ar": "تم استلام طلبك | أرمادا ريزيدنس",
+      "description_ar": "وصل طلب الحجز إلى فريق الاستقبال في أرمادا ريزيدنس، وسنؤكد التوافر خلال ساعات.",
+      "title_en": "Request Received | Armada Residence",
+      "description_en": "Your booking request has reached the Armada Residence reception team. We will confirm availability within hours.",
+      "noindex": true
+    },
+    "404": {
+      "title_ar": "الصفحة غير موجودة | أرمادا ريزيدنس",
+      "description_ar": "الصفحة المطلوبة غير موجودة على موقع أرمادا ريزيدنس.",
+      "title_en": "Page Not Found | Armada Residence",
+      "description_en": "The requested page does not exist on the Armada Residence website.",
+      "noindex": true
+    }
+  },
+  "room_templates": {
+    "title_ar": "{room} {size_clause_short} – {branch_short} | أرمادا ريزيدنس",
+    "title_en": "{room} {size_clause_short} – {branch_short} | Armada Residence",
+    "description_ar": "{room}{size_clause} لـ{capacity} أشخاص في أرمادا ريزيدنس {branch_short} بالطائف، {bed}{features_clause}. يبدأ من {price} ريالًا لليلة شاملًا الضريبة.",
+    "description_en": "{size} m² {room_lower} for {capacity} at Armada Residence {branch_short}, Taif — {bed_lower}{features_clause}. From SAR {price} per night incl. VAT.",
+    "size_clause_ar": " بمساحة {size} مترًا مربعًا",
+    "size_clause_en": " of {size} m²",
+    "size_clause_short_ar": "{size} م²",
+    "size_clause_short_en": "{size} m²",
+    "features_clause_note": "comma-joined true features from rooms.json features (kitchen/living_room/balcony/jacuzzi/fridge) in the page language; empty string if none",
+    "max_title_chars": 60,
+    "max_description_chars": 155
+  },
+  "verified": false,
+  "pending": [
+    "Ahmed's approval of titles and descriptions",
+    "real OG image per page once the approved photo set arrives"
+  ]
+}

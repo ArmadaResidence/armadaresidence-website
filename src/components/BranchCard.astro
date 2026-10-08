@@ -1,0 +1,57 @@
+---
+import {
+  amenityLabel,
+  branchContact,
+  branchPath,
+  fill,
+  L,
+  paragraphs,
+  telHref,
+  ui,
+  type Branch,
+  type Locale,
+} from '@lib/content';
+import Placeholder from './Placeholder.astro';
+import Icon from './Icon.astro';
+
+interface Props {
+  locale: Locale;
+  branch: Branch;
+}
+const { locale, branch } = Astro.props;
+const t = ui(locale);
+const c = branchContact(branch.slug);
+const name = L(locale, branch, 'name');
+const href = branchPath(locale, branch.slug);
+const intro = paragraphs(L(locale, branch, 'description'))[0] ?? '';
+const photoLabel = fill(t.photo_pending_alt, { subject: name });
+---
+
+<article class="bg-white border border-line rounded-card overflow-hidden flex flex-col">
+  <a href={href} tabindex="-1" aria-hidden="true">
+    <Placeholder label={photoLabel} class="rounded-b-none" />
+  </a>
+  <div class="p-6 flex flex-col gap-4 flex-1">
+    <div>
+      <p class="text-xs font-semibold uppercase tracking-wide text-bronze">{L(locale, branch, 'type')}</p>
+      <h3 class="text-xl font-semibold text-midnight mt-1">
+        <a href={href} class="hover:text-bronze">{name}</a>
+      </h3>
+      <p class="text-ink-muted mt-1">{L(locale, branch, 'tagline')}</p>
+    </div>
+    <p class="text-sm leading-relaxed">{intro}</p>
+    <ul class="flex flex-wrap gap-1.5">
+      {branch.amenities.map((a) => <li class="text-xs bg-porcelain text-ink px-2 py-1 rounded">{amenityLabel(locale, a)}</li>)}
+    </ul>
+    <div class="mt-auto pt-4 border-t border-line flex flex-wrap items-center justify-between gap-3">
+      <a href={href} class="inline-flex items-center gap-2 bg-midnight text-white text-sm font-semibold px-4 py-2.5 rounded hover:bg-bronze transition-colors">
+        <span>{t.home.view_branch}</span>
+        <Icon name="arrow" size={16} class="rtl:rotate-180" />
+      </a>
+      <a href={telHref(c.phone)} class="latin inline-flex items-center gap-2 text-sm text-ink-muted hover:text-midnight" dir="ltr">
+        <Icon name="phone" size={16} />
+        <span>{c.phone_display}</span>
+      </a>
+    </div>
+  </div>
+</article>

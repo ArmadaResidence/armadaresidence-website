@@ -1,0 +1,86 @@
+---
+import Base from '@layouts/Base.astro';
+import Icon from '@components/Icon.astro';
+import { langPaths } from '@lib/paths';
+import { contact, localePath, mailHref, offers, pageSeo, telHref, ui, waHref, type Locale } from '@lib/content';
+
+export const getStaticPaths = langPaths;
+
+interface Props {
+  locale: Locale;
+}
+const { locale } = Astro.props;
+const t = ui(locale);
+const s = pageSeo(locale, 'offers');
+const sales = contact.sales;
+const g = offers.groups;
+const corp = offers.corporate;
+---
+
+<Base locale={locale} path="/offers/" title={s.title} description={s.description}>
+  <section class="mx-auto max-w-6xl px-4 pt-10 pb-14">
+    <h1 class="text-3xl md:text-4xl font-bold text-midnight">{t.offers.heading}</h1>
+
+    <div class="mt-8 bg-white border border-line rounded-card p-6">
+      <h2 class="text-sm font-semibold uppercase tracking-wide text-bronze">{t.offers.no_offers_heading}</h2>
+      {
+        offers.current_offers.length === 0 ? (
+          <p class="mt-2 text-ink-muted">{locale === 'ar' ? offers.no_offers_ar : offers.no_offers_en}</p>
+        ) : (
+          <ul class="mt-4 space-y-4">
+            {(offers.current_offers as Record<string, string>[]).map((o) => (
+              <li>
+                <h3 class="font-semibold text-midnight">{locale === 'ar' ? o.title_ar : o.title_en}</h3>
+                <p class="text-sm text-ink-muted mt-1">{locale === 'ar' ? o.body_ar : o.body_en}</p>
+              </li>
+            ))}
+          </ul>
+        )
+      }
+    </div>
+
+    <div class="mt-10 grid gap-8 lg:grid-cols-2">
+      <section class="bg-midnight text-porcelain rounded-card p-8">
+        <h2 class="text-2xl font-bold">{locale === 'ar' ? g.heading_ar : g.heading_en}</h2>
+        <p class="mt-3 text-porcelain/85 leading-relaxed">{locale === 'ar' ? g.body_ar : g.body_en}</p>
+        <div class="mt-6 flex flex-wrap gap-3">
+          <a
+            href={waHref(sales.whatsapp)}
+            rel="noopener"
+            target="_blank"
+            class="inline-flex items-center gap-2 bg-bronze text-white font-semibold px-5 py-3 rounded hover:bg-bronze-deep transition-colors"
+          >
+            <Icon name="whatsapp" size={18} />
+            <span>{locale === 'ar' ? g.cta_ar : g.cta_en}</span>
+          </a>
+          <a
+            href={telHref(sales.phone)}
+            class="latin inline-flex items-center gap-2 border border-porcelain/50 font-semibold px-5 py-3 rounded hover:bg-porcelain hover:text-midnight transition-colors"
+            dir="ltr"
+          >
+            <Icon name="phone" size={18} />
+            <span>{sales.phone_display}</span>
+          </a>
+        </div>
+        <p class="mt-5 text-sm text-porcelain/80">
+          <span>{t.offers.sales_scope}: {locale === 'ar' ? sales.scope_ar : sales.scope_en}</span>
+          <br />
+          <a href={mailHref(sales.email)} class="latin hover:text-bronze" dir="ltr">{sales.email}</a>
+        </p>
+      </section>
+
+      <section class="bg-white border border-line rounded-card p-8">
+        <h2 class="text-2xl font-bold text-midnight">{locale === 'ar' ? corp.heading_ar : corp.heading_en}</h2>
+        <p class="mt-3 text-ink-muted leading-relaxed">{locale === 'ar' ? corp.body_ar : corp.body_en}</p>
+        <a href={mailHref(sales.email)} class="mt-6 inline-flex items-center gap-2 text-sm font-semibold text-bronze hover:text-bronze-deep">
+          <Icon name="mail" size={16} />
+          <span>{t.offers.contact_sales}</span>
+        </a>
+        <p class="mt-6 text-xs text-ink-muted">
+          {locale === 'ar' ? offers.sales_note_ar : offers.sales_note_en}
+          <a href={localePath(locale, '/booking/')} class="font-semibold text-bronze hover:text-bronze-deep ms-1">{t.nav.book}</a>
+        </p>
+      </section>
+    </div>
+  </section>
+</Base>

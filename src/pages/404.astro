@@ -1,0 +1,28 @@
+---
+/** Single 404 for GitHub Pages (served for any missing path). Arabic first, English below. */
+import Base from '@layouts/Base.astro';
+import { localePath, pageSeo, ui } from '@lib/content';
+
+const ar = ui('ar');
+const en = ui('en');
+const s = pageSeo('ar', '404');
+---
+
+<Base locale="ar" path="/404/" switchPath="/" title={s.title} description={s.description} noindex={true}>
+  <section class="mx-auto max-w-3xl px-4 py-20 space-y-12">
+    <div>
+      <h1 class="text-3xl font-bold text-midnight">{ar.not_found.heading}</h1>
+      <p class="mt-3 text-ink-muted">{ar.not_found.body}</p>
+      <a href={localePath('ar', '/')} class="mt-6 inline-block bg-bronze text-white font-semibold px-5 py-3 rounded hover:bg-bronze-deep">
+        {ar.not_found.home}
+      </a>
+    </div>
+    <div lang="en" dir="ltr" class="font-en border-t border-line pt-10">
+      <h2 class="text-2xl font-bold text-midnight">{en.not_found.heading}</h2>
+      <p class="mt-3 text-ink-muted">{en.not_found.body}</p>
+      <a href={localePath('en', '/')} class="mt-6 inline-block border border-midnight text-midnight font-semibold px-5 py-3 rounded hover:bg-midnight hover:text-white">
+        {en.not_found.home}
+      </a>
+    </div>
+  </section>
+</Base>

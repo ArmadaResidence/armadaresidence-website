@@ -1,0 +1,90 @@
+/* Self-hosted fonts (no Google Fonts at runtime) */
+@import "@fontsource-variable/manrope";
+@import "@fontsource/ibm-plex-sans-arabic/400.css";
+@import "@fontsource/ibm-plex-sans-arabic/500.css";
+@import "@fontsource/ibm-plex-sans-arabic/600.css";
+@import "@fontsource/ibm-plex-sans-arabic/700.css";
+
+@import "tailwindcss";
+
+/* Brand system 2026 — the only place hex values live */
+@theme {
+  --color-midnight: #142a3b;
+  --color-bronze: #a97c50;
+  --color-porcelain: #f3efe7;
+  --color-white: #ffffff;
+  /* derived neutrals (contrast-checked against porcelain / midnight) */
+  --color-ink: #142a3b;
+  --color-ink-muted: #3f5262;
+  --color-line: #ddd5c8;
+  --color-bronze-deep: #8a6239;
+  --color-placeholder: #c9c4bb;
+
+  --font-en: "Manrope Variable", ui-sans-serif, system-ui, sans-serif;
+  --font-ar: "IBM Plex Sans Arabic", "Manrope Variable", ui-sans-serif, system-ui, sans-serif;
+
+  --radius-card: 0.75rem;
+}
+
+:root {
+  --font-body: var(--font-ar);
+}
+:root[lang="en"] {
+  --font-body: var(--font-en);
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: var(--font-body);
+  background-color: var(--color-porcelain);
+  color: var(--color-ink);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* Latin fragments inside Arabic pages (prices, codes, emails) */
+:root[lang="ar"] .latin {
+  font-family: var(--font-en);
+}
+
+/* Brand pattern tile (approved transparent SVG) */
+.pattern-bg {
+  background-image: url("/brand/pattern-tile.svg");
+  background-size: 58px 76px;
+}
+
+/* Photo placeholder — phase 1 only, grey 3:2 (per Ahmed, 8 Oct 2026). TODO(photo): replace with approved Armada photos. */
+.photo-placeholder {
+  aspect-ratio: 3 / 2;
+  background-color: var(--color-placeholder);
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+}
+.photo-placeholder svg {
+  width: 18%;
+  max-width: 96px;
+  opacity: 0.35;
+}
+
+/* Focus rings */
+:focus-visible {
+  outline: 3px solid var(--color-bronze);
+  outline-offset: 2px;
+}
+
+/* Prose blocks from content JSON (\n\n → paragraphs) */
+.prose-armada p + p {
+  margin-top: 1rem;
+}
+
+/* Sticky WhatsApp button */
+.wa-fab {
+  position: fixed;
+  bottom: 1.25rem;
+  inset-inline-end: 1.25rem;
+  z-index: 50;
+}

@@ -1,0 +1,96 @@
+---
+import Base from '@layouts/Base.astro';
+import Icon from '@components/Icon.astro';
+import { langPaths } from '@lib/paths';
+import { branchContact, branchShort, branches, fill, localePath, pageSeo, ui, waHref, type Locale } from '@lib/content';
+
+export const getStaticPaths = langPaths;
+
+interface Props {
+  locale: Locale;
+}
+const { locale } = Astro.props;
+const t = ui(locale);
+const s = pageSeo(locale, 'booking-success');
+---
+
+<Base locale={locale} path="/booking/success/" title={s.title} description={s.description} noindex={s.noindex}>
+  <section class="mx-auto max-w-3xl px-4 pt-14 pb-20">
+    <div class="bg-white border border-line rounded-card p-8 md:p-10">
+      <span class="inline-grid place-items-center w-12 h-12 rounded-full bg-porcelain text-bronze">
+        <Icon name="check" size={26} />
+      </span>
+      <h1 class="mt-5 text-3xl font-bold text-midnight">{t.success.heading}</h1>
+      <p class="mt-2 text-lg text-ink-muted">{t.success.body}</p>
+      <p class="hidden mt-4 text-sm" data-ref-wrap>
+        <span class="text-ink-muted">{t.success.ref_label}: </span>
+        <strong class="latin text-midnight" dir="ltr" data-ref></strong>
+      </p>
+
+      <h2 class="mt-8 text-sm font-semibold uppercase tracking-wide text-bronze">{t.success.next_heading}</h2>
+      <ol class="mt-3 space-y-3 list-decimal ps-5 leading-relaxed">
+        {t.success.steps.map((step) => <li>{step}</li>)}
+      </ol>
+      <p class="mt-4 text-sm text-ink-muted">
+        {t.success.policies_note}
+        <a href={localePath(locale, '/policies/')} class="font-semibold text-bronze hover:text-bronze-deep ms-1">{t.nav.policies}</a>.
+      </p>
+
+      <div class="mt-8 flex flex-wrap gap-3">
+        {
+          branches.map((b) => (
+            <a
+              href={waHref(branchContact(b.slug).whatsapp)}
+              rel="noopener"
+              target="_blank"
+              class="inline-flex items-center gap-2 bg-midnight text-white font-semibold px-5 py-3 rounded hover:bg-bronze transition-colors"
+              data-branch-wa={b.slug}
+            >
+              <Icon name="whatsapp" size={18} />
+              <span>{fill(t.cta.whatsapp_branch, { branch: branchShort(locale, b.slug) })}</span>
+            </a>
+          ))
+        }
+        <a href={localePath(locale, '/')} class="inline-flex items-center gap-2 border border-line font-semibold px-5 py-3 rounded hover:bg-porcelain">
+          {t.success.back_home}
+        </a>
+      </div>
+    </div>
+  </section>
+</Base>
+
+<script>
+  const q = new URLSearchParams(location.search);
+  const ref = q.get('ref');
+  const branch = q.get('branch');
+  if (ref) {
+    const wrap = document.querySelector<HTMLElement>('[data-ref-wrap]');
+    const el = document.querySelector<HTMLElement>('[data-ref]');
+    if (wrap && el) {
+      el.textContent = ref;
+      wrap.classList.remove('hidden');
+    }
+    // GTM: one booking_request event per request (CLAUDE.md §8 step 5)
+    const key = `armada_booking_${ref}`;
+    try {
+      if (!sessionStorage.getItem(key)) {
+        (window as unknown as { dataLayer: unknown[] }).dataLayer = (window as unknown as { dataLayer: unknown[] }).dataLayer || [];
+        (window as unknown as { dataLayer: unknown[] }).dataLayer.push({
+          event: 'booking_request',
+          booking_ref: ref,
+          branch: branch || '',
+          room_type: q.get('room') || '',
+          nights: Number(q.get('nights') || 0),
+        });
+        sessionStorage.setItem(key, '1');
+      }
+    } catch {
+      /* storage unavailable: push anyway happens above only when readable */
+    }
+  }
+  if (branch) {
+    document.querySelectorAll<HTMLElement>('[data-branch-wa]').forEach((a) => {
+      if (a.dataset.branchWa !== branch) a.classList.add('hidden');
+    });
+  }
+</script>

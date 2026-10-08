@@ -1,0 +1,328 @@
+---
+import Base from '@layouts/Base.astro';
+import Icon from '@components/Icon.astro';
+import { langPaths } from '@lib/paths';
+import { branchContact, branches, L, localePath, pageSeo, rooms, ui, type Locale } from '@lib/content';
+
+export const getStaticPaths = langPaths;
+
+interface Props {
+  locale: Locale;
+}
+const { locale } = Astro.props;
+const t = ui(locale);
+const f = t.form;
+const s = pageSeo(locale, 'booking');
+
+const endpoint = import.meta.env.PUBLIC_BOOKING_ENDPOINT ?? '';
+const anonKey = import.meta.env.PUBLIC_SUPABASE_ANON_KEY ?? '';
+
+const bookable = rooms.filter((r) => r.availability !== 'sold_out');
+
+/** Everything the client script needs, all from content/. */
+const clientData = {
+  locale,
+  endpoint,
+  anonKey,
+  successPath: localePath(locale, '/booking/success/'),
+  branches: branches.map((b) => ({ slug: b.slug, name: L(locale, b, 'name'), whatsapp: branchContact(b.slug).whatsapp })),
+  rooms: bookable.map((r) => ({ slug: r.slug, branch: r.branch, name: L(locale, r, 'name') })),
+  strings: {
+    anyRoom: f.any_room,
+    sending: f.sending,
+    submit: f.submit,
+    errors: f.errors,
+    whatsappMessage: f.whatsapp_message,
+  },
+};
+---
+
+<Base locale={locale} path="/booking/" title={s.title} description={s.description}>
+  <section class="mx-auto max-w-3xl px-4 pt-10 pb-14">
+    <h1 class="text-3xl md:text-4xl font-bold text-midnight">{f.heading}</h1>
+    <p class="mt-3 text-ink-muted">{f.intro}</p>
+
+    <form id="booking-form" class="mt-8 bg-white border border-line rounded-card p-6 md:p-8 space-y-6" novalidate>
+      <div class="grid gap-5 sm:grid-cols-2">
+        <div class="sm:col-span-2">
+          <label for="branch" class="block text-sm font-semibold text-midnight">{f.branch}</label>
+          <select id="branch" name="branch" required class="mt-1.5 w-full border border-line rounded px-3 py-2.5 bg-white">
+            <option value="">{f.choose_branch}</option>
+            {branches.map((b) => <option value={b.slug}>{L(locale, b, 'name')}</option>)}
+          </select>
+          <p class="hidden text-xs text-red-700 mt-1" data-error-for="branch"></p>
+        </div>
+
+        <div>
+          <label for="check_in" class="block text-sm font-semibold text-midnight">{f.check_in}</label>
+          <input id="check_in" name="check_in" type="date" required class="mt-1.5 w-full border border-line rounded px-3 py-2.5 bg-white" />
+          <p class="hidden text-xs text-red-700 mt-1" data-error-for="check_in"></p>
+        </div>
+        <div>
+          <label for="check_out" class="block text-sm font-semibold text-midnight">{f.check_out}</label>
+          <input id="check_out" name="check_out" type="date" required class="mt-1.5 w-full border border-line rounded px-3 py-2.5 bg-white" />
+          <p class="hidden text-xs text-red-700 mt-1" data-error-for="check_out"></p>
+        </div>
+
+        <div>
+          <label for="adults" class="block text-sm font-semibold text-midnight">{f.adults}</label>
+          <input id="adults" name="adults" type="number" inputmode="numeric" min="1" max="20" value="2" required class="mt-1.5 w-full border border-line rounded px-3 py-2.5 bg-white" />
+          <p class="hidden text-xs text-red-700 mt-1" data-error-for="adults"></p>
+        </div>
+        <div>
+          <label for="children" class="block text-sm font-semibold text-midnight">{f.children}</label>
+          <input id="children" name="children" type="number" inputmode="numeric" min="0" max="20" value="0" class="mt-1.5 w-full border border-line rounded px-3 py-2.5 bg-white" />
+        </div>
+
+        <div class="sm:col-span-2">
+          <label for="room" class="block text-sm font-semibold text-midnight">{f.room_type}</label>
+          <select id="room" name="room" class="mt-1.5 w-full border border-line rounded px-3 py-2.5 bg-white">
+            <option value="">{f.any_room}</option>
+            {bookable.map((r) => <option value={r.slug} data-branch={r.branch}>{L(locale, r, 'name')}</option>)}
+          </select>
+        </div>
+
+        <div class="sm:col-span-2">
+          <label for="name" class="block text-sm font-semibold text-midnight">{f.full_name}</label>
+          <input id="name" name="name" type="text" autocomplete="name" required maxlength="120" class="mt-1.5 w-full border border-line rounded px-3 py-2.5 bg-white" />
+          <p class="hidden text-xs text-red-700 mt-1" data-error-for="name"></p>
+        </div>
+
+        <div>
+          <label for="phone" class="block text-sm font-semibold text-midnight">{f.phone}</label>
+          <input id="phone" name="phone" type="tel" autocomplete="tel" inputmode="tel" required dir="ltr" class="latin mt-1.5 w-full border border-line rounded px-3 py-2.5 bg-white" />
+          <p class="text-xs text-ink-muted mt-1">{f.phone_hint}</p>
+          <p class="hidden text-xs text-red-700 mt-1" data-error-for="phone"></p>
+        </div>
+        <div>
+          <label for="email" class="block text-sm font-semibold text-midnight">{f.email}</label>
+          <input id="email" name="email" type="email" autocomplete="email" required dir="ltr" class="latin mt-1.5 w-full border border-line rounded px-3 py-2.5 bg-white" />
+          <p class="hidden text-xs text-red-700 mt-1" data-error-for="email"></p>
+        </div>
+
+        <div class="sm:col-span-2">
+          <label for="notes" class="block text-sm font-semibold text-midnight">{f.notes}</label>
+          <textarea id="notes" name="notes" rows="3" maxlength="1000" class="mt-1.5 w-full border border-line rounded px-3 py-2.5 bg-white"></textarea>
+          <p class="text-xs text-ink-muted mt-1">{f.notes_hint}</p>
+        </div>
+      </div>
+
+      <p class="text-xs text-ink-muted">
+        {f.consent}
+        <a href={localePath(locale, '/policies/')} class="font-semibold text-bronze hover:text-bronze-deep ms-1">{f.consent_link}</a>.
+      </p>
+
+      <p class="hidden bg-porcelain border border-line text-sm text-red-800 rounded px-4 py-3" data-form-error role="alert"></p>
+
+      <div class="flex flex-wrap items-center gap-3">
+        <button type="submit" class="inline-flex items-center gap-2 bg-bronze text-white font-semibold px-6 py-3 rounded hover:bg-bronze-deep transition-colors disabled:opacity-60" data-submit>
+          <span data-submit-label>{f.submit}</span>
+          <Icon name="arrow" size={18} class="rtl:rotate-180" />
+        </button>
+        <a href="#" class="hidden inline-flex items-center gap-2 border border-midnight text-midnight font-semibold px-5 py-3 rounded hover:bg-midnight hover:text-white transition-colors" data-wa-fallback rel="noopener" target="_blank">
+          <Icon name="whatsapp" size={18} />
+          <span>{f.whatsapp_fallback}</span>
+        </a>
+      </div>
+    </form>
+  </section>
+
+  <script type="application/json" id="booking-data" set:html={JSON.stringify(clientData).replace(/</g, '\\u003c')} />
+</Base>
+
+<script>
+  type Data = {
+    locale: string;
+    endpoint: string;
+    anonKey: string;
+    successPath: string;
+    branches: { slug: string; name: string; whatsapp: string }[];
+    rooms: { slug: string; branch: string; name: string }[];
+    strings: {
+      anyRoom: string;
+      sending: string;
+      submit: string;
+      errors: Record<string, string>;
+      whatsappMessage: string;
+    };
+  };
+
+  const data = JSON.parse(document.getElementById('booking-data')!.textContent || '{}') as Data;
+  const form = document.getElementById('booking-form') as HTMLFormElement;
+  const branchSel = form.elements.namedItem('branch') as HTMLSelectElement;
+  const roomSel = form.elements.namedItem('room') as HTMLSelectElement;
+  const checkIn = form.elements.namedItem('check_in') as HTMLInputElement;
+  const checkOut = form.elements.namedItem('check_out') as HTMLInputElement;
+  const submitBtn = form.querySelector<HTMLButtonElement>('[data-submit]')!;
+  const submitLabel = form.querySelector<HTMLElement>('[data-submit-label]')!;
+  const formError = form.querySelector<HTMLElement>('[data-form-error]')!;
+  const waFallback = form.querySelector<HTMLAnchorElement>('[data-wa-fallback]')!;
+
+  const today = new Date();
+  const iso = (d: Date) => d.toISOString().slice(0, 10);
+  checkIn.min = iso(today);
+  checkOut.min = iso(new Date(today.getTime() + 86400000));
+
+  // Prefill from ?branch=&room=
+  const q = new URLSearchParams(location.search);
+  if (q.get('branch')) branchSel.value = q.get('branch')!;
+  function filterRooms() {
+    const b = branchSel.value;
+    for (const opt of Array.from(roomSel.options)) {
+      const ob = opt.dataset.branch;
+      if (!ob) continue;
+      opt.hidden = Boolean(b) && ob !== b;
+      opt.disabled = opt.hidden;
+    }
+    const current = roomSel.selectedOptions[0];
+    if (current && current.disabled) roomSel.value = '';
+  }
+  branchSel.addEventListener('change', filterRooms);
+  filterRooms();
+  if (q.get('room')) {
+    roomSel.value = q.get('room')!;
+    if (roomSel.value !== q.get('room')) roomSel.value = '';
+  }
+  checkIn.addEventListener('change', () => {
+    if (checkIn.value) {
+      const next = new Date(checkIn.value);
+      next.setDate(next.getDate() + 1);
+      checkOut.min = iso(next);
+      if (checkOut.value && checkOut.value <= checkIn.value) checkOut.value = '';
+    }
+  });
+
+  function setError(name: string, msg: string | null) {
+    const el = form.querySelector<HTMLElement>(`[data-error-for="${name}"]`);
+    const field = form.elements.namedItem(name) as HTMLElement | null;
+    if (el) {
+      el.textContent = msg ?? '';
+      el.classList.toggle('hidden', !msg);
+    }
+    field?.setAttribute('aria-invalid', msg ? 'true' : 'false');
+  }
+
+  const E164 = /^\+[1-9]\d{7,14}$/;
+  const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+
+  function normalizePhone(v: string): string {
+    const digits = v.replace(/[\s\-().]/g, '').replace(/^00/, '+');
+    return digits;
+  }
+
+  function validate(): Record<string, string> | null {
+    const fd = new FormData(form);
+    const v = (k: string) => String(fd.get(k) ?? '').trim();
+    const errs = data.strings.errors;
+    let ok = true;
+    const out: Record<string, string> = {};
+
+    const required = ['branch', 'check_in', 'check_out', 'adults', 'name', 'phone', 'email'];
+    for (const k of required) {
+      if (!v(k)) {
+        setError(k, errs.required);
+        ok = false;
+      } else setError(k, null);
+    }
+    if (v('check_in') && v('check_in') < iso(today)) {
+      setError('check_in', errs.past);
+      ok = false;
+    }
+    if (v('check_in') && v('check_out') && v('check_out') <= v('check_in')) {
+      setError('check_out', errs.dates);
+      ok = false;
+    }
+    const phone = normalizePhone(v('phone'));
+    if (v('phone') && !E164.test(phone)) {
+      setError('phone', errs.phone);
+      ok = false;
+    }
+    if (v('email') && !EMAIL.test(v('email'))) {
+      setError('email', errs.email);
+      ok = false;
+    }
+    if (!ok) return null;
+
+    out.locale = data.locale;
+    out.branch = v('branch');
+    out.check_in = v('check_in');
+    out.check_out = v('check_out');
+    out.adults = v('adults');
+    out.children = v('children') || '0';
+    out.room = v('room');
+    out.name = v('name');
+    out.phone = phone;
+    out.email = v('email');
+    out.notes = v('notes');
+    out.page = location.href;
+    return out;
+  }
+
+  function nights(a: string, b: string): number {
+    return Math.max(1, Math.round((new Date(b).getTime() - new Date(a).getTime()) / 86400000));
+  }
+
+  function whatsappUrl(p: Record<string, string>): string {
+    const b = data.branches.find((x) => x.slug === p.branch)!;
+    const r = data.rooms.find((x) => x.slug === p.room && x.branch === p.branch);
+    const msg = data.strings.whatsappMessage
+      .replace('{branch}', b.name)
+      .replace('{check_in}', p.check_in)
+      .replace('{check_out}', p.check_out)
+      .replace('{adults}', p.adults)
+      .replace('{children}', p.children)
+      .replace('{room}', r ? r.name : data.strings.anyRoom)
+      .replace('{name}', p.name)
+      .replace('{phone}', p.phone)
+      .replace('{notes}', p.notes || '-');
+    return `https://wa.me/${b.whatsapp.replace(/\D/g, '')}?text=${encodeURIComponent(msg)}`;
+  }
+
+  function showFallback(p: Record<string, string>, msg: string) {
+    formError.textContent = msg;
+    formError.classList.remove('hidden');
+    waFallback.href = whatsappUrl(p);
+    waFallback.classList.remove('hidden');
+  }
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    formError.classList.add('hidden');
+    waFallback.classList.add('hidden');
+    const p = validate();
+    if (!p) {
+      form.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus();
+      return;
+    }
+    if (!data.endpoint) {
+      // No email endpoint configured for this build → WhatsApp handoff, never a silent failure.
+      showFallback(p, data.strings.errors.server);
+      window.open(whatsappUrl(p), '_blank', 'noopener');
+      return;
+    }
+    submitBtn.disabled = true;
+    submitLabel.textContent = data.strings.sending;
+    try {
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (data.anonKey) {
+        headers['Authorization'] = `Bearer ${data.anonKey}`;
+        headers['apikey'] = data.anonKey;
+      }
+      const res = await fetch(data.endpoint, { method: 'POST', headers, body: JSON.stringify(p) });
+      const body = (await res.json().catch(() => ({}))) as { ok?: boolean; ref?: string; error?: string };
+      if (!res.ok || !body.ok || !body.ref) throw new Error(body.error || `HTTP ${res.status}`);
+      const params = new URLSearchParams({
+        ref: body.ref,
+        branch: p.branch,
+        room: p.room || '',
+        nights: String(nights(p.check_in, p.check_out)),
+      });
+      location.assign(`${data.successPath}?${params.toString()}`);
+    } catch {
+      showFallback(p, data.strings.errors.server);
+    } finally {
+      submitBtn.disabled = false;
+      submitLabel.textContent = data.strings.submit;
+    }
+  });
+</script>

@@ -1,0 +1,119 @@
+{
+  "_note": "Confirmed 8 Oct 2026. Must stay identical to Booking.com listings.",
+  "check_in": "16:00",
+  "check_out": "12:00",
+  "check_in_ar": "الوصول من الساعة 4:00 عصرًا",
+  "check_out_ar": "المغادرة حتى الساعة 12:00 ظهرًا",
+  "check_in_en": "Check-in from 4:00 pm",
+  "check_out_en": "Check-out by 12:00 noon",
+  "cancellation": {
+    "free_until_hours_before_arrival": 24,
+    "ar": "إلغاء مجاني حتى 24 ساعة قبل موعد الوصول. في حال الإلغاء في نفس يوم الوصول أو عدم الحضور، تُحسب قيمة الليلة الأولى.",
+    "en": "Free cancellation up to 24 hours before arrival. Same-day cancellation or no-show is charged the first night.",
+    "applies_to": [
+      "airport-road",
+      "shafa-road"
+    ],
+    "matches_booking_com": true
+  },
+  "refund": {
+    "window": "5–14 business days",
+    "to": "same payment method",
+    "phase": 3
+  },
+  "privacy": "see page.sections[privacy]",
+  "verified": true,
+  "page": {
+    "title_ar": "الشروط والسياسات",
+    "title_en": "Terms & Policies",
+    "intro_ar": "تنطبق هذه الشروط على الحجوزات في فرعي أرمادا ريزيدنس بالطائف: طريق المطار وطريق الشفا. تاريخ آخر تحديث: 8 أكتوبر 2026.",
+    "intro_en": "These terms apply to bookings at both Armada Residence properties in Taif: Airport Road and Al-Shafa Road. Last updated 8 October 2026.",
+    "sections": [
+      {
+        "id": "booking",
+        "heading_ar": "طلب الحجز والتأكيد",
+        "heading_en": "Booking requests and confirmation",
+        "body_ar": "طلب الحجز عبر الموقع ليس حجزًا مؤكدًا. بعد استلام الطلب يتواصل فريق الاستقبال لتأكيد التوافر والسعر النهائي خلال ساعات عمل الاستقبال، ثم يُرسل التأكيد عبر البريد الإلكتروني أو الواتساب. الأسعار المعروضة على الموقع أسعار ابتدائية لليلة الواحدة شاملة ضريبة القيمة المضافة، والسعر النهائي هو ما يؤكده الاستقبال.",
+        "body_en": "A booking request on the website is not a confirmed booking. Once received, our reception team contacts you to confirm availability and the final price, then sends the confirmation by email or WhatsApp. Prices shown on the website are starting prices per night inclusive of VAT; the final price is the one confirmed by reception."
+      },
+      {
+        "id": "checkin",
+        "heading_ar": "الوصول والمغادرة",
+        "heading_en": "Check-in and check-out",
+        "body_ar": "الوصول من الساعة 4:00 عصرًا، والمغادرة حتى الساعة 12:00 ظهرًا، في الفرعين. الوصول المبكر أو المغادرة المتأخرة حسب التوافر ويُطلب من الاستقبال مسبقًا. المغادرة المتأخرة برسوم: 100 ريال حتى 2:00 ظهرًا، و200 ريال حتى 4:00 عصرًا، حسب توافر الغرف. تمديد الإقامة يخضع للتوافر ويُطلب من الاستقبال قبل موعد المغادرة.",
+        "body_en": "Check-in is from 4:00 pm and check-out by 12:00 noon at both properties. Early check-in or late check-out is subject to availability and should be requested from reception in advance. Late check-out is charged: SAR 100 until 2:00 pm and SAR 200 until 4:00 pm, subject to room availability. Extending a stay is subject to availability and must be requested from reception before the scheduled check-out."
+      },
+      {
+        "id": "cancellation",
+        "heading_ar": "الإلغاء وعدم الحضور",
+        "heading_en": "Cancellation and no-show",
+        "body_ar": "إلغاء مجاني حتى 24 ساعة قبل موعد الوصول. في حال الإلغاء في نفس يوم الوصول أو عدم الحضور، تُحسب قيمة الليلة الأولى. تنطبق السياسة نفسها على الحجوزات عبر الموقع وعبر Booking.com.",
+        "body_en": "Free cancellation up to 24 hours before arrival. Same-day cancellation or no-show is charged the first night. The same policy applies to bookings made on this website and on Booking.com."
+      },
+      {
+        "id": "guests",
+        "heading_ar": "عدد النزلاء والإفطار",
+        "heading_en": "Guests and breakfast",
+        "body_ar": "يشمل سعر الغرفة والاستديو وجناح الغرفة والصالة شخصين بالغين، ويشمل سعر الأجنحة بغرفتي نوم أربعة. الأطفال لا يُحسبون ضمن العدد المشمول. الشخص الإضافي 25 ريالًا لليلة، وتُطبَّق على الأطفال السياسة نفسها بحسب السن: حتى 5 سنوات مجانًا، ومن 6 إلى 12 سنة نصف الرسوم، وفوق 12 سنة بسعر البالغ. الإفطار غير مشمول في السعر الأساسي، ويُقدَّم بوفيه إفطار يومي في مطعم كل فرع من 07:00 إلى 10:30 بـ 20 ريالًا للشخص في اليوم؛ للأطفال حتى 5 سنوات مجانًا، ومن 6 إلى 12 سنة بـ 10 ريالات، وفوق 12 سنة بسعر البالغ.",
+        "body_en": "Room, studio and one-bedroom suite prices cover two adults; two-bedroom suite prices cover four. Children are not counted toward the included number. An extra guest is SAR 25 per night, and the same age policy applies to children: up to 5 free, ages 6 to 12 half the fee, over 12 at the adult rate. Breakfast is not included in the base price; a daily breakfast buffet is served in each property's restaurant from 07:00 to 10:30 at SAR 20 per person per day — children up to 5 free, ages 6 to 12 SAR 10, over 12 at the adult rate."
+      },
+      {
+        "id": "house_rules",
+        "heading_ar": "عند الوصول وداخل الغرف",
+        "heading_en": "On arrival and in the rooms",
+        "body_ar": "يُطلب إثبات هوية سارٍ (هوية وطنية أو إقامة أو جواز سفر) لصاحب الحجز عند الوصول. جميع الغرف لغير المدخنين. لا يُسمح باستضافة أشخاص غير مسجلين في الحجز. الحيوانات الأليفة غير مسموح بها. يلتزم النزيل بالحفاظ على هدوء الفندق ومحتويات الغرفة ويتحمل تكلفة أي تلف يُحدثه هو أو مرافقوه، وبإعادة بطاقة الغرفة عند المغادرة (رسوم فقدانها 10 ريالات). يُرجى حفظ الأغراض الثمينة في خزنة الغرفة؛ الفندق غير مسؤول عن المفقودات خارجها. الأطفال في مسؤولية ذويهم طوال الإقامة. يحق لإدارة الفندق إنهاء الإقامة عند مخالفة هذه القواعد، ويوقّع النزيل عند الوصول على عقد الإقامة الذي يتضمنها تفصيلًا.",
+        "body_en": "A valid ID (national ID, residence permit or passport) is required from the booking holder at check-in. All rooms are non-smoking. Guests not registered on the booking may not stay in the room. Pets are not allowed. Guests are expected to keep the hotel quiet and the room intact, bear the cost of any damage caused by them or their companions, and return the room key card at check-out (SAR 10 if lost). Please keep valuables in the in-room safe; the hotel is not responsible for items lost outside it. Children remain the responsibility of their parents throughout the stay. Management may end a stay if these rules are broken; the full stay agreement is signed at check-in."
+      },
+      {
+        "id": "payment",
+        "heading_ar": "الدفع والاسترداد",
+        "heading_en": "Payment and refunds",
+        "body_ar": "يُسدَّد المبلغ عند الوصول في الاستقبال. [مرحلة 3: عند تفعيل الدفع الإلكتروني يُرسل رابط دفع آمن بعد تأكيد التوافر، ويُعاد المبلغ المستحق في حالات الإلغاء المجاني إلى وسيلة الدفع نفسها خلال 5 إلى 14 يوم عمل بحسب البنك المُصدر.]",
+        "body_en": "Payment is made at reception on arrival. [Phase 3: once online payment is live, a secure payment link is sent after availability is confirmed, and amounts due under free cancellation are refunded to the same payment method within 5 to 14 business days depending on the issuing bank.]"
+      },
+      {
+        "id": "privacy",
+        "heading_ar": "الخصوصية",
+        "heading_en": "Privacy",
+        "body_ar": "عند إرسال طلب حجز نجمع الاسم ورقم الهاتف والبريد الإلكتروني وتفاصيل الإقامة، ونستخدمها فقط لمعالجة الطلب والتواصل بشأنه. تُحفظ البيانات في أنظمة أرمادا ريزيدنس ولا تُباع ولا تُشارك مع أي طرف ثالث إلا ما يلزم لتنفيذ الحجز أو الدفع. يستخدم الموقع أدوات قياس وإعلانات (Google Tag Manager) لفهم استخدام الموقع وتحسين الحملات؛ ويمكنكم تعطيل ملفات تعريف الارتباط من إعدادات المتصفح. لطلب الاطلاع على بياناتكم أو تعديلها أو حذفها، راسلونا على info@armadaresidence.com. نلتزم بنظام حماية البيانات الشخصية في المملكة العربية السعودية.",
+        "body_en": "When you send a booking request we collect your name, phone number, email and stay details, and use them only to process the request and contact you about it. Data is stored in Armada Residence systems and is never sold or shared with third parties beyond what is needed to complete the booking or payment. The website uses measurement and advertising tools (Google Tag Manager) to understand site usage and improve campaigns; you can disable cookies in your browser settings. To access, correct or delete your data, email info@armadaresidence.com. We comply with the Personal Data Protection Law of Saudi Arabia."
+      },
+      {
+        "id": "operator",
+        "heading_ar": "الجهة المشغّلة",
+        "heading_en": "Operator",
+        "body_ar": "شركة أرمادا ريزيدنس لتشغيل الفنادق — السجل التجاري 1010874796 — الرقم الضريبي 312154414400003.",
+        "body_en": "Armada Residence Company To Operate Hotels — CR 1010874796 — VAT 312154414400003."
+      }
+    ],
+    "open_questions": [
+      "rounding of the children's half extra-person fee (12.5 SAR?)"
+    ]
+  },
+  "late_checkout": {
+    "until_14:00": 100,
+    "until_16:00": 200,
+    "subject_to_availability": true
+  },
+  "key_card_loss_sar": 10,
+  "pets": false,
+  "smoking": "non-smoking rooms",
+  "deposit": {
+    "sar": 300,
+    "show_on_site": false,
+    "note": "in-house agreement only — Ahmed 8 Oct: not shown on the website"
+  },
+  "children": {
+    "counted_in_included_guests": false,
+    "extra_fee": {
+      "up_to_5": 0,
+      "6_to_12": "50% of extra-person fee (12.5 SAR — confirm rounding)",
+      "13_plus": 25
+    },
+    "breakfast": {
+      "up_to_5": 0,
+      "6_to_12": 10,
+      "13_plus": 20
+    }
+  }
+}
