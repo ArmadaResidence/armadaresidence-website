@@ -292,6 +292,13 @@ def main() -> int:
             for m in re.finditer(r"\d[\d,.]*\s*(?:ريال|ر\.س|SAR)|SAR\s*\d", p.text):
                 rep.f("partners pricing", f"{path}: price-like text {m.group(0)!r} under /partners/")
 
+        # prices hidden (9 Oct 2026): no number next to ريال/الليلة or SAR/night anywhere except the café menu
+        if pricing.get("display_mode") == "hidden" and lp != "/menu/":
+            for m in re.finditer(r"\d[\d,.]*\s*(?:ريال|ر\.س|SAR)\b|SAR\s*\d", p.text):
+                window = p.text[max(0, m.start() - 60) : m.end() + 60]
+                if re.search(r"الليلة|لليلة|night|/\s*الليلة", window, re.I):
+                    rep.f("pricing", f"{path}: stay price shown while prices are hidden: {window.strip()[:70]!r}")
+
         # decision 9 Oct 2026: no breakfast price anywhere on the site
         for m in re.finditer(r"إفطار|breakfast", p.text, re.I):
             window = p.text[max(0, m.start() - 80) : m.end() + 80]
@@ -459,10 +466,13 @@ def main() -> int:
                     if not offer:
                         rep.todo(f"{path}: HotelRoom has no Offer (base_price missing)")
                     else:
-                        for k in ("price", "priceCurrency", "availability"):
+                        hidden_mode = pricing.get("display_mode") == "hidden"
+                        for k in (("availability",) if hidden_mode else ("price", "priceCurrency", "availability")):
                             if offer.get(k) in (None, ""):
                                 rep.f("json-ld", f"{path}: Offer missing {k}")
-                        if offer.get("priceCurrency") != pricing["currency"]:
+                        if hidden_mode and offer.get("price") not in (None, ""):
+                            rep.f("json-ld", f"{path}: Offer carries a price while prices are hidden")
+                        if not hidden_mode and offer.get("priceCurrency") != pricing["currency"]:
                             rep.f("json-ld", f"{path}: Offer currency != pricing.json")
         if lp == "/" and "Organization" not in types:
             rep.f("json-ld", f"{path}: home must carry Organization")
@@ -511,7 +521,11 @@ def main() -> int:
         if lp in room_by_path:
             r = room_by_path[lp]
             loc = "en" if en else "ar"
-            if isinstance(r.get("base_price"), (int, float)):
+            hidden = pricing.get("display_mode") == "hidden" or r.get("pricing_mode") == "hidden"
+            if hidden:
+                if pricing[f"display_{loc}"] not in p.text:
+                    rep.f("pricing", f"{path}: hidden-price line (pricing.json display) not rendered")
+            elif isinstance(r.get("base_price"), (int, float)):
                 line = pricing[f"display_{loc}"].replace("{price}", str(r["base_price"]))
                 if line not in p.text:
                     rep.f("pricing", f"{path}: price line {line!r} not rendered")

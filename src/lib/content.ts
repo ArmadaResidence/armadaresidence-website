@@ -57,7 +57,7 @@ export interface Room {
   category: string;
   base_price: number;
   currency: string;
-  pricing_mode: 'starting_from' | 'calendar';
+  pricing_mode: 'starting_from' | 'calendar' | 'hidden';
   in_room_amenities: string[];
   size_m2: number;
   capacity: number;
@@ -217,8 +217,15 @@ export function soldOutLabel(locale: Locale, room: Room): string {
 
 /** «يبدأ من {price} ريال / الليلة — شامل الضريبة» from pricing.json for the given plan price (default: room base_price). */
 export function priceLine(locale: Locale, room: Room, price: number | undefined = room.base_price): string {
+  if (pricesHidden(room)) return locale === 'ar' ? pricing.display_ar : pricing.display_en;
   if (typeof price !== 'number') return TODO;
   return fill(locale === 'ar' ? pricing.display_ar : pricing.display_en, { price });
+}
+
+/** Decision 9 Oct 2026: no stay price on the site — pricing.json display_mode "hidden" / room pricing_mode "hidden".
+ *  starting_from and calendar stay implemented; switching the values back re-enables the price lines. */
+export function pricesHidden(room?: Room): boolean {
+  return (pricing as { display_mode?: string }).display_mode === 'hidden' || room?.pricing_mode === 'hidden';
 }
 
 /** Decision 9 Oct 2026: the breakfast price is never shown on the site — only pricing.json → breakfast.site_line. */

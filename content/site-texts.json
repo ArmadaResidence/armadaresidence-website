@@ -1,23 +1,30 @@
 {
-  "_note": "New copy, 8 Oct 2026, draft 1 for Ahmed's review. Brand voice: formal Arabic register, clear facts first, no superlatives, no exclamation marks. Official slogan is a separate line, never attached to the logo.",
+  "_note": "New copy, 8 Oct 2026, draft 1 for Ahmed's review. Brand voice: formal Arabic register, clear facts first, no superlatives, no exclamation marks. Official slogan is a separate line, never attached to the logo. Hero made brand-level (no city name) 9 Oct — future branches outside Taif.",
   "slogan_ar": "الراحة، بأسلوب أرمادا",
   "slogan_en": "Comfort, the Armada Way.",
   "hero": {
-    "title_ar": "إقامتكم في الطائف، على طريق المطار أو طريق الشفا",
+    "title_ar": "الراحة، بأسلوب أرمادا",
     "subtitle_ar": "غرف وأجنحة وشقق فندقية واسعة، بأسعار تشمل الضريبة، واستقبال على مدار الساعة.",
-    "title_en": "Your stay in Taif, on Airport Road or Al-Shafa Road",
+    "title_en": "Comfort, the Armada Way.",
     "subtitle_en": "Spacious rooms, suites and hotel apartments, prices inclusive of VAT, reception around the clock.",
     "cta_primary_ar": "اطلب حجزًا",
     "cta_primary_en": "Request a booking",
     "cta_secondary_ar": "تصفّح الفرعين",
     "cta_secondary_en": "See both properties",
     "alternatives_ar": [
-      "أرمادا ريزيدنس — فرعان في الطائف، وراحة واحدة",
-      "الراحة، بأسلوب أرمادا (slogan-led hero, title only)"
+      "إقامتكم، بأسلوب أرمادا",
+      "ضيافة تُقاس بالراحة",
+      "هدوء ومساحة وراحة — في كل إقامة"
     ],
-    "price_line_rule": "«الأسعار تبدأ من {min_base_price} ريالًا لليلة شاملة الضريبة» — min base_price from rooms.json, never typed",
-    "price_line_ar": "الأسعار تبدأ من {price} ريالًا لليلة شاملة الضريبة",
-    "price_line_en": "Prices from SAR {price} per night, VAT included"
+    "eyebrow_ar": "فنادق أرمادا ريزيدنس",
+    "eyebrow_en": "Armada Residence Hotels",
+    "show_price_line": false,
+    "price_line_note": "Decision 9 Oct: no 'from X SAR' in the hero — rates vary widely by season.",
+    "alternatives_en": [
+      "Your stay, the Armada way",
+      "Hospitality measured in comfort",
+      "Calm, space and comfort — every stay"
+    ]
   },
   "about": {
     "heading_ar": "عن أرمادا ريزيدنس",
@@ -36,10 +43,10 @@
         "body_en": "Rooms from 35 m² at Shafa Road and 50 m² at Airport Road, and suites up to 75 m²."
       },
       {
-        "title_ar": "سعر واضح",
-        "body_ar": "الأسعار المعروضة لليلة شاملة الضريبة، والشخص الإضافي 25 ريالًا. الإفطار يُحدَّد عند تأكيد الحجز.",
-        "title_en": "Clear pricing",
-        "body_en": "Listed prices are per night and include VAT; an extra guest is SAR 25. Breakfast is confirmed with your booking."
+        "title_ar": "بلا مفاجآت في السعر",
+        "body_ar": "السعر الذي يؤكده الاستقبال شامل الضريبة، والإفطار والشخص الإضافي يُوضَّحان قبل التأكيد.",
+        "title_en": "No surprises in the price",
+        "body_en": "The price reception confirms includes VAT; breakfast and extra guests are clarified before confirmation."
       },
       {
         "title_ar": "بوفيه إفطار يومي",

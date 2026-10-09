@@ -12,6 +12,7 @@ import {
   L,
   localePath,
   minPriceFor,
+  pricesHidden,
   pricing,
   roomPath,
   seo,
@@ -99,7 +100,7 @@ export function lodging(locale: Locale, b: Branch) {
       value: true,
     })),
   };
-  if (min !== null) node.priceRange = `${pricing.currency} ${min}+`;
+  if (min !== null && !pricesHidden()) node.priceRange = `${pricing.currency} ${min}+`;
   const d = (b as Branch & { dining?: Dining }).dining;
   if (d) node.containsPlace = foodEstablishment(locale, b, d);
   return node;
@@ -180,19 +181,22 @@ export function hotelRoom(locale: Locale, room: Room, b: Branch) {
   node.amenityFeature = Array.from(names).map((name) => ({ '@type': 'LocationFeatureSpecification', name, value: true }));
   const plan = visibleRatePlans(room)[0];
   const price = plan?.base_price ?? room.base_price;
-  node.offers = {
-    '@type': 'Offer',
-    url,
-    price,
-    priceCurrency: room.currency || pricing.currency,
-    availability: room.availability === 'sold_out' ? 'https://schema.org/SoldOut' : 'https://schema.org/InStock',
-    priceSpecification: {
-      '@type': 'UnitPriceSpecification',
-      price,
-      priceCurrency: room.currency || pricing.currency,
-      valueAddedTaxIncluded: true,
-      unitText: 'night',
-    },
-  };
+  // prices hidden (9 Oct 2026): the Offer keeps availability only — no price, no priceSpecification
+  node.offers = pricesHidden(room)
+    ? { '@type': 'Offer', url, availability: room.availability === 'sold_out' ? 'https://schema.org/SoldOut' : 'https://schema.org/InStock' }
+    : {
+        '@type': 'Offer',
+        url,
+        price,
+        priceCurrency: room.currency || pricing.currency,
+        availability: room.availability === 'sold_out' ? 'https://schema.org/SoldOut' : 'https://schema.org/InStock',
+        priceSpecification: {
+          '@type': 'UnitPriceSpecification',
+          price,
+          priceCurrency: room.currency || pricing.currency,
+          valueAddedTaxIncluded: true,
+          unitText: 'night',
+        },
+      };
   return node;
 }

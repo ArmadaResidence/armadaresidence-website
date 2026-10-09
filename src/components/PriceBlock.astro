@@ -10,6 +10,7 @@ import {
   extraPersonLine,
   localePath,
   priceLine,
+  pricesHidden,
   soldOutLabel,
   ui,
   visibleRatePlans,
@@ -27,7 +28,8 @@ const { locale, room, mode = 'card' } = Astro.props;
 const t = ui(locale);
 const soldOut = room.availability === 'sold_out';
 const bookHref = `${localePath(locale, '/booking/')}?branch=${room.branch}&room=${room.slug}`;
-const plans = visibleRatePlans(room);
+const hidden = pricesHidden(room);
+const plans = hidden ? [visibleRatePlans(room)[0] ?? { base_price: undefined }] : visibleRatePlans(room);
 ---
 
 <div class:list={[mode === 'full' ? 'bg-white border border-line rounded-card p-6' : '']}>
@@ -39,17 +41,17 @@ const plans = visibleRatePlans(room);
   }
   {
     plans.map((plan) => (
-      <p class:list={['font-semibold text-midnight', mode === 'full' ? 'text-2xl' : 'text-lg']}>
+      <p class:list={['font-semibold text-midnight', mode === 'full' && !hidden ? 'text-2xl' : 'text-lg']}>
         {priceLine(locale, room, plan.base_price ?? room.base_price)}
       </p>
     ))
   }
-  {mode === 'full' && <p class="text-sm text-ink-muted mt-1">{t.price.room_only_note}</p>}
+  {mode === 'full' && !hidden && <p class="text-sm text-ink-muted mt-1">{t.price.room_only_note}</p>}
   <p class="text-sm text-ink-muted mt-1">{breakfastLine(locale)}</p>
   {
     mode === 'full' && (
       <>
-        <p class="text-sm text-ink-muted mt-1">{extraPersonLine(locale)}</p>
+        {!hidden && <p class="text-sm text-ink-muted mt-1">{extraPersonLine(locale)}</p>}
         <p class="text-xs text-ink-muted mt-3">{t.price.final_note}</p>
         {!soldOut && (
           <a

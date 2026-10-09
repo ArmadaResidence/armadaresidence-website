@@ -8,7 +8,6 @@ import { existsSync } from 'node:fs';
 import {
   branches,
   fill,
-  heroPriceLine,
   localePath,
   pageSeo,
   paragraphs,
@@ -83,7 +82,6 @@ const quickFacts = fill(t.home.quick_facts, {
       <p class="mt-5 text-lg md:text-xl text-porcelain/85 max-w-2xl leading-relaxed">
         {locale === 'ar' ? hero.subtitle_ar : hero.subtitle_en}
       </p>
-      <p class="mt-3 text-base md:text-lg font-semibold text-white">{heroPriceLine(locale)}</p>
       <div class="mt-8 flex flex-wrap gap-3">
         <a
           href={localePath(locale, '/booking/')}

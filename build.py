@@ -99,7 +99,7 @@ def validate(content: dict[str, dict]) -> list[str]:
             problems.append(f"rooms.json[{r['slug']}] unknown branch {r['branch']}")
         if not re.match(r"^[a-z0-9-]+$", r["slug"]):
             problems.append(f"rooms.json[{r['slug']}] slug must be a readable kebab-case slug")
-        if r.get("pricing_mode") not in ("starting_from", "calendar"):
+        if r.get("pricing_mode") not in ("starting_from", "calendar", "hidden"):
             problems.append(f"rooms.json[{r['slug']}] pricing_mode invalid")
         if r.get("availability") not in ("available", "sold_out"):
             problems.append(f"rooms.json[{r['slug']}] availability invalid")
@@ -133,8 +133,8 @@ def validate(content: dict[str, dict]) -> list[str]:
             problems.append(f"rooms.json[{r['slug']}] no in-room washers anywhere (DECISIONS 8 Oct)")
 
     pricing = content["pricing.json"]
-    if "{price}" not in pricing["display_ar"] or "{price}" not in pricing["display_en"]:
-        problems.append("pricing.json display strings must contain {price}")
+    if pricing.get("display_mode") != "hidden" and ("{price}" not in pricing["display_ar"] or "{price}" not in pricing["display_en"]):
+        problems.append("pricing.json display strings must contain {price} unless display_mode is hidden")
     if pricing["rate_plans"]["bed_and_breakfast"].get("show_on_site") is not False:
         problems.append("pricing.json: bed_and_breakfast must stay hidden in phase 1")
 

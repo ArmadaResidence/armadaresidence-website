@@ -119,8 +119,8 @@
   "room_templates": {
     "title_ar": "{room} {size_clause_short} – {branch_short} | أرمادا ريزيدنس",
     "title_en": "{room} {size_clause_short} – {branch_short} | Armada Residence",
-    "description_ar": "{room}{size_clause} لـ{capacity} أشخاص في أرمادا ريزيدنس {branch_short} بالطائف، {bed}{features_clause}. يبدأ من {price} ريالًا لليلة شاملًا الضريبة.",
-    "description_en": "{size} m² {room_lower} for {capacity} at Armada Residence {branch_short}, Taif — {bed_lower}{features_clause}. From SAR {price} per night incl. VAT.",
+    "description_ar": "{room}{size_clause} لـ{capacity} أشخاص في أرمادا ريزيدنس {branch_short} بالطائف، {bed}{features_clause}.",
+    "description_en": "{size} m² {room_lower} for {capacity} at Armada Residence {branch_short}, Taif — {bed_lower}{features_clause}.",
     "size_clause_ar": " بمساحة {size} مترًا مربعًا",
     "size_clause_en": " of {size} m²",
     "size_clause_short_ar": "{size} م²",
