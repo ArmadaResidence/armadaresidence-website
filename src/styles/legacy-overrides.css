@@ -101,3 +101,40 @@
 
 /* the legacy header is gone: no fixed-header offset */
 .legacy-partners { --hdr: 0px; }
+
+/* ---------- /menu/ (legacy café menu inside the site chrome) ----------
+   The legacy page pinned its own header at the top of the viewport; here the site header (utility row 32 px +
+   main row 64 px) is sticky above it, so every fixed/sticky layer is offset by --site-hdr. The cart FAB sits
+   above the site WhatsApp button. The legacy AR/EN toggle became two links (styled like the legacy buttons). */
+.legacy-menu {
+  --site-hdr: 96px;
+}
+.legacy-menu .top {
+  top: calc(var(--site-hdr) + env(safe-area-inset-top, 0px));
+}
+.legacy-menu .rail {
+  top: calc(var(--site-hdr) + var(--top) + env(safe-area-inset-top, 0px));
+}
+.legacy-menu .stage {
+  top: var(--site-hdr);
+  height: calc(100vh - var(--site-hdr));
+  height: calc(100svh - var(--site-hdr));
+}
+.legacy-menu .fab {
+  bottom: calc(92px + env(safe-area-inset-bottom, 0px));
+}
+.legacy-menu .lang a {
+  display: inline-block;
+  padding: 6px 10px;
+  color: var(--ink-dim);
+  text-decoration: none;
+}
+.legacy-menu .lang a[aria-current="page"] {
+  background: var(--porcelain);
+  color: var(--cherry);
+}
+.legacy-menu .brand img {
+  padding: 4px;  /* clear space ≈ a quarter of the 34 px logo height, within the fixed bar */
+  box-sizing: content-box;
+  height: calc(100% - 8px);
+}

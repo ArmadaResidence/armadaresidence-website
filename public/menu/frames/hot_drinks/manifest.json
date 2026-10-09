@@ -1,0 +1,23 @@
+{
+  "section": "hot_drinks",
+  "source_file": "المشروبات الساخنة — القهوة.mp4",
+  "source_sha256": "1aeb7aed60c8eacc2a634aa4fa96953e5b2c1fe9ef19172a900e6ff5ace0b50a",
+  "duration_seconds": 10.041667,
+  "source_dimensions": [
+    1288,
+    1608
+  ],
+  "source_fps": 24,
+  "visual_review": "Technically complete and consistent dark stage. Around midpoint coffee beans form a dense rope/column instead of visibly grinding into liquid. Start and end are clear; final cup and logo stay fully visible. Editorial approval is pending.",
+  "fps": 15,
+  "frame_dimensions": [
+    720,
+    898
+  ],
+  "frame_count": 151,
+  "first_index": 0,
+  "last_index": 150,
+  "frame_name_pattern": "frames/frame_%04d.webp",
+  "frame_bytes_total": 5758792,
+  "optional": false
+}

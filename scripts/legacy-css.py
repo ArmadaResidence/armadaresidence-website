@@ -26,6 +26,8 @@ ROOT = Path(__file__).resolve().parent.parent
 SRC = {
     "discover": (ROOT / "legacy-sites/discover-taif-src/discover-taif/assets/css/styles.css", "legacy-discover"),
     "partners": (ROOT / "legacy-sites/b2b-src/armada-residence-b2b/src/site.css", "legacy-partners"),
+    # the menu page <style>, extracted by scripts/legacy-menu-port.py
+    "menu": (ROOT / "legacy-sites/menu-src/armada-menu-site/menu-extracted.css", "legacy-menu"),
 }
 OUT = ROOT / "src/styles"
 
@@ -35,6 +37,7 @@ FONT_MAP = {
     "'Plex Arabic', 'IBM Plex Sans Arabic', system-ui, sans-serif": '"IBM Plex Sans Arabic", system-ui, sans-serif',
     '"IBM Plex Sans Arabic", "Segoe UI", Tahoma, sans-serif': '"IBM Plex Sans Arabic", "Segoe UI", Tahoma, sans-serif',
     '"Manrope", "Segoe UI", Helvetica, Arial, sans-serif': '"Manrope Variable", "Manrope", "Segoe UI", Helvetica, Arial, sans-serif',
+    '"Manrope","Helvetica Neue",Arial,sans-serif': '"Manrope Variable","Manrope","Helvetica Neue",Arial,sans-serif',
 }
 
 
@@ -67,6 +70,16 @@ def scope_selector(sel: str, wrap: str) -> str:
         return s
     if s == ":root":
         return f".{wrap}"
+    if s.startswith(":root["):
+        return f".{wrap}{s[5:]}"
+    # [dir=rtl] body / [dir=rtl] X → the attribute stays on <html>, the wrapper follows it
+    m = re.match(r"^(\[dir=[^\]]+\])\s*(?:body)?\s*(.*)$", s)
+    if m:
+        lead, rest = m.group(1), m.group(2).strip()
+        return f"{lead} .{wrap} {rest}".strip() if rest else f"{lead} .{wrap}"
+    # the legacy menu's <main> becomes a .scenes div inside the site's own <main>
+    if s == "main":
+        return f".{wrap} .scenes"
     if s in ("html", "body", "html,body"):
         return f".{wrap}"
     if s.startswith("*"):

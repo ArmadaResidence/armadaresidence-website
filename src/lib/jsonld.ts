@@ -100,6 +100,46 @@ export function lodging(locale: Locale, b: Branch) {
     })),
   };
   if (min !== null) node.priceRange = `${pricing.currency} ${min}+`;
+  const d = (b as Branch & { dining?: Dining }).dining;
+  if (d) node.containsPlace = foodEstablishment(locale, b, d);
+  return node;
+}
+
+export interface Dining {
+  name: string;
+  name_ar: string;
+  hours: string;
+  open_to_public: boolean;
+  location_ar: string;
+  location_en: string;
+  menu_url: string;
+  phone: string;
+  whatsapp: string;
+}
+
+/** Café & restaurant inside a branch (branches.json → dining): name, 24-hour opening, restaurant phone, menu URL. */
+export function foodEstablishment(locale: Locale, b: Branch, d: Dining) {
+  const node: Record<string, unknown> = {
+    '@type': 'FoodEstablishment',
+    '@id': absoluteUrl(branchPath(locale, b.slug)) + '#restaurant',
+    name: locale === 'ar' ? d.name_ar : d.name,
+    alternateName: locale === 'ar' ? d.name : d.name_ar,
+    telephone: d.phone,
+    url: absoluteUrl(localePath(locale, d.menu_url)),
+    hasMenu: absoluteUrl(localePath(locale, d.menu_url)),
+    address: postalAddress(locale, b),
+    containedInPlace: { '@type': b.slug === 'shafa-road' ? 'Hotel' : 'LodgingBusiness', '@id': absoluteUrl(branchPath(locale, b.slug)) + '#lodging' },
+    publicAccess: d.open_to_public,
+  };
+  if (d.hours === '24h') {
+    node.openingHours = 'Mo-Su 00:00-24:00';
+    node.openingHoursSpecification = {
+      '@type': 'OpeningHoursSpecification',
+      dayOfWeek: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'],
+      opens: '00:00',
+      closes: '23:59',
+    };
+  }
   return node;
 }
 

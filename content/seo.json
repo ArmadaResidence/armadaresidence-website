@@ -108,6 +108,12 @@
       "description_ar": "أرسل البرنامج والتواريخ وعدد الأفراد إلى المكتب التجاري لفنادق أرمادا ريزيدنس بالطائف، وتصلك الإتاحة خلال يوم عمل.",
       "title_en": "Partner Enquiry | Armada Residence Commercial Office",
       "description_en": "Send the programme, dates and party size to the Armada Residence commercial office in Taif. Availability comes back within one working day."
+    },
+    "menu": {
+      "title_ar": "قائمة المطعم والمقهى | أرمادا ريزيدنس طريق المطار",
+      "description_ar": "القائمة التفاعلية لـ Armada Residence Café & Restaurant في لوبي أرمادا ريزيدنس طريق المطار بالطائف: مشروبات ساخنة وباردة، إفطار، بيتزا وحلويات.",
+      "title_en": "Café & Restaurant Menu | Armada Residence Airport Road",
+      "description_en": "Interactive menu of Armada Residence Café & Restaurant in the lobby of Armada Residence Airport Road, Taif: drinks, breakfast, pizza and desserts."
     }
   },
   "room_templates": {

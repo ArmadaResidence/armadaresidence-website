@@ -15,6 +15,7 @@ mkdirSync(OUT, { recursive: true });
 const LEGACY = {
   discover: pathToFileURL(resolve('legacy-sites/discover-taif-src/discover-taif/index.html')).href,
   partners: pathToFileURL(resolve('legacy-sites/b2b-src/armada-residence-b2b/ar/index.html')).href,
+  menu: pathToFileURL(resolve('legacy-sites/menu-src/armada-menu-site/index.html')).href,
 };
 
 async function waitFor(url, ms = 40000) {
@@ -70,7 +71,7 @@ try {
   const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 }, locale: 'ar-SA' });
   const page = await ctx.newPage();
 
-  for (const [key, path] of [['discover', '/discover-taif/'], ['partners', '/partners/']]) {
+  for (const [key, path] of [['discover', '/discover-taif/'], ['partners', '/partners/'], ['menu', '/menu/']]) {
     await page.goto(LEGACY[key], { waitUntil: 'load' });
     await settle(page);
     await page.screenshot({ path: `${OUT}/legacy-${key}-1440.png`, fullPage: true });

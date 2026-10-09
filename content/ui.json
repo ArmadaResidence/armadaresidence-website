@@ -37,7 +37,8 @@
       "location_heading": "الموقع والتواصل",
       "view_room": "تفاصيل الغرفة",
       "book_branch": "اطلب حجزًا في هذا الفرع",
-      "other_branch": "الفرع الآخر"
+      "other_branch": "الفرع الآخر",
+      "drive_times": "المسافة بالسيارة"
     },
     "room": {
       "size": "المساحة",
@@ -291,7 +292,39 @@
           "corporate": "اتفاقية أسعار شركات",
           "event": "عرض اجتماع أو فعالية"
         }
+      },
+      "fact_sheet": "ملف الحقائق 2026 (PDF)"
+    },
+    "dining": {
+      "hours_24h": "على مدار الساعة",
+      "open_to_public": "مفتوح للجميع",
+      "whatsapp": "واتساب المطعم",
+      "chip_24h": "مطعم ومقهى 24 ساعة",
+      "photo_alts": {
+        "cutlet-penne": "كتلت دجاج مقرمش مع مكرونة بالصلصة الحمراء — Armada Residence Café & Restaurant",
+        "cutlet-alfredo": "كتلت دجاج مقرمش مع مكرونة ألفريدو — Armada Residence Café & Restaurant",
+        "caesar-salad": "سلطة سيزر بالدجاج — Armada Residence Café & Restaurant",
+        "pizza-margherita": "بيتزا مارجريتا — Armada Residence Café & Restaurant"
       }
+    },
+    "drive_times": {
+      "minutes": "{n} دقيقة",
+      "under_minutes": "أقل من {n} دقائق",
+      "taif_airport": "مطار الطائف الدولي",
+      "al_abbas_mosque": "مسجد العباس",
+      "taif_city_centre": "مركز مدينة الطائف",
+      "jouri_mall": "جوري مول",
+      "terra_mall": "تيرا مول",
+      "al_hada_tourist_area": "الهدا السياحية",
+      "al_ruddaf_park": "حديقة الردف",
+      "taif_zoo": "حديقة الحيوانات بالطائف"
+    },
+    "menu_page": {
+      "h1": "قائمة Armada Residence Café & Restaurant",
+      "lang_label": "اللغة",
+      "cart": "السلة",
+      "close": "إغلاق",
+      "logo_alt": "شعار ARMADA Residence Café & Restaurant"
     }
   },
   "en": {
@@ -331,7 +364,8 @@
       "location_heading": "Location and contact",
       "view_room": "Room details",
       "book_branch": "Request a booking at this property",
-      "other_branch": "The other property"
+      "other_branch": "The other property",
+      "drive_times": "Drive times"
     },
     "room": {
       "size": "Size",
@@ -585,7 +619,39 @@
           "corporate": "Corporate rate agreement",
           "event": "Meeting / event proposal"
         }
+      },
+      "fact_sheet": "Fact Sheet 2026 (PDF)"
+    },
+    "dining": {
+      "hours_24h": "Open 24 hours",
+      "open_to_public": "Open to all",
+      "whatsapp": "Restaurant WhatsApp",
+      "chip_24h": "Café & restaurant, 24 hours",
+      "photo_alts": {
+        "cutlet-penne": "Crumbed chicken cutlet with penne in tomato sauce — Armada Residence Café & Restaurant",
+        "cutlet-alfredo": "Crumbed chicken cutlet with penne alfredo — Armada Residence Café & Restaurant",
+        "caesar-salad": "Chicken Caesar salad — Armada Residence Café & Restaurant",
+        "pizza-margherita": "Margherita pizza — Armada Residence Café & Restaurant"
       }
+    },
+    "drive_times": {
+      "minutes": "{n} min",
+      "under_minutes": "under {n} min",
+      "taif_airport": "Taif International Airport",
+      "al_abbas_mosque": "Al Abbas Mosque",
+      "taif_city_centre": "Taif city centre",
+      "jouri_mall": "Jouri Mall",
+      "terra_mall": "Terra Mall",
+      "al_hada_tourist_area": "Al Hada tourist area",
+      "al_ruddaf_park": "Al Ruddaf Park",
+      "taif_zoo": "Taif Zoo"
+    },
+    "menu_page": {
+      "h1": "Armada Residence Café & Restaurant menu",
+      "lang_label": "Language",
+      "cart": "Cart",
+      "close": "Close",
+      "logo_alt": "ARMADA Residence Café & Restaurant"
     }
   }
 }

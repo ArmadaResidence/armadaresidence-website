@@ -33,7 +33,7 @@ EMAIL = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 REQUIRED_FILES = [
     "branches.json", "rooms.json", "pricing.json", "policies.json", "contact.json",
     "legal.json", "offers.json", "site-texts.json", "seo.json", "ui.json",
-    "taif-guide.json", "partners.json", "partners-pages.json",
+    "taif-guide.json", "partners.json", "partners-pages.json", "menu.json", "halls.json",
 ]
 
 
@@ -197,6 +197,48 @@ def validate(content: dict[str, dict]) -> list[str]:
             br, sl = ref.split("/")
             if not any(r["branch"] == br and r["slug"] == sl for r in rooms):
                 problems.append(f"partners.json room_table references unknown room {ref}")
+    fs = pr.get("fact_sheet", {})
+    if fs.get("show_button") and fs.get("approved_for_site"):
+        for lang, name in fs["files"].items():
+            if not (ROOT / "public" / "docs" / name).is_file():
+                problems.append(f"partners.json fact_sheet.files.{lang} = {name} missing from public/docs/")
+
+    # café: dining block on Airport Road must agree with contact.json → cafe; the menu data + frames must be complete
+    cafe = contact.get("cafe")
+    airport = next(b for b in branches if b["slug"] == "airport-road")
+    dining = airport.get("dining")
+    if not cafe or not dining:
+        problems.append("contact.json cafe / branches.json airport-road dining missing")
+    else:
+        for k in ("phone", "whatsapp", "phone_display"):
+            if dining.get(k) != cafe.get(k):
+                problems.append(f"branches.json dining.{k} != contact.json cafe.{k}")
+        if dining.get("name") != cafe.get("name") or "Café & Restaurant" not in dining.get("name", ""):
+            problems.append("dining.name must be the 'Armada Residence Café & Restaurant' sub-brand (CLAUDE.md §4)")
+        if dining.get("menu_url") != contact.get("menu_url"):
+            problems.append("branches.json dining.menu_url != contact.json menu_url")
+        if dining.get("rooftop", {}).get("show_on_site"):
+            problems.append("dining.rooftop.show_on_site must stay false until name, menu and opening date are confirmed")
+    for n in ("cutlet-penne", "cutlet-alfredo", "caesar-salad", "pizza-margherita"):
+        for w in (800, 1400):
+            if not (CONTENT / "images" / "dining" / f"{n}-{w}.webp").is_file():
+                problems.append(f"content/images/dining/{n}-{w}.webp missing (approved café photo)")
+    menu = content["menu.json"]
+    if menu["site"].get("show_pending_items") is not False:
+        problems.append("menu.json site.show_pending_items must be false (unapproved items stay hidden)")
+    for sec in menu["sections"]:
+        fr = menu["frames"].get(sec["folder"])
+        if not fr:
+            problems.append(f"menu.json: no frames for section {sec['id']}")
+            continue
+        for key, st in fr["sets"].items():
+            for i in (0, fr["count"] - 1):
+                p = ROOT / "public" / st["pattern"].lstrip("/").replace("%04d", f"{i:04d}")
+                if not p.is_file():
+                    problems.append(f"menu frames: {p.relative_to(ROOT).as_posix()} missing")
+    for it in menu["items"]:
+        if it.get("approved") and not isinstance(it.get("price_sar"), (int, float)):
+            problems.append(f"menu.json item {it['id']} approved without a price")
     return problems
 
 

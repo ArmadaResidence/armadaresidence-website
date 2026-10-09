@@ -126,6 +126,50 @@ body {
   margin-top: 1rem;
 }
 
+/* Café sub-brand palette (brand/cafe identity guidelines 2026) — used ONLY inside the dining card on /airport-road/
+   and the /menu/ page; the site itself stays on the hotel tokens. Porcelain text on oxblood/espresso ≥ 10:1. */
+.cafe-card {
+  --cafe-oxblood: #6c1f33;
+  --cafe-espresso: #211817;
+  --cafe-porcelain: #f3e9db;
+  --cafe-bronze: #a97c50;
+  background-color: var(--cafe-porcelain);
+  color: var(--cafe-espresso);
+  border: 1px solid color-mix(in srgb, var(--cafe-oxblood) 18%, transparent);
+}
+.cafe-card .cafe-accent {
+  color: var(--cafe-oxblood);
+}
+.cafe-card .cafe-muted {
+  color: color-mix(in srgb, var(--cafe-espresso) 72%, var(--cafe-porcelain));
+}
+.cafe-card .cafe-rule {
+  background: var(--cafe-bronze);
+}
+.cafe-card .cafe-btn {
+  background: var(--cafe-oxblood);
+  color: var(--cafe-porcelain);
+}
+.cafe-card .cafe-btn:hover {
+  background: var(--cafe-espresso);
+}
+.cafe-card .cafe-btn-ghost {
+  border: 1px solid var(--cafe-espresso);
+  color: var(--cafe-espresso);
+}
+.cafe-card .cafe-btn-ghost:hover {
+  background: var(--cafe-espresso);
+  color: var(--cafe-porcelain);
+}
+/* café logo clear space = a quarter of the logo height on every side (identity guidelines) */
+.cafe-logo {
+  height: 40px;
+  width: auto;
+  padding: 10px;
+  margin: -10px;
+  box-sizing: content-box;
+}
+
 /* Sticky WhatsApp button */
 .wa-fab {
   position: fixed;

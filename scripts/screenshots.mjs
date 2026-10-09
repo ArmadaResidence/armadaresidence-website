@@ -19,6 +19,7 @@ const PAGES = [
   ['partners', '/partners/'],
   ['partners-enquiry', '/partners/enquiry/'],
   ['partners-groups-umrah', '/partners/groups-umrah/'],
+  ['menu', '/menu/'],
 ];
 const SIZES = [
   { width: 1440, height: 900, deviceScaleFactor: 1, isMobile: false },

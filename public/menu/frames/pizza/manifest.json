@@ -1,0 +1,21 @@
+{
+  "section": "pizza",
+  "source_file": "الأكل — البيتزا.mp4",
+  "source_sha256": "8cc750b0b2a51db96111c9fac998f93fa9be6c3411a90ea312e392b339b42137",
+  "source_duration_seconds": 10.041667,
+  "source_dimensions": [
+    1288,
+    1608
+  ],
+  "fps": 15,
+  "frame_dimensions": [
+    720,
+    898
+  ],
+  "frame_count": 151,
+  "first_index": 0,
+  "last_index": 150,
+  "frame_name_pattern": "frames/frame_%04d.webp",
+  "frame_bytes_total": 6647942,
+  "optional": false
+}

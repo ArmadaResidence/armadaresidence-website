@@ -25,6 +25,9 @@ const name = L(locale, branch, 'name');
 const href = branchPath(locale, branch.slug);
 const intro = paragraphs(L(locale, branch, 'description'))[0] ?? '';
 const photoLabel = fill(t.photo_pending_alt, { subject: name });
+// "مطعم ومقهى 24 ساعة" chip only when branches.json → dining says the café is open around the clock (Airport Road)
+const dining = (branch as { dining?: { hours: string } }).dining;
+const dining24h = dining?.hours === '24h';
 ---
 
 <article class="bg-white border border-line rounded-card overflow-hidden flex flex-col">
@@ -41,6 +44,7 @@ const photoLabel = fill(t.photo_pending_alt, { subject: name });
     </div>
     <p class="text-sm leading-relaxed">{intro}</p>
     <ul class="flex flex-wrap gap-1.5">
+      {dining24h && <li class="text-xs bg-midnight text-porcelain px-2 py-1 rounded font-semibold">{t.dining.chip_24h}</li>}
       {branch.amenities.map((a) => <li class="text-xs bg-porcelain text-ink px-2 py-1 rounded">{amenityLabel(locale, a)}</li>)}
     </ul>
     <div class="mt-auto pt-4 border-t border-line flex flex-wrap items-center justify-between gap-3">

@@ -18,6 +18,8 @@ interface Props {
   ogImage?: string;
   /** Where the language switch goes when this page has no twin (404). Defaults to `path`. */
   switchPath?: string;
+  /** Favicon set; the café menu page swaps in the café favicon (brand/cafe identity). */
+  icons?: { svg: string; png32: string; apple: string };
 }
 
 const {
@@ -30,6 +32,7 @@ const {
   whatsapp,
   ogImage = seo.default_og_image,
   switchPath = Astro.props.path,
+  icons = { svg: '/favicon.svg', png32: '/icons/favicon-32.png', apple: '/icons/apple-touch-icon.png' },
 } = Astro.props;
 
 const canonical = absoluteUrl(localePath(locale, path));
@@ -68,11 +71,12 @@ const ld = jsonld.map((j) => JSON.stringify(j).replace(/</g, '\\u003c'));
     <meta name="twitter:title" content={title} />
     <meta name="twitter:description" content={description} />
     <meta name="twitter:image" content={ogImageUrl} />
-    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
-    <link rel="icon" href="/icons/favicon-32.png" type="image/png" sizes="32x32" />
-    <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" sizes="180x180" />
+    <link rel="icon" href={icons.svg} type="image/svg+xml" />
+    <link rel="icon" href={icons.png32} type="image/png" sizes="32x32" />
+    <link rel="apple-touch-icon" href={icons.apple} sizes="180x180" />
     <link rel="manifest" href="/site.webmanifest" />
     <link rel="sitemap" href="/sitemap-index.xml" />
+    <slot name="head" />
     {ld.map((json) => <script type="application/ld+json" set:html={json} />)}
     <script is:inline define:vars={{ GTM_ID }}>
       window.dataLayer = window.dataLayer || [];

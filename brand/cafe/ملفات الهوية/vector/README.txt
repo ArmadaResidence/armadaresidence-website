@@ -1,0 +1,1 @@
+AR monogram traced to vector paths from the 2048px PNG master (fill-rule evenodd). Monogram_currentColor for HTML/CSS; Social_Icon = oxblood circle + porcelain mark (profile avatars); Favicon = square variant. Web-grade trace; for print ask the designer for AI/EPS.

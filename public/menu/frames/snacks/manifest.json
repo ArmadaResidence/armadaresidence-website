@@ -1,0 +1,21 @@
+{
+  "section": "snacks",
+  "source_file": "السناكس — تويكس.mp4",
+  "source_sha256": "b413e2a00d99d392c95bee7ddb85b93ad0f41f2f91e71dc302c1e529982236df",
+  "source_duration_seconds": 10.041667,
+  "source_dimensions": [
+    1288,
+    1608
+  ],
+  "fps": 15,
+  "frame_dimensions": [
+    720,
+    898
+  ],
+  "frame_count": 151,
+  "first_index": 0,
+  "last_index": 150,
+  "frame_name_pattern": "frames/frame_%04d.webp",
+  "frame_bytes_total": 5003434,
+  "optional": false
+}

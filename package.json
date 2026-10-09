@@ -13,7 +13,10 @@
     "og": "node scripts/og.mjs",
     "favicons": "node scripts/favicons.mjs",
     "screenshots": "node scripts/screenshots.mjs",
-    "logo-check": "node scripts/logo-check.mjs"
+    "logo-check": "node scripts/logo-check.mjs",
+    "compare": "node scripts/compare-legacy.mjs",
+    "fact-sheet": "node scripts/fact-sheet.mjs",
+    "menu-port": "python scripts/legacy-menu-port.py"
   },
   "dependencies": {
     "@astrojs/sitemap": "^3.7.4",

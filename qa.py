@@ -194,9 +194,13 @@ def main() -> int:
 
     known_phones = {c["phone"] for c in contact["branches"].values()} | {c["whatsapp"] for c in contact["branches"].values()}
     sales_phone = contact["sales"]["phone"]
-    known_phones_all = known_phones | {sales_phone, contact["sales"]["whatsapp"]}
+    cafe = contact.get("cafe", {})
+    cafe_phones = {cafe.get("phone"), cafe.get("whatsapp")} - {None}
+    known_phones_all = known_phones | {sales_phone, contact["sales"]["whatsapp"]} | cafe_phones
     display_by_e164 = {c["phone"]: c["phone_display"] for c in contact["branches"].values()}
     display_by_e164[sales_phone] = contact["sales"]["phone_display"]
+    if cafe:
+        display_by_e164[cafe["phone"]] = cafe["phone_display"]
     known_emails = set(contact["emails"].values()) if False else set()
     for v in contact["emails"].values():
         if isinstance(v, str):
@@ -242,6 +246,9 @@ def main() -> int:
     def sales_allowed(path: str) -> bool:
         lp_ = logical(path)
         return lp_ == "/offers/" or lp_.startswith("/partners/")
+
+    def cafe_allowed(path: str) -> bool:  # the café line appears only on the Airport Road page and /menu/
+        return logical(path) in ("/airport-road/", "/menu/")
 
     taif_count = len(json.loads((CONTENT / "taif-guide.json").read_text(encoding="utf-8"))["places"])
 
@@ -366,6 +373,8 @@ def main() -> int:
                     rep.f("contact", f"{path}: tel {num} not in contact.json")
                 if num in (sales_phone,) and not sales_allowed(path):
                     rep.f("contact", f"{path}: sales line must appear only on /offers and /partners")
+                if num in cafe_phones and not cafe_allowed(path):
+                    rep.f("contact", f"{path}: café line must appear only on /airport-road and /menu")
             elif href.startswith("mailto:"):
                 if href[7:] not in known_emails:
                     rep.f("contact", f"{path}: mailto {href[7:]} not in contact.json")
@@ -376,6 +385,8 @@ def main() -> int:
                     rep.f("contact", f"{path}: WhatsApp {num} not in contact.json")
                 if num == contact["sales"]["whatsapp"] and not sales_allowed(path):
                     rep.f("contact", f"{path}: sales WhatsApp must appear only on /offers and /partners")
+                if num in cafe_phones and not cafe_allowed(path):
+                    rep.f("contact", f"{path}: café WhatsApp must appear only on /airport-road and /menu")
         # displayed phone numbers must equal phone_display exactly
         for m in re.finditer(r"\+966[\d\s]{9,14}", p.text):
             shown = m.group(0).strip()
@@ -386,6 +397,8 @@ def main() -> int:
                 rep.f("contact", f"{path}: number shown as {shown!r}, expected {display_by_e164[e164]!r}")
             if e164 == sales_phone and not sales_allowed(path):
                 rep.f("contact", f"{path}: sales number displayed outside /offers and /partners")
+            if e164 in cafe_phones and not cafe_allowed(path):
+                rep.f("contact", f"{path}: café number displayed outside /airport-road and /menu")
 
         # assets + external requests
         for src in p.assets:
@@ -427,6 +440,20 @@ def main() -> int:
                         rep.f("json-ld", f"{path}: {t_} telephone not in contact.json")
                     if not node.get("priceRange"):
                         rep.w("json-ld", f"{path}: {t_} has no priceRange (no confirmed room price yet)")
+                    # café inside the branch (branches.json → dining): FoodEstablishment with name, 24h hours, café phone
+                    fe = node.get("containsPlace")
+                    if fe is not None:
+                        if fe.get("@type") != "FoodEstablishment":
+                            rep.f("json-ld", f"{path}: containsPlace must be a FoodEstablishment")
+                        for k in ("name", "telephone", "openingHours", "url"):
+                            if not fe.get(k):
+                                rep.f("json-ld", f"{path}: FoodEstablishment missing {k}")
+                        if fe.get("telephone") not in cafe_phones:
+                            rep.f("json-ld", f"{path}: FoodEstablishment telephone != contact.json cafe")
+                        if "ARMADA CAFÉ" in str(fe.get("name", "")) or "Armada Residence Caf" not in str(fe.get("name", "")) + str(fe.get("alternateName", "")):
+                            rep.f("json-ld", f"{path}: FoodEstablishment name must be the Armada Residence Café & Restaurant sub-brand")
+                    elif lp == "/airport-road/":
+                        rep.f("json-ld", f"{path}: Airport Road lodging must carry the café as containsPlace")
                 if t_ == "HotelRoom":
                     offer = node.get("offers")
                     if not offer:
@@ -451,6 +478,28 @@ def main() -> int:
                 rep.f("discover-taif", f"{path}: {n} place cards, expected {taif_count}")
             if len(p.imgs) < taif_count:
                 rep.f("discover-taif", f"{path}: only {len(p.imgs)} <img> for {taif_count} places")
+
+        # /menu/: the legacy café menu app — config JSON present, frames referenced exist, unapproved items hidden
+        if lp == "/menu/":
+            m = re.search(r'<script type="application/json" id="armada-menu-cfg">(.*?)</script>', html, re.S)
+            if not m:
+                rep.f("menu", f"{path}: #armada-menu-cfg JSON missing")
+            else:
+                try:
+                    mc = json.loads(m.group(1))
+                    if mc["config"].get("showPendingItems") is not False:
+                        rep.f("menu", f"{path}: unapproved items must stay hidden (showPendingItems)")
+                    if "+" + str(mc["config"].get("whatsappNumber")) not in cafe_phones:
+                        rep.f("menu", f"{path}: ordering WhatsApp number != contact.json cafe.whatsapp")
+                    for folder, fr in mc["frames"].items():
+                        for key, st in fr["sets"].items():
+                            for i in (0, fr["count"] - 1):
+                                if not exists(st["pattern"].replace("%04d", f"{i:04d}")):
+                                    rep.f("menu", f"{path}: frame missing for {folder}/{key} #{i}")
+                except (json.JSONDecodeError, KeyError) as e:
+                    rep.f("menu", f"{path}: invalid #armada-menu-cfg ({e})")
+            if "/legacy/menu.js" not in html:
+                rep.f("menu", f"{path}: menu.js not loaded")
 
         # terminology
         if lp.startswith("/airport-road/"):

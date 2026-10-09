@@ -1,5 +1,6 @@
 ---
 import Base from '@layouts/Base.astro';
+import DiningSection from '@components/DiningSection.astro';
 import Placeholder from '@components/Placeholder.astro';
 import RoomCard from '@components/RoomCard.astro';
 import Icon from '@components/Icon.astro';
@@ -19,6 +20,7 @@ import {
   policies,
   roomsFor,
   telHref,
+  TODO,
   ui,
   waHref,
   type Branch,
@@ -45,6 +47,13 @@ const other = branches.find((b) => b.slug !== branch.slug);
 const path = `/${branch.slug}/`;
 const bookHref = `${localePath(locale, '/booking/')}?branch=${branch.slug}`;
 const na = branch.national_address;
+const dining = (branch as { dining?: unknown }).dining;
+// Drive times (branches.json → drive_times_min, confirmed by Ahmed 9 Oct 2026): "<10" renders as "under 10 min"
+const dtLabels = t.drive_times as Record<string, string>;
+const driveTimes = Object.entries(((branch as { drive_times_min?: Record<string, number | string> }).drive_times_min ?? {})).map(([key, v]) => ({
+  place: dtLabels[key] ?? TODO,
+  value: typeof v === 'string' && v.startsWith('<') ? fill(dtLabels.under_minutes, { n: v.slice(1) }) : fill(dtLabels.minutes, { n: v }),
+}));
 ---
 
 <Base locale={locale} path={path} title={s.title} description={s.description} jsonld={[lodging(locale, branch)]} whatsapp={branch.slug}>
@@ -116,6 +125,8 @@ const na = branch.national_address;
     </aside>
   </section>
 
+  {dining && <DiningSection locale={locale} branch={branch} />}
+
   <section id="rooms" class="bg-white border-y border-line">
     <div class="mx-auto max-w-6xl px-4 py-14">
       <h2 class="text-2xl md:text-3xl font-bold text-midnight">{t.branch.rooms_heading}</h2>
@@ -151,6 +162,26 @@ const na = branch.national_address;
             </dd>
           </div>
         </div>
+        {
+          driveTimes.length > 0 && (
+            <div class="flex gap-3">
+              <Icon name="car" size={18} class="text-bronze shrink-0 mt-0.5" />
+              <div>
+                <dt class="font-semibold text-midnight">{t.branch.drive_times}</dt>
+                <dd>
+                  <ul class="mt-1 grid gap-x-6 gap-y-1 sm:grid-cols-2 text-ink-muted">
+                    {driveTimes.map((d) => (
+                      <li class="flex justify-between gap-3">
+                        <span>{d.place}</span>
+                        <span class="whitespace-nowrap">{d.value}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </dd>
+              </div>
+            </div>
+          )
+        }
         <div class="flex gap-3">
           <Icon name="phone" size={18} class="text-bronze shrink-0 mt-0.5" />
           <div>

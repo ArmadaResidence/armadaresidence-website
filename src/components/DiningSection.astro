@@ -1,0 +1,71 @@
+---
+/**
+ * "المطعم والمقهى" on a branch page — rendered only when branches.json → dining exists (Airport Road).
+ * Everything comes from branches.json / contact.json / ui.json; the café palette applies inside the card only
+ * (.cafe-card in global.css). Photos: the four approved café photos in content/images/dining/ (Ahmed, 9 Oct 2026).
+ * The rooftop restaurant stays hidden while dining.rooftop.show_on_site is false.
+ */
+import { fill, localePath, telHref, ui, waHref, type Branch, type Locale } from '@lib/content';
+import type { Dining } from '@lib/jsonld';
+import Icon from './Icon.astro';
+
+interface Props {
+  locale: Locale;
+  branch: Branch;
+}
+const { locale, branch } = Astro.props;
+const t = ui(locale);
+const d = (branch as Branch & { dining?: Dining & Record<string, string> }).dining;
+if (!d) throw new Error(`DiningSection: ${branch.slug} has no dining block`);
+const ar = locale === 'ar';
+const name = ar ? d.name_ar : d.name;
+const heading = ar ? d.heading_ar : d.heading_en;
+const body = ar ? d.body_ar : d.body_en;
+const cta = ar ? d.cta_ar : d.cta_en;
+const location = ar ? d.location_ar : d.location_en;
+const facts = [d.hours === '24h' ? t.dining.hours_24h : d.hours, d.open_to_public ? t.dining.open_to_public : '', location].filter(Boolean);
+const phoneDisplay = (d as unknown as { phone_display: string }).phone_display;
+const menuHref = localePath(locale, d.menu_url);
+const PHOTOS = ['cutlet-penne', 'cutlet-alfredo', 'caesar-salad', 'pizza-margherita'] as const;
+const alts = t.dining.photo_alts as Record<string, string>;
+const photo = (slug: string) => ({
+  src: `/images/dining/${slug}-800.webp`,
+  srcset: `/images/dining/${slug}-800.webp 800w, /images/dining/${slug}-1400.webp 1400w`,
+  alt: alts[slug] ?? fill(t.photo_pending_alt, { subject: name }),
+});
+---
+
+<section class="mx-auto max-w-6xl px-4 pb-14" aria-labelledby="dining-heading">
+  <div class="cafe-card rounded-card overflow-hidden grid lg:grid-cols-5">
+    <div class="lg:col-span-3 p-6 md:p-8 flex flex-col gap-5">
+      <img src="/brand/cafe/logo-bronze.svg" alt={name} width="1744" height="598" class="cafe-logo self-start" />
+      <div>
+        <h2 id="dining-heading" class="text-2xl md:text-3xl font-bold">{heading}</h2>
+        <div class="cafe-rule h-0.5 w-14 mt-3" aria-hidden="true"></div>
+      </div>
+      <p class="leading-relaxed">{body}</p>
+      <p class="cafe-accent font-semibold text-sm">{facts.join(' · ')}</p>
+      <div class="flex flex-wrap items-center gap-3 mt-auto">
+        <a href={waHref(d.whatsapp)} rel="noopener" target="_blank" class="cafe-btn inline-flex items-center gap-2 font-semibold px-5 py-3 rounded transition-colors">
+          <Icon name="whatsapp" size={18} />
+          <span>{t.dining.whatsapp}</span>
+          <span class="latin whitespace-nowrap" dir="ltr">{phoneDisplay}</span>
+          <img src="/brand/cafe/monogram-porcelain.svg" alt="" aria-hidden="true" width="20" height="20" class="h-5 w-5" />
+        </a>
+        <a href={menuHref} class="cafe-btn-ghost inline-flex items-center gap-2 font-semibold px-5 py-3 rounded transition-colors">
+          <span>{cta}</span>
+          <Icon name="arrow" size={18} class="rtl:rotate-180" />
+        </a>
+        <a href={telHref(d.phone)} class="sr-only">{t.cta.call}</a>
+      </div>
+    </div>
+    <div class="lg:col-span-2 grid grid-cols-2 gap-1 p-1 lg:p-0">
+      {
+        PHOTOS.map((slug, i) => {
+          const p = photo(slug);
+          return <img src={p.src} srcset={p.srcset} sizes="(min-width: 1024px) 240px, 50vw" alt={p.alt} width="800" height="1000" loading="lazy" decoding="async" class="w-full h-full object-cover aspect-[4/5]" />;
+        })
+      }
+    </div>
+  </div>
+</section>

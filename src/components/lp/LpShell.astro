@@ -6,11 +6,16 @@
 import '../../styles/legacy-partners.css';
 import '../../styles/legacy-overrides.css';
 import { lp, lpPath, T } from '@lib/partners';
-import type { Locale } from '@lib/content';
+import { partners, ui, type Locale } from '@lib/content';
 interface Props {
   locale: Locale;
 }
 const { locale } = Astro.props;
+// Fact Sheet 2026 (PDF) — the legacy footer link, restored at the foot of every /partners/ page once Ahmed has
+// approved the regenerated PDFs (partners.json → fact_sheet.approved_for_site). AR file on Arabic pages, EN on English.
+const fs = partners.fact_sheet as { show_button: boolean; approved_for_site?: boolean; files: Record<string, string> };
+const factSheetHref = fs.show_button && fs.approved_for_site ? `/docs/${fs.files[locale]}` : null;
+const factSheetLabel = ui(locale).partners.fact_sheet;
 const i18n = {
   waIntro: T(locale, lp.form.wa_intro),
   unitsWord: T(locale, lp.calc.units_w),
@@ -34,6 +39,17 @@ const units = (lp.calc_units as any[]).map((u) => ({ key: u.key, en: u.en, ar: u
 
 <div class="legacy-partners">
   <slot />
+  {
+    factSheetHref && (
+      <section class="band tight fact-sheet-strip">
+        <div class="wrap">
+          <a class="btn ol" href={factSheetHref} download>
+            {factSheetLabel}
+          </a>
+        </div>
+      </section>
+    )
+  }
   <script type="application/json" id="armada-partners-cfg" set:html={JSON.stringify({ i18n, cfg, units }).replace(/</g, '\\u003c')} />
 </div>
 <script src="/legacy/partners.js" defer is:inline></script>
