@@ -114,7 +114,12 @@ export function fill(template: string, vars: Record<string, string | number | nu
   });
 }
 
-/** Editorial notes in square brackets (e.g. "[مرحلة 3: …]") never reach the visitor. qa.py rejects any "[…]" in output. */
+/**
+ * Editorial notes in square brackets (e.g. "[مرحلة 3: …]") never reach the visitor.
+ * Scope (Ahmed, 9 Oct 2026): applied ONLY to displayed body copy — `paragraphs()` and the /policies texts.
+ * Never call it on JSON keys, attributes, `L()` lookups, seo.json titles/descriptions or JSON-LD builders;
+ * qa.py's bracket check likewise scans visible text only (not <title>, meta attributes or ld+json).
+ */
 export function stripBrackets(text: string): string {
   return text
     .replace(/\s*\[[^\]]*\]/g, '')

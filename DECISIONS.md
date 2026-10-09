@@ -74,7 +74,8 @@ Append-only. Newest entries at the bottom of each date.
 
 ## 2026-10-09 — Screenshot review round 1
 - Breakfast price is never shown on the site (Ahmed, 9 Oct): next to every price the site renders `pricing.json → breakfast.site_line_ar/en`; prices (20/10/free) stay in pricing.json for reception and phase 2. `qa.py` fails if "20 ريال" / "SAR 20" appears near the word breakfast.
-- Nothing in square brackets reaches the visitor: `stripBrackets()` removes "[…]" from rendered copy (the phase-3 payment note on /policies), and `qa.py` fails on any "[…]" in visible text.
+- Nothing in square brackets reaches the visitor: `stripBrackets()` removes "[…]" from rendered copy (the phase-3 payment note on /policies), and `qa.py` fails on any "[…]" in visible text. Scope confirmed by Ahmed: displayed body text only (`paragraphs()` + /policies headings/intro) — never JSON keys, attributes, SEO titles/descriptions or JSON-LD; the QA check scans visible text only.
+- `site-texts.json → hero.price_line_en` approved as written: "Prices from SAR {price} per night, VAT included".
 - Booking form: phone and email inputs are `lang="en" dir="ltr"` left-aligned; adults/children are numeric text inputs (`inputmode="numeric"`) so the digits are always Western. Native `<input type="date">` under an Arabic Chrome locale renders its placeholder reversed and with Arabic-Indic digits whatever `dir`/`lang` says (tested 9 Oct), so the dates are ISO text fields (YYYY-MM-DD, Western digits) that open the native date picker on tap; the picker writes the ISO value back.
 - /policies: table of contents is a collapsed `<details>` above the sections on mobile and a sticky aside on large screens.
 - Room cards show structural features only (kitchen, separate living room, balcony, jacuzzi). Equipment (Wi-Fi, TV, safe, AC, fridge, kettle) appears once, under "تجهيزات الغرفة" on the room page. Sold-out cards are dimmed with the «غير متاح حاليًا» badge over the image.
