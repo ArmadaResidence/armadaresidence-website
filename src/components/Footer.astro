@@ -27,7 +27,9 @@ const other = otherLocale(locale);
 const slogan = locale === 'ar' ? siteTexts.slogan_ar : siteTexts.slogan_en;
 
 const siteLinks: { key: keyof typeof t.nav; path: string }[] = [
+  { key: 'discover-taif', path: '/discover-taif/' },
   { key: 'offers', path: '/offers/' },
+  { key: 'partners', path: '/partners/' },
   { key: 'contact', path: '/contact/' },
   { key: 'policies', path: '/policies/' },
   { key: 'book', path: '/booking/' },
@@ -43,10 +45,13 @@ const social: { name: string; url: string }[] = [
 ---
 
 <footer class="bg-midnight text-porcelain mt-16">
-  <div class="mx-auto max-w-6xl px-4 py-12 grid gap-10 md:grid-cols-4">
+  <div class="mx-auto max-w-6xl px-5 py-12 grid gap-10 md:grid-cols-4">
     <div class="md:col-span-1">
-      <img src="/brand/logo-stacked.svg" alt={siteName(locale)} width="140" height="89" class="h-20 w-auto" />
-      <p class="mt-4 text-sm text-porcelain/80">{slogan}</p>
+      {/* porcelain logo on midnight; stacked logo h-20 → clear space X ≈ 24px, kept by the p-6 wrapper */}
+      <div class="p-6 -m-6 inline-block">
+        <img src="/brand/logo-stacked_Porcelain.svg" alt={siteName(locale)} width="126" height="80" class="h-20 w-auto" />
+      </div>
+      <p class="mt-6 text-sm text-porcelain/80">{slogan}</p>
       <p class="mt-4 text-sm text-porcelain/80 flex items-center gap-2">
         <Icon name="clock" size={16} />
         <span>{locale === 'ar' ? contact.working_hours_ar : contact.working_hours_en}</span>
@@ -127,6 +132,6 @@ const social: { name: string; url: string }[] = [
     </div>
   </div>
   <div class="border-t border-porcelain/15">
-    <p class="mx-auto max-w-6xl px-4 py-5 text-xs text-porcelain/70">{footerLine(locale)}</p>
+    <p class="mx-auto max-w-6xl px-5 py-5 text-xs text-porcelain/70">{footerLine(locale)}</p>
   </div>
 </footer>

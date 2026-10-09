@@ -23,6 +23,8 @@ interface Payload {
   request_type?: string;
   /** partner enquiries only */
   organisation?: string;
+  rooms?: string | number;
+  meals?: string;
 }
 
 const E164 = /^\+[1-9]\d{7,14}$/;
@@ -71,7 +73,11 @@ function fill(t: string, vars: Record<string, string>): string {
 
 function validate(p: Payload): { ok: true; data: Required<Omit<Payload, 'page'>> & { page: string; nights: number } } | { ok: false; error: string } {
   const locale: Locale = p.locale === 'en' ? 'en' : 'ar';
-  const branch = content.branches.find((b) => b.slug === p.branch);
+  const requestType = (p.request_type ?? 'booking').trim();
+  if (requestType !== 'booking' && !content.enquiry_types.includes(requestType)) return { ok: false, error: 'invalid request_type' };
+  // partner enquiries may ask for both properties
+  const branchSlug = p.branch === 'both' && requestType !== 'booking' ? 'both' : p.branch;
+  const branch = branchSlug === 'both' ? content.branches[0] : content.branches.find((b) => b.slug === p.branch);
   if (!branch) return { ok: false, error: 'invalid branch' };
   if (!ISO_DATE.test(p.check_in) || !ISO_DATE.test(p.check_out)) return { ok: false, error: 'invalid dates' };
   const ci = new Date(p.check_in + 'T00:00:00Z');
@@ -99,12 +105,13 @@ function validate(p: Payload): { ok: true; data: Required<Omit<Payload, 'page'>>
   const notes = (p.notes ?? '').trim().slice(0, 1000);
   const page = (p.page ?? '').slice(0, 500);
   const nights = Math.round((co.getTime() - ci.getTime()) / 86400000);
-  const requestType = (p.request_type ?? 'booking').trim();
-  if (requestType !== 'booking' && !content.enquiry_types.includes(requestType)) return { ok: false, error: 'invalid request_type' };
   const organisation = (p.organisation ?? '').trim().slice(0, 160);
+  const roomsRequested = p.rooms === undefined || p.rooms === '' ? null : Number(p.rooms);
+  if (roomsRequested !== null && (!Number.isInteger(roomsRequested) || roomsRequested < 1 || roomsRequested > 500)) return { ok: false, error: 'invalid rooms' };
+  const meals = (p.meals ?? '').trim().slice(0, 40);
   return {
     ok: true,
-    data: { locale, branch: branch.slug, check_in: p.check_in, check_out: p.check_out, adults, children, room, name, phone, email, notes, page, nights, requestType, organisation },
+    data: { locale, branch: branchSlug, check_in: p.check_in, check_out: p.check_out, adults, children, room, name, phone, email, notes, page, nights, requestType, organisation, roomsRequested, meals },
   };
 }
 
@@ -135,6 +142,8 @@ async function store(ref: string, d: ReturnType<typeof validate> extends { ok: t
       user_agent: ua.slice(0, 300),
       request_type: d.requestType,
       organisation: d.organisation || null,
+      rooms_requested: d.roomsRequested,
+      meals: d.meals || null,
     }),
   });
   if (!res.ok) console.error('store failed', res.status, await res.text());
@@ -172,12 +181,12 @@ Deno.serve(async (req) => {
   const d = v.data;
 
   const ref = makeRef();
-  const branch = content.branches.find((b) => b.slug === d.branch)!;
+  const branch = content.branches.find((b) => b.slug === d.branch) ?? content.branches[0];
   const room = d.room ? content.rooms.find((r) => r.slug === d.room && r.branch === d.branch) : undefined;
   const L = d.locale;
   const labels = content.labels[L];
   const mail = content.email[L];
-  const branchName = L === 'ar' ? branch.name_ar : branch.name_en;
+  const branchName = d.branch === 'both' ? content.branches.map((b) => (L === 'ar' ? b.name_ar : b.name_en)).join(' + ') : L === 'ar' ? branch.name_ar : branch.name_en;
   const roomName = room ? (L === 'ar' ? room.name_ar : room.name_en) : labels.any_room;
   const dir = L === 'ar' ? 'rtl' : 'ltr';
   const receivedAt = new Date().toISOString().replace('T', ' ').slice(0, 16) + ' UTC';
@@ -198,7 +207,7 @@ Deno.serve(async (req) => {
     [mail.language, L],
     [mail.received_at, receivedAt],
   ];
-  if (d.requestType !== 'booking') rows.splice(1, 0, ['request_type', d.requestType], ['organisation', d.organisation || '—']);
+  if (d.requestType !== 'booking') rows.splice(1, 0, ['request_type', d.requestType], ['organisation', d.organisation || '—'], ['rooms', d.roomsRequested === null ? '—' : String(d.roomsRequested)], ['meals', d.meals || '—']);
   const table = `<table cellpadding="6" style="border-collapse:collapse">${rows
     .map(([k, val]) => `<tr><td style="color:#555">${esc(k)}</td><td><strong>${esc(val)}</strong></td></tr>`)
     .join('')}</table>`;
@@ -221,7 +230,7 @@ Deno.serve(async (req) => {
     [arMail.language, L],
     [arMail.received_at, receivedAt],
   ];
-  if (d.requestType !== 'booking') hotelRows.splice(1, 0, ['request_type', d.requestType], ['organisation', d.organisation || '—']);
+  if (d.requestType !== 'booking') hotelRows.splice(1, 0, ['request_type', d.requestType], ['organisation', d.organisation || '—'], ['rooms', d.roomsRequested === null ? '—' : String(d.roomsRequested)], ['meals', d.meals || '—']);
   const hotelHtml = `<div dir="rtl" style="font-family:sans-serif"><p>${esc(arMail.hotel_intro)}</p><table cellpadding="6" style="border-collapse:collapse">${hotelRows
     .map(([k, val]) => `<tr><td style="color:#555">${esc(k)}</td><td><strong>${esc(val)}</strong></td></tr>`)
     .join('')}</table><p style="color:#777;font-size:12px">${esc(arMail.hotel_footer)}</p></div>`;
@@ -236,7 +245,7 @@ Deno.serve(async (req) => {
   const isPartner = d.requestType !== 'booking';
   const recipients = isPartner ? [content.sales_email, ...content.notification_emails] : content.notification_emails;
   const subjectPrefix = isPartner ? `[${d.requestType}] ` : '';
-  const hotelSent = await sendEmail(recipients, subjectPrefix + fill(arMail.hotel_subject, { branch: branch.name_ar, ref }), hotelHtml, d.email);
+  const hotelSent = await sendEmail(recipients, subjectPrefix + fill(arMail.hotel_subject, { branch: d.branch === 'both' ? content.branches.map((b) => b.name_ar).join(' + ') : branch.name_ar, ref }), hotelHtml, d.email);
   const guestSent = await sendEmail([d.email], fill(mail.guest_subject, { ref }), guestHtml);
 
   if (!stored && !hotelSent) {

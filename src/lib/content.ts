@@ -12,6 +12,9 @@ import offersJson from '../../content/offers.json';
 import siteTextsJson from '../../content/site-texts.json';
 import seoJson from '../../content/seo.json';
 import uiJson from '../../content/ui.json';
+import taifJson from '../../content/taif-guide.json';
+import partnersJson from '../../content/partners.json';
+import partnersPagesJson from '../../content/partners-pages.json';
 
 export type Locale = 'ar' | 'en';
 export const LOCALES: Locale[] = ['ar', 'en'];
@@ -274,6 +277,7 @@ export interface PageSeo {
   title: string;
   description: string;
   noindex: boolean;
+  ogImage?: string;
 }
 
 export function pageSeo(locale: Locale, key: string): PageSeo {
@@ -283,6 +287,7 @@ export function pageSeo(locale: Locale, key: string): PageSeo {
     title: L(locale, p, 'title'),
     description: L(locale, p, 'description'),
     noindex: Boolean(p.noindex),
+    ogImage: typeof p.og_image === 'string' ? p.og_image : undefined,
   };
 }
 
@@ -347,4 +352,73 @@ export function amenityLabel(locale: Locale, code: string): string {
 export function featureLabel(locale: Locale, code: string): string {
   const map = ui(locale).room.features as Record<string, string>;
   return map[code] ?? TODO;
+}
+
+/* ---------- Discover Taif (content/taif-guide.json) ---------- */
+
+export const taif = taifJson;
+export type Place = (typeof taifJson.places)[number];
+export type TaifCategory = (typeof taifJson.categories)[number];
+
+export function placeImage(locale: Locale, place: Place) {
+  const img = place.image;
+  return {
+    src: `${img.base}-800.webp`,
+    srcset: img.widths.map((w) => `${img.base}-${w}.webp ${w}w`).join(', '),
+    width: img.width,
+    height: img.height,
+    alt: locale === 'ar' ? img.alt_ar : img.alt_en,
+  };
+}
+
+export function categoryLabel(locale: Locale, key: string): string {
+  const c = taif.categories.find((x) => x.key === key);
+  return c ? (locale === 'ar' ? c.label_ar : c.label_en) : TODO;
+}
+
+/* ---------- Partners (content/partners.json + partners-pages.json) ---------- */
+
+export const partners = partnersJson;
+export const partnersPages = partnersPagesJson;
+
+/** "airport-road/king-room" or "a | b" → the referenced rooms (first match used for bedding). */
+export function roomsByRef(ref: string): Room[] {
+  return ref
+    .split('|')
+    .map((s) => s.trim())
+    .map((s) => {
+      const [branch, slug] = s.split('/');
+      return rooms.find((r) => r.branch === branch && r.slug === slug);
+    })
+    .filter((r): r is Room => Boolean(r));
+}
+
+export interface PartnerRow {
+  label: string;
+  occupancy: string;
+  beds: string;
+  hotel: string;
+  recommended: string;
+}
+
+/** Partner-facing unit table: labels/occupancy/recommendation from partners.json, bedding from rooms.json. */
+export function partnerRows(locale: Locale): PartnerRow[] {
+  const t = ui(locale).partners;
+  return partners.room_table.rows.map((row) => {
+    const refs = roomsByRef(row.room);
+    const override = locale === 'ar' ? (row as { beds_ar?: string }).beds_ar : (row as { beds_en?: string }).beds_en;
+    const beds = override || (refs[0] ? L(locale, refs[0], 'bed') : TODO);
+    const hotel = row.hotel === 'both' ? t.both_hotels : branchShort(locale, row.hotel);
+    return {
+      label: locale === 'ar' ? row.label_ar : row.label_en,
+      occupancy: String(row.occupancy),
+      beds,
+      hotel,
+      recommended: locale === 'ar' ? row.recommended_ar : row.recommended_en,
+    };
+  });
+}
+
+export function partnersPath(locale: Locale, sub = ''): string {
+  return localePath(locale, sub ? `/partners/${sub}/` : '/partners/');
 }

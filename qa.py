@@ -239,6 +239,12 @@ def main() -> int:
     def noindex(p: Page) -> bool:
         return "noindex" in p.metas.get("robots", "")
 
+    def sales_allowed(path: str) -> bool:
+        lp_ = logical(path)
+        return lp_ == "/offers/" or lp_.startswith("/partners/")
+
+    taif_count = len(json.loads((CONTENT / "taif-guide.json").read_text(encoding="utf-8"))["places"])
+
     # ---- per page checks
     titles: dict[str, list[str]] = defaultdict(list)
     descs: dict[str, list[str]] = defaultdict(list)
@@ -356,8 +362,8 @@ def main() -> int:
                 num = href[4:]
                 if num not in known_phones_all:
                     rep.f("contact", f"{path}: tel {num} not in contact.json")
-                if num in (sales_phone,) and logical(path) != "/offers/":
-                    rep.f("contact", f"{path}: sales line must appear only on /offers")
+                if num in (sales_phone,) and not sales_allowed(path):
+                    rep.f("contact", f"{path}: sales line must appear only on /offers and /partners")
             elif href.startswith("mailto:"):
                 if href[7:] not in known_emails:
                     rep.f("contact", f"{path}: mailto {href[7:]} not in contact.json")
@@ -366,8 +372,8 @@ def main() -> int:
                 num = "+" + digits.group(1) if digits else ""
                 if num not in known_phones_all:
                     rep.f("contact", f"{path}: WhatsApp {num} not in contact.json")
-                if num == contact["sales"]["whatsapp"] and logical(path) != "/offers/":
-                    rep.f("contact", f"{path}: sales WhatsApp must appear only on /offers")
+                if num == contact["sales"]["whatsapp"] and not sales_allowed(path):
+                    rep.f("contact", f"{path}: sales WhatsApp must appear only on /offers and /partners")
         # displayed phone numbers must equal phone_display exactly
         for m in re.finditer(r"\+966[\d\s]{9,14}", p.text):
             shown = m.group(0).strip()
@@ -376,8 +382,8 @@ def main() -> int:
                 rep.f("contact", f"{path}: displayed number {shown!r} not in contact.json")
             elif shown != display_by_e164[e164]:
                 rep.f("contact", f"{path}: number shown as {shown!r}, expected {display_by_e164[e164]!r}")
-            if e164 == sales_phone and logical(path) != "/offers/":
-                rep.f("contact", f"{path}: sales number displayed outside /offers")
+            if e164 == sales_phone and not sales_allowed(path):
+                rep.f("contact", f"{path}: sales number displayed outside /offers and /partners")
 
         # assets + external requests
         for src in p.assets:
@@ -435,6 +441,14 @@ def main() -> int:
             rep.f("json-ld", f"{path}: branch page must carry Hotel/LodgingBusiness")
         if lp in room_by_path and "HotelRoom" not in types:
             rep.f("json-ld", f"{path}: room page must carry HotelRoom")
+
+        # Discover Taif: every place renders as a card with its photo
+        if lp == "/discover-taif/":
+            n = html.count('data-place="')
+            if n != taif_count:
+                rep.f("discover-taif", f"{path}: {n} place cards, expected {taif_count}")
+            if len(p.imgs) < taif_count:
+                rep.f("discover-taif", f"{path}: only {len(p.imgs)} <img> for {taif_count} places")
 
         # terminology
         if lp.startswith("/airport-road/"):

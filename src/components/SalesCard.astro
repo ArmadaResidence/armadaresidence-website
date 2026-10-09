@@ -1,0 +1,65 @@
+---
+/** Commercial office card: sales manager (name shown per partners.json → contact.show_name), phone, WhatsApp, email, Linktree. */
+import { fill, mailHref, partners, partnersPath, telHref, ui, waHref, type Locale } from '@lib/content';
+import Icon from './Icon.astro';
+
+interface Props {
+  locale: Locale;
+  withEnquiry?: boolean;
+}
+const { locale, withEnquiry = true } = Astro.props;
+const t = ui(locale);
+const c = partners.contact;
+const phoneDisplay = c.phone.replace(/^\+(\d{3})(\d{2})(\d{3})(\d{4})$/, '+$1 $2 $3 $4');
+---
+
+<aside class="bg-midnight text-porcelain rounded-card p-6">
+  <h2 class="text-sm font-semibold uppercase tracking-wide text-bronze">{t.partners.sales_office}</h2>
+  {
+    c.show_name && (
+      <p class="mt-3 text-lg font-semibold">
+        <span class="latin">{c.sales_manager}</span>
+        <span class="block text-sm font-normal text-porcelain/75">{t.partners.sales_manager_title}</span>
+      </p>
+    )
+  }
+  <p class="mt-3 text-sm text-porcelain/80">{fill(t.partners.reply_sla, { days: partners.facts.reply_within_business_days })}</p>
+  <ul class="mt-5 space-y-3 text-sm">
+    <li>
+      <a href={telHref(c.phone)} class="latin inline-flex items-center gap-2 hover:text-bronze" dir="ltr">
+        <Icon name="phone" size={16} />
+        <span>{phoneDisplay}</span>
+      </a>
+    </li>
+    <li>
+      <a href={waHref(c.whatsapp)} rel="noopener" target="_blank" class="inline-flex items-center gap-2 hover:text-bronze">
+        <Icon name="whatsapp" size={16} />
+        <span>{t.partners.whatsapp_sales}</span>
+      </a>
+    </li>
+    <li>
+      <a href={mailHref(c.email)} class="latin inline-flex items-center gap-2 hover:text-bronze" dir="ltr">
+        <Icon name="mail" size={16} />
+        <span>{c.email}</span>
+      </a>
+    </li>
+    <li>
+      <a href={c.linktree} rel="noopener" target="_blank" class="inline-flex items-center gap-2 hover:text-bronze">
+        <Icon name="star" size={16} />
+        <span>{t.partners.linktree}</span>
+      </a>
+    </li>
+  </ul>
+  {
+    withEnquiry && (
+      <a
+        href={partnersPath(locale, 'enquiry')}
+        class="mt-6 inline-flex items-center gap-2 bg-bronze text-white font-semibold px-5 py-3 rounded hover:bg-bronze-deep transition-colors"
+      >
+        <span>{t.partners.enquiry_cta}</span>
+        <Icon name="arrow" size={18} class="rtl:rotate-180" />
+      </a>
+    )
+  }
+  <p class="mt-5 text-xs text-porcelain/70">{t.partners.no_rates}</p>
+</aside>

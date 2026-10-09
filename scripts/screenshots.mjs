@@ -15,6 +15,9 @@ const PAGES = [
   ['airport-road-one-bedroom-suite', '/airport-road/one-bedroom-suite/'],
   ['policies', '/policies/'],
   ['booking', '/booking/'],
+  ['discover-taif', '/discover-taif/'],
+  ['partners', '/partners/'],
+  ['partners-enquiry', '/partners/enquiry/'],
 ];
 const SIZES = [
   { width: 1440, height: 900, deviceScaleFactor: 1, isMobile: false },
@@ -68,6 +71,19 @@ try {
     for (const [name, path] of PAGES) {
       await page.goto(`${BASE}${path}`, { waitUntil: 'load' });
       await page.evaluate(() => document.fonts.ready);
+      // walk down the page so lazy-loaded images are fetched before the full-page capture
+      await page.evaluate(async () => {
+        const step = Math.max(400, innerHeight - 100);
+        for (let y = 0; y < document.documentElement.scrollHeight; y += step) {
+          scrollTo(0, y);
+          await new Promise((r) => setTimeout(r, 120));
+        }
+        scrollTo(0, 0);
+        // force any still-lazy image to fetch now, then wait (capped) for the fetches to settle
+        Array.from(document.images).forEach((i) => { i.loading = 'eager'; });
+        const pending = Array.from(document.images).filter((i) => !i.complete).map((i) => new Promise((r) => { i.addEventListener('load', r, { once: true }); i.addEventListener('error', r, { once: true }); }));
+        await Promise.race([Promise.all(pending), new Promise((r) => setTimeout(r, 8000))]);
+      });
       await page.waitForTimeout(300);
       const file = `${OUT}/${name}-${size.width}.png`;
       await page.screenshot({ path: file, fullPage: true });

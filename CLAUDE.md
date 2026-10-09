@@ -74,7 +74,7 @@ Tone: premium, calm, specific. No "world-class", "exceptional heritage", "heart 
 - **No invented operational data.** Prices, sizes, capacities, distances, drive times, opening hours, phone numbers, addresses, policies — only from `/content/` files marked `verified: true`. Unverified = `[TODO: confirm]` placeholder, never a guess.
 - Prices are confirmed VAT-inclusive board rates (8 Oct 2026). Each room has `base_price` (SAR) and `pricing_mode: "starting_from"` in `rooms.json` — keep this structure, it must survive the rate-calendar and channel-manager phases without re-modelling. In `starting_from` mode every price renders from `pricing.json` as «يبدأ من {price} ريال / الليلة — شامل الضريبة» / "from SAR {price} / night — incl. VAT". Never show a price without "from" and the VAT note. Breakfast (+20/person/day) and extra person (+25) come from `pricing.json`, never typed in components.
 - Breakfast is a rate-plan attribute (`rate_plans[].breakfast_included`), never a room attribute. Phase 1 renders only `room_only`; next to every price show «الإفطار 20 ريال للشخص في اليوم». `bed_and_breakfast` exists in the data for phase 2 and is never rendered while `show_on_site: false`.
-- Accessible rooms render with `availability: sold_out` («غير متاح حاليًا»), no booking CTA, excluded from the sitemap while noindex. `units` counts are not rendered.
+- Accessible rooms render with `availability: sold_out` («غير متاح حاليًا»), no booking CTA, still in the sitemap. `units` counts are not rendered.
 - Every image has a real, descriptive `alt` in both languages. "صورة جديدة" / "image" is a QA failure.
 - Phone numbers: E.164 in `href`, display spaced (`+966 53 662 2277`). Each branch page and its WhatsApp button use that branch's number from `contact.json`; the sales line (`+966 53 662 2288`) appears only on /offers and the hall section. Email as `mailto:`.
 - Reviews section: real Google/Booking reviews only, with source link. Never fabricate testimonials.
@@ -101,6 +101,12 @@ Arabic is default at `/`, English at `/en/`. Readable slugs only — never IDs.
 Halls/events, gallery, blog: phase 2 or later. Do not build them in phase 1.
 
 ---
+
+## 6b. Discover Taif and Partners (added 9 Oct 2026)
+Both existing subdomain sites are merged into this project as sections; the subdomains redirect here at launch.
+- `/discover-taif/` — guide of 17 places from `content/taif-guide.json` (imported from discovertaif.armadaresidence.com: name, category, short copy, Google Maps link, photo, nearest branch). Category filter, "My plan" list (localStorage), each place links to the nearest branch with a booking CTA. Photos from the existing site (Armada-owned).
+- `/partners/` — B2B section from `content/partners.json`: index, `/partners/groups-umrah/`, `/partners/corporate/`, `/partners/meetings-events/`, `/partners/enquiry/`. No prices anywhere. Room types, unit counts, addresses and contacts come ONLY from branches.json / rooms.json / contact.json — never from the old B2B site copy (its room table and some figures conflict with confirmed data). Enquiry form posts to the same Edge Function with `request_type` (b2b-rates | umrah-group | corporate | event) and notifies sales-marketing@armadaresidence.com.
+- Nav: "اكتشف الطائف" in the main nav; "للشركاء والوكالات" in the header utility row and footer. /offers group CTAs go to /partners/enquiry/?request=….
 
 ## 7. SEO & technical requirements (each page)
 

@@ -33,6 +33,7 @@ EMAIL = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 REQUIRED_FILES = [
     "branches.json", "rooms.json", "pricing.json", "policies.json", "contact.json",
     "legal.json", "offers.json", "site-texts.json", "seo.json", "ui.json",
+    "taif-guide.json", "partners.json", "partners-pages.json",
 ]
 
 
@@ -147,6 +148,51 @@ def validate(content: dict[str, dict]) -> list[str]:
     ui = content["ui.json"]
     if set(ui.keys()) - {"_note"} != {"ar", "en"}:
         problems.append("ui.json must have exactly ar and en blocks")
+
+    taif = content["taif-guide.json"]
+    places = taif["places"]
+    if len(places) != 17:
+        problems.append(f"taif-guide.json must have 17 places, has {len(places)}")
+    cats = {c["key"] for c in taif["categories"]}
+    seen_ids: set[str] = set()
+    for pl in places:
+        if pl["id"] in seen_ids:
+            problems.append(f"taif-guide.json duplicate id {pl['id']}")
+        seen_ids.add(pl["id"])
+        if pl["category"] not in cats:
+            problems.append(f"taif-guide.json[{pl['id']}] unknown category {pl['category']}")
+        if pl["nearest_branch"] not in slugs:
+            problems.append(f"taif-guide.json[{pl['id']}] nearest_branch must be a branch slug")
+        if not pl.get("maps") or not all(m.get("url", "").startswith("https://") for m in pl["maps"]):
+            problems.append(f"taif-guide.json[{pl['id']}] needs at least one https maps link")
+        img = pl["image"]
+        base = img["base"].split("/images/", 1)[1]
+        for w in img["widths"]:
+            if not (CONTENT / "images" / f"{base}-{w}.webp").is_file():
+                problems.append(f"taif-guide.json[{pl['id']}] missing content/images/{base}-{w}.webp")
+        for k in ("alt_ar", "alt_en"):
+            if len(img.get(k, "")) < 8:
+                problems.append(f"taif-guide.json[{pl['id']}] image.{k} is not descriptive")
+
+    pr = content["partners.json"]
+    f = pr["facts"]
+    if f["units_airport"] + f["units_shafa"] != f["units_total"]:
+        problems.append("partners.json units_airport + units_shafa != units_total")
+    for b in branches:
+        key = "units_airport" if b["slug"] == "airport-road" else "units_shafa"
+        if b.get("units") != f[key]:
+            problems.append(f"partners.json {key} ({f[key]}) != branches.json units ({b.get('units')})")
+    if f["room_types"] != len([r for r in rooms if r.get("show_on_site")]):
+        problems.append("partners.json room_types != rooms shown on site")
+    if f["hall"]["capacity"] != 50 or f["hall"]["branch"] != "airport-road":
+        problems.append("partners.json hall must be airport-road / 50 (branches description)")
+    if pr["contact"]["phone"] != contact["sales"]["phone"] or pr["contact"]["email"] != contact["sales"]["email"]:
+        problems.append("partners.json contact must match contact.json sales line")
+    for row in pr["room_table"]["rows"]:
+        for ref in [x.strip() for x in row["room"].split("|")]:
+            br, sl = ref.split("/")
+            if not any(r["branch"] == br and r["slug"] == sl for r in rooms):
+                problems.append(f"partners.json room_table references unknown room {ref}")
     return problems
 
 

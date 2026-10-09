@@ -71,6 +71,43 @@
       "title_en": "Page Not Found | Armada Residence",
       "description_en": "The requested page does not exist on the Armada Residence website.",
       "noindex": true
+    },
+    "discover-taif": {
+      "title_ar": "اكتشف الطائف | دليل أرمادا ريزيدنس لـ17 وجهة",
+      "description_ar": "دليل أرمادا ريزيدنس لسبع عشرة وجهة في الطائف: الهدا والشفا والردف وسوق عكاظ والقصور التاريخية والمواقيت. فلتر بالفئة، خطتي، والفرع الأقرب لكل وجهة.",
+      "title_en": "Discover Taif | Armada Residence Guide to 17 Places",
+      "description_en": "Armada Residence's guide to 17 places in Taif: Al Hada, Al Shafa, Al Ruddaf, Souq Okaz, historic palaces and the miqats. Filter by category, book nearby.",
+      "og_image": "/images/taif/og-discover-taif.jpg"
+    },
+    "partners": {
+      "title_ar": "للشركاء والوكالات | فنادق أرمادا ريزيدنس الطائف",
+      "description_ar": "فندقان في الطائف و168 وحدة ومسؤول تجاري واحد لوكلاء السفر ومنظّمي الرحلات ومجموعات العمرة والشركات والفرق الرياضية. اطلب أسعار الشركاء.",
+      "title_en": "Partners & Agencies | Armada Residence Hotels Taif",
+      "description_en": "Two hotels in Taif, 168 units and one commercial contact for travel agents, tour operators, Umrah groups, companies and sports teams."
+    },
+    "partners-groups-umrah": {
+      "title_ar": "المجموعات والعمرة | شركاء أرمادا ريزيدنس",
+      "description_ar": "تسكين المجموعات ومجموعات العمرة والفرق الرياضية في فرعي الطائف: غرف بسريرين، بوفيهات إفطار وغداء وعشاء من مطبخ الفندق، ومواقف حافلات.",
+      "title_en": "Groups & Umrah | Armada Residence Partners",
+      "description_en": "Group, Umrah and sports-team stays at both Taif properties: twin rooms, breakfast, lunch and dinner buffets from the hotel kitchen, coach parking."
+    },
+    "partners-corporate": {
+      "title_ar": "الشركات والإقامة الطويلة | شركاء أرمادا ريزيدنس",
+      "description_ar": "إقامات عمل وبرامج سكن للشركات وإقامات طويلة في شقق فندقية بمطبخ على طريق المطار، وقاعة اجتماعات تتسع حتى 50 شخصًا.",
+      "title_en": "Corporate & Long Stay | Armada Residence Partners",
+      "description_en": "Business stays, company accommodation programmes and long stays in hotel apartments with kitchens on Airport Road, plus a meeting hall for up to 50."
+    },
+    "partners-meetings-events": {
+      "title_ar": "الاجتماعات والفعاليات | شركاء أرمادا ريزيدنس",
+      "description_ar": "قاعة تتسع حتى 50 شخصًا في فرع طريق المطار بالطائف، مع كوفي بريك وبوفيهات من مطبخ الفندق والتسكين على حساب واحد.",
+      "title_en": "Meetings & Events | Armada Residence Partners",
+      "description_en": "A hall for up to 50 people at the Airport Road property in Taif, with coffee breaks and buffets from the hotel kitchen and rooms on one account."
+    },
+    "partners-enquiry": {
+      "title_ar": "طلب شراكة | المكتب التجاري أرمادا ريزيدنس",
+      "description_ar": "أرسل البرنامج والتواريخ وعدد الأفراد إلى المكتب التجاري لفنادق أرمادا ريزيدنس بالطائف، وتصلك الإتاحة خلال يوم عمل.",
+      "title_en": "Partner Enquiry | Armada Residence Commercial Office",
+      "description_en": "Send the programme, dates and party size to the Armada Residence commercial office in Taif. Availability comes back within one working day."
     }
   },
   "room_templates": {

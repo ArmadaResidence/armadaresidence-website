@@ -1,0 +1,552 @@
+{
+  "_note": "Discover Taif guide — 17 places imported 9 Oct 2026 from the legacy discovertaif.armadaresidence.com export (legacy-sites/discover-taif.zip → build.py data). Names, copy, alt texts and Google Maps links are verbatim; photos are the legacy Armada-owned set re-encoded to WebP in content/images/taif/ (800 + 1400 widths). nearest_branch assigned by geography (see nearest_reason); no distances or drive times are stated. Addas Mosque is intentionally absent.",
+  "categories": [
+    {
+      "key": "nature",
+      "label_ar": "الطبيعة والمرتفعات",
+      "label_en": "Nature & Highlands"
+    },
+    {
+      "key": "family",
+      "label_ar": "العائلة والترفيه",
+      "label_en": "Family & Leisure"
+    },
+    {
+      "key": "history",
+      "label_ar": "التاريخ والثقافة",
+      "label_en": "History & Culture"
+    },
+    {
+      "key": "markets",
+      "label_ar": "الأسواق والتجارب",
+      "label_en": "Markets & Experiences"
+    },
+    {
+      "key": "miqat",
+      "label_ar": "المواقيت",
+      "label_en": "Miqats"
+    }
+  ],
+  "notice_ar": "قد تتغير مواعيد العمل وحالة الدخول لبعض الوجهات، يُرجى التحقق من خرائط Google أو التواصل مع الجهة قبل الزيارة",
+  "notice_en": "Opening times and access conditions may change, please check Google Maps or contact the destination before visiting",
+  "og_image": "/images/taif/og-discover-taif.jpg",
+  "places": [
+    {
+      "id": "p01",
+      "slug": "01-al-hada-cable-car",
+      "name_ar": "الهدا والتلفريك وقرية الكر",
+      "name_en": "Al Hada, Cable Car & Al Kar Tourist Village",
+      "category": "nature",
+      "description_ar": "إطلالات جبلية وتجربة تلفريك تمتد بين مرتفعات الهدا وقرية الكر السياحية",
+      "description_en": "Mountain scenery and a cable-car experience connecting Al Hada with Al Kar Tourist Village",
+      "maps": [
+        {
+          "label_ar": "الاتجاهات",
+          "label_en": "Directions",
+          "url": "https://maps.app.goo.gl/snt3kUcnoRQS9hZ99"
+        }
+      ],
+      "image": {
+        "base": "/images/taif/01-al-hada-cable-car",
+        "widths": [
+          800,
+          1400
+        ],
+        "alt_ar": "عربات التلفريك فوق مرتفعات الهدا في الطائف عند الغروب",
+        "alt_en": "Cable car cabins above the Al Hada highlands in Taif at sunset",
+        "width": 1400,
+        "height": 933
+      },
+      "nearest_branch": "airport-road",
+      "nearest_reason": "Al Hada / cable car lies north-west on the Al Hada road, the Airport Road side of the city",
+      "verified": true
+    },
+    {
+      "id": "p02",
+      "slug": "02-al-shafa-jabal-daka",
+      "name_ar": "مرتفعات الشفا وجبل دكا",
+      "name_en": "Al Shafa Highlands & Jabal Daka",
+      "category": "nature",
+      "description_ar": "مرتفعات جبلية ومناظر طبيعية تمنح الزائر تجربة مختلفة في أجواء الشفا",
+      "description_en": "Highland scenery and mountain landscapes offering a distinctive Al Shafa experience",
+      "maps": [
+        {
+          "label_ar": "الاتجاهات",
+          "label_en": "Directions",
+          "url": "https://maps.app.goo.gl/ScwTDtqA8NqoHrXV7"
+        }
+      ],
+      "image": {
+        "base": "/images/taif/02-al-shafa-jabal-daka",
+        "widths": [
+          800,
+          1400
+        ],
+        "alt_ar": "مرتفعات الشفا وجبل دكا مع مدرجات زراعية وأشجار العرعر",
+        "alt_en": "The Al Shafa highlands and Jabal Daka with terraced slopes and juniper trees",
+        "width": 1400,
+        "height": 933
+      },
+      "nearest_branch": "shafa-road",
+      "nearest_reason": "Al Shafa highlands are reached along Al-Shafa Road",
+      "verified": true
+    },
+    {
+      "id": "p03",
+      "slug": "03-al-ruddaf-park",
+      "name_ar": "منتزه الردف",
+      "name_en": "Al Ruddaf Park",
+      "category": "family",
+      "description_ar": "منتزه عائلي واسع تشتهر مساحاته الخضراء وممراته المفتوحة ونافورته",
+      "description_en": "A spacious family park known for its greenery, open walkways and fountain",
+      "maps": [
+        {
+          "label_ar": "الاتجاهات",
+          "label_en": "Directions",
+          "url": "https://maps.app.goo.gl/Uz2P9aNf9hvaaxeB9"
+        }
+      ],
+      "image": {
+        "base": "/images/taif/03-al-ruddaf-park",
+        "widths": [
+          800,
+          1400
+        ],
+        "alt_ar": "بحيرة ونافورة منتزه الردف بالطائف مع الممرات والمساحات الخضراء مساءً",
+        "alt_en": "The lake and fountain at Al Ruddaf Park in Taif with walkways and lawns at dusk",
+        "width": 1400,
+        "height": 933
+      },
+      "nearest_branch": "shafa-road",
+      "nearest_reason": "Al Ruddaf Park is 4 minutes from the Shafa Road hotel (partners.json)",
+      "verified": true
+    },
+    {
+      "id": "p04",
+      "slug": "04-saiysad-national-park",
+      "name_ar": "منتزه الطائف الوطني بسيسد",
+      "name_en": "Saiysad National Park",
+      "category": "nature",
+      "description_ar": "وجهة طبيعية بين الجبال والأشجار ومساحات التنزه المفتوحة",
+      "description_en": "A natural escape surrounded by mountains, trees and open picnic areas",
+      "maps": [
+        {
+          "label_ar": "الاتجاهات",
+          "label_en": "Directions",
+          "url": "https://maps.app.goo.gl/QhLaRMFR3airR2fU6"
+        }
+      ],
+      "image": {
+        "base": "/images/taif/04-saiysad-national-park",
+        "widths": [
+          800,
+          1400
+        ],
+        "alt_ar": "وادٍ صخري وأشجار في منتزه الطائف الوطني بسيسد",
+        "alt_en": "A rocky valley and trees in Saiysad National Park near Taif",
+        "width": 1400,
+        "height": 933
+      },
+      "nearest_branch": "airport-road",
+      "nearest_reason": "Saiysad National Park is north-east of Taif, on the airport side",
+      "verified": true
+    },
+    {
+      "id": "p05",
+      "slug": "05-jisr-alluwzia",
+      "name_ar": "منتجع جسر اللوزية",
+      "name_en": "Jisr Al-Lawziyah Resort",
+      "category": "family",
+      "description_ar": "وجهة ترفيهية بإطلالات طبيعية وجلسات مناسبة للعائلات",
+      "description_en": "A leisure destination offering natural views and family-friendly spaces",
+      "maps": [
+        {
+          "label_ar": "الاتجاهات",
+          "label_en": "Directions",
+          "url": "https://maps.app.goo.gl/8F4jxZ3eo9Mh8h1KA"
+        }
+      ],
+      "image": {
+        "base": "/images/taif/05-jisr-alluwzia",
+        "widths": [
+          800,
+          1400
+        ],
+        "alt_ar": "جلسات ومسبح بإطلالة جبلية في منتجع جسر اللوزية",
+        "alt_en": "Terraces and a pool with mountain views at Jisr Al-Lawziyah Resort",
+        "width": 1400,
+        "height": 933
+      },
+      "nearest_branch": "airport-road",
+      "nearest_reason": "Jisr Al-Lawziyah is on the Al Hada road north-west of the city",
+      "verified": true
+    },
+    {
+      "id": "p06",
+      "slug": "06-souq-okaz",
+      "name_ar": "سوق عكاظ",
+      "name_en": "Souq Okaz",
+      "category": "history",
+      "description_ar": "معلم ثقافي يستحضر تاريخ السوق العربي والشعر والحرف التقليدية",
+      "description_en": "A cultural landmark celebrating Arab heritage, poetry and traditional crafts",
+      "maps": [
+        {
+          "label_ar": "الاتجاهات",
+          "label_en": "Directions",
+          "url": "https://maps.app.goo.gl/RKieXzQdLQ6YkQn8A"
+        }
+      ],
+      "image": {
+        "base": "/images/taif/06-souq-okaz",
+        "widths": [
+          800,
+          1400
+        ],
+        "alt_ar": "بوابة سوق عكاظ الحجرية مضاءة عند المساء",
+        "alt_en": "The illuminated stone gateway of Souq Okaz at dusk",
+        "width": 1400,
+        "height": 788
+      },
+      "nearest_branch": "airport-road",
+      "nearest_reason": "Souq Okaz is north-east of Taif beyond the airport",
+      "verified": true
+    },
+    {
+      "id": "p07",
+      "slug": "07-shubra-palace",
+      "name_ar": "قصر شبرا التاريخي",
+      "name_en": "Shubra Historical Palace",
+      "category": "history",
+      "description_ar": "قصر تاريخي بارز يجمع ملامح العمارة الحجازية والإسلامية",
+      "description_en": "A landmark palace combining Hijazi and Islamic architectural influences",
+      "maps": [
+        {
+          "label_ar": "الاتجاهات",
+          "label_en": "Directions",
+          "url": "https://maps.app.goo.gl/scLzScNe5RvmMxMz7"
+        }
+      ],
+      "image": {
+        "base": "/images/taif/07-shubra-palace",
+        "widths": [
+          800,
+          1400
+        ],
+        "alt_ar": "واجهة قصر شبرا التاريخي البيضاء وروشانه الخشبي في الطائف",
+        "alt_en": "The white facade and wooden roshan of Shubra Historical Palace in Taif",
+        "width": 1400,
+        "height": 933
+      },
+      "nearest_branch": "airport-road",
+      "nearest_reason": "Shubra Palace is in the northern/central city, nearer Airport Road",
+      "verified": true
+    },
+    {
+      "id": "p08",
+      "slug": "08-al-kaaki-palace",
+      "name_ar": "قصر الكعكي",
+      "name_en": "Al Kaaki Palace",
+      "category": "history",
+      "description_ar": "قصر تراثي يُعد من أبرز المعالم المعمارية التاريخية في الطائف",
+      "description_en": "A heritage palace and one of Taif’s notable historical architectural landmarks",
+      "maps": [
+        {
+          "label_ar": "الاتجاهات",
+          "label_en": "Directions",
+          "url": "https://maps.app.goo.gl/XPJx9umZPFMdgCQP9"
+        }
+      ],
+      "image": {
+        "base": "/images/taif/08-al-kaaki-palace",
+        "widths": [
+          800,
+          1400
+        ],
+        "alt_ar": "واجهة قصر الكعكي التراثية ونافورة الفناء الأمامي",
+        "alt_en": "The heritage facade of Al Kaaki Palace and its courtyard fountain",
+        "width": 1400,
+        "height": 933
+      },
+      "nearest_branch": "airport-road",
+      "nearest_reason": "Al Kaaki Palace is in the old town centre, nearer Airport Road",
+      "verified": true
+    },
+    {
+      "id": "p09",
+      "slug": "09-al-sharif-museum",
+      "name_ar": "متحف الشريف",
+      "name_en": "Al Sharif Museum",
+      "category": "history",
+      "description_ar": "متحف يعرض مقتنيات تراثية توثق حياة المنطقة وحرفها وتاريخها",
+      "description_en": "A museum displaying regional heritage, traditional crafts and everyday history",
+      "maps": [
+        {
+          "label_ar": "الاتجاهات",
+          "label_en": "Directions",
+          "url": "https://maps.app.goo.gl/KTfrMLMDDnNVz6kN9"
+        }
+      ],
+      "image": {
+        "base": "/images/taif/09-al-sharif-museum",
+        "widths": [
+          800,
+          1400
+        ],
+        "alt_ar": "مقتنيات نحاسية ودلال قهوة معروضة داخل متحف الشريف",
+        "alt_en": "Brass coffee pots and heritage objects on display inside Al Sharif Museum",
+        "width": 1400,
+        "height": 933
+      },
+      "nearest_branch": "airport-road",
+      "nearest_reason": "Al Sharif Museum is on the western/central side, nearer Airport Road",
+      "verified": true
+    },
+    {
+      "id": "p10",
+      "slug": "10-taif-al-balad-market",
+      "name_ar": "سوق البلد",
+      "name_en": "Al Balad Market",
+      "category": "markets",
+      "description_ar": "تجربة تسوق شعبية بين الأسواق القديمة والمنتجات المحلية في قلب الطائف",
+      "description_en": "A traditional shopping experience among old markets and local products in central Taif",
+      "maps": [
+        {
+          "label_ar": "الاتجاهات",
+          "label_en": "Directions",
+          "url": "https://maps.app.goo.gl/jUuznnLvkdE9WnBX6"
+        }
+      ],
+      "image": {
+        "base": "/images/taif/10-taif-al-balad-market",
+        "widths": [
+          800,
+          1400
+        ],
+        "alt_ar": "ممر سوق البلد في وسط الطائف بمحاله ومبانيه التقليدية",
+        "alt_en": "A walkway in Al Balad Market in central Taif with shops and traditional buildings",
+        "width": 1400,
+        "height": 933
+      },
+      "nearest_branch": "airport-road",
+      "nearest_reason": "Al Balad market is in the old town centre, nearer Airport Road",
+      "verified": true
+    },
+    {
+      "id": "p11",
+      "slug": "11-abdullah-ibn-abbas-mosque",
+      "name_ar": "مسجد عبدالله بن عباس",
+      "name_en": "Abdullah Ibn Abbas Mosque",
+      "category": "history",
+      "description_ar": "معلم ديني وتاريخي بارز في قلب المنطقة التاريخية بمدينة الطائف",
+      "description_en": "A prominent religious and historical landmark in the heart of historic Taif",
+      "maps": [
+        {
+          "label_ar": "الاتجاهات",
+          "label_en": "Directions",
+          "url": "https://maps.app.goo.gl/LHNjyfxdDxAnVgN79"
+        }
+      ],
+      "image": {
+        "base": "/images/taif/11-abdullah-ibn-abbas-mosque",
+        "widths": [
+          800,
+          1400
+        ],
+        "alt_ar": "مسجد عبدالله بن عباس ومئذنته الحجرية في الطائف",
+        "alt_en": "Abdullah Ibn Abbas Mosque and its stone minaret in Taif",
+        "width": 1400,
+        "height": 933
+      },
+      "nearest_branch": "airport-road",
+      "nearest_reason": "Abdullah Ibn Abbas Mosque is in the old town centre, nearer Airport Road",
+      "verified": true
+    },
+    {
+      "id": "p12",
+      "slug": "12-taif-rose-farm",
+      "name_ar": "تجربة الورد الطائفي",
+      "name_en": "Taif Rose Experience",
+      "category": "markets",
+      "description_ar": "اكتشف رحلة الورد الطائفي من الزراعة إلى التقطير والمنتجات المحلية",
+      "description_en": "Discover the journey of Taif roses from cultivation to distillation and local products",
+      "maps": [
+        {
+          "label_ar": "مصنع راشد القرشي",
+          "label_en": "Rashed Al Qurashi Rose Factory",
+          "url": "https://maps.app.goo.gl/JvA1nZr4FRnDJ2786"
+        },
+        {
+          "label_ar": "مصنع الكمال للورد الطائفي",
+          "label_en": "Al Kamal Taif Rose Factory",
+          "url": "https://maps.app.goo.gl/av7N44sgKhrw6RTo8"
+        }
+      ],
+      "maps_note_ar": "مصنع راشد القرشي لإنتاج دهن وماء الورد الطائفي",
+      "maps_note_en": "Rashed Al Qurashi factory for Taif rose oil and rose water",
+      "image": {
+        "base": "/images/taif/12-taif-rose-farm",
+        "widths": [
+          800,
+          1400
+        ],
+        "alt_ar": "مزرعة ورد طائفي على مدرجات جبلية مع سلال من بتلات الورد",
+        "alt_en": "A Taif rose farm on terraced slopes with baskets of rose petals",
+        "width": 1400,
+        "height": 933
+      },
+      "nearest_branch": "airport-road",
+      "nearest_reason": "The listed rose factories are on the Al Hada road side (Rashed Al Qurashi first)",
+      "verified": true
+    },
+    {
+      "id": "p13",
+      "slug": "13-strawberry-farm",
+      "name_ar": "قرية التوت ومزارع الفراولة",
+      "name_en": "Tut Village & Strawberry Farms",
+      "category": "markets",
+      "description_ar": "تجربة ريفية عائلية وسط مزارع الفراولة والمنتجات الموسمية",
+      "description_en": "A family countryside experience among strawberry farms and seasonal produce",
+      "maps": [
+        {
+          "label_ar": "الاتجاهات",
+          "label_en": "Directions",
+          "url": "https://maps.app.goo.gl/KKaqD2m1fg34D9LWA"
+        }
+      ],
+      "image": {
+        "base": "/images/taif/13-strawberry-farm",
+        "widths": [
+          800,
+          1400
+        ],
+        "alt_ar": "صفوف من نباتات الفراولة وسلة ممتلئة داخل مزرعة قرب الطائف",
+        "alt_en": "Rows of strawberry plants and a full basket inside a farm near Taif",
+        "width": 1400,
+        "height": 933
+      },
+      "nearest_branch": "shafa-road",
+      "nearest_reason": "Strawberry farms and Tut village are in the Al Shafa / Wadi area south-west",
+      "verified": true
+    },
+    {
+      "id": "p14",
+      "slug": "14-miqat-sail-al-kabir",
+      "name_ar": "ميقات قرن المنازل – السيل الكبير",
+      "name_en": "Qarn Al-Manazil Miqat – Al Sail Al Kabir",
+      "category": "miqat",
+      "description_ar": "أحد مواقيت الإحرام على طريق السيل الكبير لخدمة قاصدي مكة المكرمة",
+      "description_en": "A designated miqat on the Al Sail Al Kabir route for pilgrims heading to Makkah",
+      "maps": [
+        {
+          "label_ar": "الاتجاهات",
+          "label_en": "Directions",
+          "url": "https://maps.app.goo.gl/j9E8UhYzst2eybQ6A"
+        }
+      ],
+      "image": {
+        "base": "/images/taif/14-miqat-sail-al-kabir",
+        "widths": [
+          800,
+          1400
+        ],
+        "alt_ar": "مدخل ميقات قرن المنازل بالسيل الكبير وساحته الخارجية",
+        "alt_en": "The entrance and forecourt of Qarn Al-Manazil Miqat at Al Sail Al Kabir",
+        "width": 1400,
+        "height": 933
+      },
+      "nearest_branch": "airport-road",
+      "nearest_reason": "Qarn Al-Manazil miqat (Al Sail Al Kabir) is on the north-eastern road past the airport",
+      "verified": true
+    },
+    {
+      "id": "p15",
+      "slug": "15-miqat-wadi-muharram",
+      "name_ar": "ميقات وادي محرم – طريق الهدا",
+      "name_en": "Wadi Muharram Miqat – Al Hada Road",
+      "category": "miqat",
+      "description_ar": "أحد مواقيت الإحرام على طريق الهدا لخدمة قاصدي مكة المكرمة",
+      "description_en": "A designated miqat on the Al Hada route for pilgrims heading to Makkah",
+      "maps": [
+        {
+          "label_ar": "الاتجاهات",
+          "label_en": "Directions",
+          "url": "https://maps.app.goo.gl/aUFLzBUTS2vtYnrz9"
+        }
+      ],
+      "image": {
+        "base": "/images/taif/15-miqat-wadi-muharram",
+        "widths": [
+          800,
+          1400
+        ],
+        "alt_ar": "ساحة ميقات وادي محرم ومئذنته على طريق الهدا",
+        "alt_en": "The courtyard and minaret of Wadi Muharram Miqat on the Al Hada road",
+        "width": 1400,
+        "height": 933
+      },
+      "nearest_branch": "airport-road",
+      "nearest_reason": "Wadi Muharram miqat is on the Al Hada road north-west of the city",
+      "verified": true
+    },
+    {
+      "id": "p16",
+      "slug": "16-bab-al-hazm",
+      "name_ar": "باب الحزم التاريخي",
+      "name_en": "Historic Bab Al Hazm",
+      "category": "history",
+      "description_ar": "مدخل تاريخي يقود إلى أحياء الطائف القديمة وأسواقها الشعبية",
+      "description_en": "A historic gateway into Taif’s old neighbourhoods and traditional markets",
+      "maps": [
+        {
+          "label_ar": "الاتجاهات",
+          "label_en": "Directions",
+          "url": "https://maps.app.goo.gl/GJQ9Z3k3zUNZQkRv7"
+        }
+      ],
+      "image": {
+        "base": "/images/taif/16-bab-al-hazm",
+        "widths": [
+          800,
+          1400
+        ],
+        "alt_ar": "بوابة باب الحزم التاريخية في الطائف مضاءة عند الغروب",
+        "alt_en": "The historic Bab Al Hazm gateway in Taif lit at sunset",
+        "width": 1400,
+        "height": 933
+      },
+      "nearest_branch": "airport-road",
+      "nearest_reason": "Bab Al Hazm is in the old town centre, nearer Airport Road",
+      "verified": true
+    },
+    {
+      "id": "p17",
+      "slug": "17-taif-zoo",
+      "name_ar": "حديقة الحيوانات بالطائف",
+      "name_en": "Taif Zoo",
+      "category": "family",
+      "description_ar": "وجهة عائلية للتعرف إلى الحيوانات وقضاء وقت ترفيهي",
+      "description_en": "A family destination for animal encounters and leisure time",
+      "maps": [
+        {
+          "label_ar": "الاتجاهات",
+          "label_en": "Directions",
+          "url": "https://maps.app.goo.gl/AHQ8BaErNhJq7uVc8"
+        }
+      ],
+      "image": {
+        "base": "/images/taif/17-taif-zoo",
+        "widths": [
+          800,
+          1400
+        ],
+        "alt_ar": "المدخل الرئيسي لحديقة الحيوانات بالطائف مضاءً في المساء",
+        "alt_en": "The main entrance of Taif Zoo illuminated in the evening",
+        "width": 1400,
+        "height": 788
+      },
+      "nearest_branch": "shafa-road",
+      "nearest_reason": "Taif Zoo is in the south of the city near Al Ruddaf, the Shafa Road side",
+      "verified": true
+    }
+  ]
+}

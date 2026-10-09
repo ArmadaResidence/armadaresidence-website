@@ -1,0 +1,40 @@
+---
+/** Sub-navigation for the /partners/ section (index, groups-umrah, corporate, meetings-events, enquiry). */
+import { partnersPages, partnersPath, ui, type Locale } from '@lib/content';
+
+interface Props {
+  locale: Locale;
+  current: '' | 'groups-umrah' | 'corporate' | 'meetings-events' | 'enquiry';
+}
+const { locale, current } = Astro.props;
+const t = ui(locale);
+const pp = partnersPages;
+const items: { sub: Props['current']; label: string }[] = [
+  { sub: '', label: t.nav.partners },
+  { sub: 'groups-umrah', label: locale === 'ar' ? pp.groups_umrah.eyebrow_ar : pp.groups_umrah.eyebrow_en },
+  { sub: 'corporate', label: locale === 'ar' ? pp.corporate.eyebrow_ar : pp.corporate.eyebrow_en },
+  { sub: 'meetings-events', label: locale === 'ar' ? pp.meetings_events.eyebrow_ar : pp.meetings_events.eyebrow_en },
+  { sub: 'enquiry', label: t.partners.contact_sales },
+];
+---
+
+<nav class="bg-white border-b border-line" aria-label={t.nav.partners}>
+  <ul class="mx-auto max-w-6xl px-4 flex gap-1 overflow-x-auto text-sm font-medium">
+    {
+      items.map((i) => (
+        <li class="shrink-0">
+          <a
+            href={partnersPath(locale, i.sub)}
+            class:list={[
+              'block py-3 px-3 border-b-2 transition-colors',
+              i.sub === current ? 'border-bronze text-midnight' : 'border-transparent text-ink-muted hover:text-midnight',
+            ]}
+            aria-current={i.sub === current ? 'page' : undefined}
+          >
+            {i.label}
+          </a>
+        </li>
+      ))
+    }
+  </ul>
+</nav>

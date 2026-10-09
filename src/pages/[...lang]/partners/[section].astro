@@ -1,0 +1,92 @@
+---
+/** /partners/groups-umrah/, /partners/corporate/, /partners/meetings-events/ — copy from partners-pages.json, facts from partners.json. */
+import Base from '@layouts/Base.astro';
+import Icon from '@components/Icon.astro';
+import PartnersNav from '@components/PartnersNav.astro';
+import SalesCard from '@components/SalesCard.astro';
+import { langPaths } from '@lib/paths';
+import { pageSeo, partnersPages, partnersPath, ui, type Locale } from '@lib/content';
+
+type Section = 'groups-umrah' | 'corporate' | 'meetings-events';
+
+// getStaticPaths is hoisted by Astro: it cannot read module-level constants, so the list lives inside.
+export function getStaticPaths() {
+  const sections: Section[] = ['groups-umrah', 'corporate', 'meetings-events'];
+  return langPaths().flatMap(({ params, props }) =>
+    sections.map((section) => ({ params: { ...params, section }, props: { ...props, section } })),
+  );
+}
+
+interface Props {
+  locale: Locale;
+  section: Section;
+}
+const { locale, section } = Astro.props;
+const t = ui(locale);
+const ar = locale === 'ar';
+const s = pageSeo(locale, `partners-${section}`);
+const key = section.replace('-', '_') as 'groups_umrah' | 'corporate' | 'meetings_events';
+const pg = partnersPages[key] as Record<string, string | string[]>;
+const txt = (k: string) => String(pg[`${k}_${locale}`] ?? '');
+const list = (k: string) => (pg[`${k}_${locale}`] as string[]) ?? [];
+
+const requestFor: Record<Section, string> = { 'groups-umrah': 'umrah-group', corporate: 'corporate', 'meetings-events': 'event' };
+const ctaFor: Record<Section, string> = {
+  'groups-umrah': t.partners.enquiry_group,
+  corporate: t.partners.enquiry_corporate,
+  'meetings-events': t.partners.enquiry_event,
+};
+/** secondary blocks per section: [titleKey, bodyKey] */
+const blocksFor: Record<Section, [string, string][]> = {
+  'groups-umrah': [['sports_title', 'sports_body'], ['leisure_title', 'leisure_body']],
+  corporate: [['long_stay_title', 'long_stay_body'], ['institutional_title', 'institutional_body']],
+  'meetings-events': [['hall_title', 'hall_body'], ['catering_title', 'catering_body']],
+};
+---
+
+<Base locale={locale} path={`/partners/${section}/`} title={s.title} description={s.description}>
+  <PartnersNav locale={locale} current={section} />
+
+  <section class="mx-auto max-w-6xl px-4 pt-10 pb-14 grid gap-10 lg:grid-cols-5">
+    <div class="lg:col-span-3">
+      <p class="text-xs font-semibold uppercase tracking-wide text-bronze">{txt('eyebrow')}</p>
+      <h1 class="mt-2 text-3xl md:text-4xl font-bold text-midnight">{txt('title')}</h1>
+      <p class="mt-4 text-lg text-ink-muted leading-relaxed">{txt('lead')}</p>
+
+      <ul class="mt-8 grid gap-3 sm:grid-cols-2">
+        {
+          list('points').map((pt) => (
+            <li class="flex gap-2 bg-white border border-line rounded-card px-4 py-3 text-sm">
+              <Icon name="check" size={16} class="text-bronze shrink-0 mt-0.5" />
+              <span>{pt}</span>
+            </li>
+          ))
+        }
+      </ul>
+
+      <div class="mt-10 grid gap-6 md:grid-cols-2">
+        {
+          blocksFor[section].map(([tk, bk]) => (
+            <section>
+              <h2 class="text-xl font-semibold text-midnight">{txt(tk)}</h2>
+              <p class="mt-2 text-sm text-ink-muted leading-relaxed">{txt(bk)}</p>
+            </section>
+          ))
+        }
+      </div>
+
+      <a
+        href={`${partnersPath(locale, 'enquiry')}?request=${requestFor[section]}`}
+        class="mt-10 inline-flex items-center gap-2 bg-bronze text-white font-semibold px-6 py-3 rounded hover:bg-bronze-deep transition-colors"
+      >
+        <span>{ctaFor[section]}</span>
+        <Icon name="arrow" size={18} class="rtl:rotate-180" />
+      </a>
+
+      {section === 'groups-umrah' && <p class="mt-10 text-xs text-ink-muted leading-relaxed border-t border-line pt-4">{txt('disclaimer')}</p>}
+    </div>
+    <div class="lg:col-span-2 lg:sticky lg:top-28 self-start">
+      <SalesCard locale={locale} />
+    </div>
+  </section>
+</Base>
