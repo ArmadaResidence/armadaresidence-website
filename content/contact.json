@@ -18,7 +18,12 @@
     "whatsapp": "+966536622288",
     "scope_ar": "المجموعات والقاعة وطلبات الشركات",
     "scope_en": "Groups, hall and B2B requests",
-    "email": "sales-marketing@armadaresidence.com"
+    "email": "sales-marketing@armadaresidence.com",
+    "manager_name": "Mohamed Dagash",
+    "show_manager_name": true,
+    "show_on": [
+      "/partners/"
+    ]
   },
   "emails": {
     "reservations": "reservation@armadaresidence.com",
@@ -42,7 +47,8 @@
     "google_business": {
       "airport-road": "https://share.google/P346csOpeuQzwvJA0",
       "shafa-road": "https://share.google/vKuS4FTE8h1Iq9XHS"
-    }
+    },
+    "linktree": "https://linktr.ee/ArmadaR"
   },
   "menu_url": "https://armadaresidence.github.io/armada-residence-menu/",
   "gtm_container": "GTM-MFV9WL38",

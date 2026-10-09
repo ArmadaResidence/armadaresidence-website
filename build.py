@@ -162,6 +162,8 @@ def generate_function_content(content: dict[str, dict]) -> None:
         "_generated": "by build.py from content/ — do not edit",
         "site_url": content["seo.json"]["site_url"],
         "notification_emails": contact["emails"]["booking_notification_emails"],
+        "sales_email": contact["sales"]["email"],
+        "enquiry_types": content.get("partners.json", {}).get("enquiry_types", []),
         "branches": [
             {
                 "slug": b["slug"],
@@ -212,6 +214,8 @@ def run(cmd: list[str]) -> None:
 
 def main() -> int:
     content = {name: load_json(name) for name in REQUIRED_FILES}
+    if (CONTENT / "partners.json").is_file():
+        content["partners.json"] = load_json("partners.json")
     problems = validate(content)
     if problems:
         print("content/ validation failed:")
@@ -226,6 +230,7 @@ def main() -> int:
         shutil.rmtree(DIST)
     sync_images()
     run(["node", "scripts/og.mjs"])
+    run(["node", "scripts/favicons.mjs"])
     run(["npx", "astro", "build"])
 
     pages = sorted(p.relative_to(DIST).as_posix() for p in DIST.rglob("*.html"))

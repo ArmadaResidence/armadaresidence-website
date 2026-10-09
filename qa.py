@@ -178,6 +178,12 @@ def main() -> int:
         print("dist/ not found — run python build.py first", file=sys.stderr)
         return 2
 
+    # ---- source rule: logos are SVG only — no png/jpg logo references inside components, layouts or pages
+    for src_file in (ROOT / "src").rglob("*.astro"):
+        text = src_file.read_text(encoding="utf-8")
+        for m in re.finditer(r"""["'(]([^"'()\s]*logo[^"'()\s]*\.(?:png|jpe?g|webp|gif))["')]""", text, re.I):
+            rep.f("brand assets", f"{src_file.relative_to(ROOT).as_posix()}: raster logo {m.group(1)!r} (SVG only)")
+
     content = {n: json.loads((CONTENT / n).read_text(encoding="utf-8")) for n in
                ("branches.json", "rooms.json", "pricing.json", "contact.json", "seo.json", "ui.json")}
     site = content["seo.json"]["site_url"].rstrip("/")
@@ -240,6 +246,7 @@ def main() -> int:
     for path, p in pages.items():
         html = raw[path]
         en = is_en(path)
+        lp = logical(path)
         exp_lang, exp_dir = ("en", "ltr") if en else ("ar", "rtl")
         if (p.lang, p.dir) != (exp_lang, exp_dir):
             rep.f("lang/dir", f"{path}: lang={p.lang!r} dir={p.dir!r}, expected {exp_lang}/{exp_dir}")
@@ -266,6 +273,11 @@ def main() -> int:
         # editorial brackets never reach the visitor (e.g. "[مرحلة 3: …]", "[يُؤكَّد]")
         for m in re.finditer(r"\[[^\]\n]{1,400}\]", p.text):
             rep.f("brackets", f"{path}: visible text contains {m.group(0)[:60]!r}")
+
+        # /partners/ (B2B): no prices anywhere in that section — qa rejects any number next to ريال / SAR
+        if lp.startswith("/partners/"):
+            for m in re.finditer(r"\d[\d,.]*\s*(?:ريال|ر\.س|SAR)|SAR\s*\d", p.text):
+                rep.f("partners pricing", f"{path}: price-like text {m.group(0)!r} under /partners/")
 
         # decision 9 Oct 2026: no breakfast price anywhere on the site
         for m in re.finditer(r"إفطار|breakfast", p.text, re.I):
@@ -377,7 +389,6 @@ def main() -> int:
                 rep.f("links", f"{path}: missing asset {src}")
 
         # JSON-LD
-        lp = logical(path)
         types: list[str] = []
         for blob in p.jsonld:
             try:

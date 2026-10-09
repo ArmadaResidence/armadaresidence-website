@@ -28,3 +28,6 @@ DECISIONS_append_*.md
 .DS_Store
 Thumbs.db
 *.log
+
+# legacy site exports (reference only, never built from)
+legacy-sites/

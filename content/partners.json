@@ -1,0 +1,137 @@
+{
+  "_note": "B2B / partners section (/partners/). Facts confirmed by Ahmed 9 Oct 2026. Copy structure may be taken from legacy-sites/b2b.zip; facts ONLY from here, branches.json, rooms.json, contact.json. NO prices anywhere in this section.",
+  "hero": {
+    "eyebrow_ar": "فنادق أرمادا ريزيدنس",
+    "title_ar": "شريككم في الضيافة بالطائف.",
+    "subtitle_ar": "فندقان و168 وحدة ومسؤول تجاري واحد — لوكلاء السفر ومنظّمي الرحلات ومجموعات العمرة والشركات والفرق الرياضية.",
+    "eyebrow_en": "Armada Residence Hotels",
+    "title_en": "Your hospitality partner in Taif.",
+    "subtitle_en": "Two hotels, 168 units and one commercial contact — for travel agents, tour operators, Umrah groups, companies and sports teams.",
+    "cta_primary_ar": "اطلب أسعار الشركاء",
+    "cta_primary_en": "Request partner rates",
+    "cta_secondary_ar": "استكشف فنادقنا",
+    "cta_secondary_en": "Explore our hotels"
+  },
+  "facts": {
+    "hotels": 2,
+    "units_total": 168,
+    "units_airport": 108,
+    "units_shafa": 60,
+    "room_types": 12,
+    "reply_within_business_days": 1,
+    "drive_time_airport_to_airport_road_min": 15,
+    "drive_time_ruddaf_to_shafa_min": 4,
+    "bus_parking": "both branches",
+    "group_meals": {
+      "breakfast": true,
+      "lunch_buffet": true,
+      "dinner_buffet": true,
+      "note_ar": "بوفيه إفطار وغداء وعشاء للمجموعات من مطبخ الفندق، بقوائم عربية وآسيوية وعالمية",
+      "note_en": "Breakfast, lunch and dinner buffets for groups from the hotel kitchen — Arabic, Asian and international menus"
+    },
+    "hall": {
+      "branch": "airport-road",
+      "capacity": 50
+    },
+    "beds_shafa": 98
+  },
+  "room_table": {
+    "_note": "Partner-facing occupancy table. Rows reference rooms.json slugs; 'single' is the king room sold at single occupancy (not a separate room type). Unit counts per type: confirmed with each request.",
+    "rows": [
+      {
+        "label_ar": "غرفة مفردة",
+        "label_en": "Single room",
+        "room": "airport-road/king-room",
+        "occupancy": 1,
+        "beds_ar": "سرير كينج لضيف واحد",
+        "beds_en": "King bed, one guest",
+        "hotel": "airport-road",
+        "recommended_ar": "قادة المجموعات · مرافقو المجموعات",
+        "recommended_en": "Group leaders · escorts"
+      },
+      {
+        "label_ar": "غرفة بسريرين",
+        "label_en": "Twin room",
+        "room": "airport-road/twin-room",
+        "occupancy": 2,
+        "hotel": "airport-road",
+        "recommended_ar": "تسكين المجموعات · الفرق الرياضية",
+        "recommended_en": "Group rooming · sports teams"
+      },
+      {
+        "label_ar": "غرفة كينج",
+        "label_en": "King room",
+        "room": "airport-road/king-room | shafa-road/king-room",
+        "occupancy": 2,
+        "hotel": "both",
+        "recommended_ar": "الأزواج · مسافرو الشركات",
+        "recommended_en": "Couples · corporate travellers"
+      },
+      {
+        "label_ar": "غرفة مع بلكونة",
+        "label_en": "Balcony room",
+        "room": "shafa-road/balcony-room",
+        "occupancy": 2,
+        "hotel": "shafa-road",
+        "recommended_ar": "الأزواج · الإقامات الترفيهية",
+        "recommended_en": "Couples · leisure stays"
+      },
+      {
+        "label_ar": "استديو بجاكوزي",
+        "label_en": "Jacuzzi studio",
+        "room": "shafa-road/jacuzzi-studio",
+        "occupancy": 2,
+        "hotel": "shafa-road",
+        "recommended_ar": "الأزواج · المناسبات الخاصة",
+        "recommended_en": "Couples · special occasions"
+      },
+      {
+        "label_ar": "جناح غرفة وصالة",
+        "label_en": "One-bedroom suite",
+        "room": "airport-road/one-bedroom-suite | shafa-road/one-bedroom-suite",
+        "occupancy": "2–3",
+        "hotel": "both",
+        "recommended_ar": "المجموعات العائلية عبر الوكالات · كبار الضيوف",
+        "recommended_en": "Agency family groups · VIP guests"
+      },
+      {
+        "label_ar": "جناح غرفتي نوم وصالة",
+        "label_en": "Two-bedroom suite",
+        "room": "airport-road/two-bedroom-suite | shafa-road/two-bedroom-suite",
+        "occupancy": 4,
+        "hotel": "both",
+        "recommended_ar": "المجموعات العائلية · مجموعات العمرة · الإقامة الطويلة",
+        "recommended_en": "Family groups · Umrah groups · long stays"
+      },
+      {
+        "label_ar": "جناح غرفتي نوم وجاكوزي",
+        "label_en": "Two-bedroom jacuzzi suite",
+        "room": "shafa-road/two-bedroom-jacuzzi-suite",
+        "occupancy": 4,
+        "hotel": "shafa-road",
+        "recommended_ar": "الإقامات الترفيهية المميّزة",
+        "recommended_en": "Premium leisure stays"
+      }
+    ]
+  },
+  "contact": {
+    "sales_manager": "Mohamed Dagash",
+    "show_name": true,
+    "phone": "+966536622288",
+    "whatsapp": "+966536622288",
+    "email": "sales-marketing@armadaresidence.com",
+    "reservations_email": "reservation@armadaresidence.com",
+    "linktree": "https://linktr.ee/ArmadaR"
+  },
+  "enquiry_types": [
+    "b2b-rates",
+    "umrah-group",
+    "corporate",
+    "event"
+  ],
+  "removed_from_legacy": [
+    "any drive-time other than the two confirmed (15 min airport, 4 min Al-Ruddaf)",
+    "'حي القمم الأعلى' — correct district is حي القيم الأعلى (branches.json)"
+  ],
+  "verified": true
+}

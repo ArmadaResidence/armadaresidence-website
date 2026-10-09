@@ -19,6 +19,10 @@ interface Payload {
   email: string;
   notes?: string;
   page?: string;
+  /** 'booking' (default) or a partner enquiry type from content/partners.json → enquiry_types */
+  request_type?: string;
+  /** partner enquiries only */
+  organisation?: string;
 }
 
 const E164 = /^\+[1-9]\d{7,14}$/;
@@ -95,9 +99,12 @@ function validate(p: Payload): { ok: true; data: Required<Omit<Payload, 'page'>>
   const notes = (p.notes ?? '').trim().slice(0, 1000);
   const page = (p.page ?? '').slice(0, 500);
   const nights = Math.round((co.getTime() - ci.getTime()) / 86400000);
+  const requestType = (p.request_type ?? 'booking').trim();
+  if (requestType !== 'booking' && !content.enquiry_types.includes(requestType)) return { ok: false, error: 'invalid request_type' };
+  const organisation = (p.organisation ?? '').trim().slice(0, 160);
   return {
     ok: true,
-    data: { locale, branch: branch.slug, check_in: p.check_in, check_out: p.check_out, adults, children, room, name, phone, email, notes, page, nights },
+    data: { locale, branch: branch.slug, check_in: p.check_in, check_out: p.check_out, adults, children, room, name, phone, email, notes, page, nights, requestType, organisation },
   };
 }
 
@@ -126,6 +133,8 @@ async function store(ref: string, d: ReturnType<typeof validate> extends { ok: t
       notes: d.notes || null,
       page_url: d.page || null,
       user_agent: ua.slice(0, 300),
+      request_type: d.requestType,
+      organisation: d.organisation || null,
     }),
   });
   if (!res.ok) console.error('store failed', res.status, await res.text());
@@ -189,6 +198,7 @@ Deno.serve(async (req) => {
     [mail.language, L],
     [mail.received_at, receivedAt],
   ];
+  if (d.requestType !== 'booking') rows.splice(1, 0, ['request_type', d.requestType], ['organisation', d.organisation || '—']);
   const table = `<table cellpadding="6" style="border-collapse:collapse">${rows
     .map(([k, val]) => `<tr><td style="color:#555">${esc(k)}</td><td><strong>${esc(val)}</strong></td></tr>`)
     .join('')}</table>`;
@@ -211,6 +221,7 @@ Deno.serve(async (req) => {
     [arMail.language, L],
     [arMail.received_at, receivedAt],
   ];
+  if (d.requestType !== 'booking') hotelRows.splice(1, 0, ['request_type', d.requestType], ['organisation', d.organisation || '—']);
   const hotelHtml = `<div dir="rtl" style="font-family:sans-serif"><p>${esc(arMail.hotel_intro)}</p><table cellpadding="6" style="border-collapse:collapse">${hotelRows
     .map(([k, val]) => `<tr><td style="color:#555">${esc(k)}</td><td><strong>${esc(val)}</strong></td></tr>`)
     .join('')}</table><p style="color:#777;font-size:12px">${esc(arMail.hotel_footer)}</p></div>`;
@@ -222,7 +233,10 @@ Deno.serve(async (req) => {
   )}</p></div>`;
 
   const stored = await store(ref, d, req.headers.get('user-agent') ?? '');
-  const hotelSent = await sendEmail(content.notification_emails, fill(arMail.hotel_subject, { branch: branch.name_ar, ref }), hotelHtml, d.email);
+  const isPartner = d.requestType !== 'booking';
+  const recipients = isPartner ? [content.sales_email, ...content.notification_emails] : content.notification_emails;
+  const subjectPrefix = isPartner ? `[${d.requestType}] ` : '';
+  const hotelSent = await sendEmail(recipients, subjectPrefix + fill(arMail.hotel_subject, { branch: branch.name_ar, ref }), hotelHtml, d.email);
   const guestSent = await sendEmail([d.email], fill(mail.guest_subject, { ref }), guestHtml);
 
   if (!stored && !hotelSent) {

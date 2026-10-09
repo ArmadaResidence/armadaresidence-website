@@ -7,7 +7,7 @@
       "name_en": "Armada Residence – Airport Road",
       "type_ar": "شقق فندقية",
       "type_en": "Hotel Apartments",
-      "units": "108 [يُؤكَّد]",
+      "units": 108,
       "show_units": false,
       "address_ar": "8138 طريق المطار، حي القيم الأعلى، الطائف 26561، المملكة العربية السعودية",
       "address_en": "8138 Airport Road, Al-Qaim Al-Aala District, Taif 26561, Saudi Arabia",
@@ -54,10 +54,12 @@
       "description_ar": "على طريق المطار في الطائف، يقدّم فرع أرمادا ريزيدنس شققًا فندقية تبدأ من 50 مترًا مربعًا للغرفة الواحدة وتصل إلى 75 مترًا مربعًا للجناح بغرفتي نوم وصالة. تناسب المساحات الواسعة الإقامة القصيرة لزائر الطائف أو المسافر عبر مطارها، كما تناسب الإقامة الطويلة لمن يحتاج إلى مطبخ وصالة منفصلة.\n\nالأجنحة مزوّدة بمطبخ، ومواقف السيارات مجانية في الطابقين السفليين B1 وB2 مع مصعد مباشر. يضم الفرع مطعمًا ومقهى، ويُقدَّم فيه بوفيه إفطار يومي من 07:00 إلى 10:30، وقاعة اجتماعات تتسع حتى 50 شخصًا للفعاليات الصغيرة واجتماعات العمل.\n\nالوصول من الساعة 4:00 عصرًا والمغادرة حتى 12:00 ظهرًا، وفريق الاستقبال وخدمة الغرف في خدمتكم على مدار الساعة.",
       "description_en": "On Airport Road in Taif, Armada Residence offers hotel apartments from 50 m² for a single room up to 75 m² for a two-bedroom suite with a living room. The generous floor space suits short stays for visitors to Taif and travellers using its airport, and longer stays for guests who need a kitchen and a separate living area.\n\nSuites come with a kitchen, and parking is free on basement levels B1 and B2 with direct lift access. The property has a restaurant and café, with a daily breakfast buffet from 07:00 to 10:30, and a meeting hall for up to 50 people for small events and business meetings.\n\nCheck-in is from 4:00 pm and check-out by 12:00 noon. Reception and room service are available around the clock.",
       "verified": true,
-      "pending": [
-        "units count (108) — not shown on site until confirmed"
-      ],
-      "google_business_url": "https://share.google/P346csOpeuQzwvJA0"
+      "pending": [],
+      "google_business_url": "https://share.google/P346csOpeuQzwvJA0",
+      "units_note": "confirmed by Ahmed 9 Oct 2026",
+      "drive_time_airport_min": 15,
+      "drive_time_airport_note": "confirmed by Ahmed 9 Oct 2026 — may be shown",
+      "bus_parking": true
     },
     {
       "slug": "shafa-road",
@@ -65,7 +67,7 @@
       "name_en": "Armada Residence – Shafa Road",
       "type_ar": "فندق",
       "type_en": "Hotel",
-      "units": "32 [يُؤكَّد]",
+      "units": 60,
       "show_units": false,
       "address_ar": "6411 طريق الشفا، حي السداد، الطائف 26514، المملكة العربية السعودية",
       "address_en": "6411 Al-Shafa Road, Al-Sadad District, Taif 26514, Saudi Arabia",
@@ -111,11 +113,11 @@
       "description_ar": "على طريق الشفا، الطريق الذي يصل الطائف بمرتفعات الشفا، يقدّم فندق أرمادا ريزيدنس غرفًا وأجنحة هادئة للعائلات والأفراد. تبدأ الخيارات من غرفة كينج بمساحة 35 مترًا مربعًا، وتشمل غرفة ببلكونة خاصة، واستديو بجاكوزي، وأجنحة بغرفة أو غرفتي نوم تتسع حتى أربعة أشخاص.\n\nيُقدَّم بوفيه إفطار يومي في المطعم من 07:00 إلى 10:30، ومواقف السيارات مجانية في الطابق السفلي، وفي الفندق مقهى، والوصول من الساعة 4:00 عصرًا والمغادرة حتى 12:00 ظهرًا. فريق الاستقبال وخدمة الغرف في خدمتكم على مدار الساعة، ويمكنكم التواصل معه مباشرة عبر الواتساب لأي طلب قبل الوصول أو أثناء الإقامة.",
       "description_en": "On Al-Shafa Road, the road linking Taif to the Al-Shafa highlands, Armada Residence Shafa Road is a quiet hotel for families and individual travellers. Options start with a 35 m² king room and include a room with a private balcony, a studio with a jacuzzi, and one- and two-bedroom suites for up to four guests.\n\nA daily breakfast buffet is served in the restaurant from 07:00 to 10:30, parking is free on the basement level, and the hotel has a café. Check-in is from 4:00 pm and check-out by 12:00 noon. Reception and room service are available around the clock, and you can reach the team directly on WhatsApp before arrival or during your stay.",
       "verified": true,
-      "pending": [
-        "units count (32) — not shown on site until confirmed",
-        "nearby landmarks (Al-Ruddaf Park, Jouri Mall) — distances unconfirmed, omitted from copy"
-      ],
-      "google_business_url": "https://share.google/vKuS4FTE8h1Iq9XHS"
+      "pending": [],
+      "google_business_url": "https://share.google/vKuS4FTE8h1Iq9XHS",
+      "units_note": "confirmed by Ahmed 9 Oct 2026 (legacy 32 was wrong)",
+      "bus_parking": true,
+      "drive_time_ruddaf_min": 4
     }
   ]
 }
