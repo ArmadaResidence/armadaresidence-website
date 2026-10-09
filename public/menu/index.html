@@ -575,7 +575,7 @@ const MAXC=5, NEAR=6, AHEAD=20; let inflight=0; const queue=[]; let activeScene=
 function want(sc,i){ if(i<0||i>=sc.count||sc.imgs[i]) return; const img=new Image(); img.i=i; img.ok=false; img.sc=sc; sc.imgs[i]=img; queue.push(img); }
 function pump(){
   if(inflight>=MAXC||!queue.length) return;
-  const A=activeScene; queue.sort((a,b)=>((a.sc===A?0:1e6)+Math.abs(a.i-a.sc.idx))-((b.sc===A?0:1e6)+Math.abs(b.i-b.sc.idx)));
+  const A=activeScene; queue.sort((a,b)=>((a.sc===A?0:(a.pf?PREFETCH_RANK:1e6))+Math.abs(a.i-a.sc.idx))-((b.sc===A?0:(b.pf?PREFETCH_RANK:1e6))+Math.abs(b.i-b.sc.idx)));
   while(inflight<MAXC && queue.length){ const img=queue.shift(); inflight++;
     img.onload=()=>{ img.ok=true; img.sc.loaded++; inflight--; requestDraw(false); pump(); };
     img.onerror=()=>{ inflight--; img.sc.imgs[img.i]=null; pump(); };
@@ -594,10 +594,10 @@ function scheduleWindow(sc,i,dir){
 
 /* next-scene prefetch (10 Oct 2026): at 60 % of the active scene the first 20 frames of the next scene are requested,
    then the rest trickle in while the network is idle — so the hand-over between scenes never shows a gap. */
-const PREFETCH_AT=0.6, PREFETCH_FIRST=20, PREFETCH_TRICKLE=4;
+const PREFETCH_AT=0.6, PREFETCH_FIRST=20, PREFETCH_TRICKLE=4, PREFETCH_RANK=7;
 function prefetchNext(sc){
-  if(!sc.pf){ sc.pf=true; for(let k=0;k<Math.min(PREFETCH_FIRST,sc.count);k++) want(sc,k); pump(); return; }
-  if(inflight<MAXC && !queue.length){ let n=0; for(let k=PREFETCH_FIRST;k<sc.count && n<PREFETCH_TRICKLE;k++) if(!sc.imgs[k]){ want(sc,k); n++; } if(n) pump(); }
+  if(!sc.pf){ sc.pf=true; for(let k=0;k<Math.min(PREFETCH_FIRST,sc.count);k++){ want(sc,k); if(sc.imgs[k]) sc.imgs[k].pf=true; } pump(); return; }
+  if(inflight<MAXC && queue.length<PREFETCH_TRICKLE){ let n=0; for(let k=PREFETCH_FIRST;k<sc.count && n<PREFETCH_TRICKLE;k++) if(!sc.imgs[k]){ want(sc,k); n++; } if(n) pump(); }
 }
 let activeIdx=0, lastY=0, scrollDir=1, rafPending=false, forceNext=false;
 function requestDraw(force){ if(force) forceNext=true; if(rafPending) return; rafPending=true; requestAnimationFrame(()=>{ rafPending=false; const f=forceNext; forceNext=false; tick(f); }); }

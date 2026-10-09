@@ -54,12 +54,17 @@ BAR_CSS = """
 PREFETCH_JS = """
 /* next-scene prefetch (10 Oct 2026): at 60 % of the active scene the first 20 frames of the next scene are requested,
    then the rest trickle in while the network is idle — so the hand-over between scenes never shows a gap. */
-const PREFETCH_AT=0.6, PREFETCH_FIRST=20, PREFETCH_TRICKLE=4;
+const PREFETCH_AT=0.6, PREFETCH_FIRST=20, PREFETCH_TRICKLE=4, PREFETCH_RANK=7;
 function prefetchNext(sc){
-  if(!sc.pf){ sc.pf=true; for(let k=0;k<Math.min(PREFETCH_FIRST,sc.count);k++) want(sc,k); pump(); return; }
-  if(inflight<MAXC && !queue.length){ let n=0; for(let k=PREFETCH_FIRST;k<sc.count && n<PREFETCH_TRICKLE;k++) if(!sc.imgs[k]){ want(sc,k); n++; } if(n) pump(); }
+  if(!sc.pf){ sc.pf=true; for(let k=0;k<Math.min(PREFETCH_FIRST,sc.count);k++){ want(sc,k); if(sc.imgs[k]) sc.imgs[k].pf=true; } pump(); return; }
+  if(inflight<MAXC && queue.length<PREFETCH_TRICKLE){ let n=0; for(let k=PREFETCH_FIRST;k<sc.count && n<PREFETCH_TRICKLE;k++) if(!sc.imgs[k]){ want(sc,k); n++; } if(n) pump(); }
 }
 """
+
+# queue priority: the prefetched frames of the next scene rank like frames PREFETCH_RANK away in the active scene —
+# behind the active near window (±6) and lookahead (20), ahead of the active scene's far frames and other scenes.
+SORT_OLD = "queue.sort((a,b)=>((a.sc===A?0:1e6)+Math.abs(a.i-a.sc.idx))-((b.sc===A?0:1e6)+Math.abs(b.i-b.sc.idx)));"
+SORT_NEW = "queue.sort((a,b)=>((a.sc===A?0:(a.pf?PREFETCH_RANK:1e6))+Math.abs(a.i-a.sc.idx))-((b.sc===A?0:(b.pf?PREFETCH_RANK:1e6))+Math.abs(b.i-b.sc.idx)));"
 
 
 def bar(lang: str, home: str, brand: str, other: str) -> str:
@@ -110,6 +115,9 @@ def build(html: str, lang: str, prefetch: bool) -> str:
         if hook not in out:
             raise SystemExit("prefetch hook not found")
         out = out.replace(hook, hook + "    if(sc===activeScene && p>=PREFETCH_AT && scenes[si+1]) prefetchNext(scenes[si+1]);\n", 1)
+        if SORT_OLD not in out:
+            raise SystemExit("prefetch: queue sort line not found")
+        out = out.replace(SORT_OLD, SORT_NEW, 1)
     return out
 
 
