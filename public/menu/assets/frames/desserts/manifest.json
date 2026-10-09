@@ -1,0 +1,21 @@
+{
+  "section": "desserts",
+  "source_file": "الحلويات — هوني كيك.mp4",
+  "source_sha256": "338e424e1244e017f745c1663995d5af17e0ddfcb64eda1a1b45a65bfb2c524f",
+  "source_duration_seconds": 10.041667,
+  "source_dimensions": [
+    1288,
+    1608
+  ],
+  "fps": 15,
+  "frame_dimensions": [
+    720,
+    898
+  ],
+  "frame_count": 151,
+  "first_index": 0,
+  "last_index": 150,
+  "frame_name_pattern": "frames/frame_%04d.webp",
+  "frame_bytes_total": 8611522,
+  "optional": false
+}

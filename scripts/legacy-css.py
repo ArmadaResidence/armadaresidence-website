@@ -26,8 +26,6 @@ ROOT = Path(__file__).resolve().parent.parent
 SRC = {
     "discover": (ROOT / "legacy-sites/discover-taif-src/discover-taif/assets/css/styles.css", "legacy-discover"),
     "partners": (ROOT / "legacy-sites/b2b-src/armada-residence-b2b/src/site.css", "legacy-partners"),
-    # the menu page <style>, extracted by scripts/legacy-menu-port.py
-    "menu": (ROOT / "legacy-sites/menu-v19-src/menu-extracted.css", "legacy-menu"),
 }
 OUT = ROOT / "src/styles"
 

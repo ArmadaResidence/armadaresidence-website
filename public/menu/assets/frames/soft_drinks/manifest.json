@@ -1,0 +1,21 @@
+{
+  "section": "soft_drinks",
+  "source_file": "المشروبات الغازية.mp4",
+  "source_sha256": "813bb3f62a3717176fae3b697ae4b9bcc718364994418de35a1600994846006e",
+  "source_duration_seconds": 10.041667,
+  "source_dimensions": [
+    1288,
+    1608
+  ],
+  "fps": 15,
+  "frame_dimensions": [
+    720,
+    898
+  ],
+  "frame_count": 151,
+  "first_index": 0,
+  "last_index": 150,
+  "frame_name_pattern": "frames/frame_%04d.webp",
+  "frame_bytes_total": 8525544,
+  "optional": false
+}

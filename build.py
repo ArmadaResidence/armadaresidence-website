@@ -33,7 +33,7 @@ EMAIL = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 REQUIRED_FILES = [
     "branches.json", "rooms.json", "pricing.json", "policies.json", "contact.json",
     "legal.json", "offers.json", "site-texts.json", "seo.json", "ui.json",
-    "taif-guide.json", "partners.json", "partners-pages.json", "menu.json", "halls.json",
+    "taif-guide.json", "partners.json", "partners-pages.json", "halls.json",
 ]
 
 
@@ -223,25 +223,29 @@ def validate(content: dict[str, dict]) -> list[str]:
         for w in (800, 1400):
             if not (CONTENT / "images" / "dining" / f"{n}-{w}.webp").is_file():
                 problems.append(f"content/images/dining/{n}-{w}.webp missing (approved café photo)")
-    menu = content["menu.json"]
-    if menu["site"].get("show_pending_items") is not False:
-        problems.append("menu.json site.show_pending_items must be false (unapproved items stay hidden)")
-    for sec in menu["sections"]:
-        fr = menu["frames"].get(sec["folder"])
-        if not fr:
-            problems.append(f"menu.json: no frames for section {sec['id']}")
-            continue
-        for key, st in fr["sets"].items():
-            for i in (0, fr["count"] - 1):
-                p = ROOT / "public" / st["pattern"].lstrip("/").replace("%04d", f"{i:04d}")
-                if not p.is_file():
-                    problems.append(f"menu frames: {p.relative_to(ROOT).as_posix()} missing")
-        v = fr.get("video")
-        if v and not (ROOT / "public" / v["src"].lstrip("/")).is_file():
-            problems.append(f"menu video: {v['src']} missing (run node scripts/menu-video.mjs)")
-    for it in menu["items"]:
-        if it.get("approved") and not isinstance(it.get("price_sar"), (int, float)):
-            problems.append(f"menu.json item {it['id']} approved without a price")
+    # /menu/ = the published café menu copied verbatim by scripts/menu-publish.py (public/menu + public/en/menu)
+    menu_index = ROOT / "public/menu/index.html"
+    if not menu_index.is_file() or not (ROOT / "public/en/menu/index.html").is_file():
+        problems.append("public/menu/index.html or public/en/menu/index.html missing — run python scripts/menu-publish.py --prefetch")
+    else:
+        html = menu_index.read_text(encoding="utf-8")
+        m = re.search(r'whatsappNumber:\s*"(\d+)"', html)
+        if not m or "+" + m.group(1) != cafe.get("whatsapp"):
+            problems.append("public/menu/index.html CONFIG.whatsappNumber != contact.json cafe.whatsapp")
+        fm = re.search(r"^const FRAMES = (\{.*\});", html, re.M)
+        if not fm:
+            problems.append("public/menu/index.html: FRAMES constant not found")
+        else:
+            for folder, fr in json.loads(fm.group(1)).items():
+                for key, st in fr["sets"].items():
+                    for i in (0, fr["count"] - 1):
+                        p = ROOT / "public/menu" / st["pattern"].replace("%04d", f"{i:04d}")
+                        if not p.is_file():
+                            problems.append(f"menu frames: public/menu/{st['pattern'].replace('%04d', f'{i:04d}')} missing")
+        if "fonts.googleapis" in html:
+            problems.append("public/menu/index.html still loads Google Fonts")
+        if not (ROOT / "public/menu/assets/ARMADA_Cafe_Restaurant_Menu_2026.pdf").is_file():
+            problems.append("public/menu/assets/ARMADA_Cafe_Restaurant_Menu_2026.pdf missing")
     return problems
 
 

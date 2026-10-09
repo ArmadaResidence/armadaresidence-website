@@ -1,0 +1,21 @@
+{
+  "section": "vip_optional",
+  "source_file": "1. VIP — اختياري.mp4",
+  "source_sha256": "71c19f8cae79c029909e312b6a6b7e38d82c6673e11006ee637c489e1df89e7c",
+  "source_duration_seconds": 8.041667,
+  "source_dimensions": [
+    1288,
+    1608
+  ],
+  "fps": 15,
+  "frame_dimensions": [
+    720,
+    898
+  ],
+  "frame_count": 121,
+  "first_index": 0,
+  "last_index": 120,
+  "frame_name_pattern": "frames/frame_%04d.webp",
+  "frame_bytes_total": 5957288,
+  "optional": true
+}

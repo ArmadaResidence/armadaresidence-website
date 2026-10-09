@@ -237,6 +237,11 @@ def main() -> int:
     def logical(path: str) -> str:
         return path[3:] if path.startswith("/en/") else path
 
+    # /menu/ and /en/menu/ are the published café menu app copied verbatim (scripts/menu-publish.py): no canonical,
+    # hreflang, Open Graph, sitemap entry or JSON-LD, and the legacy brand image carries a Latin alt on both copies.
+    def legacy_app(path: str) -> bool:
+        return logical(path) == "/menu/"
+
     def is_en(path: str) -> bool:
         return path.startswith("/en/")
 
@@ -308,6 +313,42 @@ def main() -> int:
 
         # title / description / canonical / hreflang
         t, d = p.title.strip(), p.metas.get("description", "").strip()
+        if legacy_app(path):
+            if not t or not d:
+                rep.f("seo", f"{path}: legacy app page needs a title and description")
+            continue_seo = False
+        else:
+            continue_seo = True
+        if not continue_seo:
+            # images: non-generic alt only; internal links/assets; forbidden strings already checked above
+            for img in p.imgs:
+                alt = (img.get("alt") or "").strip()
+                if alt == "":
+                    continue  # decorative (the legacy footer logo) — the app markup is kept verbatim
+                if alt.lower() in GENERIC_ALT or len(alt) < 4:
+                    rep.f("images", f"{path}: <img src={img.get('src')!r}> generic alt {alt!r}")
+            for src in p.assets:
+                if src.startswith("http://") or src.startswith("https://") or src.startswith("//"):
+                    host = urlsplit(src if "//" in src[:8] else "https:" + src).netloc
+                    if host not in ALLOWED_HOSTS and host != site_host:
+                        rep.f("external requests", f"{path}: loads {src}")
+            m_ = re.search(r'whatsappNumber:\s*"(\d+)"', html)
+            if not m_ or "+" + m_.group(1) not in cafe_phones:
+                rep.f("menu", f"{path}: ordering WhatsApp number != contact.json cafe.whatsapp")
+            fm = re.search(r"^const FRAMES = (\{.*\});", html, re.M)
+            if not fm:
+                rep.f("menu", f"{path}: FRAMES constant missing")
+            else:
+                base_dir = DIST / "menu"
+                for folder, fr in json.loads(fm.group(1)).items():
+                    for key, st in fr["sets"].items():
+                        for i in (0, fr["count"] - 1):
+                            rel = st["pattern"].replace("%04d", f"{i:04d}").replace("../../menu/", "")
+                            if not (base_dir / rel).is_file():
+                                rep.f("menu", f"{path}: frame missing {rel}")
+            if "fonts.googleapis" in html:
+                rep.f("external requests", f"{path}: Google Fonts")
+            continue
         if not t:
             rep.f("seo", f"{path}: empty <title>")
         if not d:
@@ -490,30 +531,6 @@ def main() -> int:
             if len(p.imgs) < taif_count:
                 rep.f("discover-taif", f"{path}: only {len(p.imgs)} <img> for {taif_count} places")
 
-        # /menu/: the legacy café menu app — config JSON present, frames referenced exist, unapproved items hidden
-        if lp == "/menu/":
-            m = re.search(r'<script type="application/json" id="armada-menu-cfg">(.*?)</script>', html, re.S)
-            if not m:
-                rep.f("menu", f"{path}: #armada-menu-cfg JSON missing")
-            else:
-                try:
-                    mc = json.loads(m.group(1))
-                    if mc["config"].get("showPendingItems") is not False:
-                        rep.f("menu", f"{path}: unapproved items must stay hidden (showPendingItems)")
-                    if "+" + str(mc["config"].get("whatsappNumber")) not in cafe_phones:
-                        rep.f("menu", f"{path}: ordering WhatsApp number != contact.json cafe.whatsapp")
-                    for folder, fr in mc["frames"].items():
-                        for key, st in fr["sets"].items():
-                            for i in (0, fr["count"] - 1):
-                                if not exists(st["pattern"].replace("%04d", f"{i:04d}")):
-                                    rep.f("menu", f"{path}: frame missing for {folder}/{key} #{i}")
-                        if fr.get("video") and not exists(fr["video"]["src"]):
-                            rep.f("menu", f"{path}: scene video missing {fr['video']['src']}")
-                except (json.JSONDecodeError, KeyError) as e:
-                    rep.f("menu", f"{path}: invalid #armada-menu-cfg ({e})")
-            if "/legacy/menu.js" not in html:
-                rep.f("menu", f"{path}: menu.js not loaded")
-
         # terminology
         if lp.startswith("/airport-road/"):
             needle = "hotel apartments" if en else "شقق فندقية"
@@ -583,6 +600,8 @@ def main() -> int:
                 rep.f("sitemap", f"{loc}: not a built page")
         # CLAUDE.md §7: noindex pages (sold-out rooms, booking success, 404) are excluded; everything else is in.
         for path, p in pages.items():
+            if legacy_app(path):
+                continue
             if noindex(p):
                 if path in sm_paths:
                     rep.f("sitemap", f"{path} is noindex and must not be in the sitemap")

@@ -1,0 +1,21 @@
+{
+  "section": "juice_mojito",
+  "source_file": "العصائر والموهيتو.mp4",
+  "source_sha256": "36b4bbe797e9d0f77ef7ba20aeb944a834316a72d6876e12c93c915b9b965973",
+  "source_duration_seconds": 10.041667,
+  "source_dimensions": [
+    1288,
+    1608
+  ],
+  "fps": 15,
+  "frame_dimensions": [
+    720,
+    898
+  ],
+  "frame_count": 151,
+  "first_index": 0,
+  "last_index": 150,
+  "frame_name_pattern": "frames/frame_%04d.webp",
+  "frame_bytes_total": 6807264,
+  "optional": false
+}
