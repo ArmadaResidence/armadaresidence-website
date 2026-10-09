@@ -84,9 +84,9 @@ try {
         document.querySelectorAll('.legacy-discover .card').forEach((c) => c.classList.add('is-visible'));
         document.querySelectorAll('.legacy-partners .rv').forEach((c) => c.classList.add('in'));
         // force any still-lazy image to fetch now, then wait (capped) for the fetches to settle
-        Array.from(document.images).forEach((i) => { i.loading = 'eager'; });
-        const pending = Array.from(document.images).filter((i) => !i.complete).map((i) => new Promise((r) => { i.addEventListener('load', r, { once: true }); i.addEventListener('error', r, { once: true }); }));
-        await Promise.race([Promise.all(pending), new Promise((r) => setTimeout(r, 8000))]);
+        const imgs = Array.from(document.images);
+        imgs.forEach((i) => { i.removeAttribute('loading'); i.loading = 'eager'; if (i.srcset) { const ss = i.srcset; i.srcset = ''; i.srcset = ss; } });
+        await Promise.race([Promise.all(imgs.map((i) => i.decode().catch(() => {}))), new Promise((r) => setTimeout(r, 12000))]);
       });
       await page.waitForTimeout(300);
       const file = `${OUT}/${name}-${size.width}.png`;

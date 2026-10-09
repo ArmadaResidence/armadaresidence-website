@@ -34,9 +34,9 @@ async function settle(page) {
     // legacy sections reveal cards/blocks on intersection — force them visible for a full-page capture
     document.querySelectorAll('.card').forEach((c) => c.classList.add('is-visible'));
     document.querySelectorAll('.rv').forEach((c) => c.classList.add('in'));
-    Array.from(document.images).forEach((i) => { i.loading = 'eager'; });
-    const pending = Array.from(document.images).filter((i) => !i.complete).map((i) => new Promise((r) => { i.addEventListener('load', r, { once: true }); i.addEventListener('error', r, { once: true }); }));
-    await Promise.race([Promise.all(pending), new Promise((r) => setTimeout(r, 8000))]);
+    const imgs = Array.from(document.images);
+    imgs.forEach((i) => { i.removeAttribute('loading'); i.loading = 'eager'; if (i.srcset) { const ss = i.srcset; i.srcset = ''; i.srcset = ss; } });
+    await Promise.race([Promise.all(imgs.map((i) => i.decode().catch(() => {}))), new Promise((r) => setTimeout(r, 12000))]);
   });
   await page.waitForTimeout(400);
 }
@@ -86,7 +86,8 @@ try {
     const p = await c.newPage();
     await p.goto(`${BASE}/discover-taif/`, { waitUntil: 'load' });
     await settle(p);
-    await p.evaluate(() => { const h = document.querySelector('header'); if (h) h.style.visibility = 'hidden'; });
+    // hide the sticky header and the fixed legacy/plan/WhatsApp layers so the crop shows the footer alone
+    await p.evaluate(() => { document.querySelectorAll('header, .plan-sheet, .plan-fab, .sheet-overlay, .toast, .wa-fab').forEach((el) => { el.style.visibility = 'hidden'; }); });
     const footer = p.locator('footer').first();
     await footer.scrollIntoViewIfNeeded();
     await p.waitForTimeout(300);
