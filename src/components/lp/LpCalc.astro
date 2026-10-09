@@ -1,0 +1,34 @@
+---
+/** legacy calc_block(): rooming calculator (units come from content via window.ARMADA_UNITS, set by the page) */
+import { lp, T } from '@lib/partners';
+import type { Locale } from '@lib/content';
+interface Props {
+  locale: Locale;
+}
+const { locale } = Astro.props;
+const c = lp.calc;
+const props: [string, string][] = [
+  ['both', T(locale, { en: 'Both properties', ar: 'الفندقان معًا' })],
+  ['airport', T(locale, lp.props.airport.name)],
+  ['shafa', T(locale, lp.props.shafa.name)],
+];
+---
+
+<div class="calc rv" id="calc">
+  <div class="row">
+    <div class="fld">
+      <label for="calc-guests">{T(locale, c.guests)}</label>
+      <input type="number" id="calc-guests" min="1" max="400" step="1" value="40" inputmode="numeric" />
+    </div>
+    <div class="fld">
+      <label for="calc-style">{T(locale, c.style)}</label>
+      <select id="calc-style">{(c.styles as any[]).map(([k, l]) => <option value={k}>{T(locale, l)}</option>)}</select>
+    </div>
+    <div class="fld">
+      <label for="calc-prop">{T(locale, c.prop)}</label>
+      <select id="calc-prop">{props.map(([k, l]) => <option value={k}>{l}</option>)}</select>
+    </div>
+  </div>
+  <button type="button" class="btn calc-go wide" style="margin-top:18px">{T(locale, c.go)}</button>
+  <div class="out" aria-live="polite"></div>
+</div>

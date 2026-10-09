@@ -1,0 +1,16 @@
+---
+import { lpImg } from '@lib/partners';
+interface Props {
+  name: string;
+  alt: string;
+  loading?: 'lazy' | 'eager';
+  class?: string;
+  sizes?: string;
+  width?: number;
+  height?: number;
+}
+const { name, alt, loading = 'lazy', class: cls, sizes = '100vw', width = 1400, height = 788 } = Astro.props;
+const im = lpImg(name);
+---
+
+<img src={im.src} srcset={im.srcset} sizes={sizes} alt={alt} loading={loading} class={cls} decoding="async" width={width} height={height} />

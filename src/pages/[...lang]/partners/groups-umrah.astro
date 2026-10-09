@@ -1,0 +1,85 @@
+---
+import Base from '@layouts/Base.astro';
+import LpShell from '@components/lp/LpShell.astro';
+import LpPageHero from '@components/lp/LpPageHero.astro';
+import LpShead from '@components/lp/LpShead.astro';
+import LpSteps from '@components/lp/LpSteps.astro';
+import LpCalc from '@components/lp/LpCalc.astro';
+import LpUnitTable from '@components/lp/LpUnitTable.astro';
+import LpCta from '@components/lp/LpCta.astro';
+import { langPaths } from '@lib/paths';
+import { pageSeo, type Locale } from '@lib/content';
+import { lp, T } from '@lib/partners';
+
+export const getStaticPaths = langPaths;
+interface Props {
+  locale: Locale;
+}
+const { locale } = Astro.props;
+const s = pageSeo(locale, 'partners-groups-umrah');
+---
+
+<Base locale={locale} path="/partners/groups-umrah/" title={s.title} description={s.description}>
+  <LpShell locale={locale}>
+    <LpPageHero
+      locale={locale}
+      eyebrow={T(locale, { en: 'Groups & travel trade', ar: 'المجموعات وقطاع السفر' })}
+      h1={T(locale, { en: 'Umrah & Group Bookings', ar: 'العمرة وحجوزات المجموعات' })}
+      lead={T(locale, lp.group_intro)}
+      img="umrah-room"
+      alt={T(locale, { en: 'King room — Airport Road', ar: 'غرفة كينج — طريق المطار' })}
+      crumb={T(locale, { en: 'Groups & Umrah', ar: 'المجموعات والعمرة' })}
+    />
+
+    <section class="band">
+      <div class="wrap">
+        <LpShead eyebrow={T(locale, { en: 'Who we host', ar: 'من نستضيف' })} h2={T(locale, { en: 'Five kinds of group, one way of working.', ar: 'خمس فئات من المجموعات، وطريقة عمل واحدة.' })} />
+        <div class="g5 mt-m">
+          {
+            (lp.segments as any[]).map(([no, name, , bullets]) => (
+              <div class="seg rv">
+                <div class="in">
+                  <p class="no">{no}</p>
+                  <h3>{T(locale, name)}</h3>
+                  <ul>{(bullets as any[]).map((b) => <li>{T(locale, b)}</li>)}</ul>
+                </div>
+              </div>
+            ))
+          }
+        </div>
+        <div class="note mt-m rv" set:html={T(locale, lp.event_order_note)} />
+      </div>
+    </section>
+
+    <section class="band dk">
+      <div class="wrap">
+        <LpShead
+          eyebrow={T(locale, { en: 'How we run your group', ar: 'كيف ندير مجموعتكم' })}
+          h2={T(locale, { en: 'Six steps that never change.', ar: 'ستّ خطوات لا تتبدّل.' })}
+          sub={T(locale, { en: 'From the first message to the final invoice a group is run by one named contact, on one written plan, through six steps that never change.', ar: 'من أول رسالة حتى الفاتورة الأخيرة، تُدار المجموعة بمسؤول واحد باسمه، وخطة واحدة مكتوبة، عبر ستّ خطوات لا تتبدّل.' })}
+        />
+        <LpSteps locale={locale} />
+      </div>
+    </section>
+
+    <section class="band alt">
+      <div class="wrap">
+        <LpShead eyebrow={T(locale, lp.calc.eyebrow)} h2={T(locale, lp.calc.h2)} sub={T(locale, lp.calc.body)} />
+        <LpCalc locale={locale} />
+      </div>
+    </section>
+
+    <section class="band">
+      <div class="wrap">
+        <LpShead eyebrow={T(locale, { en: 'The unit collection', ar: 'مجموعة الوحدات' })} h2={T(locale, { en: 'Eight ways to place a guest, across two hotels.', ar: 'ثماني طرق لتسكين الضيف، في فندقين.' })} />
+        <LpUnitTable locale={locale} />
+      </div>
+    </section>
+
+    <section class="band tight">
+      <div class="wrap"><p class="disc rv">{T(locale, lp.disclaimer)}</p></div>
+    </section>
+
+    <LpCta locale={locale} h2={T(locale, { en: 'Send us the rooming list. We will send the offer.', ar: 'أرسل قائمة التسكين، ونرسل لك العرض.' })} body={T(locale, lp.ui.sla)} request="umrah-group" />
+  </LpShell>
+</Base>

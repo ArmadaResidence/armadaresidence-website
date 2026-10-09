@@ -1,348 +1,177 @@
 ---
-/** Partner enquiry → same Edge Function as the booking form, with request_type; sales inbox notified. */
+/** /partners/enquiry/ — legacy three-step wizard; the message now goes to the Edge Function (request_type) with WhatsApp/email as fallbacks. */
 import Base from '@layouts/Base.astro';
-import Icon from '@components/Icon.astro';
-import PartnersNav from '@components/PartnersNav.astro';
-import SalesCard from '@components/SalesCard.astro';
+import LpShell from '@components/lp/LpShell.astro';
+import LpPageHero from '@components/lp/LpPageHero.astro';
 import { langPaths } from '@lib/paths';
-import { branches, L, localePath, pageSeo, partners, partnersPages, ui, type Locale } from '@lib/content';
+import { pageSeo, type Locale } from '@lib/content';
+import { ICON, lp, T, waHrefSales } from '@lib/partners';
 
 export const getStaticPaths = langPaths;
-
 interface Props {
   locale: Locale;
 }
 const { locale } = Astro.props;
-const t = ui(locale);
-const f = t.form;
-const pf = t.partners.form;
-const ar = locale === 'ar';
 const s = pageSeo(locale, 'partners-enquiry');
-const pg = partnersPages.enquiry;
-
-const endpoint = import.meta.env.PUBLIC_BOOKING_ENDPOINT ?? '';
-const anonKey = import.meta.env.PUBLIC_SUPABASE_ANON_KEY ?? '';
-const types = partners.enquiry_types as string[];
-
-const clientData = {
-  locale,
-  endpoint,
-  anonKey,
-  salesWhatsapp: partners.contact.whatsapp,
-  strings: { sending: f.sending, submit: pf.submit, errors: f.errors, success: pf.success_heading },
-  labels: {
-    organisation: pf.organisation,
-    person: pf.person,
-    request_type: pf.request_type,
-    property: pf.property,
-    check_in: f.check_in,
-    check_out: f.check_out,
-    guests: pf.guests,
-    rooms: pf.rooms,
-    meals: pf.meals,
-    notes: pf.notes,
-    phone: f.phone,
-    email: f.email,
-  },
-  options: {
-    request_type: Object.fromEntries(types.map((k) => [k, (pf.types as Record<string, string>)[k] ?? k])),
-    property: { ...Object.fromEntries(branches.map((b) => [b.slug, L(locale, b, 'name')])), both: pf.both },
-    meals: pf.meals_opts,
-  },
-};
+const F = lp.form;
+const fl = F.fields;
+const ct = lp.contact;
+const wa = T(locale, F.wa_intro);
+const req = T(locale, lp.ui.required);
+const badEmail = T(locale, lp.ui.bad_email);
+const sel = T(locale, { en: 'Select', ar: 'اختر' });
 ---
 
 <Base locale={locale} path="/partners/enquiry/" title={s.title} description={s.description}>
-  <PartnersNav locale={locale} current="enquiry" />
+  <LpShell locale={locale}>
+    <LpPageHero
+      locale={locale}
+      eyebrow={T(locale, F.eyebrow)}
+      h1={T(locale, F.h1)}
+      lead={T(locale, F.lead)}
+      img="airport-exterior"
+      alt={T(locale, lp.props.airport.alt)}
+      crumb={T(locale, { en: 'Contact Sales', ar: 'تواصل مع المبيعات' })}
+    />
 
-  <section class="mx-auto max-w-6xl px-4 pt-10 pb-28 sm:pb-14 grid gap-10 lg:grid-cols-5">
-    <div class="lg:col-span-3">
-      <p class="text-xs font-semibold uppercase tracking-wide text-bronze">{ar ? pg.eyebrow_ar : pg.eyebrow_en}</p>
-      <h1 class="mt-2 text-3xl md:text-4xl font-bold text-midnight">{ar ? pg.title_ar : pg.title_en}</h1>
-      <p class="mt-3 text-ink-muted">{ar ? pg.lead_ar : pg.lead_en}</p>
-
-      <div class="hidden mt-8 bg-white border border-line rounded-card p-8" data-success role="status">
-        <span class="inline-grid place-items-center w-12 h-12 rounded-full bg-porcelain text-bronze"><Icon name="check" size={26} /></span>
-        <h2 class="mt-4 text-2xl font-bold text-midnight">{pf.success_heading}</h2>
-        <p class="mt-2 text-ink-muted">{pf.success_body}</p>
-        <p class="mt-3 text-sm"><span class="text-ink-muted">{pf.ref}: </span><strong class="latin" dir="ltr" data-ref></strong></p>
-      </div>
-
-      <form id="partner-form" class="mt-8 bg-white border border-line rounded-card p-6 md:p-8 space-y-6" novalidate>
-        <div class="grid gap-5 sm:grid-cols-2">
-          <div>
-            <label for="organisation" class="block text-sm font-semibold text-midnight">{pf.organisation}</label>
-            <input id="organisation" name="organisation" type="text" required maxlength="160" autocomplete="organization" class="mt-1.5 w-full border border-line rounded px-3 py-2.5 bg-white" />
-            <p class="hidden text-xs text-red-700 mt-1" data-error-for="organisation"></p>
-          </div>
-          <div>
-            <label for="name" class="block text-sm font-semibold text-midnight">{pf.person}</label>
-            <input id="name" name="name" type="text" required maxlength="120" autocomplete="name" class="mt-1.5 w-full border border-line rounded px-3 py-2.5 bg-white" />
-            <p class="hidden text-xs text-red-700 mt-1" data-error-for="name"></p>
-          </div>
-          <div>
-            <label for="email" class="block text-sm font-semibold text-midnight">{f.email}</label>
-            <input id="email" name="email" type="email" required lang="en" dir="ltr" autocomplete="email" class="latin text-left mt-1.5 w-full border border-line rounded px-3 py-2.5 bg-white" />
-            <p class="hidden text-xs text-red-700 mt-1" data-error-for="email"></p>
-          </div>
-          <div>
-            <label for="phone" class="block text-sm font-semibold text-midnight">{f.phone}</label>
-            <input id="phone" name="phone" type="tel" required lang="en" dir="ltr" autocomplete="tel" inputmode="tel" class="latin text-left mt-1.5 w-full border border-line rounded px-3 py-2.5 bg-white" />
-            <p class="text-xs text-ink-muted mt-1">{f.phone_hint}</p>
-            <p class="hidden text-xs text-red-700 mt-1" data-error-for="phone"></p>
-          </div>
-          <div>
-            <label for="request_type" class="block text-sm font-semibold text-midnight">{pf.request_type}</label>
-            <select id="request_type" name="request_type" required class="mt-1.5 w-full border border-line rounded px-3 py-2.5 bg-white">
-              {types.map((k) => <option value={k}>{(pf.types as Record<string, string>)[k] ?? k}</option>)}
-            </select>
-          </div>
-          <div>
-            <label for="branch" class="block text-sm font-semibold text-midnight">{pf.property}</label>
-            <select id="branch" name="branch" required class="mt-1.5 w-full border border-line rounded px-3 py-2.5 bg-white">
-              {branches.map((b) => <option value={b.slug}>{L(locale, b, 'name')}</option>)}
-              <option value="both">{pf.both}</option>
-            </select>
-          </div>
-          {
-            (['check_in', 'check_out'] as const).map((id) => (
-              <div>
-                <label for={id} class="block text-sm font-semibold text-midnight">{f[id]}</label>
-                <div class="relative mt-1.5" data-date-field>
-                  <input id={id} name={id} type="text" inputmode="numeric" autocomplete="off" placeholder={f.date_format} pattern="\d{4}-\d{2}-\d{2}" maxlength="10" required lang="en" dir="ltr" class="latin text-left w-full border border-line rounded ps-3 pe-11 py-2.5 bg-white" data-date-text />
-                  <input type="date" tabindex="-1" aria-hidden="true" lang="en" class="absolute bottom-0 right-10 w-px h-px opacity-0" data-date-picker />
-                  <button type="button" class="absolute inset-y-0 right-0 w-10 grid place-items-center text-bronze hover:text-bronze-deep" aria-label={f.open_calendar} data-date-open>
-                    <Icon name="calendar" size={20} />
-                  </button>
-                </div>
-                <p class="hidden text-xs text-red-700 mt-1" data-error-for={id} />
+    <section class="band">
+      <div class="wrap">
+        <div class="grid cols64">
+          <div class="rv">
+            <div class="note sent" id="enquiry-sent" hidden>
+              <b id="enquiry-sent-title"></b>
+              <p id="enquiry-sent-body" style="margin-top:8px"></p>
+              <p style="margin-top:8px"><span id="enquiry-sent-ref-label"></span>: <b id="enquiry-sent-ref" dir="ltr"></b></p>
+            </div>
+            <form class="frm" id="enquiry-form" novalidate>
+              <div class="psteps">
+                {
+                  (F.steps as any[]).map((st, i) => (
+                    <div class:list={['pstep', i === 0 && 'on']}>
+                      <div class="bar"></div>
+                      <span>{T(locale, st)}</span>
+                    </div>
+                  ))
+                }
               </div>
-            ))
-          }
-          <div>
-            <label for="guests" class="block text-sm font-semibold text-midnight">{pf.guests}</label>
-            <input id="guests" name="guests" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="4" required lang="en" dir="ltr" class="latin text-left mt-1.5 w-full border border-line rounded px-3 py-2.5 bg-white" />
-            <p class="hidden text-xs text-red-700 mt-1" data-error-for="guests"></p>
-          </div>
-          <div>
-            <label for="rooms" class="block text-sm font-semibold text-midnight">{pf.rooms}</label>
-            <input id="rooms" name="rooms" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="4" lang="en" dir="ltr" class="latin text-left mt-1.5 w-full border border-line rounded px-3 py-2.5 bg-white" />
-          </div>
-          <div class="sm:col-span-2">
-            <label for="meals" class="block text-sm font-semibold text-midnight">{pf.meals}</label>
-            <select id="meals" name="meals" class="mt-1.5 w-full border border-line rounded px-3 py-2.5 bg-white">
-              {Object.entries(pf.meals_opts).map(([k, v]) => <option value={k}>{v}</option>)}
-            </select>
-          </div>
-          <div class="sm:col-span-2">
-            <label for="notes" class="block text-sm font-semibold text-midnight">{pf.notes}</label>
-            <textarea id="notes" name="notes" rows="3" maxlength="1000" class="mt-1.5 w-full border border-line rounded px-3 py-2.5 bg-white"></textarea>
-            <p class="text-xs text-ink-muted mt-1">{pf.notes_hint}</p>
-          </div>
-        </div>
-        <p class="text-xs text-ink-muted">
-          {f.consent}
-          <a href={localePath(locale, '/policies/')} class="font-semibold text-bronze hover:text-bronze-deep ms-1">{f.consent_link}</a>.
-        </p>
-        <p class="hidden bg-porcelain border border-line text-sm text-red-800 rounded px-4 py-3" data-form-error role="alert"></p>
-        <div class="flex flex-wrap items-center gap-3">
-          <button type="submit" class="inline-flex items-center gap-2 bg-bronze text-white font-semibold px-6 py-3 rounded hover:bg-bronze-deep transition-colors disabled:opacity-60" data-submit>
-            <span data-submit-label>{pf.submit}</span>
-            <Icon name="arrow" size={18} class="rtl:rotate-180" />
-          </button>
-          <a href="#" class="hidden inline-flex items-center gap-2 border border-midnight text-midnight font-semibold px-5 py-3 rounded hover:bg-midnight hover:text-white transition-colors" data-wa-fallback rel="noopener" target="_blank">
-            <Icon name="whatsapp" size={18} />
-            <span>{f.whatsapp_fallback}</span>
-          </a>
-        </div>
-      </form>
-    </div>
-    <div class="lg:col-span-2 lg:sticky lg:top-28 self-start">
-      <SalesCard locale={locale} withEnquiry={false} />
-    </div>
-  </section>
 
-  <script type="application/json" id="partner-data" set:html={JSON.stringify(clientData).replace(/</g, '\\u003c')} />
+              <div class="fstep on">
+                <div class="row c2">
+                  <div class="fld"><label for="f-company">{T(locale, fl.company)}<span class="req">*</span></label><input type="text" id="f-company" name="company" required /><p class="err">{req}</p></div>
+                  <div class="fld"><label for="f-person">{T(locale, fl.person)}<span class="req">*</span></label><input type="text" id="f-person" name="person" required /><p class="err">{req}</p></div>
+                </div>
+                <div class="row c2">
+                  <div class="fld"><label for="f-email">{T(locale, fl.email)}<span class="req">*</span></label><input type="email" id="f-email" name="email" required dir="ltr" inputmode="email" /><p class="err">{badEmail}</p></div>
+                  <div class="fld"><label for="f-phone">{T(locale, fl.phone)}<span class="req">*</span></label><input type="tel" id="f-phone" name="phone" required dir="ltr" inputmode="tel" /><p class="err">{req}</p></div>
+                </div>
+                <div class="row c2">
+                  <div class="fld"><label for="f-country">{T(locale, fl.country)}</label><input type="text" id="f-country" name="country" /><p class="err">{req}</p></div>
+                  <div class="fld">
+                    <label for="f-biztype">{T(locale, fl.biztype)}<span class="req">*</span></label>
+                    <select id="f-biztype" name="biztype" required>
+                      <option value="">— {sel} —</option>
+                      {(F.biztypes as any[]).map(([k, l]) => <option value={k}>{T(locale, l)}</option>)}
+                    </select>
+                    <p class="err">{req}</p>
+                  </div>
+                </div>
+              </div>
+
+              <div class="fstep">
+                <div class="row c2">
+                  <div class="fld">
+                    <label for="f-reqtype">{T(locale, fl.reqtype)}<span class="req">*</span></label>
+                    <select id="f-reqtype" name="reqtype" required>
+                      <option value="">— {sel} —</option>
+                      {(F.reqtypes as any[]).map(([k, l]) => <option value={k}>{T(locale, l)}</option>)}
+                    </select>
+                    <p class="err">{req}</p>
+                  </div>
+                  <div class="fld">
+                    <label for="f-property">{T(locale, fl.property)}</label>
+                    <select id="f-property" name="property">
+                      <option value="">— {sel} —</option>
+                      {(F.properties as any[]).map(([k, l]) => <option value={k}>{T(locale, l)}</option>)}
+                    </select>
+                    <p class="err">{req}</p>
+                  </div>
+                </div>
+                <div class="row c2">
+                  <div class="fld"><label for="f-unittype">{T(locale, fl.unittype)}</label><input type="text" id="f-unittype" name="unittype" placeholder={T(locale, F.unittype_placeholder)} /><p class="err">{req}</p></div>
+                  <div class="fld">
+                    <label for="f-meals">{T(locale, fl.meals)}</label>
+                    <select id="f-meals" name="meals">
+                      <option value="">— {sel} —</option>
+                      {(F.meal_opts as any[]).map(([k, l]) => <option value={k}>{T(locale, l)}</option>)}
+                    </select>
+                    <p class="err">{req}</p>
+                  </div>
+                </div>
+                <div class="row">
+                  <div class="fld"><label for="f-notes">{T(locale, fl.notes)}</label><textarea id="f-notes" name="notes" placeholder={T(locale, F.placeholder_notes)}></textarea></div>
+                </div>
+              </div>
+
+              <div class="fstep">
+                <div class="row c2">
+                  <div class="fld"><label for="f-checkin">{T(locale, fl.checkin)}<span class="req">*</span></label><input type="date" id="f-checkin" name="checkin" required /><p class="err">{req}</p></div>
+                  <div class="fld"><label for="f-checkout">{T(locale, fl.checkout)}<span class="req">*</span></label><input type="date" id="f-checkout" name="checkout" required /><p class="err">{req}</p></div>
+                </div>
+                <div class="row c2">
+                  <div class="fld"><label for="f-guests">{T(locale, fl.guests)}<span class="req">*</span></label><input type="number" id="f-guests" name="guests" min="1" inputmode="numeric" required /><p class="err">{req}</p></div>
+                  <div class="fld"><label for="f-rooms">{T(locale, fl.rooms)}</label><input type="number" id="f-rooms" name="rooms" min="1" inputmode="numeric" /><p class="err">{req}</p></div>
+                </div>
+                <p class="sla"><Fragment set:html={ICON.clock} />{T(locale, lp.ui.sla)}</p>
+              </div>
+
+              <div class="fnav">
+                <button type="button" class="btn ol f-back">{T(locale, lp.ui.back)}</button>
+                <button type="button" class="btn f-next">{T(locale, lp.ui.next)}</button>
+                <button type="submit" class="btn f-send" style="display:none">{T(locale, F.send)}</button>
+                <button type="button" class="btn ol f-wa" style="display:none"><Fragment set:html={ICON.wa} />{T(locale, lp.ui.send_wa)}</button>
+                <button type="button" class="btn ol f-mail" style="display:none"><Fragment set:html={ICON.mail} />{T(locale, lp.ui.send_mail)}</button>
+              </div>
+              <p class="err" id="enquiry-error" style="display:none"></p>
+            </form>
+          </div>
+
+          <aside class="rv">
+            <p class="eyebrow">{T(locale, F.direct_lines)}</p>
+            <div class="feats" style="grid-template-columns:1fr;margin-top:14px">
+              {
+                ct.show_name && (
+                  <div class="feat">
+                    <b>{T(locale, ct.sales_manager_title)}</b>
+                    <span dir="ltr">{ct.sales_manager}</span>
+                  </div>
+                )
+              }
+              <a class="feat" href={waHrefSales(wa)} target="_blank" rel="noopener">
+                <b>{T(locale, lp.ui.whatsapp)}</b>
+                <span dir="ltr">{ct.phone_display}</span>
+              </a>
+              <a class="feat" href={`mailto:${ct.email}`}>
+                <b>{T(locale, lp.ui.email_sales)}</b>
+                <span dir="ltr">{ct.email}</span>
+              </a>
+              <a class="feat" href={`mailto:${ct.reservations}`}>
+                <b>{T(locale, { en: 'Reservations', ar: 'الحجوزات' })}</b>
+                <span dir="ltr">{ct.reservations}</span>
+              </a>
+              <a class="feat" href={ct.linktree} target="_blank" rel="noopener">
+                <b>{T(locale, { en: 'Follow us', ar: 'تابعنا' })}</b>
+                <span dir="ltr">linktr.ee/ArmadaR</span>
+              </a>
+            </div>
+            <div class="note lt" style="margin-top:18px" set:html={T(locale, F.what_to_send)} />
+            <p class="eyebrow" style="margin-top:22px">{T(locale, F.our_addresses)}</p>
+            <div class="feats" style="grid-template-columns:1fr;margin-top:12px">
+              <div class="feat"><b>{T(locale, lp.props.airport.name)}</b><span>{T(locale, lp.address.airport)}</span></div>
+              <div class="feat"><b>{T(locale, lp.props.shafa.name)}</b><span>{T(locale, lp.address.shafa)}</span></div>
+            </div>
+          </aside>
+        </div>
+      </div>
+    </section>
+  </LpShell>
 </Base>
-
-<script>
-  type Data = {
-    locale: string;
-    endpoint: string;
-    anonKey: string;
-    salesWhatsapp: string;
-    strings: { sending: string; submit: string; errors: Record<string, string>; success: string };
-    labels: Record<string, string>;
-    options: Record<string, Record<string, string>>;
-  };
-  const data = JSON.parse(document.getElementById('partner-data')!.textContent || '{}') as Data;
-  const form = document.getElementById('partner-form') as HTMLFormElement;
-  const submitBtn = form.querySelector<HTMLButtonElement>('[data-submit]')!;
-  const submitLabel = form.querySelector<HTMLElement>('[data-submit-label]')!;
-  const formError = form.querySelector<HTMLElement>('[data-form-error]')!;
-  const waFallback = form.querySelector<HTMLAnchorElement>('[data-wa-fallback]')!;
-  const successBox = document.querySelector<HTMLElement>('[data-success]')!;
-  const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
-  const E164 = /^\+[1-9]\d{7,14}$/;
-  const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
-  const iso = (d: Date) => d.toISOString().slice(0, 10);
-  const today = new Date();
-
-  // ?request=umrah-group|corporate|event|b2b-rates preselects the type (links from /offers and the section pages)
-  const q = new URLSearchParams(location.search);
-  const rt = form.elements.namedItem('request_type') as HTMLSelectElement;
-  if (q.get('request') && Array.from(rt.options).some((o) => o.value === q.get('request'))) rt.value = q.get('request')!;
-
-  // ISO date fields with native picker (same pattern as /booking/)
-  form.querySelectorAll<HTMLElement>('[data-date-field]').forEach((wrap) => {
-    const text = wrap.querySelector<HTMLInputElement>('[data-date-text]')!;
-    const picker = wrap.querySelector<HTMLInputElement>('[data-date-picker]')!;
-    picker.min = iso(today);
-    const show = () => {
-      if (ISO_DATE.test(text.value)) picker.value = text.value;
-      try {
-        const p = picker as HTMLInputElement & { showPicker?: () => void };
-        if (typeof p.showPicker === 'function') p.showPicker();
-        else {
-          picker.focus();
-          picker.click();
-        }
-      } catch {}
-    };
-    wrap.querySelector('[data-date-open]')!.addEventListener('click', show);
-    text.addEventListener('click', show);
-    picker.addEventListener('change', () => {
-      if (picker.value) text.value = picker.value;
-    });
-    text.addEventListener('input', () => {
-      text.value = text.value.replace(/[^\d-]/g, '').slice(0, 10);
-    });
-  });
-
-  function setError(name: string, msg: string | null) {
-    const el = form.querySelector<HTMLElement>(`[data-error-for="${name}"]`);
-    if (el) {
-      el.textContent = msg ?? '';
-      el.classList.toggle('hidden', !msg);
-    }
-    (form.elements.namedItem(name) as HTMLElement | null)?.setAttribute('aria-invalid', msg ? 'true' : 'false');
-  }
-
-  function validate(): Record<string, string> | null {
-    const fd = new FormData(form);
-    const v = (k: string) => String(fd.get(k) ?? '').trim();
-    const errs = data.strings.errors;
-    let ok = true;
-    for (const k of ['organisation', 'name', 'email', 'phone', 'check_in', 'check_out', 'guests']) {
-      if (!v(k)) {
-        setError(k, errs.required);
-        ok = false;
-      } else setError(k, null);
-    }
-    for (const k of ['check_in', 'check_out']) {
-      if (v(k) && !ISO_DATE.test(v(k))) {
-        setError(k, errs.date_format);
-        ok = false;
-      }
-    }
-    if (v('check_in') && v('check_out') && v('check_out') <= v('check_in')) {
-      setError('check_out', errs.dates);
-      ok = false;
-    }
-    const phone = v('phone').replace(/[\s\-().]/g, '').replace(/^00/, '+');
-    if (v('phone') && !E164.test(phone)) {
-      setError('phone', errs.phone);
-      ok = false;
-    }
-    if (v('email') && !EMAIL.test(v('email'))) {
-      setError('email', errs.email);
-      ok = false;
-    }
-    if (!ok) return null;
-    return {
-      locale: data.locale,
-      request_type: v('request_type'),
-      organisation: v('organisation'),
-      branch: v('branch'),
-      check_in: v('check_in'),
-      check_out: v('check_out'),
-      adults: v('guests'),
-      children: '0',
-      rooms: v('rooms'),
-      meals: v('meals'),
-      room: '',
-      name: v('name'),
-      phone,
-      email: v('email'),
-      notes: v('notes'),
-      page: location.href,
-    };
-  }
-
-  function waMessage(p: Record<string, string>): string {
-    const L = data.labels;
-    const o = data.options;
-    const lines = [
-      `${L.request_type}: ${o.request_type[p.request_type] ?? p.request_type}`,
-      `${L.organisation}: ${p.organisation}`,
-      `${L.person}: ${p.name}`,
-      `${L.property}: ${o.property[p.branch] ?? p.branch}`,
-      `${L.check_in}: ${p.check_in}`,
-      `${L.check_out}: ${p.check_out}`,
-      `${L.guests}: ${p.adults}`,
-      `${L.rooms}: ${p.rooms || '-'}`,
-      `${L.meals}: ${o.meals[p.meals] ?? p.meals}`,
-      `${L.phone}: ${p.phone}`,
-      `${L.email}: ${p.email}`,
-      `${L.notes}: ${p.notes || '-'}`,
-    ];
-    return `https://wa.me/${data.salesWhatsapp.replace(/\D/g, '')}?text=${encodeURIComponent(lines.join('\n'))}`;
-  }
-
-  function showFallback(p: Record<string, string>, msg: string) {
-    formError.textContent = msg;
-    formError.classList.remove('hidden');
-    waFallback.href = waMessage(p);
-    waFallback.classList.remove('hidden');
-  }
-
-  form.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    formError.classList.add('hidden');
-    waFallback.classList.add('hidden');
-    const p = validate();
-    if (!p) {
-      form.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus();
-      return;
-    }
-    if (!data.endpoint) {
-      showFallback(p, data.strings.errors.server);
-      window.open(waMessage(p), '_blank', 'noopener');
-      return;
-    }
-    submitBtn.disabled = true;
-    submitLabel.textContent = data.strings.sending;
-    try {
-      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-      if (data.anonKey) {
-        headers['Authorization'] = `Bearer ${data.anonKey}`;
-        headers['apikey'] = data.anonKey;
-      }
-      const res = await fetch(data.endpoint, { method: 'POST', headers, body: JSON.stringify(p) });
-      const body = (await res.json().catch(() => ({}))) as { ok?: boolean; ref?: string; error?: string };
-      if (!res.ok || !body.ok || !body.ref) throw new Error(body.error || `HTTP ${res.status}`);
-      successBox.querySelector<HTMLElement>('[data-ref]')!.textContent = body.ref;
-      successBox.classList.remove('hidden');
-      form.classList.add('hidden');
-      successBox.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      const w = window as unknown as { dataLayer: unknown[] };
-      w.dataLayer = w.dataLayer || [];
-      w.dataLayer.push({ event: 'partner_enquiry', request_type: p.request_type, branch: p.branch, booking_ref: body.ref });
-    } catch {
-      showFallback(p, data.strings.errors.server);
-    } finally {
-      submitBtn.disabled = false;
-      submitLabel.textContent = data.strings.submit;
-    }
-  });
-</script>

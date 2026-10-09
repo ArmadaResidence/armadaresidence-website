@@ -174,6 +174,10 @@ def validate(content: dict[str, dict]) -> list[str]:
             if len(img.get(k, "")) < 8:
                 problems.append(f"taif-guide.json[{pl['id']}] image.{k} is not descriptive")
 
+    for n in ("airport-exterior", "shafa-exterior", "suite-living", "umrah-room", "function-hall"):
+        for w in (800, 1400):
+            if not (CONTENT / "images" / "partners" / f"{n}-{w}.webp").is_file():
+                problems.append(f"content/images/partners/{n}-{w}.webp missing (approved legacy B2B photo)")
     pr = content["partners.json"]
     f = pr["facts"]
     if f["units_airport"] + f["units_shafa"] != f["units_total"]:

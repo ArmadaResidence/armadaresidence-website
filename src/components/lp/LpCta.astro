@@ -1,0 +1,25 @@
+---
+/** legacy cta_band(): request button + WhatsApp sales */
+import { enquiryHref, ICON, lp, T, waHrefSales } from '@lib/partners';
+import type { Locale } from '@lib/content';
+interface Props {
+  locale: Locale;
+  h2: string;
+  body: string;
+  request?: string;
+  prop?: string;
+}
+const { locale, h2, body, request = '', prop = '' } = Astro.props;
+const wa = T(locale, lp.form.wa_intro);
+---
+
+<section class="ctaband">
+  <div class="wrap rv">
+    <h2>{h2}</h2>
+    <p>{body}</p>
+    <div class="acts">
+      <a class="btn" href={enquiryHref(locale, request, prop)}>{T(locale, lp.ui.req_b2b)}</a>
+      <a class="btn gh" href={waHrefSales(wa)} target="_blank" rel="noopener"><Fragment set:html={ICON.wa} />{T(locale, lp.ui.whatsapp)}</a>
+    </div>
+  </div>
+</section>

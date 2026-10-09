@@ -18,6 +18,7 @@ const PAGES = [
   ['discover-taif', '/discover-taif/'],
   ['partners', '/partners/'],
   ['partners-enquiry', '/partners/enquiry/'],
+  ['partners-groups-umrah', '/partners/groups-umrah/'],
 ];
 const SIZES = [
   { width: 1440, height: 900, deviceScaleFactor: 1, isMobile: false },

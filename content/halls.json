@@ -1,0 +1,36 @@
+{
+  "_note": "Updated 8 Oct 2026. Branch and capacity confirmed; pricing is on request via sales. Hall page is phase 2 — in phase 1 the hall appears only as a line on the Airport Road branch page. AV/catering feature claims are legacy and unconfirmed.",
+  "halls": [
+    {
+      "slug": "events-hall",
+      "branch": "airport-road",
+      "name_ar": "قاعة أرمادا ريزيدنس",
+      "name_en": "Armada Residence Hall",
+      "capacity": 50,
+      "capacity_ar": "تتسع حتى 50 شخصًا",
+      "capacity_en": "Up to 50 guests",
+      "features_ar": [
+        "بروجكتر وشاشة عرض",
+        "نظام صوتي",
+        "سبورة",
+        "تكييف مستقل",
+        "خمسة أنماط جلوس (مسرح، صف دراسي، على شكل U، طاولة اجتماعات، طاولات مستديرة)",
+        "كوفي بريك وضيافة من مطبخ الفندق"
+      ],
+      "features_en": [
+        "Projector and screen",
+        "Sound system",
+        "Whiteboard",
+        "Independent air conditioning",
+        "Five seating layouts (theatre, classroom, U-shape, boardroom, rounds)",
+        "Coffee breaks and catering from the hotel kitchen"
+      ],
+      "pricing_ar": "حسب الإتاحة والباقة والكوفي بريك — عبر المبيعات",
+      "pricing_en": "Depends on availability, package and coffee break — via sales",
+      "contact_phone": "+966536622288",
+      "verified": true,
+      "pending": [],
+      "features_note": "confirmed by Ahmed 9 Oct 2026"
+    }
+  ]
+}

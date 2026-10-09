@@ -1,5 +1,5 @@
 {
-  "_note": "Discover Taif guide — 17 places imported 9 Oct 2026 from the legacy discovertaif.armadaresidence.com export (legacy-sites/discover-taif.zip → build.py data). Names, copy, alt texts and Google Maps links are verbatim; photos are the legacy Armada-owned set re-encoded to WebP in content/images/taif/ (800 + 1400 widths). nearest_branch assigned by geography (see nearest_reason); no distances or drive times are stated. Addas Mosque is intentionally absent.",
+  "_note": "Discover Taif guide — 17 places imported 9 Oct 2026 from the legacy discovertaif.armadaresidence.com export (legacy-sites/discover-taif.zip → build.py data). Names, copy, alt texts and Google Maps links are verbatim; photos are the legacy Armada-owned set re-encoded to WebP in content/images/taif/ (800 + 1400 widths). nearest_branch assigned by geography (see nearest_reason); no distances or drive times are stated. Addas Mosque is intentionally absent. Collections, search keywords and hero come from the legacy guide too (design kept as-is per decision 9 Oct 2026).",
   "categories": [
     {
       "key": "nature",
@@ -59,7 +59,8 @@
       },
       "nearest_branch": "airport-road",
       "nearest_reason": "Al Hada / cable car lies north-west on the Al Hada road, the Airport Road side of the city",
-      "verified": true
+      "verified": true,
+      "search_extra": "الهدا الكر تلفريك تليفريك جبل hada kar cable car"
     },
     {
       "id": "p02",
@@ -89,7 +90,8 @@
       },
       "nearest_branch": "shafa-road",
       "nearest_reason": "Al Shafa highlands are reached along Al-Shafa Road",
-      "verified": true
+      "verified": true,
+      "search_extra": "الشفا دكا شفا shafa daka highlands"
     },
     {
       "id": "p03",
@@ -119,7 +121,8 @@
       },
       "nearest_branch": "shafa-road",
       "nearest_reason": "Al Ruddaf Park is 4 minutes from the Shafa Road hotel (partners.json)",
-      "verified": true
+      "verified": true,
+      "search_extra": "الردف حديقة منتزه نافورة ruddaf park fountain"
     },
     {
       "id": "p04",
@@ -149,7 +152,8 @@
       },
       "nearest_branch": "airport-road",
       "nearest_reason": "Saiysad National Park is north-east of Taif, on the airport side",
-      "verified": true
+      "verified": true,
+      "search_extra": "سيسد منتزه وطني saiysad national park"
     },
     {
       "id": "p05",
@@ -179,7 +183,8 @@
       },
       "nearest_branch": "airport-road",
       "nearest_reason": "Jisr Al-Lawziyah is on the Al Hada road north-west of the city",
-      "verified": true
+      "verified": true,
+      "search_extra": "اللوزية جسر منتجع lawziyah jisr resort"
     },
     {
       "id": "p06",
@@ -209,7 +214,8 @@
       },
       "nearest_branch": "airport-road",
       "nearest_reason": "Souq Okaz is north-east of Taif beyond the airport",
-      "verified": true
+      "verified": true,
+      "search_extra": "عكاظ سوق شعر okaz souq poetry"
     },
     {
       "id": "p07",
@@ -239,7 +245,8 @@
       },
       "nearest_branch": "airport-road",
       "nearest_reason": "Shubra Palace is in the northern/central city, nearer Airport Road",
-      "verified": true
+      "verified": true,
+      "search_extra": "شبرا قصر متحف shubra palace"
     },
     {
       "id": "p08",
@@ -269,7 +276,8 @@
       },
       "nearest_branch": "airport-road",
       "nearest_reason": "Al Kaaki Palace is in the old town centre, nearer Airport Road",
-      "verified": true
+      "verified": true,
+      "search_extra": "الكعكي قصر kaaki palace"
     },
     {
       "id": "p09",
@@ -299,7 +307,8 @@
       },
       "nearest_branch": "airport-road",
       "nearest_reason": "Al Sharif Museum is on the western/central side, nearer Airport Road",
-      "verified": true
+      "verified": true,
+      "search_extra": "الشريف متحف sharif museum"
     },
     {
       "id": "p10",
@@ -329,7 +338,8 @@
       },
       "nearest_branch": "airport-road",
       "nearest_reason": "Al Balad market is in the old town centre, nearer Airport Road",
-      "verified": true
+      "verified": true,
+      "search_extra": "البلد سوق تسوق balad market shopping"
     },
     {
       "id": "p11",
@@ -359,7 +369,8 @@
       },
       "nearest_branch": "airport-road",
       "nearest_reason": "Abdullah Ibn Abbas Mosque is in the old town centre, nearer Airport Road",
-      "verified": true
+      "verified": true,
+      "search_extra": "عبدالله بن عباس مسجد جامع abbas mosque"
     },
     {
       "id": "p12",
@@ -396,7 +407,8 @@
       },
       "nearest_branch": "airport-road",
       "nearest_reason": "The listed rose factories are on the Al Hada road side (Rashed Al Qurashi first)",
-      "verified": true
+      "verified": true,
+      "search_extra": "الورد ورد الطائفي مصنع القرشي الكمال rose roses factory attar"
     },
     {
       "id": "p13",
@@ -426,7 +438,8 @@
       },
       "nearest_branch": "shafa-road",
       "nearest_reason": "Strawberry farms and Tut village are in the Al Shafa / Wadi area south-west",
-      "verified": true
+      "verified": true,
+      "search_extra": "التوت الفراولة مزارع قرية strawberry tut farms"
     },
     {
       "id": "p14",
@@ -456,7 +469,8 @@
       },
       "nearest_branch": "airport-road",
       "nearest_reason": "Qarn Al-Manazil miqat (Al Sail Al Kabir) is on the north-eastern road past the airport",
-      "verified": true
+      "verified": true,
+      "search_extra": "قرن المنازل السيل الكبير ميقات احرام إحرام عمرة sail miqat ihram umrah"
     },
     {
       "id": "p15",
@@ -486,7 +500,8 @@
       },
       "nearest_branch": "airport-road",
       "nearest_reason": "Wadi Muharram miqat is on the Al Hada road north-west of the city",
-      "verified": true
+      "verified": true,
+      "search_extra": "وادي محرم الهدا ميقات احرام إحرام عمرة muharram miqat ihram umrah"
     },
     {
       "id": "p16",
@@ -516,7 +531,8 @@
       },
       "nearest_branch": "airport-road",
       "nearest_reason": "Bab Al Hazm is in the old town centre, nearer Airport Road",
-      "verified": true
+      "verified": true,
+      "search_extra": "باب الحزم بوابة hazm gate"
     },
     {
       "id": "p17",
@@ -546,7 +562,71 @@
       },
       "nearest_branch": "shafa-road",
       "nearest_reason": "Taif Zoo is in the south of the city near Al Ruddaf, the Shafa Road side",
-      "verified": true
+      "verified": true,
+      "search_extra": "حديقة الحيوانات حيوان zoo animals taif"
     }
-  ]
+  ],
+  "collections": [
+    {
+      "key": "nature-highlands",
+      "name_ar": "طبيعة ومرتفعات",
+      "name_en": "Nature & Highlands",
+      "places": [
+        "p01",
+        "p02",
+        "p03",
+        "p04"
+      ]
+    },
+    {
+      "key": "heritage",
+      "name_ar": "جولة في تراث الطائف",
+      "name_en": "Taif Heritage Collection",
+      "places": [
+        "p07",
+        "p08",
+        "p09",
+        "p10",
+        "p11",
+        "p16"
+      ]
+    },
+    {
+      "key": "family-day",
+      "name_ar": "يوم عائلي",
+      "name_en": "Family Day",
+      "places": [
+        "p03",
+        "p04",
+        "p05",
+        "p13",
+        "p17"
+      ]
+    },
+    {
+      "key": "roses",
+      "name_ar": "الورد والمزارع",
+      "name_en": "Roses & Farms",
+      "places": [
+        "p12",
+        "p13"
+      ]
+    },
+    {
+      "key": "pilgrims",
+      "name_ar": "للمُعتمرين",
+      "name_en": "For Pilgrims",
+      "places": [
+        "p14",
+        "p15"
+      ]
+    }
+  ],
+  "hero": {
+    "image": "/images/taif/01-al-hada-cable-car",
+    "alt_ar": "عربات التلفريك فوق مرتفعات الهدا في الطائف عند الغروب",
+    "alt_en": "Cable car cabins above the Al Hada highlands in Taif at sunset",
+    "lede_ar": "دليل مختار من أرمادا ريزيدنس لأجمل مزارات وتجارب الطائف",
+    "lede_en": "A curated guide by Armada Residence to the places and experiences of Taif"
+  }
 }

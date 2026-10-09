@@ -1,0 +1,34 @@
+---
+/** legacy steps_block(): six steps + named-contact note + promises */
+import { lp, T } from '@lib/partners';
+import type { Locale } from '@lib/content';
+interface Props {
+  locale: Locale;
+}
+const { locale } = Astro.props;
+---
+
+<div class="steps">
+  {
+    (lp.steps as any[]).map(([no, ti, bo]) => (
+      <div class="step rv">
+        <p class="no">{no}</p>
+        <h4>{T(locale, ti)}</h4>
+        <p>{T(locale, bo)}</p>
+      </div>
+    ))
+  }
+</div>
+<div class="grid cols64 mt-m">
+  <div class="note rv" set:html={T(locale, lp.named_contact)} />
+  <div class="promise rv">
+    {
+      (lp.promises as any[]).map(([n, l]) => (
+        <div class="p">
+          <b>{n}</b>
+          <span>{T(locale, l)}</span>
+        </div>
+      ))
+    }
+  </div>
+</div>

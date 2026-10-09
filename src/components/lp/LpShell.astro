@@ -1,0 +1,39 @@
+---
+/**
+ * Wrapper for every /partners/ page: the legacy stylesheet (scoped), the config the legacy script reads
+ * (contact, endpoint, i18n, calculator units) and the script itself. The site header/footer come from Base.
+ */
+import '../../styles/legacy-partners.css';
+import '../../styles/legacy-overrides.css';
+import { lp, lpPath, T } from '@lib/partners';
+import type { Locale } from '@lib/content';
+interface Props {
+  locale: Locale;
+}
+const { locale } = Astro.props;
+const i18n = {
+  waIntro: T(locale, lp.form.wa_intro),
+  unitsWord: T(locale, lp.calc.units_w),
+  calcSend: T(locale, lp.calc.send),
+  calcCaveat: T(locale, lp.calc.caveat),
+  sentTitle: T(locale, lp.form.sent_title),
+  sentBody: T(locale, lp.form.sent_body),
+  sentRef: T(locale, lp.form.sent_ref),
+  sendFail: T(locale, { en: 'The enquiry could not be sent right now — use WhatsApp or email below.', ar: 'تعذّر إرسال الطلب الآن — استخدم واتساب أو البريد أدناه.' }),
+};
+const cfg = {
+  locale,
+  phone: (lp.contact.whatsapp as string).replace(/\D/g, ''),
+  sales: lp.contact.email,
+  enquiryUrl: lpPath(locale, 'enquiry'),
+  endpoint: import.meta.env.PUBLIC_BOOKING_ENDPOINT ?? '',
+  anonKey: import.meta.env.PUBLIC_SUPABASE_ANON_KEY ?? '',
+};
+const units = (lp.calc_units as any[]).map((u) => ({ key: u.key, en: u.en, ar: u.ar, cap: u.cap, props: u.props }));
+---
+
+<div class="legacy-partners">
+  <slot />
+  <script type="application/json" id="armada-partners-cfg" set:html={JSON.stringify({ i18n, cfg, units }).replace(/</g, '\\u003c')} />
+</div>
+<script src="/legacy/partners.js" defer is:inline></script>

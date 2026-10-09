@@ -19,7 +19,8 @@
         "safe",
         "air_conditioning",
         "kettle",
-        "fridge"
+        "fridge",
+        "iron"
       ],
       "size_m2": 57,
       "capacity": 2,
@@ -82,7 +83,8 @@
         "safe",
         "air_conditioning",
         "kettle",
-        "fridge"
+        "fridge",
+        "iron"
       ],
       "size_m2": 50,
       "capacity": 2,
@@ -145,7 +147,8 @@
         "safe",
         "air_conditioning",
         "kettle",
-        "fridge"
+        "fridge",
+        "iron"
       ],
       "size_m2": 65,
       "capacity": 2,
@@ -210,7 +213,8 @@
         "safe",
         "air_conditioning",
         "kettle",
-        "fridge"
+        "fridge",
+        "iron"
       ],
       "size_m2": 75,
       "capacity": 4,
@@ -273,7 +277,8 @@
         "safe",
         "air_conditioning",
         "kettle",
-        "fridge"
+        "fridge",
+        "iron"
       ],
       "size_m2": 50,
       "capacity": 2,
@@ -340,7 +345,8 @@
         "tv",
         "safe",
         "air_conditioning",
-        "kettle"
+        "kettle",
+        "iron"
       ],
       "size_m2": 35,
       "capacity": 2,
@@ -402,7 +408,8 @@
         "tv",
         "safe",
         "air_conditioning",
-        "kettle"
+        "kettle",
+        "iron"
       ],
       "size_m2": 45,
       "capacity": 2,
@@ -464,7 +471,8 @@
         "tv",
         "safe",
         "air_conditioning",
-        "kettle"
+        "kettle",
+        "iron"
       ],
       "size_m2": 40,
       "capacity": 2,
@@ -526,7 +534,8 @@
         "tv",
         "safe",
         "air_conditioning",
-        "kettle"
+        "kettle",
+        "iron"
       ],
       "size_m2": 45,
       "capacity": 2,
@@ -588,7 +597,8 @@
         "tv",
         "safe",
         "air_conditioning",
-        "kettle"
+        "kettle",
+        "iron"
       ],
       "size_m2": 65,
       "capacity": 4,
@@ -650,7 +660,8 @@
         "tv",
         "safe",
         "air_conditioning",
-        "kettle"
+        "kettle",
+        "iron"
       ],
       "size_m2": 45,
       "capacity": 4,
@@ -714,7 +725,8 @@
         "tv",
         "safe",
         "air_conditioning",
-        "kettle"
+        "kettle",
+        "iron"
       ],
       "size_m2": 45,
       "capacity": 2,

@@ -1,0 +1,103 @@
+/* Hand-written additions on top of the generated legacy sheets (scripts/legacy-css.py).
+   1. Brand pattern on every midnight surface of the two legacy sections (Ahmed, 9 Oct 2026):
+      Armada_Residence_Pattern_Tile_Bronze.svg, 108 px tile, bronze at 7 %, fixed so it does not visibly repeat.
+   2. Legacy brand bitmaps are never used: the symbol/pattern references point to the SVG set in /brand/. */
+
+.legacy-pattern-host {
+  position: relative;
+  isolation: isolate;
+}
+.legacy-pattern-host::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background-image: url("/brand/pattern-tile.svg");
+  background-size: 108px auto;
+  background-attachment: fixed;
+  opacity: 0.07;
+}
+@media (hover: none) {
+  .legacy-pattern-host::before {
+    background-attachment: scroll;
+  }
+}
+.legacy-pattern-host > * {
+  position: relative;
+  z-index: 1;
+}
+
+/* Discover: the hero is already isolated (media at z-index -2, veil -1); the pattern sits under the copy */
+.legacy-discover .hero::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background-image: url("/brand/pattern-tile.svg");
+  background-size: 108px auto;
+  background-attachment: fixed;
+  opacity: 0.07;
+}
+@media (hover: none) {
+  .legacy-discover .hero::after {
+    background-attachment: scroll;
+  }
+}
+
+/* Partners: dark bands, page heroes, CTA bands and the final section (the hero/phero/final keep their own
+   .bg/.scrim stacking — the pattern goes above the scrim, below the copy) */
+.legacy-partners .band.dk,
+.legacy-partners .ctaband,
+.legacy-partners .strip {
+  position: relative;
+  isolation: isolate;
+}
+.legacy-partners .band.dk::before,
+.legacy-partners .ctaband::before,
+.legacy-partners .strip::before,
+.legacy-partners .hero-v3 .scrim::before,
+.legacy-partners .phero .bg::after,
+.legacy-partners .final .scrim::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image: url("/brand/pattern-tile.svg");
+  background-size: 108px auto;
+  background-attachment: fixed;
+  opacity: 0.07;
+}
+.legacy-partners .band.dk::before,
+.legacy-partners .ctaband::before,
+.legacy-partners .strip::before {
+  z-index: 0;
+}
+.legacy-partners .band.dk > *,
+.legacy-partners .ctaband > *,
+.legacy-partners .strip > * {
+  position: relative;
+  z-index: 1;
+}
+@media (hover: none) {
+  .legacy-partners .band.dk::before,
+  .legacy-partners .ctaband::before,
+  .legacy-partners .strip::before,
+  .legacy-partners .hero-v3 .scrim::before,
+  .legacy-partners .phero .bg::after,
+  .legacy-partners .final .scrim::before {
+    background-attachment: scroll;
+  }
+}
+
+/* The legacy "sticky" CTA bar and chrome are not rendered (the site header/footer replace them) */
+.legacy-partners .sticky,
+.legacy-partners .hdr,
+.legacy-partners .mnav,
+.legacy-partners .ftr {
+  display: none !important;
+}
+
+/* the legacy header is gone: no fixed-header offset */
+.legacy-partners { --hdr: 0px; }

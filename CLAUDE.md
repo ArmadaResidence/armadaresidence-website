@@ -54,6 +54,7 @@ Rules:
 - Logos are **SVG only** (`Armada_Residence_Logo_Horizontal_Bronze.svg`, `Armada_Residence_Symbol_Bronze.svg`). PNG logos carry white plates — never use them.
 - WCAG AA minimum for all text; compute contrast from the actual hex values. Mineral/light blue on Porcelain is prohibited for text.
 - No stock photography, no Unsplash, no AI-generated images. Only approved Armada photos from `/content/images/`. If a section has no approved photo, use a brand-pattern placeholder block and add `TODO(photo)` — never a grey box, never a borrowed image.
+  - Exception (Ahmed, 9 Oct 2026): the photos of the two legacy sites are approved Armada photos — the 17 Discover Taif destination images (`content/images/taif/`) and the B2B set airport-exterior, shafa-exterior, suite-living, umrah-room, function-hall (`content/images/partners/`). They are used in their original places in `/discover-taif/` and `/partners/`.
 - Pattern tile: use the approved transparent SVG/PNG if present; otherwise omit the pattern.
 
 Tone: premium, calm, specific. No "world-class", "exceptional heritage", "heart of the city" template language. Describe what Armada actually offers: minutes from Taif airport, spacious hotel apartments, free parking, short and long stays, 24h room service.
@@ -104,6 +105,7 @@ Halls/events, gallery, blog: phase 2 or later. Do not build them in phase 1.
 
 ## 6b. Discover Taif and Partners (added 9 Oct 2026)
 Both existing subdomain sites are merged into this project as sections; the subdomains redirect here at launch.
+- Both sections keep the original visual design of the legacy sites (markup, CSS, animations, interactions) scoped under `.legacy-discover` / `.legacy-partners`; only the site header/footer, SVG logos/favicon, facts from `content/` and internal links change (decision 9 Oct 2026).
 - `/discover-taif/` — guide of 17 places from `content/taif-guide.json` (imported from discovertaif.armadaresidence.com: name, category, short copy, Google Maps link, photo, nearest branch). Category filter, "My plan" list (localStorage), each place links to the nearest branch with a booking CTA. Photos from the existing site (Armada-owned).
 - `/partners/` — B2B section from `content/partners.json`: index, `/partners/groups-umrah/`, `/partners/corporate/`, `/partners/meetings-events/`, `/partners/enquiry/`. No prices anywhere. Room types, unit counts, addresses and contacts come ONLY from branches.json / rooms.json / contact.json — never from the old B2B site copy (its room table and some figures conflict with confirmed data). Enquiry form posts to the same Edge Function with `request_type` (b2b-rates | umrah-group | corporate | event) and notifies sales-marketing@armadaresidence.com.
 - Nav: "اكتشف الطائف" in the main nav; "للشركاء والوكالات" in the header utility row and footer. /offers group CTAs go to /partners/enquiry/?request=….

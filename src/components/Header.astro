@@ -31,8 +31,9 @@ const partnersActive = path.startsWith('/partners/');
 >
 <header class="sticky top-0 z-40">
   {/* utility row: partners link + reception line (CLAUDE.md §6b) */}
-  <div class="bg-midnight text-porcelain text-xs">
-    <div class="mx-auto max-w-6xl px-5 h-8 flex items-center justify-between gap-4">
+  <div class="relative bg-midnight text-porcelain text-xs overflow-hidden">
+    <div class="absolute inset-0 pattern-bg" aria-hidden="true"></div>
+    <div class="relative mx-auto max-w-6xl px-5 h-8 flex items-center justify-between gap-4">
       <a
         href={localePath(locale, '/partners/')}
         class:list={['font-semibold hover:text-bronze', partnersActive ? 'text-bronze' : '']}

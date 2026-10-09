@@ -333,6 +333,8 @@ def main() -> int:
         # images
         for img in p.imgs:
             alt = (img.get("alt") or "").strip()
+            if alt == "" and img.get("aria-hidden") == "true":
+                continue  # decorative brand mark (legacy guide/partners markup)
             if alt.lower() in GENERIC_ALT or len(alt) < 4:
                 rep.f("images", f"{path}: <img src={img.get('src')!r}> generic alt {alt!r}")
             elif en and not LATIN.search(alt):

@@ -1,250 +1,175 @@
 ---
+/** /partners/ — legacy B2B home (hero-v3, portfolio, units, bento, flow, features, built, final) with facts from content/. */
 import Base from '@layouts/Base.astro';
-import Icon from '@components/Icon.astro';
-import PartnersNav from '@components/PartnersNav.astro';
-import SalesCard from '@components/SalesCard.astro';
-import Placeholder from '@components/Placeholder.astro';
+import LpShell from '@components/lp/LpShell.astro';
+import LpImg from '@components/lp/LpImg.astro';
+import LpShead from '@components/lp/LpShead.astro';
+import LpUnitTable from '@components/lp/LpUnitTable.astro';
 import { langPaths } from '@lib/paths';
-import {
-  branchBySlug,
-  branchPath,
-  fill,
-  L,
-  pageSeo,
-  partnerRows,
-  partners,
-  partnersPages,
-  partnersPath,
-  ui,
-  type Locale,
-} from '@lib/content';
+import { pageSeo, type Locale } from '@lib/content';
+import { enquiryHref, ICON, lp, lpPath, T, waHrefSales } from '@lib/partners';
 
 export const getStaticPaths = langPaths;
-
 interface Props {
   locale: Locale;
 }
 const { locale } = Astro.props;
-const t = ui(locale);
 const s = pageSeo(locale, 'partners');
-const h = partners.hero;
-const f = partners.facts;
-const pg = partnersPages.home;
-const ar = locale === 'ar';
-const rows = partnerRows(locale);
-const airport = branchBySlug('airport-road');
-const shafa = branchBySlug('shafa-road');
-
-const stats = [
-  { n: f.hotels, label: t.partners.hotels },
-  { n: f.units_total, label: t.partners.units },
-  { n: f.room_types, label: t.partners.room_types },
-  { n: f.reply_within_business_days, label: t.partners.working_day },
-];
-const airportFacts = [
-  `${f.units_airport} ${t.partners.units}`,
-  fill(t.partners.fact_airport, { min: f.drive_time_airport_to_airport_road_min }),
-  fill(t.partners.fact_hall, { n: f.hall.capacity }),
-  t.partners.fact_bus,
-];
-const shafaFacts = [
-  `${f.units_shafa} ${t.partners.units} · ${f.beds_shafa} ${t.partners.beds}`,
-  fill(t.partners.fact_ruddaf, { min: f.drive_time_ruddaf_to_shafa_min }),
-  t.partners.fact_bus,
+const H = lp.hero;
+const wa = T(locale, lp.form.wa_intro);
+const features = [
+  { sec: lp.umrah, img: 'umrah-room', alt: { en: 'King room — Airport Road', ar: 'غرفة كينج — طريق المطار' }, request: 'umrah-group', page: 'groups-umrah', cls: 'dkbg' },
+  { sec: lp.corp, img: 'suite-living', alt: { en: 'Suite living room — Airport Road', ar: 'صالة الجناح — طريق المطار' }, request: 'corporate', page: 'corporate', cls: 'rev' },
+  { sec: lp.meet, img: 'function-hall', alt: { en: 'The function hall — Airport Road', ar: 'قاعة المناسبات — طريق المطار' }, request: 'event', page: 'meetings-events', cls: 'dkbg' },
 ];
 ---
 
 <Base locale={locale} path="/partners/" title={s.title} description={s.description}>
-  <PartnersNav locale={locale} current="" />
-
-  <section class="relative bg-midnight text-porcelain overflow-hidden">
-    <div class="absolute inset-0 pattern-bg opacity-[0.07]" aria-hidden="true"></div>
-    <div class="relative mx-auto max-w-6xl px-4 py-16 md:py-24">
-      <p class="text-bronze font-semibold tracking-wide mb-4">{ar ? h.eyebrow_ar : h.eyebrow_en}</p>
-      <h1 class="text-3xl md:text-5xl font-bold max-w-3xl">{ar ? h.title_ar : h.title_en}</h1>
-      <p class="mt-5 text-lg md:text-xl text-porcelain/85 max-w-3xl leading-relaxed">{ar ? h.subtitle_ar : h.subtitle_en}</p>
-      <div class="mt-8 flex flex-wrap gap-3">
-        <a href={partnersPath(locale, 'enquiry')} class="inline-flex items-center gap-2 bg-bronze text-white font-semibold px-6 py-3 rounded hover:bg-bronze-deep transition-colors">
-          <span>{ar ? h.cta_primary_ar : h.cta_primary_en}</span>
-          <Icon name="arrow" size={18} class="rtl:rotate-180" />
-        </a>
-        <a href="#hotels" class="inline-flex items-center border border-porcelain/50 font-semibold px-6 py-3 rounded hover:bg-porcelain hover:text-midnight transition-colors">
-          {ar ? h.cta_secondary_ar : h.cta_secondary_en}
-        </a>
+  <LpShell locale={locale}>
+    <section class="hero hero-v3">
+      <div class="bg" data-depth="0.05"><LpImg name="airport-exterior" alt={T(locale, lp.props.airport.alt)} loading="eager" /></div>
+      <div class="scrim"></div>
+      <div class="hero-glow" aria-hidden="true"></div>
+      <div class="wrap hero-copy">
+        <p class="hero-brand">{T(locale, H.brand)}</p>
+        <h1>{T(locale, H.h1)}</h1>
+        <p class="sub">{T(locale, H.sub)}</p>
+        <div class="cta">
+          <a class="btn" href={lpPath(locale, 'enquiry')}>{T(locale, H.cta1)}</a>
+          <a class="btn gh" href="#hotels">{T(locale, H.cta2)}</a>
+        </div>
+        <p class="hero-meta">{T(locale, H.meta)}</p>
       </div>
-      <dl class="mt-12 grid grid-cols-2 md:grid-cols-4 gap-6 border-t border-porcelain/15 pt-8">
+    </section>
+
+    <section class="strip">
+      <div class="wrap">
         {
-          stats.map((x) => (
-            <div>
-              <dt class="latin text-3xl font-bold text-white">{x.n}</dt>
-              <dd class="text-sm text-porcelain/75 mt-1">{x.label}</dd>
+          (lp.hero_stats as any[]).map((x) => (
+            <div class="it">
+              <b>{x.n}</b>
+              <i>{T(locale, x.label)}</i>
+              <span>{T(locale, x.sub)}</span>
             </div>
           ))
         }
-      </dl>
-    </div>
-  </section>
+      </div>
+    </section>
 
-  <section class="mx-auto max-w-6xl px-4 py-14 grid gap-8 lg:grid-cols-5">
-    <div class="lg:col-span-3">
-      <p class="text-xs font-semibold uppercase tracking-wide text-bronze">{ar ? pg.eyebrow_ar : pg.eyebrow_en}</p>
-      <h2 class="mt-2 text-2xl md:text-3xl font-bold text-midnight">{ar ? pg.proposition_title_ar : pg.proposition_title_en}</h2>
-      <p class="mt-4 text-ink-muted leading-relaxed">{ar ? pg.proposition_body_ar : pg.proposition_body_en}</p>
-    </div>
-    <div class="lg:col-span-2">
-      <SalesCard locale={locale} />
-    </div>
-  </section>
-
-  <section id="hotels" class="bg-white border-y border-line">
-    <div class="mx-auto max-w-6xl px-4 py-14">
-      <h2 class="text-2xl md:text-3xl font-bold text-midnight">{ar ? pg.properties_heading_ar : pg.properties_heading_en}</h2>
-      <div class="mt-8 grid gap-6 md:grid-cols-2">
+    <section class="band portfolio" id="hotels">
+      <div class="wrap">
+        <LpShead eyebrow={T(locale, { en: 'Our hotels', ar: 'فنادقنا' })} h2={T(locale, lp.proposition.h2)} sub={T(locale, lp.proposition.body)} />
         {
-          [
-            { b: airport, label: ar ? pg.airport_label_ar : pg.airport_label_en, lead: ar ? pg.airport_lead_ar : pg.airport_lead_en, tags: ar ? pg.airport_tags_ar : pg.airport_tags_en, facts: airportFacts },
-            { b: shafa, label: ar ? pg.shafa_label_ar : pg.shafa_label_en, lead: ar ? pg.shafa_lead_ar : pg.shafa_lead_en, tags: ar ? pg.shafa_tags_ar : pg.shafa_tags_en, facts: shafaFacts },
-          ].map((x) => (
-            <article class="border border-line rounded-card overflow-hidden flex flex-col">
-              <Placeholder label={fill(t.photo_pending_alt, { subject: L(locale, x.b, 'name') })} class="rounded-b-none" />
-              <div class="p-6 flex flex-col gap-4 flex-1">
-                <div>
-                  <p class="text-xs font-semibold uppercase tracking-wide text-bronze">{x.label}</p>
-                  <h3 class="mt-1 text-xl font-semibold text-midnight">{L(locale, x.b, 'name')}</h3>
-                  <p class="text-sm text-ink-muted">{L(locale, x.b, 'type')}</p>
+          (lp.portfolio as any[]).map(([key, label, name, facts, cta], i) => {
+            const p = lp.props[key];
+            return (
+              <article class:list={['pf rv', i % 2 && 'rev']} id={`pf-${key}`}>
+                <div class="pf-img"><LpImg name={p.img} alt={T(locale, p.alt)} /></div>
+                <div class="pf-body">
+                  <p class="pf-label">{T(locale, label)}</p>
+                  <h3>{T(locale, name)}</h3>
+                  <ul class="pf-facts">{(facts as any[]).map((f) => <li>{T(locale, f)}</li>)}</ul>
+                  <div class="acts">
+                    <a class="btn dk" href={key === 'airport' ? '/airport-road/' : '/shafa-road/'} set:html={ICON.arrow + T(locale, cta)} />
+                    <a class="btn ol" href={enquiryHref(locale, 'b2b-rates', key === 'airport' ? 'airport-road' : 'shafa-road')}>{T(locale, lp.ui.req_rates)}</a>
+                  </div>
                 </div>
-                <p class="text-sm leading-relaxed">{x.lead}</p>
-                <ul class="grid gap-1.5 text-sm">
-                  {x.facts.map((fact) => (
-                    <li class="flex items-center gap-2">
-                      <Icon name="check" size={14} class="text-bronze shrink-0" />
-                      <span>{fact}</span>
-                    </li>
-                  ))}
-                </ul>
-                <ul class="flex flex-wrap gap-1.5">
-                  {x.tags.map((tag) => (
-                    <li class="text-xs bg-porcelain text-ink px-2 py-1 rounded">{tag}</li>
-                  ))}
-                </ul>
-                <a href={branchPath(locale, x.b.slug)} class="mt-auto inline-flex items-center gap-1 text-sm font-semibold text-bronze hover:text-bronze-deep">
-                  <span>{t.home.view_branch}</span>
-                  <Icon name="arrow" size={16} class="rtl:rotate-180" />
-                </a>
-              </div>
-            </article>
-          ))
+              </article>
+            );
+          })
         }
       </div>
-    </div>
-  </section>
+    </section>
 
-  <section class="mx-auto max-w-6xl px-4 py-14">
-    <h2 class="text-2xl md:text-3xl font-bold text-midnight">{ar ? pg.segments_heading_ar : pg.segments_heading_en}</h2>
-    <ul class="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-      {
-        pg.segments.map((sg, i) => (
-          <li class="bg-white border border-line rounded-card p-5">
-            <p class="latin text-xs font-semibold text-bronze">0{i + 1}</p>
-            <h3 class="mt-1 font-semibold text-midnight">{ar ? sg.title_ar : sg.title_en}</h3>
-            <ul class="mt-3 space-y-1.5 text-sm text-ink-muted">
-              {(ar ? sg.points_ar : sg.points_en).map((pt) => (
-                <li class="flex gap-2">
-                  <Icon name="check" size={14} class="text-bronze shrink-0 mt-1" />
-                  <span>{pt}</span>
-                </li>
-              ))}
-            </ul>
-            <a href={partnersPath(locale, sg.page)} class="mt-4 inline-flex items-center gap-1 text-sm font-semibold text-bronze hover:text-bronze-deep">
-              <span>{t.room.details_heading}</span>
-              <Icon name="arrow" size={14} class="rtl:rotate-180" />
-            </a>
-          </li>
-        ))
-      }
-    </ul>
-  </section>
-
-  <section class="bg-white border-y border-line">
-    <div class="mx-auto max-w-6xl px-4 py-14">
-      <h2 class="text-2xl md:text-3xl font-bold text-midnight">{t.partners.table_heading}</h2>
-      <p class="mt-2 text-sm text-ink-muted">{t.partners.table_note} {t.partners.no_rates}</p>
-      <p class="mt-1 text-xs text-ink-muted md:hidden">{t.partners.scroll_hint}</p>
-      <div class="mt-6 overflow-x-auto">
-        <table class="w-full text-sm border-collapse min-w-[720px]">
-          <thead>
-            <tr class="text-start bg-porcelain">
-              <th class="text-start font-semibold text-midnight px-3 py-2.5 border-b border-line">{t.partners.col_type}</th>
-              <th class="text-start font-semibold text-midnight px-3 py-2.5 border-b border-line">{t.partners.col_occupancy}</th>
-              <th class="text-start font-semibold text-midnight px-3 py-2.5 border-b border-line">{t.partners.col_beds}</th>
-              <th class="text-start font-semibold text-midnight px-3 py-2.5 border-b border-line">{t.partners.col_hotel}</th>
-              <th class="text-start font-semibold text-midnight px-3 py-2.5 border-b border-line">{t.partners.col_recommended}</th>
-            </tr>
-          </thead>
-          <tbody>
-            {
-              rows.map((r) => (
-                <tr class="border-b border-line">
-                  <td class="px-3 py-2.5 font-semibold text-midnight">{r.label}</td>
-                  <td class="px-3 py-2.5 latin">{r.occupancy}</td>
-                  <td class="px-3 py-2.5">{r.beds}</td>
-                  <td class="px-3 py-2.5">{r.hotel}</td>
-                  <td class="px-3 py-2.5 text-ink-muted">{r.recommended}</td>
-                </tr>
-              ))
-            }
-          </tbody>
-        </table>
+    <section class="band dk" id="units">
+      <div class="wrap">
+        <LpShead eyebrow={T(locale, { en: 'The unit collection', ar: 'مجموعة الوحدات' })} h2={T(locale, { en: 'Eight ways to place a guest, across two hotels.', ar: 'ثماني طرق لتسكين الضيف، في فندقين.' })} />
+        <LpUnitTable locale={locale} />
       </div>
-    </div>
-  </section>
+    </section>
 
-  <section class="mx-auto max-w-6xl px-4 py-14 grid gap-10 lg:grid-cols-2">
-    <div>
-      <h2 class="text-2xl font-bold text-midnight">{ar ? pg.services_heading_ar : pg.services_heading_en}</h2>
-      <ul class="mt-6 space-y-4">
-        {
-          pg.services.map((sv) => (
-            <li class="flex gap-3">
-              <span class="mt-1 shrink-0 w-8 h-8 rounded-full bg-white border border-line text-bronze grid place-items-center">
-                <Icon name="check" size={16} />
-              </span>
+    <section class="band" id="solutions">
+      <div class="wrap">
+        <LpShead eyebrow={T(locale, lp.why.eyebrow)} h2={T(locale, lp.why.h2)} />
+        <div class="bento mt-m">
+          {
+            (lp.why.items as any[]).map(([ti, bo, cls]) => (
+              <div class:list={['bt rv', cls]}>
+                <h3>{T(locale, ti)}</h3>
+                <p>{T(locale, bo)}</p>
+              </div>
+            ))
+          }
+        </div>
+      </div>
+    </section>
+
+    <section class="band alt">
+      <div class="wrap flow-wrap">
+        <LpShead eyebrow={T(locale, lp.flow.eyebrow)} h2={T(locale, lp.flow.h2)} />
+        <ol class="flow">
+          {
+            (lp.flow.steps as any[]).map(([ti, bo], i) => (
+              <li class="rv">
+                <span class="fn">0{i + 1}</span>
+                <div>
+                  <h3>{T(locale, ti)}</h3>
+                  <p>{T(locale, bo)}</p>
+                </div>
+              </li>
+            ))
+          }
+        </ol>
+      </div>
+    </section>
+
+    {
+      features.map((f) => (
+        <section class:list={['feat-sec', f.cls]}>
+          <div class="feat-img"><LpImg name={f.img} alt={T(locale, f.alt)} /></div>
+          <div class="feat-body rv">
+            <p class="eyebrow" set:html={T(locale, f.sec.eyebrow)} />
+            <h2 set:html={T(locale, f.sec.h2)} />
+            <p class="lede">{T(locale, f.sec.body)}</p>
+            <ul class="dash">{(f.sec.list as any[]).map((x) => <li>{T(locale, x)}</li>)}</ul>
+            <div class="acts">
+              <a class="btn" href={enquiryHref(locale, f.request)} set:html={ICON.arrow + T(locale, f.sec.cta)} />
+              <a class="btn gh" href={lpPath(locale, f.page)}>{T(locale, lp.ui.learn_more_v3)}</a>
+            </div>
+          </div>
+        </section>
+      ))
+    }
+
+    <section class="band built">
+      <div class="wrap rv">
+        <h2>{T(locale, lp.built.h2)}</h2>
+        <p>{T(locale, lp.built.body)}</p>
+        <div class="built-nums">
+          {
+            (lp.hero_stats as any[]).map((x) => (
               <div>
-                <h3 class="font-semibold text-midnight">{ar ? sv.title_ar : sv.title_en}</h3>
-                <p class="text-sm text-ink-muted mt-0.5">{ar ? sv.body_ar : sv.body_en}</p>
+                <b>{x.n}</b>
+                <span>{T(locale, x.label)} — {T(locale, x.sub)}</span>
               </div>
-            </li>
-          ))
-        }
-      </ul>
-    </div>
-    <div>
-      <h2 class="text-2xl font-bold text-midnight">{ar ? pg.steps_heading_ar : pg.steps_heading_en}</h2>
-      <ol class="mt-6 space-y-4">
-        {
-          pg.steps.map((st, i) => (
-            <li class="flex gap-3">
-              <span class="latin shrink-0 w-8 h-8 rounded-full bg-midnight text-white text-sm font-bold grid place-items-center">{i + 1}</span>
-              <div>
-                <h3 class="font-semibold text-midnight">{ar ? st.title_ar : st.title_en}</h3>
-                <p class="text-sm text-ink-muted mt-0.5">{ar ? st.body_ar : st.body_en}</p>
-              </div>
-            </li>
-          ))
-        }
-      </ol>
-    </div>
-  </section>
-
-  <section class="bg-midnight text-porcelain">
-    <div class="mx-auto max-w-6xl px-4 py-12 flex flex-wrap items-center justify-between gap-6">
-      <div>
-        <p class="text-xl font-semibold">{ar ? pg.closing_title_ar : pg.closing_title_en}</p>
-        <p class="text-sm text-porcelain/80 mt-1">{ar ? pg.closing_body_ar : pg.closing_body_en}</p>
+            ))
+          }
+        </div>
       </div>
-      <a href={partnersPath(locale, 'enquiry')} class="bg-bronze text-white font-semibold px-6 py-3 rounded hover:bg-bronze-deep transition-colors">
-        {t.partners.enquiry_cta}
-      </a>
-    </div>
-  </section>
+    </section>
+
+    <section class="final">
+      <div class="bg"><LpImg name="shafa-exterior" alt={T(locale, lp.props.shafa.alt)} /></div>
+      <div class="scrim"></div>
+      <div class="wrap rv">
+        <h2>{T(locale, lp.final.h2)}</h2>
+        <p>{T(locale, lp.final.body)}</p>
+        <div class="acts">
+          <a class="btn" href={lpPath(locale, 'enquiry')}>{T(locale, lp.ui.req_b2b)}</a>
+          <a class="btn gh" href={waHrefSales(wa)} target="_blank" rel="noopener" set:html={ICON.wa + T(locale, lp.ui.whatsapp)} />
+          <a class="btn gh" href={`mailto:${lp.contact.email}`} set:html={ICON.mail + T(locale, lp.ui.email_sales)} />
+        </div>
+      </div>
+    </section>
+  </LpShell>
 </Base>

@@ -16,8 +16,9 @@ Every price, time, phone number, address, policy and piece of guest-facing copy 
 | `ui.json` | Interface strings only (nav, labels, buttons, form, success page, email texts). Placeholders like `{price}` are filled from the other files. | draft for review |
 | `taif-guide.json` | Discover Taif: 17 places (names, category, copy, alt, Google Maps links, photo, `nearest_branch`). Imported from the legacy guide 9 Oct 2026. | `verified: true` per place |
 | `partners.json` | B2B facts: units (168 = 108 + 60), 98 beds Shafa, drive times (15 min airport, 4 min Al Ruddaf), coach parking, group meals, hall, room table, sales contact, enquiry types. **No prices.** | `verified: true` |
-| `partners-pages.json` | /partners/ page copy (structure from the legacy B2B site, facts cross-checked) + `removed_from_legacy`. | draft for review |
-| `images/` | Approved Armada photos only (WebP). `images/taif/` holds the 17 destination photos (800 + 1400). Room/branch photos still missing. | partial |
+| `partners-pages.json` | /partners/ page copy, **generated** by `scripts/legacy-partners-content.py` from the legacy B2B copy with facts overridden from content/ + `removed_from_legacy`. Re-run the script; do not edit by hand. | draft for review |
+| `halls.json` | Meeting hall: branch, capacity 50, equipment and seating layouts (confirmed 9 Oct). | `verified: true` |
+| `images/` | Approved Armada photos only (WebP). `images/taif/` = 17 destination photos, `images/partners/` = 5 approved B2B photos (800 + 1400). Room/branch photos for the main site still missing. | partial |
 
 ## Rules
 

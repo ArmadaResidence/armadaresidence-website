@@ -1,0 +1,33 @@
+---
+/** legacy page_hero(): .phero with background photo, crumb, eyebrow, h1, rule, lead */
+import LpImg from './LpImg.astro';
+import { lpPath, T, lp } from '@lib/partners';
+import type { Locale } from '@lib/content';
+interface Props {
+  locale: Locale;
+  eyebrow: string;
+  h1: string;
+  lead: string;
+  img: string;
+  alt: string;
+  crumb?: string;
+}
+const { locale, eyebrow, h1, lead, img, alt, crumb } = Astro.props;
+---
+
+<section class="phero">
+  <div class="bg"><LpImg name={img} alt={alt} loading="eager" /></div>
+  <div class="wrap">
+    {
+      crumb && (
+        <p class="crumb">
+          <a href={lpPath(locale, 'index')}>{T(locale, lp.nav[0][1])}</a> &nbsp;/&nbsp; {crumb}
+        </p>
+      )
+    }
+    <p class="eyebrow">{eyebrow}</p>
+    <h1>{h1}</h1>
+    <div class="rule"></div>
+    <p>{lead}</p>
+  </div>
+</section>

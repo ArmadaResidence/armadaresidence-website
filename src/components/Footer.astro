@@ -44,12 +44,14 @@ const social: { name: string; url: string }[] = [
 ];
 ---
 
-<footer class="bg-midnight text-porcelain mt-16">
-  <div class="mx-auto max-w-6xl px-5 py-12 grid gap-10 md:grid-cols-4">
+<footer class="relative bg-midnight text-porcelain mt-16 overflow-hidden">
+  {/* brand pattern: 108px tile, bronze at 7 %, fixed so it does not visibly repeat (Ahmed, 9 Oct 2026) */}
+  <div class="absolute inset-0 pattern-bg" aria-hidden="true"></div>
+  <div class="relative mx-auto max-w-6xl px-5 py-12 grid gap-10 md:grid-cols-4">
     <div class="md:col-span-1">
-      {/* porcelain logo on midnight; stacked logo h-20 → clear space X ≈ 24px, kept by the p-6 wrapper */}
-      <div class="p-6 -m-6 inline-block">
-        <img src="/brand/logo-stacked_Porcelain.svg" alt={siteName(locale)} width="126" height="80" class="h-20 w-auto" />
+      {/* porcelain logo on midnight at 56 px; stacked lockup → clear space X ≈ 15px, kept by the p-5 wrapper */}
+      <div class="p-5 -m-5 inline-block">
+        <img src="/brand/logo-stacked_Porcelain.svg" alt={siteName(locale)} width="88" height="56" class="h-14 w-auto" />
       </div>
       <p class="mt-6 text-sm text-porcelain/80">{slogan}</p>
       <p class="mt-4 text-sm text-porcelain/80 flex items-center gap-2">
@@ -131,7 +133,7 @@ const social: { name: string; url: string }[] = [
       </ul>
     </div>
   </div>
-  <div class="border-t border-porcelain/15">
+  <div class="relative border-t border-porcelain/15">
     <p class="mx-auto max-w-6xl px-5 py-5 text-xs text-porcelain/70">{footerLine(locale)}</p>
   </div>
 </footer>

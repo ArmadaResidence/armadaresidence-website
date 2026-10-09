@@ -70,7 +70,8 @@
         "safe": "خزنة",
         "air_conditioning": "تكييف",
         "kettle": "غلاية",
-        "fridge": "ثلاجة"
+        "fridge": "ثلاجة",
+        "iron": "مكواة"
       },
       "laundry": "المغسلة",
       "details_heading": "التفاصيل",
@@ -88,7 +89,10 @@
       "free_parking": "مواقف مجانية",
       "restaurant": "مطعم",
       "room_service_24h": "خدمة غرف على مدار الساعة",
-      "wifi": "واي فاي"
+      "wifi": "واي فاي",
+      "daily_housekeeping": "تدبير غرف يومي",
+      "laundry": "غسيل ملابس",
+      "security_24h": "أمن على مدار الساعة"
     },
     "price": {
       "extra_person": "الشخص الإضافي {price} ريال لليلة",
@@ -360,7 +364,8 @@
         "safe": "Safe",
         "air_conditioning": "Air conditioning",
         "kettle": "Kettle",
-        "fridge": "Fridge"
+        "fridge": "Fridge",
+        "iron": "Iron"
       },
       "laundry": "Laundry",
       "details_heading": "Details",
@@ -378,7 +383,10 @@
       "free_parking": "Free parking",
       "restaurant": "Restaurant",
       "room_service_24h": "24-hour room service",
-      "wifi": "Wi-Fi"
+      "wifi": "Wi-Fi",
+      "daily_housekeeping": "Daily housekeeping",
+      "laundry": "Laundry",
+      "security_24h": "24-hour security"
     },
     "price": {
       "extra_person": "Extra guest SAR {price} per night",

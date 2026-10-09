@@ -1,0 +1,98 @@
+---
+import Base from '@layouts/Base.astro';
+import LpShell from '@components/lp/LpShell.astro';
+import LpPageHero from '@components/lp/LpPageHero.astro';
+import LpShead from '@components/lp/LpShead.astro';
+import LpImg from '@components/lp/LpImg.astro';
+import LpUnitTable from '@components/lp/LpUnitTable.astro';
+import LpCta from '@components/lp/LpCta.astro';
+import { langPaths } from '@lib/paths';
+import { pageSeo, type Locale } from '@lib/content';
+import { ICON, lp, T } from '@lib/partners';
+
+export const getStaticPaths = langPaths;
+interface Props {
+  locale: Locale;
+}
+const { locale } = Astro.props;
+const s = pageSeo(locale, 'partners-corporate');
+const corp = (lp.segments as any[]).filter((x) => x[0] === '03' || x[0] === '05');
+---
+
+<Base locale={locale} path="/partners/corporate/" title={s.title} description={s.description}>
+  <LpShell locale={locale}>
+    <LpPageHero
+      locale={locale}
+      eyebrow={T(locale, { en: 'Corporate & institutional', ar: 'الشركات والجهات' })}
+      h1={T(locale, { en: 'Corporate Partnerships', ar: 'شراكات الشركات' })}
+      lead={T(locale, lp.corp.body)}
+      img="suite-living"
+      alt={T(locale, { en: 'Suite living room — Airport Road', ar: 'صالة الجناح — طريق المطار' })}
+      crumb={T(locale, { en: 'Corporate', ar: 'الشركات' })}
+    />
+
+    <section class="band">
+      <div class="wrap">
+        <LpShead eyebrow={T(locale, { en: 'Who we serve', ar: 'من نخدم' })} h2={T(locale, { en: 'Programmes that repeat, not one-off nights.', ar: 'برامج تتكرّر، لا ليالٍ متفرقة.' })} />
+        <div class="g2 mt-m">
+          {
+            corp.map(([no, name, , bullets]) => (
+              <div class="seg rv">
+                <div class="in">
+                  <p class="no">{no}</p>
+                  <h3>{T(locale, name)}</h3>
+                  <ul>{(bullets as any[]).map((b) => <li>{T(locale, b)}</li>)}</ul>
+                </div>
+              </div>
+            ))
+          }
+        </div>
+      </div>
+    </section>
+
+    <section class="band dk">
+      <div class="wrap">
+        <div class="grid cols64">
+          <div class="rv">
+            <LpShead
+              eyebrow={T(locale, { en: 'Long stay', ar: 'الإقامة الطويلة' })}
+              h2={T(locale, { en: 'Hotel apartments with kitchens.', ar: 'شقق فندقية مزوّدة بمطبخ.' })}
+              sub={T(locale, { en: 'For secondments, project teams and extended corporate assignments, the Airport Road suites with a kitchen and a separate living room hold a guest for weeks rather than nights.', ar: 'للانتدابات وفرق المشاريع والمهام الممتدة، تستوعب أجنحة طريق المطار المزوّدة بمطبخ وصالة منفصلة الضيف أسابيع لا ليالي.' })}
+            />
+            <LpUnitTable locale={locale} filterHotel="airport-road" columns={['type', 'occupancy', 'beds', 'hotel']} />
+          </div>
+          <div class="rv">
+            <figure class="ph r43 zoom">
+              <LpImg name="suite-living" alt={T(locale, { en: 'Suite living room — Airport Road', ar: 'صالة الجناح — طريق المطار' })} />
+              <figcaption>{T(locale, { en: 'Suite living room — Airport Road', ar: 'صالة الجناح — طريق المطار' })}</figcaption>
+            </figure>
+            <div class="note lt" style="margin-top:14px">
+              <b>{T(locale, { en: 'Kitchen in the Airport Road suites.', ar: 'مطبخ في أجنحة طريق المطار.' })}</b>
+              {' '}{T(locale, { en: 'Laundry and daily housekeeping at both properties.', ar: 'غسيل الملابس والتدبير اليومي في الفرعين.' })}
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="band alt">
+      <div class="wrap">
+        <LpShead eyebrow={T(locale, { en: 'What a corporate account gets', ar: 'ما يحصل عليه حساب الشركة' })} h2={T(locale, { en: 'One named contact, one agreement.', ar: 'مسؤول واحد باسمه، واتفاقية واحدة.' })} />
+        <div class="g3 mt-m">
+          {
+            (lp.agent_gets as any[]).map(([no, ti, bo]) => (
+              <div class="card rv">
+                <p class="no">{no}</p>
+                <h3>{T(locale, ti)}</h3>
+                <p>{T(locale, bo)}</p>
+              </div>
+            ))
+          }
+        </div>
+        <div class="note mt-m rv"><Fragment set:html={ICON.pin} /> {T(locale, lp.address.airport)}</div>
+      </div>
+    </section>
+
+    <LpCta locale={locale} h2={T(locale, { en: 'One agreement for the whole programme.', ar: 'اتفاقية واحدة للبرنامج كاملًا.' })} body={T(locale, lp.ui.sla)} request="corporate" />
+  </LpShell>
+</Base>

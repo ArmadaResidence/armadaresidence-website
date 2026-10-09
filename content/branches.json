@@ -29,8 +29,8 @@
       "whatsapp": "+966536622277",
       "email": "reservation@armadaresidence.com",
       "maps_url": "https://maps.app.goo.gl/WTWEcv7gmWe5bUaT9",
-      "lat": 21.2702801,
-      "lng": 40.4158308,
+      "lat": 21.337259,
+      "lng": 40.438462,
       "check_in": "16:00",
       "check_out": "12:00",
       "parking_ar": "مواقف مجانية — في الطابقين السفليين B1 وB2 مع مصعد",
@@ -38,10 +38,13 @@
       "amenities": [
         "breakfast_buffet_daily",
         "coffee_shop",
+        "daily_housekeeping",
         "events_hall",
         "free_parking",
+        "laundry",
         "restaurant",
         "room_service_24h",
+        "security_24h",
         "wifi"
       ],
       "amenities_note": "Wi-Fi, 24h room service, free parking, coffee shop confirmed 8 Oct 2026 (Ahmed).",
@@ -59,7 +62,39 @@
       "units_note": "confirmed by Ahmed 9 Oct 2026",
       "drive_time_airport_min": 15,
       "drive_time_airport_note": "confirmed by Ahmed 9 Oct 2026 — may be shown",
-      "bus_parking": true
+      "bus_parking": true,
+      "services_ar": [
+        "غسيل ملابس",
+        "تدبير غرف يومي",
+        "أمن على مدار الساعة"
+      ],
+      "services_en": [
+        "Laundry",
+        "Daily housekeeping",
+        "24-hour security"
+      ],
+      "coords_note": "Google Maps pin, confirmed by Ahmed 9 Oct 2026 (legacy coordinates were wrong)",
+      "dining": {
+        "name": "Armada Residence Café & Restaurant",
+        "name_ar": "مقهى ومطعم أرمادا ريزيدنس",
+        "hours": "24h",
+        "open_to_public": true,
+        "location_ar": "في اللوبي",
+        "location_en": "In the lobby",
+        "menu_url": "https://armadaresidence.github.io/armada-residence-menu/",
+        "heading_ar": "المطعم والمقهى",
+        "heading_en": "Café & Restaurant",
+        "body_ar": "يعمل Armada Residence Café & Restaurant في لوبي الفرع على مدار الساعة، ويستقبل النزلاء وزوار الطائف على حد سواء. يُقدَّم فيه بوفيه الإفطار اليومي من 07:00 إلى 10:30، وتتوفر قائمة المقهى والمطعم بقية اليوم.",
+        "body_en": "Armada Residence Café & Restaurant, in the lobby, is open around the clock to hotel guests and visitors to Taif alike. The daily breakfast buffet is served from 07:00 to 10:30, with the café and restaurant menu available the rest of the day.",
+        "cta_ar": "تصفّح القائمة",
+        "cta_en": "Browse the menu",
+        "rooftop": {
+          "status": "planned",
+          "show_on_site": false,
+          "note": "rooftop restaurant at Airport Road planned ~3 months (Oct 2026) — not shown until name, menu and opening date are confirmed"
+        },
+        "confirmed": "Ahmed 9 Oct 2026"
+      }
     },
     {
       "slug": "shafa-road",
@@ -89,8 +124,8 @@
       "whatsapp": "+966536663030",
       "email": "reservation@armadaresidence.com",
       "maps_url": "https://maps.app.goo.gl/yfo3wdoSwtFAFRhHA",
-      "lat": 21.069444,
-      "lng": 40.311944,
+      "lat": 21.228128,
+      "lng": 40.411206,
       "check_in": "16:00",
       "check_out": "12:00",
       "parking_ar": "مواقف مجانية — في الطابق السفلي (B)",
@@ -98,9 +133,12 @@
       "amenities": [
         "breakfast_buffet_daily",
         "coffee_shop",
+        "daily_housekeeping",
         "free_parking",
+        "laundry",
         "restaurant",
         "room_service_24h",
+        "security_24h",
         "wifi"
       ],
       "amenities_note": "Wi-Fi, 24h room service, free parking, coffee shop confirmed 8 Oct 2026 (Ahmed).",
@@ -117,7 +155,18 @@
       "google_business_url": "https://share.google/vKuS4FTE8h1Iq9XHS",
       "units_note": "confirmed by Ahmed 9 Oct 2026 (legacy 32 was wrong)",
       "bus_parking": true,
-      "drive_time_ruddaf_min": 4
+      "drive_time_ruddaf_min": 4,
+      "services_ar": [
+        "غسيل ملابس",
+        "تدبير غرف يومي",
+        "أمن على مدار الساعة"
+      ],
+      "services_en": [
+        "Laundry",
+        "Daily housekeeping",
+        "24-hour security"
+      ],
+      "coords_note": "Google Maps pin, confirmed by Ahmed 9 Oct 2026 (legacy coordinates were wrong)"
     }
   ]
 }

@@ -1,0 +1,80 @@
+---
+import Base from '@layouts/Base.astro';
+import LpShell from '@components/lp/LpShell.astro';
+import LpPageHero from '@components/lp/LpPageHero.astro';
+import LpShead from '@components/lp/LpShead.astro';
+import LpImg from '@components/lp/LpImg.astro';
+import LpCta from '@components/lp/LpCta.astro';
+import { langPaths } from '@lib/paths';
+import { pageSeo, type Locale } from '@lib/content';
+import { lp, T } from '@lib/partners';
+
+export const getStaticPaths = langPaths;
+interface Props {
+  locale: Locale;
+}
+const { locale } = Astro.props;
+const s = pageSeo(locale, 'partners-meetings-events');
+const hallAlt = T(locale, { en: 'The function hall — Airport Road', ar: 'قاعة المناسبات — طريق المطار' });
+---
+
+<Base locale={locale} path="/partners/meetings-events/" title={s.title} description={s.description}>
+  <LpShell locale={locale}>
+    <LpPageHero
+      locale={locale}
+      eyebrow={T(locale, { en: 'Meetings & events', ar: 'الاجتماعات والفعاليات' })}
+      h1={T(locale, { en: 'An equipped hall, served from our own kitchen.', ar: 'قاعة مجهَّزة، تُخدَم من مطبخنا.' })}
+      lead={T(locale, lp.hall_lead)}
+      img="function-hall"
+      alt={hallAlt}
+      crumb={T(locale, { en: 'Meetings & Events', ar: 'الاجتماعات والفعاليات' })}
+    />
+
+    <section class="band">
+      <div class="wrap">
+        <div class="grid cols64">
+          <div class="rv">
+            <p class="eyebrow">{T(locale, { en: 'Equipment', ar: 'التجهيزات' })}</p>
+            <div class="chips" style="margin-top:12px">{(lp.equipment as any[]).map((x) => <span class="chip">{T(locale, x)}</span>)}</div>
+            <p class="eyebrow">{T(locale, { en: 'Seating styles', ar: 'أنماط الجلوس' })}</p>
+            <div class="feats">
+              {
+                (lp.seating as any[]).map(([n, m]) => (
+                  <div class="feat">
+                    <b>{T(locale, n)}</b>
+                    <span>{T(locale, m)}</span>
+                  </div>
+                ))
+              }
+            </div>
+            <p class="lede mt-s">{T(locale, lp.seating_note)}</p>
+          </div>
+          <div class="rv">
+            <figure class="ph r43 zoom">
+              <LpImg name="function-hall" alt={hallAlt} />
+              <figcaption>{hallAlt}</figcaption>
+            </figure>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="band dk">
+      <div class="wrap">
+        <LpShead eyebrow={T(locale, { en: 'Catering in the hall', ar: 'الضيافة داخل القاعة' })} h2={T(locale, { en: 'Prepared in-house, on one agreement.', ar: 'تُحضَّر داخليًا، وعلى اتفاقية واحدة.' })} />
+        <div class="g4 mt-m">
+          {
+            (lp.catering as any[]).map(([ti, bo]) => (
+              <div class="card rv">
+                <h3>{T(locale, ti)}</h3>
+                <p>{T(locale, bo)}</p>
+              </div>
+            ))
+          }
+        </div>
+      </div>
+    </section>
+
+    <LpCta locale={locale} h2={T(locale, { en: 'Tell us the programme. We will build the day around it.', ar: 'أخبرنا بالبرنامج، ونبني اليوم حوله.' })} body={T(locale, lp.ui.sla)} request="event" />
+  </LpShell>
+</Base>

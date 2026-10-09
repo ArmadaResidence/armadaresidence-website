@@ -1,0 +1,17 @@
+---
+/** legacy shead(): eyebrow + h2 + rule + optional sub */
+interface Props {
+  eyebrow: string;
+  h2: string;
+  sub?: string;
+  ctr?: boolean;
+}
+const { eyebrow, h2, sub, ctr = false } = Astro.props;
+---
+
+<div class:list={['shead rv', ctr && 'ctr']}>
+  <p class="eyebrow">{eyebrow}</p>
+  <h2 set:html={h2} />
+  <div class="rule"></div>
+  {sub && <p set:html={sub} />}
+</div>

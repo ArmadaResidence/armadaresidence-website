@@ -1,0 +1,38 @@
+---
+/** legacy unit_table(): rows from partners.json → room_table (bedding from rooms.json), never prices */
+import { ICON, lp, T } from '@lib/partners';
+import type { Locale } from '@lib/content';
+interface Props {
+  locale: Locale;
+  filterHotel?: 'airport-road' | 'shafa-road';
+  columns?: ('type' | 'occupancy' | 'beds' | 'hotel' | 'best')[];
+}
+const { locale, filterHotel, columns = ['type', 'occupancy', 'beds', 'hotel', 'best'] } = Astro.props;
+const head: Record<string, string> = {
+  type: T(locale, lp.unit_head[0]),
+  occupancy: T(locale, lp.unit_head[1]),
+  beds: T(locale, lp.unit_head[2]),
+  hotel: T(locale, lp.unit_head[3]),
+  best: T(locale, lp.unit_head[4]),
+};
+const rows = (lp.units as any[]).filter((u) => !filterHotel || u.hotel_key === 'both' || u.hotel_key === filterHotel);
+---
+
+<div class="tw rv">
+  <table class="tb">
+    <thead><tr>{columns.map((c) => <th>{head[c]}</th>)}</tr></thead>
+    <tbody>
+      {
+        rows.map((u) => (
+          <tr>
+            {columns.map((c) =>
+              c === 'type' ? <td class="k">{T(locale, u.type)}</td> : c === 'hotel' ? <td><span class="pr">{T(locale, u.hotel)}</span></td> : <td>{T(locale, u[c])}</td>,
+            )}
+          </tr>
+        ))
+      }
+    </tbody>
+  </table>
+</div>
+<p class="scroll-hint"><Fragment set:html={ICON.swipe} />{T(locale, lp.ui.scroll_x)}</p>
+<p class="lede mt-s" set:html={T(locale, lp.unit_note)} />

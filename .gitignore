@@ -31,3 +31,6 @@ Thumbs.db
 
 # legacy site exports (reference only, never built from)
 legacy-sites/
+
+# brand source material (café identity, videos, PDFs) — the website uses public/brand/*.svg only
+brand/

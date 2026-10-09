@@ -26,14 +26,16 @@
       "breakfast": true,
       "lunch_buffet": true,
       "dinner_buffet": true,
-      "note_ar": "بوفيه إفطار وغداء وعشاء للمجموعات من مطبخ الفندق، بقوائم عربية وآسيوية وعالمية",
-      "note_en": "Breakfast, lunch and dinner buffets for groups from the hotel kitchen — Arabic, Asian and international menus"
+      "note_ar": "بوفيه إفطار وغداء وعشاء للمجموعات من مطبخ الفندق بإشراف شيف تنفيذي، بقوائم عربية وآسيوية وعالمية، وتشمل الماليزية والإندونيسية والتايلاندية",
+      "note_en": "Breakfast, lunch and dinner buffets for groups from the hotel kitchen under an executive chef — Arabic, Asian and international menus, including Malaysian, Indonesian and Thai"
     },
     "hall": {
       "branch": "airport-road",
-      "capacity": 50
+      "capacity": 50,
+      "features_ref": "halls.json → features (confirmed)"
     },
-    "beds_shafa": 98
+    "beds_shafa": 98,
+    "services_ref": "branches.json → services (laundry, daily housekeeping, 24h security) + rooms.json in_room_amenities (iron)"
   },
   "room_table": {
     "_note": "Partner-facing occupancy table. Rows reference rooms.json slugs; 'single' is the king room sold at single occupancy (not a separate room type). Unit counts per type: confirmed with each request.",
@@ -133,5 +135,10 @@
     "any drive-time other than the two confirmed (15 min airport, 4 min Al-Ruddaf)",
     "'حي القمم الأعلى' — correct district is حي القيم الأعلى (branches.json)"
   ],
-  "verified": true
+  "verified": true,
+  "restored_9_oct": [
+    "hall equipment and 5 seating layouts",
+    "laundry / daily housekeeping / 24h security / iron in room",
+    "executive chef with Malaysian, Indonesian and Thai menus"
+  ]
 }
