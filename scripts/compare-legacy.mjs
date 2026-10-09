@@ -31,6 +31,9 @@ async function settle(page) {
     const step = Math.max(400, innerHeight - 100);
     for (let y = 0; y < document.documentElement.scrollHeight; y += step) { scrollTo(0, y); await new Promise((r) => setTimeout(r, 120)); }
     scrollTo(0, 0);
+    // legacy sections reveal cards/blocks on intersection — force them visible for a full-page capture
+    document.querySelectorAll('.card').forEach((c) => c.classList.add('is-visible'));
+    document.querySelectorAll('.rv').forEach((c) => c.classList.add('in'));
     Array.from(document.images).forEach((i) => { i.loading = 'eager'; });
     const pending = Array.from(document.images).filter((i) => !i.complete).map((i) => new Promise((r) => { i.addEventListener('load', r, { once: true }); i.addEventListener('error', r, { once: true }); }));
     await Promise.race([Promise.all(pending), new Promise((r) => setTimeout(r, 8000))]);
@@ -83,6 +86,7 @@ try {
     const p = await c.newPage();
     await p.goto(`${BASE}/discover-taif/`, { waitUntil: 'load' });
     await settle(p);
+    await p.evaluate(() => { const h = document.querySelector('header'); if (h) h.style.visibility = 'hidden'; });
     const footer = p.locator('footer').first();
     await footer.scrollIntoViewIfNeeded();
     await p.waitForTimeout(300);

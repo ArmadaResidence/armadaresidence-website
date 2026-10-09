@@ -80,6 +80,9 @@ try {
           await new Promise((r) => setTimeout(r, 120));
         }
         scrollTo(0, 0);
+        // legacy sections reveal cards/blocks on intersection — force them visible for a full-page capture
+        document.querySelectorAll('.legacy-discover .card').forEach((c) => c.classList.add('is-visible'));
+        document.querySelectorAll('.legacy-partners .rv').forEach((c) => c.classList.add('in'));
         // force any still-lazy image to fetch now, then wait (capped) for the fetches to settle
         Array.from(document.images).forEach((i) => { i.loading = 'eager'; });
         const pending = Array.from(document.images).filter((i) => !i.complete).map((i) => new Promise((r) => { i.addEventListener('load', r, { once: true }); i.addEventListener('error', r, { once: true }); }));
