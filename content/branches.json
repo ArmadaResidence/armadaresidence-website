@@ -81,7 +81,7 @@
         "open_to_public": true,
         "location_ar": "في اللوبي",
         "location_en": "In the lobby",
-        "menu_url": "https://armadaresidence.github.io/armada-residence-menu/",
+        "menu_url": "/menu/",
         "heading_ar": "المطعم والمقهى",
         "heading_en": "Café & Restaurant",
         "body_ar": "يعمل Armada Residence Café & Restaurant في لوبي الفرع على مدار الساعة، ويستقبل النزلاء وزوار الطائف على حد سواء. يُقدَّم فيه بوفيه الإفطار اليومي من 07:00 إلى 10:30، وتتوفر قائمة المقهى والمطعم بقية اليوم.",
@@ -93,8 +93,23 @@
           "show_on_site": false,
           "note": "rooftop restaurant at Airport Road planned ~3 months (Oct 2026) — not shown until name, menu and opening date are confirmed"
         },
-        "confirmed": "Ahmed 9 Oct 2026"
-      }
+        "confirmed": "Ahmed 9 Oct 2026",
+        "phone": "+966533798590",
+        "phone_display": "+966 53 379 8590",
+        "whatsapp": "+966533798590"
+      },
+      "drive_times_min": {
+        "taif_airport": 15,
+        "al_abbas_mosque": "<10",
+        "taif_city_centre": 15,
+        "jouri_mall": 12,
+        "terra_mall": 15,
+        "al_hada_tourist_area": 25
+      },
+      "corridor_ar": "على محور الهدا باتجاه مكة المكرمة",
+      "corridor_en": "On the Al Hada corridor towards Makkah Al-Mukarramah",
+      "tv_size_inch": 65,
+      "drive_times_note": "confirmed by Ahmed 9 Oct 2026 — may be shown on partners and branch pages"
     },
     {
       "slug": "shafa-road",
@@ -166,7 +181,13 @@
         "Daily housekeeping",
         "24-hour security"
       ],
-      "coords_note": "Google Maps pin, confirmed by Ahmed 9 Oct 2026 (legacy coordinates were wrong)"
+      "coords_note": "Google Maps pin, confirmed by Ahmed 9 Oct 2026 (legacy coordinates were wrong)",
+      "drive_times_min": {
+        "al_ruddaf_park": 4,
+        "taif_zoo": 8
+      },
+      "tv_size_inch": 42,
+      "drive_times_note": "confirmed by Ahmed 9 Oct 2026 — may be shown on partners and branch pages"
     }
   ]
 }

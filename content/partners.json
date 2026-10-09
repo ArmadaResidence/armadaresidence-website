@@ -35,7 +35,13 @@
       "features_ref": "halls.json → features (confirmed)"
     },
     "beds_shafa": 98,
-    "services_ref": "branches.json → services (laundry, daily housekeeping, 24h security) + rooms.json in_room_amenities (iron)"
+    "services_ref": "branches.json → services (laundry, daily housekeeping, 24h security) + rooms.json in_room_amenities (iron)",
+    "drive_times": "see branches.json → drive_times_min (all confirmed)",
+    "airport_road_corridor": "Al Hada corridor towards Makkah — Umrah transit stays OK to mention",
+    "tv_sizes": {
+      "airport-road": 65,
+      "shafa-road": 42
+    }
   },
   "room_table": {
     "_note": "Partner-facing occupancy table. Rows reference rooms.json slugs; 'single' is the king room sold at single occupancy (not a separate room type). Unit counts per type: confirmed with each request.",
@@ -132,13 +138,29 @@
     "event"
   ],
   "removed_from_legacy": [
-    "any drive-time other than the two confirmed (15 min airport, 4 min Al-Ruddaf)",
-    "'حي القمم الأعلى' — correct district is حي القيم الأعلى (branches.json)"
+    "'حي القمم الأعلى' — correct district is حي القيم الأعلى"
   ],
   "verified": true,
   "restored_9_oct": [
     "hall equipment and 5 seating layouts",
     "laundry / daily housekeeping / 24h security / iron in room",
     "executive chef with Malaysian, Indonesian and Thai menus"
-  ]
+  ],
+  "fact_sheet": {
+    "show_button": true,
+    "files": {
+      "ar": "Armada-Residence-Fact-Sheet-2026-AR.pdf",
+      "en": "Armada-Residence-Fact-Sheet-2026.pdf"
+    },
+    "status": "must be regenerated with corrections before linking — see corrections list",
+    "corrections": [
+      "unit types: 12 (5 Airport, 7 Shafa) — not 8 / 5",
+      "unit table: twin room = Airport only; one-bedroom suite = both; jacuzzi suite has NO living room; add balcony room (Shafa) and two-bedroom suite (Shafa)",
+      "Shafa page: remove 'Twin Room' card (not a Shafa type); cards = King, Balcony, Jacuzzi studio, Suites",
+      "district: القيم الأعلى / Al-Qaim Al-Aala (text and photo caption)",
+      "Al Ruddaf: 4 min (not 8)",
+      "kitchen: in both Airport suites (one- and two-bedroom); none at Shafa",
+      "in-every-unit: iron, kettle, fridge (Airport only) — fridge not at Shafa"
+    ]
+  }
 }

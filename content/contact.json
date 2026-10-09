@@ -50,7 +50,16 @@
     },
     "linktree": "https://linktr.ee/ArmadaR"
   },
-  "menu_url": "https://armadaresidence.github.io/armada-residence-menu/",
+  "menu_url": "/menu/",
   "gtm_container": "GTM-MFV9WL38",
-  "verified": true
+  "verified": true,
+  "cafe": {
+    "name": "Armada Residence Café & Restaurant",
+    "phone": "+966533798590",
+    "phone_display": "+966 53 379 8590",
+    "whatsapp": "+966533798590",
+    "scope_ar": "طلبات المطعم والمقهى",
+    "scope_en": "Café & restaurant orders",
+    "confirmed": "Ahmed 9 Oct 2026"
+  }
 }

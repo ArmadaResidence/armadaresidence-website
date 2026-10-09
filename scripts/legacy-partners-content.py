@@ -115,16 +115,17 @@ def main() -> None:
     # ── properties: counts, drive times, feats, near ────────────────────────────────────────────
     pa, ps = out["props"]["airport"], out["props"]["shafa"]
     pa["count"], ps["count"] = str(f["units_airport"]), str(f["units_shafa"])
+    # corridor sentence restored 9 Oct (branches.json → corridor_ar/en; partners.json → airport_road_corridor)
+    corridor_en_lc = airport["corridor_en"][0].lower() + airport["corridor_en"][1:]
     ps["unit"] = {"en": f"Units · {f['beds_shafa']} beds", "ar": f"وحدة · {f['beds_shafa']} سريرًا"}
     pa["lead"] = {
-        "en": f"{f['units_airport']} hotel apartments on Airport Road, {f['drive_time_airport_to_airport_road_min']} minutes from Taif airport. This is the property we place organised groups in — the larger inventory, twin rooms, suites with kitchens, the meeting hall, and parking that accommodates a tour coach.",
-        "ar": f"{f['units_airport']} شقة فندقية على طريق المطار، على بُعد {f['drive_time_airport_to_airport_road_min']} دقيقة من مطار الطائف. هذا هو الفندق الذي نُسكِّن فيه المجموعات المنظَّمة — السعة الأكبر، والغرف بسريرين، والأجنحة المزوّدة بمطبخ، وقاعة الاجتماعات، والمواقف التي تتّسع لحافلة سياحية.",
+        "en": f"{f['units_airport']} hotel apartments on Airport Road — {corridor_en_lc}, {f['drive_time_airport_to_airport_road_min']} minutes from Taif airport. This is the property we place organised groups in — the larger inventory, twin rooms, suites with kitchens, the meeting hall, and parking that accommodates a tour coach.",
+        "ar": f"{f['units_airport']} شقة فندقية على طريق المطار — {airport['corridor_ar']}، على بُعد {f['drive_time_airport_to_airport_road_min']} دقيقة من مطار الطائف. هذا هو الفندق الذي نُسكِّن فيه المجموعات المنظَّمة — السعة الأكبر، والغرف بسريرين، والأجنحة المزوّدة بمطبخ، وقاعة الاجتماعات، والمواقف التي تتّسع لحافلة سياحية.",
     }
     ps["lead"] = {
         "en": f"{f['units_shafa']} units and {f['beds_shafa']} beds on Al-Shafa Road, {f['drive_time_ruddaf_to_shafa_min']} minutes from Al Ruddaf Park — quieter and smaller than Airport Road, built around family groups booked through agencies and leisure stays.",
         "ar": f"{f['units_shafa']} وحدة و{f['beds_shafa']} سريرًا على طريق الشفا، على بُعد {f['drive_time_ruddaf_to_shafa_min']} دقائق من حديقة الردف — أهدأ وأصغر من طريق المطار، وقائم على المجموعات العائلية عبر الوكالات والإقامات الترفيهية.",
     }
-    removed.append("Airport Road lead: 'on the Al Hada corridor towards Makkah Al-Mukarramah' (corridor claim not in content/)")
     removed.append("Shafa Road lead: 'in Al-Sadad, an established residential quarter … minutes from the parks' (district-character claim; replaced by the confirmed 4 min to Al Ruddaf)")
     pa["stats"] = [
         {"n": str(f["units_airport"]), "label": {"en": "Apartments", "ar": "شقة"}},
@@ -138,9 +139,26 @@ def main() -> None:
         {"n": str(f["drive_time_ruddaf_to_shafa_min"]), "label": {"en": "Min · Al Ruddaf", "ar": "دقائق · الردف"}},
         {"n": str(len([r for r in rooms["rooms"] if r["branch"] == "shafa-road" and r["show_on_site"]])), "label": {"en": "Unit types", "ar": "أنواع وحدات"}},
     ]
-    removed.append("Shafa stat '8 min · Taif Zoo' and Airport/Shafa 'Getting there' rows except the two confirmed drive times (Al Abbas Mosque, City Centre, Jouri Mall, Terra Mall, Al Hada area, Ruddaf 8 min, Zoo 8 min)")
-    pa["near"] = [{"en": "Taif International Airport", "ar": "مطار الطائف الدولي", "den": f"{f['drive_time_airport_to_airport_road_min']} min", "dar": f"{f['drive_time_airport_to_airport_road_min']} دقيقة"}]
-    ps["near"] = [{"en": "Al Ruddaf Park", "ar": "حديقة الردف", "den": f"{f['drive_time_ruddaf_to_shafa_min']} min", "dar": f"{f['drive_time_ruddaf_to_shafa_min']} دقائق"}]
+    removed.append("'Getting there' rows now come from branches.json → drive_times_min (all confirmed 9 Oct): Ruddaf 8 min → 4 min; 'Al Hada Road — direct access' dropped (not in content/)")
+    PLACES = {
+        "taif_airport": ("Taif International Airport", "مطار الطائف الدولي"), "al_abbas_mosque": ("Al Abbas Mosque", "مسجد العباس"),
+        "taif_city_centre": ("Taif City Centre", "مركز مدينة الطائف"), "jouri_mall": ("Jouri Mall", "جوري مول"), "terra_mall": ("Terra Mall", "تيرا مول"),
+        "al_hada_tourist_area": ("Al Hada tourist area", "الهدا السياحية"), "al_ruddaf_park": ("Al Ruddaf Park", "حديقة الردف"), "taif_zoo": ("Taif Zoo", "حديقة الحيوانات بالطائف"),
+    }
+
+    def near_rows(b):  # branches.json → drive_times_min (all confirmed by Ahmed 9 Oct 2026); "<10" → under 10
+        rows = []
+        for key, v in b["drive_times_min"].items():
+            en, ar = PLACES[key]
+            if isinstance(v, str) and v.startswith("<"):
+                n = v[1:]
+                rows.append({"en": en, "ar": ar, "den": f"under {n} min", "dar": f"أقل من {n} دقائق"})
+            else:
+                rows.append({"en": en, "ar": ar, "den": f"{v} min", "dar": f"{v} دقائق" if 3 <= int(v) <= 10 else f"{v} دقيقة"})
+        return rows
+
+    pa["near"] = near_rows(airport)
+    ps["near"] = near_rows(shafa)
     svc_ar, svc_en = airport["services_ar"], airport["services_en"]
     pa["feats"] = [
         [{"en": "Meeting hall", "ar": "قاعة اجتماعات"}, {"en": f"Up to {f['hall']['capacity']} people — equipment and seating confirmed", "ar": f"حتى {f['hall']['capacity']} شخصًا — تجهيزات وأنماط جلوس مؤكدة"}],
@@ -165,7 +183,8 @@ def main() -> None:
     # ── portfolio facts ──────────────────────────────────────────────────────────────────────────
     out["portfolio"][0][3] = [
         {"en": f"{f['units_airport']} hotel apartments", "ar": f"{f['units_airport']} شقة فندقية"},
-        {"en": "Suitable for groups and long stay", "ar": "مناسب للمجموعات والإقامة الطويلة"},
+        {"en": airport["corridor_en"], "ar": airport["corridor_ar"]},
+        {"en": "Suitable for groups, Umrah transit and long stay", "ar": "مناسب للمجموعات وإقامات عبور المعتمرين والإقامة الطويلة"},
         {"en": f"{f['drive_time_airport_to_airport_road_min']} minutes from Taif Airport", "ar": f"{f['drive_time_airport_to_airport_road_min']} دقيقة من مطار الطائف"},
         {"en": "Meeting hall and coach parking", "ar": "قاعة اجتماعات ومواقف للحافلات"},
     ]
@@ -175,10 +194,10 @@ def main() -> None:
         {"en": "Family groups via agencies and leisure", "ar": "المجموعات العائلية عبر الوكالات والسياحة"},
         {"en": "Coach parking", "ar": "مواقف للحافلات"},
     ]
-    removed.append("Portfolio: 'Al Hada road towards Makkah', '8 minutes from Al Ruddaf Park' (confirmed 4), 'Armada Residence Café'")
+    removed.append("Portfolio: '8 minutes from Al Ruddaf Park' (confirmed 4), 'Armada Residence Café'")
     out["why"]["items"][3] = [
         {"en": "Strategic Taif location", "ar": "موقع استراتيجي في الطائف"},
-        {"en": f"Airport Road is {f['drive_time_airport_to_airport_road_min']} minutes from Taif International Airport; Al-Shafa Road is {f['drive_time_ruddaf_to_shafa_min']} minutes from Al Ruddaf Park.", "ar": f"طريق المطار على بُعد {f['drive_time_airport_to_airport_road_min']} دقيقة من مطار الطائف الدولي، وطريق الشفا على بُعد {f['drive_time_ruddaf_to_shafa_min']} دقائق من حديقة الردف."},
+        {"en": f"Airport Road is {f['drive_time_airport_to_airport_road_min']} minutes from Taif International Airport, {corridor_en_lc}; Al-Shafa Road is {f['drive_time_ruddaf_to_shafa_min']} minutes from Al Ruddaf Park.", "ar": f"طريق المطار على بُعد {f['drive_time_airport_to_airport_road_min']} دقيقة من مطار الطائف الدولي، {airport['corridor_ar']}، وطريق الشفا على بُعد {f['drive_time_ruddaf_to_shafa_min']} دقائق من حديقة الردف."},
         "",
     ]
     out["footer"]["blurb"] = {"en": f"Two hotels in Taif — {f['units_total']} units, {f['room_types']} room types and one commercial contact for the travel trade.", "ar": f"فندقان في الطائف — {f['units_total']} وحدة و{f['room_types']} نوع غرفة ومسؤول تجاري واحد لقطاع السفر."}
@@ -199,13 +218,13 @@ def main() -> None:
     out["agent_gets"][4] = ["05", {"en": "Group meals from our kitchen", "ar": "وجبات المجموعات من مطبخنا"}, pair((partners["facts"]["group_meals"]["note_en"], partners["facts"]["group_meals"]["note_ar"]))]
     out["agent_gets"][5][2] = {"en": "Airport Road suites with kitchens.", "ar": "أجنحة طريق المطار المزوّدة بمطبخ."}
     out["corp"]["body"] = {"en": "Company accommodation programmes, business stays with a meeting hall, and long stays in hotel apartments with kitchens on Airport Road — with one commercial contact for the account.", "ar": "برامج إسكان الشركات، وإقامات عمل مع قاعة اجتماعات، وإقامات طويلة في شقق فندقية بمطبخ على طريق المطار — مع مسؤول تجاري واحد للحساب."}
-    out["umrah"]["body"] = {"en": "Group stays in Taif, multi-bed rooming for the whole party and meals served from our own kitchen — arranged on one file, under one agreement.", "ar": "إقامات المجموعات في الطائف، وتسكين متعدد الأسرّة للوفد كاملًا، ووجبات من مطبخنا — في ملف واحد وتحت اتفاقية واحدة."}
+    out["umrah"]["body"] = {"en": "Transit stays in Taif on the route towards Makkah Al-Mukarramah, multi-bed rooming for the whole party and meals served from our own kitchen — arranged on one file, under one agreement.", "ar": "إقامات عبور في الطائف على المسار نحو مكة المكرمة، وتسكين متعدد الأسرّة للوفد كاملًا، ووجبات من مطبخنا — في ملف واحد وتحت اتفاقية واحدة."}
     out["umrah"]["list"][3] = pair((partners["facts"]["group_meals"]["note_en"], partners["facts"]["group_meals"]["note_ar"]))
-    out["segments"][0][3][0] = {"en": "Group stays in Taif for Umrah parties", "ar": "إقامات في الطائف لمجموعات العمرة"}
+    out["segments"][0][3][0] = {"en": "Transit stays on the route towards Makkah", "ar": "إقامات عبور على المسار نحو مكة"}
     out["group_intro"] = {"en": "A group is not a stack of individual bookings. It arrives together, eats together and leaves together — and it is run from one written plan agreed with the commercial office before the group lands.", "ar": "المجموعة ليست كومة حجوزات فردية. تصل معًا وتأكل معًا وتغادر معًا — وتُدار بخطة واحدة مكتوبة يُتَّفق عليها مع المكتب التجاري قبل وصول المجموعة."}
     out["named_contact"] = {"en": "<b>One named contact.</b> The same person answers the first enquiry and follows the group through to the invoice.", "ar": "<b>مسؤول واحد باسمه.</b> الشخص نفسه يردّ على أول استفسار ويتابع المجموعة حتى الفاتورة."}
     removed.append("Process promises reworded (no content backing): 'contracted rate sheet', 'event order circulated to reception/housekeeping/F&B/accounts', 'rooming lists amended up to the agreed cut-off', 'consolidated billing / one consolidated account', 'upgrades for group leaders', 'no hand-offs, no queue'")
-    removed.append("Umrah segment 'Transit stays on the route towards Makkah' → 'Group stays in Taif for Umrah parties'")
+    out["restored_9_oct"] = ["Al Hada corridor towards Makkah (branches.json corridor_ar/en)", "Umrah transit stays", "drive_times_min rows for both properties"]
 
     # ── hall: equipment + seating from halls.json (confirmed 9 Oct) ─────────────────────────────
     feats_en, feats_ar = hall["features_en"], hall["features_ar"]

@@ -230,8 +230,12 @@
           "ar": "108 شقة فندقية"
         },
         {
-          "en": "Suitable for groups and long stay",
-          "ar": "مناسب للمجموعات والإقامة الطويلة"
+          "en": "On the Al Hada corridor towards Makkah Al-Mukarramah",
+          "ar": "على محور الهدا باتجاه مكة المكرمة"
+        },
+        {
+          "en": "Suitable for groups, Umrah transit and long stay",
+          "ar": "مناسب للمجموعات وإقامات عبور المعتمرين والإقامة الطويلة"
         },
         {
           "en": "15 minutes from Taif Airport",
@@ -330,8 +334,8 @@
           "ar": "موقع استراتيجي في الطائف"
         },
         {
-          "en": "Airport Road is 15 minutes from Taif International Airport; Al-Shafa Road is 4 minutes from Al Ruddaf Park.",
-          "ar": "طريق المطار على بُعد 15 دقيقة من مطار الطائف الدولي، وطريق الشفا على بُعد 4 دقائق من حديقة الردف."
+          "en": "Airport Road is 15 minutes from Taif International Airport, on the Al Hada corridor towards Makkah Al-Mukarramah; Al-Shafa Road is 4 minutes from Al Ruddaf Park.",
+          "ar": "طريق المطار على بُعد 15 دقيقة من مطار الطائف الدولي، على محور الهدا باتجاه مكة المكرمة، وطريق الشفا على بُعد 4 دقائق من حديقة الردف."
         },
         ""
       ],
@@ -410,8 +414,8 @@
       "ar": "ضيافة العمرة والمجموعات"
     },
     "body": {
-      "en": "Group stays in Taif, multi-bed rooming for the whole party and meals served from our own kitchen — arranged on one file, under one agreement.",
-      "ar": "إقامات المجموعات في الطائف، وتسكين متعدد الأسرّة للوفد كاملًا، ووجبات من مطبخنا — في ملف واحد وتحت اتفاقية واحدة."
+      "en": "Transit stays in Taif on the route towards Makkah Al-Mukarramah, multi-bed rooming for the whole party and meals served from our own kitchen — arranged on one file, under one agreement.",
+      "ar": "إقامات عبور في الطائف على المسار نحو مكة المكرمة، وتسكين متعدد الأسرّة للوفد كاملًا، ووجبات من مطبخنا — في ملف واحد وتحت اتفاقية واحدة."
     },
     "list": [
       {
@@ -562,8 +566,8 @@
         "ar": "شقق أرمادا ريزيدنس الفندقية، طريق المطار، الطائف — الواجهة عند الغروب"
       },
       "lead": {
-        "en": "108 hotel apartments on Airport Road, 15 minutes from Taif airport. This is the property we place organised groups in — the larger inventory, twin rooms, suites with kitchens, the meeting hall, and parking that accommodates a tour coach.",
-        "ar": "108 شقة فندقية على طريق المطار، على بُعد 15 دقيقة من مطار الطائف. هذا هو الفندق الذي نُسكِّن فيه المجموعات المنظَّمة — السعة الأكبر، والغرف بسريرين، والأجنحة المزوّدة بمطبخ، وقاعة الاجتماعات، والمواقف التي تتّسع لحافلة سياحية."
+        "en": "108 hotel apartments on Airport Road — on the Al Hada corridor towards Makkah Al-Mukarramah, 15 minutes from Taif airport. This is the property we place organised groups in — the larger inventory, twin rooms, suites with kitchens, the meeting hall, and parking that accommodates a tour coach.",
+        "ar": "108 شقة فندقية على طريق المطار — على محور الهدا باتجاه مكة المكرمة، على بُعد 15 دقيقة من مطار الطائف. هذا هو الفندق الذي نُسكِّن فيه المجموعات المنظَّمة — السعة الأكبر، والغرف بسريرين، والأجنحة المزوّدة بمطبخ، وقاعة الاجتماعات، والمواقف التي تتّسع لحافلة سياحية."
       },
       "tags": [
         {
@@ -681,6 +685,36 @@
           "ar": "مطار الطائف الدولي",
           "den": "15 min",
           "dar": "15 دقيقة"
+        },
+        {
+          "en": "Al Abbas Mosque",
+          "ar": "مسجد العباس",
+          "den": "under 10 min",
+          "dar": "أقل من 10 دقائق"
+        },
+        {
+          "en": "Taif City Centre",
+          "ar": "مركز مدينة الطائف",
+          "den": "15 min",
+          "dar": "15 دقيقة"
+        },
+        {
+          "en": "Jouri Mall",
+          "ar": "جوري مول",
+          "den": "12 min",
+          "dar": "12 دقيقة"
+        },
+        {
+          "en": "Terra Mall",
+          "ar": "تيرا مول",
+          "den": "15 min",
+          "dar": "15 دقيقة"
+        },
+        {
+          "en": "Al Hada tourist area",
+          "ar": "الهدا السياحية",
+          "den": "25 min",
+          "dar": "25 دقيقة"
         }
       ],
       "gallery": [
@@ -830,6 +864,12 @@
           "ar": "حديقة الردف",
           "den": "4 min",
           "dar": "4 دقائق"
+        },
+        {
+          "en": "Taif Zoo",
+          "ar": "حديقة الحيوانات بالطائف",
+          "den": "8 min",
+          "dar": "8 دقائق"
         }
       ],
       "gallery": [
@@ -853,8 +893,8 @@
       "groups-umrah",
       [
         {
-          "en": "Group stays in Taif for Umrah parties",
-          "ar": "إقامات في الطائف لمجموعات العمرة"
+          "en": "Transit stays on the route towards Makkah",
+          "ar": "إقامات عبور على المسار نحو مكة"
         },
         {
           "en": "Multi-bed rooming for the whole party",
@@ -1720,14 +1760,12 @@
   },
   "removed_from_legacy": [
     "'8 unit types' hero/built stat and 'Eight ways to place a guest' heading → room types = 12 (rooms.json); the unit table keeps its 8 partner-facing rows",
-    "Airport Road lead: 'on the Al Hada corridor towards Makkah Al-Mukarramah' (corridor claim not in content/)",
     "Shafa Road lead: 'in Al-Sadad, an established residential quarter … minutes from the parks' (district-character claim; replaced by the confirmed 4 min to Al Ruddaf)",
-    "Shafa stat '8 min · Taif Zoo' and Airport/Shafa 'Getting there' rows except the two confirmed drive times (Al Abbas Mosque, City Centre, Jouri Mall, Terra Mall, Al Hada area, Ruddaf 8 min, Zoo 8 min)",
+    "'Getting there' rows now come from branches.json → drive_times_min (all confirmed 9 Oct): Ruddaf 8 min → 4 min; 'Al Hada Road — direct access' dropped (not in content/)",
     "Shafa feats 'Armada Residence Café — coffee · teas · juices · pastries', 'Breakfast restaurant seating for the whole party', 'Accessible units — on request'; Airport 'Free high-speed Wi-Fi' → Wi-Fi (speed not confirmed)",
     "Gallery photos not in the approved set (heritage-majlis, lounge-airport, king-shafa, twin-shafa, jacuzzi-shafa, cafe-shafa, group-buffet, boardroom, suite-two-bed, twin-airport, lobby-airport, king-airport, king-junior, terrace)",
-    "Portfolio: 'Al Hada road towards Makkah', '8 minutes from Al Ruddaf Park' (confirmed 4), 'Armada Residence Café'",
+    "Portfolio: '8 minutes from Al Ruddaf Park' (confirmed 4), 'Armada Residence Café'",
     "Process promises reworded (no content backing): 'contracted rate sheet', 'event order circulated to reception/housekeeping/F&B/accounts', 'rooming lists amended up to the agreed cut-off', 'consolidated billing / one consolidated account', 'upgrades for group leaders', 'no hand-offs, no queue'",
-    "Umrah segment 'Transit stays on the route towards Makkah' → 'Group stays in Taif for Umrah parties'",
     "Coffee-break menu detail (Arabic and specialty coffee, tea, pastries, fruit, water) and 'Round banquet — default set-up' (halls.json lists the five layouts without a default)",
     "In-unit list: Smart TV 65\"/42\", ironing board, premium amenities, extra mattresses/blankets/pillows, walk-in shower, cotton towels, 'kitchenette in the two-bedroom suites' (kitchens: both Airport Road suites), accessible units with handrails",
     "Legacy unit rows replaced by partners.json room_table: 'Twin Room — Both' (twin is Airport Road only), 'Family Suite', 'Jacuzzi Room', 'Two-Bedroom / Executive Suite', 'Jacuzzi Suite — occupancy confirmed on enquiry'",
@@ -1786,6 +1824,11 @@
         "ar": "للردّ كتابيًا"
       }
     }
+  ],
+  "restored_9_oct": [
+    "Al Hada corridor towards Makkah (branches.json corridor_ar/en)",
+    "Umrah transit stays",
+    "drive_times_min rows for both properties"
   ],
   "units": [
     {
