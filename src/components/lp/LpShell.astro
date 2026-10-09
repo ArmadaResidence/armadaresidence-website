@@ -41,9 +41,10 @@ const units = (lp.calc_units as any[]).map((u) => ({ key: u.key, en: u.en, ar: u
   <slot />
   {
     factSheetHref && (
-      <section class="band tight fact-sheet-strip">
+      <section class="band dk tight fact-sheet-strip">
         <div class="wrap">
-          <a class="btn ol" href={factSheetHref} download>
+          <p>{T(locale, lp.footer.blurb)}</p>
+          <a class="btn" href={factSheetHref} download>
             {factSheetLabel}
           </a>
         </div>

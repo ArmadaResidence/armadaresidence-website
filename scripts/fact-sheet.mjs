@@ -510,7 +510,7 @@ for (const lang of ['en', 'ar']) {
   await page.evaluate(async () => { await Promise.all(Array.from(document.images).map((i) => i.decode().catch(() => {}))); });
   const name = partners.fact_sheet.files[lang];
   const path = resolve(outDir, name);
-  await page.pdf({ path, width: '1280px', height: '720px', printBackground: true, preferCSSPageSize: true });
+  await page.pdf({ path, width: '1280px', height: '720px', printBackground: true, preferCSSPageSize: true, tagged: true });
   const n = await page.evaluate(() => document.querySelectorAll('.page').length);
   console.log(`public/docs/${name}: ${n} pages, ${(readFileSync(path).length / 1024 / 1024).toFixed(1)} MB`);
   await page.close();

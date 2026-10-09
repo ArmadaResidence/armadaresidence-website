@@ -138,3 +138,33 @@
   box-sizing: content-box;
   height: calc(100% - 8px);
 }
+/* café footer on /menu/ (legacy footer.site kept; café identity: espresso background, porcelain text/logo, oxblood button) */
+.legacy-menu footer.site {
+  --cafe-oxblood: #6c1f33;
+  background: var(--cherry); /* legacy --cherry = café espresso #211817 */
+}
+.legacy-menu footer.site img {
+  height: 40px;
+  padding: 10px; /* clear space = a quarter of the logo height */
+  box-sizing: content-box;
+  opacity: 1;
+}
+.legacy-menu footer.site .sbtn.wa {
+  background: var(--cafe-oxblood);
+  border-color: var(--cafe-oxblood);
+}
+.legacy-menu footer.site a:hover {
+  color: var(--bronze);
+}
+/* /partners/: Fact Sheet 2026 download strip at the foot of every partners page (legacy footer link restored) */
+.legacy-partners .fact-sheet-strip .wrap {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px 28px;
+}
+.legacy-partners .fact-sheet-strip p {
+  margin: 0;
+  max-width: 640px;
+}

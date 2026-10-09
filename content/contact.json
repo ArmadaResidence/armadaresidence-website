@@ -60,6 +60,10 @@
     "whatsapp": "+966533798590",
     "scope_ar": "طلبات المطعم والمقهى",
     "scope_en": "Café & restaurant orders",
-    "confirmed": "Ahmed 9 Oct 2026"
+    "confirmed": "Ahmed 9 Oct 2026",
+    "room_extension": "333",
+    "room_extension_ar": "من هاتف الغرفة: تحويلة 333",
+    "room_extension_en": "From your room phone: ext. 333",
+    "linktree": "https://linktr.ee/armadacoffee3"
   }
 }

@@ -20,6 +20,8 @@ interface Props {
   switchPath?: string;
   /** Favicon set; the café menu page swaps in the café favicon (brand/cafe identity). */
   icons?: { svg: string; png32: string; apple: string };
+  /** /menu/ renders the café's own footer inside .legacy-menu instead of the hotel footer. */
+  hideFooter?: boolean;
 }
 
 const {
@@ -33,6 +35,7 @@ const {
   ogImage = seo.default_og_image,
   switchPath = Astro.props.path,
   icons = { svg: '/favicon.svg', png32: '/icons/favicon-32.png', apple: '/icons/apple-touch-icon.png' },
+  hideFooter = false,
 } = Astro.props;
 
 const canonical = absoluteUrl(localePath(locale, path));
@@ -105,7 +108,7 @@ const ld = jsonld.map((j) => JSON.stringify(j).replace(/</g, '\\u003c'));
     <main id="main" class="flex-1">
       <slot />
     </main>
-    <Footer locale={locale} switchPath={switchPath} />
+    {!hideFooter && <Footer locale={locale} switchPath={switchPath} />}
     <WhatsAppButton locale={locale} branch={whatsapp} />
   </body>
 </html>

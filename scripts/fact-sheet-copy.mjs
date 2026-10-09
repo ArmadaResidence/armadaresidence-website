@@ -114,7 +114,7 @@ export const COPY = {
 
   units: {
     section: { en: 'The Unit Collection', ar: 'مجموعة الوحدات' },
-    h2: { en: 'Eight ways to place a guest, across two hotels.', ar: 'ثماني طرق لتسكين الضيف، في فندقين.' },
+    h2: { en: 'Twelve unit types. Eight ways to place a guest.', ar: 'اثنا عشر نوعًا من الوحدات. ثماني طرق لتسكين الضيف.' },
     cols: [
       { en: 'Unit type', ar: 'نوع الوحدة' },
       { en: 'Occupancy', ar: 'الإشغال' },
@@ -167,7 +167,7 @@ export const COPY = {
       { img: 'king-shafa', t: { en: 'King Room', ar: 'غرفة كينج' }, o: { en: '2 GUESTS', ar: 'ضيفان' }, s: { en: '{bed_king_shafa}', ar: '{bed_king_shafa}' } },
       { img: null, t: { en: 'Balcony Room', ar: 'غرفة مع بلكونة' }, o: { en: '2 GUESTS', ar: 'ضيفان' }, s: { en: '{bed_balcony} · private balcony', ar: '{bed_balcony} · بلكونة خاصة' } },
       { img: 'jacuzzi-shafa', t: { en: 'Jacuzzi Studio', ar: 'استديو بجاكوزي' }, o: { en: '2 GUESTS', ar: 'ضيفان' }, s: { en: '{bed_jacuzzi} · jacuzzi', ar: '{bed_jacuzzi} · جاكوزي' } },
-      { img: 'king-junior', t: { en: 'Suites', ar: 'الأجنحة' }, o: { en: 'UP TO {suite_capacity} GUESTS', ar: 'حتى {suite_capacity} ضيوف' }, s: { en: 'One- and two-bedroom · living room', ar: 'غرفة أو غرفتان · صالة' } },
+      { img: 'king-junior', t: { en: 'Suites', ar: 'الأجنحة' }, o: { en: 'UP TO {suite_capacity} GUESTS', ar: 'حتى {suite_capacity} ضيوف' }, s: { en: 'One- and two-bedroom suites', ar: 'أجنحة بغرفة أو غرفتين' } },
     ],
     exteriorCaption: { en: 'AL SHAFA ROAD — TAIF', ar: 'طريق الشفا — الطائف' },
     barTitle: { en: 'Restaurant & café', ar: 'المطعم والكوفي' },

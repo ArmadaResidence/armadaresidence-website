@@ -33,8 +33,10 @@ Thumbs.db
 legacy-sites/
 
 # brand source material (café creative work, menu videos, fact-sheet PDFs) — the website uses public/brand/*.svg only.
-# Tracked exception: brand/cafe/ملفات الهوية (café identity files — vector logos, guidelines).
+# Tracked exception: brand/cafe/ملفات الهوية/vector/ (café identity as real vectors — logos, monogram, favicon).
 brand/*
 !brand/cafe/
 brand/cafe/*
 !brand/cafe/ملفات الهوية/
+brand/cafe/ملفات الهوية/*
+!brand/cafe/ملفات الهوية/vector/

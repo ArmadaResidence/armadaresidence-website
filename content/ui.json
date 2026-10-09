@@ -324,7 +324,9 @@
       "lang_label": "اللغة",
       "cart": "السلة",
       "close": "إغلاق",
-      "logo_alt": "شعار ARMADA Residence Café & Restaurant"
+      "logo_alt": "شعار ARMADA Residence Café & Restaurant",
+      "footer_whatsapp": "تواصل معنا عبر واتساب",
+      "footer_follow": "تابعنا وخلّك أول من يعرف جديدنا"
     }
   },
   "en": {
@@ -651,7 +653,9 @@
       "lang_label": "Language",
       "cart": "Cart",
       "close": "Close",
-      "logo_alt": "ARMADA Residence Café & Restaurant"
+      "logo_alt": "ARMADA Residence Café & Restaurant",
+      "footer_whatsapp": "Chat with us on WhatsApp",
+      "footer_follow": "Follow us and be the first to know what's new"
     }
   }
 }
