@@ -8,6 +8,7 @@
 import { fill, localePath, telHref, ui, waHref, type Branch, type Locale } from '@lib/content';
 import type { Dining } from '@lib/jsonld';
 import Icon from './Icon.astro';
+import GallerySlider from './GallerySlider.astro';
 
 interface Props {
   locale: Locale;
@@ -28,6 +29,8 @@ const phoneDisplay = (d as unknown as { phone_display: string }).phone_display;
 const menuHref = localePath(locale, d.menu_url);
 const PHOTOS = ['cutlet-penne', 'cutlet-alfredo', 'caesar-salad', 'pizza-margherita'] as const;
 const alts = t.dining.photo_alts as Record<string, string>;
+const g = t.gallery;
+const galleryLabels = { previous: g.previous, next: g.next, goTo: g.go_to, open: g.open, close: g.close, of: g.of };
 const photo = (slug: string) => ({
   src: `/images/dining/${slug}-800.webp`,
   srcset: `/images/dining/${slug}-800.webp 800w, /images/dining/${slug}-1400.webp 1400w`,
@@ -46,10 +49,10 @@ const photo = (slug: string) => ({
       <p class="leading-relaxed">{body}</p>
       <p class="cafe-accent font-semibold text-sm">{facts.join(' · ')}</p>
       <div class="flex flex-wrap items-center gap-3 mt-auto">
-        <a href={waHref(d.whatsapp)} rel="noopener" target="_blank" class="cafe-btn inline-flex items-center gap-2 font-semibold px-5 py-3 rounded transition-colors">
+        {/* no number in the label (Ahmed, 9 Oct): the number lives in href and aria-label only */}
+        <a href={waHref(d.whatsapp)} rel="noopener" target="_blank" class="cafe-btn inline-flex items-center gap-2 font-semibold px-5 py-3 rounded transition-colors" aria-label={`${t.dining.whatsapp} ${phoneDisplay}`}>
           <Icon name="whatsapp" size={18} />
           <span>{t.dining.whatsapp}</span>
-          <span class="latin whitespace-nowrap" dir="ltr">{phoneDisplay}</span>
           <img src="/brand/cafe/monogram-porcelain.svg" alt="" aria-hidden="true" width="20" height="20" class="h-5 w-5" />
         </a>
         <a href={menuHref} class="cafe-btn-ghost inline-flex items-center gap-2 font-semibold px-5 py-3 rounded transition-colors">
@@ -59,13 +62,8 @@ const photo = (slug: string) => ({
         <a href={telHref(d.phone)} class="sr-only">{t.cta.call}</a>
       </div>
     </div>
-    <div class="lg:col-span-2 grid grid-cols-2 gap-1 p-1 lg:p-0">
-      {
-        PHOTOS.map((slug, i) => {
-          const p = photo(slug);
-          return <img src={p.src} srcset={p.srcset} sizes="(min-width: 1024px) 240px, 50vw" alt={p.alt} width="800" height="1000" loading="lazy" decoding="async" class="w-full h-full object-cover aspect-[4/5]" />;
-        })
-      }
+    <div class="lg:col-span-2 p-4 lg:p-6 flex flex-col justify-center">
+      <GallerySlider images={PHOTOS.map((slug) => ({ ...photo(slug), width: 800, height: 1000 }))} frameClass="bg-cafe-espresso" ratio="4 / 3" labels={galleryLabels} />
     </div>
   </div>
 </section>

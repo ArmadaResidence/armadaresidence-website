@@ -16,6 +16,7 @@ into the website as /menu/ — the single-file app is kept as is (frame engine, 
 """
 from __future__ import annotations
 
+import ast
 import filecmp
 import json
 import re
@@ -25,8 +26,12 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-SRC = ROOT / "legacy-sites/menu-src/armada-menu-site"
+# v19 (brand/cafe → legacy-sites/menu-v19.zip): index.html + data + the printable PDF, no frames —
+# the frame sets still come from the first export (legacy-sites/menu.zip).
+SRC = ROOT / "legacy-sites/menu-v19-src"
+FRAMES_SRC = ROOT / "legacy-sites/menu-src/armada-menu-site/assets/frames"
 INDEX = SRC / "index.html"
+PDF_NAME = "ARMADA_Cafe_Restaurant_Menu_2026.pdf"
 CONTENT = ROOT / "content"
 FRAMES_OUT = ROOT / "public/menu/frames"
 
@@ -47,6 +52,10 @@ def main() -> None:
     data = json.loads((SRC / "data/menu_data.json").read_text(encoding="utf-8"))
     cfg_src = re.search(r"const CONFIG = \{(.*?)\n\};", js, re.S).group(1)
     hidden = json.loads(re.search(r"hiddenItems:\s*(\[[^\]]*\])", cfg_src).group(1))
+    def lit(key):  # JS object literal in CONFIG → Python (unquoted keys allowed); parsed with ast, never executed
+        m = re.search(rf"{key}:\s*(\[[^\]]*\]|\{{(?:[^{{}}]|\{{[^{{}}]*\}})*\}}|\d+|\"[^\"]*\")", cfg_src)
+        src = re.sub(r"([{,]\s*)([A-Za-z_]\w*)\s*:", lambda g: f'{g.group(1)}"{g.group(2)}":', m.group(1))
+        return ast.literal_eval(src)
     frames = json.loads(re.search(r"^const FRAMES = (\{.*\});\s*(?://.*)?$", js, re.M).group(1))
     for folder, fr in frames.items():
         for s in fr["sets"].values():
@@ -62,17 +71,25 @@ def main() -> None:
         "vip_override": None,
         "scene_length": 1.5,
         "snacks_length": 1.15,
+        "morning_order": lit("morningOrder"),
+        "day_order": lit("dayOrder"),
+        "breakfast_first_until_hour": lit("breakfastFirstUntilHour"),
+        "time_zone": lit("timeZone"),
+        "service_hours": lit("serviceHours"),
+        "pdf": f"/docs/{PDF_NAME}",
         "whatsapp_source": "contact.json → cafe.whatsapp",
         "_note": "show_pending_items false: unapproved items stay hidden (Ahmed, 9 Oct 2026); hidden_items = catalog ids left off the menu",
     }
     data["frames"] = frames
     (CONTENT / "menu.json").write_text(json.dumps(data, ensure_ascii=False, indent=2) + "\n", encoding="utf-8", newline="\n")
     shutil.copyfile(SRC / "data/catalog_source.json", CONTENT / "menu-catalog-source.json")
+    (ROOT / "public/docs").mkdir(parents=True, exist_ok=True)
+    shutil.copyfile(SRC / "assets" / PDF_NAME, ROOT / "public/docs" / PDF_NAME)
 
     # ── frames: copied as is ────────────────────────────────────────────────────────────────────
     n = 0
     for folder in frames:
-        src = SRC / "assets/frames" / folder
+        src = FRAMES_SRC / folder
         dst = FRAMES_OUT / folder
         if dst.is_dir() and filecmp.dircmp(src, dst).diff_files == [] and sum(1 for _ in dst.rglob("*.webp")) == sum(1 for _ in src.rglob("*.webp")):
             n += sum(1 for _ in dst.rglob("*.webp"))

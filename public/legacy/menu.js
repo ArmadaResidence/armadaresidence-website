@@ -9,15 +9,15 @@ const FRAMES = CFG.frames;
 
 const I18N = {
   ar:{skip:"تخطَّ إلى القائمة",cart:"السلة",yourOrder:"طلبك",total:"الإجمالي",sar:"ر.س",kcal:"سعرة",items:"صنف",add:"أضف",remove:"إزالة",
-      empty:"سلتك فارغة. أضف ما يعجبك من القائمة.",clear:"مسح",clearAll:"مسح الاختيارات والرجوع للمنيو",cleared:"تم مسح الاختيارات",
-      waContact:"تواصل معنا عبر واتساب",follow:"تابعنا وخلك أول من يعرف جديدنا",wa:"أرسل الطلب عبر واتساب",copy:"انسخ تفاصيل الطلب",copied:"تم نسخ تفاصيل الطلب",
+      empty:"سلتك فارغة. أضف ما يعجبك من القائمة.",hours:"يُقدَّم من {o} إلى {c}",clear:"مسح",clearAll:"مسح الاختيارات والرجوع للمنيو",cleared:"تم مسح الاختيارات",
+      waContact:"تواصل معنا عبر واتساب",pdf:"تحميل المنيو PDF",follow:"تابعنا وخلك أول من يعرف جديدنا",wa:"أرسل الطلب عبر واتساب",copy:"انسخ تفاصيل الطلب",copied:"تم نسخ تفاصيل الطلب",
       hintNoNumber:"رقم واتساب الطلبات لم يُضبط بعد. انسخ تفاصيل الطلب وأرسلها للفريق.",hintNumber:"يفتح واتساب برسالة جاهزة تحوي الأصناف والكميات والإجمالي.",
       pending:"يُؤكَّد مع الفريق",pendNote:"الأصناف الموسومة لا تزال قيد التأكيد؛ اسأل فريقنا عن توفرها وسعرها.",
       view:"توسيع القائمة",hide:"تصغير",orderLine:"الكمية",unit:"سعر الوحدة",vipCta:"اطلب التجربة",orderTitle:"طلب من منيو أرمادا ريزيدنس",addr:"أرمادا ريزيدنس · طريق المطار، الطائف",guest:"نزلاء الفندق: التحويلة 333 من هاتف الغرفة",
       chooseOpt:"اختر:",still:"عرض ثابت — تم تفعيل تقليل الحركة",loading:"تحميل المشهد"},
   en:{skip:"Skip to menu",cart:"Cart",yourOrder:"Your order",total:"Total",sar:"SAR",kcal:"kcal",items:"items",add:"Add",remove:"Remove",
-      empty:"Your cart is empty. Add anything you like from the menu.",clear:"Clear",clearAll:"Clear selection & back to menu",cleared:"Selection cleared",
-      waContact:"Chat with us on WhatsApp",follow:"Follow us and be the first to know what's new",wa:"Send order on WhatsApp",copy:"Copy order details",copied:"Order details copied",
+      empty:"Your cart is empty. Add anything you like from the menu.",hours:"Served {o}–{c}",clear:"Clear",clearAll:"Clear selection & back to menu",cleared:"Selection cleared",
+      waContact:"Chat with us on WhatsApp",pdf:"Download menu (PDF)",follow:"Follow us and be the first to know what's new",wa:"Send order on WhatsApp",copy:"Copy order details",copied:"Order details copied",
       hintNoNumber:"The ordering WhatsApp number isn't set yet. Copy the order details and send them to our team.",hintNumber:"Opens WhatsApp with a ready message listing items, quantities and the total.",
       pending:"Ask our team",pendNote:"Marked items are still being confirmed; ask our team for availability and price.",
       view:"Expand list",hide:"Collapse",orderLine:"Qty",unit:"Unit price",vipCta:"Order the experience",orderTitle:"Order from the ARMADA RESIDENCE menu",addr:"ARMADA RESIDENCE · Airport Road, Taif",guest:"Hotel guests: dial 333 from your room phone",
@@ -40,7 +40,12 @@ const fmt = n => `<span class="price"><span class="num">${n}</span><i>${T("sar")
 
 const vipAvailable = CONFIG.vipOverride!==null ? !!CONFIG.vipOverride : (DATA.vip && DATA.vip.availability_status==="confirmed");
 /* VIP is appended as a featured-card scene only when confirmed AND its frame set is present in this build */
-const SECTIONS = DATA.sections.filter(s=>s.id!=="vip_optional").concat(
+function localHour(){ try{ return +new Intl.DateTimeFormat("en-GB",{hour:"numeric",hour12:false,timeZone:CONFIG.timeZone}).format(new Date()); }catch(e){ return new Date().getHours(); } }
+const ORDER = localHour() < CONFIG.breakfastFirstUntilHour ? CONFIG.morningOrder : CONFIG.dayOrder;
+const byId = {}; DATA.sections.forEach(s=>byId[s.id]=s);
+function sectionOpen(id){ const h=CONFIG.serviceHours[id]; if(!h) return true; const n=localHour(); return n>=h.open && n<h.close; }
+const CLOSED = ORDER.filter(id=>byId[id] && !sectionOpen(id));
+const SECTIONS = ORDER.map(id=>byId[id]).filter(s=>s && sectionOpen(s.id)).concat(DATA.sections.filter(s=>s.id!=="vip_optional" && !ORDER.includes(s.id))).concat(
   (vipAvailable && FRAMES[DATA.vip.folder]) ? [{id:"vip_optional",folder:DATA.vip.folder,label_ar:DATA.vip.label_ar,label_en:DATA.vip.label_en,subcategories:[],items:[],featured:DATA.vip.item}] : []);
 
 /* ---------- build scenes ---------- */
@@ -72,6 +77,10 @@ function buildScenes(){
       card:el.querySelector(".vipcard"), count:fr.count, imgs:new Array(fr.count), loaded:0, drawn:-1, idx:0, maxP:0, visible:false,
       url:i=> MODE==="inline"?fr.urls[i]:fr.sets[frameSet()].pattern.replace("%04d",String(i).padStart(4,"0"))});
   });
+  CLOSED.forEach(id=>{ const h=CONFIG.serviceHours[id]; const b=document.createElement("button"); b.className="closed"; b.disabled=true; b.dataset.sec=id;
+    const t=x=>lang==="ar"?(x<12?`${x} ص`:`${x===12?12:x-12} م`):(x<12?`${x} AM`:`${x===12?12:x-12} PM`);
+    b.dataset.hrs=JSON.stringify([h.open,h.close]); rail.appendChild(b); });
+  const pl=document.createElement("a"); pl.className="pdf"; pl.href=document.getElementById("pdfTop").href; pl.target="_blank"; pl.rel="noopener"; pl.textContent="PDF"; rail.appendChild(pl);
   renderText();
   setupCanvases();
 }
@@ -101,7 +110,10 @@ function renderText(){
     sc.grps.innerHTML=html;
     renderSheetBtn(sc);
   });
-  rail.querySelectorAll("button").forEach(b=>{ const s=SECTIONS.find(x=>x.id===b.dataset.sec); b.textContent=secName(s); });
+  rail.querySelectorAll("button").forEach(b=>{ if(b.classList.contains("closed")){ const [o,c]=JSON.parse(b.dataset.hrs); const sec=byId[b.dataset.sec];
+      const t=x=>lang==="ar"?(x<12?`${x} ص`:`${x===12?12:x-12} م`):(x<12?`${x} AM`:`${x===12?12:x-12} PM`);
+      b.textContent=`${secName(sec)} · ${T("hours").replace("{o}",t(o)).replace("{c}",t(c))}`; b.title=b.textContent; return; }
+    const s=SECTIONS.find(x=>x.id===b.dataset.sec); b.textContent=secName(s); });
   renderCart();
 }
 function renderSheetBtn(sc){}

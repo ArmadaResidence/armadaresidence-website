@@ -1,0 +1,179 @@
+---
+/**
+ * GallerySlider — one large frame (default 4:3) showing each photo whole (object-fit: contain) on a configurable
+ * background, arrows + dots, swipe, autoplay every 4 s (paused on hover/focus and under prefers-reduced-motion),
+ * click opens a lightbox (Esc / backdrop / arrows). Reusable for rooms and branches: pass the `images` array
+ * (src, srcset, alt, width, height — alt in the page language, from content/).
+ */
+interface Image {
+  src: string;
+  srcset?: string;
+  sizes?: string;
+  alt: string;
+  width: number;
+  height: number;
+}
+interface Props {
+  images: Image[];
+  /** CSS class(es) for the frame background — e.g. "bg-cafe-espresso" (defaults to the midnight strip colour). */
+  frameClass?: string;
+  /** aspect ratio of the frame, e.g. "4 / 3" */
+  ratio?: string;
+  labels: { previous: string; next: string; goTo: string; open: string; close: string; of: string };
+  autoplayMs?: number;
+}
+const { images, frameClass = 'bg-midnight', ratio = '4 / 3', labels, autoplayMs = 4000 } = Astro.props;
+const id = `gal-${Math.random().toString(36).slice(2, 8)}`;
+---
+
+<div class="gallery-slider relative select-none" data-gallery data-autoplay={autoplayMs} id={id} role="region" aria-roledescription="carousel">
+  <div class:list={['gallery-frame relative overflow-hidden rounded-card', frameClass]} style={`aspect-ratio:${ratio}`}>
+    <ul class="gallery-track absolute inset-0 flex transition-transform duration-500 ease-out motion-reduce:transition-none" aria-live="polite">
+      {
+        images.map((img, i) => (
+          <li class="gallery-slide shrink-0 w-full h-full" aria-roledescription="slide" aria-label={`${i + 1} ${labels.of} ${images.length}`}>
+            <button type="button" class="block w-full h-full cursor-zoom-in" data-gallery-open={i} aria-label={`${labels.open}: ${img.alt}`}>
+              <img
+                src={img.src}
+                srcset={img.srcset}
+                sizes={img.sizes ?? '(min-width: 1024px) 480px, 100vw'}
+                alt={img.alt}
+                width={img.width}
+                height={img.height}
+                loading={i === 0 ? 'eager' : 'lazy'}
+                decoding="async"
+                draggable="false"
+                class="w-full h-full object-contain"
+              />
+            </button>
+          </li>
+        ))
+      }
+    </ul>
+    {
+      images.length > 1 && (
+        <>
+          <button type="button" class="gallery-arrow absolute top-1/2 -translate-y-1/2 inset-inline-start-2 w-10 h-10 rounded-full bg-white/85 text-midnight grid place-items-center hover:bg-white" data-gallery-prev aria-label={labels.previous}>
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor" aria-hidden="true" class="rtl:rotate-180 rotate-180"><path d="M9.3 5.3a1 1 0 011.4 0l6 6a1 1 0 010 1.4l-6 6a1 1 0 01-1.4-1.4L14.6 12 9.3 6.7a1 1 0 010-1.4z" /></svg>
+          </button>
+          <button type="button" class="gallery-arrow absolute top-1/2 -translate-y-1/2 inset-inline-end-2 w-10 h-10 rounded-full bg-white/85 text-midnight grid place-items-center hover:bg-white" data-gallery-next aria-label={labels.next}>
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor" aria-hidden="true" class="rtl:rotate-180"><path d="M9.3 5.3a1 1 0 011.4 0l6 6a1 1 0 010 1.4l-6 6a1 1 0 01-1.4-1.4L14.6 12 9.3 6.7a1 1 0 010-1.4z" /></svg>
+          </button>
+        </>
+      )
+    }
+  </div>
+  {
+    images.length > 1 && (
+      <div class="mt-3 flex justify-center gap-2" role="tablist">
+        {images.map((_, i) => (
+          <button type="button" class="gallery-dot w-2.5 h-2.5 rounded-full bg-line transition-colors" data-gallery-dot={i} aria-label={`${labels.goTo} ${i + 1}`} role="tab" aria-selected={i === 0 ? 'true' : 'false'} />
+        ))}
+      </div>
+    )
+  }
+  <dialog class="gallery-lightbox" data-gallery-lightbox aria-label={labels.open}>
+    <button type="button" class="gallery-close absolute top-4 inset-inline-end-4 w-11 h-11 rounded-full bg-white/90 text-midnight grid place-items-center" data-gallery-close aria-label={labels.close}>
+      <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor" aria-hidden="true"><path d="M5.7 4.3L4.3 5.7 10.6 12l-6.3 6.3 1.4 1.4L12 13.4l6.3 6.3 1.4-1.4L13.4 12l6.3-6.3-1.4-1.4L12 10.6z" /></svg>
+    </button>
+    <button type="button" class="gallery-arrow absolute top-1/2 -translate-y-1/2 inset-inline-start-4 w-11 h-11 rounded-full bg-white/90 text-midnight grid place-items-center" data-gallery-lb-prev aria-label={labels.previous}>
+      <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor" aria-hidden="true" class="rtl:rotate-180 rotate-180"><path d="M9.3 5.3a1 1 0 011.4 0l6 6a1 1 0 010 1.4l-6 6a1 1 0 01-1.4-1.4L14.6 12 9.3 6.7a1 1 0 010-1.4z" /></svg>
+    </button>
+    <button type="button" class="gallery-arrow absolute top-1/2 -translate-y-1/2 inset-inline-end-4 w-11 h-11 rounded-full bg-white/90 text-midnight grid place-items-center" data-gallery-lb-next aria-label={labels.next}>
+      <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor" aria-hidden="true" class="rtl:rotate-180"><path d="M9.3 5.3a1 1 0 011.4 0l6 6a1 1 0 010 1.4l-6 6a1 1 0 01-1.4-1.4L14.6 12 9.3 6.7a1 1 0 010-1.4z" /></svg>
+    </button>
+    {/* src/alt are set when the lightbox opens (aria-hidden until then) */}
+    <img class="gallery-lightbox-img" alt="" aria-hidden="true" width="1400" height="1050" data-gallery-lb-img />
+    <p class="gallery-caption" data-gallery-lb-caption></p>
+  </dialog>
+</div>
+
+<script>
+  // One controller per instance; everything is driven by data attributes so the component can repeat on a page.
+  const reduced = matchMedia('(prefers-reduced-motion: reduce)');
+  document.querySelectorAll<HTMLElement>('[data-gallery]').forEach((root) => {
+    const track = root.querySelector<HTMLElement>('.gallery-track')!;
+    const slides = Array.from(root.querySelectorAll<HTMLElement>('.gallery-slide'));
+    const dots = Array.from(root.querySelectorAll<HTMLButtonElement>('[data-gallery-dot]'));
+    const lightbox = root.querySelector<HTMLDialogElement>('[data-gallery-lightbox]')!;
+    const lbImg = lightbox.querySelector<HTMLImageElement>('[data-gallery-lb-img]')!;
+    const lbCaption = lightbox.querySelector<HTMLElement>('[data-gallery-lb-caption]')!;
+    const n = slides.length;
+    const rtl = getComputedStyle(root).direction === 'rtl';
+    const autoplayMs = Number(root.dataset.autoplay || 4000);
+    let i = 0;
+    let timer: number | undefined;
+    let paused = false;
+
+    const go = (k: number) => {
+      i = ((k % n) + n) % n;
+      track.style.transform = `translateX(${(rtl ? 1 : -1) * i * 100}%)`;
+      dots.forEach((d, j) => {
+        d.setAttribute('aria-selected', String(j === i));
+        d.classList.toggle('is-active', j === i);
+      });
+    };
+    const start = () => {
+      stop();
+      if (n < 2 || reduced.matches || paused) return;
+      timer = window.setInterval(() => go(i + 1), autoplayMs);
+    };
+    const stop = () => {
+      if (timer) window.clearInterval(timer);
+      timer = undefined;
+    };
+
+    root.querySelector('[data-gallery-prev]')?.addEventListener('click', () => { go(i - 1); start(); });
+    root.querySelector('[data-gallery-next]')?.addEventListener('click', () => { go(i + 1); start(); });
+    dots.forEach((d, j) => d.addEventListener('click', () => { go(j); start(); }));
+    root.addEventListener('mouseenter', () => { paused = true; stop(); });
+    root.addEventListener('mouseleave', () => { paused = false; start(); });
+    root.addEventListener('focusin', () => { paused = true; stop(); });
+    root.addEventListener('focusout', () => { paused = false; start(); });
+    reduced.addEventListener('change', start);
+
+    // swipe (pointer events): horizontal drag > 40 px moves one slide; a tap opens the lightbox
+    const frame = root.querySelector<HTMLElement>('.gallery-frame')!;
+    let x0: number | null = null;
+    let moved = false;
+    frame.addEventListener('pointerdown', (e) => { x0 = e.clientX; moved = false; });
+    frame.addEventListener('pointermove', (e) => { if (x0 !== null && Math.abs(e.clientX - x0) > 8) moved = true; });
+    frame.addEventListener('pointerup', (e) => {
+      if (x0 === null) return;
+      const dx = e.clientX - x0;
+      x0 = null;
+      if (Math.abs(dx) > 40) {
+        go((dx < 0) !== rtl ? i + 1 : i - 1);
+        start();
+      }
+    });
+    frame.addEventListener('click', (e) => { if (moved) { e.preventDefault(); e.stopPropagation(); moved = false; } }, true);
+
+    // lightbox
+    const show = (k: number) => {
+      i = ((k % n) + n) % n;
+      const img = slides[i].querySelector('img')!;
+      lbImg.src = img.currentSrc || img.src;
+      lbImg.alt = img.alt;
+      lbImg.removeAttribute('aria-hidden');
+      lbCaption.textContent = img.alt;
+    };
+    root.querySelectorAll<HTMLButtonElement>('[data-gallery-open]').forEach((b) =>
+      b.addEventListener('click', () => {
+        if (moved) return;
+        show(Number(b.dataset.galleryOpen));
+        stop();
+        lightbox.showModal();
+      }),
+    );
+    lightbox.querySelector('[data-gallery-close]')?.addEventListener('click', () => lightbox.close());
+    lightbox.querySelector('[data-gallery-lb-prev]')?.addEventListener('click', () => show(i - 1));
+    lightbox.querySelector('[data-gallery-lb-next]')?.addEventListener('click', () => show(i + 1));
+    lightbox.addEventListener('click', (e) => { if (e.target === lightbox) lightbox.close(); });
+    lightbox.addEventListener('keydown', (e) => { if (e.key === 'ArrowRight') show(rtl ? i - 1 : i + 1); if (e.key === 'ArrowLeft') show(rtl ? i + 1 : i - 1); });
+    lightbox.addEventListener('close', () => { go(i); start(); });
+
+    go(0);
+    start();
+  });
+</script>

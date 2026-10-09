@@ -326,7 +326,8 @@
       "close": "إغلاق",
       "logo_alt": "شعار ARMADA Residence Café & Restaurant",
       "footer_whatsapp": "تواصل معنا عبر واتساب",
-      "footer_follow": "تابعنا وخلّك أول من يعرف جديدنا"
+      "footer_follow": "تابعنا وخلّك أول من يعرف جديدنا",
+      "footer_pdf": "تحميل القائمة (PDF)"
     },
     "theme": {
       "toggle": "تبديل الوضع الليلي",
@@ -668,7 +669,8 @@
       "close": "Close",
       "logo_alt": "ARMADA Residence Café & Restaurant",
       "footer_whatsapp": "Chat with us on WhatsApp",
-      "footer_follow": "Follow us and be the first to know what's new"
+      "footer_follow": "Follow us and be the first to know what's new",
+      "footer_pdf": "Download the menu (PDF)"
     },
     "theme": {
       "toggle": "Toggle dark mode",
