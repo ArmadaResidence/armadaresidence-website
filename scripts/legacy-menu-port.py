@@ -80,6 +80,15 @@ def main() -> None:
         "whatsapp_source": "contact.json → cafe.whatsapp",
         "_note": "show_pending_items false: unapproved items stay hidden (Ahmed, 9 Oct 2026); hidden_items = catalog ids left off the menu",
     }
+    # keep the per-scene video entries written by scripts/menu-video.mjs (not part of the legacy export)
+    prev = CONTENT / "menu.json"
+    if prev.is_file():
+        old = json.loads(prev.read_text(encoding="utf-8"))
+        for folder, fr in frames.items():
+            if folder in old.get("frames", {}) and "video" in old["frames"][folder]:
+                fr["video"] = old["frames"][folder]["video"]
+        if old.get("frames_note"):
+            data["frames_note"] = old["frames_note"]
     data["frames"] = frames
     (CONTENT / "menu.json").write_text(json.dumps(data, ensure_ascii=False, indent=2) + "\n", encoding="utf-8", newline="\n")
     shutil.copyfile(SRC / "data/catalog_source.json", CONTENT / "menu-catalog-source.json")
@@ -130,6 +139,49 @@ def main() -> None:
         "", out, count=1, flags=re.S,
     )
     out = re.sub(r"/\* -+ language -+ \*/\nfunction setLang\(l\)\{.*?\n\}\n.*?langEn.*?\n", "", out, count=1, flags=re.S)
+    # ── video scrub mode (9 Oct 2026): one VP9 WebM per scene (scripts/menu-video.mjs → frames[folder].video).
+    #    The video element is drawn onto the same canvas (fades + glow unchanged); scrolling seeks currentTime;
+    #    frame 0 (webp) is the poster; the frame set stays as the fallback when the video cannot play/decode. ──
+    VIDEO_HOOKS = [
+        (
+            '      url:i=> MODE==="inline"?fr.urls[i]:fr.sets[frameSet()].pattern.replace("%04d",String(i).padStart(4,"0"))});\n',
+            '      url:i=> MODE==="inline"?fr.urls[i]:fr.sets[frameSet()].pattern.replace("%04d",String(i).padStart(4,"0")),\n'
+            '      vmeta: fr.video||null, video:null, vok:false, vseeking:false, vframe:-1});\n',
+        ),
+        (
+            'function nearestLoaded(sc,i){\n',
+            '/* video scrub: create the <video> lazily, seek to the frame the scroll asks for, draw it once the seek lands */\n'
+            'const CAN_VIDEO = (()=>{ try{ const v=document.createElement("video"); return !!v.canPlayType && v.canPlayType(\'video/webm; codecs="vp9"\')!==""; }catch(e){ return false; } })();\n'
+            'function ensureVideo(sc){\n'
+            '  if(sc.video || !sc.vmeta || !CAN_VIDEO) return;\n'
+            '  const v=document.createElement("video"); v.muted=true; v.playsInline=true; v.preload="auto"; v.setAttribute("aria-hidden","true");\n'
+            '  v.style.cssText="position:absolute;width:1px;height:1px;opacity:0;pointer-events:none";\n'
+            '  v.addEventListener("loadeddata",()=>{ sc.vok=true; requestDraw(true); });\n'
+            '  v.addEventListener("seeked",()=>{ sc.vseeking=false; sc.vframe=Math.round(v.currentTime*sc.vmeta.fps); requestDraw(true); });\n'
+            '  v.addEventListener("error",()=>{ sc.video=null; sc.vok=false; sc.vmeta=null; scheduleWindow(sc,sc.idx,1); });\n'
+            '  v.src=sc.vmeta.src; sc.video=v; sc.stage.appendChild(v);\n'
+            '}\n'
+            'function videoFrame(sc,i){\n'
+            '  const v=sc.video; if(!v || !sc.vok) return null;\n'
+            '  const fps=sc.vmeta.fps, dur=v.duration||((sc.count-1)/fps); const t=Math.min(dur, Math.max(0, i/fps));\n'
+            '  if(!sc.vseeking && Math.abs(v.currentTime-t) > 0.5/fps){ sc.vseeking=true; try{ v.currentTime=t; }catch(e){ sc.vseeking=false; } }\n'
+            '  if(sc.vframe<0 && v.readyState<2) return null;\n'
+            '  v.i = sc.vframe<0 ? 0 : sc.vframe; return v;\n'
+            '}\n'
+            'function nearestLoaded(sc,i){\n'
+            '  const vf=videoFrame(sc,i); if(vf) return vf;\n',
+        ),
+        (
+            'function scheduleWindow(sc,i,dir){\n',
+            'function scheduleWindow(sc,i,dir){\n'
+            '  if(sc.vmeta && CAN_VIDEO){ want(sc,0); pump(); ensureVideo(sc); return; }   // poster frame + the video; no frame windows\n',
+        ),
+    ]
+    for old, new in VIDEO_HOOKS:
+        if old not in out:
+            raise SystemExit(f"menu.js hook anchor not found: {old[:60]!r}")
+        out = out.replace(old, new, 1)
+
     for needle in ("setLang(", "footAddr", "langAr", "const DATA = {", "const FRAMES = {", 'whatsappNumber: "'):
         if needle in out:
             raise SystemExit(f"menu.js still contains {needle!r}")

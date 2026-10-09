@@ -507,6 +507,8 @@ def main() -> int:
                             for i in (0, fr["count"] - 1):
                                 if not exists(st["pattern"].replace("%04d", f"{i:04d}")):
                                     rep.f("menu", f"{path}: frame missing for {folder}/{key} #{i}")
+                        if fr.get("video") and not exists(fr["video"]["src"]):
+                            rep.f("menu", f"{path}: scene video missing {fr['video']['src']}")
                 except (json.JSONDecodeError, KeyError) as e:
                     rep.f("menu", f"{path}: invalid #armada-menu-cfg ({e})")
             if "/legacy/menu.js" not in html:

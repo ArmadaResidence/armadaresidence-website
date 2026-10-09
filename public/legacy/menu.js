@@ -75,7 +75,8 @@ function buildScenes(){
     scenes.push({sec,el,stage:el.querySelector(".stage"),glow:el.querySelector(".glow"),frame:el.querySelector(".frame"),
       ttl:el.querySelector(".ttl"),panel:el.querySelector(".panel"),grps:el.querySelector(".grps"),lo:el.querySelector(".lo"),
       card:el.querySelector(".vipcard"), count:fr.count, imgs:new Array(fr.count), loaded:0, drawn:-1, idx:0, maxP:0, visible:false,
-      url:i=> MODE==="inline"?fr.urls[i]:fr.sets[frameSet()].pattern.replace("%04d",String(i).padStart(4,"0"))});
+      url:i=> MODE==="inline"?fr.urls[i]:fr.sets[frameSet()].pattern.replace("%04d",String(i).padStart(4,"0")),
+      vmeta: fr.video||null, video:null, vok:false, vseeking:false, vframe:-1});
   });
   CLOSED.forEach(id=>{ const h=CONFIG.serviceHours[id]; const b=document.createElement("button"); b.className="closed"; b.disabled=true; b.dataset.sec=id;
     const t=x=>lang==="ar"?(x<12?`${x} ص`:`${x===12?12:x-12} م`):(x<12?`${x} AM`:`${x===12?12:x-12} PM`);
@@ -226,7 +227,26 @@ function fitLengths(){ // scroll distance = base length + however much of the li
     sc.ov = sc.panel ? Math.max(0, sc.panel.scrollHeight - sc.panel.clientHeight) : 0;
     sc.el.style.setProperty("--len", (base + sc.ov/Math.max(1,vh)).toFixed(3)); });
 }
+/* video scrub: create the <video> lazily, seek to the frame the scroll asks for, draw it once the seek lands */
+const CAN_VIDEO = (()=>{ try{ const v=document.createElement("video"); return !!v.canPlayType && v.canPlayType('video/webm; codecs="vp9"')!==""; }catch(e){ return false; } })();
+function ensureVideo(sc){
+  if(sc.video || !sc.vmeta || !CAN_VIDEO) return;
+  const v=document.createElement("video"); v.muted=true; v.playsInline=true; v.preload="auto"; v.setAttribute("aria-hidden","true");
+  v.style.cssText="position:absolute;width:1px;height:1px;opacity:0;pointer-events:none";
+  v.addEventListener("loadeddata",()=>{ sc.vok=true; requestDraw(true); });
+  v.addEventListener("seeked",()=>{ sc.vseeking=false; sc.vframe=Math.round(v.currentTime*sc.vmeta.fps); requestDraw(true); });
+  v.addEventListener("error",()=>{ sc.video=null; sc.vok=false; sc.vmeta=null; scheduleWindow(sc,sc.idx,1); });
+  v.src=sc.vmeta.src; sc.video=v; sc.stage.appendChild(v);
+}
+function videoFrame(sc,i){
+  const v=sc.video; if(!v || !sc.vok) return null;
+  const fps=sc.vmeta.fps, dur=v.duration||((sc.count-1)/fps); const t=Math.min(dur, Math.max(0, i/fps));
+  if(!sc.vseeking && Math.abs(v.currentTime-t) > 0.5/fps){ sc.vseeking=true; try{ v.currentTime=t; }catch(e){ sc.vseeking=false; } }
+  if(sc.vframe<0 && v.readyState<2) return null;
+  v.i = sc.vframe<0 ? 0 : sc.vframe; return v;
+}
 function nearestLoaded(sc,i){
+  const vf=videoFrame(sc,i); if(vf) return vf;
   if(sc.imgs[i]&&sc.imgs[i].ok) return sc.imgs[i];
   for(let d=1;d<sc.count;d++){ const a=sc.imgs[i-d], b=sc.imgs[i+d]; if(a&&a.ok) return a; if(b&&b.ok) return b; }
   return null;
@@ -267,6 +287,7 @@ function pump(){
     img.src=img.sc.url(img.i); }
 }
 function scheduleWindow(sc,i,dir){
+  if(sc.vmeta && CAN_VIDEO){ want(sc,0); pump(); ensureVideo(sc); return; }   // poster frame + the video; no frame windows
   for(let d=0; d<=NEAR; d++){ want(sc,i+d); want(sc,i-d); }
   for(let d=NEAR+1; d<=AHEAD; d++) want(sc, i + d*(dir>=0?1:-1));
   if(sc===activeScene && inflight===0 && !queue.length){ // trickle: next few unloaded frames beyond the lookahead

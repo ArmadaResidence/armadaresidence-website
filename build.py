@@ -236,6 +236,9 @@ def validate(content: dict[str, dict]) -> list[str]:
                 p = ROOT / "public" / st["pattern"].lstrip("/").replace("%04d", f"{i:04d}")
                 if not p.is_file():
                     problems.append(f"menu frames: {p.relative_to(ROOT).as_posix()} missing")
+        v = fr.get("video")
+        if v and not (ROOT / "public" / v["src"].lstrip("/")).is_file():
+            problems.append(f"menu video: {v['src']} missing (run node scripts/menu-video.mjs)")
     for it in menu["items"]:
         if it.get("approved") and not isinstance(it.get("price_sar"), (int, float)):
             problems.append(f"menu.json item {it['id']} approved without a price")
