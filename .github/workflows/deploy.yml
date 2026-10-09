@@ -21,6 +21,9 @@ jobs:
       # Repository → Settings → Variables / Secrets. Never commit real values.
       PUBLIC_BOOKING_ENDPOINT: ${{ vars.PUBLIC_BOOKING_ENDPOINT }}
       PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.PUBLIC_SUPABASE_ANON_KEY }}
+      # Internal review on the project site: set the variable to "/armadaresidence-website"; delete it (and restore
+      # public/CNAME) when the custom domain takes over — the build then serves from the root unchanged.
+      PUBLIC_BASE_PATH: ${{ vars.PUBLIC_BASE_PATH }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -35,6 +38,8 @@ jobs:
         run: python build.py
       - name: QA gate (qa.py exits non-zero on any failure)
         run: python qa.py
+      - name: Sub-path rewrite for the project site (no-op when PUBLIC_BASE_PATH is empty)
+        run: python scripts/base-path.py
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:

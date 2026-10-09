@@ -16,7 +16,8 @@ const locales: Locale[] = ['ar', 'en'];
 
 <Base locale="ar" path="/404/" switchPath="/" title={s.title} description={s.description} noindex={true}>
   <script is:inline>
-    if (/^\/branches(\/|$)/.test(location.pathname)) location.replace('/');
+    // no ^ anchor: also matches under a review sub-path (scripts/base-path.py rewrites the '/' target)
+    if (/\/branches(\/|$)/.test(location.pathname)) location.replace('/');
   </script>
   <section class="mx-auto max-w-3xl px-4 py-20 space-y-12">
     {
