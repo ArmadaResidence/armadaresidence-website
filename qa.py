@@ -293,7 +293,8 @@ def main() -> int:
                 rep.f("partners pricing", f"{path}: price-like text {m.group(0)!r} under /partners/")
 
         # prices hidden (9 Oct 2026): no number next to ريال/الليلة or SAR/night anywhere except the café menu
-        if pricing.get("display_mode") == "hidden" and lp != "/menu/":
+        # (/policies/ states the extra-guest and late-checkout fees from policies.json — fees, not room rates)
+        if pricing.get("display_mode") == "hidden" and lp not in ("/menu/", "/policies/"):
             for m in re.finditer(r"\d[\d,.]*\s*(?:ريال|ر\.س|SAR)\b|SAR\s*\d", p.text):
                 window = p.text[max(0, m.start() - 60) : m.end() + 60]
                 if re.search(r"الليلة|لليلة|night|/\s*الليلة", window, re.I):
