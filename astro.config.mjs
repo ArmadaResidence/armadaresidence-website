@@ -19,10 +19,11 @@ const isNoindex = (page) => {
   return noindexPaths.includes(path);
 };
 
-/** Old-site URLs → new slugs (CLAUDE.md §7). Kept in redirects.json; rendered as static redirect pages. */
+/** Old-site URLs → new slugs (CLAUDE.md §7). Kept in redirects.json; exact entries become static redirect pages,
+ *  wildcard entries (via: "404") are handled by src/pages/404.astro. */
 const redirectMap = Object.fromEntries(
   redirects.redirects
-    .filter((r) => r.from && r.to)
+    .filter((r) => r.from && r.to && !r.from.includes('*'))
     .map((r) => [r.from, { status: 301, destination: r.to }]),
 );
 

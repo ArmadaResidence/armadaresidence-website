@@ -1,28 +1,60 @@
 ---
-/** Single 404 for GitHub Pages (served for any missing path). Arabic first, English below. */
+/**
+ * Single 404 for GitHub Pages (served for any missing path). Arabic first, English below, both branches linked.
+ * Old /branches/<uuid> URLs have no mapping: the static redirect page covers them when GitHub Pages resolves the
+ * path, and this page sends any remaining /branches/* hit to the home page (DECISIONS 9 Oct 2026).
+ */
 import Base from '@layouts/Base.astro';
-import { localePath, pageSeo, ui } from '@lib/content';
+import Icon from '@components/Icon.astro';
+import { branchPath, branches, L, localePath, pageSeo, ui, type Locale } from '@lib/content';
 
 const ar = ui('ar');
 const en = ui('en');
 const s = pageSeo('ar', '404');
+const locales: Locale[] = ['ar', 'en'];
 ---
 
 <Base locale="ar" path="/404/" switchPath="/" title={s.title} description={s.description} noindex={true}>
+  <script is:inline>
+    if (/^\/branches(\/|$)/.test(location.pathname)) location.replace('/');
+  </script>
   <section class="mx-auto max-w-3xl px-4 py-20 space-y-12">
-    <div>
-      <h1 class="text-3xl font-bold text-midnight">{ar.not_found.heading}</h1>
-      <p class="mt-3 text-ink-muted">{ar.not_found.body}</p>
-      <a href={localePath('ar', '/')} class="mt-6 inline-block bg-bronze text-white font-semibold px-5 py-3 rounded hover:bg-bronze-deep">
-        {ar.not_found.home}
-      </a>
-    </div>
-    <div lang="en" dir="ltr" class="font-en border-t border-line pt-10">
-      <h2 class="text-2xl font-bold text-midnight">{en.not_found.heading}</h2>
-      <p class="mt-3 text-ink-muted">{en.not_found.body}</p>
-      <a href={localePath('en', '/')} class="mt-6 inline-block border border-midnight text-midnight font-semibold px-5 py-3 rounded hover:bg-midnight hover:text-white">
-        {en.not_found.home}
-      </a>
-    </div>
+    {
+      locales.map((locale) => {
+        const t = locale === 'ar' ? ar : en;
+        return (
+          <div lang={locale} dir={locale === 'ar' ? 'rtl' : 'ltr'} class:list={[locale === 'en' ? 'font-en border-t border-line pt-10' : '']}>
+            {locale === 'ar' ? (
+              <h1 class="text-3xl font-bold text-midnight">{t.not_found.heading}</h1>
+            ) : (
+              <h2 class="text-2xl font-bold text-midnight">{t.not_found.heading}</h2>
+            )}
+            <p class="mt-3 text-ink-muted">{t.not_found.body}</p>
+            <ul class="mt-6 grid gap-3 sm:grid-cols-2">
+              {branches.map((b) => (
+                <li>
+                  <a
+                    href={branchPath(locale, b.slug)}
+                    class="flex items-center justify-between gap-3 bg-white border border-line rounded-card px-4 py-3 hover:border-bronze"
+                  >
+                    <span>
+                      <span class="block text-xs font-semibold uppercase tracking-wide text-bronze">{L(locale, b, 'type')}</span>
+                      <span class="block font-semibold text-midnight">{L(locale, b, 'name')}</span>
+                    </span>
+                    <Icon name="arrow" size={18} class={locale === 'ar' ? 'rotate-180 text-bronze' : 'text-bronze'} />
+                  </a>
+                </li>
+              ))}
+            </ul>
+            <a
+              href={localePath(locale, '/')}
+              class="mt-6 inline-block border border-midnight text-midnight font-semibold px-5 py-3 rounded hover:bg-midnight hover:text-white"
+            >
+              {t.not_found.home}
+            </a>
+          </div>
+        );
+      })
+    }
   </section>
 </Base>

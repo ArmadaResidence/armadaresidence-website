@@ -490,15 +490,22 @@ def main() -> int:
     # ---- redirects.json
     try:
         rj = json.loads((ROOT / "redirects.json").read_text(encoding="utf-8"))
+        not_found = (DIST / "404.html").read_text(encoding="utf-8") if (DIST / "404.html").is_file() else ""
         for r in rj["redirects"]:
-            if not str(r.get("from", "")).startswith("/"):
+            src = str(r.get("from", ""))
+            if not src.startswith("/"):
                 rep.f("redirects", f"invalid from: {r}")
             if r.get("to") is None:
-                rep.w("redirects", f"{r['from']}: target pending ({r.get('pending', '')})")
+                rep.w("redirects", f"{src}: target pending ({r.get('pending', '')})")
             elif not exists(r["to"]):
-                rep.f("redirects", f"{r['from']} → {r['to']} does not exist")
-            elif r["from"] not in redirect_pages and r["from"] + "/" not in redirect_pages:
-                rep.f("redirects", f"{r['from']}: no redirect page generated")
+                rep.f("redirects", f"{src} → {r['to']} does not exist")
+            elif src.endswith("/*"):
+                # wildcard: served by 404.html, which must redirect that prefix client-side
+                prefix = src[:-2]
+                if r.get("via") != "404" or prefix not in not_found or "location.replace" not in not_found:
+                    rep.f("redirects", f"{src}: 404.html does not redirect {prefix}/* to {r['to']}")
+            elif src not in redirect_pages and src + "/" not in redirect_pages:
+                rep.f("redirects", f"{src}: no redirect page generated")
     except Exception as e:  # noqa: BLE001
         rep.f("redirects", f"redirects.json invalid: {e}")
 

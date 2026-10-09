@@ -64,4 +64,10 @@ Append-only. Newest entries at the bottom of each date.
 - `content/seo.json` titles ≤ 60 and descriptions ≤ 155 chars; room pages are filled from `room_templates` at build. When a filled room title/description exceeds the limit the size clause is dropped (title), or the size clause then the features clause (description — the size is already in the title). `qa.py` fails on any page over the limits.
 - Sitemap: CLAUDE.md §7 (updated) excludes every `noindex` page — sold-out accessible rooms, /booking/success, 404 — from the sitemap. This supersedes the §5 wording "still in the sitemap" and the earlier dual rule; flagged to Ahmed.
 - The DECISIONS_append_2026-10-08.md content was already merged verbatim at the top of this file; the append file was deleted from the project root (the copy in the knowledge-base folder is untouched).
-- Git repository initialised locally (no remote yet). The knowledge-base and brand-identity folders are kept outside version control (`.gitignore`); the website repo carries only `content/`, `public/brand/` SVGs and code. Git 2.55 installed via winget.
+- Git repository initialised locally (no remote yet).
+
+## 2026-10-09 — Sitemap rule, old /branches URLs, screenshots
+- CLAUDE.md §5 reworded by Ahmed's decision: sold-out accessible rooms are "excluded from the sitemap while noindex" (§7 wins).
+- Old `/branches/<uuid>` URLs have no mapping: `/branches` is a static redirect page to `/`, and `/branches/*` is handled by `404.html` (GitHub Pages serves it for unknown paths) with a client-side redirect to `/` — Astro cannot render a dynamic→static redirect page. The 404 page now lists both branches in Arabic and English. The redirects.json warning is gone.
+- `scripts/screenshots.mjs` (Playwright + locally installed Chrome/Edge, no browser download) writes full-page captures to `screenshots/<page>-<width>.png` at 1440 and 375 px; the folder is gitignored (binary snapshots regenerate on demand).
+- The PowerShell sandbox on this machine blocks loopback networking: anything that must reach a local server (the screenshot script) runs with the sandbox disabled. The knowledge-base and brand-identity folders are kept outside version control (`.gitignore`); the website repo carries only `content/`, `public/brand/` SVGs and code. Git 2.55 installed via winget.

@@ -1,10 +1,11 @@
 {
-  "_note": "301 redirects from old Hostinger-Horizons URLs to the new slugs (CLAUDE.md §7). GitHub Pages has no server-side redirects, so Astro renders a static redirect page per entry (trailing-slash variants are normalised by Astro, list each path once without the slash). Real 301s and www→apex happen at DNS switch (phase 4). Entries with `to: null` need the mapping from Ahmed — they are skipped at build.",
+  "_note": "301 redirects from old Hostinger-Horizons URLs to the new slugs (CLAUDE.md §7). GitHub Pages has no server-side redirects, so Astro renders a static redirect page per exact entry (list each path once, without the trailing slash). Wildcard entries (`from` ending in /*) cannot be static pages: they are handled by dist/404.html, which GitHub Pages serves for every unknown path and which sends the visitor to `to` (client-side). Real 301s and www→apex happen at DNS switch (phase 4). Decision 9 Oct 2026: old /branches/<uuid> pages have no mapping → everything under /branches/ goes to the home page; the 404 page also lists both branches.",
   "canonical_host": "armadaresidence.com",
   "www_to_apex": "301 at Hostinger DNS / GitHub Pages custom domain — not part of the static build",
   "redirects": [
     { "from": "/armada-residence-airport-rood", "to": "/airport-road/" },
     { "from": "/our-rooms", "to": "/" },
-    { "from": "/branches/[uuid]", "to": null, "pending": "old branch UUIDs → airport-road / shafa-road mapping from Ahmed" }
+    { "from": "/branches", "to": "/" },
+    { "from": "/branches/*", "to": "/", "via": "404" }
   ]
 }

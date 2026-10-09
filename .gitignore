@@ -14,6 +14,7 @@ supabase/functions/booking-request/content.generated.json
 
 # local tooling
 .claude/settings.local.json
+screenshots/
 
 # source material kept outside the website repo (knowledge base, brand identity with videos/PDFs)
 Armada Residence Knowledge Base/
