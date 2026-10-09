@@ -23,7 +23,8 @@ interface Props {
   autoplayMs?: number;
 }
 const { images, frameClass = 'bg-midnight', ratio = '4 / 3', labels, autoplayMs = 4000 } = Astro.props;
-const id = `gal-${Math.random().toString(36).slice(2, 8)}`;
+// deterministic id (reproducible builds): derived from the first image path
+const id = `gal-${Array.from(images[0]?.src ?? 'x').reduce((h, c) => (h * 31 + c.charCodeAt(0)) >>> 0, 7).toString(36)}`;
 ---
 
 <div class="gallery-slider relative select-none" data-gallery data-autoplay={autoplayMs} id={id} role="region" aria-roledescription="carousel">
