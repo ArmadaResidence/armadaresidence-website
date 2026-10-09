@@ -42,7 +42,8 @@ const cfg = {
     serviceHours: site.service_hours,
   },
   data: { sections: menuJson.sections, items: menuJson.items, subcats_en: menuJson.subcats_en, vip: menuJson.vip, catalog_version: menuJson.catalog_version },
-  frames: menuJson.frames,
+  // video_mode (content/menu.json → site): off = the original frame engine; on = per-scene WebM scrubbed by scroll
+  frames: site.video_mode ? menuJson.frames : Object.fromEntries(Object.entries(menuJson.frames).map(([k, v]) => [k, Object.fromEntries(Object.entries(v).filter(([kk]) => kk !== 'video'))])),
 };
 const frames = menuJson.frames as Record<string, { sets: { desktop: { pattern: string } } }>;
 const firstFrame = frames[menuJson.sections[0].folder].sets.desktop.pattern.replace('%04d', '0000');

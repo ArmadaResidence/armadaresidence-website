@@ -89,6 +89,9 @@ def main() -> None:
                 fr["video"] = old["frames"][folder]["video"]
         if old.get("frames_note"):
             data["frames_note"] = old["frames_note"]
+        for k in ("video_mode", "video_mode_note"):
+            if k in old.get("site", {}):
+                data["site"][k] = old["site"][k]
     data["frames"] = frames
     (CONTENT / "menu.json").write_text(json.dumps(data, ensure_ascii=False, indent=2) + "\n", encoding="utf-8", newline="\n")
     shutil.copyfile(SRC / "data/catalog_source.json", CONTENT / "menu-catalog-source.json")

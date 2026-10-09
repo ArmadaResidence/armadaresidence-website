@@ -236,10 +236,7 @@ body {
   display: none;
 }
 
-/* ---------- GallerySlider ---------- */
-.gallery-dot.is-active {
-  background-color: var(--color-bronze);
-}
+/* ---------- GallerySlider (control colours further down) ---------- */
 .gallery-lightbox {
   border: 0;
   padding: 0;
@@ -273,4 +270,52 @@ body {
 /* café frame background (dining gallery) */
 .bg-cafe-espresso {
   background-color: #211817;
+}
+
+/* slider controls: fixed colours in both themes (Ahmed, 10 Oct 2026) — midnight 70 % circle, porcelain arrow, full midnight on hover */
+.gallery-arrow {
+  background-color: rgba(20, 42, 59, 0.7);
+  color: #f3efe7;
+  transition: background-color 0.15s;
+}
+.gallery-arrow:hover,
+.gallery-arrow:focus-visible {
+  background-color: #142a3b;
+}
+.gallery-dot {
+  background-color: rgba(20, 42, 59, 0.35);
+}
+.gallery-dot:hover {
+  background-color: rgba(20, 42, 59, 0.7);
+}
+.gallery-dot.is-active {
+  background-color: #142a3b;
+}
+
+/* dining card in dark mode: café oxblood with porcelain text and the porcelain name logo (contrast 8.9:1) */
+[data-theme="dark"] .cafe-card {
+  background-color: var(--cafe-oxblood);
+  color: var(--cafe-porcelain);
+  border-color: rgba(243, 233, 219, 0.2);
+}
+[data-theme="dark"] .cafe-card .cafe-accent {
+  color: var(--cafe-porcelain);
+}
+[data-theme="dark"] .cafe-card .cafe-muted {
+  color: rgba(243, 233, 219, 0.8);
+}
+[data-theme="dark"] .cafe-card .cafe-btn {
+  background-color: var(--cafe-porcelain);
+  color: var(--cafe-oxblood);
+}
+[data-theme="dark"] .cafe-card .cafe-btn:hover {
+  background-color: #fff;
+}
+[data-theme="dark"] .cafe-card .cafe-btn-ghost {
+  border-color: var(--cafe-porcelain);
+  color: var(--cafe-porcelain);
+}
+[data-theme="dark"] .cafe-card .cafe-btn-ghost:hover {
+  background-color: var(--cafe-porcelain);
+  color: var(--cafe-oxblood);
 }

@@ -41,7 +41,8 @@ const photo = (slug: string) => ({
 <section class="mx-auto max-w-6xl px-4 pb-14" aria-labelledby="dining-heading">
   <div class="cafe-card rounded-card overflow-hidden grid lg:grid-cols-5">
     <div class="lg:col-span-3 p-6 md:p-8 flex flex-col gap-5">
-      <img src="/brand/cafe/logo-bronze.svg" alt={name} width="1744" height="598" class="cafe-logo self-start" />
+      <img src="/brand/cafe/logo-bronze.svg" alt={name} width="1744" height="598" class="cafe-logo self-start dark:hidden" />
+      <img src="/brand/cafe/logo-porcelain.svg" alt={name} width="1744" height="598" class="cafe-logo self-start hidden dark:block" />
       <div>
         <h2 id="dining-heading" class="text-2xl md:text-3xl font-bold">{heading}</h2>
         <div class="cafe-rule h-0.5 w-14 mt-3" aria-hidden="true"></div>
@@ -53,7 +54,8 @@ const photo = (slug: string) => ({
         <a href={waHref(d.whatsapp)} rel="noopener" target="_blank" class="cafe-btn inline-flex items-center gap-2 font-semibold px-5 py-3 rounded transition-colors" aria-label={`${t.dining.whatsapp} ${phoneDisplay}`}>
           <Icon name="whatsapp" size={18} />
           <span>{t.dining.whatsapp}</span>
-          <img src="/brand/cafe/monogram-porcelain.svg" alt="" aria-hidden="true" width="20" height="20" class="h-5 w-5" />
+          <img src="/brand/cafe/monogram-porcelain.svg" alt="" aria-hidden="true" width="20" height="20" class="h-5 w-5 dark:hidden" />
+          <img src="/brand/cafe/monogram-oxblood.svg" alt="" aria-hidden="true" width="20" height="20" class="h-5 w-5 hidden dark:block" />
         </a>
         <a href={menuHref} class="cafe-btn-ghost inline-flex items-center gap-2 font-semibold px-5 py-3 rounded transition-colors">
           <span>{cta}</span>

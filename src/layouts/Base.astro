@@ -97,17 +97,27 @@ const ld = jsonld.map((j) => JSON.stringify(j).replace(/</g, '\\u003c'));
     <slot name="head" />
     {ld.map((json) => <script type="application/ld+json" set:html={json} />)}
     <script is:inline define:vars={{ GTM_ID }}>
-      window.dataLayer = window.dataLayer || [];
-      (function (w, d, s, l, i) {
+      // GTM (decision 10 Oct 2026): the dataLayer exists from the first byte and queues every push (gtm.start/gtm.js,
+      // page events, booking_request…); the container script itself is injected after window.load or the first
+      // interaction, whichever comes first, so it never competes with the page's own assets. GTM replays the queue
+      // in order when it loads, so page_view and every earlier event are still recorded.
+      (function (w, d, l, i) {
         w[l] = w[l] || [];
         w[l].push({ 'gtm.start': new Date().getTime(), event: 'gtm.js' });
-        var f = d.getElementsByTagName(s)[0],
-          j = d.createElement(s),
-          dl = l != 'dataLayer' ? '&l=' + l : '';
-        j.async = true;
-        j.src = 'https://www.googletagmanager.com/gtm.js?id=' + i + dl;
-        f.parentNode.insertBefore(j, f);
-      })(window, document, 'script', 'dataLayer', GTM_ID);
+        var loaded = false;
+        function load() {
+          if (loaded) return;
+          loaded = true;
+          var j = d.createElement('script');
+          j.async = true;
+          j.src = 'https://www.googletagmanager.com/gtm.js?id=' + i + (l != 'dataLayer' ? '&l=' + l : '');
+          d.head.appendChild(j);
+        }
+        var evs = ['pointerdown', 'keydown', 'touchstart', 'scroll'];
+        evs.forEach(function (e) { w.addEventListener(e, load, { once: true, passive: true }); });
+        if (d.readyState === 'complete') load();
+        else w.addEventListener('load', load, { once: true });
+      })(window, document, 'dataLayer', GTM_ID);
     </script>
   </head>
   <body class="min-h-screen flex flex-col bg-porcelain text-ink">
