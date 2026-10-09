@@ -16,6 +16,9 @@ supabase/functions/booking-request/content.generated.json
 .claude/settings.local.json
 screenshots/
 
+# synced from content/images/ by build.py
+public/images/
+
 # source material kept outside the website repo (knowledge base, brand identity with videos/PDFs)
 Armada Residence Knowledge Base/
 الهوية النهائية لفنادق أرمادا ريزدنس/

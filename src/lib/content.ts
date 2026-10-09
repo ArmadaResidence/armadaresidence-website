@@ -78,8 +78,8 @@ export interface Room {
 /** Only rooms with show_on_site: true exist as far as the site is concerned. */
 export const rooms: Room[] = (roomsJson.rooms as unknown as Room[]).filter((r) => r.show_on_site);
 
-/** Boolean feature keys rendered as chips, in display order. */
-export const FEATURE_KEYS: (keyof RoomFeatures)[] = ['kitchen', 'living_room', 'balcony', 'jacuzzi', 'fridge', 'kettle', 'washer'];
+/** Structural features rendered as chips (cards + room page), in display order. Equipment (fridge, kettle, Wi-Fi…) lives in in_room_amenities. */
+export const FEATURE_KEYS: (keyof RoomFeatures)[] = ['kitchen', 'living_room', 'balcony', 'jacuzzi'];
 /** Features that go into the SEO description (seo.json → features_clause_note). */
 const SEO_FEATURE_KEYS: (keyof RoomFeatures)[] = ['kitchen', 'living_room', 'balcony', 'jacuzzi', 'fridge'];
 
@@ -114,8 +114,16 @@ export function fill(template: string, vars: Record<string, string | number | nu
   });
 }
 
-export function paragraphs(text: string): string[] {
+/** Editorial notes in square brackets (e.g. "[مرحلة 3: …]") never reach the visitor. qa.py rejects any "[…]" in output. */
+export function stripBrackets(text: string): string {
   return text
+    .replace(/\s*\[[^\]]*\]/g, '')
+    .replace(/\s{2,}/g, ' ')
+    .trim();
+}
+
+export function paragraphs(text: string): string[] {
+  return stripBrackets(text)
     .split(/\n\s*\n/)
     .map((p) => p.trim())
     .filter(Boolean);
@@ -205,8 +213,21 @@ export function priceLine(locale: Locale, room: Room, price: number | undefined 
   return fill(locale === 'ar' ? pricing.display_ar : pricing.display_en, { price });
 }
 
+/** Decision 9 Oct 2026: the breakfast price is never shown on the site — only pricing.json → breakfast.site_line. */
 export function breakfastLine(locale: Locale): string {
-  return fill(ui(locale).price.breakfast_addon, { price: pricing.breakfast.addon_price_per_person });
+  const b = pricing.breakfast as unknown as { site_line_ar: string; site_line_en: string };
+  return locale === 'ar' ? b.site_line_ar : b.site_line_en;
+}
+
+/** Lowest base_price across every room in rooms.json (sold-out included) — never typed by hand. */
+export function minBasePrice(): number {
+  return Math.min(...(roomsJson.rooms as unknown as Room[]).map((r) => r.base_price));
+}
+
+/** Home hero line «الأسعار تبدأ من {price} ريالًا لليلة شاملة الضريبة» from site-texts.json. */
+export function heroPriceLine(locale: Locale): string {
+  const h = siteTexts.hero as unknown as { price_line_ar: string; price_line_en: string };
+  return fill(locale === 'ar' ? h.price_line_ar : h.price_line_en, { price: minBasePrice() });
 }
 
 export function extraPersonLine(locale: Locale): string {

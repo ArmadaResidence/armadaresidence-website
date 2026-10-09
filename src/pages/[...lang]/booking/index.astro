@@ -38,7 +38,7 @@ const clientData = {
 ---
 
 <Base locale={locale} path="/booking/" title={s.title} description={s.description}>
-  <section class="mx-auto max-w-3xl px-4 pt-10 pb-14">
+  <section class="mx-auto max-w-3xl px-4 pt-10 pb-28 sm:pb-14">
     <h1 class="text-3xl md:text-4xl font-bold text-midnight">{f.heading}</h1>
     <p class="mt-3 text-ink-muted">{f.intro}</p>
 
@@ -53,25 +53,53 @@ const clientData = {
           <p class="hidden text-xs text-red-700 mt-1" data-error-for="branch"></p>
         </div>
 
-        <div>
-          <label for="check_in" class="block text-sm font-semibold text-midnight">{f.check_in}</label>
-          <input id="check_in" name="check_in" type="date" required class="mt-1.5 w-full border border-line rounded px-3 py-2.5 bg-white" />
-          <p class="hidden text-xs text-red-700 mt-1" data-error-for="check_in"></p>
-        </div>
-        <div>
-          <label for="check_out" class="block text-sm font-semibold text-midnight">{f.check_out}</label>
-          <input id="check_out" name="check_out" type="date" required class="mt-1.5 w-full border border-line rounded px-3 py-2.5 bg-white" />
-          <p class="hidden text-xs text-red-700 mt-1" data-error-for="check_out"></p>
-        </div>
+        {/* Dates: a text field in ISO form (Western digits whatever the browser locale) + the native picker opened on tap. */}
+        {
+          (['check_in', 'check_out'] as const).map((id) => (
+            <div>
+              <label for={id} class="block text-sm font-semibold text-midnight">
+                {f[id]}
+              </label>
+              <div class="relative mt-1.5" data-date-field>
+                <input
+                  id={id}
+                  name={id}
+                  type="text"
+                  inputmode="numeric"
+                  autocomplete="off"
+                  placeholder={f.date_format}
+                  pattern="\d{4}-\d{2}-\d{2}"
+                  maxlength="10"
+                  required
+                  lang="en"
+                  dir="ltr"
+                  class="latin text-left w-full border border-line rounded ps-3 pe-11 py-2.5 bg-white"
+                  data-date-text
+                />
+                {/* the text field is LTR, so the icon sits on the physical right whatever the page direction */}
+                <input type="date" tabindex="-1" aria-hidden="true" lang="en" class="absolute bottom-0 right-10 w-px h-px opacity-0" data-date-picker />
+                <button
+                  type="button"
+                  class="absolute inset-y-0 right-0 w-10 grid place-items-center text-bronze hover:text-bronze-deep"
+                  aria-label={f.open_calendar}
+                  data-date-open
+                >
+                  <Icon name="calendar" size={20} />
+                </button>
+              </div>
+              <p class="hidden text-xs text-red-700 mt-1" data-error-for={id} />
+            </div>
+          ))
+        }
 
         <div>
           <label for="adults" class="block text-sm font-semibold text-midnight">{f.adults}</label>
-          <input id="adults" name="adults" type="number" inputmode="numeric" min="1" max="20" value="2" required class="mt-1.5 w-full border border-line rounded px-3 py-2.5 bg-white" />
+          <input id="adults" name="adults" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="2" value="2" required lang="en" dir="ltr" class="latin text-left mt-1.5 w-full border border-line rounded px-3 py-2.5 bg-white" />
           <p class="hidden text-xs text-red-700 mt-1" data-error-for="adults"></p>
         </div>
         <div>
           <label for="children" class="block text-sm font-semibold text-midnight">{f.children}</label>
-          <input id="children" name="children" type="number" inputmode="numeric" min="0" max="20" value="0" class="mt-1.5 w-full border border-line rounded px-3 py-2.5 bg-white" />
+          <input id="children" name="children" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="2" value="0" lang="en" dir="ltr" class="latin text-left mt-1.5 w-full border border-line rounded px-3 py-2.5 bg-white" />
         </div>
 
         <div class="sm:col-span-2">
@@ -90,13 +118,13 @@ const clientData = {
 
         <div>
           <label for="phone" class="block text-sm font-semibold text-midnight">{f.phone}</label>
-          <input id="phone" name="phone" type="tel" autocomplete="tel" inputmode="tel" required dir="ltr" class="latin mt-1.5 w-full border border-line rounded px-3 py-2.5 bg-white" />
+          <input id="phone" name="phone" type="tel" autocomplete="tel" inputmode="tel" required lang="en" dir="ltr" class="latin text-left mt-1.5 w-full border border-line rounded px-3 py-2.5 bg-white" />
           <p class="text-xs text-ink-muted mt-1">{f.phone_hint}</p>
           <p class="hidden text-xs text-red-700 mt-1" data-error-for="phone"></p>
         </div>
         <div>
           <label for="email" class="block text-sm font-semibold text-midnight">{f.email}</label>
-          <input id="email" name="email" type="email" autocomplete="email" required dir="ltr" class="latin mt-1.5 w-full border border-line rounded px-3 py-2.5 bg-white" />
+          <input id="email" name="email" type="email" autocomplete="email" required lang="en" dir="ltr" class="latin text-left mt-1.5 w-full border border-line rounded px-3 py-2.5 bg-white" />
           <p class="hidden text-xs text-red-700 mt-1" data-error-for="email"></p>
         </div>
 
@@ -160,8 +188,47 @@ const clientData = {
 
   const today = new Date();
   const iso = (d: Date) => d.toISOString().slice(0, 10);
-  checkIn.min = iso(today);
-  checkOut.min = iso(new Date(today.getTime() + 86400000));
+  const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
+
+  // Native picker behind an ISO text field: values always read YYYY-MM-DD with Western digits.
+  const pickers = new Map<HTMLInputElement, HTMLInputElement>();
+  form.querySelectorAll<HTMLElement>('[data-date-field]').forEach((wrap) => {
+    const text = wrap.querySelector<HTMLInputElement>('[data-date-text]')!;
+    const picker = wrap.querySelector<HTMLInputElement>('[data-date-picker]')!;
+    const open = wrap.querySelector<HTMLButtonElement>('[data-date-open]')!;
+    pickers.set(text, picker);
+    const showPicker = () => {
+      if (text.value && ISO_DATE.test(text.value)) picker.value = text.value;
+      try {
+        if (typeof (picker as HTMLInputElement & { showPicker?: () => void }).showPicker === 'function') {
+          (picker as HTMLInputElement & { showPicker: () => void }).showPicker();
+        } else {
+          picker.focus();
+          picker.click();
+        }
+      } catch {
+        /* no picker available: the user types the date */
+      }
+    };
+    open.addEventListener('click', showPicker);
+    text.addEventListener('click', showPicker);
+    picker.addEventListener('change', () => {
+      if (picker.value) {
+        text.value = picker.value;
+        text.dispatchEvent(new Event('change', { bubbles: true }));
+      }
+    });
+    // keep only digits and dashes while typing
+    text.addEventListener('input', () => {
+      text.value = text.value.replace(/[^\d-]/g, '').slice(0, 10);
+    });
+  });
+  const setMin = (input: HTMLInputElement, value: string) => {
+    const p = pickers.get(input);
+    if (p) p.min = value;
+  };
+  setMin(checkIn, iso(today));
+  setMin(checkOut, iso(new Date(today.getTime() + 86400000)));
 
   // Prefill from ?branch=&room=
   const q = new URLSearchParams(location.search);
@@ -184,10 +251,10 @@ const clientData = {
     if (roomSel.value !== q.get('room')) roomSel.value = '';
   }
   checkIn.addEventListener('change', () => {
-    if (checkIn.value) {
+    if (checkIn.value && ISO_DATE.test(checkIn.value)) {
       const next = new Date(checkIn.value);
       next.setDate(next.getDate() + 1);
-      checkOut.min = iso(next);
+      setMin(checkOut, iso(next));
       if (checkOut.value && checkOut.value <= checkIn.value) checkOut.value = '';
     }
   });
@@ -224,7 +291,14 @@ const clientData = {
         ok = false;
       } else setError(k, null);
     }
-    if (v('check_in') && v('check_in') < iso(today)) {
+    for (const k of ['check_in', 'check_out'] as const) {
+      const val = v(k);
+      if (val && (!ISO_DATE.test(val) || Number.isNaN(new Date(val + 'T00:00:00Z').getTime()))) {
+        setError(k, errs.date_format);
+        ok = false;
+      }
+    }
+    if (v('check_in') && ISO_DATE.test(v('check_in')) && v('check_in') < iso(today)) {
       setError('check_in', errs.past);
       ok = false;
     }

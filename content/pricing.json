@@ -23,14 +23,17 @@
       "airport-road": true,
       "shafa-road": true
     },
-    "display_rule": "next to the price show «شامل الإفطار» if the rate plan includes it, else «الإفطار 20 ريال»",
+    "display_rule": "Decision 9 Oct: no breakfast price anywhere on the site. Next to every price show site_line_ar/en. Prices (20/10/free) stay here for reception and phase 2.",
     "children": {
       "up_to_5": "free",
       "6_to_12": "50% (SAR 10)",
       "13_plus": "adult (SAR 20)",
       "ar": "الأطفال حتى 5 سنوات مجانًا، ومن 6 إلى 12 سنة بنصف السعر (10 ريالات)، وفوق 12 سنة بسعر البالغ.",
       "en": "Children up to 5 eat free; ages 6 to 12 at half price (SAR 10); over 12 at the adult rate."
-    }
+    },
+    "show_price_on_site": false,
+    "site_line_ar": "الإفطار: يُحدَّد شموله أو رسومه عند تأكيد الحجز",
+    "site_line_en": "Breakfast: included or charged depending on your booking — confirmed with your reservation"
   },
   "extra_person_per_night": 25,
   "reduction_per_guest_below_included": 20,
@@ -65,8 +68,9 @@
       "breakfast": {
         "included": false,
         "addon_price_per_person": 20,
-        "addon_label_ar": "الإفطار 20 ريال للشخص",
-        "addon_label_en": "Breakfast SAR 20 per person"
+        "addon_label_ar": "الإفطار: يُحدَّد شموله أو رسومه عند تأكيد الحجز",
+        "addon_label_en": "Breakfast: included or charged depending on your booking — confirmed with your reservation",
+        "show_price": false
       },
       "show_on_site": true
     },

@@ -263,6 +263,16 @@ def main() -> int:
             if s in html:
                 rep.f("forbidden strings", f"{path}: contains {s!r}")
 
+        # editorial brackets never reach the visitor (e.g. "[مرحلة 3: …]", "[يُؤكَّد]")
+        for m in re.finditer(r"\[[^\]\n]{1,400}\]", p.text):
+            rep.f("brackets", f"{path}: visible text contains {m.group(0)[:60]!r}")
+
+        # decision 9 Oct 2026: no breakfast price anywhere on the site
+        for m in re.finditer(r"إفطار|breakfast", p.text, re.I):
+            window = p.text[max(0, m.start() - 80) : m.end() + 80]
+            if re.search(r"20\s*ريال|SAR\s*20\b|\b20\s*SAR", window):
+                rep.f("breakfast price", f"{path}: breakfast price shown near {window.strip()[:70]!r}")
+
         # title / description / canonical / hreflang
         t, d = p.title.strip(), p.metas.get("description", "").strip()
         if not t:
@@ -429,9 +439,8 @@ def main() -> int:
                 line = pricing[f"display_{loc}"].replace("{price}", str(r["base_price"]))
                 if line not in p.text:
                     rep.f("pricing", f"{path}: price line {line!r} not rendered")
-            bf = ui[loc]["price"]["breakfast_addon"].replace("{price}", str(pricing["breakfast"]["addon_price_per_person"]))
-            if bf not in p.text:
-                rep.f("pricing", f"{path}: breakfast add-on line missing")
+            if pricing["breakfast"][f"site_line_{loc}"] not in p.text:
+                rep.f("pricing", f"{path}: breakfast site line (pricing.json) missing next to the price")
             if r["availability"] == "sold_out":
                 label = r.get(f"availability_{loc}") or ui[loc]["room"]["sold_out"]
                 if label not in p.text:

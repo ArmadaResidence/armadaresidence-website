@@ -1,15 +1,15 @@
 ---
 /**
  * Renders a room's price exactly as pricing.json dictates, once per rate plan with show_on_site: true
- * (phase 1: room_only only): «يبدأ من {base_price} ريال / الليلة — شامل الضريبة» + breakfast add-on line
- * (+ extra person in full mode). Sold-out rooms show «غير متاح حاليًا» and no booking CTA.
+ * (phase 1: room_only only): «يبدأ من {base_price} ريال / الليلة — شامل الضريبة», then the breakfast
+ * site line from pricing.json (never a breakfast price — decision 9 Oct 2026). Full mode adds the
+ * room-only note, extra person, final-price note and the booking CTA (none when sold out).
  */
 import {
   breakfastLine,
   extraPersonLine,
   localePath,
   priceLine,
-  ratePlanMeta,
   soldOutLabel,
   ui,
   visibleRatePlans,
@@ -33,27 +33,18 @@ const plans = visibleRatePlans(room);
 <div class:list={[mode === 'full' ? 'bg-white border border-line rounded-card p-6' : '']}>
   {mode === 'full' && <h2 class="text-sm font-semibold uppercase tracking-wide text-bronze mb-3">{t.room.price_heading}</h2>}
   {
-    soldOut && (
+    mode === 'full' && soldOut && (
       <p class="inline-block bg-line text-ink text-xs font-semibold px-2.5 py-1 rounded mb-2">{soldOutLabel(locale, room)}</p>
     )
   }
   {
-    plans.map((plan) => {
-      const meta = ratePlanMeta(plan.code);
-      return (
-        <div>
-          <p class:list={['font-semibold text-midnight', mode === 'full' ? 'text-2xl' : 'text-lg']}>
-            {priceLine(locale, room, plan.base_price ?? room.base_price)}
-          </p>
-          {mode === 'full' && (
-            <p class="text-xs text-ink-muted mt-1">
-              {t.price.rate_plan}: {locale === 'ar' ? meta.name_ar : meta.name_en}
-            </p>
-          )}
-        </div>
-      );
-    })
+    plans.map((plan) => (
+      <p class:list={['font-semibold text-midnight', mode === 'full' ? 'text-2xl' : 'text-lg']}>
+        {priceLine(locale, room, plan.base_price ?? room.base_price)}
+      </p>
+    ))
   }
+  {mode === 'full' && <p class="text-sm text-ink-muted mt-1">{t.price.room_only_note}</p>}
   <p class="text-sm text-ink-muted mt-1">{breakfastLine(locale)}</p>
   {
     mode === 'full' && (

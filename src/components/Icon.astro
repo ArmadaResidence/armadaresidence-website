@@ -1,6 +1,6 @@
 ---
 interface Props {
-  name: 'whatsapp' | 'phone' | 'mail' | 'map' | 'menu' | 'close' | 'arrow' | 'check' | 'clock' | 'car' | 'star';
+  name: 'whatsapp' | 'phone' | 'mail' | 'map' | 'menu' | 'close' | 'arrow' | 'check' | 'clock' | 'car' | 'star' | 'calendar';
   class?: string;
   size?: number;
 }
@@ -20,6 +20,7 @@ const paths: Record<Props['name'], string> = {
   clock: 'M12 2a10 10 0 100 20 10 10 0 000-20zm0 18a8 8 0 110-16 8 8 0 010 16zm.5-13H11v6l5.2 3.1.8-1.2-4.5-2.7z',
   car: 'M18.9 6a1.5 1.5 0 00-1.4-1H6.5c-.6 0-1.2.4-1.4 1L3 12v8a1 1 0 001 1h1a1 1 0 001-1v-1h12v1a1 1 0 001 1h1a1 1 0 001-1v-8zM6.5 16a1.5 1.5 0 110-3 1.5 1.5 0 010 3zm11 0a1.5 1.5 0 110-3 1.5 1.5 0 010 3zM5 11l1.5-4.5h11L19 11z',
   star: 'M12 17.3l6.2 3.7-1.6-7 5.4-4.7-7.2-.6L12 2 9.2 8.7 2 9.3l5.4 4.7-1.6 7z',
+  calendar: 'M7 2h2v2h6V2h2v2h3a1 1 0 011 1v15a1 1 0 01-1 1H4a1 1 0 01-1-1V5a1 1 0 011-1h3zm-2 7v10h14V9zm2 2h3v3H7z',
 };
 ---
 

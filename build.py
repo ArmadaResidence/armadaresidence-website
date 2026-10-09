@@ -186,6 +186,20 @@ def generate_function_content(content: dict[str, dict]) -> None:
     print(f"✓ generated {FUNC_DIR.relative_to(ROOT) / 'content.generated.json'}")
 
 
+def sync_images() -> None:
+    """content/images/ (approved photos, hero video) → public/images/ so Astro serves them at /images/…"""
+    src = CONTENT / "images"
+    dst = ROOT / "public" / "images"
+    if dst.exists():
+        shutil.rmtree(dst)
+    if src.is_dir():
+        shutil.copytree(src, dst)
+        n = sum(1 for p in dst.rglob("*") if p.is_file())
+        print(f"✓ synced content/images → public/images ({n} files)")
+    else:
+        print("NOTE: content/images/ not present — placeholders stay in place (hero poster/video, room photos)")
+
+
 def run(cmd: list[str]) -> None:
     exe = shutil.which(cmd[0])
     if not exe:
@@ -210,6 +224,7 @@ def main() -> int:
 
     if DIST.exists():
         shutil.rmtree(DIST)
+    sync_images()
     run(["node", "scripts/og.mjs"])
     run(["npx", "astro", "build"])
 

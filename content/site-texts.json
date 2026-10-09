@@ -14,7 +14,10 @@
     "alternatives_ar": [
       "أرمادا ريزيدنس — فرعان في الطائف، وراحة واحدة",
       "الراحة، بأسلوب أرمادا (slogan-led hero, title only)"
-    ]
+    ],
+    "price_line_rule": "«الأسعار تبدأ من {min_base_price} ريالًا لليلة شاملة الضريبة» — min base_price from rooms.json, never typed",
+    "price_line_ar": "الأسعار تبدأ من {price} ريالًا لليلة شاملة الضريبة",
+    "price_line_en": "Prices from SAR {price} per night, VAT included"
   },
   "about": {
     "heading_ar": "عن أرمادا ريزيدنس",
@@ -34,15 +37,15 @@
       },
       {
         "title_ar": "سعر واضح",
-        "body_ar": "الأسعار المعروضة لليلة شاملة الضريبة. الإفطار 20 ريالًا للشخص في اليوم، والشخص الإضافي 25 ريالًا.",
+        "body_ar": "الأسعار المعروضة لليلة شاملة الضريبة، والشخص الإضافي 25 ريالًا. الإفطار يُحدَّد عند تأكيد الحجز.",
         "title_en": "Clear pricing",
-        "body_en": "Listed prices are per night and include VAT. Breakfast is SAR 20 per person per day; an extra guest is SAR 25."
+        "body_en": "Listed prices are per night and include VAT; an extra guest is SAR 25. Breakfast is confirmed with your booking."
       },
       {
         "title_ar": "بوفيه إفطار يومي",
-        "body_ar": "في مطعم كل فرع من 07:00 إلى 10:30، بـ 20 ريالًا للشخص في اليوم.",
+        "body_ar": "في مطعم كل فرع من 07:00 إلى 10:30.",
         "title_en": "Daily breakfast buffet",
-        "body_en": "In each property's restaurant, 07:00–10:30, SAR 20 per person per day."
+        "body_en": "In each property's restaurant, 07:00–10:30."
       },
       {
         "title_ar": "موقعان في الطائف",
@@ -51,22 +54,16 @@
         "body_en": "Airport Road for travellers and business guests; Al-Shafa Road for families and visitors heading to the highlands."
       },
       {
-        "title_ar": "استقبال على مدار الساعة",
-        "body_ar": "فريق الاستقبال متاح في أي وقت، ويمكن التواصل معه مباشرة عبر الواتساب.",
-        "title_en": "Reception around the clock",
-        "body_en": "The reception team is available at any hour and reachable directly on WhatsApp."
-      },
-      {
         "title_ar": "إلغاء مرن",
         "body_ar": "إلغاء مجاني حتى 24 ساعة قبل الوصول، بنفس الشروط المعتمدة على Booking.com.",
         "title_en": "Flexible cancellation",
         "body_en": "Free cancellation up to 24 hours before arrival — the same terms as on Booking.com."
       },
       {
-        "title_ar": "مواقف مجانية وخدمة غرف على مدار الساعة",
-        "body_ar": "مواقف خاصة للنزلاء في الفرعين، وخدمة غرف في أي وقت.",
-        "title_en": "Free parking and 24-hour room service",
-        "body_en": "Private guest parking at both properties, and room service at any hour."
+        "title_ar": "استقبال وخدمة غرف على مدار الساعة، ومواقف مجانية",
+        "body_ar": "فريق الاستقبال متاح في أي وقت وعلى الواتساب مباشرة، وخدمة غرف في أي ساعة، ومواقف خاصة للنزلاء في الفرعين.",
+        "title_en": "24-hour reception and room service, free parking",
+        "body_en": "Reception is available at any hour and directly on WhatsApp, room service around the clock, and private guest parking at both properties."
       }
     ]
   },

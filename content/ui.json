@@ -82,10 +82,9 @@
       "wifi": "واي فاي"
     },
     "price": {
-      "breakfast_addon": "الإفطار {price} ريال للشخص في اليوم",
       "extra_person": "الشخص الإضافي {price} ريال لليلة",
       "final_note": "يؤكد الاستقبال السعر النهائي عند الحجز.",
-      "rate_plan": "خطة السعر"
+      "room_only_note": "السعر للغرفة بدون إفطار"
     },
     "cta": {
       "whatsapp": "واتساب",
@@ -129,6 +128,8 @@
       "choose_branch": "اختر الفرع",
       "check_in": "تاريخ الوصول",
       "check_out": "تاريخ المغادرة",
+      "date_format": "YYYY-MM-DD",
+      "open_calendar": "افتح التقويم",
       "adults": "البالغون",
       "children": "الأطفال",
       "room_type": "نوع الغرفة (اختياري)",
@@ -146,6 +147,7 @@
       "errors": {
         "required": "هذا الحقل مطلوب.",
         "dates": "تاريخ المغادرة يجب أن يكون بعد تاريخ الوصول.",
+        "date_format": "أدخل التاريخ بصيغة YYYY-MM-DD أو اختره من التقويم.",
         "past": "تاريخ الوصول لا يمكن أن يكون في الماضي.",
         "phone": "أدخل رقم جوال صحيحًا بالصيغة الدولية.",
         "email": "أدخل بريدًا إلكترونيًا صحيحًا.",
@@ -277,10 +279,9 @@
       "wifi": "Wi-Fi"
     },
     "price": {
-      "breakfast_addon": "Breakfast SAR {price} per person per day",
       "extra_person": "Extra guest SAR {price} per night",
       "final_note": "Reception confirms the final price on booking.",
-      "rate_plan": "Rate plan"
+      "room_only_note": "Room price without breakfast"
     },
     "cta": {
       "whatsapp": "WhatsApp",
@@ -324,6 +325,8 @@
       "choose_branch": "Choose a property",
       "check_in": "Check-in date",
       "check_out": "Check-out date",
+      "date_format": "YYYY-MM-DD",
+      "open_calendar": "Open calendar",
       "adults": "Adults",
       "children": "Children",
       "room_type": "Room type (optional)",
@@ -341,6 +344,7 @@
       "errors": {
         "required": "This field is required.",
         "dates": "Check-out must be after check-in.",
+        "date_format": "Enter the date as YYYY-MM-DD or pick it from the calendar.",
         "past": "Check-in cannot be in the past.",
         "phone": "Enter a valid mobile number in international format.",
         "email": "Enter a valid email address.",

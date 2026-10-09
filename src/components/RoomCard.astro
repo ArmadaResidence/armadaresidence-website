@@ -6,6 +6,7 @@ import {
   L,
   roomFeatureLabels,
   roomPath,
+  soldOutLabel,
   ui,
   type Locale,
   type Room,
@@ -24,8 +25,10 @@ const t = ui(locale);
 const branch = branchBySlug(room.branch);
 const name = L(locale, room, 'name');
 const href = roomPath(locale, room);
+const soldOut = room.availability === 'sold_out';
 // TODO(photo): approved room photo replaces the placeholder (legacy_main_image is reference only, never rendered).
 const photoLabel = fill(t.photo_pending_alt, { subject: `${name} — ${L(locale, branch, 'name')}` });
+// Chips = structural features only (kitchen, living room, balcony, jacuzzi); equipment is on the room page.
 const features = roomFeatureLabels(locale, room);
 const meta = [
   fill(t.room.size_value, { size: room.size_m2 }),
@@ -34,9 +37,16 @@ const meta = [
 ];
 ---
 
-<article class="bg-white border border-line rounded-card overflow-hidden flex flex-col">
-  <a href={href} tabindex="-1" aria-hidden="true">
+<article class:list={['bg-white border border-line rounded-card overflow-hidden flex flex-col', soldOut && 'opacity-60']}>
+  <a href={href} tabindex="-1" aria-hidden="true" class="relative block">
     <Placeholder label={photoLabel} class="rounded-b-none" />
+    {
+      soldOut && (
+        <span class="absolute top-3 inset-inline-start-3 bg-midnight text-white text-xs font-semibold px-2.5 py-1 rounded">
+          {soldOutLabel(locale, room)}
+        </span>
+      )
+    }
   </a>
   <div class="p-5 flex flex-col gap-3 flex-1">
     <div>
@@ -44,6 +54,7 @@ const meta = [
       <h3 class="text-lg font-semibold text-midnight">
         <a href={href} class="hover:text-bronze">{name}</a>
       </h3>
+      {soldOut && <p class="sr-only">{soldOutLabel(locale, room)}</p>}
       <p class="text-sm text-ink-muted mt-1">{meta.join(' · ')}</p>
     </div>
     {
