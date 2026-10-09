@@ -177,3 +177,100 @@ body {
   inset-inline-end: 1.25rem;
   z-index: 50;
 }
+
+/* ---------- Dark mode (Ahmed, 9 Oct 2026) ----------
+   Default follows prefers-color-scheme; the header toggle stores "armada-theme" in localStorage and Base.astro sets
+   data-theme on <html> before first paint (no flash). Dark surfaces are deep midnight, text porcelain, bronze stays the
+   accent (a lighter tint for small bronze text so it keeps ≥ 4.5:1), logos switch to the porcelain SVGs, photos and
+   placeholders are untouched, and the legacy sections (discover-taif, partners, menu) keep their own palettes.
+   Contrast (WCAG AA): porcelain #F3EFE7 on #0F1F2B = 15.3:1, on #182F41 = 12.1:1; muted #C7CFD6 on #182F41 = 8.6:1;
+   bronze-tint #C9A27A on #182F41 = 6.6:1; white on bronze #A97C50 (buttons, bold) = 3.9:1 (large text, as in light mode). */
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+
+[data-theme="dark"] {
+  --dk-bg: #0f1f2b;
+  --dk-surface: #182f41;
+  --dk-strip: #0b1821;
+  --dk-bronze-text: #c9a27a;
+  --color-midnight: #f3efe7; /* text-midnight, hover:text-midnight → porcelain */
+  --color-ink: #f3efe7;
+  --color-ink-muted: #c7cfd6;
+  --color-line: rgba(243, 239, 231, 0.16);
+  color-scheme: dark;
+}
+[data-theme="dark"] body {
+  background-color: var(--dk-bg);
+}
+[data-theme="dark"] .bg-porcelain,
+[data-theme="dark"] .hover\:bg-porcelain:hover {
+  background-color: var(--dk-bg);
+}
+[data-theme="dark"] .bg-white {
+  background-color: var(--dk-surface);
+}
+[data-theme="dark"] .bg-midnight,
+[data-theme="dark"] .hover\:bg-midnight:hover {
+  background-color: var(--dk-strip);
+}
+[data-theme="dark"] .bg-midnight\/60 {
+  background-color: rgba(11, 24, 33, 0.6);
+}
+[data-theme="dark"] .border-midnight {
+  border-color: var(--dk-bronze-text);
+}
+[data-theme="dark"] .text-bronze,
+[data-theme="dark"] .hover\:text-bronze:hover {
+  color: var(--dk-bronze-text);
+}
+[data-theme="dark"] .hover\:text-white:hover {
+  color: #fff;
+}
+/* photos / placeholders unchanged */
+[data-theme="dark"] .photo-placeholder svg,
+[data-theme="dark"] .hero-poster {
+  color: #142a3b;
+}
+/* header toggle icons */
+[data-theme="dark"] .icon-moon,
+:root:not([data-theme="dark"]) .icon-sun {
+  display: none;
+}
+
+/* ---------- GallerySlider ---------- */
+.gallery-dot.is-active {
+  background-color: var(--color-bronze);
+}
+.gallery-lightbox {
+  border: 0;
+  padding: 0;
+  background: transparent;
+  max-width: 100vw;
+  max-height: 100vh;
+  width: 100vw;
+  height: 100vh;
+  display: none;
+  place-items: center;
+}
+.gallery-lightbox[open] {
+  display: grid;
+}
+.gallery-lightbox::backdrop {
+  background: rgba(11, 24, 33, 0.92);
+}
+.gallery-lightbox-img {
+  max-width: min(92vw, 1400px);
+  max-height: 84vh;
+  object-fit: contain;
+}
+.gallery-caption {
+  position: absolute;
+  bottom: 1rem;
+  inset-inline: 1rem;
+  text-align: center;
+  color: var(--color-porcelain);
+  font-size: 0.875rem;
+}
+/* café frame background (dining gallery) */
+.bg-cafe-espresso {
+  background-color: #211817;
+}

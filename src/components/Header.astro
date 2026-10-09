@@ -47,7 +47,8 @@ const partnersActive = path.startsWith('/partners/');
     {/* logo: h-8 → clear space X = half the symbol height = 16px; px-5 / h-16 keep ≥ 1X on every side */}
     <div class="mx-auto max-w-6xl px-5 h-16 flex items-center justify-between gap-4">
       <a href={localePath(locale, '/')} class="shrink-0 flex items-center" aria-label={siteName(locale)}>
-        <img src="/brand/logo-horizontal.svg" alt={siteName(locale)} width="143" height="32" class="h-8 w-auto" />
+        <img src="/brand/logo-horizontal.svg" alt={siteName(locale)} width="143" height="32" class="h-8 w-auto dark:hidden" />
+        <img src="/brand/logo-horizontal_Porcelain.svg" alt={siteName(locale)} width="143" height="32" class="h-8 w-auto hidden dark:block" />
       </a>
 
       <nav class="hidden lg:flex items-center gap-5 text-sm font-medium" aria-label={t.nav.menu}>
@@ -75,6 +76,18 @@ const partnersActive = path.startsWith('/partners/');
           class:list={['text-sm font-medium px-3 py-2 rounded hover:bg-porcelain', other === 'en' ? 'font-en' : 'font-ar']}
           >{t.switch_to}</a
         >
+        <button
+          type="button"
+          class="inline-flex items-center justify-center w-10 h-10 rounded hover:bg-porcelain text-midnight"
+          data-theme-toggle
+          aria-label={t.theme.toggle}
+          title={t.theme.toggle}
+          data-label-dark={t.theme.to_dark}
+          data-label-light={t.theme.to_light}
+        >
+          <Icon name="moon" size={20} class="icon-moon" />
+          <Icon name="sun" size={20} class="icon-sun" />
+        </button>
         <a
           href={localePath(locale, '/booking/')}
           class="hidden sm:inline-flex items-center bg-bronze text-white text-sm font-semibold px-4 py-2 rounded hover:bg-bronze-deep transition-colors"
@@ -133,6 +146,24 @@ const partnersActive = path.startsWith('/partners/');
 </header>
 
 <script>
+  // light / dark toggle — the initial value is set on <html> by Base.astro before first paint
+  const theme = document.querySelector<HTMLButtonElement>('[data-theme-toggle]');
+  if (theme) {
+    const sync = () => {
+      const dark = document.documentElement.getAttribute('data-theme') === 'dark';
+      theme.setAttribute('aria-pressed', String(dark));
+      theme.title = dark ? theme.dataset.labelLight || '' : theme.dataset.labelDark || '';
+    };
+    theme.addEventListener('click', () => {
+      const next = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+      document.documentElement.setAttribute('data-theme', next);
+      try {
+        localStorage.setItem('armada-theme', next);
+      } catch {}
+      sync();
+    });
+    sync();
+  }
   const btn = document.querySelector<HTMLButtonElement>('[data-menu-toggle]');
   const nav = document.getElementById('mobile-nav');
   if (btn && nav) {

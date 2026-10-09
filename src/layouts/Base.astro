@@ -53,6 +53,21 @@ const ld = jsonld.map((j) => JSON.stringify(j).replace(/</g, '\\u003c'));
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light dark" />
+    <meta name="theme-color" media="(prefers-color-scheme: light)" content="#F3EFE7" />
+    <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0F1F2B" />
+    <script is:inline>
+      // theme before first paint: stored choice (armada-theme) → else prefers-color-scheme (and follow its changes)
+      (function () {
+        try {
+          var s = localStorage.getItem('armada-theme');
+          var m = matchMedia('(prefers-color-scheme: dark)');
+          var t = s === 'dark' || s === 'light' ? s : m.matches ? 'dark' : 'light';
+          document.documentElement.setAttribute('data-theme', t);
+          if (!s) m.addEventListener('change', function (e) { document.documentElement.setAttribute('data-theme', e.matches ? 'dark' : 'light'); });
+        } catch (e) {}
+      })();
+    </script>
     <title>{title}</title>
     <meta name="description" content={description} />
     <link rel="canonical" href={canonical} />
