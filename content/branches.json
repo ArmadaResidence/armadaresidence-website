@@ -108,6 +108,77 @@
       },
       "corridor_ar": "على محور الهدا باتجاه مكة المكرمة",
       "corridor_en": "On the Al Hada corridor towards Makkah Al-Mukarramah",
+      "story_note": "Scroll story (item 10, 11 Oct 2026): four scenes composed only from facts confirmed elsewhere in this file; wording is a draft for Ahmed's editorial approval. image.base null = brand placeholder until the approved photo set arrives (intended_base names the expected files).",
+      "story": [
+        {
+          "key": "entrance",
+          "title_ar": "المدخل والموقع",
+          "title_en": "Entrance and location",
+          "body_ar": "على طريق المطار في الطائف، على محور الهدا باتجاه مكة المكرمة — 15 دقيقة بالسيارة من مطار الطائف الدولي، ومواقف مجانية في الطابقين السفليين B1 وB2 مع مصعد مباشر.",
+          "body_en": "On Airport Road in Taif, on the Al Hada corridor towards Makkah — 15 minutes by car from Taif International Airport, with free parking on basement levels B1 and B2 and direct lift access.",
+          "image": {
+            "base": null,
+            "intended_base": "/images/branches/airport-road-entrance",
+            "widths": [
+              800,
+              1400
+            ],
+            "alt_ar": "مدخل أرمادا ريزيدنس – طريق المطار",
+            "alt_en": "Entrance of Armada Residence – Airport Road"
+          }
+        },
+        {
+          "key": "lobby",
+          "title_ar": "اللوبي والاستقبال",
+          "title_en": "Lobby and reception",
+          "body_ar": "فريق الاستقبال في خدمتكم على مدار الساعة؛ الوصول من الساعة 4:00 عصرًا والمغادرة حتى 12:00 ظهرًا، مع تدبير غرف يومي وأمن على مدار الساعة.",
+          "body_en": "Reception is at your service around the clock; check-in from 4:00 pm and check-out by 12:00 noon, with daily housekeeping and 24-hour security.",
+          "image": {
+            "base": null,
+            "intended_base": "/images/branches/airport-road-lobby",
+            "widths": [
+              800,
+              1400
+            ],
+            "alt_ar": "لوبي واستقبال أرمادا ريزيدنس – طريق المطار",
+            "alt_en": "Lobby and reception of Armada Residence – Airport Road"
+          }
+        },
+        {
+          "key": "rooms",
+          "title_ar": "الغرف والأجنحة",
+          "title_en": "Rooms and suites",
+          "body_ar": "شقق فندقية تبدأ من 50 مترًا مربعًا للغرفة وتصل إلى 75 مترًا مربعًا للجناح بغرفتي نوم وصالة؛ الأجنحة مزوّدة بمطبخ وتناسب الإقامة القصيرة والطويلة.",
+          "body_en": "Hotel apartments from 50 m² for a room up to 75 m² for a two-bedroom suite with a living room; the suites come with a kitchen and suit short and long stays alike.",
+          "image": {
+            "base": null,
+            "intended_base": "/images/branches/airport-road-rooms",
+            "widths": [
+              800,
+              1400
+            ],
+            "alt_ar": "جناح بغرفتي نوم وصالة في أرمادا ريزيدنس – طريق المطار",
+            "alt_en": "Two-bedroom suite with living room at Armada Residence – Airport Road"
+          }
+        },
+        {
+          "key": "dining",
+          "title_ar": "المطعم والخدمات",
+          "title_en": "Dining and services",
+          "body_ar": "Armada Residence Café & Restaurant في اللوبي على مدار الساعة، بوفيه إفطار يومي من 07:00 إلى 10:30، خدمة غرف على مدار الساعة، وقاعة اجتماعات تتسع حتى 50 شخصًا.",
+          "body_en": "Armada Residence Café & Restaurant in the lobby around the clock, a daily breakfast buffet from 07:00 to 10:30, 24-hour room service and a meeting hall for up to 50 people.",
+          "image": {
+            "base": null,
+            "intended_base": "/images/branches/airport-road-dining",
+            "widths": [
+              800,
+              1400
+            ],
+            "alt_ar": "Armada Residence Café & Restaurant في لوبي فرع طريق المطار",
+            "alt_en": "Armada Residence Café & Restaurant in the Airport Road lobby"
+          }
+        }
+      ],
       "tv_size_inch": 65,
       "drive_times_note": "confirmed by Ahmed 9 Oct 2026 — may be shown on partners and branch pages"
     },
@@ -186,6 +257,77 @@
         "al_ruddaf_park": 4,
         "taif_zoo": 8
       },
+      "story_note": "Scroll story (item 10, 11 Oct 2026): four scenes composed only from facts confirmed elsewhere in this file; wording is a draft for Ahmed's editorial approval. image.base null = brand placeholder until the approved photo set arrives (intended_base names the expected files).",
+      "story": [
+        {
+          "key": "entrance",
+          "title_ar": "المدخل والموقع",
+          "title_en": "Entrance and location",
+          "body_ar": "على طريق الشفا، الطريق الذي يصل الطائف بمرتفعات الشفا — 4 دقائق بالسيارة من حديقة الردف و8 دقائق من حديقة الحيوانات بالطائف، ومواقف مجانية في الطابق السفلي.",
+          "body_en": "On Al-Shafa Road, the road linking Taif to the Al-Shafa highlands — 4 minutes by car from Al Ruddaf Park and 8 from Taif Zoo, with free parking on the basement level.",
+          "image": {
+            "base": null,
+            "intended_base": "/images/branches/shafa-road-entrance",
+            "widths": [
+              800,
+              1400
+            ],
+            "alt_ar": "مدخل فندق أرمادا ريزيدنس – طريق الشفا",
+            "alt_en": "Entrance of Armada Residence – Shafa Road"
+          }
+        },
+        {
+          "key": "lobby",
+          "title_ar": "اللوبي والاستقبال",
+          "title_en": "Lobby and reception",
+          "body_ar": "فندق هادئ للعائلات والأفراد؛ فريق الاستقبال في خدمتكم على مدار الساعة ويمكن التواصل معه مباشرة عبر الواتساب، والوصول من 4:00 عصرًا والمغادرة حتى 12:00 ظهرًا.",
+          "body_en": "A quiet hotel for families and individual travellers; reception is available around the clock and directly on WhatsApp, check-in from 4:00 pm and check-out by 12:00 noon.",
+          "image": {
+            "base": null,
+            "intended_base": "/images/branches/shafa-road-lobby",
+            "widths": [
+              800,
+              1400
+            ],
+            "alt_ar": "لوبي واستقبال فندق أرمادا ريزيدنس – طريق الشفا",
+            "alt_en": "Lobby and reception of Armada Residence – Shafa Road"
+          }
+        },
+        {
+          "key": "rooms",
+          "title_ar": "الغرف والأجنحة",
+          "title_en": "Rooms and suites",
+          "body_ar": "تبدأ الخيارات من غرفة كينج بمساحة 35 مترًا مربعًا، وتشمل غرفة ببلكونة خاصة، واستديو بجاكوزي، وأجنحة بغرفة أو غرفتي نوم تتسع حتى أربعة أشخاص.",
+          "body_en": "Options start with a 35 m² king room and include a room with a private balcony, a studio with a jacuzzi, and one- and two-bedroom suites for up to four guests.",
+          "image": {
+            "base": null,
+            "intended_base": "/images/branches/shafa-road-rooms",
+            "widths": [
+              800,
+              1400
+            ],
+            "alt_ar": "غرفة ببلكونة خاصة في فندق أرمادا ريزيدنس – طريق الشفا",
+            "alt_en": "Room with a private balcony at Armada Residence – Shafa Road"
+          }
+        },
+        {
+          "key": "dining",
+          "title_ar": "المطعم والخدمات",
+          "title_en": "Dining and services",
+          "body_ar": "بوفيه إفطار يومي في المطعم من 07:00 إلى 10:30، ومقهى في الفندق، وخدمة غرف على مدار الساعة، مع غسيل ملابس وتدبير غرف يومي.",
+          "body_en": "A daily breakfast buffet in the restaurant from 07:00 to 10:30, a café in the hotel, 24-hour room service, laundry and daily housekeeping.",
+          "image": {
+            "base": null,
+            "intended_base": "/images/branches/shafa-road-dining",
+            "widths": [
+              800,
+              1400
+            ],
+            "alt_ar": "مطعم فندق أرمادا ريزيدنس – طريق الشفا",
+            "alt_en": "Restaurant of Armada Residence – Shafa Road"
+          }
+        }
+      ],
       "tv_size_inch": 42,
       "drive_times_note": "confirmed by Ahmed 9 Oct 2026 — may be shown on partners and branch pages"
     }

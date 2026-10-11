@@ -615,3 +615,66 @@ body.has-room-bar .wa-fab {
     bottom: 1.25rem;
   }
 }
+
+/* ---------- Branch scroll story (item 10, 11 Oct 2026) ----------
+   Picture column sticky (under the header) with the scene images stacked and cross-faded; text scenes beside it on
+   lg, under it on phones (the picture stays pinned at the top while the scenes scroll past). Opacity only. */
+.story-media {
+  position: sticky;
+  top: 6.5rem;
+  z-index: 1;
+}
+.story-img {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  transition: opacity var(--motion-slow) var(--ease-in-out);
+}
+.story-img.is-active {
+  opacity: 1;
+}
+.story-scene {
+  padding-block: 1.5rem;
+  opacity: 0.45;
+  transition: opacity var(--motion-base) var(--ease-out);
+}
+.story-scene.is-active {
+  opacity: 1;
+}
+.story-scene + .story-scene {
+  border-top: 1px solid var(--color-line);
+}
+.bg-placeholder {
+  background-color: var(--color-placeholder);
+}
+@media (max-width: 1023px) {
+  /* phones: a shorter pinned picture (16:9) so the active scene's text sits in the viewport below it */
+  .story-media {
+    background: var(--color-porcelain);
+    padding-bottom: 0.5rem;
+    box-shadow: 0 10px 12px -12px rgba(20, 42, 59, 0.25);
+  }
+  [data-theme='dark'] .story-media {
+    background: var(--dk-bg);
+  }
+  .story-frame {
+    aspect-ratio: 16 / 9;
+  }
+  .story-scene {
+    min-height: 44vh;
+    padding-block: 1.25rem 2rem;
+  }
+}
+@media (min-width: 1024px) {
+  .story-scene {
+    min-height: 62vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding-block: 2rem;
+  }
+  .story-scene:first-child {
+    padding-top: 0;
+    min-height: 50vh;
+  }
+}

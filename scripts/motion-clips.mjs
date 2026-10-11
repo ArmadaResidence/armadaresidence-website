@@ -198,6 +198,31 @@ const SCENARIOS = {
       await wait(1800);
     }
   },
+  // item 10: the branch scroll story — the picture stays, the scenes change it as they pass the middle
+  story: async (page) => {
+    await page.goto(`${BASE}/airport-road/`, { waitUntil: 'load' });
+    await page.evaluate(() => document.fonts.ready);
+    await page.evaluate(() => {
+      const el = document.querySelector('[data-story]');
+      scrollTo(0, el.getBoundingClientRect().top + scrollY - 90);
+    });
+    await wait(700);
+    await page.evaluate(async () => {
+      const el = document.querySelector('[data-story]');
+      const start = scrollY;
+      const end = start + el.getBoundingClientRect().height - innerHeight * 0.7;
+      const t0 = performance.now();
+      await new Promise((done) => {
+        const tick = () => {
+          const p = Math.min(1, (performance.now() - t0) / 4600);
+          scrollTo(0, start + (end - start) * p);
+          p < 1 ? requestAnimationFrame(tick) : done();
+        };
+        requestAnimationFrame(tick);
+      });
+    });
+    await wait(500);
+  },
   // item 2: a slow scroll down the home page — headings, cards and sections rise in once, siblings 60 ms apart
   reveal: async (page) => {
     await page.goto(`${BASE}/`, { waitUntil: 'load' });

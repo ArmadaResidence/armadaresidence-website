@@ -1,0 +1,73 @@
+---
+/**
+ * Branch scroll story (item 10, 11 Oct 2026): a sticky picture column with four scenes of text beside it
+ * (entrance & location, lobby & reception, rooms, dining & services). As each scene reaches the middle of the
+ * viewport it becomes the active one and the picture cross-fades to its image (src/lib/story.ts, one
+ * IntersectionObserver; opacity only). Copy and image slots come from branches.json → story; images are brand
+ * placeholders with the final file names reserved (image.base null) until the approved photos arrive.
+ */
+import { fill, L, ui, type Branch, type Locale } from '@lib/content';
+import Placeholder from './Placeholder.astro';
+
+interface Scene {
+  key: string;
+  title_ar: string;
+  title_en: string;
+  body_ar: string;
+  body_en: string;
+  image: { base: string | null; widths: number[]; alt_ar: string; alt_en: string };
+}
+interface Props {
+  locale: Locale;
+  branch: Branch;
+}
+const { locale, branch } = Astro.props;
+const t = ui(locale);
+const scenes = ((branch as { story?: Scene[] }).story ?? []) as Scene[];
+const headingId = `story-${branch.slug}`;
+---
+
+{
+  scenes.length > 0 && (
+    <section class="story mx-auto max-w-6xl px-4 py-14" data-story aria-labelledby={headingId}>
+      <h2 id={headingId} class="reveal text-2xl md:text-3xl font-bold text-midnight">{t.story.heading}</h2>
+      <div class="story-grid mt-8 lg:grid lg:grid-cols-2 lg:gap-14 lg:items-start">
+        <div class="story-media">
+          <div class="story-frame relative aspect-[3/2] rounded-card overflow-hidden bg-placeholder">
+            {scenes.map((sc, i) => (
+              <div class:list={['story-img', i === 0 && 'is-active']} data-story-img={i}>
+                {sc.image.base ? (
+                  <img
+                    src={`${sc.image.base}-${sc.image.widths[0]}.webp`}
+                    srcset={sc.image.widths.map((w) => `${sc.image.base}-${w}.webp ${w}w`).join(', ')}
+                    sizes="(min-width: 1024px) 560px, 100vw"
+                    alt={L(locale, sc.image, 'alt')}
+                    width={sc.image.widths[0]}
+                    height={Math.round((sc.image.widths[0] * 2) / 3)}
+                    loading={i === 0 ? 'eager' : 'lazy'}
+                    decoding="async"
+                    class="absolute inset-0 w-full h-full object-cover"
+                  />
+                ) : (
+                  <Placeholder label={fill(t.photo_pending_alt, { subject: L(locale, sc.image, 'alt') })} class="photo-fill rounded-none" />
+                )}
+              </div>
+            ))}
+          </div>
+          <p class="story-index mt-3 text-xs text-ink-muted latin" aria-live="polite" data-story-index>
+            {fill(t.story.scene, { n: 1, total: scenes.length })}
+          </p>
+        </div>
+        <ol class="story-scenes mt-8 lg:mt-0" data-story-scenes>
+          {scenes.map((sc, i) => (
+            <li class:list={['story-scene', i === 0 && 'is-active']} data-story-scene={i}>
+              <span class="story-num latin text-bronze text-sm font-semibold tracking-wide">{String(i + 1).padStart(2, '0')}</span>
+              <h3 class="mt-2 text-xl md:text-2xl font-bold text-midnight">{L(locale, sc, 'title')}</h3>
+              <p class="mt-3 text-ink-muted leading-relaxed max-w-md">{L(locale, sc, 'body')}</p>
+            </li>
+          ))}
+        </ol>
+      </div>
+    </section>
+  )
+}

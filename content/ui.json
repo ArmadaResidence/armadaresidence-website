@@ -344,6 +344,10 @@
       "drive_few": "دقائق بالسيارة إلى {place}",
       "drive_many": "دقيقة بالسيارة إلى {place}",
       "heading": "أرمادا بالأرقام"
+    },
+    "story": {
+      "heading": "جولة في الفرع",
+      "scene": "المشهد {n} من {total}"
     }
   },
   "en": {
@@ -689,6 +693,10 @@
       "drive_few": "min by car to {place}",
       "drive_many": "min by car to {place}",
       "heading": "Armada in numbers"
+    },
+    "story": {
+      "heading": "A walk through the property",
+      "scene": "Scene {n} of {total}"
     }
   }
 }
