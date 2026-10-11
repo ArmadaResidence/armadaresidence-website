@@ -223,6 +223,27 @@ const SCENARIOS = {
     });
     await wait(500);
   },
+  // item 11: the booking drawer — opened from a room card CTA (prefilled), closed with Esc; phone = bottom sheet
+  drawer: async (page, size) => {
+    await page.goto(`${BASE}/airport-road/`, { waitUntil: 'load' });
+    await page.evaluate(() => document.fonts.ready);
+    await wait(500);
+    if (size.width >= 768) await page.locator('header a[href*="/booking/"]').first().click();
+    else await page.locator('.room-bar a, a[href*="/booking/?branch=airport-road"]').first().click();
+    await wait(1600);
+    await page.locator('#drawer-name').click();
+    await page.keyboard.type('أحمد', { delay: 80 });
+    await wait(600);
+    await page.keyboard.press('Escape');
+    await wait(900);
+    // a room page CTA prefills branch + room type
+    await page.goto(`${BASE}/airport-road/one-bedroom-suite/`, { waitUntil: 'load' });
+    await wait(400);
+    const cta = page.locator('[data-book-card] a[href*="/booking/"]').first();
+    await cta.scrollIntoViewIfNeeded();
+    await cta.click();
+    await wait(1500);
+  },
   // item 2: a slow scroll down the home page — headings, cards and sections rise in once, siblings 60 ms apart
   reveal: async (page) => {
     await page.goto(`${BASE}/`, { waitUntil: 'load' });

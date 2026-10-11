@@ -279,3 +279,63 @@ html:not(.js) .nav-link[aria-current] {
     display: none;
   }
 }
+
+/* ---------- Booking drawer (item 11) ----------
+   Native <dialog>: a 30 rem panel pinned to the inline-end edge that slides in (translateX, from the end side of
+   the writing direction); under md a full-height sheet rising from the bottom (translateY). Backdrop fades. */
+.drawer {
+  --drawer-from: 100%;
+  position: fixed;
+  inset: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  max-width: none;
+  max-height: none;
+  width: min(30rem, 100vw);
+  height: 100dvh;
+  inset-inline-start: auto;
+  inset-inline-end: 0;
+  background: var(--color-porcelain);
+  color: var(--color-ink);
+  box-shadow: -16px 0 48px rgba(20, 42, 59, 0.18);
+  transform: translateX(var(--drawer-from));
+  transition: transform var(--motion-base) var(--ease-out);
+  overscroll-behavior: contain;
+}
+[dir='rtl'] .drawer {
+  --drawer-from: -100%;
+  box-shadow: 16px 0 48px rgba(20, 42, 59, 0.18);
+}
+.drawer.is-open {
+  transform: none;
+}
+.drawer::backdrop {
+  background: rgba(11, 24, 33, 0);
+  transition: background var(--motion-base) var(--ease-out);
+}
+.drawer.is-open::backdrop {
+  background: rgba(11, 24, 33, 0.55);
+}
+.drawer-panel {
+  height: 100%;
+  overflow-y: auto;
+  padding: 1.5rem 1.5rem calc(2rem + env(safe-area-inset-bottom));
+}
+html.drawer-open {
+  overflow: hidden;
+}
+[data-theme='dark'] .drawer {
+  background: var(--dk-bg);
+}
+@media (max-width: 767px) {
+  .drawer {
+    width: 100vw;
+    inset-inline: 0;
+    transform: translateY(100%);
+    box-shadow: none;
+  }
+  .drawer.is-open {
+    transform: none;
+  }
+}
