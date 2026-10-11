@@ -16,7 +16,7 @@ const s = pageSeo(locale, 'booking-success');
 
 <Base locale={locale} path="/booking/success/" title={s.title} description={s.description} noindex={s.noindex}>
   <section class="mx-auto max-w-3xl px-4 pt-14 pb-20">
-    <div class="bg-white border border-line rounded-card p-8 md:p-10">
+    <div class="reveal reveal-lg bg-white border border-line rounded-card p-8 md:p-10">
       <span class="inline-grid place-items-center w-12 h-12 rounded-full bg-porcelain text-bronze">
         <Icon name="check" size={26} />
       </span>
@@ -60,6 +60,11 @@ const s = pageSeo(locale, 'booking-success');
 </Base>
 
 <script>
+  import { bindOnce, onPageLoad } from '@lib/client';
+
+  onPageLoad(() => {
+  const wrapEl = document.querySelector<HTMLElement>('[data-ref-wrap]');
+  if (!wrapEl || !bindOnce(wrapEl)) return;
   const q = new URLSearchParams(location.search);
   const ref = q.get('ref');
   const branch = q.get('branch');
@@ -93,4 +98,5 @@ const s = pageSeo(locale, 'booking-success');
       if (a.dataset.branchWa !== branch) a.classList.add('hidden');
     });
   }
+  });
 </script>

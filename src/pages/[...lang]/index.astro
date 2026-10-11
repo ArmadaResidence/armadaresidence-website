@@ -103,24 +103,24 @@ const quickFacts = fill(t.home.quick_facts, {
   </section>
 
   <section class="bg-white border-b border-line">
-    <p class="mx-auto max-w-6xl px-4 py-4 text-sm text-ink-muted flex items-center gap-2">
+    <p class="reveal mx-auto max-w-6xl px-4 py-4 text-sm text-ink-muted flex items-center gap-2">
       <Icon name="clock" size={16} class="text-bronze shrink-0" />
       <span>{quickFacts}</span>
     </p>
   </section>
 
   <section id="branches" class="mx-auto max-w-6xl px-4 py-16">
-    <h2 class="text-2xl md:text-3xl font-bold text-midnight">{t.home.branches_heading}</h2>
-    <p class="mt-3 text-ink-muted max-w-2xl">{t.home.branches_intro}</p>
-    <div class="mt-8 grid gap-6 md:grid-cols-2">
+    <h2 class="reveal text-2xl md:text-3xl font-bold text-midnight">{t.home.branches_heading}</h2>
+    <p class="reveal mt-3 text-ink-muted max-w-2xl" style="--reveal-delay:60ms">{t.home.branches_intro}</p>
+    <div class="reveal-group mt-8 grid gap-6 md:grid-cols-2">
       {branches.map((b) => <BranchCard locale={locale} branch={b} />)}
     </div>
   </section>
 
-  <section class="bg-white border-y border-line">
+  <section class="cv-auto bg-white border-y border-line">
     <div class="mx-auto max-w-6xl px-4 py-16">
-      <h2 class="text-2xl md:text-3xl font-bold text-midnight">{locale === 'ar' ? why.heading_ar : why.heading_en}</h2>
-      <ul class="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+      <h2 class="reveal text-2xl md:text-3xl font-bold text-midnight">{locale === 'ar' ? why.heading_ar : why.heading_en}</h2>
+      <ul class="reveal-group mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
         {
           why.items.map((item) => (
             <li class="flex gap-3">
@@ -138,17 +138,17 @@ const quickFacts = fill(t.home.quick_facts, {
     </div>
   </section>
 
-  <section class="mx-auto max-w-6xl px-4 py-16 grid gap-10 md:grid-cols-5">
-    <div class="md:col-span-2">
+  <section class="cv-auto mx-auto max-w-6xl px-4 py-16 grid gap-10 md:grid-cols-5">
+    <div class="reveal md:col-span-2">
       <h2 class="text-2xl md:text-3xl font-bold text-midnight">{locale === 'ar' ? about.heading_ar : about.heading_en}</h2>
     </div>
-    <div class="md:col-span-3 prose-armada leading-relaxed">
+    <div class="reveal md:col-span-3 prose-armada leading-relaxed" style="--reveal-delay:120ms">
       {paragraphs(locale === 'ar' ? about.body_ar : about.body_en).map((p) => <p>{p}</p>)}
     </div>
   </section>
 
-  <section class="bg-midnight text-porcelain">
-    <div class="mx-auto max-w-6xl px-4 py-12 flex flex-wrap items-center justify-between gap-6">
+  <section class="cv-auto bg-midnight text-porcelain">
+    <div class="reveal mx-auto max-w-6xl px-4 py-12 flex flex-wrap items-center justify-between gap-6">
       <p class="text-xl font-semibold">{slogan}</p>
       <div class="flex flex-wrap gap-3">
         <a href={localePath(locale, '/booking/')} class="bg-bronze text-white font-semibold px-6 py-3 rounded hover:bg-bronze-deep transition-colors">
@@ -163,10 +163,13 @@ const quickFacts = fill(t.home.quick_facts, {
 </Base>
 
 <script>
+  import { bindOnce, onPageLoad } from '@lib/client';
+
   // Hero video: desktop only, never with prefers-reduced-motion or Save-Data, attached after `load` so it cannot
   // affect LCP. Otherwise the poster stays with the Ken Burns move.
+  onPageLoad(() => {
   const v = document.querySelector<HTMLVideoElement>('video.hero-media');
-  if (v) {
+  if (v && bindOnce(v)) {
     const conn = (navigator as Navigator & { connection?: { saveData?: boolean } }).connection;
     const allowed =
       matchMedia('(min-width: 1024px)').matches && !matchMedia('(prefers-reduced-motion: reduce)').matches && !(conn && conn.saveData);
@@ -191,4 +194,5 @@ const quickFacts = fill(t.home.quick_facts, {
       else window.addEventListener('load', attach, { once: true });
     }
   }
+  });
 </script>

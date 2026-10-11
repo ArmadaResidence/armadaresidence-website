@@ -82,13 +82,15 @@ const details: { label: string; value: string }[] = [
     <div class="mt-8 grid gap-8 lg:grid-cols-5">
       <div class="lg:col-span-3">
         {/* TODO(photo): approved room photo (WebP, srcset, width/height). legacy_main_image is reference only. */}
-        <Placeholder label={fill(t.photo_pending_alt, { subject: `${name} — ${branchName}` })} />
+        <div transition:name={`room-media-${room.branch}-${room.slug}`}>
+          <Placeholder label={fill(t.photo_pending_alt, { subject: `${name} — ${branchName}` })} />
+        </div>
         <div class="mt-8 prose-armada leading-relaxed">
           {paragraphs(L(locale, room, 'description')).map((p) => <p>{p}</p>)}
         </div>
 
-        <h2 class="mt-10 text-sm font-semibold uppercase tracking-wide text-bronze">{t.room.details_heading}</h2>
-        <dl class="mt-3 grid gap-3 sm:grid-cols-2 text-sm">
+        <h2 class="reveal mt-10 text-sm font-semibold uppercase tracking-wide text-bronze">{t.room.details_heading}</h2>
+        <dl class="reveal-group mt-3 grid gap-3 sm:grid-cols-2 text-sm">
           {
             details.map((d) => (
               <div class="bg-white border border-line rounded-card px-4 py-3">
@@ -102,8 +104,8 @@ const details: { label: string; value: string }[] = [
         {
           features.length > 0 && (
             <>
-              <h2 class="mt-8 text-sm font-semibold uppercase tracking-wide text-bronze">{t.room.features_heading}</h2>
-              <ul class="mt-3 flex flex-wrap gap-2">
+              <h2 class="reveal mt-8 text-sm font-semibold uppercase tracking-wide text-bronze">{t.room.features_heading}</h2>
+              <ul class="reveal-group mt-3 flex flex-wrap gap-2">
                 {features.map((f) => (
                   <li class="inline-flex items-center gap-1.5 text-sm bg-white border border-line px-3 py-1.5 rounded">
                     <Icon name="check" size={14} class="text-bronze" />
@@ -118,8 +120,8 @@ const details: { label: string; value: string }[] = [
         {
           inRoom.length > 0 && (
             <>
-              <h2 class="mt-8 text-sm font-semibold uppercase tracking-wide text-bronze">{t.room.in_room_heading}</h2>
-              <ul class="mt-3 grid gap-2 sm:grid-cols-2 text-sm">
+              <h2 class="reveal mt-8 text-sm font-semibold uppercase tracking-wide text-bronze">{t.room.in_room_heading}</h2>
+              <ul class="reveal-group mt-3 grid gap-2 sm:grid-cols-2 text-sm">
                 {inRoom.map((a) => (
                   <li class="flex items-center gap-2">
                     <Icon name="check" size={14} class="text-bronze shrink-0" />
@@ -139,7 +141,7 @@ const details: { label: string; value: string }[] = [
         }
       </div>
 
-      <div class="lg:col-span-2 lg:sticky lg:top-24 self-start">
+      <div class="reveal reveal-lg lg:col-span-2 lg:sticky lg:top-24 self-start" style="--reveal-delay:120ms">
         <PriceBlock locale={locale} room={room} mode="full" />
         <a href={branchPath(locale, branch.slug)} class="mt-4 inline-flex items-center gap-1 text-sm text-ink-muted hover:text-midnight">
           <Icon name="arrow" size={16} class="rotate-180 rtl:rotate-0" />
@@ -151,10 +153,10 @@ const details: { label: string; value: string }[] = [
 
   {
     others.length > 0 && (
-      <section class="bg-white border-t border-line">
+      <section class="cv-auto bg-white border-t border-line">
         <div class="mx-auto max-w-6xl px-4 py-14">
-          <h2 class="text-2xl font-bold text-midnight">{fill(t.room.other_rooms, { branch: branchName })}</h2>
-          <div class="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+          <h2 class="reveal text-2xl font-bold text-midnight">{fill(t.room.other_rooms, { branch: branchName })}</h2>
+          <div class="reveal-group mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
             {others.map((r) => (
               <RoomCard locale={locale} room={r} />
             ))}

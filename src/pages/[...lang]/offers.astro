@@ -21,7 +21,7 @@ const corp = offers.corporate;
   <section class="mx-auto max-w-6xl px-4 pt-10 pb-14">
     <h1 class="text-3xl md:text-4xl font-bold text-midnight">{t.offers.heading}</h1>
 
-    <div class="mt-8 bg-white border border-line rounded-card p-6">
+    <div class="reveal reveal-lg mt-8 bg-white border border-line rounded-card p-6">
       <h2 class="text-sm font-semibold uppercase tracking-wide text-bronze">{t.offers.no_offers_heading}</h2>
       {
         offers.current_offers.length === 0 ? (
@@ -39,7 +39,7 @@ const corp = offers.corporate;
       }
     </div>
 
-    <div class="mt-10 grid gap-8 lg:grid-cols-2">
+    <div class="reveal-group mt-10 grid gap-8 lg:grid-cols-2">
       <section class="bg-midnight text-porcelain rounded-card p-8">
         <h2 class="text-2xl font-bold">{locale === 'ar' ? g.heading_ar : g.heading_en}</h2>
         <p class="mt-3 text-porcelain/85 leading-relaxed">{locale === 'ar' ? g.body_ar : g.body_en}</p>

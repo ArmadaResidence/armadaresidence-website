@@ -66,7 +66,7 @@ const driveTimes = Object.entries(((branch as { drive_times_min?: Record<string,
     <p class="mt-6 text-xs font-semibold uppercase tracking-wide text-bronze">{L(locale, branch, 'type')}</p>
     <h1 class="mt-1 text-3xl md:text-4xl font-bold text-midnight">{name}</h1>
     <p class="mt-2 text-lg text-ink-muted">{L(locale, branch, 'tagline')}</p>
-    <div class="mt-8">
+    <div class="reveal reveal-lg mt-8">
       <Placeholder label={fill(t.photo_pending_alt, { subject: name })} />
     </div>
   </section>
@@ -82,77 +82,69 @@ const driveTimes = Object.entries(((branch as { drive_times_min?: Record<string,
         <Icon name="arrow" size={18} class="rtl:rotate-180" />
       </a>
     </div>
-    <aside class="lg:col-span-2 bg-white border border-line rounded-card p-6">
+    <aside class="reveal reveal-lg lg:col-span-2 bg-white border border-line rounded-card p-6" style="--reveal-delay:120ms">
       <h2 class="text-sm font-semibold uppercase tracking-wide text-bronze">{t.branch.at_a_glance}</h2>
       <dl class="mt-4 space-y-4 text-sm">
-        <div class="flex gap-3">
-          <Icon name="clock" size={18} class="text-bronze shrink-0 mt-0.5" />
-          <div>
-            <dt class="font-semibold text-midnight">{t.branch.check_in} / {t.branch.check_out}</dt>
-            <dd class="text-ink-muted">
+        <div class="dl-row">
+            <dt class="font-semibold text-midnight flex items-start gap-3"><Icon name="clock" size={18} class="text-bronze shrink-0 mt-0.5" /><span>{t.branch.check_in} / {t.branch.check_out}</span></dt>
+            <dd class="ms-[30px] text-ink-muted">
               {locale === 'ar' ? policies.check_in_ar : policies.check_in_en}
               <br />
               {locale === 'ar' ? policies.check_out_ar : policies.check_out_en}
             </dd>
-          </div>
         </div>
-        <div class="flex gap-3">
-          <Icon name="car" size={18} class="text-bronze shrink-0 mt-0.5" />
-          <div>
-            <dt class="font-semibold text-midnight">{t.branch.parking}</dt>
-            <dd class="text-ink-muted">{L(locale, branch, 'parking')}</dd>
-          </div>
+        <div class="dl-row">
+            <dt class="font-semibold text-midnight flex items-start gap-3"><Icon name="car" size={18} class="text-bronze shrink-0 mt-0.5" /><span>{t.branch.parking}</span></dt>
+            <dd class="ms-[30px] text-ink-muted">{L(locale, branch, 'parking')}</dd>
         </div>
-        <div class="flex gap-3">
-          <Icon name="star" size={18} class="text-bronze shrink-0 mt-0.5" />
-          <div>
-            <dt class="font-semibold text-midnight">{t.branch.breakfast}</dt>
-            <dd class="text-ink-muted">{L(locale, branch, 'breakfast')}</dd>
-          </div>
+        <div class="dl-row">
+            <dt class="font-semibold text-midnight flex items-start gap-3"><Icon name="star" size={18} class="text-bronze shrink-0 mt-0.5" /><span>{t.branch.breakfast}</span></dt>
+            <dd class="ms-[30px] text-ink-muted">{L(locale, branch, 'breakfast')}</dd>
         </div>
-        <div class="flex gap-3">
-          <Icon name="check" size={18} class="text-bronze shrink-0 mt-0.5" />
-          <div>
-            <dt class="font-semibold text-midnight">{t.branch.amenities}</dt>
-            <dd>
+        <div class="dl-row">
+            <dt class="font-semibold text-midnight flex items-start gap-3"><Icon name="check" size={18} class="text-bronze shrink-0 mt-0.5" /><span>{t.branch.amenities}</span></dt>
+            <dd class="ms-[30px]">
               <ul class="mt-1 flex flex-wrap gap-1.5">
                 {branch.amenities.map((a) => <li class="text-xs bg-porcelain text-ink px-2 py-1 rounded">{amenityLabel(locale, a)}</li>)}
               </ul>
             </dd>
-          </div>
         </div>
       </dl>
     </aside>
   </section>
 
-  {dining && <DiningSection locale={locale} branch={branch} />}
+  {
+    dining && (
+      <div class="cv-auto reveal reveal-lg">
+        <DiningSection locale={locale} branch={branch} />
+      </div>
+    )
+  }
 
-  <section id="rooms" class="bg-white border-y border-line">
+  <section id="rooms" class="cv-auto bg-white border-y border-line">
     <div class="mx-auto max-w-6xl px-4 py-14">
-      <h2 class="text-2xl md:text-3xl font-bold text-midnight">{t.branch.rooms_heading}</h2>
-      <p class="mt-2 text-ink-muted">{t.branch.rooms_intro}</p>
-      <div class="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+      <h2 class="reveal text-2xl md:text-3xl font-bold text-midnight">{t.branch.rooms_heading}</h2>
+      <p class="reveal mt-2 text-ink-muted" style="--reveal-delay:60ms">{t.branch.rooms_intro}</p>
+      <div class="reveal-group mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
         {rooms.map((r) => <RoomCard locale={locale} room={r} />)}
       </div>
     </div>
   </section>
 
-  <section class="mx-auto max-w-6xl px-4 py-14 grid gap-8 md:grid-cols-2">
-    <div>
+  <section class="cv-auto mx-auto max-w-6xl px-4 py-14 grid gap-8 md:grid-cols-2">
+    <div class="reveal">
       <h2 class="text-2xl font-bold text-midnight">{t.branch.location_heading}</h2>
       <dl class="mt-5 space-y-4 text-sm">
-        <div class="flex gap-3">
-          <Icon name="map" size={18} class="text-bronze shrink-0 mt-0.5" />
-          <div>
-            <dt class="font-semibold text-midnight">{t.branch.address}</dt>
-            <dd class="text-ink-muted">
+        <div class="dl-row">
+            <dt class="font-semibold text-midnight flex items-start gap-3"><Icon name="map" size={18} class="text-bronze shrink-0 mt-0.5" /><span>{t.branch.address}</span></dt>
+            <dd class="ms-[30px] text-ink-muted">
               {L(locale, branch, 'address')}
               <br />
               <span class="latin" dir="ltr">
                 {t.contact.short_code}: {na.short_code} · {t.contact.additional_number}: {na.additional_number}
               </span>
             </dd>
-            <dd class="mt-2 flex flex-wrap gap-x-4 gap-y-1">
+            <dd class="ms-[30px] mt-2 flex flex-wrap gap-x-4 gap-y-1">
               <a href={branch.maps_url} rel="noopener" target="_blank" class="font-semibold text-bronze hover:text-bronze-deep">
                 {t.cta.maps}
               </a>
@@ -160,15 +152,12 @@ const driveTimes = Object.entries(((branch as { drive_times_min?: Record<string,
                 {t.cta.google_reviews}
               </a>
             </dd>
-          </div>
         </div>
         {
           driveTimes.length > 0 && (
-            <div class="flex gap-3">
-              <Icon name="car" size={18} class="text-bronze shrink-0 mt-0.5" />
-              <div>
-                <dt class="font-semibold text-midnight">{t.branch.drive_times}</dt>
-                <dd>
+            <div class="dl-row">
+                <dt class="font-semibold text-midnight flex items-start gap-3"><Icon name="car" size={18} class="text-bronze shrink-0 mt-0.5" /><span>{t.branch.drive_times}</span></dt>
+                <dd class="ms-[30px]">
                   <ul class="mt-1 grid gap-x-6 gap-y-1 sm:grid-cols-2 text-ink-muted">
                     {driveTimes.map((d) => (
                       <li class="flex justify-between gap-3">
@@ -178,15 +167,12 @@ const driveTimes = Object.entries(((branch as { drive_times_min?: Record<string,
                     ))}
                   </ul>
                 </dd>
-              </div>
             </div>
           )
         }
-        <div class="flex gap-3">
-          <Icon name="phone" size={18} class="text-bronze shrink-0 mt-0.5" />
-          <div>
-            <dt class="font-semibold text-midnight">{t.contact.phone} / {t.cta.whatsapp}</dt>
-            <dd class="flex flex-wrap gap-x-4 gap-y-1">
+        <div class="dl-row">
+            <dt class="font-semibold text-midnight flex items-start gap-3"><Icon name="phone" size={18} class="text-bronze shrink-0 mt-0.5" /><span>{t.contact.phone} / {t.cta.whatsapp}</span></dt>
+            <dd class="ms-[30px] flex flex-wrap gap-x-4 gap-y-1">
               <a href={telHref(c.phone)} class="latin text-ink-muted hover:text-midnight" dir="ltr">
                 {c.phone_display}
               </a>
@@ -194,22 +180,18 @@ const driveTimes = Object.entries(((branch as { drive_times_min?: Record<string,
                 {t.cta.whatsapp_title}
               </a>
             </dd>
-          </div>
         </div>
-        <div class="flex gap-3">
-          <Icon name="mail" size={18} class="text-bronze shrink-0 mt-0.5" />
-          <div>
-            <dt class="font-semibold text-midnight">{t.cta.email}</dt>
-            <dd>
+        <div class="dl-row">
+            <dt class="font-semibold text-midnight flex items-start gap-3"><Icon name="mail" size={18} class="text-bronze shrink-0 mt-0.5" /><span>{t.cta.email}</span></dt>
+            <dd class="ms-[30px]">
               <a href={mailHref(branch.email)} class="latin text-ink-muted hover:text-midnight" dir="ltr">
                 {branch.email}
               </a>
             </dd>
-          </div>
         </div>
       </dl>
     </div>
-    <div class="bg-white border border-line rounded-card p-6 self-start">
+    <div class="reveal reveal-lg bg-white border border-line rounded-card p-6 self-start" style="--reveal-delay:120ms">
       <h2 class="text-sm font-semibold uppercase tracking-wide text-bronze">{t.branch.other_branch}</h2>
       {
         other && (

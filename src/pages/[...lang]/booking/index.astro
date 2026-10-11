@@ -42,7 +42,7 @@ const clientData = {
     <h1 class="text-3xl md:text-4xl font-bold text-midnight">{f.heading}</h1>
     <p class="mt-3 text-ink-muted">{f.intro}</p>
 
-    <form id="booking-form" class="mt-8 bg-white border border-line rounded-card p-6 md:p-8 space-y-6" novalidate>
+    <form id="booking-form" class="reveal reveal-lg mt-8 bg-white border border-line rounded-card p-6 md:p-8 space-y-6" novalidate>
       <div class="grid gap-5 sm:grid-cols-2">
         <div class="sm:col-span-2">
           <label for="branch" class="block text-sm font-semibold text-midnight">{f.branch}</label>
@@ -175,8 +175,12 @@ const clientData = {
     };
   };
 
+  import { bindOnce, onPageLoad } from '@lib/client';
+
+  onPageLoad(() => {
+  const form = document.getElementById('booking-form') as HTMLFormElement | null;
+  if (!form || !bindOnce(form)) return;
   const data = JSON.parse(document.getElementById('booking-data')!.textContent || '{}') as Data;
-  const form = document.getElementById('booking-form') as HTMLFormElement;
   const branchSel = form.elements.namedItem('branch') as HTMLSelectElement;
   const roomSel = form.elements.namedItem('room') as HTMLSelectElement;
   const checkIn = form.elements.namedItem('check_in') as HTMLInputElement;
@@ -399,4 +403,5 @@ const clientData = {
       submitLabel.textContent = data.strings.submit;
     }
   });
+});
 </script>
