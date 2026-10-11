@@ -13,6 +13,7 @@ import siteTextsJson from '../../content/site-texts.json';
 import seoJson from '../../content/seo.json';
 import uiJson from '../../content/ui.json';
 import taifJson from '../../content/taif-guide.json';
+import hallsJson from '../../content/halls.json';
 import partnersJson from '../../content/partners.json';
 import partnersPagesJson from '../../content/partners-pages.json';
 
@@ -424,6 +425,39 @@ export function partnerRows(locale: Locale): PartnerRow[] {
       recommended: locale === 'ar' ? row.recommended_ar : row.recommended_en,
     };
   });
+}
+
+/** Count-up figures (item 6) — every value from content/. Unit counts only while every branch has show_units. */
+export interface StatItem {
+  value: number;
+  label: string;
+  suffix?: string;
+}
+const unitsVisible = (branchesJson.branches as { show_units?: boolean }[]).every((b) => b.show_units);
+export function siteStats(locale: Locale): StatItem[] {
+  const s = ui(locale).stats;
+  const items: StatItem[] = [{ value: rooms.length, label: s.room_types }];
+  if (unitsVisible) items.push({ value: branches.reduce((n, b) => n + Number((b as { units?: number }).units ?? 0), 0), label: s.units });
+  items.push({ value: 24, label: s.hours });
+  const hall = (hallsJson.halls as { capacity: number }[])[0];
+  if (hall) items.push({ value: hall.capacity, label: s.hall });
+  if (!unitsVisible) items.push({ value: taif.places.length, label: s.places });
+  return items;
+}
+export function branchStats(locale: Locale, branch: Branch): StatItem[] {
+  const s = ui(locale).stats;
+  const items: StatItem[] = [{ value: roomsFor(branch.slug).length, label: s.room_types_branch }];
+  if (unitsVisible) items.push({ value: Number((branch as { units?: number }).units ?? 0), label: s.units_branch });
+  items.push({ value: 24, label: s.hours });
+  const hall = (hallsJson.halls as { branch: string; capacity: number }[]).find((h) => h.branch === branch.slug);
+  if (hall) items.push({ value: hall.capacity, label: s.hall });
+  const drive = Object.entries((branch as { drive_times_min?: Record<string, number | string> }).drive_times_min ?? {}).find(([, v]) => typeof v === 'number');
+  if (drive && items.length < 4) {
+    const n = drive[1] as number;
+    const place = (ui(locale).drive_times as Record<string, string>)[drive[0]] ?? drive[0];
+    items.push({ value: n, label: fill(n >= 3 && n <= 10 ? s.drive_few : s.drive_many, { place }) });
+  }
+  return items;
 }
 
 export function partnersPath(locale: Locale, sub = ''): string {

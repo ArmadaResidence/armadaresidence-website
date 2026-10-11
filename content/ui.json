@@ -331,6 +331,19 @@
       "open": "عرض الصورة بالحجم الكامل",
       "close": "إغلاق",
       "of": "من"
+    },
+    "stats": {
+      "_note": "Labels for the count-up figures (item 6, 11 Oct 2026). Numbers are computed from rooms.json / branches.json / halls.json / taif-guide.json; the unit counts render only while branches.json → show_units is true.",
+      "room_types": "نوعًا من الغرف والأجنحة",
+      "room_types_branch": "أنواع من الغرف والأجنحة",
+      "units": "وحدة فندقية في الفرعين",
+      "units_branch": "وحدة فندقية",
+      "hours": "ساعة استقبال وخدمة غرف",
+      "hall": "شخصًا تتسع لهم قاعة المناسبات",
+      "places": "وجهة في دليل اكتشف الطائف",
+      "drive_few": "دقائق بالسيارة إلى {place}",
+      "drive_many": "دقيقة بالسيارة إلى {place}",
+      "heading": "أرمادا بالأرقام"
     }
   },
   "en": {
@@ -664,6 +677,18 @@
       "open": "View photo full size",
       "close": "Close",
       "of": "of"
+    },
+    "stats": {
+      "room_types": "room and suite types",
+      "room_types_branch": "room and suite types",
+      "units": "hotel units across both properties",
+      "units_branch": "hotel units",
+      "hours": "hours of reception and room service",
+      "hall": "guests in the events hall",
+      "places": "places in the Discover Taif guide",
+      "drive_few": "min by car to {place}",
+      "drive_many": "min by car to {place}",
+      "heading": "Armada in numbers"
     }
   }
 }

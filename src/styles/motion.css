@@ -13,6 +13,7 @@
   --motion-shift-lg: 24px; /* cards, sections, media */
   --motion-stagger: 60ms; /* between siblings */
   --motion-stagger-fast: 50ms; /* between words (hero) */
+  --motion-count: 1200ms; /* count-up figures */
 }
 @media (prefers-reduced-motion: reduce) {
   :root {
@@ -23,6 +24,7 @@
     --motion-shift-lg: 0px;
     --motion-stagger: 0ms;
     --motion-stagger-fast: 0ms;
+    --motion-count: 0ms;
   }
 }
 

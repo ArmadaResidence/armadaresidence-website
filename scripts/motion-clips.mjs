@@ -107,6 +107,25 @@ const SCENARIOS = {
     await page.mouse.move(bb.x - 40, bb.y + bb.height + 40, { steps: 6 });
     await wait(400);
   },
+  // item 6: the figures counting up when the strip comes into view (home "why Armada", then the branch strip)
+  counters: async (page) => {
+    await page.goto(`${BASE}/`, { waitUntil: 'load' });
+    await page.evaluate(() => document.fonts.ready);
+    await page.evaluate(() => {
+      const el = document.querySelector('[data-counters]');
+      const y = el.getBoundingClientRect().top + scrollY - innerHeight + 60;
+      scrollTo(0, Math.max(0, y));
+    });
+    await wait(500);
+    await page.evaluate(() => scrollBy({ top: 260, behavior: 'smooth' }));
+    await wait(2200);
+    await page.goto(`${BASE}/airport-road/`, { waitUntil: 'load' });
+    await page.evaluate(() => {
+      const el = document.querySelector('[data-counters]');
+      scrollTo(0, el.getBoundingClientRect().top + scrollY - innerHeight * 0.55);
+    });
+    await wait(1900);
+  },
   // item 2: a slow scroll down the home page — headings, cards and sections rise in once, siblings 60 ms apart
   reveal: async (page) => {
     await page.goto(`${BASE}/`, { waitUntil: 'load' });

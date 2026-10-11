@@ -38,13 +38,16 @@ for (const reduced of [false, true]) {
           scrollTo(0, y);
           await new Promise((r) => setTimeout(r, 180));
         }
-        await new Promise((r) => setTimeout(r, 500));
+        await new Promise((r) => setTimeout(r, 1500));
         const left = [...document.querySelectorAll('.reveal:not(.is-in), .reveal-group:not(.is-in)')].map((e) => e.tagName + '.' + e.className.split(' ').slice(0, 2).join('.'));
-        return { total, visibleAtTop, left, cls: +cls.toFixed(4), base };
+        // counters (item 6): every figure must have reached its value once scrolled past
+        const counters = [...document.querySelectorAll('[data-count]')].filter((s) => s.textContent.trim() !== s.dataset.count).map((s) => `${s.textContent.trim()}/${s.dataset.count}`);
+        return { total, visibleAtTop, left, cls: +cls.toFixed(4), base, counters };
       });
       const tag = `${path} @${width}${reduced ? ' (reduced)' : ''}`;
       if (r.left.length) failures.push(`${tag}: ${r.left.length}/${r.total} never revealed: ${r.left.slice(0, 4).join(', ')}`);
       if (r.cls > 0.01) failures.push(`${tag}: CLS ${r.cls} during scroll`);
+      if (r.counters.length) failures.push(`${tag}: counters not at final value: ${r.counters.join(', ')}`);
       if (reduced && !/^0m?s$/.test(r.base)) failures.push(`${tag}: --motion-base is ${r.base} under reduced motion`);
       if (reduced && r.total && r.visibleAtTop !== r.total) failures.push(`${tag}: reduced motion must show everything at once (${r.visibleAtTop}/${r.total})`);
       console.log(`${tag}: ${r.total} reveal blocks, ${r.left.length} left, CLS ${r.cls}, base ${r.base}`);

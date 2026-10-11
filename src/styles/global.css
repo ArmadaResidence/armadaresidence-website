@@ -545,3 +545,14 @@ footer :focus-visible,
 .field-icon {
   z-index: 1;
 }
+
+/* ---------- Count-up figures (item 6) ---------- */
+.counter-value {
+  display: inline-block;
+  min-inline-size: calc(var(--chars, 2) * 1ch);
+  font-variant-numeric: tabular-nums;
+  text-align: start;
+}
+[dir='rtl'] [data-date-field] .field-label {
+  inset-inline-start: 2.75rem;
+}

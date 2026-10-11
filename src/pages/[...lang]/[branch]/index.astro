@@ -1,5 +1,6 @@
 ---
 import Base from '@layouts/Base.astro';
+import Counters from '@components/Counters.astro';
 import DiningSection from '@components/DiningSection.astro';
 import Placeholder from '@components/Placeholder.astro';
 import RoomCard from '@components/RoomCard.astro';
@@ -10,6 +11,7 @@ import {
   amenityLabel,
   branchContact,
   branchPath,
+  branchStats,
   branches,
   fill,
   L,
@@ -111,6 +113,10 @@ const driveTimes = Object.entries(((branch as { drive_times_min?: Record<string,
         </div>
       </dl>
     </aside>
+  </section>
+
+  <section class="mx-auto max-w-6xl px-4 pb-12" aria-label={t.stats.heading}>
+    <Counters items={branchStats(locale, branch)} class="border-y border-line py-8" />
   </section>
 
   {

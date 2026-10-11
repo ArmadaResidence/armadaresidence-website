@@ -1,0 +1,36 @@
+---
+/**
+ * Count-up figures (item 6, 11 Oct 2026). Each value is rendered final in the HTML (no JS → the number is there);
+ * src/lib/counters.ts counts it up from 0 over --motion-count (1.2 s, ease-out) the first time 50 % of the strip is
+ * on screen, once. Tabular digits + a reserved width (ch) keep the strip from shifting while counting (CLS 0).
+ * Values come from content/ only — the caller decides what is shown (unit counts stay hidden while
+ * branches.json → show_units is false).
+ */
+interface Item {
+  value: number;
+  label: string;
+  /** optional text glued after the number, e.g. "+" */
+  suffix?: string;
+}
+interface Props {
+  items: Item[];
+  class?: string;
+}
+const { items, class: className = '' } = Astro.props;
+---
+
+<ul class:list={['counters reveal-group grid grid-cols-2 gap-x-6 gap-y-8 md:grid-cols-4', className]} data-counters>
+  {
+    items.map((it) => (
+      <li class="counter-item">
+        <p class="counter-figure latin text-4xl md:text-5xl font-bold text-midnight tracking-tight">
+          <span class="counter-value" data-count={it.value} style={`--chars:${String(it.value).length}`}>
+            {it.value}
+          </span>
+          {it.suffix && <span class="counter-suffix text-bronze">{it.suffix}</span>}
+        </p>
+        <p class="counter-label mt-1 text-sm text-ink-muted leading-snug">{it.label}</p>
+      </li>
+    ))
+  }
+</ul>
