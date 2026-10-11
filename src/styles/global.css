@@ -584,3 +584,34 @@ footer :focus-visible,
     scroll-snap-stop: always;
   }
 }
+
+/* ---------- Room page bottom bar on phones (item 8, 11 Oct 2026) ----------
+   Fixed above the safe area, slides up (transform only) once the booking card has scrolled past; the WhatsApp
+   button moves up while it is shown. Desktop keeps the sticky booking card instead. */
+.room-bar {
+  position: fixed;
+  inset-inline: 0;
+  bottom: 0;
+  z-index: 45;
+  background: #fff;
+  border-top: 1px solid var(--color-line);
+  box-shadow: 0 -8px 24px rgba(20, 42, 59, 0.08);
+  padding-bottom: env(safe-area-inset-bottom);
+  transform: translateY(110%);
+  transition: transform var(--motion-base) var(--ease-out);
+}
+.room-bar.is-on {
+  transform: none;
+}
+[data-theme='dark'] .room-bar {
+  background: var(--dk-surface);
+}
+body.has-room-bar .wa-fab {
+  bottom: calc(4.75rem + env(safe-area-inset-bottom));
+  transition: bottom var(--motion-base) var(--ease-out);
+}
+@media (min-width: 1024px) {
+  body.has-room-bar .wa-fab {
+    bottom: 1.25rem;
+  }
+}

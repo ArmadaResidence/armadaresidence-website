@@ -45,6 +45,8 @@ const others = roomsFor(room.branch).filter((r) => r.slug !== room.slug);
 const features = roomFeatureLabels(locale, room);
 const inRoom = inRoomAmenityLabels(locale, room);
 const laundry = locale === 'ar' ? room.features.laundry_ar : room.features.laundry_en;
+const soldOut = room.availability === 'sold_out';
+const bookHref = `${localePath(locale, '/booking/')}?branch=${room.branch}&room=${room.slug}`;
 
 const details: { label: string; value: string }[] = [
   { label: t.room.size, value: fill(t.room.size_value, { size: room.size_m2 }) },
@@ -141,7 +143,8 @@ const details: { label: string; value: string }[] = [
         }
       </div>
 
-      <div class="reveal reveal-lg lg:col-span-2 lg:sticky lg:top-24 self-start" style="--reveal-delay:120ms">
+      {/* desktop: the booking card sticks under the header and follows the scroll to the end of the content row (item 8) */}
+      <div class="reveal reveal-lg lg:col-span-2 lg:sticky lg:top-24 self-start" style="--reveal-delay:120ms" data-book-card>
         <PriceBlock locale={locale} room={room} mode="full" />
         <a href={branchPath(locale, branch.slug)} class="mt-4 inline-flex items-center gap-1 text-sm text-ink-muted hover:text-midnight">
           <Icon name="arrow" size={16} class="icon-arrow-back rotate-180 rtl:rotate-0" />
@@ -151,6 +154,24 @@ const details: { label: string; value: string }[] = [
     </div>
   </article>
 
+  {
+    /* phones: fixed bottom bar with the room name and the booking CTA once the booking card has scrolled past (item 8);
+       never for sold-out rooms (no booking CTA, CLAUDE.md §5) */
+    !soldOut && (
+      <div class="room-bar lg:hidden" data-room-bar aria-hidden="true" inert>
+        <div class="mx-auto max-w-6xl px-4 py-3 flex items-center justify-between gap-3">
+          <p class="min-w-0 text-sm leading-tight">
+            <strong class="block truncate text-midnight">{name}</strong>
+            <span class="block truncate text-ink-muted text-xs">{branchName}</span>
+          </p>
+          <a href={bookHref} class="shrink-0 inline-flex items-center gap-2 bg-bronze text-white text-sm font-semibold px-4 py-2.5 rounded hover:bg-bronze-deep transition-colors">
+            <span>{t.nav.book}</span>
+            <Icon name="arrow" size={16} class="icon-arrow rtl:rotate-180" />
+          </a>
+        </div>
+      </div>
+    )
+  }
   {
     others.length > 0 && (
       <section class="cv-auto bg-white border-t border-line">
