@@ -36,9 +36,12 @@ onPageLoad(() => {
   io ??= new IntersectionObserver(
     (entries, obs) => {
       for (const e of entries) {
-        if (!e.isIntersecting) continue;
+        // a fast fling can jump an element from "barely visible" to "above the viewport" in one step: anything
+        // that has passed above is shown too, so no block is ever left hidden
+        const passed = !e.isIntersecting && e.boundingClientRect.bottom < 0;
+        if (!e.isIntersecting && !passed) continue;
         const tall = e.rootBounds ? e.boundingClientRect.height > e.rootBounds.height * 0.5 : false;
-        if (e.intersectionRatio < 0.15 && !tall) continue;
+        if (e.isIntersecting && e.intersectionRatio < 0.15 && !tall) continue;
         show(e.target);
         obs.unobserve(e.target);
       }

@@ -126,6 +126,53 @@ const SCENARIOS = {
     });
     await wait(1900);
   },
+  // item 7: room cards — swipe through the strip on a phone; the desktop grid is unchanged (shown briefly)
+  rooms: async (page, size) => {
+    await page.goto(`${BASE}/shafa-road/#rooms`, { waitUntil: 'load' });
+    await page.evaluate(() => document.fonts.ready);
+    await page.evaluate(() => document.querySelector('[data-carousel]').scrollIntoView({ block: 'center' }));
+    await wait(900);
+    if (size.width < 768) {
+      // move through the strip the way the native scroller does it: wheel on a phone is not real, so tap the dots
+      // (snap scroll follows) and finish with a horizontal scroll of the track itself
+      const dots = page.locator('[data-carousel-dots] button');
+      for (const i of [1, 2, 3]) {
+        await dots.nth(i).click();
+        await wait(900);
+      }
+      await page.evaluate(async () => {
+        const track = document.querySelector('[data-carousel-track]');
+        const rtl = getComputedStyle(track).direction === 'rtl';
+        const step = track.clientWidth * 0.85;
+        for (let k = 0; k < 2; k++) {
+          track.scrollBy({ left: rtl ? -step : step, behavior: 'smooth' });
+          await new Promise((r) => setTimeout(r, 900));
+        }
+      });
+      await wait(600);
+    } else {
+      await wait(2000);
+    }
+  },
+  // item 8: room page — the booking card sticks on desktop; on a phone the bottom bar slides up after the card
+  roombar: async (page, size) => {
+    await page.goto(`${BASE}/airport-road/one-bedroom-suite/`, { waitUntil: 'load' });
+    await page.evaluate(() => document.fonts.ready);
+    await wait(400);
+    await page.evaluate(async () => {
+      const end = Math.min(document.documentElement.scrollHeight - innerHeight, innerHeight * 2.6);
+      const t0 = performance.now();
+      await new Promise((done) => {
+        const tick = () => {
+          const p = Math.min(1, (performance.now() - t0) / 4200);
+          scrollTo(0, end * p);
+          p < 1 ? requestAnimationFrame(tick) : done();
+        };
+        requestAnimationFrame(tick);
+      });
+    });
+    await wait(800);
+  },
   // item 2: a slow scroll down the home page — headings, cards and sections rise in once, siblings 60 ms apart
   reveal: async (page) => {
     await page.goto(`${BASE}/`, { waitUntil: 'load' });

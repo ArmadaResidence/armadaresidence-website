@@ -1,0 +1,35 @@
+---
+/**
+ * Room cards: a 2/3-column grid from sm up (unchanged); on phones a horizontal, swipeable strip with scroll-snap —
+ * each card 85 % wide with a glimpse of the next one, and a dot indicator (item 7, 11 Oct 2026). The strip is
+ * native scrolling (RTL follows the page direction); src/lib/carousel.ts only syncs the dots.
+ */
+import RoomCard from './RoomCard.astro';
+import type { Locale, Room } from '@lib/content';
+import { ui } from '@lib/content';
+
+interface Props {
+  locale: Locale;
+  rooms: Room[];
+  class?: string;
+}
+const { locale, rooms, class: className = '' } = Astro.props;
+const t = ui(locale);
+---
+
+<div class:list={['room-carousel', className]} data-carousel>
+  <div class="room-track reveal-group sm:grid sm:gap-6 sm:grid-cols-2 lg:grid-cols-3" data-carousel-track>
+    {rooms.map((r) => <RoomCard locale={locale} room={r} />)}
+  </div>
+  {
+    rooms.length > 1 && (
+      <div class="room-dots sm:hidden mt-3 flex justify-center" data-carousel-dots role="tablist" aria-label={t.branch.rooms_heading}>
+        {rooms.map((_, i) => (
+          <button type="button" class="gallery-dot-hit w-6 h-6 grid place-items-center" aria-label={`${t.branch.view_room} ${i + 1}`} aria-current={i === 0 ? 'true' : 'false'}>
+            <span class="gallery-dot block w-2.5 h-2.5 rounded-full transition-colors" aria-hidden="true" />
+          </button>
+        ))}
+      </div>
+    )
+  }
+</div>

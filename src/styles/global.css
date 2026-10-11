@@ -556,3 +556,31 @@ footer :focus-visible,
 [dir='rtl'] [data-date-field] .field-label {
   inset-inline-start: 2.75rem;
 }
+
+/* ---------- Room cards on phones: swipeable strip (item 7, 11 Oct 2026) ----------
+   Native horizontal scroll with mandatory snap; each card 85 % wide so the next one peeks in; the strip bleeds to
+   the page edges (negative margins = the page gutter). From sm up the element is the ordinary grid. */
+@media (max-width: 639px) {
+  .room-carousel {
+    margin-inline: -1rem;
+  }
+  .room-track {
+    display: flex;
+    gap: 0.75rem;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    scroll-snap-type: x mandatory;
+    padding-inline: 1rem;
+    padding-bottom: 0.25rem;
+    scroll-padding-inline: 1rem;
+    scrollbar-width: none;
+  }
+  .room-track::-webkit-scrollbar {
+    display: none;
+  }
+  .room-track > * {
+    flex: 0 0 85%;
+    scroll-snap-align: start;
+    scroll-snap-stop: always;
+  }
+}

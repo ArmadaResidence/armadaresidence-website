@@ -6,7 +6,7 @@
 import { chromium } from 'playwright';
 
 const BASE = (process.argv[2] || process.env.BASE_URL || 'http://127.0.0.1:4321').replace(/\/$/, '');
-const PAGES = ['/', '/airport-road/', '/airport-road/one-bedroom-suite/', '/offers/', '/contact/', '/policies/', '/booking/', '/en/', '/en/shafa-road/'];
+const PAGES = (process.env.PAGES ? process.env.PAGES.split(',') : ['/', '/airport-road/', '/airport-road/one-bedroom-suite/', '/offers/', '/contact/', '/policies/', '/booking/', '/en/', '/en/shafa-road/']);
 const WIDTHS = [1440, 375];
 const failures = [];
 
@@ -27,9 +27,17 @@ for (const reduced of [false, true]) {
     for (const path of PAGES) {
       await page.goto(`${BASE}${path}`, { waitUntil: 'load' });
       await page.evaluate(() => document.fonts.ready);
+      await page.waitForTimeout(400); // let the font swap settle before shifts are counted
       const r = await page.evaluate(async () => {
         let cls = 0;
-        new PerformanceObserver((l) => l.getEntries().forEach((e) => !e.hadRecentInput && (cls += e.value))).observe({ type: 'layout-shift', buffered: false });
+        const shifted = [];
+        new PerformanceObserver((l) =>
+          l.getEntries().forEach((e) => {
+            if (e.hadRecentInput) return;
+            cls += e.value;
+            if (e.value > 0.005) shifted.push(`${e.value.toFixed(3)}@${Math.round(scrollY)}:` + (e.sources || []).map((s) => (s.node ? s.node.tagName + '.' + String(s.node.className).split(' ').slice(0, 2).join('.') : '?')).join('+'));
+          }),
+        ).observe({ type: 'layout-shift', buffered: false });
         const total = document.querySelectorAll('.reveal, .reveal-group').length;
         const base = getComputedStyle(document.documentElement).getPropertyValue('--motion-base').trim();
         const visibleAtTop = document.querySelectorAll('.reveal.is-in, .reveal-group.is-in').length;
@@ -42,11 +50,11 @@ for (const reduced of [false, true]) {
         const left = [...document.querySelectorAll('.reveal:not(.is-in), .reveal-group:not(.is-in)')].map((e) => e.tagName + '.' + e.className.split(' ').slice(0, 2).join('.'));
         // counters (item 6): every figure must have reached its value once scrolled past
         const counters = [...document.querySelectorAll('[data-count]')].filter((s) => s.textContent.trim() !== s.dataset.count).map((s) => `${s.textContent.trim()}/${s.dataset.count}`);
-        return { total, visibleAtTop, left, cls: +cls.toFixed(4), base, counters };
+        return { total, visibleAtTop, left, cls: +cls.toFixed(4), base, counters, shifted };
       });
       const tag = `${path} @${width}${reduced ? ' (reduced)' : ''}`;
       if (r.left.length) failures.push(`${tag}: ${r.left.length}/${r.total} never revealed: ${r.left.slice(0, 4).join(', ')}`);
-      if (r.cls > 0.01) failures.push(`${tag}: CLS ${r.cls} during scroll`);
+      if (r.cls > 0.01) failures.push(`${tag}: CLS ${r.cls} during scroll — ${r.shifted.join(' | ')}`);
       if (r.counters.length) failures.push(`${tag}: counters not at final value: ${r.counters.join(', ')}`);
       if (reduced && !/^0m?s$/.test(r.base)) failures.push(`${tag}: --motion-base is ${r.base} under reduced motion`);
       if (reduced && r.total && r.visibleAtTop !== r.total) failures.push(`${tag}: reduced motion must show everything at once (${r.visibleAtTop}/${r.total})`);
