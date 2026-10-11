@@ -353,3 +353,119 @@ body {
   background-color: var(--cafe-porcelain);
   color: var(--cafe-oxblood);
 }
+
+/* ---------- Split-screen branch chooser (item 4, 11 Oct 2026) ----------
+   Two panes side by side from md up. Each pane's media layer is 116 % of the pane (= 58 % of the row), anchored at
+   the pane's outer edge and scaled down to 50/58 at rest; hover / focus-within scales it to 1 (58 % of the row)
+   while the picture inside counter-scales, so only transforms animate. The other pane dims through its shade. */
+.split {
+  display: grid;
+  gap: 1rem;
+}
+.split-pane {
+  position: relative;
+  isolation: isolate;
+  min-height: 88svh;
+  display: flex;
+  align-items: flex-end;
+  border-radius: var(--radius-card);
+  overflow: hidden;
+  background: var(--color-midnight);
+  color: var(--color-porcelain);
+}
+.split-media {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  transition: transform var(--motion-base) var(--ease-in-out);
+}
+.split-media-inner {
+  position: absolute;
+  inset: 0;
+  transition: transform var(--motion-base) var(--ease-in-out);
+}
+.photo-placeholder.photo-fill {
+  position: absolute;
+  inset: 0;
+  aspect-ratio: auto;
+}
+.split-shade {
+  position: absolute;
+  inset: 0;
+  background: #142a3b;
+  opacity: 0;
+  transition: opacity var(--motion-base) var(--ease-in-out);
+}
+.split-gradient {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to top, rgba(20, 42, 59, 0.94) 0%, rgba(20, 42, 59, 0.72) 38%, rgba(20, 42, 59, 0.12) 70%, rgba(20, 42, 59, 0) 100%);
+}
+.split-body {
+  position: relative;
+  z-index: 1;
+  padding: 1.75rem 1.5rem 2rem;
+  width: 100%;
+}
+.split-title-link:hover {
+  color: var(--color-bronze);
+}
+@media (min-width: 768px) {
+  .split {
+    display: flex;
+    gap: 0;
+    min-height: 560px;
+    border-radius: var(--radius-card);
+    overflow: hidden;
+  }
+  .split-pane {
+    flex: 1 1 50%;
+    min-height: 0;
+    border-radius: 0;
+    overflow: visible;
+  }
+  .split-pane:first-child .split-media {
+    inset-inline-start: 0;
+    inset-inline-end: auto;
+    width: 116%;
+    transform-origin: 0 50%;
+    transform: scaleX(0.8621);
+  }
+  .split-pane:last-child .split-media {
+    inset-inline-end: 0;
+    inset-inline-start: auto;
+    width: 116%;
+    transform-origin: 100% 50%;
+    transform: scaleX(0.8621);
+  }
+  [dir='rtl'] .split-pane:first-child .split-media {
+    transform-origin: 100% 50%;
+  }
+  [dir='rtl'] .split-pane:last-child .split-media {
+    transform-origin: 0 50%;
+  }
+  .split-pane .split-media-inner {
+    transform: scaleX(1.16);
+    transform-origin: inherit;
+  }
+  .split-pane:hover,
+  .split-pane:focus-within {
+    z-index: 2;
+  }
+  .split-pane:hover .split-media,
+  .split-pane:focus-within .split-media {
+    transform: scaleX(1);
+  }
+  .split-pane:hover .split-media-inner,
+  .split-pane:focus-within .split-media-inner {
+    transform: scaleX(1);
+  }
+  .split:has(.split-pane:hover) .split-pane:not(:hover) .split-shade,
+  .split:has(.split-pane:focus-within) .split-pane:not(:focus-within) .split-shade {
+    opacity: 0.35;
+  }
+  .split-body {
+    padding: 2.5rem 2.25rem 2.5rem;
+    max-width: 34rem;
+  }
+}

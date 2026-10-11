@@ -1,0 +1,63 @@
+---
+/**
+ * Split-screen branch chooser on the home page (item 4, 11 Oct 2026): two full-bleed panes (Airport Road / Shafa
+ * Road), each with its photo, type, name, two lines and a button. Hover or keyboard focus widens the pane to 58 %
+ * and dims the other one; the widening is done by scaling the media layer (transform only — the text columns keep
+ * their 50 % and nothing re-lays out). Under md the panes stack as two near-full-height cards.
+ * Facts come from branches.json / contact.json only. Photos: TODO(photo) placeholders until the approved set arrives.
+ */
+import { branchContact, branchPath, fill, L, paragraphs, telHref, ui, type Branch, type Locale } from '@lib/content';
+import Icon from './Icon.astro';
+import Placeholder from './Placeholder.astro';
+
+interface Props {
+  locale: Locale;
+  branches: Branch[];
+}
+const { locale, branches } = Astro.props;
+const t = ui(locale);
+const firstSentence = (text: string) => {
+  const p = paragraphs(text)[0] ?? '';
+  const m = p.match(/^[^.؟!?]+[.؟!?]/);
+  return (m ? m[0] : p).trim();
+};
+---
+
+<div class="split reveal-group" data-split>
+  {
+    branches.map((b) => {
+      const name = L(locale, b, 'name');
+      const href = branchPath(locale, b.slug);
+      const c = branchContact(b.slug);
+      return (
+        <article class="split-pane">
+          <div class="split-media" aria-hidden="true">
+            <div class="split-media-inner">
+              <Placeholder label={fill(t.photo_pending_alt, { subject: name })} class="photo-fill rounded-none" />
+            </div>
+            <div class="split-shade" />
+            <div class="split-gradient" />
+          </div>
+          <div class="split-body">
+            <p class="text-xs font-semibold uppercase tracking-wide text-bronze">{L(locale, b, 'type')}</p>
+            <h3 class="mt-2 text-2xl md:text-3xl font-bold text-porcelain">
+              <a href={href} class="split-title-link">{name}</a>
+            </h3>
+            <p class="mt-2 text-porcelain/90">{L(locale, b, 'tagline')}</p>
+            <p class="mt-1 text-sm text-porcelain/75 max-w-md">{firstSentence(L(locale, b, 'description'))}</p>
+            <div class="mt-5 flex flex-wrap items-center gap-x-5 gap-y-3">
+              <a href={href} class="arrow-nudge inline-flex items-center gap-2 bg-bronze text-white text-sm font-semibold px-4 py-2.5 rounded hover:bg-bronze-deep transition-colors">
+                <span>{t.home.view_branch}</span>
+                <Icon name="arrow" size={16} class="icon-arrow rtl:rotate-180" />
+              </a>
+              <a href={telHref(c.phone)} class="latin inline-flex items-center gap-2 text-sm text-porcelain/85 hover:text-white" dir="ltr">
+                <Icon name="phone" size={16} />
+                <span>{c.phone_display}</span>
+              </a>
+            </div>
+          </div>
+        </article>
+      );
+    })
+  }
+</div>
