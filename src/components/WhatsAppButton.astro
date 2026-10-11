@@ -20,6 +20,8 @@ const single = branch ? branchContact(branch) : null;
     <a
       href={waHref(single.whatsapp)}
       class="wa-fab inline-flex items-center gap-2 bg-midnight text-white rounded-full shadow-lg px-4 py-3 hover:bg-bronze transition-colors"
+      transition:name="wa-fab"
+      transition:animate="none"
       rel="noopener"
       target="_blank"
       title={t.cta.whatsapp_title}
@@ -28,7 +30,7 @@ const single = branch ? branchContact(branch) : null;
       <span class="text-sm font-semibold">{t.cta.whatsapp}</span>
     </a>
   ) : (
-    <div class="wa-fab" data-wa-chooser>
+    <div class="wa-fab" data-wa-chooser transition:name="wa-fab" transition:animate="none">
       <div
         class="hidden mb-3 bg-white rounded-card shadow-xl border border-line p-3 w-80 max-w-[calc(100vw-2.5rem)]"
         data-wa-panel
@@ -72,20 +74,25 @@ const single = branch ? branchContact(branch) : null;
 }
 
 <script>
-  const root = document.querySelector('[data-wa-chooser]');
-  const btn = root?.querySelector<HTMLButtonElement>('[data-wa-toggle]');
-  const panel = root?.querySelector<HTMLElement>('[data-wa-panel]');
-  if (btn && panel) {
+  import { bindOnce, onPageLoad } from '@lib/client';
+
+  onPageLoad(() => {
+    const root = document.querySelector('[data-wa-chooser]');
+    const btn = root?.querySelector<HTMLButtonElement>('[data-wa-toggle]');
+    const panel = root?.querySelector<HTMLElement>('[data-wa-panel]');
+    if (!root || !btn || !panel || !bindOnce(root)) return;
+    const close = () => {
+      btn.setAttribute('aria-expanded', 'false');
+      panel.classList.add('hidden');
+    };
     btn.addEventListener('click', () => {
       const open = btn.getAttribute('aria-expanded') === 'true';
       btn.setAttribute('aria-expanded', String(!open));
       panel.classList.toggle('hidden', open);
     });
     document.addEventListener('click', (e) => {
-      if (root && !root.contains(e.target as Node)) {
-        btn.setAttribute('aria-expanded', 'false');
-        panel.classList.add('hidden');
-      }
+      if (!root.isConnected) return;
+      if (!root.contains(e.target as Node)) close();
     });
-  }
+  });
 </script>

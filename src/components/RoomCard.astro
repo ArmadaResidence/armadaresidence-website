@@ -37,8 +37,8 @@ const meta = [
 ];
 ---
 
-<article class:list={['bg-white border border-line rounded-card overflow-hidden flex flex-col', soldOut && 'opacity-60']}>
-  <a href={href} tabindex="-1" aria-hidden="true" class="relative block">
+<article class="bg-white border border-line rounded-card overflow-hidden flex flex-col">
+  <a href={href} tabindex="-1" aria-hidden="true" class:list={['relative block', soldOut && 'opacity-60']} transition:name={`room-media-${room.branch}-${room.slug}`}>
     <Placeholder label={photoLabel} class="rounded-b-none" />
     {
       soldOut && (

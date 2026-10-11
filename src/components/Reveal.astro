@@ -1,0 +1,28 @@
+---
+/**
+ * Scroll reveal (item 2, 11 Oct 2026). Wraps its content in `as` (default div) with the `reveal` class: the element
+ * sits at opacity 0 / translateY(shift) until 15 % of it is on screen, then rises once (fade + translate, base
+ * duration, ease-out). With `stagger`, the element's direct children reveal one after another (60 ms apart)
+ * instead of the element itself — use it on grids of cards and lists.
+ * No JS → everything is visible (the hidden state is gated on html.js); prefers-reduced-motion → final state at once.
+ * The page's first block (h1, intro) should not be wrapped: it is the LCP candidate.
+ */
+interface Props {
+  as?: string;
+  class?: string;
+  /** 'sm' (16 px, text) or 'lg' (24 px, cards/media) */
+  shift?: 'sm' | 'lg';
+  /** extra delay in ms before this element reveals (e.g. a subtitle after its heading) */
+  delay?: number;
+  stagger?: boolean;
+  [key: string]: unknown;
+}
+const { as: Tag = 'div', class: className = '', shift = 'sm', delay, stagger = false, ...rest } = Astro.props;
+const style = delay ? `--reveal-delay:${delay}ms` : undefined;
+---
+
+<Tag
+  class:list={[stagger ? 'reveal-group' : 'reveal', shift === 'lg' && 'reveal-lg', className]}
+  data-reveal-stagger={stagger ? '' : undefined}
+  style={style}
+  {...rest}><slot /></Tag>

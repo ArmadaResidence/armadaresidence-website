@@ -1,0 +1,73 @@
+/* ---------- Motion tokens (polish sprint, 11 Oct 2026) ----------
+   The only durations, easings and distances used by the site's own motion (legacy sections keep theirs).
+   Documented in CLAUDE.md §3b. Under prefers-reduced-motion every value collapses to 0 so each element renders
+   its final state immediately; JS-driven motion (reveal, counters, glow, nav ink) checks `reducedMotion()` too. */
+:root {
+  --motion-fast: 200ms; /* hover, focus, icon morph, small state changes */
+  --motion-base: 400ms; /* reveal, drawer, cross-fade, nav ink */
+  --motion-slow: 700ms; /* rules being drawn, hero rule, long settles */
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1); /* arriving */
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1); /* moving / morphing */
+  --ease-in: cubic-bezier(0.55, 0, 1, 0.45); /* leaving */
+  --motion-shift-sm: 16px; /* text, labels, small elements */
+  --motion-shift-lg: 24px; /* cards, sections, media */
+  --motion-stagger: 60ms; /* between siblings */
+}
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --motion-fast: 0ms;
+    --motion-base: 0ms;
+    --motion-slow: 0ms;
+    --motion-shift-sm: 0px;
+    --motion-shift-lg: 0px;
+    --motion-stagger: 0ms;
+  }
+}
+
+/* ---------- View transitions (item 1) ----------
+   Root cross-fade at the fast token; the header and the floating WhatsApp button are their own groups with no
+   animation so they stay put while the page changes; room media morphs card → page (transition:name per room). */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: var(--motion-fast);
+  animation-timing-function: var(--ease-in-out);
+}
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-group(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*) {
+    animation: none !important;
+  }
+}
+
+/* ---------- Scroll reveal (item 2) ----------
+   Hidden state only when JS is running (html.js, set before first paint); revealed once by src/lib/reveal.ts.
+   `.reveal` moves itself, `.reveal-group` moves its direct children one after another (--i from the script). */
+.reveal,
+.reveal-group > * {
+  transition:
+    opacity var(--motion-base) var(--ease-out),
+    transform var(--motion-base) var(--ease-out);
+}
+.js .reveal:not(.is-in),
+.js .reveal-group:not(.is-in) > * {
+  opacity: 0;
+  transform: translateY(var(--reveal-shift, var(--motion-shift-sm)));
+}
+.reveal-lg,
+.reveal-group {
+  --reveal-shift: var(--motion-shift-lg);
+}
+.reveal {
+  transition-delay: var(--reveal-delay, 0ms);
+}
+.reveal-group.is-in > * {
+  transition-delay: calc(var(--motion-stagger) * var(--i, 0) + var(--reveal-delay, 0ms));
+}
+@media print {
+  .reveal,
+  .reveal-group > * {
+    opacity: 1 !important;
+    transform: none !important;
+  }
+}

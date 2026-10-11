@@ -1,5 +1,10 @@
 ---
 import '../styles/global.css';
+import { ClientRouter } from 'astro:transitions';
+import fontAr400 from '@fontsource/ibm-plex-sans-arabic/files/ibm-plex-sans-arabic-arabic-400-normal.woff2?url';
+import fontAr600 from '@fontsource/ibm-plex-sans-arabic/files/ibm-plex-sans-arabic-arabic-600-normal.woff2?url';
+import fontAr700 from '@fontsource/ibm-plex-sans-arabic/files/ibm-plex-sans-arabic-arabic-700-normal.woff2?url';
+import fontEn from '@fontsource-variable/manrope/files/manrope-latin-wght-normal.woff2?url';
 import { GTM_ID, absoluteUrl, dir, localePath, seo, siteName, type Locale } from '@lib/content';
 import Header from '@components/Header.astro';
 import Footer from '@components/Footer.astro';
@@ -46,6 +51,13 @@ const ogLocale = locale === 'ar' ? 'ar_SA' : 'en_US';
 const ogLocaleAlt = locale === 'ar' ? 'en_US' : 'ar_SA';
 // "</" inside JSON must not terminate the script tag.
 const ld = jsonld.map((j) => JSON.stringify(j).replace(/</g, '\\u003c'));
+// View transitions (item 1, 11 Oct 2026): the site's own pages navigate through Astro's ClientRouter (cross-fade,
+// shared room media, header kept still). The legacy sections keep full page loads so their markup and scripts are
+// untouched: a page without the router falls back to a normal navigation in both directions.
+const legacy = path === '/discover-taif/' || path.startsWith('/partners/');
+// Fonts the first paint needs (performance pass, 11 Oct 2026): body, semibold and heading weights of the page language
+// are preloaded so they arrive together (one re-layout, no CSS → @font-face discovery). Same hashed files the CSS uses.
+const preloadFonts = locale === 'ar' ? [fontAr400, fontAr600, fontAr700] : [fontEn];
 ---
 
 <!doctype html>
@@ -57,17 +69,24 @@ const ld = jsonld.map((j) => JSON.stringify(j).replace(/</g, '\\u003c'));
     <meta name="theme-color" media="(prefers-color-scheme: light)" content="#F3EFE7" />
     <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0F1F2B" />
     <script is:inline>
-      // theme before first paint: stored choice (armada-theme) → else prefers-color-scheme (and follow its changes)
+      // theme before first paint: stored choice (armada-theme) → else prefers-color-scheme (and follow its changes).
+      // `js` on <html> gates the scroll-reveal styles (no JS → everything visible). Both are re-applied after a
+      // view-transition swap, which replaces the <html> attributes with the new page's.
       (function () {
-        try {
-          var s = localStorage.getItem('armada-theme');
-          var m = matchMedia('(prefers-color-scheme: dark)');
+        var m = matchMedia('(prefers-color-scheme: dark)');
+        function apply() {
+          var s = null;
+          try { s = localStorage.getItem('armada-theme'); } catch (e) {}
           var t = s === 'dark' || s === 'light' ? s : m.matches ? 'dark' : 'light';
           document.documentElement.setAttribute('data-theme', t);
-          if (!s) m.addEventListener('change', function (e) { document.documentElement.setAttribute('data-theme', e.matches ? 'dark' : 'light'); });
-        } catch (e) {}
+          document.documentElement.classList.add('js');
+        }
+        apply();
+        m.addEventListener('change', function () { apply(); });
+        document.addEventListener('astro:after-swap', apply);
       })();
     </script>
+    {preloadFonts.map((href) => <link rel="preload" as="font" type="font/woff2" href={href} crossorigin />)}
     <title>{title}</title>
     <meta name="description" content={description} />
     <link rel="canonical" href={canonical} />
@@ -94,13 +113,15 @@ const ld = jsonld.map((j) => JSON.stringify(j).replace(/</g, '\\u003c'));
     <link rel="apple-touch-icon" href={icons.apple} sizes="180x180" />
     <link rel="manifest" href="/site.webmanifest" />
     <link rel="sitemap" href="/sitemap-index.xml" />
+    {!legacy && <ClientRouter fallback="animate" />}
     <slot name="head" />
     {ld.map((json) => <script type="application/ld+json" set:html={json} />)}
     <script is:inline define:vars={{ GTM_ID }}>
-      // GTM (decision 10 Oct 2026): the dataLayer exists from the first byte and queues every push (gtm.start/gtm.js,
-      // page events, booking_request…); the container script itself is injected after window.load or the first
-      // interaction, whichever comes first, so it never competes with the page's own assets. GTM replays the queue
-      // in order when it loads, so page_view and every earlier event are still recorded.
+      // GTM (decision 10 Oct 2026, tightened 11 Oct): the dataLayer exists from the first byte and queues every push
+      // (gtm.start/gtm.js, page events, booking_request…); the container script itself is injected on the first
+      // interaction or 3.5 s after window.load, whichever comes first, so the ~1 MB of tags it pulls (GA4, Ads,
+      // Meta, TikTok) never competes with the page's own assets or blocks the main thread while the page settles.
+      // GTM replays the queue in order when it loads, so page_view and every earlier event are still recorded.
       (function (w, d, l, i) {
         w[l] = w[l] || [];
         w[l].push({ 'gtm.start': new Date().getTime(), event: 'gtm.js' });
@@ -115,8 +136,15 @@ const ld = jsonld.map((j) => JSON.stringify(j).replace(/</g, '\\u003c'));
         }
         var evs = ['pointerdown', 'keydown', 'touchstart', 'scroll'];
         evs.forEach(function (e) { w.addEventListener(e, load, { once: true, passive: true }); });
-        if (d.readyState === 'complete') load();
-        else w.addEventListener('load', load, { once: true });
+        function afterLoad() { setTimeout(load, 3500); }
+        if (d.readyState === 'complete') afterLoad();
+        else w.addEventListener('load', afterLoad, { once: true });
+        // client-side navigations (view transitions) → one virtual page view per page; GTM needs a trigger on this event
+        var first = true;
+        d.addEventListener('astro:page-load', function () {
+          if (first) { first = false; return; }
+          w[l].push({ event: 'virtual_page_view', page_path: location.pathname, page_location: location.href, page_title: d.title });
+        });
       })(window, document, 'dataLayer', GTM_ID);
     </script>
   </head>
@@ -135,5 +163,8 @@ const ld = jsonld.map((j) => JSON.stringify(j).replace(/</g, '\\u003c'));
     </main>
     {!hideFooter && <Footer locale={locale} switchPath={switchPath} />}
     <WhatsAppButton locale={locale} branch={whatsapp} />
+    <script>
+      import '@lib/reveal';
+    </script>
   </body>
 </html>

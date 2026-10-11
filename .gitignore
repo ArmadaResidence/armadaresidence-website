@@ -40,3 +40,7 @@ brand/cafe/*
 !brand/cafe/ملفات الهوية/
 brand/cafe/ملفات الهوية/*
 !brand/cafe/ملفات الهوية/vector/
+
+# lighthouse / trace reports (summaries are kept)
+reports/**/*.json
+reports/trace.json

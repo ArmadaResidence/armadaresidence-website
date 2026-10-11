@@ -44,7 +44,7 @@ const social: { name: string; url: string }[] = [
       <a href={localePath(locale, '/offers/')} class="font-semibold text-bronze hover:text-bronze-deep ms-1">{t.nav.offers}</a>
     </p>
 
-    <div class="mt-10 grid gap-6 md:grid-cols-2">
+    <div class="reveal-group mt-10 grid gap-6 md:grid-cols-2">
       {
         branches.map((b) => {
           const c = branchContact(b.slug);
@@ -58,15 +58,13 @@ const social: { name: string; url: string }[] = [
                 </a>
               </h2>
               <dl class="mt-5 space-y-4 text-sm">
-                <div class="flex gap-3">
-                  <Icon name="map" size={18} class="text-bronze shrink-0 mt-0.5" />
-                  <div>
-                    <dt class="font-semibold text-midnight">{t.branch.address}</dt>
-                    <dd class="text-ink-muted">{L(locale, b, 'address')}</dd>
-                    <dd class="text-ink-muted latin mt-1" dir="ltr">
+                <div class="dl-row">
+                    <dt class="font-semibold text-midnight flex items-start gap-3"><Icon name="map" size={18} class="text-bronze shrink-0 mt-0.5" /><span>{t.branch.address}</span></dt>
+                    <dd class="ms-[30px] text-ink-muted">{L(locale, b, 'address')}</dd>
+                    <dd class="ms-[30px] text-ink-muted latin mt-1" dir="ltr">
                       {t.contact.national_address}: {na.short_code} · {t.contact.additional_number}: {na.additional_number} · {t.contact.postal_code}: {na.postal_code}
                     </dd>
-                    <dd class="mt-2 flex flex-wrap gap-x-4 gap-y-1">
+                    <dd class="ms-[30px] mt-2 flex flex-wrap gap-x-4 gap-y-1">
                       <a href={b.maps_url} rel="noopener" target="_blank" class="font-semibold text-bronze hover:text-bronze-deep">
                         {t.cta.maps}
                       </a>
@@ -74,13 +72,10 @@ const social: { name: string; url: string }[] = [
                         {t.cta.google_reviews}
                       </a>
                     </dd>
-                  </div>
                 </div>
-                <div class="flex gap-3">
-                  <Icon name="phone" size={18} class="text-bronze shrink-0 mt-0.5" />
-                  <div>
-                    <dt class="font-semibold text-midnight">{t.contact.phone} / {t.cta.whatsapp}</dt>
-                    <dd class="flex flex-wrap gap-x-4 gap-y-1">
+                <div class="dl-row">
+                    <dt class="font-semibold text-midnight flex items-start gap-3"><Icon name="phone" size={18} class="text-bronze shrink-0 mt-0.5" /><span>{t.contact.phone} / {t.cta.whatsapp}</span></dt>
+                    <dd class="ms-[30px] flex flex-wrap gap-x-4 gap-y-1">
                       <a href={telHref(c.phone)} class="latin text-ink-muted hover:text-midnight" dir="ltr">
                         {c.phone_display}
                       </a>
@@ -88,29 +83,22 @@ const social: { name: string; url: string }[] = [
                         {t.cta.whatsapp_title}
                       </a>
                     </dd>
-                  </div>
                 </div>
-                <div class="flex gap-3">
-                  <Icon name="mail" size={18} class="text-bronze shrink-0 mt-0.5" />
-                  <div>
-                    <dt class="font-semibold text-midnight">{t.contact.reservations_email}</dt>
-                    <dd>
+                <div class="dl-row">
+                    <dt class="font-semibold text-midnight flex items-start gap-3"><Icon name="mail" size={18} class="text-bronze shrink-0 mt-0.5" /><span>{t.contact.reservations_email}</span></dt>
+                    <dd class="ms-[30px]">
                       <a href={mailHref(b.email)} class="latin text-ink-muted hover:text-midnight" dir="ltr">
                         {b.email}
                       </a>
                     </dd>
-                  </div>
                 </div>
-                <div class="flex gap-3">
-                  <Icon name="clock" size={18} class="text-bronze shrink-0 mt-0.5" />
-                  <div>
-                    <dt class="font-semibold text-midnight">{t.contact.hours}</dt>
-                    <dd class="text-ink-muted">
+                <div class="dl-row">
+                    <dt class="font-semibold text-midnight flex items-start gap-3"><Icon name="clock" size={18} class="text-bronze shrink-0 mt-0.5" /><span>{t.contact.hours}</span></dt>
+                    <dd class="ms-[30px] text-ink-muted">
                       {locale === 'ar' ? contact.working_hours_ar : contact.working_hours_en}
                       <br />
                       {locale === 'ar' ? policies.check_in_ar : policies.check_in_en} · {locale === 'ar' ? policies.check_out_ar : policies.check_out_en}
                     </dd>
-                  </div>
                 </div>
               </dl>
             </section>
