@@ -12,6 +12,7 @@
   --motion-shift-sm: 16px; /* text, labels, small elements */
   --motion-shift-lg: 24px; /* cards, sections, media */
   --motion-stagger: 60ms; /* between siblings */
+  --motion-stagger-fast: 50ms; /* between words (hero) */
 }
 @media (prefers-reduced-motion: reduce) {
   :root {
@@ -21,6 +22,7 @@
     --motion-shift-sm: 0px;
     --motion-shift-lg: 0px;
     --motion-stagger: 0ms;
+    --motion-stagger-fast: 0ms;
   }
 }
 
@@ -69,5 +71,90 @@
   .reveal-group > * {
     opacity: 1 !important;
     transform: none !important;
+  }
+}
+
+/* ---------- Hero choreography (item 3) ----------
+   Words rise one after another (fast stagger), the bronze rule is drawn from the start side over the slow token
+   once the last word has started (--hero-rule-delay = words × 50 ms, set inline), the subtitle joins while the
+   rule is still drawing and the buttons follow. CSS only; reduced motion → final state. */
+.hero-word {
+  display: inline-block;
+  opacity: 0;
+  transform: translateY(var(--motion-shift-sm));
+  animation: hero-rise var(--motion-base) var(--ease-out) forwards;
+  animation-delay: calc(var(--i, 0) * var(--motion-stagger-fast));
+}
+.hero-rule {
+  display: block;
+  width: 4.5rem;
+  height: 2px;
+  margin-top: 1.25rem;
+  background: var(--color-bronze);
+  transform: scaleX(0);
+  transform-origin: 0 50%;
+  animation: hero-rule var(--motion-slow) var(--ease-out) forwards;
+  animation-delay: var(--hero-rule-delay, 150ms);
+}
+[dir='rtl'] .hero-rule {
+  transform-origin: 100% 50%;
+}
+.hero-sub,
+.hero-ctas {
+  opacity: 0;
+  transform: translateY(var(--motion-shift-sm));
+  animation: hero-rise var(--motion-base) var(--ease-out) forwards;
+}
+.hero-sub {
+  animation-delay: calc(var(--hero-rule-delay, 150ms) + var(--motion-fast));
+}
+.hero-ctas {
+  animation-delay: calc(var(--hero-rule-delay, 150ms) + var(--motion-base));
+}
+@keyframes hero-rise {
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes hero-rule {
+  to {
+    transform: scaleX(1);
+  }
+}
+/* pattern as depth: a 40 s drift of ~2.5 % towards the reading direction with a soft opacity swell; the layer is
+   oversized so its edges never show; transform + opacity only (the fixed attachment would be lost under a transform) */
+.hero-pattern {
+  --drift: 1;
+  inset: -4%;
+  background-attachment: scroll;
+  animation: hero-drift 40s var(--ease-in-out) infinite alternate;
+  will-change: transform, opacity;
+}
+[dir='rtl'] .hero-pattern {
+  --drift: -1;
+}
+@keyframes hero-drift {
+  from {
+    transform: translate3d(0, 0, 0);
+    opacity: 0.05;
+  }
+  to {
+    transform: translate3d(calc(2.5% * var(--drift)), -2%, 0);
+    opacity: 0.09;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .hero-word,
+  .hero-rule,
+  .hero-sub,
+  .hero-ctas,
+  .hero-pattern {
+    animation: none;
+    opacity: 1;
+    transform: none;
+  }
+  .hero-pattern {
+    opacity: 0.07;
   }
 }

@@ -31,6 +31,49 @@ const SCENARIOS = {
     await page.locator('header a[hreflang="en"]').click();
     await wait(1200);
   },
+  // item 3: the hero sequence on a fresh load (words → bronze rule → subtitle → buttons) and the pattern drifting
+  hero: async (page) => {
+    await page.goto(`${BASE}/`, { waitUntil: 'load' });
+    await wait(2600);
+    await page.reload({ waitUntil: 'commit' });
+    await wait(2400);
+  },
+  // item 4: the split-screen branch chooser — hover the first pane, then the second (desktop); on mobile the two
+  // near-full-height cards scroll past
+  split: async (page, size) => {
+    await page.goto(`${BASE}/#branches`, { waitUntil: 'load' });
+    await page.evaluate(() => document.fonts.ready);
+    const split = page.locator('[data-split]');
+    await split.scrollIntoViewIfNeeded();
+    await wait(900);
+    if (size.width >= 768) {
+      const panes = page.locator('.split-pane');
+      const a = await panes.nth(0).boundingBox();
+      const b = await panes.nth(1).boundingBox();
+      await page.mouse.move(a.x + a.width / 2, a.y + a.height / 2, { steps: 12 });
+      await wait(1300);
+      await page.mouse.move(b.x + b.width / 2, b.y + b.height / 2, { steps: 12 });
+      await wait(1300);
+      await page.mouse.move(b.x + b.width / 2, b.y + b.height + 60, { steps: 8 });
+      await wait(900);
+    } else {
+      await page.evaluate(async () => {
+        const el = document.querySelector('[data-split]');
+        const start = scrollY;
+        const end = start + el.getBoundingClientRect().height;
+        const t0 = performance.now();
+        await new Promise((done) => {
+          const tick = () => {
+            const p = Math.min(1, (performance.now() - t0) / 4000);
+            scrollTo(0, start + (end - start) * p);
+            p < 1 ? requestAnimationFrame(tick) : done();
+          };
+          requestAnimationFrame(tick);
+        });
+      });
+      await wait(600);
+    }
+  },
   // item 2: a slow scroll down the home page — headings, cards and sections rise in once, siblings 60 ms apart
   reveal: async (page) => {
     await page.goto(`${BASE}/`, { waitUntil: 'load' });

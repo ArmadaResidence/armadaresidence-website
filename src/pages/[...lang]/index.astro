@@ -36,6 +36,12 @@ const about = siteTexts.about;
 const why = siteTexts.why_armada;
 const slogan = locale === 'ar' ? siteTexts.slogan_ar : siteTexts.slogan_en;
 const heroCopy = hero as typeof hero & { eyebrow_ar: string; eyebrow_en: string };
+// Hero choreography (item 3, 11 Oct 2026): the slogan appears word by word (50 ms apart), the bronze rule is drawn
+// from the start side, then the subtitle and the buttons follow. Pure CSS animations (motion.css) — they replay on
+// every visit to the home page and collapse to the final state under prefers-reduced-motion.
+const heroTitle = locale === 'ar' ? hero.title_ar : hero.title_en;
+const heroWords = heroTitle.split(/\s+/).filter(Boolean);
+const heroRuleDelay = heroWords.length * 50; // ms: the rule starts when the last word has started
 const quickFacts = fill(t.home.quick_facts, {
   check_in: locale === 'ar' ? policies.check_in_ar : policies.check_in_en,
   check_out: locale === 'ar' ? policies.check_out_ar : policies.check_out_en,
@@ -75,16 +81,25 @@ const quickFacts = fill(t.home.quick_facts, {
         )
       }
       <div class="absolute inset-0 bg-midnight/60"></div>
-      <div class="absolute inset-0 pattern-bg"></div>
+      {/* brand pattern as a slow depth layer: 40 s drift of ~2.5 % towards the reading direction with a soft opacity swell */}
+      <div class="absolute inset-0 pattern-bg hero-pattern"></div>
     </div>
     <div class="relative w-full mx-auto max-w-6xl px-4 py-14 md:py-28">
       {/* hero (9 Oct 2026): eyebrow = "فنادق أرمادا ريزيدنس", h1 = the slogan; no price line, no city name */}
       <p class="text-bronze font-semibold tracking-wide mb-4">{locale === 'ar' ? heroCopy.eyebrow_ar : heroCopy.eyebrow_en}</p>
-      <h1 class="text-3xl md:text-5xl font-bold leading-tight max-w-3xl">{locale === 'ar' ? hero.title_ar : hero.title_en}</h1>
-      <p class="mt-5 text-lg md:text-xl text-porcelain/85 max-w-2xl leading-relaxed">
+      <h1 class="text-3xl md:text-5xl font-bold leading-tight max-w-3xl" style={`--hero-rule-delay:${heroRuleDelay}ms`}>
+        {heroWords.map((w, i) => (
+          <>
+            <span class="hero-word" style={`--i:${i}`}>{w}</span>
+            {i < heroWords.length - 1 && ' '}
+          </>
+        ))}
+      </h1>
+      <span class="hero-rule" aria-hidden="true" style={`--hero-rule-delay:${heroRuleDelay}ms`}></span>
+      <p class="hero-sub mt-5 text-lg md:text-xl text-porcelain/85 max-w-2xl leading-relaxed" style={`--hero-rule-delay:${heroRuleDelay}ms`}>
         {locale === 'ar' ? hero.subtitle_ar : hero.subtitle_en}
       </p>
-      <div class="mt-8 flex flex-wrap gap-3">
+      <div class="hero-ctas mt-8 flex flex-wrap gap-3" style={`--hero-rule-delay:${heroRuleDelay}ms`}>
         <a
           href={localePath(locale, '/booking/')}
           class="inline-flex items-center gap-2 bg-bronze text-white font-semibold px-6 py-3 rounded hover:bg-bronze-deep transition-colors"
@@ -109,7 +124,7 @@ const quickFacts = fill(t.home.quick_facts, {
     </p>
   </section>
 
-  <section id="branches" class="mx-auto max-w-6xl px-4 py-16">
+  <section id="branches" class="mx-auto max-w-6xl px-4 py-16 scroll-mt-24">
     <h2 class="reveal text-2xl md:text-3xl font-bold text-midnight">{t.home.branches_heading}</h2>
     <p class="reveal mt-3 text-ink-muted max-w-2xl" style="--reveal-delay:60ms">{t.home.branches_intro}</p>
     <div class="reveal-group mt-8 grid gap-6 md:grid-cols-2">
