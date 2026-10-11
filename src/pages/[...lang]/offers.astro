@@ -49,7 +49,7 @@ const corp = offers.corporate;
             class="inline-flex items-center gap-2 bg-bronze text-white font-semibold px-5 py-3 rounded hover:bg-bronze-deep transition-colors"
           >
             <span>{locale === 'ar' ? g.cta_ar : g.cta_en}</span>
-            <Icon name="arrow" size={18} class="rtl:rotate-180" />
+            <Icon name="arrow" size={18} class="icon-arrow rtl:rotate-180" />
           </a>
           <a
             href={telHref(sales.phone)}
@@ -73,16 +73,16 @@ const corp = offers.corporate;
         <div class="mt-6 flex flex-wrap gap-3">
           <a href={`${partnersPath(locale, 'enquiry')}?request=corporate`} class="inline-flex items-center gap-2 bg-midnight text-white text-sm font-semibold px-4 py-2.5 rounded hover:bg-bronze transition-colors">
             <span>{t.partners.enquiry_corporate}</span>
-            <Icon name="arrow" size={16} class="rtl:rotate-180" />
+            <Icon name="arrow" size={16} class="icon-arrow rtl:rotate-180" />
           </a>
           <a href={`${partnersPath(locale, 'enquiry')}?request=event`} class="inline-flex items-center gap-2 border border-midnight text-midnight text-sm font-semibold px-4 py-2.5 rounded hover:bg-midnight hover:text-white transition-colors">
             <span>{t.partners.enquiry_event}</span>
-            <Icon name="arrow" size={16} class="rtl:rotate-180" />
+            <Icon name="arrow" size={16} class="icon-arrow rtl:rotate-180" />
           </a>
         </div>
         <a href={partnersPath(locale)} class="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-bronze hover:text-bronze-deep">
           <span>{t.nav.partners}</span>
-          <Icon name="arrow" size={14} class="rtl:rotate-180" />
+          <Icon name="arrow" size={14} class="icon-arrow rtl:rotate-180" />
         </a>
         <p class="mt-6 text-xs text-ink-muted">
           {locale === 'ar' ? offers.sales_note_ar : offers.sales_note_en}

@@ -74,6 +74,39 @@ const SCENARIOS = {
       await wait(600);
     }
   },
+  // item 5: nav ink sliding between items, the theme glyph morphing, floating labels on the booking form, the
+  // WhatsApp pulse (5 s after load) — desktop; on mobile the form labels + the pulse
+  micro: async (page, size) => {
+    await page.goto(`${BASE}/booking/`, { waitUntil: 'load' });
+    await page.evaluate(() => document.fonts.ready);
+    if (size.width >= 768) {
+      const links = page.locator('[data-nav] .nav-link');
+      for (const i of [1, 3, 5]) {
+        const b = await links.nth(i).boundingBox();
+        await page.mouse.move(b.x + b.width / 2, b.y + b.height / 2, { steps: 6 });
+        await wait(550);
+      }
+      await page.mouse.move(700, 300, { steps: 6 });
+      await wait(400);
+      await page.locator('[data-theme-toggle]').click();
+      await wait(700);
+      await page.locator('[data-theme-toggle]').click();
+      await wait(500);
+    }
+    await page.locator('#name').click();
+    await page.keyboard.type('أحمد', { delay: 90 });
+    await wait(300);
+    await page.locator('#phone').click();
+    await wait(400);
+    await page.locator('#email').click();
+    await wait(600);
+    const btn = page.locator('button[type=submit]');
+    const bb = await btn.boundingBox();
+    await page.mouse.move(bb.x + bb.width / 2, bb.y + bb.height / 2, { steps: 6 });
+    await wait(500);
+    await page.mouse.move(bb.x - 40, bb.y + bb.height + 40, { steps: 6 });
+    await wait(400);
+  },
   // item 2: a slow scroll down the home page — headings, cards and sections rise in once, siblings 60 ms apart
   reveal: async (page) => {
     await page.goto(`${BASE}/`, { waitUntil: 'load' });

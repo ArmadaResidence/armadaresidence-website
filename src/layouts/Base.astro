@@ -27,6 +27,8 @@ interface Props {
   icons?: { svg: string; png32: string; apple: string };
   /** /menu/ renders the café's own footer inside .legacy-menu instead of the hotel footer. */
   hideFooter?: boolean;
+  /** Booking drawer (item 11): on every site page except /booking/ itself and the legacy sections. */
+  bookingDrawer?: boolean;
 }
 
 const {
@@ -41,6 +43,7 @@ const {
   switchPath = Astro.props.path,
   icons = { svg: '/favicon.svg', png32: '/icons/favicon-32.png', apple: '/icons/apple-touch-icon.png' },
   hideFooter = false,
+  bookingDrawer = true,
 } = Astro.props;
 
 const canonical = absoluteUrl(localePath(locale, path));
@@ -136,7 +139,12 @@ const preloadFonts = locale === 'ar' ? [fontAr400, fontAr600, fontAr700] : [font
         }
         var evs = ['pointerdown', 'keydown', 'touchstart', 'scroll'];
         evs.forEach(function (e) { w.addEventListener(e, load, { once: true, passive: true }); });
-        function afterLoad() { setTimeout(load, 3500); }
+        function afterLoad() {
+          setTimeout(function () {
+            if ('requestIdleCallback' in w) w.requestIdleCallback(load, { timeout: 2000 });
+            else load();
+          }, 3500);
+        }
         if (d.readyState === 'complete') afterLoad();
         else w.addEventListener('load', afterLoad, { once: true });
         // client-side navigations (view transitions) → one virtual page view per page; GTM needs a trigger on this event

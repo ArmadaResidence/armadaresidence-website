@@ -1,0 +1,406 @@
+---
+/**
+ * Booking-request form (CLAUDE.md §8) — one component for the /booking/ page and the booking drawer (item 11).
+ * Labels float on focus / when a value is present (item 5): the field keeps a fixed height, the label moves with a
+ * transform only. Every string comes from ui.json; branches / rooms from content/. `prefix` keeps ids unique when
+ * two forms share a page (page form + drawer). The client script binds every `[data-booking-form]` on the page.
+ */
+import { branchContact, branches, L, localePath, rooms, ui, type Locale } from '@lib/content';
+import Icon from './Icon.astro';
+
+interface Props {
+  locale: Locale;
+  prefix?: string;
+  class?: string;
+}
+const { locale, prefix = '', class: className = '' } = Astro.props;
+const t = ui(locale);
+const f = t.form;
+const id = (name: string) => `${prefix}${name}`;
+
+const endpoint = import.meta.env.PUBLIC_BOOKING_ENDPOINT ?? '';
+const anonKey = import.meta.env.PUBLIC_SUPABASE_ANON_KEY ?? '';
+const bookable = rooms.filter((r) => r.availability !== 'sold_out');
+
+/** Everything the client script needs, all from content/. */
+const clientData = {
+  locale,
+  endpoint,
+  anonKey,
+  successPath: localePath(locale, '/booking/success/'),
+  branches: branches.map((b) => ({ slug: b.slug, name: L(locale, b, 'name'), whatsapp: branchContact(b.slug).whatsapp })),
+  rooms: bookable.map((r) => ({ slug: r.slug, branch: r.branch, name: L(locale, r, 'name') })),
+  strings: {
+    anyRoom: f.any_room,
+    sending: f.sending,
+    submit: f.submit,
+    errors: f.errors,
+    whatsappMessage: f.whatsapp_message,
+  },
+};
+const inputClass = 'field-input latin text-left w-full border border-line rounded bg-white';
+---
+
+<form id={id('booking-form')} class:list={['space-y-6', className]} novalidate data-booking-form>
+  <div class="grid gap-5 sm:grid-cols-2">
+    <div class="sm:col-span-2 field field-select">
+      <select id={id('branch')} name="branch" required class="field-input w-full border border-line rounded bg-white">
+        <option value="">{f.choose_branch}</option>
+        {branches.map((b) => <option value={b.slug}>{L(locale, b, 'name')}</option>)}
+      </select>
+      <label for={id('branch')} class="field-label">{f.branch}</label>
+      <p class="hidden text-xs text-red-700 mt-1" data-error-for="branch"></p>
+    </div>
+
+    {/* Dates: a text field in ISO form (Western digits whatever the browser locale) + the native picker opened on tap. */}
+    {
+      (['check_in', 'check_out'] as const).map((name) => (
+        <div class="field" data-date-field>
+          <input
+            id={id(name)}
+            name={name}
+            type="text"
+            inputmode="numeric"
+            autocomplete="off"
+            placeholder={f.date_format}
+            pattern="\d{4}-\d{2}-\d{2}"
+            maxlength="10"
+            required
+            lang="en"
+            dir="ltr"
+            class:list={[inputClass, 'pe-11']}
+            data-date-text
+          />
+          <label for={id(name)} class="field-label">{f[name]}</label>
+          {/* the text field is LTR, so the icon sits on the physical right whatever the page direction */}
+          <input type="date" tabindex="-1" aria-hidden="true" lang="en" class="absolute bottom-0 right-10 w-px h-px opacity-0" data-date-picker />
+          <button type="button" class="field-icon absolute right-0 top-0 h-14 w-10 grid place-items-center text-bronze hover:text-bronze-deep" aria-label={f.open_calendar} data-date-open>
+            <Icon name="calendar" size={20} />
+          </button>
+          <p class="hidden text-xs text-red-700 mt-1" data-error-for={name} />
+        </div>
+      ))
+    }
+
+    <div class="field">
+      <input id={id('adults')} name="adults" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="2" value="2" required lang="en" dir="ltr" placeholder=" " class={inputClass} />
+      <label for={id('adults')} class="field-label">{f.adults}</label>
+      <p class="hidden text-xs text-red-700 mt-1" data-error-for="adults"></p>
+    </div>
+    <div class="field">
+      <input id={id('children')} name="children" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="2" value="0" lang="en" dir="ltr" placeholder=" " class={inputClass} />
+      <label for={id('children')} class="field-label">{f.children}</label>
+    </div>
+
+    <div class="sm:col-span-2 field field-select">
+      <select id={id('room')} name="room" class="field-input w-full border border-line rounded bg-white">
+        <option value="">{f.any_room}</option>
+        {bookable.map((r) => <option value={r.slug} data-branch={r.branch}>{L(locale, r, 'name')}</option>)}
+      </select>
+      <label for={id('room')} class="field-label">{f.room_type}</label>
+    </div>
+
+    <div class="sm:col-span-2 field">
+      <input id={id('name')} name="name" type="text" autocomplete="name" required maxlength="120" placeholder=" " class="field-input w-full border border-line rounded bg-white" />
+      <label for={id('name')} class="field-label">{f.full_name}</label>
+      <p class="hidden text-xs text-red-700 mt-1" data-error-for="name"></p>
+    </div>
+
+    <div class="field">
+      <input id={id('phone')} name="phone" type="tel" autocomplete="tel" inputmode="tel" required lang="en" dir="ltr" placeholder=" " class={inputClass} aria-describedby={id('phone-hint')} />
+      <label for={id('phone')} class="field-label">{f.phone}</label>
+      <p id={id('phone-hint')} class="text-xs text-ink-muted mt-1">{f.phone_hint}</p>
+      <p class="hidden text-xs text-red-700 mt-1" data-error-for="phone"></p>
+    </div>
+    <div class="field">
+      <input id={id('email')} name="email" type="email" autocomplete="email" required lang="en" dir="ltr" placeholder=" " class={inputClass} />
+      <label for={id('email')} class="field-label">{f.email}</label>
+      <p class="hidden text-xs text-red-700 mt-1" data-error-for="email"></p>
+    </div>
+
+    <div class="sm:col-span-2 field field-textarea">
+      <textarea id={id('notes')} name="notes" rows="3" maxlength="1000" placeholder=" " class="field-input w-full border border-line rounded bg-white" aria-describedby={id('notes-hint')}></textarea>
+      <label for={id('notes')} class="field-label">{f.notes}</label>
+      <p id={id('notes-hint')} class="text-xs text-ink-muted mt-1">{f.notes_hint}</p>
+    </div>
+  </div>
+
+  <p class="text-xs text-ink-muted">
+    {f.consent}
+    <a href={localePath(locale, '/policies/')} class="font-semibold text-bronze hover:text-bronze-deep ms-1">{f.consent_link}</a>.
+  </p>
+
+  <p class="hidden bg-porcelain border border-line text-sm text-red-800 rounded px-4 py-3" data-form-error role="alert"></p>
+
+  <div class="flex flex-wrap items-center gap-3">
+    <button type="submit" class="inline-flex items-center gap-2 bg-bronze text-white font-semibold px-6 py-3 rounded hover:bg-bronze-deep transition-colors disabled:opacity-60" data-submit>
+      <span data-submit-label>{f.submit}</span>
+      <Icon name="arrow" size={18} class="icon-arrow rtl:rotate-180" />
+    </button>
+    <a href="#" class="hidden inline-flex items-center gap-2 border border-midnight text-midnight font-semibold px-5 py-3 rounded hover:bg-midnight hover:text-white transition-colors" data-wa-fallback rel="noopener" target="_blank">
+      <Icon name="whatsapp" size={18} />
+      <span>{f.whatsapp_fallback}</span>
+    </a>
+  </div>
+
+  <script type="application/json" data-booking-data set:html={JSON.stringify(clientData).replace(/</g, '\\u003c')} />
+</form>
+
+<script>
+  import { bindOnce, onPageLoad } from '@lib/client';
+
+  type Data = {
+    locale: string;
+    endpoint: string;
+    anonKey: string;
+    successPath: string;
+    branches: { slug: string; name: string; whatsapp: string }[];
+    rooms: { slug: string; branch: string; name: string }[];
+    strings: {
+      anyRoom: string;
+      sending: string;
+      submit: string;
+      errors: Record<string, string>;
+      whatsappMessage: string;
+    };
+  };
+
+  const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
+  const E164 = /^\+[1-9]\d{7,14}$/;
+  const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+  const iso = (d: Date) => d.toISOString().slice(0, 10);
+
+  function initForm(form: HTMLFormElement) {
+    const data = JSON.parse(form.querySelector('[data-booking-data]')?.textContent || '{}') as Data;
+    const branchSel = form.elements.namedItem('branch') as HTMLSelectElement;
+    const roomSel = form.elements.namedItem('room') as HTMLSelectElement;
+    const checkIn = form.elements.namedItem('check_in') as HTMLInputElement;
+    const checkOut = form.elements.namedItem('check_out') as HTMLInputElement;
+    const submitBtn = form.querySelector<HTMLButtonElement>('[data-submit]')!;
+    const submitLabel = form.querySelector<HTMLElement>('[data-submit-label]')!;
+    const formError = form.querySelector<HTMLElement>('[data-form-error]')!;
+    const waFallback = form.querySelector<HTMLAnchorElement>('[data-wa-fallback]')!;
+    const today = new Date();
+
+    // Native picker behind an ISO text field: values always read YYYY-MM-DD with Western digits.
+    const pickers = new Map<HTMLInputElement, HTMLInputElement>();
+    form.querySelectorAll<HTMLElement>('[data-date-field]').forEach((wrap) => {
+      const text = wrap.querySelector<HTMLInputElement>('[data-date-text]')!;
+      const picker = wrap.querySelector<HTMLInputElement>('[data-date-picker]')!;
+      const open = wrap.querySelector<HTMLButtonElement>('[data-date-open]')!;
+      pickers.set(text, picker);
+      const showPicker = () => {
+        if (text.value && ISO_DATE.test(text.value)) picker.value = text.value;
+        try {
+          if (typeof (picker as HTMLInputElement & { showPicker?: () => void }).showPicker === 'function') {
+            (picker as HTMLInputElement & { showPicker: () => void }).showPicker();
+          } else {
+            picker.focus();
+            picker.click();
+          }
+        } catch {
+          /* no picker available: the user types the date */
+        }
+      };
+      open.addEventListener('click', showPicker);
+      text.addEventListener('click', showPicker);
+      picker.addEventListener('change', () => {
+        if (picker.value) {
+          text.value = picker.value;
+          text.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+      });
+      // keep only digits and dashes while typing
+      text.addEventListener('input', () => {
+        text.value = text.value.replace(/[^\d-]/g, '').slice(0, 10);
+      });
+    });
+    const setMin = (input: HTMLInputElement, value: string) => {
+      const p = pickers.get(input);
+      if (p) p.min = value;
+    };
+    setMin(checkIn, iso(today));
+    setMin(checkOut, iso(new Date(today.getTime() + 86400000)));
+
+    function filterRooms() {
+      const b = branchSel.value;
+      for (const opt of Array.from(roomSel.options)) {
+        const ob = opt.dataset.branch;
+        if (!ob) continue;
+        opt.hidden = Boolean(b) && ob !== b;
+        opt.disabled = opt.hidden;
+      }
+      const current = roomSel.selectedOptions[0];
+      if (current && current.disabled) roomSel.value = '';
+    }
+    branchSel.addEventListener('change', filterRooms);
+
+    /** Prefill branch / room (from ?branch=&room= on the page, or from the link that opened the drawer). */
+    const prefill = (branch: string | null, room: string | null) => {
+      if (branch) branchSel.value = branch;
+      filterRooms();
+      if (room) {
+        roomSel.value = room;
+        if (roomSel.value !== room) roomSel.value = '';
+      }
+    };
+    const q = new URLSearchParams(location.search);
+    prefill(q.get('branch'), q.get('room'));
+    form.addEventListener('booking:prefill', (e) => {
+      const d = (e as CustomEvent<{ branch?: string; room?: string }>).detail || {};
+      prefill(d.branch ?? null, d.room ?? null);
+    });
+
+    checkIn.addEventListener('change', () => {
+      if (checkIn.value && ISO_DATE.test(checkIn.value)) {
+        const next = new Date(checkIn.value);
+        next.setDate(next.getDate() + 1);
+        setMin(checkOut, iso(next));
+        if (checkOut.value && checkOut.value <= checkIn.value) checkOut.value = '';
+      }
+    });
+
+    function setError(name: string, msg: string | null) {
+      const el = form.querySelector<HTMLElement>(`[data-error-for="${name}"]`);
+      const field = form.elements.namedItem(name) as HTMLElement | null;
+      if (el) {
+        el.textContent = msg ?? '';
+        el.classList.toggle('hidden', !msg);
+      }
+      field?.setAttribute('aria-invalid', msg ? 'true' : 'false');
+    }
+
+    function normalizePhone(v: string): string {
+      return v.replace(/[\s\-().]/g, '').replace(/^00/, '+');
+    }
+
+    function validate(): Record<string, string> | null {
+      const fd = new FormData(form);
+      const v = (k: string) => String(fd.get(k) ?? '').trim();
+      const errs = data.strings.errors;
+      let ok = true;
+      const out: Record<string, string> = {};
+
+      const required = ['branch', 'check_in', 'check_out', 'adults', 'name', 'phone', 'email'];
+      for (const k of required) {
+        if (!v(k)) {
+          setError(k, errs.required);
+          ok = false;
+        } else setError(k, null);
+      }
+      for (const k of ['check_in', 'check_out'] as const) {
+        const val = v(k);
+        if (val && (!ISO_DATE.test(val) || Number.isNaN(new Date(val + 'T00:00:00Z').getTime()))) {
+          setError(k, errs.date_format);
+          ok = false;
+        }
+      }
+      if (v('check_in') && ISO_DATE.test(v('check_in')) && v('check_in') < iso(today)) {
+        setError('check_in', errs.past);
+        ok = false;
+      }
+      if (v('check_in') && v('check_out') && v('check_out') <= v('check_in')) {
+        setError('check_out', errs.dates);
+        ok = false;
+      }
+      const phone = normalizePhone(v('phone'));
+      if (v('phone') && !E164.test(phone)) {
+        setError('phone', errs.phone);
+        ok = false;
+      }
+      if (v('email') && !EMAIL.test(v('email'))) {
+        setError('email', errs.email);
+        ok = false;
+      }
+      if (!ok) return null;
+
+      out.locale = data.locale;
+      out.branch = v('branch');
+      out.check_in = v('check_in');
+      out.check_out = v('check_out');
+      out.adults = v('adults');
+      out.children = v('children') || '0';
+      out.room = v('room');
+      out.name = v('name');
+      out.phone = phone;
+      out.email = v('email');
+      out.notes = v('notes');
+      out.page = location.href;
+      return out;
+    }
+
+    function nights(a: string, b: string): number {
+      return Math.max(1, Math.round((new Date(b).getTime() - new Date(a).getTime()) / 86400000));
+    }
+
+    function whatsappUrl(p: Record<string, string>): string {
+      const b = data.branches.find((x) => x.slug === p.branch)!;
+      const r = data.rooms.find((x) => x.slug === p.room && x.branch === p.branch);
+      const msg = data.strings.whatsappMessage
+        .replace('{branch}', b.name)
+        .replace('{check_in}', p.check_in)
+        .replace('{check_out}', p.check_out)
+        .replace('{adults}', p.adults)
+        .replace('{children}', p.children)
+        .replace('{room}', r ? r.name : data.strings.anyRoom)
+        .replace('{name}', p.name)
+        .replace('{phone}', p.phone)
+        .replace('{notes}', p.notes || '-');
+      return `https://wa.me/${b.whatsapp.replace(/\D/g, '')}?text=${encodeURIComponent(msg)}`;
+    }
+
+    function showFallback(p: Record<string, string>, msg: string) {
+      formError.textContent = msg;
+      formError.classList.remove('hidden');
+      waFallback.href = whatsappUrl(p);
+      waFallback.classList.remove('hidden');
+    }
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      formError.classList.add('hidden');
+      waFallback.classList.add('hidden');
+      const p = validate();
+      if (!p) {
+        form.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus();
+        return;
+      }
+      if (!data.endpoint) {
+        // No email endpoint configured for this build → WhatsApp handoff, never a silent failure.
+        showFallback(p, data.strings.errors.server);
+        window.open(whatsappUrl(p), '_blank', 'noopener');
+        return;
+      }
+      submitBtn.disabled = true;
+      submitLabel.textContent = data.strings.sending;
+      try {
+        const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+        if (data.anonKey) {
+          headers['Authorization'] = `Bearer ${data.anonKey}`;
+          headers['apikey'] = data.anonKey;
+        }
+        const res = await fetch(data.endpoint, { method: 'POST', headers, body: JSON.stringify(p) });
+        const body = (await res.json().catch(() => ({}))) as { ok?: boolean; ref?: string; error?: string };
+        if (!res.ok || !body.ok || !body.ref) throw new Error(body.error || `HTTP ${res.status}`);
+        const params = new URLSearchParams({
+          ref: body.ref,
+          branch: p.branch,
+          room: p.room || '',
+          nights: String(nights(p.check_in, p.check_out)),
+        });
+        location.assign(`${data.successPath}?${params.toString()}`);
+      } catch {
+        showFallback(p, data.strings.errors.server);
+      } finally {
+        submitBtn.disabled = false;
+        submitLabel.textContent = data.strings.submit;
+      }
+    });
+  }
+
+  onPageLoad(() => {
+    document.querySelectorAll<HTMLFormElement>('form[data-booking-form]').forEach((form) => {
+      if (bindOnce(form)) initForm(form);
+    });
+  });
+</script>

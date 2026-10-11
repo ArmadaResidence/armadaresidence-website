@@ -149,10 +149,21 @@ body {
   contain-intrinsic-size: auto 720px;
 }
 
-/* Focus rings */
+/* Focus rings: bronze on light surfaces, porcelain on midnight ones; form fields tighten the ring to the border */
 :focus-visible {
   outline: 3px solid var(--color-bronze);
   outline-offset: 2px;
+}
+.bg-midnight :focus-visible,
+footer :focus-visible,
+.split-pane :focus-visible,
+.hero :focus-visible {
+  outline-color: var(--color-porcelain);
+}
+.field-input:focus-visible {
+  outline-width: 2px;
+  outline-offset: 0;
+  border-color: var(--color-bronze);
 }
 
 /* Prose blocks from content JSON (\n\n → paragraphs) */
@@ -264,10 +275,17 @@ body {
 [data-theme="dark"] .hero-poster {
   color: #142a3b;
 }
-/* header toggle icons */
-[data-theme="dark"] .icon-moon,
-:root:not([data-theme="dark"]) .icon-sun {
-  display: none;
+/* header theme glyph: moon in light mode (→ dark), sun in dark mode (→ light); the morph lives in motion.css */
+[data-theme="dark"] .theme-core {
+  r: 5;
+}
+[data-theme="dark"] .theme-cut {
+  cx: 30;
+  cy: -6;
+}
+[data-theme="dark"] .theme-rays {
+  opacity: 1;
+  transform: none;
 }
 
 /* ---------- GallerySlider (control colours further down) ---------- */
@@ -468,4 +486,62 @@ body {
     padding: 2.5rem 2.25rem 2.5rem;
     max-width: 34rem;
   }
+}
+
+/* ---------- Form fields with floating labels (item 5, 11 Oct 2026) ----------
+   Fixed 56 px field height; the label sits in the field and moves up with a transform only (focus, a value, a
+   select, an invalid field). Placeholders show on focus only (the date fields carry the YYYY-MM-DD pattern). */
+.field {
+  position: relative;
+}
+.field-input {
+  height: 3.5rem;
+  padding: 1.5rem 0.75rem 0.5rem;
+  line-height: 1.25rem;
+}
+.field-textarea .field-input {
+  height: auto;
+  min-height: 7rem;
+  padding-top: 1.75rem;
+  resize: vertical;
+}
+.field-label {
+  position: absolute;
+  top: 1.125rem;
+  inset-inline-start: 0.75rem;
+  font-size: 0.9375rem;
+  line-height: 1.25rem;
+  color: var(--color-ink-muted);
+  pointer-events: none;
+  transform-origin: 0 0;
+  transition:
+    transform var(--motion-fast) var(--ease-out),
+    color var(--motion-fast) var(--ease-out);
+}
+[dir='rtl'] .field-label {
+  transform-origin: 100% 0;
+}
+.field-textarea .field-label {
+  top: 1rem;
+}
+.field-input:focus ~ .field-label,
+.field-input:not(:placeholder-shown) ~ .field-label,
+.field-input[aria-invalid='true'] ~ .field-label,
+.field-select .field-label {
+  transform: translateY(-0.75rem) scale(0.78);
+  color: var(--color-bronze-deep);
+}
+[data-theme='dark'] .field-input:focus ~ .field-label,
+[data-theme='dark'] .field-input:not(:placeholder-shown) ~ .field-label,
+[data-theme='dark'] .field-select .field-label {
+  color: var(--dk-bronze-text);
+}
+.field-input::placeholder {
+  color: transparent;
+}
+.field-input:focus::placeholder {
+  color: var(--color-ink-muted);
+}
+.field-icon {
+  z-index: 1;
 }

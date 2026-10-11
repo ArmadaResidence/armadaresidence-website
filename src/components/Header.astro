@@ -51,21 +51,20 @@ const partnersActive = path.startsWith('/partners/');
         <img src="/brand/logo-horizontal_Porcelain.svg" alt={siteName(locale)} width="143" height="32" class="h-8 w-auto hidden dark:block" />
       </a>
 
-      <nav class="hidden lg:flex items-center gap-5 text-sm font-medium" aria-label={t.nav.menu}>
+      {/* desktop nav: one bronze ink line slides between items (item 5); without JS the active item keeps a static line */}
+      <nav class="hidden lg:flex relative items-center gap-5 text-sm font-medium" aria-label={t.nav.menu} data-nav>
         {
           nav.map((n) => (
             <a
               href={localePath(locale, n.path)}
-              class:list={[
-                'py-2 border-b-2 transition-colors',
-                isActive(n.path) ? 'border-bronze text-midnight' : 'border-transparent text-ink-muted hover:text-midnight',
-              ]}
+              class:list={['nav-link py-2 transition-colors', isActive(n.path) ? 'text-midnight' : 'text-ink-muted hover:text-midnight']}
               aria-current={isActive(n.path) ? 'page' : undefined}
             >
               {t.nav[n.key]}
             </a>
           ))
         }
+        <span class="nav-ink" aria-hidden="true"></span>
       </nav>
 
       <div class="flex items-center gap-2">
@@ -85,8 +84,24 @@ const partnersActive = path.startsWith('/partners/');
           data-label-dark={t.theme.to_dark}
           data-label-light={t.theme.to_light}
         >
-          <Icon name="moon" size={20} class="icon-moon" />
-          <Icon name="sun" size={20} class="icon-sun" />
+          {/* one glyph that morphs moon ↔ sun (item 5): the disc radius, the crescent cut-out and the rays transition */}
+          <svg class="theme-icon" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" focusable="false">
+            <mask id="theme-cut">
+              <rect width="24" height="24" fill="#fff"></rect>
+              <circle class="theme-cut" cx="17" cy="7" r="7" fill="#000"></circle>
+            </mask>
+            <circle class="theme-core" cx="12" cy="12" r="9" fill="currentColor" mask="url(#theme-cut)"></circle>
+            <g class="theme-rays" stroke="currentColor" stroke-width="2" stroke-linecap="round" fill="none">
+              <line x1="12" y1="1.5" x2="12" y2="3.5"></line>
+              <line x1="12" y1="20.5" x2="12" y2="22.5"></line>
+              <line x1="1.5" y1="12" x2="3.5" y2="12"></line>
+              <line x1="20.5" y1="12" x2="22.5" y2="12"></line>
+              <line x1="4.6" y1="4.6" x2="6" y2="6"></line>
+              <line x1="18" y1="18" x2="19.4" y2="19.4"></line>
+              <line x1="4.6" y1="19.4" x2="6" y2="18"></line>
+              <line x1="18" y1="6" x2="19.4" y2="4.6"></line>
+            </g>
+          </svg>
         </button>
         <a
           href={localePath(locale, '/booking/')}
@@ -146,7 +161,15 @@ const partnersActive = path.startsWith('/partners/');
 </header>
 
 <script>
-  import { bindOnce, onPageLoad } from '@lib/client';
+  import { bindOnce, onPageLeave, onPageLoad, reducedMotion } from '@lib/client';
+
+  // nav ink: remembered across client-side navigations so it slides from the previous item to the new one
+  let inkMemory: { x: string; w: string } | null = null;
+  let activeNav: HTMLElement | null = null;
+  onPageLeave(() => {
+    const ink = document.querySelector<HTMLElement>('[data-nav] .nav-ink');
+    inkMemory = ink && ink.classList.contains('is-on') ? { x: ink.style.getPropertyValue('--x'), w: ink.style.getPropertyValue('--w') } : null;
+  });
 
   onPageLoad(() => {
     // light / dark toggle — the initial value is set on <html> by Base.astro before first paint
@@ -176,6 +199,43 @@ const partnersActive = path.startsWith('/partners/');
         nav.classList.toggle('hidden', open);
         btn.querySelector('.icon-open')?.classList.toggle('hidden', !open);
         btn.querySelector('.icon-close')?.classList.toggle('hidden', open);
+      });
+    }
+
+    const navEl = document.querySelector<HTMLElement>('[data-nav]');
+    const ink = navEl?.querySelector<HTMLElement>('.nav-ink');
+    if (navEl && ink && bindOnce(navEl)) {
+      const links = Array.from(navEl.querySelectorAll<HTMLAnchorElement>('.nav-link'));
+      activeNav = navEl.querySelector<HTMLElement>('.nav-link[aria-current]');
+      const place = (a: HTMLElement, animate: boolean) => {
+        if (!animate || reducedMotion()) ink.style.transition = 'none';
+        ink.style.setProperty('--x', `${a.offsetLeft}px`);
+        ink.style.setProperty('--w', String(a.offsetWidth));
+        ink.classList.add('is-on');
+        if (!animate || reducedMotion()) {
+          void ink.offsetWidth;
+          ink.style.transition = '';
+        }
+      };
+      const rest = (animate: boolean) => (activeNav ? place(activeNav, animate) : ink.classList.remove('is-on'));
+      if (inkMemory) {
+        ink.style.transition = 'none';
+        ink.style.setProperty('--x', inkMemory.x);
+        ink.style.setProperty('--w', inkMemory.w);
+        ink.classList.add('is-on');
+        void ink.offsetWidth;
+        ink.style.transition = '';
+        rest(true);
+      } else rest(false);
+      links.forEach((a) => a.addEventListener('mouseenter', () => place(a, true)));
+      navEl.addEventListener('mouseleave', () => rest(true));
+      navEl.addEventListener('focusin', (e) => place(e.target as HTMLElement, true));
+      navEl.addEventListener('focusout', () => rest(true));
+      document.fonts.ready.then(() => rest(false));
+      let raf = 0;
+      window.addEventListener('resize', () => {
+        cancelAnimationFrame(raf);
+        raf = requestAnimationFrame(() => rest(false));
       });
     }
   });

@@ -158,3 +158,97 @@
     opacity: 0.07;
   }
 }
+
+/* ---------- Micro-interactions (item 5) ---------- */
+/* arrows inside links/buttons slide 4 px in the reading direction (translate, so the RTL rotate is untouched) */
+.icon-arrow,
+.icon-arrow-back {
+  transition: translate var(--motion-fast) var(--ease-out);
+}
+:is(a, button):hover > .icon-arrow,
+:is(a, button):focus-visible > .icon-arrow,
+:is(a, button):hover > .icon-arrow-back,
+:is(a, button):focus-visible > .icon-arrow-back {
+  translate: 4px 0;
+}
+[dir='rtl'] :is(a, button):hover > .icon-arrow,
+[dir='rtl'] :is(a, button):focus-visible > .icon-arrow,
+:is(a, button):hover > .icon-arrow-back,
+:is(a, button):focus-visible > .icon-arrow-back {
+  translate: -4px 0;
+}
+[dir='rtl'] :is(a, button):hover > .icon-arrow-back,
+[dir='rtl'] :is(a, button):focus-visible > .icon-arrow-back {
+  translate: 4px 0;
+}
+
+/* nav ink: one 2 px bronze line under the active item, sliding (translate + scale) to the hovered/focused item */
+.nav-ink {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 1px;
+  height: 2px;
+  background: var(--color-bronze);
+  opacity: 0;
+  transform-origin: 0 50%;
+  transform: translateX(var(--x, 0px)) scaleX(var(--w, 0));
+  transition:
+    transform var(--motion-base) var(--ease-in-out),
+    opacity var(--motion-fast) var(--ease-out);
+  pointer-events: none;
+}
+.nav-ink.is-on {
+  opacity: 1;
+}
+html:not(.js) .nav-link[aria-current] {
+  box-shadow: inset 0 -2px 0 var(--color-bronze);
+}
+
+/* theme glyph morph: disc radius, crescent cut-out and rays transition together */
+.theme-core {
+  transition: r var(--motion-base) var(--ease-in-out);
+}
+.theme-cut {
+  transition:
+    cx var(--motion-base) var(--ease-in-out),
+    cy var(--motion-base) var(--ease-in-out);
+}
+.theme-rays {
+  opacity: 0;
+  transform: rotate(-45deg) scale(0.4);
+  transform-origin: 12px 12px;
+  transition:
+    transform var(--motion-base) var(--ease-in-out),
+    opacity var(--motion-fast) var(--ease-out);
+}
+
+/* floating WhatsApp button: one bronze ring expands after 5 s, then nothing */
+.wa-pulse {
+  position: relative;
+}
+.wa-pulse::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 9999px;
+  border: 2px solid var(--color-bronze);
+  opacity: 0;
+  pointer-events: none;
+  animation: wa-pulse 1.2s var(--ease-out) 5s 1;
+}
+@keyframes wa-pulse {
+  0% {
+    transform: scale(1);
+    opacity: 0.8;
+  }
+  100% {
+    transform: scale(1.7);
+    opacity: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .wa-pulse::after {
+    animation: none;
+  }
+}

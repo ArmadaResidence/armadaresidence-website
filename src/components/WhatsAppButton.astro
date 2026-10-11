@@ -19,7 +19,7 @@ const single = branch ? branchContact(branch) : null;
   single ? (
     <a
       href={waHref(single.whatsapp)}
-      class="wa-fab inline-flex items-center gap-2 bg-midnight text-white rounded-full shadow-lg px-4 py-3 hover:bg-bronze transition-colors"
+      class="wa-fab wa-pulse inline-flex items-center gap-2 bg-midnight text-white rounded-full shadow-lg px-4 py-3 hover:bg-bronze transition-colors"
       transition:name="wa-fab"
       transition:animate="none"
       rel="noopener"
@@ -61,7 +61,7 @@ const single = branch ? branchContact(branch) : null;
       </div>
       <button
         type="button"
-        class="inline-flex items-center gap-2 bg-midnight text-white rounded-full shadow-lg px-4 py-3 hover:bg-bronze transition-colors"
+        class="wa-pulse inline-flex items-center gap-2 bg-midnight text-white rounded-full shadow-lg px-4 py-3 hover:bg-bronze transition-colors"
         aria-expanded="false"
         data-wa-toggle
         title={t.cta.whatsapp_title}
