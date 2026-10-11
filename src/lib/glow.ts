@@ -61,5 +61,5 @@ onPageLeave(() => {
 
 onPageLoad(() => {
   if (!fine.matches || reducedMotion()) return;
-  document.querySelectorAll<HTMLElement>('[data-glow]').forEach((b) => bindOnce(b, 'glow') && init(b));
+  document.querySelectorAll<HTMLElement>('[data-glow]').forEach((b) => bindOnce(b, 'glow-bound') && init(b));
 });

@@ -52,7 +52,7 @@ const quickFacts = fill(t.home.quick_facts, {
 ---
 
 <Base locale={locale} path="/" title={s.title} description={s.description} jsonld={[organization(locale)]}>
-  <section class="hero relative bg-midnight text-porcelain overflow-hidden lg:min-h-[560px] flex items-center">
+  <section class="hero relative bg-midnight text-porcelain overflow-hidden lg:min-h-[560px] flex items-center" data-glow>
     <div class="absolute inset-0" aria-hidden="true">
       {
         hasHeroVideo ? (
@@ -85,6 +85,7 @@ const quickFacts = fill(t.home.quick_facts, {
       <div class="absolute inset-0 bg-midnight/60"></div>
       {/* brand pattern as a slow depth layer: 40 s drift of ~2.5 % towards the reading direction with a soft opacity swell */}
       <div class="absolute inset-0 pattern-bg hero-pattern"></div>
+      <div class="glow"></div>
     </div>
     <div class="relative w-full mx-auto max-w-6xl px-4 py-14 md:py-28">
       {/* hero (9 Oct 2026): eyebrow = "فنادق أرمادا ريزيدنس", h1 = the slogan; no price line, no city name */}
@@ -165,8 +166,9 @@ const quickFacts = fill(t.home.quick_facts, {
     </div>
   </section>
 
-  <section class="cv-auto bg-midnight text-porcelain">
-    <div class="reveal mx-auto max-w-6xl px-4 py-12 flex flex-wrap items-center justify-between gap-6">
+  <section class="cv-auto relative overflow-hidden bg-midnight text-porcelain" data-glow>
+    <div class="glow" aria-hidden="true"></div>
+    <div class="reveal relative mx-auto max-w-6xl px-4 py-12 flex flex-wrap items-center justify-between gap-6">
       <p class="text-xl font-semibold">{slogan}</p>
       <div class="flex flex-wrap gap-3">
         <a href={localePath(locale, '/booking/')} class="bg-bronze text-white font-semibold px-6 py-3 rounded hover:bg-bronze-deep transition-colors">

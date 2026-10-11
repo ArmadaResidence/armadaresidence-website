@@ -44,9 +44,10 @@ const social: { name: string; url: string }[] = [
 ];
 ---
 
-<footer class="cv-auto relative bg-midnight text-porcelain mt-16 overflow-hidden">
+<footer class="cv-auto relative bg-midnight text-porcelain mt-16 overflow-hidden" data-glow>
   {/* brand pattern: 108px tile, bronze at 7 %, fixed so it does not visibly repeat (Ahmed, 9 Oct 2026) */}
   <div class="absolute inset-0 pattern-bg" aria-hidden="true"></div>
+  <div class="glow" aria-hidden="true"></div>
   <div class="relative mx-auto max-w-6xl px-5 py-12 grid gap-10 md:grid-cols-4">
     <div class="md:col-span-1">
       {/* porcelain logo on midnight at 56 px; stacked lockup → clear space X ≈ 15px, kept by the p-5 wrapper */}

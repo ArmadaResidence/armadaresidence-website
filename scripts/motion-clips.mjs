@@ -173,6 +173,31 @@ const SCENARIOS = {
     });
     await wait(800);
   },
+  // item 9: the bronze glow trailing the pointer over the hero and the footer (desktop only — the phone clip just shows
+  // the same surfaces without it)
+  glow: async (page, size) => {
+    await page.goto(`${BASE}/`, { waitUntil: 'load' });
+    await page.evaluate(() => document.fonts.ready);
+    await wait(1200);
+    if (size.width >= 768) {
+      const hero = await page.locator('.hero').boundingBox();
+      await page.mouse.move(hero.x + 200, hero.y + 200);
+      await page.mouse.move(hero.x + hero.width - 300, hero.y + 160, { steps: 40 });
+      await page.mouse.move(hero.x + hero.width / 2, hero.y + hero.height - 120, { steps: 40 });
+      await page.mouse.move(hero.x + 300, hero.y + 240, { steps: 40 });
+      await wait(400);
+      await page.evaluate(() => scrollTo(0, document.documentElement.scrollHeight));
+      await wait(600);
+      const f = await page.locator('footer').boundingBox();
+      await page.mouse.move(f.x + 200, f.y + 120);
+      await page.mouse.move(f.x + f.width - 300, f.y + 200, { steps: 45 });
+      await wait(500);
+    } else {
+      await wait(1500);
+      await page.evaluate(() => scrollTo({ top: document.documentElement.scrollHeight, behavior: 'smooth' }));
+      await wait(1800);
+    }
+  },
   // item 2: a slow scroll down the home page — headings, cards and sections rise in once, siblings 60 ms apart
   reveal: async (page) => {
     await page.goto(`${BASE}/`, { waitUntil: 'load' });
