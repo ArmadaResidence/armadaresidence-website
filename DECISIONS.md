@@ -193,3 +193,4 @@ Append-only. Newest entries at the bottom of each date.
 ## 2026-10-12 — Supabase MCP (phase 2 tooling)
 - `.mcp.json` adds the project-scoped Supabase MCP server (HTTP, project `wwzxwettsuwtakwwbfly`, features docs/account/database/debugging/development/functions/branching). No keys in the file; each user signs in through OAuth.
 - Writable on purpose (no `read_only`), since phase 2 starts with the schema build (Ahmed). Rule: reads and creation run freely; any migration, delete, or change to existing data waits for Ahmed's yes in chat.
+- Rule refined (Ahmed, 12 Oct 2026): creating new tables, including `apply_migration` that only creates new objects, runs without asking. Approval is needed only for deletes, any change to an existing table or its data (ALTER, UPDATE, a new column/index/FK/RLS policy on an existing table), and anything with a cost (creating a branch). A migration that mixes new objects with a change to an existing one counts as a change.
