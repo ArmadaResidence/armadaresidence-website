@@ -34,7 +34,7 @@ Never pull phase 3 work into phase 1. Ship phase 1 even if Tap is not live.
 - **Backend:** Supabase (Postgres, Auth, Storage, Edge Functions). Phase 2+.
 - **Email:** Resend (or domain SMTP) from an Edge Function. Never from the browser.
 - **Payments:** Tap Payments API — payment links + webhook. Phase 3.
-- **Tracking:** Google Tag Manager. Decision 12 Oct 2026: a new container + new GA4 property on a Google account owned by Armada Residence replace the old `GTM-MFV9WL38` (abandoned, ownership not requested); until the new ID exists `content/contact.json → gtm_container` still carries the old one — swap it there when the container is created (`[TODO: confirm]` the new ID). Ad pixels (Meta / Snap / TikTok) live only inside the container, fed by the dataLayer; no hardcoded pixels. Search Console is verified by a DNS TXT record at Hostinger.
+- **Tracking:** Google Tag Manager. Decision 12 Oct 2026: the new container `GTM-5JVH7R37` on a Google account owned by Armada Residence replaces the old `GTM-MFV9WL38` (abandoned, ownership not requested); its ID lives only in `content/contact.json → gtm_container`. The existing GA4 property 541626231 (`G-675Y7W0H1T`) is kept — exactly one GA4 configuration tag in the container. Ad pixels (Meta / Snap / TikTok) live only inside the container, fed by the dataLayer; no hardcoded pixels. Search Console is verified by a DNS TXT record at Hostinger.
 - **Hosting:** GitHub Pages (account `armadaresidence`), deployed by GitHub Actions on push to `main`. Domain stays at Hostinger; DNS points to GitHub Pages. Build output must be static.
 - **Build & QA:** `build.py` and `qa.py` pattern — `qa.py` exits non-zero on any failure and runs before every deploy.
 

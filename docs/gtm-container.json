@@ -12,7 +12,7 @@
       "accountId": "0",
       "containerId": "0",
       "name": "Armada Residence (armadaresidence.com)",
-      "publicId": "GTM-MFV9WL38",
+      "publicId": "GTM-5JVH7R37",
       "usageContext": [
         "WEB"
       ]
@@ -606,7 +606,7 @@
           {
             "type": "TEMPLATE",
             "key": "value",
-            "value": ""
+            "value": "G-675Y7W0H1T"
           }
         ],
         "notes": "Fill in before publishing (Ahmed)."
