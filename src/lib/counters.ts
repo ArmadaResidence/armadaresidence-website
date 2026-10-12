@@ -1,9 +1,9 @@
 /**
- * Count-up controller (item 6). One IntersectionObserver per page load (threshold 0.5), each strip animated once:
+ * Count-up controller (item 6). One IntersectionObserver per page load (threshold 0.2), each strip animated once:
  * every [data-count] inside runs from 0 to its value over --motion-count with an ease-out cubic (rAF, text only —
  * the span has a reserved width so nothing shifts). Reduced motion or no IO → the final values stay as rendered.
  */
-import { bindOnce, onPageLeave, onPageLoad, reducedMotion } from './client';
+import { bindOnce, motionToken, onPageLeave, onPageLoad, reducedMotion } from './client';
 
 let io: IntersectionObserver | null = null;
 let raf = 0;
@@ -12,7 +12,7 @@ const easeOut = (t: number) => 1 - Math.pow(1 - t, 3);
 function run(strip: Element): void {
   const spans = Array.from(strip.querySelectorAll<HTMLElement>('[data-count]'));
   const targets = spans.map((s) => Number(s.dataset.count) || 0);
-  const dur = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--motion-count')) || 0;
+  const dur = motionToken('count');
   if (!dur) return;
   const t0 = performance.now();
   const tick = (now: number) => {
@@ -42,7 +42,7 @@ onPageLoad(() => {
         obs.unobserve(e.target);
       }
     },
-    { threshold: 0.5 },
+    { threshold: 0.2 },
   );
   strips.forEach((s) => io!.observe(s));
 });

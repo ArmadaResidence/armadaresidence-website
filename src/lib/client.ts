@@ -29,8 +29,15 @@ export const reducedMotion = (): boolean => matchMedia('(prefers-reduced-motion:
 
 export const isRtl = (el: Element = document.documentElement): boolean => getComputedStyle(el).direction === 'rtl';
 
+/** "1.2s" → 1200, "400ms" → 400, "16px" → 16 (the minifier rewrites 1200ms as 1.2s, so units matter). */
+export function cssNumber(value: string): number {
+  const v = value.trim();
+  const n = parseFloat(v);
+  if (!Number.isFinite(n)) return 0;
+  return /\d\s*s$/i.test(v) && !/ms$/i.test(v) ? n * 1000 : n;
+}
+
 /** Motion tokens as numbers (ms / px) read from the CSS custom properties, 0 under reduced motion. */
-export function motionToken(name: 'fast' | 'base' | 'slow' | 'stagger' | 'shift-sm' | 'shift-lg'): number {
-  const v = getComputedStyle(document.documentElement).getPropertyValue(`--motion-${name}`).trim();
-  return parseFloat(v) || 0;
+export function motionToken(name: 'fast' | 'base' | 'slow' | 'count' | 'stagger' | 'shift-sm' | 'shift-lg'): number {
+  return cssNumber(getComputedStyle(document.documentElement).getPropertyValue(`--motion-${name}`));
 }

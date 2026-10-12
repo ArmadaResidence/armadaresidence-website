@@ -293,6 +293,16 @@ const SCENARIOS = {
     });
     await wait(400);
   },
+  // fix 3 (12 Oct): the theme glyph toggled twice, zoomed on the header
+  theme: async (page) => {
+    await page.goto(`${BASE}/`, { waitUntil: 'load' });
+    await page.evaluate(() => document.fonts.ready);
+    await wait(800);
+    for (let i = 0; i < 3; i++) {
+      await page.locator('[data-theme-toggle]').click();
+      await wait(1100);
+    }
+  },
   // item 2: a slow scroll down the home page — headings, cards and sections rise in once, siblings 60 ms apart
   reveal: async (page) => {
     await page.goto(`${BASE}/`, { waitUntil: 'load' });

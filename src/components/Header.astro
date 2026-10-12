@@ -85,14 +85,12 @@ const partnersActive = path.startsWith('/partners/');
           data-label-dark={t.theme.to_dark}
           data-label-light={t.theme.to_light}
         >
-          {/* one glyph that morphs moon ↔ sun (item 5): the disc radius, the crescent cut-out and the rays transition */}
+          {/* moon ↔ sun (item 5): two glyphs cross-fade with a rotate/scale — transform + opacity only, so Safari lands
+              on a clean final icon too (CSS cx/cy/r are not animatable there) */}
           <svg class="theme-icon" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" focusable="false">
-            <mask id="theme-cut">
-              <rect width="24" height="24" fill="#fff"></rect>
-              <circle class="theme-cut" cx="17" cy="7" r="7" fill="#000"></circle>
-            </mask>
-            <circle class="theme-core" cx="12" cy="12" r="9" fill="currentColor" mask="url(#theme-cut)"></circle>
-            <g class="theme-rays" stroke="currentColor" stroke-width="2" stroke-linecap="round" fill="none">
+            <path class="theme-moon" fill="currentColor" d="M12.3 2.5a9.5 9.5 0 109.2 12.1 1 1 0 00-1.3-1.2 7 7 0 01-8.9-8.9 1 1 0 00-1-1.3z"></path>
+            <g class="theme-sun" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+              <circle cx="12" cy="12" r="4" fill="currentColor" stroke="none"></circle>
               <line x1="12" y1="1.5" x2="12" y2="3.5"></line>
               <line x1="12" y1="20.5" x2="12" y2="22.5"></line>
               <line x1="1.5" y1="12" x2="3.5" y2="12"></line>

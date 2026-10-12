@@ -44,7 +44,7 @@ const firstSentence = (text: string) => {
               <a href={href} class="split-title-link">{name}</a>
             </h3>
             <p class="mt-2 text-porcelain/90">{L(locale, b, 'tagline')}</p>
-            <p class="mt-1 text-sm text-porcelain/75 max-w-md">{firstSentence(L(locale, b, 'description'))}</p>
+            <p class="split-desc mt-1 text-sm text-porcelain/75 max-w-md">{firstSentence(L(locale, b, 'description'))}</p>
             <div class="mt-5 flex flex-wrap items-center gap-x-5 gap-y-3">
               <a href={href} class="arrow-nudge inline-flex items-center gap-2 bg-bronze-deep text-white text-sm font-semibold px-4 py-2.5 rounded hover:bg-bronze-text transition-colors">
                 <span>{t.home.view_branch}</span>

@@ -279,14 +279,11 @@ footer :focus-visible,
   color: #142a3b;
 }
 /* header theme glyph: moon in light mode (→ dark), sun in dark mode (→ light); the morph lives in motion.css */
-[data-theme="dark"] .theme-core {
-  r: 5;
+[data-theme="dark"] .theme-moon {
+  opacity: 0;
+  transform: rotate(90deg) scale(0.4);
 }
-[data-theme="dark"] .theme-cut {
-  cx: 30;
-  cy: -6;
-}
-[data-theme="dark"] .theme-rays {
+[data-theme="dark"] .theme-sun {
   opacity: 1;
   transform: none;
 }
@@ -488,6 +485,40 @@ footer :focus-visible,
   .split-body {
     padding: 2.5rem 2.25rem 2.5rem;
     max-width: 34rem;
+    transition:
+      transform var(--motion-base) var(--ease-in-out),
+      opacity var(--motion-base) var(--ease-in-out);
+  }
+  /* the text never sits in the 16 % strip the neighbour's media can grow into (no character is ever covered) */
+  .split-pane:first-child .split-body {
+    margin-inline-end: 16%;
+  }
+  .split-pane:last-child .split-body {
+    margin-inline-start: 16%;
+  }
+  .split-desc {
+    transition: opacity var(--motion-base) var(--ease-in-out);
+  }
+  /* the shrunk pane keeps its title, tagline and buttons whole; only the description fades and the body eases outward */
+  .split:has(.split-pane:hover) .split-pane:not(:hover) .split-desc,
+  .split:has(.split-pane:focus-within) .split-pane:not(:focus-within) .split-desc {
+    opacity: 0;
+  }
+  .split:has(.split-pane:hover) .split-pane:first-child:not(:hover) .split-body,
+  .split:has(.split-pane:focus-within) .split-pane:first-child:not(:focus-within) .split-body {
+    transform: translateX(-8px);
+  }
+  .split:has(.split-pane:hover) .split-pane:last-child:not(:hover) .split-body,
+  .split:has(.split-pane:focus-within) .split-pane:last-child:not(:focus-within) .split-body {
+    transform: translateX(8px);
+  }
+  [dir='rtl'] .split:has(.split-pane:hover) .split-pane:first-child:not(:hover) .split-body,
+  [dir='rtl'] .split:has(.split-pane:focus-within) .split-pane:first-child:not(:focus-within) .split-body {
+    transform: translateX(8px);
+  }
+  [dir='rtl'] .split:has(.split-pane:hover) .split-pane:last-child:not(:hover) .split-body,
+  [dir='rtl'] .split:has(.split-pane:focus-within) .split-pane:last-child:not(:focus-within) .split-body {
+    transform: translateX(-8px);
   }
 }
 
