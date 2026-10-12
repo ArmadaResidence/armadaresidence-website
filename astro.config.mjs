@@ -12,6 +12,7 @@ const redirects = JSON.parse(readFileSync(new URL('./redirects.json', import.met
 const noindexPaths = [
   '/booking/success/',
   '/404/',
+  '/_motion/', // internal motion review page (polish sprint, 11 Oct 2026)
   ...roomsJson.rooms.filter((r) => r.show_on_site && r.availability === 'sold_out').map((r) => `/${r.branch}/${r.slug}/`),
 ];
 const isNoindex = (page) => {

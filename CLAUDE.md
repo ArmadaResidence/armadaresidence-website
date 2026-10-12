@@ -61,6 +61,28 @@ Tone: premium, calm, specific. No "world-class", "exceptional heritage", "heart 
 
 ---
 
+## 3b. Motion system (polish sprint, 11 Oct 2026)
+
+Tokens live in `src/styles/motion.css` and are the only durations, easings and distances the site's own motion may use (legacy sections keep theirs). Under `prefers-reduced-motion` every token is 0 and every element renders its final state at once; JS-driven motion (reveal, counters, glow, nav ink, drawer) checks `reducedMotion()` from `src/lib/client.ts` as well.
+
+| token | value | use |
+|---|---|---|
+| `--motion-fast` | 200 ms | hover, focus, icon morph, small state changes |
+| `--motion-base` | 400 ms | reveal, drawer, cross-fade, nav ink |
+| `--motion-slow` | 700 ms | rules being drawn, hero rule, long settles |
+| `--motion-count` | 1200 ms | count-up figures |
+| `--ease-out` | `cubic-bezier(0.22, 1, 0.36, 1)` | arriving |
+| `--ease-in-out` | `cubic-bezier(0.65, 0, 0.35, 1)` | moving / morphing |
+| `--ease-in` | `cubic-bezier(0.55, 0, 1, 0.45)` | leaving |
+| `--motion-shift-sm` | 16 px | text, labels, small elements |
+| `--motion-shift-lg` | 24 px | cards, sections, media |
+| `--motion-stagger` | 60 ms | between siblings |
+| `--motion-stagger-fast` | 50 ms | between hero words |
+
+Rules: transform and opacity only (no width/height/margin/font-weight animation), `will-change` only on the hero pattern layer and the glow, IntersectionObserver instead of scroll listeners, CLS 0, direction follows the writing direction (`[dir='rtl']` overrides, logical properties, the `translate` property for arrows so the RTL `rotate` is untouched), light and dark alike. Component scripts are ES modules that run once per full load, so each registers an idempotent `init` through `onPageLoad` (`astro:page-load`) and marks bound elements with a data attribute; timers/observers are cleared on `astro:before-swap`. View transitions: `ClientRouter` on every site page except `/discover-taif/`, `/partners/*` and `/menu/`. Review page: `/_motion/` (noindex, outside the sitemap). QA: `node scripts/motion-check.mjs`, `node scripts/drawer-check.mjs`, Lighthouse via `node scripts/lh.mjs <label>` (medians of repeated runs — the lab machine is noisy), clips via `node scripts/motion-clips.mjs <scenario>`.
+
+---
+
 ## 4. Terminology (brand policy — non-negotiable)
 
 - Airport Road is always **"شقق فندقية"** (hotel apartments) / "hotel apartments". Never "شقق مخدومة" / "serviced apartments" for any Armada property.

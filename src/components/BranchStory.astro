@@ -63,7 +63,7 @@ const headingId = `story-${branch.slug}`;
         <ol class="story-scenes mt-8 lg:mt-0" data-story-scenes>
           {scenes.map((sc, i) => (
             <li class:list={['story-scene', i === 0 && 'is-active']} data-story-scene={i}>
-              <span class="story-num latin text-bronze text-sm font-semibold tracking-wide">{String(i + 1).padStart(2, '0')}</span>
+              <span class="story-num latin text-bronze-deep dark:text-bronze text-sm font-semibold tracking-wide">{String(i + 1).padStart(2, '0')}</span>
               <h3 class="mt-2 text-xl md:text-2xl font-bold text-midnight">{L(locale, sc, 'title')}</h3>
               <p class="mt-3 text-ink-muted leading-relaxed max-w-md">{L(locale, sc, 'body')}</p>
             </li>

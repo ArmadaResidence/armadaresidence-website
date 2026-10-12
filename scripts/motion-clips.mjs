@@ -274,6 +274,25 @@ const SCENARIOS = {
     await page.locator('[data-gallery-next]').click();
     await wait(2400);
   },
+  // item 14: the /_motion/ review page, scrolled through
+  review: async (page) => {
+    await page.goto(`${BASE}/_motion/`, { waitUntil: 'load' });
+    await page.evaluate(() => document.fonts.ready);
+    await wait(1500);
+    await page.evaluate(async () => {
+      const end = Math.min(document.documentElement.scrollHeight - innerHeight, innerHeight * 3);
+      const t0 = performance.now();
+      await new Promise((done) => {
+        const tick = () => {
+          const p = Math.min(1, (performance.now() - t0) / 4000);
+          scrollTo(0, end * p);
+          p < 1 ? requestAnimationFrame(tick) : done();
+        };
+        requestAnimationFrame(tick);
+      });
+    });
+    await wait(400);
+  },
   // item 2: a slow scroll down the home page — headings, cards and sections rise in once, siblings 60 ms apart
   reveal: async (page) => {
     await page.goto(`${BASE}/`, { waitUntil: 'load' });

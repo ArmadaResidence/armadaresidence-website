@@ -69,11 +69,11 @@ const social: { name: string; url: string }[] = [
             const c = branchContact(b.slug);
             return (
               <li>
-                <a href={branchPath(locale, b.slug)} class="font-medium hover:text-bronze">
+                <a href={branchPath(locale, b.slug)} class="inline-block py-1 font-medium hover:text-bronze">
                   {L(locale, b, 'name')}
                 </a>
                 <br />
-                <a href={telHref(c.phone)} class="latin text-porcelain/80 hover:text-bronze" dir="ltr">
+                <a href={telHref(c.phone)} class="latin inline-block py-1 text-porcelain/80 hover:text-bronze" dir="ltr">
                   {c.phone_display}
                 </a>
               </li>
@@ -89,7 +89,7 @@ const social: { name: string; url: string }[] = [
         {
           siteLinks.map((n) => (
             <li>
-              <a href={localePath(locale, n.path)} class="hover:text-bronze">
+              <a href={localePath(locale, n.path)} class="inline-block py-0.5 hover:text-bronze">
                 {t.nav[n.key]}
               </a>
             </li>

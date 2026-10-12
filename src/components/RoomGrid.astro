@@ -25,7 +25,7 @@ const t = ui(locale);
     rooms.length > 1 && (
       <div class="room-dots sm:hidden mt-3 flex justify-center" data-carousel-dots role="tablist" aria-label={t.branch.rooms_heading}>
         {rooms.map((_, i) => (
-          <button type="button" class="gallery-dot-hit w-6 h-6 grid place-items-center" aria-label={`${t.branch.view_room} ${i + 1}`} aria-current={i === 0 ? 'true' : 'false'}>
+          <button type="button" class="gallery-dot-hit w-6 h-6 grid place-items-center" role="tab" aria-label={`${t.branch.view_room} ${i + 1}`} aria-current={i === 0 ? 'true' : 'false'}>
             <span class="gallery-dot block w-2.5 h-2.5 rounded-full transition-colors" aria-hidden="true" />
           </button>
         ))}

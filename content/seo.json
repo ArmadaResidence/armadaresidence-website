@@ -65,6 +65,13 @@
       "description_en": "Your booking request has reached the Armada Residence reception team. We will confirm availability within hours.",
       "noindex": true
     },
+    "_motion": {
+      "title_ar": "مراجعة الحركة | أرمادا ريزيدنس",
+      "description_ar": "صفحة داخلية لمراجعة مكوّنات الحركة في موقع أرمادا ريزيدنس. غير مفهرسة.",
+      "title_en": "Motion review | Armada Residence",
+      "description_en": "Internal page reviewing the motion components of the Armada Residence website. Not indexed.",
+      "noindex": true
+    },
     "404": {
       "title_ar": "الصفحة غير موجودة | أرمادا ريزيدنس",
       "description_ar": "الصفحة المطلوبة غير موجودة على موقع أرمادا ريزيدنس.",
