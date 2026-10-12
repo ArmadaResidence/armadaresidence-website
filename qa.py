@@ -14,6 +14,10 @@ Checks:
   - phones / WhatsApp / emails match content/contact.json exactly; sales line only on /offers
   - price lines rendered from pricing.json; sold-out rooms have no booking CTA
   - home transfer size < 1 MB; no external requests except GTM and own domain
+  - blog (content/articles/<slug>.<lang>.md): both languages per slug, frontmatter complete, seo_title <= 60 and
+    seo_description <= 155, branch / related_place / cover resolve, every internal Markdown link exists in the build
+    and stays in the article's language; each published article is built in both languages, listed on its /blog/,
+    and carries its own title/description, og:type article, the nearest-branch booking card and the place link
 
 Usage: python qa.py [--allow-todo]   (--allow-todo = dev mode: content gaps become warnings; NOT deployable)
 """
@@ -477,6 +481,10 @@ def main() -> int:
                     "Hotel": ["name", "address", "geo", "telephone", "image", "url"],
                     "LodgingBusiness": ["name", "address", "geo", "telephone", "image", "url"],
                     "HotelRoom": ["name", "url", "containedInPlace", "description"],
+                    "Article": ["headline", "description", "image", "datePublished", "dateModified", "author",
+                                "publisher", "mainEntityOfPage", "inLanguage", "url"],
+                    "Blog": ["name", "url", "publisher", "blogPost"],
+                    "BreadcrumbList": ["itemListElement"],
                 }.get(t_)
                 if req is None:
                     rep.f("json-ld", f"{path}: unexpected @type {t_}")
@@ -522,6 +530,10 @@ def main() -> int:
             rep.f("json-ld", f"{path}: branch page must carry Hotel/LodgingBusiness")
         if lp in room_by_path and "HotelRoom" not in types:
             rep.f("json-ld", f"{path}: room page must carry HotelRoom")
+        if re.fullmatch(r"/blog/[a-z0-9-]+/", lp) and "Article" not in types:
+            rep.f("json-ld", f"{path}: article page must carry Article")
+        if lp == "/blog/" and "Blog" not in types:
+            rep.f("json-ld", f"{path}: /blog/ must carry Blog")
 
         # Discover Taif: every place renders as a card with its photo
         if lp == "/discover-taif/":
@@ -670,6 +682,8 @@ def main() -> int:
         else:
             print(f"home transfer ≈ {kb:.0f} KB (html+css+js+fonts, uncompressed)")
 
+    check_articles(rep, pages)
+
     # ---- report
     n_fail = sum(len(v) for v in rep.fail.values())
     n_warn = sum(len(v) for v in rep.warn.values())
@@ -694,6 +708,160 @@ def main() -> int:
         return 0
     print(f"\n✓ all checks passed ({n_warn} warning(s))")
     return 0
+
+
+# ---------------------------------------------------------------- blog (12 Oct 2026)
+ARTICLES = CONTENT / "articles"
+ARTICLE_KEYS = ("slug", "lang", "title", "seo_title", "seo_description", "tags", "branch", "related_place",
+                "cover", "cover_alt", "date", "status", "author")
+COVER_PENDING = "[TODO(photo)]"
+MAX_SEO_TITLE, MAX_SEO_DESC = 60, 155
+IMG_WIDTHS = (400, 800, 1400, 1920)
+
+
+def parse_frontmatter(text: str) -> tuple[dict, str] | None:
+    """Frontmatter = one `key: value` per line between --- fences; values are JSON literals (strings in double
+    quotes, arrays like ["a", "b"], null) or bare words. This is the format the admin editor writes (phase 2)."""
+    m = re.match(r"^---\r?\n(.*?)\r?\n---\r?\n?(.*)$", text, re.S)
+    if not m:
+        return None
+    data: dict = {}
+    for line in m.group(1).splitlines():
+        if not line.strip() or line.lstrip().startswith("#"):
+            continue
+        k, sep, v = line.partition(":")
+        if not sep:
+            return None
+        v = v.strip()
+        try:
+            data[k.strip()] = json.loads(v)
+        except json.JSONDecodeError:
+            data[k.strip()] = v.strip("'")
+    return data, m.group(2)
+
+
+def image_exists(ref: str) -> bool:
+    base = ref.strip().lstrip("/").removesuffix(".webp")
+    return any((ROOT / "public" / f"{base}-{w}.webp").is_file() for w in IMG_WIDTHS)
+
+
+def check_articles(rep: "Report", pages: dict) -> None:
+    if not ARTICLES.is_dir():
+        return
+    branches = {b["slug"] for b in json.loads((CONTENT / "branches.json").read_text(encoding="utf-8"))["branches"]}
+    place_keys = {p.get("key") for p in json.loads((CONTENT / "taif-guide.json").read_text(encoding="utf-8"))["places"]}
+    G = "blog"
+    by_slug: dict[str, dict[str, dict]] = defaultdict(dict)
+    for f in sorted(ARTICLES.glob("*.md")):
+        fm = re.fullmatch(r"([a-z0-9]+(?:-[a-z0-9]+)*)\.(ar|en)\.md", f.name)
+        if not fm:
+            if f.name.lower() != "readme.md":
+                rep.f(G, f"content/articles/{f.name}: file name must be <slug>.<ar|en>.md")
+            continue
+        slug, lang = fm.group(1), fm.group(2)
+        parsed = parse_frontmatter(f.read_text(encoding="utf-8"))
+        if parsed is None:
+            rep.f(G, f"{f.name}: frontmatter missing or unreadable")
+            continue
+        d, body = parsed
+        where = f.name
+        for k in ARTICLE_KEYS:
+            if k not in d:
+                rep.f(G, f"{where}: frontmatter {k} is missing")
+            elif k != "related_place" and d[k] in ("", [], None):
+                rep.f(G, f"{where}: frontmatter {k} is empty")
+        if d.get("slug") != slug:
+            rep.f(G, f"{where}: slug {d.get('slug')!r} != file name")
+        if d.get("lang") != lang:
+            rep.f(G, f"{where}: lang {d.get('lang')!r} != file name")
+        st, sd = str(d.get("seo_title", "")), str(d.get("seo_description", ""))
+        if len(st) > MAX_SEO_TITLE:
+            rep.f(G, f"{where}: seo_title is {len(st)} chars (limit {MAX_SEO_TITLE})")
+        if len(sd) > MAX_SEO_DESC:
+            rep.f(G, f"{where}: seo_description is {len(sd)} chars (limit {MAX_SEO_DESC})")
+        if d.get("status") not in ("published", "draft"):
+            rep.f(G, f"{where}: status must be published or draft")
+        if not re.fullmatch(r"\d{4}-\d{2}-\d{2}", str(d.get("date", ""))):
+            rep.f(G, f"{where}: date must be YYYY-MM-DD")
+        if d.get("branch") not in branches:
+            rep.f(G, f"{where}: branch {d.get('branch')!r} is not in branches.json")
+        if d.get("related_place") and d["related_place"] not in place_keys:
+            rep.f(G, f"{where}: related_place {d['related_place']!r} is not a taif-guide.json place key")
+        tags = d.get("tags")
+        if not isinstance(tags, list) or not tags or not all(isinstance(x, str) and x.strip() for x in tags):
+            rep.f(G, f"{where}: tags must be a non-empty list of strings")
+        cover = str(d.get("cover", ""))
+        if cover and cover != COVER_PENDING and not image_exists(cover):
+            rep.f(G, f"{where}: cover {cover!r} has no <base>-<width>.webp under public/")
+        alt = str(d.get("cover_alt", ""))
+        if (lang == "ar" and not ARABIC.search(alt)) or (lang == "en" and not LATIN.search(alt)):
+            rep.f(G, f"{where}: cover_alt not in the article's language")
+        # :::photo / :::gallery directives: every image exists and has a real alt
+        for im in re.finditer(r"^:::(?:photo|gallery)[ \t]*\r?\n(.*?)\r?\n:::[ \t]*$", body, re.S | re.M):
+            for line in im.group(1).splitlines():
+                if not line.strip():
+                    continue
+                parts = [s.strip() for s in line.split("|")]
+                if not image_exists(parts[0]):
+                    rep.f(G, f"{where}: directive image {parts[0]!r} not found under public/")
+                if len(parts) < 2 or len(parts[1]) < 4:
+                    rep.f(G, f"{where}: directive image {parts[0]!r} without a real alt")
+        # internal Markdown links: exist in the build and stay in the article's language
+        for lm in re.finditer(r"\]\((/[^)\s]*)\)", body):
+            href = lm.group(1)
+            if not exists(href):
+                rep.f(G, f"{where}: internal link {href} does not exist in the build")
+            if lang == "en" and not href.startswith("/en/"):
+                rep.f(G, f"{where}: internal link {href} points to an Arabic page")
+            if lang == "ar" and href.startswith("/en/"):
+                rep.f(G, f"{where}: internal link {href} points to an English page")
+        by_slug[slug][lang] = d
+
+    published = 0
+    for slug, langs in sorted(by_slug.items()):
+        missing = {"ar", "en"} - set(langs)
+        if missing:
+            rep.f(G, f"{slug}: missing the {'/'.join(sorted(missing))} version (content/articles/{slug}.<lang>.md)")
+            continue
+        ar, en = langs["ar"], langs["en"]
+        for k in ("status", "branch", "related_place", "date"):
+            if ar.get(k) != en.get(k):
+                rep.f(G, f"{slug}: {k} differs between ar ({ar.get(k)!r}) and en ({en.get(k)!r})")
+        if ar.get("status") != "published" or en.get("status") != "published":
+            for p_ in (f"/blog/{slug}/", f"/en/blog/{slug}/"):
+                if p_ in pages:
+                    rep.f(G, f"{p_}: built although the article is not published in both languages")
+            continue
+        published += 1
+        for loc, d in (("ar", ar), ("en", en)):
+            pre = "" if loc == "ar" else "/en"
+            p_ = f"{pre}/blog/{slug}/"
+            if p_ not in pages:
+                rep.f(G, f"{p_}: published article not built")
+                continue
+            pg = pages[p_]
+            if pg.title.strip() != d.get("seo_title"):
+                rep.f(G, f"{p_}: <title> != seo_title")
+            if pg.metas.get("description", "").strip() != d.get("seo_description"):
+                rep.f(G, f"{p_}: meta description != seo_description")
+            if pg.metas.get("og:type") != "article":
+                rep.f(G, f"{p_}: og:type must be article")
+            listing = f"{pre}/blog/"
+            if listing in pages and p_ not in pages[listing].links:
+                rep.f(G, f"{listing}: does not list {p_}")
+            if f"{pre}/booking/?branch={d.get('branch')}" not in pg.links:
+                rep.f(G, f"{p_}: booking card for {d.get('branch')} missing")
+            if d.get("related_place"):
+                anchor = f"{pre}/discover-taif/#place-{d['related_place']}"
+                if anchor not in pg.links:
+                    rep.f(G, f"{p_}: link to the related place {anchor} missing")
+                dt = pages.get(f"{pre}/discover-taif/")
+                if dt is not None and f"place-{d['related_place']}" not in dt.ids:
+                    rep.f(G, f"{anchor}: no card with that id on /discover-taif/")
+    for listing in ("/blog/", "/en/blog/"):
+        if listing not in pages:
+            rep.f(G, f"{listing} not built")
+    print(f"blog: {published} article(s) published in both languages")
 
 
 if __name__ == "__main__":

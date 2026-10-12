@@ -1,0 +1,42 @@
+---
+/**
+ * Article body (blog, 12 Oct 2026): the sections from renderBody() in the 68ch reading column. Each `##` section is
+ * one Reveal block (the intro is not wrapped); :::photo → Photo, :::gallery → GallerySlider. Used by the article page
+ * and by the /_motion/ review sample.
+ */
+import GallerySlider from './GallerySlider.astro';
+import Photo from './Photo.astro';
+import { ui, type Locale } from '@lib/content';
+import type { Section } from '@lib/articles';
+
+interface Props {
+  locale: Locale;
+  sections: Section[];
+}
+const { locale, sections } = Astro.props;
+const g = ui(locale).gallery;
+const galleryLabels = { previous: g.previous, next: g.next, goTo: g.go_to, open: g.open, close: g.close, of: g.of };
+---
+
+<div class="article-measure article-prose">
+  {
+    sections.map((sec) => (
+      <div class:list={[!sec.intro && 'reveal']}>
+        {sec.segments.map((seg) =>
+          seg.kind === 'html' ? (
+            <Fragment set:html={seg.html} />
+          ) : seg.kind === 'photo' ? (
+            <figure class="article-figure">
+              <Photo src={seg.image.src} srcset={seg.image.srcset} sizes="(min-width: 768px) 68ch, 100vw" alt={seg.image.alt} width={seg.image.width} height={seg.image.height} lqip={seg.image.lqip} class="block rounded-card overflow-hidden" imgClass="w-full h-auto" />
+              {seg.image.caption && <figcaption>{seg.image.caption}</figcaption>}
+            </figure>
+          ) : (
+            <div class="article-figure">
+              <GallerySlider images={seg.images} labels={galleryLabels} />
+            </div>
+          ),
+        )}
+      </div>
+    ))
+  }
+</div>

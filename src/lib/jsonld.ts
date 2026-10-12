@@ -200,3 +200,71 @@ export function hotelRoom(locale: Locale, room: Room, b: Branch) {
       };
   return node;
 }
+
+/* ---------- blog (12 Oct 2026) ---------- */
+
+export interface ArticleLd {
+  url: string;
+  headline: string;
+  description: string;
+  image: string;
+  datePublished: string;
+  dateModified: string;
+  keywords: string[];
+  author: string;
+  branchSlug: string;
+}
+
+function publisher(locale: Locale) {
+  return {
+    '@type': 'Organization',
+    name: siteName(locale),
+    url: absoluteUrl(localePath(locale, '/')),
+    logo: { '@type': 'ImageObject', url: logoUrl() },
+  };
+}
+
+/** Article per blog post: headline/description from the article's frontmatter, publisher = the brand. */
+export function article(locale: Locale, a: ArticleLd) {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'Article',
+    headline: a.headline,
+    description: a.description,
+    image: absoluteUrl(a.image),
+    datePublished: a.datePublished,
+    dateModified: a.dateModified,
+    inLanguage: locale,
+    keywords: a.keywords.join(', '),
+    url: absoluteUrl(a.url),
+    mainEntityOfPage: { '@type': 'WebPage', '@id': absoluteUrl(a.url) },
+    author: { '@type': 'Organization', name: a.author, url: absoluteUrl(localePath(locale, '/')) },
+    publisher: publisher(locale),
+    isPartOf: { '@type': 'Blog', '@id': absoluteUrl(localePath(locale, '/blog/')) },
+    about: { '@type': a.branchSlug === 'shafa-road' ? 'Hotel' : 'LodgingBusiness', '@id': absoluteUrl(branchPath(locale, a.branchSlug)) + '#lodging' },
+  };
+}
+
+/** Blog listing: the Blog with its posts. */
+export function blog(locale: Locale, name: string, description: string, posts: { url: string; headline: string; datePublished: string }[]) {
+  const url = absoluteUrl(localePath(locale, '/blog/'));
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'Blog',
+    '@id': url,
+    name,
+    description,
+    url,
+    inLanguage: locale,
+    publisher: publisher(locale),
+    blogPost: posts.map((p) => ({ '@type': 'BlogPosting', headline: p.headline, url: absoluteUrl(p.url), datePublished: p.datePublished })),
+  };
+}
+
+export function breadcrumbs(items: { name: string; path: string }[]) {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: items.map((it, i) => ({ '@type': 'ListItem', position: i + 1, name: it.name, item: absoluteUrl(it.path) })),
+  };
+}

@@ -686,3 +686,243 @@ body.has-room-bar .wa-fab {
     min-height: 50vh;
   }
 }
+
+/* ---------- Blog (12 Oct 2026) ----------
+   Reading column 68ch; Arabic gets a taller line-height. Colours from the brand tokens only (dark mode follows the
+   token overrides above). Small bronze text uses bronze-text (4.7:1 on porcelain); links are underlined. */
+.article-measure {
+  max-width: 68ch;
+  margin-inline: auto;
+}
+.article-prose {
+  font-size: 1.0625rem;
+  line-height: 1.75;
+  color: var(--color-ink);
+}
+:root[lang='ar'] .article-prose {
+  font-size: 1.125rem;
+  line-height: 1.95;
+}
+.article-prose p,
+.article-prose ul,
+.article-prose ol,
+.article-prose blockquote,
+.article-prose .article-figure {
+  margin-top: 1.15em;
+}
+.article-prose > div:first-child > p:first-child {
+  margin-top: 0;
+  font-size: 1.12em;
+  color: var(--color-ink);
+}
+.article-prose h2 {
+  margin-top: 2.4em;
+  font-size: 1.45em;
+  line-height: 1.35;
+  font-weight: 700;
+  color: var(--color-midnight);
+  scroll-margin-top: 7rem;
+}
+.article-prose h2::before {
+  content: '';
+  display: block;
+  width: 2.5rem;
+  height: 2px;
+  margin-bottom: 0.75rem;
+  background: var(--color-bronze);
+}
+.article-prose h3 {
+  margin-top: 1.8em;
+  font-size: 1.15em;
+  font-weight: 700;
+  color: var(--color-midnight);
+  scroll-margin-top: 7rem;
+}
+.article-prose ul,
+.article-prose ol {
+  padding-inline-start: 1.4em;
+}
+.article-prose ul {
+  list-style: disc;
+}
+.article-prose ol {
+  list-style: decimal;
+}
+.article-prose li + li {
+  margin-top: 0.45em;
+}
+.article-prose li::marker {
+  color: var(--color-bronze);
+}
+.article-prose strong {
+  font-weight: 700;
+  color: var(--color-midnight);
+}
+.article-prose a {
+  color: var(--color-bronze-text);
+  font-weight: 600;
+  text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, var(--color-bronze) 55%, transparent);
+  text-underline-offset: 0.25em;
+  text-decoration-thickness: 1px;
+  transition: color var(--motion-fast) var(--ease-out);
+}
+.article-prose a:hover {
+  color: var(--color-midnight);
+}
+.article-prose blockquote {
+  margin-top: 2em;
+  padding: 1.1em 1.4em;
+  border-inline-start: 3px solid var(--color-bronze);
+  background: var(--color-white);
+  border-radius: 0 var(--radius-card) var(--radius-card) 0;
+  font-size: 1.05em;
+  color: var(--color-midnight);
+}
+[dir='rtl'] .article-prose blockquote {
+  border-radius: var(--radius-card) 0 0 var(--radius-card);
+}
+.article-prose blockquote > :first-child {
+  margin-top: 0;
+}
+.article-prose em {
+  font-style: italic;
+}
+:root[lang='ar'] .article-prose em {
+  font-style: normal;
+  color: var(--color-ink-muted);
+}
+.article-prose p:has(> em:only-child) {
+  font-size: 0.875em;
+  color: var(--color-ink-muted);
+}
+.article-prose hr {
+  margin-block: 2.5em;
+  border-color: var(--color-line);
+}
+.article-prose .article-figure {
+  margin-top: 2em;
+}
+.article-prose figcaption {
+  margin-top: 0.6em;
+  font-size: 0.85em;
+  color: var(--color-ink-muted);
+}
+[data-theme='dark'] .article-prose a,
+[data-theme='dark'] .article-prose blockquote {
+  color: var(--dk-bronze-text);
+}
+[data-theme='dark'] .article-prose blockquote {
+  background: var(--dk-surface);
+}
+[data-theme='dark'] .article-prose a:hover {
+  color: var(--color-midnight);
+}
+
+/* tag chips: filter buttons on /blog/ and links on the article page; 40 px hit area (24 px min for the small ones) */
+.tag-chip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2.5rem;
+  padding: 0.35rem 0.95rem;
+  border: 1px solid var(--color-line);
+  border-radius: 999px;
+  background: var(--color-white);
+  color: var(--color-ink);
+  font-size: 0.875rem;
+  font-weight: 500;
+  transition:
+    background-color var(--motion-fast) var(--ease-out),
+    color var(--motion-fast) var(--ease-out),
+    border-color var(--motion-fast) var(--ease-out);
+}
+.tag-chip:hover {
+  border-color: var(--color-bronze);
+}
+.tag-chip[aria-pressed='true'] {
+  background: var(--color-midnight);
+  border-color: var(--color-midnight);
+  color: var(--color-porcelain);
+}
+.tag-chip-sm {
+  min-height: 1.75rem;
+  padding: 0.15rem 0.7rem;
+  font-size: 0.8125rem;
+  color: var(--color-bronze-text);
+}
+[data-theme='dark'] .tag-chip {
+  background: var(--dk-surface);
+}
+[data-theme='dark'] .tag-chip[aria-pressed='true'] {
+  background: var(--color-porcelain);
+  border-color: var(--color-porcelain);
+  color: #142a3b;
+}
+[data-theme='dark'] .tag-chip-sm {
+  color: var(--dk-bronze-text);
+}
+/* the filter needs JS; html.js is set before first paint, so hiding it without JS causes no layout shift */
+:root:not(.js) .blog-filter {
+  display: none;
+}
+
+/* whole card clickable through the title link */
+.article-card-link::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: var(--radius-card);
+}
+.article-card-link:focus-visible {
+  outline: none;
+}
+.article-card:has(.article-card-link:focus-visible) {
+  outline: 2px solid var(--color-bronze);
+  outline-offset: 2px;
+}
+.article-card {
+  transition: border-color var(--motion-fast) var(--ease-out);
+}
+.article-card:hover {
+  border-color: var(--color-bronze);
+}
+
+/* reading progress: a CSS scroll-driven animation on the article body (no scroll listener, transform only).
+   Browsers without scroll timelines simply don't show the bar. */
+.read-progress {
+  display: none;
+  position: fixed;
+  top: 0;
+  inset-inline: 0;
+  height: 3px;
+  z-index: 60;
+  background: var(--color-bronze);
+  transform: scaleX(0);
+  transform-origin: 0 50%;
+  pointer-events: none;
+}
+[dir='rtl'] .read-progress {
+  transform-origin: 100% 50%;
+}
+@supports (animation-timeline: view()) {
+  .article-body-wrap {
+    view-timeline: --article block;
+  }
+  .read-progress {
+    display: block;
+    animation-name: read-progress;
+    animation-timing-function: linear;
+    animation-fill-mode: both;
+  }
+  /* separate, more specific rule: the CSS minifier would otherwise fold the timeline into the `animation`
+     shorthand, which browsers reject */
+  .article-page .read-progress {
+    animation-timeline: --article;
+    animation-range: contain 0% contain 100%;
+  }
+}
+@keyframes read-progress {
+  to {
+    transform: scaleX(1);
+  }
+}

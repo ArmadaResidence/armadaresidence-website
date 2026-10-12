@@ -119,10 +119,12 @@ Arabic is default at `/`, English at `/en/`. Readable slugs only — never IDs.
 /offers                    offers + Umrah groups + B2B (one page)
 /contact                   both branches, maps, phones, hours
 /policies                  booking / cancellation / refund / privacy
+/blog                      article list + tag filter (added 12 Oct 2026)
+/blog/<slug>               article (content/articles/<slug>.<lang>.md)
 /en/...                    mirror of all above
 ```
 
-Halls/events, gallery, blog: phase 2 or later. Do not build them in phase 1.
+Halls/events, gallery: phase 2 or later. Do not build them in phase 1. The blog was brought forward by Ahmed on 12 Oct 2026: articles are Markdown files in `content/articles/` (format in its README; seo_title ≤ 60, seo_description ≤ 155, both languages required — qa.py enforces it); the phase-2 admin editor (module 3.10) writes to the same structure.
 
 ---
 

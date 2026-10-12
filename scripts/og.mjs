@@ -17,3 +17,21 @@ await sharp({ create: { width: 1200, height: 630, channels: 4, background: MIDNI
   .toFile(out);
 
 console.log(`OG image written: ${out}`);
+
+// Blog (12 Oct 2026): one OG crop per article from its cover (content/articles/<slug>.ar.md → cover = image base under
+// public/). Articles whose cover is still the placeholder keep the default image above.
+import { existsSync, readdirSync } from 'node:fs';
+mkdirSync('public/og/blog', { recursive: true });
+let blogOg = 0;
+for (const f of existsSync('content/articles') ? readdirSync('content/articles') : []) {
+  const m = f.match(/^([a-z0-9-]+)\.ar\.md$/);
+  if (!m) continue;
+  const cover = (readFileSync(`content/articles/${f}`, 'utf8').match(/^cover:\s*"?([^"\n]+)"?\s*$/m) || [])[1] || '';
+  if (!cover || cover.startsWith('[')) continue;
+  const base = cover.replace(/^\//, '').replace(/\.webp$/, '');
+  const src = [1920, 1400, 800].map((w) => `public/${base}-${w}.webp`).find((p) => existsSync(p));
+  if (!src) continue;
+  await sharp(src).resize(1200, 630, { fit: 'cover' }).jpeg({ quality: 82, mozjpeg: true }).toFile(`public/og/blog/${m[1]}.jpg`);
+  blogOg++;
+}
+console.log(`Blog OG images written: ${blogOg}`);

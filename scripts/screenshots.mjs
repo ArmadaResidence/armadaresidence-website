@@ -20,7 +20,11 @@ const PAGES = [
   ['partners-enquiry', '/partners/enquiry/'],
   ['partners-groups-umrah', '/partners/groups-umrah/'],
   ['menu', '/menu/'],
+  ['blog', '/blog/'],
+  ['blog-taif-rose-season', '/blog/taif-rose-season/'],
 ];
+// ONLY=blog,blog-taif-rose-season → capture just those pages
+const ONLY = (process.env.ONLY || '').split(',').filter(Boolean);
 const SIZES = [
   { width: 1440, height: 900, deviceScaleFactor: 1, isMobile: false },
   { width: 375, height: 812, deviceScaleFactor: 2, isMobile: true },
@@ -47,7 +51,7 @@ if (!process.env.BASE_URL) {
   });
 }
 try {
-  await waitFor(`${BASE}/`);
+  if (server) await waitFor(`${BASE}/`); // an external BASE_URL is assumed to be up (Node fetch trips over some HTTP/1.0 servers)
   mkdirSync(OUT, { recursive: true });
 
   let browser;
@@ -70,7 +74,7 @@ try {
       locale: 'ar-SA',
     });
     const page = await ctx.newPage();
-    for (const [name, path] of PAGES) {
+    for (const [name, path] of PAGES.filter(([n]) => !ONLY.length || ONLY.includes(n))) {
       await page.goto(`${BASE}${path}`, { waitUntil: 'load' });
       await page.evaluate(() => document.fonts.ready);
       // walk down the page so lazy-loaded images are fetched before the full-page capture

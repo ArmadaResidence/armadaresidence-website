@@ -1,0 +1,236 @@
+---
+/**
+ * /blog/<slug>/ and /en/blog/<slug>/ (12 Oct 2026). Built only for slugs published in both languages.
+ * Title / description from the article's seo_title / seo_description; reading column 68ch; each ## section reveals;
+ * :::photo / :::gallery render Photo / GallerySlider; reading progress = CSS scroll-driven animation (no listener).
+ * Closing blocks: nearest branch + booking card (branch from frontmatter → the drawer opens prefilled), the related
+ * Discover Taif place, related articles (same tag or branch).
+ */
+import Base from '@layouts/Base.astro';
+import ArticleCard from '@components/ArticleCard.astro';
+import ArticleBody from '@components/ArticleBody.astro';
+import Photo from '@components/Photo.astro';
+import Placeholder from '@components/Placeholder.astro';
+import Icon from '@components/Icon.astro';
+import {
+  articlePath,
+  articles,
+  blogPath,
+  coverImage,
+  formatDate,
+  placeAnchor,
+  publishedSlugs,
+  minutesText,
+  relatedArticles,
+  relatedPlace,
+  renderBody,
+} from '@lib/articles';
+import {
+  branchBySlug,
+  branchContact,
+  branchPath,
+  categoryLabel,
+  fill,
+  L,
+  localePath,
+  policies,
+  seo,
+  ui,
+  waHref,
+  type Locale,
+} from '@lib/content';
+import { article as articleLd, breadcrumbs } from '@lib/jsonld';
+import { existsSync } from 'node:fs';
+import { join } from 'node:path';
+
+export async function getStaticPaths() {
+  const slugs = await publishedSlugs();
+  return (['ar', 'en'] as Locale[]).flatMap((locale) =>
+    slugs.map((slug) => ({ params: { lang: locale === 'ar' ? undefined : 'en', slug }, props: { locale } })),
+  );
+}
+
+interface Props {
+  locale: Locale;
+}
+const { locale } = Astro.props;
+const { slug } = Astro.params as { slug: string };
+const t = ui(locale);
+const b = t.blog;
+const all = await articles(locale);
+const both = new Set(await publishedSlugs());
+const a = all.find((x) => x.slug === slug)!;
+const path = `/blog/${slug}/`;
+
+const sections = await renderBody(a.body);
+const cover = await coverImage(a);
+const minutes = minutesText(locale, a.body);
+const branch = branchBySlug(a.branch);
+const c = branchContact(a.branch);
+const place = relatedPlace(a.related_place);
+const related = relatedArticles(
+  all.filter((x) => both.has(x.slug)),
+  a,
+);
+const checkTimes = locale === 'ar' ? `${policies.check_in_ar} — ${policies.check_out_ar}` : `${policies.check_in_en} — ${policies.check_out_en}`;
+
+// Open Graph: the cover's OG crop once the approved photo exists (scripts/og.mjs writes /og/blog/<slug>.jpg);
+// until then the default brand image.
+const ogFile = `/og/blog/${slug}.jpg`;
+const ogImage = cover && existsSync(join(process.cwd(), 'public', ogFile)) ? ogFile : seo.default_og_image;
+
+
+const crumbs = [
+  { name: t.nav.home, path: localePath(locale, '/') },
+  { name: b.heading, path: blogPath(locale) },
+  { name: a.title, path: articlePath(locale, slug) },
+];
+const jsonld = [
+  articleLd(locale, {
+    url: articlePath(locale, slug),
+    headline: a.title,
+    description: a.seo_description,
+    image: ogImage,
+    datePublished: a.date,
+    dateModified: a.updated ?? a.date,
+    keywords: a.tags,
+    author: a.author,
+    branchSlug: a.branch,
+  }),
+  breadcrumbs(crumbs),
+];
+---
+
+<Base locale={locale} path={path} title={a.seo_title} description={a.seo_description} jsonld={jsonld} ogImage={ogImage} ogType="article">
+  <Fragment slot="head">
+    <meta property="article:published_time" content={a.date} />
+    <meta property="article:modified_time" content={a.updated ?? a.date} />
+    {a.tags.map((tag) => <meta property="article:tag" content={tag} />)}
+  </Fragment>
+
+  <article class="article-page" data-article>
+    <header class="mx-auto max-w-6xl px-4 pt-8">
+      <nav aria-label={b.breadcrumb} class="text-sm text-ink-muted">
+        <ol class="flex flex-wrap items-center gap-1.5">
+          <li><a href={localePath(locale, '/')} class="hover:text-midnight">{t.nav.home}</a></li>
+          <li aria-hidden="true">/</li>
+          <li><a href={blogPath(locale)} class="hover:text-midnight">{b.heading}</a></li>
+        </ol>
+      </nav>
+      <div class="article-measure mt-6">
+        <ul class="flex flex-wrap gap-1.5" aria-label={b.tags}>
+          {
+            a.tags.map((tag) => (
+              <li>
+                <a href={`${blogPath(locale)}?tag=${encodeURIComponent(tag)}`} class="tag-chip tag-chip-sm">
+                  {tag}
+                </a>
+              </li>
+            ))
+          }
+        </ul>
+        <h1 class="mt-4 text-3xl md:text-[2.6rem] md:leading-[1.2] font-bold text-midnight text-balance">{a.title}</h1>
+        <p class="mt-4 text-sm text-ink-muted">
+          <span>{b.published} </span><time datetime={a.date}>{formatDate(locale, a.date)}</time>
+          <span aria-hidden="true"> · </span><span>{minutes}</span>
+          <span aria-hidden="true"> · </span><span>{a.author}</span>
+        </p>
+      </div>
+      <div class="mt-8 max-w-4xl mx-auto" transition:name={`article-cover-${a.slug}`}>
+        {
+          cover ? (
+            <Photo src={cover.src} srcset={cover.srcset} sizes="(min-width: 1024px) 896px, 100vw" alt={cover.alt} width={cover.width} height={cover.height} lqip={cover.lqip} loading="eager" fetchpriority="high" class="block rounded-card overflow-hidden aspect-[16/9] md:aspect-[21/9]" imgClass="w-full h-full object-cover" />
+          ) : (
+            <Placeholder label={fill(b.cover_pending, { alt: a.cover_alt })} class="aspect-[16/9]! md:aspect-[21/9]!" />
+          )
+        }
+      </div>
+    </header>
+
+    <div class="article-body-wrap relative px-4 mt-10">
+      <div class="read-progress" role="presentation" aria-hidden="true"></div>
+      <ArticleBody locale={locale} sections={sections} />
+    </div>
+
+    <aside class="mx-auto max-w-6xl px-4 mt-14 grid gap-6 lg:grid-cols-5" aria-label={b.nearest_branch}>
+      <section class="reveal reveal-lg lg:col-span-3 relative bg-midnight text-porcelain rounded-card p-6 md:p-8 overflow-hidden">
+        <div class="absolute inset-0 pattern-bg" aria-hidden="true"></div>
+        <div class="relative">
+          <p class="text-sm font-semibold text-porcelain/80">{b.nearest_branch}</p>
+          <h2 class="mt-2 text-2xl font-bold">{fill(b.book_heading, { branch: L(locale, branch, 'name') })}</h2>
+          <p class="mt-2 text-porcelain/85">{L(locale, branch, 'tagline')}</p>
+          <p class="mt-4 text-sm text-porcelain/80 flex items-start gap-2">
+            <Icon name="pin" size={16} class="mt-0.5 shrink-0" />
+            <span>{L(locale, branch, 'address')}</span>
+          </p>
+          <p class="mt-2 text-sm text-porcelain/80 flex items-center gap-2">
+            <Icon name="clock" size={16} class="shrink-0" />
+            <span>{checkTimes}</span>
+          </p>
+          <p class="mt-5 text-porcelain/90">{b.book_body}</p>
+          <div class="mt-6 flex flex-wrap gap-3">
+            <a
+              href={`${localePath(locale, '/booking/')}?branch=${branch.slug}`}
+              class="inline-flex items-center gap-2 bg-bronze-deep text-white font-semibold px-5 py-3 rounded hover:bg-bronze-text transition-colors"
+              data-article-book
+            >
+              <Icon name="calendar" size={18} />
+              <span>{b.book_cta}</span>
+            </a>
+            <a
+              href={waHref(c.whatsapp)}
+              class="inline-flex items-center gap-2 border border-porcelain/50 font-semibold px-5 py-3 rounded hover:bg-porcelain hover:text-midnight transition-colors"
+              aria-label={`${b.whatsapp} — ${L(locale, branch, 'name')}`}
+            >
+              <Icon name="whatsapp" size={18} />
+              <span>{b.whatsapp}</span>
+            </a>
+            <a href={branchPath(locale, branch.slug)} class="inline-flex items-center gap-1 font-semibold px-2 py-3 hover:text-bronze">
+              <span>{b.branch_page}</span>
+              <Icon name="arrow" size={16} class="icon-arrow rtl:rotate-180" />
+            </a>
+          </div>
+        </div>
+      </section>
+
+      {
+        place && (
+          <section class="reveal reveal-lg lg:col-span-2 bg-white border border-line rounded-card p-6 md:p-8 flex flex-col">
+            <p class="text-sm font-semibold text-bronze-text">{b.related_place}</p>
+            <h2 class="mt-2 text-xl font-bold text-midnight">{locale === 'ar' ? place.name_ar : place.name_en}</h2>
+            <p class="mt-1 text-xs text-ink-muted">{categoryLabel(locale, place.category)}</p>
+            <p class="mt-3 text-ink-muted leading-relaxed">{locale === 'ar' ? place.description_ar : place.description_en}</p>
+            <a
+              href={`${localePath(locale, '/discover-taif/')}#${placeAnchor(place)}`}
+              class="mt-auto pt-5 inline-flex items-center gap-1 text-sm font-semibold text-bronze-text hover:text-midnight"
+            >
+              <span>{b.related_place_cta}</span>
+              <Icon name="arrow" size={16} class="icon-arrow rtl:rotate-180" />
+            </a>
+          </section>
+        )
+      }
+    </aside>
+
+    {
+      related.length > 0 && (
+        <section class="mx-auto max-w-6xl px-4 mt-14" aria-labelledby="related-heading">
+          <div class="flex items-end justify-between gap-4">
+            <h2 id="related-heading" class="text-2xl font-bold text-midnight">
+              {b.related}
+            </h2>
+            <a href={blogPath(locale)} class="text-sm font-semibold text-bronze-text hover:text-midnight inline-flex items-center gap-1">
+              <span>{b.back}</span>
+              <Icon name="arrow" size={16} class="icon-arrow rtl:rotate-180" />
+            </a>
+          </div>
+          <div class="reveal-group mt-6 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+            {related.map((r) => (
+              <ArticleCard locale={locale} article={r} level={3} />
+            ))}
+          </div>
+        </section>
+      )
+    }
+  </article>
+</Base>

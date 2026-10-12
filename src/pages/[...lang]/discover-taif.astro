@@ -152,7 +152,7 @@ const colCount = (n: number) => (ar ? (n === 2 ? 'وجهتان' : `${n} وجها
               const multi = p.maps.length > 1;
               const search = [p.name_ar, p.name_en, cat(p.category), p.search_extra].join(' ');
               return (
-                <article class="card" data-id={p.id} data-place={p.id} data-cat={p.category} data-search={search}>
+                <article class="card" id={`place-${p.key}`} data-id={p.id} data-place={p.id} data-cat={p.category} data-search={search}>
                   <div class="card-media">
                     <img
                       src={im.src}

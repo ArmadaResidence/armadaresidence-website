@@ -22,6 +22,8 @@ interface Props {
   /** Branch slug for the sticky WhatsApp button; omit for the two-branch chooser. */
   whatsapp?: string;
   ogImage?: string;
+  /** Open Graph type: "article" on blog posts, "website" elsewhere. */
+  ogType?: 'website' | 'article';
   /** Where the language switch goes when this page has no twin (404). Defaults to `path`. */
   switchPath?: string;
   /** Favicon set; the café menu page swaps in the café favicon (brand/cafe identity). */
@@ -41,6 +43,7 @@ const {
   jsonld = [],
   whatsapp,
   ogImage = seo.default_og_image,
+  ogType = 'website',
   switchPath = Astro.props.path,
   icons = { svg: '/favicon.svg', png32: '/icons/favicon-32.png', apple: '/icons/apple-touch-icon.png' },
   hideFooter = false,
@@ -98,7 +101,7 @@ const preloadFonts = locale === 'ar' ? [fontAr400, fontAr600, fontAr700] : [font
     <link rel="alternate" hreflang="ar" href={arUrl} />
     <link rel="alternate" hreflang="en" href={enUrl} />
     <link rel="alternate" hreflang="x-default" href={arUrl} />
-    <meta property="og:type" content="website" />
+    <meta property="og:type" content={ogType} />
     <meta property="og:site_name" content={siteName(locale)} />
     <meta property="og:title" content={title} />
     <meta property="og:description" content={description} />

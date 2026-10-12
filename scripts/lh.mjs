@@ -1,5 +1,5 @@
-// Lighthouse scores for the built site (dist/) — mobile + desktop for the pages that matter to the motion sprint.
-//   node scripts/lh.mjs <label> [BASE_URL]        → reports/lighthouse/<label>-<page>-<form>.json + a summary table
+// Lighthouse scores for the built site (dist/) â€” mobile + desktop for the pages that matter to the motion sprint.
+//   node scripts/lh.mjs <label> [BASE_URL]        â†’ reports/lighthouse/<label>-<page>-<form>.json + a summary table
 // Needs the global `lighthouse` CLI (npm i -g lighthouse) and a running preview (astro preview on 127.0.0.1:4321).
 import { spawnSync } from 'node:child_process';
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
@@ -11,6 +11,8 @@ const ALL_PAGES = [
   ['home', '/'],
   ['branch', '/airport-road/'],
   ['room', '/airport-road/one-bedroom-suite/'],
+  ['blog', '/blog/'],
+  ['article', '/blog/taif-rose-season/'],
 ];
 // PAGES=branch,room FORMS=mobile narrow a run while iterating
 const PAGES = ALL_PAGES.filter(([n]) => !process.env.PAGES || process.env.PAGES.split(',').includes(n));
@@ -54,5 +56,5 @@ for (const [name, path] of PAGES) {
 }
 const header = '| page | form | perf | a11y | bp | seo | LCP | CLS | TBT | weight |\n|---|---|---|---|---|---|---|---|---|---|';
 const table = [header, ...rows.map((r) => `| ${r.page} | ${r.form} | ${r.perf} | ${r.a11y} | ${r.bp} | ${r.seo} | ${r.lcp} | ${r.cls} | ${r.tbt} | ${r.bytes} |`)].join('\n');
-writeFileSync(`${OUT}/${label}-summary.md`, `# Lighthouse — ${label} (${new Date().toISOString().slice(0, 16)})\n\n${table}\n`);
+writeFileSync(`${OUT}/${label}-summary.md`, `# Lighthouse â€” ${label} (${new Date().toISOString().slice(0, 16)})\n\n${table}\n`);
 console.log(table);

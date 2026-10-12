@@ -16,6 +16,7 @@ const nav: { key: keyof typeof t.nav; path: string }[] = [
   { key: 'airport-road', path: '/airport-road/' },
   { key: 'shafa-road', path: '/shafa-road/' },
   { key: 'discover-taif', path: '/discover-taif/' },
+  { key: 'blog', path: '/blog/' },
   { key: 'offers', path: '/offers/' },
   { key: 'contact', path: '/contact/' },
   { key: 'policies', path: '/policies/' },
@@ -52,12 +53,12 @@ const partnersActive = path.startsWith('/partners/');
       </a>
 
       {/* desktop nav: one bronze ink line slides between items (item 5); without JS the active item keeps a static line */}
-      <nav class="hidden lg:flex relative items-center gap-5 text-sm font-medium" aria-label={t.nav.menu} data-nav>
+      <nav class="hidden lg:flex relative items-center gap-3 xl:gap-5 text-sm font-medium" aria-label={t.nav.menu} data-nav>
         {
           nav.map((n) => (
             <a
               href={localePath(locale, n.path)}
-              class:list={['nav-link py-2 transition-colors', isActive(n.path) ? 'text-midnight' : 'text-ink-muted hover:text-midnight']}
+              class:list={['nav-link py-2 whitespace-nowrap transition-colors', isActive(n.path) ? 'text-midnight' : 'text-ink-muted hover:text-midnight']}
               aria-current={isActive(n.path) ? 'page' : undefined}
             >
               {t.nav[n.key]}
@@ -105,7 +106,7 @@ const partnersActive = path.startsWith('/partners/');
         </button>
         <a
           href={localePath(locale, '/booking/')}
-          class="hidden sm:inline-flex items-center bg-bronze-deep text-white text-sm font-semibold px-4 py-2 rounded hover:bg-bronze-text transition-colors"
+          class="hidden sm:inline-flex items-center whitespace-nowrap bg-bronze-deep text-white text-sm font-semibold px-4 py-2 rounded hover:bg-bronze-text transition-colors"
           >{t.nav.book}</a
         >
         <button

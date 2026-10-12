@@ -34,6 +34,7 @@
     {
       "id": "p01",
       "slug": "01-al-hada-cable-car",
+      "key": "al-hada-cable-car",
       "name_ar": "الهدا والتلفريك وقرية الكر",
       "name_en": "Al Hada, Cable Car & Al Kar Tourist Village",
       "category": "nature",
@@ -65,6 +66,7 @@
     {
       "id": "p02",
       "slug": "02-al-shafa-jabal-daka",
+      "key": "al-shafa",
       "name_ar": "مرتفعات الشفا وجبل دكا",
       "name_en": "Al Shafa Highlands & Jabal Daka",
       "category": "nature",
@@ -96,6 +98,7 @@
     {
       "id": "p03",
       "slug": "03-al-ruddaf-park",
+      "key": "al-ruddaf-park",
       "name_ar": "منتزه الردف",
       "name_en": "Al Ruddaf Park",
       "category": "family",
@@ -127,6 +130,7 @@
     {
       "id": "p04",
       "slug": "04-saiysad-national-park",
+      "key": "saiysad-national-park",
       "name_ar": "منتزه الطائف الوطني بسيسد",
       "name_en": "Saiysad National Park",
       "category": "nature",
@@ -158,6 +162,7 @@
     {
       "id": "p05",
       "slug": "05-jisr-alluwzia",
+      "key": "jisr-alluwzia",
       "name_ar": "منتجع جسر اللوزية",
       "name_en": "Jisr Al-Lawziyah Resort",
       "category": "family",
@@ -189,6 +194,7 @@
     {
       "id": "p06",
       "slug": "06-souq-okaz",
+      "key": "souq-okaz",
       "name_ar": "سوق عكاظ",
       "name_en": "Souq Okaz",
       "category": "history",
@@ -220,6 +226,7 @@
     {
       "id": "p07",
       "slug": "07-shubra-palace",
+      "key": "shubra-palace",
       "name_ar": "قصر شبرا التاريخي",
       "name_en": "Shubra Historical Palace",
       "category": "history",
@@ -251,6 +258,7 @@
     {
       "id": "p08",
       "slug": "08-al-kaaki-palace",
+      "key": "al-kaaki-palace",
       "name_ar": "قصر الكعكي",
       "name_en": "Al Kaaki Palace",
       "category": "history",
@@ -282,6 +290,7 @@
     {
       "id": "p09",
       "slug": "09-al-sharif-museum",
+      "key": "al-sharif-museum",
       "name_ar": "متحف الشريف",
       "name_en": "Al Sharif Museum",
       "category": "history",
@@ -313,6 +322,7 @@
     {
       "id": "p10",
       "slug": "10-taif-al-balad-market",
+      "key": "taif-al-balad-market",
       "name_ar": "سوق البلد",
       "name_en": "Al Balad Market",
       "category": "markets",
@@ -344,6 +354,7 @@
     {
       "id": "p11",
       "slug": "11-abdullah-ibn-abbas-mosque",
+      "key": "abdullah-ibn-abbas-mosque",
       "name_ar": "مسجد عبدالله بن عباس",
       "name_en": "Abdullah Ibn Abbas Mosque",
       "category": "history",
@@ -375,6 +386,7 @@
     {
       "id": "p12",
       "slug": "12-taif-rose-farm",
+      "key": "taif-rose",
       "name_ar": "تجربة الورد الطائفي",
       "name_en": "Taif Rose Experience",
       "category": "markets",
@@ -413,6 +425,7 @@
     {
       "id": "p13",
       "slug": "13-strawberry-farm",
+      "key": "strawberry-farm",
       "name_ar": "قرية التوت ومزارع الفراولة",
       "name_en": "Tut Village & Strawberry Farms",
       "category": "markets",
@@ -444,6 +457,7 @@
     {
       "id": "p14",
       "slug": "14-miqat-sail-al-kabir",
+      "key": "miqat-qarn-al-manazil",
       "name_ar": "ميقات قرن المنازل – السيل الكبير",
       "name_en": "Qarn Al-Manazil Miqat – Al Sail Al Kabir",
       "category": "miqat",
@@ -475,6 +489,7 @@
     {
       "id": "p15",
       "slug": "15-miqat-wadi-muharram",
+      "key": "miqat-wadi-muharram",
       "name_ar": "ميقات وادي محرم – طريق الهدا",
       "name_en": "Wadi Muharram Miqat – Al Hada Road",
       "category": "miqat",
@@ -506,6 +521,7 @@
     {
       "id": "p16",
       "slug": "16-bab-al-hazm",
+      "key": "bab-al-hazm",
       "name_ar": "باب الحزم التاريخي",
       "name_en": "Historic Bab Al Hazm",
       "category": "history",
@@ -537,6 +553,7 @@
     {
       "id": "p17",
       "slug": "17-taif-zoo",
+      "key": "taif-zoo",
       "name_ar": "حديقة الحيوانات بالطائف",
       "name_en": "Taif Zoo",
       "category": "family",

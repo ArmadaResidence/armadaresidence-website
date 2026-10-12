@@ -12,6 +12,8 @@ import Divider from '@components/Divider.astro';
 import Icon from '@components/Icon.astro';
 import Photo from '@components/Photo.astro';
 import RoomGrid from '@components/RoomGrid.astro';
+import ArticleBody from '@components/ArticleBody.astro';
+import { renderBody } from '@lib/articles';
 import { langPaths } from '@lib/paths';
 import { branchBySlug, branches, localePath, lqip, pageSeo, roomsFor, siteStats, siteTexts, ui, type Locale } from '@lib/content';
 
@@ -79,6 +81,23 @@ const items: { n: number; title: string; note: string }[] = ar
       { n: 14, title: 'Reduced motion', note: 'Under prefers-reduced-motion every token is 0 and final states show at once.' },
     ];
 const h = ar ? 'مراجعة الحركة' : 'Motion review';
+// Blog sample (12 Oct 2026): the same renderer the articles use — :::photo and :::gallery inside Markdown,
+// one Reveal per ## section. Approved café photos; alts from ui.json → dining.photo_alts.
+const sampleMd = [
+  ar ? 'نموذج لمكوّنات المقال: الصورة والمعرض داخل نص Markdown، وكل قسم يظهر عند التمرير.' : 'Sample of the article components: a photo and a gallery inside Markdown, each section revealed on scroll.',
+  '',
+  ar ? '## صورة داخل المقال' : '## A photo inside the article',
+  ':::photo',
+  `/images/dining/caesar-salad | ${alts['caesar-salad']} | ${ar ? 'تعليق اختياري تحت الصورة' : 'Optional caption under the photo'}`,
+  ':::',
+  '',
+  ar ? '## معرض داخل المقال' : '## A gallery inside the article',
+  ':::gallery',
+  ...['cutlet-penne', 'cutlet-alfredo', 'pizza-margherita'].map((s) => `/images/dining/${s} | ${alts[s]}`),
+  ':::',
+].join('\n');
+const sampleSections = await renderBody(sampleMd);
+
 ---
 
 <Base locale={locale} path="/_motion/" title={s.title} description={s.description} noindex={true}>
@@ -180,6 +199,13 @@ const h = ar ? 'مراجعة الحركة' : 'Motion review';
           imgClass="w-full h-auto"
         />
       ))}
+    </div>
+  </section>
+
+  <section class="cv-auto mx-auto max-w-6xl px-4 pb-14">
+    <h2 class="reveal text-2xl md:text-3xl font-bold text-midnight">{ar ? 'مكوّنات المقال' : 'Article components'}</h2>
+    <div class="mt-6">
+      <ArticleBody locale={locale} sections={sampleSections} />
     </div>
   </section>
 

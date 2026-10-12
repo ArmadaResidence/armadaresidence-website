@@ -114,3 +114,13 @@
   margin: 0;
   max-width: 640px;
 }
+
+/* Blog → Discover Taif deep links (/discover-taif/#place-<key>, 12 Oct 2026): the card clears the sticky site
+   header and is outlined in bronze when it is the target. */
+.legacy-discover .card[id] {
+  scroll-margin-top: 7rem;
+}
+.legacy-discover .card:target {
+  outline: 2px solid var(--color-bronze);
+  outline-offset: 3px;
+}

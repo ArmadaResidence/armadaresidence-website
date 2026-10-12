@@ -115,6 +115,12 @@
       "description_ar": "أرسل البرنامج والتواريخ وعدد الأفراد إلى المكتب التجاري لفنادق أرمادا ريزيدنس بالطائف، وتصلك الإتاحة خلال يوم عمل.",
       "title_en": "Partner Enquiry | Armada Residence Commercial Office",
       "description_en": "Send the programme, dates and party size to the Armada Residence commercial office in Taif. Availability comes back within one working day."
+    },
+    "blog": {
+      "title_ar": "المدونة | أدلة زيارة الطائف من أرمادا ريزيدنس",
+      "description_ar": "أدلة عملية لزيارة الطائف: موسم الورد، الشفا في الشتاء، سوق عكاظ، العمرة عبر الطائف، ورحلات العائلة — مع الفرع الأقرب لكل وجهة.",
+      "title_en": "Blog | Taif Travel Guides by Armada Residence",
+      "description_en": "Practical guides to visiting Taif: rose season, Al Shafa in winter, Souq Okaz, Umrah via Taif and family trips — with the nearest property for each."
     }
   },
   "room_templates": {
@@ -134,5 +140,6 @@
   "pending": [
     "Ahmed's approval of titles and descriptions",
     "real OG image per page once the approved photo set arrives"
-  ]
+  ],
+  "blog_note": "Article <title>/description come from content/articles frontmatter (seo_title / seo_description, ≤ 60 / ≤ 155), never from here."
 }

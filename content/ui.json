@@ -15,7 +15,8 @@
       "menu": "القائمة",
       "close": "إغلاق",
       "discover-taif": "اكتشف الطائف",
-      "partners": "للشركاء والوكالات"
+      "partners": "للشركاء والوكالات",
+      "blog": "المدونة"
     },
     "home": {
       "branches_heading": "فرعانا في الطائف",
@@ -348,6 +349,37 @@
     "story": {
       "heading": "جولة في الفرع",
       "scene": "المشهد {n} من {total}"
+    },
+    "blog": {
+      "_note": "Blog UI strings (12 Oct 2026). Article content lives in content/articles/<slug>.<lang>.md.",
+      "heading": "المدونة",
+      "intro": "أدلة قصيرة لزيارة الطائف: المواسم، الوجهات، والعمرة — ومن أين تنطلق في رحلتك.",
+      "filter_label": "تصفية حسب الوسم",
+      "all": "الكل",
+      "count": "{n} مقالات",
+      "count_one": "مقال واحد",
+      "count_two": "مقالان",
+      "empty": "لا توجد مقالات بهذا الوسم.",
+      "read": "اقرأ المقال",
+      "minutes": "{n} دقائق قراءة",
+      "minute_one": "دقيقة قراءة",
+      "published": "نُشر في",
+      "breadcrumb": "مسار التنقل",
+      "progress": "تقدّم القراءة",
+      "nearest_branch": "الفرع الأقرب",
+      "book_heading": "اطلب حجزًا في {branch}",
+      "book_body": "اختر تواريخك وعدد الضيوف، وسيؤكد الاستقبال التوافر والسعر.",
+      "book_cta": "اطلب حجزًا",
+      "branch_page": "صفحة الفرع",
+      "whatsapp": "واتساب الفرع",
+      "related_place": "الوجهة في دليل اكتشف الطائف",
+      "related_place_cta": "افتح في الدليل",
+      "related": "مقالات ذات صلة",
+      "back": "كل المقالات",
+      "tags": "الوسوم",
+      "cover_pending": "صورة الغلاف قيد الإعداد: {alt}",
+      "minute_two": "دقيقتان للقراءة",
+      "minutes_many": "{n} دقيقة قراءة"
     }
   },
   "en": {
@@ -365,7 +397,8 @@
       "menu": "Menu",
       "close": "Close",
       "discover-taif": "Discover Taif",
-      "partners": "Partners & agencies"
+      "partners": "Partners & agencies",
+      "blog": "Blog"
     },
     "home": {
       "branches_heading": "Our two properties in Taif",
@@ -697,6 +730,36 @@
     "story": {
       "heading": "A walk through the property",
       "scene": "Scene {n} of {total}"
+    },
+    "blog": {
+      "heading": "Blog",
+      "intro": "Short guides to visiting Taif: the seasons, the places and Umrah — and where to start your trip from.",
+      "filter_label": "Filter by tag",
+      "all": "All",
+      "count": "{n} articles",
+      "count_one": "1 article",
+      "count_two": "2 articles",
+      "empty": "No articles with this tag.",
+      "read": "Read the article",
+      "minutes": "{n} min read",
+      "minute_one": "1 min read",
+      "published": "Published",
+      "breadcrumb": "Breadcrumb",
+      "progress": "Reading progress",
+      "nearest_branch": "Nearest property",
+      "book_heading": "Request a booking at {branch}",
+      "book_body": "Choose your dates and guests; reception will confirm availability and price.",
+      "book_cta": "Request a booking",
+      "branch_page": "Property page",
+      "whatsapp": "Property WhatsApp",
+      "related_place": "In the Discover Taif guide",
+      "related_place_cta": "Open in the guide",
+      "related": "Related articles",
+      "back": "All articles",
+      "tags": "Tags",
+      "cover_pending": "Cover photo in preparation: {alt}",
+      "minute_two": "2 min read",
+      "minutes_many": "{n} min read"
     }
   }
 }

@@ -1,0 +1,59 @@
+---
+/**
+ * Blog card (listing + related articles): cover (brand placeholder until the approved photo), date · reading time,
+ * title, description (seo_description), tags. `data-tags` feeds the tag filter on /blog/.
+ */
+import { articlePath, coverImage, formatDate, minutesText, type Article } from '@lib/articles';
+import { fill, ui, type Locale } from '@lib/content';
+import Placeholder from './Placeholder.astro';
+import Photo from './Photo.astro';
+import Icon from './Icon.astro';
+
+interface Props {
+  locale: Locale;
+  article: Article;
+  /** heading level inside the card (h2 on /blog/, h3 under "related articles") */
+  level?: 2 | 3;
+  /** true when the card list is filtered by tag (adds data-tags) */
+  filterable?: boolean;
+}
+const { locale, article: a, level = 2, filterable = false } = Astro.props;
+const t = ui(locale).blog;
+const href = articlePath(locale, a.slug);
+const cover = await coverImage(a);
+const minutes = minutesText(locale, a.body);
+const H = `h${level}` as 'h2' | 'h3';
+---
+
+<article
+  class="article-card relative bg-white border border-line rounded-card overflow-hidden flex flex-col"
+  data-tags={filterable ? JSON.stringify(a.tags) : undefined}
+>
+  <div class="relative" transition:name={`article-cover-${a.slug}`}>
+    {
+      cover ? (
+        <Photo src={cover.src} srcset={cover.srcset} sizes="(min-width: 1024px) 360px, (min-width: 640px) 50vw, 100vw" alt={cover.alt} width={cover.width} height={cover.height} lqip={cover.lqip} class="block aspect-[3/2]" imgClass="w-full h-full object-cover" />
+      ) : (
+        <Placeholder label={fill(t.cover_pending, { alt: a.cover_alt })} class="rounded-b-none" />
+      )
+    }
+  </div>
+  <div class="p-5 flex flex-col gap-3 flex-1">
+    <p class="text-xs text-ink-muted">
+      <time datetime={a.date}>{formatDate(locale, a.date)}</time>
+      <span aria-hidden="true"> · </span>
+      <span>{minutes}</span>
+    </p>
+    <H class="text-lg font-semibold text-midnight leading-snug">
+      <a href={href} class="article-card-link hover:text-bronze-text">{a.title}</a>
+    </H>
+    <p class="text-sm text-ink-muted leading-relaxed">{a.seo_description}</p>
+    <ul class="mt-auto pt-2 flex flex-wrap gap-1.5" aria-label={t.tags}>
+      {a.tags.map((tag) => <li class="text-xs bg-porcelain text-ink px-2 py-1 rounded">{tag}</li>)}
+    </ul>
+    <span class="inline-flex items-center gap-1 text-sm font-semibold text-bronze-text" aria-hidden="true">
+      <span>{t.read}</span>
+      <Icon name="arrow" size={16} class="icon-arrow rtl:rotate-180" />
+    </span>
+  </div>
+</article>

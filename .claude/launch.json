@@ -4,14 +4,42 @@
     {
       "name": "preview",
       "runtimeExecutable": "npx",
-      "runtimeArgs": ["astro", "preview", "--host", "127.0.0.1", "--port", "4321"],
+      "runtimeArgs": [
+        "astro",
+        "preview",
+        "--host",
+        "127.0.0.1",
+        "--port",
+        "4321"
+      ],
       "port": 4321
     },
     {
       "name": "dev",
       "runtimeExecutable": "npx",
-      "runtimeArgs": ["astro", "dev", "--host", "127.0.0.1", "--port", "4321"],
+      "runtimeArgs": [
+        "astro",
+        "dev",
+        "--host",
+        "127.0.0.1",
+        "--port",
+        "4321"
+      ],
       "port": 4321
+    },
+    {
+      "name": "preview-4330",
+      "runtimeExecutable": "python",
+      "runtimeArgs": [
+        "-m",
+        "http.server",
+        "4330",
+        "--bind",
+        "127.0.0.1",
+        "--directory",
+        "dist"
+      ],
+      "port": 4330
     }
   ]
 }
