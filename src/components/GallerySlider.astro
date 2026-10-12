@@ -7,6 +7,8 @@
  */
 interface Image {
   src: string;
+  /** tiny blurred preview (data: URI) painted under the photo while it loads */
+  lqip?: string;
   srcset?: string;
   sizes?: string;
   alt: string;
@@ -33,7 +35,7 @@ const id = `gal-${Array.from(images[0]?.src ?? 'x').reduce((h, c) => (h * 31 + c
       {
         images.map((img, i) => (
           <li class="gallery-slide shrink-0 w-full h-full" aria-roledescription="slide" aria-label={`${i + 1} ${labels.of} ${images.length}`}>
-            <button type="button" class="block w-full h-full cursor-zoom-in" data-gallery-open={i} aria-label={`${labels.open}: ${img.alt}`}>
+            <button type="button" class="photo block w-full h-full cursor-zoom-in" data-gallery-open={i} aria-label={`${labels.open}: ${img.alt}`} style={img.lqip ? `background-image:url("${img.lqip}")` : undefined}>
               <img
                 src={i === 0 ? img.src : undefined}
                 srcset={i === 0 ? img.srcset : undefined}
@@ -46,7 +48,7 @@ const id = `gal-${Array.from(images[0]?.src ?? 'x').reduce((h, c) => (h * 31 + c
                 loading={i === 0 ? 'eager' : 'lazy'}
                 decoding="async"
                 draggable="false"
-                class="w-full h-full object-cover"
+                class="photo-img w-full h-full object-cover"
               />
             </button>
           </li>

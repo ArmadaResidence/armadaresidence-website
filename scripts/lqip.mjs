@@ -4,8 +4,9 @@
 import sharp from 'sharp';
 import { readdirSync, statSync, writeFileSync, readFileSync, existsSync } from 'node:fs';
 import { join, relative, sep } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
-const ROOT = new URL('..', import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, '$1');
+const ROOT = fileURLToPath(new URL('..', import.meta.url));
 const SRC = join(ROOT, 'content', 'images');
 const OUT = join(ROOT, 'content', 'lqip.json');
 

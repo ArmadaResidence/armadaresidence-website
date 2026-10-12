@@ -6,7 +6,8 @@ Steps:
   1. Validate content/*.json (parse + structural sanity, no guessing of values).
   2. Generate supabase/functions/booking-request/content.generated.json from content/ so the
      Edge Function never hardcodes emails, numbers or names.
-  3. Render the default Open Graph image from the approved SVG logo (scripts/og.mjs).
+  3. Generate content/lqip.json (16 px blurred previews of the approved photos, scripts/lqip.mjs) and render the
+     default Open Graph image from the approved SVG logo (scripts/og.mjs).
   4. Run `astro build` → dist/ (static).
   5. Print the list of generated pages.
 
@@ -328,6 +329,7 @@ def main() -> int:
     if DIST.exists():
         shutil.rmtree(DIST)
     sync_images()
+    run(["node", "scripts/lqip.mjs"])
     run(["node", "scripts/og.mjs"])
     run(["node", "scripts/favicons.mjs"])
     run(["npx", "astro", "build"])

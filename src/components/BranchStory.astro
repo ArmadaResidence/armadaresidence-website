@@ -6,7 +6,8 @@
  * IntersectionObserver; opacity only). Copy and image slots come from branches.json → story; images are brand
  * placeholders with the final file names reserved (image.base null) until the approved photos arrive.
  */
-import { fill, L, ui, type Branch, type Locale } from '@lib/content';
+import { fill, L, lqip, ui, type Branch, type Locale } from '@lib/content';
+import Photo from './Photo.astro';
 import Placeholder from './Placeholder.astro';
 
 interface Scene {
@@ -37,7 +38,7 @@ const headingId = `story-${branch.slug}`;
             {scenes.map((sc, i) => (
               <div class:list={['story-img', i === 0 && 'is-active']} data-story-img={i}>
                 {sc.image.base ? (
-                  <img
+                  <Photo
                     src={`${sc.image.base}-${sc.image.widths[0]}.webp`}
                     srcset={sc.image.widths.map((w) => `${sc.image.base}-${w}.webp ${w}w`).join(', ')}
                     sizes="(min-width: 1024px) 560px, 100vw"
@@ -45,8 +46,9 @@ const headingId = `story-${branch.slug}`;
                     width={sc.image.widths[0]}
                     height={Math.round((sc.image.widths[0] * 2) / 3)}
                     loading={i === 0 ? 'eager' : 'lazy'}
-                    decoding="async"
-                    class="absolute inset-0 w-full h-full object-cover"
+                    lqip={lqip(`${sc.image.base}-${sc.image.widths[0]}.webp`)}
+                    class="absolute inset-0"
+                    imgClass="w-full h-full object-cover"
                   />
                 ) : (
                   <Placeholder label={fill(t.photo_pending_alt, { subject: L(locale, sc.image, 'alt') })} class="photo-fill rounded-none" />

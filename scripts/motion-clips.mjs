@@ -263,6 +263,17 @@ const SCENARIOS = {
     await page.evaluate(() => scrollBy({ top: innerHeight * 0.55, behavior: 'smooth' }));
     await wait(1800);
   },
+  // item 13: progressive photos — the dining gallery on a throttled connection: brand tint + blurred preview, then
+  // the photo sharpens as it arrives
+  photos: async (page) => {
+    const cdp = await page.context().newCDPSession(page);
+    await cdp.send('Network.emulateNetworkConditions', { offline: false, latency: 200, downloadThroughput: (600 * 1024) / 8, uploadThroughput: (300 * 1024) / 8 });
+    await page.goto(`${BASE}/airport-road/`, { waitUntil: 'domcontentloaded' });
+    await page.evaluate(() => document.querySelector('[data-gallery]').scrollIntoView({ block: 'center' }));
+    await wait(2800);
+    await page.locator('[data-gallery-next]').click();
+    await wait(2400);
+  },
   // item 2: a slow scroll down the home page — headings, cards and sections rise in once, siblings 60 ms apart
   reveal: async (page) => {
     await page.goto(`${BASE}/`, { waitUntil: 'load' });

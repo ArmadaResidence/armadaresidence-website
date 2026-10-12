@@ -382,3 +382,31 @@ html.drawer-open {
 [data-theme='dark'] .divider {
   color: var(--dk-bronze-text);
 }
+
+/* ---------- Progressive photos (item 13) ----------
+   Brand-tinted box (optionally painted with the 16 px preview) at the final ratio; the photo fades in from a soft
+   blur once decoded (.is-loaded from src/lib/photo.ts). No JS → plain image. Dimensions never change. */
+.photo {
+  display: block;
+  position: relative;
+  overflow: hidden;
+  background-color: color-mix(in srgb, var(--color-midnight) 12%, var(--color-porcelain));
+  background-size: cover;
+  background-position: center;
+}
+.photo-img {
+  display: block;
+  opacity: 0;
+  filter: blur(14px);
+  transform: scale(1.04);
+  transition:
+    opacity var(--motion-base) var(--ease-out),
+    filter var(--motion-slow) var(--ease-out),
+    transform var(--motion-slow) var(--ease-out);
+}
+.photo-img.is-loaded,
+html:not(.js) .photo-img {
+  opacity: 1;
+  filter: none;
+  transform: none;
+}

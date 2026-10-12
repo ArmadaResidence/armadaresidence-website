@@ -5,7 +5,7 @@
  * (.cafe-card in global.css). Photos: the four approved café photos in content/images/dining/ (Ahmed, 9 Oct 2026).
  * The rooftop restaurant stays hidden while dining.rooftop.show_on_site is false.
  */
-import { fill, localePath, telHref, ui, waHref, type Branch, type Locale } from '@lib/content';
+import { fill, localePath, lqip, telHref, ui, waHref, type Branch, type Locale } from '@lib/content';
 import type { Dining } from '@lib/jsonld';
 import Icon from './Icon.astro';
 import GallerySlider from './GallerySlider.astro';
@@ -34,6 +34,7 @@ const galleryLabels = { previous: g.previous, next: g.next, goTo: g.go_to, open:
 const photo = (slug: string) => ({
   src: `/images/dining/${slug}-800.webp`,
   srcset: `/images/dining/${slug}-800.webp 800w, /images/dining/${slug}-1400.webp 1400w`,
+  lqip: lqip(`/images/dining/${slug}-800.webp`),
   alt: alts[slug] ?? fill(t.photo_pending_alt, { subject: name }),
 });
 ---
