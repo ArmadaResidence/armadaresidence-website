@@ -189,3 +189,7 @@ Append-only. Newest entries at the bottom of each date.
 - Ad pixels (Meta / Snap / TikTok) are installed only inside the new container, via the dataLayer.
 - No MX/SPF/DKIM record is touched during the domain switch; email stays as is.
 - CLAUDE.md §2 Tracking and docs/gtm-import.md now describe the new container; its ID `GTM-5JVH7R37` (confirmed by Ahmed, 12 Oct 2026) is in `content/contact.json → gtm_container`, the only place the site reads it. `docs/gtm-container.json` carries the new publicId and its `GA4 Measurement ID` constant is prefilled with `G-675Y7W0H1T`.
+
+## 2026-10-12 — Supabase MCP (phase 2 tooling)
+- `.mcp.json` adds the project-scoped Supabase MCP server (HTTP, project `wwzxwettsuwtakwwbfly`, features docs/account/database/debugging/development/functions/branching). No keys in the file; each user signs in through OAuth.
+- Writable on purpose (no `read_only`), since phase 2 starts with the schema build (Ahmed). Rule: reads and creation run freely; any migration, delete, or change to existing data waits for Ahmed's yes in chat.
