@@ -1,48 +1,48 @@
-# نصوص «جولة في الفرع» للمراجعة — كما هي في content/branches.json → story (12 Oct 2026)
+# نصوص «جولة في الفرع» — المعتمدة (12 Oct 2026)
 
-كل جملة تعيد صياغة حقيقة مؤكدة في branches.json (الوصف، المحور، أزمنة القيادة، المواقف، الخدمات، المطعم، الوصول/المغادرة). لم تُغيَّر بعد الإرسال؛ أرسل التعديلات وسأطبّقها نصًا.
+النصوص العربية معتمدة حرفيًا من أحمد؛ الإنجليزية مُعاد صياغتها بنفس الروح والحقائق. المصدر: content/branches.json → story.
 
 ## أرمادا ريزيدنس – طريق المطار / Armada Residence – Airport Road
 
 ### 1. المدخل والموقع — Entrance and location
-- AR: على طريق المطار في الطائف، على محور الهدا باتجاه مكة المكرمة — 15 دقيقة بالسيارة من مطار الطائف الدولي، ومواقف مجانية في الطابقين السفليين B1 وB2 مع مصعد مباشر.
-- EN: On Airport Road in Taif, on the Al Hada corridor towards Makkah — 15 minutes by car from Taif International Airport, with free parking on basement levels B1 and B2 and direct lift access.
-- الصورة المنتظرة: `/images/branches/airport-road-entrance-800.webp` / `-1400.webp` — alt: «مدخل أرمادا ريزيدنس – طريق المطار» / “Entrance of Armada Residence – Airport Road”
+- AR: تصلون إلينا بعد 15 دقيقة من مطار الطائف، على طريق المطار ومحور الهدا باتجاه مكة المكرمة. المواقف مجانية في الطابقين السفليين، والمصعد يوصلكم من سيارتكم إلى اللوبي مباشرة.
+- EN: Fifteen minutes from Taif airport, on Airport Road and the Al Hada corridor towards Makkah. Parking is free on the two basement levels, and the lift takes you from your car straight to the lobby.
+- الصورة المنتظرة: `/images/branches/airport-road-entrance-800.webp` / `-1400.webp`
 
 ### 2. اللوبي والاستقبال — Lobby and reception
-- AR: فريق الاستقبال في خدمتكم على مدار الساعة؛ الوصول من الساعة 4:00 عصرًا والمغادرة حتى 12:00 ظهرًا، مع تدبير غرف يومي وأمن على مدار الساعة.
-- EN: Reception is at your service around the clock; check-in from 4:00 pm and check-out by 12:00 noon, with daily housekeeping and 24-hour security.
-- الصورة المنتظرة: `/images/branches/airport-road-lobby-800.webp` / `-1400.webp` — alt: «لوبي واستقبال أرمادا ريزيدنس – طريق المطار» / “Lobby and reception of Armada Residence – Airport Road”
+- AR: فريق الاستقبال في انتظاركم على مدار الساعة. الوصول من الساعة 4:00 عصرًا والمغادرة حتى 12:00 ظهرًا، وطوال إقامتكم تدبير غرف يومي وأمن لا ينام.
+- EN: The reception team is waiting for you around the clock. Check-in from 4:00 pm, check-out by 12:00 noon, and throughout your stay daily housekeeping and security that never sleeps.
+- الصورة المنتظرة: `/images/branches/airport-road-lobby-800.webp` / `-1400.webp`
 
 ### 3. الغرف والأجنحة — Rooms and suites
-- AR: شقق فندقية تبدأ من 50 مترًا مربعًا للغرفة وتصل إلى 75 مترًا مربعًا للجناح بغرفتي نوم وصالة؛ الأجنحة مزوّدة بمطبخ وتناسب الإقامة القصيرة والطويلة.
-- EN: Hotel apartments from 50 m² for a room up to 75 m² for a two-bedroom suite with a living room; the suites come with a kitchen and suit short and long stays alike.
-- الصورة المنتظرة: `/images/branches/airport-road-rooms-800.webp` / `-1400.webp` — alt: «جناح بغرفتي نوم وصالة في أرمادا ريزيدنس – طريق المطار» / “Two-bedroom suite with living room at Armada Residence – Airport Road”
+- AR: شقق فندقية واسعة: غرف من 50 مترًا مربعًا، وأجنحة بمطبخ وصالة تصل إلى 75 مترًا مربعًا — لليلة عابرة أو لإقامة تطول.
+- EN: Spacious hotel apartments: rooms from 50 m², and suites with a kitchen and living room up to 75 m² — for a night in passing or a stay that lingers.
+- الصورة المنتظرة: `/images/branches/airport-road-rooms-800.webp` / `-1400.webp`
 
 ### 4. المطعم والخدمات — Dining and services
-- AR: Armada Residence Café & Restaurant في اللوبي على مدار الساعة، بوفيه إفطار يومي من 07:00 إلى 10:30، خدمة غرف على مدار الساعة، وقاعة اجتماعات تتسع حتى 50 شخصًا.
-- EN: Armada Residence Café & Restaurant in the lobby around the clock, a daily breakfast buffet from 07:00 to 10:30, 24-hour room service and a meeting hall for up to 50 people.
-- الصورة المنتظرة: `/images/branches/airport-road-dining-800.webp` / `-1400.webp` — alt: «Armada Residence Café & Restaurant في لوبي فرع طريق المطار» / “Armada Residence Café & Restaurant in the Airport Road lobby”
+- AR: في اللوبي Armada Residence Café & Restaurant مفتوح على مدار الساعة، وبوفيه الإفطار من 07:00 إلى 10:30. خدمة الغرف في أي وقت، وقاعة اجتماعات تتسع لخمسين شخصًا لمن جاء للعمل.
+- EN: In the lobby, Armada Residence Café & Restaurant is open around the clock, with the breakfast buffet from 07:00 to 10:30. Room service at any hour, and a meeting hall for fifty for those here on business.
+- الصورة المنتظرة: `/images/branches/airport-road-dining-800.webp` / `-1400.webp`
 
 ## أرمادا ريزيدنس – طريق الشفا / Armada Residence – Shafa Road
 
 ### 1. المدخل والموقع — Entrance and location
-- AR: على طريق الشفا، الطريق الذي يصل الطائف بمرتفعات الشفا — 4 دقائق بالسيارة من حديقة الردف و8 دقائق من حديقة الحيوانات بالطائف، ومواقف مجانية في الطابق السفلي.
-- EN: On Al-Shafa Road, the road linking Taif to the Al-Shafa highlands — 4 minutes by car from Al Ruddaf Park and 8 from Taif Zoo, with free parking on the basement level.
-- الصورة المنتظرة: `/images/branches/shafa-road-entrance-800.webp` / `-1400.webp` — alt: «مدخل فندق أرمادا ريزيدنس – طريق الشفا» / “Entrance of Armada Residence – Shafa Road”
+- AR: على الطريق الصاعد إلى مرتفعات الشفا، وعلى بُعد 4 دقائق من حديقة الردف و8 دقائق من حديقة الحيوانات. المواقف مجانية في الطابق السفلي.
+- EN: On the road climbing to the Al-Shafa highlands, 4 minutes from Al Ruddaf Park and 8 from Taif Zoo. Parking is free on the basement level.
+- الصورة المنتظرة: `/images/branches/shafa-road-entrance-800.webp` / `-1400.webp`
 
 ### 2. اللوبي والاستقبال — Lobby and reception
-- AR: فندق هادئ للعائلات والأفراد؛ فريق الاستقبال في خدمتكم على مدار الساعة ويمكن التواصل معه مباشرة عبر الواتساب، والوصول من 4:00 عصرًا والمغادرة حتى 12:00 ظهرًا.
-- EN: A quiet hotel for families and individual travellers; reception is available around the clock and directly on WhatsApp, check-in from 4:00 pm and check-out by 12:00 noon.
-- الصورة المنتظرة: `/images/branches/shafa-road-lobby-800.webp` / `-1400.webp` — alt: «لوبي واستقبال فندق أرمادا ريزيدنس – طريق الشفا» / “Lobby and reception of Armada Residence – Shafa Road”
+- AR: فندق هادئ صُمّم للعائلات ومن يبحث عن السكينة. الاستقبال معكم على مدار الساعة وعلى الواتساب مباشرة، والوصول من 4:00 عصرًا والمغادرة حتى 12:00 ظهرًا.
+- EN: A quiet hotel made for families and for anyone seeking calm. Reception is with you around the clock and directly on WhatsApp; check-in from 4:00 pm, check-out by 12:00 noon.
+- الصورة المنتظرة: `/images/branches/shafa-road-lobby-800.webp` / `-1400.webp`
 
 ### 3. الغرف والأجنحة — Rooms and suites
-- AR: تبدأ الخيارات من غرفة كينج بمساحة 35 مترًا مربعًا، وتشمل غرفة ببلكونة خاصة، واستديو بجاكوزي، وأجنحة بغرفة أو غرفتي نوم تتسع حتى أربعة أشخاص.
-- EN: Options start with a 35 m² king room and include a room with a private balcony, a studio with a jacuzzi, and one- and two-bedroom suites for up to four guests.
-- الصورة المنتظرة: `/images/branches/shafa-road-rooms-800.webp` / `-1400.webp` — alt: «غرفة ببلكونة خاصة في فندق أرمادا ريزيدنس – طريق الشفا» / “Room with a private balcony at Armada Residence – Shafa Road”
+- AR: من غرفة كينج بمساحة 35 مترًا مربعًا، إلى غرفة ببلكونة على الهواء الطلق، واستديو بجاكوزي، وأجنحة لعائلة من أربعة.
+- EN: From a 35 m² king room to a room with an open-air balcony, a studio with a jacuzzi, and suites for a family of four.
+- الصورة المنتظرة: `/images/branches/shafa-road-rooms-800.webp` / `-1400.webp`
 
 ### 4. المطعم والخدمات — Dining and services
-- AR: بوفيه إفطار يومي في المطعم من 07:00 إلى 10:30، ومقهى في الفندق، وخدمة غرف على مدار الساعة، مع غسيل ملابس وتدبير غرف يومي.
-- EN: A daily breakfast buffet in the restaurant from 07:00 to 10:30, a café in the hotel, 24-hour room service, laundry and daily housekeeping.
-- الصورة المنتظرة: `/images/branches/shafa-road-dining-800.webp` / `-1400.webp` — alt: «مطعم فندق أرمادا ريزيدنس – طريق الشفا» / “Restaurant of Armada Residence – Shafa Road”
+- AR: بوفيه إفطار يومي في المطعم من 07:00 إلى 10:30، ومقهى لفنجان في المساء، وخدمة غرف على مدار الساعة مع غسيل ملابس وتدبير يومي.
+- EN: A daily breakfast buffet in the restaurant from 07:00 to 10:30, a café for a cup in the evening, and round-the-clock room service with laundry and daily housekeeping.
+- الصورة المنتظرة: `/images/branches/shafa-road-dining-800.webp` / `-1400.webp`
 

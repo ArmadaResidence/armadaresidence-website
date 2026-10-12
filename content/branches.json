@@ -108,14 +108,14 @@
       },
       "corridor_ar": "على محور الهدا باتجاه مكة المكرمة",
       "corridor_en": "On the Al Hada corridor towards Makkah Al-Mukarramah",
-      "story_note": "Scroll story (item 10, 11 Oct 2026): four scenes composed only from facts confirmed elsewhere in this file; wording is a draft for Ahmed's editorial approval. image.base null = brand placeholder until the approved photo set arrives (intended_base names the expected files).",
+      "story_note": "Scroll story (item 10): Arabic copy approved verbatim by Ahmed on 12 Oct 2026; English rewritten in the same spirit with the same facts (every figure/service exists elsewhere in this file). image.base null = brand placeholder until the approved photo set arrives (intended_base names the expected files).",
       "story": [
         {
           "key": "entrance",
           "title_ar": "المدخل والموقع",
           "title_en": "Entrance and location",
-          "body_ar": "على طريق المطار في الطائف، على محور الهدا باتجاه مكة المكرمة — 15 دقيقة بالسيارة من مطار الطائف الدولي، ومواقف مجانية في الطابقين السفليين B1 وB2 مع مصعد مباشر.",
-          "body_en": "On Airport Road in Taif, on the Al Hada corridor towards Makkah — 15 minutes by car from Taif International Airport, with free parking on basement levels B1 and B2 and direct lift access.",
+          "body_ar": "تصلون إلينا بعد 15 دقيقة من مطار الطائف، على طريق المطار ومحور الهدا باتجاه مكة المكرمة. المواقف مجانية في الطابقين السفليين، والمصعد يوصلكم من سيارتكم إلى اللوبي مباشرة.",
+          "body_en": "Fifteen minutes from Taif airport, on Airport Road and the Al Hada corridor towards Makkah. Parking is free on the two basement levels, and the lift takes you from your car straight to the lobby.",
           "image": {
             "base": null,
             "intended_base": "/images/branches/airport-road-entrance",
@@ -131,8 +131,8 @@
           "key": "lobby",
           "title_ar": "اللوبي والاستقبال",
           "title_en": "Lobby and reception",
-          "body_ar": "فريق الاستقبال في خدمتكم على مدار الساعة؛ الوصول من الساعة 4:00 عصرًا والمغادرة حتى 12:00 ظهرًا، مع تدبير غرف يومي وأمن على مدار الساعة.",
-          "body_en": "Reception is at your service around the clock; check-in from 4:00 pm and check-out by 12:00 noon, with daily housekeeping and 24-hour security.",
+          "body_ar": "فريق الاستقبال في انتظاركم على مدار الساعة. الوصول من الساعة 4:00 عصرًا والمغادرة حتى 12:00 ظهرًا، وطوال إقامتكم تدبير غرف يومي وأمن لا ينام.",
+          "body_en": "The reception team is waiting for you around the clock. Check-in from 4:00 pm, check-out by 12:00 noon, and throughout your stay daily housekeeping and security that never sleeps.",
           "image": {
             "base": null,
             "intended_base": "/images/branches/airport-road-lobby",
@@ -148,8 +148,8 @@
           "key": "rooms",
           "title_ar": "الغرف والأجنحة",
           "title_en": "Rooms and suites",
-          "body_ar": "شقق فندقية تبدأ من 50 مترًا مربعًا للغرفة وتصل إلى 75 مترًا مربعًا للجناح بغرفتي نوم وصالة؛ الأجنحة مزوّدة بمطبخ وتناسب الإقامة القصيرة والطويلة.",
-          "body_en": "Hotel apartments from 50 m² for a room up to 75 m² for a two-bedroom suite with a living room; the suites come with a kitchen and suit short and long stays alike.",
+          "body_ar": "شقق فندقية واسعة: غرف من 50 مترًا مربعًا، وأجنحة بمطبخ وصالة تصل إلى 75 مترًا مربعًا — لليلة عابرة أو لإقامة تطول.",
+          "body_en": "Spacious hotel apartments: rooms from 50 m², and suites with a kitchen and living room up to 75 m² — for a night in passing or a stay that lingers.",
           "image": {
             "base": null,
             "intended_base": "/images/branches/airport-road-rooms",
@@ -165,8 +165,8 @@
           "key": "dining",
           "title_ar": "المطعم والخدمات",
           "title_en": "Dining and services",
-          "body_ar": "Armada Residence Café & Restaurant في اللوبي على مدار الساعة، بوفيه إفطار يومي من 07:00 إلى 10:30، خدمة غرف على مدار الساعة، وقاعة اجتماعات تتسع حتى 50 شخصًا.",
-          "body_en": "Armada Residence Café & Restaurant in the lobby around the clock, a daily breakfast buffet from 07:00 to 10:30, 24-hour room service and a meeting hall for up to 50 people.",
+          "body_ar": "في اللوبي Armada Residence Café & Restaurant مفتوح على مدار الساعة، وبوفيه الإفطار من 07:00 إلى 10:30. خدمة الغرف في أي وقت، وقاعة اجتماعات تتسع لخمسين شخصًا لمن جاء للعمل.",
+          "body_en": "In the lobby, Armada Residence Café & Restaurant is open around the clock, with the breakfast buffet from 07:00 to 10:30. Room service at any hour, and a meeting hall for fifty for those here on business.",
           "image": {
             "base": null,
             "intended_base": "/images/branches/airport-road-dining",
@@ -257,14 +257,14 @@
         "al_ruddaf_park": 4,
         "taif_zoo": 8
       },
-      "story_note": "Scroll story (item 10, 11 Oct 2026): four scenes composed only from facts confirmed elsewhere in this file; wording is a draft for Ahmed's editorial approval. image.base null = brand placeholder until the approved photo set arrives (intended_base names the expected files).",
+      "story_note": "Scroll story (item 10): Arabic copy approved verbatim by Ahmed on 12 Oct 2026; English rewritten in the same spirit with the same facts (every figure/service exists elsewhere in this file). image.base null = brand placeholder until the approved photo set arrives (intended_base names the expected files).",
       "story": [
         {
           "key": "entrance",
           "title_ar": "المدخل والموقع",
           "title_en": "Entrance and location",
-          "body_ar": "على طريق الشفا، الطريق الذي يصل الطائف بمرتفعات الشفا — 4 دقائق بالسيارة من حديقة الردف و8 دقائق من حديقة الحيوانات بالطائف، ومواقف مجانية في الطابق السفلي.",
-          "body_en": "On Al-Shafa Road, the road linking Taif to the Al-Shafa highlands — 4 minutes by car from Al Ruddaf Park and 8 from Taif Zoo, with free parking on the basement level.",
+          "body_ar": "على الطريق الصاعد إلى مرتفعات الشفا، وعلى بُعد 4 دقائق من حديقة الردف و8 دقائق من حديقة الحيوانات. المواقف مجانية في الطابق السفلي.",
+          "body_en": "On the road climbing to the Al-Shafa highlands, 4 minutes from Al Ruddaf Park and 8 from Taif Zoo. Parking is free on the basement level.",
           "image": {
             "base": null,
             "intended_base": "/images/branches/shafa-road-entrance",
@@ -280,8 +280,8 @@
           "key": "lobby",
           "title_ar": "اللوبي والاستقبال",
           "title_en": "Lobby and reception",
-          "body_ar": "فندق هادئ للعائلات والأفراد؛ فريق الاستقبال في خدمتكم على مدار الساعة ويمكن التواصل معه مباشرة عبر الواتساب، والوصول من 4:00 عصرًا والمغادرة حتى 12:00 ظهرًا.",
-          "body_en": "A quiet hotel for families and individual travellers; reception is available around the clock and directly on WhatsApp, check-in from 4:00 pm and check-out by 12:00 noon.",
+          "body_ar": "فندق هادئ صُمّم للعائلات ومن يبحث عن السكينة. الاستقبال معكم على مدار الساعة وعلى الواتساب مباشرة، والوصول من 4:00 عصرًا والمغادرة حتى 12:00 ظهرًا.",
+          "body_en": "A quiet hotel made for families and for anyone seeking calm. Reception is with you around the clock and directly on WhatsApp; check-in from 4:00 pm, check-out by 12:00 noon.",
           "image": {
             "base": null,
             "intended_base": "/images/branches/shafa-road-lobby",
@@ -297,8 +297,8 @@
           "key": "rooms",
           "title_ar": "الغرف والأجنحة",
           "title_en": "Rooms and suites",
-          "body_ar": "تبدأ الخيارات من غرفة كينج بمساحة 35 مترًا مربعًا، وتشمل غرفة ببلكونة خاصة، واستديو بجاكوزي، وأجنحة بغرفة أو غرفتي نوم تتسع حتى أربعة أشخاص.",
-          "body_en": "Options start with a 35 m² king room and include a room with a private balcony, a studio with a jacuzzi, and one- and two-bedroom suites for up to four guests.",
+          "body_ar": "من غرفة كينج بمساحة 35 مترًا مربعًا، إلى غرفة ببلكونة على الهواء الطلق، واستديو بجاكوزي، وأجنحة لعائلة من أربعة.",
+          "body_en": "From a 35 m² king room to a room with an open-air balcony, a studio with a jacuzzi, and suites for a family of four.",
           "image": {
             "base": null,
             "intended_base": "/images/branches/shafa-road-rooms",
@@ -314,8 +314,8 @@
           "key": "dining",
           "title_ar": "المطعم والخدمات",
           "title_en": "Dining and services",
-          "body_ar": "بوفيه إفطار يومي في المطعم من 07:00 إلى 10:30، ومقهى في الفندق، وخدمة غرف على مدار الساعة، مع غسيل ملابس وتدبير غرف يومي.",
-          "body_en": "A daily breakfast buffet in the restaurant from 07:00 to 10:30, a café in the hotel, 24-hour room service, laundry and daily housekeeping.",
+          "body_ar": "بوفيه إفطار يومي في المطعم من 07:00 إلى 10:30، ومقهى لفنجان في المساء، وخدمة غرف على مدار الساعة مع غسيل ملابس وتدبير يومي.",
+          "body_en": "A daily breakfast buffet in the restaurant from 07:00 to 10:30, a café for a cup in the evening, and round-the-clock room service with laundry and daily housekeeping.",
           "image": {
             "base": null,
             "intended_base": "/images/branches/shafa-road-dining",
