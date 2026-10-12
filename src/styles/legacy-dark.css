@@ -1,0 +1,176 @@
+/* Dark mode for the two legacy sections (Ahmed, 12 Oct 2026): /discover-taif/ and /partners/ follow the site's
+   light/dark toggle (<html data-theme>, set before first paint by Base.astro — no flash). /menu/ keeps the café
+   identity in both modes. Nothing here applies in light mode: the generated sheets stay untouched and every value
+   below lives under [data-theme="dark"], so the light rendering is pixel-identical (scripts/legacy-dark-check.mjs).
+   Palette = the site's dark family: page #0F1F2B, cards #182F41, strips #0B1821, porcelain text, secondary at 70 %,
+   bronze #C9A27A for accents/small text (≥ 6:1), bronze-deep #976E47 for filled buttons (white text 4.5:1),
+   the bronze pattern stays at 7 %. Photos and maps are untouched; a QR code (if one is ever rendered) keeps a
+   white plate. Contrast pairs: #F3EFE7 on #0F1F2B 15.3:1, on #182F41 12.1:1; rgba(243,239,231,.7) on #182F41 ≈ 7.6:1;
+   #C9A27A on #182F41 6.6:1; #142A3B on #F3EFE7 (light buttons) 12:1. */
+
+/* ---------------- Discover Taif ---------------- */
+[data-theme="dark"] .legacy-discover {
+  --porcelain: #0f1f2b; /* page, soft surfaces, search field */
+  --white: #182f41; /* cards, controls, chips, sheet (text uses re-pinned below) */
+  --midnight: #0b1821; /* hero, footer, pressed states, toast */
+  --ink: #f3efe7;
+  --ink-muted: rgba(243, 239, 231, 0.72);
+  --ink-soft: rgba(243, 239, 231, 0.62);
+  --line: rgba(243, 239, 231, 0.14);
+  --line-strong: rgba(243, 239, 231, 0.28);
+  --bronze: #c9a27a;
+  --bronze-line: rgba(201, 162, 122, 0.55);
+  --bronze-wash: rgba(201, 162, 122, 0.1);
+  --midnight-wash: rgba(243, 239, 231, 0.07);
+  --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.35), 0 10px 24px -18px rgba(0, 0, 0, 0.9);
+  --shadow-lift: 0 2px 6px rgba(0, 0, 0, 0.4), 0 22px 40px -24px rgba(0, 0, 0, 0.95);
+}
+/* text that sits on a midnight surface (the generated sheet writes it as var(--white)) */
+[data-theme="dark"] .legacy-discover :is(.skip-link, .hero-body, .btn-solid, .btn-ghost-light, .site-footer, .plan-fab, .toast),
+[data-theme="dark"] .legacy-discover .lang-switch button[aria-pressed="true"],
+[data-theme="dark"] .legacy-discover .chip[aria-pressed="true"],
+[data-theme="dark"] .legacy-discover .collection-card[aria-pressed="true"],
+[data-theme="dark"] .legacy-discover .btn-plan[aria-pressed="true"] {
+  color: #f3efe7;
+}
+[data-theme="dark"] .legacy-discover .btn-solid:hover {
+  background: #16304a;
+}
+[data-theme="dark"] .legacy-discover .btn-ghost-light {
+  border-color: rgba(243, 239, 231, 0.55);
+}
+[data-theme="dark"] .legacy-discover .btn-ghost-light:hover {
+  background: rgba(243, 239, 231, 0.12);
+  border-color: #f3efe7;
+}
+/* the light hero button keeps its porcelain plate with midnight text */
+[data-theme="dark"] .legacy-discover .btn-light {
+  background: #f3efe7;
+  color: #142a3b;
+}
+[data-theme="dark"] .legacy-discover .btn-light:hover {
+  background: #e4ded3;
+}
+/* filled bronze elements → bronze-deep with white text */
+[data-theme="dark"] .legacy-discover .plan-fab .badge {
+  background: #976e47;
+  color: #fff;
+}
+/* sticky header plate */
+[data-theme="dark"] .legacy-discover .site-header {
+  background: rgba(15, 31, 43, 0.92);
+}
+[data-theme="dark"] .legacy-discover .sheet-overlay {
+  background: rgba(0, 0, 0, 0.55);
+}
+[data-theme="dark"] .legacy-discover .search-field input:focus {
+  background: #182f41;
+}
+
+/* ---------------- Partners ---------------- */
+[data-theme="dark"] .legacy-partners {
+  --cream: #0f1f2b; /* page bands */
+  --cream-2: #0c1c27; /* alternate bands, calculator options */
+  --paper: #182f41; /* cards, fields, tables */
+  --ink: #0b1821; /* .band.ink, footer */
+  --navy: #f3efe7; /* headings and bold text on light surfaces; the navy backgrounds are re-pinned below */
+  --navy-2: #16304a;
+  --navy-3: #1d3c5a;
+  --tx: #f3efe7;
+  --tx-mute: rgba(243, 239, 231, 0.7);
+  --line: rgba(243, 239, 231, 0.14);
+  --bronze: #c9a27a; /* accent + small bronze text (step numbers, required marks, chips) — 6.6:1 on cards */
+  --bronze-dk: #c9a27a; /* small bronze text on light surfaces (chips, note b, lockup) */
+  --shadow: 0 10px 30px -22px rgba(0, 0, 0, 0.8);
+  --shadow-l: 0 30px 70px -40px rgba(0, 0, 0, 0.95);
+}
+/* surfaces the generated sheet paints with var(--navy) */
+[data-theme="dark"] .legacy-partners .band.dk,
+[data-theme="dark"] .legacy-partners .feat-sec.dkbg,
+[data-theme="dark"] .legacy-partners .bt.wide,
+[data-theme="dark"] .legacy-partners .strip,
+[data-theme="dark"] .legacy-partners .ctaband,
+[data-theme="dark"] .legacy-partners .note:not(.lt),
+[data-theme="dark"] .legacy-partners table.tb thead th,
+[data-theme="dark"] .legacy-partners .skip {
+  background-color: #0b1821;
+}
+[data-theme="dark"] .legacy-partners .band.dk {
+  background-image: radial-gradient(90% 60% at 12% 0%, rgba(29, 60, 90, 0.5) 0%, rgba(29, 60, 90, 0) 62%);
+}
+[data-theme="dark"] .legacy-partners .ctaband {
+  background-image: radial-gradient(80% 60% at 88% 0%, rgba(29, 60, 90, 0.6) 0%, rgba(29, 60, 90, 0) 60%);
+}
+[data-theme="dark"] .legacy-partners .bt.wide {
+  border-color: var(--line-dk);
+}
+[data-theme="dark"] .legacy-partners .btn.dk {
+  background: #0b1821;
+  border-color: var(--line-dk);
+}
+[data-theme="dark"] .legacy-partners .btn.dk:hover {
+  background: #16304a;
+  border-color: #16304a;
+}
+/* filled buttons → bronze-deep with white text (bronze stays for chips, rules, labels) */
+[data-theme="dark"] .legacy-partners .btn:not(.gh):not(.ol):not(.dk) {
+  background: #976e47;
+  border-color: #976e47;
+  color: #fff;
+}
+[data-theme="dark"] .legacy-partners .btn:not(.gh):not(.ol):not(.dk):hover {
+  background: #8a6239;
+  border-color: #8a6239;
+  box-shadow: 0 10px 26px -14px rgba(0, 0, 0, 0.8);
+}
+[data-theme="dark"] .legacy-partners .btn.ol {
+  border-color: rgba(243, 239, 231, 0.3);
+}
+[data-theme="dark"] .legacy-partners .btn.ol:hover {
+  background: rgba(243, 239, 231, 0.08);
+  border-color: #f3efe7;
+}
+[data-theme="dark"] .legacy-partners .feat-sec:not(.dkbg) .btn.gh {
+  border-color: rgba(243, 239, 231, 0.3);
+}
+[data-theme="dark"] .legacy-partners .feat-sec:not(.dkbg) .btn.gh:hover {
+  background: rgba(243, 239, 231, 0.08);
+}
+/* light notes, photo frames, placeholders */
+[data-theme="dark"] .legacy-partners .note.lt {
+  background: #182f41;
+}
+[data-theme="dark"] .legacy-partners figure.ph,
+[data-theme="dark"] .legacy-partners .pf-img {
+  background: #182f41;
+}
+[data-theme="dark"] .legacy-partners table.tb tbody tr:nth-child(even) td {
+  background: rgba(243, 239, 231, 0.03);
+}
+/* the legal disclaimer sat at 40 % — lifted to keep AA on the page background */
+[data-theme="dark"] .legacy-partners .disc {
+  color: rgba(247, 243, 234, 0.64);
+}
+/* form fields */
+[data-theme="dark"] .legacy-partners .fld input::placeholder,
+[data-theme="dark"] .legacy-partners .fld textarea::placeholder {
+  color: rgba(243, 239, 231, 0.55);
+}
+[data-theme="dark"] .legacy-partners .fld .err {
+  color: #f2a99a;
+}
+[data-theme="dark"] .legacy-partners .fld.bad input,
+[data-theme="dark"] .legacy-partners .fld.bad select {
+  border-color: #e07a62;
+}
+[data-theme="dark"] .legacy-partners .fld select {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23C9A27A' stroke-width='1.6' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+}
+
+/* a QR code, should one ever be rendered in either section, keeps a white plate with rounded edges */
+[data-theme="dark"] :is(.legacy-discover, .legacy-partners) :is(img, canvas, svg)[class*="qr"],
+[data-theme="dark"] :is(.legacy-discover, .legacy-partners) :is(img, canvas, svg)[src*="qr"] {
+  background: #fff;
+  padding: 8px;
+  border-radius: 8px;
+}
