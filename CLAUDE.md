@@ -49,6 +49,7 @@ Colours — define as CSS variables, never inline hex in components:
 - Armada Bronze `#A97C50` (accent)
 - Warm Porcelain `#F3EFE7` (light background)
 - Pure White `#FFFFFF`
+- Bronze Deep `#976E47` — fill of primary buttons only (nearest shade of bronze that keeps white text at ≥ 4.5:1; Ahmed, 12 Oct 2026). Bronze itself stays for accents, rules, icons and large text. Derived: Bronze Text `#8A6239` for small bronze text on porcelain/white and as the primary-button hover.
 
 Rules:
 - Logos are **SVG only** (`Armada_Residence_Logo_Horizontal_Bronze.svg`, `Armada_Residence_Symbol_Bronze.svg`). PNG logos carry white plates — never use them.
@@ -97,7 +98,7 @@ Rules: transform and opacity only (no width/height/margin/font-weight animation)
 - **No invented operational data.** Prices, sizes, capacities, distances, drive times, opening hours, phone numbers, addresses, policies — only from `/content/` files marked `verified: true`. Unverified = `[TODO: confirm]` placeholder, never a guess.
 - Prices are confirmed VAT-inclusive board rates (8 Oct 2026). Each room has `base_price` (SAR) and `pricing_mode: "starting_from"` in `rooms.json` — keep this structure, it must survive the rate-calendar and channel-manager phases without re-modelling. In `starting_from` mode every price renders from `pricing.json` as «يبدأ من {price} ريال / الليلة — شامل الضريبة» / "from SAR {price} / night — incl. VAT". Never show a price without "from" and the VAT note. Breakfast (+20/person/day) and extra person (+25) come from `pricing.json`, never typed in components.
 - Breakfast is a rate-plan attribute (`rate_plans[].breakfast_included`), never a room attribute. Phase 1 renders only `room_only`; next to every price show «الإفطار 20 ريال للشخص في اليوم». `bed_and_breakfast` exists in the data for phase 2 and is never rendered while `show_on_site: false`.
-- Accessible rooms render with `availability: sold_out` («غير متاح حاليًا»), no booking CTA, still in the sitemap. `units` counts are not rendered.
+- Accessible rooms render with `availability: sold_out` («غير متاح حاليًا»), no booking CTA, still in the sitemap. `units` counts (108 / 60, confirmed 9 Oct 2026) render through the counters while `show_units` is true (Ahmed, 12 Oct 2026).
 - Every image has a real, descriptive `alt` in both languages. "صورة جديدة" / "image" is a QA failure.
 - Phone numbers: E.164 in `href`, display spaced (`+966 53 662 2277`). Each branch page and its WhatsApp button use that branch's number from `contact.json`; the sales line (`+966 53 662 2288`) appears only on /offers and the hall section. Email as `mailto:`.
 - Reviews section: real Google/Booking reviews only, with source link. Never fabricate testimonials.
@@ -213,7 +214,7 @@ Rules: Row Level Security on every table. Guest personal data visible only to `a
 Confirmed 8 Oct 2026 and now in `/content/`: room prices (incl. VAT), sizes, capacity, bed types, kitchen/balcony/jacuzzi, addresses, per-branch phones/WhatsApp, emails, check-in/out, cancellation policy, breakfast price/hours, hall branch/capacity, legal entity, CR, VAT number.
 
 Still open:
-- Unit counts per branch (108 / 32) — hidden until confirmed.
+- Unit counts: confirmed (108 / 60 = 168) and shown since 12 Oct 2026.
 - Approved photo set per branch and per room type.
 - Hall feature list (AV, catering, layouts) — phase 2.
 - Refund wording for Tap payments — phase 3. Privacy policy text — with /policies.

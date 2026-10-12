@@ -74,7 +74,7 @@ const inputClass = 'field-input latin text-left w-full border border-line rounde
           <label for={id(name)} class="field-label">{f[name]}</label>
           {/* the text field is LTR, so the icon sits on the physical right whatever the page direction */}
           <input type="date" tabindex="-1" aria-hidden="true" lang="en" class="absolute bottom-0 right-10 w-px h-px opacity-0" data-date-picker />
-          <button type="button" class="field-icon absolute right-0 top-0 h-14 w-10 grid place-items-center text-bronze hover:text-bronze-deep" aria-label={f.open_calendar} data-date-open>
+          <button type="button" class="field-icon absolute right-0 top-0 h-14 w-10 grid place-items-center text-bronze hover:text-bronze-text" aria-label={f.open_calendar} data-date-open>
             <Icon name="calendar" size={20} />
           </button>
           <p class="hidden text-xs text-red-700 mt-1" data-error-for={name} />
@@ -127,13 +127,13 @@ const inputClass = 'field-input latin text-left w-full border border-line rounde
 
   <p class="text-xs text-ink-muted">
     {f.consent}
-    <a href={localePath(locale, '/policies/')} class="font-semibold text-bronze hover:text-bronze-deep ms-1">{f.consent_link}</a>.
+    <a href={localePath(locale, '/policies/')} class="font-semibold text-bronze hover:text-bronze-text ms-1">{f.consent_link}</a>.
   </p>
 
   <p class="hidden bg-porcelain border border-line text-sm text-red-800 rounded px-4 py-3" data-form-error role="alert"></p>
 
   <div class="flex flex-wrap items-center gap-3">
-    <button type="submit" class="inline-flex items-center gap-2 bg-bronze text-white font-semibold px-6 py-3 rounded hover:bg-bronze-deep transition-colors disabled:opacity-60" data-submit>
+    <button type="submit" class="inline-flex items-center gap-2 bg-bronze-deep text-white font-semibold px-6 py-3 rounded hover:bg-bronze-text transition-colors disabled:opacity-60" data-submit>
       <span data-submit-label>{f.submit}</span>
       <Icon name="arrow" size={18} class="icon-arrow rtl:rotate-180" />
     </button>

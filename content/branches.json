@@ -1,5 +1,5 @@
 {
-  "_note": "Updated 8 Oct 2026 from reception/management answers + national-address proofs. Terminology: Airport Road = شقق فندقية (hotel apartments) — never 'شقق مخدومة'. Unit counts still unconfirmed and are NOT shown on the site.",
+  "_note": "Updated 8 Oct 2026 from reception/management answers + national-address proofs. Terminology: Airport Road = شقق فندقية (hotel apartments) — never 'شقق مخدومة'. Unit counts confirmed 9 Oct 2026 (108 / 60) and shown since 12 Oct 2026 (show_units).",
   "branches": [
     {
       "slug": "airport-road",
@@ -8,7 +8,7 @@
       "type_ar": "شقق فندقية",
       "type_en": "Hotel Apartments",
       "units": 108,
-      "show_units": false,
+      "show_units": true,
       "address_ar": "8138 طريق المطار، حي القيم الأعلى، الطائف 26561، المملكة العربية السعودية",
       "address_en": "8138 Airport Road, Al-Qaim Al-Aala District, Taif 26561, Saudi Arabia",
       "national_address": {
@@ -189,7 +189,7 @@
       "type_ar": "فندق",
       "type_en": "Hotel",
       "units": 60,
-      "show_units": false,
+      "show_units": true,
       "address_ar": "6411 طريق الشفا، حي السداد، الطائف 26514، المملكة العربية السعودية",
       "address_en": "6411 Al-Shafa Road, Al-Sadad District, Taif 26514, Saudi Arabia",
       "national_address": {

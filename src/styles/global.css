@@ -48,7 +48,8 @@
   --color-ink: #142a3b;
   --color-ink-muted: #3f5262;
   --color-line: #ddd5c8;
-  --color-bronze-deep: #8a6239;
+  --color-bronze-deep: #976e47; /* primary button fill: nearest shade of bronze with ≥ 4.5:1 under white text (4.53:1) — Ahmed, 12 Oct 2026 */
+  --color-bronze-text: #8a6239; /* bronze for small text on porcelain / white (4.7:1 / 5.4:1) and the primary button hover */
   --color-placeholder: #c9c4bb;
 
   --font-en: "Manrope Variable", ui-sans-serif, system-ui, sans-serif;
@@ -264,7 +265,9 @@ footer :focus-visible,
   border-color: var(--dk-bronze-text);
 }
 [data-theme="dark"] .text-bronze,
-[data-theme="dark"] .hover\:text-bronze:hover {
+[data-theme="dark"] .text-bronze-text,
+[data-theme="dark"] .hover\:text-bronze:hover,
+[data-theme="dark"] .hover\:text-bronze-text:hover {
   color: var(--dk-bronze-text);
 }
 [data-theme="dark"] .hover\:text-white:hover {
@@ -529,7 +532,7 @@ footer :focus-visible,
 .field-input[aria-invalid='true'] ~ .field-label,
 .field-select .field-label {
   transform: translateY(-0.75rem) scale(0.78);
-  color: var(--color-bronze-deep);
+  color: var(--color-bronze-text);
 }
 [data-theme='dark'] .field-input:focus ~ .field-label,
 [data-theme='dark'] .field-input:not(:placeholder-shown) ~ .field-label,
@@ -635,10 +638,15 @@ body.has-room-bar .wa-fab {
 }
 .story-scene {
   padding-block: 1.5rem;
-  opacity: 0.45;
+}
+/* inactive scenes dim their heading and text only (the bronze number stays at full contrast, WCAG AA) */
+.story-scene > h3,
+.story-scene > p {
+  opacity: 0.72;
   transition: opacity var(--motion-base) var(--ease-out);
 }
-.story-scene.is-active {
+.story-scene.is-active > h3,
+.story-scene.is-active > p {
   opacity: 1;
 }
 .story-scene + .story-scene {

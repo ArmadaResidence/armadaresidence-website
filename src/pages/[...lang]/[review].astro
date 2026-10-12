@@ -100,7 +100,7 @@ const h = ar ? 'مراجعة الحركة' : 'Motion review';
       <span class="hero-rule" aria-hidden="true" style={`--hero-rule-delay:${words.length * 50}ms`}></span>
       <p class="hero-sub mt-5 text-lg text-porcelain/85 max-w-2xl" style={`--hero-rule-delay:${words.length * 50}ms`}>{h} — {ar ? 'كل مكوّنات السبرنت بحالاتها' : 'every sprint component with its states'}</p>
       <div class="hero-ctas mt-8 flex flex-wrap gap-3" style={`--hero-rule-delay:${words.length * 50}ms`}>
-        <button type="button" class="inline-flex items-center gap-2 bg-bronze text-white font-semibold px-6 py-3 rounded hover:bg-bronze-deep transition-colors" data-hero-replay>
+        <button type="button" class="inline-flex items-center gap-2 bg-bronze-deep text-white font-semibold px-6 py-3 rounded hover:bg-bronze-text transition-colors" data-hero-replay>
           <span>{ar ? 'إعادة تشغيل الهيرو' : 'Replay the hero'}</span>
           <Icon name="arrow" size={18} class="icon-arrow rtl:rotate-180" />
         </button>
@@ -187,7 +187,7 @@ const h = ar ? 'مراجعة الحركة' : 'Motion review';
     <div class="glow" aria-hidden="true"></div>
     <div class="reveal relative mx-auto max-w-6xl px-4 py-12 flex flex-wrap items-center justify-between gap-6">
       <p class="text-xl font-semibold">{ar ? 'سطح كحلي: حرّك المؤشر هنا لرؤية التوهّج' : 'Midnight surface: move the pointer here for the glow'}</p>
-      <a href={localePath(locale, '/airport-road/one-bedroom-suite/')} class="arrow-nudge inline-flex items-center gap-2 bg-bronze text-white font-semibold px-6 py-3 rounded hover:bg-bronze-deep transition-colors">
+      <a href={localePath(locale, '/airport-road/one-bedroom-suite/')} class="arrow-nudge inline-flex items-center gap-2 bg-bronze-deep text-white font-semibold px-6 py-3 rounded hover:bg-bronze-text transition-colors">
         <span>{ar ? 'صفحة غرفة (sticky + شريط سفلي)' : 'A room page (sticky + bottom bar)'}</span>
         <Icon name="arrow" size={18} class="icon-arrow rtl:rotate-180" />
       </a>

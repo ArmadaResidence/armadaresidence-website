@@ -80,7 +80,7 @@ const driveTimes = Object.entries(((branch as { drive_times_min?: Record<string,
       {paragraphs(L(locale, branch, 'description')).map((p) => <p>{p}</p>)}
       <a
         href={bookHref}
-        class="mt-8 inline-flex items-center gap-2 bg-bronze text-white font-semibold px-5 py-3 rounded hover:bg-bronze-deep transition-colors"
+        class="mt-8 inline-flex items-center gap-2 bg-bronze-deep text-white font-semibold px-5 py-3 rounded hover:bg-bronze-text transition-colors"
       >
         <span>{t.branch.book_branch}</span>
         <Icon name="arrow" size={18} class="icon-arrow rtl:rotate-180" />
@@ -155,10 +155,10 @@ const driveTimes = Object.entries(((branch as { drive_times_min?: Record<string,
               </span>
             </dd>
             <dd class="ms-[30px] mt-2 flex flex-wrap gap-x-4 gap-y-1">
-              <a href={branch.maps_url} rel="noopener" target="_blank" class="font-semibold text-bronze hover:text-bronze-deep">
+              <a href={branch.maps_url} rel="noopener" target="_blank" class="font-semibold text-bronze hover:text-bronze-text">
                 {t.cta.maps}
               </a>
-              <a href={branch.google_business_url} rel="noopener" target="_blank" class="font-semibold text-bronze hover:text-bronze-deep">
+              <a href={branch.google_business_url} rel="noopener" target="_blank" class="font-semibold text-bronze hover:text-bronze-text">
                 {t.cta.google_reviews}
               </a>
             </dd>
@@ -186,7 +186,7 @@ const driveTimes = Object.entries(((branch as { drive_times_min?: Record<string,
               <a href={telHref(c.phone)} class="latin text-ink-muted hover:text-midnight" dir="ltr">
                 {c.phone_display}
               </a>
-              <a href={waHref(c.whatsapp)} rel="noopener" target="_blank" class="font-semibold text-bronze hover:text-bronze-deep">
+              <a href={waHref(c.whatsapp)} rel="noopener" target="_blank" class="font-semibold text-bronze hover:text-bronze-text">
                 {t.cta.whatsapp_title}
               </a>
             </dd>
@@ -210,7 +210,7 @@ const driveTimes = Object.entries(((branch as { drive_times_min?: Record<string,
             <p class="text-sm text-ink-muted">{L(locale, other, 'tagline')}</p>
             <a
               href={branchPath(locale, other.slug)}
-              class="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-bronze hover:text-bronze-deep"
+              class="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-bronze hover:text-bronze-text"
             >
               <span>{t.home.view_branch}</span>
               <Icon name="arrow" size={16} class="icon-arrow rtl:rotate-180" />

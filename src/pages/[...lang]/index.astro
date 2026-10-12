@@ -106,7 +106,7 @@ const quickFacts = fill(t.home.quick_facts, {
       <div class="hero-ctas mt-8 flex flex-wrap gap-3" style={`--hero-rule-delay:${heroRuleDelay}ms`}>
         <a
           href={localePath(locale, '/booking/')}
-          class="inline-flex items-center gap-2 bg-bronze text-white font-semibold px-6 py-3 rounded hover:bg-bronze-deep transition-colors"
+          class="inline-flex items-center gap-2 bg-bronze-deep text-white font-semibold px-6 py-3 rounded hover:bg-bronze-text transition-colors"
         >
           <span>{locale === 'ar' ? hero.cta_primary_ar : hero.cta_primary_en}</span>
           <Icon name="arrow" size={18} class="icon-arrow rtl:rotate-180" />
@@ -174,7 +174,7 @@ const quickFacts = fill(t.home.quick_facts, {
     <div class="reveal relative mx-auto max-w-6xl px-4 py-12 flex flex-wrap items-center justify-between gap-6">
       <p class="text-xl font-semibold">{slogan}</p>
       <div class="flex flex-wrap gap-3">
-        <a href={localePath(locale, '/booking/')} class="bg-bronze text-white font-semibold px-6 py-3 rounded hover:bg-bronze-deep transition-colors">
+        <a href={localePath(locale, '/booking/')} class="bg-bronze-deep text-white font-semibold px-6 py-3 rounded hover:bg-bronze-text transition-colors">
           {t.nav.book}
         </a>
         <a href="#branches" class="border border-porcelain/50 font-semibold px-6 py-3 rounded hover:bg-porcelain hover:text-midnight transition-colors">

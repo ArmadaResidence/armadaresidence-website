@@ -46,7 +46,7 @@ const corp = offers.corporate;
         <div class="mt-6 flex flex-wrap gap-3">
           <a
             href={`${partnersPath(locale, 'enquiry')}?request=umrah-group`}
-            class="inline-flex items-center gap-2 bg-bronze text-white font-semibold px-5 py-3 rounded hover:bg-bronze-deep transition-colors"
+            class="inline-flex items-center gap-2 bg-bronze-deep text-white font-semibold px-5 py-3 rounded hover:bg-bronze-text transition-colors"
           >
             <span>{locale === 'ar' ? g.cta_ar : g.cta_en}</span>
             <Icon name="arrow" size={18} class="icon-arrow rtl:rotate-180" />
@@ -80,13 +80,13 @@ const corp = offers.corporate;
             <Icon name="arrow" size={16} class="icon-arrow rtl:rotate-180" />
           </a>
         </div>
-        <a href={partnersPath(locale)} class="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-bronze hover:text-bronze-deep">
+        <a href={partnersPath(locale)} class="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-bronze hover:text-bronze-text">
           <span>{t.nav.partners}</span>
           <Icon name="arrow" size={14} class="icon-arrow rtl:rotate-180" />
         </a>
         <p class="mt-6 text-xs text-ink-muted">
           {locale === 'ar' ? offers.sales_note_ar : offers.sales_note_en}
-          <a href={localePath(locale, '/booking/')} class="font-semibold text-bronze hover:text-bronze-deep ms-1">{t.nav.book}</a>
+          <a href={localePath(locale, '/booking/')} class="font-semibold text-bronze hover:text-bronze-text ms-1">{t.nav.book}</a>
         </p>
       </section>
     </div>
