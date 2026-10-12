@@ -24,7 +24,7 @@ onPageLeave(() => {
 });
 
 onPageLoad(() => {
-  const els = Array.from(document.querySelectorAll<HTMLElement>('.reveal, .reveal-group')).filter((el) => bindOnce(el, 'reveal'));
+  const els = Array.from(document.querySelectorAll<HTMLElement>('.reveal, .reveal-group, .reveal-draw')).filter((el) => bindOnce(el, 'reveal'));
   if (!els.length) return;
   els.forEach(prepare);
   if (reducedMotion() || !('IntersectionObserver' in window)) {

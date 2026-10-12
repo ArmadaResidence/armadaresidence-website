@@ -2,6 +2,7 @@
 import Base from '@layouts/Base.astro';
 import BranchStory from '@components/BranchStory.astro';
 import Counters from '@components/Counters.astro';
+import Divider from '@components/Divider.astro';
 import DiningSection from '@components/DiningSection.astro';
 import Placeholder from '@components/Placeholder.astro';
 import RoomGrid from '@components/RoomGrid.astro';
@@ -121,6 +122,7 @@ const driveTimes = Object.entries(((branch as { drive_times_min?: Record<string,
   </section>
 
   <BranchStory locale={locale} branch={branch} />
+  <Divider class="px-4 pb-14" />
 
   {
     dining && (
@@ -138,6 +140,7 @@ const driveTimes = Object.entries(((branch as { drive_times_min?: Record<string,
     </div>
   </section>
 
+  <Divider class="cv-auto mt-14 px-4" />
   <section class="cv-auto mx-auto max-w-6xl px-4 py-14 grid gap-8 md:grid-cols-2">
     <div class="reveal">
       <h2 class="text-2xl font-bold text-midnight">{t.branch.location_heading}</h2>

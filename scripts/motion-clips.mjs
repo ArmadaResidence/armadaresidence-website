@@ -244,6 +244,25 @@ const SCENARIOS = {
     await cta.click();
     await wait(1500);
   },
+  // item 12: the bronze divider drawn as it comes into view (home, under the branch chooser)
+  divider: async (page) => {
+    await page.goto(`${BASE}/`, { waitUntil: 'load' });
+    await page.evaluate(() => document.fonts.ready);
+    await page.evaluate(() => {
+      const el = document.querySelector('.divider');
+      scrollTo(0, el.getBoundingClientRect().top + scrollY - innerHeight - 40);
+    });
+    await wait(600);
+    await page.evaluate(() => scrollBy({ top: innerHeight * 0.55, behavior: 'smooth' }));
+    await wait(2400);
+    await page.evaluate(() => {
+      const el = document.querySelectorAll('.divider')[1];
+      scrollTo(0, el.getBoundingClientRect().top + scrollY - innerHeight - 40);
+    });
+    await wait(400);
+    await page.evaluate(() => scrollBy({ top: innerHeight * 0.55, behavior: 'smooth' }));
+    await wait(1800);
+  },
   // item 2: a slow scroll down the home page — headings, cards and sections rise in once, siblings 60 ms apart
   reveal: async (page) => {
     await page.goto(`${BASE}/`, { waitUntil: 'load' });

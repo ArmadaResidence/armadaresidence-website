@@ -1,0 +1,42 @@
+---
+/**
+ * Progressive photo (item 13, 11 Oct 2026): a box with the final aspect ratio (width/height → no layout shift),
+ * a brand-tinted placeholder underneath (and an optional tiny blurred LQIP from `lqip`), and the real image
+ * fading in from a soft blur once it has decoded (src/lib/photo.ts adds .is-loaded; no JS → the image just
+ * shows). Ready for the branch / room photo set: pass src, srcset, sizes, alt (page language, from content/),
+ * width, height. Use loading="eager" + fetchpriority="high" only for the LCP image.
+ */
+interface Props {
+  src: string;
+  srcset?: string;
+  sizes?: string;
+  alt: string;
+  width: number;
+  height: number;
+  loading?: 'lazy' | 'eager';
+  fetchpriority?: 'high' | 'low' | 'auto';
+  /** tiny data: URI (≈ 16 px wide) shown blurred under the photo while it loads */
+  lqip?: string;
+  class?: string;
+  imgClass?: string;
+  draggable?: boolean;
+}
+const { src, srcset, sizes, alt, width, height, loading = 'lazy', fetchpriority, lqip, class: className = '', imgClass = '', draggable } = Astro.props;
+const style = lqip ? `background-image:url("${lqip}")` : undefined;
+---
+
+<span class:list={['photo', className]} style={style} data-photo>
+  <img
+    src={src}
+    srcset={srcset}
+    sizes={sizes}
+    alt={alt}
+    width={width}
+    height={height}
+    loading={loading}
+    fetchpriority={fetchpriority}
+    decoding="async"
+    draggable={draggable === false ? 'false' : undefined}
+    class:list={['photo-img', imgClass]}
+  />
+</span>

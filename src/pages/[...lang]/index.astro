@@ -2,6 +2,7 @@
 import Base from '@layouts/Base.astro';
 import BranchSplit from '@components/BranchSplit.astro';
 import Counters from '@components/Counters.astro';
+import Divider from '@components/Divider.astro';
 import Icon from '@components/Icon.astro';
 import { langPaths } from '@lib/paths';
 import { organization } from '@lib/jsonld';
@@ -133,6 +134,7 @@ const quickFacts = fill(t.home.quick_facts, {
     <div class="mt-8">
       <BranchSplit locale={locale} branches={branches} />
     </div>
+    <Divider class="mt-16" />
   </section>
 
   <section class="cv-auto bg-white border-y border-line">
@@ -157,6 +159,7 @@ const quickFacts = fill(t.home.quick_facts, {
     </div>
   </section>
 
+  <Divider class="cv-auto mt-16 px-4" />
   <section class="cv-auto mx-auto max-w-6xl px-4 py-16 grid gap-10 md:grid-cols-5">
     <div class="reveal md:col-span-2">
       <h2 class="text-2xl md:text-3xl font-bold text-midnight">{locale === 'ar' ? about.heading_ar : about.heading_en}</h2>

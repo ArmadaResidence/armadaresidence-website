@@ -339,3 +339,46 @@ html.drawer-open {
     transform: none;
   }
 }
+
+/* ---------- Decorative divider (item 12) ----------
+   Start-side rule drawn from the start edge, symbol fades in, end-side rule drawn after — transform + opacity,
+   once (.is-in from the reveal controller). No JS / reduced motion → drawn state. */
+.divider {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  max-width: 36rem;
+  margin-inline: auto;
+  color: var(--color-bronze);
+}
+.divider-line {
+  flex: 1 1 0;
+  height: 1px;
+  background: currentColor;
+  transform-origin: 0 50%;
+  transition: transform var(--motion-slow) var(--ease-out);
+}
+[dir='rtl'] .divider-line {
+  transform-origin: 100% 50%;
+}
+.divider-mark {
+  width: 22px;
+  height: auto;
+  flex: none;
+  transition: opacity var(--motion-base) var(--ease-out);
+}
+.js .divider.reveal-draw:not(.is-in) .divider-line {
+  transform: scaleX(0);
+}
+.js .divider.reveal-draw:not(.is-in) .divider-mark {
+  opacity: 0;
+}
+.divider.is-in .divider-mark {
+  transition-delay: calc(var(--motion-slow) * 0.6);
+}
+.divider.is-in .divider-line:last-child {
+  transition-delay: calc(var(--motion-slow) * 0.7);
+}
+[data-theme='dark'] .divider {
+  color: var(--dk-bronze-text);
+}
