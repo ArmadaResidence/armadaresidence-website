@@ -178,6 +178,24 @@ Rules: Row Level Security on every table. Guest personal data visible only to `a
 
 ---
 
+## 9b. Phase 2 — Supabase backend + admin dashboard (approved 10 Oct 2026)
+
+**DASHBOARD-SPEC.md in the project root is the authoritative specification for phase 2.** Read it fully before any phase-2 work. Summary of what must hold:
+
+- Supabase is the single source of truth: branches, room_types (addable per branch, show toggle, inventory count, optional room numbers), rate_plans, rates (one row per day × type × plan: price, compare_at_price, available, status), reservations (+ status history, payment fields reserved for phase 3), b2b_enquiries, dining_venues, offers (3 categories + popup config), articles, media, content_overrides, users/permissions, audit_log, settings, tracking_ids.
+- `content/*.json` is imported into Supabase once; after that the site reads from Supabase (rebuild on "publish" via webhook + live availability query). Keep the JSON as seed/fallback only.
+- Dashboard = separate app in `/admin` of this repo, deployed to **admin.armadaresidence.com** (DNS on Hostinger). Supabase Auth; permissions enforced by RLS; four default roles (admin, management, sales, reception) — all edit rates/inventory/reservations; only admin manages users via per-permission toggles.
+- Dashboard UI: Armada identity, RTL-first, light/dark, purposeful motion (animated donuts for occupancy, number counters, card transitions), mobile-first for reception. React + Tailwind + Recharts/Motion.
+- Booking form → Supabase `reservations` + Resend email to `booking_notification_emails` (and `sales-marketing@` for B2B). Guest confirmation/cancellation emails from the dashboard.
+- Prices: `pricing_mode` per room type (hidden | starting_from | calendar). Phase 2 switches to `calendar` once rates are entered; compare_at shows strike-through.
+- Offers: individuals / corporate / dining, validity dates, auto-expiry, per-location visibility, one active popup. /offers/, /menu/ and dining sections read them.
+- Blog: /blog/ and /en/blog/ from `articles` with SEO fields, JSON-LD Article, sitemap/hreflang.
+- Tracking: GTM container loads after load/first interaction (ID from `content/contact.json → gtm_container`; the spec's GTM-MFV9WL38 is superseded by `GTM-5JVH7R37`, decision 12 Oct 2026, see §2); GA4 + Meta/Snap/TikTok pixels + Google Ads IDs come from dashboard settings; unified dataLayer events (see spec §7); consent mode; UTM stored with each reservation.
+- Build order: DB + RLS + seed → booking form live → dashboard auth + reservations + calendar + rooms → site reads live price/availability → media + content/visibility → overview + reports + B2B → offers/popup + dining venues + blog → channel-manager readiness (type_code per room type).
+- Env/keys only in `.env` (never committed). Claude Code asks for keys; never invents.
+
+---
+
 ## 10. Payments (phase 3 — outline)
 
 - Tap Payments: on "confirm" in admin, Edge Function creates a payment link (amount, SAR, booking ref, guest contact) and sends it by email + WhatsApp.
@@ -211,14 +229,22 @@ Rules: Row Level Security on every table. Guest personal data visible only to `a
 
 ---
 
-## 13. Pending inputs from Ahmed (do not build around guesses)
+## 13. Status and pending (10 Oct 2026)
 
-Confirmed 8 Oct 2026 and now in `/content/`: room prices (incl. VAT), sizes, capacity, bed types, kitchen/balcony/jacuzzi, addresses, per-branch phones/WhatsApp, emails, check-in/out, cancellation policy, breakfast price/hours, hall branch/capacity, legal entity, CR, VAT number.
+Phase 1 complete and published on GitHub Pages (robots: noindex until domain switch): site + /discover-taif/ + /partners/ (fact sheets) + /menu/ (original frame engine) + dining section, light/dark mode, prices hidden (pricing_mode: hidden).
 
-Still open:
+Pending from Ahmed:
+- Approved photo set per branch/room (hero video + stills).
+- Supabase project + Resend account (domain verified) — phase 2 start.
+- GA4 / pixel IDs (entered via dashboard settings).
+- Polish sprint list (UI/UX + motion) — runs after phase-2 kickoff or in parallel on a smaller model.
+- Café logo vector (AI/EPS) from the designer — for print only.
+- Domain switch + redirects (phase 4): armadaresidence.com → Pages; github.io menu URL and old subdomains → new paths.
+
+Carried over from the 12 Oct 2026 version (still open, not in the list above):
 - Unit counts: confirmed (108 / 60 = 168) and shown since 12 Oct 2026.
-- Approved photo set per branch and per room type.
 - Hall feature list (AV, catering, layouts) — phase 2.
 - Refund wording for Tap payments — phase 3. Privacy policy text — with /policies.
 - Hostinger / domain access confirmation and DNS control.
 - Renewed national-address proofs (expired 17 Apr 2026) before Tap / Google submissions.
+- Done since 10 Oct: polish sprint (11–12 Oct), blog brought forward (12 Oct), Supabase project created and MCP connected (12 Oct).
