@@ -582,6 +582,11 @@
             "value": "{{Google Ads - Booking request label}}"
           },
           {
+            "type": "TEMPLATE",
+            "key": "orderId",
+            "value": "{{DL - booking_ref}}"
+          },
+          {
             "type": "BOOLEAN",
             "key": "rdp",
             "value": "false"
@@ -621,7 +626,7 @@
           "22"
         ],
         "tagFiringOption": "ONCE_PER_EVENT",
-        "notes": "Booking request conversion (AW-18253894939/TYC_CMXwrpsdEJuqkYBE). No value: a request is not a confirmed booking and carries no price."
+        "notes": "Booking request conversion (AW-18253894939/TYC_CMXwrpsdEJuqkYBE). No value: a request is not a confirmed booking and carries no price. Transaction ID = booking ref (AR-YYYYMMDD-XXXX from the Edge Function), so a reload of /booking/success/ is not counted twice."
       }
     ],
     "trigger": [

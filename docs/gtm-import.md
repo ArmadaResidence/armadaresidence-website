@@ -13,12 +13,12 @@
 
 ## الاستيراد التالي — Google Ads (الإصدار 3)
 
-الملف فيه دلوقتي Google Ads للحساب 296-012-6274 (`AW-18253894939`): ثابتين (`Google Ads Conversion ID` = `18253894939`، `Google Ads - Booking request label` = `TYC_CMXwrpsdEJuqkYBE`) و3 أوسمة: `Conversion Linker` و`Google Ads - Remarketing` على All Pages، و`Google Ads - Conversion: booking_request` على `CE - booking_request` (من غير قيمة). الحساب القديم `AW-18153886239` متشال — لو لقيت أي وسم عليه في الحاوية احذفه.
+الملف فيه دلوقتي Google Ads للحساب 296-012-6274 (`AW-18253894939`): ثابتين (`Google Ads Conversion ID` = `18253894939`، `Google Ads - Booking request label` = `TYC_CMXwrpsdEJuqkYBE`) و3 أوسمة: `Conversion Linker` و`Google Ads - Remarketing` على All Pages، و`Google Ads - Conversion: booking_request` على `CE - booking_request` (من غير قيمة، و Transaction ID = `{{DL - booking_ref}}` عشان refresh صفحة النجاح مايتحسبش تحويل تاني). لو الإصدار 3 كان اتنشر قبل إضافة الـTransaction ID: أسهل من إعادة الاستيراد إنك تفتح الوسم ده في GTM وتكتب `{{DL - booking_ref}}` في خانة Transaction ID وتنشر إصدار جديد. الحساب القديم `AW-18153886239` متشال — لو لقيت أي وسم عليه في الحاوية احذفه.
 
 1. Admin → Import Container → `docs/gtm-container.json` → Workspace جديدة باسم «Google Ads tags» → **Merge** ثم **Rename conflicting tags, triggers and variables**. **مش Overwrite** — الـOverwrite بيمسح أي حاجة اتعملت في الحاوية ومش موجودة في الملف.
 2. قبل التأكيد راجع شاشة المعاينة: الجديد المفروض يكون 3 أوسمة وثابتين بس. الملف فيه كل الأوسمة القديمة كمان؛ اللي متطابق مع الحاوية بيفضل زي ما هو، لكن:
    - أي وسم اتعدّل في الحاوية بعد الاستيراد الأول هيتضاف نسخة منه باسم معدّل — احذف النسخة المستوردة واحتفظ بنسختك.
    - أي وسم كنت حذفته المرة اللي فاتت هيرجع تاني — احذفه تاني. أهمها `Google tag - GA4 config`: القاعدة لسه وسم GA4 config **واحد بس** على `G-675Y7W0H1T`.
    - لو الحاوية كان فيها Conversion Linker قبل كده، احتفظ بواحد بس.
-3. Preview على رابط المراجعة: في Tag Assistant لازم `Conversion Linker` و`Google Ads - Remarketing` يشتغلوا في كل صفحة، وبعد طلب حجز تجريبي `Google Ads - Conversion: booking_request` يشتغل مرة واحدة في `/booking/success/`.
+3. Preview على رابط المراجعة: في Tag Assistant لازم `Conversion Linker` و`Google Ads - Remarketing` يشتغلوا في كل صفحة، وبعد طلب حجز تجريبي `Google Ads - Conversion: booking_request` يشتغل مرة واحدة في `/booking/success/` والـTransaction ID فيه هو رقم الطلب (`AR-…`) — نفس الرقم اللي ظاهر على الصفحة.
 4. Submit → Publish باسم الإصدار **«Google Ads tags»** (الإصدار 3).
