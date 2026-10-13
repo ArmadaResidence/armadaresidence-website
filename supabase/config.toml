@@ -1,0 +1,8 @@
+# Supabase CLI config — only what this project sets; everything else uses the CLI defaults.
+# Remote project: armada-residence (ref wwzxwettsuwtakwwbfly).
+project_id = "armada-residence"
+
+[functions.booking-request]
+# Public endpoint for the booking and partner-enquiry forms: no JWT (the site ships no Supabase key);
+# BOOKING_ALLOWED_ORIGINS (Supabase secret) limits the browser origins.
+verify_jwt = false

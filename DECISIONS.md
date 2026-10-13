@@ -195,3 +195,11 @@ Append-only. Newest entries at the bottom of each date.
 - `.mcp.json` adds the project-scoped Supabase MCP server (HTTP, project `wwzxwettsuwtakwwbfly`, features docs/account/database/debugging/development/functions/branching). No keys in the file; each user signs in through OAuth.
 - Writable on purpose (no `read_only`), since phase 2 starts with the schema build (Ahmed). Rule: reads and creation run freely; any migration, delete, or change to existing data waits for Ahmed's yes in chat.
 - Rule refined (Ahmed, 12 Oct 2026): creating new tables, including `apply_migration` that only creates new objects, runs without asking. Approval is needed only for deletes, any change to an existing table or its data (ALTER, UPDATE, a new column/index/FK/RLS policy on an existing table), and anything with a cost (creating a branch). A migration that mixes new objects with a change to an existing one counts as a change.
+
+## 2026-10-13 — Booking Edge Function live (Supabase armada-residence)
+- Project `armada-residence` (ref `wwzxwettsuwtakwwbfly`, eu-central-1). Deployed with the Supabase CLI (`npx supabase@2.120.0`, Ahmed signed in) because the project MCP server was not loaded in the session.
+- Migrations 20261008 + 20261009 pushed to an empty database (no user tables before): `public.booking_requests`, RLS on, no policies — only the service role (the function) writes.
+- Endpoint: `https://wwzxwettsuwtakwwbfly.supabase.co/functions/v1/booking-request`, `verify_jwt = false` (supabase/config.toml) — a public form endpoint; the site ships no Supabase key. Secrets: `BOOKING_ALLOWED_ORIGINS` = armadaresidence.com + armadaresidence.github.io (CORS), `BOOKING_FROM_EMAIL` = `Armada Residence <reservation@armadaresidence.com>` (proposed, Ahmed to confirm). `RESEND_API_KEY` is set by Ahmed himself.
+- Email never blocks the guest (Ahmed): once stored, a Resend failure is logged with the ref and the response is still `{ ok, ref }`; only "not stored and hotel not emailed" returns 500 (form → WhatsApp). Until Resend is verified, requests reach the hotel only through the table.
+- GitHub variable `PUBLIC_BOOKING_ENDPOINT` set → the form posts to the function, the success page shows the ref and pushes `booking_request` (GTM conversions start).
+- Open: no rate limit / CAPTCHA on the public endpoint yet (Turnstile or per-email/phone limit before launch).

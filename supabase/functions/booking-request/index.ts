@@ -2,6 +2,10 @@
 // 1. validate  2. store in public.booking_requests  3. email hotel inbox(es)  4. email guest confirmation
 // Recipients, names and numbers come from content.generated.json (written by build.py from /content).
 // Secrets (RESEND_API_KEY, BOOKING_FROM_EMAIL, SUPABASE_SERVICE_ROLE_KEY) live only in Supabase secrets.
+// Email never blocks the guest: once the request is stored, a Resend failure (key missing, domain not verified,
+// network) is logged with the ref and the response is still { ok: true, ref }. Only "not stored and hotel not
+// emailed" returns 500, so the form hands the guest to WhatsApp instead of a success page for a lost request.
+// Deployed with verify_jwt = false (supabase/config.toml): a public form endpoint; CORS limits the browser origins.
 import content from './content.generated.json' with { type: 'json' };
 
 type Locale = 'ar' | 'en';
@@ -122,48 +126,59 @@ async function store(ref: string, d: ReturnType<typeof validate> extends { ok: t
     console.error('store: SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY missing');
     return false;
   }
-  const res = await fetch(`${url}/rest/v1/booking_requests`, {
-    method: 'POST',
-    headers: { apikey: key, Authorization: `Bearer ${key}`, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
-    body: JSON.stringify({
-      ref,
-      locale: d.locale,
-      branch: d.branch,
-      check_in: d.check_in,
-      check_out: d.check_out,
-      adults: d.adults,
-      children: d.children,
-      room_slug: d.room || null,
-      guest_name: d.name,
-      phone: d.phone,
-      email: d.email,
-      notes: d.notes || null,
-      page_url: d.page || null,
-      user_agent: ua.slice(0, 300),
-      request_type: d.requestType,
-      organisation: d.organisation || null,
-      rooms_requested: d.roomsRequested,
-      meals: d.meals || null,
-    }),
-  });
-  if (!res.ok) console.error('store failed', res.status, await res.text());
-  return res.ok;
+  try {
+    const res = await fetch(`${url}/rest/v1/booking_requests`, {
+      method: 'POST',
+      headers: { apikey: key, Authorization: `Bearer ${key}`, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+      body: JSON.stringify({
+        ref,
+        locale: d.locale,
+        branch: d.branch,
+        check_in: d.check_in,
+        check_out: d.check_out,
+        adults: d.adults,
+        children: d.children,
+        room_slug: d.room || null,
+        guest_name: d.name,
+        phone: d.phone,
+        email: d.email,
+        notes: d.notes || null,
+        page_url: d.page || null,
+        user_agent: ua.slice(0, 300),
+        request_type: d.requestType,
+        organisation: d.organisation || null,
+        rooms_requested: d.roomsRequested,
+        meals: d.meals || null,
+      }),
+    });
+    if (!res.ok) console.error('store failed', ref, res.status, await res.text());
+    return res.ok;
+  } catch (e) {
+    console.error('store failed', ref, String(e));
+    return false;
+  }
 }
 
-async function sendEmail(to: string[], subject: string, html: string, replyTo?: string): Promise<boolean> {
+/** `kind` and `ref` only label the log line; guest data is never logged. */
+async function sendEmail(kind: 'hotel' | 'guest', ref: string, to: string[], subject: string, html: string, replyTo?: string): Promise<boolean> {
   const key = Deno.env.get('RESEND_API_KEY');
   const from = Deno.env.get('BOOKING_FROM_EMAIL');
   if (!key || !from) {
-    console.error('email: RESEND_API_KEY / BOOKING_FROM_EMAIL missing');
+    console.error(`email ${kind} not sent`, ref, 'RESEND_API_KEY / BOOKING_FROM_EMAIL missing');
     return false;
   }
-  const res = await fetch('https://api.resend.com/emails', {
-    method: 'POST',
-    headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ from, to, subject, html, ...(replyTo ? { reply_to: replyTo } : {}) }),
-  });
-  if (!res.ok) console.error('resend failed', res.status, await res.text());
-  return res.ok;
+  try {
+    const res = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ from, to, subject, html, ...(replyTo ? { reply_to: replyTo } : {}) }),
+    });
+    if (!res.ok) console.error(`email ${kind} not sent`, ref, 'resend', res.status, await res.text());
+    return res.ok;
+  } catch (e) {
+    console.error(`email ${kind} not sent`, ref, String(e));
+    return false;
+  }
 }
 
 Deno.serve(async (req) => {
@@ -245,8 +260,10 @@ Deno.serve(async (req) => {
   const isPartner = d.requestType !== 'booking';
   const recipients = isPartner ? [content.sales_email, ...content.notification_emails] : content.notification_emails;
   const subjectPrefix = isPartner ? `[${d.requestType}] ` : '';
-  const hotelSent = await sendEmail(recipients, subjectPrefix + fill(arMail.hotel_subject, { branch: d.branch === 'both' ? content.branches.map((b) => b.name_ar).join(' + ') : branch.name_ar, ref }), hotelHtml, d.email);
-  const guestSent = await sendEmail([d.email], fill(mail.guest_subject, { ref }), guestHtml);
+  const [hotelSent, guestSent] = await Promise.all([
+    sendEmail('hotel', ref, recipients, subjectPrefix + fill(arMail.hotel_subject, { branch: d.branch === 'both' ? content.branches.map((b) => b.name_ar).join(' + ') : branch.name_ar, ref }), hotelHtml, d.email),
+    sendEmail('guest', ref, [d.email], fill(mail.guest_subject, { ref }), guestHtml),
+  ]);
 
   if (!stored && !hotelSent) {
     return json(req, 500, { ok: false, error: 'could not store or forward the request' });
