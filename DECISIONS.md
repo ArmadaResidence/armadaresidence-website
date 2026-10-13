@@ -189,6 +189,7 @@ Append-only. Newest entries at the bottom of each date.
 - Ad pixels (Meta / Snap / TikTok) are installed only inside the new container, via the dataLayer.
 - No MX/SPF/DKIM record is touched during the domain switch; email stays as is.
 - CLAUDE.md §2 Tracking and docs/gtm-import.md now describe the new container; its ID `GTM-5JVH7R37` (confirmed by Ahmed, 12 Oct 2026) is in `content/contact.json → gtm_container`, the only place the site reads it. `docs/gtm-container.json` carries the new publicId and its `GA4 Measurement ID` constant is prefilled with `G-675Y7W0H1T`.
+- Google Ads (Ahmed, 13 Oct 2026): the account used is 296-012-6274 (`AW-18253894939`). The old site's `AW-18153886239` belongs to an account Armada cannot access and is dropped. `docs/gtm-container.json` adds the constants `Google Ads Conversion ID` and `Google Ads - Booking request label`, and three tags: Conversion Linker and Google Ads Remarketing on All Pages, Google Ads Conversion Tracking on `CE - booking_request` with no value (a request is not a confirmed booking). Imported by Merge → Rename conflicting (not Overwrite) and published as Version 3 «Google Ads tags» — steps in docs/gtm-import.md.
 
 ## 2026-10-12 — Supabase MCP (phase 2 tooling)
 - `.mcp.json` adds the project-scoped Supabase MCP server (HTTP, project `wwzxwettsuwtakwwbfly`, features docs/account/database/debugging/development/functions/branching). No keys in the file; each user signs in through OAuth.
