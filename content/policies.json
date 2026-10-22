@@ -27,7 +27,7 @@
     "title_ar": "الشروط والسياسات",
     "title_en": "Terms & Policies",
     "intro_ar": "تنطبق هذه الشروط على الحجوزات في فرعي أرمادا ريزيدنس بالطائف: طريق المطار وطريق الشفا. تاريخ آخر تحديث: 8 أكتوبر 2026.",
-    "intro_en": "These terms apply to bookings at both Armada Residence properties in Taif: Airport Road and Al-Shafa Road. Last updated 8 October 2026.",
+    "intro_en": "These terms apply to bookings at both Armada Residence properties in Taif: Airport Road and Shafa Road. Last updated 8 October 2026.",
     "sections": [
       {
         "id": "booking",
@@ -47,8 +47,8 @@
         "id": "cancellation",
         "heading_ar": "الإلغاء وعدم الحضور",
         "heading_en": "Cancellation and no-show",
-        "body_ar": "إلغاء مجاني حتى 24 ساعة قبل موعد الوصول. في حال الإلغاء في نفس يوم الوصول أو عدم الحضور، تُحسب قيمة الليلة الأولى. تنطبق السياسة نفسها على الحجوزات عبر الموقع وعبر Booking.com.",
-        "body_en": "Free cancellation up to 24 hours before arrival. Same-day cancellation or no-show is charged the first night. The same policy applies to bookings made on this website and on Booking.com."
+        "body_ar": "إلغاء مجاني حتى 24 ساعة قبل موعد الوصول. في حال الإلغاء في نفس يوم الوصول أو عدم الحضور، تُحسب قيمة الليلة الأولى. تنطبق السياسة نفسها على جميع الحجوزات أيًا كانت قناة الحجز.",
+        "body_en": "Free cancellation up to 24 hours before arrival. Same-day cancellation or no-show is charged the first night. The same policy applies to every booking, whichever channel it was made through."
       },
       {
         "id": "guests",

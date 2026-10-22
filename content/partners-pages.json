@@ -258,7 +258,7 @@
         "ar": "الفندق الثاني"
       },
       {
-        "en": "Armada Residence Hotel — Al Shafa Road",
+        "en": "Armada Residence Hotel — Shafa Road",
         "ar": "فندق أرمادا ريزيدنس — طريق الشفا"
       },
       [
@@ -280,7 +280,7 @@
         }
       ],
       {
-        "en": "Explore Al Shafa Road",
+        "en": "Explore Shafa Road",
         "ar": "استكشف طريق الشفا"
       }
     ]
@@ -334,7 +334,7 @@
           "ar": "موقع استراتيجي في الطائف"
         },
         {
-          "en": "Airport Road is 15 minutes from Taif International Airport, on the Al Hada corridor towards Makkah Al-Mukarramah; Al-Shafa Road is 4 minutes from Al Ruddaf Park.",
+          "en": "Airport Road is 15 minutes from Taif International Airport, on the Al Hada corridor towards Makkah Al-Mukarramah; Shafa Road is 4 minutes from Al Ruddaf Park.",
           "ar": "طريق المطار على بُعد 15 دقيقة من مطار الطائف الدولي، على محور الهدا باتجاه مكة المكرمة، وطريق الشفا على بُعد 4 دقائق من حديقة الردف."
         },
         ""
@@ -741,7 +741,7 @@
         "ar": "الفندق الثاني"
       },
       "name": {
-        "en": "Al Shafa Road",
+        "en": "Shafa Road",
         "ar": "طريق الشفا"
       },
       "count": "60",
@@ -751,11 +751,11 @@
       },
       "img": "shafa-exterior",
       "alt": {
-        "en": "Armada Residence Hotel, Al Shafa Road, Taif — exterior at dusk",
+        "en": "Armada Residence Hotel, Shafa Road, Taif — exterior at dusk",
         "ar": "فندق أرمادا ريزيدنس، طريق الشفا، الطائف — الواجهة عند الغروب"
       },
       "lead": {
-        "en": "60 units and 98 beds on Al-Shafa Road, 4 minutes from Al Ruddaf Park — quieter and smaller than Airport Road, built around family groups booked through agencies and leisure stays.",
+        "en": "60 units and 98 beds on Shafa Road, 4 minutes from Al Ruddaf Park — quieter and smaller than Airport Road, built around family groups booked through agencies and leisure stays.",
         "ar": "60 وحدة و98 سريرًا على طريق الشفا، على بُعد 4 دقائق من حديقة الردف — أهدأ وأصغر من طريق المطار، وقائم على المجموعات العائلية عبر الوكالات والإقامات الترفيهية."
       },
       "tags": [
@@ -876,7 +876,7 @@
         [
           "shafa-exterior",
           {
-            "en": "Al-Shafa Road",
+            "en": "Shafa Road",
             "ar": "طريق الشفا"
           }
         ]
@@ -1635,7 +1635,7 @@
       [
         "shafa-road",
         {
-          "en": "Al Shafa Road",
+          "en": "Shafa Road",
           "ar": "طريق الشفا"
         }
       ],
@@ -1917,8 +1917,8 @@
         "ar": "سرير كينج"
       },
       "hotel": {
-        "en": "Al Shafa",
-        "ar": "الشفا"
+        "en": "Shafa Road",
+        "ar": "طريق الشفا"
       },
       "best": {
         "en": "Couples · leisure stays",
@@ -1941,8 +1941,8 @@
         "ar": "سرير كينج"
       },
       "hotel": {
-        "en": "Al Shafa",
-        "ar": "الشفا"
+        "en": "Shafa Road",
+        "ar": "طريق الشفا"
       },
       "best": {
         "en": "Couples · special occasions",
@@ -2013,8 +2013,8 @@
         "ar": "سرير كينج + سريران مفردان"
       },
       "hotel": {
-        "en": "Al Shafa",
-        "ar": "الشفا"
+        "en": "Shafa Road",
+        "ar": "طريق الشفا"
       },
       "best": {
         "en": "Premium leisure stays",

@@ -1,5 +1,5 @@
 {
-  "_note": "New copy, 8 Oct 2026, draft 1 for Ahmed's review. Brand voice: formal Arabic register, clear facts first, no superlatives, no exclamation marks. Official slogan is a separate line, never attached to the logo. Hero made brand-level (no city name) 9 Oct — future branches outside Taif.",
+  "_note": "Copy approved by Ahmed on 22 Oct 2026 (draft 1 of 8 Oct with his edits). Brand voice: formal Arabic register, clear facts first, no superlatives, no exclamation marks. Official slogan is a separate line, never attached to the logo. Hero made brand-level (no city name) 9 Oct — future branches outside Taif.",
   "slogan_ar": "الراحة، بأسلوب أرمادا",
   "slogan_en": "Comfort, the Armada Way.",
   "hero": {
@@ -30,7 +30,7 @@
     "heading_ar": "عن أرمادا ريزيدنس",
     "heading_en": "About Armada Residence",
     "body_ar": "أرمادا ريزيدنس علامة ضيافة سعودية في الطائف، بفرعين: شقق فندقية على طريق المطار، وفندق على طريق الشفا. تجمع الإقامة في الفرعين بين الهدوء والمساحة والراحة العملية، لضيوف السياحة والأعمال على حد سواء.\n\nنقدّم غرفًا وأجنحة بمساحات واضحة، وأسعارًا تشمل الضريبة بلا مفاجآت، وفريق استقبال متاحًا على مدار الساعة. الوصول من الساعة 4:00 عصرًا والمغادرة حتى 12:00 ظهرًا في الفرعين، مع إلغاء مجاني حتى 24 ساعة قبل الوصول.\n\nتدير الفرعين شركة أرمادا ريزيدنس لتشغيل الفنادق.",
-    "body_en": "Armada Residence is a Saudi hospitality brand in Taif with two properties: hotel apartments on Airport Road and a hotel on Al-Shafa Road. Both offer calm, space and practical comfort for leisure and business guests alike.\n\nRooms and suites come with clearly stated sizes, prices that include VAT with no surprises, and a reception team available around the clock. Check-in is from 4:00 pm and check-out by 12:00 noon at both properties, with free cancellation up to 24 hours before arrival.\n\nBoth properties are operated by Armada Residence Company To Operate Hotels."
+    "body_en": "Armada Residence is a Saudi hospitality brand in Taif with two properties: hotel apartments on Airport Road and a hotel on Shafa Road. Both offer calm, space and practical comfort for leisure and business guests alike.\n\nRooms and suites come with clearly stated sizes, prices that include VAT with no surprises, and a reception team available around the clock. Check-in is from 4:00 pm and check-out by 12:00 noon at both properties, with free cancellation up to 24 hours before arrival.\n\nBoth properties are operated by Armada Residence Company To Operate Hotels."
   },
   "why_armada": {
     "heading_ar": "لماذا أرمادا",
@@ -38,7 +38,7 @@
     "items": [
       {
         "title_ar": "مساحات واسعة",
-        "body_ar": "غرف تبدأ من 35 مترًا مربعًا في الشفا و50 مترًا مربعًا على طريق المطار، وأجنحة تصل إلى 75 مترًا مربعًا.",
+        "body_ar": "غرف تبدأ من 35 مترًا مربعًا على طريق الشفا و50 مترًا مربعًا على طريق المطار، وأجنحة تصل إلى 75 مترًا مربعًا.",
         "title_en": "Generous space",
         "body_en": "Rooms from 35 m² at Shafa Road and 50 m² at Airport Road, and suites up to 75 m²."
       },
@@ -50,32 +50,30 @@
       },
       {
         "title_ar": "بوفيه إفطار يومي",
-        "body_ar": "في مطعم كل فرع من 07:00 إلى 10:30.",
+        "body_ar": "في مطعم كل فرع، من 7:00 إلى 10:30 صباحًا.",
         "title_en": "Daily breakfast buffet",
-        "body_en": "In each property's restaurant, 07:00–10:30."
+        "body_en": "In each property's restaurant, 7:00–10:30 am."
       },
       {
         "title_ar": "موقعان في الطائف",
         "body_ar": "على طريق المطار للمسافرين وأصحاب الأعمال، وعلى طريق الشفا للعائلات ومن يقصد المرتفعات.",
         "title_en": "Two locations in Taif",
-        "body_en": "Airport Road for travellers and business guests; Al-Shafa Road for families and visitors heading to the highlands."
+        "body_en": "Airport Road for travellers and business guests; Shafa Road for families and visitors heading to the highlands."
       },
       {
         "title_ar": "إلغاء مرن",
-        "body_ar": "إلغاء مجاني حتى 24 ساعة قبل الوصول، بنفس الشروط المعتمدة على Booking.com.",
+        "body_ar": "إلغاء مجاني حتى 24 ساعة قبل الوصول، وبعدها أو عند عدم الحضور تُحتسب الليلة الأولى.",
         "title_en": "Flexible cancellation",
-        "body_en": "Free cancellation up to 24 hours before arrival — the same terms as on Booking.com."
+        "body_en": "Free cancellation up to 24 hours before arrival; after that, or for a no-show, the first night is charged."
       },
       {
-        "title_ar": "استقبال وخدمة غرف على مدار الساعة، ومواقف مجانية",
-        "body_ar": "فريق الاستقبال متاح في أي وقت وعلى الواتساب مباشرة، وخدمة غرف في أي ساعة، ومواقف خاصة للنزلاء في الفرعين.",
-        "title_en": "24-hour reception and room service, free parking",
-        "body_en": "Reception is available at any hour and directly on WhatsApp, room service around the clock, and private guest parking at both properties."
+        "title_ar": "على مدار الساعة",
+        "body_ar": "فريق الاستقبال متاح في أي وقت وعلى الواتساب مباشرة، وخدمة غرف في أي ساعة، ومواقف خاصة مجانية للنزلاء في الفرعين.",
+        "title_en": "Around the clock",
+        "body_en": "Reception is available at any hour and directly on WhatsApp, room service around the clock, and free private guest parking at both properties."
       }
     ]
   },
-  "verified": false,
-  "pending": [
-    "Ahmed's approval of copy"
-  ]
+  "verified": true,
+  "pending": []
 }
