@@ -106,6 +106,9 @@
       "whatsapp_title": "تواصل عبر واتساب",
       "whatsapp_branch": "واتساب {branch}",
       "whatsapp_choose": "اختر الفرع للتواصل عبر واتساب",
+      "whatsapp_close": "إغلاق",
+      "whatsapp_prefill_branch": "مرحبًا، أرغب في الاستفسار عن الحجز في {branch}.",
+      "whatsapp_prefill_partners": "مرحبًا، أرغب في الاستفسار عن الشراكة مع أرمادا ريزيدنس.",
       "call": "اتصال",
       "email": "البريد الإلكتروني",
       "maps": "عرض على خرائط Google",
@@ -215,7 +218,9 @@
       "partner_intro": "وصل طلب شراكة جديد عبر نموذج الشركاء والوكالات. التفاصيل:",
       "partner_guest_subject": "طلبك وصلنا — أرمادا ريزيدنس ({ref})",
       "partner_guest_body": "شكرًا لتواصلك مع أرمادا ريزيدنس. وصلنا طلبك وسيتواصل معك فريق المبيعات قريبًا.",
-      "partner_guest_whatsapp": "للتواصل المباشر مع فريق المبيعات عبر واتساب:"
+      "partner_guest_summary": "ملخص طلبك",
+      "partner_guest_whatsapp": "للتواصل المباشر مع فريق المبيعات عبر واتساب:",
+      "partner_guest_footer": "أُرسلت هذه الرسالة تلقائيًا من نموذج الشركاء والوكالات على armadaresidence.com."
     },
     "taif": {
       "heading": "اكتشف الطائف",
@@ -494,6 +499,9 @@
       "whatsapp_title": "Chat on WhatsApp",
       "whatsapp_branch": "WhatsApp {branch}",
       "whatsapp_choose": "Choose a property to chat on WhatsApp",
+      "whatsapp_close": "Close",
+      "whatsapp_prefill_branch": "Hello, I'd like to inquire about booking at {branch}.",
+      "whatsapp_prefill_partners": "Hello, I'd like to inquire about partnering with Armada Residence.",
       "call": "Call",
       "email": "Email",
       "maps": "Open in Google Maps",
@@ -603,7 +611,9 @@
       "partner_intro": "A new partnership request arrived from the partners form. Details:",
       "partner_guest_subject": "We have received your request — Armada Residence",
       "partner_guest_body": "Thank you for contacting Armada Residence. We have received your request and our sales team will be in touch shortly.",
-      "partner_guest_whatsapp": "To reach the sales team directly on WhatsApp:"
+      "partner_guest_summary": "Your request summary",
+      "partner_guest_whatsapp": "To reach the sales team directly on WhatsApp:",
+      "partner_guest_footer": "This message was sent automatically by the partners form on armadaresidence.com."
     },
     "taif": {
       "heading": "Discover Taif",

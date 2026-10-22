@@ -7,6 +7,7 @@
 //   both:               CC = active rows of scope 'central'; when To is empty the central rows become To —
 //                       a request is never sent to nobody. Addresses never live in the repository; names,
 //                       numbers and labels come from content.generated.json (written by build.py from /content).
+// Every message carries an HTML body and a real text/plain alternative (multipart/alternative).
 // Senders: notification from BOOKING_FROM_RECEPTION (Reply-To = the sender of the form); confirmation from
 //   BOOKING_FROM_GUEST (Reply-To = the matching recipients — branch or partners — or the sender address).
 // Secrets: RESEND_API_KEY, SUPABASE_SERVICE_ROLE_KEY (automatic), BOOKING_ALLOWED_ORIGINS, BOOKING_IP_SALT.
@@ -313,7 +314,9 @@ interface Mail {
   cc?: string[];
   replyTo?: string[];
   subject: string;
+  /** HTML body + a real text/plain alternative (Resend sends multipart/alternative when both are given). */
   html: string;
+  text: string;
 }
 
 /** Returns the Resend message id, or null. `kind` and `ref` label the log line; form data is never logged. */
@@ -338,6 +341,7 @@ async function sendEmail(kind: 'notification' | 'confirmation', ref: string, msg
         ...(msg.replyTo && msg.replyTo.length ? { reply_to: msg.replyTo } : {}),
         subject: msg.subject,
         html: msg.html,
+        text: msg.text,
       }),
     });
     if (!res.ok) {
@@ -359,6 +363,10 @@ function tableHtml(rows: [string, string][]): string {
   return `<table cellpadding="6" style="border-collapse:collapse">${rows
     .map(([k, val]) => `<tr><td style="color:#555">${esc(k)}</td><td><strong>${esc(val)}</strong></td></tr>`)
     .join('')}</table>`;
+}
+
+function tableText(rows: [string, string][]): string {
+  return rows.map(([k, val]) => `${k}: ${val}`).join('\n');
 }
 
 Deno.serve(async (req) => {
@@ -447,16 +455,48 @@ Deno.serve(async (req) => {
     intro = arMail.hotel_intro;
   }
   const notificationHtml = `<div dir="rtl" style="font-family:sans-serif"><p>${esc(intro)}</p>${tableHtml(notificationRows)}<p style="color:#777;font-size:12px">${esc(arMail.hotel_footer)}</p></div>`;
+  const notificationText = `${intro}
 
-  // ---- 4: confirmation to the sender — Arabic first, then English, in one message ----
-  const block = (L: Locale): string => {
+${tableText(notificationRows)}
+
+${arMail.hotel_footer}`;
+
+  // ---- 4: confirmation to the sender — Arabic first, then English, in one message (HTML + text/plain) ----
+  const block = (L: Locale): { html: string; text: string } => {
     const labels = content.labels[L];
     const mail = content.email[L];
     const dir = L === 'ar' ? 'rtl' : 'ltr';
+    const greeting = fill(mail.guest_greeting, { name: d.name });
     if (isPartner) {
-      // No availability promise, no request table: sales replies with the details.
+      // Specific, no availability promise: ref, company, contact, enquiry type, a short summary, and sales on WhatsApp.
+      const pl = content.partner_labels[L];
+      const typeName = (content.request_types[L] as Record<string, string>)[d.requestType] ?? d.requestType;
+      const rows: [string, string][] = [
+        [mail.ref, ref],
+        [pl.company, d.organisation || '—'],
+        [pl.person, d.name],
+        [pl.reqtype, typeName],
+        [pl.property, branchName(L)],
+        [pl.checkin, d.check_in],
+        [pl.checkout, d.check_out],
+        [labels.nights, String(d.nights)],
+        [pl.guests, String(d.adults)],
+        [pl.rooms, d.roomsRequested === null ? '—' : String(d.roomsRequested)],
+        [pl.meals, d.meals || '—'],
+        [pl.notes, d.notes || '—'],
+      ];
       const wa = `https://wa.me/${content.sales_whatsapp.replace(/\D/g, '')}`;
-      return `<div dir="${dir}" lang="${L}" style="font-family:sans-serif"><p>${esc(fill(mail.guest_greeting, { name: d.name }))}</p><p>${esc(mail.partner_guest_body)}</p><p>${esc(mail.ref)}: <strong>${esc(ref)}</strong></p><p>${esc(mail.partner_guest_whatsapp)} <a href="${wa}">${esc(content.sales_phone_display)}</a></p></div>`;
+      const html = `<div dir="${dir}" lang="${L}" style="font-family:sans-serif"><p>${esc(greeting)}</p><p>${esc(mail.partner_guest_body)}</p><h3>${esc(mail.partner_guest_summary)}</h3>${tableHtml(rows)}<p>${esc(mail.partner_guest_whatsapp)} <a href="${wa}">${esc(content.sales_phone_display)}</a></p><p style="color:#777;font-size:12px">${esc(mail.partner_guest_footer)}</p></div>`;
+      const text = `${greeting}
+${mail.partner_guest_body}
+
+${mail.partner_guest_summary}
+${tableText(rows)}
+
+${mail.partner_guest_whatsapp} ${content.sales_phone_display} — ${wa}
+
+${mail.partner_guest_footer}`;
+      return { html, text };
     }
     const rows: [string, string][] = [
       [mail.ref, ref],
@@ -472,14 +512,28 @@ Deno.serve(async (req) => {
       [labels.email, d.email],
       [labels.notes, d.notes || '—'],
     ];
+    const body = fill(mail.guest_body, { branch: branchName(L) });
     const wa = `https://wa.me/${branch.whatsapp.replace(/\D/g, '')}`;
-    return `<div dir="${dir}" lang="${L}" style="font-family:sans-serif"><p>${esc(fill(mail.guest_greeting, { name: d.name }))}</p><p>${esc(
-      fill(mail.guest_body, { branch: branchName(L) }),
-    )}</p><h3>${esc(mail.guest_summary)}</h3>${tableHtml(rows)}<p>${esc(mail.guest_whatsapp)} <a href="${wa}">${esc(branch.phone_display)}</a></p><p style="color:#777;font-size:12px">${esc(
-      mail.guest_footer,
-    )}</p></div>`;
+    const html = `<div dir="${dir}" lang="${L}" style="font-family:sans-serif"><p>${esc(greeting)}</p><p>${esc(body)}</p><h3>${esc(mail.guest_summary)}</h3>${tableHtml(rows)}<p>${esc(mail.guest_whatsapp)} <a href="${wa}">${esc(branch.phone_display)}</a></p><p style="color:#777;font-size:12px">${esc(mail.guest_footer)}</p></div>`;
+    const text = `${greeting}
+${body}
+
+${mail.guest_summary}
+${tableText(rows)}
+
+${mail.guest_whatsapp} ${branch.phone_display} — ${wa}
+
+${mail.guest_footer}`;
+    return { html, text };
   };
-  const confirmationHtml = `${block('ar')}<hr style="border:0;border-top:1px solid #ddd;margin:24px 0">${block('en')}`;
+  const ar = block('ar');
+  const en = block('en');
+  const confirmationHtml = `${ar.html}<hr style="border:0;border-top:1px solid #ddd;margin:24px 0">${en.html}`;
+  const confirmationText = `${ar.text}
+
+----------------------------------------
+
+${en.text}`;
   const confirmationSubject = isPartner
     ? `${fill(arMail.partner_guest_subject, { ref })} | ${content.email.en.partner_guest_subject}`
     : `${fill(arMail.guest_subject, { ref })} | ${content.email.en.guest_subject.replace(' ({ref})', '')}`;
@@ -491,8 +545,8 @@ Deno.serve(async (req) => {
   const confirmationReplyTo = primary.length ? primary : [addressOf(FROM_GUEST)];
 
   const [notificationId, confirmationId] = await Promise.all([
-    sendEmail('notification', ref, { from: FROM_RECEPTION, to, cc, replyTo: [d.email], subject, html: notificationHtml }),
-    sendEmail('confirmation', ref, { from: FROM_GUEST, to: [d.email], replyTo: confirmationReplyTo, subject: confirmationSubject, html: confirmationHtml }),
+    sendEmail('notification', ref, { from: FROM_RECEPTION, to, cc, replyTo: [d.email], subject, html: notificationHtml, text: notificationText }),
+    sendEmail('confirmation', ref, { from: FROM_GUEST, to: [d.email], replyTo: confirmationReplyTo, subject: confirmationSubject, html: confirmationHtml, text: confirmationText }),
   ]);
 
   if (!stored && !notificationId) {

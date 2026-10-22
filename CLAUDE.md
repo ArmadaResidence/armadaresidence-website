@@ -166,7 +166,8 @@ On submit (via Edge Function / serverless endpoint, never client-side email):
 5. Push `dataLayer` event `booking_request` (branch, room type, nights) for GA4 / Meta / TikTok / Snap via GTM.
 6. Show a success page explaining exactly what happens next. Never a silent "sent".
 
-Sticky WhatsApp button on every page, per-branch number from `content/contact.json` (home and shared pages: show both branches in a small chooser).
+Sticky WhatsApp button on every page (decision 22 Oct 2026), numbers from `content/contact.json`: /partners/* → the sales line directly; a branch page and its room pages → that branch's number directly; every other page → a small chooser with the two branches (names from branches.json in the page language), each opening its branch number — real buttons/links, aria labels, closes on Esc and outside tap, focus returns to the button, RTL/LTR correct. Prefilled message per destination in the page language (`ui.json → cta.whatsapp_prefill_branch` / `whatsapp_prefill_partners`). Every open pushes the dataLayer event `whatsapp_click` { destination: airport-road | shafa-road | sales, page_path, page_location }.
+Every email the function sends carries an HTML body and a real text/plain alternative (multipart/alternative). The partner confirmation is specific: request ref, company, contact name, enquiry type, a short summary of the submission and the sales WhatsApp link — still no availability promise.
 
 ---
 

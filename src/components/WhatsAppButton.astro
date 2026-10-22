@@ -1,30 +1,65 @@
 ---
 /**
- * Sticky WhatsApp button. On branch/room pages it links straight to that branch's number;
- * on home and shared pages it opens a two-branch chooser. Numbers come from content/contact.json.
+ * Sticky WhatsApp button (decision 22 Oct 2026).
+ *  - target 'airport-road' | 'shafa-road': a branch page or its room pages → that branch's number directly.
+ *  - target 'sales': /partners/* → the sales line directly.
+ *  - no target (home and shared pages): a small chooser with the two branches (names from branches.json in the
+ *    page language), each opening its branch number.
+ * Every destination carries a prefilled message in the page language (ui.json → cta.whatsapp_prefill_*), and every
+ * open pushes `whatsapp_click` { destination, page_path } to the dataLayer. Numbers come from content/contact.json.
  */
-import { branchContact, branchShort, branches, fill, ui, waHref, type Locale } from '@lib/content';
+import { branchContact, branches, contact, fill, L, ui, waHref, type Locale } from '@lib/content';
 import Icon from './Icon.astro';
 
 interface Props {
   locale: Locale;
-  branch?: string;
+  target?: string;
 }
-const { locale, branch } = Astro.props;
+const { locale, target } = Astro.props;
 const t = ui(locale);
-const single = branch ? branchContact(branch) : null;
+
+interface Dest {
+  destination: string;
+  href: string;
+  label: string;
+  phoneDisplay: string;
+}
+function branchDest(slug: string): Dest {
+  const b = branches.find((x) => x.slug === slug);
+  if (!b) throw new Error(`No branch ${slug}`);
+  const c = branchContact(slug);
+  const name = L(locale, b, 'name');
+  return {
+    destination: slug,
+    href: waHref(c.whatsapp, fill(t.cta.whatsapp_prefill_branch, { branch: name })),
+    label: fill(t.cta.whatsapp_branch, { branch: name }),
+    phoneDisplay: c.phone_display,
+  };
+}
+const salesDest: Dest = {
+  destination: 'sales',
+  href: waHref(contact.sales.whatsapp, t.cta.whatsapp_prefill_partners),
+  label: t.cta.whatsapp,
+  phoneDisplay: contact.sales.phone_display,
+};
+const single: Dest | null = target === 'sales' ? salesDest : target ? branchDest(target) : null;
+const choices: Dest[] = single ? [] : branches.map((b) => branchDest(b.slug));
+const fabClass = 'wa-pulse inline-flex items-center gap-2 bg-midnight text-white rounded-full shadow-lg px-4 py-3 hover:bg-bronze transition-colors';
 ---
 
 {
   single ? (
     <a
-      href={waHref(single.whatsapp)}
-      class="wa-fab wa-pulse inline-flex items-center gap-2 bg-midnight text-white rounded-full shadow-lg px-4 py-3 hover:bg-bronze transition-colors"
+      href={single.href}
+      class:list={['wa-fab', fabClass]}
       transition:name="wa-fab"
       transition:animate="none"
       rel="noopener"
       target="_blank"
       title={t.cta.whatsapp_title}
+      aria-label={t.cta.whatsapp_title}
+      data-wa-link
+      data-wa-destination={single.destination}
     >
       <Icon name="whatsapp" size={22} />
       <span class="text-sm font-semibold">{t.cta.whatsapp}</span>
@@ -32,37 +67,46 @@ const single = branch ? branchContact(branch) : null;
   ) : (
     <div class="wa-fab" data-wa-chooser transition:name="wa-fab" transition:animate="none">
       <div
+        id="wa-chooser-panel"
         class="hidden mb-3 bg-white rounded-card shadow-xl border border-line p-3 w-80 max-w-[calc(100vw-2.5rem)]"
         data-wa-panel
         role="dialog"
-        aria-label={t.cta.whatsapp_choose}
+        aria-modal="false"
+        aria-labelledby="wa-chooser-title"
       >
-        <p class="text-xs text-ink-muted mb-2">{t.cta.whatsapp_choose}</p>
+        <div class="flex items-start justify-between gap-2 mb-2">
+          <p id="wa-chooser-title" class="text-xs text-ink-muted">{t.cta.whatsapp_choose}</p>
+          <button type="button" class="shrink-0 -m-1 p-1 rounded text-ink-muted hover:text-midnight" aria-label={t.cta.whatsapp_close} data-wa-close>
+            <Icon name="close" size={16} />
+          </button>
+        </div>
         <ul class="space-y-2">
-          {branches.map((b) => {
-            const c = branchContact(b.slug);
-            return (
-              <li>
-                <a
-                  href={waHref(c.whatsapp)}
-                  class="flex items-center justify-between gap-2 rounded px-3 py-2 bg-porcelain hover:bg-bronze hover:text-white transition-colors"
-                  rel="noopener"
-                  target="_blank"
-                >
-                  <span class="text-sm font-medium">{fill(t.cta.whatsapp_branch, { branch: branchShort(locale, b.slug) })}</span>
-                  <span class="latin text-xs whitespace-nowrap" dir="ltr">
-                    {c.phone_display}
-                  </span>
-                </a>
-              </li>
-            );
-          })}
+          {choices.map((d) => (
+            <li>
+              <a
+                href={d.href}
+                class="flex items-center justify-between gap-2 rounded px-3 py-2 bg-porcelain hover:bg-bronze hover:text-white transition-colors"
+                rel="noopener"
+                target="_blank"
+                data-wa-link
+                data-wa-destination={d.destination}
+              >
+                <span class="text-sm font-medium">{d.label}</span>
+                <span class="latin text-xs whitespace-nowrap" dir="ltr">
+                  {d.phoneDisplay}
+                </span>
+              </a>
+            </li>
+          ))}
         </ul>
       </div>
       <button
         type="button"
-        class="wa-pulse inline-flex items-center gap-2 bg-midnight text-white rounded-full shadow-lg px-4 py-3 hover:bg-bronze transition-colors"
+        class={fabClass}
         aria-expanded="false"
+        aria-haspopup="dialog"
+        aria-controls="wa-chooser-panel"
+        aria-label={t.cta.whatsapp_choose}
         data-wa-toggle
         title={t.cta.whatsapp_title}
       >
@@ -76,22 +120,51 @@ const single = branch ? branchContact(branch) : null;
 <script>
   import { bindOnce, onPageLoad } from '@lib/client';
 
+  /** GTM: one event per WhatsApp open, whatever the page type. */
+  function track(destination: string) {
+    const w = window as unknown as { dataLayer?: unknown[] };
+    w.dataLayer = w.dataLayer || [];
+    w.dataLayer.push({ event: 'whatsapp_click', destination, page_path: location.pathname, page_location: location.href });
+  }
+
   onPageLoad(() => {
-    const root = document.querySelector('[data-wa-chooser]');
+    document.querySelectorAll<HTMLAnchorElement>('[data-wa-link]').forEach((a) => {
+      if (!bindOnce(a)) return;
+      a.addEventListener('click', () => track(a.dataset.waDestination || ''));
+    });
+
+    const root = document.querySelector<HTMLElement>('[data-wa-chooser]');
     const btn = root?.querySelector<HTMLButtonElement>('[data-wa-toggle]');
     const panel = root?.querySelector<HTMLElement>('[data-wa-panel]');
     if (!root || !btn || !panel || !bindOnce(root)) return;
-    const close = () => {
+    const closeBtn = panel.querySelector<HTMLButtonElement>('[data-wa-close]');
+    const isOpen = () => btn.getAttribute('aria-expanded') === 'true';
+    const open = () => {
+      btn.setAttribute('aria-expanded', 'true');
+      panel.classList.remove('hidden');
+      panel.querySelector<HTMLElement>('a, button')?.focus();
+    };
+    const close = (refocus = false) => {
+      if (!isOpen()) return;
       btn.setAttribute('aria-expanded', 'false');
       panel.classList.add('hidden');
+      if (refocus) btn.focus();
     };
-    btn.addEventListener('click', () => {
-      const open = btn.getAttribute('aria-expanded') === 'true';
-      btn.setAttribute('aria-expanded', String(!open));
-      panel.classList.toggle('hidden', open);
+    btn.addEventListener('click', () => (isOpen() ? close(true) : open()));
+    closeBtn?.addEventListener('click', () => close(true));
+    panel.addEventListener('click', (e) => {
+      // a choice opens WhatsApp in a new tab; the chooser closes behind it
+      if ((e.target as HTMLElement).closest('[data-wa-link]')) close();
     });
-    document.addEventListener('click', (e) => {
-      if (!root.isConnected) return;
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && isOpen()) {
+        e.preventDefault();
+        close(true);
+      }
+    });
+    // outside tap / click
+    document.addEventListener('pointerdown', (e) => {
+      if (!root.isConnected || !isOpen()) return;
       if (!root.contains(e.target as Node)) close();
     });
   });

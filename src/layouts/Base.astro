@@ -174,7 +174,8 @@ const preloadFonts = locale === 'ar' ? [fontAr400, fontAr600, fontAr700] : [font
       <slot />
     </main>
     {!hideFooter && <Footer locale={locale} switchPath={switchPath} />}
-    <WhatsAppButton locale={locale} branch={whatsapp} />
+    {/* Sticky WhatsApp (decision 22 Oct 2026): branch/room pages → that branch; /partners/* → sales; elsewhere → chooser. */}
+    <WhatsAppButton locale={locale} target={whatsapp ?? (path.startsWith('/partners') ? 'sales' : undefined)} />
     {bookingDrawer && !legacy && <BookingDrawer locale={locale} />}
     <script>
       import '@lib/reveal';
