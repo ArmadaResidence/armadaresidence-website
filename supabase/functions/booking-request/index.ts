@@ -1,17 +1,18 @@
 // Supabase Edge Function: booking-request (phase 1)
 //
-// Order: validate → store in public.booking_requests → email reception → email the guest.
+// Order: validate → store in public.booking_requests → email reception / sales → email the sender.
 // Routing (DECISIONS.md 2026-10-22): recipients are read from public.booking_notification_recipients —
-//   To  = active recipients of the request's branch, CC = active central recipients (branch_slug NULL);
-//   a request with no specific branch ('both' on partner enquiries) or whose branch has no active recipient
-//   goes To the central recipients. Addresses never live in the repository; names, numbers and labels come
-//   from content.generated.json (written by build.py from /content).
-// Senders: reception notification from BOOKING_FROM_RECEPTION (Reply-To = the guest), guest confirmation
-//   from BOOKING_FROM_GUEST (Reply-To = the branch's active recipients, or the sender address).
+//   booking requests:   To = active rows of scope 'branch' for the request's branch
+//   partner enquiries:  To = active rows of scope 'partners' (request_type ≠ booking; never a booking)
+//   both:               CC = active rows of scope 'central'; when To is empty the central rows become To —
+//                       a request is never sent to nobody. Addresses never live in the repository; names,
+//                       numbers and labels come from content.generated.json (written by build.py from /content).
+// Senders: notification from BOOKING_FROM_RECEPTION (Reply-To = the sender of the form); confirmation from
+//   BOOKING_FROM_GUEST (Reply-To = the matching recipients — branch or partners — or the sender address).
 // Secrets: RESEND_API_KEY, SUPABASE_SERVICE_ROLE_KEY (automatic), BOOKING_ALLOWED_ORIGINS, BOOKING_IP_SALT.
 // Email never blocks the guest: once the request is stored, a Resend failure (key missing, domain not
 //   verified, no active recipient, network) is logged with the ref and the response is still { ok, ref }.
-//   Only "not stored AND reception not emailed" returns 500 (the form then hands the guest to WhatsApp).
+//   Only "not stored AND notification not emailed" returns 500 (the form then hands the guest to WhatsApp).
 // Abuse: honeypot field `website` (filled → 200 with a ref, nothing stored or sent) and a per-IP limit of
 //   RATE_LIMIT hits per RATE_WINDOW_SECONDS (429), counted by the SQL function booking_request_hit on a
 //   salted hash of the IP. Both fail open: a throttle outage never blocks a real guest.
@@ -43,7 +44,10 @@ interface Payload {
   meals?: string;
 }
 
+type Scope = 'branch' | 'partners' | 'central';
+
 interface Recipient {
+  scope: Scope;
   branch_slug: string | null;
   email: string;
 }
@@ -262,7 +266,7 @@ async function loadRecipients(ref: string): Promise<Recipient[]> {
   const env = serviceEnv();
   if (!env) return [];
   try {
-    const res = await fetch(`${env.url}/rest/v1/booking_notification_recipients?active=eq.true&select=branch_slug,email`, {
+    const res = await fetch(`${env.url}/rest/v1/booking_notification_recipients?active=eq.true&select=scope,branch_slug,email`, {
       headers: serviceHeaders(env.key),
     });
     if (!res.ok) {
@@ -272,7 +276,7 @@ async function loadRecipients(ref: string): Promise<Recipient[]> {
     const rows = (await res.json()) as Recipient[];
     return rows
       .filter((r) => typeof r.email === 'string' && EMAIL.test(r.email))
-      .map((r) => ({ branch_slug: r.branch_slug ?? null, email: r.email.trim().toLowerCase() }));
+      .map((r) => ({ scope: r.scope, branch_slug: r.branch_slug ?? null, email: r.email.trim().toLowerCase() }));
   } catch (e) {
     console.error('recipients: read failed', ref, String(e));
     return [];
@@ -284,36 +288,44 @@ function unique(list: string[]): string[] {
 }
 
 /**
- * To = the branch's active recipients, CC = the active central recipients (+ the sales inbox on partner
- * enquiries). No branch recipient → the central recipients become To. Never the same address twice.
+ * Bookings: To = the branch's active recipients. Partner enquiries: To = the active partners recipients.
+ * CC = the active central recipients. No primary recipient → the central recipients become To.
+ * Never the same address twice. `primary` is what the confirmation's Reply-To points at.
  */
-function route(rows: Recipient[], branchSlug: string, isPartner: boolean): { to: string[]; cc: string[]; branchRecipients: string[] } {
-  const branchRecipients = unique(rows.filter((r) => r.branch_slug === branchSlug).map((r) => r.email));
-  const central = unique(rows.filter((r) => r.branch_slug === null).map((r) => r.email));
-  let to = branchRecipients;
-  let cc = isPartner ? unique([...central, content.sales_email]) : central;
+function route(rows: Recipient[], branchSlug: string, isPartner: boolean): { to: string[]; cc: string[]; primary: string[] } {
+  const primary = unique(
+    rows.filter((r) => (isPartner ? r.scope === 'partners' : r.scope === 'branch' && r.branch_slug === branchSlug)).map((r) => r.email),
+  );
+  const central = unique(rows.filter((r) => r.scope === 'central').map((r) => r.email));
+  let to = primary;
+  let cc = central;
   if (to.length === 0) {
-    to = cc;
+    to = central;
     cc = [];
   }
   cc = cc.filter((e) => !to.includes(e));
-  return { to, cc, branchRecipients };
+  return { to, cc, primary };
 }
 
-/** `kind` and `ref` only label the log line; guest data is never logged. */
-async function sendEmail(
-  kind: 'reception' | 'guest',
-  ref: string,
-  msg: { from: string; to: string[]; cc?: string[]; replyTo?: string[]; subject: string; html: string },
-): Promise<boolean> {
+interface Mail {
+  from: string;
+  to: string[];
+  cc?: string[];
+  replyTo?: string[];
+  subject: string;
+  html: string;
+}
+
+/** Returns the Resend message id, or null. `kind` and `ref` label the log line; form data is never logged. */
+async function sendEmail(kind: 'notification' | 'confirmation', ref: string, msg: Mail): Promise<string | null> {
   const key = Deno.env.get('RESEND_API_KEY');
   if (!key) {
     console.error(`email ${kind} not sent`, ref, 'RESEND_API_KEY missing — request kept in booking_requests');
-    return false;
+    return null;
   }
   if (msg.to.length === 0) {
     console.error(`email ${kind} not sent`, ref, 'no recipient');
-    return false;
+    return null;
   }
   try {
     const res = await fetch('https://api.resend.com/emails', {
@@ -328,11 +340,18 @@ async function sendEmail(
         html: msg.html,
       }),
     });
-    if (!res.ok) console.error(`email ${kind} not sent`, ref, 'resend', res.status, await res.text());
-    return res.ok;
+    if (!res.ok) {
+      console.error(`email ${kind} not sent`, ref, 'resend', res.status, await res.text());
+      return null;
+    }
+    const body = (await res.json().catch(() => ({}))) as { id?: string };
+    const id = typeof body.id === 'string' ? body.id : '';
+    // routing audit line (hotel addresses only — never the sender's own data)
+    console.log(`email ${kind} sent`, ref, `id=${id}`, `to=${msg.to.join(';')}`, `cc=${(msg.cc ?? []).join(';')}`, `reply_to=${kind === 'notification' ? '[sender]' : (msg.replyTo ?? []).join(';')}`);
+    return id || 'sent';
   } catch (e) {
     console.error(`email ${kind} not sent`, ref, String(e));
-    return false;
+    return null;
   }
 }
 
@@ -370,77 +389,122 @@ Deno.serve(async (req) => {
   const branch = content.branches.find((b) => b.slug === d.branch) ?? content.branches[0];
   const room = d.room ? content.rooms.find((r) => r.slug === d.room && r.branch === d.branch) : undefined;
   const receivedAt = riyadhNow();
-  const waLink = `https://wa.me/${branch.whatsapp.replace(/\D/g, '')}`;
   const branchNameAr = isBoth ? content.branches.map((b) => b.name_ar).join(' + ') : branch.name_ar;
   const branchNameEn = isBoth ? content.branches.map((b) => b.name_en).join(' + ') : branch.name_en;
+  const branchName = (L: Locale) => (L === 'ar' ? branchNameAr : branchNameEn);
+  const roomName = (L: Locale) => (room ? (L === 'ar' ? room.name_ar : room.name_en) : content.labels[L].any_room);
 
   // ---- 1 + 2: validate (done) → store ----
   const stored = await store(ref, d, req.headers.get('user-agent') ?? '');
 
-  // ---- 3: reception notification — Arabic labels, every field, nights, Riyadh time ----
+  // ---- 3: notification to reception (booking) or sales (partner) — Arabic labels, every field, Riyadh time ----
   const arLabels = content.labels.ar;
   const arMail = content.email.ar;
-  const receptionRows: [string, string][] = [
-    [arMail.ref, ref],
-    [arLabels.branch, branchNameAr],
-    [arLabels.check_in, d.check_in],
-    [arLabels.check_out, d.check_out],
-    [arLabels.nights, String(d.nights)],
-    [arLabels.adults, String(d.adults)],
-    [arLabels.children, String(d.children)],
-    [arLabels.room_type, room ? room.name_ar : arLabels.any_room],
-    [arLabels.full_name, d.name],
-    [arLabels.phone, d.phone],
-    [arLabels.email, d.email],
-    [arLabels.notes, d.notes || '—'],
-    [arMail.language, d.locale],
-    [arMail.received_at, receivedAt],
-  ];
-  if (isPartner) receptionRows.splice(1, 0, ['request_type', d.requestType], ['organisation', d.organisation || '—'], ['rooms', d.roomsRequested === null ? '—' : String(d.roomsRequested)], ['meals', d.meals || '—']);
-  const receptionHtml = `<div dir="rtl" style="font-family:sans-serif"><p>${esc(arMail.hotel_intro)}</p>${tableHtml(receptionRows)}<p style="color:#777;font-size:12px">${esc(arMail.hotel_footer)}</p></div>`;
-  const receptionSubject = (isPartner ? `[${d.requestType}] ` : '') + fill(arMail.hotel_subject, { branch: branchNameAr, ref });
+  let subject: string;
+  let intro: string;
+  let notificationRows: [string, string][];
+  if (isPartner) {
+    const pl = content.partner_labels.ar;
+    const typeName = (content.request_types.ar as Record<string, string>)[d.requestType] ?? d.requestType;
+    notificationRows = [
+      [arMail.ref, ref],
+      [pl.reqtype, typeName],
+      [pl.company, d.organisation || '—'],
+      [pl.person, d.name],
+      [pl.email, d.email],
+      [pl.phone, d.phone],
+      [pl.property, branchNameAr],
+      [pl.checkin, d.check_in],
+      [pl.checkout, d.check_out],
+      [arLabels.nights, String(d.nights)],
+      [pl.guests, String(d.adults)],
+      [pl.rooms, d.roomsRequested === null ? '—' : String(d.roomsRequested)],
+      [pl.meals, d.meals || '—'],
+      [pl.notes, d.notes || '—'],
+      [arMail.language, d.locale],
+      [arMail.received_at, receivedAt],
+    ];
+    subject = fill(arMail.partner_subject, { organisation: d.organisation || d.name, ref });
+    intro = arMail.partner_intro;
+  } else {
+    notificationRows = [
+      [arMail.ref, ref],
+      [arLabels.branch, branchNameAr],
+      [arLabels.check_in, d.check_in],
+      [arLabels.check_out, d.check_out],
+      [arLabels.nights, String(d.nights)],
+      [arLabels.adults, String(d.adults)],
+      [arLabels.children, String(d.children)],
+      [arLabels.room_type, roomName('ar')],
+      [arLabels.full_name, d.name],
+      [arLabels.phone, d.phone],
+      [arLabels.email, d.email],
+      [arLabels.notes, d.notes || '—'],
+      [arMail.language, d.locale],
+      [arMail.received_at, receivedAt],
+    ];
+    subject = fill(arMail.hotel_subject, { branch: branchNameAr, ref });
+    intro = arMail.hotel_intro;
+  }
+  const notificationHtml = `<div dir="rtl" style="font-family:sans-serif"><p>${esc(intro)}</p>${tableHtml(notificationRows)}<p style="color:#777;font-size:12px">${esc(arMail.hotel_footer)}</p></div>`;
 
-  // ---- 4: guest confirmation — Arabic first, then English, in one message ----
-  const guestBlock = (L: Locale): string => {
+  // ---- 4: confirmation to the sender — Arabic first, then English, in one message ----
+  const block = (L: Locale): string => {
     const labels = content.labels[L];
     const mail = content.email[L];
-    const branchName = L === 'ar' ? branchNameAr : branchNameEn;
+    const dir = L === 'ar' ? 'rtl' : 'ltr';
+    if (isPartner) {
+      // No availability promise, no request table: sales replies with the details.
+      const wa = `https://wa.me/${content.sales_whatsapp.replace(/\D/g, '')}`;
+      return `<div dir="${dir}" lang="${L}" style="font-family:sans-serif"><p>${esc(fill(mail.guest_greeting, { name: d.name }))}</p><p>${esc(mail.partner_guest_body)}</p><p>${esc(mail.ref)}: <strong>${esc(ref)}</strong></p><p>${esc(mail.partner_guest_whatsapp)} <a href="${wa}">${esc(content.sales_phone_display)}</a></p></div>`;
+    }
     const rows: [string, string][] = [
       [mail.ref, ref],
-      [labels.branch, branchName],
+      [labels.branch, branchName(L)],
       [labels.check_in, d.check_in],
       [labels.check_out, d.check_out],
       [labels.nights, String(d.nights)],
       [labels.adults, String(d.adults)],
       [labels.children, String(d.children)],
-      [labels.room_type, room ? (L === 'ar' ? room.name_ar : room.name_en) : labels.any_room],
+      [labels.room_type, roomName(L)],
       [labels.full_name, d.name],
       [labels.phone, d.phone],
       [labels.email, d.email],
       [labels.notes, d.notes || '—'],
     ];
-    return `<div dir="${L === 'ar' ? 'rtl' : 'ltr'}" lang="${L}" style="font-family:sans-serif"><p>${esc(fill(mail.guest_greeting, { name: d.name }))}</p><p>${esc(
-      fill(mail.guest_body, { branch: branchName }),
-    )}</p><h3>${esc(mail.guest_summary)}</h3>${tableHtml(rows)}<p>${esc(mail.guest_whatsapp)} <a href="${waLink}">${esc(branch.phone_display)}</a></p><p style="color:#777;font-size:12px">${esc(
+    const wa = `https://wa.me/${branch.whatsapp.replace(/\D/g, '')}`;
+    return `<div dir="${dir}" lang="${L}" style="font-family:sans-serif"><p>${esc(fill(mail.guest_greeting, { name: d.name }))}</p><p>${esc(
+      fill(mail.guest_body, { branch: branchName(L) }),
+    )}</p><h3>${esc(mail.guest_summary)}</h3>${tableHtml(rows)}<p>${esc(mail.guest_whatsapp)} <a href="${wa}">${esc(branch.phone_display)}</a></p><p style="color:#777;font-size:12px">${esc(
       mail.guest_footer,
     )}</p></div>`;
   };
-  const guestHtml = `${guestBlock('ar')}<hr style="border:0;border-top:1px solid #ddd;margin:24px 0">${guestBlock('en')}`;
-  const guestSubject = `${fill(arMail.guest_subject, { ref })} | ${content.email.en.guest_subject.replace(' ({ref})', '')}`;
+  const confirmationHtml = `${block('ar')}<hr style="border:0;border-top:1px solid #ddd;margin:24px 0">${block('en')}`;
+  const confirmationSubject = isPartner
+    ? `${fill(arMail.partner_guest_subject, { ref })} | ${content.email.en.partner_guest_subject}`
+    : `${fill(arMail.guest_subject, { ref })} | ${content.email.en.guest_subject.replace(' ({ref})', '')}`;
 
   // ---- recipients from Supabase, then send ----
   const rows = await loadRecipients(ref);
-  const { to, cc, branchRecipients } = route(rows, d.branch, isPartner);
+  const { to, cc, primary } = route(rows, d.branch, isPartner);
   if (to.length === 0) console.error('recipients: none active in booking_notification_recipients', ref);
-  const guestReplyTo = branchRecipients.length ? branchRecipients : [addressOf(FROM_GUEST)];
+  const confirmationReplyTo = primary.length ? primary : [addressOf(FROM_GUEST)];
 
-  const [receptionSent, guestSent] = await Promise.all([
-    sendEmail('reception', ref, { from: FROM_RECEPTION, to, cc, replyTo: [d.email], subject: receptionSubject, html: receptionHtml }),
-    sendEmail('guest', ref, { from: FROM_GUEST, to: [d.email], replyTo: guestReplyTo, subject: guestSubject, html: guestHtml }),
+  const [notificationId, confirmationId] = await Promise.all([
+    sendEmail('notification', ref, { from: FROM_RECEPTION, to, cc, replyTo: [d.email], subject, html: notificationHtml }),
+    sendEmail('confirmation', ref, { from: FROM_GUEST, to: [d.email], replyTo: confirmationReplyTo, subject: confirmationSubject, html: confirmationHtml }),
   ]);
 
-  if (!stored && !receptionSent) {
+  if (!stored && !notificationId) {
     return json(req, 500, { ok: false, error: 'could not store or forward the request' });
   }
-  return json(req, 200, { ok: true, ref, stored, hotel_email_sent: receptionSent, guest_email_sent: guestSent });
+  return json(req, 200, {
+    ok: true,
+    ref,
+    stored,
+    hotel_email_sent: Boolean(notificationId),
+    guest_email_sent: Boolean(confirmationId),
+    // Resend message ids (opaque) so a support thread can be traced; no addresses are returned.
+    email_ids: { notification: notificationId, confirmation: confirmationId },
+  });
 });

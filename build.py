@@ -261,8 +261,14 @@ def generate_function_content(content: dict[str, dict]) -> None:
     out = {
         "_generated": "by build.py from content/ — do not edit",
         "site_url": content["seo.json"]["site_url"],
-        "sales_email": contact["sales"]["email"],
         "enquiry_types": content.get("partners.json", {}).get("enquiry_types", []),
+        # sales line for the partner confirmation's WhatsApp link (public number). Recipient addresses are
+        # never generated here: they live only in Supabase booking_notification_recipients.
+        "sales_phone_display": contact["sales"]["phone_display"],
+        "sales_whatsapp": contact["sales"]["whatsapp"],
+        # partner-form labels and request-type names for the reception email (Arabic) and confirmation
+        "partner_labels": {loc: {k: v[loc] for k, v in content["partners-pages.json"]["form"]["fields"].items()} for loc in ("ar", "en")},
+        "request_types": {loc: {k: v[loc] for k, v in content["partners-pages.json"]["form"]["reqtypes"]} for loc in ("ar", "en")},
         "branches": [
             {
                 "slug": b["slug"],

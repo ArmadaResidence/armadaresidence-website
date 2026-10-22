@@ -210,7 +210,12 @@
       "guest_footer": "طلب الحجز عبر الموقع ليس حجزًا مؤكدًا حتى يصلك التأكيد من الاستقبال.",
       "ref": "رقم الطلب",
       "language": "لغة الضيف",
-      "received_at": "وقت الاستلام"
+      "received_at": "وقت الاستلام",
+      "partner_subject": "طلب شراكة جديد — {organisation} — {ref}",
+      "partner_intro": "وصل طلب شراكة جديد عبر نموذج الشركاء والوكالات. التفاصيل:",
+      "partner_guest_subject": "طلبك وصلنا — أرمادا ريزيدنس ({ref})",
+      "partner_guest_body": "شكرًا لتواصلك مع أرمادا ريزيدنس. وصلنا طلبك وسيتواصل معك فريق المبيعات قريبًا.",
+      "partner_guest_whatsapp": "للتواصل المباشر مع فريق المبيعات عبر واتساب:"
     },
     "taif": {
       "heading": "اكتشف الطائف",
@@ -593,7 +598,12 @@
       "guest_footer": "A booking request on the website is not a confirmed booking until reception confirms it.",
       "ref": "Request number",
       "language": "Guest language",
-      "received_at": "Received at"
+      "received_at": "Received at",
+      "partner_subject": "New partnership request — {organisation} — {ref}",
+      "partner_intro": "A new partnership request arrived from the partners form. Details:",
+      "partner_guest_subject": "We have received your request — Armada Residence",
+      "partner_guest_body": "Thank you for contacting Armada Residence. We have received your request and our sales team will be in touch shortly.",
+      "partner_guest_whatsapp": "To reach the sales team directly on WhatsApp:"
     },
     "taif": {
       "heading": "Discover Taif",
