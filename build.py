@@ -83,9 +83,9 @@ def validate(content: dict[str, dict]) -> list[str]:
             problems.append(f"branches.json and contact.json disagree on {slug} phone/whatsapp")
     if not E164.match(contact["sales"]["phone"]):
         problems.append("contact.json.sales.phone is not E.164")
-    notif = contact["emails"].get("booking_notification_emails", [])
-    if not notif or not all(EMAIL.match(e) for e in notif):
-        problems.append("contact.json.emails.booking_notification_emails must be a non-empty list of emails")
+    if "booking_notification_emails" in contact["emails"]:
+        problems.append("contact.json.emails.booking_notification_emails must not exist: recipients live only in Supabase "
+                        "booking_notification_recipients (DECISIONS.md 2026-10-22)")
     if not re.match(r"^GTM-[A-Z0-9]+$", contact.get("gtm_container", "")):
         problems.append("contact.json.gtm_container is not a GTM id")
 
@@ -261,7 +261,6 @@ def generate_function_content(content: dict[str, dict]) -> None:
     out = {
         "_generated": "by build.py from content/ — do not edit",
         "site_url": content["seo.json"]["site_url"],
-        "notification_emails": contact["emails"]["booking_notification_emails"],
         "sales_email": contact["sales"]["email"],
         "enquiry_types": content.get("partners.json", {}).get("enquiry_types", []),
         "branches": [

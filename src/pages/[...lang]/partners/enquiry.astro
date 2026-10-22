@@ -64,6 +64,10 @@ const sel = T(locale, { en: 'Select', ar: 'اختر' });
                   <div class="fld"><label for="f-email">{T(locale, fl.email)}<span class="req">*</span></label><input type="email" id="f-email" name="email" required dir="ltr" inputmode="email" /><p class="err">{badEmail}</p></div>
                   <div class="fld"><label for="f-phone">{T(locale, fl.phone)}<span class="req">*</span></label><input type="tel" id="f-phone" name="phone" required dir="ltr" inputmode="tel" /><p class="err">{req}</p></div>
                 </div>
+                {/* Honeypot: invisible to people and assistive tech; a bot that fills it gets a fake success and nothing is stored. */}
+                <div style="position:absolute;inset-inline-start:-9999px;width:1px;height:1px;overflow:hidden" aria-hidden="true">
+                  <label for="f-website">Website</label><input type="text" id="f-website" name="website" tabindex="-1" autocomplete="off" />
+                </div>
                 <div class="row c2">
                   <div class="fld"><label for="f-country">{T(locale, fl.country)}</label><input type="text" id="f-country" name="country" /><p class="err">{req}</p></div>
                   <div class="fld">

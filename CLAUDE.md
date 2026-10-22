@@ -159,8 +159,9 @@ Form fields: branch, check-in, check-out, guests (adults/children), room type (o
 On submit (via Edge Function / serverless endpoint, never client-side email):
 1. Validate; reject check-out ≤ check-in.
 2. Store the request (phase 1: append to a Supabase table or a protected JSON store; phase 2: full schema).
-3. Email hotel inbox(es) from `content/contact.json` → `booking_notification_emails` with all fields.
-4. Email guest a confirmation: "طلبك وصلنا، سنؤكد التوافر خلال ساعات" + WhatsApp link to the branch.
+3. Email reception, routed by branch (decision 22 Oct 2026): recipients live **only** in the Supabase table `booking_notification_recipients` (`branch_slug` NULL = central recipient) — never in `content/` or any committed file; phase 2 makes them editable from the dashboard. To = the branch's active recipients, CC = the active central recipients (deduped); a request with no specific branch, or whose branch has no active recipient, goes To the central recipients — a request is never sent to nobody. From "Armada Residence Bookings <no-reply@armadaresidence.com>", Reply-To = the guest's email. Subject «طلب حجز جديد — {branch name_ar} — {ref}»; body = every field with Arabic labels, number of nights, submission time in Asia/Riyadh. Never add an address before its mailbox exists (bounces hurt the domain's sending reputation).
+4. Email guest a confirmation, Arabic first then English: "طلبك وصلنا، سنؤكد التوافر خلال ساعات" + WhatsApp link to the branch. From "أرمادا ريزيدنس | Armada Residence <reservation@armadaresidence.com>", Reply-To = the branch's active recipients, or reservation@armadaresidence.com if the branch has none.
+   Sending runs after the request is stored; a send failure (Resend key missing, no active recipient, network) is logged with the request ref and the guest still reaches the success page. Honeypot field `website` and a per-IP rate limit guard the endpoint.
 5. Push `dataLayer` event `booking_request` (branch, room type, nights) for GA4 / Meta / TikTok / Snap via GTM.
 6. Show a success page explaining exactly what happens next. Never a silent "sent".
 
@@ -186,7 +187,7 @@ Rules: Row Level Security on every table. Guest personal data visible only to `a
 - `content/*.json` is imported into Supabase once; after that the site reads from Supabase (rebuild on "publish" via webhook + live availability query). Keep the JSON as seed/fallback only.
 - Dashboard = separate app in `/admin` of this repo, deployed to **admin.armadaresidence.com** (DNS on Hostinger). Supabase Auth; permissions enforced by RLS; four default roles (admin, management, sales, reception) — all edit rates/inventory/reservations; only admin manages users via per-permission toggles.
 - Dashboard UI: Armada identity, RTL-first, light/dark, purposeful motion (animated donuts for occupancy, number counters, card transitions), mobile-first for reception. React + Tailwind + Recharts/Motion.
-- Booking form → Supabase `reservations` + Resend email to `booking_notification_emails` (and `sales-marketing@` for B2B). Guest confirmation/cancellation emails from the dashboard.
+- Booking form → Supabase `reservations` + Resend email to the branch's recipients in `booking_notification_recipients` (central recipients in CC; `sales-marketing@` added for B2B). Guest confirmation/cancellation emails from the dashboard.
 - Prices: `pricing_mode` per room type (hidden | starting_from | calendar). Phase 2 switches to `calendar` once rates are entered; compare_at shows strike-through.
 - Offers: individuals / corporate / dining, validity dates, auto-expiry, per-location visibility, one active popup. /offers/, /menu/ and dining sections read them.
 - Blog: /blog/ and /en/blog/ from `articles` with SEO fields, JSON-LD Article, sitemap/hreflang.

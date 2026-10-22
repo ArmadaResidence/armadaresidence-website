@@ -8,7 +8,7 @@ Every price, time, phone number, address, policy and piece of guest-facing copy 
 | `rooms.json` | 12 room types (5 Airport Road, 7 Shafa Road): slug, names, `base_price`, `pricing_mode`, `size_m2`, `capacity`, `included_guests`, `bed_ar/en`, `features`, `in_room_amenities`, `rate_plans`, `availability`, `show_on_site`, descriptions. | **complete** — all prices, sizes, beds, capacities confirmed |
 | `pricing.json` | Site-wide pricing rules: display strings «يبدأ من … شامل الضريبة», breakfast add-on, extra person, children, rate-plan names (`room_only` shown; `bed_and_breakfast` hidden in phase 1). | `verified: true` |
 | `policies.json` | Check-in/out, cancellation, refund (phase 3), /policies page sections, house rules, children. | `verified: true` |
-| `contact.json` | Per-branch phone/WhatsApp, sales line, emails incl. `booking_notification_emails`, social links, menu URL, GTM container id. | `verified: true` |
+| `contact.json` | Per-branch phone/WhatsApp, sales line, public emails, social links, menu URL, GTM container id. Booking-notification recipients are NOT here: they live only in Supabase `booking_notification_recipients` (22 Oct 2026). | `verified: true` |
 | `legal.json` | Legal entity, CR, VAT, footer line. | `verified: true` |
 | `offers.json` | /offers content: no current offer, groups/Umrah quote line, corporate + hall line. | draft for review |
 | `site-texts.json` | Marketing copy: slogan, hero, about, Why Armada. | draft for review |

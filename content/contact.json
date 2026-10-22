@@ -1,5 +1,5 @@
 {
-  "_note": "Updated 8 Oct 2026 from reception answers. Per-branch phone/WhatsApp confirmed; sales line confirmed. E.164 in href, spaced for display. Legal entity moved to legal.json.",
+  "_note": "Updated 8 Oct 2026 from reception answers. Per-branch phone/WhatsApp confirmed; sales line confirmed. E.164 in href, spaced for display. Legal entity moved to legal.json. 22 Oct 2026: booking-notification recipients moved to Supabase (booking_notification_recipients) — never listed here.",
   "branches": {
     "airport-road": {
       "phone": "+966536622277",
@@ -28,10 +28,6 @@
   "emails": {
     "reservations": "reservation@armadaresidence.com",
     "info": "info@armadaresidence.com",
-    "booking_notification_emails": [
-      "reservation@armadaresidence.com",
-      "info@armadaresidence.com"
-    ],
     "sales": "sales-marketing@armadaresidence.com"
   },
   "working_hours_ar": "الاستقبال على مدار الساعة",

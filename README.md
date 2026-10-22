@@ -39,11 +39,11 @@ npm run preview
 
 ## Environment
 
-Copy `.env.example` to `.env`. `PUBLIC_BOOKING_ENDPOINT` + `PUBLIC_SUPABASE_ANON_KEY` are baked into the static build; without them the booking form hands the request to WhatsApp instead of emailing. Edge Function secrets (`RESEND_API_KEY`, `BOOKING_FROM_EMAIL`, service role) are set with `supabase secrets set`, never in the repo.
+Copy `.env.example` to `.env`. `PUBLIC_BOOKING_ENDPOINT` + `PUBLIC_SUPABASE_ANON_KEY` are baked into the static build; without them the booking form hands the request to WhatsApp instead of emailing. Edge Function secrets (`RESEND_API_KEY`, `BOOKING_ALLOWED_ORIGINS`, `BOOKING_IP_SALT`, service role) are set with `supabase secrets set`, never in the repo.
 
 ## Booking flow
 
-`/booking/` → POST JSON to the `booking-request` Edge Function (`supabase/functions/booking-request/`) → row in `public.booking_requests` (`supabase/migrations/`) → Resend email to `contact.json → booking_notification_emails` + guest confirmation → `/booking/success/?ref=…` pushes `booking_request` to the GTM `dataLayer`.
+`/booking/` → POST JSON to the `booking-request` Edge Function (`supabase/functions/booking-request/`) → row in `public.booking_requests` (`supabase/migrations/`) → Resend email to the branch's recipients in `public.booking_notification_recipients` (CC the central recipients; addresses live only in Supabase, never in the repo) + bilingual guest confirmation → `/booking/success/?ref=…` pushes `booking_request` to the GTM `dataLayer`.
 
 ## Deploy
 

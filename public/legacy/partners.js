@@ -247,6 +247,7 @@
       phone: v('phone').replace(/[\s\-().]/g, '').replace(/^00/, '+'),
       email: v('email'),
       notes: extra.join('\n').slice(0, 1000),
+      website: v('website'),
       page: location.href
     };
   }

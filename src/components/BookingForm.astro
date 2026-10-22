@@ -130,6 +130,12 @@ const inputClass = 'field-input latin text-left w-full border border-line rounde
     <a href={localePath(locale, '/policies/')} class="font-semibold text-bronze hover:text-bronze-text ms-1">{f.consent_link}</a>.
   </p>
 
+  {/* Honeypot: invisible to people and assistive tech; a bot that fills it gets a fake success and nothing is stored. */}
+  <div class="absolute -start-[9999px] w-px h-px overflow-hidden" aria-hidden="true">
+    <label for={id('website')}>Website</label>
+    <input id={id('website')} name="website" type="text" tabindex="-1" autocomplete="off" />
+  </div>
+
   <p class="hidden bg-porcelain border border-line text-sm text-red-800 rounded px-4 py-3" data-form-error role="alert"></p>
 
   <div class="flex flex-wrap items-center gap-3">
@@ -325,6 +331,7 @@ const inputClass = 'field-input latin text-left w-full border border-line rounde
       out.phone = phone;
       out.email = v('email');
       out.notes = v('notes');
+      out.website = v('website');
       out.page = location.href;
       return out;
     }
