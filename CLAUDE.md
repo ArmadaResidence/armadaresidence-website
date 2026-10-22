@@ -169,6 +169,8 @@ On submit (via Edge Function / serverless endpoint, never client-side email):
 Sticky WhatsApp button on every page (decision 22 Oct 2026), numbers from `content/contact.json`: /partners/* → the sales line directly; a branch page and its room pages → that branch's number directly; every other page → a small chooser with the two branches (names from branches.json in the page language), each opening its branch number — real buttons/links, aria labels, closes on Esc and outside tap, focus returns to the button, RTL/LTR correct. Prefilled message per destination in the page language (`ui.json → cta.whatsapp_prefill_branch` / `whatsapp_prefill_partners`). Every open pushes the dataLayer event `whatsapp_click` { destination: airport-road | shafa-road | sales, page_path, page_location }.
 Every email the function sends carries an HTML body and a real text/plain alternative (multipart/alternative). The partner confirmation is specific: request ref, company, contact name, enquiry type, a short summary of the submission and the sales WhatsApp link — still no availability promise.
 
+**Delivery (operational, 22 Oct 2026):** Hostinger's inbound filter flags the notifications as spam although SPF/DKIM/DMARC pass (A/B-tested: neither sender nor content). Every recipient mailbox needs a server-side filter in Hostinger Webmail (Settings → Filters): Match all rules; From contains `no-reply@armadaresidence.com` AND Subject contains `AR-`; action Move to Inbox. Outlook safe senders / rules do not fix it. Any mailbox added to `booking_notification_recipients` gets this filter **before** it is activated; if the sender address or the ref format ever changes, update all these filters first.
+
 ---
 
 ## 9. Supabase schema (phase 2 — outline)
