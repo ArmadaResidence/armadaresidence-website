@@ -2,7 +2,7 @@
 import Base from '@layouts/Base.astro';
 import Icon from '@components/Icon.astro';
 import { langPaths } from '@lib/paths';
-import { contact, localePath, mailHref, offers, pageSeo, partnersPath, telHref, ui, type Locale } from '@lib/content';
+import { contact, localePath, mailHref, offers, pageSeo, partnersPath, ui, waHref, type Locale } from '@lib/content';
 
 export const getStaticPaths = langPaths;
 
@@ -15,69 +15,84 @@ const s = pageSeo(locale, 'offers');
 const sales = contact.sales;
 const g = offers.groups;
 const corp = offers.corporate;
+const L = (obj: Record<string, string>, key: string) => obj[`${key}_${locale}`];
+
+/* Decision 22 Oct 2026: two buttons per section — the partners enquiry form (groups preset to the existing
+   umrah-group type; corporate with no preset) and the sales WhatsApp with a prefilled message. WhatsApp links
+   carry data-wa-link / data-wa-destination so the sticky-button script pushes `whatsapp_click` for them too. */
+const enquiryForm = `${partnersPath(locale, 'enquiry')}#enquiry-form`;
+const groupsQuote = `${partnersPath(locale, 'enquiry')}?request=umrah-group#enquiry-form`;
+const groupsWa = waHref(sales.whatsapp, L(g, 'whatsapp_prefill'));
+const corpWa = waHref(sales.whatsapp, L(corp, 'whatsapp_prefill'));
+const hasOffers = offers.current_offers.length > 0;
 ---
 
 <Base locale={locale} path="/offers/" title={s.title} description={s.description}>
   <section class="mx-auto max-w-6xl px-4 pt-10 pb-14">
     <h1 class="text-3xl md:text-4xl font-bold text-midnight">{t.offers.heading}</h1>
 
-    <div class="reveal reveal-lg mt-8 bg-white border border-line rounded-card p-6">
-      <h2 class="text-sm font-semibold uppercase tracking-wide text-bronze">{t.offers.no_offers_heading}</h2>
-      {
-        offers.current_offers.length === 0 ? (
-          <p class="mt-2 text-ink-muted">{locale === 'ar' ? offers.no_offers_ar : offers.no_offers_en}</p>
-        ) : (
+    {
+      hasOffers && (
+        <div class="reveal reveal-lg mt-8 bg-white border border-line rounded-card p-6">
+          <h2 class="text-sm font-semibold uppercase tracking-wide text-bronze">{t.offers.no_offers_heading}</h2>
           <ul class="mt-4 space-y-4">
             {(offers.current_offers as Record<string, string>[]).map((o) => (
               <li>
-                <h3 class="font-semibold text-midnight">{locale === 'ar' ? o.title_ar : o.title_en}</h3>
-                <p class="text-sm text-ink-muted mt-1">{locale === 'ar' ? o.body_ar : o.body_en}</p>
+                <h3 class="font-semibold text-midnight">{L(o, 'title')}</h3>
+                <p class="text-sm text-ink-muted mt-1">{L(o, 'body')}</p>
               </li>
             ))}
           </ul>
-        )
-      }
-    </div>
+        </div>
+      )
+    }
 
-    <div class="reveal-group mt-10 grid gap-8 lg:grid-cols-2">
+    <div class:list={['reveal-group grid gap-8 lg:grid-cols-2', hasOffers ? 'mt-10' : 'mt-8']}>
       <section class="bg-midnight text-porcelain rounded-card p-8">
-        <h2 class="text-2xl font-bold">{locale === 'ar' ? g.heading_ar : g.heading_en}</h2>
-        <p class="mt-3 text-porcelain/85 leading-relaxed">{locale === 'ar' ? g.body_ar : g.body_en}</p>
-        <div class="mt-6 flex flex-wrap gap-3">
-          <a
-            href={`${partnersPath(locale, 'enquiry')}?request=umrah-group`}
-            class="inline-flex items-center gap-2 bg-bronze-deep text-white font-semibold px-5 py-3 rounded hover:bg-bronze-text transition-colors"
-          >
-            <span>{locale === 'ar' ? g.cta_ar : g.cta_en}</span>
+        <h2 class="text-2xl font-bold">{L(g, 'heading')}</h2>
+        <p class="mt-3 text-porcelain/85 leading-relaxed">{L(g, 'body')}</p>
+        <div class="mt-6 flex flex-col sm:flex-row sm:flex-wrap gap-3">
+          <a href={groupsQuote} class="inline-flex items-center justify-center gap-2 bg-bronze-deep text-white font-semibold px-5 py-3 rounded hover:bg-bronze-text transition-colors">
+            <span>{L(g, 'cta')}</span>
             <Icon name="arrow" size={18} class="icon-arrow rtl:rotate-180" />
           </a>
           <a
-            href={telHref(sales.phone)}
-            class="latin inline-flex items-center gap-2 border border-porcelain/50 font-semibold px-5 py-3 rounded hover:bg-porcelain hover:text-midnight transition-colors"
-            dir="ltr"
+            href={groupsWa}
+            class="inline-flex items-center justify-center gap-2 border border-porcelain/50 font-semibold px-5 py-3 rounded hover:bg-porcelain hover:text-midnight transition-colors"
+            rel="noopener"
+            target="_blank"
+            data-wa-link
+            data-wa-destination="sales"
           >
-            <Icon name="phone" size={18} />
-            <span>{sales.phone_display}</span>
+            <Icon name="whatsapp" size={18} />
+            <span>{L(g, 'whatsapp_cta')}</span>
           </a>
         </div>
         <p class="mt-5 text-sm text-porcelain/80">
-          <span>{t.offers.sales_scope}: {locale === 'ar' ? sales.scope_ar : sales.scope_en}</span>
+          <span>{t.offers.sales_scope}: {L(sales as unknown as Record<string, string>, 'scope')}</span>
           <br />
           <a href={mailHref(sales.email)} class="latin hover:text-bronze" dir="ltr">{sales.email}</a>
         </p>
       </section>
 
       <section class="bg-white border border-line rounded-card p-8">
-        <h2 class="text-2xl font-bold text-midnight">{locale === 'ar' ? corp.heading_ar : corp.heading_en}</h2>
-        <p class="mt-3 text-ink-muted leading-relaxed">{locale === 'ar' ? corp.body_ar : corp.body_en}</p>
-        <div class="mt-6 flex flex-wrap gap-3">
-          <a href={`${partnersPath(locale, 'enquiry')}?request=corporate`} class="inline-flex items-center gap-2 bg-midnight text-white text-sm font-semibold px-4 py-2.5 rounded hover:bg-bronze transition-colors">
-            <span>{t.partners.enquiry_corporate}</span>
-            <Icon name="arrow" size={16} class="icon-arrow rtl:rotate-180" />
+        <h2 class="text-2xl font-bold text-midnight">{L(corp, 'heading')}</h2>
+        <p class="mt-3 text-ink-muted leading-relaxed">{L(corp, 'body')}</p>
+        <div class="mt-6 flex flex-col sm:flex-row sm:flex-wrap gap-3">
+          <a href={enquiryForm} class="inline-flex items-center justify-center gap-2 bg-bronze-deep text-white font-semibold px-5 py-3 rounded hover:bg-bronze-text transition-colors">
+            <span>{L(corp, 'cta')}</span>
+            <Icon name="arrow" size={18} class="icon-arrow rtl:rotate-180" />
           </a>
-          <a href={`${partnersPath(locale, 'enquiry')}?request=event`} class="inline-flex items-center gap-2 border border-midnight text-midnight text-sm font-semibold px-4 py-2.5 rounded hover:bg-midnight hover:text-white transition-colors">
-            <span>{t.partners.enquiry_event}</span>
-            <Icon name="arrow" size={16} class="icon-arrow rtl:rotate-180" />
+          <a
+            href={corpWa}
+            class="inline-flex items-center justify-center gap-2 border border-midnight text-midnight font-semibold px-5 py-3 rounded hover:bg-midnight hover:text-white transition-colors"
+            rel="noopener"
+            target="_blank"
+            data-wa-link
+            data-wa-destination="sales"
+          >
+            <Icon name="whatsapp" size={18} />
+            <span>{L(corp, 'whatsapp_cta')}</span>
           </a>
         </div>
         <a href={partnersPath(locale)} class="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-bronze hover:text-bronze-text">
@@ -85,7 +100,7 @@ const corp = offers.corporate;
           <Icon name="arrow" size={14} class="icon-arrow rtl:rotate-180" />
         </a>
         <p class="mt-6 text-xs text-ink-muted">
-          {locale === 'ar' ? offers.sales_note_ar : offers.sales_note_en}
+          {L(offers as unknown as Record<string, string>, 'sales_note')}
           <a href={localePath(locale, '/booking/')} class="font-semibold text-bronze hover:text-bronze-text ms-1">{t.nav.book}</a>
         </p>
       </section>
