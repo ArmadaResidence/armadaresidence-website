@@ -456,6 +456,19 @@ const stepper = (name: 'adults' | 'children' | 'extra_beds', value: number, min:
     checkOut.addEventListener('change', refresh);
 
     // ── room list filtered by branch ─────────────────────────────────────────────────────────────────────
+    /**
+     * Select the room option for `slug` that belongs to the selected branch. Room slugs repeat across branches
+     * (king-room, one-bedroom-suite, two-bedroom-suite), so `roomSel.value = slug` would pick the first match —
+     * often the other branch's option, which is disabled and therefore left out of the submitted form data
+     * (bug found in the 23 Oct live test: Shafa Road room CTAs were sent as «أي غرفة متاحة»).
+     */
+    function selectRoom(slug: string): boolean {
+      const b = branchSel.value;
+      const opt = Array.from(roomSel.options).find((o) => o.value === slug && !o.disabled && (!o.dataset.branch || !b || o.dataset.branch === b));
+      if (opt) opt.selected = true;
+      else roomSel.selectedIndex = 0;
+      return !!opt;
+    }
     function filterRooms() {
       const b = branchSel.value;
       for (const opt of Array.from(roomSel.options)) {
@@ -464,8 +477,9 @@ const stepper = (name: 'adults' | 'children' | 'extra_beds', value: number, min:
         opt.hidden = Boolean(b) && ob !== b;
         opt.disabled = opt.hidden;
       }
+      // keep the same room type when the new branch has it, otherwise «أي غرفة متاحة»
       const current = roomSel.selectedOptions[0];
-      if (current && current.disabled) roomSel.value = '';
+      if (current && current.disabled) selectRoom(current.value);
     }
     branchSel.addEventListener('change', () => {
       filterRooms();
@@ -626,10 +640,7 @@ const stepper = (name: 'adults' | 'children' | 'extra_beds', value: number, min:
     const prefill = (branch: string | null, room: string | null) => {
       if (branch && data.branches.some((b) => b.slug === branch)) branchSel.value = branch;
       filterRooms();
-      if (room) {
-        roomSel.value = room;
-        if (roomSel.value !== room) roomSel.value = '';
-      }
+      if (room) selectRoom(room);
       refresh();
     };
     // (applied at the end of initForm, once every helper below exists)

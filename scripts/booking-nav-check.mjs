@@ -50,7 +50,8 @@ for (const vp of [{ width: 1440, height: 900 }, { width: 375, height: 812, mobil
       return {
         open: !!(d && d.open),
         branch: f ? f.elements.namedItem('branch').value : null,
-        room: f ? f.elements.namedItem('room').value : null,
+        // what the form would actually SUBMIT (a disabled selected option is left out of the form data)
+        room: f ? String(new FormData(f).get('room') ?? '') : null,
         path: location.pathname,
         noReload: window.__noReload === true,
       };
@@ -98,6 +99,9 @@ for (const vp of [{ width: 1440, height: 900 }, { width: 375, height: 812, mobil
     ['nav', '/shafa-road/'], ['branch', 'shafa-road'],
     ['nav', '/shafa-road/jacuzzi-studio/'], ['room', 'shafa-road', 'jacuzzi-studio'],
     ['back', '/shafa-road/'], ['branch', 'shafa-road'],
+    // a Shafa Road room whose slug also exists at Airport Road (the 23 Oct prefill bug)
+    ['nav', '/shafa-road/king-room/'], ['room', 'shafa-road', 'king-room'],
+    ['back', '/shafa-road/'],
     ['back', '/'],
     ['nav', '/airport-road/'],
     ['nav', '/airport-road/two-bedroom-suite/'], ['room', 'airport-road', 'two-bedroom-suite'],
