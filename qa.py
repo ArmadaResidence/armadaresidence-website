@@ -298,7 +298,7 @@ def main() -> int:
 
         # /partners/ (B2B): no prices anywhere in that section — qa rejects any number next to ريال / SAR
         if lp.startswith("/partners/"):
-            for m in re.finditer(r"\d[\d,.]*\s*(?:ريال|ر\.س|SAR)|SAR\s*\d", p.text):
+            for m in re.finditer(r"\d[\d,.]*\s*(?:ريال|ر\.س|SAR)\b|\bSAR\s*\d", p.text):
                 rep.f("partners pricing", f"{path}: price-like text {m.group(0)!r} under /partners/")
 
         # prices hidden (9 Oct 2026): no number next to ريال/الليلة or SAR/night anywhere except the café menu
@@ -308,6 +308,16 @@ def main() -> int:
                 window = p.text[max(0, m.start() - 60) : m.end() + 60]
                 if re.search(r"الليلة|لليلة|night|/\s*الليلة", window, re.I):
                     rep.f("pricing", f"{path}: stay price shown while prices are hidden: {window.strip()[:70]!r}")
+
+        # decision 22 Oct 2026: no price in any <title>, meta description, Open Graph or Twitter tag — a number next to
+        # ريال / ريالًا / ر.س / SAR / SR fails the build, like the visible-price rule (Arabic-Indic digits included)
+        meta_fields = {"title": p.title}
+        for k in ("description", "og:title", "og:description", "twitter:title", "twitter:description"):
+            if k in p.metas:
+                meta_fields[k] = p.metas[k]
+        for field, value in meta_fields.items():
+            for m in re.finditer(r"[0-9٠-٩][0-9٠-٩,.]*\s*(?:ريال|ر\.س|SAR\b|SR\b)|\b(?:SAR|SR)\s*[0-9٠-٩][0-9٠-٩,.]*", value):
+                rep.f("meta price", f"{path}: {field} carries a price {m.group(0)!r}")
 
         # decision 9 Oct 2026: no breakfast price anywhere on the site
         for m in re.finditer(r"إفطار|breakfast", p.text, re.I):
