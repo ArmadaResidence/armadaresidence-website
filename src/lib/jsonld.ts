@@ -30,7 +30,7 @@ const AMENITY_SCHEMA: Record<string, string> = {
   free_parking: 'Free parking',
   restaurant: 'Restaurant',
   room_service_24h: '24-hour room service',
-  wifi: 'Wi-Fi',
+  wifi: 'Free Wi-Fi',
 };
 
 function logoUrl(): string {
@@ -170,7 +170,7 @@ export function hotelRoom(locale: Locale, room: Room, b: Branch) {
     fridge: 'Fridge',
     kettle: 'Kettle',
     washer: 'Washing machine',
-    wifi: 'Wi-Fi',
+    wifi: 'Free Wi-Fi',
     tv: 'TV',
     safe: 'Safe',
     air_conditioning: 'Air conditioning',

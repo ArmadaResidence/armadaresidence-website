@@ -73,6 +73,10 @@
         "Daily housekeeping",
         "24-hour security"
       ],
+      "wifi_free": true,
+      "wifi_coverage_ar": "في كل الوحدات والمناطق العامة",
+      "wifi_coverage_en": "in all units and public areas",
+      "wifi_note": "Free Wi-Fi in all units and public areas — confirmed by Ahmed, 22 Oct 2026",
       "coords_note": "Google Maps pin, confirmed by Ahmed 9 Oct 2026 (legacy coordinates were wrong)",
       "dining": {
         "name": "Armada Residence Café & Restaurant",
@@ -252,6 +256,10 @@
         "Daily housekeeping",
         "24-hour security"
       ],
+      "wifi_free": true,
+      "wifi_coverage_ar": "في كل الوحدات والمناطق العامة",
+      "wifi_coverage_en": "in all units and public areas",
+      "wifi_note": "Free Wi-Fi in all units and public areas — confirmed by Ahmed, 22 Oct 2026",
       "coords_note": "Google Maps pin, confirmed by Ahmed 9 Oct 2026 (legacy coordinates were wrong)",
       "drive_times_min": {
         "al_ruddaf_park": 4,

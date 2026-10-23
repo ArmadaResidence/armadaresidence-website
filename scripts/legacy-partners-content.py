@@ -211,6 +211,10 @@ def main() -> None:
     out["steps"][2][2] = {"en": "Unit mix and meal arrangement are confirmed in writing and the allocation is held.", "ar": "يُعتمد توزيع الوحدات وترتيب الوجبات كتابةً، ويُحجز التخصيص."}
     out["steps"][3][2] = {"en": "Reviewed with the commercial office before arrival — names, pairings and special requests.", "ar": "تُراجَع مع المكتب التجاري قبل الوصول — الأسماء والتوزيع والطلبات الخاصة."}
     out["steps"][4] = ["05", {"en": "The arrival plan", "ar": "خطة الوصول"}, {"en": "Arrival, rooming, meals and hall use are agreed in writing before the group lands.", "ar": "يُتَّفق كتابةً على الوصول والتسكين والوجبات واستخدام القاعة قبل وصول المجموعة."}]
+    # Sources (partners.json → facts.group_operations, confirmed 22 Oct 2026): organised group check-in/out, meals around
+    # sports-team training schedules, consolidated billing for corporate accounts, a written event order per confirmed
+    # group, breakfast included in group rates (lunch/dinner by prior agreement), account settled on departure, decisions
+    # in-house. Free Wi-Fi in all units and public areas: branches.json → wifi_* (both properties).
     out["steps"][5][2] = {"en": "Group check-in handled as one movement, and the account settled on departure.", "ar": "تسجيل دخول جماعي يُنجَز كحركة واحدة، وتسوية الحساب عند المغادرة."}
     out["promises"] = [["1", {"en": "Named contact", "ar": "مسؤول باسمه"}], ["1", {"en": "Working day to reply", "ar": "يوم عمل للردّ"}], ["1", {"en": "Written offer", "ar": "عرض مكتوب"}]]
     out["event_order_note"] = {"en": "<b>One written plan, agreed before arrival:</b> every confirmed group has its arrival, rooming, meals and hall use agreed in writing with the commercial office before the group lands.", "ar": "<b>خطة واحدة مكتوبة تُتَّفق قبل الوصول:</b> كل مجموعة مؤكَّدة يُتَّفق كتابةً مع المكتب التجاري على وصولها وتسكينها ووجباتها واستخدام القاعة قبل أن تصل."}
