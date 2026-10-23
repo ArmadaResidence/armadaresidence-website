@@ -517,6 +517,7 @@ def main() -> int:
                                 "publisher", "mainEntityOfPage", "inLanguage", "url"],
                     "Blog": ["name", "url", "publisher", "blogPost"],
                     "BreadcrumbList": ["itemListElement"],
+                    "FAQPage": ["mainEntity"],
                 }.get(t_)
                 if req is None:
                     rep.f("json-ld", f"{path}: unexpected @type {t_}")

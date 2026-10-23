@@ -261,6 +261,20 @@ export function blog(locale: Locale, name: string, description: string, posts: {
   };
 }
 
+/** FAQPage for an article's «أسئلة شائعة» / "Frequently asked questions" section — the exact Q&A text (23 Oct 2026). */
+export function faqPage(items: { q: string; a: string }[], url: string) {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'FAQPage',
+    url: absoluteUrl(url),
+    mainEntity: items.map((it) => ({
+      '@type': 'Question',
+      name: it.q,
+      acceptedAnswer: { '@type': 'Answer', text: it.a },
+    })),
+  };
+}
+
 export function breadcrumbs(items: { name: string; path: string }[]) {
   return {
     '@context': 'https://schema.org',

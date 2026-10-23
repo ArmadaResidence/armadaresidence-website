@@ -123,6 +123,25 @@ export async function coverImage(a: Article): Promise<ArticleImage | null> {
   return coverPending(a) ? null : resolveImage(a.cover, a.cover_alt);
 }
 
+/* ---------- FAQ (23 Oct 2026) ----------
+   An article's FAQ is the ## section headed «أسئلة شائعة» / "Frequently asked questions": every paragraph that opens
+   with a bold question (ending in ? or ؟) followed by its answer. The exact text feeds FAQPage JSON-LD; links keep
+   their text only. Anything else in the section (e.g. the closing booking CTA) is ignored. */
+const FAQ_HEADING = /^##\s+(أسئلة شائعة|Frequently asked questions)\s*$/;
+export function faqFromBody(body: string): { q: string; a: string }[] {
+  const lines = body.split(/\r?\n/);
+  const start = lines.findIndex((l) => FAQ_HEADING.test(l.trim()));
+  if (start === -1) return [];
+  const out: { q: string; a: string }[] = [];
+  const plain = (s: string) => s.replace(/\[([^\]]+)\]\([^)]+\)/g, '$1').replace(/\*\*/g, '').trim();
+  for (const line of lines.slice(start + 1)) {
+    if (/^##\s/.test(line)) break;
+    const m = line.trim().match(/^\*\*(.+?[?؟])\*\*\s+(.+)$/);
+    if (m) out.push({ q: plain(m[1]), a: plain(m[2]) });
+  }
+  return out;
+}
+
 /* ---------- body → segments ---------- */
 
 export type Segment = { kind: 'html'; html: string } | { kind: 'photo'; image: ArticleImage } | { kind: 'gallery'; images: ArticleImage[] };
