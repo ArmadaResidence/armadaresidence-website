@@ -33,7 +33,7 @@ Append-only. Newest entries at the bottom of each date.
 - Kitchens: Airport Road suites only. No washing machines anywhere. Balcony: Shafa "Room with Balcony" only.
 
 ## 2026-10-08 — Legal
-- Entity: شركة أرمادا ريزيدنس لتشغيل الفنادق / Armada Residence Company To Operate Hotels — CR 1010874796 (main, Riyadh) — VAT 312154414400003. Lives in content/legal.json; footer line defined there.
+- Entity: شركة أرمادا ريزيدنس لتشغيل الفنادق / Armada Residence Company To Operate Hotels — CR 1010874796 (main, Riyadh) — VAT 312154414400003. Lives in content/legal.json; footer line defined there. **Superseded 22 Oct 2026 for the CR shown on the site:** the site displays the Taif branch CR 4032276628 (see the 2026-10-23 entry «Commercial registration shown on the site»); entity name and VAT unchanged.
 - National-address proofs expired 17 Apr 2026 → renew before Tap Payments and Google Business submissions.
 
 ## 2026-10-08 — Content structure
@@ -270,3 +270,7 @@ Append-only. Newest entries at the bottom of each date.
 - Rule: no price in any `<title>`, meta description, Open Graph or Twitter tag. qa.py fails the build on a number next to ريال / ريالًا / ر.س / SAR / SR in those tags (Arabic-Indic digits included); checked against the old build first — it caught both branch descriptions in both languages (12 failures: description, og:description, twitter:description).
 - Found while adding it: the existing "no stay price while prices are hidden" rule in qa.py contained literal backspace characters where `\b` was meant, so it could never match. Fixed in the same change; the rule is live again.
 - The internal motion review page `/_motion/` is deleted: `src/pages/[...lang]/[review].astro`, its `seo.json` entry, its sitemap exclusion in `astro.config.mjs`, the `review` scenario in `scripts/motion-clips.mjs` and the mention in `ArticleBody.astro` and CLAUDE.md §3b. Every component it showed is used by real pages and stays.
+
+## 2026-10-23 — Commercial registration shown on the site (Ahmed, 22 Oct 2026)
+- The site displays the Taif branch commercial registration **4032276628** instead of the main CR 1010874796. 4032276628 is a branch registration of the same company, so the entity name (شركة أرمادا ريزيدنس لتشغيل الفنادق / Armada Residence Company To Operate Hotels) and the VAT number 312154414400003 stay exactly as they are. The main CR 1010874796 is no longer displayed or emitted anywhere on the site.
+- Changed: `content/legal.json` (`cr`, `footer_line_ar`, `footer_line_en`, `_note`) and `content/policies.json` (operator section `body_ar` / `body_en`). No template, JSON-LD field or fact-sheet PDF carried the number. The 8 Oct entity line above keeps its text with a superseded marker (append-only log).
