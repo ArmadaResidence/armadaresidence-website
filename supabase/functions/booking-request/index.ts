@@ -201,6 +201,8 @@ interface Row {
   adults: number;
   children: number;
   extraBeds: number;
+  needsCoordination: boolean;
+  capacity: number;
   room: string;
   breakfast: 'with' | 'without' | null;
   name: string;
@@ -250,7 +252,7 @@ function validate(p: Payload): Validation {
     const d: ValidBooking = r.data;
     return {
       ok: true,
-      row: { locale, requestType, branch: d.branch, check_in: d.check_in, check_out: d.check_out, nights: d.nights, adults: d.adults, children: d.children, extraBeds: d.extra_beds, room: d.room, breakfast: d.breakfast, name: d.name, phone: d.phone, email: d.email, notes: d.notes, page, organisation: '', roomsRequested: null, meals: '' },
+      row: { locale, requestType, branch: d.branch, check_in: d.check_in, check_out: d.check_out, nights: d.nights, adults: d.adults, children: d.children, extraBeds: d.extra_beds, needsCoordination: d.needs_coordination, capacity: d.capacity, room: d.room, breakfast: d.breakfast, name: d.name, phone: d.phone, email: d.email, notes: d.notes, page, organisation: '', roomsRequested: null, meals: '' },
     };
   }
 
@@ -282,6 +284,8 @@ function validate(p: Payload): Validation {
       adults,
       children: 0,
       extraBeds: 0,
+      needsCoordination: false,
+      capacity: 0,
       room: '',
       breakfast: null,
       name,
@@ -314,6 +318,7 @@ async function store(ref: string, d: Row, ua: string): Promise<boolean> {
         room_slug: d.room || null,
         breakfast: d.breakfast,
         extra_beds: d.extraBeds,
+        needs_coordination: d.needsCoordination,
         // fee snapshot at request time (pricing.json → extra_bed_per_night); later price changes never rewrite it
         extra_bed_fee_per_night: d.extraBeds > 0 ? content.extra_bed_fee : null,
         guest_name: d.name,
@@ -466,7 +471,7 @@ Deno.serve(async (req) => {
     notification = partnerNotification(content, pm);
     confirmation = partnerConfirmation(content, pm);
   } else {
-    const bm = { ref, locale: d.locale, branch: d.branch, room: d.room, check_in: d.check_in, check_out: d.check_out, nights: d.nights, adults: d.adults, children: d.children, extraBeds: d.extraBeds, extraBedFee: content.extra_bed_fee, breakfast: d.breakfast as 'with' | 'without', name: d.name, phone: d.phone, email: d.email, notes: d.notes, receivedAt };
+    const bm = { ref, locale: d.locale, branch: d.branch, room: d.room, check_in: d.check_in, check_out: d.check_out, nights: d.nights, adults: d.adults, children: d.children, extraBeds: d.extraBeds, extraBedFee: content.extra_bed_fee, needsCoordination: d.needsCoordination, capacity: d.capacity, breakfast: d.breakfast as 'with' | 'without', name: d.name, phone: d.phone, email: d.email, notes: d.notes, receivedAt };
     notification = bookingNotification(content, bm);
     // the guest "request received" email goes out only when the guest gave an email (decision 23 Oct 2026)
     confirmation = d.email ? bookingConfirmation(content, bm) : null;

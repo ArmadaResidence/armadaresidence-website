@@ -97,6 +97,7 @@ const s = pageSeo(locale, 'booking-success');
         nights: Number(q.get('nights') || 0),
         breakfast: q.get('breakfast') === 'with' ? 'with' : q.get('breakfast') === 'without' ? 'without' : '',
         extra_beds: Math.min(2, Math.max(0, Number(q.get('beds') || 0) || 0)),
+        needs_coordination: q.get('nc') === '1',
       });
     };
     try {

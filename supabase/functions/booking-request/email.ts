@@ -37,6 +37,9 @@ export interface BookingMail {
   /** extra beds requested (0–2) and the fee per bed per night at request time (pricing.json) */
   extraBeds: number;
   extraBedFee: number;
+  /** adults > capacity + extra beds requested (never blocks); the capacity it was measured against */
+  needsCoordination: boolean;
+  capacity: number;
   breakfast: 'with' | 'without';
   name: string;
   phone: string;
@@ -303,11 +306,14 @@ export function bookingNotification(c: Content, d: BookingMail): Mail {
         fill(M.extra_beds_estimate, { total: String(d.extraBedFee * d.nights * d.extraBeds), beds: String(d.extraBeds), fee: String(d.extraBedFee), nights: pluralForm(lab.plural.nights, d.nights) }),
       ]
     : [];
+  // party size above capacity + extra beds: never blocks, reception coordinates — shown first and prominently
+  const coordination = d.needsCoordination ? [fill(M.coordination_flag, { n: String(d.adults), capacity: String(d.capacity), beds: String(d.extraBeds) })] : [];
   const inner = section(
     L,
     `<p style="margin:0 0 14px;"><span style="display:inline-block; padding:5px 12px; border-radius:999px; background:${tagBg}; color:${WHITE}; font-family:${FONT.ar}; font-size:13px; font-weight:700;">${esc(b.name_ar)}</span>
 <span class="t-muted" dir="ltr" style="display:inline-block; margin-inline-start:8px; font-family:${FONT.en}; font-size:13px; color:${MUTED};">${esc(d.ref)} · ${esc(d.receivedAt)}</span></p>
 ${headline(L, M.hotel_intro)}
+${coordination.length ? `${flagNote(L, coordination)}<div style="height:12px; line-height:12px; font-size:0;">&nbsp;</div>` : ''}
 ${bedsLines.length ? `${flagNote(L, bedsLines)}<div style="height:16px; line-height:16px; font-size:0;">&nbsp;</div>` : ''}
 ${buttons(L, [button(L, wa(d.phone), M.notif_wa_guest, 'solid'), button(L, tel(d.phone), M.notif_call, 'ghost')])}
 <div style="height:18px; line-height:18px; font-size:0;">&nbsp;</div>
@@ -319,6 +325,7 @@ ${para(L, M.hotel_footer, { muted: true, size: 12 })}`,
   const html = doc({ lang: 'ar', title: subject, preheader: `${b.name_ar} · ${pluralForm(lab.plural.nights, d.nights)} · ${breakfast} — ${d.ref}`, body: header(c) + card(inner) + footer(c, ['ar']) });
   const text = [
     M.hotel_intro,
+    ...(coordination.length ? ['', ...coordination] : []),
     ...(bedsLines.length ? ['', ...bedsLines] : []),
     '',
     textRows(rows),

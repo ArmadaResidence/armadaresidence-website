@@ -27,6 +27,8 @@ const booking = {
   children: 1,
   extraBeds: 1,
   extraBedFee: 50,
+  needsCoordination: false,
+  capacity: 2,
   breakfast: 'with',
   name: 'تجربة النظام',
   phone: '+966500000000',
@@ -57,6 +59,7 @@ const mails = {
   'booking-notification': bookingNotification(content, booking),
   'booking-confirmation': bookingConfirmation(content, booking),
   'booking-notification-no-email': bookingNotification(content, { ...booking, email: '' }),
+  'booking-notification-coordination-no-email': bookingNotification(content, { ...booking, branch: 'shafa-road', room: 'king-room', adults: 3, children: 0, extraBeds: 0, needsCoordination: true, capacity: 2, breakfast: 'without', email: '' }),
   'partner-notification': partnerNotification(content, partner),
   'partner-confirmation': partnerConfirmation(content, partner),
 };

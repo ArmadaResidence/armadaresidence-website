@@ -112,7 +112,6 @@ export type FieldError =
   | 'dates'
   | 'adults'
   | 'children'
-  | 'capacity'
   | 'extra_beds'
   | 'breakfast'
   | 'name'
@@ -136,6 +135,10 @@ export interface ValidBooking {
   adults: number;
   children: number;
   extra_beds: number;
+  /** adults > capacity + extra beds requested — never blocks (23 Oct 2026); reception coordinates with the guest */
+  needs_coordination: boolean;
+  /** the capacity needs_coordination was measured against (the room's, or the branch's largest with «أي غرفة متاحة») */
+  capacity: number;
   breakfast: Breakfast;
   name: string;
   phone: string;
@@ -167,14 +170,15 @@ export function validateBooking(p: BookingInput, ctx: RuleContext): { ok: true; 
   const children = String(p.children ?? '').trim() === '' ? 0 : intIn(p.children, CHILDREN_MIN, CHILDREN_MAX);
   if (adults === null) errors.adults = 'adults';
   if (children === null) errors.children = 'children';
-  // Extra beds (23 Oct 2026): adults ≤ capacity + extra beds requested; extra beds ≤ the room's extra_beds_max
-  // (with «أي غرفة متاحة»: ≤ the highest extra_beds_max among the branch's bookable room types). Children are not
-  // counted against the capacity.
+  // Extra beds (23 Oct 2026, rule change): the extra bed is a suggestion, never a requirement — party size never
+  // blocks (only the technical bounds above). Still enforced: extra beds ≤ the room's extra_beds_max (with «أي غرفة
+  // متاحة»: ≤ the highest extra_beds_max among the branch's bookable room types). Adults above capacity + extra beds
+  // only set needs_coordination. Children are not counted against the capacity.
   const extraRaw = String(p.extra_beds ?? '').trim();
   const extraBeds = extraRaw === '' ? 0 : intIn(extraRaw, 0, EXTRA_BEDS_MAX);
   const bedsAllowed = room ? room.extra_beds_max : branchMaxExtraBeds(ctx.rooms, branch);
   if (extraBeds === null || extraBeds > bedsAllowed) errors.extra_beds = 'extra_beds';
-  if (room && adults !== null && extraBeds !== null && extraBeds <= bedsAllowed && adults > room.capacity + extraBeds) errors.adults = 'capacity';
+  const capacity = room ? room.capacity : branchMaxCapacity(ctx.rooms, branch);
 
   const breakfast = String(p.breakfast ?? '');
   if (!BREAKFAST.includes(breakfast as Breakfast)) errors.breakfast = breakfast ? 'breakfast' : 'required';
@@ -203,6 +207,8 @@ export function validateBooking(p: BookingInput, ctx: RuleContext): { ok: true; 
       adults: adults as number,
       children: children as number,
       extra_beds: extraBeds as number,
+      needs_coordination: (adults as number) > capacity + (extraBeds as number),
+      capacity,
       breakfast: breakfast as Breakfast,
       name,
       phone: e164 as string,
@@ -217,6 +223,11 @@ const bookableAt = (rooms: RuleRoom[], branch: string) => rooms.filter((r) => r.
 /** Highest extra_beds_max among the bookable room types of a branch (0 when none) — read from data, never hardcoded. */
 export function branchMaxExtraBeds(rooms: RuleRoom[], branch: string): number {
   return bookableAt(rooms, branch).reduce((m, r) => Math.max(m, r.extra_beds_max ?? 0), 0);
+}
+
+/** Largest capacity among the bookable room types of a branch (0 when none). */
+export function branchMaxCapacity(rooms: RuleRoom[], branch: string): number {
+  return bookableAt(rooms, branch).reduce((m, r) => Math.max(m, r.capacity), 0);
 }
 
 /** Most adults any single unit of a branch takes, its extra beds included (0 when none). */

@@ -64,13 +64,13 @@ const clientData = {
     breakfastWithout: f.breakfast_without,
     stayLength: f.stay_length,
     plural: f.plural,
-    capacityRoom: f.capacity_room,
     capacityBranch: f.capacity_branch,
     capacityBranchLink: f.capacity_branch_link,
     bedsAuto: f.extra_beds_auto,
     bedsPlural: f.extra_beds_plural,
     bedsPluralAcc: f.extra_beds_plural_acc,
     capacityBeds: f.capacity_beds,
+    capacityNoBeds: f.capacity_no_beds,
     bedsLabel: f.extra_beds,
     countryNone: f.country_none,
     adults: f.adults,
@@ -332,13 +332,13 @@ const stepper = (name: 'adults' | 'children' | 'extra_beds', value: number, min:
       breakfastWithout: string;
       stayLength: string;
       plural: Plurals;
-      capacityRoom: string;
       capacityBranch: string;
       capacityBranchLink: string;
       bedsAuto: string;
       bedsPlural: Record<'one' | 'two' | 'few' | 'many', string>;
       bedsPluralAcc: Record<'one' | 'two' | 'few' | 'many', string>;
       capacityBeds: string;
+      capacityNoBeds: string;
       bedsLabel: string;
       countryNone: string;
       adults: string;
@@ -663,14 +663,6 @@ const stepper = (name: 'adults' | 'children' | 'extra_beds', value: number, min:
     const FIELD_OF: Record<string, string> = { children: 'adults' };
     const message = (field: string, code: FieldError): string => {
       const e = S.errors;
-      if (code === 'capacity') {
-        const room = data.rooms.find((r) => r.slug === roomSel.value && r.branch === branchSel.value);
-        const adultsN = Number(adultsIn.value || 0);
-        // enough extra beds exist for this room, the guest just has fewer set than the adults need
-        if (room && adultsN <= room.capacity + room.extra_beds_max)
-          return S.capacityBeds.replace('{adults}', String(adultsN)).replace('{capacity}', String(room.capacity)).replace('{beds}', plural(S.bedsPluralAcc, bedsNeeded(room, adultsN)));
-        return S.capacityRoom.replace('{adults}', String(adultsIn.value || 0)).replace('{max}', String(room ? room.capacity + room.extra_beds_max : ''));
-      }
       if (code === 'extra_beds') return e.extra_beds;
       if (code === 'required' && field === 'breakfast') return e.breakfast;
       const map: Partial<Record<FieldError, string>> = {
@@ -781,11 +773,18 @@ const stepper = (name: 'adults' | 'children' | 'extra_beds', value: number, min:
           bedsAutoNote.textContent = S.bedsAuto.replace('{beds}', plural(S.bedsPluralAcc, need)).replace('{capacity}', String(room.capacity));
           bedsAutoNote.classList.remove('hidden');
         }
-        if (need > bedsMax) touched.add('adults');
       }
       const beds = Number(bedsIn.value || 0);
       capNote.replaceChildren();
       capNote.classList.add('hidden');
+      // non-blocking notes (rule change 23 Oct 2026): party size never stops the request; reception coordinates
+      if (room && adults > room.capacity + beds && bedsAutoNote.classList.contains('hidden')) {
+        capNote.textContent =
+          room.extra_beds_max === 0
+            ? S.capacityNoBeds.replace('{capacity}', String(room.capacity))
+            : S.capacityBeds.replace('{adults}', String(adults)).replace('{capacity}', String(room.capacity));
+        capNote.classList.remove('hidden');
+      }
       if (branchSel.value && !room) {
         const max = branchMaxAdults(data.rooms, branchSel.value);
         if (max && adults > max) {
@@ -905,6 +904,7 @@ const stepper = (name: 'adults' | 'children' | 'extra_beds', value: number, min:
           nights: String(d.nights),
           breakfast: d.breakfast,
           beds: String(d.extra_beds),
+          nc: d.needs_coordination ? '1' : '0',
           c: d.email ? 'email' : 'whatsapp',
         });
         leaving = true;

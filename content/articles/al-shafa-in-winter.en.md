@@ -26,6 +26,6 @@ When temperatures drop across the Kingdom, the Al Shafa highlands rise up the li
 Proper winter clothing — the gap between Taif and Al Shafa can be several degrees, and evenings are much colder than midday — and a car in good shape for the mountain road.
 
 ## Where to stay
-[Shafa Road](/en/shafa-road/) sits on the road up to the highlands, in the quiet Al-Sadad district, four minutes from Al Ruddaf Park. A room with a private balcony for a cold morning and a coffee, a jacuzzi studio after a day in the mountains, or a two-bedroom suite for a family. Breakfast is served from 07:00 to 10:30 before you set off.
+[Shafa Road](/en/shafa-road/) sits on the road up to the highlands, in the quiet Al-Sadad district, four minutes from Al Ruddaf Park. A room with a private balcony for a cold morning and a coffee, a jacuzzi studio after a day in the mountains, or a two-bedroom suite for a family. Breakfast is served 7:00–10:30 am before you set off.
 
 > [Request a booking at Shafa Road](/en/booking/?branch=shafa-road) for your winter break.

@@ -90,7 +90,7 @@ function vars(lang) {
     tv_airport: airport.tv_size_inch,
     tv_shafa: shafa.tv_size_inch,
     hall_short: hs.slice(0, 3).map((x) => x.replace(/ and screen| وشاشة عرض/, '').replace(/^Sound system$/, 'sound').replace(/^Projector$/, 'projector').replace(/^Whiteboard$/, 'whiteboard')).join(' · '),
-    breakfast_hours: pricing.breakfast.hours.replace(/\s*\(.*\)\s*$/, ''),
+    breakfast_hours: ar ? pricing.breakfast.hours_ar : pricing.breakfast.hours_en, // same format as the homepage (23 Oct 2026)
     bed_king_shafa: room('shafa-road', 'king-room')[ar ? 'bed_ar' : 'bed_en'],
     bed_balcony: room('shafa-road', 'balcony-room')[ar ? 'bed_ar' : 'bed_en'],
     bed_jacuzzi: room('shafa-road', 'jacuzzi-studio')[ar ? 'bed_ar' : 'bed_en'],

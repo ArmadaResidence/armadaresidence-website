@@ -173,7 +173,6 @@
         "name": "اكتب الاسم بحروف عربية أو لاتينية، 3 أحرف على الأقل، بدون أرقام.",
         "breakfast": "اختر «مع الإفطار» أو «بدون إفطار».",
         "adults": "بالغ واحد على الأقل.",
-        "capacity": "عدد الضيوف أكبر من سعة الغرفة المختارة.",
         "extra_beds": "عدد الأسرّة الإضافية أكبر من المسموح لهذه الغرفة."
       },
       "whatsapp_fallback": "أرسل الطلب عبر واتساب",
@@ -208,13 +207,12 @@
           "many": "{n} طفلًا"
         }
       },
-      "capacity_room": "عدد البالغين ({adults}) أكبر مما تتسع له هذه الغرفة حتى مع الأسرّة الإضافية ({max} كحد أقصى). اختر نوع غرفة آخر، أو احجز غرفتين، أو اطلب عرضًا للمجموعات.",
       "capacity_branch": "عدد البالغين أكبر مما تتسع له أكبر وحدة في هذا الفرع ({max} مع الأسرّة الإضافية). اكتب التفاصيل في الملاحظات، أو احجز غرفتين، أو اطلب عرضًا للمجموعات.",
       "capacity_branch_link": "طلب للمجموعات",
       "guests": "الضيوف",
       "extra_beds": "أسرّة إضافية",
       "extra_bed_fee": "السرير الإضافي {fee} ريالًا لليلة، ويؤكد الاستقبال توفره حسب الغرفة.",
-      "extra_beds_auto": "أضفنا {beds} لأن عدد البالغين أكبر من سعة الغرفة ({capacity}). يمكنك تعديل العدد.",
+      "extra_beds_auto": "أضفنا {beds} لأن عدد البالغين أكبر من سعة الغرفة ({capacity}). يمكنك تعديل العدد أو إزالته، وسيتواصل معك الاستقبال للتنسيق.",
       "extra_beds_plural": {
         "one": "سرير إضافي واحد",
         "two": "سريران إضافيان",
@@ -227,7 +225,8 @@
         "few": "{n} أسرّة إضافية",
         "many": "{n} سريرًا إضافيًا"
       },
-      "capacity_beds": "عدد البالغين ({adults}) أكبر من سعة الغرفة ({capacity}). أضف {beds}، أو اختر نوع غرفة آخر."
+      "capacity_beds": "عدد البالغين ({adults}) أكبر من سعة الغرفة ({capacity}) دون أسرّة إضافية كافية. سيتواصل معك الاستقبال للتنسيق.",
+      "capacity_no_beds": "هذه الغرفة لا تقبل أسرّة إضافية وتتسع لعدد {capacity} من البالغين. يمكنك إرسال الطلب وسيقترح عليك الاستقبال الأنسب، أو اختيار نوع غرفة آخر."
     },
     "success": {
       "heading": "طلبك وصلنا",
@@ -290,7 +289,8 @@
       "notif_reply_hint": "الرد على هذه الرسالة يصل إلى بريد الضيف.",
       "notif_no_email": "لم يُدخل الضيف بريدًا إلكترونيًا — التواصل عبر واتساب أو الهاتف.",
       "extra_beds_flag": "أسرّة إضافية: {beds} — تحتاج تأكيد التوفر",
-      "extra_beds_estimate": "تقدير تكلفة الأسرّة الإضافية: {total} ريال ({beds} × {fee} ريال × {nights})"
+      "extra_beds_estimate": "تقدير تكلفة الأسرّة الإضافية: {total} ر.س ({beds} × {fee} ر.س × {nights})",
+      "coordination_flag": "تنبيه: عدد البالغين ({n}) أكبر من سعة الغرفة ({capacity}) مع الأسرّة الإضافية المطلوبة ({beds}). يحتاج تنسيق مع الضيف."
     },
     "taif": {
       "heading": "اكتشف الطائف",
@@ -636,7 +636,6 @@
         "name": "Use Arabic or Latin letters, at least 3 characters, no digits.",
         "breakfast": "Choose “With breakfast” or “Without breakfast”.",
         "adults": "At least one adult.",
-        "capacity": "More guests than the selected room takes.",
         "extra_beds": "More extra beds than this room allows."
       },
       "whatsapp_fallback": "Send the request on WhatsApp",
@@ -671,13 +670,12 @@
           "many": "{n} children"
         }
       },
-      "capacity_room": "{adults} adults is more than this room takes, even with extra beds (at most {max}). Choose another room type, book two rooms, or ask for a group quote.",
       "capacity_branch": "That is more adults than the largest unit at this property takes ({max} with extra beds). Add the details in the notes, book two rooms, or ask for a group quote.",
       "capacity_branch_link": "Group request",
       "guests": "Guests",
       "extra_beds": "Extra beds",
       "extra_bed_fee": "Extra bed: SAR {fee} per night, subject to availability for the room; confirmed by reception.",
-      "extra_beds_auto": "We added {beds} because there are more adults than the room takes ({capacity}). You can change it.",
+      "extra_beds_auto": "We added {beds} because there are more adults than the room takes ({capacity}). You can change or remove it; the reception will contact you to arrange.",
       "extra_beds_plural": {
         "one": "1 extra bed",
         "two": "2 extra beds",
@@ -690,7 +688,8 @@
         "few": "{n} extra beds",
         "many": "{n} extra beds"
       },
-      "capacity_beds": "{adults} adults is more than the room takes ({capacity}). Add {beds}, or choose another room type."
+      "capacity_beds": "{adults} adults is more than the room takes ({capacity}) without enough extra beds. The reception will contact you to arrange.",
+      "capacity_no_beds": "This room takes no extra beds and fits {capacity} adults. You can still send the request and the reception will suggest the best option, or choose another room type."
     },
     "success": {
       "heading": "We have received your request",
@@ -753,7 +752,8 @@
       "notif_reply_hint": "Replying to this message reaches the guest’s email.",
       "notif_no_email": "The guest left no email — contact them on WhatsApp or by phone.",
       "extra_beds_flag": "Extra beds: {beds} — availability to be confirmed",
-      "extra_beds_estimate": "Estimated extra-bed total: SAR {total} ({beds} × SAR {fee} × {nights})"
+      "extra_beds_estimate": "Estimated extra-bed total: SAR {total} ({beds} × SAR {fee} × {nights})",
+      "coordination_flag": "Note: {n} adults exceeds the room capacity ({capacity}) with the extra beds requested ({beds}). Needs coordination with the guest."
     },
     "taif": {
       "heading": "Discover Taif",
