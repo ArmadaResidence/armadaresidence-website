@@ -10,6 +10,8 @@ import { readFileSync } from 'node:fs';
 import { chromium } from 'playwright';
 
 const BASE = (process.argv[2] || process.env.BASE_URL || 'http://127.0.0.1:4330').replace(/\/$/, '');
+// the GitHub Pages project site serves under a sub-path; its links carry it
+const PRE = new URL(BASE).pathname.replace(/\/$/, '');
 const contact = JSON.parse(readFileSync('content/contact.json', 'utf8'));
 const ui = JSON.parse(readFileSync('content/ui.json', 'utf8'));
 const rooms = JSON.parse(readFileSync('content/rooms.json', 'utf8'));
@@ -32,12 +34,12 @@ const roomName = (branch, slug, lang) => {
 const branchName = (b, lang) => branchList.find((x) => x.slug === b)[`name_${lang}`];
 
 const CASES = [
-  { lang: 'ar', path: '/airport-road/king-room/', open: 'main a[href="/booking/?branch=airport-road&room=king-room"]', branch: 'airport-road', room: 'king-room' },
-  { lang: 'ar', path: '/shafa-road/', open: 'main a[href="/booking/?branch=shafa-road"]', branch: 'shafa-road', room: null },
-  { lang: 'ar', path: '/', open: 'header a[href="/booking/"]', branch: null, pick: 'shafa-road', room: null },
-  { lang: 'en', path: '/en/shafa-road/king-room/', open: 'main a[href="/en/booking/?branch=shafa-road&room=king-room"]', branch: 'shafa-road', room: 'king-room' },
-  { lang: 'en', path: '/en/airport-road/', open: 'main a[href="/en/booking/?branch=airport-road"]', branch: 'airport-road', room: null },
-  { lang: 'en', path: '/en/', open: 'header a[href="/en/booking/"]', branch: null, pick: 'airport-road', room: null },
+  { lang: 'ar', path: '/airport-road/king-room/', open: `main a[href="${PRE}/booking/?branch=airport-road&room=king-room"]`, branch: 'airport-road', room: 'king-room' },
+  { lang: 'ar', path: '/shafa-road/', open: `main a[href="${PRE}/booking/?branch=shafa-road"]`, branch: 'shafa-road', room: null },
+  { lang: 'ar', path: '/', open: `header a[href="${PRE}/booking/"]`, branch: null, pick: 'shafa-road', room: null },
+  { lang: 'en', path: '/en/shafa-road/king-room/', open: `main a[href="${PRE}/en/booking/?branch=shafa-road&room=king-room"]`, branch: 'shafa-road', room: 'king-room' },
+  { lang: 'en', path: '/en/airport-road/', open: `main a[href="${PRE}/en/booking/?branch=airport-road"]`, branch: 'airport-road', room: null },
+  { lang: 'en', path: '/en/', open: `header a[href="${PRE}/en/booking/"]`, branch: null, pick: 'airport-road', room: null },
 ];
 
 const browser = await chromium.launch({ channel: 'chrome' });
