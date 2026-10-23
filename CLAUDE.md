@@ -142,7 +142,7 @@ Both existing subdomain sites are merged into this project as sections; the subd
 - `hreflang` ar / en / x-default on every page.
 - `lang="ar" dir="rtl"` on Arabic pages, `lang="en" dir="ltr"` on English.
 - Open Graph + Twitter card with a real image per page (branch/room photo).
-- JSON-LD: `Hotel` / `LodgingBusiness` per branch (name, address, geo, phone, image, priceRange), `HotelRoom` + `Offer` per room page, `Organization` on home.
+- JSON-LD: `Hotel` / `LodgingBusiness` per branch (name, address, geo, phone, image; `priceRange` only while prices are shown — none while `pricing.json → display_mode: hidden`, decision 9 Oct 2026, and qa.py treats its absence as expected), `HotelRoom` + `Offer` per room page, `Organization` on home.
 - `sitemap.xml` + `robots.txt` generated at build; one canonical domain (`https://armadaresidence.com`, no www) with 301 from the other.
 - Images: WebP with responsive `srcset`, max 1920 wide, `loading="lazy"` below the fold, explicit width/height.
 - Performance targets: LCP < 2.5 s on mobile, total transfer < 1 MB on home, Lighthouse ≥ 90 performance/SEO/accessibility.

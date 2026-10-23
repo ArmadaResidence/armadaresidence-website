@@ -495,7 +495,11 @@ def main() -> int:
                 if t_ in ("Hotel", "LodgingBusiness"):
                     if node.get("telephone") not in known_phones:
                         rep.f("json-ld", f"{path}: {t_} telephone not in contact.json")
-                    if not node.get("priceRange"):
+                    # priceRange only while prices are shown; none while display_mode is hidden (decision 9 Oct 2026)
+                    if pricing.get("display_mode") == "hidden":
+                        if node.get("priceRange"):
+                            rep.f("json-ld", f"{path}: {t_} carries a priceRange while prices are hidden")
+                    elif not node.get("priceRange"):
                         rep.w("json-ld", f"{path}: {t_} has no priceRange (no confirmed room price yet)")
                     # café inside the branch (branches.json → dining): FoodEstablishment with name, 24h hours, café phone
                     fe = node.get("containsPlace")
