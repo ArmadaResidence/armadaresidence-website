@@ -29,7 +29,11 @@ const s = pageSeo(locale, 'booking-success');
 
       <h2 class="mt-8 text-sm font-semibold uppercase tracking-wide text-bronze">{t.success.next_heading}</h2>
       <ol class="mt-3 space-y-3 list-decimal ps-5 leading-relaxed">
-        {t.success.steps.map((step) => <li>{step}</li>)}
+        <li>{t.success.steps[0]}</li>
+        <li>{t.success.steps[1]}</li>
+        {/* 23 Oct 2026: email given → confirmation by email; no email → the reception confirms on WhatsApp */}
+        <li data-next="email">{t.success.steps[2]}</li>
+        <li class="hidden" data-next="whatsapp">{t.success.next_whatsapp}</li>
       </ol>
       <p class="mt-4 text-sm text-ink-muted">
         {t.success.policies_note}
@@ -68,6 +72,10 @@ const s = pageSeo(locale, 'booking-success');
   const q = new URLSearchParams(location.search);
   const ref = q.get('ref');
   const branch = q.get('branch');
+  if (q.get('c') === 'whatsapp') {
+    document.querySelector('[data-next="email"]')?.classList.add('hidden');
+    document.querySelector('[data-next="whatsapp"]')?.classList.remove('hidden');
+  }
   if (ref) {
     const wrap = document.querySelector<HTMLElement>('[data-ref-wrap]');
     const el = document.querySelector<HTMLElement>('[data-ref]');
@@ -75,22 +83,28 @@ const s = pageSeo(locale, 'booking-success');
       el.textContent = ref;
       wrap.classList.remove('hidden');
     }
-    // GTM: one booking_request event per request (CLAUDE.md §8 step 5)
+    // GTM: one booking_request event per request (CLAUDE.md §8 step 5; DASHBOARD-SPEC §7 event name). No personal
+    // data: the ref is the opaque request number (Google Ads transaction id), room_type a slug or "any".
     const key = `armada_booking_${ref}`;
+    const push = () => {
+      const w = window as unknown as { dataLayer: unknown[] };
+      w.dataLayer = w.dataLayer || [];
+      w.dataLayer.push({
+        event: 'booking_request',
+        booking_ref: ref,
+        branch: branch || '',
+        room_type: q.get('room') || 'any',
+        nights: Number(q.get('nights') || 0),
+        breakfast: q.get('breakfast') === 'with' ? 'with' : q.get('breakfast') === 'without' ? 'without' : '',
+      });
+    };
     try {
       if (!sessionStorage.getItem(key)) {
-        (window as unknown as { dataLayer: unknown[] }).dataLayer = (window as unknown as { dataLayer: unknown[] }).dataLayer || [];
-        (window as unknown as { dataLayer: unknown[] }).dataLayer.push({
-          event: 'booking_request',
-          booking_ref: ref,
-          branch: branch || '',
-          room_type: q.get('room') || '',
-          nights: Number(q.get('nights') || 0),
-        });
+        push();
         sessionStorage.setItem(key, '1');
       }
     } catch {
-      /* storage unavailable: push anyway happens above only when readable */
+      push(); // storage unavailable: push once for this view
     }
   }
   if (branch) {

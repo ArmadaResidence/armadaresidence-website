@@ -154,9 +154,9 @@
       "room_type": "نوع الغرفة (اختياري)",
       "any_room": "أي غرفة متاحة",
       "full_name": "الاسم الكامل",
-      "phone": "رقم الجوال",
-      "phone_hint": "بالصيغة الدولية، مثل ‎+966 5X XXX XXXX",
-      "email": "البريد الإلكتروني",
+      "phone": "رقم الجوال (واتساب)",
+      "phone_hint": "نتواصل معك على هذا الرقم عبر واتساب.",
+      "email": "البريد الإلكتروني (اختياري)",
       "notes": "ملاحظات (اختياري)",
       "notes_hint": "وقت الوصول المتوقع، طلبات خاصة، أو أي استفسار.",
       "submit": "أرسل الطلب",
@@ -168,12 +168,50 @@
         "dates": "تاريخ المغادرة يجب أن يكون بعد تاريخ الوصول.",
         "date_format": "أدخل التاريخ بصيغة YYYY-MM-DD أو اختره من التقويم.",
         "past": "تاريخ الوصول لا يمكن أن يكون في الماضي.",
-        "phone": "أدخل رقم جوال صحيحًا بالصيغة الدولية.",
+        "phone": "رقم الجوال غير صحيح للدولة المختارة.",
         "email": "أدخل بريدًا إلكترونيًا صحيحًا.",
-        "server": "تعذّر إرسال الطلب الآن. يمكنكم إرسال الطلب عبر الواتساب مباشرة من الزر أدناه."
+        "server": "تعذّر إرسال الطلب الآن. يمكنكم إرسال الطلب عبر الواتساب مباشرة من الزر أدناه.",
+        "name": "اكتب الاسم بحروف عربية أو لاتينية، 3 أحرف على الأقل، بدون أرقام.",
+        "breakfast": "اختر «مع الإفطار» أو «بدون إفطار».",
+        "adults": "بالغ واحد على الأقل.",
+        "capacity": "عدد الضيوف أكبر من سعة الغرفة المختارة."
       },
       "whatsapp_fallback": "أرسل الطلب عبر واتساب",
-      "whatsapp_message": "السلام عليكم، أرغب في طلب حجز في {branch}.\nالوصول: {check_in}\nالمغادرة: {check_out}\nالبالغون: {adults} · الأطفال: {children}\nنوع الغرفة: {room}\nالاسم: {name}\nالجوال: {phone}\nملاحظات: {notes}"
+      "whatsapp_message": "السلام عليكم، أرغب في طلب حجز في {branch}.\nالوصول: {check_in}\nالمغادرة: {check_out} ({nights})\nالبالغون: {adults} · الأطفال: {children}\nنوع الغرفة: {room}\nالإفطار: {breakfast}\nالاسم: {name}\nالجوال: {phone}\nالبريد: {email}\nملاحظات: {notes}",
+      "email_hint": "إن أضفته، تصلك عليه رسالة باستلام الطلب.",
+      "country_code": "رمز الدولة",
+      "country_search": "ابحث عن دولة أو رمز",
+      "country_none": "لا توجد نتائج",
+      "breakfast": "الإفطار",
+      "breakfast_with": "مع الإفطار",
+      "breakfast_without": "بدون إفطار",
+      "guests_dec": "إنقاص {field}",
+      "guests_inc": "زيادة {field}",
+      "stay_length": "مدة الإقامة: {nights}",
+      "plural": {
+        "nights": {
+          "one": "ليلة واحدة",
+          "two": "ليلتان",
+          "few": "{n} ليالٍ",
+          "many": "{n} ليلة"
+        },
+        "adults": {
+          "one": "بالغ واحد",
+          "two": "{n} بالغين",
+          "few": "{n} بالغين",
+          "many": "{n} بالغًا"
+        },
+        "children": {
+          "one": "طفل واحد",
+          "two": "{n} طفلين",
+          "few": "{n} أطفال",
+          "many": "{n} طفلًا"
+        }
+      },
+      "capacity_room": "عدد الضيوف ({guests}) أكبر من سعة هذه الغرفة ({capacity}). اختر غرفة أخرى أو «أي غرفة متاحة».",
+      "capacity_branch": "عدد الضيوف أكبر من سعة أكبر وحدة في هذا الفرع ({capacity} أشخاص). اكتب التفاصيل في الملاحظات، أو اطلب عرضًا للمجموعات.",
+      "capacity_branch_link": "طلب للمجموعات",
+      "guests": "الضيوف"
     },
     "success": {
       "heading": "طلبك وصلنا",
@@ -187,7 +225,8 @@
       ],
       "policies_note": "يمكنك مراجعة سياسات الحجز والإلغاء والوصول والمغادرة في",
       "whatsapp_cta": "تواصل مع الفرع عبر واتساب",
-      "back_home": "العودة إلى الرئيسية"
+      "back_home": "العودة إلى الرئيسية",
+      "next_whatsapp": "سيؤكد فريق الاستقبال حجزك عبر واتساب على الرقم الذي أرسلته."
     },
     "footer": {
       "branches": "الفرعان",
@@ -220,7 +259,20 @@
       "partner_guest_body": "شكرًا لتواصلك مع أرمادا ريزيدنس. وصلنا طلبك وسيتواصل معك فريق المبيعات قريبًا.",
       "partner_guest_summary": "ملخص طلبك",
       "partner_guest_whatsapp": "للتواصل المباشر مع فريق المبيعات عبر واتساب:",
-      "partner_guest_footer": "أُرسلت هذه الرسالة تلقائيًا من نموذج الشركاء والوكالات على armadaresidence.com."
+      "partner_guest_footer": "أُرسلت هذه الرسالة تلقائيًا من نموذج الشركاء والوكالات على armadaresidence.com.",
+      "preheader_guest": "وصل طلبك {ref} — سيؤكد فريق الاستقبال التوافر خلال ساعات.",
+      "preheader_partner": "وصل طلبك {ref} — يعود إليك فريق المبيعات كتابةً خلال يوم عمل واحد.",
+      "next_heading": "ماذا يحدث بعد ذلك؟",
+      "next_guest": "يراجع فريق الاستقبال طلبك ويؤكد التوافر، ثم يرسل إليك تأكيد الحجز.",
+      "branch_card": "الفرع",
+      "map_button": "عرض على خرائط Google",
+      "wa_button": "واتساب الفرع",
+      "wa_sales_button": "واتساب المبيعات",
+      "guests": "الضيوف",
+      "notif_wa_guest": "واتساب الضيف",
+      "notif_call": "اتصال",
+      "notif_reply_hint": "الرد على هذه الرسالة يصل إلى بريد الضيف.",
+      "notif_no_email": "لم يُدخل الضيف بريدًا إلكترونيًا — التواصل عبر واتساب أو الهاتف."
     },
     "taif": {
       "heading": "اكتشف الطائف",
@@ -547,9 +599,9 @@
       "room_type": "Room type (optional)",
       "any_room": "Any available room",
       "full_name": "Full name",
-      "phone": "Mobile number",
-      "phone_hint": "International format, e.g. +966 5X XXX XXXX",
-      "email": "Email",
+      "phone": "Mobile number (WhatsApp)",
+      "phone_hint": "We will contact you on this number via WhatsApp.",
+      "email": "Email (optional)",
       "notes": "Notes (optional)",
       "notes_hint": "Expected arrival time, special requests or any question.",
       "submit": "Send request",
@@ -561,12 +613,50 @@
         "dates": "Check-out must be after check-in.",
         "date_format": "Enter the date as YYYY-MM-DD or pick it from the calendar.",
         "past": "Check-in cannot be in the past.",
-        "phone": "Enter a valid mobile number in international format.",
+        "phone": "This mobile number is not valid for the selected country.",
         "email": "Enter a valid email address.",
-        "server": "The request could not be sent right now. You can send it directly on WhatsApp using the button below."
+        "server": "The request could not be sent right now. You can send it directly on WhatsApp using the button below.",
+        "name": "Use Arabic or Latin letters, at least 3 characters, no digits.",
+        "breakfast": "Choose “With breakfast” or “Without breakfast”.",
+        "adults": "At least one adult.",
+        "capacity": "More guests than the selected room takes."
       },
       "whatsapp_fallback": "Send the request on WhatsApp",
-      "whatsapp_message": "Hello, I would like to request a booking at {branch}.\nCheck-in: {check_in}\nCheck-out: {check_out}\nAdults: {adults} · Children: {children}\nRoom type: {room}\nName: {name}\nMobile: {phone}\nNotes: {notes}"
+      "whatsapp_message": "Hello, I would like to request a booking at {branch}.\nCheck-in: {check_in}\nCheck-out: {check_out} ({nights})\nAdults: {adults} · Children: {children}\nRoom type: {room}\nBreakfast: {breakfast}\nName: {name}\nMobile: {phone}\nEmail: {email}\nNotes: {notes}",
+      "email_hint": "If you add it, we will email you when your request arrives.",
+      "country_code": "Country code",
+      "country_search": "Search a country or code",
+      "country_none": "No results",
+      "breakfast": "Breakfast",
+      "breakfast_with": "With breakfast",
+      "breakfast_without": "Without breakfast",
+      "guests_dec": "Fewer {field}",
+      "guests_inc": "More {field}",
+      "stay_length": "Length of stay: {nights}",
+      "plural": {
+        "nights": {
+          "one": "1 night",
+          "two": "2 nights",
+          "few": "{n} nights",
+          "many": "{n} nights"
+        },
+        "adults": {
+          "one": "1 adult",
+          "two": "2 adults",
+          "few": "{n} adults",
+          "many": "{n} adults"
+        },
+        "children": {
+          "one": "1 child",
+          "two": "2 children",
+          "few": "{n} children",
+          "many": "{n} children"
+        }
+      },
+      "capacity_room": "{guests} guests is more than this room takes ({capacity}). Choose another room or “Any available room”.",
+      "capacity_branch": "That is more guests than the largest unit at this property takes ({capacity}). Add the details in the notes, or ask for a group quote.",
+      "capacity_branch_link": "Group request",
+      "guests": "Guests"
     },
     "success": {
       "heading": "We have received your request",
@@ -580,7 +670,8 @@
       ],
       "policies_note": "You can review the booking, cancellation, check-in and check-out policies on the",
       "whatsapp_cta": "Chat with the property on WhatsApp",
-      "back_home": "Back to the home page"
+      "back_home": "Back to the home page",
+      "next_whatsapp": "The reception team will confirm your booking on WhatsApp, on the number you sent."
     },
     "footer": {
       "branches": "Properties",
@@ -613,7 +704,20 @@
       "partner_guest_body": "Thank you for contacting Armada Residence. We have received your request and our sales team will be in touch shortly.",
       "partner_guest_summary": "Your request summary",
       "partner_guest_whatsapp": "To reach the sales team directly on WhatsApp:",
-      "partner_guest_footer": "This message was sent automatically by the partners form on armadaresidence.com."
+      "partner_guest_footer": "This message was sent automatically by the partners form on armadaresidence.com.",
+      "preheader_guest": "Your request {ref} has arrived — reception will confirm availability within hours.",
+      "preheader_partner": "Your request {ref} has arrived — the sales team will come back to you in writing within one working day.",
+      "next_heading": "What happens next?",
+      "next_guest": "The reception team reviews your request, confirms availability and then sends you the booking confirmation.",
+      "branch_card": "Property",
+      "map_button": "View on Google Maps",
+      "wa_button": "WhatsApp the property",
+      "wa_sales_button": "WhatsApp sales",
+      "guests": "Guests",
+      "notif_wa_guest": "WhatsApp the guest",
+      "notif_call": "Call",
+      "notif_reply_hint": "Replying to this message reaches the guest’s email.",
+      "notif_no_email": "The guest left no email — contact them on WhatsApp or by phone."
     },
     "taif": {
       "heading": "Discover Taif",

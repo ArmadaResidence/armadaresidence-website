@@ -450,8 +450,9 @@ def main() -> int:
                     rep.f("contact", f"{path}: sales WhatsApp must appear only on /offers and /partners")
                 if num in cafe_phones and not cafe_allowed(path):
                     rep.f("contact", f"{path}: café WhatsApp must appear only on /airport-road and /menu")
-        # displayed phone numbers must equal phone_display exactly
-        for m in re.finditer(r"\+966[\d\s]{9,14}", p.text):
+        # displayed phone numbers must equal phone_display exactly (a digit must follow +966, so the bare country
+        # code on the booking form's country selector is not read as a number — 23 Oct 2026)
+        for m in re.finditer(r"\+966 ?\d[\d ]{7,13}\d", p.text):
             shown = m.group(0).strip()
             e164 = "+" + re.sub(r"\D", "", shown)
             if e164 not in display_by_e164:

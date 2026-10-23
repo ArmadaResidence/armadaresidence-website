@@ -156,16 +156,28 @@ const fabClass = 'wa-pulse inline-flex items-center gap-2 bg-midnight text-white
       // a choice opens WhatsApp in a new tab; the chooser closes behind it
       if ((e.target as HTMLElement).closest('[data-wa-link]')) close();
     });
-    document.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape' && isOpen()) {
-        e.preventDefault();
-        close(true);
-      }
-    });
+    // document-level listeners belong to this page only: aborted when the next page is swapped in, so they never
+    // pile up across client-side navigations (same class of bug as the booking drawer, 23 Oct 2026)
+    const ac = new AbortController();
+    document.addEventListener('astro:before-swap', () => ac.abort(), { once: true });
+    document.addEventListener(
+      'keydown',
+      (e) => {
+        if (e.key === 'Escape' && isOpen()) {
+          e.preventDefault();
+          close(true);
+        }
+      },
+      { signal: ac.signal },
+    );
     // outside tap / click
-    document.addEventListener('pointerdown', (e) => {
-      if (!root.isConnected || !isOpen()) return;
-      if (!root.contains(e.target as Node)) close();
-    });
+    document.addEventListener(
+      'pointerdown',
+      (e) => {
+        if (!root.isConnected || !isOpen()) return;
+        if (!root.contains(e.target as Node)) close();
+      },
+      { signal: ac.signal },
+    );
   });
 </script>

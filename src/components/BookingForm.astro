@@ -1,11 +1,14 @@
 ---
 /**
- * Booking-request form (CLAUDE.md §8) — one component for the /booking/ page and the booking drawer (item 11).
- * Labels float on focus / when a value is present (item 5): the field keeps a fixed height, the label moves with a
- * transform only. Every string comes from ui.json; branches / rooms from content/. `prefix` keeps ids unique when
- * two forms share a page (page form + drawer). The client script binds every `[data-booking-form]` on the page.
+ * Booking-request form (CLAUDE.md §8; rebuilt 23 Oct 2026 — decisions A2/A3) — one component for the /booking/
+ * page and the booking drawer. Every rule lives in supabase/functions/booking-request/rules.ts and is shared with
+ * the Edge Function, so the browser and the server validate the same way. Strings come from ui.json; branches,
+ * rooms and capacities from content/; countries from libphonenumber-js with self-hosted flags (public/flags/,
+ * scripts/flags.mjs — never emoji, never a CDN). `prefix` keeps ids unique when two forms share a page.
  */
-import { branchContact, branches, L, localePath, rooms, ui, type Locale } from '@lib/content';
+import { readFileSync } from 'node:fs';
+import { getCountries, getCountryCallingCode } from 'libphonenumber-js/min';
+import { branchContact, branchShort, branches, L, localePath, rooms, ui, type Locale } from '@lib/content';
 import Icon from './Icon.astro';
 
 interface Props {
@@ -22,37 +25,82 @@ const endpoint = import.meta.env.PUBLIC_BOOKING_ENDPOINT ?? '';
 const anonKey = import.meta.env.PUBLIC_SUPABASE_ANON_KEY ?? '';
 const bookable = rooms.filter((r) => r.availability !== 'sold_out');
 
+// Countries with a flag on the site, in the page language; Saudi Arabia first (default), then the GCC, then A–Z.
+let flagged: string[] = [];
+try {
+  flagged = JSON.parse(readFileSync('public/flags/index.json', 'utf8'));
+} catch {
+  flagged = getCountries();
+}
+const names = new Intl.DisplayNames([locale], { type: 'region' });
+const PINNED = ['SA', 'AE', 'KW', 'QA', 'BH', 'OM'];
+const countries = getCountries()
+  .filter((cc) => flagged.includes(cc))
+  .map((cc) => [cc, getCountryCallingCode(cc), names.of(cc) ?? cc] as [string, string, string])
+  .sort((a, b) => {
+    const pa = PINNED.indexOf(a[0]);
+    const pb = PINNED.indexOf(b[0]);
+    if (pa !== -1 || pb !== -1) return (pa === -1 ? 99 : pa) - (pb === -1 ? 99 : pb);
+    return a[2].localeCompare(b[2], locale);
+  });
+
 /** Everything the client script needs, all from content/. */
 const clientData = {
   locale,
   endpoint,
   anonKey,
   successPath: localePath(locale, '/booking/success/'),
-  branches: branches.map((b) => ({ slug: b.slug, name: L(locale, b, 'name'), whatsapp: branchContact(b.slug).whatsapp })),
-  rooms: bookable.map((r) => ({ slug: r.slug, branch: r.branch, name: L(locale, r, 'name') })),
+  partnersPath: localePath(locale, '/partners/enquiry/'),
+  branches: branches.map((b) => ({ slug: b.slug, name: L(locale, b, 'name'), short: branchShort(locale, b.slug), whatsapp: branchContact(b.slug).whatsapp })),
+  rooms: bookable.map((r) => ({ slug: r.slug, branch: r.branch, name: L(locale, r, 'name'), capacity: r.capacity, availability: r.availability })),
+  countries,
   strings: {
     anyRoom: f.any_room,
     sending: f.sending,
     submit: f.submit,
     errors: f.errors,
     whatsappMessage: f.whatsapp_message,
+    breakfastWith: f.breakfast_with,
+    breakfastWithout: f.breakfast_without,
+    stayLength: f.stay_length,
+    plural: f.plural,
+    capacityRoom: f.capacity_room,
+    capacityBranch: f.capacity_branch,
+    capacityBranchLink: f.capacity_branch_link,
+    countryNone: f.country_none,
+    adults: f.adults,
+    children: f.children,
   },
 };
-const inputClass = 'field-input latin text-left w-full border border-line rounded bg-white';
+const inputClass = 'field-input w-full border border-line rounded bg-white';
+const latinInput = `${inputClass} latin text-left`;
+const err = (name: string) => id(`${name}-error`);
+const stepper = (name: 'adults' | 'children', value: number, min: number) => ({ name, value, min, label: f[name] });
 ---
 
-<form id={id('booking-form')} class:list={['space-y-6', className]} novalidate data-booking-form>
+<form id={id('booking-form')} class:list={['booking-form space-y-6', className]} novalidate data-booking-form>
   <div class="grid gap-5 sm:grid-cols-2">
+    {/* 1. Branch first */}
     <div class="sm:col-span-2 field field-select">
-      <select id={id('branch')} name="branch" required class="field-input w-full border border-line rounded bg-white">
+      <select id={id('branch')} name="branch" required autocomplete="off" class={inputClass} aria-describedby={err('branch')}>
         <option value="">{f.choose_branch}</option>
         {branches.map((b) => <option value={b.slug}>{L(locale, b, 'name')}</option>)}
       </select>
       <label for={id('branch')} class="field-label">{f.branch}</label>
-      <p class="hidden text-xs text-red-700 mt-1" data-error-for="branch"></p>
+      <p id={err('branch')} class="field-error hidden" data-error-for="branch"></p>
     </div>
 
-    {/* Dates: a text field in ISO form (Western digits whatever the browser locale) + the native picker opened on tap. */}
+    {/* 2. Room type, filtered by the branch */}
+    <div class="sm:col-span-2 field field-select">
+      <select id={id('room')} name="room" autocomplete="off" class={inputClass} aria-describedby={err('room')}>
+        <option value="">{f.any_room}</option>
+        {bookable.map((r) => <option value={r.slug} data-branch={r.branch} data-capacity={r.capacity}>{L(locale, r, 'name')}</option>)}
+      </select>
+      <label for={id('room')} class="field-label">{f.room_type}</label>
+      <p id={err('room')} class="field-error hidden" data-error-for="room"></p>
+    </div>
+
+    {/* 3. Dates: ISO text field (Western digits whatever the locale) + the native picker; no past dates (Asia/Riyadh) */}
     {
       (['check_in', 'check_out'] as const).map((name) => (
         <div class="field" data-date-field>
@@ -68,67 +116,146 @@ const inputClass = 'field-input latin text-left w-full border border-line rounde
             required
             lang="en"
             dir="ltr"
-            class:list={[inputClass, 'pe-11']}
+            class:list={[latinInput, 'pe-11']}
+            aria-describedby={err(name)}
             data-date-text
           />
           <label for={id(name)} class="field-label">{f[name]}</label>
-          {/* the text field is LTR, so the icon sits on the physical right whatever the page direction */}
           <input type="date" tabindex="-1" aria-hidden="true" lang="en" class="absolute bottom-0 right-10 w-px h-px opacity-0" data-date-picker />
           <button type="button" class="field-icon absolute right-0 top-0 h-14 w-10 grid place-items-center text-bronze hover:text-bronze-text" aria-label={f.open_calendar} data-date-open>
             <Icon name="calendar" size={20} />
           </button>
-          <p class="hidden text-xs text-red-700 mt-1" data-error-for={name} />
+          <p id={err(name)} class="field-error hidden" data-error-for={name} />
         </div>
       ))
     }
+    <p class="sm:col-span-2 -mt-2 text-sm text-ink-muted hidden" data-nights aria-live="polite"></p>
 
-    <div class="field">
-      <input id={id('adults')} name="adults" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="2" value="2" required lang="en" dir="ltr" placeholder=" " class={inputClass} />
-      <label for={id('adults')} class="field-label">{f.adults}</label>
-      <p class="hidden text-xs text-red-700 mt-1" data-error-for="adults"></p>
-    </div>
-    <div class="field">
-      <input id={id('children')} name="children" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="2" value="0" lang="en" dir="ltr" placeholder=" " class={inputClass} />
-      <label for={id('children')} class="field-label">{f.children}</label>
-    </div>
+    {/* 4. Guests: steppers, digits only; capacity checked against rooms.json */}
+    <fieldset class="sm:col-span-2" aria-describedby={`${err('adults')} ${id('capacity-note')}`}>
+      <legend class="text-sm font-semibold text-midnight mb-2">{f.guests}</legend>
+      <div class="grid gap-4 grid-cols-2">
+        {
+          [stepper('adults', 2, 1), stepper('children', 0, 0)].map((s) => (
+            <div class="stepper" data-stepper={s.name}>
+              <label for={id(s.name)} class="block text-xs text-ink-muted mb-1">{s.label}</label>
+              <div class="flex items-stretch border border-line rounded bg-white h-12" dir="ltr">
+                <button type="button" class="stepper-btn" data-step="-1" aria-controls={id(s.name)} aria-label={f.guests_dec.replace('{field}', s.label)}>
+                  <Icon name="minus" size={18} />
+                </button>
+                <input
+                  id={id(s.name)}
+                  name={s.name}
+                  type="text"
+                  inputmode="numeric"
+                  pattern="[0-9]*"
+                  autocomplete="off"
+                  maxlength="2"
+                  value={String(s.value)}
+                  data-min={s.min}
+                  data-max="20"
+                  lang="en"
+                  class="latin w-full min-w-0 text-center bg-transparent text-midnight font-semibold focus:outline-none"
+                  aria-describedby={s.name === 'adults' ? err('adults') : undefined}
+                />
+                <button type="button" class="stepper-btn" data-step="1" aria-controls={id(s.name)} aria-label={f.guests_inc.replace('{field}', s.label)}>
+                  <Icon name="plus" size={18} />
+                </button>
+              </div>
+            </div>
+          ))
+        }
+      </div>
+      <p id={err('adults')} class="field-error hidden" data-error-for="adults"></p>
+      <p id={id('capacity-note')} class="hidden mt-2 text-sm text-ink-muted" data-capacity-note></p>
+    </fieldset>
 
-    <div class="sm:col-span-2 field field-select">
-      <select id={id('room')} name="room" class="field-input w-full border border-line rounded bg-white">
-        <option value="">{f.any_room}</option>
-        {bookable.map((r) => <option value={r.slug} data-branch={r.branch}>{L(locale, r, 'name')}</option>)}
-      </select>
-      <label for={id('room')} class="field-label">{f.room_type}</label>
-    </div>
+    {/* 5. Breakfast: required choice, no default (decision A2) */}
+    <fieldset class="sm:col-span-2" data-breakfast aria-describedby={err('breakfast')}>
+      <legend class="text-sm font-semibold text-midnight mb-2">{f.breakfast}</legend>
+      <div class="grid grid-cols-2 gap-3">
+        {
+          (['with', 'without'] as const).map((v) => (
+            <label class="choice">
+              <input type="radio" name="breakfast" value={v} class="sr-only peer" required />
+              <span class="choice-box">{v === 'with' ? f.breakfast_with : f.breakfast_without}</span>
+            </label>
+          ))
+        }
+      </div>
+      <p id={err('breakfast')} class="field-error hidden" data-error-for="breakfast"></p>
+    </fieldset>
 
+    {/* 6. Name */}
     <div class="sm:col-span-2 field">
-      <input id={id('name')} name="name" type="text" autocomplete="name" required maxlength="120" placeholder=" " class="field-input w-full border border-line rounded bg-white" />
+      <input id={id('name')} name="name" type="text" autocomplete="name" autocapitalize="words" spellcheck="false" required maxlength="120" placeholder=" " class={inputClass} aria-describedby={err('name')} />
       <label for={id('name')} class="field-label">{f.full_name}</label>
-      <p class="hidden text-xs text-red-700 mt-1" data-error-for="name"></p>
+      <p id={err('name')} class="field-error hidden" data-error-for="name"></p>
     </div>
 
-    <div class="field">
-      <input id={id('phone')} name="phone" type="tel" autocomplete="tel" inputmode="tel" required lang="en" dir="ltr" placeholder=" " class={inputClass} aria-describedby={id('phone-hint')} />
-      <label for={id('phone')} class="field-label">{f.phone}</label>
+    {/* 7. Phone (WhatsApp), required: country selector with self-hosted flags + national number, stored as E.164 */}
+    <div class="sm:col-span-2" data-phone-group>
+      <label for={id('phone')} class="block text-sm font-semibold text-midnight mb-2">{f.phone}</label>
+      <div class="relative flex gap-2" dir="ltr">
+        <input type="hidden" name="country" value="SA" data-country-value />
+        <button
+          type="button"
+          class="country-btn"
+          aria-haspopup="listbox"
+          aria-expanded="false"
+          aria-controls={id('country-list')}
+          aria-label={`${f.country_code}: ${countries[0][2]} +${countries[0][1]}`}
+          data-country-btn
+        >
+          <img src="/flags/sa.png" alt="" aria-hidden="true" width="24" height="18" class="rounded-sm" data-country-flag data-flag-src="/flags/sa.png" />
+          <span class="latin font-semibold" data-country-code>+966</span>
+          <Icon name="chevron" size={14} class="text-ink-muted" />
+        </button>
+        <input
+          id={id('phone')}
+          name="phone"
+          type="tel"
+          inputmode="tel"
+          autocomplete="tel-national"
+          required
+          maxlength="20"
+          lang="en"
+          class="flex-1 min-w-0 h-14 px-3 border border-line rounded bg-white latin text-left text-midnight"
+          aria-describedby={`${id('phone-hint')} ${err('phone')}`}
+          data-phone-input
+        />
+        <div class="country-pop hidden" data-country-pop>
+          <input
+            type="search"
+            class="w-full h-11 px-3 border border-line rounded bg-white text-sm"
+            placeholder={f.country_search}
+            aria-label={f.country_search}
+            aria-controls={id('country-list')}
+            autocomplete="off"
+            dir={locale === 'ar' ? 'rtl' : 'ltr'}
+            data-country-search
+          />
+          <ul id={id('country-list')} role="listbox" aria-label={f.country_code} class="country-list" data-country-list tabindex="-1"></ul>
+        </div>
+      </div>
       <p id={id('phone-hint')} class="text-xs text-ink-muted mt-1">{f.phone_hint}</p>
-      <p class="hidden text-xs text-red-700 mt-1" data-error-for="phone"></p>
+      <p id={err('phone')} class="field-error hidden" data-error-for="phone"></p>
     </div>
-    <div class="field">
-      <input id={id('email')} name="email" type="email" autocomplete="email" required lang="en" dir="ltr" placeholder=" " class={inputClass} />
+
+    {/* 8. Email, optional; validated when present */}
+    <div class="sm:col-span-2 field">
+      <input id={id('email')} name="email" type="email" inputmode="email" autocomplete="email" autocapitalize="off" spellcheck="false" maxlength="254" lang="en" dir="ltr" placeholder=" " class={latinInput} aria-describedby={`${id('email-hint')} ${err('email')}`} />
       <label for={id('email')} class="field-label">{f.email}</label>
-      <p class="hidden text-xs text-red-700 mt-1" data-error-for="email"></p>
+      <p id={id('email-hint')} class="text-xs text-ink-muted mt-1">{f.email_hint}</p>
+      <p id={err('email')} class="field-error hidden" data-error-for="email"></p>
     </div>
 
     <div class="sm:col-span-2 field field-textarea">
-      <textarea id={id('notes')} name="notes" rows="3" maxlength="1000" placeholder=" " class="field-input w-full border border-line rounded bg-white" aria-describedby={id('notes-hint')}></textarea>
+      <textarea id={id('notes')} name="notes" rows="3" maxlength="1000" autocomplete="off" placeholder=" " class={inputClass} aria-describedby={id('notes-hint')}></textarea>
       <label for={id('notes')} class="field-label">{f.notes}</label>
       <p id={id('notes-hint')} class="text-xs text-ink-muted mt-1">{f.notes_hint}</p>
     </div>
   </div>
-
-  <p class="text-xs text-ink-muted">
-    {f.consent}
-    <a href={localePath(locale, '/policies/')} class="font-semibold text-bronze hover:text-bronze-text ms-1">{f.consent_link}</a>.
-  </p>
 
   {/* Honeypot: invisible to people and assistive tech; a bot that fills it gets a fake success and nothing is stored. */}
   <div class="absolute -start-[9999px] w-px h-px overflow-hidden" aria-hidden="true">
@@ -136,10 +263,17 @@ const inputClass = 'field-input latin text-left w-full border border-line rounde
     <input id={id('website')} name="website" type="text" tabindex="-1" autocomplete="off" />
   </div>
 
+  <p class="text-xs text-ink-muted">
+    {f.consent}
+    <a href={localePath(locale, '/policies/')} class="font-semibold text-bronze hover:text-bronze-text ms-1">{f.consent_link}</a>.
+  </p>
+
+  <p class="hidden text-sm font-semibold text-midnight bg-porcelain rounded px-4 py-3" data-summary aria-live="polite"></p>
   <p class="hidden bg-porcelain border border-line text-sm text-red-800 rounded px-4 py-3" data-form-error role="alert"></p>
 
   <div class="flex flex-wrap items-center gap-3">
-    <button type="submit" class="inline-flex items-center gap-2 bg-bronze-deep text-white font-semibold px-6 py-3 rounded hover:bg-bronze-text transition-colors disabled:opacity-60" data-submit>
+    <button type="submit" class="inline-flex items-center gap-2 bg-bronze-deep text-white font-semibold px-6 py-3 rounded hover:bg-bronze-text transition-colors disabled:opacity-70" data-submit>
+      <span class="spinner hidden" aria-hidden="true" data-spinner></span>
       <span data-submit-label>{f.submit}</span>
       <Icon name="arrow" size={18} class="icon-arrow rtl:rotate-180" />
     </button>
@@ -154,41 +288,104 @@ const inputClass = 'field-input latin text-left w-full border border-line rounde
 
 <script>
   import { bindOnce, onPageLoad } from '@lib/client';
+  import {
+    addDays,
+    branchMaxCapacity,
+    E164,
+    nightsBetween,
+    plural,
+    riyadhToday,
+    validateBooking,
+    type BookingInput,
+    type FieldError,
+  } from '../../supabase/functions/booking-request/rules.ts';
 
+  type Plurals = Record<'nights' | 'adults' | 'children', Record<'one' | 'two' | 'few' | 'many', string>>;
   type Data = {
     locale: string;
     endpoint: string;
     anonKey: string;
     successPath: string;
-    branches: { slug: string; name: string; whatsapp: string }[];
-    rooms: { slug: string; branch: string; name: string }[];
+    partnersPath: string;
+    branches: { slug: string; name: string; short: string; whatsapp: string }[];
+    rooms: { slug: string; branch: string; name: string; capacity: number; availability: string }[];
+    countries: [string, string, string][];
     strings: {
       anyRoom: string;
       sending: string;
       submit: string;
       errors: Record<string, string>;
       whatsappMessage: string;
+      breakfastWith: string;
+      breakfastWithout: string;
+      stayLength: string;
+      plural: Plurals;
+      capacityRoom: string;
+      capacityBranch: string;
+      capacityBranchLink: string;
+      countryNone: string;
+      adults: string;
+      children: string;
     };
   };
 
-  const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
-  const E164 = /^\+[1-9]\d{7,14}$/;
-  const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
-  const iso = (d: Date) => d.toISOString().slice(0, 10);
+  type PhoneLib = typeof import('libphonenumber-js/min');
+  let phoneLib: PhoneLib | null = null;
+  let phoneLibLoading: Promise<PhoneLib | null> | null = null;
+  /** libphonenumber-js (min metadata) is loaded on first interaction, not with the page. */
+  function loadPhoneLib(): Promise<PhoneLib | null> {
+    if (phoneLib) return Promise.resolve(phoneLib);
+    phoneLibLoading ??= import('libphonenumber-js/min')
+      .then((m) => (phoneLib = m))
+      .catch(() => null);
+    return phoneLibLoading;
+  }
+
+  /** ٠١٢… / ۰۱۲… → 0-9 (phones, dates and counts are typed with Arabic keyboards too). */
+  const latinDigits = (s: string) => s.replace(/[٠-٩]/g, (c) => String(c.charCodeAt(0) - 0x0660)).replace(/[۰-۹]/g, (c) => String(c.charCodeAt(0) - 0x06f0));
+
+  /** E.164 for a number typed in the national form (or with +/00), valid for the chosen country. */
+  function phoneToE164(raw: string, country: string): string | null {
+    const v = latinDigits(raw).replace(/[\s\-().]/g, '').replace(/^00/, '+');
+    if (!v) return null;
+    if (phoneLib) {
+      const n = v.startsWith('+') ? phoneLib.parsePhoneNumberFromString(v) : phoneLib.parsePhoneNumberFromString(v, country as never);
+      return n && n.isValid() ? n.number : null;
+    }
+    // library not loaded (offline): the server still validates per country
+    return E164.test(v) ? v : null;
+  }
 
   function initForm(form: HTMLFormElement) {
     const data = JSON.parse(form.querySelector('[data-booking-data]')?.textContent || '{}') as Data;
-    const branchSel = form.elements.namedItem('branch') as HTMLSelectElement;
-    const roomSel = form.elements.namedItem('room') as HTMLSelectElement;
-    const checkIn = form.elements.namedItem('check_in') as HTMLInputElement;
-    const checkOut = form.elements.namedItem('check_out') as HTMLInputElement;
+    const S = data.strings;
+    const el = <T extends Element = HTMLInputElement>(name: string) => form.elements.namedItem(name) as unknown as T;
+    const branchSel = el<HTMLSelectElement>('branch');
+    const roomSel = el<HTMLSelectElement>('room');
+    const checkIn = el('check_in');
+    const checkOut = el('check_out');
+    const adultsIn = el('adults');
+    const childrenIn = el('children');
+    const nameIn = el('name');
+    const phoneIn = form.querySelector<HTMLInputElement>('[data-phone-input]')!;
+    const emailIn = el('email');
+    const notesIn = el<HTMLTextAreaElement>('notes');
+    const countryVal = form.querySelector<HTMLInputElement>('[data-country-value]')!;
     const submitBtn = form.querySelector<HTMLButtonElement>('[data-submit]')!;
     const submitLabel = form.querySelector<HTMLElement>('[data-submit-label]')!;
+    const spinner = form.querySelector<HTMLElement>('[data-spinner]')!;
     const formError = form.querySelector<HTMLElement>('[data-form-error]')!;
     const waFallback = form.querySelector<HTMLAnchorElement>('[data-wa-fallback]')!;
-    const today = new Date();
+    const summary = form.querySelector<HTMLElement>('[data-summary]')!;
+    const nightsLine = form.querySelector<HTMLElement>('[data-nights]')!;
+    const capNote = form.querySelector<HTMLElement>('[data-capacity-note]')!;
+    const touched = new Set<string>();
+    let sending = false;
 
-    // Native picker behind an ISO text field: values always read YYYY-MM-DD with Western digits.
+    form.addEventListener('focusin', () => void loadPhoneLib(), { once: true });
+
+    // ── dates: native picker behind an ISO text field; min = today in Asia/Riyadh ───────────────────────────
+    const today = riyadhToday();
     const pickers = new Map<HTMLInputElement, HTMLInputElement>();
     form.querySelectorAll<HTMLElement>('[data-date-field]').forEach((wrap) => {
       const text = wrap.querySelector<HTMLInputElement>('[data-date-text]')!;
@@ -196,38 +393,46 @@ const inputClass = 'field-input latin text-left w-full border border-line rounde
       const open = wrap.querySelector<HTMLButtonElement>('[data-date-open]')!;
       pickers.set(text, picker);
       const showPicker = () => {
-        if (text.value && ISO_DATE.test(text.value)) picker.value = text.value;
+        if (text.value && /^\d{4}-\d{2}-\d{2}$/.test(text.value)) picker.value = text.value;
         try {
-          if (typeof (picker as HTMLInputElement & { showPicker?: () => void }).showPicker === 'function') {
-            (picker as HTMLInputElement & { showPicker: () => void }).showPicker();
-          } else {
+          if (typeof (picker as HTMLInputElement & { showPicker?: () => void }).showPicker === 'function') (picker as HTMLInputElement & { showPicker: () => void }).showPicker();
+          else {
             picker.focus();
             picker.click();
           }
         } catch {
-          /* no picker available: the user types the date */
+          /* no picker available: the guest types the date */
         }
       };
       open.addEventListener('click', showPicker);
       text.addEventListener('click', showPicker);
       picker.addEventListener('change', () => {
-        if (picker.value) {
-          text.value = picker.value;
-          text.dispatchEvent(new Event('change', { bubbles: true }));
-        }
+        if (!picker.value) return;
+        text.value = picker.value;
+        text.dispatchEvent(new Event('change', { bubbles: true }));
+        touched.add(text.name);
+        validateField(text.name);
       });
-      // keep only digits and dashes while typing
       text.addEventListener('input', () => {
-        text.value = text.value.replace(/[^\d-]/g, '').slice(0, 10);
+        text.value = latinDigits(text.value).replace(/[^\d-]/g, '').slice(0, 10);
       });
     });
     const setMin = (input: HTMLInputElement, value: string) => {
       const p = pickers.get(input);
       if (p) p.min = value;
     };
-    setMin(checkIn, iso(today));
-    setMin(checkOut, iso(new Date(today.getTime() + 86400000)));
+    setMin(checkIn, today);
+    setMin(checkOut, addDays(today, 1));
+    checkIn.addEventListener('change', () => {
+      if (/^\d{4}-\d{2}-\d{2}$/.test(checkIn.value)) {
+        setMin(checkOut, addDays(checkIn.value, 1));
+        if (checkOut.value && checkOut.value <= checkIn.value) checkOut.value = '';
+      }
+      refresh();
+    });
+    checkOut.addEventListener('change', refresh);
 
+    // ── room list filtered by branch ─────────────────────────────────────────────────────────────────────
     function filterRooms() {
       const b = branchSel.value;
       for (const opt of Array.from(roomSel.options)) {
@@ -239,170 +444,423 @@ const inputClass = 'field-input latin text-left w-full border border-line rounde
       const current = roomSel.selectedOptions[0];
       if (current && current.disabled) roomSel.value = '';
     }
-    branchSel.addEventListener('change', filterRooms);
+    branchSel.addEventListener('change', () => {
+      filterRooms();
+      refresh();
+    });
+    roomSel.addEventListener('change', refresh);
 
-    /** Prefill branch / room (from ?branch=&room= on the page, or from the link that opened the drawer). */
+    // ── steppers: digits only, clamped ───────────────────────────────────────────────────────────────────
+    form.querySelectorAll<HTMLElement>('[data-stepper]').forEach((wrap) => {
+      const input = wrap.querySelector<HTMLInputElement>('input')!;
+      const min = Number(input.dataset.min);
+      const max = Number(input.dataset.max);
+      const clamp = (n: number) => Math.min(max, Math.max(min, Number.isFinite(n) ? n : min));
+      wrap.querySelectorAll<HTMLButtonElement>('[data-step]').forEach((btn) =>
+        btn.addEventListener('click', () => {
+          input.value = String(clamp(Number(input.value || min) + Number(btn.dataset.step)));
+          touched.add('adults');
+          refresh();
+          validateField('adults');
+        }),
+      );
+      input.addEventListener('input', () => {
+        input.value = latinDigits(input.value).replace(/\D/g, '').slice(0, 2);
+        refresh();
+      });
+      input.addEventListener('blur', () => {
+        input.value = String(clamp(Number(input.value === '' ? min : input.value)));
+        touched.add('adults');
+        refresh();
+        validateField('adults');
+      });
+    });
+
+    // ── country selector: button + searchable listbox, flags loaded only while the list is open ───────────
+    const cBtn = form.querySelector<HTMLButtonElement>('[data-country-btn]')!;
+    const cFlag = form.querySelector<HTMLImageElement>('[data-country-flag]')!;
+    const cCode = form.querySelector<HTMLElement>('[data-country-code]')!;
+    const cPop = form.querySelector<HTMLElement>('[data-country-pop]')!;
+    const cSearch = form.querySelector<HTMLInputElement>('[data-country-search]')!;
+    const cList = form.querySelector<HTMLUListElement>('[data-country-list]')!;
+    const flagBase = (cFlag.dataset.flagSrc || '/flags/sa.png').replace(/sa\.png$/, '');
+    const flagSrc = (cc: string) => `${flagBase}${cc.toLowerCase()}.png`;
+    const norm = (s: string) => s.toLowerCase().replace(/[ً-ٰٟ]/g, '').replace(/[أإآ]/g, 'ا').replace(/ة/g, 'ه').replace(/ى/g, 'ي');
+    let visible: [string, string, string][] = [];
+    let active = 0;
+    const optId = (cc: string) => `${form.id}-cc-${cc}`;
+
+    function renderList() {
+      const q = norm(latinDigits(cSearch.value.trim()).replace(/^\+/, ''));
+      visible = data.countries.filter(([cc, code, name]) => !q || norm(name).includes(q) || code.startsWith(q) || cc.toLowerCase() === q);
+      active = Math.max(0, visible.findIndex(([cc]) => cc === countryVal.value));
+      if (active === -1) active = 0;
+      cList.replaceChildren();
+      if (!visible.length) {
+        const li = document.createElement('li');
+        li.className = 'country-empty';
+        li.textContent = S.countryNone;
+        cList.append(li);
+        cSearch.removeAttribute('aria-activedescendant');
+        return;
+      }
+      for (const [i, [cc, code, name]] of visible.entries()) {
+        const li = document.createElement('li');
+        li.id = optId(cc);
+        li.setAttribute('role', 'option');
+        li.className = 'country-opt';
+        li.dataset.cc = cc;
+        li.setAttribute('aria-selected', String(cc === countryVal.value));
+        if (i === active) li.classList.add('is-active');
+        const img = document.createElement('img');
+        img.src = flagSrc(cc);
+        img.alt = '';
+        img.setAttribute('aria-hidden', 'true');
+        img.width = 24;
+        img.height = 18;
+        img.loading = 'lazy';
+        img.decoding = 'async';
+        const n = document.createElement('span');
+        n.className = 'flex-1 truncate';
+        n.textContent = name;
+        const c = document.createElement('span');
+        c.className = 'latin text-ink-muted';
+        c.dir = 'ltr';
+        c.textContent = `+${code}`;
+        li.append(img, n, c);
+        cList.append(li);
+      }
+      setActive(active, false);
+    }
+    function setActive(i: number, scroll = true) {
+      const opts = cList.querySelectorAll<HTMLElement>('.country-opt');
+      if (!opts.length) return;
+      active = (i + opts.length) % opts.length;
+      opts.forEach((o, k) => o.classList.toggle('is-active', k === active));
+      const cur = opts[active];
+      cSearch.setAttribute('aria-activedescendant', cur.id);
+      if (scroll) cur.scrollIntoView({ block: 'nearest' });
+    }
+    const popOpen = () => cBtn.getAttribute('aria-expanded') === 'true';
+    function openPop() {
+      cBtn.setAttribute('aria-expanded', 'true');
+      cPop.classList.remove('hidden');
+      cSearch.value = '';
+      renderList();
+      cSearch.focus();
+    }
+    function closePop(refocus: boolean) {
+      if (!popOpen()) return;
+      cBtn.setAttribute('aria-expanded', 'false');
+      cPop.classList.add('hidden');
+      if (refocus) cBtn.focus();
+    }
+    function choose(cc: string) {
+      const row = data.countries.find(([c]) => c === cc);
+      if (!row) return;
+      countryVal.value = cc;
+      cFlag.src = flagSrc(cc);
+      cCode.textContent = `+${row[1]}`;
+      cBtn.setAttribute('aria-label', `${cBtn.getAttribute('aria-label')!.split(':')[0]}: ${row[2]} +${row[1]}`);
+      closePop(false);
+      phoneIn.focus();
+      if (touched.has('phone')) validateField('phone');
+      refresh();
+    }
+    cBtn.addEventListener('click', () => (popOpen() ? closePop(true) : openPop()));
+    cSearch.addEventListener('input', renderList);
+    cSearch.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowDown') { e.preventDefault(); setActive(active + 1); }
+      else if (e.key === 'ArrowUp') { e.preventDefault(); setActive(active - 1); }
+      else if (e.key === 'Enter') { e.preventDefault(); const cc = visible[active]?.[0]; if (cc) choose(cc); }
+      else if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); closePop(true); }
+      else if (e.key === 'Tab') closePop(false);
+    });
+    cList.addEventListener('click', (e) => {
+      const li = (e.target as HTMLElement).closest<HTMLElement>('.country-opt');
+      if (li?.dataset.cc) choose(li.dataset.cc);
+    });
+    // outside tap closes the list (listener lives on the form, so it goes away with the page)
+    form.addEventListener('pointerdown', (e) => {
+      if (popOpen() && !cPop.contains(e.target as Node) && !cBtn.contains(e.target as Node)) closePop(false);
+    });
+    form.closest('dialog')?.addEventListener('pointerdown', (e) => {
+      if (popOpen() && !form.contains(e.target as Node)) closePop(false);
+    });
+    phoneIn.addEventListener('input', () => {
+      phoneIn.value = latinDigits(phoneIn.value).replace(/[^\d+\s\-()]/g, '');
+    });
+
+    // ── prefill (?branch=&room= on the page, or the link that opened the drawer) ─────────────────────────
     const prefill = (branch: string | null, room: string | null) => {
-      if (branch) branchSel.value = branch;
+      if (branch && data.branches.some((b) => b.slug === branch)) branchSel.value = branch;
       filterRooms();
       if (room) {
         roomSel.value = room;
         if (roomSel.value !== room) roomSel.value = '';
       }
+      refresh();
     };
-    const q = new URLSearchParams(location.search);
-    prefill(q.get('branch'), q.get('room'));
-    form.addEventListener('booking:prefill', (e) => {
-      const d = (e as CustomEvent<{ branch?: string; room?: string }>).detail || {};
-      prefill(d.branch ?? null, d.room ?? null);
+    // (applied at the end of initForm, once every helper below exists)
+
+    // ── validation (rules.ts, shared with the Edge Function) ─────────────────────────────────────────────
+    const ctx = () => ({
+      branches: data.branches.map((b) => b.slug),
+      rooms: data.rooms,
+      today: riyadhToday(),
+      phone: (raw: string, country: string) => phoneToE164(raw, country),
     });
-
-    checkIn.addEventListener('change', () => {
-      if (checkIn.value && ISO_DATE.test(checkIn.value)) {
-        const next = new Date(checkIn.value);
-        next.setDate(next.getDate() + 1);
-        setMin(checkOut, iso(next));
-        if (checkOut.value && checkOut.value <= checkIn.value) checkOut.value = '';
-      }
-    });
-
-    function setError(name: string, msg: string | null) {
-      const el = form.querySelector<HTMLElement>(`[data-error-for="${name}"]`);
-      const field = form.elements.namedItem(name) as HTMLElement | null;
-      if (el) {
-        el.textContent = msg ?? '';
-        el.classList.toggle('hidden', !msg);
-      }
-      field?.setAttribute('aria-invalid', msg ? 'true' : 'false');
-    }
-
-    function normalizePhone(v: string): string {
-      return v.replace(/[\s\-().]/g, '').replace(/^00/, '+');
-    }
-
-    function validate(): Record<string, string> | null {
+    const collect = (): BookingInput => {
       const fd = new FormData(form);
       const v = (k: string) => String(fd.get(k) ?? '').trim();
-      const errs = data.strings.errors;
-      let ok = true;
-      const out: Record<string, string> = {};
-
-      const required = ['branch', 'check_in', 'check_out', 'adults', 'name', 'phone', 'email'];
-      for (const k of required) {
-        if (!v(k)) {
-          setError(k, errs.required);
-          ok = false;
-        } else setError(k, null);
+      return {
+        branch: v('branch'),
+        room: v('room'),
+        check_in: v('check_in'),
+        check_out: v('check_out'),
+        adults: v('adults'),
+        children: v('children') || '0',
+        breakfast: v('breakfast'),
+        name: v('name'),
+        phone: v('phone'),
+        country: v('country'),
+        email: v('email'),
+        notes: v('notes'),
+      };
+    };
+    const FIELD_OF: Record<string, string> = { children: 'adults' };
+    const message = (field: string, code: FieldError): string => {
+      const e = S.errors;
+      if (code === 'capacity') {
+        const room = data.rooms.find((r) => r.slug === roomSel.value && r.branch === branchSel.value);
+        const guests = Number(adultsIn.value || 0) + Number(childrenIn.value || 0);
+        return S.capacityRoom.replace('{guests}', String(guests)).replace('{capacity}', String(room?.capacity ?? ''));
       }
-      for (const k of ['check_in', 'check_out'] as const) {
-        const val = v(k);
-        if (val && (!ISO_DATE.test(val) || Number.isNaN(new Date(val + 'T00:00:00Z').getTime()))) {
-          setError(k, errs.date_format);
-          ok = false;
+      if (code === 'required' && field === 'breakfast') return e.breakfast;
+      const map: Partial<Record<FieldError, string>> = {
+        required: e.required, branch: e.required, room: e.required, date_format: e.date_format, past: e.past, dates: e.dates,
+        adults: e.adults, children: e.adults, breakfast: e.breakfast, name: e.name, phone: e.phone, email: e.email,
+      };
+      return map[code] ?? e.required;
+    };
+    function control(field: string): HTMLElement | null {
+      if (field === 'breakfast') return form.querySelector<HTMLElement>('input[name="breakfast"]');
+      if (field === 'phone') return phoneIn;
+      return form.elements.namedItem(field) as HTMLElement | null;
+    }
+    function showError(field: string, msg: string | null) {
+      const box = form.querySelector<HTMLElement>(`[data-error-for="${field}"]`);
+      if (box) {
+        box.textContent = msg ?? '';
+        box.classList.toggle('hidden', !msg);
+      }
+      if (field === 'breakfast') {
+        form.querySelectorAll<HTMLInputElement>('input[name="breakfast"]').forEach((r) => r.setAttribute('aria-invalid', msg ? 'true' : 'false'));
+        form.querySelector('[data-breakfast]')?.classList.toggle('is-invalid', !!msg);
+      } else if (field === 'adults') {
+        [adultsIn, childrenIn].forEach((i) => i.closest('.stepper')?.classList.toggle('is-invalid', !!msg));
+        adultsIn.setAttribute('aria-invalid', msg ? 'true' : 'false');
+      } else control(field)?.setAttribute('aria-invalid', msg ? 'true' : 'false');
+    }
+    const FIELDS = ['branch', 'room', 'check_in', 'check_out', 'adults', 'breakfast', 'name', 'phone', 'email'];
+    function errorsNow() {
+      const r = validateBooking(collect(), ctx());
+      return r.ok ? {} : (r.errors as Record<string, FieldError>);
+    }
+    function validateField(field: string) {
+      const errs = errorsNow();
+      const f = FIELD_OF[field] ?? field;
+      const code = errs[f] ?? (f === 'adults' ? errs.children : undefined);
+      showError(f, code ? message(f, code) : null);
+    }
+    function validateAll(): boolean {
+      const errs = errorsNow();
+      let first: HTMLElement | null = null;
+      for (const f of FIELDS) {
+        const code = errs[f] ?? (f === 'adults' ? errs.children : undefined);
+        showError(f, code ? message(f, code) : null);
+        if (code && !first) first = f === 'adults' ? adultsIn : control(f);
+        touched.add(f);
+      }
+      if (first) first.focus();
+      return !first;
+    }
+    for (const f of ['branch', 'room', 'check_in', 'check_out', 'name', 'email']) {
+      const c = control(f);
+      c?.addEventListener('blur', () => {
+        if (f === 'name' && (c as HTMLInputElement).value.trim() === '' && !touched.has(f)) return;
+        touched.add(f);
+        validateField(f);
+      });
+      c?.addEventListener('input', () => touched.has(f) && validateField(f));
+      c?.addEventListener('change', () => touched.has(f) && validateField(f));
+    }
+    phoneIn.addEventListener('blur', async () => {
+      if (!phoneIn.value.trim() && !touched.has('phone')) return;
+      touched.add('phone');
+      await loadPhoneLib();
+      validateField('phone');
+    });
+    phoneIn.addEventListener('input', () => touched.has('phone') && validateField('phone'));
+    form.querySelectorAll<HTMLInputElement>('input[name="breakfast"]').forEach((r) =>
+      r.addEventListener('change', () => {
+        touched.add('breakfast');
+        validateField('breakfast');
+        refresh();
+      }),
+    );
+
+    // ── live helpers: nights line, capacity note, summary line ───────────────────────────────────────────
+    const P = S.plural;
+    function nightsNow(): number {
+      const a = checkIn.value;
+      const b = checkOut.value;
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(a) || !/^\d{4}-\d{2}-\d{2}$/.test(b) || b <= a) return 0;
+      return nightsBetween(a, b);
+    }
+    function refresh() {
+      const n = nightsNow();
+      nightsLine.textContent = n ? S.stayLength.replace('{nights}', plural(P.nights, n)) : '';
+      nightsLine.classList.toggle('hidden', !n);
+
+      const adults = Number(adultsIn.value || 0);
+      const kids = Number(childrenIn.value || 0);
+      const guests = adults + kids;
+      capNote.replaceChildren();
+      capNote.classList.add('hidden');
+      if (branchSel.value && !roomSel.value) {
+        const max = branchMaxCapacity(data.rooms, branchSel.value);
+        if (max && guests > max) {
+          capNote.append(S.capacityBranch.replace('{capacity}', String(max)) + ' ');
+          const a = document.createElement('a');
+          a.href = data.partnersPath;
+          a.className = 'font-semibold text-bronze hover:text-bronze-text underline';
+          a.textContent = S.capacityBranchLink;
+          capNote.append(a);
+          capNote.classList.remove('hidden');
         }
       }
-      if (v('check_in') && ISO_DATE.test(v('check_in')) && v('check_in') < iso(today)) {
-        setError('check_in', errs.past);
-        ok = false;
-      }
-      if (v('check_in') && v('check_out') && v('check_out') <= v('check_in')) {
-        setError('check_out', errs.dates);
-        ok = false;
-      }
-      const phone = normalizePhone(v('phone'));
-      if (v('phone') && !E164.test(phone)) {
-        setError('phone', errs.phone);
-        ok = false;
-      }
-      if (v('email') && !EMAIL.test(v('email'))) {
-        setError('email', errs.email);
-        ok = false;
-      }
-      if (!ok) return null;
+      if (touched.has('adults')) validateField('adults');
 
-      out.locale = data.locale;
-      out.branch = v('branch');
-      out.check_in = v('check_in');
-      out.check_out = v('check_out');
-      out.adults = v('adults');
-      out.children = v('children') || '0';
-      out.room = v('room');
-      out.name = v('name');
-      out.phone = phone;
-      out.email = v('email');
-      out.notes = v('notes');
-      out.website = v('website');
-      out.page = location.href;
-      return out;
+      const b = data.branches.find((x) => x.slug === branchSel.value);
+      const breakfast = form.querySelector<HTMLInputElement>('input[name="breakfast"]:checked')?.value;
+      const parts: string[] = [];
+      if (b) parts.push(b.short);
+      if (n) parts.push(plural(P.nights, n));
+      if (adults) parts.push(plural(P.adults, adults));
+      if (kids) parts.push(plural(P.children, kids));
+      if (breakfast) parts.push(breakfast === 'with' ? S.breakfastWith : S.breakfastWithout);
+      summary.textContent = parts.join(' · ');
+      summary.classList.toggle('hidden', !b);
     }
 
-    function nights(a: string, b: string): number {
-      return Math.max(1, Math.round((new Date(b).getTime() - new Date(a).getTime()) / 86400000));
-    }
-
-    function whatsappUrl(p: Record<string, string>): string {
-      const b = data.branches.find((x) => x.slug === p.branch)!;
+    // ── WhatsApp hand-off with every field ───────────────────────────────────────────────────────────────
+    function whatsappUrl(p: BookingInput): string {
+      const b = data.branches.find((x) => x.slug === p.branch) ?? data.branches[0];
       const r = data.rooms.find((x) => x.slug === p.room && x.branch === p.branch);
-      const msg = data.strings.whatsappMessage
-        .replace('{branch}', b.name)
-        .replace('{check_in}', p.check_in)
-        .replace('{check_out}', p.check_out)
-        .replace('{adults}', p.adults)
-        .replace('{children}', p.children)
-        .replace('{room}', r ? r.name : data.strings.anyRoom)
-        .replace('{name}', p.name)
-        .replace('{phone}', p.phone)
-        .replace('{notes}', p.notes || '-');
+      const n = nightsNow();
+      const phone = phoneToE164(p.phone, p.country || 'SA') ?? p.phone;
+      const vals: Record<string, string> = {
+        branch: b.name,
+        check_in: p.check_in || '-',
+        check_out: p.check_out || '-',
+        nights: n ? plural(P.nights, n) : '-',
+        adults: String(p.adults || '-'),
+        children: String(p.children || '0'),
+        room: r ? r.name : S.anyRoom,
+        breakfast: p.breakfast === 'with' ? S.breakfastWith : p.breakfast === 'without' ? S.breakfastWithout : '-',
+        name: p.name || '-',
+        phone: phone || '-',
+        email: p.email || '-',
+        notes: p.notes || '-',
+      };
+      const msg = S.whatsappMessage.replace(/\{(\w+)\}/g, (_, k: string) => vals[k] ?? '');
       return `https://wa.me/${b.whatsapp.replace(/\D/g, '')}?text=${encodeURIComponent(msg)}`;
     }
-
-    function showFallback(p: Record<string, string>, msg: string) {
+    function showFallback(p: BookingInput, msg: string) {
       formError.textContent = msg;
       formError.classList.remove('hidden');
       waFallback.href = whatsappUrl(p);
       waFallback.classList.remove('hidden');
     }
+    function setSending(on: boolean) {
+      sending = on;
+      submitBtn.disabled = on;
+      submitBtn.setAttribute('aria-busy', String(on));
+      spinner.classList.toggle('hidden', !on);
+      submitLabel.textContent = on ? S.sending : S.submit;
+    }
 
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
+      if (sending) return; // no double submit
       formError.classList.add('hidden');
       waFallback.classList.add('hidden');
-      const p = validate();
-      if (!p) {
-        form.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus();
-        return;
-      }
+      await loadPhoneLib();
+      if (!validateAll()) return;
+      const p = collect();
+      const r = validateBooking(p, ctx());
+      if (!r.ok) return;
+      const d = r.data;
       if (!data.endpoint) {
-        // No email endpoint configured for this build → WhatsApp handoff, never a silent failure.
-        showFallback(p, data.strings.errors.server);
+        // no endpoint configured for this build → WhatsApp hand-off, never a silent failure
+        showFallback(p, S.errors.server);
         window.open(whatsappUrl(p), '_blank', 'noopener');
         return;
       }
-      submitBtn.disabled = true;
-      submitLabel.textContent = data.strings.sending;
+      setSending(true);
+      let leaving = false;
       try {
         const headers: Record<string, string> = { 'Content-Type': 'application/json' };
         if (data.anonKey) {
           headers['Authorization'] = `Bearer ${data.anonKey}`;
           headers['apikey'] = data.anonKey;
         }
-        const res = await fetch(data.endpoint, { method: 'POST', headers, body: JSON.stringify(p) });
-        const body = (await res.json().catch(() => ({}))) as { ok?: boolean; ref?: string; error?: string };
-        if (!res.ok || !body.ok || !body.ref) throw new Error(body.error || `HTTP ${res.status}`);
+        const body = {
+          locale: data.locale,
+          branch: d.branch,
+          room: d.room,
+          check_in: d.check_in,
+          check_out: d.check_out,
+          adults: String(d.adults),
+          children: String(d.children),
+          breakfast: d.breakfast,
+          name: d.name,
+          phone: d.phone,
+          country: p.country,
+          email: d.email,
+          notes: d.notes,
+          website: String(new FormData(form).get('website') ?? ''),
+          page: location.href,
+        };
+        const res = await fetch(data.endpoint, { method: 'POST', headers, body: JSON.stringify(body) });
+        const json = (await res.json().catch(() => ({}))) as { ok?: boolean; ref?: string; error?: string };
+        if (!res.ok || !json.ok || !json.ref) throw new Error(json.error || `HTTP ${res.status}`);
         const params = new URLSearchParams({
-          ref: body.ref,
-          branch: p.branch,
-          room: p.room || '',
-          nights: String(nights(p.check_in, p.check_out)),
+          ref: json.ref,
+          branch: d.branch,
+          room: d.room || 'any',
+          nights: String(d.nights),
+          breakfast: d.breakfast,
+          c: d.email ? 'email' : 'whatsapp',
         });
+        leaving = true;
         location.assign(`${data.successPath}?${params.toString()}`);
       } catch {
-        showFallback(p, data.strings.errors.server);
+        showFallback(p, S.errors.server);
       } finally {
-        submitBtn.disabled = false;
-        submitLabel.textContent = data.strings.submit;
+        if (!leaving) setSending(false);
       }
     });
+
+    const q = new URLSearchParams(location.search);
+    prefill(q.get('branch'), q.get('room'));
+    form.addEventListener('booking:prefill', (e) => {
+      const d = (e as CustomEvent<{ branch?: string | null; room?: string | null }>).detail || {};
+      if (!d.branch) branchSel.value = '';
+      prefill(d.branch ?? null, d.room ?? null);
+    });
+    refresh();
   }
 
   onPageLoad(() => {

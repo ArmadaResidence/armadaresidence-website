@@ -3,10 +3,20 @@
  * modifier keys), prefills the drawer's form from the link's query, opens the <dialog> with a slide-in, closes it
  * on Esc / backdrop / close button with the reverse slide, locks page scroll while open, and pushes
  * `booking_drawer_open` to the dataLayer. Without JS the links simply go to /booking/.
+ *
+ * Fix 23 Oct 2026 (A1): the document-level click listener used to be added inside onPageLoad, i.e. once per
+ * client-side navigation, each copy holding the dialog of the page it was created on. After a navigation the
+ * oldest listener ran first, called preventDefault() and then showModal() on a dialog that was no longer in the
+ * document (InvalidStateError); the current page's listener saw defaultPrevented and returned — so no entry point
+ * worked until a full reload. Now the document listener is registered once per full load and resolves the
+ * dialog of the current page at click time; per-dialog handlers stay bound to their own element.
  */
 import { bindOnce, onPageLeave, onPageLoad, reducedMotion } from './client';
 
 type DL = { dataLayer?: unknown[] };
+type Controller = { open: (branch: string | null, room: string | null) => void };
+
+const controllers = new WeakMap<HTMLDialogElement, Controller>();
 
 function isBookingLink(a: HTMLAnchorElement): boolean {
   if (a.target && a.target !== '_self') return false;
@@ -14,6 +24,32 @@ function isBookingLink(a: HTMLAnchorElement): boolean {
   if (u.origin !== location.origin) return false;
   return /\/booking\/$/.test(u.pathname) && !/\/booking\/success\/$/.test(u.pathname);
 }
+
+/** The drawer of the page currently in the document (a new element after every client-side navigation). */
+function currentDrawer(): { dialog: HTMLDialogElement; ctl: Controller } | null {
+  const dialog = document.querySelector<HTMLDialogElement>('[data-booking-drawer]');
+  const ctl = dialog && dialog.isConnected ? controllers.get(dialog) : undefined;
+  return dialog && ctl ? { dialog, ctl } : null;
+}
+
+// Once per full page load (this module runs once; the ClientRouter never re-runs it). Capture phase: runs before
+// the ClientRouter's own click handler, which skips links whose default is prevented.
+document.addEventListener(
+  'click',
+  (e) => {
+    if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+    const a = (e.target as Element | null)?.closest?.<HTMLAnchorElement>('a[href]');
+    if (!a || !isBookingLink(a)) return;
+    const cur = currentDrawer();
+    if (!cur || cur.dialog.contains(a)) return; // no drawer on this page (e.g. /booking/ itself): follow the link
+    e.preventDefault();
+    const q = new URL(a.href, location.href).searchParams;
+    // the mobile menu may be open behind the link
+    document.querySelector<HTMLButtonElement>('[data-menu-toggle][aria-expanded="true"]')?.click();
+    cur.ctl.open(q.get('branch'), q.get('room'));
+  },
+  true,
+);
 
 onPageLeave(() => {
   document.documentElement.classList.remove('drawer-open');
@@ -27,7 +63,7 @@ onPageLoad(() => {
 
   const finishClose = () => {
     closing = false;
-    dialog.close();
+    if (dialog.open) dialog.close();
     document.documentElement.classList.remove('drawer-open');
   };
   const close = () => {
@@ -44,7 +80,7 @@ onPageLoad(() => {
     window.setTimeout(() => closing && finishClose(), 700); // safety net if no transition fires
   };
   const open = (branch: string | null, room: string | null) => {
-    if (dialog.open) return;
+    if (dialog.open || !dialog.isConnected) return;
     form?.dispatchEvent(new CustomEvent('booking:prefill', { detail: { branch, room } }));
     dialog.showModal();
     document.documentElement.classList.add('drawer-open');
@@ -55,23 +91,8 @@ onPageLoad(() => {
     w.dataLayer = w.dataLayer || [];
     w.dataLayer.push({ event: 'booking_drawer_open', branch: branch || '', room_type: room || '', page_path: location.pathname });
   };
+  controllers.set(dialog, { open });
 
-  // capture phase: runs before the ClientRouter's own click handler, which skips links whose default is prevented
-  document.addEventListener(
-    'click',
-    (e) => {
-    if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
-    const a = (e.target as Element).closest<HTMLAnchorElement>('a[href]');
-    if (!a || dialog.contains(a) || !isBookingLink(a)) return;
-    e.preventDefault();
-    const q = new URL(a.href, location.href).searchParams;
-    // the mobile menu may be open behind the link
-    const menuBtn = document.querySelector<HTMLButtonElement>('[data-menu-toggle][aria-expanded="true"]');
-    menuBtn?.click();
-    open(q.get('branch'), q.get('room'));
-    },
-    true,
-  );
   dialog.querySelector('[data-drawer-close]')?.addEventListener('click', close);
   dialog.addEventListener('click', (e) => {
     if (e.target === dialog) close(); // backdrop

@@ -44,6 +44,9 @@
   --color-bronze: #a97c50;
   --color-porcelain: #f3efe7;
   --color-white: #ffffff;
+  --color-bronze-bright: #c9a27a; /* hover / current state of bronze hairlines on midnight: 6.7:1 (23 Oct 2026) */
+  --color-error: #991b1b; /* form error text: 8.3:1 on white, 7.6:1 on porcelain (23 Oct 2026) */
+  --color-error-line: #b91c1c; /* invalid field border */
   /* derived neutrals (contrast-checked against porcelain / midnight) */
   --color-ink: #142a3b;
   --color-ink-muted: #3f5262;
@@ -238,6 +241,8 @@ footer :focus-visible,
   --dk-surface: #182f41;
   --dk-strip: #0b1821;
   --dk-bronze-text: #c9a27a;
+  --color-error: #fca5a5; /* 7.4:1 on the dark surface */
+  --color-error-line: #f87171;
   --color-midnight: #f3efe7; /* text-midnight, hover:text-midnight → porcelain */
   --color-ink: #f3efe7;
   --color-ink-muted: #c7cfd6;
@@ -578,6 +583,167 @@ footer :focus-visible,
 }
 .field-icon {
   z-index: 1;
+}
+
+/* ---------- Booking form controls (23 Oct 2026): errors, steppers, breakfast choice, country selector, spinner ----------
+   Error text red-800 on white ≈ 8.3:1, on porcelain ≈ 7.6:1; in dark mode red-300 on the dark surface ≈ 7.4:1. Focus rings
+   follow the site outline; the selected choice uses midnight on porcelain-white (light) / porcelain on surface (dark). */
+.field-error {
+  margin-top: 0.25rem;
+  font-size: 0.8125rem;
+  line-height: 1.25rem;
+  color: var(--color-error);
+}
+.field-input[aria-invalid='true'],
+[data-phone-input][aria-invalid='true'],
+.stepper.is-invalid > div {
+  border-color: var(--color-error-line);
+}
+.stepper-btn {
+  display: grid;
+  place-items: center;
+  width: 2.75rem;
+  flex: none;
+  color: var(--color-bronze-text);
+  transition: background-color var(--motion-fast) var(--ease-out);
+}
+.stepper-btn:hover {
+  background-color: var(--color-porcelain);
+}
+[data-theme='dark'] .stepper-btn {
+  color: var(--dk-bronze-text);
+}
+[data-theme='dark'] .stepper-btn:hover {
+  background-color: var(--dk-strip);
+}
+.choice {
+  display: block;
+  cursor: pointer;
+}
+.choice-box {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 3rem;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--color-line);
+  border-radius: 0.25rem;
+  background: var(--color-white);
+  font-weight: 600;
+  color: var(--color-ink);
+  text-align: center;
+  transition:
+    border-color var(--motion-fast) var(--ease-out),
+    background-color var(--motion-fast) var(--ease-out);
+}
+.choice:hover .choice-box {
+  border-color: var(--color-bronze);
+}
+.choice input:checked + .choice-box {
+  border-color: var(--color-bronze);
+  background-color: var(--color-porcelain);
+  box-shadow: inset 0 0 0 1px var(--color-bronze);
+}
+.choice input:focus-visible + .choice-box {
+  outline: 2px solid var(--color-bronze);
+  outline-offset: 2px;
+}
+[data-breakfast].is-invalid .choice-box {
+  border-color: var(--color-error-line);
+}
+[data-theme='dark'] .choice-box {
+  background: var(--dk-surface);
+}
+[data-theme='dark'] .choice input:checked + .choice-box {
+  background-color: var(--dk-strip);
+}
+.country-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  height: 3.5rem;
+  padding-inline: 0.625rem;
+  flex: none;
+  border: 1px solid var(--color-line);
+  border-radius: 0.25rem;
+  background: var(--color-white);
+  color: var(--color-ink);
+}
+.country-btn:hover {
+  border-color: var(--color-bronze);
+}
+[data-theme='dark'] .country-btn,
+[data-theme='dark'] .country-pop,
+[data-theme='dark'] [data-phone-input] {
+  background: var(--dk-surface);
+}
+.country-pop {
+  position: absolute;
+  inset-inline-start: 0;
+  top: calc(100% + 0.25rem);
+  z-index: 20;
+  width: min(22rem, 100%);
+  padding: 0.5rem;
+  border: 1px solid var(--color-line);
+  border-radius: 0.5rem;
+  background: var(--color-white);
+  box-shadow: 0 12px 32px rgba(20, 42, 59, 0.18);
+}
+.country-list {
+  margin-top: 0.5rem;
+  max-height: 16rem;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+.country-opt {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  padding: 0.5rem;
+  border-radius: 0.25rem;
+  font-size: 0.875rem;
+  cursor: pointer;
+}
+.country-opt img {
+  flex: none;
+  border-radius: 2px;
+  box-shadow: 0 0 0 1px rgba(20, 42, 59, 0.12);
+}
+.country-opt.is-active,
+.country-opt:hover {
+  background-color: var(--color-porcelain);
+}
+[data-theme='dark'] .country-opt.is-active,
+[data-theme='dark'] .country-opt:hover {
+  background-color: var(--dk-strip);
+}
+.country-opt[aria-selected='true'] {
+  font-weight: 600;
+}
+.country-empty {
+  padding: 0.75rem 0.5rem;
+  font-size: 0.875rem;
+  color: var(--color-ink-muted);
+}
+.spinner {
+  width: 1rem;
+  height: 1rem;
+  border-radius: 9999px;
+  border: 2px solid color-mix(in srgb, var(--color-white) 45%, transparent);
+  border-top-color: var(--color-white);
+  animation: form-spin calc(var(--motion-base) * 2) linear infinite;
+}
+@keyframes form-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .spinner {
+    animation: none;
+    border-top-color: color-mix(in srgb, var(--color-white) 45%, transparent);
+    border-inline-start-color: var(--color-white);
+  }
 }
 
 /* ---------- Count-up figures (item 6) ---------- */

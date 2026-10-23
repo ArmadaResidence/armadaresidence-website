@@ -269,6 +269,7 @@ def generate_function_content(content: dict[str, dict]) -> None:
         # partner-form labels and request-type names for the reception email (Arabic) and confirmation
         "partner_labels": {loc: {k: v[loc] for k, v in content["partners-pages.json"]["form"]["fields"].items()} for loc in ("ar", "en")},
         "request_types": {loc: {k: v[loc] for k, v in content["partners-pages.json"]["form"]["reqtypes"]} for loc in ("ar", "en")},
+        "meal_labels": {loc: {k: v[loc] for k, v in content["partners-pages.json"]["form"]["meal_opts"]} for loc in ("ar", "en")},
         "branches": [
             {
                 "slug": b["slug"],
@@ -277,16 +278,31 @@ def generate_function_content(content: dict[str, dict]) -> None:
                 "phone": contact["branches"][b["slug"]]["phone"],
                 "phone_display": contact["branches"][b["slug"]]["phone_display"],
                 "whatsapp": contact["branches"][b["slug"]]["whatsapp"],
+                "address_ar": b["address_ar"],
+                "address_en": b["address_en"],
+                "maps_url": b["maps_url"],
             }
             for b in branches
         ],
         "rooms": [
             {"slug": r["slug"], "branch": r["branch"], "name_ar": r["name_ar"], "name_en": r["name_en"],
-             "availability": r["availability"]}
+             "availability": r["availability"], "capacity": r["capacity"]}
             for r in rooms
         ],
         "labels": {loc: ui[loc]["form"] for loc in ("ar", "en")},
         "email": {loc: ui[loc]["email"] for loc in ("ar", "en")},
+        # approved copy reused by the email layout (23 Oct 2026) — no new wording in the function
+        "success_heading": {loc: ui[loc]["success"]["heading"] for loc in ("ar", "en")},
+        "check_in_line": {loc: content["policies.json"][f"check_in_{loc}"] for loc in ("ar", "en")},
+        "check_out_line": {loc: content["policies.json"][f"check_out_{loc}"] for loc in ("ar", "en")},
+        "cancellation_line": {loc: next(i for i in content["site-texts.json"]["why_armada"]["items"] if i["title_en"] == "Flexible cancellation")[f"body_{loc}"] for loc in ("ar", "en")},
+        "partner_reply_line": content["partners-pages.json"]["form"]["sent_body"],
+        "legal_line": {loc: content["legal.json"][f"footer_line_{loc}"] for loc in ("ar", "en")},
+        "brand": {loc: content["legal.json"][f"brand_{loc}"] for loc in ("ar", "en")},
+        "wa_prefill": {loc: {"branch": ui[loc]["cta"]["whatsapp_prefill_branch"], "partners": ui[loc]["cta"]["whatsapp_prefill_partners"]} for loc in ("ar", "en")},
+        # emails cannot show SVG: a 2x PNG of the approved logo (scripts/email-logo.mjs), hosted on the site. Until
+        # the domain switch the site lives on the GitHub Pages project URL; set EMAIL_ASSETS_BASE to the domain then.
+        "email_logo_url": os.environ.get("EMAIL_ASSETS_BASE", "https://armadaresidence.github.io/armadaresidence-website").rstrip("/") + "/email/armada-residence-logo@2x.png",
     }
     FUNC_DIR.mkdir(parents=True, exist_ok=True)
     (FUNC_DIR / "content.generated.json").write_text(json.dumps(out, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
@@ -337,6 +353,8 @@ def main() -> int:
     run(["node", "scripts/lqip.mjs"])
     run(["node", "scripts/og.mjs"])
     run(["node", "scripts/favicons.mjs"])
+    run(["node", "scripts/flags.mjs"])
+    run(["node", "scripts/email-logo.mjs"])
     run(["npx", "astro", "build"])
 
     pages = sorted(p.relative_to(DIST).as_posix() for p in DIST.rglob("*.html"))

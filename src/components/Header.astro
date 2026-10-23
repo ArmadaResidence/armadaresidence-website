@@ -35,12 +35,18 @@ const partnersActive = path.startsWith('/partners/');
   <div class="relative bg-midnight text-porcelain text-xs overflow-hidden">
     <div class="absolute inset-0 pattern-bg" aria-hidden="true"></div>
     <div class="relative mx-auto max-w-6xl px-5 h-8 flex items-center justify-between gap-4">
+      {/* Partners pill (23 Oct 2026): bronze hairline border, quieter than «اطلب حجزًا»; on the first page view of the
+          session the hairline draws around it once (src/styles/motion.css → .partners-pill, script below) */}
       <a
         href={localePath(locale, '/partners/')}
-        class:list={['font-semibold hover:text-bronze', partnersActive ? 'text-bronze' : '']}
+        class:list={['partners-pill', partnersActive ? 'is-current' : '']}
         aria-current={partnersActive ? 'page' : undefined}
-        >{t.nav.partners}</a
+        data-partners-pill
       >
+        <span>{t.nav.partners}</span>
+        <Icon name="arrow" size={12} class="icon-arrow rtl:rotate-180" />
+        <svg class="pill-draw" aria-hidden="true" focusable="false"><path data-pill-a pathLength="1"></path><path data-pill-b pathLength="1"></path></svg>
+      </a>
       <span class="hidden sm:inline text-porcelain/75">{locale === 'ar' ? contact.working_hours_ar : contact.working_hours_en}</span>
     </div>
   </div>
@@ -162,6 +168,46 @@ const partnersActive = path.startsWith('/partners/');
 <script>
   import { bindOnce, onPageLeave, onPageLoad, reducedMotion } from '@lib/client';
 
+  // Partners pill (23 Oct 2026): on the first page view of the session the bronze hairline draws around the pill
+  // once, from the reading-start edge, after the hero entrance — two SVG strokes (top and bottom) drawn with
+  // stroke-dashoffset over --motion-slow, the same token as the hero rule. Never layout properties. "Seen" lives in
+  // sessionStorage; reduced motion (or no storage) → the static border only.
+  const PILL_KEY = 'armada-partners-pill-drawn';
+  onPageLoad(() => {
+    const pill = document.querySelector<HTMLElement>('[data-partners-pill]');
+    if (!pill || !bindOnce(pill)) return;
+    let seen = true;
+    try {
+      seen = sessionStorage.getItem(PILL_KEY) === '1';
+      sessionStorage.setItem(PILL_KEY, '1');
+    } catch {
+      seen = true;
+    }
+    if (seen || reducedMotion()) return;
+    const svg = pill.querySelector<SVGSVGElement>('.pill-draw');
+    const a = pill.querySelector<SVGPathElement>('[data-pill-a]');
+    const b = pill.querySelector<SVGPathElement>('[data-pill-b]');
+    if (!svg || !a || !b) return;
+    const { width: w, height: h } = pill.getBoundingClientRect();
+    if (!w || !h) return;
+    const s = 0.5; // half the 1px stroke, so the line sits on the border
+    const r = h / 2;
+    const rr = r - s;
+    svg.setAttribute('viewBox', `0 0 ${w} ${h}`);
+    // both strokes start at the start-edge middle (LTR: left; RTL mirrors the svg) and meet at the end edge
+    a.setAttribute('d', `M ${s} ${r} A ${rr} ${rr} 0 0 1 ${r} ${s} L ${w - r} ${s} A ${rr} ${rr} 0 0 1 ${w - s} ${r}`);
+    b.setAttribute('d', `M ${s} ${r} A ${rr} ${rr} 0 0 0 ${r} ${h - s} L ${w - r} ${h - s} A ${rr} ${rr} 0 0 0 ${w - s} ${r}`);
+    pill.classList.add('is-drawing');
+    a.addEventListener(
+      'animationend',
+      () => {
+        pill.classList.remove('is-drawing');
+        pill.classList.add('is-drawn');
+      },
+      { once: true },
+    );
+  });
+
   // nav ink: remembered across client-side navigations so it slides from the previous item to the new one
   let inkMemory: { x: string; w: string } | null = null;
   let activeNav: HTMLElement | null = null;
@@ -232,10 +278,17 @@ const partnersActive = path.startsWith('/partners/');
       navEl.addEventListener('focusout', () => rest(true));
       document.fonts.ready.then(() => rest(false));
       let raf = 0;
-      window.addEventListener('resize', () => {
-        cancelAnimationFrame(raf);
-        raf = requestAnimationFrame(() => rest(false));
-      });
+      // per page: aborted on the next swap so resize listeners do not pile up across client-side navigations
+      const ac = new AbortController();
+      document.addEventListener('astro:before-swap', () => ac.abort(), { once: true });
+      window.addEventListener(
+        'resize',
+        () => {
+          cancelAnimationFrame(raf);
+          raf = requestAnimationFrame(() => rest(false));
+        },
+        { signal: ac.signal },
+      );
     }
   });
 </script>

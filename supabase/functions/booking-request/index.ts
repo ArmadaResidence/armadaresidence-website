@@ -1,24 +1,30 @@
 // Supabase Edge Function: booking-request (phase 1)
 //
 // Order: validate → store in public.booking_requests → email reception / sales → email the sender.
+// Validation (23 Oct 2026): individual bookings go through rules.ts — the SAME rules the browser form runs — plus
+// a per-country phone check with libphonenumber-js; the server never trusts the client. Partner enquiries keep
+// their own rules (email required, no breakfast).
 // Routing (DECISIONS.md 2026-10-22): recipients are read from public.booking_notification_recipients —
 //   booking requests:   To = active rows of scope 'branch' for the request's branch
 //   partner enquiries:  To = active rows of scope 'partners' (request_type ≠ booking; never a booking)
 //   both:               CC = active rows of scope 'central'; when To is empty the central rows become To —
 //                       a request is never sent to nobody. Addresses never live in the repository; names,
 //                       numbers and labels come from content.generated.json (written by build.py from /content).
-// Every message carries an HTML body and a real text/plain alternative (multipart/alternative).
-// Senders: notification from BOOKING_FROM_RECEPTION (Reply-To = the sender of the form); confirmation from
-//   BOOKING_FROM_GUEST (Reply-To = the matching recipients — branch or partners — or the sender address).
+// Emails (email.ts): one shared Outlook-safe layout, HTML + a real text/plain part. Reception notification:
+//   Reply-To = the guest's email only when one was given. Guest "request received": only when an email was given
+//   (decision 23 Oct 2026 — phone/WhatsApp is the required contact). Partner confirmation: always (email required).
+// Senders: notification from BOOKING_FROM_RECEPTION; confirmation from BOOKING_FROM_GUEST (Reply-To = the matching
+//   recipients — branch or partners — or the sender address).
 // Secrets: RESEND_API_KEY, SUPABASE_SERVICE_ROLE_KEY (automatic), BOOKING_ALLOWED_ORIGINS, BOOKING_IP_SALT.
-// Email never blocks the guest: once the request is stored, a Resend failure (key missing, domain not
-//   verified, no active recipient, network) is logged with the ref and the response is still { ok, ref }.
-//   Only "not stored AND notification not emailed" returns 500 (the form then hands the guest to WhatsApp).
+// Email never blocks the guest: once the request is stored, a Resend failure is logged with the ref and the
+//   response is still { ok, ref }. Only "not stored AND notification not emailed" returns 500.
 // Abuse: honeypot field `website` (filled → 200 with a ref, nothing stored or sent) and a per-IP limit of
-//   RATE_LIMIT hits per RATE_WINDOW_SECONDS (429), counted by the SQL function booking_request_hit on a
-//   salted hash of the IP. Both fail open: a throttle outage never blocks a real guest.
+//   RATE_LIMIT hits per RATE_WINDOW_SECONDS (429). Both fail open.
 // Deployed with verify_jwt = false (supabase/config.toml): a public form endpoint; CORS limits the origins.
+import { parsePhoneNumberFromString } from 'npm:libphonenumber-js@1.12.10/min';
 import content from './content.generated.json' with { type: 'json' };
+import { E164, EMAIL, intIn, ISO_DATE, nightsBetween, riyadhToday, validateBooking, type ValidBooking } from './rules.ts';
+import { bookingConfirmation, bookingNotification, partnerConfirmation, partnerNotification, type Mail } from './email.ts';
 
 type Locale = 'ar' | 'en';
 
@@ -30,9 +36,11 @@ interface Payload {
   adults: string | number;
   children?: string | number;
   room?: string;
+  breakfast?: string;
   name: string;
   phone: string;
-  email: string;
+  country?: string;
+  email?: string;
   notes?: string;
   page?: string;
   /** honeypot — hidden on the form, must stay empty */
@@ -53,12 +61,8 @@ interface Recipient {
   email: string;
 }
 
-const E164 = /^\+[1-9]\d{7,14}$/;
-const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
-const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
-
 /** Branch slugs the forms may send; 'both' is accepted on partner enquiries only. No "any" option exists. */
-const KNOWN_BRANCHES: string[] = content.branches.map((b) => b.slug);
+const KNOWN_BRANCHES: string[] = content.branches.map((b: { slug: string }) => b.slug);
 const BOTH = 'both';
 
 const RATE_LIMIT = 5;
@@ -70,7 +74,7 @@ const FROM_GUEST = Deno.env.get('BOOKING_FROM_GUEST') ?? 'أرمادا ريزي�
 
 const allowedOrigins = (Deno.env.get('BOOKING_ALLOWED_ORIGINS') ?? content.site_url)
   .split(',')
-  .map((s) => s.trim())
+  .map((s: string) => s.trim())
   .filter(Boolean);
 
 function cors(req: Request): Record<string, string> {
@@ -100,14 +104,6 @@ function makeRef(): string {
   return `AR-${ymd}-${tail}`;
 }
 
-function esc(s: string): string {
-  return s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c] as string);
-}
-
-function fill(t: string, vars: Record<string, string>): string {
-  return t.replace(/\{(\w+)\}/g, (_, k) => vars[k] ?? '');
-}
-
 /** "2026-10-22 14:05 (Asia/Riyadh)" — the hotel's local time, whatever the runtime's zone. */
 function riyadhNow(): string {
   const parts = new Intl.DateTimeFormat('en-GB', {
@@ -127,6 +123,21 @@ function riyadhNow(): string {
 function addressOf(from: string): string {
   const m = from.match(/<([^>]+)>/);
   return (m ? m[1] : from).trim().toLowerCase();
+}
+
+/** ٠١٢… / ۰۱۲… → 0-9 */
+const latinDigits = (s: string) => String(s ?? '').replace(/[٠-٩]/g, (c) => String(c.charCodeAt(0) - 0x0660)).replace(/[۰-۹]/g, (c) => String(c.charCodeAt(0) - 0x06f0));
+
+/** Valid per country (or as an international number) → E.164; anything else → null. */
+function phoneE164(raw: string, country: string): string | null {
+  const v = latinDigits(raw).replace(/[\s\-().]/g, '').replace(/^00/, '+');
+  if (!v) return null;
+  try {
+    const n = v.startsWith('+') ? parsePhoneNumberFromString(v) : parsePhoneNumberFromString(v, (country || 'SA') as never);
+    return n && n.isValid() ? n.number : null;
+  } catch {
+    return null;
+  }
 }
 
 function clientIp(req: Request): string {
@@ -178,55 +189,110 @@ async function rateLimited(req: Request): Promise<boolean> {
   }
 }
 
-function validate(p: Payload): { ok: true; data: Required<Omit<Payload, 'page' | 'website'>> & { page: string; nights: number } } | { ok: false; error: string } {
+/** One stored row, both request types. */
+interface Row {
+  locale: Locale;
+  requestType: string;
+  branch: string;
+  check_in: string;
+  check_out: string;
+  nights: number;
+  adults: number;
+  children: number;
+  room: string;
+  breakfast: 'with' | 'without' | null;
+  name: string;
+  phone: string;
+  email: string;
+  notes: string;
+  page: string;
+  organisation: string;
+  roomsRequested: number | null;
+  meals: string;
+}
+
+type Validation = { ok: true; row: Row } | { ok: false; error: string; fields?: Record<string, string> };
+
+function validate(p: Payload): Validation {
   const locale: Locale = p.locale === 'en' ? 'en' : 'ar';
-  const requestType = (p.request_type ?? 'booking').trim();
+  const requestType = String(p.request_type ?? 'booking').trim();
   if (requestType !== 'booking' && !content.enquiry_types.includes(requestType)) return { ok: false, error: 'invalid request_type' };
-  // The client sends a branch slug only. Bookings: one of the known slugs. Partner enquiries may also ask
-  // for both properties. Anything else (including an "any" value no form offers) is rejected.
-  const branchSlug = typeof p.branch === 'string' ? p.branch.trim() : '';
-  const isBoth = branchSlug === BOTH && requestType !== 'booking';
-  if (!isBoth && !KNOWN_BRANCHES.includes(branchSlug)) return { ok: false, error: 'invalid branch' };
-  const branch = isBoth ? content.branches[0] : content.branches.find((b) => b.slug === branchSlug)!;
-  if (!ISO_DATE.test(p.check_in) || !ISO_DATE.test(p.check_out)) return { ok: false, error: 'invalid dates' };
-  const ci = new Date(p.check_in + 'T00:00:00Z');
-  const co = new Date(p.check_out + 'T00:00:00Z');
-  if (Number.isNaN(ci.getTime()) || Number.isNaN(co.getTime())) return { ok: false, error: 'invalid dates' };
-  if (co <= ci) return { ok: false, error: 'check-out must be after check-in' };
-  const today = new Date();
-  today.setUTCHours(0, 0, 0, 0);
-  if (ci < new Date(today.getTime() - 86400000)) return { ok: false, error: 'check-in in the past' };
-  const adults = Number(p.adults);
-  const children = Number(p.children ?? 0);
-  if (!Number.isInteger(adults) || adults < 1 || adults > 20) return { ok: false, error: 'invalid adults' };
-  if (!Number.isInteger(children) || children < 0 || children > 20) return { ok: false, error: 'invalid children' };
-  const room = (p.room ?? '').trim();
-  if (room) {
-    const r = content.rooms.find((x) => x.slug === room && x.branch === branch.slug);
-    if (!r || r.availability === 'sold_out') return { ok: false, error: 'invalid room' };
+  const page = String(p.page ?? '').slice(0, 500);
+
+  if (requestType === 'booking') {
+    // individual bookings: every client rule, re-run here (rules.ts), with today in Asia/Riyadh
+    const r = validateBooking(
+      {
+        branch: p.branch,
+        room: p.room,
+        check_in: p.check_in,
+        check_out: p.check_out,
+        adults: p.adults,
+        children: p.children,
+        breakfast: p.breakfast,
+        name: p.name,
+        phone: p.phone,
+        country: p.country,
+        email: p.email,
+        notes: p.notes,
+      },
+      {
+        branches: KNOWN_BRANCHES,
+        rooms: content.rooms,
+        today: riyadhToday(),
+        phone: phoneE164,
+      },
+    );
+    if (!r.ok) return { ok: false, error: 'invalid booking request', fields: r.errors as Record<string, string> };
+    const d: ValidBooking = r.data;
+    return {
+      ok: true,
+      row: { locale, requestType, branch: d.branch, check_in: d.check_in, check_out: d.check_out, nights: d.nights, adults: d.adults, children: d.children, room: d.room, breakfast: d.breakfast, name: d.name, phone: d.phone, email: d.email, notes: d.notes, page, organisation: '', roomsRequested: null, meals: '' },
+    };
   }
-  const name = (p.name ?? '').trim();
+
+  // partner enquiries (unchanged rules; the partner form sends branch 'both' or a slug, an email is required)
+  const branchSlug = typeof p.branch === 'string' ? p.branch.trim() : '';
+  if (branchSlug !== BOTH && !KNOWN_BRANCHES.includes(branchSlug)) return { ok: false, error: 'invalid branch' };
+  if (!ISO_DATE.test(p.check_in) || !ISO_DATE.test(p.check_out)) return { ok: false, error: 'invalid dates' };
+  if (p.check_out <= p.check_in) return { ok: false, error: 'check-out must be after check-in' };
+  if (p.check_in < riyadhToday()) return { ok: false, error: 'check-in in the past' };
+  const adults = intIn(p.adults, 1, 999);
+  if (adults === null) return { ok: false, error: 'invalid guests' };
+  const name = String(p.name ?? '').trim();
   if (name.length < 2 || name.length > 120) return { ok: false, error: 'invalid name' };
-  const phone = (p.phone ?? '').replace(/[\s\-().]/g, '');
+  const phone = phoneE164(String(p.phone ?? ''), String(p.country ?? 'SA')) ?? String(p.phone ?? '').replace(/[\s\-().]/g, '');
   if (!E164.test(phone)) return { ok: false, error: 'invalid phone' };
-  const email = (p.email ?? '').trim();
+  const email = String(p.email ?? '').trim();
   if (!EMAIL.test(email) || email.length > 254) return { ok: false, error: 'invalid email' };
-  const notes = (p.notes ?? '').trim().slice(0, 1000);
-  const page = (p.page ?? '').slice(0, 500);
-  const nights = Math.round((co.getTime() - ci.getTime()) / 86400000);
-  const organisation = (p.organisation ?? '').trim().slice(0, 160);
-  const roomsRequested = p.rooms === undefined || p.rooms === '' ? null : Number(p.rooms);
-  if (roomsRequested !== null && (!Number.isInteger(roomsRequested) || roomsRequested < 1 || roomsRequested > 500)) return { ok: false, error: 'invalid rooms' };
-  const meals = (p.meals ?? '').trim().slice(0, 40);
+  const roomsRequested = p.rooms === undefined || p.rooms === '' ? null : intIn(p.rooms, 1, 500);
+  if (p.rooms !== undefined && p.rooms !== '' && roomsRequested === null) return { ok: false, error: 'invalid rooms' };
   return {
     ok: true,
-    data: { locale, branch: isBoth ? BOTH : branchSlug, check_in: p.check_in, check_out: p.check_out, adults, children, room, name, phone, email, notes, page, nights, requestType, organisation, roomsRequested, meals },
+    row: {
+      locale,
+      requestType,
+      branch: branchSlug,
+      check_in: p.check_in,
+      check_out: p.check_out,
+      nights: nightsBetween(p.check_in, p.check_out),
+      adults,
+      children: 0,
+      room: '',
+      breakfast: null,
+      name,
+      phone,
+      email,
+      notes: String(p.notes ?? '').trim().slice(0, 1000),
+      page,
+      organisation: String(p.organisation ?? '').trim().slice(0, 160),
+      roomsRequested,
+      meals: String(p.meals ?? '').trim().slice(0, 40),
+    },
   };
 }
 
-type Valid = ReturnType<typeof validate> extends { ok: true; data: infer D } ? D : never;
-
-async function store(ref: string, d: Valid, ua: string): Promise<boolean> {
+async function store(ref: string, d: Row, ua: string): Promise<boolean> {
   const env = serviceEnv();
   if (!env) return false;
   try {
@@ -242,9 +308,10 @@ async function store(ref: string, d: Valid, ua: string): Promise<boolean> {
         adults: d.adults,
         children: d.children,
         room_slug: d.room || null,
+        breakfast: d.breakfast,
         guest_name: d.name,
         phone: d.phone,
-        email: d.email,
+        email: d.email || null,
         notes: d.notes || null,
         page_url: d.page || null,
         user_agent: ua.slice(0, 300),
@@ -308,25 +375,21 @@ function route(rows: Recipient[], branchSlug: string, isPartner: boolean): { to:
   return { to, cc, primary };
 }
 
-interface Mail {
+interface Envelope {
   from: string;
   to: string[];
   cc?: string[];
   replyTo?: string[];
-  subject: string;
-  /** HTML body + a real text/plain alternative (Resend sends multipart/alternative when both are given). */
-  html: string;
-  text: string;
 }
 
 /** Returns the Resend message id, or null. `kind` and `ref` label the log line; form data is never logged. */
-async function sendEmail(kind: 'notification' | 'confirmation', ref: string, msg: Mail): Promise<string | null> {
+async function sendEmail(kind: 'notification' | 'confirmation', ref: string, env: Envelope, mail: Mail): Promise<string | null> {
   const key = Deno.env.get('RESEND_API_KEY');
   if (!key) {
     console.error(`email ${kind} not sent`, ref, 'RESEND_API_KEY missing — request kept in booking_requests');
     return null;
   }
-  if (msg.to.length === 0) {
+  if (env.to.length === 0) {
     console.error(`email ${kind} not sent`, ref, 'no recipient');
     return null;
   }
@@ -335,13 +398,13 @@ async function sendEmail(kind: 'notification' | 'confirmation', ref: string, msg
       method: 'POST',
       headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        from: msg.from,
-        to: msg.to,
-        ...(msg.cc && msg.cc.length ? { cc: msg.cc } : {}),
-        ...(msg.replyTo && msg.replyTo.length ? { reply_to: msg.replyTo } : {}),
-        subject: msg.subject,
-        html: msg.html,
-        text: msg.text,
+        from: env.from,
+        to: env.to,
+        ...(env.cc && env.cc.length ? { cc: env.cc } : {}),
+        ...(env.replyTo && env.replyTo.length ? { reply_to: env.replyTo } : {}),
+        subject: mail.subject,
+        html: mail.html,
+        text: mail.text,
       }),
     });
     if (!res.ok) {
@@ -350,23 +413,13 @@ async function sendEmail(kind: 'notification' | 'confirmation', ref: string, msg
     }
     const body = (await res.json().catch(() => ({}))) as { id?: string };
     const id = typeof body.id === 'string' ? body.id : '';
-    // routing audit line (hotel addresses only — never the sender's own data)
-    console.log(`email ${kind} sent`, ref, `id=${id}`, `to=${msg.to.join(';')}`, `cc=${(msg.cc ?? []).join(';')}`, `reply_to=${kind === 'notification' ? '[sender]' : (msg.replyTo ?? []).join(';')}`);
+    // routing audit line (hotel addresses only — never the guest's own data)
+    console.log(`email ${kind} sent`, ref, `id=${id}`, `to=${kind === 'notification' ? env.to.join(';') : '[sender]'}`, `cc=${(env.cc ?? []).join(';')}`, `reply_to=${kind === 'notification' ? (env.replyTo?.length ? '[sender]' : '-') : (env.replyTo ?? []).join(';')}`);
     return id || 'sent';
   } catch (e) {
     console.error(`email ${kind} not sent`, ref, String(e));
     return null;
   }
-}
-
-function tableHtml(rows: [string, string][]): string {
-  return `<table cellpadding="6" style="border-collapse:collapse">${rows
-    .map(([k, val]) => `<tr><td style="color:#555">${esc(k)}</td><td><strong>${esc(val)}</strong></td></tr>`)
-    .join('')}</table>`;
-}
-
-function tableText(rows: [string, string][]): string {
-  return rows.map(([k, val]) => `${k}: ${val}`).join('\n');
 }
 
 Deno.serve(async (req) => {
@@ -388,155 +441,29 @@ Deno.serve(async (req) => {
   if (await rateLimited(req)) return json(req, 429, { ok: false, error: 'too many requests' });
 
   const v = validate(payload);
-  if (!v.ok) return json(req, 422, { ok: false, error: v.error });
-  const d = v.data;
+  if (!v.ok) return json(req, 422, { ok: false, error: v.error, ...(v.fields ? { fields: v.fields } : {}) });
+  const d = v.row;
 
   const ref = makeRef();
   const isPartner = d.requestType !== 'booking';
-  const isBoth = d.branch === BOTH;
-  const branch = content.branches.find((b) => b.slug === d.branch) ?? content.branches[0];
-  const room = d.room ? content.rooms.find((r) => r.slug === d.room && r.branch === d.branch) : undefined;
   const receivedAt = riyadhNow();
-  const branchNameAr = isBoth ? content.branches.map((b) => b.name_ar).join(' + ') : branch.name_ar;
-  const branchNameEn = isBoth ? content.branches.map((b) => b.name_en).join(' + ') : branch.name_en;
-  const branchName = (L: Locale) => (L === 'ar' ? branchNameAr : branchNameEn);
-  const roomName = (L: Locale) => (room ? (L === 'ar' ? room.name_ar : room.name_en) : content.labels[L].any_room);
 
   // ---- 1 + 2: validate (done) → store ----
   const stored = await store(ref, d, req.headers.get('user-agent') ?? '');
 
-  // ---- 3: notification to reception (booking) or sales (partner) — Arabic labels, every field, Riyadh time ----
-  const arLabels = content.labels.ar;
-  const arMail = content.email.ar;
-  let subject: string;
-  let intro: string;
-  let notificationRows: [string, string][];
+  // ---- 3 + 4: build the messages (email.ts, copy from content/) ----
+  let notification: Mail;
+  let confirmation: Mail | null;
   if (isPartner) {
-    const pl = content.partner_labels.ar;
-    const typeName = (content.request_types.ar as Record<string, string>)[d.requestType] ?? d.requestType;
-    notificationRows = [
-      [arMail.ref, ref],
-      [pl.reqtype, typeName],
-      [pl.company, d.organisation || '—'],
-      [pl.person, d.name],
-      [pl.email, d.email],
-      [pl.phone, d.phone],
-      [pl.property, branchNameAr],
-      [pl.checkin, d.check_in],
-      [pl.checkout, d.check_out],
-      [arLabels.nights, String(d.nights)],
-      [pl.guests, String(d.adults)],
-      [pl.rooms, d.roomsRequested === null ? '—' : String(d.roomsRequested)],
-      [pl.meals, d.meals || '—'],
-      [pl.notes, d.notes || '—'],
-      [arMail.language, d.locale],
-      [arMail.received_at, receivedAt],
-    ];
-    subject = fill(arMail.partner_subject, { organisation: d.organisation || d.name, ref });
-    intro = arMail.partner_intro;
+    const pm = { ref, locale: d.locale, requestType: d.requestType, organisation: d.organisation, branch: d.branch, check_in: d.check_in, check_out: d.check_out, nights: d.nights, guests: d.adults, rooms: d.roomsRequested, meals: d.meals, name: d.name, phone: d.phone, email: d.email, notes: d.notes, receivedAt };
+    notification = partnerNotification(content, pm);
+    confirmation = partnerConfirmation(content, pm);
   } else {
-    notificationRows = [
-      [arMail.ref, ref],
-      [arLabels.branch, branchNameAr],
-      [arLabels.check_in, d.check_in],
-      [arLabels.check_out, d.check_out],
-      [arLabels.nights, String(d.nights)],
-      [arLabels.adults, String(d.adults)],
-      [arLabels.children, String(d.children)],
-      [arLabels.room_type, roomName('ar')],
-      [arLabels.full_name, d.name],
-      [arLabels.phone, d.phone],
-      [arLabels.email, d.email],
-      [arLabels.notes, d.notes || '—'],
-      [arMail.language, d.locale],
-      [arMail.received_at, receivedAt],
-    ];
-    subject = fill(arMail.hotel_subject, { branch: branchNameAr, ref });
-    intro = arMail.hotel_intro;
+    const bm = { ref, locale: d.locale, branch: d.branch, room: d.room, check_in: d.check_in, check_out: d.check_out, nights: d.nights, adults: d.adults, children: d.children, breakfast: d.breakfast as 'with' | 'without', name: d.name, phone: d.phone, email: d.email, notes: d.notes, receivedAt };
+    notification = bookingNotification(content, bm);
+    // the guest "request received" email goes out only when the guest gave an email (decision 23 Oct 2026)
+    confirmation = d.email ? bookingConfirmation(content, bm) : null;
   }
-  const notificationHtml = `<div dir="rtl" style="font-family:sans-serif"><p>${esc(intro)}</p>${tableHtml(notificationRows)}<p style="color:#777;font-size:12px">${esc(arMail.hotel_footer)}</p></div>`;
-  const notificationText = `${intro}
-
-${tableText(notificationRows)}
-
-${arMail.hotel_footer}`;
-
-  // ---- 4: confirmation to the sender — Arabic first, then English, in one message (HTML + text/plain) ----
-  const block = (L: Locale): { html: string; text: string } => {
-    const labels = content.labels[L];
-    const mail = content.email[L];
-    const dir = L === 'ar' ? 'rtl' : 'ltr';
-    const greeting = fill(mail.guest_greeting, { name: d.name });
-    if (isPartner) {
-      // Specific, no availability promise: ref, company, contact, enquiry type, a short summary, and sales on WhatsApp.
-      const pl = content.partner_labels[L];
-      const typeName = (content.request_types[L] as Record<string, string>)[d.requestType] ?? d.requestType;
-      const rows: [string, string][] = [
-        [mail.ref, ref],
-        [pl.company, d.organisation || '—'],
-        [pl.person, d.name],
-        [pl.reqtype, typeName],
-        [pl.property, branchName(L)],
-        [pl.checkin, d.check_in],
-        [pl.checkout, d.check_out],
-        [labels.nights, String(d.nights)],
-        [pl.guests, String(d.adults)],
-        [pl.rooms, d.roomsRequested === null ? '—' : String(d.roomsRequested)],
-        [pl.meals, d.meals || '—'],
-        [pl.notes, d.notes || '—'],
-      ];
-      const wa = `https://wa.me/${content.sales_whatsapp.replace(/\D/g, '')}`;
-      const html = `<div dir="${dir}" lang="${L}" style="font-family:sans-serif"><p>${esc(greeting)}</p><p>${esc(mail.partner_guest_body)}</p><h3>${esc(mail.partner_guest_summary)}</h3>${tableHtml(rows)}<p>${esc(mail.partner_guest_whatsapp)} <a href="${wa}">${esc(content.sales_phone_display)}</a></p><p style="color:#777;font-size:12px">${esc(mail.partner_guest_footer)}</p></div>`;
-      const text = `${greeting}
-${mail.partner_guest_body}
-
-${mail.partner_guest_summary}
-${tableText(rows)}
-
-${mail.partner_guest_whatsapp} ${content.sales_phone_display} — ${wa}
-
-${mail.partner_guest_footer}`;
-      return { html, text };
-    }
-    const rows: [string, string][] = [
-      [mail.ref, ref],
-      [labels.branch, branchName(L)],
-      [labels.check_in, d.check_in],
-      [labels.check_out, d.check_out],
-      [labels.nights, String(d.nights)],
-      [labels.adults, String(d.adults)],
-      [labels.children, String(d.children)],
-      [labels.room_type, roomName(L)],
-      [labels.full_name, d.name],
-      [labels.phone, d.phone],
-      [labels.email, d.email],
-      [labels.notes, d.notes || '—'],
-    ];
-    const body = fill(mail.guest_body, { branch: branchName(L) });
-    const wa = `https://wa.me/${branch.whatsapp.replace(/\D/g, '')}`;
-    const html = `<div dir="${dir}" lang="${L}" style="font-family:sans-serif"><p>${esc(greeting)}</p><p>${esc(body)}</p><h3>${esc(mail.guest_summary)}</h3>${tableHtml(rows)}<p>${esc(mail.guest_whatsapp)} <a href="${wa}">${esc(branch.phone_display)}</a></p><p style="color:#777;font-size:12px">${esc(mail.guest_footer)}</p></div>`;
-    const text = `${greeting}
-${body}
-
-${mail.guest_summary}
-${tableText(rows)}
-
-${mail.guest_whatsapp} ${branch.phone_display} — ${wa}
-
-${mail.guest_footer}`;
-    return { html, text };
-  };
-  const ar = block('ar');
-  const en = block('en');
-  const confirmationHtml = `${ar.html}<hr style="border:0;border-top:1px solid #ddd;margin:24px 0">${en.html}`;
-  const confirmationText = `${ar.text}
-
-----------------------------------------
-
-${en.text}`;
-  const confirmationSubject = isPartner
-    ? `${fill(arMail.partner_guest_subject, { ref })} | ${content.email.en.partner_guest_subject}`
-    : `${fill(arMail.guest_subject, { ref })} | ${content.email.en.guest_subject.replace(' ({ref})', '')}`;
 
   // ---- recipients from Supabase, then send ----
   const rows = await loadRecipients(ref);
@@ -545,8 +472,8 @@ ${en.text}`;
   const confirmationReplyTo = primary.length ? primary : [addressOf(FROM_GUEST)];
 
   const [notificationId, confirmationId] = await Promise.all([
-    sendEmail('notification', ref, { from: FROM_RECEPTION, to, cc, replyTo: [d.email], subject, html: notificationHtml, text: notificationText }),
-    sendEmail('confirmation', ref, { from: FROM_GUEST, to: [d.email], replyTo: confirmationReplyTo, subject: confirmationSubject, html: confirmationHtml, text: confirmationText }),
+    sendEmail('notification', ref, { from: FROM_RECEPTION, to, cc, replyTo: d.email ? [d.email] : [] }, notification),
+    confirmation ? sendEmail('confirmation', ref, { from: FROM_GUEST, to: [d.email], replyTo: confirmationReplyTo }, confirmation) : Promise.resolve(null),
   ]);
 
   if (!stored && !notificationId) {
