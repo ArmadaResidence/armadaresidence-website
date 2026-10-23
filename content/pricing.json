@@ -35,7 +35,8 @@
     "site_line_ar": "الإفطار: يُحدَّد شموله أو رسومه عند تأكيد الحجز",
     "site_line_en": "Breakfast: included or charged depending on your booking — confirmed with your reservation"
   },
-  "extra_person_per_night": 25,
+  "extra_bed_per_night": 50,
+  "extra_bed_note": "Confirmed by Ahmed 23 Oct 2026: SAR 50 per extra bed per night, covering whoever sleeps on it; room types allow 0–2 (rooms.json → extra_beds_max). The extra-person fee (25/night) and its children ladder are abolished.",
   "reduction_per_guest_below_included": 20,
   "verified": true,
   "pricing_phases": {
@@ -90,11 +91,6 @@
   },
   "children": {
     "counted_in_included_guests": false,
-    "extra_person": {
-      "up_to_5": 0,
-      "6_to_12": "50% (12.5 — confirm rounding)",
-      "13_plus": 25
-    },
     "breakfast": {
       "up_to_5": 0,
       "6_to_12": 10,

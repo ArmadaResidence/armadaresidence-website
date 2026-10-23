@@ -8,7 +8,7 @@
  */
 import { readFileSync } from 'node:fs';
 import { getCountries, getCountryCallingCode } from 'libphonenumber-js/min';
-import { branchContact, branchShort, branches, L, localePath, rooms, ui, type Locale } from '@lib/content';
+import { branchContact, branchShort, branches, extraBedFeeLine, L, localePath, rooms, ui, type Locale } from '@lib/content';
 import Icon from './Icon.astro';
 
 interface Props {
@@ -52,7 +52,7 @@ const clientData = {
   successPath: localePath(locale, '/booking/success/'),
   partnersPath: localePath(locale, '/partners/enquiry/'),
   branches: branches.map((b) => ({ slug: b.slug, name: L(locale, b, 'name'), short: branchShort(locale, b.slug), whatsapp: branchContact(b.slug).whatsapp })),
-  rooms: bookable.map((r) => ({ slug: r.slug, branch: r.branch, name: L(locale, r, 'name'), capacity: r.capacity, availability: r.availability })),
+  rooms: bookable.map((r) => ({ slug: r.slug, branch: r.branch, name: L(locale, r, 'name'), capacity: r.capacity, extra_beds_max: r.extra_beds_max ?? 0, availability: r.availability })),
   countries,
   strings: {
     anyRoom: f.any_room,
@@ -67,6 +67,11 @@ const clientData = {
     capacityRoom: f.capacity_room,
     capacityBranch: f.capacity_branch,
     capacityBranchLink: f.capacity_branch_link,
+    bedsAuto: f.extra_beds_auto,
+    bedsPlural: f.extra_beds_plural,
+    bedsPluralAcc: f.extra_beds_plural_acc,
+    capacityBeds: f.capacity_beds,
+    bedsLabel: f.extra_beds,
     countryNone: f.country_none,
     adults: f.adults,
     children: f.children,
@@ -75,7 +80,7 @@ const clientData = {
 const inputClass = 'field-input w-full border border-line rounded bg-white';
 const latinInput = `${inputClass} latin text-left`;
 const err = (name: string) => id(`${name}-error`);
-const stepper = (name: 'adults' | 'children', value: number, min: number) => ({ name, value, min, label: f[name] });
+const stepper = (name: 'adults' | 'children' | 'extra_beds', value: number, min: number) => ({ name, value, min, label: f[name] });
 ---
 
 <form id={id('booking-form')} class:list={['booking-form space-y-6', className]} novalidate data-booking-form>
@@ -131,13 +136,15 @@ const stepper = (name: 'adults' | 'children', value: number, min: number) => ({ 
     }
     <p class="sm:col-span-2 -mt-2 text-sm text-ink-muted hidden" data-nights aria-live="polite"></p>
 
-    {/* 4. Guests: steppers, digits only; capacity checked against rooms.json */}
+    {/* 4. Guests: steppers, digits only. Adults ≤ room capacity + extra beds (rooms.json); children are not limited
+        beyond a technical bound. Extra beds: 0–2 per room type, hidden when the room (or, with «أي غرفة متاحة», the
+        whole branch) takes none; the fee sentence comes from pricing.json (the one allowed price line). */}
     <fieldset class="sm:col-span-2" aria-describedby={`${err('adults')} ${id('capacity-note')}`}>
       <legend class="text-sm font-semibold text-midnight mb-2">{f.guests}</legend>
       <div class="grid gap-4 grid-cols-2">
         {
-          [stepper('adults', 2, 1), stepper('children', 0, 0)].map((s) => (
-            <div class="stepper" data-stepper={s.name}>
+          [stepper('adults', 2, 1), stepper('children', 0, 0), stepper('extra_beds', 0, 0)].map((s) => (
+            <div class:list={['stepper', s.name === 'extra_beds' ? 'col-span-2 sm:col-span-1 hidden' : '']} data-stepper={s.name}>
               <label for={id(s.name)} class="block text-xs text-ink-muted mb-1">{s.label}</label>
               <div class="flex items-stretch border border-line rounded bg-white h-12" dir="ltr">
                 <button type="button" class="stepper-btn" data-step="-1" aria-controls={id(s.name)} aria-label={f.guests_dec.replace('{field}', s.label)}>
@@ -153,10 +160,10 @@ const stepper = (name: 'adults' | 'children', value: number, min: number) => ({ 
                   maxlength="2"
                   value={String(s.value)}
                   data-min={s.min}
-                  data-max="20"
+                  data-max={s.name === 'extra_beds' ? '0' : '20'}
                   lang="en"
                   class="latin w-full min-w-0 text-center bg-transparent text-midnight font-semibold focus:outline-none"
-                  aria-describedby={s.name === 'adults' ? err('adults') : undefined}
+                  aria-describedby={s.name === 'adults' ? err('adults') : s.name === 'extra_beds' ? `${id('extra-beds-note')} ${err('extra_beds')}` : undefined}
                 />
                 <button type="button" class="stepper-btn" data-step="1" aria-controls={id(s.name)} aria-label={f.guests_inc.replace('{field}', s.label)}>
                   <Icon name="plus" size={18} />
@@ -167,6 +174,9 @@ const stepper = (name: 'adults' | 'children', value: number, min: number) => ({ 
         }
       </div>
       <p id={err('adults')} class="field-error hidden" data-error-for="adults"></p>
+      <p id={err('extra_beds')} class="field-error hidden" data-error-for="extra_beds"></p>
+      <p class="hidden mt-2 text-sm text-midnight bg-porcelain rounded px-3 py-2" data-beds-auto aria-live="polite"></p>
+      <p id={id('extra-beds-note')} class="hidden mt-2 text-xs text-ink-muted" data-beds-fee>{extraBedFeeLine(locale)}</p>
       <p id={id('capacity-note')} class="hidden mt-2 text-sm text-ink-muted" data-capacity-note></p>
     </fieldset>
 
@@ -290,7 +300,9 @@ const stepper = (name: 'adults' | 'children', value: number, min: number) => ({ 
   import { bindOnce, onPageLoad } from '@lib/client';
   import {
     addDays,
-    branchMaxCapacity,
+    bedsNeeded,
+    branchMaxAdults,
+    branchMaxExtraBeds,
     E164,
     nightsBetween,
     plural,
@@ -308,7 +320,7 @@ const stepper = (name: 'adults' | 'children', value: number, min: number) => ({ 
     successPath: string;
     partnersPath: string;
     branches: { slug: string; name: string; short: string; whatsapp: string }[];
-    rooms: { slug: string; branch: string; name: string; capacity: number; availability: string }[];
+    rooms: { slug: string; branch: string; name: string; capacity: number; extra_beds_max: number; availability: string }[];
     countries: [string, string, string][];
     strings: {
       anyRoom: string;
@@ -323,6 +335,11 @@ const stepper = (name: 'adults' | 'children', value: number, min: number) => ({ 
       capacityRoom: string;
       capacityBranch: string;
       capacityBranchLink: string;
+      bedsAuto: string;
+      bedsPlural: Record<'one' | 'two' | 'few' | 'many', string>;
+      bedsPluralAcc: Record<'one' | 'two' | 'few' | 'many', string>;
+      capacityBeds: string;
+      bedsLabel: string;
       countryNone: string;
       adults: string;
       children: string;
@@ -366,6 +383,10 @@ const stepper = (name: 'adults' | 'children', value: number, min: number) => ({ 
     const checkOut = el('check_out');
     const adultsIn = el('adults');
     const childrenIn = el('children');
+    const bedsIn = el('extra_beds');
+    const bedsWrap = form.querySelector<HTMLElement>('[data-stepper="extra_beds"]')!;
+    const bedsAutoNote = form.querySelector<HTMLElement>('[data-beds-auto]')!;
+    const bedsFee = form.querySelector<HTMLElement>('[data-beds-fee]')!;
     const nameIn = el('name');
     const phoneIn = form.querySelector<HTMLInputElement>('[data-phone-input]')!;
     const emailIn = el('email');
@@ -381,6 +402,8 @@ const stepper = (name: 'adults' | 'children', value: number, min: number) => ({ 
     const capNote = form.querySelector<HTMLElement>('[data-capacity-note]')!;
     const touched = new Set<string>();
     let sending = false;
+    /** once the guest sets the extra beds themselves, the auto-fill stops overriding them */
+    let bedsTouched = false;
 
     form.addEventListener('focusin', () => void loadPhoneLib(), { once: true });
 
@@ -446,22 +469,32 @@ const stepper = (name: 'adults' | 'children', value: number, min: number) => ({ 
     }
     branchSel.addEventListener('change', () => {
       filterRooms();
+      bedsTouched = false;
       refresh();
     });
-    roomSel.addEventListener('change', refresh);
+    roomSel.addEventListener('change', () => {
+      bedsTouched = false;
+      refresh();
+    });
 
     // ── steppers: digits only, clamped ───────────────────────────────────────────────────────────────────
     form.querySelectorAll<HTMLElement>('[data-stepper]').forEach((wrap) => {
       const input = wrap.querySelector<HTMLInputElement>('input')!;
       const min = Number(input.dataset.min);
-      const max = Number(input.dataset.max);
-      const clamp = (n: number) => Math.min(max, Math.max(min, Number.isFinite(n) ? n : min));
+      // max is read on every use: the extra-beds stepper's max follows the selected room / branch
+      const clamp = (n: number) => Math.min(Number(input.dataset.max), Math.max(min, Number.isFinite(n) ? n : min));
+      const key = wrap.dataset.stepper === 'extra_beds' ? 'extra_beds' : 'adults';
+      const changed = () => {
+        if (key === 'extra_beds') bedsTouched = true;
+        touched.add(key);
+        refresh();
+        validateField('adults');
+        validateField('extra_beds');
+      };
       wrap.querySelectorAll<HTMLButtonElement>('[data-step]').forEach((btn) =>
         btn.addEventListener('click', () => {
           input.value = String(clamp(Number(input.value || min) + Number(btn.dataset.step)));
-          touched.add('adults');
-          refresh();
-          validateField('adults');
+          changed();
         }),
       );
       input.addEventListener('input', () => {
@@ -470,9 +503,7 @@ const stepper = (name: 'adults' | 'children', value: number, min: number) => ({ 
       });
       input.addEventListener('blur', () => {
         input.value = String(clamp(Number(input.value === '' ? min : input.value)));
-        touched.add('adults');
-        refresh();
-        validateField('adults');
+        changed();
       });
     });
 
@@ -620,6 +651,7 @@ const stepper = (name: 'adults' | 'children', value: number, min: number) => ({ 
         check_out: v('check_out'),
         adults: v('adults'),
         children: v('children') || '0',
+        extra_beds: v('extra_beds') || '0',
         breakfast: v('breakfast'),
         name: v('name'),
         phone: v('phone'),
@@ -633,13 +665,17 @@ const stepper = (name: 'adults' | 'children', value: number, min: number) => ({ 
       const e = S.errors;
       if (code === 'capacity') {
         const room = data.rooms.find((r) => r.slug === roomSel.value && r.branch === branchSel.value);
-        const guests = Number(adultsIn.value || 0) + Number(childrenIn.value || 0);
-        return S.capacityRoom.replace('{guests}', String(guests)).replace('{capacity}', String(room?.capacity ?? ''));
+        const adultsN = Number(adultsIn.value || 0);
+        // enough extra beds exist for this room, the guest just has fewer set than the adults need
+        if (room && adultsN <= room.capacity + room.extra_beds_max)
+          return S.capacityBeds.replace('{adults}', String(adultsN)).replace('{capacity}', String(room.capacity)).replace('{beds}', plural(S.bedsPluralAcc, bedsNeeded(room, adultsN)));
+        return S.capacityRoom.replace('{adults}', String(adultsIn.value || 0)).replace('{max}', String(room ? room.capacity + room.extra_beds_max : ''));
       }
+      if (code === 'extra_beds') return e.extra_beds;
       if (code === 'required' && field === 'breakfast') return e.breakfast;
       const map: Partial<Record<FieldError, string>> = {
         required: e.required, branch: e.required, room: e.required, date_format: e.date_format, past: e.past, dates: e.dates,
-        adults: e.adults, children: e.adults, breakfast: e.breakfast, name: e.name, phone: e.phone, email: e.email,
+        adults: e.adults, children: e.adults, extra_beds: e.extra_beds, breakfast: e.breakfast, name: e.name, phone: e.phone, email: e.email,
       };
       return map[code] ?? e.required;
     };
@@ -662,7 +698,7 @@ const stepper = (name: 'adults' | 'children', value: number, min: number) => ({ 
         adultsIn.setAttribute('aria-invalid', msg ? 'true' : 'false');
       } else control(field)?.setAttribute('aria-invalid', msg ? 'true' : 'false');
     }
-    const FIELDS = ['branch', 'room', 'check_in', 'check_out', 'adults', 'breakfast', 'name', 'phone', 'email'];
+    const FIELDS = ['branch', 'room', 'check_in', 'check_out', 'adults', 'extra_beds', 'breakfast', 'name', 'phone', 'email'];
     function errorsNow() {
       const r = validateBooking(collect(), ctx());
       return r.ok ? {} : (r.errors as Record<string, FieldError>);
@@ -679,7 +715,7 @@ const stepper = (name: 'adults' | 'children', value: number, min: number) => ({ 
       for (const f of FIELDS) {
         const code = errs[f] ?? (f === 'adults' ? errs.children : undefined);
         showError(f, code ? message(f, code) : null);
-        if (code && !first) first = f === 'adults' ? adultsIn : control(f);
+        if (code && !first) first = f === 'adults' ? adultsIn : f === 'extra_beds' ? bedsIn : control(f);
         touched.add(f);
       }
       if (first) first.focus();
@@ -725,13 +761,35 @@ const stepper = (name: 'adults' | 'children', value: number, min: number) => ({ 
 
       const adults = Number(adultsIn.value || 0);
       const kids = Number(childrenIn.value || 0);
-      const guests = adults + kids;
+      const room = data.rooms.find((r) => r.slug === roomSel.value && r.branch === branchSel.value);
+      // extra beds: allowed up to the room's extra_beds_max, or the branch's highest with «أي غرفة متاحة»
+      const bedsMax = room ? room.extra_beds_max : branchSel.value ? branchMaxExtraBeds(data.rooms, branchSel.value) : 0;
+      bedsIn.dataset.max = String(bedsMax);
+      bedsWrap.classList.toggle('hidden', bedsMax === 0);
+      bedsFee.classList.toggle('hidden', bedsMax === 0);
+      if (bedsMax === 0) bedsIn.value = '0';
+      else if (Number(bedsIn.value || 0) > bedsMax) bedsIn.value = String(bedsMax);
+      // more adults than the room takes → set the extra beds to the difference when it fits, and say so
+      bedsAutoNote.classList.add('hidden');
+      if (room) {
+        const need = bedsNeeded(room, adults);
+        if (need > 0 && need <= bedsMax && Number(bedsIn.value || 0) < need && !bedsTouched) {
+          bedsIn.value = String(need);
+          bedsAutoNote.textContent = S.bedsAuto.replace('{beds}', plural(S.bedsPluralAcc, need)).replace('{capacity}', String(room.capacity));
+          bedsAutoNote.classList.remove('hidden');
+        } else if (need > 0 && need <= bedsMax && Number(bedsIn.value || 0) === need && !bedsTouched) {
+          bedsAutoNote.textContent = S.bedsAuto.replace('{beds}', plural(S.bedsPluralAcc, need)).replace('{capacity}', String(room.capacity));
+          bedsAutoNote.classList.remove('hidden');
+        }
+        if (need > bedsMax) touched.add('adults');
+      }
+      const beds = Number(bedsIn.value || 0);
       capNote.replaceChildren();
       capNote.classList.add('hidden');
-      if (branchSel.value && !roomSel.value) {
-        const max = branchMaxCapacity(data.rooms, branchSel.value);
-        if (max && guests > max) {
-          capNote.append(S.capacityBranch.replace('{capacity}', String(max)) + ' ');
+      if (branchSel.value && !room) {
+        const max = branchMaxAdults(data.rooms, branchSel.value);
+        if (max && adults > max) {
+          capNote.append(S.capacityBranch.replace('{max}', String(max)) + ' ');
           const a = document.createElement('a');
           a.href = data.partnersPath;
           a.className = 'font-semibold text-bronze hover:text-bronze-text underline';
@@ -741,6 +799,7 @@ const stepper = (name: 'adults' | 'children', value: number, min: number) => ({ 
         }
       }
       if (touched.has('adults')) validateField('adults');
+      if (touched.has('extra_beds')) validateField('extra_beds');
 
       const b = data.branches.find((x) => x.slug === branchSel.value);
       const breakfast = form.querySelector<HTMLInputElement>('input[name="breakfast"]:checked')?.value;
@@ -749,6 +808,7 @@ const stepper = (name: 'adults' | 'children', value: number, min: number) => ({ 
       if (n) parts.push(plural(P.nights, n));
       if (adults) parts.push(plural(P.adults, adults));
       if (kids) parts.push(plural(P.children, kids));
+      if (beds) parts.push(plural(S.bedsPlural, beds));
       if (breakfast) parts.push(breakfast === 'with' ? S.breakfastWith : S.breakfastWithout);
       summary.textContent = parts.join(' · ');
       summary.classList.toggle('hidden', !b);
@@ -767,6 +827,7 @@ const stepper = (name: 'adults' | 'children', value: number, min: number) => ({ 
         nights: n ? plural(P.nights, n) : '-',
         adults: String(p.adults || '-'),
         children: String(p.children || '0'),
+        extra_beds: String(p.extra_beds || '0'),
         room: r ? r.name : S.anyRoom,
         breakfast: p.breakfast === 'with' ? S.breakfastWith : p.breakfast === 'without' ? S.breakfastWithout : '-',
         name: p.name || '-',
@@ -824,6 +885,7 @@ const stepper = (name: 'adults' | 'children', value: number, min: number) => ({ 
           check_out: d.check_out,
           adults: String(d.adults),
           children: String(d.children),
+          extra_beds: String(d.extra_beds),
           breakfast: d.breakfast,
           name: d.name,
           phone: d.phone,
@@ -842,6 +904,7 @@ const stepper = (name: 'adults' | 'children', value: number, min: number) => ({ 
           room: d.room || 'any',
           nights: String(d.nights),
           breakfast: d.breakfast,
+          beds: String(d.extra_beds),
           c: d.email ? 'email' : 'whatsapp',
         });
         leaving = true;

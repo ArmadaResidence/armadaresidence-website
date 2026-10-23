@@ -3,11 +3,10 @@
  * Renders a room's price exactly as pricing.json dictates, once per rate plan with show_on_site: true
  * (phase 1: room_only only): «يبدأ من {base_price} ريال / الليلة — شامل الضريبة», then the breakfast
  * site line from pricing.json (never a breakfast price — decision 9 Oct 2026). Full mode adds the
- * room-only note, extra person, final-price note and the booking CTA (none when sold out).
+ * room-only note, final-price note and the booking CTA (none when sold out).
  */
 import {
   breakfastLine,
-  extraPersonLine,
   localePath,
   priceLine,
   pricesHidden,
@@ -51,7 +50,6 @@ const plans = hidden ? [visibleRatePlans(room)[0] ?? { base_price: undefined }] 
   {
     mode === 'full' && (
       <>
-        {!hidden && <p class="text-sm text-ink-muted mt-1">{extraPersonLine(locale)}</p>}
         <p class="text-xs text-ink-muted mt-3">{t.price.final_note}</p>
         {!soldOut && (
           <a

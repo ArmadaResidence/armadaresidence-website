@@ -90,6 +90,13 @@ def validate(content: dict[str, dict]) -> list[str]:
         problems.append("contact.json.gtm_container is not a GTM id")
 
     rooms = content["rooms.json"]["rooms"]
+    for r in rooms:
+        if r.get("extra_beds_max") not in (0, 1, 2):
+            problems.append(f"rooms.json[{r['branch']}/{r['slug']}].extra_beds_max must be 0, 1 or 2 (23 Oct 2026)")
+    if not isinstance(content["pricing.json"].get("extra_bed_per_night"), (int, float)):
+        problems.append("pricing.json.extra_bed_per_night must be a number (SAR per extra bed per night)")
+    if "extra_person_per_night" in content["pricing.json"]:
+        problems.append("pricing.json.extra_person_per_night must not exist: the extra-person fee was abolished on 23 Oct 2026")
     seen: set[tuple[str, str]] = set()
     for r in rooms:
         key = (r["branch"], r["slug"])
@@ -286,7 +293,7 @@ def generate_function_content(content: dict[str, dict]) -> None:
         ],
         "rooms": [
             {"slug": r["slug"], "branch": r["branch"], "name_ar": r["name_ar"], "name_en": r["name_en"],
-             "availability": r["availability"], "capacity": r["capacity"]}
+             "availability": r["availability"], "capacity": r["capacity"], "extra_beds_max": r.get("extra_beds_max", 0)}
             for r in rooms
         ],
         "labels": {loc: ui[loc]["form"] for loc in ("ar", "en")},
@@ -299,6 +306,9 @@ def generate_function_content(content: dict[str, dict]) -> None:
         "partner_reply_line": content["partners-pages.json"]["form"]["sent_body"],
         "legal_line": {loc: content["legal.json"][f"footer_line_{loc}"] for loc in ("ar", "en")},
         "brand": {loc: content["legal.json"][f"brand_{loc}"] for loc in ("ar", "en")},
+        # extra bed (23 Oct 2026): fee per bed per night from pricing.json, snapshotted on each stored request
+        "extra_bed_fee": content["pricing.json"]["extra_bed_per_night"],
+        "extra_bed_fee_line": {loc: ui[loc]["form"]["extra_bed_fee"].replace("{fee}", str(content["pricing.json"]["extra_bed_per_night"])) for loc in ("ar", "en")},
         "wa_prefill": {loc: {"branch": ui[loc]["cta"]["whatsapp_prefill_branch"], "partners": ui[loc]["cta"]["whatsapp_prefill_partners"]} for loc in ("ar", "en")},
         # emails cannot show SVG: a 2x PNG of the approved logo (scripts/email-logo.mjs), hosted on the site. Until
         # the domain switch the site lives on the GitHub Pages project URL; set EMAIL_ASSETS_BASE to the domain then.

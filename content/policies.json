@@ -54,8 +54,8 @@
         "id": "guests",
         "heading_ar": "عدد النزلاء والإفطار",
         "heading_en": "Guests and breakfast",
-        "body_ar": "يشمل سعر الغرفة والاستديو وجناح الغرفة والصالة شخصين بالغين، ويشمل سعر الأجنحة بغرفتي نوم أربعة. الأطفال لا يُحسبون ضمن العدد المشمول. الشخص الإضافي 25 ريالًا لليلة، وتُطبَّق على الأطفال السياسة نفسها بحسب السن: حتى 5 سنوات مجانًا، ومن 6 إلى 12 سنة نصف الرسوم، وفوق 12 سنة بسعر البالغ. يُقدَّم بوفيه إفطار يومي في مطعم كل فرع من 07:00 إلى 10:30، ويُحدَّد شموله في السعر أو رسومه عند تأكيد الحجز؛ الأطفال حتى 5 سنوات مجانًا ومن 6 إلى 12 سنة بنصف الرسوم.",
-        "body_en": "Room, studio and one-bedroom suite prices cover two adults; two-bedroom suite prices cover four. Children are not counted toward the included number. An extra guest is SAR 25 per night, and the same age policy applies to children: up to 5 free, ages 6 to 12 half the fee, over 12 at the adult rate. A daily breakfast buffet is served in each property's restaurant from 07:00 to 10:30; whether it is included or charged is confirmed with your booking — children up to 5 free, ages 6 to 12 half the charge."
+        "body_ar": "يشمل سعر الغرفة والاستديو وجناح الغرفة والصالة شخصين بالغين، ويشمل سعر الأجنحة بغرفتي نوم أربعة. الأطفال لا يُحسبون ضمن العدد المشمول. السرير الإضافي 50 ريالًا لليلة، ويشمل الشخص الذي ينام عليه، ويتوفر في بعض أنواع الغرف ويؤكده الاستقبال. يُقدَّم بوفيه إفطار يومي في مطعم كل فرع من 07:00 إلى 10:30، ويُحدَّد شموله في السعر أو رسومه عند تأكيد الحجز؛ الأطفال حتى 5 سنوات مجانًا ومن 6 إلى 12 سنة بنصف الرسوم.",
+        "body_en": "Room, studio and one-bedroom suite prices cover two adults; two-bedroom suite prices cover four. Children are not counted toward the included number. An extra bed is SAR 50 per night, covering whoever sleeps on it; available in selected room types and confirmed by reception. A daily breakfast buffet is served in each property's restaurant from 07:00 to 10:30; whether it is included or charged is confirmed with your booking — children up to 5 free, ages 6 to 12 half the charge."
       },
       {
         "id": "house_rules",
@@ -86,9 +86,7 @@
         "body_en": "Armada Residence Company To Operate Hotels — CR 4032276628 — VAT 312154414400003."
       }
     ],
-    "open_questions": [
-      "rounding of the children's half extra-person fee (12.5 SAR?)"
-    ]
+    "open_questions": []
   },
   "late_checkout": {
     "until_14:00": 100,
@@ -105,11 +103,6 @@
   },
   "children": {
     "counted_in_included_guests": false,
-    "extra_fee": {
-      "up_to_5": 0,
-      "6_to_12": "50% of extra-person fee (12.5 SAR — confirm rounding)",
-      "13_plus": 25
-    },
     "breakfast": {
       "up_to_5": 0,
       "6_to_12": 10,

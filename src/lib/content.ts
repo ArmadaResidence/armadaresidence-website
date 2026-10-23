@@ -63,6 +63,8 @@ export interface Room {
   in_room_amenities: string[];
   size_m2: number;
   capacity: number;
+  /** 0–2 extra beds this room type takes (23 Oct 2026); each adds one adult to the capacity. */
+  extra_beds_max: number;
   included_guests: number;
   bed_ar: string;
   bed_en: string;
@@ -247,8 +249,10 @@ export function heroPriceLine(locale: Locale): string {
   return fill(locale === 'ar' ? h.price_line_ar : h.price_line_en, { price: minBasePrice() });
 }
 
-export function extraPersonLine(locale: Locale): string {
-  return fill(ui(locale).price.extra_person, { price: pricing.extra_person_per_night });
+/** «السرير الإضافي 50 ريالًا لليلة …» — the one fee sentence allowed while prices are hidden (decision 23 Oct 2026):
+ *  booking form, WhatsApp message and /policies/ only; the amount comes from pricing.json. qa.py enforces it. */
+export function extraBedFeeLine(locale: Locale): string {
+  return fill(ui(locale).form.extra_bed_fee, { fee: (pricing as { extra_bed_per_night: number }).extra_bed_per_night });
 }
 
 export function guestsWord(locale: Locale, n: number | null | undefined): string {

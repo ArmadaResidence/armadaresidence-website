@@ -195,6 +195,21 @@ def main() -> int:
     contact = content["contact.json"]
     pricing = content["pricing.json"]
     ui = content["ui.json"]
+    # extra-bed fee (23 Oct 2026): the only price sentence allowed while prices are hidden — booking form, WhatsApp
+    # message and /policies/; the amount must match pricing.json everywhere it appears
+    fee = pricing.get("extra_bed_per_night")
+    allowed_fee_lines = [ui[loc]["form"]["extra_bed_fee"].replace("{fee}", str(fee)) for loc in ("ar", "en")]
+    policies_json = json.loads((CONTENT / "policies.json").read_text(encoding="utf-8"))
+    guests_sec = next((s for s in policies_json["page"]["sections"] if s.get("id") == "guests"), None) if "page" in policies_json else None
+    if guests_sec is None:
+        guests_sec = next((s for s in policies_json.get("sections", []) if s.get("id") == "guests"), None)
+    if guests_sec is None:
+        rep.f("pricing", "policies.json: guests section not found (extra-bed fee sentence)")
+    else:
+        if f"{fee} ريالًا لليلة" not in guests_sec["body_ar"] or f"SAR {fee} per night" not in guests_sec["body_en"]:
+            rep.f("pricing", f"policies.json guests: the extra-bed fee must read {fee} (pricing.json) in both languages")
+        if re.search(r"الشخص الإضافي|extra guest", guests_sec["body_ar"] + guests_sec["body_en"], re.I):
+            rep.f("pricing", "policies.json guests: the extra-person fee was abolished on 23 Oct 2026")
 
     known_phones = {c["phone"] for c in contact["branches"].values()} | {c["whatsapp"] for c in contact["branches"].values()}
     sales_phone = contact["sales"]["phone"]
@@ -302,10 +317,16 @@ def main() -> int:
                 rep.f("partners pricing", f"{path}: price-like text {m.group(0)!r} under /partners/")
 
         # prices hidden (9 Oct 2026): no number next to ريال/الليلة or SAR/night anywhere except the café menu
-        # (/policies/ states the extra-guest and late-checkout fees from policies.json — fees, not room rates)
+        # (/policies/ states the extra-bed and late-checkout fees from policies.json — fees, not room rates).
+        # 23 Oct 2026: the ONE allowed price line is the extra-bed fee sentence of the booking form (the form sits in the
+        # drawer on every page), built from ui.json + pricing.json; it is removed before the check, so any other price
+        # — including a different amount in that sentence — still fails.
         if pricing.get("display_mode") == "hidden" and lp not in ("/menu/", "/policies/"):
-            for m in re.finditer(r"\d[\d,.]*\s*(?:ريال|ر\.س|SAR)\b|SAR\s*\d", p.text):
-                window = p.text[max(0, m.start() - 60) : m.end() + 60]
+            price_text = p.text
+            for fee_line in allowed_fee_lines:
+                price_text = price_text.replace(fee_line, " ")
+            for m in re.finditer(r"\d[\d,.]*\s*(?:ريال|ر\.س|SAR)\b|SAR\s*\d", price_text):
+                window = price_text[max(0, m.start() - 60) : m.end() + 60]
                 if re.search(r"الليلة|لليلة|night|/\s*الليلة", window, re.I):
                     rep.f("pricing", f"{path}: stay price shown while prices are hidden: {window.strip()[:70]!r}")
 

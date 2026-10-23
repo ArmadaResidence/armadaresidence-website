@@ -12,7 +12,10 @@ export const BREAKFAST: Breakfast[] = ['with', 'without'];
 export const ADULTS_MIN = 1;
 export const ADULTS_MAX = 20;
 export const CHILDREN_MIN = 0;
+/** Children have no business limit (decision 23 Oct 2026); this is only a technical sanity bound. */
 export const CHILDREN_MAX = 20;
+/** Extra beds: 0–2 per room type (rooms.json → extra_beds_max); each one adds one adult to the room's capacity. */
+export const EXTRA_BEDS_MAX = 2;
 
 export const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 export const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
@@ -80,6 +83,7 @@ export interface RuleRoom {
   slug: string;
   branch: string;
   capacity: number;
+  extra_beds_max: number;
   availability: string;
 }
 
@@ -90,6 +94,7 @@ export interface BookingInput {
   check_out: string;
   adults: string | number;
   children?: string | number;
+  extra_beds?: string | number;
   breakfast?: string;
   name: string;
   phone: string;
@@ -108,6 +113,7 @@ export type FieldError =
   | 'adults'
   | 'children'
   | 'capacity'
+  | 'extra_beds'
   | 'breakfast'
   | 'name'
   | 'phone'
@@ -129,6 +135,7 @@ export interface ValidBooking {
   nights: number;
   adults: number;
   children: number;
+  extra_beds: number;
   breakfast: Breakfast;
   name: string;
   phone: string;
@@ -160,7 +167,14 @@ export function validateBooking(p: BookingInput, ctx: RuleContext): { ok: true; 
   const children = String(p.children ?? '').trim() === '' ? 0 : intIn(p.children, CHILDREN_MIN, CHILDREN_MAX);
   if (adults === null) errors.adults = 'adults';
   if (children === null) errors.children = 'children';
-  if (room && adults !== null && children !== null && adults + children > room.capacity) errors.adults = 'capacity';
+  // Extra beds (23 Oct 2026): adults ≤ capacity + extra beds requested; extra beds ≤ the room's extra_beds_max
+  // (with «أي غرفة متاحة»: ≤ the highest extra_beds_max among the branch's bookable room types). Children are not
+  // counted against the capacity.
+  const extraRaw = String(p.extra_beds ?? '').trim();
+  const extraBeds = extraRaw === '' ? 0 : intIn(extraRaw, 0, EXTRA_BEDS_MAX);
+  const bedsAllowed = room ? room.extra_beds_max : branchMaxExtraBeds(ctx.rooms, branch);
+  if (extraBeds === null || extraBeds > bedsAllowed) errors.extra_beds = 'extra_beds';
+  if (room && adults !== null && extraBeds !== null && extraBeds <= bedsAllowed && adults > room.capacity + extraBeds) errors.adults = 'capacity';
 
   const breakfast = String(p.breakfast ?? '');
   if (!BREAKFAST.includes(breakfast as Breakfast)) errors.breakfast = breakfast ? 'breakfast' : 'required';
@@ -188,6 +202,7 @@ export function validateBooking(p: BookingInput, ctx: RuleContext): { ok: true; 
       nights: nightsBetween(ci, co),
       adults: adults as number,
       children: children as number,
+      extra_beds: extraBeds as number,
       breakfast: breakfast as Breakfast,
       name,
       phone: e164 as string,
@@ -197,7 +212,19 @@ export function validateBooking(p: BookingInput, ctx: RuleContext): { ok: true; 
   };
 }
 
-/** Largest capacity among the bookable rooms of a branch (0 when none). */
-export function branchMaxCapacity(rooms: RuleRoom[], branch: string): number {
-  return rooms.filter((r) => r.branch === branch && r.availability !== 'sold_out').reduce((m, r) => Math.max(m, r.capacity), 0);
+const bookableAt = (rooms: RuleRoom[], branch: string) => rooms.filter((r) => r.branch === branch && r.availability !== 'sold_out');
+
+/** Highest extra_beds_max among the bookable room types of a branch (0 when none) — read from data, never hardcoded. */
+export function branchMaxExtraBeds(rooms: RuleRoom[], branch: string): number {
+  return bookableAt(rooms, branch).reduce((m, r) => Math.max(m, r.extra_beds_max ?? 0), 0);
+}
+
+/** Most adults any single unit of a branch takes, its extra beds included (0 when none). */
+export function branchMaxAdults(rooms: RuleRoom[], branch: string): number {
+  return bookableAt(rooms, branch).reduce((m, r) => Math.max(m, r.capacity + (r.extra_beds_max ?? 0)), 0);
+}
+
+/** Extra beds needed for `adults` in `room` (0 when the room's capacity is enough). */
+export function bedsNeeded(room: RuleRoom, adults: number): number {
+  return Math.max(0, adults - room.capacity);
 }

@@ -34,6 +34,9 @@ export interface BookingMail {
   nights: number;
   adults: number;
   children: number;
+  /** extra beds requested (0–2) and the fee per bed per night at request time (pricing.json) */
+  extraBeds: number;
+  extraBedFee: number;
   breakfast: 'with' | 'without';
   name: string;
   phone: string;
@@ -219,6 +222,15 @@ function hairline(): string {
 function ltrSafe(val: string): string {
   return /[؀-ۿ]/.test(val) ? esc(val) : `<span dir="ltr" style="unicode-bidi:isolate; direction:ltr;">${esc(val)}</span>`;
 }
+/** Highlighted note (extra beds awaiting confirmation): bronze side rule on porcelain, prominent but calm. */
+function flagNote(L: Locale, lines: string[]): string {
+  const side = L === 'ar' ? 'right' : 'left';
+  const body = lines
+    .map((t, i) => `<p class="t-ink" style="margin:${i ? '4px' : '0'} 0 0; font-family:${FONT[L]}; font-size:${i ? 14 : 16}px; line-height:${i ? 21 : 24}px; font-weight:${i ? 400 : 700}; color:${INK};">${esc(t)}</p>`)
+    .join('');
+  return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" class="bg-soft" style="background:${PORCELAIN}; border-${side}:4px solid ${BRONZE}; border-radius:4px;"><tr><td style="padding:12px 16px;">${body}</td></tr></table>`;
+}
+
 /** Key/value rows inside a soft card; stacks to one column on phones. */
 function kvCard(L: Locale, rows: [string, string][]): string {
   const k = L === 'ar' ? 'right' : 'left';
@@ -274,6 +286,7 @@ export function bookingNotification(c: Content, d: BookingMail): Mail {
     [lab.adults, String(d.adults)],
     [lab.children, String(d.children)],
     [plainLabel(lab.room_type), roomName(c, d.room, d.branch, 'ar')],
+    [lab.extra_beds, String(d.extraBeds)],
     [lab.breakfast, breakfast],
     [lab.full_name, d.name],
     [lab.phone, d.phone],
@@ -283,11 +296,19 @@ export function bookingNotification(c: Content, d: BookingMail): Mail {
     [M.received_at, d.receivedAt],
   ];
   const subject = fill(M.hotel_subject, { branch: b.name_ar, ref: d.ref });
+  // extra beds: prominent, with the estimated total (fee × nights × beds) for reception — never shown on the site
+  const bedsLines = d.extraBeds
+    ? [
+        fill(M.extra_beds_flag, { beds: String(d.extraBeds) }),
+        fill(M.extra_beds_estimate, { total: String(d.extraBedFee * d.nights * d.extraBeds), beds: String(d.extraBeds), fee: String(d.extraBedFee), nights: pluralForm(lab.plural.nights, d.nights) }),
+      ]
+    : [];
   const inner = section(
     L,
     `<p style="margin:0 0 14px;"><span style="display:inline-block; padding:5px 12px; border-radius:999px; background:${tagBg}; color:${WHITE}; font-family:${FONT.ar}; font-size:13px; font-weight:700;">${esc(b.name_ar)}</span>
 <span class="t-muted" dir="ltr" style="display:inline-block; margin-inline-start:8px; font-family:${FONT.en}; font-size:13px; color:${MUTED};">${esc(d.ref)} · ${esc(d.receivedAt)}</span></p>
 ${headline(L, M.hotel_intro)}
+${bedsLines.length ? `${flagNote(L, bedsLines)}<div style="height:16px; line-height:16px; font-size:0;">&nbsp;</div>` : ''}
 ${buttons(L, [button(L, wa(d.phone), M.notif_wa_guest, 'solid'), button(L, tel(d.phone), M.notif_call, 'ghost')])}
 <div style="height:18px; line-height:18px; font-size:0;">&nbsp;</div>
 ${kvCard(L, rows)}
@@ -298,6 +319,7 @@ ${para(L, M.hotel_footer, { muted: true, size: 12 })}`,
   const html = doc({ lang: 'ar', title: subject, preheader: `${b.name_ar} · ${pluralForm(lab.plural.nights, d.nights)} · ${breakfast} — ${d.ref}`, body: header(c) + card(inner) + footer(c, ['ar']) });
   const text = [
     M.hotel_intro,
+    ...(bedsLines.length ? ['', ...bedsLines] : []),
     '',
     textRows(rows),
     '',
@@ -324,8 +346,10 @@ export function bookingConfirmation(c: Content, d: BookingMail): Mail {
       [lab.nights, pluralForm(lab.plural.nights, d.nights)],
       [M.guests, guestsLine(c, d.adults, d.children, L)],
       [plainLabel(lab.room_type), roomName(c, d.room, d.branch, L)],
+      ...(d.extraBeds ? ([[lab.extra_beds, String(d.extraBeds)]] as [string, string][]) : []),
       [lab.breakfast, breakfast],
     ];
+    const bedsNote = d.extraBeds ? [fill(M.extra_beds_flag, { beds: String(d.extraBeds) }), c.extra_bed_fee_line[L]] : [];
     const waText = fill(c.wa_prefill[L].branch, { branch: b[`name_${L}`] });
     const html = section(
       L,
@@ -335,6 +359,7 @@ ${para(L, fill(M.guest_body, { branch: b[`name_${L}`] }))}
 ${refPill(L, M.ref, d.ref)}
 ${subhead(L, M.guest_summary)}
 ${kvCard(L, rows)}
+${bedsNote.length ? `<div style="height:12px; line-height:12px; font-size:0;">&nbsp;</div>${flagNote(L, bedsNote)}` : ''}
 ${subhead(L, M.next_heading)}
 ${para(L, M.next_guest)}
 ${subhead(L, M.branch_card)}
@@ -357,6 +382,7 @@ ${para(L, M.guest_footer, { muted: true, size: 13 })}`,
       '',
       M.guest_summary,
       textRows(rows),
+      ...(bedsNote.length ? ['', ...bedsNote] : []),
       '',
       M.next_heading,
       M.next_guest,

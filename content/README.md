@@ -6,7 +6,7 @@ Every price, time, phone number, address, policy and piece of guest-facing copy 
 |---|---|---|
 | `branches.json` | Both properties: names, type (Airport Road = **شقق فندقية** always), addresses, national address, geo, phone/WhatsApp, check-in/out, parking, amenities, breakfast line, descriptions. | `verified: true` (unit counts hidden) |
 | `rooms.json` | 12 room types (5 Airport Road, 7 Shafa Road): slug, names, `base_price`, `pricing_mode`, `size_m2`, `capacity`, `included_guests`, `bed_ar/en`, `features`, `in_room_amenities`, `rate_plans`, `availability`, `show_on_site`, descriptions. | **complete** — all prices, sizes, beds, capacities confirmed |
-| `pricing.json` | Site-wide pricing rules: display strings «يبدأ من … شامل الضريبة», breakfast add-on, extra person, children, rate-plan names (`room_only` shown; `bed_and_breakfast` hidden in phase 1). | `verified: true` |
+| `pricing.json` | Site-wide pricing rules: display strings «يبدأ من … شامل الضريبة», breakfast add-on, extra bed (`extra_bed_per_night`; the extra-person fee is abolished, 23 Oct 2026), children, rate-plan names (`room_only` shown; `bed_and_breakfast` hidden in phase 1). | `verified: true` |
 | `policies.json` | Check-in/out, cancellation, refund (phase 3), /policies page sections, house rules, children. | `verified: true` |
 | `contact.json` | Per-branch phone/WhatsApp, sales line, public emails, social links, menu URL, GTM container id. Booking-notification recipients are NOT here: they live only in Supabase `booking_notification_recipients` (22 Oct 2026). | `verified: true` |
 | `legal.json` | Legal entity, CR, VAT, footer line. | `verified: true` |
