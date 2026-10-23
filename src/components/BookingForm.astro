@@ -287,10 +287,12 @@ const stepper = (name: 'adults' | 'children' | 'extra_beds', value: number, min:
       <span data-submit-label>{f.submit}</span>
       <Icon name="arrow" size={18} class="icon-arrow rtl:rotate-180" />
     </button>
-    <a href="#" class="hidden inline-flex items-center gap-2 border border-midnight text-midnight font-semibold px-5 py-3 rounded hover:bg-midnight hover:text-white transition-colors" data-wa-fallback rel="noopener" target="_blank">
+    {/* WhatsApp hand-off (23 Oct 2026): a real button, always offered; it validates like the submit, then opens wa.me
+        from inside the click handler (popup blockers allow it) and never navigates this page. */}
+    <button type="button" class="inline-flex items-center gap-2 border border-midnight text-midnight font-semibold px-5 py-3 rounded hover:bg-midnight hover:text-white transition-colors" data-wa-send>
       <Icon name="whatsapp" size={18} />
       <span>{f.whatsapp_fallback}</span>
-    </a>
+    </button>
   </div>
 
   <script type="application/json" data-booking-data set:html={JSON.stringify(clientData).replace(/</g, '\\u003c')} />
@@ -396,7 +398,7 @@ const stepper = (name: 'adults' | 'children' | 'extra_beds', value: number, min:
     const submitLabel = form.querySelector<HTMLElement>('[data-submit-label]')!;
     const spinner = form.querySelector<HTMLElement>('[data-spinner]')!;
     const formError = form.querySelector<HTMLElement>('[data-form-error]')!;
-    const waFallback = form.querySelector<HTMLAnchorElement>('[data-wa-fallback]')!;
+    const waSend = form.querySelector<HTMLButtonElement>('[data-wa-send]')!;
     const summary = form.querySelector<HTMLElement>('[data-summary]')!;
     const nightsLine = form.querySelector<HTMLElement>('[data-nights]')!;
     const capNote = form.querySelector<HTMLElement>('[data-capacity-note]')!;
@@ -825,34 +827,71 @@ const stepper = (name: 'adults' | 'children' | 'extra_beds', value: number, min:
     }
 
     // ── WhatsApp hand-off with every field ───────────────────────────────────────────────────────────────
+    /** wa.me link to the branch's number with every filled field, one line per field (form labels, page language);
+        a line whose field is still empty (dates, breakfast, name, phone, email, notes) is left out. */
     function whatsappUrl(p: BookingInput): string {
-      const b = data.branches.find((x) => x.slug === p.branch) ?? data.branches[0];
+      const b = data.branches.find((x) => x.slug === p.branch)!;
       const r = data.rooms.find((x) => x.slug === p.room && x.branch === p.branch);
       const n = nightsNow();
-      const phone = phoneToE164(p.phone, p.country || 'SA') ?? p.phone;
+      const phone = p.phone ? (phoneToE164(p.phone, p.country || 'SA') ?? p.phone) : '';
       const vals: Record<string, string> = {
         branch: b.name,
-        check_in: p.check_in || '-',
-        check_out: p.check_out || '-',
-        nights: n ? plural(P.nights, n) : '-',
-        adults: String(p.adults || '-'),
+        room: r ? r.name : S.anyRoom,
+        check_in: p.check_in,
+        check_out: p.check_out,
+        nights: n ? plural(P.nights, n) : '',
+        adults: String(p.adults || ''),
         children: String(p.children || '0'),
         extra_beds: String(p.extra_beds || '0'),
-        room: r ? r.name : S.anyRoom,
-        breakfast: p.breakfast === 'with' ? S.breakfastWith : p.breakfast === 'without' ? S.breakfastWithout : '-',
-        name: p.name || '-',
-        phone: phone || '-',
-        email: p.email || '-',
-        notes: p.notes || '-',
+        breakfast: p.breakfast === 'with' ? S.breakfastWith : p.breakfast === 'without' ? S.breakfastWithout : '',
+        name: p.name,
+        phone,
+        email: p.email,
+        notes: p.notes,
       };
-      const msg = S.whatsappMessage.replace(/\{(\w+)\}/g, (_, k: string) => vals[k] ?? '');
+      const msg = S.whatsappMessage
+        .split('\n')
+        .filter((line) => [...line.matchAll(/\{(\w+)\}/g)].every((m) => vals[m[1]]))
+        .map((line) => line.replace(/\{(\w+)\}/g, (_, k: string) => vals[k] ?? ''))
+        .join('\n');
       return `https://wa.me/${b.whatsapp.replace(/\D/g, '')}?text=${encodeURIComponent(msg)}`;
     }
-    function showFallback(p: BookingInput, msg: string) {
+    /** Hand-off validation: the branch is required; every other field is checked only once the guest filled it. */
+    function validateFilled(): boolean {
+      const errs = errorsNow();
+      const filled = (f: string) => {
+        if (f === 'branch' || f === 'adults' || f === 'extra_beds' || f === 'room') return true;
+        if (f === 'breakfast') return !!form.querySelector('input[name="breakfast"]:checked');
+        if (f === 'phone') return !!phoneIn.value.trim();
+        return !!(control(f) as HTMLInputElement | null)?.value.trim();
+      };
+      let first: HTMLElement | null = null;
+      for (const f of FIELDS) {
+        const code = errs[f] ?? (f === 'adults' ? errs.children : undefined);
+        if (!filled(f)) {
+          if (!touched.has(f)) showError(f, null);
+          continue;
+        }
+        showError(f, code ? message(f, code) : null);
+        if (code && !first) first = f === 'adults' ? adultsIn : f === 'extra_beds' ? bedsIn : control(f);
+      }
+      if (first) first.focus();
+      return !first;
+    }
+    // Synchronous from click to window.open (no await): a popup opened later than the click is blocked. On mobile
+    // wa.me hands over to the WhatsApp app. The current page is never navigated.
+    waSend.addEventListener('click', () => {
+      if (!validateFilled()) return;
+      const p = collect();
+      window.open(whatsappUrl(p), '_blank', 'noopener');
+      const w = window as unknown as { dataLayer?: unknown[] };
+      w.dataLayer = w.dataLayer || [];
+      w.dataLayer.push({ event: 'whatsapp_click', destination: p.branch, source: 'booking_form', page_path: location.pathname, page_location: location.href });
+    });
+    function showFallback(msg: string) {
       formError.textContent = msg;
       formError.classList.remove('hidden');
-      waFallback.href = whatsappUrl(p);
-      waFallback.classList.remove('hidden');
+      waSend.scrollIntoView({ block: 'nearest' });
     }
     function setSending(on: boolean) {
       sending = on;
@@ -866,7 +905,6 @@ const stepper = (name: 'adults' | 'children' | 'extra_beds', value: number, min:
       e.preventDefault();
       if (sending) return; // no double submit
       formError.classList.add('hidden');
-      waFallback.classList.add('hidden');
       await loadPhoneLib();
       if (!validateAll()) return;
       const p = collect();
@@ -874,9 +912,9 @@ const stepper = (name: 'adults' | 'children' | 'extra_beds', value: number, min:
       if (!r.ok) return;
       const d = r.data;
       if (!data.endpoint) {
-        // no endpoint configured for this build → WhatsApp hand-off, never a silent failure
-        showFallback(p, S.errors.server);
-        window.open(whatsappUrl(p), '_blank', 'noopener');
+        // no endpoint configured for this build → point to the WhatsApp hand-off, never a silent failure
+        // (no window.open here: after the await above a popup would be blocked)
+        showFallback(S.errors.server);
         return;
       }
       setSending(true);
@@ -921,7 +959,7 @@ const stepper = (name: 'adults' | 'children' | 'extra_beds', value: number, min:
         leaving = true;
         location.assign(`${data.successPath}?${params.toString()}`);
       } catch {
-        showFallback(p, S.errors.server);
+        showFallback(S.errors.server);
       } finally {
         if (!leaving) setSending(false);
       }

@@ -20,7 +20,8 @@ const articles = defineCollection({
     seo_title: z.string().min(1).max(60),
     seo_description: z.string().min(1).max(155),
     tags: z.array(z.string().min(1)).min(1),
-    branch: z.enum(['airport-road', 'shafa-road']),
+    /** the property the article is about; absent or "both" → the closing block shows both branch cards */
+    branch: z.enum(['airport-road', 'shafa-road', 'both']).optional(),
     related_place: z.string().min(1).nullable().optional(),
     /** image base under public/ (files <base>-<width>.webp), or COVER_PENDING */
     cover: z.string().min(1),

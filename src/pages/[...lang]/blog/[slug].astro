@@ -3,8 +3,9 @@
  * /blog/<slug>/ and /en/blog/<slug>/ (12 Oct 2026). Built only for slugs published in both languages.
  * Title / description from the article's seo_title / seo_description; reading column 68ch; each ## section reveals;
  * :::photo / :::gallery render Photo / GallerySlider; reading progress = CSS scroll-driven animation (no listener).
- * Closing blocks: nearest branch + booking card (branch from frontmatter → the drawer opens prefilled), the related
- * Discover Taif place, related articles (same tag or branch).
+ * Closing blocks: nearest branch + booking card (branch from frontmatter → the drawer opens prefilled; an article about
+ * both properties — branch absent or "both" — shows both branch cards), the related Discover Taif place, related
+ * articles (same tag or branch).
  */
 import Base from '@layouts/Base.astro';
 import ArticleCard from '@components/ArticleCard.astro';
@@ -13,6 +14,7 @@ import Photo from '@components/Photo.astro';
 import Placeholder from '@components/Placeholder.astro';
 import Icon from '@components/Icon.astro';
 import {
+  articleBranches,
   articlePath,
   articles,
   blogPath,
@@ -66,8 +68,8 @@ const path = `/blog/${slug}/`;
 const sections = await renderBody(a.body);
 const cover = await coverImage(a);
 const minutes = minutesText(locale, a.body);
-const branch = branchBySlug(a.branch);
-const c = branchContact(a.branch);
+const cards = articleBranches(a).map((s) => ({ branch: branchBySlug(s), c: branchContact(s) }));
+const twoBranches = cards.length > 1;
 const place = relatedPlace(a.related_place);
 const related = relatedArticles(
   all.filter((x) => both.has(x.slug)),
@@ -96,7 +98,7 @@ const jsonld = [
     dateModified: a.updated ?? a.date,
     keywords: a.tags,
     author: a.author,
-    branchSlug: a.branch,
+    branchSlugs: cards.map((x) => x.branch.slug),
   }),
   breadcrumbs(crumbs),
 ];
@@ -156,11 +158,12 @@ if (faq.length) jsonld.push(faqPage(faq, articlePath(locale, slug)));
       <ArticleBody locale={locale} sections={sections} />
     </div>
 
-    <aside class="mx-auto max-w-6xl px-4 mt-14 grid gap-6 lg:grid-cols-5" aria-label={b.nearest_branch}>
-      <section class="reveal reveal-lg lg:col-span-3 relative bg-midnight text-porcelain rounded-card p-6 md:p-8 overflow-hidden">
+    <aside class:list={['mx-auto max-w-6xl px-4 mt-14 grid gap-6', twoBranches ? 'lg:grid-cols-2' : 'lg:grid-cols-5']} aria-label={twoBranches ? b.both_branches : b.nearest_branch}>
+      {cards.map(({ branch, c }) => (
+      <section class:list={['reveal reveal-lg relative bg-midnight text-porcelain rounded-card p-6 md:p-8 overflow-hidden', !twoBranches && 'lg:col-span-3']}>
         <div class="absolute inset-0 pattern-bg" aria-hidden="true"></div>
         <div class="relative">
-          <p class="text-sm font-semibold text-porcelain/80">{b.nearest_branch}</p>
+          <p class="text-sm font-semibold text-porcelain/80">{twoBranches ? b.both_branches : b.nearest_branch}</p>
           <h2 class="mt-2 text-2xl font-bold">{fill(b.book_heading, { branch: L(locale, branch, 'name') })}</h2>
           <p class="mt-2 text-porcelain/85">{L(locale, branch, 'tagline')}</p>
           <p class="mt-4 text-sm text-porcelain/80 flex items-start gap-2">
@@ -196,6 +199,7 @@ if (faq.length) jsonld.push(faqPage(faq, articlePath(locale, slug)));
           </div>
         </div>
       </section>
+      ))}
 
       {
         place && (

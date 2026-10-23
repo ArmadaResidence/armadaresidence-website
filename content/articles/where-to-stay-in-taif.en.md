@@ -10,7 +10,7 @@ title: "Where to Stay in Taif: Areas by Reason for Your Visit"
 seo_title: "Where to Stay in Taif: Areas by Reason for Your Visit"
 seo_description: "Airport Road for travellers and Umrah guests, Shafa Road for families and the highlands: choose where to stay in Taif by your reason for visiting."
 tags: ["Taif", "Where to stay", "Al Hada", "Al Shafa"]
-branch: "airport-road"
+branch: "both"
 related_place: "al-hada-cable-car"
 ---
 Taif is one city, but the right place to stay depends on why you are coming. A traveller heading on to Makkah wants to be near the road; a family wants calm and parks; a business guest wants space and easy access. This guide helps you pick the area that fits your trip.

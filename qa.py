@@ -820,8 +820,8 @@ def check_articles(rep: "Report", pages: dict) -> None:
             rep.f(G, f"{where}: status must be published or draft")
         if not re.fullmatch(r"\d{4}-\d{2}-\d{2}", str(d.get("date", ""))):
             rep.f(G, f"{where}: date must be YYYY-MM-DD")
-        if d.get("branch") not in branches:
-            rep.f(G, f"{where}: branch {d.get('branch')!r} is not in branches.json")
+        if d.get("branch") is not None and d.get("branch") not in branches | {"both"}:
+            rep.f(G, f"{where}: branch {d.get('branch')!r} is not in branches.json (or \"both\")")
         if d.get("related_place") and d["related_place"] not in place_keys:
             rep.f(G, f"{where}: related_place {d['related_place']!r} is not a taif-guide.json place key")
         tags = d.get("tags")
@@ -886,8 +886,10 @@ def check_articles(rep: "Report", pages: dict) -> None:
             listing = f"{pre}/blog/"
             if listing in pages and p_ not in pages[listing].links:
                 rep.f(G, f"{listing}: does not list {p_}")
-            if f"{pre}/booking/?branch={d.get('branch')}" not in pg.links:
-                rep.f(G, f"{p_}: booking card for {d.get('branch')} missing")
+            # one booking card per branch the article is about (absent / "both" → both branches)
+            for bs in ([d["branch"]] if d.get("branch") in branches else sorted(branches)):
+                if f"{pre}/booking/?branch={bs}" not in pg.links:
+                    rep.f(G, f"{p_}: booking card for {bs} missing")
             if d.get("related_place"):
                 anchor = f"{pre}/discover-taif/#place-{d['related_place']}"
                 if anchor not in pg.links:

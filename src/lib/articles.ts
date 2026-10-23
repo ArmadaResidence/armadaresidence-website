@@ -18,7 +18,7 @@ import { join } from 'node:path';
 import { Marked } from 'marked';
 import sharp from 'sharp';
 import { COVER_PENDING } from '../content.config';
-import { fill, lqip, localePath, taif, ui, type Locale, type Place } from './content';
+import { branches, fill, lqip, localePath, taif, ui, type Locale, type Place } from './content';
 
 export type Article = CollectionEntry<'articles'>['data'] & { id: string; body: string };
 
@@ -40,6 +40,10 @@ export async function publishedSlugs(): Promise<string[]> {
   const enSlugs = new Set(en.map((a) => a.slug));
   return ar.map((a) => a.slug).filter((s) => enSlugs.has(s));
 }
+
+/** The branches an article is about: its `branch`, or both when it is absent or "both" (23 Oct 2026). */
+export const articleBranches = (a: Pick<Article, 'branch'>): string[] =>
+  a.branch && a.branch !== 'both' ? [a.branch] : branches.map((b) => b.slug);
 
 export const blogPath = (locale: Locale) => localePath(locale, '/blog/');
 export const articlePath = (locale: Locale, slug: string) => localePath(locale, `/blog/${slug}/`);
@@ -217,11 +221,12 @@ export async function renderBody(body: string): Promise<Section[]> {
 
 /* ---------- related ---------- */
 
-/** Up to `n` other articles sharing a tag or the branch; shared tags rank first, then same branch, then date. */
+/** Up to `n` other articles sharing a tag or a branch; shared tags rank first, then a shared branch, then date. */
 export function relatedArticles(all: Article[], a: Article, n = 3): Article[] {
+  const mine = articleBranches(a);
   return all
     .filter((x) => x.slug !== a.slug)
-    .map((x) => ({ x, tags: x.tags.filter((t) => a.tags.includes(t)).length, branch: x.branch === a.branch ? 1 : 0 }))
+    .map((x) => ({ x, tags: x.tags.filter((t) => a.tags.includes(t)).length, branch: articleBranches(x).some((b) => mine.includes(b)) ? 1 : 0 }))
     .filter((r) => r.tags || r.branch)
     .sort((p, q) => q.tags - p.tags || q.branch - p.branch || q.x.date.localeCompare(p.x.date))
     .slice(0, n)

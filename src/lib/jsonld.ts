@@ -212,7 +212,7 @@ export interface ArticleLd {
   dateModified: string;
   keywords: string[];
   author: string;
-  branchSlug: string;
+  branchSlugs: string[];
 }
 
 function publisher(locale: Locale) {
@@ -241,7 +241,7 @@ export function article(locale: Locale, a: ArticleLd) {
     author: { '@type': 'Organization', name: a.author, url: absoluteUrl(localePath(locale, '/')) },
     publisher: publisher(locale),
     isPartOf: { '@type': 'Blog', '@id': absoluteUrl(localePath(locale, '/blog/')) },
-    about: { '@type': a.branchSlug === 'shafa-road' ? 'Hotel' : 'LodgingBusiness', '@id': absoluteUrl(branchPath(locale, a.branchSlug)) + '#lodging' },
+    about: a.branchSlugs.map((s) => ({ '@type': s === 'shafa-road' ? 'Hotel' : 'LodgingBusiness', '@id': absoluteUrl(branchPath(locale, s)) + '#lodging' })),
   };
 }
 

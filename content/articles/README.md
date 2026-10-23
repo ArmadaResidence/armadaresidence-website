@@ -16,7 +16,7 @@ One `key: value` per line; values are JSON literals (strings in double quotes, a
 | `seo_title` | `<title>`, **≤ 60 characters** |
 | `seo_description` | meta description and card summary, **≤ 155 characters** |
 | `tags` | non-empty list; tags filter `/blog/` and pick related articles (same tag or same branch) |
-| `branch` | `airport-road` or `shafa-road` — the "nearest property" block and the booking card (drawer opens prefilled) |
+| `branch` | `airport-road` or `shafa-road` — the "nearest property" block and the booking card (drawer opens prefilled); `both` or left out for an article about both properties → one booking card per branch |
 | `related_place` | a place `key` from `content/taif-guide.json` (e.g. `souq-okaz`) → link to `/discover-taif/#place-<key>`; `null` for none |
 | `cover` | image base under `public/` (files `<base>-800.webp`, `<base>-1400.webp`…, e.g. `/images/blog/taif-rose-season`) or `"[TODO(photo)]"` → brand placeholder |
 | `cover_alt` | real description of the cover, in the article's language |

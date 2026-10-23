@@ -176,7 +176,7 @@
         "extra_beds": "عدد الأسرّة الإضافية أكبر من المسموح لهذه الغرفة."
       },
       "whatsapp_fallback": "أرسل الطلب عبر واتساب",
-      "whatsapp_message": "السلام عليكم، أرغب في طلب حجز في {branch}.\nالوصول: {check_in}\nالمغادرة: {check_out} ({nights})\nالبالغون: {adults} · الأطفال: {children}\nنوع الغرفة: {room}\nأسرّة إضافية: {extra_beds}\nالإفطار: {breakfast}\nالاسم: {name}\nالجوال: {phone}\nالبريد: {email}\nملاحظات: {notes}",
+      "whatsapp_message": "السلام عليكم، أرغب في طلب حجز.\nالفرع: {branch}\nنوع الغرفة: {room}\nتاريخ الوصول: {check_in}\nتاريخ المغادرة: {check_out}\nعدد الليالي: {nights}\nالبالغون: {adults}\nالأطفال: {children}\nأسرّة إضافية: {extra_beds}\nالإفطار: {breakfast}\nالاسم الكامل: {name}\nرقم الجوال: {phone}\nالبريد الإلكتروني: {email}\nملاحظات: {notes}",
       "email_hint": "إن أضفته، تصلك عليه رسالة باستلام الطلب.",
       "country_code": "رمز الدولة",
       "country_search": "ابحث عن دولة أو رمز",
@@ -448,6 +448,7 @@
       "breadcrumb": "مسار التنقل",
       "progress": "تقدّم القراءة",
       "nearest_branch": "الفرع الأقرب",
+      "both_branches": "فرعا أرمادا ريزيدنس في الطائف",
       "book_heading": "اطلب حجزًا في {branch}",
       "book_body": "اختر تواريخك وعدد الضيوف، وسيؤكد الاستقبال التوافر والسعر.",
       "book_cta": "اطلب حجزًا",
@@ -639,7 +640,7 @@
         "extra_beds": "More extra beds than this room allows."
       },
       "whatsapp_fallback": "Send the request on WhatsApp",
-      "whatsapp_message": "Hello, I would like to request a booking at {branch}.\nCheck-in: {check_in}\nCheck-out: {check_out} ({nights})\nAdults: {adults} · Children: {children}\nRoom type: {room}\nExtra beds: {extra_beds}\nBreakfast: {breakfast}\nName: {name}\nMobile: {phone}\nEmail: {email}\nNotes: {notes}",
+      "whatsapp_message": "Hello, I would like to request a booking.\nProperty: {branch}\nRoom type: {room}\nCheck-in date: {check_in}\nCheck-out date: {check_out}\nNights: {nights}\nAdults: {adults}\nChildren: {children}\nExtra beds: {extra_beds}\nBreakfast: {breakfast}\nFull name: {name}\nMobile number: {phone}\nEmail: {email}\nNotes: {notes}",
       "email_hint": "If you add it, we will email you when your request arrives.",
       "country_code": "Country code",
       "country_search": "Search a country or code",
@@ -909,6 +910,7 @@
       "breadcrumb": "Breadcrumb",
       "progress": "Reading progress",
       "nearest_branch": "Nearest property",
+      "both_branches": "Armada Residence properties in Taif",
       "book_heading": "Request a booking at {branch}",
       "book_body": "Choose your dates and guests; reception will confirm availability and price.",
       "book_cta": "Request a booking",
