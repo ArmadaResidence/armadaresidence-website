@@ -18,7 +18,8 @@ import { addDays, done, formatDate, openPicker, press, riyadhToday, tapDay } fro
 const args = process.argv.slice(2);
 const shotsAt = args.indexOf('--shots');
 const SHOTS = shotsAt >= 0 ? args[shotsAt + 1] : null;
-const BASE = (args.find((a, i) => !a.startsWith('--') && i !== shotsAt + 1) || process.env.BASE_URL || 'http://127.0.0.1:4330').replace(/\/$/, '');
+const BASE = (args.find((a, i) => !a.startsWith('--') && (shotsAt < 0 || i !== shotsAt + 1)) || process.env.BASE_URL || 'http://127.0.0.1:4330').replace(/\/$/, '');
+console.log(`datepicker-check: ${BASE}`);
 const PRE = new URL(BASE).pathname.replace(/\/$/, '');
 const ui = JSON.parse(readFileSync('content/ui.json', 'utf8'));
 if (SHOTS) mkdirSync(SHOTS, { recursive: true });
@@ -322,6 +323,10 @@ for (const vp of VIEWPORTS) {
         await form.locator('[data-submit]').click();
       }
       for (let i = 0; i < 40 && !posts.length; i++) await page.waitForTimeout(100);
+      if (process.env.DEBUG) {
+        const shown = posts.length ? [] : await page.evaluate(() => [...document.querySelectorAll('[data-error-for]:not(.hidden), [data-form-error]:not(.hidden), .fld.bad, #enquiry-error')].filter((e) => e.offsetParent).map((e) => `${e.dataset?.errorFor || e.id || e.className}: ${e.textContent.trim().slice(0, 80)}`));
+        console.log(`${tag}: ${posts.length} request(s) captured; url ${page.url()}`, shown);
+      }
       if (posts.length) {
         check(posts[0].check_in === S1 && posts[0].check_out === E1, `${tag}: submitted ${posts[0].check_in} → ${posts[0].check_out} (want ${S1} → ${E1})`);
       } else if (!noEndpointNoted) {
