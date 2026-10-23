@@ -8,6 +8,7 @@
 //   node scripts/booking-whatsapp-check.mjs [BASE_URL]
 import { readFileSync } from 'node:fs';
 import { chromium } from 'playwright';
+import { pickRange } from './datepicker-helpers.mjs';
 
 const BASE = (process.argv[2] || process.env.BASE_URL || 'http://127.0.0.1:4330').replace(/\/$/, '');
 // the GitHub Pages project site serves under a sub-path; its links carry it
@@ -98,9 +99,8 @@ for (const vp of [{ width: 1440, height: 900 }, { width: 375, height: 812, mobil
       const branch = c.branch ?? c.pick;
 
       // 2. fill everything
-      await form.locator('input[name="check_in"]').fill(CHECK_IN);
-      await form.locator('input[name="check_out"]').fill(CHECK_OUT);
-      await form.locator('input[name="check_out"]').blur();
+      // dates through the calendar picker (no typing since 23 Oct 2026)
+      await pickRange(page, form, CHECK_IN, CHECK_OUT, { mobile: !!vp.mobile });
       const inc = form.locator('[data-stepper="adults"] [data-step="1"]');
       await inc.click();
       await form.locator('[data-stepper="children"] [data-step="1"]').click();

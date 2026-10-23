@@ -11,6 +11,7 @@ Checks:
   - sitemap entries match built pages; redirects.json valid and targets exist
   - JSON-LD present and well-formed (Organization / Hotel / LodgingBusiness / HotelRoom + Offer)
   - forbidden strings; terminology («شقق فندقية» on Airport Road pages)
+  - date fields: no typed date inputs; check-in / check-out values only as the calendar picker's hidden inputs
   - phones / WhatsApp / emails match content/contact.json exactly; sales line only on /offers
   - price lines rendered from pricing.json; sold-out rooms have no booking CTA
   - home transfer size < 1 MB; no external requests except GTM and own domain
@@ -306,6 +307,14 @@ def main() -> int:
         for s in FORBIDDEN:
             if s in html:
                 rep.f("forbidden strings", f"{path}: contains {s!r}")
+
+        # dates are picked from the calendar range picker, never typed (Ahmed, 23 Oct 2026): no date / text date
+        # inputs, and every date value travels in a hidden input next to its picker button
+        if re.search(r'<input[^>]*type="?(?:date|datetime-local)\b', html):
+            rep.f("date fields", f"{path}: a typed date input is present (use DateRangeField)")
+        for m in re.finditer(r'<input[^>]*name="?(check_in|check_out|checkin|checkout)\b[^>]*>', html):
+            if 'type="hidden"' not in m.group(0) or "data-dr-value" not in m.group(0):
+                rep.f("date fields", f"{path}: {m.group(1)} is not a picker value (hidden input in DateRangeField)")
 
         # editorial brackets never reach the visitor (e.g. "[مرحلة 3: …]", "[يُؤكَّد]")
         for m in re.finditer(r"\[[^\]\n]{1,400}\]", p.text):

@@ -10,6 +10,7 @@ import { readFileSync } from 'node:fs';
 import { getCountries, getCountryCallingCode } from 'libphonenumber-js/min';
 import { branchContact, branchShort, branches, extraBedFeeLine, L, localePath, rooms, ui, type Locale } from '@lib/content';
 import Icon from './Icon.astro';
+import DateRangeField from './DateRangeField.astro';
 
 interface Props {
   locale: Locale;
@@ -105,35 +106,17 @@ const stepper = (name: 'adults' | 'children' | 'extra_beds', value: number, min:
       <p id={err('room')} class="field-error hidden" data-error-for="room"></p>
     </div>
 
-    {/* 3. Dates: ISO text field (Western digits whatever the locale) + the native picker; no past dates (Asia/Riyadh) */}
-    {
-      (['check_in', 'check_out'] as const).map((name) => (
-        <div class="field" data-date-field>
-          <input
-            id={id(name)}
-            name={name}
-            type="text"
-            inputmode="numeric"
-            autocomplete="off"
-            placeholder={f.date_format}
-            pattern="\d{4}-\d{2}-\d{2}"
-            maxlength="10"
-            required
-            lang="en"
-            dir="ltr"
-            class:list={[latinInput, 'pe-11']}
-            aria-describedby={err(name)}
-            data-date-text
-          />
-          <label for={id(name)} class="field-label">{f[name]}</label>
-          <input type="date" tabindex="-1" aria-hidden="true" lang="en" class="absolute bottom-0 right-10 w-px h-px opacity-0" data-date-picker />
-          <button type="button" class="field-icon absolute right-0 top-0 h-14 w-10 grid place-items-center text-bronze hover:text-bronze-text" aria-label={f.open_calendar} data-date-open>
-            <Icon name="calendar" size={20} />
-          </button>
-          <p id={err(name)} class="field-error hidden" data-error-for={name} />
-        </div>
-      ))
-    }
+    {/* 3. Dates: calendar range picker, no typing (decision 23 Oct 2026); ISO values in hidden inputs; no past days
+        (Asia/Riyadh), departure after arrival, up to the end of next year */}
+    <DateRangeField
+      locale={locale}
+      variant="booking"
+      names={['check_in', 'check_out']}
+      ids={[id('check_in'), id('check_out')]}
+      labels={[f.check_in, f.check_out]}
+      errorIds={[err('check_in'), err('check_out')]}
+      class="sm:col-span-2"
+    />
     <p class="sm:col-span-2 -mt-2 text-sm text-ink-muted hidden" data-nights aria-live="polite"></p>
 
     {/* 4. Guests: steppers, digits only. Adults ≤ room capacity + extra beds (rooms.json); children are not limited
@@ -301,7 +284,6 @@ const stepper = (name: 'adults' | 'children' | 'extra_beds', value: number, min:
 <script>
   import { bindOnce, onPageLoad } from '@lib/client';
   import {
-    addDays,
     bedsNeeded,
     branchMaxAdults,
     branchMaxExtraBeds,
@@ -360,7 +342,7 @@ const stepper = (name: 'adults' | 'children' | 'extra_beds', value: number, min:
     return phoneLibLoading;
   }
 
-  /** ٠١٢… / ۰۱۲… → 0-9 (phones, dates and counts are typed with Arabic keyboards too). */
+  /** ٠١٢… / ۰۱۲… → 0-9 (phones and counts are typed with Arabic keyboards too). */
   const latinDigits = (s: string) => s.replace(/[٠-٩]/g, (c) => String(c.charCodeAt(0) - 0x0660)).replace(/[۰-۹]/g, (c) => String(c.charCodeAt(0) - 0x06f0));
 
   /** E.164 for a number typed in the national form (or with +/00), valid for the chosen country. */
@@ -381,8 +363,9 @@ const stepper = (name: 'adults' | 'children' | 'extra_beds', value: number, min:
     const el = <T extends Element = HTMLInputElement>(name: string) => form.elements.namedItem(name) as unknown as T;
     const branchSel = el<HTMLSelectElement>('branch');
     const roomSel = el<HTMLSelectElement>('room');
-    const checkIn = el('check_in');
-    const checkOut = el('check_out');
+    // by name only: on /booking/ the date button's id equals the input name, so namedItem() would return both
+    const checkIn = form.querySelector<HTMLInputElement>('input[name="check_in"]')!;
+    const checkOut = form.querySelector<HTMLInputElement>('input[name="check_out"]')!;
     const adultsIn = el('adults');
     const childrenIn = el('children');
     const bedsIn = el('extra_beds');
@@ -409,53 +392,19 @@ const stepper = (name: 'adults' | 'children' | 'extra_beds', value: number, min:
 
     form.addEventListener('focusin', () => void loadPhoneLib(), { once: true });
 
-    // ── dates: native picker behind an ISO text field; min = today in Asia/Riyadh ───────────────────────────
-    const today = riyadhToday();
-    const pickers = new Map<HTMLInputElement, HTMLInputElement>();
-    form.querySelectorAll<HTMLElement>('[data-date-field]').forEach((wrap) => {
-      const text = wrap.querySelector<HTMLInputElement>('[data-date-text]')!;
-      const picker = wrap.querySelector<HTMLInputElement>('[data-date-picker]')!;
-      const open = wrap.querySelector<HTMLButtonElement>('[data-date-open]')!;
-      pickers.set(text, picker);
-      const showPicker = () => {
-        if (text.value && /^\d{4}-\d{2}-\d{2}$/.test(text.value)) picker.value = text.value;
-        try {
-          if (typeof (picker as HTMLInputElement & { showPicker?: () => void }).showPicker === 'function') (picker as HTMLInputElement & { showPicker: () => void }).showPicker();
-          else {
-            picker.focus();
-            picker.click();
-          }
-        } catch {
-          /* no picker available: the guest types the date */
-        }
-      };
-      open.addEventListener('click', showPicker);
-      text.addEventListener('click', showPicker);
-      picker.addEventListener('change', () => {
-        if (!picker.value) return;
-        text.value = picker.value;
-        text.dispatchEvent(new Event('change', { bubbles: true }));
-        touched.add(text.name);
-        validateField(text.name);
-      });
-      text.addEventListener('input', () => {
-        text.value = latinDigits(text.value).replace(/[^\d-]/g, '').slice(0, 10);
-      });
-    });
-    const setMin = (input: HTMLInputElement, value: string) => {
-      const p = pickers.get(input);
-      if (p) p.min = value;
+    // ── dates: the calendar range picker (DateRangeField) writes ISO values into the hidden inputs and dispatches
+    // `change`; the past / order / range rules live in the picker and again in rules.ts ─────────────────────
+    const dateBtn: Record<string, HTMLButtonElement> = {
+      check_in: form.querySelector<HTMLButtonElement>('[data-dr-trigger="start"]')!,
+      check_out: form.querySelector<HTMLButtonElement>('[data-dr-trigger="end"]')!,
     };
-    setMin(checkIn, today);
-    setMin(checkOut, addDays(today, 1));
-    checkIn.addEventListener('change', () => {
-      if (/^\d{4}-\d{2}-\d{2}$/.test(checkIn.value)) {
-        setMin(checkOut, addDays(checkIn.value, 1));
-        if (checkOut.value && checkOut.value <= checkIn.value) checkOut.value = '';
-      }
-      refresh();
-    });
-    checkOut.addEventListener('change', refresh);
+    for (const input of [checkIn, checkOut]) {
+      input.addEventListener('change', () => {
+        touched.add(input.name);
+        for (const f of ['check_in', 'check_out']) if (touched.has(f)) validateField(f);
+        refresh();
+      });
+    }
 
     // ── room list filtered by branch ─────────────────────────────────────────────────────────────────────
     /**
@@ -687,6 +636,7 @@ const stepper = (name: 'adults' | 'children' | 'extra_beds', value: number, min:
     function control(field: string): HTMLElement | null {
       if (field === 'breakfast') return form.querySelector<HTMLElement>('input[name="breakfast"]');
       if (field === 'phone') return phoneIn;
+      if (dateBtn[field]) return dateBtn[field];
       return form.elements.namedItem(field) as HTMLElement | null;
     }
     function showError(field: string, msg: string | null) {
@@ -730,6 +680,7 @@ const stepper = (name: 'adults' | 'children' | 'extra_beds', value: number, min:
       const c = control(f);
       c?.addEventListener('blur', () => {
         if (f === 'name' && (c as HTMLInputElement).value.trim() === '' && !touched.has(f)) return;
+        if (dateBtn[f] && c.getAttribute('aria-expanded') === 'true') return; // focus moved into the picker
         touched.add(f);
         validateField(f);
       });
@@ -863,6 +814,7 @@ const stepper = (name: 'adults' | 'children' | 'extra_beds', value: number, min:
         if (f === 'branch' || f === 'adults' || f === 'extra_beds' || f === 'room') return true;
         if (f === 'breakfast') return !!form.querySelector('input[name="breakfast"]:checked');
         if (f === 'phone') return !!phoneIn.value.trim();
+        if (dateBtn[f]) return !!(f === 'check_in' ? checkIn : checkOut).value;
         return !!(control(f) as HTMLInputElement | null)?.value.trim();
       };
       let first: HTMLElement | null = null;

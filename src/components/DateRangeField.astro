@@ -1,0 +1,129 @@
+---
+/**
+ * Arrival + departure fields with the site's calendar range picker (Ahmed, 23 Oct 2026) — the one component for
+ * every date field: the booking form (`variant="booking"`, floating-label fields) and the partners enquiry form
+ * (`variant="partners"`, the legacy .fld markup). The fields are buttons, never text inputs; the values travel in
+ * hidden inputs as ISO YYYY-MM-DD under the form's own names. Behaviour: src/lib/daterange.ts. Strings: ui.json →
+ * datepicker, plus the form's night plurals.
+ */
+import Icon from './Icon.astro';
+import { ui, type Locale } from '@lib/content';
+
+interface Props {
+  locale: Locale;
+  variant: 'booking' | 'partners';
+  /** input names (arrival, departure) */
+  names: [string, string];
+  /** ids of the two field buttons */
+  ids: [string, string];
+  labels: [string, string];
+  /** booking: ids of the inline error lines (data-error-for = the input name) */
+  errorIds?: [string, string];
+  /** partners: the .err text */
+  errorText?: string;
+  required?: boolean;
+  class?: string;
+}
+const { locale, variant, names, ids, labels, errorIds, errorText = '', required = true, class: className = '' } = Astro.props;
+const t = ui(locale);
+const S = t.datepicker;
+const uid = `${ids[0]}-dp`;
+const data = { ...S, stay_length: t.form.stay_length, nights: t.form.plural.nights, labels: { start: labels[0], end: labels[1] } };
+const which = ['start', 'end'] as const;
+---
+
+<div class:list={[variant === 'booking' ? 'grid gap-5 sm:grid-cols-2' : 'row c2', className]} data-daterange>
+  {
+    variant === 'booking'
+      ? which.map((w, i) => (
+          <div class="field">
+            <input type="hidden" name={names[i]} value="" data-dr-value={w} />
+            <button
+              type="button"
+              id={ids[i]}
+              class="field-input date-trigger w-full border border-line rounded bg-white pe-11"
+              aria-haspopup="dialog"
+              aria-expanded="false"
+              aria-labelledby={`${ids[i]}-label ${ids[i]}-value`}
+              aria-describedby={errorIds?.[i]}
+              data-dr-trigger={w}
+            >
+              <span id={`${ids[i]}-value`} class="date-trigger-value" data-dr-display />
+            </button>
+            <span id={`${ids[i]}-label`} class="field-label">
+              {labels[i]}
+            </span>
+            <span class="field-icon pointer-events-none absolute end-0 top-0 h-14 w-11 grid place-items-center text-bronze" aria-hidden="true">
+              <Icon name="calendar" size={20} />
+            </span>
+            {errorIds && <p id={errorIds[i]} class="field-error hidden" data-error-for={names[i]} />}
+          </div>
+        ))
+      : which.map((w, i) => (
+          <div class="fld">
+            <label id={`${ids[i]}-label`} for={ids[i]}>
+              {labels[i]}
+              {required && <span class="req">*</span>}
+            </label>
+            <input type="hidden" name={names[i]} value="" required={required} data-dr-value={w} />
+            <button
+              type="button"
+              id={ids[i]}
+              class="dr-trigger"
+              aria-haspopup="dialog"
+              aria-expanded="false"
+              aria-labelledby={`${ids[i]}-label ${ids[i]}-value`}
+              data-dr-trigger={w}
+            >
+              <span id={`${ids[i]}-value`} class="date-trigger-value" data-dr-display />
+              <Icon name="calendar" size={18} class="dr-trigger-icon" />
+            </button>
+            <p class="err">{errorText}</p>
+          </div>
+        ))
+  }
+  {/* Modal <dialog>: bottom sheet (one month) under 768 px, popover (two months) from 768 px — src/lib/daterange.ts */}
+  <dialog id={uid} class="dp" aria-labelledby={`${uid}-title`} data-dr-dialog>
+    <div class="dp-panel">
+      <div class="dp-head">
+        <p id={`${uid}-title`} class="dp-heading">{S.title}</p>
+        <button type="button" class="dp-x" aria-label={t.nav.close} data-dr-close>
+          <Icon name="close" size={22} />
+        </button>
+      </div>
+      <div class="dp-sel">
+        {
+          which.map((w, i) => (
+            <div class="dp-sel-item" data-dr-sel={w}>
+              <span class="dp-sel-label">{labels[i]}</span>
+              <span class="dp-sel-value" data-dr-sel-value>
+                —
+              </span>
+            </div>
+          ))
+        }
+      </div>
+      <div class="dp-body">
+        <button type="button" class="dp-nav dp-prev" aria-label={S.prev_month} data-dr-prev>
+          <Icon name="chevron" size={20} />
+        </button>
+        <button type="button" class="dp-nav dp-next" aria-label={S.next_month} data-dr-next>
+          <Icon name="chevron" size={20} />
+        </button>
+        <div class="dp-months" data-dr-months></div>
+      </div>
+      <div class="dp-foot">
+        <p class="dp-status" aria-live="polite" data-dr-status></p>
+        <div class="dp-actions">
+          <button type="button" class="dp-clear" data-dr-clear>{S.clear}</button>
+          <button type="button" class="dp-done" data-dr-done>{S.done}</button>
+        </div>
+      </div>
+    </div>
+  </dialog>
+  <script type="application/json" data-dr-data set:html={JSON.stringify(data).replace(/</g, '\\u003c')} />
+</div>
+
+<script>
+  import '@lib/daterange';
+</script>

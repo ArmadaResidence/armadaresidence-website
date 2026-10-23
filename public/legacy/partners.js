@@ -114,7 +114,11 @@
       var d = JSON.parse(raw);
       Object.keys(d).forEach(function (k) {
         var el = form.elements[k];
-        if (el && !el.value) el.value = d[k];
+        if (el && !el.value) {
+          el.value = d[k];
+          // the calendar picker re-reads its hidden inputs on change (and drops a past date from an old draft)
+          if (el.hasAttribute('data-dr-value')) el.dispatchEvent(new Event('change', { bubbles: true }));
+        }
       });
     } catch (e) { /* ignore */ }
   }
@@ -138,6 +142,10 @@
     });
   }
 
+  /* Today in Asia/Riyadh as YYYY-MM-DD (same rule as the booking form and the Edge Function). */
+  function riyadhToday() {
+    return new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Riyadh', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+  }
   function validateStep(i) {
     var ok = true;
     $$('[required]', fsteps[i]).forEach(function (el) {
@@ -145,8 +153,14 @@
       var bad = !el.value.trim();
       if (!bad && el.type === 'email') bad = !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(el.value.trim());
       if (!bad && el.type === 'tel') bad = !/^\+[1-9]\d{7,14}$/.test(el.value.replace(/[\s\-().]/g, '').replace(/^00/, '+'));
+      // dates come from the calendar picker (hidden ISO inputs): no past arrival, departure after arrival
+      if (!bad && el.name === 'checkin') bad = !/^\d{4}-\d{2}-\d{2}$/.test(el.value) || el.value < riyadhToday();
+      if (!bad && el.name === 'checkout') bad = !/^\d{4}-\d{2}-\d{2}$/.test(el.value) || el.value <= (form.elements.checkin.value || '');
       if (fld) fld.classList.toggle('bad', bad);
-      if (bad && ok) { el.focus(); ok = false; }
+      if (bad && ok) {
+        (el.type === 'hidden' && fld ? $('[data-dr-trigger]', fld) || el : el).focus();
+        ok = false;
+      }
     });
     return ok;
   }

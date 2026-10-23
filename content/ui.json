@@ -138,6 +138,23 @@
     "policies": {
       "toc": "المحتويات"
     },
+    "datepicker": {
+      "title": "تواريخ الإقامة",
+      "months": ["يناير", "فبراير", "مارس", "أبريل", "مايو", "يونيو", "يوليو", "أغسطس", "سبتمبر", "أكتوبر", "نوفمبر", "ديسمبر"],
+      "months_short": ["يناير", "فبراير", "مارس", "أبريل", "مايو", "يونيو", "يوليو", "أغسطس", "سبتمبر", "أكتوبر", "نوفمبر", "ديسمبر"],
+      "weekdays": ["الأحد", "الاثنين", "الثلاثاء", "الأربعاء", "الخميس", "الجمعة", "السبت"],
+      "weekdays_short": ["أحد", "اثنين", "ثلاثاء", "أربعاء", "خميس", "جمعة", "سبت"],
+      "field_format": "{weekday} {day} {month} {year}",
+      "day_label": "{weekday} {day} {month} {year}",
+      "month_title": "{month} {year}",
+      "list_separator": "، ",
+      "prev_month": "الشهر السابق",
+      "next_month": "الشهر التالي",
+      "pick_check_in": "اختر تاريخ الوصول",
+      "pick_check_out": "اختر تاريخ المغادرة",
+      "done": "تم",
+      "clear": "مسح التواريخ"
+    },
     "form": {
       "heading": "طلب حجز",
       "intro": "املأ النموذج وسيتواصل معك فريق الاستقبال لتأكيد التوافر والسعر النهائي. الطلب عبر الموقع ليس حجزًا مؤكدًا حتى يصلك التأكيد.",
@@ -146,8 +163,6 @@
       "check_in": "تاريخ الوصول",
       "check_out": "تاريخ المغادرة",
       "nights": "عدد الليالي",
-      "date_format": "YYYY-MM-DD",
-      "open_calendar": "افتح التقويم",
       "adults": "البالغون",
       "children": "الأطفال",
       "room_type": "نوع الغرفة (اختياري)",
@@ -165,7 +180,7 @@
       "errors": {
         "required": "هذا الحقل مطلوب.",
         "dates": "تاريخ المغادرة يجب أن يكون بعد تاريخ الوصول.",
-        "date_format": "أدخل التاريخ بصيغة YYYY-MM-DD أو اختره من التقويم.",
+        "date_format": "اختر التاريخ من التقويم.",
         "past": "تاريخ الوصول لا يمكن أن يكون في الماضي.",
         "phone": "رقم الجوال غير صحيح للدولة المختارة.",
         "email": "أدخل بريدًا إلكترونيًا صحيحًا.",
@@ -602,6 +617,23 @@
     "policies": {
       "toc": "Contents"
     },
+    "datepicker": {
+      "title": "Stay dates",
+      "months": ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"],
+      "months_short": ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"],
+      "weekdays": ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"],
+      "weekdays_short": ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"],
+      "field_format": "{weekday_short}, {day} {month_short} {year}",
+      "day_label": "{weekday}, {day} {month} {year}",
+      "month_title": "{month} {year}",
+      "list_separator": ", ",
+      "prev_month": "Previous month",
+      "next_month": "Next month",
+      "pick_check_in": "Select your check-in date",
+      "pick_check_out": "Select your check-out date",
+      "done": "Done",
+      "clear": "Clear dates"
+    },
     "form": {
       "heading": "Request a booking",
       "intro": "Fill in the form and the reception team will contact you to confirm availability and the final price. A request on the website is not a confirmed booking until you receive the confirmation.",
@@ -610,8 +642,6 @@
       "check_in": "Check-in date",
       "check_out": "Check-out date",
       "nights": "Nights",
-      "date_format": "YYYY-MM-DD",
-      "open_calendar": "Open calendar",
       "adults": "Adults",
       "children": "Children",
       "room_type": "Room type (optional)",
@@ -629,7 +659,7 @@
       "errors": {
         "required": "This field is required.",
         "dates": "Check-out must be after check-in.",
-        "date_format": "Enter the date as YYYY-MM-DD or pick it from the calendar.",
+        "date_format": "Choose the date from the calendar.",
         "past": "Check-in cannot be in the past.",
         "phone": "This mobile number is not valid for the selected country.",
         "email": "Enter a valid email address.",

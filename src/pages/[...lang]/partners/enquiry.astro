@@ -3,6 +3,7 @@
 import Base from '@layouts/Base.astro';
 import LpShell from '@components/lp/LpShell.astro';
 import LpPageHero from '@components/lp/LpPageHero.astro';
+import DateRangeField from '@components/DateRangeField.astro';
 import { langPaths } from '@lib/paths';
 import { pageSeo, type Locale } from '@lib/content';
 import { ICON, lp, T, waHrefSales } from '@lib/partners';
@@ -117,10 +118,15 @@ const sel = T(locale, { en: 'Select', ar: 'اختر' });
               </div>
 
               <div class="fstep">
-                <div class="row c2">
-                  <div class="fld"><label for="f-checkin">{T(locale, fl.checkin)}<span class="req">*</span></label><input type="date" id="f-checkin" name="checkin" required /><p class="err">{req}</p></div>
-                  <div class="fld"><label for="f-checkout">{T(locale, fl.checkout)}<span class="req">*</span></label><input type="date" id="f-checkout" name="checkout" required /><p class="err">{req}</p></div>
-                </div>
+                {/* calendar range picker, same component and rules as the booking form (23 Oct 2026) */}
+                <DateRangeField
+                  locale={locale}
+                  variant="partners"
+                  names={['checkin', 'checkout']}
+                  ids={['f-checkin', 'f-checkout']}
+                  labels={[T(locale, fl.checkin), T(locale, fl.checkout)]}
+                  errorText={req}
+                />
                 <div class="row c2">
                   <div class="fld"><label for="f-guests">{T(locale, fl.guests)}<span class="req">*</span></label><input type="number" id="f-guests" name="guests" min="1" inputmode="numeric" required /><p class="err">{req}</p></div>
                   <div class="fld"><label for="f-rooms">{T(locale, fl.rooms)}</label><input type="number" id="f-rooms" name="rooms" min="1" inputmode="numeric" /><p class="err">{req}</p></div>

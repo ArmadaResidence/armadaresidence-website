@@ -529,7 +529,7 @@ footer :focus-visible,
 
 /* ---------- Form fields with floating labels (item 5, 11 Oct 2026) ----------
    Fixed 56 px field height; the label sits in the field and moves up with a transform only (focus, a value, a
-   select, an invalid field). Placeholders show on focus only (the date fields carry the YYYY-MM-DD pattern). */
+   select, an invalid field). Placeholders show on focus only. The date fields are buttons (calendar picker below). */
 .field {
   position: relative;
 }
@@ -746,15 +746,432 @@ footer :focus-visible,
   }
 }
 
+/* ---------- Date fields + calendar range picker (Ahmed, 23 Oct 2026; src/lib/daterange.ts) ----------
+   The fields are buttons (no keyboard on phones). Empty: the label sits in the field; a value, focus, an open
+   picker or an error lift it. The picker is a modal <dialog>: a full-screen bottom sheet with one month under
+   768 px, a popover with two months from 768 px. Arrival/departure: midnight disc with white text (15.9:1); in dark
+   mode bronze-tint disc with the dark background as text (7.9:1); the stay between them is a bronze band. Past days
+   are muted (disabled controls are exempt from contrast minimums). Day cells are 44 px squares. */
+.date-trigger {
+  display: block;
+  text-align: start;
+  color: var(--color-ink);
+  cursor: pointer;
+}
+.date-trigger-value {
+  display: block;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.date-trigger:hover,
+.date-trigger.is-active {
+  border-color: var(--color-bronze);
+}
+.date-trigger.is-active {
+  box-shadow: inset 0 0 0 1px var(--color-bronze);
+}
+.date-trigger:not(.has-value):not(:focus):not([aria-expanded='true']):not([aria-invalid='true']) ~ .field-label {
+  transform: none;
+  color: var(--color-ink-muted);
+}
+.dr-trigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.625rem;
+  width: 100%;
+  min-height: 3rem;
+  text-align: start;
+  cursor: pointer;
+}
+.legacy-partners .fld .dr-trigger {
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 12px 14px;
+  font-size: 14.5px;
+  color: var(--tx);
+  transition:
+    border-color var(--motion-fast) var(--ease-out),
+    box-shadow var(--motion-fast) var(--ease-out);
+}
+.legacy-partners .fld .dr-trigger:hover,
+.legacy-partners .fld .dr-trigger:focus-visible,
+.legacy-partners .fld .dr-trigger.is-active {
+  border-color: var(--bronze);
+}
+.legacy-partners .fld .dr-trigger.is-active {
+  box-shadow: 0 0 0 3px rgba(184, 134, 78, 0.16);
+}
+.legacy-partners .fld.bad .dr-trigger {
+  border-color: #c4553b;
+}
+[data-theme='dark'] .legacy-partners .fld.bad .dr-trigger {
+  border-color: #e07a62;
+}
+.dr-trigger-icon {
+  flex: none;
+  color: var(--color-bronze);
+}
+
+.dp {
+  --dp-bg: var(--color-white);
+  --dp-sel-bg: var(--color-midnight);
+  --dp-sel-fg: var(--color-white);
+  --dp-band: color-mix(in srgb, var(--color-bronze) 16%, var(--color-white));
+  --dp-band-preview: color-mix(in srgb, var(--color-bronze) 9%, var(--color-white));
+  --dp-hover: var(--color-porcelain);
+  --dp-accent: var(--color-bronze-text);
+  margin: 0;
+  padding: 0;
+  border: 0;
+  max-width: none;
+  max-height: none;
+  background: var(--dp-bg);
+  color: var(--color-ink);
+  overscroll-behavior: contain;
+}
+[data-theme='dark'] .dp {
+  --dp-bg: var(--dk-surface);
+  --dp-sel-bg: var(--dk-bronze-text);
+  --dp-sel-fg: var(--dk-bg);
+  --dp-band: rgba(201, 162, 122, 0.22);
+  --dp-band-preview: rgba(201, 162, 122, 0.12);
+  --dp-hover: var(--dk-strip);
+  --dp-accent: var(--dk-bronze-text);
+}
+.dp::backdrop {
+  background: transparent;
+}
+@media (max-width: 767px) {
+  .dp {
+    position: fixed;
+    inset: 0;
+    width: 100vw;
+    height: 100dvh;
+    transform: translateY(100%);
+    transition: transform var(--motion-base) var(--ease-out);
+  }
+  .dp.is-open {
+    transform: none;
+  }
+  .dp .dp-panel {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    padding: 0.75rem 1rem calc(1rem + env(safe-area-inset-bottom));
+  }
+  .dp .dp-body {
+    flex: 1 1 auto;
+    overflow-y: auto;
+  }
+  html.dp-open {
+    overflow: hidden;
+  }
+}
+@media (min-width: 768px) {
+  .dp {
+    position: absolute; /* top layer + absolute = document coordinates: scrolls with the page, no scroll listener */
+    inset: auto; /* top / left from the script, under (or above) the fields */
+    width: max-content;
+    max-height: calc(100dvh - 1rem);
+    overflow-y: auto;
+    border: 1px solid var(--color-line);
+    border-radius: var(--radius-card);
+    box-shadow: 0 16px 48px rgba(20, 42, 59, 0.22);
+    opacity: 0;
+    transform: translateY(calc(var(--motion-shift-sm) * -0.5));
+    transition:
+      opacity var(--motion-fast) var(--ease-out),
+      transform var(--motion-fast) var(--ease-out);
+  }
+  .dp.is-open {
+    opacity: 1;
+    transform: none;
+  }
+  .dp .dp-panel {
+    padding: 1.25rem 1.25rem 1rem;
+  }
+}
+.dp .dp-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+.dp .dp-heading {
+  margin: 0;
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: var(--color-midnight);
+}
+.dp .dp-x,
+.dp .dp-nav {
+  display: grid;
+  place-items: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: 9999px;
+  color: var(--color-midnight);
+  transition: background-color var(--motion-fast) var(--ease-out);
+}
+.dp .dp-x {
+  margin-inline-end: -0.5rem;
+}
+.dp .dp-x:hover,
+.dp .dp-nav:hover {
+  background-color: var(--dp-hover);
+}
+.dp .dp-sel {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+.dp .dp-sel-item {
+  min-width: 0;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--color-line);
+  border-radius: 0.25rem;
+}
+.dp .dp-sel-item.is-active {
+  border-color: var(--color-bronze);
+  box-shadow: inset 0 0 0 1px var(--color-bronze);
+}
+.dp .dp-sel-label {
+  display: block;
+  font-size: 0.75rem;
+  color: var(--color-ink-muted);
+}
+.dp .dp-sel-value {
+  display: block;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--color-ink);
+}
+.dp .dp-body {
+  position: relative;
+  margin-top: 0.75rem;
+}
+.dp .dp-nav {
+  position: absolute;
+  top: 0;
+  z-index: 1;
+}
+.dp .dp-prev {
+  inset-inline-start: 0;
+}
+.dp .dp-next {
+  inset-inline-end: 0;
+}
+/* the chevron points right: prev faces the reading-start side, next the reading-end side (mirrored in Arabic) */
+.dp .dp-prev svg,
+[dir='rtl'] .dp .dp-next svg {
+  transform: scaleX(-1);
+}
+[dir='rtl'] .dp .dp-prev svg {
+  transform: none;
+}
+.dp .dp-nav[aria-disabled='true'] {
+  opacity: 0.35;
+  cursor: default;
+  background: none;
+}
+.dp .dp-months {
+  display: flex;
+  gap: 2rem;
+}
+.dp .dp-live {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+.dp .dp-month {
+  flex: 1 1 0;
+  min-width: 0;
+  min-height: calc(2.75rem * 7 + 1.75rem); /* title + weekday row + six weeks: no jump between months */
+}
+@media (min-width: 768px) {
+  .dp .dp-month {
+    flex: none;
+    width: calc(2.75rem * 7);
+  }
+}
+.dp .dp-title {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 2.75rem;
+  font-weight: 700;
+  color: var(--color-midnight);
+}
+.dp .dp-grid {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+.dp .dp-grid th {
+  height: 1.75rem;
+  padding: 0;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-align: center;
+  color: var(--color-ink-muted);
+}
+.dp .dp-grid td {
+  position: relative;
+  height: 2.75rem;
+  padding: 0;
+  text-align: center;
+}
+.dp .dp-grid td[data-date] {
+  cursor: pointer;
+  outline: none;
+}
+.dp .dp-grid td.in-range::before,
+.dp .dp-grid td.is-range-start::before,
+.dp .dp-grid td.is-range-end::before {
+  content: '';
+  position: absolute;
+  inset-block: 0.125rem;
+  inset-inline: 0;
+  background: var(--dp-band);
+}
+.dp .dp-grid td.is-preview::before {
+  background: var(--dp-band-preview);
+}
+.dp .dp-grid td.is-range-start::before {
+  inset-inline-start: 50%;
+}
+.dp .dp-grid td.is-range-end::before {
+  inset-inline-end: 50%;
+}
+.dp .dp-num {
+  position: relative;
+  z-index: 1;
+  display: inline-grid;
+  place-items: center;
+  width: 2.75rem;
+  max-width: 100%;
+  height: 2.75rem;
+  border-radius: 9999px;
+  font-size: 0.9375rem;
+  font-weight: 500;
+  color: var(--color-ink);
+  transition:
+    background-color var(--motion-fast) var(--ease-out),
+    color var(--motion-fast) var(--ease-out);
+}
+.dp .dp-grid td.is-today .dp-num::after {
+  content: '';
+  position: absolute;
+  bottom: 0.375rem;
+  width: 0.25rem;
+  height: 0.25rem;
+  border-radius: 9999px;
+  background: var(--color-bronze);
+}
+@media (hover: hover) {
+  .dp .dp-grid td[data-date]:not([aria-disabled='true']):hover .dp-num {
+    box-shadow: inset 0 0 0 1px var(--color-bronze);
+  }
+}
+.dp .dp-grid td[aria-disabled='true'] {
+  cursor: default;
+}
+.dp .dp-grid td[aria-disabled='true'] .dp-num {
+  color: var(--color-ink-muted);
+  opacity: 0.4;
+}
+.dp .dp-grid td.is-preview.is-range-end .dp-num {
+  box-shadow: inset 0 0 0 2px var(--color-bronze);
+}
+.dp .dp-grid td.is-start .dp-num,
+.dp .dp-grid td.is-end .dp-num {
+  background: var(--dp-sel-bg);
+  color: var(--dp-sel-fg);
+  font-weight: 700;
+  opacity: 1;
+}
+.dp .dp-grid td.is-start.is-today .dp-num::after,
+.dp .dp-grid td.is-end.is-today .dp-num::after {
+  background: var(--dp-sel-fg);
+}
+.dp .dp-grid td[data-date]:focus-visible .dp-num {
+  outline: 2px solid var(--color-bronze);
+  outline-offset: 2px;
+}
+.dp .dp-foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem 0.75rem;
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--color-line);
+}
+.dp .dp-status {
+  margin: 0;
+  min-height: 1.25rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--color-midnight);
+}
+.dp .dp-actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-inline-start: auto;
+}
+.dp .dp-clear,
+.dp .dp-done {
+  min-height: 2.75rem;
+  border-radius: 0.25rem;
+  font-weight: 600;
+  transition: background-color var(--motion-fast) var(--ease-out);
+}
+.dp .dp-clear {
+  padding-inline: 0.75rem;
+  color: var(--dp-accent);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.dp .dp-clear:hover {
+  background-color: var(--dp-hover);
+}
+.dp .dp-done {
+  padding-inline: 1.5rem;
+  background-color: var(--color-bronze-deep);
+  color: var(--color-white);
+}
+.dp .dp-done:hover {
+  background-color: var(--color-bronze-text);
+}
+/* popover: the fields stay visible above it, so no title bar, close button or summary (the title still names the
+   dialog through aria-labelledby) */
+@media (min-width: 768px) {
+  .dp .dp-head,
+  .dp .dp-sel {
+    display: none;
+  }
+  .dp .dp-body {
+    margin-top: 0;
+  }
+}
+
 /* ---------- Count-up figures (item 6) ---------- */
 .counter-value {
   display: inline-block;
   min-inline-size: calc(var(--chars, 2) * 1ch);
   font-variant-numeric: tabular-nums;
   text-align: start;
-}
-[dir='rtl'] [data-date-field] .field-label {
-  inset-inline-start: 2.75rem;
 }
 
 /* ---------- Room cards on phones: swipeable strip (item 7, 11 Oct 2026) ----------
