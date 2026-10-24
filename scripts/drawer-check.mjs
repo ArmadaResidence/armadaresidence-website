@@ -1,13 +1,18 @@
-// Booking drawer QA (item 11): opens from the header and from a room CTA (prefilled), closes with Esc / backdrop /
-// button, returns focus, locks scroll, keeps /booking/ itself drawer-free, and reports console errors.
+// Booking drawer QA (item 11): opens from the header and from a room CTA (prefilled — what the form would submit),
+// closes with Esc / backdrop / button, returns focus, locks scroll, keeps /booking/ itself drawer-free, and reports
+// console errors. Runs against the local build or the live site (sub-path aware); endpoint, wa.me and GTM stubbed.
 //   node scripts/drawer-check.mjs [BASE_URL]
 import { chromium } from 'playwright';
 
-const BASE = (process.argv[2] || process.env.BASE_URL || 'http://127.0.0.1:4321').replace(/\/$/, '');
+const BASE = (process.argv[2] || process.env.BASE_URL || 'http://127.0.0.1:4330').replace(/\/$/, '');
+const PRE = new URL(BASE).pathname.replace(/\/$/, '');
 const fails = [];
 const browser = await chromium.launch({ channel: 'chrome' });
 for (const width of [1440, 375]) {
   const ctx = await browser.newContext({ viewport: { width, height: width < 768 ? 812 : 900 }, isMobile: width < 768, hasTouch: width < 768, locale: 'ar-SA' });
+  await ctx.route('**/functions/v1/**', (r) => r.fulfill({ status: 500, contentType: 'application/json', body: '{"ok":false}' }));
+  await ctx.route('https://wa.me/**', (r) => r.fulfill({ status: 200, contentType: 'text/html', body: '<title>wa</title>' }));
+  await ctx.route(/googletagmanager\.com|google-analytics\.com/, (r) => r.fulfill({ status: 200, contentType: 'application/javascript', body: '' }));
   const page = await ctx.newPage();
   const errors = [];
   page.on('console', (m) => m.type() === 'error' && errors.push(m.text()));
@@ -24,13 +29,13 @@ for (const width of [1440, 375]) {
   let s = await page.evaluate(() => {
     const d = document.querySelector('[data-booking-drawer]');
     const f = d.querySelector('form');
-    return { open: d.open, isOpen: d.classList.contains('is-open'), branch: f.elements.namedItem('branch').value, room: f.elements.namedItem('room').value, locked: document.documentElement.classList.contains('drawer-open'), path: location.pathname, focusInside: d.contains(document.activeElement), transform: getComputedStyle(d).transform };
+    return { open: d.open, isOpen: d.classList.contains('is-open'), branch: String(new FormData(f).get('branch') ?? ''), room: String(new FormData(f).get('room') ?? ''), locked: document.documentElement.classList.contains('drawer-open'), path: location.pathname, focusInside: d.contains(document.activeElement), transform: getComputedStyle(d).transform };
   });
   if (!s.open || !s.isOpen) fails.push(`${tag} drawer did not open from the room CTA (${JSON.stringify(s)})`);
   if (s.branch !== 'airport-road' || s.room !== 'one-bedroom-suite') fails.push(`${tag} prefill wrong: ${s.branch}/${s.room}`);
   if (!s.locked) fails.push(`${tag} scroll not locked`);
   if (!s.focusInside) fails.push(`${tag} focus not inside the drawer`);
-  if (s.path !== '/airport-road/one-bedroom-suite/') fails.push(`${tag} navigated away: ${s.path}`);
+  if (s.path !== `${PRE}/airport-road/one-bedroom-suite/`) fails.push(`${tag} navigated away: ${s.path}`);
   // 2. Esc closes, focus returns to the opener
   await page.keyboard.press('Escape');
   await page.waitForTimeout(700);

@@ -2,10 +2,11 @@
 //   node scripts/motion-check.mjs [BASE_URL]
 // Checks, per page and width: every .reveal / .reveal-group gets .is-in after a scroll-through, no console errors,
 // no layout shift during the scroll (CLS via PerformanceObserver), and under prefers-reduced-motion the tokens are 0
-// and everything is visible without scrolling. Exits non-zero on any failure.
+// and everything is visible without scrolling. Exits non-zero on any failure. Runs against the local build or the live
+// site; the booking endpoint and GTM are stubbed.
 import { chromium } from 'playwright';
 
-const BASE = (process.argv[2] || process.env.BASE_URL || 'http://127.0.0.1:4321').replace(/\/$/, '');
+const BASE = (process.argv[2] || process.env.BASE_URL || 'http://127.0.0.1:4330').replace(/\/$/, '');
 const PAGES = (process.env.PAGES ? process.env.PAGES.split(',') : ['/', '/airport-road/', '/airport-road/one-bedroom-suite/', '/offers/', '/contact/', '/policies/', '/booking/', '/en/', '/en/shafa-road/']);
 const WIDTHS = [1440, 375];
 const failures = [];
@@ -20,6 +21,8 @@ for (const reduced of [false, true]) {
       reducedMotion: reduced ? 'reduce' : 'no-preference',
       locale: 'ar-SA',
     });
+    await ctx.route('**/functions/v1/**', (r) => r.fulfill({ status: 500, contentType: 'application/json', body: '{"ok":false}' }));
+    await ctx.route(/googletagmanager\.com|google-analytics\.com/, (r) => r.fulfill({ status: 200, contentType: 'application/javascript', body: '' }));
     const page = await ctx.newPage();
     const errors = [];
     page.on('console', (m) => m.type() === 'error' && errors.push(m.text()));

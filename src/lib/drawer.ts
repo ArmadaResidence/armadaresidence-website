@@ -1,8 +1,8 @@
 /**
  * Booking drawer controller (item 11). Intercepts clicks on links to /booking/ (not the success page, not with
- * modifier keys), prefills the drawer's form from the link's query, opens the <dialog> with a slide-in, closes it
- * on Esc / backdrop / close button with the reverse slide, locks page scroll while open, and pushes
- * `booking_drawer_open` to the dataLayer. Without JS the links simply go to /booking/.
+ * modifier keys), prefills the drawer's form from the link's query (branch, room, check_in, check_out), opens the
+ * <dialog> with a slide-in, closes it on Esc / backdrop / close button with the reverse slide, locks page scroll
+ * while open, and pushes `booking_drawer_open` to the dataLayer. Without JS the links simply go to /booking/.
  *
  * Fix 23 Oct 2026 (A1): the document-level click listener used to be added inside onPageLoad, i.e. once per
  * client-side navigation, each copy holding the dialog of the page it was created on. After a navigation the
@@ -10,11 +10,17 @@
  * document (InvalidStateError); the current page's listener saw defaultPrevented and returned — so no entry point
  * worked until a full reload. Now the document listener is registered once per full load and resolves the
  * dialog of the current page at click time; per-dialog handlers stay bound to their own element.
+ *
+ * 24 Oct 2026: the drawer opens only a form whose script has run (`data-booking-ready`, set last by BookingForm).
+ * When the form's script failed to load on the first page, the ClientRouter never retries it (it records every
+ * script of the first load as run), so for the rest of the visit the drawer opened an inert form without the
+ * branch / room prefill. The link then loads /booking/?… in full instead: fresh scripts, prefilled from the URL.
  */
 import { bindOnce, onPageLeave, onPageLoad, reducedMotion } from './client';
 
 type DL = { dataLayer?: unknown[] };
-type Controller = { open: (branch: string | null, room: string | null) => void };
+type Prefill = { branch: string | null; room: string | null; check_in: string | null; check_out: string | null };
+type Controller = { open: (p: Prefill) => void };
 
 const controllers = new WeakMap<HTMLDialogElement, Controller>();
 
@@ -43,10 +49,14 @@ document.addEventListener(
     const cur = currentDrawer();
     if (!cur || cur.dialog.contains(a)) return; // no drawer on this page (e.g. /booking/ itself): follow the link
     e.preventDefault();
+    if (!cur.dialog.querySelector('form[data-booking-ready]')) {
+      location.assign(a.href); // the form's script is not running: a full load of the booking page, never an inert form
+      return;
+    }
     const q = new URL(a.href, location.href).searchParams;
     // the mobile menu may be open behind the link
     document.querySelector<HTMLButtonElement>('[data-menu-toggle][aria-expanded="true"]')?.click();
-    cur.ctl.open(q.get('branch'), q.get('room'));
+    cur.ctl.open({ branch: q.get('branch'), room: q.get('room'), check_in: q.get('check_in'), check_out: q.get('check_out') });
   },
   true,
 );
@@ -79,9 +89,9 @@ onPageLoad(() => {
     dialog.addEventListener('transitionend', done);
     window.setTimeout(() => closing && finishClose(), 700); // safety net if no transition fires
   };
-  const open = (branch: string | null, room: string | null) => {
+  const open = (p: Prefill) => {
     if (dialog.open || !dialog.isConnected) return;
-    form?.dispatchEvent(new CustomEvent('booking:prefill', { detail: { branch, room } }));
+    form?.dispatchEvent(new CustomEvent('booking:prefill', { detail: p }));
     dialog.showModal();
     document.documentElement.classList.add('drawer-open');
     // next frame so the slide-in transition runs from the closed position
@@ -89,7 +99,7 @@ onPageLoad(() => {
     dialog.querySelector<HTMLElement>('[data-drawer-close]')?.focus();
     const w = window as unknown as DL;
     w.dataLayer = w.dataLayer || [];
-    w.dataLayer.push({ event: 'booking_drawer_open', branch: branch || '', room_type: room || '', page_path: location.pathname });
+    w.dataLayer.push({ event: 'booking_drawer_open', branch: p.branch || '', room_type: p.room || '', page_path: location.pathname });
   };
   controllers.set(dialog, { open });
 

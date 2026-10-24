@@ -398,9 +398,10 @@ const stepper = (name: 'adults' | 'children' | 'extra_beds', value: number, min:
       check_in: form.querySelector<HTMLButtonElement>('[data-dr-trigger="start"]')!,
       check_out: form.querySelector<HTMLButtonElement>('[data-dr-trigger="end"]')!,
     };
+    let prefilling = false; // dates written by a prefill are not "touched" (no error shown before the guest acts)
     for (const input of [checkIn, checkOut]) {
       input.addEventListener('change', () => {
-        touched.add(input.name);
+        if (!prefilling) touched.add(input.name);
         for (const f of ['check_in', 'check_out']) if (touched.has(f)) validateField(f);
         refresh();
       });
@@ -587,11 +588,26 @@ const stepper = (name: 'adults' | 'children' | 'extra_beds', value: number, min:
       phoneIn.value = latinDigits(phoneIn.value).replace(/[^\d+\s\-()]/g, '');
     });
 
-    // ── prefill (?branch=&room= on the page, or the link that opened the drawer) ─────────────────────────
-    const prefill = (branch: string | null, room: string | null) => {
-      if (branch && data.branches.some((b) => b.slug === branch)) branchSel.value = branch;
+    // ── prefill (?branch=&room=&check_in=&check_out= on the page, or the link that opened the drawer) ─────
+    // The link sets the branch and the room exactly: none → «اختر الفرع» / «أي غرفة متاحة» (24 Oct 2026: the header
+    // button opened after a room CTA used to keep that room). Dates only when the link carries both; the picker
+    // re-reads its hidden inputs on `change` and drops a past or inconsistent pair. Without dates, dates already
+    // picked stay.
+    type Prefill = { branch?: string | null; room?: string | null; check_in?: string | null; check_out?: string | null };
+    const prefill = (p: Prefill) => {
+      branchSel.value = p.branch && data.branches.some((b) => b.slug === p.branch) ? p.branch : '';
       filterRooms();
-      if (room) selectRoom(room);
+      if (p.room) selectRoom(p.room);
+      else roomSel.selectedIndex = 0;
+      const iso = /^\d{4}-\d{2}-\d{2}$/;
+      if (p.check_in && p.check_out && iso.test(p.check_in) && iso.test(p.check_out)) {
+        prefilling = true;
+        checkIn.value = p.check_in;
+        checkOut.value = p.check_out;
+        checkIn.dispatchEvent(new Event('change', { bubbles: true }));
+        prefilling = false;
+      }
+      bedsTouched = false;
       refresh();
     };
     // (applied at the end of initForm, once every helper below exists)
@@ -918,13 +934,11 @@ const stepper = (name: 'adults' | 'children' | 'extra_beds', value: number, min:
     });
 
     const q = new URLSearchParams(location.search);
-    prefill(q.get('branch'), q.get('room'));
-    form.addEventListener('booking:prefill', (e) => {
-      const d = (e as CustomEvent<{ branch?: string | null; room?: string | null }>).detail || {};
-      if (!d.branch) branchSel.value = '';
-      prefill(d.branch ?? null, d.room ?? null);
-    });
+    prefill({ branch: q.get('branch'), room: q.get('room'), check_in: q.get('check_in'), check_out: q.get('check_out') });
+    form.addEventListener('booking:prefill', (e) => prefill((e as CustomEvent<Prefill>).detail || {}));
     refresh();
+    // last line: the drawer opens this form only once it is ready (src/lib/drawer.ts)
+    form.setAttribute('data-booking-ready', '');
   }
 
   onPageLoad(() => {

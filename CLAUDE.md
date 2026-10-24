@@ -222,12 +222,31 @@ Rules: Row Level Security on every table. Guest personal data visible only to `a
 - Contact phone/email match `content/contact.json` exactly, everywhere.
 - Home transfer size < 1 MB; no external requests except GTM and own domain.
 
+### Mandatory check suite (Ahmed, 24 Oct 2026)
+
+Every commit, however small (docs and tests included), passes the whole suite against the **local build first**; after every push, once the Pages deploy has finished, the browser checks pass against the **live site**. Never skip it, never `--no-verify`.
+
+| check | command |
+|---|---|
+| build | `python build.py` |
+| QA gate | `python qa.py` |
+| booking prefill / navigation (every entry point, FormData, dates) | `node scripts/booking-nav-check.mjs <BASE>` |
+| booking drawer | `node scripts/drawer-check.mjs <BASE>` |
+| WhatsApp hand-off | `node scripts/booking-whatsapp-check.mjs <BASE>` |
+| date picker | `node scripts/datepicker-check.mjs <BASE>` |
+| motion | `node scripts/motion-check.mjs <BASE>` |
+
+- One command runs it: `node scripts/check-all.mjs` (local: build → qa → `dist/` served by `scripts/serve-dist.mjs` → the five browser checks) and `node scripts/check-all.mjs --live [URL]` after the deploy (default: the GitHub Pages review URL; pass the domain after the switch). Every browser check stubs the booking endpoint, wa.me and GTM — nothing is sent, no analytics hit.
+- Enforced by `.githooks/pre-commit`, which runs the local suite (enable once per clone: `git config core.hooksPath .githooks`). A failing check blocks the commit: fix the cause.
+- Every report states both results (local and live). A change that adds an entry point, a form field, a page type or a date field extends the matching check in the same commit; a check must be able to run against the sub-path review site (`PRE` from its BASE URL).
+
 ---
 
 ## 12. Working rules
 
 - Decisions live in `DECISIONS.md`; append, don't rewrite history. Check it before proposing an alternative.
 - Small commits with clear messages. Never force-push. Never commit secrets, `.env`, or guest data.
+- The full check suite (§11) passes locally before every commit and on the live site after every deploy.
 - Do not change the brand tokens, terminology, or site map without asking.
 - When data is missing, stop and list exactly what is needed from Ahmed — do not fill gaps with plausible content.
 - Flag issues early and plainly; do not pad reports with what went fine.

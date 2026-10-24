@@ -1,0 +1,5 @@
+#!/bin/sh
+# Mandatory before every commit (CLAUDE.md §11, Ahmed 24 Oct 2026): build.py, qa.py and every browser check against
+# the local build — node scripts/check-all.mjs. A failing check blocks the commit; fix the cause, never --no-verify.
+# Enable once per clone: git config core.hooksPath .githooks
+exec node scripts/check-all.mjs
