@@ -168,9 +168,14 @@ async function run(vp, lang) {
       const cta = await roomPage(r.branch, r.slug, false);
       await header(false);
       await dated('dated room link', cta, { branch: r.branch, room: r.slug });
-      // the /booking/ page itself, opened with the full query
-      await page.goto(`${BASE}${bookHref(`?branch=${r.branch}&room=${r.slug}${DATES}`)}`, { waitUntil: 'load' });
-      await page.locator('form[data-booking-form][data-bound] [data-daterange][data-bound]').waitFor({ state: 'attached', timeout: 8000 });
+      // the /booking/ page itself, opened with the full query (BASE already carries the sub-path)
+      const res = await page.goto(`${BASE}${L}/booking/?branch=${r.branch}&room=${r.slug}${DATES}`, { waitUntil: 'load' });
+      // the page itself, never a 404 page (its drawer form would prefill from the same query)
+      if (res?.status() !== 200 || (await page.locator('[data-booking-drawer]').count())) {
+        fails.push(`${tag} /booking/ page @ ${here()}: HTTP ${res?.status()}, not the booking page`);
+        continue;
+      }
+      await page.locator('form[data-booking-form][data-booking-ready] [data-daterange][data-bound]').waitFor({ state: 'attached', timeout: 8000 });
       verify('/booking/ page', await formState('form[data-booking-form]'), { branch: r.branch, room: r.slug, dates: true });
     }
   } catch (e) {
