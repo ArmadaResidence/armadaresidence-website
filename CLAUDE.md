@@ -270,7 +270,7 @@ Phase 2a checks outside the suite (they need the Supabase project): `supabase/te
 
 Phase 1 complete and published on GitHub Pages (robots: noindex until domain switch): site + /discover-taif/ + /partners/ (fact sheets) + /menu/ (original frame engine) + dining section, light/dark mode.
 
-Phase 2a built 25 Oct 2026 (DECISIONS.md 2026-10-25): schema + RLS, instant confirmation, emails, dashboard in `admin/` (deployed by `ArmadaResidence/armadaresidence-admin` to admin.armadaresidence.com), runtime prices (`display_mode: runtime`). Both per-branch switches (`show_prices`, `instant_booking`) stay **off** until the sales manager has reviewed every rate and Ahmed turns them on per branch.
+Phase 2a built 25 Oct 2026 (DECISIONS.md 2026-10-25): schema + RLS, instant confirmation, emails, dashboard in `admin/` (deployed by `ArmadaResidence/armadaresidence-admin` to **admin.armadaresidence.com** — live with HTTPS enforced since 25 Oct 2026; the functions' CORS allow-list is `supabase/functions/_shared/cors.ts`), runtime prices (`display_mode: runtime`). Both per-branch switches (`show_prices`, `instant_booking`) stay **off** until the sales manager has reviewed every rate and Ahmed turns them on per branch.
 
 Pending from Ahmed:
 - Approved photo set per branch/room (hero video + stills).

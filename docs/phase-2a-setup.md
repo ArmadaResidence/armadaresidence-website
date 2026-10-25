@@ -49,6 +49,8 @@ For reception the code is optional (Q8); the same joint enrolment works if a bra
 
 ## 3. Hostinger DNS — the dashboard domain
 
+**Done 25 Oct 2026** (CNAME by Ahmed; variable, custom domain, certificate and Enforce HTTPS set the same day — the dashboard answers on `https://admin.armadaresidence.com`). What remains is the Supabase Site URL in step 1.2.
+
 Add **CNAME** `admin` → `armadaresidence.github.io` (TTL default). Then in the admin repository set the variable
 `ADMIN_DOMAIN=admin.armadaresidence.com` (`gh variable set ADMIN_DOMAIN -R ArmadaResidence/armadaresidence-admin -b admin.armadaresidence.com`),
 run the deploy workflow once, and in that repository's Settings → Pages set the custom domain to `admin.armadaresidence.com`
