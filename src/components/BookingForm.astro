@@ -24,6 +24,14 @@ const id = (name: string) => `${prefix}${name}`;
 
 const endpoint = import.meta.env.PUBLIC_BOOKING_ENDPOINT ?? '';
 const anonKey = import.meta.env.PUBLIC_SUPABASE_ANON_KEY ?? '';
+// runtime prices (phase 2a): the two read-only RPCs live on the same Supabase project as the booking function
+const supabaseUrl = (() => {
+  try {
+    return endpoint ? new URL(endpoint).origin : '';
+  } catch {
+    return '';
+  }
+})();
 const bookable = rooms.filter((r) => r.availability !== 'sold_out');
 
 // Countries with a flag on the site, in the page language; Saudi Arabia first (default), then the GCC, then A–Z.
@@ -50,6 +58,8 @@ const clientData = {
   locale,
   endpoint,
   anonKey,
+  supabaseUrl,
+  quote: t.quote,
   successPath: localePath(locale, '/booking/success/'),
   partnersPath: localePath(locale, '/partners/enquiry/'),
   branches: branches.map((b) => ({ slug: b.slug, name: L(locale, b, 'name'), short: branchShort(locale, b.slug), whatsapp: branchContact(b.slug).whatsapp })),
@@ -179,6 +189,39 @@ const stepper = (name: 'adults' | 'children' | 'extra_beds', value: number, min:
       <p id={err('breakfast')} class="field-error hidden" data-error-for="breakfast"></p>
     </fieldset>
 
+    {/* 5b. Children's ages (Q2, 24 Oct 2026): only when children > 0 AND breakfast = with — they price breakfast and
+        nothing else; one select per child, filled by the script */}
+    <fieldset class="sm:col-span-2 hidden" data-ages aria-describedby={`${id('ages-hint')} ${err('children_ages')}`}>
+      <legend class="text-sm font-semibold text-midnight mb-1">{t.quote.ages_heading}</legend>
+      <p id={id('ages-hint')} class="text-xs text-ink-muted mb-2">{t.quote.ages_hint}</p>
+      <div class="grid gap-3 grid-cols-2 sm:grid-cols-3" data-ages-list></div>
+      <p id={err('children_ages')} class="field-error hidden" data-error-for="children_ages"></p>
+    </fieldset>
+
+    {/* 5c. Price for the chosen dates (decision 4): read at runtime from quote_stay; nothing is baked into the page.
+        Hidden until a room type and both dates are set; «أي غرفة متاحة» shows the pick-room hint only. */}
+    <div class="sm:col-span-2 hidden rounded border border-line bg-porcelain p-4" data-quote aria-live="polite">
+      <div class="flex flex-wrap items-center justify-between gap-2 mb-2">
+        <h3 class="text-sm font-semibold uppercase tracking-wide text-bronze">{t.quote.heading}</h3>
+        <span class="hidden text-xs font-semibold rounded-full px-2.5 py-1" data-quote-badge></span>
+      </div>
+      <p class="hidden text-sm text-ink-muted" data-quote-note></p>
+      <table class="w-full text-sm hidden" data-quote-table>
+        <tbody>
+          <tr data-quote-row="room"><td class="py-0.5"></td><td class="py-0.5 text-end font-semibold latin" dir="auto"></td></tr>
+          <tr data-quote-row="breakfast" class="hidden"><td class="py-0.5">{t.quote.breakfast_line}</td><td class="py-0.5 text-end font-semibold" dir="auto"></td></tr>
+          <tr data-quote-row="beds" class="hidden"><td class="py-0.5"></td><td class="py-0.5 text-end font-semibold" dir="auto"></td></tr>
+          <tr data-quote-row="total" class="border-t border-line"><td class="pt-1.5 font-bold">{t.quote.total_line}</td><td class="pt-1.5 text-end font-bold text-midnight" dir="auto"></td></tr>
+        </tbody>
+      </table>
+      <details class="hidden mt-2 text-xs text-ink-muted" data-quote-nights>
+        <summary class="cursor-pointer">{t.quote.per_night}</summary>
+        <ul class="mt-1 grid gap-0.5" data-quote-nights-list></ul>
+      </details>
+      <p class="hidden mt-2 text-xs text-ink-muted" data-quote-pay>{t.quote.pay_at_hotel}</p>
+      <p class="hidden mt-2 text-sm font-semibold text-red-800" data-quote-changed role="status">{t.quote.price_changed}</p>
+    </div>
+
     {/* 6. Name */}
     <div class="sm:col-span-2 field">
       <input id={id('name')} name="name" type="text" autocomplete="name" autocapitalize="words" spellcheck="false" required maxlength="120" placeholder=" " class={inputClass} aria-describedby={err('name')} />
@@ -287,7 +330,9 @@ const stepper = (name: 'adults' | 'children' | 'extra_beds', value: number, min:
     bedsNeeded,
     branchMaxAdults,
     branchMaxExtraBeds,
+    CHILD_AGE_MAX,
     E164,
+    needsChildAges,
     nightsBetween,
     plural,
     riyadhToday,
@@ -295,12 +340,38 @@ const stepper = (name: 'adults' | 'children' | 'extra_beds', value: number, min:
     type BookingInput,
     type FieldError,
   } from '../../supabase/functions/booking-request/rules.ts';
+  import { money, quoteStay, type Quote, type QuoteResult } from '@lib/prices';
 
   type Plurals = Record<'nights' | 'adults' | 'children', Record<'one' | 'two' | 'few' | 'many', string>>;
+  type QuoteStrings = {
+    heading: string;
+    loading: string;
+    room_line: string;
+    breakfast_line: string;
+    extra_beds_line: string;
+    total_line: string;
+    per_night: string;
+    pay_at_hotel: string;
+    instant_badge: string;
+    request_badge: string;
+    submit_instant: string;
+    pick_room: string;
+    unavailable: string;
+    price_changed: string;
+    ages_heading: string;
+    ages_hint: string;
+    age_label: string;
+    age_choose: string;
+    age_under1: string;
+    age_years: string;
+    reasons: Record<string, string>;
+  };
   type Data = {
-    locale: string;
+    locale: 'ar' | 'en';
     endpoint: string;
     anonKey: string;
+    supabaseUrl: string;
+    quote: QuoteStrings;
     successPath: string;
     partnersPath: string;
     branches: { slug: string; name: string; short: string; whatsapp: string }[];
@@ -385,6 +456,9 @@ const stepper = (name: 'adults' | 'children' | 'extra_beds', value: number, min:
     const summary = form.querySelector<HTMLElement>('[data-summary]')!;
     const nightsLine = form.querySelector<HTMLElement>('[data-nights]')!;
     const capNote = form.querySelector<HTMLElement>('[data-capacity-note]')!;
+    const agesWrap = form.querySelector<HTMLElement>('[data-ages]')!;
+    const agesList = form.querySelector<HTMLElement>('[data-ages-list]')!;
+    const quoteBox = form.querySelector<HTMLElement>('[data-quote]')!;
     const touched = new Set<string>();
     let sending = false;
     /** once the guest sets the extra beds themselves, the auto-fill stops overriding them */
@@ -622,6 +696,10 @@ const stepper = (name: 'adults' | 'children' | 'extra_beds', value: number, min:
     const collect = (): BookingInput => {
       const fd = new FormData(form);
       const v = (k: string) => String(fd.get(k) ?? '').trim();
+      // ages (Q2): sent only when every shown select is chosen — they price breakfast and never block a request;
+      // without them the server stores a request with reason needs_ages (the quote badge says so)
+      const shown = agesWrap.classList.contains('hidden') ? [] : fd.getAll('children_ages').map((a) => String(a).trim());
+      const ages = shown.length && shown.every((a) => a !== '') ? shown : [];
       return {
         branch: v('branch'),
         room: v('room'),
@@ -631,6 +709,7 @@ const stepper = (name: 'adults' | 'children' | 'extra_beds', value: number, min:
         children: v('children') || '0',
         extra_beds: v('extra_beds') || '0',
         breakfast: v('breakfast'),
+        children_ages: ages,
         name: v('name'),
         phone: v('phone'),
         country: v('country'),
@@ -645,13 +724,14 @@ const stepper = (name: 'adults' | 'children' | 'extra_beds', value: number, min:
       if (code === 'required' && field === 'breakfast') return e.breakfast;
       const map: Partial<Record<FieldError, string>> = {
         required: e.required, branch: e.required, room: e.required, date_format: e.date_format, past: e.past, dates: e.dates,
-        adults: e.adults, children: e.adults, extra_beds: e.extra_beds, breakfast: e.breakfast, name: e.name, phone: e.phone, email: e.email,
+        adults: e.adults, children: e.adults, extra_beds: e.extra_beds, children_ages: e.children_ages, breakfast: e.breakfast, name: e.name, phone: e.phone, email: e.email,
       };
       return map[code] ?? e.required;
     };
     function control(field: string): HTMLElement | null {
       if (field === 'breakfast') return form.querySelector<HTMLElement>('input[name="breakfast"]');
       if (field === 'phone') return phoneIn;
+      if (field === 'children_ages') return agesList.querySelector<HTMLSelectElement>('select:invalid, select') ?? null;
       if (dateBtn[field]) return dateBtn[field];
       return form.elements.namedItem(field) as HTMLElement | null;
     }
@@ -669,7 +749,7 @@ const stepper = (name: 'adults' | 'children' | 'extra_beds', value: number, min:
         adultsIn.setAttribute('aria-invalid', msg ? 'true' : 'false');
       } else control(field)?.setAttribute('aria-invalid', msg ? 'true' : 'false');
     }
-    const FIELDS = ['branch', 'room', 'check_in', 'check_out', 'adults', 'extra_beds', 'breakfast', 'name', 'phone', 'email'];
+    const FIELDS = ['branch', 'room', 'check_in', 'check_out', 'adults', 'extra_beds', 'breakfast', 'children_ages', 'name', 'phone', 'email'];
     function errorsNow() {
       const r = validateBooking(collect(), ctx());
       return r.ok ? {} : (r.errors as Record<string, FieldError>);
@@ -791,6 +871,175 @@ const stepper = (name: 'adults' | 'children' | 'extra_beds', value: number, min:
       if (breakfast) parts.push(breakfast === 'with' ? S.breakfastWith : S.breakfastWithout);
       summary.textContent = parts.join(' · ');
       summary.classList.toggle('hidden', !b);
+
+      syncAges(kids, breakfast ?? '');
+      scheduleQuote();
+    }
+
+    // ── children's ages (Q2): one select per child, shown only with children > 0 and breakfast = with ──────
+    function syncAges(kids: number, breakfast: string) {
+      const show = needsChildAges(kids, breakfast);
+      agesWrap.classList.toggle('hidden', !show);
+      if (!show) return;
+      const current = Array.from(agesList.querySelectorAll<HTMLSelectElement>('select'));
+      for (let i = current.length; i < kids; i++) {
+        const wrap = document.createElement('div');
+        wrap.className = 'field field-select';
+        const sel = document.createElement('select');
+        sel.name = 'children_ages';
+        sel.id = `${form.id}-age-${i}`;
+        sel.autocomplete = 'off';
+        sel.className = 'field-input w-full border border-line rounded bg-white';
+        sel.setAttribute('aria-describedby', `${form.id}-children_ages-error`);
+        const first = document.createElement('option');
+        first.value = '';
+        first.textContent = Q.age_choose;
+        sel.append(first);
+        for (let a = 0; a <= CHILD_AGE_MAX; a++) {
+          const o = document.createElement('option');
+          o.value = String(a);
+          o.textContent = a === 0 ? Q.age_under1 : Q.age_years.replace('{n}', String(a));
+          sel.append(o);
+        }
+        const label = document.createElement('label');
+        label.htmlFor = sel.id;
+        label.className = 'field-label';
+        label.textContent = Q.age_label.replace('{n}', String(i + 1));
+        sel.addEventListener('change', () => {
+          touched.add('children_ages');
+          validateField('children_ages');
+          scheduleQuote();
+        });
+        wrap.append(sel, label);
+        agesList.append(wrap);
+      }
+      while (agesList.children.length > kids) agesList.lastElementChild!.remove();
+    }
+
+    // ── price quote (decision 4): quote_stay once a room type and both dates are set; debounced; stale answers
+    // dropped; no price at all when the service is off, unreachable or the branch's switch is off ─────────────
+    const Q = data.quote;
+    const supa = { url: data.supabaseUrl, key: data.anonKey };
+    const qBadge = quoteBox.querySelector<HTMLElement>('[data-quote-badge]')!;
+    const qNote = quoteBox.querySelector<HTMLElement>('[data-quote-note]')!;
+    const qTable = quoteBox.querySelector<HTMLElement>('[data-quote-table]')!;
+    const qNights = quoteBox.querySelector<HTMLElement>('[data-quote-nights]')!;
+    const qNightsList = quoteBox.querySelector<HTMLElement>('[data-quote-nights-list]')!;
+    const qPay = quoteBox.querySelector<HTMLElement>('[data-quote-pay]')!;
+    const qChanged = quoteBox.querySelector<HTMLElement>('[data-quote-changed]')!;
+    const row = (k: string) => quoteBox.querySelector<HTMLTableRowElement>(`[data-quote-row="${k}"]`)!;
+    let quoteSeq = 0;
+    let quoteTimer: ReturnType<typeof setTimeout> | null = null;
+    let quoteAbort: AbortController | null = null;
+    /** the total the guest saw (sent as quoted_total; the server refuses to confirm on a different total) */
+    let quotedTotal: number | null = null;
+    let instant = false;
+    const L = data.locale;
+
+    function quoteParams() {
+      const kids = Number(childrenIn.value || 0);
+      const breakfast = (form.querySelector<HTMLInputElement>('input[name="breakfast"]:checked')?.value ?? '') as 'with' | 'without' | '';
+      const ages = agesWrap.classList.contains('hidden') ? [] : Array.from(agesList.querySelectorAll<HTMLSelectElement>('select')).map((s) => s.value);
+      const complete = !needsChildAges(kids, breakfast) || (ages.length === kids && ages.every((a) => a !== ''));
+      return {
+        branch: branchSel.value,
+        room: roomSel.value,
+        check_in: checkIn.value,
+        check_out: checkOut.value,
+        adults: Number(adultsIn.value || 0),
+        children: kids,
+        children_ages: complete && needsChildAges(kids, breakfast) ? ages.map(Number) : null,
+        extra_beds: Number(bedsIn.value || 0),
+        breakfast,
+      };
+    }
+    function setInstant(on: boolean) {
+      instant = on;
+      if (!sending) submitLabel.textContent = on ? Q.submit_instant : S.submit;
+    }
+    function hideQuote(note?: string) {
+      quoteSeq++;
+      quoteAbort?.abort();
+      quotedTotal = null;
+      setInstant(false);
+      qTable.classList.add('hidden');
+      qNights.classList.add('hidden');
+      qPay.classList.add('hidden');
+      qBadge.classList.add('hidden');
+      qBadge.textContent = '';
+      qChanged.classList.add('hidden');
+      qNote.textContent = note ?? '';
+      qNote.classList.toggle('hidden', !note);
+      quoteBox.classList.toggle('hidden', !note);
+    }
+    function scheduleQuote() {
+      if (quoteTimer) clearTimeout(quoteTimer);
+      const p = quoteParams();
+      const n = nightsNow();
+      if (!supa.url || !supa.key || !p.branch || !n) return hideQuote();
+      if (!p.room) return hideQuote(Q.pick_room);
+      if (p.adults < 1) return hideQuote();
+      quoteTimer = setTimeout(runQuote, 300);
+    }
+    async function runQuote() {
+      const p = quoteParams();
+      const seq = ++quoteSeq;
+      quoteAbort?.abort();
+      quoteAbort = new AbortController();
+      qNote.textContent = Q.loading;
+      qNote.classList.remove('hidden');
+      quoteBox.classList.remove('hidden');
+      const r = await quoteStay(supa, p, quoteAbort.signal);
+      if (seq !== quoteSeq) return;
+      renderQuote(r);
+    }
+    function renderQuote(r: QuoteResult | null) {
+      qChanged.classList.add('hidden');
+      if (!r || !r.ok || !r.prices || !r.quote) {
+        // off, unreachable or nothing priced: no price, the request flow as before (no reason shown unless set)
+        hideQuote(r && r.ok && r.reason && r.reason !== 'instant_off' ? Q.unavailable : undefined);
+        return;
+      }
+      const q = r.quote;
+      const n = q.count;
+      row('room').cells[0].textContent = Q.room_line.replace('{nights}', plural(P.nights, n));
+      const prices = q.nights.map((x) => Number(x.price));
+      const uniform = prices.every((x) => x === prices[0]);
+      row('room').cells[1].textContent = q.room_total === null ? '—' : uniform ? `${n} × ${money(prices[0], L)} = ${money(q.room_total, L)}` : money(q.room_total, L);
+      row('breakfast').classList.toggle('hidden', q.breakfast !== 'with');
+      row('breakfast').cells[1].textContent = q.breakfast_total === null ? Q.ages_hint : money(q.breakfast_total, L);
+      row('beds').classList.toggle('hidden', !(q.extra_beds > 0));
+      row('beds').cells[0].textContent = Q.extra_beds_line.replace('{beds}', String(q.extra_beds));
+      row('beds').cells[1].textContent = money(q.extra_beds_total, L);
+      row('total').cells[1].textContent = q.total === null ? '—' : money(q.total, L);
+      qNightsList.replaceChildren(
+        ...q.nights.map((x) => {
+          const li = document.createElement('li');
+          li.className = 'flex justify-between gap-2';
+          li.innerHTML = `<span class="latin" dir="ltr">${x.night}</span><span>${money(Number(x.price), L)}${x.label ? ` — ${x.label}` : ''}</span>`;
+          return li;
+        }),
+      );
+      qNights.classList.toggle('hidden', uniform);
+      qTable.classList.remove('hidden');
+      qPay.classList.remove('hidden');
+      qNote.classList.add('hidden');
+      // breakfast for children cannot be priced without their ages: no total, no instant, the ages block asks for them
+      const inst = r.instant && q.total !== null && !q.needs_ages;
+      const reasonKey = q.needs_ages ? 'needs_ages' : r.reason;
+      const reason = reasonKey ? Q.reasons[reasonKey] ?? '' : '';
+      qBadge.textContent = inst ? Q.instant_badge : `${Q.request_badge}${reason ? ` — ${reason}` : ''}`;
+      qBadge.className = `text-xs font-semibold rounded-full px-2.5 py-1 ${inst ? 'bg-midnight text-white' : 'border border-line bg-white text-ink'}`;
+      qBadge.classList.remove('hidden');
+      quotedTotal = q.total;
+      setInstant(inst);
+      quoteBox.classList.remove('hidden');
+    }
+    /** After a 409 price_changed: show the fresh quote and say so; the guest confirms again. */
+    function showPriceChanged(q: Quote | null) {
+      if (q) renderQuote({ ok: true, prices: true, instant, reason: null, quote: q });
+      qChanged.classList.remove('hidden');
+      quoteBox.scrollIntoView({ block: 'nearest' });
     }
 
     // ── WhatsApp hand-off with every field ───────────────────────────────────────────────────────────────
@@ -866,7 +1115,7 @@ const stepper = (name: 'adults' | 'children' | 'extra_beds', value: number, min:
       submitBtn.disabled = on;
       submitBtn.setAttribute('aria-busy', String(on));
       spinner.classList.toggle('hidden', !on);
-      submitLabel.textContent = on ? S.sending : S.submit;
+      submitLabel.textContent = on ? S.sending : instant ? Q.submit_instant : S.submit;
     }
 
     form.addEventListener('submit', async (e) => {
@@ -901,6 +1150,7 @@ const stepper = (name: 'adults' | 'children' | 'extra_beds', value: number, min:
           check_out: d.check_out,
           adults: String(d.adults),
           children: String(d.children),
+          children_ages: d.children_ages.map(String),
           extra_beds: String(d.extra_beds),
           breakfast: d.breakfast,
           name: d.name,
@@ -910,10 +1160,18 @@ const stepper = (name: 'adults' | 'children' | 'extra_beds', value: number, min:
           notes: d.notes,
           website: String(new FormData(form).get('website') ?? ''),
           page: location.href,
+          // the total the guest saw (null without a quote): the server confirms only on the same total
+          quoted_total: quotedTotal === null ? null : String(quotedTotal),
         };
         const res = await fetch(data.endpoint, { method: 'POST', headers, body: JSON.stringify(body) });
-        const json = (await res.json().catch(() => ({}))) as { ok?: boolean; ref?: string; error?: string };
+        const json = (await res.json().catch(() => ({}))) as { ok?: boolean; ref?: string; error?: string; status?: string; reason?: string | null; quote?: Quote | null };
+        if (res.status === 409 && json.status === 'price_changed') {
+          // nothing was stored: show the current price, the guest confirms again
+          showPriceChanged(json.quote ?? null);
+          return;
+        }
         if (!res.ok || !json.ok || !json.ref) throw new Error(json.error || `HTTP ${res.status}`);
+        const confirmed = json.status === 'confirmed';
         const params = new URLSearchParams({
           ref: json.ref,
           branch: d.branch,
@@ -923,7 +1181,18 @@ const stepper = (name: 'adults' | 'children' | 'extra_beds', value: number, min:
           beds: String(d.extra_beds),
           nc: d.needs_coordination ? '1' : '0',
           c: d.email ? 'email' : 'whatsapp',
+          s: confirmed ? 'confirmed' : 'request',
+          ...(json.reason && !confirmed ? { reason: json.reason } : {}),
         });
+        // the breakdown travels in sessionStorage (never in the URL): the success page renders it once
+        try {
+          if (confirmed && json.quote) {
+            const roomName = data.rooms.find((x) => x.slug === d.room && x.branch === d.branch)?.name ?? '';
+            sessionStorage.setItem(`armada_confirmed_${json.ref}`, JSON.stringify({ quote: json.quote, room: roomName, branch: d.branch, check_in: d.check_in, check_out: d.check_out, adults: d.adults, children: d.children, breakfast: d.breakfast, extra_beds: d.extra_beds }));
+          }
+        } catch {
+          /* storage unavailable: the success page shows the ref and the generic text */
+        }
         leaving = true;
         location.assign(`${data.successPath}?${params.toString()}`);
       } catch {

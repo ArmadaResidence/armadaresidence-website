@@ -141,7 +141,7 @@ def validate(content: dict[str, dict]) -> list[str]:
             problems.append(f"rooms.json[{r['slug']}] no in-room washers anywhere (DECISIONS 8 Oct)")
 
     pricing = content["pricing.json"]
-    if pricing.get("display_mode") != "hidden" and ("{price}" not in pricing["display_ar"] or "{price}" not in pricing["display_en"]):
+    if pricing.get("display_mode") not in ("hidden", "runtime") and ("{price}" not in pricing["display_ar"] or "{price}" not in pricing["display_en"]):
         problems.append("pricing.json display strings must contain {price} unless display_mode is hidden")
     if pricing["rate_plans"]["bed_and_breakfast"].get("show_on_site") is not False:
         problems.append("pricing.json: bed_and_breakfast must stay hidden in phase 1")

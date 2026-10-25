@@ -2,8 +2,8 @@
   "_note": "Confirmed by management 8 Oct 2026 (sales & pricing policy Oct 2026). Site-wide pricing rules; per-room base_price lives in rooms.json.",
   "currency": "SAR",
   "price_basis": "board rate — per night, incl. VAT; room-only plan unless the rate plan says breakfast is included",
-  "display_mode": "hidden",
-  "display_reason": "Decision 9 Oct 2026: no prices shown on the site until the rate calendar (phase 2). base_price stays in rooms.json for reception/SEO data only.",
+  "display_mode": "runtime",
+  "display_reason": "Decision 24 Oct 2026 (phase 2a): no price is baked into the site; the booking form and the room pages read prices from Supabase at runtime (quote_stay / room_from_prices) while a branch's show_prices switch is on. Static output stays price-free as under the 9 Oct hidden mode; base_price in rooms.json is the seed of the dashboard base rate.",
   "display_ar": "السعر حسب التاريخ — اطلب حجزًا وسيؤكده الاستقبال",
   "display_en": "Price depends on your dates — request a booking and reception will confirm",
   "included_guests": {
@@ -60,6 +60,7 @@
   },
   "pricing_mode_values": [
     "hidden",
+    "runtime",
     "starting_from",
     "calendar"
   ],

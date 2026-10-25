@@ -330,7 +330,10 @@ def main() -> int:
         # 23 Oct 2026: the ONE allowed price line is the extra-bed fee sentence of the booking form (the form sits in the
         # drawer on every page), built from ui.json + pricing.json; it is removed before the check, so any other price
         # — including a different amount in that sentence — still fails.
-        if pricing.get("display_mode") == "hidden" and lp not in ("/menu/", "/policies/"):
+        # phase 2a (25 Oct 2026): display_mode "runtime" — prices come from Supabase at runtime (booking form, room
+        # pages); the STATIC output stays price-free, so the same rule applies. qa checks the built HTML only, so a
+        # runtime price can never pass through here; a price typed into a template or baked at build still fails.
+        if pricing.get("display_mode") in ("hidden", "runtime") and lp not in ("/menu/", "/policies/"):
             price_text = p.text
             for fee_line in allowed_fee_lines:
                 price_text = price_text.replace(fee_line, " ")
@@ -538,9 +541,9 @@ def main() -> int:
                     if node.get("telephone") not in known_phones:
                         rep.f("json-ld", f"{path}: {t_} telephone not in contact.json")
                     # priceRange only while prices are shown; none while display_mode is hidden (decision 9 Oct 2026)
-                    if pricing.get("display_mode") == "hidden":
+                    if pricing.get("display_mode") in ("hidden", "runtime"):
                         if node.get("priceRange"):
-                            rep.f("json-ld", f"{path}: {t_} carries a priceRange while prices are hidden")
+                            rep.f("json-ld", f"{path}: {t_} carries a priceRange while prices are hidden / runtime")
                     elif not node.get("priceRange"):
                         rep.w("json-ld", f"{path}: {t_} has no priceRange (no confirmed room price yet)")
                     # café inside the branch (branches.json → dining): FoodEstablishment with name, 24h hours, café phone
@@ -562,7 +565,7 @@ def main() -> int:
                     if not offer:
                         rep.todo(f"{path}: HotelRoom has no Offer (base_price missing)")
                     else:
-                        hidden_mode = pricing.get("display_mode") == "hidden"
+                        hidden_mode = pricing.get("display_mode") in ("hidden", "runtime")
                         for k in (("availability",) if hidden_mode else ("price", "priceCurrency", "availability")):
                             if offer.get(k) in (None, ""):
                                 rep.f("json-ld", f"{path}: Offer missing {k}")
@@ -599,10 +602,23 @@ def main() -> int:
         if lp in room_by_path:
             r = room_by_path[lp]
             loc = "en" if en else "ar"
-            hidden = pricing.get("display_mode") == "hidden" or r.get("pricing_mode") == "hidden"
+            hidden = pricing.get("display_mode") in ("hidden", "runtime") or r.get("pricing_mode") == "hidden"
             if hidden:
                 if pricing[f"display_{loc}"] not in p.text:
                     rep.f("pricing", f"{path}: hidden-price line (pricing.json display) not rendered")
+            # runtime prices (phase 2a): a bookable room page reserves the «يبدأ من» slot — the template with its
+            # {amount} placeholder in a data attribute, the line itself empty and hidden until the client fills it
+            if pricing.get("display_mode") == "runtime" and r["availability"] != "sold_out":
+                slot = re.search(r'<[^>]*data-from-price[^>]*>', html)
+                if not slot:
+                    rep.f("runtime price", f"{path}: no data-from-price slot on a bookable room page")
+                else:
+                    tpl = ui[loc]["price"]["from_line"]
+                    if "{amount}" not in tpl or tpl.replace("{amount}", "") in p.text:
+                        rep.f("runtime price", f"{path}: the from-price template must keep its {{amount}} slot and never render statically")
+                    m_line = re.search(r'<p[^>]*data-from-line[^>]*>([^<]*)</p>', html)
+                    if not m_line or m_line.group(1).strip():
+                        rep.f("runtime price", f"{path}: the runtime price line must be empty in the build")
             elif isinstance(r.get("base_price"), (int, float)):
                 line = pricing[f"display_{loc}"].replace("{price}", str(r["base_price"]))
                 if line not in p.text:

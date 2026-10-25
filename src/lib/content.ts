@@ -236,10 +236,18 @@ export function priceLine(locale: Locale, room: Room, price: number | undefined 
   return fill(locale === 'ar' ? pricing.display_ar : pricing.display_en, { price });
 }
 
-/** Decision 9 Oct 2026: no stay price on the site — pricing.json display_mode "hidden" / room pricing_mode "hidden".
- *  starting_from and calendar stay implemented; switching the values back re-enables the price lines. */
+/** Decision 9 Oct 2026: no stay price in the static site — pricing.json display_mode "hidden" / room pricing_mode
+ *  "hidden". Phase 2a (DECISIONS.md 2026-10-25): display_mode "runtime" keeps the static output price-free as well —
+ *  prices then come from Supabase at runtime (src/lib/prices.ts) in the booking form and on room pages only.
+ *  starting_from and calendar stay implemented; switching the values back re-enables the static price lines. */
 export function pricesHidden(room?: Room): boolean {
-  return (pricing as { display_mode?: string }).display_mode === 'hidden' || room?.pricing_mode === 'hidden';
+  const mode = (pricing as { display_mode?: string }).display_mode;
+  return mode === 'hidden' || mode === 'runtime' || room?.pricing_mode === 'hidden';
+}
+
+/** Phase 2a: prices are read from Supabase at runtime (pricing.json display_mode "runtime"). */
+export function runtimePrices(): boolean {
+  return (pricing as { display_mode?: string }).display_mode === 'runtime';
 }
 
 /** Decision 9 Oct 2026: the breakfast price is never shown on the site — only pricing.json → breakfast.site_line. */

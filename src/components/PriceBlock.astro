@@ -1,15 +1,20 @@
 ---
 /**
- * Renders a room's price exactly as pricing.json dictates, once per rate plan with show_on_site: true
- * (phase 1: room_only only): «يبدأ من {base_price} ريال / الليلة — شامل الضريبة», then the breakfast
- * site line from pricing.json (never a breakfast price — decision 9 Oct 2026). Full mode adds the
- * room-only note, final-price note and the booking CTA (none when sold out).
+ * Renders a room's price block. Static modes (pricing.json display_mode starting_from / calendar) render the
+ * «يبدأ من {base_price} ريال / الليلة — شامل الضريبة» line as before. In `runtime` mode (phase 2a, DECISIONS.md
+ * 2026-10-25 decision 4) nothing is baked into the page: full mode reserves one line that the client fills from
+ * `room_from_prices` — «يبدأ من {x} ريالًا لليلة شامل الضريبة» = the lowest open rate of the next 60 nights — and
+ * shows pricing.json → display («السعر حسب التاريخ…») until / unless a price exists. Both lines share one slot of a
+ * fixed height, so filling it never shifts the layout (CLS 0). Card mode stays price-free (Q12). The breakfast site
+ * line from pricing.json follows (never a breakfast price — decision 9 Oct 2026). Full mode adds the final-price note
+ * and the booking CTA (none when sold out).
  */
 import {
   breakfastLine,
   localePath,
   priceLine,
   pricesHidden,
+  runtimePrices,
   soldOutLabel,
   ui,
   visibleRatePlans,
@@ -28,7 +33,16 @@ const t = ui(locale);
 const soldOut = room.availability === 'sold_out';
 const bookHref = `${localePath(locale, '/booking/')}?branch=${room.branch}&room=${room.slug}`;
 const hidden = pricesHidden(room);
+const runtime = runtimePrices() && mode === 'full' && !soldOut;
 const plans = hidden ? [visibleRatePlans(room)[0] ?? { base_price: undefined }] : visibleRatePlans(room);
+const endpoint = import.meta.env.PUBLIC_BOOKING_ENDPOINT ?? '';
+const anonKey = import.meta.env.PUBLIC_SUPABASE_ANON_KEY ?? '';
+let supabaseUrl = '';
+try {
+  supabaseUrl = endpoint ? new URL(endpoint).origin : '';
+} catch {
+  supabaseUrl = '';
+}
 ---
 
 <div class:list={[mode === 'full' ? 'bg-white border border-line rounded-card p-6' : '']}>
@@ -39,11 +53,27 @@ const plans = hidden ? [visibleRatePlans(room)[0] ?? { base_price: undefined }] 
     )
   }
   {
-    plans.map((plan) => (
-      <p class:list={['font-semibold text-midnight', mode === 'full' && !hidden ? 'text-2xl' : 'text-lg']}>
-        {priceLine(locale, room, plan.base_price ?? room.base_price)}
-      </p>
-    ))
+    runtime ? (
+      <div
+        class="relative min-h-[1.75rem]"
+        data-from-price
+        data-branch={room.branch}
+        data-room={room.slug}
+        data-template={t.price.from_line}
+        data-locale={locale}
+        data-supabase-url={supabaseUrl}
+        data-supabase-key={anonKey}
+      >
+        <p class="font-semibold text-midnight text-lg" data-from-static>{priceLine(locale, room, plans[0]?.base_price ?? room.base_price)}</p>
+        <p class="font-semibold text-midnight text-2xl hidden" data-from-line aria-live="polite"></p>
+      </div>
+    ) : (
+      plans.map((plan) => (
+        <p class:list={['font-semibold text-midnight', mode === 'full' && !hidden ? 'text-2xl' : 'text-lg']}>
+          {priceLine(locale, room, plan.base_price ?? room.base_price)}
+        </p>
+      ))
+    )
   }
   {mode === 'full' && !hidden && <p class="text-sm text-ink-muted mt-1">{t.price.room_only_note}</p>}
   <p class="text-sm text-ink-muted mt-1">{breakfastLine(locale)}</p>
@@ -64,3 +94,25 @@ const plans = hidden ? [visibleRatePlans(room)[0] ?? { base_price: undefined }] 
     )
   }
 </div>
+
+<script>
+  import { bindOnce, onPageLoad } from '@lib/client';
+  import { money, roomFromPrices } from '@lib/prices';
+
+  // «يبدأ من» at runtime: one request per tab (cached 5 min), no price → the static line stays, nothing moves
+  onPageLoad(() => {
+    document.querySelectorAll<HTMLElement>('[data-from-price]').forEach(async (box) => {
+      if (!bindOnce(box)) return;
+      const supa = { url: box.dataset.supabaseUrl || '', key: box.dataset.supabaseKey || '' };
+      const prices = await roomFromPrices(supa);
+      const amount = prices.get(`${box.dataset.branch}/${box.dataset.room}`);
+      if (!amount || !box.isConnected) return;
+      const line = box.querySelector<HTMLElement>('[data-from-line]')!;
+      const staticLine = box.querySelector<HTMLElement>('[data-from-static]')!;
+      const L = (box.dataset.locale === 'en' ? 'en' : 'ar') as 'ar' | 'en';
+      line.textContent = (box.dataset.template || '').replace('{amount}', money(amount, L));
+      staticLine.classList.add('hidden');
+      line.classList.remove('hidden');
+    });
+  });
+</script>

@@ -12,23 +12,43 @@ interface Props {
 const { locale } = Astro.props;
 const t = ui(locale);
 const s = pageSeo(locale, 'booking-success');
+// Three variants (phase 2a, DECISIONS.md 2026-10-25): ?s=confirmed → «تم تأكيد حجزك» with the price breakdown from
+// sessionStorage (never from the URL); ?s=request&reason=… → the request page plus why it was not instant; otherwise
+// the request page as before. Strings for the client script:
+const clientData = {
+  locale,
+  quote: t.quote,
+  success: { confirmed_heading: t.success.confirmed_heading, confirmed_body: t.success.confirmed_body, confirmed_steps: t.success.confirmed_steps, fallback_line: t.success.fallback_line, sold_out_race: t.success.sold_out_race, ref_label: t.success.ref_label, booking_ref_label: t.email.booking_ref_label },
+  labels: { nights: t.form.plural.nights, branch: t.form.branch, room: t.form.room_type, check_in: t.form.check_in, check_out: t.form.check_out },
+};
 ---
 
 <Base locale={locale} path="/booking/success/" title={s.title} description={s.description} noindex={s.noindex}>
   <section class="mx-auto max-w-3xl px-4 pt-14 pb-20">
-    <div class="reveal reveal-lg bg-white border border-line rounded-card p-8 md:p-10">
+    <div class="reveal reveal-lg bg-white border border-line rounded-card p-8 md:p-10" data-success>
       <span class="inline-grid place-items-center w-12 h-12 rounded-full bg-porcelain text-bronze">
         <Icon name="check" size={26} />
       </span>
-      <h1 class="mt-5 text-3xl font-bold text-midnight">{t.success.heading}</h1>
-      <p class="mt-2 text-lg text-ink-muted">{t.success.body}</p>
+      <h1 class="mt-5 text-3xl font-bold text-midnight" data-heading>{t.success.heading}</h1>
+      <p class="mt-2 text-lg text-ink-muted" data-body>{t.success.body}</p>
+      <p class="hidden mt-3 text-sm font-semibold text-midnight bg-porcelain border border-line rounded px-4 py-3" data-fallback role="status"></p>
       <p class="hidden mt-4 text-sm" data-ref-wrap>
-        <span class="text-ink-muted">{t.success.ref_label}: </span>
+        <span class="text-ink-muted" data-ref-label>{t.success.ref_label}: </span>
         <strong class="latin text-midnight" dir="ltr" data-ref></strong>
       </p>
 
+      {/* confirmed only: the stay and the price breakdown (filled from sessionStorage) */}
+      <div class="hidden mt-6 rounded border border-line bg-porcelain p-4" data-breakdown>
+        <h2 class="text-sm font-semibold uppercase tracking-wide text-bronze mb-2">{t.quote.heading}</h2>
+        <dl class="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-sm mb-3" data-stay></dl>
+        <table class="w-full text-sm">
+          <tbody data-rows></tbody>
+        </table>
+        <p class="mt-2 text-xs text-ink-muted">{t.quote.pay_at_hotel}</p>
+      </div>
+
       <h2 class="mt-8 text-sm font-semibold uppercase tracking-wide text-bronze">{t.success.next_heading}</h2>
-      <ol class="mt-3 space-y-3 list-decimal ps-5 leading-relaxed">
+      <ol class="mt-3 space-y-3 list-decimal ps-5 leading-relaxed" data-steps>
         <li>{t.success.steps[0]}</li>
         <li>{t.success.steps[1]}</li>
         {/* 23 Oct 2026: email given → confirmation by email; no email → the reception confirms on WhatsApp */}
@@ -59,60 +79,138 @@ const s = pageSeo(locale, 'booking-success');
           {t.success.back_home}
         </a>
       </div>
+      <script type="application/json" data-success-data set:html={JSON.stringify(clientData).replace(/</g, '\\u003c')} />
     </div>
   </section>
 </Base>
 
 <script>
   import { bindOnce, onPageLoad } from '@lib/client';
+  import { money, type Quote } from '@lib/prices';
+  import { plural } from '../../../../supabase/functions/booking-request/rules.ts';
+
+  type Stash = { quote: Quote; room: string; branch: string; check_in: string; check_out: string; adults: number; children: number; breakfast: string; extra_beds: number };
 
   onPageLoad(() => {
-  const wrapEl = document.querySelector<HTMLElement>('[data-ref-wrap]');
-  if (!wrapEl || !bindOnce(wrapEl)) return;
-  const q = new URLSearchParams(location.search);
-  const ref = q.get('ref');
-  const branch = q.get('branch');
-  if (q.get('c') === 'whatsapp') {
-    document.querySelector('[data-next="email"]')?.classList.add('hidden');
-    document.querySelector('[data-next="whatsapp"]')?.classList.remove('hidden');
-  }
-  if (ref) {
-    const wrap = document.querySelector<HTMLElement>('[data-ref-wrap]');
-    const el = document.querySelector<HTMLElement>('[data-ref]');
-    if (wrap && el) {
-      el.textContent = ref;
-      wrap.classList.remove('hidden');
+    const root = document.querySelector<HTMLElement>('[data-success]');
+    if (!root || !bindOnce(root)) return;
+    const data = JSON.parse(root.querySelector('[data-success-data]')?.textContent || '{}');
+    const L = (data.locale === 'en' ? 'en' : 'ar') as 'ar' | 'en';
+    const q = new URLSearchParams(location.search);
+    const ref = q.get('ref');
+    const branch = q.get('branch');
+    const confirmed = q.get('s') === 'confirmed';
+    const reason = q.get('reason');
+    const el = (sel: string) => root.querySelector<HTMLElement>(sel);
+
+    if (q.get('c') === 'whatsapp') {
+      el('[data-next="email"]')?.classList.add('hidden');
+      el('[data-next="whatsapp"]')?.classList.remove('hidden');
     }
-    // GTM: one booking_request event per request (CLAUDE.md §8 step 5; DASHBOARD-SPEC §7 event name). No personal
-    // data: the ref is the opaque request number (Google Ads transaction id), room_type a slug or "any".
-    const key = `armada_booking_${ref}`;
-    const push = () => {
-      const w = window as unknown as { dataLayer: unknown[] };
-      w.dataLayer = w.dataLayer || [];
-      w.dataLayer.push({
-        event: 'booking_request',
-        booking_ref: ref,
-        branch: branch || '',
-        room_type: q.get('room') || 'any',
-        nights: Number(q.get('nights') || 0),
-        breakfast: q.get('breakfast') === 'with' ? 'with' : q.get('breakfast') === 'without' ? 'without' : '',
-        extra_beds: Math.min(2, Math.max(0, Number(q.get('beds') || 0) || 0)),
-        needs_coordination: q.get('nc') === '1',
-      });
-    };
-    try {
-      if (!sessionStorage.getItem(key)) {
-        push();
-        sessionStorage.setItem(key, '1');
+    if (ref) {
+      el('[data-ref]')!.textContent = ref;
+      el('[data-ref-wrap]')!.classList.remove('hidden');
+    }
+
+    let stash: Stash | null = null;
+    if (confirmed && ref) {
+      el('[data-heading]')!.textContent = data.success.confirmed_heading;
+      el('[data-body]')!.textContent = data.success.confirmed_body;
+      el('[data-ref-label]')!.textContent = `${data.success.booking_ref_label}: `;
+      const steps = el('[data-steps]')!;
+      steps.replaceChildren(
+        ...(data.success.confirmed_steps as string[]).map((s) => {
+          const li = document.createElement('li');
+          li.textContent = s;
+          return li;
+        }),
+      );
+      try {
+        const raw = sessionStorage.getItem(`armada_confirmed_${ref}`);
+        if (raw) stash = JSON.parse(raw) as Stash;
+      } catch {
+        /* storage unavailable: ref + generic text only */
       }
-    } catch {
-      push(); // storage unavailable: push once for this view
+      if (stash?.quote) {
+        const qu = stash.quote;
+        const Q = data.quote;
+        const dl = el('[data-stay]')!;
+        const dd = (k: string, v: string) => {
+          const dt = document.createElement('dt');
+          dt.className = 'text-ink-muted';
+          dt.textContent = k;
+          const d = document.createElement('dd');
+          d.className = 'font-semibold';
+          d.textContent = v;
+          dl.append(dt, d);
+        };
+        dd(data.labels.room, stash.room);
+        dd(data.labels.check_in, stash.check_in);
+        dd(data.labels.check_out, stash.check_out);
+        const rows = el('[data-rows]')!;
+        const tr = (k: string, v: string, bold = false) => {
+          const r = document.createElement('tr');
+          if (bold) r.className = 'border-t border-line';
+          const a = document.createElement('td');
+          a.className = bold ? 'pt-1.5 font-bold' : 'py-0.5';
+          a.textContent = k;
+          const b = document.createElement('td');
+          b.className = (bold ? 'pt-1.5 font-bold text-midnight' : 'py-0.5 font-semibold') + ' text-end';
+          b.textContent = v;
+          r.append(a, b);
+          rows.append(r);
+        };
+        const prices = qu.nights.map((n) => Number(n.price));
+        const uniform = prices.every((p) => p === prices[0]);
+        tr(Q.room_line.replace('{nights}', plural(data.labels.nights, qu.count)), uniform ? `${qu.count} × ${money(prices[0], L)} = ${money(qu.room_total ?? 0, L)}` : money(qu.room_total ?? 0, L));
+        if (!uniform) for (const n of qu.nights) tr(n.night, money(Number(n.price), L));
+        if (qu.breakfast === 'with' && qu.breakfast_total !== null) tr(Q.breakfast_line, money(qu.breakfast_total, L));
+        if (qu.extra_beds > 0) tr(Q.extra_beds_line.replace('{beds}', String(qu.extra_beds)), money(qu.extra_beds_total, L));
+        tr(Q.total_line, money(qu.total ?? 0, L), true);
+        el('[data-breakdown]')!.classList.remove('hidden');
+      }
+    } else if (ref && reason) {
+      // request with the reason it was not confirmed instantly (sold_out after a quote = another guest was faster)
+      const text = reason === 'sold_out' ? data.success.sold_out_race : data.quote.reasons[reason];
+      if (text) {
+        el('[data-fallback]')!.textContent = String(data.success.fallback_line).replace('{reason}', text);
+        el('[data-fallback]')!.classList.remove('hidden');
+      }
     }
-  }
-  if (branch) {
-    document.querySelectorAll<HTMLElement>('[data-branch-wa]').forEach((a) => {
-      if (a.dataset.branchWa !== branch) a.classList.add('hidden');
-    });
-  }
+
+    if (ref) {
+      // GTM (CLAUDE.md §8 step 5; DASHBOARD-SPEC §7 names): booking_confirmed with the value for an instant booking,
+      // booking_request otherwise. No personal data: the ref is the opaque booking number (Google Ads transaction id).
+      const key = `armada_booking_${ref}`;
+      const push = () => {
+        const w = window as unknown as { dataLayer: unknown[] };
+        w.dataLayer = w.dataLayer || [];
+        w.dataLayer.push({
+          event: confirmed ? 'booking_confirmed' : 'booking_request',
+          booking_ref: ref,
+          branch: branch || '',
+          room_type: q.get('room') || 'any',
+          nights: Number(q.get('nights') || 0),
+          breakfast: q.get('breakfast') === 'with' ? 'with' : q.get('breakfast') === 'without' ? 'without' : '',
+          extra_beds: Math.min(2, Math.max(0, Number(q.get('beds') || 0) || 0)),
+          needs_coordination: q.get('nc') === '1',
+          ...(confirmed ? { value: Number(stash?.quote?.total ?? 0), currency: 'SAR' } : {}),
+          ...(!confirmed && reason ? { reason } : {}),
+        });
+      };
+      try {
+        if (!sessionStorage.getItem(key)) {
+          push();
+          sessionStorage.setItem(key, '1');
+        }
+      } catch {
+        push(); // storage unavailable: push once for this view
+      }
+    }
+    if (branch) {
+      root.querySelectorAll<HTMLElement>('[data-branch-wa]').forEach((a) => {
+        if (a.dataset.branchWa !== branch) a.classList.add('hidden');
+      });
+    }
   });
 </script>

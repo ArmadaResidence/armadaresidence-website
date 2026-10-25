@@ -17,7 +17,7 @@ import { join, resolve } from 'node:path';
 import { serveDist } from './serve-dist.mjs';
 
 const REVIEW_URL = 'https://armadaresidence.github.io/armadaresidence-website';
-const BROWSER_CHECKS = ['booking-nav-check', 'drawer-check', 'booking-whatsapp-check', 'datepicker-check', 'motion-check'];
+const BROWSER_CHECKS = ['booking-nav-check', 'drawer-check', 'booking-whatsapp-check', 'datepicker-check', 'motion-check', 'booking-instant-check'];
 const args = process.argv.slice(2);
 const live = args.includes('--live');
 const staged = !live && args.includes('--staged');
