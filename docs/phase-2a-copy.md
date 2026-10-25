@@ -1,4 +1,4 @@
-# Phase 2a — guest-facing copy (approved 25 Oct 2026 with Ahmed's six changes; room_cleared added the same day, pending)
+# Phase 2a — guest-facing copy (approved 25 Oct 2026 with Ahmed's six changes; room_cleared approved the same day)
 
 Every new sentence a guest, the reception or a manager reads in this slice. Source of truth: `content/ui.json` (keys in the tables). Nothing is visible while the two branch switches are off. Approve, or edit the Arabic / English in place and tell me.
 

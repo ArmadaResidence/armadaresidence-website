@@ -60,7 +60,8 @@ async function run(width, lang) {
   const tag = `${lang}@${width}`;
   const L = lang === 'en' ? 'en' : 'ar';
   const S = ui[L];
-  const pre = lang === 'en' ? `${PRE}/en` : PRE;
+  // BASE already carries the Pages sub-path (PRE); only the language prefix is added to it
+  const pre = lang === 'en' ? '/en' : '';
   const browser = await chromium.launch({ channel: 'chrome' });
   const ctx = await browser.newContext({ viewport: { width, height: 900 }, locale: L === 'ar' ? 'ar-SA' : 'en-US', hasTouch: width < 768, isMobile: width < 768 });
   const page = await ctx.newPage();
