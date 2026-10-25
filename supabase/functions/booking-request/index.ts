@@ -1,9 +1,15 @@
-// Supabase Edge Function: booking-request (phase 1)
+// Supabase Edge Function: booking-request (phase 1 → phase 2a, 25 Oct 2026)
 //
-// Order: validate → store in public.booking_requests → email reception / sales → email the sender.
+// Order: validate → store → email reception / sales → email the sender.
 // Validation (23 Oct 2026): individual bookings go through rules.ts — the SAME rules the browser form runs — plus
 // a per-country phone check with libphonenumber-js; the server never trusts the client. Partner enquiries keep
 // their own rules (email required, no breakfast).
+// Phase 2a (DECISIONS.md 2026-10-25): an individual booking is stored by public.submit_booking (one transaction),
+//   which decides CONFIRMED (a specific room type, every night priced, open and in stock, no policy gate, the quoted
+//   total unchanged) or REQUEST (with the reason), or answers price_changed (nothing stored). This function never
+//   decides availability itself. Confirmed → guest «تم تأكيد حجزك» (when an email was given), reception «حجز مؤكد
+//   جديد», and the low-inventory alert to the central recipients when a night is now at 1 or 0. Request → the
+//   phase-1 emails as before. Partner enquiries are unchanged (public.booking_requests, their own emails).
 // Routing (DECISIONS.md 2026-10-22): recipients are read from public.booking_notification_recipients —
 //   booking requests:   To = active rows of scope 'branch' for the request's branch
 //   partner enquiries:  To = active rows of scope 'partners' (request_type ≠ booking; never a booking)
@@ -11,11 +17,15 @@
 //                       a request is never sent to nobody. Addresses never live in the repository; names,
 //                       numbers and labels come from content.generated.json (written by build.py from /content).
 // Emails (email.ts): one shared Outlook-safe layout, HTML + a real text/plain part. Reception notification:
-//   Reply-To = the guest's email only when one was given. Guest "request received": only when an email was given
+//   Reply-To = the guest's email only when one was given. Guest emails: only when an email was given
 //   (decision 23 Oct 2026 — phone/WhatsApp is the required contact). Partner confirmation: always (email required).
 // Senders: notification from BOOKING_FROM_RECEPTION; confirmation from BOOKING_FROM_GUEST (Reply-To = the matching
 //   recipients — branch or partners — or the sender address).
-// Secrets: RESEND_API_KEY, SUPABASE_SERVICE_ROLE_KEY (automatic), BOOKING_ALLOWED_ORIGINS, BOOKING_IP_SALT.
+// Test mode (Q10): a request with header x-armada-test = BOOKING_TEST_TOKEN (secret; its hash also in
+//   internal.test_tokens) is stored as is_test, skips the rate limit and sends every email to Resend's sink address
+//   instead of the hotel mailboxes. Without a valid token the header is ignored.
+// Secrets: RESEND_API_KEY, SUPABASE_SERVICE_ROLE_KEY (automatic), BOOKING_ALLOWED_ORIGINS, BOOKING_IP_SALT,
+//   BOOKING_TEST_TOKEN.
 // Email never blocks the guest: once the request is stored, a Resend failure is logged with the ref and the
 //   response is still { ok, ref }. Only "not stored AND notification not emailed" returns 500.
 // Abuse: honeypot field `website` (filled → 200 with a ref, nothing stored or sent) and a per-IP limit of
@@ -24,7 +34,17 @@
 import { parsePhoneNumberFromString } from 'npm:libphonenumber-js@1.12.10/min';
 import content from './content.generated.json' with { type: 'json' };
 import { E164, EMAIL, intIn, ISO_DATE, nightsBetween, riyadhToday, validateBooking, type ValidBooking } from './rules.ts';
-import { bookingConfirmation, bookingNotification, partnerConfirmation, partnerNotification, type Mail } from './email.ts';
+import {
+  bookingConfirmation,
+  bookingConfirmed,
+  bookingNotification,
+  confirmedNotification,
+  lowInventoryAlert,
+  partnerConfirmation,
+  partnerNotification,
+  type Mail,
+  type Quote,
+} from './email.ts';
 
 type Locale = 'ar' | 'en';
 
@@ -35,6 +55,7 @@ interface Payload {
   check_out: string;
   adults: string | number;
   children?: string | number;
+  children_ages?: Array<string | number>;
   extra_beds?: string | number;
   room?: string;
   breakfast?: string;
@@ -44,6 +65,8 @@ interface Payload {
   email?: string;
   notes?: string;
   page?: string;
+  /** the total the form showed (phase 2a); the database refuses to confirm on a different total */
+  quoted_total?: string | number;
   /** honeypot — hidden on the form, must stay empty */
   website?: string;
   /** 'booking' (default) or a partner enquiry type from content/partners.json → enquiry_types */
@@ -69,6 +92,9 @@ const BOTH = 'both';
 const RATE_LIMIT = 5;
 const RATE_WINDOW_SECONDS = 3600;
 
+/** Resend's delivered-sink: test-mode emails land here instead of the hotel mailboxes. */
+const TEST_SINK = 'delivered@resend.dev';
+
 /** Sender identities (decision 22 Oct 2026). Overridable by secret only to switch the verified domain. */
 const FROM_RECEPTION = Deno.env.get('BOOKING_FROM_RECEPTION') ?? 'Armada Residence Bookings <no-reply@armadaresidence.com>';
 const FROM_GUEST = Deno.env.get('BOOKING_FROM_GUEST') ?? 'أرمادا ريزيدنس | Armada Residence <reservation@armadaresidence.com>';
@@ -83,7 +109,7 @@ function cors(req: Request): Record<string, string> {
   const allow = allowedOrigins.includes(origin) ? origin : allowedOrigins[0];
   return {
     'Access-Control-Allow-Origin': allow,
-    'Access-Control-Allow-Headers': 'authorization, apikey, content-type',
+    'Access-Control-Allow-Headers': 'authorization, apikey, content-type, x-armada-test, x-armada-test-mail',
     'Access-Control-Allow-Methods': 'POST, OPTIONS',
     'Vary': 'Origin',
   };
@@ -153,6 +179,26 @@ async function ipHash(ip: string): Promise<string> {
   return Array.from(new Uint8Array(buf), (b) => b.toString(16).padStart(2, '0')).join('');
 }
 
+/** Constant-time string compare (test token). */
+function sameSecret(a: string, b: string): boolean {
+  if (!a || !b || a.length !== b.length) return false;
+  let r = 0;
+  for (let i = 0; i < a.length; i++) r |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  return r === 0;
+}
+
+/** Test mode may also ask for no email at all (x-armada-test-mail: none) so a race test does not burn the Resend quota. */
+function testWantsMail(req: Request): boolean {
+  return (req.headers.get('x-armada-test-mail') ?? '').toLowerCase() !== 'none';
+}
+
+/** The test token when the request carries it AND it matches the secret; otherwise null (header ignored). */
+function testToken(req: Request): string | null {
+  const given = req.headers.get('x-armada-test') ?? '';
+  const secret = Deno.env.get('BOOKING_TEST_TOKEN') ?? '';
+  return sameSecret(given, secret) ? given : null;
+}
+
 function serviceHeaders(key: string): Record<string, string> {
   return { apikey: key, Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' };
 }
@@ -190,7 +236,7 @@ async function rateLimited(req: Request): Promise<boolean> {
   }
 }
 
-/** One stored row, both request types. */
+/** One validated submission, both request types. */
 interface Row {
   locale: Locale;
   requestType: string;
@@ -200,6 +246,7 @@ interface Row {
   nights: number;
   adults: number;
   children: number;
+  childrenAges: number[];
   extraBeds: number;
   needsCoordination: boolean;
   capacity: number;
@@ -217,7 +264,10 @@ interface Row {
 
 type Validation = { ok: true; row: Row } | { ok: false; error: string; fields?: Record<string, string> };
 
-function validate(p: Payload): Validation {
+/** The QA room type (public.qa_fixture 'setup'): one per branch, known to rules.ts only in test mode. */
+const QA_ROOMS = content.branches.map((b: { slug: string }) => ({ slug: 'qa-test-room', branch: b.slug, capacity: 2, extra_beds_max: 1, availability: 'available' }));
+
+function validate(p: Payload, test = false): Validation {
   const locale: Locale = p.locale === 'en' ? 'en' : 'ar';
   const requestType = String(p.request_type ?? 'booking').trim();
   if (requestType !== 'booking' && !content.enquiry_types.includes(requestType)) return { ok: false, error: 'invalid request_type' };
@@ -233,6 +283,7 @@ function validate(p: Payload): Validation {
         check_out: p.check_out,
         adults: p.adults,
         children: p.children,
+        children_ages: Array.isArray(p.children_ages) ? p.children_ages : undefined,
         extra_beds: p.extra_beds,
         breakfast: p.breakfast,
         name: p.name,
@@ -243,7 +294,7 @@ function validate(p: Payload): Validation {
       },
       {
         branches: KNOWN_BRANCHES,
-        rooms: content.rooms,
+        rooms: test ? [...content.rooms, ...QA_ROOMS] : content.rooms,
         today: riyadhToday(),
         phone: phoneE164,
       },
@@ -252,7 +303,7 @@ function validate(p: Payload): Validation {
     const d: ValidBooking = r.data;
     return {
       ok: true,
-      row: { locale, requestType, branch: d.branch, check_in: d.check_in, check_out: d.check_out, nights: d.nights, adults: d.adults, children: d.children, extraBeds: d.extra_beds, needsCoordination: d.needs_coordination, capacity: d.capacity, room: d.room, breakfast: d.breakfast, name: d.name, phone: d.phone, email: d.email, notes: d.notes, page, organisation: '', roomsRequested: null, meals: '' },
+      row: { locale, requestType, branch: d.branch, check_in: d.check_in, check_out: d.check_out, nights: d.nights, adults: d.adults, children: d.children, childrenAges: d.children_ages, extraBeds: d.extra_beds, needsCoordination: d.needs_coordination, capacity: d.capacity, room: d.room, breakfast: d.breakfast, name: d.name, phone: d.phone, email: d.email, notes: d.notes, page, organisation: '', roomsRequested: null, meals: '' },
     };
   }
 
@@ -283,6 +334,7 @@ function validate(p: Payload): Validation {
       nights: nightsBetween(p.check_in, p.check_out),
       adults,
       children: 0,
+      childrenAges: [],
       extraBeds: 0,
       needsCoordination: false,
       capacity: 0,
@@ -300,7 +352,8 @@ function validate(p: Payload): Validation {
   };
 }
 
-async function store(ref: string, d: Row, ua: string): Promise<boolean> {
+/** Partner enquiries: phase-1 storage in public.booking_requests (unchanged). */
+async function storePartner(ref: string, d: Row, ua: string): Promise<boolean> {
   const env = serviceEnv();
   if (!env) return false;
   try {
@@ -314,13 +367,11 @@ async function store(ref: string, d: Row, ua: string): Promise<boolean> {
         check_in: d.check_in,
         check_out: d.check_out,
         adults: d.adults,
-        children: d.children,
-        room_slug: d.room || null,
-        breakfast: d.breakfast,
-        extra_beds: d.extraBeds,
-        needs_coordination: d.needsCoordination,
-        // fee snapshot at request time (pricing.json → extra_bed_per_night); later price changes never rewrite it
-        extra_bed_fee_per_night: d.extraBeds > 0 ? content.extra_bed_fee : null,
+        children: 0,
+        room_slug: null,
+        breakfast: null,
+        extra_beds: 0,
+        needs_coordination: false,
         guest_name: d.name,
         phone: d.phone,
         email: d.email || null,
@@ -338,6 +389,62 @@ async function store(ref: string, d: Row, ua: string): Promise<boolean> {
   } catch (e) {
     console.error('store failed', ref, String(e));
     return false;
+  }
+}
+
+/** What public.submit_booking answers (phase 2a). */
+interface Outcome {
+  status: 'confirmed' | 'request' | 'price_changed';
+  id?: string;
+  ref?: string;
+  reason?: string | null;
+  is_test?: boolean;
+  quote?: Quote | null;
+  low?: { night: string; left: number }[];
+}
+
+/** Individual bookings: ONE transaction in the database decides confirmed / request / price_changed. null = not stored. */
+async function submitBooking(ref: string, d: Row, ua: string, quoted: string | number | undefined, token: string | null): Promise<Outcome | null> {
+  const env = serviceEnv();
+  if (!env) return null;
+  try {
+    const res = await fetch(`${env.url}/rest/v1/rpc/submit_booking`, {
+      method: 'POST',
+      headers: serviceHeaders(env.key),
+      body: JSON.stringify({
+        p: {
+          ref,
+          test_token: token,
+          branch: d.branch,
+          room: d.room || null,
+          check_in: d.check_in,
+          check_out: d.check_out,
+          adults: d.adults,
+          children: d.children,
+          children_ages: d.childrenAges,
+          extra_beds: d.extraBeds,
+          breakfast: d.breakfast,
+          needs_coordination: d.needsCoordination,
+          capacity: d.capacity,
+          name: d.name,
+          phone: d.phone,
+          email: d.email || null,
+          notes: d.notes || null,
+          locale: d.locale,
+          page: d.page || null,
+          user_agent: ua.slice(0, 300),
+          quoted_total: quoted === undefined || quoted === '' || quoted === null ? null : String(quoted),
+        },
+      }),
+    });
+    if (!res.ok) {
+      console.error('submit_booking failed', ref, res.status, await res.text());
+      return null;
+    }
+    return (await res.json()) as Outcome;
+  } catch (e) {
+    console.error('submit_booking failed', ref, String(e));
+    return null;
   }
 }
 
@@ -372,7 +479,7 @@ function unique(list: string[]): string[] {
  * CC = the active central recipients. No primary recipient → the central recipients become To.
  * Never the same address twice. `primary` is what the confirmation's Reply-To points at.
  */
-function route(rows: Recipient[], branchSlug: string, isPartner: boolean): { to: string[]; cc: string[]; primary: string[] } {
+function route(rows: Recipient[], branchSlug: string, isPartner: boolean): { to: string[]; cc: string[]; primary: string[]; central: string[] } {
   const primary = unique(
     rows.filter((r) => (isPartner ? r.scope === 'partners' : r.scope === 'branch' && r.branch_slug === branchSlug)).map((r) => r.email),
   );
@@ -384,7 +491,7 @@ function route(rows: Recipient[], branchSlug: string, isPartner: boolean): { to:
     cc = [];
   }
   cc = cc.filter((e) => !to.includes(e));
-  return { to, cc, primary };
+  return { to, cc, primary, central };
 }
 
 interface Envelope {
@@ -395,26 +502,31 @@ interface Envelope {
 }
 
 /** Returns the Resend message id, or null. `kind` and `ref` label the log line; form data is never logged. */
-async function sendEmail(kind: 'notification' | 'confirmation', ref: string, env: Envelope, mail: Mail): Promise<string | null> {
+async function sendEmail(kind: string, ref: string, env: Envelope, mail: Mail, test: boolean, wantMail = true): Promise<string | null> {
+  if (test && !wantMail) return 'skipped';
   const key = Deno.env.get('RESEND_API_KEY');
   if (!key) {
-    console.error(`email ${kind} not sent`, ref, 'RESEND_API_KEY missing — request kept in booking_requests');
+    console.error(`email ${kind} not sent`, ref, 'RESEND_API_KEY missing — request kept in the database');
     return null;
   }
   if (env.to.length === 0) {
     console.error(`email ${kind} not sent`, ref, 'no recipient');
     return null;
   }
+  // test mode: every message goes to Resend's sink, never to a hotel mailbox or a guest
+  const to = test ? [TEST_SINK] : env.to;
+  const cc = test ? [] : env.cc ?? [];
+  const hotelSide = kind !== 'confirmation' && kind !== 'guest-confirmed';
   try {
     const res = await fetch('https://api.resend.com/emails', {
       method: 'POST',
       headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({
         from: env.from,
-        to: env.to,
-        ...(env.cc && env.cc.length ? { cc: env.cc } : {}),
+        to,
+        ...(cc.length ? { cc } : {}),
         ...(env.replyTo && env.replyTo.length ? { reply_to: env.replyTo } : {}),
-        subject: mail.subject,
+        subject: test ? `[TEST] ${mail.subject}` : mail.subject,
         html: mail.html,
         text: mail.text,
       }),
@@ -426,7 +538,7 @@ async function sendEmail(kind: 'notification' | 'confirmation', ref: string, env
     const body = (await res.json().catch(() => ({}))) as { id?: string };
     const id = typeof body.id === 'string' ? body.id : '';
     // routing audit line (hotel addresses only — never the guest's own data)
-    console.log(`email ${kind} sent`, ref, `id=${id}`, `to=${kind === 'notification' ? env.to.join(';') : '[sender]'}`, `cc=${(env.cc ?? []).join(';')}`, `reply_to=${kind === 'notification' ? (env.replyTo?.length ? '[sender]' : '-') : (env.replyTo ?? []).join(';')}`);
+    console.log(`email ${kind} sent`, ref, `id=${id}`, `to=${hotelSide ? to.join(';') : '[sender]'}`, `cc=${cc.join(';')}`, `reply_to=${hotelSide ? (env.replyTo?.length ? '[sender]' : '-') : (env.replyTo ?? []).join(';')}`, test ? 'TEST' : '');
     return id || 'sent';
   } catch (e) {
     console.error(`email ${kind} not sent`, ref, String(e));
@@ -448,44 +560,70 @@ Deno.serve(async (req) => {
   // Honeypot: a hidden field no person fills. Answer like a success so the bot moves on; store nothing.
   if (typeof payload.website === 'string' && payload.website.trim() !== '') {
     console.warn('honeypot hit');
-    return json(req, 200, { ok: true, ref: makeRef() });
+    return json(req, 200, { ok: true, ref: makeRef(), status: 'request' });
   }
-  if (await rateLimited(req)) return json(req, 429, { ok: false, error: 'too many requests' });
+  const token = testToken(req);
+  if (!token && (await rateLimited(req))) return json(req, 429, { ok: false, error: 'too many requests' });
 
-  const v = validate(payload);
+  const v = validate(payload, Boolean(token));
   if (!v.ok) return json(req, 422, { ok: false, error: v.error, ...(v.fields ? { fields: v.fields } : {}) });
   const d = v.row;
 
   const ref = makeRef();
   const isPartner = d.requestType !== 'booking';
   const receivedAt = riyadhNow();
+  const ua = req.headers.get('user-agent') ?? '';
+  const test = Boolean(token);
+  const wantMail = !test || testWantsMail(req);
 
   // ---- 1 + 2: validate (done) → store ----
-  const stored = await store(ref, d, req.headers.get('user-agent') ?? '');
+  let stored: boolean;
+  let outcome: Outcome | null = null;
+  if (isPartner) {
+    stored = await storePartner(ref, d, ua);
+  } else {
+    outcome = await submitBooking(ref, d, ua, payload.quoted_total, token);
+    if (outcome?.status === 'price_changed') {
+      // nothing stored: the form shows the new price and the guest submits again
+      return json(req, 409, { ok: false, error: 'price_changed', status: 'price_changed', quote: outcome.quote ?? null });
+    }
+    stored = outcome !== null;
+  }
 
   // ---- 3 + 4: build the messages (email.ts, copy from content/) ----
   let notification: Mail;
   let confirmation: Mail | null;
+  let lowAlert: Mail | null = null;
+  const confirmed = outcome?.status === 'confirmed';
   if (isPartner) {
     const pm = { ref, locale: d.locale, requestType: d.requestType, organisation: d.organisation, branch: d.branch, check_in: d.check_in, check_out: d.check_out, nights: d.nights, guests: d.adults, rooms: d.roomsRequested, meals: d.meals, name: d.name, phone: d.phone, email: d.email, notes: d.notes, receivedAt };
     notification = partnerNotification(content, pm);
     confirmation = partnerConfirmation(content, pm);
   } else {
     const bm = { ref, locale: d.locale, branch: d.branch, room: d.room, check_in: d.check_in, check_out: d.check_out, nights: d.nights, adults: d.adults, children: d.children, extraBeds: d.extraBeds, extraBedFee: content.extra_bed_fee, needsCoordination: d.needsCoordination, capacity: d.capacity, breakfast: d.breakfast as 'with' | 'without', name: d.name, phone: d.phone, email: d.email, notes: d.notes, receivedAt };
-    notification = bookingNotification(content, bm);
-    // the guest "request received" email goes out only when the guest gave an email (decision 23 Oct 2026)
-    confirmation = d.email ? bookingConfirmation(content, bm) : null;
+    if (confirmed && outcome?.quote) {
+      const cm = { ...bm, quote: outcome.quote, confirmedBy: null };
+      notification = confirmedNotification(content, cm);
+      confirmation = d.email ? bookingConfirmed(content, cm) : null;
+      if (outcome.low && outcome.low.length) lowAlert = lowInventoryAlert(content, { ref, branch: d.branch, room: d.room, nights: outcome.low });
+    } else {
+      notification = bookingNotification(content, bm);
+      // the guest "request received" email goes out only when the guest gave an email (decision 23 Oct 2026)
+      confirmation = d.email ? bookingConfirmation(content, bm) : null;
+    }
   }
 
   // ---- recipients from Supabase, then send ----
   const rows = await loadRecipients(ref);
-  const { to, cc, primary } = route(rows, d.branch, isPartner);
+  const { to, cc, primary, central } = route(rows, d.branch, isPartner);
   if (to.length === 0) console.error('recipients: none active in booking_notification_recipients', ref);
   const confirmationReplyTo = primary.length ? primary : [addressOf(FROM_GUEST)];
 
-  const [notificationId, confirmationId] = await Promise.all([
-    sendEmail('notification', ref, { from: FROM_RECEPTION, to, cc, replyTo: d.email ? [d.email] : [] }, notification),
-    confirmation ? sendEmail('confirmation', ref, { from: FROM_GUEST, to: [d.email], replyTo: confirmationReplyTo }, confirmation) : Promise.resolve(null),
+  const [notificationId, confirmationId, lowId] = await Promise.all([
+    sendEmail('notification', ref, { from: FROM_RECEPTION, to, cc, replyTo: d.email ? [d.email] : [] }, notification, test, wantMail),
+    confirmation ? sendEmail(confirmed ? 'guest-confirmed' : 'confirmation', ref, { from: FROM_GUEST, to: [d.email], replyTo: confirmationReplyTo }, confirmation, test, wantMail) : Promise.resolve(null),
+    // decision 2: the low-inventory alert goes to the central recipients only (never to nobody: falls back to To)
+    lowAlert ? sendEmail('low-inventory', ref, { from: FROM_RECEPTION, to: central.length ? central : to }, lowAlert, test, wantMail) : Promise.resolve(null),
   ]);
 
   if (!stored && !notificationId) {
@@ -495,9 +633,13 @@ Deno.serve(async (req) => {
     ok: true,
     ref,
     stored,
+    status: confirmed ? 'confirmed' : 'request',
+    reason: confirmed ? null : outcome?.reason ?? null,
+    quote: confirmed ? outcome?.quote ?? null : null,
+    is_test: test,
     hotel_email_sent: Boolean(notificationId),
     guest_email_sent: Boolean(confirmationId),
     // Resend message ids (opaque) so a support thread can be traced; no addresses are returned.
-    email_ids: { notification: notificationId, confirmation: confirmationId },
+    email_ids: { notification: notificationId, confirmation: confirmationId, low_inventory: lowId },
   });
 });

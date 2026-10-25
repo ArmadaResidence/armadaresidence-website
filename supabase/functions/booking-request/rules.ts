@@ -96,6 +96,8 @@ export interface BookingInput {
   children?: string | number;
   extra_beds?: string | number;
   breakfast?: string;
+  /** one age (0–17) per child — asked only when children > 0 and breakfast = with (Q2, 24 Oct 2026) */
+  children_ages?: Array<string | number>;
   name: string;
   phone: string;
   country?: string;
@@ -113,6 +115,7 @@ export type FieldError =
   | 'adults'
   | 'children'
   | 'extra_beds'
+  | 'children_ages'
   | 'breakfast'
   | 'name'
   | 'phone'
@@ -140,11 +143,19 @@ export interface ValidBooking {
   /** the capacity needs_coordination was measured against (the room's, or the branch's largest with «أي غرفة متاحة») */
   capacity: number;
   breakfast: Breakfast;
+  /** one age per child when breakfast = with and children > 0 (breakfast pricing only), else [] */
+  children_ages: number[];
   name: string;
   phone: string;
   email: string;
   notes: string;
 }
+
+/** Children's ages are needed only to price breakfast (Q2): children > 0 and breakfast = with. */
+export function needsChildAges(children: number, breakfast: string): boolean {
+  return children > 0 && breakfast === 'with';
+}
+export const CHILD_AGE_MAX = 17;
 
 /** Every field rule of the individual booking form. Returns per-field errors, or the normalised values. */
 export function validateBooking(p: BookingInput, ctx: RuleContext): { ok: true; data: ValidBooking } | { ok: false; errors: Partial<Record<keyof BookingInput, FieldError>> } {
@@ -183,6 +194,16 @@ export function validateBooking(p: BookingInput, ctx: RuleContext): { ok: true; 
   const breakfast = String(p.breakfast ?? '');
   if (!BREAKFAST.includes(breakfast as Breakfast)) errors.breakfast = breakfast ? 'breakfast' : 'required';
 
+  // Children's ages (Q2): needed only to price breakfast. When the client sends them they must be one valid age per
+  // child; when it sends none the booking is still valid — the database then prices nothing and stores a request
+  // (reason needs_ages), so an older form never breaks. The form itself asks for them before an instant booking.
+  let ages: number[] = [];
+  if (children !== null && needsChildAges(children, breakfast) && Array.isArray(p.children_ages) && p.children_ages.length) {
+    const raw = p.children_ages;
+    ages = raw.map((a) => intIn(a, 0, CHILD_AGE_MAX)).filter((a): a is number => a !== null);
+    if (raw.length !== children || ages.length !== children) errors.children_ages = 'children_ages';
+  }
+
   const name = String(p.name ?? '').trim().replace(/\s+/g, ' ');
   if (!name) errors.name = 'required';
   else if (!validName(name)) errors.name = 'name';
@@ -210,6 +231,7 @@ export function validateBooking(p: BookingInput, ctx: RuleContext): { ok: true; 
       needs_coordination: (adults as number) > capacity + (extraBeds as number),
       capacity,
       breakfast: breakfast as Breakfast,
+      children_ages: ages,
       name,
       phone: e164 as string,
       email,
@@ -238,4 +260,19 @@ export function branchMaxAdults(rooms: RuleRoom[], branch: string): number {
 /** Extra beds needed for `adults` in `room` (0 when the room's capacity is enough). */
 export function bedsNeeded(room: RuleRoom, adults: number): number {
   return Math.max(0, adults - room.capacity);
+}
+
+/**
+ * A SAR amount in a guest-facing sentence (24 Oct 2026). English: "SAR 470". Arabic: the number, then the noun in
+ * the form the number takes — «ريالات» after 3–10, «ريال» after round hundreds/thousands and 1–2 past them (200 ريال,
+ * 102 ريال), «ريالًا» otherwise (185 ريالًا). Whole amounts print without decimals, others with two.
+ */
+export function sarText(amount: number, L: Locale): string {
+  const whole = Math.round(amount * 100) % 100 === 0;
+  const num = whole ? String(Math.round(amount)) : amount.toFixed(2);
+  if (L === 'en') return `SAR ${num}`;
+  const n = Math.round(amount);
+  const k = n % 100;
+  const noun = !whole ? 'ريال' : k >= 3 && k <= 10 ? 'ريالات' : k === 0 || (k <= 2 && n > 100) ? 'ريال' : 'ريالًا';
+  return `${num} ${noun}`;
 }

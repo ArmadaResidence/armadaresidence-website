@@ -3,6 +3,15 @@
 project_id = "armada-residence"
 
 [functions.booking-request]
-# Public endpoint for the booking and partner-enquiry forms: no JWT (the site ships no Supabase key);
+# Public endpoint for the booking and partner-enquiry forms: no JWT (the form posts without a session);
 # BOOKING_ALLOWED_ORIGINS (Supabase secret) limits the browser origins.
 verify_jwt = false
+
+# Phase 2a dashboard functions (DECISIONS.md 2026-10-25): signed-in dashboard users only. Each forwards the caller's
+# JWT to the database, so RLS decides; booking-admin sends the confirmation / cancellation emails, admin-users
+# manages logins (admin only).
+[functions.booking-admin]
+verify_jwt = true
+
+[functions.admin-users]
+verify_jwt = true

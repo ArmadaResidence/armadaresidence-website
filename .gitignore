@@ -46,3 +46,6 @@ brand/cafe/ملفات الهوية/*
 # lighthouse / trace reports (summaries are kept)
 reports/**/*.json
 reports/trace.json
+
+# dashboard (admin/): local env + build output; the example stays tracked
+!admin/.env.local.example

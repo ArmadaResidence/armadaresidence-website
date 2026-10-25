@@ -48,6 +48,34 @@ export interface BookingMail {
   receivedAt: string;
 }
 
+/** Price breakdown of a stay as public.submit_booking / staff_confirm_reservation return it (VAT-inclusive SAR). */
+export interface Quote {
+  nights: { night: string; price: number; label?: string | null }[];
+  count: number;
+  room_total: number;
+  breakfast: 'with' | 'without';
+  breakfast_total: number;
+  extra_beds: number;
+  extra_bed_fee: number;
+  extra_beds_total: number;
+  total: number;
+}
+
+/** A confirmed booking (phase 2a, decision 7): instant from the website or confirmed by staff in the dashboard. */
+export interface ConfirmedMail extends BookingMail {
+  quote: Quote;
+  /** null = instant from the website; otherwise the staff label («استقبال طريق المطار», a manager's name) */
+  confirmedBy: string | null;
+}
+
+/** Low-inventory alert (decision 2): the affected nights of one confirmed booking now at 1 or 0 rooms left. */
+export interface LowInventoryMail {
+  ref: string;
+  branch: string;
+  room: string;
+  nights: { night: string; left: number }[];
+}
+
 export interface PartnerMail {
   ref: string;
   locale: Locale;
@@ -522,6 +550,250 @@ ${para(L, M.partner_guest_footer, { muted: true, size: 13 })}`,
     preheader: fill(c.email.ar.preheader_partner, { ref: d.ref }),
     body: header(c) + card(`${ar.html}${langDivider()}${en.html}`) + footer(c, ['ar', 'en']),
   });
+  const text = `${ar.text}\n\n${RULE}\n\n${en.text}\n\n${fill(c.legal_line.ar, { year: year() })}\n${fill(c.legal_line.en, { year: year() })}`;
+  return { subject, html, text };
+}
+
+// ══ 5–8. Phase 2a (DECISIONS.md 2026-10-25): confirmed booking, confirmed notification, low inventory, cancellation ═
+
+/** «ريالًا» / «ريال» / «ريالات» by number (Arabic), "SAR n" (English); whole amounts without decimals. */
+function sar(amount: number, L: Locale): string {
+  const a = Number(amount) || 0;
+  const whole = Math.round(a * 100) % 100 === 0;
+  const num = whole ? String(Math.round(a)) : a.toFixed(2);
+  if (L === 'en') return `SAR ${num}`;
+  const n = Math.round(a);
+  const k = n % 100;
+  const noun = !whole ? 'ريال' : k >= 3 && k <= 10 ? 'ريالات' : k === 0 || (k <= 2 && n > 100) ? 'ريال' : 'ريالًا';
+  return `${num} ${noun}`;
+}
+
+/** Price rows of a quote: room × nights (per-night list when the rates differ), breakfast, extra beds, total. */
+function priceRows(c: Content, q: Quote, L: Locale): [string, string][] {
+  const lab = c.labels[L];
+  const Q = c.quote[L];
+  const nightsWord = pluralForm(lab.plural.nights, q.count);
+  const prices = q.nights.map((n) => Number(n.price));
+  const uniform = prices.every((p) => p === prices[0]);
+  const rows: [string, string][] = [];
+  rows.push([fill(Q.room_line, { nights: nightsWord }), uniform ? `${q.count} × ${sar(prices[0], L)} = ${sar(q.room_total, L)}` : sar(q.room_total, L)]);
+  // rates differ across the stay: one row per night (dates and amounts never share a bidi run)
+  if (!uniform) for (const n of q.nights) rows.push([n.night, n.label ? `${sar(Number(n.price), L)} — ${n.label}` : sar(Number(n.price), L)]);
+  if (q.breakfast === 'with') rows.push([Q.breakfast_line, sar(q.breakfast_total, L)]);
+  if (q.extra_beds > 0) rows.push([fill(Q.extra_beds_line, { beds: String(q.extra_beds) }), sar(q.extra_beds_total, L)]);
+  rows.push([Q.total_line, sar(q.total, L)]);
+  return rows;
+}
+
+// ══ 5. Booking confirmed (guest, Arabic first then English) ═════════════════════════════════════════════════
+export function bookingConfirmed(c: Content, d: ConfirmedMail): Mail {
+  const b = branchOf(c, d.branch);
+  const block = (L: Locale) => {
+    const lab = c.labels[L];
+    const M = c.email[L];
+    const breakfast = d.breakfast === 'with' ? lab.breakfast_with : lab.breakfast_without;
+    const rows: [string, string][] = [
+      [lab.branch, b[`name_${L}`]],
+      [plainLabel(lab.room_type), roomName(c, d.room, d.branch, L)],
+      [lab.check_in, d.check_in],
+      [lab.check_out, d.check_out],
+      [lab.nights, pluralForm(lab.plural.nights, d.nights)],
+      [M.guests, guestsLine(c, d.adults, d.children, L)],
+      ...(d.extraBeds ? ([[lab.extra_beds, String(d.extraBeds)]] as [string, string][]) : []),
+      [lab.breakfast, breakfast],
+    ];
+    const price = priceRows(c, d.quote, L);
+    const waText = fill(c.wa_prefill[L].branch, { branch: b[`name_${L}`] });
+    const html = section(
+      L,
+      `${headline(L, M.confirmed_heading)}
+${para(L, fill(M.guest_greeting, { name: d.name }))}
+${para(L, fill(M.confirmed_body, { branch: b[`name_${L}`] }))}
+${refPill(L, M.booking_ref_label, d.ref)}
+${subhead(L, M.booking_summary)}
+${kvCard(L, rows)}
+${subhead(L, M.price_heading)}
+${kvCard(L, price)}
+<div style="height:12px; line-height:12px; font-size:0;">&nbsp;</div>
+${flagNote(L, [M.pay_at_hotel])}
+${subhead(L, M.next_heading)}
+${para(L, M.confirmed_next)}
+${subhead(L, M.branch_card)}
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" class="bd" style="border:1px solid ${LINE}; border-radius:8px;"><tr><td style="padding:16px 18px;">
+<p class="t-ink" style="margin:0 0 4px; font-family:${FONT[L]}; font-size:16px; line-height:24px; font-weight:700; color:${INK};">${esc(b[`name_${L}`])}</p>
+<p class="t-muted" style="margin:0 0 6px; font-family:${FONT[L]}; font-size:14px; line-height:21px; color:${MUTED};">${esc(b[`address_${L}`])}</p>
+<p class="t-muted" style="margin:0 0 12px; font-family:${FONT[L]}; font-size:14px; line-height:21px; color:${MUTED};">${esc(c.check_in_line[L])} · ${esc(c.check_out_line[L])}</p>
+${buttons(L, [button(L, wa(b.whatsapp, waText), M.wa_button, 'solid'), button(L, b.maps_url, M.map_button, 'ghost')])}
+</td></tr></table>
+<div style="height:18px; line-height:18px; font-size:0;">&nbsp;</div>
+${para(L, c.cancellation_line[L], { muted: true, size: 14 })}
+${para(L, M.confirmed_footer, { muted: true, size: 13 })}`,
+    );
+    const text = [
+      M.confirmed_heading,
+      fill(M.guest_greeting, { name: d.name }),
+      fill(M.confirmed_body, { branch: b[`name_${L}`] }),
+      '',
+      `${M.booking_ref_label}: ${d.ref}`,
+      '',
+      M.booking_summary,
+      textRows(rows),
+      '',
+      M.price_heading,
+      textRows(price),
+      M.pay_at_hotel,
+      '',
+      M.next_heading,
+      M.confirmed_next,
+      '',
+      `${M.branch_card}: ${b[`name_${L}`]}`,
+      b[`address_${L}`],
+      `${c.check_in_line[L]} · ${c.check_out_line[L]}`,
+      `${M.wa_button}: ${wa(b.whatsapp, waText)}`,
+      `${M.map_button}: ${b.maps_url}`,
+      '',
+      c.cancellation_line[L],
+      M.confirmed_footer,
+    ].join('\n');
+    return { html, text };
+  };
+  const ar = block('ar');
+  const en = block('en');
+  const subject = fill(c.email.ar.confirmed_subject, { branch: b.name_ar, ref: d.ref });
+  const html = doc({
+    lang: 'ar',
+    title: subject,
+    preheader: fill(c.email.ar.preheader_confirmed, { ref: d.ref }),
+    body: header(c) + card(`${ar.html}${langDivider()}${en.html}`) + footer(c, ['ar', 'en']),
+  });
+  const text = `${ar.text}\n\n${RULE}\n\n${en.text}\n\n${fill(c.legal_line.ar, { year: year() })}\n${fill(c.legal_line.en, { year: year() })}`;
+  return { subject, html, text };
+}
+
+// ══ 6. Confirmed booking notification (reception, Arabic, work tool) ═════════════════════════════════════════
+export function confirmedNotification(c: Content, d: ConfirmedMail): Mail {
+  const L: Locale = 'ar';
+  const lab = c.labels.ar;
+  const M = c.email.ar;
+  const b = branchOf(c, d.branch);
+  const tagBg = BRANCH_TAG[d.branch] ?? NAVY;
+  const breakfast = d.breakfast === 'with' ? lab.breakfast_with : lab.breakfast_without;
+  const by = d.confirmedBy ? fill(M.confirmed_by_staff, { name: d.confirmedBy }) : M.confirmed_by_website;
+  const rows: [string, string][] = [
+    [M.ref, d.ref],
+    [M.status_label, by],
+    [lab.branch, b.name_ar],
+    [plainLabel(lab.room_type), roomName(c, d.room, d.branch, 'ar')],
+    [lab.check_in, d.check_in],
+    [lab.check_out, d.check_out],
+    [lab.nights, pluralForm(lab.plural.nights, d.nights)],
+    [lab.adults, String(d.adults)],
+    [lab.children, String(d.children)],
+    [lab.extra_beds, String(d.extraBeds)],
+    [lab.breakfast, breakfast],
+    [lab.full_name, d.name],
+    [lab.phone, d.phone],
+    [plainLabel(lab.email), d.email || '—'],
+    [plainLabel(lab.notes), d.notes || '—'],
+    [M.language, d.locale],
+    [M.received_at, d.receivedAt],
+  ];
+  const price = priceRows(c, d.quote, 'ar');
+  const subject = fill(M.confirmed_hotel_subject, { branch: b.name_ar, ref: d.ref });
+  const inner = section(
+    L,
+    `<p style="margin:0 0 14px;"><span style="display:inline-block; padding:5px 12px; border-radius:999px; background:${tagBg}; color:${WHITE}; font-family:${FONT.ar}; font-size:13px; font-weight:700;">${esc(b.name_ar)}</span>
+<span class="t-muted" dir="ltr" style="display:inline-block; margin-inline-start:8px; font-family:${FONT.en}; font-size:13px; color:${MUTED};">${esc(d.ref)} · ${esc(d.receivedAt)}</span></p>
+${headline(L, M.confirmed_hotel_intro)}
+${flagNote(L, [M.close_other_platforms])}
+<div style="height:16px; line-height:16px; font-size:0;">&nbsp;</div>
+${buttons(L, [button(L, wa(d.phone), M.notif_wa_guest, 'solid'), button(L, tel(d.phone), M.notif_call, 'ghost')])}
+<div style="height:18px; line-height:18px; font-size:0;">&nbsp;</div>
+${kvCard(L, rows)}
+${subhead(L, M.price_heading)}
+${kvCard(L, price)}
+<div style="height:16px; line-height:16px; font-size:0;">&nbsp;</div>
+${para(L, M.pay_at_hotel, { muted: true, size: 13 })}
+${para(L, M.hotel_footer, { muted: true, size: 12 })}`,
+  );
+  const html = doc({ lang: 'ar', title: subject, preheader: `${b.name_ar} · ${pluralForm(lab.plural.nights, d.nights)} · ${sar(d.quote.total, 'ar')} — ${d.ref}`, body: header(c) + card(inner) + footer(c, ['ar']) });
+  const text = [
+    M.confirmed_hotel_intro,
+    '',
+    M.close_other_platforms,
+    '',
+    textRows(rows),
+    '',
+    M.price_heading,
+    textRows(price),
+    M.pay_at_hotel,
+    '',
+    `${M.notif_wa_guest}: ${wa(d.phone)}`,
+    `${M.notif_call}: ${tel(d.phone)}`,
+    '',
+    M.hotel_footer,
+  ].join('\n');
+  return { subject, html, text };
+}
+
+// ══ 7. Low-inventory alert (central recipients, Arabic) ══════════════════════════════════════════════════════
+export function lowInventoryAlert(c: Content, d: LowInventoryMail): Mail {
+  const L: Locale = 'ar';
+  const M = c.email.ar;
+  const b = branchOf(c, d.branch);
+  const room = roomName(c, d.room, d.branch, 'ar');
+  const rows: [string, string][] = d.nights.map((n) => [`${M.low_night} ${n.night}`, n.left <= 0 ? M.low_zero : M.low_one]);
+  const subject = fill(M.low_subject, { branch: b.name_ar, room, ref: d.ref });
+  const first = d.nights[0]?.night ?? '';
+  const href = `${String(c.admin_url).replace(/\/$/, '')}/inventory?branch=${encodeURIComponent(d.branch)}&from=${encodeURIComponent(first)}`;
+  const inner = section(
+    L,
+    `<p style="margin:0 0 14px;"><span style="display:inline-block; padding:5px 12px; border-radius:999px; background:${BRANCH_TAG[d.branch] ?? NAVY}; color:${WHITE}; font-family:${FONT.ar}; font-size:13px; font-weight:700;">${esc(b.name_ar)}</span>
+<span class="t-ink" style="display:inline-block; margin-inline-start:8px; font-family:${FONT.ar}; font-size:14px; font-weight:700; color:${INK};">${esc(room)}</span></p>
+${headline(L, fill(M.low_intro, { ref: d.ref }))}
+${kvCard(L, rows)}
+<div style="height:18px; line-height:18px; font-size:0;">&nbsp;</div>
+${buttons(L, [button(L, href, M.low_button, 'bronze')])}
+<div style="height:8px; line-height:8px; font-size:0;">&nbsp;</div>
+${para(L, M.close_other_platforms, { muted: true, size: 13 })}
+${para(L, M.hotel_footer, { muted: true, size: 12 })}`,
+  );
+  const html = doc({ lang: 'ar', title: subject, preheader: `${b.name_ar} · ${room} — ${d.ref}`, body: header(c) + card(inner) + footer(c, ['ar']) });
+  const text = [fill(M.low_intro, { ref: d.ref }), `${b.name_ar} — ${room}`, '', textRows(rows), '', `${M.low_button}: ${href}`, M.close_other_platforms, M.hotel_footer].join('\n');
+  return { subject, html, text };
+}
+
+// ══ 8. Booking cancelled (guest, Arabic first then English) ══════════════════════════════════════════════════
+export function bookingCancelled(c: Content, d: BookingMail): Mail {
+  const b = branchOf(c, d.branch);
+  const block = (L: Locale) => {
+    const lab = c.labels[L];
+    const M = c.email[L];
+    const rows: [string, string][] = [
+      [lab.branch, b[`name_${L}`]],
+      [plainLabel(lab.room_type), roomName(c, d.room, d.branch, L)],
+      [lab.check_in, d.check_in],
+      [lab.check_out, d.check_out],
+      [lab.nights, pluralForm(lab.plural.nights, d.nights)],
+    ];
+    const waText = fill(c.wa_prefill[L].branch, { branch: b[`name_${L}`] });
+    const html = section(
+      L,
+      `${headline(L, M.cancel_heading)}
+${para(L, fill(M.guest_greeting, { name: d.name }))}
+${para(L, fill(M.cancel_body, { ref: d.ref, branch: b[`name_${L}`] }))}
+${refPill(L, M.booking_ref_label, d.ref)}
+${kvCard(L, rows)}
+<div style="height:18px; line-height:18px; font-size:0;">&nbsp;</div>
+${buttons(L, [button(L, wa(b.whatsapp, waText), M.wa_button, 'solid')])}`,
+    );
+    const text = [M.cancel_heading, fill(M.guest_greeting, { name: d.name }), fill(M.cancel_body, { ref: d.ref, branch: b[`name_${L}`] }), '', `${M.booking_ref_label}: ${d.ref}`, textRows(rows), '', `${M.wa_button}: ${wa(b.whatsapp, waText)}`].join('\n');
+    return { html, text };
+  };
+  const ar = block('ar');
+  const en = block('en');
+  const subject = fill(c.email.ar.cancel_subject, { ref: d.ref });
+  const html = doc({ lang: 'ar', title: subject, preheader: fill(c.email.ar.preheader_cancel, { ref: d.ref }), body: header(c) + card(`${ar.html}${langDivider()}${en.html}`) + footer(c, ['ar', 'en']) });
   const text = `${ar.text}\n\n${RULE}\n\n${en.text}\n\n${fill(c.legal_line.ar, { year: year() })}\n${fill(c.legal_line.en, { year: year() })}`;
   return { subject, html, text };
 }

@@ -298,6 +298,10 @@ def generate_function_content(content: dict[str, dict]) -> None:
         ],
         "labels": {loc: ui[loc]["form"] for loc in ("ar", "en")},
         "email": {loc: ui[loc]["email"] for loc in ("ar", "en")},
+        # phase 2a (25 Oct 2026): price-breakdown labels shared by the form and the confirmed-booking emails, and the
+        # dashboard origin the low-inventory alert links to (ADMIN_URL to point at a preview deployment)
+        "quote": {loc: ui[loc]["quote"] for loc in ("ar", "en")},
+        "admin_url": os.environ.get("ADMIN_URL", "https://admin.armadaresidence.com"),
         # approved copy reused by the email layout (23 Oct 2026) — no new wording in the function
         "success_heading": {loc: ui[loc]["success"]["heading"] for loc in ("ar", "en")},
         "check_in_line": {loc: content["policies.json"][f"check_in_{loc}"] for loc in ("ar", "en")},

@@ -98,7 +98,8 @@
     },
     "price": {
       "final_note": "يؤكد الاستقبال السعر النهائي عند الحجز.",
-      "room_only_note": "السعر للغرفة بدون إفطار"
+      "room_only_note": "السعر للغرفة بدون إفطار",
+      "from_line": "يبدأ من {amount} لليلة شامل الضريبة"
     },
     "cta": {
       "whatsapp": "واتساب",
@@ -137,6 +138,41 @@
     },
     "policies": {
       "toc": "المحتويات"
+    },
+    "quote": {
+      "heading": "السعر لتواريخك",
+      "loading": "نحسب السعر…",
+      "room_line": "الغرفة · {nights}",
+      "breakfast_line": "الإفطار",
+      "extra_beds_line": "الأسرّة الإضافية · {beds}",
+      "total_line": "الإجمالي شامل الضريبة",
+      "per_night": "سعر الليالي",
+      "pay_at_hotel": "الدفع عند الوصول إلى الفندق، ولا يلزم أي دفع الآن.",
+      "instant_badge": "تأكيد فوري",
+      "request_badge": "طلب حجز — يؤكده الاستقبال",
+      "submit_instant": "أكّد الحجز",
+      "pick_room": "اختر نوع الغرفة لترى السعر وتؤكد حجزك فورًا.",
+      "unavailable": "لا يتوفر سعر لهذه التواريخ على الموقع. أرسل طلبك وسيؤكده الاستقبال.",
+      "price_changed": "تغيّر السعر منذ عرضه. راجع السعر الجديد ثم أكّد الحجز.",
+      "ages_heading": "أعمار الأطفال",
+      "ages_hint": "نحتاج الأعمار لحساب الإفطار فقط.",
+      "age_label": "عمر الطفل {n}",
+      "age_choose": "اختر العمر",
+      "age_under1": "أقل من سنة",
+      "age_years": "{n} سنة",
+      "reasons": {
+        "any_room": "لم يُحدَّد نوع الغرفة.",
+        "not_bookable": "هذا النوع غير متاح للحجز الفوري.",
+        "instant_off": "يؤكد الاستقبال الحجوزات حاليًا.",
+        "needs_coordination": "عدد الضيوف يحتاج تنسيقًا مع الاستقبال.",
+        "extra_beds": "توفر الأسرّة الإضافية يؤكده الاستقبال.",
+        "too_long": "الإقامات الأطول من {n} ليلة يؤكدها الاستقبال.",
+        "same_day_cutoff": "الوصول اليوم بعد الساعة {time} يؤكده الاستقبال.",
+        "no_rate": "لم تُحدَّد أسعار بعض الليالي بعد.",
+        "closed": "بعض الليالي غير متاحة للحجز الفوري.",
+        "sold_out": "لا تتبقى غرف من هذا النوع في بعض الليالي.",
+        "needs_ages": "أعمار الأطفال مطلوبة لحساب الإفطار."
+      }
     },
     "datepicker": {
       "title": "تواريخ الإقامة",
@@ -188,7 +224,8 @@
         "name": "اكتب الاسم بحروف عربية أو لاتينية، 3 أحرف على الأقل، بدون أرقام.",
         "breakfast": "اختر «مع الإفطار» أو «بدون إفطار».",
         "adults": "بالغ واحد على الأقل.",
-        "extra_beds": "عدد الأسرّة الإضافية أكبر من المسموح لهذه الغرفة."
+        "extra_beds": "عدد الأسرّة الإضافية أكبر من المسموح لهذه الغرفة.",
+        "children_ages": "اختر عمر كل طفل (لحساب الإفطار فقط)."
       },
       "whatsapp_fallback": "أرسل الطلب عبر واتساب",
       "whatsapp_message": "السلام عليكم، أرغب في طلب حجز.\nالفرع: {branch}\nنوع الغرفة: {room}\nتاريخ الوصول: {check_in}\nتاريخ المغادرة: {check_out}\nعدد الليالي: {nights}\nالبالغون: {adults}\nالأطفال: {children}\nأسرّة إضافية: {extra_beds}\nالإفطار: {breakfast}\nالاسم الكامل: {name}\nرقم الجوال: {phone}\nالبريد الإلكتروني: {email}\nملاحظات: {notes}",
@@ -256,7 +293,16 @@
       "policies_note": "يمكنك مراجعة سياسات الحجز والإلغاء والوصول والمغادرة في",
       "whatsapp_cta": "تواصل مع الفرع عبر واتساب",
       "back_home": "العودة إلى الرئيسية",
-      "next_whatsapp": "سيؤكد فريق الاستقبال حجزك عبر واتساب على الرقم الذي أرسلته."
+      "next_whatsapp": "سيؤكد فريق الاستقبال حجزك عبر واتساب على الرقم الذي أرسلته.",
+      "confirmed_heading": "تم تأكيد حجزك",
+      "confirmed_body": "حجزك مؤكد. احتفظ برقم الحجز وأبرزه عند الوصول.",
+      "confirmed_steps": [
+        "الدفع عند الوصول إلى الفندق.",
+        "لأي تعديل أو استفسار، تواصل مع الاستقبال عبر واتساب واذكر رقم الحجز.",
+        "إن أدخلت بريدك الإلكتروني فستصلك رسالة التأكيد عليه."
+      ],
+      "fallback_line": "لم نتمكن من تأكيد حجزك فورًا: {reason}",
+      "sold_out_race": "سبقك ضيف آخر إلى آخر غرفة متاحة في هذه التواريخ."
     },
     "footer": {
       "branches": "الفرعان",
@@ -305,7 +351,34 @@
       "notif_no_email": "لم يُدخل الضيف بريدًا إلكترونيًا — التواصل عبر واتساب أو الهاتف.",
       "extra_beds_flag": "أسرّة إضافية: {beds} — تحتاج تأكيد التوفر",
       "extra_beds_estimate": "تقدير تكلفة الأسرّة الإضافية: {total} ر.س ({beds} × {fee} ر.س × {nights})",
-      "coordination_flag": "تنبيه: عدد البالغين ({n}) أكبر من سعة الغرفة ({capacity}) مع الأسرّة الإضافية المطلوبة ({beds}). يحتاج تنسيق مع الضيف."
+      "coordination_flag": "تنبيه: عدد البالغين ({n}) أكبر من سعة الغرفة ({capacity}) مع الأسرّة الإضافية المطلوبة ({beds}). يحتاج تنسيق مع الضيف.",
+      "confirmed_subject": "تم تأكيد حجزك — {branch} — {ref}",
+      "confirmed_heading": "تم تأكيد حجزك",
+      "confirmed_body": "يسعدنا تأكيد إقامتك في {branch}. احتفظ برقم الحجز وأبرزه عند الوصول.",
+      "price_heading": "تفاصيل السعر",
+      "pay_at_hotel": "الدفع عند الوصول إلى الفندق، ولا يلزم أي دفع الآن.",
+      "confirmed_next": "لأي تعديل أو استفسار، تواصل مع الاستقبال عبر واتساب واذكر رقم الحجز.",
+      "preheader_confirmed": "حجزك {ref} مؤكد — التفاصيل والسعر في الداخل.",
+      "confirmed_hotel_subject": "حجز مؤكد جديد — {branch} — {ref}",
+      "confirmed_hotel_intro": "حجز مؤكد جديد. تفاصيله:",
+      "confirmed_by_website": "تأكيد فوري من الموقع",
+      "confirmed_by_staff": "أكّده {name} من لوحة التحكم",
+      "close_other_platforms": "تذكير: أغلق الغرفة على المنصات الأخرى إذا لزم.",
+      "low_subject": "تنبيه مخزون — {branch} — {room} — {ref}",
+      "low_intro": "بعد الحجز {ref} انخفض المخزون المتاح للموقع لهذا النوع:",
+      "low_one": "متبقٍ غرفة واحدة",
+      "low_zero": "نفدت — لا غرف متبقية",
+      "low_night": "الليلة",
+      "low_button": "افتح تقويم المخزون",
+      "cancel_subject": "إلغاء الحجز — {ref}",
+      "cancel_heading": "تم إلغاء حجزك",
+      "cancel_body": "أُلغي حجزك رقم {ref} في {branch}. لأي استفسار، تواصل مع الاستقبال عبر واتساب.",
+      "preheader_cancel": "أُلغي حجزك {ref}.",
+      "status_label": "الحالة",
+      "total_label": "الإجمالي شامل الضريبة",
+      "booking_ref_label": "رقم الحجز",
+      "booking_summary": "ملخص الحجز",
+      "confirmed_footer": "أُرسلت هذه الرسالة تلقائيًا بعد تأكيد حجزك على armadaresidence.com."
     },
     "taif": {
       "heading": "اكتشف الطائف",
@@ -577,7 +650,8 @@
     },
     "price": {
       "final_note": "Reception confirms the final price on booking.",
-      "room_only_note": "Room price without breakfast"
+      "room_only_note": "Room price without breakfast",
+      "from_line": "From {amount} per night incl. VAT"
     },
     "cta": {
       "whatsapp": "WhatsApp",
@@ -616,6 +690,41 @@
     },
     "policies": {
       "toc": "Contents"
+    },
+    "quote": {
+      "heading": "Price for your dates",
+      "loading": "Calculating the price…",
+      "room_line": "Room · {nights}",
+      "breakfast_line": "Breakfast",
+      "extra_beds_line": "Extra beds · {beds}",
+      "total_line": "Total incl. VAT",
+      "per_night": "Nightly rates",
+      "pay_at_hotel": "Pay at the hotel on arrival; nothing to pay now.",
+      "instant_badge": "Instant confirmation",
+      "request_badge": "Booking request — confirmed by reception",
+      "submit_instant": "Confirm booking",
+      "pick_room": "Choose a room type to see the price and confirm instantly.",
+      "unavailable": "No online price for these dates. Send your request and the reception will confirm it.",
+      "price_changed": "The price changed since it was shown. Check the new price, then confirm.",
+      "ages_heading": "Children's ages",
+      "ages_hint": "We only need the ages to price breakfast.",
+      "age_label": "Age of child {n}",
+      "age_choose": "Choose age",
+      "age_under1": "Under 1",
+      "age_years": "{n} years",
+      "reasons": {
+        "any_room": "No room type was chosen.",
+        "not_bookable": "This room type cannot be booked instantly.",
+        "instant_off": "The reception confirms bookings for now.",
+        "needs_coordination": "The party size needs to be arranged with the reception.",
+        "extra_beds": "Extra-bed availability is confirmed by the reception.",
+        "too_long": "Stays longer than {n} nights are confirmed by the reception.",
+        "same_day_cutoff": "Same-day arrivals after {time} are confirmed by the reception.",
+        "no_rate": "Some nights have no price yet.",
+        "closed": "Some nights are not open for instant booking.",
+        "sold_out": "No room of this type is left on some nights.",
+        "needs_ages": "The children's ages are needed to price breakfast."
+      }
     },
     "datepicker": {
       "title": "Stay dates",
@@ -667,7 +776,8 @@
         "name": "Use Arabic or Latin letters, at least 3 characters, no digits.",
         "breakfast": "Choose “With breakfast” or “Without breakfast”.",
         "adults": "At least one adult.",
-        "extra_beds": "More extra beds than this room allows."
+        "extra_beds": "More extra beds than this room allows.",
+        "children_ages": "Choose the age of each child (for breakfast pricing only)."
       },
       "whatsapp_fallback": "Send the request on WhatsApp",
       "whatsapp_message": "Hello, I would like to request a booking.\nProperty: {branch}\nRoom type: {room}\nCheck-in date: {check_in}\nCheck-out date: {check_out}\nNights: {nights}\nAdults: {adults}\nChildren: {children}\nExtra beds: {extra_beds}\nBreakfast: {breakfast}\nFull name: {name}\nMobile number: {phone}\nEmail: {email}\nNotes: {notes}",
@@ -735,7 +845,16 @@
       "policies_note": "You can review the booking, cancellation, check-in and check-out policies on the",
       "whatsapp_cta": "Chat with the property on WhatsApp",
       "back_home": "Back to the home page",
-      "next_whatsapp": "The reception team will confirm your booking on WhatsApp, on the number you sent."
+      "next_whatsapp": "The reception team will confirm your booking on WhatsApp, on the number you sent.",
+      "confirmed_heading": "Your booking is confirmed",
+      "confirmed_body": "Your booking is confirmed. Keep your booking number and show it at check-in.",
+      "confirmed_steps": [
+        "Payment is made at the hotel on arrival.",
+        "For any change or question, message the reception on WhatsApp with your booking number.",
+        "If you gave an email address, the confirmation is on its way there."
+      ],
+      "fallback_line": "We could not confirm your booking instantly: {reason}",
+      "sold_out_race": "Another guest took the last room available for these dates."
     },
     "footer": {
       "branches": "Properties",
@@ -784,7 +903,34 @@
       "notif_no_email": "The guest left no email — contact them on WhatsApp or by phone.",
       "extra_beds_flag": "Extra beds: {beds} — availability to be confirmed",
       "extra_beds_estimate": "Estimated extra-bed total: SAR {total} ({beds} × SAR {fee} × {nights})",
-      "coordination_flag": "Note: {n} adults exceeds the room capacity ({capacity}) with the extra beds requested ({beds}). Needs coordination with the guest."
+      "coordination_flag": "Note: {n} adults exceeds the room capacity ({capacity}) with the extra beds requested ({beds}). Needs coordination with the guest.",
+      "confirmed_subject": "Booking confirmed — {branch} — {ref}",
+      "confirmed_heading": "Your booking is confirmed",
+      "confirmed_body": "We are pleased to confirm your stay at {branch}. Keep your booking number and show it at check-in.",
+      "price_heading": "Price details",
+      "pay_at_hotel": "Pay at the hotel on arrival; nothing to pay now.",
+      "confirmed_next": "For any change or question, message the reception on WhatsApp with your booking number.",
+      "preheader_confirmed": "Booking {ref} is confirmed — details and price inside.",
+      "confirmed_hotel_subject": "New confirmed booking — {branch} — {ref}",
+      "confirmed_hotel_intro": "New confirmed booking. Details:",
+      "confirmed_by_website": "Instantly confirmed on the website",
+      "confirmed_by_staff": "Confirmed by {name} in the dashboard",
+      "close_other_platforms": "Reminder: close the room on the other platforms if needed.",
+      "low_subject": "Low inventory — {branch} — {room} — {ref}",
+      "low_intro": "After booking {ref}, website inventory for this room type is low:",
+      "low_one": "1 room left",
+      "low_zero": "Sold out — none left",
+      "low_night": "Night",
+      "low_button": "Open the inventory calendar",
+      "cancel_subject": "Booking cancelled — {ref}",
+      "cancel_heading": "Your booking is cancelled",
+      "cancel_body": "Your booking {ref} at {branch} has been cancelled. For any question, message the reception on WhatsApp.",
+      "preheader_cancel": "Booking {ref} is cancelled.",
+      "status_label": "Status",
+      "total_label": "Total incl. VAT",
+      "booking_ref_label": "Booking number",
+      "booking_summary": "Booking summary",
+      "confirmed_footer": "This message was sent automatically after your booking was confirmed on armadaresidence.com."
     },
     "taif": {
       "heading": "Discover Taif",

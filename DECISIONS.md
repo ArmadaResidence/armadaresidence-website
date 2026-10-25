@@ -367,6 +367,75 @@ Append-only. Newest entries at the bottom of each date.
 - **How:** the links are rendered with the page's query (`bookingPath(locale, ctx)` in `src/lib/content.ts` → `/booking/?branch=…&room=…`), passed from the branch and room pages through `Base.astro` (`booking` prop) to `Header.astro` and `Footer.astro`. So the drawer prefills from the link as for any CTA, and without JS the link opens /booking/ prefilled. A sold-out room (accessible rooms: no booking CTA, not in the form) prefills its branch only. `booking_drawer_open` now carries that branch / room when opened from the header on those pages.
 - **Test:** `booking-nav-check` asserts the header / menu and footer on every page type — all room pages (shared slugs included), the sold-out rooms, both branch pages, and home, offers, contact, policies, blog and an article (empty) — AR + EN, 1440 + 375, on direct loads and after client-side navigation (28 navigations per run, sold-out rooms included; home after a branch / room page goes back to empty).
 
+## 2026-10-25 — Phase 2a approved: dashboard core + instant confirmation (Ahmed, 24 Oct 2026)
+- **Plan:** `docs/phase-2a-plan.md` is approved with its recommendations, plus the answers below. Guests pay at the hotel until online payment (phase 3).
+- **Goal:** a guest gets an instantly **confirmed** booking, with the price shown before submitting, when all of these hold:
+  - a specific room type is selected;
+  - the dates are valid and the party fits;
+  - every night has a rate, is open and has stock.
+
+  Everything else stays a request, as today.
+
+**Decisions 1–9**
+1. **Inventory is managed in the dashboard; there is no channel manager.**
+   - Per room type × night there is `rooms_to_sell` and a `stop_sell` switch.
+   - `rooms_to_sell` is the number the website may **still** sell (Q1, the Booking.com meaning): each confirmed booking subtracts 1, a cancellation adds it back, and reception may overwrite it. `booked` is shown beside it.
+   - A night with no row is closed.
+   - Bulk edit works over date ranges and weekdays.
+2. **Low-inventory alert.** After a confirmed booking, if any affected night of that room type is now at exactly 1 left, or at 0, one email per booking goes to the central recipients of `booking_notification_recipients`. It lists the branch, the room type and those nights.
+3. **Rates.**
+   - A base nightly rate per room type, plus date-range overrides with a weekday mask (seasons, weekdays/weekends). All VAT-inclusive.
+   - The most recent active override that covers a night wins; the base rate is the fallback.
+   - Breakfast, its child tiers and the extra-bed fee come from Settings (DASHBOARD-SPEC §3.9).
+4. **Price display.**
+   - In the booking form once a room type and dates are picked: room × nights, breakfast, extra beds, total.
+   - On room pages: «يبدأ من {x} ريالًا لليلة شامل الضريبة» / "From SAR {x} per night incl. VAT", where x is the lowest rate on an open night (rate, not stop-sold, stock ≥ 1) over the next 60 days. Hidden when there is none.
+   - Prices are read at runtime from two read-only Supabase RPCs, using the project's publishable key.
+   - This partially supersedes the 9 Oct «prices hidden» decision and the 13 Oct "the site ships no Supabase key" note (only for those two RPCs).
+   - Static or hardcoded prices still fail QA, and meta / OG / Twitter tags still carry no price.
+   - Q12: prices appear only in the form and on room pages. Room cards, branch pages and home stay price-free.
+5. **When instant confirmation applies.** All of these must hold:
+   - a specific room type (not «أي غرفة متاحة»);
+   - every night has a rate, is open and has `rooms_to_sell ≥ 1`;
+   - `needs_coordination` is false;
+   - **no extra bed** (Q4: extra beds > 0 → a request, with the reason shown);
+   - a same-day arrival is submitted before **20:00 Asia/Riyadh**;
+   - the stay is at most **30 nights**.
+
+   The two limits (Q5) are editable in Settings. The decrement is atomic: one transaction that locks the stay's inventory rows in night order. When a check fails at submit, the booking falls back to a request and the guest is told why.
+6. **Statuses:** request → confirmed → cancelled. Cancelling restores the stock. Reception can confirm a request from the dashboard, which also decrements the stock and sends the confirmation.
+7. **Emails.**
+   - Guest «تم تأكيد حجزك» (only when an email was given; Q9 keeps the email optional, the success page is the confirmation, and the dashboard offers a WhatsApp template).
+   - Reception «حجز مؤكد جديد», with the reminder to close the room on other platforms.
+   - Q7: a guest cancellation email when an email exists. Cancelling requires a reason, and any staff with access to the branch may cancel. Guests cannot cancel online in 2a.
+   - Requests keep their current emails.
+   - Every subject carries the `AR-` ref.
+8. **Roles, enforced with RLS.**
+   - admin, management and sales see and edit all branches; each branch's reception sees and edits only its own branch.
+   - Only admin manages users.
+   - Users live in Supabase Auth only (five: admin, management, sales, one reception per branch), never in the repository.
+   - **Exception to "no shared logins" (CLAUDE.md §9), Q8:** one shared reception login per branch. Its audit actor label is the branch reception («استقبال طريق المطار» / «استقبال طريق الشفا»).
+   - TOTP two-step is required for admin, management and sales, and optional for reception.
+   - Auth emails carry an `AR-` subject tag so the Hostinger webmail filters deliver them to the Inbox.
+   - This supersedes DASHBOARD-SPEC §2 (reception edits every branch) and CLAUDE.md §9 (guest data visible only to admin and reception).
+9. **Audit log** for every change to rates, inventory, settings, staff and booking status: who, when, old → new, with one batch id per bulk edit. Written by triggers only; nobody can change it.
+
+**Answers to the open questions**
+- **Q2 (modified):** children's ages are asked only when children > 0 **and** breakfast = «مع الإفطار». Ages only affect breakfast pricing.
+- **Q3:** the 8 Oct rule "SAR 20 off per guest below the included count" is **dropped for online pricing**. `pricing.json → reduction_per_guest_below_included` stays for reception only.
+- **Q6:** base rates are seeded from rooms.json (185 / 200 / 240). Added rollout step: the sales manager reviews and confirms every rate in the dashboard before `show_prices` is turned on for a branch.
+- **Q10:** Supabase Pro approved; all tests move to a preview branch once Pro is active. Until then the plan's test mode is used: `is_test` rows, Resend sink address, and a purge function that deletes only `is_test` rows and restores their stock (approved). On 25 Oct the preview-branch creation was declined at the cost confirmation, so the tests start in test mode.
+- **Q11:** saving Settings triggers a site rebuild through a GitHub token stored as a Supabase secret.
+- **Q13:** nothing guest-facing goes live before Ahmed approves the copy list.
+
+**Rollout, hosting and other approvals**
+- **Switches:** two per branch in Settings, `instant_booking` and `show_prices`. They stay **off** in production throughout the build. Turning them on per branch is Ahmed's call, after the sales manager's rate review.
+- **Migration 3 approved (changes to existing objects):**
+  - EXECUTE on `booking_request_hit` revoked from `anon` / `authenticated`;
+  - `search_path` set on `set_updated_at`.
+- **Admin hosting:** a deploy-only repository `ArmadaResidence/armadaresidence-admin`, with GitHub Pages under the custom domain `admin.armadaresidence.com` (a new CNAME at Hostinger, given to Ahmed when the dashboard is ready). The dashboard is never served from `armadaresidence.github.io`, because it would share an origin, and therefore the session, with the review site.
+- **STEP 0 (24 Oct 2026):** deleted the test request AR-20261024-XY6S («تجربة النظام») from `booking_requests` and the 4 test rows of `booking_request_hits` (the 22 Oct send-test burst and the 24 Oct test). Both tables are empty.
+
 ## 2026-10-25 — Booking drawer closed itself after opening (bug, fixed)
 - **Found by** the context-aware link check (07e3296): "did not open on the first tap" now and then — on the live site and in the phase-2a session's local hook run — at 1440 px footer and 375 px bottom bar; the tap reached the link, and the drawer was left with `is-open` on a closed `<dialog>`.
 - **Root cause (`src/lib/drawer.ts`, since item 11 of 11 Oct):** `close()` added a `transitionend` listener and a 700 ms safety timer. When the timer finished the close first (a busy device delays the slide-out, or the transition is cancelled), the listener stayed attached; the next opening's slide-in fired `transitionend` and the stale listener ran `finishClose()` (no guard) — the drawer closed as soon as it had opened. For a guest: tap «اطلب حجزًا», the form slides in and vanishes.

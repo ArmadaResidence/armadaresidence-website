@@ -7,7 +7,16 @@ import { chromium } from 'playwright';
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { bookingConfirmation, bookingNotification, partnerConfirmation, partnerNotification } from '../supabase/functions/booking-request/email.ts';
+import {
+  bookingCancelled,
+  bookingConfirmation,
+  bookingConfirmed,
+  bookingNotification,
+  confirmedNotification,
+  lowInventoryAlert,
+  partnerConfirmation,
+  partnerNotification,
+} from '../supabase/functions/booking-request/email.ts';
 
 const content = JSON.parse(readFileSync('supabase/functions/booking-request/content.generated.json', 'utf8'));
 content.email_logo_url = pathToFileURL(resolve('public/email/armada-residence-logo@2x.png')).href;
@@ -55,9 +64,40 @@ const partner = {
   receivedAt: '2026-10-23 14:07 (Asia/Riyadh)',
 };
 
+// phase 2a (25 Oct 2026): a confirmed 3-night stay with breakfast for 2 adults + a child of 8 — sample figures only
+const confirmed = {
+  ...booking,
+  room: 'two-bedroom-suite',
+  adults: 2,
+  children: 1,
+  extraBeds: 0,
+  capacity: 4,
+  quote: {
+    nights: [
+      { night: '2026-11-02', price: 240 },
+      { night: '2026-11-03', price: 240 },
+      { night: '2026-11-04', price: 280, label: 'نهاية الأسبوع' },
+    ],
+    count: 3,
+    room_total: 760,
+    breakfast: 'with',
+    breakfast_total: 150,
+    extra_beds: 0,
+    extra_bed_fee: 50,
+    extra_beds_total: 0,
+    total: 910,
+  },
+  confirmedBy: null,
+};
+
 const mails = {
   'booking-notification': bookingNotification(content, booking),
   'booking-confirmation': bookingConfirmation(content, booking),
+  'booking-confirmed-guest': bookingConfirmed(content, confirmed),
+  'booking-confirmed-notification': confirmedNotification(content, confirmed),
+  'booking-confirmed-by-staff-notification': confirmedNotification(content, { ...confirmed, confirmedBy: 'استقبال طريق المطار', quote: { ...confirmed.quote, breakfast: 'without', breakfast_total: 0, total: 760 } }),
+  'low-inventory-alert': lowInventoryAlert(content, { ref: 'AR-20261023-TEST', branch: 'airport-road', room: 'two-bedroom-suite', nights: [{ night: '2026-11-02', left: 1 }, { night: '2026-11-03', left: 0 }] }),
+  'booking-cancelled': bookingCancelled(content, { ...confirmed }),
   'booking-notification-no-email': bookingNotification(content, { ...booking, email: '' }),
   'booking-notification-coordination-no-email': bookingNotification(content, { ...booking, branch: 'shafa-road', room: 'king-room', adults: 3, children: 0, extraBeds: 0, needsCoordination: true, capacity: 2, breakfast: 'without', email: '' }),
   'partner-notification': partnerNotification(content, partner),
