@@ -1,10 +1,11 @@
-// Routes + the auth gate. Order of gates: no session → /login; session but no staff row → "no access";
+// Routes + the auth gate. Order of gates: still resolving → a neutral splash (never a wrong state, 26 Oct 2026);
+// my_staff() failed → «تعذّر الاتصال» with retry; no session → /login; no staff row or inactive → "no access";
 // TOTP required but not passed → /mfa; a screen the matrix does not grant → the first granted screen (phase 2a.1:
 // the matrix, not the role, decides what shows). A staff user with an empty matrix sees «لا صلاحية».
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import { SessionProvider, useSession } from './lib/session';
 import { canView } from './lib/api';
-import { ToastProvider, Loading } from './components/ui';
+import { ToastProvider, Splash } from './components/ui';
 import Shell from './components/Shell';
 import Login from './pages/Login';
 import SetPassword from './pages/SetPassword';
@@ -27,13 +28,31 @@ const SCREENS: { path: string; section: string }[] = [
 ];
 
 function Gate({ children }: { children: React.ReactNode }) {
-  const { session, me, loading } = useSession();
+  const { session, me, status, refresh } = useSession();
   const loc = useLocation();
-  if (loading) return <Loading />;
+  if (status === 'loading') return <Splash />;
   if (!session) return <Navigate to="/login" replace state={{ from: loc.pathname + loc.search }} />;
-  if (!me) return <NoAccess />;
+  if (status === 'error') return <Unreachable onRetry={refresh} />;
+  if (!me || !me.active) return <NoAccess />;
   if (me.needs_mfa && loc.pathname !== '/mfa') return <Navigate to="/mfa" replace state={{ from: loc.pathname + loc.search }} />;
   return <>{children}</>;
+}
+
+function Unreachable({ onRetry }: { onRetry: () => Promise<void> }) {
+  const { signOut } = useSession();
+  return (
+    <main className="min-h-dvh grid place-items-center p-6 text-center">
+      <div className="card p-8 max-w-md" data-state="unreachable">
+        <img src={`${import.meta.env.BASE_URL}logo-bronze.svg`} alt="أرمادا ريزيدنس" className="h-10 mx-auto mb-6" />
+        <h1 className="text-xl font-bold mb-2">تعذّر الاتصال بالخادم</h1>
+        <p className="text-ink-muted text-sm mb-6">تحقق من الشبكة ثم أعد المحاولة.</p>
+        <div className="flex gap-2 justify-center">
+          <button type="button" className="btn btn-primary" onClick={() => void onRetry()} data-action="retry">إعادة المحاولة</button>
+          <button type="button" className="btn btn-ghost" onClick={signOut}>تسجيل الخروج</button>
+        </div>
+      </div>
+    </main>
+  );
 }
 
 /** The first screen the matrix grants, or null. */
@@ -53,7 +72,7 @@ function NoAccess({ sectionless }: { sectionless?: boolean }) {
   const { signOut } = useSession();
   return (
     <main className="min-h-dvh grid place-items-center p-6 text-center">
-      <div className="card p-8 max-w-md">
+      <div className="card p-8 max-w-md" data-state="no-access">
         <img src={`${import.meta.env.BASE_URL}logo-bronze.svg`} alt="أرمادا ريزيدنس" className="h-10 mx-auto mb-6" />
         <h1 className="text-xl font-bold mb-2">لا صلاحية لهذا الحساب</h1>
         <p className="text-ink-muted text-sm mb-6">{sectionless ? 'حسابك مفعّل لكن بلا صلاحية على أي قسم. تواصل مع مدير النظام.' : 'هذا الحساب غير مفعّل في اللوحة. تواصل مع مدير النظام.'}</p>

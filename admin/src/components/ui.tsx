@@ -196,6 +196,18 @@ export function Loading({ label = 'جارٍ التحميل…' }: { label?: stri
   );
 }
 
+/** Neutral first paint while the session and my_staff() resolve: logo + spinner, no text (no state can be wrong). */
+export function Splash() {
+  return (
+    <main className="min-h-dvh grid place-items-center p-6" data-state="splash">
+      <div className="flex flex-col items-center gap-6">
+        <img src={`${import.meta.env.BASE_URL}logo-bronze.svg`} alt="أرمادا ريزيدنس" className="h-10" />
+        <span role="status" aria-label="جارٍ التحميل"><Spinner /></span>
+      </div>
+    </main>
+  );
+}
+
 export function Empty({ text }: { text: string }) {
   return <p className="text-ink-muted text-center py-10">{text}</p>;
 }

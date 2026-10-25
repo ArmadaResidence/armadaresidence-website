@@ -230,6 +230,7 @@ Rollback: the migrations are additive apart from the policies; a `down` script r
 20. `Calendar` refetches the branch list on every branch change.
 21. Deployed-pages check: its default BASE was the GitHub Pages sub-path; now the domain (the base path is taken from the URL already).
 22. ~~The dashboard `verify` job in the admin repository calls a script that only exists in this repository (§0).~~ Closed by the other session (18/18 green).
+24. Reported by Ahmed on the live dashboard (26 Oct 2026): «لا صلاحية لهذا الحساب» flashed on load — the gate judged before `my_staff()` answered; fixed with a resolved-status gate, a neutral splash and an «تعذّر الاتصال» state with retry (DECISIONS.md 2026-10-26).
 23. Found by the new e2e: the modal closed itself when the nested date picker closed — React delivered the picker dialog's `close` to the modal's `onClose`; the modal now reacts only to its own dialog's close / backdrop click.
 
 ### 7a. Invite / reset links (reported by Ahmed on 25 Oct 2026, part of defect 15)

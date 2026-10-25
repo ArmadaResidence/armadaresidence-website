@@ -93,9 +93,20 @@ async function pickRange(page, startSel, a, b) {
 }
 
 const browser = await chromium.launch({ channel: 'chrome' });
+const NO_ACCESS = 'لا صلاحية لهذا الحساب';
+/** installed before any script of the page: records every text the body ever showed that must never flash */
+const WATCH = `(() => {
+  window.__flashes = [];
+  const seen = (root) => { const t = root.textContent || ''; if (t.includes(${JSON.stringify(NO_ACCESS)})) window.__flashes.push('no-access'); };
+  const mo = new MutationObserver((list) => { for (const m of list) { for (const n of m.addedNodes) if (n.nodeType === 1 || n.nodeType === 3) seen(n); if (m.type === 'characterData') seen(m.target); } });
+  const start = () => { if (document.body) { seen(document.body); mo.observe(document.body, { childList: true, subtree: true, characterData: true }); } else requestAnimationFrame(start); };
+  start();
+})();`;
+const flashes = (page) => page.evaluate(() => window.__flashes ?? []);
 const secrets = {}; // TOTP secrets enrolled in this run, per login
 async function login(email, { mfa = false, viewport = { width: 1280, height: 900 } } = {}) {
   const ctx = await browser.newContext({ viewport, locale: 'ar' });
+  await ctx.addInitScript(WATCH);
   const page = await ctx.newPage();
   page.on('pageerror', (e) => fails.push(`page error (${email}): ${e.message}`));
   await page.goto(`${BASE}/login`);
@@ -201,7 +212,7 @@ try {
     await digits(page, 'inventory (past)');
     // audit
     await page.goto(`${BASE}/audit`);
-    await page.waitForSelector('[data-list="audit"], p');
+    await page.waitForFunction(() => document.querySelector('[data-list="audit"] li') || Array.from(document.querySelectorAll('#app-main p')).some((p) => p.textContent.trim() === 'لا سجلات.'), null, { timeout: 30000 });
     const audit = await page.locator('[data-list="audit"]').textContent().catch(() => '');
     check(audit.includes('استقبال طريق المطار') && audit.includes('تعديل جماعي'), 'reception: audit lists its bulk edit under the shared login');
     check(audit.includes('استرجاع لتغيير سابق'), 'audit: the undo appears as a revert entry');
@@ -367,6 +378,55 @@ try {
     await ctx.close();
   }
 
+  // ── no-access flash (Ahmed, 26 Oct 2026): the splash, never «لا صلاحية», while the session and my_staff resolve ──
+  {
+    const { ctx, page } = await login(USERS.admin, { mfa: true });
+    check(!(await flashes(page)).length, 'no-access: never shown to the admin through sign-in and TOTP');
+    for (const path of ['bookings', 'users', 'audit?x=1']) {
+      await page.goto(`${BASE}/${path}`);
+      await page.waitForSelector('#app-main h1', { timeout: 20000 });
+      await page.waitForTimeout(600);
+      check(!(await flashes(page)).length, `no-access: never shown on a direct load of /${path}`);
+    }
+    await page.reload();
+    await page.waitForSelector('#app-main h1', { timeout: 20000 });
+    check(!(await flashes(page)).length, 'no-access: never shown on reload');
+    await ctx.close();
+    const rec = await login(USERS.rec_air);
+    await rec.page.goto(`${BASE}/inventory`);
+    await rec.page.waitForSelector('#app-main h1', { timeout: 20000 });
+    await rec.page.reload();
+    await rec.page.waitForSelector('#app-main h1', { timeout: 20000 });
+    check(!(await flashes(rec.page)).length, 'no-access: never shown to reception (sign-in, deep link, reload)');
+    await rec.ctx.close();
+  }
+  if (SERVICE) {
+    const SH = { apikey: SERVICE, Authorization: `Bearer ${SERVICE}`, 'Content-Type': 'application/json' };
+    const mk = async (tag) => {
+      const email = `${tag}-${Date.now()}@qa.invalid`;
+      const u = await fetch(`${env.SUPABASE_URL}/auth/v1/admin/users`, { method: 'POST', headers: SH, body: JSON.stringify({ email, password: PW, email_confirm: true }) }).then((r) => r.json());
+      return { email, id: u.id };
+    };
+    const signInExpectNoAccess = async (email, label) => {
+      const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 }, locale: 'ar' });
+      await ctx.addInitScript(WATCH);
+      const page = await ctx.newPage();
+      await page.goto(`${BASE}/login`);
+      await page.fill('#email', email);
+      await page.fill('#password', PW);
+      await page.click('button[type=submit]');
+      await page.waitForSelector('[data-state="no-access"]', { timeout: 20000 });
+      check(true, `no-access: shown for ${label}`);
+      await ctx.close();
+    };
+    const unknown = await mk('nostaff');
+    await signInExpectNoAccess(unknown.email, 'a signed-in user without a staff row');
+    const inactive = await mk('inactive');
+    await fetch(`${env.SUPABASE_URL}/rest/v1/staff`, { method: 'POST', headers: { ...SH, Prefer: 'return=minimal' }, body: JSON.stringify({ user_id: inactive.id, full_name: 'QA inactive', role: 'reception', branch: 'airport-road', active: false }) });
+    await signInExpectNoAccess(inactive.email, 'an inactive user');
+    for (const u of [unknown, inactive]) if (u.id) await fetch(`${env.SUPABASE_URL}/auth/v1/admin/users/${u.id}`, { method: 'DELETE', headers: SH });
+  }
+
   // ── invite link (token_hash) in a fresh context: prefetch must not consume it; «متابعة» → password → TOTP → in ──
   if (SERVICE) {
     const SH = { apikey: SERVICE, Authorization: `Bearer ${SERVICE}`, 'Content-Type': 'application/json' };
@@ -389,6 +449,7 @@ try {
       await scanner.close();
       // 2. the invitee, another fresh browser: «متابعة» → set password → TOTP → dashboard
       const fresh = await browser.newContext({ viewport: { width: 375, height: 812 }, locale: 'ar' });
+      await fresh.addInitScript(WATCH);
       const fp = await fresh.newPage();
       fp.on('pageerror', (e) => fails.push(`page error (invitee): ${e.message}`));
       await fp.goto(link);
@@ -407,6 +468,7 @@ try {
       await fp.waitForURL(/\/(bookings|rates|inventory|rooms|settings|users|audit)/, { timeout: 30000, waitUntil: 'commit' });
       await fp.waitForSelector('#app-main', { timeout: 30000 });
       check(true, 'invite: password set, TOTP enrolled, signed in (375 px)');
+      check(!(await flashes(fp)).length, 'no-access: never shown to the invitee');
       await digits(fp, 'invitee first screen');
       await fresh.close();
       // 3. the same link again → used
