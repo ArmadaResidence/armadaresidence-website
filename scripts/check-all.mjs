@@ -6,7 +6,8 @@
 //                                             another session in this shared folder neither break nor pass a commit;
 //                                             .githooks/pre-commit runs this mode
 //   node scripts/check-all.mjs --live [URL]   live: the browser checks against the deployed site (default: the review
-//                                             URL below; pass the domain after the switch)
+//                                             URL below; pass the domain after the switch) + admin-cors-check against
+//                                             the project's dashboard functions (no browser, no key)
 // Every browser check stubs the booking endpoint, wa.me and GTM: nothing is sent, no analytics hit. Runs every check
 // even after a failure (except when the build or qa.py fails: the browser checks need dist/), prints a summary and
 // exits non-zero on any failure.
@@ -18,6 +19,8 @@ import { serveDist } from './serve-dist.mjs';
 
 const REVIEW_URL = 'https://armadaresidence.github.io/armadaresidence-website';
 const BROWSER_CHECKS = ['booking-nav-check', 'drawer-check', 'booking-whatsapp-check', 'datepicker-check', 'motion-check', 'booking-instant-check'];
+// live only: the deployed functions' CORS / preflight / gateway JWT handling from every dashboard origin
+const LIVE_CHECKS = ['admin-cors-check'];
 const args = process.argv.slice(2);
 const live = args.includes('--live');
 const staged = !live && args.includes('--staged');
@@ -74,6 +77,7 @@ if (base) {
   console.log(`\nbrowser checks against ${base}`);
   for (const name of BROWSER_CHECKS) results.push(await run(name, process.execPath, [`scripts/${name}.mjs`, base]));
 }
+if (live) for (const name of LIVE_CHECKS) results.push(await run(name, process.execPath, [`scripts/${name}.mjs`]));
 await server?.close();
 removeSnapshot();
 

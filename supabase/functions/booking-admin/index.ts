@@ -8,30 +8,16 @@
 //             low-inventory alert to the central recipients when a night is now at 1 or 0.
 //   cancel  → guest «إلغاء الحجز» (when an email exists). No reception email: the dashboard shows the change.
 // Test bookings (is_test) send every email to Resend's sink. Secrets: RESEND_API_KEY, BOOKING_FROM_RECEPTION,
-// BOOKING_FROM_GUEST, SUPABASE_URL / SUPABASE_ANON_KEY / SUPABASE_SERVICE_ROLE_KEY (automatic).
+// BOOKING_FROM_GUEST, SUPABASE_URL / SUPABASE_ANON_KEY / SUPABASE_SERVICE_ROLE_KEY (automatic); browser origins in
+// ../_shared/cors.ts (ADMIN_ALLOWED_ORIGINS adds to them).
 import content from '../booking-request/content.generated.json' with { type: 'json' };
 import { EMAIL } from '../booking-request/rules.ts';
 import { bookingCancelled, bookingConfirmed, confirmedNotification, lowInventoryAlert, type Mail, type Quote } from '../booking-request/email.ts';
+import { cors, preflight } from '../_shared/cors.ts';
 
 const TEST_SINK = 'delivered@resend.dev';
 const FROM_RECEPTION = Deno.env.get('BOOKING_FROM_RECEPTION') ?? 'Armada Residence Bookings <no-reply@armadaresidence.com>';
 const FROM_GUEST = Deno.env.get('BOOKING_FROM_GUEST') ?? 'أرمادا ريزيدنس | Armada Residence <reservation@armadaresidence.com>';
-
-const allowedOrigins = (Deno.env.get('ADMIN_ALLOWED_ORIGINS') ?? `${content.admin_url},http://localhost:5173,http://127.0.0.1:5173`)
-  .split(',')
-  .map((s: string) => s.trim())
-  .filter(Boolean);
-
-function cors(req: Request): Record<string, string> {
-  const origin = req.headers.get('origin') ?? '';
-  const allow = allowedOrigins.includes(origin) ? origin : allowedOrigins[0];
-  return {
-    'Access-Control-Allow-Origin': allow,
-    'Access-Control-Allow-Headers': 'authorization, apikey, content-type',
-    'Access-Control-Allow-Methods': 'POST, OPTIONS',
-    'Vary': 'Origin',
-  };
-}
 
 function json(req: Request, status: number, body: unknown): Response {
   return new Response(JSON.stringify(body), { status, headers: { ...cors(req), 'Content-Type': 'application/json; charset=utf-8' } });
@@ -182,7 +168,7 @@ async function sendEmail(kind: string, ref: string, env: { from: string; to: str
 }
 
 Deno.serve(async (req) => {
-  if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors(req) });
+  if (req.method === 'OPTIONS') return preflight(req);
   if (req.method !== 'POST') return json(req, 405, { ok: false, error: 'method not allowed' });
   const jwt = (req.headers.get('authorization') ?? '').replace(/^Bearer\s+/i, '');
   if (!jwt) return json(req, 401, { ok: false, error: 'sign in' });

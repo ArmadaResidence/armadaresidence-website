@@ -54,6 +54,12 @@ Add **CNAME** `admin` → `armadaresidence.github.io` (TTL default). Then in the
 run the deploy workflow once, and in that repository's Settings → Pages set the custom domain to `admin.armadaresidence.com`
 and tick **Enforce HTTPS** once the certificate is issued. Update the Supabase Site URL / redirect URLs (step 1.2).
 
+CORS needs no change at the switch: the dashboard functions allow both `https://admin.armadaresidence.com` and the Pages
+origin from `content.admin_origins` (build.py: `ADMIN_URL`, `ADMIN_REVIEW_URL`) through `supabase/functions/_shared/cors.ts`.
+The Supabase secret `ADMIN_ALLOWED_ORIGINS` only **adds** origins (a dev port on a preview branch); it cannot remove the
+production origins. `node scripts/admin-cors-check.mjs` verifies every function from every origin (it runs in the live
+suite and in the admin repository's deploy workflow).
+
 ## 4. GitHub token for the rebuild trigger (Q11)
 
 GitHub → Settings → Developer settings → Fine-grained tokens → **Generate new token**:

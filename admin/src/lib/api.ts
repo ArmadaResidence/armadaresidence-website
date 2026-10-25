@@ -262,17 +262,27 @@ async function edge<T>(fn: string, body: unknown): Promise<T> {
   const { data: s } = await supabase.auth.getSession();
   const jwt = s.session?.access_token;
   if (!jwt) throw new Error('انتهت الجلسة، سجّل الدخول مرة أخرى');
-  const res = await fetch(`${SUPABASE_URL}/functions/v1/${fn}`, {
-    method: 'POST',
-    headers: { Authorization: `Bearer ${jwt}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-  });
+  let res: Response;
+  try {
+    res = await fetch(`${SUPABASE_URL}/functions/v1/${fn}`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${jwt}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+  } catch {
+    // fetch rejects without a response only for a network or CORS failure (the browser hides which)
+    throw new Error(`تعذّر الاتصال بالخادم (${fn}) — تحقق من الشبكة وأعد المحاولة.`);
+  }
   const text = await res.text();
   let json: unknown = text;
   try {
     json = JSON.parse(text);
   } catch { /* text */ }
-  if (!res.ok) throw new Error((json as { error?: string })?.error ?? `${fn}: ${res.status}`);
+  if (!res.ok) {
+    if (res.status === 401) throw new Error('انتهت الجلسة، سجّل الدخول مرة أخرى'); // the gateway refused the token
+    const e = json as { error?: string; message?: string } | null;
+    throw new Error(e?.error ?? e?.message ?? `${fn}: ${res.status}`);
+  }
   return json as T;
 }
 

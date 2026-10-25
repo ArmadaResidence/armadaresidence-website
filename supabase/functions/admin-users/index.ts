@@ -8,25 +8,17 @@
 //               policy and RPC refuses them — "no hard delete", DASHBOARD-SPEC §1)
 //   resend    → a fresh invite / recovery link by email
 // Users live only in Supabase (never in the repository); the function never prints an address to the logs.
-// Secrets: SUPABASE_URL / SUPABASE_ANON_KEY / SUPABASE_SERVICE_ROLE_KEY (automatic), ADMIN_ALLOWED_ORIGINS.
+// Secrets: SUPABASE_URL / SUPABASE_ANON_KEY / SUPABASE_SERVICE_ROLE_KEY (automatic); browser origins in ../_shared/cors.ts
+// (ADMIN_ALLOWED_ORIGINS adds to them).
 import { createClient } from 'npm:@supabase/supabase-js@2.49.4';
 import content from '../booking-request/content.generated.json' with { type: 'json' };
+import { cors, preflight } from '../_shared/cors.ts';
 
 const ROLES = ['admin', 'management', 'sales', 'reception'] as const;
 type Role = (typeof ROLES)[number];
 const BRANCHES: string[] = content.branches.map((b: { slug: string }) => b.slug);
 const ADMIN_URL = String(content.admin_url).replace(/\/$/, '');
 
-const allowedOrigins = (Deno.env.get('ADMIN_ALLOWED_ORIGINS') ?? `${ADMIN_URL},http://localhost:5173,http://127.0.0.1:5173`)
-  .split(',')
-  .map((s: string) => s.trim())
-  .filter(Boolean);
-
-function cors(req: Request): Record<string, string> {
-  const origin = req.headers.get('origin') ?? '';
-  const allow = allowedOrigins.includes(origin) ? origin : allowedOrigins[0];
-  return { 'Access-Control-Allow-Origin': allow, 'Access-Control-Allow-Headers': 'authorization, apikey, content-type', 'Access-Control-Allow-Methods': 'POST, OPTIONS', 'Vary': 'Origin' };
-}
 function json(req: Request, status: number, body: unknown): Response {
   return new Response(JSON.stringify(body), { status, headers: { ...cors(req), 'Content-Type': 'application/json; charset=utf-8' } });
 }
@@ -49,7 +41,7 @@ async function callerIsAdmin(jwt: string): Promise<boolean> {
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 
 Deno.serve(async (req) => {
-  if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors(req) });
+  if (req.method === 'OPTIONS') return preflight(req);
   if (req.method !== 'POST') return json(req, 405, { ok: false, error: 'method not allowed' });
   const jwt = (req.headers.get('authorization') ?? '').replace(/^Bearer\s+/i, '');
   if (!jwt || !(await callerIsAdmin(jwt))) return json(req, 403, { ok: false, error: 'admin only' });

@@ -8,8 +8,8 @@
 // Everything it writes is undone at the end (test room type via qa_fixture, overrides deactivated, settings restored)
 // — but it does touch the real settings table through management (switches are restored to OFF, never left on).
 import { chromium } from 'playwright';
-import { createHmac } from 'node:crypto';
 import { readFileSync } from 'node:fs';
+import { totp } from './totp.mjs';
 
 const BASE = (process.argv[2] || 'http://127.0.0.1:5173').replace(/\/$/, '');
 const PW = 'Qa-Armada-2026!x';
@@ -32,19 +32,6 @@ const rpc = async (fn, args) => {
 const riyadhToday = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Riyadh', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
 const addDays = (iso, n) => new Date(Date.parse(iso + 'T00:00:00Z') + n * 86400000).toISOString().slice(0, 10);
 const D = (n) => addDays(riyadhToday(), n);
-
-/** RFC 6238 TOTP from a base32 secret (the dashboard shows it under the QR). */
-function totp(secretB32) {
-  const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
-  let bits = '';
-  for (const ch of secretB32.replace(/=+$/, '').toUpperCase()) bits += alphabet.indexOf(ch).toString(2).padStart(5, '0');
-  const key = Buffer.from(bits.match(/.{8}/g).map((b) => parseInt(b, 2)));
-  const counter = Buffer.alloc(8);
-  counter.writeBigUInt64BE(BigInt(Math.floor(Date.now() / 30000)));
-  const h = createHmac('sha1', key).update(counter).digest();
-  const o = h[19] & 0xf;
-  return String(((h.readUInt32BE(o) & 0x7fffffff) % 1e6)).padStart(6, '0');
-}
 
 const fails = [];
 let checks = 0;

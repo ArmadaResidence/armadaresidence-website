@@ -304,6 +304,9 @@ def generate_function_content(content: dict[str, dict]) -> None:
         # dates in the emails follow the date picker (approved 25 Oct 2026): «الاثنين 2 نوفمبر 2026» / "Mon, 2 Nov 2026"
         "datepicker": {loc: {k: ui[loc]["datepicker"][k] for k in ("months", "months_short", "weekdays", "weekdays_short", "field_format")} for loc in ("ar", "en")},
         "admin_url": os.environ.get("ADMIN_URL", "https://admin.armadaresidence.com"),
+        # every browser origin the dashboard is served from — the functions' CORS allow-list (supabase/functions/_shared/cors.ts):
+        # the domain and, until the CNAME exists, the GitHub Pages deployment of ArmadaResidence/armadaresidence-admin
+        "admin_origins": [os.environ.get("ADMIN_URL", "https://admin.armadaresidence.com"), os.environ.get("ADMIN_REVIEW_URL", "https://armadaresidence.github.io/armadaresidence-admin")],
         # approved copy reused by the email layout (23 Oct 2026) — no new wording in the function
         "success_heading": {loc: ui[loc]["success"]["heading"] for loc in ("ar", "en")},
         "check_in_line": {loc: content["policies.json"][f"check_in_{loc}"] for loc in ("ar", "en")},
