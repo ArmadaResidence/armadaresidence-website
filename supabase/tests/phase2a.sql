@@ -150,27 +150,34 @@ select pg_temp._check('R6 reception: room types of its branch only', (select cou
 select pg_temp._check('R6 reception: audit of its branch only, no global rows', (select count(*) from public.audit_log where branch is distinct from 'airport-road') = 0
   and (select count(*) from public.audit_log) > 0);
 select pg_temp._check('R6 reception never sees test bookings', not exists (select 1 from public.reservations where is_test));
-do $$ declare n int; begin
-  update public.room_types set base_rate = 999 where id = pg_temp._id('shafa_king'); get diagnostics n = row_count;
-  perform pg_temp._check('R7 reception cannot set another branch''s rate', n = 0);
-  update public.room_types set base_rate = 190 where id = pg_temp._id('king'); get diagnostics n = row_count;
-  perform pg_temp._check('R7 reception sets its own branch''s rate', n = 1);
+do $$ begin
+  perform public.set_base_rate(pg_temp._id('shafa_king'), 999);
+  perform pg_temp._check('R7 reception cannot set another branch''s rate', false, 'no error');
+exception when others then perform pg_temp._check('R7 reception cannot set another branch''s rate', sqlstate = '42501', sqlerrm);
+end $$;
+select pg_temp._check('R7 reception sets its own branch''s rate', (public.set_base_rate(pg_temp._id('king'), 190) ->> 'ok')::boolean);
+select pg_temp._check('R7 … the rate is stored', (select base_rate = 190 from public.room_types where id = pg_temp._id('king')));
+do $$ begin
+  update public.room_types set base_rate = 999 where id = pg_temp._id('king');
+  perform pg_temp._check('R7 no direct table write of a rate (RPC only)', false, 'no error');
+exception when others then perform pg_temp._check('R7 no direct table write of a rate (RPC only)', sqlstate = '42501', sqlerrm);
 end $$;
 do $$ begin
   perform public.set_inventory(array[pg_temp._id('shafa_king')], pg_temp._d(80), pg_temp._d(81), 127, 3);
   perform pg_temp._check('R8 reception cannot open another branch''s stock', false, 'no error');
 exception when others then perform pg_temp._check('R8 reception cannot open another branch''s stock', sqlstate = '42501', sqlerrm);
 end $$;
-select pg_temp._check('R9 reception bulk-edits its own stock (2 nights × 1 type)', public.set_inventory(array[pg_temp._id('king')], pg_temp._d(80), pg_temp._d(81), 127, 4) = 2);
+select pg_temp._check('R9 reception bulk-edits its own stock (2 nights × 1 type)', (public.set_inventory(array[pg_temp._id('king')], pg_temp._d(80), pg_temp._d(81), 127, 4) ->> 'count')::int = 2);
 select pg_temp._check('R9 audited with the shared login''s label', exists (select 1 from public.audit_log where entity = 'inventory_days' and actor_label = 'استقبال طريق المطار' and batch_id is not null));
 do $$ begin
   perform public.set_inventory(array[pg_temp._id('king')], pg_temp._d(80), pg_temp._d(80), 127, 5, null, null, 1);
   perform pg_temp._check('R20 single-cell edit refused when the cell changed', false, 'no error');
 exception when others then perform pg_temp._check('R20 single-cell edit refused when the cell changed', sqlerrm = 'changed:4', sqlerrm);
 end $$;
-do $$ declare n int; begin
-  update public.settings set value = '50' where key = 'extra_bed_per_night'; get diagnostics n = row_count;
-  perform pg_temp._check('R10 reception cannot change settings', n = 0);
+do $$ begin
+  perform public.set_setting('extra_bed_per_night', '50');
+  perform pg_temp._check('R10 reception cannot change settings', false, 'no error');
+exception when others then perform pg_temp._check('R10 reception cannot change settings', sqlstate = '42501', sqlerrm);
 end $$;
 do $$ begin
   update public.reservations set status = 'confirmed' where ref = 'AR-20991231-QA02';
@@ -214,15 +221,14 @@ reset role;
 select pg_temp._as('mgmt');
 select pg_temp._check('R13 management reads both branches', (select count(distinct branch) from public.reservations) = 2);
 select pg_temp._check('R13 management never sees test bookings', not exists (select 1 from public.reservations where is_test));
-do $$ declare n int; begin
-  update public.settings set value = '{"adult": 25, "child_tiers": [{"max_age": 5, "price": 0}, {"max_age": 12, "price": 10}]}' where key = 'breakfast';
-  get diagnostics n = row_count;
-  perform pg_temp._check('R13 management edits settings', n = 1);
+do $$ begin
+  perform public.set_setting('breakfast', '{"adult": 25, "child_tiers": [{"max_age": 5, "price": 0}, {"max_age": 12, "price": 10}]}');
+  perform pg_temp._check('R13 management edits settings', (select (value ->> 'adult')::int = 25 from public.settings where key = 'breakfast'));
   -- the same value again: a no-op save, logged nowhere
-  update public.settings set value = '{"adult": 25, "child_tiers": [{"max_age": 5, "price": 0}, {"max_age": 12, "price": 10}]}' where key = 'breakfast';
+  perform public.set_setting('breakfast', '{"adult": 25, "child_tiers": [{"max_age": 5, "price": 0}, {"max_age": 12, "price": 10}]}');
 end $$;
 do $$ begin
-  update public.settings set value = '{"adult": -1, "child_tiers": []}' where key = 'breakfast';
+  perform public.set_setting('breakfast', '{"adult": -1, "child_tiers": []}');
   perform pg_temp._check('R13 a malformed setting is rejected', false, 'no error');
 exception when others then perform pg_temp._check('R13 a malformed setting is rejected', sqlerrm like 'settings.breakfast%', sqlerrm);
 end $$;

@@ -62,16 +62,36 @@ The Supabase secret `ADMIN_ALLOWED_ORIGINS` only **adds** origins (a dev port on
 production origins. `node scripts/admin-cors-check.mjs` verifies every function from every origin (it runs in the live
 suite and in the admin repository's deploy workflow).
 
-## 4. GitHub token for the rebuild trigger (Q11)
+## 4. GitHub token for the rebuild trigger (Q11 — wired in phase 2a.1, 26 Oct 2026)
+
+The Edge Function `site-rebuild` triggers the website's deploy workflow with **`workflow_dispatch`** (`POST
+/repos/ArmadaResidence/armadaresidence-website/actions/workflows/deploy.yml/dispatches`, ref `main`) after a Settings
+save of the extra-bed fee and after a room's «متاحة للحجز على الموقع» toggle. GitHub's permissions reference lists
+"Create a workflow dispatch event" under *Repository permissions for "Actions"* at access level **write**; a
+fine-grained token always carries *Metadata: read*. Nothing else is needed — never Contents: write.
 
 GitHub → Settings → Developer settings → Fine-grained tokens → **Generate new token**:
-- Resource owner: `ArmadaResidence`; repository access: `armadaresidence-website` and `armadaresidence-admin`.
-- Permissions: **Actions: Read and write**, **Contents: Read**, **Metadata: Read**. Expiry: 1 year (note the date).
+- Resource owner: `ArmadaResidence`; repository access: **only** `armadaresidence-website`.
+- Permissions: **Actions: Read and write** (Metadata: Read is added automatically). Expiry: 1 year (note the date).
 - Store it only as a Supabase secret: `npx supabase secrets set GITHUB_DISPATCH_TOKEN=<token>` (or in the Supabase
   dashboard → Edge Functions → Secrets). Never in the repository, `.env.example` or a chat message.
-- What it is for: a Settings save in the dashboard will call `repository_dispatch` on both repositories
-  (`site-rebuild` and `admin-deploy`) so /policies/ and the extra-bed sentence follow the new fee. The function that
-  sends the dispatch is the next slice; the token can be created now.
+- Until the secret exists the function answers `no_token` and the dashboard says «سيُطبَّق على الموقع عند إعادة البناء
+  التالية»; the booking form already follows room availability at runtime (site_room_types), only the room pages wait.
+- Optional secrets: `SITE_REPO` (default `ArmadaResidence/armadaresidence-website`), `SITE_WORKFLOW` (`deploy.yml`),
+  `SITE_REF` (`main`). The admin repository is not dispatched (its deploy stays manual).
+
+## 4b. Auth email templates (invite / recovery — fixed 26 Oct 2026)
+
+The templates are versioned in `supabase/templates/invite.html` and `recovery.html` and declared in
+`supabase/config.toml` (`[auth.email.template.invite]` / `[auth.email.template.recovery]`); `supabase config push
+--project-ref <ref>` writes **only** those declared keys (preview with `supabase config diff`). Both use a
+`token_hash` link — `{{ .SiteURL }}/set-password?token_hash={{ .TokenHash }}&type=invite|recovery` — so the one-time
+token is verified only when the user presses «متابعة» on /set-password (a mail scanner opening the link cannot consume
+it) and the link works in any browser or device. Subjects keep the `AR-` tag. The Site URL must be
+`https://admin.armadaresidence.com` (step 1.2); the dashboard's own «نسيت كلمة المرور» uses the same recovery template.
+Incident: links sent on 25 Oct 2026 were PKCE / implicit redirects that the dashboard client (PKCE mode) could not turn
+into a session when the link was requested by the admin for someone else — the token was consumed by the redirect and
+every later click said «الرابط غير صالح أو منتهي» (DECISIONS.md 2026-10-26).
 
 ## 5. GTM — booking_confirmed (container GTM-5JVH7R37)
 

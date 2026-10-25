@@ -15,3 +15,21 @@ verify_jwt = true
 
 [functions.admin-users]
 verify_jwt = true
+
+# Phase 2a.1 (26 Oct 2026): triggers the website's deploy workflow (workflow_dispatch) after a Settings / room
+# availability change; the caller needs edit on settings or rooms (checked through my_staff as the user).
+[functions.site-rebuild]
+verify_jwt = true
+
+# Auth email templates (phase 2a.1, 26 Oct 2026). token_hash links: the browser verifies the one-time token only when
+# the user presses «متابعة» on /set-password, so a mail scanner opening the link cannot consume it and the link works in
+# any browser (no PKCE code verifier needed). Subjects keep the AR- tag for the Hostinger webmail filters.
+# `supabase config push` writes ONLY the keys declared here (everything else in Auth stays as set in the dashboard);
+# preview with `supabase config diff --project-ref <ref>`.
+[auth.email.template.invite]
+subject = "دعوة إلى لوحة أرمادا ريزيدنس — AR-INVITE"
+content_path = "./supabase/templates/invite.html"
+
+[auth.email.template.recovery]
+subject = "تعيين كلمة المرور — لوحة أرمادا ريزيدنس — AR-RESET"
+content_path = "./supabase/templates/recovery.html"

@@ -1,5 +1,7 @@
-// Auth + staff context. Supabase Auth session → public.my_staff() (role, branch, needs_mfa). Admin / management /
-// sales must pass the TOTP step (aal2) before any data policy lets them read (decision 8, Q8); reception may skip it.
+// Auth + staff context. Supabase Auth session → public.my_staff() (role, branch, needs_mfa, permissions, sections).
+// TOTP (aal2) is required for every role but reception and for anyone with edit on settings or users (phase 2a.1);
+// below it no data policy answers. A change to my own permissions (Realtime on staff_permissions) re-reads my_staff,
+// so a revoked section leaves the nav at once; the database already refuses it.
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { supabase } from './supabase';
@@ -44,6 +46,18 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     });
     return () => sub.subscription.unsubscribe();
   }, [refresh]);
+
+  // my own matrix changed (another admin) → re-read; RLS lets a user see only their own rows
+  useEffect(() => {
+    const uid = session?.user.id;
+    if (!uid) return;
+    const ch = supabase
+      .channel(`perms-${uid}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'staff_permissions', filter: `user_id=eq.${uid}` }, () => loadMe().then(setMe).catch(() => setMe(null)))
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'staff', filter: `user_id=eq.${uid}` }, () => loadMe().then(setMe).catch(() => setMe(null)))
+      .subscribe();
+    return () => void supabase.removeChannel(ch);
+  }, [session?.user.id]);
 
   // idle sign-out after 12 h without interaction
   useEffect(() => {

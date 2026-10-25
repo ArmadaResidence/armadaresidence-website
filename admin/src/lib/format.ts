@@ -88,9 +88,59 @@ export function maskLabel(mask: number): string {
 export function toCsv(rows: Record<string, unknown>[], columns: { key: string; label: string }[]): string {
   const esc = (v: unknown) => {
     const s = v === null || v === undefined ? '' : String(v);
+    // a value Excel would read as a formula (+966…, =, -, @) is wrapped as a text formula so it stays verbatim
+    if (/^[=+\-@]/.test(s)) return `="${s.replace(/"/g, '""')}"`;
     return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
   };
   const head = columns.map((c) => esc(c.label)).join(',');
   const body = rows.map((r) => columns.map((c) => esc(r[c.key])).join(',')).join('\n');
   return '﻿' + head + '\n' + body + '\n';
+}
+
+/** Arabic-Indic (U+0660–0669) and Extended Arabic-Indic (U+06F0–06F9) digits → ASCII, so a phone keyboard in Arabic never yields NaN. */
+export function west(s: string): string {
+  return s.replace(/[\u0660-\u0669\u06F0-\u06F9]/g, (c) => String(c.charCodeAt(0) >= 0x06f0 ? c.charCodeAt(0) - 0x06f0 : c.charCodeAt(0) - 0x0660));
+}
+
+/** «بالغ واحد» / «بالغان» / «3 بالغين» / «11 بالغًا» — Arabic number agreement for guests. */
+export function adultsWord(n: number): string {
+  if (n === 1) return 'بالغ واحد';
+  if (n === 2) return 'بالغان';
+  if (n >= 3 && n <= 10) return `${n} بالغين`;
+  return `${n} بالغًا`;
+}
+export function childrenWord(n: number): string {
+  if (n === 0) return 'بلا أطفال';
+  if (n === 1) return 'طفل واحد';
+  if (n === 2) return 'طفلان';
+  if (n >= 3 && n <= 10) return `${n} أطفال`;
+  return `${n} طفلًا`;
+}
+export function roomsWord(n: number): string {
+  if (n === 0) return 'لا غرف';
+  if (n === 1) return 'غرفة واحدة';
+  if (n === 2) return 'غرفتان';
+  if (n >= 3 && n <= 10) return `${n} غرف`;
+  return `${n} غرفة`;
+}
+/** «الأحد 2 نوفمبر → الخميس 6 نوفمبر 2026» (the arrow follows the reading direction) */
+export function dateRange(a: string, b: string): string {
+  const da = new Date(a + 'T00:00:00Z');
+  const db = new Date(b + 'T00:00:00Z');
+  const sameYear = da.getUTCFullYear() === db.getUTCFullYear();
+  const left = sameYear ? `${DAY_AR[da.getUTCDay()]} ${da.getUTCDate()} ${MONTH_AR[da.getUTCMonth()]}` : longDate(a);
+  return `${left} ← ${longDate(b)}`;
+}
+/** «الاثنين 2 نوفمبر 2026، 14:05» (Riyadh, 24-hour, Western digits) */
+export function riyadhDateTimeLong(ts: string): string {
+  const parts = new Intl.DateTimeFormat('en-GB', { timeZone: 'Asia/Riyadh', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false }).formatToParts(new Date(ts));
+  const g = (t: string) => parts.find((x) => x.type === t)?.value ?? '';
+  return `${longDate(`${g('year')}-${g('month')}-${g('day')}`)}، ${g('hour')}:${g('minute')}`;
+}
+/** «8:00 مساءً» from "20:00" */
+export function time12(hhmm: string): string {
+  const [h, m] = hhmm.split(':').map(Number);
+  if (!Number.isFinite(h)) return hhmm;
+  const h12 = h % 12 === 0 ? 12 : h % 12;
+  return `${h12}:${String(m ?? 0).padStart(2, '0')} ${h < 12 ? 'صباحًا' : 'مساءً'}`;
 }

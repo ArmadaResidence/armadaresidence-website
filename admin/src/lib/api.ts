@@ -1,15 +1,25 @@
-// Every read and write of the dashboard. Reads go through PostgREST under RLS; status changes and the bulk edits go
-// through the SQL functions (security definer / invoker — see supabase/migrations/20261025000000_phase2a_schema.sql);
-// confirm / cancel and user management go through the two Edge Functions, which forward the user's JWT.
+// Every read and write of the dashboard. Reads go through PostgREST under RLS; every write goes through a
+// permission-checked SQL function that runs in one audit batch and returns its batch_id (phase 2a.1 — undo / revert:
+// supabase/migrations/20261026000100_phase2a1_revert.sql); confirm / cancel, user management and the site rebuild go
+// through the Edge Functions, which forward the user's JWT.
 import { supabase, SUPABASE_URL } from './supabase';
 
 export type Role = 'admin' | 'management' | 'sales' | 'reception';
+export type Level = 'none' | 'view' | 'edit';
+export interface Section {
+  key: string;
+  label_ar: string;
+  sort: number;
+  editable: boolean;
+}
 export interface Me {
   role: Role;
   branch: string | null;
   full_name: string;
   active: boolean;
   needs_mfa: boolean;
+  permissions: Record<string, Level>;
+  sections: Section[];
 }
 export interface Branch {
   slug: string;
@@ -118,6 +128,7 @@ export interface AuditRow {
   old: Record<string, unknown> | null;
   new: Record<string, unknown> | null;
   batch_id: string | null;
+  reverts_batch: string | null;
 }
 export interface StaffUser {
   user_id: string;
@@ -130,17 +141,48 @@ export interface StaffUser {
   role: Role | null;
   branch: string | null;
   active: boolean;
+  permissions: Record<string, Level>;
+}
+/** What every write returns: the audit batch the toast can undo. */
+export interface Saved {
+  ok: boolean;
+  batch_id: string;
+  count?: number;
 }
 
-function fail(e: { message?: string } | null, what: string): never {
-  throw new Error(e?.message ? `${what}: ${e.message}` : what);
+/** Arabic message for a database refusal (the RPCs raise with these codes / messages). */
+export function arabicError(e: { message?: string; code?: string; details?: string; hint?: string } | null, what: string): string {
+  const m = e?.message ?? '';
+  if (e?.code === '42501' || /not allowed|permission denied/i.test(m)) return 'لا صلاحية لهذا الإجراء.';
+  if (/last_admin/.test(m)) return 'لا يمكن إيقاف أو تنزيل آخر مدير نظام فعّال.';
+  if (/already_reverted/.test(m)) return 'هذا التغيير مُسترجَع من قبل.';
+  if (/not_revertable/.test(m)) return 'تأكيد الحجز وإلغاؤه لا يُستَرجَعان (أُرسلت رسائل بريد).';
+  if (/^conflict/.test(m)) return 'تغيّرت القيم بعد هذا التعديل، لم يُسترجع شيء.';
+  if (/^not_found/.test(m)) return 'لم يُعثر على هذا التغيير.';
+  if (/^past$/.test(m)) return 'لا يمكن تعديل ليالٍ ماضية.';
+  if (/^range/.test(m)) return 'الفترة خارج الحد المسموح.';
+  if (/changed:\d+/.test(m)) return m; // the cell editor reads the new value out of it
+  if (/^settings\./.test(m)) return 'القيمة غير صالحة: ' + m.replace(/^settings\.[a-z_.]+:\s*/, '');
+  return m ? `${what}: ${m}` : what;
+}
+function fail(e: { message?: string; code?: string; details?: string; hint?: string } | null, what: string): never {
+  const err = new Error(arabicError(e, what)) as Error & { code?: string; details?: string; raw?: string };
+  err.code = e?.code;
+  err.details = e?.details;
+  err.raw = e?.message;
+  throw err;
 }
 
 export async function me(): Promise<Me | null> {
   const { data, error } = await supabase.rpc('my_staff');
   if (error) fail(error, 'my_staff');
-  return (data as Me | null) ?? null;
+  const m = data as Me | null;
+  if (!m) return null;
+  return { ...m, permissions: m.permissions ?? {}, sections: m.sections ?? [] };
 }
+export const level = (m: Me | null, section: string): Level => m?.permissions[section] ?? 'none';
+export const canView = (m: Me | null, section: string) => level(m, section) !== 'none';
+export const canEdit = (m: Me | null, section: string) => level(m, section) === 'edit';
 
 export async function branches(): Promise<Branch[]> {
   const { data, error } = await supabase.from('branches').select('slug,name_ar,name_en,sort').order('sort');
@@ -173,21 +215,17 @@ export async function overrides(branch: string): Promise<RateOverride[]> {
   return (data as unknown as RateOverride[]).map((r) => ({ ...r }));
 }
 
-export async function setBaseRate(roomTypeId: string, rate: number | null): Promise<void> {
-  const { error } = await supabase.rpc('set_base_rate', { p_room_type: roomTypeId, p_rate: rate });
-  if (error) fail(error, 'set_base_rate');
+async function rpcSaved(fn: string, args: Record<string, unknown>): Promise<Saved> {
+  const { data, error } = await supabase.rpc(fn, args);
+  if (error) fail(error, fn);
+  return data as Saved;
 }
 
-export async function addOverride(roomTypeIds: string[], from: string, to: string, weekdays: number, price: number, label: string, labelEn = ''): Promise<number> {
-  const { data, error } = await supabase.rpc('add_rate_override', { p_room_types: roomTypeIds, p_from: from, p_to: to, p_weekdays: weekdays, p_price: price, p_label: label || null, p_label_en: labelEn || null });
-  if (error) fail(error, 'add_rate_override');
-  return data as number;
-}
-
-export async function toggleOverride(id: string, active: boolean): Promise<void> {
-  const { error } = await supabase.from('rate_overrides').update({ active }).eq('id', id);
-  if (error) fail(error, 'rate_overrides');
-}
+export const setBaseRate = (roomTypeId: string, rate: number | null) => rpcSaved('set_base_rate', { p_room_type: roomTypeId, p_rate: rate });
+export const setRoomBookable = (roomTypeId: string, bookable: boolean) => rpcSaved('set_room_bookable', { p_room_type: roomTypeId, p_bookable: bookable });
+export const addOverride = (roomTypeIds: string[], from: string, to: string, weekdays: number, price: number, label: string, labelEn = '', replaceSingle = false) =>
+  rpcSaved('add_rate_override', { p_room_types: roomTypeIds, p_from: from, p_to: to, p_weekdays: weekdays, p_price: price, p_label: label || null, p_label_en: labelEn || null, p_replace_single: replaceSingle });
+export const setOverrideActive = (id: string, active: boolean) => rpcSaved('set_override_active', { p_id: id, p_active: active });
 
 export interface InventoryEdit {
   roomTypeIds: string[];
@@ -199,8 +237,8 @@ export interface InventoryEdit {
   stopSell?: boolean | null;
   expected?: number | null;
 }
-export async function setInventory(e: InventoryEdit): Promise<number> {
-  const { data, error } = await supabase.rpc('set_inventory', {
+export const setInventory = (e: InventoryEdit) =>
+  rpcSaved('set_inventory', {
     p_room_types: e.roomTypeIds,
     p_from: e.from,
     p_to: e.to,
@@ -210,8 +248,34 @@ export async function setInventory(e: InventoryEdit): Promise<number> {
     p_stop_sell: e.stopSell ?? null,
     p_expected: e.expected ?? null,
   });
-  if (error) fail(error, 'set_inventory');
-  return data as number;
+
+export const setSetting = (key: string, value: unknown) => rpcSaved('set_setting', { p_key: key, p_value: value });
+
+export interface PermissionEdit {
+  matrix?: Record<string, Level>;
+  role?: Role;
+  applyPreset?: boolean;
+  setBranch?: boolean;
+  branch?: string | null;
+}
+export async function setPermissions(userId: string, e: PermissionEdit): Promise<Saved & { permissions: Record<string, Level> }> {
+  const { data, error } = await supabase.rpc('set_permissions', {
+    p_user: userId,
+    p_matrix: e.matrix ?? null,
+    p_role: e.role ?? null,
+    p_set_branch: e.setBranch ?? false,
+    p_branch: e.branch ?? null,
+    p_apply_preset: e.applyPreset ?? false,
+  });
+  if (error) fail(error, 'set_permissions');
+  return data as Saved & { permissions: Record<string, Level> };
+}
+
+/** Reverse one audit batch (undo toast and the audit screen). Throws the Arabic conflict / permission message. */
+export async function revertBatch(batchId: string): Promise<Saved & { rows: number }> {
+  const { data, error } = await supabase.rpc('revert_batch', { p_batch: batchId });
+  if (error) fail(error, 'revert_batch');
+  return data as Saved & { rows: number };
 }
 
 export interface ReservationFilter {
@@ -254,8 +318,9 @@ export async function reservationHistory(id: string): Promise<StatusHistory[]> {
 }
 
 export async function saveInternalNotes(id: string, notes: string): Promise<void> {
-  const { error } = await supabase.from('reservations').update({ internal_notes: notes || null }).eq('id', id);
+  const { error, count } = await supabase.from('reservations').update({ internal_notes: notes || null }, { count: 'exact' }).eq('id', id);
   if (error) fail(error, 'internal_notes');
+  if (count === 0) throw new Error('لا صلاحية لتعديل الملاحظات.');
 }
 
 async function edge<T>(fn: string, body: unknown): Promise<T> {
@@ -281,7 +346,8 @@ async function edge<T>(fn: string, body: unknown): Promise<T> {
   if (!res.ok) {
     if (res.status === 401) throw new Error('انتهت الجلسة، سجّل الدخول مرة أخرى'); // the gateway refused the token
     const e = json as { error?: string; message?: string } | null;
-    throw new Error(e?.error ?? e?.message ?? `${fn}: ${res.status}`);
+    const msg = e?.error ?? e?.message ?? `${fn}: ${res.status}`;
+    throw new Error(arabicError({ message: msg, code: res.status === 403 ? '42501' : undefined }, fn));
   }
   return json as T;
 }
@@ -302,25 +368,44 @@ export async function settings(): Promise<Setting[]> {
   if (error) fail(error, 'settings');
   return data as Setting[];
 }
-export async function saveSetting(key: string, value: unknown): Promise<void> {
-  const { error, count } = await supabase.from('settings').update({ value }, { count: 'exact' }).eq('key', key);
-  if (error) fail(error, 'settings');
-  if (count === 0) throw new Error('غير مسموح بتعديل الإعدادات');
-}
 
-export async function audit(f: { branch?: string; entity?: string; actor?: string; from?: string; to?: string }, limit = 300): Promise<AuditRow[]> {
-  let q = supabase.from('audit_log').select('id,at,actor_label,entity,entity_id,branch,action,old,new,batch_id').order('at', { ascending: false }).limit(limit);
+export async function audit(f: { branch?: string; entity?: string; actor?: string; from?: string; to?: string }, limit = 300, before?: number): Promise<AuditRow[]> {
+  let q = supabase.from('audit_log').select('id,at,actor_label,entity,entity_id,branch,action,old,new,batch_id,reverts_batch').order('id', { ascending: false }).limit(limit);
   if (f.branch) q = q.eq('branch', f.branch);
   if (f.entity) q = q.eq('entity', f.entity);
   if (f.actor) q = q.ilike('actor_label', `%${f.actor.replace(/[%,()]/g, '')}%`);
   if (f.from) q = q.gte('at', f.from + 'T00:00:00+03:00');
   if (f.to) q = q.lte('at', f.to + 'T23:59:59+03:00');
+  if (before) q = q.lt('id', before);
   const { data, error } = await q;
   if (error) fail(error, 'audit_log');
   return data as AuditRow[];
 }
+/** The batches among `ids` that a later revert reversed (and whose revert was not itself reverted). */
+export async function revertedBatches(ids: string[]): Promise<Set<string>> {
+  if (!ids.length) return new Set();
+  const { data, error } = await supabase.from('audit_log').select('batch_id,reverts_batch').in('reverts_batch', ids);
+  if (error) fail(error, 'audit_log');
+  const reverts = (data ?? []) as { batch_id: string | null; reverts_batch: string }[];
+  const revertIds = reverts.map((r) => r.batch_id).filter((x): x is string => !!x);
+  let undone = new Set<string>();
+  if (revertIds.length) {
+    const { data: d2 } = await supabase.from('audit_log').select('reverts_batch').in('reverts_batch', revertIds);
+    undone = new Set(((d2 ?? []) as { reverts_batch: string }[]).map((r) => r.reverts_batch));
+  }
+  return new Set(reverts.filter((r) => !r.batch_id || !undone.has(r.batch_id)).map((r) => r.reverts_batch));
+}
 
 export const listUsers = () => edge<{ ok: boolean; users: StaffUser[] }>('admin-users', { action: 'list' });
 export const inviteUser = (email: string, full_name: string, role: Role, branch: string | null) => edge<{ ok: boolean; user_id: string }>('admin-users', { action: 'invite', email, full_name, role, branch });
-export const updateUser = (user_id: string, patch: Partial<{ full_name: string; role: Role; branch: string | null; active: boolean }>) => edge<{ ok: boolean }>('admin-users', { action: 'update', user_id, ...patch });
+export const updateUser = (user_id: string, patch: Partial<{ full_name: string; active: boolean }>) => edge<{ ok: boolean }>('admin-users', { action: 'update', user_id, ...patch });
 export const resendLink = (user_id: string) => edge<{ ok: boolean; type: string }>('admin-users', { action: 'resend', user_id });
+
+/** Ask for a rebuild of the static site (extra-bed fee, room availability). Never throws: the UI shows the fallback line. */
+export async function siteRebuild(reason: 'settings' | 'rooms'): Promise<{ ok: boolean; dispatched?: boolean; reason?: string }> {
+  try {
+    return await edge<{ ok: boolean; dispatched?: boolean; reason?: string }>('site-rebuild', { reason });
+  } catch (e) {
+    return { ok: false, reason: (e as Error).message };
+  }
+}

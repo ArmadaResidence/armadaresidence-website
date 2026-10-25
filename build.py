@@ -328,6 +328,38 @@ def generate_function_content(content: dict[str, dict]) -> None:
     print(f"✓ generated {FUNC_DIR.relative_to(ROOT) / 'content.generated.json'}")
 
 
+def resolve_availability(content: dict[str, dict]) -> dict:
+    """Room availability on the website (phase 2a.1, dashboard «الغرف»). The dashboard's room_types.bookable, read with
+    the publishable key through the read-only RPC site_room_types on the booking endpoint's project, decides each
+    room's static availability (available / sold_out: CTA, label, noindex, sitemap, JSON-LD). rooms.json is the seed and
+    the fallback when the project is unreachable or the keys are absent (astro dev, a scratch build). The result is
+    written to dist/_availability.json for qa.py."""
+    rooms = [r for r in content["rooms.json"]["rooms"] if r.get("show_on_site")]
+    out = {"source": "rooms.json", "rooms": {f"{r['branch']}/{r['slug']}": r["availability"] for r in rooms}}
+    endpoint = os.environ.get("PUBLIC_BOOKING_ENDPOINT", "")
+    key = os.environ.get("PUBLIC_SUPABASE_ANON_KEY", "")
+    if not endpoint or not key:
+        print("NOTE: room availability from rooms.json (no Supabase endpoint / key in the environment)")
+        return out
+    try:
+        import urllib.request
+        origin = endpoint.split("/functions/")[0]
+        req = urllib.request.Request(f"{origin}/rest/v1/rpc/site_room_types", data=b"{}", method="POST",
+                                     headers={"apikey": key, "Authorization": f"Bearer {key}", "Content-Type": "application/json"})
+        with urllib.request.urlopen(req, timeout=15) as res:
+            rows = json.loads(res.read().decode("utf-8"))
+        live = {f"{r['branch']}/{r['slug']}": ("available" if r["bookable"] else "sold_out") for r in rows}
+        changed = [k for k, v in out["rooms"].items() if k in live and live[k] != v]
+        for k, v in live.items():
+            if k in out["rooms"]:
+                out["rooms"][k] = v
+        out["source"] = "supabase"
+        print(f"✓ room availability from the dashboard ({len(live)} room types; {len(changed)} differ from rooms.json: {', '.join(changed) or '—'})")
+    except Exception as e:  # noqa: BLE001 — the build must not depend on the project being awake
+        print(f"NOTE: room availability from rooms.json (site_room_types unreachable: {e})")
+    return out
+
+
 def sync_images() -> None:
     """content/images/ (approved photos, hero video) → public/images/ so Astro serves them at /images/…"""
     src = CONTENT / "images"
@@ -365,6 +397,7 @@ def main() -> int:
     print(f"✓ content/ validated ({len(REQUIRED_FILES)} files)")
 
     generate_function_content(content)
+    availability = resolve_availability(content)
 
     if DIST.exists():
         shutil.rmtree(DIST)
@@ -374,7 +407,9 @@ def main() -> int:
     run(["node", "scripts/favicons.mjs"])
     run(["node", "scripts/flags.mjs"])
     run(["node", "scripts/email-logo.mjs"])
+    os.environ["ROOM_AVAILABILITY"] = json.dumps(availability["rooms"])
     run(["npx", "astro", "build"])
+    (DIST / "_availability.json").write_text(json.dumps(availability, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 
     pages = sorted(p.relative_to(DIST).as_posix() for p in DIST.rglob("*.html"))
     print(f"\n✓ {len(pages)} HTML files in dist/:")

@@ -232,6 +232,13 @@ def main() -> int:
         known_emails.add(b["email"])
 
     rooms = [r for r in content["rooms.json"]["rooms"] if r.get("show_on_site")]
+    # phase 2a.1: build.py resolved each room's availability from the dashboard (dist/_availability.json); the page
+    # state (CTA, sold-out label, noindex, sitemap) must follow that, not rooms.json alone
+    resolved = {}
+    av_file = DIST / "_availability.json"
+    if av_file.is_file():
+        resolved = json.loads(av_file.read_text(encoding="utf-8")).get("rooms", {})
+    rooms = [dict(r, availability=resolved.get(f"{r['branch']}/{r['slug']}", r["availability"])) for r in rooms]
     room_by_path = {f"/{r['branch']}/{r['slug']}/": r for r in rooms}
     limits = content["seo.json"].get("room_templates", {})
     max_title = int(limits.get("max_title_chars", 60))

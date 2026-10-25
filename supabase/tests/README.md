@@ -6,6 +6,7 @@ and leaves nothing behind.
 | test | how | leaves |
 |---|---|---|
 | `phase2a.sql` — RLS matrix per role / branch, booking logic (rate precedence, quote, instant confirm, every fallback reason, confirm / cancel from the dashboard, audit, from-prices) | the whole file is one transaction ending in `ROLLBACK`; run it through the Supabase MCP `execute_sql` (role postgres) or `psql`; every row of the `_r` result must have `ok = true` | nothing |
+| `phase2a1.sql` — permission matrix × levels, branch scope for any role, the TOTP rule, last-admin protection, revert happy paths and conflicts (atomicity), write-RPC guards, `site_room_types` (phase 2a.1) | same harness, same rollback; run after `phase2a.sql` on a preview branch (`F:\armada-scratch\pgtool\run.mjs <branch-get.json> <file.sql>` with the Supabase root CA pinned) | nothing |
 | `scripts/booking-race-check.mjs` — 20 guests on the last room, overlapping stays, stock taken between quote and submit, stale quote | `node scripts/booking-race-check.mjs` (`--keep` leaves the rows, `--mail` sends the emails to Resend's sink) | nothing: `qa_fixture('purge')` |
 | site e2e (`scripts/booking-instant-check.mjs`) and dashboard e2e (`admin/tests`) | see each script's header | nothing |
 

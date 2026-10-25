@@ -82,8 +82,20 @@ export interface Room {
   legacy_main_image?: string;
 }
 
+/** Room availability resolved by build.py from the dashboard (site_room_types; phase 2a.1): `"branch/slug": "available" |
+ *  "sold_out"`. Absent (astro dev, a scratch build) → rooms.json as is. */
+const availabilityOverride: Record<string, 'available' | 'sold_out'> = (() => {
+  try {
+    return JSON.parse(process.env.ROOM_AVAILABILITY || '{}');
+  } catch {
+    return {};
+  }
+})();
+
 /** Only rooms with show_on_site: true exist as far as the site is concerned. */
-export const rooms: Room[] = (roomsJson.rooms as unknown as Room[]).filter((r) => r.show_on_site);
+export const rooms: Room[] = (roomsJson.rooms as unknown as Room[])
+  .filter((r) => r.show_on_site)
+  .map((r) => (availabilityOverride[`${r.branch}/${r.slug}`] ? { ...r, availability: availabilityOverride[`${r.branch}/${r.slug}`] } : r));
 
 /** Structural features rendered as chips (cards + room page), in display order. Equipment (fridge, kettle, Wi-Fi…) lives in in_room_amenities. */
 export const FEATURE_KEYS: (keyof RoomFeatures)[] = ['kitchen', 'living_room', 'balcony', 'jacuzzi'];

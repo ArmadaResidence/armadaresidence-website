@@ -7,14 +7,14 @@
 // console error and no failed or refused request. Nothing is written except the QA admin's sign-in and TOTP enrolment
 // on the branch; no invite is sent.
 //
-//   node admin/tests/deployed-pages-check.mjs [BASE]      default https://armadaresidence.github.io/armadaresidence-admin
+//   node admin/tests/deployed-pages-check.mjs [BASE]      default https://admin.armadaresidence.com
 //   env TARGET_SUPABASE_URL + TARGET_SUPABASE_ANON_KEY     the preview branch (required)
 //       BUNDLE_SUPABASE_URL / BUNDLE_SUPABASE_ANON_KEY     what the deployed bundle was built with (default: .env SUPABASE_URL / SUPABASE_ANON_KEY)
 import { chromium } from 'playwright';
 import { readFileSync } from 'node:fs';
 import { totp } from './totp.mjs';
 
-const BASE = (process.argv[2] || 'https://armadaresidence.github.io/armadaresidence-admin').replace(/\/$/, '');
+const BASE = (process.argv[2] || 'https://admin.armadaresidence.com').replace(/\/$/, '');
 const PW = 'Qa-Armada-2026!x'; // the QA admin of supabase/migrations/20261025000500_phase2a_qa_users.sql (*.qa.invalid, preview branches only)
 const ADMIN = 'admin@qa.invalid';
 const fileEnv = Object.fromEntries(readFileSync('.env', 'utf8').split(/\r?\n/).filter((l) => l.includes('=') && !l.startsWith('#')).map((l) => [l.slice(0, l.indexOf('=')).trim(), l.slice(l.indexOf('=') + 1).trim()]));
@@ -37,6 +37,7 @@ const PAGES = [
   { path: 'bookings', label: 'الحجوزات', ready: async (page) => (await page.locator('#f-branch').count()) === 1 && ((await page.locator('table').count()) > 0 || (await page.getByText('لا حجوزات تطابق الفلتر.').count()) > 0) },
   { path: 'rates', label: 'الأسعار', ready: async (page) => (await page.locator('.grid-cal').count()) === 1 && (await page.locator('[data-action="base-rate"]').count()) > 0 },
   { path: 'inventory', label: 'المخزون', ready: async (page) => (await page.locator('.grid-cal').count()) === 1 && (await page.locator('.grid-cal [aria-label]').count()) > 0 },
+  { path: 'rooms', label: 'الغرف', ready: async (page) => (await page.locator('[data-bookable]').count()) >= 12 },
   { path: 'settings', label: 'الإعدادات', ready: async (page) => (await page.locator('[data-switch]').count()) === 4 && (await page.locator('#s-limits').count()) === 1 },
   { path: 'users', label: 'المستخدمون', ready: async (page) => (await page.locator('li[data-user]').count()) >= 4 && (await page.locator(`li[data-user="${ADMIN}"]`).count()) === 1 },
   { path: 'audit', label: 'السجل', ready: async (page) => (await page.locator('#a-entity').count()) === 1 && ((await page.locator('[data-list="audit"] li').count()) > 0 || (await page.getByText('لا سجلات.').count()) > 0) },

@@ -16,6 +16,10 @@
  *
  * Other scripts can set a hidden input and dispatch `change`: the picker re-reads it and drops a past or
  * inconsistent value (the partners form restores a saved draft that way).
+ *
+ * Dashboard options (phase 2a.1, 26 Oct 2026) in the data JSON, all absent on the website: `mode: 'single'` (one
+ * field, one tap picks and closes), `min` (ISO; past dates viewable when it lies in the past — default today) and
+ * `max` (ISO; default 31 December of next year).
  */
 import { onPageLoad, bindOnce, reducedMotion } from './client';
 import { addDays, nightsBetween, plural, riyadhToday, type PluralKey } from '../../supabase/functions/booking-request/rules.ts';
@@ -36,6 +40,9 @@ type Data = {
   stay_length: string;
   nights: Record<PluralKey, string>;
   labels: Record<Which, string>;
+  mode?: 'range' | 'single';
+  min?: string | null;
+  max?: string | null;
 };
 
 const ISO = /^\d{4}-\d{2}-\d{2}$/;
@@ -77,18 +84,23 @@ export function initDateRange(root: HTMLElement): void {
   live.setAttribute('aria-live', 'polite');
   monthsEl.before(live);
   const uid = dialog.id;
+  const single = S.mode === 'single';
+  // single mode has no departure field: detached stand-ins keep the code below branch-free
   const input: Record<Which, HTMLInputElement> = {
     start: root.querySelector<HTMLInputElement>('[data-dr-value="start"]')!,
-    end: root.querySelector<HTMLInputElement>('[data-dr-value="end"]')!,
+    end: root.querySelector<HTMLInputElement>('[data-dr-value="end"]') ?? document.createElement('input'),
   };
   const trigger: Record<Which, HTMLButtonElement> = {
     start: root.querySelector<HTMLButtonElement>('[data-dr-trigger="start"]')!,
-    end: root.querySelector<HTMLButtonElement>('[data-dr-trigger="end"]')!,
+    end: root.querySelector<HTMLButtonElement>('[data-dr-trigger="end"]') ?? document.createElement('button'),
   };
+  const triggers = () => [trigger.start, trigger.end].filter((t) => t.isConnected);
   const wide = matchMedia(WIDE);
 
   let today = riyadhToday();
-  let maxDate = `${Number(today.slice(0, 4)) + 1}-12-31`;
+  const defaultMax = () => `${Number(today.slice(0, 4)) + 1}-12-31`;
+  let minDate = S.min && ISO.test(S.min) ? S.min : today;
+  let maxDate = S.max && ISO.test(S.max) ? S.max : defaultMax();
   let start: string | null = null;
   let end: string | null = null;
   let picking: Which = 'start';
@@ -102,22 +114,23 @@ export function initDateRange(root: HTMLElement): void {
 
   // ── rules ──────────────────────────────────────────────────────────────────────────────────────────────
   /** a tap on `d` sets the arrival (first tap, a full range, or a day before the arrival) */
-  const startsRange = (d: string) => picking === 'start' || !start || d < start;
+  const startsRange = (d: string) => single || picking === 'start' || !start || d < start;
   function disabled(d: string): boolean {
-    if (d < today || d > maxDate) return true;
+    if (d < minDate || d > maxDate) return true;
+    if (single) return false;
     if (startsRange(d)) return d === maxDate; // an arrival needs a departure inside the range
     return d === start; // the arrival day is never the departure
   }
-  const clampDate = (d: string) => (d < today ? today : d > maxDate ? maxDate : d);
-  const minView = () => monthOf(today);
+  const clampDate = (d: string) => (d < minDate ? minDate : d > maxDate ? maxDate : d);
+  const minView = () => monthOf(minDate);
   const maxView = () => Math.max(minView(), monthOf(maxDate) - shown + 1);
 
   /** Read the hidden inputs; drop a past, out-of-range or inconsistent value. */
   function sync() {
     const a = input.start.value;
     const b = input.end.value;
-    start = ISO.test(a) && a >= today && a < maxDate ? a : null;
-    end = start && ISO.test(b) && b > start && b <= maxDate ? b : null;
+    start = ISO.test(a) && a >= minDate && (single ? a <= maxDate : a < maxDate) ? a : null;
+    end = !single && start && ISO.test(b) && b > start && b <= maxDate ? b : null;
     if ((start ?? '') !== a || (end ?? '') !== b) write();
     else paintFields();
   }
@@ -224,7 +237,9 @@ export function initDateRange(root: HTMLElement): void {
       const role = isStart ? S.labels.start : isEnd ? S.labels.end : '';
       td.setAttribute('aria-label', format(S.day_label, d, S) + (role ? S.list_separator + role : ''));
     }
-    const text = !start ? S.pick_check_in : !end ? S.pick_check_out : S.stay_length.replace('{nights}', plural(S.nights, nightsBetween(start, end)));
+    const text = single
+      ? start ? format(S.field_format, start, S) : S.pick_check_in
+      : !start ? S.pick_check_in : !end ? S.pick_check_out : S.stay_length.replace('{nights}', plural(S.nights, nightsBetween(start, end)));
     if (status.textContent !== text) status.textContent = text;
     paintFields();
   }
@@ -248,7 +263,7 @@ export function initDateRange(root: HTMLElement): void {
     if (startsRange(d)) {
       start = d;
       end = null;
-      picking = 'end';
+      picking = single ? 'start' : 'end';
     } else {
       end = d;
       picking = 'start';
@@ -257,6 +272,7 @@ export function initDateRange(root: HTMLElement): void {
     hover = null;
     write();
     paint();
+    if (single) close();
   }
 
   /** Same day of month `n` months away, kept inside the selectable range. */
@@ -282,7 +298,7 @@ export function initDateRange(root: HTMLElement): void {
   function makeRoom() {
     if (!wide.matches) return;
     const top = root.getBoundingClientRect().top;
-    const bottom = Math.max(trigger.start.getBoundingClientRect().bottom, trigger.end.getBoundingClientRect().bottom);
+    const bottom = Math.max(...triggers().map((t) => t.getBoundingClientRect().bottom));
     const need = bottom + 16 + dialog.offsetHeight - window.innerHeight; // least scroll for the popover to fit
     const most = top - 112; // most scroll before the fields slide under the header
     const by = need > 0 ? Math.min(need, most) : most < 0 ? Math.max(most, need) : 0;
@@ -304,9 +320,8 @@ export function initDateRange(root: HTMLElement): void {
       dialog.style.removeProperty('left');
       return;
     }
-    const a = trigger.start.getBoundingClientRect();
-    const b = trigger.end.getBoundingClientRect();
-    const box = { top: Math.min(a.top, b.top), bottom: Math.max(a.bottom, b.bottom), left: Math.min(a.left, b.left), right: Math.max(a.right, b.right) };
+    const rects = triggers().map((t) => t.getBoundingClientRect());
+    const box = { top: Math.min(...rects.map((r) => r.top)), bottom: Math.max(...rects.map((r) => r.bottom)), left: Math.min(...rects.map((r) => r.left)), right: Math.max(...rects.map((r) => r.right)) };
     const w = dialog.offsetWidth;
     const h = dialog.offsetHeight;
     const gap = 8;
@@ -338,10 +353,11 @@ export function initDateRange(root: HTMLElement): void {
   function open(which: Which, from: HTMLButtonElement) {
     if (dialog.open) return;
     today = riyadhToday();
-    maxDate = `${Number(today.slice(0, 4)) + 1}-12-31`;
+    minDate = S.min && ISO.test(S.min) ? S.min : today;
+    maxDate = S.max && ISO.test(S.max) ? S.max : defaultMax();
     sync();
     // the arrival field always starts a new range (first tap = arrival); the departure field edits the departure
-    picking = which === 'end' && start ? 'end' : 'start';
+    picking = !single && which === 'end' && start ? 'end' : 'start';
     focusDate = clampDate(picking === 'end' ? (end ?? addDays(start!, 1)) : (start ?? today));
     hover = null;
     shown = wide.matches ? 2 : 1;

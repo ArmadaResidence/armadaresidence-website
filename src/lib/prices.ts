@@ -122,6 +122,45 @@ export function roomFromPrices(s: Supa): Promise<Map<string, number>> {
   return fromInflight;
 }
 
+export interface SiteRoomType {
+  branch: string;
+  slug: string;
+  name_ar: string;
+  name_en: string;
+  bookable: boolean;
+  capacity: number;
+  extra_beds_max: number;
+}
+const ROOMS_KEY = 'armada_site_rooms';
+let roomsInflight: Promise<SiteRoomType[] | null> | null = null;
+
+/** Room availability on the website (dashboard «الغرف», phase 2a.1): every active room type with its `bookable` flag,
+ *  cached five minutes per tab; null when the service cannot be reached (the static list then stands). */
+export function siteRoomTypes(s: Supa): Promise<SiteRoomType[] | null> {
+  if (!s.url || !s.key) return Promise.resolve(null);
+  try {
+    const raw = sessionStorage.getItem(ROOMS_KEY);
+    if (raw) {
+      const c = JSON.parse(raw) as { at: number; rows: SiteRoomType[] };
+      if (Date.now() - c.at < FROM_TTL) return Promise.resolve(c.rows);
+    }
+  } catch {
+    /* storage unavailable */
+  }
+  roomsInflight ??= rpc<SiteRoomType[]>(s, 'site_room_types', {})
+    .then((rows) => {
+      try {
+        sessionStorage.setItem(ROOMS_KEY, JSON.stringify({ at: Date.now(), rows }));
+      } catch {
+        /* storage unavailable */
+      }
+      return rows;
+    })
+    .catch(() => null)
+    .finally(() => (roomsInflight = null));
+  return roomsInflight;
+}
+
 /** «185 ريالًا» / "SAR 185" (rules.ts sarText — one rule for the site, the emails and the dashboard). */
 export const money = (amount: number, locale: Locale): string => sarText(amount, locale);
 

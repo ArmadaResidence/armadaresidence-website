@@ -1,14 +1,17 @@
-// Bookings list (DASHBOARD-SPEC §3.5 + decision 6): filters, realtime, details drawer with price breakdown, status
-// history and internal notes; confirm (room type pick + per-night checks) and cancel (reason); WhatsApp template;
-// CSV export. Reception sees only its branch (RLS); the branch filter is locked for it.
-import { useCallback, useEffect, useMemo, useState } from 'react';
+// Bookings list (DASHBOARD-SPEC §3.5 + decision 6; phase 2a.1): filters (stay and request date through the site's
+// picker, past allowed), realtime, details drawer with price breakdown, status history and internal notes; confirm
+// (room type pick + per-night checks) and cancel (reason); WhatsApp template; CSV export (Excel-safe). Dates read
+// «الأحد 2 نوفمبر 2026»; guests with Arabic agreement. Confirm and cancel send emails and are never undoable (said in
+// the drawer). Branch scope locks the branch filter; bookings = view makes everything read-only.
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import * as api from '../lib/api';
 import type { Reservation, RoomType, StatusHistory, CalendarCell } from '../lib/api';
 import { useSession } from '../lib/session';
-import { BRANCH_NAMES, REASON_LABELS, STATUS_LABELS, longDate, nightsWord, riyadhDateTime, sar, toCsv, riyadhToday, addDays } from '../lib/format';
+import { BRANCH_NAMES, REASON_LABELS, STATUS_LABELS, adultsWord, childrenWord, dateRange, longDate, nightsWord, riyadhDateTimeLong, sar, toCsv, riyadhToday } from '../lib/format';
 import { Confirm, Drawer, Empty, ErrorBox, Field, Loading, Modal, Spinner, useToast } from '../components/ui';
+import DateField from '../components/DateField';
 
 type Status = '' | 'request' | 'confirmed' | 'cancelled';
 
@@ -16,14 +19,18 @@ export default function Bookings() {
   const { me } = useSession();
   const toast = useToast();
   const [params, setParams] = useSearchParams();
-  const locked = me?.role === 'reception' ? me.branch! : null;
+  const locked = me?.branch ?? null;
+  const editable = api.canEdit(me, 'bookings');
   const [branch, setBranch] = useState(locked ?? params.get('branch') ?? '');
   const [status, setStatus] = useState<Status>((params.get('status') as Status) ?? '');
   const [coord, setCoord] = useState(params.get('coord') === '1');
-  const [kind, setKind] = useState<'' | 'instant' | 'staff' | 'request'>('');
+  const [kind, setKind] = useState<'' | 'instant' | 'staff' | 'request'>((params.get('kind') as '' | 'instant' | 'staff' | 'request') ?? '');
   const [search, setSearch] = useState('');
+  const [query, setQuery] = useState('');
   const [stayFrom, setStayFrom] = useState('');
   const [stayTo, setStayTo] = useState('');
+  const [createdFrom, setCreatedFrom] = useState('');
+  const [createdTo, setCreatedTo] = useState('');
   const [rows, setRows] = useState<Reservation[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [roomTypes, setRoomTypes] = useState<RoomType[]>([]);
@@ -35,16 +42,24 @@ export default function Bookings() {
     api.roomTypes().then(setRoomTypes).catch(() => {});
   }, []);
 
+  // search is debounced: one query per pause, not per keystroke
+  const timer = useRef(0);
+  useEffect(() => {
+    window.clearTimeout(timer.current);
+    timer.current = window.setTimeout(() => setQuery(search), 300);
+    return () => window.clearTimeout(timer.current);
+  }, [search]);
+
   const load = useCallback(async () => {
     try {
       setError(null);
-      const list = await api.reservations({ branch: branch || undefined, status: status || undefined, needsCoordination: coord, confirmation: kind || undefined, search, stayFrom: stayFrom || undefined, stayTo: stayTo || undefined });
+      const list = await api.reservations({ branch: branch || undefined, status: status || undefined, needsCoordination: coord, confirmation: kind || undefined, search: query, stayFrom: stayFrom || undefined, stayTo: stayTo || undefined, createdFrom: createdFrom || undefined, createdTo: createdTo || undefined });
       setRows(list);
     } catch (e) {
       setError((e as Error).message);
       setRows([]);
     }
-  }, [branch, status, coord, kind, search, stayFrom, stayTo]);
+  }, [branch, status, coord, kind, query, stayFrom, stayTo, createdFrom, createdTo]);
 
   useEffect(() => {
     load();
@@ -52,8 +67,9 @@ export default function Bookings() {
     if (branch && !locked) p.set('branch', branch);
     if (status) p.set('status', status);
     if (coord) p.set('coord', '1');
+    if (kind) p.set('kind', kind);
     setParams(p, { replace: true });
-  }, [load, branch, status, coord, locked, setParams]);
+  }, [load, branch, status, coord, kind, locked, setParams]);
 
   // realtime: a new or changed booking refreshes the list (RLS filters what each user receives)
   useEffect(() => {
@@ -92,7 +108,7 @@ export default function Bookings() {
       breakfast_ar: r.breakfast === 'with' ? 'مع الإفطار' : 'بدون إفطار',
       needs_coordination: r.needs_coordination ? 'نعم' : '',
       fallback_ar: r.fallback_reason ? REASON_LABELS[r.fallback_reason] ?? r.fallback_reason : '',
-      created: riyadhDateTime(r.created_at),
+      created: riyadhDateTimeLong(r.created_at),
     }));
     const blob = new Blob([toCsv(data, cols)], { type: 'text/csv;charset=utf-8' });
     const a = document.createElement('a');
@@ -133,20 +149,24 @@ export default function Bookings() {
             <option value="request">طلبات</option>
           </select>
         </Field>
-        <Field label="الإقامة من" id="f-from"><input id="f-from" type="date" className="field num" value={stayFrom} onChange={(e) => setStayFrom(e.target.value)} /></Field>
-        <Field label="الإقامة إلى" id="f-to"><input id="f-to" type="date" className="field num" value={stayTo} onChange={(e) => setStayTo(e.target.value)} /></Field>
         <Field label="بحث" id="f-q" hint="رقم الحجز، الاسم أو الجوال">
           <input id="f-q" className="field" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="AR-… / اسم / 05…" />
         </Field>
+        <div className="col-span-2">
+          <DateField mode="range" label="الإقامة من" endLabel="الإقامة إلى" start={stayFrom} end={stayTo} onChange={(a, b) => { setStayFrom(a); setStayTo(b); }} min="past" id="f-stay" />
+        </div>
+        <div className="col-span-2">
+          <DateField mode="range" label="تاريخ الطلب من" endLabel="تاريخ الطلب إلى" start={createdFrom} end={createdTo} onChange={(a, b) => { setCreatedFrom(a); setCreatedTo(b); }} min="past" id="f-created" />
+        </div>
         <label className="flex items-center gap-2 text-sm font-semibold col-span-2 md:col-span-1 self-end min-h-11">
           <input type="checkbox" checked={coord} onChange={(e) => setCoord(e.target.checked)} className="size-4 accent-bronze-deep" /> يحتاج تنسيق فقط
         </label>
       </div>
       <div className="flex flex-wrap gap-2 mb-3 text-xs">
-        <span className="chip chip-request">طلبات: <b className="num">{counts.request}</b></span>
-        <span className="chip chip-confirmed">مؤكد: <b className="num">{counts.confirmed}</b></span>
-        <span className="chip chip-cancelled">ملغي: <b className="num">{counts.cancelled}</b></span>
-        {counts.coord > 0 && <span className="chip chip-flag">يحتاج تنسيق: <b className="num">{counts.coord}</b></span>}
+        <span className="chip chip-request">طلبات: <b className="num-ar">{counts.request}</b></span>
+        <span className="chip chip-confirmed">مؤكد: <b className="num-ar">{counts.confirmed}</b></span>
+        <span className="chip chip-cancelled">ملغي: <b className="num-ar">{counts.cancelled}</b></span>
+        {counts.coord > 0 && <span className="chip chip-flag">يحتاج تنسيق: <b className="num-ar">{counts.coord}</b></span>}
       </div>
       <ErrorBox error={error} />
       {rows === null ? (
@@ -164,34 +184,35 @@ export default function Bookings() {
                     {r.guest_name} <span className="num text-ink-muted font-semibold text-xs">{r.ref}</span>
                     {r.is_test && <span className="chip chip-test ms-2">تجربة</span>}
                   </span>
-                  <span className="block text-sm text-ink-muted truncate">
-                    {BRANCH_NAMES[r.branch]} · {rtName(r.room_type_id)} · <span className="num">{r.check_in}</span> → <span className="num">{r.check_out}</span> · {nightsWord(r.nights)}
+                  <span className="block text-sm text-ink-muted truncate num-ar">
+                    {BRANCH_NAMES[r.branch]} · {rtName(r.room_type_id)} · {dateRange(r.check_in, r.check_out)} · {nightsWord(r.nights)}
                   </span>
                   <span className="flex flex-wrap gap-1 mt-1">
                     {r.needs_coordination && r.status !== 'cancelled' && <span className="chip chip-flag">يحتاج تنسيق</span>}
                     {r.confirmation === 'instant' && <span className="chip chip-request">تأكيد فوري</span>}
                     {r.status === 'request' && r.fallback_reason && <span className="chip chip-request">{REASON_LABELS[r.fallback_reason] ?? r.fallback_reason}</span>}
-                    {r.extra_beds > 0 && <span className="chip chip-request">أسرّة إضافية: {r.extra_beds}</span>}
+                    {r.extra_beds > 0 && <span className="chip chip-request num-ar">أسرّة إضافية: {r.extra_beds}</span>}
                   </span>
                 </span>
                 <span className="text-end">
-                  <span className="block font-bold">{r.total !== null ? sar(r.total) : '—'}</span>
-                  <span className="block text-xs text-ink-muted num">{riyadhDateTime(r.created_at)}</span>
+                  <span className="block font-bold num-ar">{r.total !== null ? sar(r.total) : '—'}</span>
+                  <span className="block text-xs text-ink-muted num-ar">{riyadhDateTimeLong(r.created_at)}</span>
                 </span>
               </button>
             </li>
           ))}
         </ul>
       )}
-      <Details r={open} roomTypes={roomTypes} onClose={() => setOpen(null)} onChanged={(msg) => { toast(msg); load(); setOpen(null); }} />
+      <Details r={open} roomTypes={roomTypes} editable={editable} onClose={() => setOpen(null)} onChanged={(msg) => { toast(msg); load(); setOpen(null); }} />
     </div>
   );
 }
 
-function Details({ r, roomTypes, onClose, onChanged }: { r: Reservation | null; roomTypes: RoomType[]; onClose: () => void; onChanged: (msg: string) => void }) {
+function Details({ r, roomTypes, editable, onClose, onChanged }: { r: Reservation | null; roomTypes: RoomType[]; editable: boolean; onClose: () => void; onChanged: (msg: string) => void }) {
   const toast = useToast();
   const [history, setHistory] = useState<StatusHistory[]>([]);
   const [notes, setNotes] = useState('');
+  const savedNotes = useRef('');
   const [busy, setBusy] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [cancelOpen, setCancelOpen] = useState(false);
@@ -203,6 +224,7 @@ function Details({ r, roomTypes, onClose, onChanged }: { r: Reservation | null; 
   useEffect(() => {
     if (!r) return;
     setNotes(r.internal_notes ?? '');
+    savedNotes.current = r.internal_notes ?? '';
     setPickRt(r.room_type_id ?? '');
     setNightIssues(null);
     setError(null);
@@ -247,8 +269,10 @@ function Details({ r, roomTypes, onClose, onChanged }: { r: Reservation | null; 
     }
   }
   async function saveNotes() {
+    if (notes === savedNotes.current) return;
     try {
       await api.saveInternalNotes(r!.id, notes);
+      savedNotes.current = notes;
       toast('حُفظت الملاحظات');
     } catch (e) {
       toast((e as Error).message, 'error');
@@ -275,29 +299,29 @@ function Details({ r, roomTypes, onClose, onChanged }: { r: Reservation | null; 
         {r.is_test && <span className="chip chip-test">تجربة</span>}
         {r.status === 'request' && r.fallback_reason && <span className="chip chip-request">{REASON_LABELS[r.fallback_reason] ?? r.fallback_reason}</span>}
       </div>
-      <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1.5 text-sm mb-5">
+      <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1.5 text-sm mb-5 num-ar">
         <dt className="text-ink-muted">الفرع</dt><dd className="font-semibold">{BRANCH_NAMES[r.branch]}</dd>
         <dt className="text-ink-muted">نوع الغرفة</dt><dd className="font-semibold">{rtName(r.room_type_id)}</dd>
         <dt className="text-ink-muted">الوصول</dt><dd className="font-semibold">{longDate(r.check_in)}</dd>
         <dt className="text-ink-muted">المغادرة</dt><dd className="font-semibold">{longDate(r.check_out)} · {nightsWord(r.nights)}</dd>
-        <dt className="text-ink-muted">الضيوف</dt><dd className="font-semibold">{r.adults} بالغ{r.children ? ` · ${r.children} طفل${r.children_ages?.length ? ` (الأعمار: ${r.children_ages.join('، ')})` : ''}` : ''}{r.capacity_at_request ? <span className="text-ink-muted"> · السعة {r.capacity_at_request}</span> : null}</dd>
+        <dt className="text-ink-muted">الضيوف</dt><dd className="font-semibold">{adultsWord(r.adults)}{r.children ? ` · ${childrenWord(r.children)}${r.children_ages?.length ? ` (الأعمار: ${r.children_ages.join('، ')})` : ''}` : ''}{r.capacity_at_request ? <span className="text-ink-muted"> · سعة الغرفة {r.capacity_at_request}</span> : null}</dd>
         <dt className="text-ink-muted">أسرّة إضافية</dt><dd className="font-semibold">{r.extra_beds}{r.extra_bed_fee_per_night ? ` (${sar(r.extra_bed_fee_per_night)} لليلة)` : ''}</dd>
         <dt className="text-ink-muted">الإفطار</dt><dd className="font-semibold">{r.breakfast === 'with' ? 'مع الإفطار' : 'بدون إفطار'}</dd>
         <dt className="text-ink-muted">الجوال</dt><dd className="font-semibold num"><a className="underline" href={`tel:${r.phone}`}>{r.phone}</a></dd>
         <dt className="text-ink-muted">البريد</dt><dd className="font-semibold latin">{r.email ? <a className="underline" href={`mailto:${r.email}`}>{r.email}</a> : '—'}</dd>
         {r.notes && (<><dt className="text-ink-muted">ملاحظات الضيف</dt><dd className="whitespace-pre-wrap">{r.notes}</dd></>)}
-        <dt className="text-ink-muted">المصدر</dt><dd>{r.source === 'website' ? 'الموقع' : 'اللوحة'} · {r.locale} · <span className="num">{riyadhDateTime(r.created_at)}</span></dd>
+        <dt className="text-ink-muted">المصدر</dt><dd>{r.source === 'website' ? 'الموقع' : 'اللوحة'} · {r.locale === 'en' ? 'النسخة الإنجليزية' : 'النسخة العربية'} · {riyadhDateTimeLong(r.created_at)}</dd>
         {r.cancel_reason && (<><dt className="text-ink-muted">سبب الإلغاء</dt><dd>{r.cancel_reason}</dd></>)}
       </dl>
 
       {r.total !== null && (
         <div className="card p-3 mb-5 bg-soft">
           <h3 className="font-bold text-sm mb-2">تفاصيل السعر</h3>
-          <table className="w-full text-sm">
+          <table className="w-full text-sm num-ar">
             <tbody>
               <tr><td>الغرفة · {nightsWord(r.nights)}</td><td className="text-end font-semibold">{sar(r.room_total)}</td></tr>
               {pricing?.nights && new Set(pricing.nights.map((n) => Number(n.price))).size > 1 && pricing.nights.map((n) => (
-                <tr key={n.night} className="text-ink-muted"><td className="ps-3 num">{n.night}{n.label ? ` — ${n.label}` : ''}</td><td className="text-end">{sar(n.price)}</td></tr>
+                <tr key={n.night} className="text-ink-muted"><td className="ps-3">{longDate(n.night)}{n.label ? ` — ${n.label}` : ''}</td><td className="text-end">{sar(n.price)}</td></tr>
               ))}
               {r.breakfast === 'with' && <tr><td>الإفطار</td><td className="text-end font-semibold">{sar(r.breakfast_total)}</td></tr>}
               {r.extra_beds > 0 && <tr><td>الأسرّة الإضافية · {r.extra_beds}</td><td className="text-end font-semibold">{sar(r.extra_beds_total)}</td></tr>}
@@ -308,22 +332,24 @@ function Details({ r, roomTypes, onClose, onChanged }: { r: Reservation | null; 
         </div>
       )}
 
-      <div className="flex flex-wrap gap-2 mb-5">
-        {r.status === 'request' && <button type="button" className="btn btn-primary" onClick={() => setConfirmOpen(true)} data-action="confirm">تأكيد الحجز</button>}
-        {r.status !== 'cancelled' && <button type="button" className="btn btn-danger" onClick={() => setCancelOpen(true)} data-action="cancel">إلغاء الحجز</button>}
+      <div className="flex flex-wrap gap-2 mb-1">
+        {editable && r.status === 'request' && <button type="button" className="btn btn-primary" onClick={() => setConfirmOpen(true)} data-action="confirm">تأكيد الحجز</button>}
+        {editable && r.status !== 'cancelled' && <button type="button" className="btn btn-danger" onClick={() => setCancelOpen(true)} data-action="cancel">إلغاء الحجز</button>}
         <a className="btn btn-ghost" href={waTemplate()} target="_blank" rel="noopener">واتساب الضيف</a>
       </div>
+      {editable && r.status !== 'cancelled' && <p className="text-xs text-ink-muted mb-5">التأكيد والإلغاء يرسلان بريدًا للضيف والاستقبال، لذلك لا يمكن التراجع عنهما.</p>}
+      {!editable && <p className="text-xs text-ink-muted mb-5">صلاحيتك هنا للعرض فقط.</p>}
 
       <Field label="ملاحظات داخلية" id="internal-notes" hint="لا يراها الضيف.">
-        <textarea id="internal-notes" className="field min-h-24" value={notes} onChange={(e) => setNotes(e.target.value)} onBlur={saveNotes} />
+        <textarea id="internal-notes" className="field min-h-24" value={notes} onChange={(e) => setNotes(e.target.value)} onBlur={saveNotes} disabled={!editable} />
       </Field>
 
       <h3 className="font-bold text-sm mt-5 mb-2">سجل الحالة</h3>
-      <ol className="text-sm grid gap-1">
+      <ol className="text-sm grid gap-1 num-ar">
         {history.map((h) => (
           <li key={h.id} className="flex flex-wrap gap-x-2 text-ink-muted">
-            <span className="num">{riyadhDateTime(h.at)}</span>
-            <span className="text-ink font-semibold">{h.from_status ? `${STATUS_LABELS[h.from_status]} → ` : ''}{STATUS_LABELS[h.to_status]}</span>
+            <span>{riyadhDateTimeLong(h.at)}</span>
+            <span className="text-ink font-semibold">{h.from_status ? `${STATUS_LABELS[h.from_status]} ← ` : ''}{STATUS_LABELS[h.to_status]}</span>
             <span>· {h.actor_label === 'website' ? 'الموقع' : h.actor_label}</span>
             {h.note && <span>· {REASON_LABELS[h.note] ?? h.note}</span>}
           </li>
@@ -331,7 +357,7 @@ function Details({ r, roomTypes, onClose, onChanged }: { r: Reservation | null; 
       </ol>
 
       <Modal open={confirmOpen} onClose={() => { setConfirmOpen(false); setNightIssues(null); setError(null); }} title="تأكيد الحجز">
-        <p className="text-sm text-ink-muted mb-3">يُخصم من مخزون كل ليلة ويُرسل التأكيد للضيف (إن كان له بريد) وإشعار للاستقبال.</p>
+        <p className="text-sm text-ink-muted mb-3">يُخصم من مخزون كل ليلة ويُرسل التأكيد للضيف (إن كان له بريد) وإشعار للاستقبال. لا يمكن التراجع بعد الإرسال.</p>
         <Field label="نوع الغرفة" id="confirm-rt">
           <select id="confirm-rt" className="field" value={pickRt} onChange={(e) => { setPickRt(e.target.value); setNightIssues(null); }}>
             <option value="">— اختر —</option>
@@ -341,9 +367,9 @@ function Details({ r, roomTypes, onClose, onChanged }: { r: Reservation | null; 
         {nightIssues && (
           <div className="mt-3 rounded border border-error/40 bg-error/10 p-3 text-sm">
             <p className="font-bold text-error mb-1">{REASON_LABELS[nightIssues.reason] ?? nightIssues.reason} — تحقق من الليالي:</p>
-            <ul className="grid gap-0.5">
+            <ul className="grid gap-0.5 num-ar">
               {nightIssues.nights.map((n) => (
-                <li key={n.night} className="flex justify-between num"><span>{n.night}</span><span>{n.price === null ? 'بلا سعر' : sar(n.price)} · {!n.has_row ? 'مغلقة' : n.stop_sell ? 'موقوفة' : `${n.rooms_to_sell} متبقية`}</span></li>
+                <li key={n.night} className="flex justify-between"><span>{longDate(n.night)}</span><span>{n.price === null ? 'بلا سعر' : sar(n.price)} · {!n.has_row || n.stop_sell ? 'مغلقة' : `${n.rooms_to_sell} متبقية`}</span></li>
               ))}
             </ul>
             <p className="mt-2 text-ink-muted">افتح تقويم الأسعار / المخزون، صحّح الليالي، ثم أعد التأكيد.</p>
@@ -357,7 +383,7 @@ function Details({ r, roomTypes, onClose, onChanged }: { r: Reservation | null; 
       </Modal>
 
       <Confirm open={cancelOpen} onClose={() => { setCancelOpen(false); setError(null); }} title="إلغاء الحجز" confirmLabel="إلغاء الحجز" danger onConfirm={doCancel} busy={busy}
-        body={r.status === 'confirmed' ? 'سيُعاد المخزون لكل ليلة ويُرسل للضيف بريد الإلغاء إن كان له بريد.' : 'سيُغلق الطلب.'}>
+        body={r.status === 'confirmed' ? 'سيُعاد المخزون لكل ليلة ويُرسل للضيف بريد الإلغاء إن كان له بريد. لا يمكن التراجع بعد الإرسال.' : 'سيُغلق الطلب. لا يمكن التراجع.'}>
         <Field label="السبب (إلزامي)" id="cancel-reason">
           <input id="cancel-reason" className="field" value={reason} onChange={(e) => setReason(e.target.value)} />
         </Field>
@@ -366,5 +392,3 @@ function Details({ r, roomTypes, onClose, onChanged }: { r: Reservation | null; 
     </Drawer>
   );
 }
-
-export { addDays };

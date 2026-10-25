@@ -5,6 +5,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useSession } from '../lib/session';
 import { ErrorBox, Loading, Spinner } from '../components/ui';
+import { west } from '../lib/format';
 
 export default function Mfa() {
   const { me, refresh, signOut } = useSession();
@@ -48,7 +49,7 @@ export default function Mfa() {
       setBusy(false);
       return setError(e1.message);
     }
-    const { error: e2 } = await supabase.auth.mfa.verify({ factorId, challengeId: ch.id, code: code.replace(/\D/g, '') });
+    const { error: e2 } = await supabase.auth.mfa.verify({ factorId, challengeId: ch.id, code: west(code).replace(/\D/g, '') });
     setBusy(false);
     if (e2) return setError('الرمز غير صحيح أو انتهت صلاحيته.');
     await refresh();
@@ -71,7 +72,7 @@ export default function Mfa() {
           <p className="text-sm text-ink-muted mb-4">{me?.role === 'reception' ? 'أدخل رمز تطبيق المصادقة.' : 'حسابك يتطلب رمز تطبيق المصادقة عند كل دخول.'}</p>
         )}
         <label className="label mt-4" htmlFor="code">الرمز</label>
-        <input id="code" className="field num text-center text-lg tracking-widest" inputMode="numeric" autoComplete="one-time-code" maxLength={6} value={code} onChange={(e) => setCode(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && verify()} />
+        <input id="code" className="field num text-center text-lg tracking-widest" inputMode="numeric" autoComplete="one-time-code" maxLength={6} value={code} onChange={(e) => setCode(west(e.target.value).replace(/\D/g, '').slice(0, 6))} onKeyDown={(e) => e.key === 'Enter' && verify()} />
         <ErrorBox error={error} />
         <button type="button" className="btn btn-primary w-full mt-3" onClick={verify} disabled={busy || code.length < 6}>
           {busy && <Spinner />} تحقق

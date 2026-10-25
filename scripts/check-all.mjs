@@ -1,6 +1,6 @@
 // The full check suite (CLAUDE.md §11 — mandatory, Ahmed 24 Oct 2026): before every commit against the local build,
 // after every deploy against the live site.
-//   node scripts/check-all.mjs                local: build.py → qa.py → dist/ served on 127.0.0.1 → the browser checks
+//   node scripts/check-all.mjs                local: build.py → qa.py → admin-digits-check → dist/ served on 127.0.0.1 → the browser checks
 //   node scripts/check-all.mjs --staged       the same on the staged snapshot (what `git commit` will record), exported
 //                                             with git checkout-index to a temp folder, so uncommitted edits of
 //                                             another session in this shared folder neither break nor pass a commit;
@@ -19,6 +19,8 @@ import { serveDist } from './serve-dist.mjs';
 
 const REVIEW_URL = 'https://armadaresidence.github.io/armadaresidence-website';
 const BROWSER_CHECKS = ['booking-nav-check', 'drawer-check', 'booking-whatsapp-check', 'datepicker-check', 'motion-check', 'booking-instant-check'];
+// static, no browser, no key: Western digits and no native date inputs in the dashboard sources (phase 2a.1)
+const STATIC_CHECKS = ['admin-digits-check'];
 // live only: the deployed functions' CORS / preflight / gateway JWT handling from every dashboard origin
 const LIVE_CHECKS = ['admin-cors-check'];
 const args = process.argv.slice(2);
@@ -73,6 +75,7 @@ if (live) {
     base = server.url;
   }
 }
+for (const name of STATIC_CHECKS) results.push(await run(name, process.execPath, [`scripts/${name}.mjs`]));
 if (base) {
   console.log(`\nbrowser checks against ${base}`);
   for (const name of BROWSER_CHECKS) results.push(await run(name, process.execPath, [`scripts/${name}.mjs`, base]));

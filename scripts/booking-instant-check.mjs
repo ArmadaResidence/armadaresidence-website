@@ -79,6 +79,14 @@ async function run(width, lang) {
   await page.route(/\/rest\/v1\/rpc\/room_from_prices/, (route) =>
     route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([{ branch: 'airport-road', room_slug: 'king-room', from_price: 185 }]) }),
   );
+  // room availability (phase 2a.1, dashboard «الغرف»): the dashboard turned the Shafa jacuzzi studio OFF and the Airport
+  // accessible room ON since the last build — the form must drop the first and offer the second
+  const SITE_ROOMS = [
+    { branch: 'shafa-road', slug: 'jacuzzi-studio', name_ar: 'استوديو جاكوزي', name_en: 'Jacuzzi Studio', bookable: false, capacity: 2, extra_beds_max: 0 },
+    { branch: 'airport-road', slug: 'accessible-room', name_ar: 'غرفة مهيأة لذوي الاحتياجات الخاصة', name_en: 'Accessible Room', bookable: true, capacity: 2, extra_beds_max: 0 },
+    { branch: 'airport-road', slug: 'king-room', name_ar: 'غرفة كينج', name_en: 'King Room', bookable: true, capacity: 2, extra_beds_max: 0 },
+  ];
+  await page.route(/\/rest\/v1\/rpc\/site_room_types/, (route) => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(SITE_ROOMS) }));
   await page.route(/\/functions\/v1\/booking-request/, async (route) => {
     const body = route.request().postDataJSON();
     submits.push(body);
@@ -139,6 +147,23 @@ async function run(width, lang) {
   await page.goto(`${BASE}${pre}/airport-road/twin-room/`, { waitUntil: 'networkidle' });
   await page.waitForTimeout(500);
   check((await page.locator('[data-from-line]').isHidden()) && (await page.locator('[data-from-static]').isVisible()), `${tag} room page: no price → static line stays`);
+
+  // ── booking page: room availability follows the dashboard at runtime ──
+  await page.goto(`${BASE}${pre}/booking/?branch=shafa-road&room=jacuzzi-studio`, { waitUntil: 'networkidle' });
+  await page.waitForSelector('form[data-booking-ready]');
+  {
+    const f0 = page.locator('form[data-booking-form]').first();
+    await page.waitForFunction(() => !document.querySelector('form[data-booking-form] select[name="room"] option[value="jacuzzi-studio"]'), null, { timeout: 8000 }).catch(() => {});
+    check((await f0.locator('select[name="room"] option[value="jacuzzi-studio"]').count()) === 0, `${tag} rooms: a room turned off in the dashboard leaves the form`);
+    check((await f0.locator('select[name="room"]').inputValue()) === '', `${tag} rooms: its prefilled selection cleared to «أي غرفة متاحة»`);
+    check((await f0.locator('[data-room-note]').textContent()).trim() === S.form.room_cleared, `${tag} rooms: the room-cleared note is shown`);
+    const added = f0.locator('select[name="room"] optgroup[data-branch="airport-road"] option[value="accessible-room"]');
+    check((await added.count()) === 1 && (await added.textContent()) === (L === 'ar' ? 'غرفة مهيأة لذوي الاحتياجات الخاصة' : 'Accessible Room'), `${tag} rooms: a room turned on since the build is offered under its branch`);
+  }
+  await page.goto(`${BASE}${pre}/booking/?branch=airport-road&room=accessible-room`, { waitUntil: 'networkidle' });
+  await page.waitForSelector('form[data-booking-ready]');
+  await page.waitForFunction(() => document.querySelector('form[data-booking-form] select[name="room"]')?.value === 'accessible-room', null, { timeout: 8000 }).catch(() => {});
+  check((await page.locator('form[data-booking-form] select[name="room"]').first().inputValue()) === 'accessible-room', `${tag} rooms: a link to the newly offered room preselects it`);
 
   // ── booking page: quote flow ──
   await page.goto(`${BASE}${pre}/booking/?branch=airport-road`, { waitUntil: 'networkidle' });

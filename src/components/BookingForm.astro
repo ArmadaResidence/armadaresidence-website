@@ -347,7 +347,7 @@ const stepper = (name: 'adults' | 'children' | 'extra_beds', value: number, min:
     type BookingInput,
     type FieldError,
   } from '../../supabase/functions/booking-request/rules.ts';
-  import { money, quoteStay, time12, type Quote, type QuoteResult } from '@lib/prices';
+  import { money, quoteStay, siteRoomTypes, time12, type Quote, type QuoteResult } from '@lib/prices';
 
   type Plurals = Record<'nights' | 'adults' | 'children', Record<'one' | 'two' | 'few' | 'many', string>>;
   type QuoteStrings = {
@@ -698,6 +698,7 @@ const stepper = (name: 'adults' | 'children' | 'extra_beds', value: number, min:
       branchSel.value = p.branch && data.branches.some((b) => b.slug === p.branch) ? p.branch : '';
       filterRooms();
       roomNote.classList.add('hidden');
+      form.dataset.prefillRoom = p.room ?? '';
       if (p.room) selectRoom(p.room);
       else roomSel.selectedIndex = 0;
       const iso = /^\d{4}-\d{2}-\d{2}$/;
@@ -943,10 +944,46 @@ const stepper = (name: 'adults' | 'children' | 'extra_beds', value: number, min:
       while (agesList.children.length > kids) agesList.lastElementChild!.remove();
     }
 
+    // ── room availability (phase 2a.1, dashboard «الغرف»): the static list is the build's snapshot; at runtime a room
+    // turned off disappears (its selection clears to «أي غرفة متاحة» with the note) and a room turned on since the last
+    // build is added to its branch's group, so the form follows the dashboard without waiting for the rebuild ──────
+    const supa = { url: data.supabaseUrl, key: data.anonKey };
+    const wanted = () => new URLSearchParams(location.search).get('room') || form.dataset.prefillRoom || '';
+    siteRoomTypes(supa).then((rows) => {
+      if (!rows) return;
+      const groups = Array.from(roomSel.querySelectorAll<HTMLOptGroupElement>('optgroup'));
+      let dropped = false;
+      for (const r of rows) {
+        const g = groups.find((x) => x.dataset.branch === r.branch);
+        if (!g) continue;
+        const opt = Array.from(g.querySelectorAll('option')).find((o) => o.value === r.slug);
+        if (!r.bookable && opt) {
+          if (opt.selected) dropped = true;
+          opt.remove();
+          data.rooms = data.rooms.filter((x) => !(x.slug === r.slug && x.branch === r.branch));
+        } else if (r.bookable && !opt) {
+          const o = document.createElement('option');
+          o.value = r.slug;
+          o.dataset.branch = r.branch;
+          o.dataset.capacity = String(r.capacity);
+          o.textContent = data.locale === 'ar' ? r.name_ar : r.name_en;
+          g.append(o);
+          data.rooms.push({ slug: r.slug, branch: r.branch, name: o.textContent, capacity: r.capacity, extra_beds_max: r.extra_beds_max, availability: 'available' });
+          if (wanted() === r.slug && !roomSel.value) selectRoom(r.slug);
+        }
+      }
+      if (dropped) {
+        roomSel.selectedIndex = 0;
+        roomNote.textContent = S.roomCleared;
+        roomNote.classList.remove('hidden');
+      }
+      filterRooms();
+      refresh();
+    });
+
     // ── price quote (decision 4): quote_stay once a room type and both dates are set; debounced; stale answers
     // dropped; no price at all when the service is off, unreachable or the branch's switch is off ─────────────
     const Q = data.quote;
-    const supa = { url: data.supabaseUrl, key: data.anonKey };
     const qBadge = quoteBox.querySelector<HTMLElement>('[data-quote-badge]')!;
     const qNote = quoteBox.querySelector<HTMLElement>('[data-quote-note]')!;
     const qTable = quoteBox.querySelector<HTMLElement>('[data-quote-table]')!;

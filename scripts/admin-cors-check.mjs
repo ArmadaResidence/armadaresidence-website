@@ -16,7 +16,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 
 const DEFAULT_ORIGINS = ['https://admin.armadaresidence.com', 'https://armadaresidence.github.io/armadaresidence-admin'];
-const DEFAULT_FUNCTIONS = ['booking-admin', 'admin-users'];
+const DEFAULT_FUNCTIONS = ['booking-admin', 'admin-users', 'site-rebuild'];
 // what the dashboard's fetch() and supabase-js functions.invoke() put in Access-Control-Request-Headers
 const REQUEST_HEADERS = ['authorization', 'apikey', 'content-type', 'x-client-info'];
 const FOREIGN = 'https://evil.invalid';
