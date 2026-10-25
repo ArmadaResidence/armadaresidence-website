@@ -1,5 +1,6 @@
 #!/bin/sh
 # Mandatory before every commit (CLAUDE.md §11, Ahmed 24 Oct 2026): build.py, qa.py and every browser check against
-# the local build — node scripts/check-all.mjs. A failing check blocks the commit; fix the cause, never --no-verify.
+# a local build of the staged snapshot — exactly what this commit records, not other uncommitted edits in the folder
+# (node scripts/check-all.mjs --staged). A failing check blocks the commit; fix the cause, never --no-verify.
 # Enable once per clone: git config core.hooksPath .githooks
-exec node scripts/check-all.mjs
+exec node scripts/check-all.mjs --staged

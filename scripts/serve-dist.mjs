@@ -1,7 +1,8 @@
 // Static server for dist/ (the local build) — used by the browser checks. Node handles the checks' parallel
 // browser contexts; python's http.server refuses connections under that load (backlog of 5).
 //   node scripts/serve-dist.mjs [PORT]        (default 4330, 127.0.0.1)
-// As a module: `const { url, close } = await serveDist(port)`; port 0 = any free port.
+// As a module: `const { url, close } = await serveDist(port, { dist })`; port 0 = any free port; `dist` defaults to
+// this repository's dist/ (check-all --staged passes the snapshot's).
 import { createReadStream, statSync } from 'node:fs';
 import { createServer } from 'node:http';
 import { extname, join, normalize, resolve } from 'node:path';
@@ -16,10 +17,10 @@ const TYPES = {
   '.mp4': 'video/mp4', '.webm': 'video/webm', '.pdf': 'application/pdf', '.webmanifest': 'application/manifest+json',
 };
 
-function fileFor(pathname) {
+function fileFor(pathname, dist) {
   const rel = normalize(decodeURIComponent(pathname)).replace(/^([/\\])+/, '');
-  const p = join(DIST, rel);
-  if (!p.startsWith(DIST)) return null;
+  const p = join(dist, rel);
+  if (!p.startsWith(dist)) return null;
   for (const c of [p, join(p, 'index.html'), `${p}.html`]) {
     try {
       if (statSync(c).isFile()) return c;
@@ -28,17 +29,18 @@ function fileFor(pathname) {
   return null;
 }
 
-export function serveDist(port = 4330, host = '127.0.0.1') {
+export function serveDist(port = 4330, { host = '127.0.0.1', dist = DIST } = {}) {
+  dist = resolve(dist);
   const server = createServer((req, res) => {
     const { pathname } = new URL(req.url, 'http://x');
     // directory URLs without the trailing slash redirect like GitHub Pages does
-    if (!extname(pathname) && !pathname.endsWith('/') && fileFor(`${pathname}/`)) {
+    if (!extname(pathname) && !pathname.endsWith('/') && fileFor(`${pathname}/`, dist)) {
       res.writeHead(301, { Location: `${pathname}/` }).end();
       return;
     }
-    const file = fileFor(pathname);
+    const file = fileFor(pathname, dist);
     const notFound = !file;
-    const path = file ?? fileFor('/404.html');
+    const path = file ?? fileFor('/404.html', dist);
     if (!path) return res.writeHead(404).end('not found');
     res.writeHead(notFound ? 404 : 200, { 'Content-Type': TYPES[extname(path).toLowerCase()] ?? 'application/octet-stream', 'Cache-Control': 'no-store' });
     if (req.method === 'HEAD') return res.end();

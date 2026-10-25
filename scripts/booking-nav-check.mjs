@@ -39,6 +39,9 @@ const CHECK_OUT = addDays(riyadhToday(), 23);
 const DATES = `&check_in=${CHECK_IN}&check_out=${CHECK_OUT}`;
 
 const fails = [];
+const notes = [];
+// action timeout (scroll / tap): generous, the suite also runs while the machine builds (another session, CI)
+const ACTION = 10000;
 let checks = 0;
 const browser = await chromium.launch({ channel: 'chrome' });
 
@@ -66,7 +69,8 @@ async function run(vp, lang) {
   page.on('console', (m) => m.type() === 'error' && errors.push(m.text()));
   page.on('pageerror', (e) => errors.push(String(e)));
   const here = () => new URL(page.url()).pathname.slice(PRE.length) || '/';
-  const press = (loc) => (mobile ? loc.tap({ timeout: 5000 }) : loc.click({ timeout: 5000 }));
+  const press = (loc) => (mobile ? loc.tap({ timeout: ACTION }) : loc.click({ timeout: ACTION }));
+  let step = ''; // the step in progress, for an abort message
   const bookHref = (q = '') => `${PRE}${L}/booking/${q}`;
   /** ?branch=&room= of a page's booking context ({} = none) */
   const ctxQuery = (c = {}) => (c.branch ? `?branch=${c.branch}${c.room ? `&room=${c.room}` : ''}` : '');
@@ -106,14 +110,32 @@ async function run(vp, lang) {
 
   /** Open the drawer from `loc` (first tap), check the prefill, close it. */
   async function openFrom(label, loc, exp) {
+    step = label;
     if (!(await loc.count())) return fails.push(`${tag} ${label} @ ${here()}: entry point not found`);
-    await loc.scrollIntoViewIfNeeded({ timeout: 5000 });
-    await press(loc);
-    const opened = await page
-      .waitForFunction(() => document.querySelector('[data-booking-drawer]')?.classList.contains('is-open'), null, { timeout: 4000 })
-      .then(() => true, () => false);
+    await loc.scrollIntoViewIfNeeded({ timeout: ACTION });
+    // record whether the tap reaches the link: a tap that reached it and opened nothing is a site failure (the A1
+    // bug); a tap that never reached it (the layout moved under the pointer on a slow, busy run) is retried once
+    await loc.evaluate((a) => {
+      a.__hit = false;
+      a.addEventListener('click', () => (a.__hit = true), { once: true, capture: true });
+    });
+    const tapAndWait = async () => {
+      await press(loc);
+      return page.waitForFunction(() => document.querySelector('[data-booking-drawer]')?.classList.contains('is-open'), null, { timeout: 6000 }).then(() => true, () => false);
+    };
+    let opened = await tapAndWait();
+    if (!opened && !(await loc.evaluate((a) => a.__hit).catch(() => true))) {
+      notes.push(`${tag} ${label} @ ${here()}: the first tap did not reach the link (retried)`);
+      opened = await tapAndWait();
+    }
     const s = await formState('[data-booking-drawer] form');
-    if (!opened || !s?.open) return fails.push(`${tag} ${label} @ ${here()}: the form did not open on the first tap`);
+    if (!opened || !s?.open) {
+      const why = await page.evaluate(() => {
+        const d = document.querySelector('[data-booking-drawer]');
+        return { url: location.pathname + location.search, open: !!d?.open, isOpen: !!d?.classList.contains('is-open'), ready: !!d?.querySelector('form[data-booking-ready]'), drawerOpenEvents: (window.dataLayer || []).filter((e) => e && e.event === 'booking_drawer_open').length };
+      });
+      return fails.push(`${tag} ${label} @ ${here()}: the form did not open on the first tap ${JSON.stringify(why)}`);
+    }
     verify(label, s, exp);
     if (exp.nav && !s.noReload) fails.push(`${tag} ${label} @ ${here()}: a full page reload happened`);
     await page.keyboard.press('Escape');
@@ -200,22 +222,24 @@ async function run(vp, lang) {
       verify('/booking/ page', await formState('form[data-booking-form]'), { branch: r.branch, room: r.slug, dates: true });
     }
   } catch (e) {
-    fails.push(`${tag} direct loads aborted at ${here()}: ${String(e).split(/\r?\n/)[0].slice(0, 180)}`);
+    fails.push(`${tag} direct loads aborted at ${here()} (${step}): ${String(e).split(/\r?\n/)[0].slice(0, 180)}`);
   }
 
   // ── 2. client-side navigation (ClientRouter, no reload) ──────────────────────────────────────────────
   let navs = 0;
   async function nav(path) {
+    step = `link to ${path}`;
     const sel = `a[href="${PRE}${path}"]`;
     let link = page.locator(`main ${sel}:visible`).first();
     if (!(await link.count())) link = page.locator(`header ${sel}:visible`).first();
     if (!(await link.count())) throw new Error(`no link to ${path} on ${here()}`);
-    await link.scrollIntoViewIfNeeded({ timeout: 5000 });
+    await link.scrollIntoViewIfNeeded({ timeout: ACTION });
     const loads = await page.evaluate(() => window.__loads || 0);
     await press(link);
     await arrived(path, loads);
   }
   async function back(path) {
+    step = `back to ${path}`;
     const loads = await page.evaluate(() => window.__loads || 0);
     await page.goBack();
     await arrived(path, loads);
@@ -248,7 +272,7 @@ async function run(vp, lang) {
       await footer(true);
     }
   } catch (e) {
-    fails.push(`${tag} navigation aborted at ${here()}: ${String(e).split(/\r?\n/)[0].slice(0, 180)}`);
+    fails.push(`${tag} navigation aborted at ${here()} (${step}): ${String(e).split(/\r?\n/)[0].slice(0, 180)}`);
   }
   for (const e of new Set(errors)) fails.push(`${tag} console: ${e.slice(0, 160)}`);
   console.log(`${tag}: ${navs} client-side navigations`);
@@ -267,10 +291,10 @@ async function failedScript(vp, lang) {
   const page = await ctx.newPage();
   const errors = [];
   page.on('pageerror', (e) => errors.push(String(e)));
-  const press = (loc) => (mobile ? loc.tap({ timeout: 5000 }) : loc.click({ timeout: 5000 }));
+  const press = (loc) => (mobile ? loc.tap({ timeout: ACTION }) : loc.click({ timeout: ACTION }));
   const go = async (path) => {
     const link = page.locator(`main a[href="${PRE}${path}"]:visible`).first();
-    await link.scrollIntoViewIfNeeded({ timeout: 5000 });
+    await link.scrollIntoViewIfNeeded({ timeout: ACTION });
     await press(link);
     await page.waitForURL((u) => u.pathname === PRE + path, { timeout: 8000 });
     await page.waitForTimeout(600);
@@ -281,7 +305,7 @@ async function failedScript(vp, lang) {
     await go(`${L}/shafa-road/`);
     await go(`${L}/shafa-road/king-room/`);
     const cta = page.locator(`[data-book-card] a[href="${PRE}${L}/booking/?branch=shafa-road&room=king-room"]`);
-    await cta.scrollIntoViewIfNeeded({ timeout: 5000 });
+    await cta.scrollIntoViewIfNeeded({ timeout: ACTION });
     await press(cta);
     await page.waitForURL((u) => u.pathname === `${PRE}${L}/booking/`, { timeout: 8000 });
     await page.locator('form[data-booking-form][data-booking-ready]').waitFor({ state: 'attached', timeout: 8000 });
@@ -306,6 +330,7 @@ await Promise.all([
 ]);
 await browser.close();
 
+for (const n of new Set(notes)) console.log('note: ' + n);
 if (fails.length) {
   console.log(`FAIL (${fails.length})`);
   for (const f of [...new Set(fails)]) console.log('  - ' + f);

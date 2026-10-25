@@ -237,7 +237,7 @@ Every commit, however small (docs and tests included), passes the whole suite ag
 | motion | `node scripts/motion-check.mjs <BASE>` |
 
 - One command runs it: `node scripts/check-all.mjs` (local: build → qa → `dist/` served by `scripts/serve-dist.mjs` → the five browser checks) and `node scripts/check-all.mjs --live [URL]` after the deploy (default: the GitHub Pages review URL; pass the domain after the switch). Every browser check stubs the booking endpoint, wa.me and GTM — nothing is sent, no analytics hit.
-- Enforced by `.githooks/pre-commit`, which runs the local suite (enable once per clone: `git config core.hooksPath .githooks`). A failing check blocks the commit: fix the cause.
+- Enforced by `.githooks/pre-commit`, which runs the suite on the **staged snapshot** (`node scripts/check-all.mjs --staged`: the index exported to a temp folder, so what is checked is exactly what the commit records, and another session's uncommitted edits in this shared folder neither break nor pass it). Enable once per clone: `git config core.hooksPath .githooks`. A failing check blocks the commit: fix the cause. Stage only your own paths.
 - Every report states both results (local and live). A change that adds an entry point, a form field, a page type or a date field extends the matching check in the same commit; a check must be able to run against the sub-path review site (`PRE` from its BASE URL).
 
 ---

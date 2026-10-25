@@ -70,9 +70,19 @@ onPageLoad(() => {
   if (!dialog || !bindOnce(dialog)) return;
   const form = dialog.querySelector<HTMLFormElement>('form[data-booking-form]');
   let closing = false;
+  let safety = 0;
 
+  // Fix 25 Oct 2026: when the safety timer finished a close before the slide-out's transitionend (a busy device),
+  // the transitionend listener stayed attached; the next slide-in's transitionend then closed the drawer right
+  // after it opened (left with `is-open` on a closed dialog). One listener, removed and guarded on every finish.
+  const onSlideEnd = (e: TransitionEvent) => {
+    if (e.target === dialog) finishClose();
+  };
   const finishClose = () => {
+    if (!closing) return;
     closing = false;
+    dialog.removeEventListener('transitionend', onSlideEnd);
+    window.clearTimeout(safety);
     if (dialog.open) dialog.close();
     document.documentElement.classList.remove('drawer-open');
   };
@@ -81,21 +91,16 @@ onPageLoad(() => {
     closing = true;
     dialog.classList.remove('is-open');
     if (reducedMotion()) return finishClose();
-    const done = (e: TransitionEvent) => {
-      if (e.target !== dialog) return;
-      dialog.removeEventListener('transitionend', done);
-      finishClose();
-    };
-    dialog.addEventListener('transitionend', done);
-    window.setTimeout(() => closing && finishClose(), 700); // safety net if no transition fires
+    dialog.addEventListener('transitionend', onSlideEnd);
+    safety = window.setTimeout(finishClose, 700); // safety net if no transition fires
   };
   const open = (p: Prefill) => {
     if (dialog.open || !dialog.isConnected) return;
     form?.dispatchEvent(new CustomEvent('booking:prefill', { detail: p }));
     dialog.showModal();
     document.documentElement.classList.add('drawer-open');
-    // next frame so the slide-in transition runs from the closed position
-    requestAnimationFrame(() => requestAnimationFrame(() => dialog.classList.add('is-open')));
+    // next frame so the slide-in transition runs from the closed position (unless it was closed meanwhile)
+    requestAnimationFrame(() => requestAnimationFrame(() => dialog.open && !closing && dialog.classList.add('is-open')));
     dialog.querySelector<HTMLElement>('[data-drawer-close]')?.focus();
     const w = window as unknown as DL;
     w.dataLayer = w.dataLayer || [];

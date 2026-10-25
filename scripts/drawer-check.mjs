@@ -59,6 +59,25 @@ for (const width of [1440, 375]) {
   s = await page.evaluate(() => document.querySelector('[data-booking-drawer]').open);
   if (width >= 768 && s) fails.push(`${tag} backdrop click did not close the drawer`);
   if (s) await page.keyboard.press('Escape');
+  await page.waitForFunction(() => !document.querySelector('[data-booking-drawer]').open, null, { timeout: 3000 }).catch(() => {});
+  // 3b. a close finished by the safety timer (no transitionend — a busy device) must not make the next opening close
+  //     itself once its slide-in ends (bug fixed 25 Oct 2026: a stale transitionend listener closed it)
+  await cta.scrollIntoViewIfNeeded();
+  await cta.click();
+  await page.waitForFunction(() => document.querySelector('[data-booking-drawer]').classList.contains('is-open'), null, { timeout: 3000 }).catch(() => {});
+  // no transition on the panel nor on its ::backdrop (whose transitionend also targets the dialog) for this close
+  await page.addStyleTag({ content: '[data-booking-drawer], [data-booking-drawer]::backdrop { transition: none !important; }' }).then((h) => h.evaluate((el) => (el.id = 'no-slide')));
+  await page.keyboard.press('Escape');
+  await page.waitForFunction(() => !document.querySelector('[data-booking-drawer]').open, null, { timeout: 3000 }).catch(() => {});
+  await page.evaluate(() => document.getElementById('no-slide')?.remove());
+  await cta.click();
+  await page.waitForTimeout(1200); // the slide-in has ended
+  s = await page.evaluate(() => {
+    const d = document.querySelector('[data-booking-drawer]');
+    return { open: d.open, isOpen: d.classList.contains('is-open') };
+  });
+  if (!s.open || !s.isOpen) fails.push(`${tag} the drawer closed itself after a close finished by the safety timer (${JSON.stringify(s)})`);
+  if (s.open) await page.keyboard.press('Escape');
   // 4. /booking/ has no drawer and its links are plain
   await page.goto(`${BASE}/booking/`, { waitUntil: 'load' });
   const n = await page.evaluate(() => document.querySelectorAll('[data-booking-drawer]').length);
