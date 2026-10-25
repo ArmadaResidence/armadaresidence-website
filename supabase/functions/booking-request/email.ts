@@ -50,7 +50,7 @@ export interface BookingMail {
 
 /** Price breakdown of a stay as public.submit_booking / staff_confirm_reservation return it (VAT-inclusive SAR). */
 export interface Quote {
-  nights: { night: string; price: number; label?: string | null }[];
+  nights: { night: string; price: number; label?: string | null; label_en?: string | null }[];
   count: number;
   room_total: number;
   breakfast: 'with' | 'without';
@@ -317,7 +317,7 @@ export function bookingNotification(c: Content, d: BookingMail): Mail {
     [lab.adults, String(d.adults)],
     [lab.children, String(d.children)],
     [plainLabel(lab.room_type), roomName(c, d.room, d.branch, 'ar')],
-    [lab.extra_beds, String(d.extraBeds)],
+    ...(d.extraBeds ? ([[lab.extra_beds, String(d.extraBeds)]] as [string, string][]) : []),
     [lab.breakfast, breakfast],
     [lab.full_name, d.name],
     [lab.phone, d.phone],
@@ -568,6 +568,15 @@ function sar(amount: number, L: Locale): string {
   return `${num} ${noun}`;
 }
 
+/** «الاثنين 2 نوفمبر 2026» / "Mon, 2 Nov 2026" — the date-picker format (ui.json → datepicker), approved 25 Oct 2026. */
+function longDate(c: Content, iso: string, L: Locale): string {
+  const d = new Date(`${iso}T00:00:00Z`);
+  if (Number.isNaN(d.getTime())) return iso;
+  const dp = c.datepicker[L];
+  const vars = { weekday: dp.weekdays[d.getUTCDay()], weekday_short: dp.weekdays_short[d.getUTCDay()], day: String(d.getUTCDate()), month: dp.months[d.getUTCMonth()], month_short: dp.months_short[d.getUTCMonth()], year: String(d.getUTCFullYear()) };
+  return fill(dp.field_format, vars);
+}
+
 /** Price rows of a quote: room × nights (per-night list when the rates differ), breakfast, extra beds, total. */
 function priceRows(c: Content, q: Quote, L: Locale): [string, string][] {
   const lab = c.labels[L];
@@ -578,7 +587,9 @@ function priceRows(c: Content, q: Quote, L: Locale): [string, string][] {
   const rows: [string, string][] = [];
   rows.push([fill(Q.room_line, { nights: nightsWord }), uniform ? `${q.count} × ${sar(prices[0], L)} = ${sar(q.room_total, L)}` : sar(q.room_total, L)]);
   // rates differ across the stay: one row per night (dates and amounts never share a bidi run)
-  if (!uniform) for (const n of q.nights) rows.push([n.night, n.label ? `${sar(Number(n.price), L)} — ${n.label}` : sar(Number(n.price), L)]);
+  // the override label of the night's language: Arabic text never appears in English content
+  const labelOf = (n: Quote['nights'][number]) => (L === 'en' ? n.label_en : n.label) || '';
+  if (!uniform) for (const n of q.nights) rows.push([longDate(c, n.night, L), labelOf(n) ? `${sar(Number(n.price), L)} — ${labelOf(n)}` : sar(Number(n.price), L)]);
   if (q.breakfast === 'with') rows.push([Q.breakfast_line, sar(q.breakfast_total, L)]);
   if (q.extra_beds > 0) rows.push([fill(Q.extra_beds_line, { beds: String(q.extra_beds) }), sar(q.extra_beds_total, L)]);
   rows.push([Q.total_line, sar(q.total, L)]);
@@ -595,8 +606,8 @@ export function bookingConfirmed(c: Content, d: ConfirmedMail): Mail {
     const rows: [string, string][] = [
       [lab.branch, b[`name_${L}`]],
       [plainLabel(lab.room_type), roomName(c, d.room, d.branch, L)],
-      [lab.check_in, d.check_in],
-      [lab.check_out, d.check_out],
+      [lab.check_in, longDate(c, d.check_in, L)],
+      [lab.check_out, longDate(c, d.check_out, L)],
       [lab.nights, pluralForm(lab.plural.nights, d.nights)],
       [M.guests, guestsLine(c, d.adults, d.children, L)],
       ...(d.extraBeds ? ([[lab.extra_beds, String(d.extraBeds)]] as [string, string][]) : []),
@@ -680,16 +691,16 @@ export function confirmedNotification(c: Content, d: ConfirmedMail): Mail {
   const breakfast = d.breakfast === 'with' ? lab.breakfast_with : lab.breakfast_without;
   const by = d.confirmedBy ? fill(M.confirmed_by_staff, { name: d.confirmedBy }) : M.confirmed_by_website;
   const rows: [string, string][] = [
-    [M.ref, d.ref],
+    [M.booking_ref_label, d.ref],
     [M.status_label, by],
     [lab.branch, b.name_ar],
     [plainLabel(lab.room_type), roomName(c, d.room, d.branch, 'ar')],
-    [lab.check_in, d.check_in],
-    [lab.check_out, d.check_out],
+    [lab.check_in, longDate(c, d.check_in, 'ar')],
+    [lab.check_out, longDate(c, d.check_out, 'ar')],
     [lab.nights, pluralForm(lab.plural.nights, d.nights)],
     [lab.adults, String(d.adults)],
     [lab.children, String(d.children)],
-    [lab.extra_beds, String(d.extraBeds)],
+    ...(d.extraBeds ? ([[lab.extra_beds, String(d.extraBeds)]] as [string, string][]) : []),
     [lab.breakfast, breakfast],
     [lab.full_name, d.name],
     [lab.phone, d.phone],
@@ -714,7 +725,7 @@ ${subhead(L, M.price_heading)}
 ${kvCard(L, price)}
 <div style="height:16px; line-height:16px; font-size:0;">&nbsp;</div>
 ${para(L, M.pay_at_hotel, { muted: true, size: 13 })}
-${para(L, M.hotel_footer, { muted: true, size: 12 })}`,
+${para(L, M.confirmed_hotel_footer, { muted: true, size: 12 })}`,
   );
   const html = doc({ lang: 'ar', title: subject, preheader: `${b.name_ar} · ${pluralForm(lab.plural.nights, d.nights)} · ${sar(d.quote.total, 'ar')} — ${d.ref}`, body: header(c) + card(inner) + footer(c, ['ar']) });
   const text = [
@@ -731,7 +742,7 @@ ${para(L, M.hotel_footer, { muted: true, size: 12 })}`,
     `${M.notif_wa_guest}: ${wa(d.phone)}`,
     `${M.notif_call}: ${tel(d.phone)}`,
     '',
-    M.hotel_footer,
+    M.confirmed_hotel_footer,
   ].join('\n');
   return { subject, html, text };
 }
@@ -742,7 +753,7 @@ export function lowInventoryAlert(c: Content, d: LowInventoryMail): Mail {
   const M = c.email.ar;
   const b = branchOf(c, d.branch);
   const room = roomName(c, d.room, d.branch, 'ar');
-  const rows: [string, string][] = d.nights.map((n) => [`${M.low_night} ${n.night}`, n.left <= 0 ? M.low_zero : M.low_one]);
+  const rows: [string, string][] = d.nights.map((n) => [`${M.low_night} ${longDate(c, n.night, 'ar')}`, n.left <= 0 ? M.low_zero : M.low_one]);
   const subject = fill(M.low_subject, { branch: b.name_ar, room, ref: d.ref });
   const first = d.nights[0]?.night ?? '';
   const href = `${String(c.admin_url).replace(/\/$/, '')}/inventory?branch=${encodeURIComponent(d.branch)}&from=${encodeURIComponent(first)}`;
@@ -772,8 +783,8 @@ export function bookingCancelled(c: Content, d: BookingMail): Mail {
     const rows: [string, string][] = [
       [lab.branch, b[`name_${L}`]],
       [plainLabel(lab.room_type), roomName(c, d.room, d.branch, L)],
-      [lab.check_in, d.check_in],
-      [lab.check_out, d.check_out],
+      [lab.check_in, longDate(c, d.check_in, L)],
+      [lab.check_out, longDate(c, d.check_out, L)],
       [lab.nights, pluralForm(lab.plural.nights, d.nights)],
     ];
     const waText = fill(c.wa_prefill[L].branch, { branch: b[`name_${L}`] });

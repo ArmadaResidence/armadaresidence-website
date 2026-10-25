@@ -301,6 +301,8 @@ def generate_function_content(content: dict[str, dict]) -> None:
         # phase 2a (25 Oct 2026): price-breakdown labels shared by the form and the confirmed-booking emails, and the
         # dashboard origin the low-inventory alert links to (ADMIN_URL to point at a preview deployment)
         "quote": {loc: ui[loc]["quote"] for loc in ("ar", "en")},
+        # dates in the emails follow the date picker (approved 25 Oct 2026): «الاثنين 2 نوفمبر 2026» / "Mon, 2 Nov 2026"
+        "datepicker": {loc: {k: ui[loc]["datepicker"][k] for k in ("months", "months_short", "weekdays", "weekdays_short", "field_format")} for loc in ("ar", "en")},
         "admin_url": os.environ.get("ADMIN_URL", "https://admin.armadaresidence.com"),
         # approved copy reused by the email layout (23 Oct 2026) — no new wording in the function
         "success_heading": {loc: ui[loc]["success"]["heading"] for loc in ("ar", "en")},

@@ -11,7 +11,9 @@ import { sarText, type Locale } from '../../supabase/functions/booking-request/r
 export interface QuoteNight {
   night: string;
   price: number;
+  /** override label in Arabic / English (English content shows label_en or none — never Arabic text) */
   label: string | null;
+  label_en?: string | null;
 }
 export interface Quote {
   nights: QuoteNight[];
@@ -32,6 +34,8 @@ export interface QuoteResult {
   prices: boolean;
   instant: boolean;
   reason: string | null;
+  /** the instant limits (Settings) so the reasons can say «أطول من {n} ليلة» / «بعد الساعة {time}» */
+  limits?: { same_day_cutoff?: string; max_nights?: number };
   room?: { slug: string; name_ar: string; name_en: string };
   quote?: Quote;
 }
@@ -120,3 +124,13 @@ export function roomFromPrices(s: Supa): Promise<Map<string, number>> {
 
 /** «185 ريالًا» / "SAR 185" (rules.ts sarText — one rule for the site, the emails and the dashboard). */
 export const money = (amount: number, locale: Locale): string => sarText(amount, locale);
+
+/** "20:00" → «8:00 مساءً» / "8:00 pm" — guests read 12-hour times, like the rest of the site (approved 25 Oct 2026). */
+export function time12(hhmm: string, locale: Locale): string {
+  const m = /^(\d{1,2}):(\d{2})/.exec(hhmm);
+  if (!m) return hhmm;
+  const h = Number(m[1]);
+  const h12 = h % 12 === 0 ? 12 : h % 12;
+  const pm = h >= 12;
+  return locale === 'ar' ? `${h12}:${m[2]} ${pm ? 'مساءً' : 'صباحًا'}` : `${h12}:${m[2]} ${pm ? 'pm' : 'am'}`;
+}

@@ -19,7 +19,9 @@ const USERS = {
   mgmt: 'mgmt@qa.invalid',
   admin: 'admin@qa.invalid',
 };
-const env = Object.fromEntries(readFileSync('.env', 'utf8').split(/\r?\n/).filter((l) => l.includes('=') && !l.startsWith('#')).map((l) => [l.slice(0, l.indexOf('=')).trim(), l.slice(l.indexOf('=') + 1).trim()]));
+// SUPABASE_URL / SUPABASE_ANON_KEY / BOOKING_TEST_TOKEN from .env; process.env overrides them (preview branch runs)
+const fileEnv = Object.fromEntries(readFileSync('.env', 'utf8').split(/\r?\n/).filter((l) => l.includes('=') && !l.startsWith('#')).map((l) => [l.slice(0, l.indexOf('=')).trim(), l.slice(l.indexOf('=') + 1).trim()]));
+const env = { ...fileEnv, ...Object.fromEntries(['SUPABASE_URL', 'SUPABASE_ANON_KEY', 'BOOKING_TEST_TOKEN'].filter((k) => process.env[k]).map((k) => [k, process.env[k]])) };
 const H = { apikey: env.SUPABASE_ANON_KEY, Authorization: `Bearer ${env.SUPABASE_ANON_KEY}`, 'Content-Type': 'application/json', 'x-armada-test': env.BOOKING_TEST_TOKEN };
 const rpc = async (fn, args) => {
   const r = await fetch(`${env.SUPABASE_URL}/rest/v1/rpc/${fn}`, { method: 'POST', headers: H, body: JSON.stringify(args) });
@@ -62,16 +64,20 @@ async function login(email, { mfa = false } = {}) {
   await page.fill('#password', PW);
   await page.click('button[type=submit]');
   if (mfa) {
-    await page.waitForURL(/\/mfa/, { timeout: 15000 });
-    // first login enrols: the secret is printed under the QR; later logins only ask for the code
+    await page.waitForURL(/\/mfa/, { timeout: 30000, waitUntil: 'commit' });
+    // first login enrols: the secret is printed under the QR (async); later logins only ask for the code
     const secretEl = page.locator('p.latin.select-all');
+    await Promise.race([secretEl.waitFor({ timeout: 20000 }), page.locator('[role=alert]').waitFor({ timeout: 20000 })]).catch(() => {});
+    const alert = await page.locator('[role=alert]').textContent().catch(() => null);
     let secret = null;
     if (await secretEl.count()) secret = (await secretEl.textContent()).trim();
-    if (!secret) throw new Error('mfa: no secret shown (already enrolled? qa-users.sql drop + create resets it)');
+    if (!secret) throw new Error(`mfa: no secret shown${alert ? ` — ${alert}` : ' (already enrolled? qa_users drop + create resets it)'}`);
     await page.fill('#code', totp(secret));
     await page.click('button:has-text("تحقق")');
   }
-  await page.waitForURL(/\/bookings/, { timeout: 20000 });
+  // the router moves to /bookings with pushState; wait for the URL, then for the list to render (dev server may be slow)
+  await page.waitForURL(/\/bookings/, { timeout: 30000, waitUntil: 'commit' });
+  await page.waitForSelector('#f-branch', { timeout: 30000 });
   return { ctx, page };
 }
 
@@ -89,8 +95,9 @@ try {
   // ── reception (Airport Road): no MFA, own branch only ──
   {
     const { ctx, page } = await login(USERS.rec_air);
+    await page.waitForSelector('#f-branch option', { state: 'attached', timeout: 10000 });
     check(await page.locator('#f-branch').isDisabled(), 'reception: branch filter locked');
-    check((await page.locator('#f-branch option').count()) === 1, 'reception: only its branch offered');
+    check((await page.locator('#f-branch option').count()) === 1, 'reception: only its branch offered', String(await page.locator('#f-branch option').count()));
     // admin-only nav hidden
     check((await page.locator('nav a:has-text("المستخدمون")').count()) === 0, 'reception: no Users nav');
     check((await page.locator('nav a:has-text("الإعدادات")').count()) === 0, 'reception: no Settings nav');
@@ -107,7 +114,7 @@ try {
     await page.fill('#b-n', '3');
     await page.click('[data-action="bulk-save"]');
     await page.waitForSelector(`[data-night="${D(200)}"]`);
-    await page.waitForFunction((n) => document.querySelector(`[data-night="${n}"][data-rt="king-room"]`)?.textContent.includes('3 / 0'), D(200), { timeout: 10000 });
+    await page.waitForFunction((n) => document.querySelector(`[data-night="${n}"][data-rt="king-room"]`)?.textContent.includes('3 / 0'), D(200), { timeout: 25000 });
     check(true, 'reception: bulk inventory edit applied (3 rooms on 2 nights)');
     // single cell: set the king room night 200 back to 0 with expected = 3
     await page.click(`[data-night="${D(200)}"][data-rt="king-room"]`);
@@ -137,7 +144,8 @@ try {
   // ── management: TOTP, both branches, settings; confirm + cancel the test bookings as admin ──
   {
     const { ctx, page } = await login(USERS.mgmt, { mfa: true });
-    check((await page.locator('#f-branch option').count()) === 3, 'management: both branches + all');
+    await page.waitForFunction(() => document.querySelectorAll('#f-branch option').length >= 3, null, { timeout: 10000 }).catch(() => {});
+    check((await page.locator('#f-branch option').count()) === 3, 'management: both branches + all', String(await page.locator('#f-branch option').count()));
     await page.goto(`${BASE}/settings`);
     await page.waitForSelector('[data-switch="show_prices:airport-road"]');
     const sw = page.locator('[data-switch="show_prices:airport-road"]');
@@ -157,8 +165,11 @@ try {
     await page.click('[data-action="confirm"]');
     await page.selectOption('#confirm-rt', { label: 'QA test room' }).catch(() => page.selectOption('#confirm-rt', { label: 'غرفة اختبار' }));
     await page.click('[data-action="confirm-go"]');
-    await page.waitForSelector(`[data-ref="${r2.ref}"][data-status="confirmed"]`, { timeout: 20000 });
-    check(true, 'admin: confirmed the request from the dashboard');
+    const confirmedRow = page.locator(`[data-ref="${r2.ref}"][data-status="confirmed"]`);
+    await Promise.race([confirmedRow.waitFor({ timeout: 20000 }), page.locator('dialog[open] [role=alert], dialog[open] .text-error').first().waitFor({ timeout: 20000 })]).catch(() => {});
+    const dialogErr = await page.locator('dialog[open] [role=alert], dialog[open] .text-error').first().textContent().catch(() => null);
+    check((await confirmedRow.count()) === 1, 'admin: confirmed the request from the dashboard', dialogErr ?? 'no row and no error shown');
+    if (!(await confirmedRow.count())) throw new Error(`confirm failed: ${dialogErr ?? 'timeout'}`);
     let st = await rpc('qa_fixture', { p_action: 'state', p_args: { branch: 'airport-road' } });
     const n20 = st.inventory.find((i) => i.night === D(20));
     check(n20.rooms_to_sell === 0 && n20.booked === 2, 'stock after two confirmations: 0 left / 2 booked', JSON.stringify(n20));
@@ -175,8 +186,10 @@ try {
     check(n20b.rooms_to_sell === 1 && n20b.booked === 1, 'cancel restored the night (1 left / 1 booked)', JSON.stringify(n20b));
     // users screen lists the QA users
     await page.goto(`${BASE}/users`);
-    await page.waitForSelector(`[data-user="${USERS.rec_air}"]`, { timeout: 15000 });
-    check(true, 'admin: users list loads through admin-users');
+    const userRow = page.locator(`[data-user="${USERS.rec_air}"]`);
+    await Promise.race([userRow.waitFor({ timeout: 30000 }), page.locator('[role=alert]').waitFor({ timeout: 30000 })]).catch(() => {});
+    const usersErr = await page.locator('[role=alert]').textContent().catch(() => null);
+    check((await userRow.count()) === 1, 'admin: users list loads through admin-users', usersErr ?? 'no row and no error shown');
     await ctx.close();
   }
 } catch (e) {

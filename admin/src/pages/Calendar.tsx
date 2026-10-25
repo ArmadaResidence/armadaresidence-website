@@ -141,7 +141,7 @@ function RowCells({ rt, nights, byKey, mode, onPick, onRate }: { rt: RoomType; n
         )}
       </div>
       {nights.map((n) => {
-        const c = byKey.get(`${rt.id}|${n}`) ?? { room_type_id: rt.id, night: n, price: rt.base_rate, override_id: null, override_label: null, has_row: false, rooms_to_sell: 0, booked: 0, stop_sell: false };
+        const c = byKey.get(`${rt.id}|${n}`) ?? { room_type_id: rt.id, night: n, price: rt.base_rate, override_id: null, override_label: null, override_label_en: null, has_row: false, rooms_to_sell: 0, booked: 0, stop_sell: false };
         const left = c.has_row && !c.stop_sell ? c.rooms_to_sell : null;
         return (
           <button
@@ -230,6 +230,7 @@ function NightRate({ sel, onClose, onSaved }: { sel: { rt: RoomType; cell: Calen
   const { rt, cell } = sel;
   const [price, setPrice] = useState(cell.price === null ? '' : String(cell.price));
   const [label, setLabel] = useState('');
+  const [labelEn, setLabelEn] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   async function save() {
@@ -237,7 +238,7 @@ function NightRate({ sel, onClose, onSaved }: { sel: { rt: RoomType; cell: Calen
     if (!(p > 0)) return setError('اكتب سعرًا أكبر من صفر.');
     setBusy(true);
     try {
-      await api.addOverride([rt.id], cell.night, cell.night, 127, p, label);
+      await api.addOverride([rt.id], cell.night, cell.night, 127, p, label, labelEn);
       onSaved(`سعر ليلة ${cell.night}: ${sar(p)}`);
     } catch (e) {
       setError((e as Error).message);
@@ -249,7 +250,10 @@ function NightRate({ sel, onClose, onSaved }: { sel: { rt: RoomType; cell: Calen
     <Modal open onClose={onClose} title={`${rt.name_ar} — ${cell.night}`}>
       <p className="text-sm text-ink-muted mb-3">السعر الحالي: <b>{cell.price === null ? 'بلا سعر' : sar(cell.price)}</b>{cell.override_label ? ` (${cell.override_label})` : ''}. يُحفظ كاستثناء لهذه الليلة فوق السعر الأساسي.</p>
       <Field label="السعر لليلة (شامل الضريبة)" id="night-price"><input id="night-price" className="field num" inputMode="decimal" value={price} onChange={(e) => setPrice(e.target.value)} /></Field>
-      <div className="mt-3"><Field label="تسمية (اختياري)" id="night-label"><input id="night-label" className="field" value={label} onChange={(e) => setLabel(e.target.value)} placeholder="مثال: عطلة" /></Field></div>
+      <div className="mt-3 grid sm:grid-cols-2 gap-3">
+        <Field label="تسمية بالعربية (اختياري)" id="night-label"><input id="night-label" className="field" value={label} onChange={(e) => setLabel(e.target.value)} placeholder="مثال: عطلة" /></Field>
+        <Field label="التسمية بالإنجليزية (اختياري)" id="night-label-en" hint="تظهر للضيف في الإنجليزية؛ فارغة = بلا تسمية"><input id="night-label-en" className="field latin" dir="ltr" value={labelEn} onChange={(e) => setLabelEn(e.target.value)} placeholder="e.g. Holiday" /></Field>
+      </div>
       <ErrorBox error={error} />
       <div className="flex gap-2 justify-end mt-5">
         <button type="button" className="btn btn-ghost" onClick={onClose} disabled={busy}>إلغاء</button>
@@ -296,6 +300,7 @@ function Bulk({ mode, types, from, onClose, onSaved }: { mode: Mode; types: Room
   const [mask, setMask] = useState(127);
   const [price, setPrice] = useState('');
   const [label, setLabel] = useState('');
+  const [labelEn, setLabelEn] = useState('');
   const [op, setOp] = useState<'set' | 'delta' | 'open' | 'close'>('set');
   const [n, setN] = useState(0);
   const [busy, setBusy] = useState(false);
@@ -311,7 +316,7 @@ function Bulk({ mode, types, from, onClose, onSaved }: { mode: Mode; types: Room
       if (mode === 'rates') {
         const p = Number(price);
         if (!(p > 0)) throw new Error('اكتب سعرًا أكبر من صفر.');
-        const k = await api.addOverride(ids, dFrom, dTo, mask, p, label);
+        const k = await api.addOverride(ids, dFrom, dTo, mask, p, label, labelEn);
         onSaved(`أُضيف سعر ${sar(p)} لـ${k} نوع غرفة (${maskLabel(mask)})`);
       } else {
         const k = await api.setInventory({ roomTypeIds: ids, from: dFrom, to: dTo, weekdays: mask, rooms: op === 'set' ? n : null, delta: op === 'delta' ? n : null, stopSell: op === 'open' ? false : op === 'close' ? true : null });
@@ -342,9 +347,10 @@ function Bulk({ mode, types, from, onClose, onSaved }: { mode: Mode; types: Room
         </div>
       </div>
       {mode === 'rates' ? (
-        <div className="grid sm:grid-cols-2 gap-3 mt-3">
+        <div className="grid sm:grid-cols-3 gap-3 mt-3">
           <Field label="السعر لليلة (شامل الضريبة)" id="b-price"><input id="b-price" className="field num" inputMode="decimal" value={price} onChange={(e) => setPrice(e.target.value)} data-field="bulk-price" /></Field>
-          <Field label="تسمية" id="b-label" hint="مثال: موسم الصيف، نهاية الأسبوع"><input id="b-label" className="field" value={label} onChange={(e) => setLabel(e.target.value)} /></Field>
+          <Field label="تسمية بالعربية" id="b-label" hint="مثال: موسم الصيف، نهاية الأسبوع"><input id="b-label" className="field" value={label} onChange={(e) => setLabel(e.target.value)} /></Field>
+          <Field label="التسمية بالإنجليزية (اختياري)" id="b-label-en" hint="للضيوف بالإنجليزية؛ فارغة = بلا تسمية"><input id="b-label-en" className="field latin" dir="ltr" value={labelEn} onChange={(e) => setLabelEn(e.target.value)} placeholder="e.g. Summer season" /></Field>
         </div>
       ) : (
         <div className="mt-3 grid sm:grid-cols-2 gap-3">
@@ -388,6 +394,7 @@ function OverridesList({ list, types, onChanged }: { list: RateOverride[]; types
             <span className="text-ink-muted">{maskLabel(o.weekdays)}</span>
             <span className="font-bold">{sar(o.price)}</span>
             {o.label && <span className="chip chip-request">{o.label}</span>}
+            {o.label_en && <span className="chip chip-request latin" dir="ltr">{o.label_en}</span>}
             <button type="button" className="btn btn-ghost btn-sm ms-auto" onClick={async () => { try { await api.toggleOverride(o.id, false); toast('أُلغي الاستثناء'); onChanged(); } catch (e) { toast((e as Error).message, 'error'); } }}>إلغاء</button>
           </li>
         ))}

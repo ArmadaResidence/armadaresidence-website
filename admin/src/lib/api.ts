@@ -37,6 +37,7 @@ export interface CalendarCell {
   price: number | null;
   override_id: string | null;
   override_label: string | null;
+  override_label_en: string | null;
   has_row: boolean;
   rooms_to_sell: number;
   booked: number;
@@ -50,6 +51,7 @@ export interface RateOverride {
   weekdays: number;
   price: number;
   label: string | null;
+  label_en: string | null;
   active: boolean;
   created_at: string;
 }
@@ -163,7 +165,7 @@ export async function calendar(branch: string, from: string, to: string): Promis
 export async function overrides(branch: string): Promise<RateOverride[]> {
   const { data, error } = await supabase
     .from('rate_overrides')
-    .select('id,room_type_id,date_from,date_to,weekdays,price,label,active,created_at,room_types!inner(branch)')
+    .select('id,room_type_id,date_from,date_to,weekdays,price,label,label_en,active,created_at,room_types!inner(branch)')
     .eq('room_types.branch', branch)
     .order('created_at', { ascending: false })
     .limit(200);
@@ -176,8 +178,8 @@ export async function setBaseRate(roomTypeId: string, rate: number | null): Prom
   if (error) fail(error, 'set_base_rate');
 }
 
-export async function addOverride(roomTypeIds: string[], from: string, to: string, weekdays: number, price: number, label: string): Promise<number> {
-  const { data, error } = await supabase.rpc('add_rate_override', { p_room_types: roomTypeIds, p_from: from, p_to: to, p_weekdays: weekdays, p_price: price, p_label: label || null });
+export async function addOverride(roomTypeIds: string[], from: string, to: string, weekdays: number, price: number, label: string, labelEn = ''): Promise<number> {
+  const { data, error } = await supabase.rpc('add_rate_override', { p_room_types: roomTypeIds, p_from: from, p_to: to, p_weekdays: weekdays, p_price: price, p_label: label || null, p_label_en: labelEn || null });
   if (error) fail(error, 'add_rate_override');
   return data as number;
 }

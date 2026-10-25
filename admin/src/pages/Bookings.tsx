@@ -280,7 +280,7 @@ function Details({ r, roomTypes, onClose, onChanged }: { r: Reservation | null; 
         <dt className="text-ink-muted">نوع الغرفة</dt><dd className="font-semibold">{rtName(r.room_type_id)}</dd>
         <dt className="text-ink-muted">الوصول</dt><dd className="font-semibold">{longDate(r.check_in)}</dd>
         <dt className="text-ink-muted">المغادرة</dt><dd className="font-semibold">{longDate(r.check_out)} · {nightsWord(r.nights)}</dd>
-        <dt className="text-ink-muted">الضيوف</dt><dd className="font-semibold">{r.adults} بالغ{r.children ? ` · ${r.children} طفل${r.children_ages?.length ? ` (${r.children_ages.join('، ')} سنة)` : ''}` : ''}{r.capacity_at_request ? <span className="text-ink-muted"> · السعة {r.capacity_at_request}</span> : null}</dd>
+        <dt className="text-ink-muted">الضيوف</dt><dd className="font-semibold">{r.adults} بالغ{r.children ? ` · ${r.children} طفل${r.children_ages?.length ? ` (الأعمار: ${r.children_ages.join('، ')})` : ''}` : ''}{r.capacity_at_request ? <span className="text-ink-muted"> · السعة {r.capacity_at_request}</span> : null}</dd>
         <dt className="text-ink-muted">أسرّة إضافية</dt><dd className="font-semibold">{r.extra_beds}{r.extra_bed_fee_per_night ? ` (${sar(r.extra_bed_fee_per_night)} لليلة)` : ''}</dd>
         <dt className="text-ink-muted">الإفطار</dt><dd className="font-semibold">{r.breakfast === 'with' ? 'مع الإفطار' : 'بدون إفطار'}</dd>
         <dt className="text-ink-muted">الجوال</dt><dd className="font-semibold num"><a className="underline" href={`tel:${r.phone}`}>{r.phone}</a></dd>

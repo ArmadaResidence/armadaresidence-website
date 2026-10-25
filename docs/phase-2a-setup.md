@@ -39,6 +39,14 @@ Accept the invite on `/set-password`, enrol TOTP on `/mfa`, then invite the rest
 
 Each mailbox needs the Hostinger filter (CLAUDE.md §8 Delivery) before the invite is sent.
 
+**Shared logins and the two-step code (management `info@` is used by two people; the same applies to any shared login):**
+TOTP needs the *same secret* on every phone, so enrol once, together:
+1. The first person signs in and reaches «التحقق بخطوتين» — the dashboard shows the QR code and, under it, the secret as text. Do not press «تحقق» yet.
+2. Every other person opens their authenticator app (Google Authenticator / Microsoft Authenticator) and scans the **same QR** from the first person's screen, or adds the account by typing the secret shown under the QR (account name: «لوحة أرمادا»).
+3. Now the first person enters the 6-digit code from any of the phones and presses «تحقق». From then on every enrolled phone produces the same codes, and any of them signs the shared login in.
+4. If a phone is lost: the admin deactivates and re-invites the login (المستخدمون → إيقاف ثم رابط كلمة مرور), which clears the factor; enrol again together.
+For reception the code is optional (Q8); the same joint enrolment works if a branch wants it.
+
 ## 3. Hostinger DNS — the dashboard domain
 
 Add **CNAME** `admin` → `armadaresidence.github.io` (TTL default). Then in the admin repository set the variable

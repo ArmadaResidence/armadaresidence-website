@@ -159,7 +159,12 @@
       "age_label": "عمر الطفل {n}",
       "age_choose": "اختر العمر",
       "age_under1": "أقل من سنة",
-      "age_years": "{n} سنة",
+      "age_years": {
+        "one": "سنة واحدة",
+        "two": "سنتان",
+        "few": "{n} سنوات",
+        "many": "{n} سنة"
+      },
       "reasons": {
         "any_room": "لم يُحدَّد نوع الغرفة.",
         "not_bookable": "هذا النوع غير متاح للحجز الفوري.",
@@ -203,6 +208,7 @@
       "children": "الأطفال",
       "room_type": "نوع الغرفة (اختياري)",
       "any_room": "أي غرفة متاحة",
+      "room_cleared": "أُلغي اختيار نوع الغرفة لأنه غير متاح في هذا الفرع.",
       "full_name": "الاسم الكامل",
       "phone": "رقم الجوال (واتساب)",
       "phone_hint": "نتواصل معك على هذا الرقم عبر واتساب.",
@@ -366,7 +372,7 @@
       "close_other_platforms": "تذكير: أغلق الغرفة على المنصات الأخرى إذا لزم.",
       "low_subject": "تنبيه مخزون — {branch} — {room} — {ref}",
       "low_intro": "بعد الحجز {ref} انخفض المخزون المتاح للموقع لهذا النوع:",
-      "low_one": "متبقٍ غرفة واحدة",
+      "low_one": "تبقّت غرفة واحدة",
       "low_zero": "نفدت — لا غرف متبقية",
       "low_night": "الليلة",
       "low_button": "افتح تقويم المخزون",
@@ -378,7 +384,8 @@
       "total_label": "الإجمالي شامل الضريبة",
       "booking_ref_label": "رقم الحجز",
       "booking_summary": "ملخص الحجز",
-      "confirmed_footer": "أُرسلت هذه الرسالة تلقائيًا بعد تأكيد حجزك على armadaresidence.com."
+      "confirmed_footer": "أُرسلت هذه الرسالة تلقائيًا بعد تأكيد حجزك على armadaresidence.com.",
+      "confirmed_hotel_footer": "أُرسلت هذه الرسالة تلقائيًا من الموقع."
     },
     "taif": {
       "heading": "اكتشف الطائف",
@@ -711,7 +718,12 @@
       "age_label": "Age of child {n}",
       "age_choose": "Choose age",
       "age_under1": "Under 1",
-      "age_years": "{n} years",
+      "age_years": {
+        "one": "1 year",
+        "two": "{n} years",
+        "few": "{n} years",
+        "many": "{n} years"
+      },
       "reasons": {
         "any_room": "No room type was chosen.",
         "not_bookable": "This room type cannot be booked instantly.",
@@ -755,6 +767,7 @@
       "children": "Children",
       "room_type": "Room type (optional)",
       "any_room": "Any available room",
+      "room_cleared": "The room type was cleared: it is not offered at this property.",
       "full_name": "Full name",
       "phone": "Mobile number (WhatsApp)",
       "phone_hint": "We will contact you on this number via WhatsApp.",
@@ -930,7 +943,8 @@
       "total_label": "Total incl. VAT",
       "booking_ref_label": "Booking number",
       "booking_summary": "Booking summary",
-      "confirmed_footer": "This message was sent automatically after your booking was confirmed on armadaresidence.com."
+      "confirmed_footer": "This message was sent automatically after your booking was confirmed on armadaresidence.com.",
+      "confirmed_hotel_footer": "This message was sent automatically by the website."
     },
     "taif": {
       "heading": "Discover Taif",

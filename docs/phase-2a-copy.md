@@ -1,4 +1,4 @@
-# Phase 2a — guest-facing copy for approval (25 Oct 2026)
+# Phase 2a — guest-facing copy (approved 25 Oct 2026 with Ahmed's six changes; room_cleared added the same day, pending)
 
 Every new sentence a guest, the reception or a manager reads in this slice. Source of truth: `content/ui.json` (keys in the tables). Nothing is visible while the two branch switches are off. Approve, or edit the Arabic / English in place and tell me.
 
@@ -27,7 +27,10 @@ Every new sentence a guest, the reception or a manager reads in this slice. Sour
 | age_label | عمر الطفل {n} | Age of child {n} |
 | age_choose | اختر العمر | Choose age |
 | age_under1 | أقل من سنة | Under 1 |
-| age_years | {n} سنة | {n} years |
+| age_years.one | سنة واحدة | 1 year |
+| age_years.two | سنتان | {n} years |
+| age_years.few | {n} سنوات | {n} years |
+| age_years.many | {n} سنة | {n} years |
 
 ## أسباب عدم التأكيد الفوري (quote.reasons)
 
@@ -63,11 +66,12 @@ Every new sentence a guest, the reception or a manager reads in this slice. Sour
 |---|---|---|
 | from_line | يبدأ من {amount} لليلة شامل الضريبة | From {amount} per night incl. VAT |
 
-## خطأ النموذج (ui.json → form.errors)
+## خطأ النموذج (ui.json → form.errors) ونوع الغرفة (form.room_cleared)
 
 | key | العربية | English |
 |---|---|---|
 | errors.children_ages | اختر عمر كل طفل (لحساب الإفطار فقط). | Choose the age of each child (for breakfast pricing only). |
+| room_cleared | أُلغي اختيار نوع الغرفة لأنه غير متاح في هذا الفرع. | The room type was cleared: it is not offered at this property. |
 
 ## الإيميلات (ui.json → email)
 
@@ -82,6 +86,7 @@ Every new sentence a guest, the reception or a manager reads in this slice. Sour
 | pay_at_hotel | الدفع عند الوصول إلى الفندق، ولا يلزم أي دفع الآن. | Pay at the hotel on arrival; nothing to pay now. |
 | confirmed_next | لأي تعديل أو استفسار، تواصل مع الاستقبال عبر واتساب واذكر رقم الحجز. | For any change or question, message the reception on WhatsApp with your booking number. |
 | confirmed_footer | أُرسلت هذه الرسالة تلقائيًا بعد تأكيد حجزك على armadaresidence.com. | This message was sent automatically after your booking was confirmed on armadaresidence.com. |
+| confirmed_hotel_footer | أُرسلت هذه الرسالة تلقائيًا من الموقع. | This message was sent automatically by the website. |
 | preheader_confirmed | حجزك {ref} مؤكد — التفاصيل والسعر في الداخل. | Booking {ref} is confirmed — details and price inside. |
 | confirmed_hotel_subject | حجز مؤكد جديد — {branch} — {ref} | New confirmed booking — {branch} — {ref} |
 | confirmed_hotel_intro | حجز مؤكد جديد. تفاصيله: | New confirmed booking. Details: |
@@ -92,7 +97,7 @@ Every new sentence a guest, the reception or a manager reads in this slice. Sour
 | total_label | الإجمالي شامل الضريبة | Total incl. VAT |
 | low_subject | تنبيه مخزون — {branch} — {room} — {ref} | Low inventory — {branch} — {room} — {ref} |
 | low_intro | بعد الحجز {ref} انخفض المخزون المتاح للموقع لهذا النوع: | After booking {ref}, website inventory for this room type is low: |
-| low_one | متبقٍ غرفة واحدة | 1 room left |
+| low_one | تبقّت غرفة واحدة | 1 room left |
 | low_zero | نفدت — لا غرف متبقية | Sold out — none left |
 | low_night | الليلة | Night |
 | low_button | افتح تقويم المخزون | Open the inventory calendar |

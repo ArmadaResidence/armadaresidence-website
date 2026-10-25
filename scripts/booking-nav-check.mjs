@@ -279,6 +279,75 @@ async function run(vp, lang) {
   await ctx.close();
 }
 
+/** Room select grouped by branch (Ahmed, 25 Oct 2026): with no branch chosen the list offers every bookable room under
+    one optgroup per branch; picking a room selects its branch (a Shafa-only room → shafa-road, the Airport Road king
+    room → airport-road, shared slug); a branch change that drops the chosen room clears it and shows a note. Asserts
+    the submitted FormData at every step. */
+async function groupedRooms(vp, lang) {
+  const mobile = vp.width < 768;
+  const L = lang === 'en' ? '/en' : '';
+  const tag = `@${vp.width} ${lang} (grouped rooms)`;
+  const ctx = await newContext(vp, lang);
+  const page = await ctx.newPage();
+  const errors = [];
+  page.on('pageerror', (e) => errors.push(String(e)));
+  const state = () =>
+    page.evaluate(() => {
+      const f = document.querySelector('form[data-booking-form]');
+      const fd = new FormData(f);
+      const r = f.querySelector('select[name="room"]');
+      const groups = Array.from(r.querySelectorAll('optgroup')).map((g) => ({ branch: g.dataset.branch, label: g.label, hidden: g.hidden || g.disabled, options: g.querySelectorAll('option').length }));
+      const note = f.querySelector('[data-room-note]');
+      return { branch: String(fd.get('branch') ?? ''), room: String(fd.get('room') ?? ''), groups, note: note && !note.classList.contains('hidden') ? note.textContent.trim() : '' };
+    });
+  const expect = (label, got, want) => {
+    checks++;
+    const bad = Object.keys(want).filter((k) => want[k] !== got[k]);
+    if (bad.length) fails.push(`${tag} ${label}: ${JSON.stringify({ branch: got.branch, room: got.room, note: got.note })}, expected ${JSON.stringify(want)}`);
+  };
+  const shafaOnly = ROOMS.find((r) => r.branch === 'shafa-road' && !ROOMS.some((x) => x.branch === 'airport-road' && x.slug === r.slug));
+  try {
+    await page.goto(`${BASE}${L}/booking/`, { waitUntil: 'load' });
+    await page.locator('form[data-booking-form][data-booking-ready]').waitFor({ state: 'attached', timeout: 8000 });
+    let s = await state();
+    checks++;
+    const labels = BRANCHES.map((b) => ui[lang].branches?.[b]?.short ?? null);
+    if (s.groups.length !== BRANCHES.length || s.groups.some((g) => g.hidden) || s.groups.reduce((n, g) => n + g.options, 0) !== ROOMS.length)
+      fails.push(`${tag} no branch: groups ${JSON.stringify(s.groups)} — expected ${BRANCHES.length} visible groups with ${ROOMS.length} rooms`);
+    void labels;
+    // a Shafa-only room → shafa-road
+    await page.locator('form[data-booking-form] select[name="room"]').selectOption(shafaOnly.slug);
+    s = await state();
+    expect(`pick ${shafaOnly.slug}`, s, { branch: 'shafa-road', room: shafaOnly.slug, note: '' });
+    checks++;
+    if (!s.groups.find((g) => g.branch === 'airport-road')?.hidden) fails.push(`${tag} after picking a Shafa room: the Airport Road group is still offered`);
+    // back to no branch, then the Airport Road king room (shared slug) → airport-road
+    await page.locator('form[data-booking-form] select[name="branch"]').selectOption('');
+    s = await state();
+    expect('branch cleared', s, { branch: '', room: shafaOnly.slug, note: '' });
+    await page.locator('form[data-booking-form] select[name="room"]').selectOption({ label: name(ROOMS, 'king-room', 'airport-road', lang) });
+    s = await state();
+    expect('pick Airport Road king room', s, { branch: 'airport-road', room: 'king-room', note: '' });
+    // branch → Shafa Road keeps the shared slug (Shafa has a king room), no note
+    await page.locator('form[data-booking-form] select[name="branch"]').selectOption('shafa-road');
+    s = await state();
+    expect('branch → shafa-road keeps king-room', s, { branch: 'shafa-road', room: 'king-room', note: '' });
+    // a Shafa-only room, then branch → Airport Road: the room is dropped with the note
+    await page.locator('form[data-booking-form] select[name="room"]').selectOption(shafaOnly.slug);
+    await page.locator('form[data-booking-form] select[name="branch"]').selectOption('airport-road');
+    s = await state();
+    expect('branch → airport-road drops a Shafa-only room', s, { branch: 'airport-road', room: '', note: ui[lang].form.room_cleared });
+    // «أي غرفة متاحة» stays available with a branch
+    checks++;
+    if ((await page.locator('form[data-booking-form] select[name="room"] option[value=""]').count()) !== 1) fails.push(`${tag}: the «any room» option is missing`);
+  } catch (e) {
+    fails.push(`${tag} aborted: ${String(e).split(/\r?\n/)[0].slice(0, 180)}`);
+  }
+  for (const e of new Set(errors)) fails.push(`${tag} page error: ${e.slice(0, 160)}`);
+  void mobile;
+  await ctx.close();
+}
+
 /** The booking form's script fails on the first page; after client-side navigation a room CTA (shared slug) must
     load the booking page in full, prefilled from its URL. */
 async function failedScript(vp, lang) {
@@ -327,6 +396,8 @@ await Promise.all([
   ...[{ width: 1440, height: 900 }, { width: 375, height: 812 }].flatMap((vp) => ['ar', 'en'].map((lang) => run(vp, lang))),
   failedScript({ width: 1440, height: 900 }, 'ar'),
   failedScript({ width: 375, height: 812 }, 'en'),
+  groupedRooms({ width: 1440, height: 900 }, 'ar'),
+  groupedRooms({ width: 375, height: 812 }, 'en'),
 ]);
 await browser.close();
 

@@ -67,6 +67,7 @@ const clientData = {
   countries,
   strings: {
     anyRoom: f.any_room,
+    roomCleared: f.room_cleared,
     sending: f.sending,
     submit: f.submit,
     errors: f.errors,
@@ -106,14 +107,20 @@ const stepper = (name: 'adults' | 'children' | 'extra_beds', value: number, min:
       <p id={err('branch')} class="field-error hidden" data-error-for="branch"></p>
     </div>
 
-    {/* 2. Room type, filtered by the branch */}
+    {/* 2. Room type: with no branch chosen every bookable room, grouped by branch (25 Oct 2026, Ahmed) — picking one
+        selects its branch; with a branch only that branch's group. Shared slugs stay branch-specific (data-branch). */}
     <div class="sm:col-span-2 field field-select">
-      <select id={id('room')} name="room" autocomplete="off" class={inputClass} aria-describedby={err('room')}>
+      <select id={id('room')} name="room" autocomplete="off" class={inputClass} aria-describedby={`${err('room')} ${id('room-note')}`}>
         <option value="">{f.any_room}</option>
-        {bookable.map((r) => <option value={r.slug} data-branch={r.branch} data-capacity={r.capacity}>{L(locale, r, 'name')}</option>)}
+        {branches.map((b) => (
+          <optgroup label={branchShort(locale, b.slug)} data-branch={b.slug}>
+            {bookable.filter((r) => r.branch === b.slug).map((r) => <option value={r.slug} data-branch={r.branch} data-capacity={r.capacity}>{L(locale, r, 'name')}</option>)}
+          </optgroup>
+        ))}
       </select>
       <label for={id('room')} class="field-label">{f.room_type}</label>
       <p id={err('room')} class="field-error hidden" data-error-for="room"></p>
+      <p id={id('room-note')} class="hidden mt-2 text-sm text-ink-muted" data-room-note aria-live="polite"></p>
     </div>
 
     {/* 3. Dates: calendar range picker, no typing (decision 23 Oct 2026); ISO values in hidden inputs; no past days
@@ -340,7 +347,7 @@ const stepper = (name: 'adults' | 'children' | 'extra_beds', value: number, min:
     type BookingInput,
     type FieldError,
   } from '../../supabase/functions/booking-request/rules.ts';
-  import { money, quoteStay, type Quote, type QuoteResult } from '@lib/prices';
+  import { money, quoteStay, time12, type Quote, type QuoteResult } from '@lib/prices';
 
   type Plurals = Record<'nights' | 'adults' | 'children', Record<'one' | 'two' | 'few' | 'many', string>>;
   type QuoteStrings = {
@@ -363,7 +370,7 @@ const stepper = (name: 'adults' | 'children' | 'extra_beds', value: number, min:
     age_label: string;
     age_choose: string;
     age_under1: string;
-    age_years: string;
+    age_years: Record<'one' | 'two' | 'few' | 'many', string>;
     reasons: Record<string, string>;
   };
   type Data = {
@@ -379,6 +386,7 @@ const stepper = (name: 'adults' | 'children' | 'extra_beds', value: number, min:
     countries: [string, string, string][];
     strings: {
       anyRoom: string;
+      roomCleared: string;
       sending: string;
       submit: string;
       errors: Record<string, string>;
@@ -495,24 +503,42 @@ const stepper = (name: 'adults' | 'children' | 'extra_beds', value: number, min:
       else roomSel.selectedIndex = 0;
       return !!opt;
     }
-    function filterRooms() {
+    const roomNote = form.querySelector<HTMLElement>('[data-room-note]')!;
+    /** With no branch every group is offered; with a branch only its group (hidden + disabled, so a hidden room is
+     *  never submitted). Returns false when the chosen room was dropped because the new branch has no such type. */
+    function filterRooms(): boolean {
       const b = branchSel.value;
-      for (const opt of Array.from(roomSel.options)) {
-        const ob = opt.dataset.branch;
-        if (!ob) continue;
-        opt.hidden = Boolean(b) && ob !== b;
-        opt.disabled = opt.hidden;
+      for (const g of Array.from(roomSel.querySelectorAll<HTMLOptGroupElement>('optgroup'))) {
+        const off = Boolean(b) && g.dataset.branch !== b;
+        g.hidden = off;
+        g.disabled = off;
+        for (const opt of Array.from(g.querySelectorAll('option'))) {
+          opt.hidden = off;
+          opt.disabled = off;
+        }
       }
       // keep the same room type when the new branch has it, otherwise «أي غرفة متاحة»
       const current = roomSel.selectedOptions[0];
-      if (current && current.disabled) selectRoom(current.value);
+      if (current && current.value && current.disabled) return selectRoom(current.value);
+      return true;
     }
     branchSel.addEventListener('change', () => {
-      filterRooms();
+      const kept = filterRooms();
+      roomNote.textContent = kept ? '' : S.roomCleared;
+      roomNote.classList.toggle('hidden', kept);
       bedsTouched = false;
       refresh();
     });
     roomSel.addEventListener('change', () => {
+      // a room picked with no branch (or another branch's group) selects its branch
+      const ob = roomSel.selectedOptions[0]?.dataset.branch;
+      if (ob && branchSel.value !== ob) {
+        branchSel.value = ob;
+        filterRooms();
+        touched.add('branch');
+        validateField('branch');
+      }
+      roomNote.classList.add('hidden');
       bedsTouched = false;
       refresh();
     });
@@ -671,6 +697,7 @@ const stepper = (name: 'adults' | 'children' | 'extra_beds', value: number, min:
     const prefill = (p: Prefill) => {
       branchSel.value = p.branch && data.branches.some((b) => b.slug === p.branch) ? p.branch : '';
       filterRooms();
+      roomNote.classList.add('hidden');
       if (p.room) selectRoom(p.room);
       else roomSel.selectedIndex = 0;
       const iso = /^\d{4}-\d{2}-\d{2}$/;
@@ -898,7 +925,7 @@ const stepper = (name: 'adults' | 'children' | 'extra_beds', value: number, min:
         for (let a = 0; a <= CHILD_AGE_MAX; a++) {
           const o = document.createElement('option');
           o.value = String(a);
-          o.textContent = a === 0 ? Q.age_under1 : Q.age_years.replace('{n}', String(a));
+          o.textContent = a === 0 ? Q.age_under1 : plural(Q.age_years, a);
           sel.append(o);
         }
         const label = document.createElement('label');
@@ -1016,7 +1043,8 @@ const stepper = (name: 'adults' | 'children' | 'extra_beds', value: number, min:
         ...q.nights.map((x) => {
           const li = document.createElement('li');
           li.className = 'flex justify-between gap-2';
-          li.innerHTML = `<span class="latin" dir="ltr">${x.night}</span><span>${money(Number(x.price), L)}${x.label ? ` — ${x.label}` : ''}</span>`;
+          const label = (L === 'en' ? x.label_en : x.label) || '';
+          li.innerHTML = `<span class="latin" dir="ltr">${x.night}</span><span>${money(Number(x.price), L)}${label ? ` — ${label}` : ''}</span>`;
           return li;
         }),
       );
@@ -1027,7 +1055,8 @@ const stepper = (name: 'adults' | 'children' | 'extra_beds', value: number, min:
       // breakfast for children cannot be priced without their ages: no total, no instant, the ages block asks for them
       const inst = r.instant && q.total !== null && !q.needs_ages;
       const reasonKey = q.needs_ages ? 'needs_ages' : r.reason;
-      const reason = reasonKey ? Q.reasons[reasonKey] ?? '' : '';
+      const lim = r.limits ?? {};
+      const reason = reasonKey ? (Q.reasons[reasonKey] ?? '').replace('{n}', String(lim.max_nights ?? '')).replace('{time}', time12(String(lim.same_day_cutoff ?? ''), L)) : '';
       qBadge.textContent = inst ? Q.instant_badge : `${Q.request_badge}${reason ? ` — ${reason}` : ''}`;
       qBadge.className = `text-xs font-semibold rounded-full px-2.5 py-1 ${inst ? 'bg-midnight text-white' : 'border border-line bg-white text-ink'}`;
       qBadge.classList.remove('hidden');
