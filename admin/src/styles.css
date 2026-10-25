@@ -172,8 +172,9 @@ body {
 }
 @keyframes fade { from { opacity: 0; } }
 @keyframes slide { from { transform: translateX(-100%); } }
-[dir="ltr"] .drawer { box-shadow: 8px 0 32px rgb(0 0 0 / 0.2); }
-[dir="ltr"] @keyframes slide { from { transform: translateX(100%); } }
+/* an @keyframes rule cannot be scoped by a selector (the old line was invalid CSS): a second animation for LTR */
+@keyframes slide-ltr { from { transform: translateX(100%); } }
+[dir="ltr"] .drawer { box-shadow: 8px 0 32px rgb(0 0 0 / 0.2); animation-name: slide-ltr; }
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
 .reveal { animation: rise var(--motion-base) var(--ease-out) both; }
 @keyframes rise { from { opacity: 0; transform: translateY(16px); } }
