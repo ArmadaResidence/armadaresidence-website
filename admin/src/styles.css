@@ -1,0 +1,171 @@
+@import "tailwindcss";
+@import "@fontsource-variable/manrope";
+@import "@fontsource/ibm-plex-sans-arabic/400.css";
+@import "@fontsource/ibm-plex-sans-arabic/500.css";
+@import "@fontsource/ibm-plex-sans-arabic/600.css";
+@import "@fontsource/ibm-plex-sans-arabic/700.css";
+
+/* Brand tokens (CLAUDE.md §3) — the same values as the site's global.css; light + dark pairs recorded there. */
+@theme {
+  --color-midnight: #142a3b;
+  --color-bronze: #a97c50;
+  --color-bronze-deep: #976e47;
+  --color-bronze-text: #8a6239;
+  --color-bronze-bright: #c9a27a;
+  --color-porcelain: #f3efe7;
+  --color-white: #ffffff;
+  --color-error: #991b1b;
+  --color-ok: #1f6b3a;
+  --color-page: var(--page);
+  --color-card: var(--card);
+  --color-soft: var(--soft);
+  --color-ink: var(--ink);
+  --color-ink-muted: var(--ink-muted);
+  --color-line: var(--line);
+  --color-accent: var(--accent);
+  --color-accent-text: var(--accent-text);
+  --font-ar: "IBM Plex Sans Arabic", "Manrope Variable", ui-sans-serif, system-ui, sans-serif;
+  --font-en: "Manrope Variable", ui-sans-serif, system-ui, sans-serif;
+  --radius-card: 0.75rem;
+  /* motion tokens (CLAUDE.md §3b) */
+  --motion-fast: 200ms;
+  --motion-base: 400ms;
+  --motion-slow: 700ms;
+  --motion-count: 1200ms;
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+}
+
+:root {
+  --page: #f3efe7;
+  --card: #ffffff;
+  --soft: #f3efe7;
+  --ink: #142a3b;
+  --ink-muted: #3f5262;
+  --line: #ddd5c8;
+  --accent: #a97c50;
+  --accent-text: #8a6239;
+  color-scheme: light;
+}
+:root[data-theme="dark"] {
+  --page: #0f1f2b;
+  --card: #182f41;
+  --soft: #0b1821;
+  --ink: #f3efe7;
+  --ink-muted: #c7cfd6;
+  --line: #2a4357;
+  --accent: #c9a27a;
+  --accent-text: #c9a27a;
+  color-scheme: dark;
+}
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --motion-fast: 0ms;
+    --motion-base: 0ms;
+    --motion-slow: 0ms;
+    --motion-count: 0ms;
+  }
+}
+
+html {
+  font-family: var(--font-ar);
+  background: var(--page);
+  color: var(--ink);
+  -webkit-text-size-adjust: 100%;
+}
+body {
+  margin: 0;
+  min-height: 100dvh;
+  background: var(--page);
+  color: var(--ink);
+}
+[dir="ltr"], .latin {
+  font-family: var(--font-en);
+}
+.num {
+  font-family: var(--font-en);
+  font-variant-numeric: tabular-nums;
+  direction: ltr;
+  unicode-bidi: isolate;
+}
+
+/* components */
+.btn {
+  @apply inline-flex items-center justify-center gap-2 rounded px-4 py-2.5 text-sm font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed;
+  transition-duration: var(--motion-fast);
+  min-height: 44px;
+}
+.btn-primary {
+  @apply bg-bronze-deep text-white hover:bg-bronze-text;
+}
+.btn-ghost {
+  @apply border border-line bg-card text-ink hover:border-bronze;
+}
+.btn-danger {
+  @apply border border-error text-error bg-card hover:bg-error hover:text-white;
+}
+.btn-sm {
+  @apply px-3 py-1.5 text-xs;
+  min-height: 36px;
+}
+.field {
+  @apply block w-full rounded border border-line bg-card px-3 py-2.5 text-ink outline-none;
+  min-height: 44px;
+  transition: border-color var(--motion-fast);
+}
+.field:focus {
+  @apply border-bronze;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 25%, transparent);
+}
+.label {
+  @apply block text-sm font-semibold text-ink mb-1;
+}
+.card {
+  @apply rounded-[var(--radius-card)] border border-line bg-card;
+}
+.chip {
+  @apply inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold;
+}
+.chip-request { @apply bg-soft text-ink border border-line; }
+.chip-confirmed { @apply bg-ok text-white; }
+.chip-cancelled { @apply bg-line text-ink-muted line-through; }
+.chip-flag { @apply bg-bronze-deep text-white; }
+.chip-test { @apply bg-error text-white; }
+
+/* calendar grid */
+.grid-cal {
+  display: grid;
+  grid-auto-rows: minmax(60px, auto);
+}
+.cal-cell {
+  @apply border-b border-s border-line p-1.5 text-center text-xs leading-tight;
+  min-width: 64px;
+  transition: background-color var(--motion-fast);
+}
+.cal-cell:hover { background: color-mix(in srgb, var(--accent) 12%, transparent); }
+.cal-cell[data-stop="true"] {
+  background-image: repeating-linear-gradient(45deg, transparent 0 6px, color-mix(in srgb, var(--ink) 10%, transparent) 6px 8px);
+}
+.cal-cell[data-left="0"] { box-shadow: inset 0 -3px 0 var(--color-error); }
+.cal-cell[data-left="1"] { box-shadow: inset 0 -3px 0 var(--accent); }
+.cal-cell[data-missing="true"] { color: var(--ink-muted); opacity: 0.7; }
+.cal-cell[data-selected="true"] { outline: 2px solid var(--accent); outline-offset: -2px; }
+.cal-sticky { position: sticky; inset-inline-start: 0; z-index: 2; background: var(--card); }
+
+/* drawer */
+.drawer-backdrop {
+  position: fixed; inset: 0; background: rgb(20 42 59 / 0.55); z-index: 40;
+  animation: fade var(--motion-base) var(--ease-out);
+}
+.drawer {
+  position: fixed; top: 0; bottom: 0; inset-inline-end: 0; width: min(560px, 100%); z-index: 41;
+  background: var(--card); overflow-y: auto; box-shadow: -8px 0 32px rgb(0 0 0 / 0.2);
+  animation: slide var(--motion-base) var(--ease-out);
+}
+@keyframes fade { from { opacity: 0; } }
+@keyframes slide { from { transform: translateX(-100%); } }
+[dir="ltr"] .drawer { box-shadow: 8px 0 32px rgb(0 0 0 / 0.2); }
+[dir="ltr"] @keyframes slide { from { transform: translateX(100%); } }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+.reveal { animation: rise var(--motion-base) var(--ease-out) both; }
+@keyframes rise { from { opacity: 0; transform: translateY(16px); } }
