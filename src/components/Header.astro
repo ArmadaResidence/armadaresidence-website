@@ -1,13 +1,16 @@
 ---
-import { contact, localePath, otherLocale, siteName, ui, type Locale } from '@lib/content';
+import { bookingPath, contact, localePath, otherLocale, siteName, ui, type BookingContext, type Locale } from '@lib/content';
 import Icon from './Icon.astro';
 
 interface Props {
   locale: Locale;
   path: string;
   switchPath?: string;
+  /** branch / room pages: «اطلب حجزًا» prefills that branch (and room) — Ahmed, 24 Oct 2026 */
+  booking?: BookingContext;
 }
-const { locale, path, switchPath = path } = Astro.props;
+const { locale, path, switchPath = path, booking } = Astro.props;
+const bookHref = bookingPath(locale, booking);
 const t = ui(locale);
 const other = otherLocale(locale);
 
@@ -109,7 +112,7 @@ const partnersActive = path.startsWith('/partners/');
           </svg>
         </button>
         <a
-          href={localePath(locale, '/booking/')}
+          href={bookHref}
           class="hidden sm:inline-flex items-center whitespace-nowrap bg-bronze-deep text-white text-sm font-semibold px-4 py-2 rounded hover:bg-bronze-text transition-colors"
           >{t.nav.book}</a
         >
@@ -155,7 +158,7 @@ const partnersActive = path.startsWith('/partners/');
         </li>
         <li class="py-3">
           <a
-            href={localePath(locale, '/booking/')}
+            href={bookHref}
             class="block text-center bg-bronze-deep text-white font-semibold px-4 py-3 rounded"
             >{t.nav.book}</a
           >

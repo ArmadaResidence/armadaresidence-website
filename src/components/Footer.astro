@@ -1,5 +1,6 @@
 ---
 import {
+  bookingPath,
   branchContact,
   branchPath,
   branches,
@@ -13,6 +14,7 @@ import {
   siteTexts,
   telHref,
   ui,
+  type BookingContext,
   type Locale,
 } from '@lib/content';
 import Icon from './Icon.astro';
@@ -20,8 +22,10 @@ import Icon from './Icon.astro';
 interface Props {
   locale: Locale;
   switchPath: string;
+  /** branch / room pages: the booking link prefills that branch (and room) — Ahmed, 24 Oct 2026 */
+  booking?: BookingContext;
 }
-const { locale, switchPath } = Astro.props;
+const { locale, switchPath, booking } = Astro.props;
 const t = ui(locale);
 const other = otherLocale(locale);
 const slogan = locale === 'ar' ? siteTexts.slogan_ar : siteTexts.slogan_en;
@@ -90,7 +94,7 @@ const social: { name: string; url: string }[] = [
         {
           siteLinks.map((n) => (
             <li>
-              <a href={localePath(locale, n.path)} class="inline-block py-0.5 hover:text-bronze">
+              <a href={n.key === 'book' ? bookingPath(locale, booking) : localePath(locale, n.path)} class="inline-block py-0.5 hover:text-bronze">
                 {t.nav[n.key]}
               </a>
             </li>

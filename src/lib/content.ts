@@ -180,6 +180,16 @@ export function roomPath(locale: Locale, room: Room): string {
   return localePath(locale, `/${room.branch}/${room.slug}/`);
 }
 
+/** Branch / room a page books for: the header, menu and footer booking links prefill it (Ahmed, 24 Oct 2026). */
+export type BookingContext = { branch: string; room?: string };
+
+/** /booking/ with the context's ?branch=&room= (the drawer and the /booking/ page prefill from it). */
+export function bookingPath(locale: Locale, ctx?: BookingContext): string {
+  const base = localePath(locale, '/booking/');
+  if (!ctx) return base;
+  return `${base}?branch=${ctx.branch}${ctx.room ? `&room=${ctx.room}` : ''}`;
+}
+
 export function branchShort(locale: Locale, slug: string): string {
   const s = (seo.branch_short as Record<string, { ar: string; en: string }>)[slug];
   return s ? s[locale] : TODO;

@@ -5,7 +5,7 @@ import fontAr400 from '@fontsource/ibm-plex-sans-arabic/files/ibm-plex-sans-arab
 import fontAr600 from '@fontsource/ibm-plex-sans-arabic/files/ibm-plex-sans-arabic-arabic-600-normal.woff2?url';
 import fontAr700 from '@fontsource/ibm-plex-sans-arabic/files/ibm-plex-sans-arabic-arabic-700-normal.woff2?url';
 import fontEn from '@fontsource-variable/manrope/files/manrope-latin-wght-normal.woff2?url';
-import { GTM_ID, absoluteUrl, dir, localePath, seo, siteName, type Locale } from '@lib/content';
+import { GTM_ID, absoluteUrl, dir, localePath, seo, siteName, type BookingContext, type Locale } from '@lib/content';
 import Header from '@components/Header.astro';
 import Footer from '@components/Footer.astro';
 import WhatsAppButton from '@components/WhatsAppButton.astro';
@@ -32,6 +32,9 @@ interface Props {
   hideFooter?: boolean;
   /** Booking drawer (item 11): on every site page except /booking/ itself and the legacy sections. */
   bookingDrawer?: boolean;
+  /** Branch / room this page books for (branch and room pages): the header, menu and footer booking links prefill
+      it (Ahmed, 24 Oct 2026); omitted everywhere else, so those links stay empty. */
+  booking?: BookingContext;
 }
 
 const {
@@ -48,6 +51,7 @@ const {
   icons = { svg: '/favicon.svg', png32: '/icons/favicon-32.png', apple: '/icons/apple-touch-icon.png' },
   hideFooter = false,
   bookingDrawer = true,
+  booking,
 } = Astro.props;
 
 const canonical = absoluteUrl(localePath(locale, path));
@@ -169,11 +173,11 @@ const preloadFonts = locale === 'ar' ? [fontAr400, fontAr600, fontAr700] : [font
         style="display:none;visibility:hidden"
         title="Google Tag Manager"></iframe>
     </noscript>
-    <Header locale={locale} path={path} switchPath={switchPath} />
+    <Header locale={locale} path={path} switchPath={switchPath} booking={booking} />
     <main id="main" class="flex-1">
       <slot />
     </main>
-    {!hideFooter && <Footer locale={locale} switchPath={switchPath} />}
+    {!hideFooter && <Footer locale={locale} switchPath={switchPath} booking={booking} />}
     {/* Sticky WhatsApp (decision 22 Oct 2026): branch/room pages → that branch; /partners/* → sales; elsewhere → chooser. */}
     <WhatsAppButton locale={locale} target={whatsapp ?? (path.startsWith('/partners') ? 'sales' : undefined)} />
     {bookingDrawer && !legacy && <BookingDrawer locale={locale} />}

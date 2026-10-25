@@ -60,7 +60,7 @@ const driveTimes = Object.entries(((branch as { drive_times_min?: Record<string,
 }));
 ---
 
-<Base locale={locale} path={path} title={s.title} description={s.description} jsonld={[lodging(locale, branch)]} whatsapp={branch.slug}>
+<Base locale={locale} path={path} title={s.title} description={s.description} jsonld={[lodging(locale, branch)]} whatsapp={branch.slug} booking={{ branch: branch.slug }}>
   <section class="mx-auto max-w-6xl px-4 pt-10">
     <nav aria-label="breadcrumb" class="text-sm text-ink-muted">
       <a href={localePath(locale, '/')} class="hover:text-midnight">{t.nav.home}</a>

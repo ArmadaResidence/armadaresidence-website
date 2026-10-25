@@ -1,16 +1,18 @@
-// Booking form prefill from every entry point (A1 23 Oct 2026; rewritten 24 Oct 2026).
-// For both branches and every bookable room (shared slugs king-room, one-bedroom-suite, two-bedroom-suite
-// included), in Arabic and English, at 1440 px and 375 px (touch), it opens the booking form from every entry point
-// and asserts what the form would actually SUBMIT — new FormData(form).get('branch' | 'room' | 'check_in' |
-// 'check_out') — plus the option text the guest sees:
+// Booking form prefill from every entry point (A1 23 Oct 2026; rewritten 24 Oct 2026; context-aware header and
+// footer, Ahmed 24 Oct 2026). For both branches and every room (shared slugs king-room, one-bedroom-suite,
+// two-bedroom-suite included), in Arabic and English, at 1440 px and 375 px (touch), it opens the booking form from
+// every entry point and asserts what the form would actually SUBMIT — new FormData(form).get('branch' | 'room' |
+// 'check_in' | 'check_out') — plus the option text the guest sees:
 //   - room page: the booking-card CTA and, on phones, the bottom bar (scrolled into view, then tapped) → branch + room
 //   - branch page: «اطلب حجزًا في هذا الفرع» → branch, any room
-//   - header button (menu link on phones) and the footer link → no branch, any room
+//   - header button (menu link on phones) and the footer link follow the page: room page → that branch + room;
+//     sold-out room page (no booking CTA) → that branch, any room; branch page → that branch; every other page
+//     (home, offers, contact, policies, blog, an article) → no branch, any room
 //   - a link that carries check_in / check_out (no page link does yet: a copy of the page's CTA with the dates
 //     appended) → branch, room and both dates
 //   - /booking/?branch=&room=&check_in=&check_out= loaded directly → the same values on the page form
-// Twice: on direct page loads, and after client-side navigation (ClientRouter: home → branch → each room → back →
-// home, no reload allowed). Then the booking form's script is made to fail on the first page (the ClientRouter
+// Twice: on direct page loads, and after client-side navigation (ClientRouter: home → branch → each room, sold-out
+// ones included → back → home, no reload allowed). Then the booking form's script is made to fail on the first page (the ClientRouter
 // never retries it): a room CTA after client-side navigation must load /booking/?branch=&room= in full, prefilled,
 // never open an inert form. Fails on a wrong value, an entry point that does not open on the first tap, a full
 // reload, and any console / page error. Runs against the local build or the live site (sub-path aware); the
@@ -27,6 +29,9 @@ const roomsJson = JSON.parse(readFileSync('content/rooms.json', 'utf8'));
 const branchesJson = JSON.parse(readFileSync('content/branches.json', 'utf8'));
 const ui = JSON.parse(readFileSync('content/ui.json', 'utf8'));
 const ROOMS = roomsJson.rooms.filter((r) => r.show_on_site && r.availability !== 'sold_out');
+const SOLD_OUT = roomsJson.rooms.filter((r) => r.show_on_site && r.availability === 'sold_out');
+// pages without a branch / room: their header and footer booking links stay empty
+const OTHER_PAGES = ['/', '/offers/', '/contact/', '/policies/', '/blog/', '/blog/where-to-stay-in-taif/'];
 const BRANCHES = branchesJson.branches.map((b) => b.slug);
 const name = (list, slug, branch, lang) => list.find((x) => x.slug === slug && (!branch || x.branch === branch))?.[`name_${lang}`];
 const CHECK_IN = addDays(riyadhToday(), 20);
@@ -63,6 +68,8 @@ async function run(vp, lang) {
   const here = () => new URL(page.url()).pathname.slice(PRE.length) || '/';
   const press = (loc) => (mobile ? loc.tap({ timeout: 5000 }) : loc.click({ timeout: 5000 }));
   const bookHref = (q = '') => `${PRE}${L}/booking/${q}`;
+  /** ?branch=&room= of a page's booking context ({} = none) */
+  const ctxQuery = (c = {}) => (c.branch ? `?branch=${c.branch}${c.room ? `&room=${c.room}` : ''}` : '');
 
   /** What the drawer's form (or the /booking/ page form) would submit, and what the guest sees. */
   const formState = (sel) =>
@@ -113,13 +120,15 @@ async function run(vp, lang) {
     await page.waitForFunction(() => !document.querySelector('[data-booking-drawer]')?.open && !document.documentElement.classList.contains('drawer-open'), null, { timeout: 4000 }).catch(() => fails.push(`${tag} ${label} @ ${here()}: the form did not close`));
   }
 
-  const header = async (nav) => {
-    if (!mobile) return openFrom('header', page.locator(`header a[href="${bookHref()}"]:visible`).first(), { nav });
+  /** Header button (menu link on phones) and footer link: they carry the page's booking context `c`. */
+  const header = async (nav, c = {}) => {
+    const href = bookHref(ctxQuery(c));
+    if (!mobile) return openFrom('header', page.locator(`header a[href="${href}"]:visible`).first(), { ...c, nav });
     await press(page.locator('[data-menu-toggle]'));
     await page.locator('#mobile-nav:visible').waitFor({ timeout: 3000 });
-    return openFrom('header menu', page.locator(`#mobile-nav a[href="${bookHref()}"]`), { nav });
+    return openFrom('header menu', page.locator(`#mobile-nav a[href="${href}"]`), { ...c, nav });
   };
-  const footer = (nav) => openFrom('footer', page.locator(`footer a[href="${bookHref()}"]`).first(), { nav });
+  const footer = (nav, c = {}) => openFrom('footer', page.locator(`footer a[href="${bookHref(ctxQuery(c))}"]`).first(), { ...c, nav });
   /** A copy of the page's own CTA whose link also carries the dates (no page link carries dates yet). */
   async function dated(label, cta, exp) {
     await cta.evaluate((a, dates) => {
@@ -156,17 +165,29 @@ async function run(vp, lang) {
 
   // ── 1. direct page loads ─────────────────────────────────────────────────────────────────────────────
   try {
+    for (const path of OTHER_PAGES) {
+      await page.goto(`${BASE}${L}${path}`, { waitUntil: 'load' });
+      await header(false);
+      await footer(false);
+    }
     for (const b of BRANCHES) {
       await page.goto(`${BASE}${L}/${b}/`, { waitUntil: 'load' });
       const cta = await branchPage(b, false);
-      await header(false);
-      await footer(false);
+      await header(false, { branch: b });
+      await footer(false, { branch: b });
       await dated('dated branch link', cta, { branch: b });
+    }
+    for (const r of SOLD_OUT) {
+      await page.goto(`${BASE}${L}/${r.branch}/${r.slug}/`, { waitUntil: 'load' });
+      if (await page.locator('main a[href*="/booking/?"]').count()) fails.push(`${tag} sold-out room @ ${here()}: has a booking CTA`);
+      await header(false, { branch: r.branch });
+      await footer(false, { branch: r.branch });
     }
     for (const r of ROOMS) {
       await page.goto(`${BASE}${L}/${r.branch}/${r.slug}/`, { waitUntil: 'load' });
       const cta = await roomPage(r.branch, r.slug, false);
-      await header(false);
+      await header(false, { branch: r.branch, room: r.slug });
+      await footer(false, { branch: r.branch, room: r.slug });
       await dated('dated room link', cta, { branch: r.branch, room: r.slug });
       // the /booking/ page itself, opened with the full query (BASE already carries the sub-path)
       const res = await page.goto(`${BASE}${L}/booking/?branch=${r.branch}&room=${r.slug}${DATES}`, { waitUntil: 'load' });
@@ -211,16 +232,20 @@ async function run(vp, lang) {
     for (const b of BRANCHES) {
       await nav(`${L}/${b}/`);
       await branchPage(b, true);
-      await header(true);
-      for (const r of ROOMS.filter((x) => x.branch === b)) {
+      await header(true, { branch: b });
+      await footer(true, { branch: b });
+      for (const r of [...ROOMS, ...SOLD_OUT].filter((x) => x.branch === b)) {
+        const bookable = r.availability !== 'sold_out';
         await nav(`${L}/${b}/${r.slug}/`);
-        await roomPage(b, r.slug, true);
-        await header(true);
+        if (bookable) await roomPage(b, r.slug, true);
+        await header(true, bookable ? { branch: b, room: r.slug } : { branch: b });
+        await footer(true, bookable ? { branch: b, room: r.slug } : { branch: b });
         await back(`${L}/${b}/`);
-        await branchPage(b, true);
+        await header(true, { branch: b });
       }
       await nav(`${L}/`);
       await header(true);
+      await footer(true);
     }
   } catch (e) {
     fails.push(`${tag} navigation aborted at ${here()}: ${String(e).split(/\r?\n/)[0].slice(0, 180)}`);
@@ -286,4 +311,4 @@ if (fails.length) {
   for (const f of [...new Set(fails)]) console.log('  - ' + f);
   process.exit(1);
 }
-console.log(`✓ booking prefill: ${checks} checks — ${BRANCHES.length} branches, ${ROOMS.length} rooms, AR + EN, 1440 + 375, direct loads and client-side navigation`);
+console.log(`✓ booking prefill: ${checks} checks — ${BRANCHES.length} branches, ${ROOMS.length} rooms + ${SOLD_OUT.length} sold-out, ${OTHER_PAGES.length} other pages, AR + EN, 1440 + 375, direct loads and client-side navigation`);
