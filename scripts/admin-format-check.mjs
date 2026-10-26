@@ -5,7 +5,7 @@
 //   node scripts/admin-format-check.mjs
 // Node ≥ 22.18 strips the TypeScript types of the imported sources.
 import { countWord, nightsWord, roomsWord, rowsWord, bookingsWord, roomsLeft, roomsBooked, adultsWord, childrenWord, DAY, ROOM_TYPE } from '../admin/src/lib/format.ts';
-import { arabicAuth, arabicError, CONNECTION, GENERIC } from '../admin/src/lib/errors.ts';
+import { arabicAuth, arabicError, passwordProblem, passwordRefusal, CONNECTION, GENERIC, PASSWORD_LETTERS_DIGITS, PASSWORD_SHORT, PASSWORD_WEAK } from '../admin/src/lib/errors.ts';
 
 const fails = [];
 let checks = 0;
@@ -33,6 +33,21 @@ eq('nightsWord(103)', nightsWord(103), '103 ليالٍ');
 eq('rowsWord(111)', rowsWord(111), '111 صفًا');
 eq('bookingsWord(102)', bookingsWord(102), '102 حجز');
 eq('roomsWord(200)', roomsWord(200), '200 غرفة');
+
+// set-password: Auth's letters_digits accepts Latin letters and 0–9 only — Arabic letters without a Latin one are refused
+eq('password texts', [PASSWORD_SHORT, PASSWORD_LETTERS_DIGITS].join(' | '), 'كلمة المرور 10 أحرف على الأقل. | يجب أن تحتوي كلمة المرور على حروف إنجليزية وأرقام.');
+for (const [pw, want] of [
+  ['Ab1', PASSWORD_SHORT],
+  ['abcdefghijkl', PASSWORD_LETTERS_DIGITS],
+  ['1234567890', PASSWORD_LETTERS_DIGITS],
+  ['كلمةمرورقوية2026', PASSWORD_LETTERS_DIGITS],
+  ['كلمةمرورA' + String.fromCharCode(0x0661, 0x0662, 0x0663), PASSWORD_LETTERS_DIGITS],
+  ['كلمةمرورA2026', null],
+  ['armada-2026', null],
+]) eq(`passwordProblem(${pw})`, passwordProblem(pw), want);
+eq('passwordRefusal(characters)', passwordRefusal({ reasons: ['characters'] }), PASSWORD_LETTERS_DIGITS);
+eq('passwordRefusal(length)', passwordRefusal({ reasons: ['length'] }), PASSWORD_SHORT);
+eq('passwordRefusal(pwned)', passwordRefusal({ reasons: ['pwned'] }), PASSWORD_WEAK);
 
 // login: an unknown user and every credential failure read the same
 const CRED = 'البريد أو كلمة المرور غير صحيحة.';

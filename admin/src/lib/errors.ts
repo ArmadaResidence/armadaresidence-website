@@ -58,6 +58,25 @@ export function arabicError(e: Raw, what: string): string {
   return GENERIC;
 }
 
+export const PASSWORD_SHORT = 'كلمة المرور 10 أحرف على الأقل.';
+export const PASSWORD_LETTERS_DIGITS = 'يجب أن تحتوي كلمة المرور على حروف إنجليزية وأرقام.';
+export const PASSWORD_WEAK = 'كلمة المرور هذه معروفة أو سهلة التخمين، اختر كلمة مرور أخرى.';
+/** /set-password, checked in the browser before the call: Auth's `minimum_password_length = 10` and
+ * `password_requirements = letters_digits` — Latin letters and 0–9 only, so Arabic letters without a Latin one (or
+ * Arabic-Indic digits without 0–9) are refused with the same message. null = acceptable to send. */
+export function passwordProblem(p: string): string | null {
+  if (p.length < 10) return PASSWORD_SHORT;
+  if (!/[A-Za-z]/.test(p) || !/[0-9]/.test(p)) return PASSWORD_LETTERS_DIGITS;
+  return null;
+}
+/** Auth's answer to a refused password (`weak_password`, split by its reasons) in the same words. */
+export function passwordRefusal(e: Raw & { reasons?: string[] }): string {
+  const reasons = e?.reasons ?? [];
+  if (reasons.includes('characters')) return PASSWORD_LETTERS_DIGITS;
+  if (reasons.includes('length')) return PASSWORD_SHORT;
+  return PASSWORD_WEAK;
+}
+
 const CREDENTIAL_CODES = ['invalid_credentials', 'user_not_found', 'signup_disabled', 'email_address_invalid'];
 
 /** The Supabase Auth messages a user can meet on the login, MFA and set-password pages. A login never tells whether

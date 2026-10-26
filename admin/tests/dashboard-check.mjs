@@ -476,11 +476,12 @@ try {
       await fp.waitForSelector('#p1', { timeout: 20000 });
       check(true, 'invite: «متابعة» verified the token and opened the password form');
       await digits(fp, 'set-password');
-      check((await fp.locator('form').innerText()).includes('10 أحرف على الأقل، وفيها حروف وأرقام.'), 'set-password: hint «10 أحرف على الأقل، وفيها حروف وأرقام.»');
+      check((await fp.locator('form').innerText()).includes('10 أحرف على الأقل، وفيها حروف إنجليزية وأرقام.'), 'set-password: hint «10 أحرف على الأقل، وفيها حروف إنجليزية وأرقام.»');
       // length and letters + digits are checked in the browser before any call to the service
       const userCalls = [];
       fp.on('request', (req) => { if (/\/auth\/v1\/user/.test(req.url()) && req.method() === 'PUT') userCalls.push(req.url()); });
-      for (const [pw, want] of [['Ab1', 'كلمة المرور 10 أحرف على الأقل.'], ['abcdefghijkl', 'يجب أن تحتوي كلمة المرور على حروف وأرقام.'], ['1234567890', 'يجب أن تحتوي كلمة المرور على حروف وأرقام.']]) {
+      const LD = 'يجب أن تحتوي كلمة المرور على حروف إنجليزية وأرقام.';
+      for (const [pw, want] of [['Ab1', 'كلمة المرور 10 أحرف على الأقل.'], ['abcdefghijkl', LD], ['1234567890', LD], ['كلمةمرور2026', LD]]) {
         await fp.fill('#p1', pw);
         await fp.fill('#p2', pw);
         await fp.click('[data-action="save-password"]');

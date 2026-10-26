@@ -12,7 +12,7 @@ import type { EmailOtpType } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
 import { useSession } from '../lib/session';
 import { ErrorBox, Spinner } from '../components/ui';
-import { arabicAuth } from '../lib/errors';
+import { arabicAuth, passwordProblem, passwordRefusal } from '../lib/errors';
 
 type Stage = 'loading' | 'ready' | 'verifying' | 'form' | 'error';
 type Reason = 'expired' | 'invalid' | 'none';
@@ -26,7 +26,6 @@ function classify(message: string): Reason {
   if (/expired/.test(m) && !/invalid/.test(m)) return 'expired';
   return 'invalid';
 }
-const LETTERS_DIGITS = 'يجب أن تحتوي كلمة المرور على حروف وأرقام.';
 const REASON_TEXT: Record<Reason, string> = {
   expired: 'انتهت صلاحية هذا الرابط.',
   invalid: 'هذا الرابط لم يعد صالحًا: استُخدم من قبل، أو انتهت صلاحيته، أو نُسخ ناقصًا.',
@@ -98,20 +97,14 @@ export default function SetPassword() {
   async function submit(e: FormEvent) {
     e.preventDefault();
     setError(null);
-    if (p1.length < 10) return setError('كلمة المرور 10 أحرف على الأقل.');
-    // Auth's password requirement (letters_digits: Latin letters and 0–9), checked before the call
-    if (!/[A-Za-z]/.test(p1) || !/[0-9]/.test(p1)) return setError(LETTERS_DIGITS);
+    const problem = passwordProblem(p1);
+    if (problem) return setError(problem);
     if (p1 !== p2) return setError('كلمتا المرور غير متطابقتين.');
     setBusy(true);
     const { error } = await supabase.auth.updateUser({ password: p1 });
     setBusy(false);
     if (error) {
-      if (error.code === 'weak_password' || /weak|pwned|leaked/i.test(error.message)) {
-        const reasons = (error as { reasons?: string[] }).reasons ?? [];
-        if (reasons.includes('characters')) return setError(LETTERS_DIGITS);
-        if (reasons.includes('length')) return setError('كلمة المرور 10 أحرف على الأقل.');
-        return setError('كلمة المرور هذه معروفة أو سهلة التخمين، اختر كلمة مرور أخرى.');
-      }
+      if (error.code === 'weak_password' || /weak|pwned|leaked/i.test(error.message)) return setError(passwordRefusal(error as { reasons?: string[] }));
       return setError(arabicAuth(error));
     }
     await refresh();
@@ -154,7 +147,7 @@ export default function SetPassword() {
             <input id="p1" className="field latin mb-4" type="password" dir="ltr" autoComplete="new-password" minLength={10} required value={p1} onChange={(e) => setP1(e.target.value)} />
             <label className="label" htmlFor="p2">تأكيد كلمة المرور</label>
             <input id="p2" className="field latin mb-2" type="password" dir="ltr" autoComplete="new-password" minLength={10} required value={p2} onChange={(e) => setP2(e.target.value)} />
-            <p className="text-xs text-ink-muted mb-2">10 أحرف على الأقل، وفيها حروف وأرقام.</p>
+            <p className="text-xs text-ink-muted mb-2">10 أحرف على الأقل، وفيها حروف إنجليزية وأرقام.</p>
             <ErrorBox error={error} />
             <button type="submit" className="btn btn-primary w-full mt-3" disabled={busy || !session} data-action="save-password">
               {busy && <Spinner />} حفظ والمتابعة

@@ -3,7 +3,8 @@
 Every string added or changed by phase 2a.1, grouped by where it appears. The dashboard is Arabic-only; English is given
 where it exists (the email templates carry one English line each). Strings that already existed before 2a.1 (booking
 list, confirm / cancel dialogs, settings sections, MFA page, `ui.json` guest copy) are not repeated. `{…}` = a value
-filled at runtime. Status: **approved by Ahmed on 26 Oct 2026 with seven changes** (DECISIONS.md 2026-10-26 — copy
+filled at runtime. Status: **approved by Ahmed on 26 Oct 2026 with seven changes**, plus a follow-up the same day (Latin
+letters named in the password texts; the generic line, the detail list and «100 صف / 100 حجز» confirmed) (DECISIONS.md 2026-10-26 — copy
 approval), applied below; nothing here is read by guests except the two email templates (sent to staff) and the reused
 booking-form note.
 
@@ -36,9 +37,10 @@ booking-form note.
 - Invite link, before the click: «وصلتك دعوة إلى لوحة التحكم. اضغط «متابعة» لتأكيد الرابط ثم اختر كلمة المرور.»
 - Reset link, before the click: «اضغط «متابعة» لتأكيد الرابط ثم اختر كلمة المرور الجديدة.»
 - Button: «متابعة»
-- Form: «كلمة المرور الجديدة» · «تأكيد كلمة المرور» · hint «10 أحرف على الأقل، وفيها حروف وأرقام.» · button «حفظ والمتابعة»
+- Form: «كلمة المرور الجديدة» · «تأكيد كلمة المرور» · hint «10 أحرف على الأقل، وفيها حروف إنجليزية وأرقام.» · button «حفظ والمتابعة»
 - Validation (length and letters + digits checked in the browser before the call, matching Auth's `letters_digits` rule:
-  Latin letters and 0–9): «كلمة المرور 10 أحرف على الأقل.» · «يجب أن تحتوي كلمة المرور على حروف وأرقام.» ·
+  Latin letters and 0–9): «كلمة المرور 10 أحرف على الأقل.» · «يجب أن تحتوي كلمة المرور على حروف إنجليزية وأرقام.» (also
+  for a password with Arabic letters but no Latin letter) ·
   «كلمتا المرور غير متطابقتين.» · leaked or weak (the service's `weak_password`) → «كلمة المرور هذه معروفة أو سهلة التخمين، اختر
   كلمة مرور أخرى.»
 - Link no longer valid: «هذا الرابط لم يعد صالحًا: استُخدم من قبل، أو انتهت صلاحيته، أو نُسخ ناقصًا.» (Supabase gives one answer for a used, an expired and a broken link)
