@@ -1,5 +1,9 @@
 ---
-/** /partners/enquiry/ — legacy three-step wizard; the message now goes to the Edge Function (request_type) with WhatsApp/email as fallbacks. */
+/**
+ * /partners/enquiry/ — legacy three-step wizard; the message now goes to the Edge Function (request_type) with
+ * WhatsApp/email as fallbacks. Behaviour in src/lib/partners-enquiry.ts (26 Oct 2026): the contact fields follow the
+ * booking form's rules (rules.ts), a saved draft is restored only with a visible notice and a clear button.
+ */
 import Base from '@layouts/Base.astro';
 import LpShell from '@components/lp/LpShell.astro';
 import LpPageHero from '@components/lp/LpPageHero.astro';
@@ -7,6 +11,7 @@ import DateRangeField from '@components/DateRangeField.astro';
 import { langPaths } from '@lib/paths';
 import { pageSeo, type Locale } from '@lib/content';
 import { ICON, lp, T, waHrefSales } from '@lib/partners';
+import { ui } from '@lib/content';
 
 export const getStaticPaths = langPaths;
 interface Props {
@@ -21,6 +26,15 @@ const wa = T(locale, F.wa_intro);
 const req = T(locale, lp.ui.required);
 const badEmail = T(locale, lp.ui.bad_email);
 const sel = T(locale, { en: 'Select', ar: 'اختر' });
+// inline messages: name / email as in the booking form (ui.json), company / phone for this form (partners-pages.json)
+const E = ui(locale).form.errors;
+const strings = {
+  required: req,
+  organisation: T(locale, F.errors.company),
+  name: E.name,
+  phone: T(locale, F.errors.phone),
+  email: E.email,
+};
 ---
 
 <Base locale={locale} path="/partners/enquiry/" title={s.title} description={s.description}>
@@ -45,6 +59,12 @@ const sel = T(locale, { en: 'Select', ar: 'اختر' });
               <p style="margin-top:8px"><span id="enquiry-sent-ref-label"></span>: <b id="enquiry-sent-ref" dir="ltr"></b></p>
             </div>
             <form class="frm" id="enquiry-form" novalidate>
+              <script type="application/json" data-enquiry-strings set:html={JSON.stringify(strings).replace(/</g, '\\u003c')} />
+              {/* a restored draft is never silent (26 Oct 2026) */}
+              <div class="note lt draft-note" data-draft-notice role="status" hidden>
+                <span>{T(locale, F.draft.notice)}</span>
+                <button type="button" class="btn ol" data-draft-clear>{T(locale, F.draft.clear)}</button>
+              </div>
               <div class="psteps">
                 {
                   (F.steps as any[]).map((st, i) => (
@@ -58,22 +78,22 @@ const sel = T(locale, { en: 'Select', ar: 'اختر' });
 
               <div class="fstep on">
                 <div class="row c2">
-                  <div class="fld"><label for="f-company">{T(locale, fl.company)}<span class="req">*</span></label><input type="text" id="f-company" name="company" required /><p class="err">{req}</p></div>
-                  <div class="fld"><label for="f-person">{T(locale, fl.person)}<span class="req">*</span></label><input type="text" id="f-person" name="person" required /><p class="err">{req}</p></div>
+                  <div class="fld"><label for="f-company">{T(locale, fl.company)}<span class="req">*</span></label><input type="text" id="f-company" name="company" required autocomplete="organization" maxlength="160" aria-describedby="f-company-err" /><p class="err" id="f-company-err">{req}</p></div>
+                  <div class="fld"><label for="f-person">{T(locale, fl.person)}<span class="req">*</span></label><input type="text" id="f-person" name="person" required autocomplete="name" autocapitalize="words" spellcheck="false" maxlength="120" aria-describedby="f-person-err" /><p class="err" id="f-person-err">{req}</p></div>
                 </div>
                 <div class="row c2">
-                  <div class="fld"><label for="f-email">{T(locale, fl.email)}<span class="req">*</span></label><input type="email" id="f-email" name="email" required dir="ltr" inputmode="email" /><p class="err">{badEmail}</p></div>
-                  <div class="fld"><label for="f-phone">{T(locale, fl.phone)}<span class="req">*</span></label><input type="tel" id="f-phone" name="phone" required dir="ltr" inputmode="tel" /><p class="err">{req}</p></div>
+                  <div class="fld"><label for="f-email">{T(locale, fl.email)}<span class="req">*</span></label><input type="email" id="f-email" name="email" required dir="ltr" inputmode="email" autocomplete="email" autocapitalize="off" spellcheck="false" maxlength="254" aria-describedby="f-email-err" /><p class="err" id="f-email-err">{badEmail}</p></div>
+                  <div class="fld"><label for="f-phone">{T(locale, fl.phone)}<span class="req">*</span></label><input type="tel" id="f-phone" name="phone" required dir="ltr" inputmode="tel" autocomplete="tel" maxlength="24" aria-describedby="f-phone-err" /><p class="err" id="f-phone-err">{req}</p></div>
                 </div>
                 {/* Honeypot: invisible to people and assistive tech; a bot that fills it gets a fake success and nothing is stored. */}
                 <div style="position:absolute;inset-inline-start:-9999px;width:1px;height:1px;overflow:hidden" aria-hidden="true">
                   <label for="f-website">Website</label><input type="text" id="f-website" name="website" tabindex="-1" autocomplete="off" />
                 </div>
                 <div class="row c2">
-                  <div class="fld"><label for="f-country">{T(locale, fl.country)}</label><input type="text" id="f-country" name="country" /><p class="err">{req}</p></div>
+                  <div class="fld"><label for="f-country">{T(locale, fl.country)}</label><input type="text" id="f-country" name="country" autocomplete="country-name" maxlength="60" /><p class="err">{req}</p></div>
                   <div class="fld">
                     <label for="f-biztype">{T(locale, fl.biztype)}<span class="req">*</span></label>
-                    <select id="f-biztype" name="biztype" required>
+                    <select id="f-biztype" name="biztype" autocomplete="off" required>
                       <option value="">— {sel} —</option>
                       {(F.biztypes as any[]).map(([k, l]) => <option value={k}>{T(locale, l)}</option>)}
                     </select>
@@ -86,7 +106,7 @@ const sel = T(locale, { en: 'Select', ar: 'اختر' });
                 <div class="row c2">
                   <div class="fld">
                     <label for="f-reqtype">{T(locale, fl.reqtype)}<span class="req">*</span></label>
-                    <select id="f-reqtype" name="reqtype" required>
+                    <select id="f-reqtype" name="reqtype" autocomplete="off" required>
                       <option value="">— {sel} —</option>
                       {(F.reqtypes as any[]).map(([k, l]) => <option value={k}>{T(locale, l)}</option>)}
                     </select>
@@ -94,7 +114,7 @@ const sel = T(locale, { en: 'Select', ar: 'اختر' });
                   </div>
                   <div class="fld">
                     <label for="f-property">{T(locale, fl.property)}</label>
-                    <select id="f-property" name="property">
+                    <select id="f-property" name="property" autocomplete="off">
                       <option value="">— {sel} —</option>
                       {(F.properties as any[]).map(([k, l]) => <option value={k}>{T(locale, l)}</option>)}
                     </select>
@@ -102,10 +122,10 @@ const sel = T(locale, { en: 'Select', ar: 'اختر' });
                   </div>
                 </div>
                 <div class="row c2">
-                  <div class="fld"><label for="f-unittype">{T(locale, fl.unittype)}</label><input type="text" id="f-unittype" name="unittype" placeholder={T(locale, F.unittype_placeholder)} /><p class="err">{req}</p></div>
+                  <div class="fld"><label for="f-unittype">{T(locale, fl.unittype)}</label><input type="text" id="f-unittype" name="unittype" autocomplete="off" placeholder={T(locale, F.unittype_placeholder)} /><p class="err">{req}</p></div>
                   <div class="fld">
                     <label for="f-meals">{T(locale, fl.meals)}</label>
-                    <select id="f-meals" name="meals">
+                    <select id="f-meals" name="meals" autocomplete="off">
                       <option value="">— {sel} —</option>
                       {(F.meal_opts as any[]).map(([k, l]) => <option value={k}>{T(locale, l)}</option>)}
                     </select>
@@ -113,7 +133,7 @@ const sel = T(locale, { en: 'Select', ar: 'اختر' });
                   </div>
                 </div>
                 <div class="row">
-                  <div class="fld"><label for="f-notes">{T(locale, fl.notes)}</label><textarea id="f-notes" name="notes" placeholder={T(locale, F.placeholder_notes)}></textarea></div>
+                  <div class="fld"><label for="f-notes">{T(locale, fl.notes)}</label><textarea id="f-notes" name="notes" autocomplete="off" placeholder={T(locale, F.placeholder_notes)}></textarea></div>
                 </div>
               </div>
 
@@ -128,8 +148,8 @@ const sel = T(locale, { en: 'Select', ar: 'اختر' });
                   errorText={req}
                 />
                 <div class="row c2">
-                  <div class="fld"><label for="f-guests">{T(locale, fl.guests)}<span class="req">*</span></label><input type="number" id="f-guests" name="guests" min="1" inputmode="numeric" required /><p class="err">{req}</p></div>
-                  <div class="fld"><label for="f-rooms">{T(locale, fl.rooms)}</label><input type="number" id="f-rooms" name="rooms" min="1" inputmode="numeric" /><p class="err">{req}</p></div>
+                  <div class="fld"><label for="f-guests">{T(locale, fl.guests)}<span class="req">*</span></label><input type="number" id="f-guests" name="guests" autocomplete="off" min="1" inputmode="numeric" required /><p class="err">{req}</p></div>
+                  <div class="fld"><label for="f-rooms">{T(locale, fl.rooms)}</label><input type="number" id="f-rooms" name="rooms" autocomplete="off" min="1" inputmode="numeric" /><p class="err">{req}</p></div>
                 </div>
                 <p class="sla"><Fragment set:html={ICON.clock} />{T(locale, lp.ui.sla)}</p>
               </div>
@@ -185,3 +205,8 @@ const sel = T(locale, { en: 'Select', ar: 'اختر' });
     </section>
   </LpShell>
 </Base>
+
+<script>
+  import { initEnquiry } from '@lib/partners-enquiry';
+  initEnquiry();
+</script>

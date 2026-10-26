@@ -1711,6 +1711,27 @@
       "en": "Request number",
       "ar": "رقم الطلب"
     },
+    "errors": {
+      "company": {
+        "en": "Enter the company name: at least 2 characters, with letters (not digits only).",
+        "ar": "اكتب اسم الجهة: حرفان على الأقل، وفيه حروف لا أرقام فقط."
+      },
+      "phone": {
+        "en": "This mobile number is not valid. For a number outside Saudi Arabia, start with the country code (+).",
+        "ar": "رقم الجوال غير صحيح. للأرقام من خارج السعودية ابدأ بمفتاح الدولة (+)."
+      }
+    },
+    "draft": {
+      "_note": "26 Oct 2026: a saved draft is never restored silently — this notice shows with a clear button; drafts expire after 7 days and are deleted after a successful submit.",
+      "notice": {
+        "en": "We restored details you entered earlier.",
+        "ar": "استعدنا بيانات أدخلتها سابقًا"
+      },
+      "clear": {
+        "en": "Clear details",
+        "ar": "مسح البيانات"
+      }
+    },
     "what_to_send": {
       "en": "<b>What to send.</b> The programme, the dates and the party size are enough for a first answer. A rooming list can follow.",
       "ar": "<b>ما الذي ترسله.</b> البرنامج والتواريخ وعدد الأفراد تكفي للحصول على أول إجابة. وقائمة التسكين يمكن أن تتبع."

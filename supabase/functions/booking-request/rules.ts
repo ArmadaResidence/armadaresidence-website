@@ -40,6 +40,46 @@ export function validEmail(raw: string): boolean {
   return s.length <= 254 && EMAIL.test(s);
 }
 
+/** Company / organisation (partner enquiries): at least 2 characters after trimming, at least one letter of any
+ * script (so "3M" passes and "112" does not), at most 160. */
+export function validOrganisation(raw: string): boolean {
+  const s = (raw ?? '').trim().replace(/\s+/g, ' ');
+  const n = [...s].length;
+  return n >= 2 && n <= 160 && /\p{L}/u.test(s);
+}
+
+export type PartnerField = 'organisation' | 'name' | 'phone' | 'email';
+export interface PartnerContact {
+  organisation: string;
+  name: string;
+  phone: string;
+  email: string;
+}
+
+/** The contact fields of the partner enquiry form (26 Oct 2026, mirroring the booking form): company, contact name
+ * (validName), phone (E.164 through the injected check, Saudi Arabia for national numbers), email (required). */
+export function validatePartnerContact(
+  p: { organisation?: unknown; name?: unknown; phone?: unknown; country?: unknown; email?: unknown },
+  phone: (raw: string, country: string) => string | null,
+): { ok: true; data: PartnerContact } | { ok: false; errors: Partial<Record<PartnerField, FieldError>> } {
+  const errors: Partial<Record<PartnerField, FieldError>> = {};
+  const organisation = String(p.organisation ?? '').trim().replace(/\s+/g, ' ');
+  if (!organisation) errors.organisation = 'required';
+  else if (!validOrganisation(organisation)) errors.organisation = 'organisation';
+  const name = String(p.name ?? '').trim().replace(/\s+/g, ' ');
+  if (!name) errors.name = 'required';
+  else if (!validName(name)) errors.name = 'name';
+  const rawPhone = String(p.phone ?? '').trim();
+  const e164 = rawPhone ? phone(rawPhone, String(p.country ?? 'SA').toUpperCase() || 'SA') : null;
+  if (!rawPhone) errors.phone = 'required';
+  else if (!e164 || !E164.test(e164)) errors.phone = 'phone';
+  const email = String(p.email ?? '').trim();
+  if (!email) errors.email = 'required';
+  else if (!validEmail(email)) errors.email = 'email';
+  if (Object.keys(errors).length) return { ok: false, errors };
+  return { ok: true, data: { organisation, name, phone: e164 as string, email } };
+}
+
 /** Today's date in Asia/Riyadh as YYYY-MM-DD (the hotel's calendar day, whatever the device's zone). */
 export function riyadhToday(now: Date = new Date()): string {
   return new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Riyadh', year: 'numeric', month: '2-digit', day: '2-digit' }).format(now);
@@ -118,6 +158,7 @@ export type FieldError =
   | 'children_ages'
   | 'breakfast'
   | 'name'
+  | 'organisation'
   | 'phone'
   | 'email';
 

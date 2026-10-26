@@ -33,7 +33,7 @@
 // Deployed with verify_jwt = false (supabase/config.toml): a public form endpoint; CORS limits the origins.
 import { parsePhoneNumberFromString } from 'npm:libphonenumber-js@1.12.10/min';
 import content from './content.generated.json' with { type: 'json' };
-import { E164, EMAIL, intIn, ISO_DATE, nightsBetween, riyadhToday, validateBooking, type ValidBooking } from './rules.ts';
+import { EMAIL, intIn, ISO_DATE, nightsBetween, riyadhToday, validateBooking, validatePartnerContact, type ValidBooking } from './rules.ts';
 import {
   bookingConfirmation,
   bookingConfirmed,
@@ -307,7 +307,10 @@ function validate(p: Payload, test = false): Validation {
     };
   }
 
-  // partner enquiries (unchanged rules; the partner form sends branch 'both' or a slug, an email is required)
+  // partner enquiries: the partner form sends branch 'both' or a slug; the contact fields follow the booking form's
+  // rules (rules.ts → validatePartnerContact, 26 Oct 2026): company with letters, name, phone E.164, email required
+  const contact = validatePartnerContact({ organisation: p.organisation, name: p.name, phone: p.phone, country: p.country, email: p.email }, phoneE164);
+  if (!contact.ok) return { ok: false, error: 'invalid partner enquiry', fields: contact.errors as Record<string, string> };
   const branchSlug = typeof p.branch === 'string' ? p.branch.trim() : '';
   if (branchSlug !== BOTH && !KNOWN_BRANCHES.includes(branchSlug)) return { ok: false, error: 'invalid branch' };
   if (!ISO_DATE.test(p.check_in) || !ISO_DATE.test(p.check_out)) return { ok: false, error: 'invalid dates' };
@@ -315,12 +318,7 @@ function validate(p: Payload, test = false): Validation {
   if (p.check_in < riyadhToday()) return { ok: false, error: 'check-in in the past' };
   const adults = intIn(p.adults, 1, 999);
   if (adults === null) return { ok: false, error: 'invalid guests' };
-  const name = String(p.name ?? '').trim();
-  if (name.length < 2 || name.length > 120) return { ok: false, error: 'invalid name' };
-  const phone = phoneE164(String(p.phone ?? ''), String(p.country ?? 'SA')) ?? String(p.phone ?? '').replace(/[\s\-().]/g, '');
-  if (!E164.test(phone)) return { ok: false, error: 'invalid phone' };
-  const email = String(p.email ?? '').trim();
-  if (!EMAIL.test(email) || email.length > 254) return { ok: false, error: 'invalid email' };
+  const { name, phone, email, organisation } = contact.data;
   const roomsRequested = p.rooms === undefined || p.rooms === '' ? null : intIn(p.rooms, 1, 500);
   if (p.rooms !== undefined && p.rooms !== '' && roomsRequested === null) return { ok: false, error: 'invalid rooms' };
   return {
@@ -345,7 +343,7 @@ function validate(p: Payload, test = false): Validation {
       email,
       notes: String(p.notes ?? '').trim().slice(0, 1000),
       page,
-      organisation: String(p.organisation ?? '').trim().slice(0, 160),
+      organisation,
       roomsRequested,
       meals: String(p.meals ?? '').trim().slice(0, 40),
     },

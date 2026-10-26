@@ -124,3 +124,17 @@
   outline: 2px solid var(--color-bronze);
   outline-offset: 3px;
 }
+
+/* Partners enquiry (26 Oct 2026): the notice shown when a saved draft is restored, with its «مسح البيانات» button. */
+.legacy-partners .draft-note {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 18px;
+  padding: 14px 18px;
+}
+.legacy-partners .draft-note[hidden] {
+  display: none;
+}
