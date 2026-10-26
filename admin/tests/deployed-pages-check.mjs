@@ -13,7 +13,7 @@
 //       BUNDLE_SUPABASE_URL / BUNDLE_SUPABASE_ANON_KEY     what the deployed bundle was built with (default: .env SUPABASE_URL / SUPABASE_ANON_KEY)
 import { chromium } from 'playwright';
 import { readFileSync } from 'node:fs';
-import { APP_PATH, handleBackupCodes, passCode, routeLoginCode } from './code-login.mjs';
+import { APP_PATH, firstOf, handleBackupCodes, passCode, routeLoginCode } from './code-login.mjs';
 
 const BASE = (process.argv[2] || 'https://admin.armadaresidence.com').replace(/\/$/, '');
 const PW = 'Qa-Armada-2026!x'; // the QA admin of supabase/migrations/20261025000500_phase2a_qa_users.sql (*.qa.invalid, preview branches only)
@@ -86,11 +86,8 @@ async function run(viewport, tag) {
   await page.fill('#password', PW);
   await page.click('button[type=submit]');
   await passCode(page, codes);
-  await page.waitForURL(/\/backup-codes|\/(bookings|rates|inventory|rooms|settings|users|audit)/, { timeout: 30000, waitUntil: 'commit' });
-  if (/\/backup-codes/.test(page.url())) {
-    await page.waitForSelector('[data-action="generate-backup"]', { timeout: 20000 });
-    await handleBackupCodes(page);
-  }
+  if ((await firstOf(page, { app: '#app-main', backup: '[data-action="generate-backup"]' })) === 'backup') await handleBackupCodes(page);
+  await page.waitForSelector('#app-main', { timeout: 30000 });
   await page.waitForURL(APP_PATH, { timeout: 30000, waitUntil: 'commit' });
   await page.waitForSelector('#f-branch', { timeout: 30000 });
   const loginProblems = take();

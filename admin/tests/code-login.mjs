@@ -47,4 +47,13 @@ export async function handleBackupCodes(page, { timeout = 30000 } = {}) {
   return codes;
 }
 
+/** the first of these selectors to appear — by content, not by URL: after the code the app passes through /bookings
+ * before the gate sends an admin without backup codes to /backup-codes. Every wait settles, so nothing is left unhandled. */
+export async function firstOf(page, map, timeout = 30000) {
+  const waits = Object.entries(map).map(([k, sel]) => page.waitForSelector(sel, { timeout }).then(() => k, () => null));
+  const k = await Promise.race(waits.map((w) => w.then((v) => v ?? new Promise(() => {}))).concat(Promise.all(waits).then(() => null)));
+  if (!k) throw new Error(`none of ${Object.values(map).join(', ')} appeared`);
+  return k;
+}
+
 export const APP_PATH = /\/(bookings|rates|inventory|rooms|settings|users|audit|security)(\?|$)/;

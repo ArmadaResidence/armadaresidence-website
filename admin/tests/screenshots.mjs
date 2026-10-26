@@ -5,7 +5,7 @@
 //   node admin/tests/screenshots.mjs [BASE_URL]      env SUPABASE_URL / SUPABASE_ANON_KEY / BOOKING_TEST_TOKEN (the branch)
 import { chromium } from 'playwright';
 import { mkdirSync, readFileSync } from 'node:fs';
-import { APP_PATH, handleBackupCodes, passCode, routeLoginCode } from './code-login.mjs';
+import { APP_PATH, firstOf, handleBackupCodes, passCode, routeLoginCode } from './code-login.mjs';
 
 const BASE = (process.argv[2] || 'http://127.0.0.1:5174').replace(/\/$/, '');
 const OUT = 'screenshots/admin';
@@ -30,9 +30,7 @@ for (const width of [1280, 375]) {
   await page.waitForSelector('[data-code-info]', { timeout: 30000 }).catch(() => {});
   await page.screenshot({ path: `${OUT}/code-${width}-light.png` });
   await passCode(page, codes);
-  await page.waitForURL(/\/backup-codes|\/(bookings|rates|inventory|rooms|settings|users|audit)/, { timeout: 30000, waitUntil: 'commit' });
-  if (/\/backup-codes/.test(page.url())) {
-    await page.waitForSelector('[data-action="generate-backup"]', { timeout: 20000 });
+  if ((await firstOf(page, { app: '#app-main', backup: '[data-action="generate-backup"]' })) === 'backup') {
     await page.screenshot({ path: `${OUT}/backup-codes-${width}-light.png` });
     await handleBackupCodes(page);
   }
