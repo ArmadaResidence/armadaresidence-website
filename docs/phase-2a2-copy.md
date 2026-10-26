@@ -1,17 +1,23 @@
-# Phase 2a.2 — new staff-facing copy for approval (26 Oct 2026)
+# Phase 2a.2 — staff-facing copy (approved by Ahmed, 26 Oct 2026)
 
 Every text added or changed by phase 2a.2 C (the email code as the second step, remembered devices, admin backup codes)
 and D (site defaults), and the redesigned staff emails (Ahmed's review of the live recovery email). The dashboard is
 Arabic-only; the emails carry an English section. `{…}` = a value filled at runtime; counts follow the dashboard's
-agreement helper (`countWord`: «محاولة واحدة / محاولتان / 3 محاولات / 11 محاولة»). Sources: `admin/src/lib/secondStep.ts`,
+agreement helper (`countWord` in `admin/src/lib/format.ts`: «محاولة واحدة / محاولتان / 3 محاولات / 11 محاولة»; every noun —
+رمز، دقيقة، ثانية، تغيير، جهاز، محاولة، سنة — unit-tested at 0, 1, 2, 3, 10, 11 and 100 in `scripts/admin-format-check.mjs`). Sources: `admin/src/lib/secondStep.ts`,
 `admin/src/components/SiteDefaults.tsx`, `admin/src/lib/errors.ts`, `content/ui.json → staff_email`.
-Status: **for approval** — built and live as written below; any change is a text edit.
+Status: **approved as written** by Ahmed on 26 Oct 2026 — the dashboard texts as listed, and the emails' look after the test
+emails with the reversed logo and the two-line footer. A later change is a text edit in the sources above and a new approval.
 
 ## 1. Staff emails — one layout (the booking emails' frame)
 
-Porcelain page, navy header band with the hosted PNG logo (`https://armadaresidence.github.io/armadaresidence-website/email/armada-residence-logo@2x.png`,
-180 × 41, alt «أرمادا ريزيدنس»), white card, bronze button, the English part in its own left-to-right section under a
-thin bronze rule, the legal footer line (company name, CR, VAT) in both languages. One subject per email, with its
+Porcelain page, navy header band with the reversed hosted PNG logo (porcelain wordmark, bronze mark —
+`https://armadaresidence.github.io/armadaresidence-website/email/armada-residence-logo-reversed@2x.png`, 180 × 41, alt
+«أرمادا ريزيدنس»), white card, bronze button, the English part in its own left-to-right section under a thin bronze rule,
+and the legal footer in two fixed lines per language: «شركة أرمادا ريزيدنس لتشغيل الفنادق» / «السجل التجاري 4032276628 ·
+الرقم الضريبي 312154414400003» and "Armada Residence Company To Operate Hotels" / "CR 4032276628 · VAT 312154414400003"
+(numbers never wrap and are not auto-linked). Same header and footer on the booking, partner and alert emails
+(Ahmed's review of the test emails, 26 Oct 2026: approved with these two changes). One subject per email, with its
 `AR-` tag. Sender `no-reply@armadaresidence.com`. Fallback under each button: «إن لم يعمل الزر، انسخ هذا الرابط:» /
 "If the button does not work, copy this link:" and the link in smaller text that wraps anywhere.
 

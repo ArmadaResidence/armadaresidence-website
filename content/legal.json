@@ -6,6 +6,11 @@
   "entity_en": "Armada Residence Company To Operate Hotels",
   "cr": "4032276628",
   "vat": "312154414400003",
+  "_email_footer_note": "26 Oct 2026 (Ahmed): every email ends with two fixed lines per language — the entity, then «{cr_label} {cr} · {vat_label} {vat}»; numbers never wrap and are protected from auto-linking (email.ts footer).",
+  "cr_label_ar": "السجل التجاري",
+  "cr_label_en": "CR",
+  "vat_label_ar": "الرقم الضريبي",
+  "vat_label_en": "VAT",
   "footer_line_ar": "© {year} شركة أرمادا ريزيدنس لتشغيل الفنادق — السجل التجاري 4032276628 — الرقم الضريبي 312154414400003",
   "footer_line_en": "© {year} Armada Residence Company To Operate Hotels — CR 4032276628 — VAT 312154414400003",
   "verified": true

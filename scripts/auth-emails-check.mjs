@@ -7,10 +7,12 @@
 //   - no stray Go-template action besides {{ .SiteURL }} / {{ .TokenHash }}
 //   - supabase/config.toml declares both templates with the same AR- subjects as ui.json → staff_email
 //   - the sign-in code email: AR- subject without the code, code in the body (HTML and text), no code in the preheader
+//   - every email (staff, booking, partner): the reversed logo, the two fixed legal lines, CR / VAT never breakable or
+//     auto-linked, the number-detection guards (26 Oct 2026)
 //   node scripts/auth-emails-check.mjs
 import { readFileSync } from 'node:fs';
 import { KINDS, goLink, loadContent, renderAuthTemplates } from './auth-templates.mjs';
-import { loginCodeMail } from '../supabase/functions/booking-request/email.ts';
+import { bookingConfirmation, bookingNotification, loginCodeMail, partnerConfirmation } from '../supabase/functions/booking-request/email.ts';
 
 const fails = [];
 let checks = 0;
@@ -22,7 +24,25 @@ const check = (ok, msg) => {
 const c = loadContent();
 const rendered = renderAuthTemplates(c);
 const toml = readFileSync('supabase/config.toml', 'utf8');
-const LOGO = /<img src="(https:\/\/[^"]+\/email\/armada-residence-logo@2x\.png)" width="(\d+)" height="(\d+)" alt="([^"]+)"/;
+const LOGO = /<img src="(https:\/\/[^"]+\/email\/armada-residence-logo-reversed@2x\.png)" width="(\d+)" height="(\d+)" alt="([^"]+)"/;
+
+// every email (26 Oct 2026, Ahmed): the reversed logo on the navy band, two fixed legal lines per language, the CR and VAT
+// numbers never breakable and never auto-linked (no-break span in the text colour + zero-width non-joiners), and the
+// no-detection meta / styles
+const ZWNJ = '&#8204;';
+const protectedNumber = (n) => `<span class="nolink" style="white-space:nowrap; color:inherit; text-decoration:none;">${String(n).replace(/(\d{3})(?=\d)/g, `$1${ZWNJ}`)}</span>`;
+function footerChecks(kind, html, langs = ['ar', 'en']) {
+  check(/armada-residence-logo-reversed@2x\.png/.test(c.email_logo_url) && html.includes(`src="${c.email_logo_url}"`), `${kind}: the header logo is not the reversed PNG`);
+  for (const L of langs) {
+    const g = c.legal[L];
+    check(html.includes(`>${g.entity}</p>`), `${kind}: footer line 1 (${L}) is not the entity alone`);
+    const line2 = `<span style="white-space:nowrap;">${g.cr_label} ${protectedNumber(g.cr)}</span> &middot; <span style="white-space:nowrap;">${g.vat_label} ${protectedNumber(g.vat)}</span>`;
+    check(html.includes(line2), `${kind}: footer line 2 (${L}) is not «${g.cr_label} … · ${g.vat_label} …» with protected numbers`);
+  }
+  check(!html.includes(c.legal.ar.cr) && !html.includes(c.legal.ar.vat), `${kind}: a raw CR / VAT number (auto-linkable) in the HTML`);
+  check(html.includes('<meta name="format-detection" content="telephone=no') && html.includes('a[x-apple-data-detectors]') && html.includes('<body id="body"'), `${kind}: number-detection guards missing`);
+  check(!/©|\{year\}/.test(html.slice(html.lastIndexOf('<tr><td class="pxf" align="center"'))), `${kind}: the old © {year} legal line is back`);
+}
 
 for (const kind of KINDS) {
   const file = readFileSync(`supabase/templates/${kind}.html`, 'utf8');
@@ -39,7 +59,7 @@ for (const kind of KINDS) {
   check(!/\.svg/i.test(html), `${kind}: an SVG reference`);
   check(/bgcolor="#142A3B"/.test(html) && /background:#F3EFE7/.test(html), `${kind}: navy header / porcelain page missing`);
   check(html.includes('background:#976E47'), `${kind}: bronze button missing`);
-  check(html.includes(String(c.legal_line.ar).split('{year}')[1].trim().slice(0, 20)), `${kind}: legal footer line missing`);
+  footerChecks(kind, html);
   check(/<div dir="ltr" lang="en" style="text-align:left;/.test(html) && /<div dir="rtl" lang="ar" style="text-align:right;/.test(html), `${kind}: the Arabic RTL and English LTR sections are not separate`);
   check(html.includes(S.ar.fallback_label) && html.includes(S.en.fallback_label), `${kind}: fallback label missing`);
   const link = goLink(kind).replace(/&/g, '&amp;');
@@ -65,6 +85,17 @@ check(m.html.includes('>482917<') && m.text.includes('482917'), 'login code: the
 check(!c.staff_email.ar.login_code.preheader.match(/\d{6}/), 'login code: a code in the preheader');
 check(m.html.includes('3:41 مساءً') && m.html.includes('3:41 pm'), 'login code: request time is not 12-hour Riyadh time');
 check(!!m.html.match(LOGO) && /<div dir="ltr" lang="en" style="text-align:left;/.test(m.html), 'login code: logo / English section');
+footerChecks('login code', m.html);
+check(m.text.includes(`${c.legal.ar.entity}
+${c.legal.ar.cr_label} ${c.legal.ar.cr} · ${c.legal.ar.vat_label} ${c.legal.ar.vat}`), 'login code: the text part ends with the two legal lines');
+
+// the booking and partner emails share the same header and footer
+const sample = { ref: 'AR-20991231-TEST', locale: 'ar', branch: 'airport-road', room: 'one-bedroom-suite', check_in: '2099-12-01', check_out: '2099-12-04', nights: 3,
+  adults: 2, children: 0, extraBeds: 0, extraBedFee: 50, needsCoordination: false, capacity: 2, breakfast: 'without', name: 'تجربة النظام', phone: '+966500000000',
+  email: 'guest@example.com', notes: '', receivedAt: 'TEST' };
+footerChecks('booking notification', bookingNotification(c, sample).html, ['ar']);
+footerChecks('booking confirmation', bookingConfirmation(c, sample).html);
+footerChecks('partner confirmation', partnerConfirmation(c, { ...sample, requestType: 'umrah-group', organisation: 'شركة تجربة', roomsRequested: 10, meals: '' }).html);
 
 if (fails.length) {
   console.error(`auth-emails-check: ${fails.length} of ${checks} failed`);

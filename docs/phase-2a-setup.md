@@ -15,7 +15,7 @@ per-branch switches are turned on in the dashboard (Settings → مفاتيح ا
    - Reset password: subject `تعيين كلمة المرور — لوحة أرمادا ريزيدنس — AR-RESET`
    - Magic link / Change email / Confirm signup: not used; leave them, or add `AR-` as well.
    The link in each template must stay `{{ .ConfirmationURL }}` (PKCE); the dashboard receives it on `/set-password`.
-5. **Second step (phase 2a.2, 26 Oct 2026):** a 6-digit code emailed by the `login-code` function to every user after the password (§4c). Multi-Factor → TOTP stays enabled only until step 2 of the rollout, then it is turned off through `supabase/config.toml`.
+5. **Second step (phase 2a.2, 26 Oct 2026):** a 6-digit code emailed by the `login-code` function to every user after the password (§4c). Multi-Factor → TOTP is off (declared in `supabase/config.toml`, pushed with `config push`).
 6. **Sessions (optional):** inactivity timeout 12 h to match the dashboard's idle sign-out.
 
 ## 2. Users (dashboard → المستخدمون, or by the admin-users function)
@@ -113,19 +113,23 @@ every later click said «الرابط غير صالح أو منتهي» (DECISIO
   current session verified — find it with `select id, created_at from auth.sessions where user_id = '<admin id>'
   order by created_at desc limit 1;` then `insert into internal.verified_sessions (session_id, user_id, method)
   values ('<session id>', '<admin id>', 'code');` — and fix delivery from the dashboard.
-- **Rollout (Ahmed, 26 Oct 2026):** step 1 is live: the email code works alongside TOTP sessions. Step 2 —
-  `supabase/rollout/phase2a2-step2-totp-off.sql` — runs only after Ahmed has signed in with an email code and saved
-  his backup codes (the script refuses otherwise); then `[auth.mfa.totp] enroll_enabled = false / verify_enabled =
-  false` in `supabase/config.toml` and `supabase config push`.
+- **Rollout (Ahmed, 26 Oct 2026):** step 1 put the email code live alongside TOTP sessions; step 2 (migration
+  `20261026000600`, guarded: every active admin needs an email-code sign-in and backup codes) ran the same evening
+  after Ahmed's sign-in: TOTP is off in Auth (`[auth.mfa.totp]` in `supabase/config.toml`), the factors are deleted and
+  an aal2 claim alone passes nothing.
 
 ## 4d. Staff emails (invite, reset, code) — one layout, 26 Oct 2026
 
+Every email — the two Auth templates, the code, the booking / partner / alert emails — shares one header (the reversed logo
+`armada-residence-logo-reversed@2x.png`: porcelain wordmark, bronze mark, 360 × 81 shown at 180 × 41) and one footer (two
+fixed lines per language: the entity, then «السجل التجاري … · الرقم الضريبي …»; each number in a no-break span with
+zero-width non-joiners so mail clients do not turn it into a link; `format-detection` meta and data-detector styles).
 The two Auth templates are generated from the booking emails' layout: `node scripts/auth-templates.mjs` writes
 `supabase/templates/invite.html` / `recovery.html` from `supabase/functions/booking-request/email.ts` (`staffLinkMail`)
 and `content/ui.json → staff_email`; `scripts/auth-emails-check.mjs` (mandatory suite) fails when they drift. Push with
 `supabase config push --project-ref <ref>` (declared keys only). The logo is the hosted PNG of the booking emails
 (`email_logo_url`, the GitHub Pages site until the domain switch — then set `EMAIL_ASSETS_BASE`, rebuild, regenerate
-the templates and push again). The footer year is fixed when the templates are generated: regenerate in January.
+the templates and push again). The footer carries no year since 26 Oct 2026.
 
 ## 5. GTM — booking_confirmed (container GTM-5JVH7R37)
 

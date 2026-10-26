@@ -124,7 +124,7 @@ function pluralForm(forms: Record<string, string>, n: number): string {
 }
 const wa = (e164: string, text?: string) => `https://wa.me/${String(e164).replace(/\D/g, '')}${text ? `?text=${encodeURIComponent(text)}` : ''}`;
 const tel = (e164: string) => `tel:${String(e164).replace(/[^\d+]/g, '')}`;
-const year = () => String(new Date().getFullYear());
+
 
 function branchOf(c: Content, slug: string) {
   return c.branches.find((b: { slug: string }) => b.slug === slug) ?? c.branches[0];
@@ -154,6 +154,7 @@ function doc(opts: { lang: Locale; title: string; preheader: string; body: strin
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="x-apple-disable-message-reformatting">
+<meta name="format-detection" content="telephone=no, date=no, address=no, email=no, url=no">
 <meta name="color-scheme" content="light dark">
 <meta name="supported-color-schemes" content="light dark">
 <title>${esc(opts.title)}</title>
@@ -166,6 +167,7 @@ function doc(opts: { lang: Locale; title: string; preheader: string; body: strin
   @media (max-width: 520px) {
     .container { width:100% !important; }
     .px { padding-left:20px !important; padding-right:20px !important; }
+    .pxf { padding-left:8px !important; padding-right:8px !important; }
     .stack, .stack > tbody, .stack > tbody > tr, .stack td.btn-cell { display:block !important; width:100% !important; }
     .stack td.btn-cell { padding:0 0 10px 0 !important; }
     .stack td.btn-cell a { display:block !important; }
@@ -189,9 +191,13 @@ function doc(opts: { lang: Locale; title: string; preheader: string; body: strin
   [data-ogsc] .bg-soft { background:#0F1F2B !important; }
   [data-ogsc] .t-ink { color:#F3EFE7 !important; }
   [data-ogsc] .t-muted { color:#C7CFD6 !important; }
+  /* numbers a client might auto-link (CR, VAT, refs): keep the text colour, no underline (Apple, Gmail, Outlook.com) */
+  a[x-apple-data-detectors] { color:inherit !important; text-decoration:none !important; font-size:inherit !important; font-family:inherit !important; font-weight:inherit !important; line-height:inherit !important; }
+  u + #body a, #MessageViewBody a { color:inherit; text-decoration:none; font-size:inherit; font-family:inherit; font-weight:inherit; line-height:inherit; }
+  .nolink, .nolink a { color:inherit !important; text-decoration:none !important; }
 </style>
 </head>
-<body class="bg-page" style="margin:0; padding:0; background:${PORCELAIN};">
+<body id="body" class="bg-page" style="margin:0; padding:0; background:${PORCELAIN};">
 <div style="display:none; font-size:1px; line-height:1px; max-height:0; max-width:0; opacity:0; overflow:hidden; mso-hide:all;">${esc(opts.preheader)}${spacer}</div>
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" class="bg-page" bgcolor="${PORCELAIN}" style="background:${PORCELAIN};">
 <tr><td align="center" style="padding:24px 12px;">
@@ -218,11 +224,31 @@ function card(inner: string): string {
   return `<tr><td class="bg-card px" bgcolor="${WHITE}" style="background:${WHITE}; padding:32px 36px;">${inner}</td></tr>`;
 }
 
+/** A number that must neither wrap nor turn into a link: no-break span in the text colour, a zero-width non-joiner
+ * after every 3 digits (invisible; it stops Gmail's and others' number detection). */
+function plainNumber(n: string): string {
+  return `<span class="nolink" style="white-space:nowrap; color:inherit; text-decoration:none;">${esc(String(n)).replace(/(\d{3})(?=\d)/g, '$1&#8204;')}</span>`;
+}
+/** The legal block of every email (Ahmed, 26 Oct 2026): two fixed lines per language — the entity, then
+ * «{CR label} {cr} · {VAT label} {vat}»; each label + number pair never wraps. From legal.json (content.generated → legal). */
 function footer(c: Content, langs: Locale[]): string {
+  const p = (L: Locale, inner: string, last: boolean, size: number) =>
+    `<p dir="${L === 'ar' ? 'rtl' : 'ltr'}" class="t-muted" style="margin:0 0 ${last ? 10 : 2}px; font-family:${FONT[L]}; font-size:${size}px; line-height:18px; color:${MUTED};">${inner}</p>`;
   const lines = langs
-    .map((L) => `<p dir="${L === 'ar' ? 'rtl' : 'ltr'}" class="t-muted" style="margin:0 0 6px; font-family:${FONT[L]}; font-size:12px; line-height:18px; color:${MUTED};">${esc(fill(c.legal_line[L], { year: year() }))}</p>`)
+    .map((L) => {
+      const g = c.legal[L];
+      const pair = (label: string, n: string) => `<span style="white-space:nowrap;">${esc(label)} ${plainNumber(n)}</span>`;
+      return p(L, esc(g.entity), false, 12) + p(L, `${pair(g.cr_label, g.cr)} &middot; ${pair(g.vat_label, g.vat)}`, true, 11);
+    })
     .join('');
-  return `<tr><td class="px" align="center" style="padding:20px 36px 8px; text-align:center;">${lines}</td></tr>`;
+  // .pxf: narrower side padding on phones, so the numbers line stays one line from 360 px up (below that it can only
+  // break at the «·», never inside a number)
+  return `<tr><td class="pxf" align="center" style="padding:20px 36px 8px; text-align:center;">${lines}</td></tr>`;
+}
+/** the same two lines for the text/plain part */
+function legalText(c: Content, L: Locale): string {
+  const g = c.legal[L];
+  return `${g.entity}\n${g.cr_label} ${g.cr} · ${g.vat_label} ${g.vat}`;
 }
 
 function section(L: Locale, inner: string): string {
@@ -442,7 +468,7 @@ ${para(L, M.guest_footer, { muted: true, size: 13 })}`,
     preheader: fill(c.email.ar.preheader_guest, { ref: d.ref }),
     body: header(c) + card(`${ar.html}${langDivider()}${en.html}`) + footer(c, ['ar', 'en']),
   });
-  const text = `${ar.text}\n\n${RULE}\n\n${en.text}\n\n${fill(c.legal_line.ar, { year: year() })}\n${fill(c.legal_line.en, { year: year() })}`;
+  const text = `${ar.text}\n\n${RULE}\n\n${en.text}\n\n${legalText(c, 'ar')}\n${legalText(c, 'en')}`;
   return { subject, html, text };
 }
 
@@ -550,7 +576,7 @@ ${para(L, M.partner_guest_footer, { muted: true, size: 13 })}`,
     preheader: fill(c.email.ar.preheader_partner, { ref: d.ref }),
     body: header(c) + card(`${ar.html}${langDivider()}${en.html}`) + footer(c, ['ar', 'en']),
   });
-  const text = `${ar.text}\n\n${RULE}\n\n${en.text}\n\n${fill(c.legal_line.ar, { year: year() })}\n${fill(c.legal_line.en, { year: year() })}`;
+  const text = `${ar.text}\n\n${RULE}\n\n${en.text}\n\n${legalText(c, 'ar')}\n${legalText(c, 'en')}`;
   return { subject, html, text };
 }
 
@@ -677,7 +703,7 @@ ${para(L, M.confirmed_footer, { muted: true, size: 13 })}`,
     preheader: fill(c.email.ar.preheader_confirmed, { ref: d.ref }),
     body: header(c) + card(`${ar.html}${langDivider()}${en.html}`) + footer(c, ['ar', 'en']),
   });
-  const text = `${ar.text}\n\n${RULE}\n\n${en.text}\n\n${fill(c.legal_line.ar, { year: year() })}\n${fill(c.legal_line.en, { year: year() })}`;
+  const text = `${ar.text}\n\n${RULE}\n\n${en.text}\n\n${legalText(c, 'ar')}\n${legalText(c, 'en')}`;
   return { subject, html, text };
 }
 
@@ -805,7 +831,7 @@ ${buttons(L, [button(L, wa(b.whatsapp, waText), M.wa_button, 'solid')])}`,
   const en = block('en');
   const subject = fill(c.email.ar.cancel_subject, { ref: d.ref });
   const html = doc({ lang: 'ar', title: subject, preheader: fill(c.email.ar.preheader_cancel, { ref: d.ref }), body: header(c) + card(`${ar.html}${langDivider()}${en.html}`) + footer(c, ['ar', 'en']) });
-  const text = `${ar.text}\n\n${RULE}\n\n${en.text}\n\n${fill(c.legal_line.ar, { year: year() })}\n${fill(c.legal_line.en, { year: year() })}`;
+  const text = `${ar.text}\n\n${RULE}\n\n${en.text}\n\n${legalText(c, 'ar')}\n${legalText(c, 'en')}`;
   return { subject, html, text };
 }
 
@@ -860,7 +886,7 @@ ${para(L, S.ignore, { muted: true, size: 13 })}`,
     preheader: c.staff_email.ar[d.kind].preheader,
     body: header(c, c.brand.ar) + card(`${ar.html}${langDivider()}${en.html}`) + footer(c, ['ar', 'en']),
   });
-  const text = `${ar.text}\n\n${RULE}\n\n${en.text}\n\n${fill(c.legal_line.ar, { year: year() })}\n${fill(c.legal_line.en, { year: year() })}`;
+  const text = `${ar.text}\n\n${RULE}\n\n${en.text}\n\n${legalText(c, 'ar')}\n${legalText(c, 'en')}`;
   return { subject, html, text };
 }
 
@@ -907,6 +933,6 @@ ${para(L, S.ignore, { muted: true, size: 13 })}`,
     preheader: c.staff_email.ar.login_code.preheader,
     body: header(c, c.brand.ar) + card(`${ar.html}${langDivider()}${en.html}`) + footer(c, ['ar', 'en']),
   });
-  const text = `${ar.text}\n\n${RULE}\n\n${en.text}\n\n${fill(c.legal_line.ar, { year: year() })}\n${fill(c.legal_line.en, { year: year() })}`;
+  const text = `${ar.text}\n\n${RULE}\n\n${en.text}\n\n${legalText(c, 'ar')}\n${legalText(c, 'en')}`;
   return { subject, html, text };
 }

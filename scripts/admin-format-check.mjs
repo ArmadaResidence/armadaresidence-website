@@ -6,7 +6,7 @@
 // Node ≥ 22.18 strips the TypeScript types of the imported sources.
 import { countWord, nightsWord, roomsWord, rowsWord, bookingsWord, roomsLeft, roomsBooked, adultsWord, childrenWord, DAY, ROOM_TYPE } from '../admin/src/lib/format.ts';
 import { arabicAuth, arabicError, CONNECTION, GENERIC } from '../admin/src/lib/errors.ts';
-import { attemptsWord, changesWord, codesWord, devicesWord, minutesWord, secondsWord } from '../admin/src/lib/format.ts';
+import { attemptsWord, changesWord, codesWord, devicesWord, minutesWord, secondsWord, YEAR } from '../admin/src/lib/format.ts';
 import { BACKUP_TEXT, CODE_TEXT, SECURITY_TEXT } from '../admin/src/lib/secondStep.ts';
 import { deviceLabel, maskEmail } from '../admin/src/lib/device.ts';
 import { PASSWORD_LEAK_NOTE, PASSWORD_MATCH, PASSWORD_RULES, PASSWORD_WEAK, passwordChecks, passwordOk, passwordProblem, passwordRefusal } from '../admin/src/lib/password.ts';
@@ -99,6 +99,7 @@ for (const [name, fn, want] of [
   ['codesWord', codesWord, ['لا رموز', 'رمز واحد', 'رمزان', '3 رموز', '10 رموز', '11 رمزًا', '100 رمز']],
   ['devicesWord', devicesWord, ['لا أجهزة', 'جهاز واحد', 'جهازان', '3 أجهزة', '10 أجهزة', '11 جهازًا', '100 جهاز']],
   ['changesWord', changesWord, ['لا تغييرات', 'تغيير واحد', 'تغييران', '3 تغييرات', '10 تغييرات', '11 تغييرًا', '100 تغيير']],
+  ['countWord(YEAR) after «حتى»', (n) => countWord(n, YEAR), ['أقل من سنة', 'سنة واحدة', 'سنتين', '3 سنوات', '10 سنوات', '11 سنة', '100 سنة']],
 ]) N2.forEach((n, i) => eq(`${name}(${n})`, fn(n), want[i]));
 eq('code wrong 4', CODE_TEXT.wrong(4), 'الرمز غير صحيح. بقيت 4 محاولات.');
 eq('code wrong 1', CODE_TEXT.wrong(1), 'الرمز غير صحيح. بقيت محاولة واحدة.');

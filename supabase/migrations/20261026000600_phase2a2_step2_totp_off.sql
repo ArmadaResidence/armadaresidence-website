@@ -1,14 +1,10 @@
 -- Phase 2a.2 C — STEP 2: TOTP off for everyone (docs/phase-2a2-plan.md §C.9; Ahmed, 26 Oct 2026, decision 4).
 --
--- NOT a migration file on purpose: it is applied by hand, only after Ahmed has signed in with an email code and his
--- backup codes exist. The guard below refuses otherwise, so an admin can never be locked out. After it ran, move this
--- file into supabase/migrations/ with the version the apply recorded, and declare in supabase/config.toml
---   [auth.mfa.totp]
---   enroll_enabled = false
---   verify_enabled = false
--- then `supabase config push` (declared keys only; preview with `supabase config diff`).
---
--- Apply: Supabase MCP apply_migration (name phase2a2_step2_totp_off) or `supabase db push` after moving the file.
+-- Applied after Ahmed signed in with an email code and saved his backup codes (26 Oct 2026, his go-ahead the same
+-- evening). From here only a verified session (email code, remembered device or an admin backup code) passes
+-- internal.me(); an aal2 (TOTP) claim alone no longer does. supabase/config.toml declares
+-- [auth.mfa.totp] enroll_enabled = false / verify_enabled = false, pushed with `supabase config push`.
+-- The guard below still refuses to run while an active admin has no email-code sign-in or no backup codes.
 
 -- guard: every active admin (users:edit) has passed an email code and holds unused backup codes
 do $$
@@ -51,5 +47,6 @@ language sql stable security definer set search_path = '' as $$
    where s.user_id = auth.uid()
 $$;
 
--- the enrolled TOTP factors (Ahmed's one factor on 26 Oct 2026); their aal2 sessions stop counting with the change above
+-- every TOTP factor (26 Oct 2026: Ahmed's verified one and the sales account's unverified one); their aal2 sessions stop
+-- counting with the change above. No auth user is touched.
 delete from auth.mfa_factors;

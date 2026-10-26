@@ -247,7 +247,8 @@ async function rateLimited(req: Request): Promise<boolean> {
 // With a valid test token only. Renders the three staff emails through the SAME builders as the Auth templates and the
 // login-code function (email.ts → staffLinkMail / loginCodeMail) with sample values — a reset / invite link that
 // verifies nothing, the code 482917 — and sends each with the subject «[TEST] …» from no-reply@ to the given addresses.
-// Recipients: the armadaresidence.com domain or an existing dashboard user (Auth) only. Nothing is stored; no Auth user,
+// + one reception notification (sample ref AR-20991231-TEST). Recipients: the armadaresidence.com domain or an existing
+// dashboard user (Auth) only. Nothing is stored; no Auth user,
 // token or code is created. 'status' returns Resend's last event for the ids it sent.
 const STAFF_FROM = 'أرمادا ريزيدنس | Armada Residence <no-reply@armadaresidence.com>';
 const ADMIN_BASE = String(content.admin_url).replace(/\/$/, '');
@@ -273,6 +274,12 @@ async function previewStaffEmails(req: Request, p: Payload): Promise<Response> {
     ['invite', staffLinkMail(content, { kind: 'invite', link: `${ADMIN_BASE}/set-password?token_hash=${SAMPLE_TOKEN}&type=invite` })],
     ['recovery', staffLinkMail(content, { kind: 'recovery', link: `${ADMIN_BASE}/set-password?token_hash=${SAMPLE_TOKEN}&type=recovery` })],
     ['login-code', loginCodeMail(content, { code: '482917', requestedAt: new Date().toISOString(), device: 'Chrome · Windows' })],
+    // one reception notification (26 Oct 2026): the booking emails share the same header and footer
+    ['booking-notification', bookingNotification(content, {
+      ref: 'AR-20991231-TEST', locale: 'ar', branch: 'airport-road', room: 'one-bedroom-suite', check_in: '2099-12-01', check_out: '2099-12-04',
+      nights: 3, adults: 2, children: 0, extraBeds: 0, extraBedFee: Number(content.extra_bed_fee) || 0, needsCoordination: false, capacity: 2,
+      breakfast: 'without', name: 'تجربة النظام', phone: '+966500000000', email: '', notes: 'TEST — ignore', receivedAt: 'TEST',
+    } as unknown as Parameters<typeof bookingNotification>[1])],
   ];
   const sent: { kind: string; id: string | null; status: number }[] = [];
   for (const addr of allowed) {

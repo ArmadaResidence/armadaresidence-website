@@ -1,4 +1,4 @@
-// Staff-facing texts of the second step (phase 2a.2 C, 26 Oct 2026; for approval in docs/phase-2a2-copy.md): the code
+// Staff-facing texts of the second step (phase 2a.2 C, 26 Oct 2026; approved by Ahmed the same day, docs/phase-2a2-copy.md): the code
 // screen, the backup codes and «الأمان». Counts through the dashboard's one agreement helper (format.ts). The unit
 // tests (scripts/admin-format-check.mjs) import this file, hence the explicit `.ts` extension.
 import { attemptsWord, codesWord, devicesWord, minutesWord, secondsWord } from './format.ts';

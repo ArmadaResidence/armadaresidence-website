@@ -6,7 +6,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import * as api from '../lib/api';
 import type { DefaultsChange, DefaultsDiff, DefaultsSave } from '../lib/api';
-import { BRANCH_NAMES, changesWord, countWord, nightsWord, riyadhDateTimeLong, sar, time12, type CountNoun } from '../lib/format';
+import { BRANCH_NAMES, changesWord, countWord, nightsWord, riyadhDateTimeLong, sar, time12, YEAR } from '../lib/format';
 import { ErrorBox, Field, Loading, Modal, Spinner, useToast } from './ui';
 
 const SWITCH: Record<string, string> = { show_prices: 'إظهار الأسعار', instant_booking: 'الحجز الفوري' };
@@ -26,7 +26,6 @@ interface Limits {
   same_day_cutoff: string;
   max_nights: number;
 }
-const YEAR: CountNoun = { zero: 'أقل من سنة', one: 'سنة واحدة', two: 'سنتين', few: 'سنوات', many: 'سنة', gen: 'سنة' };
 const tiers = (b: Breakfast | null | undefined) =>
   (b?.child_tiers ?? []).map((t) => `حتى ${countWord(Number(t.max_age), YEAR)}: ${Number(t.price) === 0 ? 'مجانًا' : sar(t.price)}`).join('، ') || '—';
 

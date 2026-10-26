@@ -21,7 +21,7 @@ import {
 } from '../supabase/functions/booking-request/email.ts';
 
 const content = JSON.parse(readFileSync('supabase/functions/booking-request/content.generated.json', 'utf8'));
-content.email_logo_url = pathToFileURL(resolve('public/email/armada-residence-logo@2x.png')).href;
+content.email_logo_url = pathToFileURL(resolve('public/email/armada-residence-logo-reversed@2x.png')).href;
 
 const OUT = 'screenshots/email';
 mkdirSync(OUT, { recursive: true });

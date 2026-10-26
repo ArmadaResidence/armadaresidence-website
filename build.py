@@ -316,6 +316,9 @@ def generate_function_content(content: dict[str, dict]) -> None:
         "cancellation_line": {loc: next(i for i in content["site-texts.json"]["why_armada"]["items"] if i["title_en"] == "Flexible cancellation")[f"body_{loc}"] for loc in ("ar", "en")},
         "partner_reply_line": content["partners-pages.json"]["form"]["sent_body"],
         "legal_line": {loc: content["legal.json"][f"footer_line_{loc}"] for loc in ("ar", "en")},
+        # the two-line email footer (Ahmed, 26 Oct 2026): entity, then CR · VAT — from legal.json, never typed in email.ts
+        "legal": {loc: {"entity": content["legal.json"][f"entity_{loc}"], "cr": content["legal.json"]["cr"], "vat": content["legal.json"]["vat"],
+                        "cr_label": content["legal.json"][f"cr_label_{loc}"], "vat_label": content["legal.json"][f"vat_label_{loc}"]} for loc in ("ar", "en")},
         "brand": {loc: content["legal.json"][f"brand_{loc}"] for loc in ("ar", "en")},
         # extra bed (23 Oct 2026): fee per bed per night from pricing.json, snapshotted on each stored request
         "extra_bed_fee": content["pricing.json"]["extra_bed_per_night"],
@@ -323,7 +326,7 @@ def generate_function_content(content: dict[str, dict]) -> None:
         "wa_prefill": {loc: {"branch": ui[loc]["cta"]["whatsapp_prefill_branch"], "partners": ui[loc]["cta"]["whatsapp_prefill_partners"]} for loc in ("ar", "en")},
         # emails cannot show SVG: a 2x PNG of the approved logo (scripts/email-logo.mjs), hosted on the site. Until
         # the domain switch the site lives on the GitHub Pages project URL; set EMAIL_ASSETS_BASE to the domain then.
-        "email_logo_url": os.environ.get("EMAIL_ASSETS_BASE", "https://armadaresidence.github.io/armadaresidence-website").rstrip("/") + "/email/armada-residence-logo@2x.png",
+        "email_logo_url": os.environ.get("EMAIL_ASSETS_BASE", "https://armadaresidence.github.io/armadaresidence-website").rstrip("/") + "/email/armada-residence-logo-reversed@2x.png",
     }
     FUNC_DIR.mkdir(parents=True, exist_ok=True)
     (FUNC_DIR / "content.generated.json").write_text(json.dumps(out, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")

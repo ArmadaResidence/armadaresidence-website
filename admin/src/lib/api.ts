@@ -22,7 +22,7 @@ export interface Me {
   needs_second_factor: boolean;
   /** the 2a.1 name of the same flag (kept by the database for the functions) */
   needs_mfa: boolean;
-  /** how this session passed: code | device | backup | totp (TOTP until step 2) | null */
+  /** how this session passed: code | device | backup | null ('totp' only during rollout step 1; none since step 2, 26 Oct 2026) */
   second_factor: 'code' | 'device' | 'backup' | 'totp' | null;
   verified_at: string | null;
   email: string | null;

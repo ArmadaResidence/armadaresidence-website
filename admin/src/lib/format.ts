@@ -84,6 +84,8 @@ export const ATTEMPT: CountNoun = { zero: 'لا محاولات', one: 'محاو�
 export const CODE: CountNoun = { zero: 'لا رموز', one: 'رمز واحد', two: 'رمزان', few: 'رموز', many: 'رمزًا', gen: 'رمز' };
 export const DEVICE: CountNoun = { zero: 'لا أجهزة', one: 'جهاز واحد', two: 'جهازان', few: 'أجهزة', many: 'جهازًا', gen: 'جهاز' };
 export const CHANGE: CountNoun = { zero: 'لا تغييرات', one: 'تغيير واحد', two: 'تغييران', few: 'تغييرات', many: 'تغييرًا', gen: 'تغيير' };
+/** a child-age tier after «حتى» (the defaults dialog): genitive dual «سنتين»; 0 = «أقل من سنة» */
+export const YEAR: CountNoun = { zero: 'أقل من سنة', one: 'سنة واحدة', two: 'سنتين', few: 'سنوات', many: 'سنة', gen: 'سنة' };
 export const secondsWord = (n: number) => countWord(n, SECOND);
 export const minutesWord = (n: number) => countWord(n, MINUTE);
 export const attemptsWord = (n: number) => countWord(n, ATTEMPT);

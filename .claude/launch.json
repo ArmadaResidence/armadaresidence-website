@@ -51,6 +51,25 @@
         "dist"
       ],
       "port": 4330
+    },
+    {
+      "name": "admin-branch",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "--prefix",
+        "admin",
+        "run",
+        "dev",
+        "--",
+        "--mode",
+        "branch",
+        "--host",
+        "127.0.0.1",
+        "--port",
+        "5174",
+        "--strictPort"
+      ],
+      "port": 5174
     }
   ]
 }

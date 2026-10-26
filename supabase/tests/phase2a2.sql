@@ -221,11 +221,11 @@ select pg_temp._fails('C6 a malformed hash is refused', $$select public.login_co
 select pg_temp._new_session('stranger');
 select pg_temp._fails('C6 a signed-in non-staff user cannot use the code RPCs', $$select public.verify_login_code('123456')$$, '42501');
 
--- ── C7 STEP 1 transition: a TOTP (aal2) session still counts until step 2 ──
+-- ── C7 STEP 2 (TOTP off, 26 Oct 2026): an aal2 (TOTP) claim alone no longer passes ──
 select pg_temp._new_session('mgmt');
 select set_config('request.jwt.claims', json_build_object('sub', pg_temp._id('mgmt'), 'role', 'authenticated', 'aal', 'aal2', 'session_id', pg_temp._sid('mgmt'))::text, true);
-select pg_temp._check('C7 step 1: an aal2 (TOTP) session still passes; my_staff names it totp', (select count(*) from public.settings) > 0
-  and public.my_staff() ->> 'second_factor' = 'totp' and not (public.my_staff() ->> 'needs_second_factor')::boolean);
+select pg_temp._check('C7 step 2: an aal2 (TOTP) session without the email code sees nothing and is asked for the code', (select count(*) from public.settings) = 0
+  and (public.my_staff() ->> 'needs_second_factor')::boolean and public.my_staff() ->> 'second_factor' is null);
 
 -- ── C8 the three factor states (Ahmed: the sales account has none) all sign in with password + email code ──
 select pg_temp._new_session('fx_none');
