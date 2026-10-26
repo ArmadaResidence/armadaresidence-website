@@ -1,37 +1,72 @@
-<!doctype html>
-<html lang="ar" dir="rtl">
-  <body style="margin:0;padding:24px;background:#f3efe7;font-family:'IBM Plex Sans Arabic',Tahoma,Arial,sans-serif;color:#142a3b;">
-    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:600px;margin:0 auto;background:#ffffff;border:1px solid #ddd5c8;border-radius:12px;">
-      <tr>
-        <td style="padding:28px 28px 8px;text-align:center;">
-          <img src="https://armadaresidence.com/email/armada-residence-logo@2x.png" width="220" alt="أرمادا ريزيدنس | Armada Residence" style="max-width:220px;height:auto;" />
-        </td>
-      </tr>
-      <tr>
-        <td style="padding:8px 28px 0;font-size:18px;font-weight:700;text-align:right;">تعيين كلمة المرور — لوحة تحكم أرمادا ريزيدنس</td>
-      </tr>
-      <tr>
-        <td style="padding:12px 28px 0;font-size:15px;line-height:1.8;text-align:right;">
-          طُلب رابط لتعيين كلمة مرور جديدة لحسابك في لوحة التحكم. اضغط الزر ثم اختر كلمة المرور. الرابط صالح لمرة واحدة خلال 24 ساعة.
-        </td>
-      </tr>
-      <tr>
-        <td style="padding:20px 28px;text-align:center;">
-          <a href="{{ .SiteURL }}/set-password?token_hash={{ .TokenHash }}&amp;type=recovery" style="display:inline-block;background:#976e47;color:#ffffff;text-decoration:none;font-weight:700;font-size:15px;padding:14px 28px;border-radius:6px;">تعيين كلمة المرور</a>
-        </td>
-      </tr>
-      <tr>
-        <td style="padding:0 28px 8px;font-size:13px;line-height:1.8;color:#3f5262;text-align:right;">
-          إن لم يعمل الزر، انسخ هذا الرابط إلى المتصفح:<br />
-          <span style="direction:ltr;unicode-bidi:embed;word-break:break-all;font-family:Manrope,Arial,sans-serif;">{{ .SiteURL }}/set-password?token_hash={{ .TokenHash }}&amp;type=recovery</span>
-        </td>
-      </tr>
-      <tr>
-        <td style="padding:8px 28px 24px;font-size:13px;line-height:1.8;color:#3f5262;text-align:right;">
-          إن لم تطلب هذا الرابط فتجاهل الرسالة؛ كلمة مرورك لن تتغير.<br />
-          <span style="direction:ltr;unicode-bidi:embed;">Armada Residence Dashboard — a password reset was requested for your account. Press the button to choose a new password; the link works once within 24 hours. If you did not ask for it, ignore this email.</span>
-        </td>
-      </tr>
-    </table>
-  </body>
+<!DOCTYPE html>
+<html lang="ar" dir="rtl" xmlns="http://www.w3.org/1999/xhtml" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="x-apple-disable-message-reformatting">
+<meta name="color-scheme" content="light dark">
+<meta name="supported-color-schemes" content="light dark">
+<title>تعيين كلمة المرور — لوحة أرمادا ريزيدنس — AR-RESET</title>
+<!--[if mso]><noscript><xml><o:OfficeDocumentSettings><o:PixelsPerInch>96</o:PixelsPerInch></o:OfficeDocumentSettings></xml></noscript><![endif]-->
+<style>
+  body { margin:0; padding:0; width:100% !important; -webkit-text-size-adjust:100%; -ms-text-size-adjust:100%; }
+  table { border-collapse:collapse; mso-table-lspace:0pt; mso-table-rspace:0pt; }
+  img { border:0; outline:none; text-decoration:none; -ms-interpolation-mode:bicubic; }
+  a { text-decoration:none; }
+  @media (max-width: 520px) {
+    .container { width:100% !important; }
+    .px { padding-left:20px !important; padding-right:20px !important; }
+    .stack, .stack > tbody, .stack > tbody > tr, .stack td.btn-cell { display:block !important; width:100% !important; }
+    .stack td.btn-cell { padding:0 0 10px 0 !important; }
+    .stack td.btn-cell a { display:block !important; }
+    .kv td { display:block !important; width:100% !important; padding:2px 0 !important; }
+    .kv td.k { padding-top:10px !important; }
+  }
+  @media (prefers-color-scheme: dark) {
+    .bg-page { background:#0F1F2B !important; }
+    .bg-card { background:#182F41 !important; }
+    .bg-soft { background:#0F1F2B !important; }
+    .t-ink { color:#F3EFE7 !important; }
+    .t-muted { color:#C7CFD6 !important; }
+    .t-bronze { color:#C9A27A !important; }
+    .bd { border-color:#2A4357 !important; }
+    .pill { background:#0F1F2B !important; color:#F3EFE7 !important; }
+    .btn-ghost { background:#182F41 !important; color:#F3EFE7 !important; }
+    .btn-solid { background:#976E47 !important; border-color:#976E47 !important; }
+  }
+  [data-ogsc] .bg-page { background:#0F1F2B !important; }
+  [data-ogsc] .bg-card { background:#182F41 !important; }
+  [data-ogsc] .bg-soft { background:#0F1F2B !important; }
+  [data-ogsc] .t-ink { color:#F3EFE7 !important; }
+  [data-ogsc] .t-muted { color:#C7CFD6 !important; }
+</style>
+</head>
+<body class="bg-page" style="margin:0; padding:0; background:#F3EFE7;">
+<div style="display:none; font-size:1px; line-height:1px; max-height:0; max-width:0; opacity:0; overflow:hidden; mso-hide:all;">رابط لتعيين كلمة مرور جديدة، صالح لمرة واحدة خلال 24 ساعة.&#8199;&#65279;&#847;&#8199;&#65279;&#847;&#8199;&#65279;&#847;&#8199;&#65279;&#847;&#8199;&#65279;&#847;&#8199;&#65279;&#847;&#8199;&#65279;&#847;&#8199;&#65279;&#847;&#8199;&#65279;&#847;&#8199;&#65279;&#847;&#8199;&#65279;&#847;&#8199;&#65279;&#847;&#8199;&#65279;&#847;&#8199;&#65279;&#847;&#8199;&#65279;&#847;&#8199;&#65279;&#847;&#8199;&#65279;&#847;&#8199;&#65279;&#847;&#8199;&#65279;&#847;&#8199;&#65279;&#847;&#8199;&#65279;&#847;&#8199;&#65279;&#847;&#8199;&#65279;&#847;&#8199;&#65279;&#847;&#8199;&#65279;&#847;&#8199;&#65279;&#847;&#8199;&#65279;&#847;&#8199;&#65279;&#847;&#8199;&#65279;&#847;&#8199;&#65279;&#847;&#8199;&#65279;&#847;&#8199;&#65279;&#847;&#8199;&#65279;&#847;&#8199;&#65279;&#847;&#8199;&#65279;&#847;&#8199;&#65279;&#847;&#8199;&#65279;&#847;&#8199;&#65279;&#847;&#8199;&#65279;&#847;&#8199;&#65279;&#847;</div>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" class="bg-page" bgcolor="#F3EFE7" style="background:#F3EFE7;">
+<tr><td align="center" style="padding:24px 12px;">
+<!--[if mso]><table role="presentation" width="600" align="center" cellpadding="0" cellspacing="0" border="0"><tr><td><![endif]-->
+<table role="presentation" class="container" width="600" cellpadding="0" cellspacing="0" border="0" style="width:100%; max-width:600px;">
+<tr><td bgcolor="#142A3B" align="center" style="background:#142A3B; padding:28px 24px;">
+<img src="https://armadaresidence.github.io/armadaresidence-website/email/armada-residence-logo@2x.png" width="180" height="41" alt="أرمادا ريزيدنس" style="display:block; margin:0 auto; width:180px; max-width:180px; height:auto; color:#F3EFE7; font-family:Manrope, 'Segoe UI', Helvetica, Arial, sans-serif; font-size:18px;">
+</td></tr>
+<tr><td bgcolor="#A97C50" height="2" style="background:#A97C50; height:2px; font-size:0; line-height:0;">&nbsp;</td></tr><tr><td class="bg-card px" bgcolor="#FFFFFF" style="background:#FFFFFF; padding:32px 36px;"><div dir="rtl" lang="ar" style="text-align:right; font-family:'IBM Plex Sans Arabic', 'Segoe UI', Tahoma, Arial, sans-serif;"><h1 class="t-ink" style="margin:0 0 12px; font-family:'IBM Plex Sans Arabic', 'Segoe UI', Tahoma, Arial, sans-serif; font-size:24px; line-height:32px; font-weight:700; color:#142A3B;">تعيين كلمة المرور — لوحة تحكم أرمادا ريزيدنس</h1>
+<p class="t-ink" style="margin:0 0 14px; font-family:'IBM Plex Sans Arabic', 'Segoe UI', Tahoma, Arial, sans-serif; font-size:16px; line-height:26px; color:#142A3B;">طُلب رابط لتعيين كلمة مرور جديدة لحسابك في لوحة التحكم. اضغط الزر ثم اختر كلمة المرور. الرابط صالح لمرة واحدة خلال 24 ساعة.</p>
+<table role="presentation" cellpadding="0" cellspacing="0" border="0" class="stack" dir="rtl" style="margin:6px 0 4px;"><tr><td class="btn-cell" style="padding-left:10px;"><!--[if mso]><v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" xmlns:w="urn:schemas-microsoft-com:office:word" href="{{ .SiteURL }}/set-password?token_hash={{ .TokenHash }}&amp;type=recovery" style="height:44px; v-text-anchor:middle; width:201px;" arcsize="10%" stroke="f" fillcolor="#976E47"><w:anchorlock/><center style="color:#FFFFFF; font-family:Arial, sans-serif; font-size:15px; font-weight:bold;">تعيين كلمة المرور</center></v:roundrect><![endif]--><!--[if !mso]><!-- --><a href="{{ .SiteURL }}/set-password?token_hash={{ .TokenHash }}&amp;type=recovery" target="_blank" class="btn-solid" style="display:inline-block; padding:12px 22px; border:1px solid #976E47; border-radius:4px; background:#976E47; color:#FFFFFF; font-family:'IBM Plex Sans Arabic', 'Segoe UI', Tahoma, Arial, sans-serif; font-size:15px; line-height:20px; font-weight:700; text-decoration:none; text-align:center;">تعيين كلمة المرور</a><!--<![endif]--></td></tr></table>
+<p class="t-muted" style="margin:18px 0 4px; font-family:'IBM Plex Sans Arabic', 'Segoe UI', Tahoma, Arial, sans-serif; font-size:13px; line-height:20px; color:#4A5A66;">إن لم يعمل الزر، انسخ هذا الرابط:</p>
+<p dir="ltr" style="margin:0 0 6px; text-align:right; font-family:Manrope, 'Segoe UI', Helvetica, Arial, sans-serif; font-size:12px; line-height:18px; color:#4A5A66; word-break:break-all; overflow-wrap:anywhere;"><a href="{{ .SiteURL }}/set-password?token_hash={{ .TokenHash }}&amp;type=recovery" target="_blank" class="t-bronze" style="color:#8A6239; text-decoration:underline; word-break:break-all; overflow-wrap:anywhere;">{{ .SiteURL }}/set-password?token_hash={{ .TokenHash }}&amp;type=recovery</a></p>
+<div style="height:12px; line-height:12px; font-size:0;">&nbsp;</div>
+<p class="t-muted" style="margin:0 0 14px; font-family:'IBM Plex Sans Arabic', 'Segoe UI', Tahoma, Arial, sans-serif; font-size:13px; line-height:23px; color:#4A5A66;">إن لم تطلب هذا الرابط فتجاهل الرسالة؛ كلمة مرورك لن تتغير.</p></div><div style="height:28px; line-height:28px; font-size:0;">&nbsp;</div><table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td height="1" style="height:1px; background:#A97C50; font-size:0; line-height:0;">&nbsp;</td></tr></table><div style="height:28px; line-height:28px; font-size:0;">&nbsp;</div><div dir="ltr" lang="en" style="text-align:left; font-family:Manrope, 'Segoe UI', Helvetica, Arial, sans-serif;"><h1 class="t-ink" style="margin:0 0 12px; font-family:Manrope, 'Segoe UI', Helvetica, Arial, sans-serif; font-size:24px; line-height:32px; font-weight:700; color:#142A3B;">Set your password — Armada Residence dashboard</h1>
+<p class="t-ink" style="margin:0 0 14px; font-family:Manrope, 'Segoe UI', Helvetica, Arial, sans-serif; font-size:16px; line-height:26px; color:#142A3B;">A password reset was requested for your dashboard account. Press the button to choose a new password. The link works once within 24 hours.</p>
+<table role="presentation" cellpadding="0" cellspacing="0" border="0" class="stack" dir="ltr" style="margin:6px 0 4px;"><tr><td class="btn-cell" style="padding-right:10px;"><!--[if mso]><v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" xmlns:w="urn:schemas-microsoft-com:office:word" href="{{ .SiteURL }}/set-password?token_hash={{ .TokenHash }}&amp;type=recovery" style="height:44px; v-text-anchor:middle; width:237px;" arcsize="10%" stroke="f" fillcolor="#976E47"><w:anchorlock/><center style="color:#FFFFFF; font-family:Arial, sans-serif; font-size:15px; font-weight:bold;">Choose a new password</center></v:roundrect><![endif]--><!--[if !mso]><!-- --><a href="{{ .SiteURL }}/set-password?token_hash={{ .TokenHash }}&amp;type=recovery" target="_blank" class="btn-solid" style="display:inline-block; padding:12px 22px; border:1px solid #976E47; border-radius:4px; background:#976E47; color:#FFFFFF; font-family:Manrope, 'Segoe UI', Helvetica, Arial, sans-serif; font-size:15px; line-height:20px; font-weight:700; text-decoration:none; text-align:center;">Choose a new password</a><!--<![endif]--></td></tr></table>
+<p class="t-muted" style="margin:18px 0 4px; font-family:Manrope, 'Segoe UI', Helvetica, Arial, sans-serif; font-size:13px; line-height:20px; color:#4A5A66;">If the button does not work, copy this link:</p>
+<p dir="ltr" style="margin:0 0 6px; text-align:left; font-family:Manrope, 'Segoe UI', Helvetica, Arial, sans-serif; font-size:12px; line-height:18px; color:#4A5A66; word-break:break-all; overflow-wrap:anywhere;"><a href="{{ .SiteURL }}/set-password?token_hash={{ .TokenHash }}&amp;type=recovery" target="_blank" class="t-bronze" style="color:#8A6239; text-decoration:underline; word-break:break-all; overflow-wrap:anywhere;">{{ .SiteURL }}/set-password?token_hash={{ .TokenHash }}&amp;type=recovery</a></p>
+<div style="height:12px; line-height:12px; font-size:0;">&nbsp;</div>
+<p class="t-muted" style="margin:0 0 14px; font-family:Manrope, 'Segoe UI', Helvetica, Arial, sans-serif; font-size:13px; line-height:23px; color:#4A5A66;">If you did not ask for it, ignore this email; your password will not change.</p></div></td></tr><tr><td class="px" align="center" style="padding:20px 36px 8px; text-align:center;"><p dir="rtl" class="t-muted" style="margin:0 0 6px; font-family:'IBM Plex Sans Arabic', 'Segoe UI', Tahoma, Arial, sans-serif; font-size:12px; line-height:18px; color:#4A5A66;">© 2026 شركة أرمادا ريزيدنس لتشغيل الفنادق — السجل التجاري 4032276628 — الرقم الضريبي 312154414400003</p><p dir="ltr" class="t-muted" style="margin:0 0 6px; font-family:Manrope, 'Segoe UI', Helvetica, Arial, sans-serif; font-size:12px; line-height:18px; color:#4A5A66;">© 2026 Armada Residence Company To Operate Hotels — CR 4032276628 — VAT 312154414400003</p></td></tr>
+</table>
+<!--[if mso]></td></tr></table><![endif]-->
+</td></tr>
+</table>
+</body>
 </html>

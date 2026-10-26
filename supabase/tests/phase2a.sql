@@ -15,9 +15,23 @@ create function pg_temp._check(p_test text, p_ok boolean, p_detail text default 
 language sql as $$ insert into _r (test, ok, detail) values (p_test, coalesce(p_ok, false), p_detail) $$;
 create function pg_temp._id(p_k text) returns uuid language sql stable as $$ select id from _ids where k = p_k $$;
 create function pg_temp._j(p_k text) returns jsonb language sql stable as $$ select j from _res where k = p_k $$;
+-- phase 2a.2 (26 Oct 2026): the second step is a VERIFIED SESSION (internal.verified_sessions on a live auth.sessions
+-- row), no longer the aal claim. p_aal 'aal2' = this user's session passed the email code; anything else = password only.
 create function pg_temp._as(p_k text, p_aal text default 'aal2') returns void language plpgsql as $$
+declare v_sid uuid;
 begin
-  perform set_config('request.jwt.claims', json_build_object('sub', pg_temp._id(p_k), 'role', 'authenticated', 'aal', p_aal)::text, true);
+  perform set_config('role', 'postgres', true);
+  select s.id into v_sid from auth.sessions s where s.user_id = pg_temp._id(p_k) order by s.created_at, s.id limit 1;
+  if v_sid is null then
+    v_sid := gen_random_uuid();
+    insert into auth.sessions (id, user_id, created_at, updated_at) values (v_sid, pg_temp._id(p_k), now(), now());
+  end if;
+  if p_aal = 'aal2' then
+    insert into internal.verified_sessions (session_id, user_id, method) values (v_sid, pg_temp._id(p_k), 'code') on conflict (session_id) do nothing;
+  else
+    delete from internal.verified_sessions where session_id = v_sid;
+  end if;
+  perform set_config('request.jwt.claims', json_build_object('sub', pg_temp._id(p_k), 'role', 'authenticated', 'aal', 'aal1', 'session_id', v_sid)::text, true);
   perform set_config('role', 'authenticated', true);
 end $$;
 -- a website booking payload (Airport Road, 2 adults, no breakfast) merged with p_extra
@@ -31,7 +45,7 @@ create function pg_temp._d(p_days integer) returns date language sql stable as $
 -- ── fixtures: 6 staff + 1 stranger, room ids, switches on (this transaction only) ──
 insert into _ids values ('admin', gen_random_uuid()), ('mgmt', gen_random_uuid()), ('sales', gen_random_uuid()),
   ('rec_air', gen_random_uuid()), ('rec_shafa', gen_random_uuid()), ('mgmt_off', gen_random_uuid()), ('stranger', gen_random_uuid());
-insert into auth.users (id, email, aud, role) select id, k || '@qa.invalid', 'authenticated', 'authenticated' from _ids;
+insert into auth.users (id, email, aud, role) select id, k || '@sql.qa.invalid', 'authenticated', 'authenticated' from _ids;
 insert into public.staff (user_id, full_name, role, branch, active) values
   (pg_temp._id('admin'), 'QA admin', 'admin', null, true),
   (pg_temp._id('mgmt'), 'QA management', 'management', null, true),
@@ -140,10 +154,13 @@ select pg_temp._check('R2 signed-in non-staff sees nothing', (select count(*) fr
 select pg_temp._as('mgmt_off');
 select pg_temp._check('R3 inactive staff sees nothing', (select count(*) from public.settings) = 0 and (select count(*) from public.reservations) = 0);
 select pg_temp._as('mgmt', 'aal1');
-select pg_temp._check('R4 management without TOTP (aal1) sees nothing, told to do MFA', (select count(*) from public.settings) = 0
-  and (select count(*) from public.reservations) = 0 and (public.my_staff() ->> 'needs_mfa')::boolean);
+select pg_temp._check('R4 management without the second step sees nothing, told to pass it', (select count(*) from public.settings) = 0
+  and (select count(*) from public.reservations) = 0 and (public.my_staff() ->> 'needs_mfa')::boolean and (public.my_staff() ->> 'needs_second_factor')::boolean);
 select pg_temp._as('rec_air', 'aal1');
-select pg_temp._check('R5 reception works without TOTP, own branch only', (select count(*) from public.branches) = 1
+select pg_temp._check('R4 reception without the second step sees nothing too (phase 2a.2: everyone)', (select count(*) from public.reservations) = 0
+  and (select count(*) from public.branches) = 0 and (public.my_staff() ->> 'needs_second_factor')::boolean);
+select pg_temp._as('rec_air');
+select pg_temp._check('R5 reception with the email code: own branch only', (select count(*) from public.branches) = 1
   and (select count(*) from public.reservations where branch = 'shafa-road') = 0 and (select count(*) from public.reservations where branch = 'airport-road') > 0);
 select pg_temp._as('rec_air');
 select pg_temp._check('R6 reception: room types of its branch only', (select count(*) from public.room_types) = 5 and (select bool_and(branch = 'airport-road') from public.room_types));

@@ -1,4 +1,4 @@
-// Email previews (Part C, 23 Oct 2026): renders the four booking-request emails with the REAL layout
+// Email previews (Part C, 23 Oct 2026; + the dashboard staff emails 26 Oct 2026): renders the booking-request emails with the REAL layout
 // (supabase/functions/booking-request/email.ts, loaded by Node's type stripping) and the generated content, then
 // screenshots each at 600 px and 375 px, light and dark (prefers-color-scheme), with Playwright.
 // Sample data only (clearly marked «تجربة» / test). The logo loads from public/ so the preview works before deploy.
@@ -13,9 +13,11 @@ import {
   bookingConfirmed,
   bookingNotification,
   confirmedNotification,
+  loginCodeMail,
   lowInventoryAlert,
   partnerConfirmation,
   partnerNotification,
+  staffLinkMail,
 } from '../supabase/functions/booking-request/email.ts';
 
 const content = JSON.parse(readFileSync('supabase/functions/booking-request/content.generated.json', 'utf8'));
@@ -102,6 +104,10 @@ const mails = {
   'booking-notification-coordination-no-email': bookingNotification(content, { ...booking, branch: 'shafa-road', room: 'king-room', adults: 3, children: 0, extraBeds: 0, needsCoordination: true, capacity: 2, breakfast: 'without', email: '' }),
   'partner-notification': partnerNotification(content, partner),
   'partner-confirmation': partnerConfirmation(content, partner),
+  // dashboard staff emails (26 Oct 2026): the Auth templates with a sample link (GoTrue fills the real one) and the code
+  'staff-invite': staffLinkMail(content, { kind: 'invite', link: 'https://admin.armadaresidence.com/set-password?token_hash=pkce_0123456789abcdef0123456789abcdef0123456789abcdef01234567&type=invite' }),
+  'staff-recovery': staffLinkMail(content, { kind: 'recovery', link: 'https://admin.armadaresidence.com/set-password?token_hash=pkce_0123456789abcdef0123456789abcdef0123456789abcdef01234567&type=recovery' }),
+  'staff-login-code': loginCodeMail(content, { code: '482917', requestedAt: '2026-10-26T12:41:00Z', device: 'Chrome · Windows' }),
 };
 
 const browser = await chromium.launch({ channel: 'chrome' });

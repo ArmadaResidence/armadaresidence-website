@@ -1,6 +1,7 @@
-// Auth + staff context. Supabase Auth session → public.my_staff() (role, branch, needs_mfa, permissions, sections).
-// TOTP (aal2) is required for every role but reception and for anyone with edit on settings or users (phase 2a.1);
-// below it no data policy answers. A change to my own permissions (Realtime on staff_permissions) re-reads my_staff,
+// Auth + staff context. Supabase Auth session → public.my_staff() (role, branch, needs_second_factor, permissions,
+// sections). The second step (phase 2a.2: a 6-digit email code, a remembered device or an admin backup code) is required
+// for every user; below it no data policy answers. A revoked device or session is noticed when the tab comes back to the
+// front and every minute (my_staff re-read quietly), so the gate sends the user to /code without a reload. A change to my own permissions (Realtime on staff_permissions) re-reads my_staff,
 // so a revoked section leaves the nav at once; the database already refuses it.
 //
 // Status (26 Oct 2026, defect: «لا صلاحية» flashed on load): `status` is 'loading' until the session AND my_staff()
@@ -19,7 +20,8 @@ interface Ctx {
   status: SessionStatus;
   /** true until the first answer (kept for callers that only need a boolean) */
   loading: boolean;
-  refresh: () => Promise<void>;
+  /** re-read the session and my_staff; `soft` keeps the current screen mounted (no splash) until the answer arrives */
+  refresh: (soft?: boolean) => Promise<void>;
   signOut: () => Promise<void>;
 }
 const SessionCtx = createContext<Ctx>({ session: null, me: null, status: 'loading', loading: true, refresh: async () => {}, signOut: async () => {} });
@@ -56,9 +58,9 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  const refresh = useCallback(async () => {
+  const refresh = useCallback(async (soft = false) => {
     const { data } = await supabase.auth.getSession();
-    await load(data.session, false);
+    await load(data.session, soft);
   }, [load]);
 
   useEffect(() => {
@@ -84,6 +86,20 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'staff', filter: `user_id=eq.${uid}` }, again)
       .subscribe();
     return () => void supabase.removeChannel(ch);
+  }, [session, load]);
+
+  // the second step can be withdrawn from elsewhere (an admin revoked the devices, a password change): re-read quietly
+  useEffect(() => {
+    if (!session) return;
+    const again = () => {
+      if (document.visibilityState === 'visible') void load(session, true);
+    };
+    document.addEventListener('visibilitychange', again);
+    const t = setInterval(again, 60_000);
+    return () => {
+      document.removeEventListener('visibilitychange', again);
+      clearInterval(t);
+    };
   }, [session, load]);
 
   // idle sign-out after 12 h without interaction

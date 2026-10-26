@@ -39,9 +39,11 @@ import {
   bookingConfirmed,
   bookingNotification,
   confirmedNotification,
+  loginCodeMail,
   lowInventoryAlert,
   partnerConfirmation,
   partnerNotification,
+  staffLinkMail,
   type Mail,
   type Quote,
 } from './email.ts';
@@ -69,6 +71,11 @@ interface Payload {
   quoted_total?: string | number;
   /** honeypot — hidden on the form, must stay empty */
   website?: string;
+  /** QA only, with a valid test token: 'staff-emails' sends the dashboard staff emails as [TEST] samples to `to`;
+   *  'status' reads Resend's last event of `ids` (26 Oct 2026) */
+  preview?: string;
+  to?: string[];
+  ids?: string[];
   /** 'booking' (default) or a partner enquiry type from content/partners.json → enquiry_types */
   request_type?: string;
   /** partner enquiries only */
@@ -234,6 +241,66 @@ async function rateLimited(req: Request): Promise<boolean> {
     console.error('rate limit check failed', String(e));
     return false;
   }
+}
+
+// ── QA: dashboard staff email preview (Ahmed, 26 Oct 2026) ──────────────────────────────────────────────────────
+// With a valid test token only. Renders the three staff emails through the SAME builders as the Auth templates and the
+// login-code function (email.ts → staffLinkMail / loginCodeMail) with sample values — a reset / invite link that
+// verifies nothing, the code 482917 — and sends each with the subject «[TEST] …» from no-reply@ to the given addresses.
+// Recipients: the armadaresidence.com domain or an existing dashboard user (Auth) only. Nothing is stored; no Auth user,
+// token or code is created. 'status' returns Resend's last event for the ids it sent.
+const STAFF_FROM = 'أرمادا ريزيدنس | Armada Residence <no-reply@armadaresidence.com>';
+const ADMIN_BASE = String(content.admin_url).replace(/\/$/, '');
+const SAMPLE_TOKEN = 'test_0000000000000000000000000000000000000000000000000000';
+
+async function knownStaffEmails(): Promise<Set<string>> {
+  const env = serviceEnv();
+  if (!env) return new Set();
+  const res = await fetch(`${env.url}/auth/v1/admin/users?per_page=200`, { headers: serviceHeaders(env.key) });
+  if (!res.ok) return new Set();
+  const body = (await res.json()) as { users?: { email?: string }[] };
+  return new Set((body.users ?? []).map((u) => String(u.email ?? '').toLowerCase()).filter(Boolean));
+}
+
+async function previewStaffEmails(req: Request, p: Payload): Promise<Response> {
+  const key = Deno.env.get('RESEND_API_KEY');
+  if (!key) return json(req, 500, { ok: false, error: 'RESEND_API_KEY missing' });
+  const to = [...new Set((Array.isArray(p.to) ? p.to : []).map((x) => String(x).trim().toLowerCase()))].filter((x) => EMAIL.test(x)).slice(0, 5);
+  const staff = await knownStaffEmails();
+  const allowed = to.filter((x) => x.endsWith('@armadaresidence.com') || staff.has(x));
+  if (!allowed.length || allowed.length !== to.length) return json(req, 400, { ok: false, error: 'recipients: armadaresidence.com or a dashboard user only' });
+  const mails: [string, Mail][] = [
+    ['invite', staffLinkMail(content, { kind: 'invite', link: `${ADMIN_BASE}/set-password?token_hash=${SAMPLE_TOKEN}&type=invite` })],
+    ['recovery', staffLinkMail(content, { kind: 'recovery', link: `${ADMIN_BASE}/set-password?token_hash=${SAMPLE_TOKEN}&type=recovery` })],
+    ['login-code', loginCodeMail(content, { code: '482917', requestedAt: new Date().toISOString(), device: 'Chrome · Windows' })],
+  ];
+  const sent: { kind: string; id: string | null; status: number }[] = [];
+  for (const addr of allowed) {
+    for (const [kind, m] of mails) {
+      const res = await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ from: STAFF_FROM, to: [addr], subject: `[TEST] ${m.subject}`, html: m.html, text: m.text }),
+      });
+      const b = (await res.json().catch(() => ({}))) as { id?: string };
+      sent.push({ kind, id: b.id ?? null, status: res.status });
+    }
+  }
+  console.log('staff email preview sent', sent.map((x) => `${x.kind}:${x.status}`).join(' '));
+  return json(req, 200, { ok: sent.every((x) => x.status < 300 && x.id), sent });
+}
+
+async function previewStatus(req: Request, p: Payload): Promise<Response> {
+  const key = Deno.env.get('RESEND_API_KEY');
+  if (!key) return json(req, 500, { ok: false, error: 'RESEND_API_KEY missing' });
+  const ids = (Array.isArray(p.ids) ? p.ids : []).map(String).filter((x) => /^[0-9a-f-]{36}$/.test(x)).slice(0, 20);
+  const out: { id: string; last_event: string | null; subject: string | null }[] = [];
+  for (const id of ids) {
+    const res = await fetch(`https://api.resend.com/emails/${id}`, { headers: { Authorization: `Bearer ${key}` } });
+    const b = (await res.json().catch(() => ({}))) as { last_event?: string; subject?: string };
+    out.push({ id, last_event: b.last_event ?? null, subject: b.subject ?? null });
+  }
+  return json(req, 200, { ok: true, emails: out });
 }
 
 /** One validated submission, both request types. */
@@ -561,6 +628,8 @@ Deno.serve(async (req) => {
     return json(req, 200, { ok: true, ref: makeRef(), status: 'request' });
   }
   const token = testToken(req);
+  if (token && payload.preview === 'staff-emails') return previewStaffEmails(req, payload);
+  if (token && payload.preview === 'status') return previewStatus(req, payload);
   if (!token && (await rateLimited(req))) return json(req, 429, { ok: false, error: 'too many requests' });
 
   const v = validate(payload, Boolean(token));

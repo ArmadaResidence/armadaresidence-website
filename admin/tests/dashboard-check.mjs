@@ -10,15 +10,20 @@
 // (no typing, past viewable in filters, edits from today); inventory open / closed per cell, row and bulk + legend;
 // the 30 s undo toast and the audit revert (+ a conflict that changes nothing); the permission matrix (view = read-only
 // screen, revocation at once in another session, last-admin guard); room availability toggle → site_room_types;
-// invite link → fresh context → «متابعة» → password → TOTP → in, and a prefetch GET that must not consume the link.
+// invite link → fresh context → «متابعة» → password → email code → in, and a prefetch GET that must not consume the link.
 // 26 Oct 2026 (password rule): the live checklist on /set-password (lines, ✓/✗ per keystroke, save disabled until every
 // line is met, the stubbed weak / leaked refusal, Auth accepting a letters-and-symbols password) and the show / hide
 // toggle on every password field (login and both set-password fields: aria-pressed, labels, 44 px, RTL inline-end,
 // focus + caret kept, keyboard, never submits, hidden again after a successful sign-in).
+// Phase 2a.2 (26 Oct 2026): every sign-in passes the email code (the login-code function answers the code itself in test
+// mode for *.qa.invalid users — code-login.mjs); the second-step block covers the code screen, wrong / locked codes,
+// remembered devices and their revocation, the admin's backup codes (forced first generation, email failure → backup
+// code, regeneration after a fresh code, download), the password-change trigger; then the site defaults (admin only,
+// save + undo, the restore dialog with the switch tick, undo of a restore, the audit label, the site-rebuild call).
 // Everything it writes is undone at the end (test room type via qa_fixture, overrides deactivated, settings restored).
 import { chromium } from 'playwright';
 import { readFileSync } from 'node:fs';
-import { totp } from './totp.mjs';
+import { APP_PATH, handleBackupCodes, passCode, routeLoginCode } from './code-login.mjs';
 
 const BASE = (process.argv[2] || 'http://127.0.0.1:5173').replace(/\/$/, '');
 const PW = 'Qa-Armada-2026!x';
@@ -109,31 +114,42 @@ const WATCH = `(() => {
   start();
 })();`;
 const flashes = (page) => page.evaluate(() => window.__flashes ?? []);
-const secrets = {}; // TOTP secrets enrolled in this run, per login
-async function login(email, { mfa = false, viewport = { width: 1280, height: 900 } } = {}) {
-  const ctx = await browser.newContext({ viewport, locale: 'ar' });
-  await ctx.addInitScript(WATCH);
+/** the first of these selectors to appear (each wait settles, so no rejection is left unhandled) */
+async function firstOf(page, map, timeout = 30000) {
+  const waits = Object.entries(map).map(([k, sel]) => page.waitForSelector(sel, { timeout }).then(() => k, () => null));
+  const k = await Promise.race(waits.map((w) => w.then((v) => v ?? new Promise(() => {}))).concat(Promise.all(waits).then(() => null)));
+  if (!k) throw new Error(`none of ${Object.values(map).join(', ')} appeared`);
+  return k;
+}
+let adminBackup = null; // the QA admin's backup codes, generated on its first sign-in of the run (forced page)
+/** sign in with password + email code (test mode). remember → «تذكّر هذا الجهاز». An existing ctx keeps its device token. */
+async function login(email, { viewport = { width: 1280, height: 900 }, remember = false, ctx: given = null } = {}) {
+  const ctx = given ?? (await browser.newContext({ viewport, locale: 'ar' }));
+  const codes = [];
+  if (!given) {
+    await ctx.addInitScript(WATCH);
+    ctx.__codes = codes;
+    await routeLoginCode(ctx, env.BOOKING_TEST_TOKEN, codes);
+  }
+  const sink = ctx.__codes ?? codes;
   const page = await ctx.newPage();
   page.on('pageerror', (e) => fails.push(`page error (${email}): ${e.message}`));
   await page.goto(`${BASE}/login`);
   await page.fill('#email', email);
   await page.fill('#password', PW);
   await page.click('button[type=submit]');
-  if (mfa) {
-    await page.waitForURL(/\/mfa/, { timeout: 30000, waitUntil: 'commit' });
-    // first sign-in enrols (QR + secret); a later one only asks for the code (the page then says so)
-    const secretEl = page.locator('p.latin.select-all');
-    const enrolled = page.getByText('حسابك يتطلب رمز تطبيق المصادقة');
-    await Promise.race([secretEl.waitFor({ timeout: 20000 }), enrolled.waitFor({ timeout: 20000 })]).catch(() => {});
-    let secret = secrets[email];
-    if (await secretEl.count()) secret = secrets[email] = (await secretEl.textContent()).trim();
-    if (!secret) throw new Error('mfa: no secret shown (already enrolled? qa_users drop + create resets it)');
-    await page.fill('#code', totp(secret));
-    await page.click('button:has-text("تحقق")');
+  // by content, not by URL: the app passes through /bookings before the gate sends an unverified session to /code
+  let at = await firstOf(page, { code: '#code', app: '#app-main', backup: '[data-action="generate-backup"]' });
+  if (at === 'code') {
+    await passCode(page, sink, { remember });
+    at = await firstOf(page, { app: '#app-main', backup: '[data-action="generate-backup"]' });
   }
-  await page.waitForURL(/\/(bookings|rates|inventory|rooms|settings|users|audit)/, { timeout: 30000, waitUntil: 'commit' });
-  await page.waitForSelector('#app-main', { timeout: 30000 });
-  return { ctx, page };
+  if (at === 'backup') {
+    adminBackup = await handleBackupCodes(page);
+    await page.waitForSelector('#app-main', { timeout: 30000 });
+  }
+  await page.waitForURL(APP_PATH, { timeout: 30000, waitUntil: 'commit' });
+  return { ctx, page, codes: sink };
 }
 const cellText = async (page, night, rt) => (await page.locator(`[data-night="${night}"][data-rt="${rt}"]`).textContent()) ?? '';
 const waitCell = (page, night, rt, re) => page.waitForFunction(({ night, rt, src }) => new RegExp(src).test(document.querySelector(`[data-night="${night}"][data-rt="${rt}"]`)?.textContent ?? ''), { night, rt, src: re.source }, { timeout: 25000 });
@@ -237,9 +253,9 @@ try {
     await ctx.close();
   }
 
-  // ── management: TOTP, both branches, settings save + undo, rates single-night override + revert conflict ──
+  // ── management: email code, both branches, settings save + undo, rates single-night override + revert conflict ──
   {
-    const { ctx, page } = await login(USERS.mgmt, { mfa: true });
+    const { ctx, page } = await login(USERS.mgmt);
     await page.waitForFunction(() => document.querySelectorAll('#f-branch option').length >= 3, null, { timeout: 10000 }).catch(() => {});
     check((await page.locator('#f-branch option').count()) === 3, 'management: both branches + all');
     await page.goto(`${BASE}/settings`);
@@ -302,7 +318,7 @@ try {
 
   // ── admin: confirm / cancel, rooms toggle, users + matrix, last-admin guard, revocation in another session ──
   {
-    const { ctx, page } = await login(USERS.admin, { mfa: true });
+    const { ctx, page } = await login(USERS.admin);
     await page.fill('#f-q', r2.ref);
     await page.waitForSelector(`[data-ref="${r2.ref}"]`, { timeout: 10000 });
     await page.click(`[data-ref="${r2.ref}"]`);
@@ -386,8 +402,8 @@ try {
 
   // ── no-access flash (Ahmed, 26 Oct 2026): the splash, never «لا صلاحية», while the session and my_staff resolve ──
   {
-    const { ctx, page } = await login(USERS.admin, { mfa: true });
-    check(!(await flashes(page)).length, 'no-access: never shown to the admin through sign-in and TOTP');
+    const { ctx, page } = await login(USERS.admin);
+    check(!(await flashes(page)).length, 'no-access: never shown to the admin through sign-in and the email code');
     for (const path of ['bookings', 'users', 'audit?x=1']) {
       await page.goto(`${BASE}/${path}`);
       await page.waitForSelector('#app-main h1', { timeout: 20000 });
@@ -455,6 +471,8 @@ try {
   // ── show / hide toggle on the login password field (26 Oct 2026), 375 px ──
   {
     const ctx = await browser.newContext({ locale: 'ar', viewport: { width: 375, height: 812 } });
+    const toggleCodes = [];
+    await routeLoginCode(ctx, env.BOOKING_TEST_TOKEN, toggleCodes);
     const page = await ctx.newPage();
     page.on('pageerror', (e) => fails.push(`page error (login toggle): ${e.message}`));
     await page.goto(`${BASE}/login`);
@@ -480,12 +498,13 @@ try {
     await eye.click();
     await page.click('button[type=submit]');
     await page.waitForFunction(() => { const el = document.querySelector('#password'); return !el || el.type === 'password'; }, null, { timeout: 30000 });
+    await passCode(page, toggleCodes);
     await page.waitForSelector('#app-main', { timeout: 30000 });
     check(true, 'login toggle: the password is not left revealed after a successful sign-in');
     await ctx.close();
   }
 
-  // ── invite link (token_hash) in a fresh context: prefetch must not consume it; «متابعة» → password → TOTP → in ──
+  // ── invite link (token_hash) in a fresh context: prefetch must not consume it; «متابعة» → password → email code → in ──
   if (SERVICE) {
     const SH = { apikey: SERVICE, Authorization: `Bearer ${SERVICE}`, 'Content-Type': 'application/json' };
     const email = `invitee-${Date.now()}@qa.invalid`;
@@ -505,9 +524,11 @@ try {
       await sp.waitForTimeout(1500);
       check(authCalls.length === 0, 'invite: opening the link verifies nothing (scanner-safe)', authCalls.join(' '));
       await scanner.close();
-      // 2. the invitee, another fresh browser: «متابعة» → set password → TOTP → dashboard
+      // 2. the invitee, another fresh browser: «متابعة» → set password → email code → dashboard
       const fresh = await browser.newContext({ viewport: { width: 375, height: 812 }, locale: 'ar' });
       await fresh.addInitScript(WATCH);
+      const inviteeCodes = [];
+      await routeLoginCode(fresh, env.BOOKING_TEST_TOKEN, inviteeCodes);
       const fp = await fresh.newPage();
       fp.on('pageerror', (e) => fails.push(`page error (invitee): ${e.message}`));
       await fp.goto(link);
@@ -579,15 +600,13 @@ try {
       await fp.fill('#p1', INVITEE_PW);
       await fp.fill('#p2', INVITEE_PW);
       await fp.click('[data-action="save-password"]');
-      await fp.waitForURL(/\/mfa/, { timeout: 30000, waitUntil: 'commit' });
-      check(true, `set-password: Auth accepted a ${INVITEE_PW.length}-character password without digits or capitals`);
-      const secretEl = fp.locator('p.latin.select-all');
-      await secretEl.waitFor({ timeout: 20000 });
-      await fp.fill('#code', totp((await secretEl.textContent()).trim()));
-      await fp.click('button:has-text("تحقق")');
+      await fp.waitForURL(/\/code/, { timeout: 30000, waitUntil: 'commit' });
+      check(true, 'invite: after the password the email code is asked (no TOTP enrolment)');
+      check(!(await fp.locator('img[alt*="QR"], p.latin.select-all').count()), 'invite: no QR / authenticator secret anywhere');
+      await passCode(fp, inviteeCodes);
       await fp.waitForURL(/\/(bookings|rates|inventory|rooms|settings|users|audit)/, { timeout: 30000, waitUntil: 'commit' });
       await fp.waitForSelector('#app-main', { timeout: 30000 });
-      check(true, 'invite: password set, TOTP enrolled, signed in (375 px)');
+      check(true, 'invite: password set, email code passed, signed in (375 px)');
       check(!(await flashes(fp)).length, 'no-access: never shown to the invitee');
       await digits(fp, 'invitee first screen');
       await fresh.close();
@@ -614,9 +633,298 @@ try {
     }
   } else console.log('invite checks skipped: SUPABASE_SERVICE_ROLE_KEY not set');
 
+  // ── the second step (phase 2a.2 C, Ahmed 26 Oct 2026) ──
+  {
+    const CORS = { 'access-control-allow-origin': new URL(BASE).origin, 'access-control-allow-headers': 'authorization, apikey, content-type, x-client-info', 'access-control-allow-methods': 'POST, OPTIONS' };
+    const ctx = await browser.newContext({ viewport: { width: 375, height: 812 }, locale: 'ar' });
+    await ctx.addInitScript(WATCH);
+    const codes = [];
+    ctx.__codes = codes;
+    await routeLoginCode(ctx, env.BOOKING_TEST_TOKEN, codes);
+    const page = await ctx.newPage();
+    page.on('pageerror', (e) => fails.push(`page error (code screen): ${e.message}`));
+    const signIn = async (p, email) => {
+      await p.goto(`${BASE}/login`);
+      await p.fill('#email', email);
+      await p.fill('#password', PW);
+      await p.click('button[type=submit]');
+    };
+    await signIn(page, USERS.rec_shafa);
+    await page.waitForURL(/\/code/, { timeout: 30000, waitUntil: 'commit' });
+    await page.waitForSelector('[data-code-info]', { timeout: 30000 });
+    const info = (await page.locator('[data-code-info]').innerText()).trim();
+    check(info === 'أرسلنا رمزًا من 6 أرقام إلى r***@qa.invalid. أدخله هنا لإكمال الدخول.', 'code: the screen names the masked address', info);
+    const resend = page.locator('[data-action="resend-code"]');
+    const resendText = (await resend.innerText()).trim();
+    check((await resend.isDisabled()) && /^إعادة الإرسال بعد /.test(resendText), 'code: «إعادة إرسال الرمز» waits with a countdown', resendText);
+    check(!(await page.locator('[data-action="use-backup"]').count()), 'code: no backup-code path for a non-admin');
+    check(!(await page.locator('[data-remember]').isChecked()), 'code: «تذكّر هذا الجهاز لمدة 30 يومًا» unchecked by default');
+    check(!(await page.locator('#app-main').count()), 'code: nothing of the dashboard before the code');
+    await digits(page, 'code screen');
+    const wrongOf = () => (codes.at(-1) === '000000' ? '111111' : '000000');
+    await page.fill('#code', wrongOf());
+    await page.click('[data-action="verify-code"]');
+    await page.locator('[role=alert]').first().waitFor({ timeout: 10000 });
+    let alert = (await page.locator('[role=alert]').first().innerText()).trim();
+    check(alert === 'الرمز غير صحيح. بقيت 4 محاولات.', 'code: a wrong code says how many attempts are left', alert);
+    await passCode(page, codes, { remember: true });
+    await page.waitForURL(APP_PATH, { timeout: 30000, waitUntil: 'commit' });
+    await page.waitForSelector('#app-main', { timeout: 30000 });
+    const tokens = await page.evaluate(() => Object.keys(localStorage).filter((k) => k.startsWith('armada-device:')).map((k) => localStorage.getItem(k)));
+    check(tokens.length === 1 && /^[0-9a-f]{64}$/.test(tokens[0] ?? ''), 'code: «تذكّر هذا الجهاز» keeps one device token in this browser');
+    await page.goto(`${BASE}/security`);
+    await page.waitForSelector('[data-devices] li', { timeout: 20000 });
+    check((await page.locator('[data-devices] li').count()) === 1 && (await page.locator('[data-devices]').innerText()).includes('هذا الجهاز'), 'security: the remembered device is listed, marked «هذا الجهاز»');
+    check((await page.locator('[data-method]').getAttribute('data-method')) === 'code', 'security: this session passed with the email code');
+    await digits(page, 'security');
+    // sign out → sign in: the remembered device passes without a new code
+    await page.click('button:has-text("خروج")');
+    await page.waitForURL(/\/login/, { timeout: 20000, waitUntil: 'commit' });
+    const before = codes.length;
+    await signIn(page, USERS.rec_shafa);
+    await page.waitForURL(APP_PATH, { timeout: 30000, waitUntil: 'commit' });
+    await page.waitForSelector('#app-main', { timeout: 30000 });
+    check(codes.length === before, 'device: the remembered browser signs in without a code', `${codes.length - before} new code(s)`);
+    // the admin revokes rec_shafa's devices on the users screen → that open session is sent to /code
+    const adm = await login(USERS.admin);
+    check(Array.isArray(adminBackup) && adminBackup.length === 10 && adminBackup.every((c) => /^[0-9A-HJKMNP-TV-Z]{5}-[0-9A-HJKMNP-TV-Z]{5}$/.test(c)), 'backup: the admin generated 10 codes on its first sign-in (forced page)', JSON.stringify(adminBackup));
+    await adm.page.goto(`${BASE}/users`);
+    const row = adm.page.locator(`[data-user="${USERS.rec_shafa}"]`);
+    await row.waitFor({ timeout: 20000 });
+    await adm.page.waitForFunction((u) => Number(document.querySelector(`[data-user="${u}"] [data-devices-count]`)?.getAttribute('data-devices-count')) >= 1, USERS.rec_shafa, { timeout: 20000 }).catch(() => {});
+    check(Number(await row.locator('[data-devices-count]').getAttribute('data-devices-count')) >= 1, 'users: the remembered device is counted');
+    await digits(adm.page, 'users (security line)');
+    await row.locator('[data-action="revoke-devices"]').click();
+    check((await adm.page.locator('dialog[open]').innerText()).includes('سيُطلب رمز البريد من «استقبال طريق الشفا»'), 'users: the revoke dialog names the user');
+    await adm.page.click('[data-action="revoke-devices-go"]');
+    await adm.page.waitForFunction((u) => document.querySelector(`[data-user="${u}"] [data-devices-count]`)?.getAttribute('data-devices-count') === '0', USERS.rec_shafa, { timeout: 20000 }).catch(() => {});
+    check((await row.locator('[data-devices-count]').getAttribute('data-devices-count')) === '0', 'users: «إلغاء الأجهزة المتذكَّرة» revoked them');
+    await page.reload();
+    await page.waitForURL(/\/code/, { timeout: 30000, waitUntil: 'commit' });
+    check(true, 'device revocation: the user\'s open session is sent to the code screen at once');
+    await page.waitForSelector('#code', { timeout: 30000 });
+    check(true, 'device revocation: the revoked device no longer passes (a code is asked)');
+    // five wrong codes lock the code; a new one can be sent at once and lets in
+    for (let i = 0; i < 5; i++) {
+      await page.fill('#code', wrongOf());
+      await page.click('[data-action="verify-code"]');
+      await page.waitForFunction(() => !document.querySelector('[data-action="verify-code"] .animate-spin'), null, { timeout: 10000 }).catch(() => {});
+      await page.waitForTimeout(300);
+    }
+    alert = (await page.locator('[role=alert]').first().innerText()).trim();
+    check(alert === 'أُدخل رمز خاطئ 5 مرات، فأُلغي هذا الرمز. اطلب رمزًا جديدًا.', 'code: the 5th wrong code locks it', alert);
+    const n = codes.length;
+    await page.waitForFunction(() => !document.querySelector('[data-action="resend-code"]')?.disabled, null, { timeout: 5000 }).catch(() => {});
+    await page.click('[data-action="resend-code"]');
+    for (let i = 0; i < 50 && codes.length === n; i++) await page.waitForTimeout(100);
+    check(codes.length > n, 'code: after a lock a new code is sent at once');
+    await passCode(page, codes);
+    await page.waitForURL(APP_PATH, { timeout: 30000, waitUntil: 'commit' });
+    check(true, 'code: the new code lets in');
+
+    // email failure → the admin's backup code lets in; the same code twice is refused
+    const fail502 = async (c) => c.route('**/functions/v1/login-code', (r) => (r.request().method() === 'OPTIONS'
+      ? r.fulfill({ status: 204, headers: CORS })
+      : r.fulfill({ status: 502, headers: CORS, contentType: 'application/json', body: JSON.stringify({ ok: false, reason: 'send_failed' }) })));
+    const bctx = await browser.newContext({ locale: 'ar' });
+    await fail502(bctx);
+    const bp = await bctx.newPage();
+    bp.on('pageerror', (e) => fails.push(`page error (backup): ${e.message}`));
+    await signIn(bp, USERS.admin);
+    await bp.waitForURL(/\/code/, { timeout: 30000, waitUntil: 'commit' });
+    await bp.locator('[role=alert]').first().waitFor({ timeout: 20000 });
+    check((await bp.locator('[role=alert]').first().innerText()).trim() === 'تعذّر إرسال الرمز بالبريد. أعد المحاولة، وإن تكرر فتواصل مع مدير النظام.', 'backup: an email failure reads in Arabic');
+    await bp.click('[data-action="use-backup"]');
+    await bp.fill('#backup-code', (adminBackup?.[0] ?? '').toLowerCase().replace('-', ''));
+    await bp.click('[data-action="verify-backup"]');
+    await bp.waitForURL(APP_PATH, { timeout: 30000, waitUntil: 'commit' });
+    await bp.waitForSelector('#app-main', { timeout: 30000 });
+    check(true, 'backup: an admin passes the second step with a backup code (any case, no dash)');
+    check((await bp.locator('[role=status]').allInnerTexts()).some((t) => t.includes('تم الدخول برمز طوارئ. بقي لديك 9 رموز.')), 'backup: «بقي لديك 9 رموز»');
+    await bctx.close();
+    const b2 = await browser.newContext({ locale: 'ar' });
+    await fail502(b2);
+    const b2p = await b2.newPage();
+    await signIn(b2p, USERS.admin);
+    await b2p.waitForURL(/\/code/, { timeout: 30000, waitUntil: 'commit' });
+    await b2p.waitForSelector('[data-action="use-backup"]', { timeout: 20000 });
+    await b2p.click('[data-action="use-backup"]');
+    await b2p.fill('#backup-code', adminBackup?.[0] ?? '');
+    await b2p.click('[data-action="verify-backup"]');
+    await b2p.locator('[role=alert]').first().waitFor({ timeout: 10000 });
+    alert = (await b2p.locator('[role=alert]').first().innerText()).trim();
+    check(alert === 'رمز الطوارئ غير صحيح. بقيت 4 محاولات.', 'backup: a used code is refused', alert);
+    await b2.close();
+
+    // regeneration needs a fresh email code: sign in on a remembered device, then «إنشاء رموز جديدة» asks for one
+    const rctx = await browser.newContext({ locale: 'ar' });
+    const rcodes = [];
+    rctx.__codes = rcodes;
+    await routeLoginCode(rctx, env.BOOKING_TEST_TOKEN, rcodes);
+    const first = await login(USERS.admin, { ctx: rctx, remember: true });
+    await first.page.click('button:has-text("خروج")');
+    await first.page.waitForURL(/\/login/, { timeout: 20000, waitUntil: 'commit' });
+    const rp = (await login(USERS.admin, { ctx: rctx })).page; // a new session in the same browser: the device passes
+    await rp.goto(`${BASE}/security`);
+    await rp.waitForSelector('[data-action="regenerate-backup"]', { timeout: 20000 });
+    check((await rp.locator('[data-method]').getAttribute('data-method')) === 'device', 'backup: this session passed on the remembered device');
+    check((await rp.locator('[data-backup-left]').getAttribute('data-backup-left')) === '9', 'security: backup codes left 9 of 10');
+    await rp.click('[data-action="regenerate-backup"]');
+    await rp.waitForURL(/\/backup-codes\?new=1/, { timeout: 20000, waitUntil: 'commit' });
+    const n2 = rcodes.length;
+    await rp.click('[data-action="generate-backup"]');
+    await rp.waitForSelector('[data-action="verify-stepup"]', { timeout: 20000 });
+    check(true, 'backup: regeneration on a remembered device asks for a fresh email code first');
+    for (let i = 0; i < 50 && rcodes.length === n2; i++) await rp.waitForTimeout(100);
+    await rp.fill('#stepup-code', rcodes.at(-1) ?? '');
+    await rp.click('[data-action="verify-stepup"]');
+    await rp.waitForSelector('[data-backup-codes] li', { timeout: 20000 });
+    const fresh = (await rp.locator('[data-backup-codes] li').allTextContents()).map((s) => s.trim());
+    check(fresh.length === 10 && !fresh.some((c) => adminBackup?.includes(c)), 'backup: 10 new codes after the fresh code');
+    await digits(rp, 'backup codes');
+    const [dl] = await Promise.all([rp.waitForEvent('download', { timeout: 10000 }), rp.click('[data-action="download-backup"]')]);
+    const file = readFileSync(await dl.path(), 'utf8');
+    check(dl.suggestedFilename() === 'armada-backup-codes.txt' && fresh.every((c) => file.includes(c)) && file.includes('رموز الطوارئ — لوحة أرمادا ريزيدنس'), 'backup: «تنزيل» saves a text file with the 10 codes', dl.suggestedFilename());
+    check(await rp.locator('[data-action="backup-continue"]').isDisabled(), 'backup: «متابعة» waits for «حفظتُ الرموز في مكان آمن»');
+    await rp.check('[data-backup-saved]');
+    await rp.click('[data-action="backup-continue"]');
+    await rp.waitForURL(/\/security/, { timeout: 20000, waitUntil: 'commit' });
+    const b3 = await browser.newContext({ locale: 'ar' });
+    await fail502(b3);
+    const b3p = await b3.newPage();
+    await signIn(b3p, USERS.admin);
+    await b3p.waitForURL(/\/code/, { timeout: 30000, waitUntil: 'commit' });
+    await b3p.waitForSelector('[data-action="use-backup"]', { timeout: 20000 });
+    await b3p.click('[data-action="use-backup"]');
+    await b3p.fill('#backup-code', adminBackup?.[1] ?? '');
+    await b3p.click('[data-action="verify-backup"]');
+    await b3p.locator('[role=alert]').first().waitFor({ timeout: 10000 });
+    check((await b3p.locator('[role=alert]').first().innerText()).startsWith('رمز الطوارئ غير صحيح.'), 'backup: an old unused code stops working after the regeneration');
+    await b3.close();
+    adminBackup = fresh;
+    await rctx.close();
+
+    // a password change clears the remembered devices (trigger on auth.users)
+    if (SERVICE) {
+      const SH = { apikey: SERVICE, Authorization: `Bearer ${SERVICE}`, 'Content-Type': 'application/json' };
+      await page.click('button:has-text("خروج")');
+      await page.waitForURL(/\/login/, { timeout: 20000, waitUntil: 'commit' });
+      const kept = await login(USERS.rec_shafa, { ctx, remember: true });
+      const device = await kept.page.evaluate(() => { const k = Object.keys(localStorage).find((x) => x.startsWith('armada-device:')); return k ? [k, localStorage.getItem(k)] : null; });
+      check(!!device, 'password change: a remembered device exists before the change');
+      const list = await fetch(`${env.SUPABASE_URL}/auth/v1/admin/users?per_page=200`, { headers: SH }).then((r) => r.json());
+      const uid = (list.users ?? []).find((u) => u.email === USERS.rec_shafa)?.id;
+      const upd = await fetch(`${env.SUPABASE_URL}/auth/v1/admin/users/${uid}`, { method: 'PUT', headers: SH, body: JSON.stringify({ password: PW }) });
+      check(upd.ok, 'password change (Auth admin API) accepted', String(upd.status));
+      // a browser that kept only the device token signs in again with the password: the code is asked (the trigger
+      // revoked the device), never a silent pass
+      const ctx2 = await browser.newContext({ locale: 'ar' });
+      const codes2 = [];
+      await routeLoginCode(ctx2, env.BOOKING_TEST_TOKEN, codes2);
+      if (device) await ctx2.addInitScript(([k, v]) => { try { localStorage.setItem(k, v); } catch { /* ignore */ } }, device);
+      const p2 = await ctx2.newPage();
+      await signIn(p2, USERS.rec_shafa);
+      const where = await firstOf(p2, { code: '#code', app: '#app-main' });
+      for (let i = 0; i < 50 && !codes2.length; i++) await p2.waitForTimeout(100);
+      check(where === 'code' && codes2.length > 0, 'password change: the remembered device no longer passes (a code is asked)', where);
+      check((await p2.evaluate(() => Object.keys(localStorage).filter((k) => k.startsWith('armada-device:')).length)) === 0, 'password change: the refused device token is removed from the browser');
+      await ctx2.close();
+    } else console.log('password-change check skipped: SUPABASE_SERVICE_ROLE_KEY not set');
+    await adm.ctx.close();
+    await ctx.close();
+  }
+
+  // ── site defaults (phase 2a.2 D): admin only, save + undo, the restore dialog + tick, undo of a restore, audit ──
+  {
+    const CORS = { 'access-control-allow-origin': new URL(BASE).origin, 'access-control-allow-headers': 'authorization, apikey, content-type, x-client-info', 'access-control-allow-methods': 'POST, OPTIONS' };
+    const { ctx, page } = await login(USERS.admin);
+    const tokenOf = (p) => p.evaluate(() => { const k = Object.keys(localStorage).find((x) => /^sb-.*-auth-token$/.test(x)); return k ? JSON.parse(localStorage.getItem(k)).access_token : null; });
+    const jwt = await tokenOf(page);
+    const as = (token) => async (fn, args = {}) => {
+      const r = await fetch(`${env.SUPABASE_URL}/rest/v1/rpc/${fn}`, { method: 'POST', headers: { apikey: env.SUPABASE_ANON_KEY, Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }, body: JSON.stringify(args) });
+      return { status: r.status, body: await r.json().catch(() => null) };
+    };
+    const admin = as(jwt);
+    const read = async (path) => fetch(`${env.SUPABASE_URL}/rest/v1/${path}`, { headers: { apikey: env.SUPABASE_ANON_KEY, Authorization: `Bearer ${jwt}` } }).then((r) => r.json());
+    const setting = async (k) => (await read(`settings?key=eq.${k}&select=value`))[0]?.value;
+    const rooms = await read('room_types?select=id,slug,branch,base_rate,bookable&active=eq.true&is_test=eq.false');
+    const king = rooms.find((r) => r.branch === 'shafa-road' && r.slug === 'king-room');
+    const twin = rooms.find((r) => r.branch === 'airport-road' && r.slug === 'twin-room');
+    const orig = { prices: await setting('show_prices'), bed: await setting('extra_bed_per_night'), king: king?.base_rate, twin: twin?.bookable };
+    const rebuilds = [];
+    await page.route('**/functions/v1/site-rebuild', (r) => (r.request().method() === 'OPTIONS' ? r.fulfill({ status: 204, headers: CORS })
+      : (rebuilds.push(1), r.fulfill({ status: 200, headers: CORS, contentType: 'application/json', body: '{"ok":true,"dispatched":true}' }))));
+    try {
+      await admin('set_setting', { p_key: 'show_prices', p_value: { ...orig.prices, 'airport-road': true } });
+      await page.goto(`${BASE}/settings`);
+      await page.waitForSelector('[data-defaults] [data-current-default]', { timeout: 20000 });
+      await digits(page, 'settings + defaults');
+      const cardBefore = (await page.locator('[data-current-default]').innerText()).trim();
+      await page.click('[data-action="defaults-save"]');
+      await page.fill('#d-label', 'QA e2e');
+      await page.click('[data-action="defaults-save-go"]');
+      await page.waitForFunction(() => document.querySelector('[data-current-default]')?.textContent?.includes('QA e2e'), null, { timeout: 20000 });
+      check(true, 'defaults: saved, the card names it');
+      await page.click('[data-toast="undo"] [data-action="undo"]');
+      await page.waitForFunction((t) => document.querySelector('[data-current-default]')?.textContent?.trim() === t, cardBefore, { timeout: 20000 }).catch(() => {});
+      check((await page.locator('[data-current-default]').innerText()).trim() === cardBefore, 'defaults: «تراجع» undoes the save (the previous default returns)');
+      await page.click('[data-action="defaults-save"]');
+      await page.fill('#d-label', 'QA e2e');
+      await page.click('[data-action="defaults-save-go"]');
+      await page.waitForFunction(() => document.querySelector('[data-current-default]')?.textContent?.includes('QA e2e'), null, { timeout: 20000 });
+      // four changes after the save
+      await admin('set_setting', { p_key: 'show_prices', p_value: { ...orig.prices, 'airport-road': false } });
+      await admin('set_setting', { p_key: 'extra_bed_per_night', p_value: Number(orig.bed) + 15 });
+      await admin('set_base_rate', { p_room_type: king.id, p_rate: 777 });
+      await admin('set_room_bookable', { p_room_type: twin.id, p_bookable: !orig.twin });
+      await page.reload();
+      await page.waitForSelector('[data-action="defaults-restore"]:not([disabled])', { timeout: 20000 });
+      await page.click('[data-action="defaults-restore"]');
+      await page.waitForSelector('[data-defaults-diff]', { timeout: 20000 });
+      const rows = (await page.locator('[data-change-row]').allInnerTexts()).map((s) => s.trim());
+      check(rows.length === 4, 'defaults: the dialog lists exactly the 4 changes', rows.join(' | '));
+      check(rows.some((r) => r.startsWith('إظهار الأسعار — طريق المطار:') && r.endsWith('متوقف ← مفعّل')), 'defaults: the switch row reads current ← default', rows.join(' | '));
+      check(rows.some((r) => r.includes('السرير الإضافي لليلة')) && rows.some((r) => r.includes('777')), 'defaults: the extra-bed and base-rate rows', rows.join(' | '));
+      check((await page.locator('[data-group="switches"] h3').innerText()).includes('يؤثر على الموقع فورًا'), 'defaults: the switches group says it acts on the site at once');
+      await digits(page, 'defaults dialog');
+      check(await page.locator('[data-action="defaults-restore-go"]').isDisabled(), 'defaults: restore waits for the switch tick');
+      await page.check('[data-defaults-ack]');
+      check((await page.locator('[data-action="defaults-restore-go"]').innerText()).includes('4 تغييرات'), 'defaults: «استعادة 4 تغييرات»');
+      await page.click('[data-action="defaults-restore-go"]');
+      await page.locator('[data-toast="undo"]').waitFor({ timeout: 20000 });
+      check((await page.locator('[data-toast="undo"]').innerText()).includes('استُعيدت الإعدادات الافتراضية'), 'defaults: the restore toast offers «تراجع»');
+      for (let i = 0; i < 30 && !rebuilds.length; i++) await page.waitForTimeout(100);
+      check(rebuilds.length === 1, 'defaults: the site rebuild is asked once (availability / fee changed)', String(rebuilds.length));
+      const kingNow = (await read(`room_types?id=eq.${king.id}&select=base_rate`))[0]?.base_rate;
+      check(Number(await setting('extra_bed_per_night')) === Number(orig.bed) && (await setting('show_prices'))['airport-road'] === true && Number(kingNow) === Number(orig.king), 'defaults: the values are back');
+      await page.click('[data-toast="undo"] [data-action="undo"]');
+      await page.waitForFunction(() => !document.querySelector('[data-toast="undo"]'), null, { timeout: 20000 }).catch(() => {});
+      await page.waitForTimeout(800);
+      check(Number(await setting('extra_bed_per_night')) === Number(orig.bed) + 15 && (await setting('show_prices'))['airport-road'] === false, 'defaults: «تراجع» undoes the restore');
+      await page.goto(`${BASE}/audit`);
+      await page.waitForSelector('[data-restore-batch]', { timeout: 20000 }).catch(() => {});
+      check((await page.locator('[data-restore-batch]').count()) >= 1, 'audit: the restore batch is labelled «استعادة الإعدادات الافتراضية»');
+      check((await page.locator('[data-list="audit"]').innerText()).includes('أمان الدخول'), 'audit: security events (devices, backup codes) are listed');
+      // management: no section, and the database refuses the call
+      const m = await login(USERS.mgmt);
+      await m.page.goto(`${BASE}/settings`);
+      await m.page.waitForSelector('#s-bed', { timeout: 20000 });
+      check(!(await m.page.locator('[data-defaults]').count()), 'defaults: management does not see the section');
+      const refused = await as(await tokenOf(m.page))('save_site_defaults', { p_label: 'x' });
+      check(refused.status === 403 || refused.status === 401, 'defaults: management saving through the API is refused by the database', String(refused.status));
+      await m.ctx.close();
+    } finally {
+      await admin('set_setting', { p_key: 'show_prices', p_value: orig.prices });
+      await admin('set_setting', { p_key: 'extra_bed_per_night', p_value: orig.bed });
+      if (king) await admin('set_base_rate', { p_room_type: king.id, p_rate: orig.king });
+      if (twin) await admin('set_room_bookable', { p_room_type: twin.id, p_bookable: orig.twin });
+      await ctx.close();
+    }
+  }
+
   // ── 375 px: every screen renders, tab bar fits, digits ──
   {
-    const { ctx, page } = await login(USERS.admin, { mfa: true, viewport: { width: 375, height: 812 } });
+    const { ctx, page } = await login(USERS.admin, { viewport: { width: 375, height: 812 } });
     for (const path of ['bookings', 'rates', 'inventory', 'rooms', 'settings', 'users', 'audit']) {
       await page.goto(`${BASE}/${path}`);
       await page.waitForSelector('#app-main h1', { timeout: 20000 });

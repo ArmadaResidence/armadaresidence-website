@@ -387,6 +387,37 @@
       "confirmed_footer": "أُرسلت هذه الرسالة تلقائيًا بعد تأكيد حجزك على armadaresidence.com.",
       "confirmed_hotel_footer": "أُرسلت هذه الرسالة تلقائيًا من الموقع."
     },
+    "staff_email": {
+      "_note": "Dashboard staff emails (26 Oct 2026): the Supabase Auth invite / recovery templates (generated into supabase/templates/ by scripts/auth-templates.mjs) and the sign-in code (login-code function), all in the booking emails' layout. The subject is one line for both languages and keeps its AR- tag (Hostinger filter).",
+      "fallback_label": "إن لم يعمل الزر، انسخ هذا الرابط:",
+      "invite": {
+        "subject": "دعوة إلى لوحة أرمادا ريزيدنس — AR-INVITE",
+        "preheader": "أُضيف حسابك إلى لوحة التحكم. الرابط يعمل لمرة واحدة خلال 24 ساعة.",
+        "heading": "دعوة إلى لوحة تحكم أرمادا ريزيدنس",
+        "body": "أُضيف حسابك إلى لوحة التحكم. اضغط الزر لتعيين كلمة المرور ثم المتابعة إلى اللوحة. الرابط يعمل لمرة واحدة خلال 24 ساعة.",
+        "button": "تعيين كلمة المرور",
+        "ignore": "إن لم تكن تتوقع هذه الدعوة فتجاهل الرسالة."
+      },
+      "recovery": {
+        "subject": "تعيين كلمة المرور — لوحة أرمادا ريزيدنس — AR-RESET",
+        "preheader": "رابط لتعيين كلمة مرور جديدة، صالح لمرة واحدة خلال 24 ساعة.",
+        "heading": "تعيين كلمة المرور — لوحة تحكم أرمادا ريزيدنس",
+        "body": "طُلب رابط لتعيين كلمة مرور جديدة لحسابك في لوحة التحكم. اضغط الزر ثم اختر كلمة المرور. الرابط صالح لمرة واحدة خلال 24 ساعة.",
+        "button": "تعيين كلمة المرور",
+        "ignore": "إن لم تطلب هذا الرابط فتجاهل الرسالة؛ كلمة مرورك لن تتغير."
+      },
+      "login_code": {
+        "subject": "رمز الدخول إلى لوحة التحكم — AR-CODE",
+        "preheader": "رمز الدخول إلى لوحة أرمادا ريزيدنس، صالح 10 دقائق.",
+        "heading": "رمز الدخول إلى لوحة التحكم",
+        "intro": "أدخل هذا الرمز في صفحة الدخول لإكمال تسجيل الدخول إلى لوحة أرمادا ريزيدنس:",
+        "validity": "الرمز صالح لمدة 10 دقائق، ولجلسة الدخول التي طلبته فقط.",
+        "requested": "وقت الطلب: {time} بتوقيت الرياض · {device}",
+        "ignore": "إن لم تكن تحاول الدخول إلى لوحة أرمادا ريزيدنس فتجاهل هذه الرسالة وغيّر كلمة المرور.",
+        "am": "صباحًا",
+        "pm": "مساءً"
+      }
+    },
     "taif": {
       "heading": "اكتشف الطائف",
       "intro": "دليل أرمادا ريزيدنس لسبع عشرة وجهة في الطائف وما حولها: الطبيعة والمرتفعات، والعائلة والترفيه، والتاريخ والثقافة، والأسواق والتجارب، والمواقيت. اختر وجهاتك، أضفها إلى خطتك، واحجز في الفرع الأقرب إليها.",
@@ -945,6 +976,37 @@
       "booking_summary": "Booking summary",
       "confirmed_footer": "This message was sent automatically after your booking was confirmed on armadaresidence.com.",
       "confirmed_hotel_footer": "This message was sent automatically by the website."
+    },
+    "staff_email": {
+      "_note": "See the Arabic block. The subject is the Arabic one (one subject per email).",
+      "fallback_label": "If the button does not work, copy this link:",
+      "invite": {
+        "subject": "دعوة إلى لوحة أرمادا ريزيدنس — AR-INVITE",
+        "preheader": "You were added to the team dashboard. The link works once within 24 hours.",
+        "heading": "Invitation to the Armada Residence dashboard",
+        "body": "You were added to the team dashboard. Press the button to set your password and continue to the dashboard. The link works once within 24 hours.",
+        "button": "Set your password",
+        "ignore": "If you were not expecting this invitation, ignore this email."
+      },
+      "recovery": {
+        "subject": "تعيين كلمة المرور — لوحة أرمادا ريزيدنس — AR-RESET",
+        "preheader": "A link to choose a new password, valid once within 24 hours.",
+        "heading": "Set your password — Armada Residence dashboard",
+        "body": "A password reset was requested for your dashboard account. Press the button to choose a new password. The link works once within 24 hours.",
+        "button": "Choose a new password",
+        "ignore": "If you did not ask for it, ignore this email; your password will not change."
+      },
+      "login_code": {
+        "subject": "رمز الدخول إلى لوحة التحكم — AR-CODE",
+        "preheader": "Your Armada Residence dashboard sign-in code, valid for 10 minutes.",
+        "heading": "Your dashboard sign-in code",
+        "intro": "Enter this code on the sign-in page to finish signing in to the Armada Residence dashboard:",
+        "validity": "The code is valid for 10 minutes, and only for the sign-in that requested it.",
+        "requested": "Requested: {time} Riyadh time · {device}",
+        "ignore": "If you are not trying to sign in to the Armada Residence dashboard, ignore this email and change your password.",
+        "am": "am",
+        "pm": "pm"
+      }
     },
     "taif": {
       "heading": "Discover Taif",

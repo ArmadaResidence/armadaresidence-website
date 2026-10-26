@@ -16,7 +16,8 @@
 import { existsSync, readFileSync } from 'node:fs';
 
 const DEFAULT_ORIGINS = ['https://admin.armadaresidence.com', 'https://armadaresidence.github.io/armadaresidence-admin'];
-const DEFAULT_FUNCTIONS = ['booking-admin', 'admin-users', 'site-rebuild'];
+// login-code (phase 2a.2, 26 Oct 2026): the second sign-in step, called from the dashboard with the user's JWT
+const DEFAULT_FUNCTIONS = ['booking-admin', 'admin-users', 'site-rebuild', 'login-code'];
 // what the dashboard's fetch() and supabase-js functions.invoke() put in Access-Control-Request-Headers
 const REQUEST_HEADERS = ['authorization', 'apikey', 'content-type', 'x-client-info'];
 const FOREIGN = 'https://evil.invalid';

@@ -40,3 +40,8 @@ content_path = "./supabase/templates/invite.html"
 [auth.email.template.recovery]
 subject = "تعيين كلمة المرور — لوحة أرمادا ريزيدنس — AR-RESET"
 content_path = "./supabase/templates/recovery.html"
+
+# Phase 2a.2 (26 Oct 2026): the second sign-in step — sends the 6-digit code by email to the signed-in user (the user's
+# JWT; verification is public.verify_login_code as that user).
+[functions.login-code]
+verify_jwt = true

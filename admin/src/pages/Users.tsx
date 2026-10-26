@@ -3,12 +3,15 @@
 // «منح صلاحية كاملة». Reads and the invite / deactivate go through the admin-users function; the matrix, preset and
 // scope go through set_permissions (as the caller, one audited batch → «تراجع»). The last active holder of users:edit
 // cannot be deactivated or demoted (database rule shown inline). With users = view the screen is read-only.
+// Phase 2a.2 (26 Oct 2026): per user the remembered devices, the last email-code sign-in and (admins) the backup codes
+// left; «إلغاء الأجهزة المتذكَّرة» (users:edit) ends that user's verified sessions too — not undoable.
 import { useEffect, useMemo, useState } from 'react';
 import * as api from '../lib/api';
 import type { Level, Role, Section, StaffUser } from '../lib/api';
 import { useSession } from '../lib/session';
 import { BRANCH_NAMES, ROLE_LABELS, riyadhDateTimeLong } from '../lib/format';
 import { ErrorBox, Field, Loading, Modal, Segmented, Spinner, useToast } from '../components/ui';
+import { SECURITY_TEXT as SEC } from '../lib/secondStep';
 
 const LEVELS: { value: Level; label: string }[] = [{ value: 'none', label: 'لا شيء' }, { value: 'view', label: 'عرض' }, { value: 'edit', label: 'تعديل' }];
 const ROLES: Role[] = ['admin', 'management', 'sales', 'reception'];
@@ -25,12 +28,15 @@ export default function Users() {
   const [edit, setEdit] = useState<StaffUser | null>(null);
   const [open, setOpen] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
+  const [security, setSecurity] = useState<Record<string, api.StaffSecurity>>({});
+  const [revoke, setRevoke] = useState<StaffUser | null>(null);
 
   const load = async () => {
     try {
-      const [u, b] = await Promise.all([api.listUsers(), api.branches()]);
+      const [u, b, sec] = await Promise.all([api.listUsers(), api.branches(), api.staffSecurity().catch(() => null)]);
       setUsers(u.users);
       setBranches(b);
+      setSecurity(Object.fromEntries((sec ?? []).map((x) => [x.user_id, x])));
     } catch (e) {
       setError((e as Error).message);
       setUsers([]);
@@ -78,7 +84,7 @@ export default function Users() {
         <h1 className="text-2xl font-bold me-auto">المستخدمون والصلاحيات</h1>
         {editable && <button type="button" className="btn btn-primary" onClick={() => setInvite(true)} data-action="invite">دعوة مستخدم</button>}
       </div>
-      <p className="text-sm text-ink-muted mb-4">لكل مستخدم مصفوفة صلاحيات (لا شيء / عرض / تعديل) لكل قسم، ونطاق فرع (كل الفروع أو فرع واحد). «الدور» قالب يملأ المصفوفة فقط ويمكن تعديلها بعده. التحقق بخطوتين إلزامي لغير الاستقبال ولكل من له تعديل على الإعدادات أو المستخدمين. لا يمكن إيقاف أو تنزيل آخر مدير نظام فعّال.{editable ? '' : ' صلاحيتك هنا للعرض فقط.'}</p>
+      <p className="text-sm text-ink-muted mb-4">لكل مستخدم مصفوفة صلاحيات (لا شيء / عرض / تعديل) لكل قسم، ونطاق فرع (كل الفروع أو فرع واحد). «الدور» قالب يملأ المصفوفة فقط ويمكن تعديلها بعده. {SEC.usersIntro} لا يمكن إيقاف أو تنزيل آخر مدير نظام فعّال.{editable ? '' : ' صلاحيتك هنا للعرض فقط.'}</p>
       <ErrorBox error={error} />
       {users === null ? (
         <Loading />
@@ -97,7 +103,9 @@ export default function Users() {
                       <span>· {u.branch ? BRANCH_NAMES[u.branch] : 'كل الفروع'}</span>
                       <span>· {u.active ? 'مفعّل' : 'موقوف'}</span>
                       <span>· {u.confirmed ? 'كلمة المرور معيّنة' : 'الدعوة لم تُقبل بعد'}</span>
-                      <span>· التحقق بخطوتين: {u.mfa_enrolled ? 'مفعّل' : 'غير مفعّل'}</span>
+                      <span data-devices-count={security[u.user_id]?.devices.length ?? 0}>· {SEC.userDevices(security[u.user_id]?.devices.length ?? 0)}</span>
+                      {security[u.user_id]?.last_code_at && <span className="num-ar">· {SEC.userLastCode} {riyadhDateTimeLong(security[u.user_id]!.last_code_at!)}</span>}
+                      {security[u.user_id]?.backup_codes_left != null && <span className="num-ar">· {SEC.userBackup(security[u.user_id]!.backup_codes_left!)}</span>}
                       {u.permissions?.users === 'edit' && <span className="chip chip-flag">مدير نظام</span>}
                       {u.last_sign_in_at && <span className="num-ar">· آخر دخول {riyadhDateTimeLong(u.last_sign_in_at)}</span>}
                     </div>
@@ -106,6 +114,7 @@ export default function Users() {
                     <button type="button" className="btn btn-ghost btn-sm" onClick={() => setOpen(isOpen ? null : u.user_id)} aria-expanded={isOpen} data-action="perms">الصلاحيات</button>
                     {editable && <button type="button" className="btn btn-ghost btn-sm" onClick={() => setEdit(u)}>الاسم</button>}
                     {editable && <button type="button" className="btn btn-ghost btn-sm" disabled={busy === u.user_id} onClick={() => act('أُرسل الرابط', u.user_id, () => api.resendLink(u.user_id))}>{u.confirmed ? 'رابط كلمة مرور' : 'إعادة الدعوة'}</button>}
+                    {editable && u.role && <button type="button" className="btn btn-ghost btn-sm" disabled={busy === u.user_id} onClick={() => setRevoke(u)} data-action="revoke-devices">{SEC.revoke}</button>}
                     {editable && (
                       <button type="button" className={`btn btn-sm ${u.active ? 'btn-danger' : 'btn-primary'}`} disabled={busy === u.user_id || !u.role || isLastAdmin} title={isLastAdmin ? 'آخر مدير نظام فعّال لا يمكن إيقافه' : undefined}
                         onClick={() => act(u.active ? 'أُوقف الحساب' : 'فُعّل الحساب', u.user_id, () => api.updateUser(u.user_id, { active: !u.active }))} data-action="toggle-active">{u.active ? 'إيقاف' : 'تفعيل'}</button>
@@ -120,6 +129,16 @@ export default function Users() {
           })}
         </ul>
       )}
+      <Modal open={!!revoke} onClose={() => setRevoke(null)} title={SEC.revoke}>
+        <p className="text-sm mb-4">{revoke ? SEC.revokeUserBody(revoke.full_name ?? revoke.email) : ''}</p>
+        <div className="flex gap-2 justify-end">
+          <button type="button" className="btn btn-ghost" onClick={() => setRevoke(null)}>إلغاء</button>
+          <button type="button" className="btn btn-danger" data-action="revoke-devices-go" disabled={!!busy}
+            onClick={() => { const u = revoke!; setRevoke(null); void act(`${SEC.revoked} — ${u.full_name ?? u.email}`, u.user_id, () => api.revokeDevices(u.user_id)); }}>
+            {SEC.revokeGo}
+          </button>
+        </div>
+      </Modal>
       {invite && <InviteForm branches={branches} onClose={() => setInvite(false)} onSaved={() => { setInvite(false); toast('أُرسلت الدعوة'); load(); }} />}
       {edit && <NameForm user={edit} onClose={() => setEdit(null)} onSaved={() => { setEdit(null); toast('حُفظ'); load(); }} />}
     </div>

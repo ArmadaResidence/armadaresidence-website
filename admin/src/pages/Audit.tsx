@@ -10,8 +10,25 @@ import { BRANCH_NAMES, longDate, riyadhDateTimeLong, rowsWord, sar } from '../li
 import DateField from '../components/DateField';
 import { Empty, ErrorBox, Field, Loading, Modal, Spinner, useToast } from '../components/ui';
 
-const ENTITY: Record<string, string> = { room_types: 'نوع غرفة (سعر أساسي / توافر)', rate_overrides: 'استثناء سعر', inventory_days: 'مخزون', settings: 'إعدادات', staff: 'مستخدم', staff_permissions: 'صلاحيات', reservations: 'حجز' };
-const FIELD: Record<string, string> = { base_rate: 'السعر الأساسي', bookable: 'متاحة على الموقع', active: 'فعّال', slug: 'المعرّف', date_from: 'من', date_to: 'إلى', weekdays: 'أيام الأسبوع', price: 'السعر', label: 'التسمية', label_en: 'التسمية بالإنجليزية', night: 'الليلة', rooms_to_sell: 'المتبقي', booked: 'المحجوز', stop_sell: 'مغلق', value: 'القيمة', full_name: 'الاسم', role: 'القالب', branch: 'الفرع', ref: 'رقم الحجز', status: 'الحالة', confirmation: 'التأكيد', fallback_reason: 'السبب', room_type_id: 'نوع الغرفة', check_in: 'الوصول', check_out: 'المغادرة', total: 'الإجمالي', payment_status: 'الدفع', cancel_reason: 'سبب الإلغاء', internal_notes: 'ملاحظات داخلية', level: 'المستوى', created_at: 'أُنشئ' };
+const ENTITY: Record<string, string> = { room_types: 'نوع غرفة (سعر أساسي / توافر)', rate_overrides: 'استثناء سعر', inventory_days: 'مخزون', settings: 'إعدادات', staff: 'مستخدم', staff_permissions: 'صلاحيات', reservations: 'حجز', security_events: 'أمان الدخول', site_defaults: 'الإعدادات الافتراضية' };
+// phase 2a.2 (26 Oct 2026): one line per security event (devices, backup codes) — never a code or a token
+const REVOKE_REASON: Record<string, string> = { admin: 'بواسطة مدير النظام', self: 'بواسطة المستخدم', password_change: 'بعد تغيير كلمة المرور', deactivated: 'بعد إيقاف الحساب' };
+function securityLine(r: AuditRow): string {
+  const d = (r.new?.detail ?? {}) as Record<string, unknown>;
+  switch (r.new?.event) {
+    case 'device_remembered':
+      return `تذكّر جهاز: ${String(d.label ?? '')}`;
+    case 'devices_revoked':
+      return `إلغاء الأجهزة المتذكَّرة (${Number(d.count ?? 0)}) ${REVOKE_REASON[String(d.reason)] ?? ''}`.trim();
+    case 'backup_codes_generated':
+      return `إنشاء رموز طوارئ (${Number(d.count ?? 10)})${Number(d.replaced ?? 0) ? ` — أُلغي ${Number(d.replaced)} من الرموز السابقة` : ''}`;
+    case 'backup_code_used':
+      return `دخول برمز طوارئ — المتبقي ${Number(d.left ?? 0)}`;
+  }
+  return String(r.new?.event ?? '');
+}
+const ACTOR: Record<string, string> = { website: 'الموقع', seed: 'الاستيراد الأول', migration: 'تحديث النظام', auth: 'نظام الدخول', system: 'النظام' };
+const FIELD: Record<string, string> = { is_default: 'الافتراضي', kind: 'النوع', saved_at: 'وقت الحفظ', base_rate: 'السعر الأساسي', bookable: 'متاحة على الموقع', active: 'فعّال', slug: 'المعرّف', date_from: 'من', date_to: 'إلى', weekdays: 'أيام الأسبوع', price: 'السعر', label: 'التسمية', label_en: 'التسمية بالإنجليزية', night: 'الليلة', rooms_to_sell: 'المتبقي', booked: 'المحجوز', stop_sell: 'مغلق', value: 'القيمة', full_name: 'الاسم', role: 'القالب', branch: 'الفرع', ref: 'رقم الحجز', status: 'الحالة', confirmation: 'التأكيد', fallback_reason: 'السبب', room_type_id: 'نوع الغرفة', check_in: 'الوصول', check_out: 'المغادرة', total: 'الإجمالي', payment_status: 'الدفع', cancel_reason: 'سبب الإلغاء', internal_notes: 'ملاحظات داخلية', level: 'المستوى', created_at: 'أُنشئ' };
 const LEVEL: Record<string, string> = { none: 'لا شيء', view: 'عرض', edit: 'تعديل' };
 const ROLE: Record<string, string> = { admin: 'مدير النظام', management: 'الإدارة', sales: 'المبيعات', reception: 'الاستقبال' };
 const SKIP = new Set(['created_at', 'room_type_id']);
@@ -28,6 +45,7 @@ function fmt(k: string, v: unknown): string {
   return String(v);
 }
 function diff(row: AuditRow): string[] {
+  if (row.entity === 'security_events') return [securityLine(row)];
   const keys = new Set([...Object.keys(row.old ?? {}), ...Object.keys(row.new ?? {})]);
   const out: string[] = [];
   for (const k of keys) {
@@ -51,6 +69,7 @@ export default function Audit() {
   const [more, setMore] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
   const [reverted, setReverted] = useState<Set<string>>(new Set());
+  const [restores, setRestores] = useState<Set<string>>(new Set());
   const [error, setError] = useState<string | null>(null);
   const [entity, setEntity] = useState('');
   const [actor, setActor] = useState('');
@@ -68,7 +87,9 @@ export default function Audit() {
       const r = await api.audit(filters, PAGE);
       setRows(r);
       setMore(r.length === PAGE);
-      setReverted(await api.revertedBatches(Array.from(new Set(r.map((x) => x.batch_id).filter((x): x is string => !!x)))));
+      const ids = Array.from(new Set(r.map((x) => x.batch_id).filter((x): x is string => !!x)));
+      setReverted(await api.revertedBatches(ids));
+      setRestores(await api.defaultsBatches(ids));
     } catch (e) {
       setError((e as Error).message);
       setRows([]);
@@ -86,7 +107,9 @@ export default function Audit() {
       const all = [...rows, ...r];
       setRows(all);
       setMore(r.length === PAGE);
-      setReverted(await api.revertedBatches(Array.from(new Set(all.map((x) => x.batch_id).filter((x): x is string => !!x)))));
+      const ids = Array.from(new Set(all.map((x) => x.batch_id).filter((x): x is string => !!x)));
+      setReverted(await api.revertedBatches(ids));
+      setRestores(await api.defaultsBatches(ids));
     } catch (e) {
       toast((e as Error).message, 'error');
     } finally {
@@ -109,7 +132,7 @@ export default function Audit() {
     return out;
   }, [rows]);
 
-  const sectionOf = (r: AuditRow) => (r.entity === 'room_types' ? (JSON.stringify(r.old?.bookable) !== JSON.stringify(r.new?.bookable) ? 'rooms' : 'rates') : r.entity === 'rate_overrides' ? 'rates' : r.entity === 'inventory_days' ? 'inventory' : r.entity === 'settings' ? 'settings' : r.entity === 'staff' || r.entity === 'staff_permissions' ? 'users' : null);
+  const sectionOf = (r: AuditRow) => (r.entity === 'room_types' ? (JSON.stringify(r.old?.bookable) !== JSON.stringify(r.new?.bookable) ? 'rooms' : 'rates') : r.entity === 'rate_overrides' ? 'rates' : r.entity === 'inventory_days' ? 'inventory' : r.entity === 'settings' ? 'settings' : r.entity === 'staff' || r.entity === 'staff_permissions' || r.entity === 'site_defaults' ? 'users' : null);
   const canRevert = (g: { rows: AuditRow[] }) => {
     const r = g.rows[0];
     if (!r.batch_id || r.entity === 'reservations' || reverted.has(r.batch_id)) return false;
@@ -176,12 +199,13 @@ export default function Audit() {
                 <li key={g.key} className="card p-3 text-sm" data-batch={r.batch_id ?? undefined} data-reverted={wasReverted || undefined}>
                   <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-ink-muted">
                     <span className="num-ar">{riyadhDateTimeLong(r.at)}</span>
-                    <span className="text-ink font-bold">{r.actor_label === 'website' ? 'الموقع' : r.actor_label === 'seed' ? 'الاستيراد الأول' : r.actor_label === 'migration' ? 'تحديث النظام' : r.actor_label}</span>
+                    <span className="text-ink font-bold">{ACTOR[r.actor_label] ?? r.actor_label}</span>
                     <span>{ENTITY[r.entity] ?? r.entity}</span>
                     {r.branch && <span>{BRANCH_NAMES[r.branch]}</span>}
                     <span>{r.action === 'insert' ? 'إضافة' : r.action === 'delete' ? 'حذف' : 'تعديل'}</span>
                     {g.rows.length > 1 && <span className="chip chip-request">تعديل جماعي · <span className="num-ar">{rowsWord(g.rows.length)}</span></span>}
                     {isRevert && <span className="chip chip-request">استرجاع لتغيير سابق</span>}
+                    {!!r.batch_id && restores.has(r.batch_id) && <span className="chip chip-flag" data-restore-batch>استعادة الإعدادات الافتراضية</span>}
                     {wasReverted && <span className="chip chip-cancelled" style={{ textDecoration: 'none' }}>مُسترجَع</span>}
                     {canRevert(g) && (
                       <button type="button" className="btn btn-ghost btn-sm ms-auto" onClick={() => setConfirm(g)} data-action="revert">استرجاع هذا التغيير</button>

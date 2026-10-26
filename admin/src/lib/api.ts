@@ -18,7 +18,18 @@ export interface Me {
   branch: string | null;
   full_name: string;
   active: boolean;
+  /** phase 2a.2: the email code (or a remembered device / an admin backup code) is still to be passed */
+  needs_second_factor: boolean;
+  /** the 2a.1 name of the same flag (kept by the database for the functions) */
   needs_mfa: boolean;
+  /** how this session passed: code | device | backup | totp (TOTP until step 2) | null */
+  second_factor: 'code' | 'device' | 'backup' | 'totp' | null;
+  verified_at: string | null;
+  email: string | null;
+  /** users:edit — the system admin (backup codes, site defaults) */
+  is_admin: boolean;
+  /** admins only: unused backup codes */
+  backup_codes_left: number | null;
   permissions: Record<string, Level>;
   sections: Section[];
 }
@@ -395,4 +406,125 @@ export async function siteRebuild(reason: 'settings' | 'rooms'): Promise<{ ok: b
   } catch (e) {
     return { ok: false, reason: (e as Error).message };
   }
+}
+
+
+// ── second step (phase 2a.2 C, 26 Oct 2026) ──────────────────────────────────────────────────────────────────────
+export interface CodeSend {
+  ok: boolean;
+  reason?: 'too_soon' | 'rate_limit' | 'send_failed' | 'not_staff' | 'no_session' | string;
+  retry_after?: number | null;
+  resend_after?: number;
+  expires_in?: number;
+}
+/** login-code function: email a 6-digit code to the signed-in user. Answers its reason on 429 / 502 (never throws for
+ * those); throws only for a lost session or the network. */
+export async function sendLoginCode(): Promise<CodeSend> {
+  const { data: s } = await supabase.auth.getSession();
+  const jwt = s.session?.access_token;
+  if (!jwt) throw new Error(SESSION_ENDED);
+  let res: Response;
+  try {
+    res = await fetch(`${SUPABASE_URL}/functions/v1/login-code`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${jwt}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'send' }),
+    });
+  } catch {
+    console.error('[login-code] network or CORS failure');
+    throw new Error(CONNECTION);
+  }
+  if (res.status === 401) throw new Error(SESSION_ENDED);
+  const j = (await res.json().catch(() => ({}))) as CodeSend;
+  return { ...j, ok: res.ok && !!j.ok };
+}
+async function rpc<T>(fn: string, args: Record<string, unknown> = {}): Promise<T> {
+  const { data, error } = await supabase.rpc(fn, args);
+  if (error) fail(error, fn);
+  return data as T;
+}
+export interface CodeCheck {
+  ok: boolean;
+  reason?: 'wrong' | 'locked' | 'expired' | 'none' | 'unknown' | 'revoked';
+  attempts_left?: number;
+  device_token?: string | null;
+  left?: number;
+}
+export const verifyLoginCode = (code: string, remember: boolean, label: string) => rpc<CodeCheck>('verify_login_code', { p_code: code, p_remember: remember, p_label: label });
+export const useRememberedDevice = (token: string) => rpc<CodeCheck>('use_remembered_device', { p_token: token });
+export const useBackupCode = (code: string) => rpc<CodeCheck>('use_backup_code', { p_code: code });
+export const generateBackupCodes = () => rpc<{ ok: boolean; codes: string[]; generated_at: string }>('generate_backup_codes');
+export const revokeDevices = (userId: string) => rpc<{ ok: boolean; count: number }>('revoke_devices', { p_user: userId });
+export interface Device {
+  id: string;
+  label: string;
+  created_at: string;
+  last_used_at: string | null;
+  expires_at: string;
+}
+export interface StaffSecurity {
+  user_id: string;
+  devices: Device[];
+  last_code_at: string | null;
+  backup_codes_left: number | null;
+}
+export const staffSecurity = () => rpc<StaffSecurity[] | null>('staff_security');
+export interface MySecurity {
+  devices: Device[];
+  current_device: string | null;
+  second_factor: 'code' | 'device' | 'backup' | null;
+  fresh: boolean;
+  is_admin: boolean;
+  backup_codes_left: number | null;
+}
+export const mySecurity = () => rpc<MySecurity | null>('my_security');
+
+// ── site defaults (phase 2a.2 D, system admin only) ──────────────────────────────────────────────────────────────
+export interface DefaultsSave {
+  id: string;
+  saved_at: string;
+  saved_by: string;
+  label: string | null;
+  kind: 'manual' | 'auto_before_restore';
+  is_default: boolean;
+}
+export interface DefaultsList {
+  saves: DefaultsSave[];
+  last_restore: { at: string; by: string; count: number; batch_id: string } | null;
+}
+export interface DefaultsChange {
+  group: 'switches' | 'fees' | 'limits' | 'rooms' | 'base_rates';
+  key: string;
+  branch?: string;
+  id?: string;
+  name_ar?: string;
+  current: unknown;
+  target: unknown;
+}
+export interface DefaultsDiff {
+  ok: boolean;
+  reason?: 'none';
+  id?: string;
+  label?: string | null;
+  kind?: 'manual' | 'auto_before_restore';
+  saved_at?: string;
+  saved_by?: string;
+  is_default?: boolean;
+  changes: DefaultsChange[];
+  skipped: { id: string; name_ar: string; branch: string }[];
+  not_covered: { id: string; name_ar: string; branch: string }[];
+  switch_on: { key: string; branch: string }[];
+  rebuild_needed: boolean;
+  hash: string;
+}
+export const saveDefaults = (label: string) => rpc<Saved & { id: string }>('save_site_defaults', { p_label: label || null });
+export const defaultsList = () => rpc<DefaultsList>('site_defaults_list');
+export const defaultsDiff = (id?: string) => rpc<DefaultsDiff>('site_defaults_diff', { p_id: id ?? null });
+export const restoreDefaults = (id: string | undefined, hash: string, ackSwitches: boolean) =>
+  rpc<Saved & { count: number; rebuild_needed: boolean }>('restore_site_defaults', { p_id: id ?? null, p_expected_hash: hash, p_ack_switches: ackSwitches });
+export async function defaultsBatches(ids: string[]): Promise<Set<string>> {
+  if (!ids.length) return new Set();
+  const { data, error } = await supabase.rpc('site_defaults_batches', { p_ids: ids });
+  if (error) return new Set();
+  return new Set((data as string[] | null) ?? []);
 }

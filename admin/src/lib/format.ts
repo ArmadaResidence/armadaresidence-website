@@ -77,6 +77,19 @@ export function countWord(n: number, w: CountNoun): string {
   if (k >= 11) return `${n} ${w.many}`;
   return `${n} ${w.gen}`;
 }
+// phase 2a.2 (26 Oct 2026): the code screen, remembered devices, backup codes, the defaults dialog
+export const SECOND: CountNoun = { zero: 'لا ثوانٍ', one: 'ثانية واحدة', two: 'ثانيتان', few: 'ثوانٍ', many: 'ثانية', gen: 'ثانية' };
+export const MINUTE: CountNoun = { zero: 'لا دقائق', one: 'دقيقة واحدة', two: 'دقيقتان', few: 'دقائق', many: 'دقيقة', gen: 'دقيقة' };
+export const ATTEMPT: CountNoun = { zero: 'لا محاولات', one: 'محاولة واحدة', two: 'محاولتان', few: 'محاولات', many: 'محاولة', gen: 'محاولة' };
+export const CODE: CountNoun = { zero: 'لا رموز', one: 'رمز واحد', two: 'رمزان', few: 'رموز', many: 'رمزًا', gen: 'رمز' };
+export const DEVICE: CountNoun = { zero: 'لا أجهزة', one: 'جهاز واحد', two: 'جهازان', few: 'أجهزة', many: 'جهازًا', gen: 'جهاز' };
+export const CHANGE: CountNoun = { zero: 'لا تغييرات', one: 'تغيير واحد', two: 'تغييران', few: 'تغييرات', many: 'تغييرًا', gen: 'تغيير' };
+export const secondsWord = (n: number) => countWord(n, SECOND);
+export const minutesWord = (n: number) => countWord(n, MINUTE);
+export const attemptsWord = (n: number) => countWord(n, ATTEMPT);
+export const codesWord = (n: number) => countWord(n, CODE);
+export const devicesWord = (n: number) => countWord(n, DEVICE);
+export const changesWord = (n: number) => countWord(n, CHANGE);
 export const nightsWord = (n: number) => countWord(n, NIGHT);
 export const roomsWord = (n: number) => countWord(n, ROOM);
 export const rowsWord = (n: number) => countWord(n, ROW);

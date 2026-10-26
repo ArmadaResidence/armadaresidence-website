@@ -253,3 +253,10 @@ body {
 
 /* mobile tab bar: seven items, short labels, no wrapping */
 .tabbar a { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* backup codes (phase 2a.2): «طباعة» prints the codes block only */
+@media print {
+  body * { visibility: hidden; }
+  #backup-print, #backup-print * { visibility: visible; }
+  #backup-print { position: absolute; top: 0; left: 0; right: 0; border: 0; }
+}

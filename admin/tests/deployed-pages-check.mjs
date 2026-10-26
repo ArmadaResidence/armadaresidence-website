@@ -4,15 +4,16 @@
 // the request URL and the publishable key are swapped, nothing else — so the bundle, the origin, the preflights and
 // the gateway are the deployed ones, and no QA user ever exists in production. Every page is opened by a full load
 // (the SPA fallback included), at 1280 and at 375, and must render its data with no error box, no page error, no
-// console error and no failed or refused request. Nothing is written except the QA admin's sign-in and TOTP enrolment
-// on the branch; no invite is sent.
+// console error and no failed or refused request. Nothing is written except the QA admin's sign-in and its email code
+// (phase 2a.2: the login-code function of the branch answers the code in test mode — BOOKING_TEST_TOKEN) on the branch;
+// no invite is sent.
 //
 //   node admin/tests/deployed-pages-check.mjs [BASE]      default https://admin.armadaresidence.com
 //   env TARGET_SUPABASE_URL + TARGET_SUPABASE_ANON_KEY     the preview branch (required)
 //       BUNDLE_SUPABASE_URL / BUNDLE_SUPABASE_ANON_KEY     what the deployed bundle was built with (default: .env SUPABASE_URL / SUPABASE_ANON_KEY)
 import { chromium } from 'playwright';
 import { readFileSync } from 'node:fs';
-import { totp } from './totp.mjs';
+import { APP_PATH, handleBackupCodes, passCode, routeLoginCode } from './code-login.mjs';
 
 const BASE = (process.argv[2] || 'https://admin.armadaresidence.com').replace(/\/$/, '');
 const PW = 'Qa-Armada-2026!x'; // the QA admin of supabase/migrations/20261025000500_phase2a_qa_users.sql (*.qa.invalid, preview branches only)
@@ -52,7 +53,7 @@ const check = (ok, label, detail = '') => {
 };
 
 const browser = await chromium.launch({ channel: 'chrome' });
-let totpSecret = null; // enrolled by the first sign-in of this run; later contexts only get asked for the code
+const TEST_TOKEN = process.env.BOOKING_TEST_TOKEN || fileEnv.BOOKING_TEST_TOKEN || '';
 async function run(viewport, tag) {
   const ctx = await browser.newContext({ viewport, locale: 'ar' });
   // the bundle's Supabase project → the preview branch; keys swapped where the bundle sends its own
@@ -62,6 +63,11 @@ async function run(viewport, tag) {
     for (const k of ['apikey', 'authorization']) if (headers[k]) headers[k] = headers[k].split(BUNDLE_KEY).join(TARGET_KEY);
     return route.continue({ url: TARGET_URL + req.url().slice(BUNDLE_ORIGIN.length), headers });
   });
+  // the second step: the branch's login-code function in test mode (the bundle's key swapped as above)
+  const codes = [];
+  const toTarget = (url) => TARGET_URL + url.slice(BUNDLE_ORIGIN.length);
+  toTarget.headers = (h) => Object.fromEntries(['apikey', 'authorization'].filter((k) => h[k]).map((k) => [k, h[k].split(BUNDLE_KEY).join(TARGET_KEY)]));
+  await routeLoginCode(ctx, TEST_TOKEN, codes, { rewrite: toTarget });
   // realtime cannot be redirected the same way (websocket): keep it off the wire — the list loads through REST
   await ctx.routeWebSocket(/\/realtime\/v1\//, () => {});
   const page = await ctx.newPage();
@@ -74,24 +80,21 @@ async function run(viewport, tag) {
   page.on('response', (r) => r.status() >= 400 && !isSpaFallback(r) && problems.push(`HTTP ${r.status()}: ${r.request().method()} ${r.url().slice(0, 120)}`));
   const take = () => problems.splice(0);
 
-  // sign in as the QA admin; the app lands on /bookings, then my_staff sends a non-reception user to /mfa (the first
-  // login enrols: the secret is shown under the QR) — wait for either screen by its content, not by the URL
+  // sign in as the QA admin: password → /code (the email code, test mode) → (first time in a run: /backup-codes) → app
   await page.goto(`${BASE}/login`, { waitUntil: 'domcontentloaded' });
   await page.fill('#email', ADMIN);
   await page.fill('#password', PW);
   await page.click('button[type=submit]');
-  await Promise.race([page.waitForSelector('#f-branch', { timeout: 30000 }), page.waitForSelector('#code', { timeout: 30000 })]);
-  if (await page.locator('#code').count()) {
-    const secretEl = page.locator('p.latin.select-all');
-    if (!totpSecret) await secretEl.waitFor({ timeout: 20000 }).catch(() => {});
-    if (await secretEl.count()) totpSecret = (await secretEl.textContent()).trim();
-    if (!totpSecret) throw new Error('mfa: the QA admin is already enrolled with an unknown secret — reset its factors on the branch (delete from auth.mfa_factors)');
-    await page.fill('#code', totp(totpSecret));
-    await page.click('button:has-text("تحقق")');
+  await passCode(page, codes);
+  await page.waitForURL(/\/backup-codes|\/(bookings|rates|inventory|rooms|settings|users|audit)/, { timeout: 30000, waitUntil: 'commit' });
+  if (/\/backup-codes/.test(page.url())) {
+    await page.waitForSelector('[data-action="generate-backup"]', { timeout: 20000 });
+    await handleBackupCodes(page);
   }
+  await page.waitForURL(APP_PATH, { timeout: 30000, waitUntil: 'commit' });
   await page.waitForSelector('#f-branch', { timeout: 30000 });
   const loginProblems = take();
-  check(loginProblems.length === 0, `${tag}: sign-in + TOTP through the deployed bundle without errors`, loginProblems.join(' | '));
+  check(loginProblems.length === 0, `${tag}: sign-in + email code through the deployed bundle without errors`, loginProblems.join(' | '));
 
   for (const p of PAGES) {
     await page.goto(`${BASE}/${p.path}`, { waitUntil: 'domcontentloaded' }); // full load: the Pages SPA fallback serves the route

@@ -15,7 +15,7 @@ per-branch switches are turned on in the dashboard (Settings → مفاتيح ا
    - Reset password: subject `تعيين كلمة المرور — لوحة أرمادا ريزيدنس — AR-RESET`
    - Magic link / Change email / Confirm signup: not used; leave them, or add `AR-` as well.
    The link in each template must stay `{{ .ConfirmationURL }}` (PKCE); the dashboard receives it on `/set-password`.
-5. **Multi-Factor → TOTP:** enabled (the default). Admin, management and sales are blocked by RLS until they verify a TOTP factor; reception may skip it.
+5. **Second step (phase 2a.2, 26 Oct 2026):** a 6-digit code emailed by the `login-code` function to every user after the password (§4c). Multi-Factor → TOTP stays enabled only until step 2 of the rollout, then it is turned off through `supabase/config.toml`.
 6. **Sessions (optional):** inactivity timeout 12 h to match the dashboard's idle sign-out.
 
 ## 2. Users (dashboard → المستخدمون, or by the admin-users function)
@@ -28,7 +28,7 @@ select id, 'أحمد محمد حلمي', 'admin', null from auth.users where ema
 on conflict (user_id) do update set role = 'admin', active = true;
 ```
 
-Accept the invite on `/set-password`, enrol TOTP on `/mfa`, then invite the rest from المستخدمون:
+Accept the invite on `/set-password`, pass the email code on `/code` (an admin then saves the 10 backup codes on `/backup-codes`), then invite the rest from المستخدمون:
 
 | role | login | display name (audit label) | branch |
 |---|---|---|---|
@@ -92,6 +92,40 @@ it) and the link works in any browser or device. Subjects keep the `AR-` tag. Th
 Incident: links sent on 25 Oct 2026 were PKCE / implicit redirects that the dashboard client (PKCE mode) could not turn
 into a session when the link was requested by the admin for someone else — the token was consumed by the redirect and
 every later click said «الرابط غير صالح أو منتهي» (DECISIONS.md 2026-10-26).
+
+## 4c. The email code (second step) and the admin's backup codes — phase 2a.2, 26 Oct 2026
+
+- **How it works:** password → `/code`: the dashboard asks the `login-code` Edge Function (user's JWT) to email a
+  6-digit code (subject «رمز الدخول إلى لوحة التحكم — AR-CODE», from `no-reply@armadaresidence.com`; the code in the body
+  only). The code is bound to that browser session, valid 10 minutes, 5 attempts; a new one after 60 s, at most 6 per
+  user and 20 per IP per hour. «تذكّر هذا الجهاز لمدة 30 يومًا» skips the code on that browser for 30 days; the users
+  screen and «الأمان» list the remembered devices and «إلغاء الأجهزة المتذكَّرة» ends them (and that user's open
+  sessions) at once. A password change and a deactivation clear them too.
+- **Mailboxes:** every staff mailbox needs the Hostinger filter (CLAUDE.md §8 Delivery: From contains
+  `no-reply@armadaresidence.com` AND Subject contains `AR-` → Inbox) before its user signs in with a code.
+- **Function secrets:** `RESEND_API_KEY`, `BOOKING_IP_SALT`, `BOOKING_TEST_TOKEN` (already set for booking-request);
+  optional `LOGIN_CODE_FROM`. Test mode answers the code itself only for `*.qa.invalid` users with the test token.
+- **Admin backup codes (break-glass):** after an email-code sign-in an admin without codes is taken to
+  `/backup-codes`: 10 one-time codes, shown once (download / print / copy). Keep them outside the mailbox. On `/code`,
+  «لم يصلك البريد؟ استخدم رمز طوارئ» accepts one (any case, dash optional). New codes (which stop the old ones) only
+  within 10 minutes of an email-code sign-in; every use and generation is in the audit (أمان الدخول).
+- **If email fails for everyone and no admin has a backup code:** from the Supabase SQL editor, mark the admin's
+  current session verified — find it with `select id, created_at from auth.sessions where user_id = '<admin id>'
+  order by created_at desc limit 1;` then `insert into internal.verified_sessions (session_id, user_id, method)
+  values ('<session id>', '<admin id>', 'code');` — and fix delivery from the dashboard.
+- **Rollout (Ahmed, 26 Oct 2026):** step 1 is live: the email code works alongside TOTP sessions. Step 2 —
+  `supabase/rollout/phase2a2-step2-totp-off.sql` — runs only after Ahmed has signed in with an email code and saved
+  his backup codes (the script refuses otherwise); then `[auth.mfa.totp] enroll_enabled = false / verify_enabled =
+  false` in `supabase/config.toml` and `supabase config push`.
+
+## 4d. Staff emails (invite, reset, code) — one layout, 26 Oct 2026
+
+The two Auth templates are generated from the booking emails' layout: `node scripts/auth-templates.mjs` writes
+`supabase/templates/invite.html` / `recovery.html` from `supabase/functions/booking-request/email.ts` (`staffLinkMail`)
+and `content/ui.json → staff_email`; `scripts/auth-emails-check.mjs` (mandatory suite) fails when they drift. Push with
+`supabase config push --project-ref <ref>` (declared keys only). The logo is the hosted PNG of the booking emails
+(`email_logo_url`, the GitHub Pages site until the domain switch — then set `EMAIL_ASSETS_BASE`, rebuild, regenerate
+the templates and push again). The footer year is fixed when the templates are generated: regenerate in January.
 
 ## 5. GTM — booking_confirmed (container GTM-5JVH7R37)
 

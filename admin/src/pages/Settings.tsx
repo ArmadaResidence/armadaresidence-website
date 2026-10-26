@@ -2,12 +2,14 @@
 // fee, the per-branch switches (prices shown, instant booking) and the instant limits. Every save goes through
 // set_setting (audited, one batch) → a 30 s «تراجع» toast; a failed switch save snaps the checkbox back. The extra-bed
 // fee is also baked into the website, so its save asks for a site rebuild (site-rebuild function). Numbers through the
-// digits helper; the cutoff time is two selects (Western digits everywhere) with its 12-hour reading beside.
+// digits helper; the cutoff time is two selects (Western digits everywhere) with its 12-hour reading beside. Phase
+// 2a.2 D: «الإعدادات الافتراضية» (components/SiteDefaults.tsx) for the system admin.
 import { useEffect, useState } from 'react';
 import * as api from '../lib/api';
 import { useSession } from '../lib/session';
 import { BRANCH_NAMES, sar, time12 } from '../lib/format';
 import { ErrorBox, Field, Loading, NumberField, Spinner, useToast } from '../components/ui';
+import SiteDefaults from '../components/SiteDefaults';
 
 interface Breakfast {
   adult: number;
@@ -158,6 +160,8 @@ export default function Settings() {
           {editable && <button type="button" className="btn btn-primary" onClick={() => save('instant_limits', limits, 'حدود الحجز الفوري', load)} disabled={busy === 'instant_limits'} data-action="save-limits">{busy === 'instant_limits' && <Spinner />} حفظ</button>}
         </div>
       </section>
+      {/* phase 2a.2 D: saved defaults, system admin only (the database refuses anyone else) */}
+      {me?.is_admin && <SiteDefaults onRestored={async (rebuild) => { await load(); if (rebuild) await askRebuild(); }} />}
     </div>
   );
 }

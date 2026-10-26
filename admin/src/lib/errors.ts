@@ -22,6 +22,7 @@ const INVALID_DETAIL: [RegExp, string][] = [
   [/^weekdays/, 'اختر يومًا واحدًا على الأقل من أيام الأسبوع'],
   [/^full_name/, 'الاسم من 2 إلى 80 حرفًا'],
   [/^email, full_name and role/, 'البريد والاسم والدور مطلوبة'],
+  [/^label 1/, 'التسمية حتى 80 حرفًا'],
 ];
 
 /** Refusals that are whole sentences of their own. */
@@ -40,6 +41,10 @@ const KNOWN: [RegExp, string][] = [
   [/^choose a room type/, 'اختر نوع الغرفة.'],
   [/^no such user/, 'لم يُعثر على هذا المستخدم.'],
   [/already (been )?registered|already exists/i, 'هذا البريد له حساب في اللوحة من قبل.'],
+  // phase 2a.2 (26 Oct 2026): backup codes and site defaults
+  [/^fresh_code_required/, 'للأمان أدخل رمزًا جديدًا من بريدك قبل إنشاء رموز الطوارئ.'],
+  [/^defaults_changed/, 'تغيّرت الإعدادات منذ فتح النافذة؛ راجع القائمة المحدّثة ثم أعد المحاولة.'],
+  [/^ack_switches/, 'أكّد أولًا أن المفاتيح ستُفعَّل على الموقع.'],
 ];
 
 /** Arabic message for a database or function refusal; `what` (the call) goes to the console only. */

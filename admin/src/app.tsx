@@ -1,7 +1,8 @@
 // Routes + the auth gate. Order of gates: still resolving → a neutral splash (never a wrong state, 26 Oct 2026);
 // my_staff() failed → «تعذّر الاتصال» with retry; no session → /login; no staff row or inactive → "no access";
-// TOTP required but not passed → /mfa; a screen the matrix does not grant → the first granted screen (phase 2a.1:
-// the matrix, not the role, decides what shows). A staff user with an empty matrix sees «لا صلاحية».
+// the second step not passed → /code (phase 2a.2: the email code, for everyone; /mfa redirects there); an admin
+// without backup codes → /backup-codes once per tab («لاحقًا» continues); a screen the matrix does not grant → the
+// first granted screen (phase 2a.1: the matrix, not the role, decides what shows). An empty matrix sees «لا صلاحية».
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import { SessionProvider, useSession } from './lib/session';
 import { canView } from './lib/api';
@@ -9,7 +10,9 @@ import { ToastProvider, Splash } from './components/ui';
 import Shell from './components/Shell';
 import Login from './pages/Login';
 import SetPassword from './pages/SetPassword';
-import Mfa from './pages/Mfa';
+import Code from './pages/Code';
+import BackupCodes, { BACKUP_LATER_KEY } from './pages/BackupCodes';
+import Security from './pages/Security';
 import Bookings from './pages/Bookings';
 import Calendar from './pages/Calendar';
 import Rooms from './pages/Rooms';
@@ -34,8 +37,21 @@ function Gate({ children }: { children: React.ReactNode }) {
   if (!session) return <Navigate to="/login" replace state={{ from: loc.pathname + loc.search }} />;
   if (status === 'error') return <Unreachable onRetry={refresh} />;
   if (!me || !me.active) return <NoAccess />;
-  if (me.needs_mfa && loc.pathname !== '/mfa') return <Navigate to="/mfa" replace state={{ from: loc.pathname + loc.search }} />;
+  if (me.needs_second_factor) {
+    if (loc.pathname !== '/code') return <Navigate to="/code" replace state={{ from: loc.pathname + loc.search }} />;
+  } else if (me.is_admin && me.backup_codes_left === 0 && loc.pathname !== '/backup-codes' && loc.pathname !== '/code' && !backupLater()) {
+    return <Navigate to="/backup-codes" replace state={{ from: loc.pathname + loc.search }} />;
+  }
   return <>{children}</>;
+}
+
+/** «لاحقًا» on the backup-codes page: this tab continues without codes (reminded at the next sign-in) */
+function backupLater(): boolean {
+  try {
+    return sessionStorage.getItem(BACKUP_LATER_KEY) === '1';
+  } catch {
+    return false;
+  }
 }
 
 function Unreachable({ onRetry }: { onRetry: () => Promise<void> }) {
@@ -89,11 +105,20 @@ export default function App() {
         <Routes>
           <Route path="/login" element={<Login />} />
           <Route path="/set-password" element={<SetPassword />} />
+          <Route path="/mfa" element={<Navigate to="/code" replace />} />
           <Route
-            path="/mfa"
+            path="/code"
             element={
               <Gate>
-                <Mfa />
+                <Code />
+              </Gate>
+            }
+          />
+          <Route
+            path="/backup-codes"
+            element={
+              <Gate>
+                <BackupCodes />
               </Gate>
             }
           />
@@ -111,6 +136,7 @@ export default function App() {
                     <Route path="settings" element={<Allowed section="settings"><Settings /></Allowed>} />
                     <Route path="users" element={<Allowed section="users"><Users /></Allowed>} />
                     <Route path="audit" element={<Allowed section="audit"><Audit /></Allowed>} />
+                    <Route path="security" element={<Security />} />
                     <Route path="*" element={<Home />} />
                   </Routes>
                 </Shell>

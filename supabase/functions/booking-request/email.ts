@@ -206,8 +206,8 @@ ${opts.body}
 </html>`;
 }
 
-function header(c: Content): string {
-  const alt = `${c.brand.ar} | ${c.brand.en}`;
+function header(c: Content, altText?: string): string {
+  const alt = altText ?? `${c.brand.ar} | ${c.brand.en}`;
   return `<tr><td bgcolor="${NAVY}" align="center" style="background:${NAVY}; padding:28px 24px;">
 <img src="${esc(c.email_logo_url)}" width="180" height="41" alt="${esc(alt)}" style="display:block; margin:0 auto; width:180px; max-width:180px; height:auto; color:${PORCELAIN}; font-family:${FONT.en}; font-size:18px;">
 </td></tr>
@@ -805,6 +805,108 @@ ${buttons(L, [button(L, wa(b.whatsapp, waText), M.wa_button, 'solid')])}`,
   const en = block('en');
   const subject = fill(c.email.ar.cancel_subject, { ref: d.ref });
   const html = doc({ lang: 'ar', title: subject, preheader: fill(c.email.ar.preheader_cancel, { ref: d.ref }), body: header(c) + card(`${ar.html}${langDivider()}${en.html}`) + footer(c, ['ar', 'en']) });
+  const text = `${ar.text}\n\n${RULE}\n\n${en.text}\n\n${fill(c.legal_line.ar, { year: year() })}\n${fill(c.legal_line.en, { year: year() })}`;
+  return { subject, html, text };
+}
+
+// ══ 9–11. Dashboard staff emails (Ahmed, 26 Oct 2026): the invitation and the password reset (the Supabase Auth
+// templates — scripts/auth-templates.mjs renders them into supabase/templates/ with the Go-template link
+// `{{ .SiteURL }}/set-password?token_hash={{ .TokenHash }}&type=…`) and the sign-in code (login-code function).
+// The booking emails' frame: porcelain page, navy header band with the hosted PNG logo (alt «أرمادا ريزيدنس»), white
+// card, bronze button, the English part in its own LTR section under a hairline, the legal footer line. One subject
+// per email, with its AR- tag (Hostinger filter). Copy from ui.json → staff_email only.
+export interface StaffLinkMail {
+  kind: 'invite' | 'recovery';
+  /** the button's target; a Go-template link in the Auth templates, a sample link in previews */
+  link: string;
+}
+export interface LoginCodeMail {
+  code: string;
+  /** ISO timestamp of the request (shown in Asia/Riyadh) */
+  requestedAt: string;
+  /** «Chrome · Windows» */
+  device: string;
+}
+
+/** «إن لم يعمل الزر، انسخ هذا الرابط:» and the URL in smaller left-to-right text that wraps anywhere */
+function fallbackLink(L: Locale, label: string, url: string): string {
+  const align = L === 'ar' ? 'right' : 'left';
+  return `<p class="t-muted" style="margin:18px 0 4px; font-family:${FONT[L]}; font-size:13px; line-height:20px; color:${MUTED};">${esc(label)}</p>
+<p dir="ltr" style="margin:0 0 6px; text-align:${align}; font-family:${FONT.en}; font-size:12px; line-height:18px; color:${MUTED}; word-break:break-all; overflow-wrap:anywhere;"><a href="${esc(url)}" target="_blank" class="t-bronze" style="color:#8A6239; text-decoration:underline; word-break:break-all; overflow-wrap:anywhere;">${esc(url)}</a></p>`;
+}
+
+/** The invitation / the password reset. */
+export function staffLinkMail(c: Content, d: StaffLinkMail): Mail {
+  const block = (L: Locale) => {
+    const S = c.staff_email[L][d.kind];
+    const html = section(
+      L,
+      `${headline(L, S.heading)}
+${para(L, S.body)}
+${buttons(L, [button(L, d.link, S.button, 'bronze')])}
+${fallbackLink(L, c.staff_email[L].fallback_label, d.link)}
+<div style="height:12px; line-height:12px; font-size:0;">&nbsp;</div>
+${para(L, S.ignore, { muted: true, size: 13 })}`,
+    );
+    const text = [S.heading, '', S.body, '', `${S.button}:`, d.link, '', S.ignore].join('\n');
+    return { html, text };
+  };
+  const ar = block('ar');
+  const en = block('en');
+  const subject = c.staff_email.ar[d.kind].subject;
+  const html = doc({
+    lang: 'ar',
+    title: subject,
+    preheader: c.staff_email.ar[d.kind].preheader,
+    body: header(c, c.brand.ar) + card(`${ar.html}${langDivider()}${en.html}`) + footer(c, ['ar', 'en']),
+  });
+  const text = `${ar.text}\n\n${RULE}\n\n${en.text}\n\n${fill(c.legal_line.ar, { year: year() })}\n${fill(c.legal_line.en, { year: year() })}`;
+  return { subject, html, text };
+}
+
+/** «الاثنين 26 أكتوبر 2026، 3:41 مساءً» / "Mon, 26 Oct 2026, 3:41 pm" in Asia/Riyadh */
+function riyadhStamp(c: Content, iso: string, L: Locale): string {
+  const parts = new Intl.DateTimeFormat('en-GB', { timeZone: 'Asia/Riyadh', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false }).formatToParts(new Date(iso));
+  const g = (t: string) => parts.find((x) => x.type === t)?.value ?? '';
+  const h = Number(g('hour')) % 24;
+  const S = c.staff_email[L].login_code;
+  const time = `${h % 12 === 0 ? 12 : h % 12}:${g('minute')} ${h < 12 ? S.am : S.pm}`;
+  return `${longDate(c, `${g('year')}-${g('month')}-${g('day')}`, L)}${L === 'ar' ? '، ' : ', '}${time}`;
+}
+
+/** The code itself: large spaced Western digits, left-to-right, in a bronze-ruled box. */
+function codeBox(code: string): string {
+  return `<table role="presentation" cellpadding="0" cellspacing="0" border="0" align="center" style="margin:6px auto 18px;"><tr>
+<td dir="ltr" class="pill bd" bgcolor="${PORCELAIN}" style="padding:14px 18px 14px 28px; border:1px solid ${BRONZE}; border-radius:8px; background:${PORCELAIN}; color:${INK}; font-family:${FONT.en}; font-size:32px; line-height:38px; font-weight:700; letter-spacing:10px; text-align:center; mso-line-height-rule:exactly;">${esc(code)}</td>
+</tr></table>`;
+}
+
+/** The sign-in code (second step). The code appears in the body only, never in the subject or the preheader. */
+export function loginCodeMail(c: Content, d: LoginCodeMail): Mail {
+  const block = (L: Locale) => {
+    const S = c.staff_email[L].login_code;
+    const requested = fill(S.requested, { time: riyadhStamp(c, d.requestedAt, L), device: d.device });
+    const html = section(
+      L,
+      `${headline(L, S.heading)}
+${para(L, S.intro)}
+${codeBox(d.code)}
+${para(L, S.validity)}
+${para(L, requested, { muted: true, size: 14 })}
+${para(L, S.ignore, { muted: true, size: 13 })}`,
+    );
+    const text = [S.heading, '', S.intro, '', d.code, '', S.validity, requested, '', S.ignore].join('\n');
+    return { html, text };
+  };
+  const ar = block('ar');
+  const en = block('en');
+  const subject = c.staff_email.ar.login_code.subject;
+  const html = doc({
+    lang: 'ar',
+    title: subject,
+    preheader: c.staff_email.ar.login_code.preheader,
+    body: header(c, c.brand.ar) + card(`${ar.html}${langDivider()}${en.html}`) + footer(c, ['ar', 'en']),
+  });
   const text = `${ar.text}\n\n${RULE}\n\n${en.text}\n\n${fill(c.legal_line.ar, { year: year() })}\n${fill(c.legal_line.en, { year: year() })}`;
   return { subject, html, text };
 }

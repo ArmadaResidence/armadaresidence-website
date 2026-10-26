@@ -6,6 +6,9 @@
 // Node ≥ 22.18 strips the TypeScript types of the imported sources.
 import { countWord, nightsWord, roomsWord, rowsWord, bookingsWord, roomsLeft, roomsBooked, adultsWord, childrenWord, DAY, ROOM_TYPE } from '../admin/src/lib/format.ts';
 import { arabicAuth, arabicError, CONNECTION, GENERIC } from '../admin/src/lib/errors.ts';
+import { attemptsWord, changesWord, codesWord, devicesWord, minutesWord, secondsWord } from '../admin/src/lib/format.ts';
+import { BACKUP_TEXT, CODE_TEXT, SECURITY_TEXT } from '../admin/src/lib/secondStep.ts';
+import { deviceLabel, maskEmail } from '../admin/src/lib/device.ts';
 import { PASSWORD_LEAK_NOTE, PASSWORD_MATCH, PASSWORD_RULES, PASSWORD_WEAK, passwordChecks, passwordOk, passwordProblem, passwordRefusal } from '../admin/src/lib/password.ts';
 
 const fails = [];
@@ -86,6 +89,43 @@ eq('arabicAuth(network)', arabicAuth({ message: 'Failed to fetch' }), CONNECTION
 const quiet = console.error;
 console.error = () => {}; // the technical detail goes to the console — silenced here
 eq('arabicAuth(unknown)', arabicAuth({ message: 'Database error granting user' }), GENERIC);
+
+// phase 2a.2 (26 Oct 2026): the second step — count words, the code-screen texts, backup codes, devices
+const N2 = [0, 1, 2, 3, 10, 11, 100];
+for (const [name, fn, want] of [
+  ['secondsWord', secondsWord, ['لا ثوانٍ', 'ثانية واحدة', 'ثانيتان', '3 ثوانٍ', '10 ثوانٍ', '11 ثانية', '100 ثانية']],
+  ['minutesWord', minutesWord, ['لا دقائق', 'دقيقة واحدة', 'دقيقتان', '3 دقائق', '10 دقائق', '11 دقيقة', '100 دقيقة']],
+  ['attemptsWord', attemptsWord, ['لا محاولات', 'محاولة واحدة', 'محاولتان', '3 محاولات', '10 محاولات', '11 محاولة', '100 محاولة']],
+  ['codesWord', codesWord, ['لا رموز', 'رمز واحد', 'رمزان', '3 رموز', '10 رموز', '11 رمزًا', '100 رمز']],
+  ['devicesWord', devicesWord, ['لا أجهزة', 'جهاز واحد', 'جهازان', '3 أجهزة', '10 أجهزة', '11 جهازًا', '100 جهاز']],
+  ['changesWord', changesWord, ['لا تغييرات', 'تغيير واحد', 'تغييران', '3 تغييرات', '10 تغييرات', '11 تغييرًا', '100 تغيير']],
+]) N2.forEach((n, i) => eq(`${name}(${n})`, fn(n), want[i]));
+eq('code wrong 4', CODE_TEXT.wrong(4), 'الرمز غير صحيح. بقيت 4 محاولات.');
+eq('code wrong 1', CODE_TEXT.wrong(1), 'الرمز غير صحيح. بقيت محاولة واحدة.');
+eq('code wrong 2', CODE_TEXT.wrong(2), 'الرمز غير صحيح. بقيت محاولتان.');
+eq('code resend 45', CODE_TEXT.resendIn(45), 'إعادة الإرسال بعد 45 ثانية');
+eq('code resend 3', CODE_TEXT.resendIn(3), 'إعادة الإرسال بعد 3 ثوانٍ');
+eq('code rate limit', CODE_TEXT.rateLimit(12), 'طلبات رموز كثيرة. حاول بعد 12 دقيقة.');
+eq('code sent', CODE_TEXT.sent(maskEmail('reservation@armadaresidence.com')), 'أرسلنا رمزًا من 6 أرقام إلى r***@armadaresidence.com. أدخله هنا لإكمال الدخول.');
+eq('backup used 9', CODE_TEXT.backupUsed(9), 'تم الدخول برمز طوارئ. بقي لديك 9 رموز.');
+eq('backup left', SECURITY_TEXT.backupLeft(7), 'الرموز المتبقية: 7 من 10');
+eq('user devices 2', SECURITY_TEXT.userDevices(2), 'الأجهزة المتذكَّرة: جهازان');
+eq('maskEmail short', maskEmail('a@b.co'), 'a***@b.co');
+eq('device label', deviceLabel('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36'), 'Chrome · Windows');
+eq('device label edge', deviceLabel('Mozilla/5.0 (Windows NT 10.0) AppleWebKit/537.36 Chrome/141.0 Safari/537.36 Edg/141.0'), 'Edge · Windows');
+eq('device label iphone', deviceLabel('Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 Version/18.0 Mobile/15E148 Safari/604.1'), 'Safari · iOS');
+// staff-facing Arabic texts carry no English (the backup-code example and the device names are the only Latin)
+const arabicTexts = [
+  ...Object.values(CODE_TEXT).filter((v) => typeof v === 'string' && v !== CODE_TEXT.backupHint),
+  ...Object.values(BACKUP_TEXT).filter((v) => typeof v === 'string'),
+  ...Object.values(SECURITY_TEXT).filter((v) => typeof v === 'string'),
+  ...Object.values(SECURITY_TEXT.methods),
+];
+for (const m of arabicTexts) {
+  checks++;
+  if (/[A-Za-z_]/.test(m)) fails.push(`English in «${m}»`);
+}
+eq('backup hint example', /K7M2Q-9TXW4/.test(CODE_TEXT.backupHint), true);
 
 // staff errors: Arabic only, a detail only from the known list
 eq('arabicError(42501)', arabicError({ message: 'not allowed', code: '42501' }, 'set_inventory'), 'لا صلاحية لهذا الإجراء.');
