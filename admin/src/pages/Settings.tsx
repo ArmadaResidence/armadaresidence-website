@@ -143,7 +143,7 @@ export default function Settings() {
         <h2 id="s-limits" className="font-bold text-lg mb-1">حدود الحجز الفوري</h2>
         <p className="text-sm text-ink-muted mb-4">بعد وقت الإغلاق يصبح وصول اليوم طلبًا يؤكده الاستقبال؛ والإقامة الأطول من الحد تصبح طلبًا.</p>
         <div className="grid sm:grid-cols-3 gap-3 items-end">
-          <Field label="إغلاق وصول اليوم (توقيت الرياض)" id="cutoff-h" hint={time12(limits.same_day_cutoff)}>
+          <Field label="آخر وقت للحجز الفوري لوصول اليوم (توقيت الرياض)" id="cutoff-h" hint={time12(limits.same_day_cutoff)}>
             <div className="flex items-center gap-1" dir="ltr">
               <select id="cutoff-h" className="field num" value={limits.same_day_cutoff.split(':')[0]} onChange={(e) => setLimits({ ...limits, same_day_cutoff: `${e.target.value}:${limits.same_day_cutoff.split(':')[1] ?? '00'}` })} aria-label="الساعة" disabled={ro}>
                 {HOURS.map((h) => <option key={h} value={h}>{h}</option>)}

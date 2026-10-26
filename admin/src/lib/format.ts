@@ -56,12 +56,38 @@ export function riyadhDateTime(ts: string): string {
   return new Intl.DateTimeFormat('en-GB', { timeZone: 'Asia/Riyadh', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false }).format(new Date(ts)).replace(',', '');
 }
 
-export function nightsWord(n: number): string {
-  if (n === 1) return 'ليلة واحدة';
-  if (n === 2) return 'ليلتان';
-  if (n >= 3 && n <= 10) return `${n} ليالٍ`;
-  return `${n} ليلة`;
+/** One noun's Arabic count forms (nominative): 1 and 2 are words, `few` is the plural (3–10), `many` the accusative
+ * singular (11–99), `gen` the genitive singular (hundreds: 100, 101, 102 …), `zero` a whole phrase. */
+export interface CountNoun { zero: string; one: string; two: string; few: string; many: string; gen: string }
+export const NIGHT: CountNoun = { zero: 'لا ليالي', one: 'ليلة واحدة', two: 'ليلتان', few: 'ليالٍ', many: 'ليلة', gen: 'ليلة' };
+export const ROOM: CountNoun = { zero: 'لا غرف', one: 'غرفة واحدة', two: 'غرفتان', few: 'غرف', many: 'غرفة', gen: 'غرفة' };
+export const ROW: CountNoun = { zero: 'لا صفوف', one: 'صف واحد', two: 'صفان', few: 'صفوف', many: 'صفًا', gen: 'صف' };
+export const BOOKING: CountNoun = { zero: 'لا حجوزات', one: 'حجز واحد', two: 'حجزان', few: 'حجوزات', many: 'حجزًا', gen: 'حجز' };
+export const DAY: CountNoun = { zero: 'لا أيام', one: 'يوم واحد', two: 'يومان', few: 'أيام', many: 'يومًا', gen: 'يوم' };
+export const ROOM_TYPE: CountNoun = { zero: 'لا أنواع', one: 'نوع واحد', two: 'نوعان', few: 'أنواع', many: 'نوعًا', gen: 'نوع' };
+
+/** The one Arabic number-agreement helper of the dashboard (Ahmed, 26 Oct 2026): «ليلة واحدة» / «ليلتان» / «3 ليالٍ» /
+ * «11 ليلة»; the form follows n mod 100 like sar(), so «103 ليالٍ», «111 صفًا», «100 صف». */
+export function countWord(n: number, w: CountNoun): string {
+  if (n === 0) return w.zero;
+  if (n === 1) return w.one;
+  if (n === 2) return w.two;
+  const k = n % 100;
+  if (k >= 3 && k <= 10) return `${n} ${w.few}`;
+  if (k >= 11) return `${n} ${w.many}`;
+  return `${n} ${w.gen}`;
 }
+export const nightsWord = (n: number) => countWord(n, NIGHT);
+export const roomsWord = (n: number) => countWord(n, ROOM);
+export const rowsWord = (n: number) => countWord(n, ROW);
+export const bookingsWord = (n: number) => countWord(n, BOOKING);
+/** «غرفة واحدة متبقية» / «غرفتان متبقيتان» / «3 غرف متبقية» — the adjective agrees (dual only differs); `adj` is the
+ * feminine singular, `dual` its dual. */
+export function roomsWith(n: number, adj: string, dual: string): string {
+  return `${roomsWord(n)} ${n === 2 ? dual : adj}`;
+}
+export const roomsLeft = (n: number) => roomsWith(n, 'متبقية', 'متبقيتان');
+export const roomsBooked = (n: number) => roomsWith(n, 'محجوزة', 'محجوزتان');
 
 /** «185 ريالًا» / «200 ريال» / «3 ريالات» — the same rule as rules.ts sarText. */
 export function sar(amount: number | string | null | undefined): string {
@@ -102,27 +128,11 @@ export function west(s: string): string {
   return s.replace(/[\u0660-\u0669\u06F0-\u06F9]/g, (c) => String(c.charCodeAt(0) >= 0x06f0 ? c.charCodeAt(0) - 0x06f0 : c.charCodeAt(0) - 0x0660));
 }
 
-/** «بالغ واحد» / «بالغان» / «3 بالغين» / «11 بالغًا» — Arabic number agreement for guests. */
-export function adultsWord(n: number): string {
-  if (n === 1) return 'بالغ واحد';
-  if (n === 2) return 'بالغان';
-  if (n >= 3 && n <= 10) return `${n} بالغين`;
-  return `${n} بالغًا`;
-}
-export function childrenWord(n: number): string {
-  if (n === 0) return 'بلا أطفال';
-  if (n === 1) return 'طفل واحد';
-  if (n === 2) return 'طفلان';
-  if (n >= 3 && n <= 10) return `${n} أطفال`;
-  return `${n} طفلًا`;
-}
-export function roomsWord(n: number): string {
-  if (n === 0) return 'لا غرف';
-  if (n === 1) return 'غرفة واحدة';
-  if (n === 2) return 'غرفتان';
-  if (n >= 3 && n <= 10) return `${n} غرف`;
-  return `${n} غرفة`;
-}
+/** «بالغ واحد» / «بالغان» / «3 بالغين» / «11 بالغًا» — guests through the same helper. */
+export const ADULT: CountNoun = { zero: 'لا بالغين', one: 'بالغ واحد', two: 'بالغان', few: 'بالغين', many: 'بالغًا', gen: 'بالغ' };
+export const CHILD: CountNoun = { zero: 'بلا أطفال', one: 'طفل واحد', two: 'طفلان', few: 'أطفال', many: 'طفلًا', gen: 'طفل' };
+export const adultsWord = (n: number) => countWord(n, ADULT);
+export const childrenWord = (n: number) => countWord(n, CHILD);
 /** «الأحد 2 نوفمبر → الخميس 6 نوفمبر 2026» (the arrow follows the reading direction) */
 export function dateRange(a: string, b: string): string {
   const da = new Date(a + 'T00:00:00Z');

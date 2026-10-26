@@ -6,6 +6,7 @@ import { supabase } from '../lib/supabase';
 import { useSession } from '../lib/session';
 import { ErrorBox, Loading, Spinner } from '../components/ui';
 import { west } from '../lib/format';
+import { arabicAuth } from '../lib/errors';
 
 export default function Mfa() {
   const { me, refresh, signOut } = useSession();
@@ -29,7 +30,7 @@ export default function Mfa() {
         // remove stale unverified factors, then enrol
         for (const f of data?.totp.filter((x) => x.status !== 'verified') ?? []) await supabase.auth.mfa.unenroll({ factorId: f.id });
         const { data: enr, error } = await supabase.auth.mfa.enroll({ factorType: 'totp', friendlyName: 'لوحة أرمادا' });
-        if (error) setError(error.message);
+        if (error) setError(arabicAuth(error));
         else {
           setFactorId(enr.id);
           setQr(enr.totp.qr_code);
@@ -47,7 +48,7 @@ export default function Mfa() {
     const { data: ch, error: e1 } = await supabase.auth.mfa.challenge({ factorId });
     if (e1) {
       setBusy(false);
-      return setError(e1.message);
+      return setError(arabicAuth(e1));
     }
     const { error: e2 } = await supabase.auth.mfa.verify({ factorId, challengeId: ch.id, code: west(code).replace(/\D/g, '') });
     setBusy(false);

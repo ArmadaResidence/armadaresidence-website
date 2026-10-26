@@ -9,7 +9,7 @@ import { supabase } from '../lib/supabase';
 import * as api from '../lib/api';
 import type { Reservation, RoomType, StatusHistory, CalendarCell } from '../lib/api';
 import { useSession } from '../lib/session';
-import { BRANCH_NAMES, REASON_LABELS, STATUS_LABELS, adultsWord, childrenWord, dateRange, longDate, nightsWord, riyadhDateTimeLong, sar, toCsv, riyadhToday } from '../lib/format';
+import { BRANCH_NAMES, REASON_LABELS, STATUS_LABELS, adultsWord, childrenWord, dateRange, longDate, nightsWord, riyadhDateTimeLong, roomsLeft, sar, toCsv, riyadhToday } from '../lib/format';
 import { Confirm, Drawer, Empty, ErrorBox, Field, Loading, Modal, Spinner, useToast } from '../components/ui';
 import DateField from '../components/DateField';
 
@@ -369,7 +369,7 @@ function Details({ r, roomTypes, editable, onClose, onChanged }: { r: Reservatio
             <p className="font-bold text-error mb-1">{REASON_LABELS[nightIssues.reason] ?? nightIssues.reason} — تحقق من الليالي:</p>
             <ul className="grid gap-0.5 num-ar">
               {nightIssues.nights.map((n) => (
-                <li key={n.night} className="flex justify-between"><span>{longDate(n.night)}</span><span>{n.price === null ? 'بلا سعر' : sar(n.price)} · {!n.has_row || n.stop_sell ? 'مغلقة' : `${n.rooms_to_sell} متبقية`}</span></li>
+                <li key={n.night} className="flex justify-between"><span>{longDate(n.night)}</span><span>{n.price === null ? 'بلا سعر' : sar(n.price)} · {!n.has_row || n.stop_sell ? 'مغلقة' : roomsLeft(n.rooms_to_sell)}</span></li>
               ))}
             </ul>
             <p className="mt-2 text-ink-muted">افتح تقويم الأسعار / المخزون، صحّح الليالي، ثم أعد التأكيد.</p>

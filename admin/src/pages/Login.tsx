@@ -3,16 +3,7 @@ import { Navigate, useLocation } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useSession } from '../lib/session';
 import { ErrorBox, Spinner } from '../components/ui';
-
-/** The Supabase Auth messages a user can meet here, in Arabic. */
-export function arabicAuth(m: string): string {
-  if (/invalid login credentials/i.test(m)) return 'البريد أو كلمة المرور غير صحيحة.';
-  if (/email not confirmed/i.test(m)) return 'الحساب لم يُفعَّل بعد: افتح رابط الدعوة من بريدك أولًا.';
-  if (/rate limit|security purposes|too many/i.test(m)) return 'محاولات كثيرة؛ انتظر دقيقة ثم أعد المحاولة.';
-  if (/user not found|signups not allowed/i.test(m)) return 'هذا البريد غير مسجّل في اللوحة.';
-  if (/network|fetch/i.test(m)) return 'تعذّر الاتصال بالخادم، تحقق من الشبكة.';
-  return m;
-}
+import { arabicAuth } from '../lib/errors';
 
 export default function Login() {
   const { session, loading } = useSession();
@@ -31,14 +22,14 @@ export default function Login() {
     setError(null);
     const { error } = await supabase.auth.signInWithPassword({ email: email.trim().toLowerCase(), password });
     setBusy(false);
-    if (error) setError(arabicAuth(error.message));
+    if (error) setError(arabicAuth(error));
   }
   async function forgot() {
     if (!email.trim()) return setError('اكتب بريدك أولًا.');
     setBusy(true);
     const { error } = await supabase.auth.resetPasswordForEmail(email.trim().toLowerCase(), { redirectTo: `${location.origin}${import.meta.env.BASE_URL.replace(/\/$/, '')}/set-password` });
     setBusy(false);
-    if (error) setError(arabicAuth(error.message));
+    if (error) setError(arabicAuth(error));
     else setReset('إن كان البريد مسجّلًا فستصلك رسالة لتعيين كلمة المرور. افتح الرسالة الأحدث واضغط «متابعة».');
   }
 

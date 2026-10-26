@@ -427,6 +427,25 @@ try {
     for (const u of [unknown, inactive]) if (u.id) await fetch(`${env.SUPABASE_URL}/auth/v1/admin/users/${u.id}`, { method: 'DELETE', headers: SH });
   }
 
+  // ── login never tells whether an email is registered (copy approval, 26 Oct 2026) ──
+  {
+    const ctx = await browser.newContext({ locale: 'ar' });
+    const page = await ctx.newPage();
+    const answer = async (email, pw) => {
+      await page.goto(`${BASE}/login`);
+      await page.fill('#email', email);
+      await page.fill('#password', pw);
+      await page.click('button[type=submit]');
+      await page.locator('[role=alert]').first().waitFor({ timeout: 20000 });
+      return (await page.locator('[role=alert]').first().innerText()).trim();
+    };
+    const unknown = await answer(`nobody-${Date.now()}@qa.invalid`, PW);
+    const wrong = await answer(USERS.rec_air, 'Wrong-password-1');
+    check(unknown === 'البريد أو كلمة المرور غير صحيحة.' && unknown === wrong, 'login: an unknown email and a wrong password read the same', `${unknown} | ${wrong}`);
+    check(!(await page.evaluate(() => document.body.innerText)).includes('غير مسجّل في اللوحة'), 'login: «غير مسجّل» never shown');
+    await ctx.close();
+  }
+
   // ── invite link (token_hash) in a fresh context: prefetch must not consume it; «متابعة» → password → TOTP → in ──
   if (SERVICE) {
     const SH = { apikey: SERVICE, Authorization: `Bearer ${SERVICE}`, 'Content-Type': 'application/json' };
@@ -457,6 +476,18 @@ try {
       await fp.waitForSelector('#p1', { timeout: 20000 });
       check(true, 'invite: «متابعة» verified the token and opened the password form');
       await digits(fp, 'set-password');
+      check((await fp.locator('form').innerText()).includes('10 أحرف على الأقل، وفيها حروف وأرقام.'), 'set-password: hint «10 أحرف على الأقل، وفيها حروف وأرقام.»');
+      // length and letters + digits are checked in the browser before any call to the service
+      const userCalls = [];
+      fp.on('request', (req) => { if (/\/auth\/v1\/user/.test(req.url()) && req.method() === 'PUT') userCalls.push(req.url()); });
+      for (const [pw, want] of [['Ab1', 'كلمة المرور 10 أحرف على الأقل.'], ['abcdefghijkl', 'يجب أن تحتوي كلمة المرور على حروف وأرقام.'], ['1234567890', 'يجب أن تحتوي كلمة المرور على حروف وأرقام.']]) {
+        await fp.fill('#p1', pw);
+        await fp.fill('#p2', pw);
+        await fp.click('[data-action="save-password"]');
+        const msg = await fp.locator('[role=alert]').first().innerText().catch(() => '');
+        check(msg.trim() === want, `set-password: «${pw}» → ${want}`, msg);
+      }
+      check(userCalls.length === 0, 'set-password: rejected passwords never reach the service', userCalls.join(' '));
       await fp.fill('#p1', PW);
       await fp.fill('#p2', PW);
       await fp.click('[data-action="save-password"]');
@@ -507,6 +538,22 @@ try {
     }
     const tabs = await page.locator('nav.tabbar a').count();
     check(tabs === 7, '375: seven tabs in the tab bar', String(tabs));
+    await page.goto(`${BASE}/settings`);
+    await page.waitForSelector('#app-main h1', { timeout: 20000 });
+    check((await page.locator('#app-main').innerText()).includes('آخر وقت للحجز الفوري لوصول اليوم (توقيت الرياض)'), 'settings: cutoff label «آخر وقت للحجز الفوري لوصول اليوم (توقيت الرياض)»');
+    // error texts: no function name, SQL or English detail on screen (copy approval, 26 Oct 2026)
+    await page.route('**/functions/v1/admin-users', (route) => (route.request().method() === 'POST' ? route.abort('failed') : route.continue()));
+    await page.goto(`${BASE}/users`);
+    await page.getByText('تعذّر الاتصال بالخادم — تحقق من الشبكة وأعد المحاولة.').first().waitFor({ timeout: 20000 }).catch(() => {});
+    let shown = await page.locator('#app-main').innerText();
+    check(shown.includes('تعذّر الاتصال بالخادم — تحقق من الشبكة وأعد المحاولة.') && !shown.includes('admin-users'), 'errors: a network failure reads in Arabic without the function name', shown.slice(0, 200));
+    await page.unroute('**/functions/v1/admin-users');
+    await page.route('**/rest/v1/rpc/staff_calendar', (route) => route.fulfill({ status: 400, contentType: 'application/json', body: JSON.stringify({ code: '42P01', message: 'relation "inventory_days_x" does not exist', details: null, hint: null }) }));
+    await page.goto(`${BASE}/inventory`);
+    await page.getByText('تعذّر إكمال العملية').first().waitFor({ timeout: 20000 }).catch(() => {});
+    shown = await page.locator('#app-main').innerText();
+    check(shown.includes('تعذّر إكمال العملية، أعد المحاولة.') && !/relation|staff_calendar|inventory_days/.test(shown), 'errors: an SQL error reads as the generic Arabic line, no SQL or function name', shown.slice(0, 200));
+    await page.unroute('**/rest/v1/rpc/staff_calendar');
     await ctx.close();
   }
 } catch (e) {

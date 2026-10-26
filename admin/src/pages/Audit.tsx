@@ -6,7 +6,7 @@ import { useEffect, useMemo, useState } from 'react';
 import * as api from '../lib/api';
 import type { AuditRow } from '../lib/api';
 import { useSession } from '../lib/session';
-import { BRANCH_NAMES, longDate, riyadhDateTimeLong, sar } from '../lib/format';
+import { BRANCH_NAMES, longDate, riyadhDateTimeLong, rowsWord, sar } from '../lib/format';
 import DateField from '../components/DateField';
 import { Empty, ErrorBox, Field, Loading, Modal, Spinner, useToast } from '../components/ui';
 
@@ -125,7 +125,7 @@ export default function Audit() {
     try {
       const r = await api.revertBatch(confirm.key);
       setConfirm(null);
-      toast(`استُرجع التغيير (${r.rows} صفًا)`);
+      toast(`استُرجع التغيير (${rowsWord(r.rows)})`);
       await load();
     } catch (e) {
       const err = e as Error & { details?: string };
@@ -176,11 +176,11 @@ export default function Audit() {
                 <li key={g.key} className="card p-3 text-sm" data-batch={r.batch_id ?? undefined} data-reverted={wasReverted || undefined}>
                   <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-ink-muted">
                     <span className="num-ar">{riyadhDateTimeLong(r.at)}</span>
-                    <span className="text-ink font-bold">{r.actor_label === 'website' ? 'الموقع' : r.actor_label === 'seed' ? 'الاستيراد الأول' : r.actor_label === 'migration' ? 'الترحيل' : r.actor_label}</span>
+                    <span className="text-ink font-bold">{r.actor_label === 'website' ? 'الموقع' : r.actor_label === 'seed' ? 'الاستيراد الأول' : r.actor_label === 'migration' ? 'تحديث النظام' : r.actor_label}</span>
                     <span>{ENTITY[r.entity] ?? r.entity}</span>
                     {r.branch && <span>{BRANCH_NAMES[r.branch]}</span>}
                     <span>{r.action === 'insert' ? 'إضافة' : r.action === 'delete' ? 'حذف' : 'تعديل'}</span>
-                    {g.rows.length > 1 && <span className="chip chip-request">تعديل جماعي · <span className="num-ar">{g.rows.length}</span></span>}
+                    {g.rows.length > 1 && <span className="chip chip-request">تعديل جماعي · <span className="num-ar">{rowsWord(g.rows.length)}</span></span>}
                     {isRevert && <span className="chip chip-request">استرجاع لتغيير سابق</span>}
                     {wasReverted && <span className="chip chip-cancelled" style={{ textDecoration: 'none' }}>مُسترجَع</span>}
                     {canRevert(g) && (

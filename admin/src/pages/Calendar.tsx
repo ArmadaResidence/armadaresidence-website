@@ -10,7 +10,7 @@ import { useSearchParams } from 'react-router-dom';
 import * as api from '../lib/api';
 import type { Branch, CalendarCell, RateOverride, RoomType } from '../lib/api';
 import { useSession } from '../lib/session';
-import { BRANCH_NAMES, WEEKDAY_BITS, WEEKDAY_LABELS, addDays, dayName, daysBetween, longDate, maskLabel, monthTitle, riyadhToday, roomsWord, sar, shortDate } from '../lib/format';
+import { BRANCH_NAMES, DAY, ROOM_TYPE, WEEKDAY_BITS, WEEKDAY_LABELS, addDays, countWord, dayName, daysBetween, longDate, maskLabel, monthTitle, nightsWord, riyadhToday, roomsBooked, roomsLeft, sar, shortDate } from '../lib/format';
 import { ErrorBox, Field, Loading, Modal, NumberField, Segmented, Spinner, Stepper, useToast } from '../components/ui';
 import DateField from '../components/DateField';
 
@@ -193,7 +193,7 @@ function RowCells({ rt, nights, byKey, mode, today, editable, onPick, onRate, on
         const past = n < today;
         const label = mode === 'rates'
           ? `${rt.name_ar} ${longDate(n)}: ${c.price === null ? 'بلا سعر' : sar(c.price)}`
-          : `${rt.name_ar} ${longDate(n)}: ${st === 'closed' ? 'مغلق' : `${roomsWord(c.rooms_to_sell)} متبقية، ${c.booked} محجوزة`}`;
+          : `${rt.name_ar} ${longDate(n)}: ${st === 'closed' ? 'مغلق' : `${roomsLeft(c.rooms_to_sell)}، ${roomsBooked(c.booked)}`}`;
         return (
           <button
             type="button"
@@ -259,11 +259,9 @@ function CellEdit({ sel, onClose, onSaved }: { sel: { rt: RoomType; cell: Calend
     setError(null);
     try {
       const r = await api.setInventory({ roomTypeIds: [rt.id], from: cell.night, to: cell.night, rooms, stopSell: state === 'closed', expected: cell.has_row ? cell.rooms_to_sell : 0 });
-      onSaved(`حُفظت ليلة ${longDate(cell.night)} — ${state === 'closed' ? 'مغلقة' : `${roomsWord(rooms)} متبقية`}`, r.batch_id);
+      onSaved(`حُفظت ليلة ${longDate(cell.night)} — ${state === 'closed' ? 'مغلقة' : roomsLeft(rooms)}`, r.batch_id);
     } catch (e) {
-      const m = (e as Error).message;
-      const changed = m.match(/changed:(\d+)/);
-      setError(changed ? `تغيّرت الخلية أثناء التعديل (المتبقي الآن ${changed[1]}). أغلق وأعد الفتح.` : m);
+      setError((e as Error).message);
     } finally {
       setBusy(false);
     }
@@ -300,7 +298,7 @@ function RowOpenClose({ rt, nights, onClose, onSaved }: { rt: RoomType; nights: 
     setError(null);
     try {
       const r = await api.setInventory({ roomTypeIds: [rt.id], from, to, stopSell: state === 'closed' });
-      onSaved(`${state === 'closed' ? 'أُغلقت' : 'فُتحت'} ${r.count} ليلة — ${rt.name_ar}`, r.batch_id);
+      onSaved(`${state === 'closed' ? 'أُغلقت' : 'فُتحت'} ${nightsWord(r.count ?? 0)} — ${rt.name_ar}`, r.batch_id);
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -310,7 +308,7 @@ function RowOpenClose({ rt, nights, onClose, onSaved }: { rt: RoomType; nights: 
   return (
     <Modal open onClose={onClose} title={`فتح / إغلاق — ${rt.name_ar}`}>
       {from ? (
-        <p className="text-sm text-ink-muted mb-4">الفترة المعروضة: من {longDate(from)} إلى {longDate(to)} ({nights.length} ليلة). «إغلاق» يوقف البيع على الموقع ويبقي الأعداد محفوظة؛ «فتح» يعيد البيع بالأعداد المحفوظة (ليلة بلا عدد تُفتح بصفر).</p>
+        <p className="text-sm text-ink-muted mb-4">الفترة المعروضة: من {longDate(from)} إلى {longDate(to)} ({nightsWord(nights.length)}). «إغلاق» يوقف البيع على الموقع ويبقي الأعداد محفوظة؛ «فتح» يعيد البيع بالأعداد المحفوظة (ليلة بلا عدد تُفتح بصفر).</p>
       ) : (
         <p className="text-sm text-ink-muted mb-4">كل الليالي المعروضة ماضية؛ انتقل إلى اليوم أو ما بعده.</p>
       )}
@@ -413,10 +411,10 @@ function Bulk({ mode, types, from, onClose, onSaved }: { mode: Mode; types: Room
       if (mode === 'rates') {
         if (!price || !(price > 0)) throw new Error('اكتب سعرًا أكبر من صفر.');
         const r = await api.addOverride(ids, dFrom, dTo, mask, price, label, labelEn);
-        onSaved(`أُضيف سعر ${sar(price)} لـ${r.count} نوع غرفة (${maskLabel(mask)})`, r.batch_id);
+        onSaved(`أُضيف سعر ${sar(price)} — ${countWord(r.count ?? 0, ROOM_TYPE)} من الغرف (${maskLabel(mask)})`, r.batch_id);
       } else {
         const r = await api.setInventory({ roomTypeIds: ids, from: dFrom, to: dTo, weekdays: mask, rooms: op === 'set' ? n : null, delta: op === 'delta' ? n : null, stopSell: op === 'open' ? false : op === 'close' ? true : null });
-        onSaved(`${op === 'close' ? 'أُغلقت' : op === 'open' ? 'فُتحت' : 'عُدّلت'} ${r.count} ليلة`, r.batch_id);
+        onSaved(`${op === 'close' ? 'أُغلقت' : op === 'open' ? 'فُتحت' : 'عُدّلت'} ${nightsWord(r.count ?? 0)}`, r.batch_id);
       }
     } catch (e) {
       setError((e as Error).message);
@@ -465,7 +463,7 @@ function Bulk({ mode, types, from, onClose, onSaved }: { mode: Mode; types: Room
           )}
         </div>
       )}
-      <p className="text-xs text-ink-muted mt-3 num-ar">{span} يوم × {ids.length} نوع — {maskLabel(mask)}</p>
+      <p className="text-xs text-ink-muted mt-3 num-ar">{countWord(span, DAY)} × {countWord(ids.length, ROOM_TYPE)} — {maskLabel(mask)}</p>
       <ErrorBox error={error} />
       <div className="flex gap-2 justify-end mt-5">
         <button type="button" className="btn btn-ghost" onClick={onClose} disabled={busy}>إلغاء</button>

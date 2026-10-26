@@ -3,6 +3,7 @@
 // supabase/migrations/20261026000100_phase2a1_revert.sql); confirm / cancel, user management and the site rebuild go
 // through the Edge Functions, which forward the user's JWT.
 import { supabase, SUPABASE_URL } from './supabase';
+import { CONNECTION, SESSION_ENDED, arabicError } from './errors';
 
 export type Role = 'admin' | 'management' | 'sales' | 'reception';
 export type Level = 'none' | 'view' | 'edit';
@@ -150,21 +151,6 @@ export interface Saved {
   count?: number;
 }
 
-/** Arabic message for a database refusal (the RPCs raise with these codes / messages). */
-export function arabicError(e: { message?: string; code?: string; details?: string; hint?: string } | null, what: string): string {
-  const m = e?.message ?? '';
-  if (e?.code === '42501' || /not allowed|permission denied/i.test(m)) return 'لا صلاحية لهذا الإجراء.';
-  if (/last_admin/.test(m)) return 'لا يمكن إيقاف أو تنزيل آخر مدير نظام فعّال.';
-  if (/already_reverted/.test(m)) return 'هذا التغيير مُسترجَع من قبل.';
-  if (/not_revertable/.test(m)) return 'تأكيد الحجز وإلغاؤه لا يُستَرجَعان (أُرسلت رسائل بريد).';
-  if (/^conflict/.test(m)) return 'تغيّرت القيم بعد هذا التعديل، لم يُسترجع شيء.';
-  if (/^not_found/.test(m)) return 'لم يُعثر على هذا التغيير.';
-  if (/^past$/.test(m)) return 'لا يمكن تعديل ليالٍ ماضية.';
-  if (/^range/.test(m)) return 'الفترة خارج الحد المسموح.';
-  if (/changed:\d+/.test(m)) return m; // the cell editor reads the new value out of it
-  if (/^settings\./.test(m)) return 'القيمة غير صالحة: ' + m.replace(/^settings\.[a-z_.]+:\s*/, '');
-  return m ? `${what}: ${m}` : what;
-}
 function fail(e: { message?: string; code?: string; details?: string; hint?: string } | null, what: string): never {
   const err = new Error(arabicError(e, what)) as Error & { code?: string; details?: string; raw?: string };
   err.code = e?.code;
@@ -326,7 +312,7 @@ export async function saveInternalNotes(id: string, notes: string): Promise<void
 async function edge<T>(fn: string, body: unknown): Promise<T> {
   const { data: s } = await supabase.auth.getSession();
   const jwt = s.session?.access_token;
-  if (!jwt) throw new Error('انتهت الجلسة، سجّل الدخول مرة أخرى');
+  if (!jwt) throw new Error(SESSION_ENDED);
   let res: Response;
   try {
     res = await fetch(`${SUPABASE_URL}/functions/v1/${fn}`, {
@@ -336,7 +322,8 @@ async function edge<T>(fn: string, body: unknown): Promise<T> {
     });
   } catch {
     // fetch rejects without a response only for a network or CORS failure (the browser hides which)
-    throw new Error(`تعذّر الاتصال بالخادم (${fn}) — تحقق من الشبكة وأعد المحاولة.`);
+    console.error(`[${fn}] network or CORS failure`);
+    throw new Error(CONNECTION);
   }
   const text = await res.text();
   let json: unknown = text;
@@ -344,7 +331,7 @@ async function edge<T>(fn: string, body: unknown): Promise<T> {
     json = JSON.parse(text);
   } catch { /* text */ }
   if (!res.ok) {
-    if (res.status === 401) throw new Error('انتهت الجلسة، سجّل الدخول مرة أخرى'); // the gateway refused the token
+    if (res.status === 401) throw new Error(SESSION_ENDED); // the gateway refused the token
     const e = json as { error?: string; message?: string } | null;
     const msg = e?.error ?? e?.message ?? `${fn}: ${res.status}`;
     throw new Error(arabicError({ message: msg, code: res.status === 403 ? '42501' : undefined }, fn));
