@@ -5,7 +5,8 @@
 //   node scripts/admin-format-check.mjs
 // Node ≥ 22.18 strips the TypeScript types of the imported sources.
 import { countWord, nightsWord, roomsWord, rowsWord, bookingsWord, roomsLeft, roomsBooked, adultsWord, childrenWord, DAY, ROOM_TYPE } from '../admin/src/lib/format.ts';
-import { arabicAuth, arabicError, passwordProblem, passwordRefusal, CONNECTION, GENERIC, PASSWORD_LETTERS_DIGITS, PASSWORD_SHORT, PASSWORD_WEAK } from '../admin/src/lib/errors.ts';
+import { arabicAuth, arabicError, CONNECTION, GENERIC } from '../admin/src/lib/errors.ts';
+import { PASSWORD_LEAK_NOTE, PASSWORD_MATCH, PASSWORD_RULES, PASSWORD_WEAK, passwordChecks, passwordOk, passwordProblem, passwordRefusal } from '../admin/src/lib/password.ts';
 
 const fails = [];
 let checks = 0;
@@ -34,20 +35,47 @@ eq('rowsWord(111)', rowsWord(111), '111 صفًا');
 eq('bookingsWord(102)', bookingsWord(102), '102 حجز');
 eq('roomsWord(200)', roomsWord(200), '200 غرفة');
 
-// set-password: Auth's letters_digits accepts Latin letters and 0–9 only — Arabic letters without a Latin one are refused
-eq('password texts', [PASSWORD_SHORT, PASSWORD_LETTERS_DIGITS].join(' | '), 'كلمة المرور 10 أحرف على الأقل. | يجب أن تحتوي كلمة المرور على حروف إنجليزية وأرقام.');
-for (const [pw, want] of [
-  ['Ab1', PASSWORD_SHORT],
-  ['abcdefghijkl', PASSWORD_LETTERS_DIGITS],
-  ['1234567890', PASSWORD_LETTERS_DIGITS],
-  ['كلمةمرورقوية2026', PASSWORD_LETTERS_DIGITS],
-  ['كلمةمرورA' + String.fromCharCode(0x0661, 0x0662, 0x0663), PASSWORD_LETTERS_DIGITS],
-  ['كلمةمرورA2026', null],
-  ['armada-2026', null],
-]) eq(`passwordProblem(${pw})`, passwordProblem(pw), want);
-eq('passwordRefusal(characters)', passwordRefusal({ reasons: ['characters'] }), PASSWORD_LETTERS_DIGITS);
-eq('passwordRefusal(length)', passwordRefusal({ reasons: ['length'] }), PASSWORD_SHORT);
+// password rule (Ahmed, 26 Oct 2026): ≥ 8 printable ASCII characters, no spaces, no required classes — the three
+// checklist lines, the confirm line, the leak note and the weak / leaked refusal (admin/src/lib/password.ts)
+const LEN = '8 أحرف على الأقل', ASCII = 'بدون حروف أو أرقام عربية', SPACES = 'بدون مسافات';
+eq('password lines', PASSWORD_RULES.map((r) => `${r.key}:${r.text}`).join(' | '), `length:${LEN} | ascii:${ASCII} | spaces:${SPACES}`);
+eq('password match line', PASSWORD_MATCH, 'كلمتا المرور متطابقتان');
+eq('password leak note', PASSWORD_LEAK_NOTE, 'عند الحفظ نتأكد أن كلمة المرور ليست شائعة أو مسرّبة.');
+eq('password weak text', PASSWORD_WEAK, 'كلمة المرور هذه شائعة أو ظهرت في تسريبات سابقة، فيسهل تخمينها. اختر كلمة مرور أخرى.');
+const AD = String.fromCharCode(0x0661, 0x0662, 0x0663, 0x0664, 0x0665, 0x0666, 0x0667, 0x0668); // ١٢٣٤٥٦٧٨
+for (const [pw, want, unmet] of [
+  ['Ab1', LEN, 'length'],
+  ['abcdefg', LEN, 'length'],
+  ['abcdefgh', null, ''], // 8 lowercase letters: no class is required
+  ['12345678', null, ''],
+  ['@_-.!#$%', null, ''],
+  ['Armada-2026!x', null, ''],
+  ['~`^&*()+={}[]|\\:;"<>,?/\'', null, ''],
+  ['كلمةمرورA2026', ASCII, 'ascii'], // Arabic letters
+  [AD, ASCII, 'ascii'], // Arabic-Indic digits, 8 of them
+  ['armadaA' + String.fromCharCode(0x0661, 0x0662), ASCII, 'ascii'], // Latin + Arabic-Indic digits
+  ['pässword1', ASCII, 'ascii'], // any other non-ASCII letter
+  ['pass’word1', ASCII, 'ascii'], // a curly quote
+  ['abcd efgh', SPACES, 'spaces'],
+  [' abcdefgh', SPACES, 'spaces'],
+  ['abcdefgh ', SPACES, 'spaces'],
+  ['abcd\tefgh', SPACES, 'spaces'],
+  ['abcd efgh', SPACES, 'spaces'], // no-break space: whitespace, not the ASCII line
+  ['ab cd', LEN, 'length spaces'], // the first unmet line is reported; both read false in the checks
+]) {
+  eq(`passwordProblem(${JSON.stringify(pw)})`, passwordProblem(pw), want);
+  eq(`passwordOk(${JSON.stringify(pw)})`, passwordOk(pw), want === null);
+  const c = passwordChecks(pw);
+  eq(`passwordChecks(${JSON.stringify(pw)}) unmet`, Object.keys(c).filter((k) => !c[k]).join(' '), unmet);
+}
+eq('passwordRefusal(length)', passwordRefusal({ reasons: ['length'] }), LEN);
 eq('passwordRefusal(pwned)', passwordRefusal({ reasons: ['pwned'] }), PASSWORD_WEAK);
+eq('passwordRefusal(characters)', passwordRefusal({ reasons: ['characters'] }), PASSWORD_WEAK); // no classes are required any more
+eq('passwordRefusal(none)', passwordRefusal({}), PASSWORD_WEAK);
+for (const m of [LEN, ASCII, SPACES, PASSWORD_MATCH, PASSWORD_LEAK_NOTE, PASSWORD_WEAK]) {
+  checks++;
+  if (/[A-Za-z_]/.test(m)) fails.push(`English in «${m}»`);
+}
 
 // login: an unknown user and every credential failure read the same
 const CRED = 'البريد أو كلمة المرور غير صحيحة.';

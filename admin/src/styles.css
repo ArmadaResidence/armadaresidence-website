@@ -176,6 +176,31 @@ body {
 @keyframes slide-ltr { from { transform: translateX(100%); } }
 [dir="ltr"] .drawer { box-shadow: 8px 0 32px rgb(0 0 0 / 0.2); animation-name: slide-ltr; }
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+
+/* password fields (PasswordField.tsx, 26 Oct 2026): the eye button inside the field at the page's inline-end — the left
+   in RTL (the LTR text and Chrome's key icon live at the right); ≥ 44 px target; the input keeps room for it */
+.pw-wrap { position: relative; }
+.pw-wrap .pw-input { padding-left: 3rem; }
+[dir="ltr"] .pw-wrap .pw-input { padding-left: 0.75rem; padding-right: 3rem; }
+.pw-eye {
+  position: absolute;
+  inset-inline-end: 0;
+  top: 0;
+  bottom: 0;
+  width: 44px;
+  min-height: 44px;
+  display: grid;
+  place-items: center;
+  color: var(--ink-muted);
+  border-radius: 0.25rem;
+  transition: color var(--motion-fast);
+}
+.pw-eye:hover, .pw-eye[aria-pressed="true"] { color: var(--ink); }
+.pw-eye:focus-visible { outline: 2px solid var(--color-bronze); outline-offset: -4px; }
+/* the live checklist: icon + text per line, never colour alone */
+.pw-rules { display: grid; gap: 0.25rem; font-size: 0.8125rem; line-height: 1.5; }
+.pw-rules li { display: flex; align-items: center; gap: 0.5rem; }
+.pw-rules .pw-mark { flex: none; }
 .reveal { animation: rise var(--motion-base) var(--ease-out) both; }
 @keyframes rise { from { opacity: 0; transform: translateY(16px); } }
 

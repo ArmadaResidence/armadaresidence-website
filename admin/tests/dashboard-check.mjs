@@ -11,6 +11,10 @@
 // the 30 s undo toast and the audit revert (+ a conflict that changes nothing); the permission matrix (view = read-only
 // screen, revocation at once in another session, last-admin guard); room availability toggle → site_room_types;
 // invite link → fresh context → «متابعة» → password → TOTP → in, and a prefetch GET that must not consume the link.
+// 26 Oct 2026 (password rule): the live checklist on /set-password (lines, ✓/✗ per keystroke, save disabled until every
+// line is met, the stubbed weak / leaked refusal, Auth accepting a letters-and-symbols password) and the show / hide
+// toggle on every password field (login and both set-password fields: aria-pressed, labels, 44 px, RTL inline-end,
+// focus + caret kept, keyboard, never submits, hidden again after a successful sign-in).
 // Everything it writes is undone at the end (test room type via qa_fixture, overrides deactivated, settings restored).
 import { chromium } from 'playwright';
 import { readFileSync } from 'node:fs';
@@ -18,6 +22,8 @@ import { totp } from './totp.mjs';
 
 const BASE = (process.argv[2] || 'http://127.0.0.1:5173').replace(/\/$/, '');
 const PW = 'Qa-Armada-2026!x';
+// what the invitee sets (26 Oct 2026 rule: ≥ 8 printable ASCII, no spaces, no required classes): letters and symbols only
+const INVITEE_PW = 'qa-armada-pass!';
 const USERS = {
   rec_air: 'rec-air@qa.invalid',
   rec_shafa: 'rec-shafa@qa.invalid',
@@ -446,6 +452,39 @@ try {
     await ctx.close();
   }
 
+  // ── show / hide toggle on the login password field (26 Oct 2026), 375 px ──
+  {
+    const ctx = await browser.newContext({ locale: 'ar', viewport: { width: 375, height: 812 } });
+    const page = await ctx.newPage();
+    page.on('pageerror', (e) => fails.push(`page error (login toggle): ${e.message}`));
+    await page.goto(`${BASE}/login`);
+    await page.fill('#email', USERS.rec_air);
+    await page.fill('#password', PW);
+    const eye = page.locator('.pw-wrap:has(#password) [data-action="toggle-password"]');
+    const eb = await eye.boundingBox();
+    const ib = await page.locator('#password').boundingBox();
+    check(eb && eb.width >= 44 && eb.height >= 44, 'login toggle: target ≥ 44 px', JSON.stringify(eb));
+    check(eb && eb.x + eb.width / 2 < ib.x + ib.width / 2, 'login toggle: at the inline-end of the field in RTL (left)', JSON.stringify({ eb, ib }));
+    check((await eye.getAttribute('aria-pressed')) === 'false' && (await eye.getAttribute('aria-label')) === 'إظهار كلمة المرور' && (await page.locator('#password').getAttribute('type')) === 'password', 'login toggle: hidden by default, «إظهار كلمة المرور»');
+    const tokenCalls = [];
+    page.on('request', (req) => { if (/\/auth\/v1\/token/.test(req.url())) tokenCalls.push(req.url()); });
+    await page.focus('#password');
+    await page.evaluate(() => document.getElementById('password').setSelectionRange(2, 2));
+    await eye.click();
+    const shown = await page.evaluate(() => ({ type: document.getElementById('password').type, focused: document.activeElement?.id, caret: document.getElementById('password').selectionStart, label: document.querySelector('[data-action="toggle-password"]').getAttribute('aria-label'), pressed: document.querySelector('[data-action="toggle-password"]').getAttribute('aria-pressed') }));
+    check(shown.type === 'text' && shown.pressed === 'true' && shown.label === 'إخفاء كلمة المرور' && shown.focused === 'password' && shown.caret === 2, 'login toggle: shows the password, keeps focus and caret, «إخفاء كلمة المرور»', JSON.stringify(shown));
+    check(tokenCalls.length === 0 && /\/login/.test(page.url()), 'login toggle: never submits the form');
+    await eye.click();
+    check((await page.locator('#password').getAttribute('type')) === 'password' && (await eye.getAttribute('aria-pressed')) === 'false', 'login toggle: hides again');
+    // revealed, then a successful sign-in: the field is hidden again (or gone with the page) — never left revealed
+    await eye.click();
+    await page.click('button[type=submit]');
+    await page.waitForFunction(() => { const el = document.querySelector('#password'); return !el || el.type === 'password'; }, null, { timeout: 30000 });
+    await page.waitForSelector('#app-main', { timeout: 30000 });
+    check(true, 'login toggle: the password is not left revealed after a successful sign-in');
+    await ctx.close();
+  }
+
   // ── invite link (token_hash) in a fresh context: prefetch must not consume it; «متابعة» → password → TOTP → in ──
   if (SERVICE) {
     const SH = { apikey: SERVICE, Authorization: `Bearer ${SERVICE}`, 'Content-Type': 'application/json' };
@@ -476,23 +515,72 @@ try {
       await fp.waitForSelector('#p1', { timeout: 20000 });
       check(true, 'invite: «متابعة» verified the token and opened the password form');
       await digits(fp, 'set-password');
-      check((await fp.locator('form').innerText()).includes('10 أحرف على الأقل، وفيها حروف إنجليزية وأرقام.'), 'set-password: hint «10 أحرف على الأقل، وفيها حروف إنجليزية وأرقام.»');
-      // length and letters + digits are checked in the browser before any call to the service
+      // the live checklist (Ahmed, 26 Oct 2026): three lines under the password, the match line under the confirm
+      // field, the leak note; the save button waits for every line, so nothing reaches the service before
+      const LINES = ['8 أحرف على الأقل', 'بدون حروف أو أرقام عربية', 'بدون مسافات', 'كلمتا المرور متطابقتان', 'عند الحفظ نتأكد أن كلمة المرور ليست شائعة أو مسرّبة.'];
+      const formText = await fp.locator('form').innerText();
+      check(LINES.every((l) => formText.includes(l)) && !formText.includes('10 أحرف'), 'set-password: the checklist lines and the leak note are shown, the old hint is gone', formText.slice(0, 300));
+      check((await fp.locator('#p1-rules[aria-live="polite"] li .pw-mark').count()) === 3 && (await fp.locator('#p2-rules[aria-live="polite"] li .pw-mark').count()) === 1, 'set-password: aria-live checklists with an icon per line');
+      const rules = (sel) => fp.evaluate((sel) => Object.fromEntries([...document.querySelectorAll(`${sel} li`)].map((li) => [li.dataset.rule, li.dataset.met])), sel);
+      const saveDisabled = () => fp.locator('[data-action="save-password"]').isDisabled();
       const userCalls = [];
       fp.on('request', (req) => { if (/\/auth\/v1\/user/.test(req.url()) && req.method() === 'PUT') userCalls.push(req.url()); });
-      const LD = 'يجب أن تحتوي كلمة المرور على حروف إنجليزية وأرقام.';
-      for (const [pw, want] of [['Ab1', 'كلمة المرور 10 أحرف على الأقل.'], ['abcdefghijkl', LD], ['1234567890', LD], ['كلمةمرور2026', LD]]) {
+      check(JSON.stringify(await rules('#p1-rules')) === JSON.stringify({ length: 'false', ascii: 'true', spaces: 'true' }) && (await rules('#p2-rules')).match === 'false' && (await saveDisabled()), 'set-password: empty → only the length line unmet, save disabled');
+      for (const [pw, want] of [
+        ['Ab1', { length: 'false', ascii: 'true', spaces: 'true' }],
+        ['كلمةمرور2026', { length: 'true', ascii: 'false', spaces: 'true' }],
+        ['abcd efgh', { length: 'true', ascii: 'true', spaces: 'false' }],
+        ['abcdefgh', { length: 'true', ascii: 'true', spaces: 'true' }], // 8 lowercase letters: no class is required
+      ]) {
         await fp.fill('#p1', pw);
-        await fp.fill('#p2', pw);
-        await fp.click('[data-action="save-password"]');
-        const msg = await fp.locator('[role=alert]').first().innerText().catch(() => '');
-        check(msg.trim() === want, `set-password: «${pw}» → ${want}`, msg);
+        const got = await rules('#p1-rules');
+        check(JSON.stringify(got) === JSON.stringify(want), `set-password: «${pw}» → ${JSON.stringify(want)}`, JSON.stringify(got));
+        check(await saveDisabled(), `set-password: «${pw}» without a matching confirmation keeps save disabled`);
       }
-      check(userCalls.length === 0, 'set-password: rejected passwords never reach the service', userCalls.join(' '));
-      await fp.fill('#p1', PW);
-      await fp.fill('#p2', PW);
+      await fp.fill('#p2', 'abcdefgX');
+      check((await rules('#p2-rules')).match === 'false' && (await saveDisabled()), 'set-password: a different confirmation → «كلمتا المرور متطابقتان» ✗, save disabled');
+      await fp.fill('#p2', 'abcdefgh');
+      check((await rules('#p2-rules')).match === 'true' && !(await saveDisabled()), 'set-password: matching confirmation → every line met, save enabled');
+      check(userCalls.length === 0, 'set-password: nothing reached the service while a line was unmet', userCalls.join(' '));
+      // the show / hide toggle on both fields: inside the field at the RTL inline-end (left), ≥ 44 px, aria-pressed,
+      // focus and caret stay, never submits
+      const eye1 = fp.locator('.pw-wrap:has(#p1) [data-action="toggle-password"]');
+      check((await fp.locator('.pw-wrap:has(#p2) [data-action="toggle-password"]').count()) === 1, 'toggle: the confirm field has one too');
+      const eb = await eye1.boundingBox();
+      const ib = await fp.locator('#p1').boundingBox();
+      check(eb.width >= 44 && eb.height >= 44, 'toggle: target ≥ 44 px', JSON.stringify(eb));
+      check(eb.x + eb.width / 2 < ib.x + ib.width / 2 && eb.x >= ib.x - 1 && eb.x + eb.width <= ib.x + ib.width + 1, 'toggle: inside the field, at its inline-end in RTL (left)', JSON.stringify({ eb, ib }));
+      await fp.focus('#p1');
+      await fp.evaluate(() => document.getElementById('p1').setSelectionRange(3, 3));
+      await eye1.click();
+      const shown = await fp.evaluate(() => ({ type: document.getElementById('p1').type, pressed: document.querySelector('.pw-wrap:has(#p1) [data-action="toggle-password"]').getAttribute('aria-pressed'), label: document.querySelector('.pw-wrap:has(#p1) [data-action="toggle-password"]').getAttribute('aria-label'), focused: document.activeElement?.id, caret: document.getElementById('p1').selectionStart }));
+      check(shown.type === 'text' && shown.pressed === 'true' && shown.label === 'إخفاء كلمة المرور', 'toggle: shows the password with «إخفاء كلمة المرور», aria-pressed', JSON.stringify(shown));
+      check(shown.focused === 'p1' && shown.caret === 3, 'toggle: focus and caret stay in the field', JSON.stringify(shown));
+      check(userCalls.length === 0 && /set-password/.test(fp.url()), 'toggle: never submits the form');
+      await eye1.click();
+      check((await fp.locator('#p1').getAttribute('type')) === 'password' && (await eye1.getAttribute('aria-pressed')) === 'false' && (await eye1.getAttribute('aria-label')) === 'إظهار كلمة المرور', 'toggle: hides it again with «إظهار كلمة المرور»');
+      await fp.focus('#p1');
+      await fp.keyboard.press('Tab');
+      check(await fp.evaluate(() => document.activeElement?.dataset.action === 'toggle-password'), 'toggle: reachable with Tab after the field');
+      await fp.keyboard.press('Space');
+      check((await fp.locator('#p1').getAttribute('type')) === 'text', 'toggle: Space toggles from the keyboard');
+      await fp.keyboard.press('Space');
+      check((await fp.locator('#p1').getAttribute('type')) === 'password', 'toggle: Space again hides');
+      // the server's weak / leaked refusal (stubbed: the branch has no leaked-password list) reads as the approved text
+      await fp.route('**/auth/v1/user', (route) => (route.request().method() === 'PUT' ? route.fulfill({ status: 422, contentType: 'application/json', body: JSON.stringify({ code: 'weak_password', error_code: 'weak_password', message: 'Password is known to be weak and easy to guess, please choose a different one.', reasons: ['pwned'] }) }) : route.continue()));
+      await fp.fill('#p1', 'password1');
+      await fp.fill('#p2', 'password1');
+      await fp.click('[data-action="save-password"]');
+      await fp.locator('[role=alert]').first().waitFor({ timeout: 10000 });
+      check((await fp.locator('[role=alert]').first().innerText()).trim() === 'كلمة المرور هذه شائعة أو ظهرت في تسريبات سابقة، فيسهل تخمينها. اختر كلمة مرور أخرى.', 'set-password: a weak / leaked refusal reads as the approved sentence');
+      check(userCalls.length === 1, 'set-password: exactly one call reached the (stubbed) service', String(userCalls.length));
+      await fp.unroute('**/auth/v1/user');
+      // Auth itself (config push on this branch: minimum 8, no required classes) accepts a letters-and-symbols password
+      await fp.fill('#p1', INVITEE_PW);
+      await fp.fill('#p2', INVITEE_PW);
       await fp.click('[data-action="save-password"]');
       await fp.waitForURL(/\/mfa/, { timeout: 30000, waitUntil: 'commit' });
+      check(true, `set-password: Auth accepted a ${INVITEE_PW.length}-character password without digits or capitals`);
       const secretEl = fp.locator('p.latin.select-all');
       await secretEl.waitFor({ timeout: 20000 });
       await fp.fill('#code', totp((await secretEl.textContent()).trim()));

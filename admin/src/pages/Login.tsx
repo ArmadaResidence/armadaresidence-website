@@ -3,6 +3,7 @@ import { Navigate, useLocation } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useSession } from '../lib/session';
 import { ErrorBox, Spinner } from '../components/ui';
+import { PasswordField } from '../components/PasswordField';
 import { arabicAuth } from '../lib/errors';
 
 export default function Login() {
@@ -10,6 +11,8 @@ export default function Login() {
   const loc = useLocation();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  // bumped after a successful sign-in: the field returns to hidden (PasswordField)
+  const [pwReset, setPwReset] = useState(0);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [reset, setReset] = useState<string | null>(null);
@@ -23,6 +26,7 @@ export default function Login() {
     const { error } = await supabase.auth.signInWithPassword({ email: email.trim().toLowerCase(), password });
     setBusy(false);
     if (error) setError(arabicAuth(error));
+    else setPwReset((k) => k + 1);
   }
   async function forgot() {
     if (!email.trim()) return setError('اكتب بريدك أولًا.');
@@ -42,7 +46,7 @@ export default function Login() {
         <label className="label" htmlFor="email">البريد الإلكتروني</label>
         <input id="email" className="field latin mb-4" type="email" dir="ltr" autoComplete="username" required value={email} onChange={(e) => setEmail(e.target.value)} />
         <label className="label" htmlFor="password">كلمة المرور</label>
-        <input id="password" className="field latin mb-2" type="password" dir="ltr" autoComplete="current-password" required value={password} onChange={(e) => setPassword(e.target.value)} />
+        <PasswordField id="password" value={password} onChange={setPassword} autoComplete="current-password" resetKey={pwReset} required className="mb-2" />
         <ErrorBox error={error} />
         {reset && <p className="text-sm text-ok my-3">{reset}</p>}
         <button type="submit" className="btn btn-primary w-full mt-3" disabled={busy}>

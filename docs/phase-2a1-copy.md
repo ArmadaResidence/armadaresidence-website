@@ -37,12 +37,20 @@ booking-form note.
 - Invite link, before the click: «وصلتك دعوة إلى لوحة التحكم. اضغط «متابعة» لتأكيد الرابط ثم اختر كلمة المرور.»
 - Reset link, before the click: «اضغط «متابعة» لتأكيد الرابط ثم اختر كلمة المرور الجديدة.»
 - Button: «متابعة»
-- Form: «كلمة المرور الجديدة» · «تأكيد كلمة المرور» · hint «10 أحرف على الأقل، وفيها حروف إنجليزية وأرقام.» · button «حفظ والمتابعة»
-- Validation (length and letters + digits checked in the browser before the call, matching Auth's `letters_digits` rule:
-  Latin letters and 0–9): «كلمة المرور 10 أحرف على الأقل.» · «يجب أن تحتوي كلمة المرور على حروف إنجليزية وأرقام.» (also
-  for a password with Arabic letters but no Latin letter) ·
-  «كلمتا المرور غير متطابقتين.» · leaked or weak (the service's `weak_password`) → «كلمة المرور هذه معروفة أو سهلة التخمين، اختر
-  كلمة مرور أخرى.»
+- Form: «كلمة المرور الجديدة» · «تأكيد كلمة المرور» · button «حفظ والمتابعة»
+- Password rule (Ahmed, 26 Oct 2026 — replaces the 10-character letters-and-digits rule): at least 8 characters, any
+  printable ASCII except the space (A–Z, a–z, 0–9, symbols such as @ _ - . ! # $), no required character classes;
+  Arabic letters, Arabic-Indic digits, whitespace and any other non-ASCII character are refused. Auth is set the same
+  way (`minimum_password_length = 8`, `password_requirements` none, leaked-password protection on).
+- Live checklist under the password field, updated as the user types, each line a green check or a red cross with
+  the text (icon + text, never colour alone; aria-live): «8 أحرف على الأقل» · «بدون حروف أو أرقام عربية» (the
+  Latin-only rule: any character outside ASCII fails it) · «بدون مسافات»; under the confirm field «كلمتا المرور متطابقتان».
+  Below the list: «عند الحفظ نتأكد أن كلمة المرور ليست شائعة أو مسرّبة.» The save button stays disabled until every
+  line is met (so the old inline validation sentences are gone).
+- Server refusal as weak or leaked (the service's `weak_password`): «كلمة المرور هذه شائعة أو ظهرت في تسريبات سابقة،
+  فيسهل تخمينها. اختر كلمة مرور أخرى.»
+- Show / hide toggle on every password field (login, both /set-password fields): an eye button inside the field,
+  «إظهار كلمة المرور» / «إخفاء كلمة المرور» (aria-label + aria-pressed), open eye ↔ crossed-out eye.
 - Link no longer valid: «هذا الرابط لم يعد صالحًا: استُخدم من قبل، أو انتهت صلاحيته، أو نُسخ ناقصًا.» (Supabase gives one answer for a used, an expired and a broken link)
 - Link expired (when the service says so explicitly): «انتهت صلاحية هذا الرابط.»
 - Page opened without a link: «هذه الصفحة تُفتح من رابط الدعوة أو رابط تعيين كلمة المرور الذي وصلك بالبريد.»

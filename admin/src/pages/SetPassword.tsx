@@ -12,7 +12,9 @@ import type { EmailOtpType } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
 import { useSession } from '../lib/session';
 import { ErrorBox, Spinner } from '../components/ui';
-import { arabicAuth, passwordProblem, passwordRefusal } from '../lib/errors';
+import { PasswordChecklist, PasswordField } from '../components/PasswordField';
+import { arabicAuth } from '../lib/errors';
+import { PASSWORD_LEAK_NOTE, PASSWORD_MATCH, PASSWORD_RULES, passwordChecks, passwordOk, passwordProblem, passwordRefusal } from '../lib/password';
 
 type Stage = 'loading' | 'ready' | 'verifying' | 'form' | 'error';
 type Reason = 'expired' | 'invalid' | 'none';
@@ -44,6 +46,8 @@ export default function SetPassword() {
   const [reason, setReason] = useState<Reason>('none');
   const [p1, setP1] = useState('');
   const [p2, setP2] = useState('');
+  // bumped after a successful save: both fields return to hidden (PasswordField)
+  const [pwReset, setPwReset] = useState(0);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   // «اطلب رابطًا جديدًا»
@@ -107,9 +111,15 @@ export default function SetPassword() {
       if (error.code === 'weak_password' || /weak|pwned|leaked/i.test(error.message)) return setError(passwordRefusal(error as { reasons?: string[] }));
       return setError(arabicAuth(error));
     }
+    setPwReset((k) => k + 1);
     await refresh();
     nav('/bookings', { replace: true });
   }
+
+  // the live checklist (password.ts): the save button waits for every line
+  const checks = passwordChecks(p1);
+  const match = p2.length > 0 && p1 === p2;
+  const allMet = passwordOk(p1) && match;
 
   async function requestNew() {
     const addr = email.trim().toLowerCase();
@@ -144,12 +154,14 @@ export default function SetPassword() {
         {stage === 'form' && (
           <>
             <label className="label" htmlFor="p1">كلمة المرور الجديدة</label>
-            <input id="p1" className="field latin mb-4" type="password" dir="ltr" autoComplete="new-password" minLength={10} required value={p1} onChange={(e) => setP1(e.target.value)} />
-            <label className="label" htmlFor="p2">تأكيد كلمة المرور</label>
-            <input id="p2" className="field latin mb-2" type="password" dir="ltr" autoComplete="new-password" minLength={10} required value={p2} onChange={(e) => setP2(e.target.value)} />
-            <p className="text-xs text-ink-muted mb-2">10 أحرف على الأقل، وفيها حروف إنجليزية وأرقام.</p>
+            <PasswordField id="p1" value={p1} onChange={setP1} autoComplete="new-password" resetKey={pwReset} required aria-describedby="p1-rules" className="mb-2" />
+            <PasswordChecklist id="p1-rules" items={PASSWORD_RULES.map((r) => ({ key: r.key, text: r.text, met: checks[r.key] }))} />
+            <label className="label mt-4" htmlFor="p2">تأكيد كلمة المرور</label>
+            <PasswordField id="p2" value={p2} onChange={setP2} autoComplete="new-password" resetKey={pwReset} required aria-describedby="p2-rules" className="mb-2" />
+            <PasswordChecklist id="p2-rules" items={[{ key: 'match', text: PASSWORD_MATCH, met: match }]} />
+            <p className="text-xs text-ink-muted mt-3 mb-2" data-leak-note>{PASSWORD_LEAK_NOTE}</p>
             <ErrorBox error={error} />
-            <button type="submit" className="btn btn-primary w-full mt-3" disabled={busy || !session} data-action="save-password">
+            <button type="submit" className="btn btn-primary w-full mt-3" disabled={busy || !session || !allMet} data-action="save-password">
               {busy && <Spinner />} حفظ والمتابعة
             </button>
           </>

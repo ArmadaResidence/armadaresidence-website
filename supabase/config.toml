@@ -21,6 +21,13 @@ verify_jwt = true
 [functions.site-rebuild]
 verify_jwt = true
 
+# Dashboard password rule (Ahmed, 26 Oct 2026): at least 8 characters, no required character classes — the dashboard
+# itself refuses spaces and anything outside printable ASCII before the call (admin/src/lib/password.ts). Leaked-password
+# protection (HaveIBeenPwned) is NOT a key of this file: `config push` cannot change it, and it stays ON in the project.
+[auth]
+minimum_password_length = 8
+password_requirements = ""
+
 # Auth email templates (phase 2a.1, 26 Oct 2026). token_hash links: the browser verifies the one-time token only when
 # the user presses «متابعة» on /set-password, so a mail scanner opening the link cannot consume it and the link works in
 # any browser (no PKCE code verifier needed). Subjects keep the AR- tag for the Hostinger webmail filters.
