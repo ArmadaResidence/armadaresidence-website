@@ -448,6 +448,19 @@ footer :focus-visible,
     border-radius: 0;
     overflow: visible;
   }
+  /* Seam fix (28 Oct 2026): the outer panes overscan the card by 2 px on their outer inline edge. The media layer is
+     116 % of the pane, so its outer edge landed on a fraction of a device pixel at DPR 1.25 / 1.5; while the media
+     transitions its transform it is a composited layer, the compositor anti-aliased that edge and a thin light line of
+     page background showed along the pane's outer edge for the 400 ms of the move (and a faint dark hairline at rest).
+     With the overscan the layer's edge lies outside the card's clip and only the card's own edge is drawn. The card's
+     overflow clips the 2 px; the inner edge between the panes and the motion are unchanged. (The card's top and bottom
+     boundary rows are the rounded clip's own anti-aliasing and are left alone.) */
+  .split-pane:first-child {
+    margin-inline-start: -2px;
+  }
+  .split-pane:last-child {
+    margin-inline-end: -2px;
+  }
   .split-pane:first-child .split-media {
     inset-inline-start: 0;
     inset-inline-end: auto;
