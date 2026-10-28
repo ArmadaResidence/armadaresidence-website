@@ -75,6 +75,9 @@ async function digits(page, label) {
   check(!ARABIC_DIGITS.test(text), `digits: ${label}`, text.match(ARABIC_DIGITS)?.[0]);
   const nativeDates = await page.locator('input[type=date], input[type=time]').count();
   check(nativeDates === 0, `no native date/time input: ${label}`, String(nativeDates));
+  // task 5 D (28 Oct 2026): a button whose whole text is «إلغاء» only ever closes a dialog
+  const bare = await page.evaluate(() => Array.from(document.querySelectorAll('button')).filter((b) => b.textContent.trim() === 'إلغاء' && b.dataset.action !== 'dialog-cancel').map((b) => b.dataset.action || b.outerHTML.slice(0, 80)));
+  check(bare.length === 0, `no action button reads a bare «إلغاء»: ${label}`, bare.join(', '));
 }
 /** tap a day inside the open picker, moving months as needed */
 async function tapDay(page, iso) {
@@ -292,6 +295,10 @@ try {
     await page.click('[data-action="night-save"]');
     await waitCell(page, D(RATE), 'king-room', /333/);
     check(true, 'rates: single-night override applied');
+    // task 5 D: the active-override row's button turns it off — «إيقاف», never a bare «إلغاء»
+    const offBtn = page.locator('[data-action="override-off"]').first();
+    await offBtn.waitFor({ timeout: 10000 }).catch(() => {});
+    check((await offBtn.count()) === 1 && (await offBtn.innerText()).trim() === 'إيقاف' && ((await offBtn.getAttribute('aria-label')) ?? '').startsWith('إيقاف السعر الاستثنائي '), 'rates: the override row button reads «إيقاف» with «إيقاف السعر الاستثنائي» + its dates', `${await offBtn.innerText().catch(() => '')} / ${await offBtn.getAttribute('aria-label').catch(() => '')}`);
     const toastUndo = page.locator('[data-toast="undo"] [data-action="undo"]');
     await toastUndo.waitFor({ timeout: 5000 });
     // a second edit on the same night (replaces the first in its own batch)

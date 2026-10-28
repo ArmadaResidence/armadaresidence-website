@@ -568,17 +568,21 @@ function OverridesList({ list, types, onSaved }: { list: RateOverride[]; types: 
     <div className="card p-4 mt-5">
       <h2 className="font-bold mb-2">الاستثناءات الفعّالة</h2>
       <ul className="grid gap-1 text-sm">
-        {active.map((o) => (
+        {active.map((o) => {
+          const dates = o.date_from === o.date_to ? longDate(o.date_from) : `${longDate(o.date_from)} ← ${longDate(o.date_to)}`;
+          return (
           <li key={o.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 border-b border-line py-1.5 last:border-0">
             <span className="font-semibold">{types.find((t) => t.id === o.room_type_id)?.name_ar ?? '—'}</span>
-            <span className="num-ar">{o.date_from === o.date_to ? longDate(o.date_from) : `${longDate(o.date_from)} ← ${longDate(o.date_to)}`}</span>
+            <span className="num-ar">{dates}</span>
             <span className="text-ink-muted">{maskLabel(o.weekdays)}</span>
             <span className="font-bold">{sar(o.price)}</span>
             {o.label && <span className="chip chip-request">{o.label}</span>}
             {o.label_en && <span className="chip chip-request latin" dir="ltr">{o.label_en}</span>}
-            <button type="button" className="btn btn-ghost btn-sm ms-auto" onClick={async () => { try { const r = await api.setOverrideActive(o.id, false); onSaved('أُلغي الاستثناء', r.batch_id); } catch (e) { toast((e as Error).message, 'error'); } }} data-action="override-off">إلغاء</button>
+            {/* 28 Oct 2026 (task 5 D): a bare «إلغاء» only ever closes a dialog — this one turns the override off */}
+            <button type="button" className="btn btn-ghost btn-sm ms-auto" aria-label={`إيقاف السعر الاستثنائي ${dates}`} onClick={async () => { try { const r = await api.setOverrideActive(o.id, false); onSaved('تم إيقاف السعر الاستثنائي', r.batch_id); } catch (e) { toast((e as Error).message, 'error'); } }} data-action="override-off">إيقاف</button>
           </li>
-        ))}
+          );
+        })}
       </ul>
     </div>
   );
