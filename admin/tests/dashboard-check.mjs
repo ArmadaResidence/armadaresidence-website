@@ -169,10 +169,15 @@ try {
   const fx = await rpc('qa_fixture', { p_action: 'setup', p_args: { branch: 'airport-road', base_rate: 120, nights: [{ night: D(20), rooms_to_sell: 2 }, { night: D(21), rooms_to_sell: 2 }] } });
   check(!!fx.room_type_id, 'fixture ready');
   const quote = await rpc('quote_stay', { p_branch: 'airport-road', p_room: 'qa-test-room', p_check_in: D(20), p_check_out: D(22), p_adults: 2, p_children: 0, p_children_ages: null, p_extra_beds: 0, p_breakfast: 'without' });
-  const submit = (body) => fetch(`${env.SUPABASE_URL}/functions/v1/booking-request`, { method: 'POST', headers: { ...H, 'x-armada-test-mail': 'none' }, body: JSON.stringify({ locale: 'ar', branch: 'airport-road', room: 'qa-test-room', check_in: D(20), check_out: D(22), adults: '2', children: '0', extra_beds: '0', breakfast: 'without', name: 'تجربة النظام', phone: '0500000000', country: 'SA', email: '', notes: 'dashboard-check', page: 'qa', ...body }) }).then((r) => r.json());
+  const submit = (body, headers = {}) => fetch(`${env.SUPABASE_URL}/functions/v1/booking-request`, { method: 'POST', headers: { ...H, 'x-armada-test-mail': 'none', ...headers }, body: JSON.stringify({ locale: 'ar', branch: 'airport-road', room: 'qa-test-room', check_in: D(20), check_out: D(22), adults: '2', children: '0', extra_beds: '0', breakfast: 'without', name: 'تجربة النظام', phone: '0500000000', country: 'SA', email: '', notes: 'dashboard-check', page: 'qa', ...body }) }).then((r) => r.json());
+  // the booking form's maximum notes (1000 characters): the print sheet must still be one page
+  const LONG_NOTES = 'نصل متأخرين بعد منتصف الليل تقريبًا، ونرجو تجهيز سرير أطفال وغرفة بعيدة عن المصعد إن أمكن، مع موقف قريب للسيارة. '.repeat(10).slice(0, 1000);
   const r1 = await submit({ quoted_total: quote.quote.total });
-  const r2 = await submit({ extra_beds: '1', quoted_total: quote.quote.total + 100 });
+  const r2 = await submit({ extra_beds: '1', quoted_total: quote.quote.total + 100, notes: LONG_NOTES });
   check(r1.status === 'confirmed' && r2.status === 'request', 'seed: one confirmed + one request (extra bed)', JSON.stringify([r1.status, r2.status, r2.reason]));
+  // task 5 A: a request whose WhatsApp message YCloud refused (test mode stub) — stored all the same
+  const r3 = await submit({ room: '', notes: LONG_NOTES }, { 'x-armada-test-wa': 'fail' });
+  check(r3.ok && r3.status === 'request' && r3.whatsapp_sent === false && r1.whatsapp_sent === true && r2.whatsapp_sent === true, 'seed: WhatsApp built for the first two (test mode), refused for the third — all three stored', JSON.stringify([r1.whatsapp_sent, r2.whatsapp_sent, r3.whatsapp_sent, r3.status]));
 
   // ── reception (Airport Road): no MFA, own branch only; inventory open/close, undo, digits ──
   {
@@ -352,6 +357,39 @@ try {
     let st = await rpc('qa_fixture', { p_action: 'state', p_args: { branch: 'airport-road' } });
     const n20 = st.inventory.find((i) => i.night === D(20));
     check(n20.rooms_to_sell === 0 && n20.booked === 2, 'stock after two confirmations: 0 left / 2 booked', JSON.stringify(n20));
+
+    // ── task 5 A: WhatsApp messages in the booking details ──
+    const openBooking = async (ref) => {
+      await page.fill('#f-q', ref);
+      await page.waitForSelector(`[data-ref="${ref}"]`, { timeout: 10000 });
+      await page.click(`[data-ref="${ref}"]`);
+      await page.waitForSelector('[data-wa-section]', { timeout: 10000 });
+    };
+    const closeDrawer = async () => {
+      await page.keyboard.press('Escape');
+      await page.waitForSelector('aside.drawer', { state: 'detached', timeout: 10000 }).catch(() => {});
+    };
+    await openBooking(r2.ref);
+    await page.waitForSelector('[data-wa="booking_confirmed"]', { timeout: 10000 }).catch(() => {});
+    check((await page.locator('[data-wa="booking_request_received"][data-wa-status="test"]').count()) === 1 && (await page.locator('[data-wa="booking_confirmed"][data-wa-status="test"]').count()) === 1,
+      'whatsapp: request received + confirmed from the dashboard, both logged (test: built, not sent)', await page.locator('[data-wa-section]').innerText().catch(() => ''));
+    await closeDrawer();
+    // the refused one: «تعذّر الإرسال» + the reason in Arabic + «إعادة الإرسال» → built again (test booking)
+    await openBooking(r3.ref);
+    const failed = page.locator('[data-wa="booking_request_received"][data-wa-status="failed"]');
+    await failed.waitFor({ timeout: 10000 }).catch(() => {});
+    check((await failed.count()) === 1 && (await failed.innerText()).includes('تعذّر الإرسال') && (await failed.locator('[data-wa-reason]').innerText()).trim() === 'رفضت خدمة واتساب الرسالة.', 'whatsapp: a refused message shows «تعذّر الإرسال» with the reason in Arabic', await failed.innerText().catch(() => ''));
+    await failed.locator('[data-action="wa-resend"]').click();
+    const resent = page.locator('[data-wa="booking_request_received"][data-wa-status="test"]');
+    await resent.waitFor({ timeout: 20000 }).catch(() => {});
+    check((await resent.count()) === 1 && (await resent.innerText()).includes('المحاولة 2'), 'whatsapp: «إعادة الإرسال» → a second attempt, built (test booking)', await page.locator('[data-wa-section]').innerText().catch(() => ''));
+    check((await page.locator('[data-action="wa-resend"]').count()) === 0, 'whatsapp: no resend button once the message went out');
+    const adminJwt0 = await page.evaluate(() => JSON.parse(Object.entries(localStorage).find(([k]) => k.startsWith('sb-') && k.endsWith('-auth-token'))?.[1] ?? '{}')?.access_token ?? '');
+    const authH = { apikey: env.SUPABASE_ANON_KEY, Authorization: `Bearer ${adminJwt0}`, 'Content-Type': 'application/json' };
+    const r3id = (await fetch(`${env.SUPABASE_URL}/rest/v1/reservations?ref=eq.${r3.ref}&select=id`, { headers: authH }).then((r) => r.json()))[0]?.id ?? '';
+    const again = await fetch(`${env.SUPABASE_URL}/functions/v1/booking-admin`, { method: 'POST', headers: authH, body: JSON.stringify({ action: 'whatsapp-resend', id: r3id, template: 'booking_request_received' }) }).then((r) => r.json()).catch((e) => ({ error: String(e) }));
+    check(again.ok === false, 'whatsapp: a second resend of a sent message is refused (idempotent)', JSON.stringify(again));
+    await closeDrawer();
     await page.fill('#f-q', r1.ref);
     await page.waitForSelector(`[data-ref="${r1.ref}"]`, { timeout: 10000 });
     await page.click(`[data-ref="${r1.ref}"]`);

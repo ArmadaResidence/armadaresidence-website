@@ -10,6 +10,10 @@
 //   decides availability itself. Confirmed → guest «تم تأكيد حجزك» (when an email was given), reception «حجز مؤكد
 //   جديد», and the low-inventory alert to the central recipients when a night is now at 1 or 0. Request → the
 //   phase-1 emails as before. Partner enquiries are unchanged (public.booking_requests, their own emails).
+// WhatsApp (task 5 A, 28 Oct 2026): after the row is stored and after the emails, the guest gets the branch's
+//   template from the branch's own number (YCloud, whatsapp-send.ts): booking_confirmed when confirmed instantly,
+//   booking_request_received otherwise. Never for partner enquiries. The response's whatsapp_sent tells the success
+//   page which sentence to show; a failure is logged in public.whatsapp_messages and changes nothing else.
 // Routing (DECISIONS.md 2026-10-22): recipients are read from public.booking_notification_recipients —
 //   booking requests:   To = active rows of scope 'branch' for the request's branch
 //   partner enquiries:  To = active rows of scope 'partners' (request_type ≠ booking; never a booking)
@@ -47,6 +51,8 @@ import {
   type Mail,
   type Quote,
 } from './email.ts';
+import { sendWhatsApp } from './whatsapp-send.ts';
+import { WA_TEMPLATES, type WaTemplate } from './whatsapp.ts';
 
 type Locale = 'ar' | 'en';
 
@@ -72,8 +78,11 @@ interface Payload {
   /** honeypot — hidden on the form, must stay empty */
   website?: string;
   /** QA only, with a valid test token: 'staff-emails' sends the dashboard staff emails as [TEST] samples to `to`;
-   *  'status' reads Resend's last event of `ids` (26 Oct 2026) */
+   *  'status' reads Resend's last event of `ids` (26 Oct 2026); 'wa-send' sends ONE real template message with a fake
+   *  ref (logged as test) to `wa_to`; 'wa-log' reads the WhatsApp log of one test ref (28 Oct 2026) */
   preview?: string;
+  wa_to?: string;
+  template?: string;
   to?: string[];
   ids?: string[];
   /** 'booking' (default) or a partner enquiry type from content/partners.json → enquiry_types */
@@ -116,7 +125,7 @@ function cors(req: Request): Record<string, string> {
   const allow = allowedOrigins.includes(origin) ? origin : allowedOrigins[0];
   return {
     'Access-Control-Allow-Origin': allow,
-    'Access-Control-Allow-Headers': 'authorization, apikey, content-type, x-armada-test, x-armada-test-mail',
+    'Access-Control-Allow-Headers': 'authorization, apikey, content-type, x-armada-test, x-armada-test-mail, x-armada-test-wa',
     'Access-Control-Allow-Methods': 'POST, OPTIONS',
     'Vary': 'Origin',
   };
@@ -308,6 +317,38 @@ async function previewStatus(req: Request, p: Payload): Promise<Response> {
     out.push({ id, last_event: b.last_event ?? null, subject: b.subject ?? null });
   }
   return json(req, 200, { ok: true, emails: out });
+}
+
+/** QA (test token only): one REAL send of a template with sample values and a fake ref «AR-20991231-…», logged in
+ *  public.whatsapp_messages as a test row (trigger 'qa') — used once after deploy to see the message arrive. */
+async function previewWaSend(req: Request, p: Payload): Promise<Response> {
+  const template = String(p.template ?? '') as WaTemplate;
+  const branch = String(p.branch ?? '');
+  const to = String(p.wa_to ?? '');
+  if (!WA_TEMPLATES.includes(template) || !KNOWN_BRANCHES.includes(branch) || !/^\+[1-9]\d{7,14}$/.test(to)) return json(req, 400, { ok: false, error: 'template, branch, wa_to (E.164)' });
+  const L: Locale = p.locale === 'en' ? 'en' : 'ar';
+  const today = riyadhToday();
+  const plus = (n: number) => new Date(Date.parse(`${today}T00:00:00Z`) + n * 86400000).toISOString().slice(0, 10);
+  const room = content.rooms.find((r: { branch: string }) => r.branch === branch)?.slug ?? '';
+  const ref = `AR-20991231-${makeRef().slice(-4)}`;
+  // the total is the sample value Meta approved with the template — a test message, never a quote
+  const quote = { nights: [], count: 3, room_total: 910, breakfast: 'without', breakfast_total: 0, extra_beds: 0, extra_bed_fee: 0, extra_beds_total: 0, total: 910 } as Quote;
+  const sentAt = new Date().toISOString();
+  const r = await sendWhatsApp(content, { template, booking: { ref, locale: L, branch, room, check_in: plus(7), check_out: plus(10), name: L === 'ar' ? 'تجربة النظام' : 'System test', phone: to, quote }, reservationId: null, test: false, qaLive: true, trigger: 'qa' });
+  return json(req, 200, { ok: r.accepted, ref, template, branch, locale: L, sent_at: sentAt, status: r.status, ycloud_id: r.messageId, error_code: r.errorCode });
+}
+
+/** QA (test token only): the WhatsApp log rows of one TEST ref (scripts/whatsapp-check.mjs --live). Test rows only,
+ *  and only ref, template, language, branch, status, YCloud message id and error — never a phone number, a name or the
+ *  message text (the table holds no text; a number inside YCloud's error text is masked). */
+async function previewWaLog(req: Request, p: Payload & { ref?: string }): Promise<Response> {
+  const env = serviceEnv();
+  const ref = String(p.ref ?? '');
+  if (!env || !/^AR-\d{8}-[A-Z0-9]{4}$/.test(ref)) return json(req, 400, { ok: false, error: 'ref' });
+  const res = await fetch(`${env.url}/rest/v1/whatsapp_messages?ref=eq.${ref}&is_test=eq.true&select=ref,template,language,branch,status,ycloud_id,error_code,error&order=created_at`, { headers: serviceHeaders(env.key) });
+  const rows = res.ok ? ((await res.json()) as { error: string | null }[]) : [];
+  for (const r of rows) if (r.error) r.error = r.error.replace(/\+?\d[\d\s().-]{6,}\d/g, '[number]');
+  return json(req, 200, { ok: res.ok, rows });
 }
 
 /** One validated submission, both request types. */
@@ -637,6 +678,8 @@ Deno.serve(async (req) => {
   const token = testToken(req);
   if (token && payload.preview === 'staff-emails') return previewStaffEmails(req, payload);
   if (token && payload.preview === 'status') return previewStatus(req, payload);
+  if (token && payload.preview === 'wa-send') return previewWaSend(req, payload);
+  if (token && payload.preview === 'wa-log') return previewWaLog(req, payload);
   if (!token && (await rateLimited(req))) return json(req, 429, { ok: false, error: 'too many requests' });
 
   const v = validate(payload, Boolean(token));
@@ -703,6 +746,19 @@ Deno.serve(async (req) => {
   if (!stored && !notificationId) {
     return json(req, 500, { ok: false, error: 'could not store or forward the request' });
   }
+
+  // ---- WhatsApp to the guest: after the row and the emails; never blocks (sendWhatsApp never throws) ----
+  let whatsappSent = false;
+  if (!isPartner && stored && outcome?.id) {
+    const wa = await sendWhatsApp(content, {
+      template: confirmed ? 'booking_confirmed' : 'booking_request_received',
+      booking: { ref, locale: d.locale, branch: d.branch, room: d.room, check_in: d.check_in, check_out: d.check_out, name: d.name, phone: d.phone, quote: confirmed ? outcome.quote ?? null : null },
+      reservationId: outcome.id,
+      test,
+      simulateFail: test && (req.headers.get('x-armada-test-wa') ?? '').toLowerCase() === 'fail',
+    });
+    whatsappSent = wa.accepted;
+  }
   return json(req, 200, {
     ok: true,
     ref,
@@ -713,6 +769,8 @@ Deno.serve(async (req) => {
     is_test: test,
     hotel_email_sent: Boolean(notificationId),
     guest_email_sent: Boolean(confirmationId),
+    // the guest's WhatsApp message was accepted by YCloud (test mode: built); the success page picks its sentence
+    whatsapp_sent: whatsappSent,
     // Resend message ids (opaque) so a support thread can be traced; no addresses are returned.
     email_ids: { notification: notificationId, confirmation: confirmationId, low_inventory: lowId },
   });

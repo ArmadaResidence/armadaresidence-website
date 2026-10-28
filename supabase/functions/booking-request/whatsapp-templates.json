@@ -1,0 +1,132 @@
+{
+  "_note": "Live template definitions read through the YCloud API (GET /v2/whatsapp/templates) on 28 Oct 2026 — the variable map of whatsapp.ts is tested against these bodies. Status as read that day; never edit a template from here.",
+  "_read_at": "2026-10-28",
+  "accounts": {
+    "+966536663030": {
+      "waba_id": "329667206894245",
+      "templates": {
+        "booking_request_received.ar": {
+          "status": "PENDING",
+          "category": "UTILITY",
+          "body": "مرحبًا {{1}}،\nوصلنا طلب حجزك رقم {{2}} في {{3}} للفترة من {{4}} إلى {{5}}.\nسيراجع فريق الاستقبال التوافر ويؤكد لك الحجز خلال ساعات.\nلأي استفسار، رد على هذه الرسالة.",
+          "example": [
+            "أحمد",
+            "AR-20261102-ABCD",
+            "أرمادا ريزيدنس طريق الشفا",
+            "الأحد 2 نوفمبر 2026",
+            "الأربعاء 5 نوفمبر 2026"
+          ],
+          "footer": null
+        },
+        "booking_request_received.en": {
+          "status": "PENDING",
+          "category": "UTILITY",
+          "body": "Hello {{1}},\nWe received your booking request {{2}} at {{3}} for {{4}} to {{5}}.\nOur reception team will check availability and confirm your booking within hours.\nFor any question, reply to this message.",
+          "example": [
+            "Ahmed",
+            "AR-20261102-ABCD",
+            "Armada Residence Shafa Road",
+            "Sun, 2 Nov 2026",
+            "Wed, 5 Nov 2026"
+          ],
+          "footer": null
+        },
+        "booking_confirmed.en": {
+          "status": "PENDING",
+          "category": "UTILITY",
+          "body": "Hello {{1}},\nYour booking at {{2}} is confirmed.\nBooking number: {{3}}\nCheck-in: {{4}}\nCheck-out: {{5}}\nRoom: {{6}}\nTotal: {{7}} incl. VAT, payable at the hotel on arrival.\nLocation: {{8}}\nFor any change or question, reply to this message.",
+          "example": [
+            "Ahmed",
+            "Armada Residence Shafa Road",
+            "AR-20261102-ABCD",
+            "Sun, 2 Nov 2026",
+            "Wed, 5 Nov 2026",
+            "One-Bedroom Suite",
+            "SAR 910",
+            "https://maps.google.com/?q=Armada+Residence+Taif"
+          ],
+          "footer": "Free cancellation up to 24 hours before arrival"
+        },
+        "booking_confirmed.ar": {
+          "status": "PENDING",
+          "category": "UTILITY",
+          "body": "مرحبًا {{1}}،\nتم تأكيد حجزك في {{2}}.\nرقم الحجز: {{3}}\nالوصول: {{4}}\nالمغادرة: {{5}}\nالغرفة: {{6}}\nالإجمالي: {{7}} شامل الضريبة، والدفع عند الوصول.\nالموقع على الخريطة: {{8}}\nلأي تعديل أو استفسار، رد على هذه الرسالة.",
+          "example": [
+            "أحمد",
+            "أرمادا ريزيدنس طريق الشفا",
+            "AR-20261102-ABCD",
+            "الأحد 2 نوفمبر 2026",
+            "الأربعاء 5 نوفمبر 2026",
+            "جناح بغرفة نوم وصالة",
+            "910 ريالات",
+            "https://maps.google.com/?q=Armada+Residence+Taif"
+          ],
+          "footer": "إلغاء مجاني حتى 24 ساعة قبل الوصول"
+        }
+      }
+    },
+    "+966536622277": {
+      "waba_id": "3187536471439127",
+      "templates": {
+        "booking_request_received.ar": {
+          "status": "APPROVED",
+          "category": "UTILITY",
+          "body": "مرحبًا {{1}}،\nوصلنا طلب حجزك رقم {{2}} في {{3}} للفترة من {{4}} إلى {{5}}.\nسيراجع فريق الاستقبال التوافر ويؤكد لك الحجز خلال ساعات.\nلأي استفسار، رد على هذه الرسالة.",
+          "example": [
+            "أحمد",
+            "AR-20261102-ABCD",
+            "أرمادا ريزيدنس طريق المطار",
+            "الأحد 2 نوفمبر 2026",
+            "الأربعاء 5 نوفمبر 2026"
+          ],
+          "footer": null
+        },
+        "booking_request_received.en": {
+          "status": "APPROVED",
+          "category": "UTILITY",
+          "body": "Hello {{1}},\nWe received your booking request {{2}} at {{3}} for {{4}} to {{5}}.\nOur reception team will check availability and confirm your booking within hours.\nFor any question, reply to this message.",
+          "example": [
+            "Ahmed",
+            "AR-20261102-ABCD",
+            "Armada Residence Airport Road",
+            "Sun, 2 Nov 2026",
+            "Wed, 5 Nov 2026"
+          ],
+          "footer": null
+        },
+        "booking_confirmed.ar": {
+          "status": "APPROVED",
+          "category": "UTILITY",
+          "body": "مرحبًا {{1}}،\nتم تأكيد حجزك في {{2}}.\nرقم الحجز: {{3}}\nالوصول: {{4}}\nالمغادرة: {{5}}\nالغرفة: {{6}}\nالإجمالي: {{7}} شامل الضريبة، والدفع عند الوصول.\nالموقع على الخريطة: {{8}}\nلأي تعديل أو استفسار، رد على هذه الرسالة.",
+          "example": [
+            "أحمد",
+            "أرمادا ريزيدنس طريق المطار",
+            "AR-20261102-ABCD",
+            "الأحد 2 نوفمبر 2026",
+            "الأربعاء 5 نوفمبر 2026",
+            "جناح بغرفة نوم وصالة",
+            "910 ريالات",
+            "https://maps.google.com/?q=Armada+Residence+Taif"
+          ],
+          "footer": "إلغاء مجاني حتى 24 ساعة قبل الوصول"
+        },
+        "booking_confirmed.en": {
+          "status": "APPROVED",
+          "category": "UTILITY",
+          "body": "Hello {{1}},\nYour booking at {{2}} is confirmed.\nBooking number: {{3}}\nCheck-in: {{4}}\nCheck-out: {{5}}\nRoom: {{6}}\nTotal: {{7}} incl. VAT, payable at the hotel on arrival.\nLocation: {{8}}\nFor any change or question, reply to this message.",
+          "example": [
+            "Ahmed",
+            "Armada Residence Airport Road",
+            "AR-20261102-ABCD",
+            "Sun, 2 Nov 2026",
+            "Wed, 5 Nov 2026",
+            "One-Bedroom Suite",
+            "SAR 910",
+            "https://maps.google.com/?q=Armada+Residence+Taif"
+          ],
+          "footer": "Free cancellation up to 24 hours before arrival"
+        }
+      }
+    }
+  }
+}

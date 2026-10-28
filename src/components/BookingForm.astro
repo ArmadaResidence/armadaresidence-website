@@ -1032,7 +1032,7 @@ const stepper = (name: 'adults' | 'children' | 'extra_beds', value: number, min:
           quoted_total: quotedTotal === null ? null : String(quotedTotal),
         };
         const res = await fetch(data.endpoint, { method: 'POST', headers, body: JSON.stringify(body) });
-        const json = (await res.json().catch(() => ({}))) as { ok?: boolean; ref?: string; error?: string; status?: string; reason?: string | null; quote?: Quote | null };
+        const json = (await res.json().catch(() => ({}))) as { ok?: boolean; ref?: string; error?: string; status?: string; reason?: string | null; quote?: Quote | null; whatsapp_sent?: boolean };
         if (res.status === 409 && json.status === 'price_changed') {
           // nothing was stored: show the current price, the guest confirms again
           showPriceChanged(json.quote ?? null);
@@ -1051,6 +1051,8 @@ const stepper = (name: 'adults' | 'children' | 'extra_beds', value: number, min:
           c: d.email ? 'email' : 'whatsapp',
           s: confirmed ? 'confirmed' : 'request',
           ...(json.reason && !confirmed ? { reason: json.reason } : {}),
+          // YCloud accepted the guest's WhatsApp message: the success page says so (task 5 A)
+          ...(json.whatsapp_sent ? { wa: '1' } : {}),
         });
         // the breakdown travels in sessionStorage (never in the URL): the success page renders it once
         try {

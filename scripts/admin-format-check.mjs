@@ -10,10 +10,20 @@ import { attemptsWord, changesWord, codesWord, devicesWord, minutesWord, seconds
 import { BACKUP_TEXT, CODE_TEXT, SECURITY_TEXT } from '../admin/src/lib/secondStep.ts';
 import { deviceLabel, maskEmail } from '../admin/src/lib/device.ts';
 import { PASSWORD_LEAK_NOTE, PASSWORD_MATCH, PASSWORD_RULES, PASSWORD_WEAK, passwordChecks, passwordOk, passwordProblem, passwordRefusal } from '../admin/src/lib/password.ts';
+import { WA_ERRORS, WA_STATUS_LABELS, WA_TEMPLATE_LABELS, waError } from '../admin/src/lib/format.ts';
 import { bulkSummary, countDays, PICK_AT_LEAST, rateConfirmRow, rateConfirmTitle, rateWarnings, rateWarningTexts, SANITY_TAG } from '../admin/src/lib/rates.ts';
 
 const fails = [];
 let checks = 0;
+// ── task 5 A (28 Oct 2026): every WhatsApp failure code of the Edge Functions reads as an Arabic sentence ──
+(() => {
+  const E = (label, ok, detail = '') => { checks++; if (!ok) fails.push(`${label}${detail ? ` — ${detail}` : ''}`); };
+  const codes = ['template_not_approved', 'recipient', 'not_configured', 'auth', 'rate_limited', 'timeout', 'network', 'stale', 'payload', 'log', 'rejected'];
+  for (const c of codes) E(`WA_ERRORS.${c}`, typeof WA_ERRORS[c] === 'string' && /[؀-ۿ]/.test(WA_ERRORS[c]) && !/[A-Za-z]/.test(WA_ERRORS[c].replace('Meta', '')) && WA_ERRORS[c].endsWith('.'), WA_ERRORS[c]);
+  E('waError(unknown) → the generic refusal', waError('something_new') === WA_ERRORS.rejected && waError(null) === WA_ERRORS.rejected);
+  E('status labels', WA_STATUS_LABELS.accepted === 'أُرسلت' && WA_STATUS_LABELS.failed === 'تعذّر الإرسال' && WA_STATUS_LABELS.sent === 'أُرسلت');
+  E('template labels', Object.keys(WA_TEMPLATE_LABELS).join() === 'booking_request_received,booking_confirmed');
+})();
 // ── C2 / C3 (28 Oct 2026): the bulk summary and the rate sanity texts ──
 (() => {
   const E = (label, got, want) => { checks++; if (got !== want) fails.push(`${label}: got «${got}», want «${want}»`); };

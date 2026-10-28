@@ -21,9 +21,9 @@ const REVIEW_URL = 'https://armadaresidence.github.io/armadaresidence-website';
 const BROWSER_CHECKS = ['booking-nav-check', 'drawer-check', 'booking-whatsapp-check', 'datepicker-check', 'motion-check', 'booking-instant-check', 'partners-form-check'];
 // static, no browser, no key: Western digits and no native date inputs in the dashboard sources (phase 2a.1); the
 // dashboard's Arabic count helper and error mapping (unit tests, phase 2a.1 copy approval); the staff emails' layout
-// (Auth templates in sync with email.ts, hosted PNG logo, AR- subjects — 26 Oct 2026); the internal emails' one-page A4
-// print (task 5 B, 28 Oct 2026)
-const STATIC_CHECKS = ['admin-digits-check', 'admin-format-check', 'auth-emails-check', 'email-print-check'];
+// (Auth templates in sync with email.ts, hosted PNG logo, AR- subjects — 26 Oct 2026); the WhatsApp template payloads
+// against the live definitions and the internal emails' one-page A4 print (task 5, 28 Oct 2026)
+const STATIC_CHECKS = ['admin-digits-check', 'admin-format-check', 'auth-emails-check', 'whatsapp-check', 'email-print-check'];
 // live only: the deployed functions' CORS / preflight / gateway JWT handling from every dashboard origin
 const LIVE_CHECKS = ['admin-cors-check'];
 const args = process.argv.slice(2);

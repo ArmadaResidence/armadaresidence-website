@@ -19,6 +19,33 @@ export const REASON_LABELS: Record<string, string> = {
   needs_ages: 'أعمار الأطفال ناقصة',
 };
 
+// WhatsApp messages to the guest (task 5 A, 28 Oct 2026): the template names, the per-attempt status and the reason a
+// send failed — the codes of supabase/functions/booking-request/whatsapp.ts → waErrorCode / whatsapp-send.ts.
+export const WA_TEMPLATE_LABELS: Record<string, string> = { booking_request_received: 'رسالة استلام الطلب', booking_confirmed: 'رسالة تأكيد الحجز' };
+export const WA_STATUS_LABELS: Record<string, string> = {
+  pending: 'قيد الإرسال',
+  accepted: 'أُرسلت',
+  sent: 'أُرسلت',
+  delivered: 'أُرسلت',
+  read: 'أُرسلت',
+  failed: 'تعذّر الإرسال',
+  test: 'تجربة — لم تُرسل',
+};
+export const WA_ERRORS: Record<string, string> = {
+  template_not_approved: 'القالب لم تعتمده Meta بعد لرقم هذا الفرع.',
+  recipient: 'رقم الضيف لا يستقبل رسائل واتساب أو غير صحيح.',
+  not_configured: 'خدمة واتساب غير مهيأة على الخادم.',
+  auth: 'رفضت خدمة واتساب مفتاح الربط.',
+  rate_limited: 'تجاوزنا حد الإرسال مؤقتًا. أعد المحاولة بعد قليل.',
+  timeout: 'لم يصل رد من خدمة واتساب في الوقت المحدد.',
+  network: 'تعذّر الاتصال بخدمة واتساب.',
+  stale: 'انقطع الإرسال قبل اكتماله.',
+  payload: 'بيانات الحجز لا تكفي لبناء الرسالة.',
+  log: 'تعذّر تسجيل الرسالة قبل إرسالها.',
+  rejected: 'رفضت خدمة واتساب الرسالة.',
+};
+export const waError = (code: string | null | undefined) => WA_ERRORS[code ?? ''] ?? WA_ERRORS.rejected;
+
 const DAY_AR = ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
 const DAY_SHORT = ['أحد', 'اثنين', 'ثلاثاء', 'أربعاء', 'خميس', 'جمعة', 'سبت'];
 const MONTH_AR = ['يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو', 'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'];

@@ -3,13 +3,15 @@
 // (room type pick + per-night checks) and cancel (reason); WhatsApp template; CSV export (Excel-safe). Dates read
 // «الأحد 2 نوفمبر 2026»; guests with Arabic agreement. Confirm and cancel send emails and are never undoable (said in
 // the drawer). Branch scope locks the branch filter; bookings = view makes everything read-only.
+// Task 5 (28 Oct 2026): the drawer lists each WhatsApp message sent to the guest («أُرسلت» / «تعذّر الإرسال» + the
+// reason in Arabic) with «إعادة الإرسال» on a failed one (bookings: edit; the RPC checks the branch scope again).
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import * as api from '../lib/api';
-import type { Reservation, RoomType, StatusHistory, CalendarCell } from '../lib/api';
+import type { Reservation, RoomType, StatusHistory, CalendarCell, WhatsAppMessage } from '../lib/api';
 import { useSession } from '../lib/session';
-import { BRANCH_NAMES, REASON_LABELS, STATUS_LABELS, adultsWord, childrenWord, dateRange, longDate, nightsWord, riyadhDateTimeLong, roomsLeft, sar, toCsv, riyadhToday } from '../lib/format';
+import { BRANCH_NAMES, REASON_LABELS, STATUS_LABELS, WA_STATUS_LABELS, WA_TEMPLATE_LABELS, adultsWord, childrenWord, dateRange, longDate, nightsWord, riyadhDateTimeLong, roomsLeft, sar, toCsv, riyadhToday, waError } from '../lib/format';
 import { BranchSelect, CancelButton, Confirm, Drawer, Empty, ErrorBox, Field, Loading, Modal, Spinner, useToast } from '../components/ui';
 import DateField from '../components/DateField';
 
@@ -217,9 +219,16 @@ function Details({ r, roomTypes, editable, onClose, onChanged }: { r: Reservatio
   const [pickRt, setPickRt] = useState<string>(r?.room_type_id ?? '');
   const [nightIssues, setNightIssues] = useState<{ reason: string; nights: CalendarCell[] } | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [wa, setWa] = useState<WhatsAppMessage[] | null>(null);
+  const [waBusy, setWaBusy] = useState<string | null>(null);
+  const [waFail, setWaFail] = useState<string | null>(null);
+  const loadWa = useCallback(() => {
+    if (r) api.whatsappMessages(r.id).then(setWa).catch(() => setWa([]));
+  }, [r]);
 
   useEffect(() => {
     if (!r) return;
+    loadWa();
     setNotes(r.internal_notes ?? '');
     savedNotes.current = r.internal_notes ?? '';
     setNotesVersion(r.internal_notes ?? '');
@@ -227,7 +236,7 @@ function Details({ r, roomTypes, editable, onClose, onChanged }: { r: Reservatio
     setNightIssues(null);
     setError(null);
     api.reservationHistory(r.id).then(setHistory).catch(() => setHistory([]));
-  }, [r]);
+  }, [r, loadWa]);
 
   if (!r) return null;
   const rts = roomTypes.filter((t) => t.branch === r.branch && t.bookable);
@@ -283,6 +292,27 @@ function Details({ r, roomTypes, editable, onClose, onChanged }: { r: Reservatio
       setNotesBusy(false);
     }
   }
+  async function resendWa(template: string) {
+    setWaBusy(template);
+    setWaFail(null);
+    try {
+      const out = await api.resendWhatsApp(r!.id, template);
+      if (!out.ok) setWaFail(out.reason === 'already_sent' ? 'أُرسلت هذه الرسالة من قبل.' : out.reason === 'status' ? 'تغيّرت حالة الحجز؛ هذه الرسالة لم تعد مناسبة.' : 'لا توجد محاولة فاشلة لإعادتها.');
+      else if (out.whatsapp?.accepted) toast(out.whatsapp.status === 'test' ? 'بُنيت الرسالة (حجز تجريبي، لم تُرسل)' : 'أُرسلت رسالة واتساب للضيف');
+      else setWaFail(`تعذّر الإرسال مرة أخرى: ${waError(out.whatsapp?.error_code)}`);
+    } catch (e) {
+      setWaFail((e as Error).message);
+    } finally {
+      setWaBusy(null);
+      loadWa();
+    }
+  }
+  // the latest attempt per template, in the order the guest receives them
+  const waLatest = (['booking_request_received', 'booking_confirmed'] as const)
+    .map((t) => ({ t, list: (wa ?? []).filter((m) => m.template === t) }))
+    .filter((x) => x.list.length)
+    .map((x) => ({ ...x.list[x.list.length - 1], attempts: x.list.length }));
+  const waResendable = (m: WhatsAppMessage) => editable && m.status === 'failed' && (m.template === 'booking_confirmed' ? r.status === 'confirmed' : r.status === 'request');
   const waTemplate = () => {
     const lines = [
       `السلام عليكم ${r.guest_name}،`,
@@ -345,6 +375,34 @@ function Details({ r, roomTypes, editable, onClose, onChanged }: { r: Reservatio
       {editable && r.status !== 'cancelled' && <p className="text-xs text-ink-muted mb-5">التأكيد والإلغاء يرسلان بريدًا للضيف والاستقبال، لذلك لا يمكن التراجع عنهما.</p>}
       {!editable && <p className="text-xs text-ink-muted mb-5">صلاحيتك هنا للعرض فقط.</p>}
 
+      <section className="card p-3 mb-5" data-wa-section>
+        <h3 className="font-bold text-sm mb-2">رسائل واتساب للضيف</h3>
+        {wa === null ? (
+          <p className="text-sm text-ink-muted">جارٍ التحميل…</p>
+        ) : waLatest.length === 0 ? (
+          <p className="text-sm text-ink-muted">لم تُرسل رسائل واتساب تلقائية لهذا الحجز.</p>
+        ) : (
+          <ul className="grid gap-2 text-sm num-ar">
+            {waLatest.map((m) => (
+              <li key={m.template} className="grid gap-1" data-wa={m.template} data-wa-status={m.status}>
+                <span className="flex flex-wrap items-center gap-2">
+                  <span className="font-semibold">{WA_TEMPLATE_LABELS[m.template]}</span>
+                  <span className={`chip ${m.status === 'failed' ? 'chip-cancelled' : m.status === 'test' ? 'chip-test' : m.status === 'pending' ? 'chip-request' : 'chip-confirmed'}`}>{WA_STATUS_LABELS[m.status] ?? m.status}</span>
+                  <span className="text-xs text-ink-muted">{riyadhDateTimeLong(m.created_at)}{m.attempts > 1 ? ` · المحاولة ${m.attempts}` : ''}</span>
+                </span>
+                {m.status === 'failed' && <span className="text-ink-muted" data-wa-reason>{waError(m.error_code)}</span>}
+                {waResendable(m) && (
+                  <span>
+                    <button type="button" className="btn btn-ghost btn-sm" onClick={() => resendWa(m.template)} disabled={waBusy !== null} data-action="wa-resend">{waBusy === m.template && <Spinner />} إعادة الإرسال</button>
+                  </span>
+                )}
+              </li>
+            ))}
+          </ul>
+        )}
+        <ErrorBox error={waFail} />
+      </section>
+
       <Field label="ملاحظات داخلية" id="internal-notes" hint="لا يراها الضيف.">
         <textarea id="internal-notes" className="field min-h-24" value={notes} onChange={(e) => setNotes(e.target.value)} disabled={!editable} />
       </Field>
@@ -403,3 +461,4 @@ function Details({ r, roomTypes, editable, onClose, onChanged }: { r: Reservatio
     </Drawer>
   );
 }
+

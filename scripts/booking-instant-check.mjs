@@ -10,6 +10,9 @@
 //              a booking_confirmed dataLayer event carrying value + currency
 //   fallback — 409 price_changed → new price shown, nothing navigates; sold_out at submit → the request page with
 //              the "another guest" line and booking_request (reason)
+//   whatsapp — (task 5 A, 28 Oct 2026) the line under the phone field; whatsapp_sent → &wa=1 and the confirmed /
+//              request page says the message was sent; a message YCloud refused (whatsapp_sent false, e.g. a stubbed
+//              YCloud error) → today's sentence unchanged
 //   room page — the «يبدأ من» line is filled from room_from_prices without moving the booking card (CLS 0), stays
 //              hidden for a room without a price, and the static HTML carries no price
 //   node scripts/booking-instant-check.mjs [BASE_URL]
@@ -68,7 +71,7 @@ async function run(width, lang) {
   page.on('pageerror', (e) => fails.push(`${tag} page error: ${e.message}`));
 
   // ── stubs ──
-  const mode = { prices: true, reason: null, submit: 'confirmed' };
+  const mode = { prices: true, reason: null, submit: 'confirmed', wa: true };
   const rpcCalls = [];
   const submits = [];
   await page.route(/\/rest\/v1\/rpc\/quote_stay/, async (route) => {
@@ -98,7 +101,7 @@ async function run(width, lang) {
       q.total += 15 * q.count;
       return route.fulfill({ status: 409, contentType: 'application/json', body: JSON.stringify({ ok: false, error: 'price_changed', status: 'price_changed', quote: q }) });
     }
-    if (mode.submit === 'sold_out') return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true, ref, stored: true, status: 'request', reason: 'sold_out', quote: null }) });
+    if (mode.submit === 'sold_out') return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true, ref, stored: true, status: 'request', reason: 'sold_out', quote: null, whatsapp_sent: mode.wa }) });
     // confirmed at exactly the quoted total (the real server refuses any other): the nightly rate follows it
     const q = quoteFor({ p_room: body.room, p_check_in: body.check_in, p_check_out: body.check_out, p_adults: Number(body.adults), p_children: Number(body.children), p_children_ages: body.children_ages?.map(Number), p_extra_beds: Number(body.extra_beds), p_breakfast: body.breakfast }, { prices: true }).quote;
     const quoted = Number(body.quoted_total);
@@ -108,7 +111,7 @@ async function run(width, lang) {
       q.room_total = room;
       q.total = quoted;
     }
-    return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true, ref, stored: true, status: 'confirmed', reason: null, quote: q, is_test: false }) });
+    return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true, ref, stored: true, status: 'confirmed', reason: null, quote: q, is_test: false, whatsapp_sent: mode.wa }) });
   });
   // GTM and wa.me never leave the machine
   await page.route(/googletagmanager\.com|wa\.me/, (route) => route.fulfill({ status: 204, body: '' }));
@@ -225,6 +228,8 @@ async function run(width, lang) {
   await page.waitForFunction((t) => { const b = document.querySelector('[data-quote-badge]'); return b && !b.classList.contains('hidden') && b.textContent === t; }, S.quote.instant_badge, { timeout: 8000 });
 
   // ── fill the guest and submit: price_changed first, then confirmed ──
+  const hint = (await form.locator('[data-phone-input]').evaluate((i) => (i.getAttribute('aria-describedby') || '').split(/\s+/).map((id) => document.getElementById(id)?.textContent?.trim() ?? '').join(' | '))) || '';
+  check(hint.includes(S.form.phone_hint), `${tag} whatsapp: the line under the phone field`, hint);
   await form.locator('input[name="name"]').fill('تجربة النظام');
   await form.locator('[data-phone-input]').fill('0500000000');
   await form.locator('input[name="email"]').fill('guest@example.com');
@@ -246,9 +251,19 @@ async function run(width, lang) {
   check((await page.locator('[data-rows]').textContent()).includes(money(400)), `${tag} success: breakdown total`);
   const dl = await page.evaluate(() => (window.dataLayer || []).filter((e) => e.event === 'booking_confirmed'));
   check(dl.length === 1 && dl[0].value === 400 && dl[0].currency === 'SAR' && dl[0].room_type === 'king-room' && !JSON.stringify(dl[0]).includes('guest@'), `${tag} success: booking_confirmed with value, no personal data`, JSON.stringify(dl[0] ?? null));
+  check(url.searchParams.get('wa') === '1', `${tag} whatsapp: accepted → &wa=1 on the success URL`);
+  const confSteps = await page.locator('[data-steps]').textContent();
+  check(confSteps.includes(S.success.whatsapp_sent_confirmed), `${tag} whatsapp: confirmed page says the confirmation went to WhatsApp`);
 
-  // ── sold out at submit → request page with the reason ──
+  // ── the request page's WhatsApp sentence: accepted (email given) → the new sentence next to the email step ──
+  await page.goto(`${BASE}${pre}/booking/success/?ref=AR-20991231-WAOK&branch=airport-road&s=request&c=email&wa=1`, { waitUntil: 'networkidle' });
+  const waLi = page.locator('[data-next="whatsapp"]');
+  check((await waLi.isVisible()) && (await waLi.textContent()).trim() === S.success.whatsapp_sent_request, `${tag} whatsapp: request page, accepted → «${S.success.whatsapp_sent_request.slice(0, 24)}…»`);
+  check(await page.locator('[data-next="email"]').isVisible(), `${tag} whatsapp: request page keeps the email step when an email was given`);
+
+  // ── sold out at submit → request page with the reason; the WhatsApp message failed (stubbed YCloud error) ──
   mode.submit = 'sold_out';
+  mode.wa = false;
   await page.goto(`${BASE}${pre}/booking/?branch=airport-road&room=king-room`, { waitUntil: 'networkidle' });
   await page.waitForSelector('form[data-booking-ready]');
   const f2 = page.locator('form[data-booking-form]').first();
@@ -264,6 +279,12 @@ async function run(width, lang) {
   check((await page.locator('[data-heading]').textContent()) === S.success.heading, `${tag} fallback: request heading`);
   const dl2 = await page.evaluate(() => (window.dataLayer || []).filter((e) => e.event === 'booking_request'));
   check(dl2.length === 1 && dl2[0].reason === 'sold_out', `${tag} fallback: booking_request with the reason`);
+  check(!new URL(page.url()).searchParams.has('wa'), `${tag} whatsapp: not accepted → no &wa on the success URL`);
+  check((await page.locator('[data-next="whatsapp"]').textContent()).trim() === S.success.next_whatsapp && (await page.locator('[data-next="whatsapp"]').isVisible()), `${tag} whatsapp: not accepted → today's sentence unchanged`);
+  check(!(await page.locator('[data-steps]').textContent()).includes(S.success.whatsapp_sent_request), `${tag} whatsapp: not accepted → no "sent" sentence`);
+  // a confirmed booking whose WhatsApp failed: the confirmed steps exactly as before
+  await page.goto(`${BASE}${pre}/booking/success/?ref=AR-20991231-WANO&branch=airport-road&s=confirmed`, { waitUntil: 'networkidle' });
+  check(!(await page.locator('[data-steps]').textContent()).includes(S.success.whatsapp_sent_confirmed) && (await page.locator('[data-steps] li').count()) === S.success.confirmed_steps.length, `${tag} whatsapp: confirmed, not accepted → steps unchanged`);
 
   await browser.close();
 }

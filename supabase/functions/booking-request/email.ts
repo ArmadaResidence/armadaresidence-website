@@ -635,7 +635,7 @@ ${para(L, M.partner_guest_footer, { muted: true, size: 13 })}`,
 // ══ 5–8. Phase 2a (DECISIONS.md 2026-10-25): confirmed booking, confirmed notification, low inventory, cancellation ═
 
 /** «ريالًا» / «ريال» / «ريالات» by number (Arabic), "SAR n" (English); whole amounts without decimals. */
-function sar(amount: number, L: Locale): string {
+export function sar(amount: number, L: Locale): string {
   const a = Number(amount) || 0;
   const whole = Math.round(a * 100) % 100 === 0;
   const num = whole ? String(Math.round(a)) : a.toFixed(2);
@@ -647,7 +647,7 @@ function sar(amount: number, L: Locale): string {
 }
 
 /** «الاثنين 2 نوفمبر 2026» / "Mon, 2 Nov 2026" — the date-picker format (ui.json → datepicker), approved 25 Oct 2026. */
-function longDate(c: Content, iso: string, L: Locale): string {
+export function longDate(c: Content, iso: string, L: Locale): string {
   const d = new Date(`${iso}T00:00:00Z`);
   if (Number.isNaN(d.getTime())) return iso;
   const dp = c.datepicker[L];

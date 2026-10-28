@@ -14,11 +14,13 @@ const t = ui(locale);
 const s = pageSeo(locale, 'booking-success');
 // Three variants (phase 2a, DECISIONS.md 2026-10-25): ?s=confirmed → «تم تأكيد حجزك» with the price breakdown from
 // sessionStorage (never from the URL); ?s=request&reason=… → the request page plus why it was not instant; otherwise
-// the request page as before. Strings for the client script:
+// the request page as before. WhatsApp (task 5 A, 28 Oct 2026): &wa=1 = the function said YCloud accepted the guest's
+// WhatsApp message → the page says it was sent (request / confirmed sentence); without it today's sentence stays.
+// Strings for the client script:
 const clientData = {
   locale,
   quote: t.quote,
-  success: { confirmed_heading: t.success.confirmed_heading, confirmed_body: t.success.confirmed_body, confirmed_steps: t.success.confirmed_steps, fallback_line: t.success.fallback_line, sold_out_race: t.success.sold_out_race, ref_label: t.success.ref_label, booking_ref_label: t.email.booking_ref_label },
+  success: { confirmed_heading: t.success.confirmed_heading, confirmed_body: t.success.confirmed_body, confirmed_steps: t.success.confirmed_steps, fallback_line: t.success.fallback_line, sold_out_race: t.success.sold_out_race, whatsapp_sent_request: t.success.whatsapp_sent_request, whatsapp_sent_confirmed: t.success.whatsapp_sent_confirmed, ref_label: t.success.ref_label, booking_ref_label: t.email.booking_ref_label },
   labels: { nights: t.form.plural.nights, branch: t.form.branch, room: t.form.room_type, check_in: t.form.check_in, check_out: t.form.check_out },
 };
 ---
@@ -103,9 +105,16 @@ const clientData = {
     const reason = q.get('reason');
     const el = (sel: string) => root.querySelector<HTMLElement>(sel);
 
+    const waSent = q.get('wa') === '1';
     if (q.get('c') === 'whatsapp') {
       el('[data-next="email"]')?.classList.add('hidden');
       el('[data-next="whatsapp"]')?.classList.remove('hidden');
+    }
+    if (waSent && !confirmed) {
+      // the request details already reached the guest's WhatsApp: that sentence replaces today's
+      const li = el('[data-next="whatsapp"]')!;
+      li.textContent = data.success.whatsapp_sent_request;
+      li.classList.remove('hidden');
     }
     if (ref) {
       el('[data-ref]')!.textContent = ref;
@@ -125,6 +134,12 @@ const clientData = {
           return li;
         }),
       );
+      if (waSent) {
+        const li = document.createElement('li');
+        li.dataset.next = 'whatsapp';
+        li.textContent = data.success.whatsapp_sent_confirmed;
+        steps.append(li);
+      }
       try {
         const raw = sessionStorage.getItem(`armada_confirmed_${ref}`);
         if (raw) stash = JSON.parse(raw) as Stash;

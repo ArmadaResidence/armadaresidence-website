@@ -320,6 +320,23 @@ export async function saveInternalNotes(id: string, notes: string): Promise<void
   if (count === 0) throw new Error('لا صلاحية لتعديل الملاحظات.');
 }
 
+/** One WhatsApp send attempt to the guest (public.whatsapp_messages; RLS = the booking's own visibility). */
+export interface WhatsAppMessage {
+  id: string;
+  template: 'booking_request_received' | 'booking_confirmed';
+  language: string;
+  status: string;
+  error_code: string | null;
+  ycloud_id: string | null;
+  trigger: string;
+  created_at: string;
+}
+export async function whatsappMessages(reservationId: string): Promise<WhatsAppMessage[]> {
+  const { data, error } = await supabase.from('whatsapp_messages').select('id,template,language,status,error_code,ycloud_id,trigger,created_at').eq('reservation_id', reservationId).order('created_at').order('id');
+  if (error) fail(error, 'whatsapp_messages');
+  return data as WhatsAppMessage[];
+}
+
 async function edge<T>(fn: string, body: unknown): Promise<T> {
   const { data: s } = await supabase.auth.getSession();
   const jwt = s.session?.access_token;
@@ -359,6 +376,7 @@ export interface ConfirmResult {
   emails?: Record<string, string | null> | null;
 }
 export const confirmReservation = (id: string, roomTypeId: string | null) => edge<ConfirmResult>('booking-admin', { action: 'confirm', id, room_type_id: roomTypeId });
+export const resendWhatsApp = (id: string, template: string) => edge<{ ok: boolean; reason?: string; whatsapp?: { accepted: boolean; status: string; error_code: string | null } }>('booking-admin', { action: 'whatsapp-resend', id, template });
 export const cancelReservation = (id: string, reason: string) => edge<{ ok: boolean; already?: boolean; emails?: Record<string, string | null> | null }>('booking-admin', { action: 'cancel', id, reason });
 
 export async function settings(): Promise<Setting[]> {
