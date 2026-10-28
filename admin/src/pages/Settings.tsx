@@ -34,6 +34,7 @@ export default function Settings() {
   const [instant, setInstant] = useState<Record<string, boolean>>({});
   const [prices, setPrices] = useState<Record<string, boolean>>({});
   const [limits, setLimits] = useState<Limits>({ same_day_cutoff: '20:00', max_nights: 30 });
+  const [mult, setMult] = useState<number | null>(10);
   const [busy, setBusy] = useState<string | null>(null);
   const [rebuild, setRebuild] = useState<string | null>(null);
   // what the server holds: the baseline of the page-level forms (the leave guard re-baselines on every load)
@@ -49,7 +50,8 @@ export default function Settings() {
       setInstant((get('instant_booking') as Record<string, boolean>) ?? {});
       setPrices((get('show_prices') as Record<string, boolean>) ?? {});
       setLimits((get('instant_limits') as Limits) ?? { same_day_cutoff: '20:00', max_nights: 30 });
-      setSaved(JSON.stringify([get('breakfast'), get('extra_bed_per_night'), get('instant_limits')]));
+      setMult(Number(get('rate_high_multiplier') ?? 10));
+      setSaved(JSON.stringify([get('breakfast'), get('extra_bed_per_night'), get('instant_limits'), get('rate_high_multiplier')]));
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -96,7 +98,7 @@ export default function Settings() {
         <h2 id="s-switches" className="font-bold text-lg mb-1">مفاتيح الموقع لكل فرع</h2>
         <p className="text-sm text-ink-muted mb-4">«إظهار الأسعار» يعرض السعر في نموذج الحجز وصفحات الغرف. «الحجز الفوري» يؤكد الحجز تلقائيًا عندما تتوفر غرفة وسعر لكل ليلة. يراجع مدير المبيعات كل الأسعار قبل تشغيلهما.</p>
         <div className="grid sm:grid-cols-2 gap-3">
-          {branches.map((b) => (
+          {branches.filter((b) => !me?.branch || b.slug === me.branch).map((b) => (
             <div key={b.slug} className="rounded border border-line p-3">
               <div className="font-bold mb-2">{BRANCH_NAMES[b.slug] ?? b.name_ar}</div>
               <label className="flex items-center justify-between gap-3 py-1.5 text-sm">
@@ -161,6 +163,15 @@ export default function Settings() {
           </Field>
           <Field label="أقصى عدد ليالٍ" id="maxn"><NumberField id="maxn" value={limits.max_nights} onChange={(n) => setLimits({ ...limits, max_nights: n ?? 1 })} min={1} max={366} /></Field>
           {editable && <button type="button" className="btn btn-primary" onClick={() => save('instant_limits', limits, 'حدود الحجز الفوري', load)} disabled={busy === 'instant_limits'} data-action="save-limits">{busy === 'instant_limits' && <Spinner />} حفظ</button>}
+        </div>
+      </DirtyScope>
+      {/* C3 (28 Oct 2026): the high-price warning multiplier — a setting like the others (audited, undoable, in the site defaults) */}
+      <DirtyScope className="card p-5" aria-labelledby="s-rate-warn" version={saved} data-scope="rate-warn">
+        <h2 id="s-rate-warn" className="font-bold text-lg mb-1">تنبيهات الأسعار</h2>
+        <p className="text-sm text-ink-muted mb-4">عند إدخال سعر ليلة يُقارن بالسعر الأساسي لكل نوع غرفة: الأقل منه، أو ما يبلغ هذا المضاعف أو أكثر، يظهر معه تنبيه ويُطلب تأكيد قبل التطبيق. الحفظ لا يُمنع، ويسجّل السجل التنبيه.</p>
+        <div className="grid sm:grid-cols-3 gap-3 items-end">
+          <Field label="تنبيه السعر المرتفع: مضاعف السعر الأساسي" id="rate-mult" hint="عدد صحيح، 2 على الأقل؛ الافتراضي 10"><NumberField id="rate-mult" value={mult} onChange={setMult} max={1000} /></Field>
+          {editable && <button type="button" className="btn btn-primary" onClick={() => mult !== null && mult >= 2 && save('rate_high_multiplier', Math.floor(mult), 'تنبيه السعر المرتفع', load)} disabled={busy === 'rate_high_multiplier' || mult === null || mult < 2} data-action="save-rate-mult">{busy === 'rate_high_multiplier' && <Spinner />} حفظ</button>}
         </div>
       </DirtyScope>
       {/* phase 2a.2 D: saved defaults, system admin only (the database refuses anyone else) */}

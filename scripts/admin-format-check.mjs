@@ -10,9 +10,50 @@ import { attemptsWord, changesWord, codesWord, devicesWord, minutesWord, seconds
 import { BACKUP_TEXT, CODE_TEXT, SECURITY_TEXT } from '../admin/src/lib/secondStep.ts';
 import { deviceLabel, maskEmail } from '../admin/src/lib/device.ts';
 import { PASSWORD_LEAK_NOTE, PASSWORD_MATCH, PASSWORD_RULES, PASSWORD_WEAK, passwordChecks, passwordOk, passwordProblem, passwordRefusal } from '../admin/src/lib/password.ts';
+import { bulkSummary, countDays, PICK_AT_LEAST, rateConfirmRow, rateConfirmTitle, rateWarnings, rateWarningTexts, SANITY_TAG } from '../admin/src/lib/rates.ts';
 
 const fails = [];
 let checks = 0;
+// ── C2 / C3 (28 Oct 2026): the bulk summary and the rate sanity texts ──
+(() => {
+  const E = (label, got, want) => { checks++; if (got !== want) fails.push(`${label}: got «${got}», want «${want}»`); };
+  E('bulkSummary(0, 0)', bulkSummary(0, 0), PICK_AT_LEAST);
+  E('bulkSummary(3, 0)', bulkSummary(3, 0), PICK_AT_LEAST);
+  E('bulkSummary(1, 1)', bulkSummary(1, 1), 'يوم واحد × نوع واحد');
+  E('bulkSummary(2, 2)', bulkSummary(2, 2), 'يومان × نوعان');
+  E('bulkSummary(7, 3)', bulkSummary(7, 3), '7 أيام × 3 أنواع');
+  E('bulkSummary(14, 11)', bulkSummary(14, 11), '14 يومًا × 11 نوعًا');
+  E('bulkSummary(100, 100)', bulkSummary(100, 100), '100 يوم × 100 نوع');
+  // 2026-11-01 is a Sunday: a week holds one of each weekday; Friday+Saturday mask (32 + 64) = 2; mask 0 = 0
+  E('countDays week all', countDays('2026-11-01', '2026-11-07', 127), 7);
+  E('countDays week weekend', countDays('2026-11-01', '2026-11-07', 96), 2);
+  E('countDays mask 0', countDays('2026-11-01', '2026-11-07', 0), 0);
+  E('countDays reversed', countDays('2026-11-07', '2026-11-01', 127), 0);
+  E('countDays one day Sunday', countDays('2026-11-01', '2026-11-01', 1), 1);
+  const king = { name_ar: 'غرفة كينغ', base_rate: 200 };
+  const twin = { name_ar: 'غرفة توين', base_rate: '300' };
+  const none = { name_ar: 'بلا أساسي', base_rate: null };
+  const w = (p, types, n = 10) => rateWarnings(p, types, n);
+  E('warn equal → none', JSON.stringify(w(200, [king])), '{"below":[],"above":[]}');
+  E('warn just below', w(199.99, [king]).below.length, 1);
+  E('warn between', JSON.stringify(w(1999.99, [king])), '{"below":[],"above":[]}');
+  E('warn exactly N×base', w(2000, [king]).above.length, 1);
+  E('warn no base → skipped', JSON.stringify(w(1, [none])), '{"below":[],"above":[]}');
+  E('warn null price → none', JSON.stringify(w(null, [king])), '{"below":[],"above":[]}');
+  E('warn N = 2', w(400, [king], 2).above.length, 1);
+  E('warn N < 2 falls back to 10', w(400, [king], 1).above.length, 0);
+  E('warn mixed', JSON.stringify(w(250, [king, twin])), '{"below":[{"name":"غرفة توين","base":300}],"above":[]}');
+  E('text one below', rateWarningTexts(w(150, [king]), 10).below, 'أقل من السعر الأساسي لهذا النوع (200 ريال)');
+  E('text several below', rateWarningTexts(w(150, [king, twin]), 10).below, 'أقل من السعر الأساسي في: غرفة كينغ (200 ريال)، غرفة توين (300 ريال)');
+  E('text one above', rateWarningTexts(w(2000, [king]), 10).above, 'يبلغ 10× السعر الأساسي لهذا النوع (200 ريال) أو أكثر. تأكّد من عدد الأرقام.');
+  E('text several above', rateWarningTexts(w(3000, [king, twin]), 10).above, 'يبلغ 10× السعر الأساسي أو أكثر في: غرفة كينغ (200 ريال)، غرفة توين (300 ريال)');
+  E('text none', JSON.stringify(rateWarningTexts(w(250, [king]), 10)), '{}');
+  E('confirm title below', rateConfirmTitle(w(150, [king])), 'سعر أقل من الأساسي');
+  E('confirm title above', rateConfirmTitle(w(2000, [king])), 'سعر مرتفع جدًا');
+  E('confirm title both', rateConfirmTitle(w(2500, [king, { name_ar: 'جناح', base_rate: 5000 }])), 'راجع الأسعار قبل التطبيق');
+  E('confirm row', rateConfirmRow('غرفة كينغ', 185, 200), 'غرفة كينغ: 185 ريالًا (الأساسي 200 ريال)');
+  E('tags', `${SANITY_TAG.below_base} | ${SANITY_TAG.above_threshold}`, 'أقل من الأساسي | أعلى بكثير من الأساسي');
+})();
 function eq(label, got, want) {
   checks++;
   if (got !== want) fails.push(`${label}: got «${got}», want «${want}»`);

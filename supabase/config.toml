@@ -51,3 +51,9 @@ content_path = "./supabase/templates/recovery.html"
 # JWT; verification is public.verify_login_code as that user).
 [functions.login-code]
 verify_jwt = true
+
+# C4 (28 Oct 2026): bilingual label suggestions — a translation suggestion for the dashboard's label pairs (the user's
+# JWT; the staff check, cache and rate limit run in the database as the user; claude-haiku-5-5 through
+# ANTHROPIC_API_KEY, answers `unavailable` without it).
+[functions.label-suggest]
+verify_jwt = true

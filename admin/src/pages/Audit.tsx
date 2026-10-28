@@ -8,7 +8,8 @@ import type { AuditRow } from '../lib/api';
 import { useSession } from '../lib/session';
 import { BRANCH_NAMES, longDate, riyadhDateTimeLong, rowsWord, sar } from '../lib/format';
 import DateField from '../components/DateField';
-import { CancelButton, Empty, ErrorBox, Field, Loading, Modal, Spinner, useLeaveGuard, useToast } from '../components/ui';
+import { BranchSelect, CancelButton, Empty, ErrorBox, Field, Loading, Modal, Spinner, useToast } from '../components/ui';
+import { SANITY_TAG } from '../lib/rates';
 
 const ENTITY: Record<string, string> = { room_types: 'نوع غرفة (سعر أساسي / توافر)', rate_overrides: 'استثناء سعر', inventory_days: 'مخزون', settings: 'إعدادات', staff: 'مستخدم', staff_permissions: 'صلاحيات', reservations: 'حجز', security_events: 'أمان الدخول', site_defaults: 'الإعدادات الافتراضية' };
 // phase 2a.2 (26 Oct 2026): one line per security event (devices, backup codes) — never a code or a token
@@ -28,7 +29,7 @@ function securityLine(r: AuditRow): string {
   return String(r.new?.event ?? '');
 }
 const ACTOR: Record<string, string> = { website: 'الموقع', seed: 'الاستيراد الأول', migration: 'تحديث النظام', auth: 'نظام الدخول', system: 'النظام' };
-const FIELD: Record<string, string> = { is_default: 'الافتراضي', kind: 'النوع', saved_at: 'وقت الحفظ', base_rate: 'السعر الأساسي', bookable: 'متاحة على الموقع', active: 'فعّال', slug: 'المعرّف', date_from: 'من', date_to: 'إلى', weekdays: 'أيام الأسبوع', price: 'السعر', label: 'التسمية', label_en: 'التسمية بالإنجليزية', night: 'الليلة', rooms_to_sell: 'المتبقي', booked: 'المحجوز', stop_sell: 'مغلق', value: 'القيمة', full_name: 'الاسم', role: 'القالب', branch: 'الفرع', ref: 'رقم الحجز', status: 'الحالة', confirmation: 'التأكيد', fallback_reason: 'السبب', room_type_id: 'نوع الغرفة', check_in: 'الوصول', check_out: 'المغادرة', total: 'الإجمالي', payment_status: 'الدفع', cancel_reason: 'سبب الإلغاء', internal_notes: 'ملاحظات داخلية', level: 'المستوى', created_at: 'أُنشئ' };
+const FIELD: Record<string, string> = { sanity_flag: 'تنبيه السعر', sanity_base: 'الأساسي عند الحفظ', sanity_multiplier: 'المضاعف عند الحفظ', is_default: 'الافتراضي', kind: 'النوع', saved_at: 'وقت الحفظ', base_rate: 'السعر الأساسي', bookable: 'متاحة على الموقع', active: 'فعّال', slug: 'المعرّف', date_from: 'من', date_to: 'إلى', weekdays: 'أيام الأسبوع', price: 'السعر', label: 'التسمية', label_en: 'التسمية بالإنجليزية', night: 'الليلة', rooms_to_sell: 'المتبقي', booked: 'المحجوز', stop_sell: 'مغلق', value: 'القيمة', full_name: 'الاسم', role: 'القالب', branch: 'الفرع', ref: 'رقم الحجز', status: 'الحالة', confirmation: 'التأكيد', fallback_reason: 'السبب', room_type_id: 'نوع الغرفة', check_in: 'الوصول', check_out: 'المغادرة', total: 'الإجمالي', payment_status: 'الدفع', cancel_reason: 'سبب الإلغاء', internal_notes: 'ملاحظات داخلية', level: 'المستوى', created_at: 'أُنشئ' };
 const LEVEL: Record<string, string> = { none: 'لا شيء', view: 'عرض', edit: 'تعديل' };
 const ROLE: Record<string, string> = { admin: 'مدير النظام', management: 'الإدارة', sales: 'المبيعات', reception: 'الاستقبال' };
 const SKIP = new Set(['created_at', 'room_type_id']);
@@ -40,7 +41,9 @@ function fmt(k: string, v: unknown): string {
   if (k === 'role') return ROLE[String(v)] ?? String(v);
   if (k === 'branch') return BRANCH_NAMES[String(v)] ?? String(v);
   if (k === 'night' || k === 'date_from' || k === 'date_to' || k === 'check_in' || k === 'check_out') return longDate(String(v));
-  if (k === 'base_rate' || k === 'price' || k === 'total') return sar(v as number);
+  if (k === 'base_rate' || k === 'price' || k === 'total' || k === 'sanity_base') return sar(v as number);
+  if (k === 'sanity_flag') return SANITY_TAG[String(v)] ?? String(v);
+  if (k === 'sanity_multiplier') return `${Number(v)}×`;
   if (typeof v === 'object') return JSON.stringify(v);
   return String(v);
 }
@@ -64,7 +67,6 @@ const PAGE = 300;
 export default function Audit() {
   const { me } = useSession();
   const toast = useToast();
-  const guard = useLeaveGuard();
   const locked = me?.branch ?? null;
   const [rows, setRows] = useState<AuditRow[] | null>(null);
   const [more, setMore] = useState(false);
@@ -171,14 +173,7 @@ export default function Audit() {
             {Object.entries(ENTITY).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
           </select>
         </Field>
-        {!locked && (
-          <Field label="الفرع" id="a-branch">
-            <select id="a-branch" className="field" value={branch} onChange={(e) => { const v = e.target.value; guard.run(() => setBranch(v)); }}>
-              <option value="">الكل</option>
-              {Object.entries(BRANCH_NAMES).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-            </select>
-          </Field>
-        )}
+        <BranchSelect id="a-branch" branches={Object.entries(BRANCH_NAMES).map(([slug, name_ar]) => ({ slug, name_ar }))} value={branch} onChange={setBranch} allLabel="الكل" />
         <Field label="المستخدم" id="a-actor"><input id="a-actor" className="field" value={actor} onChange={(e) => setActor(e.target.value)} /></Field>
         <div className="col-span-2 md:col-span-4 lg:col-span-2">
           <DateField mode="range" label="من" endLabel="إلى" start={from} end={to} onChange={(a, b) => { setFrom(a); setTo(b); }} min="past" id="a-dates" />
@@ -207,6 +202,9 @@ export default function Audit() {
                     {g.rows.length > 1 && <span className="chip chip-request">تعديل جماعي · <span className="num-ar">{rowsWord(g.rows.length)}</span></span>}
                     {isRevert && <span className="chip chip-request">استرجاع لتغيير سابق</span>}
                     {!!r.batch_id && restores.has(r.batch_id) && <span className="chip chip-flag" data-restore-batch>استعادة الإعدادات الافتراضية</span>}
+                    {Array.from(new Set(g.rows.map((x) => String(x.new?.sanity_flag ?? '')).filter((f) => f in SANITY_TAG))).map((f) => (
+                      <span key={f} className="chip chip-request" data-sanity={f}>{SANITY_TAG[f]}</span>
+                    ))}
                     {wasReverted && <span className="chip chip-cancelled" style={{ textDecoration: 'none' }}>مُسترجَع</span>}
                     {canRevert(g) && (
                       <button type="button" className="btn btn-ghost btn-sm ms-auto" onClick={() => setConfirm(g)} data-action="revert">استرجاع هذا التغيير</button>

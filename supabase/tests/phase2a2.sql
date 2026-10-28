@@ -424,8 +424,8 @@ select pg_temp._as('admin', 'code');
 select public.set_setting('show_prices', (select value from public.settings where key = 'show_prices') || '{"airport-road": true}');
 select pg_temp._save('s1', public.save_site_defaults('QA base'));
 select pg_temp._root();
-select pg_temp._check('D2 one default with the 5 settings and every active, non-test room type', (select count(*) from public.site_defaults where is_default) = 1
-  and (select (select count(*) from jsonb_object_keys(d.snapshot -> 'settings')) from public.site_defaults d where d.is_default) = 5
+select pg_temp._check('D2 one default with the 6 settings and every active, non-test room type', (select count(*) from public.site_defaults where is_default) = 1
+  and (select (select count(*) from jsonb_object_keys(d.snapshot -> 'settings')) from public.site_defaults d where d.is_default) = 6
   and (select jsonb_array_length(d.snapshot -> 'room_types') from public.site_defaults d where d.is_default) = (select count(*) from public.room_types where active and not is_test));
 select pg_temp._check('D2 the save is audited in its batch (site_defaults insert)', exists (select 1 from public.audit_log a where a.entity = 'site_defaults' and a.action = 'insert'
   and a.batch_id = (pg_temp._j('s1') ->> 'batch_id')::uuid));

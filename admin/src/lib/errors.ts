@@ -17,6 +17,7 @@ const INVALID_DETAIL: [RegExp, string][] = [
   [/^settings\.breakfast\.child_tiers/, 'شرائح الأطفال بأعمار تصاعدية من 0 إلى 17 وسعر لا يقل عن صفر'],
   [/^settings\.breakfast/, 'سعر إفطار البالغ من 0 إلى 1000 وشرائح الأطفال مطلوبة'],
   [/^settings\.(show_prices|instant_booking)/, 'تشغيل أو إيقاف لكل فرع'],
+  [/^settings\.rate_high_multiplier/, 'مضاعف تنبيه السعر المرتفع عدد صحيح من 2 إلى 1000'],
   [/^rooms 0/, 'عدد الغرف من 0 إلى 999'],
   [/^rate 0|^price$/, 'السعر أكبر من صفر وأقل من 100000'],
   [/^weekdays/, 'اختر يومًا واحدًا على الأقل من أيام الأسبوع'],

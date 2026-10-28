@@ -247,6 +247,56 @@ body {
 .cal-cell[data-past="true"]:hover { background: none; }
 .cal-cell[data-off="true"] .cal-main { color: var(--ink-muted); }
 
+/* a single-branch user's branch (C1): read-only text under the label, the field's height, no border */
+.field-static { display: inline-flex; align-items: center; min-height: 44px; padding: 0 0.25rem; font-weight: 600; }
+.field-static.block { display: flex; }
+
+/* selectable chips of the bulk dialogs (C2): outline when off, filled with a check when on */
+.chip-toggle {
+  @apply inline-flex items-center gap-1 rounded px-3 py-1.5 text-xs font-semibold border transition-colors;
+  min-height: 36px;
+  border-color: var(--line);
+  background: var(--card);
+  color: var(--ink);
+  transition-duration: var(--motion-fast);
+}
+.chip-toggle:hover { border-color: var(--color-bronze); }
+.chip-toggle.is-on { background: var(--color-bronze-deep); border-color: var(--color-bronze-deep); color: #fff; }
+.chip-toggle:focus-visible { outline: 2px solid var(--color-bronze); outline-offset: 2px; }
+
+/* rate sanity note (C3): amber, readable in both themes (ink on a warm wash) */
+.note-amber {
+  margin-top: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.375rem;
+  font-size: 0.8125rem;
+  line-height: 1.5;
+  color: #6b4a00;
+  background: #fff4d6;
+  border: 1px solid #f0d58a;
+}
+:root[data-theme="dark"] .note-amber { color: #ffe3a3; background: rgb(107 74 0 / 0.28); border-color: rgb(240 213 138 / 0.4); }
+
+/* bilingual label suggestions (C4): the list under the focused field, the translation chip */
+.label-list {
+  position: absolute;
+  inset-inline: 0;
+  top: 100%;
+  z-index: 30;
+  margin-top: 0.25rem;
+  max-height: 14rem;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 0.25rem;
+  border: 1px solid var(--line);
+  border-radius: 0.5rem;
+  background: var(--card);
+  box-shadow: 0 12px 32px rgb(20 42 59 / 0.18);
+}
+.label-opt { display: flex; justify-content: space-between; gap: 0.75rem; padding: 0.5rem 0.625rem; border-radius: 0.375rem; font-size: 0.875rem; cursor: pointer; }
+.label-opt.is-active, .label-opt:hover { background: var(--soft); }
+.label-chip { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; margin-top: 0.375rem; font-size: 0.8125rem; color: var(--ink-muted); }
+
 /* permission matrix */
 .matrix-row { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 0.75rem; padding: 0.375rem 0; border-bottom: 1px solid var(--line); }
 .matrix-row:last-child { border-bottom: 0; }

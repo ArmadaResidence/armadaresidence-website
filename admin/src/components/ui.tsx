@@ -9,8 +9,9 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
-import { west } from '../lib/format';
+import { BRANCH_NAMES, west } from '../lib/format';
 import { anyDirty, UNSAVED, useAnyDirty, useDirty } from '../lib/dirty';
+import { useSession } from '../lib/session';
 
 // ── toast ─────────────────────────────────────────────────────────────────────────────────────────────
 // A save shows its toast for 4 s; a save that returned an audit batch shows «تراجع» for 30 s (phase 2a.1). Only one
@@ -171,7 +172,12 @@ export function Modal({ open, onClose, title, children, wide, busy }: { open: bo
   useEffect(() => {
     const d = ref.current;
     if (!d) return;
-    if (open && !d.open) d.showModal();
+    if (open && !d.open) {
+      d.showModal();
+      // showModal() focuses the first focusable element (the ×); a dialog that names its default button marks it
+      // `data-autofocus` (React's autoFocus runs before the dialog is shown and is lost)
+      d.querySelector<HTMLElement>('[data-autofocus]')?.focus();
+    }
     if (!open && d.open) d.close();
   }, [open]);
   return (
@@ -448,6 +454,36 @@ export function Segmented<T extends string>({ value, options, onChange, label, s
       ))}
     </div>
   );
+}
+
+/**
+ * The one branch selector (C1, 28 Oct 2026): a user whose scope is exactly one branch sees it as read-only text under
+ * the same label — no select, no arrow, not focusable; two or more branches → the select. A change goes through the
+ * leave guard (B5). `bare` = the toolbar form (no label block; the text / select carries an aria-label).
+ */
+export function BranchSelect({ id, label = 'الفرع', branches, value, onChange, allLabel, bare, className = '' }: { id: string; label?: string; branches: { slug: string; name_ar?: string }[]; value: string; onChange: (v: string) => void; allLabel?: string; bare?: boolean; className?: string }) {
+  const { me } = useSession();
+  const guard = useLeaveGuard();
+  const scoped = me?.branch ?? null;
+  const name = (slug: string) => BRANCH_NAMES[slug] ?? branches.find((b) => b.slug === slug)?.name_ar ?? slug;
+  if (scoped) {
+    const text = <span id={id} className={`field-static ${className}`} data-branch-static={scoped} aria-label={bare ? label : undefined}>{name(scoped)}</span>;
+    if (bare) return text;
+    return (
+      <div>
+        <span className="label" id={`${id}-label`}>{label}</span>
+        <span id={id} className="field-static block" data-branch-static={scoped} aria-labelledby={`${id}-label`}>{name(scoped)}</span>
+      </div>
+    );
+  }
+  const select = (
+    <select id={id} className={`field ${bare ? 'w-auto' : ''} ${className}`} value={value} onChange={(e) => { const v = e.target.value; guard.run(() => onChange(v)); }} aria-label={bare ? label : undefined} data-branch-select>
+      {allLabel && <option value="">{allLabel}</option>}
+      {branches.map((b) => <option key={b.slug} value={b.slug}>{name(b.slug)}</option>)}
+    </select>
+  );
+  if (bare) return select;
+  return <Field label={label} id={id}>{select}</Field>;
 }
 
 export function Field({ label, children, hint, id }: { label: string; children: ReactNode; hint?: string; id?: string }) {

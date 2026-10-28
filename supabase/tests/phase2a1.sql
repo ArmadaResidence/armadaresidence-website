@@ -108,7 +108,7 @@ select pg_temp._check('P1 my_staff still answers (role, matrix empty)', (public.
 
 select pg_temp._as('viewer');
 select pg_temp._check('P1 view everywhere: reads both branches, settings and audit', (select count(distinct branch) from public.reservations) = 2
-  and (select count(*) from public.settings) = 5 and (select count(*) from public.room_types) >= 12);
+  and (select count(*) from public.settings) = 6 and (select count(*) from public.room_types) >= 12); -- 6 since rate_high_multiplier (28 Oct 2026)
 select pg_temp._fails('P1 view: cannot set a base rate', $$select public.set_base_rate(pg_temp._id('king'), 150)$$, '42501');
 select pg_temp._fails('P1 view: cannot edit inventory', $$select public.set_inventory(array[pg_temp._id('king')], pg_temp._d(80), pg_temp._d(80), 127, 1)$$, '42501');
 select pg_temp._fails('P1 view: cannot add an override', $$select public.add_rate_override(array[pg_temp._id('king')], pg_temp._d(80), pg_temp._d(80), 127, 150)$$, '42501');

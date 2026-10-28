@@ -34,6 +34,7 @@ export function changeRows(c: DefaultsChange): { label: string; from: string; to
   const branch = c.branch ? BRANCH_NAMES[c.branch] ?? c.branch : '';
   if (c.group === 'switches') return [{ label: `${SWITCH[c.key] ?? c.key} — ${branch}`, from: c.current ? 'مفعّل' : 'متوقف', to: c.target ? 'مفعّل' : 'متوقف' }];
   if (c.key === 'extra_bed_per_night') return [{ label: 'السرير الإضافي لليلة', from: sar(c.current as number), to: sar(c.target as number) }];
+  if (c.key === 'rate_high_multiplier') return [{ label: 'تنبيه السعر المرتفع: مضاعف السعر الأساسي', from: `${Number(c.current)}×`, to: `${Number(c.target)}×` }];
   if (c.key === 'breakfast') {
     const a = c.current as Breakfast;
     const b = c.target as Breakfast;

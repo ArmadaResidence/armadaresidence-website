@@ -20,6 +20,9 @@
 // remembered devices and their revocation, the admin's backup codes (forced first generation, email failure → backup
 // code, regeneration after a fresh code, download), the password-change trigger; then the site defaults (admin only,
 // save + undo, the restore dialog with the switch tick, undo of a restore, the audit label, the site-rebuild call).
+// 28 Oct 2026 (decision C): single-branch users see the branch as text (C1); the bulk dialogs start empty with toggles and
+// the counted summary (C2); the rate sanity notes, confirm, boundaries, multiplier setting and log tags (C3); the
+// bilingual label suggestions — list, glossary chip without network, stubbed function, failure, unavailable (C4).
 // 28 Oct 2026 (decision B): every dialog, drawer and confirm of the inventory at 1440 (mouse) and 375 (touch) — outside
 // presses and drags never close, clean / dirty close, the unsaved-changes confirm, saving in flight, a failed save,
 // beforeunload only while dirty, the page-level forms and the sidebar (admin/tests/dialog-guard.mjs).
@@ -171,9 +174,10 @@ try {
   // ── reception (Airport Road): no MFA, own branch only; inventory open/close, undo, digits ──
   {
     const { ctx, page } = await login(USERS.rec_air);
-    await page.waitForSelector('#f-branch option', { state: 'attached', timeout: 10000 });
-    check(await page.locator('#f-branch').isDisabled(), 'reception: branch filter locked');
-    check((await page.locator('#f-branch option').count()) === 1, 'reception: only its branch offered');
+    // C1 (28 Oct 2026): a single-branch user sees the branch as text — no select at all
+    await page.waitForSelector('[data-branch-static]', { timeout: 10000 });
+    check((await page.locator('select#f-branch').count()) === 0, 'reception: no branch select');
+    check((await page.locator('[data-branch-static]').first().innerText()).trim() === 'طريق المطار', 'reception: its branch shown as text');
     check((await page.locator('nav a:has-text("المستخدمون")').count()) === 0, 'reception: no Users nav');
     check((await page.locator('nav a:has-text("الإعدادات")').count()) === 2, 'reception: Settings nav shown (view)'); // top + tab bar
     await page.fill('#f-q', r1.ref);
@@ -192,6 +196,8 @@ try {
     const before = (await cellText(page, D(INV), 'king-room')).trim(); // what the undo must bring back («—» or an earlier state)
     await page.click('[data-action="bulk"]');
     await pickRange(page, '#bulk-dates-start', D(INV), D(INV + 1));
+    await page.click('[data-action="all-days"]'); // the dialog starts empty (decision C2, 28 Oct 2026)
+    await page.click('[data-action="all-rooms"]');
     await page.click('[role=radiogroup][aria-label="الإجراء"] [role=radio]:has-text("تحديد المتبقي")');
     await page.fill('#b-n', '3');
     await digits(page, 'inventory bulk dialog');
@@ -207,6 +213,8 @@ try {
     // redo the bulk edit, then single cell → closed
     await page.click('[data-action="bulk"]');
     await pickRange(page, '#bulk-dates-start', D(INV), D(INV + 1));
+    await page.click('[data-action="all-days"]');
+    await page.click('[data-action="all-rooms"]');
     await page.click('[role=radiogroup][aria-label="الإجراء"] [role=radio]:has-text("تحديد المتبقي")');
     await page.fill('#b-n', '3');
     await page.click('[data-action="bulk-save"]');
@@ -856,6 +864,8 @@ try {
     const king = rooms.find((r) => r.branch === 'shafa-road' && r.slug === 'king-room');
     const twin = rooms.find((r) => r.branch === 'airport-road' && r.slug === 'twin-room');
     const orig = { prices: await setting('show_prices'), bed: await setting('extra_bed_per_night'), king: king?.base_rate, twin: twin?.bookable };
+    // a label unique to this run: a default left by an earlier run must not satisfy the «saved» waits (the save would then race the next writes)
+    const DLABEL = `QA e2e ${Date.now().toString(36)}`;
     const rebuilds = [];
     await page.route('**/functions/v1/site-rebuild', (r) => (r.request().method() === 'OPTIONS' ? r.fulfill({ status: 204, headers: CORS })
       : (rebuilds.push(1), r.fulfill({ status: 200, headers: CORS, contentType: 'application/json', body: '{"ok":true,"dispatched":true}' }))));
@@ -866,17 +876,17 @@ try {
       await digits(page, 'settings + defaults');
       const cardBefore = (await page.locator('[data-current-default]').innerText()).trim();
       await page.click('[data-action="defaults-save"]');
-      await page.fill('#d-label', 'QA e2e');
+      await page.fill('#d-label', DLABEL);
       await page.click('[data-action="defaults-save-go"]');
-      await page.waitForFunction(() => document.querySelector('[data-current-default]')?.textContent?.includes('QA e2e'), null, { timeout: 20000 });
+      await page.waitForFunction((t) => document.querySelector('[data-current-default]')?.textContent?.includes(t), DLABEL, { timeout: 20000 });
       check(true, 'defaults: saved, the card names it');
       await page.click('[data-toast="undo"] [data-action="undo"]');
       await page.waitForFunction((t) => document.querySelector('[data-current-default]')?.textContent?.trim() === t, cardBefore, { timeout: 20000 }).catch(() => {});
       check((await page.locator('[data-current-default]').innerText()).trim() === cardBefore, 'defaults: «تراجع» undoes the save (the previous default returns)');
       await page.click('[data-action="defaults-save"]');
-      await page.fill('#d-label', 'QA e2e');
+      await page.fill('#d-label', DLABEL);
       await page.click('[data-action="defaults-save-go"]');
-      await page.waitForFunction(() => document.querySelector('[data-current-default]')?.textContent?.includes('QA e2e'), null, { timeout: 20000 });
+      await page.waitForFunction((t) => document.querySelector('[data-current-default]')?.textContent?.includes(t), DLABEL, { timeout: 20000 });
       // four changes after the save
       await admin('set_setting', { p_key: 'show_prices', p_value: { ...orig.prices, 'airport-road': false } });
       await admin('set_setting', { p_key: 'extra_bed_per_night', p_value: Number(orig.bed) + 15 });
@@ -1092,6 +1102,260 @@ try {
     // the matrix is left as it was (the restore clicked the original level; nothing was saved)
     // «تراجع» the display-name change is not needed (the stub never reached the server); the drawer's notes were restored
     await gctx.close();
+  }
+
+  // ── rates and branch UX (decision C, 28 Oct 2026): C1 single-branch users see the branch as text; C2 bulk dialogs start
+  // empty with toggles and the counted summary; C3 rate sanity notes, the confirm (both paths), the boundaries, a changed
+  // multiplier, the log tags; C4 the bilingual label suggestions (glossary / history list by keyboard and touch, the
+  // translation chip with no network for a glossary match, the stubbed function, failure, unavailable, never overwritten)
+  {
+    const CORS = { 'access-control-allow-origin': new URL(BASE).origin, 'access-control-allow-headers': 'authorization, apikey, content-type, x-client-info', 'access-control-allow-methods': 'POST, OPTIONS' };
+    const read = async (path, jwt) => fetch(`${env.SUPABASE_URL}/rest/v1/${path}`, { headers: { apikey: env.SUPABASE_ANON_KEY, Authorization: `Bearer ${jwt}` } }).then((r) => r.json());
+    const tokenOf = (p) => p.evaluate(() => { const k = Object.keys(localStorage).find((x) => /^sb-.*-auth-token$/.test(x)); return k ? JSON.parse(localStorage.getItem(k)).access_token : null; });
+    // C1: the two reception fixtures (fo1 = Airport Road, fo2 = Shafa Road): no branch select or combobox anywhere, the right name
+    for (const [u, name] of [[USERS.rec_air, 'طريق المطار'], [USERS.rec_shafa, 'طريق الشفا']]) {
+      const { ctx, page } = await login(u);
+      for (const path of ['bookings', 'rates', 'inventory', 'audit', 'settings']) {
+        await page.goto(`${BASE}/${path}`);
+        await page.waitForSelector('#app-main h1', { timeout: 20000 });
+        await page.waitForTimeout(800);
+        const n = await page.locator('#app-main select[id*="branch"], #app-main [data-branch-select], #app-main [role=combobox]').count();
+        check(n === 0, `C1 ${u} /${path}: no branch select or combobox (${n})`);
+        if (path !== 'settings') {
+          const txt = (await page.locator('[data-branch-static]').first().innerText().catch(() => '')).trim();
+          check(txt === name, `C1 ${u} /${path}: branch shown as text «${txt}» (want «${name}»)`);
+          check((await page.locator('[data-branch-static]').first().evaluate((el) => el.tabIndex >= 0 || el.matches('select, button, input'))) === false, `C1 ${u} /${path}: the branch text is focusable`);
+        } else {
+          const cards = await page.locator('[data-switch]').count();
+          check(cards === 2, `C1 ${u} /settings: only the user's branch switches (${cards} switches)`);
+        }
+      }
+      await ctx.close();
+    }
+    // admin: the select with both branches
+    const { ctx, page } = await login(USERS.admin);
+    await page.waitForSelector('#f-branch', { timeout: 20000 });
+    await page.waitForFunction(() => document.querySelectorAll('#f-branch option').length >= 3, null, { timeout: 10000 }).catch(() => {});
+    check((await page.locator('select#f-branch option').count()) === 3, 'C1 admin: the branch select offers both branches + all');
+    await page.goto(`${BASE}/rates?branch=shafa-road&from=${D(RATE)}`);
+    await page.waitForSelector('[data-grid="rates"]');
+    check((await page.locator('select#cal-branch').count()) === 1, 'C1 admin: the rates toolbar has the branch select');
+    const jwt = await tokenOf(page);
+    const shafa = await read('room_types?select=id,slug,name_ar,base_rate&branch=eq.shafa-road&active=eq.true&is_test=eq.false&order=sort', jwt);
+    const king = shafa.find((r) => r.slug === 'king-room');
+    const base = Number(king.base_rate);
+    const sarOf = (n) => { const k = Math.round(n) % 100; const noun = k >= 3 && k <= 10 ? 'ريالات' : k === 0 || (k <= 2 && Math.round(n) > 100) ? 'ريال' : 'ريالًا'; return `${Math.round(n * 100) % 100 === 0 ? Math.round(n) : n.toFixed(2)} ${noun}`; };
+
+    // C2: the bulk dialog starts empty; toggles; summary; «تطبيق» disabled until a day, a type and a price
+    await page.click('[data-action="bulk"]');
+    await page.waitForSelector('dialog[data-modal][open]');
+    const pressed = () => page.locator('dialog[data-modal][open] .chip-toggle[aria-pressed="true"]').count();
+    check((await pressed()) === 0, 'C2: nothing selected at open');
+    check((await page.locator('[data-bulk-summary]').innerText()).trim() === 'اختر يومًا واحدًا ونوع غرفة واحدًا على الأقل', 'C2: the empty summary line');
+    check(await page.locator('[data-action="bulk-save"]').isDisabled(), 'C2: «تطبيق» disabled with nothing selected');
+    check((await page.locator('dialog[data-modal][open] .chip-toggle').evaluateAll((els) => els.every((e) => e.hasAttribute('aria-pressed')))), 'C2: aria-pressed on every chip');
+    await page.click('[data-action="all-days"]');
+    check((await page.locator('[aria-label="أيام الأسبوع"] [data-weekday][aria-pressed="true"]').count()) === 7 && (await page.getAttribute('[data-action="all-days"]', 'aria-pressed')) === 'true', 'C2: «كل الأيام» selects the seven days and reads pressed');
+    check((await page.locator('[aria-label="أيام الأسبوع"] [data-weekday][aria-pressed="true"] svg[data-check]').count()) === 7, 'C2: selected chips carry the check icon');
+    await page.click('[data-action="all-days"]');
+    check((await page.locator('[aria-label="أيام الأسبوع"] [data-weekday][aria-pressed="true"]').count()) === 0 && (await page.getAttribute('[data-action="all-days"]', 'aria-pressed')) === 'false', 'C2: pressing «كل الأيام» again clears');
+    await page.click('[data-weekday="5"]'); // Friday
+    await page.click('[data-action="all-rooms"]');
+    const nTypes = await page.locator('[aria-label="أنواع الغرف"] [data-room-type]').count();
+    check((await page.locator('[aria-label="أنواع الغرف"] [data-room-type][aria-pressed="true"]').count()) === nTypes && (await page.getAttribute('[data-action="all-rooms"]', 'aria-pressed')) === 'true', 'C2: «كل الغرف» selects every type');
+    const summary = (await page.locator('[data-bulk-summary]').innerText()).trim();
+    check(/^(يوم واحد|يومان|\d+ أيام|\d+ يومًا|\d+ يوم) × (نوع واحد|نوعان|\d+ أنواع|\d+ نوعًا|\d+ نوع)$/.test(summary) && !ARABIC_DIGITS.test(summary), 'C2: summary «N أيام × M أنواع» with Arabic agreement and Western digits', summary);
+    check(await page.locator('[data-action="bulk-save"]').isDisabled(), 'C2: «تطبيق» still disabled without a price');
+    await page.fill('#b-price', String(base));
+    check(!(await page.locator('[data-action="bulk-save"]').isDisabled()), 'C2: «تطبيق» enabled with a day, a type and a price');
+    // C3 in the period dialog: a price under the Shafa king base but above another type's → mixed note names only the lower-based types
+    const bases = shafa.map((r) => Number(r.base_rate)).filter((n) => n > 0);
+    const minBase = Math.min(...bases);
+    const maxBase = Math.max(...bases);
+    if (minBase < maxBase) {
+      const mid = Math.round((minBase + maxBase) / 2);
+      await page.fill('#b-price', String(mid));
+      const note = (await page.locator('[data-rate-note="below"]').innerText().catch(() => '')).trim();
+      const belowTypes = shafa.filter((r) => Number(r.base_rate) > mid);
+      check(note.startsWith(belowTypes.length === 1 ? 'أقل من السعر الأساسي لهذا النوع' : 'أقل من السعر الأساسي في:') && belowTypes.every((r) => note.includes(r.name_ar)) && !shafa.filter((r) => Number(r.base_rate) <= mid).some((r) => note.includes(r.name_ar)), 'C3 period: the mixed-types note lists the types whose base is above the price', note);
+      await page.click('[data-action="bulk-save"]');
+      await page.waitForSelector('[data-rate-confirm]', { timeout: 5000 });
+      const title = await page.locator('dialog[data-modal][open]').last().locator('h2').first().innerText();
+      check(title.trim() === 'سعر أقل من الأساسي' && (await page.locator('[data-rate-confirm] [data-flag="below_base"]').count()) === belowTypes.length, 'C3 period: the confirm lists one row per flagged type', title);
+      check((await page.evaluate(() => document.activeElement?.getAttribute('data-action'))) === 'rate-review', 'C3: «مراجعة السعر» has the default focus');
+      await page.keyboard.press('Escape');
+      await page.waitForTimeout(300);
+      check((await page.locator('[data-rate-confirm]').count()) === 0 && (await page.locator('dialog[data-modal][open]').count()) === 1 && (await page.inputValue('#b-price')) === String(mid), 'C3: Esc on the confirm = «مراجعة السعر» (back to the dialog, value kept)');
+    }
+    await page.locator('dialog[data-modal][open] [data-action="dialog-close"]').first().click();
+    await page.locator('dialog[data-unsaved-confirm][open] [data-action="discard-close"]').click().catch(() => {});
+    await page.waitForFunction(() => !document.querySelector('dialog[data-modal][open]'), null, { timeout: 5000 });
+
+    // C3 single cell: boundaries (equal → nothing; N × base → warns), the confirm's two paths, the log tags
+    const open = async (night) => {
+      await page.click(`[data-night="${night}"][data-rt="king-room"]`);
+      await page.waitForSelector('#night-price', { timeout: 10000 });
+    };
+    const note = async (kind) => (await page.locator(`[data-rate-note="${kind}"]`).innerText().catch(() => '')).trim();
+    await open(D(RATE + 3));
+    await page.fill('#night-price', String(base));
+    check((await page.locator('[data-rate-note]').count()) === 0, 'C3 cell: exactly the base → no note');
+    await page.fill('#night-price', String(base - 1));
+    check((await note('below')) === `أقل من السعر الأساسي لهذا النوع (${sarOf(base)})`, 'C3 cell: below the base → the amber note', await note('below'));
+    check((await page.locator('[data-rate-note="below"]').getAttribute('role')) === 'status', 'C3 cell: the note is a status');
+    await page.fill('#night-price', String(base * 10 - 1));
+    check((await page.locator('[data-rate-note]').count()) === 0, 'C3 cell: just under 10 × base → no note');
+    await page.fill('#night-price', String(base * 10));
+    check((await note('above')) === `يبلغ 10× السعر الأساسي لهذا النوع (${sarOf(base)}) أو أكثر. تأكّد من عدد الأرقام.`, 'C3 cell: exactly 10 × base → the high-price note', await note('above'));
+    // the confirm: «مراجعة السعر» keeps the dialog; «تطبيق السعر كما هو» saves; the audit shows the tag
+    await page.fill('#night-price', String(base - 1));
+    await page.click('[data-action="night-save"]');
+    await page.waitForSelector('[data-rate-confirm]', { timeout: 5000 });
+    const confirmTitle = (await page.locator('dialog[data-modal][open]').last().locator('h2').first().innerText()).trim();
+    const row = (await page.locator('[data-rate-confirm] li').first().innerText()).trim();
+    check(confirmTitle === 'سعر أقل من الأساسي' && row === `${king.name_ar}: ${sarOf(base - 1)} (الأساسي ${sarOf(base)})`, 'C3 cell: the confirm title and row', `${confirmTitle} | ${row}`);
+    await page.click('[data-action="rate-review"]');
+    await page.waitForTimeout(300);
+    check((await page.locator('[data-rate-confirm]').count()) === 0 && (await page.locator('dialog[data-modal][open]').count()) === 1 && (await page.inputValue('#night-price')) === String(base - 1), 'C3 cell: «مراجعة السعر» returns to the dialog with the value');
+    await page.click('[data-action="night-save"]');
+    await page.waitForSelector('[data-rate-confirm]', { timeout: 5000 });
+    await page.click('[data-action="rate-apply"]');
+    await waitCell(page, D(RATE + 3), 'king-room', new RegExp(String(base - 1)));
+    check(true, 'C3 cell: «تطبيق السعر كما هو» saves the flagged price');
+    await page.locator('[data-toast="undo"]').waitFor({ timeout: 10000 }).catch(() => {});
+    // a price above 10 × base, applied: the log shows both tags
+    await open(D(RATE + 4));
+    await page.fill('#night-price', String(base * 10));
+    await page.click('[data-action="night-save"]');
+    await page.waitForSelector('[data-rate-confirm]', { timeout: 5000 });
+    check((await page.locator('dialog[data-modal][open]').last().locator('h2').first().innerText()).trim() === 'سعر مرتفع جدًا', 'C3 cell: the high-price confirm title');
+    await page.click('[data-action="rate-apply"]');
+    await waitCell(page, D(RATE + 4), 'king-room', new RegExp(String(base * 10)));
+    await page.goto(`${BASE}/audit?entity=rate_overrides`);
+    await page.waitForSelector('[data-list="audit"]', { timeout: 20000 });
+    check((await page.locator('[data-list="audit"] [data-sanity="below_base"]').count()) >= 1 && (await page.locator('[data-list="audit"] [data-sanity="above_threshold"]').count()) >= 1, 'C3 log: the tags «أقل من الأساسي» and «أعلى بكثير من الأساسي»');
+    check((await page.locator('[data-list="audit"]').innerText()).includes('أقل من الأساسي') && (await page.locator('[data-list="audit"]').innerText()).includes('أعلى بكثير من الأساسي'), 'C3 log: the tag texts');
+    // changing N takes effect: N = 2 → 2 × base warns; restore N = 10
+    await page.goto(`${BASE}/settings`);
+    await page.waitForSelector('#rate-mult', { timeout: 20000 });
+    check((await page.inputValue('#rate-mult')) === '10', 'C3 settings: the multiplier reads 10');
+    await page.fill('#rate-mult', '2');
+    await page.click('[data-action="save-rate-mult"]');
+    await page.locator('[data-toast="undo"]').waitFor({ timeout: 15000 });
+    check(true, 'C3 settings: the multiplier saves with an undo toast');
+    await page.goto(`${BASE}/rates?branch=shafa-road&from=${D(RATE)}`);
+    await page.waitForSelector('[data-grid="rates"]');
+    await open(D(RATE + 5));
+    await page.fill('#night-price', String(base * 2));
+    check((await note('above')) === `يبلغ 2× السعر الأساسي لهذا النوع (${sarOf(base)}) أو أكثر. تأكّد من عدد الأرقام.`, 'C3: a changed N takes effect (2 × base warns)', await note('above'));
+    await page.locator('dialog[data-modal][open] [data-action="dialog-close"]').first().click();
+    await page.locator('dialog[data-unsaved-confirm][open] [data-action="discard-close"]').click().catch(() => {});
+    await page.waitForFunction(() => !document.querySelector('dialog[data-modal][open]'), null, { timeout: 5000 });
+    await page.goto(`${BASE}/settings`);
+    await page.waitForSelector('#rate-mult', { timeout: 20000 });
+    await page.fill('#rate-mult', '10');
+    await page.click('[data-action="save-rate-mult"]');
+    await page.locator('[data-toast="undo"]').waitFor({ timeout: 15000 });
+    await page.fill('#rate-mult', '1');
+    check(await page.locator('[data-action="save-rate-mult"]').isDisabled(), 'C3 settings: a multiplier under 2 cannot be saved');
+    await page.fill('#rate-mult', '10');
+
+    // C4: the label pair — list by keyboard and touch, the glossary chip with no network, the stubbed function, failure,
+    // unavailable, never overwritten; history after a save
+    const suggestCalls = [];
+    let suggestMode = 'ok';
+    await page.route('**/functions/v1/label-suggest', (r) => {
+      if (r.request().method() === 'OPTIONS') return r.fulfill({ status: 204, headers: CORS });
+      suggestCalls.push(JSON.parse(r.request().postData() || '{}'));
+      if (suggestMode === 'fail') return r.fulfill({ status: 500, headers: CORS, contentType: 'application/json', body: '{"ok":false,"reason":"unavailable"}' });
+      if (suggestMode === 'unavailable') return r.fulfill({ status: 200, headers: CORS, contentType: 'application/json', body: '{"ok":false,"reason":"unavailable"}' });
+      return r.fulfill({ status: 200, headers: CORS, contentType: 'application/json', body: '{"ok":true,"label":"Stub season","source":"model"}' });
+    });
+    await page.goto(`${BASE}/rates?branch=shafa-road&from=${D(RATE)}`);
+    await page.waitForSelector('[data-grid="rates"]');
+    await open(D(RATE + 6));
+    await page.focus('#night-label');
+    await page.waitForSelector('[data-label-list]', { timeout: 5000 });
+    // the glossary is fetched when the dialog mounts; the list shows the branch history at once and fills as it arrives
+    await page.waitForFunction(() => document.querySelectorAll('[data-label-list] [role=option]').length >= 5, null, { timeout: 5000 }).catch(() => {});
+    check((await page.locator('[data-label-list] [role=option]').count()) >= 5 && (await page.getAttribute('#night-label', 'aria-expanded')) === 'true' && (await page.getAttribute('#night-label', 'role')) === 'combobox', 'C4: focusing the Arabic field opens the suggestion list (combobox)');
+    await page.keyboard.type('موسم الص');
+    await page.waitForTimeout(150);
+    const opts = await page.locator('[data-label-list] [role=option]').allInnerTexts();
+    check(opts.length >= 1 && opts.every((o) => o.includes('موسم الص')), 'C4: the list filters as you type', opts.join(' | '));
+    await page.keyboard.press('ArrowDown');
+    check((await page.getAttribute('#night-label', 'aria-activedescendant')) !== null && (await page.locator('[data-label-list] [role=option][aria-selected="true"]').count()) === 1, 'C4: ArrowDown moves the active option');
+    await page.keyboard.press('Enter');
+    await page.waitForTimeout(150);
+    check((await page.inputValue('#night-label')) === 'موسم الصيف' && (await page.inputValue('#night-label-en')) === 'Summer season', 'C4: Enter fills both fields with the pair');
+    check((await page.locator('[data-label-list]').count()) === 0, 'C4: the list closes after a pick');
+    // a glossary match: the chip without a network call
+    await page.fill('#night-label-en', '');
+    await page.fill('#night-label', 'عيد الفطر');
+    await page.waitForSelector('[data-suggest-for="en"]', { timeout: 3000 });
+    check((await page.locator('[data-suggest-for="en"] [data-suggest-text]').innerText()).trim() === 'Eid al-Fitr' && suggestCalls.length === 0, 'C4: a glossary match shows the chip at once with no network call', String(suggestCalls.length));
+    check((await page.inputValue('#night-label-en')) === '', 'C4: the chip never fills the field by itself');
+    await page.click('[data-suggest-for="en"] [data-action="use-suggestion"]');
+    check((await page.inputValue('#night-label-en')) === 'Eid al-Fitr' && (await page.locator('[data-suggest-for]').count()) === 0, 'C4: «استخدام» fills the empty field and the chip goes');
+    // the function (stubbed): a chip after the debounce; «استخدام» fills; typed text is never overwritten
+    await page.fill('#night-label-en', '');
+    await page.fill('#night-label', 'موسم تجريبي');
+    await page.waitForSelector('[data-suggest-for="en"]', { timeout: 6000 });
+    check(suggestCalls.length === 1 && suggestCalls[0].text === 'موسم تجريبي' && suggestCalls[0].from === 'ar' && (await page.locator('[data-suggest-for="en"] [data-suggest-text]').innerText()).trim() === 'Stub season', 'C4: the function is called once after typing stops and its answer shows as a chip', JSON.stringify(suggestCalls));
+    await page.fill('#night-label-en', 'My own text');
+    await page.waitForTimeout(800);
+    check((await page.inputValue('#night-label-en')) === 'My own text' && (await page.locator('[data-suggest-for]').count()) === 0, 'C4: typed text is never overwritten and the chip goes once both sides have text');
+    // failure → no chip, no error; unavailable → no chip, no error
+    suggestMode = 'fail';
+    await page.fill('#night-label-en', '');
+    await page.fill('#night-label', 'نص آخر');
+    await page.waitForTimeout(1500);
+    check((await page.locator('[data-suggest-for]').count()) === 0 && (await page.locator('dialog[data-modal][open] [role=alert]').count()) === 0, 'C4: a failed function call shows no chip and no error');
+    suggestMode = 'unavailable';
+    await page.fill('#night-label', 'نص ثالث');
+    await page.waitForTimeout(1500);
+    check((await page.locator('[data-suggest-for]').count()) === 0 && (await page.locator('dialog[data-modal][open] [role=alert]').count()) === 0, 'C4: «unavailable» shows no chip and no error');
+    suggestMode = 'ok';
+    // save a pair → history: it comes first in the list of the next dialog
+    await page.fill('#night-label', 'موسم الاختبار');
+    await page.fill('#night-label-en', 'QA season');
+    await page.fill('#night-price', String(base));
+    await page.click('[data-action="night-save"]');
+    await waitCell(page, D(RATE + 6), 'king-room', /موسم الاختبار/);
+    await open(D(RATE + 7));
+    await page.focus('#night-label');
+    await page.waitForSelector('[data-label-list]', { timeout: 5000 });
+    const first = (await page.locator('[data-label-list] [role=option]').first().innerText()).replace(/\s+/g, ' ').trim();
+    check(first.includes('موسم الاختبار') && first.includes('QA season'), 'C4: a pair saved on the branch is suggested first', first);
+    await page.keyboard.press('Escape');
+    check((await page.locator('[data-label-list]').count()) === 0 && (await page.locator('dialog[data-modal][open]').count()) === 1, 'C4: Esc closes the list, not the dialog');
+    await page.locator('dialog[data-modal][open] [data-action="dialog-close"]').first().click();
+    await page.locator('dialog[data-unsaved-confirm][open] [data-action="discard-close"]').click().catch(() => {});
+    await page.waitForFunction(() => !document.querySelector('dialog[data-modal][open]'), null, { timeout: 5000 });
+    await page.unroute('**/functions/v1/label-suggest');
+    await ctx.close();
+    // touch: a tap on an option fills both fields (375)
+    const t = await browser.newContext({ viewport: { width: 375, height: 812 }, locale: 'ar', isMobile: true, hasTouch: true });
+    await t.addInitScript(WATCH);
+    t.__codes = [];
+    await routeLoginCode(t, env.BOOKING_TEST_TOKEN, t.__codes);
+    const tp = (await login(USERS.admin, { ctx: t })).page;
+    await tp.goto(`${BASE}/rates?branch=shafa-road&from=${D(RATE)}`);
+    await tp.waitForSelector('[data-grid="rates"]');
+    await tp.click(`[data-night="${D(RATE + 1)}"][data-rt="king-room"]`);
+    await tp.waitForSelector('#night-label', { timeout: 10000 });
+    await tp.tap('#night-label');
+    await tp.waitForSelector('[data-label-list] [role=option]', { timeout: 5000 });
+    await tp.locator('[data-label-list] [role=option]').nth(1).tap();
+    await tp.waitForTimeout(200);
+    check((await tp.inputValue('#night-label')).length > 0 && (await tp.inputValue('#night-label-en')).length > 0 && (await tp.locator('[data-label-list]').count()) === 0, 'C4 touch: a tap on an option fills both fields and closes the list');
+    await digits(tp, 'night rate dialog with suggestions (375)');
+    await t.close();
+    // undo the two flagged overrides and the labelled one is not needed: the test room purge leaves real room types alone,
+    // so deactivate what this block wrote
+    const adminJwt = jwt;
+    const mine = await read(`rate_overrides?select=id&room_type_id=eq.${king.id}&date_from=gte.${D(RATE + 3)}&date_from=lte.${D(RATE + 7)}&active=eq.true`, adminJwt);
+    for (const o of mine) await fetch(`${env.SUPABASE_URL}/rest/v1/rpc/set_override_active`, { method: 'POST', headers: { apikey: env.SUPABASE_ANON_KEY, Authorization: `Bearer ${adminJwt}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ p_id: o.id, p_active: false }) });
   }
 
   // ── 375 px: every screen renders, tab bar fits, digits ──

@@ -366,6 +366,45 @@ export async function settings(): Promise<Setting[]> {
   if (error) fail(error, 'settings');
   return data as Setting[];
 }
+/** C3 (28 Oct 2026): «تنبيه السعر المرتفع: مضاعف السعر الأساسي» — 10 when unset */
+export async function rateMultiplier(): Promise<number> {
+  const { data, error } = await supabase.from('settings').select('value').eq('key', 'rate_high_multiplier').maybeSingle();
+  if (error) fail(error, 'settings');
+  const n = Number((data as { value: unknown } | null)?.value ?? 10);
+  return Number.isFinite(n) && n >= 2 ? Math.floor(n) : 10;
+}
+
+// ── bilingual labels (C4, 28 Oct 2026) ───────────────────────────────────────────────────────────────────────────
+export interface LabelPairRow {
+  ar: string;
+  en: string;
+}
+/** the seed glossary (public.label_glossary), active pairs in their order */
+export async function labelGlossary(): Promise<LabelPairRow[]> {
+  const { data, error } = await supabase.from('label_glossary').select('ar,en').eq('active', true).order('sort');
+  if (error) fail(error, 'label_glossary');
+  return (data ?? []) as LabelPairRow[];
+}
+/** the label-suggest function: a translation of a short label, or null (unavailable, refused, rate-limited, failed —
+ *  the field shows nothing and no error); `signal` aborts (the dashboard gives it 4 s) */
+export async function labelSuggest(text: string, from: 'ar' | 'en', signal?: AbortSignal): Promise<string | null> {
+  const { data: s } = await supabase.auth.getSession();
+  const jwt = s.session?.access_token;
+  if (!jwt) return null;
+  try {
+    const res = await fetch(`${SUPABASE_URL}/functions/v1/label-suggest`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${jwt}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text, from }),
+      signal,
+    });
+    if (!res.ok) return null;
+    const j = (await res.json().catch(() => null)) as { ok?: boolean; label?: string } | null;
+    return j?.ok && typeof j.label === 'string' && j.label.trim() ? j.label.trim() : null;
+  } catch {
+    return null;
+  }
+}
 
 export async function audit(f: { branch?: string; entity?: string; actor?: string; from?: string; to?: string }, limit = 300, before?: number): Promise<AuditRow[]> {
   let q = supabase.from('audit_log').select('id,at,actor_label,entity,entity_id,branch,action,old,new,batch_id,reverts_batch').order('id', { ascending: false }).limit(limit);

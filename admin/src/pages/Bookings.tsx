@@ -10,7 +10,7 @@ import * as api from '../lib/api';
 import type { Reservation, RoomType, StatusHistory, CalendarCell } from '../lib/api';
 import { useSession } from '../lib/session';
 import { BRANCH_NAMES, REASON_LABELS, STATUS_LABELS, adultsWord, childrenWord, dateRange, longDate, nightsWord, riyadhDateTimeLong, roomsLeft, sar, toCsv, riyadhToday } from '../lib/format';
-import { CancelButton, Confirm, Drawer, Empty, ErrorBox, Field, Loading, Modal, Spinner, useLeaveGuard, useToast } from '../components/ui';
+import { BranchSelect, CancelButton, Confirm, Drawer, Empty, ErrorBox, Field, Loading, Modal, Spinner, useToast } from '../components/ui';
 import DateField from '../components/DateField';
 
 type Status = '' | 'request' | 'confirmed' | 'cancelled';
@@ -18,7 +18,6 @@ type Status = '' | 'request' | 'confirmed' | 'cancelled';
 export default function Bookings() {
   const { me } = useSession();
   const toast = useToast();
-  const guard = useLeaveGuard();
   const [params, setParams] = useSearchParams();
   const locked = me?.branch ?? null;
   const editable = api.canEdit(me, 'bookings');
@@ -126,14 +125,7 @@ export default function Bookings() {
         <button type="button" className="btn btn-ghost btn-sm" onClick={exportCsv} disabled={!rows?.length}>تصدير Excel (CSV)</button>
       </div>
       <div className="card p-3 sm:p-4 mb-4 grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
-        <Field label="الفرع" id="f-branch">
-          <select id="f-branch" className="field" value={branch} onChange={(e) => { const v = e.target.value; guard.run(() => setBranch(v)); }} disabled={!!locked}>
-            {!locked && <option value="">الفرعان</option>}
-            {branches.filter((b) => !locked || b.slug === locked).map((b) => (
-              <option key={b.slug} value={b.slug}>{BRANCH_NAMES[b.slug] ?? b.name_ar}</option>
-            ))}
-          </select>
-        </Field>
+        <BranchSelect id="f-branch" branches={branches} value={branch} onChange={setBranch} allLabel="الفرعان" />
         <Field label="الحالة" id="f-status">
           <select id="f-status" className="field" value={status} onChange={(e) => setStatus(e.target.value as Status)}>
             <option value="">الكل</option>

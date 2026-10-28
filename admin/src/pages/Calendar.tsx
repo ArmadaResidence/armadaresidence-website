@@ -5,14 +5,21 @@
 // open / closed control per cell, per row (visible range) and per bulk range, with a legend. The period jumper is the
 // site's date picker; past nights are viewable (muted, read-only) and the server refuses edits on them. Every save
 // returns its audit batch → a 30 s «تراجع» toast.
+// 28 Oct 2026 (decisions B, C1–C4): every dialog closes only through × / «إلغاء» / a save (the dirty guard asks about
+// unsaved edits); a single-branch user sees the branch as text; the bulk dialogs start with nothing selected («كل
+// الأيام» / «كل الغرف» are toggles, the summary counts the days that match the weekdays); a nightly rate is compared
+// with each affected type's base rate (amber note; a confirm before applying a flagged price; the server records the
+// verdict for the log); the label pair fields suggest glossary / history pairs and a translation (LabelPair).
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import * as api from '../lib/api';
-import type { Branch, CalendarCell, RateOverride, RoomType } from '../lib/api';
+import type { Branch, CalendarCell, LabelPairRow, RateOverride, RoomType } from '../lib/api';
 import { useSession } from '../lib/session';
-import { BRANCH_NAMES, DAY, ROOM_TYPE, WEEKDAY_BITS, WEEKDAY_LABELS, addDays, countWord, dayName, daysBetween, longDate, maskLabel, monthTitle, nightsWord, riyadhToday, roomsBooked, roomsLeft, sar, shortDate } from '../lib/format';
-import { CancelButton, ErrorBox, Field, Loading, Modal, NumberField, Segmented, Spinner, Stepper, useLeaveGuard, useToast } from '../components/ui';
+import { DAY, ROOM_TYPE, WEEKDAY_BITS, WEEKDAY_LABELS, addDays, countWord, dayName, daysBetween, longDate, maskLabel, monthTitle, nightsWord, riyadhToday, roomsBooked, roomsLeft, sar, shortDate } from '../lib/format';
+import { bulkSummary, countDays, hasWarning, RATE_CONFIRM, rateConfirmRow, rateConfirmTitle, rateWarnings, rateWarningTexts, type RateWarning } from '../lib/rates';
+import { BranchSelect, CancelButton, ErrorBox, Field, Loading, Modal, NumberField, Segmented, Spinner, Stepper, useLeaveGuard, useToast } from '../components/ui';
 import DateField from '../components/DateField';
+import LabelPair from '../components/LabelPair';
 
 type Mode = 'rates' | 'inventory';
 const ISO = /^\d{4}-\d{2}-\d{2}$/;
@@ -42,6 +49,7 @@ export default function Calendar({ mode }: { mode: Mode }) {
   const [types, setTypes] = useState<RoomType[]>([]);
   const [cells, setCells] = useState<CalendarCell[] | null>(null);
   const [overridesList, setOverridesList] = useState<RateOverride[]>([]);
+  const [multiplier, setMultiplier] = useState(10);
   const [error, setError] = useState<string | null>(null);
   const [sel, setSel] = useState<{ rt: RoomType; cell: CalendarCell } | null>(null);
   const [bulk, setBulk] = useState(false);
@@ -54,7 +62,8 @@ export default function Calendar({ mode }: { mode: Mode }) {
       setBranches(b);
       if (!locked && !b.some((x) => x.slug === branch) && b[0]) setBranch(b[0].slug);
     }).catch((e) => setError(e.message));
-  }, [locked]); // eslint-disable-line react-hooks/exhaustive-deps
+    if (mode === 'rates') api.rateMultiplier().then(setMultiplier).catch(() => {});
+  }, [locked, mode]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const load = useCallback(async () => {
     try {
@@ -93,16 +102,14 @@ export default function Calendar({ mode }: { mode: Mode }) {
     return m;
   }, [cells]);
   const visibleEditable = nights.filter((n) => n >= today);
+  // label pairs already saved on this branch, most recent first (LabelPair dedupes)
+  const labelHistory = useMemo<LabelPairRow[]>(() => overridesList.filter((o) => o.label && o.label_en).map((o) => ({ ar: o.label!, en: o.label_en! })), [overridesList]);
 
   return (
     <div>
       <div className="flex flex-wrap items-center gap-3 mb-4">
         <h1 className="text-2xl font-bold me-auto">{mode === 'rates' ? 'الأسعار' : 'المخزون'}</h1>
-        {!locked && (
-          <select className="field w-auto" value={branch} onChange={(e) => { const v = e.target.value; guard.run(() => setBranch(v)); }} aria-label="الفرع">
-            {branches.map((b) => <option key={b.slug} value={b.slug}>{BRANCH_NAMES[b.slug] ?? b.name_ar}</option>)}
-          </select>
-        )}
+        <BranchSelect bare id="cal-branch" branches={branches} value={branch} onChange={(v) => guard.run(() => setBranch(v))} />
         <div className="flex items-end gap-1">
           <button type="button" className="btn btn-ghost btn-sm" onClick={() => setFrom(addDays(from, -days))} aria-label="الفترة السابقة">‹</button>
           <DateField mode="single" label="من تاريخ" value={from} onChange={(v) => v && setFrom(v)} min="past" id="cal-from" className="w-56" />
@@ -152,8 +159,8 @@ export default function Calendar({ mode }: { mode: Mode }) {
       {mode === 'rates' && editable && <OverridesList list={overridesList} types={types} onSaved={saved} />}
 
       {sel && mode === 'inventory' && <CellEdit sel={sel} onClose={() => setSel(null)} onSaved={(msg, b) => { setSel(null); saved(msg, b); }} />}
-      {sel && mode === 'rates' && <NightRate sel={sel} onClose={() => setSel(null)} onSaved={(msg, b) => { setSel(null); saved(msg, b); }} />}
-      {bulk && <Bulk mode={mode} types={types} from={from >= today ? from : today} onClose={() => setBulk(false)} onSaved={(msg, b) => { setBulk(false); saved(msg, b); }} />}
+      {sel && mode === 'rates' && <NightRate sel={sel} multiplier={multiplier} history={labelHistory} onClose={() => setSel(null)} onSaved={(msg, b) => { setSel(null); saved(msg, b); }} />}
+      {bulk && <Bulk mode={mode} types={types} multiplier={multiplier} history={labelHistory} from={from >= today ? from : today} onClose={() => setBulk(false)} onSaved={(msg, b) => { setBulk(false); saved(msg, b); }} />}
       {rateEdit && <BaseRate rt={rateEdit} onClose={() => setRateEdit(null)} onSaved={(msg, b) => { setRateEdit(null); saved(msg, b); }} />}
       {rowMenu && mode === 'inventory' && (
         <RowOpenClose rt={rowMenu} nights={visibleEditable} onClose={() => setRowMenu(null)} onSaved={(msg, b) => { setRowMenu(null); saved(msg, b); }} />
@@ -231,23 +238,75 @@ function RowCells({ rt, nights, byKey, mode, today, editable, onPick, onRate, on
   );
 }
 
+/** a selectable chip (C2): filled with a check when pressed, outlined when not; aria-pressed always */
+function Chip({ on, onClick, children, ...rest }: { on: boolean; onClick: () => void; children: React.ReactNode } & Record<string, unknown>) {
+  return (
+    <button type="button" className={`chip-toggle ${on ? 'is-on' : ''}`} aria-pressed={on} onClick={onClick} {...(rest as Record<string, unknown>)}>
+      {on && (
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" data-check>
+          <path d="M5 12l5 5L20 7" />
+        </svg>
+      )}
+      {children}
+    </button>
+  );
+}
+
 function WeekdayPicker({ mask, onChange }: { mask: number; onChange: (m: number) => void }) {
+  const all = mask === 127;
   return (
     <div className="flex flex-wrap gap-1" role="group" aria-label="أيام الأسبوع">
       {WEEKDAY_LABELS.map((l, i) => {
         const on = (mask & WEEKDAY_BITS[i]) !== 0;
         return (
-          <button type="button" key={l} className={`btn btn-sm ${on ? 'btn-primary' : 'btn-ghost'}`} aria-pressed={on} onClick={() => onChange(on ? mask & ~WEEKDAY_BITS[i] : mask | WEEKDAY_BITS[i])}>
+          <Chip key={l} on={on} onClick={() => onChange(on ? mask & ~WEEKDAY_BITS[i] : mask | WEEKDAY_BITS[i])} data-weekday={i}>
             {l}
-          </button>
+          </Chip>
         );
       })}
-      <button type="button" className="btn btn-sm btn-ghost" onClick={() => onChange(127)}>كل الأيام</button>
+      <Chip on={all} onClick={() => onChange(all ? 0 : 127)} data-action="all-days">كل الأيام</Chip>
     </div>
   );
 }
 
 type OnSaved = (msg: string, batchId: string) => void;
+
+/** the amber notes under a price field (C3) */
+function RateNotes({ warn, multiplier }: { warn: RateWarning; multiplier: number }) {
+  const t = rateWarningTexts(warn, multiplier);
+  return (
+    <>
+      {t.below && <p className="note-amber" role="status" data-rate-note="below">{t.below}</p>}
+      {t.above && <p className="note-amber" role="status" data-rate-note="above">{t.above}</p>}
+    </>
+  );
+}
+
+/** the confirm before a flagged price is applied (C3; follows the dialog rules of B) */
+function RateConfirm({ warn, price, onReview, onApply }: { warn: RateWarning; price: number; onReview: () => void; onApply: () => void }) {
+  return (
+    <Modal open onClose={onReview} title={rateConfirmTitle(warn)}>
+      <div className="text-sm grid gap-3 num-ar" data-rate-confirm>
+        {warn.below.length > 0 && (
+          <div>
+            <h3 className="font-bold mb-1">{RATE_CONFIRM.headBelow}</h3>
+            <ul className="grid gap-0.5">{warn.below.map((x) => <li key={x.name} data-flag="below_base">{rateConfirmRow(x.name, price, x.base)}</li>)}</ul>
+          </div>
+        )}
+        {warn.above.length > 0 && (
+          <div>
+            <h3 className="font-bold mb-1">{RATE_CONFIRM.headAbove}</h3>
+            <ul className="grid gap-0.5">{warn.above.map((x) => <li key={x.name} data-flag="above_threshold">{rateConfirmRow(x.name, price, x.base)}</li>)}</ul>
+          </div>
+        )}
+      </div>
+      <div className="flex flex-wrap gap-2 justify-end mt-5">
+        <button type="button" className="btn btn-primary" onClick={onReview} data-autofocus data-action="rate-review">{RATE_CONFIRM.review}</button>
+        <button type="button" className="btn btn-ghost" onClick={onApply} data-action="rate-apply">{RATE_CONFIRM.apply}</button>
+      </div>
+    </Modal>
+  );
+}
 
 function CellEdit({ sel, onClose, onSaved }: { sel: { rt: RoomType; cell: CalendarCell }; onClose: () => void; onSaved: OnSaved }) {
   const { rt, cell } = sel;
@@ -323,15 +382,19 @@ function RowOpenClose({ rt, nights, onClose, onSaved }: { rt: RoomType; nights: 
   );
 }
 
-function NightRate({ sel, onClose, onSaved }: { sel: { rt: RoomType; cell: CalendarCell }; onClose: () => void; onSaved: OnSaved }) {
+function NightRate({ sel, multiplier, history, onClose, onSaved }: { sel: { rt: RoomType; cell: CalendarCell }; multiplier: number; history: LabelPairRow[]; onClose: () => void; onSaved: OnSaved }) {
   const { rt, cell } = sel;
   const [price, setPrice] = useState<number | null>(cell.price === null ? null : Number(cell.price));
   const [label, setLabel] = useState('');
   const [labelEn, setLabelEn] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  async function save() {
+  const [ask, setAsk] = useState(false);
+  const warn = rateWarnings(price, [rt], multiplier);
+  async function save(force = false) {
     if (!price || !(price > 0)) return setError('اكتب سعرًا أكبر من صفر.');
+    if (!force && hasWarning(warn)) return setAsk(true);
+    setAsk(false);
     setBusy(true);
     try {
       const r = await api.addOverride([rt.id], cell.night, cell.night, 127, price, label, labelEn, true);
@@ -346,15 +409,18 @@ function NightRate({ sel, onClose, onSaved }: { sel: { rt: RoomType; cell: Calen
     <Modal open onClose={onClose} title={`${rt.name_ar} — ${longDate(cell.night)}`} busy={busy}>
       <p className="text-sm text-ink-muted mb-3">السعر الحالي: <b>{cell.price === null ? 'بلا سعر' : sar(cell.price)}</b>{cell.override_label ? ` (${cell.override_label})` : ''}. يُحفظ كاستثناء لهذه الليلة فوق السعر الأساسي، ويحل محل استثناء سابق لليلة نفسها.</p>
       <Field label="السعر لليلة (شامل الضريبة)" id="night-price"><NumberField id="night-price" value={price} onChange={setPrice} decimal min={0} max={99999} /></Field>
-      <div className="mt-3 grid sm:grid-cols-2 gap-3">
-        <Field label="تسمية بالعربية (اختياري)" id="night-label"><input id="night-label" className="field" value={label} onChange={(e) => setLabel(e.target.value)} placeholder="مثال: عطلة" /></Field>
-        <Field label="التسمية بالإنجليزية (اختياري)" id="night-label-en" hint="تظهر للضيف في الإنجليزية؛ فارغة = بلا تسمية"><input id="night-label-en" className="field latin" dir="ltr" value={labelEn} onChange={(e) => setLabelEn(e.target.value)} placeholder="e.g. Holiday" /></Field>
+      <RateNotes warn={warn} multiplier={multiplier} />
+      <div className="mt-3">
+        <LabelPair ar={label} en={labelEn} onChange={(a, e) => { setLabel(a); setLabelEn(e); }} history={history}
+          ids={{ ar: 'night-label', en: 'night-label-en' }} labels={{ ar: 'تسمية بالعربية (اختياري)', en: 'التسمية بالإنجليزية (اختياري)' }}
+          hints={{ en: 'تظهر للضيف في الإنجليزية؛ فارغة = بلا تسمية' }} placeholders={{ ar: 'مثال: عطلة', en: 'e.g. Holiday' }} />
       </div>
       <ErrorBox error={error} />
       <div className="flex gap-2 justify-end mt-5">
         <CancelButton disabled={busy} />
-        <button type="button" className="btn btn-primary" onClick={save} disabled={busy} data-action="night-save">{busy && <Spinner />} حفظ</button>
+        <button type="button" className="btn btn-primary" onClick={() => save()} disabled={busy} data-action="night-save">{busy && <Spinner />} حفظ</button>
       </div>
+      {ask && price !== null && <RateConfirm warn={warn} price={price} onReview={() => setAsk(false)} onApply={() => save(true)} />}
     </Modal>
   );
 }
@@ -388,11 +454,12 @@ function BaseRate({ rt, onClose, onSaved }: { rt: RoomType; onClose: () => void;
   );
 }
 
-function Bulk({ mode, types, from, onClose, onSaved }: { mode: Mode; types: RoomType[]; from: string; onClose: () => void; onSaved: OnSaved }) {
-  const [ids, setIds] = useState<string[]>(types.map((t) => t.id));
+function Bulk({ mode, types, multiplier, history, from, onClose, onSaved }: { mode: Mode; types: RoomType[]; multiplier: number; history: LabelPairRow[]; from: string; onClose: () => void; onSaved: OnSaved }) {
+  // C2: nothing selected at open — the clean state of the dirty guard
+  const [ids, setIds] = useState<string[]>([]);
   const [dFrom, setDFrom] = useState(from);
   const [dTo, setDTo] = useState(addDays(from, 6));
-  const [mask, setMask] = useState(127);
+  const [mask, setMask] = useState(0);
   const [price, setPrice] = useState<number | null>(null);
   const [label, setLabel] = useState('');
   const [labelEn, setLabelEn] = useState('');
@@ -400,13 +467,22 @@ function Bulk({ mode, types, from, onClose, onSaved }: { mode: Mode; types: Room
   const [n, setN] = useState(0);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [ask, setAsk] = useState(false);
   const span = dFrom && dTo ? daysBetween(dFrom, dTo) + 1 : 0;
+  const dayCount = countDays(dFrom, dTo, mask);
+  const allTypes = types.length > 0 && ids.length === types.length;
+  const chosen = types.filter((t) => ids.includes(t.id));
+  const warn = mode === 'rates' ? rateWarnings(price, chosen, multiplier) : { below: [], above: [] };
+  const canApply = mask !== 0 && dayCount >= 1 && ids.length >= 1 && span >= 1 && span <= 400 && (mode !== 'rates' || (price !== null && price > 0));
 
-  async function save() {
+  async function save(force = false) {
     setError(null);
     if (!ids.length) return setError('اختر نوع غرفة واحدًا على الأقل.');
     if (!dFrom || !dTo) return setError('اختر تاريخ البداية والنهاية.');
     if (span < 1 || span > 400) return setError('الفترة من يوم إلى 400 يوم.');
+    if (!mask || dayCount < 1) return setError('اختر يومًا واحدًا على الأقل من أيام الأسبوع.');
+    if (mode === 'rates' && !force && hasWarning(warn)) return setAsk(true);
+    setAsk(false);
     setBusy(true);
     try {
       if (mode === 'rates') {
@@ -435,21 +511,30 @@ function Bulk({ mode, types, from, onClose, onSaved }: { mode: Mode; types: Room
       <div className="mt-3"><span className="label">أيام الأسبوع</span><WeekdayPicker mask={mask} onChange={setMask} /></div>
       <div className="mt-3">
         <span className="label">أنواع الغرف</span>
-        <div className="flex flex-wrap gap-1">
+        <div className="flex flex-wrap gap-1" role="group" aria-label="أنواع الغرف">
           {types.map((t) => {
             const on = ids.includes(t.id);
             return (
-              <button type="button" key={t.id} className={`btn btn-sm ${on ? 'btn-primary' : 'btn-ghost'}`} aria-pressed={on} onClick={() => setIds(on ? ids.filter((x) => x !== t.id) : [...ids, t.id])}>{t.name_ar}{t.bookable ? '' : ' (غير متاحة على الموقع)'}</button>
+              <Chip key={t.id} on={on} onClick={() => setIds(on ? ids.filter((x) => x !== t.id) : [...ids, t.id])} data-room-type={t.slug}>
+                {t.name_ar}{t.bookable ? '' : ' (غير متاحة على الموقع)'}
+              </Chip>
             );
           })}
+          <Chip on={allTypes} onClick={() => setIds(allTypes ? [] : types.map((t) => t.id))} data-action="all-rooms">كل الغرف</Chip>
         </div>
       </div>
       {mode === 'rates' ? (
-        <div className="grid sm:grid-cols-3 gap-3 mt-3">
-          <Field label="السعر لليلة (شامل الضريبة)" id="b-price"><NumberField id="b-price" value={price} onChange={setPrice} decimal min={0} max={99999} /></Field>
-          <Field label="تسمية بالعربية" id="b-label" hint="مثال: موسم الصيف، نهاية الأسبوع"><input id="b-label" className="field" value={label} onChange={(e) => setLabel(e.target.value)} /></Field>
-          <Field label="التسمية بالإنجليزية (اختياري)" id="b-label-en" hint="للضيوف بالإنجليزية؛ فارغة = بلا تسمية"><input id="b-label-en" className="field latin" dir="ltr" value={labelEn} onChange={(e) => setLabelEn(e.target.value)} placeholder="e.g. Summer season" /></Field>
-        </div>
+        <>
+          <div className="grid sm:grid-cols-3 gap-3 mt-3">
+            <Field label="السعر لليلة (شامل الضريبة)" id="b-price"><NumberField id="b-price" value={price} onChange={setPrice} decimal min={0} max={99999} /></Field>
+            <div className="sm:col-span-2">
+              <LabelPair ar={label} en={labelEn} onChange={(a, e) => { setLabel(a); setLabelEn(e); }} history={history}
+                ids={{ ar: 'b-label', en: 'b-label-en' }} labels={{ ar: 'تسمية بالعربية', en: 'التسمية بالإنجليزية (اختياري)' }}
+                hints={{ ar: 'مثال: موسم الصيف، نهاية الأسبوع', en: 'للضيوف بالإنجليزية؛ فارغة = بلا تسمية' }} placeholders={{ en: 'e.g. Summer season' }} />
+            </div>
+          </div>
+          <RateNotes warn={warn} multiplier={multiplier} />
+        </>
       ) : (
         <div className="mt-3">
           <span className="label">الإجراء</span>
@@ -464,12 +549,13 @@ function Bulk({ mode, types, from, onClose, onSaved }: { mode: Mode; types: Room
           )}
         </div>
       )}
-      <p className="text-xs text-ink-muted mt-3 num-ar">{countWord(span, DAY)} × {countWord(ids.length, ROOM_TYPE)} — {maskLabel(mask)}</p>
+      <p className="text-xs text-ink-muted mt-3 num-ar" data-bulk-summary aria-live="polite">{bulkSummary(dayCount, ids.length)}</p>
       <ErrorBox error={error} />
       <div className="flex gap-2 justify-end mt-5">
         <CancelButton disabled={busy} />
-        <button type="button" className="btn btn-primary" onClick={save} disabled={busy} data-action="bulk-save">{busy && <Spinner />} تطبيق</button>
+        <button type="button" className="btn btn-primary" onClick={() => save()} disabled={busy || !canApply} data-action="bulk-save">{busy && <Spinner />} تطبيق</button>
       </div>
+      {ask && price !== null && <RateConfirm warn={warn} price={price} onReview={() => setAsk(false)} onApply={() => save(true)} />}
     </Modal>
   );
 }
