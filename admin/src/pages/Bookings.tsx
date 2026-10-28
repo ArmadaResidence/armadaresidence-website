@@ -4,14 +4,16 @@
 // «الأحد 2 نوفمبر 2026»; guests with Arabic agreement. Confirm and cancel send emails and are never undoable (said in
 // the drawer). Branch scope locks the branch filter; bookings = view makes everything read-only.
 // Task 5 (28 Oct 2026): the drawer lists each WhatsApp message sent to the guest («أُرسلت» / «تعذّر الإرسال» + the
-// reason in Arabic) with «إعادة الإرسال» on a failed one (bookings: edit; the RPC checks the branch scope again).
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+// reason in Arabic) with «إعادة الإرسال» on a failed one (bookings: edit; the RPC checks the branch scope again), and
+// «طباعة» prints one A4 sheet of the stored booking with the two signature blocks (PrintSheet, print-only CSS).
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 import { useSearchParams } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import * as api from '../lib/api';
 import type { Reservation, RoomType, StatusHistory, CalendarCell, WhatsAppMessage } from '../lib/api';
 import { useSession } from '../lib/session';
-import { BRANCH_NAMES, REASON_LABELS, STATUS_LABELS, WA_STATUS_LABELS, WA_TEMPLATE_LABELS, adultsWord, childrenWord, dateRange, longDate, nightsWord, riyadhDateTimeLong, roomsLeft, sar, toCsv, riyadhToday, waError } from '../lib/format';
+import { BRANCH_FULL, BRANCH_NAMES, REASON_LABELS, STATUS_LABELS, WA_STATUS_LABELS, WA_TEMPLATE_LABELS, adultsWord, childrenWord, dateRange, longDate, nightsWord, riyadhDateTimeLong, roomsLeft, sar, toCsv, riyadhToday, waError } from '../lib/format';
 import { BranchSelect, CancelButton, Confirm, Drawer, Empty, ErrorBox, Field, Loading, Modal, Spinner, useToast } from '../components/ui';
 import DateField from '../components/DateField';
 
@@ -371,6 +373,7 @@ function Details({ r, roomTypes, editable, onClose, onChanged }: { r: Reservatio
         {editable && r.status === 'request' && <button type="button" className="btn btn-primary" onClick={() => { setPickRt(r.room_type_id ?? ''); setNightIssues(null); setError(null); setConfirmOpen(true); }} data-action="confirm">تأكيد الحجز</button>}
         {editable && r.status !== 'cancelled' && <button type="button" className="btn btn-danger" onClick={() => { setReason(''); setError(null); setCancelOpen(true); }} data-action="cancel">إلغاء الحجز</button>}
         <a className="btn btn-ghost" href={waTemplate()} target="_blank" rel="noopener">واتساب الضيف</a>
+        <button type="button" className="btn btn-ghost" onClick={() => window.print()} data-action="print">طباعة</button>
       </div>
       {editable && r.status !== 'cancelled' && <p className="text-xs text-ink-muted mb-5">التأكيد والإلغاء يرسلان بريدًا للضيف والاستقبال، لذلك لا يمكن التراجع عنهما.</p>}
       {!editable && <p className="text-xs text-ink-muted mb-5">صلاحيتك هنا للعرض فقط.</p>}
@@ -458,7 +461,83 @@ function Details({ r, roomTypes, editable, onClose, onChanged }: { r: Reservatio
         </Field>
         <ErrorBox error={error} />
       </Confirm>
+      {createPortal(<PrintSheet r={r} room={rtName(r.room_type_id)} />, document.body)}
     </Drawer>
   );
 }
 
+/** «طباعة» (task 5 C): one A4 sheet of the STORED booking — logo, branch, ref, status, booking date, the guest's
+ * fields, the price breakdown, the notes, the coordination flag and two signature blocks. Hidden on screen; the print
+ * stylesheet (styles.css → .print-sheet) shows it alone. Arabic, RTL, Western digits (format.ts). */
+function PrintSheet({ r, room }: { r: Reservation; room: string }) {
+  const pricing = r.pricing as { nights?: { night: string; price: number }[] } | null;
+  const perNight = pricing?.nights && new Set(pricing.nights.map((n) => Number(n.price))).size > 1 ? pricing.nights : [];
+  const row = (k: string, v: ReactNode) => (<><dt>{k}</dt><dd>{v}</dd></>);
+  const sign = (title: string) => (
+    <div className="sheet-sign" data-sign={title}>
+      <h3>{title}</h3>
+      <p><span>الاسم</span><i /></p>
+      <p><span>التوقيع</span><i /></p>
+      <p><span>التاريخ</span><i /></p>
+    </div>
+  );
+  return (
+    <div className="print-sheet" dir="rtl" lang="ar" aria-hidden="true" data-print-sheet>
+      <header className="sheet-head">
+        <img src={`${import.meta.env.BASE_URL}logo-bronze.svg`} alt="أرمادا ريزيدنس" />
+        <div>
+          <p className="sheet-branch">{BRANCH_FULL[r.branch] ?? r.branch}</p>
+          <p className="sheet-ref">رقم الحجز <b dir="ltr">{r.ref}</b></p>
+        </div>
+      </header>
+      <p className="sheet-meta">
+        <span>الحالة: <b>{STATUS_LABELS[r.status]}{r.confirmation === 'instant' ? ' (تأكيد فوري من الموقع)' : ''}</b></span>
+        <span>تاريخ الحجز: <b>{riyadhDateTimeLong(r.created_at)}</b></span>
+        {r.is_test && <span><b>حجز تجريبي</b></span>}
+      </p>
+      <dl className="sheet-fields">
+        {row('اسم الضيف', r.guest_name)}
+        {row('الجوال', <span dir="ltr">{r.phone}</span>)}
+        {row('البريد الإلكتروني', r.email ? <span dir="ltr">{r.email}</span> : '—')}
+        {row('الوصول', longDate(r.check_in))}
+        {row('المغادرة', `${longDate(r.check_out)} · ${nightsWord(r.nights)}`)}
+        {row('نوع الغرفة', room)}
+        {row('الضيوف', `${adultsWord(r.adults)}${r.children ? ` · ${childrenWord(r.children)}${r.children_ages?.length ? ` (الأعمار: ${r.children_ages.join('، ')})` : ''}` : ''}`)}
+        {row('أسرّة إضافية', `${r.extra_beds}${r.extra_beds && r.extra_bed_fee_per_night ? ` (${sar(r.extra_bed_fee_per_night)} لليلة)` : ''}`)}
+        {row('الإفطار', r.breakfast === 'with' ? 'مع الإفطار' : 'بدون إفطار')}
+        {row('يحتاج تنسيق', r.needs_coordination ? 'نعم — عدد الضيوف أكبر من سعة الغرفة والأسرّة الإضافية' : 'لا')}
+      </dl>
+      <section className="sheet-price">
+        <h2>تفاصيل السعر</h2>
+        {r.total === null ? (
+          <p>لم يُحسب السعر بعد (يُحسب عند التأكيد).</p>
+        ) : (
+          <>
+            <table>
+              <tbody>
+                <tr><td>الغرفة · {nightsWord(r.nights)}</td><td>{sar(r.room_total)}</td></tr>
+                {r.breakfast === 'with' && <tr><td>الإفطار</td><td>{sar(r.breakfast_total)}</td></tr>}
+                {r.extra_beds > 0 && <tr><td>الأسرّة الإضافية · {r.extra_beds}</td><td>{sar(r.extra_beds_total)}</td></tr>}
+                <tr className="sheet-total"><td>الإجمالي شامل الضريبة</td><td>{sar(r.total)}</td></tr>
+              </tbody>
+            </table>
+            {perNight.length > 0 && (
+              <ul className="sheet-nights">
+                {perNight.map((n) => <li key={n.night}>{longDate(n.night)}: {sar(n.price)}</li>)}
+              </ul>
+            )}
+            <p className="sheet-note">الدفع عند الوصول إلى الفندق.</p>
+          </>
+        )}
+      </section>
+      <section className="sheet-notes">
+        <h2>ملاحظات الضيف</h2>
+        <p>{r.notes || '—'}</p>
+      </section>
+      <div className="sheet-signs">
+        {sign('توقيع الضيف')}
+        {sign('توقيع موظف الاستقبال')}
+      </div>
+    </div>
+  );
+}

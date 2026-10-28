@@ -27,7 +27,7 @@
 // presses and drags never close, clean / dirty close, the unsaved-changes confirm, saving in flight, a failed save,
 // beforeunload only while dirty, the page-level forms and the sidebar (admin/tests/dialog-guard.mjs).
 // Everything it writes is undone at the end (test room type via qa_fixture, overrides deactivated, settings restored).
-import { chromium } from 'playwright';
+import { chromium, webkit } from 'playwright';
 import { readFileSync } from 'node:fs';
 import { APP_PATH, handleBackupCodes, passCode, routeLoginCode } from './code-login.mjs';
 import { guardChecks, pageGuardChecks } from './dialog-guard.mjs';
@@ -373,12 +373,45 @@ try {
     await page.waitForSelector('[data-wa="booking_confirmed"]', { timeout: 10000 }).catch(() => {});
     check((await page.locator('[data-wa="booking_request_received"][data-wa-status="test"]').count()) === 1 && (await page.locator('[data-wa="booking_confirmed"][data-wa-status="test"]').count()) === 1,
       'whatsapp: request received + confirmed from the dashboard, both logged (test: built, not sent)', await page.locator('[data-wa-section]').innerText().catch(() => ''));
+    // ── task 5 C: «طباعة» — one A4 sheet with both signature blocks (Chromium PDF; WebKit print layout) ──
+    const printBtn = page.locator('aside.drawer [data-action="print"]');
+    check((await printBtn.count()) === 1 && (await printBtn.innerText()).trim() === 'طباعة', 'print: «طباعة» in the booking details');
+    await page.evaluate(() => { window.__printed = 0; window.print = () => { window.__printed++; }; });
+    await printBtn.click();
+    check((await page.evaluate(() => window.__printed)) === 1, 'print: the button opens the print dialog');
+    const printCheck = async (label) => {
+      const pdf = await page.pdf({ preferCSSPageSize: true });
+      const pagesN = Number(pdf.toString('latin1').match(/\/Count (\d+)/)?.[1] ?? 0);
+      await page.emulateMedia({ media: 'print' });
+      const sheet = await page.evaluate(() => {
+        const el = document.querySelector('[data-print-sheet]');
+        const vis = (n) => n && getComputedStyle(n).display !== 'none';
+        const others = Array.from(document.body.children).filter((c) => c !== el && vis(c)).length;
+        return { shown: vis(el), others, text: el?.innerText ?? '', signs: el ? el.querySelectorAll('.sheet-sign').length : 0, html: el?.outerHTML ?? '', css: Array.from(document.styleSheets).map((s) => { try { return Array.from(s.cssRules).map((r) => r.cssText).join('\n'); } catch { return ''; } }).join('\n') };
+      });
+      await page.emulateMedia({ media: null });
+      check(pagesN === 1, `print (${label}): Chromium A4 PDF has one page`, String(pagesN));
+      check(sheet.shown && sheet.others === 0, `print (${label}): only the sheet prints`, JSON.stringify({ shown: sheet.shown, others: sheet.others }));
+      check(sheet.signs === 2 && sheet.text.includes('توقيع الضيف') && sheet.text.includes('توقيع موظف الاستقبال') && (sheet.text.match(/التوقيع/g) ?? []).length === 2, `print (${label}): both signature blocks with name / signature / date lines`);
+      check(sheet.text.includes(LONG_NOTES.slice(0, 40)) && !ARABIC_DIGITS.test(sheet.text) && sheet.text.includes('الإجمالي شامل الضريبة') === (label === 'confirmed'), `print (${label}): the stored fields, the long notes, Western digits`);
+      // WebKit: the same sheet and stylesheet in print media at the A4 printable width (210 − 2 × 12 mm)
+      const wk = await webkit.launch();
+      const wp = await wk.newPage({ viewport: { width: Math.floor(186 * 96 / 25.4), height: 1000 } });
+      await wp.emulateMedia({ media: 'print' });
+      await wp.setContent(`<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><base href="${BASE}/"><style>${sheet.css}</style></head><body>${sheet.html}</body></html>`, { waitUntil: 'load' });
+      const h = await wp.evaluate(() => Math.ceil(document.querySelector('[data-print-sheet]').getBoundingClientRect().height));
+      await wk.close();
+      check(h > 300 && h <= Math.floor(273 * 96 / 25.4), `print (${label}): WebKit print layout fits one A4 page`, `${h}px`);
+    };
+    await printCheck('confirmed');
+    check(!ARABIC_DIGITS.test(await page.evaluate(() => document.body.innerText)), 'print: screen unchanged (sheet hidden on screen)');
     await closeDrawer();
     // the refused one: «تعذّر الإرسال» + the reason in Arabic + «إعادة الإرسال» → built again (test booking)
     await openBooking(r3.ref);
     const failed = page.locator('[data-wa="booking_request_received"][data-wa-status="failed"]');
     await failed.waitFor({ timeout: 10000 }).catch(() => {});
     check((await failed.count()) === 1 && (await failed.innerText()).includes('تعذّر الإرسال') && (await failed.locator('[data-wa-reason]').innerText()).trim() === 'رفضت خدمة واتساب الرسالة.', 'whatsapp: a refused message shows «تعذّر الإرسال» with the reason in Arabic', await failed.innerText().catch(() => ''));
+    await printCheck('request');
     await failed.locator('[data-action="wa-resend"]').click();
     const resent = page.locator('[data-wa="booking_request_received"][data-wa-status="test"]');
     await resent.waitFor({ timeout: 20000 }).catch(() => {});

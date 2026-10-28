@@ -304,6 +304,47 @@ body {
 /* mobile tab bar: seven items, short labels, no wrapping */
 .tabbar a { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
+/* booking sheet (task 5 C, 28 Oct 2026): «طباعة» in the booking details prints ONE A4 page — the sheet alone, black on
+   white whatever the theme, nothing of the screen UI. The sheet only exists while a booking's details are open
+   (portal into <body>), so printing any other page is unaffected. */
+.print-sheet { display: none; }
+@media print {
+  @page { size: A4; margin: 12mm; }
+  body:has(> .print-sheet) { background: #fff !important; }
+  body:has(> .print-sheet) > *:not(.print-sheet) { display: none !important; }
+  .print-sheet, .print-sheet * { visibility: visible !important; }
+  .print-sheet {
+    display: block; color: #000; background: #fff; font-family: 'IBM Plex Sans Arabic', 'Segoe UI', Tahoma, sans-serif;
+    font-size: 10.5pt; line-height: 1.45; -webkit-print-color-adjust: exact; print-color-adjust: exact;
+  }
+  .print-sheet h2 { font-size: 10.5pt; font-weight: 700; margin: 0 0 1.5mm; color: #8A6239; }
+  .print-sheet h3 { font-size: 10.5pt; font-weight: 700; margin: 0 0 3mm; }
+  .print-sheet p { margin: 0; }
+  .sheet-head { display: flex; align-items: center; justify-content: space-between; gap: 6mm; padding-bottom: 3mm; border-bottom: 0.4mm solid #A97C50; }
+  .sheet-head img { height: 11mm; width: auto; }
+  .sheet-head div { text-align: end; }
+  .sheet-branch { font-weight: 700; font-size: 12pt; }
+  .sheet-ref b { font-size: 12pt; letter-spacing: 0.3px; }
+  .sheet-meta { display: flex; flex-wrap: wrap; gap: 2mm 8mm; margin: 3mm 0 !important; }
+  .sheet-fields { display: grid; grid-template-columns: 34mm 1fr; gap: 1.2mm 4mm; margin: 0 0 4mm; padding: 3mm 0; border-top: 0.2mm solid #ccc; border-bottom: 0.2mm solid #ccc; }
+  .sheet-fields dt { color: #333; }
+  .sheet-fields dd { margin: 0; font-weight: 600; }
+  .sheet-price { margin-bottom: 4mm; break-inside: avoid; }
+  .sheet-price table { width: 100%; border-collapse: collapse; }
+  .sheet-price td { padding: 0.6mm 0; }
+  .sheet-price td:last-child { text-align: end; font-weight: 600; white-space: nowrap; }
+  .sheet-total td { border-top: 0.2mm solid #000; padding-top: 1.2mm; font-weight: 700; }
+  .sheet-nights { list-style: none; margin: 1.5mm 0 0; padding: 0; columns: 3; column-gap: 6mm; font-size: 9pt; }
+  .sheet-note { font-size: 9pt; color: #333; margin-top: 1mm !important; }
+  .sheet-notes { margin-bottom: 6mm; }
+  .sheet-notes p { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 9.5pt; }
+  .sheet-signs { display: grid; grid-template-columns: 1fr 1fr; gap: 10mm; break-inside: avoid; }
+  .sheet-sign { border: 0.2mm solid #000; border-radius: 1.5mm; padding: 4mm; }
+  .sheet-sign p { display: flex; align-items: flex-end; gap: 3mm; margin-top: 5mm; }
+  .sheet-sign p span { min-width: 14mm; }
+  .sheet-sign p i { flex: 1; border-bottom: 0.2mm solid #000; height: 5mm; }
+}
+
 /* backup codes (phase 2a.2): «طباعة» prints the codes block only */
 @media print {
   body * { visibility: hidden; }
