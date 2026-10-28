@@ -143,7 +143,48 @@ function guestsLine(c: Content, adults: number, children: number, L: Locale): st
 }
 
 // ── frame ─────────────────────────────────────────────────────────────────────────────────────────────────────
-function doc(opts: { lang: Locale; title: string; preheader: string; body: string }): string {
+/**
+ * Print (task 5 B, 28 Oct 2026): the internal emails (reception / sales / management — booking request, confirmed
+ * booking, partner enquiry, low-inventory alert) print on ONE A4 page in Chrome, Edge and Safari: white page, no colour
+ * band (the navy header turns white and swaps the reversed logo for the bronze one, 120 px), black text, tighter
+ * spacing, 12 px (9 pt) minimum, the action buttons left out (links are useless on paper), no page break inside a row.
+ * Screen rendering is untouched; guest emails and the Auth templates do not carry it (opts.print). The hidden print
+ * logo is excluded from Outlook desktop (conditional comment), which cannot honour display:none on images.
+ */
+const PRINT_CSS = `
+  .print-logo { display:none; }
+  @media print {
+    @page { size: A4; margin: 10mm; }
+    html, body, .bg-page, .bg-card, .bg-soft, .pill, .hdr { background:#FFFFFF !important; }
+    body { margin:0 !important; }
+    .page-pad { padding:0 !important; }
+    .container { width:100% !important; max-width:none !important; }
+    .hdr { padding:0 0 6px !important; text-align:right !important; border-bottom:1px solid ${BRONZE}; }
+    .hdr .screen-logo { display:none !important; }
+    .hdr .print-logo { display:block !important; width:120px !important; max-width:120px !important; height:auto !important; margin:0 !important; }
+    .hdr-rule { display:none !important; }
+    .px, .bg-card { padding:8px 0 0 !important; }
+    .pxf { padding:6px 0 0 !important; }
+    .t-ink, .t-muted, .t-bronze, h1, h2, p, td, span { color:#000000 !important; }
+    .tag { background:#FFFFFF !important; color:#000000 !important; border:1px solid #000000; }
+    .stack { display:none !important; }
+    div[style*="line-height"][style*="font-size:0"] { height:6px !important; line-height:6px !important; }
+    h1 { font-size:16px !important; line-height:21px !important; margin:0 0 6px !important; }
+    h2 { font-size:12px !important; line-height:16px !important; margin:8px 0 4px !important; }
+    p { font-size:12px !important; line-height:16px !important; margin-bottom:4px !important; }
+    .kvbox > tbody > tr > td { padding:6px 8px !important; }
+    .kv td { font-size:12px !important; line-height:16px !important; }
+    .kv tr + tr td { padding-top:3px !important; }
+    .kv tr { display:inline-table; width:50%; vertical-align:top; }
+    .kv td.k { padding-inline-end:8px !important; }
+    .kv tr.wide { width:100%; }
+    .kv tr.pn { width:33.33%; }
+    .kv tr.pn td.k { width:58% !important; }
+    .bd { border-color:#9A9A9A !important; }
+    tr, .kv, .bg-soft { break-inside:avoid; page-break-inside:avoid; }
+  }`;
+
+function doc(opts: { lang: Locale; title: string; preheader: string; body: string; print?: boolean }): string {
   const dir = opts.lang === 'ar' ? 'rtl' : 'ltr';
   // the preheader is followed by invisible spacers so clients do not pull body text into the preview line
   const spacer = '&#8199;&#65279;&#847;'.repeat(40);
@@ -194,13 +235,13 @@ function doc(opts: { lang: Locale; title: string; preheader: string; body: strin
   /* numbers a client might auto-link (CR, VAT, refs): keep the text colour, no underline (Apple, Gmail, Outlook.com) */
   a[x-apple-data-detectors] { color:inherit !important; text-decoration:none !important; font-size:inherit !important; font-family:inherit !important; font-weight:inherit !important; line-height:inherit !important; }
   u + #body a, #MessageViewBody a { color:inherit; text-decoration:none; font-size:inherit; font-family:inherit; font-weight:inherit; line-height:inherit; }
-  .nolink, .nolink a { color:inherit !important; text-decoration:none !important; }
+  .nolink, .nolink a { color:inherit !important; text-decoration:none !important; }${opts.print ? PRINT_CSS : ''}
 </style>
 </head>
 <body id="body" class="bg-page" style="margin:0; padding:0; background:${PORCELAIN};">
 <div style="display:none; font-size:1px; line-height:1px; max-height:0; max-width:0; opacity:0; overflow:hidden; mso-hide:all;">${esc(opts.preheader)}${spacer}</div>
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" class="bg-page" bgcolor="${PORCELAIN}" style="background:${PORCELAIN};">
-<tr><td align="center" style="padding:24px 12px;">
+<tr><td align="center"${opts.print ? ' class="page-pad"' : ''} style="padding:24px 12px;">
 <!--[if mso]><table role="presentation" width="600" align="center" cellpadding="0" cellspacing="0" border="0"><tr><td><![endif]-->
 <table role="presentation" class="container" width="600" cellpadding="0" cellspacing="0" border="0" style="width:100%; max-width:600px;">
 ${opts.body}
@@ -212,12 +253,21 @@ ${opts.body}
 </html>`;
 }
 
-function header(c: Content, altText?: string): string {
+function header(c: Content, altText?: string, print = false): string {
   const alt = altText ?? `${c.brand.ar} | ${c.brand.en}`;
-  return `<tr><td bgcolor="${NAVY}" align="center" style="background:${NAVY}; padding:28px 24px;">
+  if (!print) {
+    return `<tr><td bgcolor="${NAVY}" align="center" style="background:${NAVY}; padding:28px 24px;">
 <img src="${esc(c.email_logo_url)}" width="180" height="41" alt="${esc(alt)}" style="display:block; margin:0 auto; width:180px; max-width:180px; height:auto; color:${PORCELAIN}; font-family:${FONT.en}; font-size:18px;">
 </td></tr>
 <tr><td bgcolor="${BRONZE}" height="2" style="background:${BRONZE}; height:2px; font-size:0; line-height:0;">&nbsp;</td></tr>`;
+  }
+  // print: the bronze logo (the same approved artwork, not reversed) waits hidden and replaces the reversed one on paper
+  const printLogo = String(c.email_logo_url).replace('-reversed', '');
+  return `<tr><td class="hdr" bgcolor="${NAVY}" align="center" style="background:${NAVY}; padding:28px 24px;">
+<img src="${esc(c.email_logo_url)}" width="180" height="41" alt="${esc(alt)}" class="screen-logo" style="display:block; margin:0 auto; width:180px; max-width:180px; height:auto; color:${PORCELAIN}; font-family:${FONT.en}; font-size:18px;">
+<!--[if !mso]><!--><img src="${esc(printLogo)}" width="120" height="27" alt="" class="print-logo" style="display:none; width:120px; height:auto; mso-hide:all;"><!--<![endif]-->
+</td></tr>
+<tr><td class="hdr-rule" bgcolor="${BRONZE}" height="2" style="background:${BRONZE}; height:2px; font-size:0; line-height:0;">&nbsp;</td></tr>`;
 }
 
 function card(inner: string): string {
@@ -289,17 +339,19 @@ function flagNote(L: Locale, lines: string[]): string {
 }
 
 /** Key/value rows inside a soft card; stacks to one column on phones. */
-function kvCard(L: Locale, rows: [string, string][]): string {
+/** rows: [key, value] or [key, value, print class] — 'wide' (a full line on paper: notes, totals) or 'pn' (a
+ * per-night price, three to a line on paper); screen rendering ignores the class. */
+function kvCard(L: Locale, rows: ([string, string] | [string, string, string])[]): string {
   const k = L === 'ar' ? 'right' : 'left';
   const body = rows
     .map(
-      ([key, val], i) => `<tr>
+      ([key, val, cls], i) => `<tr${cls ? ` class="${cls}"` : ''}>
 <td class="k t-muted" width="38%" valign="top" style="padding:${i ? 9 : 0}px 0 0; text-align:${k}; font-family:${FONT[L]}; font-size:14px; line-height:20px; color:${MUTED};">${esc(key)}</td>
 <td class="t-ink" valign="top" style="padding:${i ? 9 : 0}px 0 0; text-align:${k}; font-family:${FONT[L]}; font-size:15px; line-height:21px; font-weight:600; color:${INK};">${ltrSafe(val)}</td>
 </tr>`,
     )
     .join('');
-  return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" class="bg-soft bd" style="background:${PORCELAIN}; border:1px solid ${LINE}; border-radius:8px;">
+  return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" class="kvbox bg-soft bd" style="background:${PORCELAIN}; border:1px solid ${LINE}; border-radius:8px;">
 <tr><td style="padding:16px 18px;"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" class="kv" dir="${L === 'ar' ? 'rtl' : 'ltr'}">${body}</table></td></tr></table>`;
 }
 /** Bulletproof button: VML roundrect for Outlook, a padded <a> everywhere else. */
@@ -348,7 +400,7 @@ export function bookingNotification(c: Content, d: BookingMail): Mail {
     [lab.full_name, d.name],
     [lab.phone, d.phone],
     [plainLabel(lab.email), d.email || '—'],
-    [plainLabel(lab.notes), d.notes || '—'],
+    [plainLabel(lab.notes), d.notes || '—', 'wide'],
     [M.language, d.locale],
     [M.received_at, d.receivedAt],
   ];
@@ -364,7 +416,7 @@ export function bookingNotification(c: Content, d: BookingMail): Mail {
   const coordination = d.needsCoordination ? [fill(M.coordination_flag, { n: String(d.adults), capacity: String(d.capacity), beds: String(d.extraBeds) })] : [];
   const inner = section(
     L,
-    `<p style="margin:0 0 14px;"><span style="display:inline-block; padding:5px 12px; border-radius:999px; background:${tagBg}; color:${WHITE}; font-family:${FONT.ar}; font-size:13px; font-weight:700;">${esc(b.name_ar)}</span>
+    `<p style="margin:0 0 14px;"><span class="tag" style="display:inline-block; padding:5px 12px; border-radius:999px; background:${tagBg}; color:${WHITE}; font-family:${FONT.ar}; font-size:13px; font-weight:700;">${esc(b.name_ar)}</span>
 <span class="t-muted" dir="ltr" style="display:inline-block; margin-inline-start:8px; font-family:${FONT.en}; font-size:13px; color:${MUTED};">${esc(d.ref)} · ${esc(d.receivedAt)}</span></p>
 ${headline(L, M.hotel_intro)}
 ${coordination.length ? `${flagNote(L, coordination)}<div style="height:12px; line-height:12px; font-size:0;">&nbsp;</div>` : ''}
@@ -376,7 +428,7 @@ ${kvCard(L, rows)}
 ${para(L, d.email ? M.notif_reply_hint : M.notif_no_email, { muted: true, size: 13 })}
 ${para(L, M.hotel_footer, { muted: true, size: 12 })}`,
   );
-  const html = doc({ lang: 'ar', title: subject, preheader: `${b.name_ar} · ${pluralForm(lab.plural.nights, d.nights)} · ${breakfast} — ${d.ref}`, body: header(c) + card(inner) + footer(c, ['ar']) });
+  const html = doc({ lang: 'ar', title: subject, preheader: `${b.name_ar} · ${pluralForm(lab.plural.nights, d.nights)} · ${breakfast} — ${d.ref}`, body: header(c, undefined, true) + card(inner) + footer(c, ['ar']), print: true });
   const text = [
     M.hotel_intro,
     ...(coordination.length ? ['', ...coordination] : []),
@@ -492,14 +544,14 @@ export function partnerNotification(c: Content, d: PartnerMail): Mail {
     [pl.guests, String(d.guests)],
     [pl.rooms, d.rooms === null ? '—' : String(d.rooms)],
     [pl.meals, d.meals ? (c.meal_labels?.ar?.[d.meals] ?? d.meals) : '—'],
-    [pl.notes, d.notes || '—'],
+    [pl.notes, d.notes || '—', 'wide'],
     [M.language, d.locale],
     [M.received_at, d.receivedAt],
   ];
   const subject = fill(M.partner_subject, { organisation: d.organisation || d.name, ref: d.ref });
   const inner = section(
     L,
-    `<p style="margin:0 0 14px;"><span style="display:inline-block; padding:5px 12px; border-radius:999px; background:${PORCELAIN}; border:1px solid ${BRONZE}; color:${INK}; font-family:${FONT.ar}; font-size:13px; font-weight:700;">${esc(typeName)}</span>
+    `<p style="margin:0 0 14px;"><span class="tag" style="display:inline-block; padding:5px 12px; border-radius:999px; background:${PORCELAIN}; border:1px solid ${BRONZE}; color:${INK}; font-family:${FONT.ar}; font-size:13px; font-weight:700;">${esc(typeName)}</span>
 <span class="t-muted" dir="ltr" style="display:inline-block; margin-inline-start:8px; font-family:${FONT.en}; font-size:13px; color:${MUTED};">${esc(d.ref)} · ${esc(d.receivedAt)}</span></p>
 ${headline(L, M.partner_intro)}
 ${buttons(L, [button(L, wa(d.phone), M.notif_wa_guest, 'solid'), button(L, tel(d.phone), M.notif_call, 'ghost')])}
@@ -509,7 +561,7 @@ ${kvCard(L, rows)}
 ${para(L, M.notif_reply_hint, { muted: true, size: 13 })}
 ${para(L, M.hotel_footer, { muted: true, size: 12 })}`,
   );
-  const html = doc({ lang: 'ar', title: subject, preheader: `${typeName} · ${d.organisation || d.name} — ${d.ref}`, body: header(c) + card(inner) + footer(c, ['ar']) });
+  const html = doc({ lang: 'ar', title: subject, preheader: `${typeName} · ${d.organisation || d.name} — ${d.ref}`, body: header(c, undefined, true) + card(inner) + footer(c, ['ar']), print: true });
   const text = [M.partner_intro, '', textRows(rows), '', `${M.notif_wa_guest}: ${wa(d.phone)}`, `${M.notif_call}: ${tel(d.phone)}`, '', M.notif_reply_hint, M.hotel_footer].join('\n');
   return { subject, html, text };
 }
@@ -604,21 +656,21 @@ function longDate(c: Content, iso: string, L: Locale): string {
 }
 
 /** Price rows of a quote: room × nights (per-night list when the rates differ), breakfast, extra beds, total. */
-function priceRows(c: Content, q: Quote, L: Locale): [string, string][] {
+function priceRows(c: Content, q: Quote, L: Locale): [string, string, string][] {
   const lab = c.labels[L];
   const Q = c.quote[L];
   const nightsWord = pluralForm(lab.plural.nights, q.count);
   const prices = q.nights.map((n) => Number(n.price));
   const uniform = prices.every((p) => p === prices[0]);
-  const rows: [string, string][] = [];
-  rows.push([fill(Q.room_line, { nights: nightsWord }), uniform ? `${q.count} × ${sar(prices[0], L)} = ${sar(q.room_total, L)}` : sar(q.room_total, L)]);
+  const rows: [string, string, string][] = [];
+  rows.push([fill(Q.room_line, { nights: nightsWord }), uniform ? `${q.count} × ${sar(prices[0], L)} = ${sar(q.room_total, L)}` : sar(q.room_total, L), 'wide']);
   // rates differ across the stay: one row per night (dates and amounts never share a bidi run)
   // the override label of the night's language: Arabic text never appears in English content
   const labelOf = (n: Quote['nights'][number]) => (L === 'en' ? n.label_en : n.label) || '';
-  if (!uniform) for (const n of q.nights) rows.push([longDate(c, n.night, L), labelOf(n) ? `${sar(Number(n.price), L)} — ${labelOf(n)}` : sar(Number(n.price), L)]);
-  if (q.breakfast === 'with') rows.push([Q.breakfast_line, sar(q.breakfast_total, L)]);
-  if (q.extra_beds > 0) rows.push([fill(Q.extra_beds_line, { beds: String(q.extra_beds) }), sar(q.extra_beds_total, L)]);
-  rows.push([Q.total_line, sar(q.total, L)]);
+  if (!uniform) for (const n of q.nights) rows.push([longDate(c, n.night, L), labelOf(n) ? `${sar(Number(n.price), L)} — ${labelOf(n)}` : sar(Number(n.price), L), 'pn']);
+  if (q.breakfast === 'with') rows.push([Q.breakfast_line, sar(q.breakfast_total, L), 'wide']);
+  if (q.extra_beds > 0) rows.push([fill(Q.extra_beds_line, { beds: String(q.extra_beds) }), sar(q.extra_beds_total, L), 'wide']);
+  rows.push([Q.total_line, sar(q.total, L), 'wide']);
   return rows;
 }
 
@@ -731,7 +783,7 @@ export function confirmedNotification(c: Content, d: ConfirmedMail): Mail {
     [lab.full_name, d.name],
     [lab.phone, d.phone],
     [plainLabel(lab.email), d.email || '—'],
-    [plainLabel(lab.notes), d.notes || '—'],
+    [plainLabel(lab.notes), d.notes || '—', 'wide'],
     [M.language, d.locale],
     [M.received_at, d.receivedAt],
   ];
@@ -739,7 +791,7 @@ export function confirmedNotification(c: Content, d: ConfirmedMail): Mail {
   const subject = fill(M.confirmed_hotel_subject, { branch: b.name_ar, ref: d.ref });
   const inner = section(
     L,
-    `<p style="margin:0 0 14px;"><span style="display:inline-block; padding:5px 12px; border-radius:999px; background:${tagBg}; color:${WHITE}; font-family:${FONT.ar}; font-size:13px; font-weight:700;">${esc(b.name_ar)}</span>
+    `<p style="margin:0 0 14px;"><span class="tag" style="display:inline-block; padding:5px 12px; border-radius:999px; background:${tagBg}; color:${WHITE}; font-family:${FONT.ar}; font-size:13px; font-weight:700;">${esc(b.name_ar)}</span>
 <span class="t-muted" dir="ltr" style="display:inline-block; margin-inline-start:8px; font-family:${FONT.en}; font-size:13px; color:${MUTED};">${esc(d.ref)} · ${esc(d.receivedAt)}</span></p>
 ${headline(L, M.confirmed_hotel_intro)}
 ${flagNote(L, [M.close_other_platforms])}
@@ -753,7 +805,7 @@ ${kvCard(L, price)}
 ${para(L, M.pay_at_hotel, { muted: true, size: 13 })}
 ${para(L, M.confirmed_hotel_footer, { muted: true, size: 12 })}`,
   );
-  const html = doc({ lang: 'ar', title: subject, preheader: `${b.name_ar} · ${pluralForm(lab.plural.nights, d.nights)} · ${sar(d.quote.total, 'ar')} — ${d.ref}`, body: header(c) + card(inner) + footer(c, ['ar']) });
+  const html = doc({ lang: 'ar', title: subject, preheader: `${b.name_ar} · ${pluralForm(lab.plural.nights, d.nights)} · ${sar(d.quote.total, 'ar')} — ${d.ref}`, body: header(c, undefined, true) + card(inner) + footer(c, ['ar']), print: true });
   const text = [
     M.confirmed_hotel_intro,
     '',
@@ -785,7 +837,7 @@ export function lowInventoryAlert(c: Content, d: LowInventoryMail): Mail {
   const href = `${String(c.admin_url).replace(/\/$/, '')}/inventory?branch=${encodeURIComponent(d.branch)}&from=${encodeURIComponent(first)}`;
   const inner = section(
     L,
-    `<p style="margin:0 0 14px;"><span style="display:inline-block; padding:5px 12px; border-radius:999px; background:${BRANCH_TAG[d.branch] ?? NAVY}; color:${WHITE}; font-family:${FONT.ar}; font-size:13px; font-weight:700;">${esc(b.name_ar)}</span>
+    `<p style="margin:0 0 14px;"><span class="tag" style="display:inline-block; padding:5px 12px; border-radius:999px; background:${BRANCH_TAG[d.branch] ?? NAVY}; color:${WHITE}; font-family:${FONT.ar}; font-size:13px; font-weight:700;">${esc(b.name_ar)}</span>
 <span class="t-ink" style="display:inline-block; margin-inline-start:8px; font-family:${FONT.ar}; font-size:14px; font-weight:700; color:${INK};">${esc(room)}</span></p>
 ${headline(L, fill(M.low_intro, { ref: d.ref }))}
 ${kvCard(L, rows)}
@@ -795,7 +847,7 @@ ${buttons(L, [button(L, href, M.low_button, 'bronze')])}
 ${para(L, M.close_other_platforms, { muted: true, size: 13 })}
 ${para(L, M.hotel_footer, { muted: true, size: 12 })}`,
   );
-  const html = doc({ lang: 'ar', title: subject, preheader: `${b.name_ar} · ${room} — ${d.ref}`, body: header(c) + card(inner) + footer(c, ['ar']) });
+  const html = doc({ lang: 'ar', title: subject, preheader: `${b.name_ar} · ${room} — ${d.ref}`, body: header(c, undefined, true) + card(inner) + footer(c, ['ar']), print: true });
   const text = [fill(M.low_intro, { ref: d.ref }), `${b.name_ar} — ${room}`, '', textRows(rows), '', `${M.low_button}: ${href}`, M.close_other_platforms, M.hotel_footer].join('\n');
   return { subject, html, text };
 }
