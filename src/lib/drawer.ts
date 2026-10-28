@@ -16,7 +16,7 @@
  * script of the first load as run), so for the rest of the visit the drawer opened an inert form without the
  * branch / room prefill. The link then loads /booking/?… in full instead: fresh scripts, prefilled from the URL.
  */
-import { bindOnce, onPageLeave, onPageLoad, reducedMotion } from './client';
+import { bindOnce, onOutsidePress, onPageLeave, onPageLoad, reducedMotion } from './client';
 
 type DL = { dataLayer?: unknown[] };
 type Prefill = { branch: string | null; room: string | null; check_in: string | null; check_out: string | null };
@@ -109,9 +109,12 @@ onPageLoad(() => {
   controllers.set(dialog, { open });
 
   dialog.querySelector('[data-drawer-close]')?.addEventListener('click', close);
-  dialog.addEventListener('click', (e) => {
-    if (e.target === dialog) close(); // backdrop
-  });
+  // backdrop (28 Oct 2026, decision B8): only a press that starts AND ends on the backdrop closes — a text-selection
+  // drag out of a field, or a scrollbar drag, that ends on the backdrop never does (a `click` would: the browser
+  // dispatches it to the common ancestor, the dialog itself). The listeners end with the page.
+  const gone = new AbortController();
+  document.addEventListener('astro:before-swap', () => gone.abort(), { once: true });
+  onOutsidePress(() => Array.from(dialog.children), close, { signal: gone.signal, active: () => dialog.open && !closing });
   dialog.addEventListener('cancel', (e) => {
     e.preventDefault(); // Esc: run the slide-out, then close
     close();

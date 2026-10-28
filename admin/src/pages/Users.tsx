@@ -10,7 +10,7 @@ import * as api from '../lib/api';
 import type { Level, Role, Section, StaffUser } from '../lib/api';
 import { useSession } from '../lib/session';
 import { BRANCH_NAMES, ROLE_LABELS, riyadhDateTimeLong } from '../lib/format';
-import { ErrorBox, Field, Loading, Modal, Segmented, Spinner, useToast } from '../components/ui';
+import { CancelButton, DirtyScope, ErrorBox, Field, Loading, Modal, Segmented, Spinner, useToast } from '../components/ui';
 import { SECURITY_TEXT as SEC } from '../lib/secondStep';
 
 const LEVELS: { value: Level; label: string }[] = [{ value: 'none', label: 'لا شيء' }, { value: 'view', label: 'عرض' }, { value: 'edit', label: 'تعديل' }];
@@ -129,10 +129,10 @@ export default function Users() {
           })}
         </ul>
       )}
-      <Modal open={!!revoke} onClose={() => setRevoke(null)} title={SEC.revoke}>
+      <Modal open={!!revoke} onClose={() => setRevoke(null)} title={SEC.revoke} busy={!!busy}>
         <p className="text-sm mb-4">{revoke ? SEC.revokeUserBody(revoke.full_name ?? revoke.email) : ''}</p>
         <div className="flex gap-2 justify-end">
-          <button type="button" className="btn btn-ghost" onClick={() => setRevoke(null)}>إلغاء</button>
+          <CancelButton disabled={!!busy} />
           <button type="button" className="btn btn-danger" data-action="revoke-devices-go" disabled={!!busy}
             onClick={() => { const u = revoke!; setRevoke(null); void act(`${SEC.revoked} — ${u.full_name ?? u.email}`, u.user_id, () => api.revokeDevices(u.user_id)); }}>
             {SEC.revokeGo}
@@ -161,7 +161,7 @@ function PermissionMatrix({ user, sections, branches, editable, busy, isLastAdmi
   const usersLocked = isLastAdmin; // the last admin keeps users = edit
 
   return (
-    <div className="mt-4 border-t border-line pt-4 grid gap-4 lg:grid-cols-[1fr_280px]" data-matrix={user.email}>
+    <DirtyScope className="mt-4 border-t border-line pt-4 grid gap-4 lg:grid-cols-[1fr_280px]" data-matrix={user.email} version={`${user.role ?? ''}|${user.branch ?? ''}|${JSON.stringify(user.permissions)}`}>
       <div>
         <div className="flex items-center justify-between gap-2 mb-2">
           <h3 className="font-bold text-sm">الصلاحيات حسب القسم</h3>
@@ -211,14 +211,14 @@ function PermissionMatrix({ user, sections, branches, editable, busy, isLastAdmi
           </div>
         </Field>
       </div>
-      <Modal open={confirmPreset} onClose={() => setConfirmPreset(false)} title="تطبيق القالب">
+      <Modal open={confirmPreset} onClose={() => setConfirmPreset(false)} title="تطبيق القالب" busy={busy}>
         <p className="text-sm text-ink-muted">سيُستبدل كل صلاحيات {user.full_name} بقالب «{ROLE_LABELS[role]}». يمكن التراجع من التنبيه أو من السجل.</p>
         <div className="flex gap-2 justify-end mt-5">
-          <button type="button" className="btn btn-ghost" onClick={() => setConfirmPreset(false)}>إلغاء</button>
+          <CancelButton disabled={busy} />
           <button type="button" className="btn btn-primary" onClick={() => { setConfirmPreset(false); onSave(`طُبّق قالب ${ROLE_LABELS[role]} على ${user.full_name}`, { role, applyPreset: true }); }} data-action="apply-preset-go">تطبيق القالب</button>
         </div>
       </Modal>
-    </div>
+    </DirtyScope>
   );
 }
 
@@ -244,7 +244,7 @@ function InviteForm({ branches, onClose, onSaved }: { branches: api.Branch[]; on
     }
   }
   return (
-    <Modal open onClose={onClose} title="دعوة مستخدم">
+    <Modal open onClose={onClose} title="دعوة مستخدم" busy={busy}>
       <div className="grid gap-3">
         <Field label="البريد الإلكتروني" id="u-email"><input id="u-email" className="field latin" dir="ltr" type="email" value={email} onChange={(e) => setEmail(e.target.value)} /></Field>
         <Field label="الاسم الظاهر" id="u-name" hint="للاستقبال المشترك: «استقبال طريق المطار» / «استقبال طريق الشفا»"><input id="u-name" className="field" value={name} onChange={(e) => setName(e.target.value)} /></Field>
@@ -263,7 +263,7 @@ function InviteForm({ branches, onClose, onSaved }: { branches: api.Branch[]; on
       <p className="text-xs text-ink-muted mt-3">تصل الدعوة بالبريد برابط لتعيين كلمة المرور؛ يعمل الرابط لمرة واحدة ومن أي متصفح.</p>
       <ErrorBox error={error} />
       <div className="flex gap-2 justify-end mt-5">
-        <button type="button" className="btn btn-ghost" onClick={onClose} disabled={busy}>إلغاء</button>
+        <CancelButton disabled={busy} />
         <button type="button" className="btn btn-primary" onClick={save} disabled={busy} data-action="user-save">{busy && <Spinner />} إرسال الدعوة</button>
       </div>
     </Modal>
@@ -287,12 +287,12 @@ function NameForm({ user, onClose, onSaved }: { user: StaffUser; onClose: () => 
     }
   }
   return (
-    <Modal open onClose={onClose} title="الاسم الظاهر">
+    <Modal open onClose={onClose} title="الاسم الظاهر" busy={busy}>
       <Field label="الاسم الظاهر" id="n-name" hint="يظهر في سجل التدقيق وفي رسائل التأكيد الداخلية."><input id="n-name" className="field" value={name} onChange={(e) => setName(e.target.value)} /></Field>
       <ErrorBox error={error} />
       <div className="flex gap-2 justify-end mt-5">
-        <button type="button" className="btn btn-ghost" onClick={onClose} disabled={busy}>إلغاء</button>
-        <button type="button" className="btn btn-primary" onClick={save} disabled={busy}>{busy && <Spinner />} حفظ</button>
+        <CancelButton disabled={busy} />
+        <button type="button" className="btn btn-primary" onClick={save} disabled={busy} data-action="name-save">{busy && <Spinner />} حفظ</button>
       </div>
     </Modal>
   );

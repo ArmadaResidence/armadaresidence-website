@@ -10,7 +10,7 @@ import * as api from '../lib/api';
 import type { Reservation, RoomType, StatusHistory, CalendarCell } from '../lib/api';
 import { useSession } from '../lib/session';
 import { BRANCH_NAMES, REASON_LABELS, STATUS_LABELS, adultsWord, childrenWord, dateRange, longDate, nightsWord, riyadhDateTimeLong, roomsLeft, sar, toCsv, riyadhToday } from '../lib/format';
-import { Confirm, Drawer, Empty, ErrorBox, Field, Loading, Modal, Spinner, useToast } from '../components/ui';
+import { CancelButton, Confirm, Drawer, Empty, ErrorBox, Field, Loading, Modal, Spinner, useLeaveGuard, useToast } from '../components/ui';
 import DateField from '../components/DateField';
 
 type Status = '' | 'request' | 'confirmed' | 'cancelled';
@@ -18,6 +18,7 @@ type Status = '' | 'request' | 'confirmed' | 'cancelled';
 export default function Bookings() {
   const { me } = useSession();
   const toast = useToast();
+  const guard = useLeaveGuard();
   const [params, setParams] = useSearchParams();
   const locked = me?.branch ?? null;
   const editable = api.canEdit(me, 'bookings');
@@ -126,7 +127,7 @@ export default function Bookings() {
       </div>
       <div className="card p-3 sm:p-4 mb-4 grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
         <Field label="الفرع" id="f-branch">
-          <select id="f-branch" className="field" value={branch} onChange={(e) => setBranch(e.target.value)} disabled={!!locked}>
+          <select id="f-branch" className="field" value={branch} onChange={(e) => { const v = e.target.value; guard.run(() => setBranch(v)); }} disabled={!!locked}>
             {!locked && <option value="">الفرعان</option>}
             {branches.filter((b) => !locked || b.slug === locked).map((b) => (
               <option key={b.slug} value={b.slug}>{BRANCH_NAMES[b.slug] ?? b.name_ar}</option>
@@ -203,7 +204,8 @@ export default function Bookings() {
           ))}
         </ul>
       )}
-      <Details r={open} roomTypes={roomTypes} editable={editable} onClose={() => setOpen(null)} onChanged={(msg) => { toast(msg); load(); setOpen(null); }} />
+      {/* keyed by the booking: every open starts from the saved values (decision B — reopening shows the saved values) */}
+      <Details key={open?.id ?? 'none'} r={open} roomTypes={roomTypes} editable={editable} onClose={() => setOpen(null)} onChanged={(msg) => { toast(msg); load(); setOpen(null); }} />
     </div>
   );
 }
@@ -211,13 +213,16 @@ export default function Bookings() {
 function Details({ r, roomTypes, editable, onClose, onChanged }: { r: Reservation | null; roomTypes: RoomType[]; editable: boolean; onClose: () => void; onChanged: (msg: string) => void }) {
   const toast = useToast();
   const [history, setHistory] = useState<StatusHistory[]>([]);
-  const [notes, setNotes] = useState('');
-  const savedNotes = useRef('');
+  const [notes, setNotes] = useState(r?.internal_notes ?? '');
+  const savedNotes = useRef(r?.internal_notes ?? '');
+  const [notesVersion, setNotesVersion] = useState(r?.internal_notes ?? '');
+  const [notesBusy, setNotesBusy] = useState(false);
+  const [notesError, setNotesError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [cancelOpen, setCancelOpen] = useState(false);
   const [reason, setReason] = useState('');
-  const [pickRt, setPickRt] = useState<string>('');
+  const [pickRt, setPickRt] = useState<string>(r?.room_type_id ?? '');
   const [nightIssues, setNightIssues] = useState<{ reason: string; nights: CalendarCell[] } | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -225,6 +230,7 @@ function Details({ r, roomTypes, editable, onClose, onChanged }: { r: Reservatio
     if (!r) return;
     setNotes(r.internal_notes ?? '');
     savedNotes.current = r.internal_notes ?? '';
+    setNotesVersion(r.internal_notes ?? '');
     setPickRt(r.room_type_id ?? '');
     setNightIssues(null);
     setError(null);
@@ -268,14 +274,21 @@ function Details({ r, roomTypes, editable, onClose, onChanged }: { r: Reservatio
       setBusy(false);
     }
   }
+  // 28 Oct 2026 (decision B): the notes save with their own button, never on blur — a blur-save fought the unsaved
+  // guard (the confirm itself moved the focus and saved what the user meant to discard)
   async function saveNotes() {
     if (notes === savedNotes.current) return;
+    setNotesBusy(true);
+    setNotesError(null);
     try {
       await api.saveInternalNotes(r!.id, notes);
       savedNotes.current = notes;
+      setNotesVersion(notes);
       toast('حُفظت الملاحظات');
     } catch (e) {
-      toast((e as Error).message, 'error');
+      setNotesError((e as Error).message);
+    } finally {
+      setNotesBusy(false);
     }
   }
   const waTemplate = () => {
@@ -291,8 +304,8 @@ function Details({ r, roomTypes, editable, onClose, onChanged }: { r: Reservatio
   };
 
   return (
-    <Drawer open={!!r} onClose={onClose} title={<span>{r.guest_name} <span className="num text-sm text-ink-muted">{r.ref}</span></span>}>
-      <div className="flex flex-wrap gap-2 mb-4">
+    <Drawer open={!!r} onClose={onClose} title={<span>{r.guest_name} <span className="num text-sm text-ink-muted">{r.ref}</span></span>} busy={busy || notesBusy}>
+      <div className="flex flex-wrap gap-2 mb-4" data-dirty-version={notesVersion}>
         <span className={`chip chip-${r.status}`}>{STATUS_LABELS[r.status]}</span>
         {r.confirmation === 'instant' && <span className="chip chip-request">تأكيد فوري من الموقع</span>}
         {r.needs_coordination && <span className="chip chip-flag">يحتاج تنسيق</span>}
@@ -333,16 +346,22 @@ function Details({ r, roomTypes, editable, onClose, onChanged }: { r: Reservatio
       )}
 
       <div className="flex flex-wrap gap-2 mb-1">
-        {editable && r.status === 'request' && <button type="button" className="btn btn-primary" onClick={() => setConfirmOpen(true)} data-action="confirm">تأكيد الحجز</button>}
-        {editable && r.status !== 'cancelled' && <button type="button" className="btn btn-danger" onClick={() => setCancelOpen(true)} data-action="cancel">إلغاء الحجز</button>}
+        {editable && r.status === 'request' && <button type="button" className="btn btn-primary" onClick={() => { setPickRt(r.room_type_id ?? ''); setNightIssues(null); setError(null); setConfirmOpen(true); }} data-action="confirm">تأكيد الحجز</button>}
+        {editable && r.status !== 'cancelled' && <button type="button" className="btn btn-danger" onClick={() => { setReason(''); setError(null); setCancelOpen(true); }} data-action="cancel">إلغاء الحجز</button>}
         <a className="btn btn-ghost" href={waTemplate()} target="_blank" rel="noopener">واتساب الضيف</a>
       </div>
       {editable && r.status !== 'cancelled' && <p className="text-xs text-ink-muted mb-5">التأكيد والإلغاء يرسلان بريدًا للضيف والاستقبال، لذلك لا يمكن التراجع عنهما.</p>}
       {!editable && <p className="text-xs text-ink-muted mb-5">صلاحيتك هنا للعرض فقط.</p>}
 
       <Field label="ملاحظات داخلية" id="internal-notes" hint="لا يراها الضيف.">
-        <textarea id="internal-notes" className="field min-h-24" value={notes} onChange={(e) => setNotes(e.target.value)} onBlur={saveNotes} disabled={!editable} />
+        <textarea id="internal-notes" className="field min-h-24" value={notes} onChange={(e) => setNotes(e.target.value)} disabled={!editable} />
       </Field>
+      {editable && (
+        <div className="flex items-center gap-2 mt-2">
+          <button type="button" className="btn btn-ghost btn-sm" onClick={saveNotes} disabled={notesBusy || notes === savedNotes.current} data-action="save-notes">{notesBusy && <Spinner />} حفظ الملاحظات</button>
+        </div>
+      )}
+      <ErrorBox error={notesError} />
 
       <h3 className="font-bold text-sm mt-5 mb-2">سجل الحالة</h3>
       <ol className="text-sm grid gap-1 num-ar">
@@ -356,7 +375,7 @@ function Details({ r, roomTypes, editable, onClose, onChanged }: { r: Reservatio
         ))}
       </ol>
 
-      <Modal open={confirmOpen} onClose={() => { setConfirmOpen(false); setNightIssues(null); setError(null); }} title="تأكيد الحجز">
+      <Modal open={confirmOpen} onClose={() => { setConfirmOpen(false); setNightIssues(null); setError(null); }} title="تأكيد الحجز" busy={busy}>
         <p className="text-sm text-ink-muted mb-3">يُخصم من مخزون كل ليلة ويُرسل التأكيد للضيف (إن كان له بريد) وإشعار للاستقبال. لا يمكن التراجع بعد الإرسال.</p>
         <Field label="نوع الغرفة" id="confirm-rt">
           <select id="confirm-rt" className="field" value={pickRt} onChange={(e) => { setPickRt(e.target.value); setNightIssues(null); }}>
@@ -377,7 +396,7 @@ function Details({ r, roomTypes, editable, onClose, onChanged }: { r: Reservatio
         )}
         <ErrorBox error={error} />
         <div className="flex gap-2 justify-end mt-5">
-          <button type="button" className="btn btn-ghost" onClick={() => setConfirmOpen(false)} disabled={busy}>رجوع</button>
+          <CancelButton label="رجوع" disabled={busy} />
           <button type="button" className="btn btn-primary" onClick={doConfirm} disabled={busy || !pickRt} data-action="confirm-go">{busy && <Spinner />} تأكيد</button>
         </div>
       </Modal>

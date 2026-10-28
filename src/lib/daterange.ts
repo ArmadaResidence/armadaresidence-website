@@ -21,7 +21,7 @@
  * field, one tap picks and closes), `min` (ISO; past dates viewable when it lies in the past — default today) and
  * `max` (ISO; default 31 December of next year).
  */
-import { onPageLoad, bindOnce, reducedMotion } from './client';
+import { onPageLoad, bindOnce, onOutsidePress, reducedMotion } from './client';
 import { addDays, nightsBetween, plural, riyadhToday, type PluralKey } from '../../supabase/functions/booking-request/rules.ts';
 
 type Which = 'start' | 'end';
@@ -430,9 +430,13 @@ export function initDateRange(root: HTMLElement): void {
     e.preventDefault(); // Esc: run the close transition, then close
     close();
   });
-  dialog.addEventListener('click', (e) => {
-    if (e.target === dialog) close(); // backdrop (the dialog itself has no padding)
-  });
+  // backdrop (28 Oct 2026, decision B8): closes only on a press that starts AND ends outside the panel — a drag that
+  // starts on a day or the month strip and ends on the backdrop keeps the picker open (a `click` would close it: the
+  // browser dispatches it to the common ancestor, the dialog itself). Site pages end the listener with the page; the
+  // dashboard mounts a picker once per field.
+  const gone = new AbortController();
+  document.addEventListener('astro:before-swap', () => gone.abort(), { once: true });
+  onOutsidePress(() => Array.from(dialog.children), () => close(), { signal: gone.signal, active: () => dialog.isConnected && dialog.open && !closing });
   monthsEl.addEventListener('click', (e) => {
     const td = (e.target as Element).closest<HTMLElement>('td[data-date]');
     if (td) pick(td.dataset.date!);

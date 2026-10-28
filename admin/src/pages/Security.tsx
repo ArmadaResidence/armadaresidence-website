@@ -5,7 +5,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import * as api from '../lib/api';
 import { useSession } from '../lib/session';
-import { ErrorBox, Loading, Modal, Spinner, useToast } from '../components/ui';
+import { CancelButton, ErrorBox, Loading, Modal, Spinner, useToast } from '../components/ui';
 import { clearDeviceToken } from '../lib/device';
 import { riyadhDateTimeLong } from '../lib/format';
 import { BACKUP_TEXT as B, SECURITY_TEXT as S } from '../lib/secondStep';
@@ -99,10 +99,10 @@ export default function Security() {
         </>
       )}
 
-      <Modal open={confirm} onClose={() => setConfirm(false)} title={S.revoke}>
+      <Modal open={confirm} onClose={() => setConfirm(false)} title={S.revoke} busy={busy}>
         <p className="text-sm mb-4">{S.revokeSelfBody}</p>
         <div className="flex gap-2 justify-end">
-          <button type="button" className="btn btn-ghost" onClick={() => setConfirm(false)} disabled={busy}>إلغاء</button>
+          <CancelButton disabled={busy} />
           <button type="button" className="btn btn-danger" onClick={revoke} disabled={busy} data-action="revoke-my-devices-go">{busy && <Spinner />} {S.revokeGo}</button>
         </div>
       </Modal>

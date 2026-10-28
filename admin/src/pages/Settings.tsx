@@ -8,7 +8,7 @@ import { useEffect, useState } from 'react';
 import * as api from '../lib/api';
 import { useSession } from '../lib/session';
 import { BRANCH_NAMES, sar, time12 } from '../lib/format';
-import { ErrorBox, Field, Loading, NumberField, Spinner, useToast } from '../components/ui';
+import { DirtyScope, ErrorBox, Field, Loading, NumberField, Spinner, useToast } from '../components/ui';
 import SiteDefaults from '../components/SiteDefaults';
 
 interface Breakfast {
@@ -36,6 +36,8 @@ export default function Settings() {
   const [limits, setLimits] = useState<Limits>({ same_day_cutoff: '20:00', max_nights: 30 });
   const [busy, setBusy] = useState<string | null>(null);
   const [rebuild, setRebuild] = useState<string | null>(null);
+  // what the server holds: the baseline of the page-level forms (the leave guard re-baselines on every load)
+  const [saved, setSaved] = useState('');
 
   const load = async () => {
     try {
@@ -47,6 +49,7 @@ export default function Settings() {
       setInstant((get('instant_booking') as Record<string, boolean>) ?? {});
       setPrices((get('show_prices') as Record<string, boolean>) ?? {});
       setLimits((get('instant_limits') as Limits) ?? { same_day_cutoff: '20:00', max_nights: 30 });
+      setSaved(JSON.stringify([get('breakfast'), get('extra_bed_per_night'), get('instant_limits')]));
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -111,7 +114,7 @@ export default function Settings() {
         </div>
       </section>
 
-      <section className="card p-5" aria-labelledby="s-bf">
+      <DirtyScope className="card p-5" aria-labelledby="s-bf" version={saved} data-scope="breakfast">
         <h2 id="s-bf" className="font-bold text-lg mb-1">الإفطار</h2>
         <p className="text-sm text-ink-muted mb-4">للشخص في اليوم، شامل الضريبة. شرائح الأطفال بحسب العمر؛ فوق آخر شريحة يُحسب بسعر البالغ.</p>
         <div className="grid sm:grid-cols-3 gap-3">
@@ -129,9 +132,9 @@ export default function Settings() {
         </div>
         <p className="text-xs text-ink-muted mt-2 num-ar">الحالي: البالغ {sar(bf.adult)}{bf.child_tiers.map((t) => ` · حتى ${t.max_age} سنة ${t.price === 0 ? 'مجانًا' : sar(t.price)}`).join('')}.</p>
         {editable && <button type="button" className="btn btn-primary mt-4" onClick={() => save('breakfast', bf, 'الإفطار', load)} disabled={busy === 'breakfast'} data-action="save-breakfast">{busy === 'breakfast' && <Spinner />} حفظ الإفطار</button>}
-      </section>
+      </DirtyScope>
 
-      <section className="card p-5" aria-labelledby="s-bed">
+      <DirtyScope className="card p-5" aria-labelledby="s-bed" version={saved} data-scope="bed">
         <h2 id="s-bed" className="font-bold text-lg mb-1">السرير الإضافي</h2>
         <p className="text-sm text-ink-muted mb-4">لليلة، شامل الضريبة. يُطبَّق على عرض السعر فورًا، وعلى نموذج الحجز ورسائل البريد وصفحة السياسات بعد إعادة بناء الموقع (تُطلب تلقائيًا عند الحفظ).</p>
         <div className="grid sm:grid-cols-3 gap-3 items-end">
@@ -139,9 +142,9 @@ export default function Settings() {
           {editable && <button type="button" className="btn btn-primary" onClick={() => bed !== null && save('extra_bed_per_night', bed, 'السرير الإضافي', async () => { await load(); await askRebuild(); })} disabled={busy === 'extra_bed_per_night' || bed === null} data-action="save-bed">{busy === 'extra_bed_per_night' && <Spinner />} حفظ</button>}
         </div>
         {rebuild && <p className="text-xs text-ink-muted mt-2" role="status">{rebuild}</p>}
-      </section>
+      </DirtyScope>
 
-      <section className="card p-5" aria-labelledby="s-limits">
+      <DirtyScope className="card p-5" aria-labelledby="s-limits" version={saved} data-scope="limits">
         <h2 id="s-limits" className="font-bold text-lg mb-1">حدود الحجز الفوري</h2>
         <p className="text-sm text-ink-muted mb-4">بعد وقت الإغلاق يصبح وصول اليوم طلبًا يؤكده الاستقبال؛ والإقامة الأطول من الحد تصبح طلبًا.</p>
         <div className="grid sm:grid-cols-3 gap-3 items-end">
@@ -159,7 +162,7 @@ export default function Settings() {
           <Field label="أقصى عدد ليالٍ" id="maxn"><NumberField id="maxn" value={limits.max_nights} onChange={(n) => setLimits({ ...limits, max_nights: n ?? 1 })} min={1} max={366} /></Field>
           {editable && <button type="button" className="btn btn-primary" onClick={() => save('instant_limits', limits, 'حدود الحجز الفوري', load)} disabled={busy === 'instant_limits'} data-action="save-limits">{busy === 'instant_limits' && <Spinner />} حفظ</button>}
         </div>
-      </section>
+      </DirtyScope>
       {/* phase 2a.2 D: saved defaults, system admin only (the database refuses anyone else) */}
       {me?.is_admin && <SiteDefaults onRestored={async (rebuild) => { await load(); if (rebuild) await askRebuild(); }} />}
     </div>

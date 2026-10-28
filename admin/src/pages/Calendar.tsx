@@ -11,7 +11,7 @@ import * as api from '../lib/api';
 import type { Branch, CalendarCell, RateOverride, RoomType } from '../lib/api';
 import { useSession } from '../lib/session';
 import { BRANCH_NAMES, DAY, ROOM_TYPE, WEEKDAY_BITS, WEEKDAY_LABELS, addDays, countWord, dayName, daysBetween, longDate, maskLabel, monthTitle, nightsWord, riyadhToday, roomsBooked, roomsLeft, sar, shortDate } from '../lib/format';
-import { ErrorBox, Field, Loading, Modal, NumberField, Segmented, Spinner, Stepper, useToast } from '../components/ui';
+import { CancelButton, ErrorBox, Field, Loading, Modal, NumberField, Segmented, Spinner, Stepper, useLeaveGuard, useToast } from '../components/ui';
 import DateField from '../components/DateField';
 
 type Mode = 'rates' | 'inventory';
@@ -30,6 +30,7 @@ function useDays() {
 export default function Calendar({ mode }: { mode: Mode }) {
   const { me } = useSession();
   const toast = useToast();
+  const guard = useLeaveGuard();
   const [params, setParams] = useSearchParams();
   const locked = me?.branch ?? null;
   const editable = api.canEdit(me, mode);
@@ -98,7 +99,7 @@ export default function Calendar({ mode }: { mode: Mode }) {
       <div className="flex flex-wrap items-center gap-3 mb-4">
         <h1 className="text-2xl font-bold me-auto">{mode === 'rates' ? 'الأسعار' : 'المخزون'}</h1>
         {!locked && (
-          <select className="field w-auto" value={branch} onChange={(e) => setBranch(e.target.value)} aria-label="الفرع">
+          <select className="field w-auto" value={branch} onChange={(e) => { const v = e.target.value; guard.run(() => setBranch(v)); }} aria-label="الفرع">
             {branches.map((b) => <option key={b.slug} value={b.slug}>{BRANCH_NAMES[b.slug] ?? b.name_ar}</option>)}
           </select>
         )}
@@ -267,7 +268,7 @@ function CellEdit({ sel, onClose, onSaved }: { sel: { rt: RoomType; cell: Calend
     }
   }
   return (
-    <Modal open onClose={onClose} title={`${rt.name_ar} — ${longDate(cell.night)}`}>
+    <Modal open onClose={onClose} title={`${rt.name_ar} — ${longDate(cell.night)}`} busy={busy}>
       <p className="text-sm text-ink-muted mb-3">المحجوز: <b className="num-ar">{cell.booked}</b> · الحالة الآن: <b>{cell.has_row && !cell.stop_sell ? 'مفتوحة' : 'مغلقة'}</b></p>
       <Field label="البيع على الموقع" id="cell-state">
         <Segmented value={state} onChange={setState} label="البيع على الموقع" size="md" options={[{ value: 'open', label: 'مفتوح' }, { value: 'closed', label: 'مغلق' }]} />
@@ -279,7 +280,7 @@ function CellEdit({ sel, onClose, onSaved }: { sel: { rt: RoomType; cell: Calend
       </div>
       <ErrorBox error={error} />
       <div className="flex gap-2 justify-end mt-5">
-        <button type="button" className="btn btn-ghost" onClick={onClose} disabled={busy}>إلغاء</button>
+        <CancelButton disabled={busy} />
         <button type="button" className="btn btn-primary" onClick={save} disabled={busy} data-action="cell-save">{busy && <Spinner />} حفظ</button>
       </div>
     </Modal>
@@ -306,7 +307,7 @@ function RowOpenClose({ rt, nights, onClose, onSaved }: { rt: RoomType; nights: 
     }
   }
   return (
-    <Modal open onClose={onClose} title={`فتح / إغلاق — ${rt.name_ar}`}>
+    <Modal open onClose={onClose} title={`فتح / إغلاق — ${rt.name_ar}`} busy={!!busy}>
       {from ? (
         <p className="text-sm text-ink-muted mb-4">الفترة المعروضة: من {longDate(from)} إلى {longDate(to)} ({nightsWord(nights.length)}). «إغلاق» يوقف البيع على الموقع ويبقي الأعداد محفوظة؛ «فتح» يعيد البيع بالأعداد المحفوظة (ليلة بلا عدد تُفتح بصفر).</p>
       ) : (
@@ -314,7 +315,7 @@ function RowOpenClose({ rt, nights, onClose, onSaved }: { rt: RoomType; nights: 
       )}
       <ErrorBox error={error} />
       <div className="flex flex-wrap gap-2 justify-end mt-2">
-        <button type="button" className="btn btn-ghost" onClick={onClose} disabled={!!busy}>رجوع</button>
+        <CancelButton label="رجوع" disabled={!!busy} />
         <button type="button" className="btn btn-danger" onClick={() => act('closed')} disabled={!from || !!busy} data-action="row-close">{busy === 'closed' && <Spinner />} إغلاق الفترة</button>
         <button type="button" className="btn btn-primary" onClick={() => act('open')} disabled={!from || !!busy} data-action="row-open">{busy === 'open' && <Spinner />} فتح الفترة</button>
       </div>
@@ -342,7 +343,7 @@ function NightRate({ sel, onClose, onSaved }: { sel: { rt: RoomType; cell: Calen
     }
   }
   return (
-    <Modal open onClose={onClose} title={`${rt.name_ar} — ${longDate(cell.night)}`}>
+    <Modal open onClose={onClose} title={`${rt.name_ar} — ${longDate(cell.night)}`} busy={busy}>
       <p className="text-sm text-ink-muted mb-3">السعر الحالي: <b>{cell.price === null ? 'بلا سعر' : sar(cell.price)}</b>{cell.override_label ? ` (${cell.override_label})` : ''}. يُحفظ كاستثناء لهذه الليلة فوق السعر الأساسي، ويحل محل استثناء سابق لليلة نفسها.</p>
       <Field label="السعر لليلة (شامل الضريبة)" id="night-price"><NumberField id="night-price" value={price} onChange={setPrice} decimal min={0} max={99999} /></Field>
       <div className="mt-3 grid sm:grid-cols-2 gap-3">
@@ -351,7 +352,7 @@ function NightRate({ sel, onClose, onSaved }: { sel: { rt: RoomType; cell: Calen
       </div>
       <ErrorBox error={error} />
       <div className="flex gap-2 justify-end mt-5">
-        <button type="button" className="btn btn-ghost" onClick={onClose} disabled={busy}>إلغاء</button>
+        <CancelButton disabled={busy} />
         <button type="button" className="btn btn-primary" onClick={save} disabled={busy} data-action="night-save">{busy && <Spinner />} حفظ</button>
       </div>
     </Modal>
@@ -375,12 +376,12 @@ function BaseRate({ rt, onClose, onSaved }: { rt: RoomType; onClose: () => void;
     }
   }
   return (
-    <Modal open onClose={onClose} title={`السعر الأساسي — ${rt.name_ar}`}>
+    <Modal open onClose={onClose} title={`السعر الأساسي — ${rt.name_ar}`} busy={busy}>
       <p className="text-sm text-ink-muted mb-3">يُطبَّق على كل ليلة لا يغطيها استثناء. شامل الضريبة.</p>
       <Field label="السعر لليلة" id="base-price"><NumberField id="base-price" value={price} onChange={setPrice} decimal min={0} max={99999} /></Field>
       <ErrorBox error={error} />
       <div className="flex gap-2 justify-end mt-5">
-        <button type="button" className="btn btn-ghost" onClick={onClose} disabled={busy}>إلغاء</button>
+        <CancelButton disabled={busy} />
         <button type="button" className="btn btn-primary" onClick={save} disabled={busy} data-action="base-rate-save">{busy && <Spinner />} حفظ</button>
       </div>
     </Modal>
@@ -429,7 +430,7 @@ function Bulk({ mode, types, from, onClose, onSaved }: { mode: Mode; types: Room
     { value: 'close', label: 'إغلاق', hint: 'يوقف البيع على الموقع ويبقي الأعداد محفوظة.' },
   ];
   return (
-    <Modal open onClose={onClose} title={mode === 'rates' ? 'سعر لفترة' : 'تعديل جماعي للمخزون'} wide>
+    <Modal open onClose={onClose} title={mode === 'rates' ? 'سعر لفترة' : 'تعديل جماعي للمخزون'} wide busy={busy}>
       <DateField mode="range" label="من" endLabel="إلى" start={dFrom} end={dTo} onChange={(a, b) => { setDFrom(a); setDTo(b); }} id="bulk-dates" />
       <div className="mt-3"><span className="label">أيام الأسبوع</span><WeekdayPicker mask={mask} onChange={setMask} /></div>
       <div className="mt-3">
@@ -466,7 +467,7 @@ function Bulk({ mode, types, from, onClose, onSaved }: { mode: Mode; types: Room
       <p className="text-xs text-ink-muted mt-3 num-ar">{countWord(span, DAY)} × {countWord(ids.length, ROOM_TYPE)} — {maskLabel(mask)}</p>
       <ErrorBox error={error} />
       <div className="flex gap-2 justify-end mt-5">
-        <button type="button" className="btn btn-ghost" onClick={onClose} disabled={busy}>إلغاء</button>
+        <CancelButton disabled={busy} />
         <button type="button" className="btn btn-primary" onClick={save} disabled={busy} data-action="bulk-save">{busy && <Spinner />} تطبيق</button>
       </div>
     </Modal>

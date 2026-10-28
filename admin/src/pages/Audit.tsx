@@ -8,7 +8,7 @@ import type { AuditRow } from '../lib/api';
 import { useSession } from '../lib/session';
 import { BRANCH_NAMES, longDate, riyadhDateTimeLong, rowsWord, sar } from '../lib/format';
 import DateField from '../components/DateField';
-import { Empty, ErrorBox, Field, Loading, Modal, Spinner, useToast } from '../components/ui';
+import { CancelButton, Empty, ErrorBox, Field, Loading, Modal, Spinner, useLeaveGuard, useToast } from '../components/ui';
 
 const ENTITY: Record<string, string> = { room_types: 'نوع غرفة (سعر أساسي / توافر)', rate_overrides: 'استثناء سعر', inventory_days: 'مخزون', settings: 'إعدادات', staff: 'مستخدم', staff_permissions: 'صلاحيات', reservations: 'حجز', security_events: 'أمان الدخول', site_defaults: 'الإعدادات الافتراضية' };
 // phase 2a.2 (26 Oct 2026): one line per security event (devices, backup codes) — never a code or a token
@@ -64,6 +64,7 @@ const PAGE = 300;
 export default function Audit() {
   const { me } = useSession();
   const toast = useToast();
+  const guard = useLeaveGuard();
   const locked = me?.branch ?? null;
   const [rows, setRows] = useState<AuditRow[] | null>(null);
   const [more, setMore] = useState(false);
@@ -172,7 +173,7 @@ export default function Audit() {
         </Field>
         {!locked && (
           <Field label="الفرع" id="a-branch">
-            <select id="a-branch" className="field" value={branch} onChange={(e) => setBranch(e.target.value)}>
+            <select id="a-branch" className="field" value={branch} onChange={(e) => { const v = e.target.value; guard.run(() => setBranch(v)); }}>
               <option value="">الكل</option>
               {Object.entries(BRANCH_NAMES).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
             </select>
@@ -233,7 +234,7 @@ export default function Audit() {
         </>
       )}
 
-      <Modal open={!!confirm} onClose={() => setConfirm(null)} title="استرجاع هذا التغيير">
+      <Modal open={!!confirm} onClose={() => setConfirm(null)} title="استرجاع هذا التغيير" busy={busy}>
         {confirm && (
           <>
             <p className="text-sm text-ink-muted mb-3">تُستعاد القيم القديمة فقط إذا كانت القيم الحالية لم تتغير منذ هذا التعديل؛ وإلا يظهر تعارض ولا يتغير شيء. الاسترجاع نفسه يُسجَّل.</p>
@@ -241,7 +242,7 @@ export default function Audit() {
               {confirm.rows.map((x) => <li key={x.id}>{rowTitle(x)}: {diff(x).join(' · ')}</li>)}
             </ul>
             <div className="flex gap-2 justify-end mt-5">
-              <button type="button" className="btn btn-ghost" onClick={() => setConfirm(null)} disabled={busy}>إلغاء</button>
+              <CancelButton disabled={busy} />
               <button type="button" className="btn btn-primary" onClick={doRevert} disabled={busy} data-action="revert-go">{busy && <Spinner />} استرجاع</button>
             </div>
           </>

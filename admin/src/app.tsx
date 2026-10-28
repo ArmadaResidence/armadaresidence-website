@@ -6,7 +6,7 @@
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import { SessionProvider, useSession } from './lib/session';
 import { canView } from './lib/api';
-import { ToastProvider, Splash } from './components/ui';
+import { LeaveGuardProvider, ToastProvider, Splash } from './components/ui';
 import Shell from './components/Shell';
 import Login from './pages/Login';
 import SetPassword from './pages/SetPassword';
@@ -102,6 +102,7 @@ export default function App() {
   return (
     <ToastProvider>
       <SessionProvider>
+        <LeaveGuardProvider>
         <Routes>
           <Route path="/login" element={<Login />} />
           <Route path="/set-password" element={<SetPassword />} />
@@ -144,6 +145,7 @@ export default function App() {
             }
           />
         </Routes>
+        </LeaveGuardProvider>
       </SessionProvider>
     </ToastProvider>
   );

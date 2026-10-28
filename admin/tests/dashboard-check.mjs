@@ -20,10 +20,14 @@
 // remembered devices and their revocation, the admin's backup codes (forced first generation, email failure → backup
 // code, regeneration after a fresh code, download), the password-change trigger; then the site defaults (admin only,
 // save + undo, the restore dialog with the switch tick, undo of a restore, the audit label, the site-rebuild call).
+// 28 Oct 2026 (decision B): every dialog, drawer and confirm of the inventory at 1440 (mouse) and 375 (touch) — outside
+// presses and drags never close, clean / dirty close, the unsaved-changes confirm, saving in flight, a failed save,
+// beforeunload only while dirty, the page-level forms and the sidebar (admin/tests/dialog-guard.mjs).
 // Everything it writes is undone at the end (test room type via qa_fixture, overrides deactivated, settings restored).
 import { chromium } from 'playwright';
 import { readFileSync } from 'node:fs';
 import { APP_PATH, handleBackupCodes, passCode, routeLoginCode } from './code-login.mjs';
+import { guardChecks, pageGuardChecks } from './dialog-guard.mjs';
 
 const BASE = (process.argv[2] || 'http://127.0.0.1:5173').replace(/\/$/, '');
 const PW = 'Qa-Armada-2026!x';
@@ -825,7 +829,8 @@ try {
       const p2 = await ctx2.newPage();
       await signIn(p2, USERS.rec_shafa);
       const where = await firstOf(p2, { code: '#code', app: '#app-main' });
-      for (let i = 0; i < 50 && !codes2.length; i++) await p2.waitForTimeout(100);
+      // the function's first call on a fresh browser can take a few seconds (cold start): wait up to 20 s
+      for (let i = 0; i < 200 && !codes2.length; i++) await p2.waitForTimeout(100);
       check(where === 'code' && codes2.length > 0, 'password change: the remembered device no longer passes (a code is asked)', where);
       check((await p2.evaluate(() => Object.keys(localStorage).filter((k) => k.startsWith('armada-device:')).length)) === 0, 'password change: the refused device token is removed from the browser');
       await ctx2.close();
@@ -920,6 +925,173 @@ try {
       if (twin) await admin('set_room_bookable', { p_room_type: twin.id, p_bookable: orig.twin });
       await ctx.close();
     }
+  }
+
+  // ── dialogs never close by accident (decision B, 28 Oct 2026): every dialog, drawer and confirm of the dashboard at
+  // 1440 (mouse) and 375 (touch) — outside presses, a drag from inside, clean / dirty close, the unsaved-changes
+  // confirm, saving in flight, a failed save, beforeunload; then the page-level forms (Settings, the permission matrix)
+  for (const vp of [{ width: 1440, height: 900 }, { width: 375, height: 812, mobile: true }]) {
+    const m = !!vp.mobile;
+    const gctx = await browser.newContext({ viewport: { width: vp.width, height: vp.height }, locale: 'ar', isMobile: m, hasTouch: m });
+    await gctx.addInitScript(WATCH);
+    gctx.__codes = [];
+    await routeLoginCode(gctx, env.BOOKING_TEST_TOKEN, gctx.__codes);
+    const { page } = await login(USERS.admin, { ctx: gctx });
+    const BATCH = '00000000-0000-4000-8000-00000000qa00'.replace('qa', '0a');
+    const OK = JSON.stringify({ ok: true, batch_id: BATCH, count: 1 });
+    const G = (cfg) => guardChecks(page, check, { ...cfg, mobile: m, vp });
+    /** a text / number field: edit types `typed`, restore puts the original back (captured on the first edit) */
+    const textField = (sel, typed) => {
+      let orig;
+      return {
+        sel,
+        read: () => page.inputValue(sel),
+        edit: async () => {
+          if (orig === undefined) orig = await page.inputValue(sel);
+          await page.fill(sel, typed);
+          return typed;
+        },
+        restore: () => page.fill(sel, orig ?? ''),
+      };
+    };
+    const selectField = (sel, pick) => {
+      let orig;
+      return {
+        sel,
+        read: () => page.inputValue(sel),
+        edit: async () => {
+          if (orig === undefined) orig = await page.inputValue(sel);
+          const v = await pick();
+          await page.selectOption(sel, v);
+          return v;
+        },
+        restore: () => page.selectOption(sel, orig ?? ''),
+      };
+    };
+    /** a chip / segment with aria-pressed or aria-checked: edit presses it, restore presses it again (or the original) */
+    const pressField = (sel, attr = 'aria-pressed', backSel = null) => ({
+      sel,
+      read: () => page.getAttribute(sel, attr),
+      edit: async () => {
+        await page.click(sel);
+        return (await page.getAttribute(sel, attr)) ?? 'true';
+      },
+      restore: () => page.click(backSel ?? sel),
+    });
+    /** at least one weekday and one room type pressed (bulk dialogs start empty since decision C2) */
+    const ensureChips = async () => {
+      for (const group of ['[aria-label="أيام الأسبوع"]', '[aria-label="أنواع الغرف"]']) {
+        const g = page.locator(`dialog[data-modal][open] ${group}`);
+        if (!(await g.count())) continue;
+        if (!(await g.locator('[aria-pressed="true"]').count())) await g.locator('button[aria-pressed]').first().click();
+      }
+    };
+    const goto = async (path, sel) => {
+      await page.goto(`${BASE}${path}`);
+      await page.waitForSelector(sel, { timeout: 20000 });
+    };
+    // a request booking for the drawer and its two confirms
+    const r3 = await submit({ extra_beds: '1', quoted_total: quote.quote.total + 100 });
+    check(r3.status === 'request', `dialogs @${vp.width}: seed request booking`, JSON.stringify(r3));
+    const openDrawer = async () => {
+      if (await page.locator('aside[data-drawer]').count()) return;
+      if (!/\/bookings/.test(page.url())) await goto('/bookings', '#f-q');
+      await page.fill('#f-q', r3.ref);
+      await page.waitForSelector(`[data-ref="${r3.ref}"]`, { timeout: 15000 });
+      await page.click(`[data-ref="${r3.ref}"]`);
+    };
+    const closeDrawer = async () => {
+      if (!(await page.locator('aside[data-drawer]').count())) return;
+      await page.locator('aside[data-drawer] [data-action="dialog-close"]').first().click();
+      if (await page.locator('dialog[data-unsaved-confirm][open]').count()) await page.click('dialog[data-unsaved-confirm][open] [data-action="discard-close"]');
+      await page.locator('aside[data-drawer]').waitFor({ state: 'detached', timeout: 5000 }).catch(() => {});
+    };
+    await goto('/bookings', '#f-q');
+    await G({ label: 'booking details drawer', kind: 'drawer', open: openDrawer, field: textField('#internal-notes', 'QA note'), save: { sel: 'aside[data-drawer] [data-action="save-notes"]', route: '**/rest/v1/reservations?*', ok: '[]', fail: JSON.stringify({ code: '42501', message: 'permission denied for table reservations' }), prepare: async () => { await page.fill('#internal-notes', 'QA note'); return 'QA note'; } } });
+    await G({
+      label: 'booking confirm modal',
+      open: async () => {
+        await openDrawer();
+        await page.click('aside[data-drawer] [data-action="confirm"]');
+      },
+      field: selectField('#confirm-rt', async () => page.locator('#confirm-rt option').nth(1).getAttribute('value')),
+      save: { sel: '[data-action="confirm-go"]', route: '**/functions/v1/booking-admin', ok: JSON.stringify({ ok: false, reason: 'closed', nights: [] }), fail: JSON.stringify({ error: 'choose a bookable room type' }), prepare: async () => { const v = await page.locator('#confirm-rt option').nth(1).getAttribute('value'); await page.selectOption('#confirm-rt', v); return v; } },
+      after: closeDrawer,
+    });
+    await G({
+      label: 'booking cancel confirm',
+      open: async () => {
+        await openDrawer();
+        await page.click('aside[data-drawer] [data-action="cancel"]');
+      },
+      field: textField('#cancel-reason', 'qa reason'),
+      save: { sel: 'dialog[data-modal][open] [data-action="confirm-go"]', route: '**/functions/v1/booking-admin', ok: JSON.stringify({ ok: false, error: 'not a request' }), fail: JSON.stringify({ error: 'a reason is required' }), prepare: async () => { await page.fill('#cancel-reason', 'qa reason'); return 'qa reason'; } },
+      after: closeDrawer,
+    });
+    // inventory
+    await goto(`/inventory?from=${D(INV)}`, '[data-grid="inventory"]');
+    await G({ label: 'inventory cell', open: () => page.click(`[data-night="${D(INV + 1)}"][data-rt="king-room"]`), field: textField('#cell-rooms', '7'), save: { sel: '[data-action="cell-save"]', route: '**/rest/v1/rpc/set_inventory', ok: OK, fail: JSON.stringify({ code: '22023', message: 'rooms 0–999' }), prepare: async () => { await page.fill('#cell-rooms', '7'); return '7'; } } });
+    await G({ label: 'inventory row open/close', open: () => page.click('[data-row="king-room"] [data-action="row-menu"]') });
+    await G({ label: 'inventory bulk', open: () => page.click('[data-action="bulk"]'), field: pressField('dialog[data-modal][open] [aria-label="أيام الأسبوع"] button[aria-pressed]:first-child'), save: { sel: '[data-action="bulk-save"]', route: '**/rest/v1/rpc/set_inventory', ok: OK, fail: JSON.stringify({ code: '22023', message: 'range: today … +400 days' }), prepare: ensureChips } });
+    // rates
+    await goto(`/rates?branch=shafa-road&from=${D(RATE)}`, '[data-grid="rates"]');
+    await G({ label: 'rates single night', open: () => page.click(`[data-night="${D(RATE + 2)}"][data-rt="king-room"]`), field: textField('#night-price', '555'), save: { sel: '[data-action="night-save"]', route: '**/rest/v1/rpc/add_rate_override', ok: OK, fail: JSON.stringify({ code: '22023', message: 'price' }), prepare: async () => { await page.fill('#night-price', '555'); return '555'; } } });
+    await G({ label: 'rates base rate', open: () => page.click('[data-row="king-room"] [data-action="base-rate"]'), field: textField('#base-price', '444'), save: { sel: '[data-action="base-rate-save"]', route: '**/rest/v1/rpc/set_base_rate', ok: OK, fail: JSON.stringify({ code: '22023', message: 'price' }), prepare: async () => { await page.fill('#base-price', '444'); return '444'; } } });
+    await G({ label: 'rates period («سعر لفترة»)', open: () => page.click('[data-action="bulk"]'), field: textField('#b-price', '333'), save: { sel: '[data-action="bulk-save"]', route: '**/rest/v1/rpc/add_rate_override', ok: OK, fail: JSON.stringify({ code: '22023', message: 'price' }), prepare: async () => { await ensureChips(); await page.fill('#b-price', '333'); return '333'; } } });
+    // settings: the defaults dialogs
+    await goto('/settings', '[data-defaults] [data-current-default]');
+    await G({ label: 'defaults save', open: () => page.click('[data-action="defaults-save"]'), field: textField('#d-label', 'QA label'), save: { sel: '[data-action="defaults-save-go"]', route: '**/rest/v1/rpc/save_site_defaults', ok: JSON.stringify({ ok: true, batch_id: BATCH, id: BATCH }), fail: JSON.stringify({ code: '22023', message: 'label 1–80' }), prepare: async () => { await page.fill('#d-label', 'QA label'); return 'QA label'; } } });
+    if (!(await page.locator('[data-action="defaults-restore"]').isDisabled())) {
+      await G({ label: 'defaults restore', open: async () => { await page.click('[data-action="defaults-restore"]'); await page.waitForSelector('[data-defaults-diff], dialog[data-modal][open] [role=alert]', { timeout: 20000 }); } });
+    }
+    // users
+    await goto('/users', `[data-user="${USERS.rec_air}"]`);
+    await G({ label: 'invite user', open: () => page.click('[data-action="invite"]'), field: textField('#u-email', 'qa-guard@qa.invalid'), save: { sel: '[data-action="user-save"]', route: '**/functions/v1/admin-users', ok: JSON.stringify({ ok: true, user_id: BATCH }), fail: JSON.stringify({ error: 'already registered' }), prepare: async () => { await page.fill('#u-email', 'qa-guard@qa.invalid'); await page.fill('#u-name', 'QA Guard'); return 'qa-guard@qa.invalid'; } } });
+    await G({ label: 'display name', open: () => page.click(`[data-user="${USERS.rec_air}"] button:has-text("الاسم")`), field: textField('#n-name', 'QA Name'), save: { sel: '[data-action="name-save"]', route: '**/functions/v1/admin-users', ok: JSON.stringify({ ok: true }), fail: JSON.stringify({ error: 'full_name 2–80' }), prepare: async () => { await page.fill('#n-name', 'QA Name'); return 'QA Name'; } } });
+    await G({ label: 'revoke devices', open: () => page.click(`[data-user="${USERS.rec_shafa}"] [data-action="revoke-devices"]`) });
+    const permsOpen = async () => {
+      const b = page.locator(`[data-user="${USERS.rec_air}"] [data-action="perms"]`);
+      if ((await b.getAttribute('aria-expanded')) !== 'true') await b.click();
+      await page.waitForSelector(`[data-matrix="${USERS.rec_air}"]`, { timeout: 10000 });
+    };
+    await G({ label: 'apply preset', open: async () => { await permsOpen(); await page.click(`[data-matrix="${USERS.rec_air}"] [data-action="apply-preset"]`); } });
+    // audit
+    await goto('/audit', '[data-list="audit"]');
+    if (await page.locator('[data-list="audit"] li[data-batch] [data-action="revert"]').count()) {
+      await G({ label: 'audit revert', open: () => page.locator('[data-list="audit"] li[data-batch] [data-action="revert"]').first().click() });
+    }
+    // security
+    await goto('/security', '#app-main h1');
+    if (await page.locator('[data-action="revoke-my-devices"]').count()) await G({ label: 'revoke my devices', open: () => page.click('[data-action="revoke-my-devices"]') });
+
+    // page-level forms (B5): Settings, then the permission matrix
+    const navSel = m ? 'nav.tabbar a[href$="/bookings"]' : 'nav[aria-label="الأقسام"]:not(.tabbar) a[href$="/bookings"]';
+    await goto('/settings', '#bed');
+    await page.waitForTimeout(600);
+    await pageGuardChecks(page, check, { label: 'settings extra bed', vp, linkSel: navSel, read: () => page.inputValue('#bed'), edit: async () => { await page.fill('#bed', '77'); return '77'; }, restore: (orig) => page.fill('#bed', orig) });
+    await goto('/settings', '#bed');
+    await page.waitForTimeout(600);
+    // Arabic-Indic digits equal to the saved value are not a change; an added child tier is
+    await page.fill('#bed', String.fromCharCode(0x0665, 0x0660)); // ٥٠
+    await page.waitForTimeout(100);
+    check(!(await page.evaluate(() => { const e = new Event('beforeunload', { cancelable: true }); window.dispatchEvent(e); return e.defaultPrevented; })), `settings @${vp.width}: Arabic-Indic «٥٠» counted as a change`);
+    await page.click('[data-scope="breakfast"] button:has-text("+ شريحة")');
+    await page.waitForTimeout(100);
+    check(await page.evaluate(() => { const e = new Event('beforeunload', { cancelable: true }); window.dispatchEvent(e); return e.defaultPrevented; }), `settings @${vp.width}: an added child tier is not a change`);
+    await page.click(navSel);
+    await page.locator('dialog[data-unsaved-confirm][open]').waitFor({ timeout: 3000 }).catch(() => {});
+    check((await page.locator('dialog[data-unsaved-confirm][open]').count()) === 1, `settings @${vp.width}: leaving with an added tier did not ask`);
+    await page.click('dialog[data-unsaved-confirm][open] [data-action="discard-close"]');
+    await page.waitForURL(/\/bookings/, { timeout: 5000, waitUntil: 'commit' }).catch(() => {});
+    await goto('/users', `[data-user="${USERS.rec_air}"]`);
+    await permsOpen();
+    const seg = (lvl) => `[data-matrix="${USERS.rec_air}"] [data-section="rooms"] [role=radio]:has-text("${lvl}")`;
+    const origLvl = (await page.getAttribute(seg('تعديل'), 'aria-checked')) === 'true' ? 'تعديل' : 'عرض';
+    const otherLvl = origLvl === 'تعديل' ? 'عرض' : 'تعديل';
+    await pageGuardChecks(page, check, { label: 'permission matrix', vp, linkSel: navSel, read: () => page.getAttribute(seg(otherLvl), 'aria-checked'), edit: async () => { await page.click(seg(otherLvl)); return 'true'; }, restore: () => page.click(seg(origLvl)) });
+    // the matrix is left as it was (the restore clicked the original level; nothing was saved)
+    // «تراجع» the display-name change is not needed (the stub never reached the server); the drawer's notes were restored
+    await gctx.close();
   }
 
   // ── 375 px: every screen renders, tab bar fits, digits ──

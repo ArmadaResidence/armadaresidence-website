@@ -118,7 +118,7 @@ const fabClass = 'wa-pulse inline-flex items-center gap-2 bg-midnight text-white
 }
 
 <script>
-  import { bindOnce, onPageLoad } from '@lib/client';
+  import { bindOnce, onOutsidePress, onPageLoad } from '@lib/client';
 
   /** GTM: one event per WhatsApp open, whatever the page type. */
   function track(destination: string) {
@@ -170,14 +170,7 @@ const fabClass = 'wa-pulse inline-flex items-center gap-2 bg-midnight text-white
       },
       { signal: ac.signal },
     );
-    // outside tap / click
-    document.addEventListener(
-      'pointerdown',
-      (e) => {
-        if (!root.isConnected || !isOpen()) return;
-        if (!root.contains(e.target as Node)) close();
-      },
-      { signal: ac.signal },
-    );
+    // outside tap / click (28 Oct 2026, decision B8): only a press that starts AND ends outside the chooser closes it
+    onOutsidePress(() => [root], () => close(), { signal: ac.signal, active: () => root.isConnected && isOpen() });
   });
 </script>

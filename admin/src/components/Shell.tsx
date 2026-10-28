@@ -5,6 +5,7 @@ import { useEffect, useState, type ReactNode } from 'react';
 import { useSession } from '../lib/session';
 import { canView } from '../lib/api';
 import { BRANCH_NAMES, ROLE_LABELS } from '../lib/format';
+import { useLeaveGuard } from './ui';
 
 const NAV: { to: string; label: string; short: string; section: string }[] = [
   { to: '/bookings', label: 'الحجوزات', short: 'الحجوزات', section: 'bookings' },
@@ -29,6 +30,7 @@ function useTheme() {
 
 export default function Shell({ children }: { children: ReactNode }) {
   const { me, signOut } = useSession();
+  const guard = useLeaveGuard();
   const [theme, toggle] = useTheme();
   const items = NAV.filter((n) => canView(me, n.section));
   const cls = ({ isActive }: { isActive: boolean }) => `px-3 py-2 rounded text-sm font-semibold transition-colors ${isActive ? 'bg-bronze-deep text-white' : 'text-porcelain/85 hover:bg-white/10'}`;
@@ -40,7 +42,7 @@ export default function Shell({ children }: { children: ReactNode }) {
           <img src={`${import.meta.env.BASE_URL}logo-porcelain.svg`} alt="أرمادا ريزيدنس" className="h-8" />
           <nav className="hidden md:flex items-center gap-1 ms-4" aria-label="الأقسام">
             {items.map((n) => (
-              <NavLink key={n.to} to={n.to} className={cls}>
+              <NavLink key={n.to} to={n.to} className={cls} onClick={(e) => guard.link(e, n.to)}>
                 {n.label}
               </NavLink>
             ))}
@@ -57,10 +59,10 @@ export default function Shell({ children }: { children: ReactNode }) {
                 {theme === 'dark' ? <><circle cx="12" cy="12" r="4" /><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" /></> : <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z" />}
               </svg>
             </button>
-            <NavLink to="/security" className="btn btn-sm border border-porcelain/30 text-porcelain hover:bg-white/10" data-nav="security">
+            <NavLink to="/security" className="btn btn-sm border border-porcelain/30 text-porcelain hover:bg-white/10" data-nav="security" onClick={(e) => guard.link(e, '/security')}>
               الأمان
             </NavLink>
-            <button type="button" className="btn btn-sm border border-porcelain/30 text-porcelain hover:bg-white/10" onClick={signOut}>
+            <button type="button" className="btn btn-sm border border-porcelain/30 text-porcelain hover:bg-white/10" onClick={() => guard.run(() => void signOut())} data-action="sign-out">
               خروج
             </button>
           </div>
@@ -69,7 +71,7 @@ export default function Shell({ children }: { children: ReactNode }) {
       <main id="app-main" className="flex-1 mx-auto w-full max-w-7xl px-4 py-5 pb-24 md:pb-8">{children}</main>
       <nav className="tabbar md:hidden fixed bottom-0 inset-x-0 bg-midnight text-porcelain border-t border-white/10 flex justify-around py-1 pb-[max(4px,env(safe-area-inset-bottom))] z-30" aria-label="الأقسام">
         {items.map((n) => (
-          <NavLink key={n.to} to={n.to} className={({ isActive }) => `flex-1 text-center text-[11px] font-semibold py-2 rounded ${isActive ? 'text-bronze-bright' : 'text-porcelain/80'}`}>
+          <NavLink key={n.to} to={n.to} className={({ isActive }) => `flex-1 text-center text-[11px] font-semibold py-2 rounded ${isActive ? 'text-bronze-bright' : 'text-porcelain/80'}`} onClick={(e) => guard.link(e, n.to)}>
             {n.short}
           </NavLink>
         ))}

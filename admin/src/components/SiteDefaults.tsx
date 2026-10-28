@@ -7,7 +7,7 @@ import { useEffect, useMemo, useState } from 'react';
 import * as api from '../lib/api';
 import type { DefaultsChange, DefaultsDiff, DefaultsSave } from '../lib/api';
 import { BRANCH_NAMES, changesWord, countWord, nightsWord, riyadhDateTimeLong, sar, time12, YEAR } from '../lib/format';
-import { ErrorBox, Field, Loading, Modal, Spinner, useToast } from './ui';
+import { CancelButton, ErrorBox, Field, Loading, Modal, Spinner, useToast } from './ui';
 
 const SWITCH: Record<string, string> = { show_prices: 'إظهار الأسعار', instant_booking: 'الحجز الفوري' };
 const GROUPS: { key: DefaultsChange['group']; title: string }[] = [
@@ -159,7 +159,7 @@ export default function SiteDefaults({ onRestored }: { onRestored: (rebuild: boo
           {list.last_restore && <p className="text-xs text-ink-muted mb-3 num-ar">آخر استعادة: {riyadhDateTimeLong(list.last_restore.at)} بواسطة {list.last_restore.by}</p>}
           <div className="flex flex-wrap gap-2">
             <button type="button" className="btn btn-primary" disabled={!current} onClick={() => openRestore()} data-action="defaults-restore">استعادة الإعدادات الافتراضية</button>
-            <button type="button" className="btn btn-ghost" onClick={() => setSaveOpen(true)} data-action="defaults-save">حفظ الوضع الحالي كإعدادات افتراضية</button>
+            <button type="button" className="btn btn-ghost" onClick={() => { setLabel(''); setSaveOpen(true); }} data-action="defaults-save">حفظ الوضع الحالي كإعدادات افتراضية</button>
           </div>
           {list.saves.length > 0 && (
             <details className="mt-4" data-defaults-history>
@@ -180,18 +180,18 @@ export default function SiteDefaults({ onRestored }: { onRestored: (rebuild: boo
         </>
       )}
 
-      <Modal open={saveOpen} onClose={() => setSaveOpen(false)} title="حفظ الوضع الحالي كإعدادات افتراضية">
+      <Modal open={saveOpen} onClose={() => setSaveOpen(false)} title="حفظ الوضع الحالي كإعدادات افتراضية" busy={busy}>
         <Field label="تسمية (اختياري)" id="d-label" hint="مثل: قبل موسم الشتاء">
           <input id="d-label" className="field" maxLength={80} value={label} onChange={(e) => setLabel(e.target.value)} />
         </Field>
         <p className="text-sm text-ink-muted mt-3">سيحل هذا محل الافتراضي الحالي؛ تبقى النسخ السابقة في السجل.</p>
         <div className="flex gap-2 justify-end mt-5">
-          <button type="button" className="btn btn-ghost" onClick={() => setSaveOpen(false)} disabled={busy}>إلغاء</button>
+          <CancelButton disabled={busy} />
           <button type="button" className="btn btn-primary" onClick={save} disabled={busy} data-action="defaults-save-go">{busy && <Spinner />} حفظ كإعدادات افتراضية</button>
         </div>
       </Modal>
 
-      <Modal open={open} onClose={() => { setDiff(null); setDiffFor(undefined); setDiffError(null); }} title="استعادة الإعدادات الافتراضية" wide>
+      <Modal open={open} onClose={() => { setDiff(null); setDiffFor(undefined); setDiffError(null); }} title="استعادة الإعدادات الافتراضية" wide busy={busy}>
         {!diff && !diffError && <Loading />}
         <ErrorBox error={diffError} />
         {diff && diff.ok && (
@@ -218,7 +218,7 @@ export default function SiteDefaults({ onRestored }: { onRestored: (rebuild: boo
             {diff.skipped.length > 0 && <p className="text-xs text-ink-muted mb-1" data-skipped>غرف في النسخة لم تعد فعّالة فتم تجاوزها: {diff.skipped.map((r) => `${r.name_ar} — ${BRANCH_NAMES[r.branch] ?? r.branch}`).join('، ')}</p>}
             {diff.rebuild_needed && diff.changes.length > 0 && <p className="text-xs text-ink-muted mb-1">سيُعاد بناء الموقع بعد الاستعادة لتظهر الإتاحة والرسوم الجديدة.</p>}
             {needsAck && (
-              <label className="flex items-start gap-2 mt-3 text-sm cursor-pointer rounded border border-error/40 bg-error/10 p-3">
+              <label className="flex items-start gap-2 mt-3 text-sm cursor-pointer rounded border border-error/40 bg-error/10 p-3" data-no-dirty>
                 <input type="checkbox" className="size-5 mt-0.5 accent-bronze-deep" checked={ack} onChange={(e) => setAck(e.target.checked)} data-defaults-ack />
                 <span>
                   أفهم أن هذه الاستعادة تُفعِّل على الموقع فورًا:{' '}
@@ -227,7 +227,7 @@ export default function SiteDefaults({ onRestored }: { onRestored: (rebuild: boo
               </label>
             )}
             <div className="flex gap-2 justify-end mt-5">
-              <button type="button" className="btn btn-ghost" onClick={() => { setDiff(null); setDiffFor(undefined); }} disabled={busy}>إلغاء</button>
+              <CancelButton disabled={busy} />
               {diff.changes.length > 0 && (
                 <button type="button" className="btn btn-primary" onClick={restore} disabled={busy || (needsAck && !ack)} data-action="defaults-restore-go">
                   {busy && <Spinner />} استعادة {changesWord(diff.changes.flatMap(changeRows).length)}

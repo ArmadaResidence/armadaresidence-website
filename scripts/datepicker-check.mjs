@@ -343,6 +343,46 @@ for (const vp of VIEWPORTS) {
   }
 }
 
+// the start-and-end rule (28 Oct 2026, decision B8): a press that starts on a day and ends on the backdrop keeps the
+// picker open (and the day picked); a press from the backdrop into the panel keeps it open; a real backdrop click closes
+for (const vp of VIEWPORTS) {
+  const tag = `@${vp.width} outside-press`;
+  const { ctx } = await newContext(vp);
+  const page = await ctx.newPage();
+  await page.goto(`${BASE}/booking/`, { waitUntil: 'load' });
+  const form = page.locator('main form[data-booking-form]');
+  const dlg = await openPicker(page, form, 'start', { mobile: !!vp.mobile });
+  const day = dlg.locator(`td[data-date="${addDays(TODAY, 3)}"]`).first();
+  if (!(await day.count())) await tapDay(dlg, addDays(TODAY, 3), { mobile: !!vp.mobile });
+  const db = await day.boundingBox();
+  const dr = await dlg.boundingBox();
+  // a backdrop point: outside the popover's box (its ::backdrop covers the viewport, events target the dialog);
+  // the 375 sheet fills the viewport, so there is nothing to press outside — skipped
+  const fills = dr.width >= vp.width - 2 && dr.height >= vp.height - 2;
+  const outside = fills ? null : dr.x + dr.width + 40 < vp.width ? { x: dr.x + dr.width + 40, y: dr.y + 12 } : dr.x - 40 > 0 ? { x: dr.x - 40, y: dr.y + 12 } : { x: vp.width / 2, y: dr.y - 20 > 0 ? dr.y - 20 : dr.y + dr.height + 20 };
+  if (outside) {
+    await page.mouse.move(db.x + db.width / 2, db.y + db.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(outside.x, outside.y, { steps: 6 });
+    await page.mouse.up();
+    await page.waitForTimeout(300);
+    check(await form.locator('dialog[data-dr-dialog]').evaluate((d) => d.open), `${tag}: a drag from a day to the backdrop closed the picker`);
+    await page.mouse.move(outside.x, outside.y);
+    await page.mouse.down();
+    await page.mouse.move(db.x + db.width / 2, db.y + db.height / 2, { steps: 6 });
+    await page.mouse.up();
+    await page.waitForTimeout(300);
+    check(await form.locator('dialog[data-dr-dialog]').evaluate((d) => d.open), `${tag}: a press from the backdrop into the panel closed the picker`);
+    await page.mouse.click(outside.x, outside.y);
+    await page.waitForTimeout(700);
+    check(!(await form.locator('dialog[data-dr-dialog]').evaluate((d) => d.open)), `${tag}: a real backdrop click did not close the picker`);
+  } else {
+    console.log(`${tag}: the sheet fills the viewport — no backdrop to press (skipped)`);
+    await page.keyboard.press('Escape');
+  }
+  await ctx.close();
+}
+
 // reduced motion: the picker opens and closes at once
 for (const vp of VIEWPORTS) {
   const tag = `@${vp.width} reduced-motion`;
