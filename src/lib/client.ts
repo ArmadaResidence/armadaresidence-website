@@ -41,3 +41,41 @@ export function cssNumber(value: string): number {
 export function motionToken(name: 'fast' | 'base' | 'slow' | 'count' | 'stagger' | 'shift-sm' | 'shift-lg'): number {
   return cssNumber(getComputedStyle(document.documentElement).getPropertyValue(`--motion-${name}`));
 }
+
+/**
+ * Outside press = a press that starts AND ends outside the given elements (28 Oct 2026, decision B8 — the one rule for
+ * every popover, menu, list, picker and drawer that closes on an outside click, site and dashboard). A drag that
+ * starts inside (selecting text in a search field, dragging a scrollbar) and ends outside never counts. Pointer
+ * events cover mouse, touch and pen; `click` is not used because the browser dispatches it to the common ancestor
+ * of the down and up targets. `inside()` is read on every press (the elements may be re-rendered); `active()` lets a
+ * closed popover skip the work. Returns the remover; `signal` removes the listeners too.
+ */
+export function onOutsidePress(
+  inside: () => (Element | null | undefined)[],
+  handler: (e: PointerEvent) => void,
+  opts: { signal?: AbortSignal; active?: () => boolean } = {},
+): () => void {
+  let downOutside = false;
+  const on = () => !opts.active || opts.active();
+  const isInside = (t: EventTarget | null) => t instanceof Node && inside().some((el) => el?.contains(t));
+  const down = (e: PointerEvent) => {
+    downOutside = on() && !isInside(e.target);
+  };
+  const up = (e: PointerEvent) => {
+    const fire = downOutside && on() && !isInside(e.target);
+    downOutside = false;
+    if (fire) handler(e);
+  };
+  const cancel = () => {
+    downOutside = false;
+  };
+  const o = { capture: true, signal: opts.signal };
+  document.addEventListener('pointerdown', down, o);
+  document.addEventListener('pointerup', up, o);
+  document.addEventListener('pointercancel', cancel, o);
+  return () => {
+    document.removeEventListener('pointerdown', down, true);
+    document.removeEventListener('pointerup', up, true);
+    document.removeEventListener('pointercancel', cancel, true);
+  };
+}

@@ -1,0 +1,137 @@
+/* Partners enquiry — the shared phone country selector (src/components/PhoneField.astro, variant "partners") inside
+   the legacy wizard (28 Oct 2026, decision A). It reads as the wizard's other fields: the same height (12 px padding,
+   14.5 px type), border, 8 px radius, focus ring and error colour, from the legacy variables, so light and dark
+   (legacy-dark.css remaps --paper / --line / --tx / --tx-mute / --bronze / --cream-2) follow without a second rule.
+   Scoped under .legacy-partners .fld; the generated legacy sheet (scripts/legacy-css.py) is untouched. Specificity
+   beats the site-wide .country-* rules of global.css and their dark variants. */
+/* the row must never widen the wizard's grid column (a grid item's min-content would): min-width 0 on the field, the
+   row and the number input, so the column stays the width of every other field */
+.legacy-partners .fld.fld-phone {
+  min-width: 0;
+}
+.legacy-partners .fld .phone-row {
+  position: relative;
+  display: flex;
+  gap: 8px;
+  min-width: 0;
+}
+/* the wizard column paints above the aside that follows it on phones: the step's fade-in leaves an identity transform
+   (a stacking context) and the aside's reveal is one while it runs, so without this the tail of the open list could
+   sit under the aside for a second */
+.legacy-partners .grid.cols64 > .rv:has(#enquiry-form) {
+  position: relative;
+  z-index: 1;
+}
+.legacy-partners .fld .phone-row > input[type='tel'] {
+  flex: 1 1 0;
+  min-width: 0;
+  width: 0; /* no intrinsic size (an input's default 20 characters): the row never widens the grid column */
+  font-family: var(--body);
+}
+.legacy-partners .fld .phone-row .country-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex: none;
+  min-width: 0;
+  height: auto;
+  min-height: 0;
+  padding: 0 12px;
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  color: var(--tx);
+  font-family: var(--body);
+  font-size: 14.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    border-color var(--t),
+    box-shadow var(--t);
+}
+.legacy-partners .fld .phone-row .country-btn img {
+  display: block;
+  border-radius: 2px;
+}
+.legacy-partners .fld .phone-row .country-btn .country-chevron {
+  color: var(--tx-mute);
+}
+.legacy-partners .fld .phone-row .country-btn:hover,
+.legacy-partners .fld .phone-row .country-btn[aria-expanded='true'] {
+  border-color: var(--bronze);
+}
+.legacy-partners .fld .phone-row .country-btn:focus-visible {
+  outline: none;
+  border-color: var(--bronze);
+  box-shadow: 0 0 0 3px rgba(184, 134, 78, 0.16);
+  border-radius: 8px;
+}
+/* the list: under the row, above the following rows and the step's own fade-in, never clipped */
+.legacy-partners .fld .country-pop {
+  position: absolute;
+  inset-inline-start: 0;
+  top: calc(100% + 4px);
+  z-index: 40;
+  width: min(22rem, 100%);
+  padding: 8px;
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  box-shadow: var(--shadow-l);
+}
+.legacy-partners .fld .country-pop input[type='search'] {
+  padding: 10px 12px;
+  font-size: 14px;
+  border-color: var(--line);
+}
+.legacy-partners .fld.bad .country-pop input[type='search'] {
+  border-color: var(--line);
+}
+.legacy-partners .fld .country-pop input[type='search']:focus {
+  border-color: var(--bronze);
+  box-shadow: 0 0 0 3px rgba(184, 134, 78, 0.16);
+}
+.legacy-partners .fld .country-list {
+  margin-top: 8px;
+  max-height: 16rem;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+.legacy-partners .fld .country-opt {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px;
+  border-radius: 6px;
+  font-size: 14px;
+  color: var(--tx);
+  cursor: pointer;
+}
+.legacy-partners .fld .country-opt img {
+  flex: none;
+  border-radius: 2px;
+  box-shadow: 0 0 0 1px rgba(11, 25, 38, 0.12);
+}
+.legacy-partners .fld .country-opt .flex-1 {
+  flex: 1 1 0;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.legacy-partners .fld .country-opt .latin {
+  font-family: var(--body);
+  color: var(--tx-mute);
+}
+.legacy-partners .fld .country-opt.is-active,
+.legacy-partners .fld .country-opt:hover {
+  background: var(--cream-2);
+}
+.legacy-partners .fld .country-opt[aria-selected='true'] {
+  font-weight: 600;
+}
+.legacy-partners .fld .country-empty {
+  padding: 12px 8px;
+  font-size: 14px;
+  color: var(--tx-mute);
+}

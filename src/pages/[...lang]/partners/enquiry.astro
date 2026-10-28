@@ -8,6 +8,8 @@ import Base from '@layouts/Base.astro';
 import LpShell from '@components/lp/LpShell.astro';
 import LpPageHero from '@components/lp/LpPageHero.astro';
 import DateRangeField from '@components/DateRangeField.astro';
+import PhoneField from '@components/PhoneField.astro';
+import '../../../styles/partners-phone.css';
 import { langPaths } from '@lib/paths';
 import { pageSeo, type Locale } from '@lib/content';
 import { ICON, lp, T, waHrefSales } from '@lib/partners';
@@ -83,7 +85,9 @@ const strings = {
                 </div>
                 <div class="row c2">
                   <div class="fld"><label for="f-email">{T(locale, fl.email)}<span class="req">*</span></label><input type="email" id="f-email" name="email" required dir="ltr" inputmode="email" autocomplete="email" autocapitalize="off" spellcheck="false" maxlength="254" aria-describedby="f-email-err" /><p class="err" id="f-email-err">{badEmail}</p></div>
-                  <div class="fld"><label for="f-phone">{T(locale, fl.phone)}<span class="req">*</span></label><input type="tel" id="f-phone" name="phone" required dir="ltr" inputmode="tel" autocomplete="tel" maxlength="24" aria-describedby="f-phone-err" /><p class="err" id="f-phone-err">{req}</p></div>
+                  {/* the shared phone field with the country selector (28 Oct 2026): hidden `phone_country` carries the ISO
+                      code — independent of the business «country» field below */}
+                  <PhoneField locale={locale} variant="partners" id="f-phone" name="phone" countryName="phone_country" label={T(locale, fl.phone)} errorText={req} />
                 </div>
                 {/* Honeypot: invisible to people and assistive tech; a bot that fills it gets a fake success and nothing is stored. */}
                 <div style="position:absolute;inset-inline-start:-9999px;width:1px;height:1px;overflow:hidden" aria-hidden="true">

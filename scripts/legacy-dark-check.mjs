@@ -3,12 +3,19 @@
 //   node scripts/legacy-dark-check.mjs after    → light stills again, pixel-compared with the reference (must be
 //                                                  identical), dark stills (screenshots/legacy-dark/), AA contrast
 //                                                  check of every text node in dark mode, console errors.
+//   … after --changed "/partners/enquiry/=[data-phone-group]"   (28 Oct 2026) a deliberate change: on the named
+//                                                  pages the differing pixels must all lie inside that element's box
+//                                                  (+ 4 px); every other page must still be identical. The report
+//                                                  prints the box of the differing pixels for every page.
 import { chromium } from 'playwright';
 import sharp from 'sharp';
 import { mkdirSync, existsSync } from 'node:fs';
 
 const BASE = (process.env.BASE_URL || 'http://127.0.0.1:4321').replace(/\/$/, '');
 const mode = process.argv[2] || 'after';
+// --changed "<path>=<selector>,<path>=<selector>": pages whose light rendering may differ, only inside the selector
+const changedArg = process.argv.indexOf('--changed');
+const CHANGED = new Map((changedArg >= 0 ? process.argv[changedArg + 1] : '').split(',').filter(Boolean).map((x) => x.split('=')));
 const PAGES = ['/discover-taif/', '/partners/', '/partners/enquiry/', '/partners/groups-umrah/', '/partners/corporate/', '/partners/meetings-events/', '/en/discover-taif/', '/en/partners/'];
 const SIZES = [
   { width: 1440, height: 900, isMobile: false },
@@ -60,14 +67,30 @@ async function settle(page) {
   await page.waitForTimeout(600);
 }
 
-async function diff(a, b) {
+/** pixel diff; with `allowed` (a box in CSS px, the stills are at device scale 1) the pixels outside it are counted apart */
+async function diff(a, b, allowed = null) {
   const [ia, ib] = await Promise.all([sharp(a).ensureAlpha().raw().toBuffer({ resolveWithObject: true }), sharp(b).ensureAlpha().raw().toBuffer({ resolveWithObject: true })]);
   if (ia.info.width !== ib.info.width || ia.info.height !== ib.info.height) return { size: `${ia.info.width}x${ia.info.height} vs ${ib.info.width}x${ib.info.height}` };
   let n = 0;
+  let outside = 0;
+  const w = ia.info.width;
+  let x0 = Infinity, y0 = Infinity, x1 = -1, y1 = -1;
   for (let i = 0; i < ia.data.length; i += 4) {
-    if (Math.abs(ia.data[i] - ib.data[i]) > 8 || Math.abs(ia.data[i + 1] - ib.data[i + 1]) > 8 || Math.abs(ia.data[i + 2] - ib.data[i + 2]) > 8) n++;
+    if (Math.abs(ia.data[i] - ib.data[i]) > 8 || Math.abs(ia.data[i + 1] - ib.data[i + 1]) > 8 || Math.abs(ia.data[i + 2] - ib.data[i + 2]) > 8) {
+      n++;
+      const px = (i / 4) % w;
+      const py = Math.floor(i / 4 / w);
+      if (px < x0) x0 = px;
+      if (px > x1) x1 = px;
+      if (py < y0) y0 = py;
+      if (py > y1) y1 = py;
+      if (allowed && !(px >= allowed.x - 4 && px <= allowed.x + allowed.w + 4 && py >= allowed.y - 4 && py <= allowed.y + allowed.h + 4)) outside++;
+    }
   }
-  return { pixels: n, pct: +((100 * n) / (ia.data.length / 4)).toFixed(3) };
+  const total = ia.data.length / 4;
+  // box of the differing pixels
+  const box = n ? { x: x0, y: y0, w: x1 - x0 + 1, h: y1 - y0 + 1 } : null;
+  return { pixels: n, pct: +((100 * n) / total).toFixed(3), box, outside, outsidePct: +((100 * outside) / total).toFixed(3) };
 }
 
 const browser = await chromium.launch({ channel: 'chrome' });
@@ -90,10 +113,25 @@ for (const size of SIZES) {
         if (mode === 'after') {
           if (!existsSync(`${REF}/${name}`)) fails.push(`${name}: no reference still (run "before" first)`);
           else {
-            const d = await diff(`${REF}/${name}`, file);
-            // ≤ 0.02 % differing pixels = capture noise (sub-pixel text/anti-aliasing between two renders of the same build)
-          if (d.size || d.pct > 0.02) fails.push(`light mode changed: ${name} ${JSON.stringify(d)}`);
-            console.log(`${name} light diff ${JSON.stringify(d)}`);
+            const sel = CHANGED.get(path);
+            // a deliberate change: the differing pixels lie inside the element's box (+ 4 px), measured on the same page;
+            // outside it only capture noise (≤ 0.02 %) is allowed
+            const el = sel
+              ? await page.evaluate((sel) => {
+                  const r = document.querySelector(sel)?.getBoundingClientRect();
+                  return r ? { x: r.left + scrollX, y: r.top + scrollY, w: r.width, h: r.height } : null;
+                }, sel)
+              : null;
+            const d = await diff(`${REF}/${name}`, file, el);
+            if (sel && el) {
+              const inside = !d.size && d.outsidePct <= 0.02;
+              if (!inside) fails.push(`light mode changed outside ${sel}: ${name} ${JSON.stringify(d)} element ${JSON.stringify(el)}`);
+              console.log(`${name} light diff ${JSON.stringify(d)} — inside ${sel} ${JSON.stringify(el)}: ${inside ? 'yes' : 'NO'}`);
+            } else {
+              // ≤ 0.02 % differing pixels = capture noise (sub-pixel text/anti-aliasing between two renders of the same build)
+              if (d.size || d.pct > 0.02) fails.push(`light mode changed: ${name} ${JSON.stringify(d)}`);
+              console.log(`${name} light diff ${JSON.stringify(d)}`);
+            }
           }
         }
       } else {

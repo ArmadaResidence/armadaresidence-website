@@ -2,21 +2,29 @@
  * /partners/enquiry/ — the legacy three-step wizard (moved here from public/legacy/partners.js on 26 Oct 2026 so it
  * can share the booking form's rules). Same steps, buttons and fallbacks as before; what changed:
  *   - contact fields follow supabase/functions/booking-request/rules.ts (the Edge Function runs the same checks):
- *     company (letters required, ≥ 2), contact name (validName), phone (libphonenumber-js → E.164, Saudi Arabia for
- *     national numbers), email; inline messages with aria-invalid / aria-describedby, on blur and on Continue / send;
+ *     company (letters required, ≥ 2), contact name (validName), phone (libphonenumber-js → E.164 for the country
+ *     picked in the shared selector — src/components/PhoneField.astro + src/lib/country-select.ts, 28 Oct 2026;
+ *     Saudi Arabia by default), email; inline messages with aria-invalid / aria-describedby, on blur and on
+ *     Continue / send;
+ *   - the draft keeps the phone country (`phone_country`); «مسح البيانات» resets it to Saudi Arabia; an older draft
+ *     without it takes the country from a stored international number, otherwise Saudi Arabia;
  *   - the draft (localStorage) is never restored silently: a notice «استعدنا بيانات أدخلتها سابقًا» with
  *     «مسح البيانات»; a draft expires 7 days after its last edit and is deleted after a successful submit. The
  *     unversioned draft of the old script (no timestamp, restored silently) is deleted unread.
  * The URL parameters (?request= / property= / biz= / guests= / rooms=, from /offers and the rooming calculator) still
  * preselect the request; they never carry personal data.
  */
-import { E164, riyadhToday, validEmail, validName, validOrganisation, type FieldError } from '../../supabase/functions/booking-request/rules.ts';
+import { riyadhToday, validEmail, validName, validOrganisation, type FieldError } from '../../supabase/functions/booking-request/rules.ts';
+import { loadPhoneLib, phoneToE164 } from './phone';
+import { initCountrySelect, type CountrySelect } from './country-select';
 
 export const DRAFT_KEY = 'armada_b2b_enquiry_v2';
 const OLD_DRAFT_KEYS = ['armada_b2b_enquiry_v1'];
 export const DRAFT_TTL_MS = 7 * 86400000;
 /** never saved in a draft: the honeypot */
 const NOT_SAVED = new Set(['website']);
+/** the phone country (hidden input of the shared phone field): saved with the draft, restored through the selector */
+const PHONE_COUNTRY = 'phone_country';
 
 interface Draft {
   saved_at: number;
@@ -30,33 +38,6 @@ interface Strings {
   email: string;
 }
 type Field = HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement;
-
-type PhoneLib = typeof import('libphonenumber-js/min');
-let phoneLib: PhoneLib | null = null;
-let phoneLibLoading: Promise<PhoneLib | null> | null = null;
-/** libphonenumber-js (min metadata) is loaded on first interaction, not with the page (as in the booking form). */
-function loadPhoneLib(): Promise<PhoneLib | null> {
-  if (phoneLib) return Promise.resolve(phoneLib);
-  phoneLibLoading ??= import('libphonenumber-js/min')
-    .then((m) => (phoneLib = m))
-    .catch(() => null);
-  return phoneLibLoading;
-}
-
-/** ٠١٢… / ۰۱۲… → 0-9 */
-const latinDigits = (s: string) => s.replace(/[٠-٩]/g, (c) => String(c.charCodeAt(0) - 0x0660)).replace(/[۰-۹]/g, (c) => String(c.charCodeAt(0) - 0x06f0));
-
-/** E.164 for a number typed with +/00 (any country) or in the Saudi national form. */
-function phoneToE164(raw: string): string | null {
-  const v = latinDigits(raw).replace(/[\s\-().]/g, '').replace(/^00/, '+');
-  if (!v) return null;
-  if (phoneLib) {
-    const n = v.startsWith('+') ? phoneLib.parsePhoneNumberFromString(v) : phoneLib.parsePhoneNumberFromString(v, 'SA');
-    return n && n.isValid() ? n.number : null;
-  }
-  // library not loaded (offline): the server still validates the number
-  return E164.test(v) ? v : null;
-}
 
 function readDraft(): Draft | null {
   try {
@@ -104,6 +85,15 @@ export function initEnquiry(): void {
   const psteps = $$('.pstep', form);
   const notice = $('[data-draft-notice]', form)!;
   let stepIdx = 0;
+  // the phone country selector (shared with the booking form); `country` is null only when the markup is missing
+  const country: CountrySelect | null = initCountrySelect($('[data-phone-group]', form)!, {
+    onChange: () => {
+      const ph = field('phone');
+      if (ph && touched.has('phone')) void loadPhoneLib().then(() => showFieldError(ph, errorOf(ph)));
+      saveDraft();
+    },
+  });
+  const phoneCountry = () => country?.value() || 'SA';
 
   // ── URL preselection (non-personal) ──────────────────────────────────────────────────────────────────
   function paramPrefill() {
@@ -128,8 +118,10 @@ export function initEnquiry(): void {
     if (restoring || form!.hidden) return;
     const fields: Record<string, string> = {};
     $$<Field>('input,select,textarea', form).forEach((el) => {
-      if (el.name && !NOT_SAVED.has(el.name) && el.value.trim()) fields[el.name] = el.value;
+      if (el.name && el.name !== PHONE_COUNTRY && !NOT_SAVED.has(el.name) && el.value.trim()) fields[el.name] = el.value;
     });
+    // the phone country rides along with the other fields; alone it is no draft
+    if (Object.keys(fields).length) fields[PHONE_COUNTRY] = phoneCountry();
     try {
       if (Object.keys(fields).length) localStorage.setItem(DRAFT_KEY, JSON.stringify({ saved_at: Date.now(), fields } satisfies Draft));
       else localStorage.removeItem(DRAFT_KEY);
@@ -144,24 +136,37 @@ export function initEnquiry(): void {
     restoring = true;
     Object.keys(d.fields).forEach((k) => {
       const el = field(k);
-      if (!el || NOT_SAVED.has(k) || el.value || typeof d.fields[k] !== 'string') return;
+      if (!el || k === PHONE_COUNTRY || NOT_SAVED.has(k) || el.value || typeof d.fields[k] !== 'string') return;
       el.value = d.fields[k];
       // the calendar picker re-reads its hidden inputs on change (and drops a past date from an old draft)
       if (el.hasAttribute('data-dr-value')) el.dispatchEvent(new Event('change', { bubbles: true }));
       if (el.value) restored++;
     });
-    restoring = false;
+    // the phone country: the saved one; an older draft without it takes the country from a stored international
+    // number (+ / 00), otherwise Saudi Arabia stays
+    const cc = typeof d.fields[PHONE_COUNTRY] === 'string' ? d.fields[PHONE_COUNTRY] : '';
+    let pending = false;
+    if (country && !(cc && country.choose(cc)) && /^\s*(\+|00)/.test(d.fields.phone ?? '')) {
+      // the library loads first; the draft itself is not re-saved (its age must not reset on a visit)
+      pending = true;
+      void country.applyInternational(d.fields.phone).finally(() => {
+        restoring = false;
+      });
+    }
+    if (!pending) restoring = false;
     if (restored) notice.hidden = false;
   }
   function clearDraft() {
     deleteDraft();
     restoring = true;
     form!.reset();
-    // hidden inputs keep their value through reset(): clear the dates and let the picker repaint
+    // hidden inputs keep their value through reset(): clear the dates and let the picker repaint; the phone country
+    // goes back to Saudi Arabia through the selector (button, flag and code follow)
     dateInputs().forEach((el) => {
       el.value = '';
       el.dispatchEvent(new Event('change', { bubbles: true }));
     });
+    country?.reset();
     restoring = false;
     paramPrefill();
     $$('.fld.bad', form).forEach((f) => f.classList.remove('bad'));
@@ -206,7 +211,7 @@ export function initEnquiry(): void {
       case 'email':
         return validEmail(v) ? null : 'email';
       case 'phone':
-        return phoneToE164(v) ? null : 'phone';
+        return phoneToE164(v, phoneCountry()) ? null : 'phone';
       // dates come from the calendar picker (hidden ISO inputs): no past arrival, departure after arrival
       case 'checkin':
         return /^\d{4}-\d{2}-\d{2}$/.test(v) && v >= riyadhToday() ? null : 'past';
@@ -270,7 +275,7 @@ export function initEnquiry(): void {
     const order = ['company', 'person', 'email', 'phone', 'country', 'biztype', 'reqtype', 'property', 'checkin', 'checkout', 'guests', 'rooms', 'unittype', 'meals', 'notes'];
     const lines = [T.waIntro || 'New B2B enquiry', ''];
     order.forEach((n) => {
-      const v = n === 'phone' ? phoneToE164(readableValue(n)) || readableValue(n) : readableValue(n);
+      const v = n === 'phone' ? phoneToE164(readableValue(n), phoneCountry()) || readableValue(n) : readableValue(n);
       if (v) lines.push(`${labelFor(n)}: ${v}`);
     });
     lines.push('', (IS_AR ? 'أُرسل من ' : 'Sent from ') + location.origin + location.pathname);
@@ -316,7 +321,8 @@ export function initEnquiry(): void {
       meals: v('meals'),
       room: '',
       name: v('person').replace(/\s+/g, ' '),
-      phone: phoneToE164(v('phone')) || v('phone'),
+      phone: phoneToE164(v('phone'), phoneCountry()) || v('phone'),
+      country: phoneCountry(),
       email: v('email'),
       notes: extra.join('\n').slice(0, 1000),
       website: v('website'),
@@ -388,6 +394,7 @@ export function initEnquiry(): void {
   fnav?.addEventListener('pointerdown', () => (navPressed = true));
   ['pointerup', 'pointercancel'].forEach((t) => window.addEventListener(t, () => setTimeout(() => (navPressed = false), 0)));
   $$<Field>('.fld input, .fld select', form).forEach((el) => {
+    if (el.closest('[data-country-pop]')) return; // the country search box belongs to the selector
     el.addEventListener('input', () => {
       if (CONTACT.includes(el.name)) touched.add(el.name);
       // while typing, an error only clears (a new one waits for blur / Continue)

@@ -1,0 +1,96 @@
+---
+/**
+ * Phone / WhatsApp field with the country-code selector (28 Oct 2026, decision A) — the ONE component for both forms:
+ * the booking form (`variant="booking"`, the site's field style) and the partners enquiry wizard
+ * (`variant="partners"`, the legacy .fld markup, styled by src/styles/partners-phone.css). Hidden input `countryName`
+ * carries the ISO code, the number input the national digits; the countries (src/lib/countries.ts), with their names
+ * in the page language + English, travel in the field's own JSON. Behaviour: src/lib/country-select.ts; strings:
+ * ui.json → form. Flags are self-hosted (public/flags/, scripts/flags.mjs) and loaded only while the list is open —
+ * the selected country's flag is the one image on the page.
+ */
+import Icon from './Icon.astro';
+import { ui, type Locale } from '@lib/content';
+import { countryRows } from '@lib/countries';
+
+interface Props {
+  locale: Locale;
+  variant: 'booking' | 'partners';
+  /** id of the number input */
+  id: string;
+  name?: string;
+  /** name of the hidden ISO-code input */
+  countryName?: string;
+  label: string;
+  /** booking: the hint line under the field and its id */
+  hint?: string;
+  hintId?: string;
+  /** booking: id of the inline error line (data-error-for = name) */
+  errorId?: string;
+  /** partners: the .err text (the wizard fills it with the specific message) */
+  errorText?: string;
+  required?: boolean;
+  class?: string;
+}
+const { locale, variant, id, name = 'phone', countryName = 'country', label, hint, hintId, errorId, errorText = '', required = true, class: className = '' } = Astro.props;
+const f = ui(locale).form;
+const countries = countryRows(locale);
+const listId = `${id}-country-list`;
+const data = { countries, strings: { none: f.country_none, label: f.country_code } };
+const describedBy = [variant === 'booking' ? hintId : undefined, variant === 'booking' ? errorId : `${id}-err`].filter(Boolean).join(' ');
+---
+
+{
+  variant === 'booking' ? (
+    <div class:list={['sm:col-span-2', className]} data-phone-group>
+      <label for={id} class="block text-sm font-semibold text-midnight mb-2">{label}</label>
+      <div class="relative flex gap-2" dir="ltr" data-phone-field>
+        <input type="hidden" name={countryName} value="SA" data-country-value />
+        <button type="button" class="country-btn" aria-haspopup="listbox" aria-expanded="false" aria-controls={listId} aria-label={`${f.country_code}: ${countries[0][2]} +${countries[0][1]}`} data-country-btn>
+          <img src="/flags/sa.png" alt="" aria-hidden="true" width="24" height="18" class="rounded-sm" data-country-flag data-flag-src="/flags/sa.png" />
+          <span class="latin font-semibold" data-country-code>+{countries[0][1]}</span>
+          <Icon name="chevron" size={14} class="text-ink-muted" />
+        </button>
+        <input
+          id={id}
+          name={name}
+          type="tel"
+          inputmode="tel"
+          autocomplete="tel-national"
+          required={required}
+          maxlength="20"
+          lang="en"
+          class="flex-1 min-w-0 h-14 px-3 border border-line rounded bg-white latin text-left text-midnight"
+          aria-describedby={describedBy}
+          data-phone-input
+        />
+        <div class="country-pop hidden" data-country-pop>
+          <input type="search" class="w-full h-11 px-3 border border-line rounded bg-white text-sm" placeholder={f.country_search} aria-label={f.country_search} aria-controls={listId} autocomplete="off" dir={locale === 'ar' ? 'rtl' : 'ltr'} data-country-search />
+          <ul id={listId} role="listbox" aria-label={f.country_code} class="country-list" data-country-list tabindex="-1"></ul>
+        </div>
+      </div>
+      {hint && <p id={hintId} class="text-xs text-ink-muted mt-1">{hint}</p>}
+      {errorId && <p id={errorId} class="field-error hidden" data-error-for={name}></p>}
+      <script type="application/json" data-country-data set:html={JSON.stringify(data).replace(/</g, '\\u003c')} />
+    </div>
+  ) : (
+    <div class:list={['fld', 'fld-phone', className]} data-phone-group>
+      {/* no whitespace between the text and the asterisk: the legacy label renders them joined */}
+      <label for={id}>{label}{required && <span class="req">*</span>}</label>
+      <div class="phone-row" dir="ltr" data-phone-field>
+        <input type="hidden" name={countryName} value="SA" data-country-value />
+        <button type="button" class="country-btn" aria-haspopup="listbox" aria-expanded="false" aria-controls={listId} aria-label={`${f.country_code}: ${countries[0][2]} +${countries[0][1]}`} data-country-btn>
+          <img src="/flags/sa.png" alt="" aria-hidden="true" width="24" height="18" data-country-flag data-flag-src="/flags/sa.png" />
+          <span class="country-dial" data-country-code>+{countries[0][1]}</span>
+          <Icon name="chevron" size={14} class="country-chevron" />
+        </button>
+        <input id={id} name={name} type="tel" inputmode="tel" autocomplete="tel-national" required={required} maxlength="20" lang="en" dir="ltr" aria-describedby={describedBy} data-phone-input />
+        <div class="country-pop hidden" data-country-pop>
+          <input type="search" placeholder={f.country_search} aria-label={f.country_search} aria-controls={listId} autocomplete="off" dir={locale === 'ar' ? 'rtl' : 'ltr'} data-country-search />
+          <ul id={listId} role="listbox" aria-label={f.country_code} class="country-list" data-country-list tabindex="-1"></ul>
+        </div>
+      </div>
+      <p class="err" id={`${id}-err`}>{errorText}</p>
+      <script type="application/json" data-country-data set:html={JSON.stringify(data).replace(/</g, '\\u003c')} />
+    </div>
+  )
+}
