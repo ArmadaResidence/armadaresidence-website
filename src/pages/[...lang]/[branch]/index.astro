@@ -54,7 +54,7 @@ const na = branch.national_address;
 const dining = (branch as { dining?: unknown }).dining;
 // Drive times (branches.json → drive_times_min, confirmed by Ahmed 9 Oct 2026): "<10" renders as "under 10 min"
 const dtLabels = t.drive_times as Record<string, string>;
-const driveTimes = Object.entries(((branch as { drive_times_min?: Record<string, number | string> }).drive_times_min ?? {})).map(([key, v]) => ({
+const driveTimes = Object.entries(((branch as unknown as { drive_times_min?: Record<string, number | string> }).drive_times_min ?? {})).map(([key, v]) => ({
   place: dtLabels[key] ?? TODO,
   value: typeof v === 'string' && v.startsWith('<') ? fill(dtLabels.under_minutes, { n: v.slice(1) }) : fill(dtLabels.minutes, { n: v }),
 }));

@@ -1,6 +1,6 @@
 // The full check suite (CLAUDE.md §11 — mandatory, Ahmed 24 Oct 2026): before every commit against the local build,
 // after every deploy against the live site.
-//   node scripts/check-all.mjs                local: build.py → qa.py → admin-digits/format-check → dist/ served on 127.0.0.1 → the browser checks
+//   node scripts/check-all.mjs                local: build.py → qa.py → typecheck → the static checks → dist/ served on 127.0.0.1 → the browser checks
 //   node scripts/check-all.mjs --staged       the same on the staged snapshot (what `git commit` will record), exported
 //                                             with git checkout-index to a temp folder, so uncommitted edits of
 //                                             another session in this shared folder neither break nor pass a commit;
@@ -22,8 +22,9 @@ const BROWSER_CHECKS = ['booking-nav-check', 'drawer-check', 'booking-whatsapp-c
 // static, no browser, no key: Western digits and no native date inputs in the dashboard sources (phase 2a.1); the
 // dashboard's Arabic count helper and error mapping (unit tests, phase 2a.1 copy approval); the staff emails' layout
 // (Auth templates in sync with email.ts, hosted PNG logo, AR- subjects — 26 Oct 2026); the WhatsApp template payloads
-// against the live definitions and the internal emails' one-page A4 print (task 5, 28 Oct 2026)
-const STATIC_CHECKS = ['admin-digits-check', 'admin-format-check', 'auth-emails-check', 'whatsapp-check', 'email-print-check'];
+// against the live definitions and the internal emails' one-page A4 print (task 5, 28 Oct 2026); the TypeScript type check
+// of the site (astro check) and the dashboard (tsc --noEmit) — a type error never lands (Ahmed, 28 Oct 2026)
+const STATIC_CHECKS = ['typecheck', 'admin-digits-check', 'admin-format-check', 'auth-emails-check', 'whatsapp-check', 'email-print-check'];
 // live only: the deployed functions' CORS / preflight / gateway JWT handling from every dashboard origin
 const LIVE_CHECKS = ['admin-cors-check'];
 const args = process.argv.slice(2);
@@ -31,24 +32,28 @@ const live = args.includes('--live');
 const staged = !live && args.includes('--staged');
 const PYTHON = process.env.PYTHON || 'python';
 
-// --staged: the index exported to a temp folder; node_modules is a junction to this checkout's
+// --staged: the index exported to a temp folder; node_modules and admin/node_modules (the dashboard's type check) are
+// junctions to this checkout's
+const LINKED = ['node_modules', 'admin/node_modules'];
 let cwd = process.cwd();
 let snapshot = null;
 if (staged) {
   snapshot = mkdtempSync(join(tmpdir(), 'armada-staged-'));
   execFileSync('git', ['checkout-index', '--all', '--force', `--prefix=${snapshot.split('\\').join('/')}/`]);
-  symlinkSync(resolve('node_modules'), join(snapshot, 'node_modules'), 'junction');
+  for (const dir of LINKED) if (existsSync(resolve(dir))) symlinkSync(resolve(dir), join(snapshot, dir), 'junction');
   cwd = snapshot;
   console.log(`staged snapshot: ${snapshot}`);
 }
 function removeSnapshot() {
   if (!snapshot) return;
-  const link = join(snapshot, 'node_modules');
-  // unlink the junction first, so removing the folder can never reach the real node_modules
-  try {
-    if (lstatSync(link).isSymbolicLink()) unlinkSync(link);
-  } catch {}
-  if (existsSync(link)) return console.log(`left ${snapshot} in place (its node_modules link is still there)`);
+  // unlink the junctions first, so removing the folder can never reach the real node_modules
+  for (const dir of LINKED) {
+    const link = join(snapshot, dir);
+    try {
+      if (lstatSync(link).isSymbolicLink()) unlinkSync(link);
+    } catch {}
+    if (existsSync(link)) return console.log(`left ${snapshot} in place (its ${dir} link is still there)`);
+  }
   rmSync(snapshot, { recursive: true, force: true });
 }
 

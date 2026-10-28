@@ -113,11 +113,11 @@ export function initEnquiry(): void {
 
   // ── draft ───────────────────────────────────────────────────────────────────────────────────────────
   let restoring = false;
-  const dateInputs = () => $$<HTMLInputElement>('[data-dr-value]', form);
+  const dateInputs = () => $$<HTMLInputElement>('[data-dr-value]', form!);
   function saveDraft() {
     if (restoring || form!.hidden) return;
     const fields: Record<string, string> = {};
-    $$<Field>('input,select,textarea', form).forEach((el) => {
+    $$<Field>('input,select,textarea', form!).forEach((el) => {
       if (el.name && el.name !== PHONE_COUNTRY && !NOT_SAVED.has(el.name) && el.value.trim()) fields[el.name] = el.value;
     });
     // the phone country rides along with the other fields; alone it is no draft
@@ -169,8 +169,8 @@ export function initEnquiry(): void {
     country?.reset();
     restoring = false;
     paramPrefill();
-    $$('.fld.bad', form).forEach((f) => f.classList.remove('bad'));
-    $$('[aria-invalid]', form).forEach((e) => e.setAttribute('aria-invalid', 'false'));
+    $$('.fld.bad', form!).forEach((f) => f.classList.remove('bad'));
+    $$('[aria-invalid]', form!).forEach((e) => e.setAttribute('aria-invalid', 'false'));
     touched.clear();
     hideError();
     notice.hidden = true;
@@ -405,7 +405,7 @@ export function initEnquiry(): void {
       el.addEventListener('blur', async (e) => {
         // leaving the field by pressing a wizard button: that button validates; a message shown now would shift the
         // button under the finger and the tap would miss it
-        if (navPressed || (e.relatedTarget as Element | null)?.closest?.('.fnav')) return;
+        if (navPressed || ((e as FocusEvent).relatedTarget as Element | null)?.closest?.('.fnav')) return;
         if (!touched.has(el.name)) return;
         if (el.name === 'phone') await loadPhoneLib();
         showFieldError(el, errorOf(el));

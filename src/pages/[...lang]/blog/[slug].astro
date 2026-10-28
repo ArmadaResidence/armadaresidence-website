@@ -88,7 +88,7 @@ const crumbs = [
   { name: b.heading, path: blogPath(locale) },
   { name: a.title, path: articlePath(locale, slug) },
 ];
-const jsonld = [
+const jsonld: Record<string, unknown>[] = [
   articleLd(locale, {
     url: articlePath(locale, slug),
     headline: a.title,

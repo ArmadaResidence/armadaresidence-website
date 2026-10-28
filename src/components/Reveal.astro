@@ -19,10 +19,12 @@ interface Props {
 }
 const { as: Tag = 'div', class: className = '', shift = 'sm', delay, stagger = false, ...rest } = Astro.props;
 const style = delay ? `--reveal-delay:${delay}ms` : undefined;
+// the element name is dynamic; typed as a plain element so Astro accepts the attributes below
+const El = Tag as 'div';
 ---
 
-<Tag
+<El
   class:list={[stagger ? 'reveal-group' : 'reveal', shift === 'lg' && 'reveal-lg', className]}
   data-reveal-stagger={stagger ? '' : undefined}
   style={style}
-  {...rest}><slot /></Tag>
+  {...rest}><slot /></El>

@@ -492,7 +492,7 @@ export function branchStats(locale: Locale, branch: Branch): StatItem[] {
   items.push({ value: 24, label: s.hours });
   const hall = (hallsJson.halls as { branch: string; capacity: number }[]).find((h) => h.branch === branch.slug);
   if (hall) items.push({ value: hall.capacity, label: s.hall });
-  const drive = Object.entries((branch as { drive_times_min?: Record<string, number | string> }).drive_times_min ?? {}).find(([, v]) => typeof v === 'number');
+  const drive = Object.entries((branch as unknown as { drive_times_min?: Record<string, number | string> }).drive_times_min ?? {}).find(([, v]) => typeof v === 'number');
   if (drive && items.length < 4) {
     const n = drive[1] as number;
     const place = (ui(locale).drive_times as Record<string, string>)[drive[0]] ?? drive[0];

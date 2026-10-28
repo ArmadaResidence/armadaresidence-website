@@ -930,8 +930,8 @@ const stepper = (name: 'adults' | 'children' | 'extra_beds', value: number, min:
         breakfast: p.breakfast === 'with' ? S.breakfastWith : p.breakfast === 'without' ? S.breakfastWithout : '',
         name: p.name,
         phone,
-        email: p.email,
-        notes: p.notes,
+        email: p.email ?? '',
+        notes: p.notes ?? '',
       };
       const msg = S.whatsappMessage
         .split('\n')

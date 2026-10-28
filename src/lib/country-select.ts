@@ -45,15 +45,15 @@ const norm = (s: string) => s.toLowerCase().replace(/[ً-ٰٟ]/g, '').replace(/[
 
 export function initCountrySelect(group: HTMLElement, opts: CountrySelectOptions = {}): CountrySelect | null {
   const data = JSON.parse(group.querySelector('[data-country-data]')?.textContent || 'null') as Data | null;
-  const btn = group.querySelector<HTMLButtonElement>('[data-country-btn]');
-  const flag = group.querySelector<HTMLImageElement>('[data-country-flag]');
-  const code = group.querySelector<HTMLElement>('[data-country-code]');
-  const pop = group.querySelector<HTMLElement>('[data-country-pop]');
-  const search = group.querySelector<HTMLInputElement>('[data-country-search]');
-  const list = group.querySelector<HTMLElement>('[data-country-list]');
-  const hidden = group.querySelector<HTMLInputElement>('[data-country-value]');
-  const phone = group.querySelector<HTMLInputElement>('[data-phone-input]');
-  if (!data || !btn || !flag || !code || !pop || !search || !list || !hidden || !phone) return null;
+  const q = <T extends Element>(sel: string) => group.querySelector<T>(sel);
+  const [btnEl, flagEl, codeEl, popEl, searchEl, listEl, hiddenEl, phoneEl] = [
+    q<HTMLButtonElement>('[data-country-btn]'), q<HTMLImageElement>('[data-country-flag]'), q<HTMLElement>('[data-country-code]'),
+    q<HTMLElement>('[data-country-pop]'), q<HTMLInputElement>('[data-country-search]'), q<HTMLElement>('[data-country-list]'),
+    q<HTMLInputElement>('[data-country-value]'), q<HTMLInputElement>('[data-phone-input]'),
+  ] as const;
+  if (!data || !btnEl || !flagEl || !codeEl || !popEl || !searchEl || !listEl || !hiddenEl || !phoneEl) return null;
+  // non-null from here on, also inside the hoisted function declarations below (narrowing does not reach those)
+  const [btn, flag, code, pop, search, list, hidden, phone] = [btnEl, flagEl, codeEl, popEl, searchEl, listEl, hiddenEl, phoneEl];
   const countries = data.countries;
   const flagBase = (flag.dataset.flagSrc || '/flags/sa.png').replace(/sa\.png$/, '');
   const flagSrc = (cc: string) => `${flagBase}${cc.toLowerCase()}.png`;
