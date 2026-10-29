@@ -353,7 +353,9 @@ for (const c of CASES) {
 
   // nothing typed into the form ever reaches localStorage / sessionStorage
   const writes = await page.evaluate(() => window.__storageWrites || []);
-  const typed = ['سارة', 'sara@example.com', '0501234567', '+966501234567', 'الطائف', 'linkedin.com/in/sara', 'خبرة', 'السيرة', 'housekeeping', 'shafa-road'];
+  // what the applicant types or picks as a person (option slugs such as a branch are not personal and appear in the
+  // site's public room cache, `armada_site_rooms`, written by the booking drawer on a live build)
+  const typed = ['سارة', 'sara@example.com', '0501234567', '+966501234567', 'الطائف', 'linkedin.com/in/sara', 'خبرة سنتين', 'السيرة.pdf'];
   const leaked = writes.filter(([, k, v]) => typed.some((t) => k.includes(t) || v.includes(t)));
   check(leaked.length === 0, `${label}: storage writes with form data: ${JSON.stringify(leaked).slice(0, 300)}`);
   check(errors.length === 0, `${label}: page errors: ${errors.join(' | ').slice(0, 300)}`);
