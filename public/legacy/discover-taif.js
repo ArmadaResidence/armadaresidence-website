@@ -374,6 +374,7 @@
     sheet.classList.add("is-open");
     overlay.classList.add("is-open");
     sheet.setAttribute("aria-hidden", "false");
+    sheet.inert = false;
     document.body.classList.add("sheet-open");
     if (sheetClose) sheetClose.focus();
   }
@@ -382,6 +383,7 @@
     sheet.classList.remove("is-open");
     overlay.classList.remove("is-open");
     sheet.setAttribute("aria-hidden", "true");
+    sheet.inert = true;
     document.body.classList.remove("sheet-open");
     if (lastFocused && lastFocused.focus) lastFocused.focus();
   }

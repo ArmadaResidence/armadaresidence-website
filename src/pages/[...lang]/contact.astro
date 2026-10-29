@@ -120,7 +120,7 @@ const social: { name: string; url: string }[] = [
             <a href={mailHref(contact.emails.info)} class="latin font-medium hover:text-bronze" dir="ltr">{contact.emails.info}</a>
           </li>
           <li>
-            <a href={contact.menu_url} rel="noopener" class="font-medium text-bronze hover:text-bronze-text">{t.cta.menu_link}</a>
+            <a href={localePath(locale, contact.menu_url)} rel="noopener" class="font-medium text-bronze hover:text-bronze-text">{t.cta.menu_link}</a>
           </li>
         </ul>
       </section>

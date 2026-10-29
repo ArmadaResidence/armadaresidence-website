@@ -18,7 +18,7 @@ const head: Record<string, string> = {
 const rows = (lp.units as any[]).filter((u) => !filterHotel || u.hotel_key === 'both' || u.hotel_key === filterHotel);
 ---
 
-<div class="tw rv">
+<div class="tw rv" tabindex="0" role="region" aria-label={head.type}>
   <table class="tb">
     <thead><tr>{columns.map((c) => <th>{head[c]}</th>)}</tr></thead>
     <tbody>

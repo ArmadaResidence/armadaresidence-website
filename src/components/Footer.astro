@@ -123,7 +123,7 @@ const social: { name: string; url: string }[] = [
           </a>
         </li>
         <li>
-          <a href={contact.menu_url} class="hover:text-bronze" rel="noopener">{t.cta.menu_link}</a>
+          <a href={localePath(locale, contact.menu_url)} class="hover:text-bronze" rel="noopener">{t.cta.menu_link}</a>
         </li>
       </ul>
       <h2 class="text-sm font-semibold uppercase tracking-wide text-bronze mt-6 mb-3">{t.contact.social_heading}</h2>

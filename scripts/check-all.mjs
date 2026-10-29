@@ -57,13 +57,28 @@ function removeSnapshot() {
   rmSync(snapshot, { recursive: true, force: true });
 }
 
-function run(label, cmd, cmdArgs) {
+// --live only: a check that failed on a dropped connection to the hosting edge (net::ERR_CONNECTION_CLOSED / RESET,
+// seen twice in live runs of booking-nav-check and motion-check, never reproduced — DECISIONS.md 2026-10-30) runs once
+// more, logged. An assertion failure without such an error is never retried; local runs never retry.
+const TRANSIENT = /net::ERR_(CONNECTION_CLOSED|CONNECTION_RESET|TIMED_OUT|HTTP2_PROTOCOL_ERROR|NETWORK_CHANGED)/;
+function run(label, cmd, cmdArgs, retried = false) {
   const t0 = Date.now();
   console.log(`\n━━ ${label} ━━ ${cmd} ${cmdArgs.join(' ')}`);
   return new Promise((ok) => {
-    const p = spawn(cmd, cmdArgs, { cwd, stdio: 'inherit', env: { ...process.env, PYTHONUTF8: '1' } });
+    const p = spawn(cmd, cmdArgs, { cwd, stdio: live ? ['inherit', 'pipe', 'pipe'] : 'inherit', env: { ...process.env, PYTHONUTF8: '1' } });
+    let out = '';
+    if (live) {
+      p.stdout.on('data', (d) => (process.stdout.write(d), (out += d)));
+      p.stderr.on('data', (d) => (process.stderr.write(d), (out += d)));
+    }
     p.on('error', (e) => (console.error(e), ok({ label, code: 1, s: 0 })));
-    p.on('close', (code) => ok({ label, code: code ?? 1, s: Math.round((Date.now() - t0) / 1000) }));
+    p.on('close', (code) => {
+      const result = { label: retried ? `${label} (retried)` : label, code: code ?? 1, s: Math.round((Date.now() - t0) / 1000) };
+      const hit = live && !retried && result.code !== 0 && out.match(TRANSIENT);
+      if (!hit) return ok(result);
+      console.log(`\nnote: ${label} failed with ${hit[0]} (a dropped connection, not an assertion) — running it once more`);
+      ok(run(label, cmd, cmdArgs, true));
+    });
   });
 }
 

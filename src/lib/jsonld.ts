@@ -27,10 +27,13 @@ import {
 const AMENITY_SCHEMA: Record<string, string> = {
   breakfast_buffet_daily: 'Breakfast buffet',
   coffee_shop: 'Café',
+  daily_housekeeping: 'Daily housekeeping',
   events_hall: 'Meeting hall',
   free_parking: 'Free parking',
+  laundry: 'Laundry service',
   restaurant: 'Restaurant',
   room_service_24h: '24-hour room service',
+  security_24h: '24-hour security',
   wifi: 'Free Wi-Fi',
 };
 
@@ -175,6 +178,7 @@ export function hotelRoom(locale: Locale, room: Room, b: Branch) {
     tv: 'TV',
     safe: 'Safe',
     air_conditioning: 'Air conditioning',
+    iron: 'Iron',
   };
   const names = new Set<string>();
   for (const [k, v] of Object.entries(room.features)) if (v === true) names.add(FEATURE_NAMES[k] ?? k);

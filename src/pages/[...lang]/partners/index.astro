@@ -6,7 +6,7 @@ import LpImg from '@components/lp/LpImg.astro';
 import LpShead from '@components/lp/LpShead.astro';
 import LpUnitTable from '@components/lp/LpUnitTable.astro';
 import { langPaths } from '@lib/paths';
-import { pageSeo, type Locale } from '@lib/content';
+import { branchPath, pageSeo, type Locale } from '@lib/content';
 import { enquiryHref, ICON, lp, lpPath, T, waHrefSales } from '@lib/partners';
 
 export const getStaticPaths = langPaths;
@@ -70,7 +70,7 @@ const features = [
                   <h3>{T(locale, name)}</h3>
                   <ul class="pf-facts">{(facts as any[]).map((f) => <li>{T(locale, f)}</li>)}</ul>
                   <div class="acts">
-                    <a class="btn dk" href={key === 'airport' ? '/airport-road/' : '/shafa-road/'} set:html={ICON.arrow + T(locale, cta)} />
+                    <a class="btn dk" href={branchPath(locale, key === 'airport' ? 'airport-road' : 'shafa-road')} set:html={ICON.arrow + T(locale, cta)} />
                     <a class="btn ol" href={enquiryHref(locale, 'b2b-rates', key === 'airport' ? 'airport-road' : 'shafa-road')}>{T(locale, lp.ui.req_rates)}</a>
                   </div>
                 </div>

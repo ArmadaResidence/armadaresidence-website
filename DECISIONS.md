@@ -624,3 +624,22 @@ Follow-ups from Ahmed's full booking test of 29 Oct 2026 (both branches passed).
 - **The site follows the data, no visual change until photos exist.** Room cards, the room page (one photo → Photo; several → the existing GallerySlider at 3:2) and the branch page's cover render `photos[]` when present, otherwise the placeholder as today; `Photo.astro` offers AVIF through `<picture>` only when given (the current markup is byte-identical); the OG and JSON-LD `image` of a branch / room / home use its crop when present. The BranchStory scenes keep their `intended_base` slots (not fed by the manifest).
 - **Proposed, not in CLAUDE.md before (for Ahmed):** the video limits above; widths 800 / 1400 / 1920 and quality (WebP 78, AVIF 50); the 2400 px review threshold; poster widths for the mobile poster (the page still uses the 1920 file — wiring `-800` / `-1400` is a follow-up); a `slot` column to feed the BranchStory scenes (entrance / lobby / rooms / dining).
 - Tested end to end on a generated sample set outside the repo (every flag, a real HEVC HEIC, an EXIF-rotated file, GPS stripped, focal crop, idempotent re-import, a 25 s 2560 × 1440 video with audio, qa failing on one missing alt and passing once filled, pages rendered with AVIF + WebP). No photo committed; the site's current images unchanged (the build is byte-identical).
+
+## 2026-10-30 — Pre-launch audit: technical fixes; copy / design items reported (Ahmed's launch-readiness brief, 30 Oct 2026)
+
+- **Audit** of `dist/` and the review site, AR + EN: SEO per page, links, axe-core on all 73 pages at 375 / 1440 in light and dark (292 runs), Lighthouse mobile + desktop on home, a branch, a room, `/offers/` and `/careers/`, a content-compliance scan, and the pending approvals. The full report (tables) went to Ahmed on 30 Oct 2026.
+- **Fixed (clear technical defects only):**
+  - `/en/partners/` property buttons linked to the Arabic branch pages (now `branchPath(locale, …)`).
+  - English pages linked to the Arabic café menu: the footer and `/en/contact/` now use `localePath`, as the dining section already did.
+  - The café «اتصال» link (tel) was focusable but 1 × 1 px. It now shows while it has keyboard focus (`focus:not-sr-only`).
+  - The closed «خطتي» sheet on `/discover-taif/` kept its controls in the tab order (axe `aria-hidden-focus`, serious). It is now `inert` while closed (markup + the legacy script).
+  - The partners unit tables scroll without keyboard access (axe `scrollable-region-focusable`, serious). They now have `tabindex="0"`, `role="region"` and a label.
+  - JSON-LD `amenityFeature` showed raw keys (`daily_housekeeping`, `laundry`, `security_24h`, `iron`). They now have English names, like the other keys.
+- **Not fixed (copy / design — Ahmed decides):**
+  - Light-mode contrast (axe `color-contrast`, serious): the Umrah disclaimer on `/partners/groups-umrah/` (1.01 : 1, invisible), small Armada Bronze text on white / porcelain (3.2–3.7 : 1, where CLAUDE.md §3 asks for Bronze Text `#8A6239`), the legacy partners palette, the sold-out badge on the faded card, the muted story text. Dark mode is clean.
+  - `/menu/` (verbatim legacy page) has no canonical, hreflang or OG, shares one English title with `/en/menu/`, is not in the sitemap and shows a PNG logo. Decide between head tags in `menu-publish.py` and `noindex`.
+  - `robots.txt` disallows `/booking/success/`, which also carries `noindex`. Keep one mechanism.
+  - The 404 page's canonical / hreflang point to `/404/`.
+  - Heading order h2 → h4 on `/partners/groups-umrah/`; the WhatsApp button outside landmarks (axe moderate).
+  - Lighthouse: no safe change without a visual effect was found. Live mobile LCP is 2.2–3.3 s against the 2.5 s target; the LCP element is text, waiting on render-blocking CSS (`Base.css`, 79 KiB) and three Arabic font weights. Proposals: split / inline critical CSS, preload one Arabic weight, optimise `logo-bronze.svg` (45 KiB).
+- **Intermittent `net::ERR_CONNECTION_CLOSED` in live runs:** not reproduced in 424 navigations / ~10.3k requests (8 parallel contexts and idle gaps). The likely cause is a dropped pooled HTTP/2 connection to the GitHub Pages edge on a busy machine. `check-all --live` now runs a failed check once more, logged, only when its output shows a transport error (`CONNECTION_CLOSED` / `RESET` / `TIMED_OUT` / `HTTP2_PROTOCOL_ERROR` / `NETWORK_CHANGED`). Local runs and assertion failures are never retried.
