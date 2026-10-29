@@ -150,11 +150,14 @@ function PermissionMatrix({ user, sections, branches, editable, busy, isLastAdmi
   const [role, setRole] = useState<Role>(user.role ?? 'reception');
   const [branch, setBranch] = useState<string>(user.branch ?? '');
   const [confirmPreset, setConfirmPreset] = useState(false);
+  // re-baseline only when the STORED values change: a reload of the list with the same data (another row's action,
+  // StrictMode's second mount fetch) must not wipe an unsaved edit (29 Oct 2026)
+  const stored = JSON.stringify([user.permissions, user.role, user.branch]);
   useEffect(() => {
     setMatrix({ ...user.permissions });
     setRole(user.role ?? 'reception');
     setBranch(user.branch ?? '');
-  }, [user]);
+  }, [stored]); // eslint-disable-line react-hooks/exhaustive-deps
   const dirty = sections.some((s) => (matrix[s.key] ?? 'none') !== (user.permissions[s.key] ?? 'none'));
   const branchDirty = (branch || null) !== (user.branch ?? null);
   const full = sections.every((s) => (matrix[s.key] ?? 'none') === (s.editable ? 'edit' : 'view'));
