@@ -4,7 +4,8 @@
  * every date field: the booking form (`variant="booking"`, floating-label fields) and the partners enquiry form
  * (`variant="partners"`, the legacy .fld markup). The fields are buttons, never text inputs; the values travel in
  * hidden inputs as ISO YYYY-MM-DD under the form's own names. Behaviour: src/lib/daterange.ts. Strings: ui.json →
- * datepicker, plus the form's night plurals.
+ * datepicker, plus the form's night plurals. `mode="single"` (careers form «متاح للبدء من», 28 Oct 2026): one booking-style
+ * field, one tap picks and closes (daterange.ts single mode), with the field's own dialog title / prompt / clear text.
  */
 import Icon from './Icon.astro';
 import { ui, type Locale } from '@lib/content';
@@ -23,16 +24,21 @@ interface Props {
   errorText?: string;
   required?: boolean;
   class?: string;
+  /** 'single': one date (names[0] / ids[0] / labels[0]; the second entries are ignored) */
+  mode?: 'range' | 'single';
+  /** single mode: the dialog title, the prompt shown while no date is picked, the clear button */
+  strings?: { title?: string; pick?: string; clear?: string };
 }
-const { locale, variant, names, ids, labels, errorIds, errorText = '', required = true, class: className = '' } = Astro.props;
+const { locale, variant, names, ids, labels, errorIds, errorText = '', required = true, class: className = '', mode = 'range', strings = {} } = Astro.props;
 const t = ui(locale);
-const S = t.datepicker;
+const single = mode === 'single';
+const S = { ...t.datepicker, ...(strings.title ? { title: strings.title } : {}), ...(strings.pick ? { pick_check_in: strings.pick } : {}), ...(strings.clear ? { clear: strings.clear } : {}) };
 const uid = `${ids[0]}-dp`;
-const data = { ...S, stay_length: t.form.stay_length, nights: t.form.plural.nights, labels: { start: labels[0], end: labels[1] } };
-const which = ['start', 'end'] as const;
+const data = { ...S, stay_length: t.form.stay_length, nights: t.form.plural.nights, labels: { start: labels[0], end: labels[1] }, ...(single ? { mode: 'single' } : {}) };
+const which = single ? (['start'] as const) : (['start', 'end'] as const);
 ---
 
-<div class:list={[variant === 'booking' ? 'grid gap-5 sm:grid-cols-2' : 'row c2', className]} data-daterange>
+<div class:list={[variant === 'booking' ? (single ? 'grid' : 'grid gap-5 sm:grid-cols-2') : 'row c2', className]} data-daterange>
   {
     variant === 'booking'
       ? which.map((w, i) => (

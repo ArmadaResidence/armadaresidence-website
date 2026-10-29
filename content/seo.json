@@ -114,6 +114,12 @@
       "description_ar": "أدلة عملية لزيارة الطائف: موسم الورد، الشفا في الشتاء، سوق عكاظ، العمرة عبر الطائف، ورحلات العائلة — مع الفرع الأقرب لكل وجهة.",
       "title_en": "Blog | Taif Travel Guides by Armada Residence",
       "description_en": "Practical guides to visiting Taif: rose season, Al Shafa in winter, Souq Okaz, Umrah via Taif and family trips — with the nearest property for each."
+    },
+    "careers": {
+      "title_ar": "انضم إلى فريقنا | أرمادا ريزيدنس",
+      "description_ar": "أرسل سيرتك الذاتية للعمل في أرمادا ريزيدنس بالطائف: شقق فندقية على طريق المطار وفندق على طريق الشفا.",
+      "title_en": "Join Our Team | Armada Residence",
+      "description_en": "Send your CV to work at Armada Residence in Taif: hotel apartments on Airport Road and a hotel on Shafa Road."
     }
   },
   "room_templates": {

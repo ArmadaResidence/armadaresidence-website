@@ -16,7 +16,8 @@
       "close": "إغلاق",
       "discover-taif": "اكتشف الطائف",
       "partners": "للشركاء والوكالات",
-      "blog": "المدونة"
+      "blog": "المدونة",
+      "careers": "انضم إلى فريقنا"
     },
     "home": {
       "branches_heading": "فرعانا في الطائف",
@@ -608,7 +609,8 @@
       "close": "Close",
       "discover-taif": "Discover Taif",
       "partners": "Partners & agencies",
-      "blog": "Blog"
+      "blog": "Blog",
+      "careers": "Join our team"
     },
     "home": {
       "branches_heading": "Our two properties in Taif",

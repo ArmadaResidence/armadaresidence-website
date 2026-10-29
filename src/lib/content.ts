@@ -17,6 +17,7 @@ import hallsJson from '../../content/halls.json';
 import lqipJson from '../../content/lqip.json';
 import partnersJson from '../../content/partners.json';
 import partnersPagesJson from '../../content/partners-pages.json';
+import careersJson from '../../content/careers.json';
 
 export type Locale = 'ar' | 'en';
 export const LOCALES: Locale[] = ['ar', 'en'];
@@ -423,6 +424,10 @@ export function categoryLabel(locale: Locale, key: string): string {
 
 export const partners = partnersJson;
 export const partnersPages = partnersPagesJson;
+
+/** Careers page «انضم إلى فريقنا» (28 Oct 2026): page copy, the job-application form and its emails. */
+export type CareersText = (typeof careersJson)['ar'];
+export const careers = (locale: Locale): CareersText => careersJson[locale] as unknown as CareersText;
 
 /** "airport-road/king-room" or "a | b" → the referenced rooms (first match used for bedding). */
 export function roomsByRef(ref: string): Room[] {

@@ -12,20 +12,27 @@
  *     onOutsidePress): selecting text in the search field and releasing outside never closes it;
  *   - the phone input keeps digits (Western), + and separators only; pasting a full international number (+ or 00)
  *     switches the selector to that country and keeps the national part (src/lib/phone.ts → splitInternational).
+ * Nationality mode (careers form, 28 Oct 2026 — src/components/CountryField.astro): the same list and search without
+ * dial codes (`dial: false` in the field's JSON), no phone input, and no default — the button shows the placeholder
+ * and no flag until a country is chosen.
  */
 import { onOutsidePress } from './client';
 import { latinDigits, loadPhoneLib, splitInternational, type CountryRow } from './phone';
 
 interface Data {
   countries: CountryRow[];
-  strings: { none: string; label: string };
+  strings: { none: string; label: string; placeholder?: string };
+  /** false: nationality mode — names only, no dial codes, no phone input (default true) */
+  dial?: boolean;
+  /** the selected code at load and after reset() — '' = none (default 'SA') */
+  default?: string;
 }
 export interface CountrySelect {
   /** the selected ISO code (the hidden input's value) */
   value(): string;
   /** select `cc` (unknown codes are ignored → false); `focusPhone` moves the focus to the number field */
   choose(cc: string, focusPhone?: boolean): boolean;
-  /** back to the default (Saudi Arabia) */
+  /** back to the default (Saudi Arabia; none in nationality mode) */
   reset(): void;
   isOpen(): boolean;
   close(refocus?: boolean): void;
@@ -51,13 +58,16 @@ export function initCountrySelect(group: HTMLElement, opts: CountrySelectOptions
     q<HTMLElement>('[data-country-pop]'), q<HTMLInputElement>('[data-country-search]'), q<HTMLElement>('[data-country-list]'),
     q<HTMLInputElement>('[data-country-value]'), q<HTMLInputElement>('[data-phone-input]'),
   ] as const;
-  if (!data || !btnEl || !flagEl || !codeEl || !popEl || !searchEl || !listEl || !hiddenEl || !phoneEl) return null;
+  const dial = data?.dial !== false;
+  if (!data || !btnEl || !flagEl || !codeEl || !popEl || !searchEl || !listEl || !hiddenEl || (dial && !phoneEl)) return null;
   // non-null from here on, also inside the hoisted function declarations below (narrowing does not reach those)
-  const [btn, flag, code, pop, search, list, hidden, phone] = [btnEl, flagEl, codeEl, popEl, searchEl, listEl, hiddenEl, phoneEl];
+  const [btn, flag, code, pop, search, list, hidden] = [btnEl, flagEl, codeEl, popEl, searchEl, listEl, hiddenEl];
+  const phone = phoneEl;
   const countries = data.countries;
+  const fallback = data.default ?? DEFAULT;
   const flagBase = (flag.dataset.flagSrc || '/flags/sa.png').replace(/sa\.png$/, '');
   const flagSrc = (cc: string) => `${flagBase}${cc.toLowerCase()}.png`;
-  const optId = (cc: string) => `${phone.id || 'phone'}-cc-${cc}`;
+  const optId = (cc: string) => `${phone?.id || hidden.name || 'phone'}-cc-${cc}`;
   let visible: CountryRow[] = [];
   let active = 0;
 
@@ -65,10 +75,10 @@ export function initCountrySelect(group: HTMLElement, opts: CountrySelectOptions
     const q = norm(latinDigits(search.value.trim()).replace(/^\+/, ''));
     // ranked: the exact ISO code, then dial codes starting with the digits, then names starting with the query, then
     // names containing it («eg» lists Egypt before Senegal); ties keep the list order (Saudi Arabia, the GCC, A–Z)
-    const rank = ([cc, dial, name, en]: CountryRow): number => {
+    const rank = ([cc, dc, name, en]: CountryRow): number => {
       if (!q) return 0;
       if (cc.toLowerCase() === q) return 0;
-      if (/^\d+$/.test(q) && dial.startsWith(q)) return 1;
+      if (dial && /^\d+$/.test(q) && dc.startsWith(q)) return 1;
       const n = norm(name);
       const e = en ? norm(en) : '';
       if (n.startsWith(q) || e.startsWith(q)) return 2;
@@ -90,7 +100,7 @@ export function initCountrySelect(group: HTMLElement, opts: CountrySelectOptions
       search.removeAttribute('aria-activedescendant');
       return;
     }
-    for (const [i, [cc, dial, name]] of visible.entries()) {
+    for (const [i, [cc, dc, name]] of visible.entries()) {
       const li = document.createElement('li');
       li.id = optId(cc);
       li.setAttribute('role', 'option');
@@ -112,8 +122,9 @@ export function initCountrySelect(group: HTMLElement, opts: CountrySelectOptions
       const c = document.createElement('span');
       c.className = 'latin text-ink-muted';
       c.dir = 'ltr';
-      c.textContent = `+${dial}`;
-      li.append(img, n, c);
+      c.textContent = `+${dc}`;
+      if (dial) li.append(img, n, c);
+      else li.append(img, n);
       list.append(li);
     }
     setActive(active, false);
@@ -134,7 +145,7 @@ export function initCountrySelect(group: HTMLElement, opts: CountrySelectOptions
     search.value = '';
     renderList();
     search.focus();
-    void loadPhoneLib();
+    if (dial) void loadPhoneLib();
   }
   function close(refocus = false) {
     if (!isOpen()) return;
@@ -147,14 +158,25 @@ export function initCountrySelect(group: HTMLElement, opts: CountrySelectOptions
     if (!row) return false;
     hidden.value = cc;
     flag.src = flagSrc(cc);
-    code.textContent = `+${row[1]}`;
-    btn.setAttribute('aria-label', `${data!.strings.label}: ${row[2]} +${row[1]}`);
+    flag.hidden = false;
+    code.textContent = dial ? `+${row[1]}` : row[2];
+    btn.setAttribute('aria-label', dial ? `${data!.strings.label}: ${row[2]} +${row[1]}` : `${data!.strings.label}: ${row[2]}`);
     close(false);
-    if (focusPhone) phone.focus();
+    if (focusPhone) (phone ?? btn).focus();
     opts.onChange?.(cc, source);
     return true;
   }
+  /** nationality mode: no country chosen — the placeholder, no flag */
+  function clear() {
+    hidden.value = '';
+    flag.hidden = true;
+    code.textContent = data!.strings.placeholder ?? '';
+    btn.setAttribute('aria-label', data!.strings.label);
+    close(false);
+    opts.onChange?.('', 'set');
+  }
   async function applyInternational(raw: string): Promise<boolean> {
+    if (!phone) return false;
     await loadPhoneLib();
     const s = splitInternational(raw, countries);
     if (!s) return false;
@@ -191,24 +213,26 @@ export function initCountrySelect(group: HTMLElement, opts: CountrySelectOptions
   // field keeps it open); the listener lives on the document for the page's lifetime
   onOutsidePress(() => [pop, btn], () => close(false), { signal: opts.signal, active: isOpen });
   // the number field: Western digits, +, separators; a pasted international number switches the country
-  phone.addEventListener('input', () => {
-    phone.value = latinDigits(phone.value).replace(/[^\d+\s\-()]/g, '');
-  });
-  phone.addEventListener('paste', (e) => {
-    const text = e.clipboardData?.getData('text') ?? '';
-    if (!/^\s*(\+|00)\s*[\d\s\-().٠-٩۰-۹]{6,}$/.test(text)) return;
-    e.preventDefault();
-    void applyInternational(text).then((ok) => {
-      if (ok) return;
-      phone.value = latinDigits(text).replace(/[^\d+\s\-()]/g, '');
-      phone.dispatchEvent(new Event('input', { bubbles: true }));
+  if (phone) {
+    phone.addEventListener('input', () => {
+      phone.value = latinDigits(phone.value).replace(/[^\d+\s\-()]/g, '');
     });
-  });
+    phone.addEventListener('paste', (e) => {
+      const text = e.clipboardData?.getData('text') ?? '';
+      if (!/^\s*(\+|00)\s*[\d\s\-().٠-٩۰-۹]{6,}$/.test(text)) return;
+      e.preventDefault();
+      void applyInternational(text).then((ok) => {
+        if (ok) return;
+        phone.value = latinDigits(text).replace(/[^\d+\s\-()]/g, '');
+        phone.dispatchEvent(new Event('input', { bubbles: true }));
+      });
+    });
+  }
 
   return {
     value: () => hidden.value,
     choose: (cc, focusPhone = false) => set(cc, 'set', focusPhone),
-    reset: () => void set(DEFAULT, 'set', false),
+    reset: () => (fallback ? void set(fallback, 'set', false) : clear()),
     isOpen,
     close,
     applyInternational,

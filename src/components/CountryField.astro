@@ -1,0 +1,54 @@
+---
+/**
+ * Nationality field (careers form, Ahmed 28 Oct 2026): the phone selector's searchable country list — the same rows
+ * (src/lib/countries.ts: Saudi Arabia first, then the GCC, then A–Z, names in the page language + English for the
+ * search), the same self-hosted flags loaded only while the list is open, the same keyboard and outside-press
+ * behaviour (src/lib/country-select.ts) — without dial codes and with no default: the hidden input `name` stays empty
+ * until a country is chosen.
+ */
+import Icon from './Icon.astro';
+import { ui, type Locale } from '@lib/content';
+import { countryRows } from '@lib/countries';
+
+interface Props {
+  locale: Locale;
+  id: string;
+  name: string;
+  label: string;
+  placeholder: string;
+  search: string;
+  errorId: string;
+  class?: string;
+}
+const { locale, id, name, label, placeholder, search, errorId, class: className = '' } = Astro.props;
+const f = ui(locale).form;
+const countries = countryRows(locale);
+const listId = `${id}-list`;
+const data = { countries, dial: false, default: '', strings: { none: f.country_none, label, placeholder } };
+---
+
+<div class:list={['relative', className]} data-country-field={name}>
+  <span id={`${id}-label`} class="block text-sm font-semibold text-midnight mb-2">{label}</span>
+  <input type="hidden" name={name} value="" data-country-value />
+  <button
+    type="button"
+    id={id}
+    class="country-btn country-btn-wide"
+    aria-haspopup="listbox"
+    aria-expanded="false"
+    aria-controls={listId}
+    aria-label={label}
+    aria-describedby={errorId}
+    data-country-btn
+  >
+    <img src="/flags/sa.png" alt="" aria-hidden="true" width="24" height="18" class="rounded-sm" hidden data-country-flag data-flag-src="/flags/sa.png" />
+    <span class="flex-1 truncate text-start" data-country-code>{placeholder}</span>
+    <Icon name="chevron" size={14} class="text-ink-muted" />
+  </button>
+  <div class="country-pop hidden" data-country-pop>
+    <input type="search" class="w-full h-11 px-3 border border-line rounded bg-white text-sm" placeholder={search} aria-label={search} aria-controls={listId} autocomplete="off" dir={locale === 'ar' ? 'rtl' : 'ltr'} data-country-search />
+    <ul id={listId} role="listbox" aria-label={label} class="country-list" data-country-list tabindex="-1"></ul>
+  </div>
+  <p id={errorId} class="field-error hidden" data-error-for={name}></p>
+  <script type="application/json" data-country-data set:html={JSON.stringify(data).replace(/</g, '\\u003c')} />
+</div>

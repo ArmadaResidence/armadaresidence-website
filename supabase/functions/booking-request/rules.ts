@@ -317,3 +317,177 @@ export function sarText(amount: number, L: Locale): string {
   const noun = !whole ? 'ريال' : k >= 3 && k <= 10 ? 'ريالات' : k === 0 || (k <= 2 && n > 100) ? 'ريال' : 'ريالًا';
   return `${num} ${noun}`;
 }
+
+// ── Job applications (careers page «انضم إلى فريقنا», Ahmed 28 Oct 2026) ─────────────────────────────────────────
+// ONE implementation for the careers form (src/components/CareersForm.astro) and the job-application Edge Function.
+// The option keys are the values the database accepts (public.job_applications); their labels live in careers.json.
+
+export const JOB_DEPARTMENTS = ['front-office', 'housekeeping', 'restaurant-cafe', 'sales-marketing', 'maintenance', 'admin-finance', 'other'] as const;
+export type JobDepartment = (typeof JOB_DEPARTMENTS)[number];
+export const JOB_EXPERIENCE = ['lt1', '1-3', '3-5', 'gt5'] as const;
+export type JobExperience = (typeof JOB_EXPERIENCE)[number];
+/** «أي فرع» / "Either" — the preferred-property value besides the branch slugs */
+export const JOB_ANY_BRANCH = 'any';
+export const JOB_CITY_MIN = 2;
+export const JOB_CITY_MAX = 60;
+export const JOB_NOTE_MAX = 500;
+export const CV_MAX_BYTES = 5 * 1024 * 1024;
+/** "%PDF-": a CV must START with these bytes — the file name and the browser's type are never trusted */
+export const PDF_MAGIC = [0x25, 0x50, 0x44, 0x46, 0x2d];
+
+export function isPdfHead(head: ArrayLike<number> | null | undefined): boolean {
+  if (!head || head.length < PDF_MAGIC.length) return false;
+  return PDF_MAGIC.every((b, i) => head[i] === b);
+}
+
+/** A LinkedIn profile link: https only, host linkedin.com or a subdomain of it (www., sa., …); returns the normalised
+ *  URL (no fragment) or null. */
+export function linkedInUrl(raw: string): string | null {
+  const s = String(raw ?? '').trim();
+  if (!s || s.length > 300) return null;
+  let u: URL;
+  try {
+    u = new URL(s);
+  } catch {
+    return null;
+  }
+  const host = u.hostname.toLowerCase();
+  if (u.protocol !== 'https:' || u.username || u.password || u.port) return null;
+  if (host !== 'linkedin.com' && !host.endsWith('.linkedin.com')) return null;
+  u.hash = '';
+  return u.toString();
+}
+
+/** The latest «متاح للبدء من» date the picker offers: 31 December of next year (the site's date range). */
+export function jobMaxDate(today: string): string {
+  return `${Number(today.slice(0, 4)) + 1}-12-31`;
+}
+
+/** What the form / the function knows about each uploaded file: its name, its size in bytes and its first bytes. */
+export interface JobFile {
+  name: string;
+  size: number;
+  head: ArrayLike<number> | null;
+}
+
+export interface JobInput {
+  name: string;
+  phone: string;
+  country?: string;
+  email: string;
+  nationality: string;
+  department: string;
+  branch: string;
+  city: string;
+  consent: unknown;
+  experience?: string;
+  available_from?: string;
+  note?: string;
+  linkedin?: string;
+  files: JobFile[];
+}
+
+export type JobField = 'name' | 'phone' | 'email' | 'nationality' | 'department' | 'branch' | 'city' | 'cv' | 'consent' | 'experience' | 'available_from' | 'note' | 'linkedin';
+export type JobError = 'required' | 'name' | 'phone' | 'email' | 'nationality' | 'department' | 'branch' | 'city' | 'cv_type' | 'cv_size' | 'cv_count' | 'consent' | 'experience' | 'available_from' | 'note' | 'linkedin';
+
+export interface JobContext {
+  /** branch slugs (branches.json); JOB_ANY_BRANCH is accepted besides them */
+  branches: string[];
+  /** ISO 3166 codes the nationality list offers */
+  countries: string[];
+  today: string;
+  phone: (raw: string, country: string) => string | null;
+}
+
+export interface ValidJob {
+  name: string;
+  phone: string;
+  email: string;
+  nationality: string;
+  department: JobDepartment;
+  branch: string;
+  city: string;
+  experience: JobExperience | null;
+  available_from: string | null;
+  note: string;
+  linkedin: string | null;
+  cv: { name: string; size: number };
+}
+
+const consentGiven = (v: unknown) => v === true || ['true', 'on', 'yes', '1'].includes(String(v ?? '').trim().toLowerCase());
+
+/** Every rule of the job-application form. Returns per-field errors, or the normalised values. */
+export function validateJobApplication(p: JobInput, ctx: JobContext): { ok: true; data: ValidJob } | { ok: false; errors: Partial<Record<JobField, JobError>> } {
+  const errors: Partial<Record<JobField, JobError>> = {};
+
+  const name = String(p.name ?? '').trim().replace(/\s+/g, ' ');
+  if (!name) errors.name = 'required';
+  else if (!validName(name)) errors.name = 'name';
+
+  const rawPhone = String(p.phone ?? '').trim();
+  const e164 = rawPhone ? ctx.phone(rawPhone, String(p.country ?? 'SA').toUpperCase() || 'SA') : null;
+  if (!rawPhone) errors.phone = 'required';
+  else if (!e164 || !E164.test(e164)) errors.phone = 'phone';
+
+  const email = String(p.email ?? '').trim();
+  if (!email) errors.email = 'required';
+  else if (!validEmail(email)) errors.email = 'email';
+
+  const nationality = String(p.nationality ?? '').trim().toUpperCase();
+  if (!nationality) errors.nationality = 'required';
+  else if (!/^[A-Z]{2}$/.test(nationality) || !ctx.countries.includes(nationality)) errors.nationality = 'nationality';
+
+  const department = String(p.department ?? '').trim();
+  if (!department) errors.department = 'required';
+  else if (!(JOB_DEPARTMENTS as readonly string[]).includes(department)) errors.department = 'department';
+
+  const branch = String(p.branch ?? '').trim();
+  if (!branch) errors.branch = 'required';
+  else if (branch !== JOB_ANY_BRANCH && !ctx.branches.includes(branch)) errors.branch = 'branch';
+
+  const city = String(p.city ?? '').trim().replace(/\s+/g, ' ');
+  const cityLen = [...city].length;
+  if (!city) errors.city = 'required';
+  else if (cityLen < JOB_CITY_MIN || cityLen > JOB_CITY_MAX || !/\p{L}/u.test(city)) errors.city = 'city';
+
+  const files = Array.isArray(p.files) ? p.files.filter((f) => f && Number(f.size) > 0) : [];
+  if (files.length === 0) errors.cv = 'required';
+  else if (files.length > 1) errors.cv = 'cv_count';
+  else if (Number(files[0].size) > CV_MAX_BYTES) errors.cv = 'cv_size';
+  else if (!isPdfHead(files[0].head)) errors.cv = 'cv_type';
+
+  if (!consentGiven(p.consent)) errors.consent = 'consent';
+
+  const experience = String(p.experience ?? '').trim();
+  if (experience && !(JOB_EXPERIENCE as readonly string[]).includes(experience)) errors.experience = 'experience';
+
+  const from = String(p.available_from ?? '').trim();
+  if (from && (!validIsoDate(from) || from < ctx.today || from > jobMaxDate(ctx.today))) errors.available_from = 'available_from';
+
+  // the browser sends a textarea's line breaks as CRLF: count them as one character, as the counter does
+  const note = String(p.note ?? '').replace(/\r\n?/g, '\n').trim();
+  if (note.length > JOB_NOTE_MAX) errors.note = 'note';
+
+  const rawLinkedIn = String(p.linkedin ?? '').trim();
+  const linkedin = rawLinkedIn ? linkedInUrl(rawLinkedIn) : null;
+  if (rawLinkedIn && !linkedin) errors.linkedin = 'linkedin';
+
+  if (Object.keys(errors).length) return { ok: false, errors };
+  return {
+    ok: true,
+    data: {
+      name,
+      phone: e164 as string,
+      email,
+      nationality,
+      department: department as JobDepartment,
+      branch,
+      city,
+      experience: (experience || null) as JobExperience | null,
+      available_from: from || null,
+      note,
+      linkedin,
+      cv: { name: String(files[0].name ?? ''), size: Number(files[0].size) },
+    },
+  };
+}

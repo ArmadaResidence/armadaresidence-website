@@ -1,0 +1,498 @@
+---
+/**
+ * Job-application form of /careers/ (Ahmed, 28 Oct 2026 — DECISIONS.md 2026-10-28). Same style and behaviour as the
+ * booking form: floating labels, inline errors on blur and on submit (aria-invalid / aria-describedby), focus to the
+ * first invalid field, one summary line above the button, the button disabled with a spinner while sending. Every
+ * rule lives once in supabase/functions/booking-request/rules.ts → validateJobApplication, which the job-application
+ * Edge Function runs again (the server never trusts the client). Strings: careers.json; branches: branches.json; the
+ * company name in the consent line: legal.json; the jobs mailbox: contact.json. Phone: the shared PhoneField;
+ * nationality: CountryField (the same country list, no dial codes); «متاح للبدء من»: the site's date picker in single
+ * mode. The CV travels as multipart/form-data, never through storage.
+ * No draft of any kind (personal data on possibly shared devices): nothing is written to localStorage /
+ * sessionStorage, and the form is emptied after a successful send.
+ */
+import { branches, careers, contact, L, legal, ui, type Locale } from '@lib/content';
+import { countryRows } from '@lib/countries';
+import { JOB_ANY_BRANCH, JOB_DEPARTMENTS, JOB_EXPERIENCE, JOB_NOTE_MAX } from '../../supabase/functions/booking-request/rules.ts';
+import Icon from './Icon.astro';
+import PhoneField from './PhoneField.astro';
+import CountryField from './CountryField.astro';
+import DateRangeField from './DateRangeField.astro';
+
+interface Props {
+  locale: Locale;
+  class?: string;
+}
+const { locale, class: className = '' } = Astro.props;
+const c = careers(locale);
+const f = c.form;
+const jobsEmail = contact.emails.jobs;
+const entity = locale === 'ar' ? legal.entity_ar : legal.entity_en;
+
+// the job-application function lives on the booking endpoint's Supabase project
+const bookingEndpoint = import.meta.env.PUBLIC_BOOKING_ENDPOINT ?? '';
+const endpoint = (() => {
+  try {
+    return bookingEndpoint ? `${new URL(bookingEndpoint).origin}/functions/v1/job-application` : '';
+  } catch {
+    return '';
+  }
+})();
+const anonKey = import.meta.env.PUBLIC_SUPABASE_ANON_KEY ?? '';
+const branchOptions = [...branches.map((b) => ({ value: b.slug, label: L(locale, b, 'name') })), { value: JOB_ANY_BRANCH, label: f.branch_any }];
+
+const clientData = {
+  locale,
+  endpoint,
+  anonKey,
+  branches: branches.map((b) => b.slug),
+  countries: countryRows(locale).map((r) => r[0]),
+  noteMax: JOB_NOTE_MAX,
+  strings: {
+    errors: { ...f.errors, server: f.errors.server.replace('{email}', jobsEmail) },
+    sending: f.sending,
+    submit: f.submit,
+    counter: f.note_counter,
+    cvNone: f.cv_none,
+    sizeMb: f.cv_size_mb,
+    sizeKb: f.cv_size_kb,
+    success: c.success,
+    departments: f.departments,
+    branches: Object.fromEntries(branchOptions.map((o) => [o.value, o.label])),
+  },
+};
+const inputClass = 'field-input w-full border border-line rounded bg-white';
+const latinInput = `${inputClass} latin text-left`;
+const err = (name: string) => `job-${name}-error`;
+---
+
+<div class:list={['careers-form', className]} data-careers>
+  <form id="job-form" class="space-y-6" novalidate data-careers-form>
+    <div class="grid gap-5 sm:grid-cols-2">
+      <div class="sm:col-span-2 field">
+        <input id="job-name" name="name" type="text" autocomplete="name" autocapitalize="words" spellcheck="false" required maxlength="120" placeholder=" " class={inputClass} aria-describedby={err('name')} />
+        <label for="job-name" class="field-label">{f.full_name}</label>
+        <p id={err('name')} class="field-error hidden" data-error-for="name"></p>
+      </div>
+
+      <PhoneField locale={locale} variant="booking" id="job-phone" name="phone" countryName="country" label={f.phone} errorId={err('phone')} />
+
+      <div class="sm:col-span-2 field">
+        <input id="job-email" name="email" type="email" inputmode="email" autocomplete="email" autocapitalize="off" spellcheck="false" required maxlength="254" lang="en" dir="ltr" placeholder=" " class={latinInput} aria-describedby={err('email')} />
+        <label for="job-email" class="field-label">{f.email}</label>
+        <p id={err('email')} class="field-error hidden" data-error-for="email"></p>
+      </div>
+
+      <CountryField locale={locale} id="job-nationality" name="nationality" label={f.nationality} placeholder={f.nationality_choose} search={f.nationality_search} errorId={err('nationality')} class="sm:col-span-2" />
+
+      <div class="field field-select">
+        <select id="job-department" name="department" required autocomplete="off" class={inputClass} aria-describedby={err('department')}>
+          <option value="">{f.department_choose}</option>
+          {JOB_DEPARTMENTS.map((d) => <option value={d}>{f.departments[d]}</option>)}
+        </select>
+        <label for="job-department" class="field-label">{f.department}</label>
+        <p id={err('department')} class="field-error hidden" data-error-for="department"></p>
+      </div>
+
+      <div class="field field-select">
+        <select id="job-branch" name="branch" required autocomplete="off" class={inputClass} aria-describedby={err('branch')}>
+          <option value="">{f.branch_choose}</option>
+          {branchOptions.map((o) => <option value={o.value}>{o.label}</option>)}
+        </select>
+        <label for="job-branch" class="field-label">{f.branch}</label>
+        <p id={err('branch')} class="field-error hidden" data-error-for="branch"></p>
+      </div>
+
+      <div class="sm:col-span-2 field">
+        <input id="job-city" name="city" type="text" autocomplete="address-level2" required maxlength="60" placeholder=" " class={inputClass} aria-describedby={err('city')} />
+        <label for="job-city" class="field-label">{f.city}</label>
+        <p id={err('city')} class="field-error hidden" data-error-for="city"></p>
+      </div>
+
+      <div class="field field-select">
+        <select id="job-experience" name="experience" autocomplete="off" class={inputClass} aria-describedby={err('experience')}>
+          <option value="">{f.experience_none}</option>
+          {JOB_EXPERIENCE.map((x) => <option value={x}>{f.experience_options[x]}</option>)}
+        </select>
+        <label for="job-experience" class="field-label">{f.experience}</label>
+        <p id={err('experience')} class="field-error hidden" data-error-for="experience"></p>
+      </div>
+
+      <DateRangeField
+        locale={locale}
+        variant="booking"
+        mode="single"
+        names={['available_from', 'available_from']}
+        ids={['job-available', 'job-available']}
+        labels={[f.available_from, f.available_from]}
+        errorIds={[err('available_from'), err('available_from')]}
+        strings={{ title: f.available_title, pick: f.available_pick, clear: f.available_clear }}
+      />
+
+      <div class="sm:col-span-2 field">
+        <input id="job-linkedin" name="linkedin" type="url" inputmode="url" autocomplete="url" autocapitalize="off" spellcheck="false" maxlength="300" lang="en" dir="ltr" placeholder="https://www.linkedin.com/in/…" class={latinInput} aria-describedby={err('linkedin')} />
+        <label for="job-linkedin" class="field-label">{f.linkedin}</label>
+        <p id={err('linkedin')} class="field-error hidden" data-error-for="linkedin"></p>
+      </div>
+
+      <div class="sm:col-span-2 field field-textarea">
+        <textarea id="job-note" name="note" rows="4" maxlength={JOB_NOTE_MAX} autocomplete="off" placeholder=" " class={inputClass} aria-describedby={`job-note-count ${err('note')}`}></textarea>
+        <label for="job-note" class="field-label">{f.note}</label>
+        <p id="job-note-count" class="text-xs text-ink-muted mt-1 text-end latin" dir="ltr" data-note-count>{f.note_counter.replace('{n}', '0').replace('{max}', String(JOB_NOTE_MAX))}</p>
+        <p id={err('note')} class="field-error hidden" data-error-for="note"></p>
+      </div>
+
+      {/* CV: one PDF up to 5 MB. The real file input is visually hidden but focusable; its label is the button. */}
+      <div class="sm:col-span-2" data-cv>
+        <span id="job-cv-label" class="block text-sm font-semibold text-midnight mb-2">{f.cv}</span>
+        <div class="cv-field flex items-center gap-3 border border-line rounded bg-white px-3 min-h-14">
+          <input id="job-cv" name="cv" type="file" accept="application/pdf,.pdf" required class="sr-only" aria-labelledby="job-cv-label job-cv-name" aria-describedby={err('cv')} />
+          <label for="job-cv" class="cv-btn inline-flex items-center gap-2 shrink-0 rounded border border-midnight text-midnight font-semibold text-sm px-3 py-2 cursor-pointer hover:bg-midnight hover:text-white transition-colors">
+            <Icon name="arrow" size={16} class="-rotate-90" />
+            <span>{f.cv_choose}</span>
+          </label>
+          <span id="job-cv-name" class="min-w-0 flex-1 truncate text-sm text-ink-muted" dir="auto" data-cv-name>{f.cv_none}</span>
+        </div>
+        <p id={err('cv')} class="field-error hidden" data-error-for="cv"></p>
+      </div>
+
+      <div class="sm:col-span-2">
+        <label class="consent flex items-start gap-3 cursor-pointer">
+          <input id="job-consent" name="consent" type="checkbox" value="yes" required class="consent-box mt-1 shrink-0" aria-describedby={err('consent')} />
+          <span class="text-sm text-ink leading-relaxed">{f.consent.replace('{entity}', entity)}</span>
+        </label>
+        <p id={err('consent')} class="field-error hidden" data-error-for="consent"></p>
+      </div>
+    </div>
+
+    {/* Honeypot: invisible to people and assistive tech; a bot that fills it gets a fake success and nothing is stored. */}
+    <div class="absolute -start-[9999px] w-px h-px overflow-hidden" aria-hidden="true">
+      <label for="job-website">Website</label>
+      <input id="job-website" name="website" type="text" tabindex="-1" autocomplete="off" />
+    </div>
+
+    <p class="hidden text-sm font-semibold text-midnight bg-porcelain rounded px-4 py-3" data-summary aria-live="polite"></p>
+    <p class="hidden bg-porcelain border border-line text-sm text-red-800 rounded px-4 py-3" data-form-error role="alert"></p>
+
+    <button type="submit" class="inline-flex items-center gap-2 bg-bronze-deep text-white font-semibold px-6 py-3 rounded hover:bg-bronze-text transition-colors disabled:opacity-70" data-submit>
+      <span class="spinner hidden" aria-hidden="true" data-spinner></span>
+      <span data-submit-label>{f.submit}</span>
+      <Icon name="arrow" size={18} class="icon-arrow rtl:rotate-180" />
+    </button>
+
+    <script type="application/json" data-careers-data set:html={JSON.stringify(clientData).replace(/</g, '\\u003c')} />
+  </form>
+
+  <div class="hidden rounded-card border border-line bg-porcelain p-6 md:p-8" role="status" tabindex="-1" data-success>
+    <Icon name="check" size={28} class="text-bronze" />
+    <p class="mt-3 text-lg font-semibold text-midnight leading-relaxed" data-success-text></p>
+  </div>
+</div>
+
+<script>
+  import { bindOnce, onPageLoad } from '@lib/client';
+  import { validateJobApplication, riyadhToday, type JobError, type JobField, type JobFile } from '../../supabase/functions/booking-request/rules.ts';
+  import { loadPhoneLib, phoneToE164 } from '@lib/phone';
+  import { initCountrySelect } from '@lib/country-select';
+
+  type Data = {
+    locale: 'ar' | 'en';
+    endpoint: string;
+    anonKey: string;
+    branches: string[];
+    countries: string[];
+    noteMax: number;
+    strings: {
+      errors: Record<string, string>;
+      sending: string;
+      submit: string;
+      counter: string;
+      cvNone: string;
+      sizeMb: string;
+      sizeKb: string;
+      success: string;
+      departments: Record<string, string>;
+      branches: Record<string, string>;
+    };
+  };
+  const FIELDS: JobField[] = ['name', 'phone', 'email', 'nationality', 'department', 'branch', 'city', 'experience', 'available_from', 'linkedin', 'note', 'cv', 'consent'];
+
+  function initCareers(root: HTMLElement) {
+    const form = root.querySelector<HTMLFormElement>('[data-careers-form]')!;
+    const data = JSON.parse(form.querySelector('[data-careers-data]')?.textContent || '{}') as Data;
+    const S = data.strings;
+    const $ = <T extends HTMLElement = HTMLInputElement>(sel: string) => form.querySelector<T>(sel)!;
+    const nameIn = $('#job-name');
+    const phoneIn = $('[data-phone-input]');
+    const emailIn = $('#job-email');
+    const natBtn = $<HTMLButtonElement>('#job-nationality');
+    const deptSel = $<HTMLSelectElement>('#job-department');
+    const branchSel = $<HTMLSelectElement>('#job-branch');
+    const cityIn = $('#job-city');
+    const expSel = $<HTMLSelectElement>('#job-experience');
+    const fromIn = $('input[name="available_from"]');
+    const fromBtn = $<HTMLButtonElement>('[data-dr-trigger="start"]');
+    const linkedinIn = $('#job-linkedin');
+    const noteIn = $<HTMLTextAreaElement>('#job-note');
+    const noteCount = $<HTMLElement>('[data-note-count]');
+    const cvIn = $('#job-cv');
+    const cvName = $<HTMLElement>('[data-cv-name]');
+    const consentIn = $('#job-consent');
+    const summary = $<HTMLElement>('[data-summary]');
+    const formError = $<HTMLElement>('[data-form-error]');
+    const submitBtn = $<HTMLButtonElement>('[data-submit]');
+    const submitLabel = $<HTMLElement>('[data-submit-label]');
+    const spinner = $<HTMLElement>('[data-spinner]');
+    const success = root.querySelector<HTMLElement>('[data-success]')!;
+    const touched = new Set<JobField>();
+    let sending = false;
+    /** the chosen CV's first bytes (the PDF signature is checked here and again on the server) */
+    let cvHeads: (Uint8Array | null)[] = [];
+
+    form.addEventListener('focusin', () => void loadPhoneLib(), { once: true });
+    const pageGone = new AbortController();
+    document.addEventListener('astro:before-swap', () => pageGone.abort(), { once: true });
+    const phoneSel = initCountrySelect(form.querySelector<HTMLElement>('[data-phone-group]')!, {
+      signal: pageGone.signal,
+      onChange: () => touched.has('phone') && validateField('phone'),
+    });
+    const natSel = initCountrySelect(form.querySelector<HTMLElement>('[data-country-field="nationality"]')!, {
+      signal: pageGone.signal,
+      onChange: (cc) => {
+        if (cc) touched.add('nationality');
+        if (touched.has('nationality')) validateField('nationality');
+        refresh();
+      },
+    });
+
+    // ── validation (rules.ts, shared with the job-application function) ───────────────────────────────
+    const ctx = () => ({ branches: data.branches, countries: data.countries, today: riyadhToday(), phone: (raw: string, country: string) => phoneToE164(raw, country) });
+    const files = (): JobFile[] => Array.from(cvIn.files ?? []).map((file, i) => ({ name: file.name, size: file.size, head: cvHeads[i] ?? null }));
+    const collect = () => {
+      const fd = new FormData(form);
+      const v = (k: string) => String(fd.get(k) ?? '').trim();
+      return {
+        name: v('name'),
+        phone: v('phone'),
+        country: v('country'),
+        email: v('email'),
+        nationality: v('nationality'),
+        department: v('department'),
+        branch: v('branch'),
+        city: v('city'),
+        consent: consentIn.checked,
+        experience: v('experience'),
+        available_from: v('available_from'),
+        note: noteIn.value,
+        linkedin: v('linkedin'),
+        files: files(),
+      };
+    };
+    const errorsNow = (): Partial<Record<JobField, JobError>> => {
+      const r = validateJobApplication(collect(), ctx());
+      return r.ok ? {} : r.errors;
+    };
+    const control = (field: JobField): HTMLElement =>
+      ({ name: nameIn, phone: phoneIn, email: emailIn, nationality: natBtn, department: deptSel, branch: branchSel, city: cityIn, experience: expSel, available_from: fromBtn, linkedin: linkedinIn, note: noteIn, cv: cvIn, consent: consentIn })[field];
+    function showError(field: JobField, code: JobError | undefined) {
+      const box = form.querySelector<HTMLElement>(`[data-error-for="${field}"]`);
+      const msg = code ? (S.errors[code] ?? S.errors.required) : '';
+      if (box) {
+        box.textContent = msg;
+        box.classList.toggle('hidden', !msg);
+      }
+      control(field).setAttribute('aria-invalid', msg ? 'true' : 'false');
+      if (field === 'cv') form.querySelector('.cv-field')?.classList.toggle('is-invalid', !!msg);
+    }
+    function validateField(field: JobField) {
+      showError(field, errorsNow()[field]);
+    }
+    function validateAll(): boolean {
+      const errs = errorsNow();
+      let first: HTMLElement | null = null;
+      for (const f of FIELDS) {
+        touched.add(f);
+        showError(f, errs[f]);
+        if (errs[f] && !first) first = control(f);
+      }
+      first?.focus();
+      return !first;
+    }
+
+    // blur on the text fields, change on the choices (errors appear once a field was left or used)
+    for (const f of ['name', 'email', 'city', 'linkedin'] as JobField[]) {
+      const el = control(f) as HTMLInputElement;
+      el.addEventListener('blur', () => {
+        if (!el.value.trim() && !touched.has(f)) return;
+        touched.add(f);
+        validateField(f);
+      });
+      el.addEventListener('input', () => touched.has(f) && validateField(f));
+    }
+    phoneIn.addEventListener('blur', async () => {
+      if (!phoneIn.value.trim() && !touched.has('phone')) return;
+      touched.add('phone');
+      await loadPhoneLib();
+      validateField('phone');
+    });
+    phoneIn.addEventListener('input', () => touched.has('phone') && validateField('phone'));
+    for (const f of ['department', 'branch', 'experience'] as JobField[]) {
+      const el = control(f);
+      el.addEventListener('change', () => {
+        touched.add(f);
+        validateField(f);
+        refresh();
+      });
+      el.addEventListener('blur', () => {
+        touched.add(f);
+        validateField(f);
+      });
+    }
+    fromIn.addEventListener('change', () => {
+      touched.add('available_from');
+      validateField('available_from');
+    });
+    consentIn.addEventListener('change', () => {
+      touched.add('consent');
+      validateField('consent');
+    });
+
+    // ── short note: live counter (Western digits) ─────────────────────────────────────────────────────
+    const count = () => {
+      noteCount.textContent = S.counter.replace('{n}', String(noteIn.value.length)).replace('{max}', String(data.noteMax));
+    };
+    noteIn.addEventListener('input', () => {
+      count();
+      if (touched.has('note')) validateField('note');
+    });
+
+    // ── CV: one PDF ≤ 5 MB; the first bytes are read here so the signature rule runs before the upload ───────
+    const size = (bytes: number) => (bytes >= 1024 * 1024 ? S.sizeMb.replace('{n}', (bytes / 1024 / 1024).toFixed(1)) : S.sizeKb.replace('{n}', String(Math.max(1, Math.round(bytes / 1024)))));
+    cvIn.addEventListener('change', async () => {
+      const list = Array.from(cvIn.files ?? []);
+      cvHeads = await Promise.all(list.map((file) => file.slice(0, 8).arrayBuffer().then((b) => new Uint8Array(b)).catch(() => null)));
+      cvName.textContent = list.length ? list.map((x) => `${x.name} — ${size(x.size)}`).join('، ') : S.cvNone;
+      cvName.classList.toggle('text-ink-muted', !list.length);
+      cvName.classList.toggle('text-midnight', !!list.length);
+      touched.add('cv');
+      validateField('cv');
+      refresh();
+    });
+
+    // ── one summary line above the button: department · preferred property · CV ─────────────────────────
+    function refresh() {
+      const parts: string[] = [];
+      if (deptSel.value) parts.push(S.departments[deptSel.value] ?? '');
+      if (branchSel.value) parts.push(S.branches[branchSel.value] ?? '');
+      const cv = cvIn.files?.[0];
+      if (cv) parts.push(cv.name);
+      summary.textContent = parts.filter(Boolean).join(' · ');
+      summary.classList.toggle('hidden', !summary.textContent);
+    }
+
+    function setSending(on: boolean) {
+      sending = on;
+      submitBtn.disabled = on;
+      submitBtn.setAttribute('aria-busy', String(on));
+      spinner.classList.toggle('hidden', !on);
+      submitLabel.textContent = on ? S.sending : S.submit;
+    }
+    function fail() {
+      formError.textContent = S.errors.server;
+      formError.classList.remove('hidden');
+    }
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      if (sending) return;
+      formError.classList.add('hidden');
+      await loadPhoneLib();
+      if (!validateAll()) return;
+      const r = validateJobApplication(collect(), ctx());
+      if (!r.ok) return;
+      if (!data.endpoint) return fail();
+      const d = r.data;
+      setSending(true);
+      try {
+        const body = new FormData();
+        const put = (k: string, v: string | null) => body.append(k, v ?? '');
+        put('locale', data.locale);
+        put('name', d.name);
+        put('phone', d.phone);
+        put('country', phoneSel?.value() ?? 'SA');
+        put('email', d.email);
+        put('nationality', d.nationality);
+        put('department', d.department);
+        put('branch', d.branch);
+        put('city', d.city);
+        put('consent', 'yes');
+        put('experience', d.experience);
+        put('available_from', d.available_from);
+        put('note', d.note);
+        put('linkedin', d.linkedin);
+        put('website', String(new FormData(form).get('website') ?? ''));
+        put('page', location.href);
+        body.append('cv', cvIn.files![0]);
+        const headers: Record<string, string> = {};
+        if (data.anonKey) {
+          headers['Authorization'] = `Bearer ${data.anonKey}`;
+          headers['apikey'] = data.anonKey;
+        }
+        const res = await fetch(data.endpoint, { method: 'POST', headers, body });
+        const json = (await res.json().catch(() => ({}))) as { ok?: boolean; ref?: string; fields?: Record<string, JobError> };
+        if (res.status === 422 && json.fields) {
+          // the server's verdict on a field the browser could not judge (e.g. the PDF itself): shown inline
+          let first: HTMLElement | null = null;
+          for (const f of FIELDS) {
+            if (json.fields[f]) {
+              showError(f, json.fields[f]);
+              first ??= control(f);
+            }
+          }
+          first?.focus();
+          if (!first) fail();
+          return;
+        }
+        if (!res.ok || !json.ok || !json.ref) throw new Error(`HTTP ${res.status}`);
+        // analytics: the department and the preferred property only — never a field the applicant typed
+        const w = window as unknown as { dataLayer?: unknown[] };
+        w.dataLayer = w.dataLayer || [];
+        w.dataLayer.push({ event: 'job_application', department: d.department, branch: d.branch });
+        // the device keeps nothing: the form is emptied before the thank-you appears
+        form.reset();
+        natSel?.reset();
+        phoneSel?.reset();
+        cvHeads = [];
+        cvName.textContent = S.cvNone;
+        fromIn.dispatchEvent(new Event('change', { bubbles: true })); // the picker re-reads its (now empty) input
+        touched.clear();
+        count();
+        refresh();
+        // the ref stays one left-to-right unit inside the Arabic sentence
+        const [before, after = ''] = S.success.split('{ref}');
+        const refEl = document.createElement('span');
+        refEl.className = 'latin whitespace-nowrap';
+        refEl.dir = 'ltr';
+        refEl.textContent = json.ref;
+        success.querySelector('[data-success-text]')!.replaceChildren(before, refEl, after);
+        form.classList.add('hidden');
+        success.classList.remove('hidden');
+        success.focus();
+      } catch {
+        fail();
+      } finally {
+        setSending(false);
+      }
+    });
+
+    count();
+    refresh();
+    form.setAttribute('data-careers-ready', '');
+  }
+
+  onPageLoad(() => {
+    document.querySelectorAll<HTMLElement>('[data-careers]').forEach((root) => {
+      if (bindOnce(root)) initCareers(root);
+    });
+  });
+</script>

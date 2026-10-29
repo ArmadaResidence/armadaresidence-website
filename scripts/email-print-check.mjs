@@ -1,6 +1,7 @@
 // Internal emails print on ONE A4 page (task 5 B, Ahmed 28 Oct 2026). Renders every email sent to reception / sales /
 // management — booking request, confirmed booking (instant and from the dashboard), partner enquiry, low-inventory
-// alert — with the REAL layout (email.ts, Node type stripping), every field filled and the notes at the form's maximum
+// alert, job application to the jobs mailbox and its purge alert (careers, 28 Oct 2026; the note at its 500-character
+// maximum, every optional field filled) — with the REAL layout (email.ts, Node type stripping), every field filled and the notes at the form's maximum
 // length (1000 characters, rules.ts / the partner form), then:
 //   Chromium — prints to an A4 PDF with the email's own @page rule and counts the pages (must be 1); every visible
 //              text in print media is at least 12 px (9 pt); the print header is white with the bronze logo
@@ -14,7 +15,7 @@ import { chromium, webkit } from 'playwright';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { bookingConfirmation, bookingConfirmed, bookingNotification, confirmedNotification, lowInventoryAlert, partnerNotification } from '../supabase/functions/booking-request/email.ts';
+import { bookingConfirmation, bookingConfirmed, bookingNotification, confirmedNotification, jobApplicationAlert, jobApplicationConfirmation, jobApplicationNotification, lowInventoryAlert, partnerNotification } from '../supabase/functions/booking-request/email.ts';
 
 const content = JSON.parse(readFileSync('supabase/functions/booking-request/content.generated.json', 'utf8'));
 content.email_logo_url = pathToFileURL(resolve('public/email/armada-residence-logo-reversed@2x.png')).href;
@@ -46,12 +47,22 @@ const partner = (notes) => ({
   phone: '+966500000000', email: 'groups.reservations.department@example.com', notes, receivedAt: '2026-10-28 23:59 (Asia/Riyadh)',
 });
 
+// careers (28 Oct 2026): the applicant's note is limited to 500 characters (rules.ts JOB_NOTE_MAX)
+const job = (n) => ({
+  ref: 'AR-20261028-JOBS', locale: 'ar', name: 'عبدالرحمن بن عبدالعزيز آل عبدالله الأنصاري', phone: '+966500000000', email: 'abdulrahman.alansari.careers@example.com',
+  nationality: 'EG', department: 'restaurant-cafe', branch: 'any', city: 'الطائف', experience: 'gt5', available_from: '2026-12-01',
+  note: notesOf(Math.min(n, 500)), linkedin: 'https://www.linkedin.com/in/abdulrahman-alansari-hospitality-professional-2026',
+  cvFile: 'CV-AR-20261028-JOBS.pdf', cvBytes: 4718592, receivedAt: '2026-10-28 23:59 (Asia/Riyadh)',
+});
+
 /** The internal emails at a given notes length (the confirmed one at the stay length the instant limit allows). */
 const internal = (n, stay = 7) => [
   ['booking-notification', bookingNotification(content, booking(notesOf(n)))],
   ['confirmed-notification (website)', confirmedNotification(content, { ...booking(notesOf(n)), nights: stay, check_out: nightsList('2026-11-02', stay + 1, [0]).at(-1).night, quote: quote(stay), confirmedBy: null })],
   ['confirmed-notification (dashboard)', confirmedNotification(content, { ...booking(notesOf(n)), nights: stay, check_out: nightsList('2026-11-02', stay + 1, [0]).at(-1).night, quote: quote(stay), confirmedBy: 'استقبال طريق المطار' })],
   ['partner-notification', partnerNotification(content, partner(notesOf(n)))],
+  ['job-application (jobs mailbox)', jobApplicationNotification(content, job(n))],
+  ['job-application purge alert', jobApplicationAlert(content, { ref: 'AR-20261028-JOBS', department: 'restaurant-cafe', branch: 'any', submittedAt: '2026-10-21 23:59 (Asia/Riyadh)', attempts: 12, lastError: 'resend 422 The attachment could not be processed — a long error text from the provider kept to its first 160 characters' })],
   ['low-inventory', lowInventoryAlert(content, { ref: 'AR-20261028-PRNT', branch: 'airport-road', room: 'two-bedroom-suite', nights: nightsList('2026-11-02', 30, [0]).map((x, i) => ({ night: x.night, left: i % 2 })) })],
 ];
 
@@ -148,7 +159,8 @@ for (const [kind, mail] of internal(200, 7).slice(0, 1)) {
 }
 const g1 = bookingConfirmation(content, booking('—'));
 const g2 = bookingConfirmed(content, { ...booking('—'), quote: quote(7), confirmedBy: null });
-check(!g1.html.includes('@media print') && !g2.html.includes('print-logo'), 'guest emails carry no print stylesheet');
+const g3 = jobApplicationConfirmation(content, { ref: 'AR-20261028-JOBS', name: 'تجربة النظام' });
+check(!g1.html.includes('@media print') && !g2.html.includes('print-logo') && !g3.html.includes('@media print'), 'guest emails carry no print stylesheet');
 
 await cr.close();
 await wk.close();

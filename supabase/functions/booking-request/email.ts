@@ -988,3 +988,150 @@ ${para(L, S.ignore, { muted: true, size: 13 })}`,
   const text = `${ar.text}\n\n${RULE}\n\n${en.text}\n\n${legalText(c, 'ar')}\n${legalText(c, 'en')}`;
   return { subject, html, text };
 }
+
+// ══ 11–13. Job applications (careers page «انضم إلى فريقنا», Ahmed 28 Oct 2026) ════════════════════════════════
+// Copy from careers.json (content.generated.json → careers). The jobs email is internal (Arabic, one A4 page in print);
+// the applicant's confirmation is Arabic first then English with no promise; the admin alert says an application was
+// dropped unsent by the 7-day purge (no personal data — there is none left).
+
+export interface JobMail {
+  ref: string;
+  locale: Locale;
+  name: string;
+  phone: string;
+  email: string;
+  nationality: string;
+  department: string;
+  branch: string;
+  city: string;
+  experience: string | null;
+  available_from: string | null;
+  note: string;
+  linkedin: string | null;
+  cvFile: string;
+  cvBytes: number;
+  receivedAt: string;
+}
+export interface JobAlertMail {
+  ref: string;
+  department: string;
+  branch: string;
+  submittedAt: string;
+  attempts: number;
+  lastError: string;
+}
+
+/** «مصر» / "Egypt" — the nationality as the page showed it (Intl region names; the code when unknown). */
+function countryName(cc: string, L: Locale): string {
+  try {
+    return new Intl.DisplayNames([L], { type: 'region' }).of(cc) ?? cc;
+  } catch {
+    return cc;
+  }
+}
+/** A paragraph whose {ref} stays one left-to-right unit inside an Arabic sentence (no «-AR-20261028 JOBS» reorder). */
+function paraWithRef(L: Locale, tpl: string, ref: string): string {
+  const [before, after = ''] = tpl.split('{ref}');
+  return `<p class="t-ink" style="margin:0 0 14px; font-family:${FONT[L]}; font-size:16px; line-height:26px; color:${INK};">${esc(before)}<span dir="ltr" style="unicode-bidi:isolate; direction:ltr; white-space:nowrap;">${esc(ref)}</span>${esc(after)}</p>`;
+}
+function jobBranch(c: Content, slug: string, L: Locale): string {
+  return slug === 'any' ? c.careers[L].form.branch_any : branchName(c, slug, L);
+}
+function fileSize(c: Content, bytes: number, L: Locale): string {
+  const f = c.careers[L].form;
+  return bytes >= 1024 * 1024 ? fill(f.cv_size_mb, { n: (bytes / 1024 / 1024).toFixed(1) }) : fill(f.cv_size_kb, { n: String(Math.max(1, Math.round(bytes / 1024))) });
+}
+
+// ══ 11. Job application (the careers recipients — the jobs mailbox; Arabic, prints on one A4 page) ══════════════
+export function jobApplicationNotification(c: Content, d: JobMail): Mail {
+  const L: Locale = 'ar';
+  const F = c.careers.ar.form;
+  const M = c.careers.ar.email;
+  const dept = F.departments[d.department] ?? d.department;
+  const rows: [string, string, string?][] = [
+    [c.email.ar.ref, d.ref],
+    [plainLabel(F.department), dept],
+    [plainLabel(F.branch), jobBranch(c, d.branch, 'ar')],
+    [plainLabel(F.full_name), d.name],
+    [plainLabel(F.phone), d.phone],
+    [plainLabel(F.email), d.email],
+    [plainLabel(F.nationality), countryName(d.nationality, 'ar')],
+    [plainLabel(F.city), d.city],
+    [plainLabel(F.experience), d.experience ? F.experience_options[d.experience] ?? d.experience : '—'],
+    [plainLabel(F.available_from), d.available_from ? longDate(c, d.available_from, 'ar') : '—'],
+    [plainLabel(F.linkedin), d.linkedin || '—', 'wide'],
+    [plainLabel(F.note), d.note || '—', 'wide'],
+    [M.cv_label, d.cvFile],
+    [M.cv_size_label, fileSize(c, d.cvBytes, 'ar')],
+    [M.consent_label, M.consent_value],
+    [M.language_label, d.locale],
+    [M.submitted_at, d.receivedAt],
+  ];
+  const subject = fill(M.jobs_subject, { department: dept, name: d.name, ref: d.ref });
+  const inner = section(
+    L,
+    `<p style="margin:0 0 14px;"><span class="tag" style="display:inline-block; padding:5px 12px; border-radius:999px; background:${PORCELAIN}; border:1px solid ${BRONZE}; color:${INK}; font-family:${FONT.ar}; font-size:13px; font-weight:700;">${esc(dept)}</span>
+<span class="t-muted" dir="ltr" style="display:inline-block; margin-inline-start:8px; font-family:${FONT.en}; font-size:13px; color:${MUTED};">${esc(d.ref)} · ${esc(d.receivedAt)}</span></p>
+${headline(L, M.jobs_intro)}
+${kvCard(L, rows as ([string, string] | [string, string, string])[])}
+<div style="height:16px; line-height:16px; font-size:0;">&nbsp;</div>
+${para(L, M.reply_hint, { muted: true, size: 13 })}
+${para(L, M.retention_hint, { muted: true, size: 13 })}
+${para(L, M.footer, { muted: true, size: 12 })}`,
+  );
+  const html = doc({ lang: 'ar', title: subject, preheader: fill(M.jobs_preheader, { department: dept, branch: jobBranch(c, d.branch, 'ar'), ref: d.ref }), body: header(c, undefined, true) + card(inner) + footer(c, ['ar']), print: true });
+  const text = [M.jobs_intro, '', textRows(rows.map(([k, v]) => [k, v] as [string, string])), '', M.reply_hint, M.retention_hint, M.footer, '', legalText(c, 'ar')].join('\n');
+  return { subject, html, text };
+}
+
+// ══ 12. Job application received (the applicant, Arabic first then English — no promise) ═══════════════════════
+export function jobApplicationConfirmation(c: Content, d: Pick<JobMail, 'ref' | 'name'>): Mail {
+  const block = (L: Locale) => {
+    const M = { ...c.careers.ar.email, ...c.careers[L].email };
+    const lines = [fill(M.retention_line, { email: c.jobs_email }), fill(M.rights_line, { email: c.jobs_email })];
+    const html = section(
+      L,
+      `${headline(L, fill(M.applicant_greeting, { name: d.name }))}
+${paraWithRef(L, c.careers[L].success, d.ref)}
+${refPill(L, c.email[L].ref, d.ref)}
+${lines.map((t) => para(L, t, { muted: true, size: 14 })).join('\n')}
+${para(L, M.applicant_footer, { muted: true, size: 12 })}`,
+    );
+    const text = [fill(M.applicant_greeting, { name: d.name }), fill(c.careers[L].success, { ref: d.ref }), '', `${c.email[L].ref}: ${d.ref}`, '', ...lines, '', M.applicant_footer].join('\n');
+    return { html, text };
+  };
+  const ar = block('ar');
+  const en = block('en');
+  const subject = `${fill(c.careers.ar.email.applicant_subject, { ref: d.ref })} | ${fill(c.careers.en.email.applicant_subject, { ref: d.ref })}`;
+  const html = doc({
+    lang: 'ar',
+    title: subject,
+    preheader: fill(c.careers.ar.email.applicant_preheader, { ref: d.ref }),
+    body: header(c) + card(`${ar.html}${langDivider()}${en.html}`) + footer(c, ['ar', 'en']),
+  });
+  const text = `${ar.text}\n\n${RULE}\n\n${en.text}\n\n${legalText(c, 'ar')}\n${legalText(c, 'en')}`;
+  return { subject, html, text };
+}
+
+// ══ 13. Job application dropped unsent (the dashboard admins — users:edit; Arabic) ════════════════════════════
+export function jobApplicationAlert(c: Content, d: JobAlertMail): Mail {
+  const L: Locale = 'ar';
+  const F = c.careers.ar.form;
+  const M = c.careers.ar.email;
+  const rows: [string, string][] = [
+    [c.email.ar.ref, d.ref],
+    [plainLabel(F.department), F.departments[d.department] ?? d.department],
+    [plainLabel(F.branch), jobBranch(c, d.branch, 'ar')],
+    [M.alert_submitted, d.submittedAt],
+    [M.alert_attempts, String(d.attempts)],
+    [M.alert_last_error, d.lastError || '—'],
+  ];
+  const subject = fill(M.alert_subject, { ref: d.ref });
+  const inner = section(L, `${headline(L, fill(M.alert_intro, { ref: d.ref }))}
+${kvCard(L, rows)}
+<div style="height:16px; line-height:16px; font-size:0;">&nbsp;</div>
+${para(L, M.alert_hint, { muted: true, size: 13 })}`);
+  const html = doc({ lang: 'ar', title: subject, preheader: subject, body: header(c, undefined, true) + card(inner) + footer(c, ['ar']), print: true });
+  const text = [fill(M.alert_intro, { ref: d.ref }), '', textRows(rows), '', M.alert_hint, '', legalText(c, 'ar')].join('\n');
+  return { subject, html, text };
+}

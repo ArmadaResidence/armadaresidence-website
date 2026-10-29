@@ -28,7 +28,8 @@
   "emails": {
     "reservations": "reservation@armadaresidence.com",
     "info": "info@armadaresidence.com",
-    "sales": "sales@armadaresidence.com"
+    "sales": "sales@armadaresidence.com",
+    "jobs": "jobs@armadaresidence.com"
   },
   "working_hours_ar": "الاستقبال على مدار الساعة",
   "working_hours_en": "Reception 24 hours",

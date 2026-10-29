@@ -7,6 +7,11 @@ project_id = "armada-residence"
 # BOOKING_ALLOWED_ORIGINS (Supabase secret) limits the browser origins.
 verify_jwt = false
 
+# Careers page (28 Oct 2026): the public job-application form (multipart, CV attached) and the pg_cron sweep (its own
+# JOB_SWEEP_TOKEN header) — no JWT; BOOKING_ALLOWED_ORIGINS limits the browser origins.
+[functions.job-application]
+verify_jwt = false
+
 # Phase 2a dashboard functions (DECISIONS.md 2026-10-25): signed-in dashboard users only. Each forwards the caller's
 # JWT to the database, so RLS decides; booking-admin sends the confirmation / cancellation emails, admin-users
 # manages logins (admin only).

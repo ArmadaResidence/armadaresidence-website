@@ -686,6 +686,32 @@ footer :focus-visible,
 .country-btn:hover {
   border-color: var(--color-bronze);
 }
+/* nationality (careers form): the whole field is the button */
+.country-btn-wide {
+  width: 100%;
+  gap: 0.625rem;
+  padding-inline: 0.75rem;
+}
+.country-btn[aria-invalid='true'] {
+  border-color: var(--color-error-line);
+}
+/* careers form: the CV field (the file input is visually hidden; its label is the button) and the consent box */
+.cv-field.is-invalid {
+  border-color: var(--color-error-line);
+}
+.cv-field:has(input:focus-visible) .cv-btn {
+  outline: 2px solid var(--color-bronze);
+  outline-offset: 2px;
+}
+.consent-box {
+  width: 1.25rem;
+  height: 1.25rem;
+  accent-color: var(--color-bronze-deep);
+}
+.consent-box[aria-invalid='true'] {
+  outline: 2px solid var(--color-error-line);
+  outline-offset: 2px;
+}
 [data-theme='dark'] .country-btn,
 [data-theme='dark'] .country-pop,
 [data-theme='dark'] [data-phone-input] {

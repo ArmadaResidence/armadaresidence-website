@@ -13,6 +13,9 @@ import {
   bookingConfirmed,
   bookingNotification,
   confirmedNotification,
+  jobApplicationAlert,
+  jobApplicationConfirmation,
+  jobApplicationNotification,
   loginCodeMail,
   lowInventoryAlert,
   partnerConfirmation,
@@ -107,6 +110,10 @@ const mails = {
   // dashboard staff emails (26 Oct 2026): the Auth templates with a sample link (GoTrue fills the real one) and the code
   'staff-invite': staffLinkMail(content, { kind: 'invite', link: 'https://admin.armadaresidence.com/set-password?token_hash=pkce_0123456789abcdef0123456789abcdef0123456789abcdef01234567&type=invite' }),
   'staff-recovery': staffLinkMail(content, { kind: 'recovery', link: 'https://admin.armadaresidence.com/set-password?token_hash=pkce_0123456789abcdef0123456789abcdef0123456789abcdef01234567&type=recovery' }),
+  // careers (28 Oct 2026): the jobs mailbox (CV attached at send time), the applicant, the purge alert to the admins
+  'job-application': jobApplicationNotification(content, { ref: 'AR-20261028-JOBS', locale: 'ar', name: 'تجربة النظام', phone: '+966500000000', email: 'applicant@example.com', nationality: 'EG', department: 'front-office', branch: 'any', city: 'الطائف', experience: '1-3', available_from: '2026-12-01', note: 'TEST — ignore', linkedin: 'https://www.linkedin.com/in/test', cvFile: 'CV-AR-20261028-JOBS.pdf', cvBytes: 245760, receivedAt: '2026-10-28 14:05 (Asia/Riyadh)' }),
+  'job-application-confirmation': jobApplicationConfirmation(content, { ref: 'AR-20261028-JOBS', name: 'تجربة النظام' }),
+  'job-application-purge-alert': jobApplicationAlert(content, { ref: 'AR-20261028-JOBS', department: 'front-office', branch: 'airport-road', submittedAt: '2026-10-21 14:05 (Asia/Riyadh)', attempts: 12, lastError: 'resend 401 API key is invalid' }),
   'staff-login-code': loginCodeMail(content, { code: '482917', requestedAt: '2026-10-26T12:41:00Z', device: 'Chrome · Windows' }),
 };
 

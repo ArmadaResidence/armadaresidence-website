@@ -34,7 +34,7 @@ EMAIL = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 REQUIRED_FILES = [
     "branches.json", "rooms.json", "pricing.json", "policies.json", "contact.json",
     "legal.json", "offers.json", "site-texts.json", "seo.json", "ui.json",
-    "taif-guide.json", "partners.json", "partners-pages.json", "halls.json",
+    "taif-guide.json", "partners.json", "partners-pages.json", "halls.json", "careers.json",
 ]
 
 
@@ -86,6 +86,26 @@ def validate(content: dict[str, dict]) -> list[str]:
     if "booking_notification_emails" in contact["emails"]:
         problems.append("contact.json.emails.booking_notification_emails must not exist: recipients live only in Supabase "
                         "booking_notification_recipients (DECISIONS.md 2026-10-22)")
+    # careers (Ahmed, 28 Oct 2026): the privacy notice has ONE copy, policies.json → page.sections[jobs]; the careers
+    # page renders it from there, and the applicant email's retention / rights lines must be its own sentences
+    jobs_email = contact["emails"].get("jobs", "")
+    if not EMAIL.match(jobs_email):
+        problems.append("contact.json.emails.jobs is missing or not an email (careers page, job-application emails)")
+    jobs_sec = next((s for s in content["policies.json"]["page"]["sections"] if s.get("id") == "jobs"), None)
+    careers = content["careers.json"]
+    if not jobs_sec:
+        problems.append("policies.json: page.sections[jobs] (job applications privacy notice) is missing")
+    else:
+        for loc in ("ar", "en"):
+            body = jobs_sec[f"body_{loc}"]
+            if jobs_email not in body:
+                problems.append(f"policies.json jobs.body_{loc} must name {jobs_email} (contact.json emails.jobs)")
+            for k in ("retention_line", "rights_line"):
+                line = careers[loc]["email"][k].replace("{email}", jobs_email)
+                if line not in body:
+                    problems.append(f"careers.json {loc}.email.{k} is not word for word a sentence of policies.json jobs.body_{loc}")
+    if "{entity}" not in careers["ar"]["form"]["consent"] or "{entity}" not in careers["en"]["form"]["consent"]:
+        problems.append("careers.json form.consent must take the company name from legal.json ({entity})")
     if not re.match(r"^GTM-[A-Z0-9]+$", contact.get("gtm_container", "")):
         problems.append("contact.json.gtm_container is not a GTM id")
 
@@ -326,6 +346,11 @@ def generate_function_content(content: dict[str, dict]) -> None:
         "wa_prefill": {loc: {"branch": ui[loc]["cta"]["whatsapp_prefill_branch"], "partners": ui[loc]["cta"]["whatsapp_prefill_partners"]} for loc in ("ar", "en")},
         # emails cannot show SVG: a 2x PNG of the approved logo (scripts/email-logo.mjs), hosted on the site. Until
         # the domain switch the site lives on the GitHub Pages project URL; set EMAIL_ASSETS_BASE to the domain then.
+        # careers (28 Oct 2026): the job-application function's labels, options and email copy (careers.json), the
+        # jobs mailbox named in the copy (contact.json; the recipients themselves live only in Supabase, scope careers)
+        "careers": {loc: {"form": content["careers.json"][loc]["form"], "success": content["careers.json"][loc]["success"],
+                          "email": content["careers.json"][loc]["email"]} for loc in ("ar", "en")},
+        "jobs_email": contact["emails"]["jobs"],
         "email_logo_url": os.environ.get("EMAIL_ASSETS_BASE", "https://armadaresidence.github.io/armadaresidence-website").rstrip("/") + "/email/armada-residence-logo-reversed@2x.png",
     }
     FUNC_DIR.mkdir(parents=True, exist_ok=True)

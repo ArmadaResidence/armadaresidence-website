@@ -1,0 +1,51 @@
+---
+/**
+ * «انضم إلى فريقنا» / "Join our team" (Ahmed, 28 Oct 2026 — DECISIONS.md 2026-10-28): the intro, the job-application
+ * form and, under it, the privacy notice — the ONE copy in policies.json → page.sections[jobs], which /policies/ also
+ * shows. Indexable like the other pages (robots stays noindex site-wide until the domain switch); no JobPosting
+ * JSON-LD (there are no real job ads), a BreadcrumbList as on the other pages.
+ */
+import Base from '@layouts/Base.astro';
+import CareersForm from '@components/CareersForm.astro';
+import { langPaths } from '@lib/paths';
+import { breadcrumbs } from '@lib/jsonld';
+import { careers, localePath, pageSeo, paragraphs, policies, ui, type Locale } from '@lib/content';
+
+export const getStaticPaths = langPaths;
+
+interface Props {
+  locale: Locale;
+}
+const { locale } = Astro.props;
+const t = ui(locale);
+const c = careers(locale);
+const s = pageSeo(locale, 'careers');
+const notice = policies.page.sections.find((x) => x.id === 'jobs');
+if (!notice) throw new Error('policies.json has no jobs section (the careers privacy notice)');
+const noticeParas = paragraphs(locale === 'ar' ? notice.body_ar : notice.body_en);
+const jsonld = [
+  breadcrumbs([
+    { name: t.nav.home, path: localePath(locale, '/') },
+    { name: c.heading, path: localePath(locale, '/careers/') },
+  ]),
+];
+---
+
+<Base locale={locale} path="/careers/" title={s.title} description={s.description} jsonld={jsonld}>
+  <section class="mx-auto max-w-3xl px-4 pt-10 pb-28 sm:pb-14">
+    <nav aria-label="breadcrumb" class="text-sm text-ink-muted">
+      <a href={localePath(locale, '/')} class="hover:text-midnight">{t.nav.home}</a>
+      <span aria-hidden="true" class="mx-1">/</span>
+      <span aria-current="page">{c.heading}</span>
+    </nav>
+    <h1 class="mt-3 text-3xl md:text-4xl font-bold text-midnight">{c.heading}</h1>
+    <p class="mt-3 text-ink-muted leading-relaxed">{c.intro}</p>
+    <CareersForm locale={locale} class="reveal reveal-lg mt-8 bg-white border border-line rounded-card p-6 md:p-8" />
+    <section id="privacy" class="mt-8 scroll-mt-24" aria-labelledby="careers-privacy">
+      <h2 id="careers-privacy" class="text-sm font-semibold uppercase tracking-wide text-bronze-text">{c.privacy_heading}</h2>
+      <div class="mt-2 text-sm text-ink-muted leading-relaxed space-y-2">
+        {noticeParas.map((p) => <p>{p}</p>)}
+      </div>
+    </section>
+  </section>
+</Base>

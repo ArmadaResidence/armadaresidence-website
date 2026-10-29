@@ -51,6 +51,7 @@ import {
   type Mail,
   type Quote,
 } from './email.ts';
+import { makeRef } from '../_shared/ref.ts';
 import { sendWhatsApp } from './whatsapp-send.ts';
 import { WA_TEMPLATES, type WaTemplate } from './whatsapp.ts';
 
@@ -136,15 +137,6 @@ function json(req: Request, status: number, body: unknown): Response {
     status,
     headers: { ...cors(req), 'Content-Type': 'application/json; charset=utf-8' },
   });
-}
-
-function makeRef(): string {
-  const d = new Date();
-  const ymd = `${d.getUTCFullYear()}${String(d.getUTCMonth() + 1).padStart(2, '0')}${String(d.getUTCDate()).padStart(2, '0')}`;
-  const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-  const bytes = crypto.getRandomValues(new Uint8Array(4));
-  const tail = Array.from(bytes, (b) => alphabet[b % alphabet.length]).join('');
-  return `AR-${ymd}-${tail}`;
 }
 
 /** "2026-10-22 14:05 (Asia/Riyadh)" — the hotel's local time, whatever the runtime's zone. */

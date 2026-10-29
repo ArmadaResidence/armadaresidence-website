@@ -26,8 +26,8 @@
   "page": {
     "title_ar": "الشروط والسياسات",
     "title_en": "Terms & Policies",
-    "intro_ar": "تنطبق هذه الشروط على الحجوزات في فرعي أرمادا ريزيدنس بالطائف: طريق المطار وطريق الشفا. تاريخ آخر تحديث: 8 أكتوبر 2026.",
-    "intro_en": "These terms apply to bookings at both Armada Residence properties in Taif: Airport Road and Shafa Road. Last updated 8 October 2026.",
+    "intro_ar": "تنطبق هذه الشروط على الحجوزات في فرعي أرمادا ريزيدنس بالطائف: طريق المطار وطريق الشفا. تاريخ آخر تحديث: 29 أكتوبر 2026.",
+    "intro_en": "These terms apply to bookings at both Armada Residence properties in Taif: Airport Road and Shafa Road. Last updated 29 October 2026.",
     "sections": [
       {
         "id": "booking",
@@ -77,6 +77,13 @@
         "heading_en": "Privacy",
         "body_ar": "عند إرسال طلب حجز نجمع الاسم ورقم الهاتف والبريد الإلكتروني وتفاصيل الإقامة، ونستخدمها فقط لمعالجة الطلب والتواصل بشأنه. تُحفظ البيانات في أنظمة أرمادا ريزيدنس ولا تُباع ولا تُشارك مع أي طرف ثالث إلا ما يلزم لتنفيذ الحجز أو الدفع. يستخدم الموقع أدوات قياس وإعلانات (Google Tag Manager) لفهم استخدام الموقع وتحسين الحملات؛ ويمكنكم تعطيل ملفات تعريف الارتباط من إعدادات المتصفح. لطلب الاطلاع على بياناتكم أو تعديلها أو حذفها، راسلونا على info@armadaresidence.com. نلتزم بنظام حماية البيانات الشخصية في المملكة العربية السعودية.",
         "body_en": "When you send a booking request we collect your name, phone number, email and stay details, and use them only to process the request and contact you about it. Data is stored in Armada Residence systems and is never sold or shared with third parties beyond what is needed to complete the booking or payment. The website uses measurement and advertising tools (Google Tag Manager) to understand site usage and improve campaigns; you can disable cookies in your browser settings. To access, correct or delete your data, email info@armadaresidence.com. We comply with the Personal Data Protection Law of Saudi Arabia."
+      },
+      {
+        "id": "jobs",
+        "heading_ar": "طلبات التوظيف",
+        "heading_en": "Job applications",
+        "body_ar": "يطّلع على طلبك فريق إدارة الفندق والموارد البشرية فقط، ونستخدم بياناتك لتقييم طلبك والتواصل معك ولتطبيق أنظمة العمل. نحتفظ بالطلب 12 شهرًا ثم نحذفه. قد تُعالَج بياناتك لدى مزودي خدمات تقنية خارج المملكة وفق الضمانات التي يتطلبها النظام. يحق لك طلب الاطلاع على بياناتك أو تصحيحها أو حذفها، أو سحب موافقتك، عبر jobs@armadaresidence.com. نرجو ألا تتضمن سيرتك الذاتية صورة شخصية أو معلومات صحية.",
+        "body_en": "Your application is seen only by the hotel management and HR team. We use your details to assess your application, contact you and meet labour regulations. We keep the application for 12 months, then delete it. Your data may be processed by technology providers outside Saudi Arabia under the safeguards the law requires. You may ask to access, correct or delete your data, or withdraw your consent, at jobs@armadaresidence.com. Please don't include a photo or health information in your CV."
       },
       {
         "id": "operator",
