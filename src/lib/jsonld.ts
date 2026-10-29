@@ -4,6 +4,7 @@
  */
 import {
   absoluteUrl,
+  ogImageOf,
   branchContact,
   branchPath,
   branches,
@@ -37,8 +38,8 @@ function logoUrl(): string {
   return absoluteUrl('/brand/logo-horizontal.svg');
 }
 
-function ogImage(): string {
-  return absoluteUrl(seo.default_og_image);
+function ogImage(path?: string): string {
+  return absoluteUrl(path || seo.default_og_image);
 }
 
 export function organization(locale: Locale) {
@@ -84,7 +85,7 @@ export function lodging(locale: Locale, b: Branch) {
     name: L(locale, b, 'name'),
     description: L(locale, b, 'tagline'),
     url: absoluteUrl(branchPath(locale, b.slug)),
-    image: ogImage(),
+    image: ogImage(ogImageOf(b)),
     telephone: c.phone,
     email: b.email,
     address: postalAddress(locale, b),
@@ -152,7 +153,7 @@ export function hotelRoom(locale: Locale, room: Room, b: Branch) {
     name: L(locale, room, 'name'),
     description: L(locale, room, 'description'),
     url,
-    image: ogImage(),
+    image: ogImage(ogImageOf(room)),
     containedInPlace: {
       '@type': b.slug === 'shafa-road' ? 'Hotel' : 'LodgingBusiness',
       '@id': absoluteUrl(branchPath(locale, b.slug)) + '#lodging',

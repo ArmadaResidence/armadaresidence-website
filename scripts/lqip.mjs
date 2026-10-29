@@ -1,12 +1,13 @@
 // Tiny blurred previews (LQIP) for the approved photos: every content/images/**/*-800.webp → a 16 px WebP data URI
 // in content/lqip.json (keyed by the public path, e.g. "/images/dining/caesar-salad-800.webp"). Run by build.py;
 // Photo.astro paints the preview under the real image while it loads (item 13, 11 Oct 2026). ≈ 300 bytes each.
+//   node scripts/lqip.mjs [site root]   (default: this repository; scripts/photos-import.mjs passes its --site)
 import sharp from 'sharp';
 import { readdirSync, statSync, writeFileSync, readFileSync, existsSync } from 'node:fs';
 import { join, relative, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-const ROOT = fileURLToPath(new URL('..', import.meta.url));
+const ROOT = process.argv[2] || fileURLToPath(new URL('..', import.meta.url));
 const SRC = join(ROOT, 'content', 'images');
 const OUT = join(ROOT, 'content', 'lqip.json');
 

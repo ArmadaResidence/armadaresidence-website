@@ -9,6 +9,8 @@
 interface Props {
   src: string;
   srcset?: string;
+  /** AVIF widths of the same photo (scripts/photos-import.mjs); given → <picture> offers AVIF first, WebP stays the img */
+  avifSrcset?: string;
   sizes?: string;
   alt: string;
   width: number;
@@ -21,22 +23,32 @@ interface Props {
   imgClass?: string;
   draggable?: boolean;
 }
-const { src, srcset, sizes, alt, width, height, loading = 'lazy', fetchpriority, lqip, class: className = '', imgClass = '', draggable } = Astro.props;
+const { src, srcset, avifSrcset, sizes, alt, width, height, loading = 'lazy', fetchpriority, lqip, class: className = '', imgClass = '', draggable } = Astro.props;
 const style = lqip ? `background-image:url("${lqip}")` : undefined;
+const img = {
+  src,
+  srcset,
+  sizes,
+  alt,
+  width,
+  height,
+  loading,
+  fetchpriority,
+  decoding: 'async' as const,
+  draggable: draggable === false ? ('false' as const) : undefined,
+};
 ---
 
 <span class:list={['photo', className]} style={style} data-photo>
-  <img
-    src={src}
-    srcset={srcset}
-    sizes={sizes}
-    alt={alt}
-    width={width}
-    height={height}
-    loading={loading}
-    fetchpriority={fetchpriority}
-    decoding="async"
-    draggable={draggable === false ? 'false' : undefined}
-    class:list={['photo-img', imgClass]}
-  />
+  {
+    avifSrcset ? (
+      /* display: contents keeps the img the box's direct layout child */
+      <picture class="contents">
+        <source type="image/avif" srcset={avifSrcset} sizes={sizes} />
+        <img {...img} class:list={['photo-img', imgClass]} />
+      </picture>
+    ) : (
+      <img {...img} class:list={['photo-img', imgClass]} />
+    )
+  }
 </span>

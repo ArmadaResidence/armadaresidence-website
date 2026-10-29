@@ -4,6 +4,7 @@ import BranchStory from '@components/BranchStory.astro';
 import Counters from '@components/Counters.astro';
 import Divider from '@components/Divider.astro';
 import DiningSection from '@components/DiningSection.astro';
+import Photo from '@components/Photo.astro';
 import Placeholder from '@components/Placeholder.astro';
 import RoomGrid from '@components/RoomGrid.astro';
 import Icon from '@components/Icon.astro';
@@ -19,8 +20,11 @@ import {
   L,
   localePath,
   mailHref,
+  ogImageOf,
   pageSeo,
   paragraphs,
+  photoProps,
+  photosOf,
   policies,
   roomsFor,
   telHref,
@@ -46,6 +50,7 @@ const t = ui(locale);
 const s = pageSeo(locale, branch.slug);
 const c = branchContact(branch.slug);
 const name = L(locale, branch, 'name');
+const cover = photosOf(branch)[0];
 const rooms = roomsFor(branch.slug);
 const other = branches.find((b) => b.slug !== branch.slug);
 const path = `/${branch.slug}/`;
@@ -60,7 +65,7 @@ const driveTimes = Object.entries(((branch as unknown as { drive_times_min?: Rec
 }));
 ---
 
-<Base locale={locale} path={path} title={s.title} description={s.description} jsonld={[lodging(locale, branch)]} whatsapp={branch.slug} booking={{ branch: branch.slug }}>
+<Base locale={locale} path={path} title={s.title} description={s.description} ogImage={ogImageOf(branch)} jsonld={[lodging(locale, branch)]} whatsapp={branch.slug} booking={{ branch: branch.slug }}>
   <section class="mx-auto max-w-6xl px-4 pt-10">
     <nav aria-label="breadcrumb" class="text-sm text-ink-muted">
       <a href={localePath(locale, '/')} class="hover:text-midnight">{t.nav.home}</a>
@@ -71,7 +76,13 @@ const driveTimes = Object.entries(((branch as unknown as { drive_times_min?: Rec
     <h1 class="mt-1 text-3xl md:text-4xl font-bold text-midnight">{name}</h1>
     <p class="mt-2 text-lg text-ink-muted">{L(locale, branch, 'tagline')}</p>
     <div class="reveal reveal-lg mt-8">
-      <Placeholder label={fill(t.photo_pending_alt, { subject: name })} />
+      {
+        cover ? (
+          <Photo {...photoProps(locale, cover)} sizes="(min-width: 1152px) 1120px, 100vw" loading="eager" fetchpriority="high" class="rounded-card" imgClass="w-full h-auto" />
+        ) : (
+          <Placeholder label={fill(t.photo_pending_alt, { subject: name })} />
+        )
+      }
     </div>
   </section>
 

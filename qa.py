@@ -752,6 +752,7 @@ def main() -> int:
             print(f"home transfer ≈ {kb:.0f} KB (html+css+js+fonts, uncompressed)")
 
     check_articles(rep, pages)
+    check_photos(rep)
 
     # ---- report
     n_fail = sum(len(v) for v in rep.fail.values())
@@ -807,6 +808,38 @@ def parse_frontmatter(text: str) -> tuple[dict, str] | None:
         except json.JSONDecodeError:
             data[k.strip()] = v.strip("'")
     return data, m.group(2)
+
+
+def check_photos(rep: "Report") -> None:
+    """Photos imported by scripts/photos-import.mjs (rooms.json / branches.json → photos, og_image): every file exists
+    and every photo has a real alt in both languages — never invented, so an empty one fails with the full list."""
+    G = "photos (scripts/photos-import.mjs)"
+    missing: list[str] = []
+    rooms = json.loads((CONTENT / "rooms.json").read_text(encoding="utf-8"))["rooms"]
+    branches = json.loads((CONTENT / "branches.json").read_text(encoding="utf-8"))["branches"]
+    owners = [(f"{r['branch']}/{r['slug']}", r) for r in rooms] + [(f"{b['slug']}/branch", b) for b in branches]
+    for where, owner in owners:
+        photos = owner.get("photos") or []
+        if photos and not owner.get("og_image"):
+            rep.f(G, f"{where}: photos without og_image")
+        if owner.get("og_image") and not (CONTENT / owner["og_image"].lstrip("/")).is_file():
+            rep.f(G, f"{where}: og_image {owner['og_image']} missing in content/")
+        for p in photos:
+            name = p.get("source_file") or p.get("base")
+            for w in p.get("widths") or []:
+                for ext in p.get("formats") or ["webp"]:
+                    if not (CONTENT / f"{p['base'].lstrip('/')}-{w}.{ext}").is_file():
+                        rep.f(G, f"{where}: {p['base']}-{w}.{ext} missing in content/")
+            for lang, script in (("ar", ARABIC), ("en", LATIN)):
+                alt = str(p.get(f"alt_{lang}") or "").strip()
+                if not alt:
+                    missing.append(f"{name}: alt_{lang}")
+                elif alt.lower() in GENERIC_ALT or len(alt) < 4 or not script.search(alt):
+                    rep.f(G, f"{name}: alt_{lang} {alt!r} is generic or not in that language")
+    if missing:
+        sep = "\n      - "
+        rep.f(G, f"{len(missing)} alt text(s) missing — fill them in the manifest and run photos-import again:{sep}"
+              + sep.join(missing))
 
 
 def image_exists(ref: str) -> bool:

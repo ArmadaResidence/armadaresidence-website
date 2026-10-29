@@ -34,6 +34,8 @@ const hero = siteTexts.hero;
 // Until the files arrive the grey placeholder acts as poster with a slow Ken Burns move. TODO(photo)
 const heroDir = new URL('../../../content/images/hero/', import.meta.url);
 const hasHeroVideo = ['hero.webm', 'hero.mp4', 'hero-poster.webp'].every((f) => existsSync(new URL(f, heroDir)));
+// og/home.jpg: the poster's 1200 × 630 crop written by scripts/photos-import.mjs; absent → the default OG image
+const homeOg = existsSync(new URL('../og/home.jpg', heroDir)) ? '/images/og/home.jpg' : undefined;
 const heroPosterAlt = fill(t.photo_pending_alt, { subject: locale === 'ar' ? hero.title_ar : hero.title_en });
 const about = siteTexts.about;
 const why = siteTexts.why_armada;
@@ -52,7 +54,7 @@ const quickFacts = fill(t.home.quick_facts, {
 });
 ---
 
-<Base locale={locale} path="/" title={s.title} description={s.description} jsonld={[organization(locale)]}>
+<Base locale={locale} path="/" title={s.title} description={s.description} ogImage={homeOg} jsonld={[organization(locale)]}>
   <section class="hero relative bg-midnight text-porcelain overflow-hidden lg:min-h-[560px] flex items-center" data-glow>
     <div class="absolute inset-0" aria-hidden="true">
       {

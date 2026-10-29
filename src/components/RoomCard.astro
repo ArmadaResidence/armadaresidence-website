@@ -4,6 +4,8 @@ import {
   fill,
   guestsWord,
   L,
+  photoProps,
+  photosOf,
   roomFeatureLabels,
   roomPath,
   soldOutLabel,
@@ -11,6 +13,7 @@ import {
   type Locale,
   type Room,
 } from '@lib/content';
+import Photo from './Photo.astro';
 import Placeholder from './Placeholder.astro';
 import PriceBlock from './PriceBlock.astro';
 import Icon from './Icon.astro';
@@ -26,7 +29,8 @@ const branch = branchBySlug(room.branch);
 const name = L(locale, room, 'name');
 const href = roomPath(locale, room);
 const soldOut = room.availability === 'sold_out';
-// TODO(photo): approved room photo replaces the placeholder (legacy_main_image is reference only, never rendered).
+// The cover from scripts/photos-import.mjs; none yet → the placeholder (legacy_main_image is never rendered).
+const cover = photosOf(room)[0];
 const photoLabel = fill(t.photo_pending_alt, { subject: `${name} — ${L(locale, branch, 'name')}` });
 // Chips = structural features only (kitchen, living room, balcony, jacuzzi); equipment is on the room page.
 const features = roomFeatureLabels(locale, room);
@@ -39,7 +43,13 @@ const meta = [
 
 <article class="bg-white border border-line rounded-card overflow-hidden flex flex-col">
   <a href={href} tabindex="-1" aria-hidden="true" class:list={['relative block', soldOut && 'opacity-60']} transition:name={`room-media-${room.branch}-${room.slug}`}>
-    <Placeholder label={photoLabel} class="rounded-b-none" />
+    {
+      cover ? (
+        <Photo {...photoProps(locale, cover)} sizes="(min-width: 1024px) 360px, (min-width: 640px) 50vw, 100vw" imgClass="w-full h-auto" />
+      ) : (
+        <Placeholder label={photoLabel} class="rounded-b-none" />
+      )
+    }
     {
       soldOut && (
         <span class="absolute top-3 start-3 bg-midnight text-white text-xs font-semibold px-2.5 py-1 rounded">

@@ -1,5 +1,7 @@
 ---
 import Base from '@layouts/Base.astro';
+import GallerySlider from '@components/GallerySlider.astro';
+import Photo from '@components/Photo.astro';
 import Placeholder from '@components/Placeholder.astro';
 import PriceBlock from '@components/PriceBlock.astro';
 import RoomGrid from '@components/RoomGrid.astro';
@@ -14,7 +16,10 @@ import {
   inRoomAmenityLabels,
   L,
   localePath,
+  ogImageOf,
   paragraphs,
+  photoProps,
+  photosOf,
   roomFeatureLabels,
   rooms,
   roomSeo,
@@ -46,6 +51,9 @@ const features = roomFeatureLabels(locale, room);
 const inRoom = inRoomAmenityLabels(locale, room);
 const laundry = locale === 'ar' ? room.features.laundry_ar : room.features.laundry_en;
 const soldOut = room.availability === 'sold_out';
+const photos = photosOf(room);
+const g = t.gallery;
+const galleryLabels = { previous: g.previous, next: g.next, goTo: g.go_to, open: g.open, close: g.close, of: g.of };
 const bookHref = `${localePath(locale, '/booking/')}?branch=${room.branch}&room=${room.slug}`;
 
 const details: { label: string; value: string }[] = [
@@ -62,6 +70,7 @@ const details: { label: string; value: string }[] = [
   title={s.title}
   description={s.description}
   noindex={s.noindex}
+  ogImage={ogImageOf(room)}
   jsonld={[hotelRoom(locale, room, branch)]}
   whatsapp={branch.slug}
   booking={soldOut ? { branch: room.branch } : { branch: room.branch, room: room.slug }}
@@ -84,9 +93,21 @@ const details: { label: string; value: string }[] = [
 
     <div class="mt-8 grid gap-8 lg:grid-cols-5">
       <div class="lg:col-span-3">
-        {/* TODO(photo): approved room photo (WebP, srcset, width/height). legacy_main_image is reference only. */}
+        {/* Photos from scripts/photos-import.mjs (cover first); none yet → the placeholder. legacy_main_image is never rendered. */}
         <div transition:name={`room-media-${room.branch}-${room.slug}`}>
-          <Placeholder label={fill(t.photo_pending_alt, { subject: `${name} — ${branchName}` })} />
+          {
+            photos.length > 1 ? (
+              <GallerySlider
+                images={photos.map((p) => ({ ...photoProps(locale, p), sizes: '(min-width: 1024px) 680px, 100vw' }))}
+                ratio="3 / 2"
+                labels={galleryLabels}
+              />
+            ) : photos.length === 1 ? (
+              <Photo {...photoProps(locale, photos[0])} sizes="(min-width: 1024px) 680px, 100vw" loading="eager" fetchpriority="high" class="rounded-card" imgClass="w-full h-auto" />
+            ) : (
+              <Placeholder label={fill(t.photo_pending_alt, { subject: `${name} — ${branchName}` })} />
+            )
+          }
         </div>
         <div class="mt-8 prose-armada leading-relaxed">
           {paragraphs(L(locale, room, 'description')).map((p) => <p>{p}</p>)}
