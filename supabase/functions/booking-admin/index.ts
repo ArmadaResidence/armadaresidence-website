@@ -11,7 +11,12 @@
 //   number (../booking-request/whatsapp-send.ts; never blocks, logged in public.whatsapp_messages).
 //   whatsapp-resend → public.staff_whatsapp_resend AS THE USER (bookings:edit + branch scope; only a template whose
 //   last attempt failed) claims a new attempt, then this function sends it. Test bookings: built and logged, not sent.
-// Test bookings (is_test) send every email to Resend's sink. Secrets: RESEND_API_KEY, BOOKING_FROM_RECEPTION,
+// A notification that cannot go out after the status changed (the reservation read fails, a confirmed booking has no
+// price snapshot, or an email that should go is not accepted by Resend) is never silent: console.error with the ref and
+// notify_failed: true in the answer — the dashboard then shows «تم تأكيد الحجز، لكن تعذّر إرسال الإشعارات» /
+// «تم إلغاء الحجز، لكن تعذّر إرسال الإشعارات». The status change itself stands either way.
+// Test bookings (is_test) send every email to Resend's sink; for them only, the body field test_notify ('fail-read' |
+// 'fail-send') forces the read or the sends to fail so the dashboard e2e can prove the failure path. Secrets: RESEND_API_KEY, BOOKING_FROM_RECEPTION,
 // BOOKING_FROM_GUEST, SUPABASE_URL / SUPABASE_ANON_KEY / SUPABASE_SERVICE_ROLE_KEY (automatic); browser origins in
 // ../_shared/cors.ts (ADMIN_ALLOWED_ORIGINS adds to them).
 import content from '../booking-request/content.generated.json' with { type: 'json' };
@@ -151,7 +156,11 @@ function route(rows: Recipient[], branch: string) {
   return { to, cc, primary, central };
 }
 
-async function sendEmail(kind: string, ref: string, env: { from: string; to: string[]; cc?: string[]; replyTo?: string[] }, mail: Mail, test: boolean): Promise<string | null> {
+async function sendEmail(kind: string, ref: string, env: { from: string; to: string[]; cc?: string[]; replyTo?: string[] }, mail: Mail, test: boolean, forceFail = false): Promise<string | null> {
+  if (forceFail) {
+    console.error(`email ${kind} not sent`, ref, 'forced failure (test booking)');
+    return null;
+  }
   const key = Deno.env.get('RESEND_API_KEY');
   if (!key) {
     console.error(`email ${kind} not sent`, ref, 'RESEND_API_KEY missing');
@@ -189,7 +198,7 @@ Deno.serve(async (req) => {
   const jwt = (req.headers.get('authorization') ?? '').replace(/^Bearer\s+/i, '');
   if (!jwt) return json(req, 401, { ok: false, error: 'sign in' });
 
-  let body: { action?: string; id?: string; room_type_id?: string | null; reason?: string; template?: string };
+  let body: { action?: string; id?: string; room_type_id?: string | null; reason?: string; template?: string; test_notify?: string };
   try {
     body = await req.json();
   } catch {
@@ -201,35 +210,50 @@ Deno.serve(async (req) => {
   if (body.action === 'confirm') {
     const r = await rpcAsUser(jwt, 'staff_confirm_reservation', { p_id: id, p_room_type: body.room_type_id ?? null });
     if (!r.ok) return json(req, r.status === 401 || r.status === 403 ? 403 : 400, { ok: false, error: (r.body as { message?: string })?.message ?? 'confirm failed' });
-    const out = r.body as { ok: boolean; reason?: string; nights?: unknown; low?: { night: string; left: number }[] };
+    const out = r.body as { ok: boolean; ref?: string; is_test?: boolean; reason?: string; nights?: unknown; low?: { night: string; left: number }[] };
     if (!out.ok) return json(req, 200, out);
-    const res = await loadReservation(id);
-    if (!res || !res.pricing) return json(req, 200, { ...out, emails: null });
+    const force = out.is_test === true ? String(body.test_notify ?? '') : '';
+    const res = force === 'fail-read' ? null : await loadReservation(id);
+    if (!res || !res.pricing) {
+      console.error('confirm: notifications not sent', out.ref ?? id, !res ? 'reservation read failed' : 'no price snapshot');
+      return json(req, 200, { ok: true, ref: out.ref, low: out.low ?? [], emails: null, notify_failed: true });
+    }
     const bm = { ref: res.ref, locale: res.locale, branch: res.branch, room: res.room_slug ?? '', check_in: res.check_in, check_out: res.check_out, nights: res.nights, adults: res.adults, children: res.children, extraBeds: res.extra_beds, extraBedFee: Number(res.extra_bed_fee_per_night ?? content.extra_bed_fee), needsCoordination: res.needs_coordination, capacity: res.capacity_at_request ?? 0, breakfast: res.breakfast, name: res.guest_name, phone: res.phone, email: res.email ?? '', notes: res.notes ?? '', receivedAt: riyadhNow(), quote: res.pricing, confirmedBy: res.confirmed_by_label ?? 'staff' };
     const rows = await loadRecipients(res.ref);
     const { to, cc, primary, central } = route(rows, res.branch);
+    const fail = force === 'fail-send';
+    const lowDue = Boolean(out.low && out.low.length);
     const [n, g, l] = await Promise.all([
-      sendEmail('confirmed-notification', res.ref, { from: FROM_RECEPTION, to, cc, replyTo: res.email ? [res.email] : [] }, confirmedNotification(content, bm), res.is_test),
-      res.email ? sendEmail('guest-confirmed', res.ref, { from: FROM_GUEST, to: [res.email], replyTo: primary.length ? primary : [addressOf(FROM_GUEST)] }, bookingConfirmed(content, bm), res.is_test) : Promise.resolve(null),
-      out.low && out.low.length ? sendEmail('low-inventory', res.ref, { from: FROM_RECEPTION, to: central.length ? central : to }, lowInventoryAlert(content, { ref: res.ref, branch: res.branch, room: res.room_slug ?? '', nights: out.low }), res.is_test) : Promise.resolve(null),
+      sendEmail('confirmed-notification', res.ref, { from: FROM_RECEPTION, to, cc, replyTo: res.email ? [res.email] : [] }, confirmedNotification(content, bm), res.is_test, fail),
+      res.email ? sendEmail('guest-confirmed', res.ref, { from: FROM_GUEST, to: [res.email], replyTo: primary.length ? primary : [addressOf(FROM_GUEST)] }, bookingConfirmed(content, bm), res.is_test, fail) : Promise.resolve(null),
+      lowDue ? sendEmail('low-inventory', res.ref, { from: FROM_RECEPTION, to: central.length ? central : to }, lowInventoryAlert(content, { ref: res.ref, branch: res.branch, room: res.room_slug ?? '', nights: out.low! }), res.is_test, fail) : Promise.resolve(null),
     ]);
+    const missed = [!n && 'reception', res.email && !g && 'guest', lowDue && !l && 'low-inventory'].filter(Boolean);
+    if (missed.length) console.error('confirm: notifications not sent', res.ref, missed.join(','));
     // after the emails: the guest's WhatsApp confirmation (one per ref — an instant confirmation never reaches here)
     const wa = await sendWhatsApp(content, { template: 'booking_confirmed', booking: waBooking(res), reservationId: res.id, test: res.is_test });
-    return json(req, 200, { ok: true, ref: res.ref, low: out.low ?? [], emails: { notification: n, guest: g, low_inventory: l }, whatsapp: waOut(wa) });
+    return json(req, 200, { ok: true, ref: res.ref, low: out.low ?? [], emails: { notification: n, guest: g, low_inventory: l }, notify_failed: missed.length > 0, whatsapp: waOut(wa) });
   }
 
   if (body.action === 'cancel') {
     const r = await rpcAsUser(jwt, 'staff_cancel_reservation', { p_id: id, p_reason: String(body.reason ?? '') });
     if (!r.ok) return json(req, r.status === 401 || r.status === 403 ? 403 : 400, { ok: false, error: (r.body as { message?: string })?.message ?? 'cancel failed' });
-    const out = r.body as { ok: boolean; ref: string; was?: string; already?: boolean };
-    if (out.already) return json(req, 200, { ...out, emails: null });
-    const res = await loadReservation(id);
-    if (!res || !res.email) return json(req, 200, { ...out, emails: null });
+    const out = r.body as { ok: boolean; ref: string; was?: string; already?: boolean; is_test?: boolean };
+    if (out.already) return json(req, 200, { ...out, emails: null, notify_failed: false });
+    const force = out.is_test === true ? String(body.test_notify ?? '') : '';
+    const res = force === 'fail-read' ? null : await loadReservation(id);
+    if (!res) {
+      console.error('cancel: notifications not sent', out.ref, 'reservation read failed');
+      return json(req, 200, { ...out, emails: null, notify_failed: true });
+    }
+    // no email on the booking → nothing to send (the dashboard shows the change)
+    if (!res.email) return json(req, 200, { ...out, emails: null, notify_failed: false });
     const bm = { ref: res.ref, locale: res.locale, branch: res.branch, room: res.room_slug ?? '', check_in: res.check_in, check_out: res.check_out, nights: res.nights, adults: res.adults, children: res.children, extraBeds: res.extra_beds, extraBedFee: Number(res.extra_bed_fee_per_night ?? content.extra_bed_fee), needsCoordination: res.needs_coordination, capacity: res.capacity_at_request ?? 0, breakfast: res.breakfast, name: res.guest_name, phone: res.phone, email: res.email, notes: res.notes ?? '', receivedAt: riyadhNow() };
     const rows = await loadRecipients(res.ref);
     const { primary } = route(rows, res.branch);
-    const g = await sendEmail('guest-cancelled', res.ref, { from: FROM_GUEST, to: [res.email], replyTo: primary.length ? primary : [addressOf(FROM_GUEST)] }, bookingCancelled(content, bm), res.is_test);
-    return json(req, 200, { ...out, emails: { guest: g } });
+    const g = await sendEmail('guest-cancelled', res.ref, { from: FROM_GUEST, to: [res.email], replyTo: primary.length ? primary : [addressOf(FROM_GUEST)] }, bookingCancelled(content, bm), res.is_test, force === 'fail-send');
+    if (!g) console.error('cancel: notifications not sent', res.ref, 'guest');
+    return json(req, 200, { ...out, emails: { guest: g }, notify_failed: !g });
   }
 
   if (body.action === 'whatsapp-resend') {

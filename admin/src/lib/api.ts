@@ -374,10 +374,12 @@ export interface ConfirmResult {
   ref?: string;
   low?: { night: string; left: number }[];
   emails?: Record<string, string | null> | null;
+  /** the status changed but a notification did not go out (the function logged the ref) */
+  notify_failed?: boolean;
 }
 export const confirmReservation = (id: string, roomTypeId: string | null) => edge<ConfirmResult>('booking-admin', { action: 'confirm', id, room_type_id: roomTypeId });
 export const resendWhatsApp = (id: string, template: string) => edge<{ ok: boolean; reason?: string; whatsapp?: { accepted: boolean; status: string; error_code: string | null } }>('booking-admin', { action: 'whatsapp-resend', id, template });
-export const cancelReservation = (id: string, reason: string) => edge<{ ok: boolean; already?: boolean; emails?: Record<string, string | null> | null }>('booking-admin', { action: 'cancel', id, reason });
+export const cancelReservation = (id: string, reason: string) => edge<{ ok: boolean; already?: boolean; emails?: Record<string, string | null> | null; notify_failed?: boolean }>('booking-admin', { action: 'cancel', id, reason });
 
 export async function settings(): Promise<Setting[]> {
   const { data, error } = await supabase.from('settings').select('key,value,updated_at');

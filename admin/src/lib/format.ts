@@ -31,6 +31,12 @@ export const WA_STATUS_LABELS: Record<string, string> = {
   failed: 'تعذّر الإرسال',
   test: 'تجربة — لم تُرسل',
 };
+/** confirm / cancel stood but a notification did not go out (booking-admin answered notify_failed and logged the ref) */
+export const NOTIFY_FAILED = {
+  confirm: 'تم تأكيد الحجز، لكن تعذّر إرسال الإشعارات',
+  cancel: 'تم إلغاء الحجز، لكن تعذّر إرسال الإشعارات',
+} as const;
+
 export const WA_ERRORS: Record<string, string> = {
   template_not_approved: 'القالب لم تعتمده Meta بعد لرقم هذا الفرع.',
   recipient: 'رقم الضيف لا يستقبل رسائل واتساب أو غير صحيح.',

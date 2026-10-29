@@ -13,7 +13,7 @@ import { supabase } from '../lib/supabase';
 import * as api from '../lib/api';
 import type { Reservation, RoomType, StatusHistory, CalendarCell, WhatsAppMessage } from '../lib/api';
 import { useSession } from '../lib/session';
-import { BRANCH_FULL, BRANCH_NAMES, REASON_LABELS, STATUS_LABELS, WA_STATUS_LABELS, WA_TEMPLATE_LABELS, adultsWord, childrenWord, dateRange, longDate, nightsWord, riyadhDateTimeLong, roomsLeft, sar, toCsv, riyadhToday, waError } from '../lib/format';
+import { BRANCH_FULL, BRANCH_NAMES, NOTIFY_FAILED, REASON_LABELS, STATUS_LABELS, WA_STATUS_LABELS, WA_TEMPLATE_LABELS, adultsWord, childrenWord, dateRange, longDate, nightsWord, riyadhDateTimeLong, roomsLeft, sar, toCsv, riyadhToday, waError } from '../lib/format';
 import { BranchSelect, CancelButton, Confirm, Drawer, Empty, ErrorBox, Field, Loading, Modal, Spinner, useToast } from '../components/ui';
 import DateField from '../components/DateField';
 
@@ -201,12 +201,12 @@ export default function Bookings() {
         </ul>
       )}
       {/* keyed by the booking: every open starts from the saved values (decision B — reopening shows the saved values) */}
-      <Details key={open?.id ?? 'none'} r={open} roomTypes={roomTypes} editable={editable} onClose={() => setOpen(null)} onChanged={(msg) => { toast(msg); load(); setOpen(null); }} />
+      <Details key={open?.id ?? 'none'} r={open} roomTypes={roomTypes} editable={editable} onClose={() => setOpen(null)} onChanged={(msg, kind) => { toast(msg, kind); load(); setOpen(null); }} />
     </div>
   );
 }
 
-function Details({ r, roomTypes, editable, onClose, onChanged }: { r: Reservation | null; roomTypes: RoomType[]; editable: boolean; onClose: () => void; onChanged: (msg: string) => void }) {
+function Details({ r, roomTypes, editable, onClose, onChanged }: { r: Reservation | null; roomTypes: RoomType[]; editable: boolean; onClose: () => void; onChanged: (msg: string, kind?: 'ok' | 'error') => void }) {
   const toast = useToast();
   const [history, setHistory] = useState<StatusHistory[]>([]);
   const [notes, setNotes] = useState(r?.internal_notes ?? '');
@@ -256,7 +256,9 @@ function Details({ r, roomTypes, editable, onClose, onChanged }: { r: Reservatio
         return;
       }
       setConfirmOpen(false);
-      onChanged(`تم تأكيد الحجز ${out.ref}${out.low?.length ? ' — وأُرسل تنبيه المخزون' : ''}`);
+      // the booking is confirmed either way; a notification that did not go out is never silent
+      if (out.notify_failed) onChanged(NOTIFY_FAILED.confirm, 'error');
+      else onChanged(`تم تأكيد الحجز ${out.ref}${out.low?.length ? ' — وأُرسل تنبيه المخزون' : ''}`);
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -268,8 +270,9 @@ function Details({ r, roomTypes, editable, onClose, onChanged }: { r: Reservatio
     setBusy(true);
     setError(null);
     try {
-      await api.cancelReservation(r!.id, reason.trim());
+      const out = await api.cancelReservation(r!.id, reason.trim());
       setCancelOpen(false);
+      if (out.notify_failed) return onChanged(NOTIFY_FAILED.cancel, 'error');
       onChanged(`أُلغي الحجز ${r!.ref}${r!.status === 'confirmed' ? ' وأُعيدت الغرف إلى المخزون' : ''}`);
     } catch (e) {
       setError((e as Error).message);

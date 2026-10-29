@@ -5,6 +5,8 @@
 //   node admin/tests/dashboard-check.mjs [BASE_URL]        default http://127.0.0.1:5173
 //   env SUPABASE_URL / SUPABASE_ANON_KEY / BOOKING_TEST_TOKEN  (the branch; .env values are the fallback)
 //       SUPABASE_SERVICE_ROLE_KEY                             the branch's service role: enables the invite-link checks
+//   the branch also needs RESEND_API_KEY (a sending-only QA key) and one active branch + central recipient: the
+//   confirm / cancel outcome checks require each email of a test booking to come back as a Resend id (= the sink)
 //
 // Phase 2a.1 coverage: Western digits on every page with every dialog open; the site's picker on every date field
 // (no typing, past viewable in filters, edits from today); inventory open / closed per cell, row and bulk + legend;
@@ -131,6 +133,14 @@ async function firstOf(page, map, timeout = 30000) {
   if (!k) throw new Error(`none of ${Object.values(map).join(', ')} appeared`);
   return k;
 }
+/** the JSON answer of the dashboard's next booking-admin call with this action */
+const adminAnswer = (page, action) => page.waitForResponse((res) => res.url().includes('/functions/v1/booking-admin') && res.request().method() === 'POST' && (res.request().postData() ?? '').includes(`"action":"${action}"`), { timeout: 30000 }).then((r) => r.json()).catch(() => null);
+/** a Resend message id: test bookings send to Resend's sink (delivered@resend.dev) only, so an id = it reached the sink */
+const SINK_ID = (v) => typeof v === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v);
+/** a toast of this kind with exactly this text appears */
+const toastShown = (page, kind, text) => page.locator(`[data-toast="${kind}"]`).filter({ hasText: text }).first().waitFor({ timeout: 30000 }).then(() => true, () => false);
+/** a service-role read (the e2e runs on a preview branch only) */
+const serviceRead = (path) => fetch(`${env.SUPABASE_URL}/rest/v1/${path}`, { headers: { apikey: SERVICE, Authorization: `Bearer ${SERVICE}` } }).then((r) => (r.ok ? r.json() : [])).catch(() => []);
 let adminBackup = null; // the QA admin's backup codes, generated on its first sign-in of the run (forced page)
 /** sign in with password + email code (test mode). remember → «تذكّر هذا الجهاز». An existing ctx keeps its device token. */
 async function login(email, { viewport = { width: 1280, height: 900 }, remember = false, ctx: given = null } = {}) {
@@ -172,12 +182,17 @@ try {
   const submit = (body, headers = {}) => fetch(`${env.SUPABASE_URL}/functions/v1/booking-request`, { method: 'POST', headers: { ...H, 'x-armada-test-mail': 'none', ...headers }, body: JSON.stringify({ locale: 'ar', branch: 'airport-road', room: 'qa-test-room', check_in: D(20), check_out: D(22), adults: '2', children: '0', extra_beds: '0', breakfast: 'without', name: 'تجربة النظام', phone: '0500000000', country: 'SA', email: '', notes: 'dashboard-check', page: 'qa', ...body }) }).then((r) => r.json());
   // the booking form's maximum notes (1000 characters): the print sheet must still be one page
   const LONG_NOTES = 'نصل متأخرين بعد منتصف الليل تقريبًا، ونرجو تجهيز سرير أطفال وغرفة بعيدة عن المصعد إن أمكن، مع موقف قريب للسيارة. '.repeat(10).slice(0, 1000);
-  const r1 = await submit({ quoted_total: quote.quote.total });
-  const r2 = await submit({ extra_beds: '1', quoted_total: quote.quote.total + 100, notes: LONG_NOTES });
+  const GUEST = 'qa-guest@qa.invalid'; // a test booking's emails all go to Resend's sink, never to this address
+  const r1 = await submit({ quoted_total: quote.quote.total, email: GUEST });
+  const r2 = await submit({ extra_beds: '1', quoted_total: quote.quote.total + 100, notes: LONG_NOTES, email: GUEST });
   check(r1.status === 'confirmed' && r2.status === 'request', 'seed: one confirmed + one request (extra bed)', JSON.stringify([r1.status, r2.status, r2.reason]));
   // task 5 A: a request whose WhatsApp message YCloud refused (test mode stub) — stored all the same
   const r3 = await submit({ room: '', notes: LONG_NOTES }, { 'x-armada-test-wa': 'fail' });
   check(r3.ok && r3.status === 'request' && r3.whatsapp_sent === false && r1.whatsapp_sent === true && r2.whatsapp_sent === true, 'seed: WhatsApp built for the first two (test mode), refused for the third — all three stored', JSON.stringify([r1.whatsapp_sent, r2.whatsapp_sent, r3.whatsapp_sent, r3.status]));
+  // two more requests (any room) for the notification-failure paths of confirm / cancel
+  const r4 = await submit({ room: '', email: GUEST });
+  const r5 = await submit({ room: '', email: GUEST });
+  check(r4.status === 'request' && r5.status === 'request', 'seed: two requests for the notification-failure paths', JSON.stringify([r4.status, r5.status]));
 
   // ── reception (Airport Road): no MFA, own branch only; inventory open/close, undo, digits ──
   {
@@ -350,6 +365,8 @@ try {
     check((await page.locator('aside.drawer').textContent()).includes('لا يمكن التراجع'), 'drawer: says confirm / cancel are not undoable');
     await page.click('[data-action="confirm"]');
     await page.selectOption('#confirm-rt', { label: 'QA test room' }).catch(() => page.selectOption('#confirm-rt', { label: 'غرفة اختبار' }));
+    const confirmAnswer = adminAnswer(page, 'confirm');
+    const confirmToast = toastShown(page, 'ok', `تم تأكيد الحجز ${r2.ref} — وأُرسل تنبيه المخزون`);
     await page.click('[data-action="confirm-go"]');
     const confirmedRow = page.locator(`[data-ref="${r2.ref}"][data-status="confirmed"]`);
     await Promise.race([confirmedRow.waitFor({ timeout: 20000 }), page.locator('dialog[open] [role=alert]').first().waitFor({ timeout: 20000 })]).catch(() => {});
@@ -357,6 +374,15 @@ try {
     let st = await rpc('qa_fixture', { p_action: 'state', p_args: { branch: 'airport-road' } });
     const n20 = st.inventory.find((i) => i.night === D(20));
     check(n20.rooms_to_sell === 0 && n20.booked === 2, 'stock after two confirmations: 0 left / 2 booked', JSON.stringify(n20));
+    // ── outcome of a dashboard confirm (28 Oct 2026): reception + guest emails and the low-inventory alert accepted by
+    //    Resend for its sink (test booking), notify_failed false, the toast, the WhatsApp log row ──
+    const ca = await confirmAnswer;
+    check(ca?.ok === true && ca.ref === r2.ref && ca.notify_failed === false && (ca.low ?? []).length > 0, 'confirm outcome: ok, ref, notify_failed false, low inventory reported (0 left)', JSON.stringify(ca));
+    check(SINK_ID(ca?.emails?.notification) && SINK_ID(ca?.emails?.guest), 'confirm outcome: reception «حجز مؤكد جديد» + guest «تم تأكيد حجزك» reached the sink', JSON.stringify(ca?.emails));
+    check(SINK_ID(ca?.emails?.low_inventory), 'confirm outcome: the low-inventory alert reached the sink', JSON.stringify(ca?.emails));
+    check(await confirmToast, 'confirm outcome: the toast names the ref and the alert');
+    const waRows = await serviceRead(`whatsapp_messages?ref=eq.${r2.ref}&template=eq.booking_confirmed&select=status,trigger,is_test`);
+    check(waRows.length === 1 && waRows[0].status === 'test' && waRows[0].trigger === 'auto' && waRows[0].is_test === true, 'confirm outcome: one booking_confirmed row in the WhatsApp log (test: built, not sent)', JSON.stringify(waRows));
 
     // ── task 5 A: WhatsApp messages in the booking details ──
     const openBooking = async (ref) => {
@@ -428,11 +454,56 @@ try {
     await page.click(`[data-ref="${r1.ref}"]`);
     await page.click('[data-action="cancel"]');
     await page.fill('#cancel-reason', 'qa cancel');
+    const cancelAnswer = adminAnswer(page, 'cancel');
+    const cancelToast = toastShown(page, 'ok', `أُلغي الحجز ${r1.ref} وأُعيدت الغرف إلى المخزون`);
     await page.click('dialog[open] .btn-danger');
     await page.waitForSelector(`[data-ref="${r1.ref}"][data-status="cancelled"]`, { timeout: 20000 });
+    // ── outcome of a dashboard cancel: the guest «إلغاء الحجز» reached the sink, notify_failed false, the toast ──
+    const xa = await cancelAnswer;
+    check(xa?.ok === true && xa.ref === r1.ref && xa.notify_failed === false && SINK_ID(xa?.emails?.guest), 'cancel outcome: the guest «إلغاء الحجز» reached the sink, notify_failed false', JSON.stringify(xa));
+    check(await cancelToast, 'cancel outcome: the toast names the ref');
     st = await rpc('qa_fixture', { p_action: 'state', p_args: { branch: 'airport-road' } });
     const n20b = st.inventory.find((i) => i.night === D(20));
     check(n20b.rooms_to_sell === 1 && n20b.booked === 1, 'cancel restored the night (1 left / 1 booked)', JSON.stringify(n20b));
+
+    // ── a notification that cannot go out is never silent (28 Oct 2026): booking-admin honours test_notify for test
+    //    bookings only — r4: confirm with the reservation read failing, cancel with the send failing; r5 the other way ──
+    for (const [rx, onConfirm, onCancel] of [[r4, 'fail-read', 'fail-send'], [r5, 'fail-send', 'fail-read']]) {
+      const force = (mode) => page.route('**/functions/v1/booking-admin', (route) => {
+        const req = route.request();
+        if (req.method() !== 'POST') return route.continue();
+        return route.continue({ postData: JSON.stringify({ ...JSON.parse(req.postData() ?? '{}'), test_notify: mode }) });
+      });
+      await force(onConfirm);
+      await page.fill('#f-q', rx.ref);
+      await page.waitForSelector(`[data-ref="${rx.ref}"]`, { timeout: 10000 });
+      await page.click(`[data-ref="${rx.ref}"]`);
+      await page.click('[data-action="confirm"]');
+      await page.selectOption('#confirm-rt', { label: 'QA test room' }).catch(() => page.selectOption('#confirm-rt', { label: 'غرفة اختبار' }));
+      const fc = adminAnswer(page, 'confirm');
+      await page.click('[data-action="confirm-go"]');
+      const fca = await fc;
+      await page.waitForSelector(`[data-ref="${rx.ref}"][data-status="confirmed"]`, { timeout: 20000 }).catch(() => {});
+      check(fca?.ok === true && fca.ref === rx.ref && fca.notify_failed === true && (await page.locator(`[data-ref="${rx.ref}"][data-status="confirmed"]`).count()) === 1,
+        `notify failure (confirm, ${onConfirm}): the booking is confirmed, the answer says notify_failed with the ref`, JSON.stringify(fca));
+      check(await toastShown(page, 'error', 'تم تأكيد الحجز، لكن تعذّر إرسال الإشعارات'), `notify failure (confirm, ${onConfirm}): «تم تأكيد الحجز، لكن تعذّر إرسال الإشعارات»`);
+      await page.unroute('**/functions/v1/booking-admin');
+      await force(onCancel);
+      await page.click(`[data-ref="${rx.ref}"]`);
+      await page.click('[data-action="cancel"]');
+      await page.fill('#cancel-reason', 'qa notify failure');
+      const fx2 = adminAnswer(page, 'cancel');
+      await page.click('dialog[open] .btn-danger');
+      const fxa = await fx2;
+      await page.waitForSelector(`[data-ref="${rx.ref}"][data-status="cancelled"]`, { timeout: 20000 }).catch(() => {});
+      check(fxa?.ok === true && fxa.ref === rx.ref && fxa.notify_failed === true && (await page.locator(`[data-ref="${rx.ref}"][data-status="cancelled"]`).count()) === 1,
+        `notify failure (cancel, ${onCancel}): the booking is cancelled, the answer says notify_failed with the ref`, JSON.stringify(fxa));
+      check(await toastShown(page, 'error', 'تم إلغاء الحجز، لكن تعذّر إرسال الإشعارات'), `notify failure (cancel, ${onCancel}): «تم إلغاء الحجز، لكن تعذّر إرسال الإشعارات»`);
+      await page.unroute('**/functions/v1/booking-admin');
+    }
+    st = await rpc('qa_fixture', { p_action: 'state', p_args: { branch: 'airport-road' } });
+    const n20c = st.inventory.find((i) => i.night === D(20));
+    check(n20c.rooms_to_sell === 1 && n20c.booked === 1, 'notify failures: each confirm / cancel still moved the stock (back to 1 left / 1 booked)', JSON.stringify(n20c));
 
     // rooms: the accessible room appears, toggle on → site_room_types reflects it → undo
     await page.goto(`${BASE}/rooms`);
