@@ -21,7 +21,11 @@
 // Test mode (x-armada-test = BOOKING_TEST_TOKEN): rows is_test, every email to Resend's sink, no per-IP limit (unless
 // x-armada-test-limits: ip, which applies it on a test-only key); QA actions (JSON body, test token only): 'job-state'
 // (one test ref: status, whether the personal fields are null and the file is gone — never the data itself) and
-// 'job-cleanup' (deletes the test rows, their hits and files). The email / phone quota applies in test mode too.
+// 'job-cleanup' (deletes the test rows, their hits and files), 'job-age' (moves a test row's created_at /
+// last_attempt_at into the past, so the sweep's retry and 7-day purge can be exercised now) and 'job-sweep' (runs the
+// sweep at once, as pg_cron does). Test hooks on a submission (header x-armada-test-fail, test mode only): 'jobs' —
+// the jobs email counts as not accepted (nothing is sent, the row stays failed with its file); 'delete' — the file
+// is not deleted after the accepted send (an orphan for the sweep). The email / phone quota applies in test mode too.
 // Secrets: RESEND_API_KEY, SUPABASE_SERVICE_ROLE_KEY (automatic), BOOKING_ALLOWED_ORIGINS, BOOKING_IP_SALT,
 //   BOOKING_TEST_TOKEN. The sweep token and URL live in Supabase Vault only.
 // Deployed with verify_jwt = false (supabase/config.toml): a public form endpoint; CORS limits the origins.
@@ -45,7 +49,7 @@ function cors(req: Request): Record<string, string> {
   const origin = req.headers.get('origin') ?? '';
   return {
     'Access-Control-Allow-Origin': allowedOrigins.includes(origin) ? origin : allowedOrigins[0],
-    'Access-Control-Allow-Headers': 'authorization, apikey, content-type, x-armada-test, x-armada-test-limits',
+    'Access-Control-Allow-Headers': 'authorization, apikey, content-type, x-armada-test, x-armada-test-limits, x-armada-test-fail',
     'Access-Control-Allow-Methods': 'POST, OPTIONS',
     'Vary': 'Origin',
   };
@@ -225,10 +229,12 @@ const jobMail = (r: Row): JobMail => ({
 
 /** One delivery attempt: the jobs email with the CV (+ the applicant's confirmation while it is due); on acceptance the
  *  file is deleted and the personal fields nulled. Returns whether the jobs email was accepted. */
-async function deliver(r: Row, bytes: Uint8Array | null): Promise<boolean> {
+async function deliver(r: Row, bytes: Uint8Array | null, hook = ''): Promise<boolean> {
   const test = r.is_test;
   const { to, replyTo } = await careersRecipients(r.ref);
-  const jobs = bytes
+  const jobs = test && hook.includes('jobs')
+    ? fail('jobs', r.ref, 'forced test failure')
+    : bytes
     ? await send('jobs', r.ref, { from: FROM_JOBS, to, replyTo: [r.email], mail: jobApplicationNotification(content, jobMail(r)), attachment: { name: filePath(r.ref), bytes } }, test)
     : fail('jobs', r.ref, 'cv file missing from storage');
   let confirmation: string | null = null;
@@ -239,8 +245,8 @@ async function deliver(r: Row, bytes: Uint8Array | null): Promise<boolean> {
   await rpc('job_application_result', { p_ref: r.ref, p_sent: Boolean(jobs.id), p_resend_id: jobs.id, p_error: jobs.error, p_confirmation: confirmation }).catch((x) =>
     console.error('job_application_result failed', r.ref, String(x)),
   );
-  if (jobs.id) await removeFiles([r.ref]);
-  else console.error('job application not delivered — the sweep retries', r.ref, `attempt=${r.send_attempts + 1}`);
+  if (jobs.id && !(test && hook.includes('delete'))) await removeFiles([r.ref]);
+  else if (!jobs.id) console.error('job application not delivered — the sweep retries', r.ref, `attempt=${r.send_attempts + 1}`);
   return Boolean(jobs.id);
 }
 
@@ -281,7 +287,7 @@ async function sweep(): Promise<Record<string, number>> {
 }
 
 // ── QA (test token only) ────────────────────────────────────────────────────────────────────────────────────────
-async function qa(req: Request, body: { action?: string; ref?: string }): Promise<Response> {
+async function qa(req: Request, body: { action?: string; ref?: string; created_minutes_ago?: number; attempt_minutes_ago?: number }): Promise<Response> {
   const e = env();
   if (body.action === 'job-state') {
     const ref = String(body.ref ?? '');
@@ -293,9 +299,21 @@ async function qa(req: Request, body: { action?: string; ref?: string }): Promis
     return json(req, 200, {
       ok: true, ref, department: row.department, branch: row.branch_pref, send_status: row.send_status, confirmation_status: row.confirmation_status,
       send_attempts: row.send_attempts, purged: row.purged_at !== null, personal_null: personal.every((k) => row[k] === null),
-      file_exists: await fileExists(ref), file_deleted: row.file_deleted_at !== null,
+      file_exists: await fileExists(ref), file_deleted: row.file_deleted_at !== null, alert_sent: row.alert_sent_at !== null,
+      last_error: row.last_error,
     });
   }
+  if (body.action === 'job-age') {
+    const ref = String(body.ref ?? '');
+    const mins = (v: unknown) => Math.max(0, Math.min(60 * 24 * 30, Number(v) || 0));
+    if (!/^AR-\d{8}-[A-Z0-9]{4}$/.test(ref)) return json(req, 400, { ok: false, error: 'ref' });
+    const ago = (m: number) => new Date(Date.now() - m * 60000).toISOString();
+    const patch: Record<string, string> = { created_at: ago(mins(body.created_minutes_ago)) };
+    if (body.attempt_minutes_ago !== undefined) patch.last_attempt_at = ago(mins(body.attempt_minutes_ago));
+    const res = await fetch(`${e.url}/rest/v1/job_applications?ref=eq.${ref}&is_test=eq.true`, { method: 'PATCH', headers: H(e.key, { 'Content-Type': 'application/json', Prefer: 'return=minimal' }), body: JSON.stringify(patch) });
+    return json(req, res.ok ? 200 : 500, { ok: res.ok });
+  }
+  if (body.action === 'job-sweep') return json(req, 200, { ok: true, ...(await sweep()) });
   if (body.action === 'job-cleanup') {
     const res = await fetch(`${e.url}/rest/v1/job_applications?is_test=eq.true&select=ref`, { headers: H(e.key) });
     const refs = res.ok ? ((await res.json()) as { ref: string }[]).map((x) => x.ref) : [];
@@ -397,6 +415,6 @@ Deno.serve(async (req) => {
   // 5 + 6. the emails; on acceptance the file and the personal fields go
   const now = new Date().toISOString();
   const row: Row = { ref, created_at: now, is_test: test, locale, department: d.department, branch_pref: d.branch, name: d.name, phone: d.phone, email: d.email, nationality: d.nationality, city: d.city, experience: d.experience, available_from: d.available_from, note: d.note, linkedin: d.linkedin, consent_at: now, cv_size: d.cv.size, send_attempts: 0, last_error: null, confirmation_status: 'pending' };
-  const delivered = await deliver(row, bytes);
+  const delivered = await deliver(row, bytes, test ? (req.headers.get('x-armada-test-fail') ?? '') : '');
   return json(req, 200, { ok: true, ref, delivered, is_test: test });
 });

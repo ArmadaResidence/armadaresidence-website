@@ -10,6 +10,9 @@
 //   - the quota: 3 per email in 24 h (the 4th → 429 'quota'); the per-IP limit (x-armada-test-limits: ip, a test-only
 //     key): the 6th request in an hour → 429;
 //   - the sweep refuses a call without its Vault token (401);
+//   - the sweep itself (29 Oct 2026, test hooks x-armada-test-fail + QA actions job-age / job-sweep): A a forced
+//     failed send is retried and delivered; B a failed send older than 7 days is purged unsent, its file deleted and
+//     the admin alert sent (test rows → Resend's sink); C a file left behind after an accepted send is deleted;
 //   - cleanup (job-cleanup): the test rows, their hits and files are deleted.
 //   node scripts/careers-server-check.mjs [--keep]
 import { readFileSync } from 'node:fs';
@@ -100,6 +103,40 @@ check(JSON.stringify(ip) === JSON.stringify([422, 422, 422, 422, 422, 429]), `pe
 // the sweep needs its Vault token
 const sw = await fetch(URL_, { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-armada-sweep': 'x'.repeat(64) }, body: '{"action":"sweep"}' });
 check(sw.status === 401, `sweep with a wrong token → ${sw.status}`);
+
+// ── the sweep (29 Oct 2026): retry, 7-day purge + admin alert + file, orphaned file after a send ──
+// Each scenario is a fresh test application (its own email, so the quota above does not interfere), aged with
+// 'job-age' and swept with 'job-sweep' — the same sweep pg_cron reaches through job_applications_kick.
+const sweepRun = `${run}s`;
+const submit = async (tag, hook) => {
+  // its own email and phone: the 3-per-24-hours quota counts the phone too
+  const phone = { a: '0500000101', b: '0500000102', c: '0500000103' }[tag];
+  const res = await post({ email: `careers-sweep-${tag}-${sweepRun}@qa.invalid`, phone }, [['cv.pdf', pdf(15000)]], { 'x-armada-test-fail': hook });
+  if (res.status !== 200) console.log(`  submit ${tag} → ${res.status} ${JSON.stringify(res.body)}`);
+  return res.body.ref;
+};
+const state = (ref) => qa({ action: 'job-state', ref });
+// A — a failed send is retried and then delivered: file gone, personal fields null
+const refA = await submit('a', 'jobs');
+let sa = await state(refA);
+check(sa.send_status === 'failed' && sa.file_exists === true && sa.personal_null === false && sa.last_error === 'forced test failure', `A: forced failure keeps the row and its file (${JSON.stringify(sa)})`);
+// B — a failed send older than 7 days: purged unsent, the file deleted, the admin alert sent
+const refB = await submit('b', 'jobs');
+// C — an accepted send whose file deletion did not happen: the sweep deletes the orphan
+const refC = await submit('c', 'delete');
+let sc = await state(refC);
+check(sc.send_status === 'sent' && sc.personal_null === true && sc.file_exists === true && sc.file_deleted === false, `C: sent with its file left behind (${JSON.stringify(sc)})`);
+await qa({ action: 'job-age', ref: refA, created_minutes_ago: 60, attempt_minutes_ago: 60 });
+await qa({ action: 'job-age', ref: refB, created_minutes_ago: 8 * 24 * 60 });
+const sweepOut = await qa({ action: 'job-sweep' });
+console.log(`  sweep ${JSON.stringify(sweepOut)}`);
+sa = await state(refA);
+check(sa.send_status === 'sent' && sa.send_attempts === 2 && sa.personal_null === true && sa.file_exists === false && sa.file_deleted === true, `A: retried and delivered on the sweep (${JSON.stringify(sa)})`);
+const sb = await state(refB);
+check(sb.send_status === 'purged_unsent' && sb.personal_null === true && sb.file_exists === false && sb.file_deleted === true && sb.alert_sent === true, `B: purged after 7 days, file deleted, admin alert sent (${JSON.stringify(sb)})`);
+sc = await state(refC);
+check(sc.file_exists === false && sc.file_deleted === true, `C: the orphaned file deleted by the sweep (${JSON.stringify(sc)})`);
+check(sweepOut.ok && sweepOut.delivered >= 1 && sweepOut.alerts >= 1 && sweepOut.files >= 2, `sweep counts: ${JSON.stringify(sweepOut)}`);
 
 if (!process.argv.includes('--keep')) {
   const c = await qa({ action: 'job-cleanup' });
