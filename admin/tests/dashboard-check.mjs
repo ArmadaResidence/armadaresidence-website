@@ -362,8 +362,9 @@ try {
     await page.waitForSelector(`[data-ref="${r2.ref}"]`, { timeout: 10000 });
     await page.click(`[data-ref="${r2.ref}"]`);
     await digits(page, 'booking drawer');
-    check((await page.locator('aside.drawer').textContent()).includes('لا يمكن التراجع'), 'drawer: says confirm / cancel are not undoable');
+    check((await page.locator('aside.drawer').textContent()).includes('التأكيد والإلغاء يُرسَلان للضيف بالبريد وواتساب، وللاستقبال بالبريد، لذلك لا يمكن التراجع عنهما.'), 'drawer: says confirm / cancel go by email and WhatsApp and are not undoable');
     await page.click('[data-action="confirm"]');
+    check(((await page.locator('dialog[open]').textContent()) ?? '').includes('يُخصم من مخزون كل ليلة، ويُرسَل التأكيد للضيف بالبريد (إن وُجد) وواتساب، مع إشعار للاستقبال. لا يمكن التراجع بعد الإرسال.'), 'confirm dialog: names email and WhatsApp');
     await page.selectOption('#confirm-rt', { label: 'QA test room' }).catch(() => page.selectOption('#confirm-rt', { label: 'غرفة اختبار' }));
     const confirmAnswer = adminAnswer(page, 'confirm');
     const confirmToast = toastShown(page, 'ok', `تم تأكيد الحجز ${r2.ref} — وأُرسل تنبيه المخزون`);
@@ -486,7 +487,9 @@ try {
       return route.continue({ postData: JSON.stringify({ ...JSON.parse(req.postData() ?? '{}'), test_notify: 'fail-wa' }) });
     });
     await openBooking(r3.ref);
+    check(((await page.locator('aside.drawer').textContent()) ?? '').includes('التأكيد والإلغاء يُرسَلان للضيف بالبريد وواتساب'), 'drawer (request): the same note');
     await page.click('[data-action="cancel"]');
+    check(((await page.locator('dialog[open]').textContent()) ?? '').includes('سيُغلق الطلب، ويُرسَل الإلغاء للضيف بالبريد (إن وُجد) وواتساب. لا يمكن التراجع بعد الإرسال.'), 'cancel dialog (request): names email and WhatsApp');
     await page.fill('#cancel-reason', 'qa cancel wa fail');
     const waFailAnswer = adminAnswer(page, 'cancel');
     await page.click('dialog[open] .btn-danger');

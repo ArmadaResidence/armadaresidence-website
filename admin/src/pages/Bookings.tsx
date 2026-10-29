@@ -380,7 +380,7 @@ function Details({ r, roomTypes, editable, onClose, onChanged }: { r: Reservatio
         <a className="btn btn-ghost" href={waTemplate()} target="_blank" rel="noopener">واتساب الضيف</a>
         <button type="button" className="btn btn-ghost" onClick={() => window.print()} data-action="print">طباعة</button>
       </div>
-      {editable && r.status !== 'cancelled' && <p className="text-xs text-ink-muted mb-5">التأكيد والإلغاء يرسلان بريدًا للضيف والاستقبال، لذلك لا يمكن التراجع عنهما.</p>}
+      {editable && r.status !== 'cancelled' && <p className="text-xs text-ink-muted mb-5">التأكيد والإلغاء يُرسَلان للضيف بالبريد وواتساب، وللاستقبال بالبريد، لذلك لا يمكن التراجع عنهما.</p>}
       {!editable && <p className="text-xs text-ink-muted mb-5">صلاحيتك هنا للعرض فقط.</p>}
 
       <section className="card p-3 mb-5" data-wa-section>
@@ -434,7 +434,7 @@ function Details({ r, roomTypes, editable, onClose, onChanged }: { r: Reservatio
       </ol>
 
       <Modal open={confirmOpen} onClose={() => { setConfirmOpen(false); setNightIssues(null); setError(null); }} title="تأكيد الحجز" busy={busy}>
-        <p className="text-sm text-ink-muted mb-3">يُخصم من مخزون كل ليلة ويُرسل التأكيد للضيف (إن كان له بريد) وإشعار للاستقبال. لا يمكن التراجع بعد الإرسال.</p>
+        <p className="text-sm text-ink-muted mb-3">يُخصم من مخزون كل ليلة، ويُرسَل التأكيد للضيف بالبريد (إن وُجد) وواتساب، مع إشعار للاستقبال. لا يمكن التراجع بعد الإرسال.</p>
         <Field label="نوع الغرفة" id="confirm-rt">
           <select id="confirm-rt" className="field" value={pickRt} onChange={(e) => { setPickRt(e.target.value); setNightIssues(null); }}>
             <option value="">— اختر —</option>
@@ -460,7 +460,7 @@ function Details({ r, roomTypes, editable, onClose, onChanged }: { r: Reservatio
       </Modal>
 
       <Confirm open={cancelOpen} onClose={() => { setCancelOpen(false); setError(null); }} title="إلغاء الحجز" confirmLabel="إلغاء الحجز" danger onConfirm={doCancel} busy={busy}
-        body={r.status === 'confirmed' ? 'سيُعاد المخزون لكل ليلة ويُرسل للضيف بريد الإلغاء إن كان له بريد. لا يمكن التراجع بعد الإرسال.' : 'سيُغلق الطلب. لا يمكن التراجع.'}>
+        body={r.status === 'confirmed' ? 'سيُعاد المخزون لكل ليلة، ويُرسَل الإلغاء للضيف بالبريد (إن وُجد) وواتساب. لا يمكن التراجع بعد الإرسال.' : 'سيُغلق الطلب، ويُرسَل الإلغاء للضيف بالبريد (إن وُجد) وواتساب. لا يمكن التراجع بعد الإرسال.'}>
         <Field label="السبب (إلزامي)" id="cancel-reason">
           <input id="cancel-reason" className="field" value={reason} onChange={(e) => setReason(e.target.value)} />
         </Field>
