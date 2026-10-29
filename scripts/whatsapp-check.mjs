@@ -1,6 +1,7 @@
 // WhatsApp messages to the guest (task 5 A, 28 Oct 2026) — the YCloud payloads of whatsapp.ts.
 //   node scripts/whatsapp-check.mjs          static (in the mandatory suite; no network, no key):
-//     mapping — both templates × both languages × both branches against the LIVE definitions read on 28 Oct 2026
+//     mapping — the three templates × both languages × both branches against the LIVE definitions read on 28 Oct 2026
+//               (booking_cancelled: 29 Oct 2026)
 //               (supabase/functions/booking-request/whatsapp-templates.json): as many parameters as the body's {{n}},
 //               each {{n}} carrying what Meta's approved sample carries there (name, ref, branch, check-in, check-out,
 //               room, total incl. VAT, map link), with the exact values the emails use (longDate, sar, branches.json
@@ -87,6 +88,12 @@ try {
   threw = true;
 }
 check(threw, 'confirmed template refuses to build without the quote (logged as payload failure, never a wrong total)');
+// booking_cancelled (29 Oct 2026): a cancelled request may have no room type and no quote — the same five values as the request
+for (const L of ['ar', 'en']) {
+  const d = { ref: 'AR-20261102-ABCD', locale: L, branch: 'shafa-road', room: '', check_in: '2026-11-02', check_out: '2026-11-05', name: 'x', phone: '+966500000000', quote: null };
+  check(JSON.stringify(waParams(content, 'booking_cancelled', d)) === JSON.stringify(waParams(content, 'booking_request_received', d)), `cancelled template (${L}): built without a room type or quote, the request template's values in the same order`);
+  check(waPayload(content, 'booking_cancelled', d).externalId === `${d.ref}:booking_cancelled`, `cancelled template (${L}): its own externalId, so it never collides with the request / confirmation of the same ref`);
+}
 
 // ── static: error codes ──
 const E = (status, text, want) => check(waErrorCode(status, text) === want, `error ${status} «${text.slice(0, 50)}» → ${want}`, waErrorCode(status, text));
@@ -144,4 +151,4 @@ if (fails.length) {
   for (const f of fails) console.log('  - ' + f);
   process.exit(1);
 }
-console.log(`✓ WhatsApp payloads: 2 templates × 2 languages × 2 branches mapped against the live definitions${process.argv.includes('--live') ? '; test-mode sends, failure isolation and the log checked on the deployed function' : ''}`);
+console.log(`✓ WhatsApp payloads: ${WA_TEMPLATES.length} templates × 2 languages × 2 branches mapped against the live definitions${process.argv.includes('--live') ? '; test-mode sends, failure isolation and the log checked on the deployed function' : ''}`);

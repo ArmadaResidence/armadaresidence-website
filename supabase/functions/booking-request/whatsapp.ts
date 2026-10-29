@@ -1,13 +1,16 @@
 /**
  * WhatsApp messages to the guest (task 5 A, 28 Oct 2026): the YCloud template payloads.
  *
- * Two Meta-approved Utility templates exist on each branch's own WhatsApp Business account (YCloud), in ar and en —
+ * Three Meta-approved Utility templates exist on each branch's own WhatsApp Business account (YCloud), in ar and en —
  * never edited or resubmitted from here. Their numbered body variables, mapped by the samples Meta approved
  * (read through the YCloud API on 28 Oct 2026; whatsapp-templates.json keeps those definitions for the tests):
  *   booking_request_received  {{1}} guest name · {{2}} ref · {{3}} branch name · {{4}} check-in · {{5}} check-out
  *   booking_confirmed         {{1}} guest name · {{2}} branch name · {{3}} ref · {{4}} check-in · {{5}} check-out ·
  *                             {{6}} room type · {{7}} total incl. VAT (the template adds «شامل الضريبة» itself) ·
  *                             {{8}} the branch's map link
+ *   booking_cancelled         {{1}} guest name · {{2}} ref · {{3}} branch name · {{4}} check-in · {{5}} check-out
+ *                             (added 29 Oct 2026 — the same meanings and formats as booking_request_received; read
+ *                             through the YCloud API that day)
  * Values: branch / room names from content (branches.json / rooms.json) in the booking's language; dates as the emails
  * write them (longDate: «الأحد 2 نوفمبر 2026» / "Sun, 2 Nov 2026", Western digits); the total through sar(); the map
  * link = branches.json → maps_url. Sender = the branch's own number (contact.json), recipient = the stored E.164 phone.
@@ -21,8 +24,8 @@ import { longDate, sar, type Quote } from './email.ts';
 type Content = any;
 type Locale = 'ar' | 'en';
 
-export type WaTemplate = 'booking_request_received' | 'booking_confirmed';
-export const WA_TEMPLATES: WaTemplate[] = ['booking_request_received', 'booking_confirmed'];
+export type WaTemplate = 'booking_request_received' | 'booking_confirmed' | 'booking_cancelled';
+export const WA_TEMPLATES: WaTemplate[] = ['booking_request_received', 'booking_confirmed', 'booking_cancelled'];
 
 export interface WaBooking {
   ref: string;
@@ -61,7 +64,7 @@ export function waParams(c: Content, template: WaTemplate, d: WaBooking): string
   const checkOut = longDate(c, d.check_out, L);
   // WhatsApp refuses a parameter with a newline, a tab or more than four spaces in a row
   const clean = (s: string) => String(s ?? '').replace(/[\r\n\t]+/g, ' ').replace(/ {2,}/g, ' ').trim();
-  if (template === 'booking_request_received') return [d.name, d.ref, branch, checkIn, checkOut].map(clean);
+  if (template === 'booking_request_received' || template === 'booking_cancelled') return [d.name, d.ref, branch, checkIn, checkOut].map(clean);
   const r = d.room ? c.rooms.find((x: { slug: string; branch: string }) => x.slug === d.room && x.branch === d.branch) : null;
   const room = r ? String(r[`name_${L}`]) : String(c.labels[L].any_room);
   if (!d.quote) throw new Error('booking_confirmed needs the quote');

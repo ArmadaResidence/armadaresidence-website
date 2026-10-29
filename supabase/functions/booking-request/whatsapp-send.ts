@@ -1,5 +1,5 @@
 // WhatsApp send through YCloud (task 5 A, 28 Oct 2026) — used by booking-request (request stored / instant
-// confirmation) and booking-admin (confirmed from the dashboard, «إعادة الإرسال»). Payloads: whatsapp.ts.
+// confirmation) and booking-admin (confirmed / cancelled from the dashboard, «إعادة الإرسال»). Payloads: whatsapp.ts.
 //
 // Always AFTER the row is stored and after the emails; it never throws, so a WhatsApp failure can neither block nor
 // delay the booking or its emails. Each attempt is one row of public.whatsapp_messages (no message text):

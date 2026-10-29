@@ -323,7 +323,7 @@ export async function saveInternalNotes(id: string, notes: string): Promise<void
 /** One WhatsApp send attempt to the guest (public.whatsapp_messages; RLS = the booking's own visibility). */
 export interface WhatsAppMessage {
   id: string;
-  template: 'booking_request_received' | 'booking_confirmed';
+  template: 'booking_request_received' | 'booking_confirmed' | 'booking_cancelled';
   language: string;
   status: string;
   error_code: string | null;

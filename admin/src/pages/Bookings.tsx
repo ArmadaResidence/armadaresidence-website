@@ -313,11 +313,13 @@ function Details({ r, roomTypes, editable, onClose, onChanged }: { r: Reservatio
     }
   }
   // the latest attempt per template, in the order the guest receives them
-  const waLatest = (['booking_request_received', 'booking_confirmed'] as const)
+  const waLatest = (['booking_request_received', 'booking_confirmed', 'booking_cancelled'] as const)
     .map((t) => ({ t, list: (wa ?? []).filter((m) => m.template === t) }))
     .filter((x) => x.list.length)
     .map((x) => ({ ...x.list[x.list.length - 1], attempts: x.list.length }));
-  const waResendable = (m: WhatsAppMessage) => editable && m.status === 'failed' && (m.template === 'booking_confirmed' ? r.status === 'confirmed' : r.status === 'request');
+  // each template only while the booking is in its status (public.staff_whatsapp_resend checks the same)
+  const WA_STATUS_OF = { booking_request_received: 'request', booking_confirmed: 'confirmed', booking_cancelled: 'cancelled' } as const;
+  const waResendable = (m: WhatsAppMessage) => editable && m.status === 'failed' && r.status === WA_STATUS_OF[m.template];
   const waTemplate = () => {
     const lines = [
       `السلام عليكم ${r.guest_name}،`,

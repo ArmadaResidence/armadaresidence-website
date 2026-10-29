@@ -19,9 +19,9 @@ export const REASON_LABELS: Record<string, string> = {
   needs_ages: 'أعمار الأطفال ناقصة',
 };
 
-// WhatsApp messages to the guest (task 5 A, 28 Oct 2026): the template names, the per-attempt status and the reason a
+// WhatsApp messages to the guest (task 5 A, 28 Oct 2026; booking_cancelled 29 Oct 2026): the template names, the per-attempt status and the reason a
 // send failed — the codes of supabase/functions/booking-request/whatsapp.ts → waErrorCode / whatsapp-send.ts.
-export const WA_TEMPLATE_LABELS: Record<string, string> = { booking_request_received: 'رسالة استلام الطلب', booking_confirmed: 'رسالة تأكيد الحجز' };
+export const WA_TEMPLATE_LABELS: Record<string, string> = { booking_request_received: 'رسالة استلام الطلب', booking_confirmed: 'رسالة تأكيد الحجز', booking_cancelled: 'رسالة الإلغاء' };
 export const WA_STATUS_LABELS: Record<string, string> = {
   pending: 'قيد الإرسال',
   accepted: 'أُرسلت',

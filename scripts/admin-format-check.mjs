@@ -22,7 +22,7 @@ let checks = 0;
   for (const c of codes) E(`WA_ERRORS.${c}`, typeof WA_ERRORS[c] === 'string' && /[؀-ۿ]/.test(WA_ERRORS[c]) && !/[A-Za-z]/.test(WA_ERRORS[c].replace('Meta', '')) && WA_ERRORS[c].endsWith('.'), WA_ERRORS[c]);
   E('waError(unknown) → the generic refusal', waError('something_new') === WA_ERRORS.rejected && waError(null) === WA_ERRORS.rejected);
   E('status labels', WA_STATUS_LABELS.accepted === 'أُرسلت' && WA_STATUS_LABELS.failed === 'تعذّر الإرسال' && WA_STATUS_LABELS.sent === 'أُرسلت');
-  E('template labels', Object.keys(WA_TEMPLATE_LABELS).join() === 'booking_request_received,booking_confirmed');
+  E('template labels (the three templates; booking_cancelled 29 Oct 2026)', Object.keys(WA_TEMPLATE_LABELS).join() === 'booking_request_received,booking_confirmed,booking_cancelled' && WA_TEMPLATE_LABELS.booking_cancelled === 'رسالة الإلغاء');
 })();
 // ── C2 / C3 (28 Oct 2026): the bulk summary and the rate sanity texts ──
 (() => {

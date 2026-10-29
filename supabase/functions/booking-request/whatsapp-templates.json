@@ -1,5 +1,5 @@
 {
-  "_note": "Live template definitions read through the YCloud API (GET /v2/whatsapp/templates) on 28 Oct 2026 — the variable map of whatsapp.ts is tested against these bodies. Status as read that day; never edit a template from here.",
+  "_note": "Live template definitions read through the YCloud API (GET /v2/whatsapp/templates) on 28 Oct 2026 (booking_cancelled: 29 Oct 2026, its own read_at) — the variable map of whatsapp.ts is tested against these bodies. Status as read that day; never edit a template from here.",
   "_read_at": "2026-10-28",
   "accounts": {
     "+966536663030": {
@@ -62,6 +62,34 @@
             "https://maps.google.com/?q=Armada+Residence+Taif"
           ],
           "footer": "إلغاء مجاني حتى 24 ساعة قبل الوصول"
+        },
+        "booking_cancelled.ar": {
+          "status": "PENDING",
+          "category": "UTILITY",
+          "body": "مرحبًا {{1}}،\nتم إلغاء حجزك رقم {{2}} في {{3}} للفترة من {{4}} إلى {{5}}.\nلأي استفسار، رد على هذه الرسالة.",
+          "example": [
+            "أحمد",
+            "AR-20261102-ABCD",
+            "أرمادا ريزيدنس طريق الشفا",
+            "الأحد 2 نوفمبر 2026",
+            "الأربعاء 5 نوفمبر 2026"
+          ],
+          "footer": null,
+          "read_at": "2026-10-29"
+        },
+        "booking_cancelled.en": {
+          "status": "APPROVED",
+          "category": "UTILITY",
+          "body": "Hello {{1}},\nYour booking {{2}} at {{3}}, from {{4}} to {{5}}, has been cancelled.\nFor any question, reply to this message.",
+          "example": [
+            "Ahmed",
+            "AR-20261102-ABCD",
+            "Armada Residence Shafa Road",
+            "Sun, 2 Nov 2026",
+            "Wed, 5 Nov 2026"
+          ],
+          "footer": null,
+          "read_at": "2026-10-29"
         }
       }
     },
@@ -125,6 +153,34 @@
             "https://maps.google.com/?q=Armada+Residence+Taif"
           ],
           "footer": "Free cancellation up to 24 hours before arrival"
+        },
+        "booking_cancelled.ar": {
+          "status": "APPROVED",
+          "category": "UTILITY",
+          "body": "مرحبًا {{1}}،\nتم إلغاء حجزك رقم {{2}} في {{3}} للفترة من {{4}} إلى {{5}}.\nلأي استفسار، رد على هذه الرسالة.",
+          "example": [
+            "أحمد",
+            "AR-20261102-ABCD",
+            "أرمادا ريزيدنس طريق المطار",
+            "الأحد 2 نوفمبر 2026",
+            "الأربعاء 5 نوفمبر 2026"
+          ],
+          "footer": null,
+          "read_at": "2026-10-29"
+        },
+        "booking_cancelled.en": {
+          "status": "APPROVED",
+          "category": "UTILITY",
+          "body": "Hello {{1}},\nYour booking {{2}} at {{3}}, from {{4}} to {{5}}, has been cancelled.\nFor any question, reply to this message.",
+          "example": [
+            "Ahmed",
+            "AR-20261102-ABCD",
+            "Armada Residence Airport Road",
+            "Sun, 2 Nov 2026",
+            "Wed, 5 Nov 2026"
+          ],
+          "footer": null,
+          "read_at": "2026-10-29"
         }
       }
     }

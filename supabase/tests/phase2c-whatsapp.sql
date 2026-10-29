@@ -1,6 +1,7 @@
 -- Task 5 SQL tests (28 Oct 2026 — WhatsApp messages to the guest): public.whatsapp_messages (no direct writes, RLS like
 -- the bookings, one live-or-successful attempt per ref + template) and public.staff_whatsapp_resend (bookings:edit,
 -- branch scope, only after a failed attempt, only in the matching booking status, a stale pending attempt → failed).
+-- 29 Oct 2026: W5 — booking_cancelled (the third template), resent only while the booking is cancelled.
 -- ONE transaction, ROLLED BACK at the end — nothing persists. Run after the other suites on a preview branch
 -- (F:\armada-scratch\pgtool\run.mjs <branch-get.json> <file.sql>); every row of the _r result must have ok = true.
 begin;
@@ -67,11 +68,11 @@ update public.staff_permissions set level = 'view' where user_id = pg_temp._id('
 create function pg_temp._booking(p_k text, p_ref text, p_status text, p_branch text, p_test boolean default false) returns void language plpgsql as $$
 declare v uuid;
 begin
-  -- a confirmed row needs its room type, total and time (reservations_check2)
-  insert into public.reservations (ref, status, branch, check_in, check_out, adults, breakfast, guest_name, phone, is_test, room_type_id, total, confirmed_at)
+  -- a confirmed row needs its room type, total and time (reservations_check2); a cancelled one its time (check3)
+  insert into public.reservations (ref, status, branch, check_in, check_out, adults, breakfast, guest_name, phone, is_test, room_type_id, total, confirmed_at, cancelled_at)
   values (p_ref, p_status::public.reservation_status, p_branch, pg_temp._d(30), pg_temp._d(32), 2, 'without', 'QA guest', '+966500000000', p_test,
     case when p_status = 'confirmed' then (select id from public.room_types where branch = p_branch and not is_test order by slug limit 1) end,
-    case when p_status = 'confirmed' then 400 end, case when p_status = 'confirmed' then now() end)
+    case when p_status = 'confirmed' then 400 end, case when p_status = 'confirmed' then now() end, case when p_status = 'cancelled' then now() end)
   returning id into v;
   insert into _ids values (p_k, v);
 end $$;
@@ -153,6 +154,27 @@ select pg_temp._check('W4 the claim: pending, trigger resend, by the user, in th
 select pg_temp._check('W4 the stale attempt is kept as failed (stale)', exists (select 1 from public.whatsapp_messages where ref = 'AR-20991231-WAP1' and status = 'failed' and error_code = 'stale'));
 delete from public.reservations where id = pg_temp._id('r_fail');
 select pg_temp._check('W4 deleting a booking (QA purge) removes its log', not exists (select 1 from public.whatsapp_messages where ref = 'AR-20991231-WAR2'));
+
+-- ── W5 booking_cancelled (29 Oct 2026): the third template — logged like the others, resent only while cancelled ──
+select pg_temp._root();
+select pg_temp._booking('r_canc', 'AR-20991231-WAX2', 'cancelled', 'airport-road');
+select pg_temp._booking('r_canc_ok', 'AR-20991231-WAX3', 'cancelled', 'airport-road');
+select pg_temp._msg('r_canc', 'booking_cancelled', 'accepted');
+select pg_temp._msg('r_canc_ok', 'booking_cancelled', 'failed');
+select pg_temp._check('W5 the log accepts booking_cancelled', (select count(*) from public.whatsapp_messages where template = 'booking_cancelled' and ref like 'AR-20991231-WAX%') = 2);
+select pg_temp._fails('W5 one booking_cancelled per ref (a second live attempt is refused)', $$select pg_temp._msg('r_canc', 'booking_cancelled', 'pending')$$, '23505');
+select pg_temp._fails('W5 an unknown template is still refused by the log', $$select pg_temp._msg('r_canc', 'booking_promo', 'test')$$, '23514');
+select pg_temp._as('rec_air');
+select pg_temp._save('w5_sent', public.staff_whatsapp_resend(pg_temp._id('r_canc'), 'booking_cancelled'));
+select pg_temp._check('W5 a sent cancellation is never resent', pg_temp._j('w5_sent') ->> 'reason' = 'already_sent', pg_temp._j('w5_sent')::text);
+select pg_temp._save('w5_status', public.staff_whatsapp_resend(pg_temp._id('r_req'), 'booking_cancelled'));
+select pg_temp._check('W5 booking_cancelled only for a cancelled booking', pg_temp._j('w5_status') ->> 'reason' = 'status', pg_temp._j('w5_status')::text);
+select pg_temp._save('w5_conf', public.staff_whatsapp_resend(pg_temp._id('r_canc_ok'), 'booking_confirmed'));
+select pg_temp._check('W5 a cancelled booking never gets the confirmation resent', pg_temp._j('w5_conf') ->> 'reason' = 'status', pg_temp._j('w5_conf')::text);
+select pg_temp._save('w5_ok', public.staff_whatsapp_resend(pg_temp._id('r_canc_ok'), 'booking_cancelled'));
+select pg_temp._check('W5 a failed cancellation message is claimed for resend', (pg_temp._j('w5_ok') ->> 'ok')::boolean and pg_temp._j('w5_ok') ->> 'message_id' is not null, pg_temp._j('w5_ok')::text);
+select pg_temp._as('rec_shafa');
+select pg_temp._fails('W5 reception of the other branch cannot resend it', format($$select public.staff_whatsapp_resend(%L, 'booking_cancelled')$$, pg_temp._id('r_canc_ok')), '42501');
 
 select pg_temp._root();
 select n, test, ok, detail from _r order by n;

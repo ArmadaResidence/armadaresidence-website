@@ -462,6 +462,47 @@ try {
     const xa = await cancelAnswer;
     check(xa?.ok === true && xa.ref === r1.ref && xa.notify_failed === false && SINK_ID(xa?.emails?.guest), 'cancel outcome: the guest «إلغاء الحجز» reached the sink, notify_failed false', JSON.stringify(xa));
     check(await cancelToast, 'cancel outcome: the toast names the ref');
+    const waCancel = await serviceRead(`whatsapp_messages?ref=eq.${r1.ref}&template=eq.booking_cancelled&select=status,trigger,is_test,language,branch`);
+    check(waCancel.length === 1 && waCancel[0].status === 'test' && waCancel[0].trigger === 'auto' && waCancel[0].is_test === true && waCancel[0].branch === 'airport-road' && xa?.whatsapp?.status === 'test', 'cancel outcome: one booking_cancelled row in the WhatsApp log (test: built, not sent)', JSON.stringify([waCancel, xa?.whatsapp]));
+    // a cancel sent twice answers «already» and sends nothing more (one per ref)
+    {
+      const jwt = await page.evaluate(() => JSON.parse(Object.entries(localStorage).find(([k]) => k.startsWith('sb-') && k.endsWith('-auth-token'))?.[1] ?? '{}')?.access_token ?? '');
+      const hh = { apikey: env.SUPABASE_ANON_KEY, Authorization: `Bearer ${jwt}`, 'Content-Type': 'application/json' };
+      const r1id = (await fetch(`${env.SUPABASE_URL}/rest/v1/reservations?ref=eq.${r1.ref}&select=id`, { headers: hh }).then((r) => r.json()))[0]?.id ?? '';
+      const twice = await fetch(`${env.SUPABASE_URL}/functions/v1/booking-admin`, { method: 'POST', headers: hh, body: JSON.stringify({ action: 'cancel', id: r1id, reason: 'qa twice' }) }).then((r) => r.json()).catch((e) => ({ error: String(e) }));
+      const after = await serviceRead(`whatsapp_messages?ref=eq.${r1.ref}&template=eq.booking_cancelled&select=id`);
+      check(twice.ok === true && twice.already === true && !twice.whatsapp && after.length === 1, 'cancel twice: «already», no second booking_cancelled (one per ref)', JSON.stringify([twice, after.length]));
+    }
+    await openBooking(r1.ref);
+    const cancelMsg = page.locator('[data-wa="booking_cancelled"][data-wa-status="test"]');
+    await cancelMsg.waitFor({ timeout: 10000 }).catch(() => {});
+    check((await cancelMsg.count()) === 1 && (await cancelMsg.innerText()).includes('رسالة الإلغاء'), 'whatsapp: «رسالة الإلغاء» in the cancelled booking\'s details', await page.locator('[data-wa-section]').innerText().catch(() => ''));
+    await closeDrawer();
+    // a request cancelled with WhatsApp refused (test_notify fail-wa) and no guest email: the cancel stands, notify_failed
+    // false, a failed booking_cancelled row; the drawer offers «إعادة الإرسال», which builds it again (test booking)
+    await page.route('**/functions/v1/booking-admin', (route) => {
+      const req = route.request();
+      if (req.method() !== 'POST' || !(req.postData() ?? '').includes('"action":"cancel"')) return route.continue();
+      return route.continue({ postData: JSON.stringify({ ...JSON.parse(req.postData() ?? '{}'), test_notify: 'fail-wa' }) });
+    });
+    await openBooking(r3.ref);
+    await page.click('[data-action="cancel"]');
+    await page.fill('#cancel-reason', 'qa cancel wa fail');
+    const waFailAnswer = adminAnswer(page, 'cancel');
+    await page.click('dialog[open] .btn-danger');
+    const wfa = await waFailAnswer;
+    await page.unroute('**/functions/v1/booking-admin');
+    await page.waitForSelector(`[data-ref="${r3.ref}"][data-status="cancelled"]`, { timeout: 20000 }).catch(() => {});
+    check(wfa?.ok === true && wfa.notify_failed === false && wfa.emails === null && wfa.whatsapp?.status === 'failed' && (await page.locator(`[data-ref="${r3.ref}"][data-status="cancelled"]`).count()) === 1, 'cancel with WhatsApp refused: cancelled all the same, no email due, notify_failed false', JSON.stringify(wfa));
+    await openBooking(r3.ref);
+    const cancelFailed = page.locator('[data-wa="booking_cancelled"][data-wa-status="failed"]');
+    await cancelFailed.waitFor({ timeout: 10000 }).catch(() => {});
+    check((await cancelFailed.count()) === 1 && (await cancelFailed.innerText()).includes('رسالة الإلغاء') && (await cancelFailed.innerText()).includes('تعذّر الإرسال') && (await cancelFailed.locator('[data-action="wa-resend"]').count()) === 1, 'whatsapp: a refused «رسالة الإلغاء» shows «تعذّر الإرسال» and «إعادة الإرسال»', await page.locator('[data-wa-section]').innerText().catch(() => ''));
+    await cancelFailed.locator('[data-action="wa-resend"]').click();
+    const cancelResent = page.locator('[data-wa="booking_cancelled"][data-wa-status="test"]');
+    await cancelResent.waitFor({ timeout: 20000 }).catch(() => {});
+    check((await cancelResent.count()) === 1 && (await cancelResent.innerText()).includes('المحاولة 2'), 'whatsapp: «إعادة الإرسال» of «رسالة الإلغاء» → a second attempt, built', await page.locator('[data-wa-section]').innerText().catch(() => ''));
+    await closeDrawer();
     st = await rpc('qa_fixture', { p_action: 'state', p_args: { branch: 'airport-road' } });
     const n20b = st.inventory.find((i) => i.night === D(20));
     check(n20b.rooms_to_sell === 1 && n20b.booked === 1, 'cancel restored the night (1 left / 1 booked)', JSON.stringify(n20b));
@@ -499,6 +540,8 @@ try {
       check(fxa?.ok === true && fxa.ref === rx.ref && fxa.notify_failed === true && (await page.locator(`[data-ref="${rx.ref}"][data-status="cancelled"]`).count()) === 1,
         `notify failure (cancel, ${onCancel}): the booking is cancelled, the answer says notify_failed with the ref`, JSON.stringify(fxa));
       check(await toastShown(page, 'error', 'تم إلغاء الحجز، لكن تعذّر إرسال الإشعارات'), `notify failure (cancel, ${onCancel}): «تم إلغاء الحجز، لكن تعذّر إرسال الإشعارات»`);
+      const wx = await serviceRead(`whatsapp_messages?ref=eq.${rx.ref}&template=eq.booking_cancelled&select=status`);
+      check(onCancel === 'fail-send' ? wx.length === 1 && wx[0].status === 'test' : wx.length === 0, `notify failure (cancel, ${onCancel}): ${onCancel === 'fail-send' ? 'the email failure does not stop booking_cancelled' : 'no reservation read, no WhatsApp'}`, JSON.stringify(wx));
       await page.unroute('**/functions/v1/booking-admin');
     }
     st = await rpc('qa_fixture', { p_action: 'state', p_args: { branch: 'airport-road' } });

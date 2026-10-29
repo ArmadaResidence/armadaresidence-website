@@ -9,6 +9,8 @@
 //   cancel  → guest «إلغاء الحجز» (when an email exists). No reception email: the dashboard shows the change.
 // WhatsApp (task 5 A, 28 Oct 2026): confirm → after the emails, the guest gets booking_confirmed from the branch's own
 //   number (../booking-request/whatsapp-send.ts; never blocks, logged in public.whatsapp_messages).
+//   cancel (29 Oct 2026) → after the emails (or none, without a guest email), booking_cancelled the same way — a
+//   request or a confirmed booking alike; a repeated cancel (already) sends nothing.
 //   whatsapp-resend → public.staff_whatsapp_resend AS THE USER (bookings:edit + branch scope; only a template whose
 //   last attempt failed) claims a new attempt, then this function sends it. Test bookings: built and logged, not sent.
 // A notification that cannot go out after the status changed (the reservation read fails, a confirmed booking has no
@@ -16,7 +18,8 @@
 // notify_failed: true in the answer — the dashboard then shows «تم تأكيد الحجز، لكن تعذّر إرسال الإشعارات» /
 // «تم إلغاء الحجز، لكن تعذّر إرسال الإشعارات». The status change itself stands either way.
 // Test bookings (is_test) send every email to Resend's sink; for them only, the body field test_notify ('fail-read' |
-// 'fail-send') forces the read or the sends to fail so the dashboard e2e can prove the failure path. Secrets: RESEND_API_KEY, BOOKING_FROM_RECEPTION,
+// 'fail-send' | 'fail-wa') forces the read, the email sends or the WhatsApp send to fail so the dashboard e2e can prove
+// each failure path. Secrets: RESEND_API_KEY, BOOKING_FROM_RECEPTION,
 // BOOKING_FROM_GUEST, SUPABASE_URL / SUPABASE_ANON_KEY / SUPABASE_SERVICE_ROLE_KEY (automatic); browser origins in
 // ../_shared/cors.ts (ADMIN_ALLOWED_ORIGINS adds to them).
 import content from '../booking-request/content.generated.json' with { type: 'json' };
@@ -231,7 +234,7 @@ Deno.serve(async (req) => {
     const missed = [!n && 'reception', res.email && !g && 'guest', lowDue && !l && 'low-inventory'].filter(Boolean);
     if (missed.length) console.error('confirm: notifications not sent', res.ref, missed.join(','));
     // after the emails: the guest's WhatsApp confirmation (one per ref — an instant confirmation never reaches here)
-    const wa = await sendWhatsApp(content, { template: 'booking_confirmed', booking: waBooking(res), reservationId: res.id, test: res.is_test });
+    const wa = await sendWhatsApp(content, { template: 'booking_confirmed', booking: waBooking(res), reservationId: res.id, test: res.is_test, simulateFail: force === 'fail-wa' });
     return json(req, 200, { ok: true, ref: res.ref, low: out.low ?? [], emails: { notification: n, guest: g, low_inventory: l }, notify_failed: missed.length > 0, whatsapp: waOut(wa) });
   }
 
@@ -246,14 +249,18 @@ Deno.serve(async (req) => {
       console.error('cancel: notifications not sent', out.ref, 'reservation read failed');
       return json(req, 200, { ...out, emails: null, notify_failed: true });
     }
-    // no email on the booking → nothing to send (the dashboard shows the change)
-    if (!res.email) return json(req, 200, { ...out, emails: null, notify_failed: false });
-    const bm = { ref: res.ref, locale: res.locale, branch: res.branch, room: res.room_slug ?? '', check_in: res.check_in, check_out: res.check_out, nights: res.nights, adults: res.adults, children: res.children, extraBeds: res.extra_beds, extraBedFee: Number(res.extra_bed_fee_per_night ?? content.extra_bed_fee), needsCoordination: res.needs_coordination, capacity: res.capacity_at_request ?? 0, breakfast: res.breakfast, name: res.guest_name, phone: res.phone, email: res.email, notes: res.notes ?? '', receivedAt: riyadhNow() };
-    const rows = await loadRecipients(res.ref);
-    const { primary } = route(rows, res.branch);
-    const g = await sendEmail('guest-cancelled', res.ref, { from: FROM_GUEST, to: [res.email], replyTo: primary.length ? primary : [addressOf(FROM_GUEST)] }, bookingCancelled(content, bm), res.is_test, force === 'fail-send');
-    if (!g) console.error('cancel: notifications not sent', res.ref, 'guest');
-    return json(req, 200, { ...out, emails: { guest: g }, notify_failed: !g });
+    // the guest «إلغاء الحجز» when the booking has an email (the dashboard shows the change to the staff)
+    let g: string | null = null;
+    if (res.email) {
+      const bm = { ref: res.ref, locale: res.locale, branch: res.branch, room: res.room_slug ?? '', check_in: res.check_in, check_out: res.check_out, nights: res.nights, adults: res.adults, children: res.children, extraBeds: res.extra_beds, extraBedFee: Number(res.extra_bed_fee_per_night ?? content.extra_bed_fee), needsCoordination: res.needs_coordination, capacity: res.capacity_at_request ?? 0, breakfast: res.breakfast, name: res.guest_name, phone: res.phone, email: res.email, notes: res.notes ?? '', receivedAt: riyadhNow() };
+      const rows = await loadRecipients(res.ref);
+      const { primary } = route(rows, res.branch);
+      g = await sendEmail('guest-cancelled', res.ref, { from: FROM_GUEST, to: [res.email], replyTo: primary.length ? primary : [addressOf(FROM_GUEST)] }, bookingCancelled(content, bm), res.is_test, force === 'fail-send');
+      if (!g) console.error('cancel: notifications not sent', res.ref, 'guest');
+    }
+    // after the emails: the guest's WhatsApp «booking_cancelled» (one per ref; a failure is logged, never blocks)
+    const wa = await sendWhatsApp(content, { template: 'booking_cancelled', booking: waBooking(res), reservationId: res.id, test: res.is_test, simulateFail: force === 'fail-wa' });
+    return json(req, 200, { ...out, emails: res.email ? { guest: g } : null, notify_failed: Boolean(res.email) && !g, whatsapp: waOut(wa) });
   }
 
   if (body.action === 'whatsapp-resend') {
