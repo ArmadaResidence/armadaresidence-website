@@ -28,6 +28,11 @@
 // 28 Oct 2026 (decision B): every dialog, drawer and confirm of the inventory at 1440 (mouse) and 375 (touch) — outside
 // presses and drags never close, clean / dirty close, the unsaved-changes confirm, saving in flight, a failed save,
 // beforeunload only while dirty, the page-level forms and the sidebar (admin/tests/dialog-guard.mjs).
+// 29 Oct 2026: booking_cancelled — the cancel outcome asserts its log row; a stubbed WhatsApp failure on cancel (test_notify
+// 'fail-wa') leaves the cancel untouched and shows «رسالة الإلغاء» «تعذّر الإرسال» + «إعادة الإرسال»; an email failure
+// never stops it; a repeated cancel sends nothing (one per ref). The confirm / cancel wording names WhatsApp. The print
+// sheet: @page margin 0 (no browser header / footer), the margins inside the sheet, no URL / page number / title text,
+// every night on its own line before the total, the pay-at-hotel line after it, one page.
 // Everything it writes is undone at the end (test room type via qa_fixture, overrides deactivated, settings restored).
 import { chromium, webkit } from 'playwright';
 import { readFileSync } from 'node:fs';
@@ -414,21 +419,55 @@ try {
         const el = document.querySelector('[data-print-sheet]');
         const vis = (n) => n && getComputedStyle(n).display !== 'none';
         const others = Array.from(document.body.children).filter((c) => c !== el && vis(c)).length;
-        return { shown: vis(el), others, text: el?.innerText ?? '', signs: el ? el.querySelectorAll('.sheet-sign').length : 0, html: el?.outerHTML ?? '', css: Array.from(document.styleSheets).map((s) => { try { return Array.from(s.cssRules).map((r) => r.cssText).join('\n'); } catch { return ''; } }).join('\n') };
+        const pageMargins = [];
+        const walk = (rules, print) => { for (const r of rules) { if (r instanceof CSSMediaRule) walk(r.cssRules, print || /print/.test(r.conditionText ?? r.media.mediaText)); else if (r instanceof CSSPageRule && print) for (const k of ['margin-top', 'margin-right', 'margin-bottom', 'margin-left']) { const v = r.style.getPropertyValue(k); if (v) pageMargins.push(v.trim()); } } };
+        for (const ss of Array.from(document.styleSheets)) { try { walk(ss.cssRules, false); } catch { /* cross-origin */ } }
+        const cs = el ? getComputedStyle(el) : null;
+        const pad = cs ? ['paddingTop', 'paddingRight', 'paddingBottom', 'paddingLeft'].map((k) => parseFloat(cs[k])) : [];
+        const sec = el?.querySelector('.sheet-price');
+        const order = [];
+        const extras = [];
+        if (sec) {
+          for (const n of sec.querySelectorAll('tr, li[data-night], .sheet-note')) {
+            if (n.matches('li[data-night]')) order.push('night');
+            else if (n.matches('.sheet-note')) order.push(n.textContent.trim() === 'الدفع عند الوصول إلى الفندق.' ? 'pay' : 'note?');
+            else if (n.classList.contains('sheet-nights-row')) continue;
+            else if (n.classList.contains('sheet-total')) order.push('total');
+            else { const t = n.textContent.trim(); const k = t.startsWith('الغرفة') ? 'room' : t.startsWith('الإفطار') ? 'breakfast' : t.startsWith('الأسرّة الإضافية') ? 'extra_beds' : 'other'; order.push(k); if (k === 'breakfast' || k === 'extra_beds') extras.push(k); }
+          }
+        }
+        const lis = sec ? Array.from(sec.querySelectorAll('li[data-night]')) : [];
+        const tops = new Set(lis.map((li) => Math.round(li.getBoundingClientRect().top)));
+        const totalTd = sec?.querySelector('.sheet-total td');
+        const price = { nights: lis.length, distinctLines: tops.size, expected: Number(el?.dataset.nights ?? 0), order, extras, totalBold: totalTd ? Number(getComputedStyle(totalTd).fontWeight) >= 700 : false, totalRule: totalTd ? parseFloat(getComputedStyle(totalTd).borderTopWidth) > 0 : false };
+        return { pageMargins, pad, width: el ? el.getBoundingClientRect().width : 0, title: document.title, price, shown: vis(el), others, text: el?.innerText ?? '', signs: el ? el.querySelectorAll('.sheet-sign').length : 0, html: el?.outerHTML ?? '', css: Array.from(document.styleSheets).map((s) => { try { return Array.from(s.cssRules).map((r) => r.cssText).join('\n'); } catch { return ''; } }).join('\n') };
       });
       await page.emulateMedia({ media: null });
       check(pagesN === 1, `print (${label}): Chromium A4 PDF has one page`, String(pagesN));
       check(sheet.shown && sheet.others === 0, `print (${label}): only the sheet prints`, JSON.stringify({ shown: sheet.shown, others: sheet.others }));
       check(sheet.signs === 2 && sheet.text.includes('توقيع الضيف') && sheet.text.includes('توقيع موظف الاستقبال') && (sheet.text.match(/التوقيع/g) ?? []).length === 2, `print (${label}): both signature blocks with name / signature / date lines`);
       check(sheet.text.includes(LONG_NOTES.slice(0, 40)) && !ARABIC_DIGITS.test(sheet.text) && sheet.text.includes('الإجمالي شامل الضريبة') === (label === 'confirmed'), `print (${label}): the stored fields, the long notes, Western digits`);
-      // WebKit: the same sheet and stylesheet in print media at the A4 printable width (210 − 2 × 12 mm)
+      // 29 Oct 2026: no browser header / footer — the print @page has margin 0 (Chrome and Safari then draw no title, date,
+      // URL or page number with their default settings) and the sheet carries the page margins itself; nothing of the kind
+      // is in the sheet's own text either
+      check(sheet.pageMargins.length > 0 && sheet.pageMargins.every((m) => m === '0px' || m === '0'), `print (${label}): @page margin 0 (no browser header or footer)`, JSON.stringify(sheet.pageMargins));
+      check(sheet.pad.every((v) => v >= 12 * 96 / 25.4 - 1) && sheet.width >= Math.floor(210 * 96 / 25.4) - 2, `print (${label}): the sheet holds the page margins (≥ 12 mm) at the full A4 width`, JSON.stringify({ pad: sheet.pad, width: sheet.width }));
+      check(!/https?:|www\.|localhost|127\.0\.0\.1/i.test(sheet.text) && !(sheet.title && sheet.text.includes(sheet.title)) && !/(^|\n)\s*\d+\s*\/\s*\d+\s*($|\n)/.test(sheet.text), `print (${label}): no URL, page number or document title in the sheet`, sheet.title);
+      if (label === 'confirmed') {
+        // the price block in the confirmation email's order: room · N nights, each night on its own line, extras, total, pay line
+        const pb = sheet.price;
+        check(pb.nights === pb.expected && pb.expected > 0 && pb.distinctLines === pb.nights, `print: every night on its own line (${pb.expected})`, JSON.stringify(pb));
+        check(pb.order.join('>') === ['room', ...Array(pb.nights).fill('night'), ...pb.extras, 'total', 'pay'].join('>'), 'print: room line → nights → extras → total → «الدفع عند الوصول إلى الفندق.»', pb.order.join('>'));
+        check(pb.totalBold && pb.totalRule, 'print: the total is bold with a rule above', JSON.stringify(pb));
+      }
+      // WebKit: the same sheet and stylesheet in print media on a full A4 page (the margins are inside the sheet)
       const wk = await webkit.launch();
-      const wp = await wk.newPage({ viewport: { width: Math.floor(186 * 96 / 25.4), height: 1000 } });
+      const wp = await wk.newPage({ viewport: { width: Math.ceil(210 * 96 / 25.4), height: 1200 } });
       await wp.emulateMedia({ media: 'print' });
       await wp.setContent(`<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><base href="${BASE}/"><style>${sheet.css}</style></head><body>${sheet.html}</body></html>`, { waitUntil: 'load' });
       const h = await wp.evaluate(() => Math.ceil(document.querySelector('[data-print-sheet]').getBoundingClientRect().height));
       await wk.close();
-      check(h > 300 && h <= Math.floor(273 * 96 / 25.4), `print (${label}): WebKit print layout fits one A4 page`, `${h}px`);
+      check(h > 300 && h <= Math.floor(297 * 96 / 25.4), `print (${label}): WebKit print layout fits one A4 page`, `${h}px`);
     };
     await printCheck('confirmed');
     check(!ARABIC_DIGITS.test(await page.evaluate(() => document.body.innerText)), 'print: screen unchanged (sheet hidden on screen)');

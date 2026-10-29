@@ -306,15 +306,17 @@ body {
 
 /* booking sheet (task 5 C, 28 Oct 2026): «طباعة» in the booking details prints ONE A4 page — the sheet alone, black on
    white whatever the theme, nothing of the screen UI. The sheet only exists while a booking's details are open
-   (portal into <body>), so printing any other page is unaffected. */
+   (portal into <body>), so printing any other page is unaffected.
+   29 Oct 2026: @page margin 0 — Chrome / Safari then print no header or footer (title, date, URL, page number) with
+   their default settings; the page margins live inside the sheet (padding). This @page also serves the backup codes. */
 .print-sheet { display: none; }
 @media print {
-  @page { size: A4; margin: 12mm; }
+  @page { size: A4; margin: 0; }
   body:has(> .print-sheet) { background: #fff !important; }
   body:has(> .print-sheet) > *:not(.print-sheet) { display: none !important; }
   .print-sheet, .print-sheet * { visibility: visible !important; }
   .print-sheet {
-    display: block; color: #000; background: #fff; font-family: 'IBM Plex Sans Arabic', 'Segoe UI', Tahoma, sans-serif;
+    display: block; box-sizing: border-box; width: 210mm; padding: 13mm 14mm; color: #000; background: #fff; font-family: 'IBM Plex Sans Arabic', 'Segoe UI', Tahoma, sans-serif;
     font-size: 10.5pt; line-height: 1.45; -webkit-print-color-adjust: exact; print-color-adjust: exact;
   }
   .print-sheet h2 { font-size: 10.5pt; font-weight: 700; margin: 0 0 1.5mm; color: #8A6239; }
@@ -334,8 +336,13 @@ body {
   .sheet-price td { padding: 0.6mm 0; }
   .sheet-price td:last-child { text-align: end; font-weight: 600; white-space: nowrap; }
   .sheet-total td { border-top: 0.2mm solid #000; padding-top: 1.2mm; font-weight: 700; }
-  .sheet-nights { list-style: none; margin: 1.5mm 0 0; padding: 0; columns: 3; column-gap: 6mm; font-size: 9pt; }
-  .sheet-note { font-size: 9pt; color: #333; margin-top: 1mm !important; }
+  .sheet-price .sheet-nights-row td { padding: 0 0 0.6mm; text-align: start; font-weight: 400; white-space: normal; }
+  .sheet-nights { list-style: none; margin: 0; padding: 0 4mm 0 0; column-gap: 8mm; font-size: 9pt; color: #333; }
+  .sheet-nights[data-cols="2"] { columns: 2; }
+  .sheet-nights[data-cols="3"] { columns: 3; }
+  .sheet-nights li { display: flex; justify-content: space-between; gap: 3mm; break-inside: avoid; }
+  .sheet-nights li span:last-child { white-space: nowrap; }
+  .sheet-note { display: block; font-size: 9pt; color: #333; margin-top: 1.2mm !important; }
   .sheet-notes { margin-bottom: 6mm; }
   .sheet-notes p { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 9.5pt; }
   .sheet-signs { display: grid; grid-template-columns: 1fr 1fr; gap: 10mm; break-inside: avoid; }
@@ -349,5 +356,5 @@ body {
 @media print {
   body * { visibility: hidden; }
   #backup-print, #backup-print * { visibility: visible; }
-  #backup-print { position: absolute; top: 0; left: 0; right: 0; border: 0; }
+  #backup-print { position: absolute; top: 0; left: 0; right: 0; border: 0; padding: 12mm; }
 }

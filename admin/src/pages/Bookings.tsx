@@ -473,10 +473,11 @@ function Details({ r, roomTypes, editable, onClose, onChanged }: { r: Reservatio
 
 /** «طباعة» (task 5 C): one A4 sheet of the STORED booking — logo, branch, ref, status, booking date, the guest's
  * fields, the price breakdown, the notes, the coordination flag and two signature blocks. Hidden on screen; the print
- * stylesheet (styles.css → .print-sheet) shows it alone. Arabic, RTL, Western digits (format.ts). */
+ * stylesheet (styles.css → .print-sheet) shows it alone. Arabic, RTL, Western digits (format.ts).
+ * 29 Oct 2026: the price block follows the confirmation email — «الغرفة · N ليالٍ», every night on its own line, breakfast,
+ * extra beds, the total, then the pay-at-hotel line (a long stay flows into columns so the sheet stays one page). */
 function PrintSheet({ r, room }: { r: Reservation; room: string }) {
-  const pricing = r.pricing as { nights?: { night: string; price: number }[] } | null;
-  const perNight = pricing?.nights && new Set(pricing.nights.map((n) => Number(n.price))).size > 1 ? pricing.nights : [];
+  const nights = (r.pricing as { nights?: { night: string; price: number; label?: string | null }[] } | null)?.nights ?? [];
   const row = (k: string, v: ReactNode) => (<><dt>{k}</dt><dd>{v}</dd></>);
   const sign = (title: string) => (
     <div className="sheet-sign" data-sign={title}>
@@ -487,7 +488,7 @@ function PrintSheet({ r, room }: { r: Reservation; room: string }) {
     </div>
   );
   return (
-    <div className="print-sheet" dir="rtl" lang="ar" aria-hidden="true" data-print-sheet>
+    <div className="print-sheet" dir="rtl" lang="ar" aria-hidden="true" data-print-sheet data-nights={r.nights}>
       <header className="sheet-head">
         <img src={`${import.meta.env.BASE_URL}logo-bronze.svg`} alt="أرمادا ريزيدنس" />
         <div>
@@ -521,16 +522,20 @@ function PrintSheet({ r, room }: { r: Reservation; room: string }) {
             <table>
               <tbody>
                 <tr><td>الغرفة · {nightsWord(r.nights)}</td><td>{sar(r.room_total)}</td></tr>
+                {nights.length > 0 && (
+                  <tr className="sheet-nights-row">
+                    <td colSpan={2}>
+                      <ul className="sheet-nights" data-cols={nights.length > 16 ? 3 : nights.length > 8 ? 2 : 1}>
+                        {nights.map((n) => <li key={n.night} data-night={n.night}><span>{longDate(n.night)}{n.label ? ` — ${n.label}` : ''}</span><span>{sar(n.price)}</span></li>)}
+                      </ul>
+                    </td>
+                  </tr>
+                )}
                 {r.breakfast === 'with' && <tr><td>الإفطار</td><td>{sar(r.breakfast_total)}</td></tr>}
                 {r.extra_beds > 0 && <tr><td>الأسرّة الإضافية · {r.extra_beds}</td><td>{sar(r.extra_beds_total)}</td></tr>}
                 <tr className="sheet-total"><td>الإجمالي شامل الضريبة</td><td>{sar(r.total)}</td></tr>
               </tbody>
             </table>
-            {perNight.length > 0 && (
-              <ul className="sheet-nights">
-                {perNight.map((n) => <li key={n.night}>{longDate(n.night)}: {sar(n.price)}</li>)}
-              </ul>
-            )}
             <p className="sheet-note">الدفع عند الوصول إلى الفندق.</p>
           </>
         )}
