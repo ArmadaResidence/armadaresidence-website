@@ -64,7 +64,7 @@
           "footer": "إلغاء مجاني حتى 24 ساعة قبل الوصول"
         },
         "booking_cancelled.ar": {
-          "status": "PENDING",
+          "status": "APPROVED",
           "category": "UTILITY",
           "body": "مرحبًا {{1}}،\nتم إلغاء حجزك رقم {{2}} في {{3}} للفترة من {{4}} إلى {{5}}.\nلأي استفسار، رد على هذه الرسالة.",
           "example": [
