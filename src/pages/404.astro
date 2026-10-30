@@ -14,7 +14,7 @@ const s = pageSeo('ar', '404');
 const locales: Locale[] = ['ar', 'en'];
 ---
 
-<Base locale="ar" path="/404/" switchPath="/" title={s.title} description={s.description} noindex={true}>
+<Base locale="ar" path="/404/" switchPath="/" title={s.title} description={s.description} noindex={true} notFound>
   <script is:inline>
     // no ^ anchor: also matches under a review sub-path (scripts/base-path.py rewrites the '/' target)
     if (/\/branches(\/|$)/.test(location.pathname)) location.replace('/');

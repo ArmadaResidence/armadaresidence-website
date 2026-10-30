@@ -15,9 +15,9 @@
   gap: 8px;
   min-width: 0;
 }
-/* the wizard column paints above the aside that follows it on phones: the step's fade-in leaves an identity transform
-   (a stacking context) and the aside's reveal is one while it runs, so without this the tail of the open list could
-   sit under the aside for a second */
+/* the wizard column paints above the side column (direct lines) that follows it on phones: the step's fade-in leaves an identity transform
+   (a stacking context) and the side column's reveal is one while it runs, so without this the tail of the open list could
+   sit under the side column for a second */
 .legacy-partners .grid.cols64 > .rv:has(#enquiry-form) {
   position: relative;
   z-index: 1;

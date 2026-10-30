@@ -1,5 +1,6 @@
 ---
-/** legacy steps_block(): six steps + named-contact note + promises */
+/** legacy steps_block(): six steps + named-contact note + promises. The step titles are h3 (the legacy h4 skipped a
+    level under the section h2 — 30 Oct 2026); legacy-overrides.css gives them the h4 look. */
 import { lp, T } from '@lib/partners';
 import type { Locale } from '@lib/content';
 interface Props {
@@ -13,7 +14,7 @@ const { locale } = Astro.props;
     (lp.steps as any[]).map(([no, ti, bo]) => (
       <div class="step rv">
         <p class="no">{no}</p>
-        <h4>{T(locale, ti)}</h4>
+        <h3>{T(locale, ti)}</h3>
         <p>{T(locale, bo)}</p>
       </div>
     ))

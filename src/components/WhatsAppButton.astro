@@ -47,6 +47,9 @@ const choices: Dest[] = single ? [] : branches.map((b) => branchDest(b.slug));
 const fabClass = 'wa-pulse inline-flex items-center gap-2 bg-midnight text-white rounded-full shadow-lg px-4 py-3 hover:bg-bronze transition-colors';
 ---
 
+{/* a labelled complementary landmark around the floating button (axe region rule, 30 Oct 2026); the button itself is
+    position: fixed, so the wrapper takes no space */}
+<aside aria-label={t.cta.whatsapp_title}>
 {
   single ? (
     <a
@@ -116,6 +119,7 @@ const fabClass = 'wa-pulse inline-flex items-center gap-2 bg-midnight text-white
     </div>
   )
 }
+</aside>
 
 <script>
   import { bindOnce, onOutsidePress, onPageLoad } from '@lib/client';

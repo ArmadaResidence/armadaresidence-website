@@ -26,6 +26,8 @@ interface Props {
   ogType?: 'website' | 'article';
   /** Where the language switch goes when this page has no twin (404). Defaults to `path`. */
   switchPath?: string;
+  /** The 404 page is served at every unknown URL: no canonical, hreflang or og:url (30 Oct 2026) — it has no URL of its own. */
+  notFound?: boolean;
   /** Favicon set; the café menu page swaps in the café favicon (brand/cafe identity). */
   icons?: { svg: string; png32: string; apple: string };
   /** /menu/ renders the café's own footer inside .legacy-menu instead of the hotel footer. */
@@ -48,6 +50,7 @@ const {
   ogImage = seo.default_og_image,
   ogType = 'website',
   switchPath = Astro.props.path,
+  notFound = false,
   icons = { svg: '/favicon.svg', png32: '/icons/favicon-32.png', apple: '/icons/apple-touch-icon.png' },
   hideFooter = false,
   bookingDrawer = true,
@@ -100,16 +103,22 @@ const preloadFonts = locale === 'ar' ? [fontAr400, fontAr600, fontAr700] : [font
     {preloadFonts.map((href) => <link rel="preload" as="font" type="font/woff2" href={href} crossorigin />)}
     <title>{title}</title>
     <meta name="description" content={description} />
-    <link rel="canonical" href={canonical} />
+    {!notFound && <link rel="canonical" href={canonical} />}
     {noindex && <meta name="robots" content="noindex, follow" />}
-    <link rel="alternate" hreflang="ar" href={arUrl} />
-    <link rel="alternate" hreflang="en" href={enUrl} />
-    <link rel="alternate" hreflang="x-default" href={arUrl} />
+    {
+      !notFound && (
+        <>
+          <link rel="alternate" hreflang="ar" href={arUrl} />
+          <link rel="alternate" hreflang="en" href={enUrl} />
+          <link rel="alternate" hreflang="x-default" href={arUrl} />
+        </>
+      )
+    }
     <meta property="og:type" content={ogType} />
     <meta property="og:site_name" content={siteName(locale)} />
     <meta property="og:title" content={title} />
     <meta property="og:description" content={description} />
-    <meta property="og:url" content={canonical} />
+    {!notFound && <meta property="og:url" content={canonical} />}
     <meta property="og:image" content={ogImageUrl} />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />

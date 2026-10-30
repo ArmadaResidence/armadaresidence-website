@@ -429,13 +429,18 @@ def main() -> int:
             rep.f("seo", f"{path}: meta description is {len(d)} chars (limit {max_desc})")
         titles[t].append(path)
         descs[d].append(path)
-        canon[p.canonical].append(path)
-        expected_canon = site + ("/404/" if path == "/404.html" else path)
-        if p.canonical != expected_canon:
-            rep.f("seo", f"{path}: canonical {p.canonical!r} != {expected_canon!r}")
-        for hl in ("ar", "en", "x-default"):
-            if hl not in p.hreflang:
-                rep.f("hreflang", f"{path}: missing hreflang {hl}")
+        # the 404 page is served at every unknown URL: no canonical, hreflang or og:url of its own (30 Oct 2026)
+        not_found_page = path == "/404.html"
+        if not_found_page:
+            if p.canonical or p.hreflang or p.metas.get("og:url"):
+                rep.f("seo", f"{path}: the 404 page must carry no canonical, hreflang or og:url")
+        else:
+            canon[p.canonical].append(path)
+            if p.canonical != site + path:
+                rep.f("seo", f"{path}: canonical {p.canonical!r} != {site + path!r}")
+            for hl in ("ar", "en", "x-default"):
+                if hl not in p.hreflang:
+                    rep.f("hreflang", f"{path}: missing hreflang {hl}")
         if not noindex(p):
             for hl, href in p.hreflang.items():
                 if not href.startswith(site + "/"):
@@ -450,10 +455,10 @@ def main() -> int:
             twin = "/en" + path if not en else path[3:]
             if twin in pages and pages[twin].hreflang.get("ar" if not en else "en") != site + path:
                 rep.f("hreflang", f"{path}: {twin} does not link back via hreflang")
-        for k in ("og:title", "og:description", "og:image", "og:url", "twitter:card"):
+        for k in ("og:title", "og:description", "og:image", "twitter:card") + (("og:url",) if not not_found_page else ()):
             if not p.metas.get(k):
                 rep.f("seo", f"{path}: missing {k}")
-        if p.metas.get("og:url") != p.canonical:
+        if p.metas.get("og:url") != p.canonical and not not_found_page:
             rep.f("seo", f"{path}: og:url != canonical")
 
         # images
