@@ -203,6 +203,9 @@ for (const c of CASES) {
   // empty submit: every required field flagged, focus on the first, nothing sent
   await page.locator('[data-careers-form] [data-submit]').scrollIntoViewIfNeeded();
   await press(page.locator('[data-careers-form] [data-submit]'), mobile);
+  // the submit handler first awaits the lazily loaded phone library: on a cold live load that takes longer than any
+  // fixed pause (30 Oct 2026), so wait for validation to have run (up to 10 s), then read the fields
+  await page.waitForFunction(() => document.querySelector('[data-careers-form] #job-name')?.getAttribute('aria-invalid') !== null, null, { timeout: 10000 }).catch(() => {});
   await page.waitForTimeout(150);
   const expect = { name: E.required, phone: E.required, email: E.required, nationality: E.required, department: E.required, branch: E.required, city: E.required, cv: E.required, consent: E.consent };
   for (const [f, msg] of Object.entries(expect)) {
