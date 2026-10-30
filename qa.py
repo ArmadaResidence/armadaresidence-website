@@ -264,8 +264,9 @@ def main() -> int:
     def logical(path: str) -> str:
         return path[3:] if path.startswith("/en/") else path
 
-    # /menu/ and /en/menu/ are the published café menu app copied verbatim (scripts/menu-publish.py): no canonical,
-    # hreflang, Open Graph, sitemap entry or JSON-LD, and the legacy brand image carries a Latin alt on both copies.
+    # /menu/ and /en/menu/ are the published café menu app copied verbatim (scripts/menu-publish.py): no JSON-LD, and
+    # the legacy brand image carries a Latin alt on both copies. Since 30 Oct 2026 its head carries the site's title /
+    # description (seo.json), canonical, hreflang and Open Graph, and both copies are in the sitemap — checked like any page.
     def legacy_app(path: str) -> bool:
         return logical(path) == "/menu/"
 
@@ -370,6 +371,21 @@ def main() -> int:
         if legacy_app(path):
             if not t or not d:
                 rep.f("seo", f"{path}: legacy app page needs a title and description")
+            titles[t].append(path)
+            descs[d].append(path)
+            canon[p.canonical].append(path)
+            if p.canonical != site + path:
+                rep.f("seo", f"{path}: canonical {p.canonical!r} != {site + path!r}")
+            for hl, want in (("ar", site + logical(path)), ("en", site + "/en" + logical(path)), ("x-default", site + logical(path))):
+                if p.hreflang.get(hl) != want:
+                    rep.f("hreflang", f"{path}: hreflang {hl} {p.hreflang.get(hl)!r} != {want!r}")
+            for k in ("og:title", "og:description", "og:image", "og:url", "twitter:card"):
+                if not p.metas.get(k):
+                    rep.f("seo", f"{path}: missing {k}")
+            if p.metas.get("og:url") != p.canonical:
+                rep.f("seo", f"{path}: og:url != canonical")
+            if "Logo_porcelain.png" in html:
+                rep.f("menu", f"{path}: the café PNG logo is back — the brand SVG is the only logo")
             continue_seo = False
         else:
             continue_seo = True
@@ -681,8 +697,6 @@ def main() -> int:
                 rep.f("sitemap", f"{loc}: not a built page")
         # CLAUDE.md §7: noindex pages (sold-out rooms, booking success, 404) are excluded; everything else is in.
         for path, p in pages.items():
-            if legacy_app(path):
-                continue
             if noindex(p):
                 if path in sm_paths:
                     rep.f("sitemap", f"{path} is noindex and must not be in the sitemap")

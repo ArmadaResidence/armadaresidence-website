@@ -120,6 +120,12 @@
       "description_ar": "أرسل سيرتك الذاتية للعمل في أرمادا ريزيدنس بالطائف: شقق فندقية على طريق المطار وفندق على طريق الشفا.",
       "title_en": "Join Our Team | Armada Residence",
       "description_en": "Send your CV to work at Armada Residence in Taif: hotel apartments on Airport Road and a hotel on Shafa Road."
+    },
+    "menu": {
+      "title_ar": "قائمة الطعام | أرمادا ريزيدنس",
+      "description_ar": "تصفّح قائمة المطعم والمقهى في أرمادا ريزيدنس بالطائف.",
+      "title_en": "Menu | Armada Residence",
+      "description_en": "Browse the restaurant and café menu at Armada Residence in Taif."
     }
   },
   "room_templates": {

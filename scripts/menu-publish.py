@@ -13,6 +13,10 @@ index.html gets exactly these edits (decision Ahmed, 10 Oct 2026):
   (b) a thin site bar above the menu (hotel logo, "back to the site", language switch) with the CSS offsets the
       legacy fixed layers need, and the café footer the page already carries (ext. 333, WhatsApp, Linktree, PDF).
   (+) the Google Fonts links are replaced by the same families self-hosted under /fonts/ (CLAUDE.md §2) — flagged.
+  (+) head (Ahmed, 30 Oct 2026): <title> + description from seo.json → pages.menu, self-referencing canonical,
+      hreflang ar / en / x-default and Open Graph / Twitter tags; /menu/ and /en/menu/ are in the sitemap
+      (astro.config.mjs customPages). The café logo is the brand SVG (public/brand/cafe/logo-porcelain.svg) instead
+      of the app's PNG, which is no longer copied.
   (--prefetch) next-scene frames: at 60 % of the active scene the first 20 frames of the next scene are requested,
       the rest trickle in while the network is idle (no change to frame count or quality).
 
@@ -24,6 +28,7 @@ import json
 import re
 import shutil
 import sys
+from html import escape as html_escape
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -49,6 +54,8 @@ BAR_CSS = """
 .top{top:calc(var(--site-bar) + env(safe-area-inset-top,0px))}
 .rail{top:calc(var(--site-bar) + var(--top) + env(safe-area-inset-top,0px))}
 .stage{top:var(--site-bar);height:calc(100vh - var(--site-bar));height:calc(100svh - var(--site-bar))}
+/* the café logo SVG carries width/height (1744 × 598): the footer sizes it by height only */
+footer.site img{width:auto}
 """
 
 PREFETCH_JS = """
@@ -74,13 +81,48 @@ def bar(lang: str, home: str, brand: str, other: str) -> str:
     other_label, other_lang = ("English", "en") if ar else ("العربية", "ar")
     h1 = "قائمة Armada Residence Café & Restaurant" if ar else "Armada Residence Café & Restaurant menu"
     return (
-        f'<div class="site-bar">'
+        f'<nav class="site-bar" aria-label="{site}">'
         f'<h1 class="sr">{h1}</h1>'
         f'<a class="site-bar__back" href="{home}"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M20 11H7.8l4.6-4.6L11 5l-7 7 7 7 1.4-1.4L7.8 13H20z"/></svg><span>{back}</span></a>'
         f'<a class="site-bar__brand" href="{home}" aria-label="{site}"><img src="{brand}/logo-horizontal_Porcelain.svg" alt="{site}" width="143" height="32"></a>'
         f'<a class="site-bar__lang" href="{other}" hreflang="{other_lang}" lang="{other_lang}">{other_label}</a>'
-        f"</div>\n"
+        f"</nav>\n"
     )
+
+
+def head(lang: str) -> str:
+    """<title>, description, canonical, hreflang and Open Graph / Twitter tags (Ahmed, 30 Oct 2026) — copy from
+    seo.json → pages.menu, URLs on the canonical domain (scripts/base-path.py leaves absolute URLs alone)."""
+    page = SEO["pages"]["menu"]
+    site = SEO["site_url"].rstrip("/")
+    ar_url, en_url = f"{site}/menu/", f"{site}/en/menu/"
+    url = ar_url if lang == "ar" else en_url
+    title, desc = html_escape(page[f"title_{lang}"]), html_escape(page[f"description_{lang}"], quote=True)
+    image = site + page.get("og_image", SEO["default_og_image"])
+    loc, loc_alt = ("ar_SA", "en_US") if lang == "ar" else ("en_US", "ar_SA")
+    name = html_escape(SEO[f"site_name_{lang}"], quote=True)
+    return "\n".join([
+        f"<title>{title}</title>",
+        f'<meta name="description" content="{desc}">',
+        f'<link rel="canonical" href="{url}">',
+        f'<link rel="alternate" hreflang="ar" href="{ar_url}">',
+        f'<link rel="alternate" hreflang="en" href="{en_url}">',
+        f'<link rel="alternate" hreflang="x-default" href="{ar_url}">',
+        '<meta property="og:type" content="website">',
+        f'<meta property="og:site_name" content="{name}">',
+        f'<meta property="og:title" content="{title}">',
+        f'<meta property="og:description" content="{desc}">',
+        f'<meta property="og:url" content="{url}">',
+        f'<meta property="og:image" content="{image}">',
+        '<meta property="og:image:width" content="1200">',
+        '<meta property="og:image:height" content="630">',
+        f'<meta property="og:locale" content="{loc}">',
+        f'<meta property="og:locale:alternate" content="{loc_alt}">',
+        f'<meta name="twitter:card" content="{SEO["twitter_card"]}">',
+        f'<meta name="twitter:title" content="{title}">',
+        f'<meta name="twitter:description" content="{desc}">',
+        f'<meta name="twitter:image" content="{image}">',
+    ])
 
 
 def build(html: str, lang: str, prefetch: bool) -> str:
@@ -88,6 +130,16 @@ def build(html: str, lang: str, prefetch: bool) -> str:
     up = "../" if ar else "../../"          # from /menu/ or /en/menu/ to the site root
     menu = "" if ar else "../../menu/"      # where the shared assets live, relative to the page
     out = html
+    # (+) head: the app's own <title> + description give way to the site's (seo.json), with canonical, hreflang, OG
+    title_rx = re.compile(r'<title>[^<]*</title>\n<meta name="description" content="[^"]*">')
+    if not title_rx.search(out):
+        raise SystemExit("menu <title> / description not found")
+    out = title_rx.sub(lambda _: head(lang), out, count=1)
+    # (+) the café logo from the brand assets (SVG) instead of the app's PNG — header (alt kept) and footer (decorative)
+    png = 'src="assets/ARMADA_RESIDENCE_Logo_porcelain.png"'
+    if out.count(png) != 2:
+        raise SystemExit("menu: expected the café PNG logo twice (header + footer)")
+    out = out.replace(png, f'src="{up}brand/cafe/logo-porcelain.svg" width="1744" height="598"')
     # (+) fonts: self-hosted instead of Google Fonts
     out = re.sub(r'<link rel="preconnect" href="https://fonts\.googleapis\.com">\n', "", out)
     out = re.sub(r'<link rel="preconnect" href="https://fonts\.gstatic\.com" crossorigin>\n', "", out)
@@ -105,7 +157,11 @@ def build(html: str, lang: str, prefetch: bool) -> str:
     out = out.replace("</style>", BAR_CSS + "</style>", 1)
     home = up if ar else f"{up}en/"
     other = f"{up}en/menu/" if ar else f"{up}menu/"
-    out = out.replace("<body>\n", "<body>\n" + bar(lang, home, f"{up}brand", other), 1)
+    # the bar is a labelled nav landmark right after the app's skip link, which stays the first focusable element
+    skip = re.search(r'<body>\n<a class="sr" href="#scenes"[^\n]*\n', out)
+    if not skip:
+        raise SystemExit("menu: skip link not found right after <body>")
+    out = out[: skip.end()] + bar(lang, home, f"{up}brand", other) + out[skip.end() :]
     if prefetch:
         anchor = "let activeIdx=0, lastY=0, scrollDir=1, rafPending=false, forceNext=false;"
         if anchor not in out:
@@ -131,7 +187,7 @@ def main() -> None:
         raise SystemExit(f"published menu WhatsApp {cfg_num} != contact.json cafe.whatsapp")
     if OUT.exists():
         shutil.rmtree(OUT)
-    shutil.copytree(SRC, OUT, ignore=shutil.ignore_patterns(".git", "README.md", ".github"))
+    shutil.copytree(SRC, OUT, ignore=shutil.ignore_patterns(".git", "README.md", ".github", "ARMADA_RESIDENCE_Logo_porcelain.png"))
     (OUT / "index.html").write_text(build(html, "ar", prefetch), encoding="utf-8", newline="\n")
     OUT_EN.mkdir(parents=True, exist_ok=True)
     (OUT_EN / "index.html").write_text(build(html, "en", prefetch), encoding="utf-8", newline="\n")

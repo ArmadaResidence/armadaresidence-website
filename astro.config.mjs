@@ -46,6 +46,8 @@ export default defineConfig({
         locales: { ar: 'ar', en: 'en' },
       },
       filter: (page) => !isNoindex(page),
+      // /menu/ is the café app copied into public/ (scripts/menu-publish.py), not an Astro route — listed here (30 Oct 2026)
+      customPages: [`${seo.site_url}/menu/`, `${seo.site_url}/en/menu/`],
     }),
   ],
   vite: {

@@ -72,11 +72,15 @@ async function worker() {
       await page.goto(BASE + path, { waitUntil: 'load' });
       await page.evaluate(() => document.fonts.ready);
       // legacy sections reveal on intersection; show their final state (as screenshots.mjs does)
+      // and the site's own reveals: forced in and every transition / animation finished, so axe never reads a block
+      // in the middle of its reveal delay (one flaky hit on /en/ @375, 30 Oct 2026)
       await page.evaluate(() => {
+        document.querySelectorAll('.reveal, .reveal-group').forEach((e) => e.classList.add('is-in'));
         document.querySelectorAll('.legacy-discover .card').forEach((c) => c.classList.add('is-visible'));
         document.querySelectorAll('.legacy-partners .rv').forEach((c) => c.classList.add('in'));
       });
       await page.waitForTimeout(250);
+      await page.evaluate(() => document.getAnimations().forEach((a) => { try { a.finish(); } catch {} }));
       await page.addScriptTag({ content: AXE });
       const res = await page.evaluate(async () => {
         const r = await window.axe.run(document, { resultTypes: ['violations'] });

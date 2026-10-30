@@ -3,8 +3,26 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>ARMADA RESIDENCE — Café &amp; Restaurant · Menu</title>
-<meta name="description" content="Interactive menu — ARMADA RESIDENCE Café & Restaurant, Airport Road, Taif.">
+<title>قائمة الطعام | أرمادا ريزيدنس</title>
+<meta name="description" content="تصفّح قائمة المطعم والمقهى في أرمادا ريزيدنس بالطائف.">
+<link rel="canonical" href="https://armadaresidence.com/menu/">
+<link rel="alternate" hreflang="ar" href="https://armadaresidence.com/menu/">
+<link rel="alternate" hreflang="en" href="https://armadaresidence.com/en/menu/">
+<link rel="alternate" hreflang="x-default" href="https://armadaresidence.com/menu/">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="أرمادا ريزيدنس">
+<meta property="og:title" content="قائمة الطعام | أرمادا ريزيدنس">
+<meta property="og:description" content="تصفّح قائمة المطعم والمقهى في أرمادا ريزيدنس بالطائف.">
+<meta property="og:url" content="https://armadaresidence.com/menu/">
+<meta property="og:image" content="https://armadaresidence.com/og/armada-residence.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:locale" content="ar_SA">
+<meta property="og:locale:alternate" content="en_US">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="قائمة الطعام | أرمادا ريزيدنس">
+<meta name="twitter:description" content="تصفّح قائمة المطعم والمقهى في أرمادا ريزيدنس بالطائف.">
+<meta name="twitter:image" content="https://armadaresidence.com/og/armada-residence.png">
 <meta name="theme-color" content="#211217">
 <link rel="icon" href="favicon.ico" sizes="32x32">
 <link rel="icon" type="image/png" sizes="32x32" href="assets/icons/icon-32.png">
@@ -219,18 +237,20 @@ footer.site .sbtn:hover{filter:brightness(1.12)}
 .top{top:calc(var(--site-bar) + env(safe-area-inset-top,0px))}
 .rail{top:calc(var(--site-bar) + var(--top) + env(safe-area-inset-top,0px))}
 .stage{top:var(--site-bar);height:calc(100vh - var(--site-bar));height:calc(100svh - var(--site-bar))}
+/* the café logo SVG carries width/height (1744 × 598): the footer sizes it by height only */
+footer.site img{width:auto}
 </style>
 </head>
 <body>
-<div class="site-bar"><h1 class="sr">قائمة Armada Residence Café & Restaurant</h1><a class="site-bar__back" href="../"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M20 11H7.8l4.6-4.6L11 5l-7 7 7 7 1.4-1.4L7.8 13H20z"/></svg><span>العودة إلى الموقع</span></a><a class="site-bar__brand" href="../" aria-label="أرمادا ريزيدنس"><img src="../brand/logo-horizontal_Porcelain.svg" alt="أرمادا ريزيدنس" width="143" height="32"></a><a class="site-bar__lang" href="../en/menu/" hreflang="en" lang="en">English</a></div>
 <a class="sr" href="#scenes" data-i18n="skip">تخطَّ إلى القائمة</a>
+<nav class="site-bar" aria-label="أرمادا ريزيدنس"><h1 class="sr">قائمة Armada Residence Café & Restaurant</h1><a class="site-bar__back" href="../"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M20 11H7.8l4.6-4.6L11 5l-7 7 7 7 1.4-1.4L7.8 13H20z"/></svg><span>العودة إلى الموقع</span></a><a class="site-bar__brand" href="../" aria-label="أرمادا ريزيدنس"><img src="../brand/logo-horizontal_Porcelain.svg" alt="أرمادا ريزيدنس" width="143" height="32"></a><a class="site-bar__lang" href="../en/menu/" hreflang="en" lang="en">English</a></nav>
 
 <header class="top">
   <div class="tools start">
     <button class="cartbtn clear" id="clearTop" hidden><span data-i18n="clear">مسح</span></button>
     <a class="cartbtn pdf" id="pdfTop" href="assets/ARMADA_Cafe_Restaurant_Menu_2026.pdf" target="_blank" rel="noopener" download><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg><span>PDF</span></a>
   </div>
-  <a class="brand" href="#" id="home" aria-label="ARMADA RESIDENCE — Café &amp; Restaurant"><img src="assets/ARMADA_RESIDENCE_Logo_porcelain.png" alt="ARMADA RESIDENCE · Café &amp; Restaurant"></a>
+  <a class="brand" href="#" id="home" aria-label="ARMADA RESIDENCE — Café &amp; Restaurant"><img src="../brand/cafe/logo-porcelain.svg" width="1744" height="598" alt="ARMADA RESIDENCE · Café &amp; Restaurant"></a>
   <div class="tools">
     <div class="lang" role="group" aria-label="Language">
       <button id="langAr" aria-pressed="true" lang="ar">AR</button><button id="langEn" aria-pressed="false" lang="en">EN</button>
@@ -247,7 +267,7 @@ footer.site .sbtn:hover{filter:brightness(1.12)}
 </button>
 
 <footer class="site">
-  <img src="assets/ARMADA_RESIDENCE_Logo_porcelain.png" alt="">
+  <img src="../brand/cafe/logo-porcelain.svg" width="1744" height="598" alt="">
   <div id="footAddr"></div>
   <div class="hair"></div>
   <div id="footGuest"></div>
