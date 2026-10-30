@@ -1,0 +1,23 @@
+{
+  "_note": "Written by scripts/fonts-subset.py — the code points the Arabic font subsets keep (qa.py checks the output against it).",
+  "fonttools": "4.60.1",
+  "unicode_range": "U+0600-06FF, U+200C-200F, U+2010-2011, U+FD3E-FD3F",
+  "ranges": [
+    [
+      "0600",
+      "06FF"
+    ],
+    [
+      "200C",
+      "200F"
+    ],
+    [
+      "2010",
+      "2011"
+    ],
+    [
+      "FD3E",
+      "FD3F"
+    ]
+  ]
+}

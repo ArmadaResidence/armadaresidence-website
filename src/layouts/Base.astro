@@ -1,9 +1,7 @@
 ---
 import '../styles/global.css';
 import { ClientRouter } from 'astro:transitions';
-import fontAr400 from '@fontsource/ibm-plex-sans-arabic/files/ibm-plex-sans-arabic-arabic-400-normal.woff2?url';
-import fontAr600 from '@fontsource/ibm-plex-sans-arabic/files/ibm-plex-sans-arabic-arabic-600-normal.woff2?url';
-import fontAr700 from '@fontsource/ibm-plex-sans-arabic/files/ibm-plex-sans-arabic-arabic-700-normal.woff2?url';
+import fontAr400 from '../assets/fonts/ibm-plex-sans-arabic-arabic-400-subset.woff2?url';
 import fontEn from '@fontsource-variable/manrope/files/manrope-latin-wght-normal.woff2?url';
 import { GTM_ID, absoluteUrl, dir, localePath, seo, siteName, type BookingContext, type Locale } from '@lib/content';
 import Header from '@components/Header.astro';
@@ -69,9 +67,11 @@ const ld = jsonld.map((j) => JSON.stringify(j).replace(/</g, '\\u003c'));
 // shared room media, header kept still). The legacy sections keep full page loads so their markup and scripts are
 // untouched: a page without the router falls back to a normal navigation in both directions.
 const legacy = path === '/discover-taif/' || path.startsWith('/partners/');
-// Fonts the first paint needs (performance pass, 11 Oct 2026): body, semibold and heading weights of the page language
-// are preloaded so they arrive together (one re-layout, no CSS → @font-face discovery). Same hashed files the CSS uses.
-const preloadFonts = locale === 'ar' ? [fontAr400, fontAr600, fontAr700] : [fontEn];
+// Font preload (performance pass, 30 Oct 2026): only the weight the LCP text uses — the body 400 on every Arabic page
+// (home, branch, room, /offers/, /careers/ measured), the one variable Manrope file on English pages. Preloading 400 +
+// 600 + 700 (11 Oct) put three fonts ahead of the stylesheet on a slow connection; the other weights are fetched when
+// the CSS asks for them (font-display: swap, so text shows at once and ends in the web font). Same hashed files the CSS uses.
+const preloadFonts = locale === 'ar' ? [fontAr400] : [fontEn];
 ---
 
 <!doctype html>

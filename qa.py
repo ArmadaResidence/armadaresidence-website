@@ -758,9 +758,10 @@ def main() -> int:
                 if fp.suffix == ".css":
                     css_files.append(fp)
         # fonts the browser will actually fetch for an Arabic + Latin page: faces covering U+0600 or basic Latin
+        # (the stylesheet is inlined since 30 Oct 2026 — its <style> blocks are read as well)
         font_bytes = 0
-        for css in css_files:
-            text = css.read_text(encoding="utf-8", errors="ignore")
+        inline_css = "".join(re.findall(r"<style[^>]*>(.*?)</style>", raw["/"], re.S))
+        for text in [c.read_text(encoding="utf-8", errors="ignore") for c in css_files] + [inline_css]:
             for face in re.findall(r"@font-face\{(.*?)\}", text, re.S):
                 rng = re.search(r"unicode-range:([^;]+)", face)
                 url = re.search(r"url\(([^)]+\.woff2)\)", face)
@@ -779,6 +780,28 @@ def main() -> int:
             rep.f("performance", f"home transfer ≈ {kb:.0f} KB (limit 1 MB)")
         else:
             print(f"home transfer ≈ {kb:.0f} KB (html+css+js+fonts, uncompressed)")
+
+    # ---- Arabic font subsets (30 Oct 2026): every Arabic-script character the site outputs must be in the ranges the
+    # subset fonts keep (src/assets/fonts/subset.json, scripts/fonts-subset.py) — otherwise it would fall back to a
+    # system font. The ranges checked are fontsource's full Arabic range, which the site declared before the subsets.
+    subset_json = ROOT / "src/assets/fonts/subset.json"
+    if subset_json.is_file():
+        kept = [(int(a, 16), int(b, 16)) for a, b in json.loads(subset_json.read_text(encoding="utf-8"))["ranges"]]
+        arabic_script = [(0x0600, 0x06FF), (0x0750, 0x077F), (0x0870, 0x08FF), (0x204F, 0x204F), (0x2E41, 0x2E41),
+                         (0xFB50, 0xFDFF), (0xFE70, 0xFEFC), (0x102E0, 0x102FB), (0x10E60, 0x10EFF), (0x1EE00, 0x1EEFF)]
+        # what can render: every built page, and the content/ JSON the page scripts show at runtime (ui.json …); the
+        # bundled third-party JS is not read (libphonenumber carries presentation-form tables it never displays)
+        sources = list(raw.items()) + [(f"content/{j.relative_to(CONTENT).as_posix()}", j.read_text(encoding="utf-8")) for j in CONTENT.rglob("*.json")]
+        outside: dict[str, set[str]] = defaultdict(set)
+        for where, text in sources:
+            for ch in set(text):
+                cp = ord(ch)
+                if any(a <= cp <= b for a, b in arabic_script) and not any(a <= cp <= b for a, b in kept):
+                    outside[f"U+{cp:04X} {ch}"].add(where)
+        for ch, where in sorted(outside.items()):
+            rep.f("fonts", f"{ch} is outside the Arabic font subset (scripts/fonts-subset.py) — used on {sorted(where)[:3]}")
+    else:
+        rep.f("fonts", "src/assets/fonts/subset.json missing — run scripts/fonts-subset.py")
 
     check_articles(rep, pages)
     check_photos(rep)

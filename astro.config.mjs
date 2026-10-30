@@ -32,7 +32,10 @@ export default defineConfig({
   output: 'static',
   trailingSlash: 'always',
   compressHTML: true,
-  build: { format: 'directory' },
+  // the stylesheet is inlined in every page (performance pass, 30 Oct 2026): no render-blocking request before the
+  // first paint; the whole sheet, not a critical subset, so nothing can flash unstyled (the dark theme and JS-set
+  // states are styled from the first frame)
+  build: { format: 'directory', inlineStylesheets: 'always' },
   i18n: {
     defaultLocale: 'ar',
     locales: ['ar', 'en'],
