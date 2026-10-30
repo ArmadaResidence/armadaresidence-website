@@ -27,7 +27,7 @@ const sections = page.sections.map((sec) => ({
       <p class="mt-3 text-ink-muted">{stripBrackets(locale === 'ar' ? page.intro_ar : page.intro_en)}</p>
 
       <details class="lg:hidden mt-6 bg-white border border-line rounded-card px-5 py-3">
-        <summary class="cursor-pointer text-sm font-semibold uppercase tracking-wide text-bronze py-1">{t.policies.toc}</summary>
+        <summary class="cursor-pointer text-sm font-semibold uppercase tracking-wide text-bronze-text py-1">{t.policies.toc}</summary>
         <ol class="mt-3 mb-2 space-y-2 text-sm">
           {
             sections.map((sec) => (
@@ -57,7 +57,7 @@ const sections = page.sections.map((sec) => ({
       </div>
     </div>
     <nav class="hidden lg:block lg:col-span-1 lg:sticky lg:top-24 self-start bg-white border border-line rounded-card p-5" aria-label={t.policies.toc}>
-      <h2 class="text-sm font-semibold uppercase tracking-wide text-bronze">{t.policies.toc}</h2>
+      <h2 class="text-sm font-semibold uppercase tracking-wide text-bronze-text">{t.policies.toc}</h2>
       <ol class="mt-3 space-y-2 text-sm">
         {
           sections.map((sec) => (

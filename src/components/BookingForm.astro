@@ -188,7 +188,7 @@ const stepper = (name: 'adults' | 'children' | 'extra_beds', value: number, min:
         Hidden until a room type and both dates are set; «أي غرفة متاحة» shows the pick-room hint only. */}
     <div class="sm:col-span-2 hidden rounded border border-line bg-porcelain p-4" data-quote aria-live="polite">
       <div class="flex flex-wrap items-center justify-between gap-2 mb-2">
-        <h3 class="text-sm font-semibold uppercase tracking-wide text-bronze">{t.quote.heading}</h3>
+        <h3 class="text-sm font-semibold uppercase tracking-wide text-bronze-text">{t.quote.heading}</h3>
         <span class="hidden text-xs font-semibold rounded-full px-2.5 py-1" data-quote-badge></span>
       </div>
       <p class="hidden text-sm text-ink-muted" data-quote-note></p>
@@ -242,7 +242,7 @@ const stepper = (name: 'adults' | 'children' | 'extra_beds', value: number, min:
 
   <p class="text-xs text-ink-muted">
     {f.consent}
-    <a href={localePath(locale, '/policies/')} class="font-semibold text-bronze hover:text-bronze-text ms-1">{f.consent_link}</a>.
+    <a href={localePath(locale, '/policies/')} class="font-semibold link-bronze ms-1">{f.consent_link}</a>.
   </p>
 
   <p class="hidden text-sm font-semibold text-midnight bg-porcelain rounded px-4 py-3" data-summary aria-live="polite"></p>
@@ -681,7 +681,7 @@ const stepper = (name: 'adults' | 'children' | 'extra_beds', value: number, min:
           capNote.append(S.capacityBranch.replace('{max}', String(max)) + ' ');
           const a = document.createElement('a');
           a.href = data.partnersPath;
-          a.className = 'font-semibold text-bronze hover:text-bronze-text underline';
+          a.className = 'font-semibold link-bronze underline';
           a.textContent = S.capacityBranchLink;
           capNote.append(a);
           capNote.classList.remove('hidden');

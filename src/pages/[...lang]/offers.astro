@@ -34,7 +34,7 @@ const hasOffers = offers.current_offers.length > 0;
     {
       hasOffers && (
         <div class="reveal reveal-lg mt-8 bg-white border border-line rounded-card p-6">
-          <h2 class="text-sm font-semibold uppercase tracking-wide text-bronze">{t.offers.no_offers_heading}</h2>
+          <h2 class="text-sm font-semibold uppercase tracking-wide text-bronze-text">{t.offers.no_offers_heading}</h2>
           <ul class="mt-4 space-y-4">
             {(offers.current_offers as Record<string, string>[]).map((o) => (
               <li>
@@ -71,7 +71,7 @@ const hasOffers = offers.current_offers.length > 0;
         <p class="mt-5 text-sm text-porcelain/80">
           <span>{t.offers.sales_scope}: {L(sales as unknown as Record<string, string>, 'scope')}</span>
           <br />
-          <a href={mailHref(sales.email)} class="latin hover:text-bronze" dir="ltr">{sales.email}</a>
+          <a href={mailHref(sales.email)} class="latin hover:text-bronze-text" dir="ltr">{sales.email}</a>
         </p>
       </section>
 
@@ -95,13 +95,13 @@ const hasOffers = offers.current_offers.length > 0;
             <span>{L(corp, 'whatsapp_cta')}</span>
           </a>
         </div>
-        <a href={partnersPath(locale)} class="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-bronze hover:text-bronze-text">
+        <a href={partnersPath(locale)} class="mt-4 inline-flex items-center gap-2 text-sm font-semibold link-bronze">
           <span>{t.nav.partners}</span>
           <Icon name="arrow" size={14} class="icon-arrow rtl:rotate-180" />
         </a>
         <p class="mt-6 text-xs text-ink-muted">
           {L(offers as unknown as Record<string, string>, 'sales_note')}
-          <a href={localePath(locale, '/booking/')} class="font-semibold text-bronze hover:text-bronze-text ms-1">{t.nav.book}</a>
+          <a href={localePath(locale, '/booking/')} class="font-semibold link-bronze ms-1">{t.nav.book}</a>
         </p>
       </section>
     </div>

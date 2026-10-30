@@ -138,3 +138,30 @@
 .legacy-partners .draft-note[hidden] {
   display: none;
 }
+
+/* Partners — light-mode contrast (Ahmed, 30 Oct 2026): every text colour of the generated palette reaches WCAG AA on
+   the section's light surfaces, mapped to the brand palette (CLAUDE.md §3). Backgrounds, rules, borders, buttons and
+   the navy bands keep the legacy colours; dark mode (legacy-dark.css) is untouched — every rule here is light-only. */
+:root:not([data-theme="dark"]) .legacy-partners {
+  --tx-mute: #3f5262; /* ink-muted: 7.1:1 on cream, 6.5:1 on cream-2 (was #6E7480, 3.8–4.1:1) */
+  --bronze-dk: #8a6239; /* Bronze Text: eyebrows, labels, chips, prices (was #8E6630, 4.2–4.5:1) */
+}
+/* card / segment numbers (20–21 px, below the large-text size) and the flow numbers on cream-2 */
+:root:not([data-theme="dark"]) .legacy-partners :is(.card, .seg) .no,
+:root:not([data-theme="dark"]) .legacy-partners .flow .fn {
+  color: var(--bronze-dk);
+}
+:root:not([data-theme="dark"]) .legacy-partners :is(.dk, .ink) :is(.card, .seg) .no {
+  color: var(--bronze-lt);
+}
+/* chips: the 6 % bronze tint brought Bronze Text to 4.48:1 on cream; the hairline border carries the chip */
+:root:not([data-theme="dark"]) .legacy-partners .chip:not(.sol) {
+  background: transparent;
+}
+:root:not([data-theme="dark"]) .legacy-partners :is(.dk, .ink) .chip:not(.sol) {
+  background: rgba(201, 164, 104, 0.08);
+}
+/* the Umrah disclaimer was written for the navy footer (ivory at 40 %); on the light band it read 1.01:1 */
+:root:not([data-theme="dark"]) .legacy-partners .band:not(.dk):not(.ink) .disc {
+  color: var(--tx-mute);
+}

@@ -139,7 +139,7 @@ const partnersActive = path.startsWith('/partners/');
                 href={localePath(locale, n.path)}
                 class:list={[
                   'block py-3 border-b border-line font-medium',
-                  isActive(n.path) ? 'text-bronze' : 'text-midnight',
+                  isActive(n.path) ? 'text-bronze-text' : 'text-midnight',
                 ]}
                 aria-current={isActive(n.path) ? 'page' : undefined}
               >
@@ -151,7 +151,7 @@ const partnersActive = path.startsWith('/partners/');
         <li>
           <a
             href={localePath(locale, '/partners/')}
-            class:list={['block py-3 border-b border-line font-medium', partnersActive ? 'text-bronze' : 'text-midnight']}
+            class:list={['block py-3 border-b border-line font-medium', partnersActive ? 'text-bronze-text' : 'text-midnight']}
           >
             {t.nav.partners}
           </a>

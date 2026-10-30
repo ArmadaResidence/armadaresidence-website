@@ -46,7 +46,7 @@ try {
 ---
 
 <div class:list={[mode === 'full' ? 'bg-white border border-line rounded-card p-6' : '']}>
-  {mode === 'full' && <h2 class="text-sm font-semibold uppercase tracking-wide text-bronze mb-3">{t.room.price_heading}</h2>}
+  {mode === 'full' && <h2 class="text-sm font-semibold uppercase tracking-wide text-bronze-text mb-3">{t.room.price_heading}</h2>}
   {
     mode === 'full' && soldOut && (
       <p class="inline-block bg-line text-ink text-xs font-semibold px-2.5 py-1 rounded mb-2">{soldOutLabel(locale, room)}</p>

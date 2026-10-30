@@ -42,27 +42,30 @@ const meta = [
 ---
 
 <article class="bg-white border border-line rounded-card overflow-hidden flex flex-col">
-  <a href={href} tabindex="-1" aria-hidden="true" class:list={['relative block', soldOut && 'opacity-60']} transition:name={`room-media-${room.branch}-${room.slug}`}>
-    {
-      cover ? (
-        <Photo {...photoProps(locale, cover)} sizes="(min-width: 1024px) 360px, (min-width: 640px) 50vw, 100vw" imgClass="w-full h-auto" />
-      ) : (
-        <Placeholder label={photoLabel} class="rounded-b-none" />
-      )
-    }
+  <div class="relative">
+    <a href={href} tabindex="-1" aria-hidden="true" class:list={['relative block', soldOut && 'opacity-60']} transition:name={`room-media-${room.branch}-${room.slug}`}>
+      {
+        cover ? (
+          <Photo {...photoProps(locale, cover)} sizes="(min-width: 1024px) 360px, (min-width: 640px) 50vw, 100vw" imgClass="w-full h-auto" />
+        ) : (
+          <Placeholder label={photoLabel} class="rounded-b-none" />
+        )
+      }
+    </a>
+    {/* the badge sits outside the faded link so it keeps full contrast (white on midnight 14.8:1; 4.1:1 at 60 %) */}
     {
       soldOut && (
-        <span class="absolute top-3 start-3 bg-midnight text-white text-xs font-semibold px-2.5 py-1 rounded">
+        <span class="absolute top-3 start-3 bg-midnight text-white text-xs font-semibold px-2.5 py-1 rounded" aria-hidden="true">
           {soldOutLabel(locale, room)}
         </span>
       )
     }
-  </a>
+  </div>
   <div class="p-5 flex flex-col gap-3 flex-1">
     <div>
-      {showBranch && <p class="text-xs text-bronze font-semibold mb-1">{L(locale, branch, 'name')}</p>}
+      {showBranch && <p class="text-xs text-bronze-text font-semibold mb-1">{L(locale, branch, 'name')}</p>}
       <h3 class="text-lg font-semibold text-midnight">
-        <a href={href} class="hover:text-bronze">{name}</a>
+        <a href={href} class="hover:text-bronze-text">{name}</a>
       </h3>
       {soldOut && <p class="sr-only">{soldOutLabel(locale, room)}</p>}
       <p class="text-sm text-ink-muted mt-1">{meta.join(' · ')}</p>
@@ -78,7 +81,7 @@ const meta = [
     }
     <div class="mt-auto pt-2 border-t border-line">
       <PriceBlock locale={locale} room={room} mode="card" />
-      <a href={href} class="mt-3 inline-flex items-center gap-1 text-sm font-semibold text-bronze hover:text-bronze-text">
+      <a href={href} class="mt-3 inline-flex items-center gap-1 text-sm font-semibold link-bronze">
         <span>{t.branch.view_room}</span>
         <Icon name="arrow" size={16} class="icon-arrow rtl:rotate-180" />
       </a>

@@ -72,7 +72,7 @@ const driveTimes = Object.entries(((branch as unknown as { drive_times_min?: Rec
       <span aria-hidden="true" class="mx-2">/</span>
       <span class="text-midnight">{name}</span>
     </nav>
-    <p class="mt-6 text-xs font-semibold uppercase tracking-wide text-bronze">{L(locale, branch, 'type')}</p>
+    <p class="mt-6 text-xs font-semibold uppercase tracking-wide text-bronze-text">{L(locale, branch, 'type')}</p>
     <h1 class="mt-1 text-3xl md:text-4xl font-bold text-midnight">{name}</h1>
     <p class="mt-2 text-lg text-ink-muted">{L(locale, branch, 'tagline')}</p>
     <div class="reveal reveal-lg mt-8">
@@ -98,7 +98,7 @@ const driveTimes = Object.entries(((branch as unknown as { drive_times_min?: Rec
       </a>
     </div>
     <aside class="reveal reveal-lg lg:col-span-2 bg-white border border-line rounded-card p-6" style="--reveal-delay:120ms">
-      <h2 class="text-sm font-semibold uppercase tracking-wide text-bronze">{t.branch.at_a_glance}</h2>
+      <h2 class="text-sm font-semibold uppercase tracking-wide text-bronze-text">{t.branch.at_a_glance}</h2>
       <dl class="mt-4 space-y-4 text-sm">
         <div class="dl-row">
             <dt class="font-semibold text-midnight flex items-start gap-3"><Icon name="clock" size={18} class="text-bronze shrink-0 mt-0.5" /><span>{t.branch.check_in} / {t.branch.check_out}</span></dt>
@@ -166,10 +166,10 @@ const driveTimes = Object.entries(((branch as unknown as { drive_times_min?: Rec
               </span>
             </dd>
             <dd class="ms-[30px] mt-2 flex flex-wrap gap-x-4 gap-y-1">
-              <a href={branch.maps_url} rel="noopener" target="_blank" class="font-semibold text-bronze hover:text-bronze-text">
+              <a href={branch.maps_url} rel="noopener" target="_blank" class="font-semibold link-bronze">
                 {t.cta.maps}
               </a>
-              <a href={branch.google_business_url} rel="noopener" target="_blank" class="font-semibold text-bronze hover:text-bronze-text">
+              <a href={branch.google_business_url} rel="noopener" target="_blank" class="font-semibold link-bronze">
                 {t.cta.google_reviews}
               </a>
             </dd>
@@ -197,7 +197,7 @@ const driveTimes = Object.entries(((branch as unknown as { drive_times_min?: Rec
               <a href={telHref(c.phone)} class="latin text-ink-muted hover:text-midnight" dir="ltr">
                 {c.phone_display}
               </a>
-              <a href={waHref(c.whatsapp)} rel="noopener" target="_blank" class="font-semibold text-bronze hover:text-bronze-text">
+              <a href={waHref(c.whatsapp)} rel="noopener" target="_blank" class="font-semibold link-bronze">
                 {t.cta.whatsapp_title}
               </a>
             </dd>
@@ -213,7 +213,7 @@ const driveTimes = Object.entries(((branch as unknown as { drive_times_min?: Rec
       </dl>
     </div>
     <div class="reveal reveal-lg bg-white border border-line rounded-card p-6 self-start" style="--reveal-delay:120ms">
-      <h2 class="text-sm font-semibold uppercase tracking-wide text-bronze">{t.branch.other_branch}</h2>
+      <h2 class="text-sm font-semibold uppercase tracking-wide text-bronze-text">{t.branch.other_branch}</h2>
       {
         other && (
           <>
@@ -221,7 +221,7 @@ const driveTimes = Object.entries(((branch as unknown as { drive_times_min?: Rec
             <p class="text-sm text-ink-muted">{L(locale, other, 'tagline')}</p>
             <a
               href={branchPath(locale, other.slug)}
-              class="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-bronze hover:text-bronze-text"
+              class="mt-4 inline-flex items-center gap-2 text-sm font-semibold link-bronze"
             >
               <span>{t.home.view_branch}</span>
               <Icon name="arrow" size={16} class="icon-arrow rtl:rotate-180" />

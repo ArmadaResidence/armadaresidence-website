@@ -279,6 +279,18 @@ footer :focus-visible,
 [data-theme="dark"] .hover\:text-white:hover {
   color: #fff;
 }
+/* inline bronze links on porcelain / white (contrast pass, 30 Oct 2026): Bronze Text at rest (4.7:1 / 5.4:1), midnight
+   on hover; dark mode keeps its bronze at rest and on hover, as before */
+.link-bronze {
+  color: var(--color-bronze-text);
+}
+.link-bronze:hover {
+  color: var(--color-midnight);
+}
+[data-theme="dark"] .link-bronze,
+[data-theme="dark"] .link-bronze:hover {
+  color: var(--dk-bronze-text);
+}
 /* photos / placeholders unchanged */
 [data-theme="dark"] .photo-placeholder svg,
 [data-theme="dark"] .hero-poster {
@@ -401,12 +413,12 @@ footer :focus-visible,
   position: absolute;
   inset: 0;
   overflow: hidden;
-  transition: transform var(--motion-base) var(--ease-in-out);
+  transition: scale var(--motion-base) var(--ease-in-out);
 }
 .split-media-inner {
   position: absolute;
   inset: 0;
-  transition: transform var(--motion-base) var(--ease-in-out);
+  transition: scale var(--motion-base) var(--ease-in-out);
 }
 .photo-placeholder.photo-fill {
   position: absolute;
@@ -466,14 +478,14 @@ footer :focus-visible,
     inset-inline-end: auto;
     width: 116%;
     transform-origin: 0 50%;
-    transform: scaleX(0.8621);
+    scale: 0.8621 1;
   }
   .split-pane:last-child .split-media {
     inset-inline-end: 0;
     inset-inline-start: auto;
     width: 116%;
     transform-origin: 100% 50%;
-    transform: scaleX(0.8621);
+    scale: 0.8621 1;
   }
   [dir='rtl'] .split-pane:first-child .split-media {
     transform-origin: 100% 50%;
@@ -482,7 +494,7 @@ footer :focus-visible,
     transform-origin: 0 50%;
   }
   .split-pane .split-media-inner {
-    transform: scaleX(1.16);
+    scale: 1.16 1;
     transform-origin: inherit;
   }
   .split-pane:hover,
@@ -491,11 +503,11 @@ footer :focus-visible,
   }
   .split-pane:hover .split-media,
   .split-pane:focus-within .split-media {
-    transform: scaleX(1);
+    scale: 1;
   }
   .split-pane:hover .split-media-inner,
   .split-pane:focus-within .split-media-inner {
-    transform: scaleX(1);
+    scale: 1;
   }
   .split:has(.split-pane:hover) .split-pane:not(:hover) .split-shade,
   .split:has(.split-pane:focus-within) .split-pane:not(:focus-within) .split-shade {
@@ -947,6 +959,10 @@ body.has-room-bar .wa-fab {
 .story-scene > p {
   opacity: 0.72;
   transition: opacity var(--motion-base) var(--ease-out);
+}
+/* light mode: 0.85 keeps the dimmed ink-muted text at 4.9:1 on porcelain (0.72 read 3.6:1); dark mode unchanged */
+:root:not([data-theme="dark"]) .story-scene:not(.is-active) > p {
+  opacity: 0.85;
 }
 .story-scene.is-active > h3,
 .story-scene.is-active > p {

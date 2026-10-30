@@ -18,7 +18,8 @@ import { join, resolve } from 'node:path';
 import { serveDist } from './serve-dist.mjs';
 
 const REVIEW_URL = 'https://armadaresidence.github.io/armadaresidence-website';
-const BROWSER_CHECKS = ['booking-nav-check', 'drawer-check', 'booking-whatsapp-check', 'datepicker-check', 'motion-check', 'booking-instant-check', 'partners-form-check', 'careers-form-check'];
+// a11y-check (30 Oct 2026): axe-core on every built page, AR + EN × 375 + 1440 × light + dark — no serious / critical violation
+const BROWSER_CHECKS = ['booking-nav-check', 'drawer-check', 'booking-whatsapp-check', 'datepicker-check', 'motion-check', 'booking-instant-check', 'partners-form-check', 'careers-form-check', 'a11y-check'];
 // static, no browser, no key: Western digits and no native date inputs in the dashboard sources (phase 2a.1); the
 // dashboard's Arabic count helper and error mapping (unit tests, phase 2a.1 copy approval); the staff emails' layout
 // (Auth templates in sync with email.ts, hosted PNG logo, AR- subjects — 26 Oct 2026); the WhatsApp template payloads

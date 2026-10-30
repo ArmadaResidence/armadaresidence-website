@@ -113,7 +113,7 @@ const details: { label: string; value: string }[] = [
           {paragraphs(L(locale, room, 'description')).map((p) => <p>{p}</p>)}
         </div>
 
-        <h2 class="reveal mt-10 text-sm font-semibold uppercase tracking-wide text-bronze">{t.room.details_heading}</h2>
+        <h2 class="reveal mt-10 text-sm font-semibold uppercase tracking-wide text-bronze-text">{t.room.details_heading}</h2>
         <dl class="reveal-group mt-3 grid gap-3 sm:grid-cols-2 text-sm">
           {
             details.map((d) => (
@@ -128,7 +128,7 @@ const details: { label: string; value: string }[] = [
         {
           features.length > 0 && (
             <>
-              <h2 class="reveal mt-8 text-sm font-semibold uppercase tracking-wide text-bronze">{t.room.features_heading}</h2>
+              <h2 class="reveal mt-8 text-sm font-semibold uppercase tracking-wide text-bronze-text">{t.room.features_heading}</h2>
               <ul class="reveal-group mt-3 flex flex-wrap gap-2">
                 {features.map((f) => (
                   <li class="inline-flex items-center gap-1.5 text-sm bg-white border border-line px-3 py-1.5 rounded">
@@ -144,7 +144,7 @@ const details: { label: string; value: string }[] = [
         {
           inRoom.length > 0 && (
             <>
-              <h2 class="reveal mt-8 text-sm font-semibold uppercase tracking-wide text-bronze">{t.room.in_room_heading}</h2>
+              <h2 class="reveal mt-8 text-sm font-semibold uppercase tracking-wide text-bronze-text">{t.room.in_room_heading}</h2>
               <ul class="reveal-group mt-3 grid gap-2 sm:grid-cols-2 text-sm">
                 {inRoom.map((a) => (
                   <li class="flex items-center gap-2">
