@@ -11,16 +11,24 @@
 //   node scripts/admin-cors-check.mjs [--supabase URL] [--origins a,b] [--functions f1,f2]
 //   env SUPABASE_URL (or .env), ADMIN_ORIGINS (comma-separated; each entry is reduced to its origin)
 //
+// --public (launch readiness, 30 Oct 2026): the public site functions (booking-request, job-application; verify_jwt
+// off) from the site's origins — the domain, www and the GitHub Pages review site (env SITE_ORIGINS overrides).
+// Preflight and the unknown-origin refusal only: a POST would run the function, so none is sent.
+//
 // Runs in `node scripts/check-all.mjs --live` after every site deploy and as the `verify` job of the admin
 // repository's deploy workflow after every dashboard deploy. Exit code 1 on any failure.
 import { existsSync, readFileSync } from 'node:fs';
 
-const DEFAULT_ORIGINS = ['https://admin.armadaresidence.com', 'https://armadaresidence.github.io/armadaresidence-admin'];
+const PUBLIC = process.argv.includes('--public');
+const DEFAULT_ORIGINS = PUBLIC
+  ? ['https://armadaresidence.com', 'https://www.armadaresidence.com', 'https://armadaresidence.github.io/armadaresidence-website']
+  : ['https://admin.armadaresidence.com', 'https://armadaresidence.github.io/armadaresidence-admin'];
 // login-code (phase 2a.2, 26 Oct 2026): the second sign-in step, called from the dashboard with the user's JWT
 // label-suggest (C4, 28 Oct 2026): the translation suggestion of the dashboard's bilingual label fields (user JWT)
-const DEFAULT_FUNCTIONS = ['booking-admin', 'admin-users', 'site-rebuild', 'login-code', 'label-suggest'];
-// what the dashboard's fetch() and supabase-js functions.invoke() put in Access-Control-Request-Headers
-const REQUEST_HEADERS = ['authorization', 'apikey', 'content-type', 'x-client-info'];
+const DEFAULT_FUNCTIONS = PUBLIC ? ['booking-request', 'job-application'] : ['booking-admin', 'admin-users', 'site-rebuild', 'login-code', 'label-suggest'];
+// what the dashboard's fetch() and supabase-js functions.invoke() put in Access-Control-Request-Headers (the site's
+// forms: BookingForm, partners-enquiry, CareersForm send authorization + apikey + content-type)
+const REQUEST_HEADERS = PUBLIC ? ['authorization', 'apikey', 'content-type'] : ['authorization', 'apikey', 'content-type', 'x-client-info'];
 const FOREIGN = 'https://evil.invalid';
 
 const args = process.argv.slice(2);
@@ -41,7 +49,7 @@ const toOrigin = (s) => {
     return null;
   }
 };
-const origins = Array.from(new Set((opt('origins') || process.env.ADMIN_ORIGINS || DEFAULT_ORIGINS.join(',')).split(',').map(toOrigin).filter(Boolean)));
+const origins = Array.from(new Set((opt('origins') || process.env[PUBLIC ? 'SITE_ORIGINS' : 'ADMIN_ORIGINS'] || DEFAULT_ORIGINS.join(',')).split(',').map(toOrigin).filter(Boolean)));
 const functions = (opt('functions') || DEFAULT_FUNCTIONS.join(',')).split(',').map((s) => s.trim()).filter(Boolean);
 
 const fails = [];
@@ -76,7 +84,7 @@ const jsonCode = (text) => {
   }
 };
 
-console.log(`admin-cors-check — ${supabase}\n  functions: ${functions.join(', ')}\n  origins:   ${origins.join(', ')}`);
+console.log(`admin-cors-check${PUBLIC ? ' --public' : ''} — ${supabase}\n  functions: ${functions.join(', ')}\n  origins:   ${origins.join(', ')}`);
 for (const fn of functions) {
   const url = `${supabase}/functions/v1/${fn}`;
   for (const origin of origins) {
@@ -90,6 +98,7 @@ for (const fn of functions) {
       check(missing.length === 0, `${tag}: request headers allowed (${REQUEST_HEADERS.join(', ')})`, `missing ${missing.join(', ')} in "${allowH}"`);
       check(has(pre.headers.get('access-control-allow-methods'), 'post'), `${tag}: POST allowed`, `got ${pre.headers.get('access-control-allow-methods')}`);
       check(has(pre.headers.get('vary'), 'origin'), `${tag}: Vary: Origin`, `got ${pre.headers.get('vary')}`);
+      if (PUBLIC) continue; // verify_jwt off: a POST would run the function
 
       const noAuth = await call(url, { method: 'POST', headers: { Origin: origin, 'Content-Type': 'application/json' }, body: '{"action":"list"}' });
       check(noAuth.status === 401 && jsonCode(noAuth.text).startsWith('UNAUTHORIZED'), `${tag}: POST without a token refused by the gateway (verify_jwt)`, `status ${noAuth.status} ${noAuth.text.slice(0, 120)}`);

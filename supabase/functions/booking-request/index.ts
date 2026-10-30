@@ -36,6 +36,7 @@
 //   RATE_LIMIT hits per RATE_WINDOW_SECONDS (429). Both fail open.
 // Deployed with verify_jwt = false (supabase/config.toml): a public form endpoint; CORS limits the origins.
 import { parsePhoneNumberFromString } from 'npm:libphonenumber-js@1.12.10/min';
+import { siteOrigins } from '../_shared/site-cors.ts';
 import content from './content.generated.json' with { type: 'json' };
 import { EMAIL, intIn, ISO_DATE, nightsBetween, riyadhToday, validateBooking, validatePartnerContact, type ValidBooking } from './rules.ts';
 import {
@@ -116,10 +117,7 @@ const TEST_SINK = 'delivered@resend.dev';
 const FROM_RECEPTION = Deno.env.get('BOOKING_FROM_RECEPTION') ?? 'Armada Residence Bookings <no-reply@armadaresidence.com>';
 const FROM_GUEST = Deno.env.get('BOOKING_FROM_GUEST') ?? 'أرمادا ريزيدنس | Armada Residence <reservation@armadaresidence.com>';
 
-const allowedOrigins = (Deno.env.get('BOOKING_ALLOWED_ORIGINS') ?? content.site_url)
-  .split(',')
-  .map((s: string) => s.trim())
-  .filter(Boolean);
+const allowedOrigins = siteOrigins;
 
 function cors(req: Request): Record<string, string> {
   const origin = req.headers.get('origin') ?? '';

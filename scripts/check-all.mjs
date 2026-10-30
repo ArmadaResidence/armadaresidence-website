@@ -104,6 +104,8 @@ if (base) {
   for (const name of BROWSER_CHECKS) results.push(await run(name, process.execPath, [`scripts/${name}.mjs`, base]));
 }
 if (live) for (const name of LIVE_CHECKS) results.push(await run(name, process.execPath, [`scripts/${name}.mjs`]));
+// the public site functions' CORS from the domain, www and the review site (preflight only — nothing is sent; 30 Oct 2026)
+if (live) results.push(await run('admin-cors-check --public', process.execPath, ['scripts/admin-cors-check.mjs', '--public']));
 await server?.close();
 removeSnapshot();
 

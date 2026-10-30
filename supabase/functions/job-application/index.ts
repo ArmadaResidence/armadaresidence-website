@@ -30,6 +30,7 @@
 //   BOOKING_TEST_TOKEN. The sweep token and URL live in Supabase Vault only.
 // Deployed with verify_jwt = false (supabase/config.toml): a public form endpoint; CORS limits the origins.
 import { getCountries, parsePhoneNumberFromString } from 'npm:libphonenumber-js@1.12.10/min';
+import { siteOrigins } from '../_shared/site-cors.ts';
 import content from '../booking-request/content.generated.json' with { type: 'json' };
 import { EMAIL, riyadhToday, validateJobApplication, type JobFile } from '../booking-request/rules.ts';
 import { jobApplicationAlert, jobApplicationConfirmation, jobApplicationNotification, type JobMail, type Mail } from '../booking-request/email.ts';
@@ -44,7 +45,7 @@ const FROM_JOBS = Deno.env.get('BOOKING_FROM_RECEPTION') ?? 'Armada Residence Bo
 const FROM_APPLICANT = 'أرمادا ريزيدنس | Armada Residence <no-reply@armadaresidence.com>';
 const KNOWN_BRANCHES: string[] = content.branches.map((b: { slug: string }) => b.slug);
 
-const allowedOrigins = (Deno.env.get('BOOKING_ALLOWED_ORIGINS') ?? content.site_url).split(',').map((s: string) => s.trim()).filter(Boolean);
+const allowedOrigins = siteOrigins;
 function cors(req: Request): Record<string, string> {
   const origin = req.headers.get('origin') ?? '';
   return {
