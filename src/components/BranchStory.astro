@@ -16,7 +16,8 @@ interface Scene {
   title_en: string;
   body_ar: string;
   body_en: string;
-  image: { base: string | null; widths: number[]; alt_ar: string; alt_en: string };
+  /** base set by scripts/photos-import.mjs from a branch photo with this scene's `slot` (30 Oct 2026); null → placeholder */
+  image: { base: string | null; widths: number[]; formats?: string[]; alt_ar: string; alt_en: string };
 }
 interface Props {
   locale: Locale;
@@ -39,14 +40,15 @@ const headingId = `story-${branch.slug}`;
               <div class:list={['story-img', i === 0 && 'is-active']} data-story-img={i}>
                 {sc.image.base ? (
                   <Photo
-                    src={`${sc.image.base}-${sc.image.widths[0]}.webp`}
+                    src={`${sc.image.base}-${sc.image.widths[Math.min(1, sc.image.widths.length - 1)]}.webp`}
                     srcset={sc.image.widths.map((w) => `${sc.image.base}-${w}.webp ${w}w`).join(', ')}
+                    avifSrcset={sc.image.formats?.includes('avif') ? sc.image.widths.map((w) => `${sc.image.base}-${w}.avif ${w}w`).join(', ') : undefined}
                     sizes="(min-width: 1024px) 560px, 100vw"
                     alt={L(locale, sc.image, 'alt')}
                     width={sc.image.widths[0]}
                     height={Math.round((sc.image.widths[0] * 2) / 3)}
-                    loading={i === 0 ? 'eager' : 'lazy'}
-                    lqip={lqip(`${sc.image.base}-${sc.image.widths[0]}.webp`)}
+                    loading="lazy"
+                    lqip={lqip(`${sc.image.base}-${sc.image.widths.includes(800) ? 800 : sc.image.widths[0]}.webp`)}
                     class="absolute inset-0"
                     imgClass="w-full h-full object-cover"
                   />

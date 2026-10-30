@@ -163,9 +163,11 @@ export function ffprobe(path) {
 // ---------- manifest (CSV for Excel: UTF-8 with BOM, CRLF; JSON alongside) ----------
 export const MANIFEST_COLUMNS = [
   'folder', 'file', 'kind', 'width', 'height', 'flags', 'sha256',
-  'keep', 'cover', 'focal_point', 'alt_ar', 'alt_en', 'caption_ar', 'caption_en',
+  'keep', 'cover', 'slot', 'focal_point', 'alt_ar', 'alt_en', 'caption_ar', 'caption_en',
 ];
-export const EDITABLE_COLUMNS = ['keep', 'cover', 'focal_point', 'alt_ar', 'alt_en', 'caption_ar', 'caption_en'];
+// slot (30 Oct 2026): a branch photo (<branch>/branch) can fill one BranchStory scene — entrance | lobby | rooms | dining
+// (branches.json → story[].key); a row with a slot goes to that scene instead of the branch gallery
+export const EDITABLE_COLUMNS = ['keep', 'cover', 'slot', 'focal_point', 'alt_ar', 'alt_en', 'caption_ar', 'caption_en'];
 
 const csvCell = (v) => {
   const s = v === undefined || v === null ? '' : String(v);

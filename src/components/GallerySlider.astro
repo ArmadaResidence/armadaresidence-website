@@ -23,8 +23,10 @@ interface Props {
   ratio?: string;
   labels: { previous: string; next: string; goTo: string; open: string; close: string; of: string };
   autoplayMs?: number;
+  /** the first slide is the page's LCP image (room pages): fetchpriority high (30 Oct 2026) */
+  lcp?: boolean;
 }
-const { images, frameClass = 'bg-midnight', ratio = '4 / 3', labels, autoplayMs = 4000 } = Astro.props;
+const { images, frameClass = 'bg-midnight', ratio = '4 / 3', labels, autoplayMs = 4000, lcp = false } = Astro.props;
 // deterministic id (reproducible builds): derived from the first image path
 const id = `gal-${Array.from(images[0]?.src ?? 'x').reduce((h, c) => (h * 31 + c.charCodeAt(0)) >>> 0, 7).toString(36)}`;
 ---
@@ -46,6 +48,7 @@ const id = `gal-${Array.from(images[0]?.src ?? 'x').reduce((h, c) => (h * 31 + c
                 width={img.width}
                 height={img.height}
                 loading={i === 0 ? 'eager' : 'lazy'}
+                fetchpriority={i === 0 && lcp ? 'high' : undefined}
                 decoding="async"
                 draggable="false"
                 class="photo-img w-full h-full object-cover"

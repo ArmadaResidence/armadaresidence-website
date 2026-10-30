@@ -67,6 +67,7 @@ const path = `/blog/${slug}/`;
 
 const sections = await renderBody(a.body);
 const cover = await coverImage(a);
+const COVER_SIZES = '(min-width: 1024px) 896px, 100vw';
 const minutes = minutesText(locale, a.body);
 const cards = articleBranches(a).map((s) => ({ branch: branchBySlug(s), c: branchContact(s) }));
 const twoBranches = cards.length > 1;
@@ -112,6 +113,8 @@ if (faq.length) jsonld.push(faqPage(faq, articlePath(locale, slug)));
     <meta property="article:published_time" content={a.date} />
     <meta property="article:modified_time" content={a.updated ?? a.date} />
     {a.tags.map((tag) => <meta property="article:tag" content={tag} />)}
+    {/* the cover is the LCP image: eager, fetchpriority high and preloaded (30 Oct 2026) */}
+    {cover && <link rel="preload" as="image" type="image/webp" imagesrcset={cover.srcset} imagesizes={COVER_SIZES} fetchpriority="high" />}
   </Fragment>
 
   <article class="article-page" data-article>
@@ -145,7 +148,7 @@ if (faq.length) jsonld.push(faqPage(faq, articlePath(locale, slug)));
       <div class="mt-8 max-w-4xl mx-auto" transition:name={`article-cover-${a.slug}`}>
         {
           cover ? (
-            <Photo src={cover.src} srcset={cover.srcset} sizes="(min-width: 1024px) 896px, 100vw" alt={cover.alt} width={cover.width} height={cover.height} lqip={cover.lqip} loading="eager" fetchpriority="high" class="block rounded-card overflow-hidden aspect-[16/9] md:aspect-[21/9]" imgClass="w-full h-full object-cover" />
+            <Photo src={cover.src} srcset={cover.srcset} sizes={COVER_SIZES} alt={cover.alt} width={cover.width} height={cover.height} lqip={cover.lqip} loading="eager" fetchpriority="high" class="block rounded-card overflow-hidden aspect-[16/9] md:aspect-[21/9]" imgClass="w-full h-full object-cover" />
           ) : (
             <Placeholder label={fill(b.cover_pending, { alt: a.cover_alt })} class="aspect-[16/9]! md:aspect-[21/9]!" />
           )

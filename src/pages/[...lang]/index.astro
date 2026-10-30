@@ -6,7 +6,7 @@ import Divider from '@components/Divider.astro';
 import Icon from '@components/Icon.astro';
 import { langPaths } from '@lib/paths';
 import { organization } from '@lib/jsonld';
-import { existsSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import {
   branches,
   fill,
@@ -30,10 +30,19 @@ const t = ui(locale);
 const s = pageSeo(locale, 'home');
 const hero = siteTexts.hero;
 
-// Hero video: content/images/hero/{hero.webm, hero.mp4, hero-poster.webp} (synced to public/images/ by build.py).
-// Until the files arrive the grey placeholder acts as poster with a slow Ken Burns move. TODO(photo)
+// Hero (specs approved 30 Oct 2026): content/images/hero/hero.json, written by scripts/photos-import.mjs with the files
+// (synced to public/images/ by build.py). The poster is the LCP — <picture> with a 4:5 crop for phones and 16:9 for
+// wider screens, AVIF then WebP, eager + fetchpriority high + preloaded; the loop (desktop only, after `load`, never
+// with reduced motion / Save-Data) fades in over it once it plays. Until the files arrive the grey placeholder acts as
+// poster with a slow Ken Burns move. TODO(photo)
 const heroDir = new URL('../../../content/images/hero/', import.meta.url);
-const hasHeroVideo = ['hero.webm', 'hero.mp4', 'hero-poster.webp'].every((f) => existsSync(new URL(f, heroDir)));
+interface HeroImage { base: string; widths: number[]; width: number; height: number; position: string }
+interface HeroMedia { poster: HeroImage; poster_mobile: HeroImage; video?: { mp4: string; webm: string }; alt_ar: string; alt_en: string }
+const heroMedia: HeroMedia | null = existsSync(new URL('hero.json', heroDir))
+  ? (JSON.parse(readFileSync(new URL('hero.json', heroDir), 'utf8')) as HeroMedia)
+  : null;
+const heroSet = (img: HeroImage, ext: string) => img.widths.map((w) => `${img.base}-${w}.${ext} ${w}w`).join(', ');
+const HERO_MOBILE = '(max-width: 767px)';
 // og/home.jpg: the poster's 1200 × 630 crop written by scripts/photos-import.mjs; absent → the default OG image
 const homeOg = existsSync(new URL('../og/home.jpg', heroDir)) ? '/images/og/home.jpg' : undefined;
 const heroPosterAlt = fill(t.photo_pending_alt, { subject: locale === 'ar' ? hero.title_ar : hero.title_en });
@@ -55,22 +64,51 @@ const quickFacts = fill(t.home.quick_facts, {
 ---
 
 <Base locale={locale} path="/" title={s.title} description={s.description} ogImage={homeOg} jsonld={[organization(locale)]}>
+  {
+    heroMedia && (
+      <Fragment slot="head">
+        <link rel="preload" as="image" type="image/avif" media={HERO_MOBILE} imagesrcset={heroSet(heroMedia.poster_mobile, 'avif')} imagesizes="100vw" fetchpriority="high" />
+        <link rel="preload" as="image" type="image/avif" media="(min-width: 768px)" imagesrcset={heroSet(heroMedia.poster, 'avif')} imagesizes="100vw" fetchpriority="high" />
+      </Fragment>
+    )
+  }
   <section class="hero relative bg-midnight text-porcelain overflow-hidden lg:min-h-[560px] flex items-center" data-glow>
-    <div class="absolute inset-0" aria-hidden="true">
+    <div class="absolute inset-0" aria-hidden={heroMedia ? undefined : 'true'}>
       {
-        hasHeroVideo ? (
-          <video
-            class="hero-media hero-kenburns"
-            muted
-            autoplay
-            loop
-            playsinline
-            preload="none"
-            poster="/images/hero/hero-poster.webp"
-            data-webm="/images/hero/hero.webm"
-            data-mp4="/images/hero/hero.mp4"
-            tabindex="-1"
-          />
+        heroMedia ? (
+          <>
+            <picture>
+              <source media={HERO_MOBILE} type="image/avif" srcset={heroSet(heroMedia.poster_mobile, 'avif')} sizes="100vw" />
+              <source media={HERO_MOBILE} type="image/webp" srcset={heroSet(heroMedia.poster_mobile, 'webp')} sizes="100vw" />
+              <source type="image/avif" srcset={heroSet(heroMedia.poster, 'avif')} sizes="100vw" />
+              <img
+                class="hero-media hero-photo hero-kenburns"
+                src={`${heroMedia.poster.base}-${heroMedia.poster.widths[Math.min(1, heroMedia.poster.widths.length - 1)]}.webp`}
+                srcset={heroSet(heroMedia.poster, 'webp')}
+                sizes="100vw"
+                width={heroMedia.poster.width}
+                height={heroMedia.poster.height}
+                alt={locale === 'ar' ? heroMedia.alt_ar : heroMedia.alt_en}
+                loading="eager"
+                fetchpriority="high"
+                style={`--hero-pos:${heroMedia.poster.position};--hero-pos-m:${heroMedia.poster_mobile.position}`}
+              />
+            </picture>
+            {heroMedia.video && (
+              <video
+                class="hero-media hero-video"
+                muted
+                loop
+                playsinline
+                disablepictureinpicture
+                preload="none"
+                data-webm={heroMedia.video.webm}
+                data-mp4={heroMedia.video.mp4}
+                tabindex="-1"
+                aria-hidden="true"
+              />
+            )}
+          </>
         ) : (
           <div class="hero-media hero-poster hero-kenburns" role="img" aria-label={heroPosterAlt}>
             <svg viewBox="0 0 1841.6 1985.194" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
@@ -191,9 +229,10 @@ const quickFacts = fill(t.home.quick_facts, {
   import { bindOnce, onPageLoad } from '@lib/client';
 
   // Hero video: desktop only, never with prefers-reduced-motion or Save-Data, attached after `load` so it cannot
-  // affect LCP. Otherwise the poster stays with the Ken Burns move.
+  // affect LCP (the poster image is the LCP). It fades in over the poster once it plays; otherwise the poster stays
+  // with the Ken Burns move.
   onPageLoad(() => {
-  const v = document.querySelector<HTMLVideoElement>('video.hero-media');
+  const v = document.querySelector<HTMLVideoElement>('video.hero-video');
   if (v && bindOnce(v)) {
     const conn = (navigator as Navigator & { connection?: { saveData?: boolean } }).connection;
     const allowed =
@@ -212,7 +251,7 @@ const quickFacts = fill(t.home.quick_facts, {
         }
         v.load();
         v.play()
-          .then(() => v.classList.remove('hero-kenburns'))
+          .then(() => v.classList.add('is-playing'))
           .catch(() => {});
       };
       if (document.readyState === 'complete') attach();

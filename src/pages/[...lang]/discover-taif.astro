@@ -57,6 +57,8 @@ const colCount = (n: number) => (ar ? (n === 2 ? 'وجهتان' : `${n} وجها
 ---
 
 <Base locale={locale} path="/discover-taif/" title={s.title} description={s.description} ogImage={s.ogImage}>
+  {/* the hero photo is the LCP image: preloaded with the same srcset (30 Oct 2026) */}
+  <link slot="head" rel="preload" as="image" type="image/webp" imagesrcset={img(hero.image).srcset} imagesizes="100vw" fetchpriority="high" />
   <div class="legacy-discover" id="top">
     <section class="hero">
       <div class="hero-media">

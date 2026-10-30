@@ -24,6 +24,7 @@ import {
   pageSeo,
   paragraphs,
   photoProps,
+  photoPreload,
   photosOf,
   policies,
   roomsFor,
@@ -63,9 +64,12 @@ const driveTimes = Object.entries(((branch as unknown as { drive_times_min?: Rec
   place: dtLabels[key] ?? TODO,
   value: typeof v === 'string' && v.startsWith('<') ? fill(dtLabels.under_minutes, { n: v.slice(1) }) : fill(dtLabels.minutes, { n: v }),
 }));
+// the cover is the LCP image: eager, fetchpriority high and preloaded with the same sizes (30 Oct 2026)
+const COVER_SIZES = '(min-width: 1152px) 1120px, 100vw';
 ---
 
 <Base locale={locale} path={path} title={s.title} description={s.description} ogImage={ogImageOf(branch)} jsonld={[lodging(locale, branch)]} whatsapp={branch.slug} booking={{ branch: branch.slug }}>
+  {cover && <link slot="head" {...photoPreload(cover, COVER_SIZES)} />}
   <section class="mx-auto max-w-6xl px-4 pt-10">
     <nav aria-label="breadcrumb" class="text-sm text-ink-muted">
       <a href={localePath(locale, '/')} class="hover:text-midnight">{t.nav.home}</a>
@@ -78,7 +82,7 @@ const driveTimes = Object.entries(((branch as unknown as { drive_times_min?: Rec
     <div class="reveal reveal-lg mt-8">
       {
         cover ? (
-          <Photo {...photoProps(locale, cover)} sizes="(min-width: 1152px) 1120px, 100vw" loading="eager" fetchpriority="high" class="rounded-card" imgClass="w-full h-auto" />
+          <Photo {...photoProps(locale, cover)} sizes={COVER_SIZES} loading="eager" fetchpriority="high" class="rounded-card" imgClass="w-full h-auto" />
         ) : (
           <Placeholder label={fill(t.photo_pending_alt, { subject: name })} />
         )

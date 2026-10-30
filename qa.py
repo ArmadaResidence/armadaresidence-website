@@ -483,6 +483,16 @@ def main() -> int:
             elif not en and not ARABIC.search(lbl):
                 rep.f("images", f"{path}: aria-label not in Arabic: {lbl!r}")
 
+        # the LCP image (approved photo specs, 30 Oct 2026): the img marked fetchpriority="high" is eager and preloaded
+        lcp_imgs = re.findall(r'<img\b[^>]*\bfetchpriority="high"[^>]*>', html)
+        if len(lcp_imgs) > 1:
+            rep.f("images", f"{path}: {len(lcp_imgs)} images with fetchpriority=high (one LCP image per page)")
+        for tag in lcp_imgs:
+            if 'loading="lazy"' in tag:
+                rep.f("images", f"{path}: the LCP image is lazy-loaded")
+        if lcp_imgs and not re.search(r'<link\b(?=[^>]*\brel="preload")(?=[^>]*\bas="image")[^>]*>', html):
+            rep.f("images", f"{path}: the LCP image (fetchpriority=high) has no <link rel=preload as=image>")
+
         # internal links + anchors
         for href in p.links:
             if href.startswith("#"):

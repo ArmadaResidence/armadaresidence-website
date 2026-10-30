@@ -19,6 +19,7 @@ import {
   ogImageOf,
   paragraphs,
   photoProps,
+  photoPreload,
   photosOf,
   roomFeatureLabels,
   rooms,
@@ -62,6 +63,8 @@ const details: { label: string; value: string }[] = [
   { label: t.room.included_guests, value: guestsWord(locale, room.included_guests) },
   { label: t.room.capacity, value: guestsWord(locale, room.capacity) },
 ];
+// the first photo is the LCP image: eager, fetchpriority high and preloaded (the gallery shows WebP) — 30 Oct 2026
+const PHOTO_SIZES = '(min-width: 1024px) 680px, 100vw';
 ---
 
 <Base
@@ -75,6 +78,7 @@ const details: { label: string; value: string }[] = [
   whatsapp={branch.slug}
   booking={soldOut ? { branch: room.branch } : { branch: room.branch, room: room.slug }}
 >
+  {photos.length > 0 && <link slot="head" {...photoPreload(photos[0], PHOTO_SIZES, { webpOnly: photos.length > 1 })} />}
   <article class="mx-auto max-w-6xl px-4 pt-10 pb-14">
     <nav aria-label="breadcrumb" class="text-sm text-ink-muted">
       <a href={localePath(locale, '/')} class="hover:text-midnight">{t.nav.home}</a>
@@ -98,12 +102,13 @@ const details: { label: string; value: string }[] = [
           {
             photos.length > 1 ? (
               <GallerySlider
-                images={photos.map((p) => ({ ...photoProps(locale, p), sizes: '(min-width: 1024px) 680px, 100vw' }))}
+                images={photos.map((p) => ({ ...photoProps(locale, p), sizes: PHOTO_SIZES }))}
+                lcp
                 ratio="3 / 2"
                 labels={galleryLabels}
               />
             ) : photos.length === 1 ? (
-              <Photo {...photoProps(locale, photos[0])} sizes="(min-width: 1024px) 680px, 100vw" loading="eager" fetchpriority="high" class="rounded-card" imgClass="w-full h-auto" />
+              <Photo {...photoProps(locale, photos[0])} sizes={PHOTO_SIZES} loading="eager" fetchpriority="high" class="rounded-card" imgClass="w-full h-auto" />
             ) : (
               <Placeholder label={fill(t.photo_pending_alt, { subject: `${name} — ${branchName}` })} />
             )
