@@ -253,21 +253,26 @@ ${opts.body}
 </html>`;
 }
 
+/** Dark mode (1 Nov 2026): the Gmail apps invert background colours (iOS turned the navy band light blue under the
+ * light logo) but never a background image, so the band and its bronze rule also carry their colour as a one-colour
+ * linear-gradient — the same colour, so the light rendering is unchanged; Apple Mail and Outlook keep the bgcolor. */
+const fixedBg = (hex: string) => `background:${hex}; background-color:${hex}; background-image:linear-gradient(${hex}, ${hex});`;
+
 function header(c: Content, altText?: string, print = false): string {
   const alt = altText ?? `${c.brand.ar} | ${c.brand.en}`;
   if (!print) {
-    return `<tr><td bgcolor="${NAVY}" align="center" style="background:${NAVY}; padding:28px 24px;">
+    return `<tr><td bgcolor="${NAVY}" align="center" style="${fixedBg(NAVY)} padding:28px 24px;">
 <img src="${esc(c.email_logo_url)}" width="180" height="41" alt="${esc(alt)}" style="display:block; margin:0 auto; width:180px; max-width:180px; height:auto; color:${PORCELAIN}; font-family:${FONT.en}; font-size:18px;">
 </td></tr>
-<tr><td bgcolor="${BRONZE}" height="2" style="background:${BRONZE}; height:2px; font-size:0; line-height:0;">&nbsp;</td></tr>`;
+<tr><td bgcolor="${BRONZE}" height="2" style="${fixedBg(BRONZE)} height:2px; font-size:0; line-height:0;">&nbsp;</td></tr>`;
   }
   // print: the bronze logo (the same approved artwork, not reversed) waits hidden and replaces the reversed one on paper
   const printLogo = String(c.email_logo_url).replace('-reversed', '');
-  return `<tr><td class="hdr" bgcolor="${NAVY}" align="center" style="background:${NAVY}; padding:28px 24px;">
+  return `<tr><td class="hdr" bgcolor="${NAVY}" align="center" style="${fixedBg(NAVY)} padding:28px 24px;">
 <img src="${esc(c.email_logo_url)}" width="180" height="41" alt="${esc(alt)}" class="screen-logo" style="display:block; margin:0 auto; width:180px; max-width:180px; height:auto; color:${PORCELAIN}; font-family:${FONT.en}; font-size:18px;">
 <!--[if !mso]><!--><img src="${esc(printLogo)}" width="120" height="27" alt="" class="print-logo" style="display:none; width:120px; height:auto; mso-hide:all;"><!--<![endif]-->
 </td></tr>
-<tr><td class="hdr-rule" bgcolor="${BRONZE}" height="2" style="background:${BRONZE}; height:2px; font-size:0; line-height:0;">&nbsp;</td></tr>`;
+<tr><td class="hdr-rule" bgcolor="${BRONZE}" height="2" style="${fixedBg(BRONZE)} height:2px; font-size:0; line-height:0;">&nbsp;</td></tr>`;
 }
 
 function card(inner: string): string {

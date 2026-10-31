@@ -8,7 +8,9 @@
 //   WebKit   — Playwright has no WebKit PDF: the print-media layout at the A4 printable width (190 mm) must fit the
 //              printable height (277 mm), the same measure Safari paginates by
 // Also: the guest emails carry no print stylesheet (unchanged), and each internal email's screen rendering at 600 px is
-// the same with or without it (the print CSS only acts in print media). Static, no network (the logos load from
+// the same with or without it (the print CSS only acts in print media). Dark mode (1 Nov 2026): every email's navy
+// header band and bronze rule also carry their colour as a one-colour background-image gradient (the Gmail apps invert
+// colours, never images), and the light rendering is pixel-identical with or without it. Static, no network (the logos load from
 // public/). If the notes cannot fit at 9 pt, the check reports the longest length that does.
 //   node scripts/email-print-check.mjs
 import { chromium, webkit } from 'playwright';
@@ -161,6 +163,14 @@ const g1 = bookingConfirmation(content, booking('—'));
 const g2 = bookingConfirmed(content, { ...booking('—'), quote: quote(7), confirmedBy: null });
 const g3 = jobApplicationConfirmation(content, { ref: 'AR-20261028-JOBS', name: 'تجربة النظام' });
 check(!g1.html.includes('@media print') && !g2.html.includes('print-logo') && !g3.html.includes('@media print'), 'guest emails carry no print stylesheet');
+
+// ── 3. dark mode: the header band and its rule keep their colour as a background image; light rendering unchanged ──
+const fixed = (hex) => `background:${hex}; background-color:${hex}; background-image:linear-gradient(${hex}, ${hex});`;
+for (const [kind, mail] of [...internal(200, 7), ['guest-request', g1], ['guest-confirmed', g2], ['guest-job', g3]]) {
+  check(mail.html.includes(`bgcolor="#142A3B" align="center" style="${fixed('#142A3B')} padding:28px 24px;"`) && mail.html.includes(`bgcolor="#A97C50" height="2" style="${fixed('#A97C50')} height:2px;`), `${kind}: header band without the dark-mode background image`);
+}
+const plain = g2.html.replace(/ background-color:(#[0-9A-F]{6}); background-image:linear-gradient\(\1, \1\);/g, '');
+check(plain !== g2.html && Buffer.compare(await shot(g2.html), await shot(plain)) === 0, 'guest-confirmed: the dark-mode background image changes the light rendering');
 
 await cr.close();
 await wk.close();
