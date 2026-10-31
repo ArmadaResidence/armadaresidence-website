@@ -662,8 +662,8 @@
         ],
         [
           {
-            "en": "Laundry · Daily housekeeping · 24-hour security",
-            "ar": "غسيل ملابس · تدبير غرف يومي · أمن على مدار الساعة"
+            "en": "Laundry · Rooms cleaned daily · 24-hour security",
+            "ar": "غسيل ملابس · تنظيف يومي للغرف · أمن على مدار الساعة"
           },
           {
             "en": "At both properties",
@@ -841,8 +841,8 @@
         ],
         [
           {
-            "en": "Laundry · Daily housekeeping · 24-hour security",
-            "ar": "غسيل ملابس · تدبير غرف يومي · أمن على مدار الساعة"
+            "en": "Laundry · Rooms cleaned daily · 24-hour security",
+            "ar": "غسيل ملابس · تنظيف يومي للغرف · أمن على مدار الساعة"
           },
           {
             "en": "At both properties",
@@ -1316,8 +1316,8 @@
       "ar": "مطبخ في أجنحة طريق المطار بغرفة أو غرفتين"
     },
     {
-      "en": "Laundry · Daily housekeeping · 24-hour security — both properties",
-      "ar": "غسيل ملابس · تدبير غرف يومي · أمن على مدار الساعة — في الفرعين"
+      "en": "Laundry · Rooms cleaned daily · 24-hour security — both properties",
+      "ar": "غسيل ملابس · تنظيف يومي للغرف · أمن على مدار الساعة — في الفرعين"
     }
   ],
   "group_services": [
@@ -1343,12 +1343,12 @@
     ],
     [
       {
-        "en": "Daily housekeeping",
-        "ar": "تدبير غرف يومي"
+        "en": "Rooms cleaned daily",
+        "ar": "تنظيف يومي للغرف"
       },
       {
-        "en": "Room service around the clock",
-        "ar": "خدمة غرف على مدار الساعة"
+        "en": "In-room dining around the clock",
+        "ar": "توصيل الطعام إلى الغرف على مدار الساعة"
       }
     ]
   ],

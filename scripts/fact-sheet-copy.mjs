@@ -79,7 +79,7 @@ export const COPY = {
     services: [
       { t: { en: 'Complimentary Wi-Fi', ar: 'إنترنت مجاني' }, s: { en: 'All units and public areas, both hotels', ar: 'كل الوحدات والمرافق في الفندقين' } },
       { t: { en: '24-hour reception & security', ar: 'استقبال وأمن على مدار الساعة' }, s: { en: 'Organised group check-in and check-out', ar: 'وصول ومغادرة جماعية منظّمة' } },
-      { t: { en: 'Daily housekeeping', ar: 'نظافة يومية' }, s: { en: '24-hour room service', ar: 'خدمة غرف على مدار الساعة' } },
+      { t: { en: 'Rooms cleaned daily', ar: 'تنظيف يومي للغرف' }, s: { en: '24-hour in-room dining', ar: 'توصيل الطعام إلى الغرف على مدار الساعة' } },
     ],
   },
 
@@ -136,8 +136,8 @@ export const COPY = {
       { en: 'Air conditioning · in-room safety deposit box', ar: 'تكييف · خزنة أمانات داخل الغرفة' },
       { en: 'Iron · electric kettle · refrigerator at Airport Road', ar: 'مكواة · غلاية مياه · ثلاجة في طريق المطار' },
       { en: 'Free Wi-Fi in every unit', ar: 'إنترنت مجاني في كل وحدة' },
-      { en: 'Daily housekeeping', ar: 'نظافة يومية' },
-      { en: '24-hour room service · laundry service', ar: 'خدمة غرف على مدار الساعة · خدمة مغسلة' },
+      { en: 'Rooms cleaned daily', ar: 'تنظيف يومي للغرف' },
+      { en: '24-hour in-room dining · laundry service', ar: 'توصيل الطعام إلى الغرف على مدار الساعة · خدمة مغسلة' },
       { en: 'Kitchen in the Airport Road one- and two-bedroom suites', ar: 'مطبخ في أجنحة طريق المطار بغرفة أو غرفتين' },
       { en: 'Accessible room at each property — availability on enquiry', ar: 'غرفة لذوي الهمم في كل فندق — يُؤكَّد التوافر عند الطلب' },
     ],
@@ -173,8 +173,8 @@ export const COPY = {
     barTitle: { en: 'Restaurant & café', ar: 'المطعم والكوفي' },
     bar1: { en: ' — daily breakfast buffet {breakfast_hours}', ar: ' — بوفيه إفطار يومي {breakfast_hours}' },
     bar2: {
-      en: 'Free parking (basement level) · laundry · daily housekeeping · 24-hour security · {address_shafa}',
-      ar: 'مواقف مجانية (الطابق السفلي) · مغسلة · نظافة يومية · أمن على مدار الساعة · {address_shafa}',
+      en: 'Free parking (basement level) · laundry · rooms cleaned daily · 24-hour security · {address_shafa}',
+      ar: 'مواقف مجانية (الطابق السفلي) · مغسلة · تنظيف يومي للغرف · أمن على مدار الساعة · {address_shafa}',
     },
   },
 

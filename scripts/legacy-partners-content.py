@@ -268,7 +268,7 @@ def main() -> None:
     out["group_services"] = [
         [{"en": "Complimentary Wi-Fi", "ar": "واي فاي مجاني"}, {"en": "All units and public areas, both hotels", "ar": "كل الوحدات والمناطق العامة في الفندقين"}],
         [{"en": "24-hour reception & security", "ar": "استقبال وأمن على مدار الساعة"}, {"en": "Organised group check-in and check-out", "ar": "تسجيل دخول ومغادرة جماعي منظَّم"}],
-        [{"en": "Daily housekeeping", "ar": "تدبير غرف يومي"}, {"en": "Room service around the clock", "ar": "خدمة غرف على مدار الساعة"}],
+        [{"en": "Rooms cleaned daily", "ar": "تنظيف يومي للغرف"}, {"en": "In-room dining around the clock", "ar": "توصيل الطعام إلى الغرف على مدار الساعة"}],
     ]
 
     # ── unit table from partners.json room_table + rooms.json beds ──────────────────────────────

@@ -27,12 +27,12 @@ import {
 const AMENITY_SCHEMA: Record<string, string> = {
   breakfast_buffet_daily: 'Breakfast buffet',
   coffee_shop: 'Café',
-  daily_housekeeping: 'Daily housekeeping',
+  daily_housekeeping: 'Rooms cleaned daily',
   events_hall: 'Meeting hall',
   free_parking: 'Free parking',
   laundry: 'Laundry service',
   restaurant: 'Restaurant',
-  room_service_24h: '24-hour room service',
+  room_service_24h: '24-hour in-room dining',
   security_24h: '24-hour security',
   wifi: 'Free Wi-Fi',
 };
