@@ -23,6 +23,7 @@ import { pickRange } from './datepicker-helpers.mjs';
 const BASE = (process.argv[2] || 'http://127.0.0.1:4330').replace(/\/$/, '');
 const PRE = new URL(BASE).pathname.replace(/\/$/, '');
 const ui = JSON.parse(readFileSync('content/ui.json', 'utf8'));
+const seo = JSON.parse(readFileSync('content/seo.json', 'utf8'));
 
 const riyadhToday = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Riyadh', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
 const addDays = (iso, n) => new Date(Date.parse(iso + 'T00:00:00Z') + n * 86400000).toISOString().slice(0, 10);
@@ -248,6 +249,7 @@ async function run(width, lang) {
   check(url.searchParams.get('s') === 'confirmed' && !url.search.includes('guest') && !url.search.includes('0500'), `${tag} confirm: success URL carries the status and no personal data`);
   await page.waitForSelector('[data-breakdown]:not(.hidden)', { timeout: 8000 });
   check((await page.locator('[data-heading]').textContent()) === S.success.confirmed_heading, `${tag} success: confirmed heading`);
+  check((await page.title()) === seo.pages['booking-success'][`title_confirmed_${L}`], `${tag} success: confirmed document title`, await page.title());
   check((await page.locator('[data-rows]').textContent()).includes(money(400)), `${tag} success: breakdown total`);
   const dl = await page.evaluate(() => (window.dataLayer || []).filter((e) => e.event === 'booking_confirmed'));
   check(dl.length === 1 && dl[0].value === 400 && dl[0].currency === 'SAR' && dl[0].room_type === 'king-room' && !JSON.stringify(dl[0]).includes('guest@'), `${tag} success: booking_confirmed with value, no personal data`, JSON.stringify(dl[0] ?? null));
@@ -277,6 +279,7 @@ async function run(width, lang) {
   await page.waitForSelector('[data-fallback]:not(.hidden)', { timeout: 8000 });
   check((await page.locator('[data-fallback]').textContent()) === S.success.fallback_line.replace('{reason}', S.success.sold_out_race), `${tag} fallback: sold-out line on the request page`);
   check((await page.locator('[data-heading]').textContent()) === S.success.heading, `${tag} fallback: request heading`);
+  check((await page.title()) === seo.pages['booking-success'][`title_${L}`], `${tag} fallback: request keeps today's document title`, await page.title());
   const dl2 = await page.evaluate(() => (window.dataLayer || []).filter((e) => e.event === 'booking_request'));
   check(dl2.length === 1 && dl2[0].reason === 'sold_out', `${tag} fallback: booking_request with the reason`);
   check(!new URL(page.url()).searchParams.has('wa'), `${tag} whatsapp: not accepted → no &wa on the success URL`);

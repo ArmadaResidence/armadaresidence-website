@@ -63,6 +63,8 @@
       "description_ar": "وصل طلب الحجز إلى فريق الاستقبال في أرمادا ريزيدنس، وسنؤكد التوافر خلال ساعات.",
       "title_en": "Request Received | Armada Residence",
       "description_en": "Your booking request has reached the Armada Residence reception team. We will confirm availability within hours.",
+      "title_confirmed_ar": "تم تأكيد حجزك | أرمادا ريزيدنس",
+      "title_confirmed_en": "Booking confirmed | Armada Residence",
       "noindex": true
     },
     "404": {

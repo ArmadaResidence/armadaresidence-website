@@ -2,7 +2,7 @@
 import Base from '@layouts/Base.astro';
 import Icon from '@components/Icon.astro';
 import { langPaths } from '@lib/paths';
-import { branchContact, branchShort, branches, fill, localePath, pageSeo, ui, waHref, type Locale } from '@lib/content';
+import { branchContact, branchShort, branches, fill, L, localePath, pageSeo, seo, ui, waHref, type Locale } from '@lib/content';
 
 export const getStaticPaths = langPaths;
 
@@ -19,6 +19,8 @@ const s = pageSeo(locale, 'booking-success');
 // Strings for the client script:
 const clientData = {
   locale,
+  // the confirmed variant's document title (seo.json → pages.booking-success.title_confirmed_*); requests keep s.title
+  confirmed_title: L(locale, seo.pages['booking-success'] as Record<string, unknown>, 'title_confirmed'),
   quote: t.quote,
   success: { confirmed_heading: t.success.confirmed_heading, confirmed_body: t.success.confirmed_body, confirmed_steps: t.success.confirmed_steps, fallback_line: t.success.fallback_line, sold_out_race: t.success.sold_out_race, whatsapp_sent_request: t.success.whatsapp_sent_request, whatsapp_sent_confirmed: t.success.whatsapp_sent_confirmed, ref_label: t.success.ref_label, booking_ref_label: t.email.booking_ref_label },
   labels: { nights: t.form.plural.nights, branch: t.form.branch, room: t.form.room_type, check_in: t.form.check_in, check_out: t.form.check_out },
@@ -123,6 +125,7 @@ const clientData = {
 
     let stash: Stash | null = null;
     if (confirmed && ref) {
+      document.title = data.confirmed_title;
       el('[data-heading]')!.textContent = data.success.confirmed_heading;
       el('[data-body]')!.textContent = data.success.confirmed_body;
       el('[data-ref-label]')!.textContent = `${data.success.booking_ref_label}: `;

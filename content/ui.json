@@ -199,7 +199,7 @@
     },
     "form": {
       "heading": "طلب حجز",
-      "intro": "املأ النموذج وسيتواصل معك فريق الاستقبال لتأكيد التوافر والسعر النهائي. الطلب عبر الموقع ليس حجزًا مؤكدًا حتى يصلك التأكيد.",
+      "intro": "إذا ظهرت علامة «تأكيد فوري» يتأكد حجزك مباشرة، وإلا يراجع الاستقبال طلبك ويؤكده لك.",
       "branch": "الفرع",
       "choose_branch": "اختر الفرع",
       "check_in": "تاريخ الوصول",
@@ -792,7 +792,7 @@
     },
     "form": {
       "heading": "Request a booking",
-      "intro": "Fill in the form and the reception team will contact you to confirm availability and the final price. A request on the website is not a confirmed booking until you receive the confirmation.",
+      "intro": "If you see «Instant confirmation», your booking is confirmed right away; otherwise reception reviews your request and confirms it with you.",
       "branch": "Property",
       "choose_branch": "Choose a property",
       "check_in": "Check-in date",
