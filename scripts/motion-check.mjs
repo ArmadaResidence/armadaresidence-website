@@ -2,13 +2,15 @@
 //   node scripts/motion-check.mjs [BASE_URL]
 // Checks, per page and width: every .reveal / .reveal-group gets .is-in after a scroll-through, no console errors,
 // no layout shift during the scroll (CLS via PerformanceObserver), and under prefers-reduced-motion the tokens are 0
-// and everything is visible without scrolling. Exits non-zero on any failure. Runs against the local build or the live
+// and everything is visible without scrolling. Above the fold (1 Nov 2026): every reveal block in the first viewport
+// enters with the transform-only `enter-rise` (visible from the first paint, opacity 1 even without .is-in), and the
+// hero / enter keyframes never animate opacity. Exits non-zero on any failure. Runs against the local build or the live
 // site; the booking endpoint and GTM are stubbed.
 import { chromium } from 'playwright';
 import sharp from 'sharp';
 
 const BASE = (process.argv[2] || process.env.BASE_URL || 'http://127.0.0.1:4330').replace(/\/$/, '');
-const PAGES = (process.env.PAGES ? process.env.PAGES.split(',') : ['/', '/airport-road/', '/airport-road/one-bedroom-suite/', '/offers/', '/contact/', '/policies/', '/booking/', '/en/', '/en/shafa-road/']);
+const PAGES = (process.env.PAGES ? process.env.PAGES.split(',') : ['/', '/airport-road/', '/airport-road/one-bedroom-suite/', '/offers/', '/contact/', '/policies/', '/booking/', '/booking/success/', '/careers/', '/blog/', '/en/', '/en/shafa-road/', '/en/shafa-road/king-room/']);
 const WIDTHS = [1440, 375];
 const failures = [];
 
@@ -32,6 +34,32 @@ for (const reduced of [false, true]) {
       await page.goto(`${BASE}${path}`, { waitUntil: 'load' });
       await page.evaluate(() => document.fonts.ready);
       await page.waitForTimeout(400); // let the font swap settle before shifts are counted
+      if (!reduced) {
+        const fold = await page.evaluate(() => {
+          const out = [];
+          // the hero / above-the-fold keyframes animate transform only
+          for (const sheet of document.styleSheets) {
+            let rules;
+            try { rules = sheet.cssRules; } catch { continue; }
+            for (const rule of rules) if (rule.type === CSSRule.KEYFRAMES_RULE && /^(hero-rise|enter-rise)$/.test(rule.name) && /opacity/.test(rule.cssText)) out.push(`@keyframes ${rule.name} animates opacity`);
+          }
+          const name = (e) => e.tagName.toLowerCase() + '.' + [...e.classList].slice(0, 3).join('.');
+          for (const el of document.querySelectorAll('.reveal, .reveal-group')) {
+            if (el.getBoundingClientRect().top >= innerHeight || el.closest('[hidden], dialog:not([open])') || !el.offsetParent) continue;
+            const target = el.classList.contains('reveal-group') ? el.firstElementChild : el;
+            if (!target) continue;
+            if (getComputedStyle(target).animationName !== 'enter-rise') { out.push(`${name(el)} is in the first viewport but waits for the scroll reveal`); continue; }
+            const had = el.classList.contains('is-in');
+            el.classList.remove('is-in');
+            const op = getComputedStyle(target).opacity;
+            if (had) el.classList.add('is-in');
+            if (op !== '1') out.push(`${name(el)} starts at opacity ${op}`);
+          }
+          for (const el of document.querySelectorAll('.hero-word, .hero-sub, .hero-ctas')) if (getComputedStyle(el).animationName !== 'hero-rise') out.push(`${name(el)} has no transform-only rise`);
+          return out;
+        });
+        fold.forEach((m) => failures.push(`${path} @${width} first viewport: ${m}`));
+      }
       const r = await page.evaluate(async () => {
         let cls = 0;
         const shifted = [];

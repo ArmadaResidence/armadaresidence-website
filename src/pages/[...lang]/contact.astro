@@ -44,7 +44,7 @@ const social: { name: string; url: string }[] = [
       <a href={localePath(locale, '/offers/')} class="font-semibold link-bronze ms-1">{t.nav.offers}</a>
     </p>
 
-    <div class="reveal-group mt-10 grid gap-6 md:grid-cols-2">
+    <div class="reveal-group enter mt-10 grid gap-6 md:grid-cols-2">
       {
         branches.map((b) => {
           const c = branchContact(b.slug);

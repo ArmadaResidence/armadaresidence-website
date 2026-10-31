@@ -118,8 +118,8 @@ const PHOTO_SIZES = '(min-width: 1024px) 680px, 100vw';
           {paragraphs(L(locale, room, 'description')).map((p) => <p>{p}</p>)}
         </div>
 
-        <h2 class="reveal mt-10 text-sm font-semibold uppercase tracking-wide text-bronze-text">{t.room.details_heading}</h2>
-        <dl class="reveal-group mt-3 grid gap-3 sm:grid-cols-2 text-sm">
+        <h2 class="reveal enter mt-10 text-sm font-semibold uppercase tracking-wide text-bronze-text">{t.room.details_heading}</h2>
+        <dl class="reveal-group enter mt-3 grid gap-3 sm:grid-cols-2 text-sm">
           {
             details.map((d) => (
               <div class="bg-white border border-line rounded-card px-4 py-3">
@@ -171,7 +171,7 @@ const PHOTO_SIZES = '(min-width: 1024px) 680px, 100vw';
       </div>
 
       {/* desktop: the booking card sticks under the header and follows the scroll to the end of the content row (item 8) */}
-      <div class="reveal reveal-lg lg:col-span-2 lg:sticky lg:top-24 self-start" style="--reveal-delay:120ms" data-book-card>
+      <div class="reveal reveal-lg enter-lg lg:col-span-2 lg:sticky lg:top-24 self-start" style="--reveal-delay:120ms" data-book-card>
         <PriceBlock locale={locale} room={room} mode="full" />
         <a href={branchPath(locale, branch.slug)} class="mt-4 inline-flex items-center gap-1 text-sm text-ink-muted hover:text-midnight">
           <Icon name="arrow" size={16} class="icon-arrow-back rotate-180 rtl:rotate-0" />

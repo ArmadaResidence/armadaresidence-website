@@ -43,8 +43,8 @@ const sections = page.sections.map((sec) => ({
 
       <div class="mt-10 space-y-10">
         {
-          sections.map((sec) => (
-            <section id={sec.id} class="reveal scroll-mt-24">
+          sections.map((sec, i) => (
+            <section id={sec.id} class:list={['reveal scroll-mt-24', i < 4 && 'enter']}>
               <h2 class="text-xl font-semibold text-midnight">{sec.heading}</h2>
               <div class="mt-3 prose-armada leading-relaxed text-ink">
                 {sec.paragraphs.map((p) => (

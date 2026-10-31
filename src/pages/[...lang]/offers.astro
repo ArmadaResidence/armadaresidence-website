@@ -33,7 +33,7 @@ const hasOffers = offers.current_offers.length > 0;
 
     {
       hasOffers && (
-        <div class="reveal reveal-lg mt-8 bg-white border border-line rounded-card p-6">
+        <div class="reveal reveal-lg enter mt-8 bg-white border border-line rounded-card p-6">
           <h2 class="text-sm font-semibold uppercase tracking-wide text-bronze-text">{t.offers.no_offers_heading}</h2>
           <ul class="mt-4 space-y-4">
             {(offers.current_offers as Record<string, string>[]).map((o) => (
@@ -47,7 +47,7 @@ const hasOffers = offers.current_offers.length > 0;
       )
     }
 
-    <div class:list={['reveal-group grid gap-8 lg:grid-cols-2', hasOffers ? 'mt-10' : 'mt-8']}>
+    <div class:list={['reveal-group enter grid gap-8 lg:grid-cols-2', hasOffers ? 'mt-10' : 'mt-8']}>
       <section class="bg-midnight text-porcelain rounded-card p-8">
         <h2 class="text-2xl font-bold">{L(g, 'heading')}</h2>
         <p class="mt-3 text-porcelain/85 leading-relaxed">{L(g, 'body')}</p>

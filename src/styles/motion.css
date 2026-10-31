@@ -76,6 +76,67 @@
   }
 }
 
+/* ---------- Above the fold (1 Nov 2026) ----------
+   Blocks in the first viewport (page heading, intro, form, the LCP element) are visible from the first paint: their
+   entrance is a short translate with the reveal tokens — never from opacity 0 — played once on load, and the scroll
+   reveal's hidden state does not apply to them. `.enter` at every width, `.enter-m` below 768 px (in the first
+   viewport only on a phone), `.enter-lg` from 1024 px (a side column that sits below the fold when stacked).
+   Groups rise together with the sibling stagger; reduced motion → no motion at all. */
+.js .reveal.enter:not(.is-in),
+.js .reveal-group.enter:not(.is-in) > * {
+  opacity: 1;
+  transform: none;
+}
+.reveal.enter,
+.reveal-group.enter > * {
+  animation: enter-rise var(--motion-base) var(--ease-out) backwards;
+}
+@media (max-width: 767px) {
+  .js .reveal.enter-m:not(.is-in),
+  .js .reveal-group.enter-m:not(.is-in) > * {
+    opacity: 1;
+    transform: none;
+  }
+  .reveal.enter-m,
+  .reveal-group.enter-m > * {
+    animation: enter-rise var(--motion-base) var(--ease-out) backwards;
+  }
+}
+@media (min-width: 1024px) {
+  .js .reveal.enter-lg:not(.is-in),
+  .js .reveal-group.enter-lg:not(.is-in) > * {
+    opacity: 1;
+    transform: none;
+  }
+  .reveal.enter-lg,
+  .reveal-group.enter-lg > * {
+    animation: enter-rise var(--motion-base) var(--ease-out) backwards;
+  }
+}
+.reveal:is(.enter, .enter-m, .enter-lg) {
+  animation-delay: var(--reveal-delay, 0ms);
+}
+/* the stagger index comes from the markup order, not from the script's --i (set later, it would re-time a running animation) */
+.reveal-group:is(.enter, .enter-m, .enter-lg) > * {
+  animation-delay: calc(var(--motion-stagger) * var(--enter-i, 0) + var(--reveal-delay, 0ms));
+}
+.reveal-group:is(.enter, .enter-m, .enter-lg) > :nth-child(2) { --enter-i: 1; }
+.reveal-group:is(.enter, .enter-m, .enter-lg) > :nth-child(3) { --enter-i: 2; }
+.reveal-group:is(.enter, .enter-m, .enter-lg) > :nth-child(4) { --enter-i: 3; }
+.reveal-group:is(.enter, .enter-m, .enter-lg) > :nth-child(5) { --enter-i: 4; }
+.reveal-group:is(.enter, .enter-m, .enter-lg) > :nth-child(n + 6) { --enter-i: 5; }
+@keyframes enter-rise {
+  from {
+    transform: translateY(var(--reveal-shift, var(--motion-shift-sm)));
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .reveal:is(.enter, .enter-m, .enter-lg),
+  .reveal-group:is(.enter, .enter-m, .enter-lg) > * {
+    animation: none;
+  }
+}
+
 /* ---------- Partners pill in the utility row (23 Oct 2026) ----------
    Bronze hairline border, quieter than the «اطلب حجزًا» button. Hover / focus: the border brightens and the pill
    lifts 1 px over the fast token. First page view of the session: the hairline draws around the pill once from the
@@ -157,12 +218,11 @@
 /* ---------- Hero choreography (item 3) ----------
    Words rise one after another (fast stagger), the bronze rule is drawn from the start side over the slow token
    once the last word has started (--hero-rule-delay = words × 50 ms, set inline), the subtitle joins while the
-   rule is still drawing and the buttons follow. CSS only; reduced motion → final state. */
+   rule is still drawing and the buttons follow. CSS only; reduced motion → final state. Since 1 Nov 2026 the rise
+   is transform only: the words, subtitle and buttons are visible from the first paint (the LCP text). */
 .hero-word {
   display: inline-block;
-  opacity: 0;
-  transform: translateY(var(--motion-shift-sm));
-  animation: hero-rise var(--motion-base) var(--ease-out) forwards;
+  animation: hero-rise var(--motion-base) var(--ease-out) backwards;
   animation-delay: calc(var(--i, 0) * var(--motion-stagger-fast));
 }
 .hero-rule {
@@ -181,9 +241,7 @@
 }
 .hero-sub,
 .hero-ctas {
-  opacity: 0;
-  transform: translateY(var(--motion-shift-sm));
-  animation: hero-rise var(--motion-base) var(--ease-out) forwards;
+  animation: hero-rise var(--motion-base) var(--ease-out) backwards;
 }
 .hero-sub {
   animation-delay: calc(var(--hero-rule-delay, 150ms) + var(--motion-fast));
@@ -192,9 +250,8 @@
   animation-delay: calc(var(--hero-rule-delay, 150ms) + var(--motion-base));
 }
 @keyframes hero-rise {
-  to {
-    opacity: 1;
-    transform: none;
+  from {
+    transform: translateY(var(--motion-shift-sm));
   }
 }
 @keyframes hero-rule {

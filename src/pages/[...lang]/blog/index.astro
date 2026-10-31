@@ -65,7 +65,7 @@ const jsonld = [
       <p class="mt-4 text-sm text-ink-muted" role="status" aria-live="polite" data-blog-count>{countText(list.length)}</p>
     </div>
 
-    <div class="reveal-group mt-6 grid gap-6 sm:grid-cols-2 lg:grid-cols-3" data-blog-list>
+    <div class="reveal-group enter mt-6 grid gap-6 sm:grid-cols-2 lg:grid-cols-3" data-blog-list>
       {list.map((a) => <ArticleCard locale={locale} article={a} filterable />)}
     </div>
     <p class="hidden mt-6 text-ink-muted" data-blog-empty>{b.empty}</p>

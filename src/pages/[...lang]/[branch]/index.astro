@@ -79,7 +79,7 @@ const COVER_SIZES = '(min-width: 1152px) 1120px, 100vw';
     <p class="mt-6 text-xs font-semibold uppercase tracking-wide text-bronze-text">{L(locale, branch, 'type')}</p>
     <h1 class="mt-1 text-3xl md:text-4xl font-bold text-midnight">{name}</h1>
     <p class="mt-2 text-lg text-ink-muted">{L(locale, branch, 'tagline')}</p>
-    <div class="reveal reveal-lg mt-8">
+    <div class="reveal reveal-lg enter mt-8">
       {
         cover ? (
           <Photo {...photoProps(locale, cover)} sizes={COVER_SIZES} loading="eager" fetchpriority="high" class="rounded-card" imgClass="w-full h-auto" />
