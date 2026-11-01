@@ -9,7 +9,7 @@ import '../../styles/legacy-overrides.css';
 import '../../styles/legacy-dark.css';
 import Base from '@layouts/Base.astro';
 import { langPaths } from '@lib/paths';
-import { branchBySlug, branchPath, L, localePath, pageSeo, taif, ui, type Locale } from '@lib/content';
+import { branchBySlug, branchPath, L, localePath, pageSeo, taif, taifPlaces, ui, type Locale, type Place } from '@lib/content';
 
 export const getStaticPaths = langPaths;
 
@@ -20,7 +20,9 @@ const { locale } = Astro.props;
 const ar = locale === 'ar';
 const t = ui(locale);
 const s = pageSeo(locale, 'discover-taif');
-const places = taif.places;
+// a place whose cover was published from the dashboard «الصور» (target place, 2 Nov 2026) shows it in the same slot and
+// size; every other place keeps the guide's own photo
+const places = taifPlaces;
 const hero = taif.hero;
 const tx = (a: string, e: string) => (ar ? a : e);
 
@@ -36,6 +38,7 @@ const ICON = {
 };
 
 const img = (base: string) => ({ src: `${base}-800.webp`, srcset: `${base}-800.webp 800w, ${base}-1400.webp 1400w` });
+const placeImg = (im: Place['image']) => ({ src: `${im.base}-${im.widths.includes(800) ? 800 : im.widths[0]}.webp`, srcset: im.widths.map((w) => `${im.base}-${w}.webp ${w}w`).join(', ') });
 const cat = (key: string) => {
   const c = taif.categories.find((x) => x.key === key)!;
   return ar ? c.label_ar : c.label_en;
@@ -44,7 +47,7 @@ const placesJson = places.map((p) => ({
   id: p.id,
   nameAr: p.name_ar,
   nameEn: p.name_en,
-  thumb: `${p.image.base}-800.webp`,
+  thumb: placeImg(p.image).src,
   altAr: p.image.alt_ar,
   altEn: p.image.alt_en,
   maps: p.maps.map((m) => ({ labelAr: m.label_ar, labelEn: m.label_en, url: m.url })),
@@ -150,7 +153,7 @@ const colCount = (n: number) => (ar ? (n === 2 ? 'وجهتان' : `${n} وجها
         <div class="grid" id="places-grid">
           {
             places.map((p) => {
-              const im = img(p.image.base);
+              const im = placeImg(p.image);
               const branch = branchBySlug(p.nearest_branch);
               const multi = p.maps.length > 1;
               const search = [p.name_ar, p.name_en, cat(p.category), p.search_extra].join(' ');

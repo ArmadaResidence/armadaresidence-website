@@ -2,7 +2,7 @@
 // published, the repository's content/ and public/ are untouched (everything goes to a temp folder) unless --site.
 //   node scripts/media-pipeline-check.mjs [--site [white|busy]]
 // 1. scripts/media-sample.mjs → a branch (cover + 4 story scenes + 6 gallery, one P3 profile, one EXIF orientation 6),
-//    a room type (cover + portrait + 1800 px photo), the restaurant section, the hero poster + a 25 s 2560 × 1440 clip
+//    a room type (cover + portrait + 1800 px photo), a dining venue, the hall, a Discover Taif place, sample venues, the hero poster + a 25 s 2560 × 1440 clip
 //    with audio;
 // 2. scripts/media-build.mjs cold: every derived file — 3:2 at the approved widths never upscaled, AVIF + WebP, no
 //    metadata, sRGB; the 1200 × 630 OG crop of each cover and of the poster; the poster 16:9 + 4:5; the loop cut to 20 s,
@@ -60,8 +60,11 @@ const twin = d.rooms?.['airport-road/twin-room'];
 check(twin?.photos.length === 4 && twin.photos[0].cover && twin.og_image, 'data: the room type — cover first, 3 gallery photos, its OG image');
 const air = d.branches?.['airport-road'];
 check(air?.photos.length === 7 && Object.keys(air.story || {}).sort().join() === 'dining,entrance,lobby,rooms', 'data: the branch — cover + 6 gallery, the 4 story scenes');
-check(d.sections?.restaurant?.photos.length === 2, 'data: the restaurant section gallery');
-const all = [...Object.values(d.rooms), ...Object.values(d.branches), ...Object.values(d.sections)].flatMap((e) => [...e.photos, ...Object.values(e.story || {})]);
+check(d.dining?.['armada-residence-cafe']?.photos.length === 3 && d.dining['armada-residence-cafe'].photos[0].cover && d.dining['armada-residence-cafe'].og_image, 'data: the dining venue — cover first, gallery, OG');
+check(d.halls?.['events-hall']?.photos.length === 4, 'data: the hall — cover + 3 gallery');
+check(d.places?.['al-hada-cable-car']?.photos.length === 1, 'data: the Discover Taif place cover');
+check(Array.isArray(d.venues) && d.venues.map((v) => v.slug).join() === 'armada-residence-cafe,lario' && /^\/images\/media\/dining-armada-residence-cafe-logo-[0-9a-f]{10}\.svg$/.test(d.venues[0].logo) && !('logo_svg' in d.venues[0]), 'data: the published venues (the hidden one left out, the logo as its own file)');
+const all = [...Object.values(d.rooms), ...Object.values(d.branches), ...Object.values(d.dining), ...Object.values(d.halls), ...Object.values(d.places)].flatMap((e) => [...e.photos, ...Object.values(e.story || {})]);
 const file = (ref) => join(cold.img, ref.replace(/^\/images\/media\//, ''));
 let sizeOk = true, metaOk = true, fmtOk = true;
 for (const p of all) {
@@ -136,6 +139,28 @@ if (SITE) {
   check(/\/images\/media\/airport-road-twin-room-[0-9a-f]+-800\.(avif|webp)/.test(room) && room.includes('og:image') && room.includes('/images/media/airport-road-twin-room-'), 'site: the room page shows its photos and the OG image');
   const branch = readFileSync(join(ROOT, 'dist', 'airport-road', 'index.html'), 'utf8');
   check(/\/images\/media\/airport-road-lobby-[0-9a-f]+-/.test(branch), 'site: the branch story scenes use the published photos');
+  // dining, the hall and the Discover Taif covers (2 Nov 2026)
+  const page = (...p) => {
+    try {
+      return readFileSync(join(ROOT, 'dist', ...p, 'index.html'), 'utf8');
+    } catch {
+      return null;
+    }
+  };
+  const dining = page('dining');
+  check(!!dining && dining.includes('data-venue="armada-residence-cafe"') && dining.includes('data-venue="lario"') && !dining.includes('sample-hidden'), 'site: /dining/ lists the active venue and the coming-soon teaser, never the hidden one');
+  check(!!page('en', 'dining') && !page('dining', 'sample-hidden') && !page('en', 'dining', 'sample-hidden'), 'site: /en/dining/ exists; the hidden venue has no page');
+  const cafe = page('dining', 'armada-residence-cafe');
+  check(!!cafe && /"@type":\["Restaurant","CafeOrCoffeeShop"\]/.test(cafe) && /\/images\/media\/dining-armada-residence-cafe-[0-9a-f]+-/.test(cafe) && cafe.includes('/images/media/dining-armada-residence-cafe-logo-'), 'site: the venue page — photos, logo, Restaurant + CafeOrCoffeeShop JSON-LD');
+  const lario = page('dining', 'lario');
+  check(!!lario && lario.includes('data-notify-form') && lario.includes('name="website"') && !lario.includes('"@type":["Restaurant"'), 'site: the coming-soon teaser carries the notify form (honeypot) and no restaurant JSON-LD');
+  check(branch.includes('data-dining-venues') && !/class="[^"]*cafe-card/.test(branch), 'site: the Airport Road page lists its active venue instead of the branches.json café card');
+  const hallPage = page('airport-road', 'hall');
+  check(!!hallPage && /\/images\/media\/hall-events-hall-[0-9a-f]+-/.test(hallPage) && hallPage.includes('request=event&amp;property=airport-road#enquiry-form'), 'site: the hall page — its photos and the quote link');
+  const taifPage = page('discover-taif');
+  check(!!taifPage && /\/images\/media\/place-al-hada-cable-car-[0-9a-f]+-800\.webp/.test(taifPage) && taifPage.includes('/images/taif/02-al-shafa-jabal-daka-800.webp'), 'site: Discover Taif — the published cover replaces its place\'s photo, the others keep theirs');
+  const sitemap = readdirSync(join(ROOT, 'dist')).filter((f) => /^sitemap-\d+\.xml$/.test(f)).map((f) => readFileSync(join(ROOT, 'dist', f), 'utf8')).join('');
+  check(sitemap.includes('/dining/</loc>') && sitemap.includes('/dining/lario/</loc>') && !sitemap.includes('sample-hidden') && sitemap.includes('/airport-road/hall/</loc>'), 'site: the sitemap has /dining/, the venues and the hall, never the hidden venue');
   // keep the built sample site for the scrim check
   cpSync(join(ROOT, 'dist'), join(T, 'dist'), { recursive: true });
   console.log(`sample site copied to ${join(T, 'dist')}`);

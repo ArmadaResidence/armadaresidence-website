@@ -454,13 +454,21 @@ export function featureLabel(locale: Locale, code: string): string {
 /* ---------- Discover Taif (content/taif-guide.json) ---------- */
 
 export const taif = taifJson;
-export type Place = (typeof taifJson.places)[number];
+type PlaceJson = (typeof taifJson.places)[number];
+/** a guide place; `image` is the published cover from the dashboard «الصور» (target place) when there is one — the same
+ *  slot and size (3:2, the guide's width × height), its own widths and alt texts — else the guide's own photo */
+export type Place = Omit<PlaceJson, 'image'> & { image: PlaceJson['image'] & { published?: boolean } };
+export const taifPlaces: Place[] = taifJson.places.map((p) => {
+  const cover = media.places?.[p.key]?.photos?.[0];
+  if (!cover) return p;
+  return { ...p, image: { ...p.image, base: cover.base, widths: cover.widths, alt_ar: cover.alt_ar, alt_en: cover.alt_en, published: true } };
+});
 export type TaifCategory = (typeof taifJson.categories)[number];
 
 export function placeImage(locale: Locale, place: Place) {
   const img = place.image;
   return {
-    src: `${img.base}-800.webp`,
+    src: `${img.base}-${img.widths.includes(800) ? 800 : img.widths[0]}.webp`,
     srcset: img.widths.map((w) => `${img.base}-${w}.webp ${w}w`).join(', '),
     width: img.width,
     height: img.height,

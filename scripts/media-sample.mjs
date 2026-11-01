@@ -4,8 +4,11 @@
 //   node scripts/media-sample.mjs <dir> [--poster white|busy] [--no-video]
 // What it holds (a typical publish and the edge cases): Airport Road branch — cover + the 4 story scenes + 6 gallery
 // photos (one with a Display P3 profile, one with EXIF orientation 6); its twin room — cover + 3 gallery (one portrait,
-// one only 1800 px wide); the restaurant section — 2 photos; the home hero — a poster (pure white or a busy pattern:
-// the scrim's two test cases) and a 25 s 2560 × 1440 clip WITH an audio track (cut to 20 s, audio removed, ≤ 4 MB).
+// one only 1800 px wide); the Airport Road café venue — cover + 2 gallery photos, the hall — cover + 3 gallery, the
+// Discover Taif place al-hada-cable-car — its cover (2 Nov 2026, replacing the retired restaurant section); the home
+// hero — a poster (pure white or a busy pattern: the scrim's two test cases) and a 25 s 2560 × 1440 clip WITH an audio
+// track (cut to 20 s, audio removed, ≤ 4 MB). venues.json: sample dining venues — the café active (24 hours, the
+// internal menu), LARIO coming soon, and a hidden one that must never reach a page (sample copy only, never published).
 import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { spawnSync } from 'node:child_process';
@@ -54,8 +57,13 @@ await add('twin-cover.jpg', lbl('Twin room', 280), 4000, 2667, { ...R, slot: 'co
 await add('twin-g1.jpg', lbl('Twin bath', 320), 3600, 2400, { ...R, slot: 'gallery', sort: 0, alt_ar: 'دورة مياه الغرفة التوأم', alt_en: 'The twin room bathroom' });
 await add('twin-portrait.jpg', lbl('Portrait', 340), 2400, 3600, { ...R, slot: 'gallery', sort: 1, focal_y: 0.7, alt_ar: 'زاوية الجلوس في الغرفة التوأم', alt_en: 'The seating corner of the twin room' });
 await add('twin-small.jpg', lbl('Small 1800', 300), 1800, 1200, { ...R, slot: 'gallery', sort: 2, alt_ar: 'منظر من نافذة الغرفة التوأم', alt_en: 'The view from the twin room window' });
-const S = { target: 'section', key: 'restaurant', branch: null };
-for (let i = 0; i < 2; i++) await add(`rest-${i + 1}.jpg`, lbl(`Restaurant ${i + 1}`, 30 + i * 30), 3600, 2400, { ...S, slot: 'gallery', sort: i, alt_ar: `طاولات المطعم ${i + 1}`, alt_en: `Restaurant tables ${i + 1}` });
+const V = { target: 'dining', key: 'armada-residence-cafe', branch: 'airport-road' };
+await add('cafe-cover.jpg', lbl('Café — cover', 30), 3600, 2400, { ...V, slot: 'cover', alt_ar: 'ركن الجلوس في مقهى اللوبي', alt_en: 'The seating corner of the lobby café' });
+for (let i = 0; i < 2; i++) await add(`cafe-${i + 1}.jpg`, lbl(`Café ${i + 1}`, 40 + i * 30), 3600, 2400, { ...V, slot: 'gallery', sort: i, alt_ar: `طاولات المقهى ${i + 1}`, alt_en: `Café tables ${i + 1}` });
+const HL = { target: 'hall', key: 'events-hall', branch: 'airport-road' };
+await add('hall-cover.jpg', lbl('Hall — cover', 210), 3600, 2400, { ...HL, slot: 'cover', alt_ar: 'القاعة مجهزة بطاولات مستديرة', alt_en: 'The hall set with round tables' });
+for (let i = 0; i < 3; i++) await add(`hall-${i + 1}.jpg`, lbl(`Hall ${i + 1}`, 220 + i * 20), 3600, 2400, { ...HL, slot: 'gallery', sort: i, alt_ar: `زاوية من القاعة ${i + 1}`, alt_en: `A corner of the hall ${i + 1}` });
+await add('place-hada.jpg', lbl('Al Hada — cover', 120), 3000, 2000, { target: 'place', key: 'al-hada-cable-car', branch: null, slot: 'cover', alt_ar: 'عربات التلفريك فوق جبال الهدا', alt_en: 'Cable cars above the Al Hada mountains' });
 const H = { target: 'home', key: 'home', branch: null };
 await add('hero-poster.jpg', poster === 'busy' ? busy : white, 3840, 2160, { ...H, slot: 'hero-poster', alt_ar: 'واجهة الفندق مساءً', alt_en: 'The hotel front in the evening' });
 if (video && hasTool('ffmpeg')) {
@@ -67,4 +75,13 @@ if (video && hasTool('ffmpeg')) {
   items.push({ ...H, id: 'hero.mp4', slot: 'hero-video', sort: 0, focal_x: 0.5, focal_y: 0.5, kind: 'video', mime: 'video/mp4', file: 'hero.mp4', file_name: 'hero.mp4', sha256: sha256(buf), bytes: buf.length, width: 2560, height: 1440, duration: 25, alt_ar: '', alt_en: '' });
 }
 writeFileSync(join(dir, 'manifest.json'), JSON.stringify({ at: new Date().toISOString(), sample: true, items }, null, 1) + '\n');
+// sample venues (the shape of public.dining_site_manifest); the logo is a plain SVG, the copy is sample text only
+const logo = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 60"><rect width="200" height="60" rx="8" fill="#142A3B"/><circle cx="30" cy="30" r="14" fill="#A97C50"/></svg>';
+const venue = (o) => ({ id: o.slug, branch: 'airport-road', kind: 'restaurant_cafe', location: 'lobby', location_note_ar: '', location_note_en: '', hours: null, audience: null, phone: null, whatsapp: null, extension: null, menu: 'none', menu_url: null, description_ar: '', description_en: '', sort: 0, ...o });
+writeFileSync(join(dir, 'venues.json'), JSON.stringify({ at: new Date().toISOString(), sample: true, venues: [
+  venue({ slug: 'armada-residence-cafe', name_ar: 'مطعم ومقهى أرمادا ريزيدنس', name_en: 'Armada Residence Café & Restaurant', status: 'active', hours: { mode: '24h' }, menu: 'internal', audience: 'public', phone: '+966533798590', whatsapp: '+966533798590', extension: '9', logo_svg: logo,
+    description_ar: 'نص تجريبي لوصف المقهى في عينة الاختبار.', description_en: 'Sample text describing the café in the test sample.' }),
+  venue({ slug: 'lario', name_ar: 'لاريو — مطعم ومقهى عالمي', name_en: 'LARIO — International Dining & Café', location: 'rooftop', status: 'coming_soon', sort: 1 }),
+  venue({ slug: 'sample-hidden', name_ar: 'منشأة مخفية للاختبار', name_en: 'Hidden test venue', status: 'hidden', sort: 2 }),
+] }, null, 1) + '\n');
 console.log(`✓ media sample: ${items.length} item(s) in ${dir} (poster: ${poster}${video ? ', video' : ''})`);
