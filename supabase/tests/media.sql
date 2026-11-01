@@ -1,4 +1,4 @@
--- Media module SQL tests (1 Nov 2026 — dashboard «الصور», migrations 20261101000000 / 20261101000100): the section and
+-- Media module SQL tests (1 Nov 2026 — dashboard «الصور», migrations 20261101133420 / 20261101133500): the section and
 -- its three levels in the matrix, RLS and the branch scope, the storage policies of the private bucket, every write RPC
 -- (upload begin / finish / abort, alt + focal point, slot moves, reorder, archive / restore), the publish rules
 -- (required slots, alt in both languages, the hero poster, soft gallery warnings, skip-blocked, dry runs), the site

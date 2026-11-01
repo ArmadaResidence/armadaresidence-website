@@ -18,6 +18,8 @@ import { APP_PATH, firstOf, handleBackupCodes, passCode, routeLoginCode } from '
 const BASE = (process.argv[2] || 'https://admin.armadaresidence.com').replace(/\/$/, '');
 const PW = 'Qa-Armada-2026!x'; // the QA admin of supabase/migrations/20261025000500_phase2a_qa_users.sql (*.qa.invalid, preview branches only)
 const ADMIN = 'admin@qa.invalid';
+// media «الصور» (1 Nov 2026): the QA management user holds media = none (its preset) — the section must not show for it
+const NO_MEDIA = 'mgmt@qa.invalid';
 const fileEnv = Object.fromEntries(readFileSync('.env', 'utf8').split(/\r?\n/).filter((l) => l.includes('=') && !l.startsWith('#')).map((l) => [l.slice(0, l.indexOf('=')).trim(), l.slice(l.indexOf('=') + 1).trim()]));
 const BUNDLE_URL = (process.env.BUNDLE_SUPABASE_URL || fileEnv.SUPABASE_URL || '').replace(/\/$/, '');
 const BUNDLE_KEY = process.env.BUNDLE_SUPABASE_ANON_KEY || fileEnv.SUPABASE_ANON_KEY || '';
@@ -56,7 +58,7 @@ const check = (ok, label, detail = '') => {
 
 const browser = await chromium.launch({ channel: 'chrome' });
 const TEST_TOKEN = process.env.BOOKING_TEST_TOKEN || fileEnv.BOOKING_TEST_TOKEN || '';
-async function run(viewport, tag) {
+async function run(viewport, tag, email = ADMIN) {
   const ctx = await browser.newContext({ viewport, locale: 'ar' });
   // the bundle's Supabase project → the preview branch; keys swapped where the bundle sends its own
   await ctx.route((u) => u.origin === BUNDLE_ORIGIN, (route) => {
@@ -84,7 +86,7 @@ async function run(viewport, tag) {
 
   // sign in as the QA admin: password → /code (the email code, test mode) → (first time in a run: /backup-codes) → app
   await page.goto(`${BASE}/login`, { waitUntil: 'domcontentloaded' });
-  await page.fill('#email', ADMIN);
+  await page.fill('#email', email);
   await page.fill('#password', PW);
   await page.click('button[type=submit]');
   await passCode(page, codes);
@@ -94,6 +96,19 @@ async function run(viewport, tag) {
   await page.waitForSelector('#f-branch', { timeout: 30000 });
   const loginProblems = take();
   check(loginProblems.length === 0, `${tag}: sign-in + email code through the deployed bundle without errors`, loginProblems.join(' | '));
+  // «الصور» in the navigation: shown with the media permission, absent without it — and /media leads elsewhere
+  const mediaLinks = await page.locator('nav a[href$="/media"]').count();
+  if (email === NO_MEDIA) {
+    check(mediaLinks === 0, `${tag}: «الصور» is not in the navigation of a user without the media permission`, String(mediaLinks));
+    await page.goto(`${BASE}/media`, { waitUntil: 'domcontentloaded' });
+    const atMedia = (path) => /\/media\/?$/.test(path);
+    await page.waitForURL((u) => !atMedia(u.pathname), { timeout: 30000 }).catch(() => {});
+    check(!atMedia(new URL(page.url()).pathname) && (await page.locator('[data-target]').count()) === 0, `${tag}: /media sends a user without the permission to another screen`, page.url());
+    take();
+    await ctx.close();
+    return;
+  }
+  check(mediaLinks > 0, `${tag}: «الصور» is in the navigation of the admin (media = publish)`, String(mediaLinks));
 
   for (const p of PAGES) {
     await page.goto(`${BASE}/${p.path}`, { waitUntil: 'domcontentloaded' }); // full load: the Pages SPA fallback serves the route
@@ -117,6 +132,8 @@ async function run(viewport, tag) {
 try {
   await run({ width: 1280, height: 900 }, 'desktop');
   await run({ width: 375, height: 812 }, 'mobile');
+  await run({ width: 1280, height: 900 }, 'no-media desktop', NO_MEDIA);
+  await run({ width: 375, height: 812 }, 'no-media mobile', NO_MEDIA);
 } catch (e) {
   check(false, 'run completed', e.message);
 } finally {
