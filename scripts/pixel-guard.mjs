@@ -4,6 +4,8 @@
 //   node scripts/pixel-guard.mjs compare <beforeDir> <afterDir>          exit 1 on any differing pixel; diff PNGs in <afterDir>/_diff
 // Motion is settled (reduced motion emulated, reveals forced in), lazy images are fetched and decoded and the fonts
 // are loaded before each capture; GTM and the Supabase origin are blocked, so both builds see the same page.
+// Deterministic (2 Nov 2026): two captures of the same build differ on 0 of the 292 shots — the carousel dots are frozen
+// on their initial state and the legacy partners photo layers are masked (see shoot()).
 import { chromium } from 'playwright';
 import { PNG } from 'pngjs';
 import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
@@ -48,6 +50,18 @@ async function shoot(BASE, OUT, dist) {
       // page, so the same photo would render from a different file depending on the visit order
       const ctx = await browser.newContext({ viewport: form.viewport, deviceScaleFactor: 1, isMobile: form.isMobile, hasTouch: form.hasTouch, colorScheme: theme, reducedMotion: 'reduce', locale: 'ar-SA', timezoneId: 'Asia/Riyadh' });
       await ctx.addInitScript((t) => { try { localStorage.setItem('armada-theme', t); } catch {} }, theme);
+      // determinism (2 Nov 2026): the mobile room carousel marks its active dot from an IntersectionObserver whose
+      // callbacks land at a timing-dependent moment (the first or the second card) — capture it frozen on its initial
+      // state (setActive(0) at init) by giving the carousel tracks' observers a no-op callback
+      await ctx.addInitScript(() => {
+        const IO = window.IntersectionObserver;
+        window.IntersectionObserver = class extends IO {
+          constructor(cb, opts) {
+            const frozen = opts?.root instanceof Element && opts.root.matches('[data-carousel-track]');
+            super(frozen ? () => {} : cb, opts);
+          }
+        };
+      });
       await ctx.route(/googletagmanager|supabase\.co/, (r) => r.abort());
       const page = await ctx.newPage();
       try {
@@ -59,14 +73,26 @@ async function shoot(BASE, OUT, dist) {
           // content-visibility: auto (the footer, .cv-auto) is skipped beyond the viewport, and its placeholder height
           // depends on timing — render it so it is compared like the rest of the page
           const st = document.createElement('style');
-          st.textContent = '.cv-auto{content-visibility:visible!important}';
+          // the legacy partners photo layers (hero, page heroes, the closing band) sit under a scale transform with
+          // will-change: their resampling differs between two loads of the same page by a few levels, so they are
+          // masked during capture (2 Nov 2026) — the text, scrims and layout over them are still compared; the other
+          // partners photos (the feature panels, scaled 1.03) are captured unscaled, which removes the same seams
+          st.textContent = '.cv-auto{content-visibility:visible!important}'
+            + '.legacy-partners .hero .bg img,.legacy-partners .phero .bg img,.legacy-partners .final .bg img{visibility:hidden!important}'
+            + '.legacy-partners img{will-change:auto!important;transition:none!important;animation:none!important;transform:none!important}';
           document.head.append(st);
           document.querySelectorAll('.reveal, .reveal-group').forEach((e) => e.classList.add('is-in'));
           document.querySelectorAll('.legacy-discover .card').forEach((c) => c.classList.add('is-visible'));
           document.querySelectorAll('.legacy-partners .rv').forEach((c) => c.classList.add('in'));
           const imgs = Array.from(document.images);
-          imgs.forEach((i) => { if (i.loading === 'lazy') i.loading = 'eager'; });
-          await Promise.race([Promise.all(imgs.map((i) => i.decode().catch(() => {}))), new Promise((r) => setTimeout(r, 10000))]);
+          // every image with a source fully loaded and decoded before the capture (an eager image inside a
+          // content-visibility block could still be blank when decode() resolved early — 2 Nov 2026)
+          imgs.forEach((i) => { if (i.loading === 'lazy') i.loading = 'eager'; i.decoding = 'sync'; });
+          const ready = (i) => (!i.getAttribute('src') && !i.getAttribute('srcset')) || (i.complete && i.naturalWidth > 0)
+            ? i.decode().catch(() => {})
+            : new Promise((r) => { i.addEventListener('load', r, { once: true }); i.addEventListener('error', r, { once: true }); }).then(() => i.decode().catch(() => {}));
+          await Promise.race([Promise.all(imgs.map(ready)), new Promise((r) => setTimeout(r, 10000))]);
+          await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
           await document.fonts.ready;
         });
         await page.waitForTimeout(800);
