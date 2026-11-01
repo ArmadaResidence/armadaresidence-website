@@ -1,7 +1,8 @@
 // «الصور» — the dashboard media module (Ahmed, 31 Oct 2026; DECISIONS.md 2026-11-01). Ahmed uploads, orders, describes
 // and publishes every photo of the site and the home hero video here:
 //   - the target picker: the home page, then each branch (its cover, the 4 story scenes, its gallery) followed by its room
-//     types (cover, gallery), then the sections (restaurant, hall, discover-taif: an optional gallery for now); each
+//     types (cover, gallery), its hall and its dining venues (cover + gallery — 2 Nov 2026, replacing the generic
+//     sections), then the Discover Taif places (a cover each, replacing the guide's photo); each
 //     target shows whether it is complete, has unpublished changes, or misses a required slot (media_overview — the
 //     same rules «نشر» applies);
 //   - each slot shows its photo or a drop zone (several files at once into the gallery, with progress); every file is
@@ -83,7 +84,8 @@ export default function Media() {
   }, []);
   const loadJobs = useCallback(async () => {
     try {
-      setJobs(await api.mediaJobs());
+      // the dining venues' publishes share the jobs table; they are listed in «المطاعم والمقاهي»
+      setJobs((await api.mediaJobs(16)).filter((j) => !j.targets.some((t) => (t.target as string) === 'venue')).slice(0, 8));
     } catch { /* the panel keeps the last list */ }
   }, []);
   // keyed by the target itself, not by its overview row: a refreshed overview must not reload (and blank) the list
@@ -247,7 +249,7 @@ export default function Media() {
   const groups: { title: string; rows: MediaTargetRow[] }[] = [
     { title: 'الصفحة الرئيسية', rows: rows.filter((r) => r.target === 'home') },
     ...[...new Set(rows.filter((r) => r.branch).map((r) => r.branch as string))].map((b) => ({ title: BRANCH_NAMES[b] ?? b, rows: rows.filter((r) => r.branch === b) })),
-    { title: 'الأقسام', rows: rows.filter((r) => r.target === 'section') },
+    { title: 'اكتشف الطائف', rows: rows.filter((r) => r.target === 'place') },
   ].filter((g) => g.rows.length);
   const pick = (r: MediaTargetRow) => setParams({ t: targetId(r) }, { replace: true });
   const st = current ? stateOf(current) : null;
@@ -294,7 +296,7 @@ export default function Media() {
                   return (
                     <li key={targetId(r)}>
                       <button type="button" className={`media-target ${on ? 'is-on' : ''}`} aria-current={on ? 'page' : undefined} onClick={() => pick(r)} data-target={targetId(r)}>
-                        <span className="truncate">{r.target === 'branch' ? 'الفرع' : r.target === 'room' ? r.name_ar ?? r.key : targetLabel(r)}</span>
+                        <span className="truncate">{r.target === 'branch' ? 'الفرع' : r.target === 'room' || r.target === 'hall' ? r.name_ar ?? r.key : targetLabel(r)}</span>
                         <span className={`media-dot media-dot-${s.tone}`} title={s.text}><span className="sr-only">{s.text}</span></span>
                       </button>
                     </li>

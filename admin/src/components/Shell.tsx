@@ -13,6 +13,7 @@ const NAV: { to: string; label: string; short: string; section: string }[] = [
   { to: '/inventory', label: 'المخزون', short: 'المخزون', section: 'inventory' },
   { to: '/rooms', label: 'الغرف', short: 'الغرف', section: 'rooms' },
   { to: '/media', label: 'الصور', short: 'الصور', section: 'media' },
+  { to: '/dining', label: 'المطاعم', short: 'المطاعم', section: 'dining' },
   { to: '/settings', label: 'الإعدادات', short: 'الإعدادات', section: 'settings' },
   { to: '/users', label: 'المستخدمون والصلاحيات', short: 'المستخدمون', section: 'users' },
   { to: '/audit', label: 'السجل', short: 'السجل', section: 'audit' },
@@ -75,7 +76,7 @@ export default function Shell({ children }: { children: ReactNode }) {
         </div>
       </header>
       <main id="app-main" className="flex-1 mx-auto w-full max-w-7xl px-4 py-5 pb-24 md:pb-8">{children}</main>
-      {/* every label whole: with eight sections (an admin since «الصور», 1 Nov 2026) the bar scrolls sideways when the labels do
+      {/* every label whole: with nine sections (an admin since «المطاعم», 2 Nov 2026) the bar scrolls sideways when the labels do
           not fit, and the current section is kept in view */}
       <nav ref={tabbar} className="tabbar md:hidden fixed bottom-0 inset-x-0 bg-midnight text-porcelain border-t border-white/10 flex overflow-x-auto py-1 pb-[max(4px,env(safe-area-inset-bottom))] z-30" aria-label="الأقسام">
         {items.map((n) => (

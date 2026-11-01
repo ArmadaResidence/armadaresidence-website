@@ -12,6 +12,7 @@ import { deviceLabel, maskEmail } from '../admin/src/lib/device.ts';
 import { PASSWORD_LEAK_NOTE, PASSWORD_MATCH, PASSWORD_RULES, PASSWORD_WEAK, passwordChecks, passwordOk, passwordProblem, passwordRefusal } from '../admin/src/lib/password.ts';
 import { WA_ERRORS, WA_STATUS_LABELS, WA_TEMPLATE_LABELS, waError } from '../admin/src/lib/format.ts';
 import { bulkSummary, countDays, PICK_AT_LEAST, rateConfirmRow, rateConfirmTitle, rateWarnings, rateWarningTexts, SANITY_TAG } from '../admin/src/lib/rates.ts';
+import { e164, E164, svgProblem, liveText, MISSING_LABELS } from '../admin/src/lib/dining.ts';
 
 const fails = [];
 let checks = 0;
@@ -192,6 +193,30 @@ for (const m of [CONNECTION, GENERIC]) {
   checks++;
   if (/[A-Za-z_]/.test(m)) fails.push(`English in «${m}»`);
 }
+
+// ── dining «المطاعم والمقاهي» (2 Nov 2026): the phone normaliser, the logo check, the texts ──
+(() => {
+  const E = (label, ok, detail = '') => { checks++; if (!ok) fails.push(`${label}${detail ? ` — ${detail}` : ''}`); };
+  E('e164: a Saudi 05… → +9665…', e164('0533798590') === '+966533798590' && E164.test(e164('0533798590')));
+  E('e164: Arabic-Indic digits and spaces', e164('٠٥٣ ٣٧٩ ٨٥٩٠') === '+966533798590', e164('٠٥٣ ٣٧٩ ٨٥٩٠'));
+  E('e164: 00 → +', e164('00971501234567') === '+971501234567');
+  E('e164: a short number stays invalid', !E164.test(e164('12345')));
+  const ok = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10"><path d="M0 0h10v10z"/><use href="#a"/></svg>';
+  E('svgProblem: a clean SVG passes', svgProblem(ok) === null, String(svgProblem(ok)));
+  for (const [name, bad] of [['script', '<svg><script>x()</script></svg>'], ['handler', '<svg onload="x()"></svg>'], ['external image', '<svg><image href="https://x.example/a.png"/></svg>'],
+    ['css url', '<svg><style>a{fill:url(https://x.example/f)}</style></svg>'], ['not svg', 'PNG'], ['foreignObject', '<svg><foreignObject/></svg>']]) {
+    const m = svgProblem(bad);
+    E(`svgProblem: ${name} refused in Arabic`, typeof m === 'string' && /[؀-ۿ]/.test(m), String(m));
+  }
+  E('liveText: never published', liveText({ live: null }) === 'لم يُنشر');
+  E('liveText: published coming soon', liveText({ live: { status: 'coming_soon' } }) === 'على الموقع: قريبًا');
+  E('missing labels are Arabic', Object.values(MISSING_LABELS).every((t) => /[؀-ۿ]/.test(t) && !/[A-Za-z]/.test(t)));
+  for (const code of ['dining_slug_locked', 'dining_slug_taken', 'dining_slug', 'dining_name', 'dining_logo', 'dining_hours', 'dining_phone', 'dining_whatsapp', 'dining_extension', 'dining_menu_url', 'dining_description', 'dining_location', 'dining_order_changed', 'dining_not_open', 'dining_status']) {
+    const m = arabicError({ message: code, code: '22023' }, 'dining_save');
+    E(`arabicError(${code}) is a known Arabic sentence`, m !== GENERIC && /[؀-ۿ]/.test(m), m);
+  }
+  E('arabicError(dining_slug_locked) is not the generic slug rule', arabicError({ message: 'dining_slug_locked' }, 'x') !== arabicError({ message: 'dining_slug' }, 'x'));
+})();
 
 if (fails.length) {
   console.error(`admin-format-check: ${fails.length} of ${checks} failed`);

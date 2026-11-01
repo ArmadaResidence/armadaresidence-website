@@ -518,6 +518,22 @@
         "pizza-margherita": "بيتزا مارجريتا — Armada Residence Café & Restaurant"
       }
     },
+    "dining_email": {
+      "subject": "افتُتح {name}",
+      "preheader": "{name} في {branch} مفتوح الآن.",
+      "headline": "افتُتح {name}",
+      "body": "طلبت أن نخبرك عند افتتاح {name} في {branch}، وهو مفتوح الآن. ساعات العمل والمنيو والمكان في صفحته.",
+      "cta": "عرض الصفحة",
+      "footer": "هذه الرسالة الوحيدة التي نرسلها لك بشأن هذا الطلب، وقد حُذف بريدك من قائمة الإشعار."
+    },
+    "hall": {
+      "features_heading": "تجهيزات القاعة",
+      "capacity_label": "السعة",
+      "pricing_label": "الأسعار",
+      "cta": "اطلب عرض سعر",
+      "photos_heading": "صور القاعة",
+      "link_label": "صفحة القاعة"
+    },
     "drive_times": {
       "minutes": "{n} دقيقة",
       "under_minutes": "أقل من {n} دقائق",
@@ -1110,6 +1126,22 @@
         "caesar-salad": "Chicken Caesar salad — Armada Residence Café & Restaurant",
         "pizza-margherita": "Margherita pizza — Armada Residence Café & Restaurant"
       }
+    },
+    "dining_email": {
+      "subject": "{name} is now open",
+      "preheader": "{name} at {branch} is now open.",
+      "headline": "{name} is now open",
+      "body": "You asked us to tell you when {name} opened at {branch}. It is open now; its hours, menu and location are on its page.",
+      "cta": "View the page",
+      "footer": "This is the only email we send for this request, and your address has been deleted from the notification list."
+    },
+    "hall": {
+      "features_heading": "Hall facilities",
+      "capacity_label": "Capacity",
+      "pricing_label": "Prices",
+      "cta": "Request a quote",
+      "photos_heading": "Photos of the hall",
+      "link_label": "Hall page"
     },
     "drive_times": {
       "minutes": "{n} min",

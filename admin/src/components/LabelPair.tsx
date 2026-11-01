@@ -1,7 +1,9 @@
 // Bilingual label pair (decision C4, 28 Oct 2026) — ONE component for every Arabic / English label of the dashboard
 // (today the rate labels of «سعر لفترة» and the single-night rate; the offers module reuses it). Alt mode (`kind="alt"`,
 // the media module «الصور», 1 Nov 2026): a photo's alt text ar / en, up to 150 characters, the translation chip only —
-// no list of saved pairs (alt texts describe one photo each), the function asked with kind alt.
+// no list of saved pairs (alt texts describe one photo each), the function asked with kind alt. Text mode
+// (`kind="text"`, the dining venues' descriptions «المطاعم والمقاهي», 2 Nov 2026): two text areas of up to 600
+// characters, the translation chip only, the function asked with kind text.
 //   - focusing either field opens a combobox list of suggested pairs: the pairs already saved on this branch (most
 //     recent first, deduplicated — `history`) then the seed glossary (public.label_glossary); filtered as you type,
 //     keyboard (arrows, Enter, Esc) and touch; picking fills BOTH fields with the pair;
@@ -27,8 +29,11 @@ export interface LabelPairProps {
   hints?: Partial<Record<Side, string>>;
   placeholders?: Partial<Record<Side, string>>;
   disabled?: boolean;
-  /** alt texts (photos): 150 characters, no suggestion list, the translation chip asks for an alt text */
-  kind?: 'label' | 'alt';
+  /** alt texts (photos): 150 characters; text (venue descriptions): 600 characters, a text area — both without the
+   *  suggestion list, the translation chip asks the function for that kind */
+  kind?: 'label' | 'alt' | 'text';
+  /** text areas: visible rows */
+  rows?: number;
 }
 
 const norm = (s: string) => s.replace(/\s+/g, ' ').trim().toLowerCase().replace(/[ً-ٰٟ]/g, '').replace(/[أإآ]/g, 'ا').replace(/ة/g, 'ه').replace(/ى/g, 'ي');
@@ -39,8 +44,10 @@ const MAX_LISTED = 12;
 let glossaryCache: Promise<LabelPairRow[]> | null = null;
 const glossary = () => (glossaryCache ??= labelGlossary().catch(() => [] as LabelPairRow[]));
 
-export default function LabelPair({ ar, en, onChange, history = [], ids, labels, hints = {}, placeholders = {}, disabled, kind = 'label' }: LabelPairProps) {
-  const alt = kind === 'alt';
+export default function LabelPair({ ar, en, onChange, history = [], ids, labels, hints = {}, placeholders = {}, disabled, kind = 'label', rows = 4 }: LabelPairProps) {
+  // no list of saved pairs for alt texts and descriptions (each describes one thing)
+  const alt = kind !== 'label';
+  const max = kind === 'text' ? 600 : kind === 'alt' ? 150 : 80;
   const root = useRef<HTMLDivElement>(null);
   const uid = useId().replace(/:/g, '');
   const [seed, setSeed] = useState<LabelPairRow[]>([]);
@@ -130,7 +137,7 @@ export default function LabelPair({ ar, en, onChange, history = [], ids, labels,
   const listId = `${uid}-list`;
   const optId = (i: number) => `${uid}-opt-${i}`;
 
-  const onKey = (side: Side) => (e: React.KeyboardEvent<HTMLInputElement>) => {
+  const onKey = (side: Side) => (e: React.KeyboardEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     if (e.key === 'ArrowDown') {
       e.preventDefault();
       if (open !== side) {
@@ -164,33 +171,49 @@ export default function LabelPair({ ar, en, onChange, history = [], ids, labels,
       {(['ar', 'en'] as Side[]).map((side) => (
         <div key={side} className="relative">
           <Field label={labels[side]} id={ids[side]} hint={hints[side]}>
-            <input
-              id={ids[side]}
-              className={`field ${side === 'en' ? 'latin' : ''}`}
-              dir={side === 'en' ? 'ltr' : undefined}
-              lang={side === 'en' ? 'en' : 'ar'}
-              value={values[side]}
-              maxLength={alt ? 150 : 80}
-              autoComplete="off"
-              disabled={disabled}
-              placeholder={placeholders[side]}
-              role={alt ? undefined : 'combobox'}
-              aria-autocomplete={alt ? undefined : 'list'}
-              aria-expanded={alt ? undefined : open === side}
-              aria-controls={alt ? undefined : listId}
-              aria-activedescendant={!alt && open === side && active >= 0 && listed[active] ? optId(active) : undefined}
-              onChange={(e) => {
-                set(side, e.target.value);
-                setOpen(side);
-                setActive(-1);
-              }}
-              onFocus={() => {
-                setOpen(side);
-                setActive(-1);
-              }}
-              onKeyDown={onKey(side)}
-              data-label-input={side}
-            />
+            {kind === 'text' ? (
+              <textarea
+                id={ids[side]}
+                className={`field ${side === 'en' ? 'latin' : ''}`}
+                dir={side === 'en' ? 'ltr' : undefined}
+                lang={side === 'en' ? 'en' : 'ar'}
+                value={values[side]}
+                maxLength={max}
+                rows={rows}
+                disabled={disabled}
+                placeholder={placeholders[side]}
+                onChange={(e) => set(side, e.target.value)}
+                data-label-input={side}
+              />
+            ) : (
+              <input
+                id={ids[side]}
+                className={`field ${side === 'en' ? 'latin' : ''}`}
+                dir={side === 'en' ? 'ltr' : undefined}
+                lang={side === 'en' ? 'en' : 'ar'}
+                value={values[side]}
+                maxLength={max}
+                autoComplete="off"
+                disabled={disabled}
+                placeholder={placeholders[side]}
+                role={alt ? undefined : 'combobox'}
+                aria-autocomplete={alt ? undefined : 'list'}
+                aria-expanded={alt ? undefined : open === side}
+                aria-controls={alt ? undefined : listId}
+                aria-activedescendant={!alt && open === side && active >= 0 && listed[active] ? optId(active) : undefined}
+                onChange={(e) => {
+                  set(side, e.target.value);
+                  setOpen(side);
+                  setActive(-1);
+                }}
+                onFocus={() => {
+                  setOpen(side);
+                  setActive(-1);
+                }}
+                onKeyDown={onKey(side)}
+                data-label-input={side}
+              />
+            )}
           </Field>
           {open === side && listed.length > 0 && (
             <ul id={listId} role="listbox" aria-label="تسميات مقترحة" className="label-list" data-label-list>

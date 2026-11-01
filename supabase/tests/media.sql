@@ -91,7 +91,7 @@ insert into public.staff (user_id, full_name, role, branch, active) values
 
 -- ── M0 the section, its levels, the presets ──
 select pg_temp._check('M0 the media section offers view / edit / publish', (select x.max_level = 'publish' and x.editable and x.label_ar = 'الصور' from public.sections x where x.key = 'media'));
-select pg_temp._check('M0 the other sections keep their maximum (edit; audit view)', (select bool_and(case when x.key = 'audit' then x.max_level = 'view' else x.max_level = 'edit' end) from public.sections x where x.key <> 'media'));
+select pg_temp._check('M0 the other sections keep their maximum (edit; audit view; dining publish since 2 Nov 2026)', (select bool_and(case when x.key = 'audit' then x.max_level = 'view' else x.max_level = 'edit' end) from public.sections x where x.key not in ('media', 'dining')));
 select pg_temp._check('M0 presets: admin → publish, every other role → none',
   (select level from public.staff_permissions where user_id = pg_temp._id('admin') and section = 'media') = 'publish'
   and (select level from public.staff_permissions where user_id = pg_temp._id('mgmt') and section = 'media') = 'none'
@@ -217,10 +217,12 @@ select pg_temp._upload('air_lobby', 'branch', 'airport-road', 'story-lobby', 'ai
 select pg_temp._upload('shafa_cover', 'branch', 'shafa-road', 'cover', 'shafa-cover');
 select pg_temp._as('admin');
 select pg_temp._save('ov', public.media_overview());
-select pg_temp._check('M6 overview: home, each branch then its room types, then the 3 sections (12 room types incl. accessible)',
+select pg_temp._check('M6 overview: home, each branch then its room types, its hall and venues, then the 17 Discover Taif places — no retired section (12 room types incl. accessible; 2 Nov 2026)',
   (select count(*) from jsonb_array_elements(pg_temp._j('ov')) e where e ->> 'target' = 'room') = 12
   and pg_temp._j('ov') -> 0 ->> 'target' = 'home' and pg_temp._j('ov') -> 1 ->> 'key' = 'airport-road'
-  and (select array_agg(e ->> 'key' order by o) from jsonb_array_elements(pg_temp._j('ov')) with ordinality x(e, o) where e ->> 'target' = 'section') = array['restaurant', 'hall', 'discover-taif']);
+  and not exists (select 1 from jsonb_array_elements(pg_temp._j('ov')) e where e ->> 'target' = 'section')
+  and (select count(*) from jsonb_array_elements(pg_temp._j('ov')) e where e ->> 'target' = 'place') = 17
+  and exists (select 1 from jsonb_array_elements(pg_temp._j('ov')) e where e ->> 'target' = 'hall' and e ->> 'key' = 'events-hall' and e ->> 'branch' = 'airport-road'));
 select pg_temp._check('M6 overview: the branch lists the two missing story scenes and the low gallery warning',
   (select e -> 'check' -> 'missing' = '[{"code": "story-rooms"}, {"code": "story-dining"}]'::jsonb
       and e -> 'check' -> 'warnings' -> 0 ->> 'code' = 'gallery_low' and (e -> 'check' -> 'warnings' -> 0 ->> 'min')::int = 6
@@ -294,7 +296,7 @@ select pg_temp._check('M9 nothing is ever hard-deleted: no delete RPC, no delete
 select pg_temp._as('rec_air');
 select pg_temp._check('M10 a branch-scoped user sees only that branch''s items', (select count(*) from public.media_items m where m.branch = 'shafa-road') = 0
   and (select count(*) from public.media_items m where m.branch = 'airport-road') > 0 and (select count(*) from public.media_items m where m.target = 'home') = 0);
-select pg_temp._check('M10 … and the overview has no home, no sections, no other branch', not exists (select 1 from jsonb_array_elements(public.media_overview()) e where e ->> 'target' in ('home', 'section') or e ->> 'branch' = 'shafa-road'));
+select pg_temp._check('M10 … and the overview has no home, no places, no other branch', not exists (select 1 from jsonb_array_elements(public.media_overview()) e where e ->> 'target' in ('home', 'section', 'place') or e ->> 'branch' = 'shafa-road'));
 select pg_temp._fails('M10 … and cannot upload to the other branch', $$select public.media_begin_upload('branch', 'shafa-road', 'gallery', 'a.jpg', 'image/jpeg', 1000, pg_temp._hash('x'))$$, '42501');
 select pg_temp._fails('M10 … nor publish it', $$select public.media_publish('[{"target": "branch", "key": "shafa-road"}]'::jsonb)$$, '42501');
 select pg_temp._as('mgmt');

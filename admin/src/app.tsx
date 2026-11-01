@@ -17,6 +17,7 @@ import Bookings from './pages/Bookings';
 import Calendar from './pages/Calendar';
 import Rooms from './pages/Rooms';
 import Media from './pages/Media';
+import Dining from './pages/Dining';
 import Settings from './pages/Settings';
 import Users from './pages/Users';
 import Audit from './pages/Audit';
@@ -27,6 +28,7 @@ const SCREENS: { path: string; section: string }[] = [
   { path: 'inventory', section: 'inventory' },
   { path: 'rooms', section: 'rooms' },
   { path: 'media', section: 'media' },
+  { path: 'dining', section: 'dining' },
   { path: 'settings', section: 'settings' },
   { path: 'users', section: 'users' },
   { path: 'audit', section: 'audit' },
@@ -137,6 +139,7 @@ export default function App() {
                     <Route path="inventory" element={<Allowed section="inventory"><Calendar mode="inventory" /></Allowed>} />
                     <Route path="rooms" element={<Allowed section="rooms"><Rooms /></Allowed>} />
                     <Route path="media" element={<Allowed section="media"><Media /></Allowed>} />
+                    <Route path="dining" element={<Allowed section="dining"><Dining /></Allowed>} />
                     <Route path="settings" element={<Allowed section="settings"><Settings /></Allowed>} />
                     <Route path="users" element={<Allowed section="users"><Users /></Allowed>} />
                     <Route path="audit" element={<Allowed section="audit"><Audit /></Allowed>} />

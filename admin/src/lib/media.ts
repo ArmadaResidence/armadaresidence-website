@@ -16,7 +16,7 @@ export const VIDEO_MAX = 300 * 1024 * 1024;
 export const MIN_LONG_SIDE = 2400;
 /** the hero loop (approved 30 Oct 2026): 10–15 s, 20 s at most (longer is cut), 1920 × 1080 */
 export const HERO_VIDEO = { width: 1920, height: 1080, loop: [10, 15], maxSeconds: 20 };
-export const GALLERY_RANGE: Partial<Record<MediaTarget, [number, number]>> = { branch: [6, 12], room: [3, 8] };
+export const GALLERY_RANGE: Partial<Record<MediaTarget, [number, number]>> = { branch: [6, 12], room: [3, 8], dining: [3, 12], hall: [3, 12] };
 
 const BY_EXT: Record<string, string> = {
   jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', heic: 'image/heic', heif: 'image/heif', webp: 'image/webp',
@@ -37,6 +37,7 @@ export const PHOTO_NOUN: CountNoun = { zero: 'لا صور', one: 'صورة وا�
 export const photosWord = (n: number) => countWord(n, PHOTO_NOUN);
 
 // ── labels ─────────────────────────────────────────────────────────────────────────────────────────────────────
+/** the retired generic sections (2 Nov 2026: replaced by the dining venues, the hall and the Discover Taif places) */
 export const SECTION_LABELS: Record<string, string> = { restaurant: 'المطعم', hall: 'القاعة', 'discover-taif': 'اكتشف الطائف' };
 export const SLOT_LABELS: Record<MediaSlot, string> = {
   cover: 'الصورة الرئيسية',
@@ -70,8 +71,20 @@ export function slotsOf(target: MediaTarget): { slot: MediaSlot; required: boole
         { slot: 'cover', required: true, hint: 'أول صورة في صفحة الغرفة وبطاقتها، وصورة المشاركة.' },
         { slot: 'gallery', required: false },
       ];
+    case 'dining':
+      return [
+        { slot: 'cover', required: true, hint: 'أعلى صفحة المطعم أو المقهى وبطاقته في صفحة الفرع وصفحة المطاعم، وصورة المشاركة.' },
+        { slot: 'gallery', required: false },
+      ];
+    case 'hall':
+      return [
+        { slot: 'cover', required: true, hint: 'أعلى صفحة القاعة وصورة المشاركة.' },
+        { slot: 'gallery', required: false },
+      ];
+    case 'place':
+      return [{ slot: 'cover', required: false, hint: 'تحل محل صورة هذا المكان في «اكتشف الطائف» بالمقاس نفسه؛ بلا صورة منشورة تبقى صورته الحالية.' }];
     case 'section':
-      return [{ slot: 'gallery', required: false, hint: 'اختياري حاليًا: تُحفظ وتُنشر مع بيانات الموقع، ولا تظهر في صفحة بعد.' }];
+      return [{ slot: 'gallery', required: false }];
   }
 }
 export const STORY_SLOTS: MediaSlot[] = ['story-entrance', 'story-lobby', 'story-rooms', 'story-dining'];
@@ -80,6 +93,9 @@ export const targetId = (t: { target: MediaTarget; key: string }) => `${t.target
 export function targetLabel(t: Pick<MediaTargetRow, 'target' | 'key' | 'name_ar'>): string {
   if (t.target === 'home') return 'الصفحة الرئيسية';
   if (t.target === 'section') return SECTION_LABELS[t.key] ?? t.key;
+  if (t.target === 'place') return t.name_ar ?? t.key;
+  if (t.target === 'hall') return `${t.name_ar ?? 'القاعة'} — ${BRANCH_NAMES['airport-road']}`;
+  if (t.target === 'dining') return t.name_ar ?? t.key;
   if (t.target === 'branch') return `فرع ${BRANCH_NAMES[t.key] ?? t.key}`;
   const [b] = t.key.split('/');
   return `${t.name_ar ?? t.key.split('/')[1]} — ${BRANCH_NAMES[b] ?? b}`;

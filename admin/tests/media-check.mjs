@@ -4,7 +4,8 @@
 // only to assert what the UI did, to set the QA users' media level, and to play the deploy workflow's report.
 //   node admin/tests/media-check.mjs [BASE_URL=http://127.0.0.1:5174]
 //   env SUPABASE_URL / SUPABASE_ANON_KEY / SUPABASE_SERVICE_ROLE_KEY / BOOKING_TEST_TOKEN (the branch)
-// Covers: the nav and the target picker (home, each branch and its room types, the sections; 375 px select); uploads of
+// Covers: the nav and the target picker (home, each branch with its room types, hall and dining venues, then the Discover
+// Taif places — 2 Nov 2026; 375 px select); uploads of
 // generated photos and a short video through the file inputs (several at once into a gallery, progress to done); the
 // checks before upload (portrait and under-2400 warnings, a duplicate refused, a GIF refused, the video's size / audio
 // notes); the soft gallery warning; the required-slot and alt validation blocking «نشر» with the exact list; the focal
@@ -162,7 +163,8 @@ try {
   await page.click('nav a[href$="/media"] >> nth=0');
   await page.waitForSelector('[data-target]');
   const ids = await page.locator('[data-target]').evaluateAll((els) => els.map((e) => e.getAttribute('data-target')));
-  check(ids.length === 18 && ids[0] === 'home:home' && ids[1] === 'branch:airport-road' && ids.at(-1) === 'section:discover-taif', 'picker: home, each branch then its 12 room types, the 3 sections', ids.join(' '));
+  check(ids.length === 35 && ids[0] === 'home:home' && ids[1] === 'branch:airport-road' && ids.includes('hall:events-hall') && ids.includes('dining:armada-residence-cafe') && ids.includes('dining:lario')
+    && ids.at(-1) === 'place:taif-zoo' && !ids.some((x) => x.startsWith('section:')), 'picker: home, each branch with its 12 room types, the hall and the 2 venues, then the 17 places — no retired section', ids.join(' '));
   check(ids.filter((x) => x.startsWith('room:')).includes('room:airport-road/accessible-room'), 'picker: the accessible rooms are targets');
   await digits(page, 'media page');
 
@@ -281,8 +283,10 @@ try {
   const bt = await page.locator('[data-blocked]').textContent();
   check(['المدخل والموقع', 'اللوبي والاستقبال', 'الغرف والأجنحة', 'المطعم والخدمات'].every((s) => bt.includes(s)), 'branch: publishing is blocked until the 4 story scenes are there', bt.slice(0, 200));
   await page.click('[data-blocked] [data-action="dialog-cancel"]');
-  await target(page, 'section:restaurant');
-  await page.setInputFiles('[data-file-input="gallery"]', F.rest);
+  // a Discover Taif place: its cover only, nothing required (2 Nov 2026 — the retired restaurant section's step)
+  await target(page, 'place:al-hada-cable-car');
+  check(await page.locator('[data-file-input="gallery"]').count() === 0, 'place: a cover only, no gallery');
+  await page.setInputFiles('[data-file-input="cover"]', F.rest);
   await uploadsDone(page, ['qa-restaurant.jpg']);
   const rest1 = await item('qa-restaurant');
   await fillAlts(page, rest1.id, 'طاولات المطعم', 'The restaurant tables');
@@ -291,7 +295,7 @@ try {
   check(await page.locator('[data-action="media-publish-ready"]').textContent().then((t) => /نشر المكتمل فقط \(1\)/.test(t)), '«نشر الكل»: lists the blocked branch and offers the complete ones');
   await page.click('[data-action="media-publish-ready"]');
   await page.waitForFunction(() => document.querySelectorAll('[data-job]').length === 2, null, { timeout: 30000 });
-  check((await item('qa-restaurant')).live !== null && (await item('qa-branch-cover')).live === null, '«نشر المكتمل فقط»: the section is published, the blocked branch is not');
+  check((await item('qa-restaurant')).live !== null && (await item('qa-branch-cover')).live === null, '«نشر المكتمل فقط»: the place cover is published, the blocked branch is not');
 
   // ── the hero: video + poster ──
   await target(page, 'home:home');

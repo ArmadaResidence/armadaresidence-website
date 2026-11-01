@@ -1140,3 +1140,40 @@ ${para(L, M.alert_hint, { muted: true, size: 13 })}`);
   const text = [fill(M.alert_intro, { ref: d.ref }), '', textRows(rows), '', M.alert_hint, '', legalText(c, 'ar')].join('\n');
   return { subject, html, text };
 }
+
+// ══ 14. A dining venue opened (dining-notify, 2 Nov 2026 — one email per address on «أبلغني عند الافتتاح»; ar then en) ══
+export interface DiningOpeningMail {
+  slug: string;
+  branch: string;
+  nameAr: string;
+  nameEn: string;
+}
+export function diningOpening(c: Content, d: DiningOpeningMail): Mail {
+  const site = String(c.site_url).replace(/\/$/, '');
+  const block = (L: Locale) => {
+    const M = c.dining_email[L];
+    const vars = { name: L === 'ar' ? d.nameAr : d.nameEn || d.nameAr, branch: branchName(c, d.branch, L) };
+    const href = `${site}${L === 'ar' ? '' : '/en'}/dining/${d.slug}/`;
+    const html = section(
+      L,
+      `${headline(L, fill(M.headline, vars))}
+${para(L, fill(M.body, vars))}
+${buttons(L, [button(L, href, M.cta, 'bronze')])}
+<div style="height:14px; line-height:14px; font-size:0;">&nbsp;</div>
+${para(L, M.footer, { muted: true, size: 13 })}`,
+    );
+    const text = [fill(M.headline, vars), '', fill(M.body, vars), '', `${M.cta}: ${href}`, '', M.footer].join('\n');
+    return { html, text };
+  };
+  const ar = block('ar');
+  const en = block('en');
+  const subject = `${fill(c.dining_email.ar.subject, { name: d.nameAr })} | ${fill(c.dining_email.en.subject, { name: d.nameEn || d.nameAr })}`;
+  const html = doc({
+    lang: 'ar',
+    title: subject,
+    preheader: fill(c.dining_email.ar.preheader, { name: d.nameAr, branch: branchName(c, d.branch, 'ar') }),
+    body: header(c) + card(`${ar.html}${langDivider()}${en.html}`) + footer(c, ['ar', 'en']),
+  });
+  const text = `${ar.text}\n\n${RULE}\n\n${en.text}\n\n${legalText(c, 'ar')}\n${legalText(c, 'en')}`;
+  return { subject, html, text };
+}

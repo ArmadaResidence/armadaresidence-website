@@ -181,7 +181,7 @@ export async function me(): Promise<Me | null> {
 }
 export const level = (m: Me | null, section: string): Level => m?.permissions[section] ?? 'none';
 export const canView = (m: Me | null, section: string) => level(m, section) !== 'none';
-/** none < view < edit < publish (the database's perm_level order; only «الصور» offers publish) */
+/** none < view < edit < publish (the database's perm_level order; «الصور» and «المطاعم» offer publish) */
 export const levelRank = (l: Level) => ['none', 'view', 'edit', 'publish'].indexOf(l);
 export const canEdit = (m: Me | null, section: string) => levelRank(level(m, section)) >= levelRank('edit');
 export const canPublish = (m: Me | null, section: string) => level(m, section) === 'publish';
@@ -412,7 +412,7 @@ export async function labelGlossary(): Promise<LabelPairRow[]> {
 }
 /** the label-suggest function: a translation of a short label, or null (unavailable, refused, rate-limited, failed —
  *  the field shows nothing and no error); `signal` aborts (the dashboard gives it 4 s) */
-export async function labelSuggest(text: string, from: 'ar' | 'en', signal?: AbortSignal, kind: 'label' | 'alt' = 'label'): Promise<string | null> {
+export async function labelSuggest(text: string, from: 'ar' | 'en', signal?: AbortSignal, kind: 'label' | 'alt' | 'text' = 'label'): Promise<string | null> {
   const { data: s } = await supabase.auth.getSession();
   const jwt = s.session?.access_token;
   if (!jwt) return null;
@@ -420,7 +420,7 @@ export async function labelSuggest(text: string, from: 'ar' | 'en', signal?: Abo
     const res = await fetch(`${SUPABASE_URL}/functions/v1/label-suggest`, {
       method: 'POST',
       headers: { Authorization: `Bearer ${jwt}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify(kind === 'alt' ? { text, from, kind } : { text, from }),
+      body: JSON.stringify(kind === 'label' ? { text, from } : { text, from, kind }),
       signal,
     });
     if (!res.ok) return null;
@@ -464,7 +464,7 @@ export const updateUser = (user_id: string, patch: Partial<{ full_name: string; 
 export const resendLink = (user_id: string) => edge<{ ok: boolean; type: string }>('admin-users', { action: 'resend', user_id });
 
 /** Ask for a rebuild of the static site (extra-bed fee, room availability). Never throws: the UI shows the fallback line. */
-export async function siteRebuild(reason: 'settings' | 'rooms' | 'media', job?: string): Promise<{ ok: boolean; dispatched?: boolean; reason?: string }> {
+export async function siteRebuild(reason: 'settings' | 'rooms' | 'media' | 'dining', job?: string): Promise<{ ok: boolean; dispatched?: boolean; reason?: string }> {
   try {
     return await edge<{ ok: boolean; dispatched?: boolean; reason?: string }>('site-rebuild', job ? { reason, job } : { reason });
   } catch (e) {
@@ -598,7 +598,7 @@ export async function defaultsBatches(ids: string[]): Promise<Set<string>> {
 // media_overview() for every target's check (the same rules media_publish applies). Writes: the media_* RPCs (one audit
 // batch each; media batches are never undoable). The bytes go to the private bucket through signed upload URLs that
 // the storage policy issues only for the caller's own pending item (lib/media.ts uploads them with progress).
-export type MediaTarget = 'home' | 'branch' | 'room' | 'section';
+export type MediaTarget = 'home' | 'branch' | 'room' | 'section' | 'dining' | 'hall' | 'place';
 export type MediaSlot = 'cover' | 'gallery' | 'story-entrance' | 'story-lobby' | 'story-rooms' | 'story-dining' | 'hero-poster' | 'hero-video';
 export interface MediaItem {
   id: string;
@@ -756,3 +756,89 @@ export async function mediaPublish(targets: { target: MediaTarget; key: string }
   if (error) fail(error, 'media_publish');
   return data as MediaPublishResult;
 }
+
+// ── dining «المطاعم والمقاهي» (2 Nov 2026) ─────────────────────────────────────────────────────────────────────────
+// Reads: public.dining_library (dining_venues + pending + check + the notify count — never the addresses) under RLS
+// (dining view + branch scope). Writes: dining_save / dining_reorder / dining_publish (one audit batch each, never
+// undoable); the publish job goes to site-rebuild (reason dining); «إرسال إشعار الافتتاح» goes through the
+// dining-notify function, which checks the caller as the user.
+export type DiningStatus = 'active' | 'coming_soon' | 'hidden';
+export type DiningKind = 'restaurant' | 'cafe' | 'restaurant_cafe';
+export type DiningLocation = 'lobby' | 'rooftop' | 'other';
+export type DiningDay = 'sat' | 'sun' | 'mon' | 'tue' | 'wed' | 'thu' | 'fri';
+export type DiningHours = { mode: '24h' } | { mode: 'weekly'; days: Record<DiningDay, { open: string; close: string } | null> } | null;
+export interface DiningFields {
+  slug: string;
+  branch: string;
+  kind: DiningKind;
+  name_ar: string;
+  name_en: string;
+  location: DiningLocation;
+  location_note_ar: string;
+  location_note_en: string;
+  logo_svg: string | null;
+  hours: DiningHours;
+  audience: 'public' | 'guests' | null;
+  phone: string | null;
+  whatsapp: string | null;
+  extension: string | null;
+  menu: 'none' | 'internal' | 'custom';
+  menu_url: string | null;
+  description_ar: string;
+  description_en: string;
+  status: DiningStatus;
+}
+export interface DiningMissing {
+  code: 'name_ar' | 'name_en' | 'description_ar' | 'description_en' | 'hours' | 'location_note';
+}
+export interface DiningVenue extends DiningFields {
+  id: string;
+  sort: number;
+  live: (DiningFields & { sort: number }) | null;
+  published_at: string | null;
+  notified_at: string | null;
+  notified_count: number;
+  is_test: boolean;
+  updated_at: string;
+  pending: boolean;
+  check: { missing: DiningMissing[]; warnings: { code: 'no_cover' }[] };
+  notify_count: number;
+}
+export interface DiningPublishResult {
+  ok: boolean;
+  reason?: 'blocked' | 'nothing';
+  job_id?: string;
+  published?: { id: string; slug: string; name_ar: string; warnings: { code: 'no_cover' }[] }[];
+  ready?: { id: string; slug: string; name_ar: string; warnings: { code: 'no_cover' }[] }[];
+  blocked?: { id: string; slug: string; name_ar: string; missing: DiningMissing[] }[];
+}
+
+export async function diningVenues(): Promise<DiningVenue[]> {
+  const { data, error } = await supabase.from('dining_library').select('*').order('branch').order('sort').order('slug');
+  if (error) fail(error, 'dining_library');
+  return (data ?? []) as DiningVenue[];
+}
+/** the site-publish jobs of the dining venues (targets [{target: 'venue', key: slug}]) */
+export async function diningJobs(limit = 8): Promise<MediaJob[]> {
+  const { data, error } = await supabase
+    .from('media_publish_jobs')
+    .select('id,targets,dry_run,status,dispatch,requested_label,requested_at,started_at,finished_at,run_url,error')
+    .contains('targets', [{ target: 'venue' }])
+    .order('requested_at', { ascending: false })
+    .limit(limit);
+  if (error) fail(error, 'media_publish_jobs');
+  return (data ?? []) as MediaJob[];
+}
+export async function diningSave(id: string | null, f: DiningFields): Promise<Saved & { id: string }> {
+  const { data, error } = await supabase.rpc('dining_save', { p_id: id, p: f });
+  if (error) fail(error, 'dining_save');
+  return data as Saved & { id: string };
+}
+export const diningReorder = (branch: string, ids: string[]) => rpcSaved('dining_reorder', { p_branch: branch, p_ids: ids });
+export async function diningPublish(ids: string[] | null, skipBlocked = false): Promise<DiningPublishResult> {
+  const { data, error } = await supabase.rpc('dining_publish', { p_ids: ids, p_skip_blocked: skipBlocked });
+  if (error) fail(error, 'dining_publish');
+  return data as DiningPublishResult;
+}
+/** «إرسال إشعار الافتتاح»: one email per waiting address, then each sent address is deleted (dining-notify) */
+export const diningNotifySend = (id: string) => edge<{ ok: boolean; sent: number; failed: number; left: number }>('dining-notify', { action: 'send', id });

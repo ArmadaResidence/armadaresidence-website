@@ -3,7 +3,8 @@
 // Translates a short hotel rate / offer label between Arabic and English for the dashboard's bilingual label fields
 // (admin/src/components/LabelPair.tsx) — a suggestion only; the dashboard never auto-fills. POST { text, from, kind? }
 // with the staff user's JWT (verify_jwt = true). kind = 'alt' (the media module «الصور», 1 Nov 2026): a photo's alt
-// text, up to 150 characters, translated with its own instruction and cached under its own key:
+// text, up to 150 characters, translated with its own instruction and cached under its own key; kind = 'text' (the
+// dining venues' descriptions «المطاعم والمقاهي», 2 Nov 2026): up to 600 characters, its own instruction and key:
 //   1. input ≤ 60 characters (alt: 150), from ∈ ar | en;
 //   2. public.label_suggest_gate AS THE USER (the JWT forwarded): the same staff check as every dashboard RPC
 //      (internal.me() — a verified session, active staff), the cache of identical requests, the per-user rate limit
@@ -24,8 +25,9 @@ const SUPABASE_URL = Deno.env.get('SUPABASE_URL') ?? '';
 const ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY') ?? '';
 const SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
 const MODEL = 'claude-haiku-5-5';
-const MAX_INPUT = { label: 60, alt: 150 };
-const MAX_OUTPUT = { label: 80, alt: 180 };
+const MAX_INPUT = { label: 60, alt: 150, text: 600 };
+const MAX_OUTPUT = { label: 80, alt: 180, text: 720 };
+type Kind = keyof typeof MAX_INPUT;
 /** never in a guest-facing label (CLAUDE.md §4) */
 const FORBIDDEN = [/شقق\s*مخدومة/u, /serviced\s+apartments?/i];
 
@@ -42,6 +44,15 @@ const SYSTEM_ALT = [
   'You translate the alt text (a short description of what a photo shows, for people who cannot see it) of photos of Armada Residence, a hotel brand in Taif, Saudi Arabia, between Arabic and English.',
   'Arabic answers are Modern Standard Arabic. English answers are one plain sentence or phrase in sentence case.',
   'Translate only what the source describes: add no prices, dates, numbers, facts or praise that the source does not contain, and never start with "image of" or «صورة».',
+  'Never write «شقق مخدومة» or "serviced apartments"; Armada Residence offers hotel apartments («شقق فندقية»).',
+  'Return only the translated text — no quotes, no explanation.',
+].join(' ');
+
+// venue descriptions (dining «المطاعم والمقاهي», 2 Nov 2026): a few sentences shown to guests — the same rules, no added facts
+const SYSTEM_TEXT = [
+  'You translate the short descriptions of the restaurants and cafés of Armada Residence, a hotel brand in Taif, Saudi Arabia, between Arabic and English, for its website.',
+  'Arabic answers are Modern Standard Arabic. English answers are plain, calm sentences in sentence case.',
+  'Translate only what the source says: add no prices, opening hours, dates, numbers, dishes, facts or praise that the source does not contain.',
   'Never write «شقق مخدومة» or "serviced apartments"; Armada Residence offers hotel apartments («شقق فندقية»).',
   'Return only the translated text — no quotes, no explanation.',
 ].join(' ');
@@ -73,14 +84,14 @@ interface MessagesResponse {
 
 /** the Messages API call; `thinking` off at low effort is the cheapest setting Claude Haiku 5.5 accepts, and a 400 on
  *  that field retries once with the model's default (adaptive) thinking */
-async function translate(key: string, text: string, from: 'ar' | 'en', kind: 'label' | 'alt', signal: AbortSignal): Promise<{ label: string; input_tokens: number; output_tokens: number } | { reason: string }> {
+async function translate(key: string, text: string, from: 'ar' | 'en', kind: Kind, signal: AbortSignal): Promise<{ label: string; input_tokens: number; output_tokens: number } | { reason: string }> {
   const target = from === 'ar' ? 'English' : 'Arabic';
-  const what = kind === 'alt' ? 'photo description (alt text)' : 'label';
+  const what = kind === 'alt' ? 'photo description (alt text)' : kind === 'text' ? 'venue description' : 'label';
   const body = {
     model: MODEL,
-    max_tokens: kind === 'alt' ? 200 : 100,
+    max_tokens: kind === 'text' ? 900 : kind === 'alt' ? 200 : 100,
     output_config: { effort: 'low' },
-    system: kind === 'alt' ? SYSTEM_ALT : SYSTEM,
+    system: kind === 'text' ? SYSTEM_TEXT : kind === 'alt' ? SYSTEM_ALT : SYSTEM,
     messages: [{ role: 'user', content: `Translate this ${from === 'ar' ? 'Arabic' : 'English'} ${what} to ${target}:\n${text}` }],
   };
   const call = (extra: Record<string, unknown>) =>
@@ -106,8 +117,8 @@ async function translate(key: string, text: string, from: 'ar' | 'en', kind: 'la
   const m = (await res.json()) as MessagesResponse;
   if (m.stop_reason === 'refusal') return { reason: 'refused' };
   const raw = (m.content ?? []).filter((b) => b.type === 'text').map((b) => b.text ?? '').join(' ');
-  // a label loses a final full stop; an alt text keeps its sentence as written
-  let label = normalize(raw).split('\n')[0].replace(kind === 'alt' ? /^["'«»“”‘’]+|["'«»“”‘’]+$/g : /^["'«»“”‘’]+|["'«»“”‘’.]+$/g, '').trim();
+  // a label loses a final full stop; an alt text and a description keep their sentences as written
+  let label = (kind === 'text' ? normalize(raw) : normalize(raw).split('\n')[0]).replace(kind !== 'label' ? /^["'«»“”‘’]+|["'«»“”‘’]+$/g : /^["'«»“”‘’]+|["'«»“”‘’.]+$/g, '').trim();
   if (!label || label.length > MAX_OUTPUT[kind]|| FORBIDDEN.some((re) => re.test(label))) return { reason: 'empty' };
   if (from === 'en' && !/[؀-ۿ]/.test(label)) return { reason: 'empty' };
   if (from === 'ar' && /[؀-ۿ]/.test(label)) return { reason: 'empty' };
@@ -128,11 +139,11 @@ Deno.serve(async (req) => {
   }
   const from = body.from === 'en' ? 'en' : body.from === 'ar' ? 'ar' : null;
   const text = typeof body.text === 'string' ? normalize(body.text) : '';
-  const kind = body.kind === 'alt' ? 'alt' : 'label';
+  const kind: Kind = body.kind === 'alt' ? 'alt' : body.kind === 'text' ? 'text' : 'label';
   if (!from || !text || [...text].length > MAX_INPUT[kind]) return json(req, 400, { ok: false, reason: 'invalid' });
 
-  // labels keep their 28 Oct cache keys; alt texts are cached under their own prefix
-  const hash = await sha256hex(`${kind === 'alt' ? 'alt:' : ''}${from}:${from === 'en' ? text.toLowerCase() : text}`);
+  // labels keep their 28 Oct cache keys; alt texts and descriptions are cached under their own prefix
+  const hash = await sha256hex(`${kind === 'label' ? '' : `${kind}:`}${from}:${from === 'en' ? text.toLowerCase() : text}`);
   const test = sameSecret(req.headers.get('x-armada-test') ?? '', Deno.env.get('BOOKING_TEST_TOKEN') ?? '');
   if (!test) {
     // the staff check, the cache and the rate limit run as the user (RLS and internal.me() decide)

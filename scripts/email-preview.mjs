@@ -13,6 +13,7 @@ import {
   bookingConfirmed,
   bookingNotification,
   confirmedNotification,
+  diningOpening,
   jobApplicationAlert,
   jobApplicationConfirmation,
   jobApplicationNotification,
@@ -115,6 +116,8 @@ const mails = {
   'job-application-confirmation': jobApplicationConfirmation(content, { ref: 'AR-20261028-JOBS', name: 'تجربة النظام' }),
   'job-application-purge-alert': jobApplicationAlert(content, { ref: 'AR-20261028-JOBS', department: 'front-office', branch: 'airport-road', submittedAt: '2026-10-21 14:05 (Asia/Riyadh)', attempts: 12, lastError: 'resend 401 API key is invalid' }),
   'staff-login-code': loginCodeMail(content, { code: '482917', requestedAt: '2026-10-26T12:41:00Z', device: 'Chrome · Windows' }),
+  // dining (2 Nov 2026): the one opening email of «أبلغني عند الافتتاح»
+  'dining-opening': diningOpening(content, { slug: 'lario', branch: 'airport-road', nameAr: 'لاريو — مطعم ومقهى عالمي', nameEn: 'LARIO — International Dining & Café' }),
 };
 
 const browser = await chromium.launch({ channel: 'chrome' });

@@ -13,6 +13,8 @@
 // the debounce (a publish must never be swallowed by a rebuild claimed for another reason — the Pages concurrency group
 // cancels the older run, and the newer one publishes every waiting job), and its result is recorded on the job
 // (public.media_job_update, service role): dispatched | no_token | failed.
+// Dining (dashboard «المطاعم والمقاهي», 2 Nov 2026): reason 'dining' + the publish job of public.dining_publish — the
+// same path as a media job (the jobs share public.media_publish_jobs); the caller needs publish on dining.
 // Without the secret GITHUB_DISPATCH_TOKEN it answers { ok: false, reason: 'no_token' } and the dashboard shows
 // «سيُطبَّق على الموقع عند إعادة البناء التالية». Test mode (supabase/tests/README.md): a request carrying a valid
 // `x-armada-test` token (checked through public.qa_fixture('state'), which refuses any other) may dispatch without a
@@ -25,7 +27,7 @@ const REPO = Deno.env.get('SITE_REPO') ?? 'ArmadaResidence/armadaresidence-websi
 const WORKFLOW = Deno.env.get('SITE_WORKFLOW') ?? 'deploy.yml';
 const REF = Deno.env.get('SITE_REF') ?? 'main';
 const DEBOUNCE_MS = 2 * 60 * 1000;
-const REASONS = new Set(['settings', 'rooms', 'media']);
+const REASONS = new Set(['settings', 'rooms', 'media', 'dining']);
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 
 const url = () => Deno.env.get('SUPABASE_URL') ?? '';
@@ -68,8 +70,8 @@ function json(req: Request, status: number, body: unknown): Response {
   return new Response(JSON.stringify(body), { status, headers: { ...cors(req), 'Content-Type': 'application/json; charset=utf-8' } });
 }
 
-/** The caller through RLS: edit on settings or rooms (publish on media for a media job), past the second step. */
-async function callerMayRebuild(jwt: string, media: boolean): Promise<boolean> {
+/** The caller through RLS: edit on settings or rooms (publish on media / dining for their publish jobs), past the second step. */
+async function callerMayRebuild(jwt: string, job: 'media' | 'dining' | null): Promise<boolean> {
   const res = await fetch(`${url()}/rest/v1/rpc/my_staff`, {
     method: 'POST',
     headers: { apikey: anonKey(), Authorization: `Bearer ${jwt}`, 'Content-Type': 'application/json' },
@@ -79,7 +81,7 @@ async function callerMayRebuild(jwt: string, media: boolean): Promise<boolean> {
   const me = (await res.json()) as { active?: boolean; needs_mfa?: boolean; permissions?: Record<string, string> } | null;
   if (!me || !me.active || me.needs_mfa) return false;
   const p = me.permissions ?? {};
-  if (media) return p.media === 'publish';
+  if (job) return p[job] === 'publish';
   return p.settings === 'edit' || p.rooms === 'edit';
 }
 
@@ -105,12 +107,12 @@ Deno.serve(async (req) => {
   try {
     body = await req.json();
   } catch { /* empty body is fine */ }
-  const media = body.reason === 'media';
-  if (media && !UUID.test(String(body.job ?? ''))) return json(req, 400, { ok: false, error: 'job required' });
-  if (!test && (!jwt || !(await callerMayRebuild(jwt, media)))) return json(req, 403, { ok: false, error: 'not allowed' });
-  const reason = media ? 'media' : test ? 'test' : REASONS.has(String(body.reason)) ? String(body.reason) : 'dashboard';
-  const job = media ? await mediaJob(String(body.job)) : null;
-  if (media && !job) return json(req, 400, { ok: false, error: 'unknown job' });
+  const kind = body.reason === 'media' || body.reason === 'dining' ? body.reason : null;
+  if (kind && !UUID.test(String(body.job ?? ''))) return json(req, 400, { ok: false, error: 'job required' });
+  if (!test && (!jwt || !(await callerMayRebuild(jwt, kind)))) return json(req, 403, { ok: false, error: 'not allowed' });
+  const reason = kind ?? (test ? 'test' : REASONS.has(String(body.reason)) ? String(body.reason) : 'dashboard');
+  const job = kind ? await mediaJob(String(body.job)) : null;
+  if (kind && !job) return json(req, 400, { ok: false, error: 'unknown job' });
 
   const token = Deno.env.get('GITHUB_DISPATCH_TOKEN');
   if (!token) {
