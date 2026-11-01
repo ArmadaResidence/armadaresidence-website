@@ -1,6 +1,8 @@
 #!/bin/sh
-# Mandatory before every commit (CLAUDE.md §11, Ahmed 24 Oct 2026): build.py, qa.py and every browser check against
-# a local build of the staged snapshot — exactly what this commit records, not other uncommitted edits in the folder
-# (node scripts/check-all.mjs --staged). A failing check blocks the commit; fix the cause, never --no-verify.
+# Before every commit (CLAUDE.md §11; routed since 31 Oct 2026, Ahmed): on the staged snapshot — exactly what this
+# commit records, not other uncommitted edits in the folder — the fast checks (build, qa, typecheck, digits, format,
+# auth-emails, whatsapp; a docs-only commit skips the build) plus the checks mapped to the staged files
+# (scripts/check-plan.mjs; a file no rule maps runs the full suite). ARMADA_INVISIBLE=1 git commit … adds the pixel
+# guard. The full suite runs in .githooks/pre-push. A failing check blocks the commit; fix the cause, never --no-verify.
 # Enable once per clone: git config core.hooksPath .githooks
 exec node scripts/check-all.mjs --staged
