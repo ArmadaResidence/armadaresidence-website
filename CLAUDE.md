@@ -160,7 +160,7 @@ Both existing subdomain sites are merged into this project as sections; the subd
 - Images: AVIF + WebP with responsive `srcset` + `sizes`, max 2000 wide (approved photo specs, 30 Oct 2026 — §3c), `loading="lazy"` below the fold, the LCP image eager + `fetchpriority="high"` + preloaded, explicit width/height.
 - Fonts (performance pass, 30 Oct 2026): the Arabic weights are subsets (`src/assets/fonts/`, `scripts/fonts-subset.py`: the Arabic block U+0600–06FF + joiners / bidi marks, every OpenType feature and the hinting kept); `font-display: swap`; Arabic pages preload only the 400 weight (the LCP text's), English pages the one Manrope file. qa.py fails if the output holds an Arabic-script character outside the subset. The stylesheet is inlined in every page (`astro.config.mjs → build.inlineStylesheets: 'always'`): the whole sheet, not a critical subset, so nothing can render unstyled. A change meant to be invisible (performance, refactor) passes `node scripts/pixel-guard.mjs` (every page, AR + EN × 375 + 1440 × light + dark, before / after pixel-identical).
 - `/menu/` (the café app copied by `scripts/menu-publish.py`): title / description from `seo.json → pages.menu`, self-referencing canonical, hreflang, Open Graph and a sitemap entry (since 30 Oct 2026); the café logo is the brand SVG. The 404 page carries no canonical, hreflang or og:url (it answers every unknown URL).
-- Performance targets: LCP < 2.5 s on mobile, total transfer < 1 MB on home, Lighthouse ≥ 90 performance/SEO/accessibility.
+- Performance targets: LCP < 2.5 s on mobile, total transfer < 1 MB on home (first-party resources only — the ad pixels GTM loads are reported separately by `scripts/lh.mjs` and never fail a check; Ahmed, 31 Oct 2026), Lighthouse ≥ 90 performance/SEO/accessibility.
 - 301 redirects from old URLs (`/branches/<uuid>`, `/our-rooms/`, `/armada-residence-airport-rood/`) to the new slugs. Keep a `redirects.json`.
 
 Mobile first. Test every page at 375 px width before marking done.
@@ -258,7 +258,7 @@ Later phases keep the 10 Oct outline: channel manager writes into the inventory 
 - JSON-LD validates (schema.org types above).
 - Forbidden strings anywhere in output: `شقق مخدومة`, `serviced apartment`, `ARMADA CAFÉ`, `booking.fullName`, `Unsplash`, `+96653 662`.
 - Contact phone/email match `content/contact.json` exactly, everywhere.
-- Home transfer size < 1 MB; no external requests except GTM, the project's Supabase origin (the booking and job-application functions and the two price RPCs, at runtime only) and own domain.
+- Home transfer size < 1 MB (first party); no external requests except GTM, the project's Supabase origin (the booking and job-application functions and the two price RPCs, at runtime only) and own domain.
 - Runtime prices (phase 2a): every room page reserves the `data-from-price` slot with its `{amount}` template and an empty line; no static price anywhere; meta / OG / Twitter and JSON-LD carry no price.
 - Room availability (phase 2a.1): `build.py` resolves each room's `availability` from the dashboard (`site_room_types`, publishable key; rooms.json is the seed / fallback) into `dist/_availability.json`, and qa.py judges every room page (CTA, sold-out label, noindex, sitemap, JSON-LD) by that resolved value. The booking form also hides / adds room types at runtime from the same RPC.
 

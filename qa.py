@@ -745,7 +745,8 @@ def main() -> int:
         if not (DIST / name).is_file():
             rep.f("hosting", f"dist/{name} missing")
 
-    # ---- home transfer size
+    # ---- home transfer size: first-party resources only (DECISIONS.md 2026-11-01) — the GTM container and the ad
+    # pixels it loads are third party, reported separately by scripts/lh.mjs and never counted here
     home = DIST / "index.html"
     if home.is_file():
         total = home.stat().st_size
