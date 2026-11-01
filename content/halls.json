@@ -1,5 +1,5 @@
 {
-  "_note": "Branch, capacity (50) and features confirmed by Ahmed (8–9 Oct 2026); pricing on request via sales. Hall page is phase 2.",
+  "_note": "Branch, capacity (50) and features confirmed by Ahmed (8–9 Oct 2026); pricing on request via sales. The hall page /airport-road/hall/ is live from phase 2b (2 Nov 2026; intro text by Ahmed, 1 Nov 2026); its photos come from the dashboard «الصور» → «القاعة» (media target hall:events-hall).",
   "halls": [
     {
       "slug": "events-hall",
@@ -9,6 +9,8 @@
       "capacity": 50,
       "capacity_ar": "تتسع حتى 50 شخصًا",
       "capacity_en": "Up to 50 guests",
+      "intro_ar": "قاعة مجهزة للاجتماعات والدورات والمناسبات الصغيرة في فرع طريق المطار، تتسع حتى 50 شخصًا، مع خمسة أنماط للجلوس وضيافة من مطبخ الفندق. للأسعار والحجز، اطلب عرض سعر وسيتواصل معك فريق المبيعات.",
+      "intro_en": "An equipped hall for meetings, training and small events at our Airport Road property, for up to 50 guests, with five seating layouts and coffee breaks and catering from the hotel kitchen. For prices and bookings, request a quote and our sales team will contact you.",
       "features_ar": [
         "بروجكتر وشاشة عرض",
         "نظام صوتي",

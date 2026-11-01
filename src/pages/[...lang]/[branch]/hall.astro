@@ -1,0 +1,108 @@
+---
+/**
+ * /airport-road/hall/ — the hall page (2 Nov 2026; Ahmed's intro text of 1 Nov 2026): name, capacity and features from
+ * halls.json, the photos from the dashboard «الصور» → «القاعة» (cover first; none → the brand placeholder), no price
+ * (sales quote it). «اطلب عرض سعر» opens the partners enquiry with the event request and the property preselected; the
+ * sticky WhatsApp goes to the sales line (CLAUDE.md §5: the sales line appears on /offers and the hall). Built for every
+ * branch that has a hall in halls.json (today Airport Road). BreadcrumbList; title / description from seo.json →
+ * pages["<branch>-hall"].
+ */
+import Base from '@layouts/Base.astro';
+import GallerySlider from '@components/GallerySlider.astro';
+import Icon from '@components/Icon.astro';
+import Photo from '@components/Photo.astro';
+import Placeholder from '@components/Placeholder.astro';
+import { langPaths } from '@lib/paths';
+import { breadcrumbs } from '@lib/jsonld';
+import { enquiryHref } from '@lib/partners';
+import { branchBySlug, branchPath, fill, hallOg, hallPath, hallPhotos, halls, L, localePath, pageSeo, photoPreload, photoProps, ui, type Hall, type Locale } from '@lib/content';
+
+export function getStaticPaths() {
+  return langPaths().flatMap(({ params, props }) => halls.map((h) => ({ params: { ...params, branch: h.branch }, props: { ...props, hall: h } })));
+}
+
+interface Props {
+  locale: Locale;
+  hall: Hall;
+}
+const { locale, hall } = Astro.props;
+const t = ui(locale);
+const h = t.hall;
+const g = t.gallery;
+const galleryLabels = { previous: g.previous, next: g.next, goTo: g.go_to, open: g.open, close: g.close, of: g.of };
+const s = pageSeo(locale, `${hall.branch}-hall`);
+const branch = branchBySlug(hall.branch);
+const branchName = L(locale, branch, 'name');
+const name = L(locale, hall, 'name');
+const photos = hallPhotos(hall);
+const features = (locale === 'ar' ? hall.features_ar : hall.features_en) as string[];
+const quote = `${enquiryHref(locale, 'event', hall.branch)}#enquiry-form`;
+const PHOTO_SIZES = '(min-width: 1152px) 680px, (min-width: 1024px) 60vw, 100vw';
+const jsonld = [
+  breadcrumbs([
+    { name: t.nav.home, path: localePath(locale, '/') },
+    { name: branchName, path: branchPath(locale, hall.branch) },
+    { name, path: hallPath(locale, hall) },
+  ]),
+];
+---
+
+<Base locale={locale} path={`/${hall.branch}/hall/`} title={s.title} description={s.description} ogImage={hallOg(hall)} jsonld={jsonld} whatsapp="sales" booking={{ branch: hall.branch }}>
+  {photos.length > 0 && <link slot="head" {...photoPreload(photos[0], PHOTO_SIZES, { webpOnly: photos.length > 1 })} />}
+  <section class="mx-auto max-w-6xl px-4 pt-10 pb-14">
+    <nav aria-label="breadcrumb" class="text-sm text-ink-muted">
+      <a href={localePath(locale, '/')} class="hover:text-midnight">{t.nav.home}</a>
+      <span aria-hidden="true" class="mx-2">/</span>
+      <a href={branchPath(locale, hall.branch)} class="hover:text-midnight">{branchName}</a>
+      <span aria-hidden="true" class="mx-2">/</span>
+      <span class="text-midnight">{name}</span>
+    </nav>
+    <p class="mt-6 text-xs font-semibold uppercase tracking-wide text-bronze-text">{branchName} · {L(locale, branch, 'type')}</p>
+    <h1 class="mt-1 text-3xl md:text-4xl font-bold text-midnight">{name}</h1>
+    <p class="mt-2 text-lg text-ink-muted">{L(locale, hall, 'capacity')}</p>
+
+    <div class="mt-8 grid gap-10 lg:grid-cols-5">
+      <div class="lg:col-span-3">
+        {
+          photos.length > 1 ? (
+            <GallerySlider images={photos.map((p) => ({ ...photoProps(locale, p), sizes: PHOTO_SIZES }))} lcp ratio="3 / 2" labels={galleryLabels} />
+          ) : photos.length === 1 ? (
+            <Photo {...photoProps(locale, photos[0])} sizes={PHOTO_SIZES} loading="eager" fetchpriority="high" class="rounded-card" imgClass="w-full h-auto" />
+          ) : (
+            <Placeholder label={fill(t.photo_pending_alt, { subject: `${name} — ${branchName}` })} />
+          )
+        }
+        <div class="mt-8 prose-armada leading-relaxed">
+          <p>{L(locale, hall, 'intro')}</p>
+        </div>
+      </div>
+      <aside class="lg:col-span-2 self-start bg-white border border-line rounded-card p-6" aria-labelledby="hall-features">
+        <h2 id="hall-features" class="text-sm font-semibold uppercase tracking-wide text-bronze-text">{h.features_heading}</h2>
+        <ul class="mt-4 space-y-2.5 text-sm text-ink">
+          {
+            features.map((f) => (
+              <li class="flex items-start gap-3">
+                <Icon name="check" size={18} class="text-bronze shrink-0 mt-0.5" />
+                <span>{f}</span>
+              </li>
+            ))
+          }
+        </ul>
+        <dl class="mt-6 space-y-3 text-sm border-t border-line pt-5">
+          <div>
+            <dt class="font-semibold text-midnight">{h.capacity_label}</dt>
+            <dd class="text-ink-muted">{L(locale, hall, 'capacity')}</dd>
+          </div>
+          <div>
+            <dt class="font-semibold text-midnight">{h.pricing_label}</dt>
+            <dd class="text-ink-muted">{L(locale, hall, 'pricing')}</dd>
+          </div>
+        </dl>
+        <a href={quote} class="mt-6 inline-flex w-full justify-center items-center gap-2 bg-bronze-deep text-white font-semibold px-5 py-3 rounded hover:bg-bronze-text transition-colors" data-hall-quote>
+          <span>{h.cta}</span>
+          <Icon name="arrow" size={18} class="icon-arrow rtl:rotate-180" />
+        </a>
+      </aside>
+    </div>
+  </section>
+</Base>

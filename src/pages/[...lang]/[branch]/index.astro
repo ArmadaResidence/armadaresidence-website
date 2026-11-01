@@ -133,7 +133,13 @@ const COVER_SIZES = '(min-width: 1152px) 1120px, 100vw';
             <dt class="font-semibold text-midnight flex items-start gap-3"><Icon name="check" size={18} class="text-bronze shrink-0 mt-0.5" /><span>{t.branch.amenities}</span></dt>
             <dd class="ms-[30px]">
               <ul class="mt-1 flex flex-wrap gap-1.5">
-                {branch.amenities.map((a) => <li class="text-xs bg-porcelain text-ink px-2 py-1 rounded">{amenityLabel(locale, a)}</li>)}
+                {branch.amenities.map((a) =>
+                  a === 'events_hall' && hall ? (
+                    <li><a href={hallPath(locale, hall)} class="text-xs bg-porcelain text-ink px-2 py-1 rounded inline-block underline decoration-bronze underline-offset-2 hover:text-midnight" data-hall-link>{amenityLabel(locale, a)}</a></li>
+                  ) : (
+                    <li class="text-xs bg-porcelain text-ink px-2 py-1 rounded">{amenityLabel(locale, a)}</li>
+                  ),
+                )}
               </ul>
             </dd>
         </div>

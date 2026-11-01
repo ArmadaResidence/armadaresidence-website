@@ -283,12 +283,12 @@ def main() -> int:
     def noindex(p: Page) -> bool:
         return "noindex" in p.metas.get("robots", "")
 
-    def sales_allowed(path: str) -> bool:
+    def sales_allowed(path: str) -> bool:  # /offers, /partners and the hall (CLAUDE.md §5: the sales line and the hall)
         lp_ = logical(path)
-        return lp_ == "/offers/" or lp_.startswith("/partners/")
+        return lp_ == "/offers/" or lp_.startswith("/partners/") or bool(re.fullmatch(r"/[a-z-]+/hall/", lp_))
 
-    def cafe_allowed(path: str) -> bool:  # the café line appears only on the Airport Road page and /menu/
-        return logical(path) in ("/airport-road/", "/menu/")
+    def cafe_allowed(path: str) -> bool:  # the café line appears only on the Airport Road page, /menu/ and the dining pages
+        return logical(path) in ("/airport-road/", "/menu/") or logical(path).startswith("/dining/")
 
     taif_count = len(json.loads((CONTENT / "taif-guide.json").read_text(encoding="utf-8"))["places"])
 
