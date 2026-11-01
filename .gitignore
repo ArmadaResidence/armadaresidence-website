@@ -49,3 +49,9 @@ reports/trace.json
 
 # dashboard (admin/): local env + build output; the example stays tracked
 !admin/.env.local.example
+
+# dashboard media «الصور» (1 Nov 2026): derived files and data written by scripts/media-build.mjs on every build
+.media-build/
+.media-cache/
+.media-sample/
+content/media.generated.json

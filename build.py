@@ -7,7 +7,10 @@ Steps:
   2. Generate supabase/functions/booking-request/content.generated.json from content/ so the
      Edge Function never hardcodes emails, numbers or names.
   3. Generate content/lqip.json (16 px blurred previews of the approved photos, scripts/lqip.mjs) and render the
-     default Open Graph image from the approved SVG logo (scripts/og.mjs).
+     default Open Graph image from the approved SVG logo (scripts/og.mjs). The photos published from the dashboard
+     «الصور» (1 Nov 2026): scripts/media-build.mjs → .media-build/images/media (copied to public/images/media, never
+     committed) + content/media.generated.json (the data src/lib/content.ts merges); without the service-role key the
+     data is empty and the pages keep their placeholders.
   4. Run `astro build` → dist/ (static).
   5. Print the list of generated pages.
 
@@ -408,6 +411,18 @@ def sync_images() -> None:
         print("NOTE: content/images/ not present — placeholders stay in place (hero poster/video, room photos)")
 
 
+def sync_media() -> None:
+    """.media-build/images/media/ (the derived files of the photos published from the dashboard, scripts/media-build.mjs)
+    → public/images/media/ so Astro serves them at /images/media/…"""
+    src = ROOT / ".media-build" / "images" / "media"
+    dst = ROOT / "public" / "images" / "media"
+    if dst.exists():
+        shutil.rmtree(dst)
+    if src.is_dir() and any(src.iterdir()):
+        shutil.copytree(src, dst)
+        print(f"✓ synced .media-build/images/media → public/images/media ({sum(1 for p in dst.iterdir())} files)")
+
+
 def run(cmd: list[str]) -> None:
     exe = shutil.which(cmd[0])
     if not exe:
@@ -436,6 +451,8 @@ def main() -> int:
     if DIST.exists():
         shutil.rmtree(DIST)
     sync_images()
+    run(["node", "scripts/media-build.mjs"])
+    sync_media()
     run(["node", "scripts/lqip.mjs"])
     run(["node", "scripts/og.mjs"])
     run(["node", "scripts/favicons.mjs"])

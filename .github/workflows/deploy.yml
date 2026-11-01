@@ -1,9 +1,28 @@
 name: Build, QA and deploy to GitHub Pages
 
+# Media (dashboard «الصور», 1 Nov 2026): every build reads the photos published from the dashboard (scripts/media-build.mjs
+# through build.py — the service-role key below), with the derived files cached between runs (.media-cache, keyed by
+# each original's sha256 + focal point + the specs). A publish in the dashboard dispatches this workflow with its job
+# (`media_job`); the `report` job tells the dashboard published / failed with this run's link. `dry_run` builds and
+# uploads the site as an artifact without deploying (`media_sample` adds the generated sample set instead of the
+# published photos — the publish-time measurement); a dry run never takes the Pages concurrency slot.
 on:
   push:
     branches: [main]
   workflow_dispatch:
+    inputs:
+      media_job:
+        description: dashboard publish job (set by the site-rebuild function)
+        required: false
+        default: ''
+      dry_run:
+        description: build and report the artifact without deploying
+        type: boolean
+        default: false
+      media_sample:
+        description: dry run only — build with the generated media sample (scripts/media-sample.mjs)
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -11,7 +30,7 @@ permissions:
   id-token: write
 
 concurrency:
-  group: pages
+  group: ${{ inputs.dry_run && 'pages-dry-run' || 'pages' }}
   cancel-in-progress: true
 
 jobs:
@@ -24,8 +43,20 @@ jobs:
       # Internal review on the project site: set the variable to "/armadaresidence-website"; delete it (and restore
       # public/CNAME) when the custom domain takes over — the build then serves from the root unchanged.
       PUBLIC_BASE_PATH: ${{ vars.PUBLIC_BASE_PATH }}
+      # the published photos (read-only use: the media manifest, the originals, the job reports). Absent → no media step
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      MEDIA_JOB: ${{ inputs.media_job }}
+      MEDIA_DRY_RUN: ${{ inputs.dry_run && 'true' || 'false' }}
+      MEDIA_FIXTURE: ${{ inputs.dry_run && inputs.media_sample && '.media-sample' || '' }}
+    outputs:
+      manifest_at: ${{ steps.media.outputs.manifest_at }}
     steps:
       - uses: actions/checkout@v4
+      - name: A media sample is for dry runs only
+        if: ${{ inputs.media_sample && !inputs.dry_run }}
+        run: |
+          echo "::error::media_sample needs dry_run — a sample is never deployed"
+          exit 1
       - uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -34,19 +65,58 @@ jobs:
         with:
           python-version: '3.12'
       - run: npm ci
-      - name: Build (build.py → astro build)
-        run: python build.py
+      - name: Media cache (derived photos of earlier builds)
+        uses: actions/cache/restore@v4
+        with:
+          path: .media-cache
+          key: media-${{ github.run_id }}
+          restore-keys: media-
+      - name: Media plan (ffmpeg only when a hero video or a HEIC photo must be processed)
+        id: plan
+        run: |
+          if [ -n "$MEDIA_FIXTURE" ]; then echo "ffmpeg=true" >> "$GITHUB_OUTPUT"; else node scripts/media-build.mjs --plan; fi
+      - name: ffmpeg
+        if: ${{ steps.plan.outputs.ffmpeg == 'true' }}
+        run: command -v ffmpeg || (sudo apt-get update -qq && sudo apt-get install -y -qq --no-install-recommends ffmpeg)
+      - name: Media sample (dry run)
+        if: ${{ env.MEDIA_FIXTURE != '' }}
+        run: node scripts/media-sample.mjs .media-sample
+      - name: Build (build.py → media → astro build)
+        id: media
+        run: |
+          python build.py
+          if [ -f .media-build/report.json ]; then
+            echo "manifest_at=$(node -e "process.stdout.write(require('./.media-build/report.json').manifest_at || '')")" >> "$GITHUB_OUTPUT"
+          fi
       - name: QA gate (qa.py exits non-zero on any failure)
         run: python qa.py
       - name: Sub-path rewrite for the project site (no-op when PUBLIC_BASE_PATH is empty)
         run: python scripts/base-path.py
+      - name: Save the media cache
+        if: ${{ always() && hashFiles('.media-cache/**') != '' }}
+        uses: actions/cache/save@v4
+        with:
+          path: .media-cache
+          key: media-${{ github.run_id }}
+      - name: Dry run — the built site as an artifact (nothing deployed)
+        if: ${{ inputs.dry_run }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: site-dry-run
+          path: |
+            dist
+            .media-build/report.json
+          retention-days: 7
       - uses: actions/configure-pages@v5
+        if: ${{ !inputs.dry_run }}
       - uses: actions/upload-pages-artifact@v3
+        if: ${{ !inputs.dry_run }}
         with:
           path: dist
 
   deploy:
     needs: build
+    if: ${{ !inputs.dry_run }}
     runs-on: ubuntu-latest
     environment:
       name: github-pages
@@ -54,3 +124,30 @@ jobs:
     steps:
       - id: deployment
         uses: actions/deploy-pages@v4
+
+  # the dashboard's publish jobs: published / failed with this run's link (a cancelled run reports nothing — the newer
+  # run that cancelled it publishes every waiting job)
+  report:
+    needs: [build, deploy]
+    if: ${{ always() && needs.build.result != 'cancelled' && needs.deploy.result != 'cancelled' }}
+    runs-on: ubuntu-latest
+    env:
+      PUBLIC_BOOKING_ENDPOINT: ${{ vars.PUBLIC_BOOKING_ENDPOINT }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      MEDIA_JOB: ${{ inputs.media_job }}
+      MEDIA_MANIFEST_AT: ${{ needs.build.outputs.manifest_at }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: scripts/media-job.mjs
+          sparse-checkout-cone-mode: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Report to the dashboard
+        run: |
+          if [ "${{ inputs.dry_run }}" = "true" ]; then
+            node scripts/media-job.mjs dry ${{ needs.build.result == 'success' && 'ok' || 'fail' }}
+          else
+            node scripts/media-job.mjs settle ${{ needs.build.result == 'success' && needs.deploy.result == 'success' && 'ok' || 'fail' }}
+          fi

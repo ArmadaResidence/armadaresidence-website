@@ -11,6 +11,7 @@ import {
   branches,
   fill,
   localePath,
+  media,
   pageSeo,
   paragraphs,
   policies,
@@ -38,13 +39,16 @@ const hero = siteTexts.hero;
 const heroDir = new URL('../../../content/images/hero/', import.meta.url);
 interface HeroImage { base: string; widths: number[]; width: number; height: number; position: string }
 interface HeroMedia { poster: HeroImage; poster_mobile: HeroImage; video?: { mp4: string; webm: string }; alt_ar: string; alt_en: string }
-const heroMedia: HeroMedia | null = existsSync(new URL('hero.json', heroDir))
-  ? (JSON.parse(readFileSync(new URL('hero.json', heroDir), 'utf8')) as HeroMedia)
-  : null;
+// the dashboard «الصور» (1 Nov 2026): a published hero (media.generated.json) comes first, then the imported one
+const heroMedia: HeroMedia | null = media.home?.poster
+  ? (media.home as HeroMedia)
+  : existsSync(new URL('hero.json', heroDir))
+    ? (JSON.parse(readFileSync(new URL('hero.json', heroDir), 'utf8')) as HeroMedia)
+    : null;
 const heroSet = (img: HeroImage, ext: string) => img.widths.map((w) => `${img.base}-${w}.${ext} ${w}w`).join(', ');
 const HERO_MOBILE = '(max-width: 767px)';
 // og/home.jpg: the poster's 1200 × 630 crop written by scripts/photos-import.mjs; absent → the default OG image
-const homeOg = existsSync(new URL('../og/home.jpg', heroDir)) ? '/images/og/home.jpg' : undefined;
+const homeOg = media.home?.og_image ?? (existsSync(new URL('../og/home.jpg', heroDir)) ? '/images/og/home.jpg' : undefined);
 const heroPosterAlt = fill(t.photo_pending_alt, { subject: locale === 'ar' ? hero.title_ar : hero.title_en });
 const about = siteTexts.about;
 const why = siteTexts.why_armada;
@@ -124,13 +128,16 @@ const quickFacts = fill(t.home.quick_facts, {
         )
       }
       <div class="absolute inset-0 bg-midnight/60"></div>
+      {/* over a photo (1 Nov 2026): a midnight gradient behind the text block keeps the small hero text WCAG AA on any
+          image, white or busy (global.css → .hero-scrim; measured by scripts/hero-scrim-check.mjs) */}
+      {heroMedia && <div class="absolute inset-0 hero-scrim"></div>}
       {/* brand pattern as a slow depth layer: 40 s drift of ~2.5 % towards the reading direction with a soft opacity swell */}
       <div class="absolute inset-0 pattern-bg hero-pattern"></div>
       <div class="glow"></div>
     </div>
     <div class="relative w-full mx-auto max-w-6xl px-4 py-14 md:py-28">
       {/* hero (9 Oct 2026): eyebrow = "فنادق أرمادا ريزيدنس", h1 = the slogan; no price line, no city name */}
-      <p class="text-bronze font-semibold tracking-wide mb-4">{locale === 'ar' ? heroCopy.eyebrow_ar : heroCopy.eyebrow_en}</p>
+      <p class={`${heroMedia ? 'text-bronze-bright' : 'text-bronze'} font-semibold tracking-wide mb-4`}>{locale === 'ar' ? heroCopy.eyebrow_ar : heroCopy.eyebrow_en}</p>
       <h1 class="text-3xl md:text-5xl font-bold leading-tight max-w-3xl" style={`--hero-rule-delay:${heroRuleDelay}ms`}>
         {heroWords.map((w, i) => (
           <>

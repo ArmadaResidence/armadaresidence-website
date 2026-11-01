@@ -15,13 +15,14 @@
 // empty and fails qa.py with the list of what is missing. The originals are only read.
 //   node scripts/photos-import.mjs <manifest.csv|json> [--src <photo folder>] [--site <site root>] [--dry-run]
 // --site defaults to this repository; the e2e test points it at a scratch copy.
-import { readFileSync, writeFileSync, mkdirSync, existsSync, readdirSync, rmSync, statSync } from 'node:fs';
+// Since 1 Nov 2026 every derived file comes from scripts/photos-engine.mjs — the engine the site build uses for the
+// photos published from the dashboard «الصور» (scripts/media-build.mjs); this script keeps the folder / manifest side.
+import { readFileSync, writeFileSync, mkdirSync, existsSync, readdirSync, rmSync } from 'node:fs';
 import { join, dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
-import { tmpdir } from 'node:os';
-import sharp from 'sharp';
-import { siteSlugs, readManifest, yes, parseFocal, cropBox, decodable, orientedSize, hasTool, ffprobe, HERO_FOLDER } from './photos-lib.mjs';
+import { siteSlugs, readManifest, yes, parseFocal, decodable, hasTool, ffprobe, HERO_FOLDER } from './photos-lib.mjs';
+import { renderHeroVideo, renderOg, renderPhoto, renderPoster, videoFrame } from './photos-engine.mjs';
 
 const REPO = fileURLToPath(new URL('..', import.meta.url));
 const args = process.argv.slice(2);
@@ -39,19 +40,7 @@ const SITE = resolve(opt('--site') || REPO);
 const DRY = args.includes('--dry-run');
 const IMAGES = join(SITE, 'content', 'images');
 
-// Sizes (approved 30 Oct 2026, CLAUDE.md §3c / §7): 3:2 photos at 480 / 800 / 1200 / 1600 / 2000 (never upscaled),
-// AVIF ≈ q50 + WebP ≈ q78, converted to sRGB (sharp converts through the embedded ICC profile, then strips it).
-export const PHOTO = { ratio: 3 / 2, widths: [480, 800, 1200, 1600, 2000], webp: { quality: 78, effort: 5 }, avif: { quality: 50, effort: 4 } };
-export const OG = { width: 1200, height: 630, jpeg: { quality: 82, mozjpeg: true } };
-// Hero (approved 30 Oct 2026): a 10–15 s loop (20 s max: longer clips are cut), muted, audio track removed, 1920 × 1080
-// H.264 MP4 ≤ 4 MB + WebM (VP9, same budget). The bitrate cap follows the clip length so the file fits the budget; a
-// file still over it is encoded once more at a fixed lower bitrate. Poster: 16:9 for desktop + an art-directed 4:5
-// crop for mobile, both around the manifest's focal point, AVIF + WebP — the home page's LCP image.
-export const HERO = {
-  width: 1920, height: 1080, loopSeconds: [10, 15], maxSeconds: 20, fps: 30, maxMB: 4, mp4Crf: 24, webmCrf: 34,
-  posterWidths: [800, 1200, 1600, 2000], mobileRatio: 4 / 5, mobileWidths: [480, 800, 1200],
-};
-
+// Sizes, the hero specs and every encoder setting: scripts/photos-engine.mjs (PHOTO, OG, HERO — approved 30 Oct 2026).
 const { folders } = siteSlugs(SITE);
 const rows = readManifest(manifestPath).filter((r) => yes(r.keep));
 const problems = [];
@@ -102,28 +91,15 @@ function clearOld(dir, prefix, numbered = true) {
 async function processPhoto(r, dir, base) {
   const path = join(SRC, r.folder, r.file);
   const { buf } = await decodable(path, readFileSync(path));
-  const { width: w, height: h } = orientedSize(await sharp(buf).metadata());
   const focal = parseFocal(r.focal_point);
-  const box = cropBox(w, h, PHOTO.ratio, focal);
-  if (box.width < PHOTO.widths[0]) throw new Error(`only ${box.width} px wide after the 3:2 crop — at least ${PHOTO.widths[0]} needed`);
-  // every approved width the crop can fill without upscaling
-  const widths = PHOTO.widths.filter((x) => x <= box.width);
-  // rotate() applies the EXIF orientation first; without withMetadata() nothing of the original metadata is written
-  const pipe = sharp(buf).rotate().extract(box).toColourspace('srgb');
-  for (const width of widths) {
-    const sized = pipe.clone().resize(width, Math.round(width / PHOTO.ratio), { fit: 'fill' });
-    if (!DRY) {
-      await sized.clone().webp(PHOTO.webp).toFile(join(dir, `${base}-${width}.webp`));
-      await sized.clone().avif(PHOTO.avif).toFile(join(dir, `${base}-${width}.avif`));
-    }
-  }
-  const largest = widths.at(-1);
+  const out = await renderPhoto(buf, focal, dir, base, { dry: DRY });
+  const { w, h } = out.source;
   return {
     entry: {
       base: pubPath(join(dir, base)),
-      widths,
-      width: largest,
-      height: Math.round(largest / PHOTO.ratio),
+      widths: out.widths,
+      width: out.width,
+      height: out.height,
       formats: ['avif', 'webp'],
       ...(focal ? { focal: `${Math.round(focal.x * 100)},${Math.round(focal.y * 100)}` } : {}),
       alt_ar: r.alt_ar || '',
@@ -140,12 +116,8 @@ async function processPhoto(r, dir, base) {
 
 /** 1200 × 630 crop of an image (EXIF orientation applied), centred on the focal point. */
 async function writeOg(buf, name, focal) {
-  const { width, height } = orientedSize(await sharp(buf).metadata());
   const out = join(IMAGES, 'og', `${name}.jpg`);
-  if (!DRY) {
-    mkdirSync(dirname(out), { recursive: true });
-    await sharp(buf).rotate().extract(cropBox(width, height, OG.width / OG.height, focal)).resize(OG.width, OG.height).toColourspace('srgb').jpeg(OG.jpeg).toFile(out);
-  }
+  await renderOg(buf, focal, out, { dry: DRY });
   return pubPath(out);
 }
 
@@ -229,60 +201,15 @@ const heroStill = heroRows.find((r) => r !== heroVideo && !/\.(mp4|mov|m4v|webm)
 const heroDir = join(IMAGES, 'hero');
 const heroJson = { _note: 'Generated by scripts/photos-import.mjs — what the home hero renders. Do not edit.' };
 
-/** Even crop box for ffmpeg (yuv420p needs even sizes), the same focal rule as the photos (cropBox). */
-function evenBox(w, h, ratio, focal) {
-  const b = cropBox(w, h, ratio, focal);
-  const ev = (n) => n - (n % 2);
-  return { left: ev(b.left), top: ev(b.top), width: ev(b.width), height: ev(b.height) };
-}
-/** The focal point as a position inside a crop (object-position), so the subject stays in view at any hero height. */
-function focalIn(focal, w, h, box) {
-  if (!focal) return '50% 50%';
-  const pct = (v) => Math.min(100, Math.max(0, Math.round(v * 100)));
-  return `${pct((focal.x * w - box.left) / box.width)}% ${pct((focal.y * h - box.top) / box.height)}%`;
-}
-
 if (heroVideo && !(hasTool('ffmpeg') && hasTool('ffprobe'))) {
   problems.push('hero video: ffmpeg / ffprobe not found — the video step was skipped (install ffmpeg and run again); nothing else depends on it');
 } else if (heroVideo) {
   const src = join(SRC, heroVideo.folder === '.' ? '' : heroVideo.folder, heroVideo.file);
-  const v = ffprobe(src);
-  const focal = parseFocal(heroVideo.focal_point);
-  const box = evenBox(v.width, v.height, 16 / 9, focal);
-  const seconds = Math.min(v.duration || HERO.maxSeconds, HERO.maxSeconds);
-  if (v.duration > HERO.maxSeconds) log(`  ! hero video: ${v.duration.toFixed(1)} s — cut to the first ${HERO.maxSeconds} s (the approved loop is ${HERO.loopSeconds.join('–')} s)`);
-  else if (v.duration > HERO.loopSeconds[1]) log(`  ! hero video: ${v.duration.toFixed(1)} s — longer than the approved ${HERO.loopSeconds.join('–')} s loop (kept; ${HERO.maxSeconds} s max)`);
-  if (box.width < HERO.width) log(`  ! hero video: ${box.width} × ${box.height} after the 16:9 crop — under ${HERO.width} × ${HERO.height}, kept at its size (never upscaled)`);
-  // 16:9 crop around the focal point (the posters' rule), then down to 1920 × 1080, 30 fps, no audio / subtitle / data, ≤ 20 s
-  const vf = [`crop=${box.width}:${box.height}:${box.left}:${box.top}`, `scale='min(${HERO.width},iw)':-2:flags=lanczos`, `fps=${HERO.fps}`, 'format=yuv420p'].join(',');
-  const common = ['-v', 'error', '-y', '-i', src, '-t', String(HERO.maxSeconds), '-an', '-sn', '-dn', '-map_metadata', '-1', '-vf', vf];
-  // bitrate cap that fits the budget for this length (92 % of maxMB; the container takes the rest)
-  const kbps = Math.floor((HERO.maxMB * 8 * 1024 * 0.92) / seconds);
-  const enc = {
-    'hero.mp4': (rate) => ['-c:v', 'libx264', '-preset', 'slow', '-crf', String(HERO.mp4Crf), '-maxrate', `${rate}k`, '-bufsize', `${rate * 2}k`, '-profile:v', 'high', '-pix_fmt', 'yuv420p', '-movflags', '+faststart'],
-    'hero.webm': (rate) => ['-c:v', 'libvpx-vp9', '-crf', String(HERO.webmCrf), '-b:v', `${rate}k`, '-row-mt', '1', '-deadline', 'good', '-cpu-used', '2'],
-  };
-  if (!DRY) mkdirSync(heroDir, { recursive: true });
-  for (const [name, args] of Object.entries(enc)) {
-    if (DRY) continue;
-    const out = join(heroDir, name);
-    let rate = kbps;
-    for (let attempt = 0; attempt < 2; attempt++) {
-      const r = spawnSync('ffmpeg', [...common, ...args(rate), out], { encoding: 'utf8' });
-      if (r.status !== 0) {
-        problems.push(`hero video → ${name}: ${(r.stderr || '').trim().split('\n').pop()}`);
-        break;
-      }
-      const mb = statSync(out).size / 1048576;
-      if (mb <= HERO.maxMB) {
-        log(`  ✓ hero video → /images/hero/${name} (${mb.toFixed(2)} MB, ${seconds.toFixed(1)} s, cap ${rate} kbit/s)`);
-        break;
-      }
-      if (attempt === 1) problems.push(`hero video → ${name}: ${mb.toFixed(2)} MB, over ${HERO.maxMB} MB — trim the clip`);
-      rate = Math.floor((rate * HERO.maxMB * 0.95) / mb); // once more, scaled to the budget
-    }
-  }
-  heroJson.video = { mp4: '/images/hero/hero.mp4', webm: '/images/hero/hero.webm', seconds: Math.round(seconds * 10) / 10 };
+  const v = renderHeroVideo(src, ffprobe(src), parseFocal(heroVideo.focal_point), heroDir, { mp4: 'hero.mp4', webm: 'hero.webm' }, { dry: DRY });
+  for (const n of v.notes) log(`  ! hero video: ${n}`);
+  for (const [kind, x] of Object.entries(v.sizes)) log(`  ✓ hero video → /images/hero/hero.${kind} (${x.mb.toFixed(2)} MB, ${v.seconds.toFixed(1)} s, cap ${x.rate} kbit/s)`);
+  problems.push(...v.problems);
+  heroJson.video = { mp4: '/images/hero/hero.mp4', webm: '/images/hero/hero.webm', seconds: Math.round(v.seconds * 10) / 10 };
 }
 
 // poster: the still in the hero folder if one is kept, else the video's first frame (uncropped, so both crops use the
@@ -295,37 +222,22 @@ if (heroStill) {
   posterBuf = (await decodable(p, readFileSync(p))).buf;
   posterFocal = parseFocal(heroStill.focal_point);
 } else if (heroVideo && hasTool('ffmpeg')) {
-  const tmp = join(tmpdir(), `armada-poster-${process.pid}.png`);
-  const r = spawnSync('ffmpeg', ['-v', 'error', '-y', '-i', join(SRC, heroVideo.folder === '.' ? '' : heroVideo.folder, heroVideo.file), '-frames:v', '1', tmp], { encoding: 'utf8' });
-  if (r.status === 0) {
-    posterBuf = readFileSync(tmp);
-    rmSync(tmp, { force: true });
+  try {
+    posterBuf = videoFrame(join(SRC, heroVideo.folder === '.' ? '' : heroVideo.folder, heroVideo.file));
     posterFocal = parseFocal(heroVideo.focal_point);
-  } else problems.push(`hero poster: ${(r.stderr || '').trim().split('\n').pop()}`);
+  } catch (e) {
+    problems.push(`hero poster: ${e.message}`);
+  }
 }
 if (posterBuf) {
-  const { width: pw, height: ph } = orientedSize(await sharp(posterBuf).metadata());
   if (!DRY) {
     mkdirSync(heroDir, { recursive: true });
     for (const n of readdirSync(heroDir)) if (/^hero-poster/.test(n)) rmSync(join(heroDir, n));
   }
-  const variants = [
-    ['poster', 'hero-poster', 16 / 9, HERO.posterWidths],
-    ['poster_mobile', 'hero-poster-m', HERO.mobileRatio, HERO.mobileWidths],
-  ];
-  for (const [key, name, ratio, list] of variants) {
-    const box = cropBox(pw, ph, ratio, posterFocal);
-    let widths = list.filter((w) => w <= box.width);
-    if (!widths.length) widths = [box.width]; // under the smallest approved width: its own size, never upscaled
-    const pipe = sharp(posterBuf).rotate().extract(box).toColourspace('srgb');
-    for (const w of widths) {
-      if (DRY) continue;
-      const sized = pipe.clone().resize(w, Math.round(w / ratio), { fit: 'fill' });
-      await sized.clone().webp(PHOTO.webp).toFile(join(heroDir, `${name}-${w}.webp`));
-      await sized.clone().avif(PHOTO.avif).toFile(join(heroDir, `${name}-${w}.avif`));
-    }
-    const top = widths.at(-1);
-    heroJson[key] = { base: `/images/hero/${name}`, widths, width: top, height: Math.round(top / ratio), position: focalIn(posterFocal, pw, ph, box) };
+  const p = await renderPoster(posterBuf, posterFocal, heroDir, { poster: 'hero-poster', mobile: 'hero-poster-m' }, { dry: DRY });
+  for (const key of ['poster', 'poster_mobile']) {
+    const { name, widths, width, height, position } = p[key];
+    heroJson[key] = { base: `/images/hero/${name}`, widths, width, height, position };
   }
   heroJson.alt_ar = posterRow.alt_ar || '';
   heroJson.alt_en = posterRow.alt_en || '';

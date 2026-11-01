@@ -806,6 +806,7 @@ def main() -> int:
 
     check_articles(rep, pages)
     check_photos(rep)
+    check_media(rep)
 
     # ---- report
     n_fail = sum(len(v) for v in rep.fail.values())
@@ -893,6 +894,54 @@ def check_photos(rep: "Report") -> None:
         sep = "\n      - "
         rep.f(G, f"{len(missing)} alt text(s) missing — fill them in the manifest and run photos-import again:{sep}"
               + sep.join(missing))
+
+
+def check_media(rep: "Report") -> None:
+    """The photos published from the dashboard «الصور» (content/media.generated.json, scripts/media-build.mjs, 1 Nov 2026):
+    every derived file is in dist/, every photo has a real alt in both languages, the hero loop is within its 4 MB budget.
+    The dashboard refuses to publish without both alts; this is the build's own check."""
+    G = "media (dashboard «الصور»)"
+    path = CONTENT / "media.generated.json"
+    if not path.is_file():
+        return
+    data = json.loads(path.read_text(encoding="utf-8"))
+    def built(ref: str) -> bool:
+        return (DIST / ref.lstrip("/")).is_file()
+    images: list[tuple[str, dict]] = []
+    for group in ("rooms", "branches", "sections"):
+        for key, entry in (data.get(group) or {}).items():
+            for i, p in enumerate(entry.get("photos") or []):
+                images.append((f"{group}/{key} #{i + 1}", p))
+            for scene, p in (entry.get("story") or {}).items():
+                images.append((f"{group}/{key} story {scene}", p))
+            if entry.get("og_image") and not built(entry["og_image"]):
+                rep.f(G, f"{group}/{key}: og_image {entry['og_image']} missing in dist/")
+    for where, p in images:
+        for w in p.get("widths") or []:
+            for ext in p.get("formats") or ["webp"]:
+                if not built(f"{p['base']}-{w}.{ext}"):
+                    rep.f(G, f"{where}: {p['base']}-{w}.{ext} missing in dist/")
+        for lang, script in (("ar", ARABIC), ("en", LATIN)):
+            alt = str(p.get(f"alt_{lang}") or "").strip()
+            if alt.lower() in GENERIC_ALT or len(alt) < 4 or not script.search(alt):
+                rep.f(G, f"{where}: alt_{lang} {alt!r} is missing, generic or not in that language")
+    home = data.get("home")
+    if home:
+        for key in ("poster", "poster_mobile"):
+            for w in home[key]["widths"]:
+                for ext in ("avif", "webp"):
+                    if not built(f"{home[key]['base']}-{w}.{ext}"):
+                        rep.f(G, f"home {key}: {home[key]['base']}-{w}.{ext} missing in dist/")
+        for lang, script in (("ar", ARABIC), ("en", LATIN)):
+            alt = str(home.get(f"alt_{lang}") or "").strip()
+            if alt.lower() in GENERIC_ALT or len(alt) < 4 or not script.search(alt):
+                rep.f(G, f"home hero: alt_{lang} {alt!r} is missing, generic or not in that language")
+        for ext in ("mp4", "webm"):
+            ref = (home.get("video") or {}).get(ext)
+            if ref and not built(ref):
+                rep.f(G, f"home hero video: {ref} missing in dist/")
+            elif ref and (DIST / ref.lstrip("/")).stat().st_size > 4 * 1048576:
+                rep.f(G, f"home hero video: {ref} is over 4 MB")
 
 
 def image_exists(ref: str) -> bool:

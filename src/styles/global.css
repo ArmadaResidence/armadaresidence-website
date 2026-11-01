@@ -147,6 +147,19 @@ body {
 .hero-video.is-playing {
   opacity: 1;
 }
+/* Hero over a photo (1 Nov 2026, the dashboard «الصور»): the text block sits on ≈ 94 % midnight (the 60 % overlay + this
+   84 % scrim) so the small hero text keeps WCAG AA on any image, white or busy — measured with the glow and the pattern
+   by scripts/hero-scrim-check.mjs (75 % left the Bronze Bright eyebrow at 4.27:1 over pure white). The scrim holds to just past the text column's end
+   edge (the 72rem container's centre + 15rem, at least 52rem — every width where the column is narrower), then opens
+   the photo over 18rem; on phones the column spans the width and the scrim with it. Rendered only with a photo. */
+.hero-scrim {
+  --scrim: color-mix(in srgb, var(--color-midnight) 84%, transparent);
+  --scrim-end: max(calc(50% + 15rem), 52rem);
+  background: linear-gradient(to left, var(--scrim) 0, var(--scrim) var(--scrim-end), transparent calc(var(--scrim-end) + 18rem));
+}
+[dir='ltr'] .hero-scrim {
+  background: linear-gradient(to right, var(--scrim) 0, var(--scrim) var(--scrim-end), transparent calc(var(--scrim-end) + 18rem));
+}
 @keyframes hero-kenburns {
   from {
     transform: scale(1);
