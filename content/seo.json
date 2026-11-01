@@ -54,9 +54,9 @@
     },
     "booking": {
       "title_ar": "طلب حجز | أرمادا ريزيدنس",
-      "description_ar": "احجز في أرمادا ريزيدنس – طريق المطار أو طريق الشفا بالطائف. مع علامة «تأكيد فوري» يتأكد حجزك مباشرة، وإلا يؤكد الاستقبال التوافر والسعر.",
+      "description_ar": "احجز إقامتك في أرمادا ريزيدنس بالطائف: شقق فندقية على طريق المطار وفندق على طريق الشفا، مع تأكيد فوري عند توفره والدفع عند الوصول.",
       "title_en": "Request a Booking | Armada Residence",
-      "description_en": "Book Armada Residence – Airport Road or Shafa Road, Taif. With “Instant confirmation” it is confirmed at once; otherwise reception confirms it."
+      "description_en": "Book Armada Residence in Taif: hotel apartments on Airport Road, a hotel on Shafa Road. Instant confirmation when available, and pay on arrival."
     },
     "booking-success": {
       "title_ar": "تم استلام طلبك | أرمادا ريزيدنس",

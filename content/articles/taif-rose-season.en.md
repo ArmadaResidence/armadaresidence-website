@@ -32,4 +32,4 @@ The rose farms spread between Al Hada and Al Shafa, and both properties suit the
 - Mornings for the farms, midday for distilleries and markets, evenings for the cool highland air.
 - Taif rose products are sold in small quantities at widely varying prices; buy from established distilleries.
 
-> Ready for rose season? [Book your stay](/en/booking/?branch=airport-road): if you see “Instant confirmation”, your booking is confirmed right away; otherwise reception confirms availability and price for your dates.
+> Ready for rose season? [Book your stay](/en/booking/); if you see “Instant confirmation”, it’s confirmed right away.

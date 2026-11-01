@@ -701,3 +701,11 @@ Ahmed's decisions on the pre-launch audit's open items, one commit per part. Not
 - **Legacy motion stays:** /partners/* and /discover-taif/ keep their current entrance motion (legacy design rule of 9 Oct 2026), including the blocks that enter from opacity 0.
 - **Mobile LCP on branch pages and /offers/:** the remaining gap is handled in the photos session — the hero image becomes the LCP element there.
 - **Café menu:** the catalog notes that mention room service are internal and stay as they are.
+
+## 2026-11-01 — Booking wording approved (Ahmed, 1 Nov 2026)
+
+The four strings written on 1 Nov 2026 to align with the policies' booking section are approved by Ahmed, 1 Nov 2026 — two as written, two in his own wording:
+- `pricing.json → display_ar / display_en` (room cards, room-page placeholder): «السعر حسب التاريخ — اختر تواريخك في نموذج الحجز» / "Price depends on your dates — choose them in the booking form" — as written.
+- `ui.json → blog.book_body` (the booking box under every article): «اختر تواريخك وعدد الضيوف. إذا ظهرت علامة «تأكيد فوري» يتأكد حجزك مباشرة، وإلا يؤكد الاستقبال التوافر والسعر.» / "Choose your dates and guests. If you see “Instant confirmation”, your booking is confirmed right away; otherwise reception confirms availability and price." — as written.
+- `seo.json → pages.booking` description: «احجز إقامتك في أرمادا ريزيدنس بالطائف: شقق فندقية على طريق المطار وفندق على طريق الشفا، مع تأكيد فوري عند توفره والدفع عند الوصول.» / "Book Armada Residence in Taif: hotel apartments on Airport Road, a hotel on Shafa Road. Instant confirmation when available, and pay on arrival." — Ahmed's wording.
+- The rose-season article's closing sentence: «جاهز لموسم الورد؟ [احجز إقامتك](/booking/)، وإذا ظهرت علامة «تأكيد فوري» يتأكد حجزك مباشرة.» / "Ready for rose season? [Book your stay](/en/booking/); if you see “Instant confirmation”, it’s confirmed right away." — Ahmed's wording; the link opens the booking page with no branch preselected, so the guest chooses the branch (relative site path; the build adds the review site's base path).
