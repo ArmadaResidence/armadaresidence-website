@@ -1,5 +1,5 @@
 // Users and permissions (phase 2a.1, item 6): list, invite, deactivate / activate, resend the invite or a reset link,
-// and per user the matrix (section × none / view / edit), the preset («الدور») that prefills it, the branch scope and
+// and per user the matrix (section × none / view / edit, + publish where the section offers it — «الصور», 1 Nov 2026), the preset («الدور») that prefills it, the branch scope and
 // «منح صلاحية كاملة». Reads and the invite / deactivate go through the admin-users function; the matrix, preset and
 // scope go through set_permissions (as the caller, one audited batch → «تراجع»). The last active holder of users:edit
 // cannot be deactivated or demoted (database rule shown inline). With users = view the screen is read-only.
@@ -13,7 +13,9 @@ import { BRANCH_NAMES, ROLE_LABELS, riyadhDateTimeLong } from '../lib/format';
 import { CancelButton, DirtyScope, ErrorBox, Field, Loading, Modal, Segmented, Spinner, useToast } from '../components/ui';
 import { SECURITY_TEXT as SEC } from '../lib/secondStep';
 
-const LEVELS: { value: Level; label: string }[] = [{ value: 'none', label: 'لا شيء' }, { value: 'view', label: 'عرض' }, { value: 'edit', label: 'تعديل' }];
+const LEVELS: { value: Level; label: string }[] = [{ value: 'none', label: 'لا شيء' }, { value: 'view', label: 'عرض' }, { value: 'edit', label: 'تعديل' }, { value: 'publish', label: 'نشر' }];
+/** the highest level a section offers (sections.max_level; view-only sections: view) */
+const top = (s: Section): Level => (s.editable ? s.max_level ?? 'edit' : 'view');
 const ROLES: Role[] = ['admin', 'management', 'sales', 'reception'];
 
 export default function Users() {
@@ -160,7 +162,7 @@ function PermissionMatrix({ user, sections, branches, editable, busy, isLastAdmi
   }, [stored]); // eslint-disable-line react-hooks/exhaustive-deps
   const dirty = sections.some((s) => (matrix[s.key] ?? 'none') !== (user.permissions[s.key] ?? 'none'));
   const branchDirty = (branch || null) !== (user.branch ?? null);
-  const full = sections.every((s) => (matrix[s.key] ?? 'none') === (s.editable ? 'edit' : 'view'));
+  const full = sections.every((s) => (matrix[s.key] ?? 'none') === top(s));
   const usersLocked = isLastAdmin; // the last admin keeps users = edit
 
   return (
@@ -170,7 +172,7 @@ function PermissionMatrix({ user, sections, branches, editable, busy, isLastAdmi
           <h3 className="font-bold text-sm">الصلاحيات حسب القسم</h3>
           {editable && (
             <div className="flex gap-1">
-              <button type="button" className="btn btn-ghost btn-sm" disabled={full} onClick={() => setMatrix(Object.fromEntries(sections.map((s) => [s.key, s.editable ? 'edit' : 'view'])) as Record<string, Level>)} data-action="grant-full">منح صلاحية كاملة</button>
+              <button type="button" className="btn btn-ghost btn-sm" disabled={full} onClick={() => setMatrix(Object.fromEntries(sections.map((s) => [s.key, top(s)])) as Record<string, Level>)} data-action="grant-full">منح صلاحية كاملة</button>
               <button type="button" className="btn btn-ghost btn-sm" disabled={!full} onClick={() => setConfirmPreset(true)} data-action="revoke-full">إلغاء الصلاحية الكاملة</button>
             </div>
           )}
@@ -178,7 +180,7 @@ function PermissionMatrix({ user, sections, branches, editable, busy, isLastAdmi
         <div className="matrix">
           {sections.map((s) => {
             const lvl = matrix[s.key] ?? 'none';
-            const opts = s.editable ? LEVELS : LEVELS.filter((l) => l.value !== 'edit');
+            const opts = LEVELS.filter((l) => api.levelRank(l.value) <= api.levelRank(top(s)));
             const lock = s.key === 'users' && usersLocked;
             return (
               <div key={s.key} className="matrix-row" data-section={s.key}>

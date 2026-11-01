@@ -1,7 +1,7 @@
 // App frame: brand header, navigation from the user's permission matrix (phase 2a.1 — a section shows with view or
 // edit), theme toggle, sign-out. Mobile-first: a bottom tab bar under md, a top nav from md. RTL throughout.
-import { NavLink } from 'react-router-dom';
-import { useEffect, useState, type ReactNode } from 'react';
+import { NavLink, useLocation } from 'react-router-dom';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { useSession } from '../lib/session';
 import { canView } from '../lib/api';
 import { BRANCH_NAMES, ROLE_LABELS } from '../lib/format';
@@ -12,6 +12,7 @@ const NAV: { to: string; label: string; short: string; section: string }[] = [
   { to: '/rates', label: 'الأسعار', short: 'الأسعار', section: 'rates' },
   { to: '/inventory', label: 'المخزون', short: 'المخزون', section: 'inventory' },
   { to: '/rooms', label: 'الغرف', short: 'الغرف', section: 'rooms' },
+  { to: '/media', label: 'الصور', short: 'الصور', section: 'media' },
   { to: '/settings', label: 'الإعدادات', short: 'الإعدادات', section: 'settings' },
   { to: '/users', label: 'المستخدمون والصلاحيات', short: 'المستخدمون', section: 'users' },
   { to: '/audit', label: 'السجل', short: 'السجل', section: 'audit' },
@@ -33,6 +34,11 @@ export default function Shell({ children }: { children: ReactNode }) {
   const guard = useLeaveGuard();
   const [theme, toggle] = useTheme();
   const items = NAV.filter((n) => canView(me, n.section));
+  const tabbar = useRef<HTMLElement>(null);
+  const { pathname } = useLocation();
+  useEffect(() => {
+    tabbar.current?.querySelector<HTMLElement>('a[aria-current="page"]')?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+  }, [pathname]);
   const cls = ({ isActive }: { isActive: boolean }) => `px-3 py-2 rounded text-sm font-semibold transition-colors ${isActive ? 'bg-bronze-deep text-white' : 'text-porcelain/85 hover:bg-white/10'}`;
   return (
     <div className="min-h-dvh flex flex-col">
@@ -69,9 +75,11 @@ export default function Shell({ children }: { children: ReactNode }) {
         </div>
       </header>
       <main id="app-main" className="flex-1 mx-auto w-full max-w-7xl px-4 py-5 pb-24 md:pb-8">{children}</main>
-      <nav className="tabbar md:hidden fixed bottom-0 inset-x-0 bg-midnight text-porcelain border-t border-white/10 flex justify-around py-1 pb-[max(4px,env(safe-area-inset-bottom))] z-30" aria-label="الأقسام">
+      {/* every label whole: with eight sections (an admin since «الصور», 1 Nov 2026) the bar scrolls sideways when the labels do
+          not fit, and the current section is kept in view */}
+      <nav ref={tabbar} className="tabbar md:hidden fixed bottom-0 inset-x-0 bg-midnight text-porcelain border-t border-white/10 flex overflow-x-auto py-1 pb-[max(4px,env(safe-area-inset-bottom))] z-30" aria-label="الأقسام">
         {items.map((n) => (
-          <NavLink key={n.to} to={n.to} className={({ isActive }) => `flex-1 text-center text-[11px] font-semibold py-2 rounded ${isActive ? 'text-bronze-bright' : 'text-porcelain/80'}`} onClick={(e) => guard.link(e, n.to)}>
+          <NavLink key={n.to} to={n.to} className={({ isActive }) => `flex-1 shrink-0 min-w-max px-2 text-center text-[11px] font-semibold py-2 rounded ${isActive ? 'text-bronze-bright' : 'text-porcelain/80'}`} onClick={(e) => guard.link(e, n.to)}>
             {n.short}
           </NavLink>
         ))}

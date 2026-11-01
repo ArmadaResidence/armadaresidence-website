@@ -6,12 +6,12 @@ import { useEffect, useMemo, useState } from 'react';
 import * as api from '../lib/api';
 import type { AuditRow } from '../lib/api';
 import { useSession } from '../lib/session';
-import { BRANCH_NAMES, longDate, riyadhDateTimeLong, rowsWord, sar } from '../lib/format';
+import { BRANCH_NAMES, longDate, riyadhDateTime, riyadhDateTimeLong, rowsWord, sar } from '../lib/format';
 import DateField from '../components/DateField';
 import { BranchSelect, CancelButton, Empty, ErrorBox, Field, Loading, Modal, Spinner, useToast } from '../components/ui';
 import { SANITY_TAG } from '../lib/rates';
 
-const ENTITY: Record<string, string> = { room_types: 'نوع غرفة (سعر أساسي / توافر)', rate_overrides: 'استثناء سعر', inventory_days: 'مخزون', settings: 'إعدادات', staff: 'مستخدم', staff_permissions: 'صلاحيات', reservations: 'حجز', security_events: 'أمان الدخول', site_defaults: 'الإعدادات الافتراضية' };
+const ENTITY: Record<string, string> = { room_types: 'نوع غرفة (سعر أساسي / توافر)', rate_overrides: 'استثناء سعر', inventory_days: 'مخزون', settings: 'إعدادات', staff: 'مستخدم', staff_permissions: 'صلاحيات', reservations: 'حجز', security_events: 'أمان الدخول', site_defaults: 'الإعدادات الافتراضية', media_items: 'صورة', media_publish_jobs: 'نشر الصور' };
 // phase 2a.2 (26 Oct 2026): one line per security event (devices, backup codes) — never a code or a token
 const REVOKE_REASON: Record<string, string> = { admin: 'بواسطة مدير النظام', self: 'بواسطة المستخدم', password_change: 'بعد تغيير كلمة المرور', deactivated: 'بعد إيقاف الحساب' };
 function securityLine(r: AuditRow): string {
@@ -29,10 +29,14 @@ function securityLine(r: AuditRow): string {
   return String(r.new?.event ?? '');
 }
 const ACTOR: Record<string, string> = { website: 'الموقع', seed: 'الاستيراد الأول', migration: 'تحديث النظام', auth: 'نظام الدخول', system: 'النظام' };
-const FIELD: Record<string, string> = { sanity_flag: 'تنبيه السعر', sanity_base: 'الأساسي عند الحفظ', sanity_multiplier: 'المضاعف عند الحفظ', is_default: 'الافتراضي', kind: 'النوع', saved_at: 'وقت الحفظ', base_rate: 'السعر الأساسي', bookable: 'متاحة على الموقع', active: 'فعّال', slug: 'المعرّف', date_from: 'من', date_to: 'إلى', weekdays: 'أيام الأسبوع', price: 'السعر', label: 'التسمية', label_en: 'التسمية بالإنجليزية', night: 'الليلة', rooms_to_sell: 'المتبقي', booked: 'المحجوز', stop_sell: 'مغلق', value: 'القيمة', full_name: 'الاسم', role: 'القالب', branch: 'الفرع', ref: 'رقم الحجز', status: 'الحالة', confirmation: 'التأكيد', fallback_reason: 'السبب', room_type_id: 'نوع الغرفة', check_in: 'الوصول', check_out: 'المغادرة', total: 'الإجمالي', payment_status: 'الدفع', cancel_reason: 'سبب الإلغاء', internal_notes: 'ملاحظات داخلية', level: 'المستوى', created_at: 'أُنشئ' };
-const LEVEL: Record<string, string> = { none: 'لا شيء', view: 'عرض', edit: 'تعديل' };
+const FIELD: Record<string, string> = { sanity_flag: 'تنبيه السعر', sanity_base: 'الأساسي عند الحفظ', sanity_multiplier: 'المضاعف عند الحفظ', is_default: 'الافتراضي', kind: 'النوع', saved_at: 'وقت الحفظ', base_rate: 'السعر الأساسي', bookable: 'متاحة على الموقع', active: 'فعّال', slug: 'المعرّف', date_from: 'من', date_to: 'إلى', weekdays: 'أيام الأسبوع', price: 'السعر', label: 'التسمية', label_en: 'التسمية بالإنجليزية', night: 'الليلة', rooms_to_sell: 'المتبقي', booked: 'المحجوز', stop_sell: 'مغلق', value: 'القيمة', full_name: 'الاسم', role: 'القالب', branch: 'الفرع', ref: 'رقم الحجز', status: 'الحالة', confirmation: 'التأكيد', fallback_reason: 'السبب', room_type_id: 'نوع الغرفة', check_in: 'الوصول', check_out: 'المغادرة', total: 'الإجمالي', payment_status: 'الدفع', cancel_reason: 'سبب الإلغاء', internal_notes: 'ملاحظات داخلية', level: 'المستوى', created_at: 'أُنشئ',
+  // media «الصور» (1 Nov 2026)
+  target: 'الصفحة', target_key: 'المفتاح', slot: 'الخانة', sort: 'الترتيب', alt_ar: 'النص البديل', alt_en: 'النص البديل بالإنجليزية', focal_x: 'التركيز أفقيًا', focal_y: 'التركيز رأسيًا',
+  file_name: 'الملف', bytes: 'الحجم', upload_state: 'الرفع', published_at: 'نُشرت', targets: 'الصفحات', dry_run: 'تجربة', dispatch: 'طلب البناء', run_url: 'سجل البناء', error: 'الخطأ' };
+const LEVEL: Record<string, string> = { none: 'لا شيء', view: 'عرض', edit: 'تعديل', publish: 'نشر' };
+const MEDIA_VALUE: Record<string, string> = { draft: 'مسودة', published: 'منشورة', archived: 'مؤرشفة', queued: 'في الانتظار', building: 'جارٍ البناء', failed: 'فشل', pending: 'يُرفع', ready: 'مكتمل', dispatched: 'طُلب', no_token: 'بلا مفتاح', home: 'الصفحة الرئيسية', branch: 'فرع', room: 'نوع غرفة', section: 'قسم' };
 const ROLE: Record<string, string> = { admin: 'مدير النظام', management: 'الإدارة', sales: 'المبيعات', reception: 'الاستقبال' };
-const SKIP = new Set(['created_at', 'room_type_id']);
+const SKIP = new Set(['created_at', 'room_type_id', 'sha256']);
 
 function fmt(k: string, v: unknown): string {
   if (v === null || v === undefined) return '—';
@@ -44,6 +48,10 @@ function fmt(k: string, v: unknown): string {
   if (k === 'base_rate' || k === 'price' || k === 'total' || k === 'sanity_base') return sar(v as number);
   if (k === 'sanity_flag') return SANITY_TAG[String(v)] ?? String(v);
   if (k === 'sanity_multiplier') return `${Number(v)}×`;
+  if ((k === 'status' || k === 'upload_state' || k === 'dispatch' || k === 'target') && MEDIA_VALUE[String(v)]) return MEDIA_VALUE[String(v)];
+  if (k === 'bytes') return `${(Number(v) / 1048576).toFixed(1)} ميغابايت`;
+  if (k === 'focal_x' || k === 'focal_y') return `${Math.round(Number(v) * 100)}%`;
+  if (k === 'published_at') return riyadhDateTime(String(v));
   if (typeof v === 'object') return JSON.stringify(v);
   return String(v);
 }

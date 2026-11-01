@@ -6,12 +6,14 @@ import { supabase, SUPABASE_URL } from './supabase';
 import { CONNECTION, SESSION_ENDED, arabicError } from './errors';
 
 export type Role = 'admin' | 'management' | 'sales' | 'reception';
-export type Level = 'none' | 'view' | 'edit';
+export type Level = 'none' | 'view' | 'edit' | 'publish';
 export interface Section {
   key: string;
   label_ar: string;
   sort: number;
   editable: boolean;
+  /** the highest level the section offers (media: publish, 1 Nov 2026); absent from an older my_staff → edit */
+  max_level?: Level;
 }
 export interface Me {
   role: Role;
@@ -179,7 +181,10 @@ export async function me(): Promise<Me | null> {
 }
 export const level = (m: Me | null, section: string): Level => m?.permissions[section] ?? 'none';
 export const canView = (m: Me | null, section: string) => level(m, section) !== 'none';
-export const canEdit = (m: Me | null, section: string) => level(m, section) === 'edit';
+/** none < view < edit < publish (the database's perm_level order; only «الصور» offers publish) */
+export const levelRank = (l: Level) => ['none', 'view', 'edit', 'publish'].indexOf(l);
+export const canEdit = (m: Me | null, section: string) => levelRank(level(m, section)) >= levelRank('edit');
+export const canPublish = (m: Me | null, section: string) => level(m, section) === 'publish';
 
 export async function branches(): Promise<Branch[]> {
   const { data, error } = await supabase.from('branches').select('slug,name_ar,name_en,sort').order('sort');
@@ -407,7 +412,7 @@ export async function labelGlossary(): Promise<LabelPairRow[]> {
 }
 /** the label-suggest function: a translation of a short label, or null (unavailable, refused, rate-limited, failed —
  *  the field shows nothing and no error); `signal` aborts (the dashboard gives it 4 s) */
-export async function labelSuggest(text: string, from: 'ar' | 'en', signal?: AbortSignal): Promise<string | null> {
+export async function labelSuggest(text: string, from: 'ar' | 'en', signal?: AbortSignal, kind: 'label' | 'alt' = 'label'): Promise<string | null> {
   const { data: s } = await supabase.auth.getSession();
   const jwt = s.session?.access_token;
   if (!jwt) return null;
@@ -415,7 +420,7 @@ export async function labelSuggest(text: string, from: 'ar' | 'en', signal?: Abo
     const res = await fetch(`${SUPABASE_URL}/functions/v1/label-suggest`, {
       method: 'POST',
       headers: { Authorization: `Bearer ${jwt}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ text, from }),
+      body: JSON.stringify(kind === 'alt' ? { text, from, kind } : { text, from }),
       signal,
     });
     if (!res.ok) return null;
@@ -459,9 +464,9 @@ export const updateUser = (user_id: string, patch: Partial<{ full_name: string; 
 export const resendLink = (user_id: string) => edge<{ ok: boolean; type: string }>('admin-users', { action: 'resend', user_id });
 
 /** Ask for a rebuild of the static site (extra-bed fee, room availability). Never throws: the UI shows the fallback line. */
-export async function siteRebuild(reason: 'settings' | 'rooms'): Promise<{ ok: boolean; dispatched?: boolean; reason?: string }> {
+export async function siteRebuild(reason: 'settings' | 'rooms' | 'media', job?: string): Promise<{ ok: boolean; dispatched?: boolean; reason?: string }> {
   try {
-    return await edge<{ ok: boolean; dispatched?: boolean; reason?: string }>('site-rebuild', { reason });
+    return await edge<{ ok: boolean; dispatched?: boolean; reason?: string }>('site-rebuild', job ? { reason, job } : { reason });
   } catch (e) {
     return { ok: false, reason: (e as Error).message };
   }
@@ -586,4 +591,168 @@ export async function defaultsBatches(ids: string[]): Promise<Set<string>> {
   const { data, error } = await supabase.rpc('site_defaults_batches', { p_ids: ids });
   if (error) return new Set();
   return new Set((data as string[] | null) ?? []);
+}
+
+// ── media «الصور» (1 Nov 2026) ───────────────────────────────────────────────────────────────────────────────────
+// Reads: public.media_library (media_items + pending) and media_publish_jobs under RLS (media view + branch scope);
+// media_overview() for every target's check (the same rules media_publish applies). Writes: the media_* RPCs (one audit
+// batch each; media batches are never undoable). The bytes go to the private bucket through signed upload URLs that
+// the storage policy issues only for the caller's own pending item (lib/media.ts uploads them with progress).
+export type MediaTarget = 'home' | 'branch' | 'room' | 'section';
+export type MediaSlot = 'cover' | 'gallery' | 'story-entrance' | 'story-lobby' | 'story-rooms' | 'story-dining' | 'hero-poster' | 'hero-video';
+export interface MediaItem {
+  id: string;
+  target: MediaTarget;
+  target_key: string;
+  branch: string | null;
+  slot: MediaSlot;
+  sort: number;
+  alt_ar: string;
+  alt_en: string;
+  focal_x: number;
+  focal_y: number;
+  kind: 'image' | 'video';
+  file_name: string;
+  mime: string;
+  width: number | null;
+  height: number | null;
+  duration: number | null;
+  bytes: number;
+  sha256: string;
+  original_path: string;
+  thumb_path: string | null;
+  preview_path: string | null;
+  upload_state: 'pending' | 'ready';
+  status: 'draft' | 'published' | 'archived';
+  live: Record<string, unknown> | null;
+  published_at: string | null;
+  archived_at: string | null;
+  created_at: string;
+  updated_at: string;
+  /** a publish of the target would change the site (computed by the database) */
+  pending: boolean;
+}
+export interface MediaMissing {
+  code: 'cover' | 'story-entrance' | 'story-lobby' | 'story-rooms' | 'story-dining' | 'hero-poster' | 'alt';
+  item?: string;
+  lang?: 'ar' | 'en';
+}
+export interface MediaWarning {
+  code: 'gallery_low' | 'gallery_high';
+  count: number;
+  min: number;
+  max: number;
+}
+export interface MediaCheck {
+  missing: MediaMissing[];
+  warnings: MediaWarning[];
+  uploading: number;
+  pending: boolean;
+  live: number;
+  items: number;
+}
+export interface MediaTargetRow {
+  target: MediaTarget;
+  key: string;
+  branch: string | null;
+  name_ar?: string;
+  check: MediaCheck;
+}
+export interface MediaJob {
+  id: string;
+  targets: { target: MediaTarget; key: string }[];
+  dry_run: boolean;
+  status: 'queued' | 'building' | 'published' | 'failed';
+  dispatch: 'dispatched' | 'no_token' | 'failed' | null;
+  requested_label: string | null;
+  requested_at: string;
+  started_at: string | null;
+  finished_at: string | null;
+  run_url: string | null;
+  error: string | null;
+}
+export interface MediaPublishResult {
+  ok: boolean;
+  reason?: 'blocked' | 'nothing';
+  job_id?: string;
+  published?: { target: MediaTarget; key: string; warnings: MediaWarning[] }[];
+  ready?: { target: MediaTarget; key: string; warnings: MediaWarning[] }[];
+  blocked?: { target: MediaTarget; key: string; missing: MediaMissing[]; uploading: number }[];
+}
+export interface MediaBegin {
+  target: MediaTarget;
+  key: string;
+  slot: MediaSlot;
+  fileName: string;
+  mime: string;
+  bytes: number;
+  sha256: string;
+  width: number | null;
+  height: number | null;
+  duration: number | null;
+  preview: boolean;
+}
+export type MediaShaHit = { sha256: string; id: string; target: MediaTarget; key: string; slot: MediaSlot };
+
+export async function mediaOverview(): Promise<MediaTargetRow[]> {
+  const { data, error } = await supabase.rpc('media_overview');
+  if (error) fail(error, 'media_overview');
+  return (data ?? []) as MediaTargetRow[];
+}
+export async function mediaItems(target: MediaTarget, key: string, archived = false): Promise<MediaItem[]> {
+  let q = supabase.from('media_library').select('*').eq('target', target).eq('target_key', key);
+  q = archived ? q.eq('status', 'archived') : q.neq('status', 'archived');
+  const { data, error } = await q.order('sort').order('created_at');
+  if (error) fail(error, 'media_library');
+  return (data ?? []) as MediaItem[];
+}
+export async function mediaJobs(limit = 8): Promise<MediaJob[]> {
+  const { data, error } = await supabase
+    .from('media_publish_jobs')
+    .select('id,targets,dry_run,status,dispatch,requested_label,requested_at,started_at,finished_at,run_url,error')
+    .order('requested_at', { ascending: false })
+    .limit(limit);
+  if (error) fail(error, 'media_publish_jobs');
+  return (data ?? []) as MediaJob[];
+}
+export async function mediaFindSha(shas: string[]): Promise<MediaShaHit[]> {
+  if (!shas.length) return [];
+  const { data, error } = await supabase.rpc('media_find_sha', { p_shas: shas });
+  if (error) fail(error, 'media_find_sha');
+  return (data ?? []) as MediaShaHit[];
+}
+export async function mediaBeginUpload(b: MediaBegin): Promise<Saved & { id: string; original_path: string; thumb_path: string | null; preview_path: string | null }> {
+  const { data, error } = await supabase.rpc('media_begin_upload', {
+    p_target: b.target, p_key: b.key, p_slot: b.slot, p_file_name: b.fileName, p_mime: b.mime, p_bytes: b.bytes, p_sha256: b.sha256,
+    p_width: b.width, p_height: b.height, p_duration: b.duration, p_preview: b.preview,
+  });
+  if (error) fail(error, 'media_begin_upload');
+  return data as Saved & { id: string; original_path: string; thumb_path: string | null; preview_path: string | null };
+}
+/** a signed upload URL for one of the caller's own pending paths (the storage insert policy decides) */
+export async function mediaUploadUrl(path: string): Promise<string> {
+  const { data, error } = await supabase.storage.from('media-originals').createSignedUploadUrl(path);
+  if (error || !data) fail({ message: error?.message ?? 'no url', code: /row-level|policy|unauthori/i.test(error?.message ?? '') ? '42501' : undefined }, 'createSignedUploadUrl');
+  return data.signedUrl;
+}
+/** signed download URLs (1 h) for the previews the caller may view; the ones refused are left out */
+export async function mediaSignedUrls(paths: string[]): Promise<Record<string, string>> {
+  const list = [...new Set(paths.filter(Boolean))];
+  if (!list.length) return {};
+  const { data, error } = await supabase.storage.from('media-originals').createSignedUrls(list, 3600);
+  if (error) fail({ message: error.message }, 'createSignedUrls');
+  return Object.fromEntries((data ?? []).flatMap((x) => (x.signedUrl && x.path ? [[x.path, x.signedUrl] as [string, string]] : [])));
+}
+export const mediaFinishUpload = (id: string) => rpcSaved('media_finish_upload', { p_id: id });
+export const mediaAbortUpload = (id: string) => rpcSaved('media_abort_upload', { p_id: id });
+export const mediaUpdate = (id: string, altAr: string, altEn: string, fx: number, fy: number) =>
+  rpcSaved('media_update', { p_id: id, p_alt_ar: altAr, p_alt_en: altEn, p_focal_x: fx, p_focal_y: fy });
+export const mediaSetSlot = (id: string, slot: MediaSlot) => rpcSaved('media_set_slot', { p_id: id, p_slot: slot });
+export const mediaReorder = (target: MediaTarget, key: string, ids: string[]) => rpcSaved('media_reorder', { p_target: target, p_key: key, p_ids: ids });
+export const mediaArchive = (id: string) => rpcSaved('media_archive', { p_id: id });
+export const mediaRestore = (id: string) => rpcSaved('media_restore', { p_id: id });
+export async function mediaPublish(targets: { target: MediaTarget; key: string }[] | null, skipBlocked = false): Promise<MediaPublishResult> {
+  const { data, error } = await supabase.rpc('media_publish', { p_targets: targets, p_skip_blocked: skipBlocked, p_dry_run: false });
+  if (error) fail(error, 'media_publish');
+  return data as MediaPublishResult;
 }

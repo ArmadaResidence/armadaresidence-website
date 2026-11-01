@@ -1,5 +1,7 @@
 // Bilingual label pair (decision C4, 28 Oct 2026) — ONE component for every Arabic / English label of the dashboard
-// (today the rate labels of «سعر لفترة» and the single-night rate; the offers module reuses it).
+// (today the rate labels of «سعر لفترة» and the single-night rate; the offers module reuses it). Alt mode (`kind="alt"`,
+// the media module «الصور», 1 Nov 2026): a photo's alt text ar / en, up to 150 characters, the translation chip only —
+// no list of saved pairs (alt texts describe one photo each), the function asked with kind alt.
 //   - focusing either field opens a combobox list of suggested pairs: the pairs already saved on this branch (most
 //     recent first, deduplicated — `history`) then the seed glossary (public.label_glossary); filtered as you type,
 //     keyboard (arrows, Enter, Esc) and touch; picking fills BOTH fields with the pair;
@@ -25,6 +27,8 @@ export interface LabelPairProps {
   hints?: Partial<Record<Side, string>>;
   placeholders?: Partial<Record<Side, string>>;
   disabled?: boolean;
+  /** alt texts (photos): 150 characters, no suggestion list, the translation chip asks for an alt text */
+  kind?: 'label' | 'alt';
 }
 
 const norm = (s: string) => s.replace(/\s+/g, ' ').trim().toLowerCase().replace(/[ً-ٰٟ]/g, '').replace(/[أإآ]/g, 'ا').replace(/ة/g, 'ه').replace(/ى/g, 'ي');
@@ -35,7 +39,8 @@ const MAX_LISTED = 12;
 let glossaryCache: Promise<LabelPairRow[]> | null = null;
 const glossary = () => (glossaryCache ??= labelGlossary().catch(() => [] as LabelPairRow[]));
 
-export default function LabelPair({ ar, en, onChange, history = [], ids, labels, hints = {}, placeholders = {}, disabled }: LabelPairProps) {
+export default function LabelPair({ ar, en, onChange, history = [], ids, labels, hints = {}, placeholders = {}, disabled, kind = 'label' }: LabelPairProps) {
+  const alt = kind === 'alt';
   const root = useRef<HTMLDivElement>(null);
   const uid = useId().replace(/:/g, '');
   const [seed, setSeed] = useState<LabelPairRow[]>([]);
@@ -47,7 +52,7 @@ export default function LabelPair({ ar, en, onChange, history = [], ids, labels,
 
   useEffect(() => {
     let on = true;
-    glossary().then((g) => on && setSeed(g));
+    if (!alt) glossary().then((g) => on && setSeed(g));
     return () => {
       on = false;
     };
@@ -70,7 +75,7 @@ export default function LabelPair({ ar, en, onChange, history = [], ids, labels,
   }, [history, seed]);
 
   const listed = useMemo(() => {
-    if (!open) return [];
+    if (!open || alt) return [];
     const q = norm(values[open]);
     return pairs.filter((p) => !q || norm(p.ar).includes(q) || norm(p.en).includes(q)).slice(0, MAX_LISTED);
   }, [open, pairs, ar, en]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -100,7 +105,7 @@ export default function LabelPair({ ar, en, onChange, history = [], ids, labels,
       pending.current.ac = ac;
       const kill = window.setTimeout(() => ac.abort(), TIMEOUT_MS);
       try {
-        const label = await labelSuggest(text, from, ac.signal);
+        const label = await labelSuggest(text, from, ac.signal, kind);
         if (!ac.signal.aborted && label) setChip({ side: to, text: label });
       } catch {
         /* nothing: no chip, no error */
@@ -111,7 +116,7 @@ export default function LabelPair({ ar, en, onChange, history = [], ids, labels,
     return () => {
       window.clearTimeout(pending.current.timer);
     };
-  }, [ar, en, pairs]);
+  }, [ar, en, pairs, kind]);
 
   // an outside press (start AND end outside) closes the list
   useEffect(() => onOutsidePress(() => [root.current], () => setOpen(null), { active: () => open !== null }), [open]);
@@ -165,15 +170,15 @@ export default function LabelPair({ ar, en, onChange, history = [], ids, labels,
               dir={side === 'en' ? 'ltr' : undefined}
               lang={side === 'en' ? 'en' : 'ar'}
               value={values[side]}
-              maxLength={80}
+              maxLength={alt ? 150 : 80}
               autoComplete="off"
               disabled={disabled}
               placeholder={placeholders[side]}
-              role="combobox"
-              aria-autocomplete="list"
-              aria-expanded={open === side}
-              aria-controls={listId}
-              aria-activedescendant={open === side && active >= 0 && listed[active] ? optId(active) : undefined}
+              role={alt ? undefined : 'combobox'}
+              aria-autocomplete={alt ? undefined : 'list'}
+              aria-expanded={alt ? undefined : open === side}
+              aria-controls={alt ? undefined : listId}
+              aria-activedescendant={!alt && open === side && active >= 0 && listed[active] ? optId(active) : undefined}
               onChange={(e) => {
                 set(side, e.target.value);
                 setOpen(side);

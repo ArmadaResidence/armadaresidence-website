@@ -1,9 +1,10 @@
 // Supabase Edge Function: label-suggest (decision C4, Ahmed 28 Oct 2026)
 //
 // Translates a short hotel rate / offer label between Arabic and English for the dashboard's bilingual label fields
-// (admin/src/components/LabelPair.tsx) — a suggestion only; the dashboard never auto-fills. POST { text, from } with
-// the staff user's JWT (verify_jwt = true):
-//   1. input ≤ 60 characters, from ∈ ar | en;
+// (admin/src/components/LabelPair.tsx) — a suggestion only; the dashboard never auto-fills. POST { text, from, kind? }
+// with the staff user's JWT (verify_jwt = true). kind = 'alt' (the media module «الصور», 1 Nov 2026): a photo's alt
+// text, up to 150 characters, translated with its own instruction and cached under its own key:
+//   1. input ≤ 60 characters (alt: 150), from ∈ ar | en;
 //   2. public.label_suggest_gate AS THE USER (the JWT forwarded): the same staff check as every dashboard RPC
 //      (internal.me() — a verified session, active staff), the cache of identical requests, the per-user rate limit
 //      (60 model calls per hour; a cache hit costs no quota);
@@ -23,8 +24,8 @@ const SUPABASE_URL = Deno.env.get('SUPABASE_URL') ?? '';
 const ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY') ?? '';
 const SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
 const MODEL = 'claude-haiku-5-5';
-const MAX_INPUT = 60;
-const MAX_OUTPUT = 80;
+const MAX_INPUT = { label: 60, alt: 150 };
+const MAX_OUTPUT = { label: 80, alt: 180 };
 /** never in a guest-facing label (CLAUDE.md §4) */
 const FORBIDDEN = [/شقق\s*مخدومة/u, /serviced\s+apartments?/i];
 
@@ -34,6 +35,15 @@ const SYSTEM = [
   'Keep the answer as short as the source: a label, not a sentence. Add no prices, dates, numbers or facts that the source does not contain.',
   'Never write «شقق مخدومة» or "serviced apartments"; Armada Residence offers hotel apartments («شقق فندقية»).',
   'Return only the translated label — no quotes, no explanation, no punctuation at the end.',
+].join(' ');
+
+// alt texts (1 Nov 2026): what a photo shows, for people who cannot see it — the same brand rules, a description
+const SYSTEM_ALT = [
+  'You translate the alt text (a short description of what a photo shows, for people who cannot see it) of photos of Armada Residence, a hotel brand in Taif, Saudi Arabia, between Arabic and English.',
+  'Arabic answers are Modern Standard Arabic. English answers are one plain sentence or phrase in sentence case.',
+  'Translate only what the source describes: add no prices, dates, numbers, facts or praise that the source does not contain, and never start with "image of" or «صورة».',
+  'Never write «شقق مخدومة» or "serviced apartments"; Armada Residence offers hotel apartments («شقق فندقية»).',
+  'Return only the translated text — no quotes, no explanation.',
 ].join(' ');
 
 /** Constant-time string compare (test token). */
@@ -63,14 +73,15 @@ interface MessagesResponse {
 
 /** the Messages API call; `thinking` off at low effort is the cheapest setting Claude Haiku 5.5 accepts, and a 400 on
  *  that field retries once with the model's default (adaptive) thinking */
-async function translate(key: string, text: string, from: 'ar' | 'en', signal: AbortSignal): Promise<{ label: string; input_tokens: number; output_tokens: number } | { reason: string }> {
+async function translate(key: string, text: string, from: 'ar' | 'en', kind: 'label' | 'alt', signal: AbortSignal): Promise<{ label: string; input_tokens: number; output_tokens: number } | { reason: string }> {
   const target = from === 'ar' ? 'English' : 'Arabic';
+  const what = kind === 'alt' ? 'photo description (alt text)' : 'label';
   const body = {
     model: MODEL,
-    max_tokens: 100,
+    max_tokens: kind === 'alt' ? 200 : 100,
     output_config: { effort: 'low' },
-    system: SYSTEM,
-    messages: [{ role: 'user', content: `Translate this ${from === 'ar' ? 'Arabic' : 'English'} label to ${target}:\n${text}` }],
+    system: kind === 'alt' ? SYSTEM_ALT : SYSTEM,
+    messages: [{ role: 'user', content: `Translate this ${from === 'ar' ? 'Arabic' : 'English'} ${what} to ${target}:\n${text}` }],
   };
   const call = (extra: Record<string, unknown>) =>
     fetch('https://api.anthropic.com/v1/messages', {
@@ -95,8 +106,9 @@ async function translate(key: string, text: string, from: 'ar' | 'en', signal: A
   const m = (await res.json()) as MessagesResponse;
   if (m.stop_reason === 'refusal') return { reason: 'refused' };
   const raw = (m.content ?? []).filter((b) => b.type === 'text').map((b) => b.text ?? '').join(' ');
-  let label = normalize(raw).split('\n')[0].replace(/^["'«»“”‘’]+|["'«»“”‘’.]+$/g, '').trim();
-  if (!label || label.length > MAX_OUTPUT || FORBIDDEN.some((re) => re.test(label))) return { reason: 'empty' };
+  // a label loses a final full stop; an alt text keeps its sentence as written
+  let label = normalize(raw).split('\n')[0].replace(kind === 'alt' ? /^["'«»“”‘’]+|["'«»“”‘’]+$/g : /^["'«»“”‘’]+|["'«»“”‘’.]+$/g, '').trim();
+  if (!label || label.length > MAX_OUTPUT[kind]|| FORBIDDEN.some((re) => re.test(label))) return { reason: 'empty' };
   if (from === 'en' && !/[؀-ۿ]/.test(label)) return { reason: 'empty' };
   if (from === 'ar' && /[؀-ۿ]/.test(label)) return { reason: 'empty' };
   return { label, input_tokens: m.usage?.input_tokens ?? 0, output_tokens: m.usage?.output_tokens ?? 0 };
@@ -108,7 +120,7 @@ Deno.serve(async (req) => {
   const jwt = (req.headers.get('authorization') ?? '').replace(/^Bearer\s+/i, '');
   if (!jwt) return json(req, 401, { ok: false, error: 'sign in' });
 
-  let body: { text?: unknown; from?: unknown };
+  let body: { text?: unknown; from?: unknown; kind?: unknown };
   try {
     body = await req.json();
   } catch {
@@ -116,9 +128,11 @@ Deno.serve(async (req) => {
   }
   const from = body.from === 'en' ? 'en' : body.from === 'ar' ? 'ar' : null;
   const text = typeof body.text === 'string' ? normalize(body.text) : '';
-  if (!from || !text || [...text].length > MAX_INPUT) return json(req, 400, { ok: false, reason: 'invalid' });
+  const kind = body.kind === 'alt' ? 'alt' : 'label';
+  if (!from || !text || [...text].length > MAX_INPUT[kind]) return json(req, 400, { ok: false, reason: 'invalid' });
 
-  const hash = await sha256hex(`${from}:${from === 'en' ? text.toLowerCase() : text}`);
+  // labels keep their 28 Oct cache keys; alt texts are cached under their own prefix
+  const hash = await sha256hex(`${kind === 'alt' ? 'alt:' : ''}${from}:${from === 'en' ? text.toLowerCase() : text}`);
   const test = sameSecret(req.headers.get('x-armada-test') ?? '', Deno.env.get('BOOKING_TEST_TOKEN') ?? '');
   if (!test) {
     // the staff check, the cache and the rate limit run as the user (RLS and internal.me() decide)
@@ -139,7 +153,7 @@ Deno.serve(async (req) => {
   const timer = setTimeout(() => ac.abort(), 8000);
   let out: Awaited<ReturnType<typeof translate>>;
   try {
-    out = await translate(key, text, from, ac.signal);
+    out = await translate(key, text, from, kind, ac.signal);
   } catch (e) {
     console.error('label-suggest: call failed', String(e).slice(0, 120));
     return json(req, 200, { ok: false, reason: 'unavailable' });

@@ -8,6 +8,11 @@
 // Debounced in the database (public.site_rebuild_claim, service role): one dispatch per DEBOUNCE_MS whoever asks and
 // whichever isolate answers — an in-memory timer proved per-isolate on 26 Oct 2026 (the Actions concurrency group
 // still cancels a stale build).
+// Media (dashboard «الصور», 1 Nov 2026): reason 'media' + the publish job id. The caller needs publish on media; the
+// dispatch carries the job (workflow input media_job, and dry_run for a dry job) so the workflow reports on it, skips
+// the debounce (a publish must never be swallowed by a rebuild claimed for another reason — the Pages concurrency group
+// cancels the older run, and the newer one publishes every waiting job), and its result is recorded on the job
+// (public.media_job_update, service role): dispatched | no_token | failed.
 // Without the secret GITHUB_DISPATCH_TOKEN it answers { ok: false, reason: 'no_token' } and the dashboard shows
 // «سيُطبَّق على الموقع عند إعادة البناء التالية». Test mode (supabase/tests/README.md): a request carrying a valid
 // `x-armada-test` token (checked through public.qa_fixture('state'), which refuses any other) may dispatch without a
@@ -20,7 +25,8 @@ const REPO = Deno.env.get('SITE_REPO') ?? 'ArmadaResidence/armadaresidence-websi
 const WORKFLOW = Deno.env.get('SITE_WORKFLOW') ?? 'deploy.yml';
 const REF = Deno.env.get('SITE_REF') ?? 'main';
 const DEBOUNCE_MS = 2 * 60 * 1000;
-const REASONS = new Set(['settings', 'rooms']);
+const REASONS = new Set(['settings', 'rooms', 'media']);
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 
 const url = () => Deno.env.get('SUPABASE_URL') ?? '';
 const anonKey = () => Deno.env.get('SUPABASE_ANON_KEY') ?? '';
@@ -40,12 +46,30 @@ async function claim(reason: string): Promise<boolean> {
   return (await res.json()) === true;
 }
 
+/** the publish job (service role): it must exist and still wait for its build */
+async function mediaJob(id: string): Promise<{ id: string; dry_run: boolean } | null> {
+  const res = await fetch(`${url()}/rest/v1/media_publish_jobs?id=eq.${id}&status=in.(queued,building)&select=id,dry_run`, {
+    headers: { apikey: serviceKey(), Authorization: `Bearer ${serviceKey()}` },
+  });
+  if (!res.ok) return null;
+  const rows = (await res.json()) as { id: string; dry_run: boolean }[];
+  return rows[0] ?? null;
+}
+async function jobDispatch(id: string, dispatch: 'dispatched' | 'no_token' | 'failed'): Promise<void> {
+  const res = await fetch(`${url()}/rest/v1/rpc/media_job_update`, {
+    method: 'POST',
+    headers: { apikey: serviceKey(), Authorization: `Bearer ${serviceKey()}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ p_id: id, p_dispatch: dispatch, p_error: dispatch === 'failed' ? 'dispatch failed' : null }),
+  });
+  if (!res.ok) console.error('site-rebuild: job report failed', res.status);
+}
+
 function json(req: Request, status: number, body: unknown): Response {
   return new Response(JSON.stringify(body), { status, headers: { ...cors(req), 'Content-Type': 'application/json; charset=utf-8' } });
 }
 
-/** The caller through RLS: edit on settings or rooms, at the TOTP level the policies demand. */
-async function callerMayRebuild(jwt: string): Promise<boolean> {
+/** The caller through RLS: edit on settings or rooms (publish on media for a media job), past the second step. */
+async function callerMayRebuild(jwt: string, media: boolean): Promise<boolean> {
   const res = await fetch(`${url()}/rest/v1/rpc/my_staff`, {
     method: 'POST',
     headers: { apikey: anonKey(), Authorization: `Bearer ${jwt}`, 'Content-Type': 'application/json' },
@@ -55,6 +79,7 @@ async function callerMayRebuild(jwt: string): Promise<boolean> {
   const me = (await res.json()) as { active?: boolean; needs_mfa?: boolean; permissions?: Record<string, string> } | null;
   if (!me || !me.active || me.needs_mfa) return false;
   const p = me.permissions ?? {};
+  if (media) return p.media === 'publish';
   return p.settings === 'edit' || p.rooms === 'edit';
 }
 
@@ -76,20 +101,24 @@ Deno.serve(async (req) => {
   if (req.method !== 'POST') return json(req, 405, { ok: false, error: 'method not allowed' });
   const jwt = (req.headers.get('authorization') ?? '').replace(/^Bearer\s+/i, '');
   const test = await testMode(req);
-  if (!test && (!jwt || !(await callerMayRebuild(jwt)))) return json(req, 403, { ok: false, error: 'not allowed' });
-
-  let body: { reason?: string } = {};
+  let body: { reason?: string; job?: string } = {};
   try {
     body = await req.json();
   } catch { /* empty body is fine */ }
-  const reason = test ? 'test' : REASONS.has(String(body.reason)) ? String(body.reason) : 'dashboard';
+  const media = body.reason === 'media';
+  if (media && !UUID.test(String(body.job ?? ''))) return json(req, 400, { ok: false, error: 'job required' });
+  if (!test && (!jwt || !(await callerMayRebuild(jwt, media)))) return json(req, 403, { ok: false, error: 'not allowed' });
+  const reason = media ? 'media' : test ? 'test' : REASONS.has(String(body.reason)) ? String(body.reason) : 'dashboard';
+  const job = media ? await mediaJob(String(body.job)) : null;
+  if (media && !job) return json(req, 400, { ok: false, error: 'unknown job' });
 
   const token = Deno.env.get('GITHUB_DISPATCH_TOKEN');
   if (!token) {
     console.log('site-rebuild: no token, skipped', reason);
+    if (job) await jobDispatch(job.id, 'no_token');
     return json(req, 200, { ok: false, reason: 'no_token' });
   }
-  if (!(await claim(reason))) {
+  if (!job && !(await claim(reason))) {
     console.log('site-rebuild: debounced', reason);
     return json(req, 200, { ok: true, dispatched: false, debounced: true });
   }
@@ -102,13 +131,15 @@ Deno.serve(async (req) => {
       'Content-Type': 'application/json',
       'User-Agent': 'armada-site-rebuild',
     },
-    body: JSON.stringify({ ref: REF }),
+    body: JSON.stringify(job ? { ref: REF, inputs: { media_job: job.id, dry_run: String(job.dry_run) } } : { ref: REF }),
   });
   if (res.status !== 204) {
     const text = await res.text();
     console.error('site-rebuild: dispatch failed', res.status, text.slice(0, 300));
+    if (job) await jobDispatch(job.id, 'failed');
     return json(req, 502, { ok: false, reason: 'dispatch_failed', status: res.status });
   }
+  if (job) await jobDispatch(job.id, 'dispatched');
   console.log('site-rebuild: dispatched', reason);
   return json(req, 200, { ok: true, dispatched: true });
 });

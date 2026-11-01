@@ -62,3 +62,9 @@ verify_jwt = true
 # ANTHROPIC_API_KEY, answers `unavailable` without it).
 [functions.label-suggest]
 verify_jwt = true
+
+# Media module «الصور» (1 Nov 2026): the home hero video may be up to 300 MB (Ahmed, 31 Oct 2026). The project's global
+# upload cap defaults to 50 MB; the bucket media-originals caps each object at 300 MB and the media RPCs keep photos to
+# 40 MB.
+[storage]
+file_size_limit = "300MiB"
