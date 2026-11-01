@@ -26,15 +26,15 @@
   "page": {
     "title_ar": "الشروط والسياسات",
     "title_en": "Terms & Policies",
-    "intro_ar": "تنطبق هذه الشروط على الحجوزات في فرعي أرمادا ريزيدنس بالطائف: طريق المطار وطريق الشفا. تاريخ آخر تحديث: 29 أكتوبر 2026.",
-    "intro_en": "These terms apply to bookings at both Armada Residence properties in Taif: Airport Road and Shafa Road. Last updated 29 October 2026.",
+    "intro_ar": "تنطبق هذه الشروط على الحجوزات في فرعي أرمادا ريزيدنس بالطائف: طريق المطار وطريق الشفا. تاريخ آخر تحديث: 1 نوفمبر 2026.",
+    "intro_en": "These terms apply to bookings at both Armada Residence properties in Taif: Airport Road and Shafa Road. Last updated 1 November 2026.",
     "sections": [
       {
         "id": "booking",
-        "heading_ar": "طلب الحجز والتأكيد",
-        "heading_en": "Booking requests and confirmation",
-        "body_ar": "طلب الحجز عبر الموقع ليس حجزًا مؤكدًا. بعد استلام الطلب يتواصل فريق الاستقبال لتأكيد التوافر والسعر النهائي خلال ساعات عمل الاستقبال، ثم يُرسل التأكيد عبر البريد الإلكتروني أو الواتساب. الأسعار المعروضة على الموقع أسعار ابتدائية لليلة الواحدة شاملة ضريبة القيمة المضافة، والسعر النهائي هو ما يؤكده الاستقبال.",
-        "body_en": "A booking request on the website is not a confirmed booking. Once received, our reception team contacts you to confirm availability and the final price, then sends the confirmation by email or WhatsApp. Prices shown on the website are starting prices per night inclusive of VAT; the final price is the one confirmed by reception."
+        "heading_ar": "الحجز والتأكيد",
+        "heading_en": "Booking and confirmation",
+        "body_ar": "يمكن تأكيد الحجز عبر الموقع بطريقتين. إذا ظهرت علامة «تأكيد فوري» بعد اختيار التواريخ، يتأكد حجزك مباشرة عند الإرسال، ويصلك التأكيد عبر الواتساب وعبر البريد الإلكتروني إن أدخلته، ويكون الإجمالي المعروض قبل الإرسال هو المستحق. وإذا لم تظهر هذه العلامة، فما ترسله طلب حجز يراجعه فريق الاستقبال، ثم يؤكد لك التوافر والسعر النهائي عبر الواتساب أو البريد الإلكتروني. الأسعار المعروضة على الموقع لليلة الواحدة وشاملة ضريبة القيمة المضافة.",
+        "body_en": "A website booking is confirmed in one of two ways. If you see “Instant confirmation” after choosing your dates, your booking is confirmed as soon as you submit it; the confirmation reaches you on WhatsApp, and by email if you gave one, and the total shown before you submit is the amount due. Otherwise, what you send is a booking request: our reception team reviews it and confirms availability and the final price with you on WhatsApp or by email. Prices on the website are per night and include VAT."
       },
       {
         "id": "checkin",
