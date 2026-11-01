@@ -7,16 +7,21 @@ import DiningSection from '@components/DiningSection.astro';
 import Photo from '@components/Photo.astro';
 import Placeholder from '@components/Placeholder.astro';
 import RoomGrid from '@components/RoomGrid.astro';
+import VenueCards from '@components/VenueCards.astro';
 import Icon from '@components/Icon.astro';
 import { langPaths } from '@lib/paths';
 import { lodging } from '@lib/jsonld';
 import {
+  activeVenuesFor,
   amenityLabel,
   branchContact,
   branchPath,
   branchStats,
   branches,
+  diningLive,
   fill,
+  hallFor,
+  hallPath,
   L,
   localePath,
   mailHref,
@@ -58,6 +63,10 @@ const path = `/${branch.slug}/`;
 const bookHref = `${localePath(locale, '/booking/')}?branch=${branch.slug}`;
 const na = branch.national_address;
 const dining = (branch as { dining?: unknown }).dining;
+// the venues published from the dashboard «المطاعم والمقاهي» (2 Nov 2026): this branch's active ones replace the
+// branches.json dining card; none published → the card as before
+const venues = activeVenuesFor(branch.slug);
+const hall = hallFor(branch.slug);
 // Drive times (branches.json → drive_times_min, confirmed by Ahmed 9 Oct 2026): "<10" renders as "under 10 min"
 const dtLabels = t.drive_times as Record<string, string>;
 const driveTimes = Object.entries(((branch as unknown as { drive_times_min?: Record<string, number | string> }).drive_times_min ?? {})).map(([key, v]) => ({
@@ -140,10 +149,25 @@ const COVER_SIZES = '(min-width: 1152px) 1120px, 100vw';
   <Divider class="px-4 pb-14" />
 
   {
-    dining && (
-      <div class="cv-auto reveal reveal-lg">
-        <DiningSection locale={locale} branch={branch} />
-      </div>
+    venues.length > 0 ? (
+      <section class="cv-auto mx-auto max-w-6xl px-4 pb-14" aria-labelledby="dining-heading" data-dining-venues>
+        <div class="flex flex-wrap items-end justify-between gap-3">
+          <h2 id="dining-heading" class="reveal text-2xl md:text-3xl font-bold text-midnight">{t.dining.section_heading}</h2>
+          {diningLive && (
+            <a href={localePath(locale, '/dining/')} class="reveal inline-flex items-center gap-1.5 text-sm font-semibold link-bronze">
+              <span>{t.dining.all_link}</span>
+              <Icon name="arrow" size={16} class="icon-arrow rtl:rotate-180" />
+            </a>
+          )}
+        </div>
+        <VenueCards locale={locale} venues={venues} class="mt-6" />
+      </section>
+    ) : (
+      dining && (
+        <div class="cv-auto reveal reveal-lg">
+          <DiningSection locale={locale} branch={branch} />
+        </div>
+      )
     )
   }
 

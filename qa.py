@@ -221,6 +221,13 @@ def main() -> int:
     display_by_e164[sales_phone] = contact["sales"]["phone_display"]
     if cafe:
         display_by_e164[cafe["phone"]] = cafe["phone_display"]
+    # dining venues (2 Nov 2026): the phone / WhatsApp each published venue was given in the dashboard, shown on /dining/
+    media_file = CONTENT / "media.generated.json"
+    venue_list = (json.loads(media_file.read_text(encoding="utf-8")).get("venues") or []) if media_file.is_file() else []
+    venue_phones = {n for v in venue_list for n in (v.get("phone"), v.get("whatsapp")) if n}
+    known_phones_all = known_phones_all | venue_phones
+    for n in venue_phones:
+        display_by_e164.setdefault(n, re.sub(r"^(\+966)(\d{2})(\d{3})(\d{4})$", r"\1 \2 \3 \4", n))
     known_emails = set(contact["emails"].values()) if False else set()
     for v in contact["emails"].values():
         if isinstance(v, str):
@@ -555,6 +562,9 @@ def main() -> int:
             nodes = data if isinstance(data, list) else [data]
             for node in nodes:
                 t_ = node.get("@type")
+                # a restaurant & café is both types (2 Nov 2026, dining venues)
+                if isinstance(t_, list):
+                    t_ = "Restaurant" if sorted(t_) == ["CafeOrCoffeeShop", "Restaurant"] else str(t_)
                 types.append(t_)
                 if node.get("@context") != "https://schema.org":
                     rep.f("json-ld", f"{path}: @context must be https://schema.org")
@@ -568,6 +578,8 @@ def main() -> int:
                     "Blog": ["name", "url", "publisher", "blogPost"],
                     "BreadcrumbList": ["itemListElement"],
                     "FAQPage": ["mainEntity"],
+                    "Restaurant": ["name", "url", "address", "image", "containedInPlace"],
+                    "CafeOrCoffeeShop": ["name", "url", "address", "image", "containedInPlace"],
                 }.get(t_)
                 if req is None:
                     rep.f("json-ld", f"{path}: unexpected @type {t_}")
@@ -908,7 +920,7 @@ def check_media(rep: "Report") -> None:
     def built(ref: str) -> bool:
         return (DIST / ref.lstrip("/")).is_file()
     images: list[tuple[str, dict]] = []
-    for group in ("rooms", "branches", "sections"):
+    for group in ("rooms", "branches", "sections", "dining", "halls", "places"):
         for key, entry in (data.get(group) or {}).items():
             for i, p in enumerate(entry.get("photos") or []):
                 images.append((f"{group}/{key} #{i + 1}", p))

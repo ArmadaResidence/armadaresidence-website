@@ -81,6 +81,12 @@
       "description_en": "Armada Residence's guide to 17 places in Taif: Al Hada, Al Shafa, Al Ruddaf, Souq Okaz, historic palaces and the miqats. Filter by category, book nearby.",
       "og_image": "/images/taif/og-discover-taif.jpg"
     },
+    "dining": {
+      "title_ar": "المطاعم والمقاهي | أرمادا ريزيدنس",
+      "description_ar": "مطاعم ومقاهي أرمادا ريزيدنس في الطائف: مطعم ومقهى على مدار الساعة في طريق المطار، وبوفيه إفطار يومي في الفرعين.",
+      "title_en": "Dining | Armada Residence",
+      "description_en": "Dining at Armada Residence, Taif: a 24-hour restaurant and café at Airport Road and a daily breakfast buffet at both properties."
+    },
     "partners": {
       "title_ar": "للشركاء والوكالات | فنادق أرمادا ريزيدنس الطائف",
       "description_ar": "فندقان في الطائف و168 وحدة ومسؤول تجاري واحد لوكلاء السفر ومنظّمي الرحلات ومجموعات العمرة والشركات والفرق الرياضية. اطلب أسعار الشركاء.",
@@ -147,5 +153,14 @@
   "pending": [
     "real OG image per page once the approved photo set arrives"
   ],
-  "blog_note": "Article <title>/description come from content/articles frontmatter (seo_title / seo_description, ≤ 60 / ≤ 155), never from here."
+  "blog_note": "Article <title>/description come from content/articles frontmatter (seo_title / seo_description, ≤ 60 / ≤ 155), never from here.",
+  "venue_templates": {
+    "_note": "Dining venue pages /dining/<slug>/ (2 Nov 2026): the title from the venue's name and branch; the description is the venue's own description (cut to max_description_chars at a word) or, for a coming-soon teaser, the template. Venues come from the dashboard «المطاعم والمقاهي».",
+    "title_ar": "{name} | أرمادا ريزيدنس {branch}",
+    "title_en": "{name} | Armada Residence {branch}",
+    "teaser_description_ar": "{name} يفتح قريبًا في أرمادا ريزيدنس {branch} بالطائف. اترك بريدك ونبلغك برسالة واحدة عند الافتتاح.",
+    "teaser_description_en": "{name} opens soon at Armada Residence {branch}, Taif. Leave your email and we will send you one message when it opens.",
+    "max_title_chars": 60,
+    "max_description_chars": 155
+  }
 }

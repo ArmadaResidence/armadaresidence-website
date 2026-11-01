@@ -36,6 +36,13 @@ export interface MediaData {
   rooms?: Record<string, { photos: MediaImage[]; og_image?: string }>;
   branches?: Record<string, { photos: MediaImage[]; og_image?: string; story?: Record<string, MediaImage> }>;
   sections?: Record<string, { photos: MediaImage[] }>;
+  /** dining venues' photos (target dining, key = venue slug), the hall's (hall, key = halls.json slug) and the Discover
+   *  Taif places' covers (place, key = taif-guide.json places[].key) — 2 Nov 2026 */
+  dining?: Record<string, { photos: MediaImage[]; og_image?: string }>;
+  halls?: Record<string, { photos: MediaImage[]; og_image?: string }>;
+  places?: Record<string, { photos: MediaImage[] }>;
+  /** the published dining venues (active and coming soon; a hidden one never reaches the build) */
+  venues?: Venue[];
   home?: { poster: { base: string; widths: number[]; width: number; height: number; position: string }; poster_mobile: { base: string; widths: number[]; width: number; height: number; position: string }; video?: { mp4: string; webm: string; seconds: number }; alt_ar: string; alt_en: string; og_image?: string } | null;
   lqip?: Record<string, string>;
 }
@@ -597,3 +604,115 @@ export function branchStats(locale: Locale, branch: Branch): StatItem[] {
 export function partnersPath(locale: Locale, sub = ''): string {
   return localePath(locale, sub ? `/partners/${sub}/` : '/partners/');
 }
+
+/* ---------- Dining venues (dashboard «المطاعم والمقاهي», 2 Nov 2026) ---------- */
+
+export interface VenueDay {
+  open: string;
+  close: string;
+}
+export type VenueHours = { mode: '24h' } | { mode: 'weekly'; days: Record<string, VenueDay | null> } | null;
+/** One published venue (public.dining_site_manifest → content/media.generated.json → venues). */
+export interface Venue {
+  id: string;
+  slug: string;
+  branch: string;
+  kind: 'restaurant' | 'cafe' | 'restaurant_cafe';
+  name_ar: string;
+  name_en: string;
+  location: 'lobby' | 'rooftop' | 'other';
+  location_note_ar: string;
+  location_note_en: string;
+  /** the SVG logo written by media-build (/images/media/dining-<slug>-logo-<hash>.svg) */
+  logo?: string;
+  hours: VenueHours;
+  audience: 'public' | 'guests' | null;
+  phone: string | null;
+  whatsapp: string | null;
+  extension: string | null;
+  menu: 'none' | 'internal' | 'custom';
+  menu_url: string | null;
+  description_ar: string;
+  description_en: string;
+  status: 'active' | 'coming_soon';
+  sort: number;
+}
+/** active and coming-soon venues in site order (branch, then the dashboard's order); hidden ones never reach the build */
+export const venues: Venue[] = (media.venues ?? []).filter((v) => v.status === 'active' || v.status === 'coming_soon');
+/** /dining/ and the venue pages exist only once at least one venue is active (Ahmed, 1 Nov 2026) */
+export const diningLive: boolean = venues.some((v) => v.status === 'active');
+/** the pages built: every active venue, and the coming-soon teasers once /dining/ exists */
+export const venuePages: Venue[] = diningLive ? venues : [];
+export const activeVenuesFor = (branchSlug: string): Venue[] => venues.filter((v) => v.status === 'active' && v.branch === branchSlug);
+export const venuePath = (locale: Locale, v: Venue): string => localePath(locale, `/dining/${v.slug}/`);
+export const venueName = (locale: Locale, v: Venue): string => (locale === 'en' && v.name_en ? v.name_en : v.name_ar);
+export function venuePhotos(v: Venue): SitePhoto[] {
+  return (media.dining?.[v.slug]?.photos ?? []) as SitePhoto[];
+}
+export const venueOg = (v: Venue): string | undefined => media.dining?.[v.slug]?.og_image;
+/** the venue's kind, its place in the hotel and who may come in, as display facts */
+export function venueFacts(locale: Locale, v: Venue): string[] {
+  const d = ui(locale).dining as unknown as { kinds: Record<string, string>; locations: Record<string, string>; audience: Record<string, string> };
+  const where = v.location === 'other' ? (locale === 'ar' ? v.location_note_ar : v.location_note_en) : d.locations[v.location];
+  return [d.kinds[v.kind], where, v.audience ? d.audience[v.audience] : ''].filter(Boolean);
+}
+const DAY_KEYS = ['sat', 'sun', 'mon', 'tue', 'wed', 'thu', 'fri'] as const;
+/** opening hours as display lines: «على مدار الساعة», or consecutive days with the same times grouped
+ *  («السبت – الأربعاء: 07:00 – 23:00», «الجمعة: مغلق») */
+export function venueHoursLines(locale: Locale, v: Venue): { days: string; time: string }[] {
+  const d = ui(locale).dining as unknown as { hours_24h: string; closed: string; days: Record<string, string> };
+  if (!v.hours) return [];
+  if (v.hours.mode === '24h') return [{ days: '', time: d.hours_24h }];
+  const days = v.hours.days;
+  const sig = (k: string) => (days[k] ? `${days[k]!.open}–${days[k]!.close}` : 'x');
+  const out: { days: string; time: string }[] = [];
+  let i = 0;
+  while (i < DAY_KEYS.length) {
+    let j = i;
+    while (j + 1 < DAY_KEYS.length && sig(DAY_KEYS[j + 1]) === sig(DAY_KEYS[i])) j++;
+    const first = d.days[DAY_KEYS[i]];
+    const label = i === j ? first : `${first} – ${d.days[DAY_KEYS[j]]}`;
+    const day = days[DAY_KEYS[i]];
+    out.push({ days: label, time: day ? `${day.open} – ${day.close}` : d.closed });
+    i = j + 1;
+  }
+  return out;
+}
+/** schema.org openingHoursSpecification of a venue */
+export function venueOpening(v: Venue): Record<string, unknown>[] {
+  const NAMES: Record<string, string> = { sat: 'Saturday', sun: 'Sunday', mon: 'Monday', tue: 'Tuesday', wed: 'Wednesday', thu: 'Thursday', fri: 'Friday' };
+  if (!v.hours) return [];
+  if (v.hours.mode === '24h') return [{ '@type': 'OpeningHoursSpecification', dayOfWeek: Object.values(NAMES), opens: '00:00', closes: '23:59' }];
+  const days = v.hours.days;
+  return DAY_KEYS.filter((k) => days[k]).map((k) => ({ '@type': 'OpeningHoursSpecification', dayOfWeek: NAMES[k], opens: days[k]!.open, closes: days[k]!.close === '24:00' ? '23:59' : days[k]!.close }));
+}
+/** title / description of a venue page from seo.json → venue_templates (the venue's own description, cut at a word) */
+export function venueSeo(locale: Locale, v: Venue): PageSeo {
+  const t = (seo as unknown as { venue_templates: Record<string, string | number> }).venue_templates;
+  const maxT = Number(t.max_title_chars ?? 60);
+  const maxD = Number(t.max_description_chars ?? 155);
+  const name = venueName(locale, v);
+  const branch = branchShort(locale, v.branch);
+  let title = fill(String(t[`title_${locale}`]), { name, branch });
+  if (title.length > maxT) title = `${name} | ${siteName(locale)}`;
+  if (title.length > maxT) title = name.slice(0, maxT);
+  let description = v.status === 'coming_soon'
+    ? fill(String(t[`teaser_description_${locale}`]), { name, branch })
+    : (locale === 'ar' ? v.description_ar : v.description_en).replace(/\s+/g, ' ').trim();
+  if (description.length > maxD) {
+    const cut = description.slice(0, maxD - 1);
+    description = `${cut.slice(0, Math.max(cut.lastIndexOf(' '), maxD - 30)).replace(/[،,.;:—–-]+$/, '')}…`;
+  }
+  return { title, description, noindex: false };
+}
+
+/* ---------- The hall (halls.json; its page /airport-road/hall/ since 2 Nov 2026) ---------- */
+
+export type Hall = (typeof hallsJson.halls)[number];
+export const halls: Hall[] = hallsJson.halls as Hall[];
+export const hallFor = (branchSlug: string): Hall | undefined => halls.find((h) => h.branch === branchSlug);
+export const hallPath = (locale: Locale, h: Hall): string => localePath(locale, `/${h.branch}/hall/`);
+export function hallPhotos(h: Hall): SitePhoto[] {
+  return (media.halls?.[h.slug]?.photos ?? []) as SitePhoto[];
+}
+export const hallOg = (h: Hall): string | undefined => media.halls?.[h.slug]?.og_image;

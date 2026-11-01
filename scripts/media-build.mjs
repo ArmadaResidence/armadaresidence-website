@@ -12,6 +12,10 @@
 //      content/media.generated.json (gitignored): what src/lib/content.ts merges into the rooms, the branches and their
 //      story scenes, what the home hero renders, the section galleries, their LQIPs;
 //   4. .media-build/report.json + the GitHub step summary / outputs (manifest_at, items) for the deploy workflow.
+// Dining (2 Nov 2026): the published venues of «المطاعم والمقاهي» (public.dining_site_manifest, service role — or the
+// fixture's venues.json) go into the same data file (`venues`: active and coming soon only; a hidden venue never), each
+// SVG logo as its own content-addressed file; the targets dining (per venue), hall and place (per Discover Taif place,
+// cover only) are rendered like the room photos (`dining`, `halls`, `places`).
 // Without SUPABASE_SERVICE_ROLE_KEY (a local build, the check suite) and without a fixture the data file is written
 // empty and nothing else changes: the site renders exactly as before (placeholders). WITH the key a failure is fatal —
 // a transient error must never publish a site without its photos.
@@ -90,6 +94,13 @@ if (FIXTURE) {
   if (JOB && !PLAN) await rpc('media_job_update', { p_id: JOB, p_status: 'building', p_run_url: RUN_URL }).catch((e) => log(`  ! job report: ${e.message}`));
   manifest = await rpc('media_site_manifest', { p_dry_job: DRY && JOB ? JOB : null });
   source = 'supabase';
+}
+// the published dining venues (never a hidden one; the fixture may hold one to prove it stays out)
+let venues = [];
+if (!PLAN) {
+  if (FIXTURE) venues = existsSync(join(FIXTURE, 'venues.json')) ? JSON.parse(readFileSync(join(FIXTURE, 'venues.json'), 'utf8')).venues ?? [] : [];
+  else venues = (await rpc('dining_site_manifest', {})).venues ?? [];
+  venues = venues.filter((v) => v.status === 'active' || v.status === 'coming_soon');
 }
 const items = manifest.items || [];
 const focalOf = (it) => ({ x: Number(it.focal_x ?? 0.5), y: Number(it.focal_y ?? 0.5) });
@@ -207,7 +218,18 @@ async function photo(it, prefix, withOg) {
 }
 
 // ---------- the data the pages read ----------
-const data = { _note: NOTE, source, manifest_at: manifest.at, dry_job: DRY ? JOB || true : undefined, rooms: {}, branches: {}, sections: {}, home: null, lqip: {} };
+const data = { _note: NOTE, source, manifest_at: manifest.at, dry_job: DRY ? JOB || true : undefined, rooms: {}, branches: {}, sections: {}, dining: {}, halls: {}, places: {}, home: null, lqip: {}, venues: [] };
+for (const v of venues) {
+  const { logo_svg: logo, ...rest } = v;
+  const entry = { ...rest };
+  if (logo) {
+    const name = `dining-${v.slug}-logo-${createHash('sha256').update(logo).digest('hex').slice(0, 10)}.svg`;
+    writeFileSync(join(IMG, name), logo);
+    entry.logo = `${PUB}/${name}`;
+  }
+  data.venues.push(entry);
+}
+if (venues.length) log(`✓ dining: ${venues.length} published venue(s) (${venues.map((v) => `${v.slug} ${v.status}`).join(', ')})`);
 const byTarget = new Map();
 for (const it of items) {
   const k = `${it.target}:${it.key}`;
@@ -218,8 +240,8 @@ const ordered = (list) => [...list.filter((i) => i.slot === 'cover'), ...list.fi
 for (const [k, list] of byTarget) {
   const [target, key] = [k.slice(0, k.indexOf(':')), k.slice(k.indexOf(':') + 1)];
   try {
-    if (target === 'room' || target === 'branch' || target === 'section') {
-      const prefix = target === 'section' ? `section-${key}` : key.replace('/', '-');
+    if (['room', 'branch', 'section', 'dining', 'hall', 'place'].includes(target)) {
+      const prefix = ['section', 'dining', 'hall', 'place'].includes(target) ? `${target}-${key}` : key.replace('/', '-');
       const photos = [];
       let og;
       for (const it of ordered(list)) {
@@ -241,7 +263,7 @@ for (const [k, list] of byTarget) {
           data.lqip[r.lqip[0]] = r.lqip[1];
         }
       }
-      data[target === 'room' ? 'rooms' : target === 'branch' ? 'branches' : 'sections'][key] = entry;
+      data[{ room: 'rooms', branch: 'branches', section: 'sections', dining: 'dining', hall: 'halls', place: 'places' }[target]][key] = entry;
       log(`  ✓ ${k}: ${photos.length} photo(s)${entry.story ? ` + ${Object.keys(entry.story).length} story scene(s)` : ''}`);
     } else if (target === 'home') {
       const posterItem = list.find((i) => i.slot === 'hero-poster');
@@ -321,7 +343,8 @@ const report = {
   seconds: { total: (Date.now() - t0) / 1000, download: stats.download_ms / 1000, render: stats.render_ms / 1000 }, problems,
 };
 writeFileSync(join(OUT, 'report.json'), JSON.stringify(report, null, 2) + '\n');
-for (const k of ['rooms', 'branches', 'sections']) if (!Object.keys(data[k]).length) delete data[k];
+for (const k of ['rooms', 'branches', 'sections', 'dining', 'halls', 'places']) if (!Object.keys(data[k]).length) delete data[k];
+if (!data.venues.length) delete data.venues;
 if (!data.home) delete data.home;
 writeFileSync(DATA, JSON.stringify(data, null, 1) + '\n');
 log(`✓ media: ${files.length} file(s), ${(bytes / 1048576).toFixed(1)} MB in .media-build/images/media — cache ${stats.hits} hit(s), ${stats.misses} miss(es), ${(stats.downloaded / 1048576).toFixed(1)} MB downloaded, ${report.seconds.total.toFixed(1)} s`);

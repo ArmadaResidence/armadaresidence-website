@@ -18,10 +18,15 @@ import {
   roomPath,
   seo,
   siteName,
+  venueName,
+  venueOg,
+  venueOpening,
+  venuePath,
   visibleRatePlans,
   type Branch,
   type Locale,
   type Room,
+  type Venue,
 } from './content';
 
 const AMENITY_SCHEMA: Record<string, string> = {
@@ -286,4 +291,30 @@ export function breadcrumbs(items: { name: string; path: string }[]) {
     '@type': 'BreadcrumbList',
     itemListElement: items.map((it, i) => ({ '@type': 'ListItem', position: i + 1, name: it.name, item: absoluteUrl(it.path) })),
   };
+}
+
+/** A dining venue page (2 Nov 2026, dashboard «المطاعم والمقاهي»): Restaurant / CafeOrCoffeeShop (both for a restaurant
+ *  & café) inside its branch — name, page, cover image, address, phone, opening hours, menu, audience. */
+export function venueLd(locale: Locale, v: Venue) {
+  const b = branches.find((x) => x.slug === v.branch)!;
+  const type = v.kind === 'restaurant' ? 'Restaurant' : v.kind === 'cafe' ? 'CafeOrCoffeeShop' : ['Restaurant', 'CafeOrCoffeeShop'];
+  const node: Record<string, unknown> = {
+    '@context': 'https://schema.org',
+    '@type': type,
+    '@id': absoluteUrl(venuePath(locale, v)) + '#venue',
+    name: venueName(locale, v),
+    url: absoluteUrl(venuePath(locale, v)),
+    image: ogImage(venueOg(v)),
+    address: postalAddress(locale, b),
+    containedInPlace: { '@type': b.slug === 'shafa-road' ? 'Hotel' : 'LodgingBusiness', '@id': absoluteUrl(branchPath(locale, b.slug)) + '#lodging' },
+  };
+  const description = locale === 'ar' ? v.description_ar : v.description_en;
+  if (description) node.description = description;
+  if (v.phone) node.telephone = v.phone;
+  const opening = venueOpening(v);
+  if (opening.length) node.openingHoursSpecification = opening;
+  if (v.menu === 'internal') node.hasMenu = absoluteUrl(localePath(locale, '/menu/'));
+  else if (v.menu === 'custom' && v.menu_url) node.hasMenu = v.menu_url;
+  if (v.audience) node.publicAccess = v.audience === 'public';
+  return node;
 }

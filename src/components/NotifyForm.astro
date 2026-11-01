@@ -1,0 +1,177 @@
+---
+/**
+ * «أبلغني عند الافتتاح» (2 Nov 2026) on a coming-soon venue's teaser page: email only, a consent that names the venue
+ * (approved wording, ui.json → dining.notify_consent), a honeypot `website`; posts JSON to the dining-notify function on
+ * the booking endpoint's Supabase project (per-IP limit there; the address is stored for this venue only and deleted
+ * once the opening email is sent). Inline errors on blur and submit with aria-invalid / aria-describedby, focus to the
+ * first invalid field, the button disabled with a spinner while sending; nothing is kept in the browser.
+ */
+import Icon from './Icon.astro';
+import { fill, ui, type Locale } from '@lib/content';
+
+interface Props {
+  locale: Locale;
+  venue: string;
+  name: string;
+}
+const { locale, venue, name } = Astro.props;
+const d = ui(locale).dining as unknown as Record<string, string>;
+const bookingEndpoint = import.meta.env.PUBLIC_BOOKING_ENDPOINT ?? '';
+const endpoint = (() => {
+  try {
+    return bookingEndpoint ? `${new URL(bookingEndpoint).origin}/functions/v1/dining-notify` : '';
+  } catch {
+    return '';
+  }
+})();
+const clientData = {
+  endpoint,
+  anonKey: import.meta.env.PUBLIC_SUPABASE_ANON_KEY ?? '',
+  venue,
+  strings: {
+    email: d.notify_err_email,
+    consent: d.notify_err_consent,
+    rate: d.notify_err_rate,
+    failed: d.notify_err_failed,
+    sending: d.notify_sending,
+    submit: d.notify_submit,
+    done: fill(d.notify_done, { name }),
+  },
+};
+---
+
+<div class="bg-white border border-line rounded-card p-6 md:p-8" data-notify-root>
+  <h2 class="text-xl font-bold text-midnight" id="notify-heading">{d.notify_heading}</h2>
+  <p class="mt-2 text-ink-muted">{d.notify_intro}</p>
+  <form class="mt-5 grid gap-4" novalidate data-notify-form aria-labelledby="notify-heading">
+    <div class="field">
+      <input id="notify-email" name="email" type="email" inputmode="email" autocomplete="email" spellcheck="false" placeholder=" " maxlength="254" class="field-input w-full border border-line rounded bg-white latin text-left" dir="ltr" aria-describedby="notify-email-error" required />
+      <label for="notify-email" class="field-label">{d.notify_email}</label>
+      <p id="notify-email-error" class="field-error" hidden></p>
+    </div>
+    <div>
+      <label class="flex items-start gap-3 text-sm leading-relaxed text-ink">
+        <input type="checkbox" name="consent" value="yes" class="mt-1 size-4 accent-bronze-deep shrink-0" aria-describedby="notify-consent-error" required />
+        <span>{fill(d.notify_consent, { name })}</span>
+      </label>
+      <p id="notify-consent-error" class="field-error" hidden></p>
+    </div>
+    {/* honeypot: hidden from people and assistive tech; a filled value is dropped by the function */}
+    <div class="hidden" aria-hidden="true">
+      <label>Website <input type="text" name="website" tabindex="-1" autocomplete="off" /></label>
+    </div>
+    <p class="field-error" role="alert" hidden data-notify-summary></p>
+    <div>
+      <button type="submit" class="inline-flex items-center gap-2 bg-bronze-deep text-white font-semibold px-5 py-3 rounded hover:bg-bronze-text transition-colors disabled:opacity-60" data-notify-submit>
+        <span class="spinner hidden" aria-hidden="true" data-spinner></span>
+        <span data-label>{d.notify_submit}</span>
+      </button>
+    </div>
+    <script type="application/json" data-notify-data set:html={JSON.stringify(clientData).replace(/</g, '\\u003c')} />
+  </form>
+  <div class="hidden mt-5 rounded-card border border-line bg-porcelain p-5" role="status" tabindex="-1" data-notify-done>
+    <Icon name="check" size={24} class="text-bronze" />
+    <p class="mt-2 font-semibold text-midnight leading-relaxed" data-notify-done-text></p>
+  </div>
+</div>
+
+<script>
+  import { bindOnce, onPageLoad } from '@lib/client';
+  import { validEmail } from '../../supabase/functions/booking-request/rules.ts';
+
+  type Data = { endpoint: string; anonKey: string; venue: string; strings: Record<string, string> };
+
+  function init(root: HTMLElement) {
+    const form = root.querySelector<HTMLFormElement>('[data-notify-form]');
+    const raw = root.querySelector<HTMLScriptElement>('[data-notify-data]');
+    if (!form || !raw || !bindOnce(form)) return;
+    const data = JSON.parse(raw.textContent || '{}') as Data;
+    const email = form.elements.namedItem('email') as HTMLInputElement;
+    const consent = form.elements.namedItem('consent') as HTMLInputElement;
+    const honey = form.elements.namedItem('website') as HTMLInputElement;
+    const summary = form.querySelector<HTMLElement>('[data-notify-summary]')!;
+    const button = form.querySelector<HTMLButtonElement>('[data-notify-submit]')!;
+    const done = root.querySelector<HTMLElement>('[data-notify-done]')!;
+
+    const show = (input: HTMLInputElement, msg: string | null) => {
+      const err = document.getElementById(input.getAttribute('aria-describedby') || '');
+      input.setAttribute('aria-invalid', msg ? 'true' : 'false');
+      if (err) {
+        err.textContent = msg ?? '';
+        err.hidden = !msg;
+      }
+    };
+    const check = (which?: 'email' | 'consent'): HTMLInputElement[] => {
+      const bad: HTMLInputElement[] = [];
+      if (!which || which === 'email') {
+        const ok = validEmail(email.value.trim());
+        show(email, ok ? null : data.strings.email);
+        if (!ok) bad.push(email);
+      }
+      if (!which || which === 'consent') {
+        show(consent, consent.checked ? null : data.strings.consent);
+        if (!consent.checked) bad.push(consent);
+      }
+      return bad;
+    };
+    // an error shows on blur and clears while typing — never on the blur of a press on «أبلغني», where hiding the line
+    // would move the button away from the finger before the click lands
+    email.addEventListener('blur', () => {
+      if (email.value.trim() && !validEmail(email.value.trim())) show(email, data.strings.email);
+    });
+    email.addEventListener('input', () => {
+      if (email.getAttribute('aria-invalid') === 'true' && validEmail(email.value.trim())) show(email, null);
+    });
+    consent.addEventListener('change', () => check('consent'));
+
+    const busy = (on: boolean) => {
+      button.disabled = on;
+      button.querySelector('[data-spinner]')?.classList.toggle('hidden', !on);
+      button.querySelector('[data-label]')!.textContent = on ? data.strings.sending : data.strings.submit;
+    };
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      summary.hidden = true;
+      const bad = check();
+      if (bad.length) {
+        bad[0].focus();
+        return;
+      }
+      busy(true);
+      try {
+        const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+        if (data.anonKey) {
+          headers['Authorization'] = `Bearer ${data.anonKey}`;
+          headers['apikey'] = data.anonKey;
+        }
+        if (!data.endpoint) throw new Error('no endpoint');
+        const res = await fetch(data.endpoint, {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({ action: 'subscribe', venue: data.venue, email: email.value.trim(), consent: consent.checked, website: honey.value }),
+        });
+        if (res.status === 422) {
+          const j = (await res.json().catch(() => ({}))) as { fields?: Record<string, string> };
+          if (j.fields?.email) show(email, data.strings.email);
+          if (j.fields?.consent) show(consent, data.strings.consent);
+          (j.fields?.email ? email : consent).focus();
+          return;
+        }
+        if (!res.ok) throw new Error(res.status === 429 ? 'rate' : 'failed');
+        form.reset();
+        form.hidden = true;
+        done.classList.remove('hidden');
+        done.querySelector('[data-notify-done-text]')!.textContent = data.strings.done;
+        done.focus();
+        (window as unknown as { dataLayer?: unknown[] }).dataLayer?.push({ event: 'dining_notify', venue: data.venue });
+      } catch (x) {
+        summary.textContent = (x as Error).message === 'rate' ? data.strings.rate : data.strings.failed;
+        summary.hidden = false;
+      } finally {
+        busy(false);
+      }
+    });
+  }
+
+  onPageLoad(() => document.querySelectorAll<HTMLElement>('[data-notify-root]').forEach(init));
+</script>

@@ -1,0 +1,166 @@
+---
+/**
+ * /dining/<slug>/ — one dining venue (2 Nov 2026, dashboard «المطاعم والمقاهي»). Active: the cover (LCP) and the gallery
+ * from «الصور», the description, opening hours, where it is in the hotel, the menu, the venue's phone / WhatsApp / room
+ * extension, the map link of its branch; JSON-LD Restaurant / CafeOrCoffeeShop + BreadcrumbList. Coming soon: a teaser
+ * with «أبلغني عند الافتتاح» (NotifyForm). Built only while /dining/ exists (at least one active venue); a hidden venue
+ * never reaches the build. Title / description from seo.json → venue_templates.
+ */
+import Base from '@layouts/Base.astro';
+import GallerySlider from '@components/GallerySlider.astro';
+import Icon from '@components/Icon.astro';
+import NotifyForm from '@components/NotifyForm.astro';
+import Photo from '@components/Photo.astro';
+import Placeholder from '@components/Placeholder.astro';
+import { langPaths } from '@lib/paths';
+import { breadcrumbs, venueLd } from '@lib/jsonld';
+import {
+  branchBySlug,
+  fill,
+  L,
+  localePath,
+  paragraphs,
+  photoPreload,
+  photoProps,
+  telHref,
+  ui,
+  venueFacts,
+  venueHoursLines,
+  venueName,
+  venueOg,
+  venuePages,
+  venuePath,
+  venuePhotos,
+  venueSeo,
+  waHref,
+  type Locale,
+  type Venue,
+} from '@lib/content';
+
+export function getStaticPaths() {
+  return langPaths().flatMap(({ params, props }) => venuePages.map((v) => ({ params: { ...params, venue: v.slug }, props: { ...props, venue: v } })));
+}
+
+interface Props {
+  locale: Locale;
+  venue: Venue;
+}
+const { locale, venue: v } = Astro.props;
+const t = ui(locale);
+const d = t.dining as unknown as Record<string, string>;
+const g = t.gallery;
+const galleryLabels = { previous: g.previous, next: g.next, goTo: g.go_to, open: g.open, close: g.close, of: g.of };
+const s = venueSeo(locale, v);
+const name = venueName(locale, v);
+const branch = branchBySlug(v.branch);
+const branchName = L(locale, branch, 'name');
+const photos = venuePhotos(v);
+const soon = v.status === 'coming_soon';
+const hours = venueHoursLines(locale, v);
+const menu = v.menu === 'internal' ? localePath(locale, '/menu/') : v.menu === 'custom' ? v.menu_url : null;
+const description = paragraphs(locale === 'ar' ? v.description_ar : v.description_en);
+const path = `/dining/${v.slug}/`;
+const PHOTO_SIZES = '(min-width: 1152px) 680px, (min-width: 1024px) 60vw, 100vw';
+const jsonld = [
+  breadcrumbs([
+    { name: t.nav.home, path: localePath(locale, '/') },
+    { name: t.dining.page_heading, path: localePath(locale, '/dining/') },
+    { name, path: venuePath(locale, v) },
+  ]),
+  ...(soon ? [] : [venueLd(locale, v)]),
+];
+---
+
+<Base locale={locale} path={path} title={s.title} description={s.description} ogImage={venueOg(v)} jsonld={jsonld} whatsapp={v.branch} booking={{ branch: v.branch }}>
+  {photos.length > 0 && <link slot="head" {...photoPreload(photos[0], PHOTO_SIZES, { webpOnly: photos.length > 1 })} />}
+  <section class="mx-auto max-w-6xl px-4 pt-10 pb-14">
+    <nav aria-label="breadcrumb" class="text-sm text-ink-muted">
+      <a href={localePath(locale, '/')} class="hover:text-midnight">{t.nav.home}</a>
+      <span aria-hidden="true" class="mx-2">/</span>
+      <a href={localePath(locale, '/dining/')} class="hover:text-midnight">{t.dining.page_heading}</a>
+      <span aria-hidden="true" class="mx-2">/</span>
+      <span class="text-midnight">{name}</span>
+    </nav>
+    <div class="mt-6 flex flex-wrap items-center gap-4">
+      {v.logo && <img src={v.logo} alt="" aria-hidden="true" width="200" height="60" class="h-14 w-auto max-w-52 object-contain" />}
+    </div>
+    {soon && <p class="mt-4 text-xs font-semibold uppercase tracking-wide text-bronze-text">{d.coming_soon}</p>}
+    <h1 class="mt-1 text-3xl md:text-4xl font-bold text-midnight">{name}</h1>
+    <p class="mt-2 text-lg text-ink-muted">{[...venueFacts(locale, v), branchName].join(' · ')}</p>
+
+    <div class="mt-8 grid gap-10 lg:grid-cols-5">
+      <div class="lg:col-span-3">
+        {
+          photos.length > 1 ? (
+            <GallerySlider images={photos.map((p) => ({ ...photoProps(locale, p), sizes: PHOTO_SIZES }))} lcp ratio="3 / 2" labels={galleryLabels} />
+          ) : photos.length === 1 ? (
+            <Photo {...photoProps(locale, photos[0])} sizes={PHOTO_SIZES} loading="eager" fetchpriority="high" class="rounded-card" imgClass="w-full h-auto" />
+          ) : (
+            <Placeholder label={fill(t.photo_pending_alt, { subject: name })} />
+          )
+        }
+        {soon && <p class="mt-8 text-lg font-semibold text-midnight">{fill(d.coming_soon_lede, { name, branch: branchName })}</p>}
+        {description.length > 0 && (
+          <div class="mt-6 prose-armada leading-relaxed">
+            {description.map((p) => <p>{p}</p>)}
+          </div>
+        )}
+        {soon && (
+          <div class="mt-10">
+            <NotifyForm locale={locale} venue={v.slug} name={name} />
+          </div>
+        )}
+      </div>
+
+      <aside class="lg:col-span-2 self-start bg-white border border-line rounded-card p-6" aria-label={name}>
+        <dl class="space-y-5 text-sm">
+          {
+            hours.length > 0 && (
+              <div class="dl-row">
+                <dt class="font-semibold text-midnight flex items-start gap-3"><Icon name="clock" size={18} class="text-bronze shrink-0 mt-0.5" /><span>{d.hours_label}</span></dt>
+                <dd class="ms-[30px] mt-1 text-ink-muted">
+                  <ul class="space-y-1">
+                    {hours.map((h) => (
+                      <li class="flex justify-between gap-3">
+                        {h.days && <span>{h.days}</span>}
+                        <span class="latin whitespace-nowrap" dir="ltr">{h.time}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </dd>
+              </div>
+            )
+          }
+          <div class="dl-row">
+            <dt class="font-semibold text-midnight flex items-start gap-3"><Icon name="map" size={18} class="text-bronze shrink-0 mt-0.5" /><span>{d.location_label}</span></dt>
+            <dd class="ms-[30px] mt-1 text-ink-muted">
+              {venueFacts(locale, v).slice(1, 2).join('')}{venueFacts(locale, v).slice(1, 2).length ? ' — ' : ''}<a href={localePath(locale, `/${v.branch}/`)} class="link-bronze font-semibold">{branchName}</a>
+              <br />
+              <a href={branch.maps_url} rel="noopener" target="_blank" class="font-semibold link-bronze">{t.cta.maps}</a>
+            </dd>
+          </div>
+          {
+            !soon && (v.phone || v.whatsapp || v.extension) && (
+              <div class="dl-row">
+                <dt class="font-semibold text-midnight flex items-start gap-3"><Icon name="phone" size={18} class="text-bronze shrink-0 mt-0.5" /><span>{d.contact_label}</span></dt>
+                <dd class="ms-[30px] mt-1 flex flex-col gap-1">
+                  {v.phone && <a href={telHref(v.phone)} class="latin text-ink-muted hover:text-midnight" dir="ltr">{v.phone.replace(/^(\+966)(\d{2})(\d{3})(\d{4})$/, '$1 $2 $3 $4')}</a>}
+                  {v.whatsapp && <a href={waHref(v.whatsapp)} rel="noopener" target="_blank" class="font-semibold link-bronze">{t.cta.whatsapp_title}</a>}
+                  {v.extension && <span class="text-ink-muted">{fill(d.extension, { n: v.extension })}</span>}
+                </dd>
+              </div>
+            )
+          }
+        </dl>
+        {
+          !soon && menu && (
+            <a href={menu} class="mt-6 inline-flex w-full justify-center items-center gap-2 bg-bronze-deep text-white font-semibold px-5 py-3 rounded hover:bg-bronze-text transition-colors" {...(v.menu === 'custom' ? { rel: 'noopener', target: '_blank' } : {})}>
+              <span>{d.menu_cta}</span>
+              <Icon name="arrow" size={18} class="icon-arrow rtl:rotate-180" />
+            </a>
+          )
+        }
+      </aside>
+    </div>
+  </section>
+</Base>

@@ -1,0 +1,53 @@
+---
+/**
+ * /dining/ — «المطاعم والمقاهي» (2 Nov 2026): every active venue published from the dashboard, then the coming-soon
+ * teasers, grouped by branch. Built only once at least one venue is active (Ahmed, 1 Nov 2026): until then there is no
+ * page and no sitemap entry (getStaticPaths returns nothing). Title / description from seo.json → pages.dining.
+ */
+import Base from '@layouts/Base.astro';
+import VenueCards from '@components/VenueCards.astro';
+import { langPaths } from '@lib/paths';
+import { breadcrumbs } from '@lib/jsonld';
+import { branches, diningLive, L, localePath, pageSeo, ui, venues, type Locale } from '@lib/content';
+
+export function getStaticPaths() {
+  return diningLive ? langPaths() : [];
+}
+
+interface Props {
+  locale: Locale;
+}
+const { locale } = Astro.props;
+const t = ui(locale);
+const s = pageSeo(locale, 'dining');
+// per branch: its active venues first, then its coming-soon teasers (the dashboard's order within each)
+const groups = branches
+  .map((b) => ({ branch: b, list: [...venues.filter((v) => v.branch === b.slug && v.status === 'active'), ...venues.filter((v) => v.branch === b.slug && v.status === 'coming_soon')] }))
+  .filter((g) => g.list.length);
+const jsonld = [
+  breadcrumbs([
+    { name: t.nav.home, path: localePath(locale, '/') },
+    { name: t.dining.page_heading, path: localePath(locale, '/dining/') },
+  ]),
+];
+---
+
+<Base locale={locale} path="/dining/" title={s.title} description={s.description} jsonld={jsonld}>
+  <section class="mx-auto max-w-6xl px-4 pt-10 pb-14">
+    <nav aria-label="breadcrumb" class="text-sm text-ink-muted">
+      <a href={localePath(locale, '/')} class="hover:text-midnight">{t.nav.home}</a>
+      <span aria-hidden="true" class="mx-2">/</span>
+      <span class="text-midnight">{t.dining.page_heading}</span>
+    </nav>
+    <h1 class="mt-6 text-3xl md:text-4xl font-bold text-midnight">{t.dining.page_heading}</h1>
+    <p class="mt-3 max-w-3xl text-lg text-ink-muted">{s.description}</p>
+    {
+      groups.map((g, i) => (
+        <section class:list={['mt-12', i > 0 && 'cv-auto']} aria-labelledby={`dining-${g.branch.slug}`} data-dining-branch={g.branch.slug}>
+          <h2 id={`dining-${g.branch.slug}`} class:list={['text-2xl font-bold text-midnight reveal', i === 0 && 'enter']}>{L(locale, g.branch, 'name')}</h2>
+          <VenueCards locale={locale} venues={g.list} class="mt-6" enter={i === 0} />
+        </section>
+      ))
+    }
+  </section>
+</Base>

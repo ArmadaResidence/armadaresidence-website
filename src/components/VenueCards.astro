@@ -1,0 +1,85 @@
+---
+/**
+ * Dining venues as cards (2 Nov 2026, dashboard «المطاعم والمقاهي»): the branch page's dining section (that branch's
+ * ACTIVE venues) and /dining/ (every active venue, then the coming-soon teasers). Each card: the cover from «الصور» (else
+ * the brand placeholder), the SVG logo, the name, kind · place in the hotel · audience, the opening hours, «عرض المنيو»
+ * when there is a menu, the venue's own WhatsApp, and the venue page. Every value comes from the published venue.
+ */
+import Icon from './Icon.astro';
+import Photo from './Photo.astro';
+import Placeholder from './Placeholder.astro';
+import { fill, localePath, photoProps, ui, venueFacts, venueHoursLines, venueName, venuePath, venuePhotos, waHref, type Locale, type Venue } from '@lib/content';
+
+interface Props {
+  locale: Locale;
+  venues: Venue[];
+  /** heading level of each card's name (h3 under a section heading, h2 on /dining/) */
+  level?: 2 | 3;
+  class?: string;
+  /** the list may sit in the first viewport (/dining/): its reveal is transform only (CLAUDE.md §3b, above the fold) */
+  enter?: boolean;
+}
+const { locale, venues, level = 3, class: className = '', enter = false } = Astro.props;
+const t = ui(locale);
+const d = t.dining as unknown as Record<string, string>;
+const Heading = level === 2 ? 'h2' : 'h3';
+const menuHref = (v: Venue) => (v.menu === 'internal' ? localePath(locale, '/menu/') : v.menu === 'custom' ? v.menu_url : null);
+---
+
+<ul class:list={['grid gap-6 md:grid-cols-2', className]} data-venues>
+  {
+    venues.map((v, i) => {
+      const name = venueName(locale, v);
+      const cover = venuePhotos(v)[0];
+      const hours = venueHoursLines(locale, v);
+      const menu = menuHref(v);
+      const soon = v.status === 'coming_soon';
+      return (
+        <li class:list={['reveal reveal-lg bg-white border border-line rounded-card overflow-hidden flex flex-col', enter && 'enter']} style={`--reveal-delay:${Math.min(i, 3) * 60}ms`} data-venue={v.slug} data-venue-status={v.status}>
+          <a href={venuePath(locale, v)} class="block" tabindex="-1" aria-hidden="true">
+            {cover ? (
+              <Photo {...photoProps(locale, cover)} sizes="(min-width: 768px) 560px, 100vw" imgClass="w-full h-auto" />
+            ) : (
+              <Placeholder label={fill(t.photo_pending_alt, { subject: name })} />
+            )}
+          </a>
+          <div class="p-6 flex flex-col gap-3 grow">
+            {v.logo && <img src={v.logo} alt="" aria-hidden="true" width="160" height="48" class="venue-logo self-start h-12 w-auto max-w-40 object-contain" loading="lazy" />}
+            <div>
+              {soon && <p class="text-xs font-semibold uppercase tracking-wide text-bronze-text">{d.coming_soon}</p>}
+              <Heading class="text-xl font-bold text-midnight">
+                <a href={venuePath(locale, v)} class="hover:underline">{name}</a>
+              </Heading>
+              <p class="mt-1 text-sm text-ink-muted">{venueFacts(locale, v).join(' · ')}</p>
+            </div>
+            {hours.length > 0 && (
+              <p class="text-sm text-ink">
+                <span class="font-semibold">{d.hours_label}: </span>
+                {hours.map((h, k) => (
+                  <span>{k > 0 && ' · '}{h.days ? `${h.days}: ` : ''}<span class="latin" dir="ltr">{h.time}</span></span>
+                ))}
+              </p>
+            )}
+            <div class="mt-auto flex flex-wrap items-center gap-3 pt-2">
+              {!soon && menu && (
+                <a href={menu} class="inline-flex items-center gap-2 bg-bronze-deep text-white font-semibold px-4 py-2.5 rounded hover:bg-bronze-text transition-colors" {...(v.menu === 'custom' ? { rel: 'noopener', target: '_blank' } : {})}>
+                  <span>{d.menu_cta}</span>
+                </a>
+              )}
+              {!soon && v.whatsapp && (
+                <a href={waHref(v.whatsapp)} rel="noopener" target="_blank" class="inline-flex items-center gap-2 font-semibold link-bronze" aria-label={`${t.cta.whatsapp} — ${name}`}>
+                  <Icon name="whatsapp" size={18} />
+                  <span>{t.cta.whatsapp}</span>
+                </a>
+              )}
+              <a href={venuePath(locale, v)} class="inline-flex items-center gap-1.5 text-sm font-semibold link-bronze ms-auto" aria-label={`${d.details}: ${name}`}>
+                <span>{d.details}</span>
+                <Icon name="arrow" size={16} class="icon-arrow rtl:rotate-180" />
+              </a>
+            </div>
+          </div>
+        </li>
+      );
+    })
+  }
+</ul>
