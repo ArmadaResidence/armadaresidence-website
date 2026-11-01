@@ -792,7 +792,7 @@
     },
     "form": {
       "heading": "Request a booking",
-      "intro": "If you see «Instant confirmation», your booking is confirmed right away; otherwise reception reviews your request and confirms it with you.",
+      "intro": "If you see “Instant confirmation”, your booking is confirmed right away; otherwise reception reviews your request and confirms it with you.",
       "branch": "Property",
       "choose_branch": "Choose a property",
       "check_in": "Check-in date",

@@ -175,7 +175,7 @@
       "applicant_preheader": "Your application {ref} has arrived.",
       "retention_line": "We keep the application for 12 months, then delete it.",
       "rights_line": "You may ask to access, correct or delete your data, or withdraw your consent, at {email}.",
-      "applicant_footer": "This message was sent automatically from the «Join our team» page on armadaresidence.com."
+      "applicant_footer": "This message was sent automatically from the “Join our team” page on armadaresidence.com."
     }
   }
 }
