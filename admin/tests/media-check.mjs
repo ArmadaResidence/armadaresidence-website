@@ -1,0 +1,374 @@
+// Dashboard e2e of the media module «الصور» (1 Nov 2026) — Playwright (system Chrome) against the dashboard running on a
+// PREVIEW BRANCH with the QA users (internal.qa_users('create'); never production — the script refuses the production
+// project). Everything goes through the UI as Ahmed would do it; the database is read with the branch's service role
+// only to assert what the UI did, to set the QA users' media level, and to play the deploy workflow's report.
+//   node admin/tests/media-check.mjs [BASE_URL=http://127.0.0.1:5174]
+//   env SUPABASE_URL / SUPABASE_ANON_KEY / SUPABASE_SERVICE_ROLE_KEY / BOOKING_TEST_TOKEN (the branch)
+// Covers: the nav and the target picker (home, each branch and its room types, the sections; 375 px select); uploads of
+// generated photos and a short video through the file inputs (several at once into a gallery, progress to done); the
+// checks before upload (portrait and under-2400 warnings, a duplicate refused, a GIF refused, the video's size / audio
+// notes); the soft gallery warning; the required-slot and alt validation blocking «نشر» with the exact list; the focal
+// point saved with its crop previews; alt texts; reorder («تأخير») and drag; set as cover (the cover hand-over);
+// archive and restore; «نشر» creating a job with the dispatch stubbed (reason media + the job id), the job's status
+// through queued → published with the build-log link (the workflow's report played with the service role); «نشر الكل»
+// with a blocked target («نشر المكتمل فقط»); a user with edit but not publish (no publish button, the RPC refused); view
+// only (no upload, read-only dialog); none (no nav); Western digits and no bare «إلغاء» with the dialogs open.
+// Before it runs it deletes the media rows and jobs of the branch (test data only — the branch is a throwaway copy).
+import { chromium } from 'playwright';
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { tmpdir } from 'node:os';
+import { spawnSync } from 'node:child_process';
+import sharp from '../../node_modules/sharp/dist/index.mjs';
+import { APP_PATH, firstOf, handleBackupCodes, passCode, routeLoginCode } from './code-login.mjs';
+
+const BASE = (process.argv[2] || 'http://127.0.0.1:5174').replace(/\/$/, '');
+const PW = 'Qa-Armada-2026!x';
+const env = process.env;
+const URL_ = env.SUPABASE_URL;
+const SERVICE = env.SUPABASE_SERVICE_ROLE_KEY;
+if (!URL_ || !SERVICE || !env.BOOKING_TEST_TOKEN) throw new Error('SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY and BOOKING_TEST_TOKEN of the preview branch are required');
+if (/wwzxwettsuwtakwwbfly/.test(URL_)) throw new Error('refused: this is the production project — run on a preview branch');
+const S = { apikey: SERVICE, Authorization: `Bearer ${SERVICE}`, 'Content-Type': 'application/json' };
+const rest = async (path, init = {}) => {
+  const r = await fetch(`${URL_}/rest/v1/${path}`, { ...init, headers: { ...S, Prefer: 'return=representation', ...(init.headers || {}) } });
+  const t = await r.text();
+  if (!r.ok) throw new Error(`${path} ${r.status} ${t.slice(0, 200)}`);
+  return t ? JSON.parse(t) : null;
+};
+const rpc = (fn, args) => rest(`rpc/${fn}`, { method: 'POST', body: JSON.stringify(args) });
+const ARABIC_DIGITS = new RegExp(`[${String.fromCharCode(0x0660)}-${String.fromCharCode(0x0669)}${String.fromCharCode(0x06f0)}-${String.fromCharCode(0x06f9)}]`);
+
+const SHOTS = 'screenshots/media';
+mkdirSync(SHOTS, { recursive: true });
+const shot = (page, name) => page.screenshot({ path: `${SHOTS}/${name}.png`, fullPage: name.endsWith('-full') }).catch(() => {});
+const fails = [];
+let checks = 0;
+const check = (ok, label, detail = '') => {
+  checks++;
+  console.log(`${ok ? 'ok ' : 'FAIL'} ${label}${!ok && detail ? ` — ${detail}` : ''}`);
+  if (!ok) fails.push(`${label}${detail ? ` — ${detail}` : ''}`);
+};
+async function digits(page, label) {
+  const text = await page.evaluate(() => document.body.innerText);
+  check(!ARABIC_DIGITS.test(text), `digits: ${label}`, text.match(ARABIC_DIGITS)?.[0]);
+  const bare = await page.evaluate(() => Array.from(document.querySelectorAll('button')).filter((b) => b.textContent.trim() === 'إلغاء' && b.dataset.action !== 'dialog-cancel').length);
+  check(bare === 0, `no action button reads a bare «إلغاء»: ${label}`);
+}
+
+// ── fixtures: unique per run (a new sha256 each time) ──
+const RUN = Date.now().toString(36);
+const DIR = join(tmpdir(), `armada-media-e2e-${RUN}`);
+mkdirSync(DIR, { recursive: true });
+async function jpeg(name, w, h, hue) {
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="hsl(${hue},50%,40%)"/><stop offset="1" stop-color="hsl(${hue + 50},60%,70%)"/></linearGradient></defs><rect width="100%" height="100%" fill="url(#g)"/><text x="50%" y="50%" font-size="${Math.round(h / 12)}" text-anchor="middle" fill="#fff" font-family="Arial">${name} ${RUN}</text></svg>`;
+  const p = join(DIR, `qa-${name}.jpg`);
+  await sharp(Buffer.from(svg)).jpeg({ quality: 85 }).toFile(p);
+  return p;
+}
+const F = {
+  cover: await jpeg('cover', 3600, 2400, 20),
+  portrait: await jpeg('portrait', 2400, 3600, 200),
+  small: await jpeg('small', 1800, 1200, 120),
+  third: await jpeg('third', 3600, 2400, 260),
+  bcover: await jpeg('branch-cover', 3600, 2400, 300),
+  rest: await jpeg('restaurant', 3600, 2400, 40),
+  poster: await jpeg('poster', 3840, 2160, 210),
+};
+F.gif = join(DIR, 'qa-anim.gif');
+writeFileSync(F.gif, Buffer.from('R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7', 'base64'));
+F.video = join(DIR, 'qa-hero.mp4');
+const ff = spawnSync('ffmpeg', ['-v', 'error', '-y', '-f', 'lavfi', '-i', `testsrc2=size=1280x720:rate=30:duration=3`, '-f', 'lavfi', '-i', 'sine=frequency=440:duration=3', '-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-c:a', 'aac', '-shortest', F.video], { encoding: 'utf8' });
+if (ff.status !== 0) throw new Error(`ffmpeg: ${ff.stderr}`);
+
+// ── the branch: clean media state, the QA users' media levels ──
+await rest('media_items?id=not.is.null', { method: 'DELETE' });
+await rest('media_publish_jobs?id=not.is.null', { method: 'DELETE' });
+const users = Object.fromEntries((await rest('staff?select=user_id,full_name,role')).map((s) => [s.role === 'admin' ? 'admin' : s.role === 'management' ? 'mgmt' : s.full_name, s.user_id]));
+const setLevel = (user, level) => rest(`staff_permissions?user_id=eq.${user}&section=eq.media`, { method: 'PATCH', body: JSON.stringify({ level }) });
+await setLevel(users.admin, 'publish');
+await setLevel(users.mgmt, 'edit');
+/** the stored gallery order of a target, polled until `want(order)` (the UI updates first, the save lands after) */
+async function galleryOrder(key, want) {
+  let order = [];
+  for (let i = 0; i < 40; i++) {
+    order = (await rest(`media_items?target_key=eq.${key}&slot=eq.gallery&status=neq.archived&upload_state=eq.ready&order=sort&select=id`)).map((r) => r.id);
+    if (want(order)) break;
+    await new Promise((r) => setTimeout(r, 250));
+  }
+  return order;
+}
+const item = async (fileLike) => (await rest(`media_items?file_name=like.*${fileLike}*&select=*&order=created_at.desc`))[0];
+
+const browser = await chromium.launch({ channel: 'chrome' });
+async function login(email, viewport = { width: 1280, height: 900 }) {
+  const ctx = await browser.newContext({ viewport, locale: 'ar' });
+  const codes = [];
+  await routeLoginCode(ctx, env.BOOKING_TEST_TOKEN, codes);
+  const page = await ctx.newPage();
+  page.on('pageerror', (e) => fails.push(`page error (${email}): ${e.message}`));
+  await page.goto(`${BASE}/login`);
+  await page.fill('#email', email);
+  await page.fill('#password', PW);
+  await page.click('button[type=submit]');
+  let at = await firstOf(page, { code: '#code', app: '#app-main', backup: '[data-action="generate-backup"]' });
+  if (at === 'code') {
+    await passCode(page, codes);
+    at = await firstOf(page, { app: '#app-main', backup: '[data-action="generate-backup"]' });
+  }
+  if (at === 'backup') {
+    await handleBackupCodes(page);
+    await page.waitForSelector('#app-main', { timeout: 30000 });
+  }
+  await page.waitForURL(APP_PATH, { timeout: 30000, waitUntil: 'commit' });
+  return { ctx, page };
+}
+const dispatches = [];
+async function stubRebuild(ctx) {
+  await ctx.route('**/functions/v1/site-rebuild', async (route) => {
+    if (route.request().method() === 'OPTIONS') return route.fulfill({ status: 204, headers: { 'access-control-allow-origin': '*', 'access-control-allow-headers': '*' } });
+    dispatches.push(JSON.parse(route.request().postData() || '{}'));
+    await route.fulfill({ status: 200, contentType: 'application/json', headers: { 'access-control-allow-origin': '*' }, body: JSON.stringify({ ok: true, dispatched: true }) });
+  });
+}
+const target = async (page, id) => {
+  await page.click(`[data-target="${id}"]`);
+  await page.waitForSelector(`[data-current="${id}"]`);
+  await page.waitForSelector('[data-slot]');
+};
+/** the latest row of each named file has finished (done or refused) — the list empties on a reload */
+const uploadsDone = (page, names) => page.waitForFunction((names) => names.every((n) => {
+  const rows = [...document.querySelectorAll('[data-upload]')].filter((r) => r.getAttribute('data-upload') === n);
+  return rows.length && ['done', 'error'].includes(rows.at(-1).getAttribute('data-stage'));
+}), names, { timeout: 120000 });
+const stageOf = (page, name) => page.locator(`[data-upload="${name}"]`).last().getAttribute('data-stage');
+async function openItem(page, id) {
+  await page.click(`[data-open="${id}"]`);
+  await page.waitForSelector(`[data-media-dialog="${id}"]`);
+}
+async function fillAlts(page, id, ar, en) {
+  await openItem(page, id);
+  await page.fill('#alt-ar', ar);
+  await page.fill('#alt-en', en);
+  await page.click('[data-action="media-save"]');
+  await page.waitForSelector(`[data-media-dialog="${id}"]`, { state: 'detached' });
+}
+
+try {
+  // ── admin: nav, picker ──
+  const { ctx, page } = await login('admin@qa.invalid');
+  await stubRebuild(ctx);
+  check(await page.locator('nav a[href$="/media"]').count() > 0, 'nav: «الصور» shows for media publish');
+  await page.click('nav a[href$="/media"] >> nth=0');
+  await page.waitForSelector('[data-target]');
+  const ids = await page.locator('[data-target]').evaluateAll((els) => els.map((e) => e.getAttribute('data-target')));
+  check(ids.length === 18 && ids[0] === 'home:home' && ids[1] === 'branch:airport-road' && ids.at(-1) === 'section:discover-taif', 'picker: home, each branch then its 12 room types, the 3 sections', ids.join(' '));
+  check(ids.filter((x) => x.startsWith('room:')).includes('room:airport-road/accessible-room'), 'picker: the accessible rooms are targets');
+  await digits(page, 'media page');
+
+  // ── a room type: uploads and their checks ──
+  await target(page, 'room:airport-road/twin-room');
+  check(await page.locator('[data-action="media-publish"]').isDisabled(), 'publish: disabled with nothing to publish');
+  await page.setInputFiles('[data-file-input="cover"]', F.cover);
+  await uploadsDone(page, ['qa-cover.jpg']);
+  check((await stageOf(page, 'qa-cover.jpg')) === 'done', 'upload: the cover reaches «تم الرفع»');
+  await page.waitForSelector('[data-slot="cover"] [data-open]');
+  check(await page.locator('[data-slot="cover"] [data-required]').textContent() === 'مطلوبة', 'cover slot: filled, still marked required');
+  await page.setInputFiles('[data-file-input="gallery"]', [F.portrait, F.small]);
+  await uploadsDone(page, ['qa-portrait.jpg', 'qa-small.jpg']);
+  await page.waitForFunction(() => document.querySelectorAll('[data-slot="gallery"] [data-open]').length === 2, null, { timeout: 15000 }).catch(() => {});
+  const warns = (await page.locator('[data-upload-warning]').allTextContents()).join(' | ');
+  check(/طولية/.test(warns), 'upload: a portrait photo warns with the reason', warns);
+  check(/1800 بكسل، أقل من 2400/.test(warns), 'upload: a long side under 2400 px warns with its size', warns);
+  const tiles = await page.locator('[data-slot="gallery"] [data-open]').count();
+  check(tiles === 2, 'gallery: two photos uploaded at once', `${tiles} tile(s); uploads: ${(await page.locator('[data-upload]').allTextContents()).join(' | ').slice(0, 300)}`);
+  check(await page.locator('[data-gallery-warning="gallery_low"]').count() === 1 && /المقترح من 3 إلى 8/.test(await page.locator('[data-gallery-warning]').textContent()), 'gallery: the soft warning below 3');
+  await page.setInputFiles('[data-file-input="gallery"]', F.cover);
+  await uploadsDone(page, ['qa-cover.jpg']);
+  check(/مرفوع هنا من قبل/.test(await page.locator('[data-upload="qa-cover.jpg"]').last().textContent()), 'upload: the same file twice in a target is refused');
+  await page.setInputFiles('[data-file-input="gallery"]', F.gif);
+  await uploadsDone(page, ['qa-anim.gif']);
+  check(/نوع الملف غير مقبول/.test(await page.locator('[data-upload="qa-anim.gif"]').textContent()), 'upload: a GIF is refused before any upload');
+  const cover = await item('qa-cover');
+  check(cover && cover.upload_state === 'ready' && cover.width === 3600 && cover.height === 2400 && cover.thumb_path && cover.preview_path, 'database: the cover is a ready draft with its size and both previews', JSON.stringify(cover && { s: cover.upload_state, w: cover.width, t: !!cover.thumb_path }));
+
+  // ── publish blocked: missing alts ──
+  await page.click('[data-action="media-publish"]');
+  await page.waitForSelector('[data-blocked]');
+  const blockedText = await page.locator('[data-blocked]').textContent();
+  check(/الصورة الرئيسية: النص البديل بالعربية/.test(blockedText) && /صورة المعرض رقم 2: النص البديل بالإنجليزية/.test(blockedText), 'publish: blocked with the exact missing alts', blockedText.slice(0, 200));
+  await digits(page, 'blocked dialog');
+  await shot(page, 'blocked-1280');
+  await page.click('[data-blocked] [data-action="dialog-cancel"]');
+  check((await rest('media_publish_jobs?select=id')).length === 0, 'publish: a blocked publish creates no job');
+
+  // ── the dialog: focal point, crops, alts ──
+  await openItem(page, cover.id);
+  await page.waitForSelector('[data-focal] img');
+  check(await page.locator('[data-crop]').count() === 2, 'dialog: a cover shows its 3:2 and sharing crops');
+  const box = await page.locator('[data-focal]').boundingBox();
+  await page.mouse.click(box.x + box.width * 0.25, box.y + box.height * 0.75);
+  check(/25% · 75%/.test(await page.locator('[data-focal-value]').textContent()), 'dialog: the focal point follows the click');
+  await shot(page, 'dialog-1280');
+  await page.fill('#alt-ar', 'غرفة التوأم بسريرين وإضاءة نهارية');
+  await page.fill('#alt-en', 'The twin room with two beds in daylight');
+  await digits(page, 'item dialog');
+  await page.click('[data-action="media-save"]');
+  await page.waitForSelector(`[data-media-dialog="${cover.id}"]`, { state: 'detached' });
+  const saved = await item('qa-cover');
+  check(Math.abs(saved.focal_x - 0.25) < 0.02 && Math.abs(saved.focal_y - 0.75) < 0.02 && saved.alt_en === 'The twin room with two beds in daylight', 'database: the focal point and the alts are saved', `${saved.focal_x},${saved.focal_y}`);
+  const portrait = await item('qa-portrait');
+  const small = await item('qa-small');
+  await fillAlts(page, portrait.id, 'ركن الجلوس في الغرفة', 'The seating corner of the room');
+  await fillAlts(page, small.id, 'منظر من نافذة الغرفة', 'The view from the room window');
+
+  // ── order, cover hand-over, archive / restore ──
+  await page.locator(`[data-item="${portrait.id}"] [data-action="move-later"]`).click();
+  let order = await galleryOrder('airport-road/twin-room', (o) => o[0] === small.id);
+  check(order[0] === small.id && order[1] === portrait.id, 'reorder: «تأخير» moves the photo and the order is stored', order.join(','));
+  await page.waitForFunction((id) => document.querySelector('[data-slot="gallery"] [data-item]')?.getAttribute('data-item') === id, small.id);
+  await page.waitForTimeout(500);
+  await page.locator(`[data-item="${portrait.id}"]`).dragTo(page.locator(`[data-item="${small.id}"]`));
+  order = await galleryOrder('airport-road/twin-room', (o) => o[0] === portrait.id);
+  check(order[0] === portrait.id, 'reorder: dragging a tile onto another stores the new order', order.join(','));
+  await page.waitForFunction((id) => document.querySelector('[data-slot="gallery"] [data-item]')?.getAttribute('data-item') === id, portrait.id);
+  await openItem(page, small.id);
+  await page.selectOption('#media-slot', 'cover');
+  await page.click('[data-action="media-save"]');
+  await page.waitForSelector(`[data-media-dialog="${small.id}"]`, { state: 'detached' });
+  check((await item('qa-small')).slot === 'cover' && (await item('qa-cover')).slot === 'gallery', 'set as cover: the gallery photo becomes the cover and the cover moves to the gallery');
+  await page.setInputFiles('[data-file-input="gallery"]', F.third);
+  await uploadsDone(page, ['qa-third.jpg']);
+  const third = await item('qa-third');
+  await openItem(page, third.id);
+  await page.click('[data-action="media-archive"]');
+  await page.waitForSelector(`[data-media-dialog="${third.id}"]`, { state: 'detached' });
+  check((await item('qa-third')).status === 'archived' && (await page.locator(`[data-item="${third.id}"]`).count()) === 0, 'archive: the photo leaves the gallery (no hard delete)');
+  await page.click('[data-action="toggle-archived"]');
+  await page.click(`[data-archived="${third.id}"] [data-action="media-restore"]`);
+  await page.waitForSelector(`[data-item="${third.id}"]`);
+  check((await item('qa-third')).status === 'draft', 'restore: back in the gallery as a draft');
+  await fillAlts(page, third.id, 'دورة مياه الغرفة', 'The room bathroom');
+
+  // ── publish: job, dispatch, the workflow's report ──
+  await page.click('[data-action="media-publish"]');
+  await page.waitForSelector('[data-job]');
+  const jobs = await rest('media_publish_jobs?select=*');
+  check(jobs.length === 1 && jobs[0].status === 'queued' && JSON.stringify(jobs[0].targets) === '[{"key":"airport-road/twin-room","target":"room"}]', 'publish: one queued job for the room type', JSON.stringify(jobs));
+  check(dispatches.length === 1 && dispatches[0].reason === 'media' && dispatches[0].job === jobs[0].id, 'publish: the site build is asked with reason media and the job id (stubbed)', JSON.stringify(dispatches));
+  check((await rest('media_items?target_key=eq.airport-road/twin-room&status=neq.archived&select=live,status')).every((r) => r.live && r.status === 'published'), 'publish: every photo of the target is live');
+  check(/في الانتظار/.test(await page.locator(`[data-job="${jobs[0].id}"]`).textContent()), 'jobs: «في الانتظار» with the time');
+  await shot(page, 'room-1280-full');
+  await page.evaluate(() => (document.documentElement.dataset.theme = 'dark'));
+  await shot(page, 'room-1280-dark-full');
+  await page.evaluate(() => (document.documentElement.dataset.theme = 'light'));
+  check(await page.locator('[data-target="room:airport-road/twin-room"] .media-dot-live').count() === 1, 'picker: the room type is now «منشورة»');
+  const man = await rpc('media_site_manifest', {});
+  await rpc('media_job_update', { p_id: jobs[0].id, p_status: 'building', p_run_url: 'https://github.com/ArmadaResidence/armadaresidence-website/actions/runs/1' });
+  await rpc('media_jobs_settle', { p_manifest_at: man.at, p_ok: true, p_run_url: 'https://github.com/ArmadaResidence/armadaresidence-website/actions/runs/2' });
+  await page.reload();
+  await page.waitForSelector(`[data-job="${jobs[0].id}"][data-job-status="published"]`, { timeout: 30000 });
+  check(/منشور/.test(await page.locator(`[data-job="${jobs[0].id}"]`).textContent()) && (await page.locator(`[data-job="${jobs[0].id}"] [data-run-link]`).getAttribute('href')).endsWith('/runs/2'), 'jobs: «منشور» with the build-log link after the workflow report');
+
+  // ── a branch: required story scenes; «نشر الكل» with a blocked target ──
+  await target(page, 'branch:airport-road');
+  await page.setInputFiles('[data-file-input="cover"]', F.bcover);
+  await uploadsDone(page, ['qa-branch-cover.jpg']);
+  const bcover = await item('qa-branch-cover');
+  await fillAlts(page, bcover.id, 'واجهة الفرع ومدخله', 'The branch front and its entrance');
+  await page.click('[data-action="media-publish"]');
+  await page.waitForSelector('[data-blocked]');
+  const bt = await page.locator('[data-blocked]').textContent();
+  check(['المدخل والموقع', 'اللوبي والاستقبال', 'الغرف والأجنحة', 'المطعم والخدمات'].every((s) => bt.includes(s)), 'branch: publishing is blocked until the 4 story scenes are there', bt.slice(0, 200));
+  await page.click('[data-blocked] [data-action="dialog-cancel"]');
+  await target(page, 'section:restaurant');
+  await page.setInputFiles('[data-file-input="gallery"]', F.rest);
+  await uploadsDone(page, ['qa-restaurant.jpg']);
+  const rest1 = await item('qa-restaurant');
+  await fillAlts(page, rest1.id, 'طاولات المطعم', 'The restaurant tables');
+  await page.click('[data-action="media-publish-all"]');
+  await page.waitForSelector('[data-blocked-target="branch:airport-road"]');
+  check(await page.locator('[data-action="media-publish-ready"]').textContent().then((t) => /نشر المكتمل فقط \(1\)/.test(t)), '«نشر الكل»: lists the blocked branch and offers the complete ones');
+  await page.click('[data-action="media-publish-ready"]');
+  await page.waitForFunction(() => document.querySelectorAll('[data-job]').length === 2, null, { timeout: 30000 });
+  check((await item('qa-restaurant')).live !== null && (await item('qa-branch-cover')).live === null, '«نشر المكتمل فقط»: the section is published, the blocked branch is not');
+
+  // ── the hero: video + poster ──
+  await target(page, 'home:home');
+  await page.setInputFiles('[data-file-input="hero-video"]', F.video);
+  await uploadsDone(page, ['qa-hero.mp4']);
+  const vw = (await page.locator('[data-upload="qa-hero.mp4"] [data-upload-warning]').allTextContents()).join(' | ');
+  check((await stageOf(page, 'qa-hero.mp4')) === 'done' && /1280 × 720/.test(vw) && /الصوت يُحذف/.test(vw), 'video: uploaded through the UI with its size and audio notes', vw);
+  const vid = await item('qa-hero');
+  check(vid.kind === 'video' && Math.abs(Number(vid.duration) - 3) < 0.5 && vid.thumb_path, 'database: the video with its duration and a frame preview', JSON.stringify({ d: vid.duration, t: !!vid.thumb_path }));
+  await page.click('[data-action="media-publish"]');
+  await page.waitForSelector('[data-blocked]');
+  check(/صورة الواجهة \(مطلوبة مع الفيديو\)/.test(await page.locator('[data-blocked]').textContent()), 'hero: a video without a poster is blocked');
+  await page.click('[data-blocked] [data-action="dialog-cancel"]');
+  await page.setInputFiles('[data-file-input="hero-poster"]', F.poster);
+  await uploadsDone(page, ['qa-poster.jpg']);
+  const poster = await item('qa-poster');
+  await openItem(page, poster.id);
+  await page.waitForSelector('[data-focal] img', { timeout: 15000 }).catch(() => {});
+  check(await page.locator('[data-crop]').count() === 3, 'dialog: the hero poster shows 16:9, 4:5 and the sharing crop');
+  await page.click('[data-action="dialog-cancel"]');
+  await fillAlts(page, poster.id, 'واجهة الفندق مساءً', 'The hotel front in the evening');
+  await fillAlts(page, vid.id, 'لقطات من الفندق', 'Scenes from the hotel');
+  await page.click('[data-action="media-publish"]');
+  await page.waitForFunction(() => document.querySelectorAll('[data-job]').length === 3, null, { timeout: 30000 });
+  check((await item('qa-poster')).live && (await item('qa-hero')).live, 'hero: poster + video published together');
+
+  // 375 px: the picker is a select, no horizontal scroll
+  await page.setViewportSize({ width: 375, height: 812 });
+  await page.waitForTimeout(400);
+  check(await page.locator('#media-target').isVisible(), '375 px: the target picker is a select');
+  await shot(page, 'home-375-full');
+  check(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1), '375 px: no horizontal scroll');
+  await ctx.close();
+
+  // ── edit without publish ──
+  const m = await login('mgmt@qa.invalid');
+  await stubRebuild(m.ctx);
+  await m.page.goto(`${BASE}/media?t=room:airport-road/king-room`);
+  await m.page.waitForSelector('[data-current="room:airport-road/king-room"] [data-slot="cover"]');
+  check(await m.page.locator('[data-action="media-publish"], [data-action="media-publish-all"]').count() === 0, 'edit level: no «نشر» button');
+  check(await m.page.locator('[data-file-input="cover"]').count() === 1, 'edit level: uploads are offered');
+  const token = await m.page.evaluate(() => {
+    const k = Object.keys(localStorage).find((x) => x.startsWith('sb-') && x.endsWith('-auth-token'));
+    return k ? JSON.parse(localStorage.getItem(k)).access_token : null;
+  });
+  const res = await fetch(`${URL_}/rest/v1/rpc/media_publish`, { method: 'POST', headers: { apikey: env.SUPABASE_ANON_KEY, Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ p_targets: null }) });
+  const body = await res.json().catch(() => ({}));
+  check(res.status === 403 || body.code === '42501', 'edit level: the publish RPC is refused by the database', `${res.status} ${JSON.stringify(body).slice(0, 120)}`);
+  // view only
+  await setLevel(users.mgmt, 'view');
+  await m.page.reload();
+  await m.page.waitForSelector('[data-current]');
+  check(await m.page.locator('[data-file-input]').count() === 0, 'view level: no upload');
+  await m.page.click('[data-target="room:airport-road/twin-room"]');
+  await m.page.waitForSelector('[data-slot="cover"] [data-open]');
+  await m.page.locator('[data-slot="cover"] [data-open]').click();
+  await m.page.waitForSelector('[data-media-dialog]');
+  check(await m.page.locator('#alt-ar').isDisabled() && (await m.page.locator('[data-action="media-save"]').count()) === 0, 'view level: the dialog is read-only («إغلاق»)');
+  await m.page.click('[data-action="dialog-cancel"]');
+  // none
+  await setLevel(users.mgmt, 'none');
+  await m.page.reload();
+  await m.page.waitForSelector('#app-main');
+  await m.page.waitForTimeout(800);
+  check(await m.page.locator('nav a[href$="/media"]').count() === 0, 'none: «الصور» is not in the nav');
+  await m.ctx.close();
+} catch (e) {
+  // the error and its first frames, without Playwright's call log
+  fails.push(`crash: ${String(e.stack || e).split(/\r?\n/).filter((l) => !/^\s*-/.test(l) && !l.includes(String.fromCharCode(27))).slice(0, 4).join(' ')}`);
+  for (const c of browser.contexts()) for (const pg of c.pages()) await pg.screenshot({ path: join(DIR, `crash-${Date.now()}.png`), fullPage: true }).catch(() => {});
+  console.log(`screenshots in ${DIR}`);
+} finally {
+  await setLevel(users.mgmt, 'none').catch(() => {});
+  await browser.close();
+}
+console.log(`\n${checks} checks, ${fails.length} failed`);
+if (fails.length) {
+  for (const f of fails) console.log(`  ✗ ${f}`);
+  process.exit(1);
+}

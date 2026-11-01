@@ -1604,7 +1604,10 @@ try {
       await digits(page, `${path} at 375`);
     }
     const tabs = await page.locator('nav.tabbar a').count();
-    check(tabs === 7, '375: seven tabs in the tab bar', String(tabs));
+    check(tabs === 8, '375: eight tabs in the tab bar (+ «الصور», 1 Nov 2026)', String(tabs));
+    // the eight labels fit the 375 px bar: none is clipped or wraps
+    const clipped = await page.locator('nav.tabbar a').evaluateAll((els) => els.filter((e) => e.scrollWidth > e.clientWidth + 1 || e.getBoundingClientRect().height > 48).map((e) => e.textContent));
+    check(clipped.length === 0, '375: no tab label is clipped or wrapped', clipped.join(', '));
     await page.goto(`${BASE}/settings`);
     await page.waitForSelector('#app-main h1', { timeout: 20000 });
     check((await page.locator('#app-main').innerText()).includes('آخر وقت للحجز الفوري لوصول اليوم (توقيت الرياض)'), 'settings: cutoff label «آخر وقت للحجز الفوري لوصول اليوم (توقيت الرياض)»');
