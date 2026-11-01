@@ -18,6 +18,7 @@ import lqipJson from '../../content/lqip.json';
 import partnersJson from '../../content/partners.json';
 import partnersPagesJson from '../../content/partners-pages.json';
 import careersJson from '../../content/careers.json';
+import { sarText } from '../../supabase/functions/booking-request/rules.ts';
 
 export type Locale = 'ar' | 'en';
 export const LOCALES: Locale[] = ['ar', 'en'];
@@ -157,6 +158,18 @@ export const FEATURE_KEYS: (keyof RoomFeatures)[] = ['kitchen', 'living_room', '
 const SEO_FEATURE_KEYS: (keyof RoomFeatures)[] = ['kitchen', 'living_room', 'balcony', 'jacuzzi', 'fridge'];
 
 export const pricing = pricingJson;
+/** The fees the static site states (E1, 2 Nov 2026): Settings read at build time by build.py (resolve_fees →
+ *  content/fees.generated.json, gitignored), pricing.json as the seed / fallback (astro dev). */
+const feeFiles = import.meta.glob<{ extra_bed_per_night: number; breakfast_adult: number }>('../../content/fees.generated.json', { eager: true, import: 'default' });
+export const fees: { extra_bed_per_night: number; breakfast_adult: number } = Object.values(feeFiles)[0] ?? {
+  extra_bed_per_night: pricingJson.extra_bed_per_night,
+  breakfast_adult: pricingJson.breakfast.addon_price_per_person,
+};
+/** a fee in the page language through the riyal formatter (rules.ts → sarText): «50 ريالًا» / "SAR 50" */
+export const feeText = (locale: Locale, amount: number): string => sarText(amount, locale);
+/** a policies text with its fee placeholders filled: {extra_bed}, {breakfast} */
+export const withFees = (locale: Locale, text: string): string =>
+  text.replace(/\{extra_bed\}/g, feeText(locale, fees.extra_bed_per_night)).replace(/\{breakfast\}/g, feeText(locale, fees.breakfast_adult));
 export const policies = policiesJson;
 export const contact = contactJson;
 export const legal = legalJson;
@@ -336,7 +349,7 @@ export function heroPriceLine(locale: Locale): string {
 /** «السرير الإضافي 50 ريالًا لليلة …» — the one fee sentence allowed while prices are hidden (decision 23 Oct 2026):
  *  booking form, WhatsApp message and /policies/ only; the amount comes from pricing.json. qa.py enforces it. */
 export function extraBedFeeLine(locale: Locale): string {
-  return fill(ui(locale).form.extra_bed_fee, { fee: (pricing as { extra_bed_per_night: number }).extra_bed_per_night });
+  return fill(ui(locale).form.extra_bed_fee, { fee: feeText(locale, fees.extra_bed_per_night) });
 }
 
 export function guestsWord(locale: Locale, n: number | null | undefined): string {

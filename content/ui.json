@@ -270,7 +270,7 @@
       "capacity_branch_link": "طلب للمجموعات",
       "guests": "الضيوف",
       "extra_beds": "أسرّة إضافية",
-      "extra_bed_fee": "السرير الإضافي {fee} ريالًا لليلة، ويؤكد الاستقبال توفره حسب الغرفة.",
+      "extra_bed_fee": "السرير الإضافي {fee} لليلة، ويؤكد الاستقبال توفره حسب الغرفة.",
       "extra_beds_auto": "أضفنا {beds} لأن عدد البالغين أكبر من سعة الغرفة ({capacity}). يمكنك تعديل العدد أو إزالته، وسيتواصل معك الاستقبال للتنسيق.",
       "extra_beds_plural": {
         "one": "سرير إضافي واحد",
@@ -908,7 +908,7 @@
       "capacity_branch_link": "Group request",
       "guests": "Guests",
       "extra_beds": "Extra beds",
-      "extra_bed_fee": "Extra bed: SAR {fee} per night, subject to availability for the room; confirmed by reception.",
+      "extra_bed_fee": "Extra bed: {fee} per night, subject to availability for the room; confirmed by reception.",
       "extra_beds_auto": "We added {beds} because there are more adults than the room takes ({capacity}). You can change or remove it; the reception will contact you to arrange.",
       "extra_beds_plural": {
         "one": "1 extra bed",

@@ -467,7 +467,8 @@ export function bookingConfirmation(c: Content, d: BookingMail): Mail {
       ...(d.extraBeds ? ([[lab.extra_beds, String(d.extraBeds)]] as [string, string][]) : []),
       [lab.breakfast, breakfast],
     ];
-    const bedsNote = d.extraBeds ? [fill(M.extra_beds_flag, { beds: String(d.extraBeds) }), c.extra_bed_fee_line[L]] : [];
+    // the fee line from the request's own fee (its snapshot of Settings), through the riyal formatter (2 Nov 2026)
+    const bedsNote = d.extraBeds ? [fill(M.extra_beds_flag, { beds: String(d.extraBeds) }), fill(c.labels[L].extra_bed_fee, { fee: sar(d.extraBedFee, L) })] : [];
     const waText = fill(c.wa_prefill[L].branch, { branch: b[`name_${L}`] });
     const html = section(
       L,

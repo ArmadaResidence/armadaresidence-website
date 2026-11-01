@@ -707,7 +707,7 @@ Deno.serve(async (req) => {
     notification = partnerNotification(content, pm);
     confirmation = partnerConfirmation(content, pm);
   } else {
-    const bm = { ref, locale: d.locale, branch: d.branch, room: d.room, check_in: d.check_in, check_out: d.check_out, nights: d.nights, adults: d.adults, children: d.children, extraBeds: d.extraBeds, extraBedFee: content.extra_bed_fee, needsCoordination: d.needsCoordination, capacity: d.capacity, breakfast: d.breakfast as 'with' | 'without', name: d.name, phone: d.phone, email: d.email, notes: d.notes, receivedAt };
+    const bm = { ref, locale: d.locale, branch: d.branch, room: d.room, check_in: d.check_in, check_out: d.check_out, nights: d.nights, adults: d.adults, children: d.children, extraBeds: d.extraBeds, extraBedFee: Number(outcome?.quote?.extra_bed_fee ?? content.extra_bed_fee), needsCoordination: d.needsCoordination, capacity: d.capacity, breakfast: d.breakfast as 'with' | 'without', name: d.name, phone: d.phone, email: d.email, notes: d.notes, receivedAt };
     if (confirmed && outcome?.quote) {
       const cm = { ...bm, quote: outcome.quote, confirmedBy: null };
       notification = confirmedNotification(content, cm);

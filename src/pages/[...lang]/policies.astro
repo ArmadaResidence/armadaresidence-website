@@ -1,7 +1,7 @@
 ---
 import Base from '@layouts/Base.astro';
 import { langPaths } from '@lib/paths';
-import { pageSeo, paragraphs, policies, stripBrackets, ui, type Locale } from '@lib/content';
+import { pageSeo, paragraphs, policies, stripBrackets, ui, withFees, type Locale } from '@lib/content';
 
 export const getStaticPaths = langPaths;
 
@@ -12,11 +12,12 @@ const { locale } = Astro.props;
 const t = ui(locale);
 const s = pageSeo(locale, 'policies');
 const page = policies.page;
-// Editorial brackets (e.g. the phase-3 payment note) are stripped — nothing in [ … ] reaches the visitor.
+// Editorial brackets (e.g. the phase-3 payment note) are stripped — nothing in [ … ] reaches the visitor. The fees
+// ({extra_bed}, {breakfast}) come from the dashboard Settings at build time, through the riyal formatter (2 Nov 2026).
 const sections = page.sections.map((sec) => ({
   id: sec.id,
   heading: stripBrackets(locale === 'ar' ? sec.heading_ar : sec.heading_en),
-  paragraphs: paragraphs(locale === 'ar' ? sec.body_ar : sec.body_en),
+  paragraphs: paragraphs(withFees(locale, locale === 'ar' ? sec.body_ar : sec.body_en)),
 }));
 ---
 

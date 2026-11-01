@@ -197,9 +197,13 @@ def main() -> int:
     pricing = content["pricing.json"]
     ui = content["ui.json"]
     # extra-bed fee (23 Oct 2026): the only price sentence allowed while prices are hidden — booking form, WhatsApp
-    # message and /policies/; the amount must match pricing.json everywhere it appears
-    fee = pricing.get("extra_bed_per_night")
-    allowed_fee_lines = [ui[loc]["form"]["extra_bed_fee"].replace("{fee}", str(fee)) for loc in ("ar", "en")]
+    # message and /policies/. Since 2 Nov 2026 (E1) the amounts come from the dashboard Settings at build time
+    # (build.py resolve_fees → content/fees.generated.json; pricing.json is the fallback) through the riyal formatter.
+    fees_file = CONTENT / "fees.generated.json"
+    fees = json.loads(fees_file.read_text(encoding="utf-8")) if fees_file.is_file() else {"extra_bed_per_night": pricing["extra_bed_per_night"], "breakfast_adult": pricing["breakfast"]["addon_price_per_person"]}
+    fee = fees["extra_bed_per_night"]
+    breakfast_fee = fees["breakfast_adult"]
+    allowed_fee_lines = [ui[loc]["form"]["extra_bed_fee"].replace("{fee}", sar_text(fee, loc)) for loc in ("ar", "en")]
     policies_json = json.loads((CONTENT / "policies.json").read_text(encoding="utf-8"))
     guests_sec = next((s for s in policies_json["page"]["sections"] if s.get("id") == "guests"), None) if "page" in policies_json else None
     if guests_sec is None:
@@ -207,8 +211,17 @@ def main() -> int:
     if guests_sec is None:
         rep.f("pricing", "policies.json: guests section not found (extra-bed fee sentence)")
     else:
-        if f"{fee} ريالًا لليلة" not in guests_sec["body_ar"] or f"SAR {fee} per night" not in guests_sec["body_en"]:
-            rep.f("pricing", f"policies.json guests: the extra-bed fee must read {fee} (pricing.json) in both languages")
+        # no amount typed in the policies: the placeholders {extra_bed} / {breakfast}, filled from Settings at build time
+        for loc in ("ar", "en"):
+            body = guests_sec[f"body_{loc}"]
+            if "{extra_bed}" not in body or "{breakfast}" not in body:
+                rep.f("pricing", f"policies.json guests ({loc}): the extra-bed and breakfast fees must be the {{extra_bed}} / {{breakfast}} placeholders")
+            if re.search(r"\d[\d,.]*\s*(?:ريال|SAR)|SAR\s*\d", body):
+                rep.f("pricing", f"policies.json guests ({loc}): an amount is typed in the text — use the placeholders")
+        policies_fee_lines = {
+            "ar": [f"السرير الإضافي {sar_text(fee, 'ar')} لليلة", f"{sar_text(breakfast_fee, 'ar')} للشخص في الليلة"],
+            "en": [f"An extra bed is {sar_text(fee, 'en')} per night", f"breakfast is {sar_text(breakfast_fee, 'en')} per person per night"],
+        }
         if re.search(r"الشخص الإضافي|extra guest", guests_sec["body_ar"] + guests_sec["body_en"], re.I):
             rep.f("pricing", "policies.json guests: the extra-person fee was abolished on 23 Oct 2026")
 
@@ -367,11 +380,19 @@ def main() -> int:
             for m in re.finditer(r"[0-9٠-٩][0-9٠-٩,.]*\s*(?:ريال|ر\.س|SAR\b|SR\b)|\b(?:SAR|SR)\s*[0-9٠-٩][0-9٠-٩,.]*", value):
                 rep.f("meta price", f"{path}: {field} carries a price {m.group(0)!r}")
 
-        # decision 9 Oct 2026: no breakfast price anywhere on the site
-        for m in re.finditer(r"إفطار|breakfast", p.text, re.I):
-            window = p.text[max(0, m.start() - 80) : m.end() + 80]
-            if re.search(r"20\s*ريال|SAR\s*20\b|\b20\s*SAR", window):
-                rep.f("breakfast price", f"{path}: breakfast price shown near {window.strip()[:70]!r}")
+        # decision 9 Oct 2026: no breakfast price anywhere on the site — except the /policies/ sentence (E1, Ahmed
+        # 1 Nov 2026: the price per person per night from Settings at build time), checked below
+        bf_amount = str(int(breakfast_fee) if float(breakfast_fee).is_integer() else breakfast_fee)
+        if lp != "/policies/":
+            for m in re.finditer(r"إفطار|breakfast", p.text, re.I):
+                window = p.text[max(0, m.start() - 80) : m.end() + 80]
+                if re.search(rf"{re.escape(bf_amount)}\s*ريال|SAR\s*{re.escape(bf_amount)}\b|\b{re.escape(bf_amount)}\s*SAR", window):
+                    rep.f("breakfast price", f"{path}: breakfast price shown near {window.strip()[:70]!r}")
+        elif guests_sec is not None:
+            loc = "en" if is_en(path) else "ar"
+            for line in policies_fee_lines[loc]:
+                if line not in p.text:
+                    rep.f("pricing", f"{path}: the fee sentence {line!r} (Settings at build time) is not rendered")
 
         # title / description / canonical / hreflang
         t, d = p.title.strip(), p.metas.get("description", "").strip()
@@ -906,6 +927,18 @@ def check_photos(rep: "Report") -> None:
         sep = "\n      - "
         rep.f(G, f"{len(missing)} alt text(s) missing — fill them in the manifest and run photos-import again:{sep}"
               + sep.join(missing))
+
+
+def sar_text(amount: float, L: str) -> str:
+    """rules.ts → sarText (the same in build.py): «50 ريالًا», «200 ريال», «3 ريالات» / "SAR 50"."""
+    whole = round(amount * 100) % 100 == 0
+    num = str(round(amount)) if whole else f"{amount:.2f}"
+    if L == "en":
+        return f"SAR {num}"
+    n = round(amount)
+    k = n % 100
+    noun = "ريال" if not whole else "ريالات" if 3 <= k <= 10 else "ريال" if k == 0 or (k <= 2 and n > 100) else "ريالًا"
+    return f"{num} {noun}"
 
 
 def check_media(rep: "Report") -> None:
