@@ -44,7 +44,7 @@ const PAGES = [
   // media «الصور» (1 Nov 2026): every target in the picker, the current target's slots
   // the picker (2 Nov 2026): home, 2 branches, their 12 room types, the hall, the venues, the 17 places, the 13 partners slots
   { path: 'media', label: 'الصور', ready: async (page) => {
-    const ids = [...(await page.locator('[data-target]').evaluateAll((els) => els.map((e) => e.getAttribute('data-target')))), ...(await page.locator('#media-target option').evaluateAll((els) => els.map((e) => e.value)))];
+    const ids = [...(await page.locator('[data-target]').evaluateAll((els) => els.map((e) => e.getAttribute('data-target')))), /* the grouped picker (3 Nov 2026) keeps every target in the DOM, collapsed groups included */];
     return (await page.locator('[data-current] [data-slot]').count()) > 0 && ids.includes('home:home') && ids.includes('hall:events-hall') && ids.includes('place:taif-zoo') && ids.filter((x) => x.startsWith('partners:')).length >= 13 && new Set(ids).size >= 1 + 2 + 12 + 1 + 17 + 13;
   } },
   // offers «العروض» (2 Nov 2026): the four tabs; the individuals list (empty or not) with the add button

@@ -373,6 +373,40 @@ body {
 .media-dot-pending { background: var(--accent); border-color: var(--accent); }
 .media-dot-missing { background: var(--color-error); border-color: var(--color-error); }
 .media-target.is-on .media-dot { border-color: #fff; }
+/* the grouped target picker (TargetPicker.tsx, 3 Nov 2026): header bands, chips, sticky heads, sub-headers, guide lines */
+.picker-panel { padding: 0.5rem; }
+@media (min-width: 768px) { .picker-panel { position: sticky; top: 1rem; } }
+.picker-mobile { width: 100%; justify-content: space-between; border: 1px solid var(--line); background: var(--card); min-height: 2.75rem; }
+/* (these rules sit outside Tailwind's layers, so the phone-only controls are hidden here, not with md:hidden) */
+@media (min-width: 768px) { .picker-mobile, .topbar [data-action="nav-open"] { display: none; } }
+.picker-search { position: relative; margin-bottom: 0.5rem; }
+.picker-search .field { padding-inline-start: 2rem; }
+.picker-search-icon { position: absolute; inset-inline-start: 0.6rem; top: 50%; transform: translateY(-50%); color: var(--ink-muted); pointer-events: none; }
+.picker-list { max-height: calc(100dvh - 11rem); overflow-y: auto; overscroll-behavior: contain; display: grid; gap: 0.6rem; padding-bottom: 0.25rem; }
+@media (max-width: 767.98px) { .picker-list { max-height: 60dvh; } }
+.picker-head-wrap { position: sticky; top: 0; z-index: 2; margin: 0; }
+.picker-head {
+  display: flex; width: 100%; align-items: center; gap: 0.5rem; min-height: 2.75rem; padding: 0.5rem 0.6rem;
+  background: var(--soft); border-inline-start: 3px solid var(--accent); border-radius: 0.375rem; text-align: start;
+  font-size: 0.95rem; font-weight: 700; color: var(--ink);
+}
+.picker-head:hover { background: color-mix(in srgb, var(--soft) 80%, var(--accent) 20%); }
+.picker-head:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.picker-icon { flex: none; color: var(--accent-text); }
+:root[data-theme="dark"] .picker-icon { color: var(--accent); }
+.picker-title { flex: 1 1 auto; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.picker-chip { flex: none; font-size: 0.72rem; font-weight: 700; line-height: 1; padding: 0.3rem 0.5rem; border-radius: 999px; border: 1px solid transparent; white-space: nowrap; }
+.picker-chip.is-missing { color: var(--color-error); background: #fde8e8; border-color: #f5c2c2; }
+.picker-chip.is-done { color: var(--color-ok); background: #e3f3e8; border-color: #b9dfc6; }
+:root[data-theme="dark"] .picker-chip.is-missing { color: #fecaca; background: rgb(153 27 27 / 0.35); border-color: rgb(254 202 202 / 0.35); }
+:root[data-theme="dark"] .picker-chip.is-done { color: #bbf7d0; background: rgb(31 107 58 / 0.4); border-color: rgb(187 247 208 / 0.3); }
+.picker-chevron { flex: none; color: var(--ink-muted); transition: transform var(--motion-fast) var(--ease-out); }
+.picker-chevron.is-open { transform: rotate(180deg); }
+.picker-body { padding-top: 0.35rem; display: grid; gap: 0.35rem; }
+.picker-sub { margin-inline-start: 0.7rem; padding-inline-start: 0.5rem; border-inline-start: 1px solid var(--line); }
+.picker-subhead { padding: 0.35rem 0.45rem 0.15rem; font-size: 0.72rem; font-weight: 700; color: var(--ink-muted); letter-spacing: 0; }
+.picker-items { display: grid; gap: 1px; }
+@media (prefers-reduced-motion: reduce) { .picker-chevron { transition: none; } }
 .media-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(9.5rem, 1fr)); gap: 0.75rem; }
 .media-tile { display: grid; gap: 0.25rem; align-content: start; }
 .media-tile[draggable="true"] { cursor: grab; }

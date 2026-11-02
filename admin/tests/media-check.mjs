@@ -136,7 +136,17 @@ async function stubRebuild(ctx) {
     await route.fulfill({ status: 200, contentType: 'application/json', headers: { 'access-control-allow-origin': '*' }, body: JSON.stringify({ ok: true, dispatched: true }) });
   });
 }
+/** the grouped picker (3 Nov 2026): open the phone disclosure and the target's group when they are closed */
+const reveal = async (page, id) => {
+  const btn = page.locator(`[data-target="${id}"]`);
+  if (await btn.isVisible()) return;
+  const t = page.locator('[data-action="picker-toggle"]');
+  if ((await t.isVisible()) && (await t.getAttribute('aria-expanded')) === 'false') await t.click();
+  const g = await btn.evaluate((el) => el.closest('[data-picker-group]')?.getAttribute('data-picker-group'));
+  if (g && !(await btn.isVisible())) await page.click(`[data-group="${g}"]`);
+};
 const target = async (page, id) => {
+  await reveal(page, id);
   await page.click(`[data-target="${id}"]`);
   await page.waitForSelector(`[data-current="${id}"]`);
   await page.waitForSelector('[data-slot]');
@@ -169,12 +179,61 @@ try {
   const ids = await page.locator('[data-target]').evaluateAll((els) => els.map((e) => e.getAttribute('data-target')));
   const venueCount = (await rest('dining_venues?select=id')).length;
   const partnerKeys = JSON.parse(readFileSync('content/partners-photos.json', 'utf8')).slots.map((s) => `partners:${s.key}`);
-  check(ids.length === 33 + venueCount + partnerKeys.length && ids[0] === 'home:home' && ids[1] === 'branch:airport-road' && ids.includes('hall:events-hall') && ids.includes('dining:armada-residence-cafe') && ids.includes('dining:lario')
-    && ids.at(-1 - partnerKeys.length) === 'place:taif-zoo' && JSON.stringify(ids.slice(-partnerKeys.length)) === JSON.stringify(partnerKeys) && !ids.some((x) => x.startsWith('section:')),
-    'picker: home, each branch with its 12 room types, the hall and every venue, the 17 places, then the 13 partners slots in content/partners-photos.json order — no retired section', ids.join(' '));
+  // the offers' covers and (3 Nov 2026) the articles' photos follow the partners slots, in groups of their own
+  const tail = ids.filter((x) => x.startsWith('offer:') || x.startsWith('blog:'));
+  const articleCount = (await rest('articles?select=id')).length;
+  const core = ids.filter((x) => !tail.includes(x));
+  check(tail.filter((x) => x.startsWith('blog:')).length === articleCount && JSON.stringify(ids.slice(-tail.length)) === JSON.stringify(tail) && ids.at(-1).startsWith('blog:'),
+    'picker: the offers then every article («المدونة») come last', tail.join(' '));
+  check(core.length === 33 + venueCount + partnerKeys.length && core[0] === 'home:home' && core[1] === 'branch:airport-road' && core.includes('hall:events-hall') && core.includes('dining:armada-residence-cafe') && core.includes('dining:lario')
+    && core.at(-1 - partnerKeys.length) === 'place:taif-zoo' && JSON.stringify(core.slice(-partnerKeys.length)) === JSON.stringify(partnerKeys) && !core.some((x) => x.startsWith('section:')),
+    'picker: home, each branch with its 12 room types, the hall and every venue, the 17 places, then the 13 partners slots in content/partners-photos.json order — no retired section', core.join(' '));
   check(await page.locator('nav[aria-label="صفحات الموقع"]').textContent().then((t) => t.includes('صفحات الشركاء')), 'picker: the «صفحات الشركاء» group');
   check(ids.filter((x) => x.startsWith('room:')).includes('room:airport-road/accessible-room'), 'picker: the accessible rooms are targets');
   await digits(page, 'media page');
+
+  // ── the grouped picker (3 Nov 2026): header bands, chips, collapse, remembered state, search, keyboard ──
+  {
+    const heads = await page.locator('[data-group]').evaluateAll((els) => els.map((e) => ({ g: e.getAttribute('data-group'), exp: e.getAttribute('aria-expanded'), tag: e.tagName, title: e.textContent.trim() })));
+    check(heads.length >= 5 && heads.every((h) => h.tag === 'BUTTON' && (h.exp === 'true' || h.exp === 'false')) && ['home', 'branch:airport-road', 'branch:shafa-road', 'places', 'partners'].every((g) => heads.some((h) => h.g === g)),
+      'picker: every group header is a button with aria-expanded (home, both branches, Discover Taif, partners)', JSON.stringify(heads));
+    const chips = await page.locator('[data-group] [data-chip]').evaluateAll((els) => els.map((e) => e.textContent.trim()));
+    check(chips.length === heads.length && chips.every((c) => /^ناقص \d+$/.test(c) || c === 'مكتمل ✓'), 'picker: each group shows «ناقص N» or «مكتمل ✓»', chips.join(' | '));
+    const bar = await page.locator('[data-group="branch:airport-road"]').evaluate((el) => { const cs = getComputedStyle(el); return { b: cs.borderInlineStartWidth, w: cs.fontWeight }; });
+    check(parseFloat(bar.b) >= 2 && Number(bar.w) >= 700, 'picker: the header band carries the bronze start bar and a bold label', JSON.stringify(bar));
+    const subs = await page.locator('[data-picker-group="branch:airport-road"] .picker-subhead').allTextContents();
+    check(JSON.stringify(subs) === JSON.stringify(['الفرع', 'الغرف والأجنحة', 'القاعة والمطاعم']), 'picker: the branch sub-headers «الفرع»، «الغرف والأجنحة»، «القاعة والمطاعم»', subs.join(' | '));
+    // collapse a group that does not hold the current target, then expand it from the keyboard
+    const places = page.locator('[data-group="places"]');
+    if ((await places.getAttribute('aria-expanded')) === 'true') await places.click();
+    check((await places.getAttribute('aria-expanded')) === 'false' && !(await page.locator('[data-target="place:taif-zoo"]').isVisible()), 'picker: a group collapses (its items hidden)');
+    await places.focus();
+    await page.keyboard.press('Enter');
+    check((await places.getAttribute('aria-expanded')) === 'true' && (await page.locator('[data-target="place:taif-zoo"]').isVisible()), 'picker: Enter on the focused header expands it');
+    await page.keyboard.press('Space');
+    check((await places.getAttribute('aria-expanded')) === 'false', 'picker: Space collapses it again');
+    const cur = page.locator('[data-group="home"]');
+    await cur.click();
+    check((await cur.getAttribute('aria-expanded')) === 'true', 'picker: the group holding the selected target stays open');
+    await page.reload();
+    await page.waitForSelector('[data-group="places"]');
+    check((await page.locator('[data-group="places"]').getAttribute('aria-expanded')) === 'false', 'picker: the open state is remembered after a reload');
+    // search
+    await page.fill('[data-picker-search]', 'عكاظ');
+    await page.waitForTimeout(150);
+    const found = await page.locator('[data-target]:visible').evaluateAll((els) => els.map((e) => e.getAttribute('data-target')));
+    check(found.includes('place:souq-okaz') && found.length <= 3 && found.every((x) => x.startsWith('place:') || x.startsWith('blog:')), 'picker: the search filters by name and opens the matching group', found.join(' '));
+    await page.fill('[data-picker-search]', 'zzzz');
+    check(await page.getByText('لا نتائج لـ«zzzz»').isVisible(), 'picker: no match says so');
+    await page.fill('[data-picker-search]', '');
+    // sticky header inside the scrolling list
+    const sticky = await page.locator('.picker-head-wrap').first().evaluate((el) => getComputedStyle(el).position);
+    check(sticky === 'sticky', 'picker: the group header is sticky while the list scrolls', sticky);
+    await page.evaluate(() => (document.documentElement.dataset.theme = 'dark'));
+    await shot(page, 'picker-1280-dark');
+    await page.evaluate(() => (document.documentElement.dataset.theme = 'light'));
+    await shot(page, 'picker-1280-light');
+  }
 
   // ── a room type: uploads and their checks ──
   await target(page, 'room:airport-road/twin-room');
@@ -382,10 +441,14 @@ try {
   await page.waitForFunction(() => document.querySelectorAll('[data-job]').length === 5, null, { timeout: 30000 });
   check((await item('qa-poster')).live && (await item('qa-hero')).live, 'hero: poster + video published together');
 
-  // 375 px: the picker is a select, no horizontal scroll
+  // 375 px: the picker in its disclosure, no horizontal scroll
   await page.setViewportSize({ width: 375, height: 812 });
   await page.waitForTimeout(400);
-  check(await page.locator('#media-target').isVisible(), '375 px: the target picker is a select');
+  check(await page.locator('[data-action="picker-toggle"]').isVisible() && (await page.locator('[data-action="picker-toggle"]').getAttribute('aria-expanded')) === 'false', '375 px: the picker is a disclosure under the current page name');
+  await page.click('[data-action="picker-toggle"]');
+  check(await page.locator('[data-picker-search]').isVisible() && (await page.locator('[data-group="home"]').isVisible()), '375 px: the disclosure opens the same grouped list');
+  await shot(page, 'picker-375');
+  await page.click('[data-action="picker-toggle"]');
   await shot(page, 'home-375-full');
   check(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1), '375 px: no horizontal scroll');
   await ctx.close();
@@ -409,6 +472,7 @@ try {
   await m.page.reload();
   await m.page.waitForSelector('[data-current]');
   check(await m.page.locator('[data-file-input]').count() === 0, 'view level: no upload');
+  await reveal(m.page, 'room:airport-road/twin-room');
   await m.page.click('[data-target="room:airport-road/twin-room"]');
   await m.page.waitForSelector('[data-slot="cover"] [data-open]');
   await m.page.locator('[data-slot="cover"] [data-open]').click();

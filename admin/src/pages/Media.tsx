@@ -1,6 +1,6 @@
 // «الصور» — the dashboard media module (Ahmed, 31 Oct 2026; DECISIONS.md 2026-11-01). Ahmed uploads, orders, describes
 // and publishes every photo of the site and the home hero video here:
-//   - the target picker: the home page, then each branch (its cover, the 4 story scenes, its gallery) followed by its room
+//   - the target picker (TargetPicker — grouped, collapsible, searchable, 3 Nov 2026): the home page, then each branch (its cover, the 4 story scenes, its gallery) followed by its room
 //     types (cover, gallery), its hall and its dining venues (cover + gallery — 2 Nov 2026, replacing the generic
 //     sections), then the Discover Taif places (a cover each, replacing the guide's photo), then «صفحات الشركاء» (a cover
 //     per photo slot of the /partners/ pages, replacing the legacy photo at its own ratio — 2 Nov 2026); each
@@ -27,6 +27,7 @@ import {
 } from '../lib/media';
 import { CancelButton, Empty, ErrorBox, Loading, Modal, Spinner, useToast } from '../components/ui';
 import MediaItemDialog from '../components/MediaItemDialog';
+import TargetPicker, { type PickerGroup, type PickerItem } from '../components/TargetPicker';
 
 interface Upload {
   id: number;
@@ -248,14 +249,29 @@ export default function Media() {
   if (rows === null) return <Loading />;
   if (!rows.length) return <div className="grid gap-4"><h1 className="text-2xl font-bold">الصور</h1><ErrorBox error={error} /><Empty text="لا صفحات ضمن صلاحيتك." /></div>;
   const pendingAll = rows.filter((r) => r.check.pending).length;
-  const groups: { title: string; rows: MediaTargetRow[] }[] = [
-    { title: 'الصفحة الرئيسية', rows: rows.filter((r) => r.target === 'home') },
-    ...[...new Set(rows.filter((r) => r.branch && r.target !== 'offer').map((r) => r.branch as string))].map((b) => ({ title: BRANCH_NAMES[b] ?? b, rows: rows.filter((r) => r.branch === b && r.target !== 'offer') })),
-    { title: 'اكتشف الطائف', rows: rows.filter((r) => r.target === 'place') },
-    { title: 'صفحات الشركاء', rows: rows.filter((r) => r.target === 'partners') },
-    { title: 'العروض', rows: rows.filter((r) => r.target === 'offer') },
-  ].filter((g) => g.rows.length);
-  const pick = (r: MediaTargetRow) => setParams({ t: targetId(r) }, { replace: true });
+  const item = (r: MediaTargetRow, label?: string): PickerItem => {
+    const t = stateOf(r);
+    return { id: targetId(r), label: label ?? targetLabel(r), search: `${targetLabel(r)} ${r.key}`, tone: t.tone, toneText: t.text, missing: t.tone === 'missing' ? r.check.missing.length : 0 };
+  };
+  const of = (pred: (r: MediaTargetRow) => boolean) => rows.filter(pred);
+  const branchKeys = [...new Set(rows.filter((r) => r.branch && r.target !== 'offer').map((r) => r.branch as string))];
+  const groups: PickerGroup[] = [
+    { key: 'home', title: 'الصفحة الرئيسية', icon: 'home' as const, subs: [{ items: of((r) => r.target === 'home').map((r) => item(r)) }] },
+    ...branchKeys.map((b) => {
+      const mine = of((r) => r.branch === b && r.target !== 'offer');
+      return {
+        key: `branch:${b}`, title: BRANCH_NAMES[b] ?? b, icon: 'branch' as const,
+        subs: [
+          { title: 'الفرع', items: mine.filter((r) => r.target !== 'room' && r.target !== 'hall' && r.target !== 'dining').map((r) => item(r, r.target === 'branch' ? 'صور الفرع' : undefined)) },
+          { title: 'الغرف والأجنحة', items: mine.filter((r) => r.target === 'room').map((r) => item(r, r.name_ar ?? r.key)) },
+          { title: 'القاعة والمطاعم', items: mine.filter((r) => r.target === 'hall' || r.target === 'dining').map((r) => item(r, r.target === 'hall' ? r.name_ar ?? 'القاعة' : undefined)) },
+        ].filter((s) => s.items.length),
+      };
+    }),
+    { key: 'places', title: 'اكتشف الطائف', icon: 'place' as const, subs: [{ items: of((r) => r.target === 'place').map((r) => item(r)) }] },
+    { key: 'partners', title: 'صفحات الشركاء', icon: 'partners' as const, subs: [{ items: of((r) => r.target === 'partners').map((r) => item(r)) }] },
+    { key: 'offers', title: 'العروض', icon: 'offers' as const, subs: [{ items: of((r) => r.target === 'offer').map((r) => item(r)) }] },
+  ].filter((g) => g.subs.some((s) => s.items.length));
   const st = current ? stateOf(current) : null;
 
   return (
@@ -275,41 +291,16 @@ export default function Media() {
         )}
       </div>
       <ErrorBox error={error} />
-      <div className="grid gap-5 md:grid-cols-[16rem_minmax(0,1fr)] items-start">
-        {/* target picker: a select on phones, a grouped list from md */}
-        <div className="md:hidden">
-          <label className="label" htmlFor="media-target">الصفحة</label>
-          <select id="media-target" className="field" value={current ? targetId(current) : ''} onChange={(e) => setParams({ t: e.target.value }, { replace: true })} data-no-dirty>
-            {groups.map((g) => (
-              <optgroup key={g.title} label={g.title}>
-                {g.rows.map((r) => (
-                  <option key={targetId(r)} value={targetId(r)}>{`${targetLabel(r)} — ${stateOf(r).text}`}</option>
-                ))}
-              </optgroup>
-            ))}
-          </select>
-        </div>
-        <nav className="hidden md:block card p-2 sticky top-4" aria-label="صفحات الموقع">
-          {groups.map((g) => (
-            <div key={g.title} className="mb-2">
-              <p className="px-2 pt-2 pb-1 text-xs font-bold text-ink-muted">{g.title}</p>
-              <ul>
-                {g.rows.map((r) => {
-                  const s = stateOf(r);
-                  const on = current && targetId(current) === targetId(r);
-                  return (
-                    <li key={targetId(r)}>
-                      <button type="button" className={`media-target ${on ? 'is-on' : ''}`} aria-current={on ? 'page' : undefined} onClick={() => pick(r)} data-target={targetId(r)}>
-                        <span className="truncate">{r.target === 'branch' ? 'الفرع' : r.target === 'room' || r.target === 'hall' ? r.name_ar ?? r.key : targetLabel(r)}</span>
-                        <span className={`media-dot media-dot-${s.tone}`} title={s.text}><span className="sr-only">{s.text}</span></span>
-                      </button>
-                    </li>
-                  );
-                })}
-              </ul>
-            </div>
-          ))}
-        </nav>
+      <div className="grid gap-5 md:grid-cols-[18rem_minmax(0,1fr)] items-start">
+        {/* the grouped target picker (3 Nov 2026): the same list on every width, in a disclosure on phones */}
+        <TargetPicker
+          groups={groups}
+          current={current ? targetId(current) : null}
+          onPick={(id) => setParams({ t: id }, { replace: true })}
+          label="صفحات الموقع"
+          storageKey={`armada-media-groups:${me?.email ?? ''}`}
+          currentLabel={current ? `الصفحة: ${targetLabel(current)}` : undefined}
+        />
 
         {current && (
           <section className="grid gap-4 min-w-0" aria-labelledby="media-target-title" data-current={targetId(current)}>
