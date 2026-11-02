@@ -14,6 +14,9 @@
 // through queued → published with the build-log link (the workflow's report played with the service role); «نشر الكل»
 // with a blocked target («نشر المكتمل فقط»); a user with edit but not publish (no publish button, the RPC refused); view
 // only (no upload, read-only dialog); none (no nav); Western digits and no bare «إلغاء» with the dialogs open.
+// 2 Nov 2026: «إظهار في المعرض» (on by default, dirty when unticked, the tile chip, carried by «نشر» to the live
+// snapshot and the build manifest, not offered for a place cover); «صفحات الشركاء» (the 13 slots after the places, a
+// cover only at the slot's own ratio — 4:5 for the Shafa Road card — no sharing crop, nothing required, published).
 // Before it runs it deletes the media rows and jobs of the branch (test data only — the branch is a throwaway copy).
 import { chromium } from 'playwright';
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
@@ -75,6 +78,7 @@ const F = {
   bcover: await jpeg('branch-cover', 3600, 2400, 300),
   rest: await jpeg('restaurant', 3600, 2400, 40),
   poster: await jpeg('poster', 3840, 2160, 210),
+  partner: await jpeg('partner', 3600, 2400, 150),
 };
 F.gif = join(DIR, 'qa-anim.gif');
 writeFileSync(F.gif, Buffer.from('R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7', 'base64'));
@@ -164,8 +168,11 @@ try {
   await page.waitForSelector('[data-target]');
   const ids = await page.locator('[data-target]').evaluateAll((els) => els.map((e) => e.getAttribute('data-target')));
   const venueCount = (await rest('dining_venues?select=id')).length;
-  check(ids.length === 33 + venueCount && ids[0] === 'home:home' && ids[1] === 'branch:airport-road' && ids.includes('hall:events-hall') && ids.includes('dining:armada-residence-cafe') && ids.includes('dining:lario')
-    && ids.at(-1) === 'place:taif-zoo' && !ids.some((x) => x.startsWith('section:')), 'picker: home, each branch with its 12 room types, the hall and every venue, then the 17 places — no retired section', ids.join(' '));
+  const partnerKeys = JSON.parse(readFileSync('content/partners-photos.json', 'utf8')).slots.map((s) => `partners:${s.key}`);
+  check(ids.length === 33 + venueCount + partnerKeys.length && ids[0] === 'home:home' && ids[1] === 'branch:airport-road' && ids.includes('hall:events-hall') && ids.includes('dining:armada-residence-cafe') && ids.includes('dining:lario')
+    && ids.at(-1 - partnerKeys.length) === 'place:taif-zoo' && JSON.stringify(ids.slice(-partnerKeys.length)) === JSON.stringify(partnerKeys) && !ids.some((x) => x.startsWith('section:')),
+    'picker: home, each branch with its 12 room types, the hall and every venue, the 17 places, then the 13 partners slots in content/partners-photos.json order — no retired section', ids.join(' '));
+  check(await page.locator('nav[aria-label="صفحات الموقع"]').textContent().then((t) => t.includes('صفحات الشركاء')), 'picker: the «صفحات الشركاء» group');
   check(ids.filter((x) => x.startsWith('room:')).includes('room:airport-road/accessible-room'), 'picker: the accessible rooms are targets');
   await digits(page, 'media page');
 
@@ -326,6 +333,30 @@ try {
   await page.waitForFunction(() => document.querySelectorAll('[data-job]').length === 3, null, { timeout: 30000 });
   check((await item('qa-restaurant')).live !== null && (await item('qa-branch-cover')).live === null, '«نشر المكتمل فقط»: the place cover is published, the blocked branch is not');
 
+  // ── «صفحات الشركاء» (2 Nov 2026): the Shafa Road card keeps its 4:5 legacy ratio ──
+  await target(page, 'partners:index-shafa-road');
+  check(await page.locator('[data-file-input="gallery"]').count() === 0 && (await page.locator('[data-slot="cover"] [data-required]').count()) === 0, 'partners slot: a cover only, not required');
+  await page.setInputFiles('[data-file-input="cover"]', F.partner);
+  await uploadsDone(page, ['qa-partner.jpg']);
+  const partner = await item('qa-partner');
+  check(partner?.target === 'partners' && partner.target_key === 'index-shafa-road' && partner.branch === null && partner.upload_state === 'ready', 'partners slot: uploaded as a ready draft with no branch scope');
+  await openItem(page, partner.id);
+  await page.waitForSelector('[data-focal] img', { timeout: 15000 }).catch(() => {});
+  const crops = await page.locator('[data-crop]').evaluateAll((els) => els.map((e) => e.getAttribute('data-crop')));
+  check(crops.join() === '0.800', 'partners slot: one crop at the slot\'s own ratio (4:5), no sharing crop', crops.join());
+  check(await page.locator('#media-in-gallery').count() === 0, 'partners slot: «إظهار في المعرض» is not offered');
+  await page.click('[data-action="dialog-cancel"]');
+  await page.waitForSelector(`[data-media-dialog="${partner.id}"]`, { state: 'detached' });
+  await page.click('[data-action="media-publish"]');
+  await page.waitForSelector('[data-blocked]');
+  check(/الصورة الرئيسية: النص البديل بالعربية/.test(await page.locator('[data-blocked]').textContent()), 'partners slot: publishing waits for both alts');
+  await page.click('[data-blocked] [data-action="dialog-cancel"]');
+  await fillAlts(page, partner.id, 'واجهة فرع طريق الشفا مساءً', 'The Shafa Road front in the evening');
+  await page.click('[data-action="media-publish"]');
+  await page.waitForFunction(() => document.querySelectorAll('[data-job]').length === 4, null, { timeout: 30000 });
+  const man3 = await rpc('media_site_manifest', {});
+  check(man3.items.some((x) => x.target === 'partners' && x.key === 'index-shafa-road' && x.slot === 'cover' && x.alt_en === 'The Shafa Road front in the evening'), 'partners slot: published into the build manifest');
+
   // ── the hero: video + poster ──
   await target(page, 'home:home');
   await page.setInputFiles('[data-file-input="hero-video"]', F.video);
@@ -348,7 +379,7 @@ try {
   await fillAlts(page, poster.id, 'واجهة الفندق مساءً', 'The hotel front in the evening');
   await fillAlts(page, vid.id, 'لقطات من الفندق', 'Scenes from the hotel');
   await page.click('[data-action="media-publish"]');
-  await page.waitForFunction(() => document.querySelectorAll('[data-job]').length === 4, null, { timeout: 30000 });
+  await page.waitForFunction(() => document.querySelectorAll('[data-job]').length === 5, null, { timeout: 30000 });
   check((await item('qa-poster')).live && (await item('qa-hero')).live, 'hero: poster + video published together');
 
   // 375 px: the picker is a select, no horizontal scroll

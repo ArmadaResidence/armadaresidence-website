@@ -8,7 +8,7 @@ import LpUnitTable from '@components/lp/LpUnitTable.astro';
 import LpCta from '@components/lp/LpCta.astro';
 import { langPaths } from '@lib/paths';
 import { pageSeo, type Locale } from '@lib/content';
-import { ICON, lp, T } from '@lib/partners';
+import { ICON, lp, lpAlt, T } from '@lib/partners';
 
 export const getStaticPaths = langPaths;
 interface Props {
@@ -27,6 +27,7 @@ const corp = (lp.segments as any[]).filter((x) => x[0] === '03' || x[0] === '05'
       h1={T(locale, { en: 'Corporate Partnerships', ar: 'شراكات الشركات' })}
       lead={T(locale, lp.corp.body)}
       img="suite-living"
+      photoSlot="corporate-hero"
       alt={T(locale, { en: 'Suite living room — Airport Road', ar: 'صالة الجناح — طريق المطار' })}
       crumb={T(locale, { en: 'Corporate', ar: 'الشركات' })}
     />
@@ -63,8 +64,8 @@ const corp = (lp.segments as any[]).filter((x) => x[0] === '03' || x[0] === '05'
           </div>
           <div class="rv">
             <figure class="ph r43 zoom">
-              <LpImg name="suite-living" alt={T(locale, { en: 'Suite living room — Airport Road', ar: 'صالة الجناح — طريق المطار' })} />
-              <figcaption>{T(locale, { en: 'Suite living room — Airport Road', ar: 'صالة الجناح — طريق المطار' })}</figcaption>
+              <LpImg name="suite-living" alt={T(locale, { en: 'Suite living room — Airport Road', ar: 'صالة الجناح — طريق المطار' })} photoSlot="corporate-suite" locale={locale} />
+              <figcaption>{lpAlt(locale, 'corporate-suite', T(locale, { en: 'Suite living room — Airport Road', ar: 'صالة الجناح — طريق المطار' }))}</figcaption>
             </figure>
             <div class="note lt" style="margin-top:14px">
               <b>{T(locale, { en: 'Kitchen in the Airport Road suites.', ar: 'مطبخ في أجنحة طريق المطار.' })}</b>

@@ -956,7 +956,12 @@ def check_media(rep: "Report") -> None:
     def built(ref: str) -> bool:
         return (DIST / ref.lstrip("/")).is_file()
     images: list[tuple[str, dict]] = []
-    for group in ("rooms", "branches", "sections", "dining", "halls", "places"):
+    # the partners pages' photo slots (2 Nov 2026): only keys of content/partners-photos.json
+    slots = {s["key"] for s in json.loads((CONTENT / "partners-photos.json").read_text(encoding="utf-8"))["slots"]}
+    for key in (data.get("partners") or {}):
+        if key not in slots:
+            rep.f(G, f"partners/{key}: not a slot of content/partners-photos.json")
+    for group in ("rooms", "branches", "sections", "dining", "halls", "places", "partners"):
         for key, entry in (data.get(group) or {}).items():
             for i, p in enumerate(entry.get("photos") or []):
                 images.append((f"{group}/{key} #{i + 1}", p))

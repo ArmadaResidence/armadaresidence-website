@@ -133,6 +133,56 @@ select pg_temp._check('G4 the library view lists the column', exists (select 1 f
 select pg_temp._check('G4 the library view stays security invoker, select only for authenticated', (select reloptions @> array['security_invoker=true'] from pg_class where oid = 'public.media_library'::regclass)
   and has_table_privilege('authenticated', 'public.media_library', 'select') and not has_table_privilege('anon', 'public.media_library', 'select') and not has_table_privilege('authenticated', 'public.media_library', 'insert'));
 
+-- ── P1 the partners slots: the catalog, the overview group ──
+select pg_temp._root();
+select pg_temp._check('P1 the catalog holds exactly the 13 slots of content/partners-photos.json, in its order, without a branch',
+  (select array_agg(c.key order by c.sort) from public.media_catalog c where c.target = 'partners') = array['index-hero', 'index-airport-road', 'index-shafa-road', 'index-umrah', 'index-corporate', 'index-meetings', 'index-final', 'groups-umrah-hero', 'corporate-hero', 'corporate-suite', 'meetings-events-hero', 'meetings-events-hall', 'enquiry-hero']
+  and not exists (select 1 from public.media_catalog c where c.target = 'partners' and (c.branch is not null or btrim(c.name_ar) = '' or btrim(c.name_en) = '')));
+select pg_temp._as('admin');
+select pg_temp._save('ov', public.media_overview());
+select pg_temp._check('P1 the overview lists the slots last, after the places, with their names',
+  (select array_agg(e ->> 'key' order by n) from jsonb_array_elements(pg_temp._j('ov')) with ordinality as t(e, n) where e ->> 'target' = 'partners') = array['index-hero', 'index-airport-road', 'index-shafa-road', 'index-umrah', 'index-corporate', 'index-meetings', 'index-final', 'groups-umrah-hero', 'corporate-hero', 'corporate-suite', 'meetings-events-hero', 'meetings-events-hall', 'enquiry-hero']
+  and (select max(n) from jsonb_array_elements(pg_temp._j('ov')) with ordinality as t(e, n) where e ->> 'target' = 'place')
+      < (select min(n) from jsonb_array_elements(pg_temp._j('ov')) with ordinality as t(e, n) where e ->> 'target' = 'partners')
+  and (select bool_and(e ->> 'name_ar' <> '' and e -> 'branch' = 'null'::jsonb) from jsonb_array_elements(pg_temp._j('ov')) e where e ->> 'target' = 'partners'));
+select pg_temp._as('rec_air');
+select pg_temp._save('ov_rec', public.media_overview());
+select pg_temp._check('P1 a single-branch user does not see them (they need all branches, like the home page)',
+  not exists (select 1 from jsonb_array_elements(pg_temp._j('ov_rec')) e where e ->> 'target' = 'partners'));
+select pg_temp._fails('P1 … nor upload to them', $$select public.media_begin_upload('partners', 'index-hero', 'cover', 'a.jpg', 'image/jpeg', 1000, pg_temp._hash('rec-p'))$$, '42501');
+
+-- ── P2 cover only, nothing required, alts required ──
+select pg_temp._as('admin');
+select pg_temp._fails('P2 an unknown slot is refused', $$select public.media_begin_upload('partners', 'index-nowhere', 'cover', 'a.jpg', 'image/jpeg', 1000, pg_temp._hash('p-x'))$$, '42501');
+select pg_temp._fails('P2 a slot has no gallery', $$select public.media_begin_upload('partners', 'index-hero', 'gallery', 'a.jpg', 'image/jpeg', 1000, pg_temp._hash('p-g'))$$, 'media_slot');
+select pg_temp._fails('P2 a slot takes no video', $$select public.media_begin_upload('partners', 'index-hero', 'cover', 'a.mp4', 'video/mp4', 1000, pg_temp._hash('p-v'))$$, 'media_slot');
+select pg_temp._root();
+select pg_temp._check('P2 an empty slot misses nothing (it keeps the legacy photo)', jsonb_array_length(internal.media_check('partners', 'index-hero') -> 'missing') = 0
+  and jsonb_array_length(internal.media_check('partners', 'index-hero') -> 'warnings') = 0);
+select pg_temp._as('admin');
+select pg_temp._upload('p_hero', 'partners', 'index-hero', 'cover', 'p-hero', 'image/jpeg', 5000000, null, null);
+select pg_temp._check('P2 the item has no branch scope', (select branch is null and slot = 'cover' and target = 'partners' from public.media_items where id = pg_temp._id('p_hero')));
+select pg_temp._save('pblk', public.media_publish(jsonb_build_array(jsonb_build_object('target', 'partners', 'key', 'index-hero'))));
+select pg_temp._check('P2 publishing waits for both alts', pg_temp._j('pblk') ->> 'reason' = 'blocked'
+  and (select count(*) from jsonb_array_elements(pg_temp._j('pblk') -> 'blocked' -> 0 -> 'missing') m where m ->> 'code' = 'alt') = 2);
+select public.media_update(pg_temp._id('p_hero'), 'واجهة الفندق عند الغروب', 'The hotel front at sunset', 0.4, 0.6);
+select pg_temp._save('pok', public.media_publish(jsonb_build_array(jsonb_build_object('target', 'partners', 'key', 'index-hero'))));
+select pg_temp._check('P2 then it publishes, with a job for the site build', (pg_temp._j('pok') ->> 'ok')::boolean and pg_temp._j('pok') ->> 'job_id' is not null);
+select pg_temp._upload('p_hero2', 'partners', 'index-hero', 'cover', 'p-hero2');
+select pg_temp._check('P2 a second cover archives the first (a single slot)', (select status = 'archived' from public.media_items where id = pg_temp._id('p_hero'))
+  and (select status = 'draft' from public.media_items where id = pg_temp._id('p_hero2')));
+select pg_temp._upload('g_place2', 'place', 'al-hada-cable-car', 'cover', 'g-place2');
+select pg_temp._check('P2 the same fix for a Discover Taif place: a new cover archives the earlier one', (select status = 'archived' from public.media_items where id = pg_temp._id('g_place')));
+select pg_temp._fails('P2 the gallery switch is refused for a slot', format($$select public.media_update(%L, 'أ', 'a', 0.5, 0.5, true)$$, pg_temp._id('p_hero2')), 'media_gallery');
+
+-- ── P3 the manifest, the view level ──
+select pg_temp._service();
+select pg_temp._save('pman', public.media_site_manifest());
+select pg_temp._check('P3 the build manifest carries the published slot with its focal point and alts',
+  exists (select 1 from jsonb_array_elements(pg_temp._j('pman') -> 'items') e where e ->> 'target' = 'partners' and e ->> 'key' = 'index-hero' and e ->> 'alt_en' = 'The hotel front at sunset' and (e ->> 'focal_x')::numeric = 0.4));
+select pg_temp._as('viewer');
+select pg_temp._fails('P3 without the media level nothing is listed', $$select public.media_overview()$$, '42501');
+
 select pg_temp._root();
 select n, test, ok, detail from _r order by n;
 rollback;

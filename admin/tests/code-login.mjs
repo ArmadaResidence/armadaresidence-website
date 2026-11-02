@@ -7,6 +7,17 @@
 export async function routeLoginCode(ctx, token, sink, { rewrite } = {}) {
   await ctx.route('**/functions/v1/login-code', async (route) => {
     const req = route.request();
+    // LOGIN_CODE_VIA_SERVICE=1 (2 Nov 2026): a preview branch that holds no BOOKING_TEST_TOKEN secret — the code is issued
+    // the way the function issues it (public.login_code_issue, service role of the branch, flagged test), nothing is
+    // emailed and nothing is set on the branch. Refused for the production project.
+    if (process.env.LOGIN_CODE_VIA_SERVICE === '1' && req.method() === 'POST') {
+      try {
+        await route.fulfill({ status: 200, contentType: 'application/json', headers: { 'access-control-allow-origin': '*' }, body: JSON.stringify(await issueViaService(req, sink)) });
+      } catch (e) {
+        await route.fulfill({ status: 500, contentType: 'application/json', headers: { 'access-control-allow-origin': '*' }, body: JSON.stringify({ ok: false, reason: String(e.message || e) }) });
+      }
+      return;
+    }
     if (req.method() !== 'POST') return route.continue(rewrite ? { url: rewrite(req.url()) } : undefined);
     const headers = { ...req.headers(), 'x-armada-test': token };
     if (rewrite?.headers) Object.assign(headers, rewrite.headers(headers));
@@ -24,6 +35,26 @@ export async function routeLoginCode(ctx, token, sink, { rewrite } = {}) {
       await route.abort().catch(() => {});
     }
   });
+}
+
+/** the login-code function's test answer, made from the request's JWT with the branch's service role */
+async function issueViaService(req, sink) {
+  const url = process.env.SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !key || /wwzxwettsuwtakwwbfly/.test(url)) throw new Error('LOGIN_CODE_VIA_SERVICE needs a preview branch');
+  const jwt = (req.headers().authorization || '').replace(/^Bearer\s+/i, '');
+  const claims = JSON.parse(Buffer.from(jwt.split('.')[1].replace(/-/g, '+').replace(/_/g, '/'), 'base64').toString('utf8'));
+  const code = String(Math.floor(100000 + Math.random() * 900000));
+  const { createHash } = await import('node:crypto');
+  const res = await fetch(`${url}/rest/v1/rpc/login_code_issue`, {
+    method: 'POST',
+    headers: { apikey: key, Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ p_user: claims.sub, p_session: claims.session_id, p_hash: createHash('sha256').update(`${code}:${claims.session_id}`).digest('hex'), p_ip_hash: null, p_ua: 'e2e', p_test: true }),
+  });
+  const r = await res.json();
+  if (!res.ok || !r.ok) return { ok: false, reason: r.reason ?? 'refused', retry_after: r.retry_after ?? null };
+  sink.push(code);
+  return { ok: true, sent: false, test_code: code, resend_after: r.resend_after, expires_in: r.expires_in };
 }
 
 /** wait for the code screen's form, then the latest code the function issued */

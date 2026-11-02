@@ -2,7 +2,7 @@
  * Helpers for the /partners/ section, which keeps the legacy B2B site design (markup + CSS + script).
  * Copy comes from content/partners-pages.json (generated from the legacy copy with facts overridden).
  */
-import { localePath, partnersPages, type Locale } from './content';
+import { localePath, media, partnersPages, type Locale } from './content';
 
 export type Bi = { en: string; ar: string };
 
@@ -22,6 +22,23 @@ export function lpImg(name: string) {
     srcset: `/images/partners/${name}-800.webp 800w, /images/partners/${name}-1400.webp 1400w`,
   };
 }
+
+/**
+ * The photo published from the dashboard «الصور» → «صفحات الشركاء» for one slot (2 Nov 2026; content/partners-photos.json),
+ * or null: the slot keeps its legacy photo. Same <img> markup and attributes as the legacy one (the legacy CSS sizes it);
+ * the pipeline's WebP widths, cropped to the slot's legacy ratio; the alt in the page language.
+ */
+export function lpSlot(locale: Locale, slot: string | undefined): { src: string; srcset: string; alt: string } | null {
+  const p = slot ? media.partners?.[slot]?.photos?.[0] : undefined;
+  if (!p) return null;
+  return {
+    src: `${p.base}-${p.widths.includes(800) ? 800 : p.widths[0]}.webp`,
+    srcset: p.widths.map((w) => `${p.base}-${w}.webp ${w}w`).join(', '),
+    alt: locale === 'en' ? p.alt_en : p.alt_ar,
+  };
+}
+/** a slot's alt text: the published photo's, else the legacy one (the corporate / meetings figcaptions repeat it) */
+export const lpAlt = (locale: Locale, slot: string, legacy: string): string => lpSlot(locale, slot)?.alt ?? legacy;
 
 export function lpPath(locale: Locale, page: string): string {
   return localePath(locale, page === 'index' ? '/partners/' : `/partners/${page}/`);

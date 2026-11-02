@@ -1,16 +1,20 @@
 ---
-import { lpImg } from '@lib/partners';
+import { lpImg, lpSlot } from '@lib/partners';
+import type { Locale } from '@lib/content';
 interface Props {
   name: string;
   alt: string;
+  /** the partners photo slot (content/partners-photos.json, 2 Nov 2026): a photo published there replaces `name` / `alt` */
+  photoSlot?: string;
+  locale?: Locale;
   loading?: 'lazy' | 'eager';
   class?: string;
   sizes?: string;
   width?: number;
   height?: number;
 }
-const { name, alt, loading = 'lazy', class: cls, sizes = '100vw', width = 1400, height = 788 } = Astro.props;
-const im = lpImg(name);
+const { name, alt, photoSlot, locale = 'ar', loading = 'lazy', class: cls, sizes = '100vw', width = 1400, height = 788 } = Astro.props;
+const im = lpSlot(locale, photoSlot) ?? { ...lpImg(name), alt };
 ---
 
-<img src={im.src} srcset={im.srcset} sizes={sizes} alt={alt} loading={loading} class={cls} decoding="async" width={width} height={height} />
+<img src={im.src} srcset={im.srcset} sizes={sizes} alt={im.alt} loading={loading} class={cls} decoding="async" width={width} height={height} />

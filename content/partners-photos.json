@@ -1,0 +1,19 @@
+{
+  "_note": "Every photo slot of the /partners/ pages (AR + EN alike), one dashboard «الصور» target each under «صفحات الشركاء» (target partners, key = slot; Ahmed, 2 Nov 2026). A photo published there replaces the legacy photo of that slot only, cropped around its focal point to the legacy photo's own ratio (`ratio` = width / height of the file in content/images/partners/), at the same size in the same markup; an unpublished slot keeps `legacy`. The keys and names are seeded in public.media_catalog by supabase/migrations/20261102100200_partners_slots.sql — a new slot adds its row there too (media-pipeline-check compares them).",
+  "verified": true,
+  "slots": [
+    { "key": "index-hero", "page": "/partners/", "where_ar": "الشركاء — صورة أعلى الصفحة", "where_en": "Partners — hero", "legacy": "airport-exterior", "ratio": "16:9" },
+    { "key": "index-airport-road", "page": "/partners/", "where_ar": "الشركاء — «فنادقنا»: طريق المطار", "where_en": "Partners — Our hotels: Airport Road", "legacy": "airport-exterior", "ratio": "16:9" },
+    { "key": "index-shafa-road", "page": "/partners/", "where_ar": "الشركاء — «فنادقنا»: طريق الشفا", "where_en": "Partners — Our hotels: Shafa Road", "legacy": "shafa-exterior", "ratio": "4:5" },
+    { "key": "index-umrah", "page": "/partners/", "where_ar": "الشركاء — قسم العمرة والمجموعات", "where_en": "Partners — Umrah & groups panel", "legacy": "umrah-room", "ratio": "3:2" },
+    { "key": "index-corporate", "page": "/partners/", "where_ar": "الشركاء — قسم الشركات", "where_en": "Partners — Corporate panel", "legacy": "suite-living", "ratio": "16:9" },
+    { "key": "index-meetings", "page": "/partners/", "where_ar": "الشركاء — قسم الاجتماعات والفعاليات", "where_en": "Partners — Meetings & events panel", "legacy": "function-hall", "ratio": "16:9" },
+    { "key": "index-final", "page": "/partners/", "where_ar": "الشركاء — خلفية القسم الأخير", "where_en": "Partners — closing band", "legacy": "shafa-exterior", "ratio": "4:5" },
+    { "key": "groups-umrah-hero", "page": "/partners/groups-umrah/", "where_ar": "العمرة والمجموعات — صورة أعلى الصفحة", "where_en": "Umrah & groups — hero", "legacy": "umrah-room", "ratio": "3:2" },
+    { "key": "corporate-hero", "page": "/partners/corporate/", "where_ar": "الشركات — صورة أعلى الصفحة", "where_en": "Corporate — hero", "legacy": "suite-living", "ratio": "16:9" },
+    { "key": "corporate-suite", "page": "/partners/corporate/", "where_ar": "الشركات — صورة «الإقامة الطويلة»", "where_en": "Corporate — Long stay photo", "legacy": "suite-living", "ratio": "16:9" },
+    { "key": "meetings-events-hero", "page": "/partners/meetings-events/", "where_ar": "الاجتماعات والفعاليات — صورة أعلى الصفحة", "where_en": "Meetings & events — hero", "legacy": "function-hall", "ratio": "16:9" },
+    { "key": "meetings-events-hall", "page": "/partners/meetings-events/", "where_ar": "الاجتماعات والفعاليات — صورة القاعة", "where_en": "Meetings & events — hall photo", "legacy": "function-hall", "ratio": "16:9" },
+    { "key": "enquiry-hero", "page": "/partners/enquiry/", "where_ar": "طلب عرض — صورة أعلى الصفحة", "where_en": "Enquiry — hero", "legacy": "airport-exterior", "ratio": "16:9" }
+  ]
+}

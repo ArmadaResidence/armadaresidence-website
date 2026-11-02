@@ -10,13 +10,15 @@ interface Props {
   lead: string;
   img: string;
   alt: string;
+  /** the partners photo slot of this hero (content/partners-photos.json) */
+  photoSlot: string;
   crumb?: string;
 }
-const { locale, eyebrow, h1, lead, img, alt, crumb } = Astro.props;
+const { locale, eyebrow, h1, lead, img, alt, photoSlot, crumb } = Astro.props;
 ---
 
 <section class="phero">
-  <div class="bg"><LpImg name={img} alt={alt} loading="eager" /></div>
+  <div class="bg"><LpImg name={img} alt={alt} photoSlot={photoSlot} locale={locale} loading="eager" /></div>
   <div class="wrap">
     {
       crumb && (

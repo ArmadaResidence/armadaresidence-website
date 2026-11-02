@@ -16,6 +16,8 @@
 // fixture's venues.json) go into the same data file (`venues`: active and coming soon only; a hidden venue never), each
 // SVG logo as its own content-addressed file; the targets dining (per venue), hall and place (per Discover Taif place,
 // cover only) are rendered like the room photos (`dining`, `halls`, `places`).
+// Partners pages (2 Nov 2026): the target partners (one per photo slot of /partners/, content/partners-photos.json) is
+// cropped to that slot's legacy ratio, no OG crop (`partners`: { <slot>: { photos: [one] } }).
 // Without SUPABASE_SERVICE_ROLE_KEY (a local build, the check suite) and without a fixture the data file is written
 // empty and nothing else changes: the site renders exactly as before (placeholders). WITH the key a failure is fatal —
 // a transient error must never publish a site without its photos.
@@ -52,6 +54,12 @@ const URL_ = (process.env.SUPABASE_URL || (process.env.PUBLIC_BOOKING_ENDPOINT |
 const RUN_URL = process.env.GITHUB_RUN_ID ? `${process.env.GITHUB_SERVER_URL}/${process.env.GITHUB_REPOSITORY}/actions/runs/${process.env.GITHUB_RUN_ID}` : null;
 const BUCKET = 'media-originals';
 const PLAN = args.includes('--plan');
+// the partners pages' photo slots and the ratio each keeps (width / height of its legacy photo)
+const PARTNER_RATIO = Object.fromEntries(JSON.parse(readFileSync(join(ROOT, 'content', 'partners-photos.json'), 'utf8')).slots.map((s) => {
+  const [w, h] = s.ratio.split(':').map(Number);
+  return [s.key, w / h];
+}));
+const recipeOf = (it) => (it.target === 'partners' ? `photo@${PARTNER_RATIO[it.key]}` : null);
 // libvips keeps the files it read open in its cache; on Windows an open file blocks the cache folder's rename
 sharp.cache(false);
 const t0 = Date.now();
@@ -115,7 +123,7 @@ if (PLAN) {
   const poster = home.find((i) => i.slot === 'hero-poster');
   const video = home.find((i) => i.slot === 'hero-video');
   const needs = (video && (miss('video', video) || (!poster && miss('poster-from-video', video))))
-    || items.some((i) => /hei[cf]$/.test(i.mime) && miss(i.slot === 'cover' && i.target !== 'home' ? 'photo+og' : i.slot === 'hero-poster' ? 'poster' : 'photo', i));
+    || items.some((i) => /hei[cf]$/.test(i.mime) && miss(recipeOf(i) ?? (i.slot === 'cover' && i.target !== 'home' ? 'photo+og' : i.slot === 'hero-poster' ? 'poster' : 'photo'), i));
   output('ffmpeg', needs ? 'true' : 'false');
   log(`media plan: ${items.length} item(s); ffmpeg ${needs ? 'needed' : 'not needed'}`);
   process.exit(0);
@@ -190,14 +198,17 @@ async function cached(recipe, it, prefix, make) {
   return { meta, id };
 }
 
-/** a photo: the 3:2 widths (+ the OG crop for a cover) and the LQIP of its -800 (else first) WebP */
+/** a photo: the 3:2 widths (+ the OG crop for a cover) and the LQIP of its -800 (else first) WebP; a partners slot keeps
+ *  its legacy ratio (recipeOf) */
 async function photo(it, prefix, withOg) {
-  const { meta, id } = await cached(withOg ? 'photo+og' : 'photo', it, prefix, async (dir, focal) => {
+  const ratio = it.target === 'partners' ? PARTNER_RATIO[it.key] : undefined;
+  if (it.target === 'partners' && !ratio) throw new Error(`partners slot ${it.key} is not in content/partners-photos.json`);
+  const { meta, id } = await cached(recipeOf(it) ?? (withOg ? 'photo+og' : 'photo'), it, prefix, async (dir, focal) => {
     const raw = await original(it);
     const path = tempFile(raw, extOf(it.mime));
     try {
       const { buf } = await decodable(path, raw);
-      const r = await renderPhoto(buf, focal, dir, 'x');
+      const r = await renderPhoto(buf, focal, dir, 'x', ratio ? { ratio } : {});
       const files = [...r.files];
       if (withOg) {
         await renderOg(buf, focal, join(dir, 'x.og.jpg'));
@@ -219,7 +230,7 @@ async function photo(it, prefix, withOg) {
 }
 
 // ---------- the data the pages read ----------
-const data = { _note: NOTE, source, manifest_at: manifest.at, dry_job: DRY ? JOB || true : undefined, rooms: {}, branches: {}, sections: {}, dining: {}, halls: {}, places: {}, home: null, lqip: {}, venues: [] };
+const data = { _note: NOTE, source, manifest_at: manifest.at, dry_job: DRY ? JOB || true : undefined, rooms: {}, branches: {}, sections: {}, dining: {}, halls: {}, places: {}, partners: {}, home: null, lqip: {}, venues: [] };
 for (const v of venues) {
   const { logo_svg: logo, ...rest } = v;
   const entry = { ...rest };
@@ -241,12 +252,12 @@ const ordered = (list) => [...list.filter((i) => i.slot === 'cover'), ...list.fi
 for (const [k, list] of byTarget) {
   const [target, key] = [k.slice(0, k.indexOf(':')), k.slice(k.indexOf(':') + 1)];
   try {
-    if (['room', 'branch', 'section', 'dining', 'hall', 'place'].includes(target)) {
-      const prefix = ['section', 'dining', 'hall', 'place'].includes(target) ? `${target}-${key}` : key.replace('/', '-');
+    if (['room', 'branch', 'section', 'dining', 'hall', 'place', 'partners'].includes(target)) {
+      const prefix = ['section', 'dining', 'hall', 'place', 'partners'].includes(target) ? `${target}-${key}` : key.replace('/', '-');
       const photos = [];
       let og;
       for (const it of ordered(list)) {
-        const r = await photo(it, prefix, it.slot === 'cover');
+        const r = await photo(it, prefix, it.slot === 'cover' && target !== 'partners');
         if (it.slot === 'cover') {
           r.photo.cover = true;
           og = r.og;
@@ -264,7 +275,7 @@ for (const [k, list] of byTarget) {
           data.lqip[r.lqip[0]] = r.lqip[1];
         }
       }
-      data[{ room: 'rooms', branch: 'branches', section: 'sections', dining: 'dining', hall: 'halls', place: 'places' }[target]][key] = entry;
+      data[{ room: 'rooms', branch: 'branches', section: 'sections', dining: 'dining', hall: 'halls', place: 'places', partners: 'partners' }[target]][key] = entry;
       log(`  ✓ ${k}: ${photos.length} photo(s)${entry.story ? ` + ${Object.keys(entry.story).length} story scene(s)` : ''}`);
     } else if (target === 'home') {
       const posterItem = list.find((i) => i.slot === 'hero-poster');
@@ -344,7 +355,7 @@ const report = {
   seconds: { total: (Date.now() - t0) / 1000, download: stats.download_ms / 1000, render: stats.render_ms / 1000 }, problems,
 };
 writeFileSync(join(OUT, 'report.json'), JSON.stringify(report, null, 2) + '\n');
-for (const k of ['rooms', 'branches', 'sections', 'dining', 'halls', 'places']) if (!Object.keys(data[k]).length) delete data[k];
+for (const k of ['rooms', 'branches', 'sections', 'dining', 'halls', 'places', 'partners']) if (!Object.keys(data[k]).length) delete data[k];
 if (!data.venues.length) delete data.venues;
 if (!data.home) delete data.home;
 writeFileSync(DATA, JSON.stringify(data, null, 1) + '\n');

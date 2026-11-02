@@ -9,6 +9,10 @@ import * as api from './api';
 import type { MediaItem, MediaMissing, MediaSlot, MediaTarget, MediaTargetRow, MediaWarning } from './api';
 import { PUBLISHABLE_KEY } from './supabase';
 import { BRANCH_NAMES, countWord, type CountNoun } from './format';
+import partnersPhotos from '../../../content/partners-photos.json';
+
+/** the partners pages' photo slots (2 Nov 2026): the ratio each keeps — width / height of its legacy photo */
+export const PARTNER_SLOTS: Record<string, { page: string; ratio: string }> = Object.fromEntries(partnersPhotos.slots.map((s) => [s.key, { page: s.page, ratio: s.ratio }]));
 
 export const IMAGE_MAX = 40 * 1024 * 1024;
 export const VIDEO_MAX = 300 * 1024 * 1024;
@@ -83,6 +87,8 @@ export function slotsOf(target: MediaTarget): { slot: MediaSlot; required: boole
       ];
     case 'place':
       return [{ slot: 'cover', required: false, hint: 'تحل محل صورة هذا المكان في «اكتشف الطائف» بالمقاس نفسه؛ بلا صورة منشورة تبقى صورته الحالية.' }];
+    case 'partners':
+      return [{ slot: 'cover', required: false, hint: 'تحل محل الصورة الحالية في هذا الموضع من صفحات الشركاء (بالعربية والإنجليزية) بالمقاس والتصميم نفسيهما؛ بلا صورة منشورة تبقى الصورة الحالية.' }];
     case 'section':
       return [{ slot: 'gallery', required: false }];
   }
@@ -95,7 +101,7 @@ export const targetId = (t: { target: MediaTarget; key: string }) => `${t.target
 export function targetLabel(t: Pick<MediaTargetRow, 'target' | 'key' | 'name_ar'>): string {
   if (t.target === 'home') return 'الصفحة الرئيسية';
   if (t.target === 'section') return SECTION_LABELS[t.key] ?? t.key;
-  if (t.target === 'place') return t.name_ar ?? t.key;
+  if (t.target === 'place' || t.target === 'partners') return t.name_ar ?? t.key;
   if (t.target === 'hall') return `${t.name_ar ?? 'القاعة'} — ${BRANCH_NAMES['airport-road']}`;
   if (t.target === 'dining') return t.name_ar ?? t.key;
   if (t.target === 'branch') return `فرع ${BRANCH_NAMES[t.key] ?? t.key}`;
@@ -322,8 +328,13 @@ const C32: Crop = { label: '3:2 — صفحات الغرف والفروع', ratio
 const C169: Crop = { label: '16:9 — الشاشات الكبيرة', ratio: 16 / 9 };
 const C45: Crop = { label: '4:5 — الجوال', ratio: 4 / 5 };
 const COG: Crop = { label: 'المشاركة على وسائل التواصل', ratio: 1200 / 630 };
-/** the crops a photo in this slot will get on the site */
-export function cropsOf(slot: MediaSlot): Crop[] {
+/** the crops a photo in this slot will get on the site (a partners slot: its legacy photo's ratio only, no sharing crop) */
+export function cropsOf(slot: MediaSlot, target?: MediaTarget, key?: string): Crop[] {
+  if (target === 'partners') {
+    const r = PARTNER_SLOTS[key ?? '']?.ratio ?? '16:9';
+    const [w, h] = r.split(':').map(Number);
+    return [{ label: `${r} — بمقاس الصورة الحالية في هذا الموضع`, ratio: w / h }];
+  }
   if (slot === 'hero-poster') return [C169, C45, COG];
   if (slot === 'hero-video') return [C169];
   if (slot === 'cover') return [C32, COG];

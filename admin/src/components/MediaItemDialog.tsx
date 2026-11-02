@@ -146,7 +146,7 @@ function ItemBody({ item, src, editable, onClose, onChanged, busy, setBusy }: Om
               <div>
                 <p className="label">كيف ستظهر على الموقع</p>
                 <div className="media-crops">
-                  {cropsOf(slot).map((c) => (
+                  {cropsOf(slot, item.target, item.target_key).map((c) => (
                     <figure key={c.label} className="media-crop" data-crop={c.ratio.toFixed(3)}>
                       <div style={{ aspectRatio: String(c.ratio), backgroundImage: `url("${src}")`, ...cropStyle(w, h, c.ratio, fx, fy) }} />
                       <figcaption>{c.label}</figcaption>

@@ -64,6 +64,15 @@ check(d.dining?.['armada-residence-cafe']?.photos.length === 3 && d.dining['arma
 check(d.halls?.['events-hall']?.photos.length === 4, 'data: the hall — cover + 3 gallery');
 check(air?.photos.map((p) => p.in_gallery).join() === 'true,true,true,true,true,true,false' && Object.values(air?.story || {}).every((p) => p.in_gallery === true), 'data: «إظهار في المعرض» — the 6th gallery photo off, every other photo and story scene on', air?.photos.map((p) => p.in_gallery).join());
 check(d.places?.['al-hada-cable-car']?.photos.length === 1, 'data: the Discover Taif place cover');
+// the partners slots: content/partners-photos.json and the catalog the migration seeds hold the same keys, in order
+const slotKeys = JSON.parse(readFileSync(join(ROOT, 'content', 'partners-photos.json'), 'utf8')).slots.map((x) => x.key);
+const seeded = [...readFileSync(join(ROOT, 'supabase', 'migrations', '20261102100200_partners_slots.sql'), 'utf8').matchAll(/\('partners', '([a-z0-9-]+)'/g)].map((m) => m[1]);
+check(slotKeys.length === 13 && JSON.stringify(seeded) === JSON.stringify(slotKeys), 'partners: the 13 slots of content/partners-photos.json are the catalog rows of the migration', `${slotKeys} / ${seeded}`);
+const ph = d.partners?.['index-hero']?.photos?.[0];
+const ps = d.partners?.['index-shafa-road']?.photos?.[0];
+check(ph && ps && Object.keys(d.partners).length === 2 && !d.partners['index-hero'].og_image, 'data: the two partners slots, one photo each, no sharing crop');
+check(ph?.width === 2000 && ph.height === 1125 && ps?.width === 1600 && ps.height === 2000 && ps.widths.join() === '480,800,1200,1600',
+  'data: each partners slot at its legacy ratio (hero 16:9 to 2000; the Shafa card 4:5 from a 2400 px high crop, never upscaled)', `${ph?.width}×${ph?.height} ${ps?.width}×${ps?.height} ${ps?.widths}`);
 check(Array.isArray(d.venues) && d.venues.map((v) => v.slug).join() === 'armada-residence-cafe,lario' && /^\/images\/media\/dining-armada-residence-cafe-logo-[0-9a-f]{10}\.svg$/.test(d.venues[0].logo) && !('logo_svg' in d.venues[0]), 'data: the published venues (the hidden one left out, the logo as its own file)');
 const all = [...Object.values(d.rooms), ...Object.values(d.branches), ...Object.values(d.dining), ...Object.values(d.halls), ...Object.values(d.places)].flatMap((e) => [...e.photos, ...Object.values(e.story || {})]);
 const file = (ref) => join(cold.img, ref.replace(/^\/images\/media\//, ''));
@@ -162,10 +171,18 @@ if (SITE) {
   check(!!taifPage && /\/images\/media\/place-al-hada-cable-car-[0-9a-f]+-800\.webp/.test(taifPage) && taifPage.includes('/images/taif/02-al-shafa-jabal-daka-800.webp'), 'site: Discover Taif — the published cover replaces its place\'s photo, the others keep theirs');
   const sitemap = readdirSync(join(ROOT, 'dist')).filter((f) => /^sitemap-\d+\.xml$/.test(f)).map((f) => readFileSync(join(ROOT, 'dist', f), 'utf8')).join('');
   check(sitemap.includes('/dining/</loc>') && sitemap.includes('/dining/lario/</loc>') && !sitemap.includes('sample-hidden') && sitemap.includes('/airport-road/hall/</loc>'), 'site: the sitemap has /dining/, the venues and the hall, never the hidden venue');
+  // the partners pages (2 Nov 2026): a published slot replaces its legacy photo (alt included), the others keep theirs
+  const pIdx = page('partners');
+  const pIdxEn = page('en', 'partners');
+  check(!!pIdx && /<div class="bg" data-depth="0.05"><img src="\/images\/media\/partners-index-hero-[0-9a-f]+-800\.webp"[^>]*alt="واجهة فرع طريق المطار عند الغروب"/.test(pIdx)
+    && /pf-img"><img src="\/images\/media\/partners-index-shafa-road-[0-9a-f]+-800\.webp"/.test(pIdx) && pIdx.includes('/images/partners/airport-exterior-800.webp')
+    && pIdx.includes('/images/partners/shafa-exterior-800.webp') && pIdx.includes('/images/partners/umrah-room-800.webp'), 'site: /partners/ — the published hero and Shafa card, every other slot its legacy photo');
+  check(!!pIdxEn && pIdxEn.includes('alt="The Airport Road front at sunset"'), 'site: /en/partners/ — the English alt of the published slot');
+  check(!/\/images\/media\/partners-/.test(page('partners', 'enquiry') || 'x') && (page('partners', 'enquiry') || '').includes('/images/partners/airport-exterior-800.webp'), 'site: an unpublished slot (the enquiry hero) keeps its legacy photo');
   // the gallery page (2 Nov 2026): every published branch / room / venue / hall photo but the one switched off, never the place cover
   const gal = page('gallery');
   const cells = gal ? (gal.match(/<li\b[^>]*\bdata-gallery-item\b/g) || []).length : 0;
-  check(!!gal && cells === 21 && !/place-al-hada-cable-car/.test(gal) && (gal.match(/data-category="rooms"/g) || []).length === 4, `site: /gallery/ — 21 photos (the off one and the place cover left out), ${cells} found`);
+  check(!!gal && cells === 21 && !/place-al-hada-cable-car|partners-index/.test(gal) && (gal.match(/data-category="rooms"/g) || []).length === 4, `site: /gallery/ — 21 photos (the off one and the place cover left out), ${cells} found`);
   check(home.includes('href="/gallery/"') && sitemap.includes('/gallery/</loc>') && sitemap.includes('/en/gallery/</loc>'), 'site: the gallery nav link and sitemap entries (6 photos or more)');
   // keep the built sample site for the scrim check
   cpSync(join(ROOT, 'dist'), join(T, 'dist'), { recursive: true });

@@ -598,7 +598,7 @@ export async function defaultsBatches(ids: string[]): Promise<Set<string>> {
 // media_overview() for every target's check (the same rules media_publish applies). Writes: the media_* RPCs (one audit
 // batch each; media batches are never undoable). The bytes go to the private bucket through signed upload URLs that
 // the storage policy issues only for the caller's own pending item (lib/media.ts uploads them with progress).
-export type MediaTarget = 'home' | 'branch' | 'room' | 'section' | 'dining' | 'hall' | 'place';
+export type MediaTarget = 'home' | 'branch' | 'room' | 'section' | 'dining' | 'hall' | 'place' | 'partners';
 export type MediaSlot = 'cover' | 'gallery' | 'story-entrance' | 'story-lobby' | 'story-rooms' | 'story-dining' | 'hero-poster' | 'hero-video';
 export interface MediaItem {
   id: string;

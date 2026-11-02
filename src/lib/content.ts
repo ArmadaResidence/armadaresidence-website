@@ -42,6 +42,9 @@ export interface MediaData {
   dining?: Record<string, { photos: MediaImage[]; og_image?: string }>;
   halls?: Record<string, { photos: MediaImage[]; og_image?: string }>;
   places?: Record<string, { photos: MediaImage[] }>;
+  /** the partners pages' photo slots (target partners, key = content/partners-photos.json slots[].key — 2 Nov 2026),
+   *  each cropped to its legacy photo's ratio */
+  partners?: Record<string, { photos: MediaImage[] }>;
   /** the published dining venues (active and coming soon; a hidden one never reaches the build) */
   venues?: Venue[];
   home?: { poster: { base: string; widths: number[]; width: number; height: number; position: string }; poster_mobile: { base: string; widths: number[]; width: number; height: number; position: string }; video?: { mp4: string; webm: string; seconds: number }; alt_ar: string; alt_en: string; og_image?: string } | null;

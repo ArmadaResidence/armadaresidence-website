@@ -7,7 +7,7 @@ import LpImg from '@components/lp/LpImg.astro';
 import LpCta from '@components/lp/LpCta.astro';
 import { langPaths } from '@lib/paths';
 import { pageSeo, type Locale } from '@lib/content';
-import { lp, T } from '@lib/partners';
+import { lp, lpAlt, T } from '@lib/partners';
 
 export const getStaticPaths = langPaths;
 interface Props {
@@ -26,6 +26,7 @@ const hallAlt = T(locale, { en: 'The function hall — Airport Road', ar: 'قا�
       h1={T(locale, { en: 'An equipped hall, served from our own kitchen.', ar: 'قاعة مجهَّزة، تُخدَم من مطبخنا.' })}
       lead={T(locale, lp.hall_lead)}
       img="function-hall"
+      photoSlot="meetings-events-hero"
       alt={hallAlt}
       crumb={T(locale, { en: 'Meetings & Events', ar: 'الاجتماعات والفعاليات' })}
     />
@@ -51,8 +52,8 @@ const hallAlt = T(locale, { en: 'The function hall — Airport Road', ar: 'قا�
           </div>
           <div class="rv">
             <figure class="ph r43 zoom">
-              <LpImg name="function-hall" alt={hallAlt} />
-              <figcaption>{hallAlt}</figcaption>
+              <LpImg name="function-hall" alt={hallAlt} photoSlot="meetings-events-hall" locale={locale} />
+              <figcaption>{lpAlt(locale, 'meetings-events-hall', hallAlt)}</figcaption>
             </figure>
           </div>
         </div>

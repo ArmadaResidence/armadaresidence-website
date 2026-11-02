@@ -5,7 +5,8 @@
 // What it holds (a typical publish and the edge cases): Airport Road branch — cover + the 4 story scenes + 6 gallery
 // photos (one with a Display P3 profile, one with EXIF orientation 6, one with «إظهار في المعرض» off); its twin room — cover + 3 gallery (one portrait,
 // one only 1800 px wide); the Airport Road café venue — cover + 2 gallery photos, the hall — cover + 3 gallery, the
-// Discover Taif place al-hada-cable-car — its cover (2 Nov 2026, replacing the retired restaurant section); the home
+// Discover Taif place al-hada-cable-car — its cover (2 Nov 2026, replacing the retired restaurant section); two partners
+// pages slots (the hero 16:9, the Shafa Road card 4:5); the home
 // hero — a poster (pure white or a busy pattern: the scrim's two test cases) and a 25 s 2560 × 1440 clip WITH an audio
 // track (cut to 20 s, audio removed, ≤ 4 MB). venues.json: sample dining venues — the café active (24 hours, the
 // internal menu), LARIO coming soon, and a hidden one that must never reach a page (sample copy only, never published).
@@ -65,6 +66,10 @@ const HL = { target: 'hall', key: 'events-hall', branch: 'airport-road' };
 await add('hall-cover.jpg', lbl('Hall — cover', 210), 3600, 2400, { ...HL, slot: 'cover', alt_ar: 'القاعة مجهزة بطاولات مستديرة', alt_en: 'The hall set with round tables' });
 for (let i = 0; i < 3; i++) await add(`hall-${i + 1}.jpg`, lbl(`Hall ${i + 1}`, 220 + i * 20), 3600, 2400, { ...HL, slot: 'gallery', sort: i, alt_ar: `زاوية من القاعة ${i + 1}`, alt_en: `A corner of the hall ${i + 1}` });
 await add('place-hada.jpg', lbl('Al Hada — cover', 120), 3000, 2000, { target: 'place', key: 'al-hada-cable-car', branch: null, slot: 'cover', alt_ar: 'عربات التلفريك فوق جبال الهدا', alt_en: 'Cable cars above the Al Hada mountains' });
+// two partners slots (2 Nov 2026): the /partners/ hero (16:9) and the Shafa Road card (4:5, from a landscape photo)
+const PT = { target: 'partners', branch: null, slot: 'cover' };
+await add('partners-hero.jpg', lbl('Partners hero', 160), 3600, 2400, { ...PT, key: 'index-hero', alt_ar: 'واجهة فرع طريق المطار عند الغروب', alt_en: 'The Airport Road front at sunset' });
+await add('partners-shafa.jpg', lbl('Shafa card', 170), 3600, 2400, { ...PT, key: 'index-shafa-road', focal_x: 0.7, alt_ar: 'مدخل فرع طريق الشفا', alt_en: 'The Shafa Road entrance' });
 const H = { target: 'home', key: 'home', branch: null };
 await add('hero-poster.jpg', poster === 'busy' ? busy : white, 3840, 2160, { ...H, slot: 'hero-poster', alt_ar: 'واجهة الفندق مساءً', alt_en: 'The hotel front in the evening' });
 if (video && hasTool('ffmpeg')) {

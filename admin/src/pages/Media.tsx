@@ -2,7 +2,8 @@
 // and publishes every photo of the site and the home hero video here:
 //   - the target picker: the home page, then each branch (its cover, the 4 story scenes, its gallery) followed by its room
 //     types (cover, gallery), its hall and its dining venues (cover + gallery — 2 Nov 2026, replacing the generic
-//     sections), then the Discover Taif places (a cover each, replacing the guide's photo); each
+//     sections), then the Discover Taif places (a cover each, replacing the guide's photo), then «صفحات الشركاء» (a cover
+//     per photo slot of the /partners/ pages, replacing the legacy photo at its own ratio — 2 Nov 2026); each
 //     target shows whether it is complete, has unpublished changes, or misses a required slot (media_overview — the
 //     same rules «نشر» applies);
 //   - each slot shows its photo or a drop zone (several files at once into the gallery, with progress); every file is
@@ -251,6 +252,7 @@ export default function Media() {
     { title: 'الصفحة الرئيسية', rows: rows.filter((r) => r.target === 'home') },
     ...[...new Set(rows.filter((r) => r.branch).map((r) => r.branch as string))].map((b) => ({ title: BRANCH_NAMES[b] ?? b, rows: rows.filter((r) => r.branch === b) })),
     { title: 'اكتشف الطائف', rows: rows.filter((r) => r.target === 'place') },
+    { title: 'صفحات الشركاء', rows: rows.filter((r) => r.target === 'partners') },
   ].filter((g) => g.rows.length);
   const pick = (r: MediaTargetRow) => setParams({ t: targetId(r) }, { replace: true });
   const st = current ? stateOf(current) : null;
@@ -398,7 +400,7 @@ export default function Media() {
                           accept={s.slot === 'hero-video' ? ACCEPT_VIDEO : ACCEPT_IMAGES}
                           onFiles={(f) => add(f, s.slot)}
                           slot={s.slot}
-                          label={it ? (s.slot === 'cover' ? 'استبدال: اسحب صورة أو اخترها (تنتقل الحالية إلى المعرض)' : 'استبدال: اسحب ملفًا أو اختره (تُؤرشف الحالية)') : s.slot === 'hero-video' ? 'اسحب الفيديو إلى هنا أو اختره (MP4 أو MOV أو WebM حتى 300 ميغابايت)' : 'اسحب صورة إلى هنا أو اخترها'}
+                          label={it ? (s.slot === 'cover' && slotsOf(current.target).some((x) => x.slot === 'gallery') ? 'استبدال: اسحب صورة أو اخترها (تنتقل الحالية إلى المعرض)' : 'استبدال: اسحب ملفًا أو اختره (تُؤرشف الحالية)') : s.slot === 'hero-video' ? 'اسحب الفيديو إلى هنا أو اختره (MP4 أو MOV أو WebM حتى 300 ميغابايت)' : 'اسحب صورة إلى هنا أو اخترها'}
                         />
                       )}
                     </div>

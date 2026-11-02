@@ -18,16 +18,16 @@ const s = pageSeo(locale, 'partners');
 const H = lp.hero;
 const wa = T(locale, lp.form.wa_intro);
 const features = [
-  { sec: lp.umrah, img: 'umrah-room', alt: { en: 'King room — Airport Road', ar: 'غرفة كينج — طريق المطار' }, request: 'umrah-group', page: 'groups-umrah', cls: 'dkbg' },
-  { sec: lp.corp, img: 'suite-living', alt: { en: 'Suite living room — Airport Road', ar: 'صالة الجناح — طريق المطار' }, request: 'corporate', page: 'corporate', cls: 'rev' },
-  { sec: lp.meet, img: 'function-hall', alt: { en: 'The function hall — Airport Road', ar: 'قاعة المناسبات — طريق المطار' }, request: 'event', page: 'meetings-events', cls: 'dkbg' },
+  { sec: lp.umrah, img: 'umrah-room', slot: 'index-umrah', alt: { en: 'King room — Airport Road', ar: 'غرفة كينج — طريق المطار' }, request: 'umrah-group', page: 'groups-umrah', cls: 'dkbg' },
+  { sec: lp.corp, img: 'suite-living', slot: 'index-corporate', alt: { en: 'Suite living room — Airport Road', ar: 'صالة الجناح — طريق المطار' }, request: 'corporate', page: 'corporate', cls: 'rev' },
+  { sec: lp.meet, img: 'function-hall', slot: 'index-meetings', alt: { en: 'The function hall — Airport Road', ar: 'قاعة المناسبات — طريق المطار' }, request: 'event', page: 'meetings-events', cls: 'dkbg' },
 ];
 ---
 
 <Base locale={locale} path="/partners/" title={s.title} description={s.description}>
   <LpShell locale={locale}>
     <section class="hero hero-v3">
-      <div class="bg" data-depth="0.05"><LpImg name="airport-exterior" alt={T(locale, lp.props.airport.alt)} loading="eager" /></div>
+      <div class="bg" data-depth="0.05"><LpImg name="airport-exterior" alt={T(locale, lp.props.airport.alt)} photoSlot="index-hero" locale={locale} loading="eager" /></div>
       <div class="scrim"></div>
       <div class="hero-glow" aria-hidden="true"></div>
       <div class="wrap hero-copy">
@@ -64,7 +64,7 @@ const features = [
             const p = lp.props[key];
             return (
               <article class:list={['pf rv', i % 2 && 'rev']} id={`pf-${key}`}>
-                <div class="pf-img"><LpImg name={p.img} alt={T(locale, p.alt)} /></div>
+                <div class="pf-img"><LpImg name={p.img} alt={T(locale, p.alt)} photoSlot={key === 'airport' ? 'index-airport-road' : 'index-shafa-road'} locale={locale} /></div>
                 <div class="pf-body">
                   <p class="pf-label">{T(locale, label)}</p>
                   <h3>{T(locale, name)}</h3>
@@ -126,7 +126,7 @@ const features = [
     {
       features.map((f) => (
         <section class:list={['feat-sec', f.cls]}>
-          <div class="feat-img"><LpImg name={f.img} alt={T(locale, f.alt)} /></div>
+          <div class="feat-img"><LpImg name={f.img} alt={T(locale, f.alt)} photoSlot={f.slot} locale={locale} /></div>
           <div class="feat-body rv">
             <p class="eyebrow" set:html={T(locale, f.sec.eyebrow)} />
             <h2 set:html={T(locale, f.sec.h2)} />
@@ -159,7 +159,7 @@ const features = [
     </section>
 
     <section class="final">
-      <div class="bg"><LpImg name="shafa-exterior" alt={T(locale, lp.props.shafa.alt)} /></div>
+      <div class="bg"><LpImg name="shafa-exterior" alt={T(locale, lp.props.shafa.alt)} photoSlot="index-final" locale={locale} /></div>
       <div class="scrim"></div>
       <div class="wrap rv">
         <h2>{T(locale, lp.final.h2)}</h2>

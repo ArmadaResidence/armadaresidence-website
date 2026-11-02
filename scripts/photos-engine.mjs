@@ -31,17 +31,19 @@ export const SPEC_VERSION = JSON.stringify({ PHOTO, OG, HERO, LQIP, v: 1 });
  * A 3:2 photo around the focal point at every approved width the crop can fill (never upscaled): `<base>-<w>.webp` +
  * `.avif` in `dir`. Orientation applied first; without withMetadata() nothing of the original metadata is written.
  * Returns { widths, width, height, files } (files = the names written, in `dir`). Throws under 480 px.
+ * `ratio` (2 Nov 2026): another width / height for a slot that keeps its own (the partners pages' legacy photos —
+ * content/partners-photos.json); the widths and encoders are the same.
  */
-export async function renderPhoto(buf, focal, dir, base, { dry = false } = {}) {
+export async function renderPhoto(buf, focal, dir, base, { dry = false, ratio = PHOTO.ratio } = {}) {
   const { width: w, height: h } = orientedSize(await sharp(buf).metadata());
-  const box = cropBox(w, h, PHOTO.ratio, focal);
-  if (box.width < PHOTO.widths[0]) throw new Error(`only ${box.width} px wide after the 3:2 crop — at least ${PHOTO.widths[0]} needed`);
+  const box = cropBox(w, h, ratio, focal);
+  if (box.width < PHOTO.widths[0]) throw new Error(`only ${box.width} px wide after the crop — at least ${PHOTO.widths[0]} needed`);
   const widths = PHOTO.widths.filter((x) => x <= box.width);
   const pipe = sharp(buf).rotate().extract(box).toColourspace('srgb');
   const files = [];
   if (!dry) mkdirSync(dir, { recursive: true });
   for (const width of widths) {
-    const sized = pipe.clone().resize(width, Math.round(width / PHOTO.ratio), { fit: 'fill' });
+    const sized = pipe.clone().resize(width, Math.round(width / ratio), { fit: 'fill' });
     if (!dry) {
       await sized.clone().webp(PHOTO.webp).toFile(join(dir, `${base}-${width}.webp`));
       await sized.clone().avif(PHOTO.avif).toFile(join(dir, `${base}-${width}.avif`));
@@ -49,7 +51,7 @@ export async function renderPhoto(buf, focal, dir, base, { dry = false } = {}) {
     files.push(`${base}-${width}.webp`, `${base}-${width}.avif`);
   }
   const largest = widths.at(-1);
-  return { widths, width: largest, height: Math.round(largest / PHOTO.ratio), files, source: { w, h } };
+  return { widths, width: largest, height: Math.round(largest / ratio), files, source: { w, h } };
 }
 
 /** The 1200 × 630 Open Graph crop of an image (orientation applied), around the focal point, as `file` (JPEG). */
