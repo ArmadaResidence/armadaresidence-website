@@ -823,7 +823,8 @@ export async function diningJobs(limit = 8): Promise<MediaJob[]> {
   const { data, error } = await supabase
     .from('media_publish_jobs')
     .select('id,targets,dry_run,status,dispatch,requested_label,requested_at,started_at,finished_at,run_url,error')
-    .contains('targets', [{ target: 'venue' }])
+    // jsonb containment needs the JSON text (an array would be sent as a Postgres array literal)
+    .contains('targets', JSON.stringify([{ target: 'venue' }]))
     .order('requested_at', { ascending: false })
     .limit(limit);
   if (error) fail(error, 'media_publish_jobs');
@@ -841,4 +842,4 @@ export async function diningPublish(ids: string[] | null, skipBlocked = false): 
   return data as DiningPublishResult;
 }
 /** «إرسال إشعار الافتتاح»: one email per waiting address, then each sent address is deleted (dining-notify) */
-export const diningNotifySend = (id: string) => edge<{ ok: boolean; sent: number; failed: number; left: number }>('dining-notify', { action: 'send', id });
+export const diningNotifySend = (id: string) => edge<{ ok: boolean; sent: number; failed: number; left: number; why?: 'no_key' | 'network' | string }>('dining-notify', { action: 'send', id });

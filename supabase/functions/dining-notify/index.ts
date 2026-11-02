@@ -85,21 +85,24 @@ async function rpc<T>(name: string, args: Record<string, unknown>, jwt?: string)
   return { ok: true, data: JSON.parse(text) as T };
 }
 
-/** one opening email through Resend; true when accepted (never logs the address) */
-async function sendOne(to: string, mail: { subject: string; html: string; text: string }, sink: boolean): Promise<boolean> {
+/** one opening email through Resend: null when accepted, else why (never logs the address) */
+async function sendOne(to: string, mail: { subject: string; html: string; text: string }, sink: boolean): Promise<string | null> {
   const key = Deno.env.get('RESEND_API_KEY');
-  if (!key) return false;
+  if (!key) return 'no_key';
   try {
     const res = await fetch('https://api.resend.com/emails', {
       method: 'POST',
       headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({ from: FROM, to: [sink ? TEST_SINK : to], subject: sink ? `[TEST] ${mail.subject}` : mail.subject, html: mail.html, text: mail.text }),
     });
-    if (!res.ok) console.error('dining-notify: resend refused', res.status, (await res.text()).slice(0, 160));
-    return res.ok;
+    if (!res.ok) {
+      console.error('dining-notify: resend refused', res.status, (await res.text()).slice(0, 160));
+      return `refused_${res.status}`;
+    }
+    return null;
   } catch (x) {
     console.error('dining-notify: resend failed', String(x).slice(0, 160));
-    return false;
+    return 'network';
   }
 }
 
@@ -149,9 +152,14 @@ async function send(req: Request, body: Record<string, unknown>, test: boolean):
   const mail = diningOpening(content, { slug: g.slug, branch: g.branch, nameAr: g.name_ar, nameEn: g.name_en });
   const sent: string[] = [];
   let failed = 0;
+  let why: string | null = null;
   for (const row of list.data) {
-    if (await sendOne(row.email, mail, test || row.is_test || g.is_test)) sent.push(row.id);
-    else failed++;
+    const err = await sendOne(row.email, mail, test || row.is_test || g.is_test);
+    if (!err) sent.push(row.id);
+    else {
+      failed++;
+      why ??= err;
+    }
   }
   const done = await rpc<{ ok: boolean; deleted: number; left: number }>('dining_notify_done', { p_id: id, p_sent: sent, p_actor: g.actor });
   if (!done.ok) {
@@ -159,7 +167,7 @@ async function send(req: Request, body: Record<string, unknown>, test: boolean):
     return json(req, 500, { ok: false, error: 'delete_failed', sent: sent.length, failed });
   }
   console.log('dining-notify: opening sent', g.slug, `sent=${sent.length}`, `failed=${failed}`, test ? 'TEST' : '');
-  return json(req, 200, { ok: true, sent: sent.length, failed, left: done.data.left });
+  return json(req, 200, { ok: true, sent: sent.length, failed, left: done.data.left, ...(why ? { why } : {}) });
 }
 
 Deno.serve(async (req) => {

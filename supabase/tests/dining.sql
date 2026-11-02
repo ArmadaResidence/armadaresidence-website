@@ -234,11 +234,15 @@ select pg_temp._save('man', public.dining_site_manifest());
 select pg_temp._check('D6 manifest: published, not hidden, not test — a venue published hidden leaves it',
   (select array_agg(e ->> 'slug') from jsonb_array_elements(pg_temp._j('man') -> 'venues') e) = array['lario']
   and pg_temp._j('man') -> 'venues' -> 0 ? 'logo_svg' and pg_temp._j('man') -> 'venues' -> 0 ? 'id', pg_temp._j('man')::text);
+select pg_temp._root();
+select pg_temp._save('fees_want', jsonb_build_object('bed', (select (value #>> '{}')::numeric from public.settings where key = 'extra_bed_per_night'),
+  'bf', (select (value ->> 'adult')::numeric from public.settings where key = 'breakfast')));
 select pg_temp._anon();
 select pg_temp._save('fees', public.site_fees());
 select pg_temp._check('D6 site_fees (anon): the breakfast adult price and the extra-bed fee from Settings',
-  (pg_temp._j('fees') ->> 'extra_bed_per_night')::numeric = (select (value #>> '{}')::numeric from public.settings where key = 'extra_bed_per_night')
-  and (pg_temp._j('fees') ->> 'breakfast_adult')::numeric = (select (value ->> 'adult')::numeric from public.settings where key = 'breakfast'), pg_temp._j('fees')::text);
+  (pg_temp._j('fees') ->> 'extra_bed_per_night')::numeric = (pg_temp._j('fees_want') ->> 'bed')::numeric
+  and (pg_temp._j('fees') ->> 'breakfast_adult')::numeric = (pg_temp._j('fees_want') ->> 'bf')::numeric, pg_temp._j('fees')::text);
+select pg_temp._fails('D6 anon still cannot read the settings table', $$select count(*) from public.settings$$, '42501');
 
 -- ── D7 the media targets ──
 select pg_temp._root();

@@ -122,7 +122,11 @@ export default function Dining() {
     setSending(true);
     try {
       const r = await api.diningNotifySend(v.id);
-      toast(r.failed ? `أُرسلت ${messagesWord(r.sent)}، وتعذّر إرسال ${messagesWord(r.failed)}؛ بقيت عناوينها لإعادة المحاولة.` : `أُرسلت ${messagesWord(r.sent)}، وحُذفت العناوين.`, r.failed ? 'error' : undefined);
+      toast(
+        r.why === 'no_key' ? 'لم يُرسل شيء: خدمة البريد غير مهيأة على الخادم. العناوين باقية؛ تواصل مع مدير النظام.'
+          : r.failed ? `أُرسلت ${messagesWord(r.sent)}، وتعذّر إرسال ${messagesWord(r.failed)}؛ بقيت عناوينها لإعادة المحاولة.` : `أُرسلت ${messagesWord(r.sent)}، وحُذفت العناوين.`,
+        r.failed ? 'error' : undefined,
+      );
       setNotify(null);
       await load();
     } catch (e) {

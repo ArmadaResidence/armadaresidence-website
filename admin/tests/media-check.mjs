@@ -163,8 +163,9 @@ try {
   await page.click('nav a[href$="/media"] >> nth=0');
   await page.waitForSelector('[data-target]');
   const ids = await page.locator('[data-target]').evaluateAll((els) => els.map((e) => e.getAttribute('data-target')));
-  check(ids.length === 35 && ids[0] === 'home:home' && ids[1] === 'branch:airport-road' && ids.includes('hall:events-hall') && ids.includes('dining:armada-residence-cafe') && ids.includes('dining:lario')
-    && ids.at(-1) === 'place:taif-zoo' && !ids.some((x) => x.startsWith('section:')), 'picker: home, each branch with its 12 room types, the hall and the 2 venues, then the 17 places — no retired section', ids.join(' '));
+  const venueCount = (await rest('dining_venues?select=id')).length;
+  check(ids.length === 33 + venueCount && ids[0] === 'home:home' && ids[1] === 'branch:airport-road' && ids.includes('hall:events-hall') && ids.includes('dining:armada-residence-cafe') && ids.includes('dining:lario')
+    && ids.at(-1) === 'place:taif-zoo' && !ids.some((x) => x.startsWith('section:')), 'picker: home, each branch with its 12 room types, the hall and every venue, then the 17 places — no retired section', ids.join(' '));
   check(ids.filter((x) => x.startsWith('room:')).includes('room:airport-road/accessible-room'), 'picker: the accessible rooms are targets');
   await digits(page, 'media page');
 

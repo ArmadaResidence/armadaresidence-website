@@ -74,6 +74,8 @@ await rest('dining_notify?id=not.is.null', { method: 'DELETE' });
 await rest('media_items?target=eq.dining', { method: 'DELETE' });
 await rest('media_publish_jobs?id=not.is.null', { method: 'DELETE' });
 await rest('dining_venues?slug=in.(armada-residence-cafe,lario)', { method: 'PATCH', body: JSON.stringify({ live: null, published_at: null, status: 'hidden', notified_at: null, notified_count: 0 }) });
+await rest('dining_venues?slug=eq.armada-residence-cafe', { method: 'PATCH', body: JSON.stringify({ sort: 0 }) });
+await rest('dining_venues?slug=eq.lario', { method: 'PATCH', body: JSON.stringify({ sort: 1, name_en: 'LARIO — International Dining & Café' }) });
 const users = Object.fromEntries((await rest('staff?select=user_id,full_name,role')).map((s) => [s.role === 'admin' ? 'admin' : s.role === 'management' ? 'mgmt' : s.full_name, s.user_id]));
 const setLevel = (user, section, level) => rest(`staff_permissions?user_id=eq.${user}&section=eq.${section}`, { method: 'PATCH', body: JSON.stringify({ level }) });
 await setLevel(users.admin, 'dining', 'publish');
@@ -213,6 +215,7 @@ try {
   // ── the venue's photos ──
   await row(page, SLUG).locator('[data-action="venue-photos"]').click();
   await page.waitForSelector(`[data-current="dining:${SLUG}"]`);
+  await page.waitForSelector('[data-slot="cover"]');
   check(await page.locator('[data-slot="cover"] [data-required]').count() === 1, 'photos: the venue\'s cover is required in «الصور»');
   await page.setInputFiles('[data-file-input="cover"]', COVER);
   await page.waitForFunction(() => [...document.querySelectorAll('[data-upload]')].some((r) => r.getAttribute('data-stage') === 'done'), null, { timeout: 120000 });
@@ -253,7 +256,7 @@ try {
   await page.click('[data-modal][open] >> text=إرسال الرسائل');
   for (let i = 0; i < 60 && (await rest('dining_notify?select=id')).length; i++) await page.waitForTimeout(500);
   const after = await venue(SLUG);
-  check((await rest('dining_notify?select=id')).length === 0 && after.notified_count === 1 && after.notified_at, '«إرسال إشعار الافتتاح»: sent through the sink and the address deleted', JSON.stringify({ n: after.notified_count, at: after.notified_at }));
+  check((await rest('dining_notify?select=id')).length === 0 && after.notified_count === 1 && after.notified_at, '«إرسال إشعار الافتتاح»: sent through the sink and the address deleted', JSON.stringify({ n: after.notified_count, at: after.notified_at, toast: await page.locator('[role="status"], [role="alert"]').allTextContents().catch(() => []) }));
   const audited = await rest(`audit_log?entity=eq.dining_venues&entity_id=eq.${after.id}&order=at.desc&limit=1&select=actor_label,new`);
   check(audited[0]?.new?.notified_count === 1 && audited[0].actor_label !== 'system', 'the opening notice is audited as the staff member', JSON.stringify(audited[0]));
 
@@ -271,7 +274,7 @@ try {
 
   // ── management: edit without publish, then view, then none ──
   await setLevel(users.mgmt, 'dining', 'edit');
-  const m = await login('management@qa.invalid');
+  const m = await login('mgmt@qa.invalid');
   await openDining(m.page);
   check(await m.page.locator('[data-action="dining-add"]').count() === 1 && await m.page.locator('[data-action="dining-publish-all"]').count() === 0 && await m.page.locator('[data-action="venue-publish"]').count() === 0, 'edit level: add and edit, no «نشر»');
   const refused = await m.page.evaluate(async ({ url, anon }) => {
