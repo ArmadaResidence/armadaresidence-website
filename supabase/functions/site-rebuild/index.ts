@@ -15,6 +15,8 @@
 // (public.media_job_update, service role): dispatched | no_token | failed.
 // Dining (dashboard «المطاعم والمقاهي», 2 Nov 2026): reason 'dining' + the publish job of public.dining_publish — the
 // same path as a media job (the jobs share public.media_publish_jobs); the caller needs publish on dining.
+// Offers (dashboard «العروض», 2 Nov 2026): reason 'offers' + the job of offers_publish / unpublish / archive or
+// popup_publish — the same path; the caller needs publish on offers.
 // Without the secret GITHUB_DISPATCH_TOKEN it answers { ok: false, reason: 'no_token' } and the dashboard shows
 // «سيُطبَّق على الموقع عند إعادة البناء التالية». Test mode (supabase/tests/README.md): a request carrying a valid
 // `x-armada-test` token (checked through public.qa_fixture('state'), which refuses any other) may dispatch without a
@@ -70,8 +72,8 @@ function json(req: Request, status: number, body: unknown): Response {
   return new Response(JSON.stringify(body), { status, headers: { ...cors(req), 'Content-Type': 'application/json; charset=utf-8' } });
 }
 
-/** The caller through RLS: edit on settings or rooms (publish on media / dining for their publish jobs), past the second step. */
-async function callerMayRebuild(jwt: string, job: 'media' | 'dining' | null): Promise<boolean> {
+/** The caller through RLS: edit on settings or rooms (publish on media / dining / offers for their publish jobs), past the second step. */
+async function callerMayRebuild(jwt: string, job: 'media' | 'dining' | 'offers' | null): Promise<boolean> {
   const res = await fetch(`${url()}/rest/v1/rpc/my_staff`, {
     method: 'POST',
     headers: { apikey: anonKey(), Authorization: `Bearer ${jwt}`, 'Content-Type': 'application/json' },
@@ -107,7 +109,7 @@ Deno.serve(async (req) => {
   try {
     body = await req.json();
   } catch { /* empty body is fine */ }
-  const kind = body.reason === 'media' || body.reason === 'dining' ? body.reason : null;
+  const kind = body.reason === 'media' || body.reason === 'dining' || body.reason === 'offers' ? body.reason : null;
   if (kind && !UUID.test(String(body.job ?? ''))) return json(req, 400, { ok: false, error: 'job required' });
   if (!test && (!jwt || !(await callerMayRebuild(jwt, kind)))) return json(req, 403, { ok: false, error: 'not allowed' });
   const reason = kind ?? (test ? 'test' : REASONS.has(String(body.reason)) ? String(body.reason) : 'dashboard');

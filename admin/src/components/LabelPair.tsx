@@ -34,6 +34,8 @@ export interface LabelPairProps {
   kind?: 'label' | 'alt' | 'text';
   /** text areas: visible rows */
   rows?: number;
+  /** a shorter (or longer) limit than the kind's own (the offers' texts, the pop-up — 2 Nov 2026) */
+  max?: number;
 }
 
 const norm = (s: string) => s.replace(/\s+/g, ' ').trim().toLowerCase().replace(/[ً-ٰٟ]/g, '').replace(/[أإآ]/g, 'ا').replace(/ة/g, 'ه').replace(/ى/g, 'ي');
@@ -44,10 +46,10 @@ const MAX_LISTED = 12;
 let glossaryCache: Promise<LabelPairRow[]> | null = null;
 const glossary = () => (glossaryCache ??= labelGlossary().catch(() => [] as LabelPairRow[]));
 
-export default function LabelPair({ ar, en, onChange, history = [], ids, labels, hints = {}, placeholders = {}, disabled, kind = 'label', rows = 4 }: LabelPairProps) {
+export default function LabelPair({ ar, en, onChange, history = [], ids, labels, hints = {}, placeholders = {}, disabled, kind = 'label', rows = 4, max: maxProp }: LabelPairProps) {
   // no list of saved pairs for alt texts and descriptions (each describes one thing)
   const alt = kind !== 'label';
-  const max = kind === 'text' ? 600 : kind === 'alt' ? 150 : 80;
+  const max = maxProp ?? (kind === 'text' ? 600 : kind === 'alt' ? 150 : 80);
   const root = useRef<HTMLDivElement>(null);
   const uid = useId().replace(/:/g, '');
   const [seed, setSeed] = useState<LabelPairRow[]>([]);

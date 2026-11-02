@@ -250,9 +250,10 @@ export default function Media() {
   const pendingAll = rows.filter((r) => r.check.pending).length;
   const groups: { title: string; rows: MediaTargetRow[] }[] = [
     { title: 'الصفحة الرئيسية', rows: rows.filter((r) => r.target === 'home') },
-    ...[...new Set(rows.filter((r) => r.branch).map((r) => r.branch as string))].map((b) => ({ title: BRANCH_NAMES[b] ?? b, rows: rows.filter((r) => r.branch === b) })),
+    ...[...new Set(rows.filter((r) => r.branch && r.target !== 'offer').map((r) => r.branch as string))].map((b) => ({ title: BRANCH_NAMES[b] ?? b, rows: rows.filter((r) => r.branch === b && r.target !== 'offer') })),
     { title: 'اكتشف الطائف', rows: rows.filter((r) => r.target === 'place') },
     { title: 'صفحات الشركاء', rows: rows.filter((r) => r.target === 'partners') },
+    { title: 'العروض', rows: rows.filter((r) => r.target === 'offer') },
   ].filter((g) => g.rows.length);
   const pick = (r: MediaTargetRow) => setParams({ t: targetId(r) }, { replace: true });
   const st = current ? stateOf(current) : null;

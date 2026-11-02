@@ -14,6 +14,7 @@ const NAV: { to: string; label: string; short: string; section: string }[] = [
   { to: '/rooms', label: 'الغرف', short: 'الغرف', section: 'rooms' },
   { to: '/media', label: 'الصور', short: 'الصور', section: 'media' },
   { to: '/dining', label: 'المطاعم', short: 'المطاعم', section: 'dining' },
+  { to: '/offers', label: 'العروض', short: 'العروض', section: 'offers' },
   { to: '/settings', label: 'الإعدادات', short: 'الإعدادات', section: 'settings' },
   { to: '/users', label: 'المستخدمون والصلاحيات', short: 'المستخدمون', section: 'users' },
   { to: '/audit', label: 'السجل', short: 'السجل', section: 'audit' },

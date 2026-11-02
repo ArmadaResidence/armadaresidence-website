@@ -89,6 +89,8 @@ export function slotsOf(target: MediaTarget): { slot: MediaSlot; required: boole
       return [{ slot: 'cover', required: false, hint: 'تحل محل صورة هذا المكان في «اكتشف الطائف» بالمقاس نفسه؛ بلا صورة منشورة تبقى صورته الحالية.' }];
     case 'partners':
       return [{ slot: 'cover', required: false, hint: 'تحل محل الصورة الحالية في هذا الموضع من صفحات الشركاء (بالعربية والإنجليزية) بالمقاس والتصميم نفسيهما؛ بلا صورة منشورة تبقى الصورة الحالية.' }];
+    case 'offer':
+      return [{ slot: 'cover', required: true, hint: 'صورة العرض في بطاقته وفي شريط الإعلان والنافذة المنبثقة؛ مطلوبة لنشر العرض، وتُنشر معه من «العروض».' }];
     case 'section':
       return [{ slot: 'gallery', required: false }];
   }
@@ -104,6 +106,7 @@ export function targetLabel(t: Pick<MediaTargetRow, 'target' | 'key' | 'name_ar'
   if (t.target === 'place' || t.target === 'partners') return t.name_ar ?? t.key;
   if (t.target === 'hall') return `${t.name_ar ?? 'القاعة'} — ${BRANCH_NAMES['airport-road']}`;
   if (t.target === 'dining') return t.name_ar ?? t.key;
+  if (t.target === 'offer') return `عرض: ${t.name_ar ?? t.key}`;
   if (t.target === 'branch') return `فرع ${BRANCH_NAMES[t.key] ?? t.key}`;
   const [b] = t.key.split('/');
   return `${t.name_ar ?? t.key.split('/')[1]} — ${BRANCH_NAMES[b] ?? b}`;

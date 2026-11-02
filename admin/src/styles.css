@@ -417,3 +417,33 @@ body {
 .media-err { color: var(--color-error); }
 :root[data-theme="dark"] .media-ok { color: #7fd09a; }
 :root[data-theme="dark"] .media-err { color: #f3a3a3; }
+
+/* offer pop-up preview («العروض» → «النافذة المنبثقة», 2 Nov 2026): the site's pop-up, drawn inside a frame of the
+   chosen width — same surface, image, button colours / shapes and entrances (CONTRACT: src/components/OfferPopup) */
+.pp-frame { position: relative; overflow: hidden; border-radius: 0.75rem; border: 1px solid var(--line); background: #f3efe7; min-height: 420px; margin-inline: auto; transition: width var(--motion-base) var(--ease-in-out); }
+.pp-frame[data-scheme="dark"] { background: #0c1a25; }
+.pp-backdrop { position: absolute; inset: 0; background: rgb(20 42 59 / 0.6); display: grid; place-items: center; padding: 16px; }
+.pp-dialog { position: relative; width: 100%; max-width: 26rem; background: #fff; color: #142a3b; border-radius: 0.75rem; overflow: hidden; box-shadow: 0 16px 48px rgb(0 0 0 / 0.3); }
+.pp-frame[data-scheme="dark"] .pp-dialog { background: #142a3b; color: #f3efe7; }
+.pp-img { display: block; width: 100%; aspect-ratio: 3 / 2; object-fit: cover; background: repeating-linear-gradient(45deg, #e8e1d4 0 8px, #f3efe7 8px 16px); }
+.pp-body { padding: 1.25rem 1.25rem 1.5rem; display: grid; gap: 0.5rem; }
+.pp-title { font-size: 1.25rem; font-weight: 700; line-height: 1.4; }
+.pp-text { font-size: 0.95rem; color: #4a5866; line-height: 1.6; }
+.pp-frame[data-scheme="dark"] .pp-text { color: rgb(243 239 231 / 0.85); }
+.pp-close { position: absolute; top: 0.25rem; inset-inline-end: 0.25rem; width: 44px; height: 44px; display: grid; place-items: center; border-radius: 9999px; background: rgb(255 255 255 / 0.9); color: #142a3b; font-size: 1.25rem; }
+.pp-btn { margin-top: 0.5rem; display: inline-flex; justify-content: center; align-items: center; min-height: 44px; padding: 0 1.25rem; font-weight: 600; }
+.pp-btn[data-color="bronze"] { background: #976e47; color: #fff; }
+.pp-btn[data-color="midnight"] { background: #142a3b; color: #fff; }
+.pp-btn[data-color="porcelain"] { background: #f3efe7; color: #142a3b; border: 1px solid rgb(20 42 59 / 0.2); }
+.pp-frame[data-scheme="dark"] .pp-btn[data-color="midnight"] { box-shadow: inset 0 0 0 1px rgb(243 239 231 / 0.35); }
+.pp-btn[data-shape="rounded"] { border-radius: 6px; }
+.pp-btn[data-shape="pill"] { border-radius: 9999px; }
+.pp-btn[data-shape="square"] { border-radius: 0; }
+.pp-dialog[data-entrance="fade"] { animation: pp-fade var(--motion-base) var(--ease-out) both; }
+.pp-dialog[data-entrance="slide-up"] { animation: pp-slide var(--motion-base) var(--ease-out) both; }
+.pp-dialog[data-entrance="zoom"] { animation: pp-zoom var(--motion-base) var(--ease-out) both; }
+@keyframes pp-fade { from { opacity: 0; } }
+@keyframes pp-slide { from { opacity: 0; transform: translateY(var(--motion-shift-lg, 24px)); } }
+@keyframes pp-zoom { from { opacity: 0; transform: scale(0.96); } }
+.swatch { width: 44px; height: 44px; border-radius: 9999px; border: 2px solid var(--line); }
+.swatch[aria-pressed="true"] { outline: 3px solid var(--color-bronze); outline-offset: 2px; }

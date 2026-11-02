@@ -47,6 +47,8 @@ const PAGES = [
     const ids = [...(await page.locator('[data-target]').evaluateAll((els) => els.map((e) => e.getAttribute('data-target')))), ...(await page.locator('#media-target option').evaluateAll((els) => els.map((e) => e.value)))];
     return (await page.locator('[data-current] [data-slot]').count()) > 0 && ids.includes('home:home') && ids.includes('hall:events-hall') && ids.includes('place:taif-zoo') && ids.filter((x) => x.startsWith('partners:')).length >= 13 && new Set(ids).size >= 1 + 2 + 12 + 1 + 17 + 13;
   } },
+  // offers «العروض» (2 Nov 2026): the four tabs; the individuals list (empty or not) with the add button
+  { path: 'offers', label: 'العروض', ready: async (page) => (await page.locator('[data-tab]').count()) === 4 && (await page.locator('[data-offer]').count() > 0 || (await page.locator('[data-action]').count()) > 0) },
   { path: 'settings', label: 'الإعدادات', ready: async (page) => (await page.locator('[data-switch]').count()) === 4 && (await page.locator('#s-limits').count()) === 1 },
   { path: 'users', label: 'المستخدمون', ready: async (page) => (await page.locator('li[data-user]').count()) >= 4 && (await page.locator(`li[data-user="${ADMIN}"]`).count()) === 1 },
   { path: 'audit', label: 'السجل', ready: async (page) => (await page.locator('#a-entity').count()) === 1 && ((await page.locator('[data-list="audit"] li').count()) > 0 || (await page.getByText('لا سجلات.').count()) > 0) },
