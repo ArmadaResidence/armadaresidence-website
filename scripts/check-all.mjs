@@ -128,6 +128,9 @@ if (live) {
   base = (args.find((a) => !a.startsWith('--')) || REVIEW_URL).replace(/\/$/, '');
 } else if (plan.build) {
   built = await build(cwd);
+} else {
+  // no build (a docs-only commit): the email and WhatsApp checks still read the functions' generated content
+  results.push(await run('build --content-only', PYTHON, ['build.py', '--content-only']));
 }
 const browser = plan.checks.filter((c) => BROWSER_CHECKS.includes(c));
 for (const name of plan.checks.filter((c) => STATIC_CHECKS.includes(c))) results.push(await run(name, process.execPath, [`scripts/${name}.mjs`]));

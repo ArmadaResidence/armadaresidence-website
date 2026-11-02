@@ -15,6 +15,7 @@ Steps:
   5. Print the list of generated pages.
 
 Run `python qa.py` afterwards (the deploy workflow does). Exit non-zero on any error.
+`--content-only` stops after step 2 (a docs-only commit's routed checks read the generated function content; 2 Nov 2026).
 """
 from __future__ import annotations
 
@@ -490,6 +491,8 @@ def main() -> int:
 
     fees = resolve_fees(content)
     generate_function_content(content, fees)
+    if "--content-only" in sys.argv[1:]:
+        return 0
     availability = resolve_availability(content)
 
     if DIST.exists():
