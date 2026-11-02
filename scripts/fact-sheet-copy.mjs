@@ -142,10 +142,10 @@ export const COPY = {
       { en: 'Accessible room at each property — availability on enquiry', ar: 'غرفة لذوي الهمم في كل فندق — يُؤكَّد التوافر عند الطلب' },
     ],
     photos: [
-      ['king-airport', { en: 'KING ROOM — AIRPORT', ar: 'غرفة كينج — المطار' }],
+      ['king-airport', { en: 'KING ROOM — AIRPORT', ar: 'غرفة بسرير كينج — المطار' }],
       ['twin-airport', { en: 'TWIN ROOM — AIRPORT', ar: 'غرفة بسريرين — المطار' }],
       ['suite-two-bed', { en: 'TWO-BEDROOM SUITE', ar: 'جناح غرفتين وصالة' }],
-      ['king-shafa', { en: 'KING ROOM — AL SHAFA', ar: 'غرفة كينج — الشفا' }],
+      ['king-shafa', { en: 'KING ROOM — AL SHAFA', ar: 'غرفة بسرير كينج — الشفا' }],
     ],
   },
 
@@ -164,7 +164,7 @@ export const COPY = {
       { n: '{zoo_min}', l: { en: 'MIN · TAIF ZOO', ar: 'دقائق لحديقة الحيوانات' } },
     ],
     cards: [
-      { img: 'king-shafa', t: { en: 'King Room', ar: 'غرفة كينج' }, o: { en: '2 GUESTS', ar: 'ضيفان' }, s: { en: '{bed_king_shafa}', ar: '{bed_king_shafa}' } },
+      { img: 'king-shafa', t: { en: 'King Room', ar: 'غرفة بسرير كينج' }, o: { en: '2 GUESTS', ar: 'ضيفان' }, s: { en: '{bed_king_shafa}', ar: '{bed_king_shafa}' } },
       { img: null, t: { en: 'Balcony Room', ar: 'غرفة مع بلكونة' }, o: { en: '2 GUESTS', ar: 'ضيفان' }, s: { en: '{bed_balcony} · private balcony', ar: '{bed_balcony} · بلكونة خاصة' } },
       { img: 'jacuzzi-shafa', t: { en: 'Jacuzzi Studio', ar: 'استديو بجاكوزي' }, o: { en: '2 GUESTS', ar: 'ضيفان' }, s: { en: '{bed_jacuzzi} · jacuzzi', ar: '{bed_jacuzzi} · جاكوزي' } },
       { img: 'king-junior', t: { en: 'Suites', ar: 'الأجنحة' }, o: { en: 'UP TO {suite_capacity} GUESTS', ar: 'حتى {suite_capacity} ضيوف' }, s: { en: 'One- and two-bedroom suites', ar: 'أجنحة بغرفة أو غرفتين' } },

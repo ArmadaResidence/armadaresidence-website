@@ -1896,7 +1896,7 @@
     {
       "type": {
         "en": "King room",
-        "ar": "غرفة كينج"
+        "ar": "غرفة بسرير كينج"
       },
       "occupancy": {
         "en": "2 guests",
@@ -1968,7 +1968,7 @@
     {
       "type": {
         "en": "One-bedroom suite",
-        "ar": "جناح غرفة وصالة"
+        "ar": "جناح بغرفة وصالة"
       },
       "occupancy": {
         "en": "2–3 guests",
@@ -2082,7 +2082,7 @@
     {
       "key": "king",
       "en": "King room",
-      "ar": "غرفة كينج",
+      "ar": "غرفة بسرير كينج",
       "cap": 2,
       "props": [
         "airport",
@@ -2092,7 +2092,7 @@
     {
       "key": "suite1",
       "en": "One-bedroom suite",
-      "ar": "جناح غرفة وصالة",
+      "ar": "جناح بغرفة وصالة",
       "cap": 3,
       "props": [
         "airport",

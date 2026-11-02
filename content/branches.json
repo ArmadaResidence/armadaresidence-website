@@ -238,7 +238,7 @@
       "legacy_description_en": "A gem on Al-Shafa Road in Taif, close to services and landmarks such as Al-Ruddaf Park and Jouri Mall. An elegant choice for family and individual stays.",
       "tagline_ar": "فندق هادئ على طريق الشفا",
       "tagline_en": "A quiet hotel on Shafa Road",
-      "description_ar": "على طريق الشفا، الطريق الذي يصل الطائف بمرتفعات الشفا، يقدّم فندق أرمادا ريزيدنس غرفًا وأجنحة هادئة للعائلات والأفراد. تبدأ الخيارات من غرفة كينج بمساحة 35 مترًا مربعًا، وتشمل غرفة ببلكونة خاصة، واستديو بجاكوزي، وأجنحة بغرفة أو غرفتي نوم تتسع حتى أربعة أشخاص.\n\nيُقدَّم بوفيه إفطار يومي في المطعم من 7:00 إلى 10:30 صباحًا، ومواقف السيارات مجانية في الطابق السفلي، وفي الفندق مقهى، والوصول من الساعة 4:00 عصرًا والمغادرة حتى 12:00 ظهرًا. الاستقبال وتوصيل الطعام إلى الغرف متاحان على مدار الساعة، ويمكنكم التواصل مع الاستقبال مباشرة عبر الواتساب لأي طلب قبل الوصول أو أثناء الإقامة. وتُنظَّف الغرف يوميًا من 10:00 صباحًا حتى 5:00 مساءً.",
+      "description_ar": "على طريق الشفا، الطريق الذي يصل الطائف بمرتفعات الشفا، يقدّم فندق أرمادا ريزيدنس غرفًا وأجنحة هادئة للعائلات والأفراد. تبدأ الخيارات من غرفة بسرير كينج بمساحة 35 مترًا مربعًا، وتشمل غرفة ببلكونة خاصة، واستديو بجاكوزي، وأجنحة بغرفة أو غرفتي نوم تتسع حتى أربعة أشخاص.\n\nيُقدَّم بوفيه إفطار يومي في المطعم من 7:00 إلى 10:30 صباحًا، ومواقف السيارات مجانية في الطابق السفلي، وفي الفندق مقهى، والوصول من الساعة 4:00 عصرًا والمغادرة حتى 12:00 ظهرًا. الاستقبال وتوصيل الطعام إلى الغرف متاحان على مدار الساعة، ويمكنكم التواصل مع الاستقبال مباشرة عبر الواتساب لأي طلب قبل الوصول أو أثناء الإقامة. وتُنظَّف الغرف يوميًا من 10:00 صباحًا حتى 5:00 مساءً.",
       "description_en": "On Shafa Road, the road linking Taif to the Al-Shafa highlands, Armada Residence Shafa Road is a quiet hotel for families and individual travellers. Options start with a 35 m² king room and include a room with a private balcony, a studio with a jacuzzi, and one- and two-bedroom suites for up to four guests.\n\nA daily breakfast buffet is served in the restaurant 7:00–10:30 am, parking is free on the basement level, and the hotel has a café. Check-in is from 4:00 pm and check-out by 12:00 noon. Reception and in-room dining are available around the clock, and you can reach reception directly on WhatsApp before arrival or during your stay. Rooms are cleaned daily between 10:00 am and 5:00 pm.",
       "verified": true,
       "pending": [],
@@ -305,7 +305,7 @@
           "key": "rooms",
           "title_ar": "الغرف والأجنحة",
           "title_en": "Rooms and suites",
-          "body_ar": "من غرفة كينج بمساحة 35 مترًا مربعًا، إلى غرفة ببلكونة على الهواء الطلق، واستديو بجاكوزي، وأجنحة لعائلة من أربعة.",
+          "body_ar": "من غرفة بسرير كينج بمساحة 35 مترًا مربعًا، إلى غرفة ببلكونة على الهواء الطلق، واستديو بجاكوزي، وأجنحة لعائلة من أربعة.",
           "body_en": "From a 35 m² king room to a room with an open-air balcony, a studio with a jacuzzi, and suites for a family of four.",
           "image": {
             "base": null,

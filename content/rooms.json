@@ -336,7 +336,7 @@
     {
       "slug": "king-room",
       "branch": "shafa-road",
-      "name_ar": "غرفة كينج",
+      "name_ar": "غرفة بسرير كينج",
       "name_en": "King Room",
       "category": "standard",
       "base_price": 185,
@@ -528,7 +528,7 @@
     {
       "slug": "one-bedroom-suite",
       "branch": "shafa-road",
-      "name_ar": "جناح غرفة وصالة",
+      "name_ar": "جناح بغرفة وصالة",
       "name_en": "One-Bedroom Suite",
       "category": "suite",
       "base_price": 200,
@@ -722,7 +722,7 @@
     {
       "slug": "accessible-room",
       "branch": "shafa-road",
-      "name_ar": "غرفة ذوي الاحتياجات الخاصة",
+      "name_ar": "غرفة مهيأة لذوي الاحتياجات الخاصة",
       "name_en": "Accessible Room",
       "category": "standard",
       "base_price": 185,

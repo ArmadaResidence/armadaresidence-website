@@ -92,7 +92,7 @@ async function run(width, lang) {
   const SITE_ROOMS = [
     { branch: 'shafa-road', slug: 'jacuzzi-studio', name_ar: 'استوديو جاكوزي', name_en: 'Jacuzzi Studio', bookable: false, capacity: 2, extra_beds_max: 0 },
     { branch: 'airport-road', slug: 'accessible-room', name_ar: 'غرفة مهيأة لذوي الاحتياجات الخاصة', name_en: 'Accessible Room', bookable: true, capacity: 2, extra_beds_max: 0 },
-    { branch: 'airport-road', slug: 'king-room', name_ar: 'غرفة كينج', name_en: 'King Room', bookable: true, capacity: 2, extra_beds_max: 0 },
+    { branch: 'airport-road', slug: 'king-room', name_ar: 'غرفة بسرير كينج', name_en: 'King Room', bookable: true, capacity: 2, extra_beds_max: 0 },
   ];
   await page.route(/\/rest\/v1\/rpc\/site_room_types/, (route) => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(SITE_ROOMS) }));
   await page.route(/\/functions\/v1\/booking-request/, async (route) => {

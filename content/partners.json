@@ -89,7 +89,7 @@
         "recommended_en": "Group rooming · sports teams"
       },
       {
-        "label_ar": "غرفة كينج",
+        "label_ar": "غرفة بسرير كينج",
         "label_en": "King room",
         "room": "airport-road/king-room | shafa-road/king-room",
         "occupancy": 2,
@@ -116,7 +116,7 @@
         "recommended_en": "Couples · special occasions"
       },
       {
-        "label_ar": "جناح غرفة وصالة",
+        "label_ar": "جناح بغرفة وصالة",
         "label_en": "One-bedroom suite",
         "room": "airport-road/one-bedroom-suite | shafa-road/one-bedroom-suite",
         "occupancy": "2–3",

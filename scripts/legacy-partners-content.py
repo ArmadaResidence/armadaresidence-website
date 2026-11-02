@@ -299,8 +299,8 @@ def main() -> None:
     out["calc_units"] = [
         {"key": "single", "en": "Single room (king, one guest)", "ar": "غرفة مفردة (كينج لضيف واحد)", "cap": 1, "props": ["airport"]},
         {"key": "twin", "en": "Twin room", "ar": "غرفة بسريرين", "cap": 2, "props": ["airport"]},
-        {"key": "king", "en": "King room", "ar": "غرفة كينج", "cap": 2, "props": ["airport", "shafa"]},
-        {"key": "suite1", "en": "One-bedroom suite", "ar": "جناح غرفة وصالة", "cap": 3, "props": ["airport", "shafa"]},
+        {"key": "king", "en": "King room", "ar": "غرفة بسرير كينج", "cap": 2, "props": ["airport", "shafa"]},
+        {"key": "suite1", "en": "One-bedroom suite", "ar": "جناح بغرفة وصالة", "cap": 3, "props": ["airport", "shafa"]},
         {"key": "suite2", "en": "Two-bedroom suite", "ar": "جناح غرفتي نوم وصالة", "cap": 4, "props": ["airport", "shafa"]},
         {"key": "suite2j", "en": "Two-bedroom jacuzzi suite", "ar": "جناح غرفتي نوم وجاكوزي", "cap": 4, "props": ["shafa"]},
     ]
