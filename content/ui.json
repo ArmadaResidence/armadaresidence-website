@@ -8,6 +8,7 @@
       "home": "الرئيسية",
       "airport-road": "طريق المطار",
       "shafa-road": "طريق الشفا",
+      "gallery": "المعرض",
       "offers": "العروض",
       "contact": "التواصل",
       "policies": "السياسات",
@@ -588,6 +589,21 @@
       "close": "إغلاق",
       "of": "من"
     },
+    "gallery_page": {
+      "filters": "تصفية الصور",
+      "filter": {
+        "all": "الكل",
+        "airport-road": "طريق المطار",
+        "shafa-road": "طريق الشفا",
+        "rooms": "الغرف والأجنحة",
+        "dining": "المطاعم والمقاهي",
+        "hall": "القاعة"
+      },
+      "heading": "معرض الصور",
+      "shown": "الصور المعروضة: {n}",
+      "viewer": "عارض الصور",
+      "go_to": "انتقل إلى {page}"
+    },
     "stats": {
       "_note": "Labels for the count-up figures (item 6, 11 Oct 2026). Numbers are computed from rooms.json / branches.json / halls.json / taif-guide.json; the unit counts render only while branches.json → show_units is true.",
       "room_types": "نوعًا من الغرف والأجنحة",
@@ -646,6 +662,7 @@
       "home": "Home",
       "airport-road": "Airport Road",
       "shafa-road": "Shafa Road",
+      "gallery": "Gallery",
       "offers": "Offers",
       "contact": "Contact",
       "policies": "Policies",
@@ -1225,6 +1242,21 @@
       "open": "View photo full size",
       "close": "Close",
       "of": "of"
+    },
+    "gallery_page": {
+      "filters": "Filter the photos",
+      "filter": {
+        "all": "All",
+        "airport-road": "Airport Road",
+        "shafa-road": "Shafa Road",
+        "rooms": "Rooms and suites",
+        "dining": "Dining",
+        "hall": "The hall"
+      },
+      "heading": "Gallery",
+      "shown": "Photos shown: {n}",
+      "viewer": "Photo viewer",
+      "go_to": "Go to {page}"
     },
     "stats": {
       "room_types": "room and suite types",

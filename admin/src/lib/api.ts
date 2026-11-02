@@ -631,6 +631,8 @@ export interface MediaItem {
   updated_at: string;
   /** a publish of the target would change the site (computed by the database) */
   pending: boolean;
+  /** «إظهار في المعرض» (2 Nov 2026): shown on /gallery/ (branch, room, dining and hall targets) */
+  in_gallery: boolean;
 }
 export interface MediaMissing {
   code: 'cover' | 'story-entrance' | 'story-lobby' | 'story-rooms' | 'story-dining' | 'hero-poster' | 'alt';
@@ -745,8 +747,8 @@ export async function mediaSignedUrls(paths: string[]): Promise<Record<string, s
 }
 export const mediaFinishUpload = (id: string) => rpcSaved('media_finish_upload', { p_id: id });
 export const mediaAbortUpload = (id: string) => rpcSaved('media_abort_upload', { p_id: id });
-export const mediaUpdate = (id: string, altAr: string, altEn: string, fx: number, fy: number) =>
-  rpcSaved('media_update', { p_id: id, p_alt_ar: altAr, p_alt_en: altEn, p_focal_x: fx, p_focal_y: fy });
+export const mediaUpdate = (id: string, altAr: string, altEn: string, fx: number, fy: number, inGallery?: boolean) =>
+  rpcSaved('media_update', { p_id: id, p_alt_ar: altAr, p_alt_en: altEn, p_focal_x: fx, p_focal_y: fy, ...(inGallery === undefined ? {} : { p_in_gallery: inGallery }) });
 export const mediaSetSlot = (id: string, slot: MediaSlot) => rpcSaved('media_set_slot', { p_id: id, p_slot: slot });
 export const mediaReorder = (target: MediaTarget, key: string, ids: string[]) => rpcSaved('media_reorder', { p_target: target, p_key: key, p_ids: ids });
 export const mediaArchive = (id: string) => rpcSaved('media_archive', { p_id: id });

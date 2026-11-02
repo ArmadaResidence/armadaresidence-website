@@ -62,6 +62,7 @@ const air = d.branches?.['airport-road'];
 check(air?.photos.length === 7 && Object.keys(air.story || {}).sort().join() === 'dining,entrance,lobby,rooms', 'data: the branch — cover + 6 gallery, the 4 story scenes');
 check(d.dining?.['armada-residence-cafe']?.photos.length === 3 && d.dining['armada-residence-cafe'].photos[0].cover && d.dining['armada-residence-cafe'].og_image, 'data: the dining venue — cover first, gallery, OG');
 check(d.halls?.['events-hall']?.photos.length === 4, 'data: the hall — cover + 3 gallery');
+check(air?.photos.map((p) => p.in_gallery).join() === 'true,true,true,true,true,true,false' && Object.values(air?.story || {}).every((p) => p.in_gallery === true), 'data: «إظهار في المعرض» — the 6th gallery photo off, every other photo and story scene on', air?.photos.map((p) => p.in_gallery).join());
 check(d.places?.['al-hada-cable-car']?.photos.length === 1, 'data: the Discover Taif place cover');
 check(Array.isArray(d.venues) && d.venues.map((v) => v.slug).join() === 'armada-residence-cafe,lario' && /^\/images\/media\/dining-armada-residence-cafe-logo-[0-9a-f]{10}\.svg$/.test(d.venues[0].logo) && !('logo_svg' in d.venues[0]), 'data: the published venues (the hidden one left out, the logo as its own file)');
 const all = [...Object.values(d.rooms), ...Object.values(d.branches), ...Object.values(d.dining), ...Object.values(d.halls), ...Object.values(d.places)].flatMap((e) => [...e.photos, ...Object.values(e.story || {})]);
@@ -161,6 +162,11 @@ if (SITE) {
   check(!!taifPage && /\/images\/media\/place-al-hada-cable-car-[0-9a-f]+-800\.webp/.test(taifPage) && taifPage.includes('/images/taif/02-al-shafa-jabal-daka-800.webp'), 'site: Discover Taif — the published cover replaces its place\'s photo, the others keep theirs');
   const sitemap = readdirSync(join(ROOT, 'dist')).filter((f) => /^sitemap-\d+\.xml$/.test(f)).map((f) => readFileSync(join(ROOT, 'dist', f), 'utf8')).join('');
   check(sitemap.includes('/dining/</loc>') && sitemap.includes('/dining/lario/</loc>') && !sitemap.includes('sample-hidden') && sitemap.includes('/airport-road/hall/</loc>'), 'site: the sitemap has /dining/, the venues and the hall, never the hidden venue');
+  // the gallery page (2 Nov 2026): every published branch / room / venue / hall photo but the one switched off, never the place cover
+  const gal = page('gallery');
+  const cells = gal ? (gal.match(/<li\b[^>]*\bdata-gallery-item\b/g) || []).length : 0;
+  check(!!gal && cells === 21 && !/place-al-hada-cable-car/.test(gal) && (gal.match(/data-category="rooms"/g) || []).length === 4, `site: /gallery/ — 21 photos (the off one and the place cover left out), ${cells} found`);
+  check(home.includes('href="/gallery/"') && sitemap.includes('/gallery/</loc>') && sitemap.includes('/en/gallery/</loc>'), 'site: the gallery nav link and sitemap entries (6 photos or more)');
   // keep the built sample site for the scrim check
   cpSync(join(ROOT, 'dist'), join(T, 'dist'), { recursive: true });
   console.log(`sample site copied to ${join(T, 'dist')}`);

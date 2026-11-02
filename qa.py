@@ -601,6 +601,8 @@ def main() -> int:
                     "FAQPage": ["mainEntity"],
                     "Restaurant": ["name", "url", "address", "image", "containedInPlace"],
                     "CafeOrCoffeeShop": ["name", "url", "address", "image", "containedInPlace"],
+                    # the gallery page (2 Nov 2026)
+                    "CollectionPage": ["name", "url", "image", "inLanguage"],
                 }.get(t_)
                 if req is None:
                     rep.f("json-ld", f"{path}: unexpected @type {t_}")
@@ -840,6 +842,7 @@ def main() -> int:
     check_articles(rep, pages)
     check_photos(rep)
     check_media(rep)
+    check_gallery(rep)
 
     # ---- report
     n_fail = sum(len(v) for v in rep.fail.values())
@@ -987,6 +990,34 @@ def check_media(rep: "Report") -> None:
                 rep.f(G, f"home hero video: {ref} missing in dist/")
             elif ref and (DIST / ref.lstrip("/")).stat().st_size > 4 * 1048576:
                 rep.f(G, f"home hero video: {ref} is over 4 MB")
+
+
+def check_gallery(rep: "Report") -> None:
+    """The gallery page /gallery/ (Ahmed, 2 Nov 2026): it exists only from 6 published photos; its nav link (after
+    «طريق الشفا») is in every page's header exactly when the page exists, in both languages; every photo of it is a
+    published derived file with its alt; its CollectionPage lists as many images as the grid."""
+    G = "gallery"
+    pages = {"ar": DIST / "gallery" / "index.html", "en": DIST / "en" / "gallery" / "index.html"}
+    live = pages["ar"].is_file()
+    if pages["en"].is_file() != live:
+        rep.f(G, "/gallery/ and /en/gallery/ must exist together")
+    for lang, home in (("ar", DIST / "index.html"), ("en", DIST / "en" / "index.html")):
+        if not home.is_file():
+            continue
+        html = home.read_text(encoding="utf-8")
+        link = 'href="/gallery/"' if lang == "ar" else 'href="/en/gallery/"'
+        if (link in html) != live:
+            rep.f(G, f"{lang} home: the nav link to the gallery {'is missing' if live else 'appears without the page'}")
+    if not live:
+        return
+    for lang, page in pages.items():
+        html = page.read_text(encoding="utf-8")
+        thumbs = re.findall(r'<li\b[^>]*\bdata-gallery-item\b', html)
+        if len(thumbs) < 6:
+            rep.f(G, f"{lang}: {len(thumbs)} photo(s) — the page needs at least 6")
+        m = re.search(r'"@type":"CollectionPage".*?"image":\[(.*?)\]\}', html)
+        if not m or m.group(1).count('"ImageObject"') != len(thumbs):
+            rep.f(G, f"{lang}: the CollectionPage must list every photo of the grid")
 
 
 def image_exists(ref: str) -> bool:

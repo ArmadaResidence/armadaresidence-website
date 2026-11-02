@@ -1,6 +1,7 @@
 ---
 import { bookingPath, contact, localePath, otherLocale, siteName, ui, type BookingContext, type Locale } from '@lib/content';
 import Icon from './Icon.astro';
+import { galleryLive } from '@lib/gallery';
 
 interface Props {
   locale: Locale;
@@ -18,6 +19,8 @@ const nav: { key: keyof typeof t.nav; path: string }[] = [
   { key: 'home', path: '/' },
   { key: 'airport-road', path: '/airport-road/' },
   { key: 'shafa-road', path: '/shafa-road/' },
+  // the gallery appears once /gallery/ exists (≥ 6 published photos — Ahmed, 2 Nov 2026)
+  ...(galleryLive ? [{ key: 'gallery' as const, path: '/gallery/' }] : []),
   { key: 'discover-taif', path: '/discover-taif/' },
   { key: 'blog', path: '/blog/' },
   { key: 'offers', path: '/offers/' },

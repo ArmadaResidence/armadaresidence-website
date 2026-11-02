@@ -273,6 +273,30 @@ try {
   await page.waitForSelector(`[data-job="${jobs[0].id}"][data-job-status="published"]`, { timeout: 30000 });
   check(/منشور/.test(await page.locator(`[data-job="${jobs[0].id}"]`).textContent()) && (await page.locator(`[data-job="${jobs[0].id}"] [data-run-link]`).getAttribute('href')).endsWith('/runs/2'), 'jobs: «منشور» with the build-log link after the workflow report');
 
+  // ── «إظهار في المعرض» (2 Nov 2026): on by default, off reaches the site only at «نشر» ──
+  check((await rest('media_items?target_key=eq.airport-road/twin-room&status=neq.archived&select=in_gallery,live')).every((r) => r.in_gallery === true && r.live?.in_gallery === true), 'gallery switch: every photo starts shown in the gallery (column and live snapshot)');
+  await openItem(page, third.id);
+  check(await page.locator('#media-in-gallery').isChecked(), 'gallery switch: on in the dialog by default');
+  await page.uncheck('#media-in-gallery');
+  await page.click('[data-action="dialog-cancel"]');
+  await page.waitForSelector('dialog[data-unsaved-confirm][open]', { timeout: 3000 }).catch(() => {});
+  check(await page.locator('dialog[data-unsaved-confirm][open]').count() > 0, 'gallery switch: unticking it makes the dialog dirty (cancel asks first)');
+  await page.keyboard.press('Escape');
+  await page.waitForSelector('dialog[data-unsaved-confirm][open]', { state: 'detached', timeout: 3000 }).catch(() => {});
+  await page.click('[data-action="media-save"]');
+  await page.waitForSelector(`[data-media-dialog="${third.id}"]`, { state: 'detached' });
+  const off = await item('qa-third');
+  check(off.in_gallery === false && off.live?.in_gallery === true, 'gallery switch: saved off; the site keeps it until «نشر»', JSON.stringify({ c: off.in_gallery, l: off.live?.in_gallery }));
+  await page.waitForSelector(`[data-item="${third.id}"] [data-off-gallery]`);
+  check(/خارج المعرض/.test(await page.locator(`[data-item="${third.id}"] [data-off-gallery]`).textContent()), 'gallery switch: the tile says «خارج المعرض»');
+  check(await page.locator('[data-action="media-publish"]').isEnabled(), 'gallery switch: the target has a change to publish');
+  await page.click('[data-action="media-publish"]');
+  await page.waitForFunction(() => document.querySelectorAll('[data-job]').length === 2, null, { timeout: 30000 });
+  check((await item('qa-third')).live?.in_gallery === false, 'gallery switch: «نشر» carries it to the live snapshot');
+  const man2 = await rpc('media_site_manifest', {});
+  check(man2.items.find((x) => x.id === third.id)?.in_gallery === false && man2.items.filter((x) => x.key === 'airport-road/twin-room' && x.id !== third.id).every((x) => x.in_gallery === true), 'gallery switch: the build manifest carries it');
+  await rpc('media_jobs_settle', { p_manifest_at: man2.at, p_ok: true, p_run_url: 'https://github.com/ArmadaResidence/armadaresidence-website/actions/runs/3' });
+
   // ── a branch: required story scenes; «نشر الكل» with a blocked target ──
   await target(page, 'branch:airport-road');
   await page.setInputFiles('[data-file-input="cover"]', F.bcover);
@@ -290,12 +314,16 @@ try {
   await page.setInputFiles('[data-file-input="cover"]', F.rest);
   await uploadsDone(page, ['qa-restaurant.jpg']);
   const rest1 = await item('qa-restaurant');
+  await openItem(page, rest1.id);
+  check(await page.locator('#media-in-gallery').count() === 0, 'gallery switch: not offered for a Discover Taif place cover');
+  await page.click('[data-action="dialog-cancel"]');
+  await page.waitForSelector(`[data-media-dialog="${rest1.id}"]`, { state: 'detached' });
   await fillAlts(page, rest1.id, 'طاولات المطعم', 'The restaurant tables');
   await page.click('[data-action="media-publish-all"]');
   await page.waitForSelector('[data-blocked-target="branch:airport-road"]');
   check(await page.locator('[data-action="media-publish-ready"]').textContent().then((t) => /نشر المكتمل فقط \(1\)/.test(t)), '«نشر الكل»: lists the blocked branch and offers the complete ones');
   await page.click('[data-action="media-publish-ready"]');
-  await page.waitForFunction(() => document.querySelectorAll('[data-job]').length === 2, null, { timeout: 30000 });
+  await page.waitForFunction(() => document.querySelectorAll('[data-job]').length === 3, null, { timeout: 30000 });
   check((await item('qa-restaurant')).live !== null && (await item('qa-branch-cover')).live === null, '«نشر المكتمل فقط»: the place cover is published, the blocked branch is not');
 
   // ── the hero: video + poster ──
@@ -320,7 +348,7 @@ try {
   await fillAlts(page, poster.id, 'واجهة الفندق مساءً', 'The hotel front in the evening');
   await fillAlts(page, vid.id, 'لقطات من الفندق', 'Scenes from the hotel');
   await page.click('[data-action="media-publish"]');
-  await page.waitForFunction(() => document.querySelectorAll('[data-job]').length === 3, null, { timeout: 30000 });
+  await page.waitForFunction(() => document.querySelectorAll('[data-job]').length === 4, null, { timeout: 30000 });
   check((await item('qa-poster')).live && (await item('qa-hero')).live, 'hero: poster + video published together');
 
   // 375 px: the picker is a select, no horizontal scroll

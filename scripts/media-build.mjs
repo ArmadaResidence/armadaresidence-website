@@ -211,7 +211,8 @@ async function photo(it, prefix, withOg) {
   });
   const base = `${PUB}/${id}`;
   return {
-    photo: { base, widths: meta.widths, width: meta.width, height: meta.height, formats: ['avif', 'webp'], focal: `${Math.round(focalOf(it).x * 100)},${Math.round(focalOf(it).y * 100)}`, alt_ar: it.alt_ar || '', alt_en: it.alt_en || '' },
+    // in_gallery (2 Nov 2026): «إظهار في المعرض» — /gallery/ shows the photo unless it was switched off
+    photo: { base, widths: meta.widths, width: meta.width, height: meta.height, formats: ['avif', 'webp'], focal: `${Math.round(focalOf(it).x * 100)},${Math.round(focalOf(it).y * 100)}`, alt_ar: it.alt_ar || '', alt_en: it.alt_en || '', in_gallery: it.in_gallery !== false },
     og: withOg ? `${PUB}/${id}.og.jpg` : undefined,
     lqip: [`${base}-${meta.lqip_width}.webp`, meta.lqip],
   };
@@ -259,7 +260,7 @@ for (const [k, list] of byTarget) {
         for (const it of list.filter((i) => i.slot.startsWith('story-'))) {
           const scene = it.slot.slice('story-'.length);
           const r = await photo(it, `${key}-${scene}`, false);
-          entry.story[scene] = { base: r.photo.base, widths: r.photo.widths, width: r.photo.width, height: r.photo.height, formats: r.photo.formats, alt_ar: r.photo.alt_ar, alt_en: r.photo.alt_en };
+          entry.story[scene] = { base: r.photo.base, widths: r.photo.widths, width: r.photo.width, height: r.photo.height, formats: r.photo.formats, alt_ar: r.photo.alt_ar, alt_en: r.photo.alt_en, in_gallery: r.photo.in_gallery };
           data.lqip[r.lqip[0]] = r.lqip[1];
         }
       }

@@ -1,13 +1,14 @@
 // One photo (or the hero video) of the media module «الصور» (1 Nov 2026): the focal point picker with live previews of
 // the crops the site will make of it (lib/media.ts → cropsOf: 3:2 for rooms and branches, 16:9 + 4:5 for the hero
 // poster, the social-sharing crop for covers — the build's own cropBox rule), its alt texts in both languages (required
-// before publishing, ≤ 150 characters, the label-suggest translation chip — never auto-filled), the slot it fills, and
+// before publishing, ≤ 150 characters, the label-suggest translation chip — never auto-filled), the slot it fills,
+// «إظهار في المعرض» (2 Nov 2026: branch, room, dining and hall photos — the site's /gallery/; on by default), and
 // «أرشفة» (never a hard delete). The shared Modal: the dirty guard covers the alts, the slot and the focal point
 // (hidden inputs); a save is the «حفظ» button only.
 import { useMemo, useState } from 'react';
 import * as api from '../lib/api';
 import type { MediaItem, MediaSlot } from '../lib/api';
-import { cropStyle, cropsOf, ITEM_STATUS, megabytes, MIN_LONG_SIDE, SLOT_LABELS, slotsOf } from '../lib/media';
+import { cropStyle, cropsOf, galleryTarget, ITEM_STATUS, megabytes, MIN_LONG_SIDE, SLOT_LABELS, slotsOf } from '../lib/media';
 import { riyadhDateTime } from '../lib/format';
 import LabelPair from './LabelPair';
 import { CancelButton, Field, Modal, Spinner, useToast } from './ui';
@@ -41,6 +42,8 @@ function ItemBody({ item, src, editable, onClose, onChanged, busy, setBusy }: Om
   const [fx, setFx] = useState(Number(item.focal_x));
   const [fy, setFy] = useState(Number(item.focal_y));
   const [slot, setSlot] = useState<MediaSlot>(item.slot);
+  const [inGallery, setInGallery] = useState(item.in_gallery !== false);
+  const offersGallery = galleryTarget(item.target) && item.kind === 'image';
   const [error, setError] = useState<string | null>(null);
   const [natural, setNatural] = useState<{ w: number; h: number } | null>(null);
 
@@ -76,8 +79,9 @@ function ItemBody({ item, src, editable, onClose, onChanged, busy, setBusy }: Om
     setBusy(true);
     setError(null);
     try {
-      if (altAr.trim() !== item.alt_ar || altEn.trim() !== item.alt_en || Math.abs(fx - Number(item.focal_x)) > 1e-4 || Math.abs(fy - Number(item.focal_y)) > 1e-4) {
-        await api.mediaUpdate(item.id, altAr.trim(), altEn.trim(), Math.round(fx * 10000) / 10000, Math.round(fy * 10000) / 10000);
+      const galleryChanged = offersGallery && inGallery !== (item.in_gallery !== false);
+      if (altAr.trim() !== item.alt_ar || altEn.trim() !== item.alt_en || Math.abs(fx - Number(item.focal_x)) > 1e-4 || Math.abs(fy - Number(item.focal_y)) > 1e-4 || galleryChanged) {
+        await api.mediaUpdate(item.id, altAr.trim(), altEn.trim(), Math.round(fx * 10000) / 10000, Math.round(fy * 10000) / 10000, galleryChanged ? inGallery : undefined);
       }
       if (slot !== item.slot) await api.mediaSetSlot(item.id, slot);
       toast('حُفظت التعديلات؛ تظهر على الموقع بعد «نشر».');
@@ -175,6 +179,15 @@ function ItemBody({ item, src, editable, onClose, onChanged, busy, setBusy }: Om
                   ))}
                 </select>
               </Field>
+            )}
+            {offersGallery && (
+              <label className="flex items-start gap-2 text-sm" htmlFor="media-in-gallery">
+                <input type="checkbox" id="media-in-gallery" className="mt-1" checked={inGallery} disabled={!editable} onChange={(e) => setInGallery(e.target.checked)} aria-describedby="media-in-gallery-hint" />
+                <span>
+                  <span className="font-semibold">إظهار في المعرض</span>
+                  <span className="block text-xs text-ink-muted" id="media-in-gallery-hint">تظهر الصورة في صفحة «المعرض» على الموقع بعد «نشر» هذه الصفحة.</span>
+                </span>
+              </label>
             )}
             <dl className="media-facts">
               <dt>الملف</dt>

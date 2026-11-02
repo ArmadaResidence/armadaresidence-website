@@ -3,7 +3,7 @@
 // workflow's dry run with `media_sample` (the publish time measured on GitHub Actions).
 //   node scripts/media-sample.mjs <dir> [--poster white|busy] [--no-video]
 // What it holds (a typical publish and the edge cases): Airport Road branch — cover + the 4 story scenes + 6 gallery
-// photos (one with a Display P3 profile, one with EXIF orientation 6); its twin room — cover + 3 gallery (one portrait,
+// photos (one with a Display P3 profile, one with EXIF orientation 6, one with «إظهار في المعرض» off); its twin room — cover + 3 gallery (one portrait,
 // one only 1800 px wide); the Airport Road café venue — cover + 2 gallery photos, the hall — cover + 3 gallery, the
 // Discover Taif place al-hada-cable-car — its cover (2 Nov 2026, replacing the retired restaurant section); the home
 // hero — a poster (pure white or a busy pattern: the scrim's two test cases) and a 25 s 2560 × 1440 clip WITH an audio
@@ -51,7 +51,8 @@ const A = { target: 'branch', key: 'airport-road', branch: 'airport-road' };
 await add('air-cover.jpg', lbl('Airport Road — cover', 20), 3600, 2400, { ...A, slot: 'cover', alt_ar: 'واجهة أرمادا ريزيدنس طريق المطار ومدخلها الرئيسي', alt_en: 'The front and main entrance of Armada Residence Airport Road' }, { p3: true });
 const scenes = [['entrance', 'المدخل والموقف أمام المبنى', 'The entrance and the parking in front of the building'], ['lobby', 'ردهة الاستقبال ومكتب الاستقبال', 'The lobby and the reception desk'], ['rooms', 'غرفة نوم بسرير مزدوج ونافذة واسعة', 'A bedroom with a double bed and a wide window'], ['dining', 'المقهى والمطعم في الطابق الأرضي', 'The café and restaurant on the ground floor']];
 for (const [i, [scene, ar, en]] of scenes.entries()) await add(`air-${scene}.jpg`, lbl(`story ${scene}`, 60 + i * 50), 3000, 2000, { ...A, slot: `story-${scene}`, alt_ar: ar, alt_en: en });
-for (let i = 0; i < 6; i++) await add(`air-g${i + 1}.jpg`, lbl(`gallery ${i + 1}`, 200 + i * 20), 3600, 2400, { ...A, slot: 'gallery', sort: i, focal_x: 0.3 + i * 0.08, alt_ar: `صورة المعرض ${i + 1} لفرع طريق المطار`, alt_en: `Airport Road gallery photo ${i + 1}` }, i === 2 ? { orientation: 6 } : {});
+// the 6th gallery photo has «إظهار في المعرض» off (2 Nov 2026): on the branch page, never on /gallery/
+for (let i = 0; i < 6; i++) await add(`air-g${i + 1}.jpg`, lbl(`gallery ${i + 1}`, 200 + i * 20), 3600, 2400, { ...A, slot: 'gallery', sort: i, focal_x: 0.3 + i * 0.08, alt_ar: `صورة المعرض ${i + 1} لفرع طريق المطار`, alt_en: `Airport Road gallery photo ${i + 1}`, ...(i === 5 ? { in_gallery: false } : {}) }, i === 2 ? { orientation: 6 } : {});
 const R = { target: 'room', key: 'airport-road/twin-room', branch: 'airport-road' };
 await add('twin-cover.jpg', lbl('Twin room', 280), 4000, 2667, { ...R, slot: 'cover', focal_y: 0.4, alt_ar: 'غرفة توأم بسريرين منفصلين', alt_en: 'A twin room with two single beds' });
 await add('twin-g1.jpg', lbl('Twin bath', 320), 3600, 2400, { ...R, slot: 'gallery', sort: 0, alt_ar: 'دورة مياه الغرفة التوأم', alt_en: 'The twin room bathroom' });

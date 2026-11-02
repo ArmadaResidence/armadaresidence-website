@@ -8,7 +8,8 @@
 //   - each slot shows its photo or a drop zone (several files at once into the gallery, with progress); every file is
 //     checked before upload (type, size, a long side under 2400 px or a portrait photo with the reason, the same file
 //     twice — lib/media.ts); the gallery reorders by drag (and by «تقديم» / «تأخير» from the keyboard);
-//   - a photo opens its dialog (MediaItemDialog): focal point with the crop previews, alt ar / en, slot, archive;
+//   - a photo opens its dialog (MediaItemDialog): focal point with the crop previews, alt ar / en, slot, «إظهار في
+//     المعرض» (2 Nov 2026), archive;
 //   - «نشر» per target or «نشر الكل» validates first and lists exactly what is missing; a publish creates a job, asks for
 //     the site build (site-rebuild, reason media) and shows its status (في الانتظار / جارٍ البناء / منشور / فشل) with the
 //     time and the build log link. Drafts and edits never reach the site before their target is published.
@@ -20,7 +21,7 @@ import type { MediaItem, MediaJob, MediaPublishResult, MediaSlot, MediaTargetRow
 import { useSession } from '../lib/session';
 import { BRANCH_NAMES, riyadhDateTime } from '../lib/format';
 import {
-  ACCEPT_IMAGES, ACCEPT_VIDEO, GALLERY_RANGE, ITEM_STATUS, JOB_STATUS, missingText, photosWord, previewUrls, SLOT_LABELS, slotsOf, targetId, targetLabel,
+  ACCEPT_IMAGES, ACCEPT_VIDEO, GALLERY_RANGE, galleryTarget, ITEM_STATUS, JOB_STATUS, missingText, photosWord, previewUrls, SLOT_LABELS, slotsOf, targetId, targetLabel,
   uploadFile, UploadRefused, warningText, type UploadStage,
 } from '../lib/media';
 import { CancelButton, Empty, ErrorBox, Loading, Modal, Spinner, useToast } from '../components/ui';
@@ -518,6 +519,7 @@ function Tile({ item, url, n, onOpen }: { item: MediaItem; url?: string; n?: num
         {n && <span className="chip chip-request num">{n}</span>}
         <span className={`chip ${item.status === 'published' && !item.pending ? 'chip-confirmed' : 'chip-request'}`} data-status={item.status}>{status}</span>
         {noAlt && <span className="chip chip-flag" data-no-alt>بلا نص بديل</span>}
+        {galleryTarget(item.target) && item.in_gallery === false && <span className="chip chip-request" data-off-gallery>خارج المعرض</span>}
       </span>
     </button>
   );

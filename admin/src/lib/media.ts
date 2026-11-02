@@ -88,6 +88,8 @@ export function slotsOf(target: MediaTarget): { slot: MediaSlot; required: boole
   }
 }
 export const STORY_SLOTS: MediaSlot[] = ['story-entrance', 'story-lobby', 'story-rooms', 'story-dining'];
+/** the targets whose photos the site's gallery page /gallery/ shows (2 Nov 2026) — «إظهار في المعرض» is offered there */
+export const galleryTarget = (t: MediaTarget) => t === 'branch' || t === 'room' || t === 'dining' || t === 'hall';
 export const targetId = (t: { target: MediaTarget; key: string }) => `${t.target}:${t.key}`;
 
 export function targetLabel(t: Pick<MediaTargetRow, 'target' | 'key' | 'name_ar'>): string {

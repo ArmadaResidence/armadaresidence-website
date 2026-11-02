@@ -28,7 +28,7 @@ export const DEFAULT_LOCALE: Locale = 'ar';
 export const TODO = '[TODO: confirm]';
 
 /** One image as the pages render it (`${base}-${w}.webp` / `.avif`); the shape of SitePhoto and of a story scene. */
-interface MediaImage { base: string; widths: number[]; width: number; height: number; formats?: string[]; alt_ar: string; alt_en: string; cover?: boolean }
+interface MediaImage { base: string; widths: number[]; width: number; height: number; formats?: string[]; alt_ar: string; alt_en: string; cover?: boolean; /** «إظهار في المعرض» (2 Nov 2026; absent = shown) */ in_gallery?: boolean }
 /** The photos published from the dashboard «الصور» (1 Nov 2026) — content/media.generated.json, written on every build by
  *  scripts/media-build.mjs (gitignored; absent in astro dev and empty without the service-role key). A target published
  *  there replaces that target's photos from rooms.json / branches.json (scripts/photos-import.mjs); everything else is

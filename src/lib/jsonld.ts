@@ -285,6 +285,22 @@ export function faqPage(items: { q: string; a: string }[], url: string) {
   };
 }
 
+/** The gallery page (2 Nov 2026): CollectionPage with every photo it shows as an ImageObject (largest WebP, alt as caption). */
+export function collectionPage(locale: Locale, name: string, description: string, path: string, images: { url: string; caption: string; width: number; height: number }[]) {
+  const url = absoluteUrl(path);
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'CollectionPage',
+    '@id': url,
+    name,
+    description,
+    url,
+    inLanguage: locale,
+    isPartOf: { '@type': 'WebSite', name: siteName(locale), url: absoluteUrl(localePath(locale, '/')) },
+    image: images.map((im) => ({ '@type': 'ImageObject', contentUrl: absoluteUrl(im.url), caption: im.caption, width: im.width, height: im.height })),
+  };
+}
+
 export function breadcrumbs(items: { name: string; path: string }[]) {
   return {
     '@context': 'https://schema.org',
