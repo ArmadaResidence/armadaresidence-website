@@ -30,6 +30,8 @@ export interface OfferFields {
   percent: number | null;
   fixed_price: number | null;
   stay_nights: number | null;
+  /** stay N pay N−1: one free night per booking (default) or one per complete N eligible nights */
+  stay_pay_mode: StayPayMode;
   promo_code: string | null;
   room_types: string[];
   min_nights: number;
@@ -47,6 +49,8 @@ export interface OfferFields {
   show_menu: boolean;
   show_bar: boolean;
 }
+export type StayPayMode = 'per_booking' | 'per_n';
+export const STAY_PAY_MODE_LABELS: Record<StayPayMode, string> = { per_booking: 'ليلة واحدة لكل حجز', per_n: 'ليلة لكل N ليالٍ' };
 export interface OfferMissing {
   code: 'title_ar' | 'title_en' | 'description_ar' | 'description_en' | 'cover' | 'percent' | 'fixed_price' | 'stay_nights' | 'venue'
     | 'expired' | 'prices_off' | 'bar_taken' | 'code_taken';
@@ -183,7 +187,7 @@ export const PAGE_LABELS: Record<Exclude<PopupPage, 'all'>, string> = {
 };
 
 /** the summary of an offer's effect, as staff read it in the list */
-export function effectText(o: Pick<OfferFields, 'category' | 'kind' | 'percent' | 'fixed_price' | 'stay_nights' | 'promo_code' | 'dining_price'>, sar: (n: number) => string): string {
+export function effectText(o: Pick<OfferFields, 'category' | 'kind' | 'percent' | 'fixed_price' | 'stay_nights' | 'stay_pay_mode' | 'promo_code' | 'dining_price'>, sar: (n: number) => string): string {
   if (o.category === 'b2b') return 'بلا أسعار';
   if (o.category === 'dining') return o.dining_price ? `السعر ${sar(o.dining_price)}` : 'بلا سعر';
   const code = o.promo_code ? ` · بالكود ${o.promo_code}` : '';
@@ -191,7 +195,7 @@ export function effectText(o: Pick<OfferFields, 'category' | 'kind' | 'percent' 
     case 'percent': return `خصم ${o.percent}٪${code}`;
     case 'fixed_price': return `${sar(o.fixed_price ?? 0)} لليلة${code}`;
     case 'free_breakfast': return `إفطار مجاني${code}`;
-    case 'stay_pay': return `أقم ${o.stay_nights} وادفع ${(o.stay_nights ?? 1) - 1}${code}`;
+    case 'stay_pay': return `أقم ${o.stay_nights} وادفع ${(o.stay_nights ?? 1) - 1} · ${STAY_PAY_MODE_LABELS[o.stay_pay_mode ?? 'per_booking']}${code}`;
     default: return 'بلا أثر على السعر';
   }
 }
@@ -206,7 +210,7 @@ export const CODE = /^[A-Z0-9][A-Z0-9-]{2,19}$/;
 export const blankOffer = (category: OfferCategory, branches: string[]): OfferFields => ({
   slug: '', category, branches, venue: null, title_ar: '', title_en: '', description_ar: '', description_en: '', terms_ar: '', terms_en: '',
   valid_from: null, valid_to: null, kind: category === 'individuals' ? 'percent' : 'none', percent: null, fixed_price: null, stay_nights: null,
-  promo_code: null, room_types: [], min_nights: 1, dining_price: null,
+  stay_pay_mode: 'per_booking', promo_code: null, room_types: [], min_nights: 1, dining_price: null,
   cta: category === 'individuals' ? 'book' : category === 'b2b' ? 'quote' : 'menu', quote_request: null, whatsapp: category === 'b2b',
   whatsapp_prefill_ar: '', whatsapp_prefill_en: '', show_site: true, show_home: false, show_offers: category !== 'dining', show_branch: category === 'dining',
   show_partners: false, show_menu: category === 'dining', show_bar: false,

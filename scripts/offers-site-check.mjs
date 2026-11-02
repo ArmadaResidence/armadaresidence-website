@@ -7,7 +7,7 @@
 //   - published offers (the sample: OFFERS_FIXTURE=scripts/fixtures/offers-sample.json python build.py):
 //     /offers/ — the tabs «عروض الأفراد» / «الشركات والشركاء» (roving tabindex, arrows in the reading direction, Home /
 //     End, a hash to an offer in the other tab opens it), the cards (cover with alt, terms, the code, the runtime
-//     «من … بدل …» line filled from offer_from_prices with the base struck through — stubbed), ended and scheduled
+//     «من … لليلة بدلًا من …» line filled from offer_from_prices with the base struck through — stubbed), ended and scheduled
 //     offers nowhere, offer_view / offer_click (slug, category, placement only); the offer's button opens the
 //     booking drawer prefilled (branch, room, promo code); the home and branch placements; the announcement bar — on
 //     top, «التفاصيل» to the offer, × hides it and the dismissal survives a reload with no layout shift, the open

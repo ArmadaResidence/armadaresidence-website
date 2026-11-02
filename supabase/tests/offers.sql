@@ -170,6 +170,18 @@ select pg_temp._fails('O2 a percent above 90 is refused', $$select public.offers
 select pg_temp._fails('O2 a percent offer needs its percent', $$select public.offers_save(null, pg_temp._offer('{"kind": "percent"}'))$$, 'offers_percent');
 select pg_temp._fails('O2 a fixed price needs a price', $$select public.offers_save(null, pg_temp._offer('{"kind": "fixed_price"}'))$$, 'offers_fixed_price');
 select pg_temp._fails('O2 stay N pay N−1 needs N ≥ 2', $$select public.offers_save(null, pg_temp._offer('{"kind": "stay_pay", "stay_nights": 1}'))$$, 'offers_stay_nights');
+select pg_temp._fails('O2 an unknown free-night setting is refused', $$select public.offers_save(null, pg_temp._offer('{"kind": "stay_pay", "stay_nights": 3, "stay_pay_mode": "per_week"}'))$$, 'offers_stay_pay_mode');
+select pg_temp._save('s_sp1', public.offers_save(null, pg_temp._offer('{"slug": "qa-sp-default", "kind": "stay_pay", "stay_nights": 3}')));
+select pg_temp._save('s_sp2', public.offers_save(null, pg_temp._offer('{"slug": "qa-sp-pern", "kind": "stay_pay", "stay_nights": 4, "stay_pay_mode": "per_n"}')));
+select pg_temp._save('s_sp3', public.offers_save(null, pg_temp._offer('{"slug": "qa-sp-other", "kind": "percent", "percent": 10, "stay_pay_mode": "per_n"}')));
+select pg_temp._check('O2 stay N pay N−1: a new offer defaults to «ليلة واحدة لكل حجز»; «ليلة لكل N ليالٍ» is stored when chosen; other types keep the default',
+  (select stay_pay_mode = 'per_booking' from public.offers where id = (pg_temp._j('s_sp1') ->> 'id')::uuid)
+  and (select stay_pay_mode = 'per_n' and stay_nights = 4 from public.offers where id = (pg_temp._j('s_sp2') ->> 'id')::uuid)
+  and (select stay_pay_mode = 'per_booking' from public.offers where id = (pg_temp._j('s_sp3') ->> 'id')::uuid));
+-- (the three drafts leave again, so the rest of the file sees the offers it expects)
+select pg_temp._root();
+delete from public.offers where slug in ('qa-sp-default', 'qa-sp-pern', 'qa-sp-other');
+select pg_temp._as('editor');
 select pg_temp._fails('O2 a malformed promo code is refused', $$select public.offers_save(null, pg_temp._offer('{"kind": "percent", "percent": 10, "promo_code": "a b"}'))$$, 'offers_promo_code');
 select pg_temp._fails('O2 a promo code needs a price effect', $$select public.offers_save(null, pg_temp._offer('{"kind": "none", "promo_code": "QA10"}'))$$, 'offers_promo_code');
 select pg_temp._fails('O2 a room type of another branch is refused', $$select public.offers_save(null, pg_temp._offer('{"room_types": ["shafa-road/x"]}'))$$, 'offers_room_types');
@@ -315,10 +327,26 @@ select pg_temp._check('P5 free breakfast: breakfast charge 0 (2 × 20 × 3 = 120
   and (q ->> 'breakfast_total')::numeric = 120 from (select pg_temp._q(null, 3, 'with') q) x));
 select pg_temp._check('P5 free breakfast without breakfast: nothing', (select (pg_temp._q(null, 3, 'without') ->> 'discount')::numeric = 0));
 select pg_temp._clear();
-select pg_temp._fx('{"slug": "qa-stay3", "branches": ["airport-road"], "kind": "stay_pay", "stay_nights": 3}');
-select pg_temp._check('P6 stay 3 pay 2: the cheapest eligible night is free (150)', (select (q ->> 'discount')::numeric = 150 and (q ->> 'total')::numeric = 400 and (q -> 'offer' ->> 'free_nights')::int = 1 from (select pg_temp._q(null) q) x));
-select pg_temp._check('P6 stay 3 pay 2 with 2 nights: nothing', (select (pg_temp._q(null, 2) ->> 'discount')::numeric = 0));
-select pg_temp._check('P6 stay 3 pay 2 with 6 nights: one free night per 3 — the two cheapest (150 + 200)', (select (q ->> 'discount')::numeric = 350 and (q -> 'offer' ->> 'free_nights')::int = 2 from (select pg_temp._q(null, 6) q) x));
+-- «ليلة لكل N ليالٍ» (per_n, the rule of 2 Nov 2026): one free night per complete N eligible nights
+select pg_temp._fx('{"slug": "qa-stay3", "branches": ["airport-road"], "kind": "stay_pay", "stay_nights": 3, "stay_pay_mode": "per_n"}');
+select pg_temp._check('P6 per_n stay 3 pay 2 (N = 3 nights): the cheapest eligible night is free (150)', (select (q ->> 'discount')::numeric = 150 and (q ->> 'total')::numeric = 400 and (q -> 'offer' ->> 'free_nights')::int = 1
+  and q -> 'offer' ->> 'stay_pay_mode' = 'per_n' from (select pg_temp._q(null) q) x));
+select pg_temp._check('P6 per_n stay 3 pay 2 with 2 nights: nothing', (select (pg_temp._q(null, 2) ->> 'discount')::numeric = 0));
+select pg_temp._check('P6 per_n stay 3 pay 2 with 6 nights (2N): one free night per 3 — the two cheapest (150 + 200)', (select (q ->> 'discount')::numeric = 350 and (q ->> 'total')::numeric = 800 and (q -> 'offer' ->> 'free_nights')::int = 2 from (select pg_temp._q(null, 6) q) x));
+select pg_temp._check('P6 per_n stay 3 pay 2 with 7 nights (2N + 1): still two free nights (350)', (select (q ->> 'discount')::numeric = 350 and (q ->> 'total')::numeric = 1000 and (q -> 'offer' ->> 'free_nights')::int = 2 from (select pg_temp._q(null, 7) q) x));
+-- «ليلة واحدة لكل حجز» (per_booking, the default since 3 Nov 2026): one free night once the stay holds N eligible nights
+select pg_temp._clear();
+select pg_temp._fx('{"slug": "qa-stay3b", "branches": ["airport-road"], "kind": "stay_pay", "stay_nights": 3}');
+select pg_temp._check('P6 the fixture''s default is per_booking, and its snapshot carries it', (select stay_pay_mode = 'per_booking' and live ->> 'stay_pay_mode' = 'per_booking' from public.offers where slug = 'qa-stay3b'));
+select pg_temp._check('P6 per_booking with 2 nights: nothing', (select (pg_temp._q(null, 2) ->> 'discount')::numeric = 0));
+select pg_temp._check('P6 per_booking (N = 3 nights): the cheapest night free (150)', (select (q ->> 'discount')::numeric = 150 and (q ->> 'total')::numeric = 400 and (q -> 'offer' ->> 'free_nights')::int = 1
+  and q -> 'offer' ->> 'stay_pay_mode' = 'per_booking' from (select pg_temp._q(null) q) x));
+select pg_temp._check('P6 per_booking with 6 nights (2N): one free night only (150)', (select (q ->> 'discount')::numeric = 150 and (q ->> 'total')::numeric = 1000 and (q -> 'offer' ->> 'free_nights')::int = 1 from (select pg_temp._q(null, 6) q) x));
+select pg_temp._check('P6 per_booking with 7 nights (2N + 1): one free night only (150)', (select (q ->> 'discount')::numeric = 150 and (q ->> 'total')::numeric = 1200 and (q -> 'offer' ->> 'free_nights')::int = 1 from (select pg_temp._q(null, 7) q) x));
+-- a snapshot published before the setting existed (no key) keeps the per-N rule it was published with
+update public.offers set live = live - 'stay_pay_mode' where slug = 'qa-stay3b';
+select pg_temp._check('P6 a snapshot without the key (published before 3 Nov 2026) keeps per_n: 6 nights → 350', (select (pg_temp._q(null, 6) ->> 'discount')::numeric = 350));
+select pg_temp._check('P6 only stay N pay N−1 snapshots carry stay_pay_mode', not exists (select 1 from public.offers o where o.kind <> 'stay_pay' and internal.offer_snapshot(o) ? 'stay_pay_mode'));
 -- promo codes: never stacked, the best for the guest wins
 select pg_temp._clear();
 select pg_temp._fx('{"slug": "qa-auto5", "branches": ["airport-road"], "kind": "percent", "percent": 5}');

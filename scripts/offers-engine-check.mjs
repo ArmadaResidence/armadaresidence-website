@@ -29,7 +29,7 @@ const cases = [
   ['percent 10 %', { ...base, base_total: 550, discount: 55, total: 495, offer: offer('percent', 55, { percent: 10 }) }],
   ['fixed price 160', { ...base, base_total: 550, discount: 80, total: 470, offer: offer('fixed_price', 80, { fixed_price: 160 }) }],
   ['free breakfast', { ...base, breakfast: 'with', breakfast_total: 120, base_total: 670, discount: 120, total: 550, offer: offer('free_breakfast', 120) }],
-  ['stay 3 pay 2', { ...base, base_total: 550, discount: 150, total: 400, offer: offer('stay_pay', 150, { stay_nights: 3 }) }],
+  ['stay 3 pay 2', { ...base, base_total: 550, discount: 150, total: 400, offer: offer('stay_pay', 150, { stay_nights: 3, stay_pay_mode: 'per_booking' }) }],
   ['promo code 10 %', { ...base, base_total: 550, discount: 55, total: 495, offer: offer('percent', 55, { percent: 10, promo_code: 'QA-TEN' }) }],
   ['no offer', { ...base, base_total: 550, discount: 0, total: 550, offer: null }],
 ];

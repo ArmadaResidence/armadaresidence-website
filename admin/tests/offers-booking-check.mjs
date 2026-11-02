@@ -64,20 +64,26 @@ const KINDS = [
   { key: 'percent', offer: { kind: 'percent', percent: 10 }, locale: 'en' },
   { key: 'fixed_price', offer: { kind: 'fixed_price', fixed_price: 160 }, locale: 'ar' },
   { key: 'free_breakfast', offer: { kind: 'free_breakfast' }, locale: 'ar', breakfast: 'with' },
-  { key: 'stay_pay', offer: { kind: 'stay_pay', stay_nights: 3 }, locale: 'ar' },
+  // stay N pay N−1 with both settings (3 Nov 2026), a 2N + 1 stay: one free night per booking, or one per N nights
+  { key: 'stay_pay', offer: { kind: 'stay_pay', stay_nights: 2, stay_pay_mode: 'per_booking' }, locale: 'ar', nights: 5, free: 1, discount: 150 },
+  { key: 'stay_pay_n', offer: { kind: 'stay_pay', stay_nights: 2, stay_pay_mode: 'per_n' }, locale: 'en', nights: 5, free: 2, discount: 350 },
   { key: 'promo', offer: { kind: 'percent', percent: 10, promo_code: 'QA-E2E-TEN', show_site: false }, locale: 'ar', promo: 'QA-E2E-TEN' },
 ];
-KINDS.forEach((k, i) => {
-  k.ci = riyadh(10 + 5 * i);
-  k.co = riyadh(13 + 5 * i);
-  k.cheap = riyadh(11 + 5 * i);
-});
+{
+  let d = 10;
+  for (const k of KINDS) {
+    k.ci = riyadh(d);
+    k.co = riyadh(d + (k.nights ?? 3));
+    k.cheap = riyadh(d + 1);
+    d += (k.nights ?? 3) + 1;
+  }
+}
 for (const k of KINDS) {
   await rest('rate_overrides', { method: 'POST', body: JSON.stringify({ room_type_id: fx.room_type_id, date_from: k.cheap, date_to: k.cheap, weekdays: 127, price: 150, label: 'QA' }) });
 }
 const offerFor = async (k) => {
   await fixture('offers_clear');
-  await fixture('offer', { slug: `qa-e2e-${k.key.replace('_', '-')}`, branches: [BRANCH], room_types: [`${BRANCH}/${ROOM}`], title_ar: `عرض ${k.key}`, title_en: `Offer ${k.key}`, valid_from: riyadh(0), valid_to: riyadh(60), ...k.offer });
+  await fixture('offer', { slug: `qa-e2e-${k.key.replaceAll('_', '-')}`, branches: [BRANCH], room_types: [`${BRANCH}/${ROOM}`], title_ar: `عرض ${k.key}`, title_en: `Offer ${k.key}`, valid_from: riyadh(0), valid_to: riyadh(60), ...k.offer });
 };
 
 async function quote(k, beds) {
@@ -184,6 +190,8 @@ for (const k of KINDS) {
   const qt = q?.quote;
   check(q?.ok && qt?.offer?.slug?.startsWith('qa-e2e') && num(qt.discount) > 0, `${k.key} instant: the quote applies the offer`, JSON.stringify({ offer: qt?.offer?.slug, discount: qt?.discount, promo: q?.promo }));
   if (k.promo) check(q?.promo?.status === 'applied', `${k.key} instant: the quote says the code is applied`, JSON.stringify(q?.promo));
+  if (k.free) check(num(qt?.offer?.free_nights) === k.free && num(qt?.discount) === k.discount && qt?.offer?.stay_pay_mode === k.offer.stay_pay_mode,
+    `${k.key} instant: ${k.nights} nights, «${k.offer.stay_pay_mode}» → ${k.free} free night(s), discount ${k.discount}`, JSON.stringify({ free: qt?.offer?.free_nights, discount: qt?.discount, mode: qt?.offer?.stay_pay_mode }));
   const b = await book(k, 0, qt?.total);
   const ref = b.json?.ref;
   check(b.status === 200 && b.json?.status === 'confirmed', `${k.key} instant: confirmed at once`, `${b.status} ${JSON.stringify(b.json)?.slice(0, 200)}`);
@@ -219,6 +227,7 @@ for (const k of KINDS) {
     const discount = num(qt2?.discount);
     check(ca?.ok === true && after.status === 'confirmed', `${k.key} request: confirmed from the dashboard`, JSON.stringify(ca)?.slice(0, 200));
     check(num(after.total) === total && num(after.discount_total) === discount, `${k.key} request: confirmed total / discount = the quote (${total} / ${discount})`, JSON.stringify({ total: after.total, discount: after.discount_total }));
+    if (k.free) check(num(after.offer?.free_nights) === k.free && after.offer?.stay_pay_mode === k.offer.stay_pay_mode, `${k.key} request: the confirmed booking keeps the setting (${k.free} free)`, JSON.stringify(after.offer));
     checkEcho(`${k.key} confirm`, ca?.test_echo, { total, discount, title, L: k.locale, priced: true });
     await checkSheet(`${k.key} confirmed request`, ref2, { total, base: num(after.base_total), discount, title, code: k.promo });
   }

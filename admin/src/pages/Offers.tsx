@@ -25,8 +25,8 @@ import { JOB_STATUS, previewUrls } from '../lib/media';
 import { TIMES } from '../lib/dining';
 import {
   blankOffer, blankPopup, CATEGORY_LABELS, CODE, COLOR_LABELS, CTA_LABELS, effectText, ENTRANCE_LABELS, MISSING_LABELS, PAGE_LABELS, PLACEMENTS,
-  POPUP_MISSING, QUOTE_LABELS, riyadhParts, riyadhStamp, SHAPE_LABELS, SLUG, slugify, STATE_CHIP, STATE_LABELS, TYPE_LABELS, WARNING_LABELS,
-  type Offer, type OfferCategory, type OfferFields, type OfferPublishResult, type Popup, type PopupFields, type PopupPage, type QuoteRequest, type TypeChoice,
+  POPUP_MISSING, QUOTE_LABELS, riyadhParts, riyadhStamp, SHAPE_LABELS, SLUG, slugify, STATE_CHIP, STATE_LABELS, STAY_PAY_MODE_LABELS, TYPE_LABELS, WARNING_LABELS,
+  type Offer, type OfferCategory, type OfferFields, type OfferPublishResult, type Popup, type PopupFields, type PopupPage, type QuoteRequest, type StayPayMode, type TypeChoice,
 } from '../lib/offers';
 import * as off from '../lib/offers';
 import LabelPair from '../components/LabelPair';
@@ -533,6 +533,7 @@ function OfferForm({ offer, category, branches, rooms, venues, editable, seesMed
       percent: category === 'individuals' && effect === 'percent' ? f.percent : null,
       fixed_price: category === 'individuals' && effect === 'fixed_price' ? f.fixed_price : null,
       stay_nights: category === 'individuals' && effect === 'stay_pay' ? f.stay_nights : null,
+      stay_pay_mode: category === 'individuals' && effect === 'stay_pay' ? f.stay_pay_mode ?? 'per_booking' : 'per_booking',
       room_types: category === 'individuals' ? f.room_types : [],
       min_nights: category === 'individuals' ? f.min_nights || 1 : 1,
       venue: category === 'dining' ? f.venue : null,
@@ -608,9 +609,16 @@ function OfferForm({ offer, category, branches, rooms, venues, editable, seesMed
               </Field>
             )}
             {effect === 'stay_pay' && (
-              <Field label="أقم N ليالٍ (وادفع N−1)" id="o-stay" hint="ليلة مجانية — الأرخص — عن كل N ليالٍ مؤهلة.">
+              <Field label="أقم N ليالٍ (وادفع N−1)" id="o-stay" hint="الليلة المجانية هي الأرخص بين الليالي المؤهلة.">
                 <NumberField id="o-stay" value={f.stay_nights} onChange={(v) => set('stay_nights', v)} min={0} max={30} className="w-24" />
               </Field>
+            )}
+            {effect === 'stay_pay' && (
+              <div className="sm:col-span-2" data-field="stay_pay_mode">
+                <span className="label">عدد الليالي المجانية</span>
+                <Segmented value={f.stay_pay_mode ?? 'per_booking'} onChange={(v) => set('stay_pay_mode', v)} label="عدد الليالي المجانية" disabled={dis} options={(Object.keys(STAY_PAY_MODE_LABELS) as StayPayMode[]).map((k) => ({ value: k, label: STAY_PAY_MODE_LABELS[k] }))} />
+                <p className="text-xs text-ink-muted mt-1">{(f.stay_pay_mode ?? 'per_booking') === 'per_booking' ? 'ليلة مجانية واحدة في الحجز مهما طالت الإقامة، متى بلغت N ليالٍ مؤهلة.' : `ليلة مجانية عن كل ${f.stay_nights || 'N'} ليالٍ مؤهلة كاملة؛ إقامة ضعف المدة = ليلتان.`}</p>
+              </div>
             )}
             <Field label="الحد الأدنى للإقامة (ليالٍ)" id="o-min" hint="1 = بلا حد أدنى.">
               <NumberField id="o-min" value={f.min_nights} onChange={(v) => set('min_nights', v ?? 1)} min={1} max={60} className="w-24" />

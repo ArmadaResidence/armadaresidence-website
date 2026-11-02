@@ -160,7 +160,7 @@ export function diningOfferPrice(locale: Locale, o: Offer): string {
   if (o.category !== 'dining' || o.dining_price == null) return '';
   return fill(T(locale).dining_price, { price: sarText(Number(o.dining_price), locale) });
 }
-/** per-night offers (percent / fixed price) carry the runtime «من {offer} بدل {base}» line (offer_from_prices) */
+/** per-night offers (percent / fixed price) carry the runtime «من {offer} لليلة بدلًا من {base}» line (offer_from_prices) */
 export const offerHasRuntimePrice = (o: Offer): boolean => o.category === 'individuals' && (o.kind === 'percent' || o.kind === 'fixed_price');
 /** ui.json → offers in a page language */
 export const offersText = T;

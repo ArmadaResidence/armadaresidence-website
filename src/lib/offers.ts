@@ -1,5 +1,5 @@
 /**
- * Offer cards in the browser (2 Nov 2026, «العروض»): the runtime «من {offer} بدل {base} لليلة» line of per-night offers
+ * Offer cards in the browser (2 Nov 2026, «العروض»): the runtime «من {offer} لليلة بدلًا من {base}» line of per-night offers
  * (public.offer_from_prices, publishable key — like room_from_prices: nothing while the branch hides its prices, and
  * the reserved slot stays empty), an offer that ended since the build is hidden, and the dataLayer events offer_view
  * (once per card and page, when half of it is seen) / offer_click — slug, category, placement and the button kind only.
