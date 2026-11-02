@@ -2,6 +2,7 @@
 // screenshots of every built page — AR + EN × 375 + 1440 × light + dark — then a pixel-by-pixel comparison.
 //   node scripts/pixel-guard.mjs shoot <BASE> <outDir> [--dist <dist>]   every page of <dist> (default dist/) served at BASE
 //   node scripts/pixel-guard.mjs compare <beforeDir> <afterDir>          exit 1 on any differing pixel; diff PNGs in <afterDir>/_diff
+//   PIXEL_MASK='<selectors>' (shoot): those elements hidden in the capture (visibility only), e.g. '[data-partners-pill]'
 // Motion is settled (reduced motion emulated, reveals forced in), lazy images are fetched and decoded and the fonts
 // are loaded before each capture; GTM and the Supabase origin are blocked, so both builds see the same page.
 // Deterministic (2 Nov 2026): two captures of the same build differ on 0 of the 292 shots — the carousel dots are frozen
@@ -66,7 +67,7 @@ async function shoot(BASE, OUT, dist) {
       const page = await ctx.newPage();
       try {
         await page.goto(BASE + path, { waitUntil: 'load' });
-        await page.evaluate(async () => {
+        await page.evaluate(async (mask) => {
           // no scrolling: scroll-driven state (the branch story's active scene, the partners parallax, the menu's
           // frame engine) would depend on timing; the full-page capture needs none, the lazy images are forced instead
           await document.fonts.ready;
@@ -77,7 +78,9 @@ async function shoot(BASE, OUT, dist) {
           // will-change: their resampling differs between two loads of the same page by a few levels, so they are
           // masked during capture (2 Nov 2026) — the text, scrims and layout over them are still compared; the other
           // partners photos (the feature panels, scaled 1.03) are captured unscaled, which removes the same seams
-          st.textContent = '.cv-auto{content-visibility:visible!important}'
+          // PIXEL_MASK (2 Nov 2026): selectors hidden in both captures (visibility only — the layout is still compared), for
+          // a change that is meant to be visible in one place only (the partners button: PIXEL_MASK='[data-partners-pill]')
+          st.textContent = (mask ? `${mask}{visibility:hidden!important}` : '') + '.cv-auto{content-visibility:visible!important}'
             + '.legacy-partners .hero .bg img,.legacy-partners .phero .bg img,.legacy-partners .final .bg img{visibility:hidden!important}'
             + '.legacy-partners img{will-change:auto!important;transition:none!important;animation:none!important;transform:none!important}';
           document.head.append(st);
@@ -94,7 +97,7 @@ async function shoot(BASE, OUT, dist) {
           await Promise.race([Promise.all(imgs.map(ready)), new Promise((r) => setTimeout(r, 10000))]);
           await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
           await document.fonts.ready;
-        });
+        }, process.env.PIXEL_MASK || '');
         await page.waitForTimeout(800);
         await page.evaluate(() => document.getAnimations().forEach((a) => { try { a.finish(); } catch {} }));
         await page.screenshot({ path: join(OUT, fileName(path, form.name, theme)), fullPage: true, animations: 'disabled', caret: 'hide' });
