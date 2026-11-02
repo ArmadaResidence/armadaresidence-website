@@ -101,6 +101,10 @@ const mails = {
   'booking-confirmation': bookingConfirmation(content, booking),
   'booking-confirmed-guest': bookingConfirmed(content, confirmed),
   'booking-confirmed-notification': confirmedNotification(content, confirmed),
+  // an offer (2 Nov 2026): the guest and reception see the total before it, its name, its code and the discount
+  'booking-confirmed-guest-offer': bookingConfirmed(content, { ...confirmed, quote: { ...confirmed.quote, base_total: 910, discount: 76, total: 834, offer: { slug: 'winter-stay', title_ar: 'خصم الشتاء على الإقامة', title_en: 'Winter stay discount', kind: 'percent', promo_code: 'WINTER10', discount: 76 } } }),
+  'booking-notification-offer': bookingNotification(content, { ...booking, offer: { slug: 'winter-stay', title_ar: 'خصم الشتاء على الإقامة', title_en: 'Winter stay discount', kind: 'percent', promo_code: 'WINTER10', discount: 76 }, promoCode: 'WINTER10' }),
+  'booking-confirmation-offer': bookingConfirmation(content, { ...booking, offer: { slug: 'winter-stay', title_ar: 'خصم الشتاء على الإقامة', title_en: 'Winter stay discount', kind: 'percent', promo_code: 'WINTER10', discount: 76 }, promoCode: 'WINTER10' }),
   'booking-confirmed-by-staff-notification': confirmedNotification(content, { ...confirmed, confirmedBy: 'استقبال طريق المطار', quote: { ...confirmed.quote, breakfast: 'without', breakfast_total: 0, total: 760 } }),
   'low-inventory-alert': lowInventoryAlert(content, { ref: 'AR-20261023-TEST', branch: 'airport-road', room: 'two-bedroom-suite', nights: [{ night: '2026-11-02', left: 1 }, { night: '2026-11-03', left: 0 }] }),
   'booking-cancelled': bookingCancelled(content, { ...confirmed }),

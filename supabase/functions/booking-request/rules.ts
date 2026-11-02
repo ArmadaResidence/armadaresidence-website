@@ -143,6 +143,8 @@ export interface BookingInput {
   country?: string;
   email?: string;
   notes?: string;
+  /** an offer's promo code (2 Nov 2026) — optional; the database decides whether it applies */
+  promo_code?: string;
 }
 
 export type FieldError =
@@ -160,7 +162,8 @@ export type FieldError =
   | 'name'
   | 'organisation'
   | 'phone'
-  | 'email';
+  | 'email'
+  | 'format';
 
 export interface RuleContext {
   branches: string[];
@@ -190,6 +193,20 @@ export interface ValidBooking {
   phone: string;
   email: string;
   notes: string;
+  /** the promo code upper-cased ('' = none) */
+  promo_code: string;
+}
+
+/** An offer's promo code (2 Nov 2026, «العروض»): letters A–Z, digits and hyphens, 3–20 characters, upper case. */
+export const PROMO_CODE = /^[A-Z0-9][A-Z0-9-]{2,19}$/;
+/** The code as the database stores it: trimmed, upper-cased, Arabic-Indic digits converted; '' = none, null = malformed. */
+export function normalisePromo(raw: unknown): string | null {
+  const s = String(raw ?? '')
+    .trim()
+    .replace(/[٠-٩]/g, (d) => String(d.charCodeAt(0) - 0x0660))
+    .toUpperCase();
+  if (!s) return '';
+  return PROMO_CODE.test(s) ? s : null;
 }
 
 /** Children's ages are needed only to price breakfast (Q2): children > 0 and breakfast = with. */
@@ -257,6 +274,9 @@ export function validateBooking(p: BookingInput, ctx: RuleContext): { ok: true; 
   const email = String(p.email ?? '').trim();
   if (email && !validEmail(email)) errors.email = 'email';
 
+  const promo = normalisePromo(p.promo_code);
+  if (promo === null) errors.promo_code = 'format';
+
   if (Object.keys(errors).length) return { ok: false, errors };
   return {
     ok: true,
@@ -277,6 +297,7 @@ export function validateBooking(p: BookingInput, ctx: RuleContext): { ok: true; 
       phone: e164 as string,
       email,
       notes: String(p.notes ?? '').trim().slice(0, 1000),
+      promo_code: promo as string,
     },
   };
 }

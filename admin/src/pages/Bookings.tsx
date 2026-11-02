@@ -326,6 +326,7 @@ function Details({ r, roomTypes, editable, onClose, onChanged }: { r: Reservatio
       r.status === 'confirmed' ? `تم تأكيد حجزك رقم ${r.ref} في ${BRANCH_NAMES[r.branch]}.` : `بخصوص طلب الحجز رقم ${r.ref} في ${BRANCH_NAMES[r.branch]}:`,
       `نوع الغرفة: ${rtName(r.room_type_id)}`,
       `الوصول: ${longDate(r.check_in)} — المغادرة: ${longDate(r.check_out)} (${nightsWord(r.nights)})`,
+      r.offer && Number(r.discount_total) > 0 ? `العرض: ${r.offer.title_ar} (خصم ${sar(r.discount_total)})` : '',
       r.total !== null ? `الإجمالي شامل الضريبة: ${sar(r.total)} — الدفع عند الوصول.` : '',
       'أرمادا ريزيدنس',
     ].filter(Boolean);
@@ -349,6 +350,8 @@ function Details({ r, roomTypes, editable, onClose, onChanged }: { r: Reservatio
         <dt className="text-ink-muted">الضيوف</dt><dd className="font-semibold">{adultsWord(r.adults)}{r.children ? ` · ${childrenWord(r.children)}${r.children_ages?.length ? ` (الأعمار: ${r.children_ages.join('، ')})` : ''}` : ''}{r.capacity_at_request ? <span className="text-ink-muted"> · سعة الغرفة {r.capacity_at_request}</span> : null}</dd>
         <dt className="text-ink-muted">أسرّة إضافية</dt><dd className="font-semibold">{r.extra_beds}{r.extra_bed_fee_per_night ? ` (${sar(r.extra_bed_fee_per_night)} لليلة)` : ''}</dd>
         <dt className="text-ink-muted">الإفطار</dt><dd className="font-semibold">{r.breakfast === 'with' ? 'مع الإفطار' : 'بدون إفطار'}</dd>
+        {r.offer && (<><dt className="text-ink-muted">العرض</dt><dd className="font-semibold" data-offer>{r.offer.title_ar}{r.discount_total ? ` · خصم ${sar(r.discount_total)}` : ''}</dd></>)}
+        {r.promo_code && (<><dt className="text-ink-muted">كود العرض</dt><dd className="font-semibold latin" dir="ltr">{r.promo_code}</dd></>)}
         <dt className="text-ink-muted">الجوال</dt><dd className="font-semibold num"><a className="underline" href={`tel:${r.phone}`}>{r.phone}</a></dd>
         <dt className="text-ink-muted">البريد</dt><dd className="font-semibold latin">{r.email ? <a className="underline" href={`mailto:${r.email}`}>{r.email}</a> : '—'}</dd>
         {r.notes && (<><dt className="text-ink-muted">ملاحظات الضيف</dt><dd className="whitespace-pre-wrap">{r.notes}</dd></>)}
@@ -367,6 +370,12 @@ function Details({ r, roomTypes, editable, onClose, onChanged }: { r: Reservatio
               ))}
               {r.breakfast === 'with' && <tr><td>الإفطار</td><td className="text-end font-semibold">{sar(r.breakfast_total)}</td></tr>}
               {r.extra_beds > 0 && <tr><td>الأسرّة الإضافية · {r.extra_beds}</td><td className="text-end font-semibold">{sar(r.extra_beds_total)}</td></tr>}
+              {r.offer && Number(r.discount_total) > 0 && (
+                <>
+                  <tr className="border-t border-line"><td className="pt-1">الإجمالي قبل العرض</td><td className="pt-1 text-end font-semibold">{sar(r.base_total)}</td></tr>
+                  <tr data-offer-discount><td>خصم العرض · {r.offer.title_ar}</td><td className="text-end font-semibold">{sar(r.discount_total)}</td></tr>
+                </>
+              )}
               <tr className="border-t border-line"><td className="pt-1 font-bold">الإجمالي شامل الضريبة</td><td className="pt-1 text-end font-bold">{sar(r.total)}</td></tr>
             </tbody>
           </table>
@@ -475,7 +484,8 @@ function Details({ r, roomTypes, editable, onClose, onChanged }: { r: Reservatio
  * fields, the price breakdown, the notes, the coordination flag and two signature blocks. Hidden on screen; the print
  * stylesheet (styles.css → .print-sheet) shows it alone. Arabic, RTL, Western digits (format.ts).
  * 29 Oct 2026: the price block follows the confirmation email — «الغرفة · N ليالٍ», every night on its own line, breakfast,
- * extra beds, the total, then the pay-at-hotel line (a long stay flows into columns so the sheet stays one page). */
+ * extra beds, the total, then the pay-at-hotel line (a long stay flows into columns so the sheet stays one page).
+ * 2 Nov 2026: an offer adds «الإجمالي قبل العرض» and «خصم العرض · {name}» above the total, and its name / code to the fields. */
 function PrintSheet({ r, room }: { r: Reservation; room: string }) {
   const nights = (r.pricing as { nights?: { night: string; price: number; label?: string | null }[] } | null)?.nights ?? [];
   const row = (k: string, v: ReactNode) => (<><dt>{k}</dt><dd>{v}</dd></>);
@@ -511,6 +521,8 @@ function PrintSheet({ r, room }: { r: Reservation; room: string }) {
         {row('الضيوف', `${adultsWord(r.adults)}${r.children ? ` · ${childrenWord(r.children)}${r.children_ages?.length ? ` (الأعمار: ${r.children_ages.join('، ')})` : ''}` : ''}`)}
         {row('أسرّة إضافية', `${r.extra_beds}${r.extra_beds && r.extra_bed_fee_per_night ? ` (${sar(r.extra_bed_fee_per_night)} لليلة)` : ''}`)}
         {row('الإفطار', r.breakfast === 'with' ? 'مع الإفطار' : 'بدون إفطار')}
+        {r.offer && row('العرض', r.offer.title_ar)}
+        {r.promo_code && row('كود العرض', <span dir="ltr">{r.promo_code}</span>)}
         {row('يحتاج تنسيق', r.needs_coordination ? 'نعم — عدد الضيوف أكبر من سعة الغرفة والأسرّة الإضافية' : 'لا')}
       </dl>
       <section className="sheet-price">
@@ -533,6 +545,12 @@ function PrintSheet({ r, room }: { r: Reservation; room: string }) {
                 )}
                 {r.breakfast === 'with' && <tr><td>الإفطار</td><td>{sar(r.breakfast_total)}</td></tr>}
                 {r.extra_beds > 0 && <tr><td>الأسرّة الإضافية · {r.extra_beds}</td><td>{sar(r.extra_beds_total)}</td></tr>}
+                {r.offer && Number(r.discount_total) > 0 && (
+                  <>
+                    <tr><td>الإجمالي قبل العرض</td><td>{sar(r.base_total)}</td></tr>
+                    <tr data-offer-discount><td>خصم العرض · {r.offer.title_ar}</td><td>{sar(r.discount_total)}</td></tr>
+                  </>
+                )}
                 <tr className="sheet-total"><td>الإجمالي شامل الضريبة</td><td>{sar(r.total)}</td></tr>
               </tbody>
             </table>

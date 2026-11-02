@@ -77,6 +77,8 @@ interface Payload {
   page?: string;
   /** the total the form showed (phase 2a); the database refuses to confirm on a different total */
   quoted_total?: string | number;
+  /** an offer's promo code (2 Nov 2026); the database applies it or refuses it (422 fields.promo_code) */
+  promo_code?: string;
   /** honeypot — hidden on the form, must stay empty */
   website?: string;
   /** QA only, with a valid test token: 'staff-emails' sends the dashboard staff emails as [TEST] samples to `to`;
@@ -365,6 +367,8 @@ interface Row {
   organisation: string;
   roomsRequested: number | null;
   meals: string;
+  /** an offer's promo code, upper case ('' = none) */
+  promoCode: string;
 }
 
 type Validation = { ok: true; row: Row } | { ok: false; error: string; fields?: Record<string, string> };
@@ -396,6 +400,7 @@ function validate(p: Payload, test = false): Validation {
         country: p.country,
         email: p.email,
         notes: p.notes,
+        promo_code: p.promo_code,
       },
       {
         branches: KNOWN_BRANCHES,
@@ -408,7 +413,7 @@ function validate(p: Payload, test = false): Validation {
     const d: ValidBooking = r.data;
     return {
       ok: true,
-      row: { locale, requestType, branch: d.branch, check_in: d.check_in, check_out: d.check_out, nights: d.nights, adults: d.adults, children: d.children, childrenAges: d.children_ages, extraBeds: d.extra_beds, needsCoordination: d.needs_coordination, capacity: d.capacity, room: d.room, breakfast: d.breakfast, name: d.name, phone: d.phone, email: d.email, notes: d.notes, page, organisation: '', roomsRequested: null, meals: '' },
+      row: { locale, requestType, branch: d.branch, check_in: d.check_in, check_out: d.check_out, nights: d.nights, adults: d.adults, children: d.children, childrenAges: d.children_ages, extraBeds: d.extra_beds, needsCoordination: d.needs_coordination, capacity: d.capacity, room: d.room, breakfast: d.breakfast, name: d.name, phone: d.phone, email: d.email, notes: d.notes, page, organisation: '', roomsRequested: null, meals: '', promoCode: d.promo_code },
     };
   }
 
@@ -451,6 +456,7 @@ function validate(p: Payload, test = false): Validation {
       organisation,
       roomsRequested,
       meals: String(p.meals ?? '').trim().slice(0, 40),
+      promoCode: '',
     },
   };
 }
@@ -497,12 +503,14 @@ async function storePartner(ref: string, d: Row, ua: string): Promise<boolean> {
 
 /** What public.submit_booking answers (phase 2a). */
 interface Outcome {
-  status: 'confirmed' | 'request' | 'price_changed';
+  status: 'confirmed' | 'request' | 'price_changed' | 'promo_invalid';
   id?: string;
   ref?: string;
   reason?: string | null;
   is_test?: boolean;
   quote?: Quote | null;
+  /** the promo code's verdict (2 Nov 2026): applied | better_offer | unpriced | ok, or — status promo_invalid — why it was refused */
+  promo?: { code: string; status: string } | null;
   low?: { night: string; left: number }[];
 }
 
@@ -537,11 +545,16 @@ async function submitBooking(ref: string, d: Row, ua: string, quoted: string | n
           page: d.page || null,
           user_agent: ua.slice(0, 300),
           quoted_total: quoted === undefined || quoted === '' || quoted === null ? null : String(quoted),
+          promo_code: d.promoCode || null,
         },
       }),
     });
     if (!res.ok) {
-      console.error('submit_booking failed', ref, res.status, await res.text());
+      const text = await res.text();
+      // a code the database refuses (promo_<status>, 22023): nothing stored, the guest corrects the field
+      const promo = /"message"\s*:\s*"promo_([a-z_]+)"/.exec(text);
+      if (promo) return { status: 'promo_invalid', promo: { code: d.promoCode, status: promo[1] === 'format' ? 'format' : promo[1] } };
+      console.error('submit_booking failed', ref, res.status, text);
       return null;
     }
     return (await res.json()) as Outcome;
@@ -692,7 +705,10 @@ Deno.serve(async (req) => {
     outcome = await submitBooking(ref, d, ua, payload.quoted_total, token);
     if (outcome?.status === 'price_changed') {
       // nothing stored: the form shows the new price and the guest submits again
-      return json(req, 409, { ok: false, error: 'price_changed', status: 'price_changed', quote: outcome.quote ?? null });
+      return json(req, 409, { ok: false, error: 'price_changed', status: 'price_changed', quote: outcome.quote ?? null, promo: outcome.promo ?? null });
+    }
+    if (outcome?.status === 'promo_invalid') {
+      return json(req, 422, { ok: false, error: 'invalid promo code', fields: { promo_code: outcome.promo?.status ?? 'unknown' } });
     }
     stored = outcome !== null;
   }
@@ -707,7 +723,7 @@ Deno.serve(async (req) => {
     notification = partnerNotification(content, pm);
     confirmation = partnerConfirmation(content, pm);
   } else {
-    const bm = { ref, locale: d.locale, branch: d.branch, room: d.room, check_in: d.check_in, check_out: d.check_out, nights: d.nights, adults: d.adults, children: d.children, extraBeds: d.extraBeds, extraBedFee: Number(outcome?.quote?.extra_bed_fee ?? content.extra_bed_fee), needsCoordination: d.needsCoordination, capacity: d.capacity, breakfast: d.breakfast as 'with' | 'without', name: d.name, phone: d.phone, email: d.email, notes: d.notes, receivedAt };
+    const bm = { ref, locale: d.locale, branch: d.branch, room: d.room, check_in: d.check_in, check_out: d.check_out, nights: d.nights, adults: d.adults, children: d.children, extraBeds: d.extraBeds, extraBedFee: Number(outcome?.quote?.extra_bed_fee ?? content.extra_bed_fee), needsCoordination: d.needsCoordination, capacity: d.capacity, breakfast: d.breakfast as 'with' | 'without', name: d.name, phone: d.phone, email: d.email, notes: d.notes, receivedAt, offer: outcome?.quote?.offer ?? null, promoCode: d.promoCode };
     if (confirmed && outcome?.quote) {
       const cm = { ...bm, quote: outcome.quote, confirmedBy: null };
       notification = confirmedNotification(content, cm);
@@ -756,6 +772,8 @@ Deno.serve(async (req) => {
     status: confirmed ? 'confirmed' : 'request',
     reason: confirmed ? null : outcome?.reason ?? null,
     quote: confirmed ? outcome?.quote ?? null : null,
+    // the promo code's verdict (applied | better_offer | unpriced | ok) — the success page names the offer from the quote
+    promo: outcome?.promo ?? null,
     is_test: test,
     hotel_email_sent: Boolean(notificationId),
     guest_email_sent: Boolean(confirmationId),

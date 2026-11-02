@@ -46,6 +46,19 @@ export interface BookingMail {
   email: string;
   notes: string;
   receivedAt: string;
+  /** the offer the stay was priced with (2 Nov 2026, «العروض») and the promo code the guest entered ('' / absent = none) */
+  offer?: QuoteOffer | null;
+  promoCode?: string;
+}
+
+/** The offer a quote / a booking carries (public.price_stay_offer → offer). */
+export interface QuoteOffer {
+  slug: string;
+  title_ar: string;
+  title_en: string;
+  kind: string;
+  promo_code?: string | null;
+  discount: number;
 }
 
 /** Price breakdown of a stay as public.submit_booking / staff_confirm_reservation return it (VAT-inclusive SAR). */
@@ -58,7 +71,12 @@ export interface Quote {
   extra_beds: number;
   extra_bed_fee: number;
   extra_beds_total: number;
+  /** the total the guest pays (after the offer) */
   total: number;
+  /** the total before the offer and the offer's discount (2 Nov 2026); absent on quotes stored before offers */
+  base_total?: number | null;
+  discount?: number | null;
+  offer?: QuoteOffer | null;
 }
 
 /** A confirmed booking (phase 2a, decision 7): instant from the website or confirmed by staff in the dashboard. */
@@ -180,6 +198,7 @@ const PRINT_CSS = `
     .kv tr.wide { width:100%; }
     .kv tr.pn { width:33.33%; }
     .kv tr.pn td.k { width:58% !important; }
+    .kv tr.wk td.k { width:22% !important; }
     .bd { border-color:#9A9A9A !important; }
     tr, .kv, .bg-soft { break-inside:avoid; page-break-inside:avoid; }
   }`;
@@ -402,6 +421,7 @@ export function bookingNotification(c: Content, d: BookingMail): Mail {
     [plainLabel(lab.room_type), roomName(c, d.room, d.branch, 'ar')],
     ...(d.extraBeds ? ([[lab.extra_beds, String(d.extraBeds)]] as [string, string][]) : []),
     [lab.breakfast, breakfast],
+    ...offerRows(c, d, 'ar'),
     [lab.full_name, d.name],
     [lab.phone, d.phone],
     [plainLabel(lab.email), d.email || '—'],
@@ -466,6 +486,7 @@ export function bookingConfirmation(c: Content, d: BookingMail): Mail {
       [plainLabel(lab.room_type), roomName(c, d.room, d.branch, L)],
       ...(d.extraBeds ? ([[lab.extra_beds, String(d.extraBeds)]] as [string, string][]) : []),
       [lab.breakfast, breakfast],
+      ...offerRows(c, d, L),
     ];
     // the fee line from the request's own fee (its snapshot of Settings), through the riyal formatter (2 Nov 2026)
     const bedsNote = d.extraBeds ? [fill(M.extra_beds_flag, { beds: String(d.extraBeds) }), fill(c.labels[L].extra_bed_fee, { fee: sar(d.extraBedFee, L) })] : [];
@@ -661,6 +682,23 @@ export function longDate(c: Content, iso: string, L: Locale): string {
   return fill(dp.field_format, vars);
 }
 
+/** The key of an «العرض: {title}» line: «العرض» / "Offer" (the label before the title). */
+function offerKey(c: Content, L: Locale): string {
+  return fill(c.quote[L].offer_line, { title: '' }).replace(/[\s:：]+$/u, '');
+}
+/** The offer rows of a booking that is not priced in the email (a request): the offer and its discount, or the code. */
+function offerRows(c: Content, d: BookingMail, L: Locale): [string, string][] {
+  const Q = c.quote[L];
+  const rows: [string, string][] = [];
+  if (d.offer && Number(d.offer.discount) > 0) {
+    rows.push([offerKey(c, L), d.offer[`title_${L}`] || d.offer.title_ar]);
+    rows.push([Q.discount_line, sar(Number(d.offer.discount), L)]);
+  }
+  const code = d.offer?.promo_code || d.promoCode;
+  if (code) rows.push([Q.promo_line, code]);
+  return rows;
+}
+
 /** Price rows of a quote: room × nights (per-night list when the rates differ), breakfast, extra beds, total. */
 function priceRows(c: Content, q: Quote, L: Locale): [string, string, string][] {
   const lab = c.labels[L];
@@ -674,8 +712,16 @@ function priceRows(c: Content, q: Quote, L: Locale): [string, string, string][] 
   // the override label of the night's language: Arabic text never appears in English content
   const labelOf = (n: Quote['nights'][number]) => (L === 'en' ? n.label_en : n.label) || '';
   if (!uniform) for (const n of q.nights) rows.push([longDate(c, n.night, L), labelOf(n) ? `${sar(Number(n.price), L)} — ${labelOf(n)}` : sar(Number(n.price), L), 'pn']);
-  if (q.breakfast === 'with') rows.push([Q.breakfast_line, sar(q.breakfast_total, L), 'wide']);
-  if (q.extra_beds > 0) rows.push([fill(Q.extra_beds_line, { beds: String(q.extra_beds) }), sar(q.extra_beds_total, L), 'wide']);
+  // with an offer line, breakfast and extra beds share one line on paper (the 30-night internal email stays one page)
+  const sub = q.offer && Number(q.discount) > 0 && q.breakfast === 'with' && q.extra_beds > 0 ? 'half' : 'wide';
+  if (q.breakfast === 'with') rows.push([Q.breakfast_line, sar(q.breakfast_total, L), sub]);
+  if (q.extra_beds > 0) rows.push([fill(Q.extra_beds_line, { beds: String(q.extra_beds) }), sar(q.extra_beds_total, L), sub]);
+  // an offer (2 Nov 2026): the total before it, the offer's name, its discount, then the total the guest pays
+  // (one line: the internal email of a 30-night stay still prints on one A4 page; total + discount = the total before it)
+  if (q.offer && Number(q.discount) > 0) {
+    const title = q.offer[`title_${L}`] || q.offer.title_ar;
+    rows.push([Q.discount_line, `${sar(Number(q.discount), L)} — ${title}`, 'wide wk']);
+  }
   rows.push([Q.total_line, sar(q.total, L), 'wide']);
   return rows;
 }

@@ -138,7 +138,7 @@ update public.settings set value = '{"same_day_cutoff": "20:00", "max_nights": 3
 select pg_temp._check('R1 anon has no privilege on any new table', not exists (
   select 1 from unnest(array['branches','room_types','rate_overrides','inventory_days','settings','staff','reservations','reservation_nights','reservation_status_history','audit_log']) t
    where has_table_privilege('anon', 'public.' || t, 'select,insert,update,delete')));
-select pg_temp._check('R1 anon executes quote_stay / room_from_prices only', has_function_privilege('anon', 'public.quote_stay(text,text,date,date,integer,integer,integer[],integer,text)', 'execute')
+select pg_temp._check('R1 anon executes quote_stay / room_from_prices only', has_function_privilege('anon', 'public.quote_stay(text,text,date,date,integer,integer,integer[],integer,text,text)', 'execute')
   and has_function_privilege('anon', 'public.room_from_prices()', 'execute')
   and not has_function_privilege('anon', 'public.submit_booking(jsonb)', 'execute')
   and not has_function_privilege('anon', 'public.staff_confirm_reservation(uuid,uuid)', 'execute')
@@ -299,7 +299,8 @@ select pg_temp._check('B18 audit: website stock change, actor website', exists (
   and (old ->> 'booked')::int = 0 and (new ->> 'booked')::int = 1));
 select pg_temp._check('B18 audit: settings change by management, old → new', exists (select 1 from public.audit_log where entity = 'settings' and actor_label = 'QA management'));
 select pg_temp._check('B18 an unchanged save writes no audit row', (select count(*) from public.audit_log where entity = 'settings' and actor_label = 'QA management') = 1);
-select pg_temp._check('B18 audit never carries guest data', not exists (select 1 from public.audit_log where (coalesce(old, '{}') || coalesce(new, '{}')) ?| array['guest_name', 'phone', 'email', 'notes']));
+-- (a dining venue's phone is the venue's public number, audited since 2 Nov 2026 — not guest data)
+select pg_temp._check('B18 audit never carries guest data', not exists (select 1 from public.audit_log where entity <> 'dining_venues' and (coalesce(old, '{}') || coalesce(new, '{}')) ?| array['guest_name', 'phone', 'email', 'notes']));
 
 -- ── B19 «يبدأ من» = lowest rate on an open night in the next 60 days ──
 update public.settings set value = '{"airport-road": true, "shafa-road": true}' where key = 'show_prices';

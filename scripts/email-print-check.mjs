@@ -43,6 +43,13 @@ const quote = (n) => {
   const room_total = nights.reduce((s, x) => s + x.price, 0);
   return { nights, count: n, room_total, breakfast: 'with', breakfast_total: 9 * 20 * n, extra_beds: 2, extra_bed_fee: 50, extra_beds_total: 100 * n, total: room_total + 180 * n + 100 * n };
 };
+// an offer (2 Nov 2026): the longest title the dashboard allows (80 characters) and a promo code — the price block gains
+// «الإجمالي قبل العرض», the offer's name, its code and «خصم العرض» and must still fit one page
+const OFFER = { slug: 'qa-offer', title_ar: 'عرض الإقامة الطويلة في الشتاء: خصم على كل ليلة مع إفطار مجاني للأطفال ومواقف مجانية'.slice(0, 80), title_en: 'Long winter stay', kind: 'percent', promo_code: 'WINTER-STAY-2026', discount: 0 };
+const withOffer = (q) => {
+  const discount = Math.round(q.room_total * 0.15 * 100) / 100;
+  return { ...q, base_total: q.total, discount, total: q.total - discount, offer: { ...OFFER, discount } };
+};
 const partner = (notes) => ({
   ref: 'AR-20261028-PRTN', locale: 'ar', requestType: 'umrah-group', organisation: 'شركة الرحلات المباركة للسفر والسياحة وخدمات المعتمرين', branch: 'both',
   check_in: '2026-11-10', check_out: '2026-11-24', nights: 14, guests: 240, rooms: 120, meals: 'breakfast', name: 'عبدالرحمن بن عبدالعزيز آل عبدالله الأنصاري',
@@ -62,6 +69,8 @@ const internal = (n, stay = 7) => [
   ['booking-notification', bookingNotification(content, booking(notesOf(n)))],
   ['confirmed-notification (website)', confirmedNotification(content, { ...booking(notesOf(n)), nights: stay, check_out: nightsList('2026-11-02', stay + 1, [0]).at(-1).night, quote: quote(stay), confirmedBy: null })],
   ['confirmed-notification (dashboard)', confirmedNotification(content, { ...booking(notesOf(n)), nights: stay, check_out: nightsList('2026-11-02', stay + 1, [0]).at(-1).night, quote: quote(stay), confirmedBy: 'استقبال طريق المطار' })],
+  ['confirmed-notification (offer)', confirmedNotification(content, { ...booking(notesOf(n)), nights: stay, check_out: nightsList('2026-11-02', stay + 1, [0]).at(-1).night, quote: withOffer(quote(stay)), confirmedBy: null })],
+  ['booking-notification (offer)', bookingNotification(content, { ...booking(notesOf(n)), offer: { ...OFFER, discount: 315 }, promoCode: OFFER.promo_code })],
   ['partner-notification', partnerNotification(content, partner(notesOf(n)))],
   ['job-application (jobs mailbox)', jobApplicationNotification(content, job(n))],
   ['job-application purge alert', jobApplicationAlert(content, { ref: 'AR-20261028-JOBS', department: 'restaurant-cafe', branch: 'any', submittedAt: '2026-10-21 23:59 (Asia/Riyadh)', attempts: 12, lastError: 'resend 422 The attachment could not be processed — a long error text from the provider kept to its first 160 characters' })],
