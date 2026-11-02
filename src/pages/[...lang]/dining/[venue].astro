@@ -10,6 +10,8 @@ import Base from '@layouts/Base.astro';
 import GallerySlider from '@components/GallerySlider.astro';
 import Icon from '@components/Icon.astro';
 import NotifyForm from '@components/NotifyForm.astro';
+import OfferList from '@components/OfferList.astro';
+import { offersFor, offersText } from '@lib/offers-data';
 import Photo from '@components/Photo.astro';
 import Placeholder from '@components/Placeholder.astro';
 import { langPaths } from '@lib/paths';
@@ -60,6 +62,8 @@ const hours = venueHoursLines(locale, v);
 const menu = v.menu === 'internal' ? localePath(locale, '/menu/') : v.menu === 'custom' ? v.menu_url : null;
 const description = paragraphs(locale === 'ar' ? v.description_ar : v.description_en);
 const path = `/dining/${v.slug}/`;
+// «العروض» (2 Nov 2026): this venue's offers marked «صفحة الفرع» (its dining section and its page)
+const venueOffers = soon ? [] : offersFor('show_branch', 'dining').filter((o) => o.venue === v.slug);
 const PHOTO_SIZES = '(min-width: 1152px) 680px, (min-width: 1024px) 60vw, 100vw';
 const jsonld = [
   breadcrumbs([
@@ -103,6 +107,12 @@ const jsonld = [
         {description.length > 0 && (
           <div class="mt-6 prose-armada leading-relaxed">
             {description.map((p) => <p>{p}</p>)}
+          </div>
+        )}
+        {venueOffers.length > 0 && (
+          <div class="mt-10">
+            <h2 class="text-xl font-bold text-midnight">{offersText(locale).dining_heading}</h2>
+            <OfferList locale={locale} offers={venueOffers} placement="dining" narrow class="mt-4" />
           </div>
         )}
         {soon && (

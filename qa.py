@@ -204,6 +204,9 @@ def main() -> int:
     fee = fees["extra_bed_per_night"]
     breakfast_fee = fees["breakfast_adult"]
     allowed_fee_lines = [ui[loc]["form"]["extra_bed_fee"].replace("{fee}", sar_text(fee, loc)) for loc in ("ar", "en")]
+    # «العروض» (2 Nov 2026): a restaurant / café offer states its own explicit price (CLAUDE.md §5) — exactly that line,
+    # built from the offers data and ui.json, is removed before the price rules; any other price still fails
+    allowed_fee_lines += offer_price_lines(ui)
     policies_json = json.loads((CONTENT / "policies.json").read_text(encoding="utf-8"))
     guests_sec = next((s for s in policies_json["page"]["sections"] if s.get("id") == "guests"), None) if "page" in policies_json else None
     if guests_sec is None:
@@ -843,6 +846,7 @@ def main() -> int:
     check_photos(rep)
     check_media(rep)
     check_gallery(rep)
+    check_offers(rep)
 
     # ---- report
     n_fail = sum(len(v) for v in rep.fail.values())
@@ -1023,6 +1027,66 @@ def check_gallery(rep: "Report") -> None:
         m = re.search(r'"@type":"CollectionPage".*?"image":\[(.*?)\]\}', html)
         if not m or m.group(1).count('"ImageObject"') != len(thumbs):
             rep.f(G, f"{lang}: the CollectionPage must list every photo of the grid")
+
+
+def offers_data() -> tuple[dict, str]:
+    """content/offers.generated.json (scripts/offers-build.mjs) and the build's Riyadh date"""
+    f = CONTENT / "offers.generated.json"
+    data = json.loads(f.read_text(encoding="utf-8")) if f.is_file() else {"source": "none"}
+    import datetime as dt
+    today = data.get("today") or (dt.datetime.now(dt.timezone.utc) + dt.timedelta(hours=3)).date().isoformat()
+    return data, today
+
+
+def offer_price_lines(ui: dict) -> list[str]:
+    data, _ = offers_data()
+    out = []
+    for o in data.get("offers") or []:
+        if o.get("category") == "dining" and o.get("dining_price") is not None:
+            for loc in ("ar", "en"):
+                out.append(ui[loc]["offers"]["dining_price"].replace("{price}", sar_text(float(o["dining_price"]), loc)))
+    return out
+
+
+def check_offers(rep: "Report") -> None:
+    """«العروض» (2 Nov 2026): an offer that has ended, has not started, or is off the site appears nowhere; the
+    runtime «من … بدل …» slot of a per-night offer is empty in the build (a discount never shows without its base price,
+    and only at runtime); the announcement bar and the pop-up exist exactly when a live offer holds them; individuals
+    offers never state a price in the static output; offers have no pages of their own (nothing in the sitemap)."""
+    G = "offers"
+    data, today = offers_data()
+    offers = data.get("offers") or []
+    def on_site(o: dict) -> bool:
+        return o.get("show_site") and (not o.get("valid_from") or o["valid_from"] <= today) and (not o.get("valid_to") or o["valid_to"] >= today)
+    gone = {o["slug"] for o in offers if not on_site(o)}
+    live = {o["slug"]: o for o in offers if on_site(o)}
+    want_bar = data.get("source") != "none" and any(o.get("show_bar") for o in live.values())
+    popup = data.get("popup") if data.get("source") != "none" else None
+    want_popup = bool(popup and popup.get("offer") in live)
+    for page in DIST.rglob("*.html"):
+        rel = "/" + page.relative_to(DIST).as_posix()
+        html = page.read_text(encoding="utf-8")
+        for slug in re.findall(r'data-offer="([a-z0-9-]+)"', html):
+            if slug in gone:
+                rep.f(G, f"{rel}: offer {slug!r} is shown although it has ended, not started or is off the site")
+        for m in re.finditer(r'<p\b[^>]*\bdata-offer-price="[^"]*"[^>]*>(.*?)</p>', html, re.S):
+            if m.group(1).strip():
+                rep.f(G, f"{rel}: the runtime offer price line must be empty in the build")
+            if "{offer}" not in m.group(0) or "{base}" not in m.group(0):
+                rep.f(G, f"{rel}: the runtime offer price template must keep its {{offer}} and {{base}} slots")
+        if rel.startswith("/menu/") or rel.startswith("/en/menu/"):
+            continue
+        is_page = "<header" in html
+        if is_page and ("data-offer-bar=" in html) != want_bar:
+            rep.f(G, f"{rel}: the announcement bar {'is missing' if want_bar else 'appears without a bar offer'}")
+        if "data-offer-popup " in html or "data-offer-popup>" in html:
+            if not want_popup:
+                rep.f(G, f"{rel}: the pop-up appears without a live pop-up")
+            if re.match(r"^/(en/)?booking/", rel):
+                rep.f(G, f"{rel}: the pop-up must never be on the booking pages")
+    sm = DIST / "sitemap-0.xml"
+    if sm.is_file() and re.search(r"/offers/[a-z0-9-]+/", sm.read_text(encoding="utf-8")):
+        rep.f(G, "sitemap: offers have no pages of their own")
 
 
 def image_exists(ref: str) -> bool:

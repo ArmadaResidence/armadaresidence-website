@@ -10,7 +10,8 @@ Steps:
      default Open Graph image from the approved SVG logo (scripts/og.mjs). The photos published from the dashboard
      «الصور» (1 Nov 2026): scripts/media-build.mjs → .media-build/images/media (copied to public/images/media, never
      committed) + content/media.generated.json (the data src/lib/content.ts merges); without the service-role key the
-     data is empty and the pages keep their placeholders.
+     data is empty and the pages keep their placeholders. The offers of «العروض» (2 Nov 2026): scripts/offers-build.mjs →
+     content/offers.generated.json (without the key: content/offers.json, the dashboard's seed).
   4. Run `astro build` → dist/ (static).
   5. Print the list of generated pages.
 
@@ -467,6 +468,56 @@ def sync_media() -> None:
         print(f"✓ synced .media-build/images/media → public/images/media ({sum(1 for p in dst.iterdir())} files)")
 
 
+def menu_offers(content: dict[str, dict]) -> None:
+    """/menu/ (the café app copied verbatim, scripts/menu-publish.py) shows the restaurant & café offers marked «المنيو»
+    in «العروض» (2 Nov 2026): a list inserted after the build, above the café footer, in the app's own colours — the app
+    itself is untouched, and nothing changes while there is no such offer. Same rules as the pages (src/lib/offers-data.ts):
+    on the site, started, not ended on this build's Riyadh date; the explicit price through sarText."""
+    data_file = CONTENT / "offers.generated.json"
+    data = json.loads(data_file.read_text(encoding="utf-8")) if data_file.is_file() else {"source": "none"}
+    if data.get("source") == "none":
+        return  # the seed holds the two b2b offers only
+    import datetime as dt
+    today = data.get("today") or (dt.datetime.now(dt.timezone.utc) + dt.timedelta(hours=3)).date().isoformat()
+    offers = [o for o in data.get("offers") or []
+              if o.get("category") == "dining" and o.get("show_menu") and o.get("show_site")
+              and (not o.get("valid_from") or o["valid_from"] <= today) and (not o.get("valid_to") or o["valid_to"] >= today)]
+    offers.sort(key=lambda o: (o.get("sort", 0), o["slug"]))
+    if not offers:
+        return
+    ui = content["ui.json"]
+    from html import escape
+    for L, rel in (("ar", "menu/index.html"), ("en", "en/menu/index.html")):
+        page = DIST / rel
+        if not page.is_file():
+            continue
+        t = ui[L]["offers"]
+        months = ui[L]["datepicker"]["months"]
+        def date(iso: str) -> str:
+            y, m, d = (int(x) for x in iso.split("-"))
+            return f"{d} {months[m - 1]} {y}" if L == "ar" else f"{d} {months[m - 1]} {y}"
+        items = []
+        for o in offers:
+            lines = [f'<h3 style="font-size:17px;font-weight:700;color:var(--ink);margin:0 0 6px">{escape(o["title_" + L])}</h3>',
+                     f'<p style="margin:0">{escape(o["description_" + L])}</p>']
+            if o.get("dining_price") is not None:
+                lines.append(f'<p style="margin:6px 0 0;font-weight:700;color:var(--ink)">{escape(t["dining_price"].replace("{price}", sar_text(float(o["dining_price"]), L)))}</p>')
+            if o.get("valid_to"):
+                lines.append(f'<p style="margin:6px 0 0">{escape(t["valid_until"].replace("{date}", date(o["valid_to"])))}</p>')
+            if o.get("terms_" + L):
+                lines.append(f'<details style="margin-top:6px"><summary style="cursor:pointer;font-weight:600">{escape(t["terms"])}</summary><p style="margin:6px 0 0;white-space:pre-line">{escape(o["terms_" + L])}</p></details>')
+            items.append(f'<li data-offer="{escape(o["slug"])}" data-offer-category="dining" data-offer-placement="menu" style="border:1px solid var(--line);border-radius:12px;padding:18px 20px;text-align:start">{"".join(lines)}</li>')
+        block = (f'<section class="site-offers" aria-labelledby="site-offers-h" style="padding:40px 24px;background:var(--cherry);color:var(--ink-dim);font-size:14px;line-height:1.8">'
+                 f'<div style="max-width:720px;margin:0 auto"><h2 id="site-offers-h" style="font-size:20px;font-weight:700;color:var(--ink);margin:0 0 16px;text-align:center">{escape(t["dining_heading"])}</h2>'
+                 f'<ul style="list-style:none;margin:0;padding:0;display:grid;gap:14px">{"".join(items)}</ul></div></section>')
+        html = page.read_text(encoding="utf-8")
+        marker = '<footer class="site">'
+        if html.count(marker) != 1:
+            fail(f"{rel}: the café footer marker is missing — cannot place the menu offers")
+        page.write_text(html.replace(marker, block + marker), encoding="utf-8")
+    print(f"✓ /menu/: {len(offers)} restaurant offer(s)")
+
+
 def run(cmd: list[str]) -> None:
     exe = shutil.which(cmd[0])
     if not exe:
@@ -499,6 +550,7 @@ def main() -> int:
         shutil.rmtree(DIST)
     sync_images()
     run(["node", "scripts/media-build.mjs"])
+    run(["node", "scripts/offers-build.mjs"])
     sync_media()
     run(["node", "scripts/lqip.mjs"])
     run(["node", "scripts/og.mjs"])
@@ -507,6 +559,7 @@ def main() -> int:
     run(["node", "scripts/email-logo.mjs"])
     os.environ["ROOM_AVAILABILITY"] = json.dumps(availability["rooms"])
     run(["npx", "astro", "build"])
+    menu_offers(content)
     (DIST / "_availability.json").write_text(json.dumps(availability, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 
     pages = sorted(p.relative_to(DIST).as_posix() for p in DIST.rglob("*.html"))

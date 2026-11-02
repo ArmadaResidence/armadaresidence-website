@@ -1,0 +1,79 @@
+---
+/**
+ * One offer of «العروض» as a card (2 Nov 2026) — individuals and restaurant / café offers (the b2b offers keep the
+ * sales sections' own design on /offers/, B2bOffers.astro). Cover from «الصور», title, description, the explicit
+ * price of a restaurant offer, the runtime «من {offer} بدل {base}» line of a per-night offer (reserved slot, empty in
+ * the build — never a discount without its base price), the validity, the promo code, the terms, the button.
+ * dataLayer: offer_view / offer_click (src/lib/offers.ts) — slug, category and placement only.
+ */
+import Icon from './Icon.astro';
+import Photo from './Photo.astro';
+import { photoProps, type Locale } from '@lib/content';
+import { diningOfferPrice, offerAnchor, offerCover, offerCta, offerHasRuntimePrice, offersText, offerText, offerTitle, offerValidity, type Offer } from '@lib/offers-data';
+
+interface Props {
+  locale: Locale;
+  offer: Offer;
+  /** where the card sits (dataLayer): offers | home | branch | dining | partners | menu */
+  placement: string;
+  /** heading level of the title */
+  level?: 2 | 3;
+  /** give the card the anchor id (only one card per offer and page carries it) */
+  anchor?: boolean;
+}
+const { locale, offer: o, placement, level = 3, anchor = false } = Astro.props;
+const t = offersText(locale);
+const cover = offerCover(o);
+const cta = offerCta(locale, o);
+const validity = offerValidity(locale, o);
+const price = diningOfferPrice(locale, o);
+const terms = offerText(locale, o, 'terms');
+const Heading = level === 2 ? 'h2' : 'h3';
+---
+
+<article
+  id={anchor ? offerAnchor(o) : undefined}
+  class="offer-card w-full bg-white border border-line rounded-card overflow-hidden flex flex-col scroll-mt-28"
+  data-offer={o.slug}
+  data-offer-category={o.category}
+  data-offer-placement={placement}
+  data-offer-until={o.valid_to ?? undefined}
+>
+  {cover && <Photo {...photoProps(locale, cover)} sizes="(min-width: 1024px) 380px, (min-width: 768px) 50vw, 100vw" imgClass="w-full h-auto" />}
+  <div class="p-6 flex flex-col gap-3 flex-1">
+    <Heading class="text-xl font-bold text-midnight">{offerTitle(locale, o)}</Heading>
+    <p class="text-ink-muted leading-relaxed">{offerText(locale, o, 'description')}</p>
+    {offerHasRuntimePrice(o) && <p class="text-sm font-semibold text-midnight min-h-5" data-offer-price={o.slug} data-template={t.from_line} aria-live="polite"></p>}
+    {price && <p class="text-sm font-semibold text-midnight" data-offer-dining-price>{price}</p>}
+    {validity && <p class="text-sm text-ink-muted">{validity}</p>}
+    {
+      o.promo_code && (
+        <p class="text-sm text-ink">
+          <span>{t.code_label}:</span> <span class="latin font-semibold tracking-wide text-midnight" dir="ltr">{o.promo_code}</span>
+        </p>
+      )
+    }
+    {
+      terms && (
+        <details class="text-sm text-ink-muted">
+          <summary class="cursor-pointer font-semibold text-midnight">{t.terms}</summary>
+          <p class="mt-2 whitespace-pre-line leading-relaxed">{terms}</p>
+        </details>
+      )
+    }
+    {
+      cta && (
+        <a
+          href={cta.href}
+          class="mt-auto self-start inline-flex items-center justify-center gap-2 bg-bronze-deep text-white! font-semibold px-5 py-3 rounded hover:bg-bronze-text transition-colors"
+          data-offer-cta={o.cta}
+          rel={/^https?:/.test(cta.href) ? 'noopener' : undefined}
+          target={/^https?:/.test(cta.href) ? '_blank' : undefined}
+        >
+          <span>{cta.label}</span>
+          <Icon name="arrow" size={18} class="icon-arrow rtl:rotate-180" />
+        </a>
+      )
+    }
+  </div>
+</article>

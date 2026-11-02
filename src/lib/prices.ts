@@ -28,6 +28,19 @@ export interface Quote {
   extra_beds_total: number;
   total: number | null;
   currency: 'SAR';
+  /** the total before the offer and its discount (2 Nov 2026, «العروض» — the server applies at most one offer) */
+  base_total?: number | null;
+  discount?: number;
+  offer?: QuoteOffer | null;
+}
+export interface QuoteOffer {
+  id: string;
+  slug: string;
+  title_ar: string;
+  title_en: string;
+  kind: string;
+  promo_code: string | null;
+  discount: number;
 }
 export interface QuoteResult {
   ok: boolean;
@@ -38,6 +51,8 @@ export interface QuoteResult {
   limits?: { same_day_cutoff?: string; max_nights?: number };
   room?: { slug: string; name_ar: string; name_en: string };
   quote?: Quote;
+  /** the typed promo code and what the database says about it (applied | better_offer | unpriced | unknown | …) */
+  promo?: { code: string; status: string } | null;
 }
 export interface QuoteParams {
   branch: string;
@@ -49,6 +64,8 @@ export interface QuoteParams {
   children_ages: number[] | null;
   extra_beds: number;
   breakfast: 'with' | 'without' | '';
+  /** upper case, '' = none */
+  promo_code?: string;
 }
 export interface Supa {
   url: string;
@@ -83,6 +100,7 @@ export async function quoteStay(s: Supa, p: QuoteParams, signal?: AbortSignal): 
         p_children_ages: p.children_ages,
         p_extra_beds: p.extra_beds,
         p_breakfast: p.breakfast || 'without',
+        ...(p.promo_code ? { p_promo_code: p.promo_code } : {}),
       },
       signal,
     );

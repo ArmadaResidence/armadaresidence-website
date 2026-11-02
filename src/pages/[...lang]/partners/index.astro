@@ -5,6 +5,8 @@ import LpShell from '@components/lp/LpShell.astro';
 import LpImg from '@components/lp/LpImg.astro';
 import LpShead from '@components/lp/LpShead.astro';
 import LpUnitTable from '@components/lp/LpUnitTable.astro';
+import OfferList from '@components/OfferList.astro';
+import { offersFor, offersText } from '@lib/offers-data';
 import { langPaths } from '@lib/paths';
 import { branchPath, pageSeo, type Locale } from '@lib/content';
 import { enquiryHref, ICON, lp, lpPath, T, waHrefSales } from '@lib/partners';
@@ -17,6 +19,8 @@ const { locale } = Astro.props;
 const s = pageSeo(locale, 'partners');
 const H = lp.hero;
 const wa = T(locale, lp.form.wa_intro);
+// «العروض» (2 Nov 2026): the companies & partners offers marked «صفحة الشركاء» (no prices — b2b offers carry none)
+const partnerOffers = offersFor('show_partners', 'b2b');
 const features = [
   { sec: lp.umrah, img: 'umrah-room', slot: 'index-umrah', alt: { en: 'King room — Airport Road', ar: 'غرفة كينج — طريق المطار' }, request: 'umrah-group', page: 'groups-umrah', cls: 'dkbg' },
   { sec: lp.corp, img: 'suite-living', slot: 'index-corporate', alt: { en: 'Suite living room — Airport Road', ar: 'صالة الجناح — طريق المطار' }, request: 'corporate', page: 'corporate', cls: 'rev' },
@@ -139,6 +143,17 @@ const features = [
           </div>
         </section>
       ))
+    }
+
+    {
+      partnerOffers.length > 0 && (
+        <section class="band" id="offers" data-partners-offers>
+          <div class="wrap">
+            <LpShead eyebrow={offersText(locale).dining_heading} h2={offersText(locale).partners_heading} />
+            <OfferList locale={locale} offers={partnerOffers} placement="partners" class="mt-8" />
+          </div>
+        </section>
+      )
     }
 
     <section class="band built">

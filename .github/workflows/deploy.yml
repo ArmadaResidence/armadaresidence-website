@@ -6,7 +6,12 @@ name: Build, QA and deploy to GitHub Pages
 # (`media_job`); the `report` job tells the dashboard published / failed with this run's link. `dry_run` builds and
 # uploads the site as an artifact without deploying (`media_sample` adds the generated sample set instead of the
 # published photos — the publish-time measurement); a dry run never takes the Pages concurrency slot.
+# Offers (dashboard «العروض», 2 Nov 2026): the site shows an offer only between its start and end dates (Riyadh days),
+# so a scheduled build at 00:07 Riyadh (21:07 UTC) brings in the offers that start today and drops the ones that ended
+# yesterday — the pages, the announcement bar and the pop-up (the browser also hides an ended offer before that run).
 on:
+  schedule:
+    - cron: '7 21 * * *'
   push:
     branches: [main]
   workflow_dispatch:

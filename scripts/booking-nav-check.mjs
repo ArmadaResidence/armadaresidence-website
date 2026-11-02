@@ -221,6 +221,16 @@ async function run(vp, lang) {
       await page.locator('form[data-booking-form][data-booking-ready] [data-daterange][data-bound]').waitFor({ state: 'attached', timeout: 8000 });
       verify('/booking/ page', await formState('form[data-booking-form]'), { branch: r.branch, room: r.slug, dates: true });
     }
+    // «العروض» (2 Nov 2026): an offer's link carries its promo code (?promo=) — the field takes it, upper case; a build
+    // without a live code has no field at all (scripts/offers-site-check.mjs covers the code itself)
+    step = 'promo prefill';
+    await page.goto(`${BASE}${L}/booking/?branch=airport-road&promo=weekend10`, { waitUntil: 'load' });
+    await page.locator('form[data-booking-form][data-booking-ready]').waitFor({ state: 'attached', timeout: 8000 });
+    const promoField = page.locator('form[data-booking-form] input[name="promo_code"]');
+    if (await promoField.count()) {
+      const v = await promoField.inputValue();
+      if (v !== 'WEEKEND10') fails.push(`${tag} /booking/?promo=: the code field holds ${JSON.stringify(v)}, not WEEKEND10`);
+    } else notes.push('no live promo code in this build: no code field (expected)');
   } catch (e) {
     fails.push(`${tag} direct loads aborted at ${here()} (${step}): ${String(e).split(/\r?\n/)[0].slice(0, 180)}`);
   }

@@ -1,0 +1,37 @@
+---
+/**
+ * A titled block of offer cards (2 Nov 2026, «العروض») for the home page, a branch page, a venue page and /partners/.
+ * Rendered by the page only when it has offers for that placement (nothing changes on a page without them).
+ */
+import Icon from './Icon.astro';
+import OfferList from './OfferList.astro';
+import { localePath, type Locale } from '@lib/content';
+import { offersText, type Offer } from '@lib/offers-data';
+
+interface Props {
+  locale: Locale;
+  offers: Offer[];
+  placement: string;
+  heading: string;
+  /** «كل العروض» → /offers/ */
+  allLink?: boolean;
+  class?: string;
+}
+const { locale, offers, placement, heading, allLink = false, class: className = 'mx-auto max-w-6xl px-4 py-16' } = Astro.props;
+const t = offersText(locale);
+---
+
+<section class={className} aria-labelledby={`offers-${placement}-heading`} data-offers-section={placement}>
+  <div class="flex flex-wrap items-end justify-between gap-4">
+    <h2 id={`offers-${placement}-heading`} class="text-2xl md:text-3xl font-bold text-midnight">{heading}</h2>
+    {
+      allLink && (
+        <a href={localePath(locale, '/offers/')} class="inline-flex items-center gap-2 text-sm font-semibold link-bronze">
+          <span>{t.home_all}</span>
+          <Icon name="arrow" size={14} class="icon-arrow rtl:rotate-180" />
+        </a>
+      )
+    }
+  </div>
+  <OfferList locale={locale} offers={offers} placement={placement} class="mt-8" />
+</section>

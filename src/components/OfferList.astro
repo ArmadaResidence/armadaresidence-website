@@ -1,0 +1,48 @@
+---
+/**
+ * A list of offer cards (2 Nov 2026, «العروض») for one placement: /offers/, the home page, a branch page, a venue's
+ * dining section, /partners/. Renders nothing without offers. The runtime per-night prices and the dataLayer events
+ * live in src/lib/offers.ts (loaded only on pages that show an offer).
+ */
+import OfferCard from './OfferCard.astro';
+import type { Locale } from '@lib/content';
+import type { Offer } from '@lib/offers-data';
+
+interface Props {
+  locale: Locale;
+  offers: Offer[];
+  placement: string;
+  level?: 2 | 3;
+  /** the cards carry the #offer-<slug> anchors (on /offers/ only) */
+  anchors?: boolean;
+  /** two columns at most (a list inside a page column) */
+  narrow?: boolean;
+  class?: string;
+}
+const { locale, offers, placement, level = 3, anchors = false, narrow = false, class: className = '' } = Astro.props;
+const endpoint = import.meta.env.PUBLIC_BOOKING_ENDPOINT ?? '';
+const supaUrl = (() => {
+  try {
+    return endpoint ? new URL(endpoint).origin : '';
+  } catch {
+    return '';
+  }
+})();
+const supaKey = import.meta.env.PUBLIC_SUPABASE_ANON_KEY ?? '';
+---
+
+{
+  offers.length > 0 && (
+    <ul class:list={[narrow ? 'grid gap-6 sm:grid-cols-2' : 'grid gap-6 md:grid-cols-2 lg:grid-cols-3', className]} data-offer-list data-supa-url={supaUrl || undefined} data-supa-key={supaKey || undefined}>
+      {offers.map((o) => (
+        <li class="flex">
+          <OfferCard locale={locale} offer={o} placement={placement} level={level} anchor={anchors} />
+        </li>
+      ))}
+    </ul>
+  )
+}
+
+<script>
+  import '@lib/offers';
+</script>

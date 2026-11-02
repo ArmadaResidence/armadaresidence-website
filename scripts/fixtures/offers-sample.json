@@ -1,0 +1,72 @@
+{
+  "_note": "Sample offers manifest for scripts/offers-site-check.mjs (OFFERS_FIXTURE): the shape of public.offers_site_manifest. Test copy only — never deployed; the covers are existing approved Discover Taif photos. Dates are far in the past / future so the sample holds on any build day.",
+  "at": "2026-11-02T12:00:00Z",
+  "today": null,
+  "offers": [
+    {
+      "id": "00000000-0000-4000-8000-000000000001", "slug": "qa-autumn-stay", "category": "individuals", "branches": ["airport-road", "shafa-road"], "venue": null,
+      "title_ar": "عرض اختبار: إقامة الخريف", "title_en": "Test offer: autumn stay",
+      "description_ar": "نص اختبار لبطاقة عرض الأفراد.", "description_en": "Test copy for an individuals offer card.",
+      "terms_ar": "شروط اختبار: لا يُجمع مع عرض آخر.", "terms_en": "Test terms: not combined with another offer.",
+      "valid_from": null, "valid_to": "2099-12-31", "kind": "percent", "percent": 15, "fixed_price": null, "stay_nights": null, "promo_code": null,
+      "room_types": [], "min_nights": 2, "dining_price": null, "cta": "book", "quote_request": null, "whatsapp": false, "whatsapp_prefill_ar": "", "whatsapp_prefill_en": "",
+      "show_site": true, "show_home": true, "show_offers": true, "show_branch": true, "show_partners": false, "show_menu": false, "show_bar": true, "sort": 0,
+      "cover": { "base": "/images/taif/01-al-hada-cable-car", "widths": [800, 1400], "width": 1400, "height": 933, "formats": ["webp"], "alt_ar": "طريق الهدا والتلفريك في الطائف", "alt_en": "The Al Hada road and cable car in Taif" }
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000002", "slug": "qa-weekend-code", "category": "individuals", "branches": ["airport-road"], "venue": null,
+      "title_ar": "عرض اختبار: كود نهاية الأسبوع", "title_en": "Test offer: weekend code",
+      "description_ar": "نص اختبار لعرض بكود.", "description_en": "Test copy for a promo-code offer.",
+      "terms_ar": "", "terms_en": "",
+      "valid_from": "2020-01-01", "valid_to": "2099-12-31", "kind": "fixed_price", "percent": null, "fixed_price": 150, "stay_nights": null, "promo_code": "WEEKEND10",
+      "room_types": ["airport-road/king-room"], "min_nights": 1, "dining_price": null, "cta": "book", "quote_request": null, "whatsapp": false, "whatsapp_prefill_ar": "", "whatsapp_prefill_en": "",
+      "show_site": true, "show_home": false, "show_offers": true, "show_branch": true, "show_partners": false, "show_menu": false, "show_bar": false, "sort": 1,
+      "cover": { "base": "/images/taif/05-jisr-alluwzia", "widths": [800, 1400], "width": 1400, "height": 933, "formats": ["webp"], "alt_ar": "منتجع جسر اللوزية في الطائف", "alt_en": "Jisr Al-Lawziyah resort in Taif" }
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000003", "slug": "qa-scheduled", "category": "individuals", "branches": ["shafa-road"], "venue": null,
+      "title_ar": "عرض اختبار مجدول", "title_en": "Test scheduled offer", "description_ar": "يبدأ لاحقًا.", "description_en": "Starts later.", "terms_ar": "", "terms_en": "",
+      "valid_from": "2099-01-01", "valid_to": "2099-12-31", "kind": "free_breakfast", "percent": null, "fixed_price": null, "stay_nights": null, "promo_code": null,
+      "room_types": [], "min_nights": 1, "dining_price": null, "cta": "book", "quote_request": null, "whatsapp": false, "whatsapp_prefill_ar": "", "whatsapp_prefill_en": "",
+      "show_site": true, "show_home": true, "show_offers": true, "show_branch": true, "show_partners": false, "show_menu": false, "show_bar": false, "sort": 2
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000004", "slug": "qa-ended", "category": "individuals", "branches": ["shafa-road"], "venue": null,
+      "title_ar": "عرض اختبار منتهٍ", "title_en": "Test ended offer", "description_ar": "انتهى.", "description_en": "Ended.", "terms_ar": "", "terms_en": "",
+      "valid_from": null, "valid_to": "2020-01-31", "kind": "stay_pay", "percent": null, "fixed_price": null, "stay_nights": 3, "promo_code": null,
+      "room_types": [], "min_nights": 3, "dining_price": null, "cta": "book", "quote_request": null, "whatsapp": false, "whatsapp_prefill_ar": "", "whatsapp_prefill_en": "",
+      "show_site": true, "show_home": true, "show_offers": true, "show_branch": true, "show_partners": false, "show_menu": false, "show_bar": false, "sort": 3
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000010", "slug": "umrah-groups", "category": "b2b", "branches": ["airport-road", "shafa-road"], "venue": null,
+      "title_ar": "أسعار خاصة لشركات العمرة والمجموعات", "title_en": "Special rates for Umrah operators and groups",
+      "description_ar": "نقدّم أسعارًا خاصة لشركات العمرة والمجموعات في فرعي طريق المطار وطريق الشفا. أرسلوا عدد الغرف وتواريخ الإقامة وعدد الأشخاص إلى فريق المبيعات، ليصلكم عرض سعر مكتوب.",
+      "description_en": "We offer special rates for Umrah operators and groups at both the Airport Road and Shafa Road properties. Send the number of rooms, the stay dates and the number of guests to the sales team to receive a written quote.",
+      "terms_ar": "", "terms_en": "", "valid_from": null, "valid_to": null, "kind": "none", "percent": null, "fixed_price": null, "stay_nights": null, "promo_code": null,
+      "room_types": [], "min_nights": 1, "dining_price": null, "cta": "quote", "quote_request": "umrah-group", "whatsapp": true,
+      "whatsapp_prefill_ar": "مرحبًا، أرغب في طلب عرض سعر لمجموعة لدى أرمادا ريزيدنس.", "whatsapp_prefill_en": "Hello, I'd like to request a group quote from Armada Residence.",
+      "show_site": true, "show_home": false, "show_offers": true, "show_branch": false, "show_partners": false, "show_menu": false, "show_bar": false, "sort": 0
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000011", "slug": "qa-partners-extra", "category": "b2b", "branches": ["airport-road", "shafa-road"], "venue": null,
+      "title_ar": "عرض اختبار للشركات", "title_en": "Test offer for companies", "description_ar": "نص اختبار لعرض الشركات بلا أسعار.", "description_en": "Test copy for a companies offer, no prices.",
+      "terms_ar": "", "terms_en": "", "valid_from": null, "valid_to": null, "kind": "none", "percent": null, "fixed_price": null, "stay_nights": null, "promo_code": null,
+      "room_types": [], "min_nights": 1, "dining_price": null, "cta": "quote", "quote_request": "corporate", "whatsapp": false, "whatsapp_prefill_ar": "", "whatsapp_prefill_en": "",
+      "show_site": true, "show_home": false, "show_offers": true, "show_branch": false, "show_partners": true, "show_menu": false, "show_bar": false, "sort": 1
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000020", "slug": "qa-cafe-breakfast", "category": "dining", "branches": ["airport-road"], "venue": "armada-residence-cafe",
+      "title_ar": "عرض اختبار للمقهى", "title_en": "Test café offer", "description_ar": "نص اختبار لعرض المطعم والمقهى.", "description_en": "Test copy for a restaurant & café offer.",
+      "terms_ar": "", "terms_en": "", "valid_from": null, "valid_to": "2099-12-31", "kind": "none", "percent": null, "fixed_price": null, "stay_nights": null, "promo_code": null,
+      "room_types": [], "min_nights": 1, "dining_price": 45, "cta": "menu", "quote_request": null, "whatsapp": false, "whatsapp_prefill_ar": "", "whatsapp_prefill_en": "",
+      "show_site": true, "show_home": true, "show_offers": false, "show_branch": true, "show_partners": false, "show_menu": true, "show_bar": false, "sort": 0
+    }
+  ],
+  "popup": {
+    "id": "00000000-0000-4000-8000-0000000000aa", "offer": "qa-autumn-stay", "offer_id": "00000000-0000-4000-8000-000000000001",
+    "show_image": true, "title_ar": "عرض الخريف", "title_en": "Autumn offer", "text_ar": "نص اختبار قصير للنافذة المنبثقة.", "text_en": "Short test copy for the pop-up.",
+    "button_ar": "اعرف أكثر", "button_en": "Learn more", "button_color": "bronze", "button_shape": "pill", "entrance": "slide-up", "enabled": true,
+    "starts_at": null, "ends_at": null, "frequency": "visit", "frequency_days": null, "delay_seconds": 1,
+    "pages": ["home", "offers", "branches"], "hide_on_mobile": false
+  }
+}

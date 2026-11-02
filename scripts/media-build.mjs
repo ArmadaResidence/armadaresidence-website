@@ -15,7 +15,8 @@
 // Dining (2 Nov 2026): the published venues of «المطاعم والمقاهي» (public.dining_site_manifest, service role — or the
 // fixture's venues.json) go into the same data file (`venues`: active and coming soon only; a hidden venue never), each
 // SVG logo as its own content-addressed file; the targets dining (per venue), hall and place (per Discover Taif place,
-// cover only) are rendered like the room photos (`dining`, `halls`, `places`).
+// cover only) are rendered like the room photos (`dining`, `halls`, `places`). Offers (2 Nov 2026): the target offer
+// (one per offer of «العروض», cover only, no OG image) → `offers`.
 // Partners pages (2 Nov 2026): the target partners (one per photo slot of /partners/, content/partners-photos.json) is
 // cropped to that slot's legacy ratio, no OG crop (`partners`: { <slot>: { photos: [one] } }).
 // Without SUPABASE_SERVICE_ROLE_KEY (a local build, the check suite) and without a fixture the data file is written
@@ -230,7 +231,7 @@ async function photo(it, prefix, withOg) {
 }
 
 // ---------- the data the pages read ----------
-const data = { _note: NOTE, source, manifest_at: manifest.at, dry_job: DRY ? JOB || true : undefined, rooms: {}, branches: {}, sections: {}, dining: {}, halls: {}, places: {}, partners: {}, home: null, lqip: {}, venues: [] };
+const data = { _note: NOTE, source, manifest_at: manifest.at, dry_job: DRY ? JOB || true : undefined, rooms: {}, branches: {}, sections: {}, dining: {}, halls: {}, places: {}, partners: {}, offers: {}, home: null, lqip: {}, venues: [] };
 for (const v of venues) {
   const { logo_svg: logo, ...rest } = v;
   const entry = { ...rest };
@@ -252,12 +253,12 @@ const ordered = (list) => [...list.filter((i) => i.slot === 'cover'), ...list.fi
 for (const [k, list] of byTarget) {
   const [target, key] = [k.slice(0, k.indexOf(':')), k.slice(k.indexOf(':') + 1)];
   try {
-    if (['room', 'branch', 'section', 'dining', 'hall', 'place', 'partners'].includes(target)) {
-      const prefix = ['section', 'dining', 'hall', 'place', 'partners'].includes(target) ? `${target}-${key}` : key.replace('/', '-');
+    if (['room', 'branch', 'section', 'dining', 'hall', 'place', 'partners', 'offer'].includes(target)) {
+      const prefix = ['section', 'dining', 'hall', 'place', 'partners', 'offer'].includes(target) ? `${target}-${key}` : key.replace('/', '-');
       const photos = [];
       let og;
       for (const it of ordered(list)) {
-        const r = await photo(it, prefix, it.slot === 'cover' && target !== 'partners');
+        const r = await photo(it, prefix, it.slot === 'cover' && target !== 'partners' && target !== 'offer');
         if (it.slot === 'cover') {
           r.photo.cover = true;
           og = r.og;
@@ -275,7 +276,7 @@ for (const [k, list] of byTarget) {
           data.lqip[r.lqip[0]] = r.lqip[1];
         }
       }
-      data[{ room: 'rooms', branch: 'branches', section: 'sections', dining: 'dining', hall: 'halls', place: 'places', partners: 'partners' }[target]][key] = entry;
+      data[{ room: 'rooms', branch: 'branches', section: 'sections', dining: 'dining', hall: 'halls', place: 'places', partners: 'partners', offer: 'offers' }[target]][key] = entry;
       log(`  ✓ ${k}: ${photos.length} photo(s)${entry.story ? ` + ${Object.keys(entry.story).length} story scene(s)` : ''}`);
     } else if (target === 'home') {
       const posterItem = list.find((i) => i.slot === 'hero-poster');
@@ -355,7 +356,7 @@ const report = {
   seconds: { total: (Date.now() - t0) / 1000, download: stats.download_ms / 1000, render: stats.render_ms / 1000 }, problems,
 };
 writeFileSync(join(OUT, 'report.json'), JSON.stringify(report, null, 2) + '\n');
-for (const k of ['rooms', 'branches', 'sections', 'dining', 'halls', 'places', 'partners']) if (!Object.keys(data[k]).length) delete data[k];
+for (const k of ['rooms', 'branches', 'sections', 'dining', 'halls', 'places', 'partners', 'offers']) if (!Object.keys(data[k]).length) delete data[k];
 if (!data.venues.length) delete data.venues;
 if (!data.home) delete data.home;
 writeFileSync(DATA, JSON.stringify(data, null, 1) + '\n');

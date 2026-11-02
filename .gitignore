@@ -57,3 +57,4 @@ reports/trace.json
 content/media.generated.json
 # the fees the static site states, from Settings at build time (build.py resolve_fees, 2 Nov 2026)
 content/fees.generated.json
+content/offers.generated.json

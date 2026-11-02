@@ -12,8 +12,8 @@ import { execFileSync } from 'node:child_process';
 import { pathToFileURL } from 'node:url';
 
 // the suite, in the order check-all runs it
-export const STATIC_CHECKS = ['typecheck', 'admin-digits-check', 'admin-format-check', 'auth-emails-check', 'whatsapp-check', 'email-print-check'];
-export const BROWSER_CHECKS = ['booking-nav-check', 'drawer-check', 'booking-whatsapp-check', 'datepicker-check', 'motion-check', 'booking-instant-check', 'partners-form-check', 'careers-form-check', 'dining-site-check', 'gallery-site-check', 'partners-button-check', 'a11y-check'];
+export const STATIC_CHECKS = ['typecheck', 'admin-digits-check', 'admin-format-check', 'auth-emails-check', 'whatsapp-check', 'email-print-check', 'offers-engine-check'];
+export const BROWSER_CHECKS = ['booking-nav-check', 'drawer-check', 'booking-whatsapp-check', 'datepicker-check', 'motion-check', 'booking-instant-check', 'partners-form-check', 'careers-form-check', 'dining-site-check', 'gallery-site-check', 'offers-site-check', 'partners-button-check', 'a11y-check'];
 // every commit (build and qa.py too, unless the commit is docs only)
 export const FAST_CHECKS = ['typecheck', 'admin-digits-check', 'admin-format-check', 'auth-emails-check', 'whatsapp-check'];
 // a11y-check on sample pages for a content change: home, one branch, one room, offers, policies — both languages
@@ -95,9 +95,20 @@ const RULES = [
     checks: ['gallery-site-check'],
   },
   {
+    // «العروض» (2 Nov 2026): /offers/, the cards and their placements, the announcement bar, the pop-up, the promo-code
+    // field of the booking form
+    name: 'offers',
+    test: (f) =>
+      comp(['OfferCard', 'OfferList', 'OffersSection', 'OfferBar', 'OfferPopup', 'Header', 'BookingForm']).test(f) ||
+      lib(['offers', 'offers-data', 'popup', 'drawer', 'prices']).test(f) ||
+      f === 'src/pages/[...lang]/offers.astro' ||
+      f === 'src/layouts/Base.astro',
+    checks: ['offers-site-check'],
+  },
+  {
     name: 'email.ts',
     test: (f) => f === EMAIL,
-    checks: ['email-print-check', 'auth-emails-check', 'whatsapp-check'],
+    checks: ['email-print-check', 'auth-emails-check', 'whatsapp-check', 'offers-engine-check'],
   },
 ];
 

@@ -1,8 +1,11 @@
 ---
 import Base from '@layouts/Base.astro';
 import Icon from '@components/Icon.astro';
+import OfferList from '@components/OfferList.astro';
+import Photo from '@components/Photo.astro';
 import { langPaths } from '@lib/paths';
-import { contact, localePath, mailHref, offers, pageSeo, partnersPath, ui, waHref, type Locale } from '@lib/content';
+import { contact, localePath, mailHref, offers, pageSeo, partnersPath, photoProps, ui, waHref, type Locale } from '@lib/content';
+import { offerAnchor, offerCover, offerCta, offersFor, offersText, offerText, offerTitle } from '@lib/offers-data';
 
 export const getStaticPaths = langPaths;
 
@@ -13,18 +16,18 @@ const { locale } = Astro.props;
 const t = ui(locale);
 const s = pageSeo(locale, 'offers');
 const sales = contact.sales;
-const g = offers.groups;
-const corp = offers.corporate;
 const L = (obj: Record<string, string>, key: string) => obj[`${key}_${locale}`];
+const ot = offersText(locale);
 
-/* Decision 22 Oct 2026: two buttons per section — the partners enquiry form (groups preset to the existing
-   umrah-group type; corporate with no preset) and the sales WhatsApp with a prefilled message. WhatsApp links
-   carry data-wa-link / data-wa-destination so the sticky-button script pushes `whatsapp_click` for them too. */
-const enquiryForm = `${partnersPath(locale, 'enquiry')}#enquiry-form`;
-const groupsQuote = `${partnersPath(locale, 'enquiry')}?request=umrah-group#enquiry-form`;
-const groupsWa = waHref(sales.whatsapp, L(g, 'whatsapp_prefill'));
-const corpWa = waHref(sales.whatsapp, L(corp, 'whatsapp_prefill'));
-const hasOffers = offers.current_offers.length > 0;
+/* «العروض» (2 Nov 2026): the page renders the offers published in the dashboard. Companies & partners (b2b) keep the
+   design of the two sales sections they replaced (decision 22 Oct 2026): alternating midnight / white cards, each with
+   the partners enquiry form (preset to the offer's request type) and the sales WhatsApp with the offer's prefilled
+   message; the sales scope and email under the first card, the partners link and the sales note under the last. With
+   the seeded offers (the two sections) the page is unchanged. Individuals offers are cards; with both kinds, tabs (a
+   panel shown later has no reveal: it would wait for an intersection that a hidden panel never has). */
+const individuals = offersFor('show_offers', 'individuals');
+const b2b = offersFor('show_offers', 'b2b');
+const tabs = individuals.length > 0 && b2b.length > 0;
 ---
 
 <Base locale={locale} path="/offers/" title={s.title} description={s.description}>
@@ -32,78 +35,121 @@ const hasOffers = offers.current_offers.length > 0;
     <h1 class="text-3xl md:text-4xl font-bold text-midnight">{t.offers.heading}</h1>
 
     {
-      hasOffers && (
-        <div class="reveal reveal-lg enter mt-8 bg-white border border-line rounded-card p-6">
-          <h2 class="text-sm font-semibold uppercase tracking-wide text-bronze-text">{t.offers.no_offers_heading}</h2>
-          <ul class="mt-4 space-y-4">
-            {(offers.current_offers as Record<string, string>[]).map((o) => (
-              <li>
-                <h3 class="font-semibold text-midnight">{L(o, 'title')}</h3>
-                <p class="text-sm text-ink-muted mt-1">{L(o, 'body')}</p>
-              </li>
-            ))}
-          </ul>
+      tabs && (
+        <div class="mt-8 flex flex-wrap gap-2 border-b border-line" role="tablist" aria-label={ot.tabs_label} data-offer-tabs>
+          <button type="button" role="tab" id="offers-tab-individuals" aria-controls="offers-panel-individuals" aria-selected="true" tabindex="0" class="offers-tab">
+            {ot.tab_individuals}
+          </button>
+          <button type="button" role="tab" id="offers-tab-b2b" aria-controls="offers-panel-b2b" aria-selected="false" tabindex="-1" class="offers-tab">
+            {ot.tab_b2b}
+          </button>
         </div>
       )
     }
 
-    <div class:list={['reveal-group enter grid gap-8 lg:grid-cols-2', hasOffers ? 'mt-10' : 'mt-8']}>
-      <section class="bg-midnight text-porcelain rounded-card p-8">
-        <h2 class="text-2xl font-bold">{L(g, 'heading')}</h2>
-        <p class="mt-3 text-porcelain/85 leading-relaxed">{L(g, 'body')}</p>
-        <div class="mt-6 flex flex-col sm:flex-row sm:flex-wrap gap-3">
-          <a href={groupsQuote} class="inline-flex items-center justify-center gap-2 bg-bronze-deep text-white font-semibold px-5 py-3 rounded hover:bg-bronze-text transition-colors">
-            <span>{L(g, 'cta')}</span>
-            <Icon name="arrow" size={18} class="icon-arrow rtl:rotate-180" />
-          </a>
-          <a
-            href={groupsWa}
-            class="inline-flex items-center justify-center gap-2 border border-porcelain/50 font-semibold px-5 py-3 rounded hover:bg-porcelain hover:text-midnight transition-colors"
-            rel="noopener"
-            target="_blank"
-            data-wa-link
-            data-wa-destination="sales"
-          >
-            <Icon name="whatsapp" size={18} />
-            <span>{L(g, 'whatsapp_cta')}</span>
-          </a>
+    {
+      individuals.length > 0 && (
+        <div id="offers-panel-individuals" role={tabs ? 'tabpanel' : undefined} aria-labelledby={tabs ? 'offers-tab-individuals' : undefined} tabindex={tabs ? 0 : undefined}>
+          <OfferList locale={locale} offers={individuals} placement="offers" level={2} anchors class="mt-8" />
         </div>
-        <p class="mt-5 text-sm text-porcelain/80">
-          <span>{t.offers.sales_scope}: {L(sales as unknown as Record<string, string>, 'scope')}</span>
-          <br />
-          <a href={mailHref(sales.email)} class="latin hover:text-bronze-text" dir="ltr">{sales.email}</a>
-        </p>
-      </section>
+      )
+    }
 
-      <section class="bg-white border border-line rounded-card p-8">
-        <h2 class="text-2xl font-bold text-midnight">{L(corp, 'heading')}</h2>
-        <p class="mt-3 text-ink-muted leading-relaxed">{L(corp, 'body')}</p>
-        <div class="mt-6 flex flex-col sm:flex-row sm:flex-wrap gap-3">
-          <a href={enquiryForm} class="inline-flex items-center justify-center gap-2 bg-bronze-deep text-white font-semibold px-5 py-3 rounded hover:bg-bronze-text transition-colors">
-            <span>{L(corp, 'cta')}</span>
-            <Icon name="arrow" size={18} class="icon-arrow rtl:rotate-180" />
-          </a>
-          <a
-            href={corpWa}
-            class="inline-flex items-center justify-center gap-2 border border-midnight text-midnight font-semibold px-5 py-3 rounded hover:bg-midnight hover:text-white transition-colors"
-            rel="noopener"
-            target="_blank"
-            data-wa-link
-            data-wa-destination="sales"
-          >
-            <Icon name="whatsapp" size={18} />
-            <span>{L(corp, 'whatsapp_cta')}</span>
-          </a>
+    {
+      b2b.length > 0 && (
+        <div id={tabs ? 'offers-panel-b2b' : undefined} role={tabs ? 'tabpanel' : undefined} aria-labelledby={tabs ? 'offers-tab-b2b' : undefined} tabindex={tabs ? 0 : undefined} hidden={tabs}>
+          <div class:list={[tabs ? 'grid gap-8 lg:grid-cols-2' : 'reveal-group enter grid gap-8 lg:grid-cols-2', individuals.length > 0 && !tabs ? 'mt-10' : 'mt-8']} data-offer-list>
+            {b2b.map((o, i) => {
+              const dark = i % 2 === 0;
+              const cover = offerCover(o);
+              const cta = offerCta(locale, o);
+              const wa = o.whatsapp ? waHref(sales.whatsapp, offerText(locale, o, 'whatsapp_prefill')) : null;
+              return (
+                <section
+                  id={offerAnchor(o)}
+                  class={dark ? 'bg-midnight text-porcelain rounded-card p-8' : 'bg-white border border-line rounded-card p-8'}
+                  data-offer={o.slug}
+                  data-offer-category="b2b"
+                  data-offer-placement="offers"
+                  data-offer-until={o.valid_to ?? undefined}
+                >
+                  {cover && <Photo {...photoProps(locale, cover)} sizes="(min-width: 1024px) 560px, 100vw" class="-mx-8 -mt-8 mb-6 rounded-t-card overflow-hidden" imgClass="w-full h-auto" />}
+                  <h2 class={dark ? 'text-2xl font-bold' : 'text-2xl font-bold text-midnight'}>{offerTitle(locale, o)}</h2>
+                  <p class={dark ? 'mt-3 text-porcelain/85 leading-relaxed' : 'mt-3 text-ink-muted leading-relaxed'}>{offerText(locale, o, 'description')}</p>
+                  {(cta || wa) && (
+                    <div class="mt-6 flex flex-col sm:flex-row sm:flex-wrap gap-3">
+                      {cta && (
+                        <a href={cta.href} class="inline-flex items-center justify-center gap-2 bg-bronze-deep text-white font-semibold px-5 py-3 rounded hover:bg-bronze-text transition-colors" data-offer-cta="quote">
+                          <span>{cta.label}</span>
+                          <Icon name="arrow" size={18} class="icon-arrow rtl:rotate-180" />
+                        </a>
+                      )}
+                      {wa && (
+                        <a
+                          href={wa}
+                          class={
+                            dark
+                              ? 'inline-flex items-center justify-center gap-2 border border-porcelain/50 font-semibold px-5 py-3 rounded hover:bg-porcelain hover:text-midnight transition-colors'
+                              : 'inline-flex items-center justify-center gap-2 border border-midnight text-midnight font-semibold px-5 py-3 rounded hover:bg-midnight hover:text-white transition-colors'
+                          }
+                          rel="noopener"
+                          target="_blank"
+                          data-wa-link
+                          data-wa-destination="sales"
+                        >
+                          <Icon name="whatsapp" size={18} />
+                          <span>{ot.chat_whatsapp}</span>
+                        </a>
+                      )}
+                    </div>
+                  )}
+                  {i === 0 && (
+                    <p class={dark ? 'mt-5 text-sm text-porcelain/80' : 'mt-5 text-sm text-ink-muted'}>
+                      <span>{t.offers.sales_scope}: {L(sales as unknown as Record<string, string>, 'scope')}</span>
+                      <br />
+                      <a href={mailHref(sales.email)} class="latin hover:text-bronze-text" dir="ltr">{sales.email}</a>
+                    </p>
+                  )}
+                  {i === b2b.length - 1 && (
+                    <>
+                      <a href={partnersPath(locale)} class="mt-4 inline-flex items-center gap-2 text-sm font-semibold link-bronze">
+                        <span>{t.nav.partners}</span>
+                        <Icon name="arrow" size={14} class="icon-arrow rtl:rotate-180" />
+                      </a>
+                      <p class="mt-6 text-xs text-ink-muted">
+                        {L(offers as unknown as Record<string, string>, 'sales_note')}
+                        <a href={localePath(locale, '/booking/')} class="font-semibold link-bronze ms-1">{t.nav.book}</a>
+                      </p>
+                    </>
+                  )}
+                </section>
+              );
+            })}
+          </div>
         </div>
-        <a href={partnersPath(locale)} class="mt-4 inline-flex items-center gap-2 text-sm font-semibold link-bronze">
-          <span>{t.nav.partners}</span>
-          <Icon name="arrow" size={14} class="icon-arrow rtl:rotate-180" />
-        </a>
-        <p class="mt-6 text-xs text-ink-muted">
-          {L(offers as unknown as Record<string, string>, 'sales_note')}
-          <a href={localePath(locale, '/booking/')} class="font-semibold link-bronze ms-1">{t.nav.book}</a>
-        </p>
-      </section>
-    </div>
+      )
+    }
   </section>
 </Base>
+
+<script>
+  import '@lib/offers';
+</script>
+
+<style>
+  .offers-tab {
+    margin-bottom: -1px;
+    border-bottom: 2px solid transparent;
+    padding: 0.75rem 1rem;
+    font-weight: 600;
+    color: var(--color-ink-muted);
+    transition: color var(--motion-fast) var(--ease-out), border-color var(--motion-fast) var(--ease-out);
+  }
+  .offers-tab[aria-selected='true'] {
+    color: var(--color-midnight);
+    border-bottom-color: var(--color-bronze);
+  }
+  .offers-tab:hover {
+    color: var(--color-midnight);
+  }
+</style>

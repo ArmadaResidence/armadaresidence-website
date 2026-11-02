@@ -4,6 +4,8 @@ import BranchSplit from '@components/BranchSplit.astro';
 import Counters from '@components/Counters.astro';
 import Divider from '@components/Divider.astro';
 import Icon from '@components/Icon.astro';
+import OffersSection from '@components/OffersSection.astro';
+import { offersFor, offersText } from '@lib/offers-data';
 import { langPaths } from '@lib/paths';
 import { organization } from '@lib/jsonld';
 import { existsSync, readFileSync } from 'node:fs';
@@ -28,6 +30,8 @@ interface Props {
 }
 const { locale } = Astro.props;
 const t = ui(locale);
+// «العروض» (2 Nov 2026): the offers marked for the home page, after the branches — nothing without them
+const homeOffers = offersFor('show_home');
 const s = pageSeo(locale, 'home');
 const hero = siteTexts.hero;
 
@@ -183,6 +187,8 @@ const quickFacts = fill(t.home.quick_facts, {
     </div>
     <Divider class="mt-16" />
   </section>
+
+  {homeOffers.length > 0 && <OffersSection locale={locale} offers={homeOffers} placement="home" heading={offersText(locale).home_heading} allLink class="cv-auto mx-auto max-w-6xl px-4 pb-16" />}
 
   <section class="cv-auto bg-white border-y border-line">
     <div class="mx-auto max-w-6xl px-4 py-16">

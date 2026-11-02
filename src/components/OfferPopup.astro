@@ -1,0 +1,136 @@
+---
+/**
+ * The offer pop-up (2 Nov 2026, «العروض» → «النافذة المنبثقة»): the one live design, as a modal <dialog> labelled by its
+ * title — focus kept inside, Esc / the visible × / a press that starts and ends on the backdrop close it, focus returns
+ * to where it was. The browser decides whether it opens (src/lib/popup.ts): its schedule, the page groups, «لا تظهر على
+ * الجوال» (< 768 px), the frequency (each visit → sessionStorage; every N days → localStorage, a timestamp only — no
+ * personal data), the delay; it waits while the booking drawer, the WhatsApp chooser, another dialog or a form field is
+ * in use, and never runs on /booking/ or its success page. Entrance fade / slide-up / zoom on the motion tokens, none
+ * under reduced motion. dataLayer: popup_view / popup_click / popup_close { offer_id }.
+ */
+import Icon from './Icon.astro';
+import Photo from './Photo.astro';
+import { localePath, photoProps, ui, type Locale } from '@lib/content';
+import { offerAnchor, offerCover, offerCta, offerPopup } from '@lib/offers-data';
+
+interface Props {
+  locale: Locale;
+  /** the page's locale-independent path (Base) → its page group */
+  path: string;
+}
+const { locale, path } = Astro.props;
+const p = offerPopup!;
+const t = ui(locale).offers as unknown as Record<string, string>;
+const o = p.target;
+const cover = p.show_image ? offerCover(o) : null;
+const href = offerCta(locale, o)?.href ?? (o.category !== 'dining' && o.show_offers ? `${localePath(locale, '/offers/')}#${offerAnchor(o)}` : localePath(locale, '/offers/'));
+const L = (k: 'title' | 'text' | 'button') => p[`${k}_${locale}`];
+/** the page group a design targets (dashboard «الصفحات») */
+function group(x: string): string | null {
+  if (x === '/') return 'home';
+  if (x.startsWith('/booking/')) return 'never';
+  const top = x.split('/')[1];
+  if (['airport-road', 'shafa-road'].includes(top)) return x.split('/').filter(Boolean).length === 1 || x.endsWith('/hall/') ? 'branches' : 'rooms';
+  return ({ offers: 'offers', dining: 'dining', gallery: 'gallery', blog: 'blog', 'discover-taif': 'discover-taif', partners: 'partners', contact: 'contact' } as Record<string, string>)[top] ?? null;
+}
+const g = group(path);
+const btn = {
+  bronze: 'bg-bronze-deep text-white hover:bg-bronze-text',
+  midnight: 'bg-midnight text-white hover:opacity-90',
+  porcelain: 'bg-porcelain text-midnight border border-midnight/20 hover:border-midnight',
+}[p.button_color];
+const shape = { rounded: 'rounded-md', pill: 'rounded-full', square: 'rounded-none' }[p.button_shape];
+const config = {
+  id: p.id,
+  offer: o.slug,
+  group: g,
+  pages: p.pages,
+  starts_at: p.starts_at,
+  ends_at: p.ends_at,
+  until: o.valid_to,
+  frequency: p.frequency,
+  days: p.frequency_days,
+  delay: p.delay_seconds,
+  hide_on_mobile: p.hide_on_mobile,
+};
+---
+
+{
+  g !== 'never' && (
+    <dialog class="offer-popup" data-offer-popup data-entrance={p.entrance} aria-labelledby="offer-popup-title">
+      <div class="offer-popup-panel bg-white rounded-card overflow-hidden shadow-xl">
+        <button type="button" class="offer-popup-close" data-offer-popup-close aria-label={t.popup_close}>
+          <Icon name="close" size={20} />
+        </button>
+        {cover && <Photo {...photoProps(locale, cover)} sizes="(min-width: 480px) 416px, 100vw" imgClass="w-full h-auto" />}
+        <div class="p-6">
+          <h2 id="offer-popup-title" class="text-xl font-bold text-midnight pe-8">{L('title')}</h2>
+          {L('text') && <p class="mt-2 text-ink-muted leading-relaxed">{L('text')}</p>}
+          <a href={href} class:list={['mt-5 inline-flex items-center justify-center gap-2 font-semibold px-5 py-3 transition-colors', btn, shape]} data-offer-popup-cta>
+            <span>{L('button')}</span>
+            <Icon name="arrow" size={18} class="icon-arrow rtl:rotate-180" />
+          </a>
+        </div>
+      </div>
+      <script type="application/json" data-offer-popup-config set:html={JSON.stringify(config).replace(/</g, '\\u003c')} />
+    </dialog>
+  )
+}
+
+<script>
+  import '@lib/popup';
+</script>
+
+<style is:global>
+  .offer-popup {
+    width: min(26rem, calc(100vw - 2rem));
+    max-width: none;
+    max-height: calc(100dvh - 2rem);
+    margin: auto;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    overflow: visible;
+  }
+  .offer-popup::backdrop {
+    background: rgba(20, 42, 59, 0.6); /* Armada Midnight at 60 % (CONTRACT: backdrop midnight 60 %) */
+  }
+  .offer-popup-panel {
+    position: relative;
+    max-height: calc(100dvh - 2rem);
+    overflow-y: auto;
+  }
+  .offer-popup-close {
+    position: absolute;
+    inset-block-start: 0.5rem;
+    inset-inline-end: 0.5rem;
+    z-index: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.75rem;
+    height: 2.75rem;
+    border-radius: 9999px;
+    background: var(--color-white);
+    color: var(--color-ink);
+    box-shadow: 0 1px 4px rgb(0 0 0 / 0.18);
+  }
+  [data-theme='dark'] .offer-popup-close {
+    background: var(--dk-surface);
+  }
+  /* entrances (motion tokens; none under reduced motion — the tokens are 0 there and popup.ts skips the class) */
+  .offer-popup.is-entering {
+    opacity: 0;
+  }
+  .offer-popup.is-entering[data-entrance='slide-up'] {
+    transform: translateY(var(--motion-shift-lg));
+  }
+  .offer-popup.is-entering[data-entrance='zoom'] {
+    transform: scale(0.96);
+  }
+  .offer-popup.is-animating {
+    transition:
+      opacity var(--motion-base) var(--ease-out),
+      transform var(--motion-base) var(--ease-out);
+  }
+</style>

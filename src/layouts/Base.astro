@@ -8,6 +8,8 @@ import Header from '@components/Header.astro';
 import Footer from '@components/Footer.astro';
 import WhatsAppButton from '@components/WhatsAppButton.astro';
 import BookingDrawer from '@components/BookingDrawer.astro';
+import OfferPopupDialog from '@components/OfferPopup.astro';
+import { barOffer, offerPopup } from '@lib/offers-data';
 
 interface Props {
   locale: Locale;
@@ -100,6 +102,27 @@ const preloadFonts = locale === 'ar' ? [fontAr400] : [fontEn];
         document.addEventListener('astro:after-swap', apply);
       })();
     </script>
+    {
+      /* the announcement bar (2 Nov 2026): a stored dismissal of this offer, or its end date passed since the build,
+         hides it before the first paint (no shift); re-applied after a view-transition swap */
+      barOffer && (
+        <>
+          <style is:inline>html[data-offer-bar-off] .offer-bar{display:none}</style>
+          <script is:inline define:vars={{ barSlug: barOffer.slug, barUntil: barOffer.valid_to }}>
+            (function () {
+              function apply() {
+                var off = false;
+                try { off = localStorage.getItem('armada-offer-bar') === barSlug; } catch (e) {}
+                if (barUntil && new Date(Date.now() + 108e5).toISOString().slice(0, 10) > barUntil) off = true;
+                if (off) document.documentElement.setAttribute('data-offer-bar-off', '');
+              }
+              apply();
+              document.addEventListener('astro:after-swap', apply);
+            })();
+          </script>
+        </>
+      )
+    }
     {preloadFonts.map((href) => <link rel="preload" as="font" type="font/woff2" href={href} crossorigin />)}
     <title>{title}</title>
     <meta name="description" content={description} />
@@ -190,6 +213,8 @@ const preloadFonts = locale === 'ar' ? [fontAr400] : [fontEn];
     {/* Sticky WhatsApp (decision 22 Oct 2026): branch/room pages → that branch; /partners/* → sales; elsewhere → chooser. */}
     <WhatsAppButton locale={locale} target={whatsapp ?? (path.startsWith('/partners') ? 'sales' : undefined)} />
     {bookingDrawer && !legacy && <BookingDrawer locale={locale} />}
+    {/* the offer pop-up (2 Nov 2026): never on /booking/ and its success page (bookingDrawer is off there) */}
+    {offerPopup && bookingDrawer && <OfferPopupDialog locale={locale} path={path} />}
     <script>
       import '@lib/reveal';
       import '@lib/counters';

@@ -48,7 +48,11 @@ function quoteFor(args, mode) {
   const bf = args.p_breakfast === 'with' && !needsAges ? (args.p_adults * 20 + (ages || []).reduce((s, a) => s + (a <= 5 ? 0 : a <= 12 ? 10 : 20), 0)) * n : args.p_breakfast === 'with' ? null : 0;
   const beds = (args.p_extra_beds || 0) * 50 * n;
   const room_total = nightly * n;
-  const total = bf === null ? null : room_total + bf + beds;
+  let total = bf === null ? null : room_total + bf + beds;
+  // an offer the server applied (2 Nov 2026, «العروض»): 10 % of the room, its name; the total before it stays visible
+  const offer = mode.offer && total !== null ? { id: 'o1', slug: 'qa-autumn-stay', title_ar: 'عرض الخريف', title_en: 'Autumn offer', kind: 'percent', promo_code: null, discount: room_total / 10 } : null;
+  const base_total = total;
+  if (offer) total -= offer.discount;
   const reason = mode.reason ?? (args.p_extra_beds > 0 ? 'extra_beds' : null);
   return {
     ok: true,
@@ -56,7 +60,7 @@ function quoteFor(args, mode) {
     instant: mode.prices !== false && !reason && !needsAges,
     reason: mode.prices === false ? 'instant_off' : reason,
     room: { slug: args.p_room, name_ar: 'x', name_en: 'x' },
-    ...(mode.prices !== false ? { quote: { nights, count: n, room_total, breakfast: args.p_breakfast || 'without', breakfast_total: bf, needs_ages: needsAges, breakfast_adult: 20, extra_beds: args.p_extra_beds || 0, extra_bed_fee: 50, extra_beds_total: beds, total, currency: 'SAR' } } : {}),
+    ...(mode.prices !== false ? { quote: { nights, count: n, room_total, breakfast: args.p_breakfast || 'without', breakfast_total: bf, needs_ages: needsAges, breakfast_adult: 20, extra_beds: args.p_extra_beds || 0, extra_bed_fee: 50, extra_beds_total: beds, total, currency: 'SAR', base_total, discount: offer ? offer.discount : 0, offer } } : {}),
   };
 }
 
@@ -72,7 +76,7 @@ async function run(width, lang) {
   page.on('pageerror', (e) => fails.push(`${tag} page error: ${e.message}`));
 
   // ── stubs ──
-  const mode = { prices: true, reason: null, submit: 'confirmed', wa: true };
+  const mode = { prices: true, reason: null, submit: 'confirmed', wa: true, offer: false };
   const rpcCalls = [];
   const submits = [];
   await page.route(/\/rest\/v1\/rpc\/quote_stay/, async (route) => {
@@ -227,6 +231,22 @@ async function run(width, lang) {
   mode.prices = true;
   await form.locator('select[name="room"]').selectOption('king-room');
   await page.waitForFunction((t) => { const b = document.querySelector('[data-quote-badge]'); return b && !b.classList.contains('hidden') && b.textContent === t; }, S.quote.instant_badge, { timeout: 8000 });
+
+  // ── an offer applied by the server: its name and discount, the total before it struck through ──
+  mode.offer = true;
+  await form.locator('select[name="room"]').selectOption('two-bedroom-suite');
+  await page.waitForFunction(() => !document.querySelector('[data-quote-row="discount"]')?.classList.contains('hidden'), null, { timeout: 8000 });
+  {
+    const cells = await form.locator('[data-quote-row="discount"] td').allTextContents();
+    check(cells[0] === S.quote.offer_line.replace('{title}', L === 'ar' ? 'عرض الخريف' : 'Autumn offer') && cells[1] === `− ${money(48)}`, `${tag} offer: the line names the offer and its discount`, cells.join(' | '));
+    const was = await form.locator('[data-quote-row="total"] td').nth(1).locator('s').textContent().catch(() => '');
+    check(was === money(480) && (await totalCell()).endsWith(money(432)), `${tag} offer: the total before the offer struck through next to the offer total`, `${was} / ${await totalCell()}`);
+  }
+  mode.offer = false;
+  await form.locator('select[name="room"]').selectOption('king-room');
+  await page.waitForFunction(() => document.querySelector('[data-quote-row="discount"]')?.classList.contains('hidden'), null, { timeout: 8000 });
+  await page.waitForFunction((t) => document.querySelector('[data-quote-row="total"] td:nth-child(2)')?.textContent === t, money(370), { timeout: 8000 });
+  check((await form.locator('[data-quote-row="total"] s').count()) === 0, `${tag} offer: no struck-through total without an offer`);
 
   // ── fill the guest and submit: price_changed first, then confirmed ──
   const hint = (await form.locator('[data-phone-input]').evaluate((i) => (i.getAttribute('aria-describedby') || '').split(/\s+/).map((id) => document.getElementById(id)?.textContent?.trim() ?? '').join(' | '))) || '';

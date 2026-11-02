@@ -9,6 +9,9 @@ import Placeholder from '@components/Placeholder.astro';
 import RoomGrid from '@components/RoomGrid.astro';
 import VenueCards from '@components/VenueCards.astro';
 import Icon from '@components/Icon.astro';
+import OfferList from '@components/OfferList.astro';
+import OffersSection from '@components/OffersSection.astro';
+import { offersFor, offersText } from '@lib/offers-data';
 import { langPaths } from '@lib/paths';
 import { lodging } from '@lib/jsonld';
 import {
@@ -66,6 +69,9 @@ const dining = (branch as { dining?: unknown }).dining;
 // the venues published from the dashboard «المطاعم والمقاهي» (2 Nov 2026): this branch's active ones replace the
 // branches.json dining card; none published → the card as before
 const venues = activeVenuesFor(branch.slug);
+// «العروض» (2 Nov 2026): this branch's stay offers and its venues' offers marked «صفحة الفرع»
+const stayOffers = offersFor('show_branch', 'individuals', branch.slug);
+const diningOffers = offersFor('show_branch', 'dining', branch.slug).filter((o) => venues.some((v) => v.slug === o.venue));
 const hall = hallFor(branch.slug);
 // Drive times (branches.json → drive_times_min, confirmed by Ahmed 9 Oct 2026): "<10" renders as "under 10 min"
 const dtLabels = t.drive_times as Record<string, string>;
@@ -154,6 +160,8 @@ const COVER_SIZES = '(min-width: 1152px) 1120px, 100vw';
   <BranchStory locale={locale} branch={branch} />
   <Divider class="px-4 pb-14" />
 
+  {stayOffers.length > 0 && <OffersSection locale={locale} offers={stayOffers} placement="branch" heading={offersText(locale).branch_heading} allLink class="cv-auto mx-auto max-w-6xl px-4 pb-14" />}
+
   {
     venues.length > 0 ? (
       <section class="cv-auto mx-auto max-w-6xl px-4 pb-14" aria-labelledby="dining-heading" data-dining-venues>
@@ -167,6 +175,12 @@ const COVER_SIZES = '(min-width: 1152px) 1120px, 100vw';
           )}
         </div>
         <VenueCards locale={locale} venues={venues} class="mt-6" />
+        {diningOffers.length > 0 && (
+          <>
+            <h3 class="mt-10 text-xl font-bold text-midnight">{offersText(locale).dining_heading}</h3>
+            <OfferList locale={locale} offers={diningOffers} placement="dining" class="mt-4" />
+          </>
+        )}
       </section>
     ) : (
       dining && (

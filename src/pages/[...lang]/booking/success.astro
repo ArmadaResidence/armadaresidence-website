@@ -184,6 +184,8 @@ const clientData = {
         if (!uniform) for (const n of qu.nights) tr(n.night, money(Number(n.price), L));
         if (qu.breakfast === 'with' && qu.breakfast_total !== null) tr(Q.breakfast_line, money(qu.breakfast_total, L));
         if (qu.extra_beds > 0) tr(Q.extra_beds_line.replace('{beds}', String(qu.extra_beds)), money(qu.extra_beds_total, L));
+        // the offer the server applied (2 Nov 2026, «العروض»): its name and discount, then the total the guest pays
+        if (qu.offer && Number(qu.discount) > 0) tr(Q.offer_line.replace('{title}', L === 'en' ? qu.offer.title_en : qu.offer.title_ar), `− ${money(Number(qu.discount), L)}`);
         tr(Q.total_line, money(qu.total ?? 0, L), true);
         el('[data-breakdown]')!.classList.remove('hidden');
       }

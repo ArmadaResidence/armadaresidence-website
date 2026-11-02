@@ -19,7 +19,7 @@
 import { bindOnce, onOutsidePress, onPageLeave, onPageLoad, reducedMotion } from './client';
 
 type DL = { dataLayer?: unknown[] };
-type Prefill = { branch: string | null; room: string | null; check_in: string | null; check_out: string | null };
+type Prefill = { branch: string | null; room: string | null; check_in: string | null; check_out: string | null; promo?: string | null };
 type Controller = { open: (p: Prefill) => void };
 
 const controllers = new WeakMap<HTMLDialogElement, Controller>();
@@ -56,7 +56,7 @@ document.addEventListener(
     const q = new URL(a.href, location.href).searchParams;
     // the mobile menu may be open behind the link
     document.querySelector<HTMLButtonElement>('[data-menu-toggle][aria-expanded="true"]')?.click();
-    cur.ctl.open({ branch: q.get('branch'), room: q.get('room'), check_in: q.get('check_in'), check_out: q.get('check_out') });
+    cur.ctl.open({ branch: q.get('branch'), room: q.get('room'), check_in: q.get('check_in'), check_out: q.get('check_out'), promo: q.get('promo') });
   },
   true,
 );
