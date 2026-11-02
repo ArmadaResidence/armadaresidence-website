@@ -677,9 +677,10 @@ export function venueFacts(locale: Locale, v: Venue): string[] {
   const where = v.location === 'other' ? (locale === 'ar' ? v.location_note_ar : v.location_note_en) : d.locations[v.location];
   return [d.kinds[v.kind], where, v.audience ? d.audience[v.audience] : ''].filter(Boolean);
 }
-const DAY_KEYS = ['sat', 'sun', 'mon', 'tue', 'wed', 'thu', 'fri'] as const;
+// the week starts on Sunday, as in the date picker (Ahmed, 2 Nov 2026)
+const DAY_KEYS = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'] as const;
 /** opening hours as display lines: «على مدار الساعة», or consecutive days with the same times grouped
- *  («السبت – الأربعاء: 07:00 – 23:00», «الجمعة: مغلق») */
+ *  («الأحد – الخميس: 07:00 – 23:00», «الجمعة: مغلق») */
 export function venueHoursLines(locale: Locale, v: Venue): { days: string; time: string }[] {
   const d = ui(locale).dining as unknown as { hours_24h: string; closed: string; days: Record<string, string> };
   if (!v.hours) return [];

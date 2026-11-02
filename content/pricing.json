@@ -34,8 +34,8 @@
       "en": "Children up to 5 eat free; ages 6 to 12 at half price (SAR 10); over 12 at the adult rate."
     },
     "show_price_on_site": false,
-    "site_line_ar": "الإفطار: يُحدَّد شموله أو رسومه عند تأكيد الحجز",
-    "site_line_en": "Breakfast: included or charged depending on your booking — confirmed with your reservation"
+    "site_line_ar": "الإفطار: اختياري تختاره عند الحجز",
+    "site_line_en": "Breakfast: optional, chosen when you book"
   },
   "extra_bed_per_night": 50,
   "extra_bed_note": "Confirmed by Ahmed 23 Oct 2026: SAR 50 per extra bed per night, covering whoever sleeps on it; room types allow 0–2 (rooms.json → extra_beds_max). The extra-person fee (25/night) and its children ladder are abolished.",

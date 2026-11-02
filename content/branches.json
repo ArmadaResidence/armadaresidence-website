@@ -48,8 +48,8 @@
         "wifi"
       ],
       "amenities_note": "Wi-Fi, 24h in-room dining, free parking, coffee shop confirmed 8 Oct 2026 (Ahmed). Clarified 30 Oct 2026 (Ahmed): reception 24h, in-room dining 24h, rooms cleaned daily 10:00–17:00, Airport Road café & restaurant 24h, security 24h.",
-      "breakfast_ar": "بوفيه إفطار يومي في المطعم من 7:00 إلى 10:30 صباحًا — يُحدَّد شموله أو رسومه عند تأكيد الحجز.",
-      "breakfast_en": "Daily breakfast buffet in the restaurant, 7:00–10:30 am — included or charged depending on your booking.",
+      "breakfast_ar": "بوفيه إفطار يومي في المطعم من 7:00 إلى 10:30 صباحًا — اختياري تختاره عند الحجز.",
+      "breakfast_en": "Daily breakfast buffet in the restaurant, 7:00–10:30 am — optional, chosen when you book.",
       "legacy_description_ar": "يقع فندق أرمادا ريزيدنس بموقع استراتيجي على طريق المطار في الطائف، مما يجعله قريبًا جدًا من المطار الدولي وسهل الوصول منه وإليه. يتميز الفندق بسهولة الوصول إلى الخدمات الأساسية والمعالم الرئيسية في المدينة. يوفر الفندق غرف وشقق مجهزة بالكامل تناسب الإقامات القصيرة والطويلة، مع مساحات معيشة واسعة. كما يضم قاعة اجتماعات حديثة، بهو واسع، وكوفي. تشمل الخدمات الإنترنت عالي السرعة ومواقف سيارات مجانية.",
       "legacy_description_en": "Armada Residence enjoys a strategic location on Airport Road in Taif, very close to Taif International Airport. Fully furnished rooms and apartments for short and long stays, spacious living areas, a modern meeting hall, a spacious lobby and a coffee area. High-speed internet and free parking.",
       "tagline_ar": "شقق فندقية واسعة على طريق المطار",
@@ -232,8 +232,8 @@
         "wifi"
       ],
       "amenities_note": "Wi-Fi, 24h in-room dining, free parking, coffee shop confirmed 8 Oct 2026 (Ahmed). Clarified 30 Oct 2026 (Ahmed): reception 24h, in-room dining 24h, rooms cleaned daily 10:00–17:00, Airport Road café & restaurant 24h, security 24h.",
-      "breakfast_ar": "بوفيه إفطار يومي في المطعم من 7:00 إلى 10:30 صباحًا — يُحدَّد شموله أو رسومه عند تأكيد الحجز.",
-      "breakfast_en": "Daily breakfast buffet in the restaurant, 7:00–10:30 am — included or charged depending on your booking.",
+      "breakfast_ar": "بوفيه إفطار يومي في المطعم من 7:00 إلى 10:30 صباحًا — اختياري تختاره عند الحجز.",
+      "breakfast_en": "Daily breakfast buffet in the restaurant, 7:00–10:30 am — optional, chosen when you book.",
       "legacy_description_ar": "جوهرة طريق الشفا في قلب الطائف، بإطلالة مريحة وقريبة من الخدمات والمعالم مثل حديقة الردف وجوري مول، خيار أنيق للإقامة العائلية أو الفردية.",
       "legacy_description_en": "A gem on Al-Shafa Road in Taif, close to services and landmarks such as Al-Ruddaf Park and Jouri Mall. An elegant choice for family and individual stays.",
       "tagline_ar": "فندق هادئ على طريق الشفا",

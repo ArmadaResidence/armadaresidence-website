@@ -8,13 +8,13 @@ export const STATUS_LABELS: Record<DiningStatus, string> = { active: 'نشط', c
 export const KIND_LABELS: Record<DiningKind, string> = { restaurant: 'مطعم', cafe: 'مقهى', restaurant_cafe: 'مطعم ومقهى' };
 export const LOCATION_LABELS: Record<DiningLocation, string> = { lobby: 'اللوبي', rooftop: 'سطح الفندق (الروف)', other: 'مكان آخر' };
 export const DAYS: { key: DiningDay; label: string }[] = [
-  { key: 'sat', label: 'السبت' },
   { key: 'sun', label: 'الأحد' },
   { key: 'mon', label: 'الاثنين' },
   { key: 'tue', label: 'الثلاثاء' },
   { key: 'wed', label: 'الأربعاء' },
   { key: 'thu', label: 'الخميس' },
   { key: 'fri', label: 'الجمعة' },
+  { key: 'sat', label: 'السبت' },
 ];
 export const MISSING_LABELS: Record<DiningMissing['code'], string> = {
   name_ar: 'الاسم بالعربية',

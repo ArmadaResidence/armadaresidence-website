@@ -26,8 +26,8 @@
   "page": {
     "title_ar": "الشروط والسياسات",
     "title_en": "Terms & Policies",
-    "intro_ar": "تنطبق هذه الشروط على الحجوزات في فرعي أرمادا ريزيدنس بالطائف: طريق المطار وطريق الشفا. تاريخ آخر تحديث: 1 نوفمبر 2026.",
-    "intro_en": "These terms apply to bookings at both Armada Residence properties in Taif: Airport Road and Shafa Road. Last updated 1 November 2026.",
+    "intro_ar": "تنطبق هذه الشروط على الحجوزات في فرعي أرمادا ريزيدنس بالطائف: طريق المطار وطريق الشفا. تاريخ آخر تحديث: 2 نوفمبر 2026.",
+    "intro_en": "These terms apply to bookings at both Armada Residence properties in Taif: Airport Road and Shafa Road. Last updated 2 November 2026.",
     "sections": [
       {
         "id": "booking",
@@ -47,15 +47,15 @@
         "id": "cancellation",
         "heading_ar": "الإلغاء وعدم الحضور",
         "heading_en": "Cancellation and no-show",
-        "body_ar": "إلغاء مجاني حتى 24 ساعة قبل موعد الوصول. في حال الإلغاء في نفس يوم الوصول أو عدم الحضور، تُحسب قيمة الليلة الأولى. تنطبق السياسة نفسها على جميع الحجوزات أيًا كانت قناة الحجز.",
-        "body_en": "Free cancellation up to 24 hours before arrival. Same-day cancellation or no-show is charged the first night. The same policy applies to every booking, whichever channel it was made through."
+        "body_ar": "إلغاء مجاني حتى 24 ساعة قبل موعد الوصول. في حال الإلغاء في نفس يوم الوصول أو عدم الحضور، تُحسب قيمة الليلة الأولى. تنطبق هذه السياسة على الحجز المباشر عبر الموقع والواتساب والاستقبال؛ أما الحجوزات عبر منصات الحجز الأخرى فتخضع لسياسة المنصة.",
+        "body_en": "Free cancellation up to 24 hours before arrival. Same-day cancellation or no-show is charged the first night. This policy applies to direct bookings through the website, WhatsApp and reception; bookings made on other booking platforms follow that platform's policy."
       },
       {
         "id": "guests",
         "heading_ar": "عدد النزلاء والإفطار",
         "heading_en": "Guests and breakfast",
-        "body_ar": "يشمل سعر الغرفة والاستديو وجناح الغرفة والصالة شخصين بالغين، ويشمل سعر الأجنحة بغرفتي نوم أربعة. الأطفال لا يُحسبون ضمن العدد المشمول. السرير الإضافي {extra_bed} لليلة، ويشمل الشخص الذي ينام عليه، ويتوفر في بعض أنواع الغرف ويؤكده الاستقبال. يُقدَّم بوفيه إفطار يومي في مطعم كل فرع من 7:00 إلى 10:30 صباحًا، ويُحدَّد شموله في السعر عند تأكيد الحجز؛ ورسومه إن لم يكن مشمولًا {breakfast} للشخص في الليلة، والأطفال حتى 5 سنوات مجانًا ومن 6 إلى 12 سنة بنصف الرسوم.",
-        "body_en": "Room, studio and one-bedroom suite prices cover two adults; two-bedroom suite prices cover four. Children are not counted toward the included number. An extra bed is {extra_bed} per night, covering whoever sleeps on it; available in selected room types and confirmed by reception. A daily breakfast buffet is served in each property's restaurant 7:00–10:30 am; whether it is included is confirmed with your booking. When it is not included, breakfast is {breakfast} per person per night — children up to 5 free, ages 6 to 12 half the charge."
+        "body_ar": "يشمل سعر الغرفة والاستديو وجناح الغرفة والصالة شخصين بالغين، ويشمل سعر الأجنحة بغرفتي نوم أربعة. الأطفال لا يُحسبون ضمن العدد المشمول. السرير الإضافي {extra_bed} لليلة ويشمل الشخص الذي ينام عليه، ويتوفر في بعض أنواع الغرف وتختاره عند الحجز. يُقدَّم بوفيه إفطار يومي في مطعم كل فرع من 7:00 إلى 10:30 صباحًا؛ والإفطار اختياري تختاره عند الحجز، ورسومه {breakfast} للشخص في الليلة، والأطفال حتى 5 سنوات مجانًا ومن 6 إلى 12 سنة بنصف الرسوم.",
+        "body_en": "Room, studio and one-bedroom suite prices cover two adults; two-bedroom suite prices cover four. Children are not counted toward the included number. An extra bed is {extra_bed} per night, covering whoever sleeps on it; it is available in selected room types and chosen when you book. A daily breakfast buffet is served in each property's restaurant 7:00–10:30 am; breakfast is optional and chosen when you book, at {breakfast} per person per night — children up to 5 free, ages 6 to 12 half the charge."
       },
       {
         "id": "house_rules",

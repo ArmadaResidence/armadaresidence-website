@@ -220,7 +220,7 @@ def main() -> int:
                 rep.f("pricing", f"policies.json guests ({loc}): an amount is typed in the text — use the placeholders")
         policies_fee_lines = {
             "ar": [f"السرير الإضافي {sar_text(fee, 'ar')} لليلة", f"{sar_text(breakfast_fee, 'ar')} للشخص في الليلة"],
-            "en": [f"An extra bed is {sar_text(fee, 'en')} per night", f"breakfast is {sar_text(breakfast_fee, 'en')} per person per night"],
+            "en": [f"An extra bed is {sar_text(fee, 'en')} per night", f"at {sar_text(breakfast_fee, 'en')} per person per night"],
         }
         if re.search(r"الشخص الإضافي|extra guest", guests_sec["body_ar"] + guests_sec["body_en"], re.I):
             rep.f("pricing", "policies.json guests: the extra-person fee was abolished on 23 Oct 2026")
