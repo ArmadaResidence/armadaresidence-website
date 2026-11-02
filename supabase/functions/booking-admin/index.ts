@@ -27,6 +27,7 @@ import { EMAIL } from '../booking-request/rules.ts';
 import { bookingCancelled, bookingConfirmed, confirmedNotification, lowInventoryAlert, type Mail, type Quote } from '../booking-request/email.ts';
 import { cors, preflight } from '../_shared/cors.ts';
 import { sendWhatsApp, type WaResult } from '../booking-request/whatsapp-send.ts';
+import { testEcho } from '../booking-request/test-echo.ts';
 import type { WaBooking, WaTemplate } from '../booking-request/whatsapp.ts';
 
 const TEST_SINK = 'delivered@resend.dev';
@@ -226,16 +227,20 @@ Deno.serve(async (req) => {
     const { to, cc, primary, central } = route(rows, res.branch);
     const fail = force === 'fail-send';
     const lowDue = Boolean(out.low && out.low.length);
+    const hotelMail = confirmedNotification(content, bm);
+    const guestMail = res.email ? bookingConfirmed(content, bm) : null;
     const [n, g, l] = await Promise.all([
-      sendEmail('confirmed-notification', res.ref, { from: FROM_RECEPTION, to, cc, replyTo: res.email ? [res.email] : [] }, confirmedNotification(content, bm), res.is_test, fail),
-      res.email ? sendEmail('guest-confirmed', res.ref, { from: FROM_GUEST, to: [res.email], replyTo: primary.length ? primary : [addressOf(FROM_GUEST)] }, bookingConfirmed(content, bm), res.is_test, fail) : Promise.resolve(null),
+      sendEmail('confirmed-notification', res.ref, { from: FROM_RECEPTION, to, cc, replyTo: res.email ? [res.email] : [] }, hotelMail, res.is_test, fail),
+      guestMail ? sendEmail('guest-confirmed', res.ref, { from: FROM_GUEST, to: [res.email], replyTo: primary.length ? primary : [addressOf(FROM_GUEST)] }, guestMail, res.is_test, fail) : Promise.resolve(null),
       lowDue ? sendEmail('low-inventory', res.ref, { from: FROM_RECEPTION, to: central.length ? central : to }, lowInventoryAlert(content, { ref: res.ref, branch: res.branch, room: res.room_slug ?? '', nights: out.low! }), res.is_test, fail) : Promise.resolve(null),
     ]);
     const missed = [!n && 'reception', res.email && !g && 'guest', lowDue && !l && 'low-inventory'].filter(Boolean);
     if (missed.length) console.error('confirm: notifications not sent', res.ref, missed.join(','));
     // after the emails: the guest's WhatsApp confirmation (one per ref — an instant confirmation never reaches here)
     const wa = await sendWhatsApp(content, { template: 'booking_confirmed', booking: waBooking(res), reservationId: res.id, test: res.is_test, simulateFail: force === 'fail-wa' });
-    return json(req, 200, { ok: true, ref: res.ref, low: out.low ?? [], emails: { notification: n, guest: g, low_inventory: l }, notify_failed: missed.length > 0, whatsapp: waOut(wa) });
+    // test bookings only: the emails' text and the WhatsApp parameters as sent (booking-request/test-echo.ts)
+    const echo = res.is_test ? { test_echo: testEcho(content, { notification: hotelMail, confirmation: guestMail }, { template: 'booking_confirmed', booking: waBooking(res) }) } : {};
+    return json(req, 200, { ok: true, ref: res.ref, low: out.low ?? [], emails: { notification: n, guest: g, low_inventory: l }, notify_failed: missed.length > 0, whatsapp: waOut(wa), ...echo });
   }
 
   if (body.action === 'cancel') {

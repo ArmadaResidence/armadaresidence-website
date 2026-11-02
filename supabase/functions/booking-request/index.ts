@@ -55,6 +55,7 @@ import {
 import { makeRef } from '../_shared/ref.ts';
 import { sendWhatsApp } from './whatsapp-send.ts';
 import { WA_TEMPLATES, type WaTemplate } from './whatsapp.ts';
+import { testEcho } from './test-echo.ts';
 
 type Locale = 'ar' | 'en';
 
@@ -755,10 +756,12 @@ Deno.serve(async (req) => {
 
   // ---- WhatsApp to the guest: after the row and the emails; never blocks (sendWhatsApp never throws) ----
   let whatsappSent = false;
+  const waTemplate: WaTemplate = confirmed ? 'booking_confirmed' : 'booking_request_received';
+  const waBooking = { ref, locale: d.locale, branch: d.branch, room: d.room, check_in: d.check_in, check_out: d.check_out, name: d.name, phone: d.phone, quote: confirmed ? outcome?.quote ?? null : null };
   if (!isPartner && stored && outcome?.id) {
     const wa = await sendWhatsApp(content, {
-      template: confirmed ? 'booking_confirmed' : 'booking_request_received',
-      booking: { ref, locale: d.locale, branch: d.branch, room: d.room, check_in: d.check_in, check_out: d.check_out, name: d.name, phone: d.phone, quote: confirmed ? outcome.quote ?? null : null },
+      template: waTemplate,
+      booking: waBooking,
       reservationId: outcome.id,
       test,
       simulateFail: test && (req.headers.get('x-armada-test-wa') ?? '').toLowerCase() === 'fail',
@@ -781,5 +784,7 @@ Deno.serve(async (req) => {
     whatsapp_sent: whatsappSent,
     // Resend message ids (opaque) so a support thread can be traced; no addresses are returned.
     email_ids: { notification: notificationId, confirmation: confirmationId, low_inventory: lowId },
+    // test bookings only: the emails' text and the WhatsApp parameters as sent (./test-echo.ts)
+    ...(test && !isPartner ? { test_echo: testEcho(content, { notification, confirmation, low_inventory: lowAlert }, outcome?.id ? { template: waTemplate, booking: waBooking } : null) } : {}),
   });
 });
