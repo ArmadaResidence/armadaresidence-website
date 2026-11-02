@@ -42,7 +42,11 @@ const PAGES = [
   { path: 'inventory', label: 'المخزون', ready: async (page) => (await page.locator('.grid-cal').count()) === 1 && (await page.locator('.grid-cal [aria-label]').count()) > 0 },
   { path: 'rooms', label: 'الغرف', ready: async (page) => (await page.locator('[data-bookable]').count()) >= 12 },
   // media «الصور» (1 Nov 2026): every target in the picker, the current target's slots
-  { path: 'media', label: 'الصور', ready: async (page) => (await page.locator('[data-current] [data-slot]').count()) > 0 && ((await page.locator('[data-target]').count()) === 18 || (await page.locator('#media-target option').count()) === 18) },
+  // the picker (2 Nov 2026): home, 2 branches, their 12 room types, the hall, the venues, the 17 places, the 13 partners slots
+  { path: 'media', label: 'الصور', ready: async (page) => {
+    const ids = [...(await page.locator('[data-target]').evaluateAll((els) => els.map((e) => e.getAttribute('data-target')))), ...(await page.locator('#media-target option').evaluateAll((els) => els.map((e) => e.value)))];
+    return (await page.locator('[data-current] [data-slot]').count()) > 0 && ids.includes('home:home') && ids.includes('hall:events-hall') && ids.includes('place:taif-zoo') && ids.filter((x) => x.startsWith('partners:')).length >= 13 && new Set(ids).size >= 1 + 2 + 12 + 1 + 17 + 13;
+  } },
   { path: 'settings', label: 'الإعدادات', ready: async (page) => (await page.locator('[data-switch]').count()) === 4 && (await page.locator('#s-limits').count()) === 1 },
   { path: 'users', label: 'المستخدمون', ready: async (page) => (await page.locator('li[data-user]').count()) >= 4 && (await page.locator(`li[data-user="${ADMIN}"]`).count()) === 1 },
   { path: 'audit', label: 'السجل', ready: async (page) => (await page.locator('#a-entity').count()) === 1 && ((await page.locator('[data-list="audit"] li').count()) > 0 || (await page.getByText('لا سجلات.').count()) > 0) },
