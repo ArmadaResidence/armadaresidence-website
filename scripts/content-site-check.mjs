@@ -40,7 +40,7 @@ const site = seo.site_url.replace(/\/$/, '');
 const sitemap = read('sitemap-0.xml');
 console.log(`content-site-check: ${BASE} (${sample ? `the sample: ${gen.texts.length} text(s), hidden ${[...gen.hidden.rooms, ...gen.hidden.sections].join(', ')}, ${gen.announcements.length} announcement(s)` : 'nothing from the dashboard'})`);
 
-// ── static ──
+// ── static (the local dist/: its links carry no sub-path — base-path.py adds it in CI, so a live run compares the same) ──
 const hiddenRooms = gen.hidden.rooms ?? [];
 const hiddenSections = gen.hidden.sections ?? [];
 for (const lang of ['ar', 'en']) {
@@ -62,11 +62,11 @@ for (const lang of ['ar', 'en']) {
   const home = read(L('index.html'));
   const branch = read(L('airport-road/index.html'));
   const contact = read(L('contact/index.html'));
-  const off = `href="${PRE}${parent('/offers/')}"`;
+  const off = `href="${parent('/offers/')}"`;
   check(home.includes(off) === !offersHidden && contact.includes(off) === !offersHidden, `${lang}: links to /offers/ ${offersHidden ? 'remain' : 'missing'}`);
-  check(branch.includes(`href="${PRE}${parent('/airport-road/hall/')}"`) === !hallHidden, `${lang}: the branch page's hall link ${hallHidden ? 'remains' : 'is missing'}`);
+  check(branch.includes(`href="${parent('/airport-road/hall/')}"`) === !hallHidden, `${lang}: the branch page's hall link ${hallHidden ? 'remains' : 'is missing'}`);
   for (const key of hiddenRooms) {
-    check(!branch.includes(`href="${PRE}${parent(`/${key}/`)}"`) && !home.includes(`href="${PRE}${parent(`/${key}/`)}"`), `${lang}: a link to the hidden room ${key} remains`);
+    check(!branch.includes(`href="${parent(`/${key}/`)}"`) && !home.includes(`href="${parent(`/${key}/`)}"`), `${lang}: a link to the hidden room ${key} remains`);
     check(!new RegExp(`<option value="${key.split('/')[1]}"[^>]*data-branch="${key.split('/')[0]}"`).test(home) && !home.includes(`"branch":"${key.split('/')[0]}","slug":"${key.split('/')[1]}"`), `${lang}: the hidden room ${key} is still in the booking form`);
   }
   // published texts

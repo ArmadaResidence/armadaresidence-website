@@ -35,7 +35,7 @@ const check = (ok, msg, detail = '') => {
 };
 console.log(`faq-site-check: ${BASE} — ${ordered.length} questions`);
 
-// ── static ──
+// ── static (the local dist/: its links carry no sub-path — base-path.py adds it in CI, so a live run compares the same) ──
 const site = seo.site_url.replace(/\/$/, '');
 const sitemap = existsSync(join(DIST, 'sitemap-0.xml')) ? readFileSync(join(DIST, 'sitemap-0.xml'), 'utf8') : '';
 check(sitemap.includes(`<loc>${site}/faq/</loc>`) && sitemap.includes(`<loc>${site}/en/faq/</loc>`), 'sitemap: /faq/ and /en/faq/ missing');
@@ -56,10 +56,10 @@ for (const lang of ['ar', 'en']) {
   check(lds.some((x) => x['@type'] === 'BreadcrumbList' && x.itemListElement?.length === 2), `${lang}: BreadcrumbList missing`);
   for (const page of ['contact', 'policies']) {
     const ph = readFileSync(join(DIST, ...(lang === 'en' ? ['en'] : []), page, 'index.html'), 'utf8');
-    check(new RegExp(`data-faq-link-line[\\s\\S]{0,400}href="${PRE}${lang === 'en' ? '/en' : ''}/faq/"`).test(ph), `${lang}: /${page}/ has no FAQ link`);
+    check(new RegExp(`data-faq-link-line[\\s\\S]{0,400}href="${lang === 'en' ? '/en' : ''}/faq/"`).test(ph), `${lang}: /${page}/ has no FAQ link`);
   }
   const home = readFileSync(join(DIST, ...(lang === 'en' ? ['en'] : []), 'index.html'), 'utf8');
-  check(home.includes(`href="${PRE}${lang === 'en' ? '/en' : ''}/faq/"`), `${lang}: the footer has no FAQ link`);
+  check(home.includes(`href="${lang === 'en' ? '/en' : ''}/faq/"`), `${lang}: the footer has no FAQ link`);
   check(home.includes(`>${ui[lang].nav.book}</a`), `${lang}: the header booking label is not «${ui[lang].nav.book}»`);
 }
 

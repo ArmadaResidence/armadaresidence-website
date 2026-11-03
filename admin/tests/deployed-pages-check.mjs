@@ -92,8 +92,9 @@ async function run(viewport, tag, email = ADMIN) {
   const isSpaFallback = (r) => r.request().resourceType() === 'document' && r.status() === 404 && r.url().startsWith(BASE_ORIGIN);
   page.on('console', (m) => m.type() === 'error' && !/realtime|websocket/i.test(m.text()) && !(/status of 404/.test(m.text()) && (m.location()?.url ?? '').startsWith(BASE_ORIGIN)) && problems.push(`console: ${m.text().slice(0, 160)}`));
   // the «الحجوزات» badge counts requests with a debounced HEAD (3 Nov 2026): this check full-loads the next page while it
-  // may still be in flight, and the browser cancels it (ERR_ABORTED) — a navigation, not a failure
-  const badgeCount = (r) => r.method() === 'HEAD' && /\/rest\/v1\/reservations\?select=id&status=eq\.request/.test(r.url()) && r.failure()?.errorText === 'net::ERR_ABORTED';
+  // may still be in flight, and the browser cancels it (ERR_ABORTED) — a navigation, not a failure (the bookings and,
+  // since 3 Nov 2026, the partner enquiries badge)
+  const badgeCount = (r) => r.method() === 'HEAD' && /\/rest\/v1\/(reservations\?select=id&status=eq\.request|partner_enquiries\?select=id&status=eq\.new)/.test(r.url()) && r.failure()?.errorText === 'net::ERR_ABORTED';
   page.on('requestfailed', (r) => !/realtime/.test(r.url()) && !badgeCount(r) && problems.push(`request failed: ${r.method()} ${r.url().slice(0, 120)} — ${r.failure()?.errorText}`));
   page.on('response', (r) => r.status() >= 400 && !isSpaFallback(r) && problems.push(`HTTP ${r.status()}: ${r.request().method()} ${r.url().slice(0, 120)}`));
   const take = () => problems.splice(0);
