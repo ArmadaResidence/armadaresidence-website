@@ -469,7 +469,7 @@ export const updateUser = (user_id: string, patch: Partial<{ full_name: string; 
 export const resendLink = (user_id: string) => edge<{ ok: boolean; type: string }>('admin-users', { action: 'resend', user_id });
 
 /** Ask for a rebuild of the static site (extra-bed fee, room availability). Never throws: the UI shows the fallback line. */
-export async function siteRebuild(reason: 'settings' | 'rooms' | 'media' | 'dining' | 'offers' | 'blog', job?: string): Promise<{ ok: boolean; dispatched?: boolean; reason?: string }> {
+export async function siteRebuild(reason: 'settings' | 'rooms' | 'media' | 'dining' | 'offers' | 'blog' | 'faq' | 'content', job?: string): Promise<{ ok: boolean; dispatched?: boolean; reason?: string }> {
   try {
     return await edge<{ ok: boolean; dispatched?: boolean; reason?: string }>('site-rebuild', job ? { reason, job } : { reason });
   } catch (e) {

@@ -49,6 +49,8 @@ const PAGES = [
   } },
   // offers «العروض» (2 Nov 2026): the four tabs; the individuals list (empty or not) with the add button
   { path: 'offers', label: 'العروض', ready: async (page) => (await page.locator('[data-tab]').count()) === 4 && (await page.locator('[data-offer]').count() > 0 || (await page.locator('[data-action]').count()) > 0) },
+  // «الأسئلة الشائعة» (3 Nov 2026): the four categories, the 19 seeded questions at least
+  { path: 'faq', label: 'الأسئلة الشائعة', ready: async (page) => (await page.locator('[data-faq-category]').count()) === 4 && (await page.locator('[data-faq-row]').count()) >= 19 },
   { path: 'settings', label: 'الإعدادات', ready: async (page) => (await page.locator('[data-switch]').count()) === 4 && (await page.locator('#s-limits').count()) === 1 },
   { path: 'users', label: 'المستخدمون', ready: async (page) => (await page.locator('li[data-user]').count()) >= 4 && (await page.locator(`li[data-user="${ADMIN}"]`).count()) === 1 },
   { path: 'audit', label: 'السجل', ready: async (page) => (await page.locator('#a-entity').count()) === 1 && ((await page.locator('[data-list="audit"] li').count()) > 0 || (await page.getByText('لا سجلات.').count()) > 0) },

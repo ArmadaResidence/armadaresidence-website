@@ -43,6 +43,10 @@ const social: { name: string; url: string }[] = [
       {t.contact.intro}
       <a href={localePath(locale, '/offers/')} class="font-semibold link-bronze ms-1">{t.nav.offers}</a>
     </p>
+    <p class="mt-2 text-ink-muted max-w-2xl" data-faq-link-line>
+      {t.faq.link_lead}
+      <a href={localePath(locale, '/faq/')} class="font-semibold link-bronze ms-1">{t.faq.link_text}</a>
+    </p>
 
     <div class="reveal-group enter mt-10 grid gap-6 md:grid-cols-2">
       {

@@ -11,7 +11,7 @@ import DateField from '../components/DateField';
 import { BranchSelect, CancelButton, Empty, ErrorBox, Field, Loading, Modal, Spinner, useToast } from '../components/ui';
 import { SANITY_TAG } from '../lib/rates';
 
-const ENTITY: Record<string, string> = { room_types: 'نوع غرفة (سعر أساسي / توافر)', rate_overrides: 'استثناء سعر', inventory_days: 'مخزون', settings: 'إعدادات', staff: 'مستخدم', staff_permissions: 'صلاحيات', reservations: 'حجز', security_events: 'أمان الدخول', site_defaults: 'الإعدادات الافتراضية', media_items: 'صورة', media_publish_jobs: 'نشر على الموقع', dining_venues: 'مطعم أو مقهى', offers: 'عرض', offer_popups: 'نافذة منبثقة', articles: 'مقال' };
+const ENTITY: Record<string, string> = { room_types: 'نوع غرفة (سعر أساسي / توافر)', rate_overrides: 'استثناء سعر', inventory_days: 'مخزون', settings: 'إعدادات', staff: 'مستخدم', staff_permissions: 'صلاحيات', reservations: 'حجز', security_events: 'أمان الدخول', site_defaults: 'الإعدادات الافتراضية', media_items: 'صورة', media_publish_jobs: 'نشر على الموقع', dining_venues: 'مطعم أو مقهى', offers: 'عرض', offer_popups: 'نافذة منبثقة', articles: 'مقال', faq_items: 'سؤال شائع' };
 // phase 2a.2 (26 Oct 2026): one line per security event (devices, backup codes) — never a code or a token
 const REVOKE_REASON: Record<string, string> = { admin: 'بواسطة مدير النظام', self: 'بواسطة المستخدم', password_change: 'بعد تغيير كلمة المرور', deactivated: 'بعد إيقاف الحساب' };
 function securityLine(r: AuditRow): string {

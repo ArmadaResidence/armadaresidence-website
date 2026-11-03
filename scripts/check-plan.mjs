@@ -13,7 +13,7 @@ import { pathToFileURL } from 'node:url';
 
 // the suite, in the order check-all runs it
 export const STATIC_CHECKS = ['typecheck', 'admin-digits-check', 'admin-format-check', 'auth-emails-check', 'whatsapp-check', 'email-print-check', 'offers-engine-check'];
-export const BROWSER_CHECKS = ['booking-nav-check', 'drawer-check', 'booking-whatsapp-check', 'datepicker-check', 'motion-check', 'booking-instant-check', 'partners-form-check', 'careers-form-check', 'dining-site-check', 'gallery-site-check', 'offers-site-check', 'blog-site-check', 'partners-button-check', 'a11y-check'];
+export const BROWSER_CHECKS = ['booking-nav-check', 'drawer-check', 'booking-whatsapp-check', 'datepicker-check', 'motion-check', 'booking-instant-check', 'partners-form-check', 'careers-form-check', 'dining-site-check', 'gallery-site-check', 'offers-site-check', 'blog-site-check', 'faq-site-check', 'partners-button-check', 'a11y-check'];
 // every commit (build and qa.py too, unless the commit is docs only)
 export const FAST_CHECKS = ['typecheck', 'admin-digits-check', 'admin-format-check', 'auth-emails-check', 'whatsapp-check'];
 // a11y-check on sample pages for a content change: home, one branch, one room, offers, policies — both languages
@@ -36,6 +36,7 @@ function contentPages(f) {
   if (/^content\/partners(-pages)?\.json$/.test(f)) return ['/partners/', '/partners/enquiry/'];
   if (f === 'content/branches.json') return ['/shafa-road/', '/contact/'];
   if (f === 'content/contact.json') return ['/contact/'];
+  if (f === 'content/faq.json') return ['/faq/'];
   return [];
 }
 
@@ -113,6 +114,12 @@ const RULES = [
       /^src\/pages\/\[\.\.\.lang\]\/blog\//.test(f) || comp(['ArticleCard', 'ArticleBody']).test(f) || lib(['articles', 'blog-md']).test(f) ||
       /^content\/articles\/[^/]+\.(ar|en)\.md$/.test(f) || f === 'src/content.config.ts',
     checks: ['blog-site-check'],
+  },
+  {
+    // «الأسئلة الشائعة» on the site (3 Nov 2026): the page, its data library, the seed / fallback file
+    name: 'faq',
+    test: (f) => f === 'src/pages/[...lang]/faq.astro' || lib(['faq']).test(f) || f === 'content/faq.json',
+    checks: ['faq-site-check'],
   },
   {
     name: 'email.ts',

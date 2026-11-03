@@ -1,0 +1,201 @@
+---
+/**
+ * «الأسئلة الشائعة» / FAQ (Ahmed, 3 Nov 2026 — DECISIONS.md 2026-11-03 «FAQ…»): the questions published from the
+ * dashboard (src/lib/faq.ts), under their category headings. Each question is a button (aria-expanded) that opens its
+ * answer; the answers are hidden until opened (shown without JavaScript). A search box filters the questions on the page
+ * (Arabic letters normalised: hamza forms, taa marbuta, alef maqsura, diacritics). Every question has a deep link
+ * (/faq/#<key>): opening a question writes its key into the address, and a link to it opens it. FAQPage JSON-LD carries
+ * exactly the questions on the page; BreadcrumbList; dataLayer `faq_open` { question_id } only.
+ */
+import Base from '@layouts/Base.astro';
+import Icon from '@components/Icon.astro';
+import { langPaths } from '@lib/paths';
+import { breadcrumbs, faqPage } from '@lib/jsonld';
+import { faqGroups } from '@lib/faq';
+import { localePath, pageSeo, ui, type Locale } from '@lib/content';
+
+export const getStaticPaths = langPaths;
+
+interface Props {
+  locale: Locale;
+}
+const { locale } = Astro.props;
+const t = ui(locale);
+const f = t.faq;
+const s = pageSeo(locale, 'faq');
+const groups = faqGroups(locale);
+const all = groups.flatMap((g) => g.items);
+const jsonld = [
+  faqPage(all.map((i) => ({ q: i.q, a: i.a })), localePath(locale, '/faq/')),
+  breadcrumbs([
+    { name: t.nav.home, path: localePath(locale, '/') },
+    { name: f.heading, path: localePath(locale, '/faq/') },
+  ]),
+];
+const counts = { one: f.count_one, two: f.count_two, few: f.count_few, many: f.count_many };
+---
+
+<Base locale={locale} path="/faq/" title={s.title} description={s.description} jsonld={jsonld}>
+  <section class="mx-auto max-w-3xl px-4 pt-10 pb-28 sm:pb-14" data-faq-page data-counts={JSON.stringify(counts)}>
+    <nav aria-label="breadcrumb" class="text-sm text-ink-muted">
+      <a href={localePath(locale, '/')} class="hover:text-midnight">{t.nav.home}</a>
+      <span aria-hidden="true" class="mx-1">/</span>
+      <span aria-current="page">{f.heading}</span>
+    </nav>
+    <h1 class="mt-3 text-3xl md:text-4xl font-bold text-midnight">{f.heading}</h1>
+    <p class="mt-3 text-ink-muted leading-relaxed">
+      {f.intro}
+      {' '}{f.contact_lead}{' '}<a href={localePath(locale, '/contact/')} class="font-semibold link-bronze">{f.contact_cta}</a>
+    </p>
+
+    <div role="search" class="mt-8">
+      <label for="faq-search" class="block text-sm font-semibold text-midnight">{f.search_label}</label>
+      <div class="mt-2 relative">
+        <span class="absolute inset-y-0 start-0 flex items-center ps-3 text-ink-muted pointer-events-none" aria-hidden="true">
+          <Icon name="search" size={18} />
+        </span>
+        <input
+          id="faq-search"
+          type="search"
+          autocomplete="off"
+          placeholder={f.search_placeholder}
+          aria-describedby="faq-count"
+          class="w-full h-12 rounded-card border border-line bg-white ps-10 pe-4 text-ink placeholder:text-ink-muted focus:outline-none focus-visible:ring-2 focus-visible:ring-bronze"
+          data-faq-search
+        />
+      </div>
+      <p id="faq-count" class="mt-2 text-sm text-ink-muted" aria-live="polite" data-faq-count></p>
+    </div>
+
+    <div class="mt-8 space-y-10">
+      {
+        groups.map((g) => (
+          <section aria-labelledby={`faq-cat-${g.key}`} data-faq-group={g.key}>
+            <h2 id={`faq-cat-${g.key}`} class="text-xl font-semibold text-midnight">{g.label}</h2>
+            <ul class="mt-4 divide-y divide-line border-y border-line">
+              {g.items.map((i) => (
+                <li id={i.key} class="scroll-mt-24" data-faq-item={i.key}>
+                  <h3>
+                    <button
+                      type="button"
+                      id={`${i.key}-q`}
+                      aria-expanded="false"
+                      aria-controls={`${i.key}-a`}
+                      class="faq-q w-full flex items-start justify-between gap-4 py-4 text-start font-semibold text-midnight hover:text-bronze-text"
+                      data-faq-toggle
+                    >
+                      <span data-faq-q>{i.q}</span>
+                      <span class="faq-icon shrink-0 mt-1" aria-hidden="true"><Icon name="plus" size={16} /></span>
+                    </button>
+                  </h3>
+                  <div id={`${i.key}-a`} role="region" aria-labelledby={`${i.key}-q`} class="faq-a pb-5 text-ink leading-relaxed" hidden data-faq-panel>
+                    <p data-faq-a>{i.a}</p>
+                    <a href={`#${i.key}`} class="mt-2 inline-block text-sm link-bronze" data-faq-link>{f.question_link}</a>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </section>
+        ))
+      }
+    </div>
+    <p class="mt-8 text-ink-muted" hidden data-faq-empty>{f.no_results}</p>
+  </section>
+  <noscript><style>[data-faq-panel] { display: block !important; } [data-faq-search], [data-faq-count] { display: none; }</style></noscript>
+</Base>
+
+<style>
+  .faq-icon {
+    transition: transform var(--motion-fast) var(--ease-in-out);
+  }
+  .faq-q[aria-expanded='true'] .faq-icon {
+    transform: rotate(45deg);
+  }
+</style>
+
+<script>
+  import { bindOnce, onPageLoad } from '@lib/client';
+
+  type DL = { dataLayer?: unknown[] };
+  const push = (o: Record<string, string>) => {
+    const w = window as unknown as DL;
+    w.dataLayer = w.dataLayer || [];
+    w.dataLayer.push(o);
+  };
+  // Arabic search folds hamza forms, taa marbuta, alef maqsura and the diacritics; Latin is case-insensitive
+  const norm = (s: string) =>
+    s
+      .toLowerCase()
+      .replace(/[ً-ْٰـ]/g, '')
+      .replace(/[إأآٱ]/g, 'ا')
+      .replace(/ة/g, 'ه')
+      .replace(/ى/g, 'ي')
+      .replace(/ؤ/g, 'و')
+      .replace(/ئ/g, 'ي')
+      .replace(/\s+/g, ' ')
+      .trim();
+
+  onPageLoad(() => {
+    const root = document.querySelector<HTMLElement>('[data-faq-page]');
+    if (!root || !bindOnce(root)) return;
+    const items = Array.from(root.querySelectorAll<HTMLLIElement>('[data-faq-item]'));
+    const groups = Array.from(root.querySelectorAll<HTMLElement>('[data-faq-group]'));
+    const search = root.querySelector<HTMLInputElement>('[data-faq-search]')!;
+    const count = root.querySelector<HTMLElement>('[data-faq-count]')!;
+    const empty = root.querySelector<HTMLElement>('[data-faq-empty]')!;
+    const counts = JSON.parse(root.dataset.counts || '{}') as Record<'one' | 'two' | 'few' | 'many', string>;
+    const text = new Map(items.map((li) => [li, norm(li.textContent || '')]));
+    const countText = (n: number) => {
+      const k = document.documentElement.lang === 'ar' ? (n === 1 ? 'one' : n === 2 ? 'two' : n % 100 >= 3 && n % 100 <= 10 ? 'few' : 'many') : n === 1 ? 'one' : 'many';
+      return (counts[k] || '{n}').replace('{n}', String(n));
+    };
+
+    const setOpen = (li: HTMLLIElement, open: boolean) => {
+      const btn = li.querySelector<HTMLButtonElement>('[data-faq-toggle]')!;
+      const panel = li.querySelector<HTMLElement>('[data-faq-panel]')!;
+      btn.setAttribute('aria-expanded', String(open));
+      panel.hidden = !open;
+    };
+    for (const li of items) {
+      li.querySelector<HTMLButtonElement>('[data-faq-toggle]')!.addEventListener('click', () => {
+        const open = li.querySelector('[data-faq-toggle]')!.getAttribute('aria-expanded') !== 'true';
+        setOpen(li, open);
+        if (open) {
+          // the deep link of the question opened, without a jump or a history entry
+          history.replaceState(history.state, '', `#${li.id}`);
+          push({ event: 'faq_open', question_id: li.id });
+        }
+      });
+    }
+
+    // a link to a question (/faq/#key, or a click on «رابط هذا السؤال») opens it
+    const openHash = () => {
+      const key = decodeURIComponent(location.hash.slice(1));
+      const li = items.find((x) => x.id === key);
+      if (!li) return;
+      if (li.hidden) {
+        search.value = '';
+        filter();
+      }
+      setOpen(li, true);
+      li.scrollIntoView({ block: 'start' });
+      li.querySelector<HTMLButtonElement>('[data-faq-toggle]')!.focus({ preventScroll: true });
+    };
+    window.addEventListener('hashchange', openHash);
+
+    const filter = () => {
+      const q = norm(search.value);
+      let shown = 0;
+      for (const li of items) {
+        const hit = !q || q.split(' ').every((w) => text.get(li)!.includes(w));
+        li.hidden = !hit;
+        if (hit) shown++;
+      }
+      for (const g of groups) g.hidden = !g.querySelector('[data-faq-item]:not([hidden])');
+      empty.hidden = shown > 0;
+      count.textContent = q ? countText(shown) : '';
+    };
+    search.addEventListener('input', filter);
+    openHash();
+  });
+</script>

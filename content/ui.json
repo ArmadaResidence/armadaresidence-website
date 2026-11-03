@@ -18,7 +18,8 @@
       "discover-taif": "اكتشف الطائف",
       "partners": "للشركاء والوكالات",
       "blog": "المدونة",
-      "careers": "انضم إلى فريقنا"
+      "careers": "انضم إلى فريقنا",
+      "faq": "الأسئلة الشائعة"
     },
     "home": {
       "branches_heading": "فرعانا في الطائف",
@@ -158,6 +159,22 @@
       "bar_details": "التفاصيل",
       "bar_dismiss": "إخفاء الإعلان",
       "popup_close": "إغلاق"
+    },
+    "faq": {
+      "heading": "الأسئلة الشائعة",
+      "intro": "إجابات مختصرة عن الحجز والإقامة في فرعَي أرمادا ريزيدنس بالطائف.",
+      "contact_lead": "لم تجد إجابتك؟",
+      "contact_cta": "تواصل معنا",
+      "search_label": "ابحث في الأسئلة",
+      "search_placeholder": "مثل: الإفطار، المواقف، الإلغاء",
+      "count_one": "سؤال واحد",
+      "count_two": "سؤالان",
+      "count_few": "{n} أسئلة",
+      "count_many": "{n} سؤالًا",
+      "no_results": "لا توجد أسئلة تطابق بحثك. جرّب كلمة أخرى أو تواصل معنا.",
+      "question_link": "رابط هذا السؤال",
+      "link_lead": "لديك سؤال؟",
+      "link_text": "اطّلع على الأسئلة الشائعة"
     },
     "policies": {
       "toc": "المحتويات"
@@ -701,7 +718,8 @@
       "discover-taif": "Discover Taif",
       "partners": "Partners & agencies",
       "blog": "Blog",
-      "careers": "Join our team"
+      "careers": "Join our team",
+      "faq": "FAQ"
     },
     "home": {
       "branches_heading": "Our two properties in Taif",
@@ -841,6 +859,22 @@
       "bar_details": "Details",
       "bar_dismiss": "Dismiss the announcement",
       "popup_close": "Close"
+    },
+    "faq": {
+      "heading": "Frequently asked questions",
+      "intro": "Short answers about booking and staying at Armada Residence's two properties in Taif.",
+      "contact_lead": "Can't find your answer?",
+      "contact_cta": "Contact us",
+      "search_label": "Search the questions",
+      "search_placeholder": "e.g. breakfast, parking, cancellation",
+      "count_one": "1 question",
+      "count_two": "2 questions",
+      "count_few": "{n} questions",
+      "count_many": "{n} questions",
+      "no_results": "No questions match your search. Try another word or contact us.",
+      "question_link": "Link to this question",
+      "link_lead": "Have a question?",
+      "link_text": "Read the FAQ"
     },
     "policies": {
       "toc": "Contents"

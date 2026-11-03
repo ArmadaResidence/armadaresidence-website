@@ -19,6 +19,9 @@
 // popup_publish — the same path; the caller needs publish on offers.
 // Blog (dashboard «المدونة», 3 Nov 2026): reason 'blog' + the job of blog_publish / blog_unpublish — the same path; the
 // caller needs publish on blog. (A scheduled article's own time is handled by pg_cron → the blog-due function.)
+// FAQ and content (dashboard «الأسئلة الشائعة» / «المحتوى والظهور», 3 Nov 2026): reasons 'faq' and 'content' + the job
+// of faq_publish / content_publish / visibility_publish / announcement_publish — the same path; the caller needs publish
+// on content (both modules live under that permission).
 // Without the secret GITHUB_DISPATCH_TOKEN it answers { ok: false, reason: 'no_token' } and the dashboard shows
 // «سيُطبَّق على الموقع عند إعادة البناء التالية». Test mode (supabase/tests/README.md): a request carrying a valid
 // `x-armada-test` token (checked through public.qa_fixture('state'), which refuses any other) may dispatch without a
@@ -74,8 +77,8 @@ function json(req: Request, status: number, body: unknown): Response {
   return new Response(JSON.stringify(body), { status, headers: { ...cors(req), 'Content-Type': 'application/json; charset=utf-8' } });
 }
 
-/** The caller through RLS: edit on settings or rooms (publish on media / dining / offers / blog for their publish jobs), past the second step. */
-async function callerMayRebuild(jwt: string, job: 'media' | 'dining' | 'offers' | 'blog' | null): Promise<boolean> {
+/** The caller through RLS: edit on settings or rooms (publish on media / dining / offers / blog / content for their publish jobs), past the second step. */
+async function callerMayRebuild(jwt: string, job: 'media' | 'dining' | 'offers' | 'blog' | 'faq' | 'content' | null): Promise<boolean> {
   const res = await fetch(`${url()}/rest/v1/rpc/my_staff`, {
     method: 'POST',
     headers: { apikey: anonKey(), Authorization: `Bearer ${jwt}`, 'Content-Type': 'application/json' },
@@ -85,7 +88,7 @@ async function callerMayRebuild(jwt: string, job: 'media' | 'dining' | 'offers' 
   const me = (await res.json()) as { active?: boolean; needs_mfa?: boolean; permissions?: Record<string, string> } | null;
   if (!me || !me.active || me.needs_mfa) return false;
   const p = me.permissions ?? {};
-  if (job) return p[job] === 'publish';
+  if (job) return p[job === 'faq' ? 'content' : job] === 'publish';
   return p.settings === 'edit' || p.rooms === 'edit';
 }
 
@@ -111,7 +114,7 @@ Deno.serve(async (req) => {
   try {
     body = await req.json();
   } catch { /* empty body is fine */ }
-  const kind = body.reason === 'media' || body.reason === 'dining' || body.reason === 'offers' || body.reason === 'blog' ? body.reason : null;
+  const kind = body.reason === 'media' || body.reason === 'dining' || body.reason === 'offers' || body.reason === 'blog' || body.reason === 'faq' || body.reason === 'content' ? body.reason : null;
   if (kind && !UUID.test(String(body.job ?? ''))) return json(req, 400, { ok: false, error: 'job required' });
   if (!test && (!jwt || !(await callerMayRebuild(jwt, kind)))) return json(req, 403, { ok: false, error: 'not allowed' });
   const reason = kind ?? (test ? 'test' : REASONS.has(String(body.reason)) ? String(body.reason) : 'dashboard');

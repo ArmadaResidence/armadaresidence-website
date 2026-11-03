@@ -1,23 +1,32 @@
 {
-  "_note": "FAQ drafted 2 Nov 2026 from facts confirmed by Ahmed (payment: mada, Visa, cash; Wi-Fi free; parking free at both branches; Airport Road to Taif airport 22 km / 18 min — Ahmed, 2 Nov 2026) and the approved policies. {breakfast} and {extra_bed} are filled from the dashboard pricing settings at build time. Approved by Ahmed, 2 Nov 2026 (DECISIONS.md 2026-11-02); editable from the dashboard once the content module exists.",
+  "_note": "FAQ drafted 2 Nov 2026 from facts confirmed by Ahmed (payment: mada, Visa, cash; Wi-Fi free; parking free at both branches; Airport Road to Taif airport 22 km / 18 min — Ahmed, 2 Nov 2026) and the approved policies. {breakfast} and {extra_bed} are filled from the dashboard pricing settings at build time. Approved by Ahmed, 2 Nov 2026 (DECISIONS.md 2026-11-02); seeded into the dashboard «الأسئلة الشائعة» on 3 Nov 2026 (migration 20261103100100) with these categories and this order; the dashboard is the source since then and this file is the build's fallback (scripts/faq-build.mjs).",
   "verified": true,
+  "categories": [
+    {
+      "key": "booking",
+      "label_ar": "الحجز والإلغاء والدفع",
+      "label_en": "Booking, cancellation and payment"
+    },
+    {
+      "key": "stay",
+      "label_ar": "الإقامة والخدمات",
+      "label_en": "Your stay and services"
+    },
+    {
+      "key": "branches",
+      "label_ar": "الفروع والموقع",
+      "label_en": "Properties and location"
+    },
+    {
+      "key": "business",
+      "label_ar": "الشركات والقاعة",
+      "label_en": "Companies and the hall"
+    }
+  ],
   "items": [
     {
-      "id": "check-in-out",
-      "q_ar": "ما مواعيد الوصول والمغادرة؟",
-      "a_ar": "الوصول من الساعة 4:00 عصرًا، والمغادرة حتى الساعة 12:00 ظهرًا، في الفرعين. ويمكنكم الوصول في أي وقت بعد الرابعة، فالاستقبال متاح على مدار الساعة.",
-      "q_en": "What are the check-in and check-out times?",
-      "a_en": "Check-in is from 4:00 pm and check-out is by 12:00 noon at both properties. You can arrive at any time after 4:00 pm, as reception is open around the clock."
-    },
-    {
-      "id": "early-late",
-      "q_ar": "هل يمكن الوصول مبكرًا أو المغادرة متأخرًا؟",
-      "a_ar": "حسب التوافر، ويُطلب ذلك من الاستقبال مسبقًا. المغادرة المتأخرة برسوم: 100 ريال حتى 2:00 ظهرًا، و200 ريال حتى 4:00 عصرًا.",
-      "q_en": "Can I check in early or check out late?",
-      "a_en": "Subject to availability; please ask reception in advance. Late check-out is SAR 100 until 2:00 pm and SAR 200 until 4:00 pm."
-    },
-    {
       "id": "confirmation",
+      "category": "booking",
       "q_ar": "كيف أعرف أن حجزي مؤكد؟",
       "a_ar": "إذا ظهرت علامة «تأكيد فوري» بعد اختيار التواريخ، يتأكد حجزك مباشرة عند الإرسال، ويصلك التأكيد عبر الواتساب والبريد الإلكتروني إن أدخلته. وإذا لم تظهر، فما ترسله طلب حجز يراجعه الاستقبال ويؤكد لك التوافر والسعر.",
       "q_en": "How do I know my booking is confirmed?",
@@ -25,6 +34,7 @@
     },
     {
       "id": "cancellation",
+      "category": "booking",
       "q_ar": "ما سياسة الإلغاء؟",
       "a_ar": "الإلغاء مجاني حتى 24 ساعة قبل موعد الوصول. بعد ذلك، أو في حال عدم الحضور، تُحسب قيمة الليلة الأولى. تنطبق هذه السياسة على الحجز المباشر عبر الموقع والواتساب والاستقبال؛ أما الحجوزات عبر منصات الحجز الأخرى فتخضع لسياسة المنصة.",
       "q_en": "What is the cancellation policy?",
@@ -32,55 +42,63 @@
     },
     {
       "id": "payment",
+      "category": "booking",
       "q_ar": "متى وكيف أدفع؟",
       "a_ar": "يُسدَّد المبلغ عند الوصول في الاستقبال، ولا نطلب أي دفعة مسبقة. نقبل مدى وفيزا والدفع النقدي.",
       "q_en": "When and how do I pay?",
       "a_en": "You pay at reception when you arrive; no prepayment is required. We accept mada, Visa and cash."
     },
     {
-      "id": "breakfast",
-      "q_ar": "هل الإفطار مشمول؟",
-      "a_ar": "الإفطار اختياري تختاره عند الحجز، ورسومه {breakfast} للشخص في الليلة، والأطفال حتى 5 سنوات مجانًا ومن 6 إلى 12 سنة بنصف الرسوم. يُقدَّم بوفيه الإفطار يوميًا في مطعم كل فرع من 7:00 إلى 10:30 صباحًا.",
-      "q_en": "Is breakfast included?",
-      "a_en": "Breakfast is optional and chosen when you book, at {breakfast} per person per night; children up to 5 eat free and ages 6 to 12 pay half. The breakfast buffet is served daily in each property's restaurant from 7:00 to 10:30 am."
-    },
-    {
       "id": "guests-extra-bed",
+      "category": "booking",
       "q_ar": "كم شخصًا يشمل السعر؟ وهل يمكن إضافة سرير؟",
       "a_ar": "يشمل سعر الغرفة والاستديو وجناح الغرفة والصالة شخصين بالغين، ويشمل سعر الأجنحة بغرفتي نوم أربعة أشخاص، والأطفال لا يُحسبون ضمن العدد المشمول. ويمكن إضافة سرير إضافي في بعض أنواع الغرف برسوم {extra_bed} لليلة، تختاره عند الحجز.",
       "q_en": "How many guests does the price cover? Can I add a bed?",
       "a_en": "Rooms, studios and one-bedroom suites are priced for two adults, and two-bedroom suites for four; children aren't counted. An extra bed can be added in selected room types for {extra_bed} per night, chosen when you book."
     },
     {
+      "id": "check-in-out",
+      "category": "stay",
+      "q_ar": "ما مواعيد الوصول والمغادرة؟",
+      "a_ar": "الوصول من الساعة 4:00 عصرًا، والمغادرة حتى الساعة 12:00 ظهرًا، في الفرعين. ويمكنكم الوصول في أي وقت بعد الرابعة، فالاستقبال متاح على مدار الساعة.",
+      "q_en": "What are the check-in and check-out times?",
+      "a_en": "Check-in is from 4:00 pm and check-out is by 12:00 noon at both properties. You can arrive at any time after 4:00 pm, as reception is open around the clock."
+    },
+    {
+      "id": "early-late",
+      "category": "stay",
+      "q_ar": "هل يمكن الوصول مبكرًا أو المغادرة متأخرًا؟",
+      "a_ar": "حسب التوافر، ويُطلب ذلك من الاستقبال مسبقًا. المغادرة المتأخرة برسوم: 100 ريال حتى 2:00 ظهرًا، و200 ريال حتى 4:00 عصرًا.",
+      "q_en": "Can I check in early or check out late?",
+      "a_en": "Subject to availability; please ask reception in advance. Late check-out is SAR 100 until 2:00 pm and SAR 200 until 4:00 pm."
+    },
+    {
+      "id": "breakfast",
+      "category": "stay",
+      "q_ar": "هل الإفطار مشمول؟",
+      "a_ar": "الإفطار اختياري تختاره عند الحجز، ورسومه {breakfast} للشخص في الليلة، والأطفال حتى 5 سنوات مجانًا ومن 6 إلى 12 سنة بنصف الرسوم. يُقدَّم بوفيه الإفطار يوميًا في مطعم كل فرع من 7:00 إلى 10:30 صباحًا.",
+      "q_en": "Is breakfast included?",
+      "a_en": "Breakfast is optional and chosen when you book, at {breakfast} per person per night; children up to 5 eat free and ages 6 to 12 pay half. The breakfast buffet is served daily in each property's restaurant from 7:00 to 10:30 am."
+    },
+    {
       "id": "id",
+      "category": "stay",
       "q_ar": "ما المستندات المطلوبة عند الوصول؟",
       "a_ar": "يُطلب إثبات هوية سارٍ لصاحب الحجز: هوية وطنية أو إقامة أو جواز سفر.",
       "q_en": "What do I need to show at check-in?",
       "a_en": "The guest who made the booking needs a valid ID: a national ID, an iqama or a passport."
     },
     {
-      "id": "parking",
-      "q_ar": "هل يوجد موقف سيارات؟",
-      "a_ar": "نعم، المواقف مجانية في الفرعين.",
-      "q_en": "Is there parking?",
-      "a_en": "Yes, parking is free at both properties."
-    },
-    {
       "id": "wifi",
+      "category": "stay",
       "q_ar": "هل يوجد واي فاي؟",
       "a_ar": "نعم، الواي فاي مجاني في جميع الغرف.",
       "q_en": "Is there Wi-Fi?",
       "a_en": "Yes, Wi-Fi is free in every room."
     },
     {
-      "id": "branches",
-      "q_ar": "ما الفرق بين الفرعين؟",
-      "a_ar": "فرع طريق المطار شقق فندقية تضم غرفًا وأجنحة بعضها بمطبخ، مع مطعم ومقهى على مدار الساعة وقاعة للاجتماعات. وفندق طريق الشفا يضم غرفًا وأجنحة، منها وحدات بجاكوزي خاص وغرفة ببلكونة، ويقع على الطريق إلى مرتفعات الشفا.",
-      "q_en": "What's the difference between the two properties?",
-      "a_en": "Airport Road offers hotel apartments: rooms and suites, some with a kitchen, plus a 24-hour restaurant and café and a meeting hall. The Shafa Road hotel offers rooms and suites, including units with a private jacuzzi and a balcony room, on the road to the Al-Shafa highlands."
-    },
-    {
       "id": "dining-housekeeping",
+      "category": "stay",
       "q_ar": "هل يوجد توصيل طعام إلى الغرف؟ ومتى تُنظَّف الغرف؟",
       "a_ar": "نعم، توصيل الطعام إلى الغرف متاح على مدار الساعة في الفرعين، وتُنظَّف الغرف يوميًا من 10:00 صباحًا حتى 5:00 مساءً.",
       "q_en": "Is there in-room dining? When are rooms cleaned?",
@@ -88,6 +106,7 @@
     },
     {
       "id": "smoking",
+      "category": "stay",
       "q_ar": "هل التدخين مسموح في الغرف؟",
       "a_ar": "جميع الغرف لغير المدخنين.",
       "q_en": "Is smoking allowed in the rooms?",
@@ -95,6 +114,7 @@
     },
     {
       "id": "pets",
+      "category": "stay",
       "q_ar": "هل يُسمح باصطحاب الحيوانات الأليفة؟",
       "a_ar": "لا، الحيوانات الأليفة غير مسموح بها.",
       "q_en": "Are pets allowed?",
@@ -102,27 +122,31 @@
     },
     {
       "id": "accessible",
+      "category": "stay",
       "q_ar": "هل توجد غرف مهيأة لذوي الاحتياجات الخاصة؟",
       "a_ar": "نعم، يتوفر في كل فرع غرفة مهيأة لذوي الاحتياجات الخاصة. لمعرفة تفاصيل تجهيزاتها قبل الحجز، تواصلوا مع الاستقبال.",
       "q_en": "Do you have accessible rooms?",
       "a_en": "Yes, each property has an accessible room. For details of its facilities before booking, please contact reception."
     },
     {
-      "id": "hall",
-      "q_ar": "هل لديكم قاعة للاجتماعات والمناسبات؟",
-      "a_ar": "نعم، في فرع طريق المطار قاعة تتسع حتى 50 شخصًا، مجهزة ببروجكتر ونظام صوتي وخمسة أنماط للجلوس. للأسعار والحجز، اطلبوا عرض سعر من صفحة القاعة وسيتواصل معكم فريق المبيعات.",
-      "q_en": "Do you have a meeting and events hall?",
-      "a_en": "Yes, Airport Road has a hall for up to 50 guests, with a projector, a sound system and five seating layouts. For prices and bookings, request a quote from the hall page and our sales team will contact you."
+      "id": "parking",
+      "category": "branches",
+      "q_ar": "هل يوجد موقف سيارات؟",
+      "a_ar": "نعم، المواقف مجانية في الفرعين.",
+      "q_en": "Is there parking?",
+      "a_en": "Yes, parking is free at both properties."
     },
     {
-      "id": "groups",
-      "q_ar": "هل لديكم أسعار للشركات والمجموعات؟",
-      "a_ar": "نعم، للشركات والمجموعات وشركات السياحة صفحة «للشركاء والوكالات»، يمكنكم منها إرسال طلب عرض سعر، ويتواصل معكم فريق المبيعات.",
-      "q_en": "Do you have rates for companies and groups?",
-      "a_en": "Yes. Companies, groups and travel agencies can send a quote request from our “Partners and agencies” page, and our sales team will contact you."
+      "id": "branches",
+      "category": "branches",
+      "q_ar": "ما الفرق بين الفرعين؟",
+      "a_ar": "فرع طريق المطار شقق فندقية تضم غرفًا وأجنحة بعضها بمطبخ، مع مطعم ومقهى على مدار الساعة وقاعة للاجتماعات. وفندق طريق الشفا يضم غرفًا وأجنحة، منها وحدات بجاكوزي خاص وغرفة ببلكونة، ويقع على الطريق إلى مرتفعات الشفا.",
+      "q_en": "What's the difference between the two properties?",
+      "a_en": "Airport Road offers hotel apartments: rooms and suites, some with a kitchen, plus a 24-hour restaurant and café and a meeting hall. The Shafa Road hotel offers rooms and suites, including units with a private jacuzzi and a balcony room, on the road to the Al-Shafa highlands."
     },
     {
       "id": "contact",
+      "category": "branches",
       "q_ar": "كيف أتواصل مع الاستقبال؟",
       "a_ar": "تواصلوا مع استقبال الفرع مباشرة عبر زر الواتساب في صفحة كل فرع، والاستقبال متاح على مدار الساعة.",
       "q_en": "How do I contact reception?",
@@ -130,10 +154,27 @@
     },
     {
       "id": "airport",
+      "category": "branches",
       "q_ar": "كم يبعد فرع طريق المطار عن مطار الطائف؟",
       "a_ar": "يبعد فرع طريق المطار عن مطار الطائف الدولي نحو 22 كيلومترًا، أي قرابة 18 دقيقة بالسيارة.",
       "q_en": "How far is Airport Road from Taif airport?",
       "a_en": "Airport Road is about 22 km from Taif International Airport, around 18 minutes by car."
+    },
+    {
+      "id": "hall",
+      "category": "business",
+      "q_ar": "هل لديكم قاعة للاجتماعات والمناسبات؟",
+      "a_ar": "نعم، في فرع طريق المطار قاعة تتسع حتى 50 شخصًا، مجهزة ببروجكتر ونظام صوتي وخمسة أنماط للجلوس. للأسعار والحجز، اطلبوا عرض سعر من صفحة القاعة وسيتواصل معكم فريق المبيعات.",
+      "q_en": "Do you have a meeting and events hall?",
+      "a_en": "Yes, Airport Road has a hall for up to 50 guests, with a projector, a sound system and five seating layouts. For prices and bookings, request a quote from the hall page and our sales team will contact you."
+    },
+    {
+      "id": "groups",
+      "category": "business",
+      "q_ar": "هل لديكم أسعار للشركات والمجموعات؟",
+      "a_ar": "نعم، للشركات والمجموعات وشركات السياحة صفحة «للشركاء والوكالات»، يمكنكم منها إرسال طلب عرض سعر، ويتواصل معكم فريق المبيعات.",
+      "q_en": "Do you have rates for companies and groups?",
+      "a_en": "Yes. Companies, groups and travel agencies can send a quote request from our “Partners and agencies” page, and our sales team will contact you."
     }
   ]
 }

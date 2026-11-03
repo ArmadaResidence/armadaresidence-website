@@ -60,3 +60,7 @@ content/fees.generated.json
 content/offers.generated.json
 # the articles published from the dashboard «المدونة» (scripts/blog-build.mjs, 3 Nov 2026)
 content/articles.generated/
+# the FAQ published from the dashboard «الأسئلة الشائعة» (scripts/faq-build.mjs, 3 Nov 2026)
+content/faq.generated.json
+# «المحتوى والظهور»: published texts, hidden pages, the announcement bar (scripts/content-build.mjs, 3 Nov 2026)
+content/content.generated.json

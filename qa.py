@@ -370,6 +370,12 @@ def main() -> int:
             price_text = p.text
             for fee_line in allowed_fee_lines:
                 price_text = price_text.replace(fee_line, " ")
+            # /faq/ (3 Nov 2026): the answers state the breakfast and extra-bed fees through {breakfast} / {extra_bed},
+            # filled from Settings at build time — exactly those amounts are removed; a room rate typed there still fails
+            if lp == "/faq/":
+                for amount in (fee, breakfast_fee):
+                    for loc in ("ar", "en"):
+                        price_text = price_text.replace(sar_text(amount, loc), " ")
             for m in re.finditer(r"\d[\d,.]*\s*(?:ريال|ر\.س|SAR)\b|SAR\s*\d", price_text):
                 window = price_text[max(0, m.start() - 60) : m.end() + 60]
                 if re.search(r"الليلة|لليلة|night|/\s*الليلة", window, re.I):
@@ -388,12 +394,12 @@ def main() -> int:
         # decision 9 Oct 2026: no breakfast price anywhere on the site — except the /policies/ sentence (E1, Ahmed
         # 1 Nov 2026: the price per person per night from Settings at build time), checked below
         bf_amount = str(int(breakfast_fee) if float(breakfast_fee).is_integer() else breakfast_fee)
-        if lp != "/policies/":
+        if lp not in ("/policies/", "/faq/"):
             for m in re.finditer(r"إفطار|breakfast", p.text, re.I):
                 window = p.text[max(0, m.start() - 80) : m.end() + 80]
                 if re.search(rf"{re.escape(bf_amount)}\s*ريال|SAR\s*{re.escape(bf_amount)}\b|\b{re.escape(bf_amount)}\s*SAR", window):
                     rep.f("breakfast price", f"{path}: breakfast price shown near {window.strip()[:70]!r}")
-        elif guests_sec is not None:
+        elif lp == "/policies/" and guests_sec is not None:
             loc = "en" if is_en(path) else "ar"
             for line in policies_fee_lines[loc]:
                 if line not in p.text:
@@ -672,6 +678,16 @@ def main() -> int:
             rep.f("json-ld", f"{path}: article page must carry BlogPosting (3 Nov 2026)")
         if lp == "/blog/" and "Blog" not in types:
             rep.f("json-ld", f"{path}: /blog/ must carry Blog")
+        # /faq/ (3 Nov 2026): FAQPage with exactly the questions on the page, and every question a button with its panel
+        if lp == "/faq/":
+            if "FAQPage" not in types or "BreadcrumbList" not in types:
+                rep.f("json-ld", f"{path}: /faq/ must carry FAQPage and BreadcrumbList")
+            shown = len(re.findall(r"<li[^>]*\sdata-faq-item=", html))
+            ld_q = sum(len(json.loads(b).get("mainEntity", [])) for b in p.jsonld if '"FAQPage"' in b)
+            if shown == 0 or shown != ld_q:
+                rep.f("faq", f"{path}: {shown} questions on the page, {ld_q} in the FAQPage JSON-LD")
+            if len(re.findall(r'<button[^>]*aria-expanded="false"[^>]*data-faq-toggle', html)) != shown or len(re.findall(r"<div[^>]*\sdata-faq-panel", html)) != shown:
+                rep.f("faq", f"{path}: every question needs a button (aria-expanded) and its answer panel")
 
         # Discover Taif: every place renders as a card with its photo
         if lp == "/discover-taif/":
