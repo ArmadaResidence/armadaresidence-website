@@ -76,6 +76,13 @@ const KNOWN: [RegExp, string][] = [
   [/^dining_not_open/, 'ينشر المطعم أو المقهى «نشطًا» أولًا، ثم يُرسل إشعار الافتتاح.'],
   [/^dining_(branch|kind|audience|menu|status)/, 'القيمة غير صالحة.'],
   // offers «العروض» and the pop-up (2 Nov 2026)
+  // «العملاء» (3 Nov 2026)
+  [/^guests_tags/, 'حتى 12 وسمًا، وكل وسم حتى 30 حرفًا.'],
+  [/^guests_notes/, 'الملاحظات حتى 2000 حرف.'],
+  [/^guests_merge_same/, 'اختر ملفًا آخر غير هذا الملف.'],
+  [/^guests_merge_test/, 'لا يُدمج ملف تجريبي مع ملف حقيقي.'],
+  [/^guests_consent_version/, 'نص الموافقة غير معروف؛ حدّث الصفحة.'],
+  [/^guests_platform/, 'منصة غير معروفة.'],
   [/^offers_slug_locked/, 'لا يتغير رابط العرض بعد نشره.'],
   [/^offers_slug_taken/, 'هذا الرابط مستخدم لعرض آخر.'],
   [/^offers_slug/, 'رابط العرض بحروف إنجليزية صغيرة وأرقام وشرطات فقط (من 2 إلى 60).'],

@@ -16,6 +16,7 @@ import { useSession } from '../lib/session';
 import { BRANCH_FULL, BRANCH_NAMES, NOTIFY_FAILED, REASON_LABELS, STATUS_LABELS, WA_STATUS_LABELS, WA_TEMPLATE_LABELS, adultsWord, childrenWord, dateRange, longDate, nightsWord, riyadhDateTimeLong, roomsLeft, sar, toCsv, riyadhToday, waError } from '../lib/format';
 import { BranchSelect, CancelButton, Confirm, Drawer, Empty, ErrorBox, Field, Loading, Modal, Spinner, useToast } from '../components/ui';
 import DateField from '../components/DateField';
+import { BookingGuestBadges } from './Guests';
 
 type Status = '' | 'request' | 'confirmed' | 'cancelled';
 
@@ -358,6 +359,8 @@ function Details({ r, roomTypes, editable, onClose, onChanged }: { r: Reservatio
         {r.is_test && <span className="chip chip-test">تجربة</span>}
         {r.status === 'request' && r.fallback_reason && <span className="chip chip-request">{REASON_LABELS[r.fallback_reason] ?? r.fallback_reason}</span>}
       </div>
+      {/* the guest (3 Nov 2026): «عضو نادي أرمادا ريزيدنس», «ضيف عائد (N)», the consent — recorded in person by reception */}
+      <div className="mb-4"><BookingGuestBadges reservation={r.id} editable={editable} /></div>
       <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1.5 text-sm mb-5 num-ar">
         <dt className="text-ink-muted">الفرع</dt><dd className="font-semibold">{BRANCH_NAMES[r.branch]}</dd>
         <dt className="text-ink-muted">نوع الغرفة</dt><dd className="font-semibold">{rtName(r.room_type_id)}</dd>
@@ -502,6 +505,7 @@ function Details({ r, roomTypes, editable, onClose, onChanged }: { r: Reservatio
  * 29 Oct 2026: the price block follows the confirmation email — «الغرفة · N ليالٍ», every night on its own line, breakfast,
  * extra beds, the total, then the pay-at-hotel line (a long stay flows into columns so the sheet stays one page).
  * 2 Nov 2026: an offer adds «الإجمالي قبل العرض» and «خصم العرض · {name}» above the total, and its name / code to the fields. */
+
 function PrintSheet({ r, room }: { r: Reservation; room: string }) {
   const nights = (r.pricing as { nights?: { night: string; price: number; label?: string | null }[] } | null)?.nights ?? [];
   const row = (k: string, v: ReactNode) => (<><dt>{k}</dt><dd>{v}</dd></>);

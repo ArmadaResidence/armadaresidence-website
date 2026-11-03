@@ -42,6 +42,8 @@ export const NAV_GROUPS: NavGroup[] = [
       { to: '/blog', label: 'المدونة', section: 'blog', icon: 'blog' },
       { to: '/content', label: 'المحتوى', section: 'content', icon: 'content' },
       { to: '/faq', label: 'الأسئلة الشائعة', section: 'content', icon: 'faq', id: 'faq' },
+      // «العملاء» (3 Nov 2026): guest profiles, the club, consents and the audience exports
+      { to: '/guests', label: 'العملاء', section: 'guests', icon: 'guests' },
     ],
   },
   {

@@ -24,6 +24,7 @@ import Offers from './pages/Offers';
 import Blog from './pages/Blog';
 import Faq from './pages/Faq';
 import Partners from './pages/Partners';
+import Guests from './pages/Guests';
 import Content from './pages/Content';
 import Settings from './pages/Settings';
 import Users from './pages/Users';
@@ -41,6 +42,7 @@ const SCREENS: { path: string; section: string }[] = [
   { path: 'content', section: 'content' },
   { path: 'faq', section: 'content' },
   { path: 'partners', section: 'partners' },
+  { path: 'guests', section: 'guests' },
   { path: 'settings', section: 'settings' },
   { path: 'users', section: 'users' },
   { path: 'audit', section: 'audit' },
@@ -161,6 +163,7 @@ export default function App() {
                     <Route path="content" element={<Allowed section="content"><Content /></Allowed>} />
                     <Route path="faq" element={<Allowed section="content"><Faq /></Allowed>} />
                     <Route path="partners" element={<Allowed section="partners"><Partners /></Allowed>} />
+                    <Route path="guests" element={<Allowed section="guests"><Guests /></Allowed>} />
                     <Route path="settings" element={<Allowed section="settings"><Settings /></Allowed>} />
                     <Route path="users" element={<Allowed section="users"><Users /></Allowed>} />
                     <Route path="audit" element={<Allowed section="audit"><Audit /></Allowed>} />
