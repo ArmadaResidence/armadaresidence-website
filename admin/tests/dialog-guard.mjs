@@ -241,14 +241,19 @@ export async function guardChecks(page, check, cfg) {
 }
 
 /** page-level forms (B5): dirty + a sidebar link → the «في هذه الصفحة» prompt; keep stays; discard navigates */
-export async function pageGuardChecks(page, check, { label, edit, restore, read, linkSel, vp }) {
+export async function pageGuardChecks(page, check, { label, edit, restore, read, linkSel, openSel, vp }) {
   const tag = `${label} @${vp.width}`;
+  // the phone navigation is a drawer (3 Nov 2026): open it before the link
+  const clickLink = async () => {
+    if (openSel && (await page.locator(openSel).isVisible())) await page.click(openSel);
+    await page.click(linkSel);
+  };
   const original = await read();
   const restoreOriginal = () => restore(original);
   const typed = await edit();
   await page.waitForTimeout(100);
   check(await beforeUnloadArmed(page), `${tag}: beforeunload not armed while the page is dirty`);
-  await page.click(linkSel);
+  await clickLink();
   await page.locator(PROMPT).waitFor({ timeout: 3000 }).catch(() => {});
   check(await promptOpen(page), `${tag}: a sidebar link did not ask`);
   const body = await page.locator(`${PROMPT} p`).textContent().catch(() => '');
@@ -262,7 +267,7 @@ export async function pageGuardChecks(page, check, { label, edit, restore, read,
   check(!(await beforeUnloadArmed(page)), `${tag}: beforeunload still armed after restoring the value`, JSON.stringify(await page.evaluate(() => globalThis.__armadaDirty?.())));
   await edit();
   const before = page.url();
-  await page.click(linkSel);
+  await clickLink();
   await page.locator(PROMPT).waitFor({ timeout: 3000 }).catch(() => {});
   await page.locator(`${PROMPT} [data-action="discard-close"]`).click();
   await page.waitForFunction((u) => location.href !== u, before, { timeout: 5000 }).catch(() => {});

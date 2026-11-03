@@ -3,9 +3,11 @@
 // the second step not passed → /code (phase 2a.2: the email code, for everyone; /mfa redirects there); an admin
 // without backup codes → /backup-codes once per tab («لاحقًا» continues); a screen the matrix does not grant → the
 // first granted screen (phase 2a.1: the matrix, not the role, decides what shows). An empty matrix sees «لا صلاحية».
+// Signing in lands on the last section visited (lib/nav.ts, 3 Nov 2026).
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import { SessionProvider, useSession } from './lib/session';
 import { canView } from './lib/api';
+import { lastSection } from './lib/nav';
 import { LeaveGuardProvider, ToastProvider, Splash } from './components/ui';
 import Shell from './components/Shell';
 import Login from './pages/Login';
@@ -77,9 +79,12 @@ function Unreachable({ onRetry }: { onRetry: () => Promise<void> }) {
   );
 }
 
-/** The first screen the matrix grants, or null. */
+/** The last section this user visited (3 Nov 2026 — until the overview page exists), else the first screen the matrix
+ *  grants, or «لا صلاحية». */
 function Home() {
   const { me } = useSession();
+  const last = lastSection(me);
+  if (last) return <Navigate to={last} replace />;
   const first = SCREENS.find((s) => canView(me, s.section));
   return first ? <Navigate to={`/${first.path}`} replace /> : <NoAccess sectionless />;
 }

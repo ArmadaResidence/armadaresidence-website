@@ -427,8 +427,9 @@ try {
   }, { url: URL_, anon: env.SUPABASE_ANON_KEY });
   const sec = sections.find((s) => s.key === 'offers');
   check(sec?.label_ar === 'العروض' && sec.max_level === 'publish' && sec.editable, 'users: the matrix gets the «العروض» row (view / edit / publish)', JSON.stringify(sec));
-  const navOrder = await page.locator('header nav a').evaluateAll((els) => els.map((e) => e.textContent.trim()));
-  check(navOrder.indexOf('العروض') === navOrder.indexOf('المطاعم') + 1, 'nav: «العروض» right after «المطاعم»', navOrder.join(' · '));
+  // the sidebar (3 Nov 2026): «المحتوى والتسويق» = الصور، العروض، المطاعم، المدونة
+  const navOrder = await page.locator('[data-sidebar] a[data-nav]').evaluateAll((els) => els.map((e) => e.getAttribute('data-nav')));
+  check(navOrder.indexOf('offers') === navOrder.indexOf('media') + 1 && navOrder.indexOf('dining') === navOrder.indexOf('offers') + 1, 'nav: «العروض» between «الصور» and «المطاعم»', navOrder.join(' · '));
   await ctx.close();
 
   // ── management: edit without publish, then view, then none ──

@@ -40,6 +40,22 @@ export default function Bookings() {
   const [roomTypes, setRoomTypes] = useState<RoomType[]>([]);
   const [open, setOpen] = useState<Reservation | null>(null);
   const [branches, setBranches] = useState<api.Branch[]>([]);
+  // ?ref=AR-… (the quick search, 3 Nov 2026): find that booking and open its details
+  const refParam = params.get('ref');
+  const [wanted, setWanted] = useState<string | null>(null);
+  useEffect(() => {
+    if (!refParam) return;
+    setWanted(refParam);
+    setSearch(refParam);
+  }, [refParam]);
+  useEffect(() => {
+    if (!wanted || !rows) return;
+    const r = rows.find((x) => x.ref === wanted);
+    if (r) {
+      setOpen(r);
+      setWanted(null);
+    }
+  }, [rows, wanted]);
 
   useEffect(() => {
     api.branches().then(setBranches).catch(() => {});

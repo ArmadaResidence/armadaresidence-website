@@ -1,24 +1,43 @@
-// App frame: brand header, navigation from the user's permission matrix (phase 2a.1 — a section shows with view or
-// edit), theme toggle, sign-out. Mobile-first: a bottom tab bar under md, a top nav from md. RTL throughout.
+// App frame (Ahmed, 2 Nov 2026 — phase 2b session 3, part D; replaces the one-line top nav and the phone tab bar):
+//   - a sidebar on the start side (right in Arabic), grouped (lib/nav.ts), an icon per item, only the items the user's
+//     permission matrix grants, empty groups hidden, labels never wrapped. From md it collapses to icons (remembered per
+//     user, a tooltip on hover / focus); on phones it is a drawer opened from the top bar (a modal: focus kept inside,
+//     Esc or × closes it, an outside press never does).
+//   - the account menu at the bottom: name and role, «الأمان», light / dark, the opt-in alerts for new booking requests
+//     (browser notification, sound — off by default), «خروج».
+//   - a slim top bar with the page title (and its breadcrumb when the page has levels — usePageCrumbs) and the quick
+//     search (Ctrl+K / ⌘K). The document title is «{page} | لوحة أرمادا».
+//   - the live «الحجوزات» badge (lib/live.ts, Realtime under RLS).
+// Every link goes through the leave guard (unsaved edits ask first). Landmarks: banner, navigation, main; aria-current on
+// the current item; visible focus; RTL; light and dark.
 import { NavLink, useLocation } from 'react-router-dom';
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 import { useSession } from '../lib/session';
 import { canView } from '../lib/api';
 import { BRANCH_NAMES, ROLE_LABELS } from '../lib/format';
+import { docTitle, EXTRA_TITLES, itemOf, readPrefs, rememberSection, visibleGroups, writePrefs, type NavGroup, type NavPrefs } from '../lib/nav';
+import { useBookingBadge } from '../lib/live';
+import { onOutsidePress } from '../../../src/lib/client';
 import { useLeaveGuard } from './ui';
+import { Icon } from './icons';
+import QuickSearch from './QuickSearch';
 
-const NAV: { to: string; label: string; short: string; section: string }[] = [
-  { to: '/bookings', label: 'الحجوزات', short: 'الحجوزات', section: 'bookings' },
-  { to: '/rates', label: 'الأسعار', short: 'الأسعار', section: 'rates' },
-  { to: '/inventory', label: 'المخزون', short: 'المخزون', section: 'inventory' },
-  { to: '/rooms', label: 'الغرف', short: 'الغرف', section: 'rooms' },
-  { to: '/media', label: 'الصور', short: 'الصور', section: 'media' },
-  { to: '/dining', label: 'المطاعم', short: 'المطاعم', section: 'dining' },
-  { to: '/offers', label: 'العروض', short: 'العروض', section: 'offers' },
-  { to: '/settings', label: 'الإعدادات', short: 'الإعدادات', section: 'settings' },
-  { to: '/users', label: 'المستخدمون والصلاحيات', short: 'المستخدمون', section: 'users' },
-  { to: '/audit', label: 'السجل', short: 'السجل', section: 'audit' },
-];
+// ── the page title and breadcrumb a page may set (pages with levels: the blog editor…) ──
+export interface Crumb {
+  label: string;
+  to?: string;
+}
+const CrumbCtx = createContext<(c: Crumb[] | null) => void>(() => {});
+/** a page with levels names them: [{label: 'المدونة', to: '/blog'}, {label: 'تعديل مقال'}]; null = the section's name */
+export function usePageCrumbs(crumbs: Crumb[] | null) {
+  const set = useContext(CrumbCtx);
+  const key = JSON.stringify(crumbs);
+  useEffect(() => {
+    set(crumbs);
+    return () => set(null);
+  }, [key]); // eslint-disable-line react-hooks/exhaustive-deps
+}
 
 function useTheme() {
   const [theme, setTheme] = useState<string>(() => document.documentElement.dataset.theme ?? 'light');
@@ -31,61 +50,266 @@ function useTheme() {
   return [theme, () => setTheme((t) => (t === 'dark' ? 'light' : 'dark'))] as const;
 }
 
-export default function Shell({ children }: { children: ReactNode }) {
+function NavList({ groups, collapsed, badge, onGo }: { groups: NavGroup[]; collapsed: boolean; badge: number | null; onGo?: () => void }) {
+  const guard = useLeaveGuard();
+  return (
+    <nav aria-label="الأقسام" className="side-nav" data-side-nav>
+      {groups.map((g) => (
+        <div key={g.key} className="side-group" data-nav-group={g.key}>
+          {g.title && (collapsed ? <hr className="side-rule" aria-hidden="true" /> : <p className="side-group-title" id={`nav-g-${g.key}`}>{g.title}</p>)}
+          <ul aria-labelledby={g.title && !collapsed ? `nav-g-${g.key}` : undefined}>
+            {g.items.map((i) => {
+              const n = i.section === 'bookings' ? badge : null;
+              return (
+                <li key={i.to}>
+                  <NavLink
+                    to={i.to}
+                    className={({ isActive }) => `side-link ${isActive ? 'is-on' : ''}`}
+                    onClick={(e) => {
+                      guard.link(e, i.to);
+                      onGo?.();
+                    }}
+                    data-nav={i.section}
+                  >
+                    <span className="side-icon">
+                      <Icon name={i.icon} size={20} />
+                      {collapsed && n ? <span className="side-dot" aria-hidden="true" /> : null}
+                    </span>
+                    <span className="side-label">
+                      {i.label}
+                      {n ? <span className="sr-only">{`، ${n} طلب ينتظر الإجراء`}</span> : null}
+                    </span>
+                    {n && !collapsed ? <span className="side-badge num" aria-hidden="true" data-badge={i.section}>{n > 99 ? '99+' : n}</span> : null}
+                  </NavLink>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      ))}
+    </nav>
+  );
+}
+
+function AccountMenu({ collapsed, prefs, setPrefs, onGo }: { collapsed: boolean; prefs: NavPrefs; setPrefs: (p: NavPrefs) => void; onGo?: () => void }) {
   const { me, signOut } = useSession();
   const guard = useLeaveGuard();
   const [theme, toggle] = useTheme();
-  const items = NAV.filter((n) => canView(me, n.section));
-  const tabbar = useRef<HTMLElement>(null);
-  const { pathname } = useLocation();
+  const [open, setOpen] = useState(false);
+  const root = useRef<HTMLDivElement>(null);
+  const [perm, setPerm] = useState(() => ('Notification' in window ? Notification.permission : 'denied'));
+  useEffect(() => onOutsidePress(() => [root.current], () => setOpen(false), { active: () => open }), [open]);
   useEffect(() => {
-    tabbar.current?.querySelector<HTMLElement>('a[aria-current="page"]')?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
-  }, [pathname]);
-  const cls = ({ isActive }: { isActive: boolean }) => `px-3 py-2 rounded text-sm font-semibold transition-colors ${isActive ? 'bg-bronze-deep text-white' : 'text-porcelain/85 hover:bg-white/10'}`;
+    if (!open) return;
+    const k = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && !document.querySelector('dialog[open]')) {
+        setOpen(false);
+        root.current?.querySelector<HTMLElement>('[data-action="account-menu"]')?.focus();
+      }
+    };
+    addEventListener('keydown', k);
+    return () => removeEventListener('keydown', k);
+  }, [open]);
+  const canBookings = canView(me, 'bookings');
+  const askNotify = async (on: boolean) => {
+    if (on && 'Notification' in window && Notification.permission === 'default') setPerm(await Notification.requestPermission());
+    setPrefs({ ...prefs, notify: on });
+  };
+  const role = me ? `${ROLE_LABELS[me.role] ?? me.role}${me.branch ? ` · ${BRANCH_NAMES[me.branch] ?? me.branch}` : ''}` : '';
   return (
-    <div className="min-h-dvh flex flex-col">
-      <a href="#app-main" className="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:start-2 focus:z-50 btn btn-primary">إلى المحتوى</a>
-      <header className="bg-midnight text-porcelain">
-        <div className="mx-auto max-w-7xl px-4 h-16 flex items-center gap-4">
-          <img src={`${import.meta.env.BASE_URL}logo-porcelain.svg`} alt="أرمادا ريزيدنس" className="h-8" />
-          <nav className="hidden md:flex items-center gap-1 ms-4" aria-label="الأقسام">
-            {items.map((n) => (
-              <NavLink key={n.to} to={n.to} className={cls} onClick={(e) => guard.link(e, n.to)}>
-                {n.label}
-              </NavLink>
-            ))}
-          </nav>
-          <div className="ms-auto flex items-center gap-2 text-xs">
-            {me && (
-              <span className="hidden sm:inline text-porcelain/80">
-                {me.full_name} · {ROLE_LABELS[me.role]}
-                {me.branch ? ` · ${BRANCH_NAMES[me.branch] ?? me.branch}` : ''}
-              </span>
-            )}
-            <button type="button" className="btn btn-sm border border-porcelain/30 text-porcelain hover:bg-white/10" onClick={toggle} aria-label={theme === 'dark' ? 'الوضع الفاتح' : 'الوضع الداكن'} aria-pressed={theme === 'dark'}>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
-                {theme === 'dark' ? <><circle cx="12" cy="12" r="4" /><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" /></> : <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z" />}
-              </svg>
+    <div className="side-account" ref={root}>
+      <button type="button" className="side-link side-account-btn" aria-expanded={open} aria-controls="account-panel" onClick={() => setOpen((v) => !v)} data-action="account-menu">
+        <span className="side-icon"><Icon name="user" size={20} /></span>
+        <span className="side-label side-account-text">
+          <span className="block truncate font-semibold">{me?.full_name}</span>
+          <span className="block truncate text-xs opacity-80">{role}</span>
+        </span>
+        {!collapsed && <Icon name="chevron" size={16} className={`side-chevron ${open ? '' : 'is-up'}`} />}
+      </button>
+      {open && (
+        <div id="account-panel" className="account-panel" data-account-panel>
+          {collapsed && (
+            <div className="px-3 pt-2 pb-1">
+              <p className="font-semibold text-sm truncate">{me?.full_name}</p>
+              <p className="text-xs text-ink-muted truncate">{role}</p>
+            </div>
+          )}
+          <NavLink to="/security" className="account-item" data-nav="security" onClick={(e) => { guard.link(e, '/security'); setOpen(false); onGo?.(); }}>
+            <Icon name="security" size={18} /> الأمان
+          </NavLink>
+          <button type="button" className="account-item" onClick={toggle} aria-pressed={theme === 'dark'} data-action="theme">
+            <Icon name={theme === 'dark' ? 'sun' : 'moon'} size={18} /> {theme === 'dark' ? 'الوضع الفاتح' : 'الوضع الداكن'}
+          </button>
+          {canBookings && (
+            <fieldset className="account-alerts">
+              <legend className="text-xs font-bold text-ink-muted px-3 pt-2">تنبيه بطلبات الحجز الجديدة</legend>
+              <label className="account-check">
+                <input type="checkbox" checked={prefs.notify && perm === 'granted'} disabled={perm === 'denied'} onChange={(e) => void askNotify(e.target.checked)} data-pref="notify" data-no-dirty />
+                <span>إشعار المتصفح{perm === 'denied' ? ' (محظور في إعدادات المتصفح)' : ''}</span>
+              </label>
+              <label className="account-check">
+                <input type="checkbox" checked={prefs.sound} onChange={(e) => setPrefs({ ...prefs, sound: e.target.checked })} data-pref="sound" data-no-dirty />
+                <span>صوت التنبيه</span>
+              </label>
+              <p className="text-[11px] text-ink-muted px-3 pb-1">أثناء فتح اللوحة فقط؛ رقم الحجز والفرع دون بيانات الضيف.</p>
+            </fieldset>
+          )}
+          <button type="button" className="account-item" onClick={() => guard.run(() => void signOut())} data-action="sign-out">
+            <Icon name="logout" size={18} /> خروج
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** the phone drawer: a modal panel on the start side; Esc and × close it, an outside press never does */
+function NavDrawer({ open, onClose, children }: { open: boolean; onClose: () => void; children: ReactNode }) {
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!open) return;
+    const opener = document.activeElement as HTMLElement | null;
+    const behind = [document.getElementById('app-main'), document.getElementById('app-topbar')];
+    behind.forEach((el) => el?.setAttribute('inert', ''));
+    ref.current?.querySelector<HTMLElement>('[data-action="nav-close"]')?.focus();
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && !document.querySelector('dialog[open]')) {
+        e.preventDefault();
+        onClose();
+      }
+      if (e.key === 'Tab' && ref.current) {
+        const items = Array.from(ref.current.querySelectorAll<HTMLElement>('a[href], button:not([disabled]), input:not([disabled])')).filter((x) => x.offsetParent !== null);
+        if (!items.length) return;
+        const a = items[0];
+        const z = items[items.length - 1];
+        if (e.shiftKey && document.activeElement === a) {
+          e.preventDefault();
+          z.focus();
+        } else if (!e.shiftKey && document.activeElement === z) {
+          e.preventDefault();
+          a.focus();
+        }
+      }
+    };
+    addEventListener('keydown', onKey);
+    return () => {
+      removeEventListener('keydown', onKey);
+      behind.forEach((el) => el?.removeAttribute('inert'));
+      opener?.focus();
+    };
+  }, [open, onClose]);
+  if (!open) return null;
+  return createPortal(
+    <>
+      <div className="nav-drawer-backdrop" onMouseDown={(e) => e.preventDefault()} data-nav-backdrop />
+      <div ref={ref} className="nav-drawer sidebar" role="dialog" aria-modal="true" aria-label="القائمة" data-nav-drawer>
+        <div className="flex items-center justify-between gap-2 px-3 h-14">
+          <img src={`${import.meta.env.BASE_URL}logo-porcelain.svg`} alt="أرمادا ريزيدنس" className="h-7" />
+          <button type="button" className="side-icon-btn" onClick={onClose} aria-label="إغلاق القائمة" data-action="nav-close"><Icon name="close" size={20} /></button>
+        </div>
+        {children}
+      </div>
+    </>,
+    document.body,
+  );
+}
+
+export default function Shell({ children }: { children: ReactNode }) {
+  const { me } = useSession();
+  const { pathname } = useLocation();
+  const [prefs, setPrefsState] = useState<NavPrefs>(() => readPrefs(me?.email));
+  const setPrefs = useCallback((p: NavPrefs) => {
+    setPrefsState(p);
+    writePrefs(me?.email, p);
+  }, [me?.email]);
+  useEffect(() => setPrefsState(readPrefs(me?.email)), [me?.email]);
+  const prefsRef = useRef(prefs);
+  prefsRef.current = prefs;
+  const badge = useBookingBadge(me, () => prefsRef.current);
+  const groups = useMemo(() => visibleGroups(me), [me]);
+  const [drawer, setDrawer] = useState(false);
+  const [search, setSearch] = useState(false);
+  const [crumbs, setCrumbs] = useState<Crumb[] | null>(null);
+  const closeDrawer = useCallback(() => setDrawer(false), []);
+
+  const item = itemOf(pathname);
+  const page = crumbs?.at(-1)?.label ?? item?.label ?? EXTRA_TITLES[pathname] ?? 'لوحة أرمادا';
+  useEffect(() => {
+    document.title = docTitle(page);
+  }, [page]);
+  useEffect(() => {
+    if (item) rememberSection(me?.email, item.to);
+  }, [item, me?.email]);
+  useEffect(() => setDrawer(false), [pathname]);
+  // Ctrl+K / ⌘K
+  useEffect(() => {
+    const k = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && !e.altKey && (e.key === 'k' || e.key === 'K' || e.code === 'KeyK')) {
+        e.preventDefault();
+        setSearch(true);
+      }
+    };
+    addEventListener('keydown', k);
+    return () => removeEventListener('keydown', k);
+  }, []);
+
+  const collapsed = prefs.collapsed;
+  const trail: Crumb[] = crumbs ?? (item ? [{ label: item.label }] : [{ label: page }]);
+  return (
+    <CrumbCtx.Provider value={setCrumbs}>
+      <div className={`app-frame ${collapsed ? 'is-collapsed' : ''}`}>
+        <a href="#app-main" className="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:start-2 focus:z-50 btn btn-primary">إلى المحتوى</a>
+        <div className={`sidebar side-fixed ${collapsed ? 'is-collapsed' : ''}`} data-sidebar data-collapsed={collapsed ? '1' : '0'}>
+          <div className="side-brand">
+            {collapsed
+              ? <img src={`${import.meta.env.BASE_URL}symbol.svg`} alt="أرمادا ريزيدنس" className="h-8 w-8" />
+              : <img src={`${import.meta.env.BASE_URL}logo-porcelain.svg`} alt="أرمادا ريزيدنس" className="h-8" />}
+          </div>
+          <NavList groups={groups} collapsed={collapsed} badge={badge} />
+          <div className="side-foot">
+            <button type="button" className="side-link" onClick={() => setPrefs({ ...prefs, collapsed: !collapsed })} aria-pressed={collapsed} data-action="nav-collapse">
+              <span className="side-icon"><Icon name="collapse" size={20} className={collapsed ? 'flip-x' : ''} /></span>
+              <span className="side-label">{collapsed ? 'توسيع القائمة' : 'طيّ القائمة'}</span>
             </button>
-            <NavLink to="/security" className="btn btn-sm border border-porcelain/30 text-porcelain hover:bg-white/10" data-nav="security" onClick={(e) => guard.link(e, '/security')}>
-              الأمان
-            </NavLink>
-            <button type="button" className="btn btn-sm border border-porcelain/30 text-porcelain hover:bg-white/10" onClick={() => guard.run(() => void signOut())} data-action="sign-out">
-              خروج
-            </button>
+            <AccountMenu collapsed={collapsed} prefs={prefs} setPrefs={setPrefs} />
           </div>
         </div>
-      </header>
-      <main id="app-main" className="flex-1 mx-auto w-full max-w-7xl px-4 py-5 pb-24 md:pb-8">{children}</main>
-      {/* every label whole: with nine sections (an admin since «المطاعم», 2 Nov 2026) the bar scrolls sideways when the labels do
-          not fit, and the current section is kept in view */}
-      <nav ref={tabbar} className="tabbar md:hidden fixed bottom-0 inset-x-0 bg-midnight text-porcelain border-t border-white/10 flex overflow-x-auto py-1 pb-[max(4px,env(safe-area-inset-bottom))] z-30" aria-label="الأقسام">
-        {items.map((n) => (
-          <NavLink key={n.to} to={n.to} className={({ isActive }) => `flex-1 shrink-0 min-w-max px-2 text-center text-[11px] font-semibold py-2 rounded ${isActive ? 'text-bronze-bright' : 'text-porcelain/80'}`} onClick={(e) => guard.link(e, n.to)}>
-            {n.short}
-          </NavLink>
-        ))}
-      </nav>
-    </div>
+        <div className="app-col">
+          <header id="app-topbar" className="topbar">
+            <button type="button" className="side-icon-btn md:hidden" onClick={() => setDrawer(true)} aria-label="القائمة" aria-expanded={drawer} aria-haspopup="dialog" data-action="nav-open">
+              <Icon name="menu" size={22} />
+              {badge ? <span className="side-dot" aria-hidden="true" /> : null}
+            </button>
+            {trail.length > 1 ? (
+              <nav aria-label="مسار الصفحة" className="topbar-title min-w-0" data-breadcrumb>
+                <ol className="flex items-center gap-1.5 min-w-0">
+                  {trail.map((c, i) => (
+                    <li key={i} className="flex items-center gap-1.5 min-w-0">
+                      {i > 0 && <span aria-hidden="true" className="text-ink-muted">‹</span>}
+                      {c.to && i < trail.length - 1 ? <NavLink to={c.to} className="link truncate">{c.label}</NavLink> : <span className="truncate" aria-current={i === trail.length - 1 ? 'page' : undefined}>{c.label}</span>}
+                    </li>
+                  ))}
+                </ol>
+              </nav>
+            ) : (
+              <p className="topbar-title truncate" data-page-title>{trail[0].label}</p>
+            )}
+            <button type="button" className="topbar-search ms-auto" onClick={() => setSearch(true)} aria-keyshortcuts="Control+K Meta+K" data-action="quick-search">
+              <Icon name="search" size={18} />
+              <span className="max-sm:sr-only">بحث</span>
+              <kbd className="max-md:hidden num" aria-hidden="true">Ctrl K</kbd>
+            </button>
+          </header>
+          <main id="app-main" className="flex-1 w-full max-w-7xl mx-auto px-4 py-5 pb-10">{children}</main>
+        </div>
+        <NavDrawer open={drawer} onClose={closeDrawer}>
+          <NavList groups={groups} collapsed={false} badge={badge} onGo={closeDrawer} />
+          <div className="side-foot">
+            <AccountMenu collapsed={false} prefs={prefs} setPrefs={setPrefs} onGo={closeDrawer} />
+          </div>
+        </NavDrawer>
+        <QuickSearch open={search} onClose={() => setSearch(false)} />
+      </div>
+    </CrumbCtx.Provider>
   );
 }

@@ -207,7 +207,7 @@ try {
     check((await page.locator('select#f-branch').count()) === 0, 'reception: no branch select');
     check((await page.locator('[data-branch-static]').first().innerText()).trim() === 'طريق المطار', 'reception: its branch shown as text');
     check((await page.locator('nav a:has-text("المستخدمون")').count()) === 0, 'reception: no Users nav');
-    check((await page.locator('nav a:has-text("الإعدادات")').count()) === 2, 'reception: Settings nav shown (view)'); // top + tab bar
+    check((await page.locator('[data-sidebar] a[data-nav="settings"]').count()) === 1, 'reception: Settings nav shown (view)'); // the sidebar (3 Nov 2026)
     await page.fill('#f-q', r1.ref);
     await page.waitForTimeout(900);
     check((await page.locator(`[data-ref="${r1.ref}"]`).count()) === 0, 'reception: test booking hidden (is_test)');
@@ -1309,10 +1309,12 @@ try {
     if (await page.locator('[data-action="revoke-my-devices"]').count()) await G({ label: 'revoke my devices', open: () => page.click('[data-action="revoke-my-devices"]') });
 
     // page-level forms (B5): Settings, then the permission matrix
-    const navSel = m ? 'nav.tabbar a[href$="/bookings"]' : 'nav[aria-label="الأقسام"]:not(.tabbar) a[href$="/bookings"]';
+    // the sidebar (3 Nov 2026); on phones its drawer, opened from the top bar first
+    const navSel = m ? '[data-nav-drawer] a[data-nav="bookings"]' : '[data-sidebar] a[data-nav="bookings"]';
+    const openSel = m ? '[data-action="nav-open"]' : undefined;
     await goto('/settings', '#bed');
     await page.waitForTimeout(600);
-    await pageGuardChecks(page, check, { label: 'settings extra bed', vp, linkSel: navSel, read: () => page.inputValue('#bed'), edit: async () => { await page.fill('#bed', '77'); return '77'; }, restore: (orig) => page.fill('#bed', orig) });
+    await pageGuardChecks(page, check, { label: 'settings extra bed', vp, linkSel: navSel, openSel, read: () => page.inputValue('#bed'), edit: async () => { await page.fill('#bed', '77'); return '77'; }, restore: (orig) => page.fill('#bed', orig) });
     await goto('/settings', '#bed');
     await page.waitForTimeout(600);
     // Arabic-Indic digits equal to the saved value are not a change; an added child tier is
@@ -1332,7 +1334,7 @@ try {
     const seg = (lvl) => `[data-matrix="${USERS.rec_air}"] [data-section="rooms"] [role=radio]:has-text("${lvl}")`;
     const origLvl = (await page.getAttribute(seg('تعديل'), 'aria-checked')) === 'true' ? 'تعديل' : 'عرض';
     const otherLvl = origLvl === 'تعديل' ? 'عرض' : 'تعديل';
-    await pageGuardChecks(page, check, { label: 'permission matrix', vp, linkSel: navSel, read: () => page.getAttribute(seg(otherLvl), 'aria-checked'), edit: async () => { await page.click(seg(otherLvl)); return 'true'; }, restore: () => page.click(seg(origLvl)) });
+    await pageGuardChecks(page, check, { label: 'permission matrix', vp, linkSel: navSel, openSel, read: () => page.getAttribute(seg(otherLvl), 'aria-checked'), edit: async () => { await page.click(seg(otherLvl)); return 'true'; }, restore: () => page.click(seg(origLvl)) });
     // the matrix is left as it was (the restore clicked the original level; nothing was saved)
     // «تراجع» the display-name change is not needed (the stub never reached the server); the drawer's notes were restored
     await gctx.close();
@@ -1603,11 +1605,14 @@ try {
       check(!overflow || path === 'rates' || path === 'inventory', `375: ${path} has no horizontal page overflow`);
       await digits(page, `${path} at 375`);
     }
-    const tabs = await page.locator('nav.tabbar a').count();
-    check(tabs === 8, '375: eight tabs in the tab bar (+ «الصور», 1 Nov 2026)', String(tabs));
-    // the eight labels fit the 375 px bar: none is clipped or wraps
-    const clipped = await page.locator('nav.tabbar a').evaluateAll((els) => els.filter((e) => e.scrollWidth > e.clientWidth + 1 || e.getBoundingClientRect().height > 48).map((e) => e.textContent));
-    check(clipped.length === 0, '375: no tab label is clipped or wrapped', clipped.join(', '));
+    // the navigation drawer (3 Nov 2026, replaces the tab bar): every section of the admin, no label clipped or wrapped
+    await page.click('[data-action="nav-open"]');
+    await page.waitForSelector('[data-nav-drawer]');
+    const tabs = await page.locator('[data-nav-drawer] a[data-nav]').count();
+    check(tabs >= 10, '375: every section in the navigation drawer', String(tabs));
+    const clipped = await page.locator('[data-nav-drawer] [data-side-nav] .side-label').evaluateAll((els) => els.filter((e) => e.scrollWidth > e.clientWidth + 1 || e.getBoundingClientRect().height > 26).map((e) => e.textContent));
+    check(clipped.length === 0, '375: no drawer label is clipped or wrapped', clipped.join(', '));
+    await page.click('[data-action="nav-close"]');
     await page.goto(`${BASE}/settings`);
     await page.waitForSelector('#app-main h1', { timeout: 20000 });
     check((await page.locator('#app-main').innerText()).includes('آخر وقت للحجز الفوري لوصول اليوم (توقيت الرياض)'), 'settings: cutoff label «آخر وقت للحجز الفوري لوصول اليوم (توقيت الرياض)»');
