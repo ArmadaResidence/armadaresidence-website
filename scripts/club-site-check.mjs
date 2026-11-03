@@ -82,6 +82,9 @@ for (const lang of ['ar', 'en']) {
   const home = page(lang);
   check(home.includes(`href="${pre}/club/"`) && has(home, ui[L].nav.club), `${lang}: the footer has no club link`);
   check(/data-club-band[\s\S]{0,200}/.test(home) && has(home, c.band), `${lang}: the home page has no club band`);
+  const pol = page(lang, 'policies');
+  const sec = policies.page.sections.find((s) => s.id === 'club');
+  check(pol.includes('id="club"') && has(pol, sec[`heading_${L}`]) && has(pol, sec[`body_${L}`]), `${lang}: /policies/ has no #club section with the approved text`);
   // part 0 labels
   check(has(page(lang, 'airport-road'), ui[L].branch.book_branch), `${lang}: branch page button ≠ «${ui[L].branch.book_branch}»`);
   check(has(page(lang, 'airport-road', 'king-room'), ui[L].room.book_room), `${lang}: room page button ≠ «${ui[L].room.book_room}»`);
