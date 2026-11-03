@@ -11,7 +11,7 @@
 // Every link goes through the leave guard (unsaved edits ask first). Landmarks: banner, navigation, main; aria-current on
 // the current item; visible focus; RTL; light and dark.
 import { NavLink, useLocation } from 'react-router-dom';
-import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { useSession } from '../lib/session';
 import { canView } from '../lib/api';
@@ -39,15 +39,36 @@ export function usePageCrumbs(crumbs: Crumb[] | null) {
   }, [key]); // eslint-disable-line react-hooks/exhaustive-deps
 }
 
+// one light / dark setting (<html data-theme>, remembered in localStorage) shared by the top-bar toggle and the account
+// menu item (3 Nov 2026): every user of the hook re-renders when either changes it
+const themeListeners = new Set<() => void>();
+const readTheme = () => (document.documentElement.dataset.theme === 'dark' ? 'dark' : 'light');
 function useTheme() {
-  const [theme, setTheme] = useState<string>(() => document.documentElement.dataset.theme ?? 'light');
-  useEffect(() => {
-    document.documentElement.dataset.theme = theme;
+  const theme = useSyncExternalStore((cb) => {
+    themeListeners.add(cb);
+    return () => themeListeners.delete(cb);
+  }, readTheme);
+  const toggle = useCallback(() => {
+    const next = readTheme() === 'dark' ? 'light' : 'dark';
+    document.documentElement.dataset.theme = next;
     try {
-      localStorage.setItem('armada-theme', theme);
+      localStorage.setItem('armada-theme', next);
     } catch { /* private mode */ }
-  }, [theme]);
-  return [theme, () => setTheme((t) => (t === 'dark' ? 'light' : 'dark'))] as const;
+    themeListeners.forEach((f) => f());
+  }, []);
+  return [theme, toggle] as const;
+}
+
+/** The top bar's light / dark switch (sun / moon, 44 px), next to the search on every width. */
+function ThemeToggle() {
+  const [theme, toggle] = useTheme();
+  const label = theme === 'dark' ? 'التبديل إلى الوضع الفاتح' : 'التبديل إلى الوضع الداكن';
+  return (
+    <button type="button" className="topbar-theme" onClick={toggle} aria-pressed={theme === 'dark'} aria-label={label} data-action="theme-top">
+      <Icon name={theme === 'dark' ? 'sun' : 'moon'} size={20} />
+      <span className="topbar-tip" role="tooltip" aria-hidden="true">{label}</span>
+    </button>
+  );
 }
 
 function NavList({ groups, collapsed, badges, onGo }: { groups: NavGroup[]; collapsed: boolean; badges: Record<string, number | null>; onGo?: () => void }) {
@@ -301,6 +322,7 @@ export default function Shell({ children }: { children: ReactNode }) {
               <span className="max-sm:sr-only">بحث</span>
               <kbd className="max-md:hidden num" aria-hidden="true">Ctrl K</kbd>
             </button>
+            <ThemeToggle />
           </header>
           <main id="app-main" className="flex-1 w-full max-w-7xl mx-auto px-4 py-5 pb-10">{children}</main>
         </div>

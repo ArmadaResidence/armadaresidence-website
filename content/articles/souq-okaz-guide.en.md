@@ -33,4 +33,4 @@ Souq Okaz sits on the northern side of Taif near Airport Road, which makes [Airp
 - Arrive an hour before sunset to avoid queues at the gates.
 - Carry ID; some events require prior registration.
 
-> [Request a booking at Airport Road](/en/booking/?branch=airport-road) before the festival opens.
+> [Book at Airport Road](/en/booking/?branch=airport-road) before the festival opens.

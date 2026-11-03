@@ -1,5 +1,5 @@
 ---
-import { bookingPath, branchVisible, contact, localePath, offersPageLive, otherLocale, siteName, ui, type BookingContext, type Locale } from '@lib/content';
+import { bookingPath, branches, contact, localePath, offersPageLive, otherLocale, siteName, ui, type BookingContext, type Locale } from '@lib/content';
 import Icon from './Icon.astro';
 import { galleryLive } from '@lib/gallery';
 import { siteBar } from '@lib/offers-data';
@@ -17,11 +17,15 @@ const bookHref = bookingPath(locale, booking);
 const t = ui(locale);
 const other = otherLocale(locale);
 
+// «فروعنا» (Ahmed, 3 Nov 2026) replaces the two branch items: one entry per property the site shows, in branches.json
+// order — its short name (the part of the name after «–») and its type; a branch hidden in «المحتوى والظهور» is left out
+const properties = branches.map((b) => {
+  const name = locale === 'ar' ? b.name_ar : b.name_en;
+  return { slug: b.slug, path: `/${b.slug}/`, short: name.split(/\s+[–-]\s+/).pop() || name, type: locale === 'ar' ? b.type_ar : b.type_en };
+});
+const lead: { key: keyof typeof t.nav; path: string }[] = [{ key: 'home', path: '/' }];
 const nav: { key: keyof typeof t.nav; path: string }[] = [
-  { key: 'home', path: '/' },
-  // a branch, the gallery or the offers page hidden in «المحتوى والظهور» (3 Nov 2026) has no link
-  ...(branchVisible('airport-road') ? [{ key: 'airport-road' as const, path: '/airport-road/' }] : []),
-  ...(branchVisible('shafa-road') ? [{ key: 'shafa-road' as const, path: '/shafa-road/' }] : []),
+  // the gallery or the offers page hidden in «المحتوى والظهور» (3 Nov 2026) has no link;
   // the gallery appears once /gallery/ exists (≥ 6 published photos — Ahmed, 2 Nov 2026)
   ...(galleryLive ? [{ key: 'gallery' as const, path: '/gallery/' }] : []),
   { key: 'discover-taif', path: '/discover-taif/' },
@@ -32,6 +36,8 @@ const nav: { key: keyof typeof t.nav; path: string }[] = [
 ];
 const isActive = (p: string) => (p === '/' ? path === '/' : path.startsWith(p));
 const partnersActive = path.startsWith('/partners/');
+// the ink sits under «فروعنا» on a property page and every page under it (rooms, the hall)
+const propertiesActive = properties.some((b) => path.startsWith(b.path));
 ---
 
 <a
@@ -71,6 +77,55 @@ const partnersActive = path.startsWith('/partners/');
 
       {/* desktop nav: one bronze ink line slides between items (item 5); without JS the active item keeps a static line */}
       <nav class="hidden lg:flex relative items-center gap-3 xl:gap-5 text-sm font-medium" aria-label={t.nav.menu} data-nav>
+        {
+          lead.map((n) => (
+            <a
+              href={localePath(locale, n.path)}
+              class:list={['nav-link py-2 whitespace-nowrap transition-colors', isActive(n.path) ? 'text-midnight' : 'text-ink-muted hover:text-midnight']}
+              aria-current={isActive(n.path) ? 'page' : undefined}
+            >
+              {t.nav[n.key]}
+            </a>
+          ))
+        }
+        {/* «فروعنا»: a disclosure (WAI-ARIA disclosure pattern) — click, or hover with a mouse; Tab walks its links, Esc
+            closes it and returns to the button; without JS it opens on hover / focus-within (motion.css) */}
+        {
+          properties.length > 0 && (
+            <div class="nav-props" data-nav-props>
+              <button
+                type="button"
+                class:list={['nav-link nav-props-toggle py-2 whitespace-nowrap transition-colors inline-flex items-center gap-1', propertiesActive ? 'text-midnight' : 'text-ink-muted hover:text-midnight']}
+                aria-expanded="false"
+                aria-controls="nav-props-panel"
+                data-current={propertiesActive ? '' : undefined}
+                data-nav-props-toggle
+              >
+                <span>{t.nav.properties}</span>
+                <svg class="nav-props-chevron" viewBox="0 0 24 24" width="14" height="14" aria-hidden="true" focusable="false">
+                  <path d="M6 9l6 6 6-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>
+                </svg>
+              </button>
+              <div id="nav-props-panel" class="nav-props-panel bg-white border border-line rounded shadow-lg" data-nav-props-panel>
+                <ul class="py-2">
+                  {properties.map((b) => (
+                    <li>
+                      <a
+                        href={localePath(locale, b.path)}
+                        class="nav-props-link block px-4 py-2 hover:bg-porcelain"
+                        aria-current={path === b.path ? 'page' : undefined}
+                        data-property={b.slug}
+                      >
+                        <span class="block font-semibold text-midnight whitespace-nowrap">{b.short}</span>
+                        <span class="block text-xs font-normal text-ink-muted whitespace-nowrap">{b.type}</span>
+                      </a>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+          )
+        }
         {
           nav.map((n) => (
             <a
@@ -141,6 +196,42 @@ const partnersActive = path.startsWith('/partners/');
     <nav id="mobile-nav" class="lg:hidden hidden border-t border-line bg-white" aria-label={t.nav.menu}>
       <ul class="px-5 py-2">
         {
+          lead.map((n) => (
+            <li>
+              <a
+                href={localePath(locale, n.path)}
+                class:list={['block py-3 border-b border-line font-medium', isActive(n.path) ? 'text-bronze-text' : 'text-midnight']}
+                aria-current={isActive(n.path) ? 'page' : undefined}
+              >
+                {t.nav[n.key]}
+              </a>
+            </li>
+          ))
+        }
+        {/* «فروعنا» as a subheading with the properties under it (no extra tap) */}
+        {
+          properties.length > 0 && (
+            <li class="border-b border-line pb-1">
+              <span id="mobile-props-heading" class="block pt-3 pb-1 text-xs font-semibold text-bronze-text">{t.nav.properties}</span>
+              <ul aria-labelledby="mobile-props-heading">
+                {properties.map((b) => (
+                  <li>
+                    <a
+                      href={localePath(locale, b.path)}
+                      class:list={['block py-2 ps-3 font-medium', path.startsWith(b.path) ? 'text-bronze-text' : 'text-midnight']}
+                      aria-current={path === b.path ? 'page' : undefined}
+                      data-property={b.slug}
+                    >
+                      <span class="block">{b.short}</span>
+                      <span class="block text-xs font-normal text-ink-muted">{b.type}</span>
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </li>
+          )
+        }
+        {
           nav.map((n) => (
             <li>
               <a
@@ -177,7 +268,7 @@ const partnersActive = path.startsWith('/partners/');
 </header>
 
 <script>
-  import { bindOnce, onPageLeave, onPageLoad, reducedMotion } from '@lib/client';
+  import { bindOnce, onOutsidePress, onPageLeave, onPageLoad, reducedMotion } from '@lib/client';
 
   // nav ink: remembered across client-side navigations so it slides from the previous item to the new one
   let inkMemory: { x: string; w: string } | null = null;
@@ -222,10 +313,11 @@ const partnersActive = path.startsWith('/partners/');
     const ink = navEl?.querySelector<HTMLElement>('.nav-ink');
     if (navEl && ink && bindOnce(navEl)) {
       const links = Array.from(navEl.querySelectorAll<HTMLAnchorElement>('.nav-link'));
-      activeNav = navEl.querySelector<HTMLElement>('.nav-link[aria-current]');
+      activeNav = navEl.querySelector<HTMLElement>('.nav-link[aria-current], .nav-link[data-current]');
       const place = (a: HTMLElement, animate: boolean) => {
         if (!animate || reducedMotion()) ink.style.transition = 'none';
-        ink.style.setProperty('--x', `${a.offsetLeft}px`);
+        // measured against the nav itself (the «فروعنا» wrapper is not the offset parent, but rects never depend on it)
+        ink.style.setProperty('--x', `${a.getBoundingClientRect().left - navEl.getBoundingClientRect().left}px`);
         ink.style.setProperty('--w', String(a.offsetWidth));
         ink.classList.add('is-on');
         if (!animate || reducedMotion()) {
@@ -245,7 +337,12 @@ const partnersActive = path.startsWith('/partners/');
       } else rest(false);
       links.forEach((a) => a.addEventListener('mouseenter', () => place(a, true)));
       navEl.addEventListener('mouseleave', () => rest(true));
-      navEl.addEventListener('focusin', (e) => place(e.target as HTMLElement, true));
+      // focus inside the «فروعنا» panel keeps the ink under its button
+      navEl.addEventListener('focusin', (e) => {
+        const el = e.target as HTMLElement;
+        const target = el.closest('[data-nav-props]')?.querySelector<HTMLElement>('[data-nav-props-toggle]') ?? el;
+        if (target.classList.contains('nav-link')) place(target, true);
+      });
       navEl.addEventListener('focusout', () => rest(true));
       document.fonts.ready.then(() => rest(false));
       let raf = 0;
@@ -260,6 +357,62 @@ const partnersActive = path.startsWith('/partners/');
         },
         { signal: ac.signal },
       );
+    }
+
+    // «فروعنا» disclosure (3 Nov 2026): a click toggles it; a mouse hover opens it and leaving closes what the hover
+    // opened; Esc closes it and returns focus to the button; an outside press (start and end outside), focus leaving it
+    // or a navigation closes it. Document listeners are aborted on the next swap, so nothing piles up.
+    const props = document.querySelector<HTMLElement>('[data-nav-props]');
+    const toggle = props?.querySelector<HTMLButtonElement>('[data-nav-props-toggle]');
+    if (props && toggle && bindOnce(props)) {
+      props.setAttribute('data-js', '');
+      let by: 'hover' | 'click' | null = null;
+      let leaveTimer = 0;
+      const isOpen = () => toggle.getAttribute('aria-expanded') === 'true';
+      const set = (open: boolean, how: 'hover' | 'click' | null = null) => {
+        clearTimeout(leaveTimer);
+        by = open ? how : null;
+        toggle.setAttribute('aria-expanded', String(open));
+        props.toggleAttribute('data-open', open);
+      };
+      toggle.addEventListener('click', () => {
+        // a click on a panel the hover opened keeps it open (it now stays until closed)
+        if (isOpen() && by === 'hover') by = 'click';
+        else set(!isOpen(), 'click');
+      });
+      props.addEventListener('pointerenter', (e) => {
+        if (e.pointerType !== 'mouse') return;
+        clearTimeout(leaveTimer);
+        if (!isOpen()) set(true, 'hover');
+      });
+      props.addEventListener('pointerleave', (e) => {
+        if (e.pointerType !== 'mouse' || by !== 'hover') return;
+        leaveTimer = window.setTimeout(() => set(false), 150);
+      });
+      props.addEventListener('focusout', (e) => {
+        if (isOpen() && by !== 'hover' && !props.contains(e.relatedTarget as Node | null)) set(false);
+      });
+      props.querySelectorAll('a').forEach((a) => a.addEventListener('click', () => set(false)));
+      const ac = new AbortController();
+      document.addEventListener(
+        'astro:before-swap',
+        () => {
+          set(false);
+          ac.abort();
+        },
+        { once: true },
+      );
+      document.addEventListener(
+        'keydown',
+        (e) => {
+          if (e.key !== 'Escape' || !isOpen()) return;
+          const inside = props.contains(document.activeElement);
+          set(false);
+          if (inside) toggle.focus();
+        },
+        { signal: ac.signal },
+      );
+      onOutsidePress(() => [props], () => set(false), { signal: ac.signal, active: isOpen });
     }
   });
 </script>

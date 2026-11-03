@@ -4,7 +4,7 @@
 // every entry point and asserts what the form would actually SUBMIT — new FormData(form).get('branch' | 'room' |
 // 'check_in' | 'check_out') — plus the option text the guest sees:
 //   - room page: the booking-card CTA and, on phones, the bottom bar (scrolled into view, then tapped) → branch + room
-//   - branch page: «اطلب حجزًا في هذا الفرع» → branch, any room
+//   - branch page: «احجز في هذا الفرع» → branch, any room
 //   - header button (menu link on phones) and the footer link follow the page: room page → that branch + room;
 //     sold-out room page (no booking CTA) → that branch, any room; branch page → that branch; every other page
 //     (home, offers, contact, policies, blog, an article) → no branch, any room

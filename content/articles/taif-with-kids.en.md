@@ -30,4 +30,4 @@ Closest to the parks-and-Shafa programme is [Shafa Road](/en/shafa-road/): four 
 
 At both properties children are not counted in the room's included guests, breakfast is a daily buffet, and parking is free.
 
-> [Request a booking](/en/booking/) and pick the property closest to your plan.
+> [Book now](/en/booking/) and pick the property closest to your plan.

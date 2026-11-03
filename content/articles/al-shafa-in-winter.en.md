@@ -28,4 +28,4 @@ Proper winter clothing — the gap between Taif and Al Shafa can be several degr
 ## Where to stay
 [Shafa Road](/en/shafa-road/) sits on the road up to the highlands, in the quiet Al-Sadad district, four minutes from Al Ruddaf Park. A room with a private balcony for a cold morning and a coffee, a jacuzzi studio after a day in the mountains, or a two-bedroom suite for a family. Breakfast is served 7:00–10:30 am before you set off.
 
-> [Request a booking at Shafa Road](/en/booking/?branch=shafa-road) for your winter break.
+> [Book at Shafa Road](/en/booking/?branch=shafa-road) for your winter break.

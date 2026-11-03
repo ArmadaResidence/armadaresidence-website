@@ -31,6 +31,6 @@ Both have mosques and facilities for washing and entering ihram.
 
 For Umrah operators and groups: special rates via the [partners page](/en/partners/groups-umrah/).
 
-> [Request a booking at Airport Road](/en/booking/?branch=airport-road) before your journey to Makkah.
+> [Book at Airport Road](/en/booking/?branch=airport-road) before your journey to Makkah.
 
 *This guide covers accommodation only; for religious rulings and ihram timing, consult the relevant authorities.*
