@@ -3,7 +3,7 @@
 //   - contrast measured pixel by pixel: the button shot twice at 2× (as rendered, then with its text and arrow made
 //     transparent); every pixel that differs is ink, and the text colour against the background pixel under it must
 //     hold ≥ 4.5:1 — over the whole gradient, highlight and sweep included;
-//   - the box: 24 px high, its text white, the bronze gradient and the top highlight; secondary to «اطلب حجزًا» (smaller
+//   - the box: 24 px high, its text white, the bronze gradient and the top highlight; secondary to «احجز الآن» (smaller
 //     and lower in the page's visual order: its height and font size are below the booking button's);
 //   - hover lifts it 1–2 px and the sweep plays once (≤ 600 ms); active presses it below its rest position; a visible
 //     focus ring; reduced motion: no lift and no sweep;
@@ -108,7 +108,7 @@ try {
           check(/linear-gradient/.test(st.bg) && /169, 124, 80/.test(st.bg) && /138, 98, 57/.test(st.bg), `${tag}: not the bronze gradient #A97C50 → #8A6239 (${st.bg})`);
           check(/inset/.test(st.shadow) && /255, 255, 255/.test(st.shadow), `${tag}: no light inner highlight (${st.shadow})`);
           check(!st.old && st.sweep, `${tag}: the old hairline pill is still there / the sweep layer is missing`);
-          check(st.bookH === null || (st.h < st.bookH && st.font < st.bookFont), `${tag}: not secondary to «اطلب حجزًا» (${st.h}/${st.bookH} px, ${st.font}/${st.bookFont} px text)`);
+          check(st.bookH === null || (st.h < st.bookH && st.font < st.bookFont), `${tag}: not secondary to «احجز الآن» (${st.h}/${st.bookH} px, ${st.font}/${st.bookFont} px text)`);
           check(!(await page.evaluate(() => Object.keys(sessionStorage).some((k) => k.includes('pill')))), `${tag}: the old pill's sessionStorage key is written`);
           await measure(page, `${tag} rest`);
           // hover: lift, the sweep once, the larger shadow

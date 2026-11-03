@@ -9,7 +9,7 @@ interface Props {
   locale: Locale;
   path: string;
   switchPath?: string;
-  /** branch / room pages: «اطلب حجزًا» prefills that branch (and room) — Ahmed, 24 Oct 2026 */
+  /** branch / room pages: «احجز الآن» prefills that branch (and room) — Ahmed, 24 Oct 2026 */
   booking?: BookingContext;
 }
 const { locale, path, switchPath = path, booking } = Astro.props;
@@ -45,7 +45,7 @@ const partnersActive = path.startsWith('/partners/');
     <div class="absolute inset-0 pattern-bg" aria-hidden="true"></div>
     <div class="relative mx-auto max-w-6xl px-5 h-8 flex items-center justify-between gap-4">
       {/* Partners button (raised and refined — Ahmed, 2 Nov 2026; replaces the hairline pill of 23 Oct): a bronze
-          gradient with a top highlight and a soft shadow, secondary to «اطلب حجزًا»; hover lifts it and one light sweep
+          gradient with a top highlight and a soft shadow, secondary to «احجز الآن»; hover lifts it and one light sweep
           crosses it (src/styles/motion.css → .partners-pill; CSS only) */}
       <a
         href={localePath(locale, '/partners/')}

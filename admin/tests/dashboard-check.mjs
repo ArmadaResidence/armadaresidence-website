@@ -5,8 +5,9 @@
 //   node admin/tests/dashboard-check.mjs [BASE_URL]        default http://127.0.0.1:5173
 //   env SUPABASE_URL / SUPABASE_ANON_KEY / BOOKING_TEST_TOKEN  (the branch; .env values are the fallback)
 //       SUPABASE_SERVICE_ROLE_KEY                             the branch's service role: enables the invite-link checks
-//   the branch also needs RESEND_API_KEY (a sending-only QA key) and one active branch + central recipient: the
-//   confirm / cancel outcome checks require each email of a test booking to come back as a Resend id (= the sink)
+//   the branch also needs RESEND_API_KEY (a sending-only QA key) and one active branch + central recipient (created by
+//   F:/armada-scratch/pgtool/reset-qa.mjs since 3 Nov 2026): the confirm / cancel outcome checks require each email of a
+//   test booking to come back as a Resend id (= the sink)
 //
 // Phase 2a.1 coverage: Western digits on every page with every dialog open; the site's picker on every date field
 // (no typing, past viewable in filters, edits from today); inventory open / closed per cell, row and bulk + legend;
