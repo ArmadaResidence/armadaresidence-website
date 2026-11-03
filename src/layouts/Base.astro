@@ -24,8 +24,12 @@ interface Props {
   ogImage?: string;
   /** Open Graph type: "article" on blog posts, "website" elsewhere. */
   ogType?: 'website' | 'article';
-  /** Where the language switch goes when this page has no twin (404). Defaults to `path`. */
+  /** Where the language switch goes when this page has no twin (404, a one-language article). Defaults to `path`. */
   switchPath?: string;
+  /** false: the page exists in this language only (a one-language article, 3 Nov 2026) — no hreflang alternates */
+  alternates?: boolean;
+  /** a canonical other than the page itself (an article's SEO field) — an absolute URL */
+  canonicalHref?: string;
   /** The 404 page is served at every unknown URL: no canonical, hreflang or og:url (30 Oct 2026) — it has no URL of its own. */
   notFound?: boolean;
   /** Favicon set; the café menu page swaps in the café favicon (brand/cafe identity). */
@@ -50,6 +54,8 @@ const {
   ogImage = seo.default_og_image,
   ogType = 'website',
   switchPath = Astro.props.path,
+  alternates = true,
+  canonicalHref,
   notFound = false,
   icons = { svg: '/favicon.svg', png32: '/icons/favicon-32.png', apple: '/icons/apple-touch-icon.png' },
   hideFooter = false,
@@ -57,7 +63,9 @@ const {
   booking,
 } = Astro.props;
 
-const canonical = absoluteUrl(localePath(locale, path));
+const canonical = canonicalHref ?? absoluteUrl(localePath(locale, path));
+// og:url is always the page itself
+const selfUrl = absoluteUrl(localePath(locale, path));
 const arUrl = absoluteUrl(localePath('ar', path));
 const enUrl = absoluteUrl(localePath('en', path));
 const ogImageUrl = absoluteUrl(ogImage);
@@ -129,7 +137,7 @@ const preloadFonts = locale === 'ar' ? [fontAr400] : [fontEn];
     {!notFound && <link rel="canonical" href={canonical} />}
     {noindex && <meta name="robots" content="noindex, follow" />}
     {
-      !notFound && (
+      !notFound && alternates && (
         <>
           <link rel="alternate" hreflang="ar" href={arUrl} />
           <link rel="alternate" hreflang="en" href={enUrl} />
@@ -141,7 +149,7 @@ const preloadFonts = locale === 'ar' ? [fontAr400] : [fontEn];
     <meta property="og:site_name" content={siteName(locale)} />
     <meta property="og:title" content={title} />
     <meta property="og:description" content={description} />
-    {!notFound && <meta property="og:url" content={canonical} />}
+    {!notFound && <meta property="og:url" content={selfUrl} />}
     <meta property="og:image" content={ogImageUrl} />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />

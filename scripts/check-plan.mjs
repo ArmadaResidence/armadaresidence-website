@@ -13,7 +13,7 @@ import { pathToFileURL } from 'node:url';
 
 // the suite, in the order check-all runs it
 export const STATIC_CHECKS = ['typecheck', 'admin-digits-check', 'admin-format-check', 'auth-emails-check', 'whatsapp-check', 'email-print-check', 'offers-engine-check'];
-export const BROWSER_CHECKS = ['booking-nav-check', 'drawer-check', 'booking-whatsapp-check', 'datepicker-check', 'motion-check', 'booking-instant-check', 'partners-form-check', 'careers-form-check', 'dining-site-check', 'gallery-site-check', 'offers-site-check', 'partners-button-check', 'a11y-check'];
+export const BROWSER_CHECKS = ['booking-nav-check', 'drawer-check', 'booking-whatsapp-check', 'datepicker-check', 'motion-check', 'booking-instant-check', 'partners-form-check', 'careers-form-check', 'dining-site-check', 'gallery-site-check', 'offers-site-check', 'blog-site-check', 'partners-button-check', 'a11y-check'];
 // every commit (build and qa.py too, unless the commit is docs only)
 export const FAST_CHECKS = ['typecheck', 'admin-digits-check', 'admin-format-check', 'auth-emails-check', 'whatsapp-check'];
 // a11y-check on sample pages for a content change: home, one branch, one room, offers, policies — both languages
@@ -104,6 +104,15 @@ const RULES = [
       f === 'src/pages/[...lang]/offers.astro' ||
       f === 'src/layouts/Base.astro',
     checks: ['offers-site-check'],
+  },
+  {
+    // «المدونة» on the site (3 Nov 2026): the list, the article page, the RSS feed, the article library and its
+    // sanitiser, the card, the body; an article file of the seed
+    name: 'blog',
+    test: (f) =>
+      /^src\/pages\/\[\.\.\.lang\]\/blog\//.test(f) || comp(['ArticleCard', 'ArticleBody']).test(f) || lib(['articles', 'blog-md']).test(f) ||
+      /^content\/articles\/[^/]+\.(ar|en)\.md$/.test(f) || f === 'src/content.config.ts',
+    checks: ['blog-site-check'],
   },
   {
     name: 'email.ts',

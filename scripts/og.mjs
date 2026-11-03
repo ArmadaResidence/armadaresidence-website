@@ -18,15 +18,19 @@ await sharp({ create: { width: 1200, height: 630, channels: 4, background: MIDNI
 
 console.log(`OG image written: ${out}`);
 
-// Blog (12 Oct 2026): one OG crop per article from its cover (content/articles/<slug>.ar.md → cover = image base under
-// public/). Articles whose cover is still the placeholder keep the default image above.
+// Blog (12 Oct 2026): one OG crop per article from its cover (content/articles.generated/<slug>.<lang>.md, written by
+// scripts/blog-build.mjs — else the seed content/articles → cover = image base under public/). Articles whose cover is
+// still the placeholder keep the default image above; a cover published in «الصور» brings its own OG crop.
 import { existsSync, readdirSync } from 'node:fs';
 mkdirSync('public/og/blog', { recursive: true });
 let blogOg = 0;
-for (const f of existsSync('content/articles') ? readdirSync('content/articles') : []) {
-  const m = f.match(/^([a-z0-9-]+)\.ar\.md$/);
-  if (!m) continue;
-  const cover = (readFileSync(`content/articles/${f}`, 'utf8').match(/^cover:\s*"?([^"\n]+)"?\s*$/m) || [])[1] || '';
+const ART_DIR = existsSync('content/articles.generated') ? 'content/articles.generated' : 'content/articles';
+const seenOg = new Set();
+for (const f of existsSync(ART_DIR) ? readdirSync(ART_DIR).sort() : []) {
+  const m = f.match(/^([a-z0-9-]+)\.(ar|en)\.md$/);
+  if (!m || seenOg.has(m[1])) continue;
+  seenOg.add(m[1]);
+  const cover = (readFileSync(`${ART_DIR}/${f}`, 'utf8').match(/^cover:\s*"?([^"\n]+)"?\s*$/m) || [])[1] || '';
   if (!cover || cover.startsWith('[')) continue;
   const base = cover.replace(/^\//, '').replace(/\.webp$/, '');
   const src = [1920, 1400, 800].map((w) => `public/${base}-${w}.webp`).find((p) => existsSync(p));

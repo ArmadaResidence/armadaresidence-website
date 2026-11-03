@@ -1,14 +1,15 @@
 ---
 /**
- * /blog/ and /en/blog/ (12 Oct 2026): published articles of the page language, newest first, with a tag filter.
+ * /blog/ and /en/blog/ (12 Oct 2026): published articles of the page language (3 Nov 2026: including the ones that exist
+ * in that language only), newest first, with a tag filter; the RSS feed of the language is linked in the head.
  * Without JS every card shows and the filter bar stays hidden; with JS the chips filter in place and the choice is
  * kept in ?tag= (shareable, restored on load and after view-transition navigations).
  */
 import Base from '@layouts/Base.astro';
 import ArticleCard from '@components/ArticleCard.astro';
 import { langPaths } from '@lib/paths';
-import { articlePath, articles, publishedSlugs } from '@lib/articles';
-import { fill, localePath, pageSeo, ui, type Locale } from '@lib/content';
+import { articlePath, articles } from '@lib/articles';
+import { fill, localePath, pageSeo, siteName, ui, type Locale } from '@lib/content';
 import { blog, breadcrumbs } from '@lib/jsonld';
 
 export const getStaticPaths = langPaths;
@@ -20,8 +21,7 @@ const { locale } = Astro.props;
 const t = ui(locale);
 const b = t.blog;
 const s = pageSeo(locale, 'blog');
-const both = new Set(await publishedSlugs());
-const list = (await articles(locale)).filter((a) => both.has(a.slug));
+const list = await articles(locale);
 
 // tags in order of frequency, then first appearance
 const counts = new Map<string, number>();
@@ -46,6 +46,7 @@ const jsonld = [
 ---
 
 <Base locale={locale} path="/blog/" title={s.title} description={s.description} jsonld={jsonld}>
+  <link slot="head" rel="alternate" type="application/rss+xml" title={`${b.heading} — ${siteName(locale)}`} href={`${localePath(locale, '/blog/')}rss.xml`} />
   <section class="mx-auto max-w-6xl px-4 pt-10 pb-14">
     <h1 class="text-3xl md:text-4xl font-bold text-midnight">{b.heading}</h1>
     <p class="mt-3 max-w-[60ch] text-ink-muted leading-relaxed">{b.intro}</p>

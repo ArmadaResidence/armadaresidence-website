@@ -1,5 +1,7 @@
 /**
- * Blog articles (12 Oct 2026): content/articles/<slug>.<lang>.md through the `articles` collection (src/content.config.ts).
+ * Blog articles (12 Oct 2026): <slug>.<lang>.md through the `articles` collection (src/content.config.ts) — since 3 Nov 2026
+ * written by scripts/blog-build.mjs from the dashboard «المدونة» into content/articles.generated (seed: content/articles).
+ * An article may exist in one language only: its page is built in that language, without hreflang alternates.
  *
  * The body is plain Markdown plus two block directives that render the site's own components inside the article:
  *
@@ -9,7 +11,9 @@
  *                                              :::
  *
  * An image is referenced by its base path under public/ (the files are <base>-800.webp, <base>-1400.webp…, the same
- * convention as every approved photo). Each `##` section becomes one Reveal block; the intro before the first `##`
+ * convention as every approved photo), or as media:<id> — one of the article's photos in «الصور» (media.generated.json;
+ * its alt in the page language unless the directive gives one). The text goes through the one sanitiser
+ * (src/lib/blog-md.ts) and raw HTML is never rendered. Each `##` section becomes one Reveal block; the intro before the first `##`
  * is never wrapped (it sits right under the h1). Format reference: content/articles/README.md.
  */
 import { getCollection, type CollectionEntry } from 'astro:content';
@@ -18,7 +22,8 @@ import { join } from 'node:path';
 import { Marked } from 'marked';
 import sharp from 'sharp';
 import { COVER_PENDING } from '../content.config';
-import { branches, fill, lqip, localePath, taif, ui, type Locale, type Place } from './content';
+import { branches, fill, lqip, localePath, media, taif, ui, type Locale, type Place } from './content';
+import { safeHref, sanitizeMarkdown } from './blog-md';
 
 export type Article = CollectionEntry<'articles'>['data'] & { id: string; body: string };
 
@@ -34,16 +39,19 @@ export async function articles(locale: Locale): Promise<Article[]> {
     .sort((a, b) => b.date.localeCompare(a.date) || a.slug.localeCompare(b.slug));
 }
 
-/** Slugs published in BOTH languages — an article missing its twin is not built (qa.py fails on it). */
+/** Slugs published in BOTH languages — those pages carry hreflang alternates and a language switch to their twin. */
 export async function publishedSlugs(): Promise<string[]> {
   const [ar, en] = await Promise.all([articles('ar'), articles('en')]);
   const enSlugs = new Set(en.map((a) => a.slug));
   return ar.map((a) => a.slug).filter((s) => enSlugs.has(s));
 }
 
-/** The branches an article is about: its `branch`, or both when it is absent or "both" (23 Oct 2026). */
+/** The branches an article's booking box is for: its `branch`; both for "both"; none for an article linked to no branch
+ *  (3 Nov 2026: the box then opens the booking form with no branch preselected). Seeded articles always name one. */
 export const articleBranches = (a: Pick<Article, 'branch'>): string[] =>
-  a.branch && a.branch !== 'both' ? [a.branch] : branches.map((b) => b.slug);
+  a.branch === 'both' ? branches.map((b) => b.slug) : a.branch ? [a.branch] : [];
+/** the branches an article is about, for related articles and JSON-LD (none linked → about the city, both branches) */
+export const aboutBranches = (a: Pick<Article, 'branch'>): string[] => (a.branch && a.branch !== 'both' ? [a.branch] : branches.map((b) => b.slug));
 
 export const blogPath = (locale: Locale) => localePath(locale, '/blog/');
 export const articlePath = (locale: Locale, slug: string) => localePath(locale, `/blog/${slug}/`);
@@ -95,8 +103,37 @@ export interface ArticleImage {
 
 const metaCache = new Map<string, { width: number; height: number } | null>();
 
-/** Resolve an image base ("/images/dining/caesar-salad") to its WebP widths; null when no file exists. */
-export async function resolveImage(base: string, alt: string, caption?: string): Promise<ArticleImage | null> {
+/** One of an article's photos published in «الصور» (media:<id>), in the page language; null when not published. */
+function mediaImage(id: string, locale: Locale, alt: string, caption?: string): ArticleImage | null {
+  for (const entry of Object.values(media.articles ?? {})) {
+    const p = entry.photos.find((x) => x.id === id);
+    if (!p) continue;
+    const w = p.widths.includes(800) ? 800 : p.widths[0];
+    const src = `${p.base}-${w}.webp`;
+    return {
+      src,
+      srcset: p.widths.map((x) => `${p.base}-${x}.webp ${x}w`).join(', '),
+      width: p.width,
+      height: p.height,
+      alt: alt || (locale === 'ar' ? p.alt_ar : p.alt_en) || p.alt_ar,
+      caption,
+      lqip: lqip(src),
+    };
+  }
+  return null;
+}
+
+/** an article's own photo for sharing: its og_media, else its published cover — the OG crop (1200 × 630) */
+export function articleOg(a: Article): string | null {
+  const photos = media.articles?.[a.slug]?.photos ?? [];
+  const p = (a.og_media && photos.find((x) => x.id === a.og_media)) || photos.find((x) => x.cover);
+  return p?.og ?? null;
+}
+
+/** Resolve an image base ("/images/dining/caesar-salad") or media:<id> to its WebP widths; null when no file exists. */
+export async function resolveImage(base: string, alt: string, caption?: string, locale: Locale = 'ar'): Promise<ArticleImage | null> {
+  const m = base.trim().match(/^media:([0-9a-f-]{36})$/);
+  if (m) return mediaImage(m[1], locale, alt, caption);
   const clean = base.trim().replace(/\.webp$/, '').replace(/-\d+$/, '');
   const widths = WIDTHS.filter((w) => existsSync(`${PUBLIC}${clean.replace(/^\//, '')}-${w}.webp`));
   if (!widths.length) return null;
@@ -119,11 +156,19 @@ export async function resolveImage(base: string, alt: string, caption?: string):
   };
 }
 
+/** the article's cover published in «الصور» (3 Nov 2026), in its language */
+function mediaCover(a: Article): ArticleImage | null {
+  const p = media.articles?.[a.slug]?.photos.find((x) => x.cover);
+  return p ? mediaImage(p.id, a.lang, '') : null;
+}
+
 export function coverPending(a: Article): boolean {
-  return a.cover === COVER_PENDING || a.cover.startsWith('[');
+  return !mediaCover(a) && (a.cover === COVER_PENDING || a.cover.startsWith('['));
 }
 
 export async function coverImage(a: Article): Promise<ArticleImage | null> {
+  const mc = mediaCover(a);
+  if (mc) return mc;
   return coverPending(a) ? null : resolveImage(a.cover, a.cover_alt);
 }
 
@@ -158,6 +203,8 @@ export interface Section {
 const marked = new Marked({ gfm: true, breaks: false });
 marked.use({
   renderer: {
+    // raw HTML never reaches a page (the sanitiser removed it already; this is the second lock)
+    html: () => '',
     // h2/h3 get stable ids (anchors) from their text
     heading({ tokens, depth }) {
       const text = this.parser.parseInline(tokens);
@@ -170,9 +217,11 @@ marked.use({
         .replace(/^-|-$/g, '');
       return `<h${depth} id="${id}">${text}</h${depth}>\n`;
     },
-    // external links open in a new tab; internal ones stay in the site (and through the router)
+    // external links open in a new tab; internal ones stay in the site (and through the router); an unsafe target
+    // (javascript:, data:…) keeps its text only
     link({ href, title, tokens }) {
       const text = this.parser.parseInline(tokens);
+      if (safeHref(href) === null) return text;
       const t = title ? ` title="${title}"` : '';
       if (/^https?:\/\//.test(href)) return `<a href="${href}"${t} rel="noopener" target="_blank">${text}</a>`;
       return `<a href="${href}"${t}>${text}</a>`;
@@ -181,8 +230,8 @@ marked.use({
 });
 
 /** Split the body into sections at each `##`, with photo / gallery directives as their own segments. */
-export async function renderBody(body: string): Promise<Section[]> {
-  const lines = body.replace(/\r\n/g, '\n').split('\n');
+export async function renderBody(body: string, locale: Locale = 'ar'): Promise<Section[]> {
+  const lines = sanitizeMarkdown(body).replace(/\r\n/g, '\n').split('\n');
   const sections: Section[] = [{ intro: true, segments: [] }];
   let buf: string[] = [];
   const flush = () => {
@@ -201,7 +250,7 @@ export async function renderBody(body: string): Promise<Section[]> {
         await Promise.all(
           items.map((it) => {
             const [base, alt = '', caption] = it.split('|').map((s) => s.trim());
-            return resolveImage(base, alt, caption || undefined);
+            return resolveImage(base, alt, caption || undefined, locale);
           }),
         )
       ).filter((x): x is ArticleImage => Boolean(x));
@@ -223,10 +272,10 @@ export async function renderBody(body: string): Promise<Section[]> {
 
 /** Up to `n` other articles sharing a tag or a branch; shared tags rank first, then a shared branch, then date. */
 export function relatedArticles(all: Article[], a: Article, n = 3): Article[] {
-  const mine = articleBranches(a);
+  const mine = aboutBranches(a);
   return all
     .filter((x) => x.slug !== a.slug)
-    .map((x) => ({ x, tags: x.tags.filter((t) => a.tags.includes(t)).length, branch: articleBranches(x).some((b) => mine.includes(b)) ? 1 : 0 }))
+    .map((x) => ({ x, tags: x.tags.filter((t) => a.tags.includes(t)).length, branch: aboutBranches(x).some((b) => mine.includes(b)) ? 1 : 0 }))
     .filter((r) => r.tags || r.branch)
     .sort((p, q) => q.tags - p.tags || q.branch - p.branch || q.x.date.localeCompare(p.x.date))
     .slice(0, n)

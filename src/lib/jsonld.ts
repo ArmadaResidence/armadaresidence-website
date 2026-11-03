@@ -238,7 +238,7 @@ function publisher(locale: Locale) {
 export function article(locale: Locale, a: ArticleLd) {
   return {
     '@context': 'https://schema.org',
-    '@type': 'Article',
+    '@type': 'BlogPosting',
     headline: a.headline,
     description: a.description,
     image: absoluteUrl(a.image),

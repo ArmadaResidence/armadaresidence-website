@@ -47,7 +47,7 @@ const H = `h${level}` as 'h2' | 'h3';
     <H class="text-lg font-semibold text-midnight leading-snug">
       <a href={href} class="article-card-link hover:text-bronze-text">{a.title}</a>
     </H>
-    <p class="text-sm text-ink-muted leading-relaxed">{a.seo_description}</p>
+    <p class="text-sm text-ink-muted leading-relaxed">{a.excerpt || a.seo_description}</p>
     <ul class="mt-auto pt-2 flex flex-wrap gap-1.5" aria-label={t.tags}>
       {a.tags.map((tag) => <li class="text-xs bg-porcelain text-ink px-2 py-1 rounded">{tag}</li>)}
     </ul>

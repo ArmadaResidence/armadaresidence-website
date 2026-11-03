@@ -12,6 +12,8 @@ Steps:
      committed) + content/media.generated.json (the data src/lib/content.ts merges); without the service-role key the
      data is empty and the pages keep their placeholders. The offers of «العروض» (2 Nov 2026): scripts/offers-build.mjs →
      content/offers.generated.json (without the key: content/offers.json, the dashboard's seed).
+     The articles of «المدونة» (3 Nov 2026): scripts/blog-build.mjs → content/articles.generated/ (the folder the
+     articles collection reads; without the key: a copy of content/articles, the dashboard's seed).
   4. Run `astro build` → dist/ (static).
   5. Print the list of generated pages.
 
@@ -551,6 +553,7 @@ def main() -> int:
     sync_images()
     run(["node", "scripts/media-build.mjs"])
     run(["node", "scripts/offers-build.mjs"])
+    run(["node", "scripts/blog-build.mjs"])
     sync_media()
     run(["node", "scripts/lqip.mjs"])
     run(["node", "scripts/og.mjs"])

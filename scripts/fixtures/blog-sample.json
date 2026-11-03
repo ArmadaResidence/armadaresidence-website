@@ -1,0 +1,51 @@
+{
+  "_note": "The blog sample for scripts/blog-site-check.mjs (3 Nov 2026): BLOG_FIXTURE=scripts/fixtures/blog-sample.json python build.py. An article in English only, an article linked to no branch and one linked to Airport Road that shares their tag (related articles). Test copy, never published.",
+  "at": "2026-11-03T00:00:00Z",
+  "articles": [
+    {
+      "slug": "qa-english-only",
+      "langs": ["en"],
+      "title_ar": "", "title_en": "A test article in English only",
+      "excerpt_ar": "", "excerpt_en": "A short excerpt for the card.",
+      "body_ar": "",
+      "body_en": "\nAn introduction.\n\n## A section\n\nText with a link to [Shafa Road](/en/shafa-road/).\n",
+      "seo_title_ar": "", "seo_title_en": "English-only test article | Armada",
+      "seo_description_ar": "", "seo_description_en": "A test article that exists in English only.",
+      "tags_ar": [], "tags_en": ["QA sample"],
+      "branch": "shafa-road", "related_place": "al-shafa",
+      "cover_path": null, "cover_alt_ar": "", "cover_alt_en": "A test cover photo",
+      "og_media": null, "canonical": null, "author": "Armada Residence",
+      "date_published": "2026-11-02", "date_updated": null, "publish_at": "2026-11-02T00:00:00+03:00"
+    },
+    {
+      "slug": "qa-no-branch",
+      "langs": ["ar", "en"],
+      "title_ar": "مقال اختبار بلا فرع", "title_en": "A test article linked to no branch",
+      "excerpt_ar": "", "excerpt_en": "",
+      "body_ar": "\nمقدمة.\n\n## قسم\n\nنص مع رابط إلى [طريق المطار](/airport-road/).\n",
+      "body_en": "\nAn introduction.\n\n## A section\n\nText with a link to [Airport Road](/en/airport-road/).\n",
+      "seo_title_ar": "مقال اختبار بلا فرع | أرمادا", "seo_title_en": "Test article, no branch | Armada",
+      "seo_description_ar": "مقال اختبار غير مرتبط بفرع محدد.", "seo_description_en": "A test article linked to no branch.",
+      "tags_ar": ["عينة اختبار"], "tags_en": ["QA sample"],
+      "branch": null, "related_place": null,
+      "cover_path": null, "cover_alt_ar": "صورة غلاف تجريبية", "cover_alt_en": "A test cover photo",
+      "og_media": null, "canonical": null, "author": "Armada Residence",
+      "date_published": "2026-11-01", "date_updated": null, "publish_at": "2026-11-01T00:00:00+03:00"
+    },
+    {
+      "slug": "qa-airport",
+      "langs": ["ar", "en"],
+      "title_ar": "مقال اختبار لطريق المطار", "title_en": "A test article for Airport Road",
+      "excerpt_ar": "مقتطف قصير للبطاقة.", "excerpt_en": "A short excerpt for the card.",
+      "body_ar": "\nمقدمة.\n\n## قسم\n\nنص مع رابط إلى [طريق المطار](/airport-road/).\n",
+      "body_en": "\nAn introduction.\n\n## A section\n\nText with a link to [Airport Road](/en/airport-road/).\n",
+      "seo_title_ar": "مقال اختبار لطريق المطار | أرمادا", "seo_title_en": "Airport Road test article | Armada",
+      "seo_description_ar": "مقال اختبار مرتبط بفرع طريق المطار.", "seo_description_en": "A test article linked to Airport Road.",
+      "tags_ar": ["عينة اختبار"], "tags_en": ["QA sample"],
+      "branch": "airport-road", "related_place": "souq-okaz",
+      "cover_path": null, "cover_alt_ar": "صورة غلاف تجريبية", "cover_alt_en": "A test cover photo",
+      "og_media": null, "canonical": null, "author": "Armada Residence",
+      "date_published": "2026-10-30", "date_updated": null, "publish_at": "2026-10-30T00:00:00+03:00"
+    }
+  ]
+}

@@ -45,6 +45,9 @@ export interface MediaData {
   /** the partners pages' photo slots (target partners, key = content/partners-photos.json slots[].key — 2 Nov 2026),
    *  each cropped to its legacy photo's ratio */
   partners?: Record<string, { photos: MediaImage[] }>;
+  /** the articles' photos «المدونة» (target blog, key = the article slug — 3 Nov 2026): the cover and the photos of the
+   *  text, each with its id (`:::photo media:<id>`) and its OG crop */
+  articles?: Record<string, { photos: (MediaImage & { id: string; og?: string })[] }>;
   /** the published dining venues (active and coming soon; a hidden one never reaches the build) */
   venues?: Venue[];
   home?: { poster: { base: string; widths: number[]; width: number; height: number; position: string }; poster_mobile: { base: string; widths: number[]; width: number; height: number; position: string }; video?: { mp4: string; webm: string; seconds: number }; alt_ar: string; alt_en: string; og_image?: string } | null;

@@ -178,6 +178,8 @@ def main() -> int:
     ap.add_argument("--allow-todo", action="store_true", help="dev mode: content gaps become warnings")
     args = ap.parse_args()
     rep = Report(args.allow_todo)
+    global ART_SINGLE, ART_CANON
+    ART_SINGLE, ART_CANON = article_meta()
 
     if not DIST.is_dir():
         print("dist/ not found — run python build.py first", file=sys.stderr)
@@ -323,7 +325,7 @@ def main() -> int:
             rep.f("headings", f"{path}: {p.h1} <h1> elements (expected 1)")
 
         # both languages
-        if path != "/404.html":
+        if path != "/404.html" and path not in ART_SINGLE:  # a one-language article has no twin (3 Nov 2026)
             twin = "/en" + path if not en else path[3:]
             if twin not in pages:
                 rep.f("translations", f"{path}: missing counterpart {twin}")
@@ -466,12 +468,23 @@ def main() -> int:
             if p.canonical or p.hreflang or p.metas.get("og:url"):
                 rep.f("seo", f"{path}: the 404 page must carry no canonical, hreflang or og:url")
         else:
-            canon[p.canonical].append(path)
-            if p.canonical != site + path:
-                rep.f("seo", f"{path}: canonical {p.canonical!r} != {site + path!r}")
-            for hl in ("ar", "en", "x-default"):
-                if hl not in p.hreflang:
-                    rep.f("hreflang", f"{path}: missing hreflang {hl}")
+            single, canon_to = ART_SINGLE, ART_CANON.get(path)
+            if canon_to:
+                # the article's own canonical (the editor's SEO field, 3 Nov 2026): absolute, as written there
+                if p.canonical != canon_to:
+                    rep.f("seo", f"{path}: canonical {p.canonical!r} != the article's canonical {canon_to!r}")
+            else:
+                canon[p.canonical].append(path)
+                if p.canonical != site + path:
+                    rep.f("seo", f"{path}: canonical {p.canonical!r} != {site + path!r}")
+            if path in single:
+                # an article in one language only (3 Nov 2026): no alternates at all
+                if p.hreflang:
+                    rep.f("hreflang", f"{path}: a one-language article must carry no hreflang ({sorted(p.hreflang)})")
+            else:
+                for hl in ("ar", "en", "x-default"):
+                    if hl not in p.hreflang:
+                        rep.f("hreflang", f"{path}: missing hreflang {hl}")
         if not noindex(p):
             for hl, href in p.hreflang.items():
                 if not href.startswith(site + "/"):
@@ -489,7 +502,7 @@ def main() -> int:
         for k in ("og:title", "og:description", "og:image", "twitter:card") + (("og:url",) if not not_found_page else ()):
             if not p.metas.get(k):
                 rep.f("seo", f"{path}: missing {k}")
-        if p.metas.get("og:url") != p.canonical and not not_found_page:
+        if p.metas.get("og:url") != (site + path if ART_CANON.get(path) else p.canonical) and not not_found_page:
             rep.f("seo", f"{path}: og:url != canonical")
 
         # images
@@ -597,7 +610,7 @@ def main() -> int:
                     "Hotel": ["name", "address", "geo", "telephone", "image", "url"],
                     "LodgingBusiness": ["name", "address", "geo", "telephone", "image", "url"],
                     "HotelRoom": ["name", "url", "containedInPlace", "description"],
-                    "Article": ["headline", "description", "image", "datePublished", "dateModified", "author",
+                    "BlogPosting": ["headline", "description", "image", "datePublished", "dateModified", "author",
                                 "publisher", "mainEntityOfPage", "inLanguage", "url"],
                     "Blog": ["name", "url", "publisher", "blogPost"],
                     "BreadcrumbList": ["itemListElement"],
@@ -655,8 +668,8 @@ def main() -> int:
             rep.f("json-ld", f"{path}: branch page must carry Hotel/LodgingBusiness")
         if lp in room_by_path and "HotelRoom" not in types:
             rep.f("json-ld", f"{path}: room page must carry HotelRoom")
-        if re.fullmatch(r"/blog/[a-z0-9-]+/", lp) and "Article" not in types:
-            rep.f("json-ld", f"{path}: article page must carry Article")
+        if re.fullmatch(r"/blog/[a-z0-9-]+/", lp) and "BlogPosting" not in types:
+            rep.f("json-ld", f"{path}: article page must carry BlogPosting (3 Nov 2026)")
         if lp == "/blog/" and "Blog" not in types:
             rep.f("json-ld", f"{path}: /blog/ must carry Blog")
 
@@ -737,7 +750,7 @@ def main() -> int:
                 loc = re.search(r"<loc>(.*?)</loc>", block).group(1)
                 locs.append(loc)
                 alts = set(re.findall(r'hreflang="([^"]+)"', block))
-                if not {"ar", "en"} <= alts:
+                if not {"ar", "en"} <= alts and loc[len(site):] not in ART_SINGLE:
                     rep.f("sitemap", f"{loc}: missing hreflang alternates ({sorted(alts)})")
         sm_paths = set()
         for loc in locs:
@@ -843,6 +856,7 @@ def main() -> int:
         rep.f("fonts", "src/assets/fonts/subset.json missing — run scripts/fonts-subset.py")
 
     check_articles(rep, pages)
+    check_rss(rep, pages)
     check_photos(rep)
     check_media(rep)
     check_gallery(rep)
@@ -874,10 +888,49 @@ def main() -> int:
     return 0
 
 
-# ---------------------------------------------------------------- blog (12 Oct 2026)
-ARTICLES = CONTENT / "articles"
+# ---------------------------------------------------------------- blog (12 Oct 2026; the dashboard «المدونة», 3 Nov 2026)
+# scripts/blog-build.mjs writes the published articles into content/articles.generated (the folder the site reads); the
+# seed content/articles is checked only when the build has not run.
+ART_SINGLE: set = set()
+ART_CANON: dict = {}
+ARTICLES = CONTENT / "articles.generated" if (CONTENT / "articles.generated").is_dir() else CONTENT / "articles"
 ARTICLE_KEYS = ("slug", "lang", "title", "seo_title", "seo_description", "tags", "branch", "related_place",
                 "cover", "cover_alt", "date", "status", "author")
+
+
+def article_meta() -> tuple[set, dict]:
+    """the one-language article pages (no hreflang, no sitemap alternates) and the pages whose canonical points
+    elsewhere (the article's own canonical, absolute) — read before the page checks"""
+    site = json.loads((CONTENT / "seo.json").read_text(encoding="utf-8"))["site_url"].rstrip("/")
+    langs: dict[str, set] = defaultdict(set)
+    canon: dict[str, str] = {}
+    if not ARTICLES.is_dir():
+        return set(), {}
+    for f in ARTICLES.glob("*.md"):
+        fm = re.fullmatch(r"([a-z0-9]+(?:-[a-z0-9]+)*)\.(ar|en)\.md", f.name)
+        parsed = parse_frontmatter(f.read_text(encoding="utf-8")) if fm else None
+        if not parsed or parsed[0].get("status") != "published":
+            continue
+        slug, lang = fm.group(1), fm.group(2)
+        langs[slug].add(lang)
+        c = parsed[0].get("canonical")
+        if c:
+            canon[f"{'' if lang == 'ar' else '/en'}/blog/{slug}/"] = c if str(c).startswith("https://") else site + str(c)
+    single = {f"{'' if l == 'ar' else '/en'}/blog/{s}/" for s, ls in langs.items() if len(ls) == 1 for l in ls}
+    return single, canon
+
+
+def media_article_photos() -> dict:
+    """the articles' photos published in «الصور» (media.generated.json → articles): id → (slug, has both alts)"""
+    f = CONTENT / "media.generated.json"
+    if not f.is_file():
+        return {}
+    data = json.loads(f.read_text(encoding="utf-8"))
+    out = {}
+    for slug, entry in (data.get("articles") or {}).items():
+        for ph in entry.get("photos", []):
+            out[ph.get("id")] = (slug, bool(str(ph.get("alt_ar", "")).strip()) and bool(str(ph.get("alt_en", "")).strip()), bool(ph.get("cover")))
+    return out
 COVER_PENDING = "[TODO(photo)]"
 MAX_SEO_TITLE, MAX_SEO_DESC = 60, 155
 IMG_WIDTHS = (400, 800, 1400, 1920)
@@ -1094,6 +1147,39 @@ def image_exists(ref: str) -> bool:
     return any((ROOT / "public" / f"{base}-{w}.webp").is_file() for w in IMG_WIDTHS)
 
 
+def check_rss(rep: "Report", pages: dict) -> None:
+    """/blog/rss.xml and /en/blog/rss.xml (3 Nov 2026): well-formed RSS 2.0, one item per published article page of the
+    language, each link a built page, linked from the blog pages' head"""
+    import xml.etree.ElementTree as ET
+    site = json.loads((CONTENT / "seo.json").read_text(encoding="utf-8"))["site_url"].rstrip("/")
+    for pre in ("", "/en"):
+        f = DIST / pre.lstrip("/") / "blog" / "rss.xml"
+        if not f.is_file():
+            rep.f("rss", f"{pre}/blog/rss.xml missing")
+            continue
+        try:
+            root = ET.fromstring(f.read_bytes())
+        except ET.ParseError as e:
+            rep.f("rss", f"{pre}/blog/rss.xml is not well-formed XML: {e}")
+            continue
+        ch = root.find("channel")
+        if root.tag != "rss" or root.get("version") != "2.0" or ch is None or not ch.findtext("title") or not ch.findtext("link"):
+            rep.f("rss", f"{pre}/blog/rss.xml: not an RSS 2.0 channel with a title and a link")
+            continue
+        links = [i.findtext("link") or "" for i in ch.findall("item")]
+        want = sorted(p for p in pages if re.fullmatch(rf"{pre}/blog/[a-z0-9-]+/", p))
+        got = sorted(l[len(site):] for l in links if l.startswith(site))
+        if got != want:
+            rep.f("rss", f"{pre}/blog/rss.xml: items {got} != the built article pages {want}")
+        for i in ch.findall("item"):
+            if not (i.findtext("title") and i.findtext("pubDate") and i.findtext("guid")):
+                rep.f("rss", f"{pre}/blog/rss.xml: an item without title, pubDate or guid")
+        idx = pages.get(f"{pre}/blog/")
+        idx_file = DIST / pre.lstrip("/") / "blog" / "index.html"
+        if idx is not None and idx_file.is_file() and f'{pre}/blog/rss.xml"' not in idx_file.read_text(encoding="utf-8"):
+            rep.f("rss", f"{pre}/blog/: the feed is not linked from the head")
+
+
 def check_articles(rep: "Report", pages: dict) -> None:
     if not ARTICLES.is_dir():
         return
@@ -1101,11 +1187,12 @@ def check_articles(rep: "Report", pages: dict) -> None:
     place_keys = {p.get("key") for p in json.loads((CONTENT / "taif-guide.json").read_text(encoding="utf-8"))["places"]}
     G = "blog"
     by_slug: dict[str, dict[str, dict]] = defaultdict(dict)
+    mphotos = media_article_photos()
     for f in sorted(ARTICLES.glob("*.md")):
         fm = re.fullmatch(r"([a-z0-9]+(?:-[a-z0-9]+)*)\.(ar|en)\.md", f.name)
         if not fm:
             if f.name.lower() != "readme.md":
-                rep.f(G, f"content/articles/{f.name}: file name must be <slug>.<ar|en>.md")
+                rep.f(G, f"{ARTICLES.name}/{f.name}: file name must be <slug>.<ar|en>.md")
             continue
         slug, lang = fm.group(1), fm.group(2)
         parsed = parse_frontmatter(f.read_text(encoding="utf-8"))
@@ -1117,7 +1204,7 @@ def check_articles(rep: "Report", pages: dict) -> None:
         for k in ARTICLE_KEYS:
             if k not in d:
                 rep.f(G, f"{where}: frontmatter {k} is missing")
-            elif k != "related_place" and d[k] in ("", [], None):
+            elif k not in ("related_place", "branch") and d[k] in ("", [], None):
                 rep.f(G, f"{where}: frontmatter {k} is empty")
         if d.get("slug") != slug:
             rep.f(G, f"{where}: slug {d.get('slug')!r} != file name")
@@ -1143,14 +1230,32 @@ def check_articles(rep: "Report", pages: dict) -> None:
         if cover and cover != COVER_PENDING and not image_exists(cover):
             rep.f(G, f"{where}: cover {cover!r} has no <base>-<width>.webp under public/")
         alt = str(d.get("cover_alt", ""))
-        if (lang == "ar" and not ARABIC.search(alt)) or (lang == "en" and not LATIN.search(alt)):
+        media_cover = any(s == slug and c for s, _ok, c in mphotos.values())
+        if not media_cover and ((lang == "ar" and not ARABIC.search(alt)) or (lang == "en" and not LATIN.search(alt))):
             rep.f(G, f"{where}: cover_alt not in the article's language")
+        canon_ = d.get("canonical")
+        if canon_ and not re.fullmatch(r"(https://\S+|/\S*)", str(canon_)):
+            rep.f(G, f"{where}: canonical {canon_!r} is not an https URL or a site path")
+        # raw HTML or an unsafe link never reaches a page (src/lib/blog-md.ts strips it; the source must not carry it)
+        if re.search(r"<\s*/?\s*(script|iframe|object|embed|style)\b|<[^>]*\son[a-z]+\s*=|\]\(\s*(javascript|vbscript|data):", body, re.I):
+            rep.f(G, f"{where}: the text carries a script, an event handler or an unsafe link")
         # :::photo / :::gallery directives: every image exists and has a real alt
         for im in re.finditer(r"^:::(?:photo|gallery)[ \t]*\r?\n(.*?)\r?\n:::[ \t]*$", body, re.S | re.M):
             for line in im.group(1).splitlines():
                 if not line.strip():
                     continue
                 parts = [s.strip() for s in line.split("|")]
+                mm = re.fullmatch(r"media:([0-9a-f-]{36})", parts[0])
+                if mm:
+                    # one of the article's photos in «الصور»: published, of this article, with both alts
+                    ph = mphotos.get(mm.group(1))
+                    if not ph:
+                        rep.f(G, f"{where}: photo {parts[0]} is not published in «الصور»")
+                    elif ph[0] != slug:
+                        rep.f(G, f"{where}: photo {parts[0]} belongs to another article ({ph[0]})")
+                    elif not ph[1]:
+                        rep.f(G, f"{where}: photo {parts[0]} without both alts")
+                    continue
                 if not image_exists(parts[0]):
                     rep.f(G, f"{where}: directive image {parts[0]!r} not found under public/")
                 if len(parts) < 2 or len(parts[1]) < 4:
@@ -1168,21 +1273,21 @@ def check_articles(rep: "Report", pages: dict) -> None:
 
     published = 0
     for slug, langs in sorted(by_slug.items()):
-        missing = {"ar", "en"} - set(langs)
-        if missing:
-            rep.f(G, f"{slug}: missing the {'/'.join(sorted(missing))} version (content/articles/{slug}.<lang>.md)")
-            continue
-        ar, en = langs["ar"], langs["en"]
-        for k in ("status", "branch", "related_place", "date"):
-            if ar.get(k) != en.get(k):
-                rep.f(G, f"{slug}: {k} differs between ar ({ar.get(k)!r}) and en ({en.get(k)!r})")
-        if ar.get("status") != "published" or en.get("status") != "published":
-            for p_ in (f"/blog/{slug}/", f"/en/blog/{slug}/"):
-                if p_ in pages:
-                    rep.f(G, f"{p_}: built although the article is not published in both languages")
+        # an article may exist in one language only (3 Nov 2026); the shared fields agree when both exist
+        if len(langs) == 2:
+            ar, en = langs["ar"], langs["en"]
+            for k in ("status", "branch", "related_place", "date"):
+                if ar.get(k) != en.get(k):
+                    rep.f(G, f"{slug}: {k} differs between ar ({ar.get(k)!r}) and en ({en.get(k)!r})")
+        for loc in ("ar", "en"):
+            p_ = f"{'' if loc == 'ar' else '/en'}/blog/{slug}/"
+            if (loc not in langs or langs[loc].get("status") != "published") and p_ in pages:
+                rep.f(G, f"{p_}: built although the article is not published in that language")
+        live = [(loc, d) for loc, d in sorted(langs.items()) if d.get("status") == "published"]
+        if not live:
             continue
         published += 1
-        for loc, d in (("ar", ar), ("en", en)):
+        for loc, d in live:
             pre = "" if loc == "ar" else "/en"
             p_ = f"{pre}/blog/{slug}/"
             if p_ not in pages:
@@ -1198,8 +1303,12 @@ def check_articles(rep: "Report", pages: dict) -> None:
             listing = f"{pre}/blog/"
             if listing in pages and p_ not in pages[listing].links:
                 rep.f(G, f"{listing}: does not list {p_}")
-            # one booking card per branch the article is about (absent / "both" → both branches)
-            for bs in ([d["branch"]] if d.get("branch") in branches else sorted(branches)):
+            # one booking card per branch it is linked to ("both" → both branches); none linked (3 Nov 2026) → one box
+            # that opens the booking form with no branch preselected
+            if d.get("branch") in (None, ""):
+                if f"{pre}/booking/" not in pg.links or any(l.startswith(f"{pre}/booking/?branch=") for l in pg.links):
+                    rep.f(G, f"{p_}: an article linked to no branch must offer one booking box without a branch")
+            for bs in ([d["branch"]] if d.get("branch") in branches else sorted(branches) if d.get("branch") == "both" else []):
                 if f"{pre}/booking/?branch={bs}" not in pg.links:
                     rep.f(G, f"{p_}: booking card for {bs} missing")
             if d.get("related_place"):
@@ -1212,7 +1321,7 @@ def check_articles(rep: "Report", pages: dict) -> None:
     for listing in ("/blog/", "/en/blog/"):
         if listing not in pages:
             rep.f(G, f"{listing} not built")
-    print(f"blog: {published} article(s) published in both languages")
+    print(f"blog: {published} article(s) published")
 
 
 if __name__ == "__main__":
