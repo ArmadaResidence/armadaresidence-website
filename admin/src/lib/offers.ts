@@ -3,7 +3,8 @@
 // (offers view + the branch scope; the pop-up needs all branches). Writes: offers_save / offers_reorder /
 // offers_publish / offers_unpublish / offers_archive / offers_restore and popup_save / popup_publish / popup_delete — one
 // audit batch each, never undoable. A publish creates a site job; the page then asks site-rebuild (reason offers).
-import { supabase } from './supabase';
+import { supabase, SUPABASE_URL } from './supabase';
+import { CONNECTION, SESSION_ENDED, arabicError } from './errors';
 import { fail, type MediaJob, type Saved } from './api';
 import { west } from './format.ts';
 
@@ -48,6 +49,8 @@ export interface OfferFields {
   show_partners: boolean;
   show_menu: boolean;
   show_bar: boolean;
+  /** «للأعضاء فقط» (3 Nov 2026): set through offer_set_audience after a save */
+  audience?: 'all' | 'members';
 }
 export type StayPayMode = 'per_booking' | 'per_n';
 export const STAY_PAY_MODE_LABELS: Record<StayPayMode, string> = { per_booking: 'ليلة واحدة لكل حجز', per_n: 'ليلة لكل N ليالٍ' };
@@ -239,6 +242,41 @@ export async function offerSave(id: string | null, f: OfferFields): Promise<Save
   const { data, error } = await supabase.rpc('offers_save', { p_id: id, p: f });
   if (error) fail(error, 'offers_save');
   return data as Saved & { id: string };
+}
+/** «للأعضاء فقط» (3 Nov 2026): the audience of the draft (published with «نشر») */
+export async function offerSetAudience(id: string, audience: 'all' | 'members'): Promise<Saved> {
+  const { data, error } = await supabase.rpc('offer_set_audience', { p_id: id, p_audience: audience });
+  if (error) fail(error, 'offer_set_audience');
+  return data as Saved;
+}
+export interface MemberSend { kind: 'test' | 'send'; at: string; by: string; recipients: number; sent: number; failed: number }
+export interface MemberGate { ok: boolean; recipients: number; tested: boolean; sends: MemberSend[] }
+export async function memberGate(id: string): Promise<MemberGate> {
+  const { data, error } = await supabase.rpc('offer_members_gate', { p_id: id, p_mode: 'preview' });
+  if (error) fail(error, 'offer_members_gate');
+  return data as MemberGate;
+}
+/** «إرسال للأعضاء»: the club function previews, sends a test to the user's own address, or sends to the members */
+export async function memberSend(id: string, mode: 'preview' | 'test' | 'send'): Promise<{ ok: boolean; html?: string; subject?: string; sent?: number; failed?: number; recipients?: number; to?: string }> {
+  const { data: s } = await supabase.auth.getSession();
+  const jwt = s.session?.access_token;
+  if (!jwt) throw new Error(SESSION_ENDED);
+  let res: Response;
+  try {
+    res = await fetch(`${SUPABASE_URL}/functions/v1/club`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${jwt}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'offer-send', id, mode }),
+    });
+  } catch {
+    throw new Error(CONNECTION);
+  }
+  const j = (await res.json().catch(() => ({}))) as { error?: string };
+  if (!res.ok) {
+    if (res.status === 401) throw new Error(SESSION_ENDED);
+    throw new Error(arabicError({ message: j.error ?? `club ${res.status}`, code: res.status === 403 ? '42501' : undefined }, 'offer_members_gate'));
+  }
+  return j as { ok: boolean };
 }
 export async function offersReorder(category: OfferCategory, ids: string[]): Promise<Saved> {
   const { data, error } = await supabase.rpc('offers_reorder', { p_category: category, p_ids: ids });

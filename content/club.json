@@ -44,6 +44,13 @@
       "body": "تم تسجيلك في نادي أرمادا ريزيدنس. ستصلك عروض الأعضاء عبر الواتساب والبريد الإلكتروني.",
       "unsubscribe_line": "لا تريد تلقي العروض؟ يمكنك إلغاء الاشتراك في أي وقت.",
       "unsubscribe": "إلغاء الاشتراك"
+    },
+    "offer_email": {
+      "subject": "عرض لأعضاء نادي أرمادا ريزيدنس: {title}",
+      "intro": "عرض خاص بأعضاء نادي أرمادا ريزيدنس.",
+      "code_label": "كود العرض",
+      "valid_until": "صالح حتى {date}",
+      "cta": "احجز الآن"
     }
   },
   "en": {
@@ -82,6 +89,13 @@
       "body": "You've joined Armada Residence Club. Member offers will reach you by WhatsApp and email.",
       "unsubscribe_line": "Don't want offers? You can unsubscribe at any time.",
       "unsubscribe": "Unsubscribe"
+    },
+    "offer_email": {
+      "subject": "Armada Residence Club offer: {title}",
+      "intro": "An offer for Armada Residence Club members.",
+      "code_label": "Promo code",
+      "valid_until": "Valid until {date}",
+      "cta": "Book now"
     }
   }
 }

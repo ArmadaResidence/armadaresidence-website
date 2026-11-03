@@ -29,6 +29,8 @@ export interface Offer {
   fixed_price: number | null;
   stay_nights: number | null;
   promo_code: string | null;
+  /** a member-only offer (3 Nov 2026): its code never reaches the site (the manifest drops it) */
+  members?: boolean;
   room_types: string[];
   min_nights: number;
   dining_price: number | null;
@@ -109,7 +111,7 @@ export const siteOffers: Offer[] = live
   .sort((a, b) => CAT_ORDER[a.category] - CAT_ORDER[b.category] || a.sort - b.sort || a.slug.localeCompare(b.slug));
 /** the promo-code field exists only while a code can be used (a live individuals offer with a code that has not
  *  ended, shown on the site or not) — no empty field when there is no code */
-export const promoCodesLive: boolean = live.some((o) => o.category === 'individuals' && !!o.promo_code && (!o.valid_to || o.valid_to >= offersToday));
+export const promoCodesLive: boolean = live.some((o) => o.category === 'individuals' && (!!o.promo_code || !!o.members) && (!o.valid_to || o.valid_to >= offersToday));
 export type Placement = 'show_home' | 'show_offers' | 'show_branch' | 'show_partners' | 'show_menu';
 export const offersFor = (placement: Placement, category?: OfferCategory, branch?: string): Offer[] =>
   siteOffers.filter((o) => o[placement] && (!category || o.category === category) && (!branch || o.branches.includes(branch)));

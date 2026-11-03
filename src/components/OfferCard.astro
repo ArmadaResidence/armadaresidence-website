@@ -8,7 +8,7 @@
  */
 import Icon from './Icon.astro';
 import Photo from './Photo.astro';
-import { photoProps, type Locale } from '@lib/content';
+import { localePath, photoProps, type Locale } from '@lib/content';
 import { diningOfferPrice, offerAnchor, offerCover, offerCta, offerHasRuntimePrice, offersText, offerText, offerTitle, offerValidity, type Offer } from '@lib/offers-data';
 
 interface Props {
@@ -46,6 +46,14 @@ const Heading = level === 2 ? 'h2' : 'h3';
     {offerHasRuntimePrice(o) && <p class="text-sm font-semibold text-midnight min-h-5" data-offer-price={o.slug} data-template={t.from_line} aria-live="polite"></p>}
     {price && <p class="text-sm font-semibold text-midnight" data-offer-dining-price>{price}</p>}
     {validity && <p class="text-sm text-ink-muted">{validity}</p>}
+    {
+      /* a member-only offer (3 Nov 2026): no code on the site — «للأعضاء — انضم لتحصل على الكود» to /club/ */
+      o.members && (
+        <p class="text-sm font-semibold" data-offer-members>
+          <a href={localePath(locale, '/club/')} class="link-bronze underline underline-offset-2">{t.members_only}</a>
+        </p>
+      )
+    }
     {
       o.promo_code && (
         <p class="text-sm text-ink">

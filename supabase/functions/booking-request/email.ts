@@ -1251,3 +1251,45 @@ ${buttons(L, [button(L, c.club_follow_url, M.follow, 'ghost')])}
   const text = `${ar.text}\n\n${RULE}\n\n${en.text}\n\n${legalText(c, 'ar')}\n${legalText(c, 'en')}`;
   return { subject, html, text };
 }
+
+// ══ 16. A member-only offer «إرسال للأعضاء» (club function, 3 Nov 2026 — one email per member; ar then en) ══
+export interface MemberOfferMail {
+  titleAr: string;
+  titleEn: string;
+  descriptionAr: string;
+  descriptionEn: string;
+  code: string;
+  validTo: string | null;
+  /** the booking links per language (through the club function's activity redirect) */
+  book: Record<Locale, string>;
+  /** the signed unsubscribe page per language */
+  unsubscribe: Record<Locale, string>;
+}
+export function memberOffer(c: Content, d: MemberOfferMail): Mail {
+  const block = (L: Locale) => {
+    const M = c.club_offer_email[L];
+    const U = c.club_email[L];
+    const title = L === 'ar' ? d.titleAr : d.titleEn || d.titleAr;
+    const desc = L === 'ar' ? d.descriptionAr : d.descriptionEn || d.descriptionAr;
+    const until = d.validTo ? fill(M.valid_until, { date: longDate(c, d.validTo, L) }) : '';
+    const html = section(
+      L,
+      `${para(L, M.intro, { muted: true, size: 14 })}
+${headline(L, title)}
+${desc ? para(L, desc) : ''}
+${refPill(L, M.code_label, d.code)}
+${until ? para(L, until, { muted: true, size: 14 }) : ''}
+${buttons(L, [button(L, d.book[L], M.cta, 'bronze')])}
+<div style="height:14px; line-height:14px; font-size:0;">&nbsp;</div>
+<p class="t-muted" style="margin:0 0 14px; font-family:${FONT[L]}; font-size:13px; line-height:20px; color:${MUTED};">${esc(U.unsubscribe_line)} <a href="${esc(d.unsubscribe[L])}" target="_blank" style="color:${MUTED}; text-decoration:underline;">${esc(U.unsubscribe)}</a></p>`,
+    );
+    const text = [M.intro, '', title, desc, '', `${M.code_label}: ${d.code}`, until, '', `${M.cta}: ${d.book[L]}`, '', `${U.unsubscribe_line} ${U.unsubscribe}: ${d.unsubscribe[L]}`].filter((x, i, a) => !(x === '' && a[i - 1] === '')).join('\n');
+    return { html, text };
+  };
+  const ar = block('ar');
+  const en = block('en');
+  const subject = `${fill(c.club_offer_email.ar.subject, { title: d.titleAr })} | ${fill(c.club_offer_email.en.subject, { title: d.titleEn || d.titleAr })}`;
+  const html = doc({ lang: 'ar', title: subject, preheader: c.club_offer_email.ar.intro, body: header(c) + card(`${ar.html}${langDivider()}${en.html}`) + footer(c, ['ar', 'en']) });
+  const text = `${ar.text}\n\n${RULE}\n\n${en.text}\n\n${legalText(c, 'ar')}\n${legalText(c, 'en')}`;
+  return { subject, html, text };
+}

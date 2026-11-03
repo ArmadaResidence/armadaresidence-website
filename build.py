@@ -458,6 +458,8 @@ def generate_function_content(content: dict[str, dict], fees: dict) -> None:
         # booking form and the club form record (club.json; the wording itself lives in public.consent_texts too)
         "club_email": {loc: {**content["club.json"][loc]["welcome_email"], "follow": content["club.json"][loc]["follow"]} for loc in ("ar", "en")},
         "club_follow_url": content["club.json"]["follow_url"],
+        # «إرسال للأعضاء» (part E): the member-only offer email
+        "club_offer_email": {loc: content["club.json"][loc]["offer_email"] for loc in ("ar", "en")},
         "club_consent_version": content["club.json"]["consent"]["version"],
         "email_logo_url": os.environ.get("EMAIL_ASSETS_BASE", "https://armadaresidence.github.io/armadaresidence-website").rstrip("/") + "/email/armada-residence-logo-reversed@2x.png",
     }

@@ -76,6 +76,12 @@ const KNOWN: [RegExp, string][] = [
   [/^dining_not_open/, 'ينشر المطعم أو المقهى «نشطًا» أولًا، ثم يُرسل إشعار الافتتاح.'],
   [/^dining_(branch|kind|audience|menu|status)/, 'القيمة غير صالحة.'],
   // offers «العروض» and the pop-up (2 Nov 2026)
+  // member-only offers and «إرسال للأعضاء» (3 Nov 2026)
+  [/^offers_members_code|offers_members_code/, 'العرض للأعضاء فقط يحتاج كودًا، وهو لعروض الأفراد فقط.'],
+  [/^offers_not_member_live/, 'أرسل عرضًا منشورًا للأعضاء فقط؛ انشر تعديلاته أولًا.'],
+  [/^offers_test_first/, 'أرسل نسخة تجريبية إلى بريدك أولًا بعد آخر نشر للعرض.'],
+  [/^offers_expired/, 'انتهت مدة هذا العرض.'],
+  [/^offers_no_email/, 'لا بريد لحسابك لاستلام النسخة التجريبية.'],
   // «العملاء» (3 Nov 2026)
   [/^guests_tags/, 'حتى 12 وسمًا، وكل وسم حتى 30 حرفًا.'],
   [/^guests_notes/, 'الملاحظات حتى 2000 حرف.'],

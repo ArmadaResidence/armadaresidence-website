@@ -162,6 +162,9 @@ try {
         const priceLine = await card.locator('[data-offer-price]').textContent();
         check(priceLine.includes(money(340, L)) && (await card.locator('[data-offer-price] s').textContent()) === money(400, L), `${tag} cards: «${O.from_line}» filled at runtime, the base struck through`, priceLine);
         check((await page.locator('#offer-qa-weekend-code').textContent()).includes('WEEKEND10'), `${tag} cards: the promo code on its card`);
+        // a member-only offer (3 Nov 2026): no code on the site, «للأعضاء — انضم لتحصل على الكود» to the club page
+        const members = page.locator('#offer-qa-members-only');
+        check((await members.count()) === 1 && ((await members.locator('[data-offer-members] a').getAttribute('href')) || '').endsWith('/club/') && (await members.textContent()).includes(O.members_only) && !(await members.textContent()).includes(O.code_label), `${tag} cards: a member offer links the club and shows no code`);
         await card.locator('details summary').click();
         check(await card.locator('details p').isVisible(), `${tag} cards: the terms open`);
         await page.evaluate(() => window.scrollTo(0, 0));

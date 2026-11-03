@@ -20,7 +20,7 @@ import { Link, useSearchParams } from 'react-router-dom';
 import * as api from '../lib/api';
 import type { Branch, DiningVenue, MediaJob, RoomType } from '../lib/api';
 import { useSession } from '../lib/session';
-import { BRANCH_NAMES, longDate, riyadhDateTime, sar } from '../lib/format';
+import { BRANCH_NAMES, countWord, longDate, riyadhDateTime, sar, type CountNoun } from '../lib/format';
 import { JOB_STATUS, previewUrls } from '../lib/media';
 import { TIMES } from '../lib/dining';
 import {
@@ -65,6 +65,7 @@ export default function Offers() {
   const [error, setError] = useState<string | null>(null);
   const [archived, setArchived] = useState(false);
   const [editing, setEditing] = useState<Offer | 'new' | null>(null);
+  const [sending, setSending] = useState<Offer | null>(null);
   const [busy, setBusy] = useState(false);
   const [blocked, setBlocked] = useState<{ result: OfferPublishResult; all: boolean } | null>(null);
   const [publishing, setPublishing] = useState(false);
@@ -288,6 +289,9 @@ export default function Offers() {
                         {publisher && !archived && o.live && (
                           <button type="button" className="btn btn-ghost btn-sm" onClick={() => setAsk({ kind: 'unpublish', offer: o })} data-action="offer-unpublish">إيقاف النشر</button>
                         )}
+                        {publisher && !archived && (o.live as { audience?: string } | null)?.audience === 'members' && (
+                          <button type="button" className="btn btn-ghost btn-sm" onClick={() => setSending(o)} data-action="offer-members-send">إرسال للأعضاء</button>
+                        )}
                         {editable && !archived && (!o.live || publisher) && (
                           <button type="button" className="btn btn-ghost btn-sm" onClick={() => setAsk({ kind: 'archive', offer: o })} data-action="offer-archive">أرشفة</button>
                         )}
@@ -372,6 +376,7 @@ export default function Offers() {
           </div>
         )}
       </Modal>
+      <MemberSendDialog offer={sending} onClose={() => setSending(null)} />
       <Confirm
         open={!!ask}
         title={ask?.kind === 'unpublish' ? 'إيقاف نشر العرض' : 'أرشفة العرض'}
@@ -491,6 +496,8 @@ function OfferForm({ offer, category, branches, rooms, venues, editable, seesMed
   const [f, setF] = useState<OfferFields>(() => (offer ? pick(offer) : blankOffer(category, [scoped ?? branches[0]?.slug ?? 'airport-road'])));
   const [type, setType] = useState<TypeChoice>(() => (f.promo_code ? 'code' : f.kind === 'none' ? 'percent' : (f.kind as TypeChoice)));
   const [codeEffect, setCodeEffect] = useState<'percent' | 'fixed_price'>(() => (f.kind === 'fixed_price' ? 'fixed_price' : 'percent'));
+  // «للأعضاء فقط» (3 Nov 2026): a coded individuals offer whose code never reaches the site
+  const [members, setMembers] = useState(offer?.audience === 'members');
   const [slugTouched, setSlugTouched] = useState(!!offer);
   const [error, setError] = useState<string | null>(null);
   const locked = !!offer?.published_at;
@@ -525,6 +532,7 @@ function OfferForm({ offer, category, branches, rooms, venues, editable, seesMed
       if (effect === 'stay_pay' && (f.stay_nights === null || f.stay_nights < 2 || f.stay_nights > 30)) return setError('عدد الليالي (N) من 2 إلى 30.');
     }
     if (category === 'dining' && !f.venue) return setError('اختر المطعم أو المقهى.');
+    if (members && (category !== 'individuals' || type !== 'code')) return setError('العرض للأعضاء فقط يحتاج كودًا.');
     const payload: OfferFields = {
       ...f,
       slug,
@@ -541,7 +549,9 @@ function OfferForm({ offer, category, branches, rooms, venues, editable, seesMed
     };
     setBusy(true);
     try {
-      await off.offerSave(offer?.id ?? null, payload);
+      const saved = await off.offerSave(offer?.id ?? null, payload);
+      const wantAudience = members && type === 'code' ? 'members' : 'all';
+      if (category === 'individuals' && wantAudience !== (offer?.audience ?? 'all')) await off.offerSetAudience(offer?.id ?? saved.id, wantAudience);
       toast(offer ? 'حُفظت التعديلات؛ لا تظهر على الموقع قبل «نشر».' : 'أُضيف العرض مسودةً؛ أضف صورته في «الصور» ثم انشره.');
       setBusy(false);
       await onSaved();
@@ -595,6 +605,12 @@ function OfferForm({ offer, category, branches, rooms, venues, editable, seesMed
                 <span className="label">أثر الكود</span>
                 <Segmented value={codeEffect} onChange={(v) => setCodeEffect(v)} label="أثر الكود" disabled={dis} options={[{ value: 'percent', label: TYPE_LABELS.percent }, { value: 'fixed_price', label: TYPE_LABELS.fixed_price }]} />
               </div>
+              <label className="sm:col-span-2 flex items-start gap-2 text-sm">
+                <input type="checkbox" className="mt-1" checked={members} onChange={(e) => setMembers(e.target.checked)} disabled={dis} data-field="audience" />
+                <span>
+                  <strong>للأعضاء فقط</strong> — لا يظهر الكود على الموقع؛ تعرض البطاقة «للأعضاء — انضم لتحصل على الكود»، ويصل الكود إلى أعضاء نادي أرمادا ريزيدنس عبر «إرسال للأعضاء».
+                </span>
+              </label>
             </div>
           )}
           <div className="grid sm:grid-cols-3 gap-3">
@@ -970,3 +986,90 @@ function PopupPreview({ f, offer }: { f: PopupFields; offer: Offer | null }) {
     </aside>
   );
 }
+
+// ── «إرسال للأعضاء» (3 Nov 2026) ─────────────────────────────────────────────────────────────────────────────
+// A live member-only offer by email to the club members whose consent is granted and who gave an email (Resend, with
+// List-Unsubscribe). Preview first, then a test to the user's own address — the real send is refused before a test
+// made since the offer's last publish. Each send is audited. WhatsApp comes later (Meta-approved marketing templates).
+function MemberSendDialog({ offer, onClose }: { offer: Offer | null; onClose: () => void }) {
+  const toast = useToast();
+  const [gate, setGate] = useState<off.MemberGate | null>(null);
+  const [preview, setPreview] = useState<string | null>(null);
+  const [busy, setBusy] = useState<string | null>(null);
+  const [confirm, setConfirm] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const load = useCallback(async () => {
+    if (!offer) return;
+    try {
+      setError(null);
+      setGate(await off.memberGate(offer.id));
+    } catch (e) {
+      setError((e as Error).message);
+    }
+  }, [offer]);
+  useEffect(() => {
+    setGate(null);
+    setPreview(null);
+    setConfirm(false);
+    void load();
+  }, [load]);
+  async function go(mode: 'preview' | 'test' | 'send') {
+    if (!offer) return;
+    setBusy(mode);
+    setError(null);
+    try {
+      const r = await off.memberSend(offer.id, mode);
+      if (mode === 'preview') setPreview(r.html ?? '');
+      if (mode === 'test') toast(`أُرسلت النسخة التجريبية إلى ${r.to ?? 'بريدك'}.`);
+      if (mode === 'send') {
+        toast(`أُرسل العرض إلى ${countWord(r.sent ?? 0, MEMBER_NOUN)}${r.failed ? `، وتعذّر الإرسال إلى ${r.failed}` : ''}.`, r.failed ? 'error' : 'ok');
+        setConfirm(false);
+      }
+      await load();
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setBusy(null);
+    }
+  }
+  return (
+    <Modal open={!!offer} onClose={onClose} title={offer ? `إرسال للأعضاء — ${offer.title_ar}` : ''} busy={!!busy} wide>
+      <div className="grid gap-3 text-sm" data-member-send>
+        <p>يصل العرض وكوده بالبريد الإلكتروني إلى أعضاء نادي أرمادا ريزيدنس الذين وافقوا على العروض وأدخلوا بريدهم، مع رابط لإلغاء الاشتراك. الإرسال عبر الواتساب لاحقًا بعد اعتماد قوالب تسويقية من ميتا.</p>
+        <ErrorBox error={error} />
+        {!gate && !error ? <Loading /> : gate && (
+          <>
+            <p data-member-recipients>المستلمون الآن: <strong>{countWord(gate.recipients, MEMBER_NOUN)}</strong></p>
+            {!!gate.sends.length && (
+              <ul className="grid gap-1 text-ink-muted" data-member-sends>
+                {gate.sends.map((x, i) => (
+                  <li key={i} className="num">{x.kind === 'test' ? 'تجريبي' : 'إرسال'} · {riyadhDateTime(x.at)} · {x.by} · أُرسل {x.sent}{x.failed ? ` · تعذّر ${x.failed}` : ''}</li>
+                ))}
+              </ul>
+            )}
+            <div className="flex flex-wrap gap-2">
+              <button type="button" className="btn btn-ghost" disabled={!!busy} onClick={() => void go('preview')} data-action="member-preview">{busy === 'preview' && <Spinner />} معاينة</button>
+              <button type="button" className="btn btn-ghost" disabled={!!busy} onClick={() => void go('test')} data-action="member-test">{busy === 'test' && <Spinner />} إرسال تجريبي إلى بريدي</button>
+              <button type="button" className="btn btn-primary" disabled={!!busy || !gate.tested || !gate.recipients} onClick={() => setConfirm(true)} data-action="member-send">
+                إرسال إلى {countWord(gate.recipients, MEMBER_NOUN)}
+              </button>
+            </div>
+            {!gate.tested && <p className="text-ink-muted" data-member-test-first>أرسل نسخة تجريبية إلى بريدك أولًا؛ يُفعَّل الإرسال بعدها.</p>}
+            {preview !== null && <iframe title="معاينة الرسالة" className="w-full h-[28rem] border border-line rounded bg-white" sandbox="" srcDoc={preview} data-member-preview />}
+          </>
+        )}
+        <div className="flex justify-end"><CancelButton label="إغلاق" disabled={!!busy} /></div>
+      </div>
+      <Confirm
+        open={confirm}
+        onClose={() => setConfirm(false)}
+        title="إرسال العرض إلى الأعضاء"
+        body={gate ? `سيُرسل العرض وكوده إلى ${countWord(gate.recipients, MEMBER_NOUN)} الآن. لا يمكن التراجع عن الإرسال.` : ''}
+        confirmLabel="إرسال الآن"
+        onConfirm={() => void go('send')}
+        busy={busy === 'send'}
+      />
+    </Modal>
+  );
+}
+const MEMBER_NOUN: CountNoun = { zero: 'لا أعضاء', one: 'عضو واحد', two: 'عضوين', few: 'أعضاء', many: 'عضوًا', gen: 'عضو' };
