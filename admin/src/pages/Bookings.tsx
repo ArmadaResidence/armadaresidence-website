@@ -376,6 +376,7 @@ function Details({ r, roomTypes, editable, onClose, onChanged }: { r: Reservatio
         {r.notes && (<><dt className="text-ink-muted">ملاحظات الضيف</dt><dd className="whitespace-pre-wrap">{r.notes}</dd></>)}
         <dt className="text-ink-muted">المصدر</dt><dd>{r.source === 'website' ? 'الموقع' : 'اللوحة'} · {r.locale === 'en' ? 'النسخة الإنجليزية' : 'النسخة العربية'} · {riyadhDateTimeLong(r.created_at)}</dd>
         {r.cancel_reason && (<><dt className="text-ink-muted">سبب الإلغاء</dt><dd>{r.cancel_reason}</dd></>)}
+        {r.visit && (<><dt className="text-ink-muted">مصدر الزيارة</dt><dd data-booking-visit><VisitLine v={r.visit} /></dd></>)}
       </dl>
 
       {r.total !== null && (
@@ -505,6 +506,20 @@ function Details({ r, roomTypes, editable, onClose, onChanged }: { r: Reservatio
  * 29 Oct 2026: the price block follows the confirmation email — «الغرفة · N ليالٍ», every night on its own line, breakfast,
  * extra beds, the total, then the pay-at-hotel line (a long stay flows into columns so the sheet stays one page).
  * 2 Nov 2026: an offer adds «الإجمالي قبل العرض» and «خصم العرض · {name}» above the total, and its name / code to the fields. */
+/** the visit's first-touch source (3 Nov 2026): utm values, the ad click ids present, the referrer, the landing page */
+function VisitLine({ v }: { v: NonNullable<Reservation['visit']> }) {
+  const utm = [v.utm_source, v.utm_medium, v.utm_campaign, v.utm_content].filter(Boolean).join(' / ');
+  const clicks = ([['gclid', 'جوجل'], ['fbclid', 'ميتا'], ['ttclid', 'تيك توك'], ['sccid', 'سناب شات']] as const).filter(([k]) => v[k]).map(([, l]) => l);
+  return (
+    <span className="grid gap-0.5">
+      {utm && <span><span className="text-ink-muted">UTM: </span><span className="latin" dir="ltr">{utm}</span></span>}
+      {clicks.length > 0 && <span><span className="text-ink-muted">نقرة إعلان: </span>{clicks.join('، ')}</span>}
+      {v.referrer && <span><span className="text-ink-muted">جاء من: </span><span className="latin" dir="ltr">{v.referrer}</span></span>}
+      {v.landing && <span><span className="text-ink-muted">أول صفحة: </span><span className="latin" dir="ltr">{v.landing}</span></span>}
+      {!utm && !clicks.length && !v.referrer && !v.landing && <span>—</span>}
+    </span>
+  );
+}
 
 function PrintSheet({ r, room }: { r: Reservation; room: string }) {
   const nights = (r.pricing as { nights?: { night: string; price: number; label?: string | null }[] } | null)?.nights ?? [];

@@ -88,6 +88,7 @@ const clientData = {
   import { bindOnce, onPageLoad } from '@lib/client';
   import { loadPhoneLib, phoneToE164 } from '@lib/phone';
   import { initCountrySelect } from '@lib/country-select';
+  import { firstTouch } from '@lib/visit';
   import { cleanUtm, clubSource, validateClubJoin, type ClubField } from '../../supabase/functions/booking-request/rules.ts';
 
   type Data = { endpoint: string; anonKey: string; locale: 'ar' | 'en'; consentVersion: string; strings: Record<string, string> };
@@ -171,7 +172,9 @@ const clientData = {
       }
       const params = new URLSearchParams(location.search);
       const src = clubSource(params.get('src'));
-      const utm = cleanUtm({ source: params.get('utm_source'), medium: params.get('utm_medium'), campaign: params.get('utm_campaign'), content: params.get('utm_content') });
+      const here = cleanUtm({ source: params.get('utm_source'), medium: params.get('utm_medium'), campaign: params.get('utm_campaign'), content: params.get('utm_content') });
+      const touch = firstTouch();
+      const utm = Object.keys(here).length ? here : cleanUtm({ source: touch?.utm_source, medium: touch?.utm_medium, campaign: touch?.utm_campaign, content: touch?.utm_content });
       const v = errorsOf();
       if (!v.ok) return;
       busy(true);

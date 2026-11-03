@@ -296,6 +296,7 @@ const stepper = (name: 'adults' | 'children' | 'extra_beds', value: number, min:
 </form>
 
 <script>
+  import { firstTouch } from '@lib/visit';
   import { bindOnce, onPageLoad } from '@lib/client';
   import {
     bedsNeeded,
@@ -1145,6 +1146,8 @@ const stepper = (name: 'adults' | 'children' | 'extra_beds', value: number, min:
           // the marketing consent (3 Nov 2026): recorded with the version of the text the form showed
           marketing_consent: marketing,
           ...(marketing ? { consent_version: data.consentVersion } : {}),
+          // the visit's first-touch source (3 Nov 2026, part G): no personal data (src/lib/visit.ts)
+          ...(firstTouch() ? { visit: firstTouch() } : {}),
         };
         const res = await fetch(data.endpoint, { method: 'POST', headers, body: JSON.stringify(body) });
         const json = (await res.json().catch(() => ({}))) as { ok?: boolean; ref?: string; error?: string; status?: string; reason?: string | null; quote?: Quote | null; whatsapp_sent?: boolean; fields?: Record<string, string> };

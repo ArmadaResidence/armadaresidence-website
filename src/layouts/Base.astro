@@ -225,6 +225,9 @@ const preloadFonts = locale === 'ar' ? [fontAr400] : [fontEn];
     {/* the offer pop-up (2 Nov 2026): never on /booking/ and its success page (bookingDrawer is off there) */}
     {offerPopup && bookingDrawer && <OfferPopupDialog locale={locale} path={path} />}
     <script>
+      // the visit's first-touch source (3 Nov 2026, part G): kept in sessionStorage until a booking is sent
+      import { captureVisit } from '@lib/visit';
+      captureVisit();
       import '@lib/reveal';
       import '@lib/counters';
       import '@lib/carousel';

@@ -118,6 +118,8 @@ export interface Reservation {
   cancelled_at: string | null;
   cancel_reason: string | null;
   internal_notes: string | null;
+  /** the visit's first-touch source (3 Nov 2026): utm values, click-id presence, referrer domain, landing path — no personal data */
+  visit?: { utm_source?: string; utm_medium?: string; utm_campaign?: string; utm_content?: string; gclid?: boolean; fbclid?: boolean; ttclid?: boolean; sccid?: boolean; referrer?: string; landing?: string } | null;
   payment_status: string;
   is_test: boolean;
   created_at: string;
