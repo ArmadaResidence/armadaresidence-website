@@ -288,6 +288,13 @@ Later phases keep the 10 Oct outline: channel manager writes into the inventory 
 - Runtime prices (phase 2a): every room page reserves the `data-from-price` slot with its `{amount}` template and an empty line; no static price anywhere; meta / OG / Twitter and JSON-LD carry no price.
 - Room availability (phase 2a.1): `build.py` resolves each room's `availability` from the dashboard (`site_room_types`, publishable key; rooms.json is the seed / fallback) into `dist/_availability.json`, and qa.py judges every room page (CTA, sold-out label, noindex, sitemap, JSON-LD) by that resolved value. The booking form also hides / adds room types at runtime from the same RPC.
 
+### Test targets (standing rule, Ahmed, 3 Nov 2026)
+
+- Every test or QA script that talks to Supabase targets a **preview branch by default** and must **refuse to run unless it names one** (a branch ref, never the production ref `wwzxwettsuwtakwwbfly`).
+- Reaching production requires an explicit `--production` flag, used **only** for the deliberate live check after a deploy; without the flag a production target is refused, and the flag with a non-production target is refused too.
+- Targets are switched only through the script's own arguments / environment and that guard — **never** by `sed` or any other text substitution of a script.
+- Why: on 3 Nov 2026 a failed `sed` edit left a smoke script pointing at production; six test-mode requests reached the live booking function (no real message went out, nothing was left behind — DECISIONS.md 2026-11-03).
+
 ### Mandatory check suite (Ahmed, 24 Oct 2026)
 
 Every commit, however small (docs and tests included), passes the fast checks plus the checks its staged files map to against the **local build first** (routed pre-commit, below); every push passes the **whole suite** on the commit being pushed (pre-push); after every push, once the Pages deploy has finished, the browser checks pass against the **live site**. Never skip it, never `--no-verify`.
