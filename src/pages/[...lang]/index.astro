@@ -11,6 +11,7 @@ import { organization } from '@lib/jsonld';
 import { existsSync, readFileSync } from 'node:fs';
 import {
   branches,
+  clubText,
   fill,
   localePath,
   media,
@@ -234,6 +235,16 @@ const quickFacts = fill(t.home.quick_facts, {
           {t.home.rooms_cta}
         </a>
       </div>
+    </div>
+  </section>
+
+  {/* «نادي أرمادا ريزيدنس» (3 Nov 2026): one slim band above the footer */}
+  <section class="cv-auto bg-white border-b border-line" aria-label={t.nav.club}>
+    <div class="mx-auto max-w-6xl px-4 py-4 flex justify-center">
+      <a href={localePath(locale, '/club/')} class="inline-flex items-center gap-2 py-2 font-semibold text-midnight hover:text-bronze-text transition-colors" data-club-band>
+        <span>{clubText(locale).band}</span>
+        <Icon name="arrow" size={18} class="icon-arrow rtl:rotate-180" />
+      </a>
     </div>
   </section>
 </Base>

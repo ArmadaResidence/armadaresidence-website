@@ -13,7 +13,7 @@ import { pathToFileURL } from 'node:url';
 
 // the suite, in the order check-all runs it
 export const STATIC_CHECKS = ['typecheck', 'admin-digits-check', 'admin-format-check', 'auth-emails-check', 'whatsapp-check', 'email-print-check', 'offers-engine-check'];
-export const BROWSER_CHECKS = ['booking-nav-check', 'drawer-check', 'booking-whatsapp-check', 'datepicker-check', 'motion-check', 'booking-instant-check', 'partners-form-check', 'careers-form-check', 'dining-site-check', 'gallery-site-check', 'offers-site-check', 'blog-site-check', 'faq-site-check', 'content-site-check', 'partners-button-check', 'a11y-check'];
+export const BROWSER_CHECKS = ['booking-nav-check', 'drawer-check', 'booking-whatsapp-check', 'datepicker-check', 'motion-check', 'booking-instant-check', 'partners-form-check', 'careers-form-check', 'dining-site-check', 'gallery-site-check', 'offers-site-check', 'blog-site-check', 'faq-site-check', 'content-site-check', 'club-site-check', 'partners-button-check', 'a11y-check'];
 // every commit (build and qa.py too, unless the commit is docs only)
 export const FAST_CHECKS = ['typecheck', 'admin-digits-check', 'admin-format-check', 'auth-emails-check', 'whatsapp-check'];
 // a11y-check on sample pages for a content change: home, one branch, one room, offers, policies — both languages
@@ -37,6 +37,7 @@ function contentPages(f) {
   if (f === 'content/branches.json') return ['/shafa-road/', '/contact/'];
   if (f === 'content/contact.json') return ['/contact/'];
   if (f === 'content/faq.json') return ['/faq/'];
+  if (f === 'content/club.json') return ['/club/'];
   return [];
 }
 
@@ -129,6 +130,16 @@ const RULES = [
       comp(['OfferBar', 'OfferPopup', 'Header', 'Footer', 'ArticleBody', 'OffersSection']).test(f) || lib(['offers-data', 'articles', 'gallery']).test(f) ||
       f === 'scripts/fixtures/content-sample.json' || f === 'src/layouts/Base.astro',
     checks: ['content-site-check'],
+  },
+  {
+    // session 5 (3 Nov 2026): the «فروعنا» header menu, «نادي أرمادا ريزيدنس» (/club/, the unsubscribe page, the form,
+    // the footer link and the home band), the booking form's marketing box, the club copy and the privacy section
+    name: 'club / header menu',
+    test: (f) =>
+      comp(['Header', 'Footer', 'ClubForm', 'BookingForm', 'BookingDrawer', 'PhoneField']).test(f) ||
+      /^src\/pages\/\[\.\.\.lang\]\/(club\/|index\.astro$|booking\/)/.test(f) ||
+      ['content/club.json', 'content/policies.json', 'content/ui.json', 'content/seo.json', 'content/branches.json', 'src/lib/content.ts', RULES_TS].includes(f),
+    checks: ['club-site-check'],
   },
   {
     name: 'email.ts',

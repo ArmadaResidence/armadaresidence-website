@@ -24,6 +24,7 @@ const BASE = (process.argv[2] || 'http://127.0.0.1:4330').replace(/\/$/, '');
 const PRE = new URL(BASE).pathname.replace(/\/$/, '');
 const ui = JSON.parse(readFileSync('content/ui.json', 'utf8'));
 const seo = JSON.parse(readFileSync('content/seo.json', 'utf8'));
+const club = JSON.parse(readFileSync('content/club.json', 'utf8'));
 
 const riyadhToday = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Riyadh', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
 const addDays = (iso, n) => new Date(Date.parse(iso + 'T00:00:00Z') + n * 86400000).toISOString().slice(0, 10);
@@ -254,17 +255,28 @@ async function run(width, lang) {
   await form.locator('input[name="name"]').fill('تجربة النظام');
   await form.locator('[data-phone-input]').fill('0500000000');
   await form.locator('input[name="email"]').fill('guest@example.com');
+  // the marketing consent (3 Nov 2026): one optional box, unticked, labelled; not sent as a consent until ticked
+  const mc = form.locator('[data-marketing-consent]');
+  check((await mc.count()) === 1 && !(await mc.isChecked()), `${tag} consent: the marketing box exists and is unticked`);
+  check((await mc.evaluate((i) => i.labels?.[0]?.textContent?.trim() ?? '')) === club.consent[L], `${tag} consent: its label is the approved text`);
   mode.submit = 'price_changed';
   await form.locator('[data-submit]').click();
   await page.waitForFunction(() => !document.querySelector('[data-quote-changed]')?.classList.contains('hidden'), null, { timeout: 10000 });
   check(page.url().includes('/booking/'), `${tag} price_changed: stayed on the form`);
   check(submits.at(-1)?.quoted_total === '370', `${tag} price_changed: quoted_total was sent`, String(submits.at(-1)?.quoted_total));
+  check(submits.at(-1)?.marketing_consent === false && !('consent_version' in submits.at(-1)), `${tag} consent: unticked → marketing_consent false, no version`, JSON.stringify({ m: submits.at(-1)?.marketing_consent, v: submits.at(-1)?.consent_version }));
   check((await totalCell()) === money(400), `${tag} price_changed: new total shown (2 × 200)`, await totalCell());
   check(!(await form.locator('[data-submit]').isDisabled()), `${tag} price_changed: submit enabled again`);
   mode.submit = 'confirmed';
+  // ticked from the keyboard
+  await mc.focus();
+  await page.keyboard.press('Space');
+  check(await mc.isChecked(), `${tag} consent: Space ticks the box`);
   await form.locator('[data-submit]').click();
   await page.waitForURL(/\/booking\/success\//, { timeout: 15000 });
   check(submits.at(-1)?.quoted_total === '400', `${tag} confirm: the re-quoted total was sent`);
+  check(submits.at(-1)?.marketing_consent === true && submits.at(-1)?.consent_version === club.consent.version, `${tag} consent: ticked → marketing_consent true with the text version`);
+  check(new URL(page.url()).searchParams.get('mc') === '1' && (await page.locator('[data-club-link]').isHidden()), `${tag} consent: ticked → mc=1, no club link on the success page`);
   const url = new URL(page.url());
   check(url.searchParams.get('s') === 'confirmed' && !url.search.includes('guest') && !url.search.includes('0500'), `${tag} confirm: success URL carries the status and no personal data`);
   await page.waitForSelector('[data-breakdown]:not(.hidden)', { timeout: 8000 });
@@ -303,6 +315,7 @@ async function run(width, lang) {
   const dl2 = await page.evaluate(() => (window.dataLayer || []).filter((e) => e.event === 'booking_request'));
   check(dl2.length === 1 && dl2[0].reason === 'sold_out', `${tag} fallback: booking_request with the reason`);
   check(!new URL(page.url()).searchParams.has('wa'), `${tag} whatsapp: not accepted → no &wa on the success URL`);
+  check(new URL(page.url()).searchParams.get('mc') === '0' && (await page.locator('[data-club-link]').isVisible()), `${tag} consent: unticked → the club link on the success page`);
   check((await page.locator('[data-next="whatsapp"]').textContent()).trim() === S.success.next_whatsapp && (await page.locator('[data-next="whatsapp"]').isVisible()), `${tag} whatsapp: not accepted → today's sentence unchanged`);
   check(!(await page.locator('[data-steps]').textContent()).includes(S.success.whatsapp_sent_request), `${tag} whatsapp: not accepted → no "sent" sentence`);
   // a confirmed booking whose WhatsApp failed: the confirmed steps exactly as before

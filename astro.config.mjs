@@ -15,6 +15,7 @@ const hidden = (existsSync(contentGenUrl) ? JSON.parse(readFileSync(contentGenUr
 /** noindex pages are excluded from the sitemap (CLAUDE.md §7): sold-out rooms, booking success, 404. */
 const noindexPaths = [
   '/booking/success/',
+  '/club/unsubscribe/',
   '/404/',
   ...roomsJson.rooms.filter((r) => r.show_on_site && r.availability === 'sold_out').map((r) => `/${r.branch}/${r.slug}/`),
 ];

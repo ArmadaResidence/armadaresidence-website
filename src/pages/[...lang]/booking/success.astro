@@ -2,7 +2,7 @@
 import Base from '@layouts/Base.astro';
 import Icon from '@components/Icon.astro';
 import { langPaths } from '@lib/paths';
-import { branchContact, branchShort, branches, fill, L, localePath, pageSeo, seo, ui, waHref, type Locale } from '@lib/content';
+import { branchContact, branchShort, branches, clubText, fill, L, localePath, pageSeo, seo, ui, waHref, type Locale } from '@lib/content';
 
 export const getStaticPaths = langPaths;
 
@@ -83,6 +83,13 @@ const clientData = {
           {t.success.back_home}
         </a>
       </div>
+      {/* «نادي أرمادا ريزيدنس» (3 Nov 2026): only when the booking's marketing box was not ticked (mc ≠ 1) */}
+      <p class="hidden mt-6 pt-5 border-t border-line" data-club-link>
+        <a href={localePath(locale, '/club/')} class="inline-flex items-center gap-2 font-semibold link-bronze">
+          <span>{clubText(locale).band}</span>
+          <Icon name="arrow" size={18} class="icon-arrow rtl:rotate-180" />
+        </a>
+      </p>
       <script type="application/json" data-success-data set:html={JSON.stringify(clientData).replace(/</g, '\\u003c')} />
     </div>
   </section>
@@ -227,6 +234,7 @@ const clientData = {
         push(); // storage unavailable: push once for this view
       }
     }
+    if (ref && q.get('mc') !== '1') el('[data-club-link]')?.classList.remove('hidden');
     if (branch) {
       root.querySelectorAll<HTMLElement>('[data-branch-wa]').forEach((a) => {
         if (a.dataset.branchWa !== branch) a.classList.add('hidden');

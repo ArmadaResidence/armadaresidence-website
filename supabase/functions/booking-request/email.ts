@@ -1224,3 +1224,30 @@ ${para(L, M.footer, { muted: true, size: 13 })}`,
   const text = `${ar.text}\n\n${RULE}\n\n${en.text}\n\n${legalText(c, 'ar')}\n${legalText(c, 'en')}`;
   return { subject, html, text };
 }
+
+// ══ 15. «نادي أرمادا ريزيدنس» welcome (club function, 3 Nov 2026 — when a sign-up gives an email; ar then en) ══
+export interface ClubWelcomeMail {
+  /** the signed unsubscribe page per language (/club/unsubscribe/?t=…) */
+  unsubscribe: Record<Locale, string>;
+}
+export function clubWelcome(c: Content, d: ClubWelcomeMail): Mail {
+  const block = (L: Locale) => {
+    const M = c.club_email[L];
+    const html = section(
+      L,
+      `${headline(L, M.headline)}
+${para(L, M.body)}
+${buttons(L, [button(L, c.club_follow_url, M.follow, 'ghost')])}
+<div style="height:14px; line-height:14px; font-size:0;">&nbsp;</div>
+<p class="t-muted" style="margin:0 0 14px; font-family:${FONT[L]}; font-size:13px; line-height:20px; color:${MUTED};">${esc(M.unsubscribe_line)} <a href="${esc(d.unsubscribe[L])}" target="_blank" style="color:${MUTED}; text-decoration:underline;">${esc(M.unsubscribe)}</a></p>`,
+    );
+    const text = [M.headline, '', M.body, '', `${M.follow}: ${c.club_follow_url}`, '', `${M.unsubscribe_line} ${M.unsubscribe}: ${d.unsubscribe[L]}`].join('\n');
+    return { html, text };
+  };
+  const ar = block('ar');
+  const en = block('en');
+  const subject = `${c.club_email.ar.subject} | ${c.club_email.en.subject}`;
+  const html = doc({ lang: 'ar', title: subject, preheader: c.club_email.ar.body, body: header(c) + card(`${ar.html}${langDivider()}${en.html}`) + footer(c, ['ar', 'en']) });
+  const text = `${ar.text}\n\n${RULE}\n\n${en.text}\n\n${legalText(c, 'ar')}\n${legalText(c, 'en')}`;
+  return { subject, html, text };
+}

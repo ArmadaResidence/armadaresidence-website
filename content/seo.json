@@ -135,6 +135,19 @@
       "title_en": "Blog | Taif Travel Guides by Armada Residence",
       "description_en": "Practical guides to visiting Taif: rose season, Al Shafa in winter, Souq Okaz, Umrah via Taif and family trips — with the nearest property for each."
     },
+    "club": {
+      "title_ar": "نادي أرمادا ريزيدنس | عروض الأعضاء في الطائف",
+      "description_ar": "سجّل مجانًا في نادي أرمادا ريزيدنس لتصلك عروض وأكواد خصم خاصة بالأعضاء في فرعَي الطائف: طريق المطار وطريق الشفا.",
+      "title_en": "Armada Residence Club | Member Offers in Taif",
+      "description_en": "Join Armada Residence Club free for member-only offers and promo codes at our two Taif properties: Airport Road and Shafa Road."
+    },
+    "club-unsubscribe": {
+      "title_ar": "إلغاء الاشتراك | نادي أرمادا ريزيدنس",
+      "description_ar": "إلغاء الاشتراك في عروض نادي أرمادا ريزيدنس عبر الواتساب والبريد الإلكتروني.",
+      "title_en": "Unsubscribe | Armada Residence Club",
+      "description_en": "Unsubscribe from Armada Residence Club offers by WhatsApp and email.",
+      "noindex": true
+    },
     "careers": {
       "title_ar": "انضم إلى فريقنا | أرمادا ريزيدنس",
       "description_ar": "أرسل سيرتك الذاتية للعمل في أرمادا ريزيدنس بالطائف: شقق فندقية على طريق المطار وفندق على طريق الشفا.",

@@ -512,3 +512,60 @@ export function validateJobApplication(p: JobInput, ctx: JobContext): { ok: true
     },
   };
 }
+
+// ── «نادي أرمادا ريزيدنس» / Armada Residence Club and the marketing consent (3 Nov 2026) ──
+
+/** The first-touch visit values kept with a club sign-up (and, part G, a booking): no personal data. */
+export interface UtmValues {
+  source?: string;
+  medium?: string;
+  campaign?: string;
+  content?: string;
+}
+/** ?src= of a QR code or a link (e.g. breakfast-airport): lower-case letters, digits, hyphen, underscore; '' = none. */
+export function clubSource(raw: unknown): string {
+  const s = String(raw ?? '').trim().toLowerCase();
+  return /^[a-z0-9_-]{1,64}$/.test(s) ? s : '';
+}
+/** The UTM values as stored: each trimmed, without control characters, at most 100 characters; empty ones dropped. */
+export function cleanUtm(raw: unknown): UtmValues {
+  const o = (raw && typeof raw === 'object' ? raw : {}) as Record<string, unknown>;
+  const out: UtmValues = {};
+  for (const k of ['source', 'medium', 'campaign', 'content'] as const) {
+    // eslint-disable-next-line no-control-regex
+    const v = String(o[k] ?? '').replace(/[\u0000-\u001f\u007f-\u009f]/g, '').trim().slice(0, 100);
+    if (v) out[k] = v;
+  }
+  return out;
+}
+
+export type ClubField = 'phone' | 'email' | 'consent';
+export interface ClubInput {
+  phone: string;
+  country?: string;
+  name?: string;
+  email?: string;
+  consent: unknown;
+}
+export interface ValidClubJoin {
+  phone: string;
+  name: string;
+  email: string;
+}
+/** The club form (Ahmed, 3 Nov 2026): the mobile number (required, E.164 through the injected check), the name
+ * (optional: control characters and extra spaces removed, at most 80 characters, never refused), the email
+ * (optional, validated when given) and the consent (required to join). */
+export function validateClubJoin(p: ClubInput, ctx: Pick<RuleContext, 'phone'>): { ok: true; data: ValidClubJoin } | { ok: false; errors: Partial<Record<ClubField, 'required' | 'phone' | 'email' | 'consent'>> } {
+  const errors: Partial<Record<ClubField, 'required' | 'phone' | 'email' | 'consent'>> = {};
+  const rawPhone = String(p.phone ?? '').trim();
+  const e164 = rawPhone ? ctx.phone(rawPhone, String(p.country ?? 'SA').toUpperCase()) : null;
+  if (!rawPhone) errors.phone = 'required';
+  else if (!e164 || !E164.test(e164)) errors.phone = 'phone';
+  const email = String(p.email ?? '').trim();
+  if (email && !validEmail(email)) errors.email = 'email';
+  if (!(p.consent === true || ['true', 'on', 'yes', '1'].includes(String(p.consent ?? '').trim().toLowerCase()))) errors.consent = 'consent';
+  if (Object.keys(errors).length) return { ok: false, errors };
+  // eslint-disable-next-line no-control-regex
+  const name = String(p.name ?? '').replace(/[\u0000-\u001f\u007f-\u009f\u200b-\u200f\u202a-\u202e\u2066-\u2069]/g, '').replace(/\s+/g, ' ').trim().slice(0, 80);
+  return { ok: true, data: { phone: e164 as string, name, email: email.toLowerCase() } };
+}

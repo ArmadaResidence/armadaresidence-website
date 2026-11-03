@@ -12,6 +12,7 @@ import {
   bookingConfirmation,
   bookingConfirmed,
   bookingNotification,
+  clubWelcome,
   confirmedNotification,
   diningOpening,
   jobApplicationAlert,
@@ -122,6 +123,8 @@ const mails = {
   'staff-login-code': loginCodeMail(content, { code: '482917', requestedAt: '2026-10-26T12:41:00Z', device: 'Chrome · Windows' }),
   // dining (2 Nov 2026): the one opening email of «أبلغني عند الافتتاح»
   'dining-opening': diningOpening(content, { slug: 'lario', branch: 'airport-road', nameAr: 'لاريو — مطعم ومقهى عالمي', nameEn: 'LARIO — International Dining & Café' }),
+  // «نادي أرمادا ريزيدنس» (3 Nov 2026): the welcome email of a sign-up with an email
+  'club-welcome': clubWelcome(content, { unsubscribe: { ar: 'https://armadaresidence.com/club/unsubscribe/?t=00000000-0000-4000-8000-000000000000.0123456789abcdef0123456789abcdef', en: 'https://armadaresidence.com/en/club/unsubscribe/?t=00000000-0000-4000-8000-000000000000.0123456789abcdef0123456789abcdef' } }),
 };
 
 const browser = await chromium.launch({ channel: 'chrome' });
