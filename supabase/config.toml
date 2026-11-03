@@ -35,6 +35,14 @@ verify_jwt = true
 [functions.blog-due]
 verify_jwt = false
 
+# «طلبات الشركاء» (3 Nov 2026): partners-admin — the quote PDFs, signed-in dashboard users (edit, checked as the user);
+# partners-purge — the monthly retention's file deletion, called by pg_cron with the Vault token x-armada-cron only
+[functions.partners-admin]
+verify_jwt = true
+
+[functions.partners-purge]
+verify_jwt = false
+
 # Dashboard password rule (Ahmed, 26 Oct 2026): at least 8 characters, no required character classes — the dashboard
 # itself refuses spaces and anything outside printable ASCII before the call (admin/src/lib/password.ts). Leaked-password
 # protection (HaveIBeenPwned) is NOT a key of this file: `config push` cannot change it, and it stays ON in the project.

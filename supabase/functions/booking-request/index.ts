@@ -9,7 +9,7 @@
 //   total unchanged) or REQUEST (with the reason), or answers price_changed (nothing stored). This function never
 //   decides availability itself. Confirmed → guest «تم تأكيد حجزك» (when an email was given), reception «حجز مؤكد
 //   جديد», and the low-inventory alert to the central recipients when a night is now at 1 or 0. Request → the
-//   phase-1 emails as before. Partner enquiries are unchanged (public.booking_requests, their own emails).
+//   phase-1 emails as before. Partner enquiries: public.partner_enquiries since 3 Nov 2026 («طلبات الشركاء»; their own emails, unchanged).
 // WhatsApp (task 5 A, 28 Oct 2026): after the row is stored and after the emails, the guest gets the branch's
 //   template from the branch's own number (YCloud, whatsapp-send.ts): booking_confirmed when confirmed instantly,
 //   booking_request_received otherwise. Never for partner enquiries. The response's whatsapp_sent tells the success
@@ -462,36 +462,34 @@ function validate(p: Payload, test = false): Validation {
   };
 }
 
-/** Partner enquiries: phase-1 storage in public.booking_requests (unchanged). */
-async function storePartner(ref: string, d: Row, ua: string): Promise<boolean> {
+/** Partner enquiries (3 Nov 2026, «طلبات الشركاء»): public.partner_enquiry_store (service role) — the row and its first
+ *  timeline event; the dashboard follows it up. Enquiries before 3 Nov 2026 stayed in public.booking_requests. */
+async function storePartner(ref: string, d: Row, test: boolean): Promise<boolean> {
   const env = serviceEnv();
   if (!env) return false;
   try {
-    const res = await fetch(`${env.url}/rest/v1/booking_requests`, {
+    const res = await fetch(`${env.url}/rest/v1/rpc/partner_enquiry_store`, {
       method: 'POST',
-      headers: { ...serviceHeaders(env.key), Prefer: 'return=minimal' },
+      headers: serviceHeaders(env.key),
       body: JSON.stringify({
-        ref,
-        locale: d.locale,
-        branch: d.branch,
-        check_in: d.check_in,
-        check_out: d.check_out,
-        adults: d.adults,
-        children: 0,
-        room_slug: null,
-        breakfast: null,
-        extra_beds: 0,
-        needs_coordination: false,
-        guest_name: d.name,
-        phone: d.phone,
-        email: d.email || null,
-        notes: d.notes || null,
-        page_url: d.page || null,
-        user_agent: ua.slice(0, 300),
-        request_type: d.requestType,
-        organisation: d.organisation || null,
-        rooms_requested: d.roomsRequested,
-        meals: d.meals || null,
+        p: {
+          ref,
+          request_type: d.requestType,
+          branch: d.branch,
+          locale: d.locale,
+          check_in: d.check_in,
+          check_out: d.check_out,
+          guests: d.adults,
+          rooms: d.roomsRequested,
+          meals: d.meals || null,
+          organisation: d.organisation || null,
+          name: d.name,
+          phone: d.phone,
+          email: d.email || null,
+          message: d.notes || null,
+          page: d.page || null,
+          is_test: test,
+        },
       }),
     });
     if (!res.ok) console.error('store failed', ref, res.status, await res.text());
@@ -701,7 +699,7 @@ Deno.serve(async (req) => {
   let stored: boolean;
   let outcome: Outcome | null = null;
   if (isPartner) {
-    stored = await storePartner(ref, d, ua);
+    stored = await storePartner(ref, d, test);
   } else {
     outcome = await submitBooking(ref, d, ua, payload.quoted_total, token);
     if (outcome?.status === 'price_changed') {

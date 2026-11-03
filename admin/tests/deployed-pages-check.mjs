@@ -49,6 +49,8 @@ const PAGES = [
   } },
   // offers «العروض» (2 Nov 2026): the four tabs; the individuals list (empty or not) with the add button
   { path: 'offers', label: 'العروض', ready: async (page) => (await page.locator('[data-tab]').count()) === 4 && (await page.locator('[data-offer]').count() > 0 || (await page.locator('[data-action]').count()) > 0) },
+  // «طلبات الشركاء» (3 Nov 2026): the filters and the list (or its empty line)
+  { path: 'partners', label: 'طلبات الشركاء', ready: async (page) => (await page.locator('[data-partners-filters]').count()) === 1 && (await page.locator('[data-partners-count]').count()) === 1 },
   // «الأسئلة الشائعة» (3 Nov 2026): the four categories, the 19 seeded questions at least
   { path: 'faq', label: 'الأسئلة الشائعة', ready: async (page) => (await page.locator('[data-faq-category]').count()) === 4 && (await page.locator('[data-faq-row]').count()) >= 19 },
   { path: 'settings', label: 'الإعدادات', ready: async (page) => (await page.locator('[data-switch]').count()) === 4 && (await page.locator('#s-limits').count()) === 1 },

@@ -98,3 +98,44 @@ export function useBookingBadge(me: Me | null, alerts: () => { notify: boolean; 
   }, [allowed]);
   return count;
 }
+
+// «طلبات الشركاء» (3 Nov 2026): the count of new partner enquiries on its sidebar item, live through Realtime on
+// public.partner_enquiries — Realtime applies that table's RLS (partners view + the branch scope), so a user without the
+// permission never subscribes and a row outside their scope never reaches them. No notification, no sound.
+async function newEnquiries(): Promise<number | null> {
+  let q = supabase.from('partner_enquiries').select('id', { count: 'exact', head: true }).eq('status', 'new');
+  if (!testEvents()) q = q.eq('is_test', false);
+  const { count, error } = await q;
+  return error ? null : count ?? 0;
+}
+
+export function usePartnersBadge(me: Me | null): number | null {
+  const [count, setCount] = useState<number | null>(null);
+  const allowed = canView(me, 'partners');
+  useEffect(() => {
+    if (!allowed) {
+      setCount(null);
+      return;
+    }
+    let alive = true;
+    let timer = 0;
+    const recount = () => {
+      window.clearTimeout(timer);
+      timer = window.setTimeout(async () => {
+        const n = await newEnquiries();
+        if (alive && n !== null) setCount(n);
+      }, 250);
+    };
+    recount();
+    const ch = supabase
+      .channel('nav-partners-badge')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'partner_enquiries' }, recount)
+      .subscribe();
+    return () => {
+      alive = false;
+      window.clearTimeout(timer);
+      void supabase.removeChannel(ch);
+    };
+  }, [allowed]);
+  return count;
+}

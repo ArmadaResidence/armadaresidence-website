@@ -7,7 +7,7 @@
 //     (browser notification, sound — off by default), «خروج».
 //   - a slim top bar with the page title (and its breadcrumb when the page has levels — usePageCrumbs) and the quick
 //     search (Ctrl+K / ⌘K). The document title is «{page} | لوحة أرمادا».
-//   - the live «الحجوزات» badge (lib/live.ts, Realtime under RLS).
+//   - the live «الحجوزات» and «طلبات الشركاء» badges (lib/live.ts, Realtime under RLS).
 // Every link goes through the leave guard (unsaved edits ask first). Landmarks: banner, navigation, main; aria-current on
 // the current item; visible focus; RTL; light and dark.
 import { NavLink, useLocation } from 'react-router-dom';
@@ -17,7 +17,7 @@ import { useSession } from '../lib/session';
 import { canView } from '../lib/api';
 import { BRANCH_NAMES, ROLE_LABELS } from '../lib/format';
 import { docTitle, EXTRA_TITLES, itemOf, readPrefs, rememberSection, visibleGroups, writePrefs, type NavGroup, type NavPrefs } from '../lib/nav';
-import { useBookingBadge } from '../lib/live';
+import { useBookingBadge, usePartnersBadge } from '../lib/live';
 import { onOutsidePress } from '../../../src/lib/client';
 import { useLeaveGuard } from './ui';
 import { Icon } from './icons';
@@ -50,7 +50,7 @@ function useTheme() {
   return [theme, () => setTheme((t) => (t === 'dark' ? 'light' : 'dark'))] as const;
 }
 
-function NavList({ groups, collapsed, badge, onGo }: { groups: NavGroup[]; collapsed: boolean; badge: number | null; onGo?: () => void }) {
+function NavList({ groups, collapsed, badges, onGo }: { groups: NavGroup[]; collapsed: boolean; badges: Record<string, number | null>; onGo?: () => void }) {
   const guard = useLeaveGuard();
   return (
     <nav aria-label="الأقسام" className="side-nav" data-side-nav>
@@ -59,7 +59,7 @@ function NavList({ groups, collapsed, badge, onGo }: { groups: NavGroup[]; colla
           {g.title && (collapsed ? <hr className="side-rule" aria-hidden="true" /> : <p className="side-group-title" id={`nav-g-${g.key}`}>{g.title}</p>)}
           <ul aria-labelledby={g.title && !collapsed ? `nav-g-${g.key}` : undefined}>
             {g.items.map((i) => {
-              const n = i.section === 'bookings' ? badge : null;
+              const n = badges[i.section] ?? null;
               return (
                 <li key={i.to}>
                   <NavLink
@@ -226,6 +226,8 @@ export default function Shell({ children }: { children: ReactNode }) {
   const prefsRef = useRef(prefs);
   prefsRef.current = prefs;
   const badge = useBookingBadge(me, () => prefsRef.current);
+  const partnersBadge = usePartnersBadge(me);
+  const badges = useMemo(() => ({ bookings: badge, partners: partnersBadge }), [badge, partnersBadge]);
   const groups = useMemo(() => visibleGroups(me), [me]);
   const [drawer, setDrawer] = useState(false);
   const [search, setSearch] = useState(false);
@@ -265,7 +267,7 @@ export default function Shell({ children }: { children: ReactNode }) {
               ? <img src={`${import.meta.env.BASE_URL}symbol.svg`} alt="أرمادا ريزيدنس" className="h-8 w-8" />
               : <img src={`${import.meta.env.BASE_URL}logo-porcelain.svg`} alt="أرمادا ريزيدنس" className="h-8" />}
           </div>
-          <NavList groups={groups} collapsed={collapsed} badge={badge} />
+          <NavList groups={groups} collapsed={collapsed} badges={badges} />
           <div className="side-foot">
             <button type="button" className="side-link" onClick={() => setPrefs({ ...prefs, collapsed: !collapsed })} aria-pressed={collapsed} data-action="nav-collapse">
               <span className="side-icon"><Icon name="collapse" size={20} className={collapsed ? 'flip-x' : ''} /></span>
@@ -278,7 +280,7 @@ export default function Shell({ children }: { children: ReactNode }) {
           <header id="app-topbar" className="topbar">
             <button type="button" className="side-icon-btn md:hidden" onClick={() => setDrawer(true)} aria-label="القائمة" aria-expanded={drawer} aria-haspopup="dialog" data-action="nav-open">
               <Icon name="menu" size={22} />
-              {badge ? <span className="side-dot" aria-hidden="true" /> : null}
+              {badge || partnersBadge ? <span className="side-dot" aria-hidden="true" /> : null}
             </button>
             {trail.length > 1 ? (
               <nav aria-label="مسار الصفحة" className="topbar-title min-w-0" data-breadcrumb>
@@ -303,7 +305,7 @@ export default function Shell({ children }: { children: ReactNode }) {
           <main id="app-main" className="flex-1 w-full max-w-7xl mx-auto px-4 py-5 pb-10">{children}</main>
         </div>
         <NavDrawer open={drawer} onClose={closeDrawer}>
-          <NavList groups={groups} collapsed={false} badge={badge} onGo={closeDrawer} />
+          <NavList groups={groups} collapsed={false} badges={badges} onGo={closeDrawer} />
           <div className="side-foot">
             <AccountMenu collapsed={false} prefs={prefs} setPrefs={setPrefs} onGo={closeDrawer} />
           </div>
