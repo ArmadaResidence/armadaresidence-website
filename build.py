@@ -47,7 +47,7 @@ EMAIL = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 REQUIRED_FILES = [
     "branches.json", "rooms.json", "pricing.json", "policies.json", "contact.json",
     "legal.json", "offers.json", "site-texts.json", "seo.json", "ui.json",
-    "taif-guide.json", "partners.json", "partners-pages.json", "halls.json", "careers.json",
+    "taif-guide.json", "partners.json", "partners-pages.json", "halls.json", "careers.json", "club.json",
 ]
 
 
@@ -454,6 +454,11 @@ def generate_function_content(content: dict[str, dict], fees: dict) -> None:
         "careers": {loc: {"form": content["careers.json"][loc]["form"], "success": content["careers.json"][loc]["success"],
                           "email": content["careers.json"][loc]["email"]} for loc in ("ar", "en")},
         "jobs_email": contact["emails"]["jobs"],
+        # «نادي أرمادا ريزيدنس» (3 Nov 2026): the welcome email (club function), the follow link and the consent version the
+        # booking form and the club form record (club.json; the wording itself lives in public.consent_texts too)
+        "club_email": {loc: {**content["club.json"][loc]["welcome_email"], "follow": content["club.json"][loc]["follow"]} for loc in ("ar", "en")},
+        "club_follow_url": content["club.json"]["follow_url"],
+        "club_consent_version": content["club.json"]["consent"]["version"],
         "email_logo_url": os.environ.get("EMAIL_ASSETS_BASE", "https://armadaresidence.github.io/armadaresidence-website").rstrip("/") + "/email/armada-residence-logo-reversed@2x.png",
     }
     FUNC_DIR.mkdir(parents=True, exist_ok=True)

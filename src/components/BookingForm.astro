@@ -7,7 +7,7 @@
  * (28 Oct 2026 — the same component and behaviour as the partners enquiry wizard). `prefix` keeps ids unique when
  * two forms share a page.
  */
-import { branchContact, branchShort, branches, extraBedFeeLine, L, localePath, rooms, ui, type Locale } from '@lib/content';
+import { branchContact, branchShort, branches, clubPrivacyHref, clubText, extraBedFeeLine, L, localePath, marketingConsent, rooms, ui, type Locale } from '@lib/content';
 import { promoCodesLive } from '@lib/offers-data';
 import Icon from './Icon.astro';
 import DateRangeField from './DateRangeField.astro';
@@ -45,6 +45,8 @@ const clientData = {
   /** the promo-code field exists only while a code can be used («العروض», 2 Nov 2026) */
   promo: promoCodesLive,
   successPath: localePath(locale, '/booking/success/'),
+  /** the marketing consent's version (club.json) — what the server records when the box is ticked */
+  consentVersion: marketingConsent.version,
   partnersPath: localePath(locale, '/partners/enquiry/'),
   branches: branches.map((b) => ({ slug: b.slug, name: L(locale, b, 'name'), short: branchShort(locale, b.slug), whatsapp: branchContact(b.slug).whatsapp })),
   rooms: bookable.map((r) => ({ slug: r.slug, branch: r.branch, name: L(locale, r, 'name'), capacity: r.capacity, extra_beds_max: r.extra_beds_max ?? 0, availability: r.availability })),
@@ -250,6 +252,16 @@ const stepper = (name: 'adults' | 'children' | 'extra_beds', value: number, min:
       <label for={id('notes')} class="field-label">{f.notes}</label>
       <p id={id('notes-hint')} class="text-xs text-ink-muted mt-1">{f.notes_hint}</p>
     </div>
+
+    {/* 9. Marketing consent (Ahmed, 3 Nov 2026): one optional box, unticked; never required to book, never changes the
+        price or the confirmation — offers by WhatsApp and email and ads on the platforms (club.json → consent) */}
+    <div class="sm:col-span-2">
+      <label for={id('marketing_consent')} class="flex items-start gap-3 text-sm leading-relaxed text-ink">
+        <input id={id('marketing_consent')} name="marketing_consent" type="checkbox" value="yes" class="mt-1 size-5 accent-bronze-deep shrink-0" data-marketing-consent />
+        <span>{locale === 'ar' ? marketingConsent.ar : marketingConsent.en}</span>
+      </label>
+      <a href={clubPrivacyHref(locale)} class="link-bronze inline-block mt-1 ms-8 text-xs underline underline-offset-2">{clubText(locale).privacy_link}</a>
+    </div>
   </div>
 
   {/* Honeypot: invisible to people and assistive tech; a bot that fills it gets a fake success and nothing is stored. */}
@@ -339,6 +351,7 @@ const stepper = (name: 'adults' | 'children' | 'extra_beds', value: number, min:
     quote: QuoteStrings;
     promo: boolean;
     successPath: string;
+    consentVersion: string;
     partnersPath: string;
     branches: { slug: string; name: string; short: string; whatsapp: string }[];
     rooms: { slug: string; branch: string; name: string; capacity: number; extra_beds_max: number; availability: string }[];
@@ -1106,6 +1119,7 @@ const stepper = (name: 'adults' | 'children' | 'extra_beds', value: number, min:
           headers['Authorization'] = `Bearer ${data.anonKey}`;
           headers['apikey'] = data.anonKey;
         }
+        const marketing = Boolean(form.querySelector<HTMLInputElement>('[data-marketing-consent]')?.checked);
         const body = {
           locale: data.locale,
           branch: d.branch,
@@ -1128,6 +1142,9 @@ const stepper = (name: 'adults' | 'children' | 'extra_beds', value: number, min:
           quoted_total: quotedTotal === null ? null : String(quotedTotal),
           // the offer's code (the server applies the offer, never the browser)
           ...(d.promo_code ? { promo_code: d.promo_code } : {}),
+          // the marketing consent (3 Nov 2026): recorded with the version of the text the form showed
+          marketing_consent: marketing,
+          ...(marketing ? { consent_version: data.consentVersion } : {}),
         };
         const res = await fetch(data.endpoint, { method: 'POST', headers, body: JSON.stringify(body) });
         const json = (await res.json().catch(() => ({}))) as { ok?: boolean; ref?: string; error?: string; status?: string; reason?: string | null; quote?: Quote | null; whatsapp_sent?: boolean; fields?: Record<string, string> };
@@ -1155,6 +1172,8 @@ const stepper = (name: 'adults' | 'children' | 'extra_beds', value: number, min:
           beds: String(d.extra_beds),
           nc: d.needs_coordination ? '1' : '0',
           c: d.email ? 'email' : 'whatsapp',
+          // the marketing box was ticked: the success page leaves out the club link
+          mc: marketing ? '1' : '0',
           s: confirmed ? 'confirmed' : 'request',
           ...(json.reason && !confirmed ? { reason: json.reason } : {}),
           // YCloud accepted the guest's WhatsApp message: the success page says so (task 5 A)

@@ -86,9 +86,9 @@ values ('AR-20991231-QB01', 'request', 'airport-road', pg_temp._d(70), pg_temp._
 
 -- ── P0 presets ──
 select pg_temp._check('P0 the staff insert trigger fills the matrix (every section; 8 since the media module, 1 Nov 2026)', (select count(*) from public.staff_permissions where user_id = pg_temp._id('rec_air')) = (select count(*) from public.sections));
-select pg_temp._check('P0 reception preset: settings view, rooms view, users none, audit view, media / dining / offers / blog / content / partners none',
+select pg_temp._check('P0 reception preset: settings view, rooms view, users none, audit view, media / dining / offers / blog / content / partners / guests / guests_export none',
   (select jsonb_object_agg(section, level) from public.staff_permissions where user_id = pg_temp._id('rec_air'))
-  = '{"bookings": "edit", "rates": "edit", "inventory": "edit", "rooms": "view", "settings": "view", "users": "none", "audit": "view", "media": "none", "dining": "none", "offers": "none", "blog": "none", "content": "none", "partners": "none"}');
+  = '{"bookings": "edit", "rates": "edit", "inventory": "edit", "rooms": "view", "settings": "view", "users": "none", "audit": "view", "media": "none", "dining": "none", "offers": "none", "blog": "none", "content": "none", "partners": "none", "guests": "none", "guests_export": "none"}');
 select pg_temp._check('P0 sales preset: settings view (Ahmed, 25 Oct 2026)', (select level from public.staff_permissions where user_id = pg_temp._id('sales') and section = 'settings') = 'view');
 select pg_temp._check('P0 management preset: settings edit, users none', (select jsonb_object_agg(section, level) from public.staff_permissions where user_id = pg_temp._id('mgmt'))
   @> '{"settings": "edit", "users": "none"}');

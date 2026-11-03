@@ -1,0 +1,87 @@
+{
+  "_note": "«نادي أرمادا ريزيدنس» / Armada Residence Club (Ahmed, 3 Nov 2026 — DECISIONS.md 2026-11-03 «Phase 2b session 5»). The club is named «نادي أرمادا ريزيدنس» / \"Armada Residence Club\" everywhere — never «نادي أرمادا» / \"Armada Club\". The consent text is ONE text for both offers (WhatsApp, email) and ads (hashed upload to ad platforms); every stored consent names its version (public.consent_texts). A new wording = a new version here AND in a migration (consent_texts), never an edit of an existing one. Copy approved by Ahmed (3 Nov 2026) except where DECISIONS.md lists text written in the session.",
+  "verified": true,
+  "consent": {
+    "version": "2026-11-03",
+    "ar": "أوافق على تلقي العروض من أرمادا ريزيدنس عبر الواتساب والبريد الإلكتروني، وعلى عرض إعلاناتها لي على منصات مثل سناب شات وتيك توك وميتا وجوجل، ويمكنني إلغاء ذلك في أي وقت.",
+    "en": "I agree to receive Armada Residence offers by WhatsApp and email, and to be shown its ads on platforms such as Snapchat, TikTok, Meta and Google. I can opt out at any time."
+  },
+  "follow_url": "https://linktr.ee/ArmadaR",
+  "privacy_anchor": "club",
+  "ar": {
+    "title": "نادي أرمادا ريزيدنس",
+    "subtitle": "سجّل مجانًا لتصلك عروض خاصة بالأعضاء في فرعَي أرمادا ريزيدنس بالطائف.",
+    "benefits_label": "مزايا العضوية",
+    "benefits": ["عروض وأكواد خصم للأعضاء فقط", "أول من يعرف بالعروض الموسمية", "مجانًا ودون أي التزام"],
+    "phone": "رقم الجوال",
+    "name": "الاسم (اختياري)",
+    "email": "البريد الإلكتروني (اختياري)",
+    "privacy_link": "كيف نستخدم بياناتك",
+    "submit": "انضم إلى النادي",
+    "sending": "جارٍ التسجيل…",
+    "error_phone": "اكتب رقم جوال صحيحًا.",
+    "error_consent": "يلزم الموافقة للانضمام إلى النادي.",
+    "error_email": "اكتب بريدًا إلكترونيًا صحيحًا، أو اتركه فارغًا.",
+    "error_network": "تعذّر التسجيل الآن، حاول مرة أخرى بعد قليل.",
+    "success": "تم تسجيلك في نادي أرمادا ريزيدنس. ستصلك عروض الأعضاء عبر الواتساب والبريد الإلكتروني.",
+    "follow": "تابعنا على حساباتنا",
+    "new_tab": "(يفتح في نافذة جديدة)",
+    "band": "انضم إلى نادي أرمادا ريزيدنس",
+    "footer_link": "نادي أرمادا ريزيدنس",
+    "unsubscribe": {
+      "title": "إلغاء الاشتراك",
+      "working": "جارٍ إلغاء اشتراكك…",
+      "done": "تم إلغاء اشتراكك. لن تصلك عروض أرمادا ريزيدنس عبر الواتساب والبريد الإلكتروني، ولن نرفع بياناتك إلى منصات الإعلان.",
+      "invalid": "رابط إلغاء الاشتراك غير صالح. تواصل معنا لإلغاء اشتراكك.",
+      "failed": "تعذّر إلغاء الاشتراك الآن، حاول مرة أخرى بعد قليل.",
+      "retry": "حاول مرة أخرى",
+      "contact": "تواصل معنا",
+      "noscript": "لإلغاء اشتراكك تواصل معنا."
+    },
+    "welcome_email": {
+      "subject": "مرحبًا بك في نادي أرمادا ريزيدنس",
+      "headline": "مرحبًا بك في نادي أرمادا ريزيدنس",
+      "body": "تم تسجيلك في نادي أرمادا ريزيدنس. ستصلك عروض الأعضاء عبر الواتساب والبريد الإلكتروني.",
+      "unsubscribe_line": "لا تريد تلقي العروض؟ يمكنك إلغاء الاشتراك في أي وقت.",
+      "unsubscribe": "إلغاء الاشتراك"
+    }
+  },
+  "en": {
+    "title": "Armada Residence Club",
+    "subtitle": "Join free to receive member-only offers at Armada Residence's two properties in Taif.",
+    "benefits_label": "Membership benefits",
+    "benefits": ["Member-only offers and promo codes", "Be the first to hear about seasonal offers", "Free, with no commitment"],
+    "phone": "Mobile number",
+    "name": "Name (optional)",
+    "email": "Email (optional)",
+    "privacy_link": "How we use your data",
+    "submit": "Join the club",
+    "sending": "Signing you up…",
+    "error_phone": "Enter a valid mobile number.",
+    "error_consent": "Your consent is needed to join the club.",
+    "error_email": "Enter a valid email address, or leave it empty.",
+    "error_network": "We couldn't sign you up right now; please try again shortly.",
+    "success": "You've joined Armada Residence Club. Member offers will reach you by WhatsApp and email.",
+    "follow": "Follow us",
+    "new_tab": "(opens in a new tab)",
+    "band": "Join Armada Residence Club",
+    "footer_link": "Armada Residence Club",
+    "unsubscribe": {
+      "title": "Unsubscribe",
+      "working": "Unsubscribing you…",
+      "done": "You've been unsubscribed. You won't receive Armada Residence offers by WhatsApp or email, and we won't upload your details to advertising platforms.",
+      "invalid": "This unsubscribe link isn't valid. Contact us to unsubscribe.",
+      "failed": "We couldn't unsubscribe you right now; please try again shortly.",
+      "retry": "Try again",
+      "contact": "Contact us",
+      "noscript": "To unsubscribe, contact us."
+    },
+    "welcome_email": {
+      "subject": "Welcome to Armada Residence Club",
+      "headline": "Welcome to Armada Residence Club",
+      "body": "You've joined Armada Residence Club. Member offers will reach you by WhatsApp and email.",
+      "unsubscribe_line": "Don't want offers? You can unsubscribe at any time.",
+      "unsubscribe": "Unsubscribe"
+    }
+  }
+}

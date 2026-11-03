@@ -18,6 +18,7 @@ import lqipJson from '../../content/lqip.json';
 import partnersJson from '../../content/partners.json';
 import partnersPagesJson from '../../content/partners-pages.json';
 import careersJson from '../../content/careers.json';
+import clubJson from '../../content/club.json';
 import { sarText } from '../../supabase/functions/booking-request/rules.ts';
 
 export type Locale = 'ar' | 'en';
@@ -580,6 +581,15 @@ export const partnersPages = partnersPagesJson;
 /** Careers page «انضم إلى فريقنا» (28 Oct 2026): page copy, the job-application form and its emails. */
 export type CareersText = (typeof careersJson)['ar'];
 export const careers = (locale: Locale): CareersText => careersJson[locale] as unknown as CareersText;
+
+/* ---------- club.json — «نادي أرمادا ريزيدنس» / Armada Residence Club (3 Nov 2026) ---------- */
+export type ClubText = (typeof clubJson)['ar'];
+export const clubText = (locale: Locale): ClubText => clubJson[locale] as unknown as ClubText;
+/** the ONE marketing consent (offers + ads): the version every stored consent names, and its wording per language */
+export const marketingConsent = { version: clubJson.consent.version, ar: clubJson.consent.ar, en: clubJson.consent.en };
+export const clubFollowUrl = clubJson.follow_url;
+/** the privacy section the club form and the booking form's box link to (/policies/#club, /en/policies/#club) */
+export const clubPrivacyHref = (locale: Locale): string => `${localePath(locale, '/policies/')}#${clubJson.privacy_anchor}`;
 
 /** "airport-road/king-room" or "a | b" → the referenced rooms (first match used for bedding). */
 export function roomsByRef(ref: string): Room[] {

@@ -91,7 +91,7 @@ insert into public.staff (user_id, full_name, role, branch, active) values
 
 -- ── M0 the section, its levels, the presets ──
 select pg_temp._check('M0 the media section offers view / edit / publish', (select x.max_level = 'publish' and x.editable and x.label_ar = 'الصور' from public.sections x where x.key = 'media'));
-select pg_temp._check('M0 the other sections keep their maximum (edit; audit view; dining and offers publish since 2 Nov 2026, blog and content since 3 Nov)', (select bool_and(case when x.key = 'audit' then x.max_level = 'view' else x.max_level = 'edit' end) from public.sections x where x.key not in ('media', 'dining', 'offers', 'blog', 'content')));
+select pg_temp._check('M0 the other sections keep their maximum (edit; audit and guests_export view; dining and offers publish since 2 Nov 2026, blog and content since 3 Nov)', (select bool_and(case when x.key in ('audit', 'guests_export') then x.max_level = 'view' else x.max_level = 'edit' end) from public.sections x where x.key not in ('media', 'dining', 'offers', 'blog', 'content')));
 select pg_temp._check('M0 presets: admin → publish, every other role → none',
   (select level from public.staff_permissions where user_id = pg_temp._id('admin') and section = 'media') = 'publish'
   and (select level from public.staff_permissions where user_id = pg_temp._id('mgmt') and section = 'media') = 'none'
