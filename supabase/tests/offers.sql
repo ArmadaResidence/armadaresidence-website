@@ -275,8 +275,8 @@ select pg_temp._fails('O3 … so the archived one cannot come back with it', for
 
 -- ── O4 media: the offer target ──
 select pg_temp._as('admin');
-select pg_temp._check('O4 media lists the offers (cover only) after the partners slots', (select bool_or(e ->> 'target' = 'offer' and e ->> 'key' = 'qa-percent') from jsonb_array_elements(public.media_overview()) e)
-  and (select e ->> 'target' from jsonb_array_elements(public.media_overview()) with ordinality t(e, i) order by i desc limit 1) = 'offer');
+select pg_temp._check('O4 media lists the offers (cover only) after the partners slots (the articles follow them since 3 Nov 2026)', (select bool_or(e ->> 'target' = 'offer' and e ->> 'key' = 'qa-percent') from jsonb_array_elements(public.media_overview()) e)
+  and (select e ->> 'target' from jsonb_array_elements(public.media_overview()) with ordinality t(e, i) where e ->> 'target' <> 'blog' order by i desc limit 1) = 'offer');
 select pg_temp._root();
 select pg_temp._check('O4 an offer target takes a cover only', internal.media_slot_ok('offer', 'cover', 'image') and not internal.media_slot_ok('offer', 'gallery', 'image'));
 select pg_temp._check('O4 an offer on both branches needs all branches; one on a single branch is scoped to it',

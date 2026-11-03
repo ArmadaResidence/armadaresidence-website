@@ -13,6 +13,8 @@ import { PASSWORD_LEAK_NOTE, PASSWORD_MATCH, PASSWORD_RULES, PASSWORD_WEAK, pass
 import { WA_ERRORS, WA_STATUS_LABELS, WA_TEMPLATE_LABELS, waError } from '../admin/src/lib/format.ts';
 import { bulkSummary, countDays, PICK_AT_LEAST, rateConfirmRow, rateConfirmTitle, rateWarnings, rateWarningTexts, SANITY_TAG } from '../admin/src/lib/rates.ts';
 import { e164, E164, svgProblem, liveText, MISSING_LABELS } from '../admin/src/lib/dining.ts';
+import { safeHref, sanitizeMarkdown, unsafeMarkdown } from '../src/lib/blog-md.ts';
+import { readdirSync, readFileSync as readFile } from 'node:fs';
 
 const fails = [];
 let checks = 0;
@@ -216,6 +218,38 @@ for (const m of [CONNECTION, GENERIC]) {
     E(`arabicError(${code}) is a known Arabic sentence`, m !== GENERIC && /[؀-ۿ]/.test(m), m);
   }
   E('arabicError(dining_slug_locked) is not the generic slug rule', arabicError({ message: 'dining_slug_locked' }, 'x') !== arabicError({ message: 'dining_slug' }, 'x'));
+})();
+
+// ── «المدونة» (3 Nov 2026): the one Markdown sanitiser (src/lib/blog-md.ts) — scripts, event handlers and javascript:
+//    links are stripped; safe Markdown and every seeded article come back byte for byte; the blog error codes ──
+(() => {
+  const E = (label, ok, detail = '') => { checks++; if (!ok) fails.push(`${label}${detail ? ` — ${detail}` : ''}`); };
+  const S = sanitizeMarkdown;
+  E('a <script> block is removed, its text kept', S('a<script>alert(1)</script>b') === 'aalert(1)b', S('a<script>alert(1)</script>b'));
+  E('nested tags cannot rebuild a script', !/<\s*script/i.test(S('<scr<script>ipt>alert(1)</scr</script>ipt>')), S('<scr<script>ipt>x</scr</script>ipt>'));
+  E('an event handler on raw HTML goes with its tag', S('<img src=x onerror="alert(1)">نص') === 'نص' && S('<a href="/x" onclick="steal()">رابط</a>') === 'رابط');
+  E('an HTML comment is removed', S('a<!-- <script>x</script> -->b') === 'ab');
+  E('a javascript: link keeps its text only', S('[اضغط](javascript:alert(1))') === 'اضغط', S('[اضغط](javascript:alert(1))'));
+  E('JaVaScRiPt: with spaces / tabs is caught', S('[x](  JaVa\tScript:alert(1))') === 'x' || !/script:/i.test(S('[x](  JaVa\tScript:alert(1))')), S('[x](  JaVa\tScript:alert(1))'));
+  E('vbscript: and data: links are stripped', S('[a](vbscript:msgbox(1)) [b](data:text/html;base64,PHNjcmlwdD4=)') === 'a b');
+  E('an image with a javascript: source disappears', S('![x](javascript:alert(1))') === '');
+  E('safe links stay (site path, https, mailto, tel, anchor)', S('[a](/airport-road/) [b](https://example.com/p) [c](mailto:x@y.z) [d](tel:+966536622277) [e](#faq)') === '[a](/airport-road/) [b](https://example.com/p) [c](mailto:x@y.z) [d](tel:+966536622277) [e](#faq)');
+  E('protocol-relative //host links are refused', safeHref('//evil.example/x') === null && safeHref('/ok/') === '/ok/');
+  E('headings, bold, italic, lists, quotes, directives are untouched', S('## عنوان\n\n**عريض** و*مائل*\n\n- بند\n1. بند\n\n> اقتباس\n\n:::photo\nmedia:00000000-0000-0000-0000-000000000000 | | تعليق\n:::') === '## عنوان\n\n**عريض** و*مائل*\n\n- بند\n1. بند\n\n> اقتباس\n\n:::photo\nmedia:00000000-0000-0000-0000-000000000000 | | تعليق\n:::');
+  E('a < b > c in text is not a tag', S('3 < 5 > 2') === '3 < 5 > 2');
+  E('unsafeMarkdown flags what would be removed', unsafeMarkdown('<b>x</b>') && !unsafeMarkdown('**x**'));
+  let seeded = 0;
+  for (const f of readdirSync('content/articles').filter((x) => /\.(ar|en)\.md$/.test(x))) {
+    const t = readFile(`content/articles/${f}`, 'utf8');
+    E(`seeded article ${f} is unchanged by the sanitiser`, S(t) === t);
+    seeded++;
+  }
+  E('the seeded articles were all checked', seeded === 14, String(seeded));
+  for (const code of ['blog_slug_taken', 'blog_slug_locked', 'blog_slug', 'blog_title', 'blog_excerpt', 'blog_body', 'blog_seo_title', 'blog_seo_description', 'blog_cover_alt', 'blog_unsafe', 'blog_tags', 'blog_branch', 'blog_place', 'blog_canonical', 'blog_author', 'blog_og', 'blog_dates', 'blog_schedule_past', 'blog_schedule_far']) {
+    const m = arabicError({ message: code, code: '22023' }, 'blog_save');
+    E(`arabicError(${code}) is a known Arabic sentence`, m !== GENERIC && /[؀-ۿ]/.test(m), m);
+  }
+  E('arabicError(blog_slug_taken) is not the generic slug rule', arabicError({ message: 'blog_slug_taken' }, 'x') !== arabicError({ message: 'blog_slug' }, 'x'));
 })();
 
 if (fails.length) {

@@ -87,8 +87,8 @@ export default function Media() {
   }, []);
   const loadJobs = useCallback(async () => {
     try {
-      // the dining venues' publishes share the jobs table; they are listed in «المطاعم والمقاهي»
-      setJobs((await api.mediaJobs(16)).filter((j) => !j.targets.some((t) => (t.target as string) === 'venue')).slice(0, 8));
+      // the dining venues' and the articles' publishes share the jobs table; they are listed in their own modules
+      setJobs((await api.mediaJobs(16)).filter((j) => !j.targets.some((t) => (t.target as string) === 'venue' || (t.target as string) === 'article')).slice(0, 8));
     } catch { /* the panel keeps the last list */ }
   }, []);
   // keyed by the target itself, not by its overview row: a refreshed overview must not reload (and blank) the list
@@ -271,6 +271,7 @@ export default function Media() {
     { key: 'places', title: 'اكتشف الطائف', icon: 'place' as const, subs: [{ items: of((r) => r.target === 'place').map((r) => item(r)) }] },
     { key: 'partners', title: 'صفحات الشركاء', icon: 'partners' as const, subs: [{ items: of((r) => r.target === 'partners').map((r) => item(r)) }] },
     { key: 'offers', title: 'العروض', icon: 'offers' as const, subs: [{ items: of((r) => r.target === 'offer').map((r) => item(r)) }] },
+    { key: 'blog', title: 'المدونة', icon: 'blog' as const, subs: [{ items: of((r) => r.target === 'blog').map((r) => item(r, r.name_ar ?? r.key)) }] },
   ].filter((g) => g.subs.some((s) => s.items.length));
   const st = current ? stateOf(current) : null;
 

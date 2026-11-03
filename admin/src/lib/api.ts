@@ -469,7 +469,7 @@ export const updateUser = (user_id: string, patch: Partial<{ full_name: string; 
 export const resendLink = (user_id: string) => edge<{ ok: boolean; type: string }>('admin-users', { action: 'resend', user_id });
 
 /** Ask for a rebuild of the static site (extra-bed fee, room availability). Never throws: the UI shows the fallback line. */
-export async function siteRebuild(reason: 'settings' | 'rooms' | 'media' | 'dining' | 'offers', job?: string): Promise<{ ok: boolean; dispatched?: boolean; reason?: string }> {
+export async function siteRebuild(reason: 'settings' | 'rooms' | 'media' | 'dining' | 'offers' | 'blog', job?: string): Promise<{ ok: boolean; dispatched?: boolean; reason?: string }> {
   try {
     return await edge<{ ok: boolean; dispatched?: boolean; reason?: string }>('site-rebuild', job ? { reason, job } : { reason });
   } catch (e) {
@@ -603,7 +603,7 @@ export async function defaultsBatches(ids: string[]): Promise<Set<string>> {
 // media_overview() for every target's check (the same rules media_publish applies). Writes: the media_* RPCs (one audit
 // batch each; media batches are never undoable). The bytes go to the private bucket through signed upload URLs that
 // the storage policy issues only for the caller's own pending item (lib/media.ts uploads them with progress).
-export type MediaTarget = 'home' | 'branch' | 'room' | 'section' | 'dining' | 'hall' | 'place' | 'partners' | 'offer';
+export type MediaTarget = 'home' | 'branch' | 'room' | 'section' | 'dining' | 'hall' | 'place' | 'partners' | 'offer' | 'blog';
 export type MediaSlot = 'cover' | 'gallery' | 'story-entrance' | 'story-lobby' | 'story-rooms' | 'story-dining' | 'hero-poster' | 'hero-video';
 export interface MediaItem {
   id: string;

@@ -31,6 +31,10 @@ verify_jwt = true
 [functions.site-rebuild]
 verify_jwt = true
 
+# blog-due (3 Nov 2026): called by pg_cron (public.blog_due_tick) with the Vault token x-armada-cron, never by a browser
+[functions.blog-due]
+verify_jwt = false
+
 # Dashboard password rule (Ahmed, 26 Oct 2026): at least 8 characters, no required character classes — the dashboard
 # itself refuses spaces and anything outside printable ASCII before the call (admin/src/lib/password.ts). Leaked-password
 # protection (HaveIBeenPwned) is NOT a key of this file: `config push` cannot change it, and it stays ON in the project.

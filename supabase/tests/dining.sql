@@ -266,9 +266,10 @@ select pg_temp._as('admin');
 select pg_temp._save('up2', public.media_begin_upload('place', 'souq-okaz', 'cover', 'okaz.jpg', 'image/jpeg', 5000000, pg_temp._hash('okaz'), 3600, 2400, null, false));
 select pg_temp._check('D7 an all-branch editor uploads a place cover', (pg_temp._j('up2') ->> 'ok')::boolean);
 select pg_temp._fails('D7 a gallery photo for a place is refused', $$select public.media_begin_upload('place', 'souq-okaz', 'gallery', 'okaz2.jpg', 'image/jpeg', 5000000, pg_temp._hash('okaz2'))$$, 'media_slot');
--- (since 2 Nov 2026 the partners pages' slots and then the offers follow the places: the last target that is neither is a place)
+-- (since 2 Nov 2026 the partners pages' slots and then the offers follow the places, and since 3 Nov the articles: the last
+-- target that is none of them is a place)
 select pg_temp._check('D7 the overview lists the venues under their branch and the places last', (select bool_or(e ->> 'target' = 'dining' and e ->> 'key' = 'lario' and e ->> 'branch' = 'airport-road') from jsonb_array_elements(public.media_overview()) e)
-  and (select e ->> 'target' from jsonb_array_elements(public.media_overview()) with ordinality x(e, o) where e ->> 'target' not in ('partners', 'offer') order by o desc limit 1) = 'place');
+  and (select e ->> 'target' from jsonb_array_elements(public.media_overview()) with ordinality x(e, o) where e ->> 'target' not in ('partners', 'offer', 'blog') order by o desc limit 1) = 'place');
 select pg_temp._check('D7 no retired section item is visible or in the site manifest', (select count(*) from public.media_items where target = 'section') = 0);
 select pg_temp._service();
 select pg_temp._check('D7 … and none is live', not exists (select 1 from public.media_items where target = 'section' and live is not null));
