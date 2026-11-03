@@ -280,6 +280,22 @@ try {
         // ── /club/ ──
         state.posts.length = 0;
         state.reply = { status: 200, body: { ok: true } };
+        // a slow connection: the phone library arrives late — a valid national number must not show an error on blur
+        // (live, 3 Nov 2026: the shape-only check flagged 05… and the form moved under the next press)
+        {
+          await p.route(/\/_astro\/min\.[^/]*\.js$/, async (r) => {
+            await new Promise((res) => setTimeout(res, 1500));
+            await r.continue();
+          });
+          await p.goto(`${ORIGIN}${pre}/club/`, { waitUntil: 'load' });
+          await p.locator('[data-club-form] [data-phone-input]').fill('0500000000');
+          const box = p.locator('[data-club-consent]');
+          const y0 = (await box.boundingBox())?.y;
+          await box.click();
+          await p.waitForTimeout(1800);
+          check((await box.isChecked()) && (await fieldState(p, 'phone')).text === '' && (await box.boundingBox())?.y === y0, `${tag}: a slow phone library — a valid number shows no error and the box ticks`);
+          await p.unroute(/\/_astro\/min\.[^/]*\.js$/);
+        }
         await p.goto(`${ORIGIN}${pre}/club/?src=breakfast-airport&utm_source=qr&utm_medium=print&utm_campaign=breakfast&utm_content=card`, { waitUntil: 'load' });
         await layout(p, `${tag} /club/`);
         const top = await p.locator('[data-club-form] [data-phone-input]').boundingBox();

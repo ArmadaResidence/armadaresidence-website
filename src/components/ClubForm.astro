@@ -138,11 +138,19 @@ const clientData = {
       const v = errorsOf();
       if (!v.ok && v.errors[k]) show(k, true);
     };
-    phone.addEventListener('blur', () => phone.value.trim() && showIfBad('phone'));
+    // the phone is judged only once libphonenumber is there (before it, a national number like 05… cannot pass the
+    // shape-only check — on a slow connection that showed a false error and moved the form under the finger)
+    phone.addEventListener('blur', async () => {
+      if (!phone.value.trim()) return;
+      await loadPhoneLib();
+      showIfBad('phone');
+    });
     email.addEventListener('blur', () => email.value.trim() && showIfBad('email'));
     for (const k of ['phone', 'email'] as const) {
-      inputs[k].addEventListener('input', () => {
-        if (inputs[k].getAttribute('aria-invalid') === 'true') check(k);
+      inputs[k].addEventListener('input', async () => {
+        if (inputs[k].getAttribute('aria-invalid') !== 'true') return;
+        if (k === 'phone') await loadPhoneLib();
+        check(k);
       });
     }
     consent.addEventListener('change', () => check('consent'));
