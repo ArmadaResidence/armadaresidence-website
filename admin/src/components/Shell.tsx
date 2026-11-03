@@ -69,7 +69,7 @@ function NavList({ groups, collapsed, badges, onGo }: { groups: NavGroup[]; coll
                       guard.link(e, i.to);
                       onGo?.();
                     }}
-                    data-nav={i.section}
+                    data-nav={i.id ?? i.section}
                   >
                     <span className="side-icon">
                       <Icon name={i.icon} size={20} />

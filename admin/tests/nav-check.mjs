@@ -130,11 +130,11 @@ const groupsOf = (page, scope = '[data-sidebar]') => page.locator(`${scope} [dat
   await page.goto(`${BASE}/rates`);
   await page.waitForSelector('.grid-cal');
   const items = await navItems(page);
-  check(JSON.stringify(items) === JSON.stringify(['bookings', 'rates', 'inventory', 'rooms', 'media', 'offers', 'dining', 'blog', 'users', 'settings', 'audit']),
-    'admin: every section, in the sidebar order (التشغيل، المحتوى والتسويق، الإدارة)', items.join(' '));
-  check(JSON.stringify(await groupsOf(page)) === JSON.stringify(['operations', 'content', 'admin']), 'admin: three groups (the empty ones hidden)', (await groupsOf(page)).join(' '));
+  check(JSON.stringify(items) === JSON.stringify(['bookings', 'rates', 'inventory', 'rooms', 'media', 'offers', 'dining', 'blog', 'content', 'faq', 'partners', 'users', 'settings', 'audit']),
+    'admin: every section, in the sidebar order (التشغيل، المحتوى والتسويق، الشركاء، الإدارة)', items.join(' '));
+  check(JSON.stringify(await groupsOf(page)) === JSON.stringify(['operations', 'content', 'partners', 'admin']), 'admin: four groups (the empty ones hidden)', (await groupsOf(page)).join(' '));
   const titles = await page.locator('[data-sidebar] .side-group-title').allTextContents();
-  check(JSON.stringify(titles) === JSON.stringify(['التشغيل', 'المحتوى والتسويق', 'الإدارة']), 'admin: the group headings', titles.join(' | '));
+  check(JSON.stringify(titles) === JSON.stringify(['التشغيل', 'المحتوى والتسويق', 'الشركاء', 'الإدارة']), 'admin: the group headings', titles.join(' | '));
   const wrap = await page.locator('[data-sidebar] [data-side-nav] .side-link .side-label').evaluateAll((els) => els.filter((e) => e.getBoundingClientRect().height > 26 || e.scrollWidth > e.clientWidth + 1).map((e) => e.textContent));
   check(wrap.length === 0, 'labels never wrap and are never cut (المستخدمون والصلاحيات included)', wrap.join(' | '));
   const side = await page.locator('[data-sidebar]').boundingBox();

@@ -56,6 +56,74 @@ export interface MediaData {
 const mediaFiles = import.meta.glob<MediaData>('../../content/media.generated.json', { eager: true, import: 'default' });
 export const media: MediaData = Object.values(mediaFiles)[0] ?? {};
 
+/** «المحتوى والظهور» (3 Nov 2026): content/content.generated.json (scripts/content-build.mjs, gitignored; absent in astro
+ *  dev) — the texts published from the dashboard (applied over the content files by path; build.py checked each
+ *  field's anchor), what is hidden from the site, and the announcement bar's announcements. */
+export interface Announcement {
+  id: string;
+  kind: 'offer' | 'custom';
+  offer: string | null;
+  text_ar: string;
+  text_en: string;
+  link: string | null;
+  link_label_ar: string;
+  link_label_en: string;
+  starts_on: string | null;
+  ends_on: string | null;
+}
+interface ContentGen {
+  source: string;
+  today?: string | null;
+  texts: { key: string; file: string; path_ar: string[]; path_en: string[]; ar: string; en: string }[];
+  hidden: { branches: string[]; rooms: string[]; sections: string[] };
+  announcements: Announcement[];
+}
+const contentFiles = import.meta.glob<ContentGen>('../../content/content.generated.json', { eager: true, import: 'default' });
+export const contentGen: ContentGen = Object.values(contentFiles)[0] ?? { source: 'none', texts: [], hidden: { branches: [], rooms: [], sections: [] }, announcements: [] };
+
+/** a content file with the texts published from the dashboard applied (a copy; the file itself is the seed / fallback) */
+function withTexts<T>(file: string, json: T): T {
+  const mine = contentGen.texts.filter((t) => t.file === file);
+  if (!mine.length) return json;
+  const out = structuredClone(json) as Record<string, unknown>;
+  const set = (path: string[], value: string) => {
+    let o = out as Record<string, unknown>;
+    for (const k of path.slice(0, -1)) o = o[k] as Record<string, unknown>;
+    o[path[path.length - 1]] = value;
+  };
+  for (const t of mine) {
+    set(t.path_ar, t.ar);
+    set(t.path_en, t.en);
+  }
+  return out as T;
+}
+
+/** visibility on the site (3 Nov 2026): a hidden branch hides its room types, its hall and its venues too */
+export const branchVisible = (slug: string): boolean => !contentGen.hidden.branches.includes(slug);
+export const roomVisible = (branch: string, slug: string): boolean => branchVisible(branch) && !contentGen.hidden.rooms.includes(`${branch}/${slug}`);
+export type SiteSection = 'hall' | 'gallery' | 'offers' | 'dining';
+export const sectionVisible = (s: SiteSection): boolean => !contentGen.hidden.sections.includes(s);
+/** the /offers/ page exists (its links: the header, the footer, the contact page, the offer cards and the bar) */
+export const offersPageLive: boolean = sectionVisible('offers');
+/** a site path that is hidden: a hidden branch (all its pages), room type, hall or section page */
+export function hiddenPath(href: string): boolean {
+  const [path, query = ''] = href.replace(/^\/en(?=\/)/, '').split('#')[0].split('?');
+  const seg = path.split('/').filter(Boolean);
+  if (!seg.length) return false;
+  if (contentGen.hidden.branches.includes(seg[0])) return true;
+  if (seg.length >= 2 && contentGen.hidden.rooms.includes(`${seg[0]}/${seg[1]}`)) return true;
+  if (seg[1] === 'hall' && !sectionVisible('hall')) return true;
+  if (['gallery', 'offers', 'dining'].includes(seg[0]) && !sectionVisible(seg[0] as SiteSection)) return true;
+  // a booking link preselecting a hidden branch
+  const branch = /(?:^|&)branch=([a-z-]+)/.exec(query)?.[1];
+  return seg[0] === 'booking' && !!branch && !branchVisible(branch);
+}
+/** article HTML with its links to hidden pages unwrapped (the text stays) */
+export function unlinkHidden(html: string): string {
+  if (!contentGen.hidden.branches.length && !contentGen.hidden.rooms.length && !contentGen.hidden.sections.length) return html;
+  return html.replace(/<a\b[^>]*\bhref="([^"]+)"[^>]*>([\s\S]*?)<\/a>/g, (m, href: string, text: string) => (href.startsWith('/') && hiddenPath(href) ? text : m));
+}
+
 /** a branch with its published media (photos, og_image, story scene images) when the dashboard published it */
 function withMedia<T extends { slug: string; story?: { key: string; image: object }[] }>(b: T): T {
   const m = media.branches?.[b.slug];
@@ -63,8 +131,12 @@ function withMedia<T extends { slug: string; story?: { key: string; image: objec
   const story = b.story?.map((sc) => (m.story?.[sc.key] ? { ...sc, image: { ...sc.image, ...m.story[sc.key] } } : sc));
   return { ...b, photos: m.photos, ...(m.og_image ? { og_image: m.og_image } : {}), ...(story ? { story } : {}) } as T;
 }
-export const branches = branchesJson.branches.map(withMedia);
-export type Branch = (typeof branches)[number];
+const branchesData = withTexts('branches.json', branchesJson);
+/** every branch, hidden ones included (facts: names, addresses — never a link to a hidden page) */
+export const allBranches = branchesData.branches.map(withMedia);
+/** the branches the site shows (pages, links, the booking form, the WhatsApp chooser) */
+export const branches = allBranches.filter((b) => branchVisible(b.slug));
+export type Branch = (typeof allBranches)[number];
 export type BranchSlug = 'airport-road' | 'shafa-road';
 
 /* ---------- rooms.json (final structure, 8 Oct 2026 second batch) ---------- */
@@ -149,8 +221,8 @@ const availabilityOverride: Record<string, 'available' | 'sold_out'> = (() => {
 })();
 
 /** Only rooms with show_on_site: true exist as far as the site is concerned. */
-export const rooms: Room[] = (roomsJson.rooms as unknown as Room[])
-  .filter((r) => r.show_on_site)
+export const rooms: Room[] = (withTexts('rooms.json', roomsJson).rooms as unknown as Room[])
+  .filter((r) => r.show_on_site && roomVisible(r.branch, r.slug))
   .map((r) => (availabilityOverride[`${r.branch}/${r.slug}`] ? { ...r, availability: availabilityOverride[`${r.branch}/${r.slug}`] } : r))
   // the dashboard's published photos (media.generated.json) replace the imported ones of that room type
   .map((r) => {
@@ -163,7 +235,7 @@ export const FEATURE_KEYS: (keyof RoomFeatures)[] = ['kitchen', 'living_room', '
 /** Features that go into the SEO description (seo.json → features_clause_note). */
 const SEO_FEATURE_KEYS: (keyof RoomFeatures)[] = ['kitchen', 'living_room', 'balcony', 'jacuzzi', 'fridge'];
 
-export const pricing = pricingJson;
+export const pricing = withTexts('pricing.json', pricingJson);
 /** The fees the static site states (E1, 2 Nov 2026): Settings read at build time by build.py (resolve_fees →
  *  content/fees.generated.json, gitignored), pricing.json as the seed / fallback (astro dev). */
 const feeFiles = import.meta.glob<{ extra_bed_per_night: number; breakfast_adult: number }>('../../content/fees.generated.json', { eager: true, import: 'default' });
@@ -176,11 +248,11 @@ export const feeText = (locale: Locale, amount: number): string => sarText(amoun
 /** a policies text with its fee placeholders filled: {extra_bed}, {breakfast} */
 export const withFees = (locale: Locale, text: string): string =>
   text.replace(/\{extra_bed\}/g, feeText(locale, fees.extra_bed_per_night)).replace(/\{breakfast\}/g, feeText(locale, fees.breakfast_adult));
-export const policies = policiesJson;
+export const policies = withTexts('policies.json', policiesJson);
 export const contact = contactJson;
 export const legal = legalJson;
 export const offers = offersJson;
-export const siteTexts = siteTextsJson;
+export const siteTexts = withTexts('site-texts.json', siteTextsJson);
 export const seo = seoJson;
 
 export type UI = (typeof uiJson)['ar'];
@@ -248,7 +320,7 @@ export function dir(locale: Locale): 'rtl' | 'ltr' {
 /* ---------- branches & rooms ---------- */
 
 export function branchBySlug(slug: string): Branch {
-  const b = branches.find((x) => x.slug === slug);
+  const b = allBranches.find((x) => x.slug === slug);
   if (!b) throw new Error(`Unknown branch slug: ${slug}`);
   return b;
 }
@@ -665,12 +737,13 @@ export interface Venue {
   sort: number;
 }
 /** active and coming-soon venues in site order (branch, then the dashboard's order); hidden ones never reach the build */
-export const venues: Venue[] = (media.venues ?? []).filter((v) => v.status === 'active' || v.status === 'coming_soon');
-/** /dining/ and the venue pages exist only once at least one venue is active (Ahmed, 1 Nov 2026) */
-export const diningLive: boolean = venues.some((v) => v.status === 'active');
+export const venues: Venue[] = (media.venues ?? []).filter((v) => (v.status === 'active' || v.status === 'coming_soon') && branchVisible(v.branch));
+/** /dining/ and the venue pages exist only once at least one venue is active (Ahmed, 1 Nov 2026) and the section is shown
+ *  («المحتوى والظهور», 3 Nov 2026 — hidden: no dining page, each branch page keeps its café card) */
+export const diningLive: boolean = sectionVisible('dining') && venues.some((v) => v.status === 'active');
 /** the pages built: every active venue, and the coming-soon teasers once /dining/ exists */
 export const venuePages: Venue[] = diningLive ? venues : [];
-export const activeVenuesFor = (branchSlug: string): Venue[] => venues.filter((v) => v.status === 'active' && v.branch === branchSlug);
+export const activeVenuesFor = (branchSlug: string): Venue[] => (diningLive ? venues.filter((v) => v.status === 'active' && v.branch === branchSlug) : []);
 export const venuePath = (locale: Locale, v: Venue): string => localePath(locale, `/dining/${v.slug}/`);
 export const venueName = (locale: Locale, v: Venue): string => (locale === 'en' && v.name_en ? v.name_en : v.name_ar);
 export function venuePhotos(v: Venue): SitePhoto[] {
@@ -737,7 +810,8 @@ export function venueSeo(locale: Locale, v: Venue): PageSeo {
 /* ---------- The hall (halls.json; its page /airport-road/hall/ since 2 Nov 2026) ---------- */
 
 export type Hall = (typeof hallsJson.halls)[number];
-export const halls: Hall[] = hallsJson.halls as Hall[];
+/** the hall pages the site shows (the section and its branch visible — 3 Nov 2026) */
+export const halls: Hall[] = (hallsJson.halls as Hall[]).filter((h) => sectionVisible('hall') && branchVisible(h.branch));
 export const hallFor = (branchSlug: string): Hall | undefined => halls.find((h) => h.branch === branchSlug);
 export const hallPath = (locale: Locale, h: Hall): string => localePath(locale, `/${h.branch}/hall/`);
 export function hallPhotos(h: Hall): SitePhoto[] {

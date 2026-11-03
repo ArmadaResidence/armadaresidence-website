@@ -8,7 +8,7 @@ import LpUnitTable from '@components/lp/LpUnitTable.astro';
 import OfferList from '@components/OfferList.astro';
 import { offersFor, offersText } from '@lib/offers-data';
 import { langPaths } from '@lib/paths';
-import { branchPath, pageSeo, type Locale } from '@lib/content';
+import { branchPath, branchVisible, pageSeo, type Locale } from '@lib/content';
 import { enquiryHref, ICON, lp, lpPath, T, waHrefSales } from '@lib/partners';
 
 export const getStaticPaths = langPaths;
@@ -74,7 +74,8 @@ const features = [
                   <h3>{T(locale, name)}</h3>
                   <ul class="pf-facts">{(facts as any[]).map((f) => <li>{T(locale, f)}</li>)}</ul>
                   <div class="acts">
-                    <a class="btn dk" href={branchPath(locale, key === 'airport' ? 'airport-road' : 'shafa-road')} set:html={ICON.arrow + T(locale, cta)} />
+                    {/* no link to a branch hidden in «المحتوى والظهور» (3 Nov 2026) */}
+                    {branchVisible(key === 'airport' ? 'airport-road' : 'shafa-road') && <a class="btn dk" href={branchPath(locale, key === 'airport' ? 'airport-road' : 'shafa-road')} set:html={ICON.arrow + T(locale, cta)} />}
                     <a class="btn ol" href={enquiryHref(locale, 'b2b-rates', key === 'airport' ? 'airport-road' : 'shafa-road')}>{T(locale, lp.ui.req_rates)}</a>
                   </div>
                 </div>

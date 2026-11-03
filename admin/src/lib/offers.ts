@@ -139,7 +139,7 @@ export const PLACEMENTS: { key: keyof OfferFields; label: string; cats: OfferCat
   { key: 'show_branch', label: 'صفحة الفرع (وقسم المطعم)', cats: ['individuals', 'dining'] },
   { key: 'show_partners', label: 'صفحات الشركاء /partners/', cats: ['b2b'] },
   { key: 'show_menu', label: 'المنيو /menu/', cats: ['dining'] },
-  { key: 'show_bar', label: 'شريط الإعلان أعلى الموقع', cats: ['individuals', 'b2b', 'dining'] },
+  // the announcement bar is one system since 3 Nov 2026: «المحتوى» → «شريط الإعلان» (an offer can be featured there)
 ];
 export const MISSING_LABELS: Record<OfferMissing['code'], string> = {
   title_ar: 'العنوان بالعربية',

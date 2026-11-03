@@ -13,7 +13,7 @@ import { pathToFileURL } from 'node:url';
 
 // the suite, in the order check-all runs it
 export const STATIC_CHECKS = ['typecheck', 'admin-digits-check', 'admin-format-check', 'auth-emails-check', 'whatsapp-check', 'email-print-check', 'offers-engine-check'];
-export const BROWSER_CHECKS = ['booking-nav-check', 'drawer-check', 'booking-whatsapp-check', 'datepicker-check', 'motion-check', 'booking-instant-check', 'partners-form-check', 'careers-form-check', 'dining-site-check', 'gallery-site-check', 'offers-site-check', 'blog-site-check', 'faq-site-check', 'partners-button-check', 'a11y-check'];
+export const BROWSER_CHECKS = ['booking-nav-check', 'drawer-check', 'booking-whatsapp-check', 'datepicker-check', 'motion-check', 'booking-instant-check', 'partners-form-check', 'careers-form-check', 'dining-site-check', 'gallery-site-check', 'offers-site-check', 'blog-site-check', 'faq-site-check', 'content-site-check', 'partners-button-check', 'a11y-check'];
 // every commit (build and qa.py too, unless the commit is docs only)
 export const FAST_CHECKS = ['typecheck', 'admin-digits-check', 'admin-format-check', 'auth-emails-check', 'whatsapp-check'];
 // a11y-check on sample pages for a content change: home, one branch, one room, offers, policies — both languages
@@ -120,6 +120,15 @@ const RULES = [
     name: 'faq',
     test: (f) => f === 'src/pages/[...lang]/faq.astro' || lib(['faq']).test(f) || f === 'content/faq.json',
     checks: ['faq-site-check'],
+  },
+  {
+    // «المحتوى والظهور» on the site (3 Nov 2026): the announcement bar, the links a hidden page must lose, the article
+    // links to hidden pages; the sample manifest
+    name: 'content & visibility',
+    test: (f) =>
+      comp(['OfferBar', 'OfferPopup', 'Header', 'Footer', 'ArticleBody', 'OffersSection']).test(f) || lib(['offers-data', 'articles', 'gallery']).test(f) ||
+      f === 'scripts/fixtures/content-sample.json' || f === 'src/layouts/Base.astro',
+    checks: ['content-site-check'],
   },
   {
     name: 'email.ts',

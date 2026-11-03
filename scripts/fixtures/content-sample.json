@@ -1,0 +1,75 @@
+{
+ "_note": "Sample «المحتوى والظهور» manifest for scripts/content-site-check.mjs (CONTENT_FIXTURE): the shape of public.content_site_manifest. Test copy only — never deployed.",
+ "at": "2026-11-03T12:00:00Z",
+ "today": null,
+ "texts": [
+  {
+   "key": "home.hero.title",
+   "file": "site-texts.json",
+   "path_ar": [
+    "hero",
+    "title_ar"
+   ],
+   "path_en": [
+    "hero",
+    "title_en"
+   ],
+   "anchor": null,
+   "ar": "نص اختبار للواجهة الرئيسية",
+   "en": "QA sample hero title"
+  },
+  {
+   "key": "policy.guests.body",
+   "file": "policies.json",
+   "path_ar": [
+    "page",
+    "sections",
+    "3",
+    "body_ar"
+   ],
+   "path_en": [
+    "page",
+    "sections",
+    "3",
+    "body_en"
+   ],
+   "anchor": [
+    {
+     "path": [
+      "page",
+      "sections",
+      "3",
+      "id"
+     ],
+     "value": "guests"
+    }
+   ],
+   "ar": "يشمل سعر الغرفة والاستديو وجناح الغرفة والصالة شخصين بالغين، ويشمل سعر الأجنحة بغرفتي نوم أربعة. الأطفال لا يُحسبون ضمن العدد المشمول. السرير الإضافي {extra_bed} لليلة ويشمل الشخص الذي ينام عليه، ويتوفر في بعض أنواع الغرف وتختاره عند الحجز. يُقدَّم بوفيه إفطار يومي في مطعم كل فرع من 7:00 إلى 10:30 صباحًا؛ والإفطار اختياري تختاره عند الحجز، ورسومه {breakfast} للشخص في الليلة، والأطفال حتى 5 سنوات مجانًا ومن 6 إلى 12 سنة بنصف الرسوم. نص اختبار مضاف.",
+   "en": "Room, studio and one-bedroom suite prices cover two adults; two-bedroom suite prices cover four. Children are not counted toward the included number. An extra bed is {extra_bed} per night, covering whoever sleeps on it; it is available in selected room types and chosen when you book. A daily breakfast buffet is served in each property's restaurant 7:00–10:30 am; breakfast is optional and chosen when you book, at {breakfast} per person per night — children up to 5 free, ages 6 to 12 half the charge. QA sample sentence."
+  }
+ ],
+ "hidden": {
+  "branches": [],
+  "rooms": [
+   "airport-road/king-room"
+  ],
+  "sections": [
+   "hall",
+   "offers"
+  ]
+ },
+ "announcements": [
+  {
+   "id": "00000000-0000-4000-8000-0000000000b1",
+   "kind": "custom",
+   "offer": null,
+   "text_ar": "إعلان اختبار: أسئلة شائعة جديدة",
+   "text_en": "QA notice: a new FAQ page",
+   "link": "/faq/",
+   "link_label_ar": "اقرأ الأسئلة",
+   "link_label_en": "Read the FAQ",
+   "starts_on": null,
+   "ends_on": null
+  }
+ ]
+}

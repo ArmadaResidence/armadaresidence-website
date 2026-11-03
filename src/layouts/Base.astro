@@ -9,7 +9,7 @@ import Footer from '@components/Footer.astro';
 import WhatsAppButton from '@components/WhatsAppButton.astro';
 import BookingDrawer from '@components/BookingDrawer.astro';
 import OfferPopupDialog from '@components/OfferPopup.astro';
-import { barOffer, offerPopup } from '@lib/offers-data';
+import { offerPopup, siteBar } from '@lib/offers-data';
 
 interface Props {
   locale: Locale;
@@ -111,12 +111,13 @@ const preloadFonts = locale === 'ar' ? [fontAr400] : [fontEn];
       })();
     </script>
     {
-      /* the announcement bar (2 Nov 2026): a stored dismissal of this offer, or its end date passed since the build,
-         hides it before the first paint (no shift); re-applied after a view-transition swap */
-      barOffer && (
+      /* the announcement bar (2 Nov 2026; one system since 3 Nov 2026): a stored dismissal of this announcement (an
+         offer's slug, or the announcement's id), or its last day passed since the build, hides it before the first paint
+         (no shift); re-applied after a view-transition swap */
+      siteBar && (
         <>
           <style is:inline>html[data-offer-bar-off] .offer-bar{display:none}</style>
-          <script is:inline define:vars={{ barSlug: barOffer.slug, barUntil: barOffer.valid_to }}>
+          <script is:inline define:vars={{ barSlug: siteBar.id, barUntil: siteBar.until }}>
             (function () {
               function apply() {
                 var off = false;

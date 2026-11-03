@@ -502,7 +502,7 @@ async function storePartner(ref: string, d: Row, test: boolean): Promise<boolean
 
 /** What public.submit_booking answers (phase 2a). */
 interface Outcome {
-  status: 'confirmed' | 'request' | 'price_changed' | 'promo_invalid';
+  status: 'confirmed' | 'request' | 'price_changed' | 'promo_invalid' | 'not_on_site';
   id?: string;
   ref?: string;
   reason?: string | null;
@@ -553,6 +553,8 @@ async function submitBooking(ref: string, d: Row, ua: string, quoted: string | n
       // a code the database refuses (promo_<status>, 22023): nothing stored, the guest corrects the field
       const promo = /"message"\s*:\s*"promo_([a-z_]+)"/.exec(text);
       if (promo) return { status: 'promo_invalid', promo: { code: d.promoCode, status: promo[1] === 'format' ? 'format' : promo[1] } };
+      // a branch or room type hidden from the site («المحتوى والظهور», 3 Nov 2026): nothing stored, no email
+      if (/"message"\s*:\s*"not_on_site"/.test(text)) return { status: 'not_on_site' };
       console.error('submit_booking failed', ref, res.status, text);
       return null;
     }
@@ -705,6 +707,9 @@ Deno.serve(async (req) => {
     if (outcome?.status === 'price_changed') {
       // nothing stored: the form shows the new price and the guest submits again
       return json(req, 409, { ok: false, error: 'price_changed', status: 'price_changed', quote: outcome.quote ?? null, promo: outcome.promo ?? null });
+    }
+    if (outcome?.status === 'not_on_site') {
+      return json(req, 422, { ok: false, error: 'not on the site', fields: d.room ? { room: 'not_on_site' } : { branch: 'not_on_site' } });
     }
     if (outcome?.status === 'promo_invalid') {
       return json(req, 422, { ok: false, error: 'invalid promo code', fields: { promo_code: outcome.promo?.status ?? 'unknown' } });

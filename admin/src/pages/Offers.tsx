@@ -691,6 +691,7 @@ function OfferForm({ offer, category, branches, rooms, venues, editable, seesMed
             ))}
           </div>
         )}
+        <p className="text-xs text-ink-muted">شريط الإعلان أعلى الموقع صار في «المحتوى» ← «شريط الإعلان»، ومنه تختار عرضًا مميزًا.</p>
       </fieldset>
 
       <div className="card p-3 grid gap-1 text-sm" data-photo-state={noCover ? 'missing' : 'ready'}>

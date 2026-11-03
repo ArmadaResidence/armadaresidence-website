@@ -2,11 +2,15 @@
 import { defineConfig } from 'astro/config';
 import sitemap from '@astrojs/sitemap';
 import tailwindcss from '@tailwindcss/vite';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 
 const seo = JSON.parse(readFileSync(new URL('./content/seo.json', import.meta.url), 'utf8'));
 const roomsJson = JSON.parse(readFileSync(new URL('./content/rooms.json', import.meta.url), 'utf8'));
 const redirects = JSON.parse(readFileSync(new URL('./redirects.json', import.meta.url), 'utf8'));
+const hallsJson = JSON.parse(readFileSync(new URL('./content/halls.json', import.meta.url), 'utf8'));
+/** «المحتوى والظهور» (3 Nov 2026): what is hidden from the site (scripts/content-build.mjs; absent → nothing) */
+const contentGenUrl = new URL('./content/content.generated.json', import.meta.url);
+const hidden = (existsSync(contentGenUrl) ? JSON.parse(readFileSync(contentGenUrl, 'utf8')).hidden : null) ?? { branches: [], rooms: [], sections: [] };
 
 /** noindex pages are excluded from the sitemap (CLAUDE.md §7): sold-out rooms, booking success, 404. */
 const noindexPaths = [
@@ -26,6 +30,26 @@ const redirectMap = Object.fromEntries(
     .filter((r) => r.from && r.to && !r.from.includes('*'))
     .map((r) => [r.from, { status: 301, destination: r.to }]),
 );
+
+/** A page hidden in «المحتوى والظهور» (3 Nov 2026) has no page; its URL (both languages) redirects to its parent: a room
+ *  to its branch (home when the branch is hidden too), a branch with its rooms and hall to home, the hall to its branch,
+ *  the gallery / the offers page / dining (and its venue pages, by the 404 page's rule) to home. */
+const hiddenPages = [];
+const roomsOf = (b) => roomsJson.rooms.filter((r) => r.branch === b && r.show_on_site).map((r) => r.slug);
+for (const b of hidden.branches) {
+  hiddenPages.push([`/${b}`, '/'], ...roomsOf(b).map((s) => [`/${b}/${s}`, '/']));
+  if (hallsJson.halls.some((h) => h.branch === b)) hiddenPages.push([`/${b}/hall`, '/']);
+}
+for (const key of hidden.rooms) {
+  const [b, s] = key.split('/');
+  if (!hidden.branches.includes(b)) hiddenPages.push([`/${b}/${s}`, `/${b}/`]);
+}
+if (hidden.sections.includes('hall')) for (const h of hallsJson.halls) if (!hidden.branches.includes(h.branch)) hiddenPages.push([`/${h.branch}/hall`, `/${h.branch}/`]);
+for (const s of ['gallery', 'offers', 'dining']) if (hidden.sections.includes(s)) hiddenPages.push([`/${s}`, '/']);
+for (const [from, to] of hiddenPages) {
+  redirectMap[from] = { status: 301, destination: to };
+  redirectMap[`/en${from}`] = { status: 301, destination: to === '/' ? '/en/' : `/en${to}` };
+}
 
 export default defineConfig({
   site: seo.site_url,

@@ -5,7 +5,7 @@
  */
 import GallerySlider from './GallerySlider.astro';
 import Photo from './Photo.astro';
-import { ui, type Locale } from '@lib/content';
+import { ui, unlinkHidden, type Locale } from '@lib/content';
 import type { Section } from '@lib/articles';
 
 interface Props {
@@ -23,7 +23,7 @@ const galleryLabels = { previous: g.previous, next: g.next, goTo: g.go_to, open:
       <div class:list={[!sec.intro && 'reveal']}>
         {sec.segments.map((seg) =>
           seg.kind === 'html' ? (
-            <Fragment set:html={seg.html} />
+            <Fragment set:html={unlinkHidden(seg.html)} />
           ) : seg.kind === 'photo' ? (
             <figure class="article-figure">
               <Photo src={seg.image.src} srcset={seg.image.srcset} sizes="(min-width: 768px) 68ch, 100vw" alt={seg.image.alt} width={seg.image.width} height={seg.image.height} lqip={seg.image.lqip} class="block rounded-card overflow-hidden" imgClass="w-full h-auto" />

@@ -49,7 +49,8 @@ export async function publishedSlugs(): Promise<string[]> {
 /** The branches an article's booking box is for: its `branch`; both for "both"; none for an article linked to no branch
  *  (3 Nov 2026: the box then opens the booking form with no branch preselected). Seeded articles always name one. */
 export const articleBranches = (a: Pick<Article, 'branch'>): string[] =>
-  a.branch === 'both' ? branches.map((b) => b.slug) : a.branch ? [a.branch] : [];
+  // `branches` holds the shown ones only: a branch hidden in «المحتوى والظهور» (3 Nov 2026) gets no booking card
+  a.branch === 'both' ? branches.map((b) => b.slug) : a.branch && branches.some((b) => b.slug === a.branch) ? [a.branch] : [];
 /** the branches an article is about, for related articles and JSON-LD (none linked → about the city, both branches) */
 export const aboutBranches = (a: Pick<Article, 'branch'>): string[] => (a.branch && a.branch !== 'both' ? [a.branch] : branches.map((b) => b.slug));
 

@@ -1,8 +1,8 @@
 ---
-import { bookingPath, contact, localePath, otherLocale, siteName, ui, type BookingContext, type Locale } from '@lib/content';
+import { bookingPath, branchVisible, contact, localePath, offersPageLive, otherLocale, siteName, ui, type BookingContext, type Locale } from '@lib/content';
 import Icon from './Icon.astro';
 import { galleryLive } from '@lib/gallery';
-import { barOffer } from '@lib/offers-data';
+import { siteBar } from '@lib/offers-data';
 import OfferBar from './OfferBar.astro';
 
 interface Props {
@@ -19,13 +19,14 @@ const other = otherLocale(locale);
 
 const nav: { key: keyof typeof t.nav; path: string }[] = [
   { key: 'home', path: '/' },
-  { key: 'airport-road', path: '/airport-road/' },
-  { key: 'shafa-road', path: '/shafa-road/' },
+  // a branch, the gallery or the offers page hidden in «المحتوى والظهور» (3 Nov 2026) has no link
+  ...(branchVisible('airport-road') ? [{ key: 'airport-road' as const, path: '/airport-road/' }] : []),
+  ...(branchVisible('shafa-road') ? [{ key: 'shafa-road' as const, path: '/shafa-road/' }] : []),
   // the gallery appears once /gallery/ exists (≥ 6 published photos — Ahmed, 2 Nov 2026)
   ...(galleryLive ? [{ key: 'gallery' as const, path: '/gallery/' }] : []),
   { key: 'discover-taif', path: '/discover-taif/' },
   { key: 'blog', path: '/blog/' },
-  { key: 'offers', path: '/offers/' },
+  ...(offersPageLive ? [{ key: 'offers' as const, path: '/offers/' }] : []),
   { key: 'contact', path: '/contact/' },
   { key: 'policies', path: '/policies/' },
 ];
@@ -38,7 +39,7 @@ const partnersActive = path.startsWith('/partners/');
   class="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:start-2 focus:z-[100] focus:bg-white focus:px-4 focus:py-2 focus:rounded"
   >{t.skip_to_content}</a
 >
-{barOffer && <OfferBar locale={locale} />}
+{siteBar && <OfferBar locale={locale} />}
 <header class="sticky top-0 z-40" transition:name="site-header" transition:animate="none">
   {/* utility row: partners link + reception line (CLAUDE.md §6b) */}
   <div class="relative bg-midnight text-porcelain text-xs overflow-hidden">

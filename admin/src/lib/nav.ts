@@ -1,7 +1,7 @@
 // The dashboard's sections and where they sit in the sidebar (Ahmed, 2 Nov 2026 — phase 2b session 3, part D). Each user
 // sees only the items their permission matrix grants (view or more); an empty group is hidden. Groups planned for later
-// modules (النظرة العامة، التقارير) appear as soon as their first item is added here. 3 Nov 2026: «الأسئلة الشائعة» under
-// «المحتوى والتسويق», «طلبات الشركاء» under «الشركاء».
+// modules (النظرة العامة، التقارير) appear as soon as their first item is added here. 3 Nov 2026: «المحتوى» and «الأسئلة
+// الشائعة» under «المحتوى والتسويق», «طلبات الشركاء» under «الشركاء».
 import type { IconName } from '../components/icons';
 import { canView, type Me } from './api';
 
@@ -10,6 +10,8 @@ export interface NavItem {
   label: string;
   section: string;
   icon: IconName;
+  /** data-nav when two items share a section (المحتوى / الأسئلة الشائعة, both under content) */
+  id?: string;
 }
 export interface NavGroup {
   key: string;
@@ -38,7 +40,8 @@ export const NAV_GROUPS: NavGroup[] = [
       { to: '/offers', label: 'العروض', section: 'offers', icon: 'offers' },
       { to: '/dining', label: 'المطاعم', section: 'dining', icon: 'dining' },
       { to: '/blog', label: 'المدونة', section: 'blog', icon: 'blog' },
-      { to: '/faq', label: 'الأسئلة الشائعة', section: 'content', icon: 'faq' },
+      { to: '/content', label: 'المحتوى', section: 'content', icon: 'content' },
+      { to: '/faq', label: 'الأسئلة الشائعة', section: 'content', icon: 'faq', id: 'faq' },
     ],
   },
   {

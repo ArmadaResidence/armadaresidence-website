@@ -4,10 +4,13 @@ import Icon from '@components/Icon.astro';
 import OfferList from '@components/OfferList.astro';
 import Photo from '@components/Photo.astro';
 import { langPaths } from '@lib/paths';
-import { contact, localePath, mailHref, offers, pageSeo, partnersPath, photoProps, ui, waHref, type Locale } from '@lib/content';
+import { contact, localePath, mailHref, offers, offersPageLive, pageSeo, partnersPath, photoProps, ui, waHref, type Locale } from '@lib/content';
 import { offerAnchor, offerCover, offerCta, offersFor, offersText, offerText, offerTitle } from '@lib/offers-data';
 
-export const getStaticPaths = langPaths;
+// hidden in «المحتوى والظهور» (3 Nov 2026): no page (its URL redirects home — astro.config.mjs)
+export function getStaticPaths() {
+  return offersPageLive ? langPaths() : [];
+}
 
 interface Props {
   locale: Locale;

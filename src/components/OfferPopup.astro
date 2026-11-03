@@ -10,7 +10,7 @@
  */
 import Icon from './Icon.astro';
 import Photo from './Photo.astro';
-import { localePath, photoProps, ui, type Locale } from '@lib/content';
+import { localePath, offersPageLive, photoProps, ui, type Locale } from '@lib/content';
 import { offerAnchor, offerCover, offerCta, offerPopup } from '@lib/offers-data';
 
 interface Props {
@@ -23,7 +23,8 @@ const p = offerPopup!;
 const t = ui(locale).offers as unknown as Record<string, string>;
 const o = p.target;
 const cover = p.show_image ? offerCover(o) : null;
-const href = offerCta(locale, o)?.href ?? (o.category !== 'dining' && o.show_offers ? `${localePath(locale, '/offers/')}#${offerAnchor(o)}` : localePath(locale, '/offers/'));
+// /offers/ hidden in «المحتوى والظهور» (3 Nov 2026): the offer's own link, else home
+const href = offerCta(locale, o)?.href ?? (offersPageLive ? (o.category !== 'dining' && o.show_offers ? `${localePath(locale, '/offers/')}#${offerAnchor(o)}` : localePath(locale, '/offers/')) : localePath(locale, '/'));
 const L = (k: 'title' | 'text' | 'button') => p[`${k}_${locale}`];
 /** the page group a design targets (dashboard «الصفحات») */
 function group(x: string): string | null {

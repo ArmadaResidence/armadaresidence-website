@@ -1,7 +1,8 @@
 {
-  "_note": "Sample offers manifest for scripts/offers-site-check.mjs (OFFERS_FIXTURE): the shape of public.offers_site_manifest. Test copy only — never deployed; the covers are existing approved Discover Taif photos. Dates are far in the past / future so the sample holds on any build day.",
+  "_note": "Sample offers manifest for scripts/offers-site-check.mjs (OFFERS_FIXTURE): the shape of public.offers_site_manifest; `announcement` = the bar since 3 Nov 2026 (the announcement system of «المحتوى والظهور» — scripts/content-build.mjs reads it), featuring qa-autumn-stay. Test copy only — never deployed; the covers are existing approved Discover Taif photos. Dates are far in the past / future so the sample holds on any build day.",
   "at": "2026-11-02T12:00:00Z",
   "today": null,
+  "announcement": { "id": "00000000-0000-4000-8000-0000000000a1", "kind": "offer", "offer": "qa-autumn-stay", "text_ar": "", "text_en": "", "link": null, "link_label_ar": "", "link_label_en": "", "starts_on": null, "ends_on": null },
   "offers": [
     {
       "id": "00000000-0000-4000-8000-000000000001", "slug": "qa-autumn-stay", "category": "individuals", "branches": ["airport-road", "shafa-road"], "venue": null,

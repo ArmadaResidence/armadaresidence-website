@@ -3,6 +3,9 @@
 build.py — Armada Residence website build (CLAUDE.md §2 "build.py and qa.py pattern").
 
 Steps:
+  0. «المحتوى والظهور» (3 Nov 2026): scripts/content-build.mjs → content/content.generated.json (the texts published from
+     the dashboard, what is hidden, the announcement bar); the published texts are applied to the content here — after
+     each field's anchor is checked — so validation, the functions' content and the pages all see them.
   1. Validate content/*.json (parse + structural sanity, no guessing of values).
   2. Generate supabase/functions/booking-request/content.generated.json from content/ so the
      Edge Function never hardcodes emails, numbers or names.
@@ -36,6 +39,7 @@ ROOT = Path(__file__).resolve().parent
 CONTENT = ROOT / "content"
 DIST = ROOT / "dist"
 FUNC_DIR = ROOT / "supabase" / "functions" / "booking-request"
+CANCEL_ITEM = 0
 
 E164 = re.compile(r"^\+[1-9]\d{7,14}$")
 EMAIL = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
@@ -286,6 +290,49 @@ def validate(content: dict[str, dict]) -> list[str]:
     return problems
 
 
+def apply_published_texts(content: dict[str, dict]) -> None:
+    """The texts published from «المحتوى والظهور» (content/content.generated.json → texts): each is written at its JSON
+    path (ar and en) of its content file, after its anchors (the item's slug / key / id at the time the field was made)
+    are checked against the file — a moved or renamed item fails the build instead of landing on the wrong text."""
+    gen_file = CONTENT / "content.generated.json"
+    if not gen_file.is_file():
+        return
+    gen = json.loads(gen_file.read_text(encoding="utf-8"))
+    texts = gen.get("texts") or []
+
+    def walk(obj, path):
+        for k in path:
+            obj = obj[int(k)] if isinstance(obj, list) else obj[k]
+        return obj
+
+    problems = []
+    for t in texts:
+        doc = content.get(t["file"])
+        if doc is None:
+            problems.append(f"{t['key']}: unknown file {t['file']}")
+            continue
+        for a in t.get("anchor") or []:
+            try:
+                ok = walk(doc, a["path"]) == a["value"]
+            except (KeyError, IndexError, TypeError):
+                ok = False
+            if not ok:
+                problems.append(f"{t['key']}: content/{t['file']} {'/'.join(a['path'])} is no longer {a['value']!r}")
+    if problems:
+        fail("published texts do not match the content files (update the field in the dashboard or the file):\n  - " + "\n  - ".join(problems))
+    for t in texts:
+        doc = content[t["file"]]
+        for lang in ("ar", "en"):
+            path = t[f"path_{lang}"]
+            parent = walk(doc, path[:-1])
+            if isinstance(parent, list):
+                parent[int(path[-1])] = t[lang]
+            else:
+                parent[path[-1]] = t[lang]
+    if texts:
+        print(f"✓ «المحتوى والظهور»: {len(texts)} published text(s) applied")
+
+
 def sar_text(amount: float, L: str) -> str:
     """The riyal formatter of rules.ts → sarText (one rule for the site, the emails and the build): «50 ريالًا»,
     «200 ريال», «3 ريالات» / "SAR 50"."""
@@ -389,7 +436,7 @@ def generate_function_content(content: dict[str, dict], fees: dict) -> None:
         "success_heading": {loc: ui[loc]["success"]["heading"] for loc in ("ar", "en")},
         "check_in_line": {loc: content["policies.json"][f"check_in_{loc}"] for loc in ("ar", "en")},
         "check_out_line": {loc: content["policies.json"][f"check_out_{loc}"] for loc in ("ar", "en")},
-        "cancellation_line": {loc: next(i for i in content["site-texts.json"]["why_armada"]["items"] if i["title_en"] == "Flexible cancellation")[f"body_{loc}"] for loc in ("ar", "en")},
+        "cancellation_line": {loc: content["site-texts.json"]["why_armada"]["items"][CANCEL_ITEM][f"body_{loc}"] for loc in ("ar", "en")},
         "partner_reply_line": content["partners-pages.json"]["form"]["sent_body"],
         "legal_line": {loc: content["legal.json"][f"footer_line_{loc}"] for loc in ("ar", "en")},
         # the two-line email footer (Ahmed, 26 Oct 2026): entity, then CR · VAT — from legal.json, never typed in email.ts
@@ -533,9 +580,14 @@ def run(cmd: list[str]) -> None:
 
 
 def main() -> int:
+    global CANCEL_ITEM
     content = {name: load_json(name) for name in REQUIRED_FILES}
     if (CONTENT / "partners.json").is_file():
         content["partners.json"] = load_json("partners.json")
+    # the «لماذا أرمادا» item the emails quote as the cancellation line, found by its English title in the file itself
+    CANCEL_ITEM = next(i for i, x in enumerate(content["site-texts.json"]["why_armada"]["items"]) if x["title_en"] == "Flexible cancellation")
+    run(["node", "scripts/content-build.mjs"])
+    apply_published_texts(content)
     problems = validate(content)
     if problems:
         print("content/ validation failed:")

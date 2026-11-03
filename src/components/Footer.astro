@@ -9,6 +9,7 @@ import {
   L,
   localePath,
   mailHref,
+  offersPageLive,
   otherLocale,
   siteName,
   siteTexts,
@@ -33,7 +34,7 @@ const slogan = locale === 'ar' ? siteTexts.slogan_ar : siteTexts.slogan_en;
 const siteLinks: { key: keyof typeof t.nav; path: string }[] = [
   { key: 'discover-taif', path: '/discover-taif/' },
   { key: 'blog', path: '/blog/' },
-  { key: 'offers', path: '/offers/' },
+  ...(offersPageLive ? [{ key: 'offers' as const, path: '/offers/' }] : []),
   { key: 'partners', path: '/partners/' },
   { key: 'contact', path: '/contact/' },
   { key: 'faq', path: '/faq/' },

@@ -260,7 +260,8 @@ const COVER_SIZES = '(min-width: 1152px) 1120px, 100vw';
         </div>
       </dl>
     </div>
-    <div class="reveal reveal-lg bg-white border border-line rounded-card p-6 self-start" style="--reveal-delay:120ms">
+    {/* the other branch, unless it is hidden in «المحتوى والظهور» (3 Nov 2026) */}
+    <div class="reveal reveal-lg bg-white border border-line rounded-card p-6 self-start" style="--reveal-delay:120ms" hidden={!other}>
       <h2 class="text-sm font-semibold uppercase tracking-wide text-bronze-text">{t.branch.other_branch}</h2>
       {
         other && (

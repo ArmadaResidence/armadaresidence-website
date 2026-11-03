@@ -9,7 +9,7 @@ import '../../styles/legacy-overrides.css';
 import '../../styles/legacy-dark.css';
 import Base from '@layouts/Base.astro';
 import { langPaths } from '@lib/paths';
-import { branchBySlug, branchPath, L, localePath, pageSeo, taif, taifPlaces, ui, type Locale, type Place } from '@lib/content';
+import { branchBySlug, branchPath, branchVisible, L, localePath, pageSeo, taif, taifPlaces, ui, type Locale, type Place } from '@lib/content';
 
 export const getStaticPaths = langPaths;
 
@@ -179,10 +179,13 @@ const colCount = (n: number) => (ar ? (n === 2 ? 'وجهتان' : `${n} وجها
                     </h3>
                     <p class="card-desc">{ar ? p.description_ar : p.description_en}</p>
                     {p.maps_note_ar && <p class="card-desc card-note">{ar ? p.maps_note_ar : p.maps_note_en}</p>}
-                    <p class="card-desc card-note">
-                      {t.taif.nearest}:{' '}
-                      <a href={branchPath(locale, branch.slug)}>{L(locale, branch, 'name')}</a>
-                    </p>
+                    {/* a branch hidden in «المحتوى والظهور» (3 Nov 2026): no link to it, no booking button for it */}
+                    {branchVisible(branch.slug) && (
+                      <p class="card-desc card-note">
+                        {t.taif.nearest}:{' '}
+                        <a href={branchPath(locale, branch.slug)}>{L(locale, branch, 'name')}</a>
+                      </p>
+                    )}
                     <div class="card-actions">
                       <div class="card-actions-row">
                         <button type="button" class="btn btn-outline btn-plan" data-id={p.id} aria-pressed="false" aria-label={tx('أضف إلى خطتي: ', 'Add to My Plan: ') + (ar ? p.name_ar : p.name_en)}>
@@ -207,9 +210,11 @@ const colCount = (n: number) => (ar ? (n === 2 ? 'وجهتان' : `${n} وجها
                           <span>{ar ? m.label_ar : m.label_en}</span>
                         </a>
                       ))}
-                      <a class="btn btn-outline btn-sm" href={`${localePath(locale, '/booking/')}?branch=${branch.slug}`}>
-                        {t.taif.book_near}
-                      </a>
+                      {branchVisible(branch.slug) && (
+                        <a class="btn btn-outline btn-sm" href={`${localePath(locale, '/booking/')}?branch=${branch.slug}`}>
+                          {t.taif.book_near}
+                        </a>
+                      )}
                     </div>
                   </div>
                 </article>

@@ -8,7 +8,7 @@
  * photos in its «الصور» order (cover first, then the gallery by its sort, then the story scenes).
  * The page, its nav link (after «طريق الشفا») and its sitemap entry exist only once at least GALLERY_MIN photos qualify.
  */
-import { branches, hallPath, halls, L, localePath, media, roomPath, roomsFor, venueName, venuePages, venuePath, type Locale, type SitePhoto } from './content';
+import { branches, hallPath, halls, L, localePath, media, roomPath, roomsFor, sectionVisible, venueName, venuePages, venuePath, type Locale, type SitePhoto } from './content';
 
 export const GALLERY_MIN = 6;
 /** the filters, in display order (each shown only when it has photos) */
@@ -62,7 +62,8 @@ function build(): GalleryItem[] {
 
 export const galleryItems: GalleryItem[] = build();
 /** /gallery/ exists (page, nav link, sitemap entry) only from GALLERY_MIN photos (Ahmed, 2 Nov 2026) */
-export const galleryLive: boolean = galleryItems.length >= GALLERY_MIN;
+/** the page exists from GALLERY_MIN photos, unless hidden in «المحتوى والظهور» (3 Nov 2026) */
+export const galleryLive: boolean = galleryItems.length >= GALLERY_MIN && sectionVisible('gallery');
 
 /** does the photo belong under this filter (a branch filter: every photo of that branch) */
 export function inFilter(it: GalleryItem, f: GalleryFilter): boolean {

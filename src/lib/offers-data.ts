@@ -6,7 +6,7 @@
  */
 import offersJson from '../../content/offers.json';
 import { sarText } from '../../supabase/functions/booking-request/rules.ts';
-import { branches, diningLive, fill, localePath, media, partnersPath, ui, venuePath, venues, type Locale, type SitePhoto } from './content';
+import { branches, contentGen, diningLive, fill, localePath, media, partnersPath, ui, venuePath, venues, type Announcement, type Locale, type SitePhoto } from './content';
 
 export type OfferCategory = 'individuals' | 'b2b' | 'dining';
 /** One live offer, the shape of the manifest. */
@@ -113,8 +113,27 @@ export const promoCodesLive: boolean = live.some((o) => o.category === 'individu
 export type Placement = 'show_home' | 'show_offers' | 'show_branch' | 'show_partners' | 'show_menu';
 export const offersFor = (placement: Placement, category?: OfferCategory, branch?: string): Offer[] =>
   siteOffers.filter((o) => o[placement] && (!category || o.category === category) && (!branch || o.branches.includes(branch)));
-/** the announcement bar: the one offer that holds it */
-export const barOffer: Offer | null = siteOffers.find((o) => o.show_bar) ?? null;
+/** the announcement bar — one system since 3 Nov 2026 («المحتوى والظهور» → «شريط الإعلان»; the offers' own bar
+ *  placement is retired): today's published announcement (Riyadh, this build's day), either a featured offer — shown as
+ *  before, its title and «التفاصيل» — or a custom text with an optional link. `id` keys the visitor's dismissal (an
+ *  offer's slug, as before); `until` hides it in the browser once its last day has passed after this build. */
+export type SiteBar =
+  | { id: string; kind: 'offer'; offer: Offer; until: string | null }
+  | { id: string; kind: 'custom'; text_ar: string; text_en: string; link: string | null; link_label_ar: string; link_label_en: string; until: string | null };
+const barDay = contentGen.today || offersToday;
+const announcement: Announcement | undefined = contentGen.announcements.find((a) => (!a.starts_on || a.starts_on <= barDay) && (!a.ends_on || a.ends_on >= barDay));
+const earliest = (a: string | null, b: string | null) => (a && b ? (a < b ? a : b) : a || b);
+export const siteBar: SiteBar | null = (() => {
+  if (!announcement) return null;
+  if (announcement.kind === 'custom') {
+    const { id, text_ar, text_en, link, link_label_ar, link_label_en, ends_on } = announcement;
+    return { id, kind: 'custom', text_ar, text_en, link, link_label_ar, link_label_en, until: ends_on };
+  }
+  const offer = siteOffers.find((o) => o.slug === announcement.offer);
+  return offer ? { id: offer.slug, kind: 'offer', offer, until: earliest(announcement.ends_on, offer.valid_to) } : null;
+})();
+/** the featured offer of the bar, when the bar is one */
+export const barOffer: Offer | null = siteBar?.kind === 'offer' ? siteBar.offer : null;
 /** the live pop-up while its offer is on the site today */
 export const offerPopup: (OfferPopup & { target: Offer }) | null = (() => {
   const p = data.popup;

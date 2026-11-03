@@ -191,7 +191,14 @@ def main() -> int:
         for m in re.finditer(r"""["'(]([^"'()\s]*logo[^"'()\s]*\.(?:png|jpe?g|webp|gif))["')]""", text, re.I):
             rep.f("brand assets", f"{src_file.relative_to(ROOT).as_posix()}: raster logo {m.group(1)!r} (SVG only)")
 
-    content = {n: json.loads((CONTENT / n).read_text(encoding="utf-8")) for n in
+    # «المحتوى والظهور» (3 Nov 2026): the hidden pages (a branch with its rooms and hall, a room type, a section)
+    gen_file = CONTENT / "content.generated.json"
+    hidden = (json.loads(gen_file.read_text(encoding="utf-8")).get("hidden") if gen_file.is_file() else None) or {}
+    hidden_paths = [f"/{b}/" for b in hidden.get("branches", [])] + [f"/{r}/" for r in hidden.get("rooms", [])]
+    hidden_paths += [f"/{s_}/" for s_ in hidden.get("sections", []) if s_ in ("gallery", "offers", "dining")]
+    if "hall" in hidden.get("sections", []):
+        hidden_paths += [f"/{h['branch']}/hall/" for h in json.loads((CONTENT / "halls.json").read_text(encoding="utf-8"))["halls"]]
+    content = {n: with_published_texts(n, json.loads((CONTENT / n).read_text(encoding="utf-8"))) for n in
                ("branches.json", "rooms.json", "pricing.json", "contact.json", "seo.json", "ui.json")}
     site = content["seo.json"]["site_url"].rstrip("/")
     site_host = urlsplit(site).netloc
@@ -209,7 +216,7 @@ def main() -> int:
     # «العروض» (2 Nov 2026): a restaurant / café offer states its own explicit price (CLAUDE.md §5) — exactly that line,
     # built from the offers data and ui.json, is removed before the price rules; any other price still fails
     allowed_fee_lines += offer_price_lines(ui)
-    policies_json = json.loads((CONTENT / "policies.json").read_text(encoding="utf-8"))
+    policies_json = with_published_texts("policies.json", json.loads((CONTENT / "policies.json").read_text(encoding="utf-8")))
     guests_sec = next((s for s in policies_json["page"]["sections"] if s.get("id") == "guests"), None) if "page" in policies_json else None
     if guests_sec is None:
         guests_sec = next((s for s in policies_json.get("sections", []) if s.get("id") == "guests"), None)
@@ -551,6 +558,10 @@ def main() -> int:
             elif href.startswith("/") and not href.startswith("//"):
                 if not exists(href):
                     rep.f("links", f"{path}: broken internal link {href}")
+                # a page hidden in «المحتوى والظهور» (3 Nov 2026) is never linked — only its redirect answers its URL
+                bare = re.sub(r"^/en(?=/)", "", href.split("#")[0].split("?")[0])
+                if bare and any(bare == h or bare.startswith(h) for h in hidden_paths):
+                    rep.f("visibility", f"{path}: links to the hidden page {href}")
             elif href.startswith("tel:"):
                 num = href[4:]
                 if num not in known_phones_all:
@@ -973,6 +984,27 @@ def parse_frontmatter(text: str) -> tuple[dict, str] | None:
     return data, m.group(2)
 
 
+
+def with_published_texts(name: str, doc: dict) -> dict:
+    """A content file as the site shows it: the texts published from «المحتوى والظهور» applied by path (3 Nov 2026 —
+    content/content.generated.json; build.py checked their anchors)."""
+    f = CONTENT / "content.generated.json"
+    if not f.is_file():
+        return doc
+    for t in json.loads(f.read_text(encoding="utf-8")).get("texts") or []:
+        if t.get("file") != name:
+            continue
+        for lang in ("ar", "en"):
+            path = t[f"path_{lang}"]
+            o = doc
+            for k in path[:-1]:
+                o = o[int(k)] if isinstance(o, list) else o[k]
+            if isinstance(o, list):
+                o[int(path[-1])] = t[lang]
+            else:
+                o[path[-1]] = t[lang]
+    return doc
+
 def check_photos(rep: "Report") -> None:
     """Photos imported by scripts/photos-import.mjs (rooms.json / branches.json → photos, og_image): every file exists
     and every photo has a real alt in both languages — never invented, so an empty one fails with the full list."""
@@ -1076,8 +1108,10 @@ def check_gallery(rep: "Report") -> None:
     published derived file with its alt; its CollectionPage lists as many images as the grid."""
     G = "gallery"
     pages = {"ar": DIST / "gallery" / "index.html", "en": DIST / "en" / "gallery" / "index.html"}
-    live = pages["ar"].is_file()
-    if pages["en"].is_file() != live:
+    # a redirect page (the gallery hidden in «المحتوى والظهور», 3 Nov 2026) is not the page
+    built = lambda f: f.is_file() and 'http-equiv="refresh"' not in f.read_text(encoding="utf-8")[:2000]
+    live = built(pages["ar"])
+    if built(pages["en"]) != live:
         rep.f(G, "/gallery/ and /en/gallery/ must exist together")
     for lang, home in (("ar", DIST / "index.html"), ("en", DIST / "en" / "index.html")):
         if not home.is_file():
@@ -1129,7 +1163,14 @@ def check_offers(rep: "Report") -> None:
         return o.get("show_site") and (not o.get("valid_from") or o["valid_from"] <= today) and (not o.get("valid_to") or o["valid_to"] >= today)
     gone = {o["slug"] for o in offers if not on_site(o)}
     live = {o["slug"]: o for o in offers if on_site(o)}
-    want_bar = data.get("source") != "none" and any(o.get("show_bar") for o in live.values())
+    # the bar is one system since 3 Nov 2026 («المحتوى والظهور» → content/content.generated.json → announcements): today's
+    # announcement — a custom text, or a featured offer that is on the site today
+    gen_file = CONTENT / "content.generated.json"
+    gen = json.loads(gen_file.read_text(encoding="utf-8")) if gen_file.is_file() else {}
+    bar_day = gen.get("today") or today
+    ann = next((a for a in gen.get("announcements") or [] if (not a.get("starts_on") or a["starts_on"] <= bar_day) and (not a.get("ends_on") or a["ends_on"] >= bar_day)), None)
+    seed_slugs = {"umrah-groups", "corporate-long-stays"}
+    want_bar = bool(ann) and (ann.get("kind") == "custom" or ann.get("offer") in live or (data.get("source") == "none" and ann.get("offer") in seed_slugs))
     popup = data.get("popup") if data.get("source") != "none" else None
     want_popup = bool(popup and popup.get("offer") in live)
     for page in DIST.rglob("*.html"):
@@ -1324,7 +1365,9 @@ def check_articles(rep: "Report", pages: dict) -> None:
             if d.get("branch") in (None, ""):
                 if f"{pre}/booking/" not in pg.links or any(l.startswith(f"{pre}/booking/?branch=") for l in pg.links):
                     rep.f(G, f"{p_}: an article linked to no branch must offer one booking box without a branch")
-            for bs in ([d["branch"]] if d.get("branch") in branches else sorted(branches) if d.get("branch") == "both" else []):
+            gen_f = CONTENT / "content.generated.json"
+            shown = branches - set(((json.loads(gen_f.read_text(encoding="utf-8")).get("hidden") or {}).get("branches") or []) if gen_f.is_file() else [])
+            for bs in ([d["branch"]] if d.get("branch") in shown else sorted(shown) if d.get("branch") == "both" else []):
                 if f"{pre}/booking/?branch={bs}" not in pg.links:
                     rep.f(G, f"{p_}: booking card for {bs} missing")
             if d.get("related_place"):
