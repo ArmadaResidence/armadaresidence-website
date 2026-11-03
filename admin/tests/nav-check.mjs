@@ -283,6 +283,7 @@ const groupsOf = (page, scope = '[data-sidebar]') => page.locator(`${scope} [dat
   const items = await navItems(page, '[data-nav-drawer]');
   check(!items.includes('media') && !items.includes('blog') && !items.includes('users') && items.includes('bookings') && items.includes('rates'), 'reception: operations, no content, no users', items.join(' '));
   check(!(await groupsOf(page, '[data-nav-drawer]')).includes('content'), 'reception: the empty «المحتوى والتسويق» group is hidden');
+  await page.waitForTimeout(700); // the slide-in
   await shot(page, 'mobile-drawer');
   await page.evaluate(() => (document.documentElement.dataset.theme = 'dark'));
   await shot(page, 'mobile-drawer-dark');

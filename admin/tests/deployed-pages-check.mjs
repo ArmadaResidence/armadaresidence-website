@@ -86,7 +86,10 @@ async function run(viewport, tag, email = ADMIN) {
   // a deep link on GitHub Pages is served by 404.html with status 404 (the SPA fallback) — the only 4xx that is expected
   const isSpaFallback = (r) => r.request().resourceType() === 'document' && r.status() === 404 && r.url().startsWith(BASE_ORIGIN);
   page.on('console', (m) => m.type() === 'error' && !/realtime|websocket/i.test(m.text()) && !(/status of 404/.test(m.text()) && (m.location()?.url ?? '').startsWith(BASE_ORIGIN)) && problems.push(`console: ${m.text().slice(0, 160)}`));
-  page.on('requestfailed', (r) => !/realtime/.test(r.url()) && problems.push(`request failed: ${r.method()} ${r.url().slice(0, 120)} — ${r.failure()?.errorText}`));
+  // the «الحجوزات» badge counts requests with a debounced HEAD (3 Nov 2026): this check full-loads the next page while it
+  // may still be in flight, and the browser cancels it (ERR_ABORTED) — a navigation, not a failure
+  const badgeCount = (r) => r.method() === 'HEAD' && /\/rest\/v1\/reservations\?select=id&status=eq\.request/.test(r.url()) && r.failure()?.errorText === 'net::ERR_ABORTED';
+  page.on('requestfailed', (r) => !/realtime/.test(r.url()) && !badgeCount(r) && problems.push(`request failed: ${r.method()} ${r.url().slice(0, 120)} — ${r.failure()?.errorText}`));
   page.on('response', (r) => r.status() >= 400 && !isSpaFallback(r) && problems.push(`HTTP ${r.status()}: ${r.request().method()} ${r.url().slice(0, 120)}`));
   const take = () => problems.splice(0);
 
@@ -131,7 +134,8 @@ async function run(viewport, tag, email = ADMIN) {
     check(alerts.length === 0 && !/Failed to fetch/i.test(body), `${tag}: /${p.path} shows no error`, alerts.join(' | ') || 'Failed to fetch in the page');
     check(probs.length === 0, `${tag}: /${p.path} no console / page / request errors`, probs.join(' | '));
   }
-  if (viewport.width < 768) check(await page.locator('nav.md\\:hidden').isVisible(), `${tag}: mobile tab bar visible`);
+  // phones (3 Nov 2026): the sidebar is a drawer opened from the top bar's menu button
+  if (viewport.width < 768) check((await page.locator('[data-action="nav-open"]').isVisible()) && !(await page.locator('[data-sidebar]').isVisible()), `${tag}: the menu button opens the navigation (no sidebar)`);
   await ctx.close();
 }
 
