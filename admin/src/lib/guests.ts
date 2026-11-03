@@ -153,3 +153,33 @@ export async function consentText(version: string): Promise<{ text_ar: string; t
   return (data ?? null) as { text_ar: string; text_en: string } | null;
 }
 
+// ── exports (part F) ──
+export type Platform = 'meta' | 'google' | 'tiktok' | 'snapchat';
+/** each platform's customer-list headers for SHA-256 values (the database hashes; the phone rule is per platform:
+ *  Google and TikTok E.164 with «+», Meta and Snapchat the digits with the country code) */
+export const PLATFORMS: { key: Platform; label: string; email: string; phone: string }[] = [
+  { key: 'meta', label: 'ميتا (فيسبوك وإنستغرام)', email: 'email', phone: 'phone' },
+  { key: 'google', label: 'جوجل (Customer Match)', email: 'Email', phone: 'Phone' },
+  { key: 'tiktok', label: 'تيك توك', email: 'Email_SHA256', phone: 'Phone_SHA256' },
+  { key: 'snapchat', label: 'سناب شات', email: 'EMAIL_SHA256', phone: 'PHONE_SHA256' },
+];
+const cleanFilters = (f: GuestFilter) => Object.fromEntries(Object.entries(f).filter(([, v]) => v !== undefined && v !== ''));
+export async function audienceRows(platform: Platform, f: GuestFilter): Promise<{ email_sha256: string | null; phone_sha256: string | null }[]> {
+  return (await rpc<{ email_sha256: string | null; phone_sha256: string | null }[]>('guest_export_audience', { p_platform: platform, p_filters: cleanFilters(f) })) ?? [];
+}
+/** the platform file: its two headers, one row per profile, hex hashes only (no formula wrapping is needed) */
+export function audienceCsv(platform: Platform, rows: { email_sha256: string | null; phone_sha256: string | null }[]): string {
+  const p = PLATFORMS.find((x) => x.key === platform)!;
+  return [`${p.email},${p.phone}`, ...rows.map((r) => `${r.email_sha256 ?? ''},${r.phone_sha256 ?? ''}`)].join('\r\n') + '\r\n';
+}
+export interface ContactRow {
+  name: string | null;
+  phone: string | null;
+  email: string | null;
+  language: string;
+  consent_at: string;
+  consent_source: string;
+  member: boolean;
+  club_source: string | null;
+}
+export const contactRows = (f: GuestFilter) => rpc<ContactRow[]>('guest_export_contacts', { p_filters: cleanFilters(f) });

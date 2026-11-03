@@ -11,12 +11,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import * as api from '../lib/api';
 import { useSession } from '../lib/session';
-import { BOOKING, BRANCH_NAMES, countWord, riyadhDateTime, sar, shortDate, STATUS_LABELS, type CountNoun } from '../lib/format';
+import { BOOKING, BRANCH_NAMES, countWord, riyadhDateTime, riyadhToday, sar, shortDate, STATUS_LABELS, toCsv, type CountNoun } from '../lib/format';
 import {
-  bookingGuest, CLUB_SOURCES, clubSourceLabel, clubTotals, consents, consentText, CONSENT_CHIP, CONSENT_LABEL, guest, guestBookings, guests,
-  merge, recordConsent, save, SOURCE_LABEL, type ClubTotals, type ConsentEvent, type Guest, type GuestBooking, type GuestFilter,
+  audienceCsv, audienceRows, bookingGuest, CLUB_SOURCES, clubSourceLabel, clubTotals, consents, consentText, CONSENT_CHIP, CONSENT_LABEL, contactRows, guest, guestBookings, guests,
+  merge, PLATFORMS, recordConsent, save, SOURCE_LABEL, type ClubTotals, type ConsentEvent, type Guest, type GuestBooking, type GuestFilter, type Platform,
 } from '../lib/guests';
-import { CancelButton, Drawer, Empty, ErrorBox, Field, Loading, Modal, Spinner, useToast } from '../components/ui';
+import { CancelButton, Confirm, Drawer, Empty, ErrorBox, Field, Loading, Modal, Spinner, useToast } from '../components/ui';
 import DateField from '../components/DateField';
 
 const GUEST: CountNoun = { zero: 'لا عملاء', one: 'عميل واحد', two: 'عميلان', few: 'عملاء', many: 'عميلًا', gen: 'عميل' };
@@ -24,15 +24,29 @@ const MEMBER: CountNoun = { zero: 'لا أعضاء', one: 'عضو واحد', two
 const STAY: CountNoun = { zero: 'لا إقامات', one: 'إقامة واحدة', two: 'إقامتان', few: 'إقامات', many: 'إقامة', gen: 'إقامة' };
 const NIGHTS: CountNoun = { zero: 'لا ليالي', one: 'ليلة واحدة', two: 'ليلتان', few: 'ليالٍ', many: 'ليلة', gen: 'ليلة' };
 
+function download(name: string, text: string) {
+  const blob = new Blob([text], { type: 'text/csv;charset=utf-8' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = name;
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
 export default function Guests() {
   const { me } = useSession();
+  const toast = useToast();
   const editable = api.canEdit(me, 'guests');
+  const canPlain = api.canView(me, 'guests_export');
   const [rows, setRows] = useState<Guest[] | null>(null);
   const [totals, setTotals] = useState<ClubTotals | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [f, setF] = useState<GuestFilter>({});
   const [q, setQ] = useState('');
   const [open, setOpen] = useState<string | null>(null);
+  const [exportOpen, setExportOpen] = useState(false);
+  const [plainOpen, setPlainOpen] = useState(false);
+  const [busy, setBusy] = useState<string | null>(null);
 
   // filters change faster than the database answers: only the latest request may fill the list
   const latest = useRef(0);
@@ -66,6 +80,36 @@ export default function Guests() {
   const set = (k: keyof GuestFilter, v: string) => setF((x) => ({ ...x, [k]: v || undefined }));
   const consented = useMemo(() => (rows ?? []).filter((r) => r.consent === 'granted').length, [rows]);
 
+  async function exportPlatform(p: Platform) {
+    setBusy(p);
+    try {
+      const data = await audienceRows(p, f);
+      download(`audience-${p}-${riyadhToday()}.csv`, audienceCsv(p, data));
+      toast(`صُدّر ملف ${PLATFORMS.find((x) => x.key === p)!.label}: ${countWord(data.length, GUEST)} بموافقة سارية؛ سُجّل التصدير في السجل.`);
+    } catch (e) {
+      toast((e as Error).message, 'error');
+    } finally {
+      setBusy(null);
+    }
+  }
+  async function exportPlain() {
+    setBusy('plain');
+    try {
+      const data = (await contactRows(f)).map((r) => ({ ...r, consent_time: riyadhDateTime(r.consent_at), source_ar: SOURCE_LABEL[r.consent_source] ?? r.consent_source, member_ar: r.member ? 'نعم' : 'لا', club_ar: clubSourceLabel(r.club_source), language_ar: r.language === 'en' ? 'الإنجليزية' : 'العربية' }));
+      const cols = [
+        { key: 'name', label: 'الاسم' }, { key: 'phone', label: 'الجوال' }, { key: 'email', label: 'البريد' }, { key: 'language_ar', label: 'اللغة' },
+        { key: 'consent_time', label: 'وقت الموافقة' }, { key: 'source_ar', label: 'مصدر الموافقة' }, { key: 'member_ar', label: 'عضو النادي' }, { key: 'club_ar', label: 'مصدر العضوية' },
+      ];
+      download(`contacts-${riyadhToday()}.csv`, toCsv(data, cols));
+      toast(`صُدّرت ${countWord(data.length, GUEST)} بموافقة سارية؛ سُجّل التصدير في السجل.`);
+      setPlainOpen(false);
+    } catch (e) {
+      toast((e as Error).message, 'error');
+    } finally {
+      setBusy(null);
+    }
+  }
+
   if (rows === null) return <Loading />;
   return (
     <div className="grid gap-5 max-w-6xl">
@@ -76,6 +120,14 @@ export default function Guests() {
             ملف لكل ضيف يُبنى من الحجوزات والتسجيل في نادي أرمادا ريزيدنس، مع موافقته على العروض والإعلانات وسجلها.
             {!editable ? ' صلاحيتك هنا للعرض فقط.' : ''}
           </p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          {editable && (
+            <button type="button" className="btn btn-ghost" onClick={() => setExportOpen(true)} data-action="guests-export-ads">تصدير للإعلانات</button>
+          )}
+          {canPlain && (
+            <button type="button" className="btn btn-ghost" onClick={() => setPlainOpen(true)} data-action="guests-export-plain">تصدير جهات الاتصال</button>
+          )}
         </div>
       </div>
 
@@ -185,6 +237,33 @@ export default function Guests() {
         {open && <GuestDetails key={open} id={open} editable={editable} onChanged={load} onOpen={(id) => setOpen(id)} />}
       </Drawer>
 
+      <Modal open={exportOpen} onClose={() => setExportOpen(false)} title="تصدير للإعلانات" busy={!!busy}>
+        <div className="grid gap-3 text-sm" data-export-ads>
+          <p>يشمل الملف فقط العملاء الذين وافقوا على العروض والإعلانات وما زالت موافقتهم سارية، بحسب التصفية الحالية. يُشفَّر الجوال والبريد بخوارزمية SHA-256 قبل التصدير، ولا يُصدَّر أي منهما نصًا واضحًا.</p>
+          <ul className="grid gap-2">
+            {PLATFORMS.map((p) => (
+              <li key={p.key} className="flex flex-wrap items-center justify-between gap-2 border border-line rounded p-2">
+                <span><strong>{p.label}</strong> <span className="text-ink-muted latin" dir="ltr">{p.email}, {p.phone}</span></span>
+                <button type="button" className="btn btn-ghost btn-sm" disabled={!!busy} onClick={() => void exportPlatform(p.key)} data-action={`export-${p.key}`}>
+                  {busy === p.key && <Spinner />} تنزيل الملف
+                </button>
+              </li>
+            ))}
+          </ul>
+          <p className="text-xs text-ink-muted">يُسجَّل كل تصدير في السجل: من صدّر، ومتى، والتصفية، وعدد الصفوف.</p>
+          <div className="flex justify-end"><CancelButton label="إغلاق" disabled={!!busy} /></div>
+        </div>
+      </Modal>
+
+      <Confirm
+        open={plainOpen}
+        onClose={() => setPlainOpen(false)}
+        title="تصدير جهات الاتصال بنص واضح"
+        body={<>ستُصدَّر أسماء العملاء الذين وافقوا على العروض وأرقام جوالاتهم وبريدهم الإلكتروني بنص واضح، بحسب التصفية الحالية، لاستخدامها في المراسلة فقط. احفظ الملف في مكان آمن واحذفه بعد الاستخدام. يُسجَّل التصدير في السجل.</>}
+        confirmLabel="تصدير الملف"
+        onConfirm={() => void exportPlain()}
+        busy={busy === 'plain'}
+      />
     </div>
   );
 }
