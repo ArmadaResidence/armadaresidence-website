@@ -40,6 +40,19 @@ import { readFileSync } from 'node:fs';
 import { APP_PATH, handleBackupCodes, passCode, routeLoginCode } from './code-login.mjs';
 import { guardChecks, pageGuardChecks } from './dialog-guard.mjs';
 
+/** sign out through the account menu of the sidebar (3 Nov 2026: «خروج» lives there since the navigation of session 3) */
+async function signOutVia(page) {
+  let scope = '[data-sidebar]';
+  if (!(await page.locator('[data-sidebar]').isVisible())) {
+    // 375 px: the menu button opens the drawer, which holds the same account menu
+    await page.click('[data-action="nav-open"]');
+    await page.waitForSelector('[data-nav-drawer]');
+    scope = '[data-nav-drawer]';
+  }
+  await page.locator(`${scope} [data-action="account-menu"]`).click();
+  await page.locator(`${scope} [data-action="sign-out"]`).click();
+}
+
 const BASE = (process.argv[2] || 'http://127.0.0.1:5173').replace(/\/$/, '');
 const PW = 'Qa-Armada-2026!x';
 // what the invitee sets (26 Oct 2026 rule: ≥ 8 printable ASCII, no spaces, no required classes): letters and symbols only
@@ -925,7 +938,7 @@ try {
     check((await page.locator('[data-method]').getAttribute('data-method')) === 'code', 'security: this session passed with the email code');
     await digits(page, 'security');
     // sign out → sign in: the remembered device passes without a new code
-    await page.click('button:has-text("خروج")');
+    await signOutVia(page);
     await page.waitForURL(/\/login/, { timeout: 20000, waitUntil: 'commit' });
     const before = codes.length;
     await signIn(page, USERS.rec_shafa);
@@ -1009,7 +1022,7 @@ try {
     rctx.__codes = rcodes;
     await routeLoginCode(rctx, env.BOOKING_TEST_TOKEN, rcodes);
     const first = await login(USERS.admin, { ctx: rctx, remember: true });
-    await first.page.click('button:has-text("خروج")');
+    await signOutVia(first.page);
     await first.page.waitForURL(/\/login/, { timeout: 20000, waitUntil: 'commit' });
     const rp = (await login(USERS.admin, { ctx: rctx })).page; // a new session in the same browser: the device passes
     await rp.goto(`${BASE}/security`);
@@ -1054,7 +1067,7 @@ try {
     // a password change clears the remembered devices (trigger on auth.users)
     if (SERVICE) {
       const SH = { apikey: SERVICE, Authorization: `Bearer ${SERVICE}`, 'Content-Type': 'application/json' };
-      await page.click('button:has-text("خروج")');
+      await signOutVia(page);
       await page.waitForURL(/\/login/, { timeout: 20000, waitUntil: 'commit' });
       const kept = await login(USERS.rec_shafa, { ctx, remember: true });
       const device = await kept.page.evaluate(() => { const k = Object.keys(localStorage).find((x) => x.startsWith('armada-device:')); return k ? [k, localStorage.getItem(k)] : null; });
@@ -1325,6 +1338,7 @@ try {
     await page.click('[data-scope="breakfast"] button:has-text("+ شريحة")');
     await page.waitForTimeout(100);
     check(await page.evaluate(() => { const e = new Event('beforeunload', { cancelable: true }); window.dispatchEvent(e); return e.defaultPrevented; }), `settings @${vp.width}: an added child tier is not a change`);
+    if (openSel) await page.click(openSel); // phones: the drawer first (3 Nov 2026)
     await page.click(navSel);
     await page.locator('dialog[data-unsaved-confirm][open]').waitFor({ timeout: 3000 }).catch(() => {});
     check((await page.locator('dialog[data-unsaved-confirm][open]').count()) === 1, `settings @${vp.width}: leaving with an added tier did not ask`);
