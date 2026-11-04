@@ -96,6 +96,10 @@ const ref = book.body.ref;
 const club = await fn('club', { action: 'join', phone: phoneClub, country: 'SA', name: 'عضو اختبار', email: 'member.e2e@example.com', consent: true, consent_version: VERSION, lang: 'ar', src: 'breakfast-shafa', utm: {} });
 check(club.status === 200, 'club sign-up through the function', JSON.stringify(club.body));
 const res = (await rest(`reservations?ref=eq.${ref}&select=id,visit,profile_id`))[0];
+{
+  const g = (await rest(`guest_profiles?phone=eq.${encodeURIComponent(phoneBook)}&select=club_source,club_joined_at,consent_version`))[0];
+  check(g?.club_source === 'booking' && !!g.club_joined_at && g.consent_version === VERSION, 'the booking box makes the guest a member (source booking) with the current text version', JSON.stringify(g));
+}
 check(res?.visit?.utm_source === 'snapchat' && res.visit.sccid === true && res.visit.gclid === false && res.visit.referrer === 'www.snapchat.com' && res.visit.landing === '/airport-road/', 'the booking source is stored without personal data', JSON.stringify(res?.visit));
 
 const browser = await chromium.launch({ channel: 'chrome' });
@@ -153,7 +157,7 @@ const { ctx, page } = await login('admin@qa.invalid');
   const imp = (await rest('guest_profiles_library?phone=eq.%2B966500000921&select=club_source,consent,club_joined_at'))[0];
   check(imp?.club_source === 'breakfast-airport' && imp.consent === 'granted', 'the imported club member: its source and consent', JSON.stringify(imp));
   const c = (await rest('guest_consents?source=eq.club&at=eq.2026-11-03T04:45:00%2B00:00&select=text_version'))[0];
-  check(c?.text_version === VERSION, 'the imported consent keeps its original time and version', JSON.stringify(c));
+  check(c?.text_version === '2026-11-03', 'the imported consent keeps its original time and its own (first) text version', JSON.stringify(c));
 }
 
 // ══ «العملاء» ══
@@ -162,7 +166,7 @@ await page.waitForSelector('[data-list="guests"], [data-guests-count]');
 await shot(page, 'guests-list');
 const totals = await page.evaluate(() => Object.fromEntries([...document.querySelectorAll('[data-club-sources] tr[data-source]')].map((tr) => [tr.dataset.source, [...tr.querySelectorAll('td')].map((td) => Number(td.textContent))])));
 // test-mode sign-ups are left out of the totals by design: the imported (real) breakfast-airport member is counted
-check((totals['breakfast-airport']?.[0] ?? 0) >= 1 && (totals['breakfast-airport']?.[1] ?? 0) >= 1 && Object.keys(totals).join() === 'breakfast-airport,breakfast-shafa,site,reception,other', 'club totals by source: the imported breakfast-airport member counted in all and today', JSON.stringify(totals));
+check((totals['breakfast-airport']?.[0] ?? 0) >= 1 && Object.keys(totals).join() === 'breakfast-airport,breakfast-shafa,site,reception,booking,other', 'club totals by source: the imported breakfast-airport member counted', JSON.stringify(totals));
 // search
 await page.fill('#gf-q', phoneBook.slice(-7));
 await until(async () => (await page.locator('[data-list="guests"] [data-guest]').count()) === 1);
@@ -194,7 +198,7 @@ check(await until(async () => JSON.stringify((await rest(`guest_profiles?phone=e
 // withdraw on request, then record again in person
 await page.click('[data-action="consent-withdraw"]');
 await page.click('[data-action="consent-save"]');
-check(await until(async () => (await rest(`guest_profiles?phone=eq.${encodeURIComponent(phoneBook)}&select=consent,consent_source`))[0].consent === 'withdrawn'), 'withdrawal on the guest\'s request (source reception)');
+check(await until(async () => { const g = (await rest(`guest_profiles?phone=eq.${encodeURIComponent(phoneBook)}&select=consent,club_joined_at`))[0]; return g.consent === 'withdrawn' && g.club_joined_at === null; }), 'withdrawal on the guest\'s request ends the consent and the membership');
 await page.click('[data-action="consent-record"]');
 check(await page.locator('[data-consent-text-ar]').isVisible() && await page.locator('[data-consent-text-en]').isVisible(), 'the in-person consent shows the approved text in both languages');
 check(await page.locator('[data-action="consent-save"]').isDisabled(), 'record is disabled until the staff member confirms');

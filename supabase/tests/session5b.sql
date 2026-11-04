@@ -128,7 +128,9 @@ select pg_temp._check('D1 the library: stays, nights, spend (confirmed only), fi
 select pg_temp._check('D1 a club-only member: no stays, member, its source', (select stays = 0 and member and club_source = 'breakfast-airport' from public.guest_profiles_library where id = pg_temp._id('g2')));
 select pg_temp._save('t', public.guest_club_totals());
 select pg_temp._check('D2 club totals by source (all, today, this week)', (pg_temp._j('t') -> 'sources' -> 'breakfast-airport' ->> 'all')::int >= 1
-  and (pg_temp._j('t') -> 'sources' -> 'breakfast-airport' ->> 'today')::int >= 1 and (pg_temp._j('t') -> 'sources' -> 'site' ->> 'week')::int >= 1
+  and (pg_temp._j('t') -> 'sources' -> 'breakfast-airport' ->> 'today')::int >= 1 and (pg_temp._j('t') -> 'sources' -> 'breakfast-airport' ->> 'week')::int >= 1
+  -- g4 unsubscribed: a withdrawal ends the membership (4 Nov 2026), so it is not counted
+  and coalesce((pg_temp._j('t') -> 'sources' -> 'site' ->> 'all')::int, 0) = (select count(*) from public.guest_profiles where club_source = 'site' and club_joined_at is not null and not is_test and merged_into is null)
   and (pg_temp._j('t') ->> 'week_from')::date <= (pg_temp._j('t') ->> 'today')::date and extract(dow from (pg_temp._j('t') ->> 'week_from')::date) = 0);
 select pg_temp._fails('D3 view cannot save notes', $$select public.guest_save(pg_temp._id('g1'), 'x', '{}')$$, '42501');
 select pg_temp._fails('D3 view cannot merge', $$select public.guest_merge(pg_temp._id('g1'), pg_temp._id('d1'))$$, '42501');
