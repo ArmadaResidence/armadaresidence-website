@@ -9,7 +9,7 @@ import * as api from '../lib/api';
 import * as m from '../lib/metrics';
 import { workbook, type Sheet } from '../lib/xlsx';
 import { useSession } from '../lib/session';
-import { BRANCH_NAMES, dateRange, longDate, riyadhToday, sar, shortDate } from '../lib/format';
+import { BRANCH_NAMES, DAY, NIGHT, dateRange, longDate, measureWord, nightsWord, riyadhToday, sar, shortDate } from '../lib/format';
 import { BranchSelect, ErrorBox, Field } from '../components/ui';
 import DateField from '../components/DateField';
 import { AnimatedNumber, Bars, ChartCard, DataTable, HBars, HowTip, Legend, Lines, useFirstLoad } from '../components/charts';
@@ -86,7 +86,7 @@ export default function Reports() {
         </div>
         <div className="flex flex-wrap items-end gap-3 print:hidden" data-report-controls>
           <Field label="الفترة" id="rp-period">
-            <select id="rp-period" className="field w-auto" value={periodKey} onChange={(e) => setPeriodKey(e.target.value as m.PeriodKey)} data-period>
+            <select id="rp-period" data-tour="report-period" className="field w-auto" value={periodKey} onChange={(e) => setPeriodKey(e.target.value as m.PeriodKey)} data-period>
               {m.PERIOD_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
             </select>
           </Field>
@@ -94,7 +94,7 @@ export default function Reports() {
             <div className="min-w-[280px]"><DateField mode="range" label="من" endLabel="إلى" start={custom.from} end={custom.to} min="past" max={today} id="rp-custom" onChange={(a, b) => a && b && setCustom({ from: a, to: b })} /></div>
           )}
           <Field label="المقارنة" id="rp-cmp">
-            <select id="rp-cmp" className="field w-auto" value={cmpKey} onChange={(e) => setCmpKey(e.target.value as m.CompareKey)} data-compare>
+            <select id="rp-cmp" data-tour="report-period" className="field w-auto" value={cmpKey} onChange={(e) => setCmpKey(e.target.value as m.CompareKey)} data-compare>
               {m.COMPARE_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
             </select>
           </Field>
@@ -102,8 +102,8 @@ export default function Reports() {
             <div className="min-w-[280px]"><DateField mode="range" label="مقارنة من" endLabel="إلى" start={cmpCustom.from} end={cmpCustom.to} min="past" id="rp-cmp-custom" onChange={(a, b) => a && b && setCmpCustom({ from: a, to: b })} /></div>
           )}
           <BranchSelect id="rp-branch" label="الفرع" branches={branches} value={branch} onChange={setBranch} allLabel="الفرعان" />
-          <button type="button" className="btn btn-ghost" onClick={exportXlsx} disabled={!perf.data} data-action="xlsx"><Icon name="download" size={18} /> Excel</button>
-          <button type="button" className="btn btn-ghost" onClick={() => window.print()} data-action="pdf"><Icon name="print" size={18} /> PDF</button>
+          <button type="button" className="btn btn-ghost" onClick={exportXlsx} disabled={!perf.data} data-action="xlsx" data-tour="report-export"><Icon name="download" size={18} /> Excel</button>
+          <button type="button" className="btn btn-ghost" onClick={() => window.print()} data-action="pdf" data-tour="report-export"><Icon name="print" size={18} /> PDF</button>
         </div>
       </div>
 
@@ -200,8 +200,8 @@ function BehaviourSection({ s, first }: { s: Sect<m.Behaviour>; first: boolean }
         <>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             <Kpi k="bookings" title="الحجوزات المؤكدة" how={m.HOW.bookings} value={<AnimatedNumber value={d.bookings} first={first} />} />
-            <Kpi k="los" title="متوسط مدة الإقامة" how={m.HOW.los} value={d.avg_los === null ? '—' : <><AnimatedNumber value={d.avg_los} first={first} format={(x) => m.fmt1(x)} /> <span className="text-sm font-normal">ليلة</span></>} />
-            <Kpi k="lead" title="متوسط الحجز المسبق" how={m.HOW.lead} value={d.avg_lead === null ? '—' : <><AnimatedNumber value={d.avg_lead} first={first} format={(x) => m.fmt1(x)} /> <span className="text-sm font-normal">يوم</span></>} />
+            <Kpi k="los" title="متوسط مدة الإقامة" how={m.HOW.los} value={d.avg_los === null ? '—' : <AnimatedNumber value={d.avg_los} first={first} format={(x) => measureWord(x, NIGHT)} />} />
+            <Kpi k="lead" title="متوسط الحجز المسبق" how={m.HOW.lead} value={d.avg_lead === null ? '—' : <AnimatedNumber value={d.avg_lead} first={first} format={(x) => measureWord(x, DAY)} />} />
             <Kpi k="same-day" title="حجوزات اليوم نفسه" how={m.HOW.sameDay} value={<AnimatedNumber value={d.same_day_share} first={first} format={(x) => m.pctText(x)} />} />
           </div>
           <div className="grid lg:grid-cols-2 gap-4">
@@ -236,7 +236,7 @@ function SourcesSection({ s, money, first }: { s: Sect<m.SourcesReport>; money: 
             summary={d.bookings ? `الحجوزات المؤكدة حسب المصدر: ${d.sources.map((x) => `${m.sourceLabel(x.key)} ${x.bookings}`).join('، ')}.` : 'لا حجوزات مؤكدة في الفترة.'}
             table={{ head: ['المصدر', 'الحجوزات', 'الليالي', ...(money ? ['الإيراد', 'حصة الإيراد'] : [])], rows: d.sources.map((x) => [m.sourceLabel(x.key), x.bookings, x.nights, ...(money ? [sar(x.revenue ?? 0), m.pctText(x.revenue_share)] : [])]) }}>
             {d.bookings === 0 ? <p className="text-sm text-ink-muted">لا حجوزات مؤكدة في الفترة.</p> : (
-              <HBars first={first} cls="s2" rows={d.sources.map((x) => ({ key: x.key, label: m.sourceLabel(x.key), value: x.bookings, text: money && x.revenue !== undefined ? `${x.bookings} · ${sar(x.revenue)} · ${m.pctText(x.revenue_share)}` : `${x.bookings} · ${x.nights} ليلة` }))} />
+              <HBars first={first} cls="s2" rows={d.sources.map((x) => ({ key: x.key, label: m.sourceLabel(x.key), value: x.bookings, text: money && x.revenue !== undefined ? `${x.bookings} · ${sar(x.revenue)} · ${m.pctText(x.revenue_share)}` : `${x.bookings} · ${nightsWord(x.nights)}` }))} />
             )}
           </ChartCard>
           <section className="card p-4" aria-labelledby="camp-h" data-campaigns>
@@ -261,7 +261,7 @@ function CancelSection({ s, first }: { s: Sect<m.Cancellations>; first: boolean 
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             <Kpi k="cancel-rate" title="نسبة الإلغاء" how={m.HOW.cancelRate} value={<AnimatedNumber value={d.rate} first={first} format={(x) => m.pctText(x)} />} />
             <Kpi k="cancelled" title="أُلغيت بعد التأكيد" how={m.HOW.cancelRate} value={<span className="num-ar">{d.cancelled} من {d.confirmed}</span>} />
-            <Kpi k="reply" title="وقت الرد (الوسيط)" how={m.HOW.reply} value={<span className="num-ar">{m.durationText(d.reply_median_minutes)}</span>} />
+            <Kpi k="reply" title="وقت الرد المعتاد" how={m.HOW.reply} value={<span className="num-ar">{m.durationText(d.reply_median_minutes)}</span>} />
             <Kpi k="partners-reply" title="أول تواصل مع الشركاء (الوسيط)" how={m.HOW.partnersReply} value={<span className="num-ar">{m.durationText(d.partners_median_minutes)}</span>} />
           </div>
           <p className="text-xs text-ink-muted num-ar" data-declined>طلبات أُلغيت قبل تأكيدها: {d.declined} · طلبات حجز في الفترة: {d.requests}، رُدّ على {d.reply_count} منها.</p>
@@ -356,7 +356,7 @@ function buildSheets(x: { perf: m.Performance | null; beh: m.Behaviour | null; s
   const c = x.can;
   if (c) sheets.push({ name: 'الإلغاء والرد', blocks: [
     { title: head, rows: [['المؤشر', 'القيمة'], ['نسبة الإلغاء (٪)', num(c.rate)], ['أُلغيت بعد التأكيد', c.cancelled], ['تأكدت', c.confirmed], ['طلبات أُلغيت قبل تأكيدها', c.declined],
-      ['وقت الرد — الوسيط (دقيقة)', num(c.reply_median_minutes)], ['طلبات رُدّ عليها', c.reply_count], ['أول تواصل مع الشركاء — الوسيط (دقيقة)', num(c.partners_median_minutes)]] },
+      ['وقت الرد المعتاد (دقيقة)', num(c.reply_median_minutes)], ['طلبات رُدّ عليها', c.reply_count], ['أول تواصل مع الشركاء — الوسيط (دقيقة)', num(c.partners_median_minutes)]] },
     { title: 'الإلغاء حسب المدة قبل الوصول', rows: [['المدة', 'الإلغاءات'], ...m.CANCEL_BUCKETS.map((k) => [k.label, c.buckets[k.key]])] },
   ] });
   const cp = x.cp;

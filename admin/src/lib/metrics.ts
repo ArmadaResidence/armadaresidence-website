@@ -195,8 +195,8 @@ export const FUNNEL: { key: string; label: string }[] = [
 
 /** «كيف نحسب»: one line per card / chart (Ahmed, 4 Nov 2026) */
 export const HOW = {
-  arrivals: 'الحجوزات المؤكدة التي يبدأ وصولها اليوم بتوقيت الرياض.',
-  departures: 'الحجوزات المؤكدة التي تنتهي مغادرتها اليوم بتوقيت الرياض.',
+  arrivals: 'الحجوزات المؤكدة التي موعد وصولها اليوم بتوقيت الرياض.',
+  departures: 'الحجوزات المؤكدة التي موعد مغادرتها اليوم بتوقيت الرياض.',
   tonight: 'المحجوز ÷ (المحجوز + المتاح للبيع) في مخزون الموقع لليلة اليوم، دون الليالي المغلقة.',
   pending: 'طلبات الحجز التي لم تُؤكَّد ولم تُلغَ، مع طلبات الشركاء التي ما زالت «جديد».',
   alerts: 'أنواع غرف نفدت أو أُغلقت في الأيام السبعة القادمة، وحجوزات تحتاج تنسيقًا، وطلبات بلا رد بعد المدة المحددة في الإعدادات، وأسعار نُبّه عليها في الأيام الأربعة عشر القادمة.',
@@ -223,8 +223,8 @@ export const HOW = {
   campaigns: 'الحجوزات المؤكدة التي حملت اسم حملة (utm_campaign)؛ متوسط قيمة الحجز = إيراد الغرف ÷ عدد الحجوزات.',
   cancelRate: 'الحجوزات التي أُلغيت بعد تأكيدها ÷ كل الحجوزات التي تأكدت، من الحجوزات المسجّلة في الفترة.',
   cancelBuckets: 'الأيام بين الإلغاء ويوم الوصول.',
-  reply: 'الوسيط بين وصول طلب الحجز وأول إجراء من الموظفين (تأكيد أو إلغاء أو ملاحظة داخلية).',
-  partnersReply: 'الوسيط بين وصول طلب الشراكة وأول تواصل مسجّل.',
+  reply: 'نصف طلبات الحجز رُدّ عليها في أقل من هذه المدة.',
+  partnersReply: 'نصف طلبات الشراكة تم التواصل معها في أقل من هذه المدة.',
   newMembers: 'الأعضاء الجدد في كل أسبوع يبدأ يوم الأحد.',
   clubSources: 'الأعضاء الحاليون حسب مصدر الانضمام، والجدد منهم في الفترة.',
   bookedMembers: 'أعضاء النادي الذين لهم حجز غير ملغى سُجّل في الفترة، بمطابقة ملف الضيف.',
@@ -239,19 +239,7 @@ export function pctText(n: number | null | undefined): string {
   const v = Math.round(Number(n) * 10) / 10;
   return `${Number.isInteger(v) ? v : v.toFixed(1)}٪`;
 }
-/** a duration in minutes → «45 دقيقة» / «3.5 ساعة» / «2 يوم» */
-export function durationText(min: number | null | undefined): string {
-  if (min === null || min === undefined) return '—';
-  const m = Number(min);
-  if (m < 60) return `${Math.round(m)} دقيقة`;
-  if (m < 48 * 60) {
-    const h = Math.round((m / 60) * 10) / 10;
-    return `${Number.isInteger(h) ? h : h.toFixed(1)} ساعة`;
-  }
-  const d = Math.round((m / 1440) * 10) / 10;
-  return `${Number.isInteger(d) ? d : d.toFixed(1)} يوم`;
-}
-export const fmt1 = (n: number | null | undefined) => (n === null || n === undefined ? '—' : String(Math.round(Number(n) * 10) / 10));
+export { durationText } from './format';
 /** change against the comparison: «+12.5٪» / «−3 ن.م» (percentage points for a %) */
 export function changeText(cur: number | null | undefined, prev: number | null | undefined, points = false): { text: string; dir: 'up' | 'down' | 'flat' } | null {
   if (cur === null || cur === undefined || prev === null || prev === undefined) return null;

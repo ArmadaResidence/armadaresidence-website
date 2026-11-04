@@ -1070,3 +1070,60 @@ at 00:30 Riyadh, a cancelled booking, a declined request, closed nights, test ro
 permissions; branch scope; the alert rules and N; the signals and their RLS) with every earlier suite green on a preview
 branch (`phase2a1.sql` and `media.sql` updated for the new sections and the seventh setting); `admin/tests/overview-check.mjs`
 (90, preview branch); `admin/tests/nav-check.mjs` updated (landing, the sidebar's first group).
+
+## 2026-11-04 — Session 6 follow-ups: text fixes, the guided tour, a faster push (Ahmed, 4 Nov 2026)
+
+**0 — Text fixes on «النظرة العامة» and «التقارير».** Every count these pages build goes through `countWord`
+(`admin/src/lib/format.ts`): after «منذ» the genitive with a bare one — «منذ ساعة / منذ ساعتين / منذ 3 ساعات / منذ 11 ساعة»
+(`sinceHours`); «المدة الحالية: ساعتان» (`hoursWord`); the inventory alert reads «{الغرفة} — {الفرع}: نافد ليلة واحدة ·
+مغلق ليلتان — الأيام السبعة القادمة (من {التاريخ})» (`inventoryAlertText`, a part whose count is 0 left out — it replaces
+«نفد في 2 ليلتين، ومغلق في … خلال الأيام السبعة القادمة»); the averages and medians of «التقارير» use `measureWord` (a whole
+number takes the counted form — «ليلتان», «3 أيام»; a fraction the singular after the digits — «2.5 ليلة»; under a minute
+«أقل من دقيقة»), the source bars «N · 3 ليالٍ», the ADR tooltip «— ليلتان». The donut's «N من M أنواع غرف مغلقة» (wrong for
+M = 1, 2, 11 …) became «أنواع الغرف المغلقة الليلة: N من M». «كيف نحسب»: «الوصول اليوم» = «الحجوزات المؤكدة التي موعد
+وصولها اليوم بتوقيت الرياض.», «المغادرة اليوم» = «الحجوزات المؤكدة التي موعد مغادرتها اليوم بتوقيت الرياض.». «وقت الرد
+(الوسيط)» is now «وقت الرد المعتاد» (Excel: «وقت الرد المعتاد (دقيقة)»), its tip «نصف طلبات الحجز رُدّ عليها في أقل من هذه
+المدة.»; the partners card keeps its title, its tip «نصف طلبات الشراكة تم التواصل معها في أقل من هذه المدة.» The definition
+of the median in «Phase 2b session 6» is unchanged. `scripts/admin-format-check.mjs` checks 1, 2, 3, 11 and 100 for each
+form and fails on a count built by hand in either page (a digit placeholder followed by a counted noun, «منذ ${…}»).
+
+**A — The guided tour** (`admin/src/components/Tour.tsx`, steps and texts in `admin/src/lib/tours.ts`, migration
+`20261104200000_staff_tours`). Arabic only; our own component, no library.
+- A card points at one control at a time with an arrow; the page dims behind a spotlight with a 2 px Armada Bronze ring;
+  card and spotlight glide between steps in `--motion-fast` (200 ms; reduced motion → instant); the target scrolls into
+  view. The card: title, text, «2 من 5», «السابق», «التالي» («إنهاء» on the last step), «تخطّي» and — on the welcome tour
+  only — «لا تعرض الجولة مرة أخرى». Focus moves into the card (its primary button) on every step, Tab / Shift+Tab cycle its
+  controls, Esc = «تخطّي», the page behind is inert, a press on the dim does nothing, focus returns where it was (else «؟»).
+  Below 640 px the card is a bottom sheet without an arrow. The first placement is instant (no glide in from the corner).
+- **State** in `public.staff_tours` (user × tour, RLS: own rows only, for an active staff member past the second step; the
+  one write is `public.staff_tour_done(p_tour)`, the read `public.staff_tours_done()`; no direct write for `authenticated`).
+  Finishing the welcome tour, or «تخطّي» with the box ticked (Esc too), writes its row; a plain «تخطّي» writes nothing, so
+  the next sign-in (a new auth session) shows it again; within one sign-in it shows once (the session id is remembered in
+  localStorage only for that). The shared reception login is one auth user: its first time is that login's.
+  An automated browser (`navigator.webdriver`) never gets the welcome tour by itself unless localStorage
+  `armada-tour-test` = '1' — the other dashboard e2e checks are unaffected; «؟» works everywhere.
+- **«؟»** (44 px, aria-label «المساعدة») in the top bar right after the search: «شرح هذه الصفحة» (only on a screen that has
+  a tour — none on «النظرة العامة») and «جولة سريعة في اللوحة»; both run at any time whatever the stored state; page tours
+  store nothing.
+- **Skipped steps.** A step whose control is not on screen, or that needs a permission the user lacks, is left out before
+  the tour starts, so the counter counts only the steps shown (reception without «النظرة العامة»: «1 من 3»). A step may
+  open something first: «التأكيد» / «بعد كل حجز مؤكد» open the first request in the list (bookings edit), «أول تواصل» /
+  «عرض السعر» the first partner enquiry (partners edit), «الموافقة الحضورية» the first guest (guests edit); the tour closes
+  what it opened when it ends. Targets are `data-tour` tokens on the existing controls.
+- **Texts changed from the brief to match the controls** (Ahmed's rule in the brief): «المخزون» step 3 is titled «تعديل
+  جماعي» (the button's label; the brief said «تعديل لفترة»); «العملاء» step 1 «ابحث عن أي ضيف بالاسم أو الجوال أو البريد.»
+  (the search also matches the email); «العملاء» step 3 «إذا وافق الضيف أمامك على تلقي العروض، سجّلها من ملفه هنا أو من
+  تفاصيل الحجز.» (the consent is recorded from the guest's profile as well as from a booking); «التقارير» step 3 «PDF» (the
+  brief's «PDف» was a typo). On phones the welcome tour's «القائمة» and «الحجوزات» steps point at the menu button (the
+  sidebar lives in the drawer there). «تنبيه السعر» points at the rates grid (the warning appears wherever a price is
+  entered) and shows only to those who can edit rates. Every other text is as written.
+- Tests: `supabase/tests/tours.sql` (15 checks, rolled back; preview branch), `node admin/tests/tour-check.mjs` (156
+  checks on a preview branch: first sign-in, next / back / finish, plain skip vs the box in fresh browsers, «؟» both items,
+  every page tour, reception's counters, Esc / Tab / focus return, 375 bottom sheet + 1440 × light + dark with axe, reduced
+  motion).
+
+**B — A faster push.** `node scripts/check-all.mjs` records the tree hash of every staged snapshot or commit whose WHOLE
+suite (no routing) passed, in `.git/armada-full-suite-passed.txt` (local to the clone, the newest 500). `.githooks/pre-push`
+runs `check-all --commit <sha> --skip-if-passed`: when the pushed commit's tree is in the record the suite is skipped,
+otherwise it runs in full as before (recording on success); one line says which. A commit whose pre-commit run was routed
+(not full) is never recorded, so its push runs the suite.

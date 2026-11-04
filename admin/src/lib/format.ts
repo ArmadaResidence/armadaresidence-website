@@ -135,6 +135,36 @@ export function roomsWith(n: number, adj: string, dual: string): string {
   return `${roomsWord(n)} ${n === 2 ? dual : adj}`;
 }
 export const roomsLeft = (n: number) => roomsWith(n, 'متبقية', 'متبقيتان');
+
+// «النظرة العامة» / «التقارير» text fixes (Ahmed, 4 Nov 2026): every count on those pages through countWord
+export const HOUR: CountNoun = { zero: 'أقل من ساعة', one: 'ساعة واحدة', two: 'ساعتان', few: 'ساعات', many: 'ساعة', gen: 'ساعة' };
+/** after «منذ» the noun is genitive and the one is bare: «منذ ساعة» / «منذ ساعتين» / «منذ 3 ساعات» / «منذ 11 ساعة» */
+export const HOUR_SINCE: CountNoun = { zero: 'أقل من ساعة', one: 'ساعة', two: 'ساعتين', few: 'ساعات', many: 'ساعة', gen: 'ساعة' };
+export const hoursWord = (n: number) => countWord(n, HOUR);
+export const sinceHours = (n: number) => `منذ ${countWord(Math.max(0, Math.floor(n)), HOUR_SINCE)}`;
+export const daysWord = (n: number) => countWord(n, DAY);
+/** a measured amount (an average, a median): a whole number takes countWord («ليلتان», «3 ليالٍ»), a fraction the
+ * singular after the digits («2.5 ليلة») — rounded to one decimal */
+export function measureWord(x: number, w: CountNoun): string {
+  const v = Math.round(x * 10) / 10;
+  return Number.isInteger(v) ? countWord(v, w) : `${v.toFixed(1)} ${w.gen}`;
+}
+/** a duration in minutes («التقارير» reply times) → «45 دقيقة» / «3 ساعات» / «3.5 ساعة» / «يومان»; under a minute
+ * «أقل من دقيقة» */
+export function durationText(min: number | null | undefined): string {
+  if (min === null || min === undefined) return '—';
+  const m = Number(min);
+  if (m < 1) return 'أقل من دقيقة';
+  if (m < 60) return measureWord(Math.round(m), MINUTE);
+  if (m < 48 * 60) return measureWord(m / 60, HOUR);
+  return measureWord(m / 1440, DAY);
+}
+/** the inventory alert of «النظرة العامة»: «{room} — {branch}: نافد ليلة واحدة · مغلق ليلتان — الأيام السبعة القادمة
+ * (من {date})»; a part whose count is 0 is left out */
+export function inventoryAlertText(room: string, branch: string, soldout: number, closed: number, from: string): string {
+  const parts = [soldout ? `نافد ${nightsWord(soldout)}` : null, closed ? `مغلق ${nightsWord(closed)}` : null].filter(Boolean).join(' · ');
+  return `${room} — ${branch}: ${parts} — الأيام السبعة القادمة (من ${from})`;
+}
 export const roomsBooked = (n: number) => roomsWith(n, 'محجوزة', 'محجوزتان');
 
 /** «185 ريالًا» / «200 ريال» / «3 ريالات» — the same rule as rules.ts sarText. */

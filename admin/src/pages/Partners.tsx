@@ -117,7 +117,7 @@ export default function Partners() {
           </select>
         </Field>
         <Field label="الحالة" id="pf-status">
-          <select id="pf-status" className="field" value={f.status ?? ''} onChange={(e) => set('status', e.target.value)}>
+          <select id="pf-status" data-tour="partner-status" className="field" value={f.status ?? ''} onChange={(e) => set('status', e.target.value)}>
             <option value="">الكل</option>
             {STATUS.map((s) => <option key={s.key} value={s.key}>{s.label}</option>)}
           </select>
@@ -146,11 +146,11 @@ export default function Partners() {
         <Empty text="لا طلبات تطابق التصفية." />
       ) : (
         <ul className="grid gap-2" data-list="partners">
-          {rows.map((r) => {
+          {rows.map((r, k) => {
             const st = STATUS.find((s) => s.key === r.status)!;
             return (
               <li key={r.id}>
-                <button type="button" className="card w-full text-start p-3 grid gap-1 hover:border-bronze" onClick={() => setOpen(r)} data-enquiry={r.ref} data-enquiry-status={r.status}>
+                <button type="button" className="card w-full text-start p-3 grid gap-1 hover:border-bronze" onClick={() => setOpen(r)} data-enquiry={r.ref} data-enquiry-status={r.status} data-tour={k === 0 ? 'partner-row' : undefined}>
                   <span className="flex flex-wrap items-center gap-2">
                     <span className={`chip ${st.chip}`}>{st.label}</span>
                     <strong>{r.organisation ?? (r.scrubbed_at ? 'حُذفت البيانات الشخصية' : '—')}</strong>
@@ -256,7 +256,7 @@ function EnquiryDetails({ e: initial, people, editable, onChanged }: { e: Enquir
           <dt className="text-ink-muted">أول تواصل</dt><dd className="num" data-first-contact>{e.first_contact_at ? riyadhDateTime(e.first_contact_at) : 'لم يُسجَّل بعد'}</dd>
         </dl>
         {!scrubbed && (
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap gap-2" data-tour="partner-contact">
             {wa && <a className="btn btn-ghost btn-sm" href={wa} target="_blank" rel="noreferrer" onClick={() => void quick('whatsapp')} data-action="enquiry-whatsapp">واتساب</a>}
             {e.email && <a className="btn btn-ghost btn-sm" href={`mailto:${e.email}?subject=${encodeURIComponent(`أرمادا ريزيدنس — ${e.ref}`)}`} onClick={() => void quick('email')} data-action="enquiry-email">بريد</a>}
             {e.phone && <a className="btn btn-ghost btn-sm" href={`tel:${e.phone}`} onClick={() => void quick('phone')} data-action="enquiry-call">اتصال</a>}
@@ -333,7 +333,7 @@ function EnquiryDetails({ e: initial, people, editable, onChanged }: { e: Enquir
           ))}
         </ul>
         {editable && !scrubbed && (
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2" data-tour="partner-quote">
             <label className="btn btn-ghost btn-sm cursor-pointer">
               {busy === 'file' ? <Spinner /> : null} إرفاق ملف PDF
               <input ref={fileRef} type="file" accept="application/pdf,.pdf" className="sr-only" disabled={dis} data-no-dirty data-enquiry-file-input

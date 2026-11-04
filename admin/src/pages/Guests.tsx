@@ -158,7 +158,7 @@ export default function Guests() {
       <div className="card p-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4" data-guests-filters>
         <div className="sm:col-span-2">
           <Field label="بحث بالاسم أو الجوال أو البريد" id="gf-q">
-            <input id="gf-q" type="search" className="field" value={q} onChange={(e) => setQ(e.target.value)} autoComplete="off" data-no-dirty />
+            <input id="gf-q" type="search" data-tour="guest-search" className="field" value={q} onChange={(e) => setQ(e.target.value)} autoComplete="off" data-no-dirty />
           </Field>
         </div>
         <Field label="الموافقة" id="gf-consent">
@@ -210,9 +210,9 @@ export default function Guests() {
         <Empty text="لا عملاء يطابقون البحث والتصفية." />
       ) : (
         <ul className="grid gap-2" data-list="guests">
-          {rows.map((r) => (
+          {rows.map((r, k) => (
             <li key={r.id}>
-              <button type="button" className="card w-full text-start p-3 grid gap-1 hover:border-bronze" onClick={() => setOpen(r.id)} data-guest={r.phone ?? r.id}>
+              <button type="button" className="card w-full text-start p-3 grid gap-1 hover:border-bronze" onClick={() => setOpen(r.id)} data-guest={r.phone ?? r.id} data-tour={k === 0 ? 'guest-row' : undefined}>
                 <span className="flex flex-wrap items-center gap-2">
                   <strong>{r.name ?? 'بلا اسم'}</strong>
                   <span className={`chip ${CONSENT_CHIP[r.consent]}`} data-consent={r.consent}>{CONSENT_LABEL[r.consent]}</span>
@@ -331,7 +331,7 @@ function GuestDetails({ id, editable, onChanged, onOpen }: { id: string; editabl
         </dl>
       </section>
 
-      <section aria-labelledby="gd-consent" className="grid gap-2">
+      <section aria-labelledby="gd-consent" className="grid gap-2" data-tour="guest-consent">
         <h3 id="gd-consent" className="font-bold">الموافقة على العروض والإعلانات</h3>
         <p className="text-sm flex flex-wrap items-center gap-2">
           <span className={`chip ${CONSENT_CHIP[g.consent]}`} data-consent-now={g.consent}>{CONSENT_LABEL[g.consent]}</span>

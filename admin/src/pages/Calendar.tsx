@@ -116,7 +116,7 @@ export default function Calendar({ mode }: { mode: Mode }) {
           <button type="button" className="btn btn-ghost btn-sm" onClick={() => setFrom(addDays(from, days))} aria-label="الفترة التالية">›</button>
           {from !== today && <button type="button" className="btn btn-ghost btn-sm" onClick={() => setFrom(today)}>اليوم</button>}
         </div>
-        {editable && <button type="button" className="btn btn-primary" onClick={() => setBulk(true)} data-action="bulk">{mode === 'rates' ? 'سعر لفترة' : 'تعديل جماعي'}</button>}
+        {editable && <button type="button" className="btn btn-primary" onClick={() => setBulk(true)} data-action="bulk" data-tour="cal-bulk">{mode === 'rates' ? 'سعر لفترة' : 'تعديل جماعي'}</button>}
       </div>
       <ErrorBox error={error} />
       {cells === null ? (
@@ -124,7 +124,7 @@ export default function Calendar({ mode }: { mode: Mode }) {
       ) : types.length === 0 ? (
         <p className="text-ink-muted text-center py-10">لا أنواع غرف في هذا الفرع.</p>
       ) : (
-        <div className="card overflow-x-auto" data-grid={mode}>
+        <div className="card overflow-x-auto" data-grid={mode} data-tour="cal-grid">
           <div className="grid-cal" style={{ gridTemplateColumns: `172px repeat(${days}, minmax(72px, 1fr))` }}>
             <div className="cal-sticky border-b border-line p-2 text-xs font-bold text-ink-muted">{monthTitle(from)}{monthTitle(to) !== monthTitle(from) ? ` – ${monthTitle(to)}` : ''}</div>
             {nights.map((n) => {
@@ -136,8 +136,8 @@ export default function Calendar({ mode }: { mode: Mode }) {
                 </div>
               );
             })}
-            {types.map((rt) => (
-              <RowCells key={rt.id} rt={rt} nights={nights} byKey={byKey} mode={mode} today={today} editable={editable}
+            {types.map((rt, k) => (
+              <RowCells key={rt.id} first={k === 0} rt={rt} nights={nights} byKey={byKey} mode={mode} today={today} editable={editable}
                 onPick={(cell) => editable && cell.night >= today && setSel({ rt, cell })} onRate={() => setRateEdit(rt)} onMenu={() => setRowMenu(rt)} />
             ))}
           </div>
@@ -176,7 +176,7 @@ function cellState(c: CalendarCell): 'closed' | 'zero' | 'one' | 'open' {
   return 'open';
 }
 
-function RowCells({ rt, nights, byKey, mode, today, editable, onPick, onRate, onMenu }: { rt: RoomType; nights: string[]; byKey: Map<string, CalendarCell>; mode: Mode; today: string; editable: boolean; onPick: (c: CalendarCell) => void; onRate: () => void; onMenu: () => void }) {
+function RowCells({ first, rt, nights, byKey, mode, today, editable, onPick, onRate, onMenu }: { first?: boolean; rt: RoomType; nights: string[]; byKey: Map<string, CalendarCell>; mode: Mode; today: string; editable: boolean; onPick: (c: CalendarCell) => void; onRate: () => void; onMenu: () => void }) {
   return (
     <>
       <div className="cal-sticky border-b border-line p-2 text-xs" data-row={rt.slug}>
@@ -184,18 +184,18 @@ function RowCells({ rt, nights, byKey, mode, today, editable, onPick, onRate, on
         {!rt.bookable && <span className="chip chip-request mt-0.5" style={{ fontSize: 10 }}>غير متاحة على الموقع</span>}
         {mode === 'rates' ? (
           editable ? (
-            <button type="button" className="text-bronze-text underline num-ar block mt-0.5" onClick={onRate} data-action="base-rate">{rt.base_rate === null ? 'بلا سعر أساسي' : `الأساسي ${sar(rt.base_rate)}`}</button>
+            <button type="button" className="text-bronze-text underline num-ar block mt-0.5" onClick={onRate} data-action="base-rate" data-tour={first ? 'base-rate' : undefined}>{rt.base_rate === null ? 'بلا سعر أساسي' : `الأساسي ${sar(rt.base_rate)}`}</button>
           ) : (
-            <span className="text-ink-muted num-ar block mt-0.5">{rt.base_rate === null ? 'بلا سعر أساسي' : `الأساسي ${sar(rt.base_rate)}`}</span>
+            <span className="text-ink-muted num-ar block mt-0.5" data-tour={first ? 'base-rate' : undefined}>{rt.base_rate === null ? 'بلا سعر أساسي' : `الأساسي ${sar(rt.base_rate)}`}</span>
           )
         ) : (
           <div className="flex items-center justify-between gap-1 mt-0.5">
             <span className="text-ink-muted num-ar">{rt.capacity} أشخاص{rt.extra_beds_max ? ` · +${rt.extra_beds_max} سرير` : ''}</span>
-            {editable && <button type="button" className="btn btn-ghost btn-sm" style={{ minHeight: 28, padding: '0 6px' }} onClick={onMenu} aria-label={`فتح أو إغلاق الفترة المعروضة — ${rt.name_ar}`} data-action="row-menu">فتح / إغلاق</button>}
+            {editable && <button type="button" className="btn btn-ghost btn-sm" style={{ minHeight: 28, padding: '0 6px' }} onClick={onMenu} aria-label={`فتح أو إغلاق الفترة المعروضة — ${rt.name_ar}`} data-action="row-menu" data-tour={first ? 'row-open-close' : undefined}>فتح / إغلاق</button>}
           </div>
         )}
       </div>
-      {nights.map((n) => {
+      {nights.map((n, ni) => {
         const c = byKey.get(`${rt.id}|${n}`) ?? { room_type_id: rt.id, night: n, price: rt.base_rate, override_id: null, override_label: null, override_label_en: null, has_row: false, rooms_to_sell: 0, booked: 0, stop_sell: false };
         const st = cellState(c);
         const past = n < today;
@@ -215,6 +215,7 @@ function RowCells({ rt, nights, byKey, mode, today, editable, onPick, onRate, on
             data-left={mode === 'inventory' && (st === 'one' || st === 'zero') ? String(c.rooms_to_sell) : undefined}
             data-past={past}
             data-off={!rt.bookable}
+            data-tour={first && ni === 0 ? 'cal-cell' : undefined}
             onClick={() => onPick(c)}
             disabled={past || !editable}
             aria-disabled={past || !editable}

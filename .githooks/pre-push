@@ -2,6 +2,8 @@
 # Before every push (CLAUDE.md §11, Ahmed 31 Oct 2026): the full mandatory suite on the commit being pushed (its tree
 # exported to a temp folder: node scripts/check-all.mjs --commit <sha>). Any failure blocks the push; fix the cause,
 # never --no-verify. The live suite after every deploy (check-all --live) stays as it is.
+# 4 Nov 2026 (Ahmed): skipped only when the pushed commit's tree hash is recorded as having passed the full suite on
+# this machine (a full run of the commit hook records it); any other tree runs the suite. check-all prints which.
 zero=0000000000000000000000000000000000000000
 shas=""
 while read -r local_ref local_sha remote_ref remote_sha; do
@@ -9,7 +11,6 @@ while read -r local_ref local_sha remote_ref remote_sha; do
   case " $shas " in *" $local_sha "*) ;; *) shas="$shas $local_sha" ;; esac
 done
 for sha in $shas; do
-  echo "pre-push: full suite on $sha ($local_ref)"
-  node scripts/check-all.mjs --commit "$sha" </dev/null || exit 1
+  node scripts/check-all.mjs --commit "$sha" --skip-if-passed </dev/null || exit 1
 done
 exit 0

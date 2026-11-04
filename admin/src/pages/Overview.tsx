@@ -11,7 +11,7 @@ import { supabase } from '../lib/supabase';
 import * as api from '../lib/api';
 import * as m from '../lib/metrics';
 import { useSession } from '../lib/session';
-import { BRANCH_NAMES, STATUS_LABELS, dateRange, longDate, riyadhDateTime, riyadhToday, sar, shortDate, dayName } from '../lib/format';
+import { BRANCH_NAMES, STATUS_LABELS, dateRange, hoursWord, inventoryAlertText, longDate, nightsWord, riyadhDateTime, riyadhToday, sar, shortDate, sinceHours, dayName } from '../lib/format';
 import { STATUS_LABEL as PARTNER_STATUS, TYPE_LABEL } from '../lib/partners';
 import { BranchSelect, ErrorBox, Field, useLeaveGuard } from '../components/ui';
 import DateField from '../components/DateField';
@@ -135,7 +135,7 @@ export default function Overview() {
 
       {/* B1 — the four cards */}
       <ErrorBox error={cards.error} />
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3" data-cards>
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3" data-cards data-tour="overview-cards">
         <StatCard i={0} id="arrivals" title="الوصول اليوم" how={m.HOW.arrivals} first={first} flash={live}
           value={c?.arrivals.total} line={perBranch(c?.arrivals.by_branch)} to={canBookings ? q('/bookings', { status: 'confirmed', arrive: today }) : undefined} />
         <StatCard i={1} id="departures" title="المغادرة اليوم" how={m.HOW.departures} first={first} flash={live}
@@ -210,16 +210,14 @@ function StatCard({ i, id, title, how, value, fmt, line, to, first, flash, empty
 
 function alertText(a: m.AlertItem): { text: string; to: string; action: string } {
   switch (a.kind) {
-    case 'inventory': {
-      const parts = [a.soldout ? `نفد في ${a.soldout} ${a.soldout === 1 ? 'ليلة' : a.soldout === 2 ? 'ليلتين' : 'ليالٍ'}` : null, a.closed ? `مغلق في ${a.closed} ${a.closed === 1 ? 'ليلة' : a.closed === 2 ? 'ليلتين' : 'ليالٍ'}` : null].filter(Boolean).join('، و');
-      return { text: `${a.room_name} — ${bname(a.branch)}: ${parts} خلال الأيام السبعة القادمة (من ${shortDate(a.first)})`, to: `/inventory?${new URLSearchParams({ branch: a.branch, from: a.first })}`, action: 'فتح المخزون' };
-    }
+    case 'inventory':
+      return { text: inventoryAlertText(a.room_name, bname(a.branch), a.soldout, a.closed, shortDate(a.first)), to: `/inventory?${new URLSearchParams({ branch: a.branch, from: a.first })}`, action: 'فتح المخزون' };
     case 'coordination':
       return { text: `الحجز ${a.ref} — ${bname(a.branch)}: يحتاج تنسيقًا (الوصول ${shortDate(a.check_in)})`, to: `/bookings?ref=${a.ref}`, action: 'فتح الحجز' };
     case 'reply':
-      return { text: `طلب الحجز ${a.ref} — ${bname(a.branch)}: بلا رد منذ ${a.hours} ساعة`, to: `/bookings?ref=${a.ref}`, action: 'الرد على الطلب' };
+      return { text: `طلب الحجز ${a.ref} — ${bname(a.branch)}: بلا رد ${sinceHours(a.hours)}`, to: `/bookings?ref=${a.ref}`, action: 'الرد على الطلب' };
     case 'partner':
-      return { text: `طلب الشراكة ${a.ref} (${TYPE_LABEL[a.request_type as keyof typeof TYPE_LABEL] ?? a.request_type}): «جديد» منذ ${a.hours} ساعة`, to: `/partners?ref=${a.ref}`, action: 'فتح الطلب' };
+      return { text: `طلب الشراكة ${a.ref} (${TYPE_LABEL[a.request_type as keyof typeof TYPE_LABEL] ?? a.request_type}): «جديد» ${sinceHours(a.hours)}`, to: `/partners?ref=${a.ref}`, action: 'فتح الطلب' };
     case 'rate':
       return { text: `${a.room_name} — ${bname(a.branch)}: ${a.flag === 'below_base' ? 'سعر أقل من الأساسي' : 'سعر أعلى بكثير من الأساسي'} (${dateRange(a.date_from, a.date_to)})`, to: `/rates?${new URLSearchParams({ branch: a.branch, from: a.date_from })}`, action: 'فتح الأسعار' };
   }
@@ -229,11 +227,11 @@ function AlertsCard({ s, first }: { s: Sect<m.Alerts>; canPartners: boolean; fir
   const guard = useLeaveGuard();
   const n = s.data?.count ?? 0;
   return (
-    <section className="card p-4 reveal" style={{ animationDelay: '0ms' }} aria-labelledby="ov-alerts" data-alerts={n}>
+    <section className="card p-4 reveal" style={{ animationDelay: '0ms' }} aria-labelledby="ov-alerts" data-alerts={n} data-tour="overview-alerts">
       <div className="flex items-start gap-2 mb-3">
         <h2 id="ov-alerts" className="font-bold text-base">تنبيهات</h2>
         {s.data && <span className={`chip ${n ? 'chip-flag' : 'chip-request'}`} data-alert-count><AnimatedNumber value={n} first={first} /></span>}
-        <HowTip text={`${m.HOW.alerts}${s.data ? ` المدة الحالية: ${s.data.hours} ساعة.` : ''}`} />
+        <HowTip text={`${m.HOW.alerts}${s.data ? ` المدة الحالية: ${hoursWord(s.data.hours)}.` : ''}`} />
       </div>
       <ErrorBox error={s.error} />
       {s.data && (n === 0
@@ -263,7 +261,7 @@ function DonutBlock({ b, first, href }: { b: m.TonightBranch; first: boolean; hr
     { key: 'left', label: 'متاح للبيع', value: b.left, cls: 'seg-left' },
     { key: 'closed', label: 'مغلق', value: b.closed, cls: 'seg-closed' },
   ];
-  const summary = `${bn(b)} الليلة: المباع ${m.pctText(b.pct)} — محجوز ${b.sold}، متاح للبيع ${b.left}، مغلق ${b.closed}${b.closed_types ? ` (${b.closed_types} من ${b.types} أنواع غرف مغلقة)` : ''}.`;
+  const summary = `${bn(b)} الليلة: المباع ${m.pctText(b.pct)} — محجوز ${b.sold}، متاح للبيع ${b.left}، مغلق ${b.closed}${b.closed_types ? ` (أنواع الغرف المغلقة: ${b.closed_types} من ${b.types})` : ''}.`;
   return (
     <div className="flex items-center gap-4 flex-wrap" data-donut={b.slug}>
       <figure className="m-0" role="group" aria-label={summary}>
@@ -280,7 +278,7 @@ function DonutBlock({ b, first, href }: { b: m.TonightBranch; first: boolean; hr
             </li>
           ))}
         </ul>
-        {b.closed_types > 0 && <p className="text-xs text-ink-muted mt-2 num-ar">{b.closed_types} من {b.types} أنواع غرف مغلقة الليلة</p>}
+        {b.closed_types > 0 && <p className="text-xs text-ink-muted mt-2 num-ar">أنواع الغرف المغلقة الليلة: {b.closed_types} من {b.types}</p>}
         {href && <Link to={href} className="link text-sm mt-2 inline-block">فتح المخزون الليلة</Link>}
       </div>
     </div>
@@ -385,7 +383,7 @@ function TrendBlock({ s, first, money, flash, period }: { s: Sect<m.Trend>; firs
                 summary={`متوسط سعر الليلة لكل يوم في الفترة؛ متوسط الفترة ${d.totals.adr === null ? 'لا ليالٍ مباعة' : sar(d.totals.adr)}.`}
                 table={{ head: ['الليلة', 'متوسط سعر الليلة', 'الليالي', 'الإيراد'], rows: days.map((x) => [longDate(x.night), x.adr == null ? '—' : sar(x.adr), x.nights, sar(x.revenue ?? 0)]) }}>
                 <Lines first={first} label="متوسط سعر الليلة" xLabelEvery={every} format={(n) => String(Math.round(n))}
-                  series={[{ key: 'adr', label: 'متوسط سعر الليلة', cls: 's2', points: days.map((x) => ({ label: shortDate(x.night), value: x.adr ?? null, tip: `${longDate(x.night)}\n${x.adr == null ? 'لا ليالٍ مباعة' : `متوسط سعر الليلة ${sar(x.adr)} — ${x.nights} ليلة`}` })) }]} />
+                  series={[{ key: 'adr', label: 'متوسط سعر الليلة', cls: 's2', points: days.map((x) => ({ label: shortDate(x.night), value: x.adr ?? null, tip: `${longDate(x.night)}\n${x.adr == null ? 'لا ليالٍ مباعة' : `متوسط سعر الليلة ${sar(x.adr)} — ${nightsWord(x.nights)}`}` })) }]} />
               </ChartCard>
             )}
           </div>

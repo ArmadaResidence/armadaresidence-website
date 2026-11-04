@@ -8,6 +8,8 @@
 //   - a slim top bar with the page title (and its breadcrumb when the page has levels — usePageCrumbs) and the quick
 //     search (Ctrl+K / ⌘K). The document title is «{page} | لوحة أرمادا».
 //   - the live «الحجوزات» and «طلبات الشركاء» badges (lib/live.ts, Realtime under RLS).
+//   - «؟» «المساعدة» next to the search and the guided tour (components/Tour.tsx, 4 Nov 2026); the controls it points at
+//     carry `data-tour` tokens.
 // Every link goes through the leave guard (unsaved edits ask first). Landmarks: banner, navigation, main; aria-current on
 // the current item; visible focus; RTL; light and dark.
 import { NavLink, useLocation } from 'react-router-dom';
@@ -22,6 +24,7 @@ import { onOutsidePress } from '../../../src/lib/client';
 import { useLeaveGuard } from './ui';
 import { Icon } from './icons';
 import QuickSearch from './QuickSearch';
+import { HelpMenu, TourProvider } from './Tour';
 
 // ── the page title and breadcrumb a page may set (pages with levels: the blog editor…) ──
 export interface Crumb {
@@ -91,6 +94,7 @@ function NavList({ groups, collapsed, badges, onGo }: { groups: NavGroup[]; coll
                       onGo?.();
                     }}
                     data-nav={i.id ?? i.section}
+                    data-tour={`nav-${i.id ?? i.section}`}
                   >
                     <span className="side-icon">
                       <Icon name={i.icon} size={20} />
@@ -277,9 +281,10 @@ export default function Shell({ children }: { children: ReactNode }) {
   const trail: Crumb[] = crumbs ?? (item ? [{ label: item.label }] : [{ label: page }]);
   return (
     <CrumbCtx.Provider value={setCrumbs}>
+      <TourProvider>
       <div className={`app-frame ${collapsed ? 'is-collapsed' : ''}`}>
         <a href="#app-main" className="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:start-2 focus:z-50 btn btn-primary">إلى المحتوى</a>
-        <div className={`sidebar side-fixed ${collapsed ? 'is-collapsed' : ''}`} data-sidebar data-collapsed={collapsed ? '1' : '0'}>
+        <div className={`sidebar side-fixed ${collapsed ? 'is-collapsed' : ''}`} data-sidebar data-collapsed={collapsed ? '1' : '0'} data-tour="sidebar">
           <div className="side-brand">
             {collapsed
               ? <img src={`${import.meta.env.BASE_URL}symbol.svg`} alt="أرمادا ريزيدنس" className="h-8 w-8" />
@@ -296,7 +301,7 @@ export default function Shell({ children }: { children: ReactNode }) {
         </div>
         <div className="app-col">
           <header id="app-topbar" className="topbar">
-            <button type="button" className="side-icon-btn md:hidden" onClick={() => setDrawer(true)} aria-label="القائمة" aria-expanded={drawer} aria-haspopup="dialog" data-action="nav-open">
+            <button type="button" className="side-icon-btn md:hidden" onClick={() => setDrawer(true)} aria-label="القائمة" aria-expanded={drawer} aria-haspopup="dialog" data-action="nav-open" data-tour="nav-open">
               <Icon name="menu" size={22} />
               {badge || partnersBadge ? <span className="side-dot" aria-hidden="true" /> : null}
             </button>
@@ -319,6 +324,7 @@ export default function Shell({ children }: { children: ReactNode }) {
               <span className="max-sm:sr-only">بحث</span>
               <kbd className="max-md:hidden num" aria-hidden="true">Ctrl K</kbd>
             </button>
+            <HelpMenu />
             <ThemeToggle />
           </header>
           <main id="app-main" className="flex-1 w-full max-w-7xl mx-auto px-4 py-5 pb-10">{children}</main>
@@ -331,6 +337,7 @@ export default function Shell({ children }: { children: ReactNode }) {
         </NavDrawer>
         <QuickSearch open={search} onClose={() => setSearch(false)} />
       </div>
+      </TourProvider>
     </CrumbCtx.Provider>
   );
 }

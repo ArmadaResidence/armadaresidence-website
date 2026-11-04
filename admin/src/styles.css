@@ -753,3 +753,46 @@ body {
   .reports .how { display: none; }
   .reports .text-ink-muted { color: #333 !important; }
 }
+
+/* the guided tour (4 Nov 2026 — components/Tour.tsx): a click-catcher, a spotlight whose huge shadow dims the page and
+   whose 2 px bronze border rings the target, and the card. The spotlight and the card glide with --motion-fast (200 ms,
+   0 under reduced motion); transform for the position, the spotlight's size follows the target. */
+.tour-root { --tour-dim: rgb(20 42 59 / 0.62); }
+:root[data-theme="dark"] .tour-root { --tour-dim: rgb(3 9 14 / 0.72); }
+.tour-catch { position: fixed; inset: 0; z-index: 90; }
+.tour-spot {
+  position: fixed; top: 0; left: 0; z-index: 91; pointer-events: none; box-sizing: border-box;
+  border: 2px solid var(--color-bronze); border-radius: 10px; box-shadow: 0 0 0 200vmax var(--tour-dim);
+  transition: transform var(--motion-fast) var(--ease-in-out), width var(--motion-fast) var(--ease-in-out), height var(--motion-fast) var(--ease-in-out);
+  animation: fade var(--motion-fast) var(--ease-out);
+}
+.tour-card {
+  position: fixed; top: 0; left: 0; z-index: 92; width: min(22rem, calc(100vw - 16px));
+  background: var(--card); color: var(--ink); border: 1px solid var(--line); border-radius: 0.75rem; padding: 1rem 1.1rem 0.85rem;
+  box-shadow: 0 18px 48px rgb(0 0 0 / 0.28);
+  animation: fade var(--motion-fast) var(--ease-out);
+}
+.tour-card.is-placed { transition: transform var(--motion-fast) var(--ease-in-out); }
+.tour-card.is-sheet {
+  top: auto; bottom: 0; left: 0; right: 0; width: auto; max-height: 55dvh; overflow-y: auto;
+  border-radius: 1rem 1rem 0 0; border-bottom: 0; padding-bottom: max(0.85rem, env(safe-area-inset-bottom));
+  transform: none; animation: tour-sheet var(--motion-fast) var(--ease-out);
+}
+@keyframes tour-sheet { from { transform: translateY(24px); opacity: 0; } }
+.tour-arrow { position: absolute; width: 14px; height: 14px; background: var(--card); border: 1px solid var(--line); transform: rotate(45deg); }
+.tour-arrow.is-top { top: -8px; border-right: 0; border-bottom: 0; }
+.tour-arrow.is-bottom { bottom: -8px; border-left: 0; border-top: 0; }
+.tour-arrow.is-right { right: -8px; border-left: 0; border-bottom: 0; }
+.tour-arrow.is-left { left: -8px; border-right: 0; border-top: 0; }
+.tour-count { font-size: 0.75rem; font-weight: 600; color: var(--ink-muted); margin: 0 0 0.25rem; }
+.tour-title { font-size: 1.05rem; font-weight: 700; margin: 0 0 0.35rem; }
+.tour-text { font-size: 0.9rem; line-height: 1.7; margin: 0; }
+.tour-check { display: flex; align-items: center; gap: 0.5rem; margin-top: 0.75rem; font-size: 0.85rem; min-height: 2.75rem; cursor: pointer; }
+.tour-check input { width: 1.1rem; height: 1.1rem; accent-color: var(--color-bronze-deep); }
+.tour-actions { display: flex; align-items: center; gap: 0.5rem; margin-top: 0.6rem; }
+.tour-actions .btn { min-height: 2.75rem; }
+.help-menu {
+  position: absolute; top: calc(100% + 0.35rem); inset-inline-end: 0; z-index: 56; min-width: 13rem; padding: 0.35rem;
+  background: var(--card); border: 1px solid var(--line); border-radius: 0.6rem; box-shadow: 0 12px 32px rgb(0 0 0 / 0.18);
+}
+.help-menu .account-item { width: 100%; }

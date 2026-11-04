@@ -5,6 +5,7 @@
 //   node scripts/admin-format-check.mjs
 // Node ≥ 22.18 strips the TypeScript types of the imported sources.
 import { countWord, nightsWord, roomsWord, rowsWord, bookingsWord, roomsLeft, roomsBooked, adultsWord, childrenWord, DAY, ROOM_TYPE } from '../admin/src/lib/format.ts';
+import { daysWord, durationText, hoursWord, inventoryAlertText, measureWord, NIGHT, sinceHours } from '../admin/src/lib/format.ts';
 import { arabicAuth, arabicError, CONNECTION, GENERIC } from '../admin/src/lib/errors.ts';
 import { attemptsWord, changesWord, codesWord, devicesWord, minutesWord, secondsWord, YEAR } from '../admin/src/lib/format.ts';
 import { BACKUP_TEXT, CODE_TEXT, SECURITY_TEXT } from '../admin/src/lib/secondStep.ts';
@@ -91,6 +92,39 @@ eq('nightsWord(103)', nightsWord(103), '103 ليالٍ');
 eq('rowsWord(111)', rowsWord(111), '111 صفًا');
 eq('bookingsWord(102)', bookingsWord(102), '102 حجز');
 eq('roomsWord(200)', roomsWord(200), '200 غرفة');
+
+// «النظرة العامة» / «التقارير» counts (Ahmed, 4 Nov 2026): never «3 ليلة» or «منذ 5 ساعة» — 1, 2, 3, 11, 100
+const N5 = [1, 2, 3, 11, 100];
+for (const [name, fn, want] of [
+  ['sinceHours', sinceHours, ['منذ ساعة', 'منذ ساعتين', 'منذ 3 ساعات', 'منذ 11 ساعة', 'منذ 100 ساعة']],
+  ['hoursWord', hoursWord, ['ساعة واحدة', 'ساعتان', '3 ساعات', '11 ساعة', '100 ساعة']],
+  ['nightsWord', nightsWord, ['ليلة واحدة', 'ليلتان', '3 ليالٍ', '11 ليلة', '100 ليلة']],
+  ['daysWord', daysWord, ['يوم واحد', 'يومان', '3 أيام', '11 يومًا', '100 يوم']],
+  ['bookingsWord', bookingsWord, ['حجز واحد', 'حجزان', '3 حجوزات', '11 حجزًا', '100 حجز']],
+  ['measureWord(NIGHT)', (n) => measureWord(n, NIGHT), ['ليلة واحدة', 'ليلتان', '3 ليالٍ', '11 ليلة', '100 ليلة']],
+  ['durationText(hours)', (n) => durationText(n * 60), ['ساعة واحدة', 'ساعتان', '3 ساعات', '11 ساعة', '4.2 يوم']],
+  ['durationText(minutes)', (n) => durationText(n), ['دقيقة واحدة', 'دقيقتان', '3 دقائق', '11 دقيقة', '1.7 ساعة']],
+]) N5.forEach((n, i) => eq(`${name}(${n})`, fn(n), want[i]));
+eq('measureWord(2.5, NIGHT)', measureWord(2.46, NIGHT), '2.5 ليلة');
+eq('durationText(0.4)', durationText(0.4), 'أقل من دقيقة');
+eq('durationText(90)', durationText(90), '1.5 ساعة');
+eq('durationText(2 days)', durationText(2880), 'يومان');
+eq('durationText(null)', durationText(null), '—');
+for (const [so, cl, want] of [
+  [1, 2, 'غرفة كينغ — طريق المطار: نافد ليلة واحدة · مغلق ليلتان — الأيام السبعة القادمة (من 4 نوفمبر)'],
+  [3, 0, 'غرفة كينغ — طريق المطار: نافد 3 ليالٍ — الأيام السبعة القادمة (من 4 نوفمبر)'],
+  [0, 11, 'غرفة كينغ — طريق المطار: مغلق 11 ليلة — الأيام السبعة القادمة (من 4 نوفمبر)'],
+  [100, 0, 'غرفة كينغ — طريق المطار: نافد 100 ليلة — الأيام السبعة القادمة (من 4 نوفمبر)'],
+]) eq(`inventoryAlertText(${so}, ${cl})`, inventoryAlertText('غرفة كينغ', 'طريق المطار', so, cl, '4 نوفمبر'), want);
+// the two pages build no count by hand: a digit run followed directly by a singular / plural noun in a template is a failure
+for (const f of ['admin/src/pages/Overview.tsx', 'admin/src/pages/Reports.tsx']) {
+  const src = readFile(new URL(`../${f}`, import.meta.url), 'utf8');
+  for (const re of [/\} (ليلة|ليلتين|ليالٍ|ساعة|ساعات|يوم|أيام|حجز|حجوزات|عضو|أعضاء)[`\s،.)]/g, /منذ \$\{(?!sinceHours)/g]) {
+    checks++;
+    const hit = src.match(re);
+    if (hit) fails.push(`${f}: a count built by hand («${hit[0]}») — use countWord / sinceHours`);
+  }
+}
 
 // password rule (Ahmed, 26 Oct 2026): ≥ 8 printable ASCII characters, no spaces, no required classes — the three
 // checklist lines, the confirm line, the leak note and the weak / leaked refusal (admin/src/lib/password.ts)

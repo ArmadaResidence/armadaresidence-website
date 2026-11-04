@@ -109,6 +109,8 @@ export default function Bookings() {
 
   const rtName = useCallback((id: string | null) => (id ? roomTypes.find((r) => r.id === id)?.name_ar ?? '—' : 'أي غرفة متاحة'), [roomTypes]);
 
+  // the guided tour's «التأكيد» step opens the first request in the list
+  const firstRequest = useMemo(() => rows?.find((r) => r.status === 'request')?.id ?? null, [rows]);
   const counts = useMemo(() => {
     const c = { request: 0, confirmed: 0, cancelled: 0, coord: 0 };
     for (const r of rows ?? []) {
@@ -151,7 +153,7 @@ export default function Bookings() {
         <h1 className="text-2xl font-bold me-auto">الحجوزات</h1>
         <button type="button" className="btn btn-ghost btn-sm" onClick={exportCsv} disabled={!rows?.length}>تصدير Excel (CSV)</button>
       </div>
-      <div className="card p-3 sm:p-4 mb-4 grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
+      <div className="card p-3 sm:p-4 mb-4 grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3" data-tour="booking-filters">
         <BranchSelect id="f-branch" branches={branches} value={branch} onChange={setBranch} allLabel="الفرعان" />
         <Field label="الحالة" id="f-status">
           <select id="f-status" className="field" value={status} onChange={(e) => setStatus(e.target.value as Status)}>
@@ -199,7 +201,7 @@ export default function Bookings() {
         <ul className="grid gap-2" data-list="bookings">
           {rows.map((r, i) => (
             <li key={r.id} className="reveal" style={{ animationDelay: `${Math.min(i, 10) * 60}ms` }}>
-              <button type="button" onClick={() => setOpen(r)} className="card w-full text-start p-3 sm:p-4 hover:border-bronze transition-colors grid grid-cols-[auto_1fr_auto] gap-3 items-center" data-ref={r.ref} data-status={r.status}>
+              <button type="button" onClick={() => setOpen(r)} className="card w-full text-start p-3 sm:p-4 hover:border-bronze transition-colors grid grid-cols-[auto_1fr_auto] gap-3 items-center" data-ref={r.ref} data-status={r.status} data-tour={[i === 0 ? 'booking-row' : '', r.id === firstRequest ? 'booking-request-row' : ''].join(' ').trim() || undefined}>
                 <span className={`chip chip-${r.status}`}>{STATUS_LABELS[r.status]}</span>
                 <span className="min-w-0">
                   <span className="block font-bold truncate">
@@ -412,7 +414,7 @@ function Details({ r, roomTypes, editable, onClose, onChanged }: { r: Reservatio
       )}
 
       <div className="flex flex-wrap gap-2 mb-1">
-        {editable && r.status === 'request' && <button type="button" className="btn btn-primary" onClick={() => { setPickRt(r.room_type_id ?? ''); setNightIssues(null); setError(null); setConfirmOpen(true); }} data-action="confirm">تأكيد الحجز</button>}
+        {editable && r.status === 'request' && <button type="button" className="btn btn-primary" onClick={() => { setPickRt(r.room_type_id ?? ''); setNightIssues(null); setError(null); setConfirmOpen(true); }} data-action="confirm" data-tour="booking-confirm">تأكيد الحجز</button>}
         {editable && r.status !== 'cancelled' && <button type="button" className="btn btn-danger" onClick={() => { setReason(''); setError(null); setCancelOpen(true); }} data-action="cancel">إلغاء الحجز</button>}
         <a className="btn btn-ghost" href={waTemplate()} target="_blank" rel="noopener">واتساب الضيف</a>
         <button type="button" className="btn btn-ghost" onClick={() => window.print()} data-action="print">طباعة</button>

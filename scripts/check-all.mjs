@@ -7,6 +7,12 @@
 //                                              (scripts/check-plan.mjs); --full runs the whole suite; --dry-run prints
 //                                              the plan and exits. .githooks/pre-commit runs this mode
 //   node scripts/check-all.mjs --commit <sha>  the full suite on that commit's tree (.githooks/pre-push: the commit being pushed)
+//   … --commit <sha> --skip-if-passed          pre-push (4 Nov 2026): skipped when that commit's TREE hash is in the
+//                                              record of trees whose full suite passed on this machine; any other tree
+//                                              runs the full suite as before. One line says which happened.
+//   The record: every run of the WHOLE suite (no routing) that passes on a staged snapshot or a commit appends the
+//   tree hash it checked (the staged index's `git write-tree` = the tree the commit records) to
+//   $(git rev-parse --git-path armada-full-suite-passed.txt) — local to this clone, never committed.
 //   node scripts/check-all.mjs --live [URL]    live: the browser checks against the deployed site (default: the review
 //                                              URL below; pass the domain after the switch) + admin-cors-check against
 //                                              the project's dashboard functions (no browser, no key)
@@ -14,7 +20,7 @@
 // even after a failure (except when the build or qa.py fails: the browser checks need dist/), prints a summary and
 // exits non-zero on any failure.
 import { execFileSync, spawn } from 'node:child_process';
-import { existsSync, lstatSync, mkdtempSync, rmSync, symlinkSync, unlinkSync } from 'node:fs';
+import { appendFileSync, existsSync, lstatSync, mkdtempSync, readFileSync, rmSync, symlinkSync, unlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { BROWSER_CHECKS, STATIC_CHECKS, describe, planFor, stagedFiles } from './check-plan.mjs';
@@ -34,6 +40,36 @@ const t0All = Date.now();
 if (commitAt >= 0 && !commit) {
   console.error('check-all: --commit needs a commit (sha or ref)');
   process.exit(2);
+}
+
+// the trees whose full suite passed on this machine (pre-push skips those; 4 Nov 2026)
+const git = (...a) => execFileSync('git', a, { encoding: 'utf8' }).trim();
+const RECORD = (() => {
+  try {
+    return resolve(git('rev-parse', '--git-path', 'armada-full-suite-passed.txt'));
+  } catch {
+    return null;
+  }
+})();
+const recorded = () => {
+  try {
+    return readFileSync(RECORD, 'utf8').split('\n').map((l) => l.split(' ')).filter((x) => /^[0-9a-f]{40,64}$/.test(x[0]));
+  } catch {
+    return [];
+  }
+};
+let tree = null;
+try {
+  if (commit) tree = git('rev-parse', `${commit}^{tree}`);
+  else if (staged) tree = git('write-tree');
+} catch { /* unmerged index or an unknown commit: no record either way */ }
+if (commit && args.includes('--skip-if-passed')) {
+  const hit = tree && recorded().find((x) => x[0] === tree);
+  if (hit) {
+    console.log(`pre-push: ${commit.slice(0, 12)} — tree ${tree.slice(0, 12)} already passed the full suite on this machine (${hit[1] ?? ''}); suite skipped`);
+    process.exit(0);
+  }
+  console.log(`pre-push: ${commit.slice(0, 12)} — tree ${tree ? tree.slice(0, 12) : '?'} has no full-suite pass on this machine; running the full suite`);
 }
 
 // the plan: routed for --staged (unless --full), the whole suite otherwise
@@ -176,3 +212,14 @@ if (failed.length || (plan.build && !built && !live)) {
   process.exit(1);
 }
 console.log(`\nall ${results.length} checks passed in ${Math.floor(total / 60)} min ${total % 60} s`);
+// the whole suite passed on a snapshot of a known tree: record it (the newest 500 kept)
+if (plan.full && built && tree && RECORD && (staged || commit)) {
+  try {
+    appendFileSync(RECORD, `${tree} ${new Date().toISOString()} ${commit ? `commit ${commit}` : 'staged'}\n`);
+    const lines = readFileSync(RECORD, 'utf8').split('\n').filter(Boolean);
+    if (lines.length > 500) writeFileSync(RECORD, lines.slice(-500).join('\n') + '\n');
+    console.log(`recorded tree ${tree.slice(0, 12)} as passing the full suite`);
+  } catch (e) {
+    console.log(`could not record the tree (${e.message}); the next push runs the suite`);
+  }
+}
