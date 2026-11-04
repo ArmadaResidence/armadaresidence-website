@@ -37,6 +37,9 @@ const BUNDLE_ORIGIN = new URL(BUNDLE_URL).origin;
 const BASE_ORIGIN = new URL(BASE).origin;
 
 const PAGES = [
+  // «النظرة العامة» / «التقارير» (4 Nov 2026): the four cards with their numbers, the donuts; the five report sections
+  { path: 'overview', label: 'النظرة العامة', ready: async (page) => (await page.locator('[data-card] .num').count()) >= 3 && (await page.locator('[data-donut]').count()) >= 1 && (await page.locator('[data-chart="forward"] [data-mark]').count()) > 0 },
+  { path: 'reports', label: 'التقارير', ready: async (page) => (await page.locator('[data-section]').count()) === 5 && (await page.locator('[data-section="performance"] [data-kpi="pct"]').count()) === 1 },
   { path: 'bookings', label: 'الحجوزات', ready: async (page) => (await page.locator('#f-branch').count()) === 1 && ((await page.locator('table').count()) > 0 || (await page.getByText('لا حجوزات تطابق الفلتر.').count()) > 0) },
   { path: 'rates', label: 'الأسعار', ready: async (page) => (await page.locator('.grid-cal').count()) === 1 && (await page.locator('[data-action="base-rate"]').count()) > 0 },
   { path: 'inventory', label: 'المخزون', ready: async (page) => (await page.locator('.grid-cal').count()) === 1 && (await page.locator('.grid-cal [aria-label]').count()) > 0 },
@@ -108,7 +111,8 @@ async function run(viewport, tag, email = ADMIN) {
   if ((await firstOf(page, { app: '#app-main', backup: '[data-action="generate-backup"]' })) === 'backup') await handleBackupCodes(page);
   await page.waitForSelector('#app-main', { timeout: 30000 });
   await page.waitForURL(APP_PATH, { timeout: 30000, waitUntil: 'commit' });
-  await page.waitForSelector('#f-branch', { timeout: 30000 });
+  // sign-in lands on «النظرة العامة» since 4 Nov 2026 (else «الحجوزات»): wait for the app frame
+  await page.waitForSelector('#app-main [data-page="overview"], #f-branch', { timeout: 30000 });
   const loginProblems = take();
   check(loginProblems.length === 0, `${tag}: sign-in + email code through the deployed bundle without errors`, loginProblems.join(' | '));
   // «الصور» in the navigation: shown with the media permission, absent without it — and /media leads elsewhere
