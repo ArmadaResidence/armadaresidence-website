@@ -19,6 +19,24 @@ const sections = page.sections.map((sec) => ({
   heading: stripBrackets(locale === 'ar' ? sec.heading_ar : sec.heading_en),
   paragraphs: paragraphs(withFees(locale, locale === 'ar' ? sec.body_ar : sec.body_en)),
 }));
+// another section named in quotes («نادي أرمادا ريزيدنس والتسويق» / "Armada Residence Club and marketing") links to its
+// anchor (4 Nov 2026); the quotes stay outside the link
+const esc = (x: string) => x.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+const linkable = (selfId: string) => sections.filter((x) => x.id !== selfId && x.heading);
+function parts(text: string, selfId: string): { text: string; href?: string }[] {
+  const others = linkable(selfId);
+  if (!others.length) return [{ text }];
+  const re = new RegExp(`(?<=[«"“])(${others.map((x) => esc(x.heading)).join('|')})(?=[»"”])`, 'g');
+  const out: { text: string; href?: string }[] = [];
+  let at = 0;
+  for (const m of text.matchAll(re)) {
+    if (m.index! > at) out.push({ text: text.slice(at, m.index) });
+    out.push({ text: m[1], href: `#${others.find((x) => x.heading === m[1])!.id}` });
+    at = m.index! + m[1].length;
+  }
+  if (at < text.length) out.push({ text: text.slice(at) });
+  return out;
+}
 ---
 
 <Base locale={locale} path="/policies/" title={s.title} description={s.description}>
@@ -53,7 +71,7 @@ const sections = page.sections.map((sec) => ({
               <h2 class="text-xl font-semibold text-midnight">{sec.heading}</h2>
               <div class="mt-3 prose-armada leading-relaxed text-ink">
                 {sec.paragraphs.map((p) => (
-                  <p>{p}</p>
+                  <p>{parts(p, sec.id).map((x) => (x.href ? <a href={x.href} class="link-bronze underline underline-offset-2">{x.text}</a> : x.text))}</p>
                 ))}
               </div>
             </section>

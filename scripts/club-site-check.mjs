@@ -86,6 +86,9 @@ for (const lang of ['ar', 'en']) {
   const pol = page(lang, 'policies');
   const sec = policies.page.sections.find((s) => s.id === 'club');
   check(pol.includes('id="club"') && has(pol, sec[`heading_${L}`]) && has(pol, sec[`body_${L}`]), `${lang}: /policies/ has no #club section with the approved text`);
+  const priv = pol.slice(pol.indexOf('id="privacy"'), pol.indexOf('</section>', pol.indexOf('id="privacy"')));
+  check(new RegExp(`<a href="#club"[^>]*>${sec[`heading_${L}`]}</a>`).test(priv), `${lang}: the «الخصوصية» section does not link «${sec[`heading_${L}`]}»`);
+  check(priv.includes(L === 'ar' ? 'ولا نستخدمها للتسويق إلا بموافقتك' : 'we use them for marketing only with your consent'), `${lang}: the «الخصوصية» section lacks the new sentence`);
   // part 0 labels
   check(has(page(lang, 'airport-road'), ui[L].branch.book_branch), `${lang}: branch page button ≠ «${ui[L].branch.book_branch}»`);
   check(has(page(lang, 'airport-road', 'king-room'), ui[L].room.book_room), `${lang}: room page button ≠ «${ui[L].room.book_room}»`);

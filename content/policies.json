@@ -26,8 +26,8 @@
   "page": {
     "title_ar": "الشروط والسياسات",
     "title_en": "Terms & Policies",
-    "intro_ar": "تنطبق هذه الشروط على الحجوزات في فرعي أرمادا ريزيدنس بالطائف: طريق المطار وطريق الشفا. تاريخ آخر تحديث: 3 نوفمبر 2026.",
-    "intro_en": "These terms apply to bookings at both Armada Residence properties in Taif: Airport Road and Shafa Road. Last updated 3 November 2026.",
+    "intro_ar": "تنطبق هذه الشروط على الحجوزات في فرعي أرمادا ريزيدنس بالطائف: طريق المطار وطريق الشفا. تاريخ آخر تحديث: 4 نوفمبر 2026.",
+    "intro_en": "These terms apply to bookings at both Armada Residence properties in Taif: Airport Road and Shafa Road. Last updated 4 November 2026.",
     "sections": [
       {
         "id": "booking",
@@ -75,8 +75,8 @@
         "id": "privacy",
         "heading_ar": "الخصوصية",
         "heading_en": "Privacy",
-        "body_ar": "عند إرسال طلب حجز نجمع الاسم ورقم الهاتف والبريد الإلكتروني وتفاصيل الإقامة، ونستخدمها فقط لمعالجة الطلب والتواصل بشأنه. تُحفظ البيانات في أنظمة أرمادا ريزيدنس ولا تُباع ولا تُشارك مع أي طرف ثالث إلا ما يلزم لتنفيذ الحجز أو الدفع. نحتفظ ببيانات طلبات الشركات والمجموعات مدة 24 شهرًا من آخر تواصل، ثم نحذف البيانات الشخصية منها. يستخدم الموقع أدوات قياس وإعلانات (Google Tag Manager) لفهم استخدام الموقع وتحسين الحملات؛ ويمكنكم تعطيل ملفات تعريف الارتباط من إعدادات المتصفح. لطلب الاطلاع على بياناتكم أو تعديلها أو حذفها، راسلونا على info@armadaresidence.com. نلتزم بنظام حماية البيانات الشخصية في المملكة العربية السعودية.",
-        "body_en": "When you send a booking request we collect your name, phone number, email and stay details, and use them only to process the request and contact you about it. Data is stored in Armada Residence systems and is never sold or shared with third parties beyond what is needed to complete the booking or payment. We keep company and group enquiry data for 24 months after our last contact, then delete the personal details. The website uses measurement and advertising tools (Google Tag Manager) to understand site usage and improve campaigns; you can disable cookies in your browser settings. To access, correct or delete your data, email info@armadaresidence.com. We comply with the Personal Data Protection Law of Saudi Arabia."
+        "body_ar": "عند إرسال طلب حجز نجمع الاسم ورقم الهاتف والبريد الإلكتروني وتفاصيل الإقامة، ونستخدمها لمعالجة الطلب والتواصل بشأنه، ولا نستخدمها للتسويق إلا بموافقتك. تُحفظ البيانات في أنظمة أرمادا ريزيدنس ولا تُباع، ولا تُشارك مع أي طرف ثالث إلا ما يلزم لتنفيذ الحجز أو الدفع، أو ما توافق عليه كما هو موضّح في قسم «نادي أرمادا ريزيدنس والتسويق». نحتفظ ببيانات طلبات الشركات والمجموعات مدة 24 شهرًا من آخر تواصل، ثم نحذف البيانات الشخصية منها. يستخدم الموقع أدوات قياس وإعلانات (Google Tag Manager) لفهم استخدام الموقع وتحسين الحملات؛ ويمكنكم تعطيل ملفات تعريف الارتباط من إعدادات المتصفح. لطلب الاطلاع على بياناتكم أو تعديلها أو حذفها، راسلونا على info@armadaresidence.com. نلتزم بنظام حماية البيانات الشخصية في المملكة العربية السعودية.",
+        "body_en": "When you send a booking request we collect your name, phone number, email and stay details, and use them to process the request and contact you about it; we use them for marketing only with your consent. Data is stored in Armada Residence systems and is never sold, and it is shared with third parties only as needed to complete the booking or payment, or as you agree to in \"Armada Residence Club and marketing\". We keep company and group enquiry data for 24 months after our last contact, then delete the personal details. The website uses measurement and advertising tools (Google Tag Manager) to understand site usage and improve campaigns; you can disable cookies in your browser settings. To access, correct or delete your data, email info@armadaresidence.com. We comply with the Personal Data Protection Law of Saudi Arabia."
       },
       {
         "id": "club",
