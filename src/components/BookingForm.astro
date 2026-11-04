@@ -7,11 +7,12 @@
  * (28 Oct 2026 — the same component and behaviour as the partners enquiry wizard). `prefix` keeps ids unique when
  * two forms share a page.
  */
-import { branchContact, branchShort, branches, clubPrivacyHref, clubText, extraBedFeeLine, L, localePath, marketingConsent, rooms, ui, type Locale } from '@lib/content';
+import { branchContact, branchShort, branches, extraBedFeeLine, L, localePath, marketingConsent, rooms, ui, type Locale } from '@lib/content';
 import { promoCodesLive } from '@lib/offers-data';
 import Icon from './Icon.astro';
 import DateRangeField from './DateRangeField.astro';
 import PhoneField from './PhoneField.astro';
+import MarketingConsent from './MarketingConsent.astro';
 
 interface Props {
   locale: Locale;
@@ -256,11 +257,7 @@ const stepper = (name: 'adults' | 'children' | 'extra_beds', value: number, min:
     {/* 9. Marketing consent (Ahmed, 3 Nov 2026): one optional box, unticked; never required to book, never changes the
         price or the confirmation — offers by WhatsApp and email and ads on the platforms (club.json → consent) */}
     <div class="sm:col-span-2">
-      <label for={id('marketing_consent')} class="flex items-start gap-3 text-sm leading-relaxed text-ink">
-        <input id={id('marketing_consent')} name="marketing_consent" type="checkbox" value="yes" class="mt-1 size-5 accent-bronze-deep shrink-0" data-marketing-consent />
-        <span>{locale === 'ar' ? marketingConsent.ar : marketingConsent.en}</span>
-      </label>
-      <a href={clubPrivacyHref(locale)} class="link-bronze inline-block mt-1 ms-8 text-xs underline underline-offset-2">{clubText(locale).privacy_link}</a>
+      <MarketingConsent locale={locale} id={id('marketing_consent')} name="marketing_consent" hook="data-marketing-consent" />
     </div>
   </div>
 

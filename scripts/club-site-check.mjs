@@ -75,7 +75,8 @@ for (const lang of ['ar', 'en']) {
   for (const [hl, href] of Object.entries({ ar: `${site}/club/`, en: `${site}/en/club/`, 'x-default': `${site}/club/` })) check(html.includes(`hreflang="${hl}" href="${href}"`), `${lang}: /club/ hreflang ${hl}`);
   check(/"@type":"BreadcrumbList"/.test(html), `${lang}: /club/ has no BreadcrumbList`);
   check(has(html, c.title) && has(html, c.subtitle) && c.benefits.every((b) => has(html, b)), `${lang}: /club/ title, subtitle or a benefit missing`);
-  check(has(html, club.consent[L]) && html.includes(`href="${pre}/policies/#club"`), `${lang}: /club/ consent text or its privacy link missing`);
+  check(has(html, club.consent[L]) && new RegExp(`href="${pre}/policies/#club"[^>]*>${club[L].details}<`).test(html), `${lang}: /club/ consent text or its «${club[L].details}» link missing`);
+  check(!html.includes(L === 'ar' ? 'كيف نستخدم بياناتك' : 'How we use your data'), `${lang}: /club/ still shows the old privacy link text`);
   check(!html.includes('[object Object]'), `${lang}: /club/ renders an object`);
   const un = page(lang, 'club', 'unsubscribe');
   check(un.includes('name="robots" content="noindex'), `${lang}: /club/unsubscribe/ is not noindex`);

@@ -13,7 +13,7 @@ import * as api from '../lib/api';
 import { useSession } from '../lib/session';
 import { BOOKING, BRANCH_NAMES, countWord, riyadhDateTime, riyadhToday, sar, shortDate, STATUS_LABELS, toCsv, type CountNoun } from '../lib/format';
 import {
-  audienceCsv, audienceRows, bookingGuest, CLUB_SOURCES, clubSourceLabel, clubTotals, consents, consentText, CONSENT_CHIP, CONSENT_LABEL, contactRows, guest, guestBookings, guests,
+  audienceCsv, audienceRows, bookingGuest, CLUB_SOURCES, clubSourceLabel, clubTotals, consents, currentConsentText, CONSENT_CHIP, CONSENT_LABEL, contactRows, guest, guestBookings, guests,
   merge, PLATFORMS, recordConsent, save, SOURCE_LABEL, type ClubTotals, type ConsentEvent, type Guest, type GuestBooking, type GuestFilter, type Platform,
 } from '../lib/guests';
 import { CancelButton, Confirm, Drawer, Empty, ErrorBox, Field, Loading, Modal, Spinner, useToast } from '../components/ui';
@@ -401,7 +401,7 @@ function GuestDetails({ id, editable, onChanged, onOpen }: { id: string; editabl
 
       <ConsentDialog open={!!consentOpen} action={consentOpen ?? 'grant'} onClose={() => setConsentOpen(null)}
         onSave={(language, version) => run('consent', () => recordConsent({ profile: g.id, action: consentOpen!, language, version }), consentOpen === 'grant' ? 'سُجّلت الموافقة.' : 'سُحبت الموافقة.').then(() => setConsentOpen(null))}
-        busy={busy === 'consent'} versionHint={g.consent_version} />
+        busy={busy === 'consent'} />
       <MergeDialog open={mergeOpen} keep={g} onClose={() => setMergeOpen(false)}
         onMerge={(dup) => run('merge', () => merge(g.id, dup.id), `دُمج الملف المكرر في هذا الملف.`).then(() => { setMergeOpen(false); onOpen(g.id); })} busy={busy === 'merge'} />
     </div>
@@ -409,16 +409,16 @@ function GuestDetails({ id, editable, onChanged, onOpen }: { id: string; editabl
 }
 
 /** the text the guest agrees to, shown in both languages; the language they read it in is recorded */
-export function ConsentDialog({ open, action, onClose, onSave, busy, versionHint }: { open: boolean; action: 'grant' | 'withdraw'; onClose: () => void; onSave: (language: 'ar' | 'en', version: string) => void; busy: boolean; versionHint?: string | null }) {
+export function ConsentDialog({ open, action, onClose, onSave, busy }: { open: boolean; action: 'grant' | 'withdraw'; onClose: () => void; onSave: (language: 'ar' | 'en', version: string) => void; busy: boolean }) {
   const [text, setText] = useState<{ version: string; text_ar: string; text_en: string } | null>(null);
   const [language, setLanguage] = useState<'ar' | 'en'>('ar');
   const [said, setSaid] = useState(false);
   useEffect(() => {
     if (!open) return;
     setSaid(false);
-    const v = versionHint || '2026-11-03';
-    consentText(v).then((t) => setText(t ? { version: v, ...t } : null)).catch(() => setText(null));
-  }, [open, versionHint]);
+    // always the current wording (the newest version), whatever the guest agreed to before
+    currentConsentText().then(setText).catch(() => setText(null));
+  }, [open]);
   const grant = action === 'grant';
   return (
     <Modal open={open} onClose={onClose} title={grant ? 'تسجيل موافقة حضورية' : 'سحب الموافقة بطلب الضيف'} busy={busy}>
@@ -448,7 +448,7 @@ export function ConsentDialog({ open, action, onClose, onSave, busy, versionHint
         )}
         <div className="flex justify-end gap-2 mt-2">
           <CancelButton disabled={busy} />
-          <button type="button" className={`btn ${grant ? 'btn-primary' : 'btn-danger'}`} disabled={busy || (grant && (!said || !text))} onClick={() => onSave(language, text?.version ?? '2026-11-03')} data-action="consent-save">
+          <button type="button" className={`btn ${grant ? 'btn-primary' : 'btn-danger'}`} disabled={busy || (grant && (!said || !text))} onClick={() => onSave(language, text?.version ?? '')} /* a grant waits for the text (disabled above); a withdrawal needs none */ data-action="consent-save">
             {busy && <Spinner />} {grant ? 'تسجيل الموافقة' : 'سحب الموافقة'}
           </button>
         </div>
@@ -536,7 +536,7 @@ export function BookingGuestBadges({ reservation, editable }: { reservation: str
       {s.profile && <a className="link" href={`guests?id=${s.profile}`} data-action="open-guest">ملف العميل</a>}
       {editable && s.consent !== 'granted' && <button type="button" className="btn btn-ghost btn-sm" onClick={() => setDialog('grant')} data-action="booking-consent-record">تسجيل موافقة حضورية</button>}
       {editable && s.consent === 'granted' && <button type="button" className="btn btn-ghost btn-sm" onClick={() => setDialog('withdraw')} data-action="booking-consent-withdraw">سحب الموافقة بطلب الضيف</button>}
-      <ConsentDialog open={!!dialog} action={dialog ?? 'grant'} onClose={() => setDialog(null)} onSave={(l, v) => void saveConsent(l, v)} busy={busy} versionHint={s.version} />
+      <ConsentDialog open={!!dialog} action={dialog ?? 'grant'} onClose={() => setDialog(null)} onSave={(l, v) => void saveConsent(l, v)} busy={busy} />
     </div>
   );
 }

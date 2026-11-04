@@ -114,6 +114,13 @@ if (!production) {
       r = await call({ action: 'join', country: 'SA', consent_version: VERSION, lang: 'ar', ...body });
       check(r.status === 422 && r.j.fields?.[field], `refused: ${label}`, `${r.status} ${JSON.stringify(r.j)}`);
     }
+    // a page loaded before a wording change still sends the previous version: accepted and recorded as such
+    for (const prev of content.club_consent_previous ?? []) {
+      const np = nat();
+      const rp = await call({ action: 'join', phone: `0${np}`, country: 'SA', consent: true, consent_version: prev, lang: 'ar' });
+      const vv = await q("select c.text_version from public.guest_consents c join public.guest_profiles g on g.id = c.profile_id where g.phone = $1", [`+966${np}`]);
+      check(rp.status === 200 && vv[0]?.text_version === prev, `previous consent version ${prev} accepted and recorded`, `${rp.status} ${JSON.stringify(vv)}`);
+    }
     // the honeypot
     const nh = nat();
     r = await call({ action: 'join', phone: `0${nh}`, country: 'SA', consent: true, consent_version: VERSION, website: 'http://spam.example' });

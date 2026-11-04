@@ -461,6 +461,8 @@ def generate_function_content(content: dict[str, dict], fees: dict) -> None:
         # «إرسال للأعضاء» (part E): the member-only offer email
         "club_offer_email": {loc: content["club.json"][loc]["offer_email"] for loc in ("ar", "en")},
         "club_consent_version": content["club.json"]["consent"]["version"],
+        # versions a page loaded before a wording change may still send (accepted; the one the guest saw is recorded)
+        "club_consent_previous": content["club.json"]["consent"].get("previous", []),
         "email_logo_url": os.environ.get("EMAIL_ASSETS_BASE", "https://armadaresidence.github.io/armadaresidence-website").rstrip("/") + "/email/armada-residence-logo-reversed@2x.png",
     }
     FUNC_DIR.mkdir(parents=True, exist_ok=True)

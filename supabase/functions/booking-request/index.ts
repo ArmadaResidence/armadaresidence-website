@@ -557,8 +557,8 @@ async function submitBooking(ref: string, d: Row, ua: string, quoted: string | n
           user_agent: ua.slice(0, 300),
           quoted_total: quoted === undefined || quoted === '' || quoted === null ? null : String(quoted),
           promo_code: d.promoCode || null,
-          // only the version the form showed (content/club.json); the database records nothing for another one
-          marketing_consent: Boolean(d.marketingConsent) && d.consentVersion === content.club_consent_version,
+          // only a version the site has shown (content/club.json: the current one or a previous one); the database records it
+          marketing_consent: Boolean(d.marketingConsent) && [content.club_consent_version, ...(content.club_consent_previous ?? [])].includes(d.consentVersion),
           consent_version: d.consentVersion || null,
           // stored by submit_booking through internal.clean_visit (anything but the known keys dropped)
           visit: d.visit ?? null,

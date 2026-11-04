@@ -148,9 +148,10 @@ export interface GuestSummary {
   version?: string;
 }
 export const bookingGuest = (reservation: string) => rpc<GuestSummary>('booking_guest_summary', { p_reservation: reservation });
-export async function consentText(version: string): Promise<{ text_ar: string; text_en: string } | null> {
-  const { data } = await supabase.from('consent_texts').select('text_ar, text_en').eq('version', version).maybeSingle();
-  return (data ?? null) as { text_ar: string; text_en: string } | null;
+/** the current consent wording (the newest version): what a consent recorded in person is given for */
+export async function currentConsentText(): Promise<{ version: string; text_ar: string; text_en: string } | null> {
+  const { data } = await supabase.from('consent_texts').select('version, text_ar, text_en').order('created_at', { ascending: false }).order('version', { ascending: false }).limit(1).maybeSingle();
+  return (data ?? null) as { version: string; text_ar: string; text_en: string } | null;
 }
 
 // ── exports (part F) ──

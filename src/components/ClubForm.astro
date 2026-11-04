@@ -12,7 +12,8 @@
  */
 import Icon from './Icon.astro';
 import PhoneField from './PhoneField.astro';
-import { clubFollowUrl, clubPrivacyHref, clubText, marketingConsent, type Locale } from '@lib/content';
+import MarketingConsent from './MarketingConsent.astro';
+import { clubFollowUrl, clubText, marketingConsent, type Locale } from '@lib/content';
 
 interface Props {
   locale: Locale;
@@ -50,12 +51,8 @@ const clientData = {
       <p id="club-email-error" class="field-error hidden" data-error-for="email"></p>
     </div>
     <div>
-      <label class="flex items-start gap-3 text-sm leading-relaxed text-ink">
-        <input type="checkbox" name="consent" value="yes" class="mt-1 size-5 accent-bronze-deep shrink-0" aria-describedby="club-consent-error" required data-club-consent />
-        <span>{locale === 'ar' ? marketingConsent.ar : marketingConsent.en}</span>
-      </label>
+      <MarketingConsent locale={locale} id="club-consent" name="consent" required describedBy="club-consent-error" hook="data-club-consent" />
       <p id="club-consent-error" class="field-error hidden" data-error-for="consent"></p>
-      <a href={clubPrivacyHref(locale)} class="link-bronze inline-block mt-2 ms-8 text-sm underline underline-offset-2">{c.privacy_link}</a>
     </div>
     {/* honeypot: hidden from people and assistive tech; a filled value is dropped by the function */}
     <div class="hidden" aria-hidden="true">

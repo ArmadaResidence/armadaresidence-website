@@ -165,7 +165,7 @@ select pg_temp._as('rec_air');
 select pg_temp._fails('D7 reception cannot record for another branch''s booking', $$select public.guest_consent_record(null, pg_temp._id('r4'), 'withdraw', 'ar', null)$$, '42501');
 select pg_temp._save('bs', public.booking_guest_summary(pg_temp._id('r2')));
 select pg_temp._check('D8 the booking badges: returning = the other confirmed bookings (incl. the merged one), member, consent; no profile id without «العملاء»',
-  (pg_temp._j('bs') ->> 'returning')::int = 2 and (pg_temp._j('bs') ->> 'profile') is null and (pg_temp._j('bs') ->> 'consent') = 'withdrawn' and (pg_temp._j('bs') ->> 'version') = '2026-11-03', pg_temp._j('bs')::text);
+  (pg_temp._j('bs') ->> 'returning')::int = 2 and (pg_temp._j('bs') ->> 'profile') is null and (pg_temp._j('bs') ->> 'consent') = 'withdrawn' and (pg_temp._j('bs') ->> 'version') = (select version from public.consent_texts order by created_at desc, version desc limit 1), pg_temp._j('bs')::text);
 select pg_temp._fails('D8 another branch''s booking summary is refused', $$select public.booking_guest_summary(pg_temp._id('r4'))$$, '42501');
 select pg_temp._as('admin');
 select pg_temp._save('cr3', public.guest_consent_record(pg_temp._id('g1'), null, 'grant', 'ar', '2026-11-03'));

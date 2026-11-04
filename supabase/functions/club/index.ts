@@ -167,7 +167,8 @@ async function join(req: Request, body: Record<string, unknown>, test: boolean):
     return json(req, 429, { ok: false, error: 'rate_limited' });
   }
   const version = String(body.consent_version ?? '');
-  if (version !== content.club_consent_version) return json(req, 422, { ok: false, error: 'invalid', fields: { consent: 'consent' } });
+  // the current wording, or a previous one from a page loaded before it changed: the version the guest saw is recorded
+  if (![content.club_consent_version, ...(content.club_consent_previous ?? [])].includes(version)) return json(req, 422, { ok: false, error: 'invalid', fields: { consent: 'consent' } });
   const r = await rpc<{ ok: boolean; token: string; welcome: boolean; is_test: boolean }>('club_join', {
     p: {
       phone: v.data.phone,

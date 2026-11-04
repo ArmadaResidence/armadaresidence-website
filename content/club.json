@@ -2,9 +2,11 @@
   "_note": "«نادي أرمادا ريزيدنس» / Armada Residence Club (Ahmed, 3 Nov 2026 — DECISIONS.md 2026-11-03 «Phase 2b session 5»). The club is named «نادي أرمادا ريزيدنس» / \"Armada Residence Club\" everywhere — never «نادي أرمادا» / \"Armada Club\". The consent text is ONE text for both offers (WhatsApp, email) and ads (hashed upload to ad platforms); every stored consent names its version (public.consent_texts). A new wording = a new version here AND in a migration (consent_texts), never an edit of an existing one. Copy approved by Ahmed (3 Nov 2026) except where DECISIONS.md lists text written in the session.",
   "verified": true,
   "consent": {
-    "version": "2026-11-03",
-    "ar": "أوافق على تلقي العروض من أرمادا ريزيدنس عبر الواتساب والبريد الإلكتروني، وعلى عرض إعلاناتها لي على منصات مثل سناب شات وتيك توك وميتا وجوجل، ويمكنني إلغاء ذلك في أي وقت.",
-    "en": "I agree to receive Armada Residence offers by WhatsApp and email, and to be shown its ads on platforms such as Snapchat, TikTok, Meta and Google. I can opt out at any time."
+    "version": "2026-11-04",
+    "_previous": "versions a page loaded before a wording change may still send; the functions accept them and record the one the guest saw (2026-11-03 = the longer first wording, Ahmed 3 Nov 2026)",
+    "previous": ["2026-11-03"],
+    "ar": "أوافق على تلقي عروض أرمادا ريزيدنس، وعلى استخدام بياناتي لعرض إعلاناتها لي.",
+    "en": "I agree to receive Armada Residence offers and to have my details used to show me its ads."
   },
   "follow_url": "https://linktr.ee/ArmadaR",
   "privacy_anchor": "club",
@@ -16,7 +18,7 @@
     "phone": "رقم الجوال",
     "name": "الاسم (اختياري)",
     "email": "البريد الإلكتروني (اختياري)",
-    "privacy_link": "كيف نستخدم بياناتك",
+    "details": "التفاصيل",
     "submit": "انضم إلى النادي",
     "sending": "جارٍ التسجيل…",
     "error_phone": "اكتب رقم جوال صحيحًا.",
@@ -61,7 +63,7 @@
     "phone": "Mobile number",
     "name": "Name (optional)",
     "email": "Email (optional)",
-    "privacy_link": "How we use your data",
+    "details": "Details",
     "submit": "Join the club",
     "sending": "Signing you up…",
     "error_phone": "Enter a valid mobile number.",
