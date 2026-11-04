@@ -27,6 +27,7 @@ export const NAV_GROUPS: NavGroup[] = [
     title: null,
     items: [
       { to: '/overview', label: 'النظرة العامة', section: 'overview', icon: 'overview' },
+      { to: '/reports', label: 'التقارير', section: 'reports', icon: 'reports' },
     ],
   },
   {

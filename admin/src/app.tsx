@@ -16,6 +16,7 @@ import Code from './pages/Code';
 import BackupCodes, { BACKUP_LATER_KEY } from './pages/BackupCodes';
 import Security from './pages/Security';
 import Overview from './pages/Overview';
+import Reports from './pages/Reports';
 import Bookings from './pages/Bookings';
 import Calendar from './pages/Calendar';
 import Rooms from './pages/Rooms';
@@ -33,6 +34,7 @@ import Audit from './pages/Audit';
 
 const SCREENS: { path: string; section: string }[] = [
   { path: 'overview', section: 'overview' },
+  { path: 'reports', section: 'reports' },
   { path: 'bookings', section: 'bookings' },
   { path: 'rates', section: 'rates' },
   { path: 'inventory', section: 'inventory' },
@@ -156,6 +158,7 @@ export default function App() {
                   <Routes>
                     <Route index element={<Home />} />
                     <Route path="overview" element={<Allowed section="overview"><Overview /></Allowed>} />
+                    <Route path="reports" element={<Allowed section="reports"><Reports /></Allowed>} />
                     <Route path="bookings" element={<Allowed section="bookings"><Bookings /></Allowed>} />
                     <Route path="rates" element={<Allowed section="rates"><Calendar mode="rates" /></Allowed>} />
                     <Route path="inventory" element={<Allowed section="inventory"><Calendar mode="inventory" /></Allowed>} />

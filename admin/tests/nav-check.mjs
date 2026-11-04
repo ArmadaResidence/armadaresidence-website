@@ -130,9 +130,9 @@ const groupsOf = (page, scope = '[data-sidebar]') => page.locator(`${scope} [dat
   await page.goto(`${BASE}/rates`);
   await page.waitForSelector('.grid-cal');
   const items = await navItems(page);
-  check(JSON.stringify(items) === JSON.stringify(['bookings', 'rates', 'inventory', 'rooms', 'media', 'offers', 'dining', 'blog', 'content', 'faq', 'partners', 'users', 'settings', 'audit']),
-    'admin: every section, in the sidebar order (التشغيل، المحتوى والتسويق، الشركاء، الإدارة)', items.join(' '));
-  check(JSON.stringify(await groupsOf(page)) === JSON.stringify(['operations', 'content', 'partners', 'admin']), 'admin: four groups (the empty ones hidden)', (await groupsOf(page)).join(' '));
+  check(JSON.stringify(items) === JSON.stringify(['overview', 'reports', 'bookings', 'rates', 'inventory', 'rooms', 'media', 'offers', 'dining', 'blog', 'content', 'faq', 'guests', 'partners', 'users', 'settings', 'audit']),
+    'admin: every section, in the sidebar order (النظرة العامة والتقارير بلا عنوان، التشغيل، المحتوى والتسويق، الشركاء، الإدارة)', items.join(' '));
+  check(JSON.stringify(await groupsOf(page)) === JSON.stringify(['overview', 'operations', 'content', 'partners', 'admin']), 'admin: five groups, the first without a title (the empty ones hidden)', (await groupsOf(page)).join(' '));
   const titles = await page.locator('[data-sidebar] .side-group-title').allTextContents();
   check(JSON.stringify(titles) === JSON.stringify(['التشغيل', 'المحتوى والتسويق', 'الشركاء', 'الإدارة']), 'admin: the group headings', titles.join(' | '));
   const wrap = await page.locator('[data-sidebar] [data-side-nav] .side-link .side-label').evaluateAll((els) => els.filter((e) => e.getBoundingClientRect().height > 26 || e.scrollWidth > e.clientWidth + 1).map((e) => e.textContent));
@@ -240,15 +240,16 @@ const groupsOf = (page, scope = '[data-sidebar]') => page.locator(`${scope} [dat
       await page.keyboard.press('Escape');
     }
   }
-  // last section landing: sign out on /offers, sign in again in the same browser → /offers
+  // landing (4 Nov 2026): sign out on /offers, sign in again in the same browser → «النظرة العامة» (no last-section memory)
   await page.goto(`${BASE}/offers`);
   await page.waitForSelector('[data-tab]');
   await page.click('[data-sidebar] [data-action="account-menu"]');
   await page.click('[data-sidebar] [data-account-panel] [data-action="sign-out"]');
   await page.waitForURL(/\/login/, { timeout: 15000 });
   await signIn(page, codes, 'admin@qa.invalid');
-  await page.waitForURL(/\/offers$/, { timeout: 15000 }).catch(() => {});
-  check(page.url().endsWith('/offers'), 'after sign-in the dashboard opens the last section visited', page.url());
+
+  await page.waitForURL(/\/overview$/, { timeout: 15000 }).catch(() => {});
+  check(page.url().endsWith('/overview'), 'after sign-in a user with «النظرة العامة» lands on it', page.url());
   await ctx.close();
 }
 
@@ -290,7 +291,8 @@ const groupsOf = (page, scope = '[data-sidebar]') => page.locator(`${scope} [dat
   await page.evaluate(() => (document.documentElement.dataset.theme = 'light'));
   for (let i = 0; i < 30; i++) await page.keyboard.press('Tab');
   check(await page.evaluate(() => !!document.activeElement?.closest('[data-nav-drawer]')), 'Tab stays inside the drawer');
-  await page.mouse.click(360, 400);
+  // the drawer sits at the start side (the right in Arabic): press on the backdrop at the far left
+  await page.mouse.click(12, 400);
   check(await drawer.isVisible(), 'an outside press does not close the drawer');
   await page.keyboard.press('Escape');
   check(!(await drawer.isVisible()) && (await page.evaluate(() => document.activeElement?.getAttribute('data-action'))) === 'nav-open', 'Esc closes it and focus returns to the menu button');

@@ -736,3 +736,20 @@ body {
 .viz-table thead th { font-size: 0.75rem; color: var(--ink-muted); font-weight: 600; }
 .viz-table tbody th { font-weight: 500; }
 .viz-table tfoot th, .viz-table tfoot td { font-weight: 700; border-top: 2px solid var(--line); }
+
+/* «التقارير» → «PDF»: A4 landscape, every section in order, the way the internal emails print (white page, black text,
+   no navigation, no buttons, the table under each chart) */
+@page report { size: A4 landscape; margin: 10mm; }
+@media print {
+  .reports { page: report; color: #000; }
+  body:has(.reports) { background: #fff !important; }
+  body:has(.reports) .sidebar, body:has(.reports) #app-topbar, body:has(.reports) .nav-drawer, body:has(.reports) [data-action="as-table"] { display: none !important; }
+  body:has(.reports) .app-frame, body:has(.reports) .app-col { display: block !important; padding: 0 !important; margin: 0 !important; }
+  body:has(.reports) #app-main { padding: 0 !important; max-width: none !important; }
+  .reports { font-size: 9.5pt; gap: 4mm; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .reports .card { border-color: #ccc; background: #fff; box-shadow: none; break-inside: avoid; }
+  .reports .report-section + .report-section { break-before: page; }
+  .reports .reveal, .reports .is-first * { animation: none !important; }
+  .reports .how { display: none; }
+  .reports .text-ink-muted { color: #333 !important; }
+}
