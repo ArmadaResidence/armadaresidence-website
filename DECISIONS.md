@@ -974,3 +974,99 @@ Decisions by Ahmed, 3 Nov 2026: ONE marketing consent covering both offers (What
 - **The guest's message when a booking is refused because a room type or property is hidden (item 0.3):** the form has no specific text for that 422 — it shows the generic failure line «تعذّر إرسال الطلب الآن. يمكنكم إرسال الطلب عبر الواتساب مباشرة من الزر أدناه.» / "The request could not be sent right now. You can send it directly on WhatsApp using the button below." In practice it is rare: a hidden room type leaves the form at runtime and a hidden property is not built into it; it happens only to a page opened before the change was published.
 - Checks: session5c.sql (10) with every earlier suite green on a preview branch; guests-check 71; club-server-check 29; the pixel guard against the deployed build — 300 of 324 shots identical, the 24 that differ are /booking/, /club/ and /policies/ (AR + EN × 375 + 1440 × light + dark), where the text changed; the 20 production quotes unchanged.
 - Fixed on the way: the in-person withdrawal in the dashboard waited for the consent text to load (it needs none).
+
+## 2026-11-04 — Phase 2b session 6: «النظرة العامة» and «التقارير» (Ahmed, 4 Nov 2026 — the last session of phase 2b)
+
+Ahmed approved the layout on 4 Nov 2026. Migration `20261104100000_metrics`; dashboard `admin/src/pages/Overview.tsx`,
+`admin/src/pages/Reports.tsx`, `admin/src/components/charts.tsx`, `admin/src/lib/metrics.ts`, `admin/src/lib/xlsx.ts`.
+
+**Data scope (decision 1).** Every number comes from the bookings recorded in this system (the website and what staff enter
+in the dashboard). There is no channel manager, so nothing is called hotel occupancy and there is no RevPAR. The reports
+say so under the section links: «كل الأرقام من الحجوزات المسجّلة في اللوحة. حجوزات المنصات الأخرى تدخل بعد ربط مدير القنوات.»;
+the overview's subtitle is the date + «من الحجوزات المسجّلة في اللوحة».
+
+**Metric definitions** (computed in Postgres by the RPCs; test rows always excluded; days, «today» and weeks in Asia/Riyadh,
+weeks from Sunday):
+- *Room types counted*: active, offered on the website (`bookable`), not test rows. A room type switched off the website (the
+  accessible rooms by default) is outside every inventory figure and alert.
+- *Open / closed night* (per room type × night): open = an `inventory_days` row exists and `stop_sell` is false; closed =
+  `stop_sell` or no row («مغلق»), out of every ratio.
+- *Sold* = `inventory_days.booked` minus the confirmed TEST nights on that row (never below 0); *left* = `rooms_to_sell`.
+- «المباع من مخزون الموقع» = Σ sold ÷ Σ (sold + left) over open nights (a period's average is the same weighted ratio).
+- *Nights sold* = the nights (`reservation_nights`) of confirmed bookings that fall in the period.
+- *Revenue* (decision 2) = room revenue of confirmed bookings attributed to the nights of the stay: each stored night price
+  (`reservation_nights.price`) less the booking's offer discount when the offer is on the room price (percent, fixed nightly
+  price, stay N pay N−1 — spread over the booking's nights in proportion to their prices). Breakfast and extra beds are not
+  room revenue. *ADR* = revenue ÷ nights sold.
+- *Arrivals / departures today* = confirmed bookings with check-in / check-out today.
+- *Waiting for a reply* = bookings in status `request` + partner enquiries in status `new` (in scope: their branch or «both»).
+- *Confirmed bookings* (reports) = bookings confirmed now whose booking date (`created_at` in Riyadh) is in the period;
+  *length of stay*, *lead time* (check-in − booking date, days) and *same-day share* (lead time 0) over the same set; the
+  stay-length buckets 1, 2, 3, 4–6, 7+.
+- *First-touch source* (`internal.visit_source`, from `reservations.visit`): staff-entered → «أُدخل من اللوحة»; no visit stored
+  (bookings before source capture) → «غير معروف»; a utm_source → google / meta (facebook, instagram, fb, ig) / snapchat /
+  tiktok / whatsapp / email, any other utm_source shown as itself; else a click id (gclid → google, fbclid → meta, ttclid →
+  tiktok, ScCid → snapchat); else the referrer (a search engine → «بحث مجاني», a social site → its platform, another site →
+  «مواقع أخرى»); else «مباشر». *Campaigns* = utm_campaign of confirmed bookings, platform = the source; *average booking
+  value* = room revenue ÷ bookings. Source revenue = the booking's room revenue over all its nights.
+- *Cancellation rate* = bookings cancelled after a confirmation ÷ bookings ever confirmed, among bookings made in the period;
+  buckets by check-in − cancellation date: same day (≤ 0), 1–3, 4–7, 8–30, 30+ days; requests cancelled before any
+  confirmation are counted apart («طلبات أُلغيت قبل تأكيدها»).
+- «وقت الرد (الوسيط)» = the median from a booking request (a booking whose first status was `request`) to its first staff
+  action: the first status change by a staff member (confirm / cancel) or the first audited staff edit (the internal notes).
+  Partner enquiries: the median from creation to `first_contact_at`.
+- *No-show*: bookings record none (statuses request / confirmed / cancelled), so there is no no-show card.
+- *Club*: members = profiles with `club_joined_at` (not merged, not test); new members per week (from Sunday); by source
+  breakfast-airport, breakfast-shafa, site, booking, reception, other; *members who booked* = members with a non-cancelled
+  booking made in the period (matched through the guest profile, merged duplicates included); *unsubscribe rate* = members
+  who withdrew in the period ÷ (current members + those who withdrew). In one branch's figures a member counts when they
+  have a booking at that branch or joined through that branch's breakfast QR; all branches = every member.
+- *Partner funnel* = enquiries made in the period by their last status (جديد → تم التواصل → أُرسل عرض سعر → مؤكد, plus لم يتم);
+  conversion = confirmed ÷ every enquiry not archived (archived counted apart).
+
+**Permissions (decision 3).** Three view-only sections: «النظرة العامة» `overview` (every preset), «التقارير» `reports` and
+«الأرقام المالية» `finance` (admin, management, sales; reception none), toggled per user in «المستخدمون والصلاحيات».
+Without `finance` the RPCs remove every money key (revenue, ADR, value, average value, revenue share — `internal.no_money`)
+and the UI shows nothing in its place (never 0). Branch scope everywhere (a single-branch user gets only its branch; asking
+for another one is refused). Alerts appear only for a user who may open their screen (inventory, bookings, partners, rates).
+«آخر الطلبات» needs bookings view. The bookings list itself still shows each booking's total (reception collects at the hotel).
+
+**Alerts** («تنبيهات», with a count; each item has an action link): room types with 0 left or closed on any of the next 7
+nights (tonight + 6) → the inventory at the first such night; open bookings (request or confirmed, stay not over) flagged
+`needs_coordination` → the booking; booking requests (stay not over) with no staff action after N hours → the booking;
+partner enquiries still «جديد» after N hours → the enquiry; active rate overrides overlapping the next 14 nights with a
+rate-warning flag (`sanity_flag`) → the rates at that date. Nothing → «لا توجد تنبيهات الآن». **N = the new setting
+`reply_alert_hours`** («تنبيه الطلبات بلا رد بعد (ساعات)», Settings → «تنبيهات النظرة العامة»; whole number 1–168, default 2;
+audited and undoable like the other settings; not one of the saved site defaults — it changes no page of the site).
+
+**Navigation (decision 4).** «النظرة العامة» and «التقارير» head the sidebar without a group label. After sign-in, users
+with «النظرة العامة» land on it, others on «الحجوزات» (else the first granted screen) — this replaces the last-section landing
+of 3 Nov 2026; a deliberate sign-out no longer returns to the page left (a session that expired still returns to its page).
+The phone has no tab bar since 2 Nov 2026 (the sidebar became a drawer): «النظرة العامة» is the first item of the phone menu.
+
+**Overview, as built.** Branch filter (read-only for a single-branch user) and the charts' period (default the last 30
+days: today and the 29 nights before; 7 / 90 days, this month, last month, custom) in a row under the page title (the top
+bar keeps the search and the theme toggle). The four cards link to their lists already filtered (bookings `?status=confirmed&arrive=` /
+`&depart=` with a removable chip, `?status=request`; the inventory at tonight); partner enquiries accept `?status=` and `?ref=`.
+Spec change: «المباع ومتوسط سعر الليلة» is **two charts side by side** (% sold as bars, ADR as a line, each with its own
+axis) rather than bars and a line on two y-axes in one chart — a dual-axis chart misreads (the charts' design rule); the
+four figures above them are unchanged.
+
+**Reports, as built.** Period + comparison (previous period of the same length, the same dates last year, custom, or none),
+branch, «Excel» (one .xlsx, a right-to-left sheet per section, written in the browser without a dependency) and «PDF» (the
+browser's print to A4 landscape — a named `@page report`; every section on its own page, the table under each chart, no
+navigation or buttons). Sections: الأداء، سلوك الحجز، المصادر والحملات، الإلغاء والرد، النادي والشركاء.
+
+**Motion and interaction.** First load only: donuts draw in (`--motion-slow`, 700 ms), bars grow, numbers count up
+(800 ms), cards fade in with a 60 ms stagger; a filter change only moves values (`--motion-fast`). Realtime: one row per new
+or changed booking, partner enquiry or club membership in `public.dashboard_signals` (kind, branch, time — nothing personal;
+RLS = overview view + scope; kept two days) refreshes the figures, and a changed number glows bronze for 1.5 s. Tooltips by
+hover, tap (a second tap follows the link) and keyboard (one tab stop per chart, arrows in the reading direction, Enter
+opens). Every chart: an aria-label summary and «عرض كجدول». prefers-reduced-motion: no animation at all. Chart colours
+validated for colour-vision deficiency and contrast: branch 1 #2f6a9c / dark #4b8bc9, branch 2 #b5793a / dark #bf8640.
+
+**Checks.** `supabase/tests/session6.sql` (55: every metric on fixed fixtures with known answers — a booking at 23:30 and one
+at 00:30 Riyadh, a cancelled booking, a declined request, closed nights, test rows that must not count; the three
+permissions; branch scope; the alert rules and N; the signals and their RLS) with every earlier suite green on a preview
+branch (`phase2a1.sql` and `media.sql` updated for the new sections and the seventh setting); `admin/tests/overview-check.mjs`
+(90, preview branch); `admin/tests/nav-check.mjs` updated (landing, the sidebar's first group).
