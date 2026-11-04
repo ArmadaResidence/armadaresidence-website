@@ -17,7 +17,7 @@ export const COPY = {
     h1b: { en: 'Hotels', ar: 'ملف الحقائق لوكلاء السفر' },
     tagline: {
       en: 'Welcome, partners. We are not looking for a booking — we are looking for a <b>partnership</b> that returns every season.',
-      ar: 'أهلاً بكم شركاء — لا نبحث عن حجزٍ واحد، بل عن <b>شراكة</b> تعود كل موسم',
+      ar: 'أهلاً بك شريكًا — لا نبحث عن حجزٍ واحد، بل عن <b>شراكة</b> تعود كل موسم',
     },
     stats: [
       { label: { en: 'Properties', ar: 'الفنادق' }, value: { en: 'Two', ar: 'فندقان' } },
@@ -33,7 +33,7 @@ export const COPY = {
     h2: { en: 'Two hotels in Taif.<br>One for groups.<br>One for families.', ar: 'فندقان في الطائف.<br>واحد للمجموعات.<br>وآخر للعائلات.' },
     body: {
       en: 'That is the whole proposition. You are not choosing between two similar addresses — you are choosing the one that matches the programme in your hand.<br>And when a programme needs both, you book them under one agreement, one rooming list and one commercial contact.',
-      ar: 'أنتم لا تختارون بين عنوانين متشابهين — بل تختارون الفندق الذي يطابق البرنامج الذي بين أيديكم. وحين يحتاج البرنامج إليهما معاً، تحجزونهما تحت اتفاقية واحدة، وقائمة تسكين واحدة، وجهة اتصال تجارية واحدة',
+      ar: 'أنت لا تختار بين عنوانين متشابهين — بل تختار الفندق الذي يطابق البرنامج الذي بين يديك. وحين يحتاج البرنامج إليهما معاً، تحجزهما تحت اتفاقية واحدة، وقائمة تسكين واحدة، وجهة اتصال تجارية واحدة',
     },
     airport: {
       name: { en: 'Airport Road', ar: 'طريق المطار' },
@@ -59,10 +59,10 @@ export const COPY = {
     section: { en: 'At a Glance', ar: 'نظرة سريعة' },
     h2: { en: 'The group<br>in numbers.', ar: 'المجموعة<br>في أرقام.' },
     sub: { en: 'Every figure is taken from the properties’ own records. Nothing is estimated and nothing is rounded up.', ar: 'كل رقم مأخوذ من سجلات الفندقين. لا تقدير، ولا تقريب إلى الأعلى' },
-    welcomeTitle: { en: 'Welcome, partners', ar: 'أهلاً بكم شركاء' },
+    welcomeTitle: { en: 'Welcome, partners', ar: 'أهلاً بك شريكًا' },
     welcome: {
       en: 'We meet travel agents and tour operators as <b>partners, not accounts</b>. A partnership starts with information you can build on.',
-      ar: 'نستقبل وكلاء السفر ومنظّمي الرحلات <b>شركاء لا عملاء</b>. الشراكة تبدأ من معلومة يمكنكم البناء عليها',
+      ar: 'نستقبل وكلاء السفر ومنظّمي الرحلات <b>شركاء لا عملاء</b>. الشراكة تبدأ من معلومة يمكنك البناء عليها',
     },
     stats: [
       { n: '{units_airport}', l: { en: 'Apartments', ar: 'شقة فندقية' }, s: { en: 'Airport Road', ar: 'طريق المطار' } },
@@ -180,7 +180,7 @@ export const COPY = {
 
   groups: {
     section: { en: 'Groups & Travel Trade', ar: 'المجموعات وقطاع السفر' },
-    h2: { en: 'Your group. Our priority.', ar: 'مجموعتكم أولويتنا.' },
+    h2: { en: 'Your group. Our priority.', ar: 'مجموعتك أولويتنا.' },
     intro: {
       en: 'A group is not a stack of individual bookings. It arrives together, eats together and leaves together — and it is run from one written plan issued to every department before the group lands.',
       ar: 'المجموعة ليست كومة حجوزات فردية. تصل معاً، وتأكل معاً، وتغادر معاً — وتُدار بخطة واحدة مكتوبة تُعمَّم على كل قسم قبل وصولها',
@@ -199,15 +199,15 @@ export const COPY = {
   },
 
   steps: {
-    section: { en: 'How We Run Your Group', ar: 'كيف ندير مجموعتكم' },
+    section: { en: 'How We Run Your Group', ar: 'كيف ندير مجموعتك' },
     h2: { en: 'Six steps that never change.', ar: 'ستّ خطوات لا تتبدّل.' },
     sub: {
       en: 'From the first message to the final invoice a group is run by one named contact, on one written plan, through six steps that never change.',
       ar: 'من أول رسالة حتى الفاتورة الأخيرة يديرها مسؤول واحد باسمه، بخطة واحدة مكتوبة، عبر ستّ خطوات لا تتبدّل',
     },
     list: [
-      { t: { en: 'The enquiry', ar: 'الطلب' }, s: { en: 'Send the programme, the dates and the party size to the commercial office.', ar: 'أرسلوا البرنامج والتواريخ وعدد الوفد إلى الإدارة التجارية' } },
-      { t: { en: 'The offer', ar: 'العرض' }, s: { en: 'Availability comes back within one working day, with a written contracted rate sheet.', ar: 'يصلكم ردّ التوافر خلال يوم عمل، ومعه جدول أسعار تعاقدي مكتوب' } },
+      { t: { en: 'The enquiry', ar: 'الطلب' }, s: { en: 'Send the programme, the dates and the party size to the commercial office.', ar: 'أرسل البرنامج والتواريخ وعدد الوفد إلى الإدارة التجارية' } },
+      { t: { en: 'The offer', ar: 'العرض' }, s: { en: 'Availability comes back within one working day, with a written contracted rate sheet.', ar: 'يصلك ردّ التوافر خلال يوم عمل، ومعه جدول أسعار تعاقدي مكتوب' } },
       { t: { en: 'The agreement', ar: 'الاتفاقية' }, s: { en: 'Rates, unit mix and meal arrangement are confirmed in writing and the allocation is held.', ar: 'تُعتمد الأسعار وتوزيع الوحدات وترتيب الوجبات كتابةً، ويُحجز التخصيص' } },
       { t: { en: 'The rooming list', ar: 'قائمة التسكين' }, s: { en: 'Reviewed and amended up to the agreed cut-off — names, pairings and special requests.', ar: 'تُراجَع وتُعدَّل حتى الموعد المتفق عليه — الأسماء والتوزيع والطلبات الخاصة' } },
       { t: { en: 'The event order', ar: 'أمر التشغيل' }, s: { en: 'One written plan circulated to reception, housekeeping, food &amp; beverage and accounts before the group lands.', ar: 'خطة واحدة مكتوبة تُعمَّم على الاستقبال والهاوسكيبينق والأغذية والمشروبات والحسابات قبل وصول المجموعة' } },
@@ -254,12 +254,12 @@ export const COPY = {
     rateTitle: { en: 'Special corporate &amp; travel-trade rates — to the end of the year', ar: 'أسعار وعروض خاصة للشركات ووكلاء السفر — حتى نهاية العام' },
     rateBody: {
       en: 'Send the dates and the party size; a contracted rate sheet comes back in writing — <b>held to the end of the year</b>.',
-      ar: 'أرسلوا التواريخ وعدد الوفد، ويصلكم جدول أسعار تعاقدي مكتوب — <b>مثبّت حتى نهاية العام</b>',
+      ar: 'أرسل التواريخ وعدد الوفد، ويصلك جدول أسعار تعاقدي مكتوب — <b>مثبّت حتى نهاية العام</b>',
     },
     rateTags: [{ en: 'CORPORATE RATES', ar: 'أسعار الشركات' }, { en: 'GROUP RATES', ar: 'أسعار المجموعات' }, { en: 'LONG STAY', ar: 'الإقامة الطويلة' }, { en: 'HALL &amp; COFFEE BREAK PACKAGES', ar: 'باقات القاعة والكوفي بريك' }, { en: 'CONSOLIDATED BILLING', ar: 'تسوية حساب موحّدة' }],
     getsLabel: { en: 'WHAT AN AGENT GETS', ar: 'ما يحصل عليه الوكيل' },
     gets: [
-      { t: { en: 'Dedicated sales contact', ar: 'مسؤول مبيعات مخصَّص' }, s: { en: 'One named contact for your account, from enquiry to invoice.', ar: 'مسؤول واحد باسمه لحسابكم، من الاستفسار حتى الفاتورة' } },
+      { t: { en: 'Dedicated sales contact', ar: 'مسؤول مبيعات مخصَّص' }, s: { en: 'One named contact for your account, from enquiry to invoice.', ar: 'مسؤول واحد باسمه لحسابك، من الاستفسار حتى الفاتورة' } },
       { t: { en: 'Availability within one working day', ar: 'ردّ التوافر خلال يوم عمل' }, s: { en: 'Decisions taken in-house, with no long approval chain.', ar: 'القرارات تُتَّخذ داخلياً بلا دورة اعتماد طويلة' } },
       { t: { en: 'Flexible rooming lists', ar: 'مرونة قوائم التسكين' }, s: { en: 'Reviewed and amended up to the agreed cut-off.', ar: 'تُراجَع وتُعدَّل حتى الموعد المتفق عليه' } },
       { t: { en: 'Group meal arrangements', ar: 'ترتيبات وجبات المجموعات' }, s: { en: 'Breakfast per guest; lunch and dinner by prior agreement.', ar: 'الإفطار للضيف؛ والغداء والعشاء بالاتفاق المسبق' } },
@@ -274,12 +274,12 @@ export const COPY = {
     h2: { en: 'The Commercial Office<br>Armada Residence Hotels', ar: 'الإدارة التجارية<br>فنادق أرمادا ريزيدنس' },
     sub: {
       en: 'Welcome to Armada Residence — send the programme, the dates and the party size, and availability comes back within one working day.',
-      ar: 'أهلاً بكم في أرمادا ريزيدنس — أرسلوا البرنامج والتواريخ وعدد الوفد، ويصلكم الردّ خلال يوم عمل',
+      ar: 'أهلاً بك في أرمادا ريزيدنس — أرسل البرنامج والتواريخ وعدد الوفد، ويصلك الردّ خلال يوم عمل',
     },
     qr: [
       { t: { en: 'Airport Road', ar: 'طريق المطار' }, s: { en: 'LOCATION', ar: 'الموقع' } },
       { t: { en: 'Al Shafa Road', ar: 'طريق الشفا' }, s: { en: 'LOCATION', ar: 'الموقع' } },
-      { t: { en: 'Follow us', ar: 'تابعونا' }, s: { en: 'LINKTR.EE/ARMADAR', ar: 'linktr.ee/ArmadaR' } },
+      { t: { en: 'Follow us', ar: 'تابعنا' }, s: { en: 'LINKTR.EE/ARMADAR', ar: 'linktr.ee/ArmadaR' } },
     ],
     rows: [
       { en: 'MOBILE · WHATSAPP', ar: 'الجوال · واتساب' },

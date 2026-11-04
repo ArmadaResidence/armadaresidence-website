@@ -118,7 +118,7 @@
           "key": "entrance",
           "title_ar": "المدخل والموقع",
           "title_en": "Entrance and location",
-          "body_ar": "تصلون إلينا بعد 15 دقيقة من مطار الطائف، على طريق المطار ومحور الهدا باتجاه مكة المكرمة. المواقف مجانية في الطابقين السفليين، والمصعد يوصلكم من سيارتكم إلى اللوبي مباشرة.",
+          "body_ar": "تصل إلينا بعد 15 دقيقة من مطار الطائف، على طريق المطار ومحور الهدا باتجاه مكة المكرمة. المواقف مجانية في الطابقين السفليين، والمصعد يوصلك من سيارتك إلى اللوبي مباشرة.",
           "body_en": "Fifteen minutes from Taif airport, on Airport Road and the Al Hada corridor towards Makkah. Parking is free on the two basement levels, and the lift takes you from your car straight to the lobby.",
           "image": {
             "base": null,
@@ -135,7 +135,7 @@
           "key": "lobby",
           "title_ar": "اللوبي والاستقبال",
           "title_en": "Lobby and reception",
-          "body_ar": "فريق الاستقبال في انتظاركم على مدار الساعة. الوصول من الساعة 4:00 عصرًا والمغادرة حتى 12:00 ظهرًا، وطوال إقامتكم تُنظَّف الغرف يوميًا والأمن لا ينام.",
+          "body_ar": "فريق الاستقبال في انتظارك على مدار الساعة. الوصول من الساعة 4:00 عصرًا والمغادرة حتى 12:00 ظهرًا، وطوال إقامتك تُنظَّف الغرف يوميًا والأمن لا ينام.",
           "body_en": "The reception team is waiting for you around the clock. Check-in from 4:00 pm, check-out by 12:00 noon, and throughout your stay rooms are cleaned daily and security never sleeps.",
           "image": {
             "base": null,
@@ -238,7 +238,7 @@
       "legacy_description_en": "A gem on Al-Shafa Road in Taif, close to services and landmarks such as Al-Ruddaf Park and Jouri Mall. An elegant choice for family and individual stays.",
       "tagline_ar": "فندق هادئ على طريق الشفا",
       "tagline_en": "A quiet hotel on Shafa Road",
-      "description_ar": "على طريق الشفا، الطريق الذي يصل الطائف بمرتفعات الشفا، يقدّم فندق أرمادا ريزيدنس غرفًا وأجنحة هادئة للعائلات والأفراد. تبدأ الخيارات من غرفة بسرير كينج بمساحة 35 مترًا مربعًا، وتشمل غرفة ببلكونة خاصة، واستديو بجاكوزي، وأجنحة بغرفة أو غرفتي نوم تتسع حتى أربعة أشخاص.\n\nيُقدَّم بوفيه إفطار يومي في المطعم من 7:00 إلى 10:30 صباحًا، ومواقف السيارات مجانية في الطابق السفلي، وفي الفندق مقهى، والوصول من الساعة 4:00 عصرًا والمغادرة حتى 12:00 ظهرًا. الاستقبال وتوصيل الطعام إلى الغرف متاحان على مدار الساعة، ويمكنكم التواصل مع الاستقبال مباشرة عبر الواتساب لأي طلب قبل الوصول أو أثناء الإقامة. وتُنظَّف الغرف يوميًا من 10:00 صباحًا حتى 5:00 مساءً.",
+      "description_ar": "على طريق الشفا، الطريق الذي يصل الطائف بمرتفعات الشفا، يقدّم فندق أرمادا ريزيدنس غرفًا وأجنحة هادئة للعائلات والأفراد. تبدأ الخيارات من غرفة بسرير كينج بمساحة 35 مترًا مربعًا، وتشمل غرفة ببلكونة خاصة، واستديو بجاكوزي، وأجنحة بغرفة أو غرفتي نوم تتسع حتى أربعة أشخاص.\n\nيُقدَّم بوفيه إفطار يومي في المطعم من 7:00 إلى 10:30 صباحًا، ومواقف السيارات مجانية في الطابق السفلي، وفي الفندق مقهى، والوصول من الساعة 4:00 عصرًا والمغادرة حتى 12:00 ظهرًا. الاستقبال وتوصيل الطعام إلى الغرف متاحان على مدار الساعة، ويمكنك التواصل مع الاستقبال مباشرة عبر الواتساب لأي طلب قبل الوصول أو أثناء الإقامة. وتُنظَّف الغرف يوميًا من 10:00 صباحًا حتى 5:00 مساءً.",
       "description_en": "On Shafa Road, the road linking Taif to the Al-Shafa highlands, Armada Residence Shafa Road is a quiet hotel for families and individual travellers. Options start with a 35 m² king room and include a room with a private balcony, a studio with a jacuzzi, and one- and two-bedroom suites for up to four guests.\n\nA daily breakfast buffet is served in the restaurant 7:00–10:30 am, parking is free on the basement level, and the hotel has a café. Check-in is from 4:00 pm and check-out by 12:00 noon. Reception and in-room dining are available around the clock, and you can reach reception directly on WhatsApp before arrival or during your stay. Rooms are cleaned daily between 10:00 am and 5:00 pm.",
       "verified": true,
       "pending": [],
@@ -288,7 +288,7 @@
           "key": "lobby",
           "title_ar": "اللوبي والاستقبال",
           "title_en": "Lobby and reception",
-          "body_ar": "فندق هادئ صُمّم للعائلات ومن يبحث عن السكينة. الاستقبال معكم على مدار الساعة وعلى الواتساب مباشرة، والوصول من 4:00 عصرًا والمغادرة حتى 12:00 ظهرًا.",
+          "body_ar": "فندق هادئ صُمّم للعائلات ومن يبحث عن السكينة. الاستقبال معك على مدار الساعة وعلى الواتساب مباشرة، والوصول من 4:00 عصرًا والمغادرة حتى 12:00 ظهرًا.",
           "body_en": "A quiet hotel made for families and for anyone seeking calm. Reception is with you around the clock and directly on WhatsApp; check-in from 4:00 pm, check-out by 12:00 noon.",
           "image": {
             "base": null,

@@ -51,7 +51,7 @@
     {
       "id": "00000000-0000-4000-8000-000000000010", "slug": "umrah-groups", "category": "b2b", "branches": ["airport-road", "shafa-road"], "venue": null,
       "title_ar": "أسعار خاصة لشركات العمرة والمجموعات", "title_en": "Special rates for Umrah operators and groups",
-      "description_ar": "نقدّم أسعارًا خاصة لشركات العمرة والمجموعات في فرعي طريق المطار وطريق الشفا. أرسلوا عدد الغرف وتواريخ الإقامة وعدد الأشخاص إلى فريق المبيعات، ليصلكم عرض سعر مكتوب.",
+      "description_ar": "نقدّم أسعارًا خاصة لشركات العمرة والمجموعات في فرعي طريق المطار وطريق الشفا. أرسل عدد الغرف وتواريخ الإقامة وعدد الأشخاص إلى فريق المبيعات، ليصلك عرض سعر مكتوب.",
       "description_en": "We offer special rates for Umrah operators and groups at both the Airport Road and Shafa Road properties. Send the number of rooms, the stay dates and the number of guests to the sales team to receive a written quote.",
       "terms_ar": "", "terms_en": "", "valid_from": null, "valid_to": null, "kind": "none", "percent": null, "fixed_price": null, "stay_nights": null, "promo_code": null,
       "room_types": [], "min_nights": 1, "dining_price": null, "cta": "quote", "quote_request": "umrah-group", "whatsapp": true,

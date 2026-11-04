@@ -17,6 +17,8 @@ const noindexPaths = [
   '/booking/success/',
   '/club/unsubscribe/',
   '/404/',
+  // the old Horizons paths rendered by src/pages/[legacy].astro are redirect pages, never sitemap entries (4 Nov 2026)
+  ...redirects.redirects.filter((r) => r.via === 'page').map((r) => `${r.from}/`),
   ...roomsJson.rooms.filter((r) => r.show_on_site && r.availability === 'sold_out').map((r) => `/${r.branch}/${r.slug}/`),
 ];
 const isNoindex = (page) => {
@@ -28,7 +30,9 @@ const isNoindex = (page) => {
  *  wildcard entries (via: "404") are handled by src/pages/404.astro. */
 const redirectMap = Object.fromEntries(
   redirects.redirects
-    .filter((r) => r.from && r.to && !r.from.includes('*'))
+    // `via: page` entries are conditional (src/pages/[legacy].astro decides at build time); wildcards and `via: 404`
+    // single paths (/gallery) go through 404.html
+    .filter((r) => r.from && r.to && !r.from.includes('*') && r.via !== 'page' && r.via !== '404')
     .map((r) => [r.from, { status: 301, destination: r.to }]),
 );
 

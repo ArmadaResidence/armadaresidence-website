@@ -19,6 +19,7 @@ import partnersJson from '../../content/partners.json';
 import partnersPagesJson from '../../content/partners-pages.json';
 import careersJson from '../../content/careers.json';
 import clubJson from '../../content/club.json';
+import turnstileJson from '../../content/turnstile.json';
 import { sarText } from '../../supabase/functions/booking-request/rules.ts';
 
 export type Locale = 'ar' | 'en';
@@ -255,6 +256,8 @@ export const legal = legalJson;
 export const offers = offersJson;
 export const siteTexts = withTexts('site-texts.json', siteTextsJson);
 export const seo = seoJson;
+/** Cloudflare Turnstile's public site key while the setting is on (content/turnstile.json, 4 Nov 2026); '' = off */
+export const turnstileKey: string = turnstileJson.enabled && turnstileJson.site_key ? String(turnstileJson.site_key) : '';
 
 export type UI = (typeof uiJson)['ar'];
 export const ui = (locale: Locale): UI => uiJson[locale] as UI;

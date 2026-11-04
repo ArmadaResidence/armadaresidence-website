@@ -1,0 +1,271 @@
+{
+  "exportFormatVersion": 2,
+  "exportTime": "2026-11-04 20:00:00",
+  "containerVersion": {
+    "path": "accounts/0/containers/0/versions/0",
+    "accountId": "0",
+    "containerId": "0",
+    "containerVersionId": "0",
+    "name": "Armada Residence — pixels after engagement (4 Nov 2026)",
+    "description": "Moves the Meta, TikTok and Snap BASE pixels from page load to the first click / tap, a 25 % scroll or 10 s on the page (once per page) — and on CE - booking_request with priority 10, so the untouched conversion tags still find fbq / ttq / snaptr on the success page. Conversion tags on CE - booking_request are not in this file and stay as they are. Import with Merge + Overwrite conflicting (docs/gtm-performance.md).",
+    "container": {
+      "accountId": "0",
+      "containerId": "0",
+      "name": "Armada Residence (armadaresidence.com)",
+      "publicId": "GTM-5JVH7R37",
+      "usageContext": [
+        "WEB"
+      ]
+    },
+    "tag": [
+      {
+        "accountId": "0",
+        "containerId": "0",
+        "tagId": "35",
+        "name": "Meta Pixel - base",
+        "type": "html",
+        "parameter": [
+          {
+            "type": "TEMPLATE",
+            "key": "html",
+            "value": "<script>!function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window,document,'script','https://connect.facebook.net/en_US/fbevents.js');fbq('init','{{Meta Pixel ID}}');fbq('track','PageView');</script>"
+          },
+          {
+            "type": "BOOLEAN",
+            "key": "supportDocumentWrite",
+            "value": "false"
+          }
+        ],
+        "firingTriggerId": [
+          "101",
+          "102",
+          "103",
+          "22"
+        ],
+        "tagFiringOption": "ONCE_PER_LOAD",
+        "notes": "4 Nov 2026 (docs/gtm-performance.md): fires once per page on the first click / tap, a 25 % scroll, 10 s on the page, or CE - booking_request (the success page is a new page load) — with priority 10 so it runs before the conversion tag of the same event. No longer on page load. The conversion tags are unchanged.",
+        "priority": {
+          "type": "INTEGER",
+          "value": "10"
+        }
+      },
+      {
+        "accountId": "0",
+        "containerId": "0",
+        "tagId": "37",
+        "name": "TikTok Pixel - base",
+        "type": "html",
+        "parameter": [
+          {
+            "type": "TEMPLATE",
+            "key": "html",
+            "value": "<script>!function(w,d,t){w.TiktokAnalyticsObject=t;var ttq=w[t]=w[t]||[];ttq.methods=[\"page\",\"track\",\"identify\",\"instances\",\"debug\",\"on\",\"off\",\"once\",\"ready\",\"alias\",\"group\",\"enableCookie\",\"disableCookie\"],ttq.setAndDefer=function(t,e){t[e]=function(){t.push([e].concat(Array.prototype.slice.call(arguments,0)))}};for(var i=0;i<ttq.methods.length;i++)ttq.setAndDefer(ttq,ttq.methods[i]);ttq.instance=function(t){for(var e=ttq._i[t]||[],n=0;n<ttq.methods.length;n++)ttq.setAndDefer(e,ttq.methods[n]);return e};ttq.load=function(e,n){var i=\"https://analytics.tiktok.com/i18n/pixel/events.js\";ttq._i=ttq._i||{},ttq._i[e]=[],ttq._i[e]._u=i,ttq._t=ttq._t||{},ttq._t[e]=+new Date,ttq._o=ttq._o||{},ttq._o[e]=n||{};var o=document.createElement(\"script\");o.type=\"text/javascript\",o.async=!0,o.src=i+\"?sdkid=\"+e+\"&lib=\"+t;var a=document.getElementsByTagName(\"script\")[0];a.parentNode.insertBefore(o,a)};ttq.load('{{TikTok Pixel ID}}');ttq.page();}(window,document,'ttq');</script>"
+          },
+          {
+            "type": "BOOLEAN",
+            "key": "supportDocumentWrite",
+            "value": "false"
+          }
+        ],
+        "firingTriggerId": [
+          "101",
+          "102",
+          "103",
+          "22"
+        ],
+        "tagFiringOption": "ONCE_PER_LOAD",
+        "notes": "4 Nov 2026 (docs/gtm-performance.md): fires once per page on the first click / tap, a 25 % scroll, 10 s on the page, or CE - booking_request (the success page is a new page load) — with priority 10 so it runs before the conversion tag of the same event. No longer on page load. The conversion tags are unchanged.",
+        "priority": {
+          "type": "INTEGER",
+          "value": "10"
+        }
+      },
+      {
+        "accountId": "0",
+        "containerId": "0",
+        "tagId": "39",
+        "name": "Snap Pixel - base",
+        "type": "html",
+        "parameter": [
+          {
+            "type": "TEMPLATE",
+            "key": "html",
+            "value": "<script>(function(e,t,n){if(e.snaptr)return;var a=e.snaptr=function(){a.handleRequest?a.handleRequest.apply(a,arguments):a.queue.push(arguments)};a.queue=[];var s='script';r=t.createElement(s);r.async=!0;r.src=n;var u=t.getElementsByTagName(s)[0];u.parentNode.insertBefore(r,u);})(window,document,'https://sc-static.net/scevent.min.js');snaptr('init','{{Snap Pixel ID}}',{});snaptr('track','PAGE_VIEW');</script>"
+          },
+          {
+            "type": "BOOLEAN",
+            "key": "supportDocumentWrite",
+            "value": "false"
+          }
+        ],
+        "firingTriggerId": [
+          "101",
+          "102",
+          "103",
+          "22"
+        ],
+        "tagFiringOption": "ONCE_PER_LOAD",
+        "notes": "4 Nov 2026 (docs/gtm-performance.md): fires once per page on the first click / tap, a 25 % scroll, 10 s on the page, or CE - booking_request (the success page is a new page load) — with priority 10 so it runs before the conversion tag of the same event. No longer on page load. The conversion tags are unchanged.",
+        "priority": {
+          "type": "INTEGER",
+          "value": "10"
+        }
+      }
+    ],
+    "trigger": [
+      {
+        "accountId": "0",
+        "containerId": "0",
+        "triggerId": "101",
+        "name": "Engaged - first click or tap",
+        "type": "CLICK"
+      },
+      {
+        "accountId": "0",
+        "containerId": "0",
+        "triggerId": "102",
+        "name": "Engaged - scroll 25 %",
+        "type": "SCROLL_DEPTH",
+        "parameter": [
+          {
+            "type": "BOOLEAN",
+            "key": "verticalThresholdOn",
+            "value": "true"
+          },
+          {
+            "type": "TEMPLATE",
+            "key": "verticalThresholdUnits",
+            "value": "PERCENT"
+          },
+          {
+            "type": "TEMPLATE",
+            "key": "verticalThresholdsPercent",
+            "value": "25"
+          },
+          {
+            "type": "BOOLEAN",
+            "key": "horizontalThresholdOn",
+            "value": "false"
+          },
+          {
+            "type": "TEMPLATE",
+            "key": "triggerStartOption",
+            "value": "WINDOW_LOAD"
+          }
+        ]
+      },
+      {
+        "accountId": "0",
+        "containerId": "0",
+        "triggerId": "103",
+        "name": "Engaged - 10 s on the page (fallback)",
+        "type": "TIMER",
+        "eventName": {
+          "type": "TEMPLATE",
+          "value": "gtm.timer"
+        },
+        "interval": {
+          "type": "TEMPLATE",
+          "value": "10000"
+        },
+        "limit": {
+          "type": "TEMPLATE",
+          "value": "1"
+        },
+        "autoEventFilter": [
+          {
+            "type": "MATCH_REGEX",
+            "parameter": [
+              {
+                "type": "TEMPLATE",
+                "key": "arg0",
+                "value": "{{Page URL}}"
+              },
+              {
+                "type": "TEMPLATE",
+                "key": "arg1",
+                "value": ".*"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "accountId": "0",
+        "containerId": "0",
+        "triggerId": "22",
+        "name": "CE - booking_request",
+        "type": "CUSTOM_EVENT",
+        "customEventFilter": [
+          {
+            "type": "EQUALS",
+            "parameter": [
+              {
+                "type": "TEMPLATE",
+                "key": "arg0",
+                "value": "{{_event}}"
+              },
+              {
+                "type": "TEMPLATE",
+                "key": "arg1",
+                "value": "booking_request"
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "variable": [
+      {
+        "accountId": "0",
+        "containerId": "0",
+        "variableId": "2",
+        "name": "Meta Pixel ID",
+        "type": "c",
+        "parameter": [
+          {
+            "type": "TEMPLATE",
+            "key": "value",
+            "value": "1902071377169884"
+          }
+        ]
+      },
+      {
+        "accountId": "0",
+        "containerId": "0",
+        "variableId": "3",
+        "name": "Snap Pixel ID",
+        "type": "c",
+        "parameter": [
+          {
+            "type": "TEMPLATE",
+            "key": "value",
+            "value": "a5b03844-9eb8-4811-9f0f-e5598b39d43a"
+          }
+        ]
+      },
+      {
+        "accountId": "0",
+        "containerId": "0",
+        "variableId": "4",
+        "name": "TikTok Pixel ID",
+        "type": "c",
+        "parameter": [
+          {
+            "type": "TEMPLATE",
+            "key": "value",
+            "value": "D86BR0BC77UBE9T94V7G"
+          }
+        ]
+      }
+    ],
+    "builtInVariable": [
+      {
+        "accountId": "0",
+        "containerId": "0",
+        "type": "PAGE_URL",
+        "name": "Page URL"
+      }
+    ]
+  }
+}

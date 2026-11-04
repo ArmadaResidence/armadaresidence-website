@@ -34,6 +34,7 @@ import {
 } from '@lib/articles';
 import {
   branchBySlug,
+  ogImageOf,
   branchContact,
   branchPath,
   categoryLabel,
@@ -87,7 +88,8 @@ const checkTimes = locale === 'ar' ? `${policies.check_in_ar} — ${policies.che
 // Open Graph: the cover's OG crop once the approved photo exists (scripts/og.mjs writes /og/blog/<slug>.jpg);
 // until then the default brand image.
 const ogFile = `/og/blog/${slug}.jpg`;
-const ogImage = articleOg(a) ?? (cover && existsSync(join(process.cwd(), 'public', ogFile)) ? ogFile : seo.default_og_image);
+const oneBranch = articleBranches(a).length === 1 ? ogImageOf(branchBySlug(articleBranches(a)[0])) : undefined;
+const ogImage = articleOg(a) ?? (cover && existsSync(join(process.cwd(), 'public', ogFile)) ? ogFile : oneBranch ?? seo.default_og_image);
 // a canonical other than the page itself (the editor's SEO field): an absolute URL or a site path
 const canonicalHref = a.canonical ? (/^https:\/\//.test(a.canonical) ? a.canonical : absoluteUrl(a.canonical)) : undefined;
 

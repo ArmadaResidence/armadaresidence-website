@@ -31,6 +31,7 @@
 import { parsePhoneNumberFromString } from 'npm:libphonenumber-js@1.12.10/min';
 import { siteOrigins } from '../_shared/site-cors.ts';
 import { emailKey, platformClientIp } from '../_shared/client-ip.ts';
+import { verifyTurnstile } from '../_shared/turnstile.ts';
 import { allowedOrigins as adminOrigins } from '../_shared/cors.ts';
 import content from '../booking-request/content.generated.json' with { type: 'json' };
 import { cleanUtm, clubSource, validateClubJoin } from '../booking-request/rules.ts';
@@ -161,6 +162,11 @@ async function join(req: Request, body: Record<string, unknown>, test: boolean):
   if (!ip) console.warn('club: no platform client address — per-IP limit skipped');
   if (ip && (!test || limits === 'ip') && (await limited((test ? 'test:' : '') + (await sha(`club-ip:${ip}`)), IP_LIMIT, IP_WINDOW_SECONDS))) {
     return json(req, 429, { ok: false, error: 'rate_limited' });
+  }
+  // Cloudflare Turnstile (content/turnstile.json — off until its keys exist; test mode skips it)
+  if (!test) {
+    const ts = await verifyTurnstile(body.turnstile_token, ip, { enabled: Boolean(content.turnstile?.enabled), secret: Deno.env.get('TURNSTILE_SECRET_KEY') });
+    if (!ts.ok) return json(req, 403, { ok: false, error: 'challenge' });
   }
   const v = validateClubJoin(
     { phone: String(body.phone ?? ''), country: String(body.country ?? 'SA'), name: String(body.name ?? ''), email: String(body.email ?? ''), consent: body.consent },

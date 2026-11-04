@@ -60,7 +60,7 @@
       "id": "check-in-out",
       "category": "stay",
       "q_ar": "ما مواعيد الوصول والمغادرة؟",
-      "a_ar": "الوصول من الساعة 4:00 عصرًا، والمغادرة حتى الساعة 12:00 ظهرًا، في الفرعين. ويمكنكم الوصول في أي وقت بعد الرابعة، فالاستقبال متاح على مدار الساعة.",
+      "a_ar": "الوصول من الساعة 4:00 عصرًا، والمغادرة حتى الساعة 12:00 ظهرًا، في الفرعين. ويمكنك الوصول في أي وقت بعد الرابعة، فالاستقبال متاح على مدار الساعة.",
       "q_en": "What are the check-in and check-out times?",
       "a_en": "Check-in is from 4:00 pm and check-out is by 12:00 noon at both properties. You can arrive at any time after 4:00 pm, as reception is open around the clock."
     },
@@ -124,7 +124,7 @@
       "id": "accessible",
       "category": "stay",
       "q_ar": "هل توجد غرف مهيأة لذوي الاحتياجات الخاصة؟",
-      "a_ar": "نعم، يتوفر في كل فرع غرفة مهيأة لذوي الاحتياجات الخاصة. لمعرفة تفاصيل تجهيزاتها قبل الحجز، تواصلوا مع الاستقبال.",
+      "a_ar": "نعم، يتوفر في كل فرع غرفة مهيأة لذوي الاحتياجات الخاصة. لمعرفة تفاصيل تجهيزاتها قبل الحجز، تواصل مع الاستقبال.",
       "q_en": "Do you have accessible rooms?",
       "a_en": "Yes, each property has an accessible room. For details of its facilities before booking, please contact reception."
     },
@@ -148,7 +148,7 @@
       "id": "contact",
       "category": "branches",
       "q_ar": "كيف أتواصل مع الاستقبال؟",
-      "a_ar": "تواصلوا مع استقبال الفرع مباشرة عبر زر الواتساب في صفحة كل فرع، والاستقبال متاح على مدار الساعة.",
+      "a_ar": "تواصل مع استقبال الفرع مباشرة عبر زر الواتساب في صفحة كل فرع، والاستقبال متاح على مدار الساعة.",
       "q_en": "How do I contact reception?",
       "a_en": "Message the property's reception directly with the WhatsApp button on its page; reception is available around the clock."
     },
@@ -164,7 +164,7 @@
       "id": "hall",
       "category": "business",
       "q_ar": "هل لديكم قاعة للاجتماعات والمناسبات؟",
-      "a_ar": "نعم، في فرع طريق المطار قاعة تتسع حتى 50 شخصًا، مجهزة ببروجكتر ونظام صوتي وخمسة أنماط للجلوس. للأسعار والحجز، اطلبوا عرض سعر من صفحة القاعة وسيتواصل معكم فريق المبيعات.",
+      "a_ar": "نعم، في فرع طريق المطار قاعة تتسع حتى 50 شخصًا، مجهزة ببروجكتر ونظام صوتي وخمسة أنماط للجلوس. للأسعار والحجز، اطلب عرض سعر من صفحة القاعة وسيتواصل معك فريق المبيعات.",
       "q_en": "Do you have a meeting and events hall?",
       "a_en": "Yes, Airport Road has a hall for up to 50 guests, with a projector, a sound system and five seating layouts. For prices and bookings, request a quote from the hall page and our sales team will contact you."
     },
@@ -172,7 +172,7 @@
       "id": "groups",
       "category": "business",
       "q_ar": "هل لديكم أسعار للشركات والمجموعات؟",
-      "a_ar": "نعم، للشركات والمجموعات وشركات السياحة صفحة «للشركاء والوكالات»، يمكنكم منها إرسال طلب عرض سعر، ويتواصل معكم فريق المبيعات.",
+      "a_ar": "نعم، للشركات والمجموعات وشركات السياحة صفحة «للشركاء والوكالات»، يمكنك منها إرسال طلب عرض سعر، ويتواصل معك فريق المبيعات.",
       "q_en": "Do you have rates for companies and groups?",
       "a_en": "Yes. Companies, groups and travel agencies can send a quote request from our “Partners and agencies” page, and our sales team will contact you."
     }

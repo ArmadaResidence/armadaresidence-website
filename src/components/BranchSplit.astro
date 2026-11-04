@@ -4,9 +4,11 @@
  * Road), each with its photo, type, name, two lines and a button. Hover or keyboard focus widens the pane to 58 %
  * and dims the other one; the widening is done by scaling the media layer (transform only — the text columns keep
  * their 50 % and nothing re-lays out). Under md the panes stack as two near-full-height cards.
- * Facts come from branches.json / contact.json only. Photos: TODO(photo) placeholders until the approved set arrives.
+ * Facts come from branches.json / contact.json only. Photos (4 Nov 2026): each pane shows its branch's published cover
+ * («الصور», merged by content.ts — the same photo as the branch page's cover), else the brand-pattern placeholder.
  */
-import { branchContact, branchPath, fill, L, paragraphs, telHref, ui, type Branch, type Locale } from '@lib/content';
+import { branchContact, branchPath, fill, L, paragraphs, photoProps, photosOf, telHref, ui, type Branch, type Locale } from '@lib/content';
+import Photo from './Photo.astro';
 import Icon from './Icon.astro';
 import Placeholder from './Placeholder.astro';
 
@@ -33,7 +35,14 @@ const firstSentence = (text: string) => {
         <article class="split-pane">
           <div class="split-media" aria-hidden="true">
             <div class="split-media-inner">
-              <Placeholder label={fill(t.photo_pending_alt, { subject: name })} class="photo-fill rounded-none" />
+              {(() => {
+                const cover = photosOf(b)[0];
+                return cover ? (
+                  <Photo {...photoProps(locale, cover)} sizes="(min-width: 768px) 58vw, 100vw" class="photo-fill split-photo" imgClass="w-full h-full object-cover" />
+                ) : (
+                  <Placeholder label={fill(t.photo_pending_alt, { subject: name })} class="photo-fill rounded-none" />
+                );
+              })()}
             </div>
             <div class="split-shade" />
             <div class="split-gradient" />

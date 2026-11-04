@@ -1,23 +1,35 @@
 ---
 /**
  * Single 404 for GitHub Pages (served for any missing path). Arabic first, English below, both branches linked.
- * Old /branches/<uuid> URLs have no mapping: the static redirect page covers them when GitHub Pages resolves the
- * path, and this page sends any remaining /branches/* hit to the home page (DECISIONS 9 Oct 2026).
+ * Old /branches/<uuid> URLs: the 2 branch and 10 room IDs have exact redirect pages (4 Nov 2026); this page sends any
+ * other /branches/*, /admin/*, /offers/<id> and /blog/<slug> hit to its closest page (redirects.json `via: 404`).
  */
 import Base from '@layouts/Base.astro';
 import Icon from '@components/Icon.astro';
-import { branchPath, branches, L, localePath, pageSeo, ui, type Locale } from '@lib/content';
+import { branchPath, branches, L, localePath, pageSeo, sectionVisible, ui, type Locale } from '@lib/content';
+import { galleryLive } from '@lib/gallery';
 
 const ar = ui('ar');
 const en = ui('en');
 const s = pageSeo('ar', '404');
 const locales: Locale[] = ['ar', 'en'];
+// the old /gallery (Horizons) → home only while /gallery/ is not built and not hidden (hidden: astro.config.mjs redirects it)
+const galleryHome = !galleryLive && sectionVisible('gallery');
 ---
 
 <Base locale="ar" path="/404/" switchPath="/" title={s.title} description={s.description} noindex={true} notFound>
-  <script is:inline>
-    // no ^ anchor: also matches under a review sub-path (scripts/base-path.py rewrites the '/' target)
-    if (/\/branches(\/|$)/.test(location.pathname)) location.replace('/');
+  <script is:inline define:vars={{ galleryHome }}>
+    // no ^ anchor: also matches under a review sub-path (scripts/base-path.py rewrites the quoted site paths). The old
+    // Horizons wildcards (redirects.json `via: 404`, 4 Nov 2026): /branches/* → home, /admin/* → the dashboard's
+    // sign-in, an unknown /offers/<id> → /offers/, an unknown /blog/<slug> → /blog/.
+    (function () {
+      var p = location.pathname;
+      if (/\/branches(\/|$)/.test(p)) location.replace('/');
+      else if (/\/admin(\/|$)/.test(p)) location.replace('https://admin.armadaresidence.com/');
+      else if (p.indexOf('/offers/') === 0) location.replace('/offers/');
+      else if (p.indexOf('/blog/') === 0) location.replace('/blog/');
+      else if (galleryHome && /\/gallery\/?$/.test(p) && !/\/en\/gallery/.test(p)) location.replace('/');
+    })();
   </script>
   <section class="mx-auto max-w-3xl px-4 py-20 space-y-12">
     {

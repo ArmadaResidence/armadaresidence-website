@@ -1,0 +1,37 @@
+---
+/**
+ * Conditional redirects from the old Horizons site (Ahmed, 4 Nov 2026 — DECISIONS.md «Pre-launch fixes, commit 2»):
+ * the `via: "page"` entries of redirects.json, decided at build time from the same data the pages use:
+ *   - /restaurant, /coffee-shop → /dining/ while a venue is active (diningLive), else the Airport Road café section
+ *     (/airport-road/#dining);
+ *   - /gallery is NOT here: while /gallery/ is not built the 404 page sends it home (src/pages/404.astro); once it is,
+ *     the old path IS the new page and keeps its sitemap entry.
+ * The markup is Astro's own redirect page (meta refresh, noindex, canonical to the target), so qa.py and
+ * scripts/base-path.py treat it like the static entries.
+ */
+import redirects from '../../redirects.json';
+import { diningLive } from '@lib/content';
+import { seo } from '@lib/content';
+
+interface Entry { from: string; to: string; else?: string; via?: string; via404?: boolean }
+
+export function getStaticPaths() {
+  const out: { params: { legacy: string }; props: { target: string } }[] = [];
+  for (const r of (redirects as { redirects: Entry[] }).redirects) {
+    if (r.via !== 'page') continue;
+    const slug = r.from.replace(/^\//, '');
+    if (r.via404) continue; // handled by 404.astro (/gallery: a real page once the gallery is built)
+    if (r.to === '/dining/') {
+      out.push({ params: { legacy: slug }, props: { target: diningLive ? r.to : r.else ?? '/' } });
+    } else {
+      out.push({ params: { legacy: slug }, props: { target: r.to } });
+    }
+  }
+  return out;
+}
+
+const { target } = Astro.props as { target: string };
+const canonical = new URL(target, seo.site_url).href;
+---
+
+<!doctype html><title>Redirecting to: {target}</title><meta http-equiv="refresh" content={`0;url=${target}`} /><meta name="robots" content="noindex" /><link rel="canonical" href={canonical} /><body><a href={target}>Redirecting from <code>{Astro.url.pathname}</code> to <code>{target}</code></a></body>

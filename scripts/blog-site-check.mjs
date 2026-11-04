@@ -29,7 +29,10 @@ const check = (ok, msg, detail = '') => {
 };
 const slugsOf = (lang) => {
   const dir = join(DIST, ...(lang === 'en' ? ['en'] : []), 'blog');
-  return existsSync(dir) ? readdirSync(dir, { withFileTypes: true }).filter((d) => d.isDirectory() && existsSync(join(dir, d.name, 'index.html'))).map((d) => d.name).sort() : [];
+  return existsSync(dir) ? readdirSync(dir, { withFileTypes: true }).filter((d) => d.isDirectory() && existsSync(join(dir, d.name, 'index.html')))
+    // an old-URL redirect page (/blog/- → /blog/, 4 Nov 2026) is not an article
+    .filter((d) => !/http-equiv="refresh"/.test(readFileSync(join(dir, d.name, 'index.html'), 'utf8')))
+    .map((d) => d.name).sort() : [];
 };
 const SLUGS = { ar: slugsOf('ar'), en: slugsOf('en') };
 const all = [...new Set([...SLUGS.ar, ...SLUGS.en])].sort();

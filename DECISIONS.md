@@ -1154,3 +1154,75 @@ unchanged (booking 5 / hour, careers 5 / hour, club 30 / 10 min, dining 10 / hou
 **Tests.** `node scripts/limits-check.mjs --branch …` (9 checks, preview branch only); club-server-check 29/29 and
 careers-server-check 23/23 on the same branch. `careers-server-check` read production from `.env` with no guard — it now
 refuses to run without `--branch` (or `--production` for the deliberate live check), per the 3 Nov test-target rule.
+
+## 2026-11-04 — Pre-launch fixes, commit 2: redirects, placeholders, branch panes, SEO, singular copy, Turnstile, GTM (Ahmed's decisions on the audit)
+
+**Redirects** (`redirects.json`, `src/pages/[legacy].astro`, `src/pages/404.astro`). Every old Horizons URL goes to its
+exact new page or the closest one:
+- `/branches/4c52beb5-…` → `/airport-road/`, `/branches/3e0f3f43-…` → `/shafa-road/`;
+- their 10 room URLs (`/branches/<branch id>/rooms/<room id>`) → the room page of the same type (twin, king, one- and
+  two-bedroom suites at Airport Road; king, balcony, jacuzzi studio, one-bedroom, two-bedroom, two-bedroom jacuzzi at
+  Shafa Road);
+- `/offers/ff0badb3-…` (the Umrah season offer) → `/partners/groups-umrah/`; any other `/offers/<id>` → `/offers/`;
+- `/blog/-` (the old site's one article) → `/blog/`; any unknown `/blog/<slug>` → `/blog/`;
+- `/admin/login` → `https://admin.armadaresidence.com/`; `/admin/*` → the same;
+- `/restaurant`, `/coffee-shop` → `/dining/` while a venue is active, else the Airport Road café section
+  `/airport-road/#dining` (the section now carries `id="dining"`) — decided at build time;
+- `/gallery` → `/` only while `/gallery/` is not built (the 404 page, so a built gallery keeps its URL and sitemap entry);
+- `/about`, `/rooms` → `/` (the old app's soft-404 paths); `/our-rooms` → `/`, `/branches` → `/`,
+  `/armada-residence-airport-rood` → `/airport-road/` (unchanged).
+Static redirect pages (meta refresh + canonical + noindex, out of the sitemap) wherever the target is known at build
+time; the client-side 404 script for the wildcards and `/gallery`. qa.py accepts an absolute target only for the
+dashboard.
+
+**Placeholders.** Every photo slot without a published photo shows the approved bronze pattern tile
+(`public/brand/pattern-tile.svg`) on porcelain — on Armada Midnight in dark — softened by a translucent layer of the
+ground, the brand symbol centred (porcelain in dark). `--placeholder-bg` in `src/styles/global.css`, used by
+`.photo-placeholder`, `.hero-poster`, `.bg-placeholder` and the gallery thumbnails. The grey `#c9c4bb` box is retired.
+
+**Home branch panes** (`BranchSplit.astro`) show each branch's published cover (the branch page's cover, through
+`photosOf`), else the placeholder.
+
+**SEO.** BreadcrumbList JSON-LD on branch pages (home › branch) and room pages (home › branch › room). `og:image`:
+the page's own published image, else its branch's cover (rooms, the hall, venues, an article about one branch), else
+the brand default; the JSON-LD `image` of rooms and venues follows the same chain. Today (no photos published) every
+page still shows the brand default — the chain takes effect as photos are published.
+
+**Copy in the singular** (every proposal of `docs/prelaunch-audit.md` §1a and §1b applied):
+- Repo: `content/branches.json`, `faq.json`, `offers.json` (+ the test fixture), `policies.json`, `site-texts.json`,
+  `ui.json`, `partners.json`, `partners-pages.json` (and its generator `scripts/legacy-partners-content.py`, which now
+  carries a singular pass — the generator also no longer matches the committed JSON's hand-added keys, so the JSON was
+  edited in place), `content/articles/*.ar.md` (3), `groups-umrah.astro`, `scripts/fact-sheet-copy.mjs` → the Arabic
+  Fact Sheet PDF regenerated (the English one unchanged). Row 10 also takes «نموذج الحجز» for «نموذج طلب الحجز».
+- Dashboard (production), migration `20261104400000_copy_singular.sql`, actor «أحمد محمد حلمي (via Claude)»: the 5
+  «المحتوى والظهور» fields (2 Airport Road story scenes, the Shafa Road description and lobby scene, the privacy
+  section — never published before; now published, a save and a publish revision each), the 5 FAQ answers, the 3
+  articles' Arabic bodies (their published dates kept), the 2 b2b offers' descriptions — each module's live snapshot
+  rebuilt with its own function and a site job per module. The migration refuses to run if a phrase is not where the
+  audit found it and fails if one is left behind.
+- Kept on purpose: the two FAQ questions in the guest's own voice («هل لديكم…؟»), the greeting «السلام عليكم», and the
+  Meta-approved WhatsApp templates (already singular).
+
+**Cloudflare Turnstile** (`content/turnstile.json` OFF; `src/lib/turnstile.ts`; `supabase/functions/_shared/turnstile.ts`)
+on the booking, partners, careers and club forms. Off: no meta, no script, no request to Cloudflare, nothing verified.
+On (a site key + `enabled`, and the Supabase secret `TURNSTILE_SECRET_KEY`): the page loads Cloudflare's script on the
+first submit, renders an interaction-only widget before the submit button, sends `turnstile_token`; booking-request,
+job-application and club verify it with siteverify (with the platform's client address) before anything is stored —
+refused → 403 `challenge` (the forms show their failure message and WhatsApp hand-off); Cloudflare unreachable or no
+secret → let through, logged; test mode skips it. Ahmed's steps: `docs/turnstile-setup.md` (the site key and the secret;
+the secret is set only with his explicit OK). `node scripts/turnstile-check.mjs` (in the suite, offline) checks the
+verdicts and the off switch.
+
+**GTM** (no change to the container): `docs/gtm-performance.md` + `docs/gtm-performance-container.json` — the Meta,
+TikTok and Snap base pixels fire once per page on the first click / tap, a 25 % scroll, 10 s on the page, or on
+`CE - booking_request` with priority 10 (the success page is a new page load; the conversion tags — unchanged —
+need fbq / ttq / snaptr); GA4, Google Ads and every conversion tag unchanged. Ahmed applies it (import with Merge +
+Overwrite, or by hand) with Claude in Chrome.
+
+**Pixel guard** (HEAD = commit 1 vs this commit, 81 pages × 375 / 1440 × light / dark): 256 of 324 shots differ, all
+expected — every Arabic page's footer («تابعونا» → «تابعنا»; 13 Arabic pages differ by that line only: 404, booking,
+booking success, careers, club, club unsubscribe, contact, discover-taif, faq, the four partners sub-pages); the pages
+with photo slots in both languages (home, both branches, the 12 room pages, the hall, the blog list and its 7 articles)
+for the pattern placeholder and the home panes; Arabic /offers/, /policies/ and /partners/ for their copy. English pages
+without photo slots (contact, offers, policies, faq, careers, club, partners, booking, discover-taif, menu) are unchanged.
+`blog-site-check` now skips redirect pages under /blog/ (the old /blog/- is not an article).

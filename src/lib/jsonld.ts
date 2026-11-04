@@ -161,7 +161,7 @@ export function hotelRoom(locale: Locale, room: Room, b: Branch) {
     name: L(locale, room, 'name'),
     description: L(locale, room, 'description'),
     url,
-    image: ogImage(ogImageOf(room)),
+    image: ogImage(ogImageOf(room) ?? ogImageOf(b)),
     containedInPlace: {
       '@type': b.slug === 'shafa-road' ? 'Hotel' : 'LodgingBusiness',
       '@id': absoluteUrl(branchPath(locale, b.slug)) + '#lodging',
@@ -320,7 +320,7 @@ export function venueLd(locale: Locale, v: Venue) {
     '@id': absoluteUrl(venuePath(locale, v)) + '#venue',
     name: venueName(locale, v),
     url: absoluteUrl(venuePath(locale, v)),
-    image: ogImage(venueOg(v)),
+    image: ogImage(venueOg(v) ?? ogImageOf(b)),
     address: postalAddress(locale, b),
     containedInPlace: { '@type': b.slug === 'shafa-road' ? 'Hotel' : 'LodgingBusiness', '@id': absoluteUrl(branchPath(locale, b.slug)) + '#lodging' },
   };

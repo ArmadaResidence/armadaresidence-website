@@ -32,6 +32,7 @@
 import { getCountries, parsePhoneNumberFromString } from 'npm:libphonenumber-js@1.12.10/min';
 import { siteOrigins } from '../_shared/site-cors.ts';
 import { platformClientIp } from '../_shared/client-ip.ts';
+import { verifyTurnstile } from '../_shared/turnstile.ts';
 import content from '../booking-request/content.generated.json' with { type: 'json' };
 import { EMAIL, riyadhToday, validateJobApplication, type JobFile } from '../booking-request/rules.ts';
 import { jobApplicationAlert, jobApplicationConfirmation, jobApplicationNotification, type JobMail, type Mail } from '../booking-request/email.ts';
@@ -370,6 +371,12 @@ Deno.serve(async (req) => {
     } catch (x) {
       console.error('rate limit check failed', String(x)); // fails open
     }
+  }
+
+  // Cloudflare Turnstile (content/turnstile.json — off until its keys exist; test mode skips it)
+  if (!test) {
+    const ts = await verifyTurnstile(v('turnstile_token'), ip, { enabled: Boolean(content.turnstile?.enabled), secret: Deno.env.get('TURNSTILE_SECRET_KEY') });
+    if (!ts.ok) return json(req, 403, { ok: false, error: 'challenge' });
   }
 
   // 2. validate (rules.ts) — the file by its own bytes

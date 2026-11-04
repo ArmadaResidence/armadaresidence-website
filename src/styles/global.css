@@ -57,7 +57,12 @@
   --color-line: #ddd5c8;
   --color-bronze-deep: #976e47; /* primary button fill: nearest shade of bronze with ≥ 4.5:1 under white text (4.53:1) — Ahmed, 12 Oct 2026 */
   --color-bronze-text: #8a6239; /* bronze for small text on porcelain / white (4.7:1 / 5.4:1) and the primary button hover */
-  --color-placeholder: #c9c4bb;
+  --color-placeholder: #c9c4bb; /* retired for photo slots (4 Nov 2026): kept for nothing but legacy references */
+  /* Photo slot without a published photo (Ahmed, 4 Nov 2026): the approved bronze pattern tile on porcelain (light) or
+     midnight (dark), softened by a translucent layer of the same ground — never a grey box (CLAUDE.md §3) */
+  --ph-ground: var(--color-porcelain);
+  --ph-veil: color-mix(in srgb, var(--color-porcelain) 80%, transparent);
+  --placeholder-bg: linear-gradient(var(--ph-veil), var(--ph-veil)), url("/brand/pattern-tile.svg") 0 0 / 64px auto repeat, var(--ph-ground);
 
   --font-en: "Manrope Variable", ui-sans-serif, system-ui, sans-serif;
   --font-ar: "IBM Plex Sans Arabic", "Manrope Variable", ui-sans-serif, system-ui, sans-serif;
@@ -97,10 +102,10 @@ body {
   }
 }
 
-/* Photo placeholder — phase 1 only, grey 3:2 (per Ahmed, 8 Oct 2026). TODO(photo): replace with approved Armada photos. */
+/* Photo placeholder — 3:2, the brand pattern (Ahmed, 4 Nov 2026; replaces the grey of 8 Oct 2026) until a photo is published */
 .photo-placeholder {
   aspect-ratio: 3 / 2;
-  background-color: var(--color-placeholder);
+  background: var(--placeholder-bg);
   display: grid;
   place-items: center;
   overflow: hidden;
@@ -121,7 +126,7 @@ body {
   transform-origin: center;
 }
 .hero-poster {
-  background-color: var(--color-placeholder);
+  background: var(--placeholder-bg);
   color: var(--color-midnight);
   display: grid;
   place-items: center;
@@ -323,10 +328,15 @@ footer :focus-visible,
 [data-theme="dark"] .link-bronze:hover {
   color: var(--dk-bronze-text);
 }
-/* photos / placeholders unchanged */
+/* placeholders in dark: the pattern on midnight, the symbol in porcelain (4 Nov 2026) */
+[data-theme="dark"] {
+  /* Armada Midnight itself: --color-midnight is remapped to porcelain for text in dark */
+  --ph-ground: #142a3b;
+  --ph-veil: color-mix(in srgb, #142a3b 72%, transparent);
+}
 [data-theme="dark"] .photo-placeholder svg,
 [data-theme="dark"] .hero-poster {
-  color: #142a3b;
+  color: var(--color-porcelain);
 }
 /* header theme glyph: moon in light mode (→ dark), sun in dark mode (→ light); the morph lives in motion.css */
 [data-theme="dark"] .theme-moon {
@@ -389,7 +399,7 @@ footer :focus-visible,
   padding: 0;
   border: 0;
   border-radius: 0.375rem;
-  background-color: var(--color-placeholder);
+  background: var(--placeholder-bg);
   cursor: zoom-in;
 }
 .gallery-thumb img {
@@ -607,6 +617,12 @@ footer :focus-visible,
   position: absolute;
   inset: 0;
   aspect-ratio: auto;
+}
+/* a published branch cover in a home split pane (4 Nov 2026): fills the pane like the placeholder did */
+.photo.split-photo {
+  position: absolute;
+  inset: 0;
+  display: block;
 }
 .split-shade {
   position: absolute;
@@ -1155,7 +1171,7 @@ body.has-room-bar .wa-fab {
   border-top: 1px solid var(--color-line);
 }
 .bg-placeholder {
-  background-color: var(--color-placeholder);
+  background: var(--placeholder-bg);
 }
 @media (max-width: 1023px) {
   /* phones: a shorter pinned picture (16:9) so the active scene's text sits in the viewport below it */

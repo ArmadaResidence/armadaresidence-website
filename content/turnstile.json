@@ -1,0 +1,5 @@
+{
+  "_note": "Cloudflare Turnstile on the booking, partners, careers and club forms (Ahmed, 4 Nov 2026 — DECISIONS.md «Pre-launch fixes, commit 2»). OFF until Cloudflare's keys exist: with enabled false (or no site_key) the pages load nothing and the functions verify nothing. To switch on: site_key here (public), the secret as the Supabase secret TURNSTILE_SECRET_KEY (never in the repo), enabled true, rebuild + redeploy booking-request, job-application and club. The widget's mode (Managed or Invisible) is chosen in Cloudflare's dashboard; the pages render it with appearance interaction-only, so a person sees it only when Cloudflare asks for a click.",
+  "enabled": false,
+  "site_key": ""
+}

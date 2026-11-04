@@ -17,6 +17,7 @@
 import { riyadhToday, validEmail, validName, validOrganisation, type FieldError } from '../../supabase/functions/booking-request/rules.ts';
 import { loadPhoneLib, phoneToE164 } from './phone';
 import { initCountrySelect, type CountrySelect } from './country-select';
+import { turnstileToken } from './turnstile';
 
 export const DRAFT_KEY = 'armada_b2b_enquiry_v2';
 const OLD_DRAFT_KEYS = ['armada_b2b_enquiry_v1'];
@@ -344,8 +345,11 @@ export function initEnquiry(): void {
       headers.Authorization = `Bearer ${CFG.anonKey}`;
       headers.apikey = CFG.anonKey;
     }
-    const body = payload();
+    const body = payload() as Record<string, unknown>;
     try {
+      // Cloudflare Turnstile (off until its keys exist — ./turnstile.ts)
+      const ts = await turnstileToken(form!, btn);
+      if (ts !== null) body.turnstile_token = ts;
       const r = await fetch(CFG.endpoint, { method: 'POST', headers, body: JSON.stringify(body) });
       const res = await r.json().catch(() => null);
       if (!r.ok || !res || !res.ok || !res.ref) throw new Error('send failed');

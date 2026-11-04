@@ -330,8 +330,8 @@ def main() -> None:
     removed.append("Enquiry request types not in partners.json → enquiry_types (group-quote, long-stay, other) and 'Advise me' property option")
     out["form"]["unittype_placeholder"] = {"en": "e.g. 10 twin, 4 two-bedroom suites", "ar": "مثال: 10 غرف بسريرين، 4 أجنحة غرفتين"}
     out["form"]["send"] = {"en": "Send the enquiry", "ar": "أرسل الطلب"}
-    out["form"]["sent_title"] = {"en": "Your enquiry has reached the commercial office", "ar": "وصل طلبكم إلى المكتب التجاري"}
-    out["form"]["sent_body"] = {"en": "The sales team will come back to you in writing within one working day.", "ar": "سيعود إليكم فريق المبيعات كتابةً خلال يوم عمل واحد."}
+    out["form"]["sent_title"] = {"en": "Your enquiry has reached the commercial office", "ar": "وصل طلبك إلى المكتب التجاري"}
+    out["form"]["sent_body"] = {"en": "The sales team will come back to you in writing within one working day.", "ar": "سيعود إليك فريق المبيعات كتابةً خلال يوم عمل واحد."}
     out["form"]["sent_ref"] = {"en": "Request number", "ar": "رقم الطلب"}
     out["form"]["what_to_send"] = {"en": "<b>What to send.</b> The programme, the dates and the party size are enough for a first answer. A rooming list can follow.", "ar": "<b>ما الذي ترسله.</b> البرنامج والتواريخ وعدد الأفراد تكفي للحصول على أول إجابة. وقائمة التسكين يمكن أن تتبع."}
     out["form"]["direct_lines"] = {"en": "Direct lines", "ar": "خطوط مباشرة"}
@@ -349,6 +349,34 @@ def main() -> None:
         return o
 
     out = {k: (v if k == "address" else shafa_name(v)) for k, v in out.items()}
+
+    # ── the partner is addressed in the singular (Ahmed, 4 Nov 2026 — docs/prelaunch-audit.md §1b): the legacy plural
+    #    lines become singular like the rest of these pages; every Arabic string passes through this map ──
+    SINGULAR = [
+        ("شريككم في الضيافة", "شريكك في الضيافة"),
+        ("على برنامجكم", "على برنامجك"),
+        ("أرسلوا متطلباتكم", "أرسل متطلباتك"),
+        ("تصلكم الإتاحة", "تصلك الإتاحة"),
+        ("يصلكم عرض", "يصلك عرض"),
+        ("أكّدوا الحجز", "أكّد الحجز"),
+        ("أخبرونا بمتطلباتكم", "أخبرنا بمتطلباتك"),
+        ("مناسبًا لأعمالكم", "مناسبًا لأعمالك"),
+        ("باسمه لحسابكم", "باسمه لحسابك"),
+    ]
+
+    def singular(o, lang=None):
+        if isinstance(o, str):
+            if lang == "ar":
+                for a, b in SINGULAR:
+                    o = o.replace(a, b)
+            return o
+        if isinstance(o, list):
+            return [singular(x, lang) for x in o]
+        if isinstance(o, dict):
+            return {k: singular(v, "ar" if k == "ar" else lang) for k, v in o.items()}
+        return o
+
+    out = singular(out)
     (CONTENT / "partners-pages.json").write_text(json.dumps(out, ensure_ascii=False, indent=2) + "\n", encoding="utf-8", newline="\n")
     print(f"partners-pages.json written: {len(rows)} unit rows, {len(removed)} removal notes")
 

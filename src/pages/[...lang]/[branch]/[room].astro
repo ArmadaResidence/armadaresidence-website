@@ -7,7 +7,7 @@ import PriceBlock from '@components/PriceBlock.astro';
 import RoomGrid from '@components/RoomGrid.astro';
 import Icon from '@components/Icon.astro';
 import { langPaths } from '@lib/paths';
-import { hotelRoom } from '@lib/jsonld';
+import { breadcrumbs, hotelRoom } from '@lib/jsonld';
 import {
   branchBySlug,
   branchPath,
@@ -73,8 +73,12 @@ const PHOTO_SIZES = '(min-width: 1024px) 680px, 100vw';
   title={s.title}
   description={s.description}
   noindex={s.noindex}
-  ogImage={ogImageOf(room)}
-  jsonld={[hotelRoom(locale, room, branch)]}
+  ogImage={ogImageOf(room) ?? ogImageOf(branch)}
+  jsonld={[
+    hotelRoom(locale, room, branch),
+    // BreadcrumbList (4 Nov 2026): home › branch › room
+    breadcrumbs([{ name: t.nav.home, path: localePath(locale, '/') }, { name: branchName, path: branchPath(locale, room.branch) }, { name, path: localePath(locale, path) }]),
+  ]}
   whatsapp={branch.slug}
   booking={soldOut ? { branch: room.branch } : { branch: room.branch, room: room.slug }}
 >

@@ -57,6 +57,7 @@ import {
 } from './email.ts';
 import { makeRef } from '../_shared/ref.ts';
 import { emailKey, phoneKey, platformClientIp } from '../_shared/client-ip.ts';
+import { verifyTurnstile } from '../_shared/turnstile.ts';
 import { sendWhatsApp } from './whatsapp-send.ts';
 import { WA_TEMPLATES, type WaTemplate } from './whatsapp.ts';
 import { testEcho } from './test-echo.ts';
@@ -724,6 +725,12 @@ Deno.serve(async (req) => {
   if (token && payload.preview === 'wa-send') return previewWaSend(req, payload);
   if (token && payload.preview === 'wa-log') return previewWaLog(req, payload);
   if (limitApplies(req, token, 'ip') && (await rateLimited(req, Boolean(token)))) return json(req, 429, { ok: false, error: 'too many requests' });
+
+  // Cloudflare Turnstile (content/turnstile.json — off until its keys exist; test mode skips it)
+  if (!token) {
+    const ts = await verifyTurnstile((payload as { turnstile_token?: unknown }).turnstile_token, platformClientIp(req), { enabled: Boolean(content.turnstile?.enabled), secret: Deno.env.get('TURNSTILE_SECRET_KEY') });
+    if (!ts.ok) return json(req, 403, { ok: false, error: 'challenge' });
+  }
 
   const v = validate(payload, Boolean(token));
   if (!v.ok) return json(req, 422, { ok: false, error: v.error, ...(v.fields ? { fields: v.fields } : {}) });

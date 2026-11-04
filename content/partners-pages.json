@@ -180,7 +180,7 @@
     },
     "h1": {
       "en": "Your hospitality partner in Taif.",
-      "ar": "شريككم في الضيافة بالطائف."
+      "ar": "شريكك في الضيافة بالطائف."
     },
     "sub": {
       "en": "Two hotels, 168 units and one commercial contact for travel agents, tour operators, Umrah organisers, corporate accounts and sports teams.",
@@ -324,7 +324,7 @@
         },
         {
           "en": "Accommodation, meals from our own kitchen, a function hall and arrangements set around your programme.",
-          "ar": "إقامة، ووجبات من مطبخنا، وقاعة مناسبات، وترتيبات تُبنى على برنامجكم."
+          "ar": "إقامة، ووجبات من مطبخنا، وقاعة مناسبات، وترتيبات تُبنى على برنامجك."
         },
         ""
       ],
@@ -365,7 +365,7 @@
       [
         {
           "en": "Send your requirements",
-          "ar": "أرسلوا متطلباتكم"
+          "ar": "أرسل متطلباتك"
         },
         {
           "en": "Dates · guests · rooms · meals · special requests",
@@ -379,13 +379,13 @@
         },
         {
           "en": "Availability comes back within one working day.",
-          "ar": "تصلكم الإتاحة خلال يوم عمل واحد."
+          "ar": "تصلك الإتاحة خلال يوم عمل واحد."
         }
       ],
       [
         {
           "en": "Receive your tailored offer",
-          "ar": "يصلكم عرض مخصَّص"
+          "ar": "يصلك عرض مخصَّص"
         },
         {
           "en": "A written offer with unit mix and meal arrangement.",
@@ -395,7 +395,7 @@
       [
         {
           "en": "Confirm your booking",
-          "ar": "أكّدوا الحجز"
+          "ar": "أكّد الحجز"
         },
         {
           "en": "The allocation is held and the arrival plan is agreed in writing.",
@@ -533,7 +533,7 @@
     },
     "body": {
       "en": "Tell us your requirements and our commercial team will prepare a suitable offer for your business.",
-      "ar": "أخبرونا بمتطلباتكم، وستُعدّ إدارتنا التجارية عرضًا مناسبًا لأعمالكم."
+      "ar": "أخبرنا بمتطلباتك، وستُعدّ إدارتنا التجارية عرضًا مناسبًا لأعمالك."
     }
   },
   "props": {
@@ -1239,7 +1239,7 @@
       },
       {
         "en": "One named contact for your account, from enquiry to invoice.",
-        "ar": "مسؤول واحد باسمه لحسابكم، من الاستفسار حتى الفاتورة."
+        "ar": "مسؤول واحد باسمه لحسابك، من الاستفسار حتى الفاتورة."
       }
     ],
     [
@@ -1701,11 +1701,11 @@
     },
     "sent_title": {
       "en": "Your enquiry has reached the commercial office",
-      "ar": "وصل طلبكم إلى المكتب التجاري"
+      "ar": "وصل طلبك إلى المكتب التجاري"
     },
     "sent_body": {
       "en": "The sales team will come back to you in writing within one working day.",
-      "ar": "سيعود إليكم فريق المبيعات كتابةً خلال يوم عمل واحد."
+      "ar": "سيعود إليك فريق المبيعات كتابةً خلال يوم عمل واحد."
     },
     "sent_ref": {
       "en": "Request number",

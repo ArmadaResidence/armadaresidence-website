@@ -806,6 +806,25 @@ def main() -> int:
                 rep.f("redirects", f"invalid from: {r}")
             if r.get("to") is None:
                 rep.w("redirects", f"{src}: target pending ({r.get('pending', '')})")
+            elif str(r["to"]).startswith("https://"):
+                # an absolute target (4 Nov 2026): only the dashboard's sign-in
+                if not str(r["to"]).startswith("https://admin.armadaresidence.com/"):
+                    rep.f("redirects", f"{src} → {r['to']}: an absolute target must be the dashboard")
+                if src.endswith("/*") and (src[:-2] not in not_found or r["to"] not in not_found):
+                    rep.f("redirects", f"{src}: 404.html does not redirect {src[:-2]}/* to {r['to']}")
+                elif not src.endswith("/*") and src not in redirect_pages and src + "/" not in redirect_pages:
+                    rep.f("redirects", f"{src}: no redirect page generated")
+            elif r.get("via") == "404" and not src.endswith("/*"):
+                # a single path the 404 page handles conditionally (/gallery, 4 Nov 2026): the page itself, or 404.html redirects it
+                if not exists(src + "/") and src not in not_found:
+                    rep.f("redirects", f"{src}: neither a page nor handled by 404.html")
+            elif r.get("via") == "page":
+                # conditional (src/pages/[legacy].astro): a redirect page to `to` or `else`, or — /gallery — the page itself
+                page = src + "/"
+                if page in redirect_pages or src in redirect_pages:
+                    pass
+                elif not exists(page):
+                    rep.f("redirects", f"{src}: neither a redirect page nor a page")
             elif not exists(r["to"]):
                 rep.f("redirects", f"{src} → {r['to']} does not exist")
             elif src.endswith("/*"):

@@ -15,7 +15,7 @@ import Placeholder from '@components/Placeholder.astro';
 import { langPaths } from '@lib/paths';
 import { breadcrumbs } from '@lib/jsonld';
 import { enquiryHref } from '@lib/partners';
-import { branchBySlug, branchPath, fill, hallOg, hallPath, hallPhotos, halls, L, localePath, pageSeo, photoPreload, photoProps, ui, type Hall, type Locale } from '@lib/content';
+import { branchBySlug, branchPath, fill, hallOg, ogImageOf, hallPath, hallPhotos, halls, L, localePath, pageSeo, photoPreload, photoProps, ui, type Hall, type Locale } from '@lib/content';
 
 export function getStaticPaths() {
   return langPaths().flatMap(({ params, props }) => halls.map((h) => ({ params: { ...params, branch: h.branch }, props: { ...props, hall: h } })));
@@ -47,7 +47,7 @@ const jsonld = [
 ];
 ---
 
-<Base locale={locale} path={`/${hall.branch}/hall/`} title={s.title} description={s.description} ogImage={hallOg(hall)} jsonld={jsonld} whatsapp="sales" booking={{ branch: hall.branch }}>
+<Base locale={locale} path={`/${hall.branch}/hall/`} title={s.title} description={s.description} ogImage={hallOg(hall) ?? ogImageOf(branch)} jsonld={jsonld} whatsapp="sales" booking={{ branch: hall.branch }}>
   {photos.length > 0 && <link slot="head" {...photoPreload(photos[0], PHOTO_SIZES, { webpOnly: photos.length > 1 })} />}
   <section class="mx-auto max-w-6xl px-4 pt-10 pb-14">
     <nav aria-label="breadcrumb" class="text-sm text-ink-muted">

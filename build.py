@@ -47,7 +47,7 @@ EMAIL = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 REQUIRED_FILES = [
     "branches.json", "rooms.json", "pricing.json", "policies.json", "contact.json",
     "legal.json", "offers.json", "site-texts.json", "seo.json", "ui.json",
-    "taif-guide.json", "partners.json", "partners-pages.json", "halls.json", "careers.json", "club.json",
+    "taif-guide.json", "partners.json", "partners-pages.json", "halls.json", "careers.json", "club.json", "turnstile.json",
 ]
 
 
@@ -387,6 +387,8 @@ def generate_function_content(content: dict[str, dict], fees: dict) -> None:
     out = {
         "_generated": "by build.py from content/ — do not edit",
         "site_url": content["seo.json"]["site_url"],
+        # Cloudflare Turnstile (4 Nov 2026): the functions verify a token only while the setting is on with a site key
+        "turnstile": {"enabled": bool(content["turnstile.json"].get("enabled") and content["turnstile.json"].get("site_key"))},
         # where the site answers today (4 Nov 2026): every link in the emails (club, member offers, ?go=, dining) and the
         # email logo — the review address until switch day, then https://armadaresidence.com (seo.json → live_url)
         "live_url": content["seo.json"]["live_url"].rstrip("/"),
