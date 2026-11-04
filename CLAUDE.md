@@ -389,7 +389,7 @@ Phase 2a checks outside the suite (they need the Supabase project): `supabase/te
 
 Phase 1 complete and published on GitHub Pages (robots: noindex until domain switch): site + /discover-taif/ + /partners/ (fact sheets) + /menu/ (original frame engine) + dining section, light/dark mode.
 
-Session 6 follow-ups 4 Nov 2026 (DECISIONS.md 2026-11-04 «Session 6 follow-ups»): the counted nouns and «كيف نحسب» texts of «النظرة العامة» / «التقارير», «وقت الرد المعتاد», the dashboard's guided tour and «؟», the pre-push skip by tree hash. Nothing on the public site changed.
+Session 6 follow-ups 4 Nov 2026 (DECISIONS.md 2026-11-04 «Session 6 follow-ups»): the counted nouns and «كيف نحسب» texts of «النظرة العامة» / «التقارير», «وقت الرد المعتاد», the dashboard's guided tour and «؟», the pre-push skip by tree hash. Nothing on the public site changed. The read-only pre-launch audit (copy in the singular — proposals only, photos shot list, SEO, old-URL redirects, Lighthouse / axe, form protection, the launch checklist) is `docs/prelaunch-audit.md`; its fixes wait for Ahmed's review and the pre-launch fix session.
 
 Phase 2b session 6 built 4 Nov 2026 (DECISIONS.md 2026-11-04 «Phase 2b session 6»), the last of phase 2b: «النظرة العامة» (the landing page) and «التقارير» (Excel, PDF), the permissions «النظرة العامة» / «التقارير» / «الأرقام المالية», the setting `reply_alert_hours`. Nothing on the public site changed.
 
