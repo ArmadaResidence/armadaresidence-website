@@ -20,6 +20,8 @@ import { chromium } from 'playwright';
 
 const BASE = (process.argv.slice(2).find((a) => !a.startsWith('--')) || process.env.BASE_URL || 'http://127.0.0.1:4330').replace(/\/$/, '');
 const DIST = process.env.DIST || 'dist';
+// the site's base path (the review site lives under /armadaresidence-website): hrefs on its pages carry it
+const PRE = new URL(BASE).pathname.replace(/\/$/, '');
 const ui = JSON.parse(readFileSync('content/ui.json', 'utf8'));
 const AXE = readFileSync(createRequire(import.meta.url).resolve('axe-core/axe.min.js'), 'utf8');
 const fails = [];
@@ -28,8 +30,20 @@ const check = (ok, msg) => {
   checks++;
   if (!ok) fails.push(msg);
 };
-const sitemap = readdirSync(DIST).filter((f) => /^sitemap-\d+\.xml$/.test(f)).map((f) => readFileSync(join(DIST, f), 'utf8')).join('');
-const live = existsSync(join(DIST, 'gallery', 'index.html'));
+// a remote BASE (the live run, 4 Nov 2026) is judged by what it serves — its build reads the photos published in
+// production, which a local build without the service key never sees; a local BASE by the dist/ it serves
+const REMOTE = !/^https?:\/\/(127\.0\.0\.1|localhost)(:|\/|$)/.test(BASE);
+const remoteText = async (path) => { const r = await fetch(`${BASE}${path}`); return { status: r.status, text: r.ok ? await r.text() : '' }; };
+let sitemap;
+let live;
+if (REMOTE) {
+  sitemap = (await remoteText('/sitemap-0.xml')).text;
+  const g = await remoteText('/gallery/');
+  live = g.status === 200 && !/http-equiv="refresh"/.test(g.text) && /data-gallery-grid/.test(g.text);
+} else {
+  sitemap = readdirSync(DIST).filter((f) => /^sitemap-\d+\.xml$/.test(f)).map((f) => readFileSync(join(DIST, f), 'utf8')).join('');
+  live = existsSync(join(DIST, 'gallery', 'index.html')) && !/http-equiv="refresh"/.test(readFileSync(join(DIST, 'gallery', 'index.html'), 'utf8'));
+}
 console.log(`gallery-site-check: ${BASE} (${live ? 'the page is built' : 'under 6 photos: no page'})`);
 
 const FORMS = [
@@ -80,6 +94,7 @@ try {
       const page = await ctx.newPage();
       for (const lang of ['ar', 'en']) {
         const L = (p) => (lang === 'en' ? `/en${p}` : p);
+        const H = (p) => PRE + L(p); // as an href on the page
         const t = ui[lang];
         const g = t.gallery_page;
         const tag = `${lang} ${form.name} ${theme}`;
@@ -87,7 +102,7 @@ try {
         if (!live) {
           check(res?.status() === 404, `${tag}: /gallery/ answers ${res?.status()} under 6 photos`);
           await page.goto(BASE + L('/'), { waitUntil: 'load' });
-          check((await navLinks(page, L('/gallery/'))) === 0, `${tag}: a gallery link is in the header without the page`);
+          check((await navLinks(page, H('/gallery/'))) === 0, `${tag}: a gallery link is in the header without the page`);
           check(!(await page.locator('header').innerText()).includes(t.nav.gallery), `${tag}: the header names the gallery without the page`);
           continue;
         }
@@ -96,11 +111,11 @@ try {
         await layout(page, tag);
         // the nav link, right after «طريق الشفا» (the desktop nav; the mobile menu lists the same items)
         const order = await page.locator('nav[data-nav] a, #mobile-nav a').evaluateAll((as) => as.map((a) => a.getAttribute('href')));
-        const navs = order.filter((h) => h === L('/gallery/'));
+        const navs = order.filter((h) => h === H('/gallery/'));
         check(navs.length === 2, `${tag}: the gallery link appears ${navs.length} times in the header navs (desktop + mobile)`);
-        const i = order.indexOf(L('/gallery/'));
-        check(i > 0 && order[i - 1] === L('/shafa-road/'), `${tag}: the gallery link does not follow «طريق الشفا» (${order[i - 1]})`);
-        check(await page.locator(`nav[data-nav] a[href="${L('/gallery/')}"][aria-current="page"]`).count() === 1, `${tag}: the gallery link is not current on its page`);
+        const i = order.indexOf(H('/gallery/'));
+        check(i > 0 && order[i - 1] === H('/shafa-road/'), `${tag}: the gallery link does not follow «طريق الشفا» (${order[i - 1]})`);
+        check(await page.locator(`nav[data-nav] a[href="${H('/gallery/')}"][aria-current="page"]`).count() === 1, `${tag}: the gallery link is not current on its page`);
         // the grid
         const cells = await page.locator('[data-gallery-item]').evaluateAll((lis) => lis.map((li, n) => {
           const img = li.querySelector('img');

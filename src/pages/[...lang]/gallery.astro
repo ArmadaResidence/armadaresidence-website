@@ -65,7 +65,8 @@ const first = galleryItems[0]?.photo;
       <span class="text-midnight">{g.heading}</span>
     </nav>
     <h1 class="mt-6 text-3xl md:text-4xl font-bold text-midnight">{g.heading}</h1>
-    <p class="mt-3 max-w-3xl text-lg text-ink-muted">{s.description}</p>
+    {/* max-w-4xl (4 Nov 2026): one line with the web font and with its fallback, so the font swap never moves the grid */}
+    <p class="mt-3 max-w-4xl text-lg text-ink-muted">{s.description}</p>
 
     <div class="mt-8 flex flex-wrap gap-2" role="group" aria-label={g.filters} data-gallery-filters>
       {

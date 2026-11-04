@@ -135,6 +135,11 @@ for (const reduced of [false, true]) {
     const page = await ctx.newPage();
     await page.goto(`${BASE}${lang === 'ar' ? '/' : '/en/'}`, { waitUntil: 'load' });
     await page.evaluate(() => document.fonts.ready);
+    // the seam is geometry (the media layer's edge against the card's clip), not content: once a branch cover is
+    // published (4 Nov 2026) one pane shows a photo and the other the light pattern placeholder, and the medians below
+    // would follow the content as a pane widens. Both panes' media get one flat fill (the layers and the motion stay),
+    // as the two grey placeholders were when the check was written.
+    await page.addStyleTag({ content: '[data-split] .split-media-inner > * { background: #6b7280 !important; } [data-split] .split-media-inner img, [data-split] .split-media-inner svg, [data-split] .split-media-inner picture { visibility: hidden !important; }' });
     await page.evaluate(() => document.querySelector('[data-split]')?.scrollIntoView({ block: 'center', behavior: 'instant' }));
     await page.waitForTimeout(1500);
     const rect = await page.evaluate(() => { const r = document.querySelector('[data-split]')?.getBoundingClientRect(); return r ? { x: r.x, y: r.y, w: r.width, h: r.height } : null; });

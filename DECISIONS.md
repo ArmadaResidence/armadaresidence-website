@@ -1226,3 +1226,11 @@ with photo slots in both languages (home, both branches, the 12 room pages, the 
 for the pattern placeholder and the home panes; Arabic /offers/, /policies/ and /partners/ for their copy. English pages
 without photo slots (contact, offers, policies, faq, careers, club, partners, booking, discover-taif, menu) are unchanged.
 `blog-site-check` now skips redirect pages under /blog/ (the old /blog/- is not an article).
+
+**Live run after commit 2 (4 Nov 2026, same evening).** Ahmed had published photos meanwhile (the gallery page is live,
+75 photos; the Airport Road cover shows in its home pane). Three checks needed to follow the live site: `motion-check`'s
+seam test now fills both panes' media with one flat colour before sampling (it measures the layer's edge, and a photo
+next to the light placeholder moved its medians as a pane widened — no seam on the page); `gallery-site-check` judges a
+remote BASE by what it serves (page, sitemap) and compares hrefs with the base path; and it found a real shift: the
+gallery intro wrapped to two lines in the fallback font and one in the web font (Arabic, 1440), moving the grid by 28 px
+on a cold load — the intro is now `max-w-4xl`, one line with either font in both languages.
