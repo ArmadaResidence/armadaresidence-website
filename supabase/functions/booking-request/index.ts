@@ -32,8 +32,11 @@
 //   BOOKING_TEST_TOKEN.
 // Email never blocks the guest: once the request is stored, a Resend failure is logged with the ref and the
 //   response is still { ok, ref }. Only "not stored AND notification not emailed" returns 500.
-// Abuse: honeypot field `website` (filled → 200 with a ref, nothing stored or sent) and a per-IP limit of
-//   RATE_LIMIT hits per RATE_WINDOW_SECONDS (429). Both fail open.
+// Abuse: honeypot field `website` (filled → 200 with a ref, nothing stored or sent); a per-IP limit of RATE_LIMIT hits
+//   per RATE_WINDOW_SECONDS (429) on the address the platform sets (_shared/client-ip.ts — never a client header);
+//   after validation a limit per phone (E.164 digits) and per email (lower-cased) over 24 h — bookings PHONE_LIMIT /
+//   EMAIL_LIMIT, partner enquiries PARTNER_LIMIT (4 Nov 2026). Salted hashes only; all fail open. Test mode skips them
+//   unless x-armada-test-limits names them (ip, phone, email), then on test-only keys.
 // Deployed with verify_jwt = false (supabase/config.toml): a public form endpoint; CORS limits the origins.
 import { parsePhoneNumberFromString } from 'npm:libphonenumber-js@1.12.10/min';
 import { siteOrigins } from '../_shared/site-cors.ts';
@@ -53,6 +56,7 @@ import {
   type Quote,
 } from './email.ts';
 import { makeRef } from '../_shared/ref.ts';
+import { emailKey, phoneKey, platformClientIp } from '../_shared/client-ip.ts';
 import { sendWhatsApp } from './whatsapp-send.ts';
 import { WA_TEMPLATES, type WaTemplate } from './whatsapp.ts';
 import { testEcho } from './test-echo.ts';
@@ -117,6 +121,12 @@ const BOTH = 'both';
 
 const RATE_LIMIT = 5;
 const RATE_WINDOW_SECONDS = 3600;
+/** per normalised phone and per email, over 24 h (Ahmed, 4 Nov 2026): a guest may try several dates in a day */
+const PHONE_LIMIT = 6;
+const EMAIL_LIMIT = 6;
+/** partner enquiries: per phone and per email, over 24 h */
+const PARTNER_LIMIT = 4;
+const DAY_SECONDS = 86400;
 
 /** Resend's delivered-sink: test-mode emails land here instead of the hotel mailboxes. */
 const TEST_SINK = 'delivered@resend.dev';
@@ -132,7 +142,7 @@ function cors(req: Request): Record<string, string> {
   const allow = allowedOrigins.includes(origin) ? origin : allowedOrigins[0];
   return {
     'Access-Control-Allow-Origin': allow,
-    'Access-Control-Allow-Headers': 'authorization, apikey, content-type, x-armada-test, x-armada-test-mail, x-armada-test-wa',
+    'Access-Control-Allow-Headers': 'authorization, apikey, content-type, x-armada-test, x-armada-test-mail, x-armada-test-wa, x-armada-test-limits',
     'Access-Control-Allow-Methods': 'POST, OPTIONS',
     'Vary': 'Origin',
   };
@@ -181,15 +191,10 @@ function phoneE164(raw: string, country: string): string | null {
   }
 }
 
-function clientIp(req: Request): string {
-  const fwd = req.headers.get('x-forwarded-for') ?? '';
-  const first = fwd.split(',')[0].trim();
-  return first || req.headers.get('cf-connecting-ip') || req.headers.get('x-real-ip') || 'unknown';
-}
-
-async function ipHash(ip: string): Promise<string> {
+/** a salted SHA-256 of a limit key (an address, a phone, an email — never stored in clear) */
+async function ipHash(key: string): Promise<string> {
   const salt = Deno.env.get('BOOKING_IP_SALT') ?? 'armada-booking';
-  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(`${salt}:${ip}`));
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(`${salt}:${key}`));
   return Array.from(new Uint8Array(buf), (b) => b.toString(16).padStart(2, '0')).join('');
 }
 
@@ -227,27 +232,44 @@ function serviceEnv(): { url: string; key: string } | null {
   return { url, key };
 }
 
-/** true = over the limit. Fails open on any error so a throttle outage never blocks a guest. */
-async function rateLimited(req: Request): Promise<boolean> {
+/** one hit on a limit key; true = over `limit` in the window. Fails open on any error so a throttle outage never
+ * blocks a guest. `test` keys live apart from real ones. */
+async function overLimit(key: string, limit: number, windowSeconds: number, test: boolean): Promise<boolean> {
   const env = serviceEnv();
   if (!env) return false;
   try {
-    const hash = await ipHash(clientIp(req));
+    const hash = (test ? 'test:' : '') + (await ipHash(key));
     const res = await fetch(`${env.url}/rest/v1/rpc/booking_request_hit`, {
       method: 'POST',
       headers: serviceHeaders(env.key),
-      body: JSON.stringify({ p_ip_hash: hash, p_window_seconds: RATE_WINDOW_SECONDS }),
+      body: JSON.stringify({ p_ip_hash: hash, p_window_seconds: windowSeconds }),
     });
     if (!res.ok) {
       console.error('rate limit check failed', res.status, await res.text());
       return false;
     }
     const hits = Number(await res.text());
-    return Number.isFinite(hits) && hits > RATE_LIMIT;
+    return Number.isFinite(hits) && hits > limit;
   } catch (e) {
     console.error('rate limit check failed', String(e));
     return false;
   }
+}
+
+/** the per-IP limit on the platform's address only; none known → skipped (logged) */
+async function rateLimited(req: Request, test: boolean): Promise<boolean> {
+  const ip = platformClientIp(req);
+  if (!ip) {
+    console.warn('rate limit: no platform client address — per-IP limit skipped');
+    return false;
+  }
+  return overLimit(`ip:${ip}`, RATE_LIMIT, RATE_WINDOW_SECONDS, test);
+}
+
+/** test mode applies a limit only when x-armada-test-limits names it */
+function limitApplies(req: Request, token: string | null, name: 'ip' | 'phone' | 'email'): boolean {
+  if (!token) return true;
+  return (req.headers.get('x-armada-test-limits') ?? '').split(/[\s,]+/).includes(name);
 }
 
 // ── QA: dashboard staff email preview (Ahmed, 26 Oct 2026) ──────────────────────────────────────────────────────
@@ -701,11 +723,25 @@ Deno.serve(async (req) => {
   if (token && payload.preview === 'status') return previewStatus(req, payload);
   if (token && payload.preview === 'wa-send') return previewWaSend(req, payload);
   if (token && payload.preview === 'wa-log') return previewWaLog(req, payload);
-  if (!token && (await rateLimited(req))) return json(req, 429, { ok: false, error: 'too many requests' });
+  if (limitApplies(req, token, 'ip') && (await rateLimited(req, Boolean(token)))) return json(req, 429, { ok: false, error: 'too many requests' });
 
   const v = validate(payload, Boolean(token));
   if (!v.ok) return json(req, 422, { ok: false, error: v.error, ...(v.fields ? { fields: v.fields } : {}) });
   const d = v.row;
+
+  // per phone and per email over 24 h (4 Nov 2026): one person changing networks still meets the limit
+  {
+    const partner = d.requestType !== 'booking';
+    const kind = partner ? 'partner' : 'booking';
+    const phoneMax = partner ? PARTNER_LIMIT : PHONE_LIMIT;
+    const emailMax = partner ? PARTNER_LIMIT : EMAIL_LIMIT;
+    if (d.phone && limitApplies(req, token, 'phone') && (await overLimit(`${kind}-phone:${phoneKey(d.phone)}`, phoneMax, DAY_SECONDS, Boolean(token)))) {
+      return json(req, 429, { ok: false, error: 'too many requests' });
+    }
+    if (d.email && limitApplies(req, token, 'email') && (await overLimit(`${kind}-email:${emailKey(d.email)}`, emailMax, DAY_SECONDS, Boolean(token)))) {
+      return json(req, 429, { ok: false, error: 'too many requests' });
+    }
+  }
 
   const ref = makeRef();
   const isPartner = d.requestType !== 'booking';

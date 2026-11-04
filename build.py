@@ -182,6 +182,8 @@ def validate(content: dict[str, dict]) -> list[str]:
     seo = content["seo.json"]
     if not seo.get("site_url", "").startswith("https://"):
         problems.append("seo.json.site_url must be https")
+    if not seo.get("live_url", "").startswith("https://"):
+        problems.append("seo.json.live_url must be https (where the site answers today: the base of every email link)")
     for key in ("home", "airport-road", "shafa-road", "offers", "contact", "policies", "booking", "booking-success", "404"):
         if key not in seo["pages"]:
             problems.append(f"seo.json.pages missing {key}")
@@ -385,6 +387,9 @@ def generate_function_content(content: dict[str, dict], fees: dict) -> None:
     out = {
         "_generated": "by build.py from content/ — do not edit",
         "site_url": content["seo.json"]["site_url"],
+        # where the site answers today (4 Nov 2026): every link in the emails (club, member offers, ?go=, dining) and the
+        # email logo — the review address until switch day, then https://armadaresidence.com (seo.json → live_url)
+        "live_url": content["seo.json"]["live_url"].rstrip("/"),
         "enquiry_types": content.get("partners.json", {}).get("enquiry_types", []),
         # sales line for the partner confirmation's WhatsApp link (public number). Recipient addresses are
         # never generated here: they live only in Supabase booking_notification_recipients.
@@ -463,7 +468,7 @@ def generate_function_content(content: dict[str, dict], fees: dict) -> None:
         "club_consent_version": content["club.json"]["consent"]["version"],
         # versions a page loaded before a wording change may still send (accepted; the one the guest saw is recorded)
         "club_consent_previous": content["club.json"]["consent"].get("previous", []),
-        "email_logo_url": os.environ.get("EMAIL_ASSETS_BASE", "https://armadaresidence.github.io/armadaresidence-website").rstrip("/") + "/email/armada-residence-logo-reversed@2x.png",
+        "email_logo_url": os.environ.get("EMAIL_ASSETS_BASE", content["seo.json"]["live_url"]).rstrip("/") + "/email/armada-residence-logo-reversed@2x.png",
     }
     FUNC_DIR.mkdir(parents=True, exist_ok=True)
     (FUNC_DIR / "content.generated.json").write_text(json.dumps(out, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")

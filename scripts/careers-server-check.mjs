@@ -14,13 +14,28 @@
 //     failed send is retried and delivered; B a failed send older than 7 days is purged unsent, its file deleted and
 //     the admin alert sent (test rows → Resend's sink); C a file left behind after an accepted send is deleted;
 //   - cleanup (job-cleanup): the test rows, their hits and files are deleted.
-//   node scripts/careers-server-check.mjs [--keep]
+//   node scripts/careers-server-check.mjs --branch <branch-get.json> [--keep]   (or --production for the deliberate live check)
 import { readFileSync } from 'node:fs';
 
 const env = Object.fromEntries(
   readFileSync('.env', 'utf8').split(/\r?\n/).filter((l) => /^[A-Z_]+=/.test(l)).map((l) => [l.slice(0, l.indexOf('=')), l.slice(l.indexOf('=') + 1).trim()]),
 );
 const TOKEN = env.BOOKING_TEST_TOKEN;
+// Test targets (CLAUDE.md §11, 3 Nov 2026; guard added 4 Nov 2026): a PREVIEW BRANCH by default — its record from
+// `--branch <branch-get.json>`; the production project only with --production (and --production refuses a branch).
+const argv = process.argv.slice(2);
+const PROD_REF = 'wwzxwettsuwtakwwbfly';
+const branchAt = argv.indexOf('--branch');
+const target = branchAt >= 0 ? JSON.parse(readFileSync(argv[branchAt + 1], 'utf8')).SUPABASE_URL : argv.includes('--production') ? env.SUPABASE_URL : '';
+if (!target) {
+  console.error('careers-server-check: name a preview branch (--branch <branch-get.json>) or pass --production for the deliberate live check');
+  process.exit(2);
+}
+if (argv.includes('--production') !== String(target).includes(PROD_REF)) {
+  console.error('careers-server-check: refused — --production must go with the production project, a branch without it');
+  process.exit(2);
+}
+env.SUPABASE_URL = target;
 const URL_ = `${(env.SUPABASE_URL || '').replace(/\/$/, '')}/functions/v1/job-application`;
 const ORIGIN = 'https://armadaresidence.github.io';
 if (!TOKEN || !env.SUPABASE_URL) {

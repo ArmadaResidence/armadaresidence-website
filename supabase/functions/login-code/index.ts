@@ -20,6 +20,7 @@ import { createClient } from 'npm:@supabase/supabase-js@2.49.4';
 import content from '../booking-request/content.generated.json' with { type: 'json' };
 import { loginCodeMail, type Mail } from '../booking-request/email.ts';
 import { cors, preflight } from '../_shared/cors.ts';
+import { platformClientIp } from '../_shared/client-ip.ts';
 
 const url = Deno.env.get('SUPABASE_URL') ?? '';
 const admin = createClient(url, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '', { auth: { persistSession: false, autoRefreshToken: false } });
@@ -55,9 +56,9 @@ function sixDigits(): string {
   return String(a[0] % 1_000_000).padStart(6, '0');
 }
 
+// the per-IP count reads only the address the platform sets (4 Nov 2026 — _shared/client-ip.ts)
 function clientIp(req: Request): string {
-  const first = (req.headers.get('x-forwarded-for') ?? '').split(',')[0].trim();
-  return first || req.headers.get('cf-connecting-ip') || req.headers.get('x-real-ip') || 'unknown';
+  return platformClientIp(req) ?? 'unknown';
 }
 async function ipHash(ip: string): Promise<string> {
   return sha256hex(`${Deno.env.get('BOOKING_IP_SALT') ?? 'armada-booking'}:${ip}`);

@@ -30,6 +30,7 @@
 //   BOOKING_ALLOWED_ORIGINS (only ADDS origins). Deployed with verify_jwt = false (supabase/config.toml).
 import { parsePhoneNumberFromString } from 'npm:libphonenumber-js@1.12.10/min';
 import { siteOrigins } from '../_shared/site-cors.ts';
+import { emailKey, platformClientIp } from '../_shared/client-ip.ts';
 import { allowedOrigins as adminOrigins } from '../_shared/cors.ts';
 import content from '../booking-request/content.generated.json' with { type: 'json' };
 import { cleanUtm, clubSource, validateClubJoin } from '../booking-request/rules.ts';
@@ -38,6 +39,8 @@ import { clubWelcome, memberOffer } from '../booking-request/email.ts';
 const IP_LIMIT = 30;
 const IP_WINDOW_SECONDS = 600;
 const PHONE_LIMIT = 5;
+/** sign-ups per email per day (4 Nov 2026) */
+const EMAIL_LIMIT = 5;
 const PHONE_WINDOW_SECONDS = 86400;
 const TEST_SINK = 'delivered@resend.dev';
 const FROM = 'أرمادا ريزيدنس | Armada Residence <reservation@armadaresidence.com>';
@@ -72,14 +75,13 @@ async function sha(s: string): Promise<string> {
   const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(`${salt}:${s}`));
   return Array.from(new Uint8Array(buf), (b) => b.toString(16).padStart(2, '0')).join('');
 }
-function clientIp(req: Request): string {
-  const first = (req.headers.get('x-forwarded-for') ?? '').split(',')[0].trim();
-  return first || req.headers.get('cf-connecting-ip') || req.headers.get('x-real-ip') || 'unknown';
-}
+// the per-IP limit reads only the address the platform sets (4 Nov 2026 — _shared/client-ip.ts)
+const clientIp = (req: Request) => platformClientIp(req);
 
 const url = () => Deno.env.get('SUPABASE_URL') ?? '';
 const serviceKey = () => Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
-const site = () => String(content.site_url).replace(/\/$/, '');
+// every link in the club and member-offer emails and the ?go= redirect: where the site answers today (seo.json → live_url)
+const site = () => String(content.live_url ?? content.site_url).replace(/\/$/, '');
 
 async function rpc<T>(name: string, args: Record<string, unknown>): Promise<{ ok: true; data: T } | { ok: false; status: number; message: string }> {
   const res = await fetch(`${url()}/rest/v1/rpc/${name}`, {
@@ -155,7 +157,9 @@ async function join(req: Request, body: Record<string, unknown>, test: boolean):
     return json(req, 200, { ok: true });
   }
   const limits = req.headers.get('x-armada-test-limits') ?? '';
-  if ((!test || limits === 'ip') && (await limited((test ? 'test:' : '') + (await sha(`club-ip:${clientIp(req)}`)), IP_LIMIT, IP_WINDOW_SECONDS))) {
+  const ip = clientIp(req);
+  if (!ip) console.warn('club: no platform client address — per-IP limit skipped');
+  if (ip && (!test || limits === 'ip') && (await limited((test ? 'test:' : '') + (await sha(`club-ip:${ip}`)), IP_LIMIT, IP_WINDOW_SECONDS))) {
     return json(req, 429, { ok: false, error: 'rate_limited' });
   }
   const v = validateClubJoin(
@@ -164,6 +168,10 @@ async function join(req: Request, body: Record<string, unknown>, test: boolean):
   );
   if (!v.ok) return json(req, 422, { ok: false, error: 'invalid', fields: v.errors });
   if ((!test || limits === 'phone') && (await limited((test ? 'test:' : '') + (await sha(`club-phone:${v.data.phone}`)), PHONE_LIMIT, PHONE_WINDOW_SECONDS))) {
+    return json(req, 429, { ok: false, error: 'rate_limited' });
+  }
+  // per email over a day (4 Nov 2026), when one is given
+  if (v.data.email && (!test || limits === 'email') && (await limited((test ? 'test:' : '') + (await sha(`club-email:${emailKey(v.data.email)}`)), EMAIL_LIMIT, PHONE_WINDOW_SECONDS))) {
     return json(req, 429, { ok: false, error: 'rate_limited' });
   }
   const version = String(body.consent_version ?? '');

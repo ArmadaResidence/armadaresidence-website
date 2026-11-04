@@ -19,6 +19,7 @@
 // JWT itself through the database (a missing or invalid token is refused there). CORS: the site's and the dashboard's
 // origins (_shared/site-cors.ts + _shared/cors.ts).
 import { siteOrigins } from '../_shared/site-cors.ts';
+import { platformClientIp } from '../_shared/client-ip.ts';
 import { allowedOrigins as adminOrigins } from '../_shared/cors.ts';
 import content from '../booking-request/content.generated.json' with { type: 'json' };
 import { validEmail } from '../booking-request/rules.ts';
@@ -57,10 +58,8 @@ async function sha(s: string): Promise<string> {
   const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(`${salt}:${s}`));
   return Array.from(new Uint8Array(buf), (b) => b.toString(16).padStart(2, '0')).join('');
 }
-function clientIp(req: Request): string {
-  const first = (req.headers.get('x-forwarded-for') ?? '').split(',')[0].trim();
-  return first || req.headers.get('cf-connecting-ip') || req.headers.get('x-real-ip') || 'unknown';
-}
+// the per-IP limit reads only the address the platform sets (4 Nov 2026 — _shared/client-ip.ts)
+const clientIp = (req: Request) => platformClientIp(req);
 
 const url = () => Deno.env.get('SUPABASE_URL') ?? '';
 const serviceKey = () => Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
@@ -111,8 +110,10 @@ async function subscribe(req: Request, body: Record<string, unknown>, test: bool
     console.warn('dining-notify: honeypot hit');
     return json(req, 200, { ok: true });
   }
-  if (!test || req.headers.get('x-armada-test-limits') === 'ip') {
-    const hits = await rpc<number>('booking_request_hit', { p_ip_hash: (test ? 'test:' : '') + (await sha(`dining-ip:${clientIp(req)}`)), p_window_seconds: IP_WINDOW_SECONDS });
+  const ip = clientIp(req);
+  if (!ip) console.warn('dining-notify: no platform client address — per-IP limit skipped');
+  if (ip && (!test || req.headers.get('x-armada-test-limits') === 'ip')) {
+    const hits = await rpc<number>('booking_request_hit', { p_ip_hash: (test ? 'test:' : '') + (await sha(`dining-ip:${ip}`)), p_window_seconds: IP_WINDOW_SECONDS });
     if (hits.ok && hits.data > IP_LIMIT) return json(req, 429, { ok: false, error: 'rate_limited' });
   }
   const venue = String(body.venue ?? '');

@@ -1196,7 +1196,7 @@ export interface DiningOpeningMail {
   nameEn: string;
 }
 export function diningOpening(c: Content, d: DiningOpeningMail): Mail {
-  const site = String(c.site_url).replace(/\/$/, '');
+  const site = String(c.live_url ?? c.site_url).replace(/\/$/, ''); // where the site answers today (seo.json → live_url)
   const block = (L: Locale) => {
     const M = c.dining_email[L];
     const vars = { name: L === 'ar' ? d.nameAr : d.nameEn || d.nameAr, branch: branchName(c, d.branch, L) };

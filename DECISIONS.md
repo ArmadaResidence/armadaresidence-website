@@ -1127,3 +1127,30 @@ suite (no routing) passed, in `.git/armada-full-suite-passed.txt` (local to the 
 runs `check-all --commit <sha> --skip-if-passed`: when the pushed commit's tree is in the record the suite is skipped,
 otherwise it runs in full as before (recording on success); one line says which. A commit whose pre-commit run was routed
 (not full) is never recorded, so its push runs the suite.
+
+## 2026-11-04 — Pre-launch fixes, commit 1: email links and form limits (Ahmed's decisions on the audit, 4 Nov 2026)
+
+**Email links from one base URL.** `content/seo.json → live_url` = where the site answers today
+(`https://armadaresidence.github.io/armadaresidence-website` until switch day). `build.py` copies it into the functions'
+generated content; every link in the club welcome / unsubscribe and member-offer emails, the club `?go=` redirect, the
+dining opening email and the email logo (`EMAIL_ASSETS_BASE` still overrides) use it. `site_url` stays the canonical
+domain (SEO, CORS). Launch: set `live_url` to `https://armadaresidence.com`, redeploy the email-sending functions —
+added to `docs/launch-runbook.md` (step 6b) and to the audit's checklist (B12). Until then a club email's unsubscribe link
+opens `/club/unsubscribe/` on the review site, which works (it was the old Hostinger site before).
+
+**Client address.** Probed on a preview branch with spoofed headers (4 Nov 2026): the platform rebuilds
+`x-forwarded-for`, overwrites `sb-forwarded-for`, sets `cf-connecting-ip` (a request carrying its own CF-Connecting-IP is
+refused by Cloudflare, error 1000) and drops `x-real-ip`; `true-client-ip` and `forwarded` reach the function as the
+client sent them. `supabase/functions/_shared/client-ip.ts → platformClientIp` reads only `cf-connecting-ip`, then
+`sb-forwarded-for`; the per-IP limits of booking-request, job-application, club and dining-notify and the login-code
+count use it (no platform address → the IP limit is skipped and logged; the old first-`x-forwarded-for` read is gone).
+
+**Per-person limits (defaults chosen here, 24 h windows, salted hashes in `booking_request_hits`, fail open):** bookings
+6 per phone and 6 per email (a guest may try several dates in a day); partner enquiries 4 per phone and 4 per email;
+club sign-ups 5 per phone (unchanged) and 5 per email (new); careers unchanged (3 per email or phone). Phones are keyed by
+their E.164 digits (so «05…» and «+966 5…» are one number), emails trimmed and lower-cased. The per-IP limits are
+unchanged (booking 5 / hour, careers 5 / hour, club 30 / 10 min, dining 10 / hour). Answer: 429, as before.
+
+**Tests.** `node scripts/limits-check.mjs --branch …` (9 checks, preview branch only); club-server-check 29/29 and
+careers-server-check 23/23 on the same branch. `careers-server-check` read production from `.env` with no guard — it now
+refuses to run without `--branch` (or `--production` for the deliberate live check), per the 3 Nov test-target rule.

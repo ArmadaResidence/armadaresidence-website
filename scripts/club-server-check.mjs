@@ -44,7 +44,8 @@ const FN = `${target.url}/functions/v1/club`;
 const TOKEN = envGet('BOOKING_TEST_TOKEN');
 const content = JSON.parse(readFileSync('supabase/functions/booking-request/content.generated.json', 'utf8'));
 const VERSION = content.club_consent_version;
-const SITE = String(content.site_url).replace(/\/$/, '');
+// the email links follow seo.json → live_url (where the site answers today; 4 Nov 2026)
+const SITE = String(content.live_url ?? content.site_url).replace(/\/$/, '');
 const ORIGIN = (content.site_origins ?? [SITE]).map((u) => new URL(u).origin);
 const fails = [];
 let checks = 0;

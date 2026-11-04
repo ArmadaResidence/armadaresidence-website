@@ -653,10 +653,12 @@ server (`supabase/functions/booking-request/rules.ts`, the one source for the fo
 | Club (`/club/`) | `club` | honeypot; 30 per hashed IP per 10 min (hotel Wi-Fi) and 5 per hashed phone per day; consent required and versioned; a repeat returns the same answer; signed unsubscribe links (HMAC, Vault key) | the same `x-forwarded-for` question; the welcome email can be triggered for any email address typed in (no double opt-in) — acceptable under the one-consent decision but worth a decision |
 | «أبلغني عند الافتتاح» (dining teaser) | `dining-notify` | honeypot; 10 per IP per hour; consent; only for coming-soon venues | inactive today (no venue); the same `x-forwarded-for` question |
 
+**Fixed 4 Nov 2026 (commit 1 of the fix session, DECISIONS.md «Pre-launch fixes, commit 1»):** the per-IP limits read only the platform's address (`cf-connecting-ip` / `sb-forwarded-for`, verified with spoofed headers on a preview branch); per phone and per email limits added — bookings 6 + 6, partner enquiries 4 + 4, club email 5 a day (per 24 h).
+
 Not present anywhere (decision for Ahmed, not a defect): a CAPTCHA / Turnstile. The honeypots + rate limits + server
 validation are the current design; add a challenge only if spam appears after launch.
 
-**Email links today.** The functions build every guest link from `seo.json → site_url` = `https://armadaresidence.com`
+**Email links today** (fixed 4 Nov 2026 by `seo.json → live_url` — see B12; kept here as found). The functions build every guest link from `seo.json → site_url` = `https://armadaresidence.com`
 (e.g. the club welcome email's unsubscribe and `?go=` links, the booking confirmation's site links). Until the DNS
 switch that host still serves the **old** site, which answers 200 to any path — so an unsubscribe link in a club email
 sent before launch lands on the old home page, not `/club/unsubscribe/`. The one-click `List-Unsubscribe` header goes
@@ -695,9 +697,9 @@ account, a DNS panel, a real phone or mailbox, a decision); **Claude** = can be 
 | B9 | Search Console (Domain property, already verified by DNS TXT): remove the old `sitemap.xml`, submit `https://armadaresidence.com/sitemap-index.xml`; URL Inspection → *Request indexing* for `/`, `/en/`, `/airport-road/`, `/shafa-road/`. | أحمد |
 | B10 | Live suite against the domain: `node scripts/check-all.mjs --live https://armadaresidence.com` (browser checks + `admin-cors-check` + `admin-cors-check --public`). | Claude |
 | B11 | GTM / GA4 on the real domain: GA4 Realtime shows a visit on `armadaresidence.com`; Tag Assistant shows one GA4 config hit, no duplicate pixel loads; a `whatsapp_click` from a branch page arrives. | أحمد (GA4 access); Claude can run Tag Assistant-style checks in a browser |
-| B12 | Email links: every guest email already links to `https://armadaresidence.com` (`seo.json → site_url`, `build.py site_origins`) — after B4 they reach the new pages. Test: a club sign-up with Ahmed's own email, open the welcome email, click «إلغاء الاشتراك» → `/club/unsubscribe/` works; re-join afterwards. | أحمد (his mailbox) |
+| B12 | **Email links → the domain** (added 4 Nov 2026, commit 1 of the fix session): in `content/seo.json` set `live_url` to `https://armadaresidence.com` (today the review address), commit — the build regenerates `content.generated.json` — and redeploy the functions that send email (`booking-request`, `club`, `dining-notify`, `job-application`, `login-code`). Every link in the club welcome / unsubscribe, member-offer and dining emails, the `?go=` redirect and the email logo follow it. Then test: a club sign-up with Ahmed's own email, open the welcome email, click «إلغاء الاشتراك» → `/club/unsubscribe/` on the domain; re-join afterwards. | Claude (setting + deploy) + أحمد (his mailbox) |
 | B13 | Real form test: one booking request and one partner enquiry from the domain with real contact details → the reception email (Hostinger filter), the WhatsApp message, the dashboard row; cancel the test booking from the dashboard. | أحمد |
-| B14 | Email logo: set `EMAIL_ASSETS_BASE=https://armadaresidence.com` for the build (`build.py` defaults to the github.io sub-path), redeploy the Edge Functions that send email; regenerate `supabase/templates/invite.html` / `recovery.html` (`scripts/auth-templates.mjs`, both hard-code the github.io logo) and `supabase config push`. After B3 the github.io path only redirects. | Claude |
+| B14 | Staff (Auth) email logo: regenerate `supabase/templates/invite.html` / `recovery.html` (`scripts/auth-templates.mjs`, both hard-code the github.io logo) after B12 and `supabase config push`. After B3 the github.io path only redirects. | Claude |
 | B15 | Unfreeze; record the switch time in DECISIONS.md. | Claude |
 
 ### C. Rollback (trigger: the domain unreachable after 60 min, the certificate fails, or forms fail from the domain and cannot be fixed within the hour)

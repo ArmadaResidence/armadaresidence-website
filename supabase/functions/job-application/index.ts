@@ -31,6 +31,7 @@
 // Deployed with verify_jwt = false (supabase/config.toml): a public form endpoint; CORS limits the origins.
 import { getCountries, parsePhoneNumberFromString } from 'npm:libphonenumber-js@1.12.10/min';
 import { siteOrigins } from '../_shared/site-cors.ts';
+import { platformClientIp } from '../_shared/client-ip.ts';
 import content from '../booking-request/content.generated.json' with { type: 'json' };
 import { EMAIL, riyadhToday, validateJobApplication, type JobFile } from '../booking-request/rules.ts';
 import { jobApplicationAlert, jobApplicationConfirmation, jobApplicationNotification, type JobMail, type Mail } from '../booking-request/email.ts';
@@ -90,10 +91,8 @@ async function sha(s: string): Promise<string> {
   const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(`${salt}:${s}`));
   return Array.from(new Uint8Array(buf), (b) => b.toString(16).padStart(2, '0')).join('');
 }
-function clientIp(req: Request): string {
-  const first = (req.headers.get('x-forwarded-for') ?? '').split(',')[0].trim();
-  return first || req.headers.get('cf-connecting-ip') || req.headers.get('x-real-ip') || 'unknown';
-}
+// the per-IP limit reads only the address the platform sets (4 Nov 2026 — _shared/client-ip.ts)
+const clientIp = (req: Request) => platformClientIp(req);
 
 function env(): { url: string; key: string } {
   const url = Deno.env.get('SUPABASE_URL');
@@ -361,10 +360,12 @@ Deno.serve(async (req) => {
     console.warn('honeypot hit');
     return json(req, 200, { ok: true, ref: makeRef() });
   }
-  const ipLimit = !test || (req.headers.get('x-armada-test-limits') ?? '').includes('ip');
+  const ip = clientIp(req);
+  if (!ip) console.warn('no platform client address — per-IP limit skipped');
+  const ipLimit = !!ip && (!test || (req.headers.get('x-armada-test-limits') ?? '').includes('ip'));
   if (ipLimit) {
     try {
-      const hits = await rpc<number>('job_application_ip_hit', { p_ip_hash: (test ? 'test:' : '') + (await sha(`jobs-ip:${clientIp(req)}`)), p_window_seconds: IP_WINDOW_SECONDS });
+      const hits = await rpc<number>('job_application_ip_hit', { p_ip_hash: (test ? 'test:' : '') + (await sha(`jobs-ip:${ip}`)), p_window_seconds: IP_WINDOW_SECONDS });
       if (hits > IP_LIMIT) return json(req, 429, { ok: false, error: 'too many requests' });
     } catch (x) {
       console.error('rate limit check failed', String(x)); // fails open
