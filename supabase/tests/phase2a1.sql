@@ -86,9 +86,9 @@ values ('AR-20991231-QB01', 'request', 'airport-road', pg_temp._d(70), pg_temp._
 
 -- ── P0 presets ──
 select pg_temp._check('P0 the staff insert trigger fills the matrix (every section; 8 since the media module, 1 Nov 2026)', (select count(*) from public.staff_permissions where user_id = pg_temp._id('rec_air')) = (select count(*) from public.sections));
-select pg_temp._check('P0 reception preset: settings view, rooms view, users none, audit view, media / dining / offers / blog / content / partners / guests / guests_export none',
+select pg_temp._check('P0 reception preset: settings view, rooms view, users none, audit view, media / dining / offers / blog / content / partners / guests / guests_export none, overview view, reports / finance none (4 Nov 2026)',
   (select jsonb_object_agg(section, level) from public.staff_permissions where user_id = pg_temp._id('rec_air'))
-  = '{"bookings": "edit", "rates": "edit", "inventory": "edit", "rooms": "view", "settings": "view", "users": "none", "audit": "view", "media": "none", "dining": "none", "offers": "none", "blog": "none", "content": "none", "partners": "none", "guests": "none", "guests_export": "none"}');
+  = '{"bookings": "edit", "rates": "edit", "inventory": "edit", "rooms": "view", "settings": "view", "users": "none", "audit": "view", "media": "none", "dining": "none", "offers": "none", "blog": "none", "content": "none", "partners": "none", "guests": "none", "guests_export": "none", "overview": "view", "reports": "none", "finance": "none"}');
 select pg_temp._check('P0 sales preset: settings view (Ahmed, 25 Oct 2026)', (select level from public.staff_permissions where user_id = pg_temp._id('sales') and section = 'settings') = 'view');
 select pg_temp._check('P0 management preset: settings edit, users none', (select jsonb_object_agg(section, level) from public.staff_permissions where user_id = pg_temp._id('mgmt'))
   @> '{"settings": "edit", "users": "none"}');
@@ -108,7 +108,7 @@ select pg_temp._check('P1 my_staff still answers (role, matrix empty)', (public.
 
 select pg_temp._as('viewer');
 select pg_temp._check('P1 view everywhere: reads both branches, settings and audit', (select count(distinct branch) from public.reservations) = 2
-  and (select count(*) from public.settings) = 6 and (select count(*) from public.room_types) >= 12); -- 6 since rate_high_multiplier (28 Oct 2026)
+  and (select count(*) from public.settings) = 7 and (select count(*) from public.room_types) >= 12); -- 6 since rate_high_multiplier (28 Oct 2026), 7 since reply_alert_hours (4 Nov 2026)
 select pg_temp._fails('P1 view: cannot set a base rate', $$select public.set_base_rate(pg_temp._id('king'), 150)$$, '42501');
 select pg_temp._fails('P1 view: cannot edit inventory', $$select public.set_inventory(array[pg_temp._id('king')], pg_temp._d(80), pg_temp._d(80), 127, 1)$$, '42501');
 select pg_temp._fails('P1 view: cannot add an override', $$select public.add_rate_override(array[pg_temp._id('king')], pg_temp._d(80), pg_temp._d(80), 127, 150)$$, '42501');
