@@ -16,7 +16,16 @@ export default function Login() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [reset, setReset] = useState<string | null>(null);
-  const from = (loc.state as { from?: string } | null)?.from ?? '/bookings';
+  // after a deliberate sign-out the next sign-in lands through the landing rule (4 Nov 2026), not on the page left
+  // (read here; cleared by the landing itself — app.tsx Home)
+  const signedOut = (() => {
+    try {
+      return sessionStorage.getItem('armada-signed-out') === '1';
+    } catch {
+      return false;
+    }
+  })();
+  const from = signedOut ? '/' : (loc.state as { from?: string } | null)?.from ?? '/';
   if (!loading && session) return <Navigate to={from} replace />;
 
   async function submit(e: FormEvent) {

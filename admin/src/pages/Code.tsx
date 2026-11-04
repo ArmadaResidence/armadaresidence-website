@@ -19,7 +19,7 @@ export default function Code() {
   const nav = useNavigate();
   const loc = useLocation();
   const toast = useToast();
-  const from = (loc.state as { from?: string } | null)?.from ?? '/bookings';
+  const from = (loc.state as { from?: string } | null)?.from ?? '/';
   const [stage, setStage] = useState<Stage>('device');
   const [code, setCode] = useState('');
   const [backup, setBackup] = useState('');
@@ -33,7 +33,7 @@ export default function Code() {
 
   // passed (here or in another tab): continue where the user was going
   useEffect(() => {
-    if (me && !me.needs_second_factor) nav(from === '/code' ? '/bookings' : from, { replace: true });
+    if (me && !me.needs_second_factor) nav(from === '/code' ? '/' : from, { replace: true });
   }, [me, from, nav]);
 
   // the resend countdown

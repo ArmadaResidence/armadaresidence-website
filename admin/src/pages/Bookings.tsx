@@ -30,6 +30,10 @@ export default function Bookings() {
   const [status, setStatus] = useState<Status>((params.get('status') as Status) ?? '');
   const [coord, setCoord] = useState(params.get('coord') === '1');
   const [kind, setKind] = useState<'' | 'instant' | 'staff' | 'request'>((params.get('kind') as '' | 'instant' | 'staff' | 'request') ?? '');
+  // ?arrive= / ?depart= (the overview cards «الوصول اليوم» / «المغادرة اليوم», 4 Nov 2026): a removable chip
+  const ISO = /^\d{4}-\d{2}-\d{2}$/;
+  const [arriveOn, setArriveOn] = useState(ISO.test(params.get('arrive') ?? '') ? params.get('arrive')! : '');
+  const [departOn, setDepartOn] = useState(ISO.test(params.get('depart') ?? '') ? params.get('depart')! : '');
   const [search, setSearch] = useState('');
   const [query, setQuery] = useState('');
   const [stayFrom, setStayFrom] = useState('');
@@ -74,13 +78,13 @@ export default function Bookings() {
   const load = useCallback(async () => {
     try {
       setError(null);
-      const list = await api.reservations({ branch: branch || undefined, status: status || undefined, needsCoordination: coord, confirmation: kind || undefined, search: query, stayFrom: stayFrom || undefined, stayTo: stayTo || undefined, createdFrom: createdFrom || undefined, createdTo: createdTo || undefined });
+      const list = await api.reservations({ branch: branch || undefined, status: status || undefined, needsCoordination: coord, confirmation: kind || undefined, search: query, arriveOn: arriveOn || undefined, departOn: departOn || undefined, stayFrom: stayFrom || undefined, stayTo: stayTo || undefined, createdFrom: createdFrom || undefined, createdTo: createdTo || undefined });
       setRows(list);
     } catch (e) {
       setError((e as Error).message);
       setRows([]);
     }
-  }, [branch, status, coord, kind, query, stayFrom, stayTo, createdFrom, createdTo]);
+  }, [branch, status, coord, kind, query, arriveOn, departOn, stayFrom, stayTo, createdFrom, createdTo]);
 
   useEffect(() => {
     load();
@@ -89,8 +93,10 @@ export default function Bookings() {
     if (status) p.set('status', status);
     if (coord) p.set('coord', '1');
     if (kind) p.set('kind', kind);
+    if (arriveOn) p.set('arrive', arriveOn);
+    if (departOn) p.set('depart', departOn);
     setParams(p, { replace: true });
-  }, [load, branch, status, coord, kind, locked, setParams]);
+  }, [load, branch, status, coord, kind, arriveOn, departOn, locked, setParams]);
 
   // realtime: a new or changed booking refreshes the list (RLS filters what each user receives)
   useEffect(() => {
@@ -181,6 +187,8 @@ export default function Bookings() {
         <span className="chip chip-confirmed">مؤكد: <b className="num-ar">{counts.confirmed}</b></span>
         <span className="chip chip-cancelled">ملغي: <b className="num-ar">{counts.cancelled}</b></span>
         {counts.coord > 0 && <span className="chip chip-flag">يحتاج تنسيق: <b className="num-ar">{counts.coord}</b></span>}
+        {arriveOn && <button type="button" className="chip chip-request" onClick={() => setArriveOn('')} aria-label={`إزالة عامل التصفية: الوصول ${longDate(arriveOn)}`} data-filter-chip="arrive">الوصول: <span className="num-ar">{longDate(arriveOn)}</span> ×</button>}
+        {departOn && <button type="button" className="chip chip-request" onClick={() => setDepartOn('')} aria-label={`إزالة عامل التصفية: المغادرة ${longDate(departOn)}`} data-filter-chip="depart">المغادرة: <span className="num-ar">{longDate(departOn)}</span> ×</button>}
       </div>
       <ErrorBox error={error} />
       {rows === null ? (

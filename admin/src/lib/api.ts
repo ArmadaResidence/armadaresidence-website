@@ -298,6 +298,9 @@ export interface ReservationFilter {
   createdFrom?: string;
   createdTo?: string;
   search?: string;
+  /** «الوصول اليوم» / «المغادرة اليوم» from the overview (4 Nov 2026): an exact arrival / departure date */
+  arriveOn?: string;
+  departOn?: string;
 }
 export async function reservations(f: ReservationFilter, limit = 200): Promise<Reservation[]> {
   let q = supabase.from('reservations').select('*').order('created_at', { ascending: false }).limit(limit);
@@ -309,6 +312,8 @@ export async function reservations(f: ReservationFilter, limit = 200): Promise<R
   if (f.roomTypeId) q = q.eq('room_type_id', f.roomTypeId);
   if (f.stayFrom) q = q.gte('check_out', f.stayFrom);
   if (f.stayTo) q = q.lte('check_in', f.stayTo);
+  if (f.arriveOn) q = q.eq('check_in', f.arriveOn);
+  if (f.departOn) q = q.eq('check_out', f.departOn);
   if (f.createdFrom) q = q.gte('created_at', f.createdFrom + 'T00:00:00+03:00');
   if (f.createdTo) q = q.lte('created_at', f.createdTo + 'T23:59:59+03:00');
   if (f.search) {

@@ -21,7 +21,7 @@ export default function BackupCodes() {
   const loc = useLocation();
   const toast = useToast();
   const [params] = useSearchParams();
-  const from = (loc.state as { from?: string } | null)?.from ?? '/bookings';
+  const from = (loc.state as { from?: string } | null)?.from ?? '/';
   const forced = (me?.backup_codes_left ?? 0) === 0 && params.get('new') !== '1';
   const [stage, setStage] = useState<Stage>('intro');
   const [codes, setCodes] = useState<string[] | null>(null);
@@ -40,7 +40,7 @@ export default function BackupCodes() {
   }, [wait]);
 
   if (me && !me.is_admin) {
-    nav('/bookings', { replace: true });
+    nav('/', { replace: true });
     return null;
   }
 

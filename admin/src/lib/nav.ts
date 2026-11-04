@@ -1,6 +1,6 @@
 // The dashboard's sections and where they sit in the sidebar (Ahmed, 2 Nov 2026 — phase 2b session 3, part D). Each user
-// sees only the items their permission matrix grants (view or more); an empty group is hidden. Groups planned for later
-// modules (النظرة العامة، التقارير) appear as soon as their first item is added here. 3 Nov 2026: «المحتوى» and «الأسئلة
+// sees only the items their permission matrix grants (view or more); an empty group is hidden. «النظرة العامة» and
+// «التقارير» head the list without a group label (4 Nov 2026). 3 Nov 2026: «المحتوى» and «الأسئلة
 // الشائعة» under «المحتوى والتسويق», «طلبات الشركاء» under «الشركاء».
 import type { IconName } from '../components/icons';
 import { canView, type Me } from './api';
@@ -21,7 +21,14 @@ export interface NavGroup {
 }
 
 export const NAV_GROUPS: NavGroup[] = [
-  { key: 'overview', title: null, items: [] },
+  // «النظرة العامة» and «التقارير» at the top without a group label (Ahmed, 4 Nov 2026 — session 6)
+  {
+    key: 'overview',
+    title: null,
+    items: [
+      { to: '/overview', label: 'النظرة العامة', section: 'overview', icon: 'overview' },
+    ],
+  },
   {
     key: 'operations',
     title: 'التشغيل',
@@ -51,7 +58,6 @@ export const NAV_GROUPS: NavGroup[] = [
     title: 'الشركاء',
     items: [{ to: '/partners', label: 'طلبات الشركاء', section: 'partners', icon: 'partners' }],
   },
-  { key: 'reports', title: 'التقارير', items: [] },
   {
     key: 'admin',
     title: 'الإدارة',
@@ -80,21 +86,12 @@ export const EXTRA_TITLES: Record<string, string> = { '/security': 'الأمان
 
 export const docTitle = (page: string) => `${page} | لوحة أرمادا`;
 
-// ── the last section visited (until the overview page exists, sign-in lands there) ──
-const lastKey = (email: string | null | undefined) => `armada-last-section:${email ?? ''}`;
-export function rememberSection(email: string | null | undefined, path: string) {
-  try {
-    localStorage.setItem(lastKey(email), path);
-  } catch { /* private mode */ }
-}
-export function lastSection(me: Me | null): string | null {
-  try {
-    const p = localStorage.getItem(lastKey(me?.email));
-    const it = p ? itemOf(p) : undefined;
-    return it && canView(me, it.section) ? it.to : null;
-  } catch {
-    return null;
-  }
+// ── where sign-in lands (Ahmed, 4 Nov 2026): «النظرة العامة» for those who hold it, else «الحجوزات», else the first
+// granted screen (replaces the last-section landing of 3 Nov 2026) ──
+export function landing(me: Me | null): string | null {
+  if (canView(me, 'overview')) return '/overview';
+  if (canView(me, 'bookings')) return '/bookings';
+  return ALL_ITEMS.find((i) => canView(me, i.section))?.to ?? null;
 }
 
 // ── per-user preferences kept in this browser (conveniences only) ──

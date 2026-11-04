@@ -119,7 +119,12 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   }, [session]);
 
   const value = useMemo<Ctx>(
-    () => ({ session, me, status, loading: status === 'loading', refresh, signOut: async () => void (await supabase.auth.signOut()) }),
+    () => ({ session, me, status, loading: status === 'loading', refresh, signOut: async () => {
+      try {
+        sessionStorage.setItem('armada-signed-out', '1');
+      } catch { /* private mode */ }
+      await supabase.auth.signOut();
+    } }),
     [session, me, status, refresh],
   );
   return <SessionCtx.Provider value={value}>{children}</SessionCtx.Provider>;

@@ -16,7 +16,7 @@ import { createPortal } from 'react-dom';
 import { useSession } from '../lib/session';
 import { canView } from '../lib/api';
 import { BRANCH_NAMES, ROLE_LABELS } from '../lib/format';
-import { docTitle, EXTRA_TITLES, itemOf, readPrefs, rememberSection, visibleGroups, writePrefs, type NavGroup, type NavPrefs } from '../lib/nav';
+import { docTitle, EXTRA_TITLES, itemOf, readPrefs, visibleGroups, writePrefs, type NavGroup, type NavPrefs } from '../lib/nav';
 import { useBookingBadge, usePartnersBadge } from '../lib/live';
 import { onOutsidePress } from '../../../src/lib/client';
 import { useLeaveGuard } from './ui';
@@ -260,9 +260,6 @@ export default function Shell({ children }: { children: ReactNode }) {
   useEffect(() => {
     document.title = docTitle(page);
   }, [page]);
-  useEffect(() => {
-    if (item) rememberSection(me?.email, item.to);
-  }, [item, me?.email]);
   useEffect(() => setDrawer(false), [pathname]);
   // Ctrl+K / ⌘K
   useEffect(() => {

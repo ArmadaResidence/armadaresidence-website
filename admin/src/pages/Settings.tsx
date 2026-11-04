@@ -35,6 +35,7 @@ export default function Settings() {
   const [prices, setPrices] = useState<Record<string, boolean>>({});
   const [limits, setLimits] = useState<Limits>({ same_day_cutoff: '20:00', max_nights: 30 });
   const [mult, setMult] = useState<number | null>(10);
+  const [replyHours, setReplyHours] = useState<number | null>(2);
   const [busy, setBusy] = useState<string | null>(null);
   const [rebuild, setRebuild] = useState<string | null>(null);
   // what the server holds: the baseline of the page-level forms (the leave guard re-baselines on every load)
@@ -51,7 +52,8 @@ export default function Settings() {
       setPrices((get('show_prices') as Record<string, boolean>) ?? {});
       setLimits((get('instant_limits') as Limits) ?? { same_day_cutoff: '20:00', max_nights: 30 });
       setMult(Number(get('rate_high_multiplier') ?? 10));
-      setSaved(JSON.stringify([get('breakfast'), get('extra_bed_per_night'), get('instant_limits'), get('rate_high_multiplier')]));
+      setReplyHours(Number(get('reply_alert_hours') ?? 2));
+      setSaved(JSON.stringify([get('breakfast'), get('extra_bed_per_night'), get('instant_limits'), get('rate_high_multiplier'), get('reply_alert_hours')]));
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -172,6 +174,16 @@ export default function Settings() {
         <div className="grid sm:grid-cols-3 gap-3 items-end">
           <Field label="تنبيه السعر المرتفع: مضاعف السعر الأساسي" id="rate-mult" hint="عدد صحيح، 2 على الأقل؛ الافتراضي 10"><NumberField id="rate-mult" value={mult} onChange={setMult} max={1000} /></Field>
           {editable && <button type="button" className="btn btn-primary" onClick={() => mult !== null && mult >= 2 && save('rate_high_multiplier', Math.floor(mult), 'تنبيه السعر المرتفع', load)} disabled={busy === 'rate_high_multiplier' || mult === null || mult < 2} data-action="save-rate-mult">{busy === 'rate_high_multiplier' && <Spinner />} حفظ</button>}
+        </div>
+      </DirtyScope>
+      {/* 4 Nov 2026 (session 6): N of the overview's «تنبيهات» — an unanswered booking request, or a partner enquiry still
+          «جديد», becomes an alert after N hours (audited, undoable; not one of the site defaults: it changes no page of the site) */}
+      <DirtyScope className="card p-5" aria-labelledby="s-reply-alert" version={saved} data-scope="reply-alert">
+        <h2 id="s-reply-alert" className="font-bold text-lg mb-1">تنبيهات النظرة العامة</h2>
+        <p className="text-sm text-ink-muted mb-4">بعد هذه المدة يظهر في «تنبيهات» طلب الحجز الذي لم يُرَدّ عليه، وطلب الشراكة الذي ما زال «جديد».</p>
+        <div className="grid sm:grid-cols-3 gap-3 items-end">
+          <Field label="تنبيه الطلبات بلا رد بعد (ساعات)" id="reply-hours" hint="عدد صحيح من 1 إلى 168؛ الافتراضي 2"><NumberField id="reply-hours" value={replyHours} onChange={setReplyHours} max={168} /></Field>
+          {editable && <button type="button" className="btn btn-primary" onClick={() => replyHours !== null && replyHours >= 1 && save('reply_alert_hours', Math.floor(replyHours), 'تنبيه الطلبات بلا رد', load)} disabled={busy === 'reply_alert_hours' || replyHours === null || replyHours < 1 || replyHours > 168} data-action="save-reply-hours">{busy === 'reply_alert_hours' && <Spinner />} حفظ</button>}
         </div>
       </DirtyScope>
       {/* phase 2a.2 D: saved defaults, system admin only (the database refuses anyone else) */}

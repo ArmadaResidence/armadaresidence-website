@@ -3,11 +3,11 @@
 // the second step not passed → /code (phase 2a.2: the email code, for everyone; /mfa redirects there); an admin
 // without backup codes → /backup-codes once per tab («لاحقًا» continues); a screen the matrix does not grant → the
 // first granted screen (phase 2a.1: the matrix, not the role, decides what shows). An empty matrix sees «لا صلاحية».
-// Signing in lands on the last section visited (lib/nav.ts, 3 Nov 2026).
+// Signing in lands on «النظرة العامة» for those who hold it, else «الحجوزات» (lib/nav.ts landing(), 4 Nov 2026).
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import { SessionProvider, useSession } from './lib/session';
 import { canView } from './lib/api';
-import { lastSection } from './lib/nav';
+import { landing } from './lib/nav';
 import { LeaveGuardProvider, ToastProvider, Splash } from './components/ui';
 import Shell from './components/Shell';
 import Login from './pages/Login';
@@ -15,6 +15,7 @@ import SetPassword from './pages/SetPassword';
 import Code from './pages/Code';
 import BackupCodes, { BACKUP_LATER_KEY } from './pages/BackupCodes';
 import Security from './pages/Security';
+import Overview from './pages/Overview';
 import Bookings from './pages/Bookings';
 import Calendar from './pages/Calendar';
 import Rooms from './pages/Rooms';
@@ -31,6 +32,7 @@ import Users from './pages/Users';
 import Audit from './pages/Audit';
 
 const SCREENS: { path: string; section: string }[] = [
+  { path: 'overview', section: 'overview' },
   { path: 'bookings', section: 'bookings' },
   { path: 'rates', section: 'rates' },
   { path: 'inventory', section: 'inventory' },
@@ -89,12 +91,14 @@ function Unreachable({ onRetry }: { onRetry: () => Promise<void> }) {
   );
 }
 
-/** The last section this user visited (3 Nov 2026 — until the overview page exists), else the first screen the matrix
- *  grants, or «لا صلاحية». */
+/** «النظرة العامة», else «الحجوزات», else the first screen the matrix grants (4 Nov 2026), or «لا صلاحية». */
 function Home() {
   const { me } = useSession();
-  const last = lastSection(me);
-  if (last) return <Navigate to={last} replace />;
+  const to = landing(me);
+  try {
+    sessionStorage.removeItem('armada-signed-out');
+  } catch { /* private mode */ }
+  if (to) return <Navigate to={to} replace />;
   const first = SCREENS.find((s) => canView(me, s.section));
   return first ? <Navigate to={`/${first.path}`} replace /> : <NoAccess sectionless />;
 }
@@ -151,6 +155,7 @@ export default function App() {
                 <Shell>
                   <Routes>
                     <Route index element={<Home />} />
+                    <Route path="overview" element={<Allowed section="overview"><Overview /></Allowed>} />
                     <Route path="bookings" element={<Allowed section="bookings"><Bookings /></Allowed>} />
                     <Route path="rates" element={<Allowed section="rates"><Calendar mode="rates" /></Allowed>} />
                     <Route path="inventory" element={<Allowed section="inventory"><Calendar mode="inventory" /></Allowed>} />

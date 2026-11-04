@@ -87,4 +87,4 @@ export async function firstOf(page, map, timeout = 30000) {
   return k;
 }
 
-export const APP_PATH = /\/(bookings|rates|inventory|rooms|media|dining|offers|blog|faq|content|partners|guests|settings|users|audit|security)(\?|$|\/)/;
+export const APP_PATH = /\/(overview|reports|bookings|rates|inventory|rooms|media|dining|offers|blog|faq|content|partners|guests|settings|users|audit|security)(\?|$|\/)/;

@@ -624,3 +624,115 @@ body {
 /* the revision diff of «المحتوى» (3 Nov 2026) */
 .diff-del { background: color-mix(in srgb, var(--color-error) 14%, transparent); text-decoration: line-through; }
 .diff-add { background: color-mix(in srgb, var(--color-ok) 18%, transparent); text-decoration: none; }
+
+/* ── «النظرة العامة» and «التقارير» (4 Nov 2026 — phase 2b session 6) ──
+   Chart colours (dataviz palette checks: lightness band, chroma floor, CVD and normal-vision separation, ≥ 3:1 on the
+   card): branch 1 = steel blue, branch 2 = bronze; light on #ffffff, dark on #182f41. «مغلق» = a hatched neutral.
+   Text never takes a series colour. */
+:root {
+  --viz-1: #2f6a9c;
+  --viz-2: #b5793a;
+  --viz-closed: #8b8680;
+  --viz-grid: #ebe5da;
+  --viz-shade: rgb(169 124 80 / 0.1);
+}
+:root[data-theme="dark"] {
+  --viz-1: #4b8bc9;
+  --viz-2: #bf8640;
+  --viz-closed: #8395a4;
+  --viz-grid: #24405a;
+  --viz-shade: rgb(201 162 122 / 0.07);
+}
+.s1 { --c: var(--viz-1); }
+.s2 { --c: var(--viz-2); }
+.seg-sold { --c: var(--viz-2); }
+.seg-left { --c: var(--viz-1); }
+.seg-closed { --c: var(--viz-closed); }
+
+/* grid items may shrink below their content (the charts measure their box) */
+.overview > *, .reports > *, .overview .grid > *, .reports .grid > *, .viz-card, [data-viz-bars], [data-viz-lines] { min-width: 0; }
+
+/* stat cards: the whole card is the link; «كيف نحسب» sits outside it (no nested controls) */
+.stat-card { transition: border-color var(--motion-fast); }
+.stat-card:hover, .stat-card:focus-within { border-color: var(--color-bronze); }
+.stat-link { display: block; padding: 1rem; border-radius: var(--radius-card); color: inherit; }
+.stat-link:focus-visible { outline: 2px solid var(--color-bronze); outline-offset: 2px; }
+.alert-item { display: flex; align-items: flex-start; justify-content: space-between; gap: 0.75rem; padding: 0.5rem 0.625rem; border: 1px solid var(--line); border-radius: 0.5rem; background: var(--soft); }
+
+/* the realtime highlight: a brief bronze glow on a number that changed (about 1.5 s; none under reduced motion) */
+.is-flash { animation: viz-flash 1500ms var(--ease-out); border-radius: 0.25rem; }
+@keyframes viz-flash {
+  0%, 30% { background: color-mix(in srgb, var(--color-bronze) 28%, transparent); box-shadow: 0 0 0 4px color-mix(in srgb, var(--color-bronze) 28%, transparent); }
+  100% { background: transparent; box-shadow: 0 0 0 4px transparent; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .is-flash { animation: none; outline: 2px solid var(--color-bronze); outline-offset: 2px; }
+}
+
+/* «كيف نحسب» */
+.how { position: relative; display: inline-flex; }
+.how-btn { display: inline-grid; place-items: center; width: 28px; height: 28px; margin: -4px 0; border-radius: 999px; color: var(--ink-muted); }
+.how-btn:hover, .how-btn[aria-expanded="true"] { color: var(--accent-text); }
+.how-btn:focus-visible { outline: 2px solid var(--color-bronze); outline-offset: 0; }
+.how-tip {
+  position: absolute; top: calc(100% + 6px); inset-inline-end: -0.5rem; z-index: 30; width: max-content; max-width: min(280px, 80vw);
+  padding: 0.5rem 0.625rem; border-radius: 0.5rem; background: var(--color-midnight); color: #fff; font-size: 0.75rem; font-weight: 500; line-height: 1.6;
+  box-shadow: 0 6px 20px rgb(0 0 0 / 0.18); white-space: normal; text-align: start;
+}
+:root[data-theme="dark"] .how-tip { background: #f3efe7; color: #142a3b; }
+
+/* charts */
+.viz-svg { display: block; overflow: visible; }
+.viz-grid { stroke: var(--viz-grid); stroke-width: 1; }
+.viz-base { stroke: var(--line); stroke-width: 1; }
+.viz-axis { fill: var(--ink-muted); font-size: 10.5px; }
+.viz-shade { fill: var(--viz-shade); }
+.viz-hit { fill: transparent; }
+.viz-hit:focus-visible { outline: none; stroke: var(--color-bronze); stroke-width: 2; }
+.viz-bar { fill: var(--c); transition: y var(--motion-fast) var(--ease-out), height var(--motion-fast) var(--ease-out); }
+.viz-closed-tick { stroke: var(--viz-closed); stroke-width: 2; stroke-dasharray: 2 2; }
+.is-first .viz-bar { animation: viz-grow var(--motion-slow) var(--ease-out) both; }
+@keyframes viz-grow { from { transform: scaleY(0); } }
+.viz-line { fill: none; stroke: var(--c); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; transition: d var(--motion-fast) var(--ease-out); }
+.viz-line.is-dashed { stroke-dasharray: 6 4; }
+.is-first .viz-line:not(.is-dashed) { stroke-dasharray: 3000; animation: viz-draw var(--motion-slow) var(--ease-out) both; }
+@keyframes viz-draw { from { stroke-dashoffset: 3000; } to { stroke-dashoffset: 0; } }
+.viz-dot { fill: var(--c); stroke: var(--card); stroke-width: 2; }
+.viz-cross { stroke: var(--ink-muted); stroke-width: 1; stroke-dasharray: 3 3; }
+.viz-tip {
+  position: absolute; z-index: 20; transform: translate(-50%, calc(-100% - 10px)); pointer-events: none;
+  padding: 0.375rem 0.625rem; border-radius: 0.5rem; background: var(--color-midnight); color: #fff; font-size: 0.75rem; line-height: 1.6;
+  white-space: nowrap; box-shadow: 0 6px 20px rgb(0 0 0 / 0.2);
+}
+:root[data-theme="dark"] .viz-tip { background: #f3efe7; color: #142a3b; }
+.viz-swatch { display: inline-block; width: 0.875rem; height: 0.875rem; border-radius: 3px; background: var(--c); flex: none; }
+.viz-swatch.is-dashed { height: 0; border-top: 2px dashed var(--c); background: none; border-radius: 0; width: 1.25rem; }
+.viz-swatch.seg-closed { background-image: repeating-linear-gradient(45deg, transparent 0 3px, rgb(255 255 255 / 0.55) 3px 5px); }
+.viz-shade-swatch { --c: var(--viz-shade); border: 1px solid var(--line); }
+
+/* donut: draws in on the first load only (≤ 700 ms) */
+.donut-track { fill: none; stroke: var(--soft); stroke-width: 22; }
+.donut-seg { fill: none; stroke: var(--c); stroke-width: 22; transform: rotate(-90deg); transform-origin: 90px 90px; transition: stroke-dasharray var(--motion-fast) var(--ease-out), stroke-dashoffset var(--motion-fast) var(--ease-out); }
+.donut-seg.seg-closed { stroke-opacity: 0.75; }
+.donut-seg:hover, .donut-seg:focus-visible { stroke-width: 26; }
+.is-first .donut-seg { animation: donut-draw var(--motion-slow) var(--ease-out) both; }
+@keyframes donut-draw { from { stroke-dasharray: 0 1000; } }
+.donut-center { fill: var(--ink); font-size: 26px; font-weight: 700; pointer-events: none; }
+.donut-sub { fill: var(--ink-muted); font-size: 12px; pointer-events: none; }
+
+/* ranked horizontal bars */
+.hbars { display: grid; gap: 0.5rem; }
+.hbar-row { display: grid; grid-template-columns: minmax(7rem, 11rem) 1fr auto; align-items: center; gap: 0.625rem; font-size: 0.8125rem; }
+.hbar-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hbar-track { height: 0.625rem; border-radius: 999px; background: var(--soft); overflow: hidden; }
+.hbar-fill { display: block; height: 100%; border-radius: 999px; background: var(--c); transform-origin: right; transition: transform var(--motion-fast) var(--ease-out); }
+[dir="ltr"] .hbar-fill { transform-origin: left; }
+.is-first .hbar-fill { animation: hbar-grow var(--motion-slow) var(--ease-out) both; }
+@keyframes hbar-grow { from { transform: scaleX(0); } }
+.hbar-value { color: var(--ink-muted); white-space: nowrap; }
+
+/* tables of the charts («عرض كجدول») and reports */
+.viz-table th, .viz-table td { padding: 0.4rem 0.5rem; border-bottom: 1px solid var(--line); text-align: start; vertical-align: top; }
+.viz-table thead th { font-size: 0.75rem; color: var(--ink-muted); font-weight: 600; }
+.viz-table tbody th { font-weight: 500; }
+.viz-table tfoot th, .viz-table tfoot td { font-weight: 700; border-top: 2px solid var(--line); }

@@ -6,6 +6,7 @@
 //     and the timeline. Level view reads everything; edit changes it. The live badge of the sidebar counts «جديد».
 // Personal fields are removed 24 months after the last activity (a monthly job); such an enquiry shows its statistics only.
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import * as api from '../lib/api';
 import { useSession } from '../lib/session';
 import { countWord, riyadhDateTime, riyadhToday, shortDate, toCsv, nightsWord, daysBetween, type CountNoun } from '../lib/format';
@@ -25,8 +26,17 @@ export default function Partners() {
   const [rows, setRows] = useState<Enquiry[] | null>(null);
   const [people, setPeople] = useState<{ user_id: string; full_name: string }[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const [f, setF] = useState<EnquiryFilter>({});
+  // ?status=new / ?ref=AR-… (the overview's «طلبات الشركاء» card and alerts, 4 Nov 2026)
+  const [params] = useSearchParams();
+  const [f, setF] = useState<EnquiryFilter>(() => (STATUS.some((x) => x.key === params.get('status')) ? { status: params.get('status')! } : {}));
   const [open, setOpen] = useState<Enquiry | null>(null);
+  const wanted = useRef(params.get('ref'));
+  useEffect(() => {
+    if (!wanted.current || !rows) return;
+    const r = rows.find((x) => x.ref === wanted.current);
+    if (r) setOpen(r);
+    wanted.current = null;
+  }, [rows]);
   const [exporting, setExporting] = useState(false);
 
   const load = useCallback(async () => {
