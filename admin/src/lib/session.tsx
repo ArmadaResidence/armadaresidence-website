@@ -8,6 +8,13 @@
 // have both resolved — the gate shows a neutral splash meanwhile and decides «no access» only on a definitive answer
 // (no staff row, or an inactive user). A failed my_staff() is 'error' (retry), never «no access». While a user is
 // already known, a refresh (token, Realtime) keeps the current `me` until the new one arrives: no flicker.
+//
+// Defect fixed 5 Nov 2026 (Ahmed: «the page reloaded on its own and my text was gone»): supabase-js re-checks the session
+// every time the tab comes back to the front (_recoverAndRefresh) and announces it as SIGNED_IN for the SAME user. That
+// event used to count as a new sign-in: status 'loading' → the splash → every screen unmounted and mounted again, so
+// whatever was being typed was lost. Now any event for the user already signed in is a quiet refresh: the screen stays
+// mounted, `session` / `me` keep their identity unless something really changed (another user, new permissions), and
+// nothing a form holds is touched. Only a different user, or no user, takes the full path.
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { supabase } from './supabase';
@@ -33,12 +40,22 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const [me, setMe] = useState<Me | null>(null);
   const [status, setStatus] = useState<SessionStatus>('loading');
   const seq = useRef(0); // the latest load wins; stale answers are dropped
+  const meRef = useRef<Me | null>(null);
+  const sessionRef = useRef<Session | null>(null);
 
   /** load my_staff for `s`; `soft` keeps the current me (and status) until the answer arrives */
   const load = useCallback(async (s: Session | null, soft: boolean) => {
     const n = ++seq.current;
-    setSession(s);
+    // the same user again (a token refresh, the tab back in front, a duplicate event): never a new screen
+    const sameUser = !!s && !!sessionRef.current && sessionRef.current.user.id === s.user.id && meRef.current !== null;
+    if (sameUser) soft = true;
+    // keep the session object while the user and token are unchanged, so effects keyed on it do not re-run
+    if (!s || !sessionRef.current || sessionRef.current.user.id !== s.user.id || sessionRef.current.access_token !== s.access_token) {
+      sessionRef.current = s;
+      setSession(s);
+    }
     if (!s) {
+      meRef.current = null;
       setMe(null);
       setStatus('ready');
       return;
@@ -47,11 +64,16 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     try {
       const m = await loadMe();
       if (n !== seq.current) return;
-      setMe(m);
+      // the same answer keeps the same object: nothing downstream re-renders for an unchanged user
+      if (!meRef.current || JSON.stringify(meRef.current) !== JSON.stringify(m)) {
+        meRef.current = m;
+        setMe(m);
+      }
       setStatus('ready');
     } catch {
       if (n !== seq.current) return;
       if (!soft) {
+        meRef.current = null;
         setMe(null);
         setStatus('error');
       }
@@ -68,31 +90,32 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     refresh().then(() => (known = true));
     const { data: sub } = supabase.auth.onAuthStateChange((event, s) => {
       if (event === 'SIGNED_OUT') return void load(null, false);
-      // a token refresh or a duplicate initial event: keep what is shown, update quietly
-      const soft = event === 'TOKEN_REFRESHED' || (event === 'INITIAL_SESSION' && known);
+      // a token refresh, a duplicate initial event, or SIGNED_IN for the user already shown (the tab back in front):
+      // keep what is shown, update quietly — load() also forces this for the same user
+      const soft = event === 'TOKEN_REFRESHED' || (event === 'INITIAL_SESSION' && known) || (event === 'SIGNED_IN' && known && sessionRef.current?.user.id === s?.user.id);
       void load(s, soft);
     });
     return () => sub.subscription.unsubscribe();
   }, [refresh, load]);
 
   // my own matrix changed (another admin) → re-read quietly; RLS lets a user see only their own rows
+  const uid = session?.user.id;
   useEffect(() => {
-    const uid = session?.user.id;
     if (!uid) return;
-    const again = () => void load(session, true);
+    const again = () => void load(sessionRef.current, true);
     const ch = supabase
       .channel(`perms-${uid}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'staff_permissions', filter: `user_id=eq.${uid}` }, again)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'staff', filter: `user_id=eq.${uid}` }, again)
       .subscribe();
     return () => void supabase.removeChannel(ch);
-  }, [session, load]);
+  }, [uid, load]);
 
   // the second step can be withdrawn from elsewhere (an admin revoked the devices, a password change): re-read quietly
   useEffect(() => {
-    if (!session) return;
+    if (!uid) return;
     const again = () => {
-      if (document.visibilityState === 'visible') void load(session, true);
+      if (document.visibilityState === 'visible') void load(sessionRef.current, true);
     };
     document.addEventListener('visibilitychange', again);
     const t = setInterval(again, 60_000);
@@ -100,7 +123,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       document.removeEventListener('visibilitychange', again);
       clearInterval(t);
     };
-  }, [session, load]);
+  }, [uid, load]);
 
   // idle sign-out after 12 h without interaction
   useEffect(() => {

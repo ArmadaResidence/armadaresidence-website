@@ -12,6 +12,7 @@
 //     carry `data-tour` tokens.
 // Every link goes through the leave guard (unsaved edits ask first). Landmarks: banner, navigation, main; aria-current on
 // the current item; visible focus; RTL; light and dark.
+import UpdateBar from './UpdateBar';
 import { NavLink, useLocation } from 'react-router-dom';
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
@@ -327,6 +328,7 @@ export default function Shell({ children }: { children: ReactNode }) {
             <HelpMenu />
             <ThemeToggle />
           </header>
+          <UpdateBar />
           <main id="app-main" className="flex-1 w-full max-w-7xl mx-auto px-4 py-5 pb-10">{children}</main>
         </div>
         <NavDrawer open={drawer} onClose={closeDrawer}>

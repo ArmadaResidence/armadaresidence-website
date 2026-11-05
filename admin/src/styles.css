@@ -818,3 +818,16 @@ body {
   background: var(--card); border: 1px solid var(--line); border-radius: 0.6rem; box-shadow: 0 12px 32px rgb(0 0 0 / 0.18);
 }
 .help-menu .account-item { width: 100%; }
+
+/* the update bar and the draft bar (5 Nov 2026): small, non-blocking, never a dialog */
+.update-bar {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem 0.75rem; margin: 0.75rem auto 0; width: calc(100% - 2rem); max-width: 80rem;
+  padding: 0.5rem 0.75rem; border: 1px solid var(--line); border-inline-start: 3px solid var(--accent); border-radius: 0.5rem;
+  background: var(--card); font-size: 0.875rem;
+}
+.update-bar-note { color: var(--ink-muted); }
+.draft-bar {
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.5rem 0.75rem; margin-bottom: 0.75rem;
+  padding: 0.5rem 0.75rem; border: 1px solid var(--line); border-inline-start: 3px solid var(--accent); border-radius: 0.5rem;
+  background: var(--soft); font-size: 0.875rem;
+}

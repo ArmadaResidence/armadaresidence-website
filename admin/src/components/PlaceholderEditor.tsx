@@ -5,6 +5,7 @@
 // keeps it. Other chips (inserted here) can be removed with their ×. Paste is plain text; a typed «{breakfast}» becomes
 // a chip on blur. Enter starts a new line («\n»; two make a paragraph) unless `singleLine`.
 // The value is the text with the placeholders, mirrored into a hidden input so the dialog's dirty guard sees it.
+import { useDraftMirror } from '../lib/dirty';
 import { useEffect, useLayoutEffect, useRef } from 'react';
 
 export const PLACEHOLDERS: Record<string, string> = { breakfast: 'سعر الإفطار', extra_bed: 'رسم السرير الإضافي' };
@@ -81,6 +82,8 @@ export default function PlaceholderEditor({
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const last = useRef<string | null>(null);
+  // a restored draft (lib/dirty.ts) arrives on the hidden mirror: it becomes the value, rendered from outside
+  const mirror = useDraftMirror<HTMLInputElement>((v) => onChange(v));
   // render only when the value changed from outside (never while typing: the caret would jump)
   useLayoutEffect(() => {
     if (!ref.current || value === last.current) return;
@@ -172,7 +175,7 @@ export default function PlaceholderEditor({
         }}
       />
       {/* the value, for the dirty guard of the dialog / page */}
-      <input type="hidden" value={value} readOnly data-ph-value={id} />
+      <input type="hidden" value={value} readOnly data-ph-value={id} data-draft-mirror ref={mirror} />
     </>
   );
 }

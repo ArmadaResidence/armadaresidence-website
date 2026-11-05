@@ -13,6 +13,14 @@
 // on the scope re-baselines it (a save that keeps the window open).
 // Every tracker is registered, so the app knows whether anything on the page is dirty (beforeunload, the sidebar,
 // the branch switch and sign-out ask through the same confirm).
+//
+// Draft safety net (Ahmed, 5 Nov 2026 — after text was lost on a reload): a tracker given a `draftKey` keeps the scope's
+// unsaved values in sessionStorage (this tab only; `armada-draft:<key>`, the key = the page address + the dialog / form,
+// so one per record) while it is dirty, and deletes them as soon as it is clean again, saved (re-baselined) or closed
+// after an edit (saved, cancelled or discarded). After a reload — the user's, a browser tab discard, anything — the scope
+// offers «استرجاع المسودة» / «تجاهل» once it has settled, when the draft differs from what it shows; restoring sets each
+// field through its native setter + input/change events (React sees a normal edit). Never kept: passwords, one-time
+// codes, file inputs, anything under [data-no-draft] (or [data-no-dirty]).
 import { useCallback, useEffect, useRef, useState, type RefObject } from 'react';
 import { west } from './format';
 
@@ -48,6 +56,68 @@ function keyOf(el: Element, scope: Element): string {
   return `/${path.join('/')}`;
 }
 
+// ── drafts ──
+export interface Draft {
+  at: number;
+  values: Record<string, string>;
+}
+const DRAFT_PREFIX = 'armada-draft:';
+function readDraft(key: string): Draft | null {
+  try {
+    const v = sessionStorage.getItem(DRAFT_PREFIX + key);
+    return v ? (JSON.parse(v) as Draft) : null;
+  } catch {
+    return null;
+  }
+}
+function writeDraft(key: string, d: Draft | null) {
+  try {
+    if (d) sessionStorage.setItem(DRAFT_PREFIX + key, JSON.stringify(d));
+    else sessionStorage.removeItem(DRAFT_PREFIX + key);
+  } catch { /* private mode / quota: the safety net is best effort */ }
+}
+/** a control whose value is never written to a draft */
+function secret(el: Element): boolean {
+  if (el.closest('[data-no-draft]')) return true;
+  if (el instanceof HTMLInputElement) {
+    if (el.type === 'password' || el.type === 'file') return true;
+    const ac = (el.getAttribute('autocomplete') ?? '').toLowerCase();
+    if (ac.includes('one-time-code') || ac.includes('password')) return true;
+  }
+  return false;
+}
+/** the value to keep / restore (raw, not normalised) */
+function rawValue(el: Element): string | null {
+  if (el instanceof HTMLInputElement) {
+    if (el.type === 'button' || el.type === 'submit' || el.type === 'reset' || el.type === 'search') return null;
+    if (el.type === 'checkbox' || el.type === 'radio') return el.checked ? '1' : '0';
+    return el.value;
+  }
+  if (el instanceof HTMLSelectElement || el instanceof HTMLTextAreaElement) return el.value;
+  return readValue(el);
+}
+/** set a control as a user edit would (React's onChange fires) */
+function applyValue(el: Element, v: string) {
+  // a read-only mirror of a rich editor (the FAQ / content text, an article body, the focal point): its owner applies it
+  if (el.hasAttribute('data-draft-mirror')) {
+    el.dispatchEvent(new CustomEvent('armada-draft-restore', { detail: v }));
+    return;
+  }
+  if (el instanceof HTMLInputElement && (el.type === 'checkbox' || el.type === 'radio')) {
+    if ((el.checked ? '1' : '0') !== v) el.click();
+    return;
+  }
+  if (el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement || el instanceof HTMLSelectElement) {
+    if (el.value === v) return;
+    const proto = el instanceof HTMLInputElement ? HTMLInputElement.prototype : el instanceof HTMLTextAreaElement ? HTMLTextAreaElement.prototype : HTMLSelectElement.prototype;
+    Object.getOwnPropertyDescriptor(proto, 'value')?.set?.call(el, v);
+    el.dispatchEvent(new Event('input', { bubbles: true }));
+    el.dispatchEvent(new Event('change', { bubbles: true }));
+    return;
+  }
+  if (readValue(el) !== v) (el as HTMLElement).click();
+}
+
 type Listener = () => void;
 const registry = new Set<DirtyTracker>();
 const listeners = new Set<Listener>();
@@ -73,12 +143,19 @@ export class DirtyTracker {
   private settled = false;
   private settleTimer = 0;
   private mo: MutationObserver;
+  /** the user edited inside this tracker's lifetime (only then does closing it delete the draft) */
+  private touched = false;
+  private draftTimer = 0;
+  private draftOffered = false;
+  private offerTimer = 0;
   // deferred to a macrotask: a React state update flushed between the native listeners of one `input` event would
   // re-render a controlled field before React's own root listener reads it, and swallow the change
-  private readonly onEvent = () => {
+  private readonly onEvent = (e: Event) => {
     // the first edit ends the settle window: the baseline stays what the scope showed before the user acted
     window.clearTimeout(this.settleTimer);
     this.settled = true;
+    if (e.isTrusted) this.touched = true;
+    this.queueDraft();
     setTimeout(notify, 0);
   };
   private readonly onPress = (e: Event) => {
@@ -87,10 +164,12 @@ export class DirtyTracker {
     if (!t?.closest?.('[aria-pressed], [role="radio"], [role="switch"]')) return;
     window.clearTimeout(this.settleTimer);
     this.settled = true;
+    this.touched = true;
+    this.queueDraft();
     setTimeout(notify, 0);
   };
 
-  constructor(private scope: HTMLElement) {
+  constructor(private scope: HTMLElement, private draftKey: string | null = null, private onDraft: ((d: Draft | null) => void) | null = null) {
     this.snapshot();
     this.mo = new MutationObserver((list) => {
       for (const m of list) {
@@ -104,6 +183,10 @@ export class DirtyTracker {
         this.adopt();
         window.clearTimeout(this.settleTimer);
         this.settleTimer = window.setTimeout(this.settle, SETTLE_MS);
+      } else if (this.draftKey && !this.draftOffered && !this.touched) {
+        // settled before its fields arrived (a slow load): offer the draft once they are there
+        window.clearTimeout(this.offerTimer);
+        this.offerTimer = window.setTimeout(() => this.offerDraft(), SETTLE_MS);
       }
       setTimeout(notify, 0);
     });
@@ -119,6 +202,7 @@ export class DirtyTracker {
   private readonly settle = () => {
     this.settled = true;
     this.snapshot();
+    this.offerDraft();
     notify();
   };
   /** the controls this scope owns: not those of a dialog nested inside it (its own guard tracks them), none under
@@ -137,6 +221,62 @@ export class DirtyTracker {
       const v = readValue(el);
       if (v !== null) this.baseline.set(k, v);
     }
+  }
+  // ── the draft safety net ──
+  private queueDraft() {
+    if (!this.draftKey) return;
+    window.clearTimeout(this.draftTimer);
+    this.draftTimer = window.setTimeout(() => this.saveDraft(), 250);
+  }
+  private saveDraft() {
+    if (!this.draftKey || !this.touched) return;
+    if (!this.isDirty()) return writeDraft(this.draftKey, null);
+    const values: Record<string, string> = {};
+    for (const el of this.controls()) {
+      if (secret(el)) continue;
+      const v = rawValue(el);
+      if (v !== null) values[keyOf(el, this.scope)] = v;
+    }
+    writeDraft(this.draftKey, { at: Date.now(), values });
+  }
+  /** after the scope settled: a stored draft that differs from what is shown is offered (once) */
+  private offerDraft() {
+    if (!this.draftKey || !this.onDraft || this.draftOffered || this.touched) return;
+    const d = readDraft(this.draftKey);
+    if (!d) return void (this.draftOffered = true);
+    const current = new Map(this.controls().map((el) => [keyOf(el, this.scope), rawValue(el)] as const));
+    const shared = Object.keys(d.values).filter((k) => current.has(k));
+    // its fields are not on screen yet (still loading): wait for them
+    if (!shared.length) return;
+    this.draftOffered = true;
+    const differs = shared.some((k) => normalize(current.get(k) ?? '') !== normalize(d.values[k]));
+    if (!differs) return writeDraft(this.draftKey, null);
+    this.onDraft(d);
+  }
+  /** put the draft's values back (repeated passes: a choice can reveal the fields that depend on it) */
+  async restoreDraft(d: Draft): Promise<void> {
+    for (let pass = 0; pass < 3; pass++) {
+      let changed = false;
+      for (const el of this.controls()) {
+        if (secret(el)) continue;
+        const k = keyOf(el, this.scope);
+        if (!(k in d.values)) continue;
+        if (rawValue(el) !== d.values[k]) {
+          applyValue(el, d.values[k]);
+          changed = true;
+        }
+      }
+      if (!changed) break;
+      await new Promise((r) => setTimeout(r, 60));
+    }
+    this.settled = true;
+    this.touched = true;
+    this.saveDraft();
+    notify();
+  }
+  /** «تجاهل»: the stored draft is dropped */
+  dropDraft(): void {
+    if (this.draftKey) writeDraft(this.draftKey, null);
   }
   describe(): string {
     const s = this.scope;
@@ -162,11 +302,18 @@ export class DirtyTracker {
   /** the current values become the baseline (after a save that keeps the scope open) */
   reset(): void {
     this.snapshot();
+    // a save after an edit that keeps the scope open: nothing unsaved remains (a re-baseline on load keeps the draft)
+    if (this.draftKey && this.touched) writeDraft(this.draftKey, null);
     notify();
   }
   dispose(): void {
     this.mo.disconnect();
     window.clearTimeout(this.settleTimer);
+    window.clearTimeout(this.draftTimer);
+    window.clearTimeout(this.offerTimer);
+    // closed after an edit (saved, cancelled or discarded): the draft is done with. A tracker that saw no edit (a
+    // StrictMode double mount, a dialog opened and closed untouched) leaves an earlier draft for the next open.
+    if (this.draftKey && this.touched) writeDraft(this.draftKey, null);
     this.scope.removeEventListener('input', this.onEvent);
     this.scope.removeEventListener('change', this.onEvent);
     this.scope.removeEventListener('click', this.onPress);
@@ -175,14 +322,38 @@ export class DirtyTracker {
   }
 }
 
-/** Track `ref` while `enabled`; `dirty` re-renders on every edit, `isDirty()` reads the live answer. */
-export function useDirty(ref: RefObject<HTMLElement | null>, enabled: boolean): { dirty: boolean; isDirty: () => boolean; reset: () => void } {
+/** a read-only mirror field (marked `data-draft-mirror`) receives a restored draft value through `onRestore` */
+export function useDraftMirror<T extends HTMLElement>(onRestore: (v: string) => void): RefObject<T | null> {
+  const ref = useRef<T | null>(null);
+  const cb = useRef(onRestore);
+  cb.current = onRestore;
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const on = (e: Event) => cb.current(String((e as CustomEvent).detail ?? ''));
+    el.addEventListener('armada-draft-restore', on);
+    return () => el.removeEventListener('armada-draft-restore', on);
+  }, []);
+  return ref;
+}
+
+/** the draft key of a scope: the page address (this record's page) + what the scope is (a dialog's title, a form's name) */
+export function draftKeyFor(what: string): string {
+  return `${location.pathname}${location.search}|${what}`;
+}
+
+/** Track `ref` while `enabled`; `dirty` re-renders on every edit, `isDirty()` reads the live answer. With `draftKey` the
+ *  scope's unsaved values survive a reload: `draft` is the stored draft to offer, `restore` / `drop` answer it. */
+export function useDirty(ref: RefObject<HTMLElement | null>, enabled: boolean, draftKey: string | null = null): {
+  dirty: boolean; isDirty: () => boolean; reset: () => void; draft: Draft | null; restore: () => void; drop: () => void;
+} {
   const tracker = useRef<DirtyTracker | null>(null);
   const [dirty, setDirty] = useState(false);
+  const [draft, setDraft] = useState<Draft | null>(null);
   useEffect(() => {
     const el = ref.current;
     if (!enabled || !el) return;
-    const t = new DirtyTracker(el);
+    const t = new DirtyTracker(el, draftKey, setDraft);
     tracker.current = t;
     const off = subscribeDirty(() => setDirty(t.isDirty()));
     return () => {
@@ -190,11 +361,21 @@ export function useDirty(ref: RefObject<HTMLElement | null>, enabled: boolean): 
       t.dispose();
       tracker.current = null;
       setDirty(false);
+      setDraft(null);
     };
-  }, [ref, enabled]);
+  }, [ref, enabled, draftKey]);
   const isDirty = useCallback(() => tracker.current?.isDirty() ?? false, []);
   const reset = useCallback(() => tracker.current?.reset(), []);
-  return { dirty, isDirty, reset };
+  const restore = useCallback(() => {
+    const d = draft;
+    setDraft(null);
+    if (d) void tracker.current?.restoreDraft(d);
+  }, [draft]);
+  const drop = useCallback(() => {
+    tracker.current?.dropDraft();
+    setDraft(null);
+  }, []);
+  return { dirty, isDirty, reset, draft, restore, drop };
 }
 
 /** Subscribe to "anything dirty?" (the leave guard, beforeunload). */

@@ -11,6 +11,7 @@
 //     publish. A publish that changes the site now rebuilds it (site-rebuild, reason blog); a scheduled one goes live
 //     with the hourly check (pg_cron) or the daily build.
 // Levels: view (read-only), edit (write drafts), publish (+ «نشر», «جدولة», «إيقاف النشر»). Everything is audited.
+import { useDraftMirror } from '../lib/dirty';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import * as api from '../lib/api';
@@ -150,6 +151,9 @@ function Editor({ id }: { id: string | null }) {
   usePageCrumbs([{ label: 'المدونة', to: '/blog' }, { label: id ? 'تعديل مقال' : 'مقال جديد' }]);
 
   const set = <K extends keyof ArticleFields>(k: K, v: ArticleFields[K]) => setF((x) => ({ ...x, [k]: v }));
+  // a restored draft (lib/dirty.ts) reaches the body editors through their Markdown mirrors
+  const mirrorAr = useDraftMirror<HTMLTextAreaElement>((v) => set('body_ar', v));
+  const mirrorEn = useDraftMirror<HTMLTextAreaElement>((v) => set('body_en', v));
   const locked = !!article?.first_published_at;
   const dis = !editable || busy;
 
@@ -390,8 +394,8 @@ function Editor({ id }: { id: string | null }) {
             disabled={dis}
           />
           {/* the Markdown of both languages, so the page's unsaved-changes guard sees the text */}
-          <textarea id="b-body-ar-md" className="sr-only" aria-hidden="true" tabIndex={-1} readOnly value={f.body_ar} />
-          <textarea id="b-body-en-md" className="sr-only" aria-hidden="true" tabIndex={-1} readOnly value={f.body_en} />
+          <textarea id="b-body-ar-md" className="sr-only" aria-hidden="true" tabIndex={-1} readOnly value={f.body_ar} data-draft-mirror ref={mirrorAr} />
+          <textarea id="b-body-en-md" className="sr-only" aria-hidden="true" tabIndex={-1} readOnly value={f.body_en} data-draft-mirror ref={mirrorEn} />
           <div className="grid sm:grid-cols-2 gap-3">
             {(['ar', 'en'] as Lang[]).map((l) => (
               <Field key={l} label={`الوسوم (${LANG_LABELS[l]})`} id={`b-tags-${l}`} hint="افصل بين الوسوم بفاصلة؛ حتى 8 وسوم. تُصفّى بها قائمة المدونة وتُختار بها المقالات ذات الصلة.">

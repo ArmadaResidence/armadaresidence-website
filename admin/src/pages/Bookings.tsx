@@ -361,7 +361,7 @@ function Details({ r, roomTypes, editable, onClose, onChanged }: { r: Reservatio
   };
 
   return (
-    <Drawer open={!!r} onClose={onClose} title={<span>{r.guest_name} <span className="num text-sm text-ink-muted">{r.ref}</span></span>} busy={busy || notesBusy}>
+    <Drawer open={!!r} onClose={onClose} draftKey={`booking:${r.ref}`} title={<span>{r.guest_name} <span className="num text-sm text-ink-muted">{r.ref}</span></span>} busy={busy || notesBusy}>
       <div className="flex flex-wrap gap-2 mb-4" data-dirty-version={notesVersion}>
         <span className={`chip chip-${r.status}`}>{STATUS_LABELS[r.status]}</span>
         {r.confirmation === 'instant' && <span className="chip chip-request">تأكيد فوري من الموقع</span>}

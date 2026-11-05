@@ -1305,3 +1305,27 @@ checks.
   alts, the source untouched, a duplicate refused, a gallery copy at the end, the article cover and a text photo
   preselected in «إدراج صورة», no button for the view level), `blog-check` 35 / 35.
 
+## 2026-11-05 — Dashboard: no lost text on a tab switch, the update bar, drafts (Ahmed, 5 Nov 2026)
+
+- **Cause** of «the page reloaded on its own and my text was gone»: not a reload. supabase-js (auth-js 2.118) re-checks
+  the session every time the tab comes back to the front (`_recoverAndRefresh` on `visibilitychange`) and announces it
+  as `SIGNED_IN` for the same user. `lib/session.tsx` treated every event but `TOKEN_REFRESHED` as a fresh sign-in:
+  status `loading` → `app.tsx` rendered the splash → every screen unmounted and mounted again, so a form or an open
+  dialog lost what was typed. Nothing reloaded on a new deploy (no such code), and no refetch-on-focus touched fields;
+  a Chrome tab discard (Memory Saver) is a real reload and is covered by the drafts below.
+- **Fix:** any auth event for the user already signed in is a quiet refresh — the screen stays mounted; `session` and
+  `me` keep their identity unless the user, the token or `my_staff()` really changed (effects keyed on them do not re-run);
+  only another user, or none, takes the full path.
+- **New version:** the build writes `version.json` (vite.config.ts, `__ADMIN_BUILD__`); the dashboard compares it when the
+  tab comes back, on focus and every 5 minutes, and shows a small bar «يوجد تحديث جديد للوحة» + «تحديث الآن» (+ «احفظ
+  تعديلاتك أولًا» while anything is unsaved). It never reloads by itself.
+- **Drafts:** every scope of the dirty guard — each dialog and drawer (the shared Modal / Drawer) and each page-level
+  form (`DirtyScope`) — keeps its unsaved values in sessionStorage (this tab only), keyed by the page address and the
+  dialog (its title, or `draftKey` for a record: FAQ item, announcement, booking, guest, photo, user name). After any
+  reload the scope offers «استرجاع المسودة» / «تجاهل»; restoring goes through each field's own setter (rich editors and
+  the focal point through `data-draft-mirror`). A save, «إلغاء» / discard after an edit, or «تجاهل» deletes it. Never
+  kept: passwords (shown or hidden), one-time codes, file inputs, `[data-no-draft]`.
+- Tests on the preview branch: `admin/tests/draft-check.mjs` 25 / 25 (hidden → visible, SIGNED_IN and TOKEN_REFRESHED
+  for the same user, a simulated deploy → the bar and no reload, «تحديث الآن», a forced reload → the draft offered and
+  restored exactly in a dialog and on an article, discard / «تجاهل» / save clear it, no password in a draft).
+

@@ -5,6 +5,7 @@
 // «إظهار في المعرض» (2 Nov 2026: branch, room, dining and hall photos — the site's /gallery/; on by default), and
 // «أرشفة» (never a hard delete). The shared Modal: the dirty guard covers the alts, the slot and the focal point
 // (hidden inputs); a save is the «حفظ» button only.
+import { useDraftMirror } from '../lib/dirty';
 import { useMemo, useState } from 'react';
 import * as api from '../lib/api';
 import type { MediaItem, MediaSlot } from '../lib/api';
@@ -28,7 +29,7 @@ const clamp = (v: number) => Math.min(1, Math.max(0, v));
 export default function MediaItemDialog({ item, src, editable, onClose, onChanged }: MediaItemDialogProps) {
   const [busy, setBusy] = useState(false);
   return (
-    <Modal open={!!item} onClose={onClose} title={item?.kind === 'video' ? 'تفاصيل الفيديو' : 'تفاصيل الصورة'} wide busy={busy}>
+    <Modal open={!!item} onClose={onClose} title={item?.kind === 'video' ? 'تفاصيل الفيديو' : 'تفاصيل الصورة'} draftKey={item ? `media:${item.id}` : undefined} wide busy={busy}>
       {/* keyed by the item: the first render already holds its values (the dirty guard's baseline is never another photo's) */}
       {item && <ItemBody key={item.id} item={item} src={src} editable={editable} onClose={onClose} onChanged={onChanged} busy={busy} setBusy={setBusy} />}
     </Modal>
@@ -41,6 +42,8 @@ function ItemBody({ item, src, editable, onClose, onChanged, busy, setBusy }: Om
   const [altEn, setAltEn] = useState(item.alt_en);
   const [fx, setFx] = useState(Number(item.focal_x));
   const [fy, setFy] = useState(Number(item.focal_y));
+  const mirrorX = useDraftMirror<HTMLInputElement>((v) => setFx(Number(v)));
+  const mirrorY = useDraftMirror<HTMLInputElement>((v) => setFy(Number(v)));
   const [slot, setSlot] = useState<MediaSlot>(item.slot);
   const [inGallery, setInGallery] = useState(item.in_gallery !== false);
   const offersGallery = galleryTarget(item.target) && item.kind === 'image';
@@ -138,8 +141,8 @@ function ItemBody({ item, src, editable, onClose, onChanged, busy, setBusy }: Om
               ) : (
                 <div className="media-noprev">لا تتوفر معاينة لهذا الملف في هذا المتصفح؛ تُطبَّق نقطة التركيز عند البناء.</div>
               )}
-              <input type="hidden" id="focal-x" value={fx.toFixed(3)} readOnly />
-              <input type="hidden" id="focal-y" value={fy.toFixed(3)} readOnly />
+              <input type="hidden" id="focal-x" value={fx.toFixed(3)} readOnly data-draft-mirror ref={mirrorX} />
+              <input type="hidden" id="focal-y" value={fy.toFixed(3)} readOnly data-draft-mirror ref={mirrorY} />
               <p className="text-xs text-ink-muted mt-1 num" data-focal-value>{`${Math.round(fx * 100)}% · ${Math.round(fy * 100)}%`}</p>
             </div>
             {src && w > 0 && h > 0 && (

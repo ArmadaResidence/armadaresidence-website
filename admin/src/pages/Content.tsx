@@ -475,7 +475,7 @@ function Bar({ editable, publisher }: { editable: boolean; publisher: boolean })
           ))}
         </ul>
       )}
-      <Modal open={editing !== null} onClose={() => setEditing(null)} title={editing === 'new' ? 'إضافة إعلان' : 'تعديل الإعلان'} wide busy={busy}>
+      <Modal open={editing !== null} onClose={() => setEditing(null)} title={editing === 'new' ? 'إضافة إعلان' : 'تعديل الإعلان'} draftKey={editing === 'new' ? 'announcement:new' : editing ? `announcement:${editing.id}` : undefined} wide busy={busy}>
         {editing !== null && (
           <AnnouncementForm key={editing === 'new' ? 'new' : editing.id} item={editing === 'new' ? null : editing} offers={offers} editable={editable} busy={busy} setBusy={setBusy}
             onSaved={async () => { setEditing(null); await load(); }} />

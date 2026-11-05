@@ -201,7 +201,7 @@ export default function Faq() {
         );
       })}
 
-      <Modal open={editing !== null} onClose={() => setEditing(null)} title={editing && 'new' in editing ? 'إضافة سؤال' : editing ? (editable ? 'تعديل السؤال' : 'السؤال') : ''} wide busy={busy}>
+      <Modal open={editing !== null} onClose={() => setEditing(null)} title={editing && 'new' in editing ? 'إضافة سؤال' : editing ? (editable ? 'تعديل السؤال' : 'السؤال') : ''} draftKey={editing ? ('new' in editing ? `faq:new:${editing.new}` : `faq:${editing.id}`) : undefined} wide busy={busy}>
         {editing !== null && (
           <FaqForm
             key={'new' in editing ? `new-${editing.new}` : editing.id}

@@ -10,7 +10,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { BRANCH_NAMES, west } from '../lib/format';
-import { anyDirty, UNSAVED, useAnyDirty, useDirty } from '../lib/dirty';
+import { anyDirty, draftKeyFor, UNSAVED, useAnyDirty, useDirty, type Draft } from '../lib/dirty';
 import { useSession } from '../lib/session';
 
 // ── toast ─────────────────────────────────────────────────────────────────────────────────────────────
@@ -141,8 +141,8 @@ export function UnsavedConfirm({ open, where, onKeep, onDiscard }: { open: boole
  * The close request of a dialog (B2–B4): busy → ignored; dirty → the confirm; clean → close. Shared by Modal and
  * Drawer.
  */
-function useCloseGuard(contentRef: React.RefObject<HTMLElement | null>, open: boolean, busy: boolean | undefined, onClose: () => void) {
-  const { isDirty } = useDirty(contentRef, open);
+function useCloseGuard(contentRef: React.RefObject<HTMLElement | null>, open: boolean, busy: boolean | undefined, onClose: () => void, draftKey: string | null = null) {
+  const { isDirty, draft, restore, drop } = useDirty(contentRef, open, draftKey);
   const [ask, setAsk] = useState(false);
   useEffect(() => {
     if (!open) setAsk(false);
@@ -156,7 +156,25 @@ function useCloseGuard(contentRef: React.RefObject<HTMLElement | null>, open: bo
     setAsk(false);
     onClose();
   }, [onClose]);
-  return { request, ask, keep: () => setAsk(false), discard };
+  return { request, ask, keep: () => setAsk(false), discard, draft, restore, drop };
+}
+
+/** «استرجاع المسودة» / «تجاهل» (5 Nov 2026): the unsaved values this tab kept for this form before a reload */
+export function DraftBar({ draft, onRestore, onDrop }: { draft: Draft | null; onRestore: () => void; onDrop: () => void }) {
+  if (!draft) return null;
+  return (
+    <div className="draft-bar" role="status" data-draft-bar data-no-dirty>
+      <span>لديك تعديلات لم تُحفظ من قبل ({riyadhTime(draft.at)}).</span>
+      <div className="flex flex-wrap gap-2">
+        <button type="button" className="btn btn-primary btn-sm" onClick={onRestore} data-action="draft-restore">استرجاع المسودة</button>
+        <button type="button" className="btn btn-ghost btn-sm" onClick={onDrop} data-action="draft-drop">تجاهل</button>
+      </div>
+    </div>
+  );
+}
+/** the time of a draft, Riyadh, Western digits */
+function riyadhTime(at: number): string {
+  return new Date(at).toLocaleTimeString('en-GB', { timeZone: 'Asia/Riyadh', hour: '2-digit', minute: '2-digit' });
 }
 
 /** A dialog's own cancel / close button goes through the same guard as × (B2): `const cancel = useDialogCancel()`. */
@@ -164,11 +182,12 @@ const DialogCancel = createContext<() => void>(() => {});
 export const useDialogCancel = () => useContext(DialogCancel);
 
 // ── modal (dialog) ────────────────────────────────────────────────────────────────────────────────────
-export function Modal({ open, onClose, title, children, wide, busy }: { open: boolean; onClose: () => void; title: string; children: ReactNode; wide?: boolean; busy?: boolean }) {
+export function Modal({ open, onClose, title, children, wide, busy, draftKey }: { open: boolean; onClose: () => void; title: string; children: ReactNode; wide?: boolean; busy?: boolean; draftKey?: string }) {
   const ref = useRef<HTMLDialogElement>(null);
   const content = useRef<HTMLDivElement>(null);
   const id = useRef(`modal-${Math.random().toString(36).slice(2, 8)}`);
-  const guard = useCloseGuard(content, open, busy, onClose);
+  // its unsaved text survives a reload: one draft per page address + dialog (its title, or `draftKey` for a record)
+  const guard = useCloseGuard(content, open, busy, onClose, open ? draftKeyFor(`modal:${draftKey ?? title}`) : null);
   useEffect(() => {
     const d = ref.current;
     if (!d) return;
@@ -206,6 +225,7 @@ export function Modal({ open, onClose, title, children, wide, busy }: { open: bo
           <h2 id={id.current} className="text-lg font-bold">{title}</h2>
           <button type="button" className="btn btn-ghost btn-sm" onClick={guard.request} aria-label="إغلاق" disabled={busy} data-action="dialog-close">✕</button>
         </div>
+        <DraftBar draft={guard.draft} onRestore={guard.restore} onDrop={guard.drop} />
         {open && <DialogCancel.Provider value={guard.request}>{children}</DialogCancel.Provider>}
       </div>
       <UnsavedConfirm open={guard.ask} where="window" onKeep={guard.keep} onDiscard={guard.discard} />
@@ -216,11 +236,12 @@ export function Modal({ open, onClose, title, children, wide, busy }: { open: bo
 // ── side drawer ──────────────────────────────────────────────────────────────────────────────────────
 // Esc = × (through the guard); focus moves into the drawer on open and returns to the opener on close; the page
 // behind is inert; an outside press never closes it (B1).
-export function Drawer({ open, onClose, title, children, busy }: { open: boolean; onClose: () => void; title: ReactNode; children: ReactNode; busy?: boolean }) {
+export function Drawer({ open, onClose, title, children, busy, draftKey }: { open: boolean; onClose: () => void; title: ReactNode; children: ReactNode; busy?: boolean; draftKey?: string }) {
   const ref = useRef<HTMLElement>(null);
   const content = useRef<HTMLDivElement>(null);
   const opener = useRef<HTMLElement | null>(null);
-  const guard = useCloseGuard(content, open, busy, onClose);
+  const what = draftKey ?? (typeof title === 'string' ? title : null);
+  const guard = useCloseGuard(content, open, busy, onClose, open && what ? draftKeyFor(`drawer:${what}`) : null);
   const request = guard.request;
   useEffect(() => {
     if (!open) return;
@@ -268,6 +289,7 @@ export function Drawer({ open, onClose, title, children, busy }: { open: boolean
           <button type="button" className="btn btn-ghost btn-sm" onClick={request} aria-label="إغلاق" disabled={busy} data-action="dialog-close">✕</button>
         </div>
         <div className="p-5" ref={content} data-dialog-content>
+          <DraftBar draft={guard.draft} onRestore={guard.restore} onDrop={guard.drop} />
           <DialogCancel.Provider value={request}>{children}</DialogCancel.Provider>
         </div>
         <UnsavedConfirm open={guard.ask} where="window" onKeep={guard.keep} onDiscard={guard.discard} />
@@ -280,11 +302,15 @@ export function Drawer({ open, onClose, title, children, busy }: { open: boolean
 // ── page-level edits (B5) ────────────────────────────────────────────────────────────────────────────
 /** Wrap a page-level form whose edits wait for a save button: its controls count for the leave guard. `version`
  *  re-baselines after a successful save (pass what the save changed, e.g. the saved values). */
-export function DirtyScope({ children, version, className, ...rest }: { children: ReactNode; version?: string | number; className?: string } & Record<string, unknown>) {
+export function DirtyScope({ children, version, className, draftKey, ...rest }: { children: ReactNode; version?: string | number; className?: string; draftKey?: string } & Record<string, unknown>) {
   const ref = useRef<HTMLDivElement>(null);
-  useDirty(ref, true);
+  // a page-level form keeps its unsaved values across a reload too (one draft per page address + form)
+  const named = rest['data-scope'] ?? rest['data-matrix'];
+  const what = draftKey ?? (typeof named === 'string' ? named : 'form');
+  const { draft, restore, drop } = useDirty(ref, true, draftKeyFor(`page:${what}`));
   return (
     <div ref={ref} className={className} data-dirty-scope data-dirty-version={version === undefined ? undefined : String(version)} {...(rest as Record<string, unknown>)}>
+      <DraftBar draft={draft} onRestore={restore} onDrop={drop} />
       {children}
     </div>
   );

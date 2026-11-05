@@ -292,7 +292,7 @@ function NameForm({ user, onClose, onSaved }: { user: StaffUser; onClose: () => 
     }
   }
   return (
-    <Modal open onClose={onClose} title="الاسم الظاهر" busy={busy}>
+    <Modal open onClose={onClose} title="الاسم الظاهر" draftKey={`user-name:${user.user_id}`} busy={busy}>
       <Field label="الاسم الظاهر" id="n-name" hint="يظهر في سجل التدقيق وفي رسائل التأكيد الداخلية."><input id="n-name" className="field" value={name} onChange={(e) => setName(e.target.value)} /></Field>
       <ErrorBox error={error} />
       <div className="flex gap-2 justify-end mt-5">

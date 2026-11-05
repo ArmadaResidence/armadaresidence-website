@@ -233,7 +233,7 @@ export default function Guests() {
         </ul>
       )}
 
-      <Drawer open={!!open} onClose={() => setOpen(null)} title="ملف العميل">
+      <Drawer open={!!open} onClose={() => setOpen(null)} title="ملف العميل" draftKey={open ? `guest:${open}` : undefined}>
         {open && <GuestDetails key={open} id={open} editable={editable} onChanged={load} onOpen={(id) => setOpen(id)} />}
       </Drawer>
 

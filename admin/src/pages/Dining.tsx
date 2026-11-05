@@ -486,7 +486,7 @@ function VenueForm({ venue, branches, editable, busy, setBusy, onSaved }: { venu
             </>
           )}
           {/* the logo is part of the dirty state (the file input itself is not) */}
-          <input type="hidden" value={f.logo_svg ? String(f.logo_svg.length) + ':' + f.logo_svg.slice(-40) : ''} readOnly data-logo-state />
+          <input type="hidden" value={f.logo_svg ? String(f.logo_svg.length) + ':' + f.logo_svg.slice(-40) : ''} readOnly data-logo-state data-no-draft />
         </div>
         {logoError && <p className="text-sm media-err" role="alert" data-logo-error>{logoError}</p>}
       </div>
