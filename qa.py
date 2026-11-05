@@ -1078,7 +1078,7 @@ def sar_text(amount: float, L: str) -> str:
 
 def check_media(rep: "Report") -> None:
     """The photos published from the dashboard «الصور» (content/media.generated.json, scripts/media-build.mjs, 1 Nov 2026):
-    every derived file is in dist/, every photo has a real alt in both languages, the hero loop is within its 4 MB budget.
+    every derived file is in dist/, every photo has a real alt in both languages, the hero loops are within their budgets (desktop 8 MB, phone 3 MB).
     The dashboard refuses to publish without both alts; this is the build's own check."""
     G = "media (dashboard «الصور»)"
     path = CONTENT / "media.generated.json"
@@ -1121,12 +1121,16 @@ def check_media(rep: "Report") -> None:
             alt = str(home.get(f"alt_{lang}") or "").strip()
             if alt.lower() in GENERIC_ALT or len(alt) < 4 or not script.search(alt):
                 rep.f(G, f"home hero: alt_{lang} {alt!r} is missing, generic or not in that language")
-        for ext in ("mp4", "webm"):
-            ref = (home.get("video") or {}).get(ext)
-            if ref and not built(ref):
+        # the loops' budgets (CLAUDE.md §3c, 5 Nov 2026): desktop ≤ 8 MB each, the phone loops ≤ 3 MB each
+        video = home.get("video") or {}
+        for key, limit in (("mp4", 8), ("webm", 8), ("mobile_mp4", 3), ("mobile_webm", 3)):
+            ref = video.get(key)
+            if video and key.startswith("mobile") and not ref:
+                rep.f(G, f"home hero video: the phone loop {key} is missing from the manifest")
+            elif ref and not built(ref):
                 rep.f(G, f"home hero video: {ref} missing in dist/")
-            elif ref and (DIST / ref.lstrip("/")).stat().st_size > 4 * 1048576:
-                rep.f(G, f"home hero video: {ref} is over 4 MB")
+            elif ref and (DIST / ref.lstrip("/")).stat().st_size > limit * 1048576:
+                rep.f(G, f"home hero video: {ref} is over {limit} MB")
 
 
 def check_gallery(rep: "Report") -> None:
