@@ -6,6 +6,9 @@
  * their 50 % and nothing re-lays out). Under md the panes stack as two near-full-height cards.
  * Facts come from branches.json / contact.json only. Photos (4 Nov 2026): each pane shows its branch's published cover
  * («الصور», merged by content.ts — the same photo as the branch page's cover), else the brand-pattern placeholder.
+ * The whole card opens the branch page (Ahmed, 5 Nov 2026): ONE link per card, the branch name, stretched over the
+ * pane by its ::after (no nested links); «عرض الفرع» is its look only; the phone stays its own link above the stretch
+ * and still dials. Hover and focus act on the whole card, with a ring around it. CSS in global.css (.split-*).
  */
 import { branchContact, branchPath, fill, L, paragraphs, photoProps, photosOf, telHref, ui, type Branch, type Locale } from '@lib/content';
 import Photo from './Photo.astro';
@@ -50,16 +53,16 @@ const firstSentence = (text: string) => {
           <div class="split-body">
             <p class="text-xs font-semibold uppercase tracking-wide text-bronze-bright">{L(locale, b, 'type')}</p>
             <h3 class="mt-2 text-2xl md:text-3xl font-bold text-porcelain">
-              <a href={href} class="split-title-link">{name}</a>
+              <a href={href} class="split-title-link" data-split-link><span class="split-title-text">{name}</span></a>
             </h3>
             <p class="mt-2 text-porcelain/90">{L(locale, b, 'tagline')}</p>
             <p class="split-desc mt-1 text-sm text-porcelain/75 max-w-md">{firstSentence(L(locale, b, 'description'))}</p>
-            <div class="mt-5 flex flex-wrap items-center gap-x-5 gap-y-3">
-              <a href={href} class="arrow-nudge inline-flex items-center gap-2 bg-bronze-deep text-white text-sm font-semibold px-4 py-2.5 rounded hover:bg-bronze-text transition-colors">
+            <div class="split-actions mt-5 flex flex-wrap items-center gap-x-5 gap-y-3">
+              <span class="split-cta inline-flex items-center gap-2 bg-bronze-deep text-white text-sm font-semibold px-4 py-2.5 rounded transition-colors" aria-hidden="true">
                 <span>{t.home.view_branch}</span>
                 <Icon name="arrow" size={16} class="icon-arrow rtl:rotate-180" />
-              </a>
-              <a href={telHref(c.phone)} class="latin inline-flex items-center gap-2 text-sm text-porcelain/85 hover:text-white" dir="ltr">
+              </span>
+              <a href={telHref(c.phone)} class="split-phone latin inline-flex items-center gap-2 text-sm text-porcelain/85 hover:text-white" dir="ltr">
                 <Icon name="phone" size={16} />
                 <span>{c.phone_display}</span>
               </a>

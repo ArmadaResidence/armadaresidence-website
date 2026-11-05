@@ -132,12 +132,14 @@ const quickFacts = fill(t.home.quick_facts, {
           </div>
         )
       }
-      <div class="absolute inset-0 bg-midnight/60"></div>
-      {/* over a photo (1 Nov 2026): a midnight gradient behind the text block keeps the small hero text WCAG AA on any
-          image, white or busy (global.css → .hero-scrim; measured by scripts/hero-scrim-check.mjs) */}
+      {/* over a real photo or video (Ahmed, 5 Nov 2026): no pattern and no flat tint — one directional midnight scrim,
+          strongest behind the text (the start side; bottom-up on phones), a light tint on the far side; the small hero
+          text keeps WCAG AA on any image, white or busy (global.css → .hero-scrim; scripts/hero-scrim-check.mjs) */}
       {heroMedia && <div class="absolute inset-0 hero-scrim"></div>}
-      {/* brand pattern as a slow depth layer: 40 s drift of ~2.5 % towards the reading direction with a soft opacity swell */}
-      <div class="absolute inset-0 pattern-bg hero-pattern"></div>
+      {/* the placeholder poster only: the flat tint and the brand pattern as a slow depth layer (40 s drift of ~2.5 %
+          towards the reading direction with a soft opacity swell) */}
+      {!heroMedia && <div class="absolute inset-0 bg-midnight/60"></div>}
+      {!heroMedia && <div class="absolute inset-0 pattern-bg hero-pattern"></div>}
       <div class="glow"></div>
     </div>
     <div class="relative w-full mx-auto max-w-6xl px-4 py-14 md:py-28">

@@ -72,6 +72,8 @@
 
 :root {
   --font-body: var(--font-ar);
+  /* Armada Midnight in both themes (--color-midnight is remapped to porcelain for text in dark) */
+  --brand-midnight: #142a3b;
 }
 :root[lang="en"] {
   --font-body: var(--font-en);
@@ -152,18 +154,30 @@ body {
 .hero-video.is-playing {
   opacity: 1;
 }
-/* Hero over a photo (1 Nov 2026, the dashboard «الصور»): the text block sits on ≈ 94 % midnight (the 60 % overlay + this
-   84 % scrim) so the small hero text keeps WCAG AA on any image, white or busy — measured with the glow and the pattern
-   by scripts/hero-scrim-check.mjs (75 % left the Bronze Bright eyebrow at 4.27:1 over pure white). The scrim holds to just past the text column's end
-   edge (the 72rem container's centre + 15rem, at least 52rem — every width where the column is narrower), then opens
-   the photo over 18rem; on phones the column spans the width and the scrim with it. Rendered only with a photo. */
+/* Hero over a real photo or video (Ahmed, 5 Nov 2026; replaces the flat 60 % tint + the 84 % scrim of 1 Nov): the pattern
+   and the flat tint are gone (they stay on the placeholder poster only); one directional Armada Midnight scrim — the same
+   in light and dark (--brand-midnight, never --color-midnight, which dark mode remaps to porcelain) — is strongest behind
+   the text and fades to a light tint on the far side:
+   - from md: from the start side (right in Arabic, left in English) at --scrim-text up to just past the text column's
+     end edge (the 72rem container's centre + 15rem, at least 52rem), then over 20rem down to --scrim-far;
+   - phones, where the text spans the screen: bottom-up — --scrim-text from the bottom to just under the top padding, then
+     lighter towards the top edge, above the eyebrow.
+   --scrim-text is the weakest midnight that keeps the Bronze Bright eyebrow at AA over pure white (measured on the
+   white and busy sample posters and on the published poster by scripts/hero-scrim-check.mjs, light and dark). */
 .hero-scrim {
-  --scrim: color-mix(in srgb, var(--color-midnight) 84%, transparent);
-  --scrim-end: max(calc(50% + 15rem), 52rem);
-  background: linear-gradient(to left, var(--scrim) 0, var(--scrim) var(--scrim-end), transparent calc(var(--scrim-end) + 18rem));
+  --scrim-text: color-mix(in srgb, var(--brand-midnight) 90%, transparent);
+  --scrim-far: color-mix(in srgb, var(--brand-midnight) 22%, transparent);
+  --scrim-top: color-mix(in srgb, var(--brand-midnight) 55%, transparent);
+  background: linear-gradient(to top, var(--scrim-text) 0, var(--scrim-text) calc(100% - 3.25rem), var(--scrim-top) 100%);
 }
-[dir='ltr'] .hero-scrim {
-  background: linear-gradient(to right, var(--scrim) 0, var(--scrim) var(--scrim-end), transparent calc(var(--scrim-end) + 18rem));
+@media (min-width: 768px) {
+  .hero-scrim {
+    --scrim-end: max(calc(50% + 15rem), 52rem);
+    background: linear-gradient(to left, var(--scrim-text) 0, var(--scrim-text) var(--scrim-end), var(--scrim-far) calc(var(--scrim-end) + 20rem));
+  }
+  [dir='ltr'] .hero-scrim {
+    background: linear-gradient(to right, var(--scrim-text) 0, var(--scrim-text) var(--scrim-end), var(--scrim-far) calc(var(--scrim-end) + 20rem));
+  }
 }
 @keyframes hero-kenburns {
   from {
@@ -599,12 +613,15 @@ footer :focus-visible,
   align-items: flex-end;
   border-radius: var(--radius-card);
   overflow: hidden;
-  background: var(--color-midnight);
+  /* Armada Midnight in both themes (the media layer covers it; it is what the text sits on when that layer is read as
+     behind — --color-midnight would be porcelain in dark) */
+  background: var(--brand-midnight);
   color: var(--color-porcelain);
 }
 .split-media {
   position: absolute;
   inset: 0;
+  z-index: -1; /* under the text (the pane isolates its stacking), so the body needs no positioning of its own */
   overflow: hidden;
   transition: scale var(--motion-base) var(--ease-in-out);
 }
@@ -637,13 +654,56 @@ footer :focus-visible,
   background: linear-gradient(to top, rgba(20, 42, 59, 0.94) 0%, rgba(20, 42, 59, 0.72) 38%, rgba(20, 42, 59, 0.12) 70%, rgba(20, 42, 59, 0) 100%);
 }
 .split-body {
-  position: relative;
-  z-index: 1;
   padding: 1.75rem 1.5rem 2rem;
   width: 100%;
 }
-.split-title-link:hover {
+/* the whole card is the branch link (5 Nov 2026): the name's ::after covers the pane — its containing block, since
+   nothing between them is positioned or transformed (the shrink shift below moves the body's children and the name's
+   text, never the body, the heading or the link) — and the phone sits above it, inside a row that lets presses through */
+.split-title-link::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+}
+.split-title-text {
+  display: inline-block;
+}
+.split-actions {
+  position: relative;
+  z-index: 2;
+  pointer-events: none;
+}
+.split-phone {
+  pointer-events: auto;
+}
+.split-pane:hover .split-title-link,
+.split-pane:has(.split-title-link:focus-visible) .split-title-link {
   color: var(--color-bronze);
+}
+.split-pane:has(.split-phone:hover) .split-title-link {
+  color: inherit;
+}
+.split-pane:hover:not(:has(.split-phone:hover)) .split-cta,
+.split-pane:has(.split-title-link:focus-visible) .split-cta {
+  background: var(--color-bronze-text);
+}
+.split-pane:hover:not(:has(.split-phone:hover)) .split-cta > .icon-arrow,
+.split-pane:has(.split-title-link:focus-visible) .split-cta > .icon-arrow {
+  translate: 4px 0;
+}
+[dir='rtl'] .split-pane:hover:not(:has(.split-phone:hover)) .split-cta > .icon-arrow,
+[dir='rtl'] .split-pane:has(.split-title-link:focus-visible) .split-cta > .icon-arrow {
+  translate: -4px 0;
+}
+/* the focus ring goes round the whole card: a midnight band at its edge, then porcelain — visible on any photo */
+.split-title-link:focus-visible {
+  outline: none;
+}
+.split-title-link:focus-visible::after {
+  box-shadow:
+    inset 0 0 0 4px var(--brand-midnight),
+    inset 0 0 0 7px var(--color-porcelain);
 }
 @media (min-width: 768px) {
   .split {
@@ -715,6 +775,10 @@ footer :focus-visible,
   .split-body {
     padding: 2.5rem 2.25rem 2.5rem;
     max-width: 34rem;
+  }
+  /* the shrink shift moves the body's children and the name's text (never the heading or the link: see above) */
+  .split-body > :not(h3),
+  .split-title-text {
     transition:
       transform var(--motion-base) var(--ease-in-out),
       opacity var(--motion-base) var(--ease-in-out);
@@ -734,20 +798,20 @@ footer :focus-visible,
   .split:has(.split-pane:focus-within) .split-pane:not(:focus-within) .split-desc {
     opacity: 0;
   }
-  .split:has(.split-pane:hover) .split-pane:first-child:not(:hover) .split-body,
-  .split:has(.split-pane:focus-within) .split-pane:first-child:not(:focus-within) .split-body {
+  .split:has(.split-pane:hover) .split-pane:first-child:not(:hover) :is(.split-body > :not(h3), .split-title-text),
+  .split:has(.split-pane:focus-within) .split-pane:first-child:not(:focus-within) :is(.split-body > :not(h3), .split-title-text) {
     transform: translateX(-8px);
   }
-  .split:has(.split-pane:hover) .split-pane:last-child:not(:hover) .split-body,
-  .split:has(.split-pane:focus-within) .split-pane:last-child:not(:focus-within) .split-body {
+  .split:has(.split-pane:hover) .split-pane:last-child:not(:hover) :is(.split-body > :not(h3), .split-title-text),
+  .split:has(.split-pane:focus-within) .split-pane:last-child:not(:focus-within) :is(.split-body > :not(h3), .split-title-text) {
     transform: translateX(8px);
   }
-  [dir='rtl'] .split:has(.split-pane:hover) .split-pane:first-child:not(:hover) .split-body,
-  [dir='rtl'] .split:has(.split-pane:focus-within) .split-pane:first-child:not(:focus-within) .split-body {
+  [dir='rtl'] .split:has(.split-pane:hover) .split-pane:first-child:not(:hover) :is(.split-body > :not(h3), .split-title-text),
+  [dir='rtl'] .split:has(.split-pane:focus-within) .split-pane:first-child:not(:focus-within) :is(.split-body > :not(h3), .split-title-text) {
     transform: translateX(8px);
   }
-  [dir='rtl'] .split:has(.split-pane:hover) .split-pane:last-child:not(:hover) .split-body,
-  [dir='rtl'] .split:has(.split-pane:focus-within) .split-pane:last-child:not(:focus-within) .split-body {
+  [dir='rtl'] .split:has(.split-pane:hover) .split-pane:last-child:not(:hover) :is(.split-body > :not(h3), .split-title-text),
+  [dir='rtl'] .split:has(.split-pane:focus-within) .split-pane:last-child:not(:focus-within) :is(.split-body > :not(h3), .split-title-text) {
     transform: translateX(-8px);
   }
 }

@@ -3,14 +3,18 @@
 //   - each group is a header band (a darker surface, a bronze bar on the start side, a bold label and an icon) and a
 //     button with aria-expanded that collapses / expands it; next to it a chip «ناقص N» (required slots or alts missing in
 //     the group) or «مكتمل ✓»;
-//   - the group holding the selected target is always open; the open state is remembered per user (localStorage, a
-//     convenience only); the header of the group being scrolled stays sticky at the top of the list;
+//   - an accordion (Ahmed, 5 Nov 2026): opening a group closes the one that was open; the group holding the selected
+//     target is always open as well; the open group is remembered per user (localStorage, a convenience only); the
+//     whole header row is the button (Enter / Space toggle it), the chevron fixed at its end; the header of the group
+//     being scrolled stays sticky at the top of the list;
 //   - inside a group, optional sub-headers («الفرع»، «الغرف والأجنحة»، «القاعة والمطاعم») and the items indented with a thin
 //     guide line on the start side;
 //   - a search box filters the items by name (Arabic, English or key; Arabic-Indic digits accepted) and opens every group
-//     that has a match.
+//     that has a match — the accordion pauses while it holds text (a header then closes / reopens only its own group);
+//   - no sideways scrolling: an item name wraps to two lines at most, a little smaller, its full text in a tooltip when
+//     still cut; the list keeps its width when a group opens (a stable scrollbar gutter).
 // The same component on every width: on phones the list sits in a disclosure under the current target's name.
-import { useEffect, useId, useMemo, useState } from 'react';
+import { useEffect, useId, useMemo, useRef, useState, type SyntheticEvent } from 'react';
 import { Icon, type IconName } from './icons';
 import { west } from '../lib/format';
 
@@ -40,19 +44,27 @@ export interface PickerGroup {
 
 const norm = (s: string) => west(s).toLowerCase().replace(/[ً-ْـ]/g, '').replace(/[أإآ]/g, 'ا').replace(/ة/g, 'ه').replace(/ى/g, 'ي').trim();
 
-function readOpen(key: string): string[] | null {
+// the one open group (stored as a one-element list; an older multi-group list keeps its last entry)
+function readOpen(key: string): string | null {
   try {
-    const v = localStorage.getItem(key);
-    return v ? (JSON.parse(v) as string[]) : null;
+    const v = JSON.parse(localStorage.getItem(key) ?? 'null') as unknown;
+    return Array.isArray(v) ? ((v[v.length - 1] as string | undefined) ?? null) : null;
   } catch {
     return null;
   }
 }
-function writeOpen(key: string, open: string[]) {
+function writeOpen(key: string, open: string | null) {
   try {
-    localStorage.setItem(key, JSON.stringify(open));
+    localStorage.setItem(key, JSON.stringify(open ? [open] : []));
   } catch { /* private mode: the state lasts for this visit */ }
 }
+// the full name as a tooltip only when the two lines still cut it
+const tipIfCut = (e: SyntheticEvent<HTMLElement>) => {
+  const el = e.currentTarget.querySelector<HTMLElement>('[data-target-name]');
+  if (!el) return;
+  if (el.scrollHeight > el.clientHeight + 1 || el.scrollWidth > el.clientWidth + 1) el.title = el.textContent ?? '';
+  else el.removeAttribute('title');
+};
 
 export default function TargetPicker({ groups, current, onPick, label, storageKey, currentLabel }: {
   groups: PickerGroup[];
@@ -66,16 +78,23 @@ export default function TargetPicker({ groups, current, onPick, label, storageKe
   currentLabel?: string;
 }) {
   const uid = useId();
-  const [open, setOpen] = useState<string[]>(() => readOpen(storageKey) ?? []);
+  const [open, setOpen] = useState<string | null>(() => readOpen(storageKey));
   const [q, setQ] = useState('');
+  // while searching: the matching groups the user closed (cleared whenever the text changes)
+  const [searchClosed, setSearchClosed] = useState<string[]>([]);
   const [mobileOpen, setMobileOpen] = useState(false);
   const currentGroup = useMemo(() => groups.find((g) => g.subs.some((s) => s.items.some((i) => i.id === current)))?.key ?? null, [groups, current]);
 
-  // the group of the selected target stays open
+  // a target picked in the open group: that group is now the selected one's (always open), nothing else stays open
+  // (only on a real change: the first value after load keeps the remembered group)
+  const prevGroup = useRef<string | null>(null);
   useEffect(() => {
-    if (currentGroup && !open.includes(currentGroup)) setOpen((o) => [...o, currentGroup]);
-  }, [currentGroup]); // eslint-disable-line react-hooks/exhaustive-deps
+    const before = prevGroup.current;
+    prevGroup.current = currentGroup;
+    if (before && currentGroup && before !== currentGroup) setOpen((o) => (o === currentGroup ? o : null));
+  }, [currentGroup]);
   useEffect(() => writeOpen(storageKey, open), [storageKey, open]);
+  useEffect(() => setSearchClosed([]), [q]);
 
   const nq = norm(q);
   const shown = useMemo(() => {
@@ -86,7 +105,11 @@ export default function TargetPicker({ groups, current, onPick, label, storageKe
   }, [groups, nq]);
   const matches = shown.reduce((n, g) => n + g.subs.reduce((m, s) => m + s.items.length, 0), 0);
 
-  const toggle = (k: string) => setOpen((o) => (o.includes(k) ? (k === currentGroup ? o : o.filter((x) => x !== k)) : [...o, k]));
+  const toggle = (k: string) => {
+    if (nq) return setSearchClosed((c) => (c.includes(k) ? c.filter((x) => x !== k) : [...c, k]));
+    if (k === currentGroup) return; // the selected target's group stays open
+    setOpen((o) => (o === k ? null : k));
+  };
   const pick = (id: string) => {
     onPick(id);
     setMobileOpen(false);
@@ -109,7 +132,7 @@ export default function TargetPicker({ groups, current, onPick, label, storageKe
           {!shown.length && <p className="px-3 py-4 text-sm text-ink-muted">لا نتائج لـ«{q}».</p>}
           {shown.map((g) => {
             const missing = g.subs.reduce((n, s) => n + s.items.reduce((m, i) => m + (i.missing ?? 0), 0), 0);
-            const isOpen = !!nq || open.includes(g.key) || g.key === currentGroup;
+            const isOpen = nq ? !searchClosed.includes(g.key) : open === g.key || g.key === currentGroup;
             const listId = `${uid}-${g.key}`;
             return (
               <section key={g.key} className="picker-group" data-picker-group={g.key}>
@@ -134,8 +157,8 @@ export default function TargetPicker({ groups, current, onPick, label, storageKe
                           const on = i.id === current;
                           return (
                             <li key={i.id}>
-                              <button type="button" className={`media-target ${on ? 'is-on' : ''}`} aria-current={on ? 'page' : undefined} onClick={() => pick(i.id)} data-target={i.id}>
-                                <span className="truncate">{i.label}</span>
+                              <button type="button" className={`media-target ${on ? 'is-on' : ''}`} aria-current={on ? 'page' : undefined} onClick={() => pick(i.id)} onMouseEnter={tipIfCut} onFocus={tipIfCut} data-target={i.id}>
+                                <span className="media-target-name" data-target-name>{i.label}</span>
                                 {i.tone && <span className={`media-dot media-dot-${i.tone}`} title={i.toneText}><span className="sr-only">{i.toneText}</span></span>}
                               </button>
                             </li>

@@ -1256,3 +1256,33 @@ branch page shows the cover and the 4 story scenes only — the branch gallery a
 Follow-up: the first live suite after the switch failed only `datepicker-check` (it submits the forms without the stub,
 so Cloudflare's real widget loaded and logged CSP noise in the console); it now stubs Cloudflare like the other form
 checks.
+
+## 2026-11-05 — Dashboard photo list, whole-card branch links, hero scrim (Ahmed, 5 Nov 2026)
+
+- **«الصور» list (`TargetPicker`):** an accordion — opening a section closes the one that was open; the section holding
+  the selected slot stays open; while the search box has text every section with a match opens and a header closes only
+  its own section. The whole header row is the button (aria-expanded, Enter / Space), the chevron fixed at its end. No
+  sideways scrolling: a slot name wraps to two lines at most at 13 px, its full text in a tooltip only when still cut;
+  the list keeps its width when a section opens (overflow-x hidden, a stable scrollbar gutter). The group labels inside
+  a section («الفرع»، «الغرف والأجنحة»، «القاعة والمطاعم») take the sidebar's group-label style: 12.5 px semibold
+  `--ink-muted` (8.1:1 light, 8.6:1 dark), no fill, not a control, extra space and a hairline above all but the first.
+  The open section is remembered per user as before (one entry now).
+- **Home branch cards («فرعانا في الطائف»):** the whole card — photo and text — opens the branch page through ONE link,
+  the branch name, stretched over the card by its ::after (no nested links); «عرض الفرع» is its look only (a span,
+  aria-hidden); the phone stays its own link above the stretch and still dials. Hover and focus act on the whole card;
+  the focus ring is a midnight + porcelain band round the card. To keep the pane the stretch's containing block, the
+  media layer sits at z-index -1 inside the isolated pane and the shrink shift moves the body's children and the
+  name's text instead of the body.
+- **Heroes over a real photo or video:** the pattern layer and the flat 60 % tint are removed there (they stay on the
+  placeholder poster); one directional scrim instead — 90 % Armada Midnight from the start side (right in Arabic, left
+  in English) to just past the text column, fading to 22 % on the far side; bottom-up on phones. It uses
+  `--brand-midnight` (new, `:root`): the old scrim used `--color-midnight`, which dark mode remaps to porcelain, so in
+  dark mode it was a light veil under light text. Measured by `hero-scrim-check` (now light + dark, and
+  `--poster <URL>` for the published hero): white sample worst 4.57:1 (eyebrow), busy sample and the published poster
+  pass, 52 / 52 each. The only page with a photo / video hero is the home page: the branch pages show their cover under
+  the heading (no text over it) and the legacy /discover-taif/ and /partners/ heroes keep their own design (§6b; they
+  have no brand pattern layer).
+- **Café number (read-only check):** with «مطعم ومقهى أرمادا ريزيدنس» published (its phone / WhatsApp = the café line,
+  extension 333) a fixture build passes qa.py — the line appears only on /airport-road/, /dining/, /dining/<venue>/ and
+  /menu/, which `cafe_allowed` already permits (since 2 Nov 2026); no rule change.
+

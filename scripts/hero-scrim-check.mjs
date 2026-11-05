@@ -4,13 +4,30 @@
 // is compared with EVERY pixel behind it (the text made transparent, the page shot, the text's own colour blended over
 // each pixel); the worst pixel must reach 4.5:1 (3:1 for large text: ≥ 24 px, or ≥ 18.66 px bold). Reduced motion, so
 // the hero is still. Filled buttons carry their own background and are not measured here (axe covers them).
-//   node scripts/hero-scrim-check.mjs <dist dir> [label]
+// Light and dark (5 Nov 2026: the directional scrim is the same Armada Midnight in both themes).
+// --poster <page URL>: the hero's <picture> and focal points are taken from that page (e.g. the live home page) and put
+// in place of the built ones before measuring — the PUBLISHED poster behind the new scrim.
+//   node scripts/hero-scrim-check.mjs <dist dir> [label] [--poster <page URL>]
 import { chromium } from 'playwright';
 import sharp from 'sharp';
 import { serveDist } from './serve-dist.mjs';
 
-const dist = process.argv[2];
-const label = process.argv[3] || '';
+const args = process.argv.slice(2);
+const posterAt = args.includes('--poster') ? args[args.indexOf('--poster') + 1] : null;
+const pos = args.filter((a, i) => a !== '--poster' && args[i - 1] !== '--poster');
+const dist = pos[0];
+const label = pos[1] || '';
+// the published hero: its <picture> (URLs made absolute) and the focal points, per language
+const published = {};
+if (posterAt) {
+  for (const path of ['/', '/en/']) {
+    const url = new URL(path.replace(/^\//, ''), posterAt.replace(/\/?$/, '/'));
+    const html = await (await fetch(`${url}?v=${Date.now()}`)).text();
+    const pic = html.match(/<section[^>]*class="hero[\s\S]*?(<picture>[\s\S]*?<\/picture>)/)?.[1];
+    if (!pic) throw new Error(`no hero <picture> on ${url}`);
+    published[path] = pic.replace(/(src|srcset)="([^"]*)"/g, (_, k, v) => `${k}="${v.split(',').map((part) => part.trim().replace(/^\//, `${url.origin}/`)).join(', ')}"`);
+  }
+}
 if (!dist) throw new Error('usage: node scripts/hero-scrim-check.mjs <dist dir> [label]');
 const lin = (v) => {
   v /= 255;
@@ -24,11 +41,14 @@ const browser = await chromium.launch({ channel: 'chrome' });
 const fails = [];
 let checks = 0;
 try {
-  for (const path of ['/', '/en/']) {
+  for (const path of ['/', '/en/']) for (const theme of ['light', 'dark']) {
     for (const width of [375, 1440]) {
-      const ctx = await browser.newContext({ viewport: { width, height: 900 }, reducedMotion: 'reduce', deviceScaleFactor: 1 });
+      const ctx = await browser.newContext({ viewport: { width, height: 900 }, reducedMotion: 'reduce', deviceScaleFactor: 1, colorScheme: theme });
+      await ctx.addInitScript((t) => { try { localStorage.setItem('armada-theme', t); } catch {} }, theme);
       const page = await ctx.newPage();
       await page.goto(server.url + path, { waitUntil: 'load' });
+      await page.evaluate((t) => (document.documentElement.dataset.theme = t), theme);
+      if (posterAt) await page.evaluate((pic) => { const old = document.querySelector('.hero picture'); const t = document.createElement('template'); t.innerHTML = pic; old.replaceWith(t.content.firstElementChild); }, published[path]);
       await page.waitForFunction(() => {
         const img = document.querySelector('.hero .hero-photo');
         return img && img.complete && img.naturalWidth > 0;
@@ -57,7 +77,7 @@ try {
           return { i, name: el.tagName.toLowerCase() + (el.className ? '.' + String(el.className).split(' ')[0] : ''), text: el.textContent.trim().slice(0, 30), rgba: rgba(cs.color), size: parseFloat(cs.fontSize), weight: Number(cs.fontWeight), filled, rect: { x: r.x, y: r.y + window.scrollY, width: r.width, height: r.height } };
         });
       });
-      await page.screenshot({ path: `screenshots/media/hero-${label || 'x'}-${path === '/' ? 'ar' : 'en'}-${width}.png` }).catch(() => {});
+      await page.screenshot({ path: `screenshots/media/hero-${label || 'x'}-${path === '/' ? 'ar' : 'en'}-${width}-${theme}.png` }).catch(() => {});
       // the background alone: every hero text transparent (layout unchanged)
       await page.addStyleTag({ content: '.hero > .relative, .hero > .relative * { color: transparent !important; text-shadow: none !important; border-color: transparent !important; -webkit-text-fill-color: transparent !important }' });
       await page.waitForTimeout(150);
@@ -78,8 +98,8 @@ try {
         const need = large ? 3 : 4.5;
         checks++;
         const ok = worst >= need;
-        if (!ok) fails.push(`${path} @${width}: ${t.name} «${t.text}» ${worst.toFixed(2)}:1 < ${need}`);
-        console.log(`${ok ? 'ok ' : 'FAIL'} ${label} ${path} @${width}: ${t.name} «${t.text}» worst ${worst.toFixed(2)}:1 (needs ${need})`);
+        if (!ok) fails.push(`${path} @${width} ${theme}: ${t.name} «${t.text}» ${worst.toFixed(2)}:1 < ${need}`);
+        console.log(`${ok ? 'ok ' : 'FAIL'} ${label} ${path} @${width} ${theme}: ${t.name} «${t.text}» worst ${worst.toFixed(2)}:1 (needs ${need})`);
       }
       await ctx.close();
     }
