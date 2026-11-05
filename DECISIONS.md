@@ -1329,3 +1329,29 @@ checks.
   for the same user, a simulated deploy → the bar and no reload, «تحديث الآن», a forced reload → the draft offered and
   restored exactly in a dialog and on an article, discard / «تجاهل» / save clear it, no password in a draft).
 
+## 2026-11-05 — Dashboard printouts: «التقارير» without blank pages, our own header and footer (Ahmed, 5 Nov 2026)
+
+- **Cause** of «12 pages, some blank but for Chrome's header and footer»: the backup-codes print rule of 26 Oct
+  (`@media print { body * { visibility: hidden } #backup-print … { visibility: visible } }`) was not scoped, so every
+  printout of the dashboard hid everything; hidden content still takes its space, so «التقارير» printed page after page
+  of nothing (the booking sheet survived only because it re-shows itself). Also: `@page report { margin: 10mm }` left
+  room for Chrome's own header and footer (the title, the date, the admin URL); the tables under the charts sit in a
+  scroll container (`overflow-x: auto`), which prints as one unbreakable block; and every card was `break-inside: avoid`,
+  so a card taller than the space left jumped a page.
+- **Fix:** the backup-codes rule applies only on its page (`body:has(#backup-print)`). «التقارير» prints A4 landscape with
+  `@page` margin 0 — the browser prints nothing of its own, no URL — and our own running header (the logo, «تقرير الأداء»,
+  the period, the comparison, the branch) and footer («طُبع في {Riyadh date and time}» · «للاستخدام الداخلي») on every
+  page: a real `<table>` frame (Chrome repeats a table's thead / tfoot on every page even when its one cell runs over
+  many; CSS display: table does not), transparent on screen (display: contents). The page number: Chrome (131+) prints
+  page margin boxes and then nothing of its own, so only there (`@supports (anchor-name) and not (-moz-appearance)`) the
+  page keeps a 7 mm bottom margin for «صفحة N من M»; other browsers keep margin 0, where they cannot print their URL
+  either. In print every section, chart and table is laid out with no animation; each section starts a page; breaks
+  never fall inside a KPI, a figure, a chart or a table row, titles stay with their content, long tables break between
+  rows and repeat their header; scroll containers print open; the page is white to its end.
+- `admin/tests/print-check.mjs` (preview branch, fixtures over 120 days; `pdfjs-dist` in the dashboard's dev
+  dependencies renders every page in Chromium → `screenshots/print/`): 30 days → 11 pages, 90 days + last year → 14, each
+  A4 landscape with report content in its body, no URL (with Chrome's own header / footer switched on, as the print
+  dialog does), our header on every page and our footer, «صفحة N من M», the five sections each starting a page in order,
+  every chart and table laid out in print media with no animation; the booking sheet one page, no URL, both signature
+  blocks. 21 / 21.
+

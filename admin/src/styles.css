@@ -443,10 +443,12 @@ body {
   .sheet-sign p i { flex: 1; border-bottom: 0.2mm solid #000; height: 5mm; }
 }
 
-/* backup codes (phase 2a.2): «طباعة» prints the codes block only */
+/* backup codes (phase 2a.2): «طباعة» prints the codes block only — scoped to the page that holds it (5 Nov 2026: unscoped,
+   `body * { visibility: hidden }` blanked every other printout of the dashboard, «التقارير» included: hidden content
+   still takes its space, so Chrome printed page after page of nothing) */
 @media print {
-  body * { visibility: hidden; }
-  #backup-print, #backup-print * { visibility: visible; }
+  body:has(#backup-print) * { visibility: hidden; }
+  body:has(#backup-print) #backup-print, body:has(#backup-print) #backup-print * { visibility: visible; }
   #backup-print { position: absolute; top: 0; left: 0; right: 0; border: 0; padding: 12mm; }
 }
 
@@ -759,19 +761,53 @@ body {
 .viz-table tbody th { font-weight: 500; }
 .viz-table tfoot th, .viz-table tfoot td { font-weight: 700; border-top: 2px solid var(--line); }
 
-/* «التقارير» → «PDF»: A4 landscape, every section in order, the way the internal emails print (white page, black text,
-   no navigation, no buttons, the table under each chart) */
-@page report { size: A4 landscape; margin: 10mm; }
+/* «التقارير» → «PDF» (5 Nov 2026 — the print layout rebuilt after Ahmed's blank pages): A4 landscape; @page has no margin, so
+   the browser prints none of its own header / footer (no URL) and our own repeat on every page — a print-only table frame
+   (Reports.tsx: .report-print-frame) whose header and footer groups Chrome repeats per page. The page number: Chrome
+   (131+) prints page margin boxes and then nothing of its own, so only there the page keeps a 7 mm bottom margin for
+   «صفحة N من M» (other browsers keep margin 0, where they cannot print their URL either). Every section and chart prints
+   in full, with no animation; a section starts on a new page; breaks never fall inside a figure, a KPI or a table row;
+   long tables break between rows and repeat their header; scroll containers print open (a scroll container is one
+   unbreakable block in print). On screen the frame is transparent (display: contents). */
+.report-print-frame, .report-print-frame > tbody, .report-print-frame > tbody > tr, .report-print-frame > tbody > tr > td { display: contents; }
+.report-print-frame > thead, .report-print-frame > tfoot { display: none; }
+@page report { size: A4 landscape; margin: 0; }
+@supports (anchor-name: --a) and (not (-moz-appearance: none)) {
+  @page report {
+    margin: 0 0 7mm;
+    @bottom-center { content: "صفحة " counter(page) " من " counter(pages); font-size: 8pt; color: #444; vertical-align: top; }
+  }
+}
 @media print {
-  .reports { page: report; color: #000; }
-  body:has(.reports) { background: #fff !important; }
-  body:has(.reports) .sidebar, body:has(.reports) #app-topbar, body:has(.reports) .nav-drawer, body:has(.reports) [data-action="as-table"] { display: none !important; }
-  body:has(.reports) .app-frame, body:has(.reports) .app-col { display: block !important; padding: 0 !important; margin: 0 !important; }
-  body:has(.reports) #app-main { padding: 0 !important; max-width: none !important; }
-  .reports { font-size: 9.5pt; gap: 4mm; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-  .reports .card { border-color: #ccc; background: #fff; box-shadow: none; break-inside: avoid; }
+  .reports { page: report; color: #000; display: block !important; font-size: 9.5pt; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  html:has(.reports), body:has(.reports), body:has(.reports) .app-frame, body:has(.reports) .app-col, body:has(.reports) #app-main { background: #fff !important; }
+  body:has(.reports) .sidebar, body:has(.reports) #app-topbar, body:has(.reports) .nav-drawer, body:has(.reports) .update-bar,
+  body:has(.reports) .draft-bar, body:has(.reports) [data-action="as-table"], body:has(.reports) .tour-root { display: none !important; }
+  body:has(.reports) .app-frame, body:has(.reports) .app-col { display: block !important; padding: 0 !important; margin: 0 !important; min-height: 0 !important; height: auto !important; }
+  body:has(.reports) #app-main { padding: 0 !important; margin: 0 !important; max-width: none !important; min-height: 0 !important; }
+  .reports .report-print-frame { display: table; width: 100%; border-collapse: collapse; }
+  .reports .report-print-frame > thead { display: table-header-group; }
+  .reports .report-print-frame > tbody { display: table-row-group; }
+  .reports .report-print-frame > tfoot { display: table-footer-group; }
+  .reports .report-print-frame > * > tr { display: table-row; }
+  .reports .report-print-frame > * > tr > td { display: table-cell; padding: 0; vertical-align: top; }
+  .report-print-head-in { display: flex; align-items: center; gap: 6mm; margin: 0 12mm 5mm; padding: 8mm 0 3mm; border-bottom: 0.4mm solid #a97c50; }
+  .report-print-head-in p { margin: 0; font-size: 9pt; }
+  .report-print-logo { height: 10mm; width: auto; }
+  .report-print-title { font-size: 13pt !important; font-weight: 700; color: #142a3b; }
+  .report-print-foot-in { display: flex; justify-content: space-between; gap: 6mm; margin: 4mm 12mm 0; padding: 2mm 0 5mm; border-top: 0.2mm solid #bbb; font-size: 8pt; color: #333; }
+  .reports .report-print-frame > tbody > tr > td > * { margin-inline: 12mm; }
+  .reports .report-print-frame > tbody > tr > td > * + * { margin-top: 4mm; }
+  .reports .viz-table th, .reports .viz-table td { padding: 1mm 1.5mm; font-size: 8.5pt; }
+  .reports .grid { gap: 3mm; }
+  .reports *, .reports *::before, .reports *::after { animation: none !important; transition: none !important; }
+  .reports .card { border-color: #ccc; background: #fff; box-shadow: none; break-inside: auto; }
+  .reports .report-kpi, .reports figure, .reports svg, .reports .hbars, .reports .viz-legend, .reports tr { break-inside: avoid; }
+  .reports h2, .reports h3, .reports .card > div:first-child { break-after: avoid; }
   .reports .report-section + .report-section { break-before: page; }
-  .reports .reveal, .reports .is-first * { animation: none !important; }
+  .reports .overflow-x-auto, .reports .overflow-auto { overflow: visible !important; }
+  .reports thead { display: table-header-group; }
+  .reports svg { max-width: 100%; height: auto; }
   .reports .how { display: none; }
   .reports .text-ink-muted { color: #333 !important; }
 }

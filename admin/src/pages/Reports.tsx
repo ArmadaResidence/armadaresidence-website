@@ -4,12 +4,17 @@
 // top: الأداء، سلوك الحجز، المصادر والحملات، الإلغاء والرد، النادي والشركاء. Every figure comes from the bookings
 // recorded in this system; money only with «الأرقام المالية» (withheld by the RPCs). No no-show card: bookings do not
 // record a no-show.
+// Print (Ahmed, 5 Nov 2026): our own running header (the logo, «تقرير الأداء», the period, the comparison, the branch)
+// and footer («طُبع في …» · «للاستخدام الداخلي») repeat on every page — a real <table> frame (Chrome repeats a table's
+// <thead> / <tfoot> on every page, even when its one cell runs over many; CSS display: table does not), transparent on
+// screen (display: contents); @page has no margin, so the browser prints none of its own (no URL). styles.css.
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { flushSync } from 'react-dom';
 import * as api from '../lib/api';
 import * as m from '../lib/metrics';
 import { workbook, type Sheet } from '../lib/xlsx';
 import { useSession } from '../lib/session';
-import { BRANCH_NAMES, DAY, NIGHT, dateRange, longDate, measureWord, nightsWord, riyadhToday, sar, shortDate } from '../lib/format';
+import { BRANCH_NAMES, DAY, NIGHT, dateRange, longDate, measureWord, nightsWord, riyadhDateTimeLong, riyadhToday, sar, shortDate } from '../lib/format';
 import { BranchSelect, ErrorBox, Field } from '../components/ui';
 import DateField from '../components/DateField';
 import { AnimatedNumber, Bars, ChartCard, DataTable, HBars, HowTip, Legend, Lines, useFirstLoad } from '../components/charts';
@@ -48,6 +53,13 @@ export default function Reports() {
   const [can, setCan] = useState<Sect<m.Cancellations>>(empty);
   const [cp, setCp] = useState<Sect<m.ClubPartners>>(empty);
   const first = useFirstLoad(!!perf.data);
+  // the time on the printout: the moment of printing (set synchronously before the print layout)
+  const [printedAt, setPrintedAt] = useState(() => new Date().toISOString());
+  useEffect(() => {
+    const before = () => flushSync(() => setPrintedAt(new Date().toISOString()));
+    addEventListener('beforeprint', before);
+    return () => removeEventListener('beforeprint', before);
+  }, []);
 
   useEffect(() => {
     api.branches().then(setBranches).catch(() => setBranches([]));
@@ -79,6 +91,18 @@ export default function Reports() {
 
   return (
     <div className="grid gap-5 reports" data-page="reports">
+      {/* print only: the running header and footer of every page (screen: not shown; the frame lets the page flow) */}
+      <table className="report-print-frame" role="presentation">
+      <thead className="report-print-head" aria-hidden="true" data-print-head><tr><td>
+        <div className="report-print-head-in">
+          <img src={`${import.meta.env.BASE_URL}logo-bronze.svg`} alt="" className="report-print-logo" />
+          <div>
+            <p className="report-print-title">تقرير الأداء</p>
+            <p className="num-ar">الفترة: {periodText}{cmpText ? ` · المقارنة: ${cmpText}` : ''} · الفرع: {scope}</p>
+          </div>
+        </div>
+      </td></tr></thead>
+      <tbody className="report-print-body"><tr><td>
       <div className="flex flex-wrap items-end gap-3">
         <div className="me-auto">
           <h1 className="text-2xl font-bold">التقارير</h1>
@@ -113,14 +137,19 @@ export default function Reports() {
         </ul>
       </nav>
       <p className="text-sm text-ink-muted note-scope" data-scope-note>كل الأرقام من الحجوزات المسجّلة في اللوحة. حجوزات المنصات الأخرى تدخل بعد ربط مدير القنوات.</p>
-      {/* the print header: what the sheet covers */}
-      <p className="hidden print:block text-sm">أرمادا ريزيدنس — التقارير · {scope} · {periodText}{cmpText ? ` · المقارنة: ${cmpText}` : ''}</p>
-
       <Performance s={perf} money={money} first={first} hasCmp={!!cmp} />
       <BehaviourSection s={beh} first={first} />
       <SourcesSection s={src} money={money} first={first} />
       <CancelSection s={can} first={first} />
       <ClubSection s={cp} first={first} />
+      </td></tr></tbody>
+      <tfoot className="report-print-foot" aria-hidden="true" data-print-foot><tr><td>
+        <div className="report-print-foot-in">
+          <span className="num-ar">طُبع في {riyadhDateTimeLong(printedAt)} (بتوقيت الرياض)</span>
+          <span>للاستخدام الداخلي</span>
+        </div>
+      </td></tr></tfoot>
+      </table>
     </div>
   );
 }
