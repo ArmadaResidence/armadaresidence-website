@@ -1234,3 +1234,22 @@ next to the light placeholder moved its medians as a pane widened — no seam on
 remote BASE by what it serves (page, sitemap) and compares hrefs with the base path; and it found a real shift: the
 gallery intro wrapped to two lines in the fallback font and one in the web font (Arabic, 1440), moving the grid by 28 px
 on a cold load — the intro is now `max-w-4xl`, one line with either font in both languages.
+
+## 2026-11-05 — Cloudflare Turnstile switched on
+
+Ahmed created the widget in Cloudflare (hostnames `armadaresidence.com` — every subdomain, `www` included, is covered —
+and `armadaresidence.github.io`) and sent the site key; `content/turnstile.json` is now `enabled: true` with it. The
+secret is the Supabase secret `TURNSTILE_SECRET_KEY` (set with Ahmed's explicit OK, never in a file); booking-request,
+job-application and club are redeployed with the switch on, so a submission without a valid token answers 403
+«challenge» (test mode still skips it; Cloudflare unreachable still lets through, logged). Order of the switch: the pages
+first (they send a token the old functions ignore), then the secret and the functions after the Pages cache (10 min).
+`turnstile-check` now asserts the on state (a `0x4…` key, no secret in the file, the meta with the key on the form
+pages AR + EN). The browser checks of the four forms stub Cloudflare's script (`scripts/turnstile-stub.mjs`) and fail
+when a submission leaves without the token; the club check counts only sign-ups (unsubscribe is a signed link and is
+not verified). Rolling back = `enabled: false`, rebuild, redeploy the three functions; the secret can stay.
+
+Same day, read-only findings (no change): a dashboard «نشر» of 8 targets dispatched 8 deploys at 18:43–18:44 UTC on
+4 Nov; the workflow's concurrency cancelled 7 by design and the last one built every target and deployed at 18:51 — the
+path works; the home panes looked unchanged because they rendered the placeholder until the pre-launch fix (deployed
+20:05). The live Shafa Road branch page and its 7 room pages match «الصور» (cover, gallery order, alt AR / EN); the
+branch page shows the cover and the 4 story scenes only — the branch gallery appears on /gallery/.

@@ -373,7 +373,7 @@ Deno.serve(async (req) => {
     }
   }
 
-  // Cloudflare Turnstile (content/turnstile.json — off until its keys exist; test mode skips it)
+  // Cloudflare Turnstile (content/turnstile.json; test mode skips it)
   if (!test) {
     const ts = await verifyTurnstile(v('turnstile_token'), ip, { enabled: Boolean(content.turnstile?.enabled), secret: Deno.env.get('TURNSTILE_SECRET_KEY') });
     if (!ts.ok) return json(req, 403, { ok: false, error: 'challenge' });

@@ -5,6 +5,7 @@
 // field) and ends on the backdrop keeps the drawer open and the typed text; a real backdrop click still closes it.
 //   node scripts/drawer-check.mjs [BASE_URL]
 import { chromium } from 'playwright';
+import { stubTurnstile } from './turnstile-stub.mjs';
 
 const BASE = (process.argv[2] || process.env.BASE_URL || 'http://127.0.0.1:4330').replace(/\/$/, '');
 const PRE = new URL(BASE).pathname.replace(/\/$/, '');
@@ -15,6 +16,7 @@ for (const width of [1440, 375]) {
   await ctx.route('**/functions/v1/**', (r) => r.fulfill({ status: 500, contentType: 'application/json', body: '{"ok":false}' }));
   await ctx.route('https://wa.me/**', (r) => r.fulfill({ status: 200, contentType: 'text/html', body: '<title>wa</title>' }));
   await ctx.route(/googletagmanager\.com|google-analytics\.com/, (r) => r.fulfill({ status: 200, contentType: 'application/javascript', body: '' }));
+  await stubTurnstile(ctx);
   const page = await ctx.newPage();
   const errors = [];
   page.on('console', (m) => m.type() === 'error' && errors.push(m.text()));

@@ -20,6 +20,7 @@ import { parsePhoneNumberFromString } from 'libphonenumber-js/min';
 import { chromium } from 'playwright';
 import { CV_MAX_BYTES, JOB_DEPARTMENTS, JOB_EXPERIENCE, validateJobApplication } from '../supabase/functions/booking-request/rules.ts';
 import { addDays, openPicker, press, riyadhToday, tapDay } from './datepicker-helpers.mjs';
+import { noteTurnstile, stubTurnstile, turnstileProblem } from './turnstile-stub.mjs';
 
 const BASE = (process.argv.slice(2).find((a) => !a.startsWith('--')) || process.env.BASE_URL || 'http://127.0.0.1:4330').replace(/\/$/, '');
 console.log(`careers-form-check: ${BASE}`);
@@ -129,6 +130,7 @@ async function newContext(c) {
   const fn = (r) => {
     if (r.request().method() === 'OPTIONS') return r.fulfill({ status: 204, headers: cors });
     state.posts.push({ url: r.request().url(), body: r.request().postDataBuffer()?.toString('latin1') ?? '', type: r.request().headers()['content-type'] ?? '' });
+    noteTurnstile(state.posts.at(-1).body);
     return r.fulfill({ status: state.respond.status, headers: cors, contentType: 'application/json', body: JSON.stringify(state.respond.body) });
   };
   await ctx.route('**/functions/v1/**', fn);
@@ -141,6 +143,7 @@ async function newContext(c) {
   });
   await ctx.route('https://wa.me/**', (r) => r.fulfill({ status: 200, contentType: 'text/html', body: '<title>wa</title>' }));
   await ctx.route(/googletagmanager|google-analytics/, (r) => r.abort());
+  await stubTurnstile(ctx);
   return { ctx, state };
 }
 
@@ -366,6 +369,7 @@ for (const c of CASES) {
 }
 
 await browser.close();
+check(!turnstileProblem(), `Turnstile: ${turnstileProblem()}`);
 if (fails.length) {
   console.log(`✗ careers-form-check: ${fails.length} of ${checks} checks failed`);
   for (const f of fails) console.log(`  - ${f}`);

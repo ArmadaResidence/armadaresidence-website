@@ -1147,7 +1147,7 @@ const stepper = (name: 'adults' | 'children' | 'extra_beds', value: number, min:
           // the visit's first-touch source (3 Nov 2026, part G): no personal data (src/lib/visit.ts)
           ...(firstTouch() ? { visit: firstTouch() } : {}),
         };
-        // Cloudflare Turnstile (off until its keys exist — src/lib/turnstile.ts): a fresh token per submission
+        // Cloudflare Turnstile (content/turnstile.json — src/lib/turnstile.ts): a fresh token per submission
         const ts = await turnstileToken(form);
         if (ts !== null) (body as Record<string, unknown>).turnstile_token = ts;
         const res = await fetch(data.endpoint, { method: 'POST', headers, body: JSON.stringify(body) });

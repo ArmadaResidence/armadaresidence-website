@@ -19,6 +19,7 @@
 import { chromium } from 'playwright';
 import { readFileSync } from 'node:fs';
 import { pickRange } from './datepicker-helpers.mjs';
+import { noteTurnstile, stubTurnstile, turnstileProblem } from './turnstile-stub.mjs';
 
 const BASE = (process.argv[2] || 'http://127.0.0.1:4330').replace(/\/$/, '');
 const PRE = new URL(BASE).pathname.replace(/\/$/, '');
@@ -99,6 +100,7 @@ async function run(width, lang) {
   await page.route(/\/functions\/v1\/booking-request/, async (route) => {
     const body = route.request().postDataJSON();
     submits.push(body);
+    noteTurnstile(body);
     const ref = `AR-20991231-T${submits.length}`.padEnd(16, 'X').slice(0, 16);
     if (mode.submit === 'price_changed') {
       const q = quoteFor({ p_room: body.room, p_check_in: body.check_in, p_check_out: body.check_out, p_adults: Number(body.adults), p_children: Number(body.children), p_children_ages: body.children_ages?.map(Number), p_extra_beds: Number(body.extra_beds), p_breakfast: body.breakfast }, { prices: true }).quote;
@@ -121,6 +123,7 @@ async function run(width, lang) {
   });
   // GTM and wa.me never leave the machine
   await page.route(/googletagmanager\.com|wa\.me/, (route) => route.fulfill({ status: 204, body: '' }));
+  await stubTurnstile(page);
   // a local build has no PUBLIC_BOOKING_ENDPOINT, so the page carries no Supabase origin and would never call the
   // RPCs: give the built HTML a stub origin (the stubs above catch every request to it). A build with a real origin
   // is left as is — the stubs match the paths whatever the host.
@@ -334,6 +337,8 @@ for (const width of [1440, 375]) for (const lang of ['ar', 'en']) {
     fails.push(`${lang}@${width} exception: ${e?.stack || e}`);
   }
 }
+checks++;
+if (turnstileProblem()) fails.push(`Turnstile: ${turnstileProblem()}`);
 console.log(`${checks} checks in ${Math.round((Date.now() - t0) / 1000)}s`);
 if (fails.length) {
   console.log(`FAIL (${fails.length})`);

@@ -9,6 +9,7 @@
 import { readFileSync } from 'node:fs';
 import { chromium } from 'playwright';
 import { pickRange } from './datepicker-helpers.mjs';
+import { stubTurnstile } from './turnstile-stub.mjs';
 
 const BASE = (process.argv[2] || process.env.BASE_URL || 'http://127.0.0.1:4330').replace(/\/$/, '');
 // the GitHub Pages project site serves under a sub-path; its links carry it
@@ -53,6 +54,7 @@ for (const vp of [{ width: 1440, height: 900 }, { width: 375, height: 812, mobil
     await ctx.route('**/functions/v1/**', (r) => r.fulfill({ status: 500, contentType: 'application/json', body: '{"ok":false}' }));
     await ctx.route('https://wa.me/**', (r) => r.fulfill({ status: 200, contentType: 'text/html', body: '<title>wa</title>' }));
     await ctx.route(/googletagmanager|google-analytics/, (r) => r.abort());
+    await stubTurnstile(ctx);
     const page = await ctx.newPage();
     const errors = [];
     page.on('console', (m) => m.type() === 'error' && !/Failed to load resource/.test(m.text()) && errors.push(m.text()));

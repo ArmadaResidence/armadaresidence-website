@@ -24,6 +24,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { join } from 'node:path';
 import { chromium } from 'playwright';
+import { stubTurnstile } from './turnstile-stub.mjs';
 
 const BASE = (process.argv.slice(2).find((a) => !a.startsWith('--')) || process.env.BASE_URL || 'http://127.0.0.1:4330').replace(/\/$/, '');
 const PRE = new URL(BASE).pathname.replace(/\/$/, '');
@@ -74,6 +75,7 @@ async function context(form, theme, { edit = (h) => h, reducedMotion = 'no-prefe
     })).observe({ type: 'layout-shift', buffered: true });
   });
   await ctx.route(/googletagmanager|google-analytics|wa\.me/, (r) => r.fulfill({ status: 204, body: '' }));
+  await stubTurnstile(ctx);
   await ctx.route(/\/rest\/v1\/rpc\/offer_from_prices/, (r) => r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([{ slug: 'qa-autumn-stay', base_price: 400, offer_price: 340 }]) }));
   await ctx.route(/\/rest\/v1\/rpc\/(room_from_prices|site_room_types)/, (r) => r.fulfill({ status: 200, contentType: 'application/json', body: '[]' }));
   await ctx.route(/\/rest\/v1\/rpc\/quote_stay/, (r) => r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(quote ? quote(r.request().postDataJSON()) : { ok: true, prices: false, instant: false, reason: 'instant_off' }) }));

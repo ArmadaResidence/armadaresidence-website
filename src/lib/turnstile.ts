@@ -1,5 +1,5 @@
 /**
- * Cloudflare Turnstile for the public forms (Ahmed, 4 Nov 2026 — content/turnstile.json). Off by default: without the
+ * Cloudflare Turnstile for the public forms (Ahmed, 4 Nov 2026 — content/turnstile.json). Off when the setting is: without the
  * <meta name="armada-turnstile"> that Base.astro writes only when the setting is on and a site key exists, every call
  * answers null at once and nothing is loaded (no request to Cloudflare).
  * On: the script loads on the first submit (render=explicit), a widget is rendered just before the form's submit button

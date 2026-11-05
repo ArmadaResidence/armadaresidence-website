@@ -183,7 +183,7 @@ const clientData = {
           headers['Authorization'] = `Bearer ${data.anonKey}`;
           headers['apikey'] = data.anonKey;
         }
-        // Cloudflare Turnstile (off until its keys exist — src/lib/turnstile.ts)
+        // Cloudflare Turnstile (content/turnstile.json — src/lib/turnstile.ts)
         const ts = await turnstileToken(form);
         const res = await fetch(data.endpoint, {
           method: 'POST',

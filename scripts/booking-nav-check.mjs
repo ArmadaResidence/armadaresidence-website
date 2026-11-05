@@ -21,6 +21,7 @@
 import { readFileSync } from 'node:fs';
 import { chromium } from 'playwright';
 import { addDays, riyadhToday } from './datepicker-helpers.mjs';
+import { stubTurnstile } from './turnstile-stub.mjs';
 
 const BASE = (process.argv[2] || process.env.BASE_URL || 'http://127.0.0.1:4330').replace(/\/$/, '');
 // the GitHub Pages project site serves under a sub-path; its links carry it
@@ -52,6 +53,7 @@ async function newContext(vp, lang) {
   await ctx.route('**/functions/v1/**', (r) => r.fulfill({ status: 500, contentType: 'application/json', body: '{"ok":false}' }));
   await ctx.route('https://wa.me/**', (r) => r.fulfill({ status: 200, contentType: 'text/html', body: '<title>wa</title>' }));
   await ctx.route(/googletagmanager\.com|google-analytics\.com/, (r) => r.fulfill({ status: 200, contentType: 'application/javascript', body: '' }));
+  await stubTurnstile(ctx);
   return ctx;
 }
 

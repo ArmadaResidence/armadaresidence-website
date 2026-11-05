@@ -163,7 +163,7 @@ async function join(req: Request, body: Record<string, unknown>, test: boolean):
   if (ip && (!test || limits === 'ip') && (await limited((test ? 'test:' : '') + (await sha(`club-ip:${ip}`)), IP_LIMIT, IP_WINDOW_SECONDS))) {
     return json(req, 429, { ok: false, error: 'rate_limited' });
   }
-  // Cloudflare Turnstile (content/turnstile.json — off until its keys exist; test mode skips it)
+  // Cloudflare Turnstile (content/turnstile.json; test mode skips it)
   if (!test) {
     const ts = await verifyTurnstile(body.turnstile_token, ip, { enabled: Boolean(content.turnstile?.enabled), secret: Deno.env.get('TURNSTILE_SECRET_KEY') });
     if (!ts.ok) return json(req, 403, { ok: false, error: 'challenge' });

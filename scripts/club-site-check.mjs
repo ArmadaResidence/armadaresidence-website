@@ -26,6 +26,7 @@ import { existsSync, mkdirSync, readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { join } from 'node:path';
 import { chromium } from 'playwright';
+import { noteTurnstile, stubTurnstile, turnstileProblem } from './turnstile-stub.mjs';
 
 const BASE = (process.argv.slice(2).find((a) => !a.startsWith('--')) || process.env.BASE_URL || 'http://127.0.0.1:4330').replace(/\/$/, '');
 const PRE = new URL(BASE).pathname.replace(/\/$/, '');
@@ -133,12 +134,14 @@ async function context(form, theme) {
   }, theme);
   const state = { posts: [], reply: { status: 200, body: { ok: true } } };
   await ctx.route(/googletagmanager|google-analytics/, (r) => r.abort());
+  await stubTurnstile(ctx);
   await ctx.route('https://wa.me/**', (r) => r.fulfill({ status: 200, contentType: 'text/html', body: '<title>wa</title>' }));
   await ctx.route('https://linktr.ee/**', (r) => r.fulfill({ status: 200, contentType: 'text/html', body: '<title>follow</title>' }));
   await ctx.route(/\/rest\/v1\//, (r) => r.fulfill({ status: 200, contentType: 'application/json', body: '[]' }));
   await ctx.route(/\/functions\/v1\/club/, async (r) => {
     if (r.request().method() === 'OPTIONS') return r.fulfill({ status: 204, headers: { 'access-control-allow-origin': '*', 'access-control-allow-headers': '*' } });
     state.posts.push(JSON.parse(r.request().postData() || '{}'));
+    if (state.posts.at(-1).action === 'join') noteTurnstile(state.posts.at(-1)); // only the sign-up is verified (unsubscribe is a signed link)
     return r.fulfill({ status: state.reply.status, contentType: 'application/json', headers: { 'access-control-allow-origin': '*' }, body: JSON.stringify(state.reply.body) });
   });
   // a local build has no PUBLIC_BOOKING_ENDPOINT: the pages get a stub origin (the routes above catch it)
@@ -434,6 +437,7 @@ try {
 } finally {
   await browser.close();
 }
+check(!turnstileProblem(), 'Turnstile', turnstileProblem() ?? '');
 
 if (fails.length) {
   console.log(`\nclub-site-check: ${fails.length} failure(s) of ${checks}`);

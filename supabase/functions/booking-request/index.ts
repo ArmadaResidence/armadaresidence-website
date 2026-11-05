@@ -726,7 +726,7 @@ Deno.serve(async (req) => {
   if (token && payload.preview === 'wa-log') return previewWaLog(req, payload);
   if (limitApplies(req, token, 'ip') && (await rateLimited(req, Boolean(token)))) return json(req, 429, { ok: false, error: 'too many requests' });
 
-  // Cloudflare Turnstile (content/turnstile.json — off until its keys exist; test mode skips it)
+  // Cloudflare Turnstile (content/turnstile.json; test mode skips it)
   if (!token) {
     const ts = await verifyTurnstile((payload as { turnstile_token?: unknown }).turnstile_token, platformClientIp(req), { enabled: Boolean(content.turnstile?.enabled), secret: Deno.env.get('TURNSTILE_SECRET_KEY') });
     if (!ts.ok) return json(req, 403, { ok: false, error: 'challenge' });

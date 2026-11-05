@@ -24,6 +24,7 @@ import examples from 'libphonenumber-js/mobile/examples';
 import { chromium } from 'playwright';
 import { validatePartnerContact } from '../supabase/functions/booking-request/rules.ts';
 import { addDays, pickRange, press, riyadhToday } from './datepicker-helpers.mjs';
+import { noteTurnstile, stubTurnstile, turnstileProblem } from './turnstile-stub.mjs';
 
 const BASE = (process.argv.slice(2).find((a) => !a.startsWith('--')) || process.env.BASE_URL || 'http://127.0.0.1:4330').replace(/\/$/, '');
 console.log(`partners-form-check: ${BASE}`);
@@ -83,6 +84,7 @@ async function newContext(vp, theme = 'light') {
     if (r.request().method() === 'OPTIONS') return r.fulfill({ status: 204, headers: cors });
     try {
       posts.push(JSON.parse(r.request().postData() || '{}'));
+      noteTurnstile(posts.at(-1));
     } catch {
       posts.push({});
     }
@@ -98,6 +100,7 @@ async function newContext(vp, theme = 'light') {
   });
   await ctx.route('https://wa.me/**', (r) => r.fulfill({ status: 200, contentType: 'text/html', body: '<title>wa</title>' }));
   await ctx.route(/googletagmanager|google-analytics/, (r) => r.abort());
+  await stubTurnstile(ctx);
   return { ctx, posts };
 }
 
@@ -180,7 +183,7 @@ async function selectorChecks(page, tag, c, posts, { quick = false } = {}) {
   page.on('request', (r) => {
     const u = r.url();
     if (u.includes('/flags/')) flagRequests.push(u);
-    else if (!u.startsWith(origin) && !/^(data|blob):/.test(u) && !u.startsWith('https://stub.invalid') && !/googletagmanager|google-analytics/.test(u)) foreign.push(u);
+    else if (!u.startsWith(origin) && !/^(data|blob):/.test(u) && !u.startsWith('https://stub.invalid') && !/googletagmanager|google-analytics|challenges\.cloudflare\.com\/turnstile\//.test(u)) foreign.push(u);
   });
   await page.waitForTimeout(300);
 
@@ -499,6 +502,7 @@ for (const c of CASES) {
   await ctx.close();
 }
 await browser.close();
+check(!turnstileProblem(), `Turnstile: ${turnstileProblem()}`);
 
 console.log(`${checks} checks, ${fails.length} failed`);
 for (const f of fails) console.log(`  ✗ ${f}`);

@@ -347,7 +347,7 @@ export function initEnquiry(): void {
     }
     const body = payload() as Record<string, unknown>;
     try {
-      // Cloudflare Turnstile (off until its keys exist — ./turnstile.ts)
+      // Cloudflare Turnstile (content/turnstile.json — ./turnstile.ts)
       const ts = await turnstileToken(form!, btn);
       if (ts !== null) body.turnstile_token = ts;
       const r = await fetch(CFG.endpoint, { method: 'POST', headers, body: JSON.stringify(body) });

@@ -1,6 +1,6 @@
 // Cloudflare Turnstile (4 Nov 2026 — content/turnstile.json, supabase/functions/_shared/turnstile.ts): offline unit
-// checks of the server verdict with a fake siteverify, and of the switch — off by default, the generated content and
-// the built pages carry nothing while it is off. Node ≥ 22.18 strips the TypeScript types of the imported source.
+// checks of the server verdict with a fake siteverify, and of the switch (on since 5 Nov 2026) — the generated
+// content and the built pages follow it: the meta with the site key on the form pages while on, nothing while off. Node ≥ 22.18 strips the TypeScript types of the imported source.
 //   node scripts/turnstile-check.mjs
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
@@ -41,16 +41,25 @@ v = await verifyTurnstile('tok', null, on(fake(new Error('network down'))));
 check(v.ok && v.reason === 'unreachable', 'Cloudflare unreachable → let through (logged)', JSON.stringify(v));
 console.error = quiet;
 
-// the switch: off in the repository until the keys exist
+// the switch: on since 5 Nov 2026 with Cloudflare's site key (the secret only in Supabase, never here)
 const setting = JSON.parse(readFileSync('content/turnstile.json', 'utf8'));
-check(setting.enabled === false, 'content/turnstile.json is off (switched on only once Cloudflare\'s keys exist)', JSON.stringify(setting));
+const isOn = setting.enabled === true && !!setting.site_key;
+check(typeof setting.enabled === 'boolean', 'content/turnstile.json: enabled is true or false', JSON.stringify(setting));
+check(!setting.enabled || /^0x4[A-Za-z0-9_-]{18,}$/.test(String(setting.site_key ?? '')), 'enabled → a Cloudflare site key (0x4…)', String(setting.site_key));
+check(!Object.keys(setting).some((k) => /secret/i.test(k)), 'no secret field in content/turnstile.json');
 const gen = 'supabase/functions/booking-request/content.generated.json';
 if (existsSync(gen)) check(JSON.parse(readFileSync(gen, 'utf8')).turnstile?.enabled === (setting.enabled && !!setting.site_key), 'the functions\' generated content follows the setting');
-// a built site (when dist/ exists): no Turnstile meta while off
-if (existsSync('dist/index.html') && !(setting.enabled && setting.site_key)) {
-  const pages = ['index.html', 'booking/index.html', 'club/index.html', 'careers/index.html', 'partners/enquiry/index.html'].filter((p) => existsSync(join('dist', p)));
-  const hit = pages.filter((p) => /name="armada-turnstile"/.test(readFileSync(join('dist', p), 'utf8')));
-  check(hit.length === 0, 'while off, no page carries the Turnstile meta', hit.join(', '));
+// a built site (when dist/ exists): the meta follows the switch
+if (existsSync('dist/index.html')) {
+  const pages = ['index.html', 'booking/index.html', 'club/index.html', 'careers/index.html', 'partners/enquiry/index.html', 'en/booking/index.html', 'en/club/index.html', 'en/careers/index.html', 'en/partners/enquiry/index.html'].filter((p) => existsSync(join('dist', p)));
+  const metaOf = (p) => /<meta name="armada-turnstile" content="([^"]*)"/.exec(readFileSync(join('dist', p), 'utf8'))?.[1] ?? null;
+  if (isOn) {
+    const wrong = pages.filter((p) => metaOf(p) !== setting.site_key);
+    check(pages.length >= 5 && wrong.length === 0, 'while on, every form page carries the Turnstile meta with the site key', wrong.join(', '));
+  } else {
+    const hit = pages.filter((p) => metaOf(p) !== null);
+    check(hit.length === 0, 'while off, no page carries the Turnstile meta', hit.join(', '));
+  }
 }
 
 if (fails.length) {
