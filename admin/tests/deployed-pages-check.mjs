@@ -40,7 +40,8 @@ const PAGES = [
   // «النظرة العامة» / «التقارير» (4 Nov 2026): the four cards with their numbers, the donuts; the five report sections
   { path: 'overview', label: 'النظرة العامة', ready: async (page) => (await page.locator('[data-card] .num').count()) >= 3 && (await page.locator('[data-donut]').count()) >= 1 && (await page.locator('[data-chart="forward"] [data-mark]').count()) > 0 },
   { path: 'reports', label: 'التقارير', ready: async (page) => (await page.locator('[data-section]').count()) === 5 && (await page.locator('[data-section="performance"] [data-kpi="pct"]').count()) === 1 },
-  { path: 'bookings', label: 'الحجوزات', ready: async (page) => (await page.locator('#f-branch').count()) === 1 && ((await page.locator('table').count()) > 0 || (await page.getByText('لا حجوزات تطابق الفلتر.').count()) > 0) },
+  // the list (cards, one per booking — 5 Nov 2026: the check knew only a table or the empty state) or the empty state
+  { path: 'bookings', label: 'الحجوزات', ready: async (page) => (await page.locator('#f-branch').count()) === 1 && ((await page.locator('[data-ref]').count()) > 0 || (await page.locator('table').count()) > 0 || (await page.getByText('لا حجوزات تطابق الفلتر.').count()) > 0) },
   { path: 'rates', label: 'الأسعار', ready: async (page) => (await page.locator('.grid-cal').count()) === 1 && (await page.locator('[data-action="base-rate"]').count()) > 0 },
   { path: 'inventory', label: 'المخزون', ready: async (page) => (await page.locator('.grid-cal').count()) === 1 && (await page.locator('.grid-cal [aria-label]').count()) > 0 },
   { path: 'rooms', label: 'الغرف', ready: async (page) => (await page.locator('[data-bookable]').count()) >= 12 },
