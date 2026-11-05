@@ -1272,7 +1272,8 @@ checks.
   aria-hidden); the phone stays its own link above the stretch and still dials. Hover and focus act on the whole card;
   the focus ring is a midnight + porcelain band round the card. To keep the pane the stretch's containing block, the
   media layer sits at z-index -1 inside the isolated pane and the shrink shift moves the body's children and the
-  name's text instead of the body.
+  name's text instead of the body. The pane's own background is `--brand-midnight` in both themes (it was
+  `--color-midnight`, porcelain in dark: hidden under the media layer, but axe read it once the layer sat at z-index -1).
 - **Heroes over a real photo or video:** the pattern layer and the flat 60 % tint are removed there (they stay on the
   placeholder poster); one directional scrim instead — 90 % Armada Midnight from the start side (right in Arabic, left
   in English) to just past the text column, fading to 22 % on the far side; bottom-up on phones. It uses
@@ -1285,4 +1286,22 @@ checks.
 - **Café number (read-only check):** with «مطعم ومقهى أرمادا ريزيدنس» published (its phone / WhatsApp = the café line,
   extension 333) a fixture build passes qa.py — the line appears only on /airport-road/, /dining/, /dining/<venue>/ and
   /menu/, which `cafe_allowed` already permits (since 2 Nov 2026); no rule change.
+
+## 2026-11-05 — Existing photos into other slots: «اختيار صورة موجودة» (Ahmed, 5 Nov 2026)
+
+- Every photo slot of «الصور» (each single slot and each gallery; not the hero video) and of «المدونة» (the article's
+  cover, its text photos — also from «إدراج صورة») offers «اختيار صورة موجودة»: a dialog of every ready, not archived
+  photo the user may view (newest first; search by description, file name or page; a photo already in this page greyed
+  out). «استخدام هذه الصورة» copies it into the slot exactly as an upload of the same file: `public.media_begin_copy`
+  (edit on the target, view on the source, both under the branch scope; one audit batch) writes a pending row with the
+  source's file name, type, size, sha256, dimensions, focal point and BOTH descriptions, at new object paths; the
+  browser copies the stored original (full size) and the two dashboard previews inside the private bucket (the existing
+  storage policies: read the source, write only one's own pending paths); `media_finish_upload` makes it ready (the
+  cover hand-over / archive as for an upload). The source row and files are never changed. The copy reaches the site at
+  «نشر» like any photo. A choice is not an edit: the dialog closes at once on «إلغاء» (no unsaved-changes prompt).
+- Migration `20261105100000_media_copy` (`internal.media_copy_insert` + `public.media_begin_copy`). Tests on the preview
+  branch `media-copy-5nov`: `supabase/tests/media-copy.sql` 30 / 30 (+ media 84, gallery-partners 31, blog 64 unchanged),
+  `admin/tests/media-check.mjs` 100 / 100 with the new section (a partners cover, the byte-for-byte original, both
+  alts, the source untouched, a duplicate refused, a gallery copy at the end, the article cover and a text photo
+  preselected in «إدراج صورة», no button for the view level), `blog-check` 35 / 35.
 

@@ -30,6 +30,7 @@ import { CancelButton, Confirm, DirtyScope, Empty, ErrorBox, Field, Loading, Mod
 import LabelPair from '../components/LabelPair';
 import DateField from '../components/DateField';
 import RichEditor, { type RichEditorHandle } from '../components/RichEditor';
+import ExistingPhotoPicker from '../components/ExistingPhotoPicker';
 import { usePageCrumbs } from '../components/Shell';
 import taif from '../../../content/taif-guide.json';
 
@@ -120,6 +121,11 @@ function Editor({ id }: { id: string | null }) {
   const editable = api.canEdit(me, 'blog');
   const publisher = api.canPublish(me, 'blog');
   const seesMedia = api.canView(me, 'media');
+  // «اختيار صورة موجودة» (5 Nov 2026): copying a photo into the article's target needs «الصور» edit
+  const editsMedia = api.canEdit(me, 'media');
+  const [existing, setExisting] = useState<'cover' | 'gallery' | null>(null);
+  // after a copy into the text photos: the new photo, preselected when the insert dialog reopens
+  const [justAdded, setJustAdded] = useState<string | null>(null);
   const [article, setArticle] = useState<Article | null>(null);
   const [all, setAll] = useState<Article[]>([]);
   const [f, setF] = useState<ArticleFields>(blankArticle());
@@ -173,6 +179,13 @@ function Editor({ id }: { id: string | null }) {
       setLoaded(true);
     }
   }, [id, seesMedia]);
+  // the article's photos alone (a copy must not reload — and reset — the form being edited)
+  const reloadPhotos = useCallback(async () => {
+    if (!article || !seesMedia) return;
+    const items = articlePhotos(await api.mediaItems('blog', article.slug).catch(() => [] as MediaItem[]));
+    setPhotos(items);
+    setUrls(await previewUrls(items).catch(() => ({})));
+  }, [article, seesMedia]);
   useEffect(() => {
     void load();
     api.roomTypes().then(setRooms).catch(() => setRooms([]));
@@ -425,6 +438,12 @@ function Editor({ id }: { id: string | null }) {
               <LabelPair kind="alt" ar={f.cover_alt_ar} en={f.cover_alt_en} onChange={(a, e) => setF((x) => ({ ...x, cover_alt_ar: a, cover_alt_en: e }))}
                 ids={{ ar: 'b-cover-alt-ar', en: 'b-cover-alt-en' }} labels={{ ar: 'وصف الغلاف بالعربية', en: 'وصف الغلاف بالإنجليزية' }} disabled={dis} />
             )}
+            {id && article && editsMedia && (
+              <div className="flex flex-wrap gap-2">
+                <button type="button" className="btn btn-ghost btn-sm" onClick={() => setExisting('cover')} disabled={dis} data-action="blog-existing-cover">{cover ? 'استبدال الغلاف بصورة موجودة' : 'اختيار صورة موجودة للغلاف'}</button>
+                <button type="button" className="btn btn-ghost btn-sm" onClick={() => setExisting('gallery')} disabled={dis} data-action="blog-existing-gallery">إضافة صورة موجودة إلى صور النص</button>
+              </div>
+            )}
             {id && seesMedia ? (
               <Link to={`/media?t=blog:${article?.slug ?? f.slug}`} className="link text-sm" data-action="blog-media">إدارة صور المقال في «الصور» ({photos.length})</Link>
             ) : (
@@ -490,7 +509,30 @@ function Editor({ id }: { id: string | null }) {
         onPick={(href, text) => { setLinkOpen(false); window.setTimeout(() => editor.current?.insertLink(href, text), 30); }} />
       <ImageDialog open={imageOpen} onClose={() => setImageOpen(false)} photos={photos.filter((p) => p.slot === 'gallery' || p.slot === 'cover')} urls={urls} lang={lang}
         mediaLink={id && seesMedia ? `/media?t=blog:${article?.slug ?? f.slug}` : null}
+        preselect={justAdded}
+        onExisting={id && article && editsMedia ? () => { setImageOpen(false); setExisting('gallery'); } : undefined}
         onPick={(p, caption) => { setImageOpen(false); window.setTimeout(() => editor.current?.insertBlock(figureHtml(photoDirective(p.id, caption), preview)), 30); }} />
+      {article && (
+        <ExistingPhotoPicker
+          open={existing !== null}
+          onClose={() => setExisting(null)}
+          target="blog"
+          keyName={article.slug}
+          slot={existing ?? 'cover'}
+          slotLabel={existing === 'gallery' ? 'صور نص المقال' : 'غلاف المقال'}
+          onDone={(newId) => {
+            const was = existing;
+            setExisting(null);
+            toast(was === 'gallery' ? 'أُضيفت الصورة إلى صور النص مع وصفيها؛ أدرجها من «صورة» في المحرر.' : 'صار الغلاف هذه الصورة مع وصفيها؛ يظهر على الموقع عند نشر المقال.');
+            void reloadPhotos().then(() => {
+              if (was === 'gallery') {
+                setJustAdded(newId);
+                setImageOpen(true);
+              }
+            });
+          }}
+        />
+      )}
       <PreviewDialog open={previewOpen} onClose={() => setPreviewOpen(false)} f={f} langs={langs} preview={preview} />
       <ScheduleDialog open={scheduleOpen} onClose={() => setScheduleOpen(false)} busy={busy} current={article?.state === 'scheduled' ? article.publish_at : null} onSchedule={(at) => void publish(at)} />
       <Confirm open={unpublishOpen} title="إيقاف نشر المقال" body="يختفي المقال من الموقع مع البناء التالي ويبقى هنا مسودة؛ رابطه ثابت ويعود عند نشره من جديد." confirmLabel="إيقاف النشر" danger busy={busy} onConfirm={() => void unpublish()} onClose={() => setUnpublishOpen(false)} />
@@ -553,15 +595,15 @@ function LinkDialog({ open, onClose, choices, lang, onPick }: { open: boolean; o
   );
 }
 
-function ImageDialog({ open, onClose, photos, urls, lang, mediaLink, onPick }: { open: boolean; onClose: () => void; photos: MediaItem[]; urls: Record<string, string>; lang: Lang; mediaLink: string | null; onPick: (p: MediaItem, caption: string) => void }) {
+function ImageDialog({ open, onClose, photos, urls, lang, mediaLink, onPick, onExisting, preselect }: { open: boolean; onClose: () => void; photos: MediaItem[]; urls: Record<string, string>; lang: Lang; mediaLink: string | null; onPick: (p: MediaItem, caption: string) => void; onExisting?: () => void; preselect?: string | null }) {
   const [pick, setPick] = useState<string | null>(null);
   const [caption, setCaption] = useState('');
   useEffect(() => {
     if (open) {
-      setPick(null);
+      setPick(preselect ?? null);
       setCaption('');
     }
-  }, [open]);
+  }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
   const chosen = photos.find((p) => p.id === pick);
   return (
     <Modal open={open} onClose={onClose} title="إدراج صورة من «الصور»" wide>
@@ -576,6 +618,11 @@ function ImageDialog({ open, onClose, photos, urls, lang, mediaLink, onPick }: {
                 <span className="text-xs truncate">{(lang === 'ar' ? p.alt_ar : p.alt_en) || 'بلا نص بديل'}</span>
               </button>
             ))}
+          </div>
+        )}
+        {onExisting && (
+          <div>
+            <button type="button" className="btn btn-ghost btn-sm" onClick={onExisting} data-action="image-existing">اختيار صورة موجودة في «الصور»</button>
           </div>
         )}
         {chosen && (!chosen.alt_ar.trim() || !chosen.alt_en.trim()) && <p className="text-sm text-error">هذه الصورة بلا نص بديل كامل؛ أكمله في «الصور» قبل النشر.</p>}

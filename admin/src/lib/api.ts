@@ -758,6 +758,31 @@ export async function mediaSignedUrls(paths: string[]): Promise<Record<string, s
   return Object.fromEntries((data ?? []).flatMap((x) => (x.signedUrl && x.path ? [[x.path, x.signedUrl] as [string, string]] : [])));
 }
 export const mediaFinishUpload = (id: string) => rpcSaved('media_finish_upload', { p_id: id });
+/** «اختيار صورة موجودة» (5 Nov 2026): a pending copy of an existing photo in another slot — its new object paths and the source's */
+export interface MediaCopyBegin extends Saved {
+  id: string;
+  original_path: string;
+  thumb_path: string | null;
+  preview_path: string | null;
+  source: { id: string; original_path: string; thumb_path: string | null; preview_path: string | null };
+}
+export async function mediaBeginCopy(source: string, target: MediaTarget, key: string, slot: MediaSlot): Promise<MediaCopyBegin> {
+  const { data, error } = await supabase.rpc('media_begin_copy', { p_source: source, p_target: target, p_key: key, p_slot: slot });
+  if (error) fail(error, 'media_begin_copy');
+  return data as MediaCopyBegin;
+}
+/** a stored object copied inside the private bucket (read: media view on the source; write: the caller's pending copy) */
+export async function mediaCopyObject(from: string, to: string): Promise<void> {
+  const { error } = await supabase.storage.from('media-originals').copy(from, to);
+  if (error) fail({ message: error.message, code: /row-level|policy|unauthori/i.test(error.message) ? '42501' : undefined }, 'storage.copy');
+}
+/** the photos that can fill another slot: every ready, not archived photo the caller may view, newest first */
+export async function mediaPickable(): Promise<MediaItem[]> {
+  const { data, error } = await supabase.from('media_library').select('*').eq('upload_state', 'ready').eq('kind', 'image').neq('status', 'archived')
+    .order('created_at', { ascending: false }).limit(1000);
+  if (error) fail(error, 'media_library');
+  return (data ?? []) as MediaItem[];
+}
 export const mediaAbortUpload = (id: string) => rpcSaved('media_abort_upload', { p_id: id });
 export const mediaUpdate = (id: string, altAr: string, altEn: string, fx: number, fy: number, inGallery?: boolean) =>
   rpcSaved('media_update', { p_id: id, p_alt_ar: altAr, p_alt_en: altEn, p_focal_x: fx, p_focal_y: fy, ...(inGallery === undefined ? {} : { p_in_gallery: inGallery }) });

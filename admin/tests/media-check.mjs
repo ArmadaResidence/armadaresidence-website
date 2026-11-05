@@ -17,12 +17,16 @@
 // 2 Nov 2026: «إظهار في المعرض» (on by default, dirty when unticked, the tile chip, carried by «نشر» to the live
 // snapshot and the build manifest, not offered for a place cover); «صفحات الشركاء» (the 13 slots after the places, a
 // cover only at the slot's own ratio — 4:5 for the Shafa Road card — no sharing crop, nothing required, published).
+// 5 Nov 2026: «اختيار صورة موجودة» — a published photo copied into another page's cover (the stored original byte for
+// byte at a new path, both alts, the source untouched), the copy already in a page shown as unavailable, a gallery copy
+// appended, the article's cover and text photos from «المدونة», no button for the view level.
 // Before it runs it deletes the media rows and jobs of the branch (test data only — the branch is a throwaway copy).
 import { chromium } from 'playwright';
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { spawnSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import sharp from '../../node_modules/sharp/dist/index.mjs';
 import { APP_PATH, firstOf, handleBackupCodes, passCode, routeLoginCode } from './code-login.mjs';
 
@@ -416,6 +420,90 @@ try {
   const man3 = await rpc('media_site_manifest', {});
   check(man3.items.some((x) => x.target === 'partners' && x.key === 'index-shafa-road' && x.slot === 'cover' && x.alt_en === 'The Shafa Road front in the evening'), 'partners slot: published into the build manifest');
 
+  // ── «اختيار صورة موجودة» (5 Nov 2026): a photo already in the dashboard fills another slot without an upload ──
+  {
+    const bytesOf = async (path) => {
+      const r = await fetch(`${URL_}/storage/v1/object/media-originals/${path.split('/').map(encodeURIComponent).join('/')}`, { headers: { apikey: SERVICE, Authorization: `Bearer ${SERVICE}` } });
+      return r.ok ? Buffer.from(await r.arrayBuffer()) : null;
+    };
+    const sha = (b) => (b ? createHash('sha256').update(b).digest('hex') : null);
+    const before = (await rest(`media_items?id=eq.${partner.id}&select=*`))[0];
+    await target(page, 'partners:index-final');
+    const btn = page.locator('[data-slot="cover"] [data-action="choose-existing"]');
+    check(await btn.isVisible(), 'existing: every photo slot offers «اختيار صورة موجودة»');
+    await btn.click();
+    await page.waitForSelector('[data-existing-picker="partners:index-final:cover"]');
+    await page.waitForSelector('[data-existing]');
+    await page.fill('[data-existing-search]', 'واجهة فرع طريق الشفا');
+    await page.waitForTimeout(150);
+    const listed = await page.locator('[data-existing]').evaluateAll((els) => els.map((e) => e.getAttribute('data-existing')));
+    check(listed.includes(partner.id) && listed.length <= 3, 'existing: the search finds the photo by its description', listed.join());
+    await page.click(`[data-existing="${partner.id}"]`);
+    check((await page.locator('[data-existing-chosen]').textContent()).includes('qa-partner.jpg'), 'existing: the chosen photo is named (file and page)');
+    await page.click('[data-action="existing-use"]');
+    await page.waitForSelector('[data-existing-picker]', { state: 'detached', timeout: 60000 });
+    await page.waitForSelector('[data-slot="cover"] [data-open]');
+    const copy = (await rest(`media_items?target=eq.partners&target_key=eq.index-final&status=neq.archived&select=*`))[0];
+    check(copy && copy.upload_state === 'ready' && copy.status === 'draft' && copy.slot === 'cover' && copy.id !== partner.id, 'existing: a ready draft in the new slot', JSON.stringify(copy).slice(0, 160));
+    check(copy && copy.sha256 === before.sha256 && copy.bytes === before.bytes && copy.file_name === before.file_name && copy.width === before.width && copy.height === before.height,
+      'existing: the copy is the same file (sha256, size, name, dimensions)');
+    check(copy && copy.alt_ar === before.alt_ar && copy.alt_en === before.alt_en, 'existing: both descriptions copied');
+    check(copy && copy.original_path !== before.original_path && copy.original_path.startsWith('partners/index-final/'), 'existing: stored at its own path', copy?.original_path);
+    const srcB = await bytesOf(before.original_path);
+    const dstB = copy ? await bytesOf(copy.original_path) : null;
+    check(!!dstB && sha(dstB) === sha(srcB) && sha(dstB) === before.sha256, 'existing: the stored original copied byte for byte (full size, not a preview)');
+    check(!!copy?.thumb_path && !!(await bytesOf(copy.thumb_path)), 'existing: the dashboard previews copied too');
+    const after = (await rest(`media_items?id=eq.${partner.id}&select=*`))[0];
+    check(['status', 'slot', 'original_path', 'thumb_path', 'alt_ar', 'alt_en', 'updated_at', 'target_key'].every((k) => JSON.stringify(after[k]) === JSON.stringify(before[k])) && JSON.stringify(after.live) === JSON.stringify(before.live) && !!srcB,
+      'existing: the source is untouched (row and file)');
+    // the same photo again: shown as already here
+    await btn.click();
+    await page.waitForSelector(`[data-existing="${partner.id}"]`);
+    check(await page.locator(`[data-existing="${partner.id}"]`).isDisabled(), 'existing: a photo already in this page cannot be chosen again');
+    await shot(page, 'existing-picker');
+    await page.click('[data-existing-picker] [data-action="dialog-cancel"]');
+    await page.waitForSelector('[data-existing-picker]', { state: 'detached' });
+    // a gallery: the copy goes to the end of the order
+    await target(page, 'room:airport-road/twin-room');
+    const galBefore = await rest(`media_items?target=eq.room&target_key=eq.airport-road/twin-room&slot=eq.gallery&status=neq.archived&select=id,sort&order=sort`);
+    await page.click('[data-slot="gallery"] [data-action="choose-existing"]');
+    await page.waitForSelector(`[data-existing="${partner.id}"]`);
+    await page.click(`[data-existing="${partner.id}"]`);
+    await page.click('[data-action="existing-use"]');
+    await page.waitForSelector('[data-existing-picker]', { state: 'detached', timeout: 60000 });
+    const galAfter = await rest(`media_items?target=eq.room&target_key=eq.airport-road/twin-room&slot=eq.gallery&status=neq.archived&select=id,sort,sha256&order=sort`);
+    check(galAfter.length === galBefore.length + 1 && galAfter.at(-1).sha256 === before.sha256, 'existing: a gallery copy is added at the end of the order');
+    // «المدونة»: the article's cover and its text photos
+    const art = (await rest(`articles?slug=eq.where-to-stay-in-taif&select=id`))[0];
+    await page.goto(`${BASE}/blog/${art.id}`);
+    await page.waitForSelector('[data-action="blog-existing-cover"]', { timeout: 20000 });
+    await page.click('[data-action="blog-existing-cover"]');
+    await page.waitForSelector(`[data-existing-picker="blog:where-to-stay-in-taif:cover"] [data-existing="${partner.id}"]`);
+    await page.click(`[data-existing="${partner.id}"]`);
+    await page.click('[data-action="existing-use"]');
+    await page.waitForSelector('[data-existing-picker]', { state: 'detached', timeout: 60000 });
+    const bcover = (await rest(`media_items?target=eq.blog&target_key=eq.where-to-stay-in-taif&slot=eq.cover&status=neq.archived&select=*`))[0];
+    check(bcover && bcover.sha256 === before.sha256 && bcover.alt_en === before.alt_en && bcover.upload_state === 'ready', 'existing (blog): the article cover from an existing photo, with its descriptions');
+    await page.waitForSelector('[data-cover] img', { timeout: 15000 }).catch(() => {});
+    check(await page.locator('[data-cover] img').isVisible(), 'existing (blog): the editor shows the new cover');
+    await page.click('[data-action="blog-existing-gallery"]');
+    await page.waitForSelector('[data-existing-picker="blog:where-to-stay-in-taif:gallery"] [data-existing]');
+    check(await page.locator(`[data-existing="${partner.id}"]`).isDisabled(), 'existing (blog): the cover photo is already in this article');
+    const other = await page.locator('[data-existing]:not([disabled])').first().getAttribute('data-existing');
+    await page.click(`[data-existing="${other}"]`);
+    await page.click('[data-action="existing-use"]');
+    await page.waitForSelector('[data-image-dialog]', { timeout: 60000 });
+    await page.waitForTimeout(300);
+    const pre = await page.locator('[data-image-dialog] [aria-checked="true"]').getAttribute('data-photo').catch(() => null);
+    const bgal = (await rest(`media_items?target=eq.blog&target_key=eq.where-to-stay-in-taif&slot=eq.gallery&status=neq.archived&select=id&order=created_at.desc`))[0];
+    check(!!bgal && pre === bgal.id, 'existing (blog): a text photo is added and preselected in «إدراج صورة»', `${pre} / ${bgal?.id}`);
+    check(await page.locator('[data-image-dialog] [data-action="image-existing"]').isVisible(), 'existing (blog): «إدراج صورة» offers «اختيار صورة موجودة»');
+    await page.click('[data-image-dialog] [data-action="dialog-cancel"]');
+    await page.goto(`${BASE}/media`);
+    await page.waitForSelector('[data-current]');
+  }
+
+
   // ── the hero: video + poster ──
   await target(page, 'home:home');
   await page.setInputFiles('[data-file-input="hero-video"]', F.video);
@@ -472,6 +560,7 @@ try {
   await m.page.reload();
   await m.page.waitForSelector('[data-current]');
   check(await m.page.locator('[data-file-input]').count() === 0, 'view level: no upload');
+  check(await m.page.locator('[data-action="choose-existing"]').count() === 0, 'view level: no «اختيار صورة موجودة»');
   await reveal(m.page, 'room:airport-road/twin-room');
   await m.page.click('[data-target="room:airport-road/twin-room"]');
   await m.page.waitForSelector('[data-slot="cover"] [data-open]');

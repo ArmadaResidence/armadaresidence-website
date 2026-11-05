@@ -323,6 +323,24 @@ export async function uploadFile(file: File, target: MediaTarget, key: string, s
   }
 }
 
+/** «اختيار صورة موجودة» (5 Nov 2026): fill a slot with a photo already in «الصور», exactly as an upload of the same file —
+ *  a pending row (the source's file, size, sha256, focal point and both alt texts), the stored original and previews copied
+ *  inside the bucket at full size, then media_finish_upload; the source is never touched. Resolves with the new item id. */
+export async function copyExisting(source: MediaItem, target: MediaTarget, key: string, slot: MediaSlot): Promise<string> {
+  if (source.kind !== 'image') throw new UploadRefused('هذه الخانة للصور فقط.');
+  const begin = await api.mediaBeginCopy(source.id, target, key, slot);
+  try {
+    if (begin.thumb_path && begin.source.thumb_path) await api.mediaCopyObject(begin.source.thumb_path, begin.thumb_path);
+    if (begin.preview_path && begin.source.preview_path) await api.mediaCopyObject(begin.source.preview_path, begin.preview_path);
+    await api.mediaCopyObject(begin.source.original_path, begin.original_path);
+    await api.mediaFinishUpload(begin.id);
+  } catch (e) {
+    await api.mediaAbortUpload(begin.id).catch(() => {});
+    throw e instanceof UploadRefused || (e as Error).message?.match(/[؀-ۿ]/) ? e : new UploadRefused('تعذّر نسخ الصورة؛ تحقق من الشبكة وأعد المحاولة.');
+  }
+  return begin.id;
+}
+
 /** signed preview URLs of the items (thumb for the grid, preview for the dialog) */
 export async function previewUrls(items: MediaItem[]): Promise<Record<string, string>> {
   return api.mediaSignedUrls(items.flatMap((i) => [i.thumb_path ?? '', i.preview_path ?? '']));

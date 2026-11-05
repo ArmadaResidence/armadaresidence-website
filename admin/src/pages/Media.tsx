@@ -28,6 +28,7 @@ import {
 import { CancelButton, Empty, ErrorBox, Loading, Modal, Spinner, useToast } from '../components/ui';
 import MediaItemDialog from '../components/MediaItemDialog';
 import TargetPicker, { type PickerGroup, type PickerItem } from '../components/TargetPicker';
+import ExistingPhotoPicker from '../components/ExistingPhotoPicker';
 
 interface Upload {
   id: number;
@@ -64,6 +65,8 @@ export default function Media() {
   const [jobs, setJobs] = useState<MediaJob[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [open, setOpen] = useState<MediaItem | null>(null);
+  // «اختيار صورة موجودة» (5 Nov 2026): the slot the picker fills
+  const [existing, setExisting] = useState<MediaSlot | null>(null);
   const [uploads, setUploads] = useState<Upload[]>([]);
   const [blocked, setBlocked] = useState<{ result: MediaPublishResult; all: boolean } | null>(null);
   const [publishing, setPublishing] = useState(false);
@@ -373,7 +376,7 @@ export default function Media() {
                           ))}
                         </ol>
                       )}
-                      {editable && <Drop multiple accept={ACCEPT_IMAGES} onFiles={(f) => add(f, 'gallery')} label="اسحب الصور إلى هنا أو اخترها — يمكن عدة صور معًا" slot="gallery" />}
+                      {editable && <Drop multiple accept={ACCEPT_IMAGES} onFiles={(f) => add(f, 'gallery')} label="اسحب الصور إلى هنا أو اخترها — يمكن عدة صور معًا" slot="gallery" onExisting={() => setExisting('gallery')} />}
                     </div>
                   );
                 }
@@ -393,6 +396,7 @@ export default function Media() {
                           accept={s.slot === 'hero-video' ? ACCEPT_VIDEO : ACCEPT_IMAGES}
                           onFiles={(f) => add(f, s.slot)}
                           slot={s.slot}
+                          onExisting={s.slot === 'hero-video' ? undefined : () => setExisting(s.slot)}
                           label={it ? (s.slot === 'cover' && slotsOf(current.target).some((x) => x.slot === 'gallery') ? 'استبدال: اسحب صورة أو اخترها (تنتقل الحالية إلى المعرض)' : 'استبدال: اسحب ملفًا أو اختره (تُؤرشف الحالية)') : s.slot === 'hero-video' ? 'اسحب الفيديو إلى هنا أو اختره (MP4 أو MOV أو WebM حتى 300 ميغابايت)' : 'اسحب صورة إلى هنا أو اخترها'}
                         />
                       )}
@@ -456,6 +460,21 @@ export default function Media() {
 
       <Jobs jobs={jobs} rows={rows} publisher={publisher} onRetry={retry} />
 
+      {current && (
+        <ExistingPhotoPicker
+          open={existing !== null}
+          onClose={() => setExisting(null)}
+          target={current.target}
+          keyName={current.key}
+          slot={existing ?? 'cover'}
+          slotLabel={existing ? `${targetLabel(current)} · ${SLOT_LABELS[existing]}` : ''}
+          onDone={() => {
+            setExisting(null);
+            toast('أُضيفت الصورة إلى هذه الخانة مع وصفيها؛ اضغط «نشر» لتظهر على الموقع.');
+            void reload();
+          }}
+        />
+      )}
       <MediaItemDialog item={open && open.status !== 'archived' ? open : null} src={open ? urls[open.preview_path ?? ''] ?? urls[open.thumb_path ?? ''] ?? null : null} editable={editable} onClose={() => setOpen(null)} onChanged={() => void reload()} />
       <Modal open={!!open && open.status === 'archived'} onClose={() => setOpen(null)} title="صورة مؤرشفة">
         {open && open.status === 'archived' && (
@@ -520,7 +539,7 @@ function Tile({ item, url, n, onOpen }: { item: MediaItem; url?: string; n?: num
   );
 }
 
-function Drop({ accept, multiple, onFiles, label, slot }: { accept: string; multiple?: boolean; onFiles: (f: FileList) => void; label: string; slot: MediaSlot }) {
+function Drop({ accept, multiple, onFiles, label, slot, onExisting }: { accept: string; multiple?: boolean; onFiles: (f: FileList) => void; label: string; slot: MediaSlot; onExisting?: () => void }) {
   const input = useRef<HTMLInputElement>(null);
   const [over, setOver] = useState(false);
   return (
@@ -541,7 +560,10 @@ function Drop({ accept, multiple, onFiles, label, slot }: { accept: string; mult
       data-drop={slot}
     >
       <p className="text-sm">{label}</p>
-      <button type="button" className="btn btn-ghost btn-sm" onClick={() => input.current?.click()} data-action="choose-files">اختيار {multiple ? 'ملفات' : 'ملف'}</button>
+      <div className="flex flex-wrap justify-center gap-2">
+        <button type="button" className="btn btn-ghost btn-sm" onClick={() => input.current?.click()} data-action="choose-files">اختيار {multiple ? 'ملفات' : 'ملف'}</button>
+        {onExisting && <button type="button" className="btn btn-ghost btn-sm" onClick={onExisting} data-action="choose-existing">اختيار صورة موجودة</button>}
+      </div>
       <input
         ref={input}
         type="file"

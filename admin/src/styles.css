@@ -517,6 +517,10 @@ body {
 .picker-items { display: grid; gap: 1px; }
 @media (prefers-reduced-motion: reduce) { .picker-chevron { transition: none; } }
 .media-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(9.5rem, 1fr)); gap: 0.75rem; }
+/* «اختيار صورة موجودة» (5 Nov 2026): the dialog's grid scrolls inside the dialog; a description wraps to two lines */
+.existing-grid { max-height: min(60dvh, 34rem); overflow-y: auto; overscroll-behavior: contain; padding: 0.25rem; }
+.existing-alt { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden; line-height: 1.35; text-align: start; }
+.ed-pick:disabled { opacity: 0.45; cursor: not-allowed; }
 .media-tile { display: grid; gap: 0.25rem; align-content: start; }
 .media-tile[draggable="true"] { cursor: grab; }
 .media-tile.is-drag { opacity: 0.45; }
