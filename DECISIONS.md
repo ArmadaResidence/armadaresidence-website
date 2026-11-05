@@ -1381,3 +1381,35 @@ viewport, which aborted Astro's page transitions (the console error `booking-nav
   submit could come before the form's script had bound; the check now waits for `[data-club-form][data-bound]` and for
   the form's answer instead of a fixed 150 ms.
 
+## 2026-11-05 — Hero video: quality and a phone loop (Ahmed, 5 Nov 2026)
+
+- **Where the quality dropped:** not the upload (the original arrived intact: HEVC 1920 × 802, a 2.39:1 frame, 120 fps,
+  3.8 Mbit/s, 69 s) and not the scrim (it darkens the text side by design); our encode: it cut the frame to 16:9 —
+  1426 × 802, a quarter of the width thrown away — then squeezed 20 s into 4 MB (1.45 Mbit/s H.264, 1.27 VP9), and the
+  browser stretched 1426 px over the screen; and the poster was a different still (1672 px, with a slow zoom), so the
+  switch to the video jumped. SSIM against the original: served 0.974 (on its smaller crop) → new 0.988 (VP9) / 0.981
+  (H.264) on the whole frame; `screenshots/hero-compare-dark.png` / `-full.png` (frame 9 s, the darkest stretch).
+- **Now** (photos-engine HERO v3): desktop = the source's own frame (no crop when 16:9 or wider), ≤ 1920, two-pass VP9 +
+  H.264 (tune film, aq-mode 3 — no blocks or banding in the night areas) ≤ 8 MB: 7.1 MB WebM / 7.2 MB MP4; phones = a
+  4:5 crop around the focal point (642 × 802) ≤ 3 MB: 2.7 MB each; the posters are the loops' first frames (1920 px
+  desktop), at the same object-position, no zoom while a video exists — the published still stays the sharing image.
+  The page: from 768 px the desktop loop (WebM first), below it the phone loop (MP4 first), after `load` + an idle
+  moment, muted + playsinline; reduced motion, Save-Data and a phone on a slow connection keep the poster.
+- **Measured:** Lighthouse mobile on the home page, the same machine, 5 runs each with the real video: performance 83 →
+  82 (noise), LCP 3.68 → 3.83 s (the poster stays the LCP element), TBT 142 → 137 ms, a11y / best practices / SEO 100.
+  `hero-video-check` 27 / 27 (desktop, Android Chrome emulation and iPhone WebKit play; reduced motion, Save-Data, 3G →
+  poster only; the video requested after `load`), the hero text AA over the new poster 52 / 52, `media-pipeline-check`
+  on the generated sample.
+
+## 2026-11-05 — The public site is light by default (Ahmed, 5 Nov 2026)
+
+- Light for everyone, whatever the device's system setting; dark only when chosen with the header toggle (localStorage
+  `armada-theme`, try / catch), remembered across pages and visits. The head script sets the theme before the first
+  paint (no flash); one `theme-color` meta follows the active theme (porcelain / midnight), the toggle updates it;
+  `color-scheme: light` on the page (dark sets its own through the `[data-theme=dark]` CSS). The dashboard is unchanged
+  (system setting + its own toggle; another origin, its own storage).
+- `scripts/theme-check.mjs` (system emulated dark, 1440 + 375, AR + EN, the legacy sections): loads light with no flash
+  (every data-theme value recorded from the start), dark by the toggle persists across a full and a client-side
+  navigation and a reload, light again persists — 48 / 48. The pixel guard and the other browser checks already set the
+  theme explicitly (localStorage), not by the system setting — no change needed.
+

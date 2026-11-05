@@ -106,16 +106,26 @@ for (const og of [twin.og_image, air.og_image, d.home?.og_image]) {
 }
 check(all.every((p) => d.lqip[`${p.base}-${p.widths.includes(800) ? 800 : p.widths[0]}.webp`]?.startsWith('data:image/webp;base64,')), 'LQIP: a 16 px WebP preview per photo');
 const h = d.home;
-check(h?.poster.widths.join() === HERO.posterWidths.join() && h.poster_mobile.widths.join() === HERO.mobileWidths.join(), 'hero: poster 16:9 at 800–2000, 4:5 at 480–1200', JSON.stringify(h && [h.poster.widths, h.poster_mobile.widths]));
-const pm = await sharp(file(`${h.poster_mobile.base}-1200.avif`)).metadata();
-const pd = await sharp(file(`${h.poster.base}-2000.avif`)).metadata();
-check(pm.width === 1200 && pm.height === 1500 && pd.width === 2000 && pd.height === 1125, 'hero: the 4:5 and 16:9 crops have their exact sizes');
-for (const ext of ['mp4', 'webm']) {
-  const v = ffprobe(file(h.video[ext]));
-  const mb = readFileSync(file(h.video[ext])).length / 1048576;
-  check(v.width === 1920 && v.height === 1080 && v.duration <= HERO.maxSeconds + 0.2 && !v.audio && mb <= HERO.maxMB, `hero video ${ext}: 1920 × 1080, cut to ${HERO.maxSeconds} s, no audio, ≤ ${HERO.maxMB} MB`, `${v.width}×${v.height} ${v.duration.toFixed(1)} s audio:${v.audio} ${mb.toFixed(2)} MB`);
+// 5 Nov 2026: with a video the posters are the loops' own first frames (desktop 1920 × 1080 from the 16:9 sample, the
+// phone 4:5 crop at 720 × 900), the desktop loops ≤ 8 MB and the phone loops ≤ 3 MB
+check(h?.poster.widths.join() === HERO.posterWidths.join() && h.poster_mobile.widths.join() === HERO.mobileWidths.join(), 'hero: posters at 800–1920 and 480–720 (the loops\' first frames)', JSON.stringify(h && [h.poster.widths, h.poster_mobile.widths]));
+const pm = await sharp(file(`${h.poster_mobile.base}-720.avif`)).metadata();
+const pd = await sharp(file(`${h.poster.base}-1920.avif`)).metadata();
+check(pm.width === 720 && pm.height === 900 && pd.width === 1920 && pd.height === 1080, 'hero: the posters have the loops\' exact sizes', `${pd.width}×${pd.height} / ${pm.width}×${pm.height}`);
+for (const [key, w, hgt, maxMB] of [['mp4', 1920, 1080, HERO.maxMB], ['webm', 1920, 1080, HERO.maxMB], ['mobile_mp4', 720, 900, HERO.mobile.maxMB], ['mobile_webm', 720, 900, HERO.mobile.maxMB]]) {
+  const v = ffprobe(file(h.video[key]));
+  const mb = readFileSync(file(h.video[key])).length / 1048576;
+  check(v.width === w && v.height === hgt && v.duration <= HERO.maxSeconds + 0.2 && !v.audio && mb <= maxMB, `hero video ${key}: ${w} × ${hgt}, cut to ${HERO.maxSeconds} s, no audio, ≤ ${maxMB} MB`, `${v.width}×${v.height} ${v.duration.toFixed(1)} s audio:${v.audio} ${mb.toFixed(2)} MB`);
 }
 check(h.video.seconds === 20, 'hero video: the 25 s source is cut to 20 s', String(h.video.seconds));
+// the poster is the loop's first frame: no jump when the video takes over (PSNR of the 1920 WebP against frame 0)
+{
+  const tmp = join(T, 'frame0.png');
+  spawnSync('ffmpeg', ['-v', 'error', '-y', '-i', file(h.video.mp4), '-frames:v', '1', tmp]);
+  const r = spawnSync('ffmpeg', ['-hide_banner', '-i', file(`${h.poster.base}-1920.webp`), '-i', tmp, '-lavfi', 'psnr', '-f', 'null', '-'], { encoding: 'utf8' });
+  const psnr = Number((r.stderr.match(/average:([\d.]+|inf)/) || [])[1]?.replace('inf', '99'));
+  check(psnr >= 30, 'hero: the desktop poster is the loop\'s first frame (PSNR ≥ 30 dB)', String(psnr));
+}
 
 // ── warm: everything from the cache ──
 const warm = build('warm');

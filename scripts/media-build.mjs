@@ -36,7 +36,7 @@ import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
 import sharp from 'sharp';
 import { decodable, ffprobe, hasTool, sha256 } from './photos-lib.mjs';
-import { lqipOf, renderHeroVideo, renderOg, renderPhoto, renderPoster, SPEC_VERSION, videoFrame } from './photos-engine.mjs';
+import { heroFrame, lqipOf, renderHeroVideo, renderOg, renderPhoto, renderPoster, renderPosterFrames, SPEC_VERSION, videoFrame } from './photos-engine.mjs';
 
 const ROOT = fileURLToPath(new URL('..', import.meta.url));
 const args = process.argv.slice(2);
@@ -287,23 +287,35 @@ for (const [k, list] of byTarget) {
       const videoItem = list.find((i) => i.slot === 'hero-video');
       const home = { alt_ar: posterItem?.alt_ar || videoItem?.alt_ar || '', alt_en: posterItem?.alt_en || videoItem?.alt_en || '' };
       if (videoItem) {
+        // the loops (desktop + the mobile 4:5) and their posters = their own first frames (5 Nov 2026: no jump from the
+        // poster to the video; the published still keeps its role for sharing — the OG image below)
         const { meta, id } = await cached('video', videoItem, 'hero', async (dir, focal) => {
           // a cached loop needs no ffmpeg; a new one does
           if (!hasTool('ffmpeg') || !hasTool('ffprobe')) throw new Error('the hero video needs ffmpeg / ffprobe on the build machine');
           const raw = await original(videoItem);
           const path = tempFile(raw, extOf(videoItem.mime));
           try {
-            const v = renderHeroVideo(path, ffprobe(path), focal, dir, { mp4: 'x.mp4', webm: 'x.webm' });
+            const v = renderHeroVideo(path, ffprobe(path), focal, dir, { mp4: 'x.mp4', webm: 'x.webm', mobileMp4: 'x-mobile.mp4', mobileWebm: 'x-mobile.webm' });
             if (v.problems.length) throw new Error(v.problems.join('; '));
-            // the first frame, in case no poster was published (the publish rules require one; a fallback only)
-            writeFileSync(join(dir, 'frame.png'), videoFrame(path));
-            return { files: ['x.mp4', 'x.webm'], seconds: Math.round(v.seconds * 10) / 10, notes: v.notes, sizes: v.sizes };
+            const p = await renderPosterFrames(heroFrame(path, v.desktop.vf), heroFrame(path, v.mobile.vf), { desktop: v.desktop.position, mobile: v.mobile.position }, dir, { poster: 'x-poster', mobile: 'x-poster-m' });
+            return {
+              files: ['x.mp4', 'x.webm', 'x-mobile.mp4', 'x-mobile.webm', ...p.files], seconds: Math.round(v.seconds * 10) / 10, notes: v.notes, sizes: v.sizes,
+              size: [v.desktop.width, v.desktop.height], mobile: [v.mobile.width, v.mobile.height], poster: p.poster, poster_mobile: p.poster_mobile,
+            };
           } finally {
             rmSync(path, { force: true });
           }
         });
-        home.video = { mp4: `${PUB}/${id}.mp4`, webm: `${PUB}/${id}.webm`, seconds: meta.seconds };
+        home.video = {
+          mp4: `${PUB}/${id}.mp4`, webm: `${PUB}/${id}.webm`, mobile_mp4: `${PUB}/${id}-mobile.mp4`, mobile_webm: `${PUB}/${id}-mobile.webm`,
+          seconds: meta.seconds, width: meta.size[0], height: meta.size[1], mobile_width: meta.mobile[0], mobile_height: meta.mobile[1],
+        };
+        for (const key of ['poster', 'poster_mobile']) {
+          const v = meta[key];
+          home[key] = { base: `${PUB}/${id}-poster${key === 'poster' ? '' : '-m'}`, widths: v.widths, width: v.width, height: v.height, position: v.position };
+        }
         for (const n of meta.notes || []) log(`  ! hero video: ${n}`);
+        log(`  ✓ hero loops: ${Object.entries(meta.sizes || {}).map(([n, s]) => `${n.replace(/^x/, '')} ${s.mb} MB`).join(', ')}`);
       }
       const posterSrc = posterItem || videoItem;
       if (posterSrc) {
@@ -330,13 +342,16 @@ for (const [k, list] of byTarget) {
           await renderOg(buf, focal, join(dir, 'x.og.jpg'));
           return { files: [...p.files, 'x.og.jpg'], poster: p.poster, poster_mobile: p.poster_mobile };
         });
-        for (const key of ['poster', 'poster_mobile']) {
-          const v = meta[key];
-          home[key] = { base: `${PUB}/${id}${key === 'poster' ? '' : '-m'}`, widths: v.widths, width: v.width, height: v.height, position: v.position };
+        // with a video the posters are its own first frames (above); the still is then only the sharing image
+        if (!home.video) {
+          for (const key of ['poster', 'poster_mobile']) {
+            const v = meta[key];
+            home[key] = { base: `${PUB}/${id}${key === 'poster' ? '' : '-m'}`, widths: v.widths, width: v.width, height: v.height, position: v.position };
+          }
         }
         home.og_image = `${PUB}/${id}.og.jpg`;
         data.home = home;
-        log(`  ✓ home hero: poster 16:9 ${home.poster.widths.join(' / ')} + 4:5 ${home.poster_mobile.widths.join(' / ')}${home.video ? `, loop ${home.video.seconds} s` : ''}`);
+        log(`  ✓ home hero: poster ${home.poster.widths.join(' / ')} + mobile ${home.poster_mobile.widths.join(' / ')}${home.video ? ` (the loops' first frames), loop ${home.video.seconds} s` : ''}`);
       }
     }
   } catch (e) {

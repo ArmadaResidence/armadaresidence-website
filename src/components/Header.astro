@@ -290,9 +290,11 @@ const propertiesActive = properties.some((b) => path.startsWith(b.path));
       theme.addEventListener('click', () => {
         const next = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
         document.documentElement.setAttribute('data-theme', next);
+        // the explicit choice is remembered (light is the default for everyone — Base.astro); the browser bar follows
         try {
           localStorage.setItem('armada-theme', next);
         } catch {}
+        document.querySelector('meta[data-theme-color]')?.setAttribute('content', next === 'dark' ? '#0F1F2B' : '#F3EFE7');
         sync();
       });
       sync();

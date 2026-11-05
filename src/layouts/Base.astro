@@ -90,24 +90,25 @@ const preloadFonts = locale === 'ar' ? [fontAr400] : [fontEn];
     <meta charset="utf-8" />
     {turnstileKey && <meta name="armada-turnstile" content={turnstileKey} />}
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="color-scheme" content="light dark" />
-    <meta name="theme-color" media="(prefers-color-scheme: light)" content="#F3EFE7" />
-    <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0F1F2B" />
+    <meta name="color-scheme" content="light" />
+    <meta name="theme-color" content="#F3EFE7" data-theme-color />
     <script is:inline>
-      // theme before first paint: stored choice (armada-theme) → else prefers-color-scheme (and follow its changes).
-      // `js` on <html> gates the scroll-reveal styles (no JS → everything visible). Both are re-applied after a
-      // view-transition swap, which replaces the <html> attributes with the new page's.
+      // theme before first paint (Ahmed, 5 Nov 2026): LIGHT for everyone, whatever the device's system setting; dark only
+      // when chosen with the header toggle (armada-theme in localStorage, remembered across pages and visits). The
+      // theme-color meta follows the active theme (light porcelain / dark midnight). `js` on <html> gates the
+      // scroll-reveal styles (no JS → everything visible). Re-applied after a view-transition swap, which replaces the
+      // <html> attributes with the new page's.
       (function () {
-        var m = matchMedia('(prefers-color-scheme: dark)');
         function apply() {
           var s = null;
           try { s = localStorage.getItem('armada-theme'); } catch (e) {}
-          var t = s === 'dark' || s === 'light' ? s : m.matches ? 'dark' : 'light';
+          var t = s === 'dark' ? 'dark' : 'light';
           document.documentElement.setAttribute('data-theme', t);
           document.documentElement.classList.add('js');
+          var meta = document.querySelector('meta[data-theme-color]');
+          if (meta) meta.setAttribute('content', t === 'dark' ? '#0F1F2B' : '#F3EFE7');
         }
         apply();
-        m.addEventListener('change', function () { apply(); });
         document.addEventListener('astro:after-swap', apply);
       })();
     </script>

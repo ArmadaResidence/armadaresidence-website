@@ -52,7 +52,7 @@ export interface MediaData {
   articles?: Record<string, { photos: (MediaImage & { id: string; og?: string })[] }>;
   /** the published dining venues (active and coming soon; a hidden one never reaches the build) */
   venues?: Venue[];
-  home?: { poster: { base: string; widths: number[]; width: number; height: number; position: string }; poster_mobile: { base: string; widths: number[]; width: number; height: number; position: string }; video?: { mp4: string; webm: string; seconds: number }; alt_ar: string; alt_en: string; og_image?: string } | null;
+  home?: { poster: { base: string; widths: number[]; width: number; height: number; position: string }; poster_mobile: { base: string; widths: number[]; width: number; height: number; position: string }; video?: { mp4: string; webm: string; mobile_mp4?: string; mobile_webm?: string; seconds: number; width?: number; height?: number; mobile_width?: number; mobile_height?: number }; alt_ar: string; alt_en: string; og_image?: string } | null;
   lqip?: Record<string, string>;
 }
 const mediaFiles = import.meta.glob<MediaData>('../../content/media.generated.json', { eager: true, import: 'default' });

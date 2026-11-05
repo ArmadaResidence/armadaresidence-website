@@ -138,12 +138,15 @@ body {
   max-width: 180px;
   opacity: 0.25;
 }
-/* the photo poster (30 Oct 2026): framed on the manifest's focal point, 4:5 crop below 768 px; the loop fades in over it */
-.hero-photo {
+/* the photo poster (30 Oct 2026): framed on the manifest's focal point, 4:5 crop below 768 px; the loop fades in over it —
+   with a video the poster IS the loop's first frame and both sit at the same position (5 Nov 2026), so nothing jumps */
+.hero-photo,
+.hero-video {
   object-position: var(--hero-pos, 50% 50%);
 }
 @media (max-width: 767px) {
-  .hero-photo {
+  .hero-photo,
+  .hero-video {
     object-position: var(--hero-pos-m, 50% 50%);
   }
 }
@@ -280,7 +283,7 @@ footer :focus-visible,
 }
 
 /* ---------- Dark mode (Ahmed, 9 Oct 2026) ----------
-   Default follows prefers-color-scheme; the header toggle stores "armada-theme" in localStorage and Base.astro sets
+   Light is the default for everyone (5 Nov 2026 — the system setting is ignored); the header toggle stores "armada-theme" in localStorage and Base.astro sets
    data-theme on <html> before first paint (no flash). Dark surfaces are deep midnight, text porcelain, bronze stays the
    accent (a lighter tint for small bronze text so it keeps ≥ 4.5:1), logos switch to the porcelain SVGs, photos and
    placeholders are untouched, and the legacy sections (discover-taif, partners, menu) keep their own palettes.

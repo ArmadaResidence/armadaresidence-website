@@ -43,7 +43,7 @@ const hero = siteTexts.hero;
 // poster with a slow Ken Burns move. TODO(photo)
 const heroDir = new URL('../../../content/images/hero/', import.meta.url);
 interface HeroImage { base: string; widths: number[]; width: number; height: number; position: string }
-interface HeroMedia { poster: HeroImage; poster_mobile: HeroImage; video?: { mp4: string; webm: string }; alt_ar: string; alt_en: string }
+interface HeroMedia { poster: HeroImage; poster_mobile: HeroImage; video?: { mp4: string; webm: string; mobile_mp4?: string; mobile_webm?: string }; alt_ar: string; alt_en: string }
 // the dashboard «الصور» (1 Nov 2026): a published hero (media.generated.json) comes first, then the imported one
 const heroMedia: HeroMedia | null = media.home?.poster
   ? (media.home as HeroMedia)
@@ -91,7 +91,7 @@ const quickFacts = fill(t.home.quick_facts, {
               <source media={HERO_MOBILE} type="image/webp" srcset={heroSet(heroMedia.poster_mobile, 'webp')} sizes="100vw" />
               <source type="image/avif" srcset={heroSet(heroMedia.poster, 'avif')} sizes="100vw" />
               <img
-                class="hero-media hero-photo hero-kenburns"
+                class:list={['hero-media hero-photo', !heroMedia.video && 'hero-kenburns']}
                 src={`${heroMedia.poster.base}-${heroMedia.poster.widths[Math.min(1, heroMedia.poster.widths.length - 1)]}.webp`}
                 srcset={heroSet(heroMedia.poster, 'webp')}
                 sizes="100vw"
@@ -113,6 +113,9 @@ const quickFacts = fill(t.home.quick_facts, {
                 preload="none"
                 data-webm={heroMedia.video.webm}
                 data-mp4={heroMedia.video.mp4}
+                data-webm-m={heroMedia.video.mobile_webm}
+                data-mp4-m={heroMedia.video.mobile_mp4}
+                style={`--hero-pos:${heroMedia.poster.position};--hero-pos-m:${heroMedia.poster_mobile.position}`}
                 tabindex="-1"
                 aria-hidden="true"
               />
@@ -254,35 +257,45 @@ const quickFacts = fill(t.home.quick_facts, {
 <script>
   import { bindOnce, onPageLoad } from '@lib/client';
 
-  // Hero video: desktop only, never with prefers-reduced-motion or Save-Data, attached after `load` so it cannot
-  // affect LCP (the poster image is the LCP). It fades in over the poster once it plays; otherwise the poster stays
-  // with the Ken Burns move.
+  // Hero video (5 Nov 2026): from 768 px the desktop loop (WebM first, MP4 fallback), below it the light 4:5 phone loop
+  // (MP4 first — hardware H.264 on iOS and Android). Never with prefers-reduced-motion or Save-Data; on a phone also not on
+  // a slow connection (2G / 3G or under 1.5 Mbit/s when the browser tells; iOS Safari does not, and plays). Attached after
+  // `load` and an idle moment, so it never competes with the page's main content (the poster is the LCP). It fades in
+  // over the poster — the loop's own first frame at the same position, so nothing jumps.
   onPageLoad(() => {
-  const v = document.querySelector<HTMLVideoElement>('video.hero-video');
-  if (v && bindOnce(v)) {
-    const conn = (navigator as Navigator & { connection?: { saveData?: boolean } }).connection;
-    const allowed =
-      matchMedia('(min-width: 1024px)').matches && !matchMedia('(prefers-reduced-motion: reduce)').matches && !(conn && conn.saveData);
-    if (allowed) {
-      const attach = () => {
-        for (const [type, src] of [
-          ['video/webm', v.dataset.webm],
-          ['video/mp4', v.dataset.mp4],
-        ] as const) {
-          if (!src) continue;
-          const s = document.createElement('source');
-          s.src = src;
-          s.type = type;
-          v.appendChild(s);
-        }
-        v.load();
-        v.play()
-          .then(() => v.classList.add('is-playing'))
-          .catch(() => {});
-      };
-      if (document.readyState === 'complete') attach();
-      else window.addEventListener('load', attach, { once: true });
-    }
-  }
+    const v = document.querySelector<HTMLVideoElement>('video.hero-video');
+    if (!v || !bindOnce(v)) return;
+    type Conn = { saveData?: boolean; effectiveType?: string; downlink?: number };
+    const conn = (navigator as Navigator & { connection?: Conn }).connection;
+    if (matchMedia('(prefers-reduced-motion: reduce)').matches || conn?.saveData) return;
+    const phone = !matchMedia('(min-width: 768px)').matches;
+    const slow = !!conn && (/(^|-)(2g|3g)$/.test(conn.effectiveType ?? '') || (typeof conn.downlink === 'number' && conn.downlink > 0 && conn.downlink < 1.5));
+    if (phone && slow) return;
+    const sources = (
+      phone
+        ? [['video/mp4', v.dataset.mp4M], ['video/webm', v.dataset.webmM]]
+        : [['video/webm', v.dataset.webm], ['video/mp4', v.dataset.mp4]]
+    ).filter((x): x is [string, string] => !!x[1]);
+    if (!sources.length) return;
+    const attach = () => {
+      for (const [type, src] of sources) {
+        const s = document.createElement('source');
+        s.src = src;
+        s.type = type;
+        v.appendChild(s);
+      }
+      v.muted = true; // iOS plays inline only muted (the attribute alone is not always reflected)
+      v.load();
+      v.play()
+        .then(() => v.classList.add('is-playing'))
+        .catch(() => {});
+    };
+    const later = () => {
+      const w = window as Window & { requestIdleCallback?: (cb: () => void, o?: { timeout: number }) => number };
+      if (w.requestIdleCallback) w.requestIdleCallback(attach, { timeout: 2500 });
+      else setTimeout(attach, 800);
+    };
+    if (document.readyState === 'complete') later();
+    else window.addEventListener('load', later, { once: true });
   });
 </script>
