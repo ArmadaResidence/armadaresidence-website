@@ -310,8 +310,11 @@ try {
         if (form.name === '375') await shot(p, `club-${lang}-${theme}`);
         if (theme === 'dark') await axe(p, `${tag} /club/`);
         const submit = p.locator('[data-club-submit]');
-        // empty → phone + consent, focus on the phone
+        // empty → phone + consent, focus on the phone (5 Nov 2026: wait for the form's script to bind first, then for its
+        // answer — a press before the binding went unanswered on a slow live run and read as an empty error)
+        await p.waitForSelector('[data-club-form][data-bound]', { timeout: 15000 });
         await submit.click();
+        await p.waitForFunction(() => document.querySelector('[data-club-form] [data-phone-input]')?.getAttribute('aria-invalid') === 'true', null, { timeout: 5000 }).catch(() => {});
         await p.waitForTimeout(150);
         let ph = await fieldState(p, 'phone');
         let cs = await fieldState(p, 'consent');

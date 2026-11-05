@@ -595,6 +595,34 @@ def run(cmd: list[str]) -> None:
         fail(f"{cmd[0]} exited with {res.returncode}")
 
 
+def write_version() -> None:
+    """dist/version.json (5 Nov 2026 — the deploy watchdog, .github/workflows/deploy-watchdog.yml, compares it with main's
+    HEAD): the commit this site was built from, when, by which run and event, and the snapshot of the dashboard's published
+    photos it carries (media-build's manifest_at). Served at /version.json; nothing personal."""
+    from datetime import datetime, timezone
+    commit = os.environ.get("GITHUB_SHA", "")
+    if not commit:
+        try:
+            commit = subprocess.run(["git", "rev-parse", "HEAD"], cwd=ROOT, capture_output=True, text=True, check=True).stdout.strip()
+        except Exception:
+            commit = "unknown"  # an exported snapshot (the check suite) has no .git
+    media_at = None
+    report = ROOT / ".media-build" / "report.json"
+    if report.is_file():
+        try:
+            media_at = json.loads(report.read_text(encoding="utf-8")).get("manifest_at")
+        except Exception:
+            media_at = None
+    out = {
+        "commit": commit,
+        "built_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "run_id": os.environ.get("GITHUB_RUN_ID") or None,
+        "event": os.environ.get("GITHUB_EVENT_NAME") or "local",
+        "media_manifest_at": media_at,
+    }
+    (DIST / "version.json").write_text(json.dumps(out, indent=1) + "\n", encoding="utf-8")
+
+
 def main() -> int:
     global CANCEL_ITEM
     content = {name: load_json(name) for name in REQUIRED_FILES}
@@ -635,6 +663,7 @@ def main() -> int:
     run(["npx", "astro", "build"])
     menu_offers(content)
     (DIST / "_availability.json").write_text(json.dumps(availability, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    write_version()
 
     pages = sorted(p.relative_to(DIST).as_posix() for p in DIST.rglob("*.html"))
     print(f"\n✓ {len(pages)} HTML files in dist/:")

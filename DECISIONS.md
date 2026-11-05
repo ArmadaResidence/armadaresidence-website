@@ -1363,3 +1363,21 @@ serves (every venue on /dining/: its page, its card on the branch page, no café
 viewport, which aborted Astro's page transitions (the console error `booking-nav-check` caught). The dots wrap now
 (GallerySlider).
 
+## 2026-11-05 — Deploy watchdog (Ahmed, 5 Nov 2026)
+
+- **Why:** the push of 67fe587 (≈ 15:40 UTC) never became a run — no `push` run for that commit, while the pushes before
+  and after it did; `deploy.yml` triggers on every push to main with no path filter, no branch rule beyond main and no
+  skip condition (no `[skip ci]` in the message); GitHub logged no incident that day (the last «events that trigger
+  Actions» incident was 4 Nov, 17:40–18:16 UTC). Not our rule: GitHub dropped the event. The site deploy was dispatched by
+  hand at 16:11 UTC.
+- **Watchdog:** every build writes `dist/version.json` (build.py `write_version`: the commit, the build time, the run and
+  event, the photos snapshot `media_manifest_at`; qa.py fails without it). `.github/workflows/deploy-watchdog.yml` runs
+  `scripts/deploy-watchdog.mjs` every 30 minutes: the live `/version.json` (cache-busted) against main's HEAD, and the
+  dashboard's publish jobs still queued / building 20 minutes after their request; when the site is behind and no deploy
+  is queued or running it dispatches `deploy.yml` on main (with the oldest waiting job). It never loops: when the last
+  deploy of HEAD failed it dispatches nothing and fails its run (a person must look). Every decision goes to the run's log
+  and summary. `workflow_dispatch` takes `pretend_live_commit` (a deliberate mismatch for a test) and `dry_run`.
+- Same day: `club-site-check` failed once more on a live run (an empty phone error at 1440 dark, as on 4 Nov): the first
+  submit could come before the form's script had bound; the check now waits for `[data-club-form][data-bound]` and for
+  the form's answer instead of a fixed 150 ms.
+

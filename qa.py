@@ -272,6 +272,14 @@ def main() -> int:
         resolved = json.loads(av_file.read_text(encoding="utf-8")).get("rooms", {})
     rooms = [dict(r, availability=resolved.get(f"{r['branch']}/{r['slug']}", r["availability"])) for r in rooms]
     room_by_path = {f"/{r['branch']}/{r['slug']}/": r for r in rooms}
+    # the deploy watchdog (5 Nov 2026) compares the live /version.json with main's HEAD: every build carries it
+    ver_file = DIST / "version.json"
+    try:
+        ver = json.loads(ver_file.read_text(encoding="utf-8")) if ver_file.is_file() else {}
+    except ValueError:
+        ver = {}
+    if not ver.get("commit") or not ver.get("built_at"):
+        rep.f("version", "dist/version.json is missing or has no commit / built_at (build.py write_version) — the deploy watchdog reads it")
     limits = content["seo.json"].get("room_templates", {})
     max_title = int(limits.get("max_title_chars", 60))
     max_desc = int(limits.get("max_description_chars", 155))

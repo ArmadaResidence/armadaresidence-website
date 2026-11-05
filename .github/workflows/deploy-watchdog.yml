@@ -1,0 +1,51 @@
+name: Deploy watchdog
+
+# Every 30 minutes (Ahmed, 5 Nov 2026): the live site's /version.json (written by build.py) against main's HEAD, and the
+# dashboard's publish jobs still waiting for their build; when the site is behind and no deploy is queued or running, it
+# dispatches deploy.yml. Covers a push GitHub never turned into a run, a publish whose dispatch failed. Every decision is
+# in the run's log and summary (scripts/deploy-watchdog.mjs). workflow_dispatch: `pretend_live_commit` makes a
+# deliberate mismatch for a test; `dry_run` decides and logs without dispatching.
+on:
+  schedule:
+    - cron: '*/30 * * * *'
+  workflow_dispatch:
+    inputs:
+      pretend_live_commit:
+        description: test only — treat the live site as serving this commit (a deliberate mismatch)
+        required: false
+        default: ''
+      dry_run:
+        description: decide and log, dispatch nothing
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+  actions: write
+
+concurrency:
+  group: deploy-watchdog
+  cancel-in-progress: false
+
+jobs:
+  watch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          sparse-checkout: |
+            content/seo.json
+            scripts/deploy-watchdog.mjs
+          sparse-checkout-cone-mode: false
+      - name: Compare the live site with main and the dashboard's publishes
+        run: node scripts/deploy-watchdog.mjs
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          HEAD_SHA: ${{ github.sha }}
+          PUBLIC_BOOKING_ENDPOINT: ${{ vars.PUBLIC_BOOKING_ENDPOINT }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          PRETEND_LIVE: ${{ inputs.pretend_live_commit }}
+          DRY_RUN: ${{ inputs.dry_run && 'true' || 'false' }}
