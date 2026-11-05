@@ -1253,3 +1253,6 @@ Same day, read-only findings (no change): a dashboard «نشر» of 8 targets di
 path works; the home panes looked unchanged because they rendered the placeholder until the pre-launch fix (deployed
 20:05). The live Shafa Road branch page and its 7 room pages match «الصور» (cover, gallery order, alt AR / EN); the
 branch page shows the cover and the 4 story scenes only — the branch gallery appears on /gallery/.
+Follow-up: the first live suite after the switch failed only `datepicker-check` (it submits the forms without the stub,
+so Cloudflare's real widget loaded and logged CSP noise in the console); it now stubs Cloudflare like the other form
+checks.

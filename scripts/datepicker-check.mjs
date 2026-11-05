@@ -14,6 +14,7 @@
 import { mkdirSync, readFileSync } from 'node:fs';
 import { chromium } from 'playwright';
 import { addDays, done, formatDate, openPicker, press, riyadhToday, tapDay } from './datepicker-helpers.mjs';
+import { stubTurnstile } from './turnstile-stub.mjs';
 
 const args = process.argv.slice(2);
 const shotsAt = args.indexOf('--shots');
@@ -69,6 +70,7 @@ async function newContext(vp, extra = {}) {
   });
   await ctx.route('https://wa.me/**', (r) => r.fulfill({ status: 200, contentType: 'text/html', body: '<title>wa</title>' }));
   await ctx.route(/googletagmanager|google-analytics/, (r) => r.abort());
+  await stubTurnstile(ctx); // the forms are submitted: Cloudflare's real widget never loads in a check
   return { ctx, posts };
 }
 
