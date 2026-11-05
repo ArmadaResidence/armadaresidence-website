@@ -31,9 +31,24 @@ const check = (ok, msg) => {
   if (!ok) fails.push(msg);
 };
 const built = (rel) => existsSync(join(DIST, rel, 'index.html'));
-const sitemap = readdirSync(DIST).filter((f) => /^sitemap-\d+\.xml$/.test(f)).map((f) => readFileSync(join(DIST, f), 'utf8')).join('');
-const live = built('dining');
-console.log(`dining-site-check: ${BASE} (${live ? 'published venues' : 'no published venue'})`);
+// a remote BASE (the live run, 5 Nov 2026 — the café venue published by Ahmed) is judged by what it serves: its build
+// reads the venues published in «المطاعم والمقاهي», not the local dist (the same rule as gallery-site-check)
+const REMOTE = !/^https?:\/\/(127\.0\.0\.1|localhost)(:|\/|$)/.test(BASE);
+const remoteText = async (path) => { const r = await fetch(`${BASE}${path}?v=${Date.now()}`); return { status: r.status, text: r.ok ? await r.text() : '' }; };
+let sitemap;
+let live;
+/** the venues the live /dining/ lists (remote, published): [{ slug, status }] */
+let served = [];
+if (REMOTE) {
+  sitemap = (await remoteText('/sitemap-0.xml')).text;
+  const d = await remoteText('/dining/');
+  live = d.status === 200;
+  served = [...d.text.matchAll(/data-venue="([a-z0-9-]+)"[^>]*data-venue-status="([a-z_]+)"/g)].map((m) => ({ slug: m[1], status: m[2] }));
+} else {
+  sitemap = readdirSync(DIST).filter((f) => /^sitemap-\d+\.xml$/.test(f)).map((f) => readFileSync(join(DIST, f), 'utf8')).join('');
+  live = built('dining');
+}
+console.log(`dining-site-check: ${BASE} (${live ? (REMOTE ? `published venues: ${served.map((v) => `${v.slug} ${v.status}`).join(', ')}` : 'published venues') : 'no published venue'})`);
 
 const FORMS = [
   { name: '375', viewport: { width: 375, height: 812 }, isMobile: true, hasTouch: true },
@@ -99,6 +114,28 @@ try {
           check((await status(page, L('/dining/armada-residence-cafe/'))) === 404, `${tag}: a venue page exists without an active venue`);
           continue;
         }
+        if (REMOTE) {
+          // the live site: whatever is published — every active venue on its branch page (no café card), its own page
+          // with the hours and the menu link; a coming-soon venue only on /dining/ and its teaser
+          check((await status(page, L('/dining/'))) === 200, `${tag}: /dining/ is missing`);
+          await layout(page, `${tag} /dining/`);
+          check(served.length > 0 && served.some((v) => v.status === 'active'), `${tag}: /dining/ lists no active venue`);
+          await status(page, L('/airport-road/'));
+          const onBranch = await page.locator('[data-dining-venues] [data-venue]').evaluateAll((els) => els.map((e) => e.getAttribute('data-venue')));
+          check(onBranch.length > 0 && (await page.locator('.cafe-card').count()) === 0, `${tag}: the Airport Road page does not list its venues (${onBranch.join()})`);
+          check(onBranch.every((v) => served.some((x) => x.slug === v && x.status === 'active')), `${tag}: the branch page lists a venue that is not active (${onBranch.join()})`);
+          for (const v of served) {
+            check((await status(page, L(`/dining/${v.slug}/`))) === 200, `${tag}: the page of ${v.slug} is missing`);
+            await layout(page, `${tag} ${v.slug}`);
+            if (v.status === 'active') {
+              const body = await page.locator('main').innerText();
+              check(body.includes(t.dining.menu_cta) || body.includes(t.dining.hours_label), `${tag}: ${v.slug} shows neither its hours nor its menu`);
+            } else {
+              check((await page.locator('[data-notify-form]').count()) === 1, `${tag}: the teaser of ${v.slug} has no notify form`);
+            }
+          }
+          continue;
+        }
         // published venues (the media sample)
         await status(page, L('/airport-road/'));
         check((await page.locator('[data-dining-venues] [data-venue="armada-residence-cafe"]').count()) === 1 && (await page.locator('.cafe-card').count()) === 0, `${tag}: the Airport Road page does not list its active venue`);
@@ -154,7 +191,8 @@ try {
   }
   // the sitemap follows the build
   check(sitemap.includes('/airport-road/hall/</loc>') && sitemap.includes('/en/airport-road/hall/</loc>'), 'sitemap: the hall pages are missing');
-  check(live ? sitemap.includes('/dining/</loc>') && sitemap.includes('/dining/lario/</loc>') && !sitemap.includes('sample-hidden') : !sitemap.includes('/dining/'), `sitemap: dining entries do not follow the build (${live ? 'published' : 'none'})`);
+  if (REMOTE && live) check(sitemap.includes('/dining/</loc>') && served.every((v) => sitemap.includes(`/dining/${v.slug}/</loc>`)), 'sitemap: the live dining entries are missing');
+  else check(live ? sitemap.includes('/dining/</loc>') && sitemap.includes('/dining/lario/</loc>') && !sitemap.includes('sample-hidden') : !sitemap.includes('/dining/'), `sitemap: dining entries do not follow the build (${live ? 'published' : 'none'})`);
 } catch (e) {
   fails.push(`crash: ${String(e.stack || e).split('\n').slice(0, 3).join(' ')}`);
 } finally {

@@ -1355,3 +1355,11 @@ checks.
   every chart and table laid out in print media with no animation; the booking sheet one page, no URL, both signature
   blocks. 21 / 21.
 
+**Live suite after these deploys (5 Nov 2026).** Two findings, both fixed: `dining-site-check` judged the live site by the
+local build (no venue) while Ahmed had published «مطعم ومقهى أرمادا ريزيدنس» — a remote BASE is now judged by what it
+serves (every venue on /dining/: its page, its card on the branch page, no café card, the sitemap), like
+`gallery-site-check`; and a real layout defect on room pages with many published photos: the gallery's dots (24 px each,
+15 on Airport Road's King Room) did not wrap, so at 375 px the page was 376 px wide — mobile browsers then widen the
+viewport, which aborted Astro's page transitions (the console error `booking-nav-check` caught). The dots wrap now
+(GallerySlider).
+
