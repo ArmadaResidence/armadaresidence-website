@@ -38,7 +38,7 @@ const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replac
 
 export function alertEmail(kind: AlertKind, run: AlertRun, lastSuccessAt: string | null, test = false): AlertMail {
   const short = run.commit.slice(0, 7);
-  const subject = `${test ? '[TEST] ' : ''}${kind === 'watchdog' ? 'تنبيه: مراقب النشر أوقف تحديث الموقع' : 'تنبيه: فشل تحديث الموقع'} — ${short}`;
+  const subject = `${test ? '[تجربة] ' : ''}${kind === 'watchdog' ? 'تنبيه: مراقب النشر أوقف تحديث الموقع' : 'تنبيه: فشل تحديث الموقع'} — ${short}`;
   const lead = kind === 'watchdog'
     ? 'أوقف مراقب النشر إعادة المحاولة تلقائيًا لأن آخر تحديث للموقع فشل. الموقع ما زال يعرض آخر نسخة نجحت.'
     : 'فشل تحديث الموقع، والموقع ما زال يعرض آخر نسخة نجحت.';

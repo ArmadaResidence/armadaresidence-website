@@ -1540,7 +1540,7 @@ One unattended session from Ahmed's brief of 6 Nov 2026.
   Shafa Road's king room is open on production (Ahmed reopened it at 01:57:02); nothing was changed.
 - **A latent gap fixed:** `site-rebuild` debounced every reason for 2 minutes, so a second availability change inside the
   window could miss a build that had already read the availability (about a minute in). The reasons `rooms` and
-  `settings` now always dispatch (`site-rebuild/debounce.ts`); the Pages concurrency group cancels the older run.
+  `settings` now always dispatch (`site-rebuild/debounce.ts`); the requests still waiting collapse into the last one (below).
 - **A failed deploy is never silent.** `deploy.yml` reports each run — `running` from the build's first step, then
   `succeeded` / `failed` / `cancelled` from a new `status` job (`if: always()`, dry runs never) with the failed step read
   from the run's jobs — to the Edge Function `site-deploy-report` (`verify_jwt = false`; the caller proves the service
@@ -1569,5 +1569,22 @@ One unattended session from Ahmed's brief of 6 Nov 2026.
 - **Files:** content/README.md (status table and Pending: photos from «الصور», the draft texts approved),
   DASHBOARD-SPEC.md marked as the 9 Oct spec kept for reference, CLAUDE.md §13 no longer lists the privacy text (rewritten
   3–4 Nov 2026).
+- **The Pages concurrency (Ahmed, 6 Nov 2026 — GitHub's recommended setting for Pages):** `deploy.yml` runs with
+  `cancel-in-progress: false`: a running deploy is never cancelled; a newer request waits and replaces any request still
+  waiting, so the waiting requests collapse into the last one, which reads every change when it starts. Its report
+  settles every publish job created before its media manifest (the replaced runs' jobs included). The `report` job now
+  runs on every outcome: a run cancelled midway (by hand) puts its own «الصور» job back to queued
+  (`media-job.mjs requeue`) — never left «building»; the next run settles it and the deploy watchdog dispatches one for
+  it after 20 minutes at the latest. A cancelled run is recorded `cancelled` and never sends an alert (the watchdog
+  ignores cancelled runs too).
+- **Approved texts (Ahmed, 6 Nov 2026):** the «الغرف» lines «تم حفظ التعديل وظهر في نموذج الحجز. سيظهر في صفحات الغرف
+  خلال دقائق، بعد تحديث الموقع.», «تم حفظ التعديل وظهر في نموذج الحجز، لكن تعذّر طلب تحديث الموقع الآن. سيظهر في صفحات
+  الغرف مع التحديث التالي.», the failure line «… غير ظاهر في صفحات الغرف …», the status detail «التعديلات المحفوظة بعد آخر
+  تحديث ناجح ({time}) لن تظهر على الموقع حتى ينجح تحديث جديد.»; the other texts and the email subjects as proposed.
+- **Test alerts:** the deploy watchdog's `workflow_dispatch` input `alert_test` (none | sink | admin) sends the sample
+  alert «[تجربة] تنبيه: فشل تحديث الموقع — 0123456» through the deployed function — `sink` to Resend's sink, `admin`
+  once to the active admins (`public.site_deploy_alert_recipients()`); nothing recorded. The alert's From is
+  `no-reply@armadaresidence.com` (`ALERT_FROM` unset), so no Bcc is added (Ahmed's rule: a Bcc to the general manager
+  only when the sender is info@ or sales-marketing@).
 - **For the launch session (not changed):** CLAUDE.md §8 step 5 and `docs/gtm-performance.md` still say the container
   lacks a trigger and a valued conversion for `booking_confirmed`, while the test of 30 Oct 2026 confirmed the conversion.

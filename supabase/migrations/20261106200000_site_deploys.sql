@@ -77,6 +77,15 @@ begin
   return jsonb_build_object('run_id', r.run_id, 'status', r.status, 'alert_due', r.status = 'failed' and r.alerted_at is null);
 end $$;
 
+-- the alert's recipients: the active admins' sign-in addresses (auth.users, never stored elsewhere) — service role;
+-- also read by the function's admin test («[تجربة]», workflow_dispatch of the deploy watchdog with alert_test = admin)
+create function public.site_deploy_alert_recipients() returns text[]
+language sql stable security definer set search_path = '' as $$
+  select coalesce(array_agg(u.email::text order by u.email), '{}')
+    from public.staff s join auth.users u on u.id = s.user_id
+   where s.role = 'admin' and s.active and u.email is not null
+$$;
+
 -- claim the one alert of a failed run (service role): sets alerted_at atomically and returns what the email needs —
 -- the run, the last successful deploy before it, and the active admins' sign-in addresses (auth.users, never stored
 -- elsewhere). claimed = false when the run is not failed or was already alerted.
@@ -97,9 +106,7 @@ begin
     return jsonb_build_object('claimed', false);
   end if;
   select max(finished_at) into last_ok from public.site_deploys where status = 'succeeded' and is_test = r.is_test and finished_at <= coalesce(r.finished_at, now());
-  select coalesce(array_agg(u.email::text order by u.email), '{}') into rcpt
-    from public.staff s join auth.users u on u.id = s.user_id
-   where s.role = 'admin' and s.active and u.email is not null;
+  rcpt := public.site_deploy_alert_recipients();
   return jsonb_build_object('claimed', true, 'recipients', to_jsonb(rcpt), 'last_success_at', last_ok,
     'run', jsonb_build_object('run_id', r.run_id, 'run_url', r.run_url, 'commit', r.commit_sha, 'commit_title', r.commit_title,
       'event', r.event, 'failed_step', r.failed_step, 'started_at', r.started_at, 'finished_at', r.finished_at, 'is_test', r.is_test));
@@ -133,8 +140,8 @@ begin
 end $$;
 
 revoke execute on function public.site_deploy_report(bigint, text, text, text, text, integer, text, text, boolean, timestamptz),
-  public.site_deploy_alert_claim(bigint, text), public.site_deploy_alert_release(bigint), public.site_deploy_status()
-  from public, anon, authenticated;
+  public.site_deploy_alert_claim(bigint, text), public.site_deploy_alert_release(bigint), public.site_deploy_status(),
+  public.site_deploy_alert_recipients() from public, anon, authenticated;
 grant execute on function public.site_deploy_report(bigint, text, text, text, text, integer, text, text, boolean, timestamptz),
-  public.site_deploy_alert_claim(bigint, text), public.site_deploy_alert_release(bigint) to service_role;
+  public.site_deploy_alert_claim(bigint, text), public.site_deploy_alert_release(bigint), public.site_deploy_alert_recipients() to service_role;
 grant execute on function public.site_deploy_status() to authenticated;

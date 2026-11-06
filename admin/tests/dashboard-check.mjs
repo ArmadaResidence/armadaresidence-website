@@ -637,12 +637,12 @@ try {
       check((await page.locator('[data-rooms-deploy]').textContent()).includes('آخر تحديث للموقع: نجح'), 'rooms: the last site deploy «آخر تحديث للموقع: نجح — …»');
       await acc.click();
       await page.locator('[data-rooms-note="info"]').waitFor({ timeout: 15000 });
-      check((await page.locator('[data-rooms-note]').textContent()).includes('سيظهر في صفحات الغرف بعد تحديث الموقع'), 'rooms: after a change «تم حفظ التعديل … بعد تحديث الموقع»');
+      check((await page.locator('[data-rooms-note]').textContent()).includes('تم حفظ التعديل وظهر في نموذج الحجز. سيظهر في صفحات الغرف خلال دقائق، بعد تحديث الموقع.'), 'rooms: after a change «تم حفظ التعديل وظهر في نموذج الحجز …»');
       check(await page.locator('[data-rooms-deploy] [data-site-deploy="running"]').count() === 1 && await page.locator('[data-update-bar] [data-site-deploy="running"]').count() === 1, 'rooms + update bar: «جارٍ تحديث الموقع» at once');
       deploy = { ...deploy, status: 'failed', started_at: iso(Date.now()), finished_at: iso(Date.now() + 1000), failed_step: 'build › QA gate', alerted: true };
       await refocus();
       await page.locator('[data-rooms-note="error"]').waitFor({ timeout: 30000 });
-      check((await page.locator('[data-rooms-note]').textContent()).includes('غير ظاهر على صفحات الغرف لأن تحديث الموقع فشل'), 'rooms: a failed update → «التعديل محفوظ … غير ظاهر»');
+      check((await page.locator('[data-rooms-note]').textContent()).includes('غير ظاهر في صفحات الغرف لأن تحديث الموقع فشل'), 'rooms: a failed update → «التعديل محفوظ … غير ظاهر في صفحات الغرف»');
       check(await page.locator('.update-bar-alert [data-site-deploy="failed"] [data-action="deploy-run"]').count() === 1, 'update bar: «آخر تحديث للموقع: فشل» with the run link');
       deploy = { ...deploy, status: 'succeeded', started_at: iso(Date.now() + 2000), finished_at: iso(Date.now() + 3000), failed_step: null, alerted: false };
       await refocus();

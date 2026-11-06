@@ -5,9 +5,10 @@
 //   node scripts/site-deploy-report.mjs final     the workflow's `status` job (if: always()): succeeded / failed /
 //                                                 cancelled from BUILD_RESULT + DEPLOY_RESULT, the failed step's name
 //                                                 read from the run's jobs (GitHub API, GH_TOKEN)
-//   node scripts/site-deploy-report.mjs test      a sample alert to Resend's sink only (the function's test mode —
-//                                                 proves the service-key check and the send; nothing recorded); run
-//                                                 by the deploy watchdog workflow with its `alert_test` input
+//   node scripts/site-deploy-report.mjs test sink|admin   a sample alert «[تجربة] …» (the function's test mode —
+//                                                 the service-key check and the send; nothing recorded): `sink` to
+//                                                 Resend's sink only, `admin` once to the active admins; run by the
+//                                                 deploy watchdog workflow with its `alert_test` input
 // The deploy watchdog imports report() for its own stop (stage `watchdog`).
 // Env: GITHUB_* (the run), SUPABASE_URL or PUBLIC_BOOKING_ENDPOINT + SUPABASE_SERVICE_ROLE_KEY (absent → nothing
 // reported, logged), GH_TOKEN (the run's jobs and commit title; optional). A report failure never fails the workflow.
@@ -74,8 +75,9 @@ async function main() {
   const env = process.env;
   const mode = process.argv[2];
   if (mode === 'test') {
-    const a = await report({ test: true }, env, () => {});
-    console.log(`site-deploy-report: test alert ${a?.ok ? 'accepted by Resend (sink)' : 'NOT sent'}`);
+    const target = process.argv[3] === 'admin' ? 'admin' : 'sink';
+    const a = await report({ test: target }, env, () => {});
+    console.log(`site-deploy-report: test alert (${target}) ${a?.ok ? `accepted by Resend — ${a.recipients} recipient(s)` : 'NOT sent'}`);
     if (!a?.ok) process.exitCode = 1;
     return;
   }

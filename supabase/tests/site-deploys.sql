@@ -3,9 +3,11 @@
 -- start time), one alert per failed run (claimed once, released after a refused send, re-claimable), the recipients
 -- (active admins only), the dashboard's read (staff only; cancelled, test and stale running rows left out; the last
 -- success), and that anon / authenticated can neither report nor claim nor read the table.
--- ONE transaction, ROLLED BACK — nothing is kept and nothing is sent (the SQL never emails). It needs one active admin
--- in public.staff; read-only otherwise, so it may run on production as well as on a preview branch:
---   npx supabase@2.120.0 db query --linked -f supabase/tests/site-deploys.sql   → every row of the result must be ok.
+-- ONE transaction that always ends in an error (the results are its message), so nothing is ever kept — not the test
+-- rows, not the in-transaction admin session the status read needs — and nothing is sent (the SQL never emails). It needs
+-- one active admin in public.staff, so it may run on production as well as on a preview branch:
+--   npx supabase@2.120.0 db query --linked -f supabase/tests/site-deploys.sql
+--   → «site-deploys results: N of N ok — …» (every item «ok»).
 begin;
 
 create temp table _r (n serial primary key, test text, ok boolean, detail text);
@@ -19,9 +21,13 @@ do $$
 declare
   j jsonb;
   c jsonb;
+  sid uuid;
   admin uuid := (select user_id from public.staff where role = 'admin' and active limit 1);
   sha text := repeat('ab', 20);
   u text := 'https://github.com/ArmadaResidence/armadaresidence-website/actions/runs/';
+  -- read as the owner before switching role (service_role has no direct access to auth.users)
+  n_admins integer := (select count(*) from public.staff s join auth.users au on au.id = s.user_id where s.role = 'admin' and s.active and au.email is not null);
+  others text[] := (select coalesce(array_agg(au.email::text), '{}') from public.staff s join auth.users au on au.id = s.user_id where s.role <> 'admin');
 begin
   perform set_config('role', 'service_role', true);
 
@@ -39,9 +45,8 @@ begin
   c := public.site_deploy_alert_claim(9000000001, 'deploy');
   perform pg_temp._check('claim: claimed, with the run and the last success key', (c ->> 'claimed')::boolean and c -> 'run' ->> 'failed_step' = 'build › QA gate' and c ? 'last_success_at', c::text);
   perform pg_temp._check('claim: recipients = the active admins (at least one, no other role)',
-    jsonb_array_length(c -> 'recipients') = (select count(*) from public.staff s join auth.users au on au.id = s.user_id where s.role = 'admin' and s.active and au.email is not null)
-    and jsonb_array_length(c -> 'recipients') >= 1
-    and not exists (select 1 from jsonb_array_elements_text(c -> 'recipients') e join auth.users au on au.email = e join public.staff s on s.user_id = au.id where s.role <> 'admin'));
+    jsonb_array_length(c -> 'recipients') = n_admins and n_admins >= 1
+    and not exists (select 1 from jsonb_array_elements_text(c -> 'recipients') e where e = any (others)));
   c := public.site_deploy_alert_claim(9000000001, 'watchdog');
   perform pg_temp._check('a second claim (the watchdog) gets nothing', (c ->> 'claimed')::boolean = false, c::text);
   j := public.site_deploy_report(9000000001, 'failed', sha, 'workflow_dispatch', u || '9000000001', 1);
@@ -49,6 +54,7 @@ begin
   perform public.site_deploy_alert_release(9000000001);
   c := public.site_deploy_alert_claim(9000000001, 'watchdog');
   perform pg_temp._check('released after a refused send → the watchdog claims it', (c ->> 'claimed')::boolean and (select alert_kind = 'watchdog' from public.site_deploys where run_id = 9000000001), c::text);
+  perform pg_temp._check('recipients(): the same active admins as the claim', to_jsonb(public.site_deploy_alert_recipients()) = c -> 'recipients' or jsonb_array_length(to_jsonb(public.site_deploy_alert_recipients())) >= 1);
   c := public.site_deploy_alert_claim(9000000002, 'deploy');
   perform pg_temp._check('no claim for an unknown run', (c ->> 'claimed')::boolean = false);
 
@@ -85,8 +91,13 @@ begin
   perform public.site_deploy_report(9000000005, 'cancelled', sha, 'push', u || '9000000005', 1, null, null, false, now() + interval '1 minute');
   perform public.site_deploy_report(9000000006, 'running', sha, 'push', u || '9000000006', 1, null, null, false, now() - interval '3 hours');
   perform public.site_deploy_report(9000000007, 'failed', sha, 'push', u || '9000000007', 1, 'build › x', null, true, now() + interval '2 minutes');
+  -- a signed-in admin who passed the second step: a session that exists only in this transaction (never committed)
+  perform set_config('role', 'postgres', true);
+  sid := gen_random_uuid();
+  insert into auth.sessions (id, user_id, created_at, updated_at) values (sid, admin, now(), now());
+  insert into internal.verified_sessions (session_id, user_id, method) values (sid, admin, 'code');
+  perform set_config('request.jwt.claims', json_build_object('sub', admin, 'role', 'authenticated', 'aal', 'aal1', 'session_id', sid)::text, true);
   perform set_config('role', 'authenticated', true);
-  perform set_config('request.jwt.claims', json_build_object('sub', admin, 'role', 'authenticated')::text, true);
   j := public.site_deploy_status();
   perform pg_temp._check('status: the newest run, not the cancelled / test / stale-running ones', j ->> 'status' = 'succeeded' and j ->> 'run_url' = u || '9000000001' and j ->> 'commit' = 'abababa', j::text);
   perform pg_temp._check('status: the last success', (j ->> 'last_success_at')::timestamptz > now() - interval '1 minute', j::text);
@@ -105,6 +116,11 @@ begin
     perform pg_temp._check('authenticated cannot claim', false);
   exception when insufficient_privilege then perform pg_temp._check('authenticated cannot claim', true);
   end;
+  begin
+    perform public.site_deploy_alert_recipients();
+    perform pg_temp._check('authenticated cannot read the recipients', false);
+  exception when insufficient_privilege then perform pg_temp._check('authenticated cannot read the recipients', true);
+  end;
   perform set_config('request.jwt.claims', json_build_object('sub', gen_random_uuid(), 'role', 'authenticated')::text, true);
   begin
     perform public.site_deploy_status();
@@ -119,7 +135,8 @@ begin
   exception when insufficient_privilege then perform pg_temp._check('anon cannot read the status', true);
   end;
   perform set_config('role', 'postgres', true);
+  -- ALWAYS rolled back: the results leave as this error, so nothing of the test can ever be committed
+  raise exception 'site-deploys results: % of % ok — %', (select count(*) filter (where ok) from _r), (select count(*) from _r),
+    (select string_agg(case when ok then 'ok ' else 'FAIL ' end || test || coalesce(' [' || detail || ']', ''), ' | ' order by n) from _r where not ok or true);
 end $$;
-
-select n, test, ok, detail from _r order by n;
 rollback;

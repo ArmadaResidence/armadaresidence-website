@@ -34,9 +34,13 @@ permissions:
   pages: write
   id-token: write
 
+# One deploy at a time, never cancelled midway (6 Nov 2026 — GitHub's recommended setting for Pages): a run waits for the
+# running one to finish; a newer request replaces the one still waiting, so the waiting requests collapse into the last
+# one, which reads every change (room availability, fees, publishes) when it starts. Its report settles every publish
+# job created before its media manifest — the replaced runs' jobs included.
 concurrency:
   group: ${{ inputs.dry_run && 'pages-dry-run' || 'pages' }}
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   build:
@@ -134,11 +138,13 @@ jobs:
       - id: deployment
         uses: actions/deploy-pages@v4
 
-  # the dashboard's publish jobs: published / failed with this run's link (a cancelled run reports nothing — the newer
-  # run that cancelled it publishes every waiting job)
+  # the dashboard's publish jobs: published / failed with this run's link. A run cancelled midway (by hand — the
+  # concurrency group never cancels a running deploy) puts its own job back to «queued» (never left «building»): the
+  # next run's manifest settles it, and the deploy watchdog dispatches one for it after 20 minutes at the latest. A run
+  # replaced while still waiting never started: its job stays queued for the run that replaced it.
   report:
     needs: [build, deploy]
-    if: ${{ always() && needs.build.result != 'cancelled' && needs.deploy.result != 'cancelled' }}
+    if: ${{ always() }}
     runs-on: ubuntu-latest
     env:
       PUBLIC_BOOKING_ENDPOINT: ${{ vars.PUBLIC_BOOKING_ENDPOINT }}
@@ -155,7 +161,9 @@ jobs:
           node-version: 22
       - name: Report to the dashboard
         run: |
-          if [ "${{ inputs.dry_run }}" = "true" ]; then
+          if [ "${{ needs.build.result }}" = "cancelled" ] || [ "${{ needs.deploy.result }}" = "cancelled" ]; then
+            node scripts/media-job.mjs requeue
+          elif [ "${{ inputs.dry_run }}" = "true" ]; then
             node scripts/media-job.mjs dry ${{ needs.build.result == 'success' && 'ok' || 'fail' }}
           else
             node scripts/media-job.mjs settle ${{ needs.build.result == 'success' && needs.deploy.result == 'success' && 'ok' || 'fail' }}
@@ -163,7 +171,7 @@ jobs:
 
   # the run's outcome for the dashboard (public.site_deploys) — and, when it failed, ONE alert email to the admins with
   # the commit, the failed step and this run's link (Edge Function site-deploy-report; 6 Nov 2026: from the evening of
-  # 5 Nov every build failed qa.py and nobody knew). always(): a cancelled run reports `cancelled`; dry runs never report.
+  # 5 Nov every build failed qa.py and nobody knew). always(): a cancelled run reports `cancelled` (never an alert); dry runs never report.
   status:
     needs: [build, deploy]
     if: ${{ always() && !inputs.dry_run }}

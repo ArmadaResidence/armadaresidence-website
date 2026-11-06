@@ -7,12 +7,12 @@
 // token needs only Actions: read and write (+ Metadata: read) on armadaresidence-website, never Contents: write.
 // Debounced in the database (public.site_rebuild_claim, service role): one dispatch per DEBOUNCE_MS whoever asks and
 // whichever isolate answers — an in-memory timer proved per-isolate on 26 Oct 2026 (the Actions concurrency group
-// still cancels a stale build). Since 6 Nov 2026 the reasons 'rooms' and 'settings' skip the debounce (./debounce.ts): a
+// collapses the requests still waiting into the last one). Since 6 Nov 2026 the reasons 'rooms' and 'settings' skip the debounce (./debounce.ts): a
 // second change inside the window could miss the build already running.
 // Media (dashboard «الصور», 1 Nov 2026): reason 'media' + the publish job id. The caller needs publish on media; the
 // dispatch carries the job (workflow input media_job, and dry_run for a dry job) so the workflow reports on it, skips
 // the debounce (a publish must never be swallowed by a rebuild claimed for another reason — the Pages concurrency group
-// cancels the older run, and the newer one publishes every waiting job), and its result is recorded on the job
+// keeps one waiting request, the newest, and it publishes every waiting job), and its result is recorded on the job
 // (public.media_job_update, service role): dispatched | no_token | failed.
 // Dining (dashboard «المطاعم والمقاهي», 2 Nov 2026): reason 'dining' + the publish job of public.dining_publish — the
 // same path as a media job (the jobs share public.media_publish_jobs); the caller needs publish on dining.

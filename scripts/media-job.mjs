@@ -1,8 +1,11 @@
 // The deploy workflow's report on the dashboard's publish jobs (media module «الصور», 1 Nov 2026). After the deploy job:
 //   node scripts/media-job.mjs settle <ok|fail>   every waiting (non-dry) job created before this build read its media
 //                                                 manifest (MEDIA_MANIFEST_AT) becomes published / failed, with this
-//                                                 run's link — whichever run it was dispatched for (a newer run cancels
-//                                                 an older one in the Pages concurrency group and publishes them all);
+//                                                 run's link — whichever run it was dispatched for (a newer request
+//                                                 replaces a run still waiting in the Pages group and publishes them all);
+//   node scripts/media-job.mjs requeue            the run was cancelled midway: its own job MEDIA_JOB, if building,
+//                                                 goes back to queued (never left «building») — the next run settles it,
+//                                                 the deploy watchdog dispatches one for it after 20 minutes at the latest;
 //   node scripts/media-job.mjs dry <ok|fail>      the dry job MEDIA_JOB ends (nothing was deployed; the artifact holds
 //                                                 the built site) with the build's media report.
 // Env: SUPABASE_URL (else the origin of PUBLIC_BOOKING_ENDPOINT), SUPABASE_SERVICE_ROLE_KEY, MEDIA_MANIFEST_AT, MEDIA_JOB,
@@ -14,7 +17,7 @@ const [mode, result] = process.argv.slice(2);
 const KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
 const URL_ = (process.env.SUPABASE_URL || (process.env.PUBLIC_BOOKING_ENDPOINT || '').split('/functions/')[0]).replace(/\/$/, '');
 const RUN_URL = process.env.GITHUB_RUN_ID ? `${process.env.GITHUB_SERVER_URL}/${process.env.GITHUB_REPOSITORY}/actions/runs/${process.env.GITHUB_RUN_ID}` : null;
-if (!KEY || !URL_ || !['settle', 'dry'].includes(mode) || !['ok', 'fail'].includes(result)) {
+if (!KEY || !URL_ || !['settle', 'dry', 'requeue'].includes(mode) || (mode !== 'requeue' && !['ok', 'fail'].includes(result))) {
   console.log(`media-job: nothing to report (${!KEY ? 'no key' : `mode ${mode} ${result}`})`);
   process.exit(0);
 }
@@ -29,6 +32,16 @@ async function rpc(fn, body) {
   return JSON.parse(text);
 }
 try {
+  if (mode === 'requeue') {
+    const job = process.env.MEDIA_JOB;
+    if (!job) {
+      console.log('media-job: cancelled run without a job — nothing to requeue');
+      process.exit(0);
+    }
+    const r = await rpc('media_job_update', { p_id: job, p_status: 'queued', p_run_url: RUN_URL });
+    console.log(`media-job: cancelled run — job ${job} ${r.ok ? 'back to queued' : 'already settled'}`);
+    process.exit(0);
+  }
   if (mode === 'settle') {
     const at = process.env.MEDIA_MANIFEST_AT;
     if (!at) {

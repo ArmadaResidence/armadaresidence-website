@@ -10,8 +10,9 @@
 // Server to server only: verify_jwt = false, no CORS. The caller proves the service role by its key: the function
 // forwards that key to public.site_deploy_report, which only service_role may execute — any other key gets 403 and
 // nothing else. The email itself goes out with the function's own RESEND_API_KEY.
-// Test: { "test": true } (still needs the service key) renders a deploy alert for a sample run and sends it to Resend's
-// sink address only — nothing is recorded.
+// Test (still needs the service key; nothing recorded): { "test": "sink" } (or true) sends a sample deploy alert,
+// subject «[تجربة] …», to Resend's sink address only; { "test": "admin" } sends the same sample once to the active
+// admins (the real recipients) — run from the deploy watchdog's workflow_dispatch input alert_test.
 // Secrets: RESEND_API_KEY, optional ALERT_FROM; SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY (automatic).
 import { alertEmail, type AlertKind, type AlertRun } from './email.ts';
 
@@ -71,7 +72,7 @@ async function send(to: string[], mail: { subject: string; html: string; text: s
 
 interface Body {
   stage?: string; run_id?: number | string; attempt?: number; run_url?: string; commit?: string; commit_title?: string;
-  event?: string; failed_step?: string; started_at?: string; test?: boolean;
+  event?: string; failed_step?: string; started_at?: string; test?: boolean | 'sink' | 'admin';
 }
 interface Claim { claimed: boolean; recipients?: string[]; last_success_at?: string | null; run?: AlertRun & { is_test?: boolean } }
 
@@ -86,7 +87,7 @@ Deno.serve(async (req) => {
     return json(400, { ok: false, error: 'invalid json' });
   }
 
-  if (body.test === true) {
+  if (body.test === true || body.test === 'sink' || body.test === 'admin') {
     // the service role, proven without writing: a report with an invalid status is refused by the database (22023 →
     // 400) only when the caller may execute it; anyone else is refused before (401 / 403 / 404)
     const probe = await rpc(key, 'site_deploy_report', { p_run_id: 1, p_status: 'probe', p_commit: '0'.repeat(40), p_event: 'other', p_run_url: 'https://github.com/x/y/actions/runs/1' });
@@ -96,8 +97,13 @@ Deno.serve(async (req) => {
       commit_title: 'test alert', event: 'workflow_dispatch', failed_step: 'QA gate (qa.py exits non-zero on any failure)',
       started_at: new Date().toISOString(), finished_at: new Date().toISOString(),
     };
-    const sent = await send([TEST_SINK], alertEmail('deploy', sample, null, true));
-    return json(200, { ok: sent, test: true });
+    let to = [TEST_SINK];
+    if (body.test === 'admin') {
+      const rc = await rpc<string[]>(serviceKey(), 'site_deploy_alert_recipients', {});
+      to = rc.ok && Array.isArray(rc.data) ? rc.data : [];
+    }
+    const sent = await send(to, alertEmail('deploy', sample, null, true));
+    return json(200, { ok: sent, test: body.test === 'admin' ? 'admin' : 'sink', recipients: to.length });
   }
 
   const stage = String(body.stage ?? '');

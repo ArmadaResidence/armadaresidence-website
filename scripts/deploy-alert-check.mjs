@@ -31,7 +31,7 @@ const d = alertEmail('deploy', run, '2026-11-05T20:50:00Z');
 E('deploy subject', d.subject === 'تنبيه: فشل تحديث الموقع — 1020de3', d.subject);
 const w = alertEmail('watchdog', run, null);
 E('watchdog subject', w.subject === 'تنبيه: مراقب النشر أوقف تحديث الموقع — 1020de3', w.subject);
-E('test subject is marked', alertEmail('deploy', run, null, true).subject.startsWith('[TEST] '));
+E('test subject starts with «[تجربة]»', alertEmail('deploy', run, null, true).subject === '[تجربة] تنبيه: فشل تحديث الموقع — 1020de3');
 for (const [k, m] of [['deploy', d], ['watchdog', w]]) {
   E(`${k}: the run link (HTML + text)`, m.html.includes(`href="${run.run_url}"`) && m.text.includes(run.run_url));
   E(`${k}: the failed step`, m.text.includes('الخطوة التي فشلت: build › QA gate (qa.py exits non-zero on any failure)'));
@@ -70,7 +70,11 @@ E('deploy.yml reports the start', /node scripts\/site-deploy-report\.mjs running
 E('deploy.yml status job: always(), never for a dry run, actions: read', /status:\n\s+needs: \[build, deploy\]\n\s+if: \$\{\{ always\(\) && !inputs\.dry_run \}\}/.test(wf) && /actions: read/.test(wf) && /site-deploy-report\.mjs final/.test(wf));
 const wd = readFileSync(new URL('../.github/workflows/deploy-watchdog.yml', import.meta.url), 'utf8');
 E('the watchdog checks out the report helper', wd.includes('scripts/site-deploy-report.mjs'));
-E('the watchdog alert_test runs only the sink test', /alert_test:/.test(wd) && /if: \$\{\{ inputs\.alert_test \}\}\n\s+run: node scripts\/site-deploy-report\.mjs test/.test(wd) && /if: \$\{\{ !inputs\.alert_test \}\}\n\s+run: node scripts\/deploy-watchdog\.mjs/.test(wd));
+E('the watchdog alert_test (none | sink | admin) runs only the sample alert', /alert_test:[\s\S]*?type: choice[\s\S]*?options: \['none', 'sink', 'admin'\]/.test(wd) && wd.includes("run: node scripts/site-deploy-report.mjs test ${{ inputs.alert_test }}") && wd.includes("if: ${{ inputs.alert_test != 'sink' && inputs.alert_test != 'admin' }}\n        run: node scripts/deploy-watchdog.mjs"));
+// the Pages concurrency (6 Nov 2026): a running deploy is never cancelled; a cancelled run requeues its job, never an alert
+E('deploy.yml: cancel-in-progress false', /concurrency:\n\s+group: .*\n\s+cancel-in-progress: false/.test(wf));
+E('deploy.yml: the report job always runs and requeues on a cancelled run', /report:\n\s+needs: \[build, deploy\]\n\s+if: \$\{\{ always\(\) \}\}/.test(wf) && /= "cancelled" \][\s\S]{0,120}node scripts\/media-job\.mjs requeue/.test(wf));
+E('a cancelled run is reported as cancelled (no alert)', finalStatus('cancelled', 'skipped') === 'cancelled' && finalStatus('success', 'cancelled') === 'cancelled');
 const cfg = readFileSync(new URL('../supabase/config.toml', import.meta.url), 'utf8');
 E('site-deploy-report: verify_jwt = false (server to server)', /\[functions\.site-deploy-report\]\nverify_jwt = false/.test(cfg));
 
@@ -90,7 +94,7 @@ E('deployTime: Riyadh, Western digits', deployTime(T0) === '06/11/2026 05:00', d
 let l = deployLine(ok, null, T0);
 E('succeeded line', l.view === 'succeeded' && l.text === 'آخر تحديث للموقع: نجح — 06/11/2026 04:54' && !l.detail, JSON.stringify(l));
 l = deployLine(failed, null, T0 + 5 * 60000);
-E('failed line + detail + run link', l.view === 'failed' && l.text === 'آخر تحديث للموقع: فشل — 06/11/2026 05:04' && l.detail === 'ما حُفظ في اللوحة بعد آخر تحديث ناجح (06/11/2026 04:54) محفوظ، لكنه غير ظاهر على الموقع حتى ينجح تحديث جديد.' && l.link === failed.run_url, JSON.stringify(l));
+E('failed line + detail + run link', l.view === 'failed' && l.text === 'آخر تحديث للموقع: فشل — 06/11/2026 05:04' && l.detail === 'التعديلات المحفوظة بعد آخر تحديث ناجح (06/11/2026 04:54) لن تظهر على الموقع حتى ينجح تحديث جديد.' && l.link === failed.run_url, JSON.stringify(l));
 E('failed line without a known success', deployLine({ ...failed, last_success_at: null }, null, T0).detail === DEPLOY_TEXT.failedDetail(null));
 l = deployLine(running, null, T0 + 10000);
 E('running line with its link', l.view === 'running' && l.text === 'جارٍ تحديث الموقع — بدأ 06/11/2026 05:00' && l.link === running.run_url, JSON.stringify(l));
