@@ -20,6 +20,10 @@ on:
         description: decide and log, dispatch nothing
         type: boolean
         default: false
+      alert_test:
+        description: only send a sample deploy alert to Resend's sink (site-deploy-report test mode) — no watchdog run
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -42,7 +46,14 @@ jobs:
             scripts/deploy-watchdog.mjs
             scripts/site-deploy-report.mjs
           sparse-checkout-cone-mode: false
+      - name: Sample deploy alert to Resend's sink (alert_test)
+        if: ${{ inputs.alert_test }}
+        run: node scripts/site-deploy-report.mjs test
+        env:
+          PUBLIC_BOOKING_ENDPOINT: ${{ vars.PUBLIC_BOOKING_ENDPOINT }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
       - name: Compare the live site with main and the dashboard's publishes
+        if: ${{ !inputs.alert_test }}
         run: node scripts/deploy-watchdog.mjs
         env:
           GH_TOKEN: ${{ github.token }}

@@ -70,6 +70,7 @@ E('deploy.yml reports the start', /node scripts\/site-deploy-report\.mjs running
 E('deploy.yml status job: always(), never for a dry run, actions: read', /status:\n\s+needs: \[build, deploy\]\n\s+if: \$\{\{ always\(\) && !inputs\.dry_run \}\}/.test(wf) && /actions: read/.test(wf) && /site-deploy-report\.mjs final/.test(wf));
 const wd = readFileSync(new URL('../.github/workflows/deploy-watchdog.yml', import.meta.url), 'utf8');
 E('the watchdog checks out the report helper', wd.includes('scripts/site-deploy-report.mjs'));
+E('the watchdog alert_test runs only the sink test', /alert_test:/.test(wd) && /if: \$\{\{ inputs\.alert_test \}\}\n\s+run: node scripts\/site-deploy-report\.mjs test/.test(wd) && /if: \$\{\{ !inputs\.alert_test \}\}\n\s+run: node scripts\/deploy-watchdog\.mjs/.test(wd));
 const cfg = readFileSync(new URL('../supabase/config.toml', import.meta.url), 'utf8');
 E('site-deploy-report: verify_jwt = false (server to server)', /\[functions\.site-deploy-report\]\nverify_jwt = false/.test(cfg));
 
