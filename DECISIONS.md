@@ -1413,3 +1413,78 @@ viewport, which aborted Astro's page transitions (the console error `booking-nav
   navigation and a reload, light again persists — 48 / 48. The pixel guard and the other browser checks already set the
   theme explicitly (localStorage), not by the system setting — no change needed.
 
+## 2026-11-06 — Nine changes: the hero as photos or video, a measured scrim, no pattern over photos, Discover Taif in «الصور», forms on phones, «كواية», secret scan, GTM 5 s, the old site archived (Ahmed, 6 Nov 2026)
+
+One unattended session from Ahmed's brief of 6 Nov 2026.
+
+- **1 — Home hero: «فيديو» or «صور متتابعة».** In «الصور» → «الصفحة الرئيسية» a choice above the slots (`public.media_hero`:
+  `mode` = the draft, `live_mode` = what the site shows, written only by «نشر» of the home page; `media_set_hero_mode`,
+  `media_hero_get`; a changed mode is a pending change of the home target, also for «نشر الكل»; the manifest carries
+  `hero.mode`; audited, never undoable — migration `20261106100100_home_hero_photos`). Video mode is unchanged. Photos
+  mode = the home target's gallery slot: 3–8 photos (missing code `hero-slides`), uploads or «اختيار صورة موجودة», Ahmed's
+  order, focal point, both descriptions required. The build (`photos-engine.mjs renderSlide`, recipe `slide@1`): 16:9 at
+  800–1920 + 4:5 at 480–720 around the focal point, AVIF + WebP, every file ≤ 600 KB desktop / ≤ 250 KB phone (re-encoded
+  8 quality steps lower until within, never below q30). The page: stacked layers, the first the LCP (eager, high
+  priority, preloaded for both crops), the others only in data-src / data-srcset — loaded after the load event, one ahead;
+  6 s per photo (`--motion-hero-hold`), a 1.2 s cross-fade (`--motion-hero-fade`), Ken Burns 1.00 ↔ 1.08 alternating in /
+  out with the transform origin on the focal point; transform + opacity only, no layout shift; plays on phones; pauses
+  while the tab is hidden or the hero is off screen. A 44 px pause / play button («إيقاف الحركة مؤقتًا» / «تشغيل الحركة» —
+  "Pause motion" / "Play motion"), for the slideshow and the video, shown only while something moves (WCAG 2.2.2).
+  Reduced motion, Save-Data or a slow connection (2G / 3G, < 1.5 Mbit/s): the first photo / the poster only, still —
+  the slow-connection rule now applies to the desktop video too (it was phones only). The hero stays on video in
+  production; Ahmed picks the photos and switches.
+- **2 — The scrim, measured.** The scrim's strength is now computed at build time per picture (`heroScrim`): the lightest
+  Armada Midnight alpha at which the eyebrow (Bronze Bright), the subtitle (Porcelain 85 %) and the outline button reach
+  4.5:1 and the headline 3:1 over the brightest pixels behind them (+ 0.2 margin), per layout (phones: the whole 4:5 crop;
+  768–1279: the whole 16:9 crop; ≥ 1280: the 76 % on the reading-start side), for a poster, each slideshow photo and a
+  video's poster + frames sampled every second (kept beside the cache entry, `scrim-v1.json`; the first CI build with the
+  video measures its frames once — `--plan` asks for ffmpeg). The far side now falls to nothing (it was 22 %).
+  **Measured on the published video (its poster is a bright daytime shot — white sky and a cream façade, luminance up to
+  0.93): 0.91 behind the text in every layout**, against 0.90 before — the AA rule allows no lighter layer over this
+  picture; what gets lighter is the far side and, automatically, every darker photo (the sample's night photo: 0.43).
+  This is the honest result of the brief's rule, not a change from it.
+- **3 — No pattern over real photos.** Removed from the Discover Taif hero (`.legacy-discover .hero::after`) and from the
+  partners pages' heroes and closing band (`.hero-v3 .scrim::before`, `.phero .bg::after`, `.final .scrim::before`):
+  /discover-taif/, /partners/, /partners/groups-umrah/, /partners/corporate/, /partners/meetings-events/,
+  /partners/enquiry/ (AR + EN). No other hero or banner with a real photo carried it (the home hero had none since
+  5 Nov; the site's own pages use the pattern only on placeholders and photo-less midnight surfaces).
+- **Pixel guard** (HEAD vs this change, both built locally without the service key, 324 shots): 96 differ, all expected —
+  the Arabic room pages («كواية»; English unchanged), /discover-taif/ and every /partners/ page in both languages (the
+  pattern gone from the photo heroes; the enquiry wizard's fields at 16 px on phones). The home hero's scrim is checked
+  on the published poster instead (`hero-scrim-check --poster`), since a local build has no published photos.
+- Tests on the preview branch `hero-photos-6nov` (deleted after): `supabase/tests/hero-photos.sql` 34 / 34, and media 84,
+  dining 77, gallery-partners 31, media-copy 30, blog 64, offers 124 unchanged; `admin/tests/media-check.mjs` 116 / 116
+  (+ the hero section); `hero-slides-check` 150 / 150 and `hero-scrim-check` 52 / 52 on the sample slideshow build.
+- **4 — Discover Taif in «الصور».** 17 records, one per place in the page's order, from the built-in files at full
+  resolution (`content/images/taif/<slug>-1400.webp`, byte for byte; previews from the same file), descriptions as
+  written for the guide after checking each photo — two corrected to what the photo shows (Al Shafa: rocky peaks, not
+  terraces; Al Kaaki: a courtyard pool, not a fountain; `taif-guide.json` updated the same way), published, actor
+  «أحمد محمد حلمي (via Claude)». The build keeps the page's own rendition for a published cover whose sha256 is the
+  built-in file's (`media-build.mjs → TAIF_BUILTIN`; `content.ts` takes only the descriptions), so the page is unchanged:
+  pixel guard of the same code without / with the 17 records: 8 / 8 shots identical (AR + EN × 375 + 1440 × light +
+  dark). A different photo published later goes through the engine like any cover.
+- **5 — Forms on phones.** Israel removed from every country list (`countries.ts → EXCLUDED`, the flag no longer made —
+  the phone selector and the careers nationality list, which is built from it; the dashboard has no country list).
+  Every field is 16 px below 768 px — site (`global.css`, the legacy partners wizard included) and dashboard
+  (`admin/src/styles.css`, larger fields keep their size); the viewport meta never had maximum-scale. The country picker
+  already fitted the 375 px screen. `scripts/mobile-forms-check.mjs` (iPhone WebKit + Android Chromium, AR + EN, 8 page
+  types): before the change the country search was 14 px on every page and the partners wizard's fields 14.5 px.
+- **6 — «كواية».** «مكواة» → «كواية» in guest-facing Arabic: the 12 room descriptions (`rooms.json`), the amenity label
+  (`ui.json → room.in_room.iron`), the partners unit list (`partners-pages.json` and its generator), the fact sheet copy
+  (PDFs regenerated), and in «المحتوى والظهور» the 12 room-description fields (draft and original text; nothing was
+  published) as one audited «save» revision each, actor «أحمد محمد حلمي (via Claude)» (migration `20261106100000_kawaya`).
+  No image description held it. English stays "iron".
+- **7 — Secret scan.** gitleaks 8.30.1 over the full history (mirror clones, every ref) of the website, the dashboard,
+  armada-club and the menu repo: 4 matches, all in the website, none a secret (a QA token of 1s, a localStorage key name
+  twice, a deliberately forged JWT in the CORS check). Nothing to rotate. Secret scanning + push protection: already on
+  for the other three; turned on for the website repository.
+- **8 — GTM fragment.** `docs/gtm-performance(.md|-container.json)`: the Meta / TikTok / Snap base pixels fire on
+  `first_engagement` — pushed once by a new Custom HTML tag on All Pages at the first scroll, pointerdown, touchstart or
+  keydown, or after 5 s (was a click / 25 % scroll / 10 s) — or on `CE - booking_request`; the conversion tags unchanged.
+  The live container is not touched (Ahmed imports it).
+- **9 — The old site archived:** a separate entry below (built in parallel; its own repository).
+- **Page-weight rule (approved by Ahmed).** The 1 MB initial budget excludes media that loads only after the load event;
+  deferred hero media: video ≤ 8 MB desktop / ≤ 3 MB phone, photos ≤ 600 KB / ≤ 250 KB each; never with Save-Data,
+  reduced motion or a slow connection. qa.py: the home transfer counts src / href only (the deferred files sit in data-*
+  attributes) and `check_media` holds the slideshow budgets, its 3–8 count, both descriptions, the measured scrim and
+  that only the first photo is referenced eagerly. `lh.mjs` reports «initial first party (before load)».
