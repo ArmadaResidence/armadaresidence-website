@@ -28,6 +28,10 @@ on:
         description: dry run only — build with the generated media sample (scripts/media-sample.mjs)
         type: boolean
         default: false
+      trigger:
+        description: who asked (dashboard = site-rebuild / blog-due, watchdog = the deploy watchdog; empty = by hand) — named in the deploy alert
+        required: false
+        default: ''
 
 permissions:
   contents: read
@@ -65,6 +69,8 @@ jobs:
       - name: Report the start to the dashboard
         if: ${{ !inputs.dry_run }}
         run: node scripts/site-deploy-report.mjs running
+        env:
+          TRIGGER: ${{ inputs.trigger }}
       - name: A media sample is for dry runs only
         if: ${{ inputs.media_sample && !inputs.dry_run }}
         run: |
@@ -186,6 +192,8 @@ jobs:
       GH_TOKEN: ${{ github.token }}
       BUILD_RESULT: ${{ needs.build.result }}
       DEPLOY_RESULT: ${{ needs.deploy.result }}
+      TRIGGER: ${{ inputs.trigger }}
+      MEDIA_JOB: ${{ inputs.media_job }}
     steps:
       - uses: actions/checkout@v4
         with:

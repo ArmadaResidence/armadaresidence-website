@@ -14,7 +14,13 @@
 // subject «[تجربة] …», to Resend's sink address only; { "test": "admin" } sends the same sample once to the active
 // admins (the real recipients) — run from the deploy watchdog's workflow_dispatch input alert_test.
 // Secrets: RESEND_API_KEY, optional ALERT_FROM; SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY (automatic).
-import { alertEmail, type AlertKind, type AlertRun } from './email.ts';
+// the one email layout (header with the reversed logo, dark-mode safe; the legal footer) and its copy (ui.json →
+// staff_email.ar.deploy_alert, through build.py's content.generated.json) — 6 Nov 2026
+import content from '../booking-request/content.generated.json' with { type: 'json' };
+import { deployAlertMail } from '../booking-request/email.ts';
+
+type AlertKind = 'deploy' | 'watchdog';
+interface AlertRun { run_id: number; run_url: string; commit: string; commit_title: string | null; event: string; failed_step: string | null; started_at: string | null; finished_at: string | null }
 
 const TEST_SINK = 'delivered@resend.dev';
 const FROM = Deno.env.get('ALERT_FROM') ?? 'لوحة أرمادا ريزيدنس <no-reply@armadaresidence.com>';
@@ -92,17 +98,18 @@ Deno.serve(async (req) => {
     // 400) only when the caller may execute it; anyone else is refused before (401 / 403 / 404)
     const probe = await rpc(key, 'site_deploy_report', { p_run_id: 1, p_status: 'probe', p_commit: '0'.repeat(40), p_event: 'other', p_run_url: 'https://github.com/x/y/actions/runs/1' });
     if (probe.status !== 400) return json(403, { ok: false });
-    const sample: AlertRun = {
-      run_id: 1, run_url: 'https://github.com/ArmadaResidence/armadaresidence-website/actions', commit: '0123456789abcdef0123456789abcdef01234567',
-      commit_title: 'test alert', event: 'workflow_dispatch', failed_step: 'QA gate (qa.py exits non-zero on any failure)',
-      started_at: new Date().toISOString(), finished_at: new Date().toISOString(),
+    const now = new Date().toISOString();
+    const sample = {
+      kind: 'deploy' as const, run_url: 'https://github.com/ArmadaResidence/armadaresidence-website/actions', commit: '0123456789abcdef0123456789abcdef01234567',
+      commit_title: 'test alert', event: 'dashboard', failed_step: 'build › QA gate (qa.py exits non-zero on any failure)',
+      started_at: now, last_success_at: now, test: true,
     };
     let to = [TEST_SINK];
     if (body.test === 'admin') {
       const rc = await rpc<string[]>(serviceKey(), 'site_deploy_alert_recipients', {});
       to = rc.ok && Array.isArray(rc.data) ? rc.data : [];
     }
-    const sent = await send(to, alertEmail('deploy', sample, null, true));
+    const sent = await send(to, deployAlertMail(content, sample));
     return json(200, { ok: sent, test: body.test === 'admin' ? 'admin' : 'sink', recipients: to.length });
   }
 
@@ -129,7 +136,10 @@ Deno.serve(async (req) => {
   const c = await rpc<Claim>(serviceKey(), 'site_deploy_alert_claim', { p_run_id: runId, p_kind: kind });
   if (!c.ok || !c.data) return json(200, { ok: true, recorded: r.data.status, alert: 'claim_failed' });
   if (!c.data.claimed || !c.data.run) return json(200, { ok: true, recorded: r.data.status, alert: 'already_sent' });
-  const sent = await send(c.data.run.is_test ? [TEST_SINK] : c.data.recipients ?? [], alertEmail(kind, c.data.run, c.data.last_success_at ?? null, !!c.data.run.is_test));
+  const run = c.data.run;
+  const mail = deployAlertMail(content, { kind, run_url: run.run_url, commit: run.commit, commit_title: run.commit_title, event: run.event,
+    failed_step: run.failed_step, started_at: run.started_at, last_success_at: c.data.last_success_at ?? null, test: !!run.is_test });
+  const sent = await send(run.is_test ? [TEST_SINK] : c.data.recipients ?? [], mail);
   if (!sent) await rpc(serviceKey(), 'site_deploy_alert_release', { p_run_id: runId });
   return json(200, { ok: true, recorded: r.data.status, alert: sent ? 'sent' : 'send_failed' });
 });

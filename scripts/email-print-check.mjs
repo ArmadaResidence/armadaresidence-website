@@ -17,7 +17,7 @@ import { chromium, webkit } from 'playwright';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { bookingConfirmation, bookingConfirmed, bookingNotification, confirmedNotification, jobApplicationAlert, jobApplicationConfirmation, jobApplicationNotification, lowInventoryAlert, partnerNotification } from '../supabase/functions/booking-request/email.ts';
+import { bookingConfirmation, bookingConfirmed, bookingNotification, confirmedNotification, deployAlertMail, jobApplicationAlert, jobApplicationConfirmation, jobApplicationNotification, lowInventoryAlert, partnerNotification } from '../supabase/functions/booking-request/email.ts';
 
 const content = JSON.parse(readFileSync('supabase/functions/booking-request/content.generated.json', 'utf8'));
 content.email_logo_url = pathToFileURL(resolve('public/email/armada-residence-logo-reversed@2x.png')).href;
@@ -75,6 +75,7 @@ const internal = (n, stay = 7) => [
   ['job-application (jobs mailbox)', jobApplicationNotification(content, job(n))],
   ['job-application purge alert', jobApplicationAlert(content, { ref: 'AR-20261028-JOBS', department: 'restaurant-cafe', branch: 'any', submittedAt: '2026-10-21 23:59 (Asia/Riyadh)', attempts: 12, lastError: 'resend 422 The attachment could not be processed — a long error text from the provider kept to its first 160 characters' })],
   ['low-inventory', lowInventoryAlert(content, { ref: 'AR-20261028-PRNT', branch: 'airport-road', room: 'two-bedroom-suite', nights: nightsList('2026-11-02', 30, [0]).map((x, i) => ({ night: x.night, left: i % 2 })) })],
+  ['site-deploy alert', deployAlertMail(content, { kind: 'watchdog', run_url: 'https://github.com/ArmadaResidence/armadaresidence-website/actions/runs/42112958082', commit: '1020de3f00000000000000000000000000000000', commit_title: 'fix(qa): a long commit title that runs over more than one line of the alert to test the print layout of the row', event: 'dashboard', failed_step: 'build › QA gate (qa.py exits non-zero on any failure)', started_at: '2026-11-05T21:28:30Z', last_success_at: '2026-11-05T20:50:00Z' })],
 ];
 
 const fails = [];

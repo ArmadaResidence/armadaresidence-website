@@ -146,7 +146,7 @@ try {
     log(`would dispatch ${WORKFLOW} on main${stale.length ? ` with media_job ${stale[0].id}` : ''} (dry run)`);
     finish(0);
   }
-  gh(['workflow', 'run', WORKFLOW, '--repo', REPO, '--ref', 'main', ...(stale.length ? ['-f', `media_job=${stale[0].id}`] : [])]);
+  gh(['workflow', 'run', WORKFLOW, '--repo', REPO, '--ref', 'main', '-f', 'trigger=watchdog', ...(stale.length ? ['-f', `media_job=${stale[0].id}`] : [])]);
   log(`dispatched ${WORKFLOW} on main${stale.length ? ` with media_job ${stale[0].id}` : ''}`);
   finish(0);
 } catch (e) {

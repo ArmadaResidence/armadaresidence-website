@@ -32,6 +32,18 @@ export function failedStepFrom(jobs) {
   return null;
 }
 
+/** what started this run, for the alert's «سبب التشغيل» (6 Nov 2026): push | schedule | dashboard | watchdog | manual.
+ * A dispatch carries `trigger` (site-rebuild and blog-due: dashboard; the watchdog: watchdog); a dashboard publish job
+ * alone also means the dashboard; any other dispatch was started by hand. */
+export function resolveEvent(eventName, trigger, mediaJob) {
+  if (eventName === 'push' || eventName === 'schedule') return eventName;
+  if (eventName === 'workflow_dispatch') {
+    if (trigger === 'dashboard' || trigger === 'watchdog') return trigger;
+    return mediaJob ? 'dashboard' : 'manual';
+  }
+  return 'other';
+}
+
 export function functionUrl(env = process.env) {
   const base = (env.SUPABASE_URL || (env.PUBLIC_BOOKING_ENDPOINT || '').split('/functions/')[0]).replace(/\/$/, '');
   return base ? `${base}/functions/v1/site-deploy-report` : null;
@@ -88,7 +100,8 @@ async function main() {
   const repo = env.GITHUB_REPOSITORY;
   const runId = Number(env.GITHUB_RUN_ID);
   const attempt = Number(env.GITHUB_RUN_ATTEMPT || 1);
-  const base = { run_id: runId, attempt, run_url: `${env.GITHUB_SERVER_URL}/${repo}/actions/runs/${runId}`, commit: env.GITHUB_SHA, event: env.GITHUB_EVENT_NAME };
+  const event = resolveEvent(env.GITHUB_EVENT_NAME, env.TRIGGER, env.MEDIA_JOB);
+  const base = { run_id: runId, attempt, run_url: `${env.GITHUB_SERVER_URL}/${repo}/actions/runs/${runId}`, commit: env.GITHUB_SHA, event };
   if (mode === 'running') {
     let title = null;
     try {

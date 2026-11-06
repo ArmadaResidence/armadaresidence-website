@@ -14,6 +14,7 @@ import {
   bookingNotification,
   clubWelcome,
   confirmedNotification,
+  deployAlertMail,
   diningOpening,
   jobApplicationAlert,
   jobApplicationConfirmation,
@@ -128,6 +129,9 @@ const mails = {
   'club-welcome': clubWelcome(content, { unsubscribe: { ar: 'https://armadaresidence.com/club/unsubscribe/?t=00000000-0000-4000-8000-000000000000.0123456789abcdef0123456789abcdef', en: 'https://armadaresidence.com/en/club/unsubscribe/?t=00000000-0000-4000-8000-000000000000.0123456789abcdef0123456789abcdef' } }),
   // «إرسال للأعضاء» (3 Nov 2026): a member-only offer with its code
   'club-member-offer': memberOffer(content, { titleAr: 'خصم 15٪ لأعضاء النادي', titleEn: '15% off for club members', descriptionAr: 'على كل الليالي حتى نهاية الشهر في فرع طريق المطار.', descriptionEn: 'On every night until the end of the month at Airport Road.', code: 'CLUB15', validTo: '2026-11-30', book: { ar: 'https://armadaresidence.com/booking/?promo=CLUB15', en: 'https://armadaresidence.com/en/booking/?promo=CLUB15' }, unsubscribe: { ar: 'https://armadaresidence.com/club/unsubscribe/?t=x', en: 'https://armadaresidence.com/en/club/unsubscribe/?t=x' } }),
+  // the site-deploy alert to the admins (6 Nov 2026): a failed dashboard rebuild and the watchdog's stop
+  'deploy-alert': deployAlertMail(content, { kind: 'deploy', run_url: 'https://github.com/ArmadaResidence/armadaresidence-website/actions/runs/42112958082', commit: '1020de3f00000000000000000000000000000000', commit_title: 'fix(qa): hero loop budgets follow the new spec', event: 'dashboard', failed_step: 'build › QA gate (qa.py exits non-zero on any failure)', started_at: '2026-11-05T21:28:30Z', last_success_at: '2026-11-05T20:50:00Z', test: true }),
+  'deploy-alert-watchdog': deployAlertMail(content, { kind: 'watchdog', run_url: 'https://github.com/ArmadaResidence/armadaresidence-website/actions/runs/42112958082', commit: '1020de3f00000000000000000000000000000000', commit_title: null, event: 'watchdog', failed_step: null, started_at: '2026-11-05T21:28:30Z', last_success_at: null, test: true }),
 };
 
 const browser = await chromium.launch({ channel: 'chrome' });

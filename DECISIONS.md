@@ -1586,5 +1586,25 @@ One unattended session from Ahmed's brief of 6 Nov 2026.
   once to the active admins (`public.site_deploy_alert_recipients()`); nothing recorded. The alert's From is
   `no-reply@armadaresidence.com` (`ALERT_FROM` unset), so no Bcc is added (Ahmed's rule: a Bcc to the general manager
   only when the sender is info@ or sales-marketing@).
+- **Deployed (6 Nov 2026):** migration `20261106200000` (dry run, then push), `site-deploy-report` + `site-rebuild`,
+  commits 8a5a765 → 3976fc4 pushed; deploy run 42196013395 green (running → succeeded recorded, no alert); the
+  dashboard deployed (build, deploy, verify); `site-deploys.sql` on production 26 / 26 (always ends in an error: nothing
+  kept); test alerts: sink accepted, then one «[تجربة]» to the admin; the watchdog «in sync», newest run succeeded; live
+  suite 32 / 32.
+- **The alert email in the one look (Ahmed, 6 Nov 2026, after the first test in Gmail's dark mode: a light-blue header,
+  no logo).** `deployAlertMail` now lives in `supabase/functions/booking-request/email.ts` — the shared header with the
+  reversed logo and its one-colour gradient band (DECISIONS 2026-10-26 «one look for every email», 2026-11-01 «Email
+  header immune to dark-mode inversion»), the two-line legal footer, one A4 page in print (`email-print-check`), in
+  `email-preview`; copy in `ui.json → staff_email.ar.deploy_alert` (approved wording: «… آخر نسخة ناجحة.», «التعديلات
+  المحفوظة في اللوحة بعد آخر تحديث ناجح، مثل «متاحة للحجز على الموقع»، لن تظهر في صفحات الموقع حتى ينجح تحديث جديد.
+  نموذج الحجز وحده يعرض تغييرات «الغرف» فورًا.»). The values: the failed step as an Arabic name only — تجهيز البناء /
+  تجهيز الصور / بناء الموقع / فحص الجودة / النشر (`deployStepKey`; the technical name stays in the run's log); the run's
+  actual trigger, never «… أو …» — تحديث للكود / التحديث اليومي المجدول / تعديل من اللوحة / مراقب النشر / تشغيل يدوي
+  (`deploy.yml` input `trigger`: site-rebuild and blog-due send `dashboard`, the watchdog `watchdog`; a publish job alone
+  also means the dashboard; `scripts/site-deploy-report.mjs → resolveEvent`; migration `20261106300000` widens
+  `site_deploys.event` and keeps a recorded specific trigger when a later report only knows `workflow_dispatch`); the
+  time as the other emails write it, longDate + 12 h («الجمعة 6 نوفمبر 2026، 12:28 صباحًا بتوقيت الرياض»).
+  `supabase/functions/site-deploy-report/email.ts` is removed. `deno check` of functions importing email.ts reports
+  20 type errors in older code of that file (lines 422–869, also on 3976fc4); the bundler deploys them as before.
 - **For the launch session (not changed):** CLAUDE.md §8 step 5 and `docs/gtm-performance.md` still say the container
   lacks a trigger and a valued conversion for `booking_confirmed`, while the test of 30 Oct 2026 confirmed the conversion.

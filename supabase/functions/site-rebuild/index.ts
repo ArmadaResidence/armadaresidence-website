@@ -142,7 +142,8 @@ Deno.serve(async (req) => {
       'Content-Type': 'application/json',
       'User-Agent': 'armada-site-rebuild',
     },
-    body: JSON.stringify(job ? { ref: REF, inputs: { media_job: job.id, dry_run: String(job.dry_run) } } : { ref: REF }),
+    // trigger: the deploy alert names the dashboard as what started the run (6 Nov 2026)
+    body: JSON.stringify(job ? { ref: REF, inputs: { media_job: job.id, dry_run: String(job.dry_run), trigger: 'dashboard' } } : { ref: REF, inputs: { trigger: 'dashboard' } }),
   });
   if (res.status !== 204) {
     const text = await res.text();

@@ -1,15 +1,17 @@
 // «A failed deploy is never silent» (6 Nov 2026, DECISIONS.md 2026-11-06) — offline, no key, nothing sent:
-//   - the alert email (supabase/functions/site-deploy-report/email.ts): deploy and watchdog subjects, the commit, the
-//     failed step, the run link, the event label, Riyadh time in Western digits, the last success, HTML escaped, RTL;
+//   - the alert email (supabase/functions/booking-request/email.ts → deployAlertMail, the one email layout; copy from
+//     ui.json → staff_email.ar.deploy_alert via content.generated.json): the header with the reversed logo and its
+//     dark-mode-proof band, the legal footer, deploy / watchdog / «[تجربة]» subjects, the commit, the step and the
+//     trigger in Arabic (never «أو», no technical step name), the time as longDate + 12 h, the run link, escaped, RTL;
 //   - the workflow's report helpers (scripts/site-deploy-report.mjs): the run's outcome from its jobs' results, the
-//     failed step from the GitHub jobs list, the function URL;
+//     failed step from the GitHub jobs list, what started the run, the function URL;
 //   - site-rebuild's debounce (supabase/functions/site-rebuild/debounce.ts): rooms and settings always dispatch;
 //   - the dashboard texts (admin/src/lib/siteDeployText.ts): «جارٍ / نجح / فشل + الوقت», the bar's visibility, and the
 //     «الغرف» line after a change (saved and waiting / on the room pages / saved but not on the site).
-//   node scripts/deploy-alert-check.mjs
+//   node scripts/deploy-alert-check.mjs   (after build.py — it reads supabase/functions/booking-request/content.generated.json)
 import { readFileSync } from 'node:fs';
-import { alertEmail, EVENT_LABELS, riyadhTime } from '../supabase/functions/site-deploy-report/email.ts';
-import { failedStepFrom, finalStatus, functionUrl } from './site-deploy-report.mjs';
+import { deployAlertMail, deployStepKey, deployTriggerKey } from '../supabase/functions/booking-request/email.ts';
+import { failedStepFrom, finalStatus, functionUrl, resolveEvent } from './site-deploy-report.mjs';
 import { usesDebounce } from '../supabase/functions/site-rebuild/debounce.ts';
 import { barShowsDeploy, DEPLOY_TEXT, deployLine, deployTime, deployView, PENDING_MS, RECENT_MS, ROOMS_NOTE, roomsNote } from '../admin/src/lib/siteDeployText.ts';
 
@@ -22,32 +24,59 @@ const E = (label, ok, detail = '') => {
 const AR_DIGITS = /[٠-٩۰-۹]/;
 
 // ── the alert email ──
+const content = JSON.parse(readFileSync(new URL('../supabase/functions/booking-request/content.generated.json', import.meta.url), 'utf8'));
+const M = content.staff_email.ar.deploy_alert;
 const run = {
-  run_id: 42112958082, run_url: 'https://github.com/ArmadaResidence/armadaresidence-website/actions/runs/42112958082',
-  commit: '1020de3f00000000000000000000000000000000', commit_title: 'fix(qa): hero <loop> budgets & "specs"', event: 'workflow_dispatch',
-  failed_step: 'build › QA gate (qa.py exits non-zero on any failure)', started_at: '2026-11-05T21:28:30Z', finished_at: '2026-11-05T21:33:00Z',
+  kind: 'deploy', run_url: 'https://github.com/ArmadaResidence/armadaresidence-website/actions/runs/42112958082',
+  commit: '1020de3f00000000000000000000000000000000', commit_title: 'fix(qa): hero <loop> budgets & "specs"', event: 'dashboard',
+  failed_step: 'build › QA gate (qa.py exits non-zero on any failure)', started_at: '2026-11-05T21:28:30Z', last_success_at: '2026-11-05T20:50:00Z',
 };
-const d = alertEmail('deploy', run, '2026-11-05T20:50:00Z');
+const d = deployAlertMail(content, run);
+const w = deployAlertMail(content, { ...run, kind: 'watchdog', event: 'watchdog', last_success_at: null });
 E('deploy subject', d.subject === 'تنبيه: فشل تحديث الموقع — 1020de3', d.subject);
-const w = alertEmail('watchdog', run, null);
 E('watchdog subject', w.subject === 'تنبيه: مراقب النشر أوقف تحديث الموقع — 1020de3', w.subject);
-E('test subject starts with «[تجربة]»', alertEmail('deploy', run, null, true).subject === '[تجربة] تنبيه: فشل تحديث الموقع — 1020de3');
+E('test subject starts with «[تجربة]»', deployAlertMail(content, { ...run, test: true }).subject === '[تجربة] تنبيه: فشل تحديث الموقع — 1020de3');
 for (const [k, m] of [['deploy', d], ['watchdog', w]]) {
+  E(`${k}: the shared header — the reversed logo on the navy band, dark-mode proof (one-colour gradient)`, m.html.includes(`src="${content.email_logo_url}"`) && content.email_logo_url.endsWith('armada-residence-logo-reversed@2x.png') && /bgcolor="#142A3B"[^>]*background-image:linear-gradient\(#142A3B, #142A3B\)/.test(m.html));
+  E(`${k}: the legal footer (entity, CR, VAT)`, m.html.includes(content.legal.ar.entity) && m.html.includes(content.legal.ar.cr_label) && m.text.includes(`${content.legal.ar.cr_label} ${content.legal.ar.cr}`));
   E(`${k}: the run link (HTML + text)`, m.html.includes(`href="${run.run_url}"`) && m.text.includes(run.run_url));
-  E(`${k}: the failed step`, m.text.includes('الخطوة التي فشلت: build › QA gate (qa.py exits non-zero on any failure)'));
   E(`${k}: the commit and its title`, m.text.includes('1020de3 — fix(qa): hero <loop> budgets & "specs"'));
   E(`${k}: the title is escaped in HTML`, m.html.includes('hero &lt;loop&gt; budgets &amp; &quot;specs&quot;') && !m.html.includes('<loop>'));
-  E(`${k}: the event label`, m.text.includes(`سبب التشغيل: ${EVENT_LABELS.workflow_dispatch}`));
-  E(`${k}: Riyadh time, Western digits`, m.text.includes('وقت التشغيل: 2026-11-06 00:28 (توقيت الرياض)') && !AR_DIGITS.test(m.text));
-  E(`${k}: RTL Arabic document`, m.html.includes('<html lang="ar" dir="rtl">'));
-  E(`${k}: says the dashboard changes are saved but not on the site`, m.text.includes('محفوظ، لكنه لن يظهر على صفحات الموقع حتى ينجح تحديث جديد'));
+  E(`${k}: the step in Arabic, no technical name`, m.text.includes('الخطوة التي فشلت: فحص الجودة') && !m.text.includes('qa.py') && !m.html.includes('QA gate'));
+  E(`${k}: the time as the other emails write it`, m.text.includes('وقت التشغيل: الجمعة 6 نوفمبر 2026، 12:28 صباحًا بتوقيت الرياض') && !AR_DIGITS.test(m.text), m.text);
+  E(`${k}: the approved meaning sentence`, m.text.includes(M.meaning) && M.meaning.startsWith('التعديلات المحفوظة في اللوحة بعد آخر تحديث ناجح، مثل «متاحة للحجز على الموقع»، لن تظهر في صفحات الموقع'));
+  E(`${k}: RTL Arabic document`, m.html.includes('<html lang="ar" dir="rtl"'));
+  E(`${k}: no «أو» in the trigger`, !/سبب التشغيل: [^\n]*\sأو\s/.test(m.text));
 }
-E('the last success (deploy)', d.text.includes('آخر تحديث ناجح للموقع: 2026-11-05 23:50 (توقيت الرياض)'), d.text);
+E('the deploy lead (approved)', d.text.startsWith('فشل تحديث الموقع، والموقع ما زال يعرض آخر نسخة ناجحة.'));
+E('the watchdog lead', w.text.startsWith('أوقف مراقب النشر إعادة المحاولة تلقائيًا') && w.text.includes('آخر نسخة ناجحة.'));
+E('trigger: from the dashboard', d.text.includes('سبب التشغيل: تعديل من اللوحة'));
+E('trigger: the watchdog', w.text.includes('سبب التشغيل: مراقب النشر'));
+E('the last success (deploy)', d.text.includes('آخر تحديث ناجح للموقع: الخميس 5 نوفمبر 2026، 11:50 مساءً بتوقيت الرياض'), d.text);
 E('no last success recorded', w.text.includes('آخر تحديث ناجح للموقع: غير مسجّل'));
-E('the watchdog lead', w.text.startsWith('أوقف مراقب النشر إعادة المحاولة تلقائيًا'));
-E('an unknown step', alertEmail('deploy', { ...run, failed_step: null }, null).text.includes('غير معروفة — راجع سجل التشغيل'));
-E('an unknown event', alertEmail('deploy', { ...run, event: 'merge_group' }, null).text.includes(`سبب التشغيل: ${EVENT_LABELS.other}`));
-E('riyadhTime of nothing', riyadhTime(null) === '—' && riyadhTime('nope') === '—');
+const stepCases = [
+  ['build › QA gate (qa.py exits non-zero on any failure)', 'qa'], ['build › Build (build.py → media → astro build)', 'build'],
+  ['build › Sub-path rewrite for the project site (no-op when PUBLIC_BASE_PATH is empty)', 'build'], ['build › Media plan (ffmpeg only when a hero video or a HEIC photo must be processed)', 'media'],
+  ['build › ffmpeg', 'media'], ['build › Run npm ci', 'setup'], ['build › Run actions/checkout@v4', 'setup'], ['build › Set up job', 'setup'],
+  ['build › Run actions/upload-pages-artifact@v3', 'deploy'], ['deploy › Run actions/deploy-pages@v4', 'deploy'], ['deploy', 'deploy'], ['build', 'build'],
+  [null, 'unknown'], ['report › something new', 'unknown'],
+];
+for (const [raw, key] of stepCases) E(`step «${raw}» → ${key}`, deployStepKey(raw) === key, deployStepKey(raw));
+for (const [ev, key] of [['push', 'push'], ['schedule', 'schedule'], ['dashboard', 'dashboard'], ['watchdog', 'watchdog'], ['manual', 'manual'], ['workflow_dispatch', 'manual'], ['merge_group', 'other']]) {
+  E(`trigger «${ev}» → ${key}`, deployTriggerKey(ev) === key && typeof M.triggers[key] === 'string' && !/\sأو\s/.test(M.triggers[key]));
+}
+for (const v of [...Object.values(M.steps), ...Object.values(M.triggers)]) E(`label «${v}»: Arabic, no «أو», no brackets`, /[؀-ۿ]/.test(v) && !/\sأو\s/.test(v) && !/[()]/.test(v));
+// what started the run
+E('resolveEvent: push / schedule', resolveEvent('push', '', '') === 'push' && resolveEvent('schedule', '', '') === 'schedule');
+E('resolveEvent: dispatch from the dashboard', resolveEvent('workflow_dispatch', 'dashboard', '') === 'dashboard' && resolveEvent('workflow_dispatch', '', 'a-job-id') === 'dashboard');
+E('resolveEvent: dispatch by the watchdog', resolveEvent('workflow_dispatch', 'watchdog', '') === 'watchdog');
+E('resolveEvent: dispatch by hand', resolveEvent('workflow_dispatch', '', '') === 'manual');
+const wfText = readFileSync(new URL('../.github/workflows/deploy.yml', import.meta.url), 'utf8');
+const wdText = readFileSync(new URL('../scripts/deploy-watchdog.mjs', import.meta.url), 'utf8');
+const rbText = readFileSync(new URL('../supabase/functions/site-rebuild/index.ts', import.meta.url), 'utf8');
+const bdText = readFileSync(new URL('../supabase/functions/blog-due/index.ts', import.meta.url), 'utf8');
+E('deploy.yml: the trigger input, passed to both reports', /\n      trigger:\n/.test(wfText) && (wfText.match(/TRIGGER: \$\{\{ inputs\.trigger \}\}/g) || []).length === 2);
+E('the dispatchers name themselves', wdText.includes("'-f', 'trigger=watchdog'") && (rbText.match(/trigger: 'dashboard'/g) || []).length === 2 && bdText.includes("trigger: 'dashboard'"));
 
 // ── the workflow's report helpers ──
 E('finalStatus success', finalStatus('success', 'success') === 'succeeded');

@@ -1293,3 +1293,76 @@ ${buttons(L, [button(L, d.book[L], M.cta, 'bronze')])}
   const text = `${ar.text}\n\n${RULE}\n\n${en.text}\n\n${legalText(c, 'ar')}\n${legalText(c, 'en')}`;
   return { subject, html, text };
 }
+
+// ══ 14. Site-deploy alert (6 Nov 2026, DECISIONS.md 2026-11-06 «A failed deploy is never silent») ══════════════
+// To the dashboard's active admins, once per failed run of the website's deploy workflow (Edge Function
+// site-deploy-report). Arabic only, internal: the one header with the reversed logo (dark-mode safe), the legal
+// footer, one A4 page in print. Copy from ui.json → staff_email.ar.deploy_alert; the step and the trigger are named in
+// Arabic (the technical step name stays in the run's log); the time as the other emails write it (longDate + 12 h).
+
+export type DeployTrigger = 'push' | 'schedule' | 'dashboard' | 'watchdog' | 'manual' | 'workflow_dispatch' | 'repository_dispatch' | 'other';
+export interface DeployAlertMail {
+  kind: 'deploy' | 'watchdog';
+  run_url: string;
+  commit: string;
+  commit_title: string | null;
+  /** what started the run (site_deploys.event) */
+  event: string;
+  /** «job › step» as GitHub names it, or null */
+  failed_step: string | null;
+  started_at: string | null;
+  last_success_at: string | null;
+  test?: boolean;
+}
+
+/** a GitHub «job › step» → one of the alert's step keys (setup | media | build | qa | deploy | unknown) */
+export function deployStepKey(raw: string | null | undefined): 'setup' | 'media' | 'build' | 'qa' | 'deploy' | 'unknown' {
+  const s = String(raw ?? '').trim();
+  if (!s) return 'unknown';
+  const [job, step = ''] = s.split(' › ');
+  if (/qa\.py|QA gate/i.test(step)) return 'qa';
+  if (/^Build\b|Sub-path rewrite/i.test(step)) return 'build';
+  if (/media|ffmpeg|HEIC/i.test(step)) return 'media';
+  if (/pages|deploy/i.test(step) || (/^deploy$/i.test(job) && !step)) return 'deploy';
+  if (/checkout|setup-|Set up|npm ci|Install|dry runs only/i.test(step)) return 'setup';
+  if (/^deploy$/i.test(job)) return 'deploy';
+  if (/^build$/i.test(job) && !step) return 'build';
+  return 'unknown';
+}
+
+/** site_deploys.event → one of the alert's trigger keys (a dispatch whose origin is unknown counts as manual) */
+export function deployTriggerKey(event: string | null | undefined): 'push' | 'schedule' | 'dashboard' | 'watchdog' | 'manual' | 'other' {
+  const e = String(event ?? '');
+  if (e === 'push' || e === 'schedule' || e === 'dashboard' || e === 'watchdog' || e === 'manual') return e;
+  if (e === 'workflow_dispatch') return 'manual';
+  return 'other';
+}
+
+export function deployAlertMail(c: Content, d: DeployAlertMail): Mail {
+  const L: Locale = 'ar';
+  const M = c.staff_email.ar.deploy_alert;
+  const short = String(d.commit).slice(0, 7);
+  const subject = `${d.test ? M.test_prefix : ''}${fill(d.kind === 'watchdog' ? M.subject_watchdog : M.subject_deploy, { commit: short })}`;
+  const lead = d.kind === 'watchdog' ? M.lead_watchdog : M.lead_deploy;
+  const when = (ts: string | null) => (ts ? `${riyadhStamp(c, ts, L)}${M.time_suffix}` : M.not_recorded);
+  const rows: [string, string][] = [
+    [M.label_commit, `${short}${d.commit_title ? ` — ${d.commit_title}` : ''}`],
+    [M.label_step, M.steps[deployStepKey(d.failed_step)]],
+    [M.label_trigger, M.triggers[deployTriggerKey(d.event)]],
+    [M.label_time, when(d.started_at)],
+    [M.label_last_ok, when(d.last_success_at)],
+  ];
+  const inner = section(
+    L,
+    `${headline(L, lead)}
+${para(L, M.meaning)}
+${kvCard(L, rows)}
+<div style="height:18px; line-height:18px; font-size:0;">&nbsp;</div>
+${buttons(L, [button(L, d.run_url, M.button, 'bronze')])}
+<div style="height:8px; line-height:8px; font-size:0;">&nbsp;</div>
+${para(L, M.foot, { muted: true, size: 12 })}`,
+  );
+  const html = doc({ lang: 'ar', title: subject, preheader: `${lead} — ${short}`, body: header(c, undefined, true) + card(inner) + footer(c, ['ar']), print: true });
+  const text = [lead, '', M.meaning, '', textRows(rows), '', `${M.button}: ${d.run_url}`, '', M.foot, '', legalText(c, 'ar')].join('\n');
+  return { subject, html, text };
+}
