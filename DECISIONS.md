@@ -1488,3 +1488,9 @@ One unattended session from Ahmed's brief of 6 Nov 2026.
   reduced motion or a slow connection. qa.py: the home transfer counts src / href only (the deferred files sit in data-*
   attributes) and `check_media` holds the slideshow budgets, its 3–8 count, both descriptions, the measured scrim and
   that only the first photo is referenced eagerly. `lh.mjs` reports «initial first party (before load)».
+- **Found during the deploy — the sitemap and the dashboard availability.** Since the evening of 5 Nov 2026 every site build
+  failed qa (`/shafa-road/accessible-room/` AR + EN «missing from sitemap»; the two dispatched runs on 1020de3 and the
+  first run of this change): the room was switched on in «الغرف», so build.py's resolved availability made its page
+  indexable, but `astro.config.mjs` built the sitemap's noindex list from rooms.json alone. The config now reads the same
+  `ROOM_AVAILABILITY` that `src/lib/content.ts` reads (rooms.json only without it). The live site kept the 5 Nov build
+  until this fix deployed.

@@ -12,6 +12,14 @@ const hallsJson = JSON.parse(readFileSync(new URL('./content/halls.json', import
 const contentGenUrl = new URL('./content/content.generated.json', import.meta.url);
 const hidden = (existsSync(contentGenUrl) ? JSON.parse(readFileSync(contentGenUrl, 'utf8')).hidden : null) ?? { branches: [], rooms: [], sections: [] };
 
+/** the room availability resolved by build.py (site_room_types) — absent (astro dev, a scratch build) → rooms.json */
+const availabilityOverride = (() => {
+  try {
+    return JSON.parse(process.env.ROOM_AVAILABILITY || '{}');
+  } catch {
+    return {};
+  }
+})();
 /** noindex pages are excluded from the sitemap (CLAUDE.md §7): sold-out rooms, booking success, 404. */
 const noindexPaths = [
   '/booking/success/',
@@ -19,7 +27,11 @@ const noindexPaths = [
   '/404/',
   // the old Horizons paths rendered by src/pages/[legacy].astro are redirect pages, never sitemap entries (4 Nov 2026)
   ...redirects.redirects.filter((r) => r.via === 'page').map((r) => `${r.from}/`),
-  ...roomsJson.rooms.filter((r) => r.show_on_site && r.availability === 'sold_out').map((r) => `/${r.branch}/${r.slug}/`),
+  // sold-out rooms by the availability build.py resolved from the dashboard (ROOM_AVAILABILITY, as src/lib/content.ts
+  // reads it — 6 Nov 2026: a room switched on in «الغرف» is indexable and must be in the sitemap); rooms.json without it
+  ...roomsJson.rooms
+    .filter((r) => r.show_on_site && (availabilityOverride[`${r.branch}/${r.slug}`] ?? r.availability) === 'sold_out')
+    .map((r) => `/${r.branch}/${r.slug}/`),
 ];
 const isNoindex = (page) => {
   const path = new URL(page).pathname.replace(/^\/en\//, '/');
