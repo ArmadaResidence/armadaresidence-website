@@ -13,7 +13,7 @@ import { pathToFileURL } from 'node:url';
 
 // the suite, in the order check-all runs it
 export const STATIC_CHECKS = ['typecheck', 'admin-digits-check', 'admin-format-check', 'auth-emails-check', 'whatsapp-check', 'email-print-check', 'offers-engine-check', 'turnstile-check'];
-export const BROWSER_CHECKS = ['booking-nav-check', 'drawer-check', 'booking-whatsapp-check', 'datepicker-check', 'motion-check', 'booking-instant-check', 'partners-form-check', 'careers-form-check', 'dining-site-check', 'gallery-site-check', 'offers-site-check', 'blog-site-check', 'faq-site-check', 'content-site-check', 'club-site-check', 'partners-button-check', 'theme-check', 'hero-video-check', 'a11y-check'];
+export const BROWSER_CHECKS = ['booking-nav-check', 'drawer-check', 'booking-whatsapp-check', 'datepicker-check', 'motion-check', 'booking-instant-check', 'partners-form-check', 'careers-form-check', 'dining-site-check', 'gallery-site-check', 'offers-site-check', 'blog-site-check', 'faq-site-check', 'content-site-check', 'club-site-check', 'partners-button-check', 'theme-check', 'hero-video-check', 'hero-slides-check', 'mobile-forms-check', 'a11y-check'];
 // every commit (build and qa.py too, unless the commit is docs only)
 export const FAST_CHECKS = ['typecheck', 'admin-digits-check', 'admin-format-check', 'auth-emails-check', 'whatsapp-check'];
 // a11y-check on sample pages for a content change: home, one branch, one room, offers, policies — both languages
@@ -59,7 +59,7 @@ const RULES = [
     name: 'styles / motion / components',
     test: (f) => /^src\/(styles|components|layouts)\//.test(f) || lib(['reveal', 'counters', 'glow', 'carousel', 'story', 'roombar']).test(f),
     // the partners button lives in the header and motion.css (2 Nov 2026): its contrast, lift, sweep and focus ring
-    checks: ['motion-check', 'partners-button-check', 'theme-check', 'hero-video-check'],
+    checks: ['motion-check', 'partners-button-check', 'theme-check', 'hero-video-check', 'hero-slides-check', 'mobile-forms-check'],
     a11y: 'all',
     pixelGuard: true,
   },
@@ -140,6 +140,18 @@ const RULES = [
       /^src\/pages\/\[\.\.\.lang\]\/(club\/|index\.astro$|booking\/)/.test(f) ||
       ['content/club.json', 'content/policies.json', 'content/ui.json', 'content/seo.json', 'content/branches.json', 'src/lib/content.ts', RULES_TS].includes(f),
     checks: ['club-site-check'],
+  },
+  {
+    // the home hero (6 Nov 2026): the page and its script — the video, the slideshow, the pause control
+    name: 'home hero',
+    test: (f) => f === 'src/pages/[...lang]/index.astro',
+    checks: ['hero-video-check', 'hero-slides-check', 'motion-check'],
+  },
+  {
+    // forms on phones (6 Nov 2026): every field ≥ 16 px, the country picker inside 375 px, no Israel in the lists
+    name: 'forms on phones',
+    test: (f) => SHARED_FIELDS.some((r) => r.test(f)) || comp(['CountryField', 'ClubForm', 'NotifyForm', 'CareersForm', 'BookingForm']).test(f) || f === 'src/styles/partners-phone.css',
+    checks: ['mobile-forms-check'],
   },
   {
     name: 'email.ts',

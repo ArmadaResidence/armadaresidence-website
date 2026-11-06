@@ -4,7 +4,7 @@
 //   scripts/media-build.mjs    the site build (the photos published from the dashboard «الصور» → .media-build, cached)
 // Nothing here knows about folders, manifests or the database: a source buffer / file in, files out, facts back.
 import { spawnSync } from 'node:child_process';
-import { mkdirSync, readFileSync, rmSync, statSync } from 'node:fs';
+import { mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import sharp from 'sharp';
@@ -258,4 +258,147 @@ export async function renderPoster(buf, focal, dir, names = { poster: 'hero-post
     out[key] = { name, widths, width: top, height: Math.round(top / ratio), position: focalIn(focal, pw, ph, box) };
   }
   return out;
+}
+
+// ── the home hero as a slideshow (Ahmed, 6 Nov 2026) ─────────────────────────────────────────────────────────────────
+// 3–8 photos, each cropped around its focal point like the hero still: 16:9 for desktop (800–1920) and 4:5 for phones
+// (480–720), AVIF + WebP. Deferred-media budget (approved by Ahmed, 6 Nov 2026): every file of a photo ≤ 600 KB on
+// desktop and ≤ 250 KB on phones — a variant over it is encoded again at a lower quality (never below q30).
+export const SLIDE = {
+  widths: [800, 1200, 1600, 1920], mobileWidths: [480, 640, 720], mobileRatio: 4 / 5,
+  maxKB: { desktop: 600, mobile: 250 }, minQuality: 30, v: 1,
+};
+async function encodeWithin(pipe, file, fmt, opts, maxBytes) {
+  let q = opts.quality;
+  for (;;) {
+    const buf = await pipe.clone()[fmt]({ ...opts, quality: q }).toBuffer();
+    if (buf.length <= maxBytes || q <= SLIDE.minQuality) {
+      writeFileSync(file, buf);
+      return { bytes: buf.length, quality: q, over: buf.length > maxBytes };
+    }
+    q = Math.max(SLIDE.minQuality, q - 8);
+  }
+}
+/**
+ * One slide of the hero slideshow: `<names.desktop>-<w>.*` (16:9) and `<names.mobile>-<w>.*` (4:5) around the focal
+ * point, each file within its budget. Returns { desktop, mobile, files, notes } with each variant's widths, size and
+ * object-position.
+ */
+export async function renderSlide(buf, focal, dir, names = { desktop: 's', mobile: 's-m' }, { dry = false } = {}) {
+  const { width: pw, height: ph } = orientedSize(await sharp(buf).metadata());
+  const out = { files: [], notes: [] };
+  if (!dry) mkdirSync(dir, { recursive: true });
+  for (const [key, name, ratio, list, kb] of [
+    ['desktop', names.desktop, 16 / 9, SLIDE.widths, SLIDE.maxKB.desktop],
+    ['mobile', names.mobile, SLIDE.mobileRatio, SLIDE.mobileWidths, SLIDE.maxKB.mobile],
+  ]) {
+    const box = cropBox(pw, ph, ratio, focal);
+    let widths = list.filter((w) => w <= box.width);
+    if (!widths.length) widths = [box.width]; // under the smallest approved width: its own size, never upscaled
+    const pipe = sharp(buf).rotate().extract(box).toColourspace('srgb');
+    for (const w of widths) {
+      out.files.push(`${name}-${w}.webp`, `${name}-${w}.avif`);
+      if (dry) continue;
+      const sized = pipe.clone().resize(w, Math.round(w / ratio), { fit: 'fill' });
+      for (const [fmt, opts] of [['webp', PHOTO.webp], ['avif', PHOTO.avif]]) {
+        const r = await encodeWithin(sized, join(dir, `${name}-${w}.${fmt}`), fmt, opts, kb * 1024);
+        if (r.quality !== opts.quality) out.notes.push(`${key} ${w} ${fmt}: q${r.quality} to stay within ${kb} KB`);
+        if (r.over) out.notes.push(`${key} ${w} ${fmt}: ${Math.round(r.bytes / 1024)} KB, over ${kb} KB even at q${r.quality}`);
+      }
+    }
+    const top = widths.at(-1);
+    out[key] = { name, widths, width: top, height: Math.round(top / ratio), position: focalIn(focal, pw, ph, box) };
+  }
+  return out;
+}
+
+// ── the hero scrim, measured (Ahmed, 6 Nov 2026) ─────────────────────────────────────────────────────────────────────
+// The lightest Armada Midnight layer that keeps every hero text at WCAG AA over the brightest pixels behind it: the
+// eyebrow (Bronze Bright), the subtitle (Porcelain at 85 %) and the outline button (Porcelain) at 4.5:1, the headline
+// (Porcelain, large) at 3:1 — each with a margin of 0.2. Measured on the image as the page shows it, per layout:
+//   m       phones (< 768 px): the whole 4:5 crop (the text sits over most of it; the box only ever shows a part);
+//   md      768–1279 px: the whole 16:9 crop (the text column spans almost the full width there);
+//   lg_rtl / lg_ltr  ≥ 1280 px: the 76 % of the 16:9 crop on the reading-start side (the text column ends by 66 %,
+//           + the slow 1.08 zoom of a slideshow).
+// Returns alphas in [0.15, 0.92], two decimals, rounded up. The site sets them per slide / poster (global.css .hero-scrim).
+const SCRIM_COLORS = { midnight: [0x14, 0x2a, 0x3b], porcelain: [0xf3, 0xef, 0xe7], bronzeBright: [0xc9, 0xa2, 0x7a] };
+export const SCRIM = { min: 0.15, max: 0.92, margin: 0.2, small: 4.5, large: 3, lgShare: 0.76, sample: 4000, v: 1 };
+const lin = (v) => {
+  v /= 255;
+  return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
+};
+const lum = (r, g, b) => 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b);
+const contrast = (a, b) => (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05);
+const LIN = Float64Array.from({ length: 256 }, (_, v) => lin(v));
+/** the brightest pixels of a region (by luminance), as [r, g, b] triples — the ones that decide the scrim (a
+ *  1024-bin histogram finds the threshold of the SCRIM.sample brightest, so no sort of a million pixels) */
+function brightest(raw, w, h, x0, x1) {
+  const L = new Float32Array((x1 - x0) * h);
+  const hist = new Uint32Array(1024);
+  let k = 0;
+  for (let y = 0; y < h; y++) {
+    for (let x = x0; x < x1; x++, k++) {
+      const i = (y * w + x) * 3;
+      const v = 0.2126 * LIN[raw[i]] + 0.7152 * LIN[raw[i + 1]] + 0.0722 * LIN[raw[i + 2]];
+      L[k] = v;
+      hist[Math.min(1023, Math.floor(v * 1024))]++;
+    }
+  }
+  let bin = 1023;
+  for (let n = 0; bin > 0 && n + hist[bin] < SCRIM.sample; bin--) n += hist[bin];
+  const t = bin / 1024;
+  const out = [];
+  k = 0;
+  for (let y = 0; y < h; y++) {
+    for (let x = x0; x < x1; x++, k++) {
+      if (L[k] >= t) {
+        const i = (y * w + x) * 3;
+        out.push([raw[i], raw[i + 1], raw[i + 2]]);
+      }
+    }
+  }
+  return out;
+}
+function alphaFor(pixels) {
+  const M = SCRIM_COLORS.midnight;
+  const P = SCRIM_COLORS.porcelain;
+  const LB = lum(...SCRIM_COLORS.bronzeBright);
+  const LP = lum(...P);
+  const need = SCRIM.small + SCRIM.margin; // the 4.5:1 texts decide; the headline's 3:1 is met with them
+  const ok = (a) => pixels.every(([r, g, b]) => {
+    const bg = [a * M[0] + (1 - a) * r, a * M[1] + (1 - a) * g, a * M[2] + (1 - a) * b];
+    const L = lum(...bg);
+    const sub = lum(0.85 * P[0] + 0.15 * bg[0], 0.85 * P[1] + 0.15 * bg[1], 0.85 * P[2] + 0.15 * bg[2]);
+    return contrast(sub, L) >= need && contrast(LB, L) >= need && contrast(LP, L) >= need;
+  });
+  for (let i = Math.round(SCRIM.min * 100); i <= Math.round(SCRIM.max * 100); i++) if (ok(i / 100)) return i / 100;
+  return SCRIM.max;
+}
+/** the scrim alphas of one hero picture: `desktop` = the 16:9 image, `mobile` = the 4:5 one (buffers or file paths) */
+export async function heroScrim(desktop, mobile) {
+  const d = await sharp(desktop).resize(1440).removeAlpha().toColourspace('srgb').raw().toBuffer({ resolveWithObject: true });
+  const m = await sharp(mobile).resize(720).removeAlpha().toColourspace('srgb').raw().toBuffer({ resolveWithObject: true });
+  const dw = d.info.width;
+  const dh = d.info.height;
+  const share = Math.round(dw * SCRIM.lgShare);
+  return {
+    m: alphaFor(brightest(m.data, m.info.width, m.info.height, 0, m.info.width)),
+    md: alphaFor(brightest(d.data, dw, dh, 0, dw)),
+    lg_ltr: alphaFor(brightest(d.data, dw, dh, 0, share)),
+    lg_rtl: alphaFor(brightest(d.data, dw, dh, dw - share, dw)),
+  };
+}
+/** the highest of several measures (a video: its posters and frames sampled over the loop) */
+export const scrimMax = (list) => list.reduce((a, s) => ({ m: Math.max(a.m, s.m), md: Math.max(a.md, s.md), lg_ltr: Math.max(a.lg_ltr, s.lg_ltr), lg_rtl: Math.max(a.lg_rtl, s.lg_rtl) }), { m: 0, md: 0, lg_ltr: 0, lg_rtl: 0 });
+/** frames of a loop, one every `every` seconds (ffmpeg), as PNG buffers — for the scrim of a video hero */
+export function loopFrames(src, every = 1) {
+  const d = join(tmpdir(), `armada-frames-${process.pid}-${Date.now()}`);
+  mkdirSync(d, { recursive: true });
+  try {
+    const r = spawnSync('ffmpeg', ['-v', 'error', '-y', '-i', src, '-vf', `fps=1/${every}`, join(d, 'f%03d.png')], { encoding: 'utf8' });
+    if (r.status !== 0) throw new Error((r.stderr || '').trim().split('\n').pop() || 'ffmpeg failed');
+    return readdirSync(d).sort().map((f) => readFileSync(join(d, f)));
+  } finally {
+    rmSync(d, { recursive: true, force: true });
+  }
 }

@@ -259,7 +259,7 @@ def main() -> None:
     # ── in every unit: from rooms.json / branches.json ───────────────────────────────────────────
     out["in_every_unit"] = [
         {"en": "Wi-Fi · TV · in-room safe · air conditioning", "ar": "واي فاي · تلفاز · خزنة داخل الغرفة · تكييف"},
-        {"en": "Electric kettle · iron", "ar": "غلاية مياه · مكواة"},
+        {"en": "Electric kettle · iron", "ar": "غلاية مياه · كواية"},
         {"en": "Refrigerator in every Airport Road unit", "ar": "ثلاجة في كل وحدات طريق المطار"},
         {"en": "Kitchen in the Airport Road one- and two-bedroom suites", "ar": "مطبخ في أجنحة طريق المطار بغرفة أو غرفتين"},
         {"en": " · ".join(svc_en) + " — both properties", "ar": " · ".join(svc_ar) + " — في الفرعين"},

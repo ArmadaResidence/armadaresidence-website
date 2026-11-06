@@ -3,13 +3,15 @@
  * (28 Oct 2026, decision A — the same list for the booking form and the partners enquiry wizard).
  * Countries libphonenumber-js knows AND that have a self-hosted flag (public/flags/index.json, scripts/flags.mjs);
  * names from Intl.DisplayNames in the page language plus the English name (the search matches both); Saudi Arabia
- * first (the default), then the GCC, then A–Z in the page language.
+ * first (the default), then the GCC, then A–Z in the page language. Israel is not offered (Ahmed, 6 Nov 2026).
  */
 import { readFileSync } from 'node:fs';
 import { getCountries, getCountryCallingCode } from 'libphonenumber-js/min';
 import type { CountryRow } from './phone';
 
 const PINNED = ['SA', 'AE', 'KW', 'QA', 'BH', 'OM'];
+/** never offered in any country list (Ahmed, 6 Nov 2026) */
+export const EXCLUDED = ['IL'];
 
 export function countryRows(locale: 'ar' | 'en'): CountryRow[] {
   let flagged: string[] = [];
@@ -21,7 +23,7 @@ export function countryRows(locale: 'ar' | 'en'): CountryRow[] {
   const names = new Intl.DisplayNames([locale], { type: 'region' });
   const english = new Intl.DisplayNames(['en'], { type: 'region' });
   return getCountries()
-    .filter((cc) => flagged.includes(cc))
+    .filter((cc) => flagged.includes(cc) && !EXCLUDED.includes(cc))
     .map((cc) => {
       const name = names.of(cc) ?? cc;
       const en = english.of(cc) ?? cc;

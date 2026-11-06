@@ -647,10 +647,16 @@ export interface MediaItem {
   in_gallery: boolean;
 }
 export interface MediaMissing {
-  code: 'cover' | 'story-entrance' | 'story-lobby' | 'story-rooms' | 'story-dining' | 'hero-poster' | 'alt';
+  code: 'cover' | 'story-entrance' | 'story-lobby' | 'story-rooms' | 'story-dining' | 'hero-poster' | 'hero-slides' | 'alt';
   item?: string;
   lang?: 'ar' | 'en';
+  /** hero-slides (6 Nov 2026): how many photos there are, and the 3–8 asked */
+  count?: number;
+  min?: number;
+  max?: number;
 }
+/** the home hero (6 Nov 2026): a video or «صور متتابعة»; `mode` is the draft, `live_mode` what the site shows */
+export type HeroMode = 'video' | 'photos';
 export interface MediaWarning {
   code: 'gallery_low' | 'gallery_high';
   count: number;
@@ -664,6 +670,8 @@ export interface MediaCheck {
   pending: boolean;
   live: number;
   items: number;
+  /** the home target only (6 Nov 2026) */
+  mode?: { mode: HeroMode; live_mode: HeroMode } | null;
 }
 export interface MediaTargetRow {
   target: MediaTarget;
@@ -789,6 +797,8 @@ export const mediaUpdate = (id: string, altAr: string, altEn: string, fx: number
 export const mediaSetSlot = (id: string, slot: MediaSlot) => rpcSaved('media_set_slot', { p_id: id, p_slot: slot });
 export const mediaReorder = (target: MediaTarget, key: string, ids: string[]) => rpcSaved('media_reorder', { p_target: target, p_key: key, p_ids: ids });
 export const mediaArchive = (id: string) => rpcSaved('media_archive', { p_id: id });
+/** the home hero's choice (6 Nov 2026) — a draft until the home page is published */
+export const mediaSetHeroMode = (mode: HeroMode) => rpcSaved('media_set_hero_mode', { p_mode: mode });
 export const mediaRestore = (id: string) => rpcSaved('media_restore', { p_id: id });
 export async function mediaPublish(targets: { target: MediaTarget; key: string }[] | null, skipBlocked = false): Promise<MediaPublishResult> {
   const { data, error } = await supabase.rpc('media_publish', { p_targets: targets, p_skip_blocked: skipBlocked, p_dry_run: false });

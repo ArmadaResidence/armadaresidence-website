@@ -851,7 +851,10 @@ def main() -> int:
             rep.f("hosting", f"dist/{name} missing")
 
     # ---- home transfer size: first-party resources only (DECISIONS.md 2026-11-01) — the GTM container and the ad
-    # pixels it loads are third party, reported separately by scripts/lh.mjs and never counted here
+    # pixels it loads are third party, reported separately by scripts/lh.mjs and never counted here. The 1 MB is the
+    # INITIAL page weight (Ahmed, 6 Nov 2026): media that loads only after the load event — the hero loops (data-webm /
+    # data-mp4) and the slideshow's photos after the first (data-src / data-srcset) — is outside it and has its own
+    # budget (check_media); only src / href references are counted here.
     home = DIST / "index.html"
     if home.is_file():
         total = home.stat().st_size
@@ -1078,7 +1081,8 @@ def sar_text(amount: float, L: str) -> str:
 
 def check_media(rep: "Report") -> None:
     """The photos published from the dashboard «الصور» (content/media.generated.json, scripts/media-build.mjs, 1 Nov 2026):
-    every derived file is in dist/, every photo has a real alt in both languages, the hero loops are within their budgets (desktop 8 MB, phone 3 MB).
+    every derived file is in dist/, every photo has a real alt in both languages, the hero loops are within their budgets (desktop 8 MB, phone 3 MB),
+    the slideshow's photos within theirs (desktop 600 KB, phone 250 KB each, loaded only after the load event).
     The dashboard refuses to publish without both alts; this is the build's own check."""
     G = "media (dashboard «الصور»)"
     path = CONTENT / "media.generated.json"
@@ -1121,6 +1125,37 @@ def check_media(rep: "Report") -> None:
             alt = str(home.get(f"alt_{lang}") or "").strip()
             if alt.lower() in GENERIC_ALT or len(alt) < 4 or not script.search(alt):
                 rep.f(G, f"home hero: alt_{lang} {alt!r} is missing, generic or not in that language")
+        # «صور متتابعة» (6 Nov 2026): 3–8 photos, each with both alts and every file within the deferred-media budget
+        # (desktop ≤ 600 KB, phones ≤ 250 KB — Ahmed, 6 Nov 2026); on the page only the first is referenced by src /
+        # srcset, the others only by data-src / data-srcset (loaded by the script after the load event, never with
+        # reduced motion, Save-Data or a slow connection — scripts/hero-video-check.mjs)
+        slides = home.get("slides") or []
+        if home.get("mode") == "photos":
+            if not 3 <= len(slides) <= 8:
+                rep.f(G, f"home hero slideshow: {len(slides)} photos (3 to 8)")
+            html = (DIST / "index.html").read_text(encoding="utf-8") if (DIST / "index.html").is_file() else ""
+            for n, sl in enumerate(slides, 1):
+                for key, limit in (("poster", 600), ("poster_mobile", 250)):
+                    for w in sl[key]["widths"]:
+                        for ext in ("avif", "webp"):
+                            ref = f"{sl[key]['base']}-{w}.{ext}"
+                            if not built(ref):
+                                rep.f(G, f"home hero photo {n}: {ref} missing in dist/")
+                            elif (DIST / ref.lstrip("/")).stat().st_size > limit * 1024:
+                                rep.f(G, f"home hero photo {n}: {ref} is over {limit} KB")
+                for lang, script in (("ar", ARABIC), ("en", LATIN)):
+                    alt = str(sl.get(f"alt_{lang}") or "").strip()
+                    if alt.lower() in GENERIC_ALT or len(alt) < 4 or not script.search(alt):
+                        rep.f(G, f"home hero photo {n}: alt_{lang} {alt!r} is missing, generic or not in that language")
+                if n > 1 and html:
+                    eager = re.findall(r'(?<![-\w])(?:src|srcset)="[^"]*' + re.escape(sl["poster"]["base"]) + r"-\d", html)
+                    eager += re.findall(r'(?<![-\w])(?:src|srcset)="[^"]*' + re.escape(sl["poster_mobile"]["base"]) + r"-\d", html)
+                    if eager:
+                        rep.f(G, f"home hero photo {n}: referenced by src / srcset on the page — it must load only after the load event (data-src / data-srcset)")
+                if not sl.get("scrim"):
+                    rep.f(G, f"home hero photo {n}: no measured scrim")
+        elif home.get("poster") and not home.get("scrim"):
+            rep.f(G, "home hero: no measured scrim (photos-engine heroScrim)")
         # the loops' budgets (CLAUDE.md §3c, 5 Nov 2026): desktop ≤ 8 MB each, the phone loops ≤ 3 MB each
         video = home.get("video") or {}
         for key, limit in (("mp4", 8), ("webm", 8), ("mobile_mp4", 3), ("mobile_webm", 3)):

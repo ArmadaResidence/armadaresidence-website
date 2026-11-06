@@ -74,6 +74,7 @@
   --font-body: var(--font-ar);
   /* Armada Midnight in both themes (--color-midnight is remapped to porcelain for text in dark) */
   --brand-midnight: #142a3b;
+  --brand-porcelain: #f3efe7; /* fixed in both themes, like --brand-midnight (the hero controls over a photo) */
 }
 :root[lang="en"] {
   --font-body: var(--font-en);
@@ -157,30 +158,130 @@ body {
 .hero-video.is-playing {
   opacity: 1;
 }
-/* Hero over a real photo or video (Ahmed, 5 Nov 2026; replaces the flat 60 % tint + the 84 % scrim of 1 Nov): the pattern
-   and the flat tint are gone (they stay on the placeholder poster only); one directional Armada Midnight scrim — the same
-   in light and dark (--brand-midnight, never --color-midnight, which dark mode remaps to porcelain) — is strongest behind
-   the text and fades to a light tint on the far side:
-   - from md: from the start side (right in Arabic, left in English) at --scrim-text up to just past the text column's
-     end edge (the 72rem container's centre + 15rem, at least 52rem), then over 20rem down to --scrim-far;
-   - phones, where the text spans the screen: bottom-up — --scrim-text from the bottom to just under the top padding, then
-     lighter towards the top edge, above the eyebrow.
-   --scrim-text is the weakest midnight that keeps the Bronze Bright eyebrow at AA over pure white (measured on the
-   white and busy sample posters and on the published poster by scripts/hero-scrim-check.mjs, light and dark). */
+/* Hero over a real photo or video (Ahmed, 5 Nov 2026; measured per picture since 6 Nov 2026): no pattern and no flat
+   tint (they stay on the placeholder poster only); one directional Armada Midnight scrim — the same in light and dark
+   (--brand-midnight, never --color-midnight, which dark mode remaps to porcelain) — behind the text only:
+   - from 768 px: from the start side (right in Arabic, left in English) at the measured strength up to just past the
+     text column's end edge (the 72rem container's centre + 15rem, at least 52rem), then over 20rem to nothing;
+   - phones, where the text spans the screen: bottom-up — the measured strength from the bottom to just under the top
+     padding, then lighter towards the top edge, above the eyebrow.
+   The strength is the LIGHTEST that keeps the hero text at AA over the brightest pixels behind it (4.5:1 for the
+   eyebrow, the subtitle and the outline button, 3:1 for the headline), measured at build time on each poster / each
+   slideshow photo / sampled video frames (scripts/photos-engine.mjs heroScrim): --scrim-m (phones), --scrim-md
+   (768–1279 px), --scrim-lg-rtl / --scrim-lg-ltr (from 1280 px), set on the picture's own layer. Without a measure
+   (a picture imported by photos-import) 0.9, the 5 Nov value. Checked pixel by pixel by scripts/hero-scrim-check.mjs. */
 .hero-scrim {
-  --scrim-text: color-mix(in srgb, var(--brand-midnight) 90%, transparent);
-  --scrim-far: color-mix(in srgb, var(--brand-midnight) 22%, transparent);
-  --scrim-top: color-mix(in srgb, var(--brand-midnight) 55%, transparent);
+  --scrim-a: var(--scrim-m, 0.9);
+  --scrim-text: color-mix(in srgb, var(--brand-midnight) calc(var(--scrim-a) * 100%), transparent);
+  --scrim-top: color-mix(in srgb, var(--brand-midnight) calc(var(--scrim-a) * 60%), transparent);
   background: linear-gradient(to top, var(--scrim-text) 0, var(--scrim-text) calc(100% - 3.25rem), var(--scrim-top) 100%);
 }
 @media (min-width: 768px) {
   .hero-scrim {
+    --scrim-a: var(--scrim-md, 0.9);
     --scrim-end: max(calc(50% + 15rem), 52rem);
-    background: linear-gradient(to left, var(--scrim-text) 0, var(--scrim-text) var(--scrim-end), var(--scrim-far) calc(var(--scrim-end) + 20rem));
+    background: linear-gradient(to left, var(--scrim-text) 0, var(--scrim-text) var(--scrim-end), transparent calc(var(--scrim-end) + 20rem));
   }
   [dir='ltr'] .hero-scrim {
-    background: linear-gradient(to right, var(--scrim-text) 0, var(--scrim-text) var(--scrim-end), var(--scrim-far) calc(var(--scrim-end) + 20rem));
+    background: linear-gradient(to right, var(--scrim-text) 0, var(--scrim-text) var(--scrim-end), transparent calc(var(--scrim-end) + 20rem));
   }
+}
+@media (min-width: 1280px) {
+  .hero-scrim {
+    --scrim-a: var(--scrim-lg-rtl, 0.9);
+  }
+  [dir='ltr'] .hero-scrim {
+    --scrim-a: var(--scrim-lg-ltr, 0.9);
+  }
+}
+
+/* The home hero as a slideshow (Ahmed, 6 Nov 2026): the photos are stacked layers, each with its own measured scrim;
+   the active one is opaque, the next fades in over --motion-hero-fade, each stays --motion-hero-hold. A slow Ken Burns
+   move on the photo (1.00 → 1.08, zooming in and out in turn, around the focal point — transform only, the layer never
+   moves). Paused (the button, a hidden tab, the hero off screen) → the move holds where it is. Reduced motion, Save-Data
+   or a slow connection: only the first photo, still (index.astro's script never starts the show). */
+.hero-slide {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  transition: opacity var(--motion-hero-fade) var(--ease-in-out);
+}
+.hero-slide.is-active {
+  opacity: 1;
+}
+.hero-slide.is-next {
+  opacity: 1;
+  z-index: 1;
+}
+.hero-slide .hero-photo {
+  transform-origin: var(--hero-pos, 50% 50%);
+}
+@media (max-width: 767px) {
+  .hero-slide .hero-photo {
+    transform-origin: var(--hero-pos-m, 50% 50%);
+  }
+}
+@keyframes hero-kb-in {
+  from {
+    transform: scale(1);
+  }
+  to {
+    transform: scale(1.08);
+  }
+}
+@keyframes hero-kb-out {
+  from {
+    transform: scale(1.08);
+  }
+  to {
+    transform: scale(1);
+  }
+}
+.hero-slide.kb-in .hero-photo,
+.hero-slide.kb-out .hero-photo {
+  animation: hero-kb-in calc(var(--motion-hero-hold) + 2 * var(--motion-hero-fade)) linear both;
+}
+.hero-slide.kb-out .hero-photo {
+  animation-name: hero-kb-out;
+}
+.hero.is-paused .hero-slide .hero-photo {
+  animation-play-state: paused;
+}
+@media (prefers-reduced-motion: reduce) {
+  .hero-slide .hero-photo {
+    animation: none !important;
+  }
+}
+/* the pause / play control of the moving hero (WCAG 2.2.2): 44 px, the reading-end bottom corner, over the scrim */
+.hero-toggle {
+  position: absolute;
+  inset-inline-end: 1rem;
+  bottom: 1rem;
+  z-index: 2;
+  width: 44px;
+  height: 44px;
+  display: inline-grid;
+  place-items: center;
+  border-radius: 999px;
+  color: var(--brand-porcelain);
+  background: color-mix(in srgb, var(--brand-midnight) 72%, transparent);
+  border: 1px solid color-mix(in srgb, var(--brand-porcelain) 45%, transparent);
+  transition: background-color var(--motion-fast) var(--ease-out);
+}
+.hero-toggle:hover {
+  background: var(--brand-midnight);
+}
+.hero-toggle[hidden] {
+  display: none;
+}
+.hero-toggle .i-play {
+  display: none;
+}
+.hero-toggle[data-paused='true'] .i-pause {
+  display: none;
+}
+.hero-toggle[data-paused='true'] .i-play {
+  display: block;
 }
 @keyframes hero-kenburns {
   from {
@@ -1531,5 +1632,19 @@ body.has-room-bar .wa-fab {
 @keyframes read-progress {
   to {
     transform: scaleX(1);
+  }
+}
+
+/* Forms on phones (Ahmed, 6 Nov 2026): iOS zooms into a focused field whose text is under 16 px, and the page then
+   sits shifted. Every field — the country picker's search included, the legacy partners wizard too — is 16 px below
+   768 px (no field on the site is larger there; scripts/mobile-forms-check.mjs measures it). Pinch zoom stays open:
+   the viewport meta never carries maximum-scale. */
+@media (max-width: 767px) {
+  input:not([type='checkbox'], [type='radio'], [type='range'], [type='file'], [type='submit'], [type='button'], [type='image'], [type='reset'], [type='color']),
+  select,
+  textarea,
+  [contenteditable='true'],
+  [contenteditable=''] {
+    font-size: 16px !important;
   }
 }

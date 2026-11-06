@@ -6,7 +6,8 @@
 //     page's `load` (the poster stays the LCP);
 //   - Android phone (Chromium, Pixel 7) and iPhone (WebKit, iPhone 14): the phone loop, MP4 first, muted + playsinline,
 //     plays (WebKit builds without H.264 — Playwright's on Windows — are told apart: the source is checked, playback noted);
-//   - poster only: prefers-reduced-motion, Save-Data, and a phone on a slow connection (3G).
+//   - the pause / play button (6 Nov 2026): shown while the loop plays, 44 px, pauses and plays it;
+//   - poster only: prefers-reduced-motion, Save-Data, and a slow connection (3G) — a phone or, since 6 Nov 2026, desktop.
 //   node scripts/hero-video-check.mjs <BASE>
 import { chromium, webkit, devices } from 'playwright';
 
@@ -82,12 +83,24 @@ async function visit(engine, ctxOpts, label, { expect, init } = {}) {
       notes.push(`${label}: this WebKit build has no H.264 (Playwright on Windows) — the source choice is checked, playback is not`);
     } else {
       check(s.playing && s.t > 0.5, `${label}: the loop plays and fades in`, `playing ${s.playing}, t ${s.t.toFixed(2)} s`);
+      // the pause / play control (WCAG 2.2.2, 6 Nov 2026): 44 px, labelled in the page language, pauses and plays
+      const btn = page.locator('[data-hero-toggle]');
+      const box = await btn.boundingBox();
+      check(!!box && box.width >= 44 && box.height >= 44, `${label}: the pause button is shown, ≥ 44 px`, JSON.stringify(box));
+      check((await btn.getAttribute('aria-label')) === 'إيقاف الحركة مؤقتًا', `${label}: … labelled «إيقاف الحركة مؤقتًا»`);
+      await btn.click();
+      await page.waitForTimeout(300);
+      check(await page.evaluate(() => document.querySelector('video.hero-video').paused), `${label}: the button pauses the video`);
+      check((await btn.getAttribute('aria-label')) === 'تشغيل الحركة', `${label}: … then reads «تشغيل الحركة»`);
+      await btn.click();
+      await page.waitForTimeout(500);
+      check(await page.evaluate(() => !document.querySelector('video.hero-video').paused), `${label}: … and plays it again`);
     }
   }
   await b.close();
 }
 try {
-  await visit(chromium, { viewport: { width: 1440, height: 900 } }, 'desktop 1440', { expect: 'desktop' });
+  await visit(chromium, { viewport: { width: 1440, height: 900 } }, 'desktop 1440', { expect: 'desktop', init: `Object.defineProperty(navigator, 'connection', { configurable: true, get: () => ({ saveData: false, effectiveType: '4g', downlink: 10 }) });` });
   // the connection the browser reports is its own estimate of the network (a busy machine can read «3G»): pinned to a
   // fast one here, as the slow / Save-Data cases below pin theirs
   const fast = `Object.defineProperty(navigator, 'connection', { configurable: true, get: () => ({ saveData: false, effectiveType: '4g', downlink: 10 }) });`;
@@ -99,6 +112,8 @@ try {
   await visit(chromium, { ...devices['Pixel 7'] }, 'phone, Save-Data', { expect: 'none', init: conn({ saveData: true, effectiveType: '4g', downlink: 10 }) });
   await visit(chromium, { ...devices['Pixel 7'] }, 'phone, slow connection (3G)', { expect: 'none', init: conn({ saveData: false, effectiveType: '3g', downlink: 0.7 }) });
   await visit(chromium, { viewport: { width: 1440, height: 900 } }, 'desktop, Save-Data', { expect: 'none', init: conn({ saveData: true, effectiveType: '4g', downlink: 10 }) });
+  // 6 Nov 2026: deferred hero media never loads on a slow connection — on desktop too
+  await visit(chromium, { viewport: { width: 1440, height: 900 } }, 'desktop, slow connection (3G)', { expect: 'none', init: conn({ saveData: false, effectiveType: '3g', downlink: 0.7 }) });
 } catch (e) {
   fails.push(`crash: ${String(e.stack || e).split('\n').slice(0, 3).join(' ')}`);
 }

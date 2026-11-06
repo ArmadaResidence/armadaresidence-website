@@ -43,7 +43,20 @@ const hero = siteTexts.hero;
 // poster with a slow Ken Burns move. TODO(photo)
 const heroDir = new URL('../../../content/images/hero/', import.meta.url);
 interface HeroImage { base: string; widths: number[]; width: number; height: number; position: string }
-interface HeroMedia { poster: HeroImage; poster_mobile: HeroImage; video?: { mp4: string; webm: string; mobile_mp4?: string; mobile_webm?: string }; alt_ar: string; alt_en: string }
+/** the hero scrim measured at build time on the picture (photos-engine heroScrim) — absent: the CSS default */
+interface HeroScrim { m: number; md: number; lg_rtl: number; lg_ltr: number }
+interface HeroSlide { poster: HeroImage; poster_mobile: HeroImage; alt_ar: string; alt_en: string; scrim?: HeroScrim }
+interface HeroMedia {
+  mode?: 'video' | 'still' | 'photos';
+  poster: HeroImage;
+  poster_mobile: HeroImage;
+  video?: { mp4: string; webm: string; mobile_mp4?: string; mobile_webm?: string };
+  alt_ar: string;
+  alt_en: string;
+  scrim?: HeroScrim;
+  /** «صور متتابعة» (6 Nov 2026): 3–8 photos, the first = poster above */
+  slides?: HeroSlide[];
+}
 // the dashboard «الصور» (1 Nov 2026): a published hero (media.generated.json) comes first, then the imported one
 const heroMedia: HeroMedia | null = media.home?.poster
   ? (media.home as HeroMedia)
@@ -52,6 +65,12 @@ const heroMedia: HeroMedia | null = media.home?.poster
     : null;
 const heroSet = (img: HeroImage, ext: string) => img.widths.map((w) => `${img.base}-${w}.${ext} ${w}w`).join(', ');
 const HERO_MOBILE = '(max-width: 767px)';
+const heroSlides = heroMedia?.mode === 'photos' && heroMedia.slides && heroMedia.slides.length > 1 ? heroMedia.slides : null;
+const scrimStyle = (sc?: HeroScrim) => (sc ? `--scrim-m:${sc.m};--scrim-md:${sc.md};--scrim-lg-rtl:${sc.lg_rtl};--scrim-lg-ltr:${sc.lg_ltr}` : '');
+const posStyle = (sl: { poster: HeroImage; poster_mobile: HeroImage }) => `--hero-pos:${sl.poster.position};--hero-pos-m:${sl.poster_mobile.position}`;
+const altOf = (sl: { alt_ar: string; alt_en: string }) => (locale === 'ar' ? sl.alt_ar : sl.alt_en);
+/** a transparent pixel: the src of a slideshow photo until the script loads it (after the page's load event) */
+const BLANK = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
 // og/home.jpg: the poster's 1200 × 630 crop written by scripts/photos-import.mjs; absent → the default OG image
 const homeOg = media.home?.og_image ?? (existsSync(new URL('../og/home.jpg', heroDir)) ? '/images/og/home.jpg' : undefined);
 const heroPosterAlt = fill(t.photo_pending_alt, { subject: locale === 'ar' ? hero.title_ar : hero.title_en });
@@ -84,7 +103,57 @@ const quickFacts = fill(t.home.quick_facts, {
   <section class="hero relative bg-midnight text-porcelain overflow-hidden lg:min-h-[560px] flex items-center" data-glow>
     <div class="absolute inset-0" aria-hidden={heroMedia ? undefined : 'true'}>
       {
-        heroMedia ? (
+        heroSlides ? (
+          // «صور متتابعة» (6 Nov 2026): the first photo is the LCP image (eager, preloaded, high priority); the others
+          // carry their sources as data-* and are loaded by the script after the page's load event, one ahead
+          <div class="absolute inset-0" data-hero-show>
+            {heroSlides.map((sl, i) => (
+              <div class:list={['hero-slide', i === 0 && 'is-active']} data-hero-slide={i} aria-hidden={i === 0 ? undefined : 'true'} style={`${scrimStyle(sl.scrim)};${posStyle(sl)}`}>
+                <picture>
+                  {i === 0 ? (
+                    <>
+                      <source media={HERO_MOBILE} type="image/avif" srcset={heroSet(sl.poster_mobile, 'avif')} sizes="100vw" />
+                      <source media={HERO_MOBILE} type="image/webp" srcset={heroSet(sl.poster_mobile, 'webp')} sizes="100vw" />
+                      <source type="image/avif" srcset={heroSet(sl.poster, 'avif')} sizes="100vw" />
+                    </>
+                  ) : (
+                    <>
+                      <source media={HERO_MOBILE} type="image/avif" data-srcset={heroSet(sl.poster_mobile, 'avif')} sizes="100vw" />
+                      <source media={HERO_MOBILE} type="image/webp" data-srcset={heroSet(sl.poster_mobile, 'webp')} sizes="100vw" />
+                      <source type="image/avif" data-srcset={heroSet(sl.poster, 'avif')} sizes="100vw" />
+                    </>
+                  )}
+                  {i === 0 ? (
+                    <img
+                      class="hero-media hero-photo"
+                      src={`${sl.poster.base}-${sl.poster.widths[Math.min(1, sl.poster.widths.length - 1)]}.webp`}
+                      srcset={heroSet(sl.poster, 'webp')}
+                      sizes="100vw"
+                      width={sl.poster.width}
+                      height={sl.poster.height}
+                      alt={altOf(sl)}
+                      loading="eager"
+                      fetchpriority="high"
+                    />
+                  ) : (
+                    <img
+                      class="hero-media hero-photo"
+                      src={BLANK}
+                      data-src={`${sl.poster.base}-${sl.poster.widths[Math.min(1, sl.poster.widths.length - 1)]}.webp`}
+                      data-srcset={heroSet(sl.poster, 'webp')}
+                      sizes="100vw"
+                      width={sl.poster.width}
+                      height={sl.poster.height}
+                      alt={altOf(sl)}
+                      decoding="async"
+                    />
+                  )}
+                </picture>
+                <div class="absolute inset-0 hero-scrim"></div>
+              </div>
+            ))}
+          </div>
+        ) : heroMedia ? (
           <>
             <picture>
               <source media={HERO_MOBILE} type="image/avif" srcset={heroSet(heroMedia.poster_mobile, 'avif')} sizes="100vw" />
@@ -97,10 +166,10 @@ const quickFacts = fill(t.home.quick_facts, {
                 sizes="100vw"
                 width={heroMedia.poster.width}
                 height={heroMedia.poster.height}
-                alt={locale === 'ar' ? heroMedia.alt_ar : heroMedia.alt_en}
+                alt={altOf(heroMedia)}
                 loading="eager"
                 fetchpriority="high"
-                style={`--hero-pos:${heroMedia.poster.position};--hero-pos-m:${heroMedia.poster_mobile.position}`}
+                style={posStyle(heroMedia)}
               />
             </picture>
             {heroMedia.video && (
@@ -115,7 +184,7 @@ const quickFacts = fill(t.home.quick_facts, {
                 data-mp4={heroMedia.video.mp4}
                 data-webm-m={heroMedia.video.mobile_webm}
                 data-mp4-m={heroMedia.video.mobile_mp4}
-                style={`--hero-pos:${heroMedia.poster.position};--hero-pos-m:${heroMedia.poster_mobile.position}`}
+                style={posStyle(heroMedia)}
                 tabindex="-1"
                 aria-hidden="true"
               />
@@ -138,7 +207,7 @@ const quickFacts = fill(t.home.quick_facts, {
       {/* over a real photo or video (Ahmed, 5 Nov 2026): no pattern and no flat tint — one directional midnight scrim,
           strongest behind the text (the start side; bottom-up on phones), a light tint on the far side; the small hero
           text keeps WCAG AA on any image, white or busy (global.css → .hero-scrim; scripts/hero-scrim-check.mjs) */}
-      {heroMedia && <div class="absolute inset-0 hero-scrim"></div>}
+      {heroMedia && !heroSlides && <div class="absolute inset-0 hero-scrim" style={scrimStyle(heroMedia.scrim)}></div>}
       {/* the placeholder poster only: the flat tint and the brand pattern as a slow depth layer (40 s drift of ~2.5 %
           towards the reading direction with a soft opacity swell) */}
       {!heroMedia && <div class="absolute inset-0 bg-midnight/60"></div>}
@@ -176,6 +245,15 @@ const quickFacts = fill(t.home.quick_facts, {
         </a>
       </div>
     </div>
+    {
+      /* pause / play for the moving hero (WCAG 2.2.2, 6 Nov 2026): shown by the script only while something moves */
+      (heroSlides || heroMedia?.video) && (
+        <button type="button" class="hero-toggle" data-hero-toggle data-paused="false" aria-label={t.home.hero_pause} data-label-pause={t.home.hero_pause} data-label-play={t.home.hero_play} hidden>
+          <svg class="i-pause" width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path fill="currentColor" d="M7 5h3.5v14H7zM13.5 5H17v14h-3.5z" /></svg>
+          <svg class="i-play" width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path fill="currentColor" d="M8 5.5v13l11-6.5z" /></svg>
+        </button>
+      )
+    }
   </section>
 
   <section class="bg-white border-b border-line">
@@ -255,47 +333,185 @@ const quickFacts = fill(t.home.quick_facts, {
 </Base>
 
 <script>
-  import { bindOnce, onPageLoad } from '@lib/client';
+  import { bindOnce, cssNumber, onPageLeave, onPageLoad } from '@lib/client';
 
-  // Hero video (5 Nov 2026): from 768 px the desktop loop (WebM first, MP4 fallback), below it the light 4:5 phone loop
-  // (MP4 first — hardware H.264 on iOS and Android). Never with prefers-reduced-motion or Save-Data; on a phone also not on
-  // a slow connection (2G / 3G or under 1.5 Mbit/s when the browser tells; iOS Safari does not, and plays). Attached after
-  // `load` and an idle moment, so it never competes with the page's main content (the poster is the LCP). It fades in
-  // over the poster — the loop's own first frame at the same position, so nothing jumps.
-  onPageLoad(() => {
-    const v = document.querySelector<HTMLVideoElement>('video.hero-video');
-    if (!v || !bindOnce(v)) return;
-    type Conn = { saveData?: boolean; effectiveType?: string; downlink?: number };
+  // The moving hero (5–6 Nov 2026). Deferred hero media — the video loops and the slideshow's photos after the first —
+  // never loads with prefers-reduced-motion, Save-Data or a slow connection (2G / 3G or under 1.5 Mbit/s when the
+  // browser tells; iOS Safari does not) and is attached only after the page's `load` event and an idle moment, so it
+  // never competes with the page's own content (the first picture is the LCP). One pause / play control (WCAG 2.2.2),
+  // shown only while something moves; the motion also holds while the tab is hidden or the hero is off screen.
+  type Conn = { saveData?: boolean; effectiveType?: string; downlink?: number };
+  const still = () => {
     const conn = (navigator as Navigator & { connection?: Conn }).connection;
-    if (matchMedia('(prefers-reduced-motion: reduce)').matches || conn?.saveData) return;
-    const phone = !matchMedia('(min-width: 768px)').matches;
     const slow = !!conn && (/(^|-)(2g|3g)$/.test(conn.effectiveType ?? '') || (typeof conn.downlink === 'number' && conn.downlink > 0 && conn.downlink < 1.5));
-    if (phone && slow) return;
+    return matchMedia('(prefers-reduced-motion: reduce)').matches || !!conn?.saveData || slow;
+  };
+  const afterLoad = (fn: () => void) => {
+    const later = () => {
+      const w = window as Window & { requestIdleCallback?: (cb: () => void, o?: { timeout: number }) => number };
+      if (w.requestIdleCallback) w.requestIdleCallback(fn, { timeout: 2500 });
+      else setTimeout(fn, 800);
+    };
+    if (document.readyState === 'complete') later();
+    else window.addEventListener('load', later, { once: true });
+  };
+  const token = (name: string, fallback: number) => cssNumber(getComputedStyle(document.documentElement).getPropertyValue(name)) || fallback;
+
+  /** pausing: by the visitor (the button), the hidden tab, the hero off screen */
+  function control(hero: HTMLElement, onChange: (running: boolean) => void) {
+    const btn = hero.querySelector<HTMLButtonElement>('[data-hero-toggle]');
+    const why = { user: false, hidden: document.hidden, offscreen: false };
+    const apply = () => {
+      const running = !why.user && !why.hidden && !why.offscreen;
+      hero.classList.toggle('is-paused', !running);
+      onChange(running);
+    };
+    if (btn) {
+      btn.hidden = false;
+      btn.addEventListener('click', () => {
+        why.user = !why.user;
+        btn.dataset.paused = String(why.user);
+        btn.setAttribute('aria-label', (why.user ? btn.dataset.labelPlay : btn.dataset.labelPause) ?? '');
+        apply();
+      });
+    }
+    const onVis = () => {
+      why.hidden = document.hidden;
+      apply();
+    };
+    document.addEventListener('visibilitychange', onVis);
+    const io = new IntersectionObserver(([e]) => {
+      why.offscreen = !e.isIntersecting;
+      apply();
+    });
+    io.observe(hero);
+    return () => {
+      document.removeEventListener('visibilitychange', onVis);
+      io.disconnect();
+    };
+  }
+
+  /** «صور متتابعة»: each photo stays --motion-hero-hold, the next fades in over --motion-hero-fade, Ken Burns in / out */
+  function slideshow(hero: HTMLElement, show: HTMLElement) {
+    const slides = [...show.querySelectorAll<HTMLElement>('[data-hero-slide]')];
+    if (slides.length < 2) return;
+    const hold = token('--motion-hero-hold', 6000);
+    const fade = token('--motion-hero-fade', 1200);
+    const ready = new Map<number, Promise<void>>();
+    /** the photo's real sources, then its decode (a slow photo delays the change, never shows half-loaded) */
+    const load = (i: number) => {
+      if (!ready.has(i)) {
+        const sl = slides[i];
+        for (const el of sl.querySelectorAll<HTMLSourceElement | HTMLImageElement>('[data-srcset]')) {
+          el.srcset = el.dataset.srcset ?? '';
+          el.removeAttribute('data-srcset');
+        }
+        const img = sl.querySelector<HTMLImageElement>('img');
+        if (img?.dataset.src) {
+          img.src = img.dataset.src;
+          img.removeAttribute('data-src');
+        }
+        ready.set(i, img ? img.decode().catch(() => {}) : Promise.resolve());
+      }
+      return ready.get(i)!;
+    };
+    let cur = 0;
+    let timer = 0;
+    let due = 0; // when the next change is due (performance.now())
+    let left = hold; // what was left of the hold when paused
+    let running = false;
+    let changing = false;
+    const kb = (sl: HTMLElement, n: number) => {
+      sl.classList.remove('kb-in', 'kb-out');
+      void sl.offsetWidth; // restart the move
+      sl.classList.add(n % 2 === 0 ? 'kb-in' : 'kb-out');
+    };
+    const schedule = (ms: number) => {
+      clearTimeout(timer);
+      due = performance.now() + ms;
+      timer = window.setTimeout(change, ms);
+    };
+    async function change() {
+      if (!running || changing) return;
+      changing = true;
+      const n = (cur + 1) % slides.length;
+      await load(n);
+      if (!running) {
+        changing = false;
+        left = 0;
+        return;
+      }
+      const from = slides[cur];
+      const to = slides[n];
+      kb(to, n);
+      to.removeAttribute('aria-hidden');
+      to.classList.add('is-next');
+      window.setTimeout(() => {
+        from.classList.remove('is-active', 'kb-in', 'kb-out');
+        from.setAttribute('aria-hidden', 'true');
+        to.classList.add('is-active');
+        to.classList.remove('is-next');
+        cur = n;
+        changing = false;
+        load((n + 1) % slides.length); // one ahead
+        if (running) schedule(hold);
+        else left = hold;
+      }, fade);
+    }
+    const stop = control(hero, (r) => {
+      if (r === running) return;
+      running = r;
+      if (r) schedule(left);
+      else {
+        clearTimeout(timer);
+        left = Math.max(0, due - performance.now());
+      }
+    });
+    kb(slides[0], 0);
+    load(1);
+    onPageLeave(() => {
+      clearTimeout(timer);
+      running = false;
+      stop();
+    });
+  }
+
+  /** the video: from 768 px the desktop loop (WebM first), below it the 4:5 phone loop (MP4 first); fades in over the
+   *  poster — the loop's own first frame at the same position, so nothing jumps */
+  function video(hero: HTMLElement, v: HTMLVideoElement) {
+    const phone = !matchMedia('(min-width: 768px)').matches;
     const sources = (
       phone
         ? [['video/mp4', v.dataset.mp4M], ['video/webm', v.dataset.webmM]]
         : [['video/webm', v.dataset.webm], ['video/mp4', v.dataset.mp4]]
     ).filter((x): x is [string, string] => !!x[1]);
     if (!sources.length) return;
-    const attach = () => {
-      for (const [type, src] of sources) {
-        const s = document.createElement('source');
-        s.src = src;
-        s.type = type;
-        v.appendChild(s);
-      }
-      v.muted = true; // iOS plays inline only muted (the attribute alone is not always reflected)
-      v.load();
-      v.play()
-        .then(() => v.classList.add('is-playing'))
-        .catch(() => {});
-    };
-    const later = () => {
-      const w = window as Window & { requestIdleCallback?: (cb: () => void, o?: { timeout: number }) => number };
-      if (w.requestIdleCallback) w.requestIdleCallback(attach, { timeout: 2500 });
-      else setTimeout(attach, 800);
-    };
-    if (document.readyState === 'complete') later();
-    else window.addEventListener('load', later, { once: true });
+    for (const [type, src] of sources) {
+      const s = document.createElement('source');
+      s.src = src;
+      s.type = type;
+      v.appendChild(s);
+    }
+    v.muted = true; // iOS plays inline only muted (the attribute alone is not always reflected)
+    v.load();
+    v.play()
+      .then(() => {
+        v.classList.add('is-playing');
+        const stop = control(hero, (running) => {
+          if (running) v.play().catch(() => {});
+          else v.pause();
+        });
+        onPageLeave(stop);
+      })
+      .catch(() => {});
+  }
+
+  onPageLoad(() => {
+    const hero = document.querySelector<HTMLElement>('section.hero');
+    if (!hero || !bindOnce(hero, 'hero-bound')) return;
+    const show = hero.querySelector<HTMLElement>('[data-hero-show]');
+    const v = hero.querySelector<HTMLVideoElement>('video.hero-video');
+    if ((!show && !v) || still()) return;
+    afterLoad(() => (show ? slideshow(hero, show) : v && video(hero, v)));
   });
 </script>

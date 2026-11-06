@@ -3,7 +3,8 @@
 //   node scripts/lh.mjs <label> [BASE_URL]        → reports/lighthouse/<label>-<page>-<form>-<n>.json + <label>-summary.md
 //   RUNS=3 (default) · PAGES=home,branch narrows the pages · FORMS=mobile narrows the form factors
 // Weight (DECISIONS.md 2026-11-01): the first-party transfer (BASE's origin — what the < 1 MB home budget counts, as
-// qa.py does) and the third-party transfer (GTM and the pixels it loads) in separate columns; only first party is budgeted.
+// qa.py does) and the third-party transfer (GTM and the pixels it loads) in separate columns; only first party is budgeted —
+// since 6 Nov 2026 its initial part (requests started before the load event), the column «initial first party».
 // Needs the global `lighthouse` CLI (npm i -g lighthouse) and a running server (e.g. node scripts/serve-dist.mjs).
 import { spawnSync } from 'node:child_process';
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
@@ -31,17 +32,22 @@ const median = (xs) => {
   return s[Math.floor(s.length / 2)];
 };
 const ORIGIN = new URL(BASE).origin;
-// network-requests: transferSize per request; data: / blob: URLs carry none
-function weight(items) {
+// network-requests: transferSize per request; data: / blob: URLs carry none. `initial` (Ahmed, 6 Nov 2026): the
+// first-party requests that start before the load event — the 1 MB budget; media deferred to after it (the hero loops,
+// the slideshow's next photos) has its own budget (qa.py check_media) and counts in `first party` only
+function weight(items, loadAt) {
   let first = 0;
   let third = 0;
+  let initial = 0;
   for (const r of items) {
     const size = r.transferSize ?? 0;
     if (!/^https?:/.test(r.url ?? '')) continue;
-    if (new URL(r.url).origin === ORIGIN) first += size;
-    else third += size;
+    if (new URL(r.url).origin === ORIGIN) {
+      first += size;
+      if ((r.networkRequestTime ?? 0) < loadAt) initial += size;
+    } else third += size;
   }
-  return { first, third };
+  return { first, third, initial };
 }
 const rows = [];
 for (const [name, path] of PAGES) {
@@ -73,7 +79,7 @@ for (const [name, path] of PAGES) {
         cls: a['cumulative-layout-shift'].numericValue,
         tbt: a['total-blocking-time'].numericValue,
         bytes: a['total-byte-weight'].numericValue,
-        ...weight(a['network-requests']?.details?.items ?? []),
+        ...weight(a['network-requests']?.details?.items ?? [], a.metrics?.details?.items?.[0]?.observedLoad ?? Infinity),
         ttfb: sub.timeToFirstByte ?? 0,
         lcpEl: el ? `${el.selector?.split(' > ').pop() ?? ''} ${el.nodeLabel ?? ''}`.slice(0, 48).replace(/\|/g, '/') : '',
       });
@@ -85,12 +91,12 @@ for (const [name, path] of PAGES) {
       perf: Math.round(m('perf')), a11y: Math.round(m('a11y')), bp: Math.round(m('bp')), seo: Math.round(m('seo')),
       lcp: (m('lcp') / 1000).toFixed(2) + ' s', fcp: (m('fcp') / 1000).toFixed(2) + ' s',
       ttfb: (m('ttfb') / 1000).toFixed(2) + ' s', cls: m('cls').toFixed(3), tbt: Math.round(m('tbt')) + ' ms', bytes: Math.round(m('bytes') / 1024) + ' KB',
-      first: Math.round(m('first') / 1024) + ' KB', third: Math.round(m('third') / 1024) + ' KB',
+      first: Math.round(m('first') / 1024) + ' KB', third: Math.round(m('third') / 1024) + ' KB', initial: Math.round(m('initial') / 1024) + ' KB',
       lcpEl: runs[0].lcpEl,
     });
   }
 }
-const header = '| page | form | runs | perf | a11y | bp | seo | LCP | FCP | TTFB (LCP subpart) | CLS | TBT | weight | first party | third party | LCP element |\n|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|';
-const table = [header, ...rows.map((r) => `| ${r.page} | ${r.form} | ${r.n} | ${r.perf} | ${r.a11y} | ${r.bp} | ${r.seo} | ${r.lcp} | ${r.fcp} | ${r.ttfb} | ${r.cls} | ${r.tbt} | ${r.bytes} | ${r.first} | ${r.third} | ${r.lcpEl} |`)].join('\n');
+const header = '| page | form | runs | perf | a11y | bp | seo | LCP | FCP | TTFB (LCP subpart) | CLS | TBT | weight | first party | initial first party (before load) | third party | LCP element |\n|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|';
+const table = [header, ...rows.map((r) => `| ${r.page} | ${r.form} | ${r.n} | ${r.perf} | ${r.a11y} | ${r.bp} | ${r.seo} | ${r.lcp} | ${r.fcp} | ${r.ttfb} | ${r.cls} | ${r.tbt} | ${r.bytes} | ${r.first} | ${r.initial} | ${r.third} | ${r.lcpEl} |`)].join('\n');
 writeFileSync(`${OUT}/${label}-summary.md`, `# Lighthouse — ${label} (${new Date().toISOString().slice(0, 16)}, ${BASE}, median of ${RUNS})\n\n${table}\n`);
 console.log(table);

@@ -43,7 +43,8 @@ export interface MediaData {
    *  Taif places' covers (place, key = taif-guide.json places[].key) — 2 Nov 2026 */
   dining?: Record<string, { photos: MediaImage[]; og_image?: string }>;
   halls?: Record<string, { photos: MediaImage[]; og_image?: string }>;
-  places?: Record<string, { photos: MediaImage[] }>;
+  /** a place's built-in photo published from «الصور» (6 Nov 2026) is `builtin`: the page keeps its own files */
+  places?: Record<string, { photos: (MediaImage | { builtin: true; cover?: boolean; alt_ar: string; alt_en: string })[] }>;
   /** the partners pages' photo slots (target partners, key = content/partners-photos.json slots[].key — 2 Nov 2026),
    *  each cropped to its legacy photo's ratio */
   partners?: Record<string, { photos: MediaImage[] }>;
@@ -556,6 +557,8 @@ export type Place = Omit<PlaceJson, 'image'> & { image: PlaceJson['image'] & { p
 export const taifPlaces: Place[] = taifJson.places.map((p) => {
   const cover = media.places?.[p.key]?.photos?.[0];
   if (!cover) return p;
+  // the built-in photo published from «الصور» (6 Nov 2026): the page keeps its own files, with the published descriptions
+  if ('builtin' in cover) return { ...p, image: { ...p.image, alt_ar: cover.alt_ar, alt_en: cover.alt_en } };
   return { ...p, image: { ...p.image, base: cover.base, widths: cover.widths, alt_ar: cover.alt_ar, alt_en: cover.alt_en, published: true } };
 });
 export type TaifCategory = (typeof taifJson.categories)[number];

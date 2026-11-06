@@ -134,7 +134,7 @@ export const COPY = {
     items: [
       { en: 'Smart TV — {tv_airport}" Airport Road · {tv_shafa}" Al Shafa', ar: 'شاشة ذكية — {tv_airport} بوصة في طريق المطار و{tv_shafa} بوصة في الشفا' },
       { en: 'Air conditioning · in-room safety deposit box', ar: 'تكييف · خزنة أمانات داخل الغرفة' },
-      { en: 'Iron · electric kettle · refrigerator at Airport Road', ar: 'مكواة · غلاية مياه · ثلاجة في طريق المطار' },
+      { en: 'Iron · electric kettle · refrigerator at Airport Road', ar: 'كواية · غلاية مياه · ثلاجة في طريق المطار' },
       { en: 'Free Wi-Fi in every unit', ar: 'إنترنت مجاني في كل وحدة' },
       { en: 'Rooms cleaned daily', ar: 'تنظيف يومي للغرف' },
       { en: '24-hour in-room dining · laundry service', ar: 'توصيل الطعام إلى الغرف على مدار الساعة · خدمة مغسلة' },

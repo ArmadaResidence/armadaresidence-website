@@ -15,6 +15,7 @@ mkdirSync(OUT, { recursive: true });
 
 const done = [];
 for (const cc of getCountries()) {
+  if (cc === 'IL') continue; // never offered (Ahmed, 6 Nov 2026; src/lib/countries.ts EXCLUDED)
   const svg = `${SRC}/${cc.toLowerCase()}.svg`;
   if (!existsSync(svg)) continue;
   await sharp(readFileSync(svg), { density: 144 })

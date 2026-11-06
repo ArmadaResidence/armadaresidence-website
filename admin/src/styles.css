@@ -867,3 +867,15 @@ body {
   padding: 0.5rem 0.75rem; border: 1px solid var(--line); border-inline-start: 3px solid var(--accent); border-radius: 0.5rem;
   background: var(--soft); font-size: 0.875rem;
 }
+
+/* Forms on phones (Ahmed, 6 Nov 2026): iOS zooms into a focused field under 16 px — every field is at least 16 px below 768 px —
+   larger ones such as the sign-in code keep their size (the same rule as the site, src/styles/global.css). Pinch zoom stays open (no maximum-scale in index.html). */
+@media (max-width: 767px) {
+  input:not([type='checkbox'], [type='radio'], [type='range'], [type='file'], [type='submit'], [type='button'], [type='image'], [type='reset'], [type='color'], .text-lg, .text-xl, .text-2xl),
+  select,
+  textarea,
+  [contenteditable='true'],
+  [contenteditable=''] {
+    font-size: 16px !important;
+  }
+}

@@ -20,6 +20,8 @@
 // 5 Nov 2026: «اختيار صورة موجودة» — a published photo copied into another page's cover (the stored original byte for
 // byte at a new path, both alts, the source untouched), the copy already in a page shown as unavailable, a gallery copy
 // appended, the article's cover and text photos from «المدونة», no button for the view level.
+// 6 Nov 2026: the home hero's choice «فيديو» / «صور متتابعة» — the draft and its note, the photo list (3–8, both
+// descriptions), the order, «نشر» → live_mode + the manifest in that order, back to video as a change of its own, audit.
 // Before it runs it deletes the media rows and jobs of the branch (test data only — the branch is a throwaway copy).
 import { chromium } from 'playwright';
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
@@ -528,6 +530,58 @@ try {
   await page.click('[data-action="media-publish"]');
   await page.waitForFunction(() => document.querySelectorAll('[data-job]').length === 5, null, { timeout: 30000 });
   check((await item('qa-poster')).live && (await item('qa-hero')).live, 'hero: poster + video published together');
+
+  // ── the home hero: «فيديو» or «صور متتابعة» (6 Nov 2026) ──
+  await rest('media_hero?id=eq.home', { method: 'PATCH', body: JSON.stringify({ mode: 'video', live_mode: 'video' }) });
+  await page.goto(`${BASE}/media?t=home:home`);
+  await page.waitForSelector('[data-current="home:home"] [data-hero-mode]');
+  check((await page.locator('[data-hero-mode]').getAttribute('data-hero-mode')) === 'video' && (await page.locator('[data-hero-mode-option="video"]').getAttribute('aria-pressed')) === 'true', 'hero: «فيديو» chosen by default (pressed)');
+  check(await page.locator('[data-current="home:home"] [data-slot="hero-video"]').count() === 1 && (await page.locator('[data-current="home:home"] [data-slot="gallery"]').count()) === 0, 'hero, video mode: the poster and video slots, no photo list');
+  await page.click('[data-hero-mode-option="photos"]');
+  await page.waitForSelector('[data-hero-mode="photos"]');
+  check(await page.locator('[data-hero-mode-pending]').isVisible() && /حتى «نشر هذه الصفحة»/.test(await page.locator('[data-hero-mode-pending]').textContent()), 'hero: the new choice is a draft until «نشر» (the note says what the site shows now)');
+  check(/صور الواجهة المتتابعة/.test(await page.locator('[data-current="home:home"] [data-slot="gallery"] h3').textContent()) && (await page.locator('[data-current="home:home"] [data-slot="hero-video"]').count()) === 0, 'hero, photos mode: «صور الواجهة المتتابعة» instead of the video slots');
+  check(/المطلوب من 3 إلى 8/.test(await page.locator('[data-hero-slides-missing]').textContent()), 'hero, photos mode under 3 photos: «المطلوب من 3 إلى 8»', await page.locator('[data-hero-slides-missing]').textContent());
+  let hero = (await rest('media_hero?select=mode,live_mode'))[0];
+  check(hero.mode === 'photos' && hero.live_mode === 'video', 'hero: the draft is stored, the site keeps the video', JSON.stringify(hero));
+  const slides = [await jpeg('slide-a', 3840, 2160, 10), await jpeg('slide-b', 3840, 2160, 90), await jpeg('slide-c', 3840, 2160, 170)];
+  await page.setInputFiles('[data-current="home:home"] [data-file-input="gallery"]', slides);
+  await uploadsDone(page, ['qa-slide-a.jpg', 'qa-slide-b.jpg', 'qa-slide-c.jpg']);
+  await page.waitForFunction(() => document.querySelectorAll('[data-slot="gallery"] [data-open]').length === 3, null, { timeout: 20000 }).catch(() => {});
+  check(await page.locator('[data-slot="gallery"] [data-open]').count() === 3, 'hero: three photos uploaded into the slideshow');
+  check(/الوصف|النص البديل/.test(await page.locator('[data-target-state]').textContent()), 'hero: publishing waits for both descriptions of each photo');
+  for (const [n, f] of ['a', 'b', 'c'].entries()) {
+    const it = await item(`slide-${f}`);
+    await fillAlts(page, it.id, `صورة الواجهة رقم ${n + 1} للاختبار`, `Hero test photo ${n + 1}`);
+  }
+  await page.waitForFunction(() => !document.querySelector('[data-hero-slides-missing]'), null, { timeout: 15000 }).catch(() => {});
+  check(await page.locator('[data-hero-slides-missing]').count() === 0, 'hero: three photos with their descriptions — nothing missing');
+  // Ahmed's order: the third first
+  const ids3 = await galleryOrder('home', (o) => o.length === 3);
+  await page.locator(`[data-item="${ids3[2]}"] [data-action="move-earlier"]`).click();
+  await page.locator(`[data-item="${ids3[2]}"] [data-action="move-earlier"]`).click();
+  const ord = await galleryOrder('home', (o) => o[0] === ids3[2]);
+  check(ord[0] === ids3[2], 'hero: the order is set by «تقديم»', JSON.stringify(ord));
+  const before = dispatches.length;
+  await page.click('[data-action="media-publish"]');
+  await page.waitForFunction((n) => document.querySelectorAll('[data-job]').length > 0, before, { timeout: 15000 });
+  await page.waitForTimeout(800);
+  hero = (await rest('media_hero?select=mode,live_mode'))[0];
+  check(hero.live_mode === 'photos', 'hero: «نشر هذه الصفحة» puts the slideshow on the site (live_mode photos)', JSON.stringify(hero));
+  check(dispatches.length === before + 1 && dispatches.at(-1).reason === 'media', 'hero: the site build is asked (stubbed)', JSON.stringify(dispatches.at(-1)));
+  const manHero = await rpc('media_site_manifest', {});
+  check(manHero.hero?.mode === 'photos' && manHero.items.filter((i) => i.target === 'home' && i.slot === 'gallery').map((i) => i.id).join() === ord.join(), 'hero: the manifest carries photos mode and the three photos in Ahmed\'s order');
+  await shot(page, 'home-hero-photos-1280');
+  // back to the video: the choice alone is a change to publish
+  await page.click('[data-hero-mode-option="video"]');
+  await page.waitForSelector('[data-hero-mode="video"]');
+  check(await page.locator('[data-action="media-publish"]').isEnabled(), 'hero: switching back is a change of its own («نشر» enabled)');
+  await page.click('[data-action="media-publish"]');
+  await page.waitForTimeout(1500);
+  hero = (await rest('media_hero?select=mode,live_mode'))[0];
+  check(hero.live_mode === 'video' && hero.mode === 'video', 'hero: back on video after «نشر»', JSON.stringify(hero));
+  const audit = await rest(`audit_log?entity=eq.media_hero&select=actor_label,new&order=id`);
+  check(audit.length >= 4 && audit.every((a) => ['QA admin', 'migration', 'system'].includes(a.actor_label)) && audit.some((a) => a.actor_label === 'QA admin'), 'hero: every change of the choice is audited with its actor', JSON.stringify(audit.slice(-3)));
 
   // 375 px: the picker in its disclosure, no horizontal scroll
   await page.setViewportSize({ width: 375, height: 812 });

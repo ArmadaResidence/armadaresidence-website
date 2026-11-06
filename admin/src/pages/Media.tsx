@@ -22,7 +22,7 @@ import type { MediaItem, MediaJob, MediaPublishResult, MediaSlot, MediaTargetRow
 import { useSession } from '../lib/session';
 import { BRANCH_NAMES, riyadhDateTime } from '../lib/format';
 import {
-  ACCEPT_IMAGES, ACCEPT_VIDEO, GALLERY_RANGE, galleryTarget, ITEM_STATUS, JOB_STATUS, missingText, photosWord, previewUrls, SLOT_LABELS, slotsOf, targetId, targetLabel,
+  ACCEPT_IMAGES, ACCEPT_VIDEO, GALLERY_RANGE, galleryTarget, HERO_SLIDES, ITEM_STATUS, JOB_STATUS, missingText, photosWord, previewUrls, SLOT_LABELS, slotLabel, slotsOf, targetId, targetLabel,
   uploadFile, UploadRefused, warningText, type UploadStage,
 } from '../lib/media';
 import { CancelButton, Empty, ErrorBox, Loading, Modal, Spinner, useToast } from '../components/ui';
@@ -183,6 +183,23 @@ export default function Media() {
     }
   }
   const gallery = (items ?? []).filter((i) => i.slot === 'gallery');
+  // the home hero (6 Nov 2026): «فيديو» or «صور متتابعة» — a draft until «نشر هذه الصفحة»
+  const heroMode = current?.target === 'home' ? (current.check.mode?.mode ?? 'video') : 'video';
+  const heroLive = current?.target === 'home' ? (current.check.mode?.live_mode ?? 'video') : 'video';
+  const [modeBusy, setModeBusy] = useState(false);
+  async function chooseMode(mode: api.HeroMode) {
+    if (!editable || mode === heroMode || modeBusy) return;
+    setModeBusy(true);
+    try {
+      await api.mediaSetHeroMode(mode);
+      await loadOverview();
+      toast(mode === 'photos' ? 'تم اختيار «صور متتابعة» للواجهة؛ يظهر على الموقع بعد «نشر هذه الصفحة».' : 'تم اختيار «فيديو» للواجهة؛ يظهر على الموقع بعد «نشر هذه الصفحة».');
+    } catch (e) {
+      toast((e as Error).message, 'error');
+    } finally {
+      setModeBusy(false);
+    }
+  }
   const move = (id: string, by: number) => {
     const ids = gallery.map((i) => i.id);
     const at = ids.indexOf(id);
@@ -331,20 +348,43 @@ export default function Media() {
             {items === null ? (
               <Loading />
             ) : (
-              slotsOf(current.target).map((s) => {
+              <>
+              {current.target === 'home' && (
+                <div className="card p-4 grid gap-3" data-hero-mode={heroMode} data-tour="media-hero-mode">
+                  <div className="flex flex-wrap items-baseline justify-between gap-2">
+                    <h3 className="font-bold" id="hero-mode-title">واجهة الصفحة الرئيسية</h3>
+                    {heroMode !== heroLive && <p className="note-amber text-xs" role="status" data-hero-mode-pending>اختيار غير منشور بعد: الموقع يعرض الآن «{heroLive === 'photos' ? 'صور متتابعة' : 'فيديو'}» حتى «نشر هذه الصفحة».</p>}
+                  </div>
+                  <div className="flex flex-wrap gap-2" role="group" aria-labelledby="hero-mode-title">
+                    {(['video', 'photos'] as const).map((m) => (
+                      <button key={m} type="button" className={`chip-toggle ${heroMode === m ? 'is-on' : ''}`} aria-pressed={heroMode === m} disabled={!editable || modeBusy} onClick={() => void chooseMode(m)} data-hero-mode-option={m}>
+                        {heroMode === m && <span aria-hidden="true">✓ </span>}{m === 'video' ? 'فيديو' : 'صور متتابعة'}
+                      </button>
+                    ))}
+                  </div>
+                  <p className="text-xs text-ink-muted">
+                    {heroMode === 'photos'
+                      ? 'من 3 إلى 8 صور بترتيبك، تتبدل بتلاشٍ هادئ مع حركة تقريب بطيئة، وتعمل على الجوال أيضًا. للزائر زر لإيقاف الحركة.'
+                      : 'مقطع بلا صوت يعمل بعد تحميل الصفحة، وصورة الواجهة تظهر قبله وعند تقليل الحركة.'}
+                  </p>
+                </div>
+              )}
+              {slotsOf(current.target, heroMode).map((s) => {
                 const filled = (items ?? []).filter((i) => i.slot === s.slot);
                 if (s.slot === 'gallery') {
-                  const range = GALLERY_RANGE[current.target];
+                  const range = current.target === 'home' ? HERO_SLIDES : GALLERY_RANGE[current.target];
+                  const slidesMissing = current.target === 'home' && current.check.missing.find((m) => m.code === 'hero-slides');
                   const warn = current.check.warnings[0];
                   return (
                     <div key={s.slot} className="card p-4 grid gap-3" data-slot="gallery">
                       <div className="flex flex-wrap items-baseline justify-between gap-2">
-                        <h3 className="font-bold">{SLOT_LABELS.gallery} <span className="text-sm font-normal text-ink-muted">· {photosWord(filled.length)}{range ? ` · المقترح ${range[0]} إلى ${range[1]}` : ''}</span></h3>
+                        <h3 className="font-bold">{current.target === 'home' ? 'صور الواجهة المتتابعة' : SLOT_LABELS.gallery} <span className="text-sm font-normal text-ink-muted">· {photosWord(filled.length)}{range ? ` · ${current.target === 'home' ? 'المطلوب' : 'المقترح'} ${range[0]} إلى ${range[1]}` : ''}</span></h3>
                         {s.hint && <p className="text-xs text-ink-muted">{s.hint}</p>}
                       </div>
                       {warn && <p className="note-amber text-sm" role="status" data-gallery-warning={warn.code}>{warningText(warn)}</p>}
+                      {slidesMissing && <p className="note-amber text-sm" role="status" data-hero-slides-missing>{missingText(slidesMissing, byId)}</p>}
                       {filled.length > 0 && (
-                        <ol className="media-grid" aria-label="صور المعرض بالترتيب">
+                        <ol className="media-grid" aria-label={current.target === 'home' ? 'صور الواجهة بالترتيب' : 'صور المعرض بالترتيب'}>
                           {filled.map((it, n) => (
                             <li
                               key={it.id}
@@ -397,13 +437,14 @@ export default function Media() {
                           onFiles={(f) => add(f, s.slot)}
                           slot={s.slot}
                           onExisting={s.slot === 'hero-video' ? undefined : () => setExisting(s.slot)}
-                          label={it ? (s.slot === 'cover' && slotsOf(current.target).some((x) => x.slot === 'gallery') ? 'استبدال: اسحب صورة أو اخترها (تنتقل الحالية إلى المعرض)' : 'استبدال: اسحب ملفًا أو اختره (تُؤرشف الحالية)') : s.slot === 'hero-video' ? 'اسحب الفيديو إلى هنا أو اختره (MP4 أو MOV أو WebM حتى 300 ميغابايت)' : 'اسحب صورة إلى هنا أو اخترها'}
+                          label={it ? (s.slot === 'cover' && slotsOf(current.target, heroMode).some((x) => x.slot === 'gallery') ? 'استبدال: اسحب صورة أو اخترها (تنتقل الحالية إلى المعرض)' : 'استبدال: اسحب ملفًا أو اختره (تُؤرشف الحالية)') : s.slot === 'hero-video' ? 'اسحب الفيديو إلى هنا أو اختره (MP4 أو MOV أو WebM حتى 300 ميغابايت)' : 'اسحب صورة إلى هنا أو اخترها'}
                         />
                       )}
                     </div>
                   </div>
                 );
-              })
+              })}
+              </>
             )}
 
             {uploads.length > 0 && (
@@ -418,7 +459,7 @@ export default function Media() {
                       <div className="flex flex-wrap justify-between gap-2 text-sm">
                         <span className="latin truncate" dir="ltr">{u.name}</span>
                         <span className={u.stage === 'error' ? 'media-err font-semibold' : u.stage === 'done' ? 'media-ok font-semibold' : 'text-ink-muted'}>
-                          {STAGE_TEXT[u.stage]}{u.stage === 'uploading' ? ` ${Math.round(u.progress * 100)}%` : ''} · {u.target} · {SLOT_LABELS[u.slot]}
+                          {STAGE_TEXT[u.stage]}{u.stage === 'uploading' ? ` ${Math.round(u.progress * 100)}%` : ''} · {u.target} · {u.target === 'الصفحة الرئيسية' ? slotLabel(u.slot, 'home') : SLOT_LABELS[u.slot]}
                         </span>
                       </div>
                       {['uploading', 'finishing'].includes(u.stage) && (
@@ -467,7 +508,7 @@ export default function Media() {
           target={current.target}
           keyName={current.key}
           slot={existing ?? 'cover'}
-          slotLabel={existing ? `${targetLabel(current)} · ${SLOT_LABELS[existing]}` : ''}
+          slotLabel={existing ? `${targetLabel(current)} · ${slotLabel(existing, current.target)}` : ''}
           onDone={() => {
             setExisting(null);
             toast('أُضيفت الصورة إلى هذه الخانة مع وصفيها؛ اضغط «نشر» لتظهر على الموقع.');

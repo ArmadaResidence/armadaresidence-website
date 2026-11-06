@@ -28,26 +28,11 @@
   z-index: 1;
 }
 
-/* Discover: the hero is already isolated (media at z-index -2, veil -1); the pattern sits under the copy */
-.legacy-discover .hero::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  z-index: -1;
-  pointer-events: none;
-  background-image: url("/brand/pattern-tile.svg");
-  background-size: 108px auto;
-  background-attachment: fixed;
-  opacity: 0.07;
-}
-@media (hover: none) {
-  .legacy-discover .hero::after {
-    background-attachment: scroll;
-  }
-}
+/* Discover: no pattern over the hero photo (Ahmed, 6 Nov 2026 — the pattern stays on placeholders only). */
 
-/* Partners: dark bands, page heroes, CTA bands and the final section (the hero/phero/final keep their own
-   .bg/.scrim stacking — the pattern goes above the scrim, below the copy) */
+/* Partners: the dark bands, the CTA bands and the strip — midnight surfaces without a photo. Never over a photo
+   (Ahmed, 6 Nov 2026): the home hero (.hero-v3), the page heroes (.phero) and the final section keep their photo
+   and scrim only. */
 .legacy-partners .band.dk,
 .legacy-partners .ctaband,
 .legacy-partners .strip {
@@ -56,10 +41,7 @@
 }
 .legacy-partners .band.dk::before,
 .legacy-partners .ctaband::before,
-.legacy-partners .strip::before,
-.legacy-partners .hero-v3 .scrim::before,
-.legacy-partners .phero .bg::after,
-.legacy-partners .final .scrim::before {
+.legacy-partners .strip::before {
   content: "";
   position: absolute;
   inset: 0;
@@ -83,10 +65,7 @@
 @media (hover: none) {
   .legacy-partners .band.dk::before,
   .legacy-partners .ctaband::before,
-  .legacy-partners .strip::before,
-  .legacy-partners .hero-v3 .scrim::before,
-  .legacy-partners .phero .bg::after,
-  .legacy-partners .final .scrim::before {
+  .legacy-partners .strip::before {
     background-attachment: scroll;
   }
 }

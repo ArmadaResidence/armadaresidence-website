@@ -21,6 +21,8 @@ export const MIN_LONG_SIDE = 2400;
 /** the hero loop (approved 30 Oct 2026): 10–15 s, 20 s at most (longer is cut), 1920 × 1080 */
 export const HERO_VIDEO = { width: 1920, height: 1080, loop: [10, 15], maxSeconds: 20 };
 export const GALLERY_RANGE: Partial<Record<MediaTarget, [number, number]>> = { branch: [6, 12], room: [3, 8], dining: [3, 12], hall: [3, 12] };
+/** «صور متتابعة» (6 Nov 2026): the home hero's photos — 3 to 8, required to publish in that mode */
+export const HERO_SLIDES: [number, number] = [3, 8];
 
 const BY_EXT: Record<string, string> = {
   jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', heic: 'image/heic', heif: 'image/heif', webp: 'image/webp',
@@ -54,9 +56,12 @@ export const SLOT_LABELS: Record<MediaSlot, string> = {
   'hero-video': 'فيديو الواجهة',
 };
 /** the slots of a target in the order the page shows them; required ones block publishing that target */
-export function slotsOf(target: MediaTarget): { slot: MediaSlot; required: boolean; hint?: string }[] {
+export function slotsOf(target: MediaTarget, heroMode: 'video' | 'photos' = 'video'): { slot: MediaSlot; required: boolean; hint?: string }[] {
   switch (target) {
     case 'home':
+      if (heroMode === 'photos') {
+        return [{ slot: 'gallery', required: true, hint: 'من 3 إلى 8 صور تتبدل كل 6 ثوانٍ بحركة هادئة؛ الأولى تظهر أولًا وهي صورة المشاركة. لكل صورة نقطة تركيز ونص بديل بالعربية والإنجليزية.' }];
+      }
       return [
         { slot: 'hero-poster', required: false, hint: 'صورة أعلى الصفحة الرئيسية؛ مطلوبة إذا رُفع فيديو (تظهر للجوال وقبل تشغيل الفيديو).' },
         { slot: 'hero-video', required: false, hint: 'اختياري: مقطع بلا صوت من 10 إلى 15 ثانية (20 ثانية حدًا أقصى)، يعمل على الشاشات الكبيرة فقط.' },
@@ -100,6 +105,8 @@ export function slotsOf(target: MediaTarget): { slot: MediaSlot; required: boole
       return [{ slot: 'gallery', required: false }];
   }
 }
+/** a slot's label on a target (the home page's gallery is the hero slideshow, 6 Nov 2026) */
+export const slotLabel = (slot: MediaSlot, target?: MediaTarget) => (target === 'home' && slot === 'gallery' ? 'صور الواجهة المتتابعة' : SLOT_LABELS[slot]);
 export const STORY_SLOTS: MediaSlot[] = ['story-entrance', 'story-lobby', 'story-rooms', 'story-dining'];
 /** the targets whose photos the site's gallery page /gallery/ shows (2 Nov 2026) — «إظهار في المعرض» is offered there */
 export const galleryTarget = (t: MediaTarget) => t === 'branch' || t === 'room' || t === 'dining' || t === 'hall';
@@ -125,6 +132,7 @@ export function missingText(m: MediaMissing, items: Map<string, MediaItem>, inde
     return `${where}: النص البديل ${m.lang === 'ar' ? 'بالعربية' : 'بالإنجليزية'}`;
   }
   if (m.code === 'hero-poster') return 'صورة الواجهة (مطلوبة مع الفيديو)';
+  if (m.code === 'hero-slides') return `صور الواجهة المتتابعة: ${photosWord(m.count ?? 0)}، والمطلوب من ${m.min ?? 3} إلى ${m.max ?? 8}`;
   return SLOT_LABELS[m.code];
 }
 export function warningText(w: MediaWarning): string {
@@ -363,6 +371,7 @@ export function cropsOf(slot: MediaSlot, target?: MediaTarget, key?: string): Cr
     return [{ label: `${r} — بمقاس الصورة الحالية في هذا الموضع`, ratio: w / h }];
   }
   if (slot === 'hero-poster') return [C169, C45, COG];
+  if (target === 'home' && slot === 'gallery') return [C169, C45, COG];
   if (slot === 'hero-video') return [C169];
   if (slot === 'cover') return [C32, COG];
   return [C32];

@@ -1,13 +1,13 @@
 {
   "exportFormatVersion": 2,
-  "exportTime": "2026-11-04 20:00:00",
+  "exportTime": "2026-11-06 12:00:00",
   "containerVersion": {
     "path": "accounts/0/containers/0/versions/0",
     "accountId": "0",
     "containerId": "0",
     "containerVersionId": "0",
-    "name": "Armada Residence — pixels after engagement (4 Nov 2026)",
-    "description": "Moves the Meta, TikTok and Snap BASE pixels from page load to the first click / tap, a 25 % scroll or 10 s on the page (once per page) — and on CE - booking_request with priority 10, so the untouched conversion tags still find fbq / ttq / snaptr on the success page. Conversion tags on CE - booking_request are not in this file and stay as they are. Import with Merge + Overwrite conflicting (docs/gtm-performance.md).",
+    "name": "Armada Residence — pixels after engagement (6 Nov 2026)",
+    "description": "Moves the Meta, TikTok and Snap BASE pixels from page load to the first interaction (scroll, pointerdown, touchstart or keydown) or 5 s, whichever comes first (once per page) — and on CE - booking_request with priority 10, so the untouched conversion tags still find fbq / ttq / snaptr on the success page. The tag «Engagement - first interaction or 5 s» (All Pages) pushes the event first_engagement once. Conversion tags on CE - booking_request are not in this file and stay as they are. Import with Merge + Overwrite conflicting (docs/gtm-performance.md).",
     "container": {
       "accountId": "0",
       "containerId": "0",
@@ -18,6 +18,30 @@
       ]
     },
     "tag": [
+      {
+        "accountId": "0",
+        "containerId": "0",
+        "tagId": "40",
+        "name": "Engagement - first interaction or 5 s",
+        "type": "html",
+        "parameter": [
+          {
+            "type": "TEMPLATE",
+            "key": "html",
+            "value": "<script>(function(){if(window.__armadaEngaged)return;window.__armadaEngaged=1;var done=false,t,ev=['scroll','pointerdown','touchstart','keydown'];function fire(kind){if(done)return;done=true;clearTimeout(t);for(var i=0;i<ev.length;i++)window.removeEventListener(ev[i],h,true);window.dataLayer=window.dataLayer||[];window.dataLayer.push({event:'first_engagement',engagement:kind});}function h(e){fire(e.type);}for(var i=0;i<ev.length;i++)window.addEventListener(ev[i],h,{capture:true,passive:true});t=setTimeout(function(){fire('timer_5s');},5000);})();</script>"
+          },
+          {
+            "type": "BOOLEAN",
+            "key": "supportDocumentWrite",
+            "value": "false"
+          }
+        ],
+        "firingTriggerId": [
+          "2147479553"
+        ],
+        "tagFiringOption": "ONCE_PER_LOAD",
+        "notes": "6 Nov 2026 (docs/gtm-performance.md): on All Pages; pushes first_engagement once per page — on the first scroll, pointerdown, touchstart or keydown (passive listeners, removed after), or after 5 s, whichever comes first. Sends nothing itself."
+      },
       {
         "accountId": "0",
         "containerId": "0",
@@ -37,13 +61,11 @@
           }
         ],
         "firingTriggerId": [
-          "101",
-          "102",
-          "103",
+          "104",
           "22"
         ],
         "tagFiringOption": "ONCE_PER_LOAD",
-        "notes": "4 Nov 2026 (docs/gtm-performance.md): fires once per page on the first click / tap, a 25 % scroll, 10 s on the page, or CE - booking_request (the success page is a new page load) — with priority 10 so it runs before the conversion tag of the same event. No longer on page load. The conversion tags are unchanged.",
+        "notes": "6 Nov 2026 (docs/gtm-performance.md): fires once per page on first_engagement — the first scroll, pointerdown, touchstart or keydown, or 5 s, whichever comes first — or CE - booking_request (the success page is a new page load), with priority 10 so it runs before the conversion tag of the same event. No longer on page load. The conversion tags are unchanged.",
         "priority": {
           "type": "INTEGER",
           "value": "10"
@@ -68,13 +90,11 @@
           }
         ],
         "firingTriggerId": [
-          "101",
-          "102",
-          "103",
+          "104",
           "22"
         ],
         "tagFiringOption": "ONCE_PER_LOAD",
-        "notes": "4 Nov 2026 (docs/gtm-performance.md): fires once per page on the first click / tap, a 25 % scroll, 10 s on the page, or CE - booking_request (the success page is a new page load) — with priority 10 so it runs before the conversion tag of the same event. No longer on page load. The conversion tags are unchanged.",
+        "notes": "6 Nov 2026 (docs/gtm-performance.md): fires once per page on first_engagement — the first scroll, pointerdown, touchstart or keydown, or 5 s, whichever comes first — or CE - booking_request (the success page is a new page load), with priority 10 so it runs before the conversion tag of the same event. No longer on page load. The conversion tags are unchanged.",
         "priority": {
           "type": "INTEGER",
           "value": "10"
@@ -99,13 +119,11 @@
           }
         ],
         "firingTriggerId": [
-          "101",
-          "102",
-          "103",
+          "104",
           "22"
         ],
         "tagFiringOption": "ONCE_PER_LOAD",
-        "notes": "4 Nov 2026 (docs/gtm-performance.md): fires once per page on the first click / tap, a 25 % scroll, 10 s on the page, or CE - booking_request (the success page is a new page load) — with priority 10 so it runs before the conversion tag of the same event. No longer on page load. The conversion tags are unchanged.",
+        "notes": "6 Nov 2026 (docs/gtm-performance.md): fires once per page on first_engagement — the first scroll, pointerdown, touchstart or keydown, or 5 s, whichever comes first — or CE - booking_request (the success page is a new page load), with priority 10 so it runs before the conversion tag of the same event. No longer on page load. The conversion tags are unchanged.",
         "priority": {
           "type": "INTEGER",
           "value": "10"
@@ -116,75 +134,22 @@
       {
         "accountId": "0",
         "containerId": "0",
-        "triggerId": "101",
-        "name": "Engaged - first click or tap",
-        "type": "CLICK"
-      },
-      {
-        "accountId": "0",
-        "containerId": "0",
-        "triggerId": "102",
-        "name": "Engaged - scroll 25 %",
-        "type": "SCROLL_DEPTH",
-        "parameter": [
+        "triggerId": "104",
+        "name": "CE - first_engagement",
+        "type": "CUSTOM_EVENT",
+        "customEventFilter": [
           {
-            "type": "BOOLEAN",
-            "key": "verticalThresholdOn",
-            "value": "true"
-          },
-          {
-            "type": "TEMPLATE",
-            "key": "verticalThresholdUnits",
-            "value": "PERCENT"
-          },
-          {
-            "type": "TEMPLATE",
-            "key": "verticalThresholdsPercent",
-            "value": "25"
-          },
-          {
-            "type": "BOOLEAN",
-            "key": "horizontalThresholdOn",
-            "value": "false"
-          },
-          {
-            "type": "TEMPLATE",
-            "key": "triggerStartOption",
-            "value": "WINDOW_LOAD"
-          }
-        ]
-      },
-      {
-        "accountId": "0",
-        "containerId": "0",
-        "triggerId": "103",
-        "name": "Engaged - 10 s on the page (fallback)",
-        "type": "TIMER",
-        "eventName": {
-          "type": "TEMPLATE",
-          "value": "gtm.timer"
-        },
-        "interval": {
-          "type": "TEMPLATE",
-          "value": "10000"
-        },
-        "limit": {
-          "type": "TEMPLATE",
-          "value": "1"
-        },
-        "autoEventFilter": [
-          {
-            "type": "MATCH_REGEX",
+            "type": "EQUALS",
             "parameter": [
               {
                 "type": "TEMPLATE",
                 "key": "arg0",
-                "value": "{{Page URL}}"
+                "value": "{{_event}}"
               },
               {
                 "type": "TEMPLATE",
                 "key": "arg1",
-                "value": ".*"
+                "value": "first_engagement"
               }
             ]
           }
@@ -263,8 +228,8 @@
       {
         "accountId": "0",
         "containerId": "0",
-        "type": "PAGE_URL",
-        "name": "Page URL"
+        "type": "EVENT",
+        "name": "Event"
       }
     ]
   }

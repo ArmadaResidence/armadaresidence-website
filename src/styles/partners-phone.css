@@ -135,3 +135,11 @@
   font-size: 14px;
   color: var(--tx-mute);
 }
+
+/* phones (6 Nov 2026): the wizard's fields are 16 px there (global.css — no iOS zoom on focus); the code button keeps
+   their look */
+@media (max-width: 767px) {
+  .legacy-partners .fld .phone-row .country-btn {
+    font-size: 16px;
+  }
+}

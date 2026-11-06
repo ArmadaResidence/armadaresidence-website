@@ -36,7 +36,7 @@ import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
 import sharp from 'sharp';
 import { decodable, ffprobe, hasTool, sha256 } from './photos-lib.mjs';
-import { heroFrame, lqipOf, renderHeroVideo, renderOg, renderPhoto, renderPoster, renderPosterFrames, SPEC_VERSION, videoFrame } from './photos-engine.mjs';
+import { heroFrame, heroScrim, loopFrames, lqipOf, renderHeroVideo, renderOg, renderPhoto, renderPoster, renderPosterFrames, renderSlide, SCRIM, scrimMax, SLIDE, SPEC_VERSION, videoFrame } from './photos-engine.mjs';
 
 const ROOT = fileURLToPath(new URL('..', import.meta.url));
 const args = process.argv.slice(2);
@@ -63,6 +63,13 @@ const PARTNER_RATIO = Object.fromEntries(JSON.parse(readFileSync(join(ROOT, 'con
   return [s.key, w / h];
 }));
 const recipeOf = (it) => (it.target === 'partners' ? `photo@${PARTNER_RATIO[it.key]}` : null);
+// the Discover Taif places' built-in photos (6 Nov 2026): a published cover that IS the place's built-in file (the same
+// sha256 as content/images/taif/<slug>-1400.webp — the records made from them in «الصور») keeps the page's own
+// rendition, so the page is unchanged; any other photo goes through the engine like every cover
+const TAIF_BUILTIN = Object.fromEntries(JSON.parse(readFileSync(join(ROOT, 'content', 'taif-guide.json'), 'utf8')).places.map((p) => {
+  const f = join(ROOT, 'content', 'images', 'taif', `${p.slug}-1400.webp`);
+  return [p.key, existsSync(f) ? createHash('sha256').update(readFileSync(f)).digest('hex') : null];
+}));
 // libvips keeps the files it read open in its cache; on Windows an open file blocks the cache folder's rename
 sharp.cache(false);
 const t0 = Date.now();
@@ -115,6 +122,9 @@ if (!PLAN) {
 }
 const items = manifest.items || [];
 const focalOf = (it) => ({ x: Number(it.focal_x ?? 0.5), y: Number(it.focal_y ?? 0.5) });
+/** the measured hero scrim of a cache entry (6 Nov 2026), kept beside its files: its own version, so a change of the
+ *  measure never re-encodes a loop */
+const SCRIM_FILE = `scrim-v${SCRIM.v}.json`;
 /** the cache key of one derived set: the specs, what is made, the original and the focal point */
 const keyOf = (recipe, it) => {
   const f = focalOf(it);
@@ -125,7 +135,9 @@ if (PLAN) {
   const home = items.filter((i) => i.target === 'home');
   const poster = home.find((i) => i.slot === 'hero-poster');
   const video = home.find((i) => i.slot === 'hero-video');
-  const needs = (video && (miss('video', video) || (!poster && miss('poster-from-video', video))))
+  const heroMode = manifest.hero?.mode === 'photos' ? 'photos' : 'video';
+  const scrimMiss = (it) => !existsSync(join(CACHE, keyOf('video', it), SCRIM_FILE));
+  const needs = (heroMode === 'video' && video && (miss('video', video) || (!poster && miss('poster-from-video', video)) || scrimMiss(video)))
     || items.some((i) => /hei[cf]$/.test(i.mime) && miss(recipeOf(i) ?? (i.slot === 'cover' && i.target !== 'home' ? 'photo+og' : i.slot === 'hero-poster' ? 'poster' : 'photo'), i));
   output('ffmpeg', needs ? 'true' : 'false');
   log(`media plan: ${items.length} item(s); ffmpeg ${needs ? 'needed' : 'not needed'}`);
@@ -140,6 +152,7 @@ mkdirSync(CACHE, { recursive: true });
 const stats = { hits: 0, misses: 0, downloaded: 0, download_ms: 0, render_ms: 0 };
 const problems = [];
 const k8 = (k) => k.slice(0, 10);
+const HERO_MODE = manifest.hero?.mode === 'photos' ? 'photos' : 'video';
 
 /** the original's bytes: the fixture file, or the private bucket (service role) */
 async function original(it) {
@@ -198,7 +211,29 @@ async function cached(recipe, it, prefix, make) {
   writeFileSync(join(dir, 'used'), new Date().toISOString());
   const id = `${prefix}-${k8(key)}`;
   for (const name of meta.files) cpSync(join(dir, name), join(IMG, name.replace(/^x(?=[-.])/, id)));
-  return { meta, id };
+  return { meta, id, dir };
+}
+/** the largest file of a variant in a cache entry (`x-poster` + widths → its largest WebP) */
+const largestOf = (dir, name, v) => join(dir, `${name}-${v.widths.at(-1)}.webp`);
+/**
+ * The hero scrim of a cache entry, measured once and kept beside it (SCRIM_FILE): the posters (or a slide's two crops)
+ * and, for a video, frames sampled every second over both loops — the highest of them, since the scrim stays put while
+ * the video plays. A video entry from before 6 Nov 2026 is measured on the first build that has ffmpeg (--plan asks).
+ */
+async function scrimOf(dir, desktopFile, mobileFile, loops = []) {
+  const f = join(dir, SCRIM_FILE);
+  if (existsSync(f)) return JSON.parse(readFileSync(f, 'utf8'));
+  const list = [await heroScrim(desktopFile, mobileFile)];
+  if (loops.length) {
+    if (!hasTool('ffmpeg')) throw new Error('the hero video\'s scrim is measured on its frames: ffmpeg is needed once');
+    const [desk, phone] = loops.map((l) => loopFrames(l));
+    for (let i = 0; i < Math.max(desk.length, phone.length); i++) {
+      list.push(await heroScrim(desk[Math.min(i, desk.length - 1)], phone[Math.min(i, phone.length - 1)]));
+    }
+  }
+  const s = { ...scrimMax(list), samples: list.length };
+  writeFileSync(f, JSON.stringify(s));
+  return s;
 }
 
 /** a photo: the 3:2 widths (+ the OG crop for a cover) and the LQIP of its -800 (else first) WebP; a partners slot keeps
@@ -255,6 +290,12 @@ const ordered = (list) => [...list.filter((i) => i.slot === 'cover'), ...list.fi
 for (const [k, list] of byTarget) {
   const [target, key] = [k.slice(0, k.indexOf(':')), k.slice(k.indexOf(':') + 1)];
   try {
+    const cover = list.find((i) => i.slot === 'cover');
+    if (target === 'place' && cover && TAIF_BUILTIN[key] && cover.sha256 === TAIF_BUILTIN[key]) {
+      data.places[key] = { photos: [{ builtin: true, cover: true, alt_ar: cover.alt_ar || '', alt_en: cover.alt_en || '' }] };
+      log(`  ✓ ${k}: the built-in photo (kept as the page renders it)`);
+      continue;
+    }
     if (['room', 'branch', 'section', 'dining', 'hall', 'place', 'partners', 'offer', 'blog'].includes(target)) {
       const prefix = ['section', 'dining', 'hall', 'place', 'partners', 'offer', 'blog'].includes(target) ? `${target}-${key}` : key.replace('/', '-');
       const photos = [];
@@ -282,6 +323,37 @@ for (const [k, list] of byTarget) {
       }
       data[{ room: 'rooms', branch: 'branches', section: 'sections', dining: 'dining', hall: 'halls', place: 'places', partners: 'partners', offer: 'offers', blog: 'articles' }[target]][key] = entry;
       log(`  ✓ ${k}: ${photos.length} photo(s)${entry.story ? ` + ${Object.keys(entry.story).length} story scene(s)` : ''}`);
+    } else if (target === 'home' && HERO_MODE === 'photos') {
+      // «صور متتابعة» (6 Nov 2026): 3–8 photos in Ahmed's order, each 16:9 + 4:5 around its focal point, within the
+      // deferred-media budget, with its own measured scrim; the first is the LCP image and the sharing image
+      const slides = list.filter((i) => i.slot === 'gallery').sort((a, b) => a.sort - b.sort);
+      if (slides.length < 3 || slides.length > 8) throw new Error(`the hero slideshow needs 3 to 8 photos, the manifest has ${slides.length}`);
+      const home = { mode: 'photos', slides: [] };
+      for (const [n, it] of slides.entries()) {
+        const { meta, id, dir } = await cached(`slide@${SLIDE.v}`, it, 'hero-slide', async (dir, focal) => {
+          const raw = await original(it);
+          const path = tempFile(raw, extOf(it.mime));
+          try {
+            const { buf } = await decodable(path, raw);
+            const r = await renderSlide(buf, focal, dir, { desktop: 'x', mobile: 'x-m' });
+            await renderOg(buf, focal, join(dir, 'x.og.jpg'));
+            return { files: [...r.files, 'x.og.jpg'], desktop: r.desktop, mobile: r.mobile, notes: r.notes };
+          } finally {
+            rmSync(path, { force: true });
+          }
+        });
+        const scrim = await scrimOf(dir, largestOf(dir, 'x', meta.desktop), largestOf(dir, 'x-m', meta.mobile));
+        const slide = { alt_ar: it.alt_ar || '', alt_en: it.alt_en || '', focal: `${Math.round(focalOf(it).x * 100)},${Math.round(focalOf(it).y * 100)}`, scrim: { m: scrim.m, md: scrim.md, lg_ltr: scrim.lg_ltr, lg_rtl: scrim.lg_rtl } };
+        for (const [key, src] of [['poster', meta.desktop], ['poster_mobile', meta.mobile]]) {
+          slide[key] = { base: `${PUB}/${id}${key === 'poster' ? '' : '-m'}`, widths: src.widths, width: src.width, height: src.height, position: src.position };
+        }
+        home.slides.push(slide);
+        if (n === 0) home.og_image = `${PUB}/${id}.og.jpg`;
+        for (const note of meta.notes || []) log(`  ! hero photo ${n + 1}: ${note}`);
+      }
+      Object.assign(home, { poster: home.slides[0].poster, poster_mobile: home.slides[0].poster_mobile, alt_ar: home.slides[0].alt_ar, alt_en: home.slides[0].alt_en, scrim: home.slides[0].scrim });
+      data.home = home;
+      log(`  ✓ home hero: ${home.slides.length} photos (scrim ${home.slides.map((x) => x.scrim.md).join(' / ')})`);
     } else if (target === 'home') {
       const posterItem = list.find((i) => i.slot === 'hero-poster');
       const videoItem = list.find((i) => i.slot === 'hero-video');
@@ -289,7 +361,7 @@ for (const [k, list] of byTarget) {
       if (videoItem) {
         // the loops (desktop + the mobile 4:5) and their posters = their own first frames (5 Nov 2026: no jump from the
         // poster to the video; the published still keeps its role for sharing — the OG image below)
-        const { meta, id } = await cached('video', videoItem, 'hero', async (dir, focal) => {
+        const { meta, id, dir: videoDir } = await cached('video', videoItem, 'hero', async (dir, focal) => {
           // a cached loop needs no ffmpeg; a new one does
           if (!hasTool('ffmpeg') || !hasTool('ffprobe')) throw new Error('the hero video needs ffmpeg / ffprobe on the build machine');
           const raw = await original(videoItem);
@@ -314,12 +386,15 @@ for (const [k, list] of byTarget) {
           const v = meta[key];
           home[key] = { base: `${PUB}/${id}-poster${key === 'poster' ? '' : '-m'}`, widths: v.widths, width: v.width, height: v.height, position: v.position };
         }
+        const scrim = await scrimOf(videoDir, largestOf(videoDir, 'x-poster', meta.poster), largestOf(videoDir, 'x-poster-m', meta.poster_mobile), [join(videoDir, 'x.mp4'), join(videoDir, 'x-mobile.mp4')]);
+        home.scrim = { m: scrim.m, md: scrim.md, lg_ltr: scrim.lg_ltr, lg_rtl: scrim.lg_rtl };
+        log(`  ✓ hero scrim (poster + ${scrim.samples - 1} frames): phone ${scrim.m}, tablet ${scrim.md}, wide ${scrim.lg_rtl} (ar) / ${scrim.lg_ltr} (en)`);
         for (const n of meta.notes || []) log(`  ! hero video: ${n}`);
         log(`  ✓ hero loops: ${Object.entries(meta.sizes || {}).map(([n, s]) => `${n.replace(/^x/, '')} ${s.mb} MB`).join(', ')}`);
       }
       const posterSrc = posterItem || videoItem;
       if (posterSrc) {
-        const { meta, id } = await cached(posterItem ? 'poster' : 'poster-from-video', posterSrc, 'hero-poster', async (dir, focal) => {
+        const { meta, id, dir: posterDir } = await cached(posterItem ? 'poster' : 'poster-from-video', posterSrc, 'hero-poster', async (dir, focal) => {
           let buf;
           if (posterItem) {
             const raw = await original(posterItem);
@@ -348,7 +423,10 @@ for (const [k, list] of byTarget) {
             const v = meta[key];
             home[key] = { base: `${PUB}/${id}${key === 'poster' ? '' : '-m'}`, widths: v.widths, width: v.width, height: v.height, position: v.position };
           }
+          const scrim = await scrimOf(posterDir, largestOf(posterDir, 'x', meta.poster), largestOf(posterDir, 'x-m', meta.poster_mobile));
+          home.scrim = { m: scrim.m, md: scrim.md, lg_ltr: scrim.lg_ltr, lg_rtl: scrim.lg_rtl };
         }
+        home.mode = home.video ? 'video' : 'still';
         home.og_image = `${PUB}/${id}.og.jpg`;
         data.home = home;
         log(`  ✓ home hero: poster ${home.poster.widths.join(' / ')} + mobile ${home.poster_mobile.widths.join(' / ')}${home.video ? ` (the loops' first frames), loop ${home.video.seconds} s` : ''}`);

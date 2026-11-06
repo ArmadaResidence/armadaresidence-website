@@ -9,7 +9,7 @@ import { useDraftMirror } from '../lib/dirty';
 import { useMemo, useState } from 'react';
 import * as api from '../lib/api';
 import type { MediaItem, MediaSlot } from '../lib/api';
-import { cropStyle, cropsOf, galleryTarget, ITEM_STATUS, megabytes, MIN_LONG_SIDE, SLOT_LABELS, slotsOf } from '../lib/media';
+import { cropStyle, cropsOf, galleryTarget, ITEM_STATUS, megabytes, MIN_LONG_SIDE, slotLabel, slotsOf } from '../lib/media';
 import { riyadhDateTime } from '../lib/format';
 import LabelPair from './LabelPair';
 import { CancelButton, Field, Modal, Spinner, useToast } from './ui';
@@ -54,7 +54,8 @@ function ItemBody({ item, src, editable, onClose, onChanged, busy, setBusy }: Om
   // upload), else the preview's own
   const w = item.width ?? natural?.w ?? 0;
   const h = item.height ?? natural?.h ?? 0;
-  const slots = useMemo(() => slotsOf(item.target).filter((s) => (s.slot === 'hero-video') === (item.kind === 'video')), [item]);
+  // the home page (6 Nov 2026): the poster, the video and the slideshow photos — a photo moves between them
+  const slots = useMemo(() => (item.target === 'home' ? [...slotsOf('home', 'video'), ...slotsOf('home', 'photos')] : slotsOf(item.target)).filter((s) => (s.slot === 'hero-video') === (item.kind === 'video')), [item]);
   const warnings: string[] = [];
   if (item.kind === 'image' && w && h) {
     if (Math.max(w, h) < MIN_LONG_SIDE) warnings.push(`الضلع الأطول ${Math.max(w, h)} بكسل، أقل من ${MIN_LONG_SIDE}: قد تبدو أقل حدة على الشاشات الكبيرة.`);
@@ -178,7 +179,7 @@ function ItemBody({ item, src, editable, onClose, onChanged, busy, setBusy }: Om
               <Field label="الخانة" id="media-slot" hint={slot !== item.slot && slot !== 'gallery' ? 'إن كانت الخانة مشغولة تنتقل صورتها إلى المعرض.' : undefined}>
                 <select id="media-slot" className="field" value={slot} disabled={!editable} onChange={(e) => setSlot(e.target.value as MediaSlot)}>
                   {slots.map((s) => (
-                    <option key={s.slot} value={s.slot}>{SLOT_LABELS[s.slot]}</option>
+                    <option key={s.slot} value={s.slot}>{slotLabel(s.slot, item.target)}</option>
                   ))}
                 </select>
               </Field>

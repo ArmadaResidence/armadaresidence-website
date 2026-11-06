@@ -14,6 +14,8 @@
   --motion-stagger: 60ms; /* between siblings */
   --motion-stagger-fast: 50ms; /* between words (hero) */
   --motion-count: 1200ms; /* count-up figures */
+  --motion-hero-hold: 6000ms; /* the home hero slideshow: how long each photo stays (6 Nov 2026) */
+  --motion-hero-fade: 1200ms; /* the home hero slideshow: the cross-fade between two photos */
 }
 @media (prefers-reduced-motion: reduce) {
   :root {
@@ -25,6 +27,8 @@
     --motion-stagger: 0ms;
     --motion-stagger-fast: 0ms;
     --motion-count: 0ms;
+    --motion-hero-hold: 0ms;
+    --motion-hero-fade: 0ms;
   }
 }
 

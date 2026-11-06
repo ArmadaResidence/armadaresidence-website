@@ -1,7 +1,10 @@
 // A generated sample set for the media pipeline (1 Nov 2026): never a real photo, never published — it feeds
 // scripts/media-build.mjs as a fixture (--fixture <dir>) for scripts/media-pipeline-check.mjs and for the deploy
 // workflow's dry run with `media_sample` (the publish time measured on GitHub Actions).
-//   node scripts/media-sample.mjs <dir> [--poster white|busy] [--no-video]
+//   node scripts/media-sample.mjs <dir> [--poster white|busy] [--no-video] [--slides]
+// --slides (6 Nov 2026): the home hero as «صور متتابعة» — 4 photos (a white, a busy, a dark and a mid one, focal points
+// off-centre) in the home gallery and manifest.hero = { mode: 'photos' }; the poster and the clip stay in the manifest
+// (the build ignores them in that mode, as the site does).
 // What it holds (a typical publish and the edge cases): Airport Road branch — cover + the 4 story scenes + 6 gallery
 // photos (one with a Display P3 profile, one with EXIF orientation 6, one with «إظهار في المعرض» off); its twin room — cover + 3 gallery (one portrait,
 // one only 1800 px wide); the Airport Road café venue — cover + 2 gallery photos, the hall — cover + 3 gallery, the
@@ -20,6 +23,7 @@ const args = process.argv.slice(2);
 const dir = resolve(args.find((a) => !a.startsWith('--') && args[args.indexOf(a) - 1] !== '--poster') || '.media-sample');
 const poster = args.includes('--poster') ? args[args.indexOf('--poster') + 1] : 'white';
 const video = !args.includes('--no-video');
+const slidesMode = args.includes('--slides');
 rmSync(dir, { recursive: true, force: true });
 mkdirSync(dir, { recursive: true });
 
@@ -80,7 +84,19 @@ if (video && hasTool('ffmpeg')) {
   const buf = readFileSync(out);
   items.push({ ...H, id: 'hero.mp4', slot: 'hero-video', sort: 0, focal_x: 0.5, focal_y: 0.5, kind: 'video', mime: 'video/mp4', file: 'hero.mp4', file_name: 'hero.mp4', sha256: sha256(buf), bytes: buf.length, width: 2560, height: 1440, duration: 25, alt_ar: '', alt_en: '' });
 }
-writeFileSync(join(dir, 'manifest.json'), JSON.stringify({ at: new Date().toISOString(), sample: true, items }, null, 1) + '\n');
+if (slidesMode) {
+  const dark = (w, h) => Buffer.from(`<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}"><rect width="100%" height="100%" fill="#1b2430"/><circle cx="${w * 0.7}" cy="${h * 0.3}" r="${h * 0.08}" fill="#3a4656"/></svg>`);
+  const shots = [
+    ['white', white, 0.5, 0.5, 'واجهة فاتحة اللون تحت سماء صافية', 'A pale front under a clear sky'],
+    ['busy', busy, 0.3, 0.4, 'نقوش متداخلة على جدار الردهة', 'Interlaced patterns on the lobby wall'],
+    ['dark', dark, 0.7, 0.3, 'الواجهة ليلًا بإضاءة خافتة', 'The front at night under soft light'],
+    ['mid', lbl('Hero 4', 25), 0.5, 0.6, 'المدخل الرئيسي ومواقف السيارات', 'The main entrance and the parking'],
+  ];
+  for (const [i, [name, input, fx, fy, ar, en]] of shots.entries()) {
+    await add(`hero-slide-${name}.jpg`, input, 3840, 2160, { ...H, slot: 'gallery', sort: i, focal_x: fx, focal_y: fy, alt_ar: ar, alt_en: en });
+  }
+}
+writeFileSync(join(dir, 'manifest.json'), JSON.stringify({ at: new Date().toISOString(), sample: true, ...(slidesMode ? { hero: { mode: 'photos' } } : {}), items }, null, 1) + '\n');
 // sample venues (the shape of public.dining_site_manifest); the logo is a plain SVG, the copy is sample text only
 const logo = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 60"><rect width="200" height="60" rx="8" fill="#142A3B"/><circle cx="30" cy="30" r="14" fill="#A97C50"/></svg>';
 const venue = (o) => ({ id: o.slug, branch: 'airport-road', kind: 'restaurant_cafe', location: 'lobby', location_note_ar: '', location_note_en: '', hours: null, audience: null, phone: null, whatsapp: null, extension: null, menu: 'none', menu_url: null, description_ar: '', description_en: '', sort: 0, ...o });
