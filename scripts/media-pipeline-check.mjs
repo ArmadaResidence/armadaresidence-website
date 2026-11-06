@@ -19,7 +19,7 @@ import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import sharp from 'sharp';
 import { ffprobe } from './photos-lib.mjs';
-import { HERO, PHOTO } from './photos-engine.mjs';
+import { FINE, HERO, MOBILE_COVER, PHOTO } from './photos-engine.mjs';
 
 const ROOT = fileURLToPath(new URL('..', import.meta.url));
 const args = process.argv.slice(2);
@@ -90,7 +90,19 @@ for (const p of all) {
 check(fmtOk, 'photos: AVIF + WebP at every listed width');
 check(sizeOk, 'photos: every file is the exact 3:2 size of its width');
 check(metaOk, 'photos: no EXIF / XMP / IPTC left');
-check(all.every((p) => p.widths.every((w) => PHOTO.widths.includes(w))), 'photos: only the approved widths (480 / 800 / 1200 / 1600 / 2000)');
+// 7 Nov 2026: the branch photos take the FINE widths (+ 2560 for retina screens), every other photo the approved five
+const branchPhotos = new Set(Object.values(d.branches).flatMap((e) => [...e.photos, ...Object.values(e.story || {})]));
+check(all.every((p) => p.widths.every((w) => (branchPhotos.has(p) ? FINE.widths : PHOTO.widths).includes(w))), 'photos: only the approved widths (480 / 800 / 1200 / 1600 / 2000; the branch photos + 2560)');
+check(air.photos[0].widths.includes(2560) && !twin.photos[0].widths.includes(2560), 'photos: a 3600 px branch cover reaches 2560, a room photo stops at 2000', `${air.photos[0].widths} / ${twin.photos[0].widths}`);
+// «صورة الجوال» of the cover: 9:16 at 480 / 750 / 1080 from its own photo; the card's measured gradient
+const mc = air.photos[0].mobile;
+check(mc && mc.widths.join() === MOBILE_COVER.widths.join() && mc.width === 1080 && mc.height === 1920, 'phone photo: the cover\'s 9:16 files (480 / 750 / 1080)', JSON.stringify(mc));
+if (mc) {
+  const m = await sharp(file(`${mc.base}-1080.avif`)).metadata().catch(() => null);
+  check(m && m.width === 1080 && m.height === 1920, 'phone photo: 1080 × 1920 AVIF', m && `${m.width}×${m.height}`);
+}
+check(air.photos[0].card_scrim && air.photos[0].card_scrim.lg >= 0.15 && air.photos[0].card_scrim.m >= 0.15, 'the «فرعانا» card gradient measured on the cover', JSON.stringify(air.photos[0].card_scrim));
+check(!all.some((p) => p.base.includes('-m-') && !p.cover), 'phone photo: never in a gallery list');
 const small = twin.photos.find((p) => p.alt_en.includes('window'));
 check(small && Math.max(...small.widths) === 1600, 'photos: an 1800 px photo is never upscaled (largest 1600)', small?.widths.join());
 const portrait = twin.photos.find((p) => p.alt_en.includes('seating'));
@@ -154,7 +166,7 @@ if (SITE) {
   const q = spawnSync('python', ['qa.py'], { cwd: ROOT, env, encoding: 'utf8' });
   check(q.status === 0, 'site: qa.py passes with published media', q.status ? q.stdout.split('\n').filter((l) => /✗|FAIL|media/.test(l)).slice(0, 15).join('\n') : '');
   const home = readFileSync(join(ROOT, 'dist', 'index.html'), 'utf8');
-  check(home.includes('hero-scrim') && home.includes('text-bronze-bright') && /rel="preload"[^>]+imagesrcset="\/images\/media\/hero-poster-/.test(home), 'site: the home hero renders the poster with the scrim, Bronze Bright and the preload');
+  check(home.includes('hero-scrim') && home.includes('text-bronze-bright') && /rel="preload"[^>]+imagesrcset="\/images\/media\/hero-(?:poster-|[0-9a-f]{10}-poster-)/.test(home), 'site: the home hero renders the poster with the scrim, Bronze Bright and the preload');
   const room = readFileSync(join(ROOT, 'dist', 'airport-road', 'twin-room', 'index.html'), 'utf8');
   check(/\/images\/media\/airport-road-twin-room-[0-9a-f]+-800\.(avif|webp)/.test(room) && room.includes('og:image') && room.includes('/images/media/airport-road-twin-room-'), 'site: the room page shows its photos and the OG image');
   const branch = readFileSync(join(ROOT, 'dist', 'airport-road', 'index.html'), 'utf8');

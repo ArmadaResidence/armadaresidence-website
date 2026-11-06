@@ -84,7 +84,8 @@ const COVER_SIZES = '(min-width: 1152px) 1120px, 100vw';
 ---
 
 <Base locale={locale} path={path} title={s.title} description={s.description} ogImage={ogImageOf(branch)} jsonld={[lodging(locale, branch), breadcrumbs([{ name: t.nav.home, path: localePath(locale, '/') }, { name: L(locale, branch, 'name'), path: branchPath(locale, branch.slug) }])]} whatsapp={branch.slug} booking={{ branch: branch.slug }}>
-  {cover && <link slot="head" {...photoPreload(cover, COVER_SIZES)} />}
+  {cover && <link slot="head" {...photoPreload(cover, COVER_SIZES)} media={cover.mobile ? '(min-width: 768px)' : undefined} />}
+  {cover?.mobile && <link slot="head" {...photoPreload({ ...cover, ...cover.mobile }, COVER_SIZES)} media="(max-width: 767px)" />}
   <section class="mx-auto max-w-6xl px-4 pt-10">
     <nav aria-label="breadcrumb" class="text-sm text-ink-muted">
       <a href={localePath(locale, '/')} class="hover:text-midnight">{t.nav.home}</a>
@@ -97,7 +98,15 @@ const COVER_SIZES = '(min-width: 1152px) 1120px, 100vw';
     <div class="reveal reveal-lg enter mt-8">
       {
         cover ? (
-          <Photo {...photoProps(locale, cover)} sizes={COVER_SIZES} loading="eager" fetchpriority="high" class="rounded-card" imgClass="w-full h-auto" />
+          // «صورة الجوال» (7 Nov 2026): under 768 px the branch's phone photo, shown 4:5 around its focal point
+          <Photo
+            {...photoProps(locale, cover)}
+            sizes={COVER_SIZES}
+            loading="eager"
+            fetchpriority="high"
+            class="rounded-card"
+            imgClass={cover.mobile ? 'w-full h-auto cover-m45' : 'w-full h-auto'}
+          />
         ) : (
           <Placeholder label={fill(t.photo_pending_alt, { subject: name })} />
         )

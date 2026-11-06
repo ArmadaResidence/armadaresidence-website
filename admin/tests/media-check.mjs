@@ -85,6 +85,9 @@ const F = {
   rest: await jpeg('restaurant', 3600, 2400, 40),
   poster: await jpeg('poster', 3840, 2160, 210),
   partner: await jpeg('partner', 3600, 2400, 150),
+  // «صورة الجوال» (7 Nov 2026): a portrait phone photo for a hero photo and one for the branch cover
+  phone: await jpeg('phone', 1080, 1350, 30),
+  bphone: await jpeg('branch-phone', 1080, 1920, 330),
 };
 F.gif = join(DIR, 'qa-anim.gif');
 writeFileSync(F.gif, Buffer.from('R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7', 'base64'));
@@ -318,6 +321,8 @@ try {
   await openItem(page, third.id);
   await page.click('[data-action="media-archive"]');
   await page.waitForSelector(`[data-media-dialog="${third.id}"]`, { state: 'detached' });
+  // the list reloads after the dialog closes
+  await page.waitForSelector(`[data-item="${third.id}"]`, { state: 'detached', timeout: 10000 }).catch(() => {});
   check((await item('qa-third')).status === 'archived' && (await page.locator(`[data-item="${third.id}"]`).count()) === 0, 'archive: the photo leaves the gallery (no hard delete)');
   await page.click('[data-action="toggle-archived"]');
   await page.click(`[data-archived="${third.id}"] [data-action="media-restore"]`);
@@ -375,6 +380,16 @@ try {
   await uploadsDone(page, ['qa-branch-cover.jpg']);
   const bcover = await item('qa-branch-cover');
   await fillAlts(page, bcover.id, 'واجهة الفرع ومدخله', 'The branch front and its entrance');
+  // the branch cover's «صورة الجوال» and its size guide (7 Nov 2026)
+  const bguide = (await page.locator('[data-size-guide="cover"]').textContent().catch(() => '')) || '';
+  check(bguide.includes('2560 × 1707') && bguide.includes('1080 × 1920'), 'branch: the cover\'s size guide (computer 3:2, phone 9:16)', bguide.slice(0, 120));
+  check(await page.locator('[data-size-guide="story-entrance"]').count() === 1 && await page.locator('[data-mobile-slot]').count() === 1, 'branch: a size line on every slot; the «صورة الجوال» slot beside the cover only');
+  await page.setInputFiles(`[data-mobile-slot="${bcover.id}"] [data-file-input="mobile"]`, F.bphone);
+  await uploadsDone(page, ['qa-branch-phone.jpg']);
+  const bphone = await item('qa-branch-phone');
+  check(bphone?.slot === 'mobile' && bphone.mobile_of === bcover.id && bphone.target === 'branch', 'branch: the cover\'s phone photo stored');
+  await page.waitForSelector(`[data-mobile-slot="${bcover.id}"] [data-open]`, { timeout: 20000 }).catch(() => {});
+  await shot(page, 'branch-cover-phone-photo-1280');
   await page.click('[data-action="media-publish"]');
   await page.waitForSelector('[data-blocked]');
   const bt = await page.locator('[data-blocked]').textContent();
@@ -562,6 +577,25 @@ try {
   await page.locator(`[data-item="${ids3[2]}"] [data-action="move-earlier"]`).click();
   const ord = await galleryOrder('home', (o) => o[0] === ids3[2]);
   check(ord[0] === ids3[2], 'hero: the order is set by «تقديم»', JSON.stringify(ord));
+  // «صورة الجوال» and the sizes to prepare (7 Nov 2026)
+  const guide = (await page.locator('[data-current="home:home"] [data-size-guide="gallery"]').textContent().catch(() => '')) || '';
+  check(guide.includes('2560 × 1440') && guide.includes('1080 × 1350') && guide.includes('منطقة النص'), 'hero: the size guide (computer, phone, the text area)', guide.slice(0, 120));
+  check(await page.locator('[data-current="home:home"] [data-mobile-slot]').count() === 3, 'hero: each photo has its «صورة الجوال» slot');
+  await page.setInputFiles(`[data-mobile-slot="${ord[0]}"] [data-file-input="mobile"]`, F.phone);
+  await uploadsDone(page, ['qa-phone.jpg']);
+  await page.waitForSelector(`[data-mobile-slot="${ord[0]}"] [data-open]`, { timeout: 20000 }).catch(() => {});
+  const phone = await item('qa-phone');
+  check(phone?.slot === 'mobile' && phone.mobile_of === ord[0] && phone.upload_state === 'ready', 'hero: the phone photo is stored beside its photo', JSON.stringify(phone && { slot: phone.slot, of: phone.mobile_of }));
+  check(await page.locator(`[data-mobile-slot="${ord[0]}"] [data-no-alt]`).count() === 0, 'hero: a phone photo is never flagged «بلا نص بديل» (it shows its photo\'s)');
+  check(await page.locator('[data-current="home:home"] [data-slot="gallery"] > ol > li').count() === 3 && await page.locator('[data-hero-slides-missing]').count() === 0, 'hero: still three slideshow photos, nothing missing');
+  await page.locator(`[data-mobile-slot="${ord[0]}"] [data-open]`).click();
+  await page.waitForSelector(`[data-media-dialog="${phone.id}"]`);
+  check(await page.locator('[data-mobile-alt]').isVisible() && await page.locator('#alt-ar').count() === 0 && await page.locator('#media-slot').count() === 0, 'hero: the phone photo\'s dialog — its photo\'s descriptions, no slot change');
+  check(await page.locator('[data-crop]').count() === 1, 'hero: the phone photo\'s crop preview (4:5)');
+  await shot(page, 'home-hero-phone-photo-dialog-1280');
+  await page.click('[data-action="dialog-cancel"]');
+  await page.waitForSelector(`[data-media-dialog="${phone.id}"]`, { state: 'detached' });
+  await shot(page, 'home-hero-phone-photo-1280');
   const before = dispatches.length;
   await page.click('[data-action="media-publish"]');
   await page.waitForFunction((n) => document.querySelectorAll('[data-job]').length > 0, before, { timeout: 15000 });
@@ -571,6 +605,7 @@ try {
   check(dispatches.length === before + 1 && dispatches.at(-1).reason === 'media', 'hero: the site build is asked (stubbed)', JSON.stringify(dispatches.at(-1)));
   const manHero = await rpc('media_site_manifest', {});
   check(manHero.hero?.mode === 'photos' && manHero.items.filter((i) => i.target === 'home' && i.slot === 'gallery').map((i) => i.id).join() === ord.join(), 'hero: the manifest carries photos mode and the three photos in Ahmed\'s order');
+  check(manHero.items.some((i) => i.id === phone.id && i.slot === 'mobile' && i.mobile_of === ord[0]), 'hero: the manifest carries the phone photo with its photo (mobile_of)');
   await shot(page, 'home-hero-photos-1280');
   // back to the video: the choice alone is a change to publish
   await page.click('[data-hero-mode-option="video"]');

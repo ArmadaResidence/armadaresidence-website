@@ -18,23 +18,26 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import * as api from '../lib/api';
-import type { MediaItem, MediaJob, MediaPublishResult, MediaSlot, MediaTargetRow } from '../lib/api';
+import type { MediaItem, MediaJob, MediaPublishResult, MediaSlot, MediaTarget, MediaTargetRow } from '../lib/api';
 import { useSession } from '../lib/session';
 import { BRANCH_NAMES, riyadhDateTime } from '../lib/format';
 import {
-  ACCEPT_IMAGES, ACCEPT_VIDEO, GALLERY_RANGE, galleryTarget, HERO_SLIDES, ITEM_STATUS, JOB_STATUS, missingText, photosWord, previewUrls, SLOT_LABELS, slotLabel, slotsOf, targetId, targetLabel,
+  ACCEPT_IMAGES, ACCEPT_VIDEO, GALLERY_RANGE, galleryTarget, HERO_SLIDES, ITEM_STATUS, JOB_STATUS, missingText, mobileFor, photosWord, previewUrls, sizeGuide, SLOT_LABELS, slotLabel, slotsOf, takesMobile, targetId, targetLabel,
   uploadFile, UploadRefused, warningText, type UploadStage,
 } from '../lib/media';
 import { CancelButton, Empty, ErrorBox, Loading, Modal, Spinner, useToast } from '../components/ui';
 import MediaItemDialog from '../components/MediaItemDialog';
 import TargetPicker, { type PickerGroup, type PickerItem } from '../components/TargetPicker';
 import ExistingPhotoPicker from '../components/ExistingPhotoPicker';
+import { brightWarning, SCRIM_AIM, scrimNeed, type ScrimPlace } from '../lib/scrim';
 
 interface Upload {
   id: number;
   name: string;
   target: string;
   slot: MediaSlot;
+  /** «صورة الجوال» (7 Nov 2026): the desktop photo it belongs to */
+  mobileOf?: string;
   stage: UploadStage;
   progress: number;
   warnings: string[];
@@ -67,6 +70,8 @@ export default function Media() {
   const [open, setOpen] = useState<MediaItem | null>(null);
   // «اختيار صورة موجودة» (5 Nov 2026): the slot the picker fills
   const [existing, setExisting] = useState<MediaSlot | null>(null);
+  /** «اختيار صورة موجودة» for a «صورة الجوال» (7 Nov 2026): the desktop photo it is for */
+  const [existingMobile, setExistingMobile] = useState<string | null>(null);
   const [uploads, setUploads] = useState<Upload[]>([]);
   const [blocked, setBlocked] = useState<{ result: MediaPublishResult; all: boolean } | null>(null);
   const [publishing, setPublishing] = useState(false);
@@ -144,7 +149,7 @@ export default function Media() {
             stage: (s) => patch(up.id, { stage: s }),
             progress: (f) => patch(up.id, { progress: f }),
             warnings: (w) => patch(up.id, { warnings: w }),
-          });
+          }, up.mobileOf);
         } catch (e) {
           patch(up.id, { stage: 'error', error: e instanceof UploadRefused ? e.message : (e as Error).message || 'تعذّر رفع الملف.' });
         }
@@ -154,12 +159,12 @@ export default function Media() {
       running.current = false;
     }
   }, [reload]);
-  const add = (files: FileList | File[], slot: MediaSlot) => {
+  const add = (files: FileList | File[], slot: MediaSlot, mobileOf?: string) => {
     if (!current || !editable) return;
     const list = [...files];
     const single = slot !== 'gallery';
     for (const file of single ? list.slice(0, 1) : list) {
-      const up: Upload = { id: ++seq.current, name: file.name, target: targetLabel(current), slot, stage: 'checking', progress: 0, warnings: [], error: null };
+      const up: Upload = { id: ++seq.current, name: file.name, target: targetLabel(current), slot, mobileOf, stage: 'checking', progress: 0, warnings: [], error: null };
       setUploads((u) => [...u, up]);
       queue.current.push({ up, file, target: current });
     }
@@ -381,6 +386,7 @@ export default function Media() {
                         <h3 className="font-bold">{current.target === 'home' ? 'صور الواجهة المتتابعة' : SLOT_LABELS.gallery} <span className="text-sm font-normal text-ink-muted">· {photosWord(filled.length)}{range ? ` · ${current.target === 'home' ? 'المطلوب' : 'المقترح'} ${range[0]} إلى ${range[1]}` : ''}</span></h3>
                         {s.hint && <p className="text-xs text-ink-muted">{s.hint}</p>}
                       </div>
+                      <SizeGuide target={current.target} slot={s.slot} />
                       {warn && <p className="note-amber text-sm" role="status" data-gallery-warning={warn.code}>{warningText(warn)}</p>}
                       {slidesMissing && <p className="note-amber text-sm" role="status" data-hero-slides-missing>{missingText(slidesMissing, byId)}</p>}
                       {filled.length > 0 && (
@@ -406,6 +412,10 @@ export default function Media() {
                               data-item={it.id}
                             >
                               <Tile item={it} url={urls[it.thumb_path ?? '']} n={n + 1} onOpen={() => setOpen(it)} />
+                              <BrightNote item={it} url={urls[it.preview_path ?? ''] ?? urls[it.thumb_path ?? '']} />
+                              {takesMobile(it) && (
+                                <MobileSlot parent={it} items={items ?? []} urls={urls} editable={editable} onFiles={(f) => add(f, 'mobile', it.id)} onExisting={() => setExistingMobile(it.id)} onOpen={setOpen} />
+                              )}
                               {editable && filled.length > 1 && (
                                 <div className="media-move">
                                   <button type="button" className="btn btn-ghost btn-sm" disabled={n === 0} onClick={() => move(it.id, -1)} aria-label={`تقديم الصورة رقم ${n + 1}`} data-action="move-earlier">تقديم</button>
@@ -428,9 +438,20 @@ export default function Media() {
                         {SLOT_LABELS[s.slot]} {s.required && <span className={`chip ${it ? 'chip-request' : 'chip-test'}`} data-required>{it ? 'مطلوبة' : 'مطلوبة — ناقصة'}</span>}
                       </h3>
                       {s.hint && <p className="text-xs text-ink-muted">{s.hint}</p>}
+                      <SizeGuide target={current.target} slot={s.slot} />
                     </div>
                     <div className="grid gap-2">
-                      {it && <div className="max-w-xs"><Tile item={it} url={urls[it.thumb_path ?? '']} onOpen={() => setOpen(it)} /></div>}
+                      {it && (
+                        <div className="flex flex-wrap items-start gap-3">
+                          <div className="max-w-xs grow grid gap-2">
+                            <Tile item={it} url={urls[it.thumb_path ?? '']} onOpen={() => setOpen(it)} />
+                            <BrightNote item={it} url={urls[it.preview_path ?? ''] ?? urls[it.thumb_path ?? '']} />
+                          </div>
+                          {takesMobile(it) && (
+                            <div className="w-40"><MobileSlot parent={it} items={items ?? []} urls={urls} editable={editable} onFiles={(f) => add(f, 'mobile', it.id)} onExisting={() => setExistingMobile(it.id)} onOpen={setOpen} /></div>
+                          )}
+                        </div>
+                      )}
                       {editable && (
                         <Drop
                           accept={s.slot === 'hero-video' ? ACCEPT_VIDEO : ACCEPT_IMAGES}
@@ -516,6 +537,22 @@ export default function Media() {
           }}
         />
       )}
+      {current && (
+        <ExistingPhotoPicker
+          open={existingMobile !== null}
+          onClose={() => setExistingMobile(null)}
+          target={current.target}
+          keyName={current.key}
+          slot="mobile"
+          mobileOf={existingMobile ?? undefined}
+          slotLabel={`${targetLabel(current)} · ${SLOT_LABELS.mobile}`}
+          onDone={() => {
+            setExistingMobile(null);
+            toast('أُضيفت صورة الجوال؛ اضغط «نشر» لتظهر على الموقع.');
+            void reload();
+          }}
+        />
+      )}
       <MediaItemDialog item={open && open.status !== 'archived' ? open : null} src={open ? urls[open.preview_path ?? ''] ?? urls[open.thumb_path ?? ''] ?? null : null} editable={editable} onClose={() => setOpen(null)} onChanged={() => void reload()} />
       <Modal open={!!open && open.status === 'archived'} onClose={() => setOpen(null)} title="صورة مؤرشفة">
         {open && open.status === 'archived' && (
@@ -564,8 +601,75 @@ export default function Media() {
   );
 }
 
+/** where a photo carries text on the site (7 Nov 2026): the hero's photos, a branch cover (the «فرعانا» card) and a branch
+ *  cover's phone photo (the card on a phone) */
+function scrimPlace(it: MediaItem): ScrimPlace | null {
+  if (it.kind !== 'image') return null;
+  if (it.target === 'home' && (it.slot === 'gallery' || it.slot === 'hero-poster')) return 'hero';
+  if (it.target === 'branch' && it.slot === 'cover') return 'card';
+  if (it.target === 'branch' && it.slot === 'mobile') return 'card-phone';
+  return null;
+}
+/** «الصورة فاتحة خلف النص» (Ahmed, 7 Nov 2026): the navy layer this photo needs behind the text, from its preview — a
+ *  warning above the aim (0.6); the site still gives the photo what AA needs */
+function BrightNote({ item, url }: { item: MediaItem; url?: string }) {
+  const place = scrimPlace(item);
+  const [need, setNeed] = useState<number | null>(null);
+  useEffect(() => {
+    if (!place || !url) return;
+    let live = true;
+    void scrimNeed(url, place, { x: Number(item.focal_x), y: Number(item.focal_y) }).then((a) => live && setNeed(a));
+    return () => {
+      live = false;
+    };
+  }, [place, url, item.focal_x, item.focal_y]);
+  if (!place || need === null || need <= SCRIM_AIM) return null;
+  return <p className="note-amber text-xs" role="status" data-bright-warning={need}>{brightWarning(need, place)}</p>;
+}
+
+/** what to prepare for a slot (7 Nov 2026): the size and the area the text covers, for the computer and the phone */
+function SizeGuide({ target, slot }: { target: MediaTarget; slot: MediaSlot }) {
+  const g = sizeGuide(target, slot);
+  if (!g) return null;
+  return (
+    <div className="text-xs text-ink-muted grid gap-1" data-size-guide={slot}>
+      <p className="font-semibold text-ink">{g.mobile ? 'الكمبيوتر' : 'المقاس المطلوب'}</p>
+      <ul className="grid gap-1 list-disc ps-4">{g.desktop.map((l) => <li key={l}>{l}</li>)}</ul>
+      {g.mobile && (
+        <>
+          <p className="font-semibold text-ink mt-1">الجوال (صورة الجوال، اختيارية)</p>
+          <ul className="grid gap-1 list-disc ps-4">{g.mobile.map((l) => <li key={l}>{l}</li>)}</ul>
+        </>
+      )}
+    </div>
+  );
+}
+
+/** «صورة الجوال» beside its desktop photo (7 Nov 2026): optional; without it the phone gets the desktop photo cropped */
+function MobileSlot({ parent, items, urls, editable, onFiles, onExisting, onOpen }: {
+  parent: MediaItem; items: MediaItem[]; urls: Record<string, string>; editable: boolean;
+  onFiles: (f: FileList) => void; onExisting: () => void; onOpen: (it: MediaItem) => void;
+}) {
+  const mob = mobileFor(items, parent.id);
+  return (
+    <div className="media-mobile grid gap-1" data-mobile-slot={parent.id}>
+      <p className="text-xs font-semibold">صورة الجوال <span className="font-normal text-ink-muted">(اختيارية)</span></p>
+      {mob ? (
+        <>
+          <div className="max-w-[7rem]"><Tile item={mob} url={urls[mob.thumb_path ?? '']} onOpen={() => onOpen(mob)} /></div>
+          <BrightNote item={mob} url={urls[mob.preview_path ?? ''] ?? urls[mob.thumb_path ?? '']} />
+        </>
+      ) : (
+        <p className="text-xs text-ink-muted">بدونها يعرض الجوال الصورة نفسها مقصوصة حول نقطة التركيز.</p>
+      )}
+      {editable && <Drop accept={ACCEPT_IMAGES} onFiles={onFiles} label={mob ? 'استبدال صورة الجوال' : 'إضافة صورة الجوال'} slot="mobile" onExisting={onExisting} />}
+    </div>
+  );
+}
+
 function Tile({ item, url, n, onOpen }: { item: MediaItem; url?: string; n?: number; onOpen: () => void }) {
-  const noAlt = !item.alt_ar.trim() || !item.alt_en.trim();
+  // a phone photo shows its desktop photo's descriptions (7 Nov 2026)
+  const noAlt = item.slot !== 'mobile' && (!item.alt_ar.trim() || !item.alt_en.trim());
   const status = item.status === 'published' && item.pending ? 'تعديلات غير منشورة' : ITEM_STATUS[item.status];
   return (
     <button type="button" className="media-thumb" onClick={onOpen} aria-label={`${n ? `الصورة رقم ${n}: ` : ''}${item.alt_ar || item.file_name} — ${status}${noAlt ? '، بلا نص بديل' : ''}`} data-open={item.id}>

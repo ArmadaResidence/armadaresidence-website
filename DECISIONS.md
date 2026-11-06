@@ -1608,3 +1608,72 @@ One unattended session from Ahmed's brief of 6 Nov 2026.
   20 type errors in older code of that file (lines 422–869, also on 3976fc4); the bundler deploys them as before.
 - **For the launch session (not changed):** CLAUDE.md §8 step 5 and `docs/gtm-performance.md` still say the container
   lacks a trigger and a valued conversion for `booking_confirmed`, while the test of 30 Oct 2026 confirmed the conversion.
+
+## 2026-11-07 — The home hero: fixed text, a scrim only behind the text, sharper photos, «صورة الجوال» (Ahmed, 6–7 Nov 2026)
+
+Ahmed's brief of 6 Nov 2026 (session of 7 Nov). Published photos untouched: no row of `media_items` deleted or replaced.
+
+- **Only the photos change.** With «صور متتابعة» the headline, the subtitle and the buttons seemed to fade out and in with
+  each photo: the incoming photo's layer (`z-index: 1` while it fades in) was painted over the text, and each photo
+  carried its own scrim, so the scrim faded with it. Now the photos sit in their own isolated layer
+  (`.hero-show { isolation: isolate }`), the incoming one fades in over the current one, which leaves at once once
+  covered (no transition on the way out); ONE scrim layer and the text above them never change. The headline's entrance
+  runs once per page view (CSS, as before). The pause button stops the photo changes and the slow zoom; reduced motion,
+  Save-Data and a slow connection show the first photo only, still (unchanged). `hero-slides-check` judges it mid
+  cross-fade: the text at opacity 1, unmoved and topmost at its own place, one scrim layer outside the photos, unmoved.
+- **The scrim's strength per photo** stays measured at build time (photos-engine `heroScrim`, AA over the brightest
+  pixels behind the text + 0.2 margin). Each photo carries its measure as `data-scrim`; the one layer's opacity eases to
+  the stronger of the two photos' measures as the next comes in and settles on the new one's (opacity only, never a
+  fade-out or a move). The measure now covers only where the text can sit (from 1280 px: the start-side 62 % of the
+  picture between the rows the 560 px hero shows behind the text — `SCRIM.v` 2).
+- **The published photos' scrim, before → after (phone / tablet / wide AR / wide EN): all 8 photos 0.91 / 0.91 / 0.91 /
+  0.91 → 0.91 / 0.91 / 0.91 / 0.91; the two «فرعانا» covers (new measure) 0.91 / 0.91.** The facades are bright behind
+  the text (lit columns, pale stone): even a 95th-percentile criterion would need 0.87–0.90. The AA rule is kept; less
+  navy comes from the scrim's shape (next point) and, for a lighter layer, from photos whose text side is darker
+  (the size guide in «الصور» says so).
+- **The scrim: one smooth gradient across the whole width (Ahmed, 7 Nov 2026 — replacing the same day's narrow band,
+  which read as a hard navy frame behind the text).** Measured on the page: the text block starts at the content edge
+  and is 620 px wide in Arabic / 630 px in English, 22–78 % of the hero's height from 768 px. From 768 px the layer is
+  at the photo's measured strength from the start side (Arabic right, English left) to the end of the text column (the
+  content edge + 40rem + 1.5rem), then a long eased fall-off (smoothstep, eight stops) over the rest of the width to a
+  light tint on the far side (`--scrim-far` 0.1), the whole height, no edge anywhere. Phones keep the bottom-up layer
+  (the text covers the screen there). The aim is 0.6 or less behind the text; AA stays mandatory, so a photo that needs
+  more gets what it needs. `hero-scrim-check` now also runs at 768, 1280 and 1920 px.
+- **A soft text shadow** under the hero's eyebrow, headline and subtitle over a photo (`.hero-over-photo`: 1 px / 2 px
+  and 18 px midnight shadows) — a help to reading only: `hero-scrim-check` removes it before measuring AA.
+- **«الصورة فاتحة خلف النص» in «الصور».** On each hero photo, each branch cover and a cover's phone photo the
+  dashboard measures its preview with the build's rule (`admin/src/lib/scrim.ts`, unit-tested equal to
+  `photos-engine.mjs`) and, above 0.6, shows: «الصورة فاتحة {خلف نص الواجهة | خلف نص بطاقة «فرعانا» | خلف نص البطاقة
+  على الجوال}: يحتاج النص طبقة كحلية بقوة {n}% تقريبًا ليبقى واضحًا (المستهدف 60% أو أقل). جرّب صورة أغمق في جهة
+  النص، أو غيّر نقطة التركيز ليقع جزء أغمق خلف النص.» The build log names the same photos. **Today every published
+  hero photo (all 8, 0.91) and both branch covers (0.91) trigger it.**
+- **«فرعانا» cards, the same approach.** The gradient is a grid item of the card's text row: at the cover's measured
+  strength under the text, then a long eased fall-off over 9rem above it (no visible edge) — `cardScrim`: the lower
+  60 % of the desktop cover, the lower 55 % of the phone picture; the card's smallest text is the description at 75 %
+  porcelain; 0.9 without a measure. It no longer sits in the media layer, so the hover's widening never moves it.
+  `hero-scrim-check` measures every card text pixel by pixel (330 checks with the hero).
+- **Quality (settings before → after).** Every photo: WebP q78 → q80, AVIF q50 → q55. The hero and every branch photo
+  (cover, story scenes, gallery): WebP q84 + AVIF q64 (AVIF's scale runs lower; a browser that reads AVIF never takes
+  the WebP, so both move together) and one more width, 2560 (`FINE`); the hero's desktop widths 800–1920 → 800–2560 and
+  its phone widths 480 / 640 / 720 → 480 / 640 / 750 / 828 / 1080; the hero still (video mode, no video) the same as a
+  slide; the video's first-frame posters AVIF q62 → q64 (WebP q86 kept). Nothing is ever upscaled: the published slides'
+  originals give 1200–1600 px and the branch covers 1200 px, so 2560 appears only with larger originals (the size guide
+  asks for 2560 px). The deferred-media budget (600 KB desktop / 250 KB phone per slide file) is kept; the build log
+  names any file encoded lower to stay within it. Phones never take a desktop file: `sizes` everywhere and a `<picture>`
+  with phone sources under 768 px for the hero and the cards. The cache entries are remade once (`SPEC_VERSION` v2,
+  `SLIDE.v` 2).
+- **«صورة الجوال».** An optional phone photo beside each «صور الواجهة المتتابعة» photo and each branch's cover: a
+  `media_items` row of the new slot `mobile` with `mobile_of` = its desktop photo (migrations `20261107100000` /
+  `20261107100100`), one active per photo (a new one or a restore archives the earlier — never a delete), the desktop
+  photo's descriptions (none asked of it), its own focal point; archiving the desktop photo archives it; it reaches the
+  site at «نشر» like every other change. RPCs `media_begin_mobile` / `media_begin_copy_mobile` («اختيار صورة موجودة»).
+  The site: a slide's 4:5 phone files from its phone photo, else (as before) from the desktop photo around its focal
+  point; a branch cover's phone photo rendered 9:16 (480 / 750 / 1080) — the «فرعانا» card under 768 px and the branch
+  page's cover under 768 px shown 4:5 from its middle (its own preload with `media`). A phone photo too small for its
+  crop is skipped with a note (the phone keeps the desktop cover). SQL: `supabase/tests/media-mobile.sql`.
+- **The size guide in «الصور»** beside every slot (`lib/media.ts → sizeGuide`, computed from the layout above): hero
+  2560 × 1440 (min 1920 × 1080), the middle band of its height shown on wide screens, the text area 40–100 % of the width
+  in Arabic and 0–60 % in English between 22 % and 78 % of the height — both sides kept calm, the subject in the middle;
+  hero phone 1080 × 1350 (min 750 × 938), the text over almost all of it; branch cover 2560 × 1707 (min 2400 long side),
+  the card shows a near-square middle with the text over its lower half; branch phone 1080 × 1920 (min 750 × 1334), the
+  text over its lower half; every other photo 2560 × 1707, no text over it. The wording waits for Ahmed's approval.

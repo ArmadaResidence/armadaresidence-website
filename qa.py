@@ -1126,6 +1126,13 @@ def check_media(rep: "Report") -> None:
             for ext in p.get("formats") or ["webp"]:
                 if not built(f"{p['base']}-{w}.{ext}"):
                     rep.f(G, f"{where}: {p['base']}-{w}.{ext} missing in dist/")
+        # «صورة الجوال» of a branch cover (7 Nov 2026): its 9:16 files, served to phones by the <picture>
+        m = p.get("mobile")
+        if m:
+            for w in m.get("widths") or []:
+                for ext in p.get("formats") or ["webp"]:
+                    if not built(f"{m['base']}-{w}.{ext}"):
+                        rep.f(G, f"{where} phone photo: {m['base']}-{w}.{ext} missing in dist/")
         for lang, script in (("ar", ARABIC), ("en", LATIN)):
             alt = str(p.get(f"alt_{lang}") or "").strip()
             if alt.lower() in GENERIC_ALT or len(alt) < 4 or not script.search(alt):

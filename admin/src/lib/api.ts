@@ -618,13 +618,16 @@ export async function defaultsBatches(ids: string[]): Promise<Set<string>> {
 // batch each; media batches are never undoable). The bytes go to the private bucket through signed upload URLs that
 // the storage policy issues only for the caller's own pending item (lib/media.ts uploads them with progress).
 export type MediaTarget = 'home' | 'branch' | 'room' | 'section' | 'dining' | 'hall' | 'place' | 'partners' | 'offer' | 'blog';
-export type MediaSlot = 'cover' | 'gallery' | 'story-entrance' | 'story-lobby' | 'story-rooms' | 'story-dining' | 'hero-poster' | 'hero-video';
+/** 'mobile' (7 Nov 2026): «صورة الجوال» of a hero slide or a branch cover — `mobile_of` names that photo */
+export type MediaSlot = 'cover' | 'gallery' | 'story-entrance' | 'story-lobby' | 'story-rooms' | 'story-dining' | 'hero-poster' | 'hero-video' | 'mobile';
 export interface MediaItem {
   id: string;
   target: MediaTarget;
   target_key: string;
   branch: string | null;
   slot: MediaSlot;
+  /** «صورة الجوال» (7 Nov 2026): the desktop photo this phone photo belongs to */
+  mobile_of?: string | null;
   sort: number;
   alt_ar: string;
   alt_en: string;
@@ -712,6 +715,8 @@ export interface MediaBegin {
   target: MediaTarget;
   key: string;
   slot: MediaSlot;
+  /** «صورة الجوال» (7 Nov 2026): the desktop photo it belongs to (slot mobile) */
+  mobileOf?: string;
   fileName: string;
   mime: string;
   bytes: number;
@@ -751,11 +756,15 @@ export async function mediaFindSha(shas: string[]): Promise<MediaShaHit[]> {
   return (data ?? []) as MediaShaHit[];
 }
 export async function mediaBeginUpload(b: MediaBegin): Promise<Saved & { id: string; original_path: string; thumb_path: string | null; preview_path: string | null }> {
-  const { data, error } = await supabase.rpc('media_begin_upload', {
-    p_target: b.target, p_key: b.key, p_slot: b.slot, p_file_name: b.fileName, p_mime: b.mime, p_bytes: b.bytes, p_sha256: b.sha256,
-    p_width: b.width, p_height: b.height, p_duration: b.duration, p_preview: b.preview,
-  });
-  if (error) fail(error, 'media_begin_upload');
+  const { data, error } = b.mobileOf
+    ? await supabase.rpc('media_begin_mobile', {
+      p_parent: b.mobileOf, p_file_name: b.fileName, p_mime: b.mime, p_bytes: b.bytes, p_sha256: b.sha256, p_width: b.width, p_height: b.height, p_preview: b.preview,
+    })
+    : await supabase.rpc('media_begin_upload', {
+      p_target: b.target, p_key: b.key, p_slot: b.slot, p_file_name: b.fileName, p_mime: b.mime, p_bytes: b.bytes, p_sha256: b.sha256,
+      p_width: b.width, p_height: b.height, p_duration: b.duration, p_preview: b.preview,
+    });
+  if (error) fail(error, b.mobileOf ? 'media_begin_mobile' : 'media_begin_upload');
   return data as Saved & { id: string; original_path: string; thumb_path: string | null; preview_path: string | null };
 }
 /** a signed upload URL for one of the caller's own pending paths (the storage insert policy decides) */
@@ -781,9 +790,11 @@ export interface MediaCopyBegin extends Saved {
   preview_path: string | null;
   source: { id: string; original_path: string; thumb_path: string | null; preview_path: string | null };
 }
-export async function mediaBeginCopy(source: string, target: MediaTarget, key: string, slot: MediaSlot): Promise<MediaCopyBegin> {
-  const { data, error } = await supabase.rpc('media_begin_copy', { p_source: source, p_target: target, p_key: key, p_slot: slot });
-  if (error) fail(error, 'media_begin_copy');
+export async function mediaBeginCopy(source: string, target: MediaTarget, key: string, slot: MediaSlot, mobileOf?: string): Promise<MediaCopyBegin> {
+  const { data, error } = mobileOf
+    ? await supabase.rpc('media_begin_copy_mobile', { p_source: source, p_parent: mobileOf })
+    : await supabase.rpc('media_begin_copy', { p_source: source, p_target: target, p_key: key, p_slot: slot });
+  if (error) fail(error, mobileOf ? 'media_begin_copy_mobile' : 'media_begin_copy');
   return data as MediaCopyBegin;
 }
 /** a stored object copied inside the private bucket (read: media view on the source; write: the caller's pending copy) */

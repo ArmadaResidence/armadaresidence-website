@@ -36,7 +36,7 @@ import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
 import sharp from 'sharp';
 import { decodable, ffprobe, hasTool, sha256 } from './photos-lib.mjs';
-import { heroFrame, heroScrim, loopFrames, lqipOf, renderHeroVideo, renderOg, renderPhoto, renderPoster, renderPosterFrames, renderSlide, SCRIM, scrimMax, SLIDE, SPEC_VERSION, videoFrame } from './photos-engine.mjs';
+import { cardScrim, heroFrame, heroScrim, loopFrames, lqipOf, MOBILE_COVER, renderHeroVideo, renderOg, renderPhoto, renderPoster, renderPosterFrames, renderSlide, SCRIM, scrimMax, SLIDE, SPEC_VERSION, videoFrame } from './photos-engine.mjs';
 
 const ROOT = fileURLToPath(new URL('..', import.meta.url));
 const args = process.argv.slice(2);
@@ -49,6 +49,8 @@ const OUT = resolve(opt('--out') || join(ROOT, '.media-build'));
 const CACHE = resolve(opt('--cache') || process.env.MEDIA_CACHE || join(ROOT, '.media-cache'));
 const DATA = resolve(opt('--data') || join(ROOT, 'content', 'media.generated.json'));
 const PUB = '/images/media';
+/** the aim for the navy layer behind the text (Ahmed, 7 Nov 2026) — the dashboard's warning (admin/src/lib/scrim.ts) */
+const SCRIM_AIM = 0.6;
 const IMG = join(OUT, 'images', 'media');
 const JOB = process.env.MEDIA_JOB || '';
 const DRY = process.env.MEDIA_DRY_RUN === 'true';
@@ -63,6 +65,16 @@ const PARTNER_RATIO = Object.fromEntries(JSON.parse(readFileSync(join(ROOT, 'con
   return [s.key, w / h];
 }));
 const recipeOf = (it) => (it.target === 'partners' ? `photo@${PARTNER_RATIO[it.key]}` : null);
+// the hero and the branch photos take the FINE quality and widths (7 Nov 2026)
+const fineOf = (it) => it.target === 'branch' || it.target === 'home';
+/** the cache recipe an item is rendered with (the build below; --plan asks whether a HEIC one is cached) */
+const recipeFor = (it) => {
+  if (recipeOf(it)) return recipeOf(it);
+  if (it.slot === 'mobile') return it.target === 'home' ? `slide@${SLIDE.v}:mobile` : 'mobile-cover';
+  if (it.target === 'home') return it.slot === 'gallery' ? `slide@${SLIDE.v}:desktop` : it.slot === 'hero-poster' ? 'poster' : 'video';
+  const og = it.target === 'blog' || (it.slot === 'cover' && it.target !== 'offer');
+  return `${og ? 'photo+og' : 'photo'}${fineOf(it) ? ':fine' : ''}`;
+};
 // the Discover Taif places' built-in photos (6 Nov 2026): a published cover that IS the place's built-in file (the same
 // sha256 as content/images/taif/<slug>-1400.webp — the records made from them in «الصور») keeps the page's own
 // rendition, so the page is unchanged; any other photo goes through the engine like every cover
@@ -138,7 +150,7 @@ if (PLAN) {
   const heroMode = manifest.hero?.mode === 'photos' ? 'photos' : 'video';
   const scrimMiss = (it) => !existsSync(join(CACHE, keyOf('video', it), SCRIM_FILE));
   const needs = (heroMode === 'video' && video && (miss('video', video) || (!poster && miss('poster-from-video', video)) || scrimMiss(video)))
-    || items.some((i) => /hei[cf]$/.test(i.mime) && miss(recipeOf(i) ?? (i.slot === 'cover' && i.target !== 'home' ? 'photo+og' : i.slot === 'hero-poster' ? 'poster' : 'photo'), i));
+    || items.some((i) => /hei[cf]$/.test(i.mime) && miss(recipeFor(i), i));
   output('ffmpeg', needs ? 'true' : 'false');
   log(`media plan: ${items.length} item(s); ffmpeg ${needs ? 'needed' : 'not needed'}`);
   process.exit(0);
@@ -220,10 +232,12 @@ const largestOf = (dir, name, v) => join(dir, `${name}-${v.widths.at(-1)}.webp`)
  * and, for a video, frames sampled every second over both loops — the highest of them, since the scrim stays put while
  * the video plays. A video entry from before 6 Nov 2026 is measured on the first build that has ffmpeg (--plan asks).
  */
-async function scrimOf(dir, desktopFile, mobileFile, loops = []) {
-  const f = join(dir, SCRIM_FILE);
+async function scrimOf(dir, desktopFile, mobileFile, loops = [], { pair = '', posY = 0.5 } = {}) {
+  // a slide's measure depends on its phone files too (another cache entry, 7 Nov 2026): `pair` names them; posY = the
+  // desktop picture's vertical position (the rows the text covers from 1280 px)
+  const f = join(dir, pair ? SCRIM_FILE.replace('.json', `-${pair}.json`) : SCRIM_FILE);
   if (existsSync(f)) return JSON.parse(readFileSync(f, 'utf8'));
-  const list = [await heroScrim(desktopFile, mobileFile)];
+  const list = [await heroScrim(desktopFile, mobileFile, posY)];
   if (loops.length) {
     if (!hasTool('ffmpeg')) throw new Error('the hero video\'s scrim is measured on its frames: ffmpeg is needed once');
     const [desk, phone] = loops.map((l) => loopFrames(l));
@@ -241,12 +255,13 @@ async function scrimOf(dir, desktopFile, mobileFile, loops = []) {
 async function photo(it, prefix, withOg) {
   const ratio = it.target === 'partners' ? PARTNER_RATIO[it.key] : undefined;
   if (it.target === 'partners' && !ratio) throw new Error(`partners slot ${it.key} is not in content/partners-photos.json`);
-  const { meta, id } = await cached(recipeOf(it) ?? (withOg ? 'photo+og' : 'photo'), it, prefix, async (dir, focal) => {
+  const fine = fineOf(it);
+  const { meta, id } = await cached(recipeOf(it) ?? `${withOg ? 'photo+og' : 'photo'}${fine ? ':fine' : ''}`, it, prefix, async (dir, focal) => {
     const raw = await original(it);
     const path = tempFile(raw, extOf(it.mime));
     try {
       const { buf } = await decodable(path, raw);
-      const r = await renderPhoto(buf, focal, dir, 'x', ratio ? { ratio } : {});
+      const r = await renderPhoto(buf, focal, dir, 'x', { ...(ratio ? { ratio } : {}), fine });
       const files = [...r.files];
       if (withOg) {
         await renderOg(buf, focal, join(dir, 'x.og.jpg'));
@@ -266,6 +281,31 @@ async function photo(it, prefix, withOg) {
     lqip: [`${base}-${meta.lqip_width}.webp`, meta.lqip],
   };
 }
+
+/** «صورة الجوال» of a branch cover (7 Nov 2026): its 9:16 files around its own focal point; null (with a note) when the
+ *  photo is too small for the crop — the phone then keeps the desktop cover */
+async function mobileCover(it, prefix) {
+  try {
+    const { meta, id } = await cached('mobile-cover', it, `${prefix}-m`, async (dir, focal) => {
+      const raw = await original(it);
+      const path = tempFile(raw, extOf(it.mime));
+      try {
+        const { buf } = await decodable(path, raw);
+        const r = await renderPhoto(buf, focal, dir, 'x', { ratio: MOBILE_COVER.ratio, widths: MOBILE_COVER.widths, fine: true });
+        return { widths: r.widths, width: r.width, height: r.height, files: r.files };
+      } finally {
+        rmSync(path, { force: true });
+      }
+    });
+    return { base: `${PUB}/${id}`, widths: meta.widths, width: meta.width, height: meta.height };
+  } catch (e) {
+    if (!/after the crop/.test(e.message || '')) throw e;
+    log(`  ! ${it.target}:${it.key} phone photo: ${e.message} — the phone keeps the desktop cover`);
+    return null;
+  }
+}
+/** the published file of a photo base at a width (WebP), in the output folder */
+const pubFile = (base, w) => join(IMG, `${base.slice(PUB.length + 1)}-${w}.webp`);
 
 // ---------- the data the pages read ----------
 const data = { _note: NOTE, source, manifest_at: manifest.at, dry_job: DRY ? JOB || true : undefined, rooms: {}, branches: {}, sections: {}, dining: {}, halls: {}, places: {}, partners: {}, offers: {}, articles: {}, home: null, lqip: {}, venues: [] };
@@ -312,6 +352,22 @@ for (const [k, list] of byTarget) {
         data.lqip[r.lqip[0]] = r.lqip[1];
       }
       const entry = { photos, ...(og ? { og_image: og } : {}) };
+      if (target === 'branch' && cover) {
+        // «صورة الجوال» (7 Nov 2026) and the «فرعانا» card's measured gradient
+        const mob = list.find((i) => i.slot === 'mobile' && i.mobile_of === cover.id);
+        const coverPhoto = photos.find((p) => p.cover);
+        if (mob && coverPhoto) {
+          const m = await mobileCover(mob, key);
+          if (m) coverPhoto.mobile = m;
+        }
+        if (coverPhoto) {
+          const d = pubFile(coverPhoto.base, coverPhoto.widths.at(-1));
+          const mm = coverPhoto.mobile ? pubFile(coverPhoto.mobile.base, coverPhoto.mobile.widths.at(-1)) : d;
+          coverPhoto.card_scrim = await cardScrim(d, mm);
+          log(`  ✓ ${k}: card gradient ${coverPhoto.card_scrim.lg} (desktop) / ${coverPhoto.card_scrim.m} (phone)${coverPhoto.mobile ? ', with its phone photo' : ''}`);
+          if (Math.max(coverPhoto.card_scrim.lg, coverPhoto.card_scrim.m) > SCRIM_AIM) log(`  ! ${k}: too bright behind the card text — the gradient needs ${Math.max(coverPhoto.card_scrim.lg, coverPhoto.card_scrim.m)} (aim ${SCRIM_AIM})`);
+        }
+      }
       if (target === 'branch') {
         entry.story = {};
         for (const it of list.filter((i) => i.slot.startsWith('story-'))) {
@@ -330,26 +386,47 @@ for (const [k, list] of byTarget) {
       if (slides.length < 3 || slides.length > 8) throw new Error(`the hero slideshow needs 3 to 8 photos, the manifest has ${slides.length}`);
       const home = { mode: 'photos', slides: [] };
       for (const [n, it] of slides.entries()) {
-        const { meta, id, dir } = await cached(`slide@${SLIDE.v}`, it, 'hero-slide', async (dir, focal) => {
+        // the desktop 16:9 files (+ the sharing crop) from the photo; the phone 4:5 files from its «صورة الجوال» when one
+        // is published (7 Nov 2026), else from the photo around its focal point — two cache entries
+        const mob = list.find((i) => i.slot === 'mobile' && i.mobile_of === it.id);
+        const desk = await cached(`slide@${SLIDE.v}:desktop`, it, 'hero-slide', async (dir, focal) => {
           const raw = await original(it);
           const path = tempFile(raw, extOf(it.mime));
           try {
             const { buf } = await decodable(path, raw);
-            const r = await renderSlide(buf, focal, dir, { desktop: 'x', mobile: 'x-m' });
+            const r = await renderSlide(buf, focal, dir, { desktop: 'x', mobile: 'x-m' }, { only: 'desktop' });
             await renderOg(buf, focal, join(dir, 'x.og.jpg'));
-            return { files: [...r.files, 'x.og.jpg'], desktop: r.desktop, mobile: r.mobile, notes: r.notes };
+            return { files: [...r.files, 'x.og.jpg'], desktop: r.desktop, notes: r.notes };
           } finally {
             rmSync(path, { force: true });
           }
         });
-        const scrim = await scrimOf(dir, largestOf(dir, 'x', meta.desktop), largestOf(dir, 'x-m', meta.mobile));
-        const slide = { alt_ar: it.alt_ar || '', alt_en: it.alt_en || '', focal: `${Math.round(focalOf(it).x * 100)},${Math.round(focalOf(it).y * 100)}`, scrim: { m: scrim.m, md: scrim.md, lg_ltr: scrim.lg_ltr, lg_rtl: scrim.lg_rtl } };
-        for (const [key, src] of [['poster', meta.desktop], ['poster_mobile', meta.mobile]]) {
-          slide[key] = { base: `${PUB}/${id}${key === 'poster' ? '' : '-m'}`, widths: src.widths, width: src.width, height: src.height, position: src.position };
-        }
+        const phoneSrc = mob ?? it;
+        const phone = await cached(`slide@${SLIDE.v}:mobile`, phoneSrc, 'hero-slide', async (dir, focal) => {
+          const raw = await original(phoneSrc);
+          const path = tempFile(raw, extOf(phoneSrc.mime));
+          try {
+            const { buf } = await decodable(path, raw);
+            const r = await renderSlide(buf, focal, dir, { desktop: 'x', mobile: 'x-m' }, { only: 'mobile' });
+            return { files: r.files, mobile: r.mobile, notes: r.notes };
+          } finally {
+            rmSync(path, { force: true });
+          }
+        });
+        const posY = Number(String(desk.meta.desktop.position).split(' ')[1]?.replace('%', '') ?? 50) / 100;
+        const scrim = await scrimOf(desk.dir, largestOf(desk.dir, 'x', desk.meta.desktop), largestOf(phone.dir, 'x-m', phone.meta.mobile), [], { pair: phone.id.slice(-10), posY });
+        const slide = {
+          alt_ar: it.alt_ar || '', alt_en: it.alt_en || '', focal: `${Math.round(focalOf(it).x * 100)},${Math.round(focalOf(it).y * 100)}`,
+          scrim: { m: scrim.m, md: scrim.md, lg_ltr: scrim.lg_ltr, lg_rtl: scrim.lg_rtl }, ...(mob ? { phone_photo: true } : {}),
+          poster: { base: `${PUB}/${desk.id}`, widths: desk.meta.desktop.widths, width: desk.meta.desktop.width, height: desk.meta.desktop.height, position: desk.meta.desktop.position },
+          poster_mobile: { base: `${PUB}/${phone.id}-m`, widths: phone.meta.mobile.widths, width: phone.meta.mobile.width, height: phone.meta.mobile.height, position: phone.meta.mobile.position },
+        };
         home.slides.push(slide);
-        if (n === 0) home.og_image = `${PUB}/${id}.og.jpg`;
-        for (const note of meta.notes || []) log(`  ! hero photo ${n + 1}: ${note}`);
+        if (n === 0) home.og_image = `${PUB}/${desk.id}.og.jpg`;
+        for (const note of [...(desk.meta.notes || []), ...(phone.meta.notes || [])]) log(`  ! hero photo ${n + 1}: ${note}`);
+        // the aim behind the text is 0.6 (Ahmed, 7 Nov 2026): a brighter photo gets what AA needs, and is named here
+        const wide = Math.max(scrim.lg_rtl, scrim.lg_ltr);
+        if (wide > SCRIM_AIM) log(`  ! hero photo ${n + 1}: too bright behind the text — the scrim needs ${wide} there (aim ${SCRIM_AIM})`);
       }
       Object.assign(home, { poster: home.slides[0].poster, poster_mobile: home.slides[0].poster_mobile, alt_ar: home.slides[0].alt_ar, alt_en: home.slides[0].alt_en, scrim: home.slides[0].scrim });
       data.home = home;

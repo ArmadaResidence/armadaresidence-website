@@ -54,6 +54,8 @@ async function add(file, input, w, h, it, opts = {}) {
 const lbl = (label, hue) => (w, h) => svg(w, h, label, hue);
 const A = { target: 'branch', key: 'airport-road', branch: 'airport-road' };
 await add('air-cover.jpg', lbl('Airport Road — cover', 20), 3600, 2400, { ...A, slot: 'cover', alt_ar: 'واجهة أرمادا ريزيدنس طريق المطار ومدخلها الرئيسي', alt_en: 'The front and main entrance of Armada Residence Airport Road' }, { p3: true });
+// «صورة الجوال» of the cover (7 Nov 2026): a portrait phone photo, 2160 × 3840
+await add('air-cover-phone.jpg', lbl('Airport Road — phone', 25), 2160, 3840, { ...A, slot: 'mobile', mobile_of: 'air-cover.jpg', focal_y: 0.3, alt_ar: '', alt_en: '' });
 const scenes = [['entrance', 'المدخل والموقف أمام المبنى', 'The entrance and the parking in front of the building'], ['lobby', 'ردهة الاستقبال ومكتب الاستقبال', 'The lobby and the reception desk'], ['rooms', 'غرفة نوم بسرير مزدوج ونافذة واسعة', 'A bedroom with a double bed and a wide window'], ['dining', 'المقهى والمطعم في الطابق الأرضي', 'The café and restaurant on the ground floor']];
 for (const [i, [scene, ar, en]] of scenes.entries()) await add(`air-${scene}.jpg`, lbl(`story ${scene}`, 60 + i * 50), 3000, 2000, { ...A, slot: `story-${scene}`, alt_ar: ar, alt_en: en });
 // the 6th gallery photo has «إظهار في المعرض» off (2 Nov 2026): on the branch page, never on /gallery/
@@ -95,6 +97,8 @@ if (slidesMode) {
   for (const [i, [name, input, fx, fy, ar, en]] of shots.entries()) {
     await add(`hero-slide-${name}.jpg`, input, 3840, 2160, { ...H, slot: 'gallery', sort: i, focal_x: fx, focal_y: fy, alt_ar: ar, alt_en: en });
   }
+  // «صورة الجوال» of the dark photo (7 Nov 2026): its own 4:5 phone photo
+  await add('hero-slide-dark-phone.jpg', lbl('Hero phone', 210), 1440, 1800, { ...H, slot: 'mobile', mobile_of: 'hero-slide-dark.jpg', alt_ar: '', alt_en: '' });
 }
 writeFileSync(join(dir, 'manifest.json'), JSON.stringify({ at: new Date().toISOString(), sample: true, ...(slidesMode ? { hero: { mode: 'photos' } } : {}), items }, null, 1) + '\n');
 // sample venues (the shape of public.dining_site_manifest); the logo is a plain SVG, the copy is sample text only

@@ -9,7 +9,7 @@ import { useDraftMirror } from '../lib/dirty';
 import { useMemo, useState } from 'react';
 import * as api from '../lib/api';
 import type { MediaItem, MediaSlot } from '../lib/api';
-import { cropStyle, cropsOf, galleryTarget, ITEM_STATUS, megabytes, MIN_LONG_SIDE, slotLabel, slotsOf } from '../lib/media';
+import { cropStyle, cropsOf, galleryTarget, ITEM_STATUS, megabytes, MIN_LONG_SIDE, MOBILE_MIN_WIDTH, slotLabel, slotsOf } from '../lib/media';
 import { riyadhDateTime } from '../lib/format';
 import LabelPair from './LabelPair';
 import { CancelButton, Field, Modal, Spinner, useToast } from './ui';
@@ -46,7 +46,9 @@ function ItemBody({ item, src, editable, onClose, onChanged, busy, setBusy }: Om
   const mirrorY = useDraftMirror<HTMLInputElement>((v) => setFy(Number(v)));
   const [slot, setSlot] = useState<MediaSlot>(item.slot);
   const [inGallery, setInGallery] = useState(item.in_gallery !== false);
-  const offersGallery = galleryTarget(item.target) && item.kind === 'image';
+  // «صورة الجوال» (7 Nov 2026): its descriptions are its desktop photo's, it stays in its slot and off the gallery page
+  const isMobile = item.slot === 'mobile';
+  const offersGallery = galleryTarget(item.target) && item.kind === 'image' && !isMobile;
   const [error, setError] = useState<string | null>(null);
   const [natural, setNatural] = useState<{ w: number; h: number } | null>(null);
 
@@ -57,7 +59,10 @@ function ItemBody({ item, src, editable, onClose, onChanged, busy, setBusy }: Om
   // the home page (6 Nov 2026): the poster, the video and the slideshow photos — a photo moves between them
   const slots = useMemo(() => (item.target === 'home' ? [...slotsOf('home', 'video'), ...slotsOf('home', 'photos')] : slotsOf(item.target)).filter((s) => (s.slot === 'hero-video') === (item.kind === 'video')), [item]);
   const warnings: string[] = [];
-  if (item.kind === 'image' && w && h) {
+  if (item.kind === 'image' && w && h && isMobile) {
+    if (Math.min(w, h) < MOBILE_MIN_WIDTH) warnings.push(`العرض ${Math.min(w, h)} بكسل، أقل من ${MOBILE_MIN_WIDTH}: قد تبدو أقل حدة على شاشات الجوال الحديثة.`);
+    if (w > h) warnings.push('صورة أفقية: تُعرض على الجوال طولية فيضيع جزء كبير منها — اختر نقطة التركيز بعناية.');
+  } else if (item.kind === 'image' && w && h) {
     if (Math.max(w, h) < MIN_LONG_SIDE) warnings.push(`الضلع الأطول ${Math.max(w, h)} بكسل، أقل من ${MIN_LONG_SIDE}: قد تبدو أقل حدة على الشاشات الكبيرة.`);
     if (h > w) warnings.push('صورة طولية: يضيع جزء كبير منها في القص الأفقي — اختر نقطة التركيز بعناية.');
   }
@@ -162,6 +167,9 @@ function ItemBody({ item, src, editable, onClose, onChanged, busy, setBusy }: Om
           </div>
           <div className="grid gap-3 content-start">
             <p className="text-sm"><span className="chip chip-request" data-item-status>{status}</span></p>
+            {isMobile ? (
+              <p className="text-sm text-ink-muted" data-mobile-alt>تستخدم صورة الجوال النص البديل للصورة الأساسية بالعربية والإنجليزية.</p>
+            ) : (
             <LabelPair
               kind="alt"
               ar={altAr}
@@ -175,7 +183,8 @@ function ItemBody({ item, src, editable, onClose, onChanged, busy, setBusy }: Om
               hints={{ ar: 'وصف ما في الصورة لمن لا يراها، حتى 150 حرفًا. مطلوب قبل النشر.', en: 'Describe the photo in English, up to 150 characters.' }}
               disabled={!editable}
             />
-            {slots.length > 1 && (
+            )}
+            {slots.length > 1 && !isMobile && (
               <Field label="الخانة" id="media-slot" hint={slot !== item.slot && slot !== 'gallery' ? 'إن كانت الخانة مشغولة تنتقل صورتها إلى المعرض.' : undefined}>
                 <select id="media-slot" className="field" value={slot} disabled={!editable} onChange={(e) => setSlot(e.target.value as MediaSlot)}>
                   {slots.map((s) => (

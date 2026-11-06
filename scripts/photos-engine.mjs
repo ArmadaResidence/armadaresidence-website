@@ -11,8 +11,17 @@ import sharp from 'sharp';
 import { cropBox, orientedSize } from './photos-lib.mjs';
 
 // Sizes (approved 30 Oct 2026, CLAUDE.md §3c / §7): 3:2 photos at 480 / 800 / 1200 / 1600 / 2000 (never upscaled),
-// AVIF ≈ q50 + WebP ≈ q78, converted to sRGB (sharp converts through the embedded ICC profile, then strips it).
-export const PHOTO = { ratio: 3 / 2, widths: [480, 800, 1200, 1600, 2000], webp: { quality: 78, effort: 5 }, avif: { quality: 50, effort: 4 } };
+// converted to sRGB (sharp converts through the embedded ICC profile, then strips it). Quality pass (Ahmed, 7 Nov 2026 —
+// DECISIONS.md 2026-11-07): every photo at WebP q80 (was 78) + AVIF q55 (was 50; AVIF's scale runs lower than WebP's —
+// the pair is kept in step, since a browser that reads AVIF never downloads the WebP);
+export const PHOTO = { ratio: 3 / 2, widths: [480, 800, 1200, 1600, 2000], webp: { quality: 80, effort: 5 }, avif: { quality: 55, effort: 4 } };
+// the hero and the branch photos (cover, story scenes, gallery): WebP q84 + AVIF q64 and one more width, 2560, for
+// retina desktops (never upscaled: only an original at least that wide gets it); phones never download it — every
+// <img> carries sizes, and the hero / the «فرعانا» cards give phones their own 4:5 / 9:16 files in a <picture>.
+export const FINE = { widths: [480, 800, 1200, 1600, 2000, 2560], webp: { quality: 84, effort: 5 }, avif: { quality: 64, effort: 4 } };
+// «صورة الجوال» of a branch cover (7 Nov 2026): 9:16 around its focal point — the «فرعانا» card on a phone (about
+// 1:2, the text over its lower half) and the branch page's cover under 768 px (shown 4:5 around the focal point).
+export const MOBILE_COVER = { ratio: 9 / 16, widths: [480, 750, 1080] };
 export const OG = { width: 1200, height: 630, jpeg: { quality: 82, mozjpeg: true } };
 // Hero (approved 30 Oct 2026; quality pass 5 Nov 2026 — Ahmed: the loop looked worse than his original): a 10–15 s loop
 // (20 s max: longer clips are cut), muted, audio track removed, 30 fps.
@@ -33,7 +42,7 @@ export const HERO = {
 /** 16 px blurred preview (scripts/lqip.mjs: ≈ 300 bytes, base64 WebP) */
 export const LQIP = { width: 16, webp: { quality: 40 } };
 /** what a change of any spec must invalidate in the build cache (media-build.mjs keys every entry with it) */
-export const SPEC_VERSION = JSON.stringify({ PHOTO, OG, HERO, LQIP, v: 1 });
+export const SPEC_VERSION = JSON.stringify({ PHOTO, FINE, MOBILE_COVER, OG, HERO, LQIP, v: 2 });
 
 /**
  * A 3:2 photo around the focal point at every approved width the crop can fill (never upscaled): `<base>-<w>.webp` +
@@ -42,19 +51,21 @@ export const SPEC_VERSION = JSON.stringify({ PHOTO, OG, HERO, LQIP, v: 1 });
  * `ratio` (2 Nov 2026): another width / height for a slot that keeps its own (the partners pages' legacy photos —
  * content/partners-photos.json); the widths and encoders are the same.
  */
-export async function renderPhoto(buf, focal, dir, base, { dry = false, ratio = PHOTO.ratio } = {}) {
+export async function renderPhoto(buf, focal, dir, base, { dry = false, ratio = PHOTO.ratio, fine = false, widths: list } = {}) {
   const { width: w, height: h } = orientedSize(await sharp(buf).metadata());
   const box = cropBox(w, h, ratio, focal);
-  if (box.width < PHOTO.widths[0]) throw new Error(`only ${box.width} px wide after the crop — at least ${PHOTO.widths[0]} needed`);
-  const widths = PHOTO.widths.filter((x) => x <= box.width);
+  const spec = fine ? FINE : PHOTO;
+  list ??= spec.widths;
+  if (box.width < list[0]) throw new Error(`only ${box.width} px wide after the crop — at least ${list[0]} needed`);
+  const widths = list.filter((x) => x <= box.width);
   const pipe = sharp(buf).rotate().extract(box).toColourspace('srgb');
   const files = [];
   if (!dry) mkdirSync(dir, { recursive: true });
   for (const width of widths) {
     const sized = pipe.clone().resize(width, Math.round(width / ratio), { fit: 'fill' });
     if (!dry) {
-      await sized.clone().webp(PHOTO.webp).toFile(join(dir, `${base}-${width}.webp`));
-      await sized.clone().avif(PHOTO.avif).toFile(join(dir, `${base}-${width}.avif`));
+      await sized.clone().webp(spec.webp).toFile(join(dir, `${base}-${width}.webp`));
+      await sized.clone().avif(spec.avif).toFile(join(dir, `${base}-${width}.avif`));
     }
     files.push(`${base}-${width}.webp`, `${base}-${width}.avif`);
   }
@@ -209,7 +220,7 @@ export async function renderPosterFrames(desktopBuf, mobileBuf, positions, dir, 
       if (dry) continue;
       const sized = pipe.clone().resize(w, Math.round((w * fh) / fw), { fit: 'fill' });
       await sized.clone().webp({ ...PHOTO.webp, quality: 86 }).toFile(join(dir, `${name}-${w}.webp`));
-      await sized.clone().avif({ ...PHOTO.avif, quality: 62 }).toFile(join(dir, `${name}-${w}.avif`));
+      await sized.clone().avif(FINE.avif).toFile(join(dir, `${name}-${w}.avif`));
     }
     const top = widths.at(-1);
     out[key] = { name, widths, width: top, height: Math.round((top * fh) / fw), position: pos };
@@ -238,9 +249,10 @@ export async function renderPoster(buf, focal, dir, names = { poster: 'hero-post
   const { width: pw, height: ph } = orientedSize(await sharp(buf).metadata());
   const out = { files: [] };
   if (!dry) mkdirSync(dir, { recursive: true });
+  // the still (7 Nov 2026): the hero's widths and quality, like a slideshow photo
   const variants = [
-    ['poster', names.poster, 16 / 9, HERO.posterWidths],
-    ['poster_mobile', names.mobile, HERO.mobileRatio, HERO.mobileWidths],
+    ['poster', names.poster, 16 / 9, SLIDE.widths],
+    ['poster_mobile', names.mobile, HERO.mobileRatio, SLIDE.mobileWidths],
   ];
   for (const [key, name, ratio, list] of variants) {
     const box = cropBox(pw, ph, ratio, focal);
@@ -251,8 +263,8 @@ export async function renderPoster(buf, focal, dir, names = { poster: 'hero-post
       out.files.push(`${name}-${w}.webp`, `${name}-${w}.avif`);
       if (dry) continue;
       const sized = pipe.clone().resize(w, Math.round(w / ratio), { fit: 'fill' });
-      await sized.clone().webp(PHOTO.webp).toFile(join(dir, `${name}-${w}.webp`));
-      await sized.clone().avif(PHOTO.avif).toFile(join(dir, `${name}-${w}.avif`));
+      await sized.clone().webp(FINE.webp).toFile(join(dir, `${name}-${w}.webp`));
+      await sized.clone().avif(FINE.avif).toFile(join(dir, `${name}-${w}.avif`));
     }
     const top = widths.at(-1);
     out[key] = { name, widths, width: top, height: Math.round(top / ratio), position: focalIn(focal, pw, ph, box) };
@@ -261,12 +273,16 @@ export async function renderPoster(buf, focal, dir, names = { poster: 'hero-post
 }
 
 // ── the home hero as a slideshow (Ahmed, 6 Nov 2026) ─────────────────────────────────────────────────────────────────
-// 3–8 photos, each cropped around its focal point like the hero still: 16:9 for desktop (800–1920) and 4:5 for phones
-// (480–720), AVIF + WebP. Deferred-media budget (approved by Ahmed, 6 Nov 2026): every file of a photo ≤ 600 KB on
-// desktop and ≤ 250 KB on phones — a variant over it is encoded again at a lower quality (never below q30).
+// 3–8 photos, each cropped around its focal point like the hero still: 16:9 for desktop and 4:5 for phones, AVIF + WebP
+// at the FINE quality. Widths (7 Nov 2026): desktop 800–1920 + 2560 for retina screens; phones 480 / 640 / 750 / 828 /
+// 1080 (750 = a 375 px phone at 2×, which also serves a 412 px one at 1.75×; 1080 = 3× screens) — sizes + the <picture>
+// media keep every phone on the phone files. «صورة الجوال» (7 Nov 2026): the 4:5 files come from the photo's own phone
+// photo when one is published (renderSlide's `only`), else from the desktop photo around its focal point.
+// Deferred-media budget (approved by Ahmed, 6 Nov 2026): every file of a photo ≤ 600 KB on desktop and ≤ 250 KB on
+// phones — a variant over it is encoded again at a lower quality (never below q30; the build log names each one).
 export const SLIDE = {
-  widths: [800, 1200, 1600, 1920], mobileWidths: [480, 640, 720], mobileRatio: 4 / 5,
-  maxKB: { desktop: 600, mobile: 250 }, minQuality: 30, v: 1,
+  widths: [800, 1200, 1600, 1920, 2560], mobileWidths: [480, 640, 750, 828, 1080], mobileRatio: 4 / 5,
+  maxKB: { desktop: 600, mobile: 250 }, minQuality: 30, v: 2,
 };
 async function encodeWithin(pipe, file, fmt, opts, maxBytes) {
   let q = opts.quality;
@@ -284,14 +300,14 @@ async function encodeWithin(pipe, file, fmt, opts, maxBytes) {
  * point, each file within its budget. Returns { desktop, mobile, files, notes } with each variant's widths, size and
  * object-position.
  */
-export async function renderSlide(buf, focal, dir, names = { desktop: 's', mobile: 's-m' }, { dry = false } = {}) {
+export async function renderSlide(buf, focal, dir, names = { desktop: 's', mobile: 's-m' }, { dry = false, only = null } = {}) {
   const { width: pw, height: ph } = orientedSize(await sharp(buf).metadata());
   const out = { files: [], notes: [] };
   if (!dry) mkdirSync(dir, { recursive: true });
   for (const [key, name, ratio, list, kb] of [
     ['desktop', names.desktop, 16 / 9, SLIDE.widths, SLIDE.maxKB.desktop],
     ['mobile', names.mobile, SLIDE.mobileRatio, SLIDE.mobileWidths, SLIDE.maxKB.mobile],
-  ]) {
+  ].filter(([key]) => !only || key === only)) {
     const box = cropBox(pw, ph, ratio, focal);
     let widths = list.filter((w) => w <= box.width);
     if (!widths.length) widths = [box.width]; // under the smallest approved width: its own size, never upscaled
@@ -300,7 +316,7 @@ export async function renderSlide(buf, focal, dir, names = { desktop: 's', mobil
       out.files.push(`${name}-${w}.webp`, `${name}-${w}.avif`);
       if (dry) continue;
       const sized = pipe.clone().resize(w, Math.round(w / ratio), { fit: 'fill' });
-      for (const [fmt, opts] of [['webp', PHOTO.webp], ['avif', PHOTO.avif]]) {
+      for (const [fmt, opts] of [['webp', FINE.webp], ['avif', FINE.avif]]) {
         const r = await encodeWithin(sized, join(dir, `${name}-${w}.${fmt}`), fmt, opts, kb * 1024);
         if (r.quality !== opts.quality) out.notes.push(`${key} ${w} ${fmt}: q${r.quality} to stay within ${kb} KB`);
         if (r.over) out.notes.push(`${key} ${w} ${fmt}: ${Math.round(r.bytes / 1024)} KB, over ${kb} KB even at q${r.quality}`);
@@ -312,17 +328,27 @@ export async function renderSlide(buf, focal, dir, names = { desktop: 's', mobil
   return out;
 }
 
-// ── the hero scrim, measured (Ahmed, 6 Nov 2026) ─────────────────────────────────────────────────────────────────────
+// ── the hero scrim, measured (Ahmed, 6 Nov 2026; narrowed to the text, 7 Nov 2026) ───────────────────────────────────
 // The lightest Armada Midnight layer that keeps every hero text at WCAG AA over the brightest pixels behind it: the
 // eyebrow (Bronze Bright), the subtitle (Porcelain at 85 %) and the outline button (Porcelain) at 4.5:1, the headline
-// (Porcelain, large) at 3:1 — each with a margin of 0.2. Measured on the image as the page shows it, per layout:
-//   m       phones (< 768 px): the whole 4:5 crop (the text sits over most of it; the box only ever shows a part);
-//   md      768–1279 px: the whole 16:9 crop (the text column spans almost the full width there);
-//   lg_rtl / lg_ltr  ≥ 1280 px: the 76 % of the 16:9 crop on the reading-start side (the text column ends by 66 %,
-//           + the slow 1.08 zoom of a slideshow).
-// Returns alphas in [0.15, 0.92], two decimals, rounded up. The site sets them per slide / poster (global.css .hero-scrim).
+// (Porcelain, large) at 3:1 — each with a margin of 0.2. Measured on the image as the page shows it, only where the text
+// can sit (the text block measured on the page, 7 Nov 2026: from the content edge, 620 px wide in Arabic / 630 in
+// English, 24–76 % of the 560 px hero from 1024 px up), per layout:
+//   m       phones (< 768 px): the whole 4:5 crop (the text spans the screen and most of its height);
+//   md      768–1279 px: the whole 16:9 crop (the text spans most of the width there);
+//   lg_rtl / lg_ltr  ≥ 1280 px: the start-side 62 % of the 16:9 crop (the text ends by 56 % of the screen at every
+//           width from 1280 px; + the 1.08 zoom of a slideshow around the focal point), between the rows the 560 px
+//           hero can show behind the text at 1280 px (the widest band; wider screens show less) around the photo's
+//           vertical position `posY`, with a 4 % margin.
+// Returns alphas in [0.15, 0.92], two decimals, rounded up. The site sets them on the one scrim layer (global.css).
 const SCRIM_COLORS = { midnight: [0x14, 0x2a, 0x3b], porcelain: [0xf3, 0xef, 0xe7], bronzeBright: [0xc9, 0xa2, 0x7a] };
-export const SCRIM = { min: 0.15, max: 0.92, margin: 0.2, small: 4.5, large: 3, lgShare: 0.76, sample: 4000, v: 1 };
+export const SCRIM = { min: 0.15, max: 0.92, margin: 0.2, small: 4.5, large: 3, lgShare: 0.62, lgBand: [0.24, 0.76], lgVisible: 0.78, bandMargin: 0.04, sample: 4000, v: 2 };
+// the «فرعانا» cards (7 Nov 2026): the gradient sits under the card's text only; its strength is measured like the
+// hero's over the lower part of the photo the text can cover (the card's text: the type in Bronze Bright, the tagline
+// at 90 %, the description at 75 % and the phone at 85 % of Porcelain — 4.5:1 —, the name large — 3:1).
+//   lg  the desktop cover (≈ 1:1 to 1.16:1 window of the 3:2 photo): the lower 60 %;
+//   m   the phone (≈ 1:2 window, its own «صورة الجوال» or the desktop photo): the lower 55 %.
+export const CARD = { lgFrom: 0.4, mFrom: 0.45, v: 1 };
 const lin = (v) => {
   v /= 255;
   return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
@@ -332,11 +358,11 @@ const contrast = (a, b) => (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05);
 const LIN = Float64Array.from({ length: 256 }, (_, v) => lin(v));
 /** the brightest pixels of a region (by luminance), as [r, g, b] triples — the ones that decide the scrim (a
  *  1024-bin histogram finds the threshold of the SCRIM.sample brightest, so no sort of a million pixels) */
-function brightest(raw, w, h, x0, x1) {
-  const L = new Float32Array((x1 - x0) * h);
+function brightest(raw, w, h, x0, x1, y0 = 0, y1 = h) {
+  const L = new Float32Array((x1 - x0) * (y1 - y0));
   const hist = new Uint32Array(1024);
   let k = 0;
-  for (let y = 0; y < h; y++) {
+  for (let y = y0; y < y1; y++) {
     for (let x = x0; x < x1; x++, k++) {
       const i = (y * w + x) * 3;
       const v = 0.2126 * LIN[raw[i]] + 0.7152 * LIN[raw[i + 1]] + 0.0722 * LIN[raw[i + 2]];
@@ -349,7 +375,7 @@ function brightest(raw, w, h, x0, x1) {
   const t = bin / 1024;
   const out = [];
   k = 0;
-  for (let y = 0; y < h; y++) {
+  for (let y = y0; y < y1; y++) {
     for (let x = x0; x < x1; x++, k++) {
       if (L[k] >= t) {
         const i = (y * w + x) * 3;
@@ -359,33 +385,60 @@ function brightest(raw, w, h, x0, x1) {
   }
   return out;
 }
-function alphaFor(pixels) {
+/** the small texts (each a Porcelain share over the background, or Bronze Bright) that decide the alpha at 4.5:1 */
+const HERO_TEXTS = [0.85, 1, 'bronze'];
+const CARD_TEXTS = [0.75, 0.85, 0.9, 'bronze'];
+function alphaFor(pixels, texts = HERO_TEXTS) {
   const M = SCRIM_COLORS.midnight;
   const P = SCRIM_COLORS.porcelain;
   const LB = lum(...SCRIM_COLORS.bronzeBright);
-  const LP = lum(...P);
   const need = SCRIM.small + SCRIM.margin; // the 4.5:1 texts decide; the headline's 3:1 is met with them
   const ok = (a) => pixels.every(([r, g, b]) => {
     const bg = [a * M[0] + (1 - a) * r, a * M[1] + (1 - a) * g, a * M[2] + (1 - a) * b];
     const L = lum(...bg);
-    const sub = lum(0.85 * P[0] + 0.15 * bg[0], 0.85 * P[1] + 0.15 * bg[1], 0.85 * P[2] + 0.15 * bg[2]);
-    return contrast(sub, L) >= need && contrast(LB, L) >= need && contrast(LP, L) >= need;
+    return texts.every((t) => {
+      if (t === 'bronze') return contrast(LB, L) >= need;
+      return contrast(lum(t * P[0] + (1 - t) * bg[0], t * P[1] + (1 - t) * bg[1], t * P[2] + (1 - t) * bg[2]), L) >= need;
+    });
   });
   for (let i = Math.round(SCRIM.min * 100); i <= Math.round(SCRIM.max * 100); i++) if (ok(i / 100)) return i / 100;
   return SCRIM.max;
 }
-/** the scrim alphas of one hero picture: `desktop` = the 16:9 image, `mobile` = the 4:5 one (buffers or file paths) */
-export async function heroScrim(desktop, mobile) {
-  const d = await sharp(desktop).resize(1440).removeAlpha().toColourspace('srgb').raw().toBuffer({ resolveWithObject: true });
-  const m = await sharp(mobile).resize(720).removeAlpha().toColourspace('srgb').raw().toBuffer({ resolveWithObject: true });
+/** the alpha rule alone, for a list of [r, g, b] pixels (the dashboard's copy, admin/src/lib/scrim.ts, is unit-tested
+ *  against it — scripts/admin-format-check.mjs) */
+export const scrimAlphaOf = (pixels, kind = 'hero') => alphaFor(pixels, kind === 'card' ? CARD_TEXTS : HERO_TEXTS);
+const rawOf = async (input, width) => sharp(input).resize(width).removeAlpha().toColourspace('srgb').raw().toBuffer({ resolveWithObject: true });
+/** the rows of a 16:9 image behind the text at ≥ 1280 px for a vertical position `posY` (0–1) */
+export function lgRows(posY = 0.5) {
+  const v = SCRIM.lgVisible;
+  const top = (1 - v) * posY + SCRIM.lgBand[0] * v - SCRIM.bandMargin;
+  const bottom = (1 - v) * posY + SCRIM.lgBand[1] * v + SCRIM.bandMargin;
+  return [Math.max(0, top), Math.min(1, bottom)];
+}
+/** the scrim alphas of one hero picture: `desktop` = the 16:9 image, `mobile` = the 4:5 one (buffers or file paths);
+ *  `posY` = the desktop picture's vertical object-position (0–1) */
+export async function heroScrim(desktop, mobile, posY = 0.5) {
+  const d = await rawOf(desktop, 1440);
+  const m = await rawOf(mobile, 720);
   const dw = d.info.width;
   const dh = d.info.height;
   const share = Math.round(dw * SCRIM.lgShare);
+  const [r0, r1] = lgRows(posY).map((f) => Math.round(f * dh));
   return {
     m: alphaFor(brightest(m.data, m.info.width, m.info.height, 0, m.info.width)),
     md: alphaFor(brightest(d.data, dw, dh, 0, dw)),
-    lg_ltr: alphaFor(brightest(d.data, dw, dh, 0, share)),
-    lg_rtl: alphaFor(brightest(d.data, dw, dh, dw - share, dw)),
+    lg_ltr: alphaFor(brightest(d.data, dw, dh, 0, share, r0, r1)),
+    lg_rtl: alphaFor(brightest(d.data, dw, dh, dw - share, dw, r0, r1)),
+  };
+}
+/** the «فرعانا» card gradient of a branch cover: `desktop` = its 3:2 photo, `mobile` = its phone photo (or the desktop
+ *  photo again) */
+export async function cardScrim(desktop, mobile) {
+  const d = await rawOf(desktop, 1200);
+  const m = await rawOf(mobile, 720);
+  return {
+    lg: alphaFor(brightest(d.data, d.info.width, d.info.height, 0, d.info.width, Math.round(d.info.height * CARD.lgFrom)), CARD_TEXTS),
+    m: alphaFor(brightest(m.data, m.info.width, m.info.height, 0, m.info.width, Math.round(m.info.height * CARD.mFrom)), CARD_TEXTS),
   };
 }
 /** the highest of several measures (a video: its posters and frames sampled over the loop) */

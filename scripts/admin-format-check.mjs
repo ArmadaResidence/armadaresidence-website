@@ -15,6 +15,8 @@ import { WA_ERRORS, WA_STATUS_LABELS, WA_TEMPLATE_LABELS, waError } from '../adm
 import { bulkSummary, countDays, PICK_AT_LEAST, rateConfirmRow, rateConfirmTitle, rateWarnings, rateWarningTexts, SANITY_TAG } from '../admin/src/lib/rates.ts';
 import { e164, E164, svgProblem, liveText, MISSING_LABELS } from '../admin/src/lib/dining.ts';
 import { safeHref, sanitizeMarkdown, unsafeMarkdown } from '../src/lib/blog-md.ts';
+import { alphaFor as scrimAlpha, brightWarning, CARD_TEXTS, SCRIM_AIM } from '../admin/src/lib/scrim.ts';
+import { scrimAlphaOf } from './photos-engine.mjs';
 import { readdirSync, readFileSync as readFile } from 'node:fs';
 
 const fails = [];
@@ -284,6 +286,20 @@ for (const m of [CONNECTION, GENERIC]) {
     E(`arabicError(${code}) is a known Arabic sentence`, m !== GENERIC && /[؀-ۿ]/.test(m), m);
   }
   E('arabicError(blog_slug_taken) is not the generic slug rule', arabicError({ message: 'blog_slug_taken' }, 'x') !== arabicError({ message: 'blog_slug' }, 'x'));
+})();
+// ── «الصورة فاتحة خلف النص» (7 Nov 2026): the dashboard's scrim rule = the build's, and its warning ──
+(() => {
+  const E = (label, ok, detail = '') => { checks++; if (!ok) fails.push(`${label}${detail ? ` — ${detail}` : ''}`); };
+  const cases = [[[255, 255, 255]], [[0, 0, 0]], [[128, 128, 128]], [[200, 170, 120], [30, 40, 60]], [[90, 140, 210], [250, 240, 220]], [[60, 60, 60], [110, 100, 90]]];
+  for (const px of cases) {
+    E(`scrim hero ${JSON.stringify(px)}: dashboard = build`, scrimAlpha(px) === scrimAlphaOf(px), `${scrimAlpha(px)} vs ${scrimAlphaOf(px)}`);
+    E(`scrim card ${JSON.stringify(px)}: dashboard = build`, scrimAlpha(px, CARD_TEXTS) === scrimAlphaOf(px, 'card'), `${scrimAlpha(px, CARD_TEXTS)} vs ${scrimAlphaOf(px, 'card')}`);
+  }
+  E('scrim: a white photo needs 0.91, a black one the least (0.15)', scrimAlpha([[255, 255, 255]]) === 0.91 && scrimAlpha([[0, 0, 0]]) === 0.15);
+  E('scrim: the aim is 0.6', SCRIM_AIM === 0.6);
+  const w = brightWarning(0.91, 'hero');
+  E('the warning: Arabic, Western digits, the value and the aim, what to do', /[؀-ۿ]/.test(w) && !/[٠-٩]/.test(w) && w.includes('91%') && w.includes('60%') && w.includes('نقطة التركيز') && w.includes('خلف نص الواجهة'), w);
+  E('the warning names the card and the phone card', brightWarning(0.7, 'card').includes('«فرعانا»') && brightWarning(0.7, 'card-phone').includes('على الجوال'));
 })();
 
 if (fails.length) {

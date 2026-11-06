@@ -18,6 +18,8 @@ export const IMAGE_MAX = 40 * 1024 * 1024;
 export const VIDEO_MAX = 300 * 1024 * 1024;
 /** below this the 2000 px output of a 3:2 crop has no headroom (CLAUDE.md §3c) */
 export const MIN_LONG_SIDE = 2400;
+/** «صورة الجوال» (7 Nov 2026): its short side for a sharp picture on a 3× phone */
+export const MOBILE_MIN_WIDTH = 1080;
 /** the hero loop (approved 30 Oct 2026): 10–15 s, 20 s at most (longer is cut), 1920 × 1080 */
 export const HERO_VIDEO = { width: 1920, height: 1080, loop: [10, 15], maxSeconds: 20 };
 export const GALLERY_RANGE: Partial<Record<MediaTarget, [number, number]>> = { branch: [6, 12], room: [3, 8], dining: [3, 12], hall: [3, 12] };
@@ -54,7 +56,52 @@ export const SLOT_LABELS: Record<MediaSlot, string> = {
   'story-dining': 'المطعم والخدمات',
   'hero-poster': 'صورة الواجهة',
   'hero-video': 'فيديو الواجهة',
+  mobile: 'صورة الجوال',
 };
+
+// ── «صورة الجوال» and the sizes to prepare (Ahmed, 7 Nov 2026) ──────────────────────────────────────────────────────
+/** the photos that take an optional phone photo: each hero slide and each branch's cover */
+export const takesMobile = (it: Pick<MediaItem, 'target' | 'slot' | 'kind'>) =>
+  it.kind === 'image' && ((it.target === 'home' && it.slot === 'gallery') || (it.target === 'branch' && it.slot === 'cover'));
+/** the active phone photo of a desktop photo */
+export const mobileFor = (items: MediaItem[], id: string) => items.find((i) => i.slot === 'mobile' && i.mobile_of === id && i.status !== 'archived');
+/**
+ * What to prepare for a slot — the size and, where text sits over the photo, the area the text covers — computed from
+ * the site's layout on 7 Nov 2026 (the text block measured on the page: from the content edge, about 630 px wide, 22–78 %
+ * of the hero's height from 768 px; the hero 560 px tall from 1024 px; the «فرعانا» card ≈ 1:1 on a computer, ≈ 1:2 on a
+ * phone, its text over the lower part). `desktop` / `mobile` lines; `mobile` only where a phone photo exists.
+ */
+export function sizeGuide(target: MediaTarget, slot: MediaSlot): { desktop: string[]; mobile?: string[] } | null {
+  if (target === 'home' && (slot === 'gallery' || slot === 'hero-poster')) {
+    return {
+      desktop: [
+        'المقاس: 2560 × 1440 بكسل (16:9)، وأقل شيء 1920 × 1080. صورة أصغر تظهر بمقاسها دون تكبير.',
+        'على الشاشات العريضة يظهر الشريط الأوسط من ارتفاع الصورة فقط (من نحو 20% إلى 80%)؛ ضع الموضوع المهم في منتصفها رأسيًا.',
+        'منطقة النص: في العربي يمين الصورة من 40% إلى 100% من عرضها، وفي الإنجليزي يسارها من 0% إلى 60%، بين 22% و78% من الارتفاع. اترك الجهتين هادئتين بلا إضاءة قوية أو تفاصيل مهمة؛ الموضوع الأهم في المنتصف.',
+      ],
+      mobile: slot === 'gallery' ? [
+        'المقاس: 1080 × 1350 بكسل (4:5 طولية)، وأقل شيء 750 × 938.',
+        'النص يغطي الصورة كلها تقريبًا على الجوال (من 10% إلى 90% من ارتفاعها) فوق طبقة كحلي؛ الأنسب صورة هادئة غير مزدحمة، وأوضح جزء منها أعلاها.',
+      ] : undefined,
+    };
+  }
+  if (target === 'home' && slot === 'hero-video') return { desktop: ['المقاس: 1920 × 1080 (16:9)، من 10 إلى 15 ثانية؛ منطقة النص كما في صورة الواجهة.'] };
+  if (target === 'branch' && slot === 'cover') {
+    return {
+      desktop: [
+        'المقاس: 2560 × 1707 بكسل (3:2)، وأقل شيء 2400 في الضلع الأطول.',
+        'في صفحة الفرع تظهر كاملة بلا نص فوقها. في بطاقة «فرعانا» على الكمبيوتر يظهر منها مربع تقريبًا من المنتصف، والنص على النصف السفلي (من 45% إلى 100% من الارتفاع)؛ ضع المبنى في الثلث الأوسط وأعلى الصورة.',
+      ],
+      mobile: [
+        'المقاس: 1080 × 1920 بكسل (9:16 طولية)، وأقل شيء 750 × 1334.',
+        'في بطاقة «فرعانا» على الجوال تظهر شبه كاملة والنص على النصف السفلي (من 50% إلى 100% من الارتفاع)؛ ضع المبنى في النصف العلوي. في صفحة الفرع على الجوال يظهر منها جزء 4:5 من المنتصف بلا نص.',
+      ],
+    };
+  }
+  if (target === 'partners') return null; // the slot keeps its legacy ratio (shown in its crop preview)
+  if (slot === 'mobile') return null;
+  return { desktop: ['المقاس: 2560 × 1707 بكسل (3:2)، وأقل شيء 2400 في الضلع الأطول؛ لا نص فوق هذه الصور.'] };
+}
 /** the slots of a target in the order the page shows them; required ones block publishing that target */
 export function slotsOf(target: MediaTarget, heroMode: 'video' | 'photos' = 'video'): { slot: MediaSlot; required: boolean; hint?: string }[] {
   switch (target) {
@@ -205,7 +252,7 @@ function videoMeta(file: File): Promise<{ width: number; height: number; duratio
   });
 }
 
-export async function inspect(file: File, target: MediaTarget): Promise<Inspected | { error: string }> {
+export async function inspect(file: File, target: MediaTarget, slot?: MediaSlot): Promise<Inspected | { error: string }> {
   const mime = mimeOf(file);
   if (!mime) return { error: 'نوع الملف غير مقبول: الصور JPEG أو PNG أو HEIC أو WebP، والفيديو MP4 أو MOV أو WebM.' };
   const kind = mime.startsWith('video/') ? 'video' : 'image';
@@ -225,8 +272,14 @@ export async function inspect(file: File, target: MediaTarget): Promise<Inspecte
     }
     if (size) {
       const long = Math.max(size.width, size.height);
-      if (long < MIN_LONG_SIDE) warnings.push(`الضلع الأطول ${long} بكسل، أقل من ${MIN_LONG_SIDE}: قد تبدو الصورة أقل حدة على الشاشات الكبيرة بعد القص.`);
-      if (size.height > size.width) warnings.push('صورة طولية: يقصّها الموقع أفقيًا (3:2 أو 16:9) فيضيع جزء كبير منها؛ الأفضل صورة أفقية.');
+      if (slot === 'mobile') {
+        // «صورة الجوال» (7 Nov 2026): a portrait photo is what this slot wants
+        if (Math.min(size.width, size.height) < MOBILE_MIN_WIDTH) warnings.push(`العرض ${Math.min(size.width, size.height)} بكسل، أقل من ${MOBILE_MIN_WIDTH}: قد تبدو أقل حدة على شاشات الجوال الحديثة.`);
+        if (size.width > size.height) warnings.push('صورة أفقية: صورة الجوال تُعرض طولية (4:5 أو 9:16) فيضيع جزء كبير منها؛ الأفضل صورة طولية.');
+      } else {
+        if (long < MIN_LONG_SIDE) warnings.push(`الضلع الأطول ${long} بكسل، أقل من ${MIN_LONG_SIDE}: قد تبدو الصورة أقل حدة على الشاشات الكبيرة بعد القص.`);
+        if (size.height > size.width) warnings.push('صورة طولية: يقصّها الموقع أفقيًا (3:2 أو 16:9) فيضيع جزء كبير منها؛ الأفضل صورة أفقية.');
+      }
     } else warnings.push('تعذّر قراءة أبعاد الصورة في هذا المتصفح؛ تُفحص عند البناء.');
     if (!source) warnings.push('لا تتوفر معاينة لهذا النوع في هذا المتصفح (HEIC يُعرض في Safari)؛ الصورة تُرفع وتُعالج كاملة عند البناء.');
     return { mime, kind, width: size?.width ?? null, height: size?.height ?? null, duration: null, warnings, source, release: () => source?.close() };
@@ -288,9 +341,9 @@ export interface UploadEvents {
 export class UploadRefused extends Error {}
 
 /** the whole upload of one file into one slot; resolves with the item id, rejects with the Arabic reason */
-export async function uploadFile(file: File, target: MediaTarget, key: string, slot: MediaSlot, ev: UploadEvents): Promise<string> {
+export async function uploadFile(file: File, target: MediaTarget, key: string, slot: MediaSlot, ev: UploadEvents, mobileOf?: string): Promise<string> {
   ev.stage('checking');
-  const ins = await inspect(file, target);
+  const ins = await inspect(file, target, slot);
   if ('error' in ins) throw new UploadRefused(ins.error);
   try {
     if ((slot === 'hero-video') !== (ins.kind === 'video')) throw new UploadRefused(slot === 'hero-video' ? 'هذه الخانة للفيديو فقط.' : 'هذه الخانة للصور فقط.');
@@ -308,7 +361,7 @@ export async function uploadFile(file: File, target: MediaTarget, key: string, s
     const w = ins.width ?? 0, h = ins.height ?? 0;
     const [thumb, preview] = ins.source && w && h ? await Promise.all([previewOf(ins.source, w, h, 480, 0.8), previewOf(ins.source, w, h, 1600, 0.82)]) : [null, null];
     const begin = await api.mediaBeginUpload({
-      target, key, slot, fileName: file.name, mime: ins.mime, bytes: file.size, sha256: hash,
+      target, key, slot, mobileOf, fileName: file.name, mime: ins.mime, bytes: file.size, sha256: hash,
       width: ins.width, height: ins.height, duration: ins.duration, preview: !!(thumb && preview),
     });
     try {
@@ -334,9 +387,9 @@ export async function uploadFile(file: File, target: MediaTarget, key: string, s
 /** «اختيار صورة موجودة» (5 Nov 2026): fill a slot with a photo already in «الصور», exactly as an upload of the same file —
  *  a pending row (the source's file, size, sha256, focal point and both alt texts), the stored original and previews copied
  *  inside the bucket at full size, then media_finish_upload; the source is never touched. Resolves with the new item id. */
-export async function copyExisting(source: MediaItem, target: MediaTarget, key: string, slot: MediaSlot): Promise<string> {
+export async function copyExisting(source: MediaItem, target: MediaTarget, key: string, slot: MediaSlot, mobileOf?: string): Promise<string> {
   if (source.kind !== 'image') throw new UploadRefused('هذه الخانة للصور فقط.');
-  const begin = await api.mediaBeginCopy(source.id, target, key, slot);
+  const begin = await api.mediaBeginCopy(source.id, target, key, slot, mobileOf);
   try {
     if (begin.thumb_path && begin.source.thumb_path) await api.mediaCopyObject(begin.source.thumb_path, begin.thumb_path);
     if (begin.preview_path && begin.source.preview_path) await api.mediaCopyObject(begin.source.preview_path, begin.preview_path);
@@ -362,6 +415,8 @@ export interface Crop {
 const C32: Crop = { label: '3:2 — صفحات الغرف والفروع', ratio: 3 / 2 };
 const C169: Crop = { label: '16:9 — الشاشات الكبيرة', ratio: 16 / 9 };
 const C45: Crop = { label: '4:5 — الجوال', ratio: 4 / 5 };
+const C916: Crop = { label: '9:16 — بطاقة الفرع على الجوال', ratio: 9 / 16 };
+const C45B: Crop = { label: '4:5 — صفحة الفرع على الجوال', ratio: 4 / 5 };
 const COG: Crop = { label: 'المشاركة على وسائل التواصل', ratio: 1200 / 630 };
 /** the crops a photo in this slot will get on the site (a partners slot: its legacy photo's ratio only, no sharing crop) */
 export function cropsOf(slot: MediaSlot, target?: MediaTarget, key?: string): Crop[] {
@@ -370,6 +425,7 @@ export function cropsOf(slot: MediaSlot, target?: MediaTarget, key?: string): Cr
     const [w, h] = r.split(':').map(Number);
     return [{ label: `${r} — بمقاس الصورة الحالية في هذا الموضع`, ratio: w / h }];
   }
+  if (slot === 'mobile') return target === 'branch' ? [C916, C45B] : [C45];
   if (slot === 'hero-poster') return [C169, C45, COG];
   if (target === 'home' && slot === 'gallery') return [C169, C45, COG];
   if (slot === 'hero-video') return [C169];

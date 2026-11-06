@@ -2,7 +2,11 @@
 // the slideshow (a build without one: skipped, said so — the sample: `node scripts/media-sample.mjs <dir> --slides`,
 // then `MEDIA_FIXTURE=<dir> python build.py`):
 //   - the page: the first photo is the LCP image (src + srcset, eager, fetchpriority high, preloaded for both crops);
-//     every other photo only in data-src / data-srcset; each photo layer carries its measured scrim (--scrim-*);
+//     every other photo only in data-src / data-srcset; each photo layer carries its measured scrim (data-scrim, 7 Nov
+//     2026) and the hero has ONE scrim layer, outside the photos, holding the first photo's measure (--scrim-*);
+//   - only the photos change (7 Nov 2026): mid cross-fade the text is at full opacity, unmoved and the topmost thing at
+//     its own place (no photo over it), the scrim layer is the same element, unmoved, at least as strong as both
+//     photos need;
 //   - the files: every desktop file ≤ 600 KB, every phone file ≤ 250 KB (the deferred-media budget);
 //   - desktop (Chromium 1440, AR + EN), Android (Pixel 7) and iPhone (WebKit, iPhone 14): nothing of photo 2 is
 //     requested before the load event, photo 2 after it (one ahead), photo 2 shown after ~6 s with a cross-fade, then
@@ -35,8 +39,11 @@ check(slidesHtml.length >= 3 && slidesHtml.length <= 8, 'the slideshow has 3 to 
 const bases = slidesHtml.map((s) => [...new Set([...s.matchAll(/(\/images\/media\/hero-slide-[0-9a-f]+(?:-m)?)-\d+\.(?:avif|webp)/g)].map((m) => m[1]))]);
 check(/<img[^>]*fetchpriority="high"/.test(slidesHtml[0]) && /loading="eager"/.test(slidesHtml[0]), 'photo 1: eager + fetchpriority high');
 for (const b of bases[0]) check(new RegExp(`rel="preload"[^>]*imagesrcset="[^"]*${b.replace(/[-/]/g, '\\$&')}-`).test(html), `photo 1: ${b} preloaded`);
+const heroHtml = html.slice(html.indexOf('<section class="hero'), html.indexOf('</section>', html.indexOf('<section class="hero')));
+check((heroHtml.match(/class="[^"]*hero-scrim/g) || []).length === 1, 'one scrim layer in the hero (outside the photos)', String((heroHtml.match(/class="[^"]*hero-scrim/g) || []).length));
+check(/class="absolute inset-0 hero-scrim" style="--scrim-m:[\d.]+;--scrim-md:[\d.]+;--scrim-lg-rtl:[\d.]+;--scrim-lg-ltr:[\d.]+"/.test(heroHtml), 'the scrim layer starts with photo 1\'s measure');
 for (const [i, s] of slidesHtml.entries()) {
-  check(/--scrim-m:[\d.]+;--scrim-md:[\d.]+;--scrim-lg-rtl:[\d.]+;--scrim-lg-ltr:[\d.]+/.test(s), `photo ${i + 1}: its measured scrim`);
+  check(/data-scrim="[\d.]+,[\d.]+,[\d.]+,[\d.]+"/.test(s) && !/hero-scrim/.test(s), `photo ${i + 1}: its measured scrim (data-scrim), no scrim of its own`);
   if (i > 0) {
     const eager = [...s.matchAll(/(?<![-\w])(src|srcset)="([^"]*)"/g)].filter(([, , v]) => /hero-slide/.test(v));
     check(eager.length === 0 && /data-srcset=/.test(s), `photo ${i + 1}: only in data-src / data-srcset`, eager.map((e) => e[0].slice(0, 60)).join(' '));
@@ -102,9 +109,38 @@ async function visit(engine, ctxOpts, label, { expect, init, path = '/' } = {}) 
     check(!!s.btn && s.btn.w >= 44 && s.btn.h >= 44, `${label}: the pause button, ≥ 44 px`, JSON.stringify(s.btn));
     const ar = !path.startsWith('/en');
     check(s.btn?.label === (ar ? 'إيقاف الحركة مؤقتًا' : 'Pause motion'), `${label}: the button is labelled in the page language`, s.btn?.label);
-    await page.waitForTimeout(6500);
+    // the text stays (7 Nov 2026): its state before the change, then mid cross-fade
+    const textState = () => page.evaluate(() => {
+      const box = document.querySelector('section.hero > .relative');
+      const h1 = box.querySelector('h1');
+      const r = h1.getBoundingClientRect();
+      const top = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+      const scrim = document.querySelector('[data-hero-scrim]');
+      const sr = scrim.getBoundingClientRect();
+      const words = [...box.querySelectorAll('.hero-word, .hero-sub, .hero-ctas, p')];
+      return {
+        rect: [Math.round(r.left), Math.round(r.top), Math.round(r.width)],
+        opacity: Math.min(...words.map((w) => Number(getComputedStyle(w).opacity))),
+        onTop: !!top && box.contains(top),
+        scrim: { inShow: !!scrim.closest('[data-hero-show]'), rect: [Math.round(sr.left), Math.round(sr.top), Math.round(sr.width), Math.round(sr.height)], transform: getComputedStyle(scrim).transform, opacity: Number(getComputedStyle(scrim).opacity), a: Number(getComputedStyle(scrim).getPropertyValue('--scrim-a')) },
+        need: [...document.querySelectorAll('.hero-slide.is-active, .hero-slide.is-next')].map((sl) => sl.dataset.scrim),
+        mid: !!document.querySelector('.hero-slide.is-next'),
+      };
+    });
+    const before = await textState();
+    await page.waitForFunction(() => document.querySelector('.hero-slide.is-next'), null, { timeout: 9000 }).catch(() => {});
+    await page.waitForTimeout(500);
+    const mid = await textState();
+    check(mid.mid, `${label}: caught mid cross-fade`);
+    check(mid.opacity === 1 && before.opacity === 1, `${label}: mid cross-fade the text is fully shown`, `${before.opacity} → ${mid.opacity}`);
+    check(mid.onTop, `${label}: mid cross-fade the text is on top (no photo over it)`);
+    check(JSON.stringify(mid.rect) === JSON.stringify(before.rect), `${label}: the text does not move`, `${before.rect} → ${mid.rect}`);
+    check(!mid.scrim.inShow && JSON.stringify(mid.scrim.rect) === JSON.stringify(before.scrim.rect) && mid.scrim.transform === 'none', `${label}: one scrim layer, outside the photos, unmoved`, JSON.stringify([before.scrim, mid.scrim]));
+    await page.waitForTimeout(1500);
     s = await state(page);
     check(s.active === 1 && s.kb[1] === 'out', `${label}: photo 2 after ~6 s, zooming out`, JSON.stringify(s));
+    const after = await textState();
+    check(after.opacity === 1 && after.onTop, `${label}: after the change the text is still shown and on top`);
     await page.waitForTimeout(800);
     check(requested(2).length > 0, `${label}: photo 3 requested once photo 2 shows`);
     // pause / play

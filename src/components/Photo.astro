@@ -22,8 +22,12 @@ interface Props {
   class?: string;
   imgClass?: string;
   draggable?: boolean;
+  /** «صورة الجوال» (7 Nov 2026): the phone files of the same photo (another crop or its own phone photo) — given, the
+   *  <picture> serves them under 768 px (AVIF then WebP); without them a phone gets the desktop set, as before */
+  mobile?: { srcset: string; avifSrcset?: string; width: number; height: number; sizes?: string };
 }
-const { src, srcset, avifSrcset, sizes, alt, width, height, loading = 'lazy', fetchpriority, lqip, class: className = '', imgClass = '', draggable } = Astro.props;
+const { src, srcset, avifSrcset, sizes, alt, width, height, loading = 'lazy', fetchpriority, lqip, class: className = '', imgClass = '', draggable, mobile } = Astro.props;
+const PHONE = '(max-width: 767px)';
 const style = lqip ? `background-image:url("${lqip}")` : undefined;
 const img = {
   src,
@@ -41,10 +45,12 @@ const img = {
 
 <span class:list={['photo', className]} style={style} data-photo>
   {
-    avifSrcset ? (
+    avifSrcset || mobile ? (
       /* display: contents keeps the img the box's direct layout child */
       <picture class="contents">
-        <source type="image/avif" srcset={avifSrcset} sizes={sizes} />
+        {mobile?.avifSrcset && <source media={PHONE} type="image/avif" srcset={mobile.avifSrcset} sizes={mobile.sizes ?? sizes} width={mobile.width} height={mobile.height} />}
+        {mobile && <source media={PHONE} type="image/webp" srcset={mobile.srcset} sizes={mobile.sizes ?? sizes} width={mobile.width} height={mobile.height} />}
+        {avifSrcset && <source type="image/avif" srcset={avifSrcset} sizes={sizes} />}
         <img {...img} class:list={['photo-img', imgClass]} />
       </picture>
     ) : (

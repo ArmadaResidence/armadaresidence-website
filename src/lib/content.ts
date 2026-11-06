@@ -211,6 +211,10 @@ export interface SitePhoto {
   caption_ar?: string;
   caption_en?: string;
   cover?: boolean;
+  /** «صورة الجوال» of a branch cover (7 Nov 2026): its 9:16 phone files (scripts/media-build.mjs), shown under 768 px */
+  mobile?: { base: string; widths: number[]; width: number; height: number; position?: string };
+  /** the «فرعانا» card gradient's measured strength over this cover (desktop / phone; photos-engine cardScrim) */
+  card_scrim?: { lg: number; m: number };
 }
 
 /** Room availability resolved by build.py from the dashboard (site_room_types; phase 2a.1): `"branch/slug": "available" |
@@ -648,9 +652,12 @@ export function ogImageOf(x: object): string | undefined {
 }
 
 /** Props for Photo.astro / GallerySlider from an imported photo, alt in the page language. */
-export function photoProps(locale: Locale, p: SitePhoto) {
+export function photoProps(locale: Locale, p: SitePhoto, { mobileSizes }: { mobileSizes?: string } = {}) {
   const set = (ext: string) => p.widths.map((w) => `${p.base}-${w}.${ext} ${w}w`).join(', ');
+  const m = p.mobile;
+  const mset = (ext: string) => (m ? m.widths.map((w) => `${m.base}-${w}.${ext} ${w}w`).join(', ') : '');
   return {
+    mobile: m ? { srcset: mset('webp'), avifSrcset: p.formats?.includes('avif') ? mset('avif') : undefined, width: m.width, height: m.height, sizes: mobileSizes } : undefined,
     src: `${p.base}-${p.widths[Math.min(1, p.widths.length - 1)]}.webp`,
     srcset: set('webp'),
     avifSrcset: p.formats?.includes('avif') ? set('avif') : undefined,

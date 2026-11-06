@@ -9,6 +9,10 @@
  * The whole card opens the branch page (Ahmed, 5 Nov 2026): ONE link per card, the branch name, stretched over the
  * pane by its ::after (no nested links); «عرض الفرع» is its look only; the phone stays its own link above the stretch
  * and still dials. Hover and focus act on the whole card, with a ring around it. CSS in global.css (.split-*).
+ * Under the text only (Ahmed, 7 Nov 2026): the midnight gradient is as tall as the card's text (+ a soft 4rem edge
+ * above it) instead of the whole card, so the rest of the photo shows; its strength is measured per cover at build time
+ * (photos-engine cardScrim → --card-a-lg / --card-a-m), 0.9 without a measure. A branch's «صورة الجوال» (9:16) fills the
+ * card under 768 px; without one the phone gets the desktop cover as before.
  */
 import { branchContact, branchPath, fill, L, paragraphs, photoProps, photosOf, telHref, ui, type Branch, type Locale } from '@lib/content';
 import Photo from './Photo.astro';
@@ -34,22 +38,22 @@ const firstSentence = (text: string) => {
       const name = L(locale, b, 'name');
       const href = branchPath(locale, b.slug);
       const c = branchContact(b.slug);
+      const cover = photosOf(b)[0];
+      const cs = cover?.card_scrim;
       return (
-        <article class="split-pane">
+        <article class="split-pane" style={cs ? `--card-a-lg:${cs.lg};--card-a-m:${cs.m}` : undefined}>
           <div class="split-media" aria-hidden="true">
             <div class="split-media-inner">
-              {(() => {
-                const cover = photosOf(b)[0];
-                return cover ? (
-                  <Photo {...photoProps(locale, cover)} sizes="(min-width: 768px) 58vw, 100vw" class="photo-fill split-photo" imgClass="w-full h-full object-cover" />
-                ) : (
-                  <Placeholder label={fill(t.photo_pending_alt, { subject: name })} class="photo-fill rounded-none" />
-                );
-              })()}
+              {cover ? (
+                // the phone photo (9:16) is shown scaled to the ~1:2 card's height: a little wider than the screen
+                <Photo {...photoProps(locale, cover, { mobileSizes: '120vw' })} sizes="(min-width: 768px) 58vw, 100vw" class="photo-fill split-photo" imgClass="w-full h-full object-cover" />
+              ) : (
+                <Placeholder label={fill(t.photo_pending_alt, { subject: name })} class="photo-fill rounded-none" />
+              )}
             </div>
             <div class="split-shade" />
-            <div class="split-gradient" />
           </div>
+          <div class="split-gradient" aria-hidden="true" />
           <div class="split-body">
             <p class="text-xs font-semibold uppercase tracking-wide text-bronze-bright">{L(locale, b, 'type')}</p>
             <h3 class="mt-2 text-2xl md:text-3xl font-bold text-porcelain">

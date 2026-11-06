@@ -5,6 +5,8 @@
 // each pixel); the worst pixel must reach 4.5:1 (3:1 for large text: ≥ 24 px, or ≥ 18.66 px bold). Reduced motion, so
 // the hero is still. Filled buttons carry their own background and are not measured here (axe covers them).
 // Light and dark (5 Nov 2026: the directional scrim is the same Armada Midnight in both themes).
+// 7 Nov 2026: 768, 1280 and 1920 as well (the scrim narrowed to the text column), and the «فرعانا» cards on the same
+// page — every text of each card over its measured gradient (the filled «عرض الفرع» look carries its own background).
 // --poster <page URL>: the hero's <picture> and focal points are taken from that page (e.g. the live home page) and put
 // in place of the built ones before measuring — the PUBLISHED poster behind the new scrim.
 //   node scripts/hero-scrim-check.mjs <dist dir> [label] [--poster <page URL>]
@@ -45,7 +47,8 @@ const fails = [];
 let checks = 0;
 try {
   for (const path of ['/', '/en/']) for (const theme of ['light', 'dark']) {
-    for (const width of [375, 1440]) {
+    // 7 Nov 2026: + 768 (the tablet layout, the text widest), 1280 (the first wide one) and 1920 (the scrim narrowed to the text column)
+    for (const width of [375, 768, 1280, 1440, 1920]) {
       const ctx = await browser.newContext({ viewport: { width, height: 900 }, reducedMotion: 'reduce', deviceScaleFactor: 1, colorScheme: theme });
       await ctx.addInitScript((t) => { try { localStorage.setItem('armada-theme', t); } catch {} }, theme);
       const page = await ctx.newPage();
@@ -78,6 +81,10 @@ try {
       const texts = await page.evaluate(() => {
         const box = document.querySelector('.hero > .relative');
         const els = [box.querySelector('p'), ...box.querySelectorAll('h1 .hero-word'), box.querySelector('.hero-sub'), ...box.querySelectorAll('a, button')];
+        // the «فرعانا» cards (7 Nov 2026): over a published cover only (a placeholder card has no gradient to judge)
+        for (const body of document.querySelectorAll('.split-pane:has(.split-photo) .split-body')) {
+          els.push(...body.querySelectorAll(':scope > p, .split-title-text, .split-phone span'));
+        }
         // any CSS colour (oklab, color(srgb …), rgb) → [r, g, b, a] through a 1 px canvas
         const rgba = (css) => {
           const c = document.createElement('canvas').getContext('2d');
@@ -95,12 +102,12 @@ try {
           const range = document.createRange();
           range.selectNodeContents(el);
           const r = range.getBoundingClientRect();
-          return { i, name: el.tagName.toLowerCase() + (el.className ? '.' + String(el.className).split(' ')[0] : ''), text: el.textContent.trim().slice(0, 30), rgba: rgba(cs.color), size: parseFloat(cs.fontSize), weight: Number(cs.fontWeight), filled, rect: { x: r.x, y: r.y + window.scrollY, width: r.width, height: r.height } };
+          return { i, card: !!el.closest('.split-body'), name: (el.closest('.split-body') ? 'card ' : '') + el.tagName.toLowerCase() + (el.className ? '.' + String(el.className).split(' ')[0] : ''), text: el.textContent.trim().slice(0, 30), rgba: rgba(cs.color), size: parseFloat(cs.fontSize), weight: Number(cs.fontWeight), filled, rect: { x: r.x, y: r.y + window.scrollY, width: r.width, height: r.height } };
         });
       });
       await page.screenshot({ path: `screenshots/media/hero-${label || 'x'}-${path === '/' ? 'ar' : 'en'}-${width}-${theme}.png` }).catch(() => {});
       // the background alone: every hero text transparent (layout unchanged)
-      await page.addStyleTag({ content: '.hero > .relative, .hero > .relative * { color: transparent !important; text-shadow: none !important; border-color: transparent !important; -webkit-text-fill-color: transparent !important }' });
+      await page.addStyleTag({ content: ':is(.hero > .relative, .split-body), :is(.hero > .relative, .split-body) * { color: transparent !important; text-shadow: none !important; border-color: transparent !important; -webkit-text-fill-color: transparent !important }' });
       await page.waitForTimeout(150);
       for (const t of texts) {
         if (t.filled || t.rect.width < 2 || t.rect.height < 2) continue;

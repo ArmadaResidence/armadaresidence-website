@@ -158,32 +158,59 @@ body {
 .hero-video.is-playing {
   opacity: 1;
 }
-/* Hero over a real photo or video (Ahmed, 5 Nov 2026; measured per picture since 6 Nov 2026): no pattern and no flat
-   tint (they stay on the placeholder poster only); one directional Armada Midnight scrim — the same in light and dark
-   (--brand-midnight, never --color-midnight, which dark mode remaps to porcelain) — behind the text only:
-   - from 768 px: from the start side (right in Arabic, left in English) at the measured strength up to just past the
-     text column's end edge (the 72rem container's centre + 15rem, at least 52rem), then over 20rem to nothing;
+/* Hero over a real photo or video (Ahmed, 5 Nov 2026; measured per picture since 6 Nov 2026; one smooth layer across
+   the whole width, 7 Nov 2026 — the narrow band of the same day read as a frame): no pattern and no flat tint (they stay
+   on the placeholder poster only); ONE Armada Midnight layer — the same in light and dark (--brand-midnight, never
+   --color-midnight, which dark mode remaps to porcelain) — above the photos and below the text, with no edge anywhere:
+   - from 768 px: at full measured strength from the start side (right in Arabic, left in English) to the end of the text
+     column (the content edge of the 72rem container + 40rem — the text block measured on the page: 620 px in Arabic,
+     630 in English — + 1.5rem), then a long eased fall-off (smoothstep, eight stops) over the rest of the width to a
+     light tint on the far side (--scrim-far, 0.1); the whole height;
    - phones, where the text spans the screen: bottom-up — the measured strength from the bottom to just under the top
      padding, then lighter towards the top edge, above the eyebrow.
-   The strength is the LIGHTEST that keeps the hero text at AA over the brightest pixels behind it (4.5:1 for the
-   eyebrow, the subtitle and the outline button, 3:1 for the headline), measured at build time on each poster / each
-   slideshow photo / sampled video frames (scripts/photos-engine.mjs heroScrim): --scrim-m (phones), --scrim-md
-   (768–1279 px), --scrim-lg-rtl / --scrim-lg-ltr (from 1280 px), set on the picture's own layer. Without a measure
-   (a picture imported by photos-import) 0.9, the 5 Nov value. Checked pixel by pixel by scripts/hero-scrim-check.mjs. */
+   Its shape is drawn at full strength (the far tint as a share of it, --scrim-k) and its strength is its opacity, so a
+   slideshow eases from one photo's measure to the next (opacity only; it never fades out or moves). The strength is the
+   LIGHTEST that keeps the hero text at AA over the brightest pixels behind it (4.5:1 for the eyebrow, the subtitle and
+   the outline button, 3:1 for the headline), measured at build time where the text can sit (scripts/photos-engine.mjs
+   heroScrim): --scrim-m (phones), --scrim-md (768–1279 px), --scrim-lg-rtl / --scrim-lg-ltr (from 1280 px). The aim is
+   0.6 or less; a photo that needs more gets what it needs and a warning in «الصور». Without a measure 0.9. Checked pixel
+   by pixel by scripts/hero-scrim-check.mjs. */
 .hero-scrim {
   --scrim-a: var(--scrim-m, 0.9);
-  --scrim-text: color-mix(in srgb, var(--brand-midnight) calc(var(--scrim-a) * 100%), transparent);
-  --scrim-top: color-mix(in srgb, var(--brand-midnight) calc(var(--scrim-a) * 60%), transparent);
-  background: linear-gradient(to top, var(--scrim-text) 0, var(--scrim-text) calc(100% - 3.25rem), var(--scrim-top) 100%);
+  --scrim-far: 0.1;
+  --scrim-k: calc(var(--scrim-far) / var(--scrim-a));
+  opacity: var(--scrim-a);
+  background: linear-gradient(to top, var(--brand-midnight) 0, var(--brand-midnight) calc(100% - 3.25rem), color-mix(in srgb, var(--brand-midnight) 60%, transparent) 100%);
+  transition: opacity var(--motion-base) var(--ease-in-out);
 }
 @media (min-width: 768px) {
   .hero-scrim {
     --scrim-a: var(--scrim-md, 0.9);
-    --scrim-end: max(calc(50% + 15rem), 52rem);
-    background: linear-gradient(to left, var(--scrim-text) 0, var(--scrim-text) var(--scrim-end), transparent calc(var(--scrim-end) + 20rem));
+    --scrim-end: calc(max(0px, (100% - 72rem) / 2) + 1rem + 40rem + 1.5rem);
+    background: linear-gradient(to left,
+      var(--brand-midnight) 0,
+      var(--brand-midnight) var(--scrim-end),
+      color-mix(in srgb, var(--brand-midnight) calc((var(--scrim-k) + (1 - var(--scrim-k)) * 0.957) * 100%), transparent) calc(var(--scrim-end) + (100% - var(--scrim-end)) * 0.125),
+      color-mix(in srgb, var(--brand-midnight) calc((var(--scrim-k) + (1 - var(--scrim-k)) * 0.844) * 100%), transparent) calc(var(--scrim-end) + (100% - var(--scrim-end)) * 0.25),
+      color-mix(in srgb, var(--brand-midnight) calc((var(--scrim-k) + (1 - var(--scrim-k)) * 0.684) * 100%), transparent) calc(var(--scrim-end) + (100% - var(--scrim-end)) * 0.375),
+      color-mix(in srgb, var(--brand-midnight) calc((var(--scrim-k) + (1 - var(--scrim-k)) * 0.5) * 100%), transparent) calc(var(--scrim-end) + (100% - var(--scrim-end)) * 0.5),
+      color-mix(in srgb, var(--brand-midnight) calc((var(--scrim-k) + (1 - var(--scrim-k)) * 0.316) * 100%), transparent) calc(var(--scrim-end) + (100% - var(--scrim-end)) * 0.625),
+      color-mix(in srgb, var(--brand-midnight) calc((var(--scrim-k) + (1 - var(--scrim-k)) * 0.156) * 100%), transparent) calc(var(--scrim-end) + (100% - var(--scrim-end)) * 0.75),
+      color-mix(in srgb, var(--brand-midnight) calc((var(--scrim-k) + (1 - var(--scrim-k)) * 0.043) * 100%), transparent) calc(var(--scrim-end) + (100% - var(--scrim-end)) * 0.875),
+      color-mix(in srgb, var(--brand-midnight) calc((var(--scrim-k) + (1 - var(--scrim-k)) * 0) * 100%), transparent) calc(var(--scrim-end) + (100% - var(--scrim-end)) * 1));
   }
   [dir='ltr'] .hero-scrim {
-    background: linear-gradient(to right, var(--scrim-text) 0, var(--scrim-text) var(--scrim-end), transparent calc(var(--scrim-end) + 20rem));
+    background: linear-gradient(to right,
+      var(--brand-midnight) 0,
+      var(--brand-midnight) var(--scrim-end),
+      color-mix(in srgb, var(--brand-midnight) calc((var(--scrim-k) + (1 - var(--scrim-k)) * 0.957) * 100%), transparent) calc(var(--scrim-end) + (100% - var(--scrim-end)) * 0.125),
+      color-mix(in srgb, var(--brand-midnight) calc((var(--scrim-k) + (1 - var(--scrim-k)) * 0.844) * 100%), transparent) calc(var(--scrim-end) + (100% - var(--scrim-end)) * 0.25),
+      color-mix(in srgb, var(--brand-midnight) calc((var(--scrim-k) + (1 - var(--scrim-k)) * 0.684) * 100%), transparent) calc(var(--scrim-end) + (100% - var(--scrim-end)) * 0.375),
+      color-mix(in srgb, var(--brand-midnight) calc((var(--scrim-k) + (1 - var(--scrim-k)) * 0.5) * 100%), transparent) calc(var(--scrim-end) + (100% - var(--scrim-end)) * 0.5),
+      color-mix(in srgb, var(--brand-midnight) calc((var(--scrim-k) + (1 - var(--scrim-k)) * 0.316) * 100%), transparent) calc(var(--scrim-end) + (100% - var(--scrim-end)) * 0.625),
+      color-mix(in srgb, var(--brand-midnight) calc((var(--scrim-k) + (1 - var(--scrim-k)) * 0.156) * 100%), transparent) calc(var(--scrim-end) + (100% - var(--scrim-end)) * 0.75),
+      color-mix(in srgb, var(--brand-midnight) calc((var(--scrim-k) + (1 - var(--scrim-k)) * 0.043) * 100%), transparent) calc(var(--scrim-end) + (100% - var(--scrim-end)) * 0.875),
+      color-mix(in srgb, var(--brand-midnight) calc((var(--scrim-k) + (1 - var(--scrim-k)) * 0) * 100%), transparent) calc(var(--scrim-end) + (100% - var(--scrim-end)) * 1));
   }
 }
 @media (min-width: 1280px) {
@@ -194,17 +221,29 @@ body {
     --scrim-a: var(--scrim-lg-ltr, 0.9);
   }
 }
+/* a soft shadow under the hero's eyebrow, headline and subtitle over a photo (7 Nov 2026) — a help to reading, never
+   counted in the AA measure (hero-scrim-check removes it before measuring) */
+.hero-over-photo :is(.hero-eyebrow, h1, .hero-sub) {
+  text-shadow:
+    0 1px 2px rgb(20 42 59 / 0.5),
+    0 2px 18px rgb(20 42 59 / 0.45);
+}
 
 /* The home hero as a slideshow (Ahmed, 6 Nov 2026): the photos are stacked layers, each with its own measured scrim;
    the active one is opaque, the next fades in over --motion-hero-fade, each stays --motion-hero-hold. A slow Ken Burns
    move on the photo (1.00 → 1.08, zooming in and out in turn, around the focal point — transform only, the layer never
    moves). Paused (the button, a hidden tab, the hero off screen) → the move holds where it is. Reduced motion, Save-Data
    or a slow connection: only the first photo, still (index.astro's script never starts the show). */
+/* the photos only (7 Nov 2026): the slides are stacked in their own layer (isolated, so the incoming one's z-index never
+   lifts it over the scrim or the text); the incoming photo fades in over the current one, which leaves at once once it
+   is covered (no transition on the way out — it would show again for a moment over the new one) */
+.hero-show {
+  isolation: isolate;
+}
 .hero-slide {
   position: absolute;
   inset: 0;
   opacity: 0;
-  transition: opacity var(--motion-hero-fade) var(--ease-in-out);
 }
 .hero-slide.is-active {
   opacity: 1;
@@ -212,6 +251,7 @@ body {
 .hero-slide.is-next {
   opacity: 1;
   z-index: 1;
+  transition: opacity var(--motion-hero-fade) var(--ease-in-out);
 }
 .hero-slide .hero-photo {
   transform-origin: var(--hero-pos, 50% 50%);
@@ -713,8 +753,9 @@ footer :focus-visible,
   position: relative;
   isolation: isolate;
   min-height: 88svh;
-  display: flex;
-  align-items: flex-end;
+  /* the text in the bottom row; the gradient shares that row, so it is exactly as tall as the text (7 Nov 2026) */
+  display: grid;
+  grid-template: 1fr auto / minmax(0, 1fr);
   border-radius: var(--radius-card);
   overflow: hidden;
   /* Armada Midnight in both themes (the media layer covers it; it is what the text sits on when that layer is read as
@@ -739,6 +780,14 @@ footer :focus-visible,
   inset: 0;
   aspect-ratio: auto;
 }
+/* a branch cover's «صورة الجوال» (7 Nov 2026) on the branch page under 768 px: 4:5 out of the 9:16 photo, centred (its
+   focal point is the centre of the 9:16 crop) */
+@media (max-width: 767px) {
+  .cover-m45 {
+    aspect-ratio: 4 / 5;
+    object-fit: cover;
+  }
+}
 /* a published branch cover in a home split pane (4 Nov 2026): fills the pane like the placeholder did */
 .photo.split-photo {
   position: absolute;
@@ -752,14 +801,34 @@ footer :focus-visible,
   opacity: 0;
   transition: opacity var(--motion-base) var(--ease-in-out);
 }
+/* under the text only (Ahmed, 7 Nov 2026): a grid item in the text's row (so as tall as the text) reaching 9rem above it
+   with a long eased fall-off (no visible edge); Armada Midnight at its measured strength (--card-a-*, photos-engine
+   cardScrim) under the text. It
+   sits outside the media layer, so the hover's widening never moves it. */
 .split-gradient {
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(to top, rgba(20, 42, 59, 0.94) 0%, rgba(20, 42, 59, 0.72) 38%, rgba(20, 42, 59, 0.12) 70%, rgba(20, 42, 59, 0) 100%);
+  --card-a: var(--card-a-m, 0.9);
+  grid-area: 2 / 1;
+  align-self: stretch;
+  /* the text's row + 9rem above it: full strength under the text, then a long eased fall-off to nothing (no edge) */
+  margin-top: -9rem;
+  background: linear-gradient(to top,
+      color-mix(in srgb, var(--brand-midnight) calc(var(--card-a) * 100%), transparent) 0,
+      color-mix(in srgb, var(--brand-midnight) calc(var(--card-a) * 100%), transparent) calc(100% - 9rem),
+      color-mix(in srgb, var(--brand-midnight) calc(var(--card-a) * 0.957 * 100%), transparent) calc(100% - 9rem + 9rem * 0.125),
+      color-mix(in srgb, var(--brand-midnight) calc(var(--card-a) * 0.844 * 100%), transparent) calc(100% - 9rem + 9rem * 0.25),
+      color-mix(in srgb, var(--brand-midnight) calc(var(--card-a) * 0.684 * 100%), transparent) calc(100% - 9rem + 9rem * 0.375),
+      color-mix(in srgb, var(--brand-midnight) calc(var(--card-a) * 0.5 * 100%), transparent) calc(100% - 9rem + 9rem * 0.5),
+      color-mix(in srgb, var(--brand-midnight) calc(var(--card-a) * 0.316 * 100%), transparent) calc(100% - 9rem + 9rem * 0.625),
+      color-mix(in srgb, var(--brand-midnight) calc(var(--card-a) * 0.156 * 100%), transparent) calc(100% - 9rem + 9rem * 0.75),
+      color-mix(in srgb, var(--brand-midnight) calc(var(--card-a) * 0.043 * 100%), transparent) calc(100% - 9rem + 9rem * 0.875),
+      color-mix(in srgb, var(--brand-midnight) calc(var(--card-a) * 0 * 100%), transparent) calc(100% - 9rem + 9rem * 1));
+  pointer-events: none;
 }
 .split-body {
+  grid-area: 2 / 1;
   padding: 1.75rem 1.5rem 2rem;
-  width: 100%;
+  /* a grid item stretches to its row minus its margins (no width: 100%, which would add the desktop margin on top) */
+  min-width: 0;
 }
 /* the whole card is the branch link (5 Nov 2026): the name's ::after covers the pane — its containing block, since
    nothing between them is positioned or transformed (the shrink shift below moves the body's children and the name's
@@ -816,6 +885,9 @@ footer :focus-visible,
     min-height: 560px;
     border-radius: var(--radius-card);
     overflow: hidden;
+  }
+  .split-gradient {
+    --card-a: var(--card-a-lg, 0.9);
   }
   .split-pane {
     flex: 1 1 50%;

@@ -13,7 +13,7 @@ import { west } from '../lib/format';
 
 const norm = (s: string) => west(s).toLowerCase().replace(/[ً-ْـ]/g, '').replace(/[أإآ]/g, 'ا').replace(/ة/g, 'ه').replace(/ى/g, 'ي').trim();
 
-export default function ExistingPhotoPicker({ open, onClose, target, keyName, slot, slotLabel, onDone }: {
+export default function ExistingPhotoPicker({ open, onClose, target, keyName, slot, slotLabel, onDone, mobileOf }: {
   open: boolean;
   onClose: () => void;
   target: MediaTarget;
@@ -23,6 +23,8 @@ export default function ExistingPhotoPicker({ open, onClose, target, keyName, sl
   slotLabel: string;
   /** after a successful copy: the new item's id */
   onDone: (id: string) => void;
+  /** «صورة الجوال» (7 Nov 2026): the desktop photo the copy belongs to (slot mobile) */
+  mobileOf?: string;
 }) {
   const [items, setItems] = useState<MediaItem[] | null>(null);
   const [urls, setUrls] = useState<Record<string, string>>({});
@@ -74,7 +76,7 @@ export default function ExistingPhotoPicker({ open, onClose, target, keyName, sl
     setBusy(true);
     setError(null);
     try {
-      const id = await copyExisting(chosen, target, keyName, slot);
+      const id = await copyExisting(chosen, target, keyName, slot, mobileOf);
       onDone(id);
     } catch (e) {
       setError((e as Error).message);
