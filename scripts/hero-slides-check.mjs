@@ -30,8 +30,8 @@ if (!/data-hero-show/.test(html)) {
   console.log(`hero-slides-check: ${BASE} — the home hero is not a slideshow in this build (skipped)`);
   process.exit(0);
 }
-const origin = new URL(BASE).origin;
-const abs = (p) => (p.startsWith('http') ? p : origin + p);
+// a file path found on the page starts at /images/… (the sub-path of the review site is BASE's own path): BASE + path
+const abs = (p) => (p.startsWith('http') ? p : `${BASE}${p}`);
 
 // ── the page and the files ──
 const slidesHtml = html.split(/<div class="hero-slide/).slice(1).map((s) => s.split(/<\/picture>/)[0]);
