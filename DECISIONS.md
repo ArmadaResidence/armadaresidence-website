@@ -1771,6 +1771,10 @@ Ahmed's brief of 6 Nov 2026 (unattended). Every guest-facing text below was appr
   bookable on the website with **1** unit open on every one of the next 30 nights; Airport Road's accessible room is
   **not** switched on in «الغرف» (`bookable` false, no night open — it was switched off at 01:47:38 Riyadh on 6 Nov, see
   the entry above). Nothing was changed (the brief forbids changing availability).
+  **Update, read only later on 6 Nov 2026:** Ahmed switched Airport Road's accessible room on in «الغرف» at 20:14
+  Riyadh and opened it at 20:15 — `bookable` true, **1** unit on every night from 6 Nov to 31 Dec 2026 (56 nights, the
+  next 30 all open), nothing booked yet; the site build after it lists it as available. Both branches now sell their
+  accessible room online, one unit a night.
 - **For approval** (written in this session): the English slogan "Always welcome"; the /club/ intro (given as for
   approval); the club's other texts (button «انضم إلى إياب» / "Join Eyab", the consent error, the success line, the home
   band and footer link, the welcome email's headline and body, the member-offer intro, the /club/ and unsubscribe SEO
