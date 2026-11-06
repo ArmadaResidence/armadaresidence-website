@@ -4,6 +4,7 @@
 // through the Edge Functions, which forward the user's JWT.
 import { supabase, SUPABASE_URL } from './supabase';
 import { CONNECTION, SESSION_ENDED, arabicError } from './errors';
+import type { SiteDeploy } from './siteDeployText';
 
 export type Role = 'admin' | 'management' | 'sales' | 'reception';
 export type Level = 'none' | 'view' | 'edit' | 'publish';
@@ -475,14 +476,20 @@ export const inviteUser = (email: string, full_name: string, role: Role, branch:
 export const updateUser = (user_id: string, patch: Partial<{ full_name: string; active: boolean }>) => edge<{ ok: boolean }>('admin-users', { action: 'update', user_id, ...patch });
 export const resendLink = (user_id: string) => edge<{ ok: boolean; type: string }>('admin-users', { action: 'resend', user_id });
 
-/** Ask for a rebuild of the static site (extra-bed fee, room availability). Never throws: the UI shows the fallback line. */
+/** Ask for a rebuild of the static site (extra-bed fee, room availability). Never throws: the UI shows the fallback line.
+ * A dispatched rebuild is announced with the window event `armada:site-rebuild` (lib/siteDeploy.ts shows «جارٍ تحديث الموقع»). */
 export async function siteRebuild(reason: 'settings' | 'rooms' | 'media' | 'dining' | 'offers' | 'blog' | 'faq' | 'content', job?: string): Promise<{ ok: boolean; dispatched?: boolean; reason?: string }> {
   try {
-    return await edge<{ ok: boolean; dispatched?: boolean; reason?: string }>('site-rebuild', job ? { reason, job } : { reason });
+    const r = await edge<{ ok: boolean; dispatched?: boolean; reason?: string }>('site-rebuild', job ? { reason, job } : { reason });
+    if (r.ok && r.dispatched) window.dispatchEvent(new Event('armada:site-rebuild'));
+    return r;
   } catch (e) {
     return { ok: false, reason: (e as Error).message };
   }
 }
+
+/** The website's last deploy as the deploy workflow reported it (public.site_deploy_status, any staff member; 6 Nov 2026). */
+export const siteDeployStatus = () => rpc<SiteDeploy>('site_deploy_status');
 
 
 // ── second step (phase 2a.2 C, 26 Oct 2026) ──────────────────────────────────────────────────────────────────────

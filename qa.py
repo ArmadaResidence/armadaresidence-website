@@ -37,8 +37,10 @@ ROOT = Path(__file__).resolve().parent
 DIST = ROOT / "dist"
 CONTENT = ROOT / "content"
 
+# «مكواة» → «كواية» in guest-facing Arabic (Ahmed, 6 Nov 2026); Israel in no country list (Ahmed, 6 Nov 2026 — its
+# Arabic and English names; the code itself is checked in the country data below)
 FORBIDDEN = ["شقق مخدومة", "serviced apartment", "Serviced apartment", "Serviced Apartment", "ARMADA CAFÉ",
-             "booking.fullName", "Unsplash", "unsplash", "+96653 662"]
+             "booking.fullName", "Unsplash", "unsplash", "+96653 662", "مكواة", "إسرائيل", "Israel"]
 TODO_MARKERS = ["[TODO", "TODO(", "[MISSING]", "lorem ipsum", "Lorem ipsum", "[يُؤكَّد]"]
 GENERIC_ALT = {"", "image", "img", "photo", "picture", "logo", "صورة", "صورة جديدة", "صوره"}
 ALLOWED_HOSTS = {"www.googletagmanager.com"}
@@ -280,6 +282,10 @@ def main() -> int:
         ver = {}
     if not ver.get("commit") or not ver.get("built_at"):
         rep.f("version", "dist/version.json is missing or has no commit / built_at (build.py write_version) — the deploy watchdog reads it")
+    # Israel in no country list (Ahmed, 6 Nov 2026): no flag is shipped for it either (scripts/flags.mjs skips it)
+    flags_index = DIST / "flags" / "index.json"
+    if any((DIST / "flags" / f"il.{ext}").exists() for ext in ("png", "svg", "webp")) or (flags_index.is_file() and "IL" in json.loads(flags_index.read_text(encoding="utf-8"))):
+        rep.f("country lists", "dist/flags carries Israel (an il.* file or IL in index.json) — scripts/flags.mjs must skip it")
     limits = content["seo.json"].get("room_templates", {})
     max_title = int(limits.get("max_title_chars", 60))
     max_desc = int(limits.get("max_description_chars", 155))
@@ -355,6 +361,16 @@ def main() -> int:
         for s in FORBIDDEN:
             if s in html:
                 rep.f("forbidden strings", f"{path}: contains {s!r}")
+        # no Israel in any country list (Ahmed, 6 Nov 2026): the phone selector / nationality rows are [code, dial, …]
+        for m in re.finditer(r'<script[^>]*data-country-data[^>]*>(.*?)</script>', html, re.S):
+            try:
+                rows = json.loads(m.group(1))
+            except ValueError:
+                rep.f("country lists", f"{path}: country data is not JSON")
+                continue
+            flat = rows if isinstance(rows, list) else [r for v in rows.values() if isinstance(v, list) for r in v] if isinstance(rows, dict) else []
+            if any(isinstance(r, list) and r and r[0] == "IL" for r in flat) or '"IL"' in m.group(1):
+                rep.f("country lists", f"{path}: Israel (IL) is offered in a country list")
 
         # dates are picked from the calendar range picker, never typed (Ahmed, 23 Oct 2026): no date / text date
         # inputs, and every date value travels in a hidden input next to its picker button

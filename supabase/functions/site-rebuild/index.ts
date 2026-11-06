@@ -7,7 +7,8 @@
 // token needs only Actions: read and write (+ Metadata: read) on armadaresidence-website, never Contents: write.
 // Debounced in the database (public.site_rebuild_claim, service role): one dispatch per DEBOUNCE_MS whoever asks and
 // whichever isolate answers — an in-memory timer proved per-isolate on 26 Oct 2026 (the Actions concurrency group
-// still cancels a stale build).
+// still cancels a stale build). Since 6 Nov 2026 the reasons 'rooms' and 'settings' skip the debounce (./debounce.ts): a
+// second change inside the window could miss the build already running.
 // Media (dashboard «الصور», 1 Nov 2026): reason 'media' + the publish job id. The caller needs publish on media; the
 // dispatch carries the job (workflow input media_job, and dry_run for a dry job) so the workflow reports on it, skips
 // the debounce (a publish must never be swallowed by a rebuild claimed for another reason — the Pages concurrency group
@@ -29,6 +30,7 @@
 // SITE_REPO (owner/name, default ArmadaResidence/armadaresidence-website), SITE_WORKFLOW (default deploy.yml),
 // SITE_REF (default main); SUPABASE_URL / SUPABASE_ANON_KEY (automatic). Browser origins: ../_shared/cors.ts.
 import { cors, preflight } from '../_shared/cors.ts';
+import { usesDebounce } from './debounce.ts';
 
 const REPO = Deno.env.get('SITE_REPO') ?? 'ArmadaResidence/armadaresidence-website';
 const WORKFLOW = Deno.env.get('SITE_WORKFLOW') ?? 'deploy.yml';
@@ -127,7 +129,7 @@ Deno.serve(async (req) => {
     if (job) await jobDispatch(job.id, 'no_token');
     return json(req, 200, { ok: false, reason: 'no_token' });
   }
-  if (!job && !(await claim(reason))) {
+  if (usesDebounce(reason, !!job) && !(await claim(reason))) {
     console.log('site-rebuild: debounced', reason);
     return json(req, 200, { ok: true, dispatched: false, debounced: true });
   }

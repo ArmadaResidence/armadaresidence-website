@@ -57,6 +57,10 @@ jobs:
       manifest_at: ${{ steps.media.outputs.manifest_at }}
     steps:
       - uses: actions/checkout@v4
+      # the dashboard's «حالة تحديث الموقع» (6 Nov 2026): this run has started (never fails the build)
+      - name: Report the start to the dashboard
+        if: ${{ !inputs.dry_run }}
+        run: node scripts/site-deploy-report.mjs running
       - name: A media sample is for dry runs only
         if: ${{ inputs.media_sample && !inputs.dry_run }}
         run: |
@@ -156,3 +160,31 @@ jobs:
           else
             node scripts/media-job.mjs settle ${{ needs.build.result == 'success' && needs.deploy.result == 'success' && 'ok' || 'fail' }}
           fi
+
+  # the run's outcome for the dashboard (public.site_deploys) — and, when it failed, ONE alert email to the admins with
+  # the commit, the failed step and this run's link (Edge Function site-deploy-report; 6 Nov 2026: from the evening of
+  # 5 Nov every build failed qa.py and nobody knew). always(): a cancelled run reports `cancelled`; dry runs never report.
+  status:
+    needs: [build, deploy]
+    if: ${{ always() && !inputs.dry_run }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      actions: read
+    env:
+      PUBLIC_BOOKING_ENDPOINT: ${{ vars.PUBLIC_BOOKING_ENDPOINT }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      GH_TOKEN: ${{ github.token }}
+      BUILD_RESULT: ${{ needs.build.result }}
+      DEPLOY_RESULT: ${{ needs.deploy.result }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: scripts/site-deploy-report.mjs
+          sparse-checkout-cone-mode: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Report the outcome (and alert on a failure)
+        run: node scripts/site-deploy-report.mjs final

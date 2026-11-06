@@ -3,8 +3,15 @@
 // once (site_room_types RPC) and the room page stays «غير متاح حاليًا»; on = bookable like the others and the page
 // follows the normal indexing rules after the site rebuild the toggle asks for. Each toggle is one audited batch → a
 // 30 s «تراجع» toast. Capacity, extra beds and the base rate are shown for context (names and sizes stay in rooms.json).
+// 6 Nov 2026 (the toggle «لا بيقفل ولا بيفتح» — every save had stood; every site build had failed since the evening of
+// 5 Nov): the page shows the website's last deploy (نجح / جارٍ / فشل + the time, components/SiteDeployStatus.tsx), and the
+// line after a change follows that deploy — saved and waiting, now on the room pages, or saved but NOT on the site
+// because the update failed (lib/siteDeployText.ts → roomsNote).
 import { useEffect, useState } from 'react';
 import * as api from '../lib/api';
+import SiteDeployStatus from '../components/SiteDeployStatus';
+import { useSiteDeploy } from '../lib/siteDeploy';
+import { roomsNote, type RebuildAsk } from '../lib/siteDeployText';
 import type { Branch, RoomType } from '../lib/api';
 import { useSession } from '../lib/session';
 import { BRANCH_NAMES, sar } from '../lib/format';
@@ -18,7 +25,9 @@ export default function Rooms() {
   const [types, setTypes] = useState<RoomType[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
-  const [note, setNote] = useState<string | null>(null);
+  const [change, setChange] = useState<{ at: number; ask: RebuildAsk } | null>(null);
+  const deploy = useSiteDeploy();
+  const note = change ? roomsNote(change.ask, deploy.data, change.at) : null;
 
   const load = async () => {
     try {
@@ -41,14 +50,15 @@ export default function Rooms() {
       const r = await api.setRoomBookable(rt.id, on);
       toast.undo(`${rt.name_ar} — ${on ? 'متاحة للحجز على الموقع' : 'غير متاحة على الموقع'}`, async () => {
         await api.revertBatch(r.batch_id);
+        const back = Date.now();
         await load();
-        api.siteRebuild('rooms');
+        const rbBack = await api.siteRebuild('rooms');
+        setChange({ at: back, ask: rbBack.ok && rbBack.dispatched ? 'dispatched' : rbBack.ok ? 'busy' : 'not_requested' });
       });
+      const at = Date.now();
       await load();
       const rb = await api.siteRebuild('rooms');
-      setNote(rb.ok && rb.dispatched
-        ? 'نموذج الحجز يتبع التغيير فورًا؛ صفحة الغرفة (الظهور في البحث وزر الحجز) بعد إعادة بناء الموقع التي طُلبت الآن (دقائق).'
-        : rb.ok ? 'نموذج الحجز يتبع التغيير فورًا؛ إعادة بناء الموقع قيد التنفيذ من طلب سابق.' : 'نموذج الحجز يتبع التغيير فورًا؛ صفحة الغرفة تتغير عند إعادة البناء التالية للموقع.');
+      setChange({ at, ask: rb.ok && rb.dispatched ? 'dispatched' : rb.ok ? 'busy' : 'not_requested' });
     } catch (e) {
       toast((e as Error).message, 'error');
     } finally {
@@ -61,7 +71,8 @@ export default function Rooms() {
       <div>
         <h1 className="text-2xl font-bold">الغرف</h1>
         <p className="text-sm text-ink-muted mt-1">«متاحة للحجز على الموقع» تعرض نوع الغرفة في نموذج الحجز وتسمح بحجزه. الغرفة غير المتاحة تبقى صفحتها على الموقع بعلامة «غير متاح حاليًا» بلا زر حجز، وتظهر هنا وفي الأسعار والمخزون لتجهيزها قبل تشغيلها.{editable ? '' : ' صلاحيتك هنا للعرض فقط.'}</p>
-        {note && <p className="text-xs text-ink-muted mt-2" role="status">{note}</p>}
+        <p className="mt-2" data-rooms-deploy><SiteDeployStatus /></p>
+        {note && <p className={`text-sm mt-2 font-semibold ${note.tone === 'error' ? 'text-error' : note.tone === 'ok' ? 'text-ok' : 'text-ink-muted'}`} role="status" data-rooms-note={note.tone}>{note.text}</p>}
       </div>
       <ErrorBox error={error} />
       {types === null ? (

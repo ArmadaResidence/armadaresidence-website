@@ -620,6 +620,40 @@ try {
     const site2 = await fetch(`${env.SUPABASE_URL}/rest/v1/rpc/site_room_types`, { method: 'POST', headers: H, body: '{}' }).then((r) => r.json());
     check(site2.find((x) => x.branch === 'airport-road' && x.slug === 'accessible-room')?.bookable === false, 'rooms: undo turned it off again');
 
+    // 6 Nov 2026: «حالة تحديث الموقع» and the line after a change follow the site's deploy (site-rebuild and
+    // site_deploy_status stubbed: dispatched → «جارٍ» and «سيظهر … بعد تحديث الموقع»; a newer run failed → «محفوظ … غير
+    // ظاهر» + the update bar in alert; a newer run succeeded → «ظاهر الآن»)
+    {
+      const iso = (ms) => new Date(ms).toISOString();
+      const CORS = { 'access-control-allow-origin': new URL(BASE).origin, 'access-control-allow-headers': 'authorization, apikey, content-type, x-client-info', 'access-control-allow-methods': 'POST, OPTIONS' };
+      const refocus = () => page.evaluate(() => window.dispatchEvent(new Event('focus')));
+      const old = Date.now() - 3600_000;
+      let deploy = { status: 'succeeded', started_at: iso(old), finished_at: iso(old + 60_000), run_url: 'https://github.com/ArmadaResidence/armadaresidence-website/actions/runs/1', commit: 'abc1234', alerted: false, last_success_at: iso(old + 60_000) };
+      await page.route('**/rest/v1/rpc/site_deploy_status', (r) => r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(deploy) }));
+      await page.route('**/functions/v1/site-rebuild', (r) => (r.request().method() === 'OPTIONS' ? r.fulfill({ status: 204, headers: CORS })
+        : r.fulfill({ status: 200, headers: CORS, contentType: 'application/json', body: '{"ok":true,"dispatched":true}' })));
+      await page.goto(`${BASE}/rooms`);
+      await page.locator('[data-rooms-deploy] [data-site-deploy="succeeded"]').waitFor({ timeout: 15000 });
+      check((await page.locator('[data-rooms-deploy]').textContent()).includes('آخر تحديث للموقع: نجح'), 'rooms: the last site deploy «آخر تحديث للموقع: نجح — …»');
+      await acc.click();
+      await page.locator('[data-rooms-note="info"]').waitFor({ timeout: 15000 });
+      check((await page.locator('[data-rooms-note]').textContent()).includes('سيظهر في صفحات الغرف بعد تحديث الموقع'), 'rooms: after a change «تم حفظ التعديل … بعد تحديث الموقع»');
+      check(await page.locator('[data-rooms-deploy] [data-site-deploy="running"]').count() === 1 && await page.locator('[data-update-bar] [data-site-deploy="running"]').count() === 1, 'rooms + update bar: «جارٍ تحديث الموقع» at once');
+      deploy = { ...deploy, status: 'failed', started_at: iso(Date.now()), finished_at: iso(Date.now() + 1000), failed_step: 'build › QA gate', alerted: true };
+      await refocus();
+      await page.locator('[data-rooms-note="error"]').waitFor({ timeout: 30000 });
+      check((await page.locator('[data-rooms-note]').textContent()).includes('غير ظاهر على صفحات الغرف لأن تحديث الموقع فشل'), 'rooms: a failed update → «التعديل محفوظ … غير ظاهر»');
+      check(await page.locator('.update-bar-alert [data-site-deploy="failed"] [data-action="deploy-run"]').count() === 1, 'update bar: «آخر تحديث للموقع: فشل» with the run link');
+      deploy = { ...deploy, status: 'succeeded', started_at: iso(Date.now() + 2000), finished_at: iso(Date.now() + 3000), failed_step: null, alerted: false };
+      await refocus();
+      await page.locator('[data-rooms-note="ok"]').waitFor({ timeout: 30000 });
+      check((await page.locator('[data-rooms-note]').textContent()).includes('ظاهر الآن في صفحات الغرف'), 'rooms: the next successful update → «التعديل ظاهر الآن»');
+      await page.click('[data-toast="undo"] [data-action="undo"]');
+      await page.waitForFunction(() => !document.querySelector('[data-bookable="airport-road/accessible-room"]')?.checked, null, { timeout: 15000 });
+      await page.unroute('**/rest/v1/rpc/site_deploy_status');
+      await page.unroute('**/functions/v1/site-rebuild');
+    }
+
     // users: list, matrix, last-admin guard
     await page.goto(`${BASE}/users`);
     const recRow = page.locator(`[data-user="${USERS.rec_air}"]`);

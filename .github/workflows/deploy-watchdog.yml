@@ -4,7 +4,9 @@ name: Deploy watchdog
 # dashboard's publish jobs still waiting for their build; when the site is behind and no deploy is queued or running, it
 # dispatches deploy.yml. Covers a push GitHub never turned into a run, a publish whose dispatch failed. Every decision is
 # in the run's log and summary (scripts/deploy-watchdog.mjs). workflow_dispatch: `pretend_live_commit` makes a
-# deliberate mismatch for a test; `dry_run` decides and logs without dispatching.
+# deliberate mismatch for a test; `dry_run` decides and logs without dispatching. When it stops because the last deploy
+# failed — or the live commit is current but the newest deploy (a dashboard rebuild) failed — it reports the stop to the
+# Edge Function site-deploy-report, which emails the admins once per failed run (6 Nov 2026).
 on:
   schedule:
     - cron: '*/30 * * * *'
@@ -38,6 +40,7 @@ jobs:
           sparse-checkout: |
             content/seo.json
             scripts/deploy-watchdog.mjs
+            scripts/site-deploy-report.mjs
           sparse-checkout-cone-mode: false
       - name: Compare the live site with main and the dashboard's publishes
         run: node scripts/deploy-watchdog.mjs

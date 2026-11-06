@@ -862,6 +862,12 @@ body {
   background: var(--card); font-size: 0.875rem;
 }
 .update-bar-note { color: var(--ink-muted); }
+.update-bar-group { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 0.5rem 0.75rem; }
+.update-bar-alert { border-inline-start-color: var(--color-error); }
+/* «حالة تحديث الموقع» (6 Nov 2026): «الغرف» and the update bar */
+.site-deploy { display: inline-flex; flex-wrap: wrap; align-items: baseline; gap: 0.25rem 0.75rem; font-size: 0.875rem; }
+.site-deploy-detail { color: var(--ink-muted); }
+.site-deploy-link { text-decoration: underline; text-underline-offset: 2px; }
 .draft-bar {
   display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.5rem 0.75rem; margin-bottom: 0.75rem;
   padding: 0.5rem 0.75rem; border: 1px solid var(--line); border-inline-start: 3px solid var(--accent); border-radius: 0.5rem;

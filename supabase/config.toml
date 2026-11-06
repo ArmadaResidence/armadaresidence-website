@@ -36,6 +36,11 @@ verify_jwt = true
 [functions.site-rebuild]
 verify_jwt = true
 
+# site-deploy-report (6 Nov 2026): the deploy workflow and the deploy watchdog report each run (server to server, no
+# browser); the caller proves the service role by its key, which the function forwards to a service-role-only RPC
+[functions.site-deploy-report]
+verify_jwt = false
+
 # blog-due (3 Nov 2026): called by pg_cron (public.blog_due_tick) with the Vault token x-armada-cron, never by a browser
 [functions.blog-due]
 verify_jwt = false

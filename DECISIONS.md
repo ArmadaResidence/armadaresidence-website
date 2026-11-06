@@ -1522,3 +1522,52 @@ One unattended session from Ahmed's brief of 6 Nov 2026.
   booking form disabled and dimmed, as asked) and the Arabic home on a phone (1.7–5.3 %: the hero slider on another
   slide). One Unsplash image on /coffee-shop already 404s on the live site. Old paths /about, /rooms, /contact,
   /our-rooms/, /armada-residence-airport-rood/ and /branches render an empty page there and were not archived.
+
+## 2026-11-06 — «متاحة للحجز على الموقع» and a failed deploy that is never silent (Ahmed, 6 Nov 2026)
+
+- **Report:** the toggle «لا بيقفل ولا بيفتح» — opening Shafa Road's accessible room left it closed on the site, closing
+  Shafa Road's king room left it open.
+- **Root cause — the save worked, the site builds did not.** The audit log (read-only, production) holds every press, all
+  saved by «أحمد محمد حلمي», Riyadh time 6 Nov: 00:28:27 Shafa accessible on; 01:44:40 / 01:47:38 Airport accessible on →
+  off; 01:54:51 Shafa king off; 01:54:53 / 01:56:59 Airport twin off → on; 01:57:02 Shafa king on again. Each press
+  dispatched a site build (00:28:30, 01:44:43, 01:47:41, 01:54:55, 01:57:03) and every one failed qa.py (the sitemap vs the
+  dashboard availability, fixed in 3646219). The booking form follows `site_room_types` at runtime, so it changed at once;
+  the room pages (CTA / «غير متاح حاليًا», noindex, sitemap) are baked at build time and kept the 5 Nov build until the
+  first green build (04:31 Riyadh). No defect in the toggle's save.
+- **Now (checked 6 Nov 2026):** production = the live build `50428ea` (`/_availability.json` source supabase) for all 12
+  room types: everything bookable except Airport Road's accessible room. Live pages AR + EN: 11 with the booking button,
+  Airport accessible without it, «غير متاح حاليًا» and noindex; the live booking form's runtime list holds the same 11.
+  Shafa Road's king room is open on production (Ahmed reopened it at 01:57:02); nothing was changed.
+- **A latent gap fixed:** `site-rebuild` debounced every reason for 2 minutes, so a second availability change inside the
+  window could miss a build that had already read the availability (about a minute in). The reasons `rooms` and
+  `settings` now always dispatch (`site-rebuild/debounce.ts`); the Pages concurrency group cancels the older run.
+- **A failed deploy is never silent.** `deploy.yml` reports each run — `running` from the build's first step, then
+  `succeeded` / `failed` / `cancelled` from a new `status` job (`if: always()`, dry runs never) with the failed step read
+  from the run's jobs — to the Edge Function `site-deploy-report` (`verify_jwt = false`; the caller proves the service
+  role by forwarding its key to `public.site_deploy_report`, executable by service_role only). Migration
+  `20261106200000_site_deploys`: `public.site_deploys` (RLS, no client access), `site_deploy_report`,
+  `site_deploy_alert_claim` / `_release` (one alert per failed run, atomic; a refused send releases it), and
+  `site_deploy_status()` for any active staff member. A failed run emails the active admins (their sign-in addresses, read
+  at send time — today only Ahmed) through Resend: the commit and its title, the failed step, the event, the run's Riyadh
+  time, the last successful deploy, the run link. The deploy watchdog, when it stops because the last deploy of HEAD
+  failed — or (new) when the live commit is current but the newest recorded deploy failed, i.e. a dashboard rebuild failed
+  as on 5 Nov — reports `watchdog` to the same function: the email goes out only if that run was not already alerted.
+- **The dashboard:** «حالة تحديث الموقع» (`components/SiteDeployStatus.tsx`, texts `lib/siteDeployText.ts`, one shared
+  poll `lib/siteDeploy.ts`: 15 s while a deploy runs or a requested one has not started, otherwise on focus and every
+  5 min) in «الغرف» always, and in the update bar while a deploy runs, after a failure (with the run link, the bar's edge
+  in the error colour) and for 30 minutes after a success. After a change in «الغرف» the line follows the deploy: saved
+  and waiting → on the room pages → or saved but NOT on the site because the update failed.
+- **Checks:** `scripts/deploy-alert-check.mjs` (offline, in the suite), `supabase/tests/site-deploys.sql` (rolled back),
+  `admin/tests/dashboard-check.mjs` (the «الغرف» status and lines with the deploy status and site-rebuild stubbed;
+  preview branch — not run this session).
+- **«كواية» on the live site:** the 12 Arabic room pages each carry «كواية» (×3) and no «مكواة». The 12 «save» revisions
+  of 6 Nov in «المحتوى والظهور» need no publishing: every room-description field is `pending = false` (draft = the file
+  = what the site shows) and was never published; «نشر» is offered only for pending fields, and publishing one later
+  would put the same text over rooms.json. qa.py now fails on «مكواة».
+- **Israel:** besides `countries.ts → EXCLUDED` and the missing flag, qa.py fails on «إسرائيل» / "Israel" anywhere in the
+  output, on `IL` in any page's country data and on an Israel flag in `dist/flags/`.
+- **Files:** content/README.md (status table and Pending: photos from «الصور», the draft texts approved),
+  DASHBOARD-SPEC.md marked as the 9 Oct spec kept for reference, CLAUDE.md §13 no longer lists the privacy text (rewritten
+  3–4 Nov 2026).
+- **For the launch session (not changed):** CLAUDE.md §8 step 5 and `docs/gtm-performance.md` still say the container
+  lacks a trigger and a valued conversion for `booking_confirmed`, while the test of 30 Oct 2026 confirmed the conversion.
