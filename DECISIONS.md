@@ -1494,3 +1494,31 @@ One unattended session from Ahmed's brief of 6 Nov 2026.
   indexable, but `astro.config.mjs` built the sitemap's noindex list from rooms.json alone. The config now reads the same
   `ROOM_AVAILABILITY` that `src/lib/content.ts` reads (rooms.json only without it). The live site kept the 5 Nov build
   until this fix deployed.
+- **Deployed and measured (6 Nov 2026).** Commits a3efac0 + 3646219; migrations applied to production first (dry run,
+  then push); the dashboard deployed (build, deploy, verify green). The first CI build measured the live video's scrim on
+  its poster + 20 frames: 0.91 in every layout (published on the page as `--scrim-*`); `hero-scrim-check --poster` on the
+  live hero (the check now also carries the published scrim and works over a build without photos): 52 / 52. Then the 17
+  Discover Taif records were published (51 objects uploaded with `storage cp`, one insert batch + one publish batch + one
+  site job, actor «أحمد محمد حلمي (via Claude)»); the next build kept all 17 built-in renditions, and the live page serves
+  the same 18 `/images/taif/` files with the two corrected descriptions. Lighthouse mobile on the live home page (5 runs
+  each): 83 then 65 — the spread is the GTM ad pixels the live container still loads at page load (runs without them: 94;
+  with them TBT ≈ 800 ms); 5 Nov live, 3 runs: 93. Our own initial first-party weight: 314 KB. The GTM fragment (5 s) is
+  what removes that cost once imported. Live suite: 31 / 32 at first — `booking-nav-check` judged the rooms by rooms.json
+  (the same Shafa accessible room); it now reads the build's `/_availability.json` (602 checks pass live).
+
+## 2026-11-06 — The old website archived before the domain moves (Ahmed, 6 Nov 2026)
+
+- armadaresidence.com (Hostinger Horizons, a JavaScript app) captured read-only: no form submitted, no login, every
+  non-GET and every analytics / ad request blocked during the capture, no change on the old site or at Hostinger.
+- Public repo `ArmadaResidence/armada-old-site`, GitHub Pages at https://armadaresidence.github.io/armada-old-site/ — 40
+  pages (20 Arabic + 20 English: home, gallery, offers + the Umrah offer, restaurant, coffee shop, blog + its one article,
+  the 2 branch pages, 10 room pages), each rendered in Chromium and saved with its images, styles and fonts as local
+  files, scripts and inline handlers removed, forms without action and every control disabled, `noindex, nofollow`,
+  the top bar «نسخة أرشيفية من الموقع القديم — للمقارنة فقط»; `archive-index.html` lists every page with its original
+  URL; `robots.txt` disallows everything (served under /armada-old-site/, so the noindex meta is the real guard). The old
+  site switches language in place (no URL), so the English copies were captured after its «English» button, under /en/.
+  Full-page screenshots of every live page at 1440 and 375 (JPEG q82; PNGs were 112 MB) in `screenshots/`.
+- Compared with the live old pages (80 shots, the top bar hidden): over 1 % only the 20 room pages (1.6–2.1 %: their
+  booking form disabled and dimmed, as asked) and the Arabic home on a phone (1.7–5.3 %: the hero slider on another
+  slide). One Unsplash image on /coffee-shop already 404s on the live site. Old paths /about, /rooms, /contact,
+  /our-rooms/, /armada-residence-airport-rood/ and /branches render an empty page there and were not archived.

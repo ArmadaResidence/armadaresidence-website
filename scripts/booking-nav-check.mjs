@@ -29,6 +29,11 @@ const PRE = new URL(BASE).pathname.replace(/\/$/, '');
 const roomsJson = JSON.parse(readFileSync('content/rooms.json', 'utf8'));
 const branchesJson = JSON.parse(readFileSync('content/branches.json', 'utf8'));
 const ui = JSON.parse(readFileSync('content/ui.json', 'utf8'));
+// each room's availability as the build resolved it from the dashboard (dist/_availability.json, written by build.py —
+// 6 Nov 2026: a room switched on in «الغرف» is bookable on the site); rooms.json when the build has none
+const resolved = await fetch(`${BASE}/_availability.json?v=${Date.now()}`).then((r) => (r.ok ? r.json() : null)).catch(() => null);
+const availabilityOf = (r) => resolved?.rooms?.[`${r.branch}/${r.slug}`] ?? r.availability;
+for (const r of roomsJson.rooms) r.availability = availabilityOf(r);
 const ROOMS = roomsJson.rooms.filter((r) => r.show_on_site && r.availability !== 'sold_out');
 const SOLD_OUT = roomsJson.rooms.filter((r) => r.show_on_site && r.availability === 'sold_out');
 // pages without a branch / room: their header and footer booking links stay empty

@@ -25,7 +25,10 @@ if (posterAt) {
     const html = await (await fetch(`${url}?v=${Date.now()}`)).text();
     const pic = html.match(/<section[^>]*class="hero[\s\S]*?(<picture>[\s\S]*?<\/picture>)/)?.[1];
     if (!pic) throw new Error(`no hero <picture> on ${url}`);
-    published[path] = pic.replace(/(src|srcset)="([^"]*)"/g, (_, k, v) => `${k}="${v.split(',').map((part) => part.trim().replace(/^\//, `${url.origin}/`)).join(', ')}"`);
+    // the published page's measured scrim (6 Nov 2026), put on the built page's scrim layer with the picture
+    const scrim = html.match(/class="absolute inset-0 hero-scrim" style="([^"]*)"/)?.[1] ?? null;
+    published[path] = { scrim, pic: null };
+    published[path].pic = pic.replace(/(src|srcset)="([^"]*)"/g, (_, k, v) => `${k}="${v.split(',').map((part) => part.trim().replace(/^\//, `${url.origin}/`)).join(', ')}"`);
   }
 }
 if (!dist) throw new Error('usage: node scripts/hero-scrim-check.mjs <dist dir> [label]');
@@ -48,7 +51,25 @@ try {
       const page = await ctx.newPage();
       await page.goto(server.url + path, { waitUntil: 'load' });
       await page.evaluate((t) => (document.documentElement.dataset.theme = t), theme);
-      if (posterAt) await page.evaluate((pic) => { const old = document.querySelector('.hero picture'); const t = document.createElement('template'); t.innerHTML = pic; old.replaceWith(t.content.firstElementChild); }, published[path]);
+      // the published picture and its measured scrim in place of the built ones — also over a build without photos
+      // (the placeholder poster, its tint and pattern removed; the eyebrow as the page sets it over a photo)
+      if (posterAt) await page.evaluate(({ pic, scrim }) => {
+        const host = document.querySelector('.hero > .absolute');
+        const old = host.querySelector('picture') || host.querySelector('.hero-poster');
+        const t = document.createElement('template');
+        t.innerHTML = pic;
+        old.replaceWith(t.content.firstElementChild);
+        host.querySelectorAll('.hero-pattern, [class~="bg-midnight/60"]').forEach((e) => e.remove());
+        let layer = host.querySelector('.hero-scrim');
+        if (!layer) {
+          layer = document.createElement('div');
+          layer.className = 'absolute inset-0 hero-scrim';
+          host.insertBefore(layer, host.querySelector('.glow'));
+        }
+        if (scrim) layer.setAttribute('style', scrim);
+        const eyebrow = document.querySelector('.hero > .relative > p');
+        if (eyebrow) eyebrow.classList.replace('text-bronze', 'text-bronze-bright');
+      }, published[path]);
       await page.waitForFunction(() => {
         const img = document.querySelector('.hero .hero-photo');
         return img && img.complete && img.naturalWidth > 0;
