@@ -111,5 +111,5 @@ export async function scrimNeed(url: string, place: ScrimPlace, focal: { x: numb
 /** the warning shown on the photo when it needs more than the aim (Arabic, Western digits) */
 export function brightWarning(alpha: number, place: ScrimPlace): string {
   const where = place === 'hero' ? 'خلف نص الواجهة' : place === 'card' ? 'خلف نص بطاقة «فرعانا»' : 'خلف نص البطاقة على الجوال';
-  return `الصورة فاتحة ${where}: يحتاج النص طبقة كحلية بقوة ${Math.round(alpha * 100)}% تقريبًا ليبقى واضحًا (المستهدف ${Math.round(SCRIM_AIM * 100)}% أو أقل). جرّب صورة أغمق في جهة النص، أو غيّر نقطة التركيز ليقع جزء أغمق خلف النص.`;
+  return `الصورة فاتحة ${where}: يحتاج النص طبقة كحلية بقوة ${Math.round(alpha * 100)}% تقريبًا ليبقى واضحًا (المستهدف ${Math.round(SCRIM_AIM * 100)}% أو أقل). جرّب صورة أغمق في جهة النص (اليمين في العربية، واليسار في الإنجليزية)، أو غيّر نقطة التركيز ليقع جزء أغمق خلف النص.`;
 }

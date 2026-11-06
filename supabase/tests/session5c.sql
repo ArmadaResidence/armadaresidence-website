@@ -85,8 +85,9 @@ insert into auth.users (id, email, aud, role) select id, k || '@sql-s5c.qa.inval
 insert into public.staff (user_id, full_name, role, branch, active) values (pg_temp._id('admin'), 'QA admin', 'admin', null, true);
 
 -- ══ H1 ══
-select pg_temp._check('H1 the shorter text is 2026-11-04, the newest version',
-  (select version from public.consent_texts order by created_at desc, version desc limit 1) = '2026-11-04'
+-- (since 6 Nov 2026 a newer version, 2026-11-06, follows it — supabase/tests/texts-session.sql)
+select pg_temp._check('H1 the shorter text 2026-11-04 is kept with its wording',
+  exists (select 1 from public.consent_texts where version = '2026-11-04')
   and (select text_ar = 'أوافق على تلقي عروض أرمادا ريزيدنس، وعلى استخدام بياناتي لعرض إعلاناتها لي.' and text_en = 'I agree to receive Armada Residence offers and to have my details used to show me its ads.' from public.consent_texts where version = '2026-11-04'));
 select pg_temp._check('H1 the first wording stays, and no stored consent changed its version', exists (select 1 from public.consent_texts where version = '2026-11-03')
   and not exists (select 1 from public.guest_consents where text_version = '2026-11-04' and at < (select created_at from public.consent_texts where version = '2026-11-04')));
@@ -129,8 +130,9 @@ select pg_temp._check('H4 a withdrawal recorded by reception ends the membership
 
 -- ══ H5 ══
 select pg_temp._check('H5 the curated privacy text follows the file: the new sentences, draft = seed, nothing published',
-  (select seed_ar like '%ولا نستخدمها للتسويق إلا بموافقتك%' and seed_ar like '%«نادي أرمادا ريزيدنس والتسويق»%' and seed_ar not like '%ونستخدمها فقط%'
-          and seed_en like '%we use them for marketing only with your consent%' and draft_ar = seed_ar and draft_en = seed_en and live_ar is null
+  -- (published by the copy fixes of 4 Nov 2026; the section renamed «إياب …» on 6 Nov 2026)
+  (select seed_ar like '%ولا نستخدمها للتسويق إلا بموافقتك%' and seed_ar like '%«إياب — عضوية أرمادا ريزيدنس، والتسويق»%' and seed_ar not like '%ونستخدمها فقط%'
+          and seed_en like '%we use them for marketing only with your consent%' and draft_ar = seed_ar and draft_en = seed_en
      from public.content_fields where key = 'policy.privacy.body'));
 
 select pg_temp._root();

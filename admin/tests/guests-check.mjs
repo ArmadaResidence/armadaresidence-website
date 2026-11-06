@@ -5,7 +5,7 @@
 //     club_signups rows) with its source and original consent time;
 //   - «العملاء»: search (name, phone), filters (consent, member, source, branch, stays ≥ N, spend), the club totals by
 //     source; the guest drawer (stays, spend, consent history); a reception-recorded consent from the booking details
-//     (badges «عضو نادي أرمادا ريزيدنس», «ضيف عائد (N)») and its withdrawal; notes / tags; a merge of a duplicate;
+//     (badges «عضو إياب», «ضيف عائد (N)») and its withdrawal; notes / tags; a merge of a duplicate;
 //   - «تصدير للإعلانات»: the four platform files — their headers, SHA-256 of the normalised values (Meta / Snapchat
 //     without «+», Google / TikTok with it), only consented rows, the audit row; the plain contacts export only with
 //     «تصدير العملاء» (a confirmation first, audited);
@@ -219,7 +219,7 @@ await page.keyboard.press('Escape');
   await rest('reservations', { method: 'POST', body: JSON.stringify({ ref: `AR-29991231-G${RUN.slice(-3)}`, status: 'confirmed', source: 'website', branch: 'airport-road', room_type_id: rt, check_in: day(-30), check_out: day(-28), adults: 2, children: 0, extra_beds: 0, breakfast: 'without', guest_name: 'ضيف الموافقة', phone: phoneBook, locale: 'ar', is_test: true, total: 370, confirmed_at: new Date().toISOString() }) });
   await page.goto(`${BASE}/bookings?ref=${ref}`);
   await page.waitForSelector('[data-booking-guest]', { timeout: 20000 });
-  check((await page.locator('[data-booking-guest] [data-badge="member"]').count()) === 1, 'booking details: «عضو نادي أرمادا ريزيدنس»');
+  check((await page.locator('[data-booking-guest] [data-badge="member"]').count()) === 1, 'booking details: «عضو إياب»');
   check((await page.locator('[data-booking-guest] [data-badge="returning"]').textContent())?.includes('(1)'), 'booking details: «ضيف عائد (1)»');
   await shot(page, 'booking-badges');
   void prof;

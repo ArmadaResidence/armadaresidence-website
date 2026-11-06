@@ -265,8 +265,12 @@ select pg_temp._fails('P8 anon cannot check the cron token', $$select public.par
 
 -- ══ C — the texts ══
 select pg_temp._root();
-select pg_temp._check('C0 the curated texts are seeded, unpublished (the site keeps the files)', (select count(*) from public.content_fields) >= 60
-  and not exists (select 1 from public.content_fields where live_ar is not null or live_en is not null)
+-- published since then (production as of 6 Nov 2026): the five texts of the 4 Nov copy fixes (migration
+-- 20261104400000_copy_singular — the privacy text again by 20261107200000_texts_session), each live = its draft = its seed
+-- (the files carry the same wording); every other field is unpublished (the site keeps the files)
+select pg_temp._check('C0 the curated texts are seeded; only the five copy-fix texts are published, live = draft = seed', (select count(*) from public.content_fields) >= 60
+  and (select array_agg(key order by key) from public.content_fields where live_ar is not null or live_en is not null) = (select array_agg(k order by k) from unnest(array['branch.airport-road.story.entrance.body', 'branch.airport-road.story.lobby.body', 'branch.shafa-road.description', 'branch.shafa-road.story.lobby.body', 'policy.privacy.body']) k)
+  and (select bool_and(live_ar = draft_ar and live_en = draft_en and draft_ar = seed_ar and draft_en = seed_en) from public.content_fields where key = any(array['branch.airport-road.story.entrance.body', 'branch.airport-road.story.lobby.body', 'branch.shafa-road.description', 'branch.shafa-road.story.lobby.body', 'policy.privacy.body']))
   and not exists (select 1 from public.content_fields where key like 'policy.jobs.%'));
 select pg_temp._check('C0 every seeded text passes the publish check', (select bool_and(jsonb_array_length(internal.content_check(f) -> 'missing') = 0) from public.content_fields f));
 select pg_temp._as('nobody');
@@ -299,8 +303,13 @@ select pg_temp._check('C4 restore puts a revision back as the draft (a restore r
   and exists (select 1 from public.content_revisions where field_key = 'branch.airport-road.description' and kind = 'restore' and restored_from is not null));
 select pg_temp._service();
 select pg_temp._save('cm', public.content_site_manifest());
-select pg_temp._check('C5 the manifest carries only published texts, with their paths and anchors', jsonb_array_length(pg_temp._j('cm') -> 'texts') = 1
-  and pg_temp._j('cm') -> 'texts' -> 0 ->> 'key' = 'home.hero.title' and pg_temp._j('cm') -> 'texts' -> 0 -> 'path_ar' = '["hero", "title_ar"]'::jsonb);
+select pg_temp._check('C5 the manifest carries only published texts (the five copy-fix texts + the one published here), with their paths and anchors',
+  (select array_agg(e ->> 'key' order by e ->> 'key') from jsonb_array_elements(pg_temp._j('cm') -> 'texts') e)
+    = (select array_agg(k order by k) from unnest(array['branch.airport-road.story.entrance.body', 'branch.airport-road.story.lobby.body', 'branch.shafa-road.description', 'branch.shafa-road.story.lobby.body', 'policy.privacy.body'] || array['home.hero.title']) k)
+  and exists (select 1 from jsonb_array_elements(pg_temp._j('cm') -> 'texts') e
+               where e ->> 'key' = 'home.hero.title' and e -> 'path_ar' = '["hero", "title_ar"]'::jsonb and e ->> 'ar' = 'عنوان اختبار للواجهة')
+  and exists (select 1 from jsonb_array_elements(pg_temp._j('cm') -> 'texts') e
+               where e ->> 'key' = 'policy.privacy.body' and e ->> 'ar' = (select live_ar from public.content_fields where key = 'policy.privacy.body')));
 select pg_temp._as('admin');
 select pg_temp._fails('C6 a content batch is never undoable', format($$select public.revert_batch(%L)$$, pg_temp._j('cp2') ->> 'batch_id'), '42501');
 

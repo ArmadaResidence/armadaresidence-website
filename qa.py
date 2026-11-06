@@ -27,6 +27,7 @@ from __future__ import annotations
 import argparse
 import json
 import re
+import subprocess
 import sys
 from collections import defaultdict
 from html.parser import HTMLParser
@@ -40,7 +41,12 @@ CONTENT = ROOT / "content"
 # «مكواة» → «كواية» in guest-facing Arabic (Ahmed, 6 Nov 2026); Israel in no country list (Ahmed, 6 Nov 2026 — its
 # Arabic and English names; the code itself is checked in the country data below)
 FORBIDDEN = ["شقق مخدومة", "serviced apartment", "Serviced apartment", "Serviced Apartment", "ARMADA CAFÉ",
-             "booking.fullName", "Unsplash", "unsplash", "+96653 662", "مكواة", "إسرائيل", "Israel"]
+             "booking.fullName", "Unsplash", "unsplash", "+96653 662", "مكواة", "إسرائيل", "Israel",
+             # «إياب» (Ahmed, 6 Nov 2026): the club's old names, and the name without its hamza
+             "نادي أرمادا", "Armada Residence Club", "Armada Club", "اياب",
+             # the unified cancellation policy (Ahmed, 6 Nov 2026): the old deadline and the old same-day wording
+             "24 ساعة قبل الوصول", "24 ساعة قبل موعد الوصول", "24 hours before arrival", "نفس يوم الوصول",
+             "Same-day cancellation", "same-day cancellation"]
 TODO_MARKERS = ["[TODO", "TODO(", "[MISSING]", "lorem ipsum", "Lorem ipsum", "[يُؤكَّد]"]
 GENERIC_ALT = {"", "image", "img", "photo", "picture", "logo", "صورة", "صورة جديدة", "صوره"}
 ALLOWED_HOSTS = {"www.googletagmanager.com"}
@@ -138,7 +144,8 @@ class Page(HTMLParser):
 
     @property
     def text(self) -> str:
-        return " ".join(self.text_parts)
+        # a no-break space (numbers and their units, scripts/typeset.mjs) reads as a space for every text check
+        return " ".join(self.text_parts).replace(" ", " ")
 
 
 class Report:
@@ -305,7 +312,7 @@ def main() -> int:
                 rep.f("redirects", f"{path} → {target} does not exist")
             continue
         pages[path] = p
-        raw[path] = html
+        raw[path] = html.replace(" ", " ")
 
     def logical(path: str) -> str:
         return path[3:] if path.startswith("/en/") else path
@@ -660,6 +667,8 @@ def main() -> int:
                     "CafeOrCoffeeShop": ["name", "url", "address", "image", "containedInPlace"],
                     # the gallery page (2 Nov 2026)
                     "CollectionPage": ["name", "url", "image", "inLanguage"],
+                    # «من نحن» (6 Nov 2026): the page whose subject is the Organization (legalName)
+                    "AboutPage": ["name", "url", "inLanguage", "mainEntity"],
                 }.get(t_)
                 if req is None:
                     rep.f("json-ld", f"{path}: unexpected @type {t_}")
@@ -934,6 +943,8 @@ def main() -> int:
     check_media(rep)
     check_gallery(rep)
     check_offers(rep)
+    check_typeset(rep)
+    check_paragraphs(rep, raw)
 
     # ---- report
     n_fail = sum(len(v) for v in rep.fail.values())
@@ -1029,6 +1040,34 @@ def parse_frontmatter(text: str) -> tuple[dict, str] | None:
             data[k.strip()] = v.strip("'")
     return data, m.group(2)
 
+
+
+def check_typeset(rep: "Report") -> None:
+    """Every number and its unit joined by a no-break space in the output (6 Nov 2026): the one implementation,
+    scripts/typeset.mjs --check (its sample cases, then every built page)."""
+    r = subprocess.run(["node", str(ROOT / "scripts/typeset.mjs"), "--check", str(DIST)], capture_output=True, text=True, encoding="utf-8")
+    if r.returncode != 0:
+        rep.f("typeset", (r.stderr or r.stdout).strip()[:3000])
+
+
+def check_paragraphs(rep: "Report", raw: dict) -> None:
+    """A multi-paragraph text renders as paragraphs (6 Nov 2026 — «عن أرمادا ريزيدنس» rendered as one): the home page's
+    «عن أرمادا ريزيدنس» and the «من نحن» page each show exactly as many <p> as the text (as published) has paragraphs."""
+    texts = with_published_texts("site-texts.json", json.loads((CONTENT / "site-texts.json").read_text(encoding="utf-8")))
+    cases = [("/", texts["about"]["body_ar"]), ("/en/", texts["about"]["body_en"]),
+             ("/about/", texts["about_page"]["body_ar"]), ("/en/about/", texts["about_page"]["body_en"])]
+    for path, body in cases:
+        want = len([x for x in re.split(r"\n[^\S\n]*\n", re.sub(r"[^\S\n]*\[[^\]]*\]", "", body)) if x.strip()])
+        html = raw.get(path)
+        if html is None:
+            rep.f("paragraphs", f"{path}: page missing")
+            continue
+        m = re.search(r"data-about-body[^>]*>(.*?)</div>", html, re.S)
+        got = len(re.findall(r"<p[\s>]", m.group(1))) if m else 0
+        if got != want:
+            rep.f("paragraphs", f"{path}: «عن أرمادا ريزيدنس» / «من نحن» shows {got} paragraph(s), the text has {want}")
+        if m and re.search(r"\{[a-z_]+\}", m.group(1)):
+            rep.f("paragraphs", f"{path}: an unfilled placeholder in the text")
 
 
 def with_published_texts(name: str, doc: dict) -> dict:

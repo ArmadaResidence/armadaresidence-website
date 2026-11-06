@@ -638,7 +638,7 @@ try {
       await acc.click();
       await page.locator('[data-rooms-note="info"]').waitFor({ timeout: 15000 });
       check((await page.locator('[data-rooms-note]').textContent()).includes('تم حفظ التعديل وظهر في نموذج الحجز. سيظهر في صفحات الغرف خلال دقائق، بعد تحديث الموقع.'), 'rooms: after a change «تم حفظ التعديل وظهر في نموذج الحجز …»');
-      check(await page.locator('[data-rooms-deploy] [data-site-deploy="running"]').count() === 1 && await page.locator('[data-update-bar] [data-site-deploy="running"]').count() === 1, 'rooms + update bar: «جارٍ تحديث الموقع» at once');
+      check(await page.locator('[data-update-bar] [data-site-deploy="running"]').count() === 1 && await page.locator('[data-rooms-deploy]').count() === 0, 'update bar: «جارٍ تحديث الموقع» at once — shown once (the page leaves its own line out while the bar shows it)');
       deploy = { ...deploy, status: 'failed', started_at: iso(Date.now()), finished_at: iso(Date.now() + 1000), failed_step: 'build › QA gate', alerted: true };
       await refocus();
       await page.locator('[data-rooms-note="error"]').waitFor({ timeout: 30000 });

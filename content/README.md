@@ -16,7 +16,7 @@ Every price, time, phone number, address, policy and piece of guest-facing copy 
 | `ui.json` | Interface strings only (nav, labels, buttons, form, success page, email texts). | approved |
 | `faq.json` | The FAQ seed / fallback (approved 2 Nov 2026); the live FAQ comes from the dashboard «الأسئلة الشائعة». | approved; seed / fallback |
 | `careers.json` | The careers page and form options. | approved |
-| `club.json` | «نادي أرمادا ريزيدنس»: page copy, the one marketing consent text and its version, the welcome email. | approved |
+| `club.json` | «إياب — عضوية أرمادا ريزيدنس» (6 Nov 2026; the club of 3 Nov 2026): page copy and slogan, the one marketing consent text and its version, the welcome and member-offer emails. | approved (the texts DECISIONS.md lists as for approval excepted) |
 | `turnstile.json` | Cloudflare Turnstile switch + public site key (on since 5 Nov 2026). | live |
 | `taif-guide.json` | Discover Taif: 17 places (names, category, copy, alt, Google Maps links, photo, `nearest_branch`). Covers can be replaced from «الصور». | `verified: true` per place |
 | `partners.json` | B2B facts: units (168 = 108 + 60), 98 beds Shafa, drive times, coach parking, group meals, hall, sales contact, enquiry types. **No prices.** | `verified: true` |

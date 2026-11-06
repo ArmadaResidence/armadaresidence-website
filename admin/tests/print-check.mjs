@@ -212,7 +212,7 @@ try {
     // a section starts a page: the first line under our header is a section heading (15 pt; the page title is 18 pt)
     const firstLine = pages.map((p) => { const body = p.items.filter((x) => x.s.trim() && x.y < p.size[1] - 70 && x.y > 70); const yTop = Math.max(...body.map((x) => x.y)); return body.filter((x) => Math.abs(x.y - yTop) < 2); });
     const starts = firstLine.map((l, i) => (l.some((x) => x.h >= 13.5 && x.h <= 16.5) ? i + 1 : 0)).filter(Boolean);
-    const named = ['سلوك الحجز', 'المصادر والحملات', 'الإلغاء والرد', 'النادي والشركاء'].map((t) => starts.find((n) => hasLetters(firstLine[n - 1], t)) ?? 0);
+    const named = ['سلوك الحجز', 'المصادر والحملات', 'الإلغاء والرد', 'إياب والشركاء'].map((t) => starts.find((n) => hasLetters(firstLine[n - 1], t)) ?? 0);
     check(firstLine[0].some((x) => x.h > 16.5) && starts.length === 4 && named.every((n, i) => n > 0 && (i === 0 || n > named[i - 1])),
       `${run.name}: the report opens page 1 and each other section starts a page of its own, in order`, `starts ${starts.join(',')} · sections ${named.join(',')}`);
     console.log(`   ${run.name}: ${pages.length} page(s) → ${SHOTS}/${run.name}-p*.png`);

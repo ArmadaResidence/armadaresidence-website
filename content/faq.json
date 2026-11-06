@@ -36,9 +36,9 @@
       "id": "cancellation",
       "category": "booking",
       "q_ar": "ما سياسة الإلغاء؟",
-      "a_ar": "الإلغاء مجاني حتى 24 ساعة قبل موعد الوصول. بعد ذلك، أو في حال عدم الحضور، تُحسب قيمة الليلة الأولى. تنطبق هذه السياسة على الحجز المباشر عبر الموقع والواتساب والاستقبال؛ أما الحجوزات عبر منصات الحجز الأخرى فتخضع لسياسة المنصة.",
+      "a_ar": "الإلغاء مجاني حتى الساعة 2:00 ظهرًا يوم الوصول. إذا ألغيت بعد ذلك أو لم تحضر، تُحتسب عليك قيمة الليلة الأولى. تنطبق هذه السياسة على الحجز المباشر عبر الموقع والواتساب والاستقبال؛ أما الحجوزات عبر منصات الحجز الأخرى فتخضع لسياسة المنصة.",
       "q_en": "What is the cancellation policy?",
-      "a_en": "Cancellation is free until 24 hours before arrival. After that, or if you don't arrive, the first night is charged. This applies to direct bookings through the website, WhatsApp and reception; bookings made on other booking platforms follow that platform's policy."
+      "a_en": "Cancellation is free until 2:00 pm on the day of arrival. If you cancel after that or don't arrive, the first night is charged. This applies to direct bookings through the website, WhatsApp and reception; bookings made on other booking platforms follow that platform's policy."
     },
     {
       "id": "payment",

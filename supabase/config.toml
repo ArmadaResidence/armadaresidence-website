@@ -17,7 +17,7 @@ verify_jwt = false
 [functions.dining-notify]
 verify_jwt = false
 
-# «نادي أرمادا ريزيدنس» (3 Nov 2026): the /club/ sign-up and the unsubscribe page (public, no session), the mail
+# «إياب» (3 Nov 2026): the /club/ sign-up and the unsubscribe page (public, no session), the mail
 # clients' one-click unsubscribe (RFC 8058) and the email links' redirect — none of them carries a session.
 [functions.club]
 verify_jwt = false

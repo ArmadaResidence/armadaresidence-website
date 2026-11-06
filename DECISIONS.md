@@ -1677,3 +1677,102 @@ Ahmed's brief of 6 Nov 2026 (session of 7 Nov). Published photos untouched: no r
   hero phone 1080 × 1350 (min 750 × 938), the text over almost all of it; branch cover 2560 × 1707 (min 2400 long side),
   the card shows a near-square middle with the text over its lower half; branch phone 1080 × 1920 (min 750 × 1334), the
   text over its lower half; every other photo 2560 × 1707, no text over it. The wording waits for Ahmed's approval.
+
+## 2026-11-06 — Texts session: «من نحن», the consent text, «إياب», one cancellation policy, numbers and their units, «الغرف», GTM facts (Ahmed, 6 Nov 2026)
+
+Ahmed's brief of 6 Nov 2026 (unattended). Every guest-facing text below was approved by him verbatim unless listed under
+«For approval». Migration `20261107200000_texts_session` (tested on the preview branch `texts-6nov` — texts-session.sql
+15/15, session5 56/56, session5b 48/48, session5c 10/10, blog 64/64 — branch deleted, then a clean production dry run).
+
+- **«من نحن» /about/ + /en/about/** — the site's text page (h1 + the prose block, light and dark by the tokens), the
+  approved text in `site-texts.json → about_page`. Its figures and opening dates are placeholders filled at build time
+  (`content.ts → withFacts`, through `withFees`): `{shafa_opened}` / `{airport_opened}` from the new `branches.json →
+  opened` / `opened_ar` / `opened_en` (Shafa Road «منتصف عام 2024» / "mid-2024", the month not stated; Airport Road
+  «سبتمبر 2025» / "September 2025"), `{shafa_units}` 60 / `{airport_units}` 108, `{airport_minutes}` 15
+  (`drive_time_airport_min`), `{shafa_room_min}` 35 / `{airport_room_min}` 50 (each branch's smallest room in rooms.json)
+  and `{suite_max}` 75 (the largest suite). The rendered text equals the approved text word for word in both languages
+  (checked in the browser). SEO from `seo.json → pages.about`. JSON-LD: AboutPage whose `mainEntity` is the site's
+  Organization (legalName «شركة أرمادا ريزيدنس لتشغيل الفنادق» / "Armada Residence Company To Operate Hotels" from
+  legal.json; no foundingDate) + BreadcrumbList; hreflang, canonical and the sitemap as every page. Links: the footer, the
+  mobile menu (not the desktop bar) and «المزيد عن أرمادا ريزيدنس» / "More about Armada Residence" under «عن أرمادا
+  ريزيدنس» on the home page. The old Horizons `/about` (redirected home on 4 Nov) is no longer redirected: the path IS the
+  page. «المحتوى والظهور»: a new group «من نحن» (`content_fields.grp` 'about') with `about.title` and `about.body` (the
+  body must keep «شقق فندقية» / "hotel apartments"); `internal.copy_problems` now allows the eight fact placeholders
+  besides the fees, and the dashboard shows them as protected chips (`PlaceholderEditor.tsx`); the FAQ's insert buttons
+  stay the two fees.
+- **The marketing consent, version `2026-11-06`**: «أوافق على تلقّي العروض عبر واتساب والبريد الإلكتروني، وعلى استخدام
+  رقمي وبريدي في إعلانات مخصّصة لي على منصات التواصل وجوجل.» / "I agree to receive offers by WhatsApp and email, and to my
+  number and email being used for personalized ads on social media and Google.", followed by «سياسة الخصوصية» / "Privacy
+  Policy" → /policies/#club — the one `MarketingConsent.astro` (the booking form and drawer, /club/), unticked by default.
+  `club.json → consent` + `public.consent_texts` (a new row; the in-person consent in the dashboard takes the newest);
+  consents already stored keep 2026-11-03 / 2026-11-04, and the functions still accept both from an older page. The
+  platforms (Snapchat, TikTok, Meta, Google) were already named in the marketing section of the privacy policy: nothing
+  added.
+- **«إياب» — the membership (Ahmed, 6 Nov 2026).** «حيّاك» was dropped after a trademark check (registered by others in
+  classes 43 and 35); a search for «إياب» in the Saudi IP Authority's trademark search found no registered mark. Name
+  «إياب» (always with the hamza under the alif), English "Eyab", the fixed descriptor «إياب — عضوية أرمادا ريزيدنس» /
+  "Eyab — Armada Residence membership" (the first mention on every page, email and screen); the slogan «حيّاك دايم» is a
+  deliberate exception to the Modern Standard Arabic rule, for this slogan only (English "Always welcome", for approval),
+  shown under the /club/ title and opening the welcome email. Replaced everywhere guests see the name: /club/ (title,
+  slogan, intro, button, errors, success, SEO, breadcrumb), the home band, the footer, the booking success link, the
+  unsubscribe page's SEO, the welcome email (subject «مرحبًا بك في إياب» / "Welcome to Eyab"), the member-offer email
+  (subject «عرض لأعضاء إياب: {title}» / "An offer for Eyab members: {title}"), the privacy section «إياب — عضوية أرمادا
+  ريزيدنس، والتسويق» and the privacy text that names it (a published «المحتوى والظهور» text: seed, draft and live changed
+  by the migration, a publish revision and a content job). Dashboard: every visible club name is «إياب» («العملاء», the
+  booking badge «عضو إياب», «النظرة العامة», «التقارير» «إياب والشركاء», «العروض»). /club/ and club.armadaresidence.com
+  keep their addresses (printed QR codes); the redirect pages of ArmadaResidence/armada-club now carry the new name in
+  their title and link. qa.py forbids «نادي أرمادا», "Armada Residence Club", "Armada Club" and «اياب» without its hamza.
+  No Meta-approved WhatsApp template names the club.
+- **One cancellation policy, both branches**: free until 2:00 pm (Asia/Riyadh) on the arrival day; after that or for a
+  no-show the first night is charged. It replaces «free until 24 hours before arrival» and the «same-day cancellation»
+  wording (DECISIONS 8 Oct 2026 and later). Booking.com matches it: on 6 Nov 2026 Shafa Road's late-cancellation and
+  no-show fee was changed there from 50 % of the total to the first night; Airport Road already matched. The policy is data
+  in one place — `policies.json → cancellation` (`deadline_time` 14:00, `deadline_day` arrival, `timezone`, `fee`
+  first_night, the full / short / «عن أرمادا» sentences) — and build.py fails when a cancellation text of content/ (the
+  policies section, the «لماذا أرمادا» item, «عن أرمادا ريزيدنس», the FAQ seed) does not carry it or names another time.
+  The emails' cancellation line now reads the policy itself (`content.generated.json → cancellation_line`); the hero strip
+  is `{check_in} · {check_out} · {cancellation}` with the short sentence. Changed also: the SEO descriptions of the two
+  branches and /policies/ (the short sentence; for approval, shortened to stay ≤ 155), two blog articles
+  (where-to-stay-in-taif, umrah-via-taif — seed files and the published copies), the FAQ answer (published copy), the
+  «المحتوى والظهور» seeds of the three fields that hold it. No code computes a cancellation deadline today (the emails,
+  the confirmation and the WhatsApp templates state the rule); existing bookings follow the new, more generous rule and no
+  guest is messaged. qa.py forbids «24 ساعة قبل الوصول», «24 ساعة قبل موعد الوصول», "24 hours before arrival", «نفس يوم
+  الوصول» and "same-day cancellation". **Meta-approved templates that still state the old policy (never edited here):**
+  `booking_confirmed` ar + en on BOTH WhatsApp accounts — footer «إلغاء مجاني حتى 24 ساعة قبل الوصول» / "Free
+  cancellation up to 24 hours before arrival" (`whatsapp-templates.json`, as read 28 Oct 2026); changing it means
+  resubmitting the template to Meta. The fact sheet PDFs (`public/docs/`) state no cancellation policy: not regenerated.
+- **"About Armada Residence" formatting (Ahmed's phone screenshot).** Cause: `stripBrackets()` collapsed every whitespace
+  run — the blank lines included — into one space BEFORE `paragraphs()` split on blank lines, so every multi-paragraph
+  text of the site rendered as one paragraph; and each number was separated from its unit by an ordinary space, so a line
+  could end on «24» with «ساعة» on the next, and the break next to a Latin-digit run left uneven gaps in the Arabic line.
+  Fix for the whole site, both languages, the dashboard's published texts included: `stripBrackets()` collapses spaces
+  and tabs only; `scripts/typeset.mjs` (run by build.py after `astro build`) joins every number and the unit after it
+  (hours, minutes, m², the clock words, riyals, nights, units… / "SAR 50") with U+00A0 in the text of every built page
+  (never `<head>`, attributes, scripts, styles); the paragraphs keep `text-align: start`. Checks: qa.py `check_typeset`
+  (`typeset.mjs --check`: its samples, then every page) and `check_paragraphs` (the home «عن أرمادا ريزيدنس» and «من
+  نحن» show as many `<p>` as their published text has paragraphs). qa.py reads a no-break space as a space in every
+  other text check.
+- **«الغرف»**: «آخر تحديث للموقع» shows once — the page leaves its own line out while the update bar shows the site's
+  state; the time is `longDate()` + `time12()` as the emails: «الجمعة 6 نوفمبر 2026، 2:35 مساءً» (the numeric «14:35
+  06/11/2026» read as 11 June).
+- **Dashboard texts of the hero session**: «إن لم تُرفع، يعرض الجوال الصورة الأساسية مقصوصة حول نقطة التركيز.» and the
+  bright-photo warning «… جرّب صورة أغمق في جهة النص (اليمين في العربية، واليسار في الإنجليزية)، أو غيّر …».
+- **GTM (facts, corrected)**: since container version 3 (30 Oct 2026) `CE - booking_confirmed` fires GA4 `purchase`, Meta
+  `Purchase`, TikTok `Purchase` and Snap `PURCHASE`, all with value and currency; there is no Google Ads tag. Published on
+  6 Nov 2026 as «pixels after engagement»: the Engagement tag and `CE - first_engagement`; the three base tags fire on
+  `CE - first_engagement`, `CE - booking_request` and `CE - booking_confirmed`, once per page, priority 10. The
+  «Engaged - …» triggers never existed in the container. Both preview checks passed (timer_5s and scroll).
+  `docs/gtm-performance.md` and CLAUDE.md §8 corrected; `docs/gtm-performance-container.json` gains
+  `CE - booking_confirmed` on the base tags (= the live container). `docs/prelaunch-audit.md` → «Before turning instant
+  booking on»: TikTok Events Manager must count «Purchase» as a valued purchase; import the GA4 purchase into Google Ads
+  if Google Ads campaigns run.
+- **Accessible rooms (Ahmed, 6 Nov 2026):** in both branches they are booked like every other room type, instant
+  confirmation included (CLAUDE.md §5 updated). Production, read only on 6 Nov 2026: Shafa Road's accessible room is
+  bookable on the website with **1** unit open on every one of the next 30 nights; Airport Road's accessible room is
+  **not** switched on in «الغرف» (`bookable` false, no night open — it was switched off at 01:47:38 Riyadh on 6 Nov, see
+  the entry above). Nothing was changed (the brief forbids changing availability).
+- **For approval** (written in this session): the English slogan "Always welcome"; the /club/ intro (given as for
+  approval); the club's other texts (button «انضم إلى إياب» / "Join Eyab", the consent error, the success line, the home
+  band and footer link, the welcome email's headline and body, the member-offer intro, the /club/ and unsubscribe SEO
+  titles and descriptions, the privacy heading «إياب — عضوية أرمادا ريزيدنس، والتسويق» and its English); the
+  cancellation sentence in the three SEO descriptions (shortened descriptions for the two branches).

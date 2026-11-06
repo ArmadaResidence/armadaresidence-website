@@ -369,7 +369,7 @@ function Details({ r, roomTypes, editable, onClose, onChanged }: { r: Reservatio
         {r.is_test && <span className="chip chip-test">تجربة</span>}
         {r.status === 'request' && r.fallback_reason && <span className="chip chip-request">{REASON_LABELS[r.fallback_reason] ?? r.fallback_reason}</span>}
       </div>
-      {/* the guest (3 Nov 2026): «عضو نادي أرمادا ريزيدنس», «ضيف عائد (N)», the consent — recorded in person by reception */}
+      {/* the guest (3 Nov 2026): «عضو إياب», «ضيف عائد (N)», the consent — recorded in person by reception */}
       <div className="mb-4"><BookingGuestBadges reservation={r.id} editable={editable} /></div>
       <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1.5 text-sm mb-5 num-ar">
         <dt className="text-ink-muted">الفرع</dt><dd className="font-semibold">{BRANCH_NAMES[r.branch]}</dd>

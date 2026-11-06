@@ -1,7 +1,7 @@
 // «التقارير» (Ahmed, 4 Nov 2026 — phase 2b session 6; DECISIONS.md 2026-11-04). Controls: the period and a comparison
 // (previous period, the same period last year, or custom), the branch, «Excel» (one .xlsx, a sheet per section) and «PDF»
 // (the browser's print to A4 landscape, every section in order — styles.css @media print). Five sections, linked at the
-// top: الأداء، سلوك الحجز، المصادر والحملات، الإلغاء والرد، النادي والشركاء. Every figure comes from the bookings
+// top: الأداء، سلوك الحجز، المصادر والحملات، الإلغاء والرد، إياب والشركاء. Every figure comes from the bookings
 // recorded in this system; money only with «الأرقام المالية» (withheld by the RPCs). No no-show card: bookings do not
 // record a no-show.
 // Print (Ahmed, 5 Nov 2026): our own running header (the logo, «تقرير الأداء», the period, the comparison, the branch)
@@ -30,7 +30,7 @@ const SECTIONS = [
   { id: 'behaviour', label: 'سلوك الحجز' },
   { id: 'sources', label: 'المصادر والحملات' },
   { id: 'cancellations', label: 'الإلغاء والرد' },
-  { id: 'club', label: 'النادي والشركاء' },
+  { id: 'club', label: 'إياب والشركاء' },
 ];
 const bname = (slug: string) => BRANCH_NAMES[slug] ?? slug;
 const num = (n: number | null | undefined) => (n === null || n === undefined ? '' : Number(n));
@@ -305,14 +305,14 @@ function CancelSection({ s, first }: { s: Sect<m.Cancellations>; first: boolean 
   );
 }
 
-// ───────────────────────── النادي والشركاء ─────────────────────────
+// ───────────────────────── إياب والشركاء ─────────────────────────
 function ClubSection({ s, first }: { s: Sect<m.ClubPartners>; first: boolean }) {
   const d = s.data;
   const wmax = d ? Math.max(4, ...d.weeks.map((w) => w.members)) : 4;
   const funnelTotal = d?.enquiries ?? 0;
   return (
     <section id="club" aria-labelledby="club-h" className="grid gap-3 report-section" data-section="club">
-      <SectionHead id="club" title="النادي والشركاء" />
+      <SectionHead id="club" title="إياب والشركاء" />
       <ErrorBox error={s.error} />
       {d && (
         <>
@@ -389,7 +389,7 @@ function buildSheets(x: { perf: m.Performance | null; beh: m.Behaviour | null; s
     { title: 'الإلغاء حسب المدة قبل الوصول', rows: [['المدة', 'الإلغاءات'], ...m.CANCEL_BUCKETS.map((k) => [k.label, c.buckets[k.key]])] },
   ] });
   const cp = x.cp;
-  if (cp) sheets.push({ name: 'النادي والشركاء', blocks: [
+  if (cp) sheets.push({ name: 'إياب والشركاء', blocks: [
     { title: head, rows: [['المؤشر', 'القيمة'], ['الأعضاء الحاليون', cp.members], ['أعضاء جدد في الفترة', cp.joined], ['أعضاء حجزوا في الفترة', cp.booked_members], ['ألغوا الاشتراك', cp.unsubscribed], ['نسبة إلغاء الاشتراك (٪)', num(cp.unsubscribe_rate)], ['تحويل طلبات الشركاء (٪)', num(cp.conversion)]] },
     { title: 'أعضاء جدد كل أسبوع', rows: [['الأسبوع من', 'الأعضاء الجدد'], ...cp.weeks.map((w) => [w.week_from, w.members])] },
     { title: 'الأعضاء حسب المصدر', rows: [['المصدر', 'الأعضاء', 'الجدد في الفترة'], ...m.CLUB_SOURCE_LABELS.map((k) => [k.label, cp.sources[k.key]?.all ?? 0, cp.sources[k.key]?.joined ?? 0])] },

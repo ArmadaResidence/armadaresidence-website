@@ -684,6 +684,18 @@ account, a DNS panel, a real phone or mailbox, a decision); **Claude** = can be 
 | A5 | Decide the open items of this audit that are Ahmed's call: the redirect targets of §4 (`/restaurant`, `/coffee-shop`, `/admin/login`), the photo shot list of §2, whether to add a bot challenge (§6). | أحمد |
 | A6 | GTM `GTM-5JVH7R37`: confirm the container is published with exactly one GA4 configuration tag (`G-675Y7W0H1T`), the `booking_request` / `booking_confirmed` / `whatsapp_click` triggers, and the pixels' consent settings; add `armadaresidence.com` (and `www`) to GA4 → Admin → Data streams → the web stream's URL and to any pixel domain allow-lists. | أحمد (account access); Claude can review a container export |
 
+### Before turning instant booking on (added 6 Nov 2026)
+
+Instant confirmation stays off at both branches (`instant_booking` / `show_prices`) until Ahmed turns it on per branch.
+Before he does, `booking_confirmed` must count as a valued purchase everywhere it is sent (the container has
+`CE - booking_confirmed` with GA4 `purchase`, Meta `Purchase`, TikTok `Purchase`, Snap `PURCHASE` since version 3,
+30 Oct 2026 — `docs/gtm-performance.md`):
+
+| # | Step | Who |
+|---|---|---|
+| I1 | TikTok Events Manager: confirm the pixel's «Purchase» event is counted as a purchase with its value (value + currency SAR received on a test booking). | أحمد |
+| I2 | Google Ads, only if Google Ads campaigns run: import the GA4 `purchase` conversion into Google Ads (Goals → Conversions → Import → GA4). There is no Google Ads tag in the container. | أحمد |
+
 ### B. Switch day — in this order
 
 | # | Step | Who |

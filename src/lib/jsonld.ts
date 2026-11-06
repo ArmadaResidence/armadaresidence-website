@@ -301,6 +301,23 @@ export function collectionPage(locale: Locale, name: string, description: string
   };
 }
 
+/** «من نحن» /about/ (6 Nov 2026): AboutPage whose subject is the site's Organization (legalName from legal.json); no
+ *  foundingDate (Ahmed). */
+export function aboutPage(locale: Locale, name: string, description: string) {
+  const org = organization(locale) as Record<string, unknown>;
+  delete org['@context'];
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'AboutPage',
+    name,
+    description,
+    url: absoluteUrl(localePath(locale, '/about/')),
+    inLanguage: locale,
+    isPartOf: { '@type': 'WebSite', name: siteName(locale), url: absoluteUrl(localePath(locale, '/')) },
+    mainEntity: org,
+  };
+}
+
 export function breadcrumbs(items: { name: string; path: string }[]) {
   return {
     '@context': 'https://schema.org',

@@ -11,7 +11,7 @@ import { useEffect, useState } from 'react';
 import * as api from '../lib/api';
 import SiteDeployStatus from '../components/SiteDeployStatus';
 import { useSiteDeploy } from '../lib/siteDeploy';
-import { roomsNote, type RebuildAsk } from '../lib/siteDeployText';
+import { barShowsDeploy, roomsNote, type RebuildAsk } from '../lib/siteDeployText';
 import type { Branch, RoomType } from '../lib/api';
 import { useSession } from '../lib/session';
 import { BRANCH_NAMES, sar } from '../lib/format';
@@ -71,7 +71,8 @@ export default function Rooms() {
       <div>
         <h1 className="text-2xl font-bold">الغرف</h1>
         <p className="text-sm text-ink-muted mt-1">«متاحة للحجز على الموقع» تعرض نوع الغرفة في نموذج الحجز وتسمح بحجزه. الغرفة غير المتاحة تبقى صفحتها على الموقع بعلامة «غير متاح حاليًا» بلا زر حجز، وتظهر هنا وفي الأسعار والمخزون لتجهيزها قبل تشغيلها.{editable ? '' : ' صلاحيتك هنا للعرض فقط.'}</p>
-        <p className="mt-2" data-rooms-deploy><SiteDeployStatus /></p>
+        {/* once only (6 Nov 2026): while the update bar shows the site's state, the page leaves its own line out */}
+        {!barShowsDeploy(deploy.data, deploy.requestedAt, deploy.now) && <p className="mt-2" data-rooms-deploy><SiteDeployStatus /></p>}
         {note && <p className={`text-sm mt-2 font-semibold ${note.tone === 'error' ? 'text-error' : note.tone === 'ok' ? 'text-ok' : 'text-ink-muted'}`} role="status" data-rooms-note={note.tone}>{note.text}</p>}
       </div>
       <ErrorBox error={error} />

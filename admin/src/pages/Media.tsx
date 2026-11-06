@@ -660,7 +660,7 @@ function MobileSlot({ parent, items, urls, editable, onFiles, onExisting, onOpen
           <BrightNote item={mob} url={urls[mob.preview_path ?? ''] ?? urls[mob.thumb_path ?? '']} />
         </>
       ) : (
-        <p className="text-xs text-ink-muted">بدونها يعرض الجوال الصورة نفسها مقصوصة حول نقطة التركيز.</p>
+        <p className="text-xs text-ink-muted">إن لم تُرفع، يعرض الجوال الصورة الأساسية مقصوصة حول نقطة التركيز.</p>
       )}
       {editable && <Drop accept={ACCEPT_IMAGES} onFiles={onFiles} label={mob ? 'استبدال صورة الجوال' : 'إضافة صورة الجوال'} slot="mobile" onExisting={onExisting} />}
     </div>

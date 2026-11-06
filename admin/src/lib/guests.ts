@@ -62,7 +62,7 @@ export interface GuestFilter {
 export const CONSENT_LABEL: Record<Consent, string> = { none: 'بلا موافقة', granted: 'موافق', withdrawn: 'سحب الموافقة' };
 export const CONSENT_CHIP: Record<Consent, string> = { none: 'chip-cancelled', granted: 'chip-confirmed', withdrawn: 'chip-flag' };
 export const SOURCE_LABEL: Record<string, string> = {
-  booking: 'نموذج الحجز', club: 'نموذج النادي', reception: 'الاستقبال', unsubscribe: 'رابط إلغاء الاشتراك', staff: 'اللوحة',
+  booking: 'نموذج الحجز', club: 'نموذج إياب', reception: 'الاستقبال', unsubscribe: 'رابط إلغاء الاشتراك', staff: 'اللوحة',
 };
 export const CLUB_SOURCES: { key: string; label: string }[] = [
   { key: 'breakfast-airport', label: 'إفطار طريق المطار' },

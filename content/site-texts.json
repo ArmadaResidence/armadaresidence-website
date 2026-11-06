@@ -29,8 +29,17 @@
   "about": {
     "heading_ar": "عن أرمادا ريزيدنس",
     "heading_en": "About Armada Residence",
-    "body_ar": "أرمادا ريزيدنس علامة ضيافة سعودية في الطائف، بفرعين: شقق فندقية على طريق المطار، وفندق على طريق الشفا. تجمع الإقامة في الفرعين بين الهدوء والمساحة والراحة العملية، لضيوف السياحة والأعمال على حد سواء.\n\nنقدّم غرفًا وأجنحة بمساحات واضحة، وأسعارًا تشمل الضريبة بلا مفاجآت، وفريق استقبال متاحًا على مدار الساعة. الوصول من الساعة 4:00 عصرًا والمغادرة حتى 12:00 ظهرًا في الفرعين، مع إلغاء مجاني حتى 24 ساعة قبل الوصول.\n\nتدير الفرعين شركة أرمادا ريزيدنس لتشغيل الفنادق.",
-    "body_en": "Armada Residence is a Saudi hospitality brand in Taif with two properties: hotel apartments on Airport Road and a hotel on Shafa Road. Both offer calm, space and practical comfort for leisure and business guests alike.\n\nRooms and suites come with clearly stated sizes, prices that include VAT with no surprises, and a reception team available around the clock. Check-in is from 4:00 pm and check-out by 12:00 noon at both properties, with free cancellation up to 24 hours before arrival.\n\nBoth properties are operated by Armada Residence Company To Operate Hotels."
+    "more_ar": "المزيد عن أرمادا ريزيدنس",
+    "more_en": "More about Armada Residence",
+    "body_ar": "أرمادا ريزيدنس علامة ضيافة سعودية في الطائف، بفرعين: شقق فندقية على طريق المطار، وفندق على طريق الشفا. تجمع الإقامة في الفرعين بين الهدوء والمساحة والراحة العملية، لضيوف السياحة والأعمال على حد سواء.\n\nنقدّم غرفًا وأجنحة بمساحات واضحة، وأسعارًا تشمل الضريبة بلا مفاجآت، وفريق استقبال متاحًا على مدار الساعة. الوصول من الساعة 4:00 عصرًا والمغادرة حتى 12:00 ظهرًا في الفرعين، مع إلغاء مجاني حتى الساعة 2:00 ظهرًا يوم الوصول.\n\nتدير الفرعين شركة أرمادا ريزيدنس لتشغيل الفنادق.",
+    "body_en": "Armada Residence is a Saudi hospitality brand in Taif with two properties: hotel apartments on Airport Road and a hotel on Shafa Road. Both offer calm, space and practical comfort for leisure and business guests alike.\n\nRooms and suites come with clearly stated sizes, prices that include VAT with no surprises, and a reception team available around the clock. Check-in is from 4:00 pm and check-out by 12:00 noon at both properties, with free cancellation until 2:00 pm on the day of arrival.\n\nBoth properties are operated by Armada Residence Company To Operate Hotels."
+  },
+  "about_page": {
+    "_note": "«من نحن» /about/ (Ahmed, 6 Nov 2026 — DECISIONS.md 2026-11-06 «About page»): approved text. The figures and the opening dates are placeholders filled at build time from branches.json (units, opened_*, drive_time_airport_min) and rooms.json (the smallest room of each branch, the largest suite) — src/lib/content.ts → withFacts; the dashboard «المحتوى والظهور» keeps them as protected chips.",
+    "title_ar": "من نحن",
+    "title_en": "About us",
+    "body_ar": "أرمادا ريزيدنس علامة ضيافة سعودية بدأت من الطائف، على فكرة بسيطة: إقامة هادئة بمساحات واسعة، وسعر واضح من البداية، وفريق حاضر على مدار الساعة.\n\nافتتحنا فرع طريق الشفا في {shafa_opened}، فندقًا من {shafa_units} وحدة على الطريق الصاعد إلى مرتفعات الشفا. وفي {airport_opened} افتتحنا فرع طريق المطار: شقق فندقية من {airport_units} وحدات، على بُعد {airport_minutes} دقيقة من مطار الطائف.\n\nتبدأ الغرف من {shafa_room_min} مترًا مربعًا على طريق الشفا و{airport_room_min} مترًا مربعًا على طريق المطار، وتصل الأجنحة إلى {suite_max} مترًا مربعًا. أسعارنا تشمل الضريبة، والإفطار والسرير الإضافي اختياريان. الاستقبال والأمن على مدار الساعة، والتنظيف يومي، والواي فاي مجاني في كل الوحدات والمناطق العامة، والمواقف مجانية. وفي لوبي فرع طريق المطار يعمل مقهى ومطعم أرمادا ريزيدنس على مدار الساعة.\n\nتدير الفرعين شركة أرمادا ريزيدنس لتشغيل الفنادق.",
+    "body_en": "Armada Residence is a Saudi hospitality brand that began in Taif with a simple idea: a calm stay with generous space, a clear price from the start, and a team on hand around the clock.\n\nWe opened our Shafa Road hotel in {shafa_opened}: {shafa_units} units on the road climbing to the Al-Shafa highlands. In {airport_opened} we opened Airport Road: hotel apartments with {airport_units} units, {airport_minutes} minutes from Taif airport.\n\nRooms start at {shafa_room_min} m² at Shafa Road and {airport_room_min} m² at Airport Road, and suites reach {suite_max} m². Prices include VAT; breakfast and extra beds are optional. Reception and security around the clock, daily housekeeping, free Wi-Fi in every unit and public area, and free parking. In the Airport Road lobby, Armada Residence Café & Restaurant is open 24 hours.\n\nBoth properties are operated by Armada Residence Company To Operate Hotels."
   },
   "why_armada": {
     "heading_ar": "لماذا أرمادا",
@@ -62,9 +71,9 @@
       },
       {
         "title_ar": "إلغاء مرن",
-        "body_ar": "إلغاء مجاني حتى 24 ساعة قبل الوصول، وبعدها أو عند عدم الحضور تُحتسب الليلة الأولى.",
+        "body_ar": "الإلغاء مجاني حتى الساعة 2:00 ظهرًا يوم الوصول. إذا ألغيت بعد ذلك أو لم تحضر، تُحتسب عليك قيمة الليلة الأولى.",
         "title_en": "Flexible cancellation",
-        "body_en": "Free cancellation up to 24 hours before arrival; after that, or for a no-show, the first night is charged."
+        "body_en": "Cancellation is free until 2:00 pm on the day of arrival. If you cancel after that or don't arrive, the first night is charged."
       },
       {
         "title_ar": "على مدار الساعة",

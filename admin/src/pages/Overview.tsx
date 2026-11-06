@@ -1,7 +1,7 @@
 // «النظرة العامة» (Ahmed, 4 Nov 2026 — phase 2b session 6; DECISIONS.md 2026-11-04). The landing page for everyone who
 // holds the section. Every figure comes from the bookings recorded in this system (nothing is called hotel occupancy):
 // the four cards (each a link to its list, already filtered, with a per-branch line), «تنبيهات», one donut per branch,
-// «نادي أرمادا ريزيدنس», the next 14 nights, the chosen period (% sold, ADR), «آخر الطلبات», this month's sources and
+// «إياب», the next 14 nights, the chosen period (% sold, ADR), «آخر الطلبات», this month's sources and
 // the partner enquiries. Money appears only with «الأرقام المالية» (the RPCs withhold it; nothing takes its place).
 // Live: a new booking, enquiry or club sign-up (public.dashboard_signals over Realtime) refreshes the figures and a
 // changed number glows bronze for about 1.5 s. Motion only on the first load; reduced motion → none.
@@ -289,8 +289,8 @@ function ClubCard({ s, first, flash }: { s: Sect<m.Club>; first: boolean; flash:
   const d = s.data;
   const rows = d ? m.CLUB_SOURCE_LABELS.map((x) => ({ key: x.key, label: x.label, value: d.sources[x.key]?.all ?? 0 })).filter((r) => r.value > 0 || r.key !== 'other') : [];
   return (
-    <ChartCard title="نادي أرمادا ريزيدنس" how={m.HOW.club} id="club" className="reveal"
-      summary={d ? `أعضاء النادي: ${d.all}، اليوم ${d.today_count}، هذا الأسبوع ${d.week}.` : 'نادي أرمادا ريزيدنس'}
+    <ChartCard title="إياب" how={m.HOW.club} id="club" className="reveal"
+      summary={d ? `أعضاء إياب: ${d.all}، اليوم ${d.today_count}، هذا الأسبوع ${d.week}.` : 'إياب'}
       table={{ head: ['المصدر', 'الكل', 'اليوم', 'هذا الأسبوع'], rows: d ? m.CLUB_SOURCE_LABELS.map((x) => [x.label, d.sources[x.key]?.all ?? 0, d.sources[x.key]?.today ?? 0, d.sources[x.key]?.week ?? 0]) : [] }}>
       <ErrorBox error={s.error} />
       {d && (

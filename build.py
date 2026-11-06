@@ -39,7 +39,6 @@ ROOT = Path(__file__).resolve().parent
 CONTENT = ROOT / "content"
 DIST = ROOT / "dist"
 FUNC_DIR = ROOT / "supabase" / "functions" / "booking-request"
-CANCEL_ITEM = 0
 
 E164 = re.compile(r"^\+[1-9]\d{7,14}$")
 EMAIL = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
@@ -289,7 +288,50 @@ def validate(content: dict[str, dict]) -> list[str]:
             problems.append("public/menu/index.html still loads Google Fonts")
         if not (ROOT / "public/menu/assets/ARMADA_Cafe_Restaurant_Menu_2026.pdf").is_file():
             problems.append("public/menu/assets/ARMADA_Cafe_Restaurant_Menu_2026.pdf missing")
+    problems += cancellation_problems(content)
     return problems
+
+
+def cancellation_time(hhmm: str, loc: str) -> str:
+    """policies.json → cancellation.deadline_time («14:00») as the texts write it: «2:00 ظهرًا» / "2:00 pm"."""
+    h, m = (int(x) for x in hhmm.split(":"))
+    h12 = h % 12 or 12
+    if loc == "en":
+        return f"{h12}:{m:02d} {'am' if h < 12 else 'pm'}"
+    part = "صباحًا" if h < 12 else "ظهرًا" if h < 15 else "عصرًا" if h < 18 else "مساءً"
+    return f"{h12}:{m:02d} {part}"
+
+
+def cancellation_problems(content: dict[str, dict]) -> list[str]:
+    """The ONE cancellation policy (Ahmed, 6 Nov 2026): policies.json → cancellation holds the data (deadline_time on the
+    arrival day, Asia/Riyadh; fee = the first night) and the approved sentences; every other cancellation text of content/
+    (the policies page, the «لماذا أرمادا» item the emails quote, «عن أرمادا ريزيدنس», the FAQ seed) must carry them, and
+    each sentence must name the deadline the data holds — a change of the data without the texts (or the reverse) fails."""
+    out: list[str] = []
+    c = content["policies.json"]["cancellation"]
+    if c.get("deadline_day") != "arrival" or c.get("fee") != "first_night" or c.get("timezone") != "Asia/Riyadh":
+        out.append("policies.json cancellation: deadline_day arrival, fee first_night and timezone Asia/Riyadh expected")
+    if not re.fullmatch(r"\d{2}:\d{2}", str(c.get("deadline_time", ""))):
+        return out + ["policies.json cancellation.deadline_time must be HH:MM"]
+    for loc in ("ar", "en"):
+        when = cancellation_time(c["deadline_time"], loc)
+        for key in (loc, f"short_{loc}", f"about_{loc}"):
+            if when not in c.get(key, ""):
+                out.append(f"policies.json cancellation.{key} does not name {when!r} (deadline_time {c['deadline_time']})")
+        full = c[loc]
+        sec = next((s for s in content["policies.json"]["page"]["sections"] if s["id"] == "cancellation"), None)
+        if not sec or not sec[f"body_{loc}"].startswith(full):
+            out.append(f"policies.json page.sections[cancellation].body_{loc} must start with cancellation.{loc}")
+        item = next((x for x in content["site-texts.json"]["why_armada"]["items"] if x["title_en"] == "Flexible cancellation"), None)
+        if not item or item[f"body_{loc}"] != full:
+            out.append(f"site-texts.json why_armada «Flexible cancellation» body_{loc} must equal policies.json cancellation.{loc}")
+        if c[f"about_{loc}"] not in content["site-texts.json"]["about"][f"body_{loc}"]:
+            out.append(f"site-texts.json about.body_{loc} must carry policies.json cancellation.about_{loc}")
+    faq = json.loads((CONTENT / "faq.json").read_text(encoding="utf-8"))
+    q = next((x for x in faq.get("items", []) if x.get("id") == "cancellation"), None)
+    if not q or not q["a_ar"].startswith(c["ar"]) or not q["a_en"].startswith(c["en"]):
+        out.append("faq.json «cancellation»: the answer must start with policies.json cancellation.ar / .en")
+    return out
 
 
 def apply_published_texts(content: dict[str, dict]) -> None:
@@ -443,7 +485,8 @@ def generate_function_content(content: dict[str, dict], fees: dict) -> None:
         "success_heading": {loc: ui[loc]["success"]["heading"] for loc in ("ar", "en")},
         "check_in_line": {loc: content["policies.json"][f"check_in_{loc}"] for loc in ("ar", "en")},
         "check_out_line": {loc: content["policies.json"][f"check_out_{loc}"] for loc in ("ar", "en")},
-        "cancellation_line": {loc: content["site-texts.json"]["why_armada"]["items"][CANCEL_ITEM][f"body_{loc}"] for loc in ("ar", "en")},
+        # the one cancellation policy (policies.json → cancellation, 6 Nov 2026): the full sentence
+        "cancellation_line": {loc: content["policies.json"]["cancellation"][loc] for loc in ("ar", "en")},
         "partner_reply_line": content["partners-pages.json"]["form"]["sent_body"],
         "legal_line": {loc: content["legal.json"][f"footer_line_{loc}"] for loc in ("ar", "en")},
         # the two-line email footer (Ahmed, 26 Oct 2026): entity, then CR · VAT — from legal.json, never typed in email.ts
@@ -461,7 +504,7 @@ def generate_function_content(content: dict[str, dict], fees: dict) -> None:
         "careers": {loc: {"form": content["careers.json"][loc]["form"], "success": content["careers.json"][loc]["success"],
                           "email": content["careers.json"][loc]["email"]} for loc in ("ar", "en")},
         "jobs_email": contact["emails"]["jobs"],
-        # «نادي أرمادا ريزيدنس» (3 Nov 2026): the welcome email (club function), the follow link and the consent version the
+        # «إياب» (3 Nov 2026): the welcome email (club function), the follow link and the consent version the
         # booking form and the club form record (club.json; the wording itself lives in public.consent_texts too)
         "club_email": {loc: {**content["club.json"][loc]["welcome_email"], "follow": content["club.json"][loc]["follow"]} for loc in ("ar", "en")},
         "club_follow_url": content["club.json"]["follow_url"],
@@ -624,12 +667,9 @@ def write_version() -> None:
 
 
 def main() -> int:
-    global CANCEL_ITEM
     content = {name: load_json(name) for name in REQUIRED_FILES}
     if (CONTENT / "partners.json").is_file():
         content["partners.json"] = load_json("partners.json")
-    # the «لماذا أرمادا» item the emails quote as the cancellation line, found by its English title in the file itself
-    CANCEL_ITEM = next(i for i, x in enumerate(content["site-texts.json"]["why_armada"]["items"]) if x["title_en"] == "Flexible cancellation")
     run(["node", "scripts/content-build.mjs"])
     apply_published_texts(content)
     problems = validate(content)
@@ -661,6 +701,8 @@ def main() -> int:
     run(["node", "scripts/email-logo.mjs"])
     os.environ["ROOM_AVAILABILITY"] = json.dumps(availability["rooms"])
     run(["npx", "astro", "build"])
+    # every number and its unit joined by a no-break space in the built pages (6 Nov 2026 — scripts/typeset.mjs)
+    run(["node", "scripts/typeset.mjs"])
     menu_offers(content)
     (DIST / "_availability.json").write_text(json.dumps(availability, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     write_version()

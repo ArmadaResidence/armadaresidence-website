@@ -11,6 +11,7 @@ import { organization } from '@lib/jsonld';
 import { existsSync, readFileSync } from 'node:fs';
 import {
   branches,
+  cancellationText,
   clubText,
   fill,
   localePath,
@@ -87,7 +88,8 @@ const heroRuleDelay = heroWords.length * 50; // ms: the rule starts when the las
 const quickFacts = fill(t.home.quick_facts, {
   check_in: locale === 'ar' ? policies.check_in_ar : policies.check_in_en,
   check_out: locale === 'ar' ? policies.check_out_ar : policies.check_out_en,
-  hours: policies.cancellation.free_until_hours_before_arrival,
+  // the short line of the one cancellation policy (policies.json → cancellation, 6 Nov 2026)
+  cancellation: cancellationText(locale, 'short'),
 });
 ---
 
@@ -304,7 +306,14 @@ const quickFacts = fill(t.home.quick_facts, {
       <h2 class="text-2xl md:text-3xl font-bold text-midnight">{locale === 'ar' ? about.heading_ar : about.heading_en}</h2>
     </div>
     <div class="reveal md:col-span-3 prose-armada leading-relaxed" style="--reveal-delay:120ms">
-      {paragraphs(locale === 'ar' ? about.body_ar : about.body_en).map((p) => <p>{p}</p>)}
+      <div data-about-body>{paragraphs(locale === 'ar' ? about.body_ar : about.body_en).map((p) => <p>{p}</p>)}</div>
+      {/* «من نحن» (6 Nov 2026) */}
+      <p class="mt-4">
+        <a href={localePath(locale, '/about/')} class="inline-flex items-center gap-1.5 font-semibold link-bronze" data-about-more>
+          <span>{locale === 'ar' ? about.more_ar : about.more_en}</span>
+          <Icon name="arrow" size={18} class="icon-arrow rtl:rotate-180" />
+        </a>
+      </p>
     </div>
   </section>
 
@@ -323,7 +332,7 @@ const quickFacts = fill(t.home.quick_facts, {
     </div>
   </section>
 
-  {/* «نادي أرمادا ريزيدنس» (3 Nov 2026): one slim band above the footer */}
+  {/* «إياب» (3 Nov 2026): one slim band above the footer */}
   <section class="cv-auto bg-white border-b border-line" aria-label={t.nav.club}>
     <div class="mx-auto max-w-6xl px-4 py-4 flex justify-center">
       <a href={localePath(locale, '/club/')} class="inline-flex items-center gap-2 py-2 font-semibold text-midnight hover:text-bronze-text transition-colors" data-club-band>

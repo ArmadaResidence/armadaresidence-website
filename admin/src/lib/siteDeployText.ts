@@ -1,6 +1,8 @@
 // «حالة تحديث الموقع» — the dashboard's texts for the website's deploy status (6 Nov 2026, DECISIONS.md 2026-11-06 «A
-// failed deploy is never silent»). Pure: no imports (scripts/admin-format-check.mjs tests it under Node). The data comes
-// from public.site_deploy_status() (the deploy workflow reports each run; lib/siteDeploy.ts polls it).
+// failed deploy is never silent»). Pure apart from lib/format.ts (itself import-free), so scripts/deploy-alert-check.mjs
+// tests it under Node. The data comes from public.site_deploy_status() (the deploy workflow reports each run;
+// lib/siteDeploy.ts polls it).
+import { longDate, time12 } from './format.ts';
 
 export type DeployStatus = 'running' | 'succeeded' | 'failed';
 export interface SiteDeploy {
@@ -23,11 +25,16 @@ export const PENDING_MS = 15 * 60 * 1000;
 /** the update bar keeps a success on screen this long after it finished */
 export const RECENT_MS = 30 * 60 * 1000;
 
+/** «الجمعة 6 نوفمبر 2026، 2:35 مساءً» in Asia/Riyadh — longDate() + time12() as the emails write a time (6 Nov 2026: the
+ *  numeric «14:35 06/11/2026» read as 11 June) */
 export function deployTime(ts: string | number | null | undefined): string {
   if (ts === null || ts === undefined || ts === '') return '—';
   const d = new Date(ts);
   if (Number.isNaN(d.getTime())) return '—';
-  return new Intl.DateTimeFormat('en-GB', { timeZone: 'Asia/Riyadh', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false }).format(d).replace(',', '');
+  const parts = new Intl.DateTimeFormat('en-GB', { timeZone: 'Asia/Riyadh', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false }).formatToParts(d);
+  const g = (k: string) => parts.find((x) => x.type === k)?.value ?? '';
+  const hour = g('hour') === '24' ? '00' : g('hour');
+  return `${longDate(`${g('year')}-${g('month')}-${g('day')}`)}، ${time12(`${hour}:${g('minute')}`)}`;
 }
 
 const t = (ts: string | null | undefined) => (ts ? new Date(ts).getTime() : NaN);

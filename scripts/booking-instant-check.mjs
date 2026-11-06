@@ -262,7 +262,7 @@ async function run(width, lang) {
   const mc = form.locator('[data-marketing-consent]');
   check((await mc.count()) === 1 && !(await mc.isChecked()), `${tag} consent: the marketing box exists and is unticked`);
   check((await mc.evaluate((i) => i.labels?.[0]?.textContent?.trim() ?? '')) === club.consent[L], `${tag} consent: its label is the approved text`);
-  check((await form.locator('[data-consent-details]').textContent())?.trim() === club[L].details && ((await form.locator('[data-consent-details]').getAttribute('href')) || '').endsWith('/policies/#club'), `${tag} consent: «${club[L].details}» links the privacy section`);
+  check((await form.locator('[data-consent-details]').textContent())?.trim() === club.consent[`link_${L}`] && ((await form.locator('[data-consent-details]').getAttribute('href')) || '').endsWith('/policies/#club'), `${tag} consent: «${club.consent[`link_${L}`]}» links the privacy section`);
   mode.submit = 'price_changed';
   await form.locator('[data-submit]').click();
   await page.waitForFunction(() => !document.querySelector('[data-quote-changed]')?.classList.contains('hidden'), null, { timeout: 10000 });

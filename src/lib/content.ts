@@ -252,9 +252,9 @@ export const fees: { extra_bed_per_night: number; breakfast_adult: number } = Ob
 };
 /** a fee in the page language through the riyal formatter (rules.ts → sarText): «50 ريالًا» / "SAR 50" */
 export const feeText = (locale: Locale, amount: number): string => sarText(amount, locale);
-/** a policies text with its fee placeholders filled: {extra_bed}, {breakfast} */
+/** a guest text with its placeholders filled: the fees {extra_bed}, {breakfast}, then the facts of withFacts */
 export const withFees = (locale: Locale, text: string): string =>
-  text.replace(/\{extra_bed\}/g, feeText(locale, fees.extra_bed_per_night)).replace(/\{breakfast\}/g, feeText(locale, fees.breakfast_adult));
+  withFacts(locale, text.replace(/\{extra_bed\}/g, feeText(locale, fees.extra_bed_per_night)).replace(/\{breakfast\}/g, feeText(locale, fees.breakfast_adult)));
 export const policies = withTexts('policies.json', policiesJson);
 export const contact = contactJson;
 export const legal = legalJson;
@@ -294,16 +294,20 @@ export function fill(template: string, vars: Record<string, string | number | nu
  * qa.py's bracket check likewise scans visible text only (not <title>, meta attributes or ld+json).
  */
 export function stripBrackets(text: string): string {
+  // spaces and tabs only: a blank line is a paragraph break and must reach paragraphs() (6 Nov 2026 — collapsing every
+  // whitespace run here turned «عن أرمادا ريزيدنس»'s three paragraphs into one)
   return text
-    .replace(/\s*\[[^\]]*\]/g, '')
-    .replace(/\s{2,}/g, ' ')
+    .replace(/[^\S\n]*\[[^\]]*\]/g, '')
+    .replace(/[^\S\n]{2,}/g, ' ')
+    .replace(/[^\S\n]+\n/g, '\n')
     .trim();
 }
 
+/** body copy → its paragraphs: a blank line (two line breaks, spaces between them allowed) separates two */
 export function paragraphs(text: string): string[] {
   return stripBrackets(text)
-    .split(/\n\s*\n/)
-    .map((p) => p.trim())
+    .split(/\n[^\S\n]*\n/)
+    .map((p) => p.trim().replace(/\s*\n\s*/g, ' '))
     .filter(Boolean);
 }
 
@@ -592,7 +596,7 @@ export const partnersPages = partnersPagesJson;
 export type CareersText = (typeof careersJson)['ar'];
 export const careers = (locale: Locale): CareersText => careersJson[locale] as unknown as CareersText;
 
-/* ---------- club.json — «نادي أرمادا ريزيدنس» / Armada Residence Club (3 Nov 2026) ---------- */
+/* ---------- club.json — «إياب» / Eyab (3 Nov 2026) ---------- */
 export type ClubText = (typeof clubJson)['ar'];
 export const clubText = (locale: Locale): ClubText => clubJson[locale] as unknown as ClubText;
 /** the ONE marketing consent (offers + ads): the version every stored consent names, and its wording per language */
@@ -600,6 +604,42 @@ export const marketingConsent = { version: clubJson.consent.version, ar: clubJso
 export const clubFollowUrl = clubJson.follow_url;
 /** the privacy section the club form and the booking form's box link to (/policies/#club, /en/policies/#club) */
 export const clubPrivacyHref = (locale: Locale): string => `${localePath(locale, '/policies/')}#${clubJson.privacy_anchor}`;
+/** the link after the consent text: «سياسة الخصوصية» / "Privacy Policy" (6 Nov 2026) */
+export const consentLinkText = (locale: Locale): string => (locale === 'ar' ? clubJson.consent.link_ar : clubJson.consent.link_en);
+
+/* ---------- the facts a guest text may name as placeholders (the «من نحن» page, 6 Nov 2026) ---------- */
+/** {shafa_opened} {airport_opened} {shafa_units} {airport_units} {airport_minutes} {shafa_room_min} {airport_room_min}
+ *  {suite_max}: from branches.json (opened_*, units, drive_time_airport_min) and rooms.json (each branch's smallest room
+ *  shown on the site, the largest suite). The same names are the only fact placeholders internal.copy_problems allows. */
+export function factValues(locale: Locale): Record<string, string> {
+  const b = (slug: string) => allBranches.find((x) => x.slug === slug) as unknown as Record<string, unknown> | undefined;
+  const sizes = (pred: (r: Room) => boolean) => rooms.filter((r) => pred(r) && typeof r.size_m2 === 'number').map((r) => r.size_m2 as number);
+  const min = (xs: number[]) => (xs.length ? String(Math.min(...xs)) : TODO);
+  const max = (xs: number[]) => (xs.length ? String(Math.max(...xs)) : TODO);
+  const val = (slug: string, key: string) => {
+    const v = b(slug)?.[key];
+    return v === null || v === undefined || v === '' ? TODO : String(v);
+  };
+  return {
+    shafa_opened: val('shafa-road', `opened_${locale}`),
+    airport_opened: val('airport-road', `opened_${locale}`),
+    shafa_units: val('shafa-road', 'units'),
+    airport_units: val('airport-road', 'units'),
+    airport_minutes: val('airport-road', 'drive_time_airport_min'),
+    shafa_room_min: min(sizes((r) => r.branch === 'shafa-road')),
+    airport_room_min: min(sizes((r) => r.branch === 'airport-road')),
+    suite_max: max(sizes((r) => r.category === 'suite')),
+  };
+}
+/** a guest text with its fact placeholders filled (unknown {names} are left for the fee filler / QA) */
+export function withFacts(locale: Locale, text: string): string {
+  const v = factValues(locale);
+  return text.replace(/\{([a-z_]+)\}/g, (m, k: string) => (k in v ? v[k] : m));
+}
+
+/** the cancellation policy (policies.json → cancellation, 6 Nov 2026): the full sentence and the short line */
+export const cancellationText = (locale: Locale, form: 'full' | 'short' = 'full'): string =>
+  form === 'full' ? (locale === 'ar' ? policiesJson.cancellation.ar : policiesJson.cancellation.en) : locale === 'ar' ? policiesJson.cancellation.short_ar : policiesJson.cancellation.short_en;
 
 /** "airport-road/king-room" or "a | b" → the referenced rooms (first match used for bedding). */
 export function roomsByRef(ref: string): Room[] {

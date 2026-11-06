@@ -1,13 +1,13 @@
 {
   "exportFormatVersion": 2,
-  "exportTime": "2026-11-06 12:00:00",
+  "exportTime": "2026-11-06 18:00:00",
   "containerVersion": {
     "path": "accounts/0/containers/0/versions/0",
     "accountId": "0",
     "containerId": "0",
     "containerVersionId": "0",
     "name": "Armada Residence — pixels after engagement (6 Nov 2026)",
-    "description": "Moves the Meta, TikTok and Snap BASE pixels from page load to the first interaction (scroll, pointerdown, touchstart or keydown) or 5 s, whichever comes first (once per page) — and on CE - booking_request with priority 10, so the untouched conversion tags still find fbq / ttq / snaptr on the success page. The tag «Engagement - first interaction or 5 s» (All Pages) pushes the event first_engagement once. Conversion tags on CE - booking_request are not in this file and stay as they are. Import with Merge + Overwrite conflicting (docs/gtm-performance.md).",
+    "description": "Moves the Meta, TikTok and Snap BASE pixels from page load to the first interaction (scroll, pointerdown, touchstart or keydown) or 5 s, whichever comes first (once per page) — and on CE - booking_request with priority 10, so the untouched conversion tags still find fbq / ttq / snaptr on the success page. The tag «Engagement - first interaction or 5 s» (All Pages) pushes the event first_engagement once. Conversion tags on CE - booking_request are not in this file and stay as they are. Import with Merge + Overwrite conflicting (docs/gtm-performance.md). Since version 3 (30 Oct 2026) the live container also has CE - booking_confirmed (GA4 purchase, Meta Purchase, TikTok Purchase, Snap PURCHASE, all with value and currency); the base tags fire on it too (6 Nov 2026, as published), so this file matches the live container.",
     "container": {
       "accountId": "0",
       "containerId": "0",
@@ -62,7 +62,8 @@
         ],
         "firingTriggerId": [
           "104",
-          "22"
+          "22",
+          "105"
         ],
         "tagFiringOption": "ONCE_PER_LOAD",
         "notes": "6 Nov 2026 (docs/gtm-performance.md): fires once per page on first_engagement — the first scroll, pointerdown, touchstart or keydown, or 5 s, whichever comes first — or CE - booking_request (the success page is a new page load), with priority 10 so it runs before the conversion tag of the same event. No longer on page load. The conversion tags are unchanged.",
@@ -91,7 +92,8 @@
         ],
         "firingTriggerId": [
           "104",
-          "22"
+          "22",
+          "105"
         ],
         "tagFiringOption": "ONCE_PER_LOAD",
         "notes": "6 Nov 2026 (docs/gtm-performance.md): fires once per page on first_engagement — the first scroll, pointerdown, touchstart or keydown, or 5 s, whichever comes first — or CE - booking_request (the success page is a new page load), with priority 10 so it runs before the conversion tag of the same event. No longer on page load. The conversion tags are unchanged.",
@@ -120,7 +122,8 @@
         ],
         "firingTriggerId": [
           "104",
-          "22"
+          "22",
+          "105"
         ],
         "tagFiringOption": "ONCE_PER_LOAD",
         "notes": "6 Nov 2026 (docs/gtm-performance.md): fires once per page on first_engagement — the first scroll, pointerdown, touchstart or keydown, or 5 s, whichever comes first — or CE - booking_request (the success page is a new page load), with priority 10 so it runs before the conversion tag of the same event. No longer on page load. The conversion tags are unchanged.",
@@ -174,6 +177,30 @@
                 "type": "TEMPLATE",
                 "key": "arg1",
                 "value": "booking_request"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "accountId": "0",
+        "containerId": "0",
+        "triggerId": "105",
+        "name": "CE - booking_confirmed",
+        "type": "CUSTOM_EVENT",
+        "customEventFilter": [
+          {
+            "type": "EQUALS",
+            "parameter": [
+              {
+                "type": "TEMPLATE",
+                "key": "arg0",
+                "value": "{{_event}}"
+              },
+              {
+                "type": "TEMPLATE",
+                "key": "arg1",
+                "value": "booking_confirmed"
               }
             ]
           }

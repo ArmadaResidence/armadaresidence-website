@@ -1,0 +1,42 @@
+---
+/**
+ * «من نحن» / About us (Ahmed, 6 Nov 2026 — DECISIONS.md 2026-11-06 «About page»): the site's text page (heading, then
+ * the prose block of /policies/), light and dark through the same tokens. The approved text lives in
+ * site-texts.json → about_page (editable in «المحتوى والظهور», group «من نحن»); its figures and opening dates are
+ * placeholders filled from branches.json / rooms.json (content.ts → withFees / withFacts). Titles: seo.json → pages.about.
+ * JSON-LD: AboutPage with the site's Organization (legalName from legal.json, no foundingDate) + BreadcrumbList.
+ * /about was an old Horizons URL redirected home (4 Nov 2026); since 6 Nov 2026 the old path IS this page.
+ */
+import Base from '@layouts/Base.astro';
+import { langPaths } from '@lib/paths';
+import { aboutPage, breadcrumbs } from '@lib/jsonld';
+import { localePath, pageSeo, paragraphs, siteTexts, ui, withFees, type Locale } from '@lib/content';
+
+export const getStaticPaths = langPaths;
+
+interface Props {
+  locale: Locale;
+}
+const { locale } = Astro.props;
+const t = ui(locale);
+const s = pageSeo(locale, 'about');
+const page = siteTexts.about_page;
+const title = locale === 'ar' ? page.title_ar : page.title_en;
+const body = paragraphs(withFees(locale, locale === 'ar' ? page.body_ar : page.body_en));
+const jsonld = [
+  aboutPage(locale, title, s.description),
+  breadcrumbs([
+    { name: t.nav.home, path: localePath(locale, '/') },
+    { name: title, path: localePath(locale, '/about/') },
+  ]),
+];
+---
+
+<Base locale={locale} path="/about/" title={s.title} description={s.description} jsonld={jsonld}>
+  <section class="mx-auto max-w-3xl px-4 pt-10 pb-14">
+    <h1 class="reveal enter text-3xl md:text-4xl font-bold text-midnight">{title}</h1>
+    <div class="reveal enter mt-6 prose-armada leading-relaxed text-ink md:text-lg" data-about-body>
+      {body.map((p) => <p>{p}</p>)}
+    </div>
+  </section>
+</Base>

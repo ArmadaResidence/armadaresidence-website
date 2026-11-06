@@ -1,11 +1,12 @@
 ---
 /**
- * The ONE marketing consent line (Ahmed, 4 Nov 2026): the box, the shared text of club.json → consent (its current
- * version is what the forms send) and «التفاصيل» / "Details" to the privacy section «نادي أرمادا ريزيدنس والتسويق».
+ * The ONE marketing consent line (Ahmed, 4 Nov 2026; wording of 6 Nov 2026): the box, the shared text of club.json →
+ * consent (its current version is what the forms send) and «سياسة الخصوصية» / "Privacy Policy" to the privacy section
+ * «إياب — عضوية أرمادا ريزيدنس، والتسويق» (/policies/#club). Unticked by default.
  * Used by the booking form (optional, unticked) and the club form (required there). The label is the text alone, so the
  * box's accessible name is the consent itself; the link follows it on the same line.
  */
-import { clubPrivacyHref, clubText, marketingConsent, type Locale } from '@lib/content';
+import { clubPrivacyHref, consentLinkText, marketingConsent, type Locale } from '@lib/content';
 
 interface Props {
   locale: Locale;
@@ -23,6 +24,6 @@ const { locale, id, name, required = false, describedBy, hook } = Astro.props;
   <input id={id} name={name} type="checkbox" value="yes" class="mt-1 size-5 accent-bronze-deep shrink-0" required={required} aria-describedby={describedBy} {...{ [hook]: '' }} />
   <span>
     <label for={id}>{locale === 'ar' ? marketingConsent.ar : marketingConsent.en}</label>
-    <a href={clubPrivacyHref(locale)} class="link-bronze underline underline-offset-2 ms-1" data-consent-details>{clubText(locale).details}</a>
+    <a href={clubPrivacyHref(locale)} class="link-bronze underline underline-offset-2 ms-1" data-consent-details>{consentLinkText(locale)}</a>
   </span>
 </div>

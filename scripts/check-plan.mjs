@@ -132,7 +132,7 @@ const RULES = [
     checks: ['content-site-check'],
   },
   {
-    // session 5 (3 Nov 2026): the «فروعنا» header menu, «نادي أرمادا ريزيدنس» (/club/, the unsubscribe page, the form,
+    // session 5 (3 Nov 2026): the «فروعنا» header menu, «إياب» (/club/, the unsubscribe page, the form,
     // the footer link and the home band), the booking form's marketing box, the club copy and the privacy section
     name: 'club / header menu',
     test: (f) =>

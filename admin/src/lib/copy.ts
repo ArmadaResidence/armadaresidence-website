@@ -26,7 +26,7 @@ export function problemText(p: CopyProblem): string {
     case 'required_term': return `يجب أن يبقى في النص: «${p.term}»${l}.`;
     case 'placeholder_removed': return `لا يُحذف ${ph(p.name)} من النص${l}.`;
     case 'placeholder_unknown': return `{${p.name}} ليس من الحقول المسموحة؛ المسموح ${Object.values(PLACEHOLDERS).map((x) => `«${x}»`).join(' و')} فقط${l}.`;
-    case 'placeholder_mismatch': return 'الحقول (سعر الإفطار، رسم السرير الإضافي) نفسها في النصين العربي والإنجليزي.';
+    case 'placeholder_mismatch': return 'الحقول (مثل سعر الإفطار ورسم السرير الإضافي) نفسها في النصين العربي والإنجليزي.';
     case 'indic_digits': return `الأرقام في الموقع بالصيغة 0123456789${l}.`;
     case 'price_typed': return `لا يُكتب سعر الليلة في النص؛ الأسعار من اللوحة، والرسوم بالحقول${l}.`;
     case 'phone_typed': return `لا يُكتب رقم هاتف في النص؛ أرقام التواصل تأتي من بيانات الفروع${l}.`;

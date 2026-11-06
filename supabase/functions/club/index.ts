@@ -1,4 +1,4 @@
-// Supabase Edge Function: club («نادي أرمادا ريزيدنس» / Armada Residence Club — Ahmed, 3 Nov 2026; DECISIONS.md
+// Supabase Edge Function: club («إياب» / Eyab — Ahmed, 3 Nov 2026; DECISIONS.md
 // 2026-11-03 «Phase 2b session 5»). Replaces the standalone club-join function of club.armadaresidence.com.
 //
 // The website (POST JSON, the site's origins — _shared/site-cors.ts):

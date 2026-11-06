@@ -1225,7 +1225,7 @@ ${para(L, M.footer, { muted: true, size: 13 })}`,
   return { subject, html, text };
 }
 
-// ══ 15. «نادي أرمادا ريزيدنس» welcome (club function, 3 Nov 2026 — when a sign-up gives an email; ar then en) ══
+// ══ 15. «إياب» welcome (club function, 3 Nov 2026 — when a sign-up gives an email; ar then en) ══
 export interface ClubWelcomeMail {
   /** the signed unsubscribe page per language (/club/unsubscribe/?t=…) */
   unsubscribe: Record<Locale, string>;

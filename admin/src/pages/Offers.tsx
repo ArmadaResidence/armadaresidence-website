@@ -608,7 +608,7 @@ function OfferForm({ offer, category, branches, rooms, venues, editable, seesMed
               <label className="sm:col-span-2 flex items-start gap-2 text-sm">
                 <input type="checkbox" className="mt-1" checked={members} onChange={(e) => setMembers(e.target.checked)} disabled={dis} data-field="audience" />
                 <span>
-                  <strong>للأعضاء فقط</strong> — لا يظهر الكود على الموقع؛ تعرض البطاقة «للأعضاء — انضم لتحصل على الكود»، ويصل الكود إلى أعضاء نادي أرمادا ريزيدنس عبر «إرسال للأعضاء».
+                  <strong>للأعضاء فقط</strong> — لا يظهر الكود على الموقع؛ تعرض البطاقة «للأعضاء — انضم لتحصل على الكود»، ويصل الكود إلى أعضاء إياب عبر «إرسال للأعضاء».
                 </span>
               </label>
             </div>
@@ -1035,7 +1035,7 @@ function MemberSendDialog({ offer, onClose }: { offer: Offer | null; onClose: ()
   return (
     <Modal open={!!offer} onClose={onClose} title={offer ? `إرسال للأعضاء — ${offer.title_ar}` : ''} busy={!!busy} wide>
       <div className="grid gap-3 text-sm" data-member-send>
-        <p>يصل العرض وكوده بالبريد الإلكتروني إلى أعضاء نادي أرمادا ريزيدنس الذين وافقوا على العروض وأدخلوا بريدهم، مع رابط لإلغاء الاشتراك. الإرسال عبر الواتساب لاحقًا بعد اعتماد قوالب تسويقية من ميتا.</p>
+        <p>يصل العرض وكوده بالبريد الإلكتروني إلى أعضاء إياب الذين وافقوا على العروض وأدخلوا بريدهم، مع رابط لإلغاء الاشتراك. الإرسال عبر الواتساب لاحقًا بعد اعتماد قوالب تسويقية من ميتا.</p>
         <ErrorBox error={error} />
         {!gate && !error ? <Loading /> : gate && (
           <>

@@ -98,7 +98,7 @@ export default function Guests() {
       const data = (await contactRows(f)).map((r) => ({ ...r, consent_time: riyadhDateTime(r.consent_at), source_ar: SOURCE_LABEL[r.consent_source] ?? r.consent_source, member_ar: r.member ? 'نعم' : 'لا', club_ar: clubSourceLabel(r.club_source), language_ar: r.language === 'en' ? 'الإنجليزية' : 'العربية' }));
       const cols = [
         { key: 'name', label: 'الاسم' }, { key: 'phone', label: 'الجوال' }, { key: 'email', label: 'البريد' }, { key: 'language_ar', label: 'اللغة' },
-        { key: 'consent_time', label: 'وقت الموافقة' }, { key: 'source_ar', label: 'مصدر الموافقة' }, { key: 'member_ar', label: 'عضو النادي' }, { key: 'club_ar', label: 'مصدر العضوية' },
+        { key: 'consent_time', label: 'وقت الموافقة' }, { key: 'source_ar', label: 'مصدر الموافقة' }, { key: 'member_ar', label: 'عضو إياب' }, { key: 'club_ar', label: 'مصدر العضوية' },
       ];
       download(`contacts-${riyadhToday()}.csv`, toCsv(data, cols));
       toast(`صُدّرت ${countWord(data.length, GUEST)} بموافقة سارية؛ سُجّل التصدير في السجل.`);
@@ -117,7 +117,7 @@ export default function Guests() {
         <div className="max-w-3xl">
           <h1 className="text-2xl font-bold">العملاء</h1>
           <p className="text-sm text-ink-muted mt-1">
-            ملف لكل ضيف يُبنى من الحجوزات والتسجيل في نادي أرمادا ريزيدنس، مع موافقته على العروض والإعلانات وسجلها.
+            ملف لكل ضيف يُبنى من الحجوزات والتسجيل في إياب، مع موافقته على العروض والإعلانات وسجلها.
             {!editable ? ' صلاحيتك هنا للعرض فقط.' : ''}
           </p>
         </div>
@@ -133,7 +133,7 @@ export default function Guests() {
 
       {totals && (
         <section className="card p-4 grid gap-3" aria-labelledby="club-totals" data-club-totals>
-          <h2 id="club-totals" className="font-bold">نادي أرمادا ريزيدنس</h2>
+          <h2 id="club-totals" className="font-bold">إياب</h2>
           <div className="grid gap-3 sm:grid-cols-3">
             <p className="stat"><span className="text-sm text-ink-muted">كل الأعضاء</span> <strong className="num text-2xl" data-total="all">{totals.all}</strong></p>
             <p className="stat"><span className="text-sm text-ink-muted">اليوم</span> <strong className="num text-2xl" data-total="today">{totals.today_all}</strong></p>
@@ -169,7 +169,7 @@ export default function Guests() {
             <option value="none">بلا موافقة</option>
           </select>
         </Field>
-        <Field label="عضوية النادي" id="gf-member">
+        <Field label="عضوية إياب" id="gf-member">
           <select id="gf-member" className="field" value={f.member ?? ''} onChange={(e) => set('member', e.target.value)}>
             <option value="">الكل</option>
             <option value="true">أعضاء</option>
@@ -216,7 +216,7 @@ export default function Guests() {
                 <span className="flex flex-wrap items-center gap-2">
                   <strong>{r.name ?? 'بلا اسم'}</strong>
                   <span className={`chip ${CONSENT_CHIP[r.consent]}`} data-consent={r.consent}>{CONSENT_LABEL[r.consent]}</span>
-                  {r.member && <span className="chip chip-confirmed" data-member>عضو النادي</span>}
+                  {r.member && <span className="chip chip-confirmed" data-member>عضو إياب</span>}
                   {r.is_test && <span className="chip chip-test">اختبار</span>}
                 </span>
                 <span className="text-sm text-ink-muted flex flex-wrap gap-x-3">
@@ -325,7 +325,7 @@ function GuestDetails({ id, editable, onChanged, onOpen }: { id: string; editabl
           <dt className="text-ink-muted">أول إقامة</dt><dd className="num">{g.first_stay ? shortDate(g.first_stay) : '—'}</dd>
           <dt className="text-ink-muted">آخر إقامة</dt><dd className="num">{g.last_stay ? shortDate(g.last_stay) : '—'}</dd>
           <dt className="text-ink-muted">الفروع</dt><dd>{g.branches.length ? g.branches.map((b) => BRANCH_NAMES[b] ?? b).join('، ') : '—'}</dd>
-          <dt className="text-ink-muted">نادي أرمادا ريزيدنس</dt>
+          <dt className="text-ink-muted">إياب</dt>
           <dd data-club>{g.member ? `عضو منذ ${riyadhDateTime(g.club_joined_at!)} · ${clubSourceLabel(g.club_source)}` : 'ليس عضوًا'}</dd>
           <dt className="text-ink-muted">آخر نشاط</dt><dd className="num">{riyadhDateTime(g.last_activity_at)}</dd>
         </dl>
@@ -425,7 +425,7 @@ export function ConsentDialog({ open, action, onClose, onSave, busy }: { open: b
       <div className="grid gap-3 text-sm" data-consent-dialog={action}>
         {grant ? (
           <>
-            <p>اعرض النص على الضيف واطلب موافقته الصريحة. تُسجَّل الموافقة باسمك ووقتها، ويُضم الضيف إلى نادي أرمادا ريزيدنس.</p>
+            <p>اعرض النص على الضيف واطلب موافقته الصريحة. تُسجَّل الموافقة باسمك ووقتها، ويُضم الضيف إلى إياب.</p>
             {text ? (
               <>
                 <blockquote className="bg-soft rounded p-3" lang="ar" dir="rtl" data-consent-text-ar>{text.text_ar}</blockquote>
@@ -530,7 +530,7 @@ export function BookingGuestBadges({ reservation, editable }: { reservation: str
   }
   return (
     <div className="flex flex-wrap items-center gap-2 text-sm" data-booking-guest>
-      {s.member && <span className="chip chip-confirmed" data-badge="member">عضو نادي أرمادا ريزيدنس</span>}
+      {s.member && <span className="chip chip-confirmed" data-badge="member">عضو إياب</span>}
       {!!s.returning && <span className="chip chip-request" data-badge="returning">ضيف عائد ({s.returning})</span>}
       {s.consent && <span className={`chip ${CONSENT_CHIP[s.consent]}`} data-badge="consent">{s.consent === 'granted' ? 'موافق على العروض' : s.consent === 'withdrawn' ? 'سحب موافقته على العروض' : 'لم يوافق على العروض'}</span>}
       {s.profile && <a className="link" href={`guests?id=${s.profile}`} data-action="open-guest">ملف العميل</a>}

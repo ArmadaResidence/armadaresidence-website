@@ -292,7 +292,7 @@ async function axe(page, label) {
   const secs = await page.locator('[data-section]').evaluateAll((els) => els.map((e) => e.getAttribute('data-section')));
   check(secs.join(',') === 'performance,behaviour,sources,cancellations,club', 'reports: the five sections in order', secs.join(','));
   const links = await page.locator('[data-report-links] a').allInnerTexts();
-  check(links.join('،') === 'الأداء،سلوك الحجز،المصادر والحملات،الإلغاء والرد،النادي والشركاء', 'reports: the section links', links.join('،'));
+  check(links.join('،') === 'الأداء،سلوك الحجز،المصادر والحملات،الإلغاء والرد،إياب والشركاء', 'reports: the section links', links.join('،'));
   check((await page.locator('[data-scope-note]').innerText()).includes('حجوزات المنصات الأخرى تدخل بعد ربط مدير القنوات'), 'reports: the scope note');
   check(await page.locator('[data-kpi="revenue"]').count() === 1, 'reports: revenue with «الأرقام المالية»');
   check(await page.locator('[data-chart="perf-daily"] .viz-line.is-dashed').count() === 1, 'reports: current (solid) against comparison (dashed)');
@@ -303,7 +303,7 @@ async function axe(page, label) {
   const txt = buf.toString('utf8');
   const sheetNames = [...txt.matchAll(/<sheet name="([^"]+)"/g)].map((m) => m[1]);
   check(dl.suggestedFilename().endsWith('.xlsx') && buf.slice(0, 2).toString() === 'PK', 'Excel: an .xlsx (ZIP) file', dl.suggestedFilename());
-  check(sheetNames.join('،') === 'الأداء،سلوك الحجز،المصادر والحملات،الإلغاء والرد،النادي والشركاء', 'Excel: one sheet per section', sheetNames.join('،'));
+  check(sheetNames.join('،') === 'الأداء،سلوك الحجز،المصادر والحملات،الإلغاء والرد،إياب والشركاء', 'Excel: one sheet per section', sheetNames.join('،'));
   check((txt.match(/rightToLeft="1"/g) || []).length >= 6, 'Excel: right-to-left sheets');
   check(txt.includes('الإيراد'), 'Excel: money columns with «الأرقام المالية»');
   await page.emulateMedia({ media: 'print' });

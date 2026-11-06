@@ -8,8 +8,34 @@
 import { useDraftMirror } from '../lib/dirty';
 import { useEffect, useLayoutEffect, useRef } from 'react';
 
-export const PLACEHOLDERS: Record<string, string> = { breakfast: 'سعر الإفطار', extra_bed: 'رسم السرير الإضافي' };
-export const PLACEHOLDERS_EN: Record<string, string> = { breakfast: 'breakfast price', extra_bed: 'extra-bed fee' };
+export const PLACEHOLDERS: Record<string, string> = {
+  breakfast: 'سعر الإفطار',
+  extra_bed: 'رسم السرير الإضافي',
+  // the facts of the «من نحن» page (6 Nov 2026): filled at build time from branches.json / rooms.json (site content.ts →
+  // factValues); the same names are the only ones internal.copy_problems allows besides the fees
+  shafa_opened: 'تاريخ افتتاح طريق الشفا',
+  airport_opened: 'تاريخ افتتاح طريق المطار',
+  shafa_units: 'عدد وحدات طريق الشفا',
+  airport_units: 'عدد وحدات طريق المطار',
+  airport_minutes: 'الدقائق إلى مطار الطائف',
+  shafa_room_min: 'أصغر غرفة في طريق الشفا (م²)',
+  airport_room_min: 'أصغر غرفة في طريق المطار (م²)',
+  suite_max: 'أكبر جناح (م²)',
+};
+/** the fees staff may insert in the FAQ answers (the facts stay where the file put them: «من نحن») */
+export const FEE_PLACEHOLDERS = ['breakfast', 'extra_bed'] as const;
+export const PLACEHOLDERS_EN: Record<string, string> = {
+  breakfast: 'breakfast price',
+  extra_bed: 'extra-bed fee',
+  shafa_opened: 'Shafa Road opening date',
+  airport_opened: 'Airport Road opening date',
+  shafa_units: 'Shafa Road units',
+  airport_units: 'Airport Road units',
+  airport_minutes: 'minutes to Taif airport',
+  shafa_room_min: 'smallest Shafa Road room (m²)',
+  airport_room_min: 'smallest Airport Road room (m²)',
+  suite_max: 'largest suite (m²)',
+};
 
 function chip(name: string, lang: 'ar' | 'en', removable: boolean): HTMLSpanElement {
   const s = document.createElement('span');

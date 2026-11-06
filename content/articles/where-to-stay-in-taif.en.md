@@ -55,6 +55,6 @@ The city centre holds [Al Balad Market](/en/discover-taif/#place-taif-al-balad-m
 
 **Is parking free?** Yes, at both properties.
 
-**How do I book?** Send a booking request on the website or message us on WhatsApp. Cancellation is free up to 24 hours before arrival.
+**How do I book?** Send a booking request on the website or message us on WhatsApp. Cancellation is free until 2:00 pm on the day of arrival.
 
 > **[Pick the property closest to your plans and send your booking request.](/en/booking/)**

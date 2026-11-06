@@ -7,9 +7,11 @@ import { supabase } from './supabase';
 import { fail, type Saved } from './api';
 import type { CopyProblem } from './copy';
 
-export type Grp = 'home' | 'branches' | 'rooms' | 'pricing' | 'policies';
+export type Grp = 'home' | 'about' | 'branches' | 'rooms' | 'pricing' | 'policies';
 export const GROUPS: { key: Grp; label: string }[] = [
   { key: 'home', label: 'الصفحة الرئيسية' },
+  // «من نحن» (6 Nov 2026)
+  { key: 'about', label: 'من نحن' },
   { key: 'branches', label: 'الفروع' },
   { key: 'rooms', label: 'الغرف' },
   { key: 'pricing', label: 'الأسعار' },

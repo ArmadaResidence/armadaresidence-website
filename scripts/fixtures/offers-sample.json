@@ -27,7 +27,7 @@
     {
       "id": "00000000-0000-4000-8000-000000000009", "slug": "qa-members-only", "category": "individuals", "branches": ["airport-road"], "venue": null,
       "title_ar": "عرض اختبار: للأعضاء فقط", "title_en": "Test offer: members only",
-      "description_ar": "نص تجريبي لعرض خاص بأعضاء النادي.", "description_en": "Test copy for a member-only offer.",
+      "description_ar": "نص تجريبي لعرض خاص بأعضاء إياب.", "description_en": "Test copy for a member-only offer.",
       "terms_ar": "", "terms_en": "",
       "valid_from": "2020-01-01", "valid_to": "2099-12-31", "kind": "fixed_price", "percent": null, "fixed_price": 150, "stay_nights": null, "promo_code": null, "members": true,
       "room_types": ["airport-road/king-room"], "min_nights": 1, "dining_price": null, "cta": "book", "quote_request": null, "whatsapp": false, "whatsapp_prefill_ar": "", "whatsapp_prefill_en": "",

@@ -34,6 +34,8 @@ const nav: { key: keyof typeof t.nav; path: string }[] = [
   { key: 'contact', path: '/contact/' },
   { key: 'policies', path: '/policies/' },
 ];
+// «من نحن» (6 Nov 2026): in the mobile menu (and the footer), not in the desktop bar
+const mobileNav: { key: keyof typeof t.nav; path: string }[] = [...nav, { key: 'about', path: '/about/' }];
 const isActive = (p: string) => (p === '/' ? path === '/' : path.startsWith(p));
 const partnersActive = path.startsWith('/partners/');
 // the ink sits under «فروعنا» on a property page and every page under it (rooms, the hall)
@@ -232,7 +234,7 @@ const propertiesActive = properties.some((b) => path.startsWith(b.path));
           )
         }
         {
-          nav.map((n) => (
+          mobileNav.map((n) => (
             <li>
               <a
                 href={localePath(locale, n.path)}

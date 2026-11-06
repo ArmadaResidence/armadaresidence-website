@@ -15,7 +15,7 @@ import { useSession } from '../lib/session';
 import { countWord, type CountNoun } from '../lib/format';
 import { blankFaq, FAQ_CATEGORIES, FAQ_MAX, faqItems, faqPublish, faqReorder, faqSave, keyFrom, KEY_RE, liveState, pickFaq, type FaqCategory, type FaqFields, type FaqItem, type FaqPublishResult } from '../lib/faq';
 import { copyProblems, placeholdersOf, problemText, type CopyProblem } from '../lib/copy';
-import PlaceholderEditor, { insertPlaceholder, PLACEHOLDERS } from '../components/PlaceholderEditor';
+import PlaceholderEditor, { FEE_PLACEHOLDERS, insertPlaceholder, PLACEHOLDERS } from '../components/PlaceholderEditor';
 import { CancelButton, Empty, ErrorBox, Field, Loading, Modal, Segmented, Spinner, useToast } from '../components/ui';
 
 const QUESTION: CountNoun = { zero: 'لا أسئلة', one: 'سؤال واحد', two: 'سؤالان', few: 'أسئلة', many: 'سؤالًا', gen: 'سؤال' };
@@ -283,7 +283,7 @@ function FaqForm({ item, category, taken, editable, busy, setBusy, onSaved }: { 
       <div className="flex flex-wrap items-center justify-between gap-2">
         {editable ? (
           <div className="flex flex-wrap gap-1.5">
-            {Object.entries(PLACEHOLDERS).map(([k, label]) => (
+            {FEE_PLACEHOLDERS.map((k) => [k, PLACEHOLDERS[k]] as const).map(([k, label]) => (
               <button key={k} type="button" className="btn btn-ghost btn-sm" disabled={dis} onClick={() => insertPlaceholder(`faq-a-${lang}`, k)} data-action={`faq-insert-${k}-${lang}`}>إدراج: {label}</button>
             ))}
           </div>

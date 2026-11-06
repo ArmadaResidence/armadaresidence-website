@@ -513,7 +513,7 @@ export function validateJobApplication(p: JobInput, ctx: JobContext): { ok: true
   };
 }
 
-// ── «نادي أرمادا ريزيدنس» / Armada Residence Club and the marketing consent (3 Nov 2026) ──
+// ── «إياب» / Eyab and the marketing consent (3 Nov 2026) ──
 
 /** The first-touch visit values kept with a club sign-up (and, part G, a booking): no personal data. */
 export interface UtmValues {

@@ -119,16 +119,18 @@ const iso = (ms) => new Date(ms).toISOString();
 const ok = { status: 'succeeded', started_at: iso(T0 - 10 * 60000), finished_at: iso(T0 - 6 * 60000), run_url: 'https://github.com/x/y/actions/runs/1', alerted: false, last_success_at: iso(T0 - 6 * 60000) };
 const failed = { status: 'failed', started_at: iso(T0 + 2000), finished_at: iso(T0 + 4 * 60000), run_url: 'https://github.com/x/y/actions/runs/2', failed_step: 'build › QA gate', alerted: true, last_success_at: iso(T0 - 6 * 60000) };
 const running = { status: 'running', started_at: iso(T0 + 3000), finished_at: null, run_url: 'https://github.com/x/y/actions/runs/3', last_success_at: iso(T0 - 6 * 60000) };
-E('deployTime: Riyadh, Western digits', deployTime(T0) === '06/11/2026 05:00', deployTime(T0));
+E('deployTime: Riyadh, longDate + time12 as the emails', deployTime(T0) === 'الجمعة 6 نوفمبر 2026، 5:00 صباحًا', deployTime(T0));
+E('deployTime: an afternoon time (the screenshot of 6 Nov: 14:35)', deployTime('2026-11-06T11:35:00Z') === 'الجمعة 6 نوفمبر 2026، 2:35 مساءً', deployTime('2026-11-06T11:35:00Z'));
+E('deployTime: midnight', deployTime('2026-11-06T21:05:00Z') === 'السبت 7 نوفمبر 2026، 12:05 صباحًا', deployTime('2026-11-06T21:05:00Z'));
 let l = deployLine(ok, null, T0);
-E('succeeded line', l.view === 'succeeded' && l.text === 'آخر تحديث للموقع: نجح — 06/11/2026 04:54' && !l.detail, JSON.stringify(l));
+E('succeeded line', l.view === 'succeeded' && l.text === 'آخر تحديث للموقع: نجح — الجمعة 6 نوفمبر 2026، 4:54 صباحًا' && !l.detail, JSON.stringify(l));
 l = deployLine(failed, null, T0 + 5 * 60000);
-E('failed line + detail + run link', l.view === 'failed' && l.text === 'آخر تحديث للموقع: فشل — 06/11/2026 05:04' && l.detail === 'التعديلات المحفوظة بعد آخر تحديث ناجح (06/11/2026 04:54) لن تظهر على الموقع حتى ينجح تحديث جديد.' && l.link === failed.run_url, JSON.stringify(l));
+E('failed line + detail + run link', l.view === 'failed' && l.text === 'آخر تحديث للموقع: فشل — الجمعة 6 نوفمبر 2026، 5:04 صباحًا' && l.detail === 'التعديلات المحفوظة بعد آخر تحديث ناجح (الجمعة 6 نوفمبر 2026، 4:54 صباحًا) لن تظهر على الموقع حتى ينجح تحديث جديد.' && l.link === failed.run_url, JSON.stringify(l));
 E('failed line without a known success', deployLine({ ...failed, last_success_at: null }, null, T0).detail === DEPLOY_TEXT.failedDetail(null));
 l = deployLine(running, null, T0 + 10000);
-E('running line with its link', l.view === 'running' && l.text === 'جارٍ تحديث الموقع — بدأ 06/11/2026 05:00' && l.link === running.run_url, JSON.stringify(l));
+E('running line with its link', l.view === 'running' && l.text === 'جارٍ تحديث الموقع — بدأ الجمعة 6 نوفمبر 2026، 5:00 صباحًا' && l.link === running.run_url, JSON.stringify(l));
 l = deployLine(ok, T0, T0 + 5000);
-E('requested, not started yet → «جارٍ … طُلب»', l.view === 'running' && l.text === 'جارٍ تحديث الموقع — طُلب 06/11/2026 05:00' && !l.link, JSON.stringify(l));
+E('requested, not started yet → «جارٍ … طُلب»', l.view === 'running' && l.text === 'جارٍ تحديث الموقع — طُلب الجمعة 6 نوفمبر 2026، 5:00 صباحًا' && !l.link, JSON.stringify(l));
 E('a request with no run for 15 min stops counting', deployView(ok, T0, T0 + PENDING_MS + 1) === 'succeeded');
 E('no report yet', deployLine({ status: null }, null, T0).text === DEPLOY_TEXT.unknown && deployLine(null, null, T0).view === 'unknown');
 E('bar: running and failed always shown', barShowsDeploy(running, null, T0) && barShowsDeploy(failed, null, T0 + 86400000));
@@ -143,7 +145,7 @@ E('rooms: no rebuild requested after a failure → not on the site', roomsNote('
 E('rooms: no rebuild requested → says so', roomsNote('not_requested', ok, T0).text === ROOMS_NOTE.notRequested);
 E('rooms: an older failure while the new run waits → saved and waiting', roomsNote('dispatched', { ...failed, started_at: iso(T0 - 600000) }, T0).text === ROOMS_NOTE.saved);
 E('ROOMS_NOTE.failed without an alert', !ROOMS_NOTE.failed(false).includes('تنبيه'));
-for (const [k, v] of Object.entries({ ...ROOMS_NOTE, failed: ROOMS_NOTE.failed(true), unknown: DEPLOY_TEXT.unknown, detail: DEPLOY_TEXT.failedDetail('06/11/2026 04:54') })) {
+for (const [k, v] of Object.entries({ ...ROOMS_NOTE, failed: ROOMS_NOTE.failed(true), unknown: DEPLOY_TEXT.unknown, detail: DEPLOY_TEXT.failedDetail('الجمعة 6 نوفمبر 2026، 4:54 صباحًا') })) {
   E(`text ${k}: Arabic, no English, no Arabic-Indic digits`, /[؀-ۿ]/.test(v) && !/[A-Za-z]/.test(v) && !AR_DIGITS.test(v), v);
 }
 

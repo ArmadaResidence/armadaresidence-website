@@ -1,5 +1,5 @@
 // Session 5 on the built site (3 Nov 2026 — DECISIONS.md 2026-11-03 «Phase 2b session 5», deploy 1): the «فروعنا»
-// header menu, the «احجز» labels, «نادي أرمادا ريزيدنس» (/club/ and /club/unsubscribe/), the club links (footer, the
+// header menu, the «احجز» labels, «إياب» (/club/ and /club/unsubscribe/), the club links (footer, the
 // home band), the privacy section, the booking drawer's marketing box. Reads what dist/ holds:
 //   - static: the sitemap (/club/ in, /club/unsubscribe/ out), the club pages' titles / descriptions (seo.json), hreflang,
 //     BreadcrumbList, the unsubscribe page noindex; the footer link and the home band on every language; the privacy
@@ -53,7 +53,8 @@ const check = (ok, msg, detail = '') => {
   if (!ok) fails.push(`${msg}${detail ? ` — ${detail}` : ''}`);
 };
 const esc = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-const has = (html, text) => html.includes(text) || html.includes(esc(text)) || html.includes(text.replace(/'/g, '&#39;'));
+// a number and its unit are joined by a no-break space in the built pages (scripts/typeset.mjs, 6 Nov 2026): read it as a space
+const has = (raw, text) => { const html = raw.replace(/ /g, ' '); return html.includes(text) || html.includes(esc(text)) || html.includes(text.replace(/'/g, '&#39;')); };
 console.log(`club-site-check: ${BASE} — properties shown: ${shown.map((b) => b.slug).join(', ')}${hiddenBranches.length ? ` (hidden: ${hiddenBranches.join(', ')})` : ''}`);
 
 // ── static ──
@@ -76,7 +77,8 @@ for (const lang of ['ar', 'en']) {
   for (const [hl, href] of Object.entries({ ar: `${site}/club/`, en: `${site}/en/club/`, 'x-default': `${site}/club/` })) check(html.includes(`hreflang="${hl}" href="${href}"`), `${lang}: /club/ hreflang ${hl}`);
   check(/"@type":"BreadcrumbList"/.test(html), `${lang}: /club/ has no BreadcrumbList`);
   check(has(html, c.title) && has(html, c.subtitle) && c.benefits.every((b) => has(html, b)), `${lang}: /club/ title, subtitle or a benefit missing`);
-  check(has(html, club.consent[L]) && new RegExp(`href="${pre}/policies/#club"[^>]*>${club[L].details}<`).test(html), `${lang}: /club/ consent text or its «${club[L].details}» link missing`);
+  // the consent text, then «سياسة الخصوصية» / "Privacy Policy" → the marketing section (6 Nov 2026)
+  check(has(html, club.consent[L]) && new RegExp(`href="${pre}/policies/#club"[^>]*>${club.consent[`link_${L}`]}<`).test(html), `${lang}: /club/ consent text or its «${club.consent[`link_${L}`]}» link missing`);
   check(!html.includes(L === 'ar' ? 'كيف نستخدم بياناتك' : 'How we use your data'), `${lang}: /club/ still shows the old privacy link text`);
   check(!html.includes('[object Object]'), `${lang}: /club/ renders an object`);
   const un = page(lang, 'club', 'unsubscribe');
