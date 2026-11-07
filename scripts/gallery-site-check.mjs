@@ -11,6 +11,10 @@
 //     inside, Esc closes and focus returns to the thumbnail of the photo last shown, gallery_open { category } only;
 //     CLS 0 while the page loads and while filtering (no layout shift without input); axe: no serious / critical
 //     violation with the viewer closed and open;
+//   - the order (7 Nov 2026): «الكل» interleaved — no photo shares both its property and its kind (data-gallery-group)
+//     with the one before while another group still has photos, the first photos come from distinct groups, each group
+//     in the dashboard order (data-order rising); every filter shows its photos in the dashboard order, in the DOM;
+//     back on «الكل» the interleaved order returns; the home page's «من المعرض» = the first six of «الكل»;
 //   - the branch pages' photo strip (7 Nov 2026): the gallery's branch filter in its order from 3 photos, lazy, a
 //     snapping row with arrows from 768 px, the same viewer, «كل الصور» → /gallery/?filter=<branch> opening on it.
 // Every page it opens: AR + EN × 375 (touch) + 1440 × light + dark — one <h1>, no horizontal scroll. GTM is blocked.
@@ -137,6 +141,7 @@ try {
         const ALL = ['all', 'airport-road', 'shafa-road', 'rooms', 'dining', 'hall'];
         const want = await page.locator('[data-gallery-item]').evaluateAll((lis, ALL) => ALL.filter((f) => lis.some((li) => li.dataset.filters.split(' ').includes(f))), ALL);
         check(JSON.stringify(filters.map((f) => f.f)) === JSON.stringify(want), `${tag}: the filters shown (${filters.map((f) => f.f)}) are not the ones with photos (${want})`);
+        let allOrder = null;
         for (const f of filters) {
           await page.evaluate(() => { window.dataLayer = []; });
           await page.click(`[data-gallery-filter="${f.f}"]`);
@@ -151,11 +156,44 @@ try {
             };
           }, f.f);
           check(r.ok && r.n > 0, `${tag}: filter ${f.f} shows the wrong photos`);
+          // a filter: its photos in the dashboard order, in the DOM; «الكل»: the interleaved order of the page
+          const ord = await page.evaluate(() => [...document.querySelectorAll('[data-gallery-item]')].filter((li) => !li.hidden).map((li) => ({ o: Number(li.dataset.order), g: li.dataset.galleryGroup })));
+          if (f.f !== 'all') check(ord.every((x, i) => i === 0 || x.o > ord[i - 1].o), `${tag}: filter ${f.f} is not in the dashboard order (${ord.map((x) => x.o)})`);
+          else {
+            const groups = new Map();
+            ord.forEach((x) => groups.set(x.g, [...(groups.get(x.g) ?? []), x.o]));
+            check([...groups.values()].every((os) => os.every((o, i) => i === 0 || o > os[i - 1])), `${tag}: «الكل»: a group out of its dashboard order`);
+            const k = groups.size;
+            check(new Set(ord.slice(0, k).map((x) => x.g)).size === k, `${tag}: «الكل»: the first ${k} photos do not come from ${k} different groups (${ord.slice(0, k).map((x) => x.g)})`);
+            const split = (g) => ({ b: g.slice(0, g.lastIndexOf(':')), k: g.slice(g.lastIndexOf(':') + 1) });
+            const bad = ord.findIndex((x, i) => {
+              if (i === 0) return false;
+              const a = split(ord[i - 1].g), c = split(x.g);
+              if (a.b !== c.b && a.k !== c.k) return false;
+              // allowed only when no group left at this point differs from the previous photo in both
+              return ord.slice(i).some((y) => { const d = split(y.g); return d.b !== a.b && d.k !== a.k; });
+            });
+            check(bad === -1, `${tag}: «الكل»: photo ${bad + 1} repeats the property or the kind of the one before while another group was left (${ord.map((x) => x.g).join(' ')})`);
+            if (f === filters[0]) allOrder = ord.map((x) => x.o);
+          }
           check(r.count === g.shown.replace('{n}', String(r.n)), `${tag}: filter ${f.f}: count «${r.count}»`);
           check(r.pressed.join() === f.f, `${tag}: filter ${f.f}: pressed ${r.pressed}`);
           check(r.dl.length === 1 && JSON.stringify(Object.keys(r.dl[0]).filter((k) => !k.startsWith('gtm.')).sort()) === '["event","filter"]' && r.dl[0].filter === f.f, `${tag}: gallery_filter ${JSON.stringify(r.dl)}`);
         }
         check(await page.evaluate(() => window.__cls) === 0, `${tag}: layout shift without input while filtering`);
+        // back on «الكل»: the interleaved order again; the home page's six = its first six
+        await page.click('[data-gallery-filter="all"]');
+        const again = await page.evaluate(() => [...document.querySelectorAll('[data-gallery-item]')].map((li) => ({ o: Number(li.dataset.order), href: li.dataset.href })));
+        check(JSON.stringify(again.map((x) => x.o)) === JSON.stringify(allOrder), `${tag}: back on «الكل» the interleaved order is not restored`);
+        if (form.name === '1440' && theme === 'light') {
+          const hp = await ctx.newPage();
+          await hp.goto(`${BASE}${lang === 'en' ? '/en' : ''}/`, { waitUntil: 'domcontentloaded' });
+          const six = await hp.locator('[data-home-gallery-photo] img').evaluateAll((imgs) => imgs.map((i) => i.getAttribute('src') || ''));
+          const first6 = await page.evaluate(() => [...document.querySelectorAll('[data-gallery-item]')].slice(0, 6).map((li) => li.dataset.src));
+          const base = (u) => (u || '').replace(/-\d+\.(webp|avif|jpg)$/, '').split('/').pop();
+          check(six.length === Math.min(6, again.length) && six.every((u, i) => base(u) === base(first6[i])), `${tag}: the home page's «من المعرض» is not the first six of «الكل» (${six.map(base)} vs ${first6.map(base)})`);
+          await hp.close();
+        }
         // the viewer, on a filter with several photos (rooms when present, else all)
         const fv = filters.find((f) => f.f === 'rooms') ? 'rooms' : 'all';
         await page.click(`[data-gallery-filter="${fv}"]`);
@@ -232,7 +270,8 @@ try {
         let want = [];
         if (live) {
           await page.goto(`${BASE}${P}/gallery/`, { waitUntil: 'load' });
-          want = await page.$$eval('[data-gallery-item]', (xs, b) => xs.filter((x) => (x.dataset.filters || '').split(' ').includes(b)).map((x) => x.dataset.src), branch);
+          // the filter's order = the dashboard order (data-order), not the page's interleaved «الكل» (7 Nov 2026)
+          want = await page.$$eval('[data-gallery-item]', (xs, b) => xs.filter((x) => (x.dataset.filters || '').split(' ').includes(b)).sort((x, y) => Number(x.dataset.order) - Number(y.dataset.order)).map((x) => x.dataset.src), branch);
         }
         await page.goto(`${BASE}${P}/${branch}/`, { waitUntil: 'load' });
         const got = await page.$$eval('[data-branch-photos] [data-gallery-item]', (xs) => xs.map((x) => x.dataset.src));

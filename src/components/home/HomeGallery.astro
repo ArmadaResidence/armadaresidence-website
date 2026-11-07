@@ -1,20 +1,21 @@
 ---
 /**
  * «من المعرض» on the home page (7 Nov 2026): the first six photos of /gallery/ — published in «الصور» with «إظهار في
- * المعرض» on, in the gallery's (the dashboard's) order (src/lib/gallery.ts). Shown only while the gallery page exists
+ * المعرض» on, in the order of the gallery's «الكل» (interleaved across the properties and kinds since 7 Nov 2026 —
+ * src/lib/gallery.ts → galleryAll). Shown only while the gallery page exists
  * (GALLERY_MIN photos, not hidden in «المحتوى والظهور»); each photo links to the page it belongs to; «كل الصور» → /gallery/.
  */
 import Photo from '../Photo.astro';
 import SectionHead from './SectionHead.astro';
 import { localePath, photoProps, ui, type Locale } from '@lib/content';
-import { galleryItems, galleryLive } from '@lib/gallery';
+import { galleryAll, galleryLive } from '@lib/gallery';
 
 interface Props {
   locale: Locale;
 }
 const { locale } = Astro.props;
 const t = ui(locale).home;
-const list = galleryLive ? galleryItems.slice(0, 6) : [];
+const list = galleryLive ? galleryAll.slice(0, 6) : [];
 ---
 
 {

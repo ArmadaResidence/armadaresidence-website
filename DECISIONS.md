@@ -1949,3 +1949,14 @@ Ahmed's approved home design (desktop 1440, adapted for phones), built in the or
   The Shafa Road «غرفة مع بلكونة» card (a pattern square) shows the room's published cover: `scripts/fact-sheet.mjs →
   roomCover()` takes the largest file of the LCP image the room's page preloads on `seo.json → live_url`
   (`fact-sheet-copy.mjs`: `room: 'balcony-room'` instead of `img: null`). Both regenerated; all 24 pages looked at.
+- **Gallery order — «الكل» interleaved (Ahmed, 7 Nov 2026, part 7).** `/gallery/` «الكل» listed the photos target by
+  target, so the first rows showed one property's exterior only. Now `galleryAll` (`src/lib/gallery.ts → interleave()`)
+  takes them round-robin over the groups property × kind (the property itself — cover, gallery, story scenes —, rooms,
+  dining, hall): each step the group that differs from the previous photo in both property and kind (else in property,
+  else in kind), the one used longest ago, ties in site order — e.g. Airport Road exterior, Shafa Road room, Airport Road
+  dining, Shafa Road exterior, Airport Road room, …; the dashboard order kept inside each group; no randomness. The page
+  is rendered in that order; a filter re-orders the list in the DOM to the dashboard order (`data-order`), «الكل» puts
+  the interleaved order back; the branch pages' strip keeps the dashboard order. The home page's «من المعرض» = the
+  first six of «الكل». `gallery-site-check` (on a media-sample build) checks the interleaving, each group's order, every
+  filter's order, the return to «الكل» and the home six (505 checks); the sample holds Airport Road photos only, so the
+  two-property sequence above was checked on a synthetic list.

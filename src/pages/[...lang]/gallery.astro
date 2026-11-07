@@ -5,6 +5,9 @@
  * filters, «إظهار في المعرض»). Built only once at least 6 photos qualify — until then no page, no nav link, no sitemap
  * entry (getStaticPaths returns nothing). Fixed 3:2 cells (CLS 0), lazy below the first photo, the pipeline's AVIF +
  * WebP srcsets. Filters: each shown only when it has photos (the branch filters hold every photo of that branch).
+ * Order (7 Nov 2026): «الكل» is interleaved across the properties and kinds (galleryAll — the page is rendered in it);
+ * a filter shows its photos in the dashboard order (data-order), the list re-ordered in the DOM so the keyboard order,
+ * the viewer's arrows and the screen agree.
  * Lightbox: native <dialog> (inert page behind), arrows (reading direction), Esc, swipe, a visible close button, Tab
  * kept inside, focus back on the thumbnail of the photo last shown; caption = the photo's alt + «1 / 24»; a link to the
  * photo's page. dataLayer: gallery_filter { filter }, gallery_open { category } — nothing personal.
@@ -14,7 +17,7 @@ import { langPaths } from '@lib/paths';
 import { breadcrumbs, collectionPage } from '@lib/jsonld';
 import { fill, L, localePath, pageSeo, photoPreload, ui, type Locale } from '@lib/content';
 import GalleryViewer from '@components/GalleryViewer.astro';
-import { galleryFilters, galleryItems, galleryLive, galleryOg, inFilter } from '@lib/gallery';
+import { galleryAll, galleryFilters, galleryItems, galleryLive, galleryOg, groupOf, inFilter } from '@lib/gallery';
 
 export function getStaticPaths() {
   return galleryLive ? langPaths() : [];
@@ -29,10 +32,13 @@ const g = t.gallery_page;
 const s = pageSeo(locale, 'gallery');
 const THUMB_SIZES = '(min-width: 1152px) 376px, (min-width: 768px) 33vw, 50vw';
 const set = (p: { base: string; widths: number[] }, ext: string) => p.widths.map((w) => `${p.base}-${w}.${ext} ${w}w`).join(', ');
-const items = galleryItems.map((it) => {
+const items = galleryAll.map((it) => {
   const p = it.photo;
   return {
     it,
+    /** the dashboard order (a filter's order) */
+    order: galleryItems.indexOf(it),
+    group: groupOf(it),
     alt: L(locale, p, 'alt'),
     src: `${p.base}-${p.widths.includes(800) ? 800 : p.widths[0]}.webp`,
     webp: set(p, 'webp'),
@@ -53,7 +59,7 @@ const jsonld = [
     { name: g.heading, path: localePath(locale, '/gallery/') },
   ]),
 ];
-const first = galleryItems[0]?.photo;
+const first = galleryAll[0]?.photo;
 ---
 
 <Base locale={locale} path="/gallery/" title={s.title} description={s.description} ogImage={galleryOg} jsonld={jsonld}>
@@ -85,6 +91,8 @@ const first = galleryItems[0]?.photo;
           <li
             data-gallery-item
             data-filters={x.filters}
+            data-order={x.order}
+            data-gallery-group={x.group}
             data-category={x.it.category}
             data-src={x.src}
             data-srcset={x.webp}
@@ -137,6 +145,7 @@ const first = galleryItems[0]?.photo;
     const items = Array.from(root.querySelectorAll<HTMLLIElement>('[data-gallery-item]'));
     const filters = Array.from(root.querySelectorAll<HTMLButtonElement>('[data-gallery-filter]'));
     const count = root.querySelector<HTMLElement>('[data-gallery-count]')!;
+    const grid = root.querySelector<HTMLElement>('[data-gallery-grid]')!;
     let visible = items;
 
     // ── filters ──
@@ -144,7 +153,10 @@ const first = galleryItems[0]?.photo;
       const f = b.dataset.galleryFilter || 'all';
       for (const x of filters) x.setAttribute('aria-pressed', String(x === b));
       for (const li of items) li.hidden = !(li.dataset.filters || '').split(' ').includes(f);
-      visible = items.filter((li) => !li.hidden);
+      // «الكل»: the interleaved order the page was built in; a filter: the dashboard order
+      const sorted = f === 'all' ? items : [...items].sort((a, b) => Number(a.dataset.order) - Number(b.dataset.order));
+      for (const li of sorted) grid.appendChild(li);
+      visible = sorted.filter((li) => !li.hidden);
       count.textContent = (root.dataset.shown || '{n}').replace('{n}', String(visible.length));
       if (track) push({ event: 'gallery_filter', filter: f });
     };

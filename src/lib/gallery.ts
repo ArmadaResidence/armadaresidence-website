@@ -4,8 +4,13 @@
  * of the branches (cover, gallery, the 4 story scenes), the room types (cover, gallery), the dining venues that have a
  * page, and the hall. Discover Taif place covers and the partners slots are not in it; a photo whose «إظهار في المعرض»
  * is off is left out.
- * Order: branch photos, then rooms, then dining, then the hall — branches and room types in site order, each target's
- * photos in its «الصور» order (cover first, then the gallery by its sort, then the story scenes).
+ * Order (`galleryItems` — the dashboard order): branch photos, then rooms, then dining, then the hall — branches and room
+ * types in site order, each target's photos in its «الصور» order (cover first, then the gallery by its sort, then the
+ * story scenes). The category filters and the branch pages' strip show that order.
+ * «الكل» and the home page's «من المعرض» (Ahmed, 7 Nov 2026) use `galleryAll`: the same photos interleaved, round-robin
+ * across the kinds (the property itself, rooms, dining, the hall) and the two properties, so the first rows never show
+ * one property's exterior only — deterministic (everyone sees the same page), the dashboard order kept inside each
+ * group (see interleave()).
  * The page, its nav link (after «طريق الشفا») and its sitemap entry exist only once at least GALLERY_MIN photos qualify.
  */
 import { branches, hallPath, halls, L, localePath, media, roomPath, roomsFor, sectionVisible, venueName, venuePages, venuePath, type Locale, type SitePhoto } from './content';
@@ -61,6 +66,45 @@ function build(): GalleryItem[] {
 }
 
 export const galleryItems: GalleryItem[] = build();
+
+/** what a photo shows, for the interleaving: the property itself (its cover, gallery, story scenes), rooms, dining, hall */
+const kindOf = (it: GalleryItem) => (it.category === 'airport-road' || it.category === 'shafa-road' ? 'property' : it.category);
+const KINDS = ['property', 'rooms', 'dining', 'hall'];
+/** one group per property × kind, e.g. `airport-road:dining` (data-gallery-group on the page) */
+export const groupOf = (it: GalleryItem): string => `${it.branch}:${kindOf(it)}`;
+
+/**
+ * Round-robin over the groups (property × kind), each group a queue in the dashboard order. Every step takes the head of
+ * the group that differs from the previous photo in BOTH property and kind (else in property, else in kind, else any),
+ * among those the one used longest ago (never used first), ties in the fixed order — properties in site order × KINDS.
+ * With both properties: Airport Road property, Shafa Road rooms, Airport Road dining, Shafa Road property, Airport Road
+ * rooms, Shafa Road dining, Airport Road hall, … No randomness: the same list always gives the same order.
+ */
+export function interleave(list: GalleryItem[]): GalleryItem[] {
+  const order = [...new Set([...branches.map((b) => b.slug), ...list.map((it) => it.branch)])].flatMap((b) => KINDS.map((k) => `${b}:${k}`));
+  const queues = new Map(order.map((g) => [g, list.filter((it) => groupOf(it) === g)]));
+  const used = new Map<string, number>();
+  const out: GalleryItem[] = [];
+  let prev: { branch: string; kind: string } | null = null;
+  for (let step = 0; out.length < list.length; step++) {
+    const live = order.filter((g) => queues.get(g)!.length);
+    const split = (g: string) => ({ branch: g.slice(0, g.lastIndexOf(':')), kind: g.slice(g.lastIndexOf(':') + 1) });
+    const tiers = [
+      (g: string) => !prev || (split(g).branch !== prev.branch && split(g).kind !== prev.kind),
+      (g: string) => !prev || split(g).branch !== prev.branch,
+      (g: string) => !prev || split(g).kind !== prev.kind,
+      () => true,
+    ];
+    const pool = tiers.map((t) => live.filter(t)).find((x) => x.length)!;
+    const g = pool.reduce((a, b) => ((used.get(b) ?? -1) < (used.get(a) ?? -1) ? b : a));
+    out.push(queues.get(g)!.shift()!);
+    used.set(g, step);
+    prev = split(g);
+  }
+  return out;
+}
+/** «الكل» and the home page's six: the interleaved order */
+export const galleryAll: GalleryItem[] = interleave(galleryItems);
 /** /gallery/ exists (page, nav link, sitemap entry) only from GALLERY_MIN photos (Ahmed, 2 Nov 2026) */
 /** the page exists from GALLERY_MIN photos, unless hidden in «المحتوى والظهور» (3 Nov 2026) */
 export const galleryLive: boolean = galleryItems.length >= GALLERY_MIN && sectionVisible('gallery');
