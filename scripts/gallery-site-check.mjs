@@ -12,7 +12,7 @@
 //     CLS 0 while the page loads and while filtering (no layout shift without input); axe: no serious / critical
 //     violation with the viewer closed and open;
 //   - the order (7 Nov 2026): «الكل» interleaved — no photo shares both its property and its kind (data-gallery-group)
-//     with the one before while another group still has photos, the first photos come from distinct groups, each group
+//     with the one before while another group still has photos, the first six show both properties and three kinds, each group
 //     in the dashboard order (data-order rising); every filter shows its photos in the dashboard order, in the DOM;
 //     back on «الكل» the interleaved order returns; the home page's «من المعرض» = the first six of «الكل»;
 //   - the branch pages' photo strip (7 Nov 2026): the gallery's branch filter in its order from 3 photos, lazy, a
@@ -163,9 +163,14 @@ try {
             const groups = new Map();
             ord.forEach((x) => groups.set(x.g, [...(groups.get(x.g) ?? []), x.o]));
             check([...groups.values()].every((os) => os.every((o, i) => i === 0 || o > os[i - 1])), `${tag}: «الكل»: a group out of its dashboard order`);
-            const k = groups.size;
-            check(new Set(ord.slice(0, k).map((x) => x.g)).size === k, `${tag}: «الكل»: the first ${k} photos do not come from ${k} different groups (${ord.slice(0, k).map((x) => x.g)})`);
             const split = (g) => ({ b: g.slice(0, g.lastIndexOf(':')), k: g.slice(g.lastIndexOf(':') + 1) });
+            // the first row and a half: both properties (when both have photos) and three kinds (when there are three) —
+            // not six different groups: alternating the properties repeats a group of the one with fewer kinds
+            const head = ord.slice(0, 6).map((x) => split(x.g));
+            const props = new Set([...groups.keys()].map((g) => split(g).b)).size;
+            const kinds = new Set([...groups.keys()].map((g) => split(g).k)).size;
+            check(new Set(head.map((x) => x.b)).size === Math.min(2, props), `${tag}: «الكل»: the first photos are of one property only (${ord.slice(0, 6).map((x) => x.g)})`);
+            check(new Set(head.map((x) => x.k)).size >= Math.min(3, kinds), `${tag}: «الكل»: the first photos show fewer than three kinds (${ord.slice(0, 6).map((x) => x.g)})`);
             const bad = ord.findIndex((x, i) => {
               if (i === 0) return false;
               const a = split(ord[i - 1].g), c = split(x.g);

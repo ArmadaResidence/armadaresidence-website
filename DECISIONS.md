@@ -1958,5 +1958,8 @@ Ahmed's approved home design (desktop 1440, adapted for phones), built in the or
   is rendered in that order; a filter re-orders the list in the DOM to the dashboard order (`data-order`), «الكل» puts
   the interleaved order back; the branch pages' strip keeps the dashboard order. The home page's «من المعرض» = the
   first six of «الكل». `gallery-site-check` (on a media-sample build) checks the interleaving, each group's order, every
-  filter's order, the return to «الكل» and the home six (505 checks); the sample holds Airport Road photos only, so the
-  two-property sequence above was checked on a synthetic list.
+  filter's order, the return to «الكل» and the home six; the sample holds Airport Road photos only, so the two-property
+  sequence above was checked on a synthetic list. The first live run (both properties: Airport Road has four groups,
+  Shafa Road two) failed the check's «first six from six groups» rule — wrong for unequal properties, since alternating
+  the properties repeats a Shafa Road group; the rule is now «the first six show both properties and three kinds» (live:
+  579 checks passed); the order itself was right.
