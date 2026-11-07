@@ -1,0 +1,65 @@
+---
+/**
+ * The cookie banner (Ahmed, 7 Nov 2026; DECISIONS.md 2026-11-07 «Cookie consent»): Google Consent Mode v2, advanced.
+ * Base.astro sets the defaults before GTM (analytics / ads denied) and <html data-consent-open> when no valid choice is
+ * stored; this banner is shown only then (CSS), at the bottom of the screen over the page — position: fixed, so nothing
+ * moves, no backdrop, the page stays usable; the sticky WhatsApp button rises above it on phones. «قبول الكل» ·
+ * «الضروري فقط» · «تخصيص» (three categories: essential always on, analytics → analytics_storage, advertising →
+ * ad_storage + ad_user_data + ad_personalization, then «حفظ»); src/lib/consent.ts sends gtag('consent', 'update'),
+ * pushes consent_update and keeps the choice cookieConsent.max_age_days (policies.json). The footer's «إعدادات ملفات
+ * تعريف الارتباط» reopens it. Copy: ui.json → cookies; the policy section /policies/#cookies.
+ */
+import { cookieConsent, localePath, ui, type Locale } from '@lib/content';
+
+interface Props {
+  locale: Locale;
+}
+const { locale } = Astro.props;
+const t = ui(locale).cookies;
+const rows = [
+  { key: 'essential', label: t.essential, locked: true },
+  { key: 'analytics', label: t.analytics, locked: false },
+  { key: 'ads', label: t.ads, locked: false },
+];
+---
+
+<aside
+  class="cookie-banner"
+  aria-label={t.region}
+  aria-describedby="cookie-banner-text"
+  data-cookie-banner
+  data-version={cookieConsent.version}
+  data-days={cookieConsent.max_age_days}
+  tabindex="-1"
+>
+  <p id="cookie-banner-text" class="text-sm leading-relaxed text-midnight">
+    {t.text}
+    <a href={`${localePath(locale, '/policies/')}#cookies`} class="link-bronze font-semibold underline underline-offset-2" data-cookie-policy>{t.privacy}</a>
+  </p>
+  <div class="cookie-prefs" data-cookie-prefs hidden>
+    <ul class="mt-3 divide-y divide-line border-y border-line">
+      {
+        rows.map((r) => (
+          <li class="flex items-center justify-between gap-4 py-2.5">
+            <label for={`cookie-${r.key}`} class="text-sm font-semibold text-midnight">{r.label}</label>
+            <input
+              id={`cookie-${r.key}`}
+              type="checkbox"
+              role="switch"
+              class="cookie-switch"
+              checked={r.locked}
+              disabled={r.locked}
+              data-cookie-cat={r.key}
+            />
+          </li>
+        ))
+      }
+    </ul>
+  </div>
+  <div class="cookie-actions mt-3 flex flex-wrap gap-2">
+    <button type="button" class="cookie-btn cookie-btn-primary" data-cookie-accept>{t.accept_all}</button>
+    <button type="button" class="cookie-btn cookie-btn-secondary" data-cookie-essential>{t.essential_only}</button>
+    <button type="button" class="cookie-btn cookie-btn-ghost" aria-expanded="false" data-cookie-customize>{t.customize}</button>
+    <button type="button" class="cookie-btn cookie-btn-primary" data-cookie-save hidden>{t.save}</button>
+  </div>
+</aside>

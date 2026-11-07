@@ -130,7 +130,7 @@ const groupsOf = (page, scope = '[data-sidebar]') => page.locator(`${scope} [dat
   await page.goto(`${BASE}/rates`);
   await page.waitForSelector('.grid-cal');
   const items = await navItems(page);
-  check(JSON.stringify(items) === JSON.stringify(['overview', 'reports', 'bookings', 'rates', 'inventory', 'rooms', 'media', 'offers', 'dining', 'blog', 'content', 'faq', 'reviews', 'guests', 'partners', 'users', 'settings', 'audit']),
+  check(JSON.stringify(items) === JSON.stringify(['overview', 'reports', 'bookings', 'rates', 'inventory', 'rooms', 'media', 'offers', 'dining', 'blog', 'content', 'faq', 'reviews', 'partner-logos', 'guests', 'partners', 'users', 'settings', 'audit']),
     'admin: every section, in the sidebar order (النظرة العامة والتقارير بلا عنوان، التشغيل، المحتوى والتسويق، الشركاء، الإدارة)', items.join(' '));
   check(JSON.stringify(await groupsOf(page)) === JSON.stringify(['overview', 'operations', 'content', 'partners', 'admin']), 'admin: five groups, the first without a title (the empty ones hidden)', (await groupsOf(page)).join(' '));
   const titles = await page.locator('[data-sidebar] .side-group-title').allTextContents();

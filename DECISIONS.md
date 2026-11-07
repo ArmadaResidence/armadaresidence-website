@@ -1842,3 +1842,70 @@ Ahmed's approved home design (desktop 1440, adapted for phones), built in the or
   Arabic texts, the dashboard page's texts and the gallery / FAQ page UI strings — as built, with no change. Still open:
   a sales WhatsApp on the home offer cards (kept off by CLAUDE.md §5), the /club/ benefits that still name promo codes
   and «أول من يعرف», and the first mention of «إياب» on /policies/.
+
+## 2026-11-07 — Launch preparation: cookie consent, «شركاؤنا», the branch photo strip, the reviews carousel, text fixes, backups (Ahmed, 7 Nov 2026)
+
+- **Cookie consent — Google Consent Mode v2, advanced («Cookie consent»).** `Base.astro` sets the defaults before GTM is
+  queued: `ad_storage`, `analytics_storage`, `ad_user_data`, `ad_personalization` denied; `functionality_storage`,
+  `security_storage` granted; `wait_for_update` 500 ms. GTM keeps loading as before (advanced mode: Google's tags send
+  cookieless pings while denied). A stored choice (localStorage `armada-consent` = {v, t, analytics, ads}) of the current
+  policy version (`policies.json → cookie_consent.version`, 2026-11-07) and under `max_age_days` (365) old is applied at
+  once, right after the default; otherwise `<html data-consent-open>` shows the banner from the first paint.
+  `CookieConsent.astro` + `src/lib/consent.ts`: a card at the bottom (phones: full width in the 16 px gutter, the WhatsApp
+  button rises above it by its height with `translate`; from 768 px a card on the start side, clear of the button; above
+  the room bar on room pages), no backdrop, nothing moves (CLS 0), first in the keyboard order, 44 px buttons, light and
+  dark. «قبول الكل» / «الضروري فقط» / «تخصيص» → three switches (essential always on — analytics → `analytics_storage` —
+  advertising → `ad_storage` + `ad_user_data` + `ad_personalization`) and «حفظ». Each choice: `gtag('consent', 'update')`,
+  one dataLayer `consent_update` { consent_analytics, consent_ads, consent_granted: 'essential,analytics,ads' }, stored for
+  12 months; never shown again until it expires or the version changes. The footer's «إعدادات ملفات تعريف الارتباط»
+  reopens it on the customize view with the stored choice (Esc closes it unchanged, focus back on the link). The offer
+  pop-up waits while the banner is shown. Automated browsers never get it unless localStorage `armada-consent-test` = 1
+  (the suite's other checks click near the bottom of the screen). New policy section «ملفات تعريف الارتباط» / "Cookies"
+  (`page.sections[cookies]`, after «الخصوصية»; the banner links /policies/#cookies) — the curated «الجهة المشغّلة» texts
+  move to sections[10] (migration `20261107400100`). **Left for Ahmed in GTM** (`docs/gtm-performance.md`): "Require
+  additional consent" (`ad_storage`) on every pixel tag; GA4 keeps its built-in consent checks. Until then the pixels still
+  fire without consent, and the cookies paragraph is accurate only after that step. Check: `scripts/consent-check.mjs`
+  (208 checks, in the suite and the routed plan).
+- **«شركاؤنا» — the partner logos strip, a section of the home page.** No such strip existed before: no partner logos in
+  content/, in the repo's history or in the old site's archive (searched 7 Nov 2026). Built as Ahmed specified, managed
+  from a new dashboard module «شعارات الشركاء» (`public.partner_logos`, migration `20261107400000`; under the content
+  permission like «آراء الضيوف»): the logo as SVG (strict allow-list, ≤ 200 KB) or PNG (signature, ≤ 300 KB) stored in the
+  row, the partner's name ar / en used only as the image's alt, an order, «في الصفحة الرئيسية»; `live` only by «نشر» (a
+  site job, `site-rebuild` reason `partner_logos`). `scripts/partner-logos-build.mjs` → `public/images/partner-logos/` +
+  `content/partner-logos.generated.json` (both gitignored; seed `content/partner-logos.json`, empty). On the home page after
+  «عن أرمادا ريزيدنس», only from 3 logos: logos only (no names shown, no links), 48 px high, original colours (a white plate
+  in dark mode), even spacing; a seamless loop (the set and an aria-hidden copy, repeated to cover the width) moving in
+  the reading direction, one full loop per the new token `--motion-marquee` (40 s); paused under the mouse, off screen or
+  in a hidden tab; dragged with the mouse or by touch, then it carries on (`src/lib/marquee.ts`, `translate` only);
+  reduced motion → one static row. **It is a section of the home page and stays in the approved order** (rooms, offers,
+  why, dining, gallery, reviews, places, blog, about, **partners**, club — `home-sections-check` ORDER). Nothing shows until
+  Ahmed adds at least three logos.
+- **The branch page photo strip.** After the story sections (`BranchPhotoStrip.astro`): the branch's photos published with
+  «إظهار في المعرض» on — exactly the gallery page's branch filter and order — in a swipeable row (scroll-snap, arrows from
+  768 px, `src/lib/slider.ts`), opening the gallery page's viewer (moved unchanged into `GalleryViewer.astro` +
+  `src/lib/gallery-viewer.ts`, used by both); «كل الصور» → `/gallery/?filter=<branch>` (the gallery page now opens on a
+  `?filter=`), shown only while the gallery page exists. Hidden under 3 photos. All lazy.
+- **The reviews carousel.** «آراء ضيوفنا» shows every published review of the page's language (twelve at most, was three)
+  in a manual row: three side by side from 1024 px, two from 768 px, one and a peek on phones; swipe on touch; arrows and
+  dots from 768 px (one dot per stop, following the row); nothing moves by itself; reduced motion jumps instead of gliding.
+- **Two reviews** (approved text, verbatim): غند · طريق المطار · 5 · «استمتعنا بالإقامة والأجواء الهادئة…» and نواف ·
+  طريق الشفا · 5 · «نظيف وجديد وموقع قريب من كل الخدمات واستقبالهم رائع» — in `content/reviews.json` and in the dashboard
+  (migration `20261107400100`: inserted after the existing ones and published; no other review touched).
+- **Text fixes (approved):** the home café text «بجلسات داخلية وتراس» / "with indoor seating and a terrace" — the terrace
+  is now a confirmed fact (`branches.json → airport-road.dining.seating`: indoor, terrace) and `home-sections-check`
+  requires it; «واتساب مباشر» in English "Reception is available around the clock, on WhatsApp too." (file + the
+  dashboard field, never published); /club/ benefits = the home band's two («عروض خاصة بالأعضاء فقط», «مجانًا ودون أي
+  التزام» — no promo codes, no "first to know"); /policies/ «عضوية إياب والتسويق» opens with «في إياب — عضوية أرمادا
+  ريزيدنس، …» / "In Eyab — Armada Residence membership, …".
+- **Code debt:** the 20 type errors of `booking-request/email.ts` fixed with types only (`KvRow` for rows with a print
+  class) — all 50 email previews byte-identical before / after; qa.py checks `ui.json` key parity (every key in both
+  languages with the same kind of value; `_…` notes and the Arabic-only `staff_email.deploy_alert` exempt).
+- **Backups (findings, nothing changed):** production has daily physical backups (8 restore points, about 02:56 UTC,
+  7 days), PITR off; Storage files (`media-originals` ≈ 835 MiB) are **not** in the database backups and have no off-site
+  copy; the plan tier was not visible from the CLI. `docs/backup-restore.md` lists what is and is not backed up and the
+  restore steps for the database, Storage and the two repos.
+- **Old dashboard archive:** screenshots of the old Hostinger admin panel go to `F:\Armada Website\archive\` (outside git:
+  it holds guest data; `archive/` is gitignored).
+- **For approval (new texts):** the cookies paragraph (ar / en); the banner's English (given) is used as written;
+  «المراجعة السابقة» / «المراجعة التالية» ("Previous review" / "Next review"), «صور الفرع» / "Photos of the property",
+  «شركاؤنا» / "Our partners", the dashboard module's texts.

@@ -1,0 +1,42 @@
+---
+/**
+ * The photo viewer of /gallery/ and the branch pages' photo strip (one lightbox, 7 Nov 2026): a native <dialog> (inert
+ * page behind), arrows in the reading direction, Esc, swipe, a visible close button, Tab kept inside, focus back on the
+ * thumbnail of the photo last shown; caption = the photo's alt + «1 / N»; a link to the photo's page. Behaviour:
+ * src/lib/gallery-viewer.ts.
+ */
+import { ui, type Locale } from '@lib/content';
+
+interface Props {
+  locale: Locale;
+}
+const { locale } = Astro.props;
+const t = ui(locale);
+const VIEW_SIZES = '(min-width: 1520px) 1400px, 92vw';
+---
+
+<dialog class="gallery-viewer" aria-label={t.gallery_page.viewer} data-gallery-viewer>
+  <div class="gallery-viewer-frame" data-gallery-frame>
+    <picture>
+      <source type="image/avif" sizes={VIEW_SIZES} data-gallery-v-avif />
+      {/* src / alt are set when the viewer opens (aria-hidden until then) */}
+      <img class="gallery-viewer-img" alt="" aria-hidden="true" sizes={VIEW_SIZES} width="1400" height="933" data-gallery-v-img />
+    </picture>
+  </div>
+  <div class="gallery-viewer-bar">
+    <p class="gallery-viewer-caption" data-gallery-v-caption></p>
+    <p class="gallery-viewer-meta">
+      <span class="num" dir="ltr" data-gallery-v-counter></span>
+      <a class="gallery-viewer-link" href="#" data-gallery-v-link></a>
+    </p>
+  </div>
+  <button type="button" class="gallery-arrow gallery-viewer-close" aria-label={t.gallery.close} data-gallery-v-close>
+    <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor" aria-hidden="true"><path d="M5.7 4.3L4.3 5.7 10.6 12l-6.3 6.3 1.4 1.4L12 13.4l6.3 6.3 1.4-1.4L13.4 12l6.3-6.3-1.4-1.4L12 10.6z" /></svg>
+  </button>
+  <button type="button" class="gallery-arrow gallery-viewer-prev" aria-label={t.gallery.previous} data-gallery-v-prev>
+    <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor" aria-hidden="true" class="rotate-180 rtl:rotate-0"><path d="M9.3 5.3a1 1 0 011.4 0l6 6a1 1 0 010 1.4l-6 6a1 1 0 01-1.4-1.4L14.6 12 9.3 6.7a1 1 0 010-1.4z" /></svg>
+  </button>
+  <button type="button" class="gallery-arrow gallery-viewer-next" aria-label={t.gallery.next} data-gallery-v-next>
+    <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor" aria-hidden="true" class="rtl:rotate-180"><path d="M9.3 5.3a1 1 0 011.4 0l6 6a1 1 0 010 1.4l-6 6a1 1 0 01-1.4-1.4L14.6 12 9.3 6.7a1 1 0 010-1.4z" /></svg>
+  </button>
+</dialog>

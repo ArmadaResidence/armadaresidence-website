@@ -1,5 +1,6 @@
 // «آراء الضيوف» and «في الصفحة الرئيسية» in «الغرف» (7 Nov 2026 — DECISIONS.md 2026-11-07 «Home sections») end to end on
-// a PREVIEW BRANCH (the script refuses the production project): the six seeded reviews published and on the home page;
+// a PREVIEW BRANCH (the script refuses the production project): the seeded reviews (content/reviews.json — eight since
+// 7 Nov 2026) published and on the home page;
 // a new review (draft, the publish count), the checks while typing (English text marked Arabic, an http link), the
 // blocked publish with its list, the fix and «نشر» (the row published, its live snapshot, the site job); «حذف التقييم»
 // only for a review never published (confirm); reorder; Esc on an edited dialog asks «تعديلات غير محفوظة»; a user
@@ -8,11 +9,13 @@
 //   node admin/tests/reviews-check.mjs [BASE_URL=http://127.0.0.1:5173]
 //   env SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY (the branch), LOGIN_CODE_VIA_SERVICE=1
 import { chromium } from 'playwright';
-import { mkdirSync } from 'node:fs';
+import { mkdirSync, readFileSync } from 'node:fs';
 import { APP_PATH, firstOf, handleBackupCodes, passCode, routeLoginCode } from './code-login.mjs';
 
 const BASE = (process.argv[2] || 'http://127.0.0.1:5173').replace(/\/$/, '');
 const PW = 'Qa-Armada-2026!x';
+// the reviews seeded by the migrations (20261107300100: six; 20261107400100: two more) = content/reviews.json
+const SEEDED = JSON.parse(readFileSync(new URL('../../content/reviews.json', import.meta.url), 'utf8')).items.length;
 const env = process.env;
 const URL_ = env.SUPABASE_URL;
 const SERVICE = env.SUPABASE_SERVICE_ROLE_KEY;
@@ -96,9 +99,9 @@ const qa = async () => (await rest('guest_reviews?first_name=like.QA*&select=id,
   check(await page.locator('[data-sidebar] a[data-nav="reviews"]').count() === 1, 'the sidebar lists «آراء الضيوف» under «المحتوى والتسويق»');
   await page.goto(`${BASE}/reviews`);
   await page.waitForSelector('[data-review-row]');
-  check(await rows(page).count() === 6, 'six seeded reviews', String(await rows(page).count()));
-  check(await page.locator('[data-review-state="published"]').count() === 6, 'all six published');
-  check(await page.locator('[data-on-home]').count() === 6, 'all six on the home page now (3 ar + 3 en)');
+  check(await rows(page).count() === SEEDED, `${SEEDED} seeded reviews`, String(await rows(page).count()));
+  check(await page.locator('[data-review-state="published"]').count() === SEEDED, 'all seeded published');
+  check(await page.locator('[data-on-home]').count() === SEEDED, 'all seeded on the home page now');
   check(await page.locator('[data-action="review-publish"]').isDisabled(), '«نشر» waits while nothing is pending');
   check(await page.locator('[data-action="review-delete"]').count() === 0, 'no «حذف التقييم» on a published review');
   await shot(page, 'list-1280');
@@ -143,12 +146,12 @@ const qa = async () => (await rest('guest_reviews?first_name=like.QA*&select=id,
 
   // reorder: the new review first
   const mine = (await qa())[0].id;
-  for (let i = 0; i < 6; i++) {
+  for (let i = 0; i < SEEDED; i++) {
     const btn = page.locator(`[data-review-row="${mine}"] [data-action="review-earlier"]`);
     // the order buttons wait while a reorder saves (Playwright's click waits for them)
     if ((await btn.getAttribute('aria-label')) && i > 0 && (await qa())[0]?.sort === 0) break;
     await btn.click();
-    await until(async () => (await qa())[0]?.sort === 5 - i, 5000);
+    await until(async () => (await qa())[0]?.sort === SEEDED - 1 - i, 5000);
   }
   check(await until(async () => (await qa())[0]?.sort === 0), 'reorder: «تقديم» moves it to the top (saved)', JSON.stringify((await rest('guest_reviews?select=first_name,sort&order=sort')).map((r) => r.first_name + ':' + r.sort)));
   check(await rows(page).first().getAttribute('data-review-row') === mine, 'reorder: the list shows it first');

@@ -10,7 +10,9 @@
 //     photo's page, ArrowLeft / ArrowRight in the reading direction (wraps), a horizontal swipe on touch, Tab kept
 //     inside, Esc closes and focus returns to the thumbnail of the photo last shown, gallery_open { category } only;
 //     CLS 0 while the page loads and while filtering (no layout shift without input); axe: no serious / critical
-//     violation with the viewer closed and open.
+//     violation with the viewer closed and open;
+//   - the branch pages' photo strip (7 Nov 2026): the gallery's branch filter in its order from 3 photos, lazy, a
+//     snapping row with arrows from 768 px, the same viewer, «كل الصور» → /gallery/?filter=<branch> opening on it.
 // Every page it opens: AR + EN × 375 (touch) + 1440 × light + dark — one <h1>, no horizontal scroll. GTM is blocked.
 //   node scripts/gallery-site-check.mjs [BASE_URL]
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
@@ -216,6 +218,68 @@ try {
         await axe(page, `${tag} page`);
       }
       await ctx.close();
+    }
+  }
+  // the branch pages' photo strip (7 Nov 2026): the branch's photos of the gallery (its filter, same order) from 3,
+  // swipeable, arrows from 768 px, the gallery's viewer; «كل الصور» → /gallery/?filter=<branch> opens on that filter
+  for (const branch of ['airport-road', 'shafa-road']) {
+    for (const lang of ['ar', 'en']) {
+      for (const form of FORMS) {
+        const tag = `strip ${branch} ${lang} ${form.name}`;
+        const ctx = await context(form, 'light');
+        const page = await ctx.newPage();
+        const P = lang === 'en' ? '/en' : '';
+        let want = [];
+        if (live) {
+          await page.goto(`${BASE}${P}/gallery/`, { waitUntil: 'load' });
+          want = await page.$$eval('[data-gallery-item]', (xs, b) => xs.filter((x) => (x.dataset.filters || '').split(' ').includes(b)).map((x) => x.dataset.src), branch);
+        }
+        await page.goto(`${BASE}${P}/${branch}/`, { waitUntil: 'load' });
+        const got = await page.$$eval('[data-branch-photos] [data-gallery-item]', (xs) => xs.map((x) => x.dataset.src));
+        if (!live || want.length < 3) {
+          if (!REMOTE || !live) check(got.length === 0 || got.length >= 3, `${tag}: a strip with ${got.length} photo(s)`);
+          await ctx.close();
+          continue;
+        }
+        check(JSON.stringify(got) === JSON.stringify(want), `${tag}: the strip's photos ≠ the gallery's ${branch} filter (${got.length} vs ${want.length})`);
+        const lazy = await page.$$eval('[data-branch-photos] [data-gallery-item] img', (xs) => xs.every((i) => i.loading === 'lazy' && i.alt.length > 3));
+        check(lazy, `${tag}: a strip photo not lazy or without its alt`);
+        const sec = page.locator('[data-branch-photos]');
+        await sec.scrollIntoViewIfNeeded();
+        const st = await page.evaluate(() => {
+          const r = document.querySelector('[data-branch-photos]');
+          const tr = r.querySelector('[data-slider-track]');
+          const prev = r.querySelector('[data-slider-prev]');
+          return { snap: getComputedStyle(tr).scrollSnapType, over: tr.scrollWidth > tr.clientWidth + 1, arrows: getComputedStyle(prev).display !== 'none' };
+        });
+        check(st.snap.includes('x') && st.over, `${tag}: not a horizontal, snapping row`);
+        check(st.arrows === (form.name === '1440'), `${tag}: arrows ${form.name === '1440' ? 'missing on desktop' : 'shown on a phone'}`);
+        // the viewer: the 2nd photo → caption = its alt, «2 / N», Esc → focus back on it
+        await page.locator('[data-branch-photos] [data-gallery-open]').nth(1).click();
+        const v = await page.evaluate(() => ({
+          open: document.querySelector('[data-branch-photos] [data-gallery-viewer]').open,
+          cap: document.querySelector('[data-branch-photos] [data-gallery-v-caption]').textContent,
+          n: document.querySelector('[data-branch-photos] [data-gallery-v-counter]').textContent,
+          alt: document.querySelectorAll('[data-branch-photos] [data-gallery-item]')[1].dataset.alt,
+        }));
+        check(v.open && v.cap === v.alt && v.n === `2 / ${want.length}`, `${tag}: the viewer (${JSON.stringify(v)})`);
+        await page.keyboard.press('Escape');
+        const back = await page.waitForFunction(() => document.activeElement === document.querySelectorAll('[data-branch-photos] [data-gallery-open]')[1], null, { timeout: 2000 }).then(() => true, () => false);
+        check(back, `${tag}: focus does not return to the thumbnail`);
+        const all = await page.getAttribute('[data-branch-photos-all]', 'href');
+        check(all === `${PRE}${P}/gallery/?filter=${branch}`, `${tag}: «كل الصور» → ${all}`);
+        if (form.name === '1440') {
+          await page.click('[data-branch-photos-all]');
+          await page.waitForURL(/\/gallery\/\?filter=/);
+          await page.waitForTimeout(400);
+          const g = await page.evaluate(() => ({
+            pressed: [...document.querySelectorAll('[data-gallery-filter][aria-pressed="true"]')].map((b) => b.dataset.galleryFilter),
+            shown: document.querySelectorAll('[data-gallery-item]:not([hidden])').length,
+          }));
+          check(g.pressed.join() === branch && g.shown === want.length, `${tag}: /gallery/?filter=${branch} opens on ${g.pressed.join()} with ${g.shown} photos`);
+        }
+        await ctx.close();
+      }
     }
   }
   check(live ? sitemap.includes('/gallery/</loc>') && sitemap.includes('/en/gallery/</loc>') : !sitemap.includes('/gallery/'), `sitemap: the gallery entries do not follow the build (${live ? 'page' : 'no page'})`);

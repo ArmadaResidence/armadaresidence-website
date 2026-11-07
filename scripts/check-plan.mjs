@@ -13,7 +13,7 @@ import { pathToFileURL } from 'node:url';
 
 // the suite, in the order check-all runs it
 export const STATIC_CHECKS = ['typecheck', 'admin-digits-check', 'admin-format-check', 'auth-emails-check', 'whatsapp-check', 'email-print-check', 'offers-engine-check', 'turnstile-check', 'deploy-alert-check'];
-export const BROWSER_CHECKS = ['booking-nav-check', 'drawer-check', 'booking-whatsapp-check', 'datepicker-check', 'motion-check', 'booking-instant-check', 'partners-form-check', 'careers-form-check', 'dining-site-check', 'gallery-site-check', 'offers-site-check', 'blog-site-check', 'faq-site-check', 'content-site-check', 'club-site-check', 'home-sections-check', 'partners-button-check', 'theme-check', 'hero-video-check', 'hero-slides-check', 'mobile-forms-check', 'a11y-check'];
+export const BROWSER_CHECKS = ['booking-nav-check', 'drawer-check', 'booking-whatsapp-check', 'datepicker-check', 'motion-check', 'booking-instant-check', 'partners-form-check', 'careers-form-check', 'dining-site-check', 'gallery-site-check', 'offers-site-check', 'blog-site-check', 'faq-site-check', 'content-site-check', 'club-site-check', 'home-sections-check', 'consent-check', 'partners-button-check', 'theme-check', 'hero-video-check', 'hero-slides-check', 'mobile-forms-check', 'a11y-check'];
 // every commit (build and qa.py too, unless the commit is docs only)
 export const FAST_CHECKS = ['typecheck', 'admin-digits-check', 'admin-format-check', 'auth-emails-check', 'whatsapp-check'];
 // a11y-check on sample pages for a content change: home, one branch, one room, offers, policies — both languages
@@ -93,7 +93,9 @@ const RULES = [
   {
     // the gallery page (2 Nov 2026): the page, its order / filters, the nav link it adds
     name: 'gallery',
-    test: (f) => f === 'src/pages/[...lang]/gallery.astro' || f === 'src/lib/gallery.ts' || comp(['Header']).test(f),
+    test: (f) =>
+      f === 'src/pages/[...lang]/gallery.astro' || lib(['gallery', 'gallery-viewer', 'slider']).test(f) || comp(['Header', 'GalleryViewer', 'BranchPhotoStrip']).test(f) ||
+      f === 'src/pages/[...lang]/[branch]/index.astro',
     checks: ['gallery-site-check'],
   },
   {
@@ -147,9 +149,19 @@ const RULES = [
     name: 'home sections',
     test: (f) =>
       f === 'src/pages/[...lang]/index.astro' || /^src\/components\/home\//.test(f) || comp(['Footer', 'ArticleCard', 'Counters']).test(f) ||
-      lib(['reviews', 'gallery', 'offers-data']).test(f) || f === 'scripts/reviews-build.mjs' ||
+      lib(['reviews', 'gallery', 'offers-data', 'slider', 'marquee']).test(f) || f === 'scripts/reviews-build.mjs' || f === 'scripts/partner-logos-build.mjs' ||
+      f === 'scripts/fixtures/partner-logos-sample.json' || f === 'content/partner-logos.json' ||
       ['content/reviews.json', 'content/rooms.json', 'content/site-texts.json', 'content/ui.json', 'content/club.json', 'content/contact.json', 'content/taif-guide.json', 'src/lib/content.ts'].includes(f),
     checks: ['home-sections-check', 'motion-check'],
+  },
+  {
+    // the cookie banner (7 Nov 2026): Consent Mode defaults in Base.astro, the banner, its script, the footer link, the
+    // copy, the policy version; the pop-up waits for it
+    name: 'cookie consent',
+    test: (f) =>
+      comp(['CookieConsent', 'Footer']).test(f) || lib(['consent', 'popup']).test(f) || f === 'src/layouts/Base.astro' ||
+      ['content/ui.json', 'content/policies.json'].includes(f),
+    checks: ['consent-check'],
   },
   {
     // the home hero (6 Nov 2026): the page and its script — the video, the slideshow, the pause control

@@ -423,6 +423,139 @@ footer :focus-visible,
   z-index: 50;
 }
 
+/* ---------- Cookie banner (7 Nov 2026, CookieConsent.astro) ----------
+   Shown only while <html data-consent-open> (set before the first paint by Base.astro). Fixed at the bottom over the
+   page: no backdrop, nothing moves (CLS 0). Phones: full width with the 16 px gutter, the WhatsApp button rises above
+   it by its height (--consent-h, translate only); from 768 px a card on the start side, clear of the button. */
+.cookie-banner {
+  display: none;
+  position: fixed;
+  inset-inline: 1rem;
+  bottom: calc(1rem + env(safe-area-inset-bottom));
+  z-index: 48;
+  background: #fff;
+  border: 1px solid var(--color-line);
+  border-radius: 0.75rem;
+  box-shadow: 0 12px 32px rgba(20, 42, 59, 0.16);
+  padding: 1rem 1.125rem;
+  max-height: calc(100vh - 6rem);
+  overflow-y: auto;
+}
+html[data-consent-open] .cookie-banner {
+  display: block;
+}
+html[data-consent-open] .wa-fab {
+  translate: 0 calc(-1 * (var(--consent-h, 0px) + 0.75rem));
+}
+body.has-room-bar .cookie-banner {
+  bottom: calc(4.75rem + env(safe-area-inset-bottom));
+}
+@media (min-width: 768px) {
+  .cookie-banner {
+    inset-inline-end: auto;
+    inset-inline-start: 1.25rem;
+    bottom: 1.25rem;
+    width: min(34rem, calc(100vw - 15rem));
+    padding: 1.25rem 1.5rem;
+  }
+  html[data-consent-open] .wa-fab {
+    translate: none;
+  }
+}
+@media (min-width: 1024px) {
+  body.has-room-bar .cookie-banner {
+    bottom: 1.25rem;
+  }
+}
+.cookie-btn {
+  min-height: 44px;
+  padding: 0.5rem 1rem;
+  border-radius: 0.375rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  transition:
+    background-color var(--motion-fast) var(--ease-out),
+    color var(--motion-fast) var(--ease-out);
+}
+.cookie-btn[hidden] {
+  display: none;
+}
+.cookie-btn-primary {
+  background: var(--color-bronze-deep);
+  color: #fff;
+}
+.cookie-btn-primary:hover {
+  background: var(--color-bronze-text);
+}
+.cookie-btn-secondary {
+  border: 1px solid var(--color-midnight);
+  color: var(--color-midnight);
+}
+.cookie-btn-secondary:hover {
+  background: var(--color-porcelain);
+}
+.cookie-btn-ghost {
+  color: var(--color-bronze-text);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.cookie-btn-ghost:hover {
+  color: var(--color-midnight);
+}
+.cookie-btn:focus-visible,
+.cookie-switch:focus-visible {
+  outline: 2px solid var(--color-bronze-text);
+  outline-offset: 2px;
+}
+/* a switch: the native checkbox, restyled (keyboard and screen readers keep the checkbox's own behaviour) */
+.cookie-switch {
+  appearance: none;
+  flex: none;
+  position: relative;
+  width: 44px;
+  height: 26px;
+  border-radius: 999px;
+  background: #8a8f95;
+  cursor: pointer;
+  transition: background-color var(--motion-fast) var(--ease-out);
+}
+.cookie-switch::after {
+  content: '';
+  position: absolute;
+  top: 3px;
+  inset-inline-start: 3px;
+  width: 20px;
+  height: 20px;
+  border-radius: 999px;
+  background: #fff;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
+  transition: translate var(--motion-fast) var(--ease-out);
+}
+.cookie-switch:checked {
+  background: var(--color-bronze-deep);
+}
+.cookie-switch:checked::after {
+  translate: 18px 0;
+}
+[dir='rtl'] .cookie-switch:checked::after {
+  translate: -18px 0;
+}
+.cookie-switch:disabled {
+  cursor: default;
+  opacity: 0.75;
+}
+[data-theme='dark'] .cookie-banner {
+  background: var(--dk-surface);
+  border-color: rgba(243, 239, 231, 0.16);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
+}
+[data-theme='dark'] .cookie-btn-secondary:hover {
+  background: rgba(243, 239, 231, 0.08);
+}
+[data-theme='dark'] .cookie-btn-ghost {
+  color: var(--dk-bronze-text);
+}
+
 /* ---------- Dark mode (Ahmed, 9 Oct 2026) ----------
    Light is the default for everyone (5 Nov 2026 — the system setting is ignored); the header toggle stores "armada-theme" in localStorage and Base.astro sets
    data-theme on <html> before first paint (no flash). Dark surfaces are deep midnight, text porcelain, bronze stays the
@@ -1741,5 +1874,198 @@ body.has-room-bar .wa-fab {
   [contenteditable='true'],
   [contenteditable=''] {
     font-size: 16px !important;
+  }
+}
+
+/* ---------- Manual card rows (7 Nov 2026, src/lib/slider.ts): the reviews carousel and the branch photo strip ----------
+   Native horizontal scrolling with snap points (swipe on touch, RTL follows the writing direction); the arrows from
+   768 px and the dots are the slider's controls — hidden when every card fits. No auto-advance. */
+.slider-track {
+  display: flex;
+  gap: 1.5rem;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: none;
+  padding-bottom: 2px;
+  --slide-w: 85%;
+}
+.slider-track::-webkit-scrollbar {
+  display: none;
+}
+.slider-track > * {
+  flex: 0 0 var(--slide-w);
+  scroll-snap-align: start;
+}
+@media (min-width: 768px) {
+  .reviews-track {
+    --slide-w: calc((100% - 1.5rem) / 2);
+  }
+}
+@media (min-width: 1024px) {
+  .reviews-track {
+    --slide-w: calc((100% - 3rem) / 3);
+  }
+}
+[data-slider-fits] [data-slider-controls] {
+  display: none;
+}
+.slider-arrow {
+  display: none;
+  width: 44px;
+  height: 44px;
+  border-radius: 999px;
+  border: 1px solid var(--color-line);
+  color: var(--color-midnight);
+  background: #fff;
+  place-items: center;
+  transition:
+    background-color var(--motion-fast) var(--ease-out),
+    opacity var(--motion-fast) var(--ease-out);
+}
+.slider-arrow:hover:not(:disabled) {
+  background: var(--color-porcelain);
+}
+.slider-arrow:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+.slider-arrow:focus-visible {
+  outline: 2px solid var(--color-bronze-text);
+  outline-offset: 2px;
+}
+[data-theme='dark'] .slider-arrow {
+  background: var(--dk-surface);
+}
+.slider-dots {
+  display: none;
+  gap: 0;
+}
+.slider-dot {
+  display: inline-grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+}
+.slider-dot span {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--color-line);
+  transition: background-color var(--motion-fast) var(--ease-out);
+}
+.slider-dot[hidden] {
+  display: none;
+}
+.slider-dot.is-active span {
+  background: var(--color-bronze);
+}
+@media (min-width: 768px) {
+  .slider-arrow {
+    display: inline-grid;
+  }
+  .slider-dots {
+    display: flex;
+  }
+}
+/* the branch photo strip: 3:2 photos, about two and a half across on desktop */
+.photo-strip-track {
+  gap: 1rem;
+  --slide-w: 78%;
+}
+@media (min-width: 768px) {
+  .photo-strip-track {
+    --slide-w: calc((100% - 2rem) / 2.5);
+  }
+}
+@media (min-width: 1024px) {
+  .photo-strip-track {
+    --slide-w: calc((100% - 3rem) / 3.4);
+  }
+}
+.photo-strip-thumb {
+  display: block;
+  width: 100%;
+  aspect-ratio: 3 / 2;
+  overflow: hidden;
+  border-radius: 0.75rem;
+  background: var(--placeholder-bg);
+}
+.photo-strip-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform var(--motion-base) var(--ease-out);
+}
+.photo-strip-thumb:hover img {
+  transform: scale(1.03);
+}
+.photo-strip-thumb:focus-visible {
+  outline: 2px solid var(--color-bronze-text);
+  outline-offset: 3px;
+}
+
+/* ---------- «شركاؤنا» — the home partners strip (7 Nov 2026, HomePartners.astro + src/lib/marquee.ts) ----------
+   Without JS or with reduced motion: one static, centred row (the copy hidden). Otherwise a seamless loop: the set and
+   its copy side by side, each logo followed by the same space, moved by `translate` only. One fixed height, original
+   colours; in dark mode each logo sits on a white plate so dark artwork stays visible. */
+.partners-marquee {
+  overflow: hidden;
+}
+.partners-marquee-track {
+  display: flex;
+  justify-content: center;
+}
+.partners-marquee-set {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: 1.5rem 0;
+}
+.partners-marquee-copy {
+  display: none;
+}
+.partners-logo {
+  flex: none;
+  margin-inline: 2rem;
+}
+.partners-logo img {
+  display: block;
+  height: 48px;
+  width: auto;
+  max-width: none;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+[data-theme='dark'] .partners-logo {
+  background: #fff;
+  border-radius: 0.5rem;
+  padding: 0.5rem 0.75rem;
+}
+@media (prefers-reduced-motion: no-preference) {
+  html.js .partners-marquee {
+    touch-action: pan-y;
+    cursor: grab;
+    -webkit-mask-image: linear-gradient(to right, transparent, #000 6%, #000 94%, transparent);
+    mask-image: linear-gradient(to right, transparent, #000 6%, #000 94%, transparent);
+  }
+  html.js .partners-marquee.is-dragging {
+    cursor: grabbing;
+  }
+  html.js .partners-marquee-track {
+    width: max-content;
+    justify-content: flex-start;
+    will-change: translate;
+  }
+  html.js .partners-marquee-set {
+    flex-wrap: nowrap;
+    gap: 0;
+  }
+  html.js .partners-marquee-copy {
+    display: flex;
+  }
+  html.js .partners-logo {
+    margin-inline: 0 4rem;
   }
 }

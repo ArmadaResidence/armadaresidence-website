@@ -52,6 +52,8 @@ export const NAV_GROUPS: NavGroup[] = [
       { to: '/faq', label: 'الأسئلة الشائعة', section: 'content', icon: 'faq', id: 'faq' },
       // «آراء الضيوف» (7 Nov 2026): the home page's guest reviews, under the content permission as the FAQ
       { to: '/reviews', label: 'آراء الضيوف', section: 'content', icon: 'reviews', id: 'reviews' },
+      // «شعارات الشركاء» (7 Nov 2026): the home page's partner logo strip, under the content permission as the reviews
+      { to: '/partner-logos', label: 'شعارات الشركاء', section: 'content', icon: 'logos', id: 'partner-logos' },
       // «العملاء» (3 Nov 2026): guest profiles, the club, consents and the audience exports
       { to: '/guests', label: 'العملاء', section: 'guests', icon: 'guests' },
     ],

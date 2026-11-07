@@ -13,6 +13,7 @@ import Base from '@layouts/Base.astro';
 import { langPaths } from '@lib/paths';
 import { breadcrumbs, collectionPage } from '@lib/jsonld';
 import { fill, L, localePath, pageSeo, photoPreload, ui, type Locale } from '@lib/content';
+import GalleryViewer from '@components/GalleryViewer.astro';
 import { galleryFilters, galleryItems, galleryLive, galleryOg, inFilter } from '@lib/gallery';
 
 export function getStaticPaths() {
@@ -27,7 +28,6 @@ const t = ui(locale);
 const g = t.gallery_page;
 const s = pageSeo(locale, 'gallery');
 const THUMB_SIZES = '(min-width: 1152px) 376px, (min-width: 768px) 33vw, 50vw';
-const VIEW_SIZES = '(min-width: 1520px) 1400px, 92vw';
 const set = (p: { base: string; widths: number[] }, ext: string) => p.widths.map((w) => `${p.base}-${w}.${ext} ${w}w`).join(', ');
 const items = galleryItems.map((it) => {
   const p = it.photo;
@@ -116,36 +116,13 @@ const first = galleryItems[0]?.photo;
       }
     </ul>
 
-    <dialog class="gallery-viewer" aria-label={g.viewer} data-gallery-viewer>
-      <div class="gallery-viewer-frame" data-gallery-frame>
-        <picture>
-          <source type="image/avif" sizes={VIEW_SIZES} data-gallery-v-avif />
-          {/* src / alt are set when the viewer opens (aria-hidden until then) */}
-          <img class="gallery-viewer-img" alt="" aria-hidden="true" sizes={VIEW_SIZES} width="1400" height="933" data-gallery-v-img />
-        </picture>
-      </div>
-      <div class="gallery-viewer-bar">
-        <p class="gallery-viewer-caption" data-gallery-v-caption></p>
-        <p class="gallery-viewer-meta">
-          <span class="num" dir="ltr" data-gallery-v-counter></span>
-          <a class="gallery-viewer-link" href="#" data-gallery-v-link></a>
-        </p>
-      </div>
-      <button type="button" class="gallery-arrow gallery-viewer-close" aria-label={t.gallery.close} data-gallery-v-close>
-        <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor" aria-hidden="true"><path d="M5.7 4.3L4.3 5.7 10.6 12l-6.3 6.3 1.4 1.4L12 13.4l6.3 6.3 1.4-1.4L13.4 12l6.3-6.3-1.4-1.4L12 10.6z" /></svg>
-      </button>
-      <button type="button" class="gallery-arrow gallery-viewer-prev" aria-label={t.gallery.previous} data-gallery-v-prev>
-        <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor" aria-hidden="true" class="rotate-180 rtl:rotate-0"><path d="M9.3 5.3a1 1 0 011.4 0l6 6a1 1 0 010 1.4l-6 6a1 1 0 01-1.4-1.4L14.6 12 9.3 6.7a1 1 0 010-1.4z" /></svg>
-      </button>
-      <button type="button" class="gallery-arrow gallery-viewer-next" aria-label={t.gallery.next} data-gallery-v-next>
-        <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor" aria-hidden="true" class="rtl:rotate-180"><path d="M9.3 5.3a1 1 0 011.4 0l6 6a1 1 0 010 1.4l-6 6a1 1 0 01-1.4-1.4L14.6 12 9.3 6.7a1 1 0 010-1.4z" /></svg>
-      </button>
-    </dialog>
+    <GalleryViewer locale={locale} />
   </section>
 </Base>
 
 <script>
-  import { bindOnce, isRtl, onPageLoad } from '@lib/client';
+  import { bindOnce, onPageLoad } from '@lib/client';
+  import { bindViewer } from '@lib/gallery-viewer';
 
   type DL = { dataLayer?: unknown[] };
   const push = (o: Record<string, string>) => {
@@ -160,100 +137,24 @@ const first = galleryItems[0]?.photo;
     const items = Array.from(root.querySelectorAll<HTMLLIElement>('[data-gallery-item]'));
     const filters = Array.from(root.querySelectorAll<HTMLButtonElement>('[data-gallery-filter]'));
     const count = root.querySelector<HTMLElement>('[data-gallery-count]')!;
-    const dlg = root.querySelector<HTMLDialogElement>('[data-gallery-viewer]')!;
-    const img = dlg.querySelector<HTMLImageElement>('[data-gallery-v-img]')!;
-    const avif = dlg.querySelector<HTMLSourceElement>('[data-gallery-v-avif]')!;
-    const caption = dlg.querySelector<HTMLElement>('[data-gallery-v-caption]')!;
-    const counter = dlg.querySelector<HTMLElement>('[data-gallery-v-counter]')!;
-    const link = dlg.querySelector<HTMLAnchorElement>('[data-gallery-v-link]')!;
-    const closeBtn = dlg.querySelector<HTMLButtonElement>('[data-gallery-v-close]')!;
-    const frame = dlg.querySelector<HTMLElement>('[data-gallery-frame]')!;
     let visible = items;
-    let at = 0;
 
     // ── filters ──
-    for (const b of filters) {
-      b.addEventListener('click', () => {
-        const f = b.dataset.galleryFilter || 'all';
-        for (const x of filters) x.setAttribute('aria-pressed', String(x === b));
-        for (const li of items) li.hidden = !(li.dataset.filters || '').split(' ').includes(f);
-        visible = items.filter((li) => !li.hidden);
-        count.textContent = (root.dataset.shown || '{n}').replace('{n}', String(visible.length));
-        push({ event: 'gallery_filter', filter: f });
-      });
-    }
-
-    // ── the viewer ──
-    const show = (i: number) => {
-      if (!visible.length) return;
-      at = (i + visible.length) % visible.length;
-      const d = visible[at].dataset;
-      avif.srcset = d.avif || '';
-      img.srcset = d.srcset || '';
-      img.src = d.src || '';
-      img.alt = d.alt || '';
-      img.removeAttribute('aria-hidden');
-      img.width = Number(d.w) || 1400;
-      img.height = Number(d.h) || 933;
-      caption.textContent = d.alt || '';
-      counter.textContent = `${at + 1} / ${visible.length}`;
-      link.href = d.href || '#';
-      link.textContent = (root.dataset.goTo || '{page}').replace('{page}', d.page || '');
+    const choose = (b: HTMLButtonElement, track: boolean) => {
+      const f = b.dataset.galleryFilter || 'all';
+      for (const x of filters) x.setAttribute('aria-pressed', String(x === b));
+      for (const li of items) li.hidden = !(li.dataset.filters || '').split(' ').includes(f);
+      visible = items.filter((li) => !li.hidden);
+      count.textContent = (root.dataset.shown || '{n}').replace('{n}', String(visible.length));
+      if (track) push({ event: 'gallery_filter', filter: f });
     };
-    const step = (by: number) => show(at + by);
-    for (const li of items) {
-      li.querySelector<HTMLButtonElement>('[data-gallery-open]')!.addEventListener('click', () => {
-        show(visible.indexOf(li));
-        dlg.showModal();
-        closeBtn.focus();
-        push({ event: 'gallery_open', category: li.dataset.category || '' });
-      });
-    }
-    // focus returns to the thumbnail of the photo last shown
-    dlg.addEventListener('close', () => visible[at]?.querySelector<HTMLButtonElement>('[data-gallery-open]')?.focus());
-    closeBtn.addEventListener('click', () => dlg.close());
-    dlg.querySelector('[data-gallery-v-prev]')!.addEventListener('click', () => step(-1));
-    dlg.querySelector('[data-gallery-v-next]')!.addEventListener('click', () => step(1));
-    dlg.addEventListener('keydown', (e) => {
-      // the arrows follow the reading direction: in Arabic the next photo is to the left
-      if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
-        e.preventDefault();
-        step((e.key === 'ArrowRight') !== isRtl(dlg) ? 1 : -1);
-      } else if (e.key === 'Tab') {
-        // keep Tab inside the viewer
-        const f = Array.from(dlg.querySelectorAll<HTMLElement>('a[href], button'));
-        const i = f.indexOf(document.activeElement as HTMLElement);
-        if (e.shiftKey && i <= 0) {
-          e.preventDefault();
-          f[f.length - 1].focus();
-        } else if (!e.shiftKey && i === f.length - 1) {
-          e.preventDefault();
-          f[0].focus();
-        }
-      }
-    });
-    // a press that starts and ends on the backdrop closes (the site's outside-press rule)
-    let downOnBackdrop = false;
-    dlg.addEventListener('pointerdown', (e) => (downOnBackdrop = e.target === dlg));
-    dlg.addEventListener('pointerup', (e) => {
-      if (downOnBackdrop && e.target === dlg) dlg.close();
-      downOnBackdrop = false;
-    });
-    // swipe: a horizontal drag over 40 px moves one photo (towards the reading direction's next)
-    let x0: number | null = null;
-    let y0 = 0;
-    frame.addEventListener('pointerdown', (e) => {
-      x0 = e.clientX;
-      y0 = e.clientY;
-    });
-    frame.addEventListener('pointerup', (e) => {
-      if (x0 === null) return;
-      const dx = e.clientX - x0;
-      const dy = e.clientY - y0;
-      x0 = null;
-      if (Math.abs(dx) < 40 || Math.abs(dx) < Math.abs(dy)) return;
-      step((dx < 0) !== isRtl(dlg) ? 1 : -1);
-    });
-    frame.addEventListener('pointercancel', () => (x0 = null));
+    for (const b of filters) b.addEventListener('click', () => choose(b, true));
+    // ?filter=<key> (the branch pages' «كل الصور», 7 Nov 2026) opens the page on that filter
+    const want = new URLSearchParams(location.search).get('filter');
+    const start = want ? filters.find((b) => b.dataset.galleryFilter === want) : undefined;
+    if (start) choose(start, false);
+
+    // ── the viewer (src/lib/gallery-viewer.ts, shared with the branch pages' strip) ──
+    bindViewer(root.querySelector<HTMLDialogElement>('[data-gallery-viewer]')!, items, () => visible, root.dataset.goTo || '');
   });
 </script>

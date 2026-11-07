@@ -1,0 +1,60 @@
+---
+/**
+ * «شركاؤنا» on the home page (Ahmed, 7 Nov 2026; DECISIONS.md 2026-11-07 «Launch preparation» — a section of the home
+ * page, after «عن أرمادا ريزيدنس»): the partner logos published in the dashboard «شعارات الشركاء» with «في الصفحة
+ * الرئيسية» on (scripts/partner-logos-build.mjs → content/partner-logos.generated.json; the seed content/partner-logos.json
+ * otherwise — build.py always writes the generated file), in the dashboard's order. Logos only — no names shown (each name is the image's alt), no links; one fixed
+ * height, original colours, even spacing. Hidden under PARTNERS_MIN logos.
+ * Motion (src/lib/marquee.ts): a seamless loop (the set twice, the copy aria-hidden) moving in the reading direction,
+ * one full loop per --motion-marquee (40 s); paused while the mouse is over it, while it is off screen or the tab is
+ * hidden; dragged with the mouse or by touch, then it carries on. prefers-reduced-motion: one static row, no copy.
+ */
+import { ui, type Locale } from '@lib/content';
+
+interface Props {
+  locale: Locale;
+}
+interface Logo {
+  id: string;
+  alt_ar: string;
+  alt_en: string;
+  src: string;
+  width: number;
+  height: number;
+}
+const { locale } = Astro.props;
+const t = ui(locale).home as unknown as Record<string, string>;
+const files = import.meta.glob<{ items: Logo[] }>('../../../content/partner-logos.generated.json', { eager: true, import: 'default' });
+const logos: Logo[] = Object.values(files)[0]?.items ?? [];
+const PARTNERS_MIN = 3;
+const H = 48;
+const w = (l: Logo) => Math.round((l.width / l.height) * H);
+---
+
+{
+  logos.length >= PARTNERS_MIN && (
+    <section class="cv-auto border-t border-line py-12" aria-labelledby="home-partners-heading" data-home-section="partners">
+      <div class="mx-auto max-w-6xl px-4">
+        <h2 id="home-partners-heading" class="reveal text-center text-sm font-semibold uppercase tracking-wide text-bronze-text">{t.partners_heading}</h2>
+      </div>
+      <div class="partners-marquee mt-8" data-marquee>
+        <div class="partners-marquee-track" data-marquee-track>
+          <ul class="partners-marquee-set" data-marquee-set>
+            {logos.map((l) => (
+              <li class="partners-logo" data-partner-logo>
+                <img src={l.src} alt={locale === 'ar' ? l.alt_ar : l.alt_en} width={w(l)} height={H} loading="lazy" decoding="async" draggable="false" />
+              </li>
+            ))}
+          </ul>
+          <ul class="partners-marquee-set partners-marquee-copy" aria-hidden="true" data-marquee-copy>
+            {logos.map((l) => (
+              <li class="partners-logo">
+                <img src={l.src} alt="" width={w(l)} height={H} loading="lazy" decoding="async" draggable="false" />
+              </li>
+            ))}
+          </ul>
+        </div>
+      </div>
+    </section>
+  )
+}

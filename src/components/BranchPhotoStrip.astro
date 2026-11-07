@@ -1,0 +1,98 @@
+---
+/**
+ * The branch page's photo strip (Ahmed, 7 Nov 2026; DECISIONS.md 2026-11-07 «Launch preparation»), after the story
+ * sections: that branch's photos published in «الصور» with «إظهار في المعرض» on — the same list and order as the
+ * gallery page's branch filter (src/lib/gallery.ts: the branch's cover, gallery and story scenes, then its rooms, dining
+ * and hall), in a horizontal swipeable row (scroll-snap, arrows from 768 px — src/lib/slider.ts) that opens the
+ * gallery page's viewer (GalleryViewer.astro). «كل الصور» → /gallery/?filter=<branch> while the gallery page exists.
+ * Not rendered under STRIP_MIN photos. Every photo is lazy (the strip is far below the fold).
+ */
+import GalleryViewer from './GalleryViewer.astro';
+import Icon from './Icon.astro';
+import { L, localePath, ui, type Locale } from '@lib/content';
+import { galleryItems, galleryLive, inFilter } from '@lib/gallery';
+
+interface Props {
+  locale: Locale;
+  branch: string;
+}
+const { locale, branch } = Astro.props;
+const t = ui(locale);
+const STRIP_MIN = 3;
+const SIZES = '(min-width: 1152px) 330px, (min-width: 768px) 40vw, 78vw';
+const set = (p: { base: string; widths: number[] }, ext: string) => p.widths.map((w) => `${p.base}-${w}.${ext} ${w}w`).join(', ');
+const items = galleryItems
+  .filter((it) => inFilter(it, branch as 'airport-road' | 'shafa-road'))
+  .map((it) => {
+    const p = it.photo;
+    return {
+      it,
+      alt: L(locale, p, 'alt'),
+      src: `${p.base}-${p.widths.includes(800) ? 800 : p.widths[0]}.webp`,
+      webp: set(p, 'webp'),
+      avif: p.formats?.includes('avif') ? set(p, 'avif') : '',
+    };
+  });
+---
+
+{
+  items.length >= STRIP_MIN && (
+    <section class="cv-auto mx-auto max-w-6xl px-4 pb-14" aria-labelledby="branch-photos-heading" data-branch-photos={branch} data-go-to={t.gallery_page.go_to}>
+      <div class="flex flex-wrap items-end justify-between gap-3">
+        <h2 id="branch-photos-heading" class="reveal text-2xl md:text-3xl font-bold text-midnight">{t.branch.photos_heading}</h2>
+        {galleryLive && (
+          <a href={`${localePath(locale, '/gallery/')}?filter=${branch}`} class="reveal inline-flex items-center gap-1.5 text-sm font-semibold link-bronze" data-branch-photos-all>
+            <span>{t.home.gallery_all}</span>
+            <Icon name="arrow" size={16} class="icon-arrow rtl:rotate-180" />
+          </a>
+        )}
+      </div>
+      <div class="reveal mt-6" data-slider>
+        <ul class="slider-track photo-strip-track" data-slider-track>
+          {items.map((x) => (
+            <li
+              data-gallery-item
+              data-category={x.it.category}
+              data-src={x.src}
+              data-srcset={x.webp}
+              data-avif={x.avif}
+              data-alt={x.alt}
+              data-w={x.it.photo.width}
+              data-h={x.it.photo.height}
+              data-href={x.it.href[locale]}
+              data-page={x.it.page[locale]}
+            >
+              <button type="button" class="photo-strip-thumb" aria-haspopup="dialog" data-gallery-open>
+                <picture>
+                  {x.avif && <source type="image/avif" srcset={x.avif} sizes={SIZES} />}
+                  <img src={x.src} srcset={x.webp} sizes={SIZES} alt={x.alt} width={x.it.photo.width} height={x.it.photo.height} loading="lazy" decoding="async" />
+                </picture>
+              </button>
+            </li>
+          ))}
+        </ul>
+        <div class="slider-controls mt-4 flex justify-end gap-2" data-slider-controls>
+          <button type="button" class="slider-arrow" aria-label={t.gallery.previous} data-slider-prev>
+            <Icon name="arrow" size={18} class="rotate-180 rtl:rotate-0" />
+          </button>
+          <button type="button" class="slider-arrow" aria-label={t.gallery.next} data-slider-next>
+            <Icon name="arrow" size={18} class="rtl:rotate-180" />
+          </button>
+        </div>
+      </div>
+      <GalleryViewer locale={locale} />
+    </section>
+  )
+}
+
+<script>
+  import { bindOnce, onPageLoad } from '@lib/client';
+  import { bindViewer } from '@lib/gallery-viewer';
+
+  onPageLoad(() => {
+    const root = document.querySelector<HTMLElement>('[data-branch-photos]');
+    if (!root || !bindOnce(root)) return;
+    const items = Array.from(root.querySelectorAll<HTMLElement>('[data-gallery-item]'));
+    bindViewer(root.querySelector<HTMLDialogElement>('[data-gallery-viewer]')!, items, () => items, root.dataset.goTo || '');
+  });
+</script>

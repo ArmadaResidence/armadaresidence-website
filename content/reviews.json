@@ -55,6 +55,24 @@
       "text": "Clean, big rooms, friendly staff and good service",
       "source_url": "https://maps.google.com/?cid=12464971408374595043",
       "show_home": true
+    },
+    {
+      "first_name": "غند",
+      "branch": "airport-road",
+      "stars": 5,
+      "lang": "ar",
+      "text": "استمتعنا بالإقامة والأجواء الهادئة. الأكل كان لذيذًا ومتنوعًا… وبإذن الله تكون لنا زيارة أخرى قريبًا.",
+      "source_url": "https://maps.google.com/?cid=12464971408374595043",
+      "show_home": true
+    },
+    {
+      "first_name": "نواف",
+      "branch": "shafa-road",
+      "stars": 5,
+      "lang": "ar",
+      "text": "نظيف وجديد وموقع قريب من كل الخدمات واستقبالهم رائع",
+      "source_url": "https://maps.google.com/?cid=13015077371000401026",
+      "show_home": true
     }
   ]
 }

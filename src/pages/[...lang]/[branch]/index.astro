@@ -1,6 +1,7 @@
 ---
 import Base from '@layouts/Base.astro';
 import BranchStory from '@components/BranchStory.astro';
+import BranchPhotoStrip from '@components/BranchPhotoStrip.astro';
 import Counters from '@components/Counters.astro';
 import Divider from '@components/Divider.astro';
 import DiningSection from '@components/DiningSection.astro';
@@ -168,6 +169,8 @@ const COVER_SIZES = '(min-width: 1152px) 1120px, 100vw';
 
   <BranchStory locale={locale} branch={branch} />
   <Divider class="px-4 pb-14" />
+  {/* the branch's published photos (7 Nov 2026): a swipeable strip opening the gallery viewer — from 3 photos */}
+  <BranchPhotoStrip locale={locale} branch={branch.slug} />
 
   {stayOffers.length > 0 && <OffersSection locale={locale} offers={stayOffers} placement="branch" heading={offersText(locale).branch_heading} allLink class="cv-auto mx-auto max-w-6xl px-4 pb-14" />}
 

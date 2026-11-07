@@ -79,3 +79,20 @@ Admin → Versions → الإصدار السابق → Publish (أو استير�
 الموقع يرسل `booking_confirmed` (مع القيمة والعملة) عند الحجز المؤكد فورًا، والحاوية فيها منذ الإصدار 3 (30 أكتوبر 2026)
 المشغّل `CE - booking_confirmed` وعليه أوسمة الشراء الأربعة (GA4 `purchase`، Meta `Purchase`، TikTok `Purchase`، Snap
 `PURCHASE`) بالقيمة والعملة. قبل تشغيل الحجز الفوري: راجع `docs/prelaunch-audit.md` («قبل تشغيل الحجز الفوري»).
+
+## وضع الموافقة (Consent Mode v2) — المطلوب في GTM (7 نوفمبر 2026)
+
+منذ 7 نوفمبر 2026 يضبط الموقع الإعدادات الافتراضية قبل تحميل GTM (`src/layouts/Base.astro`): `ad_storage` و`analytics_storage`
+و`ad_user_data` و`ad_personalization` = denied، و`functionality_storage` و`security_storage` = granted، و`wait_for_update`
+500 مللي ثانية. وشريط ملفات تعريف الارتباط يرسل `gtag('consent', 'update', …)` ويدفع الحدث `consent_update`
+(`consent_analytics`، `consent_ads`، `consent_granted`). الوضع **متقدم**: الحاوية تُحمَّل كما هي.
+
+**باقٍ عليك في GTM (لا يُنفَّذ من الموقع):**
+- أوسمة البكسلات (Meta وSnap وTikTok، الأساسية والشراء): في كل وسم → Advanced Settings → Consent Settings →
+  **Require additional consent for tag to fire** → أضف `ad_storage`. بدون هذا تعمل البكسلات قبل الموافقة.
+- وسم إعداد GA4 ووسم `purchase`: لهما **Built-in consent checks** (‏`analytics_storage` / `ad_storage`) — يكفي
+  «No additional consent required»، ولا تضف شرطًا إضافيًا (الوضع المتقدم يرسل إشارات بلا ملفات تعريف ارتباط).
+- فعّل **Consent Overview** في إعدادات الحاوية لتتأكد أن كل وسم له إعداد موافقة، ثم انشر الحاوية واختبر بـ Tag Assistant:
+  قبل الاختيار لا يعمل أي بكسل، وبعد «قبول الكل» تعمل كلها، وبعد «الضروري فقط» لا يعمل إلا GA4 بلا ملفات.
+- نص فقرة «ملفات تعريف الارتباط» في /policies/ («لا تُحفظ ملفات التحليلات والإعلانات على جهازك إلا بموافقتك») يصبح
+  دقيقًا بالكامل بعد هذه الخطوة.

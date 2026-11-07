@@ -30,6 +30,11 @@
     "phase": 3
   },
   "privacy": "see page.sections[privacy]",
+  "cookie_consent": {
+    "_note": "The cookie banner (Google Consent Mode v2, advanced — Ahmed, 7 Nov 2026; DECISIONS.md 2026-11-07 «Cookie consent»). A new version shows the banner again to everyone; a choice is kept max_age_days in localStorage armada-consent. The wording is page.sections[cookies] and ui.json → cookies.",
+    "version": "2026-11-07",
+    "max_age_days": 365
+  },
   "verified": true,
   "page": {
     "title_ar": "الشروط والسياسات",
@@ -87,11 +92,18 @@
         "body_en": "When you send a booking request we collect your name, phone number, email and stay details, and use them to process the request and contact you about it; we use them for marketing only with your consent. Data is stored in Armada Residence systems and is never sold, and it is shared with third parties only as needed to complete the booking or payment, or as you agree to in \"Eyab membership and marketing\". We keep company and group enquiry data for 24 months after our last contact, then delete the personal details. The website uses measurement and advertising tools (Google Tag Manager) to understand site usage and improve campaigns; you can disable cookies in your browser settings. To access, correct or delete your data, email info@armadaresidence.com. We comply with the Personal Data Protection Law of Saudi Arabia."
       },
       {
+        "id": "cookies",
+        "heading_ar": "ملفات تعريف الارتباط",
+        "heading_en": "Cookies",
+        "body_ar": "يستخدم الموقع ثلاث فئات من ملفات تعريف الارتباط: الضرورية، وهي مفعّلة دائمًا لتشغيل الموقع وحفظ اختياراتك؛ والتحليلات، لقياس استخدام الموقع وتحسينه؛ والإعلانات، لقياس حملاتنا وعرض إعلانات تناسبك على منصات مثل جوجل وميتا وسناب شات وتيك توك. لا تُحفظ ملفات التحليلات والإعلانات على جهازك إلا بموافقتك، وبدونها تكتفي أدوات جوجل بإشارات قياس محدودة لا تستخدم ملفات تعريف الارتباط. نحفظ اختيارك 12 شهرًا ثم نسألك من جديد، ويمكنك تغييره في أي وقت من رابط «إعدادات ملفات تعريف الارتباط» أسفل الصفحة.",
+        "body_en": "The website uses three categories of cookies: essential cookies, always on, to run the site and remember your choices; analytics cookies, to measure and improve how the site is used; and advertising cookies, to measure our campaigns and show you relevant ads on platforms such as Google, Meta, Snapchat and TikTok. Analytics and advertising cookies are stored on your device only with your consent; without it, Google's tools send only limited measurement signals that don't use cookies. We keep your choice for 12 months, then ask again, and you can change it at any time from the “Cookie settings” link at the bottom of the page."
+      },
+      {
         "id": "club",
         "heading_ar": "عضوية إياب والتسويق",
         "heading_en": "Eyab membership and marketing",
-        "body_ar": "إذا وافقت على تلقي العروض والإعلانات، نستخدم اسمك ورقم جوالك وبريدك الإلكتروني لإرسال عروض أرمادا ريزيدنس إليك عبر الواتساب والبريد الإلكتروني، ونرفع رقم جوالك وبريدك الإلكتروني بصيغة مشفّرة إلى منصات الإعلان، مثل سناب شات وتيك توك وميتا وجوجل، لعرض إعلاناتنا لك، وقد تعالج هذه المنصات البيانات خارج المملكة. الموافقة اختيارية ولا تؤثر على الحجز، ويمكنك سحبها في أي وقت عبر رابط إلغاء الاشتراك أو بالتواصل معنا. نحذف بيانات أعضاء إياب الذين لم يحجزوا بعد 24 شهرًا من آخر نشاط.",
-        "body_en": "If you agree to receive offers and ads, we use your name, mobile number and email to send you Armada Residence offers by WhatsApp and email, and we upload your mobile number and email in hashed form to advertising platforms such as Snapchat, TikTok, Meta and Google to show you our ads; these platforms may process the data outside Saudi Arabia. The consent is optional and doesn't affect your booking, and you can withdraw it at any time through the unsubscribe link or by contacting us. We delete the data of Eyab members who haven't booked 24 months after their last activity."
+        "body_ar": "في إياب — عضوية أرمادا ريزيدنس، إذا وافقت على تلقي العروض والإعلانات، نستخدم اسمك ورقم جوالك وبريدك الإلكتروني لإرسال عروض أرمادا ريزيدنس إليك عبر الواتساب والبريد الإلكتروني، ونرفع رقم جوالك وبريدك الإلكتروني بصيغة مشفّرة إلى منصات الإعلان، مثل سناب شات وتيك توك وميتا وجوجل، لعرض إعلاناتنا لك، وقد تعالج هذه المنصات البيانات خارج المملكة. الموافقة اختيارية ولا تؤثر على الحجز، ويمكنك سحبها في أي وقت عبر رابط إلغاء الاشتراك أو بالتواصل معنا. نحذف بيانات أعضاء إياب الذين لم يحجزوا بعد 24 شهرًا من آخر نشاط.",
+        "body_en": "In Eyab — Armada Residence membership, if you agree to receive offers and ads, we use your name, mobile number and email to send you Armada Residence offers by WhatsApp and email, and we upload your mobile number and email in hashed form to advertising platforms such as Snapchat, TikTok, Meta and Google to show you our ads; these platforms may process the data outside Saudi Arabia. The consent is optional and doesn't affect your booking, and you can withdraw it at any time through the unsubscribe link or by contacting us. We delete the data of Eyab members who haven't booked 24 months after their last activity."
       },
       {
         "id": "jobs",

@@ -1,0 +1,45 @@
+{
+ "_note": "TEST SAMPLES ONLY — four obviously fake partner logos («شريك تجريبي» / \"Sample partner\") for the checks (PARTNER_LOGOS_FIXTURE=scripts/fixtures/partner-logos-sample.json node scripts/partner-logos-build.mjs). Never real partners; never published. The shape of public.partner_logos_site_manifest.",
+ "items": [
+  {
+   "id": "a0000001-0000-4000-8000-000000000001",
+   "name_ar": "شريك تجريبي 1",
+   "name_en": "Sample partner 1",
+   "kind": "svg",
+   "data": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"160\" height=\"60\" viewBox=\"0 0 160 60\"><title>Sample 1</title><rect x=\"2\" y=\"2\" width=\"156\" height=\"56\" rx=\"8\" fill=\"none\" stroke=\"#A97C50\" stroke-width=\"3\"/><text x=\"80\" y=\"38\" font-family=\"sans-serif\" font-size=\"18\" text-anchor=\"middle\" fill=\"#142A3B\">Sample 1</text></svg>",
+   "width": 160,
+   "height": 60,
+   "sort": 0
+  },
+  {
+   "id": "a0000002-0000-4000-8000-000000000002",
+   "name_ar": "شريك تجريبي 2",
+   "name_en": "Sample partner 2",
+   "kind": "svg",
+   "data": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"160\" height=\"60\" viewBox=\"0 0 160 60\"><title>Sample 2</title><circle cx=\"20\" cy=\"30\" r=\"14\" fill=\"#A97C50\"/><text x=\"80\" y=\"38\" font-family=\"sans-serif\" font-size=\"18\" text-anchor=\"middle\" fill=\"#142A3B\">Sample 2</text></svg>",
+   "width": 160,
+   "height": 60,
+   "sort": 1
+  },
+  {
+   "id": "a0000003-0000-4000-8000-000000000003",
+   "name_ar": "شريك تجريبي 3",
+   "name_en": "Sample partner 3",
+   "kind": "png",
+   "data": "iVBORw0KGgoAAAANSUhEUgAAAKAAAAA8CAYAAADha7EVAAABZUlEQVR4nO3asU0DURBAQXdHSiVUQB/UQJVGQiIgsH3ngLcr5kub3UgbbHbv8vH2cjWmmku9gPnf4wBNOr8O8PP99XsuD97Pd7eG5++9uwc4fXl+v795gBuW5/f7pw5wyvL8fn/6ACctz+/3pw5w2vL8fn/4ACcuz+/3hw5w6vL8fv/wACcvz+/3dw9w+vL8fv/wT8jk5fn9/qkDnLI8v9+fPsBJy/P7/akDnLY8v98fPsCJy/P7/aEDnLo8v9/rAfnU6wH51OsB+dTrAfnU6wH51OsB+dTrAfnU6wH51OsB+dTrAfnU6wH51OsB+dTrAfnU6wH51OsB+dTrAfnU6wH51OsB+dTrAfnU6wH51OsB+dTrAfnU6wH51OsB+dTrAfnU6wH51OsB+dTrAfnU6wH51OsB+dTrAfnU6wH51OsB+dTrAfnU6wH51OsB+dTrAfnU6wH51N88QGP+ehygSccBmnS+ANPePdJVR3TlAAAAAElFTkSuQmCC",
+   "width": 160,
+   "height": 60,
+   "sort": 2
+  },
+  {
+   "id": "a0000004-0000-4000-8000-000000000004",
+   "name_ar": "شريك تجريبي 4",
+   "name_en": "Sample partner 4",
+   "kind": "svg",
+   "data": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"160\" height=\"60\" viewBox=\"0 0 160 60\"><title>Sample 4</title><defs><linearGradient id=\"g\"><stop offset=\"0\" stop-color=\"#A97C50\"/><stop offset=\"1\" stop-color=\"#142A3B\"/></linearGradient></defs><polygon points=\"6,52 22,8 38,52\" fill=\"url(#g)\"/><text x=\"80\" y=\"38\" font-family=\"sans-serif\" font-size=\"18\" text-anchor=\"middle\" fill=\"#142A3B\">Sample 4</text></svg>",
+   "width": 160,
+   "height": 60,
+   "sort": 3
+  }
+ ]
+}

@@ -10,6 +10,8 @@ import WhatsAppButton from '@components/WhatsAppButton.astro';
 import BookingDrawer from '@components/BookingDrawer.astro';
 import OfferPopupDialog from '@components/OfferPopup.astro';
 import { offerPopup, siteBar } from '@lib/offers-data';
+import CookieConsent from '@components/CookieConsent.astro';
+import { cookieConsent } from '@lib/content';
 
 interface Props {
   locale: Locale;
@@ -170,6 +172,42 @@ const preloadFonts = locale === 'ar' ? [fontAr400] : [fontEn];
     {!legacy && <ClientRouter fallback="animate" />}
     <slot name="head" />
     {ld.map((json) => <script type="application/ld+json" set:html={json} />)}
+    <script is:inline define:vars={{ consentVersion: cookieConsent.version, consentDays: cookieConsent.max_age_days }}>
+      // Google Consent Mode v2, advanced (Ahmed, 7 Nov 2026; DECISIONS.md 2026-11-07 «Cookie consent»): the defaults are
+      // set before GTM is even queued — analytics and ads denied, functionality and security granted, GTM waits up to
+      // 500 ms for an update. A stored choice (localStorage armada-consent: this policy version, under max_age_days old)
+      // is applied at once; otherwise <html data-consent-open> shows the banner (CookieConsent.astro) from the first
+      // paint — never in an automated browser (the check suite) unless localStorage armada-consent-test = 1.
+      (function (w, d) {
+        w.dataLayer = w.dataLayer || [];
+        w.gtag = function () { w.dataLayer.push(arguments); };
+        w.gtag('consent', 'default', {
+          ad_storage: 'denied', analytics_storage: 'denied', ad_user_data: 'denied', ad_personalization: 'denied',
+          functionality_storage: 'granted', security_storage: 'granted', wait_for_update: 500,
+        });
+        var c = null, test = false;
+        try {
+          c = JSON.parse(localStorage.getItem('armada-consent') || 'null');
+          test = localStorage.getItem('armada-consent-test') === '1';
+        } catch (e) {}
+        var ok = !!c && c.v === consentVersion && typeof c.t === 'number' && Date.now() - c.t < consentDays * 864e5;
+        if (ok) {
+          var a = c.analytics ? 'granted' : 'denied', m = c.ads ? 'granted' : 'denied';
+          w.gtag('consent', 'update', { analytics_storage: a, ad_storage: m, ad_user_data: m, ad_personalization: m });
+        }
+        function apply() {
+          if (!ok && (!navigator.webdriver || test)) d.documentElement.setAttribute('data-consent-open', '');
+        }
+        apply();
+        // a view-transition swap replaces the <html> attributes with the new page's
+        d.addEventListener('astro:after-swap', function () {
+          var s = null;
+          try { s = JSON.parse(localStorage.getItem('armada-consent') || 'null'); } catch (e) {}
+          ok = !!s && s.v === consentVersion && typeof s.t === 'number' && Date.now() - s.t < consentDays * 864e5;
+          apply();
+        });
+      })(window, document);
+    </script>
     <script is:inline define:vars={{ GTM_ID }}>
       // GTM (decision 10 Oct 2026, tightened 11 Oct): the dataLayer exists from the first byte and queues every push
       // (gtm.start/gtm.js, page events, booking_request…); the container script itself is injected on the first
@@ -216,6 +254,9 @@ const preloadFonts = locale === 'ar' ? [fontAr400] : [fontEn];
         style="display:none;visibility:hidden"
         title="Google Tag Manager"></iframe>
     </noscript>
+    {/* the cookie banner (7 Nov 2026) first in the reading order, so keyboard and screen-reader users meet it first;
+        shown at the bottom of the screen, over the page (position: fixed — nothing moves) */}
+    <CookieConsent locale={locale} />
     <Header locale={locale} path={path} switchPath={switchPath} booking={booking} />
     <main id="main" class="flex-1">
       <slot />
@@ -238,6 +279,9 @@ const preloadFonts = locale === 'ar' ? [fontAr400] : [fontEn];
       import '@lib/story';
       import '@lib/drawer';
       import '@lib/photo';
+      import '@lib/consent';
+      import '@lib/slider';
+      import '@lib/marquee';
     </script>
   </body>
 </html>

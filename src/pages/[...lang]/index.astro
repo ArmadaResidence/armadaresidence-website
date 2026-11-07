@@ -9,6 +9,7 @@ import HomeClub from '@components/home/HomeClub.astro';
 import HomeDining from '@components/home/HomeDining.astro';
 import HomeGallery from '@components/home/HomeGallery.astro';
 import HomeOffers from '@components/home/HomeOffers.astro';
+import HomePartners from '@components/home/HomePartners.astro';
 import HomePlaces from '@components/home/HomePlaces.astro';
 import HomeReviews from '@components/home/HomeReviews.astro';
 import HomeRooms from '@components/home/HomeRooms.astro';
@@ -331,6 +332,8 @@ const quickFacts = fill(t.home.quick_facts, {
     </div>
   </section>
 
+  {/* «شركاؤنا» (7 Nov 2026): a section of the home page after «عن أرمادا ريزيدنس» — from 3 logos in «شعارات الشركاء» */}
+  <HomePartners locale={locale} />
   <HomeClub locale={locale} />
 </Base>
 

@@ -285,6 +285,8 @@ export const ui = (locale: Locale): UI => uiJson[locale] as UI;
 
 export const SITE_URL: string = seo.site_url.replace(/\/$/, '');
 export const GTM_ID: string = contact.gtm_container;
+/** the cookie banner's policy version and how long a choice is kept (policies.json → cookie_consent, 7 Nov 2026) */
+export const cookieConsent: { version: string; max_age_days: number } = policiesJson.cookie_consent;
 
 /* ---------- small helpers ---------- */
 

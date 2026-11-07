@@ -21,6 +21,9 @@ Steps:
      content/faq.json, the dashboard's seed).
      The guest reviews of «آراء الضيوف» (7 Nov 2026): scripts/reviews-build.mjs → content/reviews.generated.json (without
      the key: content/reviews.json, the dashboard's seed).
+     The partner logos of «شعارات الشركاء» (7 Nov 2026): scripts/partner-logos-build.mjs → public/images/partner-logos/
+     (the files, never committed) + content/partner-logos.generated.json (without the key: content/partner-logos.json,
+     the dashboard's seed — empty).
   4. Run `astro build` → dist/ (static).
   5. Print the list of generated pages.
 
@@ -704,6 +707,7 @@ def main() -> int:
     run(["node", "scripts/blog-build.mjs"])
     run(["node", "scripts/faq-build.mjs"])
     run(["node", "scripts/reviews-build.mjs"])
+    run(["node", "scripts/partner-logos-build.mjs"])
     sync_media()
     run(["node", "scripts/lqip.mjs"])
     run(["node", "scripts/og.mjs"])

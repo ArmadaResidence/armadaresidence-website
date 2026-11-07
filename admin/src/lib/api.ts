@@ -482,7 +482,7 @@ export const resendLink = (user_id: string) => edge<{ ok: boolean; type: string 
 
 /** Ask for a rebuild of the static site (extra-bed fee, room availability). Never throws: the UI shows the fallback line.
  * A dispatched rebuild is announced with the window event `armada:site-rebuild` (lib/siteDeploy.ts shows «جارٍ تحديث الموقع»). */
-export async function siteRebuild(reason: 'settings' | 'rooms' | 'media' | 'dining' | 'offers' | 'blog' | 'faq' | 'content' | 'reviews', job?: string): Promise<{ ok: boolean; dispatched?: boolean; reason?: string }> {
+export async function siteRebuild(reason: 'settings' | 'rooms' | 'media' | 'dining' | 'offers' | 'blog' | 'faq' | 'content' | 'reviews' | 'partner_logos', job?: string): Promise<{ ok: boolean; dispatched?: boolean; reason?: string }> {
   try {
     const r = await edge<{ ok: boolean; dispatched?: boolean; reason?: string }>('site-rebuild', job ? { reason, job } : { reason });
     if (r.ok && r.dispatched) window.dispatchEvent(new Event('armada:site-rebuild'));

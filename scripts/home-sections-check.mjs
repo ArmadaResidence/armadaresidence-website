@@ -6,12 +6,18 @@
 //     counts the room types shown on the site; one card per flagged open room with «الفرع · النوع», its name and its
 //     page; no price anywhere in the section; the stats row (room types, units, 24, the hall's capacity); the six «لماذا
 //     أرمادا» cards with no unfilled placeholder; the café section — the menu link, the café WhatsApp from contact.json,
-//     «تحويلة {ext}»; three reviews of the page's language in order, quoted, with «الاسم · الفرع · N على Google» and a
+//     «تحويلة {ext}», the terrace exactly when branches.json confirms one (7 Nov 2026); every review of the page's
+//     language in order (twelve at most — the carousel since 7 Nov 2026), quoted, with «الاسم · الفرع · N على Google» and a
 //     https source link opening in a new tab; NO Review / AggregateRating structured data; three Discover Taif places
 //     linking to their card; the «إياب» band (descriptor, the approved line, two benefits, /club/); the footer «تابعنا»
 //     row = the networks with a link in contact.json;
 //   - in the browser, AR + EN × 375 (touch) + 1440 × light + dark: no horizontal scroll; the room tabs (one pressed at a
-//     time, a branch tab shows exactly that branch's cards, «الكل» all); axe on the home page (1440 light + 375 dark).
+//     time, a branch tab shows exactly that branch's cards, «الكل» all); axe on the home page (1440 light + 375 dark);
+//   - the reviews carousel (7 Nov 2026), motion allowed: nothing moves by itself; 1440 — arrows (the start one disabled),
+//     a next arrow moves one card in the reading direction, the dots follow; 375 — no arrows, swipe scrolls the row;
+//   - «شركاؤنا» (7 Nov 2026, from 3 logos — PARTNER_LOGOS_FIXTURE builds): after «عن أرمادا ريزيدنس», logos only (no
+//     link, no visible name; alt = the name), 48 px high, the copy aria-hidden; it moves in the reading direction, stops
+//     while the mouse is over it, a drag moves it; reduced motion — one static row, the copy hidden.
 //   node scripts/home-sections-check.mjs [BASE_URL]
 import { existsSync, readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
@@ -32,7 +38,10 @@ const avail = existsSync(join(DIST, '_availability.json')) ? J(join(DIST, '_avai
 const reviewsFile = existsSync('content/reviews.generated.json') ? 'content/reviews.generated.json' : 'content/reviews.json';
 const reviews = J(reviewsFile).items.filter((r) => r.show_home !== false);
 const AXE = readFileSync(createRequire(import.meta.url).resolve('axe-core/axe.min.js'), 'utf8');
-const ORDER = ['rooms', 'offers', 'why', 'dining', 'gallery', 'reviews', 'places', 'blog', 'about', 'club'];
+const ORDER = ['rooms', 'offers', 'why', 'dining', 'gallery', 'reviews', 'places', 'blog', 'about', 'partners', 'club'];
+const logosFile = 'content/partner-logos.generated.json';
+const logos = existsSync(logosFile) ? J(logosFile).items : [];
+const terrace = (J('content/branches.json').branches.find((b) => b.slug === 'airport-road')?.dining?.seating ?? []).includes('terrace');
 const fails = [];
 let checks = 0;
 const check = (ok, msg, detail = '') => {
@@ -86,11 +95,11 @@ for (const lang of ['ar', 'en']) {
   check(din.includes(`wa.me/${contact.cafe.whatsapp.replace(/\D/g, '')}`), `${lang}: the café WhatsApp is not contact.json cafe.whatsapp`);
   check(din.includes(`href="${lang === 'en' ? '/en' : ''}${contact.menu_url}"`), `${lang}: the menu link`);
   check(strip(din).includes(contact.cafe.room_extension), `${lang}: the room extension`);
-  check(!/تراس|terrace/i.test(strip(din)), `${lang}: a terrace named without content/ confirming one`);
+  check(/تراس|terrace/i.test(strip(din)) === terrace, `${lang}: the terrace ${terrace ? 'is missing although branches.json confirms it' : 'is named without content/ confirming one'}`);
 
   // reviews
   const rv = sec('reviews');
-  const want = reviews.filter((r) => r.lang === lang).slice(0, 3);
+  const want = reviews.filter((r) => r.lang === lang).slice(0, 12);
   const items = [...rv.matchAll(/<li[^>]*data-home-review="([a-z-]+)"[\s\S]*?<\/li>/g)];
   check(items.length === want.length, `${lang}: ${items.length} reviews, expected ${want.length}`);
   items.forEach((m, i) => {
@@ -104,6 +113,18 @@ for (const lang of ['ar', 'en']) {
   });
   const lds = [...html.matchAll(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/g)].map((m) => m[1]).join('\n');
   check(!/"(Review|AggregateRating)"|"(review|aggregateRating|reviewRating)"\s*:/.test(lds), `${lang}: Review / AggregateRating structured data on the home page`);
+
+  // «شركاؤنا»
+  check(found.includes('partners') === logos.length >= 3, `${lang}: the partners strip ${logos.length >= 3 ? 'is missing' : 'shows with fewer than 3 logos'}`);
+  if (logos.length >= 3) {
+    const ps = sec('partners');
+    const set = ps.slice(ps.indexOf('data-marquee-set'), ps.indexOf('data-marquee-copy'));
+    const alts = [...set.matchAll(/<img[^>]*alt="([^"]*)"/g)].map((m) => m[1].replace(/&amp;/g, '&'));
+    check(JSON.stringify(alts) === JSON.stringify(logos.map((l) => (lang === 'ar' ? l.alt_ar : l.alt_en))), `${lang}: the logos (order, alt)`, alts.join(' | '));
+    check(!/<a\b/.test(ps), `${lang}: a link in the partners strip`);
+    check(/data-marquee-copy[^>]*aria-hidden="true"|aria-hidden="true"[^>]*data-marquee-copy/.test(ps), `${lang}: the logos' copy is not aria-hidden`);
+    check(logos.every((l) => !strip(ps).includes(lang === 'ar' ? l.alt_ar : l.alt_en)), `${lang}: a partner's name shown as text`);
+  }
 
   // places, club, footer
   check((sec('places').match(/data-home-place=/g) || []).length === 3, `${lang}: three Discover Taif places`);
@@ -165,6 +186,88 @@ try {
       }
       await ctx.close();
     }
+  }
+
+  // the reviews carousel and «شركاؤنا», with motion allowed
+  for (const lang of ['ar', 'en']) {
+    for (const form of FORMS) {
+      const tag = `${lang} ${form.name}`;
+      const ctx = await browser.newContext({ viewport: form.viewport, isMobile: form.isMobile, hasTouch: form.hasTouch, reducedMotion: 'no-preference' });
+      await ctx.route(/googletagmanager|google-analytics|wa\.me|supabase\.co|maps\.google/, (r) => r.abort());
+      const page = await ctx.newPage();
+      await page.goto(`${ORIGIN}${PRE}${lang === 'en' ? '/en' : ''}/`, { waitUntil: 'load' });
+      const rv = page.locator('[data-reviews-carousel]');
+      await rv.scrollIntoViewIfNeeded();
+      await page.waitForTimeout(400);
+      const pos = () => page.evaluate(() => Math.abs(document.querySelector('[data-reviews-carousel] [data-slider-track]').scrollLeft));
+      const p0 = await pos();
+      await page.waitForTimeout(2500);
+      check((await pos()) === p0, `${tag}: the reviews carousel moved by itself`);
+      const st = await page.evaluate(() => {
+        const r = document.querySelector('[data-reviews-carousel]');
+        const tr = r.querySelector('[data-slider-track]');
+        const vis = (el) => !!el && getComputedStyle(el).display !== 'none' && el.getBoundingClientRect().width > 0;
+        return { overflow: tr.scrollWidth > tr.clientWidth + 1, prev: vis(r.querySelector('[data-slider-prev]')), prevDisabled: r.querySelector('[data-slider-prev]').disabled, dots: vis(r.querySelector('[data-slider-dots]')), snap: getComputedStyle(tr).scrollSnapType };
+      });
+      check(st.snap.includes('x'), `${tag}: the reviews row has no scroll snap`);
+      if (form.name === '1440' && st.overflow) {
+        check(st.prev && st.dots && st.prevDisabled, `${tag}: arrows / dots on desktop (the start arrow disabled)`, JSON.stringify(st));
+        const firstX = await page.evaluate(() => document.querySelector('[data-reviews-carousel] [data-home-review]').getBoundingClientRect().x);
+        await page.click('[data-reviews-carousel] [data-slider-next]');
+        await page.waitForTimeout(900);
+        check((await pos()) > p0 + 50, `${tag}: the next arrow does not move the row`);
+        const x2 = await page.evaluate(() => document.querySelector('[data-reviews-carousel] [data-home-review]').getBoundingClientRect().x);
+        check(lang === 'ar' ? x2 > firstX : x2 < firstX, `${tag}: the next arrow moves against the reading direction`);
+        const active = await page.evaluate(() => [...document.querySelectorAll('[data-reviews-carousel] .slider-dot')].findIndex((d) => d.classList.contains('is-active')));
+        check(active === 1, `${tag}: the dots do not follow the row`, String(active));
+      }
+      if (form.name === '375') {
+        check(!st.prev, `${tag}: arrows shown on a phone`);
+        check(st.overflow, `${tag}: the reviews do not form a swipeable row on a phone`);
+      }
+      if (logos.length >= 3) {
+        const mq = page.locator('[data-marquee]');
+        await mq.scrollIntoViewIfNeeded();
+        await page.waitForTimeout(600);
+        const tx = () => page.evaluate(() => parseFloat((document.querySelector('[data-marquee-track]').style.translate || '0').split(' ')[0]) || 0);
+        const a = await tx();
+        await page.waitForTimeout(1200);
+        const b = await tx();
+        check(Math.abs(b - a) > 3 && (lang === 'ar' ? b > a : b < a), `${tag}: the logos do not move in the reading direction`, `${a} → ${b}`);
+        const h = await page.evaluate(() => [...document.querySelectorAll('[data-partner-logo] img')].map((i) => Math.round(i.getBoundingClientRect().height)));
+        check(h.every((x) => x === 48), `${tag}: the logos are not one height of 48 px`, h.join(','));
+        if (form.name === '1440') {
+          const box = await mq.boundingBox();
+          await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+          await page.waitForTimeout(300);
+          const c1 = await tx();
+          await page.waitForTimeout(1000);
+          check(Math.abs((await tx()) - c1) < 0.5, `${tag}: the strip does not stop under the mouse`);
+          await page.mouse.down();
+          await page.mouse.move(box.x + box.width / 2 + 150, box.y + box.height / 2, { steps: 6 });
+          const c2 = await tx();
+          await page.mouse.up();
+          check(Math.abs(c2 - c1) > 50, `${tag}: a drag does not move the strip`, `${c1} → ${c2}`);
+          await page.mouse.move(0, 0);
+          await page.waitForTimeout(300);
+          const c3 = await tx();
+          await page.waitForTimeout(1000);
+          check(Math.abs((await tx()) - c3) > 3, `${tag}: the strip does not carry on after the mouse leaves`);
+        }
+      }
+      await ctx.close();
+    }
+  }
+  if (logos.length >= 3) {
+    const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 }, reducedMotion: 'reduce' });
+    await ctx.route(/googletagmanager|google-analytics|wa\.me|supabase\.co|maps\.google/, (r) => r.abort());
+    const page = await ctx.newPage();
+    await page.goto(`${ORIGIN}${PRE}/`, { waitUntil: 'load' });
+    await page.locator('[data-marquee]').scrollIntoViewIfNeeded();
+    await page.waitForTimeout(1200);
+    const r = await page.evaluate(() => ({ t: document.querySelector('[data-marquee-track]').style.translate, copy: getComputedStyle(document.querySelector('[data-marquee-copy]')).display }));
+    check(!r.t && r.copy === 'none', 'reduced motion: the logos move or the copy shows', JSON.stringify(r));
+    await ctx.close();
   }
 } finally {
   await browser.close();

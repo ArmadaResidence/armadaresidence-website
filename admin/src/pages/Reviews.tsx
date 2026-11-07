@@ -17,7 +17,8 @@ import { blankReview, branchLabel, LISTING, pickReview, REVIEW_BRANCHES, REVIEW_
 import { CancelButton, Confirm, Empty, ErrorBox, Field, Loading, Modal, Segmented, Spinner, useToast } from '../components/ui';
 
 const REVIEW: CountNoun = { zero: 'لا تقييمات', one: 'تقييم واحد', two: 'تقييمان', few: 'تقييمات', many: 'تقييمًا', gen: 'تقييم' };
-const HOME_MAX = 3;
+/** the home page's carousel shows up to twelve reviews per language (7 Nov 2026; src/lib/reviews.ts HOME_REVIEWS) */
+const HOME_MAX = 12;
 const STAR: CountNoun = { zero: 'بلا نجوم', one: 'نجمة واحدة', two: 'نجمتان', few: 'نجوم', many: 'نجمة', gen: 'نجمة' };
 
 export default function Reviews() {
@@ -50,7 +51,7 @@ export default function Reviews() {
 
   const ordered = useMemo(() => [...(items ?? [])].sort((a, b) => a.sort - b.sort), [items]);
   const pending = ordered.filter((r) => r.pending).length;
-  /** which reviews the home page shows now (the published ones, first three per language) */
+  /** which reviews the home page shows now (the published ones, the first HOME_MAX per language) */
   const onHome = useMemo(() => {
     const s = new Set<string>();
     for (const lang of ['ar', 'en'] as const) {
@@ -118,7 +119,7 @@ export default function Reviews() {
         <div className="max-w-3xl">
           <h1 className="text-2xl font-bold">آراء الضيوف</h1>
           <p className="text-sm text-ink-muted mt-1">
-            تقييمات حقيقية من خرائط Google تظهر في قسم «آراء ضيوفنا» بالصفحة الرئيسية: الصفحة العربية تعرض أول {HOME_MAX} تقييمات عربية، والإنجليزية أول {HOME_MAX} تقييمات إنجليزية، بهذا الترتيب. انقل نص التقييم كما كتبه الضيف، واكتب «…» مكان أي جزء محذوف. لا يظهر أي تعديل على الموقع قبل «نشر».
+            تقييمات حقيقية من خرائط Google تظهر في قسم «آراء ضيوفنا» بالصفحة الرئيسية: الصفحة العربية تعرض التقييمات العربية والإنجليزية تعرض التقييمات الإنجليزية، حتى {HOME_MAX} تقييمًا لكل لغة، في شريط يتنقّل بينه الزائر بهذا الترتيب. انقل نص التقييم كما كتبه الضيف، واكتب «…» مكان أي جزء محذوف. لا يظهر أي تعديل على الموقع قبل «نشر».
             {!editable ? ' صلاحيتك هنا للعرض فقط.' : !publisher ? ' النشر لمن يملك صلاحية «نشر» في «المحتوى».' : ''}
           </p>
         </div>

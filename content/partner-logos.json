@@ -1,0 +1,5 @@
+{
+  "_note": "Partner logos of the home page's logo strip: the seed / fallback of the dashboard «شعارات الشركاء» (7 Nov 2026; scripts/partner-logos-build.mjs uses it when the build has no service key). Empty: no partner logos existed before 7 Nov 2026. Each item: {id, name_ar, name_en (the alt text only, never shown), kind svg | png, data (SVG markup | base64 PNG), width, height, sort}.",
+  "verified": true,
+  "items": []
+}

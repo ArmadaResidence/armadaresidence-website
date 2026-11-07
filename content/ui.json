@@ -41,7 +41,7 @@
       "room_details": "تفاصيل الغرفة",
       "dining_eyebrow": "في لوبي فرع طريق المطار",
       "dining_heading": "مطعم ومقهى أرمادا ريزيدنس",
-      "dining_body": "قهوة ومشروبات ووجبات في أي وقت، وبوفيه إفطار يومي من 7:00 إلى 10:30 صباحًا، بجلسات داخلية.",
+      "dining_body": "قهوة ومشروبات ووجبات في أي وقت، وبوفيه إفطار يومي من 7:00 إلى 10:30 صباحًا، بجلسات داخلية وتراس.",
       "dining_line": "{hours} · تحويلة {ext} من غرفتك",
       "dining_hours_24h": "مفتوح على مدار الساعة",
       "dining_menu": "قائمة الطعام",
@@ -49,6 +49,9 @@
       "gallery_heading": "من المعرض",
       "gallery_all": "كل الصور",
       "reviews_heading": "آراء ضيوفنا",
+      "partners_heading": "شركاؤنا",
+      "reviews_prev": "المراجعة السابقة",
+      "reviews_next": "المراجعة التالية",
       "reviews_intro": "مختارة من تقييمات الفرعين على خرائط Google",
       "review_meta": "{name} · {branch} · {stars} على Google",
       "review_link": "تقييمات {branch} على خرائط Google (يفتح في نافذة جديدة)",
@@ -61,6 +64,7 @@
     },
     "branch": {
       "rooms_heading": "الغرف والأجنحة",
+      "photos_heading": "صور الفرع",
       "rooms_intro": "الأسعار لليلة الواحدة شاملة الضريبة، ويؤكد الاستقبال السعر النهائي عند الحجز.",
       "at_a_glance": "في لمحة",
       "check_in": "الوصول",
@@ -391,6 +395,19 @@
       ],
       "fallback_line": "لم نتمكن من تأكيد حجزك فورًا: {reason}",
       "sold_out_race": "سبقك ضيف آخر إلى آخر غرفة متاحة في هذه التواريخ."
+    },
+    "cookies": {
+      "region": "ملفات تعريف الارتباط",
+      "text": "نستخدم ملفات تعريف الارتباط لتشغيل الموقع، وقياس استخدامه، وعرض إعلانات تناسبك. يمكنك تغيير اختيارك في أي وقت من أسفل الصفحة.",
+      "accept_all": "قبول الكل",
+      "essential_only": "الضروري فقط",
+      "customize": "تخصيص",
+      "privacy": "سياسة الخصوصية",
+      "essential": "ضرورية (مفعّلة دائمًا)",
+      "analytics": "التحليلات",
+      "ads": "الإعلانات",
+      "save": "حفظ",
+      "settings": "إعدادات ملفات تعريف الارتباط"
     },
     "footer": {
       "branches": "الفرعان",
@@ -794,7 +811,7 @@
       "room_details": "Room details",
       "dining_eyebrow": "In the Airport Road lobby",
       "dining_heading": "Armada Residence Café & Restaurant",
-      "dining_body": "Coffee, drinks and meals at any hour, and a daily breakfast buffet from 7:00 to 10:30 am, with indoor seating.",
+      "dining_body": "Coffee, drinks and meals at any hour, and a daily breakfast buffet from 7:00 to 10:30 am, with indoor seating and a terrace.",
       "dining_line": "{hours} · Ext. {ext} from your room",
       "dining_hours_24h": "Open 24 hours",
       "dining_menu": "Menu",
@@ -802,6 +819,9 @@
       "gallery_heading": "From the gallery",
       "gallery_all": "All photos",
       "reviews_heading": "What our guests say",
+      "partners_heading": "Our partners",
+      "reviews_prev": "Previous review",
+      "reviews_next": "Next review",
       "reviews_intro": "Selected from both properties' reviews on Google Maps",
       "review_meta": "{name} · {branch} · {stars} on Google",
       "review_link": "{branch} reviews on Google Maps (opens in a new tab)",
@@ -814,6 +834,7 @@
     },
     "branch": {
       "rooms_heading": "Rooms and suites",
+      "photos_heading": "Photos of the property",
       "rooms_intro": "Prices are per night and include VAT. Reception confirms the final price on booking.",
       "at_a_glance": "At a glance",
       "check_in": "Check-in",
@@ -1144,6 +1165,19 @@
       ],
       "fallback_line": "We could not confirm your booking instantly: {reason}",
       "sold_out_race": "Another guest took the last room available for these dates."
+    },
+    "cookies": {
+      "region": "Cookies",
+      "text": "We use cookies to run the site, measure how it is used, and show you relevant ads. You can change your choice at any time from the bottom of the page.",
+      "accept_all": "Accept all",
+      "essential_only": "Essential only",
+      "customize": "Customize",
+      "privacy": "Privacy Policy",
+      "essential": "Essential (always on)",
+      "analytics": "Analytics",
+      "ads": "Advertising",
+      "save": "Save",
+      "settings": "Cookie settings"
     },
     "footer": {
       "branches": "Properties",

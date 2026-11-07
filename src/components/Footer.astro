@@ -154,6 +154,10 @@ const social: { name: string; url: string }[] = [
     )
   }
   <div class="relative border-t border-porcelain/15">
-    <p class="mx-auto max-w-6xl px-5 py-5 text-xs text-porcelain/70">{footerLine(locale)}</p>
+    <div class="mx-auto max-w-6xl px-5 py-5 flex flex-wrap items-center justify-between gap-x-6 gap-y-2">
+      <p class="text-xs text-porcelain/70">{footerLine(locale)}</p>
+      {/* reopens the cookie banner on its customize view (7 Nov 2026; src/lib/consent.ts) */}
+      <button type="button" class="text-xs text-porcelain/80 underline underline-offset-2 py-2 hover:text-bronze" data-cookie-settings>{t.cookies.settings}</button>
+    </div>
   </div>
 </footer>

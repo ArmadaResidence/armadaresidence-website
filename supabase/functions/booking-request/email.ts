@@ -362,10 +362,12 @@ function flagNote(L: Locale, lines: string[]): string {
   return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" class="bg-soft" style="background:${PORCELAIN}; border-${side}:4px solid ${BRONZE}; border-radius:4px;"><tr><td style="padding:12px 16px;">${body}</td></tr></table>`;
 }
 
+/** A key/value row: [key, value] or [key, value, print class] (kvCard below); the text part reads key and value only. */
+type KvRow = [string, string] | [string, string, string];
 /** Key/value rows inside a soft card; stacks to one column on phones. */
 /** rows: [key, value] or [key, value, print class] — 'wide' (a full line on paper: notes, totals) or 'pn' (a
  * per-night price, three to a line on paper); screen rendering ignores the class. */
-function kvCard(L: Locale, rows: ([string, string] | [string, string, string])[]): string {
+function kvCard(L: Locale, rows: KvRow[]): string {
   const k = L === 'ar' ? 'right' : 'left';
   const body = rows
     .map(
@@ -399,7 +401,7 @@ function langDivider(): string {
 const plainLabel = (s: string) => String(s ?? '').replace(/\s*[(（][^)）]*[)）]\s*$/, '');
 
 // ── plain-text helpers ────────────────────────────────────────────────────────────────────────────────────────
-const textRows = (rows: [string, string][]) => rows.map(([k, v]) => `${k}: ${v}`).join('\n');
+const textRows = (rows: KvRow[]) => rows.map(([k, v]) => `${k}: ${v}`).join('\n');
 const RULE = '----------------------------------------';
 
 // ══ 1. Booking notification (reception, Arabic, work tool) ═══════════════════════════════════════════════════
@@ -410,7 +412,7 @@ export function bookingNotification(c: Content, d: BookingMail): Mail {
   const b = branchOf(c, d.branch);
   const tagBg = BRANCH_TAG[d.branch] ?? NAVY;
   const breakfast = d.breakfast === 'with' ? lab.breakfast_with : lab.breakfast_without;
-  const rows: [string, string][] = [
+  const rows: KvRow[] = [
     [M.ref, d.ref],
     [lab.branch, b.name_ar],
     [lab.check_in, d.check_in],
@@ -557,7 +559,7 @@ export function partnerNotification(c: Content, d: PartnerMail): Mail {
   const pl = c.partner_labels.ar;
   const M = c.email.ar;
   const typeName = c.request_types.ar[d.requestType] ?? d.requestType;
-  const rows: [string, string][] = [
+  const rows: KvRow[] = [
     [M.ref, d.ref],
     [pl.reqtype, typeName],
     [pl.company, d.organisation || '—'],
@@ -820,7 +822,7 @@ export function confirmedNotification(c: Content, d: ConfirmedMail): Mail {
   const tagBg = BRANCH_TAG[d.branch] ?? NAVY;
   const breakfast = d.breakfast === 'with' ? lab.breakfast_with : lab.breakfast_without;
   const by = d.confirmedBy ? fill(M.confirmed_by_staff, { name: d.confirmedBy }) : M.confirmed_by_website;
-  const rows: [string, string][] = [
+  const rows: KvRow[] = [
     [M.booking_ref_label, d.ref],
     [M.status_label, by],
     [lab.branch, b.name_ar],

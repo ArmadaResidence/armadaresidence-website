@@ -958,6 +958,7 @@ def main() -> int:
     check_media(rep)
     check_gallery(rep)
     check_reviews(rep)
+    check_ui_parity(rep)
     check_offers(rep)
     check_typeset(rep)
     check_paragraphs(rep, raw)
@@ -1248,7 +1249,7 @@ def check_media(rep: "Report") -> None:
 
 def check_reviews(rep: "Report") -> None:
     """«آراء ضيوفنا» on the home page (Ahmed, 7 Nov 2026): each language shows the reviews of its own language that the
-    build resolved (content/reviews.generated.json, else the seed), three at most, in order, each with its first name,
+    build resolved (content/reviews.generated.json, else the seed), twelve at most (the carousel), in order, each with its first name,
     branch, stars and a https source link opening its Google listing."""
     G = "reviews"
     gen = CONTENT / "reviews.generated.json"
@@ -1258,7 +1259,8 @@ def check_reviews(rep: "Report") -> None:
         if not home.is_file():
             continue
         html = home.read_text(encoding="utf-8")
-        want = [r for r in items if r["lang"] == lang][:3]
+        # all of them since 7 Nov 2026 (the carousel; src/lib/reviews.ts HOME_REVIEWS = 12)
+        want = [r for r in items if r["lang"] == lang][:12]
         cards = re.findall(r'<li\b[^>]*\bdata-home-review="([a-z-]+)"[^>]*>(.*?)</li>', html, re.S)
         if len(cards) != len(want):
             rep.f(G, f"{lang} home: {len(cards)} review card(s), expected {len(want)}")
@@ -1272,6 +1274,37 @@ def check_reviews(rep: "Report") -> None:
                 rep.f(G, f"{lang} home: the review of {r['first_name']} must link its source ({r['source_url']})")
         if lang == "ar" and any(not re.search(r"[\u0600-\u06FF]", r["text"]) for r in want):
             rep.f(G, "ar home: a review without Arabic text")
+
+
+def check_ui_parity(rep: "Report") -> None:
+    """content/ui.json (7 Nov 2026): every key present in Arabic exists in English and vice versa, at every depth, with
+    the same kind of value (text, list or group) — a key missing in one language would render [MISSING] or nothing."""
+    G = "ui.json parity"
+    ui = json.loads((CONTENT / "ui.json").read_text(encoding="utf-8"))
+    # notes ("_…") are comments; the deploy alert is an Arabic-only staff email (6 Nov 2026, CLAUDE.md §2)
+    ARABIC_ONLY = {"staff_email.deploy_alert"}
+
+    def kind(v):
+        return "group" if isinstance(v, dict) else "list" if isinstance(v, list) else "text"
+
+    def walk(a, b, path):
+        for k in sorted(set(a) | set(b)):
+            p = f"{path}.{k}" if path else k
+            if k.startswith("_") or p in ARABIC_ONLY:
+                continue
+            if k not in b:
+                rep.f(G, f"{p}: in Arabic, missing in English")
+            elif k not in a:
+                rep.f(G, f"{p}: in English, missing in Arabic")
+            elif kind(a[k]) != kind(b[k]):
+                rep.f(G, f"{p}: a {kind(a[k])} in Arabic but a {kind(b[k])} in English")
+            elif isinstance(a[k], dict):
+                walk(a[k], b[k], p)
+
+    if not isinstance(ui.get("ar"), dict) or not isinstance(ui.get("en"), dict):
+        rep.f(G, "ui.json has no ar / en groups")
+        return
+    walk(ui["ar"], ui["en"], "")
 
 
 def check_gallery(rep: "Report") -> None:

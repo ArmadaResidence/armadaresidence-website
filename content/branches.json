@@ -87,6 +87,7 @@
         "name_ar": "مقهى ومطعم أرمادا ريزيدنس",
         "hours": "24h",
         "open_to_public": true,
+        "seating": ["indoor", "terrace"],
         "location_ar": "في اللوبي",
         "location_en": "In the lobby",
         "menu_url": "/menu/",

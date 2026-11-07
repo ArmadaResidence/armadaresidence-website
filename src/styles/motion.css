@@ -16,6 +16,7 @@
   --motion-count: 1200ms; /* count-up figures */
   --motion-hero-hold: 6000ms; /* the home hero slideshow: how long each photo stays (6 Nov 2026) */
   --motion-hero-fade: 1200ms; /* the home hero slideshow: the cross-fade between two photos */
+  --motion-marquee: 40000ms; /* the home partners strip: one full loop of the logos (7 Nov 2026) */
 }
 @media (prefers-reduced-motion: reduce) {
   :root {
@@ -29,6 +30,7 @@
     --motion-count: 0ms;
     --motion-hero-hold: 0ms;
     --motion-hero-fade: 0ms;
+    --motion-marquee: 0ms;
   }
 }
 
