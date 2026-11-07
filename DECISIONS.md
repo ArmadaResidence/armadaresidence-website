@@ -1943,6 +1943,7 @@ Ahmed's approved home design (desktop 1440, adapted for phones), built in the or
   slider (`data-slider-autoplay`): the branch pages' photo strip stays manual. Checked in `home-sections-check`.
   Open point for Ahmed: WCAG 2.2.2 asks for a visible pause control on content that moves by itself for more than 5 s;
   the hover / touch / focus pauses are there, a button (like the hero's «إيقاف الحركة مؤقتًا») is not — his call.
+  **Decided (Ahmed, 7 Nov 2026): kept as is — no pause button; the hover / touch / focus pauses only.**
 - **Fact sheets (`public/docs/Armada-Residence-Fact-Sheet-2026.pdf`, `…-AR.pdf`).** Every page now carries the brand's
   bronze stacked logo as supplied (`public/brand/logo-stacked.svg`, one fill #A97C50, no plate) — the porcelain logo on
   a navy square of the light pages and the porcelain logo of the dark pages, the cover and the contact card are gone.
