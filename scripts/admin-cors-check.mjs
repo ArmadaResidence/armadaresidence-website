@@ -12,7 +12,8 @@
 //   env SUPABASE_URL (or .env), ADMIN_ORIGINS (comma-separated; each entry is reduced to its origin)
 //
 // --public (launch readiness, 30 Oct 2026): the public site functions (booking-request, job-application; verify_jwt
-// off) from the site's origins — the domain, www and the GitHub Pages review site (env SITE_ORIGINS overrides).
+// off) from the site's origins — the domain and www (env SITE_ORIGINS overrides). Since launch day (8 Nov 2026) the
+// retired GitHub Pages review origin must be refused like any unknown origin.
 // Preflight and the unknown-origin refusal only: a POST would run the function, so none is sent.
 //
 // Runs in `node scripts/check-all.mjs --live` after every site deploy and as the `verify` job of the admin
@@ -21,7 +22,7 @@ import { existsSync, readFileSync } from 'node:fs';
 
 const PUBLIC = process.argv.includes('--public');
 const DEFAULT_ORIGINS = PUBLIC
-  ? ['https://armadaresidence.com', 'https://www.armadaresidence.com', 'https://armadaresidence.github.io/armadaresidence-website']
+  ? ['https://armadaresidence.com', 'https://www.armadaresidence.com']
   : ['https://admin.armadaresidence.com', 'https://armadaresidence.github.io/armadaresidence-admin'];
 // login-code (phase 2a.2, 26 Oct 2026): the second sign-in step, called from the dashboard with the user's JWT
 // label-suggest (C4, 28 Oct 2026): the translation suggestion of the dashboard's bilingual label fields (user JWT)
@@ -32,6 +33,12 @@ const DEFAULT_FUNCTIONS = PUBLIC ? ['booking-request', 'job-application', 'dinin
 // forms: BookingForm, partners-enquiry, CareersForm send authorization + apikey + content-type)
 const REQUEST_HEADERS = PUBLIC ? ['authorization', 'apikey', 'content-type'] : ['authorization', 'apikey', 'content-type', 'x-client-info'];
 const FOREIGN = 'https://evil.invalid';
+// --public: the review origin the site was served from until launch day (8 Nov 2026) — no longer allowed
+const RETIRED = 'https://armadaresidence.github.io';
+// dining-notify also answers the dashboard («إرسال إشعار الافتتاح»), whose origins (_shared/cors.ts ← admin_origins) keep
+// armadaresidence.github.io as the dashboard's fallback origin — the admin repository's verify job checks it — so the
+// retired-origin refusal applies to the site-only functions
+const ALSO_DASHBOARD = new Set(['dining-notify']);
 
 const args = process.argv.slice(2);
 const opt = (name) => {
@@ -117,6 +124,14 @@ for (const fn of functions) {
     check(foreign.headers.get('access-control-allow-origin') !== FOREIGN && foreign.headers.get('access-control-allow-origin') !== '*', `${fn}: unknown origin not allowed`, `got ${foreign.headers.get('access-control-allow-origin')}`);
   } catch (e) {
     check(false, `${fn}: foreign-origin preflight reachable`, String(e));
+  }
+  if (PUBLIC && !ALSO_DASHBOARD.has(fn)) {
+    try {
+      const old = await call(url, { method: 'OPTIONS', headers: { Origin: RETIRED, 'Access-Control-Request-Method': 'POST' } });
+      check(old.headers.get('access-control-allow-origin') !== RETIRED && old.headers.get('access-control-allow-origin') !== '*', `${fn}: the retired review origin ${RETIRED} not allowed (launch day, 8 Nov 2026)`, `got ${old.headers.get('access-control-allow-origin')}`);
+    } catch (e) {
+      check(false, `${fn}: retired-origin preflight reachable`, String(e));
+    }
   }
 }
 

@@ -480,9 +480,9 @@ def generate_function_content(content: dict[str, dict], fees: dict) -> None:
         # dates in the emails follow the date picker (approved 25 Oct 2026): «الاثنين 2 نوفمبر 2026» / "Mon, 2 Nov 2026"
         "datepicker": {loc: {k: ui[loc]["datepicker"][k] for k in ("months", "months_short", "weekdays", "weekdays_short", "field_format")} for loc in ("ar", "en")},
         # every browser origin the public site functions answer (booking-request, job-application — supabase/functions/_shared/
-        # site-cors.ts): the domain, its www form and, until the switch, the GitHub Pages review deployment (30 Oct 2026)
-        "site_origins": [content["seo.json"]["site_url"], content["seo.json"]["site_url"].replace("https://", "https://www.", 1),
-                         os.environ.get("SITE_REVIEW_URL", "https://armadaresidence.github.io")],
+        # site-cors.ts): the domain and its www form (30 Oct 2026). The GitHub Pages review origin was dropped once the switch
+        # was verified (launch day, 8 Nov 2026): armadaresidence.github.io/armadaresidence-website now 301s to the domain
+        "site_origins": [content["seo.json"]["site_url"], content["seo.json"]["site_url"].replace("https://", "https://www.", 1)],
         "admin_url": os.environ.get("ADMIN_URL", "https://admin.armadaresidence.com"),
         # every browser origin the dashboard is served from — the functions' CORS allow-list (supabase/functions/_shared/cors.ts):
         # the domain and, until the CNAME exists, the GitHub Pages deployment of ArmadaResidence/armadaresidence-admin
