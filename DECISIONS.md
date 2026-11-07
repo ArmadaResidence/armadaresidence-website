@@ -1838,3 +1838,7 @@ Ahmed's approved home design (desktop 1440, adapted for phones), built in the or
 - **For approval**: every English text of these sections; the new Arabic texts not in the brief (the tabs' label «عرض
   الغرف حسب الفرع», the reviews arrow «تقييمات {الفرع} على خرائط Google (يفتح في نافذة جديدة)», the dashboard page's
   texts); the gallery page and FAQ page UI strings (written earlier without a recorded approval).
+- **Approved (Ahmed, 7 Nov 2026, «معتمدة كما هي»)**: all of the above — the English texts of these sections, the new
+  Arabic texts, the dashboard page's texts and the gallery / FAQ page UI strings — as built, with no change. Still open:
+  a sales WhatsApp on the home offer cards (kept off by CLAUDE.md §5), the /club/ benefits that still name promo codes
+  and «أول من يعرف», and the first mention of «إياب» on /policies/.
