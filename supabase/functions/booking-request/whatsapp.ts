@@ -26,6 +26,14 @@ type Locale = 'ar' | 'en';
 
 export type WaTemplate = 'booking_request_received' | 'booking_confirmed' | 'booking_cancelled';
 export const WA_TEMPLATES: WaTemplate[] = ['booking_request_received', 'booking_confirmed', 'booking_cancelled'];
+/** The Meta template each message sends (launch day, 8 Nov 2026 — DECISIONS.md «Launch»): the confirmation goes out as
+ *  booking_confirmed_v2 (ar + en approved on both numbers; the same 8 variables in the same order — Ahmed). The log
+ *  (whatsapp_messages.template), the idempotency key and the dashboard labels keep the internal name. */
+export const WA_TEMPLATE_NAMES: Record<WaTemplate, string> = {
+  booking_request_received: 'booking_request_received',
+  booking_confirmed: 'booking_confirmed_v2',
+  booking_cancelled: 'booking_cancelled',
+};
 
 export interface WaBooking {
   ref: string;
@@ -47,7 +55,7 @@ export interface WaPayload {
   to: string;
   type: 'template';
   externalId: string;
-  template: { name: WaTemplate; language: { code: Locale }; components: { type: 'body'; parameters: { type: 'text'; text: string }[] }[] };
+  template: { name: string; language: { code: Locale }; components: { type: 'body'; parameters: { type: 'text'; text: string }[] }[] };
 }
 
 function branchOf(c: Content, slug: string) {
@@ -81,7 +89,7 @@ export function waPayload(c: Content, template: WaTemplate, d: WaBooking): WaPay
     to: d.phone,
     type: 'template',
     externalId: `${d.ref}:${template}`,
-    template: { name: template, language: { code: L }, components: [{ type: 'body', parameters: waParams(c, template, d).map((text) => ({ type: 'text', text })) }] },
+    template: { name: WA_TEMPLATE_NAMES[template], language: { code: L }, components: [{ type: 'body', parameters: waParams(c, template, d).map((text) => ({ type: 'text', text })) }] },
   };
 }
 

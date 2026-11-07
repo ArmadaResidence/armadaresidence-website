@@ -26,7 +26,7 @@ import { join, resolve } from 'node:path';
 import { BROWSER_CHECKS, STATIC_CHECKS, describe, planFor, stagedFiles } from './check-plan.mjs';
 import { serveDist } from './serve-dist.mjs';
 
-const REVIEW_URL = 'https://armadaresidence.github.io/armadaresidence-website';
+const REVIEW_URL = 'https://armadaresidence.com'; // the live site since launch day (8 Nov 2026)
 // live only: the deployed functions' CORS / preflight / gateway JWT handling from every dashboard origin
 const LIVE_CHECKS = ['admin-cors-check'];
 const args = process.argv.slice(2);

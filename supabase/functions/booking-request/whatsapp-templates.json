@@ -1,6 +1,7 @@
 {
   "_note": "Live template definitions read through the YCloud API (GET /v2/whatsapp/templates) on 28 Oct 2026 (booking_cancelled: 29 Oct 2026, its own read_at) — the variable map of whatsapp.ts is tested against these bodies. Status as read that day; never edit a template from here.",
   "_read_at": "2026-10-28",
+  "_v2_note": "8 Nov 2026 (launch day): the confirmation is sent as the Meta template booking_confirmed_v2 (whatsapp.ts → WA_TEMPLATE_NAMES), approved in ar + en on both numbers, with the same 8 variables in the same order as booking_confirmed below (Ahmed). Its body was not read through the API (no YCloud key locally); the variable map is tested against the booking_confirmed definitions.",
   "accounts": {
     "+966536663030": {
       "waba_id": "329667206894245",

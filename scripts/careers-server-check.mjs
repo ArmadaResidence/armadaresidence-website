@@ -37,7 +37,7 @@ if (argv.includes('--production') !== String(target).includes(PROD_REF)) {
 }
 env.SUPABASE_URL = target;
 const URL_ = `${(env.SUPABASE_URL || '').replace(/\/$/, '')}/functions/v1/job-application`;
-const ORIGIN = 'https://armadaresidence.github.io';
+const ORIGIN = 'https://armadaresidence.com';
 if (!TOKEN || !env.SUPABASE_URL) {
   console.error('BOOKING_TEST_TOKEN / SUPABASE_URL missing in .env');
   process.exit(2);

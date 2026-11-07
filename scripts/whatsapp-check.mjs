@@ -15,7 +15,7 @@
 //     email sent exactly as without it, whatsapp_sent false, a 'failed' row with the reason; one row per ref + template.
 import { readFileSync } from 'node:fs';
 import { longDate, sar } from '../supabase/functions/booking-request/email.ts';
-import { WA_TEMPLATES, waErrorCode, waParams, waPayload } from '../supabase/functions/booking-request/whatsapp.ts';
+import { WA_TEMPLATES, WA_TEMPLATE_NAMES, waErrorCode, waParams, waPayload } from '../supabase/functions/booking-request/whatsapp.ts';
 
 const content = JSON.parse(readFileSync('supabase/functions/booking-request/content.generated.json', 'utf8'));
 const defs = JSON.parse(readFileSync('supabase/functions/booking-request/whatsapp-templates.json', 'utf8'));
@@ -74,12 +74,13 @@ for (const [phone, acc] of accounts) {
       });
       check(params.every((p) => !/[\r\n\t]| {2,}/.test(p) && !ARABIC_DIGITS.test(p) && p.length > 0), `${tag}: parameters single-line, non-empty, Western digits`, JSON.stringify(params));
       const payload = waPayload(content, template, d);
-      check(payload.from === phone && payload.to === d.phone && payload.type === 'template' && payload.template.name === template && payload.template.language.code === L, `${tag}: from the branch's own number, to the stored phone, in the booking's language`, JSON.stringify({ from: payload.from, to: payload.to, lang: payload.template.language.code }));
+      check(payload.from === phone && payload.to === d.phone && payload.type === 'template' && payload.template.name === WA_TEMPLATE_NAMES[template] && payload.template.language.code === L, `${tag}: from the branch's own number, to the stored phone, in the booking's language`, JSON.stringify({ from: payload.from, to: payload.to, lang: payload.template.language.code }));
       check(payload.externalId === `${d.ref}:${template}` && payload.template.components.length === 1 && payload.template.components[0].type === 'body', `${tag}: one body component, externalId = ref:template`);
     }
   }
 }
 // «أي غرفة متاحة» on a request never reaches booking_confirmed (always a room) — but the request template has no room
+check(WA_TEMPLATE_NAMES.booking_confirmed === 'booking_confirmed_v2' && WA_TEMPLATE_NAMES.booking_request_received === 'booking_request_received' && WA_TEMPLATE_NAMES.booking_cancelled === 'booking_cancelled', 'the confirmation sends the Meta template booking_confirmed_v2 (launch day, 8 Nov 2026); the other two keep their names');
 check(waParams(content, 'booking_request_received', { ref: 'AR-1', locale: 'ar', branch: 'airport-road', room: '', check_in: '2026-11-02', check_out: '2026-11-05', name: 'x', phone: '+966500000000' }).length === 5, 'request template: built without a room type');
 let threw = false;
 try {
