@@ -898,9 +898,9 @@ body.has-room-bar .cookie-banner {
 }
 
 /* ---------- Split-screen branch chooser (item 4, 11 Oct 2026) ----------
-   Two panes side by side from md up. Each pane's media layer is 116 % of the pane (= 58 % of the row), anchored at
-   the pane's outer edge and scaled down to 50/58 at rest; hover / focus-within scales it to 1 (58 % of the row)
-   while the picture inside counter-scales, so only transforms animate. The other pane dims through its shade. */
+   Two panes side by side from md up. Since 7 Nov 2026 (Ahmed — replaces the 116 % / 58 % widening of 11 Oct) each pane
+   clips its own photo: hover / focus-within zooms the photo inside its card and shades the whole card; the other pane
+   dims through its shade. */
 .split {
   display: grid;
   gap: 1rem;
@@ -980,6 +980,32 @@ body.has-room-bar .cookie-banner {
       color-mix(in srgb, var(--brand-midnight) calc(var(--card-a) * 0 * 100%), transparent) calc(100% - 9rem + 9rem * 1));
   pointer-events: none;
 }
+.split-gradient-full {
+  /* hover / focus (Ahmed, 7 Nov 2026): the whole card shaded, as before the under-the-text gradient — the gradient
+     of 11 Oct 2026 fades in over the photo (opacity only) while the card is hovered or holds the focus */
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to top, rgba(20, 42, 59, 0.94) 0%, rgba(20, 42, 59, 0.72) 38%, rgba(20, 42, 59, 0.12) 70%, rgba(20, 42, 59, 0) 100%);
+  opacity: 0;
+  transition: opacity var(--motion-base) var(--ease-in-out);
+  pointer-events: none;
+}
+.split-pane:focus-within .split-gradient-full {
+  opacity: 1;
+}
+/* the photo's zoom (Ahmed, 7 Nov 2026): inside the card only — the pane clips it (overflow + its own rounded corners on
+   phones, the row's rounded clip from md), so it never reaches the neighbouring card */
+.split-pane:focus-within .split-media-inner {
+  scale: 1.06;
+}
+@media (hover: hover) {
+  .split-pane:hover .split-gradient-full {
+    opacity: 1;
+  }
+  .split-pane:hover .split-media-inner {
+    scale: 1.06;
+  }
+}
 .split-body {
   grid-area: 2 / 1;
   padding: 1.75rem 1.5rem 2rem;
@@ -1041,6 +1067,8 @@ body.has-room-bar .cookie-banner {
     min-height: 560px;
     border-radius: var(--radius-card);
     overflow: hidden;
+    /* the rounded clip holds for transformed (zoomed) photos in every engine */
+    clip-path: inset(0 round var(--radius-card));
   }
   .split-gradient {
     --card-a: var(--card-a-lg, 0.9);
@@ -1049,7 +1077,8 @@ body.has-room-bar .cookie-banner {
     flex: 1 1 50%;
     min-height: 0;
     border-radius: 0;
-    overflow: visible;
+    /* each pane clips its own photo (7 Nov 2026): the hover zoom never crosses into the other pane */
+    overflow: hidden;
   }
   /* Seam fix (28 Oct 2026): the outer panes overscan the card by 2 px on their outer inline edge. The media layer is
      116 % of the pane, so its outer edge landed on a fraction of a device pixel at DPR 1.25 / 1.5; while the media
@@ -1064,41 +1093,9 @@ body.has-room-bar .cookie-banner {
   .split-pane:last-child {
     margin-inline-end: -2px;
   }
-  .split-pane:first-child .split-media {
-    inset-inline-start: 0;
-    inset-inline-end: auto;
-    width: 116%;
-    transform-origin: 0 50%;
-    scale: 0.8621 1;
-  }
-  .split-pane:last-child .split-media {
-    inset-inline-end: 0;
-    inset-inline-start: auto;
-    width: 116%;
-    transform-origin: 100% 50%;
-    scale: 0.8621 1;
-  }
-  [dir='rtl'] .split-pane:first-child .split-media {
-    transform-origin: 100% 50%;
-  }
-  [dir='rtl'] .split-pane:last-child .split-media {
-    transform-origin: 0 50%;
-  }
-  .split-pane .split-media-inner {
-    scale: 1.16 1;
-    transform-origin: inherit;
-  }
   .split-pane:hover,
   .split-pane:focus-within {
     z-index: 2;
-  }
-  .split-pane:hover .split-media,
-  .split-pane:focus-within .split-media {
-    scale: 1;
-  }
-  .split-pane:hover .split-media-inner,
-  .split-pane:focus-within .split-media-inner {
-    scale: 1;
   }
   .split:has(.split-pane:hover) .split-pane:not(:hover) .split-shade,
   .split:has(.split-pane:focus-within) .split-pane:not(:focus-within) .split-shade {
@@ -1108,43 +1105,12 @@ body.has-room-bar .cookie-banner {
     padding: 2.5rem 2.25rem 2.5rem;
     max-width: 34rem;
   }
-  /* the shrink shift moves the body's children and the name's text (never the heading or the link: see above) */
-  .split-body > :not(h3),
-  .split-title-text {
-    transition:
-      transform var(--motion-base) var(--ease-in-out),
-      opacity var(--motion-base) var(--ease-in-out);
-  }
   /* the text never sits in the 16 % strip the neighbour's media can grow into (no character is ever covered) */
   .split-pane:first-child .split-body {
     margin-inline-end: 16%;
   }
   .split-pane:last-child .split-body {
     margin-inline-start: 16%;
-  }
-  .split-desc {
-    transition: opacity var(--motion-base) var(--ease-in-out);
-  }
-  /* the shrunk pane keeps its title, tagline and buttons whole; only the description fades and the body eases outward */
-  .split:has(.split-pane:hover) .split-pane:not(:hover) .split-desc,
-  .split:has(.split-pane:focus-within) .split-pane:not(:focus-within) .split-desc {
-    opacity: 0;
-  }
-  .split:has(.split-pane:hover) .split-pane:first-child:not(:hover) :is(.split-body > :not(h3), .split-title-text),
-  .split:has(.split-pane:focus-within) .split-pane:first-child:not(:focus-within) :is(.split-body > :not(h3), .split-title-text) {
-    transform: translateX(-8px);
-  }
-  .split:has(.split-pane:hover) .split-pane:last-child:not(:hover) :is(.split-body > :not(h3), .split-title-text),
-  .split:has(.split-pane:focus-within) .split-pane:last-child:not(:focus-within) :is(.split-body > :not(h3), .split-title-text) {
-    transform: translateX(8px);
-  }
-  [dir='rtl'] .split:has(.split-pane:hover) .split-pane:first-child:not(:hover) :is(.split-body > :not(h3), .split-title-text),
-  [dir='rtl'] .split:has(.split-pane:focus-within) .split-pane:first-child:not(:focus-within) :is(.split-body > :not(h3), .split-title-text) {
-    transform: translateX(8px);
-  }
-  [dir='rtl'] .split:has(.split-pane:hover) .split-pane:last-child:not(:hover) :is(.split-body > :not(h3), .split-title-text),
-  [dir='rtl'] .split:has(.split-pane:focus-within) .split-pane:last-child:not(:focus-within) :is(.split-body > :not(h3), .split-title-text) {
-    transform: translateX(-8px);
   }
 }
 

@@ -13,8 +13,11 @@
 //     row = the networks with a link in contact.json;
 //   - in the browser, AR + EN × 375 (touch) + 1440 × light + dark: no horizontal scroll; the room tabs (one pressed at a
 //     time, a branch tab shows exactly that branch's cards, «الكل» all); axe on the home page (1440 light + 375 dark);
-//   - the reviews carousel (7 Nov 2026), motion allowed: nothing moves by itself; 1440 — arrows (the start one disabled),
-//     a next arrow moves one card in the reading direction, the dots follow; 375 — no arrows, swipe scrolls the row;
+//   - the reviews carousel (7 Nov 2026), motion allowed: 1440 — arrows (the start one disabled), a next arrow moves one
+//     card in the reading direction, the dots follow; 375 — no arrows, swipe scrolls the row; auto-advance (pre-launch
+//     fixes, 7 Nov 2026) wherever the row overflows: still before 6 s, one card on after it, paused while the mouse is
+//     over it (1440), while a finger is on it (375) and while a card's link has the focus — resumed after each; from the
+//     last position back to the first (a loop); reduced motion — never moves (data-slider-auto="off");
 //   - «شركاؤنا» (7 Nov 2026, from 3 logos — PARTNER_LOGOS_FIXTURE builds): after «عن أرمادا ريزيدنس», logos only (no
 //     link, no visible name; alt = the name), 48 px high, the copy aria-hidden; it moves in the reading direction, stops
 //     while the mouse is over it, a drag moves it; reduced motion — one static row, the copy hidden.
@@ -202,7 +205,7 @@ try {
       const pos = () => page.evaluate(() => Math.abs(document.querySelector('[data-reviews-carousel] [data-slider-track]').scrollLeft));
       const p0 = await pos();
       await page.waitForTimeout(2500);
-      check((await pos()) === p0, `${tag}: the reviews carousel moved by itself`);
+      check((await pos()) === p0, `${tag}: the reviews carousel moved before its 6 s hold`);
       const st = await page.evaluate(() => {
         const r = document.querySelector('[data-reviews-carousel]');
         const tr = r.querySelector('[data-slider-track]');
@@ -224,6 +227,63 @@ try {
       if (form.name === '375') {
         check(!st.prev, `${tag}: arrows shown on a phone`);
         check(st.overflow, `${tag}: the reviews do not form a swipeable row on a phone`);
+      }
+      // auto-advance (7 Nov 2026): every 6 s, a loop; held by the mouse, a finger, the focus
+      if (st.overflow) {
+        const auto = () => page.evaluate(() => document.querySelector('[data-reviews-carousel]').getAttribute('data-slider-auto'));
+        const toStart = async () => {
+          await page.evaluate(() => { document.querySelector('[data-reviews-carousel] [data-slider-track]').scrollLeft = 0; });
+          await page.waitForTimeout(300);
+        };
+        if (form.name === '1440') await page.mouse.move(2, 2);
+        await toStart();
+        check((await auto()) === 'running', `${tag}: auto-advance is not running`, String(await auto()));
+        // a scroll of the track does not restart the count, so wait out one full hold from a known start
+        await page.evaluate(() => document.querySelector('[data-reviews-carousel] [data-slider-next]')?.click());
+        await page.waitForTimeout(900);
+        await toStart();
+        const a0 = await pos();
+        await page.waitForTimeout(7300);
+        check((await pos()) > a0 + 50, `${tag}: the carousel did not advance by itself after 6 s`, `${a0} → ${await pos()}`);
+        if (form.name === '1440') {
+          const box = await rv.boundingBox();
+          await page.mouse.move(box.x + box.width / 2, box.y + box.height / 3);
+          await page.waitForTimeout(200);
+          check((await auto()) === 'paused', `${tag}: the mouse over the carousel does not pause it`);
+          const h0 = await pos();
+          await page.waitForTimeout(7000);
+          check((await pos()) === h0, `${tag}: the carousel moved under the mouse`);
+          await page.mouse.move(2, 2);
+          await page.waitForTimeout(200);
+          check((await auto()) === 'running', `${tag}: the carousel does not resume after the mouse leaves`);
+        } else {
+          await page.evaluate(() => {
+            const el = document.querySelector('[data-reviews-carousel] [data-home-review]');
+            const t = new Touch({ identifier: 1, target: el, clientX: 10, clientY: 10 });
+            el.dispatchEvent(new TouchEvent('touchstart', { bubbles: true, touches: [t], changedTouches: [t] }));
+          });
+          check((await auto()) === 'paused', `${tag}: a finger on the carousel does not pause it`);
+          const h0 = await pos();
+          await page.waitForTimeout(7000);
+          check((await pos()) === h0, `${tag}: the carousel moved under a finger`);
+          await page.evaluate(() => {
+            const el = document.querySelector('[data-reviews-carousel] [data-home-review]');
+            el.dispatchEvent(new TouchEvent('touchend', { bubbles: true, touches: [], changedTouches: [] }));
+          });
+          check((await auto()) === 'running', `${tag}: the carousel does not resume after the finger lifts`);
+        }
+        await page.evaluate(() => document.querySelector('[data-reviews-carousel] [data-review-source]').focus({ preventScroll: true }));
+        check((await auto()) === 'paused', `${tag}: a focused card does not pause the carousel`);
+        await page.evaluate(() => document.activeElement.blur());
+        check((await auto()) === 'running', `${tag}: the carousel does not resume after the focus leaves`);
+        // the loop: from the last position back to the first
+        await page.evaluate(() => { const tr = document.querySelector('[data-reviews-carousel] [data-slider-track]'); tr.scrollLeft = (getComputedStyle(tr).direction === 'rtl' ? -1 : 1) * tr.scrollWidth; });
+        await page.waitForTimeout(300);
+        await page.evaluate(() => document.querySelector('[data-reviews-carousel] [data-slider-prev]')?.click());
+        await page.waitForTimeout(900);
+        await page.evaluate(() => { const tr = document.querySelector('[data-reviews-carousel] [data-slider-track]'); tr.scrollLeft = (getComputedStyle(tr).direction === 'rtl' ? -1 : 1) * tr.scrollWidth; });
+        await page.waitForTimeout(7300);
+        check((await pos()) < 5, `${tag}: after the last card the carousel does not loop back to the first`, String(await pos()));
       }
       // the strip as this page serves it (a live BASE is judged by its own build, never by a local sample file)
       if ((await page.locator('[data-marquee]').count()) > 0) {
@@ -264,6 +324,14 @@ try {
     await ctx.route(/googletagmanager|google-analytics|wa\.me|supabase\.co|maps\.google/, (r) => r.abort());
     const page = await ctx.newPage();
     await page.goto(`${ORIGIN}${PRE}/`, { waitUntil: 'load' });
+    // the reviews carousel never advances by itself under reduced motion
+    if ((await page.locator('[data-reviews-carousel]').count()) > 0) {
+      await page.locator('[data-reviews-carousel]').scrollIntoViewIfNeeded();
+      const p0 = await page.evaluate(() => Math.abs(document.querySelector('[data-reviews-carousel] [data-slider-track]').scrollLeft));
+      await page.waitForTimeout(7000);
+      const r = await page.evaluate(() => ({ p: Math.abs(document.querySelector('[data-reviews-carousel] [data-slider-track]').scrollLeft), a: document.querySelector('[data-reviews-carousel]').getAttribute('data-slider-auto') }));
+      check(r.p === p0 && r.a === 'off', 'reduced motion: the reviews carousel advances by itself', JSON.stringify(r));
+    }
     if ((await page.locator('[data-marquee]').count()) > 0) {
       await page.locator('[data-marquee]').scrollIntoViewIfNeeded();
       await page.waitForTimeout(1200);

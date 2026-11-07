@@ -188,6 +188,77 @@ for (const reduced of [false, true]) {
   }
 }
 
+// ── home branch cards on hover (Ahmed, 7 Nov 2026): the whole card shaded, the photo's zoom inside its own card ────
+// Each pane's media gets one flat colour (the hovered pane red, the other blue; every overlay hidden), then each pane is
+// hovered: no pixel of the hovered pane's colour may appear in the other pane or outside the card, and the full-card
+// shading (.split-gradient-full) is shown over the whole hovered card. AR + EN × 375 + 1440.
+for (const width of [375, 1440]) for (const lang of ['ar', 'en']) {
+  const ctx = await browser.newContext({ viewport: { width, height: 900 }, colorScheme: 'light', locale: lang === 'ar' ? 'ar-SA' : 'en-GB' });
+  await ctx.route('**/functions/v1/**', (r) => r.fulfill({ status: 500, contentType: 'application/json', body: '{"ok":false}' }));
+  await ctx.route(/googletagmanager\.com|google-analytics\.com/, (r) => r.fulfill({ status: 200, contentType: 'application/javascript', body: '' }));
+  const page = await ctx.newPage();
+  await page.goto(`${BASE}${lang === 'ar' ? '/' : '/en/'}`, { waitUntil: 'load' });
+  const tag = `cards ${lang} @${width}`;
+  const panes = await page.$$('[data-split] .split-pane');
+  if (panes.length !== 2) {
+    failures.push(`${tag}: ${panes.length} branch cards`);
+    await ctx.close();
+    continue;
+  }
+  for (let i = 0; i < 2; i++) {
+    await page.mouse.move(1, 1);
+    await panes[i].scrollIntoViewIfNeeded();
+    await page.waitForTimeout(400);
+    const box = await panes[i].boundingBox();
+    await page.mouse.move(box.x + box.width / 2, box.y + Math.min(box.height / 2, 300));
+    await page.waitForTimeout(900);
+    const st = await page.evaluate((idx) => {
+      const pane = document.querySelectorAll('[data-split] .split-pane')[idx];
+      const full = pane.querySelector('.split-gradient-full');
+      const r = pane.getBoundingClientRect();
+      const f = full?.getBoundingClientRect();
+      return {
+        opacity: full ? +getComputedStyle(full).opacity : -1,
+        covers: !!f && Math.abs(f.width - r.width) < 2 && Math.abs(f.height - r.height) < 2,
+        overflow: getComputedStyle(pane).overflow,
+        scale: getComputedStyle(pane.querySelector('.split-media-inner')).scale,
+      };
+    }, i);
+    if (st.opacity !== 1) failures.push(`${tag}: card ${i + 1} hovered, the full-card shading's opacity is ${st.opacity} (expected 1)`);
+    if (!st.covers) failures.push(`${tag}: card ${i + 1} hovered, the shading does not cover the whole card`);
+    if (st.overflow !== 'hidden') failures.push(`${tag}: card ${i + 1} does not clip its photo (overflow ${st.overflow})`);
+    if (st.scale === 'none' || st.scale === '1') failures.push(`${tag}: card ${i + 1} hovered, the photo does not zoom (${st.scale})`);
+    const n = i + 1;
+    const style = await page.addStyleTag({
+      content: `[data-split] .split-media-inner > * { background: rgb(0,0,255) !important; } [data-split] .split-pane:nth-child(${n}) .split-media-inner > * { background: rgb(255,0,0) !important; } [data-split] .split-media-inner img, [data-split] .split-media-inner svg, [data-split] .split-media-inner picture { visibility: hidden !important; } [data-split] :is(.split-shade, .split-gradient, .split-gradient-full, .split-body) { visibility: hidden !important; }`,
+    });
+    await page.waitForTimeout(100);
+    const sb = await (await page.$('[data-split]')).boundingBox();
+    const other = await panes[1 - i].boundingBox();
+    const pad = 8;
+    const x0 = Math.max(0, sb.x - pad);
+    const clip = { x: x0, y: Math.max(0, sb.y - pad), width: Math.min(width - x0, sb.width + 2 * pad), height: sb.height + 2 * pad };
+    const { data, info } = await sharp(await page.screenshot({ clip })).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
+    const inBox = (x, y, b, inset) => x >= b.x + inset && x < b.x + b.width - inset && y >= b.y + inset && y < b.y + b.height - inset;
+    let leak = 0;
+    let outside = 0;
+    for (let py = 0; py < info.height; py++) {
+      for (let px = 0; px < info.width; px++) {
+        const k = (py * info.width + px) * 4;
+        if (!(data[k] > 180 && data[k + 1] < 80 && data[k + 2] < 80)) continue;
+        const x = clip.x + px;
+        const y = clip.y + py;
+        if (inBox(x, y, other, 2)) leak++;
+        if (!inBox(x, y, sb, -1)) outside++;
+      }
+    }
+    if (leak) failures.push(`${tag}: card ${n} hovered, its photo shows in the other card (${leak} px)`);
+    if (outside) failures.push(`${tag}: card ${n} hovered, its photo shows outside the card (${outside} px)`);
+    await style.evaluate((el) => el.remove());
+  }
+  await ctx.close();
+}
+
 await browser.close();
 if (failures.length) {
   console.error('\nFAIL');

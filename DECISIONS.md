@@ -1921,3 +1921,31 @@ Ahmed's approved home design (desktop 1440, adapted for phones), built in the or
   pop-up) and qa.py over it; in the full suite (pre-push) and in the routed pre-commit for the components / styles,
   offers, blog and home-section rules (`check-plan.mjs → sampleQa`). Proved: the copy's alt emptied in that build →
   qa.py «FAIL images (4)».
+- **Home branch cards («فرعانا») on hover.** The whole card is shaded again on hover / focus — the gradient of
+  11 Oct 2026 (`.split-gradient-full`, opacity only) over the photo, on top of the under-the-text gradient of 7 Nov —
+  and the photo zooms (1.06) inside its own card: each pane clips it (`overflow: hidden`; the row adds a rounded
+  `clip-path` so the zoom never shows past the rounded corners in any engine). This **replaces the 58 % widening** of
+  11 Oct 2026 (the hovered pane's media grew over its neighbour); the neighbour still dims, its text no longer shifts or
+  fades. Check: `motion-check` paints each pane's media a flat colour and hovers each card — no pixel of the hovered
+  card's colour in the other card or outside the row, the shading over the whole card, the zoom on; AR + EN × 375 + 1440.
+- **Dashboard sidebar on phones.** The drawer overflowed: its nav list shrank as a flex item while its overflow stayed
+  visible, so «شعارات الشركاء», «العملاء» and the account block drew over each other. The drawer is now the screen's
+  height, its head and the account block fixed, the list scrolling inside its own area (`overscroll-behavior: contain`).
+  Check: `node scripts/admin-sidebar-check.mjs` (→ `admin/tests/sidebar-mobile-check.mjs`, in the suite) — offline,
+  a Vite dev server on a stub Supabase origin with a fake session; at 375 × 667, 390 × 844 and 360 × 520 every item is
+  scrolled into view whole and uncovered, nothing intersects, the account menu opens on screen. On the old CSS it
+  reports 53 failures.
+- **Reviews carousel auto-advance (changes the rule of 7 Nov «nothing moves by itself», at Ahmed's request).** One card
+  every `--motion-reviews-hold` (6 s, a new motion token, 0 under reduced motion) in the reading direction, back to the
+  first after the last; paused while the mouse is over it, while a finger is on it, while a card's link (or a control
+  reached by keyboard) has the focus, while it is off screen and while the tab is hidden — the count restarts after
+  each, and after a press of an arrow or a dot. Nothing moves when every card fits or under reduced motion. Opt-in per
+  slider (`data-slider-autoplay`): the branch pages' photo strip stays manual. Checked in `home-sections-check`.
+  Open point for Ahmed: WCAG 2.2.2 asks for a visible pause control on content that moves by itself for more than 5 s;
+  the hover / touch / focus pauses are there, a button (like the hero's «إيقاف الحركة مؤقتًا») is not — his call.
+- **Fact sheets (`public/docs/Armada-Residence-Fact-Sheet-2026.pdf`, `…-AR.pdf`).** Every page now carries the brand's
+  bronze stacked logo as supplied (`public/brand/logo-stacked.svg`, one fill #A97C50, no plate) — the porcelain logo on
+  a navy square of the light pages and the porcelain logo of the dark pages, the cover and the contact card are gone.
+  The Shafa Road «غرفة مع بلكونة» card (a pattern square) shows the room's published cover: `scripts/fact-sheet.mjs →
+  roomCover()` takes the largest file of the LCP image the room's page preloads on `seo.json → live_url`
+  (`fact-sheet-copy.mjs`: `room: 'balcony-room'` instead of `img: null`). Both regenerated; all 24 pages looked at.

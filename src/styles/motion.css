@@ -17,6 +17,7 @@
   --motion-hero-hold: 6000ms; /* the home hero slideshow: how long each photo stays (6 Nov 2026) */
   --motion-hero-fade: 1200ms; /* the home hero slideshow: the cross-fade between two photos */
   --motion-marquee: 40000ms; /* the home partners strip: one full loop of the logos (7 Nov 2026) */
+  --motion-reviews-hold: 6000ms; /* the home reviews carousel: how long each position stays before it advances (7 Nov 2026) */
 }
 @media (prefers-reduced-motion: reduce) {
   :root {
@@ -31,6 +32,7 @@
     --motion-hero-hold: 0ms;
     --motion-hero-fade: 0ms;
     --motion-marquee: 0ms;
+    --motion-reviews-hold: 0ms;
   }
 }
 

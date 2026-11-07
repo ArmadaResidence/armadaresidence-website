@@ -5,7 +5,8 @@
  * and an arrow to that branch's Google listing (the review's source link). Real reviews only, with their source
  * (CLAUDE.md §5). Deliberately NO Review / AggregateRating structured data (self-serving reviews).
  * Since 7 Nov 2026 a manual carousel (src/lib/slider.ts): cards side by side (three from 1024 px, two from 768 px, one
- * and a peek on phones), swipe on touch, arrows and dots from 768 px, nothing moves by itself.
+ * and a peek on phones), swipe on touch, arrows and dots from 768 px. Since the pre-launch fixes (7 Nov 2026) it
+ * advances by itself every 6 s in a loop, paused under the mouse, a finger or the focus; never with reduced motion.
  */
 import Icon from '../Icon.astro';
 import SectionHead from './SectionHead.astro';
@@ -25,7 +26,7 @@ const list = homeReviews(locale);
     <section class="cv-auto bg-white border-y border-line" aria-labelledby="home-reviews-heading" data-home-section="reviews">
       <div class="mx-auto max-w-6xl px-4 py-16">
         <SectionHead id="home-reviews-heading" heading={t.reviews_heading} intro={t.reviews_intro} />
-        <div class="reveal mt-8" data-slider data-reviews-carousel>
+        <div class="reveal mt-8" data-slider data-slider-autoplay data-reviews-carousel>
           <ul class="slider-track reviews-track" data-slider-track>
             {list.map((r) => {
               const branch = branchShort(locale, r.branch);

@@ -38,7 +38,7 @@ export function cssNumber(value: string): number {
 }
 
 /** Motion tokens as numbers (ms / px) read from the CSS custom properties, 0 under reduced motion. */
-export function motionToken(name: 'fast' | 'base' | 'slow' | 'count' | 'stagger' | 'shift-sm' | 'shift-lg' | 'marquee'): number {
+export function motionToken(name: 'fast' | 'base' | 'slow' | 'count' | 'stagger' | 'shift-sm' | 'shift-lg' | 'marquee' | 'reviews-hold'): number {
   return cssNumber(getComputedStyle(document.documentElement).getPropertyValue(`--motion-${name}`));
 }
 

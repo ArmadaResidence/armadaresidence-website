@@ -382,8 +382,13 @@ body {
 .topbar-theme:hover .topbar-tip, .topbar-theme:focus-visible .topbar-tip { opacity: 1; }
 .topbar-search kbd { font: inherit; font-size: 0.7rem; padding: 0 0.3rem; border: 1px solid var(--line); border-radius: 0.25rem; background: var(--card); }
 .nav-drawer-backdrop { position: fixed; inset: 0; z-index: 60; background: rgb(20 42 59 / 0.55); }
-.nav-drawer { position: fixed; top: 0; bottom: 0; inset-inline-start: 0; z-index: 61; width: min(18rem, 86vw); overflow-y: auto; animation: nav-drawer-in var(--motion-base) var(--ease-out); }
-.nav-drawer .side-nav { overflow: visible; }
+/* phones (Ahmed, 7 Nov 2026): the drawer is exactly the screen's height — its head and the account block stay put and
+   the list of sections scrolls inside its own area between them (it overflowed onto the account block before: the
+   nav shrank as a flex item while its overflow stayed visible) */
+.nav-drawer { position: fixed; top: 0; bottom: 0; inset-inline-start: 0; z-index: 61; width: min(18rem, 86vw); height: 100dvh; overflow: hidden; animation: nav-drawer-in var(--motion-base) var(--ease-out); }
+.nav-drawer > :first-child { flex: none; }
+.nav-drawer .side-nav { overflow-y: auto; overscroll-behavior: contain; padding-bottom: 0.5rem; }
+.nav-drawer .side-foot { flex: none; }
 @keyframes nav-drawer-in { from { transform: translateX(100%); } to { transform: none; } }
 [dir="ltr"] .nav-drawer { animation-name: nav-drawer-in-ltr; }
 @keyframes nav-drawer-in-ltr { from { transform: translateX(-100%); } to { transform: none; } }

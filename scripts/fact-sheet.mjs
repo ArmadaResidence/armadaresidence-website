@@ -39,6 +39,27 @@ const siteHost = seo.site_url.replace(/^https?:\/\//, '');
 
 const CACHE = resolve(ROOT, 'node_modules/.cache/fact-sheet');
 mkdirSync(CACHE, { recursive: true });
+// the logo on every page (Ahmed, 7 Nov 2026): the brand's bronze stacked logo as supplied (one fill, #A97C50, no plate) —
+// never the porcelain one on a navy square
+const LOGO = file('public/brand/logo-stacked.svg');
+
+/** A room's published cover (dashboard «الصور», 7 Nov 2026 — the balcony room had no fact-sheet photo): the largest
+ *  file of the LCP image its page preloads on the published site (seo.json → live_url), as a cached JPEG. */
+async function roomCover(branch, slug) {
+  const live = seo.live_url.replace(/\/$/, '');
+  const res = await fetch(`${live}/${branch}/${slug}/`);
+  if (!res.ok) throw new Error(`fact-sheet: ${branch}/${slug} answered ${res.status}`);
+  const m = (await res.text()).match(/<link rel="preload" as="image"[^>]*imagesrcset="([^"]+)"/);
+  if (!m) throw new Error(`fact-sheet: no published cover for ${branch}/${slug}`);
+  const [src] = m[1].split(',').map((x) => x.trim().split(/\s+/)).sort((a, b) => parseInt(b[1]) - parseInt(a[1]))[0];
+  const name = `room-${src.split('/').pop().replace(/-\d+\.\w+$/, '')}`;
+  const cached = resolve(CACHE, `${name}-1600.jpg`);
+  if (!existsSync(cached)) {
+    const buf = Buffer.from(await (await fetch(new URL(src, `${live}/`).href)).arrayBuffer());
+    await sharp(buf).resize({ width: 1600, withoutEnlargement: true }).jpeg({ quality: 82 }).toFile(cached);
+  }
+  return name;
+}
 
 /** Photo for the PDF: JPEG at ≤1600 px prepared once by prepareImages() from the approved WebP (content/images/partners)
  *  or, when there is none, from the legacy B2B export — Chrome would otherwise embed WebP sources as lossless PNG. */
@@ -141,8 +162,6 @@ html[lang=ar] b{font-weight:700}
 .lt .hd{border-bottom-color:#D8CDBA}
 .lockup{display:flex;align-items:center;gap:14px}
 .lockup .logo{height:54px;width:auto;display:block}
-.lt .lockup .logobox{background:var(--midnight);border-radius:6px;padding:7px 12px;display:flex;align-items:center}
-.lt .lockup .logobox .logo{height:40px}
 .lockup .nm{font-weight:700;font-size:16px;line-height:1.2}
 .lockup .sb{font-size:9.5px;color:var(--bronze);margin-top:5px}
 html[lang=ar] .lockup .nm{font-size:16px}
@@ -348,12 +367,12 @@ html[lang=ar] .crow .k{letter-spacing:0;font-family:var(--body);font-size:12px;t
 
 function page(lang, T, cls, section, no, inner) {
   const dk = cls.includes('dk');
-  const logo = file('public/brand/logo-stacked_Porcelain.svg');
+  const logo = LOGO;
   const footerLine = `${contact.sales.phone_display} · ${contact.sales.email} · www.${siteHost}`;
   const pg = lang === 'ar' ? `<span class="pg">${String(no).padStart(2, '0')} / 12</span>` : `<span class="pg"><b>PAGE</b>${String(no).padStart(2, '0')} / 12</span>`;
   return `<section class="page ${cls}">
   <header class="hd">
-    <div class="lockup">${dk ? `<img class="logo" src="${logo}" alt="">` : `<span class="logobox"><img class="logo" src="${logo}" alt=""></span>`}
+    <div class="lockup"><img class="logo" src="${logo}" alt="">
       <div><div class="nm">${T(COPY.lockup)}</div><div class="sb en-caps">${T(COPY.lockupSub)}</div></div></div>
     <div class="sec"><b>${T(section)}</b><span class="sep">|</span>${T(COPY.region)}</div>
   </header>
@@ -375,7 +394,7 @@ async function build(lang) {
   out.push(`<section class="page dk cover">
   <div class="bg"><img src="${img('airport-exterior')}" alt=""></div><div class="scrim"></div>
   <div class="in">
-    <div class="top"><img class="logo" src="${file('public/brand/logo-stacked_Porcelain.svg')}" alt="">
+    <div class="top"><img class="logo" src="${LOGO}" alt="">
       <div class="doc"><div class="e">${T(C.cover.eyebrow)}</div><div class="t">${T(C.cover.docTitle)}</div><div class="e">${T(C.cover.edition)}</div></div></div>
     <h1>${T(C.cover.h1a)}<span>${T(C.cover.h1b)}</span></h1>
     <div class="reg">${T(C.cover.eyebrow === undefined ? '' : COPY.region)}</div>
@@ -435,12 +454,13 @@ async function build(lang) {
     <div class="photos4">${C.inUnit.photos.map(([n, c]) => `<div class="ph"><img src="${img(n)}" alt=""><span class="cap">${T(c)}</span></div>`).join('')}</div>
   </div>`));
 
-  // 7 — shafa road
+  // 7 — shafa road (a card naming a room shows that room's published cover)
+  const shafaCards = await Promise.all(C.shafa.cards.map(async (c) => (c.room ? { ...c, img: await roomCover('shafa-road', c.room) } : c)));
   out.push(page(lang, T, 'lt', C.shafa.section, 7, `<div class="two rev">
     <div class="ph" style="height:400px"><img src="${img('shafa-exterior')}" alt=""><span class="cap">${T(C.shafa.exteriorCaption)}</span></div>
     <div><p class="eyebrow">${T(C.shafa.eyebrow)}</p><h2 class="big">${T(C.shafa.h2)}</h2><div class="rule"></div><p class="lede">${T(C.shafa.lead)}</p>
       <div class="stats4">${C.shafa.stats.map((s) => `<div class="card stat" style="padding:14px 14px 12px"><div class="n num" style="font-size:32px">${T(s.n)}</div><div class="l">${T(s.l)}</div></div>`).join('')}</div>
-      <div class="cards4">${C.shafa.cards.map((c) => `<div class="card rcard">${c.img ? `<div class="ph"><img src="${img(c.img)}" alt=""></div>` : `<div class="ph pattern"></div>`}<h4>${T(c.t)}</h4><div class="o">${T(c.o)}</div><div class="s">${T(c.s)}</div></div>`).join('')}</div>
+      <div class="cards4">${shafaCards.map((c) => `<div class="card rcard">${c.img ? `<div class="ph"><img src="${img(c.img)}" alt=""></div>` : `<div class="ph pattern"></div>`}<h4>${T(c.t)}</h4><div class="o">${T(c.o)}</div><div class="s">${T(c.s)}</div></div>`).join('')}</div>
       <div class="bar"><b>${T(C.shafa.barTitle)}</b>${T(C.shafa.bar1)}<br>${T(C.shafa.bar2)}</div></div>
   </div>`));
 
@@ -480,7 +500,7 @@ async function build(lang) {
     <div class="office">
     <div><p class="eyebrow">${T(C.office.eyebrow)}</p><h2 class="big" style="font-size:46px">${T(C.office.h2)}</h2><div class="rule"></div><p class="lede">${T(C.office.sub)}</p>
       <div class="qrs">${C.office.qr.map((q, i) => `<div class="qr"><img src="${qrs[i]}" alt=""><b>${T(q.t)}</b><span>${T(q.s)}</span></div>`).join('')}</div></div>
-    <div class="card ccard"><img class="logo" src="${file('public/brand/logo-stacked_Porcelain.svg')}" alt="">
+    <div class="card ccard"><img class="logo" src="${LOGO}" alt="">
       ${[[C.office.rows[0], contact.sales.phone_display], [C.office.rows[1], contact.sales.email], [C.office.rows[2], contact.emails.reservations], [C.office.rows[3], `www.${siteHost}`]].map(([k, v]) => `<div class="crow"><span class="k">${T(k)}</span><span class="v ltr">${v}</span></div>`).join('')}
       <p class="disc">${T(C.office.disclaimer)}</p></div>
   </div>`));

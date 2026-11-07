@@ -13,6 +13,8 @@
  * above it) instead of the whole card, so the rest of the photo shows; its strength is measured per cover at build time
  * (photos-engine cardScrim → --card-a-lg / --card-a-m), 0.9 without a measure. A branch's «صورة الجوال» (9:16) fills the
  * card under 768 px; without one the phone gets the desktop cover as before.
+ * Hover / focus (Ahmed, 7 Nov 2026 — replaces the 58 % widening): the whole card is shaded as before the under-the-text
+ * gradient (.split-gradient-full fades in) and the photo zooms inside its own card only (each pane clips it).
  */
 import { branchContact, branchPath, fill, L, paragraphs, photoProps, photosOf, telHref, ui, type Branch, type Locale } from '@lib/content';
 import Photo from './Photo.astro';
@@ -52,6 +54,7 @@ const firstSentence = (text: string) => {
               )}
             </div>
             <div class="split-shade" />
+            <div class="split-gradient-full" />
           </div>
           <div class="split-gradient" aria-hidden="true" />
           <div class="split-body">

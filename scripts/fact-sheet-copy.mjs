@@ -165,7 +165,7 @@ export const COPY = {
     ],
     cards: [
       { img: 'king-shafa', t: { en: 'King Room', ar: 'غرفة بسرير كينج' }, o: { en: '2 GUESTS', ar: 'ضيفان' }, s: { en: '{bed_king_shafa}', ar: '{bed_king_shafa}' } },
-      { img: null, t: { en: 'Balcony Room', ar: 'غرفة مع بلكونة' }, o: { en: '2 GUESTS', ar: 'ضيفان' }, s: { en: '{bed_balcony} · private balcony', ar: '{bed_balcony} · بلكونة خاصة' } },
+      { room: 'balcony-room', t: { en: 'Balcony Room', ar: 'غرفة مع بلكونة' }, o: { en: '2 GUESTS', ar: 'ضيفان' }, s: { en: '{bed_balcony} · private balcony', ar: '{bed_balcony} · بلكونة خاصة' } },
       { img: 'jacuzzi-shafa', t: { en: 'Jacuzzi Studio', ar: 'استديو بجاكوزي' }, o: { en: '2 GUESTS', ar: 'ضيفان' }, s: { en: '{bed_jacuzzi} · jacuzzi', ar: '{bed_jacuzzi} · جاكوزي' } },
       { img: 'king-junior', t: { en: 'Suites', ar: 'الأجنحة' }, o: { en: 'UP TO {suite_capacity} GUESTS', ar: 'حتى {suite_capacity} ضيوف' }, s: { en: 'One- and two-bedroom suites', ar: 'أجنحة بغرفة أو غرفتين' } },
     ],
