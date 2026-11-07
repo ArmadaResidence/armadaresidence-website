@@ -47,15 +47,15 @@
     "items": [
       {
         "title_ar": "مساحات واسعة",
-        "body_ar": "غرف تبدأ من 35 مترًا مربعًا على طريق الشفا و50 مترًا مربعًا على طريق المطار، وأجنحة تصل إلى 75 مترًا مربعًا.",
+        "body_ar": "غرف تبدأ من {shafa_room_min} مترًا مربعًا على طريق الشفا و{airport_room_min} على طريق المطار، وأجنحة حتى {suite_max} مترًا مربعًا.",
         "title_en": "Generous space",
-        "body_en": "Rooms from 35 m² at Shafa Road and 50 m² at Airport Road, and suites up to 75 m²."
+        "body_en": "Rooms from {shafa_room_min} m² at Shafa Road and {airport_room_min} m² at Airport Road, and suites up to {suite_max} m²."
       },
       {
         "title_ar": "بلا مفاجآت في السعر",
-        "body_ar": "السعر الذي يؤكده الاستقبال شامل الضريبة، والإفطار والسرير الإضافي اختياريان تختارهما عند الحجز.",
+        "body_ar": "السعر شامل الضريبة، والإفطار والسرير الإضافي اختياريان عند الحجز.",
         "title_en": "No surprises in the price",
-        "body_en": "The price reception confirms includes VAT; breakfast and extra beds are optional and chosen when you book."
+        "body_en": "Prices include VAT; breakfast and an extra bed are optional when you book."
       },
       {
         "title_ar": "بوفيه إفطار يومي",
@@ -64,22 +64,22 @@
         "body_en": "In each property's restaurant, 7:00–10:30 am."
       },
       {
-        "title_ar": "موقعان في الطائف",
-        "body_ar": "على طريق المطار للمسافرين وأصحاب الأعمال، وعلى طريق الشفا للعائلات ومن يقصد المرتفعات.",
-        "title_en": "Two locations in Taif",
-        "body_en": "Airport Road for travellers and business guests; Shafa Road for families and visitors heading to the highlands."
-      },
-      {
         "title_ar": "إلغاء مرن",
-        "body_ar": "الإلغاء مجاني حتى الساعة 2:00 ظهرًا يوم الوصول. إذا ألغيت بعد ذلك أو لم تحضر، تُحتسب عليك قيمة الليلة الأولى.",
+        "body_ar": "إلغاء مجاني حتى 2:00 ظهرًا يوم الوصول.",
         "title_en": "Flexible cancellation",
-        "body_en": "Cancellation is free until 2:00 pm on the day of arrival. If you cancel after that or don't arrive, the first night is charged."
+        "body_en": "Free cancellation until 2:00 pm on arrival day."
       },
       {
-        "title_ar": "على مدار الساعة",
-        "body_ar": "فريق الاستقبال متاح في أي وقت وعلى الواتساب مباشرة، وتوصيل الطعام إلى الغرف في أي ساعة، ومواقف خاصة مجانية للنزلاء في الفرعين.",
-        "title_en": "Around the clock",
-        "body_en": "Reception is available at any hour and directly on WhatsApp, in-room dining around the clock, and free private guest parking at both properties."
+        "title_ar": "مواقف مجانية",
+        "body_ar": "مواقف خاصة مجانية للنزلاء في الفرعين.",
+        "title_en": "Free parking",
+        "body_en": "Free private parking for guests at both properties."
+      },
+      {
+        "title_ar": "واتساب مباشر",
+        "body_ar": "فريق الاستقبال متاح في أي وقت وعلى واتساب.",
+        "title_en": "Direct WhatsApp",
+        "body_en": "Reception is available at any time, and on WhatsApp."
       }
     ]
   },

@@ -1,0 +1,100 @@
+---
+/**
+ * «العروض» on the home page (Ahmed's design, 7 Nov 2026): rendered only while at least one published offer has «في
+ * الصفحة الرئيسية» on (offers.show_home); two cards at most, in the dashboard's order. Each: the cover from «الصور», the
+ * label «عرض», the title, the text, the offer's own button («اطلب عرض سعر» for a quote offer — its label follows the
+ * offer's call to action) and «واتساب». The WhatsApp button goes to the offer's branch number (one branch) or opens the
+ * branch chooser (both branches); a company / partners offer has none here — the sales line appears only on /offers/,
+ * /partners/* and the hall page (CLAUDE.md §5). The runtime per-night line, offer_view / offer_click: src/lib/offers.ts.
+ */
+import Icon from '../Icon.astro';
+import Photo from '../Photo.astro';
+import SectionHead from './SectionHead.astro';
+import { branchContact, branchShort, fill, localePath, offersPageLive, photoProps, ui, waHref, type Locale } from '@lib/content';
+import { offerCover, offerCta, offerHasRuntimePrice, offersFor, offersText, offerText, offerTitle } from '@lib/offers-data';
+
+interface Props {
+  locale: Locale;
+}
+const { locale } = Astro.props;
+const t = offersText(locale);
+const cta = ui(locale).cta as Record<string, string>;
+const list = offersFor('show_home').slice(0, 2);
+const endpoint = import.meta.env.PUBLIC_BOOKING_ENDPOINT ?? '';
+const supaUrl = (() => {
+  try {
+    return endpoint ? new URL(endpoint).origin : '';
+  } catch {
+    return '';
+  }
+})();
+const supaKey = import.meta.env.PUBLIC_SUPABASE_ANON_KEY ?? '';
+---
+
+{
+  list.length > 0 && (
+    <section class="cv-auto mx-auto max-w-6xl px-4 pb-16" aria-labelledby="home-offers-heading" data-home-section="offers" data-offers-section="home">
+      <SectionHead id="home-offers-heading" heading={t.home_heading} link={offersPageLive ? { href: localePath(locale, '/offers/'), label: t.home_all, attr: 'offers' } : undefined} />
+      <ul class="reveal-group mt-8 grid gap-6 md:grid-cols-2" data-offer-list data-supa-url={supaUrl || undefined} data-supa-key={supaKey || undefined}>
+        {list.map((o) => {
+          const cover = offerCover(o);
+          const button = offerCta(locale, o);
+          const one = o.branches.length === 1 ? o.branches[0] : null;
+          const wa = o.whatsapp && o.category !== 'b2b';
+          const prefill = offerText(locale, o, 'whatsapp_prefill') || fill(cta.whatsapp_prefill_branch, { branch: one ? branchShort(locale, one) : '' });
+          return (
+            <li class="flex">
+              <article class="w-full bg-white border border-line rounded-card overflow-hidden flex flex-col md:flex-row" data-offer={o.slug} data-offer-category={o.category} data-offer-placement="home" data-offer-until={o.valid_to ?? undefined}>
+                {cover && (
+                  <div class="md:w-2/5 shrink-0">
+                    <Photo {...photoProps(locale, cover)} sizes="(min-width: 1024px) 230px, (min-width: 768px) 20vw, 100vw" class="block aspect-[3/2] md:aspect-auto md:h-full" imgClass="w-full h-full object-cover" />
+                  </div>
+                )}
+                <div class="p-6 flex flex-col gap-3 flex-1">
+                  <p><span class="inline-block text-xs font-semibold bg-porcelain text-bronze-text px-2.5 py-1 rounded">{t.home_label}</span></p>
+                  <h3 class="text-xl font-bold text-midnight">{offerTitle(locale, o)}</h3>
+                  <p class="text-ink-muted leading-relaxed">{offerText(locale, o, 'description')}</p>
+                  {offerHasRuntimePrice(o) && <p class="text-sm font-semibold text-midnight min-h-5" data-offer-price={o.slug} data-template={t.from_line} aria-live="polite"></p>}
+                  <div class="mt-auto pt-2 flex flex-wrap gap-3">
+                    {button && (
+                      <a href={button.href} class="inline-flex items-center gap-2 bg-bronze-deep text-white! font-semibold px-5 py-3 rounded hover:bg-bronze-text transition-colors" data-offer-cta={o.cta} rel={/^https?:/.test(button.href) ? 'noopener' : undefined} target={/^https?:/.test(button.href) ? '_blank' : undefined}>
+                        <span>{button.label}</span>
+                        <Icon name="arrow" size={18} class="icon-arrow rtl:rotate-180" />
+                      </a>
+                    )}
+                    {wa && one && (
+                      <a href={waHref(branchContact(one).whatsapp, prefill)} target="_blank" rel="noopener" class="inline-flex items-center gap-2 border border-line text-midnight font-semibold px-5 py-3 rounded hover:border-bronze transition-colors" data-offer-cta="whatsapp" data-wa-link data-wa-destination={one}>
+                        <Icon name="whatsapp" size={18} />
+                        <span>{t.home_whatsapp}</span>
+                      </a>
+                    )}
+                    {wa && !one && (
+                      <button type="button" class="inline-flex items-center gap-2 border border-line text-midnight font-semibold px-5 py-3 rounded hover:border-bronze transition-colors" data-offer-cta="whatsapp" data-wa-open aria-haspopup="dialog">
+                        <Icon name="whatsapp" size={18} />
+                        <span>{t.home_whatsapp}</span>
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </article>
+            </li>
+          );
+        })}
+      </ul>
+    </section>
+  )
+}
+
+<script>
+  import '@lib/offers';
+  import { onPageLoad } from '@lib/client';
+
+  // «واتساب» on an offer for both branches opens the page's branch chooser (WhatsAppButton.astro)
+  onPageLoad(() => {
+    document.querySelectorAll<HTMLButtonElement>('[data-wa-open]').forEach((b) => {
+      if (b.dataset.waOpenBound) return;
+      b.dataset.waOpenBound = '1';
+      b.addEventListener('click', () => document.querySelector<HTMLButtonElement>('[data-wa-toggle]')?.click());
+    });
+  });
+</script>

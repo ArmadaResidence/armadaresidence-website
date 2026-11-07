@@ -569,6 +569,25 @@ footer :focus-visible,
 .gallery-thumb:hover img {
   transform: scale(1.03);
 }
+/* the home page's photo cards (7 Nov 2026): the same small zoom on hover (transform only) */
+.home-room-img {
+  transition: transform var(--motion-fast) var(--ease-out);
+}
+.home-room:hover .home-room-img,
+.home-place:hover .home-room-img,
+.home-gallery-link:hover .home-room-img {
+  transform: scale(1.03);
+}
+.room-tab {
+  min-height: 2.75rem;
+  padding-inline: 1rem;
+  border: 1px solid var(--color-line);
+  border-radius: 9999px;
+  background-color: var(--color-white);
+  color: var(--color-ink);
+  font-size: 0.875rem;
+  font-weight: 600;
+}
 .gallery-thumb:focus-visible {
   outline: 3px solid var(--color-bronze);
   outline-offset: 2px;
@@ -583,18 +602,22 @@ footer :focus-visible,
   font-size: 0.875rem;
   font-weight: 600;
 }
-.gallery-filter:hover {
+.gallery-filter:hover,
+.room-tab:hover {
   border-color: var(--color-bronze);
 }
-.gallery-filter[aria-pressed='true'] {
+.gallery-filter[aria-pressed='true'],
+.room-tab[aria-pressed='true'] {
   border-color: var(--color-ink);
   background-color: var(--color-ink);
   color: var(--color-porcelain);
 }
-[data-theme='dark'] .gallery-filter {
+[data-theme='dark'] .gallery-filter,
+[data-theme='dark'] .room-tab {
   background-color: var(--dk-surface);
 }
-[data-theme='dark'] .gallery-filter[aria-pressed='true'] {
+[data-theme='dark'] .gallery-filter[aria-pressed='true'],
+[data-theme='dark'] .room-tab[aria-pressed='true'] {
   border-color: var(--color-porcelain);
   background-color: var(--color-porcelain);
   color: var(--dk-bg);

@@ -51,6 +51,8 @@ export interface RoomType {
   capacity: number;
   extra_beds_max: number;
   bookable: boolean;
+  /** «في الصفحة الرئيسية» (7 Nov 2026): the home page's «الغرف والأجنحة» */
+  show_home: boolean;
   base_rate: number | null;
   sort: number;
   active: boolean;
@@ -233,6 +235,8 @@ async function rpcSaved(fn: string, args: Record<string, unknown>): Promise<Save
 
 export const setBaseRate = (roomTypeId: string, rate: number | null) => rpcSaved('set_base_rate', { p_room_type: roomTypeId, p_rate: rate });
 export const setRoomBookable = (roomTypeId: string, bookable: boolean) => rpcSaved('set_room_bookable', { p_room_type: roomTypeId, p_bookable: bookable });
+/** «في الصفحة الرئيسية» of a room type (7 Nov 2026): the home page's «الغرف والأجنحة» */
+export const setRoomHome = (roomTypeId: string, on: boolean) => rpcSaved('set_room_home', { p_room_type: roomTypeId, p_on: on });
 export const addOverride = (roomTypeIds: string[], from: string, to: string, weekdays: number, price: number, label: string, labelEn = '', replaceSingle = false) =>
   rpcSaved('add_rate_override', { p_room_types: roomTypeIds, p_from: from, p_to: to, p_weekdays: weekdays, p_price: price, p_label: label || null, p_label_en: labelEn || null, p_replace_single: replaceSingle });
 export const setOverrideActive = (id: string, active: boolean) => rpcSaved('set_override_active', { p_id: id, p_active: active });
@@ -478,7 +482,7 @@ export const resendLink = (user_id: string) => edge<{ ok: boolean; type: string 
 
 /** Ask for a rebuild of the static site (extra-bed fee, room availability). Never throws: the UI shows the fallback line.
  * A dispatched rebuild is announced with the window event `armada:site-rebuild` (lib/siteDeploy.ts shows «جارٍ تحديث الموقع»). */
-export async function siteRebuild(reason: 'settings' | 'rooms' | 'media' | 'dining' | 'offers' | 'blog' | 'faq' | 'content', job?: string): Promise<{ ok: boolean; dispatched?: boolean; reason?: string }> {
+export async function siteRebuild(reason: 'settings' | 'rooms' | 'media' | 'dining' | 'offers' | 'blog' | 'faq' | 'content' | 'reviews', job?: string): Promise<{ ok: boolean; dispatched?: boolean; reason?: string }> {
   try {
     const r = await edge<{ ok: boolean; dispatched?: boolean; reason?: string }>('site-rebuild', job ? { reason, job } : { reason });
     if (r.ok && r.dispatched) window.dispatchEvent(new Event('armada:site-rebuild'));

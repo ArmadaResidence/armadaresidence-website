@@ -4,15 +4,20 @@ import BranchSplit from '@components/BranchSplit.astro';
 import Counters from '@components/Counters.astro';
 import Divider from '@components/Divider.astro';
 import Icon from '@components/Icon.astro';
-import OffersSection from '@components/OffersSection.astro';
-import { offersFor, offersText } from '@lib/offers-data';
+import HomeBlog from '@components/home/HomeBlog.astro';
+import HomeClub from '@components/home/HomeClub.astro';
+import HomeDining from '@components/home/HomeDining.astro';
+import HomeGallery from '@components/home/HomeGallery.astro';
+import HomeOffers from '@components/home/HomeOffers.astro';
+import HomePlaces from '@components/home/HomePlaces.astro';
+import HomeReviews from '@components/home/HomeReviews.astro';
+import HomeRooms from '@components/home/HomeRooms.astro';
 import { langPaths } from '@lib/paths';
 import { organization } from '@lib/jsonld';
 import { existsSync, readFileSync } from 'node:fs';
 import {
   branches,
   cancellationText,
-  clubText,
   fill,
   localePath,
   media,
@@ -22,6 +27,7 @@ import {
   siteStats,
   siteTexts,
   ui,
+  withFacts,
   type Locale,
 } from '@lib/content';
 
@@ -32,8 +38,6 @@ interface Props {
 }
 const { locale } = Astro.props;
 const t = ui(locale);
-// «العروض» (2 Nov 2026): the offers marked for the home page, after the branches — nothing without them
-const homeOffers = offersFor('show_home');
 const s = pageSeo(locale, 'home');
 const hero = siteTexts.hero;
 
@@ -77,7 +81,6 @@ const homeOg = media.home?.og_image ?? (existsSync(new URL('../og/home.jpg', her
 const heroPosterAlt = fill(t.photo_pending_alt, { subject: locale === 'ar' ? hero.title_ar : hero.title_en });
 const about = siteTexts.about;
 const why = siteTexts.why_armada;
-const slogan = locale === 'ar' ? siteTexts.slogan_ar : siteTexts.slogan_en;
 const heroCopy = hero as typeof hero & { eyebrow_ar: string; eyebrow_en: string };
 // Hero choreography (item 3, 11 Oct 2026): the slogan appears word by word (50 ms apart), the bronze rule is drawn
 // from the start side, then the subtitle and the buttons follow. Pure CSS animations (motion.css) — they replay on
@@ -276,13 +279,16 @@ const quickFacts = fill(t.home.quick_facts, {
     <Divider class="mt-16" />
   </section>
 
-  {homeOffers.length > 0 && <OffersSection locale={locale} offers={homeOffers} placement="home" heading={offersText(locale).home_heading} allLink class="cv-auto mx-auto max-w-6xl px-4 pb-16" />}
+  {/* the home sections of 7 Nov 2026 (Ahmed's approved design; DECISIONS.md 2026-11-07 «Home sections») — each renders
+      only with its content: rooms flagged for the home page, offers flagged for it, … */}
+  <HomeRooms locale={locale} />
+  <HomeOffers locale={locale} />
 
-  <section class="cv-auto bg-white border-y border-line">
+  <section class="cv-auto bg-white border-y border-line" aria-labelledby="home-why-heading" data-home-section="why">
     <div class="mx-auto max-w-6xl px-4 py-16">
-      <h2 class="reveal text-2xl md:text-3xl font-bold text-midnight">{locale === 'ar' ? why.heading_ar : why.heading_en}</h2>
+      <h2 id="home-why-heading" class="reveal text-2xl md:text-3xl font-bold text-midnight">{locale === 'ar' ? why.heading_ar : why.heading_en}</h2>
       <Counters items={siteStats(locale)} class="mt-8" />
-      <ul class="reveal-group mt-12 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+      <ul class="reveal-group mt-12 grid gap-6 sm:grid-cols-2 lg:grid-cols-3" data-why-cards>
         {
           why.items.map((item) => (
             <li class="flex gap-3">
@@ -291,7 +297,8 @@ const quickFacts = fill(t.home.quick_facts, {
               </span>
               <div>
                 <h3 class="font-semibold text-midnight">{locale === 'ar' ? item.title_ar : item.title_en}</h3>
-                <p class="text-sm text-ink-muted mt-1 leading-relaxed">{locale === 'ar' ? item.body_ar : item.body_en}</p>
+                {/* the sizes are facts of rooms.json ({shafa_room_min} {airport_room_min} {suite_max}, content.ts → withFacts) */}
+                <p class="text-sm text-ink-muted mt-1 leading-relaxed">{withFacts(locale, locale === 'ar' ? item.body_ar : item.body_en)}</p>
               </div>
             </li>
           ))
@@ -300,8 +307,15 @@ const quickFacts = fill(t.home.quick_facts, {
     </div>
   </section>
 
-  <Divider class="cv-auto mt-16 px-4" />
-  <section class="cv-auto mx-auto max-w-6xl px-4 py-16 grid gap-10 md:grid-cols-5">
+  <div class="pt-16"></div>
+  <HomeDining locale={locale} />
+  <HomeGallery locale={locale} />
+  <HomeReviews locale={locale} />
+  <HomePlaces locale={locale} />
+  <HomeBlog locale={locale} />
+
+  <Divider class="cv-auto px-4" />
+  <section class="cv-auto mx-auto max-w-6xl px-4 py-16 grid gap-10 md:grid-cols-5" data-home-section="about">
     <div class="reveal md:col-span-2">
       <h2 class="text-2xl md:text-3xl font-bold text-midnight">{locale === 'ar' ? about.heading_ar : about.heading_en}</h2>
     </div>
@@ -317,30 +331,7 @@ const quickFacts = fill(t.home.quick_facts, {
     </div>
   </section>
 
-  <section class="cv-auto relative overflow-hidden bg-midnight text-porcelain" data-glow>
-    <div class="glow" aria-hidden="true"></div>
-    <div class="reveal relative mx-auto max-w-6xl px-4 py-12 flex flex-wrap items-center justify-between gap-6">
-      <p class="text-xl font-semibold">{slogan}</p>
-      <div class="flex flex-wrap gap-3">
-        <a href={localePath(locale, '/booking/')} class="bg-bronze-deep text-white font-semibold px-6 py-3 rounded hover:bg-bronze-text transition-colors">
-          {t.nav.book}
-        </a>
-        <a href="#branches" class="border border-porcelain/50 font-semibold px-6 py-3 rounded hover:bg-porcelain hover:text-midnight transition-colors">
-          {t.home.rooms_cta}
-        </a>
-      </div>
-    </div>
-  </section>
-
-  {/* «إياب» (3 Nov 2026): one slim band above the footer */}
-  <section class="cv-auto bg-white border-b border-line" aria-label={t.nav.club}>
-    <div class="mx-auto max-w-6xl px-4 py-4 flex justify-center">
-      <a href={localePath(locale, '/club/')} class="inline-flex items-center gap-2 py-2 font-semibold text-midnight hover:text-bronze-text transition-colors" data-club-band>
-        <span>{clubText(locale).band}</span>
-        <Icon name="arrow" size={18} class="icon-arrow rtl:rotate-180" />
-      </a>
-    </div>
-  </section>
+  <HomeClub locale={locale} />
 </Base>
 
 <script>

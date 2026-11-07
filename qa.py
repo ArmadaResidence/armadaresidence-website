@@ -25,6 +25,7 @@ Usage: python qa.py [--allow-todo]   (--allow-todo = dev mode: content gaps beco
 from __future__ import annotations
 
 import argparse
+import html as html_mod
 import json
 import re
 import subprocess
@@ -333,8 +334,9 @@ def main() -> int:
         lp_ = logical(path)
         return lp_ == "/offers/" or lp_.startswith("/partners/") or bool(re.fullmatch(r"/[a-z-]+/hall/", lp_))
 
-    def cafe_allowed(path: str) -> bool:  # the café line appears only on the Airport Road page, /menu/ and the dining pages
-        return logical(path) in ("/airport-road/", "/menu/") or logical(path).startswith("/dining/")
+    def cafe_allowed(path: str) -> bool:  # the café line appears only on the Airport Road page, /menu/, the dining pages
+        # and — the home page's café section, Ahmed's request of 7 Nov 2026 — the home page
+        return logical(path) in ("/", "/airport-road/", "/menu/") or logical(path).startswith("/dining/")
 
     taif_count = len(json.loads((CONTENT / "taif-guide.json").read_text(encoding="utf-8"))["places"])
 
@@ -639,6 +641,9 @@ def main() -> int:
         # JSON-LD
         types: list[str] = []
         for blob in p.jsonld:
+            # reviews a business shows about itself are self-serving for Google (7 Nov 2026): never Review / AggregateRating
+            if re.search(r'"(@type"\s*:\s*"(Review|AggregateRating)|review|aggregateRating|reviewRating)"', blob):
+                rep.f("json-ld", f"{path}: Review / AggregateRating structured data is not allowed (self-serving reviews)")
             try:
                 data = json.loads(blob)
             except json.JSONDecodeError as e:
@@ -879,15 +884,25 @@ def main() -> int:
     # pixels it loads are third party, reported separately by scripts/lh.mjs and never counted here. The 1 MB is the
     # INITIAL page weight (Ahmed, 6 Nov 2026): media that loads only after the load event — the hero loops (data-webm /
     # data-mp4) and the slideshow's photos after the first (data-src / data-srcset) — is outside it and has its own
-    # budget (check_media); only src / href references are counted here.
+    # budget (check_media); only src / href references are counted here. The home sections of 7 Nov 2026 add photos far
+    # below the fold: an <img loading="lazy"> is fetched only when scrolled near, never with the initial page, so it is
+    # reported apart ("lazy") and not counted — an eager image (the hero poster, the LCP) always is.
     home = DIST / "index.html"
     if home.is_file():
         total = home.stat().st_size
         p = pages["/"]
         css_files: list[Path] = []
+        tags = re.findall(r"<img\b[^>]*>", raw["/"])
+        attr = lambda tag, name: (re.search(rf'\b{name}="([^"]*)"', tag) or [None, None])[1]
+        eager_src = {attr(t, "src") for t in tags if attr(t, "loading") != "lazy"}
+        lazy_src = {attr(t, "src") for t in tags if attr(t, "loading") == "lazy"} - eager_src
+        lazy_bytes = 0
         for src in p.assets:
             if src.startswith("/") and exists(src):
                 fp = DIST / src.lstrip("/")
+                if src in lazy_src:
+                    lazy_bytes += fp.stat().st_size
+                    continue
                 total += fp.stat().st_size
                 if fp.suffix == ".css":
                     css_files.append(fp)
@@ -913,7 +928,7 @@ def main() -> int:
         if total >= 1_000_000:
             rep.f("performance", f"home transfer ≈ {kb:.0f} KB (limit 1 MB)")
         else:
-            print(f"home transfer ≈ {kb:.0f} KB (html+css+js+fonts, uncompressed)")
+            print(f"home transfer ≈ {kb:.0f} KB (html+css+js+fonts+eager images, uncompressed); lazy images below the fold ≈ {lazy_bytes / 1024:.0f} KB, not in it")
 
     # ---- Arabic font subsets (30 Oct 2026): every Arabic-script character the site outputs must be in the ranges the
     # subset fonts keep (src/assets/fonts/subset.json, scripts/fonts-subset.py) — otherwise it would fall back to a
@@ -942,6 +957,7 @@ def main() -> int:
     check_photos(rep)
     check_media(rep)
     check_gallery(rep)
+    check_reviews(rep)
     check_offers(rep)
     check_typeset(rep)
     check_paragraphs(rep, raw)
@@ -1228,6 +1244,34 @@ def check_media(rep: "Report") -> None:
                 rep.f(G, f"home hero video: {ref} missing in dist/")
             elif ref and (DIST / ref.lstrip("/")).stat().st_size > limit * 1048576:
                 rep.f(G, f"home hero video: {ref} is over {limit} MB")
+
+
+def check_reviews(rep: "Report") -> None:
+    """«آراء ضيوفنا» on the home page (Ahmed, 7 Nov 2026): each language shows the reviews of its own language that the
+    build resolved (content/reviews.generated.json, else the seed), three at most, in order, each with its first name,
+    branch, stars and a https source link opening its Google listing."""
+    G = "reviews"
+    gen = CONTENT / "reviews.generated.json"
+    data = json.loads((gen if gen.is_file() else CONTENT / "reviews.json").read_text(encoding="utf-8"))
+    items = [r for r in data["items"] if r.get("show_home", True)]
+    for lang, home in (("ar", DIST / "index.html"), ("en", DIST / "en" / "index.html")):
+        if not home.is_file():
+            continue
+        html = home.read_text(encoding="utf-8")
+        want = [r for r in items if r["lang"] == lang][:3]
+        cards = re.findall(r'<li\b[^>]*\bdata-home-review="([a-z-]+)"[^>]*>(.*?)</li>', html, re.S)
+        if len(cards) != len(want):
+            rep.f(G, f"{lang} home: {len(cards)} review card(s), expected {len(want)}")
+            continue
+        for (branch, body), r in zip(cards, want):
+            text = html_mod.unescape(re.sub(r"<[^>]+>", "", body))
+            if branch != r["branch"] or r["text"].strip() not in text or r["first_name"] not in text:
+                rep.f(G, f"{lang} home: the review of {r['first_name']} is not shown as published (text, name, branch, order)")
+            m = re.search(r'href="([^"]+)"[^>]*data-review-source', body)
+            if not m or not m.group(1).startswith("https://") or html_mod.unescape(m.group(1)) != r["source_url"]:
+                rep.f(G, f"{lang} home: the review of {r['first_name']} must link its source ({r['source_url']})")
+        if lang == "ar" and any(not re.search(r"[\u0600-\u06FF]", r["text"]) for r in want):
+            rep.f(G, "ar home: a review without Arabic text")
 
 
 def check_gallery(rep: "Report") -> None:

@@ -1,0 +1,60 @@
+{
+  "_note": "Guest reviews «آراء ضيوفنا» on the home page (Ahmed, 7 Nov 2026 — DECISIONS.md 2026-11-07 «Home sections»). Real Google Maps reviews of the two properties, the text verbatim (a cut is shown as «…»), the reviewer's first name only. Seed / fallback of the dashboard «آراء الضيوف» (public.guest_reviews, migration 20261107300100); the build reads the published ones through scripts/reviews-build.mjs → content/reviews.generated.json. An Arabic page shows the Arabic reviews, an English page the English ones. No Review / AggregateRating structured data: reviews a business shows about itself are self-serving for Google's rich results.",
+  "verified": true,
+  "items": [
+    {
+      "first_name": "Enad",
+      "branch": "shafa-road",
+      "stars": 5,
+      "lang": "ar",
+      "text": "الغرفة كانت شرحة وواسعة ومطابقة للصور تمامًا، والأثاث نظيف والاهتمام بالصيانة واضح جدًا… أما الاستقبال، فكانوا قمة في الأخلاق والمهنية وحسن التعامل.",
+      "source_url": "https://maps.google.com/?cid=13015077371000401026",
+      "show_home": true
+    },
+    {
+      "first_name": "Reham",
+      "branch": "shafa-road",
+      "stars": 5,
+      "lang": "ar",
+      "text": "من لحظة وصولنا لمسنا لطف الموظفين وتعاونهم وحرصهم على راحتنا، وكانت النظافة فوق الوصف، والأجواء جميلة ومريحة جدًا.",
+      "source_url": "https://maps.google.com/?cid=13015077371000401026",
+      "show_home": true
+    },
+    {
+      "first_name": "Nasser",
+      "branch": "airport-road",
+      "stars": 5,
+      "lang": "ar",
+      "text": "كانت إقامة رائعة ومميزة، الفندق نظيف ومرتب، والغرف مريحة، والخدمة ممتازة، والموظفون في قمة الذوق والتعاون.",
+      "source_url": "https://maps.google.com/?cid=12464971408374595043",
+      "show_home": true
+    },
+    {
+      "first_name": "Fayez",
+      "branch": "airport-road",
+      "stars": 5,
+      "lang": "en",
+      "text": "Great hospitality and a very professional reception team. The place is quiet, clean, and comfortable. Excellent service overall.",
+      "source_url": "https://maps.google.com/?cid=12464971408374595043",
+      "show_home": true
+    },
+    {
+      "first_name": "Donna",
+      "branch": "shafa-road",
+      "stars": 5,
+      "lang": "en",
+      "text": "We stayed here for one night and the service was very good and accommodating… a very comfortable stay.",
+      "source_url": "https://maps.google.com/?cid=13015077371000401026",
+      "show_home": true
+    },
+    {
+      "first_name": "Abey",
+      "branch": "airport-road",
+      "stars": 5,
+      "lang": "en",
+      "text": "Clean, big rooms, friendly staff and good service",
+      "source_url": "https://maps.google.com/?cid=12464971408374595043",
+      "show_home": true
+    }
+  ]
+}

@@ -1,0 +1,35 @@
+---
+/**
+ * «من المعرض» on the home page (7 Nov 2026): the first six photos of /gallery/ — published in «الصور» with «إظهار في
+ * المعرض» on, in the gallery's (the dashboard's) order (src/lib/gallery.ts). Shown only while the gallery page exists
+ * (GALLERY_MIN photos, not hidden in «المحتوى والظهور»); each photo links to the page it belongs to; «كل الصور» → /gallery/.
+ */
+import Photo from '../Photo.astro';
+import SectionHead from './SectionHead.astro';
+import { localePath, photoProps, ui, type Locale } from '@lib/content';
+import { galleryItems, galleryLive } from '@lib/gallery';
+
+interface Props {
+  locale: Locale;
+}
+const { locale } = Astro.props;
+const t = ui(locale).home;
+const list = galleryLive ? galleryItems.slice(0, 6) : [];
+---
+
+{
+  list.length > 0 && (
+    <section class="cv-auto mx-auto max-w-6xl px-4 pb-16" aria-labelledby="home-gallery-heading" data-home-section="gallery">
+      <SectionHead id="home-gallery-heading" heading={t.gallery_heading} link={{ href: localePath(locale, '/gallery/'), label: t.gallery_all, attr: 'gallery' }} />
+      <ul class="reveal-group mt-8 grid gap-3 grid-cols-2 lg:grid-cols-3">
+        {list.map((it) => (
+          <li>
+            <a href={it.href[locale]} class="block overflow-hidden rounded-card home-gallery-link" data-home-gallery-photo>
+              <Photo {...photoProps(locale, it.photo)} sizes="(min-width: 1024px) 370px, 50vw" class="block aspect-[3/2]" imgClass="home-room-img w-full h-full object-cover" />
+            </a>
+          </li>
+        ))}
+      </ul>
+    </section>
+  )
+}

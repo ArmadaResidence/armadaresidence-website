@@ -13,7 +13,7 @@ import { pathToFileURL } from 'node:url';
 
 // the suite, in the order check-all runs it
 export const STATIC_CHECKS = ['typecheck', 'admin-digits-check', 'admin-format-check', 'auth-emails-check', 'whatsapp-check', 'email-print-check', 'offers-engine-check', 'turnstile-check', 'deploy-alert-check'];
-export const BROWSER_CHECKS = ['booking-nav-check', 'drawer-check', 'booking-whatsapp-check', 'datepicker-check', 'motion-check', 'booking-instant-check', 'partners-form-check', 'careers-form-check', 'dining-site-check', 'gallery-site-check', 'offers-site-check', 'blog-site-check', 'faq-site-check', 'content-site-check', 'club-site-check', 'partners-button-check', 'theme-check', 'hero-video-check', 'hero-slides-check', 'mobile-forms-check', 'a11y-check'];
+export const BROWSER_CHECKS = ['booking-nav-check', 'drawer-check', 'booking-whatsapp-check', 'datepicker-check', 'motion-check', 'booking-instant-check', 'partners-form-check', 'careers-form-check', 'dining-site-check', 'gallery-site-check', 'offers-site-check', 'blog-site-check', 'faq-site-check', 'content-site-check', 'club-site-check', 'home-sections-check', 'partners-button-check', 'theme-check', 'hero-video-check', 'hero-slides-check', 'mobile-forms-check', 'a11y-check'];
 // every commit (build and qa.py too, unless the commit is docs only)
 export const FAST_CHECKS = ['typecheck', 'admin-digits-check', 'admin-format-check', 'auth-emails-check', 'whatsapp-check'];
 // a11y-check on sample pages for a content change: home, one branch, one room, offers, policies — both languages
@@ -140,6 +140,16 @@ const RULES = [
       /^src\/pages\/\[\.\.\.lang\]\/(club\/|index\.astro$|booking\/)/.test(f) ||
       ['content/club.json', 'content/policies.json', 'content/ui.json', 'content/seo.json', 'content/branches.json', 'src/lib/content.ts', RULES_TS].includes(f),
     checks: ['club-site-check'],
+  },
+  {
+    // the home sections (7 Nov 2026): the page, its section components, the data they read (rooms flagged for the home
+    // page, the reviews and their build step, the copy), the footer «تابعنا» row
+    name: 'home sections',
+    test: (f) =>
+      f === 'src/pages/[...lang]/index.astro' || /^src\/components\/home\//.test(f) || comp(['Footer', 'ArticleCard', 'Counters']).test(f) ||
+      lib(['reviews', 'gallery', 'offers-data']).test(f) || f === 'scripts/reviews-build.mjs' ||
+      ['content/reviews.json', 'content/rooms.json', 'content/site-texts.json', 'content/ui.json', 'content/club.json', 'content/contact.json', 'content/taif-guide.json', 'src/lib/content.ts'].includes(f),
+    checks: ['home-sections-check', 'motion-check'],
   },
   {
     // the home hero (6 Nov 2026): the page and its script — the video, the slideshow, the pause control

@@ -1,0 +1,32 @@
+---
+/**
+ * «من المدونة» on the home page (7 Nov 2026): the three latest articles published in the page's language (from the
+ * dashboard «المدونة»), as the blog's own cards with their covers; «كل المقالات» → /blog/. Nothing published → no section.
+ */
+import ArticleCard from '../ArticleCard.astro';
+import SectionHead from './SectionHead.astro';
+import { ui, type Locale } from '@lib/content';
+import { articles, blogPath } from '@lib/articles';
+
+interface Props {
+  locale: Locale;
+}
+const { locale } = Astro.props;
+const t = ui(locale).home;
+const list = (await articles(locale)).slice(0, 3);
+---
+
+{
+  list.length > 0 && (
+    <section class="cv-auto mx-auto max-w-6xl px-4 pb-16" aria-labelledby="home-blog-heading" data-home-section="blog">
+      <SectionHead id="home-blog-heading" heading={t.blog_heading} link={{ href: blogPath(locale), label: t.blog_all, attr: 'blog' }} />
+      <ul class="reveal-group mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+        {list.map((a) => (
+          <li class="grid">
+            <ArticleCard locale={locale} article={a} level={3} />
+          </li>
+        ))}
+      </ul>
+    </section>
+  )
+}

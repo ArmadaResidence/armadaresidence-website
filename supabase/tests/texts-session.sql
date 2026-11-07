@@ -29,7 +29,7 @@ select pg_temp._check('C1 the earlier versions stay; no consent given before 202
 -- ══ X1 ══
 select pg_temp._check('X1 «المحتوى والظهور»: the cancellation fields carry the 2:00 pm policy, seed = draft, not published',
   (select bool_and(seed_ar = draft_ar and seed_en = draft_en and live_ar is null
-                   and seed_ar like '%2:00 ظهرًا يوم الوصول%' and seed_en like '%2:00 pm on the day of arrival%'
+                   and seed_ar like '%2:00 ظهرًا يوم الوصول%' and seed_en like '%2:00 pm on%arrival%' -- the home card's short line since 7 Nov 2026
                    and seed_ar not like '%24 ساعة قبل%' and seed_en not like '%24 hours before%')
      from public.content_fields where key in ('home.about.body', 'home.why.flexible-cancellation.body', 'policy.cancellation.body'))
   and (select count(*) from public.content_fields where key in ('home.about.body', 'home.why.flexible-cancellation.body', 'policy.cancellation.body')) = 3);
@@ -52,9 +52,10 @@ select pg_temp._check('X1 a site job for the FAQ and one for the articles',
   and exists (select 1 from public.media_publish_jobs where targets @> '[{"target": "article", "key": "umrah-via-taif"}]' and requested_at >= now() - interval '1 day'));
 
 -- ══ E1 ══
-select pg_temp._check('E1 the published privacy text names «إياب — عضوية أرمادا ريزيدنس، والتسويق» (seed, draft, live)',
-  (select seed_ar like '%«إياب — عضوية أرمادا ريزيدنس، والتسويق»%' and draft_ar = seed_ar and live_ar = seed_ar
-          and seed_en like '%"Eyab — Armada Residence membership, and marketing"%' and draft_en = seed_en and live_en = seed_en
+-- (renamed «عضوية إياب والتسويق» / "Eyab membership and marketing" on 7 Nov 2026, migration 20261107300200)
+select pg_temp._check('E1 the published privacy text names «عضوية إياب والتسويق» (seed, draft, live)',
+  (select seed_ar like '%«عضوية إياب والتسويق»%' and draft_ar = seed_ar and live_ar = seed_ar
+          and seed_en like '%"Eyab membership and marketing"%' and draft_en = seed_en and live_en = seed_en
      from public.content_fields where key = 'policy.privacy.body')
   and exists (select 1 from public.content_revisions where field_key = 'policy.privacy.body' and kind = 'publish' and text_ar like '%إياب%'));
 select pg_temp._check('E1 the old club name nowhere in «المحتوى والظهور», the FAQ or the articles',

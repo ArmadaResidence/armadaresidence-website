@@ -19,7 +19,7 @@ const sections = page.sections.map((sec) => ({
   heading: stripBrackets(locale === 'ar' ? sec.heading_ar : sec.heading_en),
   paragraphs: paragraphs(withFees(locale, locale === 'ar' ? sec.body_ar : sec.body_en)),
 }));
-// another section named in quotes («إياب — عضوية أرمادا ريزيدنس، والتسويق» / "Eyab — Armada Residence membership, and marketing") links to its
+// another section named in quotes («عضوية إياب والتسويق» / "Eyab membership and marketing", 7 Nov 2026) links to its
 // anchor (4 Nov 2026); the quotes stay outside the link
 const esc = (x: string) => x.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 const linkable = (selfId: string) => sections.filter((x) => x.id !== selfId && x.heading);

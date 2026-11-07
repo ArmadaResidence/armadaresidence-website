@@ -64,3 +64,5 @@ content/articles.generated/
 content/faq.generated.json
 # «المحتوى والظهور»: published texts, hidden pages, the announcement bar (scripts/content-build.mjs, 3 Nov 2026)
 content/content.generated.json
+# the guest reviews published from the dashboard «آراء الضيوف» (scripts/reviews-build.mjs, 7 Nov 2026)
+content/reviews.generated.json

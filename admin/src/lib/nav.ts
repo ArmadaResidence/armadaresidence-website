@@ -50,6 +50,8 @@ export const NAV_GROUPS: NavGroup[] = [
       { to: '/blog', label: 'المدونة', section: 'blog', icon: 'blog' },
       { to: '/content', label: 'المحتوى', section: 'content', icon: 'content' },
       { to: '/faq', label: 'الأسئلة الشائعة', section: 'content', icon: 'faq', id: 'faq' },
+      // «آراء الضيوف» (7 Nov 2026): the home page's guest reviews, under the content permission as the FAQ
+      { to: '/reviews', label: 'آراء الضيوف', section: 'content', icon: 'reviews', id: 'reviews' },
       // «العملاء» (3 Nov 2026): guest profiles, the club, consents and the audience exports
       { to: '/guests', label: 'العملاء', section: 'guests', icon: 'guests' },
     ],

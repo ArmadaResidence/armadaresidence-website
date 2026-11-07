@@ -1,0 +1,69 @@
+---
+/**
+ * «مطعم ومقهى أرمادا ريزيدنس» on the home page (Ahmed's design, 7 Nov 2026): the Airport Road lobby café & restaurant
+ * (branches.json → dining). Eyebrow, text, «{hours} · تحويلة {ext} من غرفتك» (hours from branches.json dining.hours, the
+ * extension from contact.json cafe.room_extension), «قائمة الطعام» (contact.json menu_url) and «واتساب المطعم»
+ * (contact.json cafe.whatsapp — Ahmed's request of 7 Nov 2026 adds the home page to where the café line appears).
+ * Photo: the venue's cover published in «الصور» when there is one, else the first approved café photo
+ * (content/images/dining, Ahmed, 9 Oct 2026). «وتراس» of the approved text is left out: no terrace in content/.
+ */
+import Icon from '../Icon.astro';
+import Photo from '../Photo.astro';
+import { branchBySlug, branchVisible, contact, fill, localePath, lqip, media, photoProps, ui, venues, waHref, type Locale, type SitePhoto } from '@lib/content';
+
+interface Props {
+  locale: Locale;
+}
+const { locale } = Astro.props;
+const t = ui(locale).home;
+const branch = branchBySlug('airport-road');
+const d = (branch as unknown as { dining?: { hours: string; menu_url: string; name_ar: string; name: string } }).dining;
+const venue = venues.find((v) => v.branch === 'airport-road');
+const cover = venue ? (media as { dining?: Record<string, { photos: SitePhoto[] }> }).dining?.[venue.slug]?.photos?.[0] : undefined;
+const alts = ui(locale).dining.photo_alts as Record<string, string>;
+const hours = d?.hours === '24h' ? t.dining_hours_24h : d?.hours ?? '';
+const line = fill(t.dining_line, { hours, ext: contact.cafe.room_extension });
+---
+
+{
+  d && branchVisible('airport-road') && (
+    <section class="cv-auto mx-auto max-w-6xl px-4 pb-16" aria-labelledby="home-dining-heading" data-home-section="dining">
+      <div class="cafe-card rounded-card overflow-hidden grid lg:grid-cols-2">
+        <div class="p-6 md:p-10 flex flex-col gap-4 order-2 lg:order-1">
+          <p class="reveal cafe-accent text-sm font-semibold">{t.dining_eyebrow}</p>
+          <h2 id="home-dining-heading" class="reveal text-2xl md:text-3xl font-bold">{t.dining_heading}</h2>
+          <div class="cafe-rule h-0.5 w-14" aria-hidden="true"></div>
+          <p class="reveal leading-relaxed">{t.dining_body}</p>
+          <p class="reveal cafe-accent font-semibold text-sm" data-home-dining-line>{line}</p>
+          <div class="reveal flex flex-wrap items-center gap-3 mt-2">
+            <a href={localePath(locale, contact.menu_url)} class="cafe-btn inline-flex items-center gap-2 font-semibold px-5 py-3 rounded transition-colors" data-home-menu>
+              <span>{t.dining_menu}</span>
+              <Icon name="arrow" size={18} class="icon-arrow rtl:rotate-180" />
+            </a>
+            <a href={waHref(contact.cafe.whatsapp)} target="_blank" rel="noopener" class="cafe-btn-ghost inline-flex items-center gap-2 font-semibold px-5 py-3 rounded transition-colors" aria-label={`${t.dining_whatsapp} ${contact.cafe.phone_display}`} data-home-cafe-wa>
+              <Icon name="whatsapp" size={18} />
+              <span>{t.dining_whatsapp}</span>
+            </a>
+          </div>
+        </div>
+        <div class="order-1 lg:order-2 min-h-56">
+          {cover ? (
+            <Photo {...photoProps(locale, cover)} sizes="(min-width: 1024px) 576px, 100vw" class="block h-full aspect-[3/2] lg:aspect-auto" imgClass="w-full h-full object-cover" />
+          ) : (
+            <Photo
+              src="/images/dining/cutlet-penne-800.webp"
+              srcset="/images/dining/cutlet-penne-800.webp 800w, /images/dining/cutlet-penne-1400.webp 1400w"
+              sizes="(min-width: 1024px) 576px, 100vw"
+              alt={alts['cutlet-penne'] ?? t.dining_heading}
+              width={800}
+              height={1000}
+              lqip={lqip('/images/dining/cutlet-penne-800.webp')}
+              class="block h-full aspect-[3/2] lg:aspect-auto"
+              imgClass="w-full h-full object-cover"
+            />
+          )}
+        </div>
+      </div>
+    </section>
+  )
+}

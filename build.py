@@ -19,6 +19,8 @@ Steps:
      articles collection reads; without the key: a copy of content/articles, the dashboard's seed).
      The FAQ of «الأسئلة الشائعة» (3 Nov 2026): scripts/faq-build.mjs → content/faq.generated.json (without the key:
      content/faq.json, the dashboard's seed).
+     The guest reviews of «آراء الضيوف» (7 Nov 2026): scripts/reviews-build.mjs → content/reviews.generated.json (without
+     the key: content/reviews.json, the dashboard's seed).
   4. Run `astro build` → dist/ (static).
   5. Print the list of generated pages.
 
@@ -323,8 +325,9 @@ def cancellation_problems(content: dict[str, dict]) -> list[str]:
         if not sec or not sec[f"body_{loc}"].startswith(full):
             out.append(f"policies.json page.sections[cancellation].body_{loc} must start with cancellation.{loc}")
         item = next((x for x in content["site-texts.json"]["why_armada"]["items"] if x["title_en"] == "Flexible cancellation"), None)
-        if not item or item[f"body_{loc}"] != full:
-            out.append(f"site-texts.json why_armada «Flexible cancellation» body_{loc} must equal policies.json cancellation.{loc}")
+        # the home card (7 Nov 2026) states the short line as a sentence: «إلغاء مجاني حتى 2:00 ظهرًا يوم الوصول.»
+        if not item or item[f"body_{loc}"] != c[f"short_{loc}"] + ".":
+            out.append(f"site-texts.json why_armada «Flexible cancellation» body_{loc} must equal policies.json cancellation.short_{loc} + '.'")
         if c[f"about_{loc}"] not in content["site-texts.json"]["about"][f"body_{loc}"]:
             out.append(f"site-texts.json about.body_{loc} must carry policies.json cancellation.about_{loc}")
     faq = json.loads((CONTENT / "faq.json").read_text(encoding="utf-8"))
@@ -525,9 +528,12 @@ def resolve_availability(content: dict[str, dict]) -> dict:
     the publishable key through the read-only RPC site_room_types on the booking endpoint's project, decides each
     room's static availability (available / sold_out: CTA, label, noindex, sitemap, JSON-LD). rooms.json is the seed and
     the fallback when the project is unreachable or the keys are absent (astro dev, a scratch build). The result is
-    written to dist/_availability.json for qa.py."""
+    written to dist/_availability.json for qa.py.
+    The home page's «الغرف والأجنحة» (7 Nov 2026): room_types.show_home («في الصفحة الرئيسية» in «الغرف») from the same
+    RPC, rooms.json → show_home as the seed / fallback — `home` in the result (ROOM_HOME for the Astro build)."""
     rooms = [r for r in content["rooms.json"]["rooms"] if r.get("show_on_site")]
-    out = {"source": "rooms.json", "rooms": {f"{r['branch']}/{r['slug']}": r["availability"] for r in rooms}}
+    out = {"source": "rooms.json", "rooms": {f"{r['branch']}/{r['slug']}": r["availability"] for r in rooms},
+           "home": {f"{r['branch']}/{r['slug']}": bool(r.get("show_home")) for r in rooms}}
     endpoint = os.environ.get("PUBLIC_BOOKING_ENDPOINT", "")
     key = os.environ.get("PUBLIC_SUPABASE_ANON_KEY", "")
     if not endpoint or not key:
@@ -545,6 +551,10 @@ def resolve_availability(content: dict[str, dict]) -> dict:
         for k, v in live.items():
             if k in out["rooms"]:
                 out["rooms"][k] = v
+        for r in rows:
+            k = f"{r['branch']}/{r['slug']}"
+            if k in out["home"] and "show_home" in r:
+                out["home"][k] = bool(r["show_home"])
         out["source"] = "supabase"
         print(f"✓ room availability from the dashboard ({len(live)} room types; {len(changed)} differ from rooms.json: {', '.join(changed) or '—'})")
     except Exception as e:  # noqa: BLE001 — the build must not depend on the project being awake
@@ -693,6 +703,7 @@ def main() -> int:
     run(["node", "scripts/offers-build.mjs"])
     run(["node", "scripts/blog-build.mjs"])
     run(["node", "scripts/faq-build.mjs"])
+    run(["node", "scripts/reviews-build.mjs"])
     sync_media()
     run(["node", "scripts/lqip.mjs"])
     run(["node", "scripts/og.mjs"])
@@ -700,10 +711,12 @@ def main() -> int:
     run(["node", "scripts/flags.mjs"])
     run(["node", "scripts/email-logo.mjs"])
     os.environ["ROOM_AVAILABILITY"] = json.dumps(availability["rooms"])
+    os.environ["ROOM_HOME"] = json.dumps(availability["home"])
     run(["npx", "astro", "build"])
+    # the menu's dining offers are written into dist/menu/ first, so the typesetting pass covers them too (7 Nov 2026)
+    menu_offers(content)
     # every number and its unit joined by a no-break space in the built pages (6 Nov 2026 — scripts/typeset.mjs)
     run(["node", "scripts/typeset.mjs"])
-    menu_offers(content)
     (DIST / "_availability.json").write_text(json.dumps(availability, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     write_version()
 

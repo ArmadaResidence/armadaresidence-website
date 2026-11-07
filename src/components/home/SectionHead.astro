@@ -1,0 +1,32 @@
+---
+/**
+ * The heading row of a home section (7 Nov 2026): an optional eyebrow, the h2, an optional intro line and an optional
+ * «كل …» link on the end side. Small bronze text is Bronze Text on white / porcelain (CLAUDE.md §3 contrast pass).
+ */
+import Icon from '../Icon.astro';
+
+interface Props {
+  id: string;
+  heading: string;
+  eyebrow?: string;
+  intro?: string;
+  link?: { href: string; label: string; attr?: string };
+}
+const { id, heading, eyebrow, intro, link } = Astro.props;
+---
+
+<div class="flex flex-wrap items-end justify-between gap-x-6 gap-y-3">
+  <div class="max-w-2xl">
+    {eyebrow && <p class="reveal text-sm font-semibold text-bronze-text mb-2" data-home-eyebrow>{eyebrow}</p>}
+    <h2 id={id} class="reveal text-2xl md:text-3xl font-bold text-midnight">{heading}</h2>
+    {intro && <p class="reveal mt-3 text-ink-muted" style="--reveal-delay:60ms">{intro}</p>}
+  </div>
+  {
+    link && (
+      <a href={link.href} class="reveal inline-flex items-center gap-2 py-2 text-sm font-semibold link-bronze" data-home-all={link.attr}>
+        <span>{link.label}</span>
+        <Icon name="arrow" size={16} class="icon-arrow rtl:rotate-180" />
+      </a>
+    )
+  }
+</div>

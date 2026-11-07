@@ -85,7 +85,8 @@ for (const lang of ['ar', 'en']) {
   check(un.includes('name="robots" content="noindex'), `${lang}: /club/unsubscribe/ is not noindex`);
   const home = page(lang);
   check(home.includes(`href="${pre}/club/"`) && has(home, ui[L].nav.club), `${lang}: the footer has no club link`);
-  check(/data-club-band[\s\S]{0,200}/.test(home) && has(home, c.band), `${lang}: the home page has no club band`);
+  // the «إياب» band (7 Nov 2026, Ahmed's design): the name with its descriptor and «انضم إلى إياب» → /club/
+  check(/href="[^"]*\/club\/"[^>]*data-club-band/.test(home) && has(home, c.title) && has(home, c.submit), `${lang}: the home page has no club band`);
   const pol = page(lang, 'policies');
   const sec = policies.page.sections.find((s) => s.id === 'club');
   check(pol.includes('id="club"') && has(pol, sec[`heading_${L}`]) && has(pol, sec[`body_${L}`]), `${lang}: /policies/ has no #club section with the approved text`);

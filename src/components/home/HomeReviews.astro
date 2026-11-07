@@ -1,0 +1,52 @@
+---
+/**
+ * «آراء ضيوفنا» on the home page (Ahmed, 7 Nov 2026): three reviews of the page's language from the dashboard «آراء
+ * الضيوف» (src/lib/reviews.ts), each the guest's words verbatim in quotation marks, then «الاسم · الفرع · 5 على Google»
+ * and an arrow to that branch's Google listing (the review's source link). Real reviews only, with their source
+ * (CLAUDE.md §5). Deliberately NO Review / AggregateRating structured data (self-serving reviews).
+ */
+import Icon from '../Icon.astro';
+import SectionHead from './SectionHead.astro';
+import { branchShort, fill, ui, type Locale } from '@lib/content';
+import { homeReviews, quoted } from '@lib/reviews';
+
+interface Props {
+  locale: Locale;
+}
+const { locale } = Astro.props;
+const t = ui(locale).home;
+const list = homeReviews(locale);
+---
+
+{
+  list.length > 0 && (
+    <section class="cv-auto bg-white border-y border-line" aria-labelledby="home-reviews-heading" data-home-section="reviews">
+      <div class="mx-auto max-w-6xl px-4 py-16">
+        <SectionHead id="home-reviews-heading" heading={t.reviews_heading} intro={t.reviews_intro} />
+        <ul class="reveal-group mt-8 grid gap-6 md:grid-cols-3">
+          {list.map((r) => {
+            const branch = branchShort(locale, r.branch);
+            return (
+              <li class="flex" data-home-review={r.branch} lang={r.lang}>
+                <figure class="w-full bg-porcelain border border-line rounded-card p-6 flex flex-col gap-5">
+                  <span class="flex gap-0.5 text-bronze" aria-hidden="true">
+                    {Array.from({ length: r.stars }, () => <Icon name="star" size={16} />)}
+                  </span>
+                  <blockquote class="text-midnight leading-relaxed flex-1">
+                    <p>{quoted(locale, r.text)}</p>
+                  </blockquote>
+                  <figcaption class="flex items-center justify-between gap-3 pt-4 border-t border-line text-sm">
+                    <span class="text-ink-muted" data-review-meta>{fill(t.review_meta, { name: r.first_name, branch, stars: r.stars })}</span>
+                    <a href={r.source_url} target="_blank" rel="noopener" class="shrink-0 inline-grid place-items-center w-11 h-11 -m-2 rounded-full text-bronze-text hover:text-midnight" aria-label={fill(t.review_link, { branch })} data-review-source>
+                      <Icon name="arrow" size={18} class="icon-arrow rtl:rotate-180" />
+                    </a>
+                  </figcaption>
+                </figure>
+              </li>
+            );
+          })}
+        </ul>
+      </div>
+    </section>
+  )
+}

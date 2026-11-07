@@ -1,0 +1,86 @@
+---
+/**
+ * «الغرف والأجنحة» on the home page (Ahmed's design, 7 Nov 2026): the eyebrow counts the room types shown on the site,
+ * the tabs «الكل / طريق المطار / طريق الشفا» filter the cards (buttons with aria-pressed; without JS every card shows),
+ * one card per room type flagged «في الصفحة الرئيسية» in the dashboard «الغرف» and open on the site (content.ts →
+ * homeRooms): its cover, «الفرع · النوع», the name and «تفاصيل الغرفة». No price (CLAUDE.md §5: room cards stay price-free).
+ */
+import Icon from '../Icon.astro';
+import Photo from '../Photo.astro';
+import Placeholder from '../Placeholder.astro';
+import SectionHead from './SectionHead.astro';
+import { branchBySlug, branches, branchShort, fill, homeRooms, L, photoProps, photosOf, roomPath, rooms, ui, type Locale } from '@lib/content';
+
+interface Props {
+  locale: Locale;
+}
+const { locale } = Astro.props;
+const t = ui(locale).home;
+const list = homeRooms;
+const tabs = branches.filter((b) => list.some((r) => r.branch === b.slug));
+---
+
+{
+  list.length > 0 && (
+    <section class="cv-auto mx-auto max-w-6xl px-4 pb-16" aria-labelledby="home-rooms-heading" data-home-section="rooms">
+      <SectionHead id="home-rooms-heading" heading={t.rooms_heading} eyebrow={fill(t.rooms_eyebrow, { n: rooms.length })} />
+      {tabs.length > 1 && (
+        <div class="reveal mt-6 flex flex-wrap gap-2" role="group" aria-label={t.rooms_filters} data-room-tabs>
+          <button type="button" class="room-tab" aria-pressed="true" data-room-tab="all">{t.rooms_all}</button>
+          {tabs.map((b) => (
+            <button type="button" class="room-tab" aria-pressed="false" data-room-tab={b.slug}>{branchShort(locale, b.slug)}</button>
+          ))}
+        </div>
+      )}
+      <ul class="reveal-group mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-3" data-room-cards>
+        {list.map((r) => {
+          const b = branchBySlug(r.branch);
+          const name = L(locale, r, 'name');
+          const cover = photosOf(r)[0];
+          const href = roomPath(locale, r);
+          return (
+            <li class="flex" data-room-card={r.branch}>
+              <article class="home-room w-full bg-white border border-line rounded-card overflow-hidden flex flex-col">
+                <a href={href} tabindex="-1" aria-hidden="true" class="block overflow-hidden">
+                  {cover ? (
+                    <Photo {...photoProps(locale, cover)} sizes="(min-width: 1024px) 360px, (min-width: 640px) 50vw, 100vw" class="block aspect-[3/2]" imgClass="home-room-img w-full h-full object-cover" />
+                  ) : (
+                    <Placeholder label={fill(ui(locale).photo_pending_alt, { subject: `${name} — ${L(locale, b, 'name')}` })} class="rounded-b-none" />
+                  )}
+                </a>
+                <div class="p-5 flex flex-col gap-2 flex-1">
+                  <p class="text-xs font-semibold text-bronze-text">{fill(t.room_line, { branch: branchShort(locale, r.branch), type: L(locale, b, 'type') })}</p>
+                  <h3 class="text-lg font-semibold text-midnight">
+                    <a href={href} class="hover:text-bronze-text">{name}</a>
+                  </h3>
+                  <a href={href} class="mt-auto pt-2 self-start inline-flex items-center gap-1.5 text-sm font-semibold link-bronze" aria-label={`${t.room_details}: ${name} — ${branchShort(locale, r.branch)}`}>
+                    <span>{t.room_details}</span>
+                    <Icon name="arrow" size={16} class="icon-arrow rtl:rotate-180" />
+                  </a>
+                </div>
+              </article>
+            </li>
+          );
+        })}
+      </ul>
+    </section>
+  )
+}
+
+<script>
+  import { bindOnce, onPageLoad } from '@lib/client';
+
+  // the branch tabs: one pressed at a time; a card shows when its branch matches (or «الكل»)
+  onPageLoad(() => {
+    const group = document.querySelector<HTMLElement>('[data-room-tabs]');
+    if (!group || !bindOnce(group, 'room-tabs-bound')) return;
+    const cards = [...document.querySelectorAll<HTMLElement>('[data-room-card]')];
+    group.addEventListener('click', (e) => {
+      const btn = (e.target as HTMLElement).closest<HTMLButtonElement>('[data-room-tab]');
+      if (!btn) return;
+      const key = btn.dataset.roomTab;
+      group.querySelectorAll<HTMLButtonElement>('[data-room-tab]').forEach((b) => b.setAttribute('aria-pressed', String(b === btn)));
+      for (const c of cards) c.hidden = key !== 'all' && c.dataset.roomCard !== key;
+    });
+  });
+</script>

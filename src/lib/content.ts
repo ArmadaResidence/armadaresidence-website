@@ -237,6 +237,22 @@ export const rooms: Room[] = (withTexts('rooms.json', roomsJson).rooms as unknow
     return m ? { ...r, photos: m.photos as SitePhoto[], ...(m.og_image ? { og_image: m.og_image } : {}) } : r;
   });
 
+/** «الغرف والأجنحة» on the home page (7 Nov 2026): room_types.show_home from the dashboard, resolved by build.py
+ *  (ROOM_HOME); absent (astro dev, a scratch build) → rooms.json → show_home. Only rooms open on the site appear:
+ *  shown (not hidden in «المحتوى والظهور») and bookable («متاحة للحجز على الموقع» → availability available). */
+const homeOverride: Record<string, boolean> = (() => {
+  try {
+    return JSON.parse(process.env.ROOM_HOME || '{}');
+  } catch {
+    return {};
+  }
+})();
+export const homeRooms: Room[] = rooms.filter((r) => {
+  const k = `${r.branch}/${r.slug}`;
+  const on = k in homeOverride ? homeOverride[k] : !!(r as Room & { show_home?: boolean }).show_home;
+  return on && r.availability === 'available';
+});
+
 /** Structural features rendered as chips (cards + room page), in display order. Equipment (fridge, kettle, Wi-Fi…) lives in in_room_amenities. */
 export const FEATURE_KEYS: (keyof RoomFeatures)[] = ['kitchen', 'living_room', 'balcony', 'jacuzzi'];
 /** Features that go into the SEO description (seo.json → features_clause_note). */

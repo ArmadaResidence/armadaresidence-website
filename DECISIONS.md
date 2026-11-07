@@ -1780,3 +1780,61 @@ Ahmed's brief of 6 Nov 2026 (unattended). Every guest-facing text below was appr
   band and footer link, the welcome email's headline and body, the member-offer intro, the /club/ and unsubscribe SEO
   titles and descriptions, the privacy heading «إياب — عضوية أرمادا ريزيدنس، والتسويق» and its English); the
   cancellation sentence in the three SEO descriptions (shortened descriptions for the two branches).
+
+## 2026-11-07 — Home sections: rooms, offers, «لماذا أرمادا», the café, the gallery, guest reviews, Discover Taif, the blog, «إياب» (Ahmed, 7 Nov 2026)
+
+Ahmed's approved home design (desktop 1440, adapted for phones), built in the order he gave: hero, info strip and
+«فرعانا في الطائف» as built; then the new sections, each rendered only with its content (`src/components/home/`):
+
+- **«الغرف والأجنحة»**: eyebrow «{n} نوعًا في الفرعين» (n = the room types on the site, 12); tabs الكل / طريق المطار /
+  طريق الشفا (buttons with `aria-pressed`, every card shows without JS); one card per room type flagged «في الصفحة
+  الرئيسية» and open on the site (bookable, not hidden): cover, «الفرع · النوع», name, «تفاصيل الغرفة». No price. The flag
+  is `room_types.show_home` (migration `20261107300000_room_home`), on for the six of the design; «الغرف» has the
+  switch (`set_room_home`, rooms edit + branch scope, one audited batch, «تراجع» — `revert_batch` restores it; batches
+  recorded before compare only the keys they carry); `site_room_types` returns it, build.py → `ROOM_HOME` →
+  `content.ts → homeRooms`; rooms.json `show_home` is the seed / fallback. No availability or booking setting changed.
+- **«العروض»**: the offers module already had «في الصفحة الرئيسية» (`offers.show_home`); up to two cards (cover, «عرض»,
+  title, text, the offer's own button — «اطلب عرض سعر» for a quote offer — and «واتساب»), «كل العروض». **Rule kept:** the
+  sales line appears only on /offers/, /partners/* and the hall (CLAUDE.md §5), so a company / partners offer shows no
+  WhatsApp button on the home page; an individuals / dining offer's button goes to its branch number, or opens the branch
+  chooser for both branches. Nothing is flagged for the home page today, so the section does not show.
+- **«لماذا أرمادا»**: the stats row as built (12 room types, 168 units, 24 h, the hall's 50 — all from content/) and the
+  six approved cards. The sizes are the fact placeholders `{shafa_room_min}` `{airport_room_min}` `{suite_max}` (35 / 50
+  / 75 from rooms.json); «إلغاء مرن» = the policy's short line + «.» (build.py checks it). In «المحتوى والظهور»
+  (migration `20261107300200_home_texts`) the fields follow: the two new cards («مواقف مجانية», «واتساب مباشر») take the
+  never-published fields of «موقعان في الطائف» and «على مدار الساعة» (same keys; label, path, anchor and texts move —
+  no row deleted); the migration refuses to run if any of them was published or edited.
+- **«مطعم ومقهى أرمادا ريزيدنس»**: the approved text **without «وتراس»** — no terrace in content/; «مفتوح على مدار
+  الساعة · تحويلة 333 من غرفتك» (branches.json dining.hours, contact.json cafe.room_extension); «قائمة الطعام» (menu_url)
+  and «واتساب المطعم» (contact.json cafe.whatsapp — qa.py now allows the café line on the home page, Ahmed's request);
+  photo: the venue's published cover, else the approved café photo.
+- **«من المعرض»**: the first six photos of /gallery/ (the dashboard's order), only while the gallery page exists.
+- **«آراء ضيوفنا»** and the dashboard module **«آراء الضيوف»** (migration `20261107300100_guest_reviews`, under the content
+  permission as the FAQ): first name, branch, stars, language, text, source link, order, «في الصفحة الرئيسية»; `live`
+  only by «نشر» (`reviews_publish`, a site job, `site-rebuild` reason `reviews`); a review with a problem (wrong language,
+  a qa.py forbidden term, Arabic outside the font subset, Arabic-Indic digits, a non-https link) blocks «نشر»; only a
+  never-published review can be deleted. Seeded with Ahmed's six reviews, published. A page shows the first three of its
+  language, quoted, «الاسم · الفرع · 5 على Google» and an arrow to the branch's Google listing. **No Review /
+  AggregateRating structured data** (self-serving reviews) — qa.py fails on either anywhere. `scripts/reviews-build.mjs` →
+  `content/reviews.generated.json` (seed `content/reviews.json`).
+- **«اكتشف الطائف»**: the guide's first three places (its order = the dashboard's), each linking to its card.
+- **«من المدونة»**: the three latest published articles (the blog's cards); hidden with nothing published.
+- **«عن أرمادا ريزيدنس»** as built; the slogan band that followed it is gone (not in the design's order).
+- **«إياب» band** (replaces the slim link): eyebrow «مجانًا · برقم جوالك», «إياب — عضوية أرمادا ريزيدنس», the approved
+  intro line, «عروض خاصة بالأعضاء فقط» and «مجانًا ودون أي التزام», «انضم إلى إياب» → /club/.
+- **Footer «تابعنا»**: one row above the legal line with the networks whose link exists in contact.json (Instagram,
+  Facebook, TikTok, Snapchat, YouTube).
+- **Small fixes**: the /club/ SEO description without «وأكواد خصم» / "and promo codes"; the privacy section is «عضوية
+  إياب والتسويق» / "Eyab membership and marketing" and the privacy text's cross-reference names it (the file, and the
+  published «المحتوى والظهور» text: seed, draft, live, revisions, a content job).
+- **Home weight**: qa.py's initial-weight gate (1 MB, Ahmed 6 Nov) now leaves out `<img loading="lazy">` below the fold
+  (fetched only when scrolled near) and reports them apart; eager images still count. Local build: 421 KB initial,
+  505 KB lazy.
+- **build.py**: the menu's dining offers are written before the number-unit typesetting pass (a dining offer on /menu/
+  failed qa.py's typeset check — found with the offers fixture).
+- **Checks**: `scripts/home-sections-check.mjs` (static + browser, in the suite and the routed plan), `club-site-check`
+  (the new band), `nav-check` (the sidebar item), `admin/tests/reviews-check.mjs` (26 checks on a preview branch),
+  `supabase/tests/home-sections.sql` (35 checks).
+- **For approval**: every English text of these sections; the new Arabic texts not in the brief (the tabs' label «عرض
+  الغرف حسب الفرع», the reviews arrow «تقييمات {الفرع} على خرائط Google (يفتح في نافذة جديدة)», the dashboard page's
+  texts); the gallery page and FAQ page UI strings (written earlier without a recorded approval).

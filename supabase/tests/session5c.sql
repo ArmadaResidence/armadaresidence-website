@@ -130,8 +130,8 @@ select pg_temp._check('H4 a withdrawal recorded by reception ends the membership
 
 -- ══ H5 ══
 select pg_temp._check('H5 the curated privacy text follows the file: the new sentences, draft = seed, nothing published',
-  -- (published by the copy fixes of 4 Nov 2026; the section renamed «إياب …» on 6 Nov 2026)
-  (select seed_ar like '%ولا نستخدمها للتسويق إلا بموافقتك%' and seed_ar like '%«إياب — عضوية أرمادا ريزيدنس، والتسويق»%' and seed_ar not like '%ونستخدمها فقط%'
+  -- (published by the copy fixes of 4 Nov 2026; the section renamed «إياب …» on 6 Nov 2026, «عضوية إياب والتسويق» on 7 Nov 2026)
+  (select seed_ar like '%ولا نستخدمها للتسويق إلا بموافقتك%' and seed_ar like '%«عضوية إياب والتسويق»%' and seed_ar not like '%ونستخدمها فقط%'
           and seed_en like '%we use them for marketing only with your consent%' and draft_ar = seed_ar and draft_en = seed_en
      from public.content_fields where key = 'policy.privacy.body'));
 
