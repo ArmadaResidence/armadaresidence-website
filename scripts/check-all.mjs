@@ -73,7 +73,7 @@ if (commit && args.includes('--skip-if-passed')) {
 }
 
 // the plan: routed for --staged (unless --full), the whole suite otherwise
-let plan = { full: true, build: true, checks: [...STATIC_CHECKS, ...BROWSER_CHECKS], a11yPages: null, pixelGuard: false };
+let plan = { full: true, build: true, sampleQa: true, checks: [...STATIC_CHECKS, ...BROWSER_CHECKS], a11yPages: null, pixelGuard: false };
 if (staged && !args.includes('--full')) {
   plan = planFor(stagedFiles(), { invisible: process.env.ARMADA_INVISIBLE === '1' });
   for (const r of plan.files) console.log(`  ${r.file}  →  ${r.rules.join(' + ')}`);
@@ -199,6 +199,21 @@ if (live) for (const name of LIVE_CHECKS) results.push(await run(name, process.e
 // the public site functions' CORS from the domain, www and the review site (preflight only — nothing is sent; 30 Oct 2026)
 if (live) results.push(await run('admin-cors-check --public', process.execPath, ['scripts/admin-cors-check.mjs', '--public']));
 await server?.close();
+// sample qa (7 Nov 2026): the dashboard-published sections (partner logos, articles, offers and the pop-up) are empty in
+// the local build, so qa.py never judged their markup — an empty alt in «شركاؤنا» failed every real publish of
+// «شعارات الشركاء» in CI. A second build with the committed samples (scripts/fixtures/) runs qa.py over that markup;
+// outside a snapshot the plain build is restored after it (dist/ is the working build).
+if (!live && built && plan.sampleQa) {
+  const env = {
+    PARTNER_LOGOS_FIXTURE: 'scripts/fixtures/partner-logos-sample.json',
+    BLOG_FIXTURE: 'scripts/fixtures/blog-sample.json',
+    OFFERS_FIXTURE: 'scripts/fixtures/offers-sample.json',
+  };
+  const b = await run('sample build', PYTHON, ['build.py'], { env });
+  results.push(b);
+  if (!b.code) results.push(await run('sample qa', PYTHON, ['qa.py'], { env }));
+  if (!staged && !commit) results.push(await run('build (restored)', PYTHON, ['build.py']));
+}
 removeSnapshots();
 
 const scope = live ? `live: ${base}` : commit ? `commit ${commit}, full suite` : staged ? `staged snapshot, ${plan.full ? 'full suite' : 'routed'}` : 'local build';

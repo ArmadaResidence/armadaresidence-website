@@ -57,6 +57,7 @@ const RULES = [
   },
   {
     name: 'styles / motion / components',
+    sampleQa: true,
     test: (f) => /^src\/(styles|components|layouts)\//.test(f) || lib(['reveal', 'counters', 'glow', 'carousel', 'story', 'roombar']).test(f),
     // the partners button lives in the header and motion.css (2 Nov 2026): its contrast, lift, sweep and focus ring
     checks: ['motion-check', 'partners-button-check', 'theme-check', 'hero-video-check', 'hero-slides-check', 'mobile-forms-check'],
@@ -102,6 +103,7 @@ const RULES = [
     // «العروض» (2 Nov 2026): /offers/, the cards and their placements, the announcement bar, the pop-up, the promo-code
     // field of the booking form
     name: 'offers',
+    sampleQa: true,
     test: (f) =>
       comp(['OfferCard', 'OfferList', 'OffersSection', 'OfferBar', 'OfferPopup', 'Header', 'BookingForm']).test(f) ||
       lib(['offers', 'offers-data', 'popup', 'drawer', 'prices']).test(f) ||
@@ -113,6 +115,7 @@ const RULES = [
     // «المدونة» on the site (3 Nov 2026): the list, the article page, the RSS feed, the article library and its
     // sanitiser, the card, the body; an article file of the seed
     name: 'blog',
+    sampleQa: true,
     test: (f) =>
       /^src\/pages\/\[\.\.\.lang\]\/blog\//.test(f) || comp(['ArticleCard', 'ArticleBody']).test(f) || lib(['articles', 'blog-md']).test(f) ||
       /^content\/articles\/[^/]+\.(ar|en)\.md$/.test(f) || f === 'src/content.config.ts',
@@ -147,6 +150,7 @@ const RULES = [
     // the home sections (7 Nov 2026): the page, its section components, the data they read (rooms flagged for the home
     // page, the reviews and their build step, the copy), the footer «تابعنا» row
     name: 'home sections',
+    sampleQa: true,
     test: (f) =>
       f === 'src/pages/[...lang]/index.astro' || /^src\/components\/home\//.test(f) || comp(['Footer', 'ArticleCard', 'Counters']).test(f) ||
       lib(['reviews', 'gallery', 'offers-data', 'slider', 'marquee']).test(f) || f === 'scripts/reviews-build.mjs' || f === 'scripts/partner-logos-build.mjs' ||
@@ -193,7 +197,7 @@ export function planFor(files, { invisible = false } = {}) {
   const docsOnly = files.length > 0 && rows.every((r) => r.rules.length && r.rules.every((x) => x.docs));
   const files_ = rows.map((r) => ({ file: r.file, rules: r.rules.length ? r.rules.map((x) => x.name) : ['— unmapped → full suite'] }));
   if (unmapped.length) {
-    return { full: true, build: true, checks: [...STATIC_CHECKS, ...BROWSER_CHECKS], a11yPages: null, pixelGuard: invisible, files: files_, unmapped };
+    return { full: true, build: true, sampleQa: true, checks: [...STATIC_CHECKS, ...BROWSER_CHECKS], a11yPages: null, pixelGuard: invisible, files: files_, unmapped };
   }
   const extra = new Set(all.flatMap((r) => r.checks ?? []));
   const a11yAll = all.some((r) => r.a11y === 'all');
@@ -208,6 +212,7 @@ export function planFor(files, { invisible = false } = {}) {
     checks: [...STATIC_CHECKS, ...BROWSER_CHECKS].filter((c) => wanted.has(c)),
     a11yPages: a11yAll ? null : sample ? both([...pages]) : null,
     pixelGuard: invisible && !docsOnly,
+    sampleQa: !docsOnly && all.some((r) => r.sampleQa),
     files: files_,
     unmapped,
   };
@@ -220,6 +225,7 @@ export function stagedFiles(cwd = process.cwd()) {
 /** One line per check, for the hook's log and the dry-run. */
 export function describe(plan) {
   const list = [...(plan.build ? ['build', 'qa'] : []), ...plan.checks.map((c) => (c === 'a11y-check' && plan.a11yPages ? `a11y-check (${plan.a11yPages.length} sample pages)` : c))];
+  if (plan.sampleQa) list.push('sample qa (the dashboard samples built, then qa.py)');
   if (plan.pixelGuard) list.push('pixel-guard (HEAD → staged)');
   return `${plan.full ? 'FULL SUITE' : 'routed'}: ${list.join(', ')}`;
 }

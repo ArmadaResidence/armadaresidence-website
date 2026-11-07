@@ -8,6 +8,8 @@
  * Motion (src/lib/marquee.ts): a seamless loop (the set twice, the copy aria-hidden) moving in the reading direction,
  * one full loop per --motion-marquee (40 s); paused while the mouse is over it, while it is off screen or the tab is
  * hidden; dragged with the mouse or by touch, then it carries on. prefers-reduced-motion: one static row, no copy.
+ * The copy's images keep the partner's name as alt (7 Nov 2026): an empty alt is a qa.py «generic alt» failure, which
+ * blocked every publish of «شعارات الشركاء»; the copy is aria-hidden, so it is never read twice.
  */
 import { ui, type Locale } from '@lib/content';
 
@@ -49,7 +51,7 @@ const w = (l: Logo) => Math.round((l.width / l.height) * H);
           <ul class="partners-marquee-set partners-marquee-copy" aria-hidden="true" data-marquee-copy>
             {logos.map((l) => (
               <li class="partners-logo">
-                <img src={l.src} alt="" width={w(l)} height={H} loading="lazy" decoding="async" draggable="false" />
+                <img src={l.src} alt={locale === 'ar' ? l.alt_ar : l.alt_en} width={w(l)} height={H} loading="lazy" decoding="async" draggable="false" />
               </li>
             ))}
           </ul>

@@ -1909,3 +1909,15 @@ Ahmed's approved home design (desktop 1440, adapted for phones), built in the or
 - **For approval (new texts):** the cookies paragraph (ar / en); the banner's English (given) is used as written;
   «المراجعة السابقة» / «المراجعة التالية» ("Previous review" / "Next review"), «صور الفرع» / "Photos of the property",
   «شركاؤنا» / "Our partners", the dashboard module's texts.
+
+## 2026-11-07 — Pre-launch fixes: the «شعارات الشركاء» publish failure, the branch cards, the dashboard sidebar on phones, the reviews carousel, the fact sheets (Ahmed, 7 Nov 2026)
+
+- **«شعارات الشركاء» — «فشل النشر» (cause and fix).** Both publishes of 7 Nov (jobs `d682f2bb…`, `072befa4…`; runs
+  42389886860, 42390531937) failed at qa.py: the marquee's aria-hidden copy of the logos carried `alt=""`, a «generic
+  alt» failure on `/` and `/en/` (8 images). The local suite never saw it — its build has no published logos, and the
+  `PARTNER_LOGOS_FIXTURE` sample was only ever served to the browser checks, never judged by qa.py. Fix: the copy keeps
+  the partner's name as alt (it is aria-hidden, so it is never read twice); qa.py unchanged. Guard: a **sample qa** step
+  in `check-all.mjs` — a second build with the committed dashboard samples (partner logos, articles, offers and the
+  pop-up) and qa.py over it; in the full suite (pre-push) and in the routed pre-commit for the components / styles,
+  offers, blog and home-section rules (`check-plan.mjs → sampleQa`). Proved: the copy's alt emptied in that build →
+  qa.py «FAIL images (4)».
