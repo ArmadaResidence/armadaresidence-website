@@ -2099,4 +2099,13 @@ Switch day, following `docs/launch-runbook.md` with Ahmed's brief of 8 Nov 2026.
   first press, touch, hover or focus inside them, so no press is lost. The rooms tabs, offers and counters stay as
   they are (listeners / an IntersectionObserver only). `home-sections-check` and `gallery-site-check` wait for the
   widgets to start.
+  Result (`220b35e` live, median of 5, `reports/lighthouse/post1-step2-live-summary.md`): mobile 85 → **90** (runs
+  83–91), TBT 289 → 84 ms, LCP 3.05 → 3.08 s (unchanged — still above 2.5 s), FCP 2.28 s; desktop 96, LCP 1.22 s.
+  New: lab CLS 0.031 (3 of 5 runs 0.03–0.05; earlier sets ≤ 0.001), cause «Web font loaded» — the Arabic 700 weight
+  arrives after the first paint and its swap changes the height of the heading above the «فرعانا» panes; the page
+  now paints before that font. Still «good» (< 0.1); open — the choice is preloading the 700 weight (≈ 30 KB earlier,
+  competing with the LCP photo) or metric overrides on the fallback face (an invisible-change pass). Live suite: 35/36
+  then `motion-check` alone — its failures moved between runs (dropped connections; once CLS 0.0114 on
+  /en/shafa-road/king-room/ at 375; once three reveal blocks on /airport-road/ at 375) and the next run passed; the
+  two widgets are not on those pages' failing blocks.
 
