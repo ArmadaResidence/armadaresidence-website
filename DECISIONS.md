@@ -1964,3 +1964,53 @@ Ahmed's approved home design (desktop 1440, adapted for phones), built in the or
   Shafa Road two) failed the check's «first six from six groups» rule — wrong for unequal properties, since alternating
   the properties repeats a Shafa Road group; the rule is now «the first six show both properties and three kinds» (live:
   579 checks passed); the order itself was right.
+
+## 2026-11-08 — Launch: armadaresidence.com serves the new site (Ahmed, 8 Nov 2026)
+
+Switch day, following `docs/launch-runbook.md` with Ahmed's brief of 8 Nov 2026. Times in Asia/Riyadh.
+
+- **Pre-flight.** Ahmed confirmed `booking_confirmed_v2` (ar + en) approved on both WhatsApp numbers in YCloud, with
+  the same 8 variables in the same order as `booking_confirmed`. Storage copied to `archive/storage-2026-11-08/`
+  (gitignored): `media-originals` 1,032 files, 875,776,477 bytes — equal to `storage.objects`; `partner-quotes` and
+  `job-applications` empty. Full suite on `113aef5`: 37/37.
+- **Launch commit `7694de5`.** `seo.json → live_url` = `https://armadaresidence.com` (email links, the club `?go=`
+  redirect, the email logo, the deploy watchdog's `/version.json`); the Auth templates regenerated (logo from the
+  domain — `supabase config push` run by Ahmed); `check-all --live` defaults to the domain; `careers-server-check`
+  sends from the domain origin; WhatsApp confirmations go out as the Meta template `booking_confirmed_v2`
+  (`whatsapp.ts → WA_TEMPLATE_NAMES`; the log `whatsapp_messages.template`, the idempotency key and the dashboard
+  labels keep the internal name `booking_confirmed`); the runbook gained step 6a (club) and the sitemap count.
+  Canonical, hreflang, OG, JSON-LD, sitemap host, robots and `public/CNAME` were already on the domain.
+- **DNS (Ahmed, Hostinger).** Apex A ×4 `185.199.108–111.153`, AAAA ×4 `2606:50c0:8000–8003::153`, `www` CNAME
+  `armadaresidence.github.io`, TTL 300; the Hostinger CDN apex / `www` records removed. Snapshot before and after
+  through 1.1.1.1 and 8.8.8.8: MX (`mx1` / `mx2.hostinger.com`), SPF, DMARC (`p=none`), DKIM
+  (`hostingermail-a/b/c`, `resend._domainkey`), `send` MX + TXT, autodiscover / autoconfig, the Google verification
+  TXT, `admin` and `club` — identical. `partners.armadaresidence.com` does not exist in DNS (no redirect needed);
+  `discovertaif` still serves the legacy site (runbook step 6, open).
+- **GitHub Pages (≈ 01:40, 8 Nov).** Variable `PUBLIC_BASE_PATH` deleted (the build is at the root, production
+  robots); custom domain `armadaresidence.com`; push of `7694de5` → run 42421790941 green; certificate approved for
+  the apex and `www` (expires 6 Feb 2027); Enforce HTTPS on. `http://`, `www` and
+  `armadaresidence.github.io/armadaresidence-website/*` 301 to `https://armadaresidence.com/*`; `/version.json` =
+  `7694de5`; sitemap 84 URLs; no page of the live site (89 scanned) mentions github.io. Disabling the deploy watchdog
+  for the switch was refused by the session's permission classifier and was not needed.
+- **Functions.** Redeployed with the new content: `booking-request`, `booking-admin`, `club`, `dining-notify`,
+  `job-application`, `login-code`, `admin-users`, `site-deploy-report`, `site-rebuild`, `partners-admin`,
+  `label-suggest`.
+- **Club.** `ArmadaResidence/armada-club` `d666fe5`: `club.armadaresidence.com/?src=…` → `https://armadaresidence.com/club/?src=…`.
+- **CORS after verification.** `site_origins` = the domain + `www` only; the Supabase secret `BOOKING_ALLOWED_ORIGINS`
+  (it held `armadaresidence.com,armadaresidence.github.io`) unset by Ahmed; `booking-request`, `job-application`,
+  `club` refuse `https://armadaresidence.github.io`. `dining-notify` still answers it: it also serves the dashboard,
+  whose origins (`admin_origins`) keep `armadaresidence.github.io` as the dashboard's fallback origin, checked by the
+  admin repository's verify job — a separate decision. `admin-cors-check --public` checks the refusal.
+- **Live checks.** `check-all --live https://armadaresidence.com`: 35/35. Lighthouse, home on the domain: mobile 71
+  (median of 5; runs 60–83), LCP 3.92 s, CLS 0.001, initial first party 398 KB; desktop 96, LCP 1.26 s; a11y / best
+  practices / SEO 100 on both. Mobile is below the target (≥ 90, LCP < 2.5 s) and slower than the last github.io
+  measurement (91, 3.14 s, 6 Nov) — open, to be looked at on its own (the hero LCP image on phones).
+- **Instant booking.** Already on before the switch — `show_prices` and `instant_booking` true at both branches since
+  5 Nov 2026 08:54 UTC (turned on by Ahmed from the dashboard); `instant_limits` = 90 nights, same-day cutoff 23:45.
+  Read-only check on launch day: `room_from_prices` returns every room type, `quote_stay` answers `instant: true` at
+  both branches, the live room page shows «يبدأ من 200 ريال لليلة شامل الضريبة».
+  After the CORS commit `9ee2daa` (full suite 37/37, deployed — `/version.json` = `9ee2daa`), against
+  `https://armadaresidence.com`: `booking-instant-check` (AR + EN, 1440 + 375), `booking-nav-check` (622 checks),
+  `drawer-check`, `datepicker-check` (629), `booking-whatsapp-check` (64) and `admin-cors-check --public` (35/35) all
+  green. They stub the booking endpoint, so the end-to-end path (a real booking → emails, WhatsApp
+  `booking_confirmed_v2`, the dashboard row) is Ahmed's real test booking, cancelled from the dashboard.

@@ -673,6 +673,35 @@ first hour / day / week; this list puts it in order with what changed since (the
 dashboard on the same GitHub account, email links) and says who does each step. **أحمد** = only Ahmed can do it (an
 account, a DNS panel, a real phone or mailbox, a decision); **Claude** = can be done from here.
 
+### Status on launch day (8 Nov 2026 — DECISIONS.md 2026-11-08 «Launch»)
+
+| # | Done? | Note |
+|---|---|---|
+| A1 | ✅ | full suite green on `113aef5` (37/37) and on the launch commit `7694de5` |
+| A2 | ✅ | DNS snapshot before / after through 1.1.1.1 and 8.8.8.8 (Claude); every mail record identical |
+| A3 | ✅ | TTL 300 on the apex and `www` (Ahmed) — raise back to 3600 s once stable |
+| A4 | ⬜ | optional — the `_github-pages-challenge-armadaresidence` TXT does not exist yet |
+| A5 | ✅ | decided in the pre-launch fix sessions (4–7 Nov 2026) |
+| A6 | ⬜ | GA4 data stream / Tag Assistant on the domain — Ahmed (post-launch list) |
+| I1, I2 | ⬜ | Ahmed — instant booking itself is on at both branches since 5 Nov 2026 |
+| B1 | ✅ | freeze held (the watchdog stayed on — disabling it was refused and not needed) |
+| B2, B3, B5 | ✅ | custom domain, `PUBLIC_BASE_PATH` deleted, certificate (apex + www), Enforce HTTPS — by Claude with `gh` |
+| B4 | ✅ | Ahmed, Hostinger; the Hostinger CDN apex / `www` records removed |
+| B6 | ✅ | `admin.armadaresidence.com` 200, sign-in page renders |
+| B7 | ✅ | `armada-club` `d666fe5` — `/?src=qa-launch` lands on `/club/?src=qa-launch` |
+| B8 | ⬜ | `discovertaif.` still serves the legacy site (Ahmed, Hostinger → Redirects); `partners.` does not exist in DNS — nothing to do |
+| B9 | ⬜ | Ahmed — Search Console sitemap (84 URLs) + indexing requests |
+| B10 | ✅ | `check-all --live https://armadaresidence.com` 35/35 |
+| B11 | ⬜ | Ahmed — GA4 Realtime / Tag Assistant on the domain |
+| B12 | ✅ | `live_url` = the domain in `7694de5`; 11 functions redeployed |
+| B13 | ⬜ | Ahmed — one real booking (cancel it from the dashboard) and one partner enquiry |
+| B14 | ✅ | Auth templates regenerated; `supabase config push` run by Ahmed; `config push` shows Auth up to date |
+| B15 | ✅ | DECISIONS.md 2026-11-08 |
+| §3 #11 | ✅ | the forms' CORS = the domain + www; `BOOKING_ALLOWED_ORIGINS` unset (Ahmed); github.io refused by the site-only functions |
+| §3 #13 | ✅ | `check-all --live` defaults to the domain |
+| §3 #14 | ✅ | expected sitemap count 84 (runbook updated) |
+| D | ◐ | Lighthouse home on the domain: desktop 96, mobile 71 (LCP 3.92 s — below the target, open); first day / week checks pending |
+
 ### A. Before the day (24–48 h)
 
 | # | Step | Who |
