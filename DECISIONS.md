@@ -2029,8 +2029,16 @@ Switch day, following `docs/launch-runbook.md` with Ahmed's brief of 8 Nov 2026.
   The drawer's form (and its date fields) start there; a booking link pressed earlier starts it at once (`booking:init`
   from `drawer.ts`; a form whose script failed still falls back to /booking/). The slideshow and the video wait for it
   too, and a photo fetched ahead of its turn is `fetchpriority=low`. The /booking/ page's own form starts immediately.
-  GTM's timing (11 Oct 2026: first interaction or 3.5 s after `load`) is unchanged — it is a tracking decision and is
-  what still stands between the page and ≥ 90 on Lighthouse's mobile lab (see the after numbers below).
+  GTM's timing (11 Oct 2026: first interaction or 3.5 s after `load`) is unchanged — it is a tracking decision.
+  After (`258ea25` live, median of 5, `reports/lighthouse/post1-after-live-summary.md`): mobile 68 → **85** (runs
+  80–88), LCP 4.15 → **3.05 s**, FCP 2.41 → 2.44 s, TBT 530 → 289 ms, CLS 0.001; desktop 97, LCP 1.16 s. The target
+  (≥ 90, LCP ≤ 2.5 s) is not reached. What remains: the LCP photo itself is on the network at 0.27 s and loaded by
+  0.37 s; the simulated FCP (2.4 s) carries the 59 KB compressed HTML (the whole stylesheet inline, 109 KB — decision
+  of 30 Oct 2026) and the ~15 component scripts requested at high priority before the first paint, and Lighthouse's
+  headless Chrome often paints 1–2 s after `load`, so its simulation counts everything that started before; TBT is
+  our own scripts' evaluation (ClientRouter, Base) plus GTM when it lands inside the window. Next levers, each a
+  decision of its own: GTM on the first interaction only; the below-the-fold component scripts (rooms tabs, offers,
+  reviews, the logos strip) started by `afterPaint`; a critical-CSS split (reverses 30 Oct).
 - **discovertaif.armadaresidence.com.** Served by Hostinger's web hosting (the Cloud Startup plan of the old site),
   not by a record of the managed DNS zone — runbook step 6b′. A GitHub Pages redirect repository like `club.` was
   prepared (`ArmadaResidence/armada-discovertaif`, in `reports/post-launch-1/`); creating the public repository was
@@ -2062,7 +2070,7 @@ Switch day, following `docs/launch-runbook.md` with Ahmed's brief of 8 Nov 2026.
   «المستخدم» is a list of the staff users (inactive ones marked «(موقوف)») plus «بلا مستخدم مسجَّل (—)», filtering by
   `actor_id`. Nothing backfilled: entries without `actor_id` show «—» with their recorded source. On 8 Nov 2026 that is
   591 of 5,556 entries (migrations 206, system 169, changes made through Claude 153, seed 31, website 30, SQL Editor
-  2). Migration `20261108100000_audit_actors`; tests `supabase/tests/audit-actors.sql` (12/12 on a preview branch) and
+  2); 592 of 5,557 after this session's migrations (the CR field update). Migration `20261108100000_audit_actors`; tests `supabase/tests/audit-actors.sql` (12/12 on a preview branch) and
   `admin-audit-check` (offline, in the suite).
 - **Unified number.** The company's unified number 7040304821 replaces the Taif branch CR 4032276628 everywhere
   (it supersedes 22 Oct 2026): `legal.json` (footer, every email footer, the Auth templates), the /policies/ operator
@@ -2074,3 +2082,9 @@ Switch day, following `docs/launch-runbook.md` with Ahmed's brief of 8 Nov 2026.
   edited in place — regenerating it from the legacy copy would drop texts added since), the fact sheets (both PDFs
   regenerated), descriptions and structured data. No hard-coded 108 / 168 remains in content, code, the published
   blog / FAQ / offers / dining texts or the dashboard texts.
+- **Production.** Migrations `20261108100000` and `20261108100100` (dry run first, then `db push`); functions
+  redeployed with the new content: `booking-request`, `booking-admin`, `club`, `dining-notify`, `job-application`,
+  `login-code`, `admin-users`, `site-deploy-report`; the Auth templates (invite / reset, new number) — `config push`
+  was refused to the session and run by Ahmed. Commit `258ea25`: full suite 38/38 before the commit, site deploy
+  42495978603 green, `/version.json` = `258ea25`; dashboard deploy 42496148217 green; live suite
+  `check-all --live https://armadaresidence.com` 36/36.
