@@ -53,6 +53,23 @@ Written 30 Oct 2026. Nothing in this document has been done yet. It is the order
    Delete the old apex A / AAAA records `‹current Hostinger IPs›` and any `ALIAS` / redirect Hostinger adds for the apex (Hostinger "website" parking). Check the GitHub IPs against GitHub's documentation on the day. GitHub Pages then redirects `www` → apex with a 301.
 5. **Wait for the certificate.** Settings → Pages shows "DNS check successful", then the certificate is issued (usually minutes, up to an hour). Then tick **Enforce HTTPS**.
 6. **Legacy subdomains** (`discovertaif.`, `partners.`): point them to the new sections. Hostinger → Domains → Redirects: `discovertaif.armadaresidence.com` → `https://armadaresidence.com/discover-taif/` (301), `partners.armadaresidence.com` → `https://armadaresidence.com/partners/` (301). The github.io menu URL keeps working; the site links to `/menu/`.
+6b′. **discovertaif.armadaresidence.com (found 8 Nov 2026).** It is NOT in the DNS zone Ahmed manages: it answers from
+   Hostinger's web hosting (Cloud Startup plan, the account the old site lived in — `Server: hcdn`, `platform:
+   hostinger`; A `147.79.119.186` + `77.37.50.2`, AAAA `2a02:4780:2a:4d30:df35:1578:46ac:673e` +
+   `2a02:4780:37:d24c:4625:9a47:e8b8:7ee9` through `ns1/ns2.dns-parking.com`). The hosting plan publishes those records
+   for a website / subdomain it hosts, which is why the zone shows nothing; the files are the legacy one-page guide of
+   18 Sep 2026 (no deep links). Same pattern as `club.`: a GitHub Pages redirect repository
+   `ArmadaResidence/armada-discovertaif` (prepared: `CNAME` = the subdomain, `redirect.js` → `https://armadaresidence.com/discover-taif/`
+   keeping the whole query string and hash, `?lang=en` → `/en/discover-taif/`, `index.html` = `404.html` with a meta
+   refresh, canonical and `noindex`; GitHub Pages cannot send a server-side 301 — this is a `location.replace` + meta
+   refresh, as for `club.`). Steps:
+   1. Create the repository from the prepared folder and push it; Settings → Pages: branch `main` / root, custom domain
+      `discovertaif.armadaresidence.com` (creating the public repository needs Ahmed's OK — refused to the session).
+   2. Hostinger, the HOSTING account: Websites → the `discovertaif.armadaresidence.com` website (or the main site's
+      Subdomains list) → delete it, so its A / AAAA records disappear.
+   3. Hostinger, the DOMAIN's DNS zone: add `CNAME` · name `discovertaif` · target `armadaresidence.github.io` · TTL 300.
+   4. Wait for the certificate (Pages → Enforce HTTPS), then check `https://discovertaif.armadaresidence.com/?utm_source=qa`
+      lands on `https://armadaresidence.com/discover-taif/?utm_source=qa` and `/?lang=en` on `/en/discover-taif/`.
 6a. **club.armadaresidence.com (added 8 Nov 2026).** The standalone club repository `ArmadaResidence/armada-club` is a redirect only (since 3 Nov 2026). In its `redirect.js`, `index.html` and `404.html` change the target from the review address to `https://armadaresidence.com/club/` (keeping the query string, the printed QR codes carry `?src=`), push, and check `https://club.armadaresidence.com/?src=qa` lands on `https://armadaresidence.com/club/?src=qa`. Do not touch the `club` DNS record.
 6b. **Email links (added 4 Nov 2026).** In `content/seo.json` set `live_url` to `https://armadaresidence.com` (it holds the review address until today; on 8 Nov 2026 this was part of the launch commit, with the QA defaults and the Auth templates), commit and push, then redeploy the email-sending functions (`booking-request`, `club`, `dining-notify`, `job-application`, `login-code`) so their generated content carries it — every link in the club / member-offer / dining emails, the club `?go=` redirect and the email logo move to the domain. Regenerate the Auth templates (`node scripts/auth-templates.mjs`) and `supabase config push`.
 7. **Search Console.** The Domain property is already verified by the DNS TXT record. Submit `https://armadaresidence.com/sitemap-index.xml` (Sitemaps → Add). Use URL Inspection → *Request indexing* for `/`, `/en/`, `/airport-road/` and `/shafa-road/`.

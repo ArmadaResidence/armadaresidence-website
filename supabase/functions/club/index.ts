@@ -117,13 +117,13 @@ const fnUrl = () => `${url()}/functions/v1/club`;
 const unsubscribePage = (token: string, L: 'ar' | 'en') => `${site()}${L === 'ar' ? '' : '/en'}/club/unsubscribe/?t=${encodeURIComponent(token)}`;
 
 /** the welcome email: Resend's id when accepted, else null (logged without the address) */
-async function sendWelcome(to: string, token: string, sink: boolean): Promise<string | null> {
+async function sendWelcome(to: string, token: string, sink: boolean, name: string | null): Promise<string | null> {
   const key = Deno.env.get('RESEND_API_KEY');
   if (!key) {
     console.error('club: no RESEND_API_KEY — welcome not sent');
     return null;
   }
-  const mail = clubWelcome(content, { unsubscribe: { ar: unsubscribePage(token, 'ar'), en: unsubscribePage(token, 'en') } });
+  const mail = clubWelcome(content, { unsubscribe: { ar: unsubscribePage(token, 'ar'), en: unsubscribePage(token, 'en') }, name });
   try {
     const res = await fetch('https://api.resend.com/emails', {
       method: 'POST',
@@ -200,7 +200,7 @@ async function join(req: Request, body: Record<string, unknown>, test: boolean):
     return json(req, 500, { ok: false, error: 'store_failed' });
   }
   let welcome: string | null = null;
-  if (r.data.welcome && v.data.email) welcome = await sendWelcome(v.data.email, r.data.token, test || r.data.is_test);
+  if (r.data.welcome && v.data.email) welcome = await sendWelcome(v.data.email, r.data.token, test || r.data.is_test, v.data.name || null);
   console.log('club: joined', clubSource(body.src) || 'site', r.data.welcome ? (welcome ? 'welcome sent' : 'welcome failed') : '', test ? 'TEST' : '');
   return json(req, 200, { ok: true, ...(test ? { welcome_id: welcome } : {}) });
 }

@@ -4,7 +4,7 @@
 // which change they reversed. Date filter = the site's picker (past allowed); «تحميل المزيد» pages by id.
 import { useEffect, useMemo, useState } from 'react';
 import * as api from '../lib/api';
-import type { AuditRow } from '../lib/api';
+import type { AuditActor, AuditRow } from '../lib/api';
 import { useSession } from '../lib/session';
 import { BRANCH_NAMES, longDate, riyadhDateTime, riyadhDateTimeLong, rowsWord, sar } from '../lib/format';
 import DateField from '../components/DateField';
@@ -89,6 +89,13 @@ export default function Audit() {
   const [to, setTo] = useState('');
   const [confirm, setConfirm] = useState<{ key: string; rows: AuditRow[] } | null>(null);
   const [busy, setBusy] = useState(false);
+  // who made each change (8 Nov 2026): name + sign-in email by actor_id; «—» when none was recorded
+  const [actors, setActors] = useState<AuditActor[]>([]);
+  useEffect(() => {
+    api.auditActors().then(setActors).catch((e) => setError((e as Error).message));
+  }, []);
+  const actorById = useMemo(() => new Map(actors.map((a) => [a.user_id, a])), [actors]);
+  const staffUsers = useMemo(() => actors.filter((a) => a.is_staff), [actors]);
 
   const filters = useMemo(() => ({ entity: entity || undefined, actor: actor || undefined, branch: branch || undefined, from: from || undefined, to: to || undefined }), [entity, actor, branch, from, to]);
 
@@ -182,7 +189,15 @@ export default function Audit() {
           </select>
         </Field>
         <BranchSelect id="a-branch" branches={Object.entries(BRANCH_NAMES).map(([slug, name_ar]) => ({ slug, name_ar }))} value={branch} onChange={setBranch} allLabel="الكل" />
-        <Field label="المستخدم" id="a-actor"><input id="a-actor" className="field" value={actor} onChange={(e) => setActor(e.target.value)} /></Field>
+        <Field label="المستخدم" id="a-actor">
+          <select id="a-actor" className="field" value={actor} onChange={(e) => setActor(e.target.value)}>
+            <option value="">الكل</option>
+            {staffUsers.map((a) => (
+              <option key={a.user_id} value={a.user_id}>{a.full_name ?? a.email ?? '—'}{a.email && a.full_name ? ` — ${a.email}` : ''}{a.active ? '' : ' (موقوف)'}</option>
+            ))}
+            <option value={api.NO_ACTOR}>بلا مستخدم مسجَّل (—)</option>
+          </select>
+        </Field>
         <div className="col-span-2 md:col-span-4 lg:col-span-2">
           <DateField mode="range" label="من" endLabel="إلى" start={from} end={to} onChange={(a, b) => { setFrom(a); setTo(b); }} min="past" id="a-dates" />
         </div>
@@ -203,7 +218,7 @@ export default function Audit() {
                 <li key={g.key} className="card p-3 text-sm" data-batch={r.batch_id ?? undefined} data-reverted={wasReverted || undefined}>
                   <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-ink-muted">
                     <span className="num-ar">{riyadhDateTimeLong(r.at)}</span>
-                    <span className="text-ink font-bold">{ACTOR[r.actor_label] ?? r.actor_label}</span>
+                    <ActorName row={r} actor={r.actor_id ? actorById.get(r.actor_id) : undefined} />
                     <span>{ENTITY[r.entity] ?? r.entity}</span>
                     {r.branch && <span>{BRANCH_NAMES[r.branch]}</span>}
                     <span>{r.action === 'insert' ? 'إضافة' : r.action === 'delete' ? 'حذف' : 'تعديل'}</span>
@@ -255,6 +270,27 @@ export default function Audit() {
         )}
       </Modal>
     </div>
+  );
+}
+
+/** who made the change (8 Nov 2026): the staff name and sign-in email; «—» when no actor was recorded (migrations,
+ *  system jobs, the website, the seed, SQL outside the dashboard) — then the recorded source in muted text */
+function ActorName({ row, actor }: { row: AuditRow; actor: AuditActor | undefined }) {
+  if (!row.actor_id) {
+    const source = ACTOR[row.actor_label] ?? row.actor_label;
+    return (
+      <span data-actor="none" className="inline-flex flex-wrap items-baseline gap-x-1.5">
+        <span className="text-ink font-bold">—</span>
+        {source && <span>({source})</span>}
+      </span>
+    );
+  }
+  const name = actor?.full_name ?? row.actor_label ?? '—';
+  return (
+    <span data-actor={row.actor_id} className="inline-flex flex-wrap items-baseline gap-x-1.5">
+      <span className="text-ink font-bold">{name}</span>
+      {actor?.email && <span dir="ltr" className="break-all">{actor.email}</span>}
+    </span>
   );
 }
 

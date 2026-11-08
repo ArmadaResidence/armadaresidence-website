@@ -49,6 +49,8 @@ document.addEventListener(
     const cur = currentDrawer();
     if (!cur || cur.dialog.contains(a)) return; // no drawer on this page (e.g. /booking/ itself): follow the link
     e.preventDefault();
+    // the form starts after the first paint (8 Nov 2026); a press before that starts it now (synchronous event)
+    cur.dialog.querySelector('form[data-booking-form]')?.dispatchEvent(new CustomEvent('booking:init'));
     if (!cur.dialog.querySelector('form[data-booking-ready]')) {
       location.assign(a.href); // the form's script is not running: a full load of the booking page, never an inert form
       return;

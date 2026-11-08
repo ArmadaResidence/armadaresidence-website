@@ -144,6 +144,8 @@ export interface Setting {
 export interface AuditRow {
   id: number;
   at: string;
+  /** the staff user who made the change; null for migrations, system jobs, the website, the seed (8 Nov 2026) */
+  actor_id: string | null;
   actor_label: string;
   entity: string;
   entity_id: string;
@@ -448,17 +450,33 @@ export async function labelSuggest(text: string, from: 'ar' | 'en', signal?: Abo
   }
 }
 
+/** «المستخدم» in «السجل» (8 Nov 2026): a staff user's id, or NO_ACTOR for the entries without a recorded actor */
+export const NO_ACTOR = 'none';
 export async function audit(f: { branch?: string; entity?: string; actor?: string; from?: string; to?: string }, limit = 300, before?: number): Promise<AuditRow[]> {
-  let q = supabase.from('audit_log').select('id,at,actor_label,entity,entity_id,branch,action,old,new,batch_id,reverts_batch').order('id', { ascending: false }).limit(limit);
+  let q = supabase.from('audit_log').select('id,at,actor_id,actor_label,entity,entity_id,branch,action,old,new,batch_id,reverts_batch').order('id', { ascending: false }).limit(limit);
   if (f.branch) q = q.eq('branch', f.branch);
   if (f.entity) q = q.eq('entity', f.entity);
-  if (f.actor) q = q.ilike('actor_label', `%${f.actor.replace(/[%,()]/g, '')}%`);
+  if (f.actor === NO_ACTOR) q = q.is('actor_id', null);
+  else if (f.actor) q = q.eq('actor_id', f.actor);
   if (f.from) q = q.gte('at', f.from + 'T00:00:00+03:00');
   if (f.to) q = q.lte('at', f.to + 'T23:59:59+03:00');
   if (before) q = q.lt('id', before);
   const { data, error } = await q;
   if (error) fail(error, 'audit_log');
   return data as AuditRow[];
+}
+/** «السجل» (8 Nov 2026): name and sign-in email of every staff user and every recorded actor (audit:view) */
+export interface AuditActor {
+  user_id: string;
+  full_name: string | null;
+  email: string | null;
+  active: boolean;
+  is_staff: boolean;
+}
+export async function auditActors(): Promise<AuditActor[]> {
+  const { data, error } = await supabase.rpc('audit_actors');
+  if (error) fail(error, 'audit_actors');
+  return (data ?? []) as AuditActor[];
 }
 /** The batches among `ids` that a later revert reversed (and whose revert was not itself reverted). */
 export async function revertedBatches(ids: string[]): Promise<Set<string>> {

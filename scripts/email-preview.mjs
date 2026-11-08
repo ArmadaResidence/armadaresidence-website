@@ -127,6 +127,8 @@ const mails = {
   'dining-opening': diningOpening(content, { slug: 'lario', branch: 'airport-road', nameAr: 'لاريو — مطعم ومقهى عالمي', nameEn: 'LARIO — International Dining & Café' }),
   // «إياب» (3 Nov 2026): the welcome email of a sign-up with an email
   'club-welcome': clubWelcome(content, { unsubscribe: { ar: 'https://armadaresidence.com/club/unsubscribe/?t=00000000-0000-4000-8000-000000000000.0123456789abcdef0123456789abcdef', en: 'https://armadaresidence.com/en/club/unsubscribe/?t=00000000-0000-4000-8000-000000000000.0123456789abcdef0123456789abcdef' } }),
+  // the welcome of a sign-up that gave a name (8 Nov 2026): «حيّاك دايم يا أحمد.»
+  'club-welcome-named': clubWelcome(content, { name: 'أحمد محمد حلمي', unsubscribe: { ar: 'https://armadaresidence.com/club/unsubscribe/?t=x', en: 'https://armadaresidence.com/en/club/unsubscribe/?t=x' } }),
   // «إرسال للأعضاء» (3 Nov 2026): a member-only offer with its code
   'club-member-offer': memberOffer(content, { titleAr: 'خصم 15٪ لأعضاء إياب', titleEn: '15% off for club members', descriptionAr: 'على كل الليالي حتى نهاية الشهر في فرع طريق المطار.', descriptionEn: 'On every night until the end of the month at Airport Road.', code: 'CLUB15', validTo: '2026-11-30', book: { ar: 'https://armadaresidence.com/booking/?promo=CLUB15', en: 'https://armadaresidence.com/en/booking/?promo=CLUB15' }, unsubscribe: { ar: 'https://armadaresidence.com/club/unsubscribe/?t=x', en: 'https://armadaresidence.com/en/club/unsubscribe/?t=x' } }),
   // the site-deploy alert to the admins (6 Nov 2026): a failed dashboard rebuild and the watchdog's stop

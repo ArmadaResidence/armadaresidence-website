@@ -27,6 +27,43 @@ export function bindOnce(el: Element, key = 'bound'): boolean {
 
 export const reducedMotion = (): boolean => matchMedia('(prefers-reduced-motion: reduce)').matches;
 
+/**
+ * Work the first view does not need (post-launch session 1, 8 Nov 2026 — mobile LCP): runs once the page has loaded
+ * AND painted its largest element, at the next idle moment. The `load` event alone comes long before the hero photo
+ * is on a phone's screen, so anything started there competes with it for the main thread and the network (the
+ * drawer's booking form, the slideshow's next photo). Browsers without an LCP entry (Safari, Firefox) use the idle
+ * moment after `load`; one that never reports it is covered by a 3 s fallback. After a client-side navigation
+ * (`load` long past, the first page's LCP buffered) it runs at the next idle moment.
+ */
+export function afterPaint(fn: () => void): void {
+  type IdleWindow = Window & { requestIdleCallback?: (cb: () => void, o?: { timeout: number }) => number };
+  let done = false;
+  const run = () => {
+    if (done) return;
+    done = true;
+    const w = window as IdleWindow;
+    if (w.requestIdleCallback) w.requestIdleCallback(fn, { timeout: 1500 });
+    else setTimeout(fn, 50);
+  };
+  const lcp = typeof PerformanceObserver !== 'undefined' && (PerformanceObserver.supportedEntryTypes ?? []).includes('largest-contentful-paint');
+  const loaded = () => {
+    if (!lcp) return run();
+    try {
+      // buffered: an entry painted before this call (or on the first page of a client-side visit) is delivered too
+      const po = new PerformanceObserver(() => {
+        po.disconnect();
+        run();
+      });
+      po.observe({ type: 'largest-contentful-paint', buffered: true });
+      setTimeout(run, 3000);
+    } catch {
+      run();
+    }
+  };
+  if (document.readyState === 'complete') loaded();
+  else window.addEventListener('load', loaded, { once: true });
+}
+
 export const isRtl = (el: Element = document.documentElement): boolean => getComputedStyle(el).direction === 'rtl';
 
 /** "1.2s" → 1200, "400ms" → 400, "16px" → 16 (the minifier rewrites 1200ms as 1.2s, so units matter). */

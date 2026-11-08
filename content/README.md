@@ -19,7 +19,7 @@ Every price, time, phone number, address, policy and piece of guest-facing copy 
 | `club.json` | «إياب — عضوية أرمادا ريزيدنس» (6 Nov 2026; the club of 3 Nov 2026): page copy and slogan, the one marketing consent text and its version, the welcome and member-offer emails. | approved (the texts DECISIONS.md lists as for approval excepted) |
 | `turnstile.json` | Cloudflare Turnstile switch + public site key (on since 5 Nov 2026). | live |
 | `taif-guide.json` | Discover Taif: 17 places (names, category, copy, alt, Google Maps links, photo, `nearest_branch`). Covers can be replaced from «الصور». | `verified: true` per place |
-| `partners.json` | B2B facts: units (168 = 108 + 60), 98 beds Shafa, drive times, coach parking, group meals, hall, sales contact, enquiry types. **No prices.** | `verified: true` |
+| `partners.json` | B2B facts: units (166 = 106 + 60; 108 until 8 Nov 2026), 98 beds Shafa, drive times, coach parking, group meals, hall, sales contact, enquiry types. **No prices.** | `verified: true` |
 | `partners-pages.json` | /partners/ page copy, **generated** by `scripts/legacy-partners-content.py`. Re-run the script; do not edit by hand. | approved |
 | `partners-photos.json` | The 13 photo slots of /partners/ and the ratio each keeps (filled from «الصور» → «صفحات الشركاء»). | complete |
 | `halls.json` | Meeting hall: branch, capacity 50, equipment and seating layouts (confirmed 9 Oct). | `verified: true` |

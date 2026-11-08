@@ -2014,3 +2014,63 @@ Switch day, following `docs/launch-runbook.md` with Ahmed's brief of 8 Nov 2026.
   `drawer-check`, `datepicker-check` (629), `booking-whatsapp-check` (64) and `admin-cors-check --public` (35/35) all
   green. They stub the booking endpoint, so the end-to-end path (a real booking → emails, WhatsApp
   `booking_confirmed_v2`, the dashboard row) is Ahmed's real test booking, cancelled from the dashboard.
+
+## 2026-11-08 — Post-launch session 1: mobile speed, discovertaif, the launch test bookings, the «إياب» greeting, the hero photos, «السجل», the unified CR, 106 units (Ahmed, 8 Nov 2026)
+
+- **Mobile speed (home).** Live baseline today (median of 5, `reports/lighthouse/post1-before-live-summary.md`):
+  mobile 68, LCP 4.15 s, FCP 2.41 s, TBT 530 ms (launch day: 71, 3.92 s). What the trace showed: the hero's phone
+  rendition is right (750 w AVIF, 44 KB, preloaded, eager, `fetchpriority=high`, requested at 0.28 s and loaded by
+  0.52 s); the LCP is late because of what runs before the first paint — the drawer's booking form (its date picker,
+  country list, quote and the `site_room_types` call), and the slideshow requesting photo 2 at high priority right
+  after `load`; and TBT is GTM (`gtm.js` + `gtag`, 321 KB, loaded 3.5 s after `load`). Measured on the live domain
+  with each part blocked: no booking form → LCP 2.6–2.9 s; no GTM → TBT 40–120 ms; both → score 86–92, LCP 2.57–2.94 s.
+  Fix (no image quality touched): `afterPaint()` in `src/lib/client.ts` — after `load` AND the first
+  largest-contentful-paint entry (3 s fallback; Safari / Firefox: the idle moment after `load`), at an idle moment.
+  The drawer's form (and its date fields) start there; a booking link pressed earlier starts it at once (`booking:init`
+  from `drawer.ts`; a form whose script failed still falls back to /booking/). The slideshow and the video wait for it
+  too, and a photo fetched ahead of its turn is `fetchpriority=low`. The /booking/ page's own form starts immediately.
+  GTM's timing (11 Oct 2026: first interaction or 3.5 s after `load`) is unchanged — it is a tracking decision and is
+  what still stands between the page and ≥ 90 on Lighthouse's mobile lab (see the after numbers below).
+- **discovertaif.armadaresidence.com.** Served by Hostinger's web hosting (the Cloud Startup plan of the old site),
+  not by a record of the managed DNS zone — runbook step 6b′. A GitHub Pages redirect repository like `club.` was
+  prepared (`ArmadaResidence/armada-discovertaif`, in `reports/post-launch-1/`); creating the public repository was
+  refused to the session and the DNS needs Ahmed: delete the hosted subdomain, then `CNAME discovertaif →
+  armadaresidence.github.io`. GitHub Pages cannot answer a server-side 301: like `club.`, a `location.replace` + meta
+  refresh with the query string kept.
+- **Launch test bookings.** Exactly two non-test bookings exist, both Ahmed's (one profile, his phone and email):
+  `AR-20261108-WD8A` (instant, Airport Road, two-bedroom suite 8 → 12 Nov, 4 nights, cancelled 14:51) and
+  `AR-20261108-HY62` (a REQUEST — not instant —, same room 9 → 12 Nov, cancelled 14:35). Rows: WD8A = the booking + 4
+  nights + 2 status rows + 2 WhatsApp log rows; HY62 = the booking + 2 status rows + 2 WhatsApp log rows; the two
+  consent rows stay (`reservation_id` → NULL) and with them the «إياب» membership; inventory already restored (WD8A's
+  nights 3 → 2 at 14:43, back to 3 at 14:51; HY62 never held a room). The DELETE was declined by the session's
+  permission layer (as on 30 Oct 2026): the guarded one-transaction script is
+  `reports/post-launch-1/delete-test-bookings.sql`, for Ahmed to run in the SQL Editor.
+- **«إياب» welcome greeting.** The sign-up form already asks for an optional name. The welcome email now opens with
+  «حيّاك دايم يا {الاسم الأول}.» / "Always welcome, {first name}." when one is given (its first word; «عبد» / «أبو»
+  keep the next word; anything that is not a plain name — digits, an address — keeps the plain greeting), and
+  «حيّاك دايم.» / "Always welcome." otherwise. `club.json → welcome_email.greeting` / `greeting_named`; the body no
+  longer starts with the greeting. `auth-emails-check` covers it.
+- **The hero and cover photos («الصور»).** The site build measures each published picture (`photos-engine heroScrim`
+  / `cardScrim`); the live home page (built 14:41 Riyadh, after the last change) carries: slides 1, 2, 4, 6 — 0.91
+  everywhere; slide 3 — 0.87 phone, 0.91 above; slide 5 — 0.89 phone, 0.91 above; both «فرعانا» covers 0.91. All are
+  above the 0.6 aim, so every one shows «الصورة فاتحة خلف النص». The night facades are dark overall, but the measure
+  takes the brightest pixels behind the text — the lit signs and lamps — so they need the strongest layer. Found on
+  the way: the Airport Road «صورة الجوال» (`AR-COVER-M.png`) is attached to a GALLERY photo (the old cover), not to the
+  current cover, so the phone shows the desktop cover cropped — re-attach it from the cover's «صورة الجوال».
+- **«السجل».** Every entry shows who made it — the staff name and sign-in email next to the date — from
+  `public.audit_actors()` (security definer, audit:view, read-only; the users screen's list needs users:edit);
+  «المستخدم» is a list of the staff users (inactive ones marked «(موقوف)») plus «بلا مستخدم مسجَّل (—)», filtering by
+  `actor_id`. Nothing backfilled: entries without `actor_id` show «—» with their recorded source. On 8 Nov 2026 that is
+  591 of 5,556 entries (migrations 206, system 169, changes made through Claude 153, seed 31, website 30, SQL Editor
+  2). Migration `20261108100000_audit_actors`; tests `supabase/tests/audit-actors.sql` (12/12 on a preview branch) and
+  `admin-audit-check` (offline, in the suite).
+- **Unified number.** The company's unified number 7040304821 replaces the Taif branch CR 4032276628 everywhere
+  (it supersedes 22 Oct 2026): `legal.json` (footer, every email footer, the Auth templates), the /policies/ operator
+  section and its dashboard field (migration `20261108100100_unified_cr`: seed + the untouched draft; nothing was
+  published). The labels stay «السجل التجاري» / "CR". `4032276628` is a qa.py forbidden string. The fact sheets
+  carry no registration number.
+- **106 units.** Airport Road has 106 units, not 108 (`branches.json`; `partners.json` 106 / 60 = 166). Everything
+  else derives: the «من نحن» page, the home counters (total 166), the partners pages (`partners-pages.json` numbers
+  edited in place — regenerating it from the legacy copy would drop texts added since), the fact sheets (both PDFs
+  regenerated), descriptions and structured data. No hard-coded 108 / 168 remains in content, code, the published
+  blog / FAQ / offers / dining texts or the dashboard texts.

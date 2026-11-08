@@ -9,10 +9,12 @@
 //   - the sign-in code email: AR- subject without the code, code in the body (HTML and text), no code in the preheader
 //   - every email (staff, booking, partner): the reversed logo, the two fixed legal lines, CR / VAT never breakable or
 //     auto-linked, the number-detection guards (26 Oct 2026)
+//   - the «إياب» welcome (8 Nov 2026): «حيّاك دايم يا {الاسم الأول}.» / "Always welcome, {first name}." when the sign-up gave a
+//     plain name, the plain «حيّاك دايم.» / "Always welcome." otherwise (HTML, text part and preheader)
 //   node scripts/auth-emails-check.mjs
 import { readFileSync } from 'node:fs';
 import { KINDS, goLink, loadContent, renderAuthTemplates } from './auth-templates.mjs';
-import { bookingConfirmation, bookingNotification, loginCodeMail, partnerConfirmation } from '../supabase/functions/booking-request/email.ts';
+import { bookingConfirmation, bookingNotification, clubFirstName, clubWelcome, loginCodeMail, partnerConfirmation } from '../supabase/functions/booking-request/email.ts';
 
 const fails = [];
 let checks = 0;
@@ -96,6 +98,24 @@ const sample = { ref: 'AR-20991231-TEST', locale: 'ar', branch: 'airport-road', 
 footerChecks('booking notification', bookingNotification(c, sample).html, ['ar']);
 footerChecks('booking confirmation', bookingConfirmation(c, sample).html);
 footerChecks('partner confirmation', partnerConfirmation(c, { ...sample, requestType: 'umrah-group', organisation: 'شركة تجربة', roomsRequested: 10, meals: '' }).html);
+
+// the «إياب» welcome greeting (8 Nov 2026): the first name when the sign-up gave a plain one, the plain greeting otherwise
+const unsub = { ar: 'https://armadaresidence.com/club/unsubscribe/?t=x', en: 'https://armadaresidence.com/en/club/unsubscribe/?t=x' };
+for (const [name, first] of [['أحمد محمد حلمي', 'أحمد'], ['Ahmed Helmy', 'Ahmed'], ['عبد الله الشهري', 'عبد الله'], ['Jean-Luc Picard', 'Jean-Luc'], ['', null], [null, null], ['123', null], ['a@b.com', null], ['محمد-', null]]) {
+  check(clubFirstName(name) === first, `club welcome: first name of ${JSON.stringify(name)} is ${JSON.stringify(clubFirstName(name))}, expected ${JSON.stringify(first)}`);
+}
+{
+  const named = clubWelcome(c, { unsubscribe: unsub, name: 'أحمد محمد حلمي' });
+  const plain = clubWelcome(c, { unsubscribe: unsub });
+  const E = c.club_email;
+  check(E.ar.greeting === 'حيّاك دايم.' && E.ar.greeting_named === 'حيّاك دايم يا {name}.' && E.en.greeting === 'Always welcome.' && E.en.greeting_named === 'Always welcome, {name}.', 'club welcome: the greeting texts in club.json changed');
+  check(named.html.includes(`حيّاك دايم يا أحمد. ${E.ar.body}`) && named.text.includes(`حيّاك دايم يا أحمد. ${E.ar.body}`), 'club welcome: the named Arabic greeting is missing (HTML / text)');
+  check(named.html.includes(`Always welcome, أحمد. ${E.en.body.replace(/'/g, '&#39;')}`) || named.html.includes(`Always welcome, أحمد. ${E.en.body}`), 'club welcome: the named English greeting is missing');
+  check(named.text.includes(`Always welcome, أحمد. ${E.en.body}`), 'club welcome: the named English greeting is missing from the text part');
+  check(plain.text.includes(`حيّاك دايم. ${E.ar.body}`) && plain.text.includes(`Always welcome. ${E.en.body}`) && !plain.text.includes(' يا '), 'club welcome: the plain greeting changed');
+  check(/<div style="display:none;[^>]*>حيّاك دايم يا أحمد\. /.test(named.html) && /<div style="display:none;[^>]*>حيّاك دايم\. /.test(plain.html), 'club welcome: the preheader does not start with the greeting');
+  footerChecks('club welcome', named.html);
+}
 
 if (fails.length) {
   console.error(`auth-emails-check: ${fails.length} of ${checks} failed`);

@@ -505,6 +505,8 @@ export function initDateRange(root: HTMLElement): void {
 
 onPageLoad(() => {
   document.querySelectorAll<HTMLElement>('[data-daterange]').forEach((root) => {
+    // the booking drawer's fields start with its form (BookingForm, after the first paint — 8 Nov 2026)
+    if (root.closest('[data-booking-drawer]')) return;
     if (bindOnce(root)) initDateRange(root);
   });
 });

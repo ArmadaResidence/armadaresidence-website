@@ -295,7 +295,8 @@ const stepper = (name: 'adults' | 'children' | 'extra_beds', value: number, min:
 <script>
   import { firstTouch } from '@lib/visit';
   import { turnstileToken } from '@lib/turnstile';
-  import { bindOnce, onPageLoad } from '@lib/client';
+  import { afterPaint, bindOnce, onPageLoad } from '@lib/client';
+  import { initDateRange } from '@lib/daterange';
   import {
     bedsNeeded,
     branchMaxAdults,
@@ -1209,9 +1210,24 @@ const stepper = (name: 'adults' | 'children' | 'extra_beds', value: number, min:
     form.setAttribute('data-booking-ready', '');
   }
 
+  // post-launch session 1 (8 Nov 2026, mobile LCP): the drawer's form is not part of the first view, so it starts once
+  // the page has painted (afterPaint) — its date fields first, then the form (prefill writes the dates the picker
+  // shows). A booking link pressed before that asks for it at once (`booking:init`, dispatched by drawer.ts before it
+  // looks for data-booking-ready). The /booking/ page's own form starts immediately.
   onPageLoad(() => {
     document.querySelectorAll<HTMLFormElement>('form[data-booking-form]').forEach((form) => {
-      if (bindOnce(form)) initForm(form);
+      if (!bindOnce(form)) return;
+      const start = () => {
+        if (!bindOnce(form, 'booking-init')) return;
+        form.querySelectorAll<HTMLElement>('[data-daterange]').forEach((root) => {
+          if (bindOnce(root)) initDateRange(root);
+        });
+        initForm(form);
+      };
+      if (form.closest('[data-booking-drawer]')) {
+        form.addEventListener('booking:init', start);
+        afterPaint(start);
+      } else start();
     });
   });
 </script>

@@ -46,7 +46,9 @@
     "welcome_email": {
       "subject": "مرحبًا بك في إياب",
       "headline": "مرحبًا بك في إياب — عضوية أرمادا ريزيدنس",
-      "body": "حيّاك دايم. تم تسجيلك في إياب، وستصلك عروض الأعضاء الخاصة عبر الواتساب والبريد الإلكتروني لزيارتك القادمة.",
+      "greeting": "حيّاك دايم.",
+      "greeting_named": "حيّاك دايم يا {name}.",
+      "body": "تم تسجيلك في إياب، وستصلك عروض الأعضاء الخاصة عبر الواتساب والبريد الإلكتروني لزيارتك القادمة.",
       "unsubscribe_line": "لا تريد تلقي العروض؟ يمكنك إلغاء الاشتراك في أي وقت.",
       "unsubscribe": "إلغاء الاشتراك"
     },
@@ -92,7 +94,9 @@
     "welcome_email": {
       "subject": "Welcome to Eyab",
       "headline": "Welcome to Eyab — Armada Residence membership",
-      "body": "Always welcome. You've joined Eyab, and special member offers for your next visit will reach you by WhatsApp and email.",
+      "greeting": "Always welcome.",
+      "greeting_named": "Always welcome, {name}.",
+      "body": "You've joined Eyab, and special member offers for your next visit will reach you by WhatsApp and email.",
       "unsubscribe_line": "Don't want offers? You can unsubscribe at any time.",
       "unsubscribe": "Unsubscribe"
     },

@@ -47,7 +47,9 @@ FORBIDDEN = ["شقق مخدومة", "serviced apartment", "Serviced apartment", 
              "نادي أرمادا", "Armada Residence Club", "Armada Club", "اياب",
              # the unified cancellation policy (Ahmed, 6 Nov 2026): the old deadline and the old same-day wording
              "24 ساعة قبل الوصول", "24 ساعة قبل موعد الوصول", "24 hours before arrival", "نفس يوم الوصول",
-             "Same-day cancellation", "same-day cancellation"]
+             "Same-day cancellation", "same-day cancellation",
+             # the Taif branch CR shown until 8 Nov 2026; the company's unified number 7040304821 replaces it (Ahmed)
+             "4032276628"]
 TODO_MARKERS = ["[TODO", "TODO(", "[MISSING]", "lorem ipsum", "Lorem ipsum", "[يُؤكَّد]"]
 GENERIC_ALT = {"", "image", "img", "photo", "picture", "logo", "صورة", "صورة جديدة", "صوره"}
 ALLOWED_HOSTS = {"www.googletagmanager.com"}

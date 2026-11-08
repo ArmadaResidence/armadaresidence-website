@@ -1,5 +1,5 @@
 {
-  "_note": "Updated 8 Oct 2026 from reception/management answers + national-address proofs. Terminology: Airport Road = شقق فندقية (hotel apartments) — never 'شقق مخدومة'. Unit counts confirmed 9 Oct 2026 (108 / 60) and shown since 12 Oct 2026 (show_units).",
+  "_note": "Updated 8 Oct 2026 from reception/management answers + national-address proofs. Terminology: Airport Road = شقق فندقية (hotel apartments) — never 'شقق مخدومة'. Unit counts confirmed 9 Oct 2026 (108 / 60) and shown since 12 Oct 2026 (show_units); Airport Road corrected to 106 by Ahmed on 8 Nov 2026 (106 / 60 = 166).",
   "branches": [
     {
       "slug": "airport-road",
@@ -7,7 +7,7 @@
       "name_en": "Armada Residence – Airport Road",
       "type_ar": "شقق فندقية",
       "type_en": "Hotel Apartments",
-      "units": 108,
+      "units": 106,
       "show_units": true,
       "address_ar": "8138 طريق المطار، حي القيم الأعلى، الطائف 26561، المملكة العربية السعودية",
       "address_en": "8138 Airport Road, Al-Qaim Al-Aala District, Taif 26561, Saudi Arabia",
@@ -59,7 +59,7 @@
       "verified": true,
       "pending": [],
       "google_business_url": "https://share.google/P346csOpeuQzwvJA0",
-      "units_note": "confirmed by Ahmed 9 Oct 2026",
+      "units_note": "confirmed by Ahmed 9 Oct 2026; 106 (not 108), Ahmed 8 Nov 2026",
       "opened": "2025-09",
       "opened_ar": "سبتمبر 2025",
       "opened_en": "September 2025",

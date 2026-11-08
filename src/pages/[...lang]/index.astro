@@ -338,7 +338,7 @@ const quickFacts = fill(t.home.quick_facts, {
 </Base>
 
 <script>
-  import { bindOnce, cssNumber, onPageLeave, onPageLoad } from '@lib/client';
+  import { afterPaint, bindOnce, cssNumber, onPageLeave, onPageLoad } from '@lib/client';
 
   // The moving hero (5–6 Nov 2026). Deferred hero media — the video loops and the slideshow's photos after the first —
   // never loads with prefers-reduced-motion, Save-Data or a slow connection (2G / 3G or under 1.5 Mbit/s when the
@@ -351,15 +351,9 @@ const quickFacts = fill(t.home.quick_facts, {
     const slow = !!conn && (/(^|-)(2g|3g)$/.test(conn.effectiveType ?? '') || (typeof conn.downlink === 'number' && conn.downlink > 0 && conn.downlink < 1.5));
     return matchMedia('(prefers-reduced-motion: reduce)').matches || !!conn?.saveData || slow;
   };
-  const afterLoad = (fn: () => void) => {
-    const later = () => {
-      const w = window as Window & { requestIdleCallback?: (cb: () => void, o?: { timeout: number }) => number };
-      if (w.requestIdleCallback) w.requestIdleCallback(fn, { timeout: 2500 });
-      else setTimeout(fn, 800);
-    };
-    if (document.readyState === 'complete') later();
-    else window.addEventListener('load', later, { once: true });
-  };
+  // after the load event AND the first photo's paint (afterPaint, 8 Nov 2026): on a phone `load` comes long before the
+  // LCP photo is on screen, and photo 2 fetched there competed with it
+  const afterLoad = afterPaint;
   const token = (name: string, fallback: number) => cssNumber(getComputedStyle(document.documentElement).getPropertyValue(name)) || fallback;
 
   /** pausing: by the visitor (the button), the hidden tab, the hero off screen */
@@ -407,11 +401,13 @@ const quickFacts = fill(t.home.quick_facts, {
     const load = (i: number) => {
       if (!ready.has(i)) {
         const sl = slides[i];
+        const img = sl.querySelector<HTMLImageElement>('img');
+        // fetched ahead of its turn: never at the priority of what is on screen (8 Nov 2026)
+        if (img) img.fetchPriority = 'low';
         for (const el of sl.querySelectorAll<HTMLSourceElement | HTMLImageElement>('[data-srcset]')) {
           el.srcset = el.dataset.srcset ?? '';
           el.removeAttribute('data-srcset');
         }
-        const img = sl.querySelector<HTMLImageElement>('img');
         if (img?.dataset.src) {
           img.src = img.dataset.src;
           img.removeAttribute('data-src');

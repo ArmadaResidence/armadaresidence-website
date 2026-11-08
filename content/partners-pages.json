@@ -183,8 +183,8 @@
       "ar": "شريكك في الضيافة بالطائف."
     },
     "sub": {
-      "en": "Two hotels, 168 units and one commercial contact for travel agents, tour operators, Umrah organisers, corporate accounts and sports teams.",
-      "ar": "فندقان و168 وحدة ومسؤول تجاري واحد — لوكلاء السفر ومنظّمي الرحلات ومجموعات العمرة والشركات والفرق الرياضية."
+      "en": "Two hotels, 166 units and one commercial contact for travel agents, tour operators, Umrah organisers, corporate accounts and sports teams.",
+      "ar": "فندقان و166 وحدة ومسؤول تجاري واحد — لوكلاء السفر ومنظّمي الرحلات ومجموعات العمرة والشركات والفرق الرياضية."
     },
     "cta1": {
       "en": "Request B2B Rates",
@@ -195,8 +195,8 @@
       "ar": "استكشف فنادقنا"
     },
     "meta": {
-      "en": "2 properties · 168 units · B2B hospitality partner",
-      "ar": "فندقان · 168 وحدة · شريك ضيافة للشركات ووكلاء السفر"
+      "en": "2 properties · 166 units · B2B hospitality partner",
+      "ar": "فندقان · 166 وحدة · شريك ضيافة للشركات ووكلاء السفر"
     }
   },
   "proposition": {
@@ -226,8 +226,8 @@
       },
       [
         {
-          "en": "108 hotel apartments",
-          "ar": "108 شقة فندقية"
+          "en": "106 hotel apartments",
+          "ar": "106 شقة فندقية"
         },
         {
           "en": "On the Al Hada corridor towards Makkah Al-Mukarramah",
@@ -547,7 +547,7 @@
         "en": "Airport Road",
         "ar": "طريق المطار"
       },
-      "count": "108",
+      "count": "106",
       "unit": {
         "en": "Apartments",
         "ar": "شقة"
@@ -558,8 +558,8 @@
         "ar": "شقق أرمادا ريزيدنس الفندقية، طريق المطار، الطائف — الواجهة عند الغروب"
       },
       "lead": {
-        "en": "108 hotel apartments on Airport Road — on the Al Hada corridor towards Makkah Al-Mukarramah, 15 minutes from Taif airport. This is the property we place organised groups in — the larger inventory, twin rooms, suites with kitchens, the meeting hall, and parking that accommodates a tour coach.",
-        "ar": "108 شقة فندقية على طريق المطار — على محور الهدا باتجاه مكة المكرمة، على بُعد 15 دقيقة من مطار الطائف. هذا هو الفندق الذي نُسكِّن فيه المجموعات المنظَّمة — السعة الأكبر، والغرف بسريرين، والأجنحة المزوّدة بمطبخ، وقاعة الاجتماعات، والمواقف التي تتّسع لحافلة سياحية."
+        "en": "106 hotel apartments on Airport Road — on the Al Hada corridor towards Makkah Al-Mukarramah, 15 minutes from Taif airport. This is the property we place organised groups in — the larger inventory, twin rooms, suites with kitchens, the meeting hall, and parking that accommodates a tour coach.",
+        "ar": "106 شقة فندقية على طريق المطار — على محور الهدا باتجاه مكة المكرمة، على بُعد 15 دقيقة من مطار الطائف. هذا هو الفندق الذي نُسكِّن فيه المجموعات المنظَّمة — السعة الأكبر، والغرف بسريرين، والأجنحة المزوّدة بمطبخ، وقاعة الاجتماعات، والمواقف التي تتّسع لحافلة سياحية."
       },
       "tags": [
         {
@@ -581,7 +581,7 @@
       ],
       "stats": [
         {
-          "n": "108",
+          "n": "106",
           "label": {
             "en": "Apartments",
             "ar": "شقة"
@@ -1353,8 +1353,8 @@
     ]
   ],
   "unit_note": {
-    "en": "Unit counts per type are confirmed with each enquiry — combined inventory is <b>168 units</b> across the two properties.",
-    "ar": "يُؤكَّد عدد الوحدات لكل نوع مع كل طلب — وإجمالي المعروض <b>168 وحدة</b> في الفندقين."
+    "en": "Unit counts per type are confirmed with each enquiry — combined inventory is <b>166 units</b> across the two properties.",
+    "ar": "يُؤكَّد عدد الوحدات لكل نوع مع كل طلب — وإجمالي المعروض <b>166 وحدة</b> في الفندقين."
   },
   "calc": {
     "eyebrow": {
@@ -1751,8 +1751,8 @@
   },
   "footer": {
     "blurb": {
-      "en": "Two hotels in Taif — 168 units, 12 room types and one commercial contact for the travel trade.",
-      "ar": "فندقان في الطائف — 168 وحدة و12 نوع غرفة ومسؤول تجاري واحد لقطاع السفر."
+      "en": "Two hotels in Taif — 166 units, 12 room types and one commercial contact for the travel trade.",
+      "ar": "فندقان في الطائف — 166 وحدة و12 نوع غرفة ومسؤول تجاري واحد لقطاع السفر."
     },
     "nav": {
       "en": "Explore",
@@ -1806,7 +1806,7 @@
       }
     },
     {
-      "n": 168,
+      "n": 166,
       "label": {
         "en": "Combined units",
         "ar": "إجمالي الوحدات"
