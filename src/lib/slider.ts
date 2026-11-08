@@ -13,7 +13,7 @@
  *   [data-slider] > [data-slider-track] (the scroller, its children the cards), [data-slider-prev] / [data-slider-next],
  *   optional [data-slider-dots] with one button per card.
  */
-import { bindOnce, isRtl, motionToken, onPageLeave, onPageLoad, reducedMotion } from './client';
+import { isRtl, motionToken, onPageLeave, onPageLoad, reducedMotion, startAfterPaint } from './client';
 
 const cleanups: (() => void)[] = [];
 
@@ -147,4 +147,5 @@ onPageLeave(() => {
   cleanups.forEach((f) => f());
   cleanups.length = 0;
 });
-onPageLoad(() => document.querySelectorAll<HTMLElement>('[data-slider]').forEach((root) => bindOnce(root, 'slider-bound') && init(root)));
+// below the fold everywhere it is used: started after the first paint (8 Nov 2026 — it measures the cards on start)
+onPageLoad(() => document.querySelectorAll<HTMLElement>('[data-slider]').forEach((root) => startAfterPaint(root, 'slider-bound', init)));

@@ -65,6 +65,8 @@ Written 30 Oct 2026. Nothing in this document has been done yet. It is the order
    refresh, as for `club.`). Steps:
    1. Create the repository from the prepared folder and push it; Settings → Pages: branch `main` / root, custom domain
       `discovertaif.armadaresidence.com` (creating the public repository needs Ahmed's OK — refused to the session).
+      Done 8 Nov 2026: Ahmed created the empty repository; `main` pushed (`93aedfa`, the 9 files). Pages: not yet
+      enabled.
    2. Hostinger, the HOSTING account: Websites → the `discovertaif.armadaresidence.com` website (or the main site's
       Subdomains list) → delete it, so its A / AAAA records disappear.
    3. Hostinger, the DOMAIN's DNS zone: add `CNAME` · name `discovertaif` · target `armadaresidence.github.io` · TTL 300.

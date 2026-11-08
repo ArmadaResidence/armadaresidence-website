@@ -2088,3 +2088,15 @@ Switch day, following `docs/launch-runbook.md` with Ahmed's brief of 8 Nov 2026.
   was refused to the session and run by Ahmed. Commit `258ea25`: full suite 38/38 before the commit, site deploy
   42495978603 green, `/version.json` = `258ea25`; dashboard deploy 42496148217 green; live suite
   `check-all --live https://armadaresidence.com` 36/36.
+- **Follow-up, the same day.** `ArmadaResidence/armada-discovertaif` created (empty) by Ahmed; its `main` pushed from
+  the session (`93aedfa`). Still for Ahmed: Settings → Pages (branch `main`, root, custom domain
+  `discovertaif.armadaresidence.com`), the hosted subdomain removed at Hostinger, then the CNAME (runbook 6b′).
+  Next speed step (Ahmed: «yes, try it»): on the live report the scripts' own evaluation is small (31 + 53 + 66 ms);
+  the cost is style and layout of the page (the router's 118 ms is the page's first layout, forced early by its
+  scroll-position read — Astro's, unavoidable). The two widgets that measure and rebuild their DOM on start — the
+  reviews slider (`slider.ts`, 14.6 ms of forced layout) and the partners strip (`marquee.ts`, clones and measures
+  in a loop) — now start through `startAfterPaint()` (`src/lib/client.ts`): after the first paint, or at once on the
+  first press, touch, hover or focus inside them, so no press is lost. The rooms tabs, offers and counters stay as
+  they are (listeners / an IntersectionObserver only). `home-sections-check` and `gallery-site-check` wait for the
+  widgets to start.
+

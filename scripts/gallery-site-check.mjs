@@ -290,6 +290,8 @@ try {
         check(lazy, `${tag}: a strip photo not lazy or without its alt`);
         const sec = page.locator('[data-branch-photos]');
         await sec.scrollIntoViewIfNeeded();
+        // the strip's slider starts after the first paint (8 Nov 2026)
+        await page.waitForSelector('[data-branch-photos] [data-slider-bound], [data-branch-photos][data-slider-bound]', { state: 'attached', timeout: 10000 });
         const st = await page.evaluate(() => {
           const r = document.querySelector('[data-branch-photos]');
           const tr = r.querySelector('[data-slider-track]');

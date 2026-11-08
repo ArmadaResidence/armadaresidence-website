@@ -6,7 +6,7 @@
  * drags only — a vertical swipe still scrolls the page), then the loop carries on from there. prefers-reduced-motion
  * (or a 0 token): nothing moves — the CSS shows one static row and hides the copy.
  */
-import { bindOnce, isRtl, motionToken, onPageLeave, onPageLoad, reducedMotion } from './client';
+import { isRtl, motionToken, onPageLeave, onPageLoad, reducedMotion, startAfterPaint } from './client';
 
 const stops: (() => void)[] = [];
 
@@ -124,4 +124,5 @@ onPageLeave(() => {
   stops.forEach((f) => f());
   stops.length = 0;
 });
-onPageLoad(() => document.querySelectorAll<HTMLElement>('[data-marquee]').forEach((root) => bindOnce(root, 'marquee-bound') && init(root)));
+// below the fold: started after the first paint (8 Nov 2026 — it clones and measures the logos on start)
+onPageLoad(() => document.querySelectorAll<HTMLElement>('[data-marquee]').forEach((root) => startAfterPaint(root, 'marquee-bound', init)));

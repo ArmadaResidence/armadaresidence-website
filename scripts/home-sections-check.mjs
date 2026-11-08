@@ -201,6 +201,8 @@ try {
       await page.goto(`${ORIGIN}${PRE}${lang === 'en' ? '/en' : ''}/`, { waitUntil: 'load' });
       const rv = page.locator('[data-reviews-carousel]');
       await rv.scrollIntoViewIfNeeded();
+      // started after the first paint (8 Nov 2026): wait for it, then judge it
+      await page.waitForSelector('[data-reviews-carousel][data-slider-bound]', { state: 'attached', timeout: 10000 });
       await page.waitForTimeout(400);
       const pos = () => page.evaluate(() => Math.abs(document.querySelector('[data-reviews-carousel] [data-slider-track]').scrollLeft));
       const p0 = await pos();
@@ -289,6 +291,7 @@ try {
       if ((await page.locator('[data-marquee]').count()) > 0) {
         const mq = page.locator('[data-marquee]');
         await mq.scrollIntoViewIfNeeded();
+        await page.waitForSelector('[data-marquee][data-marquee-bound]', { state: 'attached', timeout: 10000 });
         await page.waitForTimeout(600);
         const tx = () => page.evaluate(() => parseFloat((document.querySelector('[data-marquee-track]').style.translate || '0').split(' ')[0]) || 0);
         const a = await tx();
@@ -327,6 +330,7 @@ try {
     // the reviews carousel never advances by itself under reduced motion
     if ((await page.locator('[data-reviews-carousel]').count()) > 0) {
       await page.locator('[data-reviews-carousel]').scrollIntoViewIfNeeded();
+      await page.waitForSelector('[data-reviews-carousel][data-slider-bound]', { state: 'attached', timeout: 10000 });
       const p0 = await page.evaluate(() => Math.abs(document.querySelector('[data-reviews-carousel] [data-slider-track]').scrollLeft));
       await page.waitForTimeout(7000);
       const r = await page.evaluate(() => ({ p: Math.abs(document.querySelector('[data-reviews-carousel] [data-slider-track]').scrollLeft), a: document.querySelector('[data-reviews-carousel]').getAttribute('data-slider-auto') }));
@@ -334,6 +338,7 @@ try {
     }
     if ((await page.locator('[data-marquee]').count()) > 0) {
       await page.locator('[data-marquee]').scrollIntoViewIfNeeded();
+      await page.waitForSelector('[data-marquee][data-marquee-bound]', { state: 'attached', timeout: 10000 });
       await page.waitForTimeout(1200);
       const r = await page.evaluate(() => ({ t: document.querySelector('[data-marquee-track]').style.translate, copy: getComputedStyle(document.querySelector('[data-marquee-copy]')).display }));
       check(!r.t && r.copy === 'none', 'reduced motion: the logos move or the copy shows', JSON.stringify(r));

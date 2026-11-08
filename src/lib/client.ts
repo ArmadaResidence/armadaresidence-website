@@ -64,6 +64,27 @@ export function afterPaint(fn: () => void): void {
   else window.addEventListener('load', loaded, { once: true });
 }
 
+/**
+ * A below-the-fold widget that measures or rebuilds its own DOM when it starts (the reviews slider, the partners
+ * strip — 8 Nov 2026): start it after the first paint (afterPaint), or at once on the first press, touch, hover or
+ * focus inside it, so a press before then is never lost. `key` is the bound marker (`data-<key>` once started,
+ * through bindOnce); repeated calls on the same root are no-ops.
+ */
+export function startAfterPaint(root: HTMLElement, key: string, init: (root: HTMLElement) => void): void {
+  const waiting = `data-${key}-wait`;
+  if (root.hasAttribute(waiting) || root.hasAttribute(`data-${key}`)) return;
+  root.setAttribute(waiting, '');
+  const go = () => {
+    if (!root.hasAttribute(waiting)) return;
+    root.removeAttribute(waiting);
+    if (bindOnce(root, key)) init(root);
+  };
+  // capture phase: the widget's own listeners exist before the press reaches its buttons
+  for (const ev of ['pointerdown', 'touchstart', 'focusin'] as const) root.addEventListener(ev, go, { once: true, passive: true, capture: true });
+  root.addEventListener('pointerenter', go, { once: true });
+  afterPaint(go);
+}
+
 export const isRtl = (el: Element = document.documentElement): boolean => getComputedStyle(el).direction === 'rtl';
 
 /** "1.2s" → 1200, "400ms" → 400, "16px" → 16 (the minifier rewrites 1200ms as 1.2s, so units matter). */
