@@ -219,7 +219,7 @@ jobs:
     name: checks · browser (${{ matrix.shard }})
     needs: build
     runs-on: ubuntu-latest
-    timeout-minutes: 40
+    timeout-minutes: 20 # about 3x the longest shard (~7 min); a hung check must not hold the run (9 Nov 2026)
     strategy:
       fail-fast: false
       matrix:

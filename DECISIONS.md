@@ -2196,3 +2196,7 @@ Switch day, following `docs/launch-runbook.md` with Ahmed's brief of 8 Nov 2026.
   check now keeps the 2.5 s minimum and waits up to 8 s more for the start before the same assertions. A failed live
   check marks the run red in Actions (GitHub's run-failure notification); it does not send the admins' deploy alert —
   that email says the site was not updated, which is not the case here.
+- **A hung check stops early.** In the first live run `datepicker-check` printed nothing for 36 min until the job's
+  40-minute limit (the same check passed against the live site from this machine in 131 s, 629 checks, and in the next
+  CI run in a 5-minute shard — not reproduced). The browser shards of both workflows now stop at 20 min (about 3× the
+  longest shard). Second live run (42554998027, after `d43931c`): all 8 jobs green in about 7 min.
