@@ -230,7 +230,7 @@ jobs:
       PUBLIC_BOOKING_ENDPOINT: ${{ vars.PUBLIC_BOOKING_ENDPOINT }}
       PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.PUBLIC_SUPABASE_ANON_KEY }}
       PIXEL_BEFORE: ${{ github.event_name == 'push' && github.event.before || inputs.pixel_before }}
-      PIXEL_SHOTS: ${{ runner.temp }}/pixel
+      PIXEL_SHOTS: ${{ github.workspace }}/pixel-shots
     steps:
       - uses: actions/checkout@v4
         with:
@@ -246,11 +246,11 @@ jobs:
       - name: Pixel guard
         run: node scripts/check-all.mjs --pixel "$PIXEL_BEFORE"
       - name: The differing pixels (when any)
-        if: ${{ always() && hashFiles(format('{0}/pixel/after/_diff/**', runner.temp)) != '' }}
+        if: ${{ always() && hashFiles('pixel-shots/after/_diff/**') != '' }}
         uses: actions/upload-artifact@v4
         with:
           name: pixel-diff
-          path: ${{ runner.temp }}/pixel/after/_diff
+          path: pixel-shots/after/_diff
           retention-days: 7
 
   deploy:
