@@ -188,8 +188,24 @@ jobs:
           python-version: '3.12'
       - run: npm ci
       - run: npm ci --prefix admin
-      - name: Browsers (Chromium, WebKit; Google Chrome is on the runner)
+      # Playwright's browsers from the cache, keyed on the installed Playwright version (9 Nov 2026): a slow
+      # download (15 min once on a GitHub incident day) can no longer eat a job's time limit
+      - name: Playwright version
+        id: pw
+        shell: bash
+        run: echo "version=$(node -p "require('playwright/package.json').version")" >> "$GITHUB_OUTPUT"
+      - name: Browsers from the cache
+        id: pw-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ steps.pw.outputs.version }}-chromium-webkit
+      - name: Browsers (chromium, webkit; Google Chrome is on the runner) — downloaded only on a cache miss
+        if: ${{ steps.pw-cache.outputs.cache-hit != 'true' }}
         run: npx playwright install --with-deps chromium webkit
+      - name: The browsers' system libraries (cache hit)
+        if: ${{ steps.pw-cache.outputs.cache-hit == 'true' }}
+        run: npx playwright install-deps chromium webkit
       - name: Run the static checks
         run: node scripts/check-all.mjs --ci-static
 
@@ -209,7 +225,20 @@ jobs:
         with:
           python-version: '3.12'
       - run: npm ci
-      - name: Browsers (WebKit; Google Chrome is on the runner)
+      # Playwright's browsers from the cache, keyed on the installed Playwright version (9 Nov 2026): a slow
+      # download (15 min once on a GitHub incident day) can no longer eat a job's time limit
+      - name: Playwright version
+        id: pw
+        shell: bash
+        run: echo "version=$(node -p "require('playwright/package.json').version")" >> "$GITHUB_OUTPUT"
+      - name: Browsers from the cache
+        id: pw-cache
+        uses: actions/cache@v4
+        with:
+          path: ~\AppData\Local\ms-playwright
+          key: playwright-${{ runner.os }}-${{ steps.pw.outputs.version }}-webkit
+      - name: Browsers (webkit; Google Chrome is on the runner) — downloaded only on a cache miss
+        if: ${{ steps.pw-cache.outputs.cache-hit != 'true' }}
         run: npx playwright install webkit
       - name: Run the print check
         run: node scripts/check-all.mjs --ci-windows
@@ -231,8 +260,24 @@ jobs:
           node-version: 24
           cache: npm
       - run: npm ci
-      - name: Browsers (Chromium, WebKit; Google Chrome is on the runner)
+      # Playwright's browsers from the cache, keyed on the installed Playwright version (9 Nov 2026): a slow
+      # download (15 min once on a GitHub incident day) can no longer eat a job's time limit
+      - name: Playwright version
+        id: pw
+        shell: bash
+        run: echo "version=$(node -p "require('playwright/package.json').version")" >> "$GITHUB_OUTPUT"
+      - name: Browsers from the cache
+        id: pw-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ steps.pw.outputs.version }}-chromium-webkit
+      - name: Browsers (chromium, webkit; Google Chrome is on the runner) — downloaded only on a cache miss
+        if: ${{ steps.pw-cache.outputs.cache-hit != 'true' }}
         run: npx playwright install --with-deps chromium webkit
+      - name: The browsers' system libraries (cache hit)
+        if: ${{ steps.pw-cache.outputs.cache-hit == 'true' }}
+        run: npx playwright install-deps chromium webkit
       - name: This run's build
         uses: actions/download-artifact@v4
         with:
