@@ -2275,3 +2275,9 @@ offers; opt-out by WhatsApp reply; one alert fix.
   own, «الموقع اتنشر، لكن فحص ما بعد النشر فشل» (Ahmed's words), the failed jobs, the commit, the time, the run link —
   the same sender and recipients (the active admins) as the deploy alert; a run off `main` is «[تجربة]».
   `workflow_dispatch` input `force_fail` skips the checks and fails one job on purpose. Checked by `deploy-alert-check`.
+- **First runs (9 Nov 2026).** The alert test: `live-checks.yml` dispatched on the branch `test/live-alert-9nov` with
+  `force_fail` (run 42574485957): the forced job failed, «live · alert the admins» sent the «[تجربة]» email to the one
+  active admin; the branch deleted after. The deploy of `e17c6e8` (run 42574449272): every check job and the deploy
+  green. Its live checks (run 42575289396): `booking-whatsapp-check` timed out once scrolling a button on
+  `/airport-road/king-room/` at 1440 px (a 4 s locator limit; not related to this change) — the new alert emailed the
+  admins for real; the failed job re-run passed (attempt 2, all green).
