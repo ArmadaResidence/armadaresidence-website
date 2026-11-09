@@ -21,7 +21,9 @@ Written 30 Oct 2026. Nothing in this document has been done yet. It is the order
    - the `discovertaif` and `partners` subdomains (legacy sites) = `‹current values›`.
 2. Lower the TTL of the apex A / AAAA and `www` records to **300 s**. Leave every other record as it is.
 3. Optional but recommended: verify the domain for the GitHub account (GitHub → Settings → Pages → *Add a domain*). This adds one TXT record `_github-pages-challenge-armadaresidence` = `‹value GitHub shows›`. It prevents anyone else's Pages site from claiming the domain.
-4. Run the full suite on `main` and confirm the last Pages deploy is green.
+4. Confirm the last Pages deploy of `main` is green — since 9 Nov 2026 its run carries the whole check suite (the
+   browser checks and the pixel guard in GitHub Actions; the deploy waits for them). `node scripts/check-all.mjs` runs
+   the same suite on a machine by hand.
 
 ## Never touch on the day
 
@@ -65,13 +67,18 @@ Written 30 Oct 2026. Nothing in this document has been done yet. It is the order
    refresh, as for `club.`). Steps:
    1. Create the repository from the prepared folder and push it; Settings → Pages: branch `main` / root, custom domain
       `discovertaif.armadaresidence.com` (creating the public repository needs Ahmed's OK — refused to the session).
-      Done 8 Nov 2026: Ahmed created the empty repository; `main` pushed (`93aedfa`, the 9 files). Pages: not yet
-      enabled.
+      Done 8 Nov 2026: Ahmed created the empty repository; `main` pushed (`93aedfa`, the 9 files). Pages enabled by
+      Ahmed (branch `main`, root, custom domain `discovertaif.armadaresidence.com`, Enforce HTTPS) — done.
    2. Hostinger, the HOSTING account: Websites → the `discovertaif.armadaresidence.com` website (or the main site's
-      Subdomains list) → delete it, so its A / AAAA records disappear.
+      Subdomains list) → delete it, so its A / AAAA records disappear. Done by Ahmed (the old site deleted from the
+      hosting plan).
    3. Hostinger, the DOMAIN's DNS zone: add `CNAME` · name `discovertaif` · target `armadaresidence.github.io` · TTL 300.
+      Done by Ahmed (TTL 300; raise it with the others once stable).
    4. Wait for the certificate (Pages → Enforce HTTPS), then check `https://discovertaif.armadaresidence.com/?utm_source=qa`
       lands on `https://armadaresidence.com/discover-taif/?utm_source=qa` and `/?lang=en` on `/en/discover-taif/`.
+      Checked 9 Nov 2026: the CNAME resolves to `armadaresidence.github.io`, `http://` answers 301 to `https://`,
+      GitHub serves the page, and `http://discovertaif.armadaresidence.com?lang=en` lands on
+      `https://armadaresidence.com/en/discover-taif/?lang=en` in a browser. **Step 6b′ is complete.**
 6a. **club.armadaresidence.com (added 8 Nov 2026).** The standalone club repository `ArmadaResidence/armada-club` is a redirect only (since 3 Nov 2026). In its `redirect.js`, `index.html` and `404.html` change the target from the review address to `https://armadaresidence.com/club/` (keeping the query string, the printed QR codes carry `?src=`), push, and check `https://club.armadaresidence.com/?src=qa` lands on `https://armadaresidence.com/club/?src=qa`. Do not touch the `club` DNS record.
 6b. **Email links (added 4 Nov 2026).** In `content/seo.json` set `live_url` to `https://armadaresidence.com` (it holds the review address until today; on 8 Nov 2026 this was part of the launch commit, with the QA defaults and the Auth templates), commit and push, then redeploy the email-sending functions (`booking-request`, `club`, `dining-notify`, `job-application`, `login-code`) so their generated content carries it — every link in the club / member-offer / dining emails, the club `?go=` redirect and the email logo move to the domain. Regenerate the Auth templates (`node scripts/auth-templates.mjs`) and `supabase config push`.
 7. **Search Console.** The Domain property is already verified by the DNS TXT record. Submit `https://armadaresidence.com/sitemap-index.xml` (Sitemaps → Add). Use URL Inspection → *Request indexing* for `/`, `/en/`, `/airport-road/` and `/shafa-road/`.
@@ -83,6 +90,9 @@ Written 30 Oct 2026. Nothing in this document has been done yet. It is the order
 
    It runs the browser checks, `admin-cors-check` (dashboard) and `admin-cors-check --public` (forms from the domain, www and github.io). Every browser check stubs the booking endpoint, wa.me and GTM, so nothing is sent.
 9. **Real form test (Ahmed, by hand).** One booking request and one partner enquiry from `https://armadaresidence.com` with real contact details, then check the reception email (Hostinger filter), the WhatsApp message and the dashboard row. Cancel the test booking from the dashboard.
+   The two test bookings of 8 Nov 2026 (`AR-20261108-WD8A`, `AR-20261108-HY62`) were cancelled, then deleted by Ahmed
+   with `reports/post-launch-1/delete-test-bookings.sql` (checked 9 Nov 2026: no reservation and no WhatsApp log row
+   left for either ref).
 10. **Unfreeze**, and note the switch time in DECISIONS.md.
 
 ## Rollback

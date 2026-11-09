@@ -2124,4 +2124,62 @@ Switch day, following `docs/launch-runbook.md` with Ahmed's brief of 8 Nov 2026.
   reached by `local()`: through `system-ui` it measured 98.06 % (400) and 93.42 % (700) — it cannot be resized, so on
   Apple devices the swap window now draws Geeza Pro resized to Plex instead of SF Arabic (7 % wider in bold). Once
   Plex is loaded none of these faces is used; the final rendering is unchanged.
+- **The font step, live (9 Nov 2026).** Committed through the new flow (below) as `bbd6860`: fast pre-commit 1 min 21 s,
+  Actions run 42545215357 green in 7 min 48 s from push to live — the pixel guard BLOCKING (6 of 6 pushed commits
+  marked `Armada-Invisible`) with 332 of 332 screenshots identical, so the fallback faces change nothing once Plex is
+  loaded. Lighthouse, live home, mobile, two sets of 5 (`reports/lighthouse/post1-fonts-live-summary.md`, `…-live-2-…`):
+  score 84 / 88 (last night 90), LCP 3.15 / 2.91 s (3.08 s), TBT 214 / 164 ms (84 ms), **CLS 0.000 / 0.000 (0.031)**.
+  CLS is 0.000–0.001 in all 10 runs (last night 3 of 5 runs were 0.03–0.05): the swap shift is gone. TBT moved between
+  1 and 705 ms from one run to the next on this machine (last night 0–281) — the step adds no script, so the score's
+  spread is the lab's; LCP is unchanged within that noise and still above the 2.5 s target.
 
+## 2026-11-09 — Checks in GitHub Actions; local hooks fast only; dining-notify origins; docs closed (Ahmed, 9 Nov 2026)
+
+- **Why.** This machine has 4 GB of memory; on 8–9 Nov Chrome ran out of it inside the hooks (a11y-check «Target
+  crashed», the pixel guard partway) and the font commit could not land. Hooks took 19 min (routed pre-commit) and
+  36 min (full pre-push, `5c7325f`).
+- **Rule (CLAUDE.md §11, §12): heavy checks run in GitHub Actions; local hooks are fast only.** pre-commit and pre-push
+  run build, qa.py and the static checks that open no browser (`check-plan.mjs → FAST_CHECKS`: typecheck, digits,
+  format, auth-emails, whatsapp, offers-engine, turnstile, deploy-alert); a docs-only commit skips the build. Measured:
+  pre-commit 1 min 21 s – 1 min 48 s (before: 19 min); pre-push 3 s when the tree already passed at commit time (the
+  record now names fast | full), else the same ~1.5 min (before: 36 min). No Chrome. The whole suite by hand:
+  `node scripts/check-all.mjs` (unchanged; no hook runs it). The routed plan stays as `--staged --routed`.
+- **deploy.yml.** Every run (push, schedule, dashboard publish, watchdog, dry run) checks what it publishes; `deploy`
+  needs every check job; a failure publishes nothing, settles the dashboard's publish job as failed and alerts the
+  admins through `status` (the build and its checks counted as one result; the alert names the step «الفحوص التلقائية
+  قبل النشر» — `deployStepKey` → `checks`, `ui.json`, `site-deploy-report` redeployed). Jobs: `checks · static`
+  (Linux: its own build without the service key, qa, the static checks incl. `admin-sidebar-check` /
+  `admin-audit-check`, sample qa); `checks · emails print (Windows)` (`email-print-check`: on Linux WebKit drew the
+  emails' Arabic in a fallback font and 3 internal emails measured 1124–1140 px against the 1046 px A4 limit; the emails
+  name Segoe UI / Tahoma / Arial, so it is measured on Windows where they exist — the limit unchanged); `checks · browser`
+  × 6 shards in parallel (`CI_SHARDS`, every browser check in exactly one — asserted at load) against THIS run's build
+  (artifact `site-build`: dist/ + the generated content files); `checks · pixel guard` on pushes (the pushed range's
+  parent vs HEAD, both built; blocking only when every pushed commit carries `Armada-Invisible: yes` —
+  `ARMADA_INVISIBLE=1 git commit …` adds it through the new `.githooks/prepare-commit-msg` —, a report otherwise; the
+  diffs with before / after crops as the `pixel-diff` artifact). Typical run: about 8 min push → live, ~43 job-minutes.
+- **Cost.** The repository is public: GitHub-hosted runners (Linux and Windows) are free. Checked before enabling.
+- **Checks fixed for the deploy build (never loosened).** On the real build the checks met the dashboard's data for the
+  first time: `content-site-check` judged the sitemap by the rooms.json seed — now by the resolved
+  `dist/_availability.json` (the Shafa Road accessible room is open in the dashboard and correctly in the sitemap);
+  `dining-site-check` judges a build from the dashboard (media source `supabase`) by what it serves, as it did the
+  live site; `hero-slides-check` waits up to 3 s for the observer's pause / play instead of a fixed 400 ms (failed
+  once on WebKit in CI) and now runs its 212 checks on the real slideshow (it skipped locally). `pixel-guard`: the
+  base tree gets its own `npm ci` (Linux Vite failed on the linked node_modules); after `load` every srcset is chosen
+  again before the capture — one CI run showed the first Discover Taif card (1440, dark) differing between two
+  builds of the same site code (likely the hero's cached 1400 file answering the card's srcset; not reproduced in the
+  next two runs, 332 / 332 identical — watch it).
+- **dining-notify.** Origins: `https://armadaresidence.com`, `https://www.armadaresidence.com` (`site-cors.ts`, as the
+  booking function) and `https://admin.armadaresidence.com` — the dashboard's «إرسال إشعار الافتتاح» calls it; dropping
+  that would break the send. `https://armadaresidence.github.io` refused; a preview branch also accepts the dashboard's
+  dev server. Deployed; `admin-cors-check --public` 37/37 (github.io refused, the dashboard answered); a POST from a
+  browser on https://armadaresidence.com with the honeypot filled answered 200 (nothing stored). No live page has the
+  notify form today (the only venue is open; the form is on «قريبًا» pages), so the form itself was not submitted.
+- **email.ts types.** Already clean since `5dd0633` (7 Nov): 0 errors under `tsc --strict`. Now kept that way —
+  `typecheck.mjs` also checks `booking-request/email.ts`, `rules.ts`, `whatsapp.ts` with `tsc --strict` in the fast
+  hook.
+- **Closed (Ahmed).** The test bookings `AR-20261108-WD8A` and `AR-20261108-HY62` deleted with
+  `reports/post-launch-1/delete-test-bookings.sql` (checked: no reservation, no WhatsApp log row). discovertaif: Pages
+  on `ArmadaResidence/armada-discovertaif` with the custom domain and Enforce HTTPS, the old site deleted from the
+  Hostinger hosting plan, CNAME `discovertaif` → `armadaresidence.github.io` (TTL 300); checked: http → https 301, and
+  `http://discovertaif.armadaresidence.com?lang=en` lands on `/en/discover-taif/` — runbook 6b′ complete. The Airport
+  Road «صورة الجوال»: left as is by decision — the desktop cover cropped is acceptable for now.
