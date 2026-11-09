@@ -2616,8 +2616,14 @@ The cookie banner keeps its three visible choices («قبول الكل» / «ا�
   `scripts/legacy-partners-content.py` is older than the file — it would write 168 units and drop the form errors),
   the airport mentions in the article seeds; the FAQ already said 18 / 22. **Not yet live:** the entrance story is a
   published field of «المحتوى والظهور» and the four articles that mention the airport are published from «المدونة»;
-  their live texts in the database still say 15 and win over the files — they change only when Ahmed edits and
-  publishes them (or approves a database update).
+  their live texts in the database said 15 and win over the files. **Updated in the database the same evening with
+  Ahmed's approval** (only the airport drive-time phrase of the four records — `public.articles` taif-rose-season,
+  umrah-via-taif, where-to-stay-in-taif: `body_*` and `live.body_*`; `public.content_fields`
+  branch.airport-road.story.entrance.body: `draft_*` and `live_*`, `seed_*` untouched): the previous values are in
+  `reports/session22-db-backup/before.json` (md5-checked against the database), the phrase-by-phrase change in
+  `after.json`; the database after the write = before + those phrases, byte for byte. The seed files say the same
+  words (no «22 كم» in those sentences; the distance is in `drive_distance_airport_km` and the FAQ). They reach the
+  site with the next successful build.
 - X: https://x.com/ArmadaR25 (verified, @armadar25) — `contact.json → social.x`: the footer «تابعنا» row, /contact/
   and the Organization `sameAs`.
 - Google Business Profiles completed for both branches; their website links are
@@ -2631,6 +2637,9 @@ The cookie banner keeps its three visible choices («قبول الكل» / «ا�
 Before the first push of a session, read https://www.githubstatus.com/api/v2/summary.json; if Actions or Pages is not
 "operational", finish the local work, commit and hand over without pushing. In any session the total waiting on CI or
 deploys is capped at 30 minutes; a GitHub-side failure gets at most two retries, 15 minutes apart, then hand over with
-what is live. Session 22 itself: at its start Actions was in a «major outage» (Pages operational), so nothing was
+what is live. The legal-name deploy (run 42677541787, `86c06e9`): every check job green, then GitHub Pages'
+`deploy-pages` step timed out twice (10 min each, 19:06 and 19:17 UTC) — the live site stayed on `a717d44`. The deploy
+watchdog had last run at 10:00 UTC (GitHub delays scheduled runs), so it is no safety net on such a day; the nightly
+scheduled build (00:07 Riyadh) runs `main` again. Session 22 itself: at its start Actions was in a «major outage» (Pages operational), so nothing was
 pushed and the CI proof that `booking-nav-check` fails on an inert booking form was not run.
 

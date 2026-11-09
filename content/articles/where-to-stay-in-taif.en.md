@@ -49,7 +49,7 @@ The city centre holds [Al Balad Market](/en/discover-taif/#place-taif-al-balad-m
 
 ## Frequently asked questions
 
-**Which property is closest to Taif airport?** Airport Road, 18 minutes by car from the airport (about 22 km).
+**Which property is closest to Taif airport?** Airport Road, 18 minutes by car from the airport.
 
 **Are there rooms with a kitchen?** Yes, the suites at the Airport Road hotel apartments have a kitchen.
 
