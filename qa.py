@@ -975,6 +975,18 @@ def main() -> int:
                     outside[f"U+{cp:04X} {ch}"].add(where)
         for ch, where in sorted(outside.items()):
             rep.f("fonts", f"{ch} is outside the Arabic font subset (scripts/fonts-subset.py) — used on {sorted(where)[:3]}")
+        # 9 Nov 2026: each weight is two files — the main one (subset.json → files.subset) and the extended letters, which
+        # a page fetches only when it contains one. Allowed (it renders in the same font), but worth knowing: that page
+        # loads one more font file per weight before its first paint.
+        ext_ranges = [(int(a, 16), int(b, 16)) for a, b in (r.split("-") if "-" in r else (r, r) for r in
+                      (x.strip().removeprefix("U+") for x in json.loads(subset_json.read_text(encoding="utf-8")).get("files", {}).get("ext", "").split(",") if x.strip()))]
+        ext_used: dict[str, set[str]] = defaultdict(set)
+        for where, text in raw.items():
+            for ch in set(text):
+                if any(a <= ord(ch) <= b for a, b in ext_ranges):
+                    ext_used[f"U+{ord(ch):04X} {ch}"].add(where)
+        for ch, where in sorted(ext_used.items()):
+            rep.w("fonts", f"{ch} is an extended Arabic letter: {sorted(where)[:3]} fetch the extended font files too")
     else:
         rep.f("fonts", "src/assets/fonts/subset.json missing — run scripts/fonts-subset.py")
 

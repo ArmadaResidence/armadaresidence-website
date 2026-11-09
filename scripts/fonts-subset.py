@@ -32,10 +32,20 @@ SUBSET_RANGES = [
     (0x2010, 0x2011),  # hyphen, non-breaking hyphen (as fontsource's Arabic subset)
     (0xFD3E, 0xFD3F),  # ornate parentheses
 ]
+# 9 Nov 2026 (mobile LCP): each weight is cut in TWO files with the same ranges in total. The main file holds what the
+# site writes — the basic Arabic letters, harakat, punctuation and digits, U+0600–0670 (the whole output uses 46 code
+# points, none above U+0670) — and the extended file the rest of the block (U+0671–06FF: Persian / Urdu and other
+# extended letters). Each @font-face declares its own unicode-range, so a browser fetches the extended file only for
+# a page that contains such a letter: today none does, and each page loads ≈ 19 KB instead of ≈ 30 KB per weight.
+MAIN_RANGES = [(0x0600, 0x0670), (0x200C, 0x200F), (0x2010, 0x2011), (0xFD3E, 0xFD3F)]
+EXT_RANGES = [(0x0671, 0x06FF)]
+assert sorted(set(cp for a, b in MAIN_RANGES + EXT_RANGES for cp in range(a, b + 1))) == sorted(
+    cp for a, b in SUBSET_RANGES for cp in range(a, b + 1)
+), "the two files must cover exactly SUBSET_RANGES"
 
 
-def css_range() -> str:
-    return ", ".join(f"U+{a:04X}" if a == b else f"U+{a:04X}-{b:04X}" for a, b in SUBSET_RANGES)
+def css_range(ranges=SUBSET_RANGES) -> str:
+    return ", ".join(f"U+{a:04X}" if a == b else f"U+{a:04X}-{b:04X}" for a, b in ranges)
 
 
 def main() -> int:
@@ -43,26 +53,27 @@ def main() -> int:
         print(f"{SRC} missing — npm install first", file=sys.stderr)
         return 2
     OUT.mkdir(parents=True, exist_ok=True)
-    unicodes = [cp for a, b in SUBSET_RANGES for cp in range(a, b + 1)]
     for w in WEIGHTS:
-        src = SRC / f"ibm-plex-sans-arabic-arabic-{w}-normal.woff2"
-        dst = OUT / f"ibm-plex-sans-arabic-arabic-{w}-subset.woff2"
-        opts = subset.Options()
-        opts.layout_features = ["*"]  # every GSUB / GPOS feature: init / medi / fina / liga / mark / kern …
-        opts.name_IDs = ["*"]
-        opts.name_languages = ["*"]
-        opts.name_legacy = True
-        opts.notdef_outline = True
-        opts.hinting = True  # keep the TrueType instructions: identical rasterisation
-        opts.legacy_kern = True
-        opts.glyph_names = False
-        opts.flavor = "woff2"
-        font = subset.load_font(str(src), opts)
-        sub = subset.Subsetter(opts)
-        sub.populate(unicodes=unicodes)
-        sub.subset(font)
-        subset.save_font(font, str(dst), opts)
-        print(f"{dst.relative_to(ROOT)}: {src.stat().st_size:,} → {dst.stat().st_size:,} bytes")
+        for suffix, ranges in (("subset", MAIN_RANGES), ("ext", EXT_RANGES)):
+            unicodes = [cp for a, b in ranges for cp in range(a, b + 1)]
+            src = SRC / f"ibm-plex-sans-arabic-arabic-{w}-normal.woff2"
+            dst = OUT / f"ibm-plex-sans-arabic-arabic-{w}-{suffix}.woff2"
+            opts = subset.Options()
+            opts.layout_features = ["*"]  # every GSUB / GPOS feature: init / medi / fina / liga / mark / kern …
+            opts.name_IDs = ["*"]
+            opts.name_languages = ["*"]
+            opts.name_legacy = True
+            opts.notdef_outline = True
+            opts.hinting = True  # keep the TrueType instructions: identical rasterisation
+            opts.legacy_kern = True
+            opts.glyph_names = False
+            opts.flavor = "woff2"
+            font = subset.load_font(str(src), opts)
+            sub = subset.Subsetter(opts)
+            sub.populate(unicodes=unicodes)
+            sub.subset(font)
+            subset.save_font(font, str(dst), opts)
+            print(f"{dst.relative_to(ROOT)}: {src.stat().st_size:,} → {dst.stat().st_size:,} bytes")
     (OUT / "subset.json").write_text(
         json.dumps(
             {
@@ -70,6 +81,7 @@ def main() -> int:
                 "fonttools": ft_version,
                 "unicode_range": css_range(),
                 "ranges": [[f"{a:04X}", f"{b:04X}"] for a, b in SUBSET_RANGES],
+                "files": {"subset": css_range(MAIN_RANGES), "ext": css_range(EXT_RANGES)},
             },
             indent=2,
             ensure_ascii=False,
