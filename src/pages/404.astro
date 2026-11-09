@@ -26,7 +26,10 @@ const galleryHome = !galleryLive && sectionVisible('gallery');
       var p = location.pathname;
       if (/\/branches(\/|$)/.test(p)) location.replace('/');
       else if (/\/admin(\/|$)/.test(p)) location.replace('https://admin.armadaresidence.com/');
-      else if (p.indexOf('/offers/') === 0) location.replace('/offers/');
+      // 9 Nov 2026: the WhatsApp offer button (https://armadaresidence.com/offers/{{1}} — a fixed Meta template) opens
+      // /offers/en/… for English members → /en/offers/; the query (utm) and the #offer-<slug> anchor are kept
+      else if (/\/offers\/en(\/|$)/.test(p)) location.replace('/en/offers/' + location.search + location.hash);
+      else if (p.indexOf('/offers/') === 0) location.replace('/offers/' + location.search + location.hash);
       else if (p.indexOf('/blog/') === 0) location.replace('/blog/');
       else if (galleryHome && /\/gallery\/?$/.test(p) && !/\/en\/gallery/.test(p)) location.replace('/');
     })();

@@ -58,6 +58,9 @@
       "code_label": "كود العرض",
       "valid_until": "صالح حتى {date}",
       "cta": "احجز الآن"
+    },
+    "whatsapp": {
+      "optout_reply": "أوقفنا رسائل عروض إياب — عضوية أرمادا ريزيدنس على واتساب. رسائل حجوزاتك تصلك كالمعتاد."
     }
   },
   "en": {
@@ -106,6 +109,9 @@
       "code_label": "Promo code",
       "valid_until": "Valid until {date}",
       "cta": "Book now"
+    },
+    "whatsapp": {
+      "optout_reply": "We have stopped Eyab — Armada Residence membership offers on WhatsApp. Messages about your bookings will still reach you."
     }
   }
 }

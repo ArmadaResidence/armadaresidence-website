@@ -12,8 +12,8 @@ const runs = [
   { label: 'site (astro check)', args: ['node_modules/astro/bin/astro.mjs', 'check'], need: 'node_modules/@astrojs/check' },
   { label: 'dashboard (tsc --noEmit -p admin)', args: ['admin/node_modules/typescript/bin/tsc', '--noEmit', '-p', 'admin'], need: 'admin/node_modules/typescript' },
   {
-    label: 'functions (email.ts, rules.ts, whatsapp.ts — tsc --strict)',
-    args: ['node_modules/typescript/bin/tsc', '--noEmit', '--strict', '--target', 'es2022', '--module', 'esnext', '--moduleResolution', 'bundler', '--allowImportingTsExtensions', '--resolveJsonModule', '--skipLibCheck', ...['email', 'rules', 'whatsapp'].map((f) => `supabase/functions/booking-request/${f}.ts`)],
+    label: 'functions (email.ts, rules.ts, whatsapp.ts, wa-automation/templates.ts — tsc --strict)',
+    args: ['node_modules/typescript/bin/tsc', '--noEmit', '--strict', '--target', 'es2022', '--module', 'esnext', '--moduleResolution', 'bundler', '--allowImportingTsExtensions', '--resolveJsonModule', '--skipLibCheck', ...['email', 'rules', 'whatsapp'].map((f) => `supabase/functions/booking-request/${f}.ts`), 'supabase/functions/wa-automation/templates.ts'],
     need: 'node_modules/typescript',
   },
 ];

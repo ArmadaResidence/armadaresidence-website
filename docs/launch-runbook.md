@@ -135,3 +135,33 @@ Trigger: the site is not reachable on the domain after 60 minutes, the certifica
 - Google Business Profiles of both branches: website URL = the new branch page.
 - Submit the domain change to Booking.com / other listings that link to the old site.
 - Archive the Hostinger Horizons site once nothing links to it.
+
+## WhatsApp automations — switching each on and off (9 Nov 2026)
+
+Four Meta-approved templates, sent from each branch's own WhatsApp number through YCloud by the Edge Function
+`wa-automation` (DECISIONS.md 2026-11-09 «WhatsApp automation»). Everything is **off** until switched on here; turning a
+switch off stops it at once (a message already queued is skipped, never sent).
+
+| automation | when | where to switch it | who |
+|---|---|---|---|
+| ترحيب إياب على واتساب (`eyab_welcome`) | when a member joins «إياب» with the consent — from the branch they joined from (a booking's branch, a breakfast QR; the site without a branch → Airport Road), once per member | Dashboard → «الإعدادات» → «رسائل واتساب التلقائية» → the branch → «ترحيب إياب على واتساب» | settings: edit (admin, management) |
+| تذكير الوصول (`arrival_reminder`) | every day 16:00 Riyadh — confirmed bookings arriving tomorrow, once per booking | same card → «تذكير الوصول» | settings: edit |
+| طلب التقييم بعد المغادرة (`stay_review`) | every day 10:00 Riyadh — confirmed bookings that left yesterday, once per booking, never to a guest who stopped the offers; never filtered by satisfaction | same card → «طلب التقييم بعد المغادرة» | settings: edit |
+| عروض إياب (`eyab_offer`) | only when someone sends a campaign | Dashboard → «عروض إياب على واتساب»: fill → «إرسال تجربة لنفسي» → «إرسال للأعضاء…» → approve the count and the cost | eyab_wa: edit (admin, sales) |
+
+Before switching anything on:
+1. «عروض إياب على واتساب» → «تفعيل استقبال الردود» (a system admin, once): registers the YCloud webhook, so a reply
+   «إلغاء» / «إيقاف» / «إلغاء الاشتراك» / stop / unsubscribe stops the offers and the review requests for that number
+   (one plain reply confirms it), and delivery statuses and Meta's price come back. No campaign can start without it.
+2. Save «رقمك للتجربة» on that page (your own WhatsApp number — tests go there only).
+3. Switch a branch on in Settings; the change is audited and the toast offers «تراجع» for 30 s.
+
+To stop everything quickly: switch the three automations off at both branches; a running campaign → «إيقاف الإرسال»
+on its row (what was sent stays sent). The schedules themselves (pg_cron `wa-arrival-reminder` 13:00 UTC,
+`wa-stay-review` 07:00 UTC, `wa-drain` every minute) never need touching: with the switches off they queue nothing.
+Where to look: a booking's details → «رسائل واتساب للضيف» (the reminder and the review request with their status);
+«عروض إياب على واتساب» → «الحملات» (sent / delivered / read / failed, the estimate and Meta's price); «السجل» (each
+switch change, each campaign's start and finish, the webhook registration, every opt-out without the number).
+Cost: Meta's Saudi Arabia rates as of Oct 2026 — about $0.0576 a marketing message (welcome, offers) and about $0.0128
+a utility message (reminder, review; free inside a 24-hour window the guest opened). The estimate lives in Settings key
+`wa_message_cost`; the invoice is YCloud's.

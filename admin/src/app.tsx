@@ -29,6 +29,7 @@ import Reviews from './pages/Reviews';
 import PartnerLogos from './pages/PartnerLogos';
 import Partners from './pages/Partners';
 import Guests from './pages/Guests';
+import EyabWhatsApp from './pages/EyabWhatsApp';
 import Content from './pages/Content';
 import Settings from './pages/Settings';
 import Users from './pages/Users';
@@ -51,6 +52,7 @@ const SCREENS: { path: string; section: string }[] = [
   { path: 'partner-logos', section: 'content' },
   { path: 'partners', section: 'partners' },
   { path: 'guests', section: 'guests' },
+  { path: 'eyab-whatsapp', section: 'eyab_wa' },
   { path: 'settings', section: 'settings' },
   { path: 'users', section: 'users' },
   { path: 'audit', section: 'audit' },
@@ -178,6 +180,7 @@ export default function App() {
                     <Route path="partner-logos" element={<Allowed section="content"><PartnerLogos /></Allowed>} />
                     <Route path="partners" element={<Allowed section="partners"><Partners /></Allowed>} />
                     <Route path="guests" element={<Allowed section="guests"><Guests /></Allowed>} />
+                    <Route path="eyab-whatsapp" element={<Allowed section="eyab_wa"><EyabWhatsApp /></Allowed>} />
                     <Route path="settings" element={<Allowed section="settings"><Settings /></Allowed>} />
                     <Route path="users" element={<Allowed section="users"><Users /></Allowed>} />
                     <Route path="audit" element={<Allowed section="audit"><Audit /></Allowed>} />

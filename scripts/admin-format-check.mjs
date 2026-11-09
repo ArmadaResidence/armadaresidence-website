@@ -28,7 +28,8 @@ let checks = 0;
   for (const c of codes) E(`WA_ERRORS.${c}`, typeof WA_ERRORS[c] === 'string' && /[؀-ۿ]/.test(WA_ERRORS[c]) && !/[A-Za-z]/.test(WA_ERRORS[c].replace('Meta', '')) && WA_ERRORS[c].endsWith('.'), WA_ERRORS[c]);
   E('waError(unknown) → the generic refusal', waError('something_new') === WA_ERRORS.rejected && waError(null) === WA_ERRORS.rejected);
   E('status labels', WA_STATUS_LABELS.accepted === 'أُرسلت' && WA_STATUS_LABELS.failed === 'تعذّر الإرسال' && WA_STATUS_LABELS.sent === 'أُرسلت');
-  E('template labels (the three templates; booking_cancelled 29 Oct 2026)', Object.keys(WA_TEMPLATE_LABELS).join() === 'booking_request_received,booking_confirmed,booking_cancelled' && WA_TEMPLATE_LABELS.booking_cancelled === 'رسالة الإلغاء');
+  E('template labels (the three templates; booking_cancelled 29 Oct 2026; the arrival reminder and the review request 9 Nov 2026)', Object.keys(WA_TEMPLATE_LABELS).join() === 'booking_request_received,booking_confirmed,booking_cancelled,arrival_reminder,stay_review' && WA_TEMPLATE_LABELS.booking_cancelled === 'رسالة الإلغاء' && WA_TEMPLATE_LABELS.arrival_reminder === 'تذكير الوصول');
+  E('status labels for the queue (9 Nov 2026)', WA_STATUS_LABELS.queued === 'في انتظار الإرسال' && WA_STATUS_LABELS.skipped === 'لم تُرسل — لم تعد مستحقة' && waError('opted_out') !== WA_ERRORS.rejected);
 })();
 // ── C2 / C3 (28 Oct 2026): the bulk summary and the rate sanity texts ──
 (() => {

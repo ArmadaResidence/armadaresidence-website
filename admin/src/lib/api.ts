@@ -347,7 +347,7 @@ export async function saveInternalNotes(id: string, notes: string): Promise<void
 /** One WhatsApp send attempt to the guest (public.whatsapp_messages; RLS = the booking's own visibility). */
 export interface WhatsAppMessage {
   id: string;
-  template: 'booking_request_received' | 'booking_confirmed' | 'booking_cancelled';
+  template: 'booking_request_received' | 'booking_confirmed' | 'booking_cancelled' | 'arrival_reminder' | 'stay_review';
   language: string;
   status: string;
   error_code: string | null;
@@ -361,7 +361,7 @@ export async function whatsappMessages(reservationId: string): Promise<WhatsAppM
   return data as WhatsAppMessage[];
 }
 
-async function edge<T>(fn: string, body: unknown): Promise<T> {
+export async function edge<T>(fn: string, body: unknown): Promise<T> {
   const { data: s } = await supabase.auth.getSession();
   const jwt = s.session?.access_token;
   if (!jwt) throw new Error(SESSION_ENDED);
@@ -405,6 +405,12 @@ export const confirmReservation = (id: string, roomTypeId: string | null) => edg
 export const resendWhatsApp = (id: string, template: string) => edge<{ ok: boolean; reason?: string; whatsapp?: { accepted: boolean; status: string; error_code: string | null } }>('booking-admin', { action: 'whatsapp-resend', id, template });
 export const cancelReservation = (id: string, reason: string) => edge<{ ok: boolean; already?: boolean; emails?: Record<string, string | null> | null; notify_failed?: boolean }>('booking-admin', { action: 'cancel', id, reason });
 
+/** 9 Nov 2026: is the YCloud webhook registered (opt-outs arrive)? — public.wa_webhook, readable with settings or eyab_wa view */
+export async function waWebhookRegistered(): Promise<boolean> {
+  const { data, error } = await supabase.from('wa_webhook').select('registered_at').limit(1);
+  if (error) fail(error, 'wa_webhook');
+  return (data ?? []).length > 0;
+}
 export async function settings(): Promise<Setting[]> {
   const { data, error } = await supabase.from('settings').select('key,value,updated_at');
   if (error) fail(error, 'settings');

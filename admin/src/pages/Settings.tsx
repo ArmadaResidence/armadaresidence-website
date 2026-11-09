@@ -20,6 +20,13 @@ interface Limits {
   max_nights: number;
 }
 const HOURS = Array.from({ length: 24 }, (_, i) => String(i).padStart(2, '0'));
+// the WhatsApp automations (9 Nov 2026; DECISIONS.md 2026-11-09 «WhatsApp automation») — per branch, default off
+type WaKey = 'wa_eyab_welcome' | 'wa_arrival_reminder' | 'wa_stay_review';
+const WA_SWITCHES: { key: WaKey; label: string; when: string }[] = [
+  { key: 'wa_eyab_welcome', label: 'ترحيب إياب على واتساب', when: 'عند انضمام عضو جديد بموافقة على العروض، من رقم الفرع الذي انضم منه (طريق المطار لمن انضم من الموقع بلا فرع).' },
+  { key: 'wa_arrival_reminder', label: 'تذكير الوصول', when: 'كل يوم 4:00 عصرًا بتوقيت الرياض، للحجوزات المؤكدة التي تصل غدًا: الاسم، الفرع، رقم الحجز، رابط الموقع على الخريطة.' },
+  { key: 'wa_stay_review', label: 'طلب التقييم بعد المغادرة', when: 'كل يوم 10:00 صباحًا بتوقيت الرياض، للحجوزات المؤكدة التي غادرت أمس: رابط تقييم الفرع على Google. لكل ضيف مؤهل، بلا تصفية بحسب الرضا، ولا يصل من أوقف العروض.' },
+];
 const MINUTES = ['00', '15', '30', '45'];
 
 export default function Settings() {
@@ -33,6 +40,9 @@ export default function Settings() {
   const [bed, setBed] = useState<number | null>(0);
   const [instant, setInstant] = useState<Record<string, boolean>>({});
   const [prices, setPrices] = useState<Record<string, boolean>>({});
+  // 9 Nov 2026: the WhatsApp automations, per branch, all off until Ahmed switches them on
+  const [wa, setWa] = useState<Record<WaKey, Record<string, boolean>>>({ wa_eyab_welcome: {}, wa_arrival_reminder: {}, wa_stay_review: {} });
+  const [hook, setHook] = useState<boolean | null>(null);
   const [limits, setLimits] = useState<Limits>({ same_day_cutoff: '20:00', max_nights: 30 });
   const [mult, setMult] = useState<number | null>(10);
   const [replyHours, setReplyHours] = useState<number | null>(2);
@@ -50,6 +60,8 @@ export default function Settings() {
       setBed(Number(get('extra_bed_per_night') ?? 0));
       setInstant((get('instant_booking') as Record<string, boolean>) ?? {});
       setPrices((get('show_prices') as Record<string, boolean>) ?? {});
+      setWa(Object.fromEntries(WA_SWITCHES.map((w) => [w.key, (get(w.key) as Record<string, boolean>) ?? {}])) as Record<WaKey, Record<string, boolean>>);
+      api.waWebhookRegistered().then(setHook, () => setHook(null));
       setLimits((get('instant_limits') as Limits) ?? { same_day_cutoff: '20:00', max_nights: 30 });
       setMult(Number(get('rate_high_multiplier') ?? 10));
       setReplyHours(Number(get('reply_alert_hours') ?? 2));
@@ -113,6 +125,27 @@ export default function Settings() {
                 <input type="checkbox" className="size-5 accent-bronze-deep" checked={!!instant[b.slug]} disabled={ro || busy === 'instant_booking'} data-switch={`instant_booking:${b.slug}`}
                   onChange={async (e) => { const prev = instant; const v = { ...instant, [b.slug]: e.target.checked }; setInstant(v); if (!(await save('instant_booking', v, `الحجز الفوري — ${BRANCH_NAMES[b.slug]}`, load))) setInstant(prev); }} />
               </label>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* 9 Nov 2026: the WhatsApp automations — a switch per branch, audited and undoable like the site switches */}
+      <section className="card p-5" aria-labelledby="s-wa" data-wa-switches>
+        <h2 id="s-wa" className="font-bold text-lg mb-1">رسائل واتساب التلقائية</h2>
+        <p className="text-sm text-ink-muted mb-1">تُرسل بقوالب Meta المعتمدة من رقم واتساب الفرع، بلغة الحجز أو العضو، ومرة واحدة لكل حجز أو عضو. كل مفتاح مغلق حتى تشغّله.</p>
+        {hook === false && <p className="text-sm text-error mb-3" data-wa-hook="off">استقبال ردود واتساب غير مفعّل بعد: فعّله من «عروض إياب على واتساب» حتى يصل طلب إيقاف العروض.</p>}
+        <div className="grid sm:grid-cols-2 gap-3 mt-3">
+          {branches.filter((b) => !me?.branch || b.slug === me.branch).map((b) => (
+            <div key={b.slug} className="rounded border border-line p-3">
+              <div className="font-bold mb-2">{BRANCH_NAMES[b.slug] ?? b.name_ar}</div>
+              {WA_SWITCHES.map((w) => (
+                <label key={w.key} className="grid grid-cols-[1fr_auto] items-start gap-x-3 py-1.5 text-sm">
+                  <span>{w.label}<span className="block text-xs text-ink-muted">{w.when}</span></span>
+                  <input type="checkbox" className="size-5 accent-bronze-deep mt-0.5" checked={!!wa[w.key][b.slug]} disabled={ro || busy === w.key} data-switch={`${w.key}:${b.slug}`}
+                    onChange={async (e) => { const prev = wa; const v = { ...wa[w.key], [b.slug]: e.target.checked }; setWa({ ...wa, [w.key]: v }); if (!(await save(w.key, v, `${w.label} — ${BRANCH_NAMES[b.slug]}`, load))) setWa(prev); }} />
+                </label>
+              ))}
             </div>
           ))}
         </div>

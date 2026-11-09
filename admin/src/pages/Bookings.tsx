@@ -340,13 +340,13 @@ function Details({ r, roomTypes, editable, onClose, onChanged }: { r: Reservatio
     }
   }
   // the latest attempt per template, in the order the guest receives them
-  const waLatest = (['booking_request_received', 'booking_confirmed', 'booking_cancelled'] as const)
+  const waLatest = (['booking_request_received', 'booking_confirmed', 'arrival_reminder', 'stay_review', 'booking_cancelled'] as const)
     .map((t) => ({ t, list: (wa ?? []).filter((m) => m.template === t) }))
     .filter((x) => x.list.length)
     .map((x) => ({ ...x.list[x.list.length - 1], attempts: x.list.length }));
   // each template only while the booking is in its status (public.staff_whatsapp_resend checks the same)
   const WA_STATUS_OF = { booking_request_received: 'request', booking_confirmed: 'confirmed', booking_cancelled: 'cancelled' } as const;
-  const waResendable = (m: WhatsAppMessage) => editable && m.status === 'failed' && r.status === WA_STATUS_OF[m.template];
+  const waResendable = (m: WhatsAppMessage) => editable && m.status === 'failed' && m.template in WA_STATUS_OF && r.status === WA_STATUS_OF[m.template as keyof typeof WA_STATUS_OF];
   const waTemplate = () => {
     const lines = [
       `السلام عليكم ${r.guest_name}،`,
@@ -434,10 +434,10 @@ function Details({ r, roomTypes, editable, onClose, onChanged }: { r: Reservatio
               <li key={m.template} className="grid gap-1" data-wa={m.template} data-wa-status={m.status}>
                 <span className="flex flex-wrap items-center gap-2">
                   <span className="font-semibold">{WA_TEMPLATE_LABELS[m.template]}</span>
-                  <span className={`chip ${m.status === 'failed' ? 'chip-cancelled' : m.status === 'test' ? 'chip-test' : m.status === 'pending' ? 'chip-request' : 'chip-confirmed'}`}>{WA_STATUS_LABELS[m.status] ?? m.status}</span>
+                  <span className={`chip ${m.status === 'failed' || m.status === 'skipped' ? 'chip-cancelled' : m.status === 'test' ? 'chip-test' : m.status === 'pending' || m.status === 'queued' ? 'chip-request' : 'chip-confirmed'}`}>{WA_STATUS_LABELS[m.status] ?? m.status}</span>
                   <span className="text-xs text-ink-muted">{riyadhDateTimeLong(m.created_at)}{m.attempts > 1 ? ` · المحاولة ${m.attempts}` : ''}</span>
                 </span>
-                {m.status === 'failed' && <span className="text-ink-muted" data-wa-reason>{waError(m.error_code)}</span>}
+                {(m.status === 'failed' || m.status === 'skipped') && <span className="text-ink-muted" data-wa-reason>{waError(m.error_code)}</span>}
                 {waResendable(m) && (
                   <span>
                     <button type="button" className="btn btn-ghost btn-sm" onClick={() => resendWa(m.template)} disabled={waBusy !== null} data-action="wa-resend">{waBusy === m.template && <Spinner />} إعادة الإرسال</button>

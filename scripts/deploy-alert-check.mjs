@@ -10,8 +10,8 @@
 //     «الغرف» line after a change (saved and waiting / on the room pages / saved but not on the site).
 //   node scripts/deploy-alert-check.mjs   (after build.py — it reads supabase/functions/booking-request/content.generated.json)
 import { readFileSync } from 'node:fs';
-import { deployAlertMail, deployStepKey, deployTriggerKey } from '../supabase/functions/booking-request/email.ts';
-import { failedStepFrom, finalStatus, functionUrl, resolveEvent } from './site-deploy-report.mjs';
+import { deployAlertMail, deployStepKey, deployTriggerKey, liveAlertMail } from '../supabase/functions/booking-request/email.ts';
+import { failedJobs, failedStepFrom, finalStatus, functionUrl, resolveEvent } from './site-deploy-report.mjs';
 import { usesDebounce } from '../supabase/functions/site-rebuild/debounce.ts';
 import { barShowsDeploy, DEPLOY_TEXT, deployLine, deployTime, deployView, PENDING_MS, RECENT_MS, ROOMS_NOTE, roomsNote } from '../admin/src/lib/siteDeployText.ts';
 
@@ -153,6 +153,30 @@ E('rooms: an older failure while the new run waits → saved and waiting', rooms
 E('ROOMS_NOTE.failed without an alert', !ROOMS_NOTE.failed(false).includes('تنبيه'));
 for (const [k, v] of Object.entries({ ...ROOMS_NOTE, failed: ROOMS_NOTE.failed(true), unknown: DEPLOY_TEXT.unknown, detail: DEPLOY_TEXT.failedDetail('الجمعة 6 نوفمبر 2026، 4:54 صباحًا') })) {
   E(`text ${k}: Arabic, no English, no Arabic-Indic digits`, /[؀-ۿ]/.test(v) && !/[A-Za-z]/.test(v) && !AR_DIGITS.test(v), v);
+}
+
+// ── the live-checks alert (9 Nov 2026): its own email, the failed jobs, the workflow job ──
+{
+  const LM = content.staff_email.ar.live_alert;
+  const live = { run_url: 'https://github.com/ArmadaResidence/armadaresidence-website/actions/runs/42200000001', commit: '7e9f9a9000000000000000000000000000000000',
+    commit_title: 'ci: <shards> & "live"', failed_jobs: ['live · booking', 'live · cors'], started_at: '2026-11-09T10:15:00Z' };
+  const m = liveAlertMail(content, live);
+  E('live: Ahmed\'s subject', m.subject === 'الموقع اتنشر، لكن فحص ما بعد النشر فشل — 7e9f9a9', m.subject);
+  E('live: «[تجربة]» for a test', liveAlertMail(content, { ...live, test: true }).subject === '[تجربة] الموقع اتنشر، لكن فحص ما بعد النشر فشل — 7e9f9a9');
+  E('live: not the deploy alert', !m.subject.includes('فشل تحديث الموقع') && !m.text.includes(M.lead_deploy));
+  E('live: the failed jobs listed', m.text.includes(`${LM.label_jobs}: live · booking، live · cors`), m.text);
+  E('live: the run link (HTML + text)', m.html.includes(`href="${live.run_url}"`) && m.text.includes(live.run_url));
+  E('live: escaped title', m.html.includes('ci: &lt;shards&gt; &amp; &quot;live&quot;') && !m.html.includes('<shards>'));
+  E('live: the time in Riyadh, Western digits', m.text.includes('وقت الفحص: الاثنين 9 نوفمبر 2026، 1:15 مساءً بتوقيت الرياض') && !AR_DIGITS.test(m.text), m.text);
+  E('live: the shared header + legal footer, RTL', m.html.includes(`src="${content.email_logo_url}"`) && m.html.includes(content.legal.ar.entity) && m.html.includes('<html lang="ar" dir="rtl"'));
+  E('live: no failed job named → «غير معروفة»', liveAlertMail(content, { ...live, failed_jobs: [] }).text.includes(M.steps.unknown));
+  const jobs = [{ name: 'live · the deploy is live', conclusion: 'success' }, { name: 'live · booking', conclusion: 'failure' }, { name: 'live · cors', conclusion: 'cancelled' },
+    { name: 'live · forced failure (alert test)', conclusion: 'failure' }, { name: 'live · alert the admins', conclusion: 'failure' }];
+  E('live: failedJobs = the failed ones, the alert job left out', JSON.stringify(failedJobs(jobs)) === JSON.stringify(['live · booking', 'live · forced failure (alert test)']));
+  const lw = readFileSync(new URL('../.github/workflows/live-checks.yml', import.meta.url), 'utf8');
+  E('live-checks.yml: the alert job after gate, live and forced, only on a failure', /alert:\n\s+name: live · alert the admins\n\s+needs: \[gate, live, forced\]\n\s+if: \$\{\{ always\(\) && \(needs\.gate\.result == 'failure' \|\| needs\.live\.result == 'failure' \|\| needs\.forced\.result == 'failure'\) \}\}/.test(lw));
+  E('live-checks.yml: the alert reports with the service key', /SUPABASE_SERVICE_ROLE_KEY: \$\{\{ secrets\.SUPABASE_SERVICE_ROLE_KEY \}\}[\s\S]*node scripts\/site-deploy-report\.mjs live/.test(lw));
+  E('live-checks.yml: force_fail skips the gate and fails one job', /force_fail:\n\s+description:/.test(lw) && /&& !inputs\.force_fail\)/.test(lw) && /forced:\n[\s\S]{0,200}inputs\.force_fail/.test(lw));
 }
 
 if (fails.length) {

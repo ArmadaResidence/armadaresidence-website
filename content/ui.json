@@ -516,6 +516,17 @@
         "am": "صباحًا",
         "pm": "مساءً"
       },
+      "live_alert": {
+        "_note": "The live-checks alert (9 Nov 2026, Ahmed's wording): the site WAS published, a check of the published site failed afterwards. Arabic only; the same sender and recipients as deploy_alert.",
+        "subject": "الموقع اتنشر، لكن فحص ما بعد النشر فشل — {commit}",
+        "lead": "الموقع اتنشر، لكن فحص ما بعد النشر فشل.",
+        "meaning": "النسخة الجديدة منشورة الآن على الموقع، لكن فحصًا أو أكثر من الفحوص التي تُجرى على الموقع المنشور بعد كل تحديث لم ينجح. التفاصيل في سجل الفحص.",
+        "label_commit": "التعديل (commit)",
+        "label_jobs": "الفحوص التي فشلت",
+        "label_time": "وقت الفحص",
+        "button": "افتح سجل الفحص على GitHub",
+        "foot": "يُرسَل هذا التنبيه مرة واحدة لكل تشغيل فاشل لفحص ما بعد النشر، إلى مديري النظام في لوحة أرمادا ريزيدنس."
+      },
       "deploy_alert": {
         "_note": "The site-deploy alert to the dashboard's active admins (6 Nov 2026, approved by Ahmed). Arabic only.",
         "test_prefix": "[تجربة] ",

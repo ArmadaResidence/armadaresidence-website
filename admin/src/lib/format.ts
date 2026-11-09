@@ -21,7 +21,8 @@ export const REASON_LABELS: Record<string, string> = {
 
 // WhatsApp messages to the guest (task 5 A, 28 Oct 2026; booking_cancelled 29 Oct 2026): the template names, the per-attempt status and the reason a
 // send failed — the codes of supabase/functions/booking-request/whatsapp.ts → waErrorCode / whatsapp-send.ts.
-export const WA_TEMPLATE_LABELS: Record<string, string> = { booking_request_received: 'رسالة استلام الطلب', booking_confirmed: 'رسالة تأكيد الحجز', booking_cancelled: 'رسالة الإلغاء' };
+// 9 Nov 2026 (wa-automation): the arrival reminder and the review request join the booking's list (no «إعادة الإرسال»)
+export const WA_TEMPLATE_LABELS: Record<string, string> = { booking_request_received: 'رسالة استلام الطلب', booking_confirmed: 'رسالة تأكيد الحجز', booking_cancelled: 'رسالة الإلغاء', arrival_reminder: 'تذكير الوصول', stay_review: 'طلب التقييم بعد المغادرة' };
 export const WA_STATUS_LABELS: Record<string, string> = {
   pending: 'قيد الإرسال',
   accepted: 'أُرسلت',
@@ -30,6 +31,8 @@ export const WA_STATUS_LABELS: Record<string, string> = {
   read: 'أُرسلت',
   failed: 'تعذّر الإرسال',
   test: 'تجربة — لم تُرسل',
+  queued: 'في انتظار الإرسال',
+  skipped: 'لم تُرسل — لم تعد مستحقة',
 };
 /** confirm / cancel stood but a notification did not go out (booking-admin answered notify_failed and logged the ref) */
 export const NOTIFY_FAILED = {
@@ -49,6 +52,8 @@ export const WA_ERRORS: Record<string, string> = {
   payload: 'بيانات الحجز لا تكفي لبناء الرسالة.',
   log: 'تعذّر تسجيل الرسالة قبل إرسالها.',
   rejected: 'رفضت خدمة واتساب الرسالة.',
+  not_confirmed: 'الحجز لم يعد مؤكدًا.',
+  opted_out: 'أوقف الضيف رسائل العروض على واتساب.',
 };
 export const waError = (code: string | null | undefined) => WA_ERRORS[code ?? ''] ?? WA_ERRORS.rejected;
 

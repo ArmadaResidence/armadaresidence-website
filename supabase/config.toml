@@ -95,3 +95,7 @@ verify_jwt = true
 # 40 MB.
 [storage]
 file_size_limit = "300MiB"
+
+# wa-automation (9 Nov 2026): Eyab WhatsApp welcome / offers, the arrival reminder, the review request, the YCloud webhook
+[functions.wa-automation]
+verify_jwt = false

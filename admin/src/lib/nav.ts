@@ -56,6 +56,8 @@ export const NAV_GROUPS: NavGroup[] = [
       { to: '/partner-logos', label: 'شعارات الشركاء', section: 'content', icon: 'logos', id: 'partner-logos' },
       // «العملاء» (3 Nov 2026): guest profiles, the club, consents and the audience exports
       { to: '/guests', label: 'العملاء', section: 'guests', icon: 'guests' },
+      // «عروض إياب على واتساب» (9 Nov 2026): eyab_offer campaigns to the members, from a branch number
+      { to: '/eyab-whatsapp', label: 'عروض إياب على واتساب', section: 'eyab_wa', icon: 'whatsapp' },
     ],
   },
   {

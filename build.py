@@ -432,6 +432,10 @@ def generate_function_content(content: dict[str, dict], fees: dict) -> None:
     ui = content["ui.json"]
     counts = {b["slug"]: sum(1 for r in rooms if r["branch"] == b["slug"]) for b in branches}
     print(f"✓ rooms on site: {len(rooms)} ({', '.join(f'{k}: {v}' for k, v in counts.items())})")
+    # the review request's link (9 Nov 2026): each branch's own Google review link, never another host
+    for b in branches:
+        if not re.fullmatch(r"https://g\.page/r/[A-Za-z0-9_-]+/review", b.get("google_review_url", "")):
+            sys.exit(f"✗ branches.json: {b['slug']} needs google_review_url = https://g.page/r/<id>/review")
     out = {
         "_generated": "by build.py from content/ — do not edit",
         "site_url": content["seo.json"]["site_url"],
@@ -460,6 +464,8 @@ def generate_function_content(content: dict[str, dict], fees: dict) -> None:
                 "address_ar": b["address_ar"],
                 "address_en": b["address_en"],
                 "maps_url": b["maps_url"],
+                # the arrival reminder's {{4}} is maps_url; the review request's {{3}} the Google review link (9 Nov 2026)
+                "google_review_url": b["google_review_url"],
             }
             for b in branches
         ],
@@ -516,6 +522,8 @@ def generate_function_content(content: dict[str, dict], fees: dict) -> None:
         "club_follow_url": content["club.json"]["follow_url"],
         # «إرسال للأعضاء» (part E): the member-only offer email
         "club_offer_email": {loc: content["club.json"][loc]["offer_email"] for loc in ("ar", "en")},
+        # WhatsApp (9 Nov 2026, wa-automation): the one plain reply to an opt-out message
+        "club_whatsapp": {loc: content["club.json"][loc]["whatsapp"] for loc in ("ar", "en")},
         "club_consent_version": content["club.json"]["consent"]["version"],
         # versions a page loaded before a wording change may still send (accepted; the one the guest saw is recorded)
         "club_consent_previous": content["club.json"]["consent"].get("previous", []),

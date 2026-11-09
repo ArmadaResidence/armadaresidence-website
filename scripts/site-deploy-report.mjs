@@ -83,9 +83,32 @@ async function github(path, env) {
   }
 }
 
+/** the failed jobs of a live-checks run (GitHub API shape), the alert job itself left out (9 Nov 2026) */
+export function failedJobs(jobs, exclude = /alert the admins/i) {
+  return (jobs ?? []).filter((j) => j.conclusion === 'failure' && !exclude.test(j.name ?? '')).map((j) => String(j.name));
+}
+
 async function main() {
   const env = process.env;
   const mode = process.argv[2];
+  // 9 Nov 2026: the live checks after a deploy failed — the alert of its own (stage live_failed), from live-checks.yml
+  if (mode === 'live') {
+    const repo = env.GITHUB_REPOSITORY;
+    const runId = Number(env.GITHUB_RUN_ID);
+    const attempt = Number(env.GITHUB_RUN_ATTEMPT || 1);
+    const sha = env.LIVE_SHA || env.GITHUB_SHA;
+    const jobs = await github(`repos/${repo}/actions/runs/${runId}/attempts/${attempt}/jobs?per_page=100`, env);
+    const run = await github(`repos/${repo}/actions/runs/${runId}`, env);
+    const commit = await github(`repos/${repo}/commits/${sha}`, env);
+    const a = await report({
+      stage: 'live_failed', run_id: runId, attempt, run_url: `${env.GITHUB_SERVER_URL}/${repo}/actions/runs/${runId}`, commit: sha,
+      commit_title: commit?.commit?.message?.split('\n')[0] ?? null, failed_jobs: failedJobs(jobs?.jobs), started_at: run?.run_started_at ?? null,
+      ref: env.GITHUB_REF_NAME || 'main',
+    }, env, () => {});
+    console.log(`site-deploy-report: live-checks alert ${a?.ok ? `sent — ${a.recipients} recipient(s)${a.test ? ' (test)' : ''}` : 'NOT sent'}`);
+    if (!a?.ok) process.exitCode = 1;
+    return;
+  }
   if (mode === 'test') {
     const target = process.argv[3] === 'admin' ? 'admin' : 'sink';
     const a = await report({ test: target }, env, () => {});

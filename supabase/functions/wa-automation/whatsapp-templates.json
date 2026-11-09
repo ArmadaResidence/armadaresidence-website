@@ -1,0 +1,424 @@
+{
+  "_note": "Live definitions of the four automation templates, read through the YCloud API (GET /v2/whatsapp/templates/{waba}/{name}/{lang}) on 9 Nov 2026 — templates.ts is tested against these. Never edit a template from here.",
+  "_read_at": "2026-11-09",
+  "accounts": {
+    "airport-road": {
+      "waba_id": "3187536471439127",
+      "templates": {
+        "eyab_welcome.ar": {
+          "status": "APPROVED",
+          "category": "MARKETING",
+          "components": [
+            {
+              "type": "BODY",
+              "text": "حيّاك دايم. تم تسجيلك في إياب، عضوية أرمادا ريزيدنس. ستصلك عروض الأعضاء الخاصة هنا وعلى بريدك الإلكتروني لزيارتك القادمة."
+            },
+            {
+              "type": "BUTTONS",
+              "buttons": [
+                {
+                  "type": "QUICK_REPLY",
+                  "text": "إلغاء الاشتراك"
+                }
+              ]
+            }
+          ]
+        },
+        "eyab_welcome.en": {
+          "status": "APPROVED",
+          "category": "MARKETING",
+          "components": [
+            {
+              "type": "BODY",
+              "text": "Always welcome. You've joined Eyab, the Armada Residence membership. Special member offers will reach you here and by email for your next visit."
+            },
+            {
+              "type": "BUTTONS",
+              "buttons": [
+                {
+                  "type": "QUICK_REPLY",
+                  "text": "Unsubscribe"
+                }
+              ]
+            }
+          ]
+        },
+        "eyab_offer.ar": {
+          "status": "APPROVED",
+          "category": "MARKETING",
+          "components": [
+            {
+              "type": "BODY",
+              "text": "عرض لأعضاء إياب: {{1}}\n{{2}}\nصالح حتى {{3}}.\nللحجز أو الاستفسار، رد على هذه الرسالة.",
+              "example": {
+                "body_text": [
+                  [
+                    "عرض نهاية الأسبوع",
+                    "ليلتان بسعر خاص للأعضاء في فرع طريق الشفا",
+                    "30 نوفمبر 2026"
+                  ]
+                ]
+              }
+            },
+            {
+              "type": "FOOTER",
+              "text": "إياب — عضوية أرمادا ريزيدنس"
+            },
+            {
+              "type": "BUTTONS",
+              "buttons": [
+                {
+                  "type": "URL",
+                  "text": "تفاصيل العرض",
+                  "url": "https://armadaresidence.com/offers/{{1}}",
+                  "example": [
+                    "https://armadaresidence.com/offers/weekend-offer"
+                  ]
+                },
+                {
+                  "type": "QUICK_REPLY",
+                  "text": "إلغاء الاشتراك"
+                }
+              ]
+            }
+          ]
+        },
+        "eyab_offer.en": {
+          "status": "APPROVED",
+          "category": "MARKETING",
+          "components": [
+            {
+              "type": "BODY",
+              "text": "An offer for Eyab members: {{1}}\n{{2}}\nValid until {{3}}.\nTo book or ask, reply to this message.",
+              "example": {
+                "body_text": [
+                  [
+                    "Weekend offer",
+                    "Two nights at a special member rate at Shafa Road",
+                    "30 November 2026"
+                  ]
+                ]
+              }
+            },
+            {
+              "type": "FOOTER",
+              "text": "Eyab — Armada Residence membership"
+            },
+            {
+              "type": "BUTTONS",
+              "buttons": [
+                {
+                  "type": "URL",
+                  "text": "Offer details",
+                  "url": "https://armadaresidence.com/offers/{{1}}",
+                  "example": [
+                    "https://armadaresidence.com/offers/weekend-offer"
+                  ]
+                },
+                {
+                  "type": "QUICK_REPLY",
+                  "text": "Unsubscribe"
+                }
+              ]
+            }
+          ]
+        },
+        "arrival_reminder.ar": {
+          "status": "APPROVED",
+          "category": "UTILITY",
+          "components": [
+            {
+              "type": "BODY",
+              "text": "مرحبًا {{1}}،\nنذكّرك بوصولك غدًا إلى {{2}}، حجز رقم {{3}}.\nتسجيل الدخول من الساعة 4:00 عصرًا. الموقع على الخريطة: {{4}}\nإذا كنت ستصل بعد منتصف الليل أو تحتاج أي ترتيب، رد على هذه الرسالة.",
+              "example": {
+                "body_text": [
+                  [
+                    "أحمد",
+                    "أرمادا ريزيدنس طريق المطار",
+                    "AR-20261102-ABCD",
+                    "https://maps.app.goo.gl/WTWEcv7gmWe5bUaT9"
+                  ]
+                ]
+              }
+            },
+            {
+              "type": "FOOTER",
+              "text": "إلغاء مجاني حتى 2:00 ظهرًا يوم الوصول"
+            }
+          ]
+        },
+        "arrival_reminder.en": {
+          "status": "APPROVED",
+          "category": "UTILITY",
+          "components": [
+            {
+              "type": "BODY",
+              "text": "Hello {{1}},\nA reminder of your arrival tomorrow at {{2}}, booking {{3}}.\nCheck-in is from 4:00 pm. Location: {{4}}\nIf you'll arrive after midnight or need anything arranged, reply to this message.",
+              "example": {
+                "body_text": [
+                  [
+                    "Ahmed",
+                    "Armada Residence Airport Road",
+                    "AR-20261102-ABCD",
+                    "https://maps.app.goo.gl/WTWEcv7gmWe5bUaT9"
+                  ]
+                ]
+              }
+            },
+            {
+              "type": "FOOTER",
+              "text": "Free cancellation until 2:00 pm on arrival day"
+            }
+          ]
+        },
+        "stay_review.ar": {
+          "status": "APPROVED",
+          "category": "UTILITY",
+          "components": [
+            {
+              "type": "BODY",
+              "text": "مرحبًا {{1}}،\nشكرًا لإقامتك في {{2}}. رأيك يساعدنا ويساعد ضيوفًا غيرك.\nلو تسمح بدقيقة لتقييم إقامتك على خرائط Google: {{3}}\nوإن كان هناك ما لم يعجبك، رد على هذه الرسالة ونحن نتابعه معك.",
+              "example": {
+                "body_text": [
+                  [
+                    "أحمد",
+                    "أرمادا ريزيدنس طريق المطار",
+                    "https://g.page/r/example/review"
+                  ]
+                ]
+              }
+            }
+          ]
+        },
+        "stay_review.en": {
+          "status": "APPROVED",
+          "category": "UTILITY",
+          "components": [
+            {
+              "type": "BODY",
+              "text": "Hello {{1}},\nThank you for staying at {{2}}. Your opinion helps us and other guests.\nIf you have a minute to rate your stay on Google Maps: {{3}}\nAnd if anything fell short, reply to this message and we'll follow up with you.",
+              "example": {
+                "body_text": [
+                  [
+                    "Ahmed",
+                    "Armada Residence Airport Road",
+                    "https://g.page/r/example/review"
+                  ]
+                ]
+              }
+            }
+          ]
+        }
+      }
+    },
+    "shafa-road": {
+      "waba_id": "329667206894245",
+      "templates": {
+        "eyab_welcome.ar": {
+          "status": "APPROVED",
+          "category": "MARKETING",
+          "components": [
+            {
+              "type": "BODY",
+              "text": "حيّاك دايم. تم تسجيلك في إياب، عضوية أرمادا ريزيدنس. ستصلك عروض الأعضاء الخاصة هنا وعلى بريدك الإلكتروني لزيارتك القادمة."
+            },
+            {
+              "type": "BUTTONS",
+              "buttons": [
+                {
+                  "type": "QUICK_REPLY",
+                  "text": "إلغاء الاشتراك"
+                }
+              ]
+            }
+          ]
+        },
+        "eyab_welcome.en": {
+          "status": "APPROVED",
+          "category": "MARKETING",
+          "components": [
+            {
+              "type": "BODY",
+              "text": "Always welcome. You've joined Eyab, the Armada Residence membership. Special member offers will reach you here and by email for your next visit."
+            },
+            {
+              "type": "BUTTONS",
+              "buttons": [
+                {
+                  "type": "QUICK_REPLY",
+                  "text": "Unsubscribe"
+                }
+              ]
+            }
+          ]
+        },
+        "eyab_offer.ar": {
+          "status": "APPROVED",
+          "category": "MARKETING",
+          "components": [
+            {
+              "type": "BODY",
+              "text": "عرض لأعضاء إياب: {{1}}\n{{2}}\nصالح حتى {{3}}.\nللحجز أو الاستفسار، رد على هذه الرسالة.",
+              "example": {
+                "body_text": [
+                  [
+                    "عرض نهاية الأسبوع",
+                    "ليلتان بسعر خاص للأعضاء في فرع طريق الشفا",
+                    "30 نوفمبر 2026"
+                  ]
+                ]
+              }
+            },
+            {
+              "type": "FOOTER",
+              "text": "إياب — عضوية أرمادا ريزيدنس"
+            },
+            {
+              "type": "BUTTONS",
+              "buttons": [
+                {
+                  "type": "URL",
+                  "text": "تفاصيل العرض",
+                  "url": "https://armadaresidence.com/offers/{{1}}",
+                  "example": [
+                    "https://armadaresidence.com/offers/weekend-offer"
+                  ]
+                },
+                {
+                  "type": "QUICK_REPLY",
+                  "text": "إلغاء الاشتراك"
+                }
+              ]
+            }
+          ]
+        },
+        "eyab_offer.en": {
+          "status": "APPROVED",
+          "category": "MARKETING",
+          "components": [
+            {
+              "type": "BODY",
+              "text": "An offer for Eyab members: {{1}}\n{{2}}\nValid until {{3}}.\nTo book or ask, reply to this message.",
+              "example": {
+                "body_text": [
+                  [
+                    "Weekend offer",
+                    "Two nights at a special member rate at Shafa Road",
+                    "30 November 2026"
+                  ]
+                ]
+              }
+            },
+            {
+              "type": "FOOTER",
+              "text": "Eyab — Armada Residence membership"
+            },
+            {
+              "type": "BUTTONS",
+              "buttons": [
+                {
+                  "type": "URL",
+                  "text": "Offer details",
+                  "url": "https://armadaresidence.com/offers/{{1}}",
+                  "example": [
+                    "https://armadaresidence.com/offers/weekend-offer"
+                  ]
+                },
+                {
+                  "type": "QUICK_REPLY",
+                  "text": "Unsubscribe"
+                }
+              ]
+            }
+          ]
+        },
+        "arrival_reminder.ar": {
+          "status": "APPROVED",
+          "category": "UTILITY",
+          "components": [
+            {
+              "type": "BODY",
+              "text": "مرحبًا {{1}}،\nنذكّرك بوصولك غدًا إلى {{2}}، حجز رقم {{3}}.\nتسجيل الدخول من الساعة 4:00 عصرًا. الموقع على الخريطة: {{4}}\nإذا كنت ستصل بعد منتصف الليل أو تحتاج أي ترتيب، رد على هذه الرسالة.",
+              "example": {
+                "body_text": [
+                  [
+                    "أحمد",
+                    "أرمادا ريزيدنس طريق الشفا",
+                    "AR-20261102-ABCD",
+                    "https://maps.app.goo.gl/yfo3wdoSwtFAFRhHA"
+                  ]
+                ]
+              }
+            },
+            {
+              "type": "FOOTER",
+              "text": "إلغاء مجاني حتى 2:00 ظهرًا يوم الوصول"
+            }
+          ]
+        },
+        "arrival_reminder.en": {
+          "status": "APPROVED",
+          "category": "UTILITY",
+          "components": [
+            {
+              "type": "BODY",
+              "text": "Hello {{1}},\nA reminder of your arrival tomorrow at {{2}}, booking {{3}}.\nCheck-in is from 4:00 pm. Location: {{4}}\nIf you'll arrive after midnight or need anything arranged, reply to this message.",
+              "example": {
+                "body_text": [
+                  [
+                    "Ahmed",
+                    "Armada Residence Shafa Road",
+                    "AR-20261102-ABCD",
+                    "https://maps.app.goo.gl/yfo3wdoSwtFAFRhHA"
+                  ]
+                ]
+              }
+            },
+            {
+              "type": "FOOTER",
+              "text": "Free cancellation until 2:00 pm on arrival day"
+            }
+          ]
+        },
+        "stay_review.ar": {
+          "status": "APPROVED",
+          "category": "UTILITY",
+          "components": [
+            {
+              "type": "BODY",
+              "text": "مرحبًا {{1}}،\nشكرًا لإقامتك في {{2}}. رأيك يساعدنا ويساعد ضيوفًا غيرك.\nلو تسمح بدقيقة لتقييم إقامتك على خرائط Google: {{3}}\nوإن كان هناك ما لم يعجبك، رد على هذه الرسالة ونحن نتابعه معك.",
+              "example": {
+                "body_text": [
+                  [
+                    "أحمد",
+                    "أرمادا ريزيدنس طريق الشفا",
+                    "https://g.page/r/example/review"
+                  ]
+                ]
+              }
+            }
+          ]
+        },
+        "stay_review.en": {
+          "status": "APPROVED",
+          "category": "UTILITY",
+          "components": [
+            {
+              "type": "BODY",
+              "text": "Hello {{1}},\nThank you for staying at {{2}}. Your opinion helps us and other guests.\nIf you have a minute to rate your stay on Google Maps: {{3}}\nAnd if anything fell short, reply to this message and we'll follow up with you.",
+              "example": {
+                "body_text": [
+                  [
+                    "Ahmed",
+                    "Armada Residence Shafa Road",
+                    "https://g.page/r/example/review"
+                  ]
+                ]
+              }
+            }
+          ]
+        }
+      }
+    }
+  }
+}

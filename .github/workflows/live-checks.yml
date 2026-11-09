@@ -21,6 +21,11 @@ on:
         description: the deploy run whose live site to check (empty = the newest successful deploy)
         required: false
         default: ''
+      force_fail:
+        description: alert test — skip the checks, fail one job on purpose and send the admins the live-checks alert («[تجربة]» off main)
+        type: boolean
+        required: false
+        default: false
 
 permissions:
   contents: read
@@ -33,7 +38,7 @@ concurrency:
 jobs:
   gate:
     name: live · the deploy is live
-    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
+    if: ${{ (github.event_name == 'workflow_dispatch' && !inputs.force_fail) || github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
     outputs:
@@ -122,3 +127,37 @@ jobs:
         run: echo "SUPABASE_URL=${PUBLIC_BOOKING_ENDPOINT%%/functions/*}" >> "$GITHUB_ENV"
       - name: Run the live checks
         run: node scripts/check-all.mjs --live "${{ needs.gate.outputs.url }}" --shard ${{ matrix.shard }}
+
+  # 9 Nov 2026: the alert test (workflow_dispatch force_fail) — one job that fails on purpose, nothing else runs
+  forced:
+    name: live · forced failure (alert test)
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.force_fail }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - run: echo "forced failure — the live-checks alert test" && exit 1
+
+  # 9 Nov 2026 (Ahmed): a failed live check is never silent — the dashboard's active admins get an email of its own
+  # («الموقع اتنشر، لكن فحص ما بعد النشر فشل»: the failed jobs, this run's link), the same sender and recipients as the
+  # deploy alert (Edge Function site-deploy-report, stage live_failed). A run on another branch than main is a test.
+  alert:
+    name: live · alert the admins
+    needs: [gate, live, forced]
+    if: ${{ always() && (needs.gate.result == 'failure' || needs.live.result == 'failure' || needs.forced.result == 'failure') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: scripts/site-deploy-report.mjs
+          sparse-checkout-cone-mode: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Email the admins
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          PUBLIC_BOOKING_ENDPOINT: ${{ vars.PUBLIC_BOOKING_ENDPOINT }}
+          LIVE_SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
+        run: node scripts/site-deploy-report.mjs live

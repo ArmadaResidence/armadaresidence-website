@@ -2200,3 +2200,78 @@ Switch day, following `docs/launch-runbook.md` with Ahmed's brief of 8 Nov 2026.
   40-minute limit (the same check passed against the live site from this machine in 131 s, 629 checks, and in the next
   CI run in a 5-minute shard — not reproduced). The browser shards of both workflows now stop at 20 min (about 3× the
   longest shard). Second live run (42554998027, after `d43931c`): all 8 jobs green in about 7 min.
+
+## 2026-11-09 — WhatsApp automation: Eyab welcome and offers, opt-out, the arrival reminder, the review request; the live-checks alert (Ahmed, 9 Nov 2026)
+
+Ahmed's brief (unattended run): four Meta-approved templates on both numbers (Airport Road, Shafa Road), ar + en —
+`eyab_welcome`, `eyab_offer`, `arrival_reminder`, `stay_review`; per-branch switches, all OFF; a dashboard page for the
+offers; opt-out by WhatsApp reply; one alert fix.
+
+- **The templates as read.** Read once through the YCloud API (9 Nov 2026, a temporary test-token action, replaced the
+  same hour by the real function): all 16 APPROVED and identical on both numbers. `eyab_welcome` MARKETING, no variable,
+  a quick reply «إلغاء الاشتراك» / "Unsubscribe"; `eyab_offer` MARKETING, {{1}} title · {{2}} details · {{3}} valid
+  until (the sample writes «30 نوفمبر 2026» / "30 November 2026"), a URL button `https://armadaresidence.com/offers/{{1}}`
+  and the same quick reply; `arrival_reminder` UTILITY {{1}} first name · {{2}} branch · {{3}} ref · {{4}} map link;
+  `stay_review` UTILITY {{1}} first name · {{2}} branch · {{3}} review link. Kept in
+  `supabase/functions/wa-automation/whatsapp-templates.json`; `templates.ts` is tested against it
+  (`scripts/wa-automation-check.mjs`, a fast check). No YCloud webhook existed.
+- **Content.** `branches.json → google_review_url` per branch (Ahmed's two links), checked by build.py and carried into
+  the functions' content; the arrival reminder's {{4}} is `maps_url` — the branch pages' own link. Branches are not
+  editable in the dashboard, so there is no dashboard field. The opt-out reply: `club.json → whatsapp.optout_reply`.
+- **The offer button.** The site has no `/offers/<slug>` pages, so the URL variable is a suffix:
+  `?utm_source=whatsapp&utm_medium=eyab&utm_campaign=<campaign>#offer-<slug>` (Arabic) or `en/…` for English — the 404
+  page now sends `/offers/en/…` to `/en/offers/` and keeps the query and the anchor on every `/offers/…` redirect.
+- **One function, `wa-automation`** (verify_jwt off): the database queues, the function sends. pg_cron → pg_net with the
+  Vault token `wa_cron_token`: `wa-arrival-reminder` 13:00 UTC (16:00 Riyadh), `wa-stay-review` 07:00 UTC (10:00),
+  `wa-drain` every minute (a query only; it calls the function only when something is queued). The welcome is queued by
+  a deferred trigger at the end of the transaction that makes someone a member with the consent, so every way of joining
+  (site, booking box, reception) is covered; the branch = the latest grant's booking, else a breakfast QR (`…-shafa` /
+  `…-airport`), else the reception user's branch, else Airport Road; never a member of more than an hour ago; once per
+  member. Arrival: confirmed bookings with check-in tomorrow; review: confirmed bookings with check-out yesterday (there
+  is no no-show status — confirmed only), one per guest and branch per day, never to an opted-out guest, never filtered
+  by satisfaction; both once per booking (the log's unique index) and in the booking's language. A message no longer due
+  when its turn comes (cancelled, opted out, switch off, campaign stopped) is `skipped`. Sends at about 5 a second; a
+  failure is logged, never retried by itself.
+- **Logs.** The booking templates in `whatsapp_messages` (shown in the booking details — «تذكير الوصول», «طلب التقييم
+  بعد المغادرة», no «إعادة الإرسال»); the Eyab ones in the new `eyab_messages`. Each row: template, sending number,
+  status, YCloud id, Meta's price once the webhook reports it — never the text or the phone number («the number» of the
+  brief is logged as the sending number; the recipient is the linked profile or booking).
+- **Opt-out.** «إلغاء» / «إيقاف» / stop / unsubscribe (any case, trimmed) and the templates' own button «إلغاء الاشتراك»;
+  hamza forms, tatweel, diacritics and a trailing punctuation mark are ignored («الغاء», "STOP."); «إلغاء الحجز» is not
+  an opt-out. It sets `guest_profiles.wa_opt_out_at` (a profile is made for an unknown number, so the stop holds if they
+  book later); a consent given after it counts again. One plain reply, only the first time, from the number they wrote
+  to, saying booking messages continue. Email unsubscribe is unchanged and separate.
+- **The webhook needs one click.** The YCloud endpoint (inbound messages + delivery statuses) is registered from the
+  dashboard by a system admin («تفعيل استقبال الردود»): the function creates it with the URL token `wa_hook_token` and
+  stores the signing secret YCloud returns straight into Vault (`ycloud_webhook_secret`, never shown or logged); each call
+  is verified (`YCloud-Signature`, HMAC-SHA256, 5-minute window). Not registered in this run: registering starts the
+  opt-out reply to guests, which waits for Ahmed. No campaign can start before it.
+- **«عروض إياب على واتساب»** (new section `eyab_wa`: admin and sales edit by default — sales is the sales & marketing
+  role; the matrix may grant others): the sending branch, the audience (ar / en / both), the three variables per language
+  and the button's offer, a preview of the approved template filled exactly; «إرسال تجربة لنفسي» to the user's own saved
+  number (20 a day; the number audited by its last two digits) is required after the last edit and within 24 h;
+  «إرسال للأعضاء…» shows the count, the cost per message and the total, and Ahmed approves each send there; the approved
+  count must still be the count (else «تغيّر عدد الأعضاء»). Recipients: members, consent granted, not opted out, in
+  their profile language. Progress live; «إيقاف الإرسال». «السجل» records the start (who, count, estimate) and the
+  finish (sent, delivered so far, failed, skipped).
+- **Cost.** Settings `wa_message_cost` (USD): marketing 0.0576, utility 0.0128 — Meta's Saudi Arabia rates after the
+  1 Oct 2026 change (public rate summaries; Meta's own card to confirm). About 0.22 SAR per offer or welcome, about
+  0.05 SAR per reminder or review (free inside a 24-hour window the guest opened). The invoice is YCloud's.
+- **Switches.** Settings «رسائل واتساب التلقائية», per branch: «ترحيب إياب على واتساب», «تذكير الوصول», «طلب التقييم
+  بعد المغادرة» (`wa_eyab_welcome`, `wa_arrival_reminder`, `wa_stay_review`), seeded OFF, audited, undoable; not part of
+  the site defaults. Nothing was switched on.
+- **Test sends (Ahmed's own number, his «إياب» membership — checked read-only).** 16 real sends through the function's
+  builder and sender (`qa-send`, logged `is_test`), 06:32–06:33 UTC: every template × ar / en × both numbers, all
+  accepted by YCloud. Delivery statuses arrive only once the webhook is registered. The opt-out handler ran in test mode
+  on fake test numbers only (+9665000009xx, `is_test` profiles; the reply logged, never sent).
+- **The CLI splitter.** `supabase db push` cut a statement at a `CASE … END` inside an `IF` / `FOREACH` header of a
+  plpgsql body (reproduced alone on the preview branch); the migration assigns the CASE to a variable first.
+- **Tests.** `supabase/tests/wa-automation.sql` — 67 checks on the preview branch `wa-automation-9nov` (switches, the
+  welcome's origin and once-only rule, both ticks, the queue and skips, statuses forward only, opt-out, campaigns and
+  their gates, grants, the schedules): all green; the branch deleted after. Production: dry run (only this migration),
+  then `db push --linked`.
+- **The live-checks alert.** A failed run of `live-checks.yml` (its gate, a shard, or the forced test job) runs the job
+  «live · alert the admins»: `site-deploy-report.mjs live` → `site-deploy-report` stage `live_failed` → an email of its
+  own, «الموقع اتنشر، لكن فحص ما بعد النشر فشل» (Ahmed's words), the failed jobs, the commit, the time, the run link —
+  the same sender and recipients (the active admins) as the deploy alert; a run off `main` is «[تجربة]».
+  `workflow_dispatch` input `force_fail` skips the checks and fails one job on purpose. Checked by `deploy-alert-check`.

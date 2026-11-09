@@ -13,11 +13,13 @@
 // Test (still needs the service key; nothing recorded): { "test": "sink" } (or true) sends a sample deploy alert,
 // subject «[تجربة] …», to Resend's sink address only; { "test": "admin" } sends the same sample once to the active
 // admins (the real recipients) — run from the deploy watchdog's workflow_dispatch input alert_test.
+// Live checks (9 Nov 2026): { stage: 'live_failed', run_id, run_url, commit, failed_jobs, ref } from the live-checks
+// workflow when a check of the published site failed — its own email (liveAlertMail), same sender and recipients.
 // Secrets: RESEND_API_KEY, optional ALERT_FROM; SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY (automatic).
 // the one email layout (header with the reversed logo, dark-mode safe; the legal footer) and its copy (ui.json →
 // staff_email.ar.deploy_alert, through build.py's content.generated.json) — 6 Nov 2026
 import content from '../booking-request/content.generated.json' with { type: 'json' };
-import { deployAlertMail } from '../booking-request/email.ts';
+import { deployAlertMail, liveAlertMail } from '../booking-request/email.ts';
 
 type AlertKind = 'deploy' | 'watchdog';
 interface AlertRun { run_id: number; run_url: string; commit: string; commit_title: string | null; event: string; failed_step: string | null; started_at: string | null; finished_at: string | null }
@@ -79,6 +81,8 @@ async function send(to: string[], mail: { subject: string; html: string; text: s
 interface Body {
   stage?: string; run_id?: number | string; attempt?: number; run_url?: string; commit?: string; commit_title?: string;
   event?: string; failed_step?: string; started_at?: string; test?: boolean | 'sink' | 'admin';
+  /** live_failed (9 Nov 2026): the live-checks run's failed jobs; a run on another branch than main is a test */
+  failed_jobs?: string[]; ref?: string;
 }
 interface Claim { claimed: boolean; recipients?: string[]; last_success_at?: string | null; run?: AlertRun & { is_test?: boolean } }
 
@@ -111,6 +115,25 @@ Deno.serve(async (req) => {
     }
     const sent = await send(to, deployAlertMail(content, sample));
     return json(200, { ok: sent, test: body.test === 'admin' ? 'admin' : 'sink', recipients: to.length });
+  }
+
+  // 9 Nov 2026: the live checks after a deploy failed (.github/workflows/live-checks.yml → `site-deploy-report.mjs live`).
+  // The site WAS published: an alert of its own (liveAlertMail), the same sender and recipients, nothing recorded in
+  // site_deploys (the deploy itself succeeded). A run on another branch than main is a test: «[تجربة]» in the subject.
+  if (body.stage === 'live_failed') {
+    const probe = await rpc(key, 'site_deploy_report', { p_run_id: 1, p_status: 'probe', p_commit: '0'.repeat(40), p_event: 'other', p_run_url: 'https://github.com/x/y/actions/runs/1' });
+    if (probe.status !== 400) return json(403, { ok: false });
+    const runUrl = String(body.run_url ?? '');
+    const commit = String(body.commit ?? '');
+    const jobs = Array.isArray(body.failed_jobs) ? body.failed_jobs.map((j) => String(j).slice(0, 80)).filter(Boolean).slice(0, 12) : [];
+    if (!RUN_URL.test(runUrl) || !SHA.test(commit)) return json(400, { ok: false, error: 'invalid report' });
+    const rc = await rpc<string[]>(serviceKey(), 'site_deploy_alert_recipients', {});
+    const to = rc.ok && Array.isArray(rc.data) ? rc.data : [];
+    const test = String(body.ref ?? 'main') !== 'main';
+    const mail = liveAlertMail(content, { run_url: runUrl, commit: commit.toLowerCase(), commit_title: body.commit_title ? String(body.commit_title).split('\n')[0] : null,
+      failed_jobs: jobs, started_at: body.started_at && !Number.isNaN(Date.parse(body.started_at)) ? body.started_at : null, test });
+    const sent = await send(to, mail);
+    return json(200, { ok: sent, recorded: 'live_failed', alert: sent ? 'sent' : 'send_failed', recipients: to.length, test });
   }
 
   const stage = String(body.stage ?? '');

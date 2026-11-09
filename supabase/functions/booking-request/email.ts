@@ -1388,3 +1388,43 @@ ${para(L, M.foot, { muted: true, size: 12 })}`,
   const text = [lead, '', M.meaning, '', textRows(rows), '', `${M.button}: ${d.run_url}`, '', M.foot, '', legalText(c, 'ar')].join('\n');
   return { subject, html, text };
 }
+
+// The live-checks alert (9 Nov 2026, Ahmed): the deploy published the site, then a check of the PUBLISHED site failed
+// (.github/workflows/live-checks.yml → site-deploy-report, stage live_failed). An email of its own — not the «فشل تحديث
+// الموقع» one — with the failed jobs and the run link; the same sender and recipients (the dashboard's active admins).
+// Copy: ui.json → staff_email.ar.live_alert (the time line and the test prefix shared with deploy_alert).
+export interface LiveAlertMail {
+  run_url: string;
+  commit: string;
+  commit_title: string | null;
+  /** the failed jobs as GitHub names them («live · booking», …) */
+  failed_jobs: string[];
+  started_at: string | null;
+  test?: boolean;
+}
+export function liveAlertMail(c: Content, d: LiveAlertMail): Mail {
+  const L: Locale = 'ar';
+  const M = c.staff_email.ar.live_alert;
+  const D = c.staff_email.ar.deploy_alert;
+  const short = String(d.commit).slice(0, 7);
+  const subject = `${d.test ? D.test_prefix : ''}${fill(M.subject, { commit: short })}`;
+  const jobs = d.failed_jobs.length ? d.failed_jobs.join('، ') : D.steps.unknown;
+  const rows: [string, string][] = [
+    [M.label_commit, `${short}${d.commit_title ? ` — ${d.commit_title}` : ''}`],
+    [M.label_jobs, jobs],
+    [M.label_time, d.started_at ? `${riyadhStamp(c, d.started_at, L)}${D.time_suffix}` : D.not_recorded],
+  ];
+  const inner = section(
+    L,
+    `${headline(L, M.lead)}
+${para(L, M.meaning)}
+${kvCard(L, rows)}
+<div style="height:18px; line-height:18px; font-size:0;">&nbsp;</div>
+${buttons(L, [button(L, d.run_url, M.button, 'bronze')])}
+<div style="height:8px; line-height:8px; font-size:0;">&nbsp;</div>
+${para(L, M.foot, { muted: true, size: 12 })}`,
+  );
+  const html = doc({ lang: 'ar', title: subject, preheader: `${M.lead} — ${short}`, body: header(c, undefined, true) + card(inner) + footer(c, ['ar']), print: true });
+  const text = [M.lead, '', M.meaning, '', textRows(rows), '', `${M.button}: ${d.run_url}`, '', M.foot, '', legalText(c, 'ar')].join('\n');
+  return { subject, html, text };
+}
