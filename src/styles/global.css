@@ -37,6 +37,152 @@
   src: url("../assets/fonts/ibm-plex-sans-arabic-arabic-700-subset.woff2") format("woff2");
   unicode-range: U+0600-06FF, U+200C-200F, U+2010-2011, U+FD3E-FD3F;
 }
+/* The Arabic fallback while IBM Plex Sans Arabic is on its way (8 Nov 2026, post-launch session 1): the device's own
+   Arabic font resized to take the web font's space, so the swap does not re-wrap lines and move the page (on the home
+   page the «فرعانا» intro went from 3 lines to 2: a 24 px shift). One family per system font, each with its own
+   numbers, in the stack after Plex in this order — a device uses the first one it has: Windows (Segoe UI — also the
+   Lighthouse lab), then Android (Noto Sans Arabic, then Noto Naskh Arabic; the «UI» builds share the widths, and the
+   vertical overrides below replace each font's own), then iPhone / Mac (Geeza Pro). iOS keeps SF Arabic, its own
+   Arabic system font, out of local() — it cannot be resized — so on Apple devices the swap window now draws Geeza Pro
+   (resized to Plex) instead of SF Arabic (7 % wider than Plex in bold). Every value is MEASURED over the home page's
+   own Arabic text (1,136 characters, shaped by the browser): size-adjust = width of Plex ÷ width of the font; ascent /
+   descent = Plex's as the browser renders them (1.09 / 0.42 em) ÷ size-adjust — Segoe UI in Chrome from this
+   machine's installed faces, Noto in Chrome from the official OFL files of google/fonts (variable, at 400 / 600 /
+   700), Geeza Pro in Safari on Ahmed's iPhone (iOS 18.7; 600 = its Bold face). A 600 face resolves to the Bold file
+   where a device has no SemiBold. Only the Arabic range, so digits and Latin still fall to
+   Manrope; once Plex is loaded these faces are never used. */
+@font-face {
+  font-family: "IBM Plex Sans Arabic Fallback Segoe";
+  font-style: normal;
+  font-weight: 400 500;
+  src: local("Segoe UI"), local("SegoeUI");
+  size-adjust: 89.81%;
+  ascent-override: 121.36%;
+  descent-override: 46.76%;
+  line-gap-override: 0%;
+  unicode-range: U+0600-06FF, U+200C-200F, U+2010-2011, U+FD3E-FD3F;
+}
+@font-face {
+  font-family: "IBM Plex Sans Arabic Fallback Segoe";
+  font-style: normal;
+  font-weight: 600;
+  src: local("Segoe UI Semibold"), local("SegoeUI-Semibold");
+  size-adjust: 94.33%;
+  ascent-override: 115.55%;
+  descent-override: 44.53%;
+  line-gap-override: 0%;
+  unicode-range: U+0600-06FF, U+200C-200F, U+2010-2011, U+FD3E-FD3F;
+}
+@font-face {
+  font-family: "IBM Plex Sans Arabic Fallback Segoe";
+  font-style: normal;
+  font-weight: 700;
+  src: local("Segoe UI Bold"), local("SegoeUI-Bold");
+  size-adjust: 96.18%;
+  ascent-override: 113.33%;
+  descent-override: 43.67%;
+  line-gap-override: 0%;
+  unicode-range: U+0600-06FF, U+200C-200F, U+2010-2011, U+FD3E-FD3F;
+}
+@font-face {
+  font-family: "IBM Plex Sans Arabic Fallback Noto Sans";
+  font-style: normal;
+  font-weight: 400 500;
+  src: local("Noto Sans Arabic"), local("NotoSansArabic-Regular"), local("Noto Sans Arabic UI"), local("NotoSansArabicUI-Regular");
+  size-adjust: 94.22%;
+  ascent-override: 115.68%;
+  descent-override: 44.58%;
+  line-gap-override: 0%;
+  unicode-range: U+0600-06FF, U+200C-200F, U+2010-2011, U+FD3E-FD3F;
+}
+@font-face {
+  font-family: "IBM Plex Sans Arabic Fallback Noto Sans";
+  font-style: normal;
+  font-weight: 600;
+  src: local("Noto Sans Arabic SemiBold"), local("NotoSansArabic-SemiBold"), local("Noto Sans Arabic UI SemiBold"), local("NotoSansArabicUI-SemiBold"), local("Noto Sans Arabic Bold"), local("NotoSansArabic-Bold"), local("Noto Sans Arabic UI Bold"), local("NotoSansArabicUI-Bold");
+  size-adjust: 93.29%;
+  ascent-override: 116.84%;
+  descent-override: 45.02%;
+  line-gap-override: 0%;
+  unicode-range: U+0600-06FF, U+200C-200F, U+2010-2011, U+FD3E-FD3F;
+}
+@font-face {
+  font-family: "IBM Plex Sans Arabic Fallback Noto Sans";
+  font-style: normal;
+  font-weight: 700;
+  src: local("Noto Sans Arabic Bold"), local("NotoSansArabic-Bold"), local("Noto Sans Arabic UI Bold"), local("NotoSansArabicUI-Bold");
+  size-adjust: 91.96%;
+  ascent-override: 118.53%;
+  descent-override: 45.67%;
+  line-gap-override: 0%;
+  unicode-range: U+0600-06FF, U+200C-200F, U+2010-2011, U+FD3E-FD3F;
+}
+@font-face {
+  font-family: "IBM Plex Sans Arabic Fallback Noto Naskh";
+  font-style: normal;
+  font-weight: 400 500;
+  src: local("Noto Naskh Arabic"), local("NotoNaskhArabic-Regular"), local("Noto Naskh Arabic UI"), local("NotoNaskhArabicUI-Regular");
+  size-adjust: 104.16%;
+  ascent-override: 104.65%;
+  descent-override: 40.32%;
+  line-gap-override: 0%;
+  unicode-range: U+0600-06FF, U+200C-200F, U+2010-2011, U+FD3E-FD3F;
+}
+@font-face {
+  font-family: "IBM Plex Sans Arabic Fallback Noto Naskh";
+  font-style: normal;
+  font-weight: 600;
+  src: local("Noto Naskh Arabic SemiBold"), local("NotoNaskhArabic-SemiBold"), local("Noto Naskh Arabic UI SemiBold"), local("NotoNaskhArabicUI-SemiBold"), local("Noto Naskh Arabic Bold"), local("NotoNaskhArabic-Bold"), local("Noto Naskh Arabic UI Bold"), local("NotoNaskhArabicUI-Bold");
+  size-adjust: 106.97%;
+  ascent-override: 101.90%;
+  descent-override: 39.26%;
+  line-gap-override: 0%;
+  unicode-range: U+0600-06FF, U+200C-200F, U+2010-2011, U+FD3E-FD3F;
+}
+@font-face {
+  font-family: "IBM Plex Sans Arabic Fallback Noto Naskh";
+  font-style: normal;
+  font-weight: 700;
+  src: local("Noto Naskh Arabic Bold"), local("NotoNaskhArabic-Bold"), local("Noto Naskh Arabic UI Bold"), local("NotoNaskhArabicUI-Bold");
+  size-adjust: 107.90%;
+  ascent-override: 101.02%;
+  descent-override: 38.92%;
+  line-gap-override: 0%;
+  unicode-range: U+0600-06FF, U+200C-200F, U+2010-2011, U+FD3E-FD3F;
+}
+@font-face {
+  font-family: "IBM Plex Sans Arabic Fallback Geeza";
+  font-style: normal;
+  font-weight: 400 500;
+  src: local("Geeza Pro"), local("GeezaPro");
+  size-adjust: 106.17%;
+  ascent-override: 102.67%;
+  descent-override: 39.56%;
+  line-gap-override: 0%;
+  unicode-range: U+0600-06FF, U+200C-200F, U+2010-2011, U+FD3E-FD3F;
+}
+@font-face {
+  font-family: "IBM Plex Sans Arabic Fallback Geeza";
+  font-style: normal;
+  font-weight: 600;
+  src: local("Geeza Pro Bold"), local("GeezaPro-Bold");
+  size-adjust: 96.45%;
+  ascent-override: 113.01%;
+  descent-override: 43.54%;
+  line-gap-override: 0%;
+  unicode-range: U+0600-06FF, U+200C-200F, U+2010-2011, U+FD3E-FD3F;
+}
+@font-face {
+  font-family: "IBM Plex Sans Arabic Fallback Geeza";
+  font-style: normal;
+  font-weight: 700;
+  src: local("Geeza Pro Bold"), local("GeezaPro-Bold");
+  size-adjust: 98.39%;
+  ascent-override: 110.79%;
+  descent-override: 42.69%;
+  line-gap-override: 0%;
+  unicode-range: U+0600-06FF, U+200C-200F, U+2010-2011, U+FD3E-FD3F;
+}
 
 @import "tailwindcss";
 @import "./motion.css";
@@ -65,7 +211,7 @@
   --placeholder-bg: linear-gradient(var(--ph-veil), var(--ph-veil)), url("/brand/pattern-tile.svg") 0 0 / 64px auto repeat, var(--ph-ground);
 
   --font-en: "Manrope Variable", ui-sans-serif, system-ui, sans-serif;
-  --font-ar: "IBM Plex Sans Arabic", "Manrope Variable", ui-sans-serif, system-ui, sans-serif;
+  --font-ar: "IBM Plex Sans Arabic", "IBM Plex Sans Arabic Fallback Segoe", "IBM Plex Sans Arabic Fallback Noto Sans", "IBM Plex Sans Arabic Fallback Noto Naskh", "IBM Plex Sans Arabic Fallback Geeza", "Manrope Variable", ui-sans-serif, system-ui, sans-serif;
 
   --radius-card: 0.75rem;
 }

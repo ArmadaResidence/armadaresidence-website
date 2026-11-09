@@ -2108,4 +2108,20 @@ Switch day, following `docs/launch-runbook.md` with Ahmed's brief of 8 Nov 2026.
   then `motion-check` alone — its failures moved between runs (dropped connections; once CLS 0.0114 on
   /en/shafa-road/king-room/ at 375; once three reveal blocks on /airport-road/ at 375) and the next run passed; the
   two widgets are not on those pages' failing blocks.
+- **Fonts: the 700 preload and the measured fallbacks (Ahmed, 8 Nov 2026).** The Arabic home page also preloads the
+  IBM Plex Sans Arabic 700 file (its hero title and the «فرعانا» heading are bold and in a phone's first view); other
+  Arabic pages keep the 400 preload only. The cause of the lab shift, found with the web font blocked: Chrome on
+  Windows draws Arabic in Segoe UI, wider than Plex, so the «فرعانا» intro wrapped to 3 lines instead of 2 and the
+  panes sat 24 px lower until the swap. Fallback faces now take Plex's space — one family per system font, each its
+  own `size-adjust` / `ascent-override` / `descent-override` (`line-gap-override: 0%`), Arabic range only, in the
+  stack after Plex: Segoe UI → Noto Sans Arabic → Noto Naskh Arabic → Geeza Pro. All values MEASURED with one method
+  (the home page's 1,136 Arabic characters shaped by the browser; size-adjust = Plex width ÷ font width; ascent /
+  descent = Plex's 1.09 / 0.42 em ÷ size-adjust): Segoe UI in Chrome on this machine (400 89.81 %, 600 94.33 %, 700
+  96.18 %); Noto Sans Arabic and Noto Naskh Arabic in Chrome from the official OFL files of google/fonts, downloaded
+  with Ahmed's OK into the scratchpad only (Sans 94.22 / 93.29 / 91.96 %, Naskh 104.16 / 106.97 / 107.90 %); Geeza
+  Pro in Safari on Ahmed's iPhone (iOS 18.7) through a temporary private measuring page — noindex, never on the site,
+  deleted after use (106.17 / 96.45 / 98.39 %; 600 = its Bold face). SF Arabic, iOS's own Arabic font, cannot be
+  reached by `local()`: through `system-ui` it measured 98.06 % (400) and 93.42 % (700) — it cannot be resized, so on
+  Apple devices the swap window now draws Geeza Pro resized to Plex instead of SF Arabic (7 % wider in bold). Once
+  Plex is loaded none of these faces is used; the final rendering is unchanged.
 
