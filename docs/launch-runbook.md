@@ -189,3 +189,31 @@ To change a wording: `content/policies.json → cancellation_reasons` (one line,
 `npx supabase@2.120.0 functions deploy booking-admin booking-request --project-ref wwzxwettsuwtakwwbfly`, and deploy the
 dashboard. A new reason also needs a migration (the code lists of `20261109200000_cancel_reasons`). Never change a
 WhatsApp template from here; a new template wording is approved by Meta first.
+
+## «انضم إلى إياب» after a booking (9 Nov 2026)
+
+Nothing to switch on: it runs for every booking. Who sees it: a guest whose booking was stored (request or confirmed)
+and who is not a member of «إياب» — a guest who ticked the booking form's box is a member already and never sees it.
+
+- The success page shows the card «انضم إلى إياب» under the booking summary; the guest ticks the consent and presses
+  «انضم الآن» → «أهلًا بك في إياب». Their booking's name, phone and email are used; nothing is typed again.
+- The request-received and confirmed emails (when the guest gave an email) carry one line with «انضم إلى إياب»; the
+  link opens /club/ with the form already filled from the booking (the guest can edit it, then ticks the consent).
+- After joining: the welcome email, and the welcome WhatsApp from the booking's branch when that branch's switch
+  «ترحيب إياب على واتساب» is on (Settings «رسائل واتساب التلقائية»).
+- Where to see it: «العملاء» (and «النظرة العامة» / «التقارير») → members by source: «بعد الحجز — الصفحة» and
+  «بعد الحجز — الإيميل». GA4: the event `club_join` with `source` = `booking-page` or `booking-email`.
+- The copy lives in `content/club.json → invite` (ar / en); after a change: `python build.py`, deploy the functions
+  `booking-request booking-admin club`, push.
+
+## Weekly backup of the photos (Storage → Cloudflare R2) (9 Nov 2026)
+
+- Runs by itself every Friday at 03:00 Riyadh (GitHub → Actions → «Storage backup to R2»); run it by hand from there
+  any time («Run workflow»; tick `dry_run` to see the plan only).
+- Each run's summary shows the files and size in Storage and in R2 and «check: OK». If a run fails or the numbers do
+  not match, the dashboard's admins get «فشل النسخ الاحتياطي الأسبوعي للصور» with the run link: open it, read the
+  summary, fix the cause (an expired R2 key, Supabase down), run it again by hand.
+- A file deleted or replaced in «الصور» stays in the backup 90 days (`deleted/<date>/…`). How to restore one file or a
+  whole bucket: `docs/backup-restore.md` §4c.
+- If the R2 keys are rotated in Cloudflare, update the repository secrets `R2_ACCESS_KEY_ID` / `R2_SECRET_ACCESS_KEY`
+  (GitHub → Settings → Secrets and variables → Actions) and run the workflow by hand once.

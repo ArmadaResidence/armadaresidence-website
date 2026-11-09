@@ -2334,3 +2334,107 @@ based on the reason staff pick in the dashboard.
 - **Not done.** The 3 `is_test` profiles of the opt-out test (+966500000917/918/919) were NOT deleted: the tool's
   permission layer declined the production delete (as on 30 Oct and 3 Nov). The SQL for Ahmed is in the hand-off; their
   3 test opt-out rows in `eyab_messages` stay (the link is `on delete set null`).
+
+## 2026-11-09 — «انضم إلى إياب» after a booking; the weekly Storage backup to R2; the old Search Console URLs (Ahmed, 9 Nov 2026)
+
+Ahmed's brief of 9 Nov 2026 (unattended; pre-approved: a preview branch, production migrations after a clean dry run,
+Edge Function and dashboard deploys, workflow edits, one manual run of the backup, test emails to his own address).
+
+### A) Eyab invite after booking
+
+- **Who.** A stored booking (request or confirmed) whose guest is NOT a member of «إياب» — a guest who ticked the
+  booking form's box is a member already (4 Nov 2026), so never invited; nor an existing member, nor a cancelled
+  booking. The database decides: `public.eyab_invite_token(reservation)` (service role) returns a signed invite or
+  NULL (the booking's profile through a merge, or any live profile with its phone, already a member → NULL).
+- **The token names the booking, never the guest:** `<reservation id>.<HMAC>` with the club's Vault key over
+  `'invite:' || id` (so an unsubscribe token is never an invite), valid 180 days after the booking. Nothing personal in
+  a URL, in the browser or in the dataLayer.
+- **Success page** (`booking/success.astro`): the card «انضم إلى إياب» / "Join Eyab" under the booking summary, Ahmed's
+  copy (`club.json → invite`), the ONE consent text with «سياسة الخصوصية» (`MarketingConsent.astro`), «انضم الآن»; the
+  booking function returns `eyab_invite`, the form keeps it in sessionStorage (`armada_invite_<ref>`, never the URL);
+  without it (member, ticked box, another tab) no card. The button refuses without the box (inline error, focus),
+  then `club` → `invite-join` (token + consent + version + language only): the function reads the booking's name,
+  phone and email with the service role and joins through `public.club_join` (source `booking-page`, the consent event
+  names the booking). Then «أهلًا بك في إياب» / "Welcome to Eyab". It replaces the old «انضم إلى إياب — …» link of
+  3 Nov 2026 on that page.
+- **Emails:** the guest request-received and confirmed emails (instant, and confirmed from the dashboard by
+  `booking-admin`) add one line — the card's text + «انضم إلى إياب» / "Join Eyab" — linking
+  `/club/?src=booking-email&invite=<token>` (ar) and `/en/club/…` (en), only with an invite. The club page takes
+  `invite` out of the address at once (before GTM), asks `club` → `invite` for the booking's name, phone and email and
+  prefills the form (editable; the consent stays unticked; a member sees the welcome at once). The sign-up carries the
+  invite: verified → source `booking-email` and the booking named; `booking-page` / `booking-email` are never taken
+  from the URL alone (a forged `?src=` is recorded as `site`).
+- **The welcome** runs as for every member: the welcome email (club function) when an email exists; the «إياب» welcome
+  WhatsApp (when its branch switch is on) goes from the booking's branch — `eyab_join_origin` reads the consent's
+  `reservation_id`.
+- **Tracking:** dashboard sources «بعد الحجز — الصفحة» (`booking-page`) / «بعد الحجز — الإيميل» (`booking-email`) in
+  «العملاء», «النظرة العامة» and «التقارير» (`internal.club_key`, `guest_club_totals`, `overview_club`,
+  `report_club_partners` replaced with the two keys); GA4 through GTM: dataLayer `club_join` { source } — the same
+  event as /club/, consent mode deciding as for every event. GTM needs no change if its `club_join` tag forwards
+  `source`; otherwise Ahmed adds the parameter in GTM (not done from here).
+- **Code:** migration `20261109300000_eyab_invite` (`internal.eyab_invite_sig` / `eyab_invite_reservation` /
+  `eyab_booking_member`, `public.eyab_invite_token` / `eyab_invite_info` service role only, `club_join` +
+  `reservation_id`); `_shared/eyab-invite.ts`; `club` actions `invite` and `invite-join` (per-IP limit; no Turnstile —
+  the HMAC proves the booking); `booking-request` returns `eyab_invite`; `email.ts` `eyabInvite` + `inviteLine`;
+  QA action `guest-email` (a fake ref and a fake invite, to armadaresidence.com or a dashboard user only).
+- **Checks:** `supabase/tests/eyab-invite.sql` 26/26 and an end-to-end of the deployed `club` function 12/12 on the
+  preview branch `eyab-invite-9nov` (deleted after); `booking-instant-check` (the card, the consent rule, the request
+  body without personal data, the welcome, `club_join` booking-page, no card without an invite) 297/297 and
+  `club-site-check` (the prefill, the token out of the address, the sign-up with the invite, `club_join`
+  booking-email, a member) 485/485 locally; axe on the card AR + EN × light + dark: no serious / critical.
+- **Copy rule:** the card's title + text read «انضم إلى إياب» then «عضوية أرمادا ريزيدنس: …» — Ahmed's wording, which
+  carries the fixed descriptor in its own way; kept as written.
+
+### B) Weekly Storage backup to Cloudflare R2
+
+- `.github/workflows/storage-backup.yml`: Friday 00:00 UTC = 03:00 Riyadh, plus `workflow_dispatch` (`dry_run`);
+  `scripts/storage-backup.mjs` (`@aws-sdk/client-s3` installed by the workflow only). Every bucket →
+  `armada-storage-backup`: `current/<bucket>/<path>` incremental (size + Storage eTag, kept as the object's
+  `src-etag` and in `manifest/current.json`); a replaced or deleted file → `deleted/<Riyadh date>/<bucket>/<path>`
+  first; `deleted/` older than 90 days removed; then R2 `current/` is listed again and must equal Storage (keys, sizes,
+  count, total) — else exit 1. Summary in the run log; `backup-result.json` as an artifact (counts, never a name).
+- **Excluded: `job-applications`** (flagged per CLAUDE.md, a conflict with "every bucket"): a CV lives in Storage only
+  until its email is accepted, then is deleted by design (§8b, the applicants' notice); a copy kept up to 90 days
+  in `deleted/` would outlive that and miss deletion requests. One line in `EXCLUDED` to include it if Ahmed decides so.
+- **Alert:** a failed run or a mismatch → `site-deploy-report.mjs backup` → the Edge Function stage `backup_failed`
+  → `backupAlertMail` «فشل النسخ الاحتياطي الأسبوعي للصور» (the reason, the counts, the run link) to the dashboard's
+  active admins, the deploy alert's sender (copy `ui.json → staff_email.ar.backup_alert`, Arabic only). A run on
+  another branch than main is a test («[تجربة]»).
+- Credentials: repository secrets `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY` (added by Ahmed) and
+  `SUPABASE_SERVICE_ROLE_KEY`; never printed. Restore steps: `docs/backup-restore.md` §4c (a single file, a whole
+  bucket). Offline check `scripts/storage-backup-check.mjs` (the plan, retention, the after-run check, the workflow
+  wiring) joins the fast checks; `deploy-alert-check` covers the email and the stage.
+- **First run:** workflow_dispatch run 42607232368 on 9 Nov 2026, 11:13–11:20 UTC: 1,107 files, 888.5 MB (MiB) from
+  `media-originals` (1,107) and `partner-quotes` (0) — all uploaded; R2 `current/` 1,107 files, 888.5 MB; check OK; the
+  copy itself 434 s (7 min 14 s), the job 7 min 27 s. The next run (Friday 13 Nov) is the first incremental one (expect
+  «unchanged 1107» plus whatever changed). The failure email was checked offline (`deploy-alert-check`), not sent —
+  a real send would reach every active admin.
+
+### C) The old URLs from Search Console
+
+Checked against the live site, `armada_admin_extract.md` and `redirects.json` (9 Nov 2026):
+
+| Old URL | Now |
+|---|---|
+| `/branches/1`, `/branches/2` | 404 (status 404; 404.html then sends `/branches/*` home, decision 9 Oct 2026). Not matched: numeric IDs appear nowhere in the old Horizons data — the extract lists only the two branch UUIDs — so no guess. |
+| `/branches/3e0f…d366/rooms/13227e25…882d` | already a redirect page → `/shafa-road/two-bedroom-suite/` (4 Nov 2026; GitHub adds the trailing slash with a 301) |
+| `/accommodation/executive-suite` | 404 — WordPress hotel-theme demo room; no Armada room type of that name |
+| `/accommodation-facility/work-desk` | 404 — WordPress facility tag |
+| `/faq` | 301 → `/faq/` (the new page) |
+| `/en/blog/where-to-stay-in-taif` | 301 → `/en/blog/where-to-stay-in-taif/` (the new article) |
+| `/en/about` | 301 → `/en/about/` (the new page) |
+| `/installing-theme-and-setting-as-demo-site`, `/tag/hotel`, `/booking-confirmation-2/reservation-received` | 404 — WordPress leftovers |
+
+No new redirect was needed. `redirects.json → gone` lists the deliberate 404s; qa.py fails if the build ever answers
+one of them, and fails on a soft 404 (any page but 404.html carrying the not-found title).
+
+### Rollout
+
+Preview branch `eyab-invite-9nov` (deleted after): the migration, the SQL suite, the `club` function e2e. Production:
+dry run (only this migration) → `db push --linked`; functions `club`, `booking-request`, `booking-admin`,
+`site-deploy-report` deployed; commit 5145a3f pushed (fast checks green; the deploy's CI checks green; site live);
+the dashboard deployed. Live probes: the success page carries the card and the club endpoint; `club` answers
+`invite` / `invite-join` for a bad token with ok false / 422. Test emails to Ahmed's own address through the deployed
+code (QA action `guest-email`, fake refs, a fake invite — the link opens the plain club form): request-received
+AR-20991231-2H7H (Airport Road) and AR-20991231-7EVT (Shafa Road), confirmed AR-20991231-Q4CW (Shafa Road) and
+AR-20991231-56KW (Airport Road) — each email is Arabic then English; all 4 accepted by Resend. Live checks after the deploy (run 42608350044): every shard green except `consent-check` once (a cookie-banner layout shift of 0.0103 on the Arabic home at 1440 light — a page this change does not touch; the same build passed it before the deploy), which passed on the one rerun of that job; the first failure had already sent the admins the live-checks alert.
