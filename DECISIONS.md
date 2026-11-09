@@ -2281,3 +2281,56 @@ offers; opt-out by WhatsApp reply; one alert fix.
   green. Its live checks (run 42575289396): `booking-whatsapp-check` timed out once scrolling a button on
   `/airport-road/king-room/` at 1440 px (a 4 s locator limit; not related to this change) — the new alert emailed the
   admins for real; the failed job re-run passed (attempt 2, all green).
+
+## 2026-11-09 — Cancellation reason to the guest: booking_cancelled_v2, the v1 fallback, the reason list (Ahmed, 9 Nov 2026)
+
+Ahmed's brief (unattended run): show the guest a cancellation reason in the WhatsApp and email cancellation messages,
+based on the reason staff pick in the dashboard.
+
+- **What existed.** Staff could pick nothing: the dashboard's «إلغاء الحجز» took a required free-text reason (≥ 3
+  characters, `reservations.cancel_reason`), never shown to the guest. So there was no list to map; the list below is
+  new and holds exactly the cases Ahmed named — no other guest-facing reason was invented.
+- **The template as read.** `booking_cancelled_v2` read through the YCloud API on 9 Nov 2026 (GET
+  `/v2/whatsapp/templates/{waba}/{name}/{lang}`, a temporary test-token action deployed and removed within the hour):
+  APPROVED, UTILITY, ar + en on both numbers — `booking_cancelled` plus «سبب الإلغاء: {{6}}» / "Cancellation reason:
+  {{6}}" (sample «بناءً على طلبك» / "At your request"). Snapshot in `whatsapp-templates.json`.
+- **The reasons (ONE source: `content/policies.json → cancellation_reasons`)** — code · staff label · guest ar / en:
+  `guest_request` «الضيف طلب الإلغاء (برسالة أو اتصال)» → «بناءً على طلبك» / "At your request";
+  `no_availability` «لا توجد غرفة متاحة (عدم توفر أو حجز زائد)» → «لعدم توفر الغرفة في التواريخ المطلوبة» / "The room is
+  not available for the requested dates"; `duplicate` «حجز مكرر» → «لتكرار الحجز» / "Duplicate booking";
+  `payment_not_completed` «لم يكتمل الدفع» → «لعدم إتمام الدفع» / "Payment was not completed"; `other` «سبب آخر» →
+  «تعذّر تأكيد الحجز» / "The booking could not be confirmed" (also the fallback for a cancellation without a code);
+  `test_booking` «حجز تجريبي — لا يُرسَل شيء للضيف» → nothing reaches the guest (no email, no WhatsApp, never resent).
+  A new wording is an edit there (then build + deploy `booking-admin`); a new code also needs a migration (the three
+  checks of `20261109200000`); build.py and `whatsapp-check` keep the lists equal.
+- **The dashboard.** «سبب الإلغاء (إلزامي)» is a list (no reason → «اختر سبب الإلغاء.»); the line under it shows what the
+  guest will read, or «لن يُرسَل شيء للضيف — لا بريد ولا واتساب.»; «ملاحظة (اختيارية)» is internal («داخلية — لا تُرسَل
+  للضيف.», ≤ 500, stored in `cancel_reason`). The booking details show «سبب الإلغاء» (staff label), «ما وصل للضيف» (the
+  phrase in the booking's language) and the note; the WhatsApp log shows «القالب: v2 · السبب المُرسَل: «…»», or «القالب:
+  v1 · رُفض القالب v2 فأُرسل v1 بدون السبب». Older cancellations keep their free text under «سبب الإلغاء».
+- **Database (migration `20261109200000_cancel_reasons`).** `reservations.cancel_reason_code` (checked, audited);
+  `staff_cancel_reservation(p_id, p_reason_code, p_note)` replaces the 2-argument one (a code is required; the history
+  note is the code; returns `reason_code` and `notify`); `whatsapp_messages.meta_template` (the Meta name sent) and
+  `reason_code`; `staff_whatsapp_resend` answers `no_guest_message` for a test_booking cancellation.
+- **WhatsApp and the fallback.** Cancellations send `booking_cancelled_v2` (`WA_TEMPLATE_NAMES`); when YCloud / Meta
+  refuse it (`template_not_approved`, `rejected`, or a payload error) the v1 `booking_cancelled` (no reason) goes at once
+  as a second log row, logged with `console.error` — never after a timeout or network error (the first may still arrive;
+  never two messages), nor for a recipient / key / rate-limit error. «إعادة الإرسال» tries v2 again first.
+- **Email.** The guest «إلغاء الحجز» adds the row «سبب الإلغاء: …» / "Reason: …" (`ui.json → email.cancel_reason_label`)
+  to the same card, ar then en; nothing else in the layout changed.
+- **Rollout.** Preview branch `cancel-reasons-9nov` (deleted after): the migration pushed with the CLI, SQL
+  `supabase/tests/cancel-reasons.sql` 27/27, phase2a 82/82, phase2a1 100/100 (two stale expectations from the morning's
+  `eyab_wa` section / settings keys fixed), wa-automation 67/67; the real `booking-admin` cancel path in test mode, 18/18
+  (every reason ar + en → v2 with the reason and the note apart, test_booking → nothing, v2 refused → v1, both refused,
+  resend, twice); the dashboard checked in the browser against the branch. Production: dry run (only this migration),
+  `db push --linked`, `booking-admin` + `booking-request` deployed, the dashboard deployed. Between the migration and the
+  dashboard deploy (≈ 5 minutes) a cancel from an open dashboard would have answered an error and changed nothing.
+- **Test sends to Ahmed (fake refs, through the deployed code, QA actions on `booking-request`).** WhatsApp to his number:
+  5 reasons × ar / en × both numbers = 20 `booking_cancelled_v2`, all accepted by YCloud; one real fallback
+  (`fail_primary`: v2 refused before YCloud, v1 sent — accepted); test_booking × 4 sent nothing. Email to his dashboard
+  address: one guest cancellation email per reason (branches alternating), 5 accepted by Resend; test_booking sent
+  nothing. New QA action `cancel-email` (recipients: armadaresidence.com or a dashboard user only); `wa-send` takes
+  `reason` and `fail_primary`.
+- **Not done.** The 3 `is_test` profiles of the opt-out test (+966500000917/918/919) were NOT deleted: the tool's
+  permission layer declined the production delete (as on 30 Oct and 3 Nov). The SQL for Ahmed is in the hand-off; their
+  3 test opt-out rows in `eyab_messages` stay (the link is `on delete set null`).

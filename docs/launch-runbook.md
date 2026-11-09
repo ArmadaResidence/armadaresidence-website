@@ -165,3 +165,27 @@ switch change, each campaign's start and finish, the webhook registration, every
 Cost: Meta's Saudi Arabia rates as of Oct 2026 — about $0.0576 a marketing message (welcome, offers) and about $0.0128
 a utility message (reminder, review; free inside a 24-hour window the guest opened). The estimate lives in Settings key
 `wa_message_cost`; the invoice is YCloud's.
+
+## Cancelling a booking — the reason the guest sees (9 Nov 2026)
+
+Dashboard → «الحجوزات» → the booking → «إلغاء الحجز» (bookings: edit). «سبب الإلغاء» is required; the line under it
+shows exactly what the guest will read. «ملاحظة» is optional and internal — it is never sent.
+
+| reason (dashboard) | the guest reads (ar / en) |
+|---|---|
+| الضيف طلب الإلغاء (برسالة أو اتصال) | بناءً على طلبك / At your request |
+| لا توجد غرفة متاحة (عدم توفر أو حجز زائد) | لعدم توفر الغرفة في التواريخ المطلوبة / The room is not available for the requested dates |
+| حجز مكرر | لتكرار الحجز / Duplicate booking |
+| لم يكتمل الدفع | لعدم إتمام الدفع / Payment was not completed |
+| سبب آخر | تعذّر تأكيد الحجز / The booking could not be confirmed |
+| حجز تجريبي — لا يُرسَل شيء للضيف | nothing: no email, no WhatsApp (the booking is still cancelled and its rooms go back) |
+
+The guest gets the email «إلغاء الحجز» (when the booking has an email) with the row «سبب الإلغاء: …», and the WhatsApp
+template `booking_cancelled_v2` from the branch's number with «سبب الإلغاء: …». If Meta / YCloud refuse v2, the older
+`booking_cancelled` (no reason) goes instead, so the guest still hears — the booking's «رسائل واتساب للضيف» then shows
+«القالب: v1 · رُفض القالب v2 فأُرسل v1 بدون السبب». If both fail, «إعادة الإرسال» tries v2 again.
+
+To change a wording: `content/policies.json → cancellation_reasons` (one line, no digits), then `python build.py` and
+`npx supabase@2.120.0 functions deploy booking-admin booking-request --project-ref wwzxwettsuwtakwwbfly`, and deploy the
+dashboard. A new reason also needs a migration (the code lists of `20261109200000_cancel_reasons`). Never change a
+WhatsApp template from here; a new template wording is approved by Meta first.
