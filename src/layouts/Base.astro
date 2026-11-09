@@ -290,6 +290,11 @@ const preloadFonts = locale === 'ar' ? (path === '/' ? [fontAr400, fontAr600, fo
       import '@lib/consent';
       import '@lib/slider';
       import '@lib/marquee';
+      // 9 Nov 2026 (mobile LCP): the header, the WhatsApp button and the booking form / date picker loaders were the
+      // components' own scripts — each a request before the first paint; here they ride with this one
+      import '@lib/header';
+      import '@lib/whatsapp-button';
+      import '@lib/form-loaders';
     </script>
   </body>
 </html>

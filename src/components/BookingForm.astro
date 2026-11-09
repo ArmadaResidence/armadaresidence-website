@@ -291,32 +291,3 @@ const stepper = (name: 'adults' | 'children' | 'extra_beds', value: number, min:
 
   <script type="application/json" data-booking-data set:html={JSON.stringify(clientData).replace(/</g, '\\u003c')} />
 </form>
-
-<script>
-  import { afterPaint, bindOnce, onPageLoad } from '@lib/client';
-
-  // post-launch session 1 (8 Nov 2026, mobile LCP): the drawer's form is not part of the first view, so it starts once
-  // the page has painted (afterPaint). A booking link pressed before that asks for it at once (`booking:init`,
-  // dispatched by drawer.ts, which waits for `booking:ready` while the code arrives). The /booking/ page's own form
-  // starts immediately. 9 Nov 2026: the form's code is a separate module (src/lib/booking-form.ts) imported when the
-  // form starts, so nothing of it is requested before the first paint; a failed load marks the form
-  // (`booking:failed`) and the drawer's link falls back to the booking page.
-  onPageLoad(() => {
-    document.querySelectorAll<HTMLFormElement>('form[data-booking-form]').forEach((form) => {
-      if (!bindOnce(form)) return;
-      const start = () => {
-        if (!bindOnce(form, 'booking-init')) return;
-        form.setAttribute('data-booking-loading', '');
-        import('@lib/booking-form')
-          // a task of its own after the module's evaluation, so the two never add up to one long task
-          .then((m) => new Promise<void>((r) => setTimeout(r, 0)).then(() => m.startBookingForm(form)))
-          .catch(() => form.dispatchEvent(new CustomEvent('booking:failed')))
-          .finally(() => form.removeAttribute('data-booking-loading'));
-      };
-      if (form.closest('[data-booking-drawer]')) {
-        form.addEventListener('booking:init', start);
-        afterPaint(start);
-      } else start();
-    });
-  });
-</script>

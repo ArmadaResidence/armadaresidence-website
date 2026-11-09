@@ -84,20 +84,3 @@ const supaKey = import.meta.env.PUBLIC_SUPABASE_ANON_KEY ?? '';
     </section>
   )
 }
-
-<script>
-  import { afterPaint, onPageLoad } from '@lib/client';
-
-  // the offer cards sit below the first view: their runtime work (expiry, the from-prices) starts after the first paint
-  // (9 Nov 2026, mobile LCP) — src/lib/offers.ts runs its own page-load pass when it arrives
-  afterPaint(() => void import('@lib/offers'));
-
-  // «واتساب» on an offer for both branches opens the page's branch chooser (WhatsAppButton.astro)
-  onPageLoad(() => {
-    document.querySelectorAll<HTMLButtonElement>('[data-wa-open]').forEach((b) => {
-      if (b.dataset.waOpenBound) return;
-      b.dataset.waOpenBound = '1';
-      b.addEventListener('click', () => document.querySelector<HTMLButtonElement>('[data-wa-toggle]')?.click());
-    });
-  });
-</script>

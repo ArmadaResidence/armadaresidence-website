@@ -339,6 +339,8 @@ const quickFacts = fill(t.home.quick_facts, {
 
 <script>
   import { afterPaint, bindOnce, cssNumber, onPageLeave, onPageLoad } from '@lib/client';
+  // the rooms tabs and the offers (HomeRooms / HomeOffers, 9 Nov 2026): with this page's script, not requests of their own
+  import '@lib/home-sections';
 
   // The moving hero (5–6 Nov 2026). Deferred hero media — the video loops and the slideshow's photos after the first —
   // never loads with prefers-reduced-motion, Save-Data or a slow connection (2G / 3G or under 1.5 Mbit/s when the
