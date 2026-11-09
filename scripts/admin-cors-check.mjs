@@ -35,10 +35,9 @@ const REQUEST_HEADERS = PUBLIC ? ['authorization', 'apikey', 'content-type'] : [
 const FOREIGN = 'https://evil.invalid';
 // --public: the review origin the site was served from until launch day (8 Nov 2026) — no longer allowed
 const RETIRED = 'https://armadaresidence.github.io';
-// dining-notify also answers the dashboard («إرسال إشعار الافتتاح»), whose origins (_shared/cors.ts ← admin_origins) keep
-// armadaresidence.github.io as the dashboard's fallback origin — the admin repository's verify job checks it — so the
-// retired-origin refusal applies to the site-only functions
-const ALSO_DASHBOARD = new Set(['dining-notify']);
+// dining-notify also answers the dashboard («إرسال إشعار الافتتاح») — from its own domain only since 9 Nov 2026 (the
+// GitHub Pages origin refused like for the site functions): its preflight from the dashboard is checked too
+const ALSO_DASHBOARD = new Map([['dining-notify', 'https://admin.armadaresidence.com']]);
 
 const args = process.argv.slice(2);
 const opt = (name) => {
@@ -125,7 +124,16 @@ for (const fn of functions) {
   } catch (e) {
     check(false, `${fn}: foreign-origin preflight reachable`, String(e));
   }
-  if (PUBLIC && !ALSO_DASHBOARD.has(fn)) {
+  if (PUBLIC && ALSO_DASHBOARD.has(fn)) {
+    const dash = ALSO_DASHBOARD.get(fn);
+    try {
+      const pre = await call(url, { method: 'OPTIONS', headers: { Origin: dash, 'Access-Control-Request-Method': 'POST', 'Access-Control-Request-Headers': 'authorization,apikey,content-type,x-client-info' } });
+      check(pre.status >= 200 && pre.status < 300 && pre.headers.get('access-control-allow-origin') === dash, `${fn} ← ${dash}: the dashboard's preflight answered`, `status ${pre.status}, got ${pre.headers.get('access-control-allow-origin')}`);
+    } catch (e) {
+      check(false, `${fn}: dashboard preflight reachable`, String(e));
+    }
+  }
+  if (PUBLIC) {
     try {
       const old = await call(url, { method: 'OPTIONS', headers: { Origin: RETIRED, 'Access-Control-Request-Method': 'POST' } });
       check(old.headers.get('access-control-allow-origin') !== RETIRED && old.headers.get('access-control-allow-origin') !== '*', `${fn}: the retired review origin ${RETIRED} not allowed (launch day, 8 Nov 2026)`, `got ${old.headers.get('access-control-allow-origin')}`);

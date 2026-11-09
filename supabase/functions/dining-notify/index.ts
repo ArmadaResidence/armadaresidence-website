@@ -16,11 +16,13 @@
 // Secrets: RESEND_API_KEY, SUPABASE_SERVICE_ROLE_KEY / SUPABASE_URL / SUPABASE_ANON_KEY (automatic), BOOKING_IP_SALT,
 //   BOOKING_TEST_TOKEN, BOOKING_ALLOWED_ORIGINS / ADMIN_ALLOWED_ORIGINS (each only ADDS origins).
 // Deployed with verify_jwt = false (supabase/config.toml): the site posts without a session; the send action checks the
-// JWT itself through the database (a missing or invalid token is refused there). CORS: the site's and the dashboard's
-// origins (_shared/site-cors.ts + _shared/cors.ts).
+// JWT itself through the database (a missing or invalid token is refused there). CORS (9 Nov 2026, Ahmed — like the
+// booking function): the site's two origins, https://armadaresidence.com and https://www.armadaresidence.com
+// (_shared/site-cors.ts), and the dashboard's own domain (content.admin_url, https://admin.armadaresidence.com) for
+// «إرسال إشعار الافتتاح». The GitHub Pages origin https://armadaresidence.github.io is no longer accepted. On a preview
+// branch (any project but production) the dashboard's local dev server is accepted too, for the dining e2e.
 import { siteOrigins } from '../_shared/site-cors.ts';
 import { platformClientIp } from '../_shared/client-ip.ts';
-import { allowedOrigins as adminOrigins } from '../_shared/cors.ts';
 import content from '../booking-request/content.generated.json' with { type: 'json' };
 import { validEmail } from '../booking-request/rules.ts';
 import { diningOpening } from '../booking-request/email.ts';
@@ -32,7 +34,10 @@ const FROM = 'أرمادا ريزيدنس | Armada Residence <no-reply@armadares
 const SLUG = /^[a-z0-9]+(-[a-z0-9]+)*$/;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 
-const origins = Array.from(new Set([...siteOrigins, ...adminOrigins]));
+const PRODUCTION_REF = 'wwzxwettsuwtakwwbfly';
+const DEV_ORIGINS = ['http://localhost:5173', 'http://127.0.0.1:5173'];
+const onProduction = (Deno.env.get('SUPABASE_URL') ?? '').includes(PRODUCTION_REF);
+const origins = Array.from(new Set([...siteOrigins, new URL(content.admin_url).origin, ...(onProduction ? [] : DEV_ORIGINS)]));
 function cors(req: Request): Record<string, string> {
   const origin = req.headers.get('origin') ?? '';
   return {
