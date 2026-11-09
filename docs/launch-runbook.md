@@ -217,3 +217,18 @@ and who is not a member of «إياب» — a guest who ticked the booking form'
   whole bucket: `docs/backup-restore.md` §4c.
 - If the R2 keys are rotated in Cloudflare, update the repository secrets `R2_ACCESS_KEY_ID` / `R2_SECRET_ACCESS_KEY`
   (GitHub → Settings → Secrets and variables → Actions) and run the workflow by hand once.
+
+## Measuring mobile speed (9 Nov 2026)
+
+- Home page, mobile, live domain, two sets of five runs (the lab is noisy; compare medians, never one run):
+  `RUNS=5 PAGES=home FORMS=mobile node scripts/lh.mjs <label> https://armadaresidence.com` twice with two labels.
+  The summary in `reports/lighthouse/<label>-summary.md` has the score, LCP, FCP, TBT, CLS, the LCP subparts
+  (TTFB, load delay, load time, render delay — from the observed trace), and the HTML / CSS transfer.
+- Lighthouse's mobile score is a simulation: every same-origin request that finished before the page's first paint is
+  replayed one after another after the HTML on a slow connection. So the score falls with every KB requested before
+  the paint, wherever it sits on the page. Before adding anything to a page, ask whether the first view needs it; if
+  not, load it after the paint (`afterPaint()` in `src/lib/client.ts`, a dynamic `import()`, `loading="lazy"`,
+  `fetchpriority="low"`).
+- TBT jumps between runs (10 ms to 1 s) depending on whether GTM's tags land inside the measured window — read it
+  over both sets. Headless Chrome sometimes shows the first frame a second or two late; that run's numbers are worse
+  for reasons outside the page.

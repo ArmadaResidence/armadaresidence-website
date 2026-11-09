@@ -2439,6 +2439,102 @@ code (QA action `guest-email`, fake refs, a fake invite — the link opens the p
 AR-20991231-2H7H (Airport Road) and AR-20991231-7EVT (Shafa Road), confirmed AR-20991231-Q4CW (Shafa Road) and
 AR-20991231-56KW (Airport Road) — each email is Arabic then English; all 4 accepted by Resend. Live checks after the deploy (run 42608350044): every shard green except `consent-check` once (a cookie-banner layout shift of 0.0103 on the Arabic home at 1440 light — a page this change does not touch; the same build passed it before the deploy), which passed on the one rerun of that job; the first failure had already sent the admins the live-checks alert.
 
+## 2026-11-09 — Mobile LCP on the home page: what is requested before the first paint (Ahmed, 9 Nov 2026)
+
+Brief: bring the home page's mobile LCP to ≤ 2.5 s with no visual change; every commit `Armada-Invisible: yes` (the
+pixel guard blocking); GTM and the cookie banner untouched. Measured on the live domain, Lighthouse mobile, two sets
+of five runs each (`RUNS=5 PAGES=home FORMS=mobile node scripts/lh.mjs <label> https://armadaresidence.com`;
+labels `lcp-before-1|2`, `lcp-step1-live`, `lcp-after-1|2`, `lcp-final-1|2` — working files, deleted on 9 Nov 2026
+in session 22; the medians are in the table below).
+
+### What the measurement showed
+
+- The hero photo is not the problem (requested at 0.28 s, loaded by ~0.4 s). Lighthouse's mobile score is Lantern's
+  simulation, and its model decides everything here: (1) every subresource starts only when the whole HTML has
+  arrived (the 59 KB gz HTML alone simulates to ~1.5 s); (2) HTTP/2 to our origin is modelled as ONE connection that
+  carries one request at a time; (3) every request that finished before the observed paint is in the LCP graph
+  (images at low priority only in the pessimistic half). So the LCP is ≈ HTML + every KB requested before the paint
+  ÷ the simulated throughput — about 7 ms per KB — wherever on the page it is used. A tool that runs Lighthouse's own
+  simulation on a gathered run and prices a change before it is built ("what if this request were smaller / later /
+  gone") was used for every step (session scratch, not committed).
+- Headless Chrome often holds the first frame 1–2 s after `load` on this page (the frame is painted at ~0.5 s and
+  submitted to the GPU process late). Then everything requested in that time counts. This is the lab, not the page;
+  it is why single runs swing 2.3–3.9 s.
+- Before: the Arabic 600 weight and Manrope were discovered only by the first layout (≈ 0.45 s of simulated CPU
+  later) and requested at the highest priority, so the paint waited for them; 16 script requests (~37 KB) — the
+  drawer's booking form with the date picker, the country list, the rules and the prices among them; four Arabic
+  font files of ~30 KB; the two «فرعانا» card photos (~98 KB, lazy but just under the hero, raised to high priority).
+
+### What changed (5 commits, each blocked by the pixel guard and green in every CI check)
+
+1. `20ef7ca` — the Arabic pages preload the 600 weight and Manrope with the 400 (home also the 700): both are in a
+   phone's first view on every page. The booking form's code moved verbatim to `src/lib/booking-form.ts`, imported
+   when the form starts (the drawer's after the first paint or on a booking press — `pointerdown` starts it — the
+   /booking/ page's at once); drawer.ts waits for `booking:ready` while it arrives, and a failed load or none in 5 s
+   loads /booking/ as before. The date picker is fetched only where a field exists outside the drawer; the home
+   offers start after the paint; the footer logo is lazy. `scripts/lh.mjs` reports the LCP subparts and the HTML /
+   CSS transfer. booking-nav-check gained the scenario "the form module fails on the first page".
+2. `1e6b117` — each Arabic weight in two files with the same glyphs in total: the main one (U+0600–0670 + joiners —
+   every Arabic character the site writes; the output uses 46 code points, none above U+0670) and the extended
+   letters (U+0671–06FF), each with its own `unicode-range`, so a page fetches the second only if it contains such a
+   letter (none does). 29–31 KB → 18.6–19.3 KB per weight. The covered range (subset.json → ranges) is unchanged, so
+   qa.py and the dashboard's text checks agree as before; qa.py warns when a page uses an extended letter.
+3. `2d4a56c` — the «فرعانا» card photos `fetchpriority="low"`: same files, fetched after the hero and the fonts.
+4. `be0b043` + `a29f137` — the small component scripts ride with the entries already loaded: Header, WhatsAppButton
+   and the form loaders in Base.astro's script, HomeRooms / HomeOffers in the home page's script — 3 script requests
+   before the paint on home instead of 9 (Lantern priced the five small ones at ≈ 0.17 s). booking-nav-check's
+   "form script failed" scenario was retargeted to the module that now holds the form's code (below).
+
+### The CSS decision of 30 Oct 2026, re-checked
+
+Kept: the whole stylesheet stays inline (`inlineStylesheets: 'always'`). Measured: a per-page "used CSS" split (rules
+whose classes appear in the page or in any site script) removes only ≈ 2 KB gz of the 23.9 KB gz inline CSS —
+almost every rule is reachable from every page (the drawer's form, the header, shared components); an external
+blocking stylesheet measured no better than inline (one more request on the critical path); a first-screen split
+would take ≈ 15–19 KB gz off the HTML, which Lantern prices at ≈ 0.1–0.17 s of LCP and ≈ 0.2 s of FCP — and it
+brings back exactly the 30 Oct risks (content below the fold unstyled until the rest arrives, JS-set states and the
+dark theme, the view transitions' head swap) plus GitHub Pages' `Cache-Control: max-age=600` on the external file,
+so a returning visitor revalidates it after 10 minutes anyway. The cheaper, invisible levers above were worth more.
+
+### Results (live, mobile, medians of 5)
+
+| set | score | LCP | FCP | TBT | CLS | TTFB | load delay | load time | render delay | HTML | CSS files |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| before 1 | 88 | 3.01 s | 2.28 s | 227 ms | 0.000 | 0.25 s | 0.04 s | 0.22 s | 0.57 s | 59.2 KB | 0 |
+| before 2 | 85 | 2.86 s | 2.23 s | 245 ms | 0.000 | 0.24 s | 0.02 s | 0.15 s | 2.21 s | 59.2 KB | 0 |
+| steps 1–3, set 1 | 87 | 2.47 s | 2.22 s | 292 ms | 0.001 | 0.37 s | 0.03 s | 0.26 s | 0.51 s | 59.3 KB | 0 |
+| steps 1–3, set 2 | 90 | 2.55 s | 2.04 s | 184 ms | 0.001 | 0.35 s | 0.03 s | 0.26 s | 0.44 s | 59.3 KB | 0 |
+| steps 1–4, set 1 | 79 | **2.37 s** | 1.85 s | 607 ms | 0.001 | 0.26 s | 0.03 s | 0.18 s | 0.48 s | 59.0 KB | 0 |
+| steps 1–4, set 2 | 93 | **2.47 s** | 1.82 s | 195 ms | 0.001 | 0.38 s | 0.02 s | 0.27 s | 0.34 s | 59.1 KB | 0 |
+
+(The subparts are the observed trace's, not the simulation's; the render delay is the headless frame hold.)
+Initial first-party weight before the load event: 381 / 284 KB → 321 / 322 KB.
+
+Step 4 reached the target on the live domain: LCP **2.37 s** and **2.47 s** (medians of 5, mobile, two sets after
+`be0b043` + `a29f137` were live), both under 2.5 s. The score swings 79 ↔ 93 between the two sets on the same build:
+TBT 607 ms vs 195 ms — GTM's tags landing inside or outside the measured window (the site injects the container after
+`load` + 3.5 s or on the first interaction), not the page. First-party weight before the load event: 319 KB.
+
+### CI: Playwright's browsers from a cache (`a717d44`)
+
+On 9 Nov 2026 (a GitHub incident day) one browser shard spent 15 min downloading Chromium / WebKit and hit its
+20-minute limit. Every job that installs them now restores `~/.cache/ms-playwright` keyed on the runner OS + the
+installed Playwright version + the browsers. Measured: the first run after the change (deploy run 42657446420, a
+miss) — `playwright install --with-deps chromium webkit` 12 min 55 s in the booking-2 shard; the next run (live
+checks 42660527525, a hit) — the 369 MB cache restored in ~8 s, then `install-deps` (system libraries) ~55 s, so ~1 min
+instead of the download.
+
+### Live checks after the last deploy (run 42660527525, `a717d44`)
+
+Cancelled, not failed: 7 of 8 jobs green (cors, a11y, forms, booking-1, motion-offers, home-phones, the gate); the
+booking-2 shard passed `booking-whatsapp-check` (64 checks) and then `datepicker-check` printed nothing for ~16 min
+until the job's 20-minute limit cancelled it, so the alert job was skipped. The same check passed on the same build
+before the deploy (101 s against the CI build) and on the live site in run 42630344689 (97 s). Run 42639306280
+(`2d4a56c`) stalled the same way (booking-2 in `datepicker-check`, motion-offers in `booking-instant-check`).
+Run 42630344689's motion-offers job was cancelled by a newer live-checks run (concurrency), not by a hang. Not
+diagnosed in session 22: GitHub Actions was in a major outage when the session started, so no CI run could be made.
+Next step: run `datepicker-check` alone against the live domain in CI with `DEBUG=1` and a per-form timeout, to see
+which form waits (the drawer's booking form is now a module loaded after the paint — the most likely place).
 ## 2026-11-09 — The legal name on the website (Ahmed, 9 Nov 2026 — Meta business verification)
 
 Meta rejected the business verification: «the legal name must be present on the website». Before the change (fetched
