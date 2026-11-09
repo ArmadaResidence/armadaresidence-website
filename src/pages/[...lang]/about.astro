@@ -10,7 +10,7 @@
 import Base from '@layouts/Base.astro';
 import { langPaths } from '@lib/paths';
 import { aboutPage, breadcrumbs } from '@lib/jsonld';
-import { localePath, pageSeo, paragraphs, siteTexts, ui, withFees, type Locale } from '@lib/content';
+import { legal, localePath, pageSeo, paragraphs, siteTexts, ui, withFees, type Locale } from '@lib/content';
 
 export const getStaticPaths = langPaths;
 
@@ -38,5 +38,9 @@ const jsonld = [
     <div class="reveal enter mt-6 prose-armada leading-relaxed text-ink md:text-lg" data-about-body>
       {body.map((p) => <p>{p}</p>)}
     </div>
+    {/* the company-details line (9 Nov 2026 — Meta business verification): the legal name as one text string */}
+    <p class="reveal mt-8 border-t border-line pt-4 text-sm text-ink-muted" data-company-details>
+      <span class="font-semibold text-ink">{locale === 'ar' ? legal.company_details_label_ar : legal.company_details_label_en}:</span> {locale === 'ar' ? legal.company_line_ar : legal.company_line_en}
+    </p>
   </section>
 </Base>

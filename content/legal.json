@@ -12,6 +12,13 @@
   "vat_label_ar": "الرقم الضريبي",
   "vat_label_en": "VAT",
   "footer_line_ar": "© {year} شركة أرمادا ريزيدنس لتشغيل الفنادق — السجل التجاري 7040304821 — الرقم الضريبي 312154414400003",
-  "footer_line_en": "© {year} Armada Residence Company To Operate Hotels — CR 7040304821 — VAT 312154414400003",
+  "footer_line_en": "© {year} Armada Residence Company To Operate Hotels (شركة أرمادا ريزيدنس لتشغيل الفنادق) — CR 7040304821 — VAT 312154414400003",
+  "_legal_name_note": "9 Nov 2026 (Ahmed — Meta business verification: «the legal name must be present on the website»): the Arabic legal name, exactly as entity_ar, is in the static footer of EVERY page in both languages (the English line carries it in brackets), in the company-details line of /policies/ (operator) and «من نحن», and is the Organization legalName in both languages. One contiguous string, no invisible characters inside it.",
+  "unified_label_ar": "الرقم الوطني الموحّد",
+  "unified_label_en": "Unified National Number",
+  "company_details_label_ar": "بيانات الشركة",
+  "company_details_label_en": "Company details",
+  "company_line_ar": "شركة أرمادا ريزيدنس لتشغيل الفنادق — الرقم الوطني الموحّد 7040304821 — الرقم الضريبي 312154414400003",
+  "company_line_en": "Armada Residence Company To Operate Hotels (شركة أرمادا ريزيدنس لتشغيل الفنادق) — Unified National Number 7040304821 — VAT 312154414400003",
   "verified": true
 }

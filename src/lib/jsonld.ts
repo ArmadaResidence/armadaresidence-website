@@ -56,7 +56,8 @@ export function organization(locale: Locale) {
     '@context': 'https://schema.org',
     '@type': 'Organization',
     name: siteName(locale),
-    legalName: locale === 'ar' ? legal.entity_ar : legal.entity_en,
+    // the legal name as registered, in Arabic on both languages (Meta business verification, 9 Nov 2026)
+    legalName: legal.entity_ar,
     url: absoluteUrl(localePath(locale, '/')),
     logo: logoUrl(),
     image: ogImage(),

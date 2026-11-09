@@ -2438,3 +2438,22 @@ the dashboard deployed. Live probes: the success page carries the card and the c
 code (QA action `guest-email`, fake refs, a fake invite — the link opens the plain club form): request-received
 AR-20991231-2H7H (Airport Road) and AR-20991231-7EVT (Shafa Road), confirmed AR-20991231-Q4CW (Shafa Road) and
 AR-20991231-56KW (Airport Road) — each email is Arabic then English; all 4 accepted by Resend. Live checks after the deploy (run 42608350044): every shard green except `consent-check` once (a cookie-banner layout shift of 0.0103 on the Arabic home at 1440 light — a page this change does not touch; the same build passed it before the deploy), which passed on the one rerun of that job; the first failure had already sent the admins the live-checks alert.
+
+## 2026-11-09 — The legal name on the website (Ahmed, 9 Nov 2026 — Meta business verification)
+
+Meta rejected the business verification: «the legal name must be present on the website». Before the change (fetched
+with `User-Agent: facebookexternalhit/1.1`, with and without `Accept-Language: en-US`): `/`, `/en/`, `/contact/`,
+`/en/contact/`, `/about/`, `/en/about/` all 200, no HTTP redirect and no JavaScript language redirect (the language
+is the path; the header changes nothing). The exact string «شركة أرمادا ريزيدنس لتشغيل الفنادق» was in every Arabic
+page (the footer line, one text node, no invisible characters; plus the Organization `legalName` on `/`) and in **no
+English page** (footer and `legalName` were the English entity name).
+
+- The footer of every page carries the string as one text node: Arabic unchanged; English «© {year} Armada Residence
+  Company To Operate Hotels (شركة أرمادا ريزيدنس لتشغيل الفنادق) — CR 7040304821 — VAT 312154414400003»
+  (`legal.json → footer_line_en`). The numbers are unchanged.
+- A company-details line (`legal.json → company_line_ar|en`, labels «بيانات الشركة» / "Company details"): the legal
+  name, «الرقم الوطني الموحّد» / "Unified National Number" 7040304821 and the VAT number 312154414400003 — as the
+  operator section of /policies/ (both languages) and at the end of «من نحن» (both languages).
+- Organization JSON-LD: `legalName` = the Arabic legal name on both languages.
+- qa.py `check_legal_name`: every page (but the café app /menu/) holds the exact string inside one text node, and
+  /policies/ + /about/ the company-details line.

@@ -1000,6 +1000,7 @@ def main() -> int:
     check_offers(rep)
     check_typeset(rep)
     check_paragraphs(rep, raw)
+    check_legal_name(rep, raw)
 
     # ---- report
     n_fail = sum(len(v) for v in rep.fail.values())
@@ -1103,6 +1104,24 @@ def check_typeset(rep: "Report") -> None:
     r = subprocess.run(["node", str(ROOT / "scripts/typeset.mjs"), "--check", str(DIST)], capture_output=True, text=True, encoding="utf-8")
     if r.returncode != 0:
         rep.f("typeset", (r.stderr or r.stdout).strip()[:3000])
+
+
+def check_legal_name(rep: "Report", raw: dict) -> None:
+    """The legal name on every page (9 Nov 2026 — Meta business verification: «the legal name must be present on the
+    website»): legal.json → entity_ar, byte for byte, inside ONE text node of the page (the footer line), in both
+    languages; /policies/ and /about/ also carry the company-details line. /menu/ is the café app copied verbatim."""
+    legal = json.loads((CONTENT / "legal.json").read_text(encoding="utf-8"))
+    name = legal["entity_ar"]
+    in_text = re.compile(r">[^<]*" + re.escape(name) + r"[^<]*<")
+    for path, html in sorted(raw.items()):
+        if path.rstrip("/").endswith("/menu"):
+            continue
+        if not in_text.search(html):
+            rep.f("legal name", f"{path}: the legal name «{name}» is not one text string in the page")
+    for path in ("/policies/", "/en/policies/", "/about/", "/en/about/"):
+        line = legal["company_line_en" if path.startswith("/en/") else "company_line_ar"]
+        if path in raw and line not in raw[path]:
+            rep.f("legal name", f"{path}: the company-details line is missing")
 
 
 def check_paragraphs(rep: "Report", raw: dict) -> None:
