@@ -110,6 +110,9 @@ async function visit(engine, ctxOpts, label, { expect, init, path = '/' } = {}) 
   } else {
     check(requested(1).every((r) => r.at >= loadAt - 50), `${label}: photo 2 is requested only after the load event`, `${JSON.stringify(requested(1))} load ${loadAt}`);
     await page.waitForTimeout(2500);
+    // the show starts after the first paint (afterPaint, 8 Nov 2026): over the real network (the live run in CI,
+    // 9 Nov 2026) WebKit can paint later than 2.5 s after load — wait for the start (up to 8 s more), then judge as before
+    await settle(page, (x) => !!x.btn && x.kb[0] === 'in', 8000);
     // layout shifts are counted from here: the show's own (the font swap at load is the page's, not the hero's)
     await page.evaluate(() => { window.__cls = 0; });
     check(requested(1).length > 0, `${label}: photo 2 is requested after the load event (one ahead)`);

@@ -89,6 +89,7 @@ Written 30 Oct 2026. Nothing in this document has been done yet. It is the order
    ```
 
    It runs the browser checks, `admin-cors-check` (dashboard) and `admin-cors-check --public` (forms from the domain, www and github.io). Every browser check stubs the booking endpoint, wa.me and GTM, so nothing is sent.
+   Since 9 Nov 2026 this runs by itself in GitHub Actions after every deploy (workflow «Live checks after a deploy»); run it by hand only on a machine with memory to spare.
 9. **Real form test (Ahmed, by hand).** One booking request and one partner enquiry from `https://armadaresidence.com` with real contact details, then check the reception email (Hostinger filter), the WhatsApp message and the dashboard row. Cancel the test booking from the dashboard.
    The two test bookings of 8 Nov 2026 (`AR-20261108-WD8A`, `AR-20261108-HY62`) were cancelled, then deleted by Ahmed
    with `reports/post-launch-1/delete-test-bookings.sql` (checked 9 Nov 2026: no reservation and no WhatsApp log row

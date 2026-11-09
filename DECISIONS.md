@@ -2183,3 +2183,16 @@ Switch day, following `docs/launch-runbook.md` with Ahmed's brief of 8 Nov 2026.
   Hostinger hosting plan, CNAME `discovertaif` → `armadaresidence.github.io` (TTL 300); checked: http → https 301, and
   `http://discovertaif.armadaresidence.com?lang=en` lands on `/en/discover-taif/` — runbook 6b′ complete. The Airport
   Road «صورة الجوال»: left as is by decision — the desktop cover cropped is acceptable for now.
+- **The live suite in GitHub Actions too (Ahmed, 9 Nov 2026: «yes, move it»).** `.github/workflows/live-checks.yml`
+  runs after every run of the deploy workflow (`workflow_run`) — a separate workflow, so it never holds the Pages queue
+  and a dashboard publish never waits for it. Its gate confirms the run deployed (a dry run or a run stopped by a check
+  published nothing → nothing to check) and waits until `/version.json` on `seo.json → live_url` names that run (up to
+  15 min; a newer live deploy makes it stand down; a newer run of the workflow cancels an older one). Then the same 6
+  shards against the domain (`check-all --live <URL> --shard <name>`, with the deployed build's content files from its
+  `site-build` artifact) and `cors` (`admin-cors-check`, `admin-cors-check --public`); a dropped connection is retried
+  once, an assertion never. Nothing runs on this machine any more. First run (42549932275, after `2621dda`): gate, cors
+  and 5 shards green; `hero-slides-check` failed on iPhone WebKit only — the show starts after the first paint
+  (afterPaint, 8 Nov) and over the real network WebKit painted later than the check's fixed 2.5 s after `load`: the
+  check now keeps the 2.5 s minimum and waits up to 8 s more for the start before the same assertions. A failed live
+  check marks the run red in Actions (GitHub's run-failure notification); it does not send the admins' deploy alert —
+  that email says the site was not updated, which is not the case here.
