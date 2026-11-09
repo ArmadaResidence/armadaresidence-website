@@ -11,7 +11,10 @@
 //     a client-side navigation; a stored choice 13 months old or of another version → shown again; a stored choice is
 //     applied before GTM (consent update right after the default);
 //   - the footer's «إعدادات ملفات تعريف الارتباط» reopens it on the customize view with the stored choice; Esc closes it
-//     unchanged and focus returns to the link; the offer pop-up never opens while the banner is shown (popup.ts).
+//     unchanged and focus returns to the link; the offer pop-up never opens while the banner is shown (popup.ts);
+//   - GTM only on the real domain (9 Nov 2026): after an interaction and the load timer, gtm.js is requested on
+//     armadaresidence.com / www.armadaresidence.com and never on any other host (a local or CI build, a preview); the
+//     consent default and the queued gtm.js event are in the dataLayer everywhere.
 //   node scripts/consent-check.mjs [BASE_URL] [--shots DIR]
 import { mkdirSync, readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
@@ -215,6 +218,25 @@ for (const lang of ['ar', 'en']) {
     const page = await c.newPage();
     await page.goto(path(lang, '/'), { waitUntil: 'load' });
     check((await shown(page)) === (label !== 'valid'), `${lang}: a stored choice ${label} → ${label === 'valid' ? 'not shown' : 'shown again'}`);
+    await c.close();
+  }
+}
+// GTM only on the real domain (9 Nov 2026): the container script is requested there, and nowhere else
+{
+  const real = ['armadaresidence.com', 'www.armadaresidence.com'].includes(new URL(BASE).hostname);
+  for (const lang of ['ar', 'en']) {
+    const c = await ctx(FORMS[1], 'light', JSON.stringify({ v: VERSION, t: Date.now(), analytics: false, ads: false }));
+    let gtm = 0;
+    c.on('request', (r) => /googletagmanager\.com\/gtm\.js/.test(r.url()) && gtm++);
+    const page = await c.newPage();
+    await page.goto(path(lang, '/'), { waitUntil: 'load' });
+    await page.mouse.move(200, 400);
+    await page.mouse.down();
+    await page.mouse.up();
+    await page.waitForTimeout(4500); // past the 3.5 s after-load timer too
+    const queued = await page.evaluate(() => (window.dataLayer || []).some((x) => x && x.event === 'gtm.js'));
+    check(queued, `${lang}: the gtm.js event is queued in the dataLayer on every host`);
+    check(real ? gtm >= 1 : gtm === 0, real ? `${lang}: GTM is not loaded on the real domain` : `${lang}: GTM was requested on ${new URL(BASE).hostname} (only the real domain may load it)`, `requests: ${gtm}`);
     await c.close();
   }
 }

@@ -126,6 +126,7 @@ const clientData = {
 <script>
   import { bindOnce, onPageLoad } from '@lib/client';
   import { money, type Quote } from '@lib/prices';
+  import { adUserDataGranted, type UserData } from '@lib/user-data';
   import { plural } from '../../../../supabase/functions/booking-request/rules.ts';
 
   type Stash = { quote: Quote; room: string; branch: string; check_in: string; check_out: string; adults: number; children: number; breakfast: string; extra_beds: number };
@@ -234,32 +235,54 @@ const clientData = {
     }
 
     if (ref) {
-      // GTM (CLAUDE.md §8 step 5; DASHBOARD-SPEC §7 names): booking_confirmed with the value for an instant booking,
-      // booking_request otherwise. No personal data: the ref is the opaque booking number (Google Ads transaction id).
-      const key = `armada_booking_${ref}`;
-      const push = () => {
+      // GTM (CLAUDE.md §8 step 5; DASHBOARD-SPEC §7 names; DECISIONS.md 2026-11-09 «Conversion data»): booking_confirmed
+      // for an instant booking (GA4 purchase, Meta / TikTok / Snap Purchase), booking_request otherwise (Lead). Pushed
+      // ONCE per booking: only while the booking form's one-shot «ticket» (sessionStorage armada_track_<ref>) exists — it
+      // is deleted here and the ref remembered (localStorage armada_tracked) — so a reload, a reopened link, a new tab or
+      // a shared URL never counts the booking again. value = the total shown to the guest, a number in SAR (none when
+      // there was no price); transaction_id = event_id = the booking ref (Meta deduplicates a server-side copy on it);
+      // user_data = the hashed email / phone, only with advertising consent (src/lib/user-data.ts). Nothing personal.
+      let ticket: { s?: string; value?: number; user?: UserData } | null = null;
+      let seen = false;
+      try {
+        seen = (JSON.parse(localStorage.getItem('armada_tracked') || '[]') as string[]).includes(ref);
+      } catch {
+        /* no localStorage: the ticket alone keeps it to once */
+      }
+      try {
+        const raw = sessionStorage.getItem(`armada_track_${ref}`);
+        if (raw) ticket = JSON.parse(raw);
+        sessionStorage.removeItem(`armada_track_${ref}`);
+      } catch {
+        ticket = null;
+      }
+      if (ticket && !seen) {
+        try {
+          const done = (JSON.parse(localStorage.getItem('armada_tracked') || '[]') as string[]).filter((r) => typeof r === 'string');
+          localStorage.setItem('armada_tracked', JSON.stringify([...done, ref].slice(-20)));
+        } catch {
+          /* no localStorage */
+        }
+        const isConfirmed = ticket.s === 'confirmed';
+        const value = typeof ticket.value === 'number' && ticket.value > 0 ? ticket.value : null;
         const w = window as unknown as { dataLayer: unknown[] };
         w.dataLayer = w.dataLayer || [];
         w.dataLayer.push({
-          event: confirmed ? 'booking_confirmed' : 'booking_request',
+          event: isConfirmed ? 'booking_confirmed' : 'booking_request',
           booking_ref: ref,
+          transaction_id: ref,
+          event_id: ref,
           branch: branch || '',
           room_type: q.get('room') || 'any',
           nights: Number(q.get('nights') || 0),
           breakfast: q.get('breakfast') === 'with' ? 'with' : q.get('breakfast') === 'without' ? 'without' : '',
           extra_beds: Math.min(2, Math.max(0, Number(q.get('beds') || 0) || 0)),
           needs_coordination: q.get('nc') === '1',
-          ...(confirmed ? { value: Number(stash?.quote?.total ?? 0), currency: 'SAR' } : {}),
-          ...(!confirmed && reason ? { reason } : {}),
+          ...(value !== null ? { value } : {}),
+          currency: 'SAR',
+          ...(!isConfirmed && reason ? { reason } : {}),
+          ...(ticket.user && adUserDataGranted() ? { user_data: ticket.user } : {}),
         });
-      };
-      try {
-        if (!sessionStorage.getItem(key)) {
-          push();
-          sessionStorage.setItem(key, '1');
-        }
-      } catch {
-        push(); // storage unavailable: push once for this view
       }
     }
     // «انضم إلى إياب» (9 Nov 2026): the card only with this booking's invite (a member or a ticked box never gets one)
@@ -330,8 +353,9 @@ const clientData = {
           if (!res.ok) throw new Error(String(res.status));
           const j = (await res.json().catch(() => ({}))) as { member?: boolean };
           welcome();
-          // GA4 through GTM (consent mode decides, as for every event): the source only, nothing personal
-          if (!j.member) (window as unknown as { dataLayer?: unknown[] }).dataLayer?.push({ event: 'club_join', source: 'booking-page' });
+          // GA4 through GTM (consent mode decides, as for every event): the source and the currency (a Lead with no amount —
+          // DECISIONS.md 2026-11-09 «Conversion data»), nothing personal
+          if (!j.member) (window as unknown as { dataLayer?: unknown[] }).dataLayer?.push({ event: 'club_join', source: 'booking-page', currency: 'SAR' });
         } catch {
           summary.textContent = data.invite.network;
           summary.classList.remove('hidden');

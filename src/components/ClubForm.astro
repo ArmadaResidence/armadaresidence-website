@@ -90,6 +90,7 @@ const clientData = {
   import { loadPhoneLib, phoneToE164 } from '@lib/phone';
   import { initCountrySelect } from '@lib/country-select';
   import { firstTouch } from '@lib/visit';
+  import { hashedUserData } from '@lib/user-data';
   import { cleanUtm, clubSource, validateClubJoin, type ClubField } from '../../supabase/functions/booking-request/rules.ts';
 
   type Data = { endpoint: string; anonKey: string; locale: 'ar' | 'en'; consentVersion: string; strings: Record<string, string> };
@@ -255,12 +256,15 @@ const clientData = {
         }
         if (!res.ok) throw new Error(String(res.status));
         const out = (await res.json().catch(() => ({}))) as { source?: string };
+        // a Lead (DECISIONS.md 2026-11-09 «Conversion data»): the currency only (no amount); the member's email / phone
+        // hashed before the form is emptied, only with advertising consent (src/lib/user-data.ts) — never raw
+        const user = await hashedUserData(v.data.email, v.data.phone);
         form.reset();
         select?.reset();
         form.hidden = true;
         done.classList.remove('hidden');
         done.focus();
-        (window as unknown as { dataLayer?: unknown[] }).dataLayer?.push({ event: 'club_join', source: clubSource(out.source) || src || 'site' });
+        (window as unknown as { dataLayer?: unknown[] }).dataLayer?.push({ event: 'club_join', source: clubSource(out.source) || src || 'site', currency: 'SAR', ...(user ? { user_data: user } : {}) });
       } catch {
         summary.textContent = data.strings.network;
         summary.classList.remove('hidden');

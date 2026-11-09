@@ -18,6 +18,7 @@
 //   node scripts/booking-instant-check.mjs [BASE_URL]
 import { chromium } from 'playwright';
 import { readFileSync } from 'node:fs';
+import { createHash } from 'node:crypto';
 import { pickRange } from './datepicker-helpers.mjs';
 import { noteTurnstile, stubTurnstile, turnstileProblem } from './turnstile-stub.mjs';
 
@@ -26,6 +27,8 @@ const PRE = new URL(BASE).pathname.replace(/\/$/, '');
 const ui = JSON.parse(readFileSync('content/ui.json', 'utf8'));
 const seo = JSON.parse(readFileSync('content/seo.json', 'utf8'));
 const club = JSON.parse(readFileSync('content/club.json', 'utf8'));
+const cookieVersion = JSON.parse(readFileSync('content/policies.json', 'utf8')).cookie_consent.version;
+const sha = (t) => createHash('sha256').update(t).digest('hex');
 // «انضم إلى إياب» (9 Nov 2026): the signed invite the booking function returns for a guest who is not a member
 const INVITE = `11111111-2222-4333-8444-555555555555.${'a'.repeat(32)}`;
 
@@ -283,6 +286,11 @@ async function run(width, lang) {
   check((await totalCell()) === money(400), `${tag} price_changed: new total shown (2 × 200)`, await totalCell());
   check(!(await form.locator('[data-submit]').isDisabled()), `${tag} price_changed: submit enabled again`);
   mode.submit = 'confirmed';
+  // advertising consent granted (a stored «قبول الكل»): the conversion carries the HASHED email / phone (9 Nov 2026)
+  await page.evaluate((v) => {
+    localStorage.setItem('armada-consent', JSON.stringify({ v, t: Date.now(), analytics: true, ads: true }));
+    window.gtag('consent', 'update', { analytics_storage: 'granted', ad_storage: 'granted', ad_user_data: 'granted', ad_personalization: 'granted' });
+  }, cookieVersion);
   // ticked from the keyboard
   await mc.focus();
   await page.keyboard.press('Space');
@@ -300,7 +308,16 @@ async function run(width, lang) {
   check((await page.title()) === seo.pages['booking-success'][`title_confirmed_${L}`], `${tag} success: confirmed document title`, await page.title());
   check((await page.locator('[data-rows]').textContent()).includes(money(400)), `${tag} success: breakdown total`);
   const dl = await page.evaluate(() => (window.dataLayer || []).filter((e) => e.event === 'booking_confirmed'));
-  check(dl.length === 1 && dl[0].value === 400 && dl[0].currency === 'SAR' && dl[0].room_type === 'king-room' && !JSON.stringify(dl[0]).includes('guest@'), `${tag} success: booking_confirmed with value, no personal data`, JSON.stringify(dl[0] ?? null));
+  const confRef = url.searchParams.get('ref');
+  check(dl.length === 1 && dl[0].value === 400 && dl[0].currency === 'SAR' && dl[0].room_type === 'king-room' && !JSON.stringify(dl[0]).includes('guest@') && !JSON.stringify(dl[0]).includes('500000000"'), `${tag} success: booking_confirmed with value, no personal data`, JSON.stringify(dl[0] ?? null));
+  check(dl[0]?.transaction_id === confRef && dl[0]?.event_id === confRef && typeof dl[0]?.value === 'number', `${tag} success: transaction_id = event_id = the booking ref, value a number`, JSON.stringify(dl[0] ?? null));
+  const ud = dl[0]?.user_data ?? {};
+  check(ud.email_sha256 === sha('guest@example.com') && ud.phone_sha256 === sha('966500000000') && ud.phone_e164_sha256 === sha('+966500000000') && Object.keys(ud).length === 3, `${tag} success: user_data = the normalised email / phone, SHA-256 (advertising consent granted)`, JSON.stringify(ud));
+  // once per booking: a reload of the confirmation page pushes nothing (the one-shot ticket is gone, the ref remembered)
+  await page.reload({ waitUntil: 'networkidle' });
+  await page.waitForSelector('[data-heading]');
+  check((await page.evaluate(() => (window.dataLayer || []).filter((e) => e.event === 'booking_confirmed' || e.event === 'booking_request').length)) === 0, `${tag} success: a reload pushes no second booking_confirmed`);
+  await page.evaluate(() => localStorage.removeItem('armada-consent'));
   check(url.searchParams.get('wa') === '1', `${tag} whatsapp: accepted → &wa=1 on the success URL`);
   const confSteps = await page.locator('[data-steps]').textContent();
   check(confSteps.includes(S.success.whatsapp_sent_confirmed), `${tag} whatsapp: confirmed page says the confirmation went to WhatsApp`);
@@ -310,6 +327,7 @@ async function run(width, lang) {
   const waLi = page.locator('[data-next="whatsapp"]');
   check((await waLi.isVisible()) && (await waLi.textContent()).trim() === S.success.whatsapp_sent_request, `${tag} whatsapp: request page, accepted → «${S.success.whatsapp_sent_request.slice(0, 24)}…»`);
   check(await page.locator('[data-next="email"]').isVisible(), `${tag} whatsapp: request page keeps the email step when an email was given`);
+  check((await page.evaluate(() => (window.dataLayer || []).filter((e) => e.event === 'booking_request' || e.event === 'booking_confirmed').length)) === 0, `${tag} success: a success URL opened without the booking form's ticket pushes no conversion`);
 
   // ── sold out at submit → request page with the reason; the WhatsApp message failed (stubbed YCloud error) ──
   mode.submit = 'sold_out';
@@ -330,6 +348,7 @@ async function run(width, lang) {
   check((await page.title()) === seo.pages['booking-success'][`title_${L}`], `${tag} fallback: request keeps today's document title`, await page.title());
   const dl2 = await page.evaluate(() => (window.dataLayer || []).filter((e) => e.event === 'booking_request'));
   check(dl2.length === 1 && dl2[0].reason === 'sold_out', `${tag} fallback: booking_request with the reason`);
+  check(typeof dl2[0]?.value === 'number' && dl2[0].value > 0 && dl2[0]?.currency === 'SAR' && dl2[0]?.event_id === new URL(page.url()).searchParams.get('ref') && !('user_data' in (dl2[0] ?? {})), `${tag} fallback: booking_request (Lead) with the quoted total, SAR, event_id = ref; no user_data without advertising consent`, JSON.stringify(dl2[0] ?? null));
   check(!new URL(page.url()).searchParams.has('wa'), `${tag} whatsapp: not accepted → no &wa on the success URL`);
   check(new URL(page.url()).searchParams.get('mc') === '0' && (await page.locator('[data-eyab-invite]').isVisible()), `${tag} consent: unticked → the «انضم إلى إياب» card on the success page`);
   {
@@ -355,7 +374,7 @@ async function run(width, lang) {
     check(!('phone' in sent) && !('name' in sent) && !('email' in sent), `${tag} invite: the page sends no personal data (the function reads the booking)`);
     check((await page.locator('[data-invite-done]').textContent()).trim() === I.welcome && (await page.locator('[data-invite-form]').isHidden()), `${tag} invite: «${I.welcome}» replaces the card's form`);
     const cj = await page.evaluate(() => (window.dataLayer || []).filter((e) => e.event === 'club_join'));
-    check(cj.length === 1 && cj[0].source === 'booking-page' && Object.keys(cj[0]).length === 2, `${tag} invite: dataLayer club_join { source: booking-page } only`, JSON.stringify(cj));
+    check(cj.length === 1 && cj[0].source === 'booking-page' && cj[0].currency === 'SAR' && Object.keys(cj[0]).length === 3, `${tag} invite: dataLayer club_join { source: booking-page, currency } only`, JSON.stringify(cj));
     check(!(await page.evaluate(() => Object.keys(sessionStorage).some((k) => k.startsWith('armada_invite_')))), `${tag} invite: the invite is dropped after joining`);
   }
   check((await page.locator('[data-next="whatsapp"]').textContent()).trim() === S.success.next_whatsapp && (await page.locator('[data-next="whatsapp"]').isVisible()), `${tag} whatsapp: not accepted → today's sentence unchanged`);

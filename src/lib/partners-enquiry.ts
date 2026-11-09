@@ -18,6 +18,7 @@ import { riyadhToday, validEmail, validName, validOrganisation, type FieldError 
 import { loadPhoneLib, phoneToE164 } from './phone';
 import { initCountrySelect, type CountrySelect } from './country-select';
 import { turnstileToken } from './turnstile';
+import { hashedUserData } from './user-data';
 
 export const DRAFT_KEY = 'armada_b2b_enquiry_v2';
 const OLD_DRAFT_KEYS = ['armada_b2b_enquiry_v1'];
@@ -364,7 +365,10 @@ export function initEnquiry(): void {
       box.scrollIntoView({ behavior: 'smooth', block: 'start' });
       const w = window as unknown as { dataLayer?: unknown[] };
       w.dataLayer = w.dataLayer || [];
-      w.dataLayer.push({ event: 'partner_enquiry', request_type: body.request_type, branch: body.branch, booking_ref: res.ref });
+      // a Lead (DECISIONS.md 2026-11-09 «Conversion data»): no amount exists, so the currency only; event_id = the ref;
+      // the contact's email / phone hashed, only with advertising consent (./user-data.ts) — never raw
+      const user = await hashedUserData(String(body.email ?? ''), String(body.phone ?? ''));
+      w.dataLayer.push({ event: 'partner_enquiry', request_type: body.request_type, branch: body.branch, booking_ref: res.ref, event_id: res.ref, currency: 'SAR', ...(user ? { user_data: user } : {}) });
     } catch {
       showError(T.sendFail || '');
     } finally {

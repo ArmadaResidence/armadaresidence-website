@@ -68,6 +68,9 @@ const {
 } = Astro.props;
 
 const canonical = canonicalHref ?? absoluteUrl(localePath(locale, path));
+// the hosts that load the GTM container (9 Nov 2026): the canonical domain and its www — nothing else
+const siteHost = new URL(seo.site_url).hostname;
+const GTM_HOSTS = [siteHost, `www.${siteHost}`];
 // og:url is always the page itself
 const selfUrl = absoluteUrl(localePath(locale, path));
 const arUrl = absoluteUrl(localePath('ar', path));
@@ -216,16 +219,20 @@ const preloadFonts = locale === 'ar' ? (path === '/' ? [fontAr400, fontAr600, fo
         });
       })(window, document);
     </script>
-    <script is:inline define:vars={{ GTM_ID }}>
+    <script is:inline define:vars={{ GTM_ID, GTM_HOSTS }}>
       // GTM (decision 10 Oct 2026, tightened 11 Oct): the dataLayer exists from the first byte and queues every push
       // (gtm.start/gtm.js, page events, booking_request…); the container script itself is injected on the first
       // interaction or 3.5 s after window.load, whichever comes first, so the ~1 MB of tags it pulls (GA4, Ads,
       // Meta, TikTok) never competes with the page's own assets or blocks the main thread while the page settles.
       // GTM replays the queue in order when it loads, so page_view and every earlier event are still recorded.
-      (function (w, d, l, i) {
+      // Only on the real domain (Ahmed, 9 Nov 2026 — DECISIONS.md «Conversion data»): the container script is injected
+      // only when the page is served from armadaresidence.com or www.armadaresidence.com (GTM_HOSTS, from seo.json →
+      // site_url) — never on a github.io preview, localhost or a check build, so no test visit reaches GA4 or the ad
+      // platforms. The dataLayer, the consent defaults above and every push run everywhere, as before.
+      (function (w, d, l, i, hosts) {
         w[l] = w[l] || [];
         w[l].push({ 'gtm.start': new Date().getTime(), event: 'gtm.js' });
-        var loaded = false;
+        var loaded = hosts.indexOf(location.hostname) < 0;
         function load() {
           if (loaded) return;
           loaded = true;
@@ -250,7 +257,7 @@ const preloadFonts = locale === 'ar' ? (path === '/' ? [fontAr400, fontAr600, fo
           if (first) { first = false; return; }
           w[l].push({ event: 'virtual_page_view', page_path: location.pathname, page_location: location.href, page_title: d.title });
         });
-      })(window, document, 'dataLayer', GTM_ID);
+      })(window, document, 'dataLayer', GTM_ID, GTM_HOSTS);
     </script>
   </head>
   <body class="min-h-screen flex flex-col bg-porcelain text-ink">

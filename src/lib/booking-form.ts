@@ -5,6 +5,7 @@
  * (date picker, phone and country list, rules, prices) are no longer requested before the first paint.
  */
 import { firstTouch } from '@lib/visit';
+import { hashedUserData } from '@lib/user-data';
 import { turnstileToken } from '@lib/turnstile';
 import { bindOnce } from '@lib/client';
 import { initDateRange } from '@lib/daterange';
@@ -906,6 +907,18 @@ function initForm(form: HTMLFormElement) {
         if (typeof json.eyab_invite === 'string') sessionStorage.setItem(`armada_invite_${json.ref}`, json.eyab_invite);
       } catch {
         /* storage unavailable: the success page shows the ref and the generic text */
+      }
+      // the conversion «ticket» (9 Nov 2026 — DECISIONS.md «Conversion data»): the success page pushes booking_confirmed /
+      // booking_request only while this one-shot entry exists, then deletes it and remembers the ref — so a reload, a
+      // reopened link or a new tab never counts the booking again. value = the total the guest was shown (confirmed: the
+      // booking's total; a request: the quote, when prices were shown); the customer data only hashed, and only with
+      // advertising consent (src/lib/user-data.ts) — never the raw email or phone.
+      try {
+        const total = confirmed ? Number(json.quote?.total ?? NaN) : quotedTotal ?? NaN;
+        const user = await hashedUserData(d.email, d.phone);
+        sessionStorage.setItem(`armada_track_${json.ref}`, JSON.stringify({ s: confirmed ? 'confirmed' : 'request', ...(Number.isFinite(total) && total > 0 ? { value: total } : {}), ...(user ? { user } : {}) }));
+      } catch {
+        /* storage unavailable: no conversion event (never one that could repeat) */
       }
       leaving = true;
       location.assign(`${data.successPath}?${params.toString()}`);

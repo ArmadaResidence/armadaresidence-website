@@ -382,7 +382,7 @@ try {
         check(done.text.includes(c.success) && done.text.includes(c.follow) && done.focused && done.formHidden, `${tag}: the success screen`, JSON.stringify(done));
         check(done.href === club.follow_url && done.target === '_blank' && done.rel === 'noopener', `${tag}: «${c.follow}» link`, JSON.stringify(done));
         const dl = await p.evaluate(() => (window.dataLayer || []).filter((e) => e && e.event === 'club_join'));
-        check(dl.length === 1 && JSON.stringify(Object.keys(dl[0]).filter((k) => !k.startsWith('gtm.')).sort()) === '["event","source"]' && dl[0].source === 'breakfast-airport', `${tag}: club_join`, JSON.stringify(dl));
+        check(dl.length === 1 && JSON.stringify(Object.keys(dl[0]).filter((k) => !k.startsWith('gtm.')).sort()) === '["currency","event","source"]' && dl[0].source === 'breakfast-airport' && dl[0].currency === 'SAR', `${tag}: club_join (source + currency; no user_data without advertising consent)`, JSON.stringify(dl));
         if (form.name === '1440' && theme === 'light') await axe(p, `${tag} /club/ success`);
         if (form.name === '375') await shot(p, `club-success-${lang}-${theme}`);
         // a repeated number: the same success (the stub answers as the server does — nothing tells them apart)
