@@ -33,6 +33,8 @@
 //                                              pages listed, exit 0)
 //   node scripts/check-all.mjs --live [URL]    live: the browser checks against the deployed site (default: the domain)
 //                                              + admin-cors-check against the project's functions (no browser, no key)
+//   ... --live [URL] --shard <name|cors>       one CI shard's browser checks against the live site, or (cors) the two
+//                                              CORS checks only — .github/workflows/live-checks.yml after every deploy
 // Every browser check stubs the booking endpoint, wa.me and GTM: nothing is sent, no analytics hit. Runs every check
 // even after a failure (except when the build or qa.py fails: the browser checks need dist/), prints a summary and
 // exits non-zero on any failure.
@@ -64,8 +66,9 @@ if (commitAt >= 0 && !commit) {
   console.error('check-all: --commit needs a commit (sha or ref)');
   process.exit(2);
 }
-if (shardAt >= 0 && !CI_SHARDS[shard]) {
-  console.error(`check-all: --shard needs one of ${Object.keys(CI_SHARDS).join(', ')}`);
+// --live --shard cors: only the two CORS checks (no browser) — the live-checks workflow's seventh job
+if (shardAt >= 0 && !CI_SHARDS[shard] && !(live && shard === 'cors')) {
+  console.error(`check-all: --shard needs one of ${Object.keys(CI_SHARDS).join(', ')}${live ? ', cors' : ''}`);
   process.exit(2);
 }
 if (pixelAt >= 0 && !pixelBase) {
@@ -116,12 +119,12 @@ if ((staged || commit) && !args.includes('--full')) {
   plan = { full: false, ci: true, build: true, sampleQa: true, checks: STATIC_CHECKS.filter((c) => !CI_WINDOWS_CHECKS.includes(c)), a11yPages: null, pixelGuard: false };
 } else if (ciWindows) {
   plan = { full: false, ci: true, build: false, sampleQa: false, checks: [...CI_WINDOWS_CHECKS], a11yPages: null, pixelGuard: false };
-} else if (shard) {
+} else if (shard && !live) {
   plan = { full: false, ci: true, build: false, prebuilt: true, sampleQa: false, checks: [...CI_SHARDS[shard]], a11yPages: null, pixelGuard: false };
 } else if (pixelBase) {
   plan = { full: false, ci: true, build: true, sampleQa: false, checks: [], a11yPages: null, pixelGuard: true };
 }
-if (plan.ci) console.log(describe(plan));
+if (plan.ci && !live) console.log(describe(plan));
 
 // a tree exported to a temp folder; node_modules and admin/node_modules (the dashboard's type check) are junctions to
 // this checkout's. Staged: the index as it is; a commit: read into a throwaway index first.
@@ -212,7 +215,9 @@ let server = null;
 let base;
 let built = false;
 if (live) {
-  base = (args.find((a) => !a.startsWith('--')) || REVIEW_URL).replace(/\/$/, '');
+  // the URL is the one argument that is neither a flag nor a flag's value (--shard <name>)
+  const positional = args.filter((a, i) => !a.startsWith('--') && !['--shard', '--commit', '--pixel'].includes(args[i - 1]));
+  base = (positional[0] || REVIEW_URL).replace(/\/$/, '');
 } else if (plan.prebuilt) {
   built = existsSync(join(cwd, 'dist', 'index.html'));
   if (!built) results.push({ label: 'dist/ present (the deploy build)', code: 1, s: 0 });
@@ -223,14 +228,16 @@ if (live) {
   results.push(await run('build --content-only', PYTHON, ['build.py', '--content-only']));
 }
 const browser = plan.checks.filter((c) => BROWSER_CHECKS.includes(c));
-for (const name of plan.checks.filter((c) => STATIC_CHECKS.includes(c))) results.push(await run(name, process.execPath, [`scripts/${name}.mjs`]));
+if (!(live && shard)) for (const name of plan.checks.filter((c) => STATIC_CHECKS.includes(c))) results.push(await run(name, process.execPath, [`scripts/${name}.mjs`]));
 if (built && browser.length) {
   server = await serveDist(0, { dist: join(cwd, 'dist') });
   base = server.url;
 }
 if (base) {
   console.log(`\nbrowser checks against ${base}`);
-  for (const name of live ? BROWSER_CHECKS : browser) {
+  // --live --shard <name> (the live-checks workflow, 9 Nov 2026): that shard's browser checks only; cors: none
+  const liveChecks = !shard ? BROWSER_CHECKS : (CI_SHARDS[shard] ?? []);
+  for (const name of live ? liveChecks : browser) {
     const env = name === 'a11y-check' && plan.a11yPages ? { ONLY: plan.a11yPages.join(',') } : {};
     results.push(await run(name, process.execPath, [`scripts/${name}.mjs`, base], { env }));
   }
@@ -267,9 +274,10 @@ if (plan.pixelGuard && built) {
     console.log(`pixel-guard shots: ${shots}`);
   }
 }
-if (live) for (const name of LIVE_CHECKS) results.push(await run(name, process.execPath, [`scripts/${name}.mjs`]));
+const liveCors = live && (!shard || shard === 'cors');
+if (liveCors) for (const name of LIVE_CHECKS) results.push(await run(name, process.execPath, [`scripts/${name}.mjs`]));
 // the public site functions' CORS from the domain, www and the review site (preflight only — nothing is sent; 30 Oct 2026)
-if (live) results.push(await run('admin-cors-check --public', process.execPath, ['scripts/admin-cors-check.mjs', '--public']));
+if (liveCors) results.push(await run('admin-cors-check --public', process.execPath, ['scripts/admin-cors-check.mjs', '--public']));
 await server?.close();
 // sample qa (7 Nov 2026): the dashboard-published sections (partner logos, articles, offers and the pop-up) are empty in
 // the local build, so qa.py never judged their markup — an empty alt in «شركاؤنا» failed every real publish of
@@ -289,7 +297,7 @@ if (!live && built && plan.sampleQa) {
 removeSnapshots();
 
 const level = plan.full ? 'full suite' : plan.fast ? 'fast checks' : 'routed';
-const scope = live ? `live: ${base}` : shard ? `CI shard ${shard}` : ciStatic ? 'CI static' : ciWindows ? 'CI windows' : pixelBase ? `CI pixel guard ${pixelBase.slice(0, 12)} -> HEAD` : commit ? `commit ${commit}, ${level}` : staged ? `staged snapshot, ${level}` : 'local build, full suite';
+const scope = live ? `live: ${base}${shard ? ` — shard ${shard}` : ""}` : shard ? `CI shard ${shard}` : ciStatic ? 'CI static' : ciWindows ? 'CI windows' : pixelBase ? `CI pixel guard ${pixelBase.slice(0, 12)} -> HEAD` : commit ? `commit ${commit}, ${level}` : staged ? `staged snapshot, ${level}` : 'local build, full suite';
 console.log(`\n━━ summary (${scope}) ━━`);
 for (const r of results) console.log(`${r.code ? '✗ FAIL' : '✓ pass'}  ${r.label.padEnd(24)} ${r.s}s`);
 const total = Math.round((Date.now() - t0All) / 1000);

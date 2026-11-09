@@ -288,7 +288,8 @@ if (import.meta.url === pathToFileURL(process.argv[1]).href) {
   const invisible = process.env.ARMADA_INVISIBLE === '1';
   if (args.includes('--shards-json')) {
     // deploy.yml's matrix (the build job's `shards` output)
-    console.log(JSON.stringify(Object.keys(CI_SHARDS)));
+    // --live: live-checks.yml's matrix — the same shards against the live site, plus `cors` (the CORS checks)
+    console.log(JSON.stringify([...Object.keys(CI_SHARDS), ...(args.includes('--live') ? ['cors'] : [])]));
   } else if (args.includes('--shards')) {
     for (const [name, checks] of Object.entries(CI_SHARDS)) console.log(`${name}: ${checks.join(', ')}`);
     console.log(`static (CI): build, qa, ${STATIC_CHECKS.filter((c) => !CI_WINDOWS_CHECKS.includes(c)).join(', ')}, sample qa`);

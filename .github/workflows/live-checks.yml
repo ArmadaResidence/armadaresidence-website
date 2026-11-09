@@ -1,0 +1,124 @@
+name: Live checks after a deploy
+
+# The live suite (CLAUDE.md §11; Ahmed, 9 Nov 2026 — moved off the 4 GB developer machine): after every run of the deploy
+# workflow that published the site, the browser checks run against https://armadaresidence.com in the same shards as
+# before the deploy (scripts/check-plan.mjs CI_SHARDS) plus the CORS checks of the dashboard and public functions —
+# `node scripts/check-all.mjs --live <URL> --shard <name|cors>`. Every browser check stubs the booking endpoint, wa.me
+# and GTM: nothing is sent, no analytics hit. A check that fails on a dropped connection runs once more (--live rule);
+# an assertion failure never does.
+# A separate workflow (workflow_run), so it never holds the Pages queue: the next deploy or dashboard publish does not
+# wait for it. It first confirms that this deploy is the one live (/version.json → run_id); a newer deploy that is
+# already live makes it stand down (that deploy's own live checks follow); a newer run of this workflow replaces an
+# older one still running. The checks read the content files of the build they judge (the deploy run's `site-build`
+# artifact). workflow_dispatch: `deploy_run` = the deploy run to check (default: the newest successful one).
+on:
+  workflow_run:
+    workflows: ['Build, QA and deploy to GitHub Pages']
+    types: [completed]
+  workflow_dispatch:
+    inputs:
+      deploy_run:
+        description: the deploy run whose live site to check (empty = the newest successful deploy)
+        required: false
+        default: ''
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: live-checks
+  cancel-in-progress: true
+
+jobs:
+  gate:
+    name: live · the deploy is live
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    outputs:
+      run: ${{ steps.gate.outputs.run }}
+      check: ${{ steps.gate.outputs.check }}
+      url: ${{ steps.gate.outputs.url }}
+      shards: ${{ steps.gate.outputs.shards }}
+    env:
+      GH_TOKEN: ${{ github.token }}
+      REPO: ${{ github.repository }}
+      RUN_ID: ${{ github.event.workflow_run.id || inputs.deploy_run }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: |
+            content/seo.json
+            scripts/check-plan.mjs
+          sparse-checkout-cone-mode: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Did this run deploy, and is it what the site serves?
+        id: gate
+        run: |
+          set -eu
+          if [ -z "$RUN_ID" ]; then
+            RUN_ID=$(gh api "repos/$REPO/actions/workflows/deploy.yml/runs?status=success&per_page=20" --jq '[.workflow_runs[].id] | .[]' | while read id; do
+              d=$(gh api "repos/$REPO/actions/runs/$id/jobs" --jq '.jobs[] | select(.name=="deploy") | .conclusion'); [ "$d" = "success" ] && { echo "$id"; break; }; done)
+          fi
+          echo "run=$RUN_ID" >> "$GITHUB_OUTPUT"
+          URL=$(node -e "process.stdout.write(require('./content/seo.json').live_url.replace(/\/$/, ''))")
+          echo "url=$URL" >> "$GITHUB_OUTPUT"
+          echo "shards=$(node scripts/check-plan.mjs --shards-json --live)" >> "$GITHUB_OUTPUT"
+          deployed=$(gh api "repos/$REPO/actions/runs/$RUN_ID/jobs" --jq '.jobs[] | select(.name=="deploy") | .conclusion')
+          if [ "$deployed" != "success" ]; then
+            echo "run $RUN_ID published nothing (deploy: ${deployed:-none} — a dry run or a failed check): no live checks"
+            echo "check=false" >> "$GITHUB_OUTPUT"; exit 0
+          fi
+          # GitHub Pages answers the new build within seconds to minutes of the deploy job; wait up to 15 minutes
+          for i in $(seq 1 90); do
+            live=$(curl -fsS "$URL/version.json?v=$(date +%s)" | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{try{process.stdout.write(String(JSON.parse(s).run_id||''))}catch{}})" || true)
+            if [ "$live" = "$RUN_ID" ]; then echo "the site serves run $RUN_ID"; echo "check=true" >> "$GITHUB_OUTPUT"; exit 0; fi
+            if [ -n "$live" ] && [ "$live" -gt "$RUN_ID" ] 2>/dev/null; then
+              echo "a newer deploy ($live) is already live: its own live checks follow"; echo "check=false" >> "$GITHUB_OUTPUT"; exit 0
+            fi
+            sleep 10
+          done
+          echo "::error::run $RUN_ID deployed, but after 15 minutes $URL/version.json still names run ${live:-?}"
+          exit 1
+
+  live:
+    name: live · ${{ matrix.shard }}
+    needs: gate
+    if: ${{ needs.gate.outputs.check == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: ${{ fromJSON(needs.gate.outputs.shards) }}
+    env:
+      PUBLIC_BOOKING_ENDPOINT: ${{ vars.PUBLIC_BOOKING_ENDPOINT }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: Browsers (Chromium, WebKit; Google Chrome is on the runner)
+        if: ${{ matrix.shard != 'cors' }}
+        run: npx playwright install --with-deps chromium webkit
+      - name: The deployed build's content files
+        if: ${{ matrix.shard != 'cors' }}
+        uses: actions/download-artifact@v4
+        with:
+          name: site-build
+          run-id: ${{ needs.gate.outputs.run }}
+          github-token: ${{ github.token }}
+      - name: Unpack them (dist/ too — some checks list the pages from it)
+        if: ${{ matrix.shard != 'cors' }}
+        run: tar -xf site-build.tar && rm site-build.tar
+      - name: The project URL for the CORS checks
+        run: echo "SUPABASE_URL=${PUBLIC_BOOKING_ENDPOINT%%/functions/*}" >> "$GITHUB_ENV"
+      - name: Run the live checks
+        run: node scripts/check-all.mjs --live "${{ needs.gate.outputs.url }}" --shard ${{ matrix.shard }}
