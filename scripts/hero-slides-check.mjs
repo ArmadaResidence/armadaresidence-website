@@ -61,6 +61,16 @@ for (const [i, s] of slidesHtml.entries()) {
 const fast = `Object.defineProperty(navigator, 'connection', { configurable: true, get: () => ({ saveData: false, effectiveType: '4g', downlink: 10 }) });`;
 const conn = (o) => `Object.defineProperty(navigator, 'connection', { configurable: true, get: () => (${JSON.stringify(o)}) });`;
 const CLS = `new PerformanceObserver((l) => { for (const e of l.getEntries()) if (!e.hadRecentInput) window.__cls = (window.__cls || 0) + e.value; }).observe({ type: 'layout-shift', buffered: true });`;
+/** the state once `ok(state)` holds, or the last state after `ms` */
+async function settle(page, ok, ms = 3000) {
+  const end = Date.now() + ms;
+  let x = await state(page);
+  while (!ok(x) && Date.now() < end) {
+    await page.waitForTimeout(100);
+    x = await state(page);
+  }
+  return x;
+}
 const state = (page) => page.evaluate(() => {
   const slides = [...document.querySelectorAll('[data-hero-slide]')];
   const btn = document.querySelector('[data-hero-toggle]');
@@ -166,11 +176,11 @@ async function visit(engine, ctxOpts, label, { expect, init, path = '/' } = {}) 
     });
     check(!(await state(page)).paused, `${label}: the tab shown again plays`);
     await page.evaluate(() => window.scrollTo(0, document.querySelector('section.hero').getBoundingClientRect().bottom + window.scrollY + 400));
-    await page.waitForTimeout(400);
-    check((await state(page)).paused, `${label}: the hero off screen pauses`);
+    // the IntersectionObserver's answer, awaited up to 3 s (9 Nov 2026: a fixed 400 ms was too short for WebKit on a
+    // busy CI runner) — the same assertion, a deadline instead of a guess
+    check((await settle(page, (x) => x.paused)).paused, `${label}: the hero off screen pauses`);
     await page.evaluate(() => window.scrollTo(0, 0));
-    await page.waitForTimeout(400);
-    s = await state(page);
+    s = await settle(page, (x) => !x.paused);
     check(!s.paused, `${label}: back on screen it plays`);
     check(s.cls < 0.001, `${label}: no layout shift during the show`, String(s.cls));
   }

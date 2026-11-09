@@ -91,6 +91,18 @@ async function shoot(BASE, OUT, dist) {
           // every image with a source fully loaded and decoded before the capture (an eager image inside a
           // content-visibility block could still be blank when decode() resolved early — 2 Nov 2026)
           imgs.forEach((i) => { if (i.loading === 'lazy') i.loading = 'eager'; i.decoding = 'sync'; });
+          // determinism (9 Nov 2026, seen on Linux CI): Chrome may answer a srcset with a LARGER candidate already in its
+          // memory cache — the Discover Taif hero (01-al-hada…-1400) and the first place card (same photo, 800w for its
+          // width) — and whether the hero's file was cached when the card chose depends on load timing. After `load`
+          // every srcset is chosen again (removed and set back in one task: one selection, with the same cache in both
+          // captures), so the card renders from the same file every time
+          imgs.forEach((i) => {
+            const set = i.getAttribute('srcset');
+            if (!set) return;
+            i.removeAttribute('srcset');
+            i.setAttribute('srcset', set);
+          });
+          await new Promise((r) => setTimeout(r, 0)); // the new selection has started: `complete` reflects it below
           const ready = (i) => (!i.getAttribute('src') && !i.getAttribute('srcset')) || (i.complete && i.naturalWidth > 0)
             ? i.decode().catch(() => {})
             : new Promise((r) => { i.addEventListener('load', r, { once: true }); i.addEventListener('error', r, { once: true }); }).then(() => i.decode().catch(() => {}));
@@ -152,6 +164,14 @@ function compare(A, B) {
       differ++;
       mkdirSync(DIFF, { recursive: true });
       writeFileSync(join(DIFF, f), PNG.sync.write(d));
+      // the two captures beside the diff (9 Nov 2026: the CI artifact holds _diff only), cropped to the differing area
+      // with a 40 px margin
+      const cx0 = Math.max(0, x0 - 40), cy0 = Math.max(0, y0 - 40), cw = Math.min(x.width, x1 + 41) - cx0, ch = Math.min(x.height, y1 + 41) - cy0;
+      for (const [img, tag] of [[x, 'before'], [y, 'after']]) {
+        const c = new PNG({ width: cw, height: ch });
+        PNG.bitblt(img, c, cx0, cy0, cw, ch, 0, 0);
+        writeFileSync(join(DIFF, f.replace(/\.png$/, `.${tag}.png`)), PNG.sync.write(c));
+      }
       console.log(`  ✗ ${f}: ${n} px differ in ${x0},${y0} – ${x1},${y1}, max channel Δ ${maxD}/255`);
     }
   }

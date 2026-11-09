@@ -206,7 +206,7 @@ try {
   }
   // the sitemap follows the build
   check(sitemap.includes('/airport-road/hall/</loc>') && sitemap.includes('/en/airport-road/hall/</loc>'), 'sitemap: the hall pages are missing');
-  if (REMOTE && live) check(sitemap.includes('/dining/</loc>') && served.every((v) => sitemap.includes(`/dining/${v.slug}/</loc>`)), 'sitemap: the live dining entries are missing');
+  if (PUBLISHED && live) check(sitemap.includes('/dining/</loc>') && served.every((v) => sitemap.includes(`/dining/${v.slug}/</loc>`)), 'sitemap: the live dining entries are missing');
   else check(live ? sitemap.includes('/dining/</loc>') && sitemap.includes('/dining/lario/</loc>') && !sitemap.includes('sample-hidden') : !sitemap.includes('/dining/'), `sitemap: dining entries do not follow the build (${live ? 'published' : 'none'})`);
 } catch (e) {
   fails.push(`crash: ${String(e.stack || e).split('\n').slice(0, 3).join(' ')}`);
