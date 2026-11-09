@@ -365,6 +365,31 @@ async function groupedRooms(vp, lang) {
   await ctx.close();
 }
 
+/** The form's code (src/lib/booking-form.ts, imported when the drawer's form starts — 9 Nov 2026) fails to load on the
+    first page: a booking link pressed there loads the booking page in full, whose form then works. */
+async function failedModule(vp, lang) {
+  const mobile = vp.width < 768;
+  const L = lang === 'en' ? '/en' : '';
+  const tag = `@${vp.width} ${lang} (form module failed)`;
+  const ctx = await newContext(vp, lang);
+  let aborted = 0;
+  await ctx.route(/\/_astro\/booking-form\.[^/]*\.js(\?|$)/, (r) => (aborted++ ? r.continue() : r.abort()));
+  const page = await ctx.newPage();
+  try {
+    await page.goto(`${BASE}${L}/`, { waitUntil: 'load' });
+    await page.waitForFunction(() => !document.querySelector('form[data-booking-form][data-booking-loading]') && !!document.querySelector('form[data-booking-form][data-booking-init]'), null, { timeout: 8000 });
+    if (aborted !== 1) throw new Error(`the form module was requested ${aborted} times on the first page`);
+    const link = page.locator(`main a[href="${PRE}${L}/booking/"]:visible`).first();
+    await (mobile ? link.tap({ timeout: ACTION }) : link.click({ timeout: ACTION }));
+    await page.waitForURL((u) => u.pathname === `${PRE}${L}/booking/`, { timeout: 8000 });
+    await page.locator('form[data-booking-form][data-booking-ready]').waitFor({ state: 'attached', timeout: 8000 });
+    checks++;
+  } catch (e) {
+    fails.push(`${tag} aborted at ${new URL(page.url()).pathname}: ${String(e).split(/\r?\n/)[0].slice(0, 180)}`);
+  }
+  await ctx.close();
+}
+
 /** The booking form's script fails on the first page; after client-side navigation a room CTA (shared slug) must
     load the booking page in full, prefilled from its URL. */
 async function failedScript(vp, lang) {
@@ -413,6 +438,8 @@ await Promise.all([
   ...[{ width: 1440, height: 900 }, { width: 375, height: 812 }].flatMap((vp) => ['ar', 'en'].map((lang) => run(vp, lang))),
   failedScript({ width: 1440, height: 900 }, 'ar'),
   failedScript({ width: 375, height: 812 }, 'en'),
+  failedModule({ width: 1440, height: 900 }, 'en'),
+  failedModule({ width: 375, height: 812 }, 'ar'),
   groupedRooms({ width: 1440, height: 900 }, 'ar'),
   groupedRooms({ width: 375, height: 812 }, 'en'),
 ]);

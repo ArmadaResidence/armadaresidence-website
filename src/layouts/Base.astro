@@ -2,6 +2,7 @@
 import '../styles/global.css';
 import { ClientRouter } from 'astro:transitions';
 import fontAr400 from '../assets/fonts/ibm-plex-sans-arabic-arabic-400-subset.woff2?url';
+import fontAr600 from '../assets/fonts/ibm-plex-sans-arabic-arabic-600-subset.woff2?url';
 import fontAr700 from '../assets/fonts/ibm-plex-sans-arabic-arabic-700-subset.woff2?url';
 import fontEn from '@fontsource-variable/manrope/files/manrope-latin-wght-normal.woff2?url';
 import { GTM_ID, absoluteUrl, dir, localePath, seo, siteName, turnstileKey, type BookingContext, type Locale } from '@lib/content';
@@ -86,7 +87,11 @@ const legacy = path === '/discover-taif/' || path.startsWith('/partners/');
 // the CSS asks for them (font-display: swap, so text shows at once and ends in the web font). Same hashed files the CSS uses.
 // 8 Nov 2026 (post-launch session 1): the Arabic home page also preloads the 700 weight — its hero title and the
 // «فرعانا» heading are bold and in the first view on a phone; arriving after the first paint, its swap shifted the page.
-const preloadFonts = locale === 'ar' ? (path === '/' ? [fontAr400, fontAr700] : [fontAr400]) : [fontEn];
+// 9 Nov 2026 (mobile LCP): every Arabic page also preloads the 600 weight and Manrope — both are in the first view of a
+// phone on every page (the header's «للشركاء والوكالات» and the first call to action are 600, the header's «English»
+// is Latin). Discovered only once the page's first layout asks for them, they were requested last, at the highest
+// priority, behind the whole first layout — and the paint waited for them; preloaded, they arrive with the others.
+const preloadFonts = locale === 'ar' ? (path === '/' ? [fontAr400, fontAr600, fontAr700, fontEn] : [fontAr400, fontAr600, fontEn]) : [fontEn];
 ---
 
 <!doctype html>

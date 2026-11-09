@@ -227,7 +227,8 @@ try {
         check((await page.locator('[data-offer-placement="partners"][data-offer="qa-partners-extra"]').count()) === 1, `${tag} /partners/: the b2b offer marked «صفحة الشركاء»`);
         check(!/\d\s*(?:ريال|SAR)/.test(await page.locator('[data-partners-offers]').textContent()), `${tag} /partners/: no price`);
         await page.goto(`${pre}/menu/`, { waitUntil: 'domcontentloaded' });
-        const menuOffers = await page.locator('.site-offers').textContent().catch(() => '');
+        // the typesetting pass (scripts/typeset.mjs, 6 Nov 2026) joins a number and its unit with a no-break space
+        const menuOffers = (await page.locator('.site-offers').textContent().catch(() => '')).replace(/ /g, ' ');
         check(menuOffers.includes(O.dining_price.replace('{price}', money(45, L))), `${tag} /menu/: the restaurant offer with its explicit price`, menuOffers.slice(0, 120));
         await ctx.close();
 

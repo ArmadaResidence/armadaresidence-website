@@ -50,18 +50,51 @@ document.addEventListener(
     if (!cur || cur.dialog.contains(a)) return; // no drawer on this page (e.g. /booking/ itself): follow the link
     e.preventDefault();
     // the form starts after the first paint (8 Nov 2026); a press before that starts it now (synchronous event)
-    cur.dialog.querySelector('form[data-booking-form]')?.dispatchEvent(new CustomEvent('booking:init'));
-    if (!cur.dialog.querySelector('form[data-booking-ready]')) {
-      location.assign(a.href); // the form's script is not running: a full load of the booking page, never an inert form
+    const form = cur.dialog.querySelector<HTMLFormElement>('form[data-booking-form]');
+    form?.dispatchEvent(new CustomEvent('booking:init'));
+    const open = () => {
+      const q = new URL(a.href, location.href).searchParams;
+      // the mobile menu may be open behind the link
+      document.querySelector<HTMLButtonElement>('[data-menu-toggle][aria-expanded="true"]')?.click();
+      cur.ctl.open({ branch: q.get('branch'), room: q.get('room'), check_in: q.get('check_in'), check_out: q.get('check_out'), promo: q.get('promo') });
+    };
+    const full = () => location.assign(a.href); // the form's script is not running: a full load of the booking page, never an inert form
+    if (form?.hasAttribute('data-booking-ready')) return open();
+    // its code is still arriving (src/lib/booking-form.ts is imported when the form starts — 9 Nov 2026): open as soon
+    // as it is ready; a failed load, or none within 5 s, loads the booking page instead
+    if (form?.hasAttribute('data-booking-loading')) {
+      let settled = false;
+      const settle = (fn: () => void) => () => {
+        if (settled) return;
+        settled = true;
+        window.clearTimeout(timer);
+        fn();
+      };
+      const timer = window.setTimeout(settle(full), 5000);
+      form.addEventListener('booking:ready', settle(() => (cur.dialog.isConnected ? open() : undefined)), { once: true });
+      form.addEventListener('booking:failed', settle(full), { once: true });
       return;
     }
-    const q = new URL(a.href, location.href).searchParams;
-    // the mobile menu may be open behind the link
-    document.querySelector<HTMLButtonElement>('[data-menu-toggle][aria-expanded="true"]')?.click();
-    cur.ctl.open({ branch: q.get('branch'), room: q.get('room'), check_in: q.get('check_in'), check_out: q.get('check_out'), promo: q.get('promo') });
+    full();
   },
   true,
 );
+
+// a press on a booking link starts the drawer's form a moment before the click lands (9 Nov 2026): its code is fetched
+// while the finger is still down, so an early press rarely waits
+for (const type of ['pointerdown', 'touchstart'] as const) {
+  document.addEventListener(
+    type,
+    (e) => {
+      const a = (e.target as Element | null)?.closest?.<HTMLAnchorElement>('a[href]');
+      if (!a || !isBookingLink(a)) return;
+      const cur = currentDrawer();
+      if (!cur || cur.dialog.contains(a)) return;
+      cur.dialog.querySelector('form[data-booking-form]')?.dispatchEvent(new CustomEvent('booking:init'));
+    },
+    { capture: true, passive: true },
+  );
+}
 
 onPageLeave(() => {
   document.documentElement.classList.remove('drawer-open');

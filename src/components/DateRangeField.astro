@@ -131,5 +131,13 @@ const which = single ? (['start'] as const) : (['start', 'end'] as const);
 </div>
 
 <script>
-  import '@lib/daterange';
+  import { onPageLoad } from '@lib/client';
+
+  // the picker's code (src/lib/daterange.ts starts every field outside the booking drawer when it loads) is fetched
+  // only where such a field exists (9 Nov 2026, mobile LCP): the drawer's own fields start with its form, whose module
+  // imports the picker itself — so a page whose only date field is the drawer's requests none of it before the paint
+  onPageLoad(() => {
+    const fields = document.querySelectorAll<HTMLElement>('[data-daterange]');
+    if ([...fields].some((root) => !root.closest('[data-booking-drawer]'))) void import('@lib/daterange');
+  });
 </script>

@@ -65,7 +65,8 @@ const social: { name: string; url: string }[] = [
     <div class="md:col-span-1">
       {/* porcelain logo on midnight at 56 px; stacked lockup → clear space X ≈ 15px, kept by the p-5 wrapper */}
       <div class="p-5 -m-5 inline-block">
-        <img src="/brand/logo-stacked_Porcelain.svg" alt={siteName(locale)} width="88" height="56" class="h-14 w-auto" />
+        {/* lazy (9 Nov 2026, mobile LCP): the footer is never in the first view, so its logo is not fetched before the paint */}
+        <img src="/brand/logo-stacked_Porcelain.svg" alt={siteName(locale)} width="88" height="56" class="h-14 w-auto" loading="lazy" decoding="async" />
       </div>
       <p class="mt-6 text-sm text-porcelain/80">{slogan}</p>
       <p class="mt-4 text-sm text-porcelain/80 flex items-center gap-2">
