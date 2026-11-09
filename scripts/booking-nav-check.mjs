@@ -390,15 +390,16 @@ async function failedModule(vp, lang) {
   await ctx.close();
 }
 
-/** The booking form's script fails on the first page; after client-side navigation a room CTA (shared slug) must
-    load the booking page in full, prefilled from its URL. */
+/** The booking form's code fails on the first page; after client-side navigation a room CTA (shared slug) must never
+    leave an inert form: either the drawer opens ready (the module loads on the next page — 9 Nov 2026: the form's
+    code is src/lib/booking-form.ts, imported when the form starts) or the booking page loads in full; both prefilled. */
 async function failedScript(vp, lang) {
   const mobile = vp.width < 768;
   const L = lang === 'en' ? '/en' : '';
   const tag = `@${vp.width} ${lang} (form script failed)`;
   const ctx = await newContext(vp, lang);
   let aborted = 0;
-  await ctx.route(/\/_astro\/BookingForm[^/]*\.js(\?|$)/, (r) => (aborted++ ? r.continue() : r.abort()));
+  await ctx.route(/\/_astro\/booking-form\.[^/]*\.js(\?|$)/, (r) => (aborted++ ? r.continue() : r.abort()));
   const page = await ctx.newPage();
   const errors = [];
   page.on('pageerror', (e) => errors.push(String(e)));
@@ -412,20 +413,27 @@ async function failedScript(vp, lang) {
   };
   try {
     await page.goto(`${BASE}${L}/`, { waitUntil: 'load' });
-    if (aborted !== 1) throw new Error(`the form script was requested ${aborted} times on the first page`);
+    // the drawer's form starts after the first paint: wait until its import has been tried (and failed)
+    await page.waitForFunction(() => !!document.querySelector('form[data-booking-form][data-booking-init]:not([data-booking-loading])'), null, { timeout: 8000 });
+    if (aborted !== 1) throw new Error(`the form module was requested ${aborted} times on the first page`);
     await go(`${L}/shafa-road/`);
     await go(`${L}/shafa-road/king-room/`);
     const cta = page.locator(`[data-book-card] a[href="${PRE}${L}/booking/?branch=shafa-road&room=king-room"]`);
     await cta.scrollIntoViewIfNeeded({ timeout: ACTION });
     await press(cta);
-    await page.waitForURL((u) => u.pathname === `${PRE}${L}/booking/`, { timeout: 8000 });
-    await page.locator('form[data-booking-form][data-booking-ready]').waitFor({ state: 'attached', timeout: 8000 });
+    // either outcome is right, never an inert form: the drawer open with a ready form, or /booking/ loaded in full
+    await page.waitForFunction(
+      (pre) => location.pathname === `${pre}/booking/` || location.pathname === `${pre}/en/booking/` ? !!document.querySelector('form[data-booking-form][data-booking-ready]') : !!document.querySelector('dialog[data-booking-drawer][open] form[data-booking-ready]'),
+      PRE,
+      { timeout: 8000 },
+    );
     checks++;
     const s = await page.evaluate(() => {
-      const fd = new FormData(document.querySelector('form[data-booking-form]'));
-      return { branch: String(fd.get('branch') ?? ''), room: String(fd.get('room') ?? '') };
+      const f = document.querySelector('dialog[data-booking-drawer][open] form[data-booking-form]') || document.querySelector('form[data-booking-form]');
+      const fd = new FormData(f);
+      return { branch: String(fd.get('branch') ?? ''), room: String(fd.get('room') ?? ''), where: location.pathname };
     });
-    if (s.branch !== 'shafa-road' || s.room !== 'king-room') fails.push(`${tag}: /booking/ submits ${s.branch}/${s.room}, expected shafa-road/king-room`);
+    if (s.branch !== 'shafa-road' || s.room !== 'king-room') fails.push(`${tag}: ${s.where} submits ${s.branch}/${s.room}, expected shafa-road/king-room`);
   } catch (e) {
     fails.push(`${tag} aborted at ${new URL(page.url()).pathname}: ${String(e).split(/\r?\n/)[0].slice(0, 180)}`);
   }
