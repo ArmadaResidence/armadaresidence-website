@@ -507,7 +507,12 @@ try {
     await page.waitForSelector(`[data-ref="${r1.ref}"]`, { timeout: 10000 });
     await page.click(`[data-ref="${r1.ref}"]`);
     await page.click('[data-action="cancel"]');
-    await page.fill('#cancel-reason', 'qa cancel');
+    // 9 Nov 2026: no reason picked → the inline error, nothing sent; then a reason + an internal note
+    await page.click('dialog[open] .btn-danger');
+    check(((await page.locator('dialog[open]').textContent()) ?? '').includes('اختر سبب الإلغاء.'), 'cancel without a reason: «اختر سبب الإلغاء.», the dialog stays open');
+    await page.selectOption('#cancel-reason', 'guest_request');
+    check(((await page.locator('[data-cancel-preview]').textContent()) ?? '').includes('بناءً على طلبك'), 'cancel dialog: the guest line shows the reason\'s phrase');
+    await page.fill('#cancel-note', 'qa internal note');
     const cancelAnswer = adminAnswer(page, 'cancel');
     const cancelToast = toastShown(page, 'ok', `أُلغي الحجز ${r1.ref} وأُعيدت الغرف إلى المخزون`);
     await page.click('dialog[open] .btn-danger');
@@ -516,21 +521,24 @@ try {
     const xa = await cancelAnswer;
     check(xa?.ok === true && xa.ref === r1.ref && xa.notify_failed === false && SINK_ID(xa?.emails?.guest), 'cancel outcome: the guest «إلغاء الحجز» reached the sink, notify_failed false', JSON.stringify(xa));
     check(await cancelToast, 'cancel outcome: the toast names the ref');
-    const waCancel = await serviceRead(`whatsapp_messages?ref=eq.${r1.ref}&template=eq.booking_cancelled&select=status,trigger,is_test,language,branch`);
-    check(waCancel.length === 1 && waCancel[0].status === 'test' && waCancel[0].trigger === 'auto' && waCancel[0].is_test === true && waCancel[0].branch === 'airport-road' && xa?.whatsapp?.status === 'test', 'cancel outcome: one booking_cancelled row in the WhatsApp log (test: built, not sent)', JSON.stringify([waCancel, xa?.whatsapp]));
+    const waCancel = await serviceRead(`whatsapp_messages?ref=eq.${r1.ref}&template=eq.booking_cancelled&select=status,trigger,is_test,language,branch,meta_template,reason_code`);
+    check(waCancel.length === 1 && waCancel[0].status === 'test' && waCancel[0].trigger === 'auto' && waCancel[0].is_test === true && waCancel[0].branch === 'airport-road' && waCancel[0].meta_template === 'booking_cancelled_v2' && waCancel[0].reason_code === 'guest_request' && xa?.whatsapp?.status === 'test', 'cancel outcome: one booking_cancelled_v2 row with the reason in the WhatsApp log (test: built, not sent)', JSON.stringify([waCancel, xa?.whatsapp]));
+    const resRow = await serviceRead(`reservations?ref=eq.${r1.ref}&select=cancel_reason_code,cancel_reason`);
+    check(resRow[0]?.cancel_reason_code === 'guest_request' && resRow[0]?.cancel_reason === 'qa internal note', 'cancel outcome: the code and the internal note stored apart', JSON.stringify(resRow));
     // a cancel sent twice answers «already» and sends nothing more (one per ref)
     {
       const jwt = await page.evaluate(() => JSON.parse(Object.entries(localStorage).find(([k]) => k.startsWith('sb-') && k.endsWith('-auth-token'))?.[1] ?? '{}')?.access_token ?? '');
       const hh = { apikey: env.SUPABASE_ANON_KEY, Authorization: `Bearer ${jwt}`, 'Content-Type': 'application/json' };
       const r1id = (await fetch(`${env.SUPABASE_URL}/rest/v1/reservations?ref=eq.${r1.ref}&select=id`, { headers: hh }).then((r) => r.json()))[0]?.id ?? '';
-      const twice = await fetch(`${env.SUPABASE_URL}/functions/v1/booking-admin`, { method: 'POST', headers: hh, body: JSON.stringify({ action: 'cancel', id: r1id, reason: 'qa twice' }) }).then((r) => r.json()).catch((e) => ({ error: String(e) }));
+      const twice = await fetch(`${env.SUPABASE_URL}/functions/v1/booking-admin`, { method: 'POST', headers: hh, body: JSON.stringify({ action: 'cancel', id: r1id, reason_code: 'other' }) }).then((r) => r.json()).catch((e) => ({ error: String(e) }));
       const after = await serviceRead(`whatsapp_messages?ref=eq.${r1.ref}&template=eq.booking_cancelled&select=id`);
       check(twice.ok === true && twice.already === true && !twice.whatsapp && after.length === 1, 'cancel twice: «already», no second booking_cancelled (one per ref)', JSON.stringify([twice, after.length]));
     }
     await openBooking(r1.ref);
     const cancelMsg = page.locator('[data-wa="booking_cancelled"][data-wa-status="test"]');
     await cancelMsg.waitFor({ timeout: 10000 }).catch(() => {});
-    check((await cancelMsg.count()) === 1 && (await cancelMsg.innerText()).includes('رسالة الإلغاء'), 'whatsapp: «رسالة الإلغاء» in the cancelled booking\'s details', await page.locator('[data-wa-section]').innerText().catch(() => ''));
+    check((await cancelMsg.count()) === 1 && (await cancelMsg.innerText()).includes('رسالة الإلغاء') && (await cancelMsg.innerText()).includes('v2') && (await cancelMsg.innerText()).includes('بناءً على طلبك'), 'whatsapp: «رسالة الإلغاء» in the cancelled booking\'s details, with the version (v2) and the reason sent', await page.locator('[data-wa-section]').innerText().catch(() => ''));
+    check(((await page.locator('[data-cancel-guest]').textContent()) ?? '').includes('بناءً على طلبك') && ((await page.locator('[data-cancel-note]').textContent()) ?? '').includes('qa internal note'), 'details: «ما وصل للضيف» and the internal note');
     await closeDrawer();
     // a request cancelled with WhatsApp refused (test_notify fail-wa) and no guest email: the cancel stands, notify_failed
     // false, a failed booking_cancelled row; the drawer offers «إعادة الإرسال», which builds it again (test booking)
@@ -543,7 +551,7 @@ try {
     check(((await page.locator('aside.drawer').textContent()) ?? '').includes('التأكيد والإلغاء يُرسَلان للضيف بالبريد وواتساب'), 'drawer (request): the same note');
     await page.click('[data-action="cancel"]');
     check(((await page.locator('dialog[open]').textContent()) ?? '').includes('سيُغلق الطلب، ويُرسَل الإلغاء للضيف بالبريد (إن وُجد) وواتساب. لا يمكن التراجع بعد الإرسال.'), 'cancel dialog (request): names email and WhatsApp');
-    await page.fill('#cancel-reason', 'qa cancel wa fail');
+    await page.selectOption('#cancel-reason', 'no_availability');
     const waFailAnswer = adminAnswer(page, 'cancel');
     await page.click('dialog[open] .btn-danger');
     const wfa = await waFailAnswer;
@@ -588,7 +596,7 @@ try {
       await force(onCancel);
       await page.click(`[data-ref="${rx.ref}"]`);
       await page.click('[data-action="cancel"]');
-      await page.fill('#cancel-reason', 'qa notify failure');
+      await page.selectOption('#cancel-reason', 'duplicate');
       const fx2 = adminAnswer(page, 'cancel');
       await page.click('dialog[open] .btn-danger');
       const fxa = await fx2;
@@ -1316,8 +1324,8 @@ try {
         await openDrawer();
         await page.click('aside[data-drawer] [data-action="cancel"]');
       },
-      field: textField('#cancel-reason', 'qa reason'),
-      save: { sel: 'dialog[data-modal][open] [data-action="confirm-go"]', route: '**/functions/v1/booking-admin', ok: JSON.stringify({ ok: false, error: 'not a request' }), fail: JSON.stringify({ error: 'a reason is required' }), prepare: async () => { await page.fill('#cancel-reason', 'qa reason'); return 'qa reason'; } },
+      field: selectField('#cancel-reason', async () => 'other'),
+      save: { sel: 'dialog[data-modal][open] [data-action="confirm-go"]', route: '**/functions/v1/booking-admin', ok: JSON.stringify({ ok: false, error: 'not a request' }), fail: JSON.stringify({ error: 'a reason must be picked' }), prepare: async () => { await page.selectOption('#cancel-reason', 'other'); return 'other'; } },
       after: closeDrawer,
     });
     // inventory

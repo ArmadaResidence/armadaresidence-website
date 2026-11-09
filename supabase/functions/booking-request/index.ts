@@ -43,6 +43,7 @@ import { siteOrigins } from '../_shared/site-cors.ts';
 import content from './content.generated.json' with { type: 'json' };
 import { EMAIL, intIn, ISO_DATE, nightsBetween, riyadhToday, validateBooking, validatePartnerContact, type ValidBooking } from './rules.ts';
 import {
+  bookingCancelled,
   bookingConfirmation,
   bookingConfirmed,
   bookingNotification,
@@ -61,6 +62,7 @@ import { verifyTurnstile } from '../_shared/turnstile.ts';
 import { sendWhatsApp } from './whatsapp-send.ts';
 import { WA_TEMPLATES, type WaTemplate } from './whatsapp.ts';
 import { testEcho } from './test-echo.ts';
+import { guestReason, isCancelReason, reasonNotifies } from './cancel-reasons.ts';
 
 type Locale = 'ar' | 'en';
 
@@ -94,10 +96,15 @@ interface Payload {
   website?: string;
   /** QA only, with a valid test token: 'staff-emails' sends the dashboard staff emails as [TEST] samples to `to`;
    *  'status' reads Resend's last event of `ids` (26 Oct 2026); 'wa-send' sends ONE real template message with a fake
-   *  ref (logged as test) to `wa_to`; 'wa-log' reads the WhatsApp log of one test ref (28 Oct 2026) */
+   *  ref (logged as test) to `wa_to`; 'wa-log' reads the WhatsApp log of one test ref (28 Oct 2026);
+   *  'cancel-email' sends the guest cancellation email with a fake ref and `reason` to `to` (9 Nov 2026) */
   preview?: string;
   wa_to?: string;
   template?: string;
+  /** QA 'wa-send' (booking_cancelled) / 'cancel-email': the reason code (content/policies.json → cancellation_reasons) */
+  reason?: string;
+  /** QA 'wa-send': refuse the primary template before YCloud, so the v1 fallback is really sent (9 Nov 2026) */
+  fail_primary?: boolean;
   to?: string[];
   ids?: string[];
   /** 'booking' (default) or a partner enquiry type from content/partners.json → enquiry_types */
@@ -354,9 +361,46 @@ async function previewWaSend(req: Request, p: Payload): Promise<Response> {
   const ref = `AR-20991231-${makeRef().slice(-4)}`;
   // the total is the sample value Meta approved with the template — a test message, never a quote
   const quote = { nights: [], count: 3, room_total: 910, breakfast: 'without', breakfast_total: 0, extra_beds: 0, extra_bed_fee: 0, extra_beds_total: 0, total: 910 } as Quote;
+  // a cancellation carries the reason code (9 Nov 2026); a reason that notifies nobody (test_booking) sends nothing — as booking-admin
+  const reason = template === 'booking_cancelled' ? String(p.reason ?? '') : '';
+  if (template === 'booking_cancelled' && !isCancelReason(reason)) return json(req, 400, { ok: false, error: 'reason' });
+  if (reason && !reasonNotifies(content, reason)) return json(req, 200, { ok: true, ref, template, branch, locale: L, reason, sent: false, note: 'the reason sends the guest nothing' });
   const sentAt = new Date().toISOString();
-  const r = await sendWhatsApp(content, { template, booking: { ref, locale: L, branch, room, check_in: plus(7), check_out: plus(10), name: L === 'ar' ? 'تجربة النظام' : 'System test', phone: to, quote }, reservationId: null, test: false, qaLive: true, trigger: 'qa' });
-  return json(req, 200, { ok: r.accepted, ref, template, branch, locale: L, sent_at: sentAt, status: r.status, ycloud_id: r.messageId, error_code: r.errorCode });
+  const r = await sendWhatsApp(content, { template, booking: { ref, locale: L, branch, room, check_in: plus(7), check_out: plus(10), name: L === 'ar' ? 'تجربة النظام' : 'System test', phone: to, quote, cancelReason: reason || null }, reservationId: null, test: false, qaLive: true, trigger: 'qa', qaFailPrimary: p.fail_primary === true });
+  return json(req, 200, { ok: r.accepted, ref, template, branch, locale: L, reason: reason || undefined, sent_at: sentAt, status: r.status, ycloud_id: r.messageId, error_code: r.errorCode, fallback: Boolean(r.fallback) });
+}
+
+/** QA (test token only, 9 Nov 2026): the guest cancellation email — built by email.ts exactly as booking-admin builds it,
+ *  with the reason's phrase — for a FAKE ref (AR-20991231-…), sent through Resend to `to` (armadaresidence.com or a
+ *  dashboard user only, as 'staff-emails'). A reason that notifies nobody (test_booking) sends nothing. */
+async function previewCancelEmail(req: Request, p: Payload): Promise<Response> {
+  const key = Deno.env.get('RESEND_API_KEY');
+  if (!key) return json(req, 500, { ok: false, error: 'RESEND_API_KEY missing' });
+  const branch = String(p.branch ?? '');
+  const reason = String(p.reason ?? '');
+  const to = [...new Set((Array.isArray(p.to) ? p.to : []).map((x) => String(x).trim().toLowerCase()))].filter((x) => EMAIL.test(x)).slice(0, 2);
+  if (!KNOWN_BRANCHES.includes(branch) || !isCancelReason(reason) || !to.length) return json(req, 400, { ok: false, error: 'branch, reason, to' });
+  const staff = await knownStaffEmails();
+  if (!to.every((x) => x.endsWith('@armadaresidence.com') || staff.has(x))) return json(req, 400, { ok: false, error: 'recipients: armadaresidence.com or a dashboard user only' });
+  const ref = `AR-20991231-${makeRef().slice(-4)}`;
+  if (!reasonNotifies(content, reason)) return json(req, 200, { ok: true, ref, branch, reason, sent: false, note: 'the reason sends the guest nothing' });
+  const L: Locale = p.locale === 'en' ? 'en' : 'ar';
+  const today = riyadhToday();
+  const plus = (n: number) => new Date(Date.parse(`${today}T00:00:00Z`) + n * 86400000).toISOString().slice(0, 10);
+  const room = content.rooms.find((r: { branch: string }) => r.branch === branch)?.slug ?? '';
+  const mail = bookingCancelled(content, {
+    ref, locale: L, branch, room, check_in: plus(7), check_out: plus(10), nights: 3, adults: 2, children: 0, extraBeds: 0, extraBedFee: Number(content.extra_bed_fee) || 0,
+    needsCoordination: false, capacity: 2, breakfast: 'without', name: L === 'ar' ? 'تجربة النظام' : 'System test', phone: '+966500000000', email: to[0], notes: '', receivedAt: 'TEST',
+    cancelReason: { ar: guestReason(content, reason, 'ar'), en: guestReason(content, reason, 'en') },
+  });
+  const res = await fetch('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ from: FROM_GUEST, to, subject: `[TEST] ${mail.subject}`, html: mail.html, text: mail.text }),
+  });
+  const b = (await res.json().catch(() => ({}))) as { id?: string };
+  console.log('cancel email preview', ref, reason, branch, res.status);
+  return json(req, 200, { ok: res.status < 300 && Boolean(b.id), ref, branch, reason, id: b.id ?? null, status: res.status });
 }
 
 /** QA (test token only): the WhatsApp log rows of one TEST ref (scripts/whatsapp-check.mjs --live). Test rows only,
@@ -724,6 +768,7 @@ Deno.serve(async (req) => {
   if (token && payload.preview === 'status') return previewStatus(req, payload);
   if (token && payload.preview === 'wa-send') return previewWaSend(req, payload);
   if (token && payload.preview === 'wa-log') return previewWaLog(req, payload);
+  if (token && payload.preview === 'cancel-email') return previewCancelEmail(req, payload);
   if (limitApplies(req, token, 'ip') && (await rateLimited(req, Boolean(token)))) return json(req, 429, { ok: false, error: 'too many requests' });
 
   // Cloudflare Turnstile (content/turnstile.json; test mode skips it)

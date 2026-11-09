@@ -17,6 +17,7 @@ import { BRANCH_FULL, BRANCH_NAMES, NOTIFY_FAILED, REASON_LABELS, STATUS_LABELS,
 import { BranchSelect, CancelButton, Confirm, Drawer, Empty, ErrorBox, Field, Loading, Modal, Spinner, useToast } from '../components/ui';
 import DateField from '../components/DateField';
 import { BookingGuestBadges } from './Guests';
+import { CANCEL_REASONS, cancelReasonStaff, guestPhrase, guestReasonOf, isCancelReasonCode } from '../lib/cancel-reasons';
 
 type Status = '' | 'request' | 'confirmed' | 'cancelled';
 
@@ -244,7 +245,9 @@ function Details({ r, roomTypes, editable, onClose, onChanged }: { r: Reservatio
   const [busy, setBusy] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [cancelOpen, setCancelOpen] = useState(false);
+  // 9 Nov 2026: a picked reason (required — its phrase reaches the guest) + an optional internal note (never sent)
   const [reason, setReason] = useState('');
+  const [cancelNote, setCancelNote] = useState('');
   const [pickRt, setPickRt] = useState<string>(r?.room_type_id ?? '');
   const [nightIssues, setNightIssues] = useState<{ reason: string; nights: CalendarCell[] } | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -293,14 +296,14 @@ function Details({ r, roomTypes, editable, onClose, onChanged }: { r: Reservatio
     }
   }
   async function doCancel() {
-    if (reason.trim().length < 3) return setError('اكتب سبب الإلغاء.');
+    if (!isCancelReasonCode(reason)) return setError('اختر سبب الإلغاء.');
     setBusy(true);
     setError(null);
     try {
-      const out = await api.cancelReservation(r!.id, reason.trim());
+      const out = await api.cancelReservation(r!.id, reason, cancelNote.trim());
       setCancelOpen(false);
       if (out.notify_failed) return onChanged(NOTIFY_FAILED.cancel, 'error');
-      onChanged(`أُلغي الحجز ${r!.ref}${r!.status === 'confirmed' ? ' وأُعيدت الغرف إلى المخزون' : ''}`);
+      onChanged(`أُلغي الحجز ${r!.ref}${r!.status === 'confirmed' ? ' وأُعيدت الغرف إلى المخزون' : ''}${out.guest_notified === false ? ' — لم يُرسَل شيء للضيف' : ''}`);
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -385,7 +388,15 @@ function Details({ r, roomTypes, editable, onClose, onChanged }: { r: Reservatio
         <dt className="text-ink-muted">البريد</dt><dd className="font-semibold latin">{r.email ? <a className="underline" href={`mailto:${r.email}`}>{r.email}</a> : '—'}</dd>
         {r.notes && (<><dt className="text-ink-muted">ملاحظات الضيف</dt><dd className="whitespace-pre-wrap">{r.notes}</dd></>)}
         <dt className="text-ink-muted">المصدر</dt><dd>{r.source === 'website' ? 'الموقع' : 'اللوحة'} · {r.locale === 'en' ? 'النسخة الإنجليزية' : 'النسخة العربية'} · {riyadhDateTimeLong(r.created_at)}</dd>
-        {r.cancel_reason && (<><dt className="text-ink-muted">سبب الإلغاء</dt><dd>{r.cancel_reason}</dd></>)}
+        {r.status === 'cancelled' && r.cancel_reason_code && (
+          <>
+            <dt className="text-ink-muted">سبب الإلغاء</dt><dd className="font-semibold" data-cancel-reason={r.cancel_reason_code}>{cancelReasonStaff(r.cancel_reason_code)}</dd>
+            <dt className="text-ink-muted">ما وصل للضيف</dt>
+            <dd data-cancel-guest>{guestReasonOf(r.cancel_reason_code).notify ? <><bdi>«{guestPhrase(r.cancel_reason_code, r.locale)}»</bdi> <span className="text-ink-muted">· بالبريد{r.email ? '' : ' (لا يوجد بريد)'} وواتساب</span></> : <span className="text-ink-muted">لم يُرسَل شيء للضيف (حجز تجريبي)</span>}</dd>
+            {r.cancel_reason && (<><dt className="text-ink-muted">ملاحظة الإلغاء</dt><dd className="whitespace-pre-wrap" data-cancel-note>{r.cancel_reason} <span className="text-ink-muted">· داخلية</span></dd></>)}
+          </>
+        )}
+        {!r.cancel_reason_code && r.cancel_reason && (<><dt className="text-ink-muted">سبب الإلغاء</dt><dd>{r.cancel_reason}</dd></>)}
         {r.visit && (<><dt className="text-ink-muted">مصدر الزيارة</dt><dd data-booking-visit><VisitLine v={r.visit} /></dd></>)}
       </dl>
 
@@ -415,7 +426,7 @@ function Details({ r, roomTypes, editable, onClose, onChanged }: { r: Reservatio
 
       <div className="flex flex-wrap gap-2 mb-1">
         {editable && r.status === 'request' && <button type="button" className="btn btn-primary" onClick={() => { setPickRt(r.room_type_id ?? ''); setNightIssues(null); setError(null); setConfirmOpen(true); }} data-action="confirm" data-tour="booking-confirm">تأكيد الحجز</button>}
-        {editable && r.status !== 'cancelled' && <button type="button" className="btn btn-danger" onClick={() => { setReason(''); setError(null); setCancelOpen(true); }} data-action="cancel">إلغاء الحجز</button>}
+        {editable && r.status !== 'cancelled' && <button type="button" className="btn btn-danger" onClick={() => { setReason(''); setCancelNote(''); setError(null); setCancelOpen(true); }} data-action="cancel">إلغاء الحجز</button>}
         <a className="btn btn-ghost" href={waTemplate()} target="_blank" rel="noopener">واتساب الضيف</a>
         <button type="button" className="btn btn-ghost" onClick={() => window.print()} data-action="print">طباعة</button>
       </div>
@@ -438,6 +449,7 @@ function Details({ r, roomTypes, editable, onClose, onChanged }: { r: Reservatio
                   <span className="text-xs text-ink-muted">{riyadhDateTimeLong(m.created_at)}{m.attempts > 1 ? ` · المحاولة ${m.attempts}` : ''}</span>
                 </span>
                 {(m.status === 'failed' || m.status === 'skipped') && <span className="text-ink-muted" data-wa-reason>{waError(m.error_code)}</span>}
+                {m.template === 'booking_cancelled' && <WaCancelLine m={m} all={(wa ?? []).filter((x) => x.template === 'booking_cancelled')} locale={r.locale} />}
                 {waResendable(m) && (
                   <span>
                     <button type="button" className="btn btn-ghost btn-sm" onClick={() => resendWa(m.template)} disabled={waBusy !== null} data-action="wa-resend">{waBusy === m.template && <Spinner />} إعادة الإرسال</button>
@@ -467,7 +479,7 @@ function Details({ r, roomTypes, editable, onClose, onChanged }: { r: Reservatio
             <span>{riyadhDateTimeLong(h.at)}</span>
             <span className="text-ink font-semibold">{h.from_status ? `${STATUS_LABELS[h.from_status]} ← ` : ''}{STATUS_LABELS[h.to_status]}</span>
             <span>· {h.actor_label === 'website' ? 'الموقع' : h.actor_label}</span>
-            {h.note && <span>· {REASON_LABELS[h.note] ?? h.note}</span>}
+            {h.note && <span>· {REASON_LABELS[h.note] ?? cancelReasonStaff(h.note) ?? h.note}</span>}
           </li>
         ))}
       </ol>
@@ -500,13 +512,38 @@ function Details({ r, roomTypes, editable, onClose, onChanged }: { r: Reservatio
 
       <Confirm open={cancelOpen} onClose={() => { setCancelOpen(false); setError(null); }} title="إلغاء الحجز" confirmLabel="إلغاء الحجز" danger onConfirm={doCancel} busy={busy}
         body={r.status === 'confirmed' ? 'سيُعاد المخزون لكل ليلة، ويُرسَل الإلغاء للضيف بالبريد (إن وُجد) وواتساب. لا يمكن التراجع بعد الإرسال.' : 'سيُغلق الطلب، ويُرسَل الإلغاء للضيف بالبريد (إن وُجد) وواتساب. لا يمكن التراجع بعد الإرسال.'}>
-        <Field label="السبب (إلزامي)" id="cancel-reason">
-          <input id="cancel-reason" className="field" value={reason} onChange={(e) => setReason(e.target.value)} />
+        <Field label="سبب الإلغاء (إلزامي)" id="cancel-reason">
+          <select id="cancel-reason" className="field" value={reason} onChange={(e) => { setReason(e.target.value); setError(null); }} aria-describedby="cancel-guest-line">
+            <option value="">— اختر السبب —</option>
+            {CANCEL_REASONS.map((x) => <option key={x.code} value={x.code}>{x.staff}</option>)}
+          </select>
+        </Field>
+        <p id="cancel-guest-line" className="text-sm mt-1 mb-3" data-cancel-preview aria-live="polite">
+          {!reason ? <span className="text-ink-muted">يرى الضيف السبب في رسالة الإلغاء.</span>
+            : guestReasonOf(reason).notify ? <>يصل للضيف: <b>«سبب الإلغاء: {guestPhrase(reason, r.locale)}»</b></>
+            : <span className="font-semibold">لن يُرسَل شيء للضيف — لا بريد ولا واتساب.</span>}
+        </p>
+        <Field label="ملاحظة (اختيارية)" id="cancel-note" hint="داخلية — لا تُرسَل للضيف.">
+          <textarea id="cancel-note" className="field min-h-16" maxLength={500} value={cancelNote} onChange={(e) => setCancelNote(e.target.value)} />
         </Field>
         <ErrorBox error={error} />
       </Confirm>
       {createPortal(<PrintSheet r={r} room={rtName(r.room_type_id)} />, document.body)}
     </Drawer>
+  );
+}
+
+/** booking_cancelled in the WhatsApp log (9 Nov 2026): the template version sent (v2 with the reason, v1 = the fallback after
+ *  v2 was refused, or a message from before 9 Nov 2026) and the reason's phrase it carried. */
+function WaCancelLine({ m, all, locale }: { m: WhatsAppMessage; all: WhatsAppMessage[]; locale: string }) {
+  const v2 = /_v2$/.test(m.meta_template ?? '');
+  const refusedV2 = !v2 && all.some((x) => x.meta_template === 'booking_cancelled_v2' && x.status === 'failed');
+  return (
+    <span className="text-ink-muted" data-wa-cancel data-wa-version={v2 ? 'v2' : 'v1'}>
+      القالب: <span className="latin" dir="ltr">{v2 ? 'v2' : 'v1'}</span>
+      {v2 && m.reason_code ? <> · السبب المُرسَل: <bdi>«{guestPhrase(m.reason_code, locale)}»</bdi></> : null}
+      {refusedV2 ? ' · رُفض القالب v2 فأُرسل v1 بدون السبب' : !v2 && !m.meta_template ? ' · قبل إضافة السبب' : !v2 ? ' · بدون السبب' : null}
+    </span>
   );
 }
 

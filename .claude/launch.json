@@ -70,6 +70,25 @@
         "--strictPort"
       ],
       "port": 5174
+    },
+    {
+      "name": "admin-branch-5173",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "--prefix",
+        "admin",
+        "run",
+        "dev",
+        "--",
+        "--mode",
+        "branch",
+        "--host",
+        "127.0.0.1",
+        "--port",
+        "5173",
+        "--strictPort"
+      ],
+      "port": 5173
     }
   ]
 }

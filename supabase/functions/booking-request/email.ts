@@ -49,6 +49,9 @@ export interface BookingMail {
   /** the offer the stay was priced with (2 Nov 2026, «العروض») and the promo code the guest entered ('' / absent = none) */
   offer?: QuoteOffer | null;
   promoCode?: string;
+  /** the guest «إلغاء الحجز» only (9 Nov 2026): the guest phrase of the reason staff picked, both languages
+   *  (cancel-reasons.ts → guestReason; content/policies.json → cancellation_reasons) — the row «سبب الإلغاء: …» */
+  cancelReason?: { ar: string; en: string } | null;
 }
 
 /** The offer a quote / a booking carries (public.price_stay_offer → offer). */
@@ -919,6 +922,8 @@ export function bookingCancelled(c: Content, d: BookingMail): Mail {
       [lab.check_out, longDate(c, d.check_out, L)],
       [lab.nights, pluralForm(lab.plural.nights, d.nights)],
     ];
+    // the reason staff picked, as the guest reads it (9 Nov 2026) — the same phrase as WhatsApp booking_cancelled_v2 {{6}}
+    if (d.cancelReason?.[L]) rows.push([M.cancel_reason_label, d.cancelReason[L]]);
     const waText = fill(c.wa_prefill[L].branch, { branch: b[`name_${L}`] });
     const html = section(
       L,

@@ -11,6 +11,11 @@
  *   booking_cancelled         {{1}} guest name · {{2}} ref · {{3}} branch name · {{4}} check-in · {{5}} check-out
  *                             (added 29 Oct 2026 — the same meanings and formats as booking_request_received; read
  *                             through the YCloud API that day)
+ *   booking_cancelled_v2      the same five + {{6}} the cancellation reason — the guest phrase of the reason staff picked
+ *                             (cancel-reasons.ts; the body reads «سبب الإلغاء: {{6}}» / "Cancellation reason: {{6}}").
+ *                             Read through the YCloud API on 9 Nov 2026: APPROVED, UTILITY, ar + en on both numbers.
+ *                             Sent since 9 Nov 2026; when YCloud / Meta refuse it, the v1 booking_cancelled goes instead
+ *                             (WA_FALLBACK_NAMES; whatsapp-send.ts), so the guest still gets a message.
  * Values: branch / room names from content (branches.json / rooms.json) in the booking's language; dates as the emails
  * write them (longDate: «الأحد 2 نوفمبر 2026» / "Sun, 2 Nov 2026", Western digits); the total through sar(); the map
  * link = branches.json → maps_url. Sender = the branch's own number (contact.json), recipient = the stored E.164 phone.
@@ -19,6 +24,7 @@
  * (Node) tests the same output.
  */
 import { longDate, sar, type Quote } from './email.ts';
+import { guestReason } from './cancel-reasons.ts';
 
 // deno-lint-ignore no-explicit-any
 type Content = any;
@@ -32,8 +38,16 @@ export const WA_TEMPLATES: WaTemplate[] = ['booking_request_received', 'booking_
 export const WA_TEMPLATE_NAMES: Record<WaTemplate, string> = {
   booking_request_received: 'booking_request_received',
   booking_confirmed: 'booking_confirmed_v2',
+  booking_cancelled: 'booking_cancelled_v2',
+};
+/** The template sent instead when the primary one is refused (9 Nov 2026): the v1 cancellation without the reason. */
+export const WA_FALLBACK_NAMES: Partial<Record<WaTemplate, string>> = {
   booking_cancelled: 'booking_cancelled',
 };
+/** «v1» / «v2» of a Meta template name as the dashboard shows it (a log row from before 9 Nov 2026 has none = v1). */
+export function waVersion(metaName: string | null | undefined): 'v1' | 'v2' {
+  return /_v2$/.test(String(metaName ?? '')) ? 'v2' : 'v1';
+}
 
 export interface WaBooking {
   ref: string;
@@ -48,6 +62,8 @@ export interface WaBooking {
   phone: string;
   /** confirmed bookings only */
   quote?: Quote | null;
+  /** cancellations only: the reason code staff picked (reservations.cancel_reason_code; null = before 9 Nov 2026) */
+  cancelReason?: string | null;
 }
 
 export interface WaPayload {
@@ -62,8 +78,9 @@ function branchOf(c: Content, slug: string) {
   return c.branches.find((b: { slug: string }) => b.slug === slug) ?? null;
 }
 
-/** The body variables of a template, in order ({{1}} first). */
-export function waParams(c: Content, template: WaTemplate, d: WaBooking): string[] {
+/** The body variables of a template, in order ({{1}} first). `metaName` = the Meta template sent (default: the primary
+ *  one, WA_TEMPLATE_NAMES) — booking_cancelled_v2 carries the reason as {{6}}, the v1 fallback does not. */
+export function waParams(c: Content, template: WaTemplate, d: WaBooking, metaName: string = WA_TEMPLATE_NAMES[template]): string[] {
   const L: Locale = d.locale === 'en' ? 'en' : 'ar';
   const b = branchOf(c, d.branch);
   if (!b) throw new Error(`unknown branch ${d.branch}`);
@@ -72,6 +89,11 @@ export function waParams(c: Content, template: WaTemplate, d: WaBooking): string
   const checkOut = longDate(c, d.check_out, L);
   // WhatsApp refuses a parameter with a newline, a tab or more than four spaces in a row
   const clean = (s: string) => String(s ?? '').replace(/[\r\n\t]+/g, ' ').replace(/ {2,}/g, ' ').trim();
+  if (template === 'booking_cancelled' && metaName === 'booking_cancelled_v2') {
+    const reason = guestReason(c, d.cancelReason, L);
+    if (!reason) throw new Error('booking_cancelled_v2 needs a reason that notifies the guest');
+    return [d.name, d.ref, branch, checkIn, checkOut, reason].map(clean);
+  }
   if (template === 'booking_request_received' || template === 'booking_cancelled') return [d.name, d.ref, branch, checkIn, checkOut].map(clean);
   const r = d.room ? c.rooms.find((x: { slug: string; branch: string }) => x.slug === d.room && x.branch === d.branch) : null;
   const room = r ? String(r[`name_${L}`]) : String(c.labels[L].any_room);
@@ -79,17 +101,19 @@ export function waParams(c: Content, template: WaTemplate, d: WaBooking): string
   return [d.name, branch, d.ref, checkIn, checkOut, room, sar(d.quote.total, L), String(b.maps_url)].map(clean);
 }
 
-/** The YCloud send body: from the branch's own number, in the booking's language. */
-export function waPayload(c: Content, template: WaTemplate, d: WaBooking): WaPayload {
+/** The YCloud send body: from the branch's own number, in the booking's language. `fallback` = the template sent
+ *  after the primary one was refused (WA_FALLBACK_NAMES). */
+export function waPayload(c: Content, template: WaTemplate, d: WaBooking, fallback = false): WaPayload {
   const L: Locale = d.locale === 'en' ? 'en' : 'ar';
   const b = branchOf(c, d.branch);
   if (!b) throw new Error(`unknown branch ${d.branch}`);
+  const name = fallback && WA_FALLBACK_NAMES[template] ? String(WA_FALLBACK_NAMES[template]) : WA_TEMPLATE_NAMES[template];
   return {
     from: String(b.whatsapp),
     to: d.phone,
     type: 'template',
     externalId: `${d.ref}:${template}`,
-    template: { name: WA_TEMPLATE_NAMES[template], language: { code: L }, components: [{ type: 'body', parameters: waParams(c, template, d).map((text) => ({ type: 'text', text })) }] },
+    template: { name, language: { code: L }, components: [{ type: 'body', parameters: waParams(c, template, d, name).map((text) => ({ type: 'text', text })) }] },
   };
 }
 

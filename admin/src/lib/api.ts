@@ -119,7 +119,10 @@ export interface Reservation {
   discount_total: number | null;
   confirmed_at: string | null;
   cancelled_at: string | null;
+  /** the internal note of a cancellation (since 9 Nov 2026; before, the free-text reason) */
   cancel_reason: string | null;
+  /** the reason staff picked (9 Nov 2026, lib/cancel-reasons.ts); null before */
+  cancel_reason_code: string | null;
   internal_notes: string | null;
   /** the visit's first-touch source (3 Nov 2026): utm values, click-id presence, referrer domain, landing path — no personal data */
   visit?: { utm_source?: string; utm_medium?: string; utm_campaign?: string; utm_content?: string; gclid?: boolean; fbclid?: boolean; ttclid?: boolean; sccid?: boolean; referrer?: string; landing?: string } | null;
@@ -354,9 +357,13 @@ export interface WhatsAppMessage {
   ycloud_id: string | null;
   trigger: string;
   created_at: string;
+  /** the Meta template sent (9 Nov 2026): booking_cancelled_v2, or booking_cancelled = the v1 fallback; null = older rows */
+  meta_template: string | null;
+  /** booking_cancelled: the reason whose phrase the message carried */
+  reason_code: string | null;
 }
 export async function whatsappMessages(reservationId: string): Promise<WhatsAppMessage[]> {
-  const { data, error } = await supabase.from('whatsapp_messages').select('id,template,language,status,error_code,ycloud_id,trigger,created_at').eq('reservation_id', reservationId).order('created_at').order('id');
+  const { data, error } = await supabase.from('whatsapp_messages').select('id,template,language,status,error_code,ycloud_id,trigger,created_at,meta_template,reason_code').eq('reservation_id', reservationId).order('created_at').order('id');
   if (error) fail(error, 'whatsapp_messages');
   return data as WhatsAppMessage[];
 }
@@ -403,7 +410,8 @@ export interface ConfirmResult {
 }
 export const confirmReservation = (id: string, roomTypeId: string | null) => edge<ConfirmResult>('booking-admin', { action: 'confirm', id, room_type_id: roomTypeId });
 export const resendWhatsApp = (id: string, template: string) => edge<{ ok: boolean; reason?: string; whatsapp?: { accepted: boolean; status: string; error_code: string | null } }>('booking-admin', { action: 'whatsapp-resend', id, template });
-export const cancelReservation = (id: string, reason: string) => edge<{ ok: boolean; already?: boolean; emails?: Record<string, string | null> | null; notify_failed?: boolean }>('booking-admin', { action: 'cancel', id, reason });
+/** 9 Nov 2026: a picked reason (required) + an optional internal note (never sent to the guest) */
+export const cancelReservation = (id: string, reasonCode: string, note: string) => edge<{ ok: boolean; already?: boolean; emails?: Record<string, string | null> | null; notify_failed?: boolean; guest_notified?: boolean; whatsapp?: { accepted: boolean; status: string; error_code: string | null; fallback?: boolean } | null }>('booking-admin', { action: 'cancel', id, reason_code: reasonCode, note });
 
 /** 9 Nov 2026: is the YCloud webhook registered (opt-outs arrive)? — public.wa_webhook, readable with settings or eyab_wa view */
 export async function waWebhookRegistered(): Promise<boolean> {

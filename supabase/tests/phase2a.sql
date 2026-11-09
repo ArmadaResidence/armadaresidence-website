@@ -250,9 +250,9 @@ do $$ begin
 exception when others then perform pg_temp._check('R13 a malformed setting is rejected', sqlerrm like 'settings.breakfast%', sqlerrm);
 end $$;
 select pg_temp._check('R13 management sees only its own staff row', (select count(*) from public.staff) = 1);
-insert into _res select 'c1', public.staff_cancel_reservation((select id from public.reservations where ref = 'AR-20991231-QA01'), 'qa cancel');
+insert into _res select 'c1', public.staff_cancel_reservation((select id from public.reservations where ref = 'AR-20991231-QA01'), 'other', 'qa cancel');
 select pg_temp._check('B15 cancel gives the nights back', (select array_agg(rooms_to_sell || '/' || booked order by night) from public.inventory_days where room_type_id = pg_temp._id('king') and night in (pg_temp._d(30), pg_temp._d(31))) = '{1/0,2/0}');
-select pg_temp._check('B15 cancel is idempotent', (public.staff_cancel_reservation((select id from public.reservations where ref = 'AR-20991231-QA01'), 'again') ->> 'already')::boolean);
+select pg_temp._check('B15 cancel is idempotent', (public.staff_cancel_reservation((select id from public.reservations where ref = 'AR-20991231-QA01'), 'other') ->> 'already')::boolean);
 do $$ begin
   perform public.staff_cancel_reservation((select id from public.reservations where ref = 'AR-20991231-QA02'), '');
   perform pg_temp._check('B15 cancelling needs a reason', false, 'no error');

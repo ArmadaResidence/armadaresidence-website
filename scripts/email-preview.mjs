@@ -110,7 +110,7 @@ const mails = {
   'booking-confirmation-offer': bookingConfirmation(content, { ...booking, offer: { slug: 'winter-stay', title_ar: 'خصم الشتاء على الإقامة', title_en: 'Winter stay discount', kind: 'percent', promo_code: 'WINTER10', discount: 76 }, promoCode: 'WINTER10' }),
   'booking-confirmed-by-staff-notification': confirmedNotification(content, { ...confirmed, confirmedBy: 'استقبال طريق المطار', quote: { ...confirmed.quote, breakfast: 'without', breakfast_total: 0, total: 760 } }),
   'low-inventory-alert': lowInventoryAlert(content, { ref: 'AR-20261023-TEST', branch: 'airport-road', room: 'two-bedroom-suite', nights: [{ night: '2026-11-02', left: 1 }, { night: '2026-11-03', left: 0 }] }),
-  'booking-cancelled': bookingCancelled(content, { ...confirmed }),
+  'booking-cancelled': bookingCancelled(content, { ...confirmed, cancelReason: { ar: content.cancel_reasons.reasons.guest_request.guest_ar, en: content.cancel_reasons.reasons.guest_request.guest_en } }),
   'booking-notification-no-email': bookingNotification(content, { ...booking, email: '' }),
   'booking-notification-coordination-no-email': bookingNotification(content, { ...booking, branch: 'shafa-road', room: 'king-room', adults: 3, children: 0, extraBeds: 0, needsCoordination: true, capacity: 2, breakfast: 'without', email: '' }),
   'partner-notification': partnerNotification(content, partner),

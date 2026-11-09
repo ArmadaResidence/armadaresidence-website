@@ -294,6 +294,7 @@ def validate(content: dict[str, dict]) -> list[str]:
         if not (ROOT / "public/menu/assets/ARMADA_Cafe_Restaurant_Menu_2026.pdf").is_file():
             problems.append("public/menu/assets/ARMADA_Cafe_Restaurant_Menu_2026.pdf missing")
     problems += cancellation_problems(content)
+    problems += cancellation_reason_problems(content)
     return problems
 
 
@@ -337,6 +338,36 @@ def cancellation_problems(content: dict[str, dict]) -> list[str]:
     q = next((x for x in faq.get("items", []) if x.get("id") == "cancellation"), None)
     if not q or not q["a_ar"].startswith(c["ar"]) or not q["a_en"].startswith(c["en"]):
         out.append("faq.json «cancellation»: the answer must start with policies.json cancellation.ar / .en")
+    return out
+
+
+CANCEL_REASON_CODES = ("guest_request", "no_availability", "duplicate", "payment_not_completed", "other", "test_booking")
+
+
+def cancellation_reason_problems(content: dict[str, dict]) -> list[str]:
+    """policies.json → cancellation_reasons (9 Nov 2026): exactly the codes the database accepts (reservations.
+    cancel_reason_code, migration 20261109200000), in `order`; every reason that notifies has a staff label and both
+    guest phrases — single-line, no digits, short enough for a WhatsApp variable; the fallback notifies; test_booking
+    never does."""
+    out: list[str] = []
+    cr = content["policies.json"].get("cancellation_reasons") or {}
+    reasons = cr.get("reasons") or {}
+    if tuple(cr.get("order") or ()) != CANCEL_REASON_CODES or set(reasons) != set(CANCEL_REASON_CODES):
+        out.append(f"policies.json cancellation_reasons: order and reasons must be exactly {', '.join(CANCEL_REASON_CODES)}")
+        return out
+    for code, r in reasons.items():
+        if not str(r.get("staff_ar", "")).strip():
+            out.append(f"policies.json cancellation_reasons.{code}: staff_ar is empty")
+        if r.get("notify") is not True:
+            continue
+        for loc in ("ar", "en"):
+            t = str(r.get(f"guest_{loc}", ""))
+            if not t.strip() or len(t) > 80 or re.search(r"[\r\n\t]|\d| {2,}", t):
+                out.append(f"policies.json cancellation_reasons.{code}.guest_{loc}: one line, 1–80 characters, no digits")
+    if cr.get("fallback") not in reasons or reasons[cr["fallback"]].get("notify") is not True:
+        out.append("policies.json cancellation_reasons.fallback must be a reason that notifies")
+    if reasons["test_booking"].get("notify") is not False:
+        out.append("policies.json cancellation_reasons.test_booking must never notify the guest")
     return out
 
 
@@ -499,6 +530,9 @@ def generate_function_content(content: dict[str, dict], fees: dict) -> None:
         "check_out_line": {loc: content["policies.json"][f"check_out_{loc}"] for loc in ("ar", "en")},
         # the one cancellation policy (policies.json → cancellation, 6 Nov 2026): the full sentence
         "cancellation_line": {loc: content["policies.json"]["cancellation"][loc] for loc in ("ar", "en")},
+        # the cancellation reasons (9 Nov 2026): the code staff pick → the guest phrase of booking_cancelled_v2 {{6}} and of
+        # the cancellation email; notify false = nothing to the guest (cancellation_reason_problems checks the list)
+        "cancel_reasons": content["policies.json"]["cancellation_reasons"],
         "partner_reply_line": content["partners-pages.json"]["form"]["sent_body"],
         "legal_line": {loc: content["legal.json"][f"footer_line_{loc}"] for loc in ("ar", "en")},
         # the two-line email footer (Ahmed, 26 Oct 2026): entity, then CR · VAT — from legal.json, never typed in email.ts

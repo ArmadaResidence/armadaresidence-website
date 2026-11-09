@@ -7,9 +7,13 @@
 //   second claim answers 409 and nothing is sent twice) → YCloud sendDirectly (synchronous: a template still pending
 //   Meta's review fails here, cleanly, once) → the row is updated with YCloud's id / status or our error code.
 // Test mode (is_test): the payload is built and logged as status 'test' — nothing is sent. With `simulateFail` (QA
-// header x-armada-test-wa: fail) the attempt fails as if YCloud had refused it.
+// header x-armada-test-wa: fail) the attempt fails as if YCloud had refused it; 'primary' fails only the primary
+// template, so the fallback is exercised.
+// Fallback (9 Nov 2026): a template with a WA_FALLBACK_NAMES entry (booking_cancelled: v2 → v1) is sent again as the
+// fallback when the primary one is refused (FALLBACK_ON) — a second log row, so the dashboard shows both; logged with
+// console.error. Every row records the Meta template sent (meta_template) and, for a cancellation, the reason code.
 // Secret: YCLOUD_API_KEY. Missing → the attempt fails with 'not_configured'.
-import { waErrorCode, waPayload, type WaBooking, type WaTemplate } from './whatsapp.ts';
+import { WA_FALLBACK_NAMES, WA_TEMPLATE_NAMES, waErrorCode, waPayload, type WaBooking, type WaTemplate } from './whatsapp.ts';
 
 // deno-lint-ignore no-explicit-any
 type Content = any;
@@ -24,6 +28,8 @@ export interface WaResult {
   status: string;
   messageId: string | null;
   errorCode: string | null;
+  /** the primary template was refused and the fallback (v1) went instead */
+  fallback?: boolean;
 }
 
 export interface WaSend {
@@ -31,7 +37,10 @@ export interface WaSend {
   booking: WaBooking;
   reservationId: string | null;
   test: boolean;
-  simulateFail?: boolean;
+  /** test mode: true = the attempt fails; 'primary' = only the primary template fails (the fallback is built) */
+  simulateFail?: boolean | 'primary';
+  /** QA only (preview 'wa-send'): the primary template is refused before YCloud, the fallback is REALLY sent */
+  qaFailPrimary?: boolean;
   trigger?: 'auto' | 'resend' | 'qa';
   /** a row already claimed by public.staff_whatsapp_resend */
   claimedId?: string;
@@ -46,11 +55,11 @@ function service(): { url: string; key: string } | null {
 }
 const headers = (key: string) => ({ apikey: key, Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' });
 
-async function claim(env: { url: string; key: string }, s: WaSend): Promise<string | 'duplicate' | null> {
+async function claim(env: { url: string; key: string }, s: WaSend, metaName: string = WA_TEMPLATE_NAMES[s.template]): Promise<string | 'duplicate' | null> {
   const res = await fetch(`${env.url}/rest/v1/whatsapp_messages?select=id`, {
     method: 'POST',
     headers: { ...headers(env.key), Prefer: 'return=representation' },
-    body: JSON.stringify({ reservation_id: s.reservationId, ref: s.booking.ref, template: s.template, language: s.booking.locale === 'en' ? 'en' : 'ar', branch: s.booking.branch, is_test: s.test || Boolean(s.qaLive), trigger: s.trigger ?? 'auto' }),
+    body: JSON.stringify({ reservation_id: s.reservationId, ref: s.booking.ref, template: s.template, language: s.booking.locale === 'en' ? 'en' : 'ar', branch: s.booking.branch, is_test: s.test || Boolean(s.qaLive), trigger: s.trigger ?? 'auto', meta_template: metaName, reason_code: s.template === 'booking_cancelled' ? s.booking.cancelReason ?? null : null }),
   });
   if (res.status === 409) return 'duplicate';
   if (!res.ok) {
@@ -70,6 +79,11 @@ async function finish(env: { url: string; key: string }, id: string, patch: Reco
   if (!res.ok) console.error('whatsapp log update failed', id, res.status, await res.text());
 }
 
+/** Errors after which the v1 fallback goes (9 Nov 2026): YCloud / Meta refused the template or its parameters. Never
+ *  after a timeout or a network error (the first message may still arrive — never two), nor when the recipient, the
+ *  key or the rate limit is the problem (the fallback would meet the same). */
+const FALLBACK_ON = new Set(['template_not_approved', 'rejected', 'payload']);
+
 /** Never throws. */
 export async function sendWhatsApp(c: Content, s: WaSend): Promise<WaResult> {
   const ref = s.booking.ref;
@@ -77,52 +91,70 @@ export async function sendWhatsApp(c: Content, s: WaSend): Promise<WaResult> {
   try {
     const env = service();
     if (!env) return fail('not_configured');
+    const fallbackName = WA_FALLBACK_NAMES[s.template];
+    const reasonCode = s.template === 'booking_cancelled' ? s.booking.cancelReason ?? null : null;
+
+    /** One attempt: the primary template, or (fallback) the v1 one. The log row carries the Meta name sent. */
+    const attempt = async (id: string, fallback: boolean): Promise<WaResult> => {
+      const metaName = fallback && fallbackName ? fallbackName : WA_TEMPLATE_NAMES[s.template];
+      const done = async (r: WaResult, extra: Record<string, unknown> = {}) => {
+        await finish(env, id, { status: r.status, ycloud_id: r.messageId, error_code: r.errorCode, meta_template: metaName, reason_code: reasonCode, ...extra });
+        console.log(`whatsapp ${s.template} ${r.status}`, ref, metaName, s.booking.locale, s.booking.branch, r.messageId ? `id=${r.messageId}` : '', r.errorCode ?? '', s.test ? 'TEST' : '');
+        return r;
+      };
+      let payload;
+      try {
+        payload = waPayload(c, s.template, s.booking, fallback);
+      } catch (e) {
+        return await done(fail('payload'), { error: String(e).slice(0, 400) });
+      }
+      if (s.test) {
+        // test mode: built and logged, never sent (the parameter count only — no personal data in the log line)
+        console.log('whatsapp test payload', ref, payload.template.name, payload.template.language.code, `from=${payload.from}`, `params=${payload.template.components[0].parameters.length}`);
+        if (s.simulateFail === true || (s.simulateFail === 'primary' && !fallback)) return await done(fail('rejected'), { error: 'simulated YCloud error (test mode)' });
+        return await done({ accepted: true, status: 'test', messageId: null, errorCode: null });
+      }
+      const key = Deno.env.get('YCLOUD_API_KEY');
+      if (!key) return await done(fail('not_configured'), { error: 'YCLOUD_API_KEY missing' });
+      // QA only (preview 'wa-send' with fail_primary): YCloud is never called for the primary — it is refused here, so a
+      // real send proves the fallback end to end
+      if (s.qaFailPrimary && !fallback) return await done(fail('rejected'), { error: 'simulated refusal of the primary template (QA)' });
+      let res: Response;
+      try {
+        res = await fetch(YCLOUD_SEND, { method: 'POST', headers: { 'X-API-Key': key, 'Content-Type': 'application/json' }, body: JSON.stringify(payload), signal: AbortSignal.timeout(TIMEOUT_MS) });
+      } catch (e) {
+        const timeout = (e as Error)?.name === 'TimeoutError';
+        return await done(fail(timeout ? 'timeout' : 'network'), { error: String(e).slice(0, 400) });
+      }
+      const text = await res.text();
+      let body: { id?: string; status?: string; errorCode?: string; errorMessage?: string; whatsappApiError?: unknown } = {};
+      try {
+        body = JSON.parse(text);
+      } catch { /* not JSON */ }
+      if (!res.ok) return await done(fail(waErrorCode(res.status, text)), { error: text.slice(0, 400) });
+      if (body.status === 'failed') {
+        const detail = `${body.errorCode ?? ''} ${body.errorMessage ?? ''} ${body.whatsappApiError ? JSON.stringify(body.whatsappApiError) : ''}`.trim();
+        return await done({ ...fail(waErrorCode(res.status, detail)), messageId: body.id ?? null }, { error: detail.slice(0, 400) });
+      }
+      const status = SENT.has(String(body.status)) ? String(body.status) : 'accepted';
+      return await done({ accepted: true, status, messageId: body.id ?? null, errorCode: null });
+    };
+
     const id = s.claimedId ?? (await claim(env, s));
     if (id === 'duplicate') {
       console.log('whatsapp skipped (already sent)', ref, s.template);
       return { accepted: false, status: 'duplicate', messageId: null, errorCode: null };
     }
     if (!id) return fail('log');
-    const done = async (r: WaResult, extra: Record<string, unknown> = {}) => {
-      await finish(env, id, { status: r.status, ycloud_id: r.messageId, error_code: r.errorCode, ...extra });
-      console.log(`whatsapp ${s.template} ${r.status}`, ref, s.booking.locale, s.booking.branch, r.messageId ? `id=${r.messageId}` : '', r.errorCode ?? '', s.test ? 'TEST' : '');
-      return r;
-    };
+    const first = await attempt(id, false);
+    if (first.accepted || !fallbackName || !FALLBACK_ON.has(String(first.errorCode))) return first;
 
-    let payload;
-    try {
-      payload = waPayload(c, s.template, s.booking);
-    } catch (e) {
-      return await done(fail('payload'), { error: String(e).slice(0, 400) });
-    }
-    if (s.test) {
-      // test mode: built and logged, never sent (the parameter count only — no personal data in the log line)
-      console.log('whatsapp test payload', ref, payload.template.name, payload.template.language.code, `from=${payload.from}`, `params=${payload.template.components[0].parameters.length}`);
-      if (s.simulateFail) return await done(fail('rejected'), { error: 'simulated YCloud error (test mode)' });
-      return await done({ accepted: true, status: 'test', messageId: null, errorCode: null });
-    }
-
-    const key = Deno.env.get('YCLOUD_API_KEY');
-    if (!key) return await done(fail('not_configured'), { error: 'YCLOUD_API_KEY missing' });
-    let res: Response;
-    try {
-      res = await fetch(YCLOUD_SEND, { method: 'POST', headers: { 'X-API-Key': key, 'Content-Type': 'application/json' }, body: JSON.stringify(payload), signal: AbortSignal.timeout(TIMEOUT_MS) });
-    } catch (e) {
-      const timeout = (e as Error)?.name === 'TimeoutError';
-      return await done(fail(timeout ? 'timeout' : 'network'), { error: String(e).slice(0, 400) });
-    }
-    const text = await res.text();
-    let body: { id?: string; status?: string; errorCode?: string; errorMessage?: string; whatsappApiError?: unknown } = {};
-    try {
-      body = JSON.parse(text);
-    } catch { /* not JSON */ }
-    if (!res.ok) return await done(fail(waErrorCode(res.status, text)), { error: text.slice(0, 400) });
-    if (body.status === 'failed') {
-      const detail = `${body.errorCode ?? ''} ${body.errorMessage ?? ''} ${body.whatsappApiError ? JSON.stringify(body.whatsappApiError) : ''}`.trim();
-      return await done({ ...fail(waErrorCode(res.status, detail)), messageId: body.id ?? null }, { error: detail.slice(0, 400) });
-    }
-    const status = SENT.has(String(body.status)) ? String(body.status) : 'accepted';
-    return await done({ accepted: true, status, messageId: body.id ?? null, errorCode: null });
+    // the primary template was refused: the v1 one goes instead (its own log row — the failed one frees the slot)
+    console.error(`whatsapp ${WA_TEMPLATE_NAMES[s.template]} refused (${first.errorCode}) → fallback ${fallbackName}`, ref, s.booking.locale, s.booking.branch);
+    const second = await claim(env, s, fallbackName);
+    if (second === 'duplicate' || !second) return first;
+    const out = await attempt(second, true);
+    return { ...out, fallback: true };
   } catch (e) {
     console.error('whatsapp send crashed', ref, s.template, String(e));
     return fail('network');

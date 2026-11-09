@@ -7,6 +7,11 @@
 //   confirm → guest «تم تأكيد حجزك» (when an email exists), reception «حجز مؤكد جديد» (To branch, CC central),
 //             low-inventory alert to the central recipients when a night is now at 1 or 0.
 //   cancel  → guest «إلغاء الحجز» (when an email exists). No reception email: the dashboard shows the change.
+//             The reason (9 Nov 2026, DECISIONS.md «Cancellation reason to the guest»): staff pick one (reason_code,
+//             required — public.staff_cancel_reservation refuses without it); the optional note is internal and never
+//             sent. The guest reads the reason's phrase (content/policies.json → cancellation_reasons, cancel-reasons.ts)
+//             as the email row «سبب الإلغاء» and as booking_cancelled_v2 {{6}} (v1 booking_cancelled when v2 is refused —
+//             whatsapp-send.ts). The reason test_booking sends the guest nothing (no email, no WhatsApp).
 // WhatsApp (task 5 A, 28 Oct 2026): confirm → after the emails, the guest gets booking_confirmed from the branch's own
 //   number (../booking-request/whatsapp-send.ts; never blocks, logged in public.whatsapp_messages).
 //   cancel (29 Oct 2026) → after the emails (or none, without a guest email), booking_cancelled the same way — a
@@ -18,7 +23,7 @@
 // notify_failed: true in the answer — the dashboard then shows «تم تأكيد الحجز، لكن تعذّر إرسال الإشعارات» /
 // «تم إلغاء الحجز، لكن تعذّر إرسال الإشعارات». The status change itself stands either way.
 // Test bookings (is_test) send every email to Resend's sink; for them only, the body field test_notify ('fail-read' |
-// 'fail-send' | 'fail-wa') forces the read, the email sends or the WhatsApp send to fail so the dashboard e2e can prove
+// 'fail-send' | 'fail-wa' | 'fail-wa-v2') forces the read, the email sends, the WhatsApp send or only its v2 template to fail so the dashboard e2e can prove
 // each failure path. Secrets: RESEND_API_KEY, BOOKING_FROM_RECEPTION,
 // BOOKING_FROM_GUEST, SUPABASE_URL / SUPABASE_ANON_KEY / SUPABASE_SERVICE_ROLE_KEY (automatic); browser origins in
 // ../_shared/cors.ts (ADMIN_ALLOWED_ORIGINS adds to them).
@@ -29,6 +34,7 @@ import { cors, preflight } from '../_shared/cors.ts';
 import { sendWhatsApp, type WaResult } from '../booking-request/whatsapp-send.ts';
 import { testEcho } from '../booking-request/test-echo.ts';
 import type { WaBooking, WaTemplate } from '../booking-request/whatsapp.ts';
+import { guestReason, isCancelReason, reasonNotifies } from '../booking-request/cancel-reasons.ts';
 
 const TEST_SINK = 'delivered@resend.dev';
 const FROM_RECEPTION = Deno.env.get('BOOKING_FROM_RECEPTION') ?? 'Armada Residence Bookings <no-reply@armadaresidence.com>';
@@ -92,6 +98,8 @@ interface ReservationRow {
   pricing: Quote | null;
   is_test: boolean;
   confirmed_by_label: string | null;
+  /** 9 Nov 2026: the reason staff picked at cancellation (null before) */
+  cancel_reason_code: string | null;
 }
 
 /** The reservation after the change (service role; the guest data stays inside the function). */
@@ -99,7 +107,7 @@ async function loadReservation(id: string): Promise<ReservationRow | null> {
   const key = serviceKey();
   // confirmed_by references auth.users, not public.staff: PostgREST cannot embed the staff name (PGRST200 — the read
   // failed and the dashboard's confirm / cancel sent nothing until 28 Oct 2026), so the name is a second read below
-  const sel = 'id,ref,status,branch,check_in,check_out,nights,adults,children,extra_beds,extra_bed_fee_per_night,needs_coordination,capacity_at_request,breakfast,guest_name,phone,email,notes,locale,pricing,is_test,room_types(slug),confirmed_by';
+  const sel = 'id,ref,status,branch,check_in,check_out,nights,adults,children,extra_beds,extra_bed_fee_per_night,needs_coordination,capacity_at_request,breakfast,guest_name,phone,email,notes,locale,pricing,is_test,cancel_reason_code,room_types(slug),confirmed_by';
   const res = await fetch(`${url()}/rest/v1/reservations?id=eq.${encodeURIComponent(id)}&select=${encodeURIComponent(sel)}`, {
     headers: { apikey: key, Authorization: `Bearer ${key}` },
   });
@@ -142,8 +150,8 @@ async function loadRecipients(ref: string): Promise<Recipient[]> {
 }
 
 /** The WhatsApp values of a stored reservation (E.164 phone, the booking's language). */
-const waBooking = (r: ReservationRow): WaBooking => ({ ref: r.ref, locale: r.locale, branch: r.branch, room: r.room_slug ?? '', check_in: r.check_in, check_out: r.check_out, name: r.guest_name, phone: r.phone, quote: r.pricing });
-const waOut = (w: WaResult) => ({ accepted: w.accepted, status: w.status, error_code: w.errorCode });
+const waBooking = (r: ReservationRow): WaBooking => ({ ref: r.ref, locale: r.locale, branch: r.branch, room: r.room_slug ?? '', check_in: r.check_in, check_out: r.check_out, name: r.guest_name, phone: r.phone, quote: r.pricing, cancelReason: r.cancel_reason_code });
+const waOut = (w: WaResult) => ({ accepted: w.accepted, status: w.status, error_code: w.errorCode, fallback: Boolean(w.fallback) });
 
 const unique = (list: string[]) => Array.from(new Set(list.map((s) => s.trim().toLowerCase()).filter(Boolean)));
 
@@ -202,7 +210,7 @@ Deno.serve(async (req) => {
   const jwt = (req.headers.get('authorization') ?? '').replace(/^Bearer\s+/i, '');
   if (!jwt) return json(req, 401, { ok: false, error: 'sign in' });
 
-  let body: { action?: string; id?: string; room_type_id?: string | null; reason?: string; template?: string; test_notify?: string };
+  let body: { action?: string; id?: string; room_type_id?: string | null; reason_code?: string; note?: string; template?: string; test_notify?: string };
   try {
     body = await req.json();
   } catch {
@@ -244,10 +252,17 @@ Deno.serve(async (req) => {
   }
 
   if (body.action === 'cancel') {
-    const r = await rpcAsUser(jwt, 'staff_cancel_reservation', { p_id: id, p_reason: String(body.reason ?? '') });
+    // the reason is required (the database refuses without one too); the note is optional and internal
+    if (!isCancelReason(body.reason_code)) return json(req, 400, { ok: false, error: 'a reason must be picked' });
+    const r = await rpcAsUser(jwt, 'staff_cancel_reservation', { p_id: id, p_reason_code: body.reason_code, p_note: String(body.note ?? '').trim() || null });
     if (!r.ok) return json(req, r.status === 401 || r.status === 403 ? 403 : 400, { ok: false, error: (r.body as { message?: string })?.message ?? 'cancel failed' });
-    const out = r.body as { ok: boolean; ref: string; was?: string; already?: boolean; is_test?: boolean };
+    const out = r.body as { ok: boolean; ref: string; was?: string; already?: boolean; is_test?: boolean; reason_code?: string };
     if (out.already) return json(req, 200, { ...out, emails: null, notify_failed: false });
+    // «حجز تجريبي»: the status changes, the guest is told nothing
+    if (!reasonNotifies(content, out.reason_code ?? body.reason_code)) {
+      console.log('cancel: guest not notified (reason test_booking)', out.ref);
+      return json(req, 200, { ...out, emails: null, notify_failed: false, guest_notified: false, whatsapp: null });
+    }
     const force = out.is_test === true ? String(body.test_notify ?? '') : '';
     const res = force === 'fail-read' ? null : await loadReservation(id);
     if (!res) {
@@ -257,15 +272,17 @@ Deno.serve(async (req) => {
     // the guest «إلغاء الحجز» when the booking has an email (the dashboard shows the change to the staff)
     let g: string | null = null;
     if (res.email) {
-      const bm = { ref: res.ref, locale: res.locale, branch: res.branch, room: res.room_slug ?? '', check_in: res.check_in, check_out: res.check_out, nights: res.nights, adults: res.adults, children: res.children, extraBeds: res.extra_beds, extraBedFee: Number(res.extra_bed_fee_per_night ?? content.extra_bed_fee), needsCoordination: res.needs_coordination, capacity: res.capacity_at_request ?? 0, breakfast: res.breakfast, name: res.guest_name, phone: res.phone, email: res.email, notes: res.notes ?? '', receivedAt: riyadhNow() };
+      const cancelReason = { ar: guestReason(content, res.cancel_reason_code, 'ar'), en: guestReason(content, res.cancel_reason_code, 'en') };
+      const bm = { ref: res.ref, locale: res.locale, branch: res.branch, room: res.room_slug ?? '', check_in: res.check_in, check_out: res.check_out, nights: res.nights, adults: res.adults, children: res.children, extraBeds: res.extra_beds, extraBedFee: Number(res.extra_bed_fee_per_night ?? content.extra_bed_fee), needsCoordination: res.needs_coordination, capacity: res.capacity_at_request ?? 0, breakfast: res.breakfast, name: res.guest_name, phone: res.phone, email: res.email, notes: res.notes ?? '', receivedAt: riyadhNow(), cancelReason };
       const rows = await loadRecipients(res.ref);
       const { primary } = route(rows, res.branch);
       g = await sendEmail('guest-cancelled', res.ref, { from: FROM_GUEST, to: [res.email], replyTo: primary.length ? primary : [addressOf(FROM_GUEST)] }, bookingCancelled(content, bm), res.is_test, force === 'fail-send');
       if (!g) console.error('cancel: notifications not sent', res.ref, 'guest');
     }
-    // after the emails: the guest's WhatsApp «booking_cancelled» (one per ref; a failure is logged, never blocks)
-    const wa = await sendWhatsApp(content, { template: 'booking_cancelled', booking: waBooking(res), reservationId: res.id, test: res.is_test, simulateFail: force === 'fail-wa' });
-    return json(req, 200, { ...out, emails: res.email ? { guest: g } : null, notify_failed: Boolean(res.email) && !g, whatsapp: waOut(wa) });
+    // after the emails: the guest's WhatsApp «booking_cancelled» — booking_cancelled_v2 with the reason, the v1 one when
+    // v2 is refused (one per ref; a failure is logged, never blocks). test_notify 'fail-wa-v2' (test bookings) refuses v2 only.
+    const wa = await sendWhatsApp(content, { template: 'booking_cancelled', booking: waBooking(res), reservationId: res.id, test: res.is_test, simulateFail: force === 'fail-wa' ? true : force === 'fail-wa-v2' ? 'primary' : false });
+    return json(req, 200, { ...out, emails: res.email ? { guest: g } : null, notify_failed: Boolean(res.email) && !g, guest_notified: true, whatsapp: waOut(wa) });
   }
 
   if (body.action === 'whatsapp-resend') {

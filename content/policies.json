@@ -24,6 +24,49 @@
     ],
     "matches_booking_com": true
   },
+  "cancellation_reasons": {
+    "_note": "Cancellation reasons (Ahmed, 9 Nov 2026 — DECISIONS.md 2026-11-09 «Cancellation reason to the guest»): the list staff pick from when they cancel a booking in the dashboard (required), and the ONE guest-facing phrase each sends — the WhatsApp template booking_cancelled_v2 {{6}} after «سبب الإلغاء:» / \"Cancellation reason:\", and the line «سبب الإلغاء: …» / \"Reason: …\" of the guest's cancellation email. staff_ar is shown to staff only; the optional free-text note staff add stays internal and is never sent. notify false = nothing reaches the guest (no email, no WhatsApp). The codes are also the check of reservations.cancel_reason_code and whatsapp_messages.reason_code (migration 20261109200000) — a new code needs a migration; a new wording is an edit here (then build + deploy booking-admin). A cancellation with no code (before 9 Nov 2026) uses fallback.",
+    "order": ["guest_request", "no_availability", "duplicate", "payment_not_completed", "other", "test_booking"],
+    "fallback": "other",
+    "reasons": {
+      "guest_request": {
+        "staff_ar": "الضيف طلب الإلغاء (برسالة أو اتصال)",
+        "guest_ar": "بناءً على طلبك",
+        "guest_en": "At your request",
+        "notify": true
+      },
+      "no_availability": {
+        "staff_ar": "لا توجد غرفة متاحة (عدم توفر أو حجز زائد)",
+        "guest_ar": "لعدم توفر الغرفة في التواريخ المطلوبة",
+        "guest_en": "The room is not available for the requested dates",
+        "notify": true
+      },
+      "duplicate": {
+        "staff_ar": "حجز مكرر",
+        "guest_ar": "لتكرار الحجز",
+        "guest_en": "Duplicate booking",
+        "notify": true
+      },
+      "payment_not_completed": {
+        "staff_ar": "لم يكتمل الدفع",
+        "guest_ar": "لعدم إتمام الدفع",
+        "guest_en": "Payment was not completed",
+        "notify": true
+      },
+      "other": {
+        "staff_ar": "سبب آخر",
+        "guest_ar": "تعذّر تأكيد الحجز",
+        "guest_en": "The booking could not be confirmed",
+        "notify": true
+      },
+      "test_booking": {
+        "staff_ar": "حجز تجريبي — لا يُرسَل شيء للضيف",
+        "guest_ar": "",
+        "guest_en": "",
+        "notify": false
+      }
+    }
+  },
   "refund": {
     "window": "5–14 business days",
     "to": "same payment method",
