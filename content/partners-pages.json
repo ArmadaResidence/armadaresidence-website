@@ -238,8 +238,8 @@
           "ar": "مناسب للمجموعات وإقامات عبور المعتمرين والإقامة الطويلة"
         },
         {
-          "en": "15 minutes from Taif Airport",
-          "ar": "15 دقيقة من مطار الطائف"
+          "en": "18 minutes from Taif Airport",
+          "ar": "18 دقيقة من مطار الطائف"
         },
         {
           "en": "Meeting hall and coach parking",
@@ -334,8 +334,8 @@
           "ar": "موقع استراتيجي في الطائف"
         },
         {
-          "en": "Airport Road is 15 minutes from Taif International Airport, on the Al Hada corridor towards Makkah Al-Mukarramah; Shafa Road is 4 minutes from Al Ruddaf Park.",
-          "ar": "طريق المطار على بُعد 15 دقيقة من مطار الطائف الدولي، على محور الهدا باتجاه مكة المكرمة، وطريق الشفا على بُعد 4 دقائق من حديقة الردف."
+          "en": "Airport Road is 18 minutes from Taif International Airport, on the Al Hada corridor towards Makkah Al-Mukarramah; Shafa Road is 4 minutes from Al Ruddaf Park.",
+          "ar": "طريق المطار على بُعد 18 دقيقة من مطار الطائف الدولي، على محور الهدا باتجاه مكة المكرمة، وطريق الشفا على بُعد 4 دقائق من حديقة الردف."
         },
         ""
       ],
@@ -558,8 +558,8 @@
         "ar": "شقق أرمادا ريزيدنس الفندقية، طريق المطار، الطائف — الواجهة عند الغروب"
       },
       "lead": {
-        "en": "106 hotel apartments on Airport Road — on the Al Hada corridor towards Makkah Al-Mukarramah, 15 minutes from Taif airport. This is the property we place organised groups in — the larger inventory, twin rooms, suites with kitchens, the meeting hall, and parking that accommodates a tour coach.",
-        "ar": "106 شقة فندقية على طريق المطار — على محور الهدا باتجاه مكة المكرمة، على بُعد 15 دقيقة من مطار الطائف. هذا هو الفندق الذي نُسكِّن فيه المجموعات المنظَّمة — السعة الأكبر، والغرف بسريرين، والأجنحة المزوّدة بمطبخ، وقاعة الاجتماعات، والمواقف التي تتّسع لحافلة سياحية."
+        "en": "106 hotel apartments on Airport Road — on the Al Hada corridor towards Makkah Al-Mukarramah, 18 minutes from Taif airport. This is the property we place organised groups in — the larger inventory, twin rooms, suites with kitchens, the meeting hall, and parking that accommodates a tour coach.",
+        "ar": "106 شقة فندقية على طريق المطار — على محور الهدا باتجاه مكة المكرمة، على بُعد 18 دقيقة من مطار الطائف. هذا هو الفندق الذي نُسكِّن فيه المجموعات المنظَّمة — السعة الأكبر، والغرف بسريرين، والأجنحة المزوّدة بمطبخ، وقاعة الاجتماعات، والمواقف التي تتّسع لحافلة سياحية."
       },
       "tags": [
         {
@@ -602,7 +602,7 @@
           }
         },
         {
-          "n": "15",
+          "n": "18",
           "label": {
             "en": "Min to airport",
             "ar": "دقيقة للمطار"
@@ -675,8 +675,8 @@
         {
           "en": "Taif International Airport",
           "ar": "مطار الطائف الدولي",
-          "den": "15 min",
-          "dar": "15 دقيقة"
+          "den": "18 min",
+          "dar": "18 دقيقة"
         },
         {
           "en": "Al Abbas Mosque",

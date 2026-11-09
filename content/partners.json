@@ -19,7 +19,7 @@
     "units_shafa": 60,
     "room_types": 12,
     "reply_within_business_days": 1,
-    "drive_time_airport_to_airport_road_min": 15,
+    "drive_time_airport_to_airport_road_min": 18,
     "drive_time_ruddaf_to_shafa_min": 4,
     "bus_parking": "both branches",
     "coach_parking": {

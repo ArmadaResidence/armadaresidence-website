@@ -51,6 +51,7 @@ const siteLinks: { key: keyof typeof t.nav; path: string }[] = [
 const social: { name: string; url: string }[] = [
   { name: 'Instagram', url: contact.social.instagram },
   { name: 'Facebook', url: contact.social.facebook },
+  { name: 'X', url: (contact.social as { x?: string }).x ?? '' },
   { name: 'TikTok', url: contact.social.tiktok },
   { name: 'Snapchat', url: contact.social.snapchat },
   { name: 'YouTube', url: contact.social.youtube },

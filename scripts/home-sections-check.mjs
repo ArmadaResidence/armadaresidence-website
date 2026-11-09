@@ -138,7 +138,7 @@ for (const lang of ['ar', 'en']) {
   check(!/كود|promo code|أول من يعرف|first to hear/i.test(cl), `${lang}: the band names promo codes or "first to know"`);
   check(new RegExp(`href="${lang === 'en' ? '/en' : ''}/club/"[^>]*data-club-band`).test(sec('club')), `${lang}: the band does not link /club/`);
   const footer = html.slice(html.indexOf('data-footer-social'));
-  const nets = ['instagram', 'facebook', 'tiktok', 'snapchat', 'youtube'].filter((n) => /^https:\/\//.test(contact.social[n] ?? ''));
+  const nets = ['instagram', 'facebook', 'x', 'tiktok', 'snapchat', 'youtube'].filter((n) => /^https:\/\//.test(contact.social[n] ?? ''));
   const links = [...footer.slice(0, footer.indexOf('</ul>')).matchAll(/<a href="(https:[^"]+)"/g)].map((m) => m[1].replace(/&amp;/g, '&'));
   check(nets.every((n) => links.includes(contact.social[n])) && links.length === nets.length, `${lang}: the footer «تابعنا» row ≠ the networks of contact.json`, links.join(' '));
 }

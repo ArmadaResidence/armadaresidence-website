@@ -65,8 +65,9 @@
       "opened_ar": "سبتمبر 2025",
       "opened_en": "September 2025",
       "opened_note": "opening date confirmed by Ahmed, 6 Nov 2026 (the «من نحن» page)",
-      "drive_time_airport_min": 15,
-      "drive_time_airport_note": "confirmed by Ahmed 9 Oct 2026 — may be shown",
+      "drive_time_airport_min": 18,
+      "drive_distance_airport_km": 22,
+      "drive_time_airport_note": "18 minutes by car, about 22 km — Ahmed, 2 Nov 2026 (recorded 9 Nov 2026; was 15 min, 9 Oct 2026) — may be shown",
       "bus_parking": true,
       "services_ar": [
         "غسيل ملابس",
@@ -109,7 +110,7 @@
         "whatsapp": "+966533798590"
       },
       "drive_times_min": {
-        "taif_airport": 15,
+        "taif_airport": 18,
         "al_abbas_mosque": "<10",
         "taif_city_centre": 15,
         "jouri_mall": 12,
@@ -124,8 +125,8 @@
           "key": "entrance",
           "title_ar": "المدخل والموقع",
           "title_en": "Entrance and location",
-          "body_ar": "تصل إلينا بعد 15 دقيقة من مطار الطائف، على طريق المطار ومحور الهدا باتجاه مكة المكرمة. المواقف مجانية في الطابقين السفليين، والمصعد يوصلك من سيارتك إلى اللوبي مباشرة.",
-          "body_en": "Fifteen minutes from Taif airport, on Airport Road and the Al Hada corridor towards Makkah. Parking is free on the two basement levels, and the lift takes you from your car straight to the lobby.",
+          "body_ar": "تصل إلينا بعد 18 دقيقة بالسيارة من مطار الطائف (نحو 22 كيلومترًا)، على طريق المطار ومحور الهدا باتجاه مكة المكرمة. المواقف مجانية في الطابقين السفليين، والمصعد يوصلك من سيارتك إلى اللوبي مباشرة.",
+          "body_en": "Eighteen minutes by car from Taif airport (about 22 km), on Airport Road and the Al Hada corridor towards Makkah. Parking is free on the two basement levels, and the lift takes you from your car straight to the lobby.",
           "image": {
             "base": null,
             "intended_base": "/images/branches/airport-road-entrance",

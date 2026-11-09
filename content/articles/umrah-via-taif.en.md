@@ -27,7 +27,7 @@ Both have mosques and facilities for washing and entering ihram.
 - For groups: multi-bed rooming, coach parking, and breakfast, lunch and dinner buffets from the hotel kitchen.
 
 ## The right property
-[Airport Road](/en/airport-road/) sits directly on the Al Hada corridor towards Makkah, 15 minutes from the airport, with spacious hotel apartments and a restaurant open around the clock. Check-in from 4:00 pm, check-out by 12:00 noon, free cancellation until 2:00 pm on the day of arrival.
+[Airport Road](/en/airport-road/) sits directly on the Al Hada corridor towards Makkah, 18 minutes by car from the airport, with spacious hotel apartments and a restaurant open around the clock. Check-in from 4:00 pm, check-out by 12:00 noon, free cancellation until 2:00 pm on the day of arrival.
 
 For Umrah operators and groups: special rates via the [partners page](/en/partners/groups-umrah/).
 

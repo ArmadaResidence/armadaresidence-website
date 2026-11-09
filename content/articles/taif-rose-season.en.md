@@ -25,7 +25,7 @@ The season usually begins at the end of March and runs to around mid-April, shif
 - **The rose festival:** Taif runs events and pop-up markets around the rose every year; check the dates before you travel, as they change annually.
 
 ## Where to stay
-The rose farms spread between Al Hada and Al Shafa, and both properties suit the trip. [Airport Road](/en/airport-road/) sits on the Al Hada corridor, 25 minutes from the Al Hada tourist area and 15 from the airport — ideal if you fly in or plan outings towards Al Hada. [Shafa Road](/en/shafa-road/) is on the road climbing to the highlands, the closest base for an early start up to Al Shafa.
+The rose farms spread between Al Hada and Al Shafa, and both properties suit the trip. [Airport Road](/en/airport-road/) sits on the Al Hada corridor, 25 minutes from the Al Hada tourist area and 18 from the airport — ideal if you fly in or plan outings towards Al Hada. [Shafa Road](/en/shafa-road/) is on the road climbing to the highlands, the closest base for an early start up to Al Shafa.
 
 ## Quick tips
 - Book early; the season is short and demand is high.

@@ -17,7 +17,7 @@ Taif is one city, but the right place to stay depends on why you are coming. A t
 
 ## Airport Road: for travellers, Umrah guests and business trips
 
-Airport Road sits on the Al Hada corridor towards Makkah Al-Mukarramah, 15 minutes from Taif airport. From here the city centre is 15 minutes away and Al Abbas Mosque under 10.
+Airport Road sits on the Al Hada corridor towards Makkah Al-Mukarramah, 18 minutes by car from Taif airport. From here the city centre is 15 minutes away and Al Abbas Mosque under 10.
 
 If you are travelling for [Umrah through Taif](/en/blog/umrah-via-taif/), both miqats are on this side of the city: [Qarn Al-Manazil at Al Sail Al Kabir](/en/discover-taif/#place-miqat-qarn-al-manazil), and [Wadi Muharram](/en/discover-taif/#place-miqat-wadi-muharram) on the Al Hada road.
 
@@ -41,7 +41,7 @@ The city centre holds [Al Balad Market](/en/discover-taif/#place-taif-al-balad-m
 
 | Reason | Best fit | Why |
 | --- | --- | --- |
-| Business trip or long stay | Airport Road | 15 min from the airport, suites with kitchens, meeting hall |
+| Business trip or long stay | Airport Road | 18 min from the airport, suites with kitchens, meeting hall |
 | Transit towards Makkah | Airport Road | On the Al Hada corridor; both miqats on this side |
 | Family with children | Shafa Road | 4 min from Al Ruddaf, 8 from the zoo, family suites |
 | Highlands and nature | Shafa Road | On the road up to the Al Shafa highlands |
@@ -49,7 +49,7 @@ The city centre holds [Al Balad Market](/en/discover-taif/#place-taif-al-balad-m
 
 ## Frequently asked questions
 
-**Which property is closest to Taif airport?** Airport Road, 15 minutes from the airport.
+**Which property is closest to Taif airport?** Airport Road, 18 minutes by car from the airport (about 22 km).
 
 **Are there rooms with a kitchen?** Yes, the suites at the Airport Road hotel apartments have a kitchen.
 
