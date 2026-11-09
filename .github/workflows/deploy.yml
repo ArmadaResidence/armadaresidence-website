@@ -9,6 +9,16 @@ name: Build, QA and deploy to GitHub Pages
 # Offers (dashboard «العروض», 2 Nov 2026): the site shows an offer only between its start and end dates (Riyadh days),
 # so a scheduled build at 00:07 Riyadh (21:07 UTC) brings in the offers that start today and drops the ones that ended
 # yesterday — the pages, the announcement bar and the pop-up (the browser also hides an ended offer before that run).
+# Checks (9 Nov 2026, Ahmed — the local hooks keep only the fast checks; CLAUDE.md §11): every run — push, schedule,
+# dashboard publish, watchdog, dry run — checks the site it is about to publish before anything is deployed:
+#   checks-static   its own build without the service key (like the developer's machine), qa.py, every static check
+#                   (the dashboard / email browser checks included) and the sample qa
+#   checks-browser  the browser checks in parallel shards (scripts/check-plan.mjs CI_SHARDS) against THIS run's build
+#                   (dist/ and the generated content files, handed over as the `site-build` artifact)
+#   checks-pixel    pushes only: the pushed range's parent and this commit each built and every page compared — blocking
+#                   when every pushed commit carries the trailer `Armada-Invisible: yes`, a report otherwise
+# `deploy` needs all of them; a failure stops the deploy, the dashboard's publish job is settled as failed and the
+# `status` job alerts the admins as for any failed run.
 on:
   schedule:
     - cron: '7 21 * * *'
@@ -30,6 +40,10 @@ on:
         default: false
       trigger:
         description: who asked (dashboard = site-rebuild / blog-due, watchdog = the deploy watchdog; empty = by hand) — named in the deploy alert
+        required: false
+        default: ''
+      pixel_before:
+        description: by hand only — also run the pixel guard against this commit (a push runs it against the pushed range)
         required: false
         default: ''
 
@@ -63,6 +77,7 @@ jobs:
       MEDIA_FIXTURE: ${{ inputs.dry_run && inputs.media_sample && '.media-sample' || '' }}
     outputs:
       manifest_at: ${{ steps.media.outputs.manifest_at }}
+      shards: ${{ steps.shards.outputs.shards }}
     steps:
       - uses: actions/checkout@v4
       # the dashboard's «حالة تحديث الموقع» (6 Nov 2026): this run has started (never fails the build)
@@ -84,6 +99,9 @@ jobs:
         with:
           python-version: '3.12'
       - run: npm ci
+      - name: The browser-check shards (scripts/check-plan.mjs CI_SHARDS)
+        id: shards
+        run: echo "shards=$(node scripts/check-plan.mjs --shards-json)" >> "$GITHUB_OUTPUT"
       - name: Media cache (derived photos of earlier builds)
         uses: actions/cache/restore@v4
         with:
@@ -111,6 +129,18 @@ jobs:
         run: python qa.py
       - name: Sub-path rewrite for the project site (no-op when PUBLIC_BASE_PATH is empty)
         run: python scripts/base-path.py
+      # the browser checks judge exactly this build: dist/ and the content files the build generated (they read them)
+      - name: Pack the build for the check jobs
+        run: |
+          tar -cf site-build.tar dist $(ls -d content/*.generated.json content/articles.generated supabase/functions/booking-request/content.generated.json 2>/dev/null)
+          ls -lh site-build.tar
+      - name: Hand the build to the check jobs
+        uses: actions/upload-artifact@v4
+        with:
+          name: site-build
+          path: site-build.tar
+          retention-days: 3
+          compression-level: 0
       - name: Save the media cache
         if: ${{ always() && hashFiles('.media-cache/**') != '' }}
         uses: actions/cache/save@v4
@@ -133,9 +163,100 @@ jobs:
         with:
           path: dist
 
-  deploy:
+  # the static checks, as on the developer's machine (no service key: the published photos, offers and texts are not
+  # built here — the samples are) + the static checks that open a browser (the dashboard's sidebar and «السجل», the
+  # emails' print layout) + the sample qa
+  checks-static:
+    name: checks · static
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      PUBLIC_BOOKING_ENDPOINT: ${{ vars.PUBLIC_BOOKING_ENDPOINT }}
+      PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.PUBLIC_SUPABASE_ANON_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            admin/package-lock.json
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: npm ci
+      - run: npm ci --prefix admin
+      - name: Browsers (Chromium, WebKit; Google Chrome is on the runner)
+        run: npx playwright install --with-deps chromium webkit
+      - name: Run the static checks
+        run: node scripts/check-all.mjs --ci-static
+
+  # the browser checks, in parallel, against this run's build (the site-build artifact)
+  checks-browser:
+    name: checks · browser (${{ matrix.shard }})
     needs: build
-    if: ${{ !inputs.dry_run }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: ${{ fromJSON(needs.build.outputs.shards) }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: Browsers (Chromium, WebKit; Google Chrome is on the runner)
+        run: npx playwright install --with-deps chromium webkit
+      - name: This run's build
+        uses: actions/download-artifact@v4
+        with:
+          name: site-build
+      - run: tar -xf site-build.tar && rm site-build.tar
+      - name: Run the browser checks
+        run: node scripts/check-all.mjs --shard ${{ matrix.shard }}
+
+  # the pixel guard on a push (or by hand with pixel_before): the pushed range's parent and this commit, both built
+  # without the service key, every page AR + EN × 375 + 1440 × light + dark compared pixel by pixel
+  checks-pixel:
+    name: checks · pixel guard
+    if: ${{ (github.event_name == 'push' && github.event.before != '0000000000000000000000000000000000000000') || inputs.pixel_before != '' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      PUBLIC_BOOKING_ENDPOINT: ${{ vars.PUBLIC_BOOKING_ENDPOINT }}
+      PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.PUBLIC_SUPABASE_ANON_KEY }}
+      PIXEL_BEFORE: ${{ github.event_name == 'push' && github.event.before || inputs.pixel_before }}
+      PIXEL_SHOTS: ${{ runner.temp }}/pixel
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: npm ci
+      - name: Pixel guard
+        run: node scripts/check-all.mjs --pixel "$PIXEL_BEFORE"
+      - name: The differing pixels (when any)
+        if: ${{ always() && hashFiles(format('{0}/pixel/after/_diff/**', runner.temp)) != '' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: pixel-diff
+          path: ${{ runner.temp }}/pixel/after/_diff
+          retention-days: 7
+
+  deploy:
+    needs: [build, checks-static, checks-browser, checks-pixel]
+    # every check job passed (the pixel guard may be skipped: not a push); a dry run never deploys
+    if: ${{ !inputs.dry_run && !cancelled() && needs.build.result == 'success' && needs.checks-static.result == 'success' && needs.checks-browser.result == 'success' && (needs.checks-pixel.result == 'success' || needs.checks-pixel.result == 'skipped') }}
     runs-on: ubuntu-latest
     environment:
       name: github-pages
@@ -149,7 +270,7 @@ jobs:
   # next run's manifest settles it, and the deploy watchdog dispatches one for it after 20 minutes at the latest. A run
   # replaced while still waiting never started: its job stays queued for the run that replaced it.
   report:
-    needs: [build, deploy]
+    needs: [build, checks-static, checks-browser, checks-pixel, deploy]
     if: ${{ always() }}
     runs-on: ubuntu-latest
     env:
@@ -167,7 +288,7 @@ jobs:
           node-version: 22
       - name: Report to the dashboard
         run: |
-          if [ "${{ needs.build.result }}" = "cancelled" ] || [ "${{ needs.deploy.result }}" = "cancelled" ]; then
+          if [ "${{ contains(needs.*.result, 'cancelled') && 'cancelled' || 'no' }}" = "cancelled" ]; then
             node scripts/media-job.mjs requeue
           elif [ "${{ inputs.dry_run }}" = "true" ]; then
             node scripts/media-job.mjs dry ${{ needs.build.result == 'success' && 'ok' || 'fail' }}
@@ -179,7 +300,7 @@ jobs:
   # the commit, the failed step and this run's link (Edge Function site-deploy-report; 6 Nov 2026: from the evening of
   # 5 Nov every build failed qa.py and nobody knew). always(): a cancelled run reports `cancelled` (never an alert); dry runs never report.
   status:
-    needs: [build, deploy]
+    needs: [build, checks-static, checks-browser, checks-pixel, deploy]
     if: ${{ always() && !inputs.dry_run }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -190,7 +311,8 @@ jobs:
       PUBLIC_BOOKING_ENDPOINT: ${{ vars.PUBLIC_BOOKING_ENDPOINT }}
       SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
       GH_TOKEN: ${{ github.token }}
-      BUILD_RESULT: ${{ needs.build.result }}
+      # the build and its checks as one result: success only when every check job passed (the pixel guard may be skipped)
+      BUILD_RESULT: ${{ (needs.build.result == 'success' && needs.checks-static.result == 'success' && needs.checks-browser.result == 'success' && (needs.checks-pixel.result == 'success' || needs.checks-pixel.result == 'skipped')) && 'success' || (contains(needs.*.result, 'cancelled') && 'cancelled' || 'failure') }}
       DEPLOY_RESULT: ${{ needs.deploy.result }}
       TRIGGER: ${{ inputs.trigger }}
       MEDIA_JOB: ${{ inputs.media_job }}

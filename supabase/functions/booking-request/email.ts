@@ -1336,10 +1336,12 @@ export interface DeployAlertMail {
 }
 
 /** a GitHub «job › step» → one of the alert's step keys (setup | media | build | qa | deploy | unknown) */
-export function deployStepKey(raw: string | null | undefined): 'setup' | 'media' | 'build' | 'qa' | 'deploy' | 'unknown' {
+export function deployStepKey(raw: string | null | undefined): 'setup' | 'media' | 'build' | 'qa' | 'checks' | 'deploy' | 'unknown' {
   const s = String(raw ?? '').trim();
   if (!s) return 'unknown';
   const [job, step = ''] = s.split(' › ');
+  // the check jobs that gate the deploy since 9 Nov 2026 (checks · static / browser … / pixel guard): any step of theirs
+  if (/^checks\b/i.test(job)) return 'checks';
   if (/qa\.py|QA gate/i.test(step)) return 'qa';
   if (/^Build\b|Sub-path rewrite/i.test(step)) return 'build';
   if (/media|ffmpeg|HEIC/i.test(step)) return 'media';

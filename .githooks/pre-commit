@@ -1,8 +1,9 @@
 #!/bin/sh
-# Before every commit (CLAUDE.md §11; routed since 31 Oct 2026, Ahmed): on the staged snapshot — exactly what this
-# commit records, not other uncommitted edits in the folder — the fast checks (build, qa, typecheck, digits, format,
-# auth-emails, whatsapp; a docs-only commit skips the build) plus the checks mapped to the staged files
-# (scripts/check-plan.mjs; a file no rule maps runs the full suite). ARMADA_INVISIBLE=1 git commit … adds the pixel
-# guard. The full suite runs in .githooks/pre-push. A failing check blocks the commit; fix the cause, never --no-verify.
+# Before every commit (CLAUDE.md §11): the FAST checks on the staged snapshot — exactly what this commit records, not
+# other uncommitted edits in the folder: build, qa and the static checks that need no browser (typecheck, digits,
+# format, auth-emails, whatsapp, offers-engine, turnstile, deploy-alert); a docs-only commit skips the build. No browser
+# runs here since 9 Nov 2026 (Ahmed: 4 GB of memory) — every browser check, the pixel guard and the sample qa run in
+# GitHub Actions on the push, and the deploy waits for them. The whole suite by hand: node scripts/check-all.mjs.
+# A failing check blocks the commit; fix the cause, never --no-verify.
 # Enable once per clone: git config core.hooksPath .githooks
 exec node scripts/check-all.mjs --staged

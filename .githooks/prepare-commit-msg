@@ -1,0 +1,7 @@
+#!/bin/sh
+# ARMADA_INVISIBLE=1 git commit … (a change that must not change what a visitor sees — performance, refactor) adds the
+# trailer `Armada-Invisible: yes` to the message. GitHub Actions reads it: when every pushed commit carries it, the pixel
+# guard is blocking (no pixel of any page may change); otherwise it only reports (scripts/check-all.mjs --pixel).
+[ "$ARMADA_INVISIBLE" = "1" ] || exit 0
+case "$2" in merge|squash) exit 0 ;; esac
+git interpret-trailers --in-place --if-exists doNothing --trailer "Armada-Invisible: yes" "$1"

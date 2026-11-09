@@ -1,21 +1,36 @@
-// The check suite (CLAUDE.md §11 — mandatory, Ahmed 24 Oct 2026; routed pre-commit + full pre-push, 31 Oct 2026).
-//   node scripts/check-all.mjs                 local, full: build.py → qa.py → the static checks → dist/ served on 127.0.0.1 → the browser checks
-//   node scripts/check-all.mjs --staged        the staged snapshot (what `git commit` will record), exported with
-//                                              git checkout-index to a temp folder, so uncommitted edits of another
-//                                              session in this shared folder neither break nor pass a commit. ROUTED:
-//                                              the fast checks + the checks mapped to the staged files
-//                                              (scripts/check-plan.mjs); --full runs the whole suite; --dry-run prints
-//                                              the plan and exits. .githooks/pre-commit runs this mode
-//   node scripts/check-all.mjs --commit <sha>  the full suite on that commit's tree (.githooks/pre-push: the commit being pushed)
-//   … --commit <sha> --skip-if-passed          pre-push (4 Nov 2026): skipped when that commit's TREE hash is in the
-//                                              record of trees whose full suite passed on this machine; any other tree
-//                                              runs the full suite as before. One line says which happened.
-//   The record: every run of the WHOLE suite (no routing) that passes on a staged snapshot or a commit appends the
-//   tree hash it checked (the staged index's `git write-tree` = the tree the commit records) to
+// The check suite (CLAUDE.md §11). Where each check runs since 9 Nov 2026 (Ahmed — this machine has 4 GB of memory and
+// Chrome ran out of it in the hooks): the local hooks run the FAST checks only (no browser); every browser check, the
+// pixel guard and the sample qa run in GitHub Actions on every push / deploy, and the deploy waits for them
+// (.github/workflows/deploy.yml). scripts/check-plan.mjs holds the lists.
+//   node scripts/check-all.mjs                 local, FULL: build.py -> qa.py -> the static checks -> dist/ served on
+//                                              127.0.0.1 -> every browser check -> sample qa. The manual way to run the
+//                                              whole suite on this machine; no hook runs it.
+//   node scripts/check-all.mjs --staged        .githooks/pre-commit: the staged snapshot (what `git commit` will record),
+//                                              exported with git checkout-index to a temp folder, so uncommitted edits of
+//                                              another session in this shared folder neither break nor pass a commit.
+//                                              FAST: build, qa and the static checks that need no browser (a docs-only
+//                                              commit skips the build). --full runs the whole suite on the snapshot;
+//                                              --routed the routed plan of 31 Oct 2026 (the checks mapped to the staged
+//                                              files); --dry-run prints the plan and exits
+//   node scripts/check-all.mjs --commit <sha>  the fast checks on that commit's tree (.githooks/pre-push: the commit
+//                                              being pushed); --full the whole suite
+//   ... --commit <sha> --skip-if-passed        pre-push: skipped when that commit's TREE hash is in the record of trees
+//                                              that passed (fast or full) on this machine. One line says which happened.
+//   The record: every passing run on a staged snapshot or a commit appends the tree hash it checked (the staged index's
+//   `git write-tree` = the tree the commit records) and its level (fast | full) to
 //   $(git rev-parse --git-path armada-full-suite-passed.txt) — local to this clone, never committed.
-//   node scripts/check-all.mjs --live [URL]    live: the browser checks against the deployed site (default: the review
-//                                              URL below; pass the domain after the switch) + admin-cors-check against
-//                                              the project's dashboard functions (no browser, no key)
+//   GitHub Actions only (deploy.yml):
+//   node scripts/check-all.mjs --ci-static     its own build (no service key, like this machine) -> qa -> every static
+//                                              check (the browser ones of the dashboard and the emails included) -> sample qa
+//   node scripts/check-all.mjs --shard <name>  the browser checks of one CI shard (check-plan CI_SHARDS) against the
+//                                              dist/ already here (the deploy build's, downloaded) — nothing is built
+//   node scripts/check-all.mjs --pixel <sha>   the pixel guard: <sha>'s tree and this checkout each built, every page
+//                                              shot and compared. BLOCKING when every commit in <sha>..HEAD carries the
+//                                              trailer `Armada-Invisible: yes` (ARMADA_INVISIBLE=1 git commit ... adds it,
+//                                              .githooks/prepare-commit-msg); otherwise a report only (the differing
+//                                              pages listed, exit 0)
+//   node scripts/check-all.mjs --live [URL]    live: the browser checks against the deployed site (default: the domain)
+//                                              + admin-cors-check against the project's functions (no browser, no key)
 // Every browser check stubs the booking endpoint, wa.me and GTM: nothing is sent, no analytics hit. Runs every check
 // even after a failure (except when the build or qa.py fails: the browser checks need dist/), prints a summary and
 // exits non-zero on any failure.
@@ -23,7 +38,7 @@ import { execFileSync, spawn } from 'node:child_process';
 import { appendFileSync, existsSync, lstatSync, mkdtempSync, readFileSync, rmSync, symlinkSync, unlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
-import { BROWSER_CHECKS, STATIC_CHECKS, describe, planFor, stagedFiles } from './check-plan.mjs';
+import { BROWSER_CHECKS, CI_SHARDS, STATIC_CHECKS, describe, fastPlan, planFor, stagedFiles } from './check-plan.mjs';
 import { serveDist } from './serve-dist.mjs';
 
 const REVIEW_URL = 'https://armadaresidence.com'; // the live site since launch day (8 Nov 2026)
@@ -34,11 +49,24 @@ const live = args.includes('--live');
 const commitAt = args.indexOf('--commit');
 const commit = !live && commitAt >= 0 ? args[commitAt + 1] : null;
 const staged = !live && !commit && args.includes('--staged');
+const shardAt = args.indexOf('--shard');
+const shard = shardAt >= 0 ? args[shardAt + 1] : null;
+const pixelAt = args.indexOf('--pixel');
+const pixelBase = pixelAt >= 0 ? args[pixelAt + 1] : null;
+const ciStatic = args.includes('--ci-static');
 const PYTHON = process.env.PYTHON || 'python';
 const t0All = Date.now();
 
 if (commitAt >= 0 && !commit) {
   console.error('check-all: --commit needs a commit (sha or ref)');
+  process.exit(2);
+}
+if (shardAt >= 0 && !CI_SHARDS[shard]) {
+  console.error(`check-all: --shard needs one of ${Object.keys(CI_SHARDS).join(', ')}`);
+  process.exit(2);
+}
+if (pixelAt >= 0 && !pixelBase) {
+  console.error('check-all: --pixel needs the commit to compare with (sha or ref)');
   process.exit(2);
 }
 
@@ -66,20 +94,29 @@ try {
 if (commit && args.includes('--skip-if-passed')) {
   const hit = tree && recorded().find((x) => x[0] === tree);
   if (hit) {
-    console.log(`pre-push: ${commit.slice(0, 12)} — tree ${tree.slice(0, 12)} already passed the full suite on this machine (${hit[1] ?? ''}); suite skipped`);
+    console.log(`pre-push: ${commit.slice(0, 12)} — tree ${tree.slice(0, 12)} already passed the ${hit[2] === 'fast' ? 'fast checks' : 'full suite'} on this machine (${hit[1] ?? ''}); skipped`);
     process.exit(0);
   }
-  console.log(`pre-push: ${commit.slice(0, 12)} — tree ${tree ? tree.slice(0, 12) : '?'} has no full-suite pass on this machine; running the full suite`);
+  console.log(`pre-push: ${commit.slice(0, 12)} — tree ${tree ? tree.slice(0, 12) : '?'} has no recorded pass on this machine; running the ${args.includes('--full') ? 'full suite' : 'fast checks'}`);
 }
 
-// the plan: routed for --staged (unless --full), the whole suite otherwise
+// the plan: the whole suite by hand; fast for the hooks (--staged, --commit) unless --full; --routed for the old
+// routed plan; the CI modes
 let plan = { full: true, build: true, sampleQa: true, checks: [...STATIC_CHECKS, ...BROWSER_CHECKS], a11yPages: null, pixelGuard: false };
-if (staged && !args.includes('--full')) {
-  plan = planFor(stagedFiles(), { invisible: process.env.ARMADA_INVISIBLE === '1' });
-  for (const r of plan.files) console.log(`  ${r.file}  →  ${r.rules.join(' + ')}`);
+if ((staged || commit) && !args.includes('--full')) {
+  const files = staged ? stagedFiles() : [];
+  plan = staged && args.includes('--routed') ? planFor(files, { invisible: process.env.ARMADA_INVISIBLE === '1' }) : fastPlan(files);
+  if (staged) for (const r of plan.files) console.log(`  ${r.file}  →  ${r.rules.join(' + ')}`);
   console.log(describe(plan));
   if (args.includes('--dry-run')) process.exit(0);
+} else if (ciStatic) {
+  plan = { full: false, ci: true, build: true, sampleQa: true, checks: [...STATIC_CHECKS], a11yPages: null, pixelGuard: false };
+} else if (shard) {
+  plan = { full: false, ci: true, build: false, prebuilt: true, sampleQa: false, checks: [...CI_SHARDS[shard]], a11yPages: null, pixelGuard: false };
+} else if (pixelBase) {
+  plan = { full: false, ci: true, build: true, sampleQa: false, checks: [], a11yPages: null, pixelGuard: true };
 }
+if (plan.ci) console.log(describe(plan));
 
 // a tree exported to a temp folder; node_modules and admin/node_modules (the dashboard's type check) are junctions to
 // this checkout's. Staged: the index as it is; a commit: read into a throwaway index first.
@@ -162,6 +199,9 @@ let base;
 let built = false;
 if (live) {
   base = (args.find((a) => !a.startsWith('--')) || REVIEW_URL).replace(/\/$/, '');
+} else if (plan.prebuilt) {
+  built = existsSync(join(cwd, 'dist', 'index.html'));
+  if (!built) results.push({ label: 'dist/ present (the deploy build)', code: 1, s: 0 });
 } else if (plan.build) {
   built = await build(cwd);
 } else {
@@ -170,7 +210,7 @@ if (live) {
 }
 const browser = plan.checks.filter((c) => BROWSER_CHECKS.includes(c));
 for (const name of plan.checks.filter((c) => STATIC_CHECKS.includes(c))) results.push(await run(name, process.execPath, [`scripts/${name}.mjs`]));
-if (built && (browser.length || plan.pixelGuard)) {
+if (built && browser.length) {
   server = await serveDist(0, { dist: join(cwd, 'dist') });
   base = server.url;
 }
@@ -181,17 +221,35 @@ if (base) {
     results.push(await run(name, process.execPath, [`scripts/${name}.mjs`, base], { env }));
   }
 }
-// pixel guard (ARMADA_INVISIBLE=1): HEAD built in a second snapshot, every page of both builds shot and compared
+// pixel guard: a second tree (HEAD for a routed run with ARMADA_INVISIBLE=1, <sha> for --pixel) built in a snapshot,
+// every page of both builds shot and compared
 if (plan.pixelGuard && built) {
-  const head = exportTree('HEAD');
-  if (await build(head, 'HEAD ')) {
+  const baseRef = pixelBase || 'HEAD';
+  let advisory = false;
+  if (pixelBase) {
+    // blocking only when every pushed commit declares itself invisible (the trailer); a visible change is reported
+    const shas = git('rev-list', `${pixelBase}..HEAD`).split('\n').filter(Boolean);
+    const marked = shas.filter((sha) => /^yes$/im.test(git('log', '-1', '--format=%(trailers:key=Armada-Invisible,valueonly)', sha)));
+    advisory = !shas.length || marked.length < shas.length;
+    console.log(`\npixel guard ${pixelBase.slice(0, 12)} -> HEAD: ${marked.length} of ${shas.length} commit(s) marked Armada-Invisible — ${advisory ? 'a REPORT only (a visible change is allowed)' : 'BLOCKING (no pixel may change)'}`);
+  }
+  const head = exportTree(baseRef);
+  if (await build(head, 'before ')) {
+    const own = await serveDist(0, { dist: join(cwd, 'dist') });
     const before = await serveDist(0, { dist: join(head, 'dist') });
-    const shots = mkdtempSync(join(tmpdir(), 'armada-pixel-'));
+    const shots = process.env.PIXEL_SHOTS || mkdtempSync(join(tmpdir(), 'armada-pixel-'));
     const shoot = (b, dir, dist) => run(`pixel-guard shoot ${dir}`, process.execPath, ['scripts/pixel-guard.mjs', 'shoot', b, join(shots, dir), '--dist', dist]);
     const a = await shoot(before.url, 'before', join(head, 'dist'));
-    const b = await shoot(base, 'after', join(cwd, 'dist'));
+    const b = await shoot(own.url, 'after', join(cwd, 'dist'));
     await before.close();
-    results.push(a, b, await run('pixel-guard compare', process.execPath, ['scripts/pixel-guard.mjs', 'compare', join(shots, 'before'), join(shots, 'after')]));
+    await own.close();
+    const c = await run('pixel-guard compare', process.execPath, ['scripts/pixel-guard.mjs', 'compare', join(shots, 'before'), join(shots, 'after')]);
+    if (advisory && c.code && !a.code && !b.code) {
+      console.log('\nnote: pages differ — reported, not blocking (not every commit is marked Armada-Invisible); the diffs are in the artifact');
+      c.label += ' (report only)';
+      c.code = 0;
+    }
+    results.push(a, b, c);
     console.log(`pixel-guard shots: ${shots}`);
   }
 }
@@ -216,24 +274,25 @@ if (!live && built && plan.sampleQa) {
 }
 removeSnapshots();
 
-const scope = live ? `live: ${base}` : commit ? `commit ${commit}, full suite` : staged ? `staged snapshot, ${plan.full ? 'full suite' : 'routed'}` : 'local build';
+const level = plan.full ? 'full suite' : plan.fast ? 'fast checks' : 'routed';
+const scope = live ? `live: ${base}` : shard ? `CI shard ${shard}` : ciStatic ? 'CI static' : pixelBase ? `CI pixel guard ${pixelBase.slice(0, 12)} -> HEAD` : commit ? `commit ${commit}, ${level}` : staged ? `staged snapshot, ${level}` : 'local build, full suite';
 console.log(`\n━━ summary (${scope}) ━━`);
 for (const r of results) console.log(`${r.code ? '✗ FAIL' : '✓ pass'}  ${r.label.padEnd(24)} ${r.s}s`);
 const total = Math.round((Date.now() - t0All) / 1000);
 const failed = results.filter((r) => r.code);
 // a commit that builds must reach the browser stage (or have nothing to run there); a docs-only commit builds nothing
-if (failed.length || (plan.build && !built && !live)) {
+if (failed.length || ((plan.build || plan.prebuilt) && !built && !live)) {
   console.log(`\n${failed.length} check(s) failed — fix the cause; never skip the suite. (${total}s)`);
   process.exit(1);
 }
 console.log(`\nall ${results.length} checks passed in ${Math.floor(total / 60)} min ${total % 60} s`);
-// the whole suite passed on a snapshot of a known tree: record it (the newest 500 kept)
-if (plan.full && built && tree && RECORD && (staged || commit)) {
+// the fast checks or the whole suite passed on a snapshot of a known tree: record it (the newest 500 kept)
+if ((plan.full || plan.fast) && (built || !plan.build) && tree && RECORD && (staged || commit)) {
   try {
-    appendFileSync(RECORD, `${tree} ${new Date().toISOString()} ${commit ? `commit ${commit}` : 'staged'}\n`);
+    appendFileSync(RECORD, `${tree} ${new Date().toISOString()} ${plan.full ? 'full' : 'fast'} ${commit ? `commit ${commit}` : 'staged'}\n`);
     const lines = readFileSync(RECORD, 'utf8').split('\n').filter(Boolean);
     if (lines.length > 500) writeFileSync(RECORD, lines.slice(-500).join('\n') + '\n');
-    console.log(`recorded tree ${tree.slice(0, 12)} as passing the full suite`);
+    console.log(`recorded tree ${tree.slice(0, 12)} as passing the ${plan.full ? 'full suite' : 'fast checks'}`);
   } catch (e) {
     console.log(`could not record the tree (${e.message}); the next push runs the suite`);
   }

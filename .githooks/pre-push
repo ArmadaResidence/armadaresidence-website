@@ -1,9 +1,9 @@
 #!/bin/sh
-# Before every push (CLAUDE.md §11, Ahmed 31 Oct 2026): the full mandatory suite on the commit being pushed (its tree
-# exported to a temp folder: node scripts/check-all.mjs --commit <sha>). Any failure blocks the push; fix the cause,
-# never --no-verify. The live suite after every deploy (check-all --live) stays as it is.
-# 4 Nov 2026 (Ahmed): skipped only when the pushed commit's tree hash is recorded as having passed the full suite on
-# this machine (a full run of the commit hook records it); any other tree runs the suite. check-all prints which.
+# Before every push (CLAUDE.md §11): the FAST checks (no browser) on the commit being pushed (its tree exported to a temp
+# folder: node scripts/check-all.mjs --commit <sha>). Skipped when that tree already passed on this machine (the commit
+# hook records it); check-all prints which. Since 9 Nov 2026 (Ahmed) the browser checks, the pixel guard and the sample
+# qa run in GitHub Actions after the push, and the deploy waits for them. Any failure blocks the push; fix the cause,
+# never --no-verify.
 zero=0000000000000000000000000000000000000000
 shas=""
 while read -r local_ref local_sha remote_ref remote_sha; do

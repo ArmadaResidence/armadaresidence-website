@@ -1,7 +1,9 @@
 // TypeScript type check (Ahmed, 28 Oct 2026 — mandatory suite): a type error never lands.
 //   site      astro check (@astrojs/check + typescript, devDependencies): every .astro / .ts file under src/
 //   dashboard tsc --noEmit -p admin (the dashboard's own TypeScript, admin/node_modules)
-// The Edge Functions (Deno) are not covered here: they are type-checked when they are bundled for a deploy.
+//   functions tsc --strict on the Edge Functions' runtime-free modules the site, the checks and the emails share —
+//             booking-request/email.ts, rules.ts, whatsapp.ts (9 Nov 2026: email.ts stays at zero errors). The rest of
+//             the Edge Functions (Deno globals, npm: imports) is type-checked when it is bundled for a deploy.
 //   node scripts/typecheck.mjs
 import { spawnSync } from 'node:child_process';
 import { existsSync } from 'node:fs';
@@ -9,6 +11,11 @@ import { existsSync } from 'node:fs';
 const runs = [
   { label: 'site (astro check)', args: ['node_modules/astro/bin/astro.mjs', 'check'], need: 'node_modules/@astrojs/check' },
   { label: 'dashboard (tsc --noEmit -p admin)', args: ['admin/node_modules/typescript/bin/tsc', '--noEmit', '-p', 'admin'], need: 'admin/node_modules/typescript' },
+  {
+    label: 'functions (email.ts, rules.ts, whatsapp.ts — tsc --strict)',
+    args: ['node_modules/typescript/bin/tsc', '--noEmit', '--strict', '--target', 'es2022', '--module', 'esnext', '--moduleResolution', 'bundler', '--allowImportingTsExtensions', '--resolveJsonModule', '--skipLibCheck', ...['email', 'rules', 'whatsapp'].map((f) => `supabase/functions/booking-request/${f}.ts`)],
+    need: 'node_modules/typescript',
+  },
 ];
 let failed = 0;
 for (const r of runs) {
@@ -29,4 +36,4 @@ for (const r of runs) {
   }
 }
 if (failed) process.exit(1);
-console.log('✓ type check passed (site + dashboard)');
+console.log('✓ type check passed (site + dashboard + shared function modules)');

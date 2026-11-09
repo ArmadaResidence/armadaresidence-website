@@ -60,6 +60,8 @@ const stepCases = [
   ['build › ffmpeg', 'media'], ['build › Run npm ci', 'setup'], ['build › Run actions/checkout@v4', 'setup'], ['build › Set up job', 'setup'],
   ['build › Run actions/upload-pages-artifact@v3', 'deploy'], ['deploy › Run actions/deploy-pages@v4', 'deploy'], ['deploy', 'deploy'], ['build', 'build'],
   [null, 'unknown'], ['report › something new', 'unknown'],
+  // the check jobs that gate the deploy (9 Nov 2026)
+  ['checks · browser (motion-offers) › Run the browser checks', 'checks'], ['checks · static › Run npm ci', 'checks'], ['checks · pixel guard › Pixel guard', 'checks'],
 ];
 for (const [raw, key] of stepCases) E(`step «${raw}» → ${key}`, deployStepKey(raw) === key, deployStepKey(raw));
 for (const [ev, key] of [['push', 'push'], ['schedule', 'schedule'], ['dashboard', 'dashboard'], ['watchdog', 'watchdog'], ['manual', 'manual'], ['workflow_dispatch', 'manual'], ['merge_group', 'other']]) {
@@ -96,13 +98,17 @@ E('function URL needs a project', functionUrl({}) === null);
 // ── the workflow wiring ──
 const wf = readFileSync(new URL('../.github/workflows/deploy.yml', import.meta.url), 'utf8');
 E('deploy.yml reports the start', /node scripts\/site-deploy-report\.mjs running/.test(wf));
-E('deploy.yml status job: always(), never for a dry run, actions: read', /status:\n\s+needs: \[build, deploy\]\n\s+if: \$\{\{ always\(\) && !inputs\.dry_run \}\}/.test(wf) && /actions: read/.test(wf) && /site-deploy-report\.mjs final/.test(wf));
+// since 9 Nov 2026 the check jobs gate the deploy: status / report also need them, and the deploy needs every one
+const NEEDS = String.raw`\[build, checks-static, checks-browser, checks-pixel, deploy\]`;
+E('deploy.yml: the deploy needs the build and every check job', /deploy:\n\s+needs: \[build, checks-static, checks-browser, checks-pixel\]\n(\s+#.*\n)?\s+if: \$\{\{ !inputs\.dry_run && !cancelled\(\) && needs\.build\.result == 'success' && needs\.checks-static\.result == 'success' && needs\.checks-browser\.result == 'success' && \(needs\.checks-pixel\.result == 'success' \|\| needs\.checks-pixel\.result == 'skipped'\) \}\}/.test(wf));
+E('deploy.yml: the status report counts a failed check job as a failed build', /BUILD_RESULT: \$\{\{ \(needs\.build\.result == 'success' && needs\.checks-static\.result == 'success' && needs\.checks-browser\.result == 'success'/.test(wf));
+E('deploy.yml status job: always(), never for a dry run, actions: read', new RegExp(String.raw`status:\n\s+needs: ${NEEDS}\n\s+if: \$\{\{ always\(\) && !inputs\.dry_run \}\}`).test(wf) && /actions: read/.test(wf) && /site-deploy-report\.mjs final/.test(wf));
 const wd = readFileSync(new URL('../.github/workflows/deploy-watchdog.yml', import.meta.url), 'utf8');
 E('the watchdog checks out the report helper', wd.includes('scripts/site-deploy-report.mjs'));
 E('the watchdog alert_test (none | sink | admin) runs only the sample alert', /alert_test:[\s\S]*?type: choice[\s\S]*?options: \['none', 'sink', 'admin'\]/.test(wd) && wd.includes("run: node scripts/site-deploy-report.mjs test ${{ inputs.alert_test }}") && wd.includes("if: ${{ inputs.alert_test != 'sink' && inputs.alert_test != 'admin' }}\n        run: node scripts/deploy-watchdog.mjs"));
 // the Pages concurrency (6 Nov 2026): a running deploy is never cancelled; a cancelled run requeues its job, never an alert
 E('deploy.yml: cancel-in-progress false', /concurrency:\n\s+group: .*\n\s+cancel-in-progress: false/.test(wf));
-E('deploy.yml: the report job always runs and requeues on a cancelled run', /report:\n\s+needs: \[build, deploy\]\n\s+if: \$\{\{ always\(\) \}\}/.test(wf) && /= "cancelled" \][\s\S]{0,120}node scripts\/media-job\.mjs requeue/.test(wf));
+E('deploy.yml: the report job always runs and requeues on a cancelled run', new RegExp(String.raw`report:\n\s+needs: ${NEEDS}\n\s+if: \$\{\{ always\(\) \}\}`).test(wf) && /= "cancelled" \][\s\S]{0,120}node scripts\/media-job\.mjs requeue/.test(wf));
 E('a cancelled run is reported as cancelled (no alert)', finalStatus('cancelled', 'skipped') === 'cancelled' && finalStatus('success', 'cancelled') === 'cancelled');
 const cfg = readFileSync(new URL('../supabase/config.toml', import.meta.url), 'utf8');
 E('site-deploy-report: verify_jwt = false (server to server)', /\[functions\.site-deploy-report\]\nverify_jwt = false/.test(cfg));
