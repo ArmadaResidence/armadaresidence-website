@@ -35,6 +35,17 @@ const built = (rel) => existsSync(join(DIST, rel, 'index.html'));
 // reads the venues published in «المطاعم والمقاهي», not the local dist (the same rule as gallery-site-check)
 const REMOTE = !/^https?:\/\/(127\.0\.0\.1|localhost)(:|\/|$)/.test(BASE);
 const remoteText = async (path) => { const r = await fetch(`${BASE}${path}?v=${Date.now()}`); return { status: r.status, text: r.ok ? await r.text() : '' }; };
+// a local build made from the dashboard (CI, 9 Nov 2026: the browser checks judge the build being deployed —
+// content/media.generated.json `source: supabase`) is judged like the live site, by what it serves; a local build
+// without the service key has no venue, the media sample (`source: fixture`) its known venues
+const mediaSource = (() => {
+  try {
+    return JSON.parse(readFileSync(join('content', 'media.generated.json'), 'utf8')).source ?? 'none';
+  } catch {
+    return 'none';
+  }
+})();
+const PUBLISHED = REMOTE || mediaSource === 'supabase';
 let sitemap;
 let live;
 /** the venues the live /dining/ lists (remote, published): [{ slug, status }] */
@@ -47,8 +58,12 @@ if (REMOTE) {
 } else {
   sitemap = readdirSync(DIST).filter((f) => /^sitemap-\d+\.xml$/.test(f)).map((f) => readFileSync(join(DIST, f), 'utf8')).join('');
   live = built('dining');
+  if (PUBLISHED && live) {
+    const d = readFileSync(join(DIST, 'dining', 'index.html'), 'utf8');
+    served = [...d.matchAll(/data-venue="([a-z0-9-]+)"[^>]*data-venue-status="([a-z_]+)"/g)].map((m) => ({ slug: m[1], status: m[2] }));
+  }
 }
-console.log(`dining-site-check: ${BASE} (${live ? (REMOTE ? `published venues: ${served.map((v) => `${v.slug} ${v.status}`).join(', ')}` : 'published venues') : 'no published venue'})`);
+console.log(`dining-site-check: ${BASE} (${live ? (PUBLISHED ? `published venues: ${served.map((v) => `${v.slug} ${v.status}`).join(', ')}` : 'published venues') : 'no published venue'})`);
 
 const FORMS = [
   { name: '375', viewport: { width: 375, height: 812 }, isMobile: true, hasTouch: true },
@@ -114,8 +129,8 @@ try {
           check((await status(page, L('/dining/armada-residence-cafe/'))) === 404, `${tag}: a venue page exists without an active venue`);
           continue;
         }
-        if (REMOTE) {
-          // the live site: whatever is published — every active venue on its branch page (no café card), its own page
+        if (PUBLISHED) {
+          // the live site (or a build from the dashboard): whatever is published — every active venue on its branch page (no café card), its own page
           // with the hours and the menu link; a coming-soon venue only on /dining/ and its teaser
           check((await status(page, L('/dining/'))) === 200, `${tag}: /dining/ is missing`);
           await layout(page, `${tag} /dining/`);

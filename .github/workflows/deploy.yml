@@ -12,7 +12,8 @@ name: Build, QA and deploy to GitHub Pages
 # Checks (9 Nov 2026, Ahmed — the local hooks keep only the fast checks; CLAUDE.md §11): every run — push, schedule,
 # dashboard publish, watchdog, dry run — checks the site it is about to publish before anything is deployed:
 #   checks-static   its own build without the service key (like the developer's machine), qa.py, every static check
-#                   (the dashboard / email browser checks included) and the sample qa
+#                   (the dashboard's browser checks included) and the sample qa
+#   checks-windows  the emails' A4 print, measured with the readers' system fonts (Segoe UI, Tahoma) on Windows
 #   checks-browser  the browser checks in parallel shards (scripts/check-plan.mjs CI_SHARDS) against THIS run's build
 #                   (dist/ and the generated content files, handed over as the `site-build` artifact)
 #   checks-pixel    pushes only: the pushed range's parent and this commit each built and every page compared — blocking
@@ -192,6 +193,27 @@ jobs:
       - name: Run the static checks
         run: node scripts/check-all.mjs --ci-static
 
+  # the emails' A4 print (email-print-check) on Windows: the emails name 'Segoe UI', Tahoma and Arial after IBM Plex
+  # Sans Arabic (which readers do not have) — Linux has none of them, so the page is measured where they exist
+  checks-windows:
+    name: checks · emails print (Windows)
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: npm ci
+      - name: Browsers (WebKit; Google Chrome is on the runner)
+        run: npx playwright install webkit
+      - name: Run the print check
+        run: node scripts/check-all.mjs --ci-windows
+
   # the browser checks, in parallel, against this run's build (the site-build artifact)
   checks-browser:
     name: checks · browser (${{ matrix.shard }})
@@ -254,9 +276,9 @@ jobs:
           retention-days: 7
 
   deploy:
-    needs: [build, checks-static, checks-browser, checks-pixel]
+    needs: [build, checks-static, checks-windows, checks-browser, checks-pixel]
     # every check job passed (the pixel guard may be skipped: not a push); a dry run never deploys
-    if: ${{ !inputs.dry_run && !cancelled() && needs.build.result == 'success' && needs.checks-static.result == 'success' && needs.checks-browser.result == 'success' && (needs.checks-pixel.result == 'success' || needs.checks-pixel.result == 'skipped') }}
+    if: ${{ !inputs.dry_run && !cancelled() && needs.build.result == 'success' && needs.checks-static.result == 'success' && needs.checks-windows.result == 'success' && needs.checks-browser.result == 'success' && (needs.checks-pixel.result == 'success' || needs.checks-pixel.result == 'skipped') }}
     runs-on: ubuntu-latest
     environment:
       name: github-pages
@@ -270,7 +292,7 @@ jobs:
   # next run's manifest settles it, and the deploy watchdog dispatches one for it after 20 minutes at the latest. A run
   # replaced while still waiting never started: its job stays queued for the run that replaced it.
   report:
-    needs: [build, checks-static, checks-browser, checks-pixel, deploy]
+    needs: [build, checks-static, checks-windows, checks-browser, checks-pixel, deploy]
     if: ${{ always() }}
     runs-on: ubuntu-latest
     env:
@@ -300,7 +322,7 @@ jobs:
   # the commit, the failed step and this run's link (Edge Function site-deploy-report; 6 Nov 2026: from the evening of
   # 5 Nov every build failed qa.py and nobody knew). always(): a cancelled run reports `cancelled` (never an alert); dry runs never report.
   status:
-    needs: [build, checks-static, checks-browser, checks-pixel, deploy]
+    needs: [build, checks-static, checks-windows, checks-browser, checks-pixel, deploy]
     if: ${{ always() && !inputs.dry_run }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -312,7 +334,7 @@ jobs:
       SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
       GH_TOKEN: ${{ github.token }}
       # the build and its checks as one result: success only when every check job passed (the pixel guard may be skipped)
-      BUILD_RESULT: ${{ (needs.build.result == 'success' && needs.checks-static.result == 'success' && needs.checks-browser.result == 'success' && (needs.checks-pixel.result == 'success' || needs.checks-pixel.result == 'skipped')) && 'success' || (contains(needs.*.result, 'cancelled') && 'cancelled' || 'failure') }}
+      BUILD_RESULT: ${{ (needs.build.result == 'success' && needs.checks-static.result == 'success' && needs.checks-windows.result == 'success' && needs.checks-browser.result == 'success' && (needs.checks-pixel.result == 'success' || needs.checks-pixel.result == 'skipped')) && 'success' || (contains(needs.*.result, 'cancelled') && 'cancelled' || 'failure') }}
       DEPLOY_RESULT: ${{ needs.deploy.result }}
       TRIGGER: ${{ inputs.trigger }}
       MEDIA_JOB: ${{ inputs.media_job }}

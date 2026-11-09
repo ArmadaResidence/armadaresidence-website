@@ -99,9 +99,9 @@ E('function URL needs a project', functionUrl({}) === null);
 const wf = readFileSync(new URL('../.github/workflows/deploy.yml', import.meta.url), 'utf8');
 E('deploy.yml reports the start', /node scripts\/site-deploy-report\.mjs running/.test(wf));
 // since 9 Nov 2026 the check jobs gate the deploy: status / report also need them, and the deploy needs every one
-const NEEDS = String.raw`\[build, checks-static, checks-browser, checks-pixel, deploy\]`;
-E('deploy.yml: the deploy needs the build and every check job', /deploy:\n\s+needs: \[build, checks-static, checks-browser, checks-pixel\]\n(\s+#.*\n)?\s+if: \$\{\{ !inputs\.dry_run && !cancelled\(\) && needs\.build\.result == 'success' && needs\.checks-static\.result == 'success' && needs\.checks-browser\.result == 'success' && \(needs\.checks-pixel\.result == 'success' \|\| needs\.checks-pixel\.result == 'skipped'\) \}\}/.test(wf));
-E('deploy.yml: the status report counts a failed check job as a failed build', /BUILD_RESULT: \$\{\{ \(needs\.build\.result == 'success' && needs\.checks-static\.result == 'success' && needs\.checks-browser\.result == 'success'/.test(wf));
+const NEEDS = String.raw`\[build, checks-static, checks-windows, checks-browser, checks-pixel, deploy\]`;
+E('deploy.yml: the deploy needs the build and every check job', /deploy:\n\s+needs: \[build, checks-static, checks-windows, checks-browser, checks-pixel\]\n(\s+#.*\n)?\s+if: \$\{\{ !inputs\.dry_run && !cancelled\(\) && needs\.build\.result == 'success' && needs\.checks-static\.result == 'success' && needs\.checks-windows\.result == 'success' && needs\.checks-browser\.result == 'success' && \(needs\.checks-pixel\.result == 'success' \|\| needs\.checks-pixel\.result == 'skipped'\) \}\}/.test(wf));
+E('deploy.yml: the status report counts a failed check job as a failed build', /BUILD_RESULT: \$\{\{ \(needs\.build\.result == 'success' && needs\.checks-static\.result == 'success' && needs\.checks-windows\.result == 'success' && needs\.checks-browser\.result == 'success'/.test(wf));
 E('deploy.yml status job: always(), never for a dry run, actions: read', new RegExp(String.raw`status:\n\s+needs: ${NEEDS}\n\s+if: \$\{\{ always\(\) && !inputs\.dry_run \}\}`).test(wf) && /actions: read/.test(wf) && /site-deploy-report\.mjs final/.test(wf));
 const wd = readFileSync(new URL('../.github/workflows/deploy-watchdog.yml', import.meta.url), 'utf8');
 E('the watchdog checks out the report helper', wd.includes('scripts/site-deploy-report.mjs'));

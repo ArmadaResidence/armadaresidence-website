@@ -23,6 +23,9 @@ export const STATIC_CHECKS = ['typecheck', 'admin-digits-check', 'admin-format-c
 export const BROWSER_CHECKS = ['booking-nav-check', 'drawer-check', 'booking-whatsapp-check', 'datepicker-check', 'motion-check', 'booking-instant-check', 'partners-form-check', 'careers-form-check', 'dining-site-check', 'gallery-site-check', 'offers-site-check', 'blog-site-check', 'faq-site-check', 'content-site-check', 'club-site-check', 'home-sections-check', 'consent-check', 'partners-button-check', 'theme-check', 'hero-video-check', 'hero-slides-check', 'mobile-forms-check', 'a11y-check'];
 // the static checks that open a browser (the dashboard's sidebar and «السجل» pages, the emails' print layout): CI only
 export const STATIC_BROWSER_CHECKS = ['admin-sidebar-check', 'admin-audit-check', 'email-print-check'];
+// measured with the reader's system fonts (the emails name 'Segoe UI', Tahoma, Arial after IBM Plex Sans Arabic, which
+// readers do not have): in CI on a Windows runner, as on the developer's machine — Linux has none of those fonts
+export const CI_WINDOWS_CHECKS = ['email-print-check'];
 // the local hooks (build and qa.py too, unless the commit is docs only): every static check that needs no browser
 export const FAST_CHECKS = STATIC_CHECKS.filter((c) => !STATIC_BROWSER_CHECKS.includes(c));
 // GitHub Actions: the browser checks in parallel jobs, balanced on the full-suite times of 8 Nov 2026 (about 5–6 min of
@@ -288,7 +291,8 @@ if (import.meta.url === pathToFileURL(process.argv[1]).href) {
     console.log(JSON.stringify(Object.keys(CI_SHARDS)));
   } else if (args.includes('--shards')) {
     for (const [name, checks] of Object.entries(CI_SHARDS)) console.log(`${name}: ${checks.join(', ')}`);
-    console.log(`static (CI): build, qa, ${STATIC_CHECKS.join(', ')}, sample qa`);
+    console.log(`static (CI): build, qa, ${STATIC_CHECKS.filter((c) => !CI_WINDOWS_CHECKS.includes(c)).join(', ')}, sample qa`);
+    console.log(`windows (CI): ${CI_WINDOWS_CHECKS.join(', ')}`);
     console.log(`local hooks: build, qa, ${FAST_CHECKS.join(', ')}`);
   } else if (args.includes('--dry-run')) {
     console.log('| sample change | files | checks |\n|---|---|---|');

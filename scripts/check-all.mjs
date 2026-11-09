@@ -21,7 +21,9 @@
 //   $(git rev-parse --git-path armada-full-suite-passed.txt) — local to this clone, never committed.
 //   GitHub Actions only (deploy.yml):
 //   node scripts/check-all.mjs --ci-static     its own build (no service key, like this machine) -> qa -> every static
-//                                              check (the browser ones of the dashboard and the emails included) -> sample qa
+//                                              check but CI_WINDOWS_CHECKS (the dashboard's browser checks included) -> sample qa
+//   node scripts/check-all.mjs --ci-windows    the checks measured with the readers' system fonts (check-plan
+//                                              CI_WINDOWS_CHECKS: the emails' A4 print) on a Windows runner
 //   node scripts/check-all.mjs --shard <name>  the browser checks of one CI shard (check-plan CI_SHARDS) against the
 //                                              dist/ already here (the deploy build's, downloaded) — nothing is built
 //   node scripts/check-all.mjs --pixel <sha>   the pixel guard: <sha>'s tree and this checkout each built, every page
@@ -38,7 +40,7 @@ import { execFileSync, spawn } from 'node:child_process';
 import { appendFileSync, existsSync, lstatSync, mkdtempSync, readFileSync, rmSync, symlinkSync, unlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
-import { BROWSER_CHECKS, CI_SHARDS, STATIC_CHECKS, describe, fastPlan, planFor, stagedFiles } from './check-plan.mjs';
+import { BROWSER_CHECKS, CI_SHARDS, CI_WINDOWS_CHECKS, STATIC_CHECKS, describe, fastPlan, planFor, stagedFiles } from './check-plan.mjs';
 import { serveDist } from './serve-dist.mjs';
 
 const REVIEW_URL = 'https://armadaresidence.com'; // the live site since launch day (8 Nov 2026)
@@ -54,6 +56,7 @@ const shard = shardAt >= 0 ? args[shardAt + 1] : null;
 const pixelAt = args.indexOf('--pixel');
 const pixelBase = pixelAt >= 0 ? args[pixelAt + 1] : null;
 const ciStatic = args.includes('--ci-static');
+const ciWindows = args.includes('--ci-windows');
 const PYTHON = process.env.PYTHON || 'python';
 const t0All = Date.now();
 
@@ -110,7 +113,9 @@ if ((staged || commit) && !args.includes('--full')) {
   console.log(describe(plan));
   if (args.includes('--dry-run')) process.exit(0);
 } else if (ciStatic) {
-  plan = { full: false, ci: true, build: true, sampleQa: true, checks: [...STATIC_CHECKS], a11yPages: null, pixelGuard: false };
+  plan = { full: false, ci: true, build: true, sampleQa: true, checks: STATIC_CHECKS.filter((c) => !CI_WINDOWS_CHECKS.includes(c)), a11yPages: null, pixelGuard: false };
+} else if (ciWindows) {
+  plan = { full: false, ci: true, build: false, sampleQa: false, checks: [...CI_WINDOWS_CHECKS], a11yPages: null, pixelGuard: false };
 } else if (shard) {
   plan = { full: false, ci: true, build: false, prebuilt: true, sampleQa: false, checks: [...CI_SHARDS[shard]], a11yPages: null, pixelGuard: false };
 } else if (pixelBase) {
@@ -122,7 +127,10 @@ if (plan.ci) console.log(describe(plan));
 // this checkout's. Staged: the index as it is; a commit: read into a throwaway index first.
 const LINKED = ['node_modules', 'admin/node_modules'];
 const snapshots = [];
-function exportTree(treeish) {
+const ownModuleSnapshots = new Set();
+// ownModules (the CI pixel guard, 9 Nov 2026): the tree gets its own `npm ci` instead of the links — on Linux Vite
+// resolves a linked node_modules to its real path outside the snapshot and astro build fails there.
+function exportTree(treeish, { ownModules = false } = {}) {
   const dir = mkdtempSync(join(tmpdir(), treeish ? 'armada-commit-' : 'armada-staged-'));
   const prefix = `--prefix=${dir.split('\\').join('/')}/`;
   if (treeish) {
@@ -134,12 +142,18 @@ function exportTree(treeish) {
   } else {
     execFileSync('git', ['checkout-index', '--all', '--force', prefix]);
   }
-  for (const d of LINKED) if (existsSync(resolve(d))) symlinkSync(resolve(d), join(dir, d), 'junction');
+  if (ownModules) ownModuleSnapshots.add(dir);
+  if (ownModules) execFileSync(process.platform === 'win32' ? 'npm.cmd' : 'npm', ['ci', '--no-audit', '--no-fund'], { cwd: dir, stdio: 'inherit', shell: process.platform === 'win32' });
+  else for (const d of LINKED) if (existsSync(resolve(d))) symlinkSync(resolve(d), join(dir, d), 'junction');
   snapshots.push(dir);
   return dir;
 }
 function removeSnapshots() {
   for (const snapshot of snapshots) {
+    if (ownModuleSnapshots.has(snapshot)) {
+      rmSync(snapshot, { recursive: true, force: true }); // its node_modules is its own: nothing links outside
+      continue;
+    }
     // unlink the junctions first, so removing the folder can never reach the real node_modules
     let linked = false;
     for (const d of LINKED) {
@@ -233,7 +247,7 @@ if (plan.pixelGuard && built) {
     advisory = !shas.length || marked.length < shas.length;
     console.log(`\npixel guard ${pixelBase.slice(0, 12)} -> HEAD: ${marked.length} of ${shas.length} commit(s) marked Armada-Invisible — ${advisory ? 'a REPORT only (a visible change is allowed)' : 'BLOCKING (no pixel may change)'}`);
   }
-  const head = exportTree(baseRef);
+  const head = exportTree(baseRef, { ownModules: Boolean(pixelBase) });
   if (await build(head, 'before ')) {
     const own = await serveDist(0, { dist: join(cwd, 'dist') });
     const before = await serveDist(0, { dist: join(head, 'dist') });
@@ -270,12 +284,12 @@ if (!live && built && plan.sampleQa) {
   const b = await run('sample build', PYTHON, ['build.py'], { env });
   results.push(b);
   if (!b.code) results.push(await run('sample qa', PYTHON, ['qa.py'], { env }));
-  if (!staged && !commit) results.push(await run('build (restored)', PYTHON, ['build.py']));
+  if (!staged && !commit && !plan.ci) results.push(await run('build (restored)', PYTHON, ['build.py']));
 }
 removeSnapshots();
 
 const level = plan.full ? 'full suite' : plan.fast ? 'fast checks' : 'routed';
-const scope = live ? `live: ${base}` : shard ? `CI shard ${shard}` : ciStatic ? 'CI static' : pixelBase ? `CI pixel guard ${pixelBase.slice(0, 12)} -> HEAD` : commit ? `commit ${commit}, ${level}` : staged ? `staged snapshot, ${level}` : 'local build, full suite';
+const scope = live ? `live: ${base}` : shard ? `CI shard ${shard}` : ciStatic ? 'CI static' : ciWindows ? 'CI windows' : pixelBase ? `CI pixel guard ${pixelBase.slice(0, 12)} -> HEAD` : commit ? `commit ${commit}, ${level}` : staged ? `staged snapshot, ${level}` : 'local build, full suite';
 console.log(`\n━━ summary (${scope}) ━━`);
 for (const r of results) console.log(`${r.code ? '✗ FAIL' : '✓ pass'}  ${r.label.padEnd(24)} ${r.s}s`);
 const total = Math.round((Date.now() - t0All) / 1000);

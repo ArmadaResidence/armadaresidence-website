@@ -37,6 +37,16 @@ const read = (p) => (existsSync(join(DIST, p)) ? readFileSync(join(DIST, p), 'ut
 const isRedirect = (html) => /http-equiv="refresh"/.test(html);
 const redirectTo = (html) => (/http-equiv="refresh" content="\d+;url=([^"]+)"/.exec(html) || [])[1] ?? null;
 const site = seo.site_url.replace(/\/$/, '');
+// each room's availability as the build resolved it from the dashboard (dist/_availability.json, written by build.py —
+// rooms.json is only the seed / fallback; CLAUDE.md §11): the sitemap follows the resolved value (9 Nov 2026)
+const resolvedAvail = (() => {
+  try {
+    return JSON.parse(readFileSync(join(DIST, '_availability.json'), 'utf8')).rooms ?? {};
+  } catch {
+    return {};
+  }
+})();
+const availabilityOf = (r) => resolvedAvail[`${r.branch}/${r.slug}`] ?? r.availability;
 const sitemap = read('sitemap-0.xml');
 console.log(`content-site-check: ${BASE} (${sample ? `the sample: ${gen.texts.length} text(s), hidden ${[...gen.hidden.rooms, ...gen.hidden.sections].join(', ')}, ${gen.announcements.length} announcement(s)` : 'nothing from the dashboard'})`);
 
@@ -50,7 +60,7 @@ for (const lang of ['ar', 'en']) {
     const html = read(L(`${r.branch}/${r.slug}/index.html`));
     const hidden = hiddenRooms.includes(`${r.branch}/${r.slug}`);
     check(hidden ? isRedirect(html) && redirectTo(html) === parent(`/${r.branch}/`) : !!html && !isRedirect(html), `${lang} ${r.branch}/${r.slug}: ${hidden ? 'not a redirect to its branch' : 'page missing'}`, redirectTo(html) ?? '');
-    check(sitemap.includes(`<loc>${site}${parent(`/${r.branch}/${r.slug}/`)}</loc>`) === (!hidden && r.availability !== 'sold_out'), `${lang} ${r.branch}/${r.slug}: sitemap entry ${hidden ? 'present' : 'missing'}`);
+    check(sitemap.includes(`<loc>${site}${parent(`/${r.branch}/${r.slug}/`)}</loc>`) === (!hidden && availabilityOf(r) !== 'sold_out'), `${lang} ${r.branch}/${r.slug}: sitemap entry ${hidden ? 'present' : 'missing'}`);
   }
   const hall = read(L('airport-road/hall/index.html'));
   const hallHidden = hiddenSections.includes('hall');
