@@ -2535,6 +2535,7 @@ Run 42630344689's motion-offers job was cancelled by a newer live-checks run (co
 diagnosed in session 22: GitHub Actions was in a major outage when the session started, so no CI run could be made.
 Next step: run `datepicker-check` alone against the live domain in CI with `DEBUG=1` and a per-form timeout, to see
 which form waits (the drawer's booking form is now a module loaded after the paint — the most likely place).
+
 ## 2026-11-09 — The legal name on the website (Ahmed, 9 Nov 2026 — Meta business verification)
 
 Meta rejected the business verification: «the legal name must be present on the website». Before the change (fetched
@@ -2553,3 +2554,83 @@ English page** (footer and `legalName` were the English entity name).
 - Organization JSON-LD: `legalName` = the Arabic legal name on both languages.
 - qa.py `check_legal_name`: every page (but the café app /menu/) holds the exact string inside one text node, and
   /policies/ + /about/ the company-details line.
+
+## 2026-11-09 — Session 22: conversion data, GTM on the real domain only, the privacy sentence, small facts (Ahmed, 9 Nov 2026)
+
+### GTM only on the real domain
+
+The container script is injected only when the page is served from `armadaresidence.com` or `www.armadaresidence.com`
+(`Base.astro → GTM_HOSTS`, from `seo.json → site_url`). A github.io preview, localhost, a CI or check build never
+loads it, so no test visit reaches GA4 or the ad platforms. The Consent Mode defaults, the dataLayer and every push
+(the queued `gtm.js` event included) run everywhere, before GTM, as before. The `<noscript>` iframe stays: it only
+loads with JavaScript off. Check: `consent-check` (gtm.js requested on the real domain, never elsewhere).
+Consequence: Tag Assistant / GTM Preview works on the real domain only.
+
+### Conversion events
+
+- `booking_confirmed` (GA4 purchase, Meta / TikTok / Snap Purchase): `value` = the total shown to the guest, a number,
+  SAR; `currency: "SAR"`; `transaction_id` = `event_id` = the booking ref (Meta / TikTok / Snap deduplicate a later
+  server-side copy on it — none exists today). Pushed **once per booking**: the booking form writes a one-shot ticket
+  (sessionStorage `armada_track_<ref>`: the status, the value, the hashed customer data) just before it opens the
+  success page; the page pushes only while the ticket exists, deletes it and remembers the ref (localStorage
+  `armada_tracked`, last 20). A reload, a reopened link, a new tab or a shared URL pushes nothing. Without storage at
+  all no conversion is pushed — never one that could repeat.
+- Leads (no amount invented; `currency: "SAR"` alone where there is none): `booking_request` (value = the quoted
+  total when the guest was shown a price; `event_id` = ref), `partner_enquiry` (`event_id` = ref), `club_join` (the
+  /club/ form and the success-page card). Mapped to ad platforms today (the exported container,
+  `docs/gtm-container.json`): only `booking_request` (Meta Lead, TikTok SubmitForm, Snap SIGN_UP); `partner_enquiry`
+  reaches GA4 only; `club_join` nothing. `dining_notify` and `job_application` stay out of the ad platforms on purpose.
+- The «about 50 % valid purchases» in Meta — most likely cause in the code before this session: the success page
+  de-duplicated `booking_confirmed` with sessionStorage, which lives per tab, and took `value` from the price stash in
+  the original tab's sessionStorage, defaulting to **0**. Every later view of the confirmation URL in another tab or
+  session (history, a restored tab, the link reopened from an in-app browser) pushed a second `booking_confirmed` with
+  `value: 0` — an invalid Purchase for Meta — and with no `event_id` Meta could not merge it with the first. One
+  re-view per guest gives exactly the 50 %. Fixed by the ticket above. Still to verify in the container (step 0 of
+  `docs/gtm-changes-session22.md`): how the Meta Purchase tag reads `value` / `currency`, and that it sends `eventID`.
+
+### Customer data (advertising consent only)
+
+`src/lib/user-data.ts`: on the booking, partners and «إياب» forms the email (trimmed, lower-case) and the phone
+(E.164 digits) are hashed with SHA-256 in the browser and pushed as `user_data` only while `ad_user_data` is granted —
+read from the page's own last Consent Mode command, so it is exactly what Google sees. Keys: `email_sha256`,
+`phone_sha256` (digits **without** `+`, as Ahmed asked — Meta, Snap) and `phone_e164_sha256` (the same number **with**
+`+` — Google's `sha256_phone_number` and TikTok require it; the dashboard's audience export already splits them the
+same way). The raw values never reach the dataLayer. The success-page «إياب» card carries no `user_data` (that page
+has no email or phone). The GTM side (variables, advanced matching, enhanced conversions if a Google Ads tag exists,
+TikTok `identify`, Snap init) is the Claude in Chrome prompt in `docs/gtm-changes-session22.md`; not applied.
+
+### Privacy policy and the cookie banner
+
+The approved sentence is in `policies.json → page.sections[cookies]`, both languages, after the consent sentence:
+«بموافقتك على ملفات الارتباط الإعلانية، نشارك بريدك الإلكتروني ورقم جوالك بصيغة مُشفّرة مع منصات الإعلان لقياس أداء
+إعلاناتنا، ويمكنك سحب موافقتك في أي وقت.» / "With your consent to advertising cookies, we share your email and mobile
+number in hashed form with advertising platforms to measure our ads. You can withdraw your consent at any time."
+The cookie banner keeps its three visible choices («قبول الكل» / «الضروري فقط» / «تخصيص»); its version
+(`cookie_consent.version` 2026-11-07) is unchanged, so nobody is asked again for this sentence.
+
+### Facts
+
+- Airport Road to Taif airport: **18 minutes by car, about 22 km** (Ahmed, 2 Nov 2026; was 15 min, 9 Oct 2026):
+  `branches.json` (`drive_time_airport_min`, the new `drive_distance_airport_km`, `drive_times_min.taif_airport`, the
+  entrance story), `partners.json`, the airport strings of `partners-pages.json` (edited by hand: the generator
+  `scripts/legacy-partners-content.py` is older than the file — it would write 168 units and drop the form errors),
+  the airport mentions in the article seeds; the FAQ already said 18 / 22. **Not yet live:** the entrance story is a
+  published field of «المحتوى والظهور» and the four articles that mention the airport are published from «المدونة»;
+  their live texts in the database still say 15 and win over the files — they change only when Ahmed edits and
+  publishes them (or approves a database update).
+- X: https://x.com/ArmadaR25 (verified, @armadar25) — `contact.json → social.x`: the footer «تابعنا» row, /contact/
+  and the Organization `sameAs`.
+- Google Business Profiles completed for both branches; their website links are
+  `/airport-road/?utm_source=google&utm_medium=organic&utm_campaign=gbp-airport-road` and
+  `/shafa-road/?utm_source=google&utm_medium=organic&utm_campaign=gbp-shafa-road`. Checked live: both answer 200
+  with the clean canonical (`https://armadaresidence.com/airport-road/`, `…/shafa-road/`); without the trailing slash
+  GitHub Pages answers 301 keeping the query; `src/lib/visit.ts` records the UTM as the first touch.
+
+### Waiting rule (CLAUDE.md §12)
+
+Before the first push of a session, read https://www.githubstatus.com/api/v2/summary.json; if Actions or Pages is not
+"operational", finish the local work, commit and hand over without pushing. In any session the total waiting on CI or
+deploys is capped at 30 minutes; a GitHub-side failure gets at most two retries, 15 minutes apart, then hand over with
+what is live. Session 22 itself: at its start Actions was in a «major outage» (Pages operational), so nothing was
+pushed and the CI proof that `booking-nav-check` fails on an inert booking form was not run.
+
