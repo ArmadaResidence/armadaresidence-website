@@ -47,8 +47,10 @@ const firstSentence = (text: string) => {
           <div class="split-media" aria-hidden="true">
             <div class="split-media-inner">
               {cover ? (
-                // the phone photo (9:16) is shown scaled to the ~1:2 card's height: a little wider than the screen
-                <Photo {...photoProps(locale, cover, { mobileSizes: '120vw' })} sizes="(min-width: 768px) 58vw, 100vw" class="photo-fill split-photo" imgClass="w-full h-full object-cover" />
+                // the phone photo (9:16) is shown scaled to the ~1:2 card's height: a little wider than the screen.
+                // fetchpriority low (9 Nov 2026, mobile LCP): the cards start just under the hero, so Chrome raised them to
+                // high priority and their ≈ 100 KB competed with the hero photo; same files, fetched after it
+                <Photo {...photoProps(locale, cover, { mobileSizes: '120vw' })} sizes="(min-width: 768px) 58vw, 100vw" fetchpriority="low" class="photo-fill split-photo" imgClass="w-full h-full object-cover" />
               ) : (
                 <Placeholder label={fill(t.photo_pending_alt, { subject: name })} class="photo-fill rounded-none" />
               )}
