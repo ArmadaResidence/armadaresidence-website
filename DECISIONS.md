@@ -2395,7 +2395,7 @@ Edge Function and dashboard deploys, workflow edits, one manual run of the backu
   count, total) — else exit 1. Summary in the run log; `backup-result.json` as an artifact (counts, never a name).
 - **Excluded: `job-applications`** (flagged per CLAUDE.md, a conflict with "every bucket"): a CV lives in Storage only
   until its email is accepted, then is deleted by design (§8b, the applicants' notice); a copy kept up to 90 days
-  in `deleted/` would outlive that and miss deletion requests. One line in `EXCLUDED` to include it if Ahmed decides so.
+  in `deleted/` would outlive that and miss deletion requests. Ahmed's decision (9 Nov 2026, after the first run): keep it excluded.
 - **Alert:** a failed run or a mismatch → `site-deploy-report.mjs backup` → the Edge Function stage `backup_failed`
   → `backupAlertMail` «فشل النسخ الاحتياطي الأسبوعي للصور» (the reason, the counts, the run link) to the dashboard's
   active admins, the deploy alert's sender (copy `ui.json → staff_email.ar.backup_alert`, Arabic only). A run on
