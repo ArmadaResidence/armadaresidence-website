@@ -75,7 +75,8 @@
   "privacy": "see page.sections[privacy]",
   "cookie_consent": {
     "_note": "The cookie banner (Google Consent Mode v2, advanced — Ahmed, 7 Nov 2026; DECISIONS.md 2026-11-07 «Cookie consent»). A new version shows the banner again to everyone; a choice is kept max_age_days in localStorage armada-consent. The wording is page.sections[cookies] and ui.json → cookies.",
-    "version": "2026-11-07",
+    "version": "2026-11-09",
+    "version_note": "2026-11-09 (Ahmed): the privacy policy now says that, with advertising consent, the hashed email and mobile number are shared with advertising platforms — a new use of data, so everyone who chose under 2026-11-07 is asked once more. 2026-11-07: the first banner.",
     "max_age_days": 365
   },
   "verified": true,

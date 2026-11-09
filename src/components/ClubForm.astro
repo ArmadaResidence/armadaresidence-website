@@ -256,7 +256,8 @@ const clientData = {
         }
         if (!res.ok) throw new Error(String(res.status));
         const out = (await res.json().catch(() => ({}))) as { source?: string };
-        // a Lead (DECISIONS.md 2026-11-09 «Conversion data»): the currency only (no amount); the member's email / phone
+        // a registration, not a Lead (Ahmed, 9 Nov 2026 — Meta / TikTok CompleteRegistration, Snap SIGN_UP in GTM): the
+        // currency only (no amount); the member's email / phone
         // hashed before the form is emptied, only with advertising consent (src/lib/user-data.ts) — never raw
         const user = await hashedUserData(v.data.email, v.data.phone);
         form.reset();

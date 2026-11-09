@@ -281,6 +281,8 @@ const clientData = {
           ...(value !== null ? { value } : {}),
           currency: 'SAR',
           ...(!isConfirmed && reason ? { reason } : {}),
+          // a request is a Lead (lead_type names which one); a confirmed booking is the purchase
+          ...(!isConfirmed ? { lead_type: 'booking_request' } : {}),
           ...(ticket.user && adUserDataGranted() ? { user_data: ticket.user } : {}),
         });
       }
@@ -353,7 +355,7 @@ const clientData = {
           if (!res.ok) throw new Error(String(res.status));
           const j = (await res.json().catch(() => ({}))) as { member?: boolean };
           welcome();
-          // GA4 through GTM (consent mode decides, as for every event): the source and the currency (a Lead with no amount —
+          // GA4 through GTM (consent mode decides, as for every event): the source and the currency (a registration, not a Lead —
           // DECISIONS.md 2026-11-09 «Conversion data»), nothing personal
           if (!j.member) (window as unknown as { dataLayer?: unknown[] }).dataLayer?.push({ event: 'club_join', source: 'booking-page', currency: 'SAR' });
         } catch {

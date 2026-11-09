@@ -310,7 +310,7 @@ async function run(width, lang) {
   const dl = await page.evaluate(() => (window.dataLayer || []).filter((e) => e.event === 'booking_confirmed'));
   const confRef = url.searchParams.get('ref');
   check(dl.length === 1 && dl[0].value === 400 && dl[0].currency === 'SAR' && dl[0].room_type === 'king-room' && !JSON.stringify(dl[0]).includes('guest@') && !JSON.stringify(dl[0]).includes('500000000"'), `${tag} success: booking_confirmed with value, no personal data`, JSON.stringify(dl[0] ?? null));
-  check(dl[0]?.transaction_id === confRef && dl[0]?.event_id === confRef && typeof dl[0]?.value === 'number', `${tag} success: transaction_id = event_id = the booking ref, value a number`, JSON.stringify(dl[0] ?? null));
+  check(dl[0]?.transaction_id === confRef && dl[0]?.event_id === confRef && typeof dl[0]?.value === 'number' && !('lead_type' in dl[0]), `${tag} success: transaction_id = event_id = the booking ref, value a number`, JSON.stringify(dl[0] ?? null));
   const ud = dl[0]?.user_data ?? {};
   check(ud.email_sha256 === sha('guest@example.com') && ud.phone_sha256 === sha('966500000000') && ud.phone_e164_sha256 === sha('+966500000000') && Object.keys(ud).length === 3, `${tag} success: user_data = the normalised email / phone, SHA-256 (advertising consent granted)`, JSON.stringify(ud));
   // once per booking: a reload of the confirmation page pushes nothing (the one-shot ticket is gone, the ref remembered)
@@ -348,7 +348,7 @@ async function run(width, lang) {
   check((await page.title()) === seo.pages['booking-success'][`title_${L}`], `${tag} fallback: request keeps today's document title`, await page.title());
   const dl2 = await page.evaluate(() => (window.dataLayer || []).filter((e) => e.event === 'booking_request'));
   check(dl2.length === 1 && dl2[0].reason === 'sold_out', `${tag} fallback: booking_request with the reason`);
-  check(typeof dl2[0]?.value === 'number' && dl2[0].value > 0 && dl2[0]?.currency === 'SAR' && dl2[0]?.event_id === new URL(page.url()).searchParams.get('ref') && !('user_data' in (dl2[0] ?? {})), `${tag} fallback: booking_request (Lead) with the quoted total, SAR, event_id = ref; no user_data without advertising consent`, JSON.stringify(dl2[0] ?? null));
+  check(typeof dl2[0]?.value === 'number' && dl2[0].value > 0 && dl2[0]?.currency === 'SAR' && dl2[0]?.event_id === new URL(page.url()).searchParams.get('ref') && dl2[0]?.lead_type === 'booking_request' && !('user_data' in (dl2[0] ?? {})), `${tag} fallback: booking_request (Lead, lead_type) with the quoted total, SAR, event_id = ref; no user_data without advertising consent`, JSON.stringify(dl2[0] ?? null));
   check(!new URL(page.url()).searchParams.has('wa'), `${tag} whatsapp: not accepted → no &wa on the success URL`);
   check(new URL(page.url()).searchParams.get('mc') === '0' && (await page.locator('[data-eyab-invite]').isVisible()), `${tag} consent: unticked → the «انضم إلى إياب» card on the success page`);
   {

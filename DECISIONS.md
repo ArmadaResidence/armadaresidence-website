@@ -2643,3 +2643,26 @@ watchdog had last run at 10:00 UTC (GitHub delays scheduled runs), so it is no s
 scheduled build (00:07 Riyadh) runs `main` again. Session 22 itself: at its start Actions was in a «major outage» (Pages operational), so nothing was
 pushed and the CI proof that `booking-nav-check` fails on an inert booking form was not run.
 
+### Session 22, second part (Ahmed, 9 Nov 2026 evening)
+
+- **Eyab is a registration, not a lead.** `club_join` → Meta and TikTok `CompleteRegistration`, Snap `SIGN_UP`, GA4
+  `sign_up`. `Lead` (TikTok `SubmitForm`, GA4 `generate_lead`) only for `booking_request` and `partner_enquiry`, which
+  now carry `lead_type: "booking_request"` / `"partner_enquiry"`. The site keeps every key the live container reads
+  today (event names, `booking_ref`, `branch`, `room_type`, `nights`, `request_type`, `value`, `currency`, the page
+  keys) beside the new ones, so the current tags work until `docs/gtm-changes-session22.md` is applied (updated to the
+  table above).
+- **Cookie consent version 2026-11-07 → 2026-11-09** (`policies.json → cookie_consent.version`): the privacy policy
+  now describes a new use of data (the hashed email / phone shared with ad platforms), so every visitor who chose under
+  the old version is asked once more. Nothing else in the banner changed.
+- **The partners-page generator can no longer write a stale unit count.** `scripts/legacy-partners-content.py` takes
+  the counts from `branches.json` (106 + 60 = 166), refuses to run while `partners.json → facts.units_*` disagree,
+  writes the hero sentence from that count (the legacy copy said 168), keeps the two hand-maintained form blocks
+  (`form.errors`, `form.draft` — added 26 Oct 2026, unknown to the generator), and refuses to write if any unit count
+  in its output is not one of the branches'. Its output is identical, key for key, to today's `partners-pages.json`.
+- **Pages deploys timing out (9 Nov 2026).** Of today's deploy jobs, the successful ones took 8–16 s (one 142 s) for
+  the same 175 MB `github-pages` artifact (≈ 3,200 files; GitHub Pages limits: 1 GB site, 10 GB artifact — far from
+  both); the failed ones (runs 42611727791, 42644030405, 42651145538, and the legal-name run 42677541787 three times)
+  sat in GitHub's `syncing_files` / `deployment_queued` state until `actions/deploy-pages` gave up at its default 10
+  minutes. The stall is on GitHub's side, not the size of the site. `deploy.yml` now gives the step 20 minutes
+  (`timeout: 1200000`, job limit 30 min); the deploy alert and every other step are unchanged.
+

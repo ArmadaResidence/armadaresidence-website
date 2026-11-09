@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import ast
 import json
+import re
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -51,9 +52,16 @@ def pair(v):
 def main() -> None:
     L = legacy_module()
     partners, branches, rooms, halls, contact = (load(n) for n in ("partners.json", "branches.json", "rooms.json", "halls.json", "contact.json"))
-    f = partners["facts"]
+    f = dict(partners["facts"])
     airport = next(b for b in branches["branches"] if b["slug"] == "airport-road")
     shafa = next(b for b in branches["branches"] if b["slug"] == "shafa-road")
+    # unit counts come ONLY from branches.json (9 Nov 2026 — the legacy copy said 168): partners.json must agree, and
+    # the counts below are the branches' own, so a stale partners.json or legacy sentence can never be written
+    units = {"units_airport": airport["units"], "units_shafa": shafa["units"], "units_total": airport["units"] + shafa["units"]}
+    for k, v in units.items():
+        if f.get(k) != v:
+            raise SystemExit(f"partners.json facts.{k} = {f.get(k)} but branches.json says {v} — fix partners.json first")
+    f.update(units)
     hall = halls["halls"][0]
     removed: list[str] = []
 
@@ -110,6 +118,11 @@ def main() -> None:
         {"n": f["room_types"], "label": {"en": "Room types", "ar": "أنواع الغرف"}, "sub": {"en": "single to two-bedroom", "ar": "من المفردة إلى الجناح"}},
         {"n": f["reply_within_business_days"], "label": {"en": "Working day", "ar": "يوم عمل"}, "sub": {"en": "to reply, in writing", "ar": "للردّ كتابيًا"}},
     ]
+    # the hero line (the legacy copy carried 168 units): the approved sentence with the count from branches.json
+    out["hero"]["sub"] = {
+        "en": f"Two hotels, {f['units_total']} units and one commercial contact for travel agents, tour operators, Umrah organisers, corporate accounts and sports teams.",
+        "ar": f"فندقان و{f['units_total']} وحدة ومسؤول تجاري واحد — لوكلاء السفر ومنظّمي الرحلات ومجموعات العمرة والشركات والفرق الرياضية.",
+    }
     out["hero"]["meta"] = {
         "en": f"{f['hotels']} properties · {f['units_total']} units · B2B hospitality partner",
         "ar": f"فندقان · {f['units_total']} وحدة · شريك ضيافة للشركات ووكلاء السفر",
@@ -377,7 +390,22 @@ def main() -> None:
         return o
 
     out = singular(out)
-    (CONTENT / "partners-pages.json").write_text(json.dumps(out, ensure_ascii=False, indent=2) + "\n", encoding="utf-8", newline="\n")
+    # the form texts maintained by hand since 26 Oct 2026 (the enquiry form's errors and draft notice) are kept as they are
+    target = CONTENT / "partners-pages.json"
+    if target.exists():
+        prev = json.loads(target.read_text(encoding="utf-8"))
+        for key in ("errors", "draft"):
+            if key in prev.get("form", {}) and key not in out.get("form", {}):
+                out.setdefault("form", {})[key] = prev["form"][key]
+    # guard (9 Nov 2026): every unit count written must be one of the branches' counts — never a legacy number
+    allowed = {str(f["units_airport"]), str(f["units_shafa"]), str(f["units_total"])}
+    text = json.dumps(out, ensure_ascii=False)
+    found = {m.group(1) for m in re.finditer(r"(\d+)\s*(?:<[^>]+>\s*)?(?:units|Units|وحدة|شقة|apartments)", text)}
+    found |= {m.group(1) for m in re.finditer(r"و(\d+) وحدة", text)}
+    bad = sorted(found - allowed)
+    if bad:
+        raise SystemExit(f"partners-pages.json NOT written: unit count(s) {', '.join(bad)} are not the branches' ({', '.join(sorted(allowed))})")
+    target.write_text(json.dumps(out, ensure_ascii=False, indent=2) + "\n", encoding="utf-8", newline="\n")
     print(f"partners-pages.json written: {len(rows)} unit rows, {len(removed)} removal notes")
 
 

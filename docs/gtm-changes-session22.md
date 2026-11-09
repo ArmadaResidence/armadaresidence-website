@@ -8,9 +8,9 @@ container `GTM-5JVH7R37` so the platforms receive it. The site side is done; not
 | event | when | keys (besides `event`) |
 |---|---|---|
 | `booking_confirmed` | instant booking confirmed, `/booking/success/` — **once per booking** (never on a reload, a reopened link or a new tab) | `booking_ref`, `transaction_id` (= ref), `event_id` (= ref), `value` (number, SAR, the total shown to the guest), `currency: "SAR"`, `branch`, `room_type`, `nights`, `breakfast`, `extra_beds`, `needs_coordination`, `user_data`* |
-| `booking_request` | booking stored as a request, `/booking/success/` — once per booking | as above, `value` **only when the guest was shown a price** (the quoted total), always `currency: "SAR"`, `reason` when the site says why it was not instant, `user_data`* |
-| `partner_enquiry` | partners enquiry sent (`/partners/enquiry/`) | `request_type`, `branch`, `booking_ref`, `event_id` (= ref), `currency: "SAR"` (no amount exists), `user_data`* |
-| `club_join` | «إياب» sign-up (`/club/`, and the card on the success page) | `source`, `currency: "SAR"` (no amount exists), `user_data`* (not on the success-page card: that page has no email / phone) |
+| `booking_request` | booking stored as a request, `/booking/success/` — once per booking | as above, `value` **only when the guest was shown a price** (the quoted total), always `currency: "SAR"`, `lead_type: "booking_request"`, `reason` when the site says why it was not instant, `user_data`* |
+| `partner_enquiry` | partners enquiry sent (`/partners/enquiry/`) | `request_type`, `branch`, `booking_ref`, `event_id` (= ref), `lead_type: "partner_enquiry"`, `currency: "SAR"` (no amount exists), `user_data`* |
+| `club_join` | «إياب» sign-up (`/club/`, and the card on the success page) — a **registration, not a lead** | `source`, `currency: "SAR"` (no amount exists), `user_data`* (not on the success-page card: that page has no email / phone) |
 
 \* `user_data` exists **only when the visitor granted advertising consent** (`ad_user_data` granted) and only hashed:
 
@@ -29,9 +29,22 @@ each platform deduplicates the browser and server events. The raw email and phon
 
 Today (the last exported container, `docs/gtm-container.json`, and `docs/gtm-performance.md`): only `booking_request`
 is a lead — Meta `Lead`, TikTok `SubmitForm`, Snap `SIGN_UP`. `partner_enquiry` goes to GA4 only. `club_join`,
-`dining_notify` and `job_application` reach no ad platform. Proposed below: `booking_request`, `partner_enquiry` and
-`club_join` as leads on all three platforms (and GA4 `generate_lead`). `dining_notify` (an opening alert) and
-`job_application` (recruiting) stay out of the ad platforms on purpose.
+`dining_notify` and `job_application` reach no ad platform.
+
+Decided (Ahmed, 9 Nov 2026):
+
+| site event | Meta | TikTok | Snap | GA4 |
+|---|---|---|---|---|
+| `booking_confirmed` | `Purchase` | `Purchase` | `PURCHASE` | `purchase` |
+| `booking_request` | `Lead` (lead_type booking_request) | `SubmitForm` (lead_type) | `SIGN_UP` (description = lead_type) | `generate_lead` (lead_type) |
+| `partner_enquiry` | `Lead` (lead_type partner_enquiry) | `SubmitForm` (lead_type) | `SIGN_UP` (description = lead_type) | `generate_lead` (lead_type) |
+| `club_join` («إياب») | `CompleteRegistration` | `CompleteRegistration` | `SIGN_UP` | `sign_up` (method = source) |
+
+`dining_notify` (an opening alert) and `job_application` (recruiting) stay out of the ad platforms on purpose.
+
+**Nothing the live container reads today was removed or renamed** — the event names and `booking_ref`, `branch`,
+`room_type`, `nights`, `request_type`, `value`, `currency`, `page_path`, `page_location`, `page_title` are all still
+pushed — so the current tags keep working until the changes below are applied; the new keys come alongside.
 
 ---
 
@@ -59,6 +72,7 @@ noted). Skip one that already exists with the same Data Layer Variable Name; tel
   DL - event_id            → event_id
   DL - booking_ref         → booking_ref
   DL - request_type        → request_type
+  DL - lead_type           → lead_type
   DL - source              → source
   DL - ud email            → user_data.email_sha256
   DL - ud phone            → user_data.phone_sha256
@@ -91,12 +105,13 @@ b) The Meta purchase tag (on CE - booking_confirmed) — its HTML becomes:
    `if ({{DL - value}})` — tell Ahmed which you chose.
 c) "Meta Pixel - Lead on booking_request": HTML becomes
      <script>if (window.fbq) { var p = { content_name: 'booking_request', content_category: {{DL - branch}},
-       currency: {{DL - currency}} || 'SAR' }; if ({{DL - value}}) p.value = Number({{DL - value}});
+       lead_type: {{DL - lead_type}}, currency: {{DL - currency}} || 'SAR' }; if ({{DL - value}}) p.value = Number({{DL - value}});
        fbq('track', 'Lead', p, { eventID: {{DL - event_id}} }); }</script>
-d) New tags, same pattern, Once per event: "Meta Pixel - Lead on partner_enquiry" (CE - partner_enquiry,
-   content_name 'partner_enquiry', content_category {{DL - request_type}}, eventID {{DL - event_id}}) and
-   "Meta Pixel - Lead on club_join" (CE - club_join, content_name 'club_join', content_category {{DL - source}}, no
-   eventID). For these two, if the base tag already fired earlier on the page, the advanced matching of STEP 3a is not
+d) New tags, Once per event: "Meta Pixel - Lead on partner_enquiry" (CE - partner_enquiry, same pattern as c:
+   content_name 'partner_enquiry', content_category {{DL - request_type}}, lead_type {{DL - lead_type}}, eventID
+   {{DL - event_id}}) and "Meta Pixel - CompleteRegistration on club_join" (CE - club_join — NOT a Lead):
+     <script>if (window.fbq) { fbq('track', 'CompleteRegistration', { content_name: 'eyab',
+       status: {{DL - source}}, currency: {{DL - currency}} || 'SAR' }); }</script> For these two, if the base tag already fired earlier on the page, the advanced matching of STEP 3a is not
    repeated; tell Ahmed whether the Meta template "Facebook Pixel" (facebookarchive) is available in the Community
    Template Gallery — it accepts the same user data per event — but do not switch templates without his OK.
 e) Tag sequencing for b, c, d: Advanced Settings → Tag Sequencing → "Fire a tag before" = "Meta Pixel - base" (so
@@ -110,9 +125,10 @@ a) In each TikTok conversion tag, before ttq.track, add:
 b) Purchase (CE - booking_confirmed):
      ttq.track('Purchase', { value: Number({{DL - value}}) || 0, currency: {{DL - currency}} || 'SAR',
        content_type: 'product', content_id: {{DL - booking_ref}} }, { event_id: {{DL - event_id}} });
-c) SubmitForm on booking_request: add currency, value when present, and { event_id: {{DL - event_id}} } as the third
-   argument. New "TikTok Pixel - SubmitForm on partner_enquiry" (event_id) and "… on club_join" (no event_id), each
-   sequenced after "TikTok Pixel - base".
+c) SubmitForm on booking_request: add currency, value when present, lead_type {{DL - lead_type}} and
+   { event_id: {{DL - event_id}} } as the third argument. New "TikTok Pixel - SubmitForm on partner_enquiry" (lead_type,
+   event_id) and "TikTok Pixel - CompleteRegistration on club_join" (ttq.track('CompleteRegistration',
+   { content_name: 'eyab', currency: 'SAR' }) — NOT SubmitForm), each sequenced after "TikTok Pixel - base".
 
 STEP 5 — Snap (pixel {{Snap Pixel ID}}).
 a) "Snap Pixel - base": change snaptr('init', '{{Snap Pixel ID}}', {}) to pass, when present,
@@ -121,17 +137,19 @@ a) "Snap Pixel - base": change snaptr('init', '{{Snap Pixel ID}}', {}) to pass, 
 b) PURCHASE (CE - booking_confirmed):
      snaptr('track', 'PURCHASE', { price: Number({{DL - value}}) || 0, currency: {{DL - currency}} || 'SAR',
        transaction_id: {{DL - transaction_id}}, client_dedup_id: {{DL - event_id}} });
-c) SIGN_UP on booking_request: add currency, price when present, client_dedup_id {{DL - event_id}}. New SIGN_UP tags
-   on CE - partner_enquiry (client_dedup_id) and CE - club_join, each sequenced after "Snap Pixel - base".
+c) SIGN_UP on booking_request: add currency, price when present, description {{DL - lead_type}}, client_dedup_id
+   {{DL - event_id}}. New SIGN_UP tags on CE - partner_enquiry (description {{DL - lead_type}}, client_dedup_id) and
+   CE - club_join (description 'eyab'), each sequenced after "Snap Pixel - base".
 
 STEP 6 — GA4 (G-675Y7W0H1T; keep exactly ONE Google tag / GA4 configuration).
 a) The GA4 "purchase" event tag: parameters transaction_id = {{DL - transaction_id}}, value = {{DL - value}},
    currency = {{DL - currency}}. In its "User-provided data" (or the Google tag's configuration setting
    "user_data") select the variable {{JS - google user data}}. Tell Ahmed that GA4 Admin → Data collection → "User-
    provided data collection" must be switched on by him (do not switch it on yourself).
-b) New GA4 event tags "generate_lead" on CE - booking_request, CE - partner_enquiry and CE - club_join with
-   parameters lead_source = booking_request | partner_enquiry | club_join, currency = {{DL - currency}}, value =
-   {{DL - value}} (only booking_request carries one), and the same user-provided data variable.
+b) New GA4 event tags "generate_lead" on CE - booking_request and CE - partner_enquiry with parameters lead_type =
+   {{DL - lead_type}}, currency = {{DL - currency}}, value = {{DL - value}} (only booking_request carries one), and the
+   same user-provided data variable; and "sign_up" on CE - club_join with method = {{DL - source}} (NOT a lead).
+   Keep the existing "GA4 - booking_request" and "GA4 - partner_enquiry" tags as they are.
 c) If a Google Ads conversion tag exists (STEP 0), enable "Include user-provided data from your website" → manual /
    variable → {{JS - google user data}}, and set its Transaction ID to {{DL - transaction_id}}. If none exists, do
    nothing here and say so.
