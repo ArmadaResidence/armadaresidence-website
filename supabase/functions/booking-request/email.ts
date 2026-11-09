@@ -52,6 +52,9 @@ export interface BookingMail {
   /** the guest «إلغاء الحجز» only (9 Nov 2026): the guest phrase of the reason staff picked, both languages
    *  (cancel-reasons.ts → guestReason; content/policies.json → cancellation_reasons) — the row «سبب الإلغاء: …» */
   cancelReason?: { ar: string; en: string } | null;
+  /** «انضم إلى إياب» (9 Nov 2026): the guest is not a member and did not tick the booking form's box — the request /
+   *  confirmed email adds one line linking /club/ (ar) and /en/club/ (en) with the signed invite (club.json → invite) */
+  eyabInvite?: { ar: string; en: string } | null;
 }
 
 /** The offer a quote / a booking carries (public.price_stay_offer → offer). */
@@ -400,6 +403,15 @@ function buttons(L: Locale, items: string[]): string {
 function langDivider(): string {
   return `<div style="height:28px; line-height:28px; font-size:0;">&nbsp;</div>${hairline()}<div style="height:28px; line-height:28px; font-size:0;">&nbsp;</div>`;
 }
+/** «انضم إلى إياب» (9 Nov 2026): one short line with its link, under the branch card of the guest's request / confirmed
+ *  email — only when the booking carries an invite (eyabInvite). */
+function inviteLine(c: Content, L: Locale, url: string | undefined): string {
+  if (!url) return '';
+  const I = c.club_invite[L];
+  return `<p class="t-ink" style="margin:0 0 14px; font-family:${FONT[L]}; font-size:15px; line-height:24px; color:${INK};">${esc(I.text)} <a href="${esc(url)}" class="t-bronze" style="color:#8A6239; font-weight:700; text-decoration:underline;">${esc(I.email_link)}</a></p>`;
+}
+const inviteText = (c: Content, L: Locale, url: string | undefined): string[] => (url ? ['', `${c.club_invite[L].text} ${c.club_invite[L].email_link}: ${url}`] : []);
+
 /** Form labels carry "(اختياري)" / "(optional)"; in a summary the hint is noise. */
 const plainLabel = (s: string) => String(s ?? '').replace(/\s*[(（][^)）]*[)）]\s*$/, '');
 
@@ -515,6 +527,7 @@ ${subhead(L, M.branch_card)}
 ${buttons(L, [button(L, wa(b.whatsapp, waText), M.wa_button, 'solid'), button(L, b.maps_url, M.map_button, 'ghost')])}
 </td></tr></table>
 <div style="height:18px; line-height:18px; font-size:0;">&nbsp;</div>
+${inviteLine(c, L, d.eyabInvite?.[L])}
 ${para(L, c.cancellation_line[L], { muted: true, size: 14 })}
 ${para(L, M.guest_footer, { muted: true, size: 13 })}`,
     );
@@ -537,6 +550,7 @@ ${para(L, M.guest_footer, { muted: true, size: 13 })}`,
       `${c.check_in_line[L]} · ${c.check_out_line[L]}`,
       `${M.wa_button}: ${wa(b.whatsapp, waText)}`,
       `${M.map_button}: ${b.maps_url}`,
+      ...inviteText(c, L, d.eyabInvite?.[L]),
       '',
       c.cancellation_line[L],
       M.guest_footer,
@@ -772,6 +786,7 @@ ${subhead(L, M.branch_card)}
 ${buttons(L, [button(L, wa(b.whatsapp, waText), M.wa_button, 'solid'), button(L, b.maps_url, M.map_button, 'ghost')])}
 </td></tr></table>
 <div style="height:18px; line-height:18px; font-size:0;">&nbsp;</div>
+${inviteLine(c, L, d.eyabInvite?.[L])}
 ${para(L, c.cancellation_line[L], { muted: true, size: 14 })}
 ${para(L, M.confirmed_footer, { muted: true, size: 13 })}`,
     );
@@ -797,6 +812,7 @@ ${para(L, M.confirmed_footer, { muted: true, size: 13 })}`,
       `${c.check_in_line[L]} · ${c.check_out_line[L]}`,
       `${M.wa_button}: ${wa(b.whatsapp, waText)}`,
       `${M.map_button}: ${b.maps_url}`,
+      ...inviteText(c, L, d.eyabInvite?.[L]),
       '',
       c.cancellation_line[L],
       M.confirmed_footer,
@@ -1430,6 +1446,40 @@ ${buttons(L, [button(L, d.run_url, M.button, 'bronze')])}
 ${para(L, M.foot, { muted: true, size: 12 })}`,
   );
   const html = doc({ lang: 'ar', title: subject, preheader: `${M.lead} — ${short}`, body: header(c, undefined, true) + card(inner) + footer(c, ['ar']), print: true });
+  const text = [M.lead, '', M.meaning, '', textRows(rows), '', `${M.button}: ${d.run_url}`, '', M.foot, '', legalText(c, 'ar')].join('\n');
+  return { subject, html, text };
+}
+
+// ══ The weekly Storage → R2 backup failed (9 Nov 2026) — to the dashboard's active admins, Arabic only ═══════════════
+export interface BackupAlertMail {
+  run_url: string;
+  /** failed = the run stopped before it finished; mismatch = R2 current/ does not match Storage after the run */
+  reason: 'failed' | 'mismatch';
+  counts: { storage_files: number; storage_bytes: number; r2_files: number; r2_bytes: number } | null;
+  started_at: string | null;
+  test?: boolean;
+}
+export function backupAlertMail(c: Content, d: BackupAlertMail): Mail {
+  const L: Locale = 'ar';
+  const M = c.staff_email.ar.backup_alert;
+  const D = c.staff_email.ar.deploy_alert;
+  const subject = `${d.test ? D.test_prefix : ''}${M.subject}`;
+  const rows: [string, string][] = [
+    [M.label_reason, d.reason === 'mismatch' ? M.reason_mismatch : M.reason_failed],
+    ...(d.counts ? ([[M.label_counts, fill(M.counts, { storage: String(d.counts.storage_files), r2: String(d.counts.r2_files) })]] as [string, string][]) : []),
+    [M.label_time, d.started_at ? `${riyadhStamp(c, d.started_at, L)}${D.time_suffix}` : D.not_recorded],
+  ];
+  const inner = section(
+    L,
+    `${headline(L, M.lead)}
+${para(L, M.meaning)}
+${kvCard(L, rows)}
+<div style="height:18px; line-height:18px; font-size:0;">&nbsp;</div>
+${buttons(L, [button(L, d.run_url, M.button, 'bronze')])}
+<div style="height:8px; line-height:8px; font-size:0;">&nbsp;</div>
+${para(L, M.foot, { muted: true, size: 12 })}`,
+  );
+  const html = doc({ lang: 'ar', title: subject, preheader: M.lead, body: header(c, undefined, true) + card(inner) + footer(c, ['ar']), print: true });
   const text = [M.lead, '', M.meaning, '', textRows(rows), '', `${M.button}: ${d.run_url}`, '', M.foot, '', legalText(c, 'ar')].join('\n');
   return { subject, html, text };
 }

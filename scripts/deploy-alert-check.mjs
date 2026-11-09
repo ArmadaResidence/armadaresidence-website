@@ -10,7 +10,7 @@
 //     «الغرف» line after a change (saved and waiting / on the room pages / saved but not on the site).
 //   node scripts/deploy-alert-check.mjs   (after build.py — it reads supabase/functions/booking-request/content.generated.json)
 import { readFileSync } from 'node:fs';
-import { deployAlertMail, deployStepKey, deployTriggerKey, liveAlertMail } from '../supabase/functions/booking-request/email.ts';
+import { backupAlertMail, deployAlertMail, deployStepKey, deployTriggerKey, liveAlertMail } from '../supabase/functions/booking-request/email.ts';
 import { failedJobs, failedStepFrom, finalStatus, functionUrl, resolveEvent } from './site-deploy-report.mjs';
 import { usesDebounce } from '../supabase/functions/site-rebuild/debounce.ts';
 import { barShowsDeploy, DEPLOY_TEXT, deployLine, deployTime, deployView, PENDING_MS, RECENT_MS, ROOMS_NOTE, roomsNote } from '../admin/src/lib/siteDeployText.ts';
@@ -177,6 +177,24 @@ for (const [k, v] of Object.entries({ ...ROOMS_NOTE, failed: ROOMS_NOTE.failed(t
   E('live-checks.yml: the alert job after gate, live and forced, only on a failure', /alert:\n\s+name: live · alert the admins\n\s+needs: \[gate, live, forced\]\n\s+if: \$\{\{ always\(\) && \(needs\.gate\.result == 'failure' \|\| needs\.live\.result == 'failure' \|\| needs\.forced\.result == 'failure'\) \}\}/.test(lw));
   E('live-checks.yml: the alert reports with the service key', /SUPABASE_SERVICE_ROLE_KEY: \$\{\{ secrets\.SUPABASE_SERVICE_ROLE_KEY \}\}[\s\S]*node scripts\/site-deploy-report\.mjs live/.test(lw));
   E('live-checks.yml: force_fail skips the gate and fails one job', /force_fail:\n\s+description:/.test(lw) && /&& !inputs\.force_fail\)/.test(lw) && /forced:\n[\s\S]{0,200}inputs\.force_fail/.test(lw));
+}
+
+// ── the weekly Storage → R2 backup alert (9 Nov 2026): its own email, the reason, the counts, the workflow step ──
+{
+  const BM = content.staff_email.ar.backup_alert;
+  const b = { run_url: 'https://github.com/ArmadaResidence/armadaresidence-website/actions/runs/42200000002', reason: 'mismatch', counts: { storage_files: 120, storage_bytes: 9, r2_files: 119, r2_bytes: 8 }, started_at: '2026-11-13T00:05:00Z' };
+  const m = backupAlertMail(content, b);
+  E('backup: the approved subject', m.subject === 'فشل النسخ الاحتياطي الأسبوعي للصور', m.subject);
+  E('backup: «[تجربة]» for a test', backupAlertMail(content, { ...b, test: true }).subject === '[تجربة] فشل النسخ الاحتياطي الأسبوعي للصور');
+  E('backup: the reason (mismatch / failed)', m.text.includes(BM.reason_mismatch) && backupAlertMail(content, { ...b, reason: 'failed' }).text.includes(BM.reason_failed));
+  E('backup: the counts', m.text.includes('التخزين 120 · النسخة 119') && !backupAlertMail(content, { ...b, counts: null }).text.includes(`${BM.label_counts}:`));
+  E('backup: the run link (HTML + text)', m.html.includes(`href="${b.run_url}"`) && m.text.includes(b.run_url));
+  E('backup: the time in Riyadh, Western digits', m.text.includes('الجمعة 13 نوفمبر 2026، 3:05 صباحًا بتوقيت الرياض') && !AR_DIGITS.test(m.text), m.text);
+  E('backup: the shared header + legal footer, RTL', m.html.includes(`src="${content.email_logo_url}"`) && m.html.includes(content.legal.ar.entity) && m.html.includes('<html lang="ar" dir="rtl"'));
+  const fn = readFileSync(new URL('../supabase/functions/site-deploy-report/index.ts', import.meta.url), 'utf8');
+  E('site-deploy-report: the backup_failed stage proves the service role and mails the admins', /body\.stage === 'backup_failed'[\s\S]{0,400}probe\.status !== 400[\s\S]{0,1400}site_deploy_alert_recipients[\s\S]{0,600}backupAlertMail/.test(fn));
+  const rp = readFileSync(new URL('./site-deploy-report.mjs', import.meta.url), 'utf8');
+  E('site-deploy-report.mjs: the backup mode reads backup-result.json', /mode === 'backup'[\s\S]{0,400}backup-result\.json[\s\S]{0,600}stage: 'backup_failed'/.test(rp));
 }
 
 if (fails.length) {

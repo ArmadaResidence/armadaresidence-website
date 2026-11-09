@@ -14,6 +14,7 @@ command line are marked **unverified**.
 | Point-in-time recovery (PITR) | — | — | — | `pitr_enabled: false` (it is a paid add-on, about $100 a month for 7 days, and needs at least the Small compute size) |
 | Code: site, dashboard (`admin/`), migrations, Edge Functions, workflows, `content/*.json`, `content/images/` | git and GitHub (`ArmadaResidence/armadaresidence-website`) | Every push | Permanent; every clone holds the full history | 230 commits, 72 migrations, 14 functions in `supabase/functions/` |
 | Dashboard deploy workflow | GitHub (`ArmadaResidence/armadaresidence-admin`) | — | Permanent | The repository holds only `.github/workflows/deploy.yml`. It checks out `admin/` from the website repository and builds it. |
+| **Storage files** (`media-originals`, `partner-quotes`) — since 9 Nov 2026 | GitHub Actions `.github/workflows/storage-backup.yml` → Cloudflare R2 bucket `armada-storage-backup` | Weekly, Friday 03:00 Riyadh (+ by hand) | `current/` = the latest copy; replaced / deleted files 90 days under `deleted/<date>/` | Each run's summary: files and size in Storage and in R2 `current/` (must match), see §4c |
 
 **Plan tier: inferred Pro, unverified.** The Management API lists 8 restore points. The Supabase docs say
 daily backups are kept for Pro (7 days), Team (14 days) and Enterprise (30 days). Preview branches have
@@ -37,7 +38,8 @@ Size of the database on 7 Nov 2026: 27 MB. There are 6 users in `auth.users`.
 
 ## 2. What is NOT backed up (plain list)
 
-1. **Storage files (the objects themselves).** The Supabase docs
+1. **Storage files (the objects themselves)** — *since 9 Nov 2026 copied weekly to Cloudflare R2 (§4c); what follows
+   is why that copy is needed.* The Supabase docs
    (<https://supabase.com/docs/guides/platform/backups>) say: *"Database backups do not include objects
    you store via the Storage API, as the database only includes metadata about these objects."*
    Restoring the database brings back the `storage.objects` rows, not the files. A file deleted after a
@@ -189,9 +191,84 @@ The exact copy semantics (nesting of the top folder, overwrite) are **unverified
 branch first. The alternative is the Node script in the Supabase guide above, run with the service-role
 key from the dashboard (never committed).
 
-**Recommendation:** copy `media-originals` (~835 MiB today) and `partner-quotes` off-site on a schedule,
-for example monthly and after any big photo publish, together with a `db dump` (§3c) so the metadata
-matches. Do not copy `job-applications`: its files are deleted on purpose.
+**Recommendation (7 Nov 2026) — done for the files on 9 Nov 2026 (§4c):** copy `media-originals` (~835 MiB
+today) and `partner-quotes` off-site on a schedule, together with a `db dump` (§3c) so the metadata matches. Do not
+copy `job-applications`: its files are deleted on purpose.
+
+### (c) The weekly copy to Cloudflare R2 (9 Nov 2026 — DECISIONS.md 2026-11-09 «Weekly Storage backup to R2»)
+
+**What and when.** `.github/workflows/storage-backup.yml` (`scripts/storage-backup.mjs`) copies every Storage bucket
+of the project except `job-applications` (transient CVs, CLAUDE.md §8b) to the R2 bucket `armada-storage-backup` of
+the Armada Residence Cloudflare account, every **Friday at 03:00 Asia/Riyadh**, and any time by hand: GitHub →
+Actions → «Storage backup to R2» → Run workflow (tick `dry_run` to see the plan without writing anything).
+
+| R2 path | Holds |
+|---|---|
+| `current/<bucket>/<path>` | the copy of what Storage holds now (the same path as in the bucket) |
+| `deleted/<YYYY-MM-DD>/<bucket>/<path>` | a file that was **replaced** or **deleted** in Storage, moved here by the run that noticed it (its Riyadh date); removed after **90 days** |
+| `manifest/current.json` | the run's own index (each file's size and Storage eTag); it only lets the next run skip unchanged files |
+
+- **Incremental:** only new or changed files (size or Storage eTag) are downloaded and uploaded.
+- **Checked every run:** R2 `current/` is listed again and must equal Storage — the same files, sizes, count and
+  total. The run's summary shows both columns, what was uploaded / moved to `deleted/` / purged, and the time.
+- **Failure or mismatch:** the dashboard's active admins get «فشل النسخ الاحتياطي الأسبوعي للصور» (the deploy alert's
+  sender and recipients: Edge Function `site-deploy-report`, stage `backup_failed`) with the reason, the counts and
+  the run link. Open the run, read the summary / log, fix the cause, run it again by hand.
+- **Credentials:** the repository secrets `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY` and
+  `SUPABASE_SERVICE_ROLE_KEY`; never printed.
+- It copies **files only**. A restored file is used again only while its row in `media_items` exists (restore the
+  database first when the row is gone, §3).
+
+**Find the file.** Cloudflare dashboard → R2 → `armada-storage-backup` → `current/<bucket>/…` (the latest copy) or
+`deleted/<date>/<bucket>/…` (an older version, or a file deleted from Storage). The path after the bucket name is the
+file's path in Storage. When unsure, restore into a scratch folder first and look at the file.
+
+The commands below use the AWS CLI (R2 speaks the S3 API) and the logged-in Supabase CLI. In your own terminal only
+(never in a file in the repository):
+
+```bash
+export AWS_ACCESS_KEY_ID=<the R2 access key id>
+export AWS_SECRET_ACCESS_KEY=<the R2 secret access key>
+export R2=https://<R2_ACCOUNT_ID>.r2.cloudflarestorage.com
+```
+
+**Restore a single file**
+
+1. Download it (the latest copy, or one from `deleted/<date>/`):
+
+```bash
+aws s3 cp "s3://armada-storage-backup/current/media-originals/<path>" ./restore/ --endpoint-url "$R2" --region auto
+```
+
+2. Put it back at the same path — Supabase dashboard → Storage → the bucket → the folder → Upload, or:
+
+```bash
+npx supabase@2.120.0 storage cp "./restore/<file name>" "ss:///media-originals/<path>" --experimental --linked
+```
+
+3. Open the item in «الصور»: its preview is back. If the item itself was archived, restore it there; then «نشر» the
+   target so the site rebuilds with it.
+
+**Restore a whole bucket**
+
+1. Download its copy (about the size the last run's summary shows):
+
+```bash
+aws s3 sync "s3://armada-storage-backup/current/media-originals/" ./restore/media-originals/ --endpoint-url "$R2" --region auto
+```
+
+2. Upload it back keeping the paths (files with the same path are overwritten — when only some are missing, restore
+   those single files instead; the copy semantics of the CLI are as noted in §4b — try on a preview branch first):
+
+```bash
+npx supabase@2.120.0 storage cp -r ./restore/media-originals "ss:///media-originals" --experimental --linked -j 4
+```
+
+3. Run the backup workflow by hand: its check must say «OK — R2 current/ matches Storage».
+4. Publish the affected targets in «الصور» (or wait for the next deploy) so the site rebuilds its photos.
+
+`partner-quotes` is restored the same way (bucket `partner-quotes`). A file deleted from Storage stays in
+`deleted/<date>/` for 90 days, then it is gone from the backup too — restore within that window.
 
 ---
 
@@ -239,7 +316,7 @@ If a repository is lost:
       - `partner-enquiries-retention` (`23 2 1 * *`)
 - [ ] Auth: Site URL / redirect URLs, custom SMTP, and `supabase/config.toml` pushed for a new project
       (`config push`). Staff can sign in and receive the email code.
-- [ ] Storage files: open a few photos in «الصور». A missing original → restore it from the off-site copy.
+- [ ] Storage files: open a few photos in «الصور». A missing original → restore it from R2 (§4c).
 - [ ] Bookings made after the backup: re-enter them from the CSV / emails / WhatsApp log taken before.
 - [ ] Inventory (`inventory_days.booked`, `rooms_to_sell`) matches the real bookings. Check «المخزون».
 - [ ] Run the site deploy (`gh workflow run deploy.yml -R ArmadaResidence/armadaresidence-website`), then

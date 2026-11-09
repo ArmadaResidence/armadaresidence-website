@@ -168,6 +168,8 @@ export const CLUB_SOURCE_LABELS: { key: string; label: string }[] = [
   { key: 'breakfast-shafa', label: 'إفطار طريق الشفا' },
   { key: 'site', label: 'الموقع' },
   { key: 'booking', label: 'نموذج الحجز' },
+  { key: 'booking-page', label: 'بعد الحجز — الصفحة' },
+  { key: 'booking-email', label: 'بعد الحجز — الإيميل' },
   { key: 'reception', label: 'الاستقبال' },
   { key: 'other', label: 'أخرى' },
 ];

@@ -26,6 +26,8 @@ const PRE = new URL(BASE).pathname.replace(/\/$/, '');
 const ui = JSON.parse(readFileSync('content/ui.json', 'utf8'));
 const seo = JSON.parse(readFileSync('content/seo.json', 'utf8'));
 const club = JSON.parse(readFileSync('content/club.json', 'utf8'));
+// «انضم إلى إياب» (9 Nov 2026): the signed invite the booking function returns for a guest who is not a member
+const INVITE = `11111111-2222-4333-8444-555555555555.${'a'.repeat(32)}`;
 
 const riyadhToday = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Riyadh', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
 const addDays = (iso, n) => new Date(Date.parse(iso + 'T00:00:00Z') + n * 86400000).toISOString().slice(0, 10);
@@ -109,7 +111,7 @@ async function run(width, lang) {
       q.total += 15 * q.count;
       return route.fulfill({ status: 409, contentType: 'application/json', body: JSON.stringify({ ok: false, error: 'price_changed', status: 'price_changed', quote: q }) });
     }
-    if (mode.submit === 'sold_out') return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true, ref, stored: true, status: 'request', reason: 'sold_out', quote: null, whatsapp_sent: mode.wa }) });
+    if (mode.submit === 'sold_out') return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true, ref, stored: true, status: 'request', reason: 'sold_out', quote: null, whatsapp_sent: mode.wa, ...(body.marketing_consent ? {} : { eyab_invite: INVITE }) }) });
     // confirmed at exactly the quoted total (the real server refuses any other): the nightly rate follows it
     const q = quoteFor({ p_room: body.room, p_check_in: body.check_in, p_check_out: body.check_out, p_adults: Number(body.adults), p_children: Number(body.children), p_children_ages: body.children_ages?.map(Number), p_extra_beds: Number(body.extra_beds), p_breakfast: body.breakfast }, { prices: true }).quote;
     const quoted = Number(body.quoted_total);
@@ -119,7 +121,15 @@ async function run(width, lang) {
       q.room_total = room;
       q.total = quoted;
     }
-    return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true, ref, stored: true, status: 'confirmed', reason: null, quote: q, is_test: false, whatsapp_sent: mode.wa }) });
+    return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true, ref, stored: true, status: 'confirmed', reason: null, quote: q, is_test: false, whatsapp_sent: mode.wa, ...(body.marketing_consent ? {} : { eyab_invite: INVITE }) }) });
+  });
+  // the club function (the success page's «انضم إلى إياب» card): recorded, never sent
+  const clubCalls = [];
+  await page.route(/\/functions\/v1\/club/, async (route) => {
+    const body = route.request().postDataJSON();
+    clubCalls.push(body);
+    if (body.consent !== true) return route.fulfill({ status: 422, contentType: 'application/json', body: JSON.stringify({ ok: false, error: 'invalid', fields: { consent: 'consent' } }) });
+    return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true }) });
   });
   // GTM and wa.me never leave the machine
   await page.route(/googletagmanager\.com|wa\.me/, (route) => route.fulfill({ status: 204, body: '' }));
@@ -136,6 +146,7 @@ async function run(width, lang) {
       .replace(/"supabaseUrl":""/g, `"supabaseUrl":"${STUB}"`)
       .replace(/"anonKey":""/g, '"anonKey":"stub-key"')
       .replace(/"endpoint":""/g, `"endpoint":"${STUB}/functions/v1/booking-request"`)
+      .replace(/"clubEndpoint":""/g, `"clubEndpoint":"${STUB}/functions/v1/club"`)
       // Astro renders an empty attribute bare: data-supabase-url (no value)
       .replace(/data-supabase-url(?=[\s>])/g, `data-supabase-url="${STUB}"`)
       .replace(/data-supabase-key(?=[\s>])/g, 'data-supabase-key="stub-key"');
@@ -280,7 +291,8 @@ async function run(width, lang) {
   await page.waitForURL(/\/booking\/success\//, { timeout: 15000 });
   check(submits.at(-1)?.quoted_total === '400', `${tag} confirm: the re-quoted total was sent`);
   check(submits.at(-1)?.marketing_consent === true && submits.at(-1)?.consent_version === club.consent.version, `${tag} consent: ticked → marketing_consent true with the text version`);
-  check(new URL(page.url()).searchParams.get('mc') === '1' && (await page.locator('[data-club-link]').isHidden()), `${tag} consent: ticked → mc=1, no club link on the success page`);
+  check(new URL(page.url()).searchParams.get('mc') === '1' && (await page.locator('[data-eyab-invite]').isHidden()), `${tag} consent: ticked → mc=1, no «انضم إلى إياب» card on the success page`);
+  check(!(await page.evaluate(() => Object.keys(sessionStorage).some((k) => k.startsWith('armada_invite_')))), `${tag} invite: ticked → no invite kept for the page`);
   const url = new URL(page.url());
   check(url.searchParams.get('s') === 'confirmed' && !url.search.includes('guest') && !url.search.includes('0500'), `${tag} confirm: success URL carries the status and no personal data`);
   await page.waitForSelector('[data-breakdown]:not(.hidden)', { timeout: 8000 });
@@ -319,9 +331,38 @@ async function run(width, lang) {
   const dl2 = await page.evaluate(() => (window.dataLayer || []).filter((e) => e.event === 'booking_request'));
   check(dl2.length === 1 && dl2[0].reason === 'sold_out', `${tag} fallback: booking_request with the reason`);
   check(!new URL(page.url()).searchParams.has('wa'), `${tag} whatsapp: not accepted → no &wa on the success URL`);
-  check(new URL(page.url()).searchParams.get('mc') === '0' && (await page.locator('[data-club-link]').isVisible()), `${tag} consent: unticked → the club link on the success page`);
+  check(new URL(page.url()).searchParams.get('mc') === '0' && (await page.locator('[data-eyab-invite]').isVisible()), `${tag} consent: unticked → the «انضم إلى إياب» card on the success page`);
+  {
+    // the card (9 Nov 2026): the approved copy, the ONE consent, no join without it, then invite-join with the token only
+    const I = club[L].invite;
+    const card = page.locator('[data-eyab-invite]');
+    check((await card.locator('h2').textContent()).trim() === I.title && (await card.locator('p').first().textContent()).trim() === I.text, `${tag} invite: the card's title and text are the approved copy`);
+    check((await card.locator('[data-invite-submit] [data-label]').textContent()).trim() === I.button, `${tag} invite: the button «${I.button}»`);
+    const box = card.locator('[data-invite-consent]');
+    check(!(await box.isChecked()) && (await box.evaluate((i) => i.labels?.[0]?.textContent?.trim() ?? '')) === club.consent[L], `${tag} invite: the consent box is unticked and carries the approved text`);
+    check(((await card.locator('[data-consent-details]').getAttribute('href')) || '').endsWith('/policies/#club'), `${tag} invite: the privacy link`);
+    check(!new URL(page.url()).search.includes(INVITE.slice(0, 8)), `${tag} invite: the token is not in the URL`);
+    const before = clubCalls.length;
+    await card.locator('[data-invite-submit]').click();
+    await page.waitForTimeout(200);
+    check(clubCalls.length === before && (await card.locator('[data-invite-error]').isVisible()) && (await box.getAttribute('aria-invalid')) === 'true', `${tag} invite: without the consent nothing is sent and the error shows`);
+    check((await page.evaluate(() => document.activeElement?.hasAttribute('data-invite-consent'))) === true, `${tag} invite: focus moves to the consent box`);
+    await box.check();
+    await card.locator('[data-invite-submit]').click();
+    await page.waitForSelector('[data-invite-done]:not(.hidden)', { timeout: 8000 });
+    const sent = clubCalls.at(-1) ?? {};
+    check(sent.action === 'invite-join' && sent.token === INVITE && sent.consent === true && sent.consent_version === club.consent.version && sent.lang === L, `${tag} invite: invite-join with the token, the consent and its version`, JSON.stringify(sent));
+    check(!('phone' in sent) && !('name' in sent) && !('email' in sent), `${tag} invite: the page sends no personal data (the function reads the booking)`);
+    check((await page.locator('[data-invite-done]').textContent()).trim() === I.welcome && (await page.locator('[data-invite-form]').isHidden()), `${tag} invite: «${I.welcome}» replaces the card's form`);
+    const cj = await page.evaluate(() => (window.dataLayer || []).filter((e) => e.event === 'club_join'));
+    check(cj.length === 1 && cj[0].source === 'booking-page' && Object.keys(cj[0]).length === 2, `${tag} invite: dataLayer club_join { source: booking-page } only`, JSON.stringify(cj));
+    check(!(await page.evaluate(() => Object.keys(sessionStorage).some((k) => k.startsWith('armada_invite_')))), `${tag} invite: the invite is dropped after joining`);
+  }
   check((await page.locator('[data-next="whatsapp"]').textContent()).trim() === S.success.next_whatsapp && (await page.locator('[data-next="whatsapp"]').isVisible()), `${tag} whatsapp: not accepted → today's sentence unchanged`);
   check(!(await page.locator('[data-steps]').textContent()).includes(S.success.whatsapp_sent_request), `${tag} whatsapp: not accepted → no "sent" sentence`);
+  // a success page opened without this booking's invite (a member, a reload in another tab): no card
+  await page.goto(`${BASE}${pre}/booking/success/?ref=AR-20991231-NOIN&branch=airport-road&s=request&c=email&mc=0`, { waitUntil: 'networkidle' });
+  check(await page.locator('[data-eyab-invite]').isHidden(), `${tag} invite: no invite for the booking → no card`);
   // a confirmed booking whose WhatsApp failed: the confirmed steps exactly as before
   await page.goto(`${BASE}${pre}/booking/success/?ref=AR-20991231-WANO&branch=airport-road&s=confirmed`, { waitUntil: 'networkidle' });
   check(!(await page.locator('[data-steps]').textContent()).includes(S.success.whatsapp_sent_confirmed) && (await page.locator('[data-steps] li').count()) === S.success.confirmed_steps.length, `${tag} whatsapp: confirmed, not accepted → steps unchanged`);

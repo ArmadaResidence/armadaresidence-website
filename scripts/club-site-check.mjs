@@ -145,6 +145,8 @@ async function context(form, theme) {
     if (r.request().method() === 'OPTIONS') return r.fulfill({ status: 204, headers: { 'access-control-allow-origin': '*', 'access-control-allow-headers': '*' } });
     state.posts.push(JSON.parse(r.request().postData() || '{}'));
     if (state.posts.at(-1).action === 'join') noteTurnstile(state.posts.at(-1)); // only the sign-up is verified (unsubscribe is a signed link)
+    // «انضم إلى إياب» from a booking email (9 Nov 2026): the prefill read
+    if (state.posts.at(-1).action === 'invite') return r.fulfill({ status: 200, contentType: 'application/json', headers: { 'access-control-allow-origin': '*' }, body: JSON.stringify(state.invite ?? { ok: false, error: 'invalid' }) });
     return r.fulfill({ status: state.reply.status, contentType: 'application/json', headers: { 'access-control-allow-origin': '*' }, body: JSON.stringify(state.reply.body) });
   });
   // a local build has no PUBLIC_BOOKING_ENDPOINT: the pages get a stub origin (the routes above catch it)
@@ -392,6 +394,39 @@ try {
         check(state.posts.at(-1)?.src === '' && (await p.locator('[data-club-done]').innerText()).includes(c.success), `${tag}: a repeat sign-up without ?src=`);
         const dl2 = await p.evaluate(() => (window.dataLayer || []).filter((e) => e && e.event === 'club_join'));
         check(dl2.length === 1 && dl2[0].source === 'site', `${tag}: club_join without ?src= → site`, JSON.stringify(dl2));
+
+        // ── «انضم إلى إياب» from a booking email (9 Nov 2026): ?invite= prefills the form from the booking ──
+        if (theme === 'light') {
+          const tok = `11111111-2222-4333-8444-555555555555.${'b'.repeat(32)}`;
+          state.invite = { ok: true, member: false, name: 'ضيف الحجز', phone: '+966500000001', email: 'booker@example.com' };
+          state.reply = { status: 200, body: { ok: true, source: 'booking-email' } };
+          await p.goto(`${ORIGIN}${pre}/club/?src=booking-email&invite=${tok}`, { waitUntil: 'load' });
+          await p.waitForFunction(() => document.querySelector('[data-club-root]')?.hasAttribute('data-invite-prefilled'), null, { timeout: 8000 }).catch(() => {});
+          check(!p.url().includes('invite=') && new URL(p.url()).searchParams.get('src') === 'booking-email', `${tag}: invite — the token left the address, ?src= kept`, p.url());
+          check(state.posts.some((x) => x.action === 'invite' && x.token === tok), `${tag}: invite — the prefill was read with the token`);
+          const pre_ = await p.evaluate(() => ({
+            name: document.querySelector('#club-name')?.value, email: document.querySelector('#club-email')?.value,
+            phone: document.querySelector('[data-club-form] [data-phone-input]')?.value?.replace(/\D/g, ''),
+            cc: document.querySelector('[data-club-form] input[name="country"]')?.value,
+          }));
+          check(pre_.name === 'ضيف الحجز' && pre_.email === 'booker@example.com' && pre_.phone?.endsWith('500000001') && pre_.cc === 'SA', `${tag}: invite — the form is prefilled from the booking`, JSON.stringify(pre_));
+          check(!(await p.locator('[data-club-consent]').isChecked()), `${tag}: invite — the consent stays unticked`);
+          await p.locator('[data-club-consent]').check();
+          await p.locator('[data-club-submit]').click();
+          await p.waitForSelector('[data-club-done]:not(.hidden)', { timeout: 5000 });
+          const jb = state.posts.at(-1) ?? {};
+          check(jb.action === 'join' && jb.invite === tok && jb.src === 'booking-email' && jb.phone === '+966500000001' && jb.email === 'booker@example.com', `${tag}: invite — the sign-up carries the invite`, JSON.stringify({ a: jb.action, i: jb.invite === tok, s: jb.src }));
+          const dl3 = await p.evaluate(() => (window.dataLayer || []).filter((e) => e && e.event === 'club_join'));
+          check(dl3.length === 1 && dl3[0].source === 'booking-email', `${tag}: invite — club_join { source: booking-email }`, JSON.stringify(dl3));
+          // a guest who joined meanwhile (the success page's card): the welcome at once, no second sign-up
+          state.invite = { ok: true, member: true };
+          const n = state.posts.length;
+          await p.goto(`${ORIGIN}${pre}/club/?src=booking-email&invite=${tok}`, { waitUntil: 'load' });
+          await p.waitForSelector('[data-club-done]:not(.hidden)', { timeout: 5000 }).catch(() => {});
+          check((await p.locator('[data-club-done]').isVisible()) && !state.posts.slice(n).some((x) => x.action === 'join'), `${tag}: invite — a member sees the welcome, nothing sent`);
+          state.invite = null;
+          state.reply = { status: 200, body: { ok: true } };
+        }
 
         // ── /club/unsubscribe/ ──
         const token = '11111111-2222-4333-8444-555555555555.0123456789abcdef0123456789abcdef';

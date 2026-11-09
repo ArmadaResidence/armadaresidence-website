@@ -15,11 +15,14 @@
 // admins (the real recipients) — run from the deploy watchdog's workflow_dispatch input alert_test.
 // Live checks (9 Nov 2026): { stage: 'live_failed', run_id, run_url, commit, failed_jobs, ref } from the live-checks
 // workflow when a check of the published site failed — its own email (liveAlertMail), same sender and recipients.
+// Storage backup (9 Nov 2026): { stage: 'backup_failed', run_url, reason: failed | mismatch, counts, started_at, ref } from
+// the weekly Storage → R2 workflow when it failed or its check did not match — backupAlertMail «فشل النسخ الاحتياطي
+// الأسبوعي للصور», same sender and recipients, nothing recorded. A run on another branch than main is a test.
 // Secrets: RESEND_API_KEY, optional ALERT_FROM; SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY (automatic).
 // the one email layout (header with the reversed logo, dark-mode safe; the legal footer) and its copy (ui.json →
 // staff_email.ar.deploy_alert, through build.py's content.generated.json) — 6 Nov 2026
 import content from '../booking-request/content.generated.json' with { type: 'json' };
-import { deployAlertMail, liveAlertMail } from '../booking-request/email.ts';
+import { backupAlertMail, deployAlertMail, liveAlertMail } from '../booking-request/email.ts';
 
 type AlertKind = 'deploy' | 'watchdog';
 interface AlertRun { run_id: number; run_url: string; commit: string; commit_title: string | null; event: string; failed_step: string | null; started_at: string | null; finished_at: string | null }
@@ -83,6 +86,8 @@ interface Body {
   event?: string; failed_step?: string; started_at?: string; test?: boolean | 'sink' | 'admin';
   /** live_failed (9 Nov 2026): the live-checks run's failed jobs; a run on another branch than main is a test */
   failed_jobs?: string[]; ref?: string;
+  /** backup_failed (9 Nov 2026) */
+  reason?: string; counts?: { storage_files?: number; storage_bytes?: number; r2_files?: number; r2_bytes?: number } | null;
 }
 interface Claim { claimed: boolean; recipients?: string[]; last_success_at?: string | null; run?: AlertRun & { is_test?: boolean } }
 
@@ -134,6 +139,24 @@ Deno.serve(async (req) => {
       failed_jobs: jobs, started_at: body.started_at && !Number.isNaN(Date.parse(body.started_at)) ? body.started_at : null, test });
     const sent = await send(to, mail);
     return json(200, { ok: sent, recorded: 'live_failed', alert: sent ? 'sent' : 'send_failed', recipients: to.length, test });
+  }
+
+  if (body.stage === 'backup_failed') {
+    const probe = await rpc(key, 'site_deploy_report', { p_run_id: 1, p_status: 'probe', p_commit: '0'.repeat(40), p_event: 'other', p_run_url: 'https://github.com/x/y/actions/runs/1' });
+    if (probe.status !== 400) return json(403, { ok: false });
+    const runUrl = String(body.run_url ?? '');
+    if (!RUN_URL.test(runUrl)) return json(400, { ok: false, error: 'invalid report' });
+    const n = (x: unknown) => (Number.isSafeInteger(Number(x)) && Number(x) >= 0 ? Number(x) : 0);
+    const counts = body.counts && typeof body.counts === 'object'
+      ? { storage_files: n(body.counts.storage_files), storage_bytes: n(body.counts.storage_bytes), r2_files: n(body.counts.r2_files), r2_bytes: n(body.counts.r2_bytes) }
+      : null;
+    const rc = await rpc<string[]>(serviceKey(), 'site_deploy_alert_recipients', {});
+    const to = rc.ok && Array.isArray(rc.data) ? rc.data : [];
+    const test = String(body.ref ?? 'main') !== 'main';
+    const mail = backupAlertMail(content, { run_url: runUrl, reason: body.reason === 'mismatch' ? 'mismatch' : 'failed', counts,
+      started_at: body.started_at && !Number.isNaN(Date.parse(body.started_at)) ? body.started_at : null, test });
+    const sent = await send(to, mail);
+    return json(200, { ok: sent, recorded: 'backup_failed', alert: sent ? 'sent' : 'send_failed', recipients: to.length, test });
   }
 
   const stage = String(body.stage ?? '');

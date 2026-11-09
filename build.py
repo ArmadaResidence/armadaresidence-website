@@ -558,6 +558,8 @@ def generate_function_content(content: dict[str, dict], fees: dict) -> None:
         "club_offer_email": {loc: content["club.json"][loc]["offer_email"] for loc in ("ar", "en")},
         # WhatsApp (9 Nov 2026, wa-automation): the one plain reply to an opt-out message
         "club_whatsapp": {loc: content["club.json"][loc]["whatsapp"] for loc in ("ar", "en")},
+        # «انضم إلى إياب» after a booking (9 Nov 2026): the request / confirmed emails' one line (club.json → invite)
+        "club_invite": {loc: {k: v for k, v in content["club.json"][loc]["invite"].items() if not k.startswith("_")} for loc in ("ar", "en")},
         "club_consent_version": content["club.json"]["consent"]["version"],
         # versions a page loaded before a wording change may still send (accepted; the one the guest saw is recorded)
         "club_consent_previous": content["club.json"]["consent"].get("previous", []),

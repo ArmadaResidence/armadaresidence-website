@@ -29,6 +29,7 @@
 // ../_shared/cors.ts (ADMIN_ALLOWED_ORIGINS adds to them).
 import content from '../booking-request/content.generated.json' with { type: 'json' };
 import { EMAIL } from '../booking-request/rules.ts';
+import { eyabInvite } from '../_shared/eyab-invite.ts';
 import { bookingCancelled, bookingConfirmed, confirmedNotification, lowInventoryAlert, type Mail, type Quote } from '../booking-request/email.ts';
 import { cors, preflight } from '../_shared/cors.ts';
 import { sendWhatsApp, type WaResult } from '../booking-request/whatsapp-send.ts';
@@ -230,7 +231,9 @@ Deno.serve(async (req) => {
       console.error('confirm: notifications not sent', out.ref ?? id, !res ? 'reservation read failed' : 'no price snapshot');
       return json(req, 200, { ok: true, ref: out.ref, low: out.low ?? [], emails: null, notify_failed: true });
     }
-    const bm = { ref: res.ref, locale: res.locale, branch: res.branch, room: res.room_slug ?? '', check_in: res.check_in, check_out: res.check_out, nights: res.nights, adults: res.adults, children: res.children, extraBeds: res.extra_beds, extraBedFee: Number(res.extra_bed_fee_per_night ?? content.extra_bed_fee), needsCoordination: res.needs_coordination, capacity: res.capacity_at_request ?? 0, breakfast: res.breakfast, name: res.guest_name, phone: res.phone, email: res.email ?? '', notes: res.notes ?? '', receivedAt: riyadhNow(), quote: res.pricing, confirmedBy: res.confirmed_by_label ?? 'staff' };
+    const bm = { ref: res.ref, locale: res.locale, branch: res.branch, room: res.room_slug ?? '', check_in: res.check_in, check_out: res.check_out, nights: res.nights, adults: res.adults, children: res.children, extraBeds: res.extra_beds, extraBedFee: Number(res.extra_bed_fee_per_night ?? content.extra_bed_fee), needsCoordination: res.needs_coordination, capacity: res.capacity_at_request ?? 0, breakfast: res.breakfast, name: res.guest_name, phone: res.phone, email: res.email ?? '', notes: res.notes ?? '', receivedAt: riyadhNow(), quote: res.pricing, confirmedBy: res.confirmed_by_label ?? 'staff', eyabInvite: null as { ar: string; en: string } | null };
+    // «انضم إلى إياب» (9 Nov 2026): the guest email's one line when the guest is not a member (the database decides)
+    if (res.email) bm.eyabInvite = (await eyabInvite(url(), serviceKey(), res.id, String(content.live_url ?? content.site_url)))?.links ?? null;
     const rows = await loadRecipients(res.ref);
     const { to, cc, primary, central } = route(rows, res.branch);
     const fail = force === 'fail-send';

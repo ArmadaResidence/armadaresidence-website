@@ -119,5 +119,36 @@
       "to": "https://admin.armadaresidence.com/",
       "via": "404"
     }
+  ],
+  "_gone_note": "Search Console (Ahmed, 9 Nov 2026): old URLs with no counterpart stay REAL 404s (GitHub Pages serves 404.html with status 404; qa.py fails if the build ever answers one of them). WordPress leftovers of an earlier site (theme demo, tags, accommodation post types, booking-confirmation pages) and /branches/1, /branches/2 — numeric IDs that appear nowhere in the old Horizons data (armada_admin_extract.md lists only the two branch UUIDs), so they cannot be matched to a branch with certainty; 404.html still sends /branches/* home client-side (decision 9 Oct 2026), the status stays 404.",
+  "gone": [
+    {
+      "path": "/branches/1",
+      "why": "numeric ID unknown to the old site map — not matched (no guess)"
+    },
+    {
+      "path": "/branches/2",
+      "why": "numeric ID unknown to the old site map — not matched (no guess)"
+    },
+    {
+      "path": "/accommodation/executive-suite",
+      "why": "WordPress hotel-theme demo room; no Armada room type of that name"
+    },
+    {
+      "path": "/accommodation-facility/work-desk",
+      "why": "WordPress facility tag; no counterpart"
+    },
+    {
+      "path": "/installing-theme-and-setting-as-demo-site",
+      "why": "WordPress theme demo post"
+    },
+    {
+      "path": "/tag/hotel",
+      "why": "WordPress tag archive"
+    },
+    {
+      "path": "/booking-confirmation-2/reservation-received",
+      "why": "WordPress booking-plugin page"
+    }
   ]
 }

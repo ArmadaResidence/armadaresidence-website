@@ -9,6 +9,14 @@
 //     profile (a phone with bookings joins the same one), the membership, the consent refreshed. A phone already
 //     registered gets the same answer as a new one (nothing tells them apart). An email given → the welcome email
 //     (Arabic first, then English) with List-Unsubscribe + one-click (RFC 8058); a failed send never fails the sign-up.
+//   - «انضم إلى إياب» after a booking (9 Nov 2026 — DECISIONS.md 2026-11-09 «Eyab invite after booking»), with the
+//     booking's signed invite (public.eyab_invite_token; it names the booking, never the guest):
+//     {action: 'invite', token} from /club/?invite=… (the email's line) → the booking's name, phone and email to prefill
+//     the form, or {member: true}; then the ordinary 'join' carries `invite`: a verified invite records the source
+//     booking-email and the booking (the welcome WhatsApp goes from its branch); without one the source is the page's.
+//     {action: 'invite-join', token, consent, consent_version, lang} from the success page's card → joins with the
+//     booking's own name, phone and email once the consent box is ticked (source booking-page); the welcome email as
+//     for 'join'. Per-IP limit as 'join'; no Turnstile (the token itself proves the booking).
 //   - {action: 'unsubscribe', token} from /club/unsubscribe/: public.club_unsubscribe — the consent withdrawn (offers and
 //     ads together); 422 {error: 'invalid'} for a link that does not verify.
 // Mail clients:
@@ -152,6 +160,71 @@ async function sendWelcome(to: string, token: string, sink: boolean, name: strin
   }
 }
 
+interface InviteInfo { ok: boolean; reservation_id?: string; member?: boolean; name?: string; phone?: string; email?: string | null; branch?: string; locale?: string; is_test?: boolean }
+const INVITE_SOURCES = ['booking-page', 'booking-email'];
+async function inviteInfo(token: unknown): Promise<InviteInfo | null> {
+  const t = String(token ?? '');
+  if (!TOKEN.test(t)) return { ok: false };
+  const r = await rpc<InviteInfo>('eyab_invite_info', { p_token: t });
+  if (!r.ok) {
+    console.error('club: invite read failed', r.status, r.message.slice(0, 120));
+    return null;
+  }
+  return r.data;
+}
+async function ipLimited(req: Request, test: boolean, kind: string, limit: number): Promise<boolean> {
+  const ip = clientIp(req);
+  if (!ip) return false;
+  const limits = req.headers.get('x-armada-test-limits') ?? '';
+  return (!test || limits === 'ip') && (await limited((test ? 'test:' : '') + (await sha(`${kind}:${ip}`)), limit, IP_WINDOW_SECONDS));
+}
+
+/** the email's line opened /club/?invite=…: what the form is prefilled with (the guest's own booking) */
+async function invitePrefill(req: Request, body: Record<string, unknown>, test: boolean): Promise<Response> {
+  if (await ipLimited(req, test, 'club-invite-ip', IP_LIMIT * 2)) return json(req, 429, { ok: false, error: 'rate_limited' });
+  const info = await inviteInfo(body.token);
+  if (!info) return json(req, 500, { ok: false, error: 'failed' });
+  if (!info.ok) return json(req, 200, { ok: false, error: 'invalid' });
+  if (info.member) return json(req, 200, { ok: true, member: true });
+  return json(req, 200, { ok: true, member: false, name: info.name ?? '', phone: info.phone ?? '', email: info.email ?? '' });
+}
+
+/** the success page's card: join with the booking's own details, the consent ticked (source booking-page) */
+async function inviteJoin(req: Request, body: Record<string, unknown>, test: boolean): Promise<Response> {
+  if (await ipLimited(req, test, 'club-ip', IP_LIMIT)) return json(req, 429, { ok: false, error: 'rate_limited' });
+  const version = String(body.consent_version ?? '');
+  if (body.consent !== true || ![content.club_consent_version, ...(content.club_consent_previous ?? [])].includes(version)) {
+    return json(req, 422, { ok: false, error: 'invalid', fields: { consent: 'consent' } });
+  }
+  const info = await inviteInfo(body.token);
+  if (!info) return json(req, 500, { ok: false, error: 'failed' });
+  if (!info.ok || !info.phone) return json(req, 422, { ok: false, error: 'invalid' });
+  if (info.member) return json(req, 200, { ok: true, member: true });
+  const isTest = test || Boolean(info.is_test);
+  const email = String(info.email ?? '').trim();
+  const r = await rpc<{ ok: boolean; token: string; welcome: boolean; is_test: boolean }>('club_join', {
+    p: {
+      phone: info.phone,
+      name: info.name || null,
+      email: email || null,
+      lang: body.lang === 'en' ? 'en' : 'ar',
+      src: 'booking-page',
+      utm: null,
+      consent_version: version,
+      reservation_id: info.reservation_id,
+      is_test: isTest,
+    },
+  });
+  if (!r.ok) {
+    console.error('club: invite store failed', r.status, r.message.slice(0, 120));
+    return json(req, 500, { ok: false, error: 'store_failed' });
+  }
+  let welcome: string | null = null;
+  if (r.data.welcome && email) welcome = await sendWelcome(email, r.data.token, isTest, info.name || null);
+  console.log('club: joined', 'booking-page', r.data.welcome ? (welcome ? 'welcome sent' : 'welcome failed') : '', isTest ? 'TEST' : '');
+  return json(req, 200, { ok: true, ...(test ? { welcome_id: welcome } : {}) });
+}
+
 async function join(req: Request, body: Record<string, unknown>, test: boolean): Promise<Response> {
   if (String(body.website ?? '').trim() !== '') {
     console.warn('club: honeypot hit');
@@ -183,16 +256,23 @@ async function join(req: Request, body: Record<string, unknown>, test: boolean):
   const version = String(body.consent_version ?? '');
   // the current wording, or a previous one from a page loaded before it changed: the version the guest saw is recorded
   if (![content.club_consent_version, ...(content.club_consent_previous ?? [])].includes(version)) return json(req, 422, { ok: false, error: 'invalid', fields: { consent: 'consent' } });
+  // an invite from the booking emails (9 Nov 2026): verified → source booking-email and the booking named; the two
+  // invite sources are never taken from the URL alone
+  const invite = body.invite ? await inviteInfo(body.invite) : null;
+  const viaInvite = Boolean(invite?.ok && invite.reservation_id);
+  const asked = clubSource(body.src);
+  const src = viaInvite ? 'booking-email' : INVITE_SOURCES.includes(asked) ? '' : asked;
   const r = await rpc<{ ok: boolean; token: string; welcome: boolean; is_test: boolean }>('club_join', {
     p: {
       phone: v.data.phone,
       name: v.data.name || null,
       email: v.data.email || null,
       lang: body.lang === 'en' ? 'en' : 'ar',
-      src: clubSource(body.src) || null,
+      src: src || null,
       utm: cleanUtm(body.utm),
       consent_version: version,
-      is_test: test,
+      ...(viaInvite ? { reservation_id: invite!.reservation_id } : {}),
+      is_test: test || Boolean(viaInvite && invite!.is_test),
     },
   });
   if (!r.ok) {
@@ -201,8 +281,9 @@ async function join(req: Request, body: Record<string, unknown>, test: boolean):
   }
   let welcome: string | null = null;
   if (r.data.welcome && v.data.email) welcome = await sendWelcome(v.data.email, r.data.token, test || r.data.is_test, v.data.name || null);
-  console.log('club: joined', clubSource(body.src) || 'site', r.data.welcome ? (welcome ? 'welcome sent' : 'welcome failed') : '', test ? 'TEST' : '');
-  return json(req, 200, { ok: true, ...(test ? { welcome_id: welcome } : {}) });
+  console.log('club: joined', src || 'site', r.data.welcome ? (welcome ? 'welcome sent' : 'welcome failed') : '', test ? 'TEST' : '');
+  // the source as recorded (the page's dataLayer club_join names it — never a personal detail)
+  return json(req, 200, { ok: true, source: src || 'site', ...(test ? { welcome_id: welcome } : {}) });
 }
 
 async function unsubscribe(token: string): Promise<'ok' | 'invalid' | 'failed'> {
@@ -349,6 +430,8 @@ Deno.serve(async (req) => {
     }
     const test = testMode(req);
     if (body.action === 'join') return await join(req, body, test);
+    if (body.action === 'invite') return await invitePrefill(req, body, test);
+    if (body.action === 'invite-join') return await inviteJoin(req, body, test);
     if (body.action === 'offer-send') return await offerSend(req, body, test);
     if (body.action === 'unsubscribe') {
       const out = await unsubscribe(String(body.token ?? ''));

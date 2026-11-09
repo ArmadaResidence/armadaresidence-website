@@ -1,8 +1,9 @@
 ---
 import Base from '@layouts/Base.astro';
 import Icon from '@components/Icon.astro';
+import MarketingConsent from '@components/MarketingConsent.astro';
 import { langPaths } from '@lib/paths';
-import { branchContact, branchShort, branches, clubText, fill, L, localePath, pageSeo, seo, ui, waHref, type Locale } from '@lib/content';
+import { branchContact, branchShort, branches, clubText, fill, L, localePath, marketingConsent, pageSeo, seo, ui, waHref, type Locale } from '@lib/content';
 
 export const getStaticPaths = langPaths;
 
@@ -12,6 +13,15 @@ interface Props {
 const { locale } = Astro.props;
 const t = ui(locale);
 const s = pageSeo(locale, 'booking-success');
+const club = clubText(locale) as ReturnType<typeof clubText> & { invite: { title: string; text: string; button: string; welcome: string } };
+const clubEndpoint = (() => {
+  try {
+    const b = import.meta.env.PUBLIC_BOOKING_ENDPOINT ?? '';
+    return b ? `${new URL(b).origin}/functions/v1/club` : '';
+  } catch {
+    return '';
+  }
+})();
 // Three variants (phase 2a, DECISIONS.md 2026-10-25): ?s=confirmed → «تم تأكيد حجزك» with the price breakdown from
 // sessionStorage (never from the URL); ?s=request&reason=… → the request page plus why it was not instant; otherwise
 // the request page as before. WhatsApp (task 5 A, 28 Oct 2026): &wa=1 = the function said YCloud accepted the guest's
@@ -24,6 +34,8 @@ const clientData = {
   quote: t.quote,
   success: { confirmed_heading: t.success.confirmed_heading, confirmed_body: t.success.confirmed_body, confirmed_steps: t.success.confirmed_steps, fallback_line: t.success.fallback_line, sold_out_race: t.success.sold_out_race, whatsapp_sent_request: t.success.whatsapp_sent_request, whatsapp_sent_confirmed: t.success.whatsapp_sent_confirmed, ref_label: t.success.ref_label, booking_ref_label: t.email.booking_ref_label },
   labels: { nights: t.form.plural.nights, branch: t.form.branch, room: t.form.room_type, check_in: t.form.check_in, check_out: t.form.check_out },
+  // «انضم إلى إياب» (9 Nov 2026): the club function, the consent version the card records, its messages
+  invite: { clubEndpoint, anonKey: import.meta.env.PUBLIC_SUPABASE_ANON_KEY ?? '', consentVersion: marketingConsent.version, consent: club.error_consent, network: club.error_network, sending: club.sending, button: club.invite.button },
 };
 ---
 
@@ -49,6 +61,29 @@ const clientData = {
           <tbody data-rows></tbody>
         </table>
         <p class="mt-2 text-xs text-ink-muted">{t.quote.pay_at_hotel}</p>
+      </div>
+
+      {/* «انضم إلى إياب» (Ahmed, 9 Nov 2026): only for a guest who is not a member and did not tick the booking form's
+          box — the booking function hands the page a signed invite (sessionStorage, never the URL); the button joins
+          with the booking's own name, phone and email once the ONE consent is ticked (source booking-page) */}
+      <div class="hidden mt-6 rounded border border-line bg-porcelain p-5" data-eyab-invite>
+        <div data-invite-form>
+          <h2 class="text-lg font-bold text-midnight">{club.invite.title}</h2>
+          <p class="mt-1 text-sm leading-relaxed text-ink">{club.invite.text}</p>
+          <div class="mt-4">
+            <MarketingConsent locale={locale} id="invite-consent" name="invite_consent" required describedBy="invite-consent-error" hook="data-invite-consent" />
+            <p id="invite-consent-error" class="field-error hidden" data-invite-error></p>
+          </div>
+          <p class="field-error hidden mt-3" role="alert" data-invite-summary></p>
+          <button type="button" class="mt-4 inline-flex items-center justify-center gap-2 bg-bronze-deep text-white font-semibold px-6 py-3 rounded hover:bg-bronze-text transition-colors disabled:opacity-60" data-invite-submit>
+            <span class="spinner hidden" aria-hidden="true" data-spinner></span>
+            <span data-label>{club.invite.button}</span>
+          </button>
+        </div>
+        <p class="hidden items-center gap-2 text-lg font-semibold text-midnight" role="status" tabindex="-1" data-invite-done>
+          <Icon name="check" size={22} class="text-bronze" />
+          <span>{club.invite.welcome}</span>
+        </p>
       </div>
 
       <h2 class="mt-8 text-sm font-semibold uppercase tracking-wide text-bronze-text">{t.success.next_heading}</h2>
@@ -83,13 +118,6 @@ const clientData = {
           {t.success.back_home}
         </a>
       </div>
-      {/* «إياب» (3 Nov 2026): only when the booking's marketing box was not ticked (mc ≠ 1) */}
-      <p class="hidden mt-6 pt-5 border-t border-line" data-club-link>
-        <a href={localePath(locale, '/club/')} class="inline-flex items-center gap-2 font-semibold link-bronze">
-          <span>{clubText(locale).band}</span>
-          <Icon name="arrow" size={18} class="icon-arrow rtl:rotate-180" />
-        </a>
-      </p>
       <script type="application/json" data-success-data set:html={JSON.stringify(clientData).replace(/</g, '\\u003c')} />
     </div>
   </section>
@@ -234,7 +262,84 @@ const clientData = {
         push(); // storage unavailable: push once for this view
       }
     }
-    if (ref && q.get('mc') !== '1') el('[data-club-link]')?.classList.remove('hidden');
+    // «انضم إلى إياب» (9 Nov 2026): the card only with this booking's invite (a member or a ticked box never gets one)
+    let invite = '';
+    try {
+      if (ref) invite = sessionStorage.getItem(`armada_invite_${ref}`) ?? '';
+    } catch {
+      /* storage unavailable: no card */
+    }
+    const card = el('[data-eyab-invite]');
+    if (card && ref && q.get('mc') !== '1' && /^[0-9a-f-]{36}\.[0-9a-f]{32}$/.test(invite) && data.invite.clubEndpoint) {
+      card.classList.remove('hidden');
+      const box = card.querySelector<HTMLInputElement>('[data-invite-consent]')!;
+      const err = card.querySelector<HTMLElement>('[data-invite-error]')!;
+      const summary = card.querySelector<HTMLElement>('[data-invite-summary]')!;
+      const btn = card.querySelector<HTMLButtonElement>('[data-invite-submit]')!;
+      const showErr = (on: boolean) => {
+        box.setAttribute('aria-invalid', on ? 'true' : 'false');
+        err.textContent = on ? data.invite.consent : '';
+        err.classList.toggle('hidden', !on);
+      };
+      box.addEventListener('change', () => box.checked && showErr(false));
+      const busy = (on: boolean) => {
+        btn.disabled = on;
+        btn.querySelector('[data-spinner]')?.classList.toggle('hidden', !on);
+        btn.querySelector('[data-label]')!.textContent = on ? data.invite.sending : data.invite.button;
+      };
+      const welcome = () => {
+        card.querySelector<HTMLElement>('[data-invite-form]')!.hidden = true;
+        const done = card.querySelector<HTMLElement>('[data-invite-done]')!;
+        done.classList.remove('hidden');
+        done.classList.add('flex');
+        done.focus();
+        try {
+          sessionStorage.removeItem(`armada_invite_${ref}`);
+        } catch {
+          /* nothing kept anyway */
+        }
+      };
+      btn.addEventListener('click', async () => {
+        summary.classList.add('hidden');
+        if (!box.checked) {
+          showErr(true);
+          box.focus();
+          return;
+        }
+        busy(true);
+        try {
+          const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+          if (data.invite.anonKey) {
+            headers['Authorization'] = `Bearer ${data.invite.anonKey}`;
+            headers['apikey'] = data.invite.anonKey;
+          }
+          const res = await fetch(data.invite.clubEndpoint, {
+            method: 'POST',
+            headers,
+            body: JSON.stringify({ action: 'invite-join', token: invite, consent: true, consent_version: data.invite.consentVersion, lang: L }),
+          });
+          if (res.status === 422) {
+            const j = (await res.json().catch(() => ({}))) as { fields?: { consent?: string } };
+            if (j.fields?.consent) {
+              showErr(true);
+              box.focus();
+              return;
+            }
+            throw new Error('invalid');
+          }
+          if (!res.ok) throw new Error(String(res.status));
+          const j = (await res.json().catch(() => ({}))) as { member?: boolean };
+          welcome();
+          // GA4 through GTM (consent mode decides, as for every event): the source only, nothing personal
+          if (!j.member) (window as unknown as { dataLayer?: unknown[] }).dataLayer?.push({ event: 'club_join', source: 'booking-page' });
+        } catch {
+          summary.textContent = data.invite.network;
+          summary.classList.remove('hidden');
+        } finally {
+          busy(false);
+        }
+      });
+    }
     if (branch) {
       root.querySelectorAll<HTMLElement>('[data-branch-wa]').forEach((a) => {
         if (a.dataset.branchWa !== branch) a.classList.add('hidden');

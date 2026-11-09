@@ -13,6 +13,7 @@
 // Env: GITHUB_* (the run), SUPABASE_URL or PUBLIC_BOOKING_ENDPOINT + SUPABASE_SERVICE_ROLE_KEY (absent → nothing
 // reported, logged), GH_TOKEN (the run's jobs and commit title; optional). A report failure never fails the workflow.
 import { execFileSync } from 'node:child_process';
+import { readFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 
 /** the run's outcome from its two jobs' results (success | failure | cancelled | skipped) */
@@ -106,6 +107,23 @@ async function main() {
       ref: env.GITHUB_REF_NAME || 'main',
     }, env, () => {});
     console.log(`site-deploy-report: live-checks alert ${a?.ok ? `sent — ${a.recipients} recipient(s)${a.test ? ' (test)' : ''}` : 'NOT sent'}`);
+    if (!a?.ok) process.exitCode = 1;
+    return;
+  }
+  // 9 Nov 2026: the weekly Storage → R2 backup failed or did not match (storage-backup.yml; its backup-result.json:
+  // the reason and the counts, never a file name) — the alert of its own (stage backup_failed)
+  if (mode === 'backup') {
+    const repo = env.GITHUB_REPOSITORY;
+    const runId = Number(env.GITHUB_RUN_ID);
+    let res = {};
+    try {
+      res = JSON.parse(readFileSync('backup-result.json', 'utf8'));
+    } catch { /* the run stopped before writing it */ }
+    const a = await report({
+      stage: 'backup_failed', run_id: runId, attempt: Number(env.GITHUB_RUN_ATTEMPT || 1), run_url: `${env.GITHUB_SERVER_URL}/${repo}/actions/runs/${runId}`,
+      reason: res.reason === 'mismatch' ? 'mismatch' : 'failed', counts: res.counts ?? null, started_at: new Date().toISOString(), ref: env.GITHUB_REF_NAME || 'main',
+    }, env, () => {});
+    console.log(`site-deploy-report: backup alert ${a?.ok ? `sent — ${a.recipients} recipient(s)${a.test ? ' (test)' : ''}` : 'NOT sent'}`);
     if (!a?.ok) process.exitCode = 1;
     return;
   }

@@ -877,6 +877,30 @@ def main() -> int:
     except Exception as e:  # noqa: BLE001
         rep.f("redirects", f"redirects.json invalid: {e}")
 
+    # ---- old URLs that stay real 404s (Search Console, 9 Nov 2026 — redirects.json → gone): WordPress leftovers with no
+    # counterpart and the unmatched /branches/<n>. None may become a built page or a redirect page (GitHub Pages then
+    # answers 404 with 404.html); an exact redirect would contradict the decision.
+    try:
+        froms = {str(r.get("from", "")).rstrip("/") for r in rj.get("redirects", [])}
+        for g in rj.get("gone", []):
+            gp = str(g.get("path", ""))
+            if not gp.startswith("/"):
+                rep.f("old urls", f"gone: invalid path {g}")
+                continue
+            if exists(gp.rstrip("/") + "/") or gp.rstrip("/") + "/" in redirect_pages or gp.rstrip("/") in froms:
+                rep.f("old urls", f"{gp} is listed as a real 404 (redirects.json → gone) but the build answers it")
+    except Exception as e:  # noqa: BLE001
+        rep.f("old urls", f"redirects.json gone invalid: {e}")
+
+    # ---- no soft 404 (9 Nov 2026): only 404.html may carry the not-found title; every other page that says "not found"
+    # with a 200 would be a soft 404 for Search Console
+    nf_titles = {str(content["seo.json"]["pages"]["404"].get(k, "")) for k in ("title_ar", "title_en")} - {""}
+    for path, p in pages.items():
+        if path.rstrip("/").endswith("404") or path.endswith("404.html"):
+            continue
+        if p.title.strip() in nf_titles:
+            rep.f("soft 404", f"{path} carries the not-found title but is a real page (served with 200)")
+
     # ---- robots / CNAME
     for name in ("robots.txt", "CNAME", ".nojekyll"):
         if not (DIST / name).is_file():
@@ -1284,7 +1308,7 @@ def check_ui_parity(rep: "Report") -> None:
     G = "ui.json parity"
     ui = json.loads((CONTENT / "ui.json").read_text(encoding="utf-8"))
     # notes ("_…") are comments; the deploy alert (6 Nov 2026) and the live-checks alert (9 Nov 2026) are Arabic-only staff emails
-    ARABIC_ONLY = {"staff_email.deploy_alert", "staff_email.live_alert"}
+    ARABIC_ONLY = {"staff_email.deploy_alert", "staff_email.live_alert", "staff_email.backup_alert"}
 
     def kind(v):
         return "group" if isinstance(v, dict) else "list" if isinstance(v, list) else "text"

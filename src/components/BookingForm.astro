@@ -1152,7 +1152,7 @@ const stepper = (name: 'adults' | 'children' | 'extra_beds', value: number, min:
         const ts = await turnstileToken(form);
         if (ts !== null) (body as Record<string, unknown>).turnstile_token = ts;
         const res = await fetch(data.endpoint, { method: 'POST', headers, body: JSON.stringify(body) });
-        const json = (await res.json().catch(() => ({}))) as { ok?: boolean; ref?: string; error?: string; status?: string; reason?: string | null; quote?: Quote | null; whatsapp_sent?: boolean; fields?: Record<string, string> };
+        const json = (await res.json().catch(() => ({}))) as { ok?: boolean; ref?: string; error?: string; status?: string; reason?: string | null; quote?: Quote | null; whatsapp_sent?: boolean; eyab_invite?: string; fields?: Record<string, string> };
         if (res.status === 422 && json.fields?.promo_code && promoIn) {
           // the code does not apply to this request (the database decided): say why, next to the field
           const why = json.fields.promo_code;
@@ -1190,6 +1190,9 @@ const stepper = (name: 'adults' | 'children' | 'extra_beds', value: number, min:
             const roomName = data.rooms.find((x) => x.slug === d.room && x.branch === d.branch)?.name ?? '';
             sessionStorage.setItem(`armada_confirmed_${json.ref}`, JSON.stringify({ quote: json.quote, room: roomName, branch: d.branch, check_in: d.check_in, check_out: d.check_out, adults: d.adults, children: d.children, breakfast: d.breakfast, extra_beds: d.extra_beds }));
           }
+          // «انضم إلى إياب» (9 Nov 2026): the booking's signed invite (no personal data) for the success page's card;
+          // absent for a member or a ticked box
+          if (typeof json.eyab_invite === 'string') sessionStorage.setItem(`armada_invite_${json.ref}`, json.eyab_invite);
         } catch {
           /* storage unavailable: the success page shows the ref and the generic text */
         }

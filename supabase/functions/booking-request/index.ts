@@ -59,6 +59,7 @@ import {
 import { makeRef } from '../_shared/ref.ts';
 import { emailKey, phoneKey, platformClientIp } from '../_shared/client-ip.ts';
 import { verifyTurnstile } from '../_shared/turnstile.ts';
+import { eyabInvite } from '../_shared/eyab-invite.ts';
 import { sendWhatsApp } from './whatsapp-send.ts';
 import { WA_TEMPLATES, type WaTemplate } from './whatsapp.ts';
 import { testEcho } from './test-echo.ts';
@@ -97,8 +98,11 @@ interface Payload {
   /** QA only, with a valid test token: 'staff-emails' sends the dashboard staff emails as [TEST] samples to `to`;
    *  'status' reads Resend's last event of `ids` (26 Oct 2026); 'wa-send' sends ONE real template message with a fake
    *  ref (logged as test) to `wa_to`; 'wa-log' reads the WhatsApp log of one test ref (28 Oct 2026);
-   *  'cancel-email' sends the guest cancellation email with a fake ref and `reason` to `to` (9 Nov 2026) */
+   *  'cancel-email' sends the guest cancellation email with a fake ref and `reason` to `to` (9 Nov 2026);
+   *  'guest-email' sends the guest request-received (`kind` request) or confirmed (`kind` confirmed) email with a fake
+   *  ref and the «انضم إلى إياب» line to `to` (9 Nov 2026) */
   preview?: string;
+  kind?: string;
   wa_to?: string;
   template?: string;
   /** QA 'wa-send' (booking_cancelled) / 'cancel-email': the reason code (content/policies.json → cancellation_reasons) */
@@ -401,6 +405,44 @@ async function previewCancelEmail(req: Request, p: Payload): Promise<Response> {
   const b = (await res.json().catch(() => ({}))) as { id?: string };
   console.log('cancel email preview', ref, reason, branch, res.status);
   return json(req, 200, { ok: res.status < 300 && Boolean(b.id), ref, branch, reason, id: b.id ?? null, status: res.status });
+}
+
+/** QA (test token only, 9 Nov 2026): the guest request-received / confirmed email — built by email.ts as the live
+ *  functions build it, with the «انضم إلى إياب» line — for a FAKE ref (AR-20991231-…) and a FAKE invite (a token no
+ *  booking has: the club page then shows its plain form), sent to `to` (armadaresidence.com or a dashboard user only). */
+async function previewGuestEmail(req: Request, p: Payload): Promise<Response> {
+  const key = Deno.env.get('RESEND_API_KEY');
+  if (!key) return json(req, 500, { ok: false, error: 'RESEND_API_KEY missing' });
+  const branch = String(p.branch ?? '');
+  const kind = p.kind === 'confirmed' ? 'confirmed' : p.kind === 'request' ? 'request' : '';
+  const to = [...new Set((Array.isArray(p.to) ? p.to : []).map((x) => String(x).trim().toLowerCase()))].filter((x) => EMAIL.test(x)).slice(0, 2);
+  if (!KNOWN_BRANCHES.includes(branch) || !kind || !to.length) return json(req, 400, { ok: false, error: 'branch, kind, to' });
+  const staff = await knownStaffEmails();
+  if (!to.every((x) => x.endsWith('@armadaresidence.com') || staff.has(x))) return json(req, 400, { ok: false, error: 'recipients: armadaresidence.com or a dashboard user only' });
+  const ref = `AR-20991231-${makeRef().slice(-4)}`;
+  const L: Locale = p.locale === 'en' ? 'en' : 'ar';
+  const today = riyadhToday();
+  const plus = (n: number) => new Date(Date.parse(`${today}T00:00:00Z`) + n * 86400000).toISOString().slice(0, 10);
+  const room = content.rooms.find((r: { branch: string }) => r.branch === branch)?.slug ?? '';
+  const site = String(content.live_url ?? content.site_url).replace(/\/$/, '');
+  const fake = `00000000-0000-4000-8000-000000000000.${'0'.repeat(32)}`;
+  const q = `?src=booking-email&invite=${fake}`;
+  const bm = {
+    ref, locale: L, branch, room, check_in: plus(7), check_out: plus(10), nights: 3, adults: 2, children: 0, extraBeds: 0, extraBedFee: Number(content.extra_bed_fee) || 0,
+    needsCoordination: false, capacity: 2, breakfast: 'without' as const, name: L === 'ar' ? 'تجربة النظام' : 'System test', phone: '+966500000000', email: to[0], notes: '', receivedAt: 'TEST',
+    eyabInvite: { ar: `${site}/club/${q}`, en: `${site}/en/club/${q}` },
+  };
+  const nights = [0, 1, 2].map((i) => ({ night: plus(7 + i), price: 200 }));
+  const quote: Quote = { nights, count: 3, room_total: 600, breakfast: 'without', breakfast_total: 0, extra_beds: 0, extra_bed_fee: bm.extraBedFee, extra_beds_total: 0, total: 600 };
+  const mail = kind === 'confirmed' ? bookingConfirmed(content, { ...bm, quote, confirmedBy: null }) : bookingConfirmation(content, bm);
+  const res = await fetch('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ from: FROM_GUEST, to, subject: `[TEST] ${mail.subject}`, html: mail.html, text: mail.text }),
+  });
+  const b = (await res.json().catch(() => ({}))) as { id?: string };
+  console.log('guest email preview', ref, kind, branch, L, res.status);
+  return json(req, 200, { ok: res.status < 300 && Boolean(b.id), ref, kind, branch, locale: L, id: b.id ?? null, status: res.status });
 }
 
 /** QA (test token only): the WhatsApp log rows of one TEST ref (scripts/whatsapp-check.mjs --live). Test rows only,
@@ -769,6 +811,7 @@ Deno.serve(async (req) => {
   if (token && payload.preview === 'wa-send') return previewWaSend(req, payload);
   if (token && payload.preview === 'wa-log') return previewWaLog(req, payload);
   if (token && payload.preview === 'cancel-email') return previewCancelEmail(req, payload);
+  if (token && payload.preview === 'guest-email') return previewGuestEmail(req, payload);
   if (limitApplies(req, token, 'ip') && (await rateLimited(req, Boolean(token)))) return json(req, 429, { ok: false, error: 'too many requests' });
 
   // Cloudflare Turnstile (content/turnstile.json; test mode skips it)
@@ -822,6 +865,13 @@ Deno.serve(async (req) => {
     stored = outcome !== null;
   }
 
+  // «انضم إلى إياب» (9 Nov 2026): a stored booking whose guest is not a member (the box unticked) is invited — the
+  // success page's card and one line in the guest's email; the database decides (public.eyab_invite_token)
+  const svc = serviceEnv();
+  const invite = !isPartner && stored && outcome?.id && !d.marketingConsent && svc
+    ? await eyabInvite(svc.url, svc.key, outcome.id, String(content.live_url ?? content.site_url))
+    : null;
+
   // ---- 3 + 4: build the messages (email.ts, copy from content/) ----
   let notification: Mail;
   let confirmation: Mail | null;
@@ -832,7 +882,7 @@ Deno.serve(async (req) => {
     notification = partnerNotification(content, pm);
     confirmation = partnerConfirmation(content, pm);
   } else {
-    const bm = { ref, locale: d.locale, branch: d.branch, room: d.room, check_in: d.check_in, check_out: d.check_out, nights: d.nights, adults: d.adults, children: d.children, extraBeds: d.extraBeds, extraBedFee: Number(outcome?.quote?.extra_bed_fee ?? content.extra_bed_fee), needsCoordination: d.needsCoordination, capacity: d.capacity, breakfast: d.breakfast as 'with' | 'without', name: d.name, phone: d.phone, email: d.email, notes: d.notes, receivedAt, offer: outcome?.quote?.offer ?? null, promoCode: d.promoCode };
+    const bm = { ref, locale: d.locale, branch: d.branch, room: d.room, check_in: d.check_in, check_out: d.check_out, nights: d.nights, adults: d.adults, children: d.children, extraBeds: d.extraBeds, extraBedFee: Number(outcome?.quote?.extra_bed_fee ?? content.extra_bed_fee), needsCoordination: d.needsCoordination, capacity: d.capacity, breakfast: d.breakfast as 'with' | 'without', name: d.name, phone: d.phone, email: d.email, notes: d.notes, receivedAt, offer: outcome?.quote?.offer ?? null, promoCode: d.promoCode, eyabInvite: invite?.links ?? null };
     if (confirmed && outcome?.quote) {
       const cm = { ...bm, quote: outcome.quote, confirmedBy: null };
       notification = confirmedNotification(content, cm);
@@ -890,6 +940,9 @@ Deno.serve(async (req) => {
     guest_email_sent: Boolean(confirmationId),
     // the guest's WhatsApp message was accepted by YCloud (test mode: built); the success page picks its sentence
     whatsapp_sent: whatsappSent,
+    // «انضم إلى إياب» (9 Nov 2026): the signed invite of this booking (no personal data) — the success page's card
+    // joins with it; absent for a member or a guest who ticked the box
+    ...(invite ? { eyab_invite: invite.token } : {}),
     // Resend message ids (opaque) so a support thread can be traced; no addresses are returned.
     email_ids: { notification: notificationId, confirmation: confirmationId, low_inventory: lowId },
     // test bookings only: the emails' text and the WhatsApp parameters as sent (./test-echo.ts)

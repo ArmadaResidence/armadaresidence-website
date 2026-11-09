@@ -9,6 +9,9 @@
  * aria-invalid / aria-describedby, focus to the first invalid field, the button disabled with a spinner while sending;
  * success replaces the form (the same message for a number already registered) with «تابعنا على حساباتنا»; dataLayer
  * `club_join` { source } only. Nothing is kept in the browser.
+ * «انضم إلى إياب» from a booking email (9 Nov 2026): ?invite=<signed token> (it names the booking, never the guest) is
+ * taken out of the address at once, the club function returns the booking's name, phone and email and the form is
+ * prefilled with them (all editable); the sign-up carries the invite, so the source is booking-email.
  */
 import Icon from './Icon.astro';
 import PhoneField from './PhoneField.astro';
@@ -154,6 +157,42 @@ const clientData = {
     }
     consent.addEventListener('change', () => check('consent'));
 
+    // an invite from a booking email: out of the address before anything reads it, then the prefill
+    const headersOf = () => {
+      const h: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (data.anonKey) {
+        h['Authorization'] = `Bearer ${data.anonKey}`;
+        h['apikey'] = data.anonKey;
+      }
+      return h;
+    };
+    const urlNow = new URL(location.href);
+    const invite = /^[0-9a-f-]{36}\.[0-9a-f]{32}$/.test(urlNow.searchParams.get('invite') ?? '') ? urlNow.searchParams.get('invite')! : '';
+    if (urlNow.searchParams.has('invite')) {
+      urlNow.searchParams.delete('invite');
+      history.replaceState(history.state, '', urlNow.pathname + urlNow.search + urlNow.hash);
+    }
+    if (invite && data.endpoint) {
+      void (async () => {
+        try {
+          const res = await fetch(data.endpoint, { method: 'POST', headers: headersOf(), body: JSON.stringify({ action: 'invite', token: invite }), signal: ac.signal });
+          const j = (await res.json().catch(() => ({}))) as { ok?: boolean; member?: boolean; name?: string; phone?: string; email?: string };
+          if (!res.ok || !j.ok) return;
+          if (j.member) {
+            form.hidden = true;
+            done.classList.remove('hidden');
+            return;
+          }
+          if (j.name && !name.value) name.value = j.name;
+          if (j.email && !email.value) email.value = j.email;
+          if (j.phone && !phone.value) await select?.applyInternational(j.phone);
+          root.dataset.invitePrefilled = '';
+        } catch {
+          /* no prefill: the plain form */
+        }
+      })();
+    }
+
     const busy = (on: boolean) => {
       button.disabled = on;
       button.querySelector('[data-spinner]')?.classList.toggle('hidden', !on);
@@ -200,6 +239,7 @@ const clientData = {
             lang: data.locale,
             src,
             utm,
+            ...(invite ? { invite } : {}),
             website: honey.value,
           }),
         });
@@ -214,12 +254,13 @@ const clientData = {
           throw new Error('invalid');
         }
         if (!res.ok) throw new Error(String(res.status));
+        const out = (await res.json().catch(() => ({}))) as { source?: string };
         form.reset();
         select?.reset();
         form.hidden = true;
         done.classList.remove('hidden');
         done.focus();
-        (window as unknown as { dataLayer?: unknown[] }).dataLayer?.push({ event: 'club_join', source: src || 'site' });
+        (window as unknown as { dataLayer?: unknown[] }).dataLayer?.push({ event: 'club_join', source: clubSource(out.source) || src || 'site' });
       } catch {
         summary.textContent = data.strings.network;
         summary.classList.remove('hidden');

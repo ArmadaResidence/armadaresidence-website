@@ -528,6 +528,20 @@
         "button": "افتح سجل الفحص على GitHub",
         "foot": "يُرسَل هذا التنبيه مرة واحدة لكل تشغيل فاشل لفحص ما بعد النشر، إلى مديري النظام في لوحة أرمادا ريزيدنس."
       },
+      "backup_alert": {
+        "_note": "The weekly Storage → R2 backup alert (9 Nov 2026; the subject is Ahmed's wording). Arabic only; the same sender and recipients as deploy_alert.",
+        "subject": "فشل النسخ الاحتياطي الأسبوعي للصور",
+        "lead": "فشل النسخ الاحتياطي الأسبوعي للصور.",
+        "meaning": "لم تكتمل النسخة الاحتياطية الأسبوعية لملفات التخزين (الصور والفيديو والملفات) إلى Cloudflare R2، أو لم يطابق ما في النسخة ما في التخزين. الملفات الأصلية في Supabase لم تتأثر. التفاصيل في سجل التشغيل.",
+        "label_reason": "السبب",
+        "reason_failed": "توقّف التشغيل قبل اكتماله",
+        "reason_mismatch": "عدد الملفات أو أحجامها في النسخة لا يطابق التخزين",
+        "label_counts": "عدد الملفات",
+        "counts": "التخزين {storage} · النسخة {r2}",
+        "label_time": "وقت التشغيل",
+        "button": "افتح سجل التشغيل على GitHub",
+        "foot": "يُرسَل هذا التنبيه مرة واحدة لكل تشغيل فاشل للنسخ الاحتياطي، إلى مديري النظام في لوحة أرمادا ريزيدنس."
+      },
       "deploy_alert": {
         "_note": "The site-deploy alert to the dashboard's active admins (6 Nov 2026, approved by Ahmed). Arabic only.",
         "test_prefix": "[تجربة] ",

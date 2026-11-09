@@ -71,6 +71,9 @@ export const CLUB_SOURCES: { key: string; label: string }[] = [
   { key: 'reception', label: 'الاستقبال' },
   // a consent ticked in the booking form makes the guest a member (4 Nov 2026)
   { key: 'booking', label: 'نموذج الحجز' },
+  // «انضم إلى إياب» after a booking (9 Nov 2026): the success page's card and the booking emails' line
+  { key: 'booking-page', label: 'بعد الحجز — الصفحة' },
+  { key: 'booking-email', label: 'بعد الحجز — الإيميل' },
 ];
 export const clubSourceLabel = (s: string | null) => (s ? CLUB_SOURCES.find((x) => x.key === s)?.label ?? s : '—');
 

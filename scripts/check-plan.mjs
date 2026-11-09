@@ -19,7 +19,7 @@ import { execFileSync } from 'node:child_process';
 import { pathToFileURL } from 'node:url';
 
 // the suite, in the order check-all runs it
-export const STATIC_CHECKS = ['typecheck', 'admin-digits-check', 'admin-format-check', 'admin-sidebar-check', 'admin-audit-check', 'auth-emails-check', 'whatsapp-check', 'email-print-check', 'offers-engine-check', 'turnstile-check', 'deploy-alert-check', 'wa-automation-check'];
+export const STATIC_CHECKS = ['typecheck', 'admin-digits-check', 'admin-format-check', 'admin-sidebar-check', 'admin-audit-check', 'auth-emails-check', 'whatsapp-check', 'email-print-check', 'offers-engine-check', 'turnstile-check', 'deploy-alert-check', 'wa-automation-check', 'storage-backup-check'];
 export const BROWSER_CHECKS = ['booking-nav-check', 'drawer-check', 'booking-whatsapp-check', 'datepicker-check', 'motion-check', 'booking-instant-check', 'partners-form-check', 'careers-form-check', 'dining-site-check', 'gallery-site-check', 'offers-site-check', 'blog-site-check', 'faq-site-check', 'content-site-check', 'club-site-check', 'home-sections-check', 'consent-check', 'partners-button-check', 'theme-check', 'hero-video-check', 'hero-slides-check', 'mobile-forms-check', 'a11y-check'];
 // the static checks that open a browser (the dashboard's sidebar and «السجل» pages, the emails' print layout): CI only
 export const STATIC_BROWSER_CHECKS = ['admin-sidebar-check', 'admin-audit-check', 'email-print-check'];

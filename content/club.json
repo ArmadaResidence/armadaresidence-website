@@ -61,6 +61,14 @@
     },
     "whatsapp": {
       "optout_reply": "أوقفنا رسائل عروض إياب — عضوية أرمادا ريزيدنس على واتساب. رسائل حجوزاتك تصلك كالمعتاد."
+    },
+    "invite": {
+      "_note": "«انضم إلى إياب» after a booking (Ahmed, 9 Nov 2026): the success page's card and the one line in the request / confirmed emails, for guests who are not members and did not tick the booking form's box. Wording approved by Ahmed (the brief of 9 Nov 2026).",
+      "title": "انضم إلى إياب",
+      "text": "عضوية أرمادا ريزيدنس: عروض خاصة بالأعضاء تصلك على واتساب والبريد الإلكتروني قبل زيارتك القادمة.",
+      "button": "انضم الآن",
+      "welcome": "أهلًا بك في إياب",
+      "email_link": "انضم إلى إياب"
     }
   },
   "en": {
@@ -112,6 +120,13 @@
     },
     "whatsapp": {
       "optout_reply": "We have stopped Eyab — Armada Residence membership offers on WhatsApp. Messages about your bookings will still reach you."
+    },
+    "invite": {
+      "title": "Join Eyab",
+      "text": "Armada Residence membership: member-only offers by WhatsApp and email before your next visit.",
+      "button": "Join now",
+      "welcome": "Welcome to Eyab",
+      "email_link": "Join Eyab"
     }
   }
 }
