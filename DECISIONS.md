@@ -2866,3 +2866,14 @@ toggles (rates, inventory and photos lived elsewhere; names, sizes, beds, featur
   no value was taken from them. After the push (read-only): every type's names, size, capacity, description and the
   form's capacities equal the live site, units NULL, totals 106 + 60 = 166 (170 checks,
   `reports/session25-db-backup/prod-vs-live-check.mjs`).
+- **Where it stands at the end of session 25 (10 Nov 2026, ~17:05 UTC).** Live in production: the migration (applied
+  with `db push` after the backup; the dashboard and site code that use it are not deployed yet — production keeps
+  working on the old code, which ignores the new columns). Committed locally, **not pushed**: c8aab27 — GitHub
+  reported Actions «partial outage» before the first push, and the standing rule says hand over without pushing. Not
+  done because the auto-mode permission classifier refused them: `functions deploy booking-request booking-admin` to
+  production (the old functions stay correct; a type added in the dashboard is refused by the old booking-request
+  until it is deployed). Not run: the CI end to end (`rooms-e2e.yml` must be on main first, and Actions was degraded);
+  the preview branch `s25-rooms` (≈ 40 minutes, ≈ 0.01 USD, Ahmed's OK) was deleted, so the e2e needs a new branch
+  and the temporary secret — ask again with the cost. SQL on that branch: room-types.sql **84 / 84**; the whole earlier
+  suite **1492 / 1492** after the migration (session4 C0 updated for the 12 retired fields; site-deploys.sql not run —
+  it needs an admin row inserted, unrelated). Ahmed still has to enter each room type's physical units in «الغرف».
