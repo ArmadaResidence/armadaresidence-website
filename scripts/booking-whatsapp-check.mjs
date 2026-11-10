@@ -6,7 +6,7 @@
 // an invalid phone / email → the inline error and no popup; and the same button after a failed submit (the
 // endpoint is stubbed to fail — no request ever reaches the real function, and wa.me is stubbed too).
 //   node scripts/booking-whatsapp-check.mjs [BASE_URL]
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { chromium } from 'playwright';
 import { pickRange } from './datepicker-helpers.mjs';
 import { stubTurnstile } from './turnstile-stub.mjs';
@@ -16,7 +16,7 @@ const BASE = (process.argv[2] || process.env.BASE_URL || 'http://127.0.0.1:4330'
 const PRE = new URL(BASE).pathname.replace(/\/$/, '');
 const contact = JSON.parse(readFileSync('content/contact.json', 'utf8'));
 const ui = JSON.parse(readFileSync('content/ui.json', 'utf8'));
-const rooms = JSON.parse(readFileSync('content/rooms.json', 'utf8'));
+const rooms = JSON.parse(readFileSync((existsSync('content/rooms.generated.json') ? 'content/rooms.generated.json' : 'content/rooms.json'), 'utf8'));
 const branchesJson = JSON.parse(readFileSync('content/branches.json', 'utf8'));
 const digits = (b) => contact.branches[b].whatsapp.replace(/\D/g, '');
 const fails = [];

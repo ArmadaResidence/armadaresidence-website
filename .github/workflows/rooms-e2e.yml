@@ -1,0 +1,51 @@
+# «الغرف» end to end on a Supabase preview branch (10 Nov 2026 — DECISIONS.md 2026-11-10 «Room types from the dashboard»).
+# Dispatched by hand for a branch that exists only for the run (created and deleted outside this workflow, with Ahmed's
+# OK for its cost): scripts/rooms-e2e.mjs adds a room type as a staff user, builds the site against the branch, checks
+# the page and the booking form, renames it (the address stays), hides it, deletes it. Never production: the script
+# refuses the production project, and the branch's service key is a temporary secret (E2E_BRANCH_SERVICE_KEY) removed
+# after the run. Never deploys anything.
+name: Rooms e2e (preview branch)
+on:
+  workflow_dispatch:
+    inputs:
+      supabase_url:
+        description: the preview branch's API URL (https://<branch ref>.supabase.co) — never production
+        required: true
+      anon_key:
+        description: the preview branch's publishable (anon) key
+        required: true
+permissions:
+  contents: read
+concurrency:
+  group: rooms-e2e
+  cancel-in-progress: false
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - name: refuse production
+        env:
+          URL_IN: ${{ inputs.supabase_url }}
+        run: |
+          case "$URL_IN" in
+            *wwzxwettsuwtakwwbfly*) echo "production is refused"; exit 1 ;;
+            https://*.supabase.co) ;;
+            *) echo "not a Supabase branch URL"; exit 1 ;;
+          esac
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: install
+        run: npm ci
+      - name: rooms e2e
+        env:
+          E2E_SUPABASE_URL: ${{ inputs.supabase_url }}
+          E2E_ANON_KEY: ${{ inputs.anon_key }}
+          E2E_SERVICE_KEY: ${{ secrets.E2E_BRANCH_SERVICE_KEY }}
+        run: node scripts/rooms-e2e.mjs

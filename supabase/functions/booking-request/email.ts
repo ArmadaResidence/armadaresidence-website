@@ -29,6 +29,8 @@ export interface BookingMail {
   locale: Locale;
   branch: string;
   room: string;
+  /** the room-type name the booking was made with (reservations.room_name_ar / _en, 10 Nov 2026) — wins over content */
+  roomName?: { ar: string | null; en: string | null } | null;
   check_in: string;
   check_out: string;
   nights: number;
@@ -97,6 +99,8 @@ export interface LowInventoryMail {
   ref: string;
   branch: string;
   room: string;
+  /** the room-type name the booking was made with (reservations.room_name_ar / _en, 10 Nov 2026) — wins over content */
+  roomName?: { ar: string | null; en: string | null } | null;
   nights: { night: string; left: number }[];
 }
 
@@ -157,7 +161,10 @@ function branchName(c: Content, slug: string, L: Locale): string {
   if (slug === 'both') return c.branches.map((b: Record<string, string>) => b[`name_${L}`]).join(' + ');
   return branchOf(c, slug)[`name_${L}`];
 }
-function roomName(c: Content, slug: string, branch: string, L: Locale): string {
+/** the stored name of the booking first (a renamed room type never renames an old booking — 10 Nov 2026), then the
+ *  content's, then «أي غرفة متاحة» */
+function roomName(c: Content, slug: string, branch: string, L: Locale, stored?: { ar: string | null; en: string | null } | null): string {
+  if (slug && stored?.[L]) return String(stored[L]);
   const r = slug ? c.rooms.find((x: { slug: string; branch: string }) => x.slug === slug && x.branch === branch) : null;
   return r ? r[`name_${L}`] : c.labels[L].any_room;
 }
@@ -435,7 +442,7 @@ export function bookingNotification(c: Content, d: BookingMail): Mail {
     [lab.nights, pluralForm(lab.plural.nights, d.nights)],
     [lab.adults, String(d.adults)],
     [lab.children, String(d.children)],
-    [plainLabel(lab.room_type), roomName(c, d.room, d.branch, 'ar')],
+    [plainLabel(lab.room_type), roomName(c, d.room, d.branch, 'ar', d.roomName)],
     ...(d.extraBeds ? ([[lab.extra_beds, String(d.extraBeds)]] as [string, string][]) : []),
     [lab.breakfast, breakfast],
     ...offerRows(c, d, 'ar'),
@@ -500,7 +507,7 @@ export function bookingConfirmation(c: Content, d: BookingMail): Mail {
       [lab.check_out, d.check_out],
       [lab.nights, pluralForm(lab.plural.nights, d.nights)],
       [M.guests, guestsLine(c, d.adults, d.children, L)],
-      [plainLabel(lab.room_type), roomName(c, d.room, d.branch, L)],
+      [plainLabel(lab.room_type), roomName(c, d.room, d.branch, L, d.roomName)],
       ...(d.extraBeds ? ([[lab.extra_beds, String(d.extraBeds)]] as [string, string][]) : []),
       [lab.breakfast, breakfast],
       ...offerRows(c, d, L),
@@ -754,7 +761,7 @@ export function bookingConfirmed(c: Content, d: ConfirmedMail): Mail {
     const breakfast = d.breakfast === 'with' ? lab.breakfast_with : lab.breakfast_without;
     const rows: [string, string][] = [
       [lab.branch, b[`name_${L}`]],
-      [plainLabel(lab.room_type), roomName(c, d.room, d.branch, L)],
+      [plainLabel(lab.room_type), roomName(c, d.room, d.branch, L, d.roomName)],
       [lab.check_in, longDate(c, d.check_in, L)],
       [lab.check_out, longDate(c, d.check_out, L)],
       [lab.nights, pluralForm(lab.plural.nights, d.nights)],
@@ -845,7 +852,7 @@ export function confirmedNotification(c: Content, d: ConfirmedMail): Mail {
     [M.booking_ref_label, d.ref],
     [M.status_label, by],
     [lab.branch, b.name_ar],
-    [plainLabel(lab.room_type), roomName(c, d.room, d.branch, 'ar')],
+    [plainLabel(lab.room_type), roomName(c, d.room, d.branch, 'ar', d.roomName)],
     [lab.check_in, longDate(c, d.check_in, 'ar')],
     [lab.check_out, longDate(c, d.check_out, 'ar')],
     [lab.nights, pluralForm(lab.plural.nights, d.nights)],
@@ -903,7 +910,7 @@ export function lowInventoryAlert(c: Content, d: LowInventoryMail): Mail {
   const L: Locale = 'ar';
   const M = c.email.ar;
   const b = branchOf(c, d.branch);
-  const room = roomName(c, d.room, d.branch, 'ar');
+  const room = roomName(c, d.room, d.branch, 'ar', d.roomName);
   const rows: [string, string][] = d.nights.map((n) => [`${M.low_night} ${longDate(c, n.night, 'ar')}`, n.left <= 0 ? M.low_zero : M.low_one]);
   const subject = fill(M.low_subject, { branch: b.name_ar, room, ref: d.ref });
   const first = d.nights[0]?.night ?? '';
@@ -933,7 +940,7 @@ export function bookingCancelled(c: Content, d: BookingMail): Mail {
     const M = c.email[L];
     const rows: [string, string][] = [
       [lab.branch, b[`name_${L}`]],
-      [plainLabel(lab.room_type), roomName(c, d.room, d.branch, L)],
+      [plainLabel(lab.room_type), roomName(c, d.room, d.branch, L, d.roomName)],
       [lab.check_in, longDate(c, d.check_in, L)],
       [lab.check_out, longDate(c, d.check_out, L)],
       [lab.nights, pluralForm(lab.plural.nights, d.nights)],

@@ -41,6 +41,7 @@ export const WELCOME: Tour = {
 };
 
 const editBookings = (me: Me | null) => canEdit(me, 'bookings');
+const editRooms = (me: Me | null) => canEdit(me, 'rooms');
 export const PAGE_TOURS: Record<string, Tour> = {
   '/bookings': {
     id: 'bookings',
@@ -52,6 +53,19 @@ export const PAGE_TOURS: Record<string, Tour> = {
       { target: [t('booking-confirm')], open: t('booking-request-row'), needs: editBookings, title: 'بعد كل حجز مؤكد', text: 'أغلق الغرفة نفسها على Booking.com والمنصات الأخرى فورًا، حتى لا تُباع مرتين.' },
       // 10 Nov 2026: «حذف نهائي» — the system admin only, in the details of a booking cancelled as «حجز تجريبي»
       { target: [t('booking-delete-test')], open: t('booking-test-row'), needs: (me) => me?.role === 'admin', title: 'حذف حجز تجريبي', text: 'يظهر «حذف نهائي» لك وحدك، وعلى الحجوزات الملغاة بسبب «حجز تجريبي» فقط. اكتب رقم الحجز للتأكيد، فيختفي من كل القوائم والتقارير، ويمكنك استرجاعه من «السجل».' },
+    ],
+  },
+  // 10 Nov 2026: room types managed from «الغرف» (DECISIONS.md 2026-11-10 «Room types from the dashboard»)
+  '/rooms': {
+    id: 'rooms',
+    steps: [
+      { target: [t('room-row')], title: 'أنواع الغرف', text: 'كل نوع غرفة في الفرع: اسمه وسعته وسعره الأساسي وعدد وحداته الفعلي ورابط صفحته على الموقع.' },
+      { target: [t('room-add')], needs: editRooms, title: 'إضافة نوع غرفة', text: 'أضف نوعًا جديدًا بالاسمين والمساحة والسرير والسعة والسعر والوحدات والمزايا والوصفين. يبدأ مخفيًا من الموقع حتى تُظهره.' },
+      { target: [t('room-edit')], title: 'تعديل', text: 'عدّل أي بيانات للنوع، والاسم أيضًا. رابط الصفحة لا يتغير بتغيير الاسم، والحجوزات القديمة تحتفظ بالاسم الذي حُجزت به.' },
+      { target: [t('room-units')], title: 'عدد الوحدات', text: 'إجمالي الفرع على الموقع هو مجموع الوحدات الفعلية للأنواع الظاهرة. المخزون المفتوح على الموقع لا يزيد أبدًا عن العدد الفعلي.' },
+      { target: [t('room-visibility')], needs: editRooms, title: 'إظهار وإخفاء', text: 'لا يظهر النوع على الموقع إلا مكتملًا: الاسمان والوصفان والسعر الأساسي وعدد الوحدات وصورة غلاف منشورة في «الصور». ستظهر لك قائمة بما ينقص.' },
+      { target: [t('room-order')], needs: editRooms, title: 'الترتيب', text: 'رتّب الأنواع داخل الفرع؛ الموقع ونموذج الحجز يعرضانها بهذا الترتيب.' },
+      { target: [t('room-delete')], needs: editRooms, title: 'الحذف', text: 'يُحذف النوع الذي لم يُحجز أبدًا فقط. النوع الذي له حجز يُخفى ولا يُحذف. وكل تغيير هنا يمكن التراجع عنه من «تراجع» أو من «السجل».' },
     ],
   },
   '/inventory': {

@@ -84,6 +84,19 @@ interface ContentGen {
 const contentFiles = import.meta.glob<ContentGen>('../../content/content.generated.json', { eager: true, import: 'default' });
 export const contentGen: ContentGen = Object.values(contentFiles)[0] ?? { source: 'none', texts: [], hidden: { branches: [], rooms: [], sections: [] }, announcements: [] };
 
+/** The room types as the dashboard «الغرف» holds them (10 Nov 2026; build.py resolve_rooms → content/rooms.generated.json):
+ *  the shown types in their order with every field the pages use, the branches' unit totals (the sum of the shown types'
+ *  physical counts once each has one, else branches.json → units) and the types not shown. Absent (astro dev, a scratch
+ *  build, the project unreachable) → rooms.json and branches.json as they are. */
+interface RoomsGen {
+  source: string;
+  rooms: unknown[];
+  branch_units: Record<string, number>;
+  hidden: string[];
+}
+const roomsGenFiles = import.meta.glob<RoomsGen>('../../content/rooms.generated.json', { eager: true, import: 'default' });
+export const roomsGen: RoomsGen | null = Object.values(roomsGenFiles)[0] ?? null;
+
 /** a content file with the texts published from the dashboard applied (a copy; the file itself is the seed / fallback) */
 function withTexts<T>(file: string, json: T): T {
   const mine = contentGen.texts.filter((t) => t.file === file);
@@ -134,7 +147,12 @@ function withMedia<T extends { slug: string; story?: { key: string; image: objec
   const story = b.story?.map((sc) => (m.story?.[sc.key] ? { ...sc, image: { ...sc.image, ...m.story[sc.key] } } : sc));
   return { ...b, photos: m.photos, ...(m.og_image ? { og_image: m.og_image } : {}), ...(story ? { story } : {}) } as T;
 }
-const branchesData = withTexts('branches.json', branchesJson);
+const branchesData = ((): typeof branchesJson => {
+  const b = withTexts('branches.json', branchesJson);
+  if (!roomsGen) return b;
+  // the unit counts the dashboard computed (build.py resolve_rooms)
+  return { ...b, branches: b.branches.map((x) => (roomsGen.branch_units[x.slug] ? { ...x, units: roomsGen.branch_units[x.slug] } : x)) } as typeof branchesJson;
+})();
 /** every branch, hidden ones included (facts: names, addresses — never a link to a hidden page) */
 export const allBranches = branchesData.branches.map(withMedia);
 /** the branches the site shows (pages, links, the booking form, the WhatsApp chooser) */
@@ -228,7 +246,9 @@ const availabilityOverride: Record<string, 'available' | 'sold_out'> = (() => {
 })();
 
 /** Only rooms with show_on_site: true exist as far as the site is concerned. */
-export const rooms: Room[] = (withTexts('rooms.json', roomsJson).rooms as unknown as Room[])
+/** every room type the site knows: the dashboard's (rooms.generated.json) or the seed */
+const roomSource: Room[] = (roomsGen ? roomsGen.rooms : withTexts('rooms.json', roomsJson).rooms) as unknown as Room[];
+export const rooms: Room[] = roomSource
   .filter((r) => r.show_on_site && roomVisible(r.branch, r.slug))
   .map((r) => (availabilityOverride[`${r.branch}/${r.slug}`] ? { ...r, availability: availabilityOverride[`${r.branch}/${r.slug}`] } : r))
   // the dashboard's published photos (media.generated.json) replace the imported ones of that room type
@@ -444,9 +464,9 @@ export function breakfastLine(locale: Locale): string {
   return locale === 'ar' ? b.site_line_ar : b.site_line_en;
 }
 
-/** Lowest base_price across every room in rooms.json (sold-out included) — never typed by hand. */
+/** Lowest base_price across every room type (sold-out included) — never typed by hand. */
 export function minBasePrice(): number {
-  return Math.min(...(roomsJson.rooms as unknown as Room[]).map((r) => r.base_price));
+  return Math.min(...roomSource.filter((r) => typeof r.base_price === 'number').map((r) => r.base_price));
 }
 
 /** Home hero line «الأسعار تبدأ من {price} ريالًا لليلة شاملة الضريبة» from site-texts.json. */
@@ -500,7 +520,9 @@ export interface PageSeo {
 }
 
 export function pageSeo(locale: Locale, key: string): PageSeo {
-  const p = (seo.pages as Record<string, Record<string, unknown>>)[key];
+  // the unit counts and room-type count a description names follow the dashboard «الغرف» (10 Nov 2026, withRoomFacts)
+  const raw = (seo.pages as Record<string, Record<string, unknown>>)[key];
+  const p = raw ? withRoomFacts(raw) : raw;
   if (!p) throw new Error(`seo.json has no page "${key}"`);
   return {
     title: L(locale, p, 'title'),
@@ -607,8 +629,113 @@ export function categoryLabel(locale: Locale, key: string): string {
 
 /* ---------- Partners (content/partners.json + partners-pages.json) ---------- */
 
-export const partners = partnersJson;
-export const partnersPages = partnersPagesJson;
+/**
+ * The partners pages follow the dashboard «الغرف» (10 Nov 2026): partners-pages.json is generated from the legacy copy
+ * with the seed's facts (scripts/legacy-partners-content.py); here the unit counts and the room-type count written in
+ * its texts and figures are replaced by the dashboard's (only a number next to a unit / room-type word, or the `n` /
+ * `count` of a figure about units — the generator's guard writes no other), the unit table keeps only the rows whose
+ * room types are shown (a row of a type the dashboard added is appended) with their beds, and the rooming calculator
+ * offers only the types shown. Without rooms.generated.json the files are used as they are.
+ */
+const seedUnits = Object.fromEntries((branchesJson.branches as { slug: string; units?: number }[]).map((b) => [b.slug, Number(b.units ?? 0)]));
+const UNIT_WORD = String.raw`(?=(?:\s|&nbsp;|<[^>]+>)*(?:units?|Units?|apartments|Apartments|hotel apartments|وحدة|وحدات|شقة|شقق))`;
+const TYPE_WORD = String.raw`(?=\s*(?:room types|Room types|نوع غرفة|أنواع))`;
+function factsMap(): { units: Map<string, string>; types: [string, string] } | null {
+  if (!roomsGen) return null;
+  const a = String(roomsGen.branch_units['airport-road'] ?? seedUnits['airport-road']);
+  const s = String(roomsGen.branch_units['shafa-road'] ?? seedUnits['shafa-road']);
+  const units = new Map<string, string>([
+    [String(seedUnits['airport-road'] + seedUnits['shafa-road']), String(Number(a) + Number(s))],
+    [String(seedUnits['airport-road']), a],
+    [String(seedUnits['shafa-road']), s],
+  ]);
+  const seedTypes = String((partnersJson.facts as { room_types: number }).room_types);
+  const shown = (roomsGen.rooms as { show_on_site?: boolean; branch: string; slug: string }[]).filter((r) => r.show_on_site && roomVisible(r.branch, r.slug)).length;
+  return { units, types: [seedTypes, String(shown)] };
+}
+function withRoomFacts<T>(json: T): T {
+  const m = factsMap();
+  if (!m || ([...m.units].every(([k, v]) => k === v) && m.types[0] === m.types[1])) return json;
+  const unitRe = new RegExp(String.raw`\b(${[...m.units.keys()].join('|')})\b${UNIT_WORD}`, 'g');
+  const typeRe = new RegExp(String.raw`\b${m.types[0]}\b${TYPE_WORD}`, 'g');
+  const text = (t: string) => t.replace(unitRe, (x) => m.units.get(x) ?? x).replace(typeRe, m.types[1]);
+  const walk = (v: unknown): unknown => {
+    if (typeof v === 'string') return text(v);
+    if (Array.isArray(v)) return v.map(walk);
+    if (v && typeof v === 'object') {
+      const o = v as Record<string, unknown>;
+      const about = JSON.stringify(o);
+      const out: Record<string, unknown> = {};
+      for (const [k, x] of Object.entries(o)) {
+        if ((k === 'n' || k === 'count') && (typeof x === 'number' || typeof x === 'string')) {
+          const str = String(x);
+          let to: string | undefined;
+          if (/unit|apartment|وحد|شق/i.test(about) && m.units.has(str)) to = m.units.get(str);
+          else if (/room type|نوع|أنواع/i.test(about) && str === m.types[0]) to = m.types[1];
+          out[k] = to === undefined ? x : typeof x === 'number' ? Number(to) : to;
+        } else out[k] = walk(x);
+      }
+      return out;
+    }
+    return v;
+  };
+  return walk(json) as T;
+}
+
+const HOTEL: Record<string, { en: string; ar: string }> = { 'airport-road': { en: 'Airport', ar: 'المطار' }, 'shafa-road': { en: 'Shafa Road', ar: 'طريق الشفا' }, both: { en: 'Both', ar: 'الفندقان' } };
+const occupancy = (n: number) => ({ en: n === 1 ? '1 guest' : `${n} guests`, ar: ({ 1: 'ضيف واحد', 2: 'ضيفان', 4: 'حتى 4 ضيوف' } as Record<number, string>)[n] ?? `${n} ضيوف` });
+/** the calculator's curated types and the room types each stands for (scripts/legacy-partners-content.py → calc_units) */
+const CALC_ROOMS: Record<string, string[]> = {
+  single: ['airport-road/king-room'],
+  twin: ['airport-road/twin-room'],
+  king: ['airport-road/king-room', 'shafa-road/king-room'],
+  suite1: ['airport-road/one-bedroom-suite', 'shafa-road/one-bedroom-suite'],
+  suite2: ['airport-road/two-bedroom-suite', 'shafa-road/two-bedroom-suite'],
+  suite2j: ['shafa-road/two-bedroom-jacuzzi-suite'],
+};
+function withRoomTable(pages: Record<string, unknown>): Record<string, unknown> {
+  if (!roomsGen) return pages;
+  const shown = (roomsGen.rooms as Room[]).filter((r) => r.show_on_site && roomVisible(r.branch, r.slug));
+  const byKey = new Map(shown.map((r) => [`${r.branch}/${r.slug}`, r]));
+  const curated = new Map((partnersJson.room_table.rows as { room: string; beds_ar?: string; beds_en?: string }[]).map((r) => [r.room, r]));
+  const used = new Set<string>();
+  const rows: Record<string, unknown>[] = (pages.units as Record<string, any>[]).flatMap((u): Record<string, unknown>[] => {
+    const refs = String(u.room).split('|').map((x) => x.trim()).filter((k) => byKey.has(k));
+    refs.forEach((k) => used.add(k));
+    if (!refs.length) return [];
+    const where = [...new Set(refs.map((k) => k.split('/')[0]))];
+    const key = where.length > 1 ? 'both' : where[0];
+    const c = curated.get(u.room);
+    const first = byKey.get(refs[0])!;
+    const beds = c?.beds_en || c?.beds_ar ? u.beds : { en: first.bed_en, ar: first.bed_ar };
+    return [{ ...u, beds, hotel_key: key, hotel: HOTEL[key], room: refs.join(' | ') }];
+  });
+  for (const r of shown) {
+    const k = `${r.branch}/${r.slug}`;
+    if (used.has(k)) continue;
+    rows.push({ type: { en: r.name_en, ar: r.name_ar }, occupancy: occupancy(r.capacity), beds: { en: r.bed_en, ar: r.bed_ar }, hotel: HOTEL[r.branch], best: { en: '—', ar: '—' }, hotel_key: r.branch, room: k });
+  }
+  const prop = (k: string) => (k.startsWith('airport-road/') ? 'airport' : 'shafa');
+  const calcKeys = new Set(Object.values(CALC_ROOMS).flat());
+  const calc = (pages.calc_units as Record<string, any>[]).flatMap((u) => {
+    const refs = (CALC_ROOMS[u.key] ?? []).filter((k) => byKey.has(k));
+    return refs.length ? [{ ...u, props: [...new Set(refs.map(prop))] }] : CALC_ROOMS[u.key] ? [] : [u];
+  });
+  for (const r of shown) {
+    const k = `${r.branch}/${r.slug}`;
+    if (!calcKeys.has(k)) calc.push({ key: `${r.branch}-${r.slug}`, en: r.name_en, ar: r.name_ar, cap: r.capacity, props: [prop(k)] });
+  }
+  return { ...pages, units: rows, calc_units: calc };
+}
+
+export const partners = ((): typeof partnersJson => {
+  const p = withRoomFacts(partnersJson);
+  if (!roomsGen) return p;
+  const a = roomsGen.branch_units['airport-road'] ?? p.facts.units_airport;
+  const s = roomsGen.branch_units['shafa-road'] ?? p.facts.units_shafa;
+  return { ...p, facts: { ...p.facts, units_airport: a, units_shafa: s, units_total: a + s } };
+})();
+export const partnersPages = withRoomTable(withRoomFacts(partnersPagesJson) as unknown as Record<string, unknown>) as unknown as typeof partnersPagesJson;
 
 /** Careers page «انضم إلى فريقنا» (28 Oct 2026): page copy, the job-application form and its emails. */
 export type CareersText = (typeof careersJson)['ar'];

@@ -570,6 +570,153 @@ def generate_function_content(content: dict[str, dict], fees: dict) -> None:
     print(f"✓ generated {FUNC_DIR.relative_to(ROOT) / 'content.generated.json'}")
 
 
+FEATURE_KEYS = ("kitchen", "living_room", "balcony", "jacuzzi")
+
+
+def room_catalog() -> tuple[list | None, str]:
+    """The room types as the dashboard «الغرف» holds them (10 Nov 2026): public.site_room_catalog (publishable key) on
+    the booking endpoint's project, or the file named by ROOMS_FIXTURE (the sample build of the checks). None when the
+    project is unreachable, the keys are absent (astro dev, a scratch build) or the function does not exist yet."""
+    fixture = os.environ.get("ROOMS_FIXTURE", "")
+    if fixture:
+        return json.loads(Path(fixture).read_text(encoding="utf-8")), "fixture"
+    endpoint = os.environ.get("PUBLIC_BOOKING_ENDPOINT", "")
+    key = os.environ.get("PUBLIC_SUPABASE_ANON_KEY", "")
+    if not endpoint or not key:
+        return None, "no Supabase endpoint / key in the environment"
+    try:
+        import urllib.request
+        origin = endpoint.split("/functions/")[0]
+        req = urllib.request.Request(f"{origin}/rest/v1/rpc/site_room_catalog", data=b"{}", method="POST",
+                                     headers={"apikey": key, "Authorization": f"Bearer {key}", "Content-Type": "application/json"})
+        with urllib.request.urlopen(req, timeout=15) as res:
+            rows = json.loads(res.read().decode("utf-8"))
+        if not isinstance(rows, list) or not rows:
+            return None, "site_room_catalog returned no room type"
+        return rows, "supabase"
+    except Exception as e:  # noqa: BLE001 — the build must not depend on the project being awake
+        return None, f"site_room_catalog unreachable: {e}"
+
+
+def num(v):
+    """a JSON number from the dashboard as the seed writes it (57, not 57.0)"""
+    return int(v) if float(v).is_integer() else float(v)
+
+
+def room_from_catalog(row: dict, seed: dict | None, branch_seed: dict | None) -> dict:
+    """One room type in the shape of rooms.json: the dashboard's values over the seed entry of the same branch/slug (its
+    rate plans, legacy fields, laundry line and labels kept), or a new entry when the dashboard added the type."""
+    base = json.loads(json.dumps(seed)) if seed else {
+        "slug": row["slug"], "branch": row["branch"], "currency": "SAR", "pricing_mode": "hidden", "price_verified": True,
+        "vat_included": True, "active": True, "show_on_site": True, "verified": True, "flags": [],
+        "rate_plans": [{"code": "room_only", "breakfast_included": False, "show_on_site": True},
+                       {"code": "bed_and_breakfast", "breakfast_included": True, "show_on_site": False, "phase": 2}],
+        "features": {k: v for k, v in ((branch_seed or {}).get("features") or {}).items() if k.startswith("laundry_")},
+        "description_note": "from the dashboard «الغرف»",
+    }
+    amen = list(row.get("amenities") or [])
+    base.update({
+        "name_ar": row["name_ar"], "name_en": row["name_en"], "category": row.get("category") or "standard",
+        "capacity": int(row["capacity"]), "extra_beds_max": int(row.get("extra_beds_max") or 0), "included_guests": int(row["capacity"]),
+        "bed_ar": row.get("bed_ar") or "", "bed_en": row.get("bed_en") or "",
+        "in_room_amenities": amen,
+        "description_ar": row.get("description_ar") or "", "description_en": row.get("description_en") or "",
+        "availability": "available" if row.get("bookable") else "sold_out",
+        "show_home": bool(row.get("show_home")), "show_on_site": True,
+    })
+    if row.get("size_m2") is not None:
+        base["size_m2"] = num(row["size_m2"])
+    if row.get("base_rate") is not None:
+        rate = num(row["base_rate"])
+        base["base_price"] = rate
+        for plan in base["rate_plans"]:
+            if plan.get("code") == "room_only":
+                plan["base_price"] = rate
+    feats = set(row.get("features") or [])
+    f = dict(base.get("features") or {})
+    for k in FEATURE_KEYS:
+        f[k] = k in feats
+    f["washer"] = False
+    f["fridge"] = "fridge" in amen
+    f["kettle"] = "kettle" in amen
+    base["features"] = f
+    if base["availability"] == "sold_out" and not base.get("availability_ar"):
+        base["availability_ar"], base["availability_en"] = "غير متاح حاليًا", "Currently unavailable"
+    return base
+
+
+def resolve_rooms(content: dict[str, dict]) -> dict:
+    """The room types the site shows (10 Nov 2026, dashboard «الغرف» — DECISIONS.md 2026-11-10): names, sizes, beds,
+    capacities, extra beds, features, equipment, descriptions, order, availability (bookable), the home flag and the
+    physical unit counts come from public.site_room_catalog; content/rooms.json and branches.json → units are the seed /
+    fallback only. Writes content/rooms.generated.json (gitignored — src/lib/content.ts, astro.config.mjs and qa.py read
+    it), adds the room types not shown (hidden in «الغرف», or a seed type deleted there) to content.generated.json →
+    hidden.rooms (their addresses redirect to the branch, like «المحتوى والظهور»), and patches `content` in memory so
+    everything built after this follows the dashboard. A branch's unit total is the sum of its shown types' counts once
+    every one of them has its count; until then branches.json → units.
+    Returns the availability map (dist/_availability.json, ROOM_AVAILABILITY / ROOM_HOME)."""
+    seed_rooms = content["rooms.json"]["rooms"]
+    seed = {f"{r['branch']}/{r['slug']}": r for r in seed_rooms}
+    branches = content["branches.json"]["branches"]
+    rows, source = room_catalog()
+    out_file = CONTENT / "rooms.generated.json"
+    if out_file.exists():
+        out_file.unlink()
+    cg_file = CONTENT / "content.generated.json"
+    cg = json.loads(cg_file.read_text(encoding="utf-8")) if cg_file.is_file() else None
+    if cg and cg.get("rooms_hidden"):  # a list this function added on an earlier build
+        cg["hidden"]["rooms"] = sorted(set(cg["hidden"].get("rooms", [])) - set(cg.pop("rooms_hidden")))
+        cg_file.write_text(json.dumps(cg, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    if rows is None:
+        print(f"NOTE: room types from rooms.json ({source})")
+        return resolve_availability(content)
+    shown = [r for r in rows if r.get("on_site")]
+    resolved = []
+    for r in shown:
+        first_of_branch = next((x for x in seed_rooms if x["branch"] == r["branch"]), None)
+        resolved.append(room_from_catalog(r, seed.get(f"{r['branch']}/{r['slug']}"), first_of_branch))
+    keys = {f"{r['branch']}/{r['slug']}" for r in shown}
+    hidden = sorted({f"{r['branch']}/{r['slug']}" for r in rows if not r.get("on_site")}
+                    | {k for k, r in seed.items() if r.get("show_on_site") and k not in keys})
+    units, units_source = {}, {}
+    for b in branches:
+        mine = [r for r in shown if r["branch"] == b["slug"]]
+        if mine and all(isinstance(r.get("units"), int) and r["units"] > 0 for r in mine):
+            units[b["slug"]], units_source[b["slug"]] = sum(r["units"] for r in mine), "dashboard"
+        else:
+            units[b["slug"]], units_source[b["slug"]] = b.get("units"), "branches.json"
+    gen = {"source": source, "rooms": resolved, "branch_units": units, "branch_units_source": units_source, "hidden": hidden}
+    out_file.write_text(json.dumps(gen, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    # the redirects of the room types not shown: one list with «المحتوى والظهور»
+    cg = cg or {
+        "source": "none", "texts": [], "hidden": {"branches": [], "rooms": [], "sections": []}, "announcements": []}
+    hid = cg.setdefault("hidden", {})
+    for k in ("branches", "rooms", "sections"):
+        hid.setdefault(k, [])
+    hid["rooms"] = sorted(set(hid["rooms"]) | set(hidden))
+    cg["rooms_hidden"] = hidden
+    cg_file.write_text(json.dumps(cg, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    # everything built after this follows the dashboard
+    content["rooms.json"] = {**content["rooms.json"], "rooms": resolved}
+    for b in branches:
+        b["units"] = units[b["slug"]]
+    if "partners.json" in content:
+        f = content["partners.json"]["facts"]
+        f["units_airport"] = units.get("airport-road", f["units_airport"])
+        f["units_shafa"] = units.get("shafa-road", f["units_shafa"])
+        f["units_total"] = f["units_airport"] + f["units_shafa"]
+        f["room_types"] = len(resolved)
+    by_key = {f"{r['branch']}/{r['slug']}": r for r in resolved}
+    changed = sorted(k for k in keys if k in seed and any(seed[k].get(x) != by_key[k].get(x) for x in
+                                                          ("name_ar", "name_en", "capacity", "extra_beds_max", "size_m2", "availability", "description_ar", "description_en")))
+    print(f"✓ room types from the dashboard ({source}): {len(resolved)} shown, {len(hidden)} not shown"
+          f"{' (' + ', '.join(hidden) + ')' if hidden else ''}; new: {', '.join(sorted(keys - set(seed))) or '—'};"
+          f" changed: {', '.join(changed) or '—'}; units {', '.join(f'{k} {v} ({units_source[k]})' for k, v in units.items())}")
+    return {"source": source,
+            "rooms": {k: r["availability"] for k, r in by_key.items()},
+            "home": {k: bool(r.get("show_home")) for k, r in by_key.items()}}
+
+
 def resolve_availability(content: dict[str, dict]) -> dict:
     """Room availability on the website (phase 2a.1, dashboard «الغرف»). The dashboard's room_types.bookable, read with
     the publishable key through the read-only RPC site_room_types on the booking endpoint's project, decides each
@@ -741,7 +888,7 @@ def main() -> int:
     generate_function_content(content, fees)
     if "--content-only" in sys.argv[1:]:
         return 0
-    availability = resolve_availability(content)
+    availability = resolve_rooms(content)
 
     if DIST.exists():
         shutil.rmtree(DIST)

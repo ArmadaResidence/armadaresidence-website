@@ -66,6 +66,8 @@ content/faq.generated.json
 content/content.generated.json
 # the guest reviews published from the dashboard «آراء الضيوف» (scripts/reviews-build.mjs, 7 Nov 2026)
 content/reviews.generated.json
+# the room types of the dashboard «الغرف» (build.py resolve_rooms, 10 Nov 2026)
+content/rooms.generated.json
 # the partner logos published from the dashboard «شعارات الشركاء» (scripts/partner-logos-build.mjs, 7 Nov 2026);
 # their files go to public/images/partner-logos/, already under public/images/ above
 content/partner-logos.generated.json

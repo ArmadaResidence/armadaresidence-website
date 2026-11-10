@@ -14,7 +14,7 @@ import DateField from '../components/DateField';
 import { BranchSelect, CancelButton, Empty, ErrorBox, Field, Loading, Modal, Spinner, useToast } from '../components/ui';
 import { SANITY_TAG } from '../lib/rates';
 
-const ENTITY: Record<string, string> = { room_types: 'نوع غرفة (سعر أساسي / توافر)', rate_overrides: 'استثناء سعر', inventory_days: 'مخزون', settings: 'إعدادات', staff: 'مستخدم', staff_permissions: 'صلاحيات', reservations: 'حجز', security_events: 'أمان الدخول', site_defaults: 'الإعدادات الافتراضية', media_items: 'صورة', media_publish_jobs: 'نشر على الموقع', dining_venues: 'مطعم أو مقهى', offers: 'عرض', offer_popups: 'نافذة منبثقة', articles: 'مقال', faq_items: 'سؤال شائع', partner_enquiries: 'طلب شراكة', partner_enquiries_export: 'تصدير طلبات الشركاء', site_visibility: 'ظهور على الموقع', content_fields: 'نص في الموقع', announcements: 'شريط الإعلان', eyab_campaigns: 'حملة إياب على واتساب', staff_wa_test: 'رقم التجربة على واتساب', wa_webhook: 'استقبال ردود واتساب', guest_profiles: 'ملف عميل' };
+const ENTITY: Record<string, string> = { room_types: 'نوع غرفة', rate_overrides: 'استثناء سعر', inventory_days: 'مخزون', settings: 'إعدادات', staff: 'مستخدم', staff_permissions: 'صلاحيات', reservations: 'حجز', security_events: 'أمان الدخول', site_defaults: 'الإعدادات الافتراضية', media_items: 'صورة', media_publish_jobs: 'نشر على الموقع', dining_venues: 'مطعم أو مقهى', offers: 'عرض', offer_popups: 'نافذة منبثقة', articles: 'مقال', faq_items: 'سؤال شائع', partner_enquiries: 'طلب شراكة', partner_enquiries_export: 'تصدير طلبات الشركاء', site_visibility: 'ظهور على الموقع', content_fields: 'نص في الموقع', announcements: 'شريط الإعلان', eyab_campaigns: 'حملة إياب على واتساب', staff_wa_test: 'رقم التجربة على واتساب', wa_webhook: 'استقبال ردود واتساب', guest_profiles: 'ملف عميل' };
 // phase 2a.2 (26 Oct 2026): one line per security event (devices, backup codes) — never a code or a token
 const REVOKE_REASON: Record<string, string> = { admin: 'بواسطة مدير النظام', self: 'بواسطة المستخدم', password_change: 'بعد تغيير كلمة المرور', deactivated: 'بعد إيقاف الحساب' };
 function securityLine(r: AuditRow): string {
@@ -35,11 +35,17 @@ const ACTOR: Record<string, string> = { website: 'الموقع', seed: 'الاس
 const FIELD: Record<string, string> = { sanity_flag: 'تنبيه السعر', sanity_base: 'الأساسي عند الحفظ', sanity_multiplier: 'المضاعف عند الحفظ', is_default: 'الافتراضي', kind: 'النوع', saved_at: 'وقت الحفظ', base_rate: 'السعر الأساسي', bookable: 'متاحة على الموقع', active: 'فعّال', slug: 'المعرّف', date_from: 'من', date_to: 'إلى', weekdays: 'أيام الأسبوع', price: 'السعر', label: 'التسمية', label_en: 'التسمية بالإنجليزية', night: 'الليلة', rooms_to_sell: 'المتبقي', booked: 'المحجوز', stop_sell: 'مغلق', value: 'القيمة', full_name: 'الاسم', role: 'القالب', branch: 'الفرع', ref: 'رقم الحجز', status: 'الحالة', confirmation: 'التأكيد', fallback_reason: 'السبب', room_type_id: 'نوع الغرفة', check_in: 'الوصول', check_out: 'المغادرة', total: 'الإجمالي', payment_status: 'الدفع', cancel_reason: 'ملاحظة الإلغاء', cancel_reason_code: 'سبب الإلغاء', internal_notes: 'ملاحظات داخلية', level: 'المستوى', created_at: 'أُنشئ',
   // media «الصور» (1 Nov 2026)
   target: 'الصفحة', target_key: 'المفتاح', slot: 'الخانة', sort: 'الترتيب', alt_ar: 'النص البديل', alt_en: 'النص البديل بالإنجليزية', focal_x: 'التركيز أفقيًا', focal_y: 'التركيز رأسيًا',
+  // «الغرف» — the room-type catalog (10 Nov 2026)
+  name_ar: 'الاسم', name_en: 'الاسم بالإنجليزية', category: 'الفئة', size_m2: 'المساحة', bed_ar: 'السرير', bed_en: 'السرير بالإنجليزية',
+  capacity: 'السعة', extra_beds_max: 'الأسرّة الإضافية', units: 'الوحدات الفعلية', features: 'المزايا', amenities: 'التجهيزات',
+  description_ar: 'الوصف', description_en: 'الوصف بالإنجليزية', on_site: 'ظاهر على الموقع', show_home: 'في الصفحة الرئيسية', type_code: 'رمز مدير القنوات',
   file_name: 'الملف', bytes: 'الحجم', upload_state: 'الرفع', published_at: 'نُشرت', targets: 'الصفحات', dry_run: 'تجربة', dispatch: 'طلب البناء', run_url: 'سجل البناء', error: 'الخطأ' };
 const LEVEL: Record<string, string> = { none: 'لا شيء', view: 'عرض', edit: 'تعديل', publish: 'نشر' };
 const MEDIA_VALUE: Record<string, string> = { draft: 'مسودة', published: 'منشورة', archived: 'مؤرشفة', queued: 'في الانتظار', building: 'جارٍ البناء', failed: 'فشل', pending: 'يُرفع', ready: 'مكتمل', dispatched: 'طُلب', no_token: 'بلا مفتاح', home: 'الصفحة الرئيسية', branch: 'فرع', room: 'نوع غرفة', section: 'قسم' };
 const ROLE: Record<string, string> = { admin: 'مدير النظام', management: 'الإدارة', sales: 'المبيعات', reception: 'الاستقبال' };
 const SKIP = new Set(['created_at', 'room_type_id', 'sha256']);
+/** a room type added or deleted (10 Nov 2026): the lines that name it, not its whole catalog */
+const ROOM_TYPE_KEYS = ['name_ar', 'name_en', 'branch', 'slug', 'units', 'base_rate'];
 
 function fmt(k: string, v: unknown): string {
   if (v === null || v === undefined) return '—';
@@ -56,7 +62,9 @@ function fmt(k: string, v: unknown): string {
   if (k === 'focal_x' || k === 'focal_y') return `${Math.round(Number(v) * 100)}%`;
   if (k === 'published_at') return riyadhDateTime(String(v));
   if (typeof v === 'object') return JSON.stringify(v);
-  return String(v);
+  // long texts (a room type's description) in one line
+  const t = String(v);
+  return t.length > 90 ? `${t.slice(0, 90).trim()}…` : t;
 }
 function diff(row: AuditRow): string[] {
   if (row.entity === 'security_events') return [securityLine(row)];
@@ -64,6 +72,8 @@ function diff(row: AuditRow): string[] {
   const out: string[] = [];
   for (const k of keys) {
     if (SKIP.has(k)) continue;
+    if (row.entity === 'room_types' && (row.action === 'insert' || row.action === 'delete') && !ROOM_TYPE_KEYS.includes(k)) continue;
+    if (row.entity === 'room_types' && (k === 'id' || k === 'is_test')) continue;
     const a = row.old?.[k];
     const b = row.new?.[k];
     if (JSON.stringify(a) === JSON.stringify(b)) continue;
@@ -164,7 +174,13 @@ export default function Audit() {
     return out;
   }, [rows]);
 
-  const sectionOf = (r: AuditRow) => (r.entity === 'room_types' ? (JSON.stringify(r.old?.bookable) !== JSON.stringify(r.new?.bookable) ? 'rooms' : 'rates') : r.entity === 'rate_overrides' ? 'rates' : r.entity === 'inventory_days' ? 'inventory' : r.entity === 'settings' ? 'settings' : r.entity === 'staff' || r.entity === 'staff_permissions' || r.entity === 'site_defaults' ? 'users' : null);
+  // the server's internal.audit_section: a room-type row is «الأسعار» only when the base rate is all that changed (10 Nov 2026)
+  const roomSection = (r: AuditRow) => {
+    if (r.action !== 'update') return 'rooms';
+    const changed = Object.keys(r.new ?? {}).filter((k) => JSON.stringify(r.old?.[k]) !== JSON.stringify(r.new?.[k]));
+    return changed.length > 0 && changed.every((k) => k === 'base_rate') ? 'rates' : 'rooms';
+  };
+  const sectionOf = (r: AuditRow) => (r.entity === 'room_types' ? roomSection(r) : r.entity === 'rate_overrides' ? 'rates' : r.entity === 'inventory_days' ? 'inventory' : r.entity === 'settings' ? 'settings' : r.entity === 'staff' || r.entity === 'staff_permissions' || r.entity === 'site_defaults' ? 'users' : null);
   const canRevert = (g: { rows: AuditRow[] }) => {
     const r = g.rows[0];
     if (!r.batch_id || r.entity === 'reservations' || reverted.has(r.batch_id)) return false;

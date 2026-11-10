@@ -495,7 +495,42 @@ type Validation = { ok: true; row: Row } | { ok: false; error: string; fields?: 
 /** The QA room type (public.qa_fixture 'setup'): one per branch, known to rules.ts only in test mode. */
 const QA_ROOMS = content.branches.map((b: { slug: string }) => ({ slug: 'qa-test-room', branch: b.slug, capacity: 2, extra_beds_max: 1, availability: 'available' }));
 
-function validate(p: Payload, test = false): Validation {
+/** A room type the website offers now, with its names (public.site_room_types). */
+interface LiveRoom {
+  slug: string;
+  branch: string;
+  name_ar: string;
+  name_en: string;
+  capacity: number;
+  extra_beds_max: number;
+  availability: string;
+}
+let liveCache: { at: number; rooms: LiveRoom[] } | null = null;
+/** The room types as the dashboard «الغرف» holds them right now (10 Nov 2026): public.site_room_types (the shown types
+ *  of the shown branches, bookable or not), cached one minute per instance. The server rules (the type exists and is
+ *  bookable, its capacity and extra beds) and the room names in the emails and WhatsApp follow the dashboard, not the
+ *  content baked into this function at deploy; null (→ content.rooms) when the read fails. */
+async function liveRooms(): Promise<LiveRoom[] | null> {
+  if (liveCache && Date.now() - liveCache.at < 60_000) return liveCache.rooms;
+  const env = serviceEnv();
+  if (!env) return null;
+  try {
+    const res = await fetch(`${env.url}/rest/v1/rpc/site_room_types`, { method: 'POST', headers: serviceHeaders(env.key), body: '{}' });
+    if (!res.ok) {
+      console.error('site_room_types failed', res.status, await res.text());
+      return null;
+    }
+    const rows = (await res.json()) as { slug: string; branch: string; name_ar: string; name_en: string; capacity: number; extra_beds_max: number; bookable: boolean }[];
+    const rooms = rows.map((r) => ({ slug: r.slug, branch: r.branch, name_ar: r.name_ar, name_en: r.name_en, capacity: Number(r.capacity), extra_beds_max: Number(r.extra_beds_max ?? 0), availability: r.bookable ? 'available' : 'sold_out' }));
+    liveCache = { at: Date.now(), rooms };
+    return rooms;
+  } catch (e) {
+    console.error('site_room_types failed', String(e));
+    return null;
+  }
+}
+
+function validate(p: Payload, test = false, live: LiveRoom[] | null = null): Validation {
   const locale: Locale = p.locale === 'en' ? 'en' : 'ar';
   const requestType = String(p.request_type ?? 'booking').trim();
   if (requestType !== 'booking' && !content.enquiry_types.includes(requestType)) return { ok: false, error: 'invalid request_type' };
@@ -523,7 +558,7 @@ function validate(p: Payload, test = false): Validation {
       },
       {
         branches: KNOWN_BRANCHES,
-        rooms: test ? [...content.rooms, ...QA_ROOMS] : content.rooms,
+        rooms: test ? [...(live ?? content.rooms), ...QA_ROOMS] : live ?? content.rooms,
         today: riyadhToday(),
         phone: phoneE164,
       },
@@ -820,9 +855,13 @@ Deno.serve(async (req) => {
     if (!ts.ok) return json(req, 403, { ok: false, error: 'challenge' });
   }
 
-  const v = validate(payload, Boolean(token));
+  const live = await liveRooms();
+  const v = validate(payload, Boolean(token), live);
   if (!v.ok) return json(req, 422, { ok: false, error: v.error, ...(v.fields ? { fields: v.fields } : {}) });
   const d = v.row;
+  // the room-type name the booking is made with (the reservation stores the same, reservations.room_name_*)
+  const liveRoom = d.room ? (live ?? (content.rooms as LiveRoom[])).find((x) => x.slug === d.room && x.branch === d.branch) : undefined;
+  const roomName = liveRoom ? { ar: liveRoom.name_ar, en: liveRoom.name_en } : null;
 
   // per phone and per email over 24 h (4 Nov 2026): one person changing networks still meets the limit
   {
@@ -882,12 +921,12 @@ Deno.serve(async (req) => {
     notification = partnerNotification(content, pm);
     confirmation = partnerConfirmation(content, pm);
   } else {
-    const bm = { ref, locale: d.locale, branch: d.branch, room: d.room, check_in: d.check_in, check_out: d.check_out, nights: d.nights, adults: d.adults, children: d.children, extraBeds: d.extraBeds, extraBedFee: Number(outcome?.quote?.extra_bed_fee ?? content.extra_bed_fee), needsCoordination: d.needsCoordination, capacity: d.capacity, breakfast: d.breakfast as 'with' | 'without', name: d.name, phone: d.phone, email: d.email, notes: d.notes, receivedAt, offer: outcome?.quote?.offer ?? null, promoCode: d.promoCode, eyabInvite: invite?.links ?? null };
+    const bm = { ref, locale: d.locale, branch: d.branch, room: d.room, roomName, check_in: d.check_in, check_out: d.check_out, nights: d.nights, adults: d.adults, children: d.children, extraBeds: d.extraBeds, extraBedFee: Number(outcome?.quote?.extra_bed_fee ?? content.extra_bed_fee), needsCoordination: d.needsCoordination, capacity: d.capacity, breakfast: d.breakfast as 'with' | 'without', name: d.name, phone: d.phone, email: d.email, notes: d.notes, receivedAt, offer: outcome?.quote?.offer ?? null, promoCode: d.promoCode, eyabInvite: invite?.links ?? null };
     if (confirmed && outcome?.quote) {
       const cm = { ...bm, quote: outcome.quote, confirmedBy: null };
       notification = confirmedNotification(content, cm);
       confirmation = d.email ? bookingConfirmed(content, cm) : null;
-      if (outcome.low && outcome.low.length) lowAlert = lowInventoryAlert(content, { ref, branch: d.branch, room: d.room, nights: outcome.low });
+      if (outcome.low && outcome.low.length) lowAlert = lowInventoryAlert(content, { ref, branch: d.branch, room: d.room, roomName, nights: outcome.low });
     } else {
       notification = bookingNotification(content, bm);
       // the guest "request received" email goes out only when the guest gave an email (decision 23 Oct 2026)
@@ -915,7 +954,7 @@ Deno.serve(async (req) => {
   // ---- WhatsApp to the guest: after the row and the emails; never blocks (sendWhatsApp never throws) ----
   let whatsappSent = false;
   const waTemplate: WaTemplate = confirmed ? 'booking_confirmed' : 'booking_request_received';
-  const waBooking = { ref, locale: d.locale, branch: d.branch, room: d.room, check_in: d.check_in, check_out: d.check_out, name: d.name, phone: d.phone, quote: confirmed ? outcome?.quote ?? null : null };
+  const waBooking = { ref, locale: d.locale, branch: d.branch, room: d.room, roomName, check_in: d.check_in, check_out: d.check_out, name: d.name, phone: d.phone, quote: confirmed ? outcome?.quote ?? null : null };
   if (!isPartner && stored && outcome?.id) {
     const wa = await sendWhatsApp(content, {
       template: waTemplate,

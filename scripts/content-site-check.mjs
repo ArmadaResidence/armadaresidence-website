@@ -24,7 +24,7 @@ const genFile = join('content', 'content.generated.json');
 const gen = existsSync(genFile) ? JSON.parse(readFileSync(genFile, 'utf8')) : { source: 'none', texts: [], hidden: { branches: [], rooms: [], sections: [] }, announcements: [] };
 const ui = JSON.parse(readFileSync('content/ui.json', 'utf8'));
 const seo = JSON.parse(readFileSync('content/seo.json', 'utf8'));
-const roomsJson = JSON.parse(readFileSync('content/rooms.json', 'utf8'));
+const roomsJson = JSON.parse(readFileSync((existsSync('content/rooms.generated.json') ? 'content/rooms.generated.json' : 'content/rooms.json'), 'utf8'));
 const AXE = readFileSync(createRequire(import.meta.url).resolve('axe-core/axe.min.js'), 'utf8');
 const sample = gen.source !== 'none';
 const fails = [];

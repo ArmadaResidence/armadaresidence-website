@@ -135,7 +135,7 @@ export default function Bookings() {
       ...r,
       status_ar: STATUS_LABELS[r.status],
       branch_ar: BRANCH_NAMES[r.branch] ?? r.branch,
-      room: rtName(r.room_type_id),
+      room: (r.room_name_ar ?? rtName(r.room_type_id)),
       breakfast_ar: r.breakfast === 'with' ? 'مع الإفطار' : 'بدون إفطار',
       needs_coordination: r.needs_coordination ? 'نعم' : '',
       fallback_ar: r.fallback_reason ? REASON_LABELS[r.fallback_reason] ?? r.fallback_reason : '',
@@ -211,7 +211,7 @@ export default function Bookings() {
                     {r.is_test && <span className="chip chip-test ms-2">تجربة</span>}
                   </span>
                   <span className="block text-sm text-ink-muted truncate num-ar">
-                    {BRANCH_NAMES[r.branch]} · {rtName(r.room_type_id)} · {dateRange(r.check_in, r.check_out)} · {nightsWord(r.nights)}
+                    {BRANCH_NAMES[r.branch]} · {(r.room_name_ar ?? rtName(r.room_type_id))} · {dateRange(r.check_in, r.check_out)} · {nightsWord(r.nights)}
                   </span>
                   <span className="flex flex-wrap gap-1 mt-1">
                     {r.needs_coordination && r.status !== 'cancelled' && <span className="chip chip-flag">يحتاج تنسيق</span>}
@@ -375,7 +375,7 @@ function Details({ r, roomTypes, editable, onClose, onChanged }: { r: Reservatio
     const lines = [
       `السلام عليكم ${r.guest_name}،`,
       r.status === 'confirmed' ? `تم تأكيد حجزك رقم ${r.ref} في ${BRANCH_NAMES[r.branch]}.` : `بخصوص طلب الحجز رقم ${r.ref} في ${BRANCH_NAMES[r.branch]}:`,
-      `نوع الغرفة: ${rtName(r.room_type_id)}`,
+      `نوع الغرفة: ${(r.room_name_ar ?? rtName(r.room_type_id))}`,
       `الوصول: ${longDate(r.check_in)} — المغادرة: ${longDate(r.check_out)} (${nightsWord(r.nights)})`,
       r.offer && Number(r.discount_total) > 0 ? `العرض: ${r.offer.title_ar} (خصم ${sar(r.discount_total)})` : '',
       r.total !== null ? `الإجمالي شامل الضريبة: ${sar(r.total)} — الدفع عند الوصول.` : '',
@@ -397,7 +397,7 @@ function Details({ r, roomTypes, editable, onClose, onChanged }: { r: Reservatio
       <div className="mb-4"><BookingGuestBadges reservation={r.id} editable={editable} /></div>
       <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1.5 text-sm mb-5 num-ar">
         <dt className="text-ink-muted">الفرع</dt><dd className="font-semibold">{BRANCH_NAMES[r.branch]}</dd>
-        <dt className="text-ink-muted">نوع الغرفة</dt><dd className="font-semibold">{rtName(r.room_type_id)}</dd>
+        <dt className="text-ink-muted">نوع الغرفة</dt><dd className="font-semibold">{(r.room_name_ar ?? rtName(r.room_type_id))}</dd>
         <dt className="text-ink-muted">الوصول</dt><dd className="font-semibold">{longDate(r.check_in)}</dd>
         <dt className="text-ink-muted">المغادرة</dt><dd className="font-semibold">{longDate(r.check_out)} · {nightsWord(r.nights)}</dd>
         <dt className="text-ink-muted">الضيوف</dt><dd className="font-semibold">{adultsWord(r.adults)}{r.children ? ` · ${childrenWord(r.children)}${r.children_ages?.length ? ` (الأعمار: ${r.children_ages.join('، ')})` : ''}` : ''}{r.capacity_at_request ? <span className="text-ink-muted"> · سعة الغرفة {r.capacity_at_request}</span> : null}</dd>
@@ -568,7 +568,7 @@ function Details({ r, roomTypes, editable, onClose, onChanged }: { r: Reservatio
           <button type="button" className="btn btn-danger" onClick={doDelete} disabled={busy || !refTyped} data-action="delete-test-go">{busy && <Spinner />} حذف نهائي</button>
         </div>
       </Modal>
-      {createPortal(<PrintSheet r={r} room={rtName(r.room_type_id)} />, document.body)}
+      {createPortal(<PrintSheet r={r} room={(r.room_name_ar ?? rtName(r.room_type_id))} />, document.body)}
     </Drawer>
   );
 }

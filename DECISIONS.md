@@ -2793,3 +2793,76 @@ pushed and the CI proof that `booking-nav-check` fails on an inert booking form 
   eyab-invite 26, session23 56, site-deploys 26 (with a QA admin inserted inside its own transaction — the file needs
   one active admin and a fresh branch has none). The branch needed the usual grants to `service_role` (tables,
   functions, sequences).
+
+## 2026-11-10 — Room types from the dashboard «الغرف» (session 25, Ahmed's brief of 10 Nov 2026)
+
+DASHBOARD-SPEC promised «إضافة/تعديل/إخفاء نوع غرفة» per branch; until today «الغرف» had only the bookable and home
+toggles (rates, inventory and photos lived elsewhere; names, sizes, beds, features and descriptions in rooms.json).
+
+- **One catalog in the database.** Migration `20261110200000_room_catalog`: `public.room_types` gains `category`,
+  `size_m2`, `bed_ar` / `bed_en`, `units` (physical count), `features` (kitchen, living_room, balcony, jacuzzi),
+  `amenities` (wifi, tv, safe, air_conditioning, kettle, fridge, iron — the room page's order), `description_ar` /
+  `description_en`, `on_site` («ظاهر على الموقع»). The 12 types were seeded with the values of `content/rooms.json`
+  (the site rebuilt from them is identical to rooms.json, checked field by field: 0 differences). `type_code` stays
+  (NULL for a new type). rooms.json and branches.json → units are the seed / fallback only.
+- **Units.** No per-type count existed anywhere (only the branch totals 106 / 60), so every `units` starts NULL and is
+  entered by Ahmed in «الغرف». The site's branch total is the sum of the shown types' counts **once every shown type of
+  the branch has one**; until then branches.json → units (106 / 60). The website inventory never exceeds the physical
+  count: `rooms_to_sell + booked ≤ units` on every night, enforced by a trigger on `inventory_days` for any write that
+  raises the sum (set_inventory, a revert, a direct write — the sold / cancelled paths keep the sum and are never
+  blocked) and by one on `room_types` refusing a count below a future night (`over_units:N`, `units_below_inventory:N`,
+  worded in Arabic in the dashboard). A type without a count is not limited.
+- **Slug.** Made once by `room_type_save` from the English name (lower-case, `-`, unique in the branch with `-2`…,
+  never a branch path such as `hall`); a trigger refuses any later change of `slug` or `branch` (`slug_locked`). A
+  rename changes the name only; the page address stays.
+- **RPCs** (section `rooms`: edit + branch scope, one audit batch each): `room_type_save` (add / edit; every problem at
+  once in `detail` — both names, an English name with a Latin letter, duplicates in the branch, ranges, the copy check
+  of `internal.copy_problems`: «شقق مخدومة» / serviced apartment / room service refused, Western digits, no typed rate
+  or phone; the base rate needs rates: edit as well; a shown type stays complete), `room_type_set_on_site` (show only
+  when nothing is missing: both names, both descriptions, base rate, unit count, a PUBLISHED cover in «الصور» — the
+  room pages' Media rule; `not_ready` + the list otherwise), `room_types_reorder` (every type of the branch once),
+  `room_type_delete` (only a type no reservation, night or archived deleted test booking ever referenced —
+  `has_bookings` otherwise; its inventory and rate overrides go with it), `room_types_admin` (rooms: view — the screen,
+  with `missing`, `booked`, `max_inventory`, `visible`), `site_room_catalog` (anon — the build; a type not shown comes
+  back with its key only, so a draft is never readable). A new type starts hidden, not bookable, not on home.
+- **Hide = the existing hidden rule.** `internal.site_visible` also refuses a type with `on_site` false, so
+  `quote_stay`, `submit_booking` and `site_room_types` (the booking form at runtime) follow at once; the build adds the
+  types not shown — and a seed type deleted in the dashboard — to `content.generated.json → hidden.rooms`, so their
+  addresses redirect to the branch exactly like «المحتوى والظهور».
+- **Undo.** The audit trigger records every catalog column; `revert_batch` undoes room-type add (only while unbooked and
+  unchanged), edit (only the keys that row changed are compared and restored — a later edit of another field is no
+  conflict), show / hide, reorder and delete (the type back with the same id, slug and its inventory and overrides).
+  `internal.audit_section`: a room-type row is «الأسعار» only when nothing but the base rate changed (before, a
+  «في الصفحة الرئيسية» change counted as rates).
+- **A booking keeps its name.** `reservations.room_name_ar` / `room_name_en`, set on insert and when a request's room
+  type changes, backfilled (production had 0 reservations). The dashboard (list, details, print sheet, CSV) shows the
+  stored name; the emails and WhatsApp prefer it (`roomName` in email.ts / whatsapp.ts; booking-admin reads it).
+  booking-request now validates against `site_room_types` (live, cached a minute) instead of the content baked at
+  deploy, so a type added or changed in the dashboard follows its capacity and extra-bed rules at once.
+- **The descriptions are edited in «الغرف» only.** The 12 room-description fields of «المحتوى والظهور» (never
+  published, drafts = seed = rooms.json — checked by md5) were removed with their seed revisions.
+- **The site follows the dashboard.** `build.py resolve_rooms` → `content/rooms.generated.json` (gitignored): the shown
+  types in their order with every field the pages use (the seed entry keeps its rate plans, legacy fields and laundry
+  line; a new type gets a fresh entry), `branch_units`, `hidden`. `src/lib/content.ts`, `astro.config.mjs`, `qa.py` and
+  the browser checks read it; room pages, branch pages, the booking form (options and rules), the home and branch
+  counters, JSON-LD, the sitemap and the partners pages follow (the unit and room-type figures in partners-pages.json,
+  partners.json and seo.json descriptions are replaced by the resolved ones — `withRoomFacts` —, the unit table keeps
+  the rows of shown types and appends a row per new type, the rooming calculator offers only shown types).
+  Without the catalog (unreachable, no key, the function missing) everything falls back to rooms.json as before.
+- **Dashboard.** `admin/src/pages/Rooms.tsx` + `lib/rooms.ts`: per branch the unit line and «إضافة نوع غرفة»; per type
+  the fixed address, what it lacks, «تعديل» / «عرض» (the shared Modal, its dirty guard and draft; × / «إلغاء» only),
+  «إظهار على الموقع» / «إخفاء من الموقع» (the missing list in a dialog), ▲ / ▼, «حذف النوع» (a booked type: «لا يُحذف
+  هذا النوع» with «إخفاء من الموقع»); every change: the 30 s «تراجع» toast and the site rebuild (reason rooms). The
+  guided tour has a «الغرف» page tour (7 steps). «السجل» names the catalog fields and shows an add / delete as its name.
+- **Checks.** `supabase/tests/room-types.sql` (84: migration, permissions, add, slug, show / hide, units ≥ inventory,
+  delete, undo, booked name, reorder); `scripts/rooms-site-check.mjs` (static, on the sample build
+  `ROOMS_FIXTURE=scripts/fixtures/rooms-sample.json` — a type added, one renamed, one hidden, one deleted, units entered —
+  inside the sample qa of check-all); `scripts/admin-rooms-check.mjs` → `admin/tests/rooms-page-check.mjs` (offline, CI
+  static); `scripts/rooms-e2e.mjs` + `.github/workflows/rooms-e2e.yml` (CI only, a preview branch: add as a staff user →
+  build against the branch → page + form → rename (same address) → hide → delete). session4.sql C0 now expects ≥ 50
+  curated texts and no room field (54 remain).
+- **Production, with Ahmed's conditions.** Before the push: the 12 room types, the 12 fields and their 12 revisions
+  saved byte-exact in `reports/session25-db-backup/` (md5 = production's); the fields were identical to rooms.json, so
+  no value was taken from them. After the push (read-only): every type's names, size, capacity, description and the
+  form's capacities equal the live site, units NULL, totals 106 + 60 = 166 (170 checks,
+  `reports/session25-db-backup/prod-vs-live-check.mjs`).

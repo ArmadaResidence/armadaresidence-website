@@ -5,7 +5,12 @@ import tailwindcss from '@tailwindcss/vite';
 import { existsSync, readFileSync } from 'node:fs';
 
 const seo = JSON.parse(readFileSync(new URL('./content/seo.json', import.meta.url), 'utf8'));
-const roomsJson = JSON.parse(readFileSync(new URL('./content/rooms.json', import.meta.url), 'utf8'));
+/** the room types: the dashboard's «الغرف» when build.py resolved them (content/rooms.generated.json, 10 Nov 2026), else
+ *  the seed content/rooms.json */
+const roomsGenUrl = new URL('./content/rooms.generated.json', import.meta.url);
+const roomsJson = existsSync(roomsGenUrl)
+  ? JSON.parse(readFileSync(roomsGenUrl, 'utf8'))
+  : JSON.parse(readFileSync(new URL('./content/rooms.json', import.meta.url), 'utf8'));
 const redirects = JSON.parse(readFileSync(new URL('./redirects.json', import.meta.url), 'utf8'));
 const hallsJson = JSON.parse(readFileSync(new URL('./content/halls.json', import.meta.url), 'utf8'));
 /** «المحتوى والظهور» (3 Nov 2026): what is hidden from the site (scripts/content-build.mjs; absent → nothing) */

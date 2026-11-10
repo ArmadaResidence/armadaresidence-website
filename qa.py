@@ -212,6 +212,14 @@ def main() -> int:
         hidden_paths += [f"/{h['branch']}/hall/" for h in json.loads((CONTENT / "halls.json").read_text(encoding="utf-8"))["halls"]]
     content = {n: with_published_texts(n, json.loads((CONTENT / n).read_text(encoding="utf-8"))) for n in
                ("branches.json", "rooms.json", "pricing.json", "contact.json", "seo.json", "ui.json")}
+    # the room types and unit counts of the dashboard «الغرف» when build.py resolved them (10 Nov 2026): the pages were
+    # built from content/rooms.generated.json, so every check judges them by it (rooms.json is the seed / fallback)
+    rooms_gen = resolved_rooms()
+    if rooms_gen:
+        content["rooms.json"] = {**content["rooms.json"], "rooms": rooms_gen["rooms"]}
+        for b in content["branches.json"]["branches"]:
+            if rooms_gen.get("branch_units", {}).get(b["slug"]):
+                b["units"] = rooms_gen["branch_units"][b["slug"]]
     site = content["seo.json"]["site_url"].rstrip("/")
     site_host = urlsplit(site).netloc
     contact = content["contact.json"]
@@ -1164,12 +1172,18 @@ def with_published_texts(name: str, doc: dict) -> dict:
                 o[path[-1]] = t[lang]
     return doc
 
+def resolved_rooms() -> dict | None:
+    """content/rooms.generated.json (build.py resolve_rooms — the room types of the dashboard «الغرف»), or None."""
+    f = CONTENT / "rooms.generated.json"
+    return json.loads(f.read_text(encoding="utf-8")) if f.is_file() else None
+
+
 def check_photos(rep: "Report") -> None:
     """Photos imported by scripts/photos-import.mjs (rooms.json / branches.json → photos, og_image): every file exists
     and every photo has a real alt in both languages — never invented, so an empty one fails with the full list."""
     G = "photos (scripts/photos-import.mjs)"
     missing: list[str] = []
-    rooms = json.loads((CONTENT / "rooms.json").read_text(encoding="utf-8"))["rooms"]
+    rooms = (resolved_rooms() or json.loads((CONTENT / "rooms.json").read_text(encoding="utf-8")))["rooms"]
     branches = json.loads((CONTENT / "branches.json").read_text(encoding="utf-8"))["branches"]
     owners = [(f"{r['branch']}/{r['slug']}", r) for r in rooms] + [(f"{b['slug']}/branch", b) for b in branches]
     for where, owner in owners:

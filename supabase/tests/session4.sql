@@ -267,8 +267,8 @@ select pg_temp._fails('P8 anon cannot check the cron token', $$select public.par
 select pg_temp._root();
 -- published since then (production as of 6 Nov 2026): the five texts of the 4 Nov copy fixes (migration
 -- 20261104400000_copy_singular — the privacy text again by 20261107200000_texts_session), each live = its draft = its seed
--- (the files carry the same wording); every other field is unpublished (the site keeps the files)
-select pg_temp._check('C0 the curated texts are seeded; only the five copy-fix texts are published, live = draft = seed', (select count(*) from public.content_fields) >= 60
+-- (the files carry the same wording); every other field is unpublished (the site keeps the files) — 10 Nov 2026: the 12 room descriptions retired (20261110200000_room_catalog — edited in «الغرف»), 54 remain
+select pg_temp._check('C0 the curated texts are seeded; only the five copy-fix texts are published, live = draft = seed', (select count(*) from public.content_fields) >= 50 and not exists (select 1 from public.content_fields where grp = 'rooms' and file = 'rooms.json')
   and (select array_agg(key order by key) from public.content_fields where live_ar is not null or live_en is not null) = (select array_agg(k order by k) from unnest(array['branch.airport-road.story.entrance.body', 'branch.airport-road.story.lobby.body', 'branch.shafa-road.description', 'branch.shafa-road.story.lobby.body', 'policy.privacy.body']) k)
   and (select bool_and(live_ar = draft_ar and live_en = draft_en and draft_ar = seed_ar and draft_en = seed_en) from public.content_fields where key = any(array['branch.airport-road.story.entrance.body', 'branch.airport-road.story.lobby.body', 'branch.shafa-road.description', 'branch.shafa-road.story.lobby.body', 'policy.privacy.body']))
   and not exists (select 1 from public.content_fields where key like 'policy.jobs.%'));

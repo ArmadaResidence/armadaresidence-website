@@ -81,6 +81,8 @@ interface ReservationRow {
   status: string;
   branch: string;
   room_slug: string | null;
+  /** the room-type name the booking was made with (10 Nov 2026) */
+  roomName: { ar: string | null; en: string | null };
   check_in: string;
   check_out: string;
   nights: number;
@@ -108,7 +110,7 @@ async function loadReservation(id: string): Promise<ReservationRow | null> {
   const key = serviceKey();
   // confirmed_by references auth.users, not public.staff: PostgREST cannot embed the staff name (PGRST200 — the read
   // failed and the dashboard's confirm / cancel sent nothing until 28 Oct 2026), so the name is a second read below
-  const sel = 'id,ref,status,branch,check_in,check_out,nights,adults,children,extra_beds,extra_bed_fee_per_night,needs_coordination,capacity_at_request,breakfast,guest_name,phone,email,notes,locale,pricing,is_test,cancel_reason_code,room_types(slug),confirmed_by';
+  const sel = 'id,ref,status,branch,check_in,check_out,nights,adults,children,extra_beds,extra_bed_fee_per_night,needs_coordination,capacity_at_request,breakfast,guest_name,phone,email,notes,locale,pricing,is_test,cancel_reason_code,room_name_ar,room_name_en,room_types(slug),confirmed_by';
   const res = await fetch(`${url()}/rest/v1/reservations?id=eq.${encodeURIComponent(id)}&select=${encodeURIComponent(sel)}`, {
     headers: { apikey: key, Authorization: `Bearer ${key}` },
   });
@@ -125,7 +127,7 @@ async function loadReservation(id: string): Promise<ReservationRow | null> {
     const s = await fetch(`${url()}/rest/v1/staff?user_id=eq.${encodeURIComponent(r.confirmed_by)}&select=full_name`, { headers: { apikey: key, Authorization: `Bearer ${key}` } });
     if (s.ok) label = ((await s.json()) as { full_name: string }[])[0]?.full_name ?? null;
   }
-  return { ...(r as unknown as ReservationRow), room_slug: rt?.slug ?? null, confirmed_by_label: label };
+  return { ...(r as unknown as ReservationRow), room_slug: rt?.slug ?? null, roomName: { ar: (r.room_name_ar as string | null) ?? null, en: (r.room_name_en as string | null) ?? null }, confirmed_by_label: label };
 }
 
 interface Recipient {
@@ -151,7 +153,7 @@ async function loadRecipients(ref: string): Promise<Recipient[]> {
 }
 
 /** The WhatsApp values of a stored reservation (E.164 phone, the booking's language). */
-const waBooking = (r: ReservationRow): WaBooking => ({ ref: r.ref, locale: r.locale, branch: r.branch, room: r.room_slug ?? '', check_in: r.check_in, check_out: r.check_out, name: r.guest_name, phone: r.phone, quote: r.pricing, cancelReason: r.cancel_reason_code });
+const waBooking = (r: ReservationRow): WaBooking => ({ ref: r.ref, locale: r.locale, branch: r.branch, room: r.room_slug ?? '', roomName: r.roomName, check_in: r.check_in, check_out: r.check_out, name: r.guest_name, phone: r.phone, quote: r.pricing, cancelReason: r.cancel_reason_code });
 const waOut = (w: WaResult) => ({ accepted: w.accepted, status: w.status, error_code: w.errorCode, fallback: Boolean(w.fallback) });
 
 const unique = (list: string[]) => Array.from(new Set(list.map((s) => s.trim().toLowerCase()).filter(Boolean)));
@@ -231,7 +233,7 @@ Deno.serve(async (req) => {
       console.error('confirm: notifications not sent', out.ref ?? id, !res ? 'reservation read failed' : 'no price snapshot');
       return json(req, 200, { ok: true, ref: out.ref, low: out.low ?? [], emails: null, notify_failed: true });
     }
-    const bm = { ref: res.ref, locale: res.locale, branch: res.branch, room: res.room_slug ?? '', check_in: res.check_in, check_out: res.check_out, nights: res.nights, adults: res.adults, children: res.children, extraBeds: res.extra_beds, extraBedFee: Number(res.extra_bed_fee_per_night ?? content.extra_bed_fee), needsCoordination: res.needs_coordination, capacity: res.capacity_at_request ?? 0, breakfast: res.breakfast, name: res.guest_name, phone: res.phone, email: res.email ?? '', notes: res.notes ?? '', receivedAt: riyadhNow(), quote: res.pricing, confirmedBy: res.confirmed_by_label ?? 'staff', eyabInvite: null as { ar: string; en: string } | null };
+    const bm = { ref: res.ref, locale: res.locale, branch: res.branch, room: res.room_slug ?? '', roomName: res.roomName, check_in: res.check_in, check_out: res.check_out, nights: res.nights, adults: res.adults, children: res.children, extraBeds: res.extra_beds, extraBedFee: Number(res.extra_bed_fee_per_night ?? content.extra_bed_fee), needsCoordination: res.needs_coordination, capacity: res.capacity_at_request ?? 0, breakfast: res.breakfast, name: res.guest_name, phone: res.phone, email: res.email ?? '', notes: res.notes ?? '', receivedAt: riyadhNow(), quote: res.pricing, confirmedBy: res.confirmed_by_label ?? 'staff', eyabInvite: null as { ar: string; en: string } | null };
     // «انضم إلى إياب» (9 Nov 2026): the guest email's one line when the guest is not a member (the database decides)
     if (res.email) bm.eyabInvite = (await eyabInvite(url(), serviceKey(), res.id, String(content.live_url ?? content.site_url)))?.links ?? null;
     const rows = await loadRecipients(res.ref);
@@ -243,7 +245,7 @@ Deno.serve(async (req) => {
     const [n, g, l] = await Promise.all([
       sendEmail('confirmed-notification', res.ref, { from: FROM_RECEPTION, to, cc, replyTo: res.email ? [res.email] : [] }, hotelMail, res.is_test, fail),
       guestMail ? sendEmail('guest-confirmed', res.ref, { from: FROM_GUEST, to: [res.email], replyTo: primary.length ? primary : [addressOf(FROM_GUEST)] }, guestMail, res.is_test, fail) : Promise.resolve(null),
-      lowDue ? sendEmail('low-inventory', res.ref, { from: FROM_RECEPTION, to: central.length ? central : to }, lowInventoryAlert(content, { ref: res.ref, branch: res.branch, room: res.room_slug ?? '', nights: out.low! }), res.is_test, fail) : Promise.resolve(null),
+      lowDue ? sendEmail('low-inventory', res.ref, { from: FROM_RECEPTION, to: central.length ? central : to }, lowInventoryAlert(content, { ref: res.ref, branch: res.branch, room: res.room_slug ?? '', roomName: res.roomName, nights: out.low! }), res.is_test, fail) : Promise.resolve(null),
     ]);
     const missed = [!n && 'reception', res.email && !g && 'guest', lowDue && !l && 'low-inventory'].filter(Boolean);
     if (missed.length) console.error('confirm: notifications not sent', res.ref, missed.join(','));
@@ -276,7 +278,7 @@ Deno.serve(async (req) => {
     let g: string | null = null;
     if (res.email) {
       const cancelReason = { ar: guestReason(content, res.cancel_reason_code, 'ar'), en: guestReason(content, res.cancel_reason_code, 'en') };
-      const bm = { ref: res.ref, locale: res.locale, branch: res.branch, room: res.room_slug ?? '', check_in: res.check_in, check_out: res.check_out, nights: res.nights, adults: res.adults, children: res.children, extraBeds: res.extra_beds, extraBedFee: Number(res.extra_bed_fee_per_night ?? content.extra_bed_fee), needsCoordination: res.needs_coordination, capacity: res.capacity_at_request ?? 0, breakfast: res.breakfast, name: res.guest_name, phone: res.phone, email: res.email, notes: res.notes ?? '', receivedAt: riyadhNow(), cancelReason };
+      const bm = { ref: res.ref, locale: res.locale, branch: res.branch, room: res.room_slug ?? '', roomName: res.roomName, check_in: res.check_in, check_out: res.check_out, nights: res.nights, adults: res.adults, children: res.children, extraBeds: res.extra_beds, extraBedFee: Number(res.extra_bed_fee_per_night ?? content.extra_bed_fee), needsCoordination: res.needs_coordination, capacity: res.capacity_at_request ?? 0, breakfast: res.breakfast, name: res.guest_name, phone: res.phone, email: res.email, notes: res.notes ?? '', receivedAt: riyadhNow(), cancelReason };
       const rows = await loadRecipients(res.ref);
       const { primary } = route(rows, res.branch);
       g = await sendEmail('guest-cancelled', res.ref, { from: FROM_GUEST, to: [res.email], replyTo: primary.length ? primary : [addressOf(FROM_GUEST)] }, bookingCancelled(content, bm), res.is_test, force === 'fail-send');

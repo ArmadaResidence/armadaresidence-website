@@ -3,6 +3,7 @@
 // supabase/migrations/20261026000100_phase2a1_revert.sql); confirm / cancel, user management and the site rebuild go
 // through the Edge Functions, which forward the user's JWT.
 import { supabase, SUPABASE_URL } from './supabase';
+import type { RoomTypeAdmin } from './rooms';
 import { CONNECTION, SESSION_ENDED, arabicError } from './errors';
 import type { SiteDeploy } from './siteDeployText';
 
@@ -88,6 +89,9 @@ export interface Reservation {
   status: 'request' | 'confirmed' | 'cancelled';
   confirmation: 'instant' | 'staff' | null;
   fallback_reason: string | null;
+  /** the room-type name the booking was made with (10 Nov 2026; NULL = «أي غرفة متاحة»), shown instead of today's name */
+  room_name_ar: string | null;
+  room_name_en: string | null;
   source: string;
   branch: string;
   room_type_id: string | null;
@@ -200,6 +204,8 @@ export const canView = (m: Me | null, section: string) => level(m, section) !== 
 export const levelRank = (l: Level) => ['none', 'view', 'edit', 'publish'].indexOf(l);
 export const canEdit = (m: Me | null, section: string) => levelRank(level(m, section)) >= levelRank('edit');
 export const canPublish = (m: Me | null, section: string) => level(m, section) === 'publish';
+/** the caller's branch scope covers this branch (staff.branch NULL = every branch; the server checks the same) */
+export const canBranch = (m: Me | null, branch: string) => !!m && (m.branch === null || m.branch === branch);
 
 export async function branches(): Promise<Branch[]> {
   const { data, error } = await supabase.from('branches').select('slug,name_ar,name_en,sort').order('sort');
@@ -242,6 +248,21 @@ export const setBaseRate = (roomTypeId: string, rate: number | null) => rpcSaved
 export const setRoomBookable = (roomTypeId: string, bookable: boolean) => rpcSaved('set_room_bookable', { p_room_type: roomTypeId, p_bookable: bookable });
 /** «في الصفحة الرئيسية» of a room type (7 Nov 2026): the home page's «الغرف والأجنحة» */
 export const setRoomHome = (roomTypeId: string, on: boolean) => rpcSaved('set_room_home', { p_room_type: roomTypeId, p_on: on });
+/* «الغرف» — room types managed from the dashboard (10 Nov 2026): add / edit / show-hide / reorder / delete, one audited,
+   undoable batch each (public.room_type_save … room_type_delete) */
+export async function roomTypesAdmin(): Promise<RoomTypeAdmin[]> {
+  const { data, error } = await supabase.rpc('room_types_admin');
+  if (error) fail(error, 'room_types_admin');
+  return (data ?? []) as RoomTypeAdmin[];
+}
+export async function roomTypeSave(id: string | null, p: Record<string, unknown>): Promise<Saved & { id: string; slug: string; missing: string[] }> {
+  const { data, error } = await supabase.rpc('room_type_save', { p_id: id, p });
+  if (error) fail(error, 'room_type_save');
+  return data as Saved & { id: string; slug: string; missing: string[] };
+}
+export const roomTypeSetOnSite = (id: string, on: boolean) => rpcSaved('room_type_set_on_site', { p_id: id, p_on: on });
+export const roomTypesReorder = (branch: string, ids: string[]) => rpcSaved('room_types_reorder', { p_branch: branch, p_ids: ids });
+export const roomTypeDelete = (id: string) => rpcSaved('room_type_delete', { p_id: id });
 export const addOverride = (roomTypeIds: string[], from: string, to: string, weekdays: number, price: number, label: string, labelEn = '', replaceSingle = false) =>
   rpcSaved('add_rate_override', { p_room_types: roomTypeIds, p_from: from, p_to: to, p_weekdays: weekdays, p_price: price, p_label: label || null, p_label_en: labelEn || null, p_replace_single: replaceSingle });
 export const setOverrideActive = (id: string, active: boolean) => rpcSaved('set_override_active', { p_id: id, p_active: active });

@@ -18,7 +18,7 @@
 // reload, and any console / page error. Runs against the local build or the live site (sub-path aware); the
 // booking endpoint, wa.me and GTM are stubbed, nothing is ever sent.
 //   node scripts/booking-nav-check.mjs [BASE_URL]
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { chromium } from 'playwright';
 import { addDays, riyadhToday } from './datepicker-helpers.mjs';
 import { stubTurnstile } from './turnstile-stub.mjs';
@@ -26,7 +26,7 @@ import { stubTurnstile } from './turnstile-stub.mjs';
 const BASE = (process.argv[2] || process.env.BASE_URL || 'http://127.0.0.1:4330').replace(/\/$/, '');
 // the GitHub Pages project site serves under a sub-path; its links carry it
 const PRE = new URL(BASE).pathname.replace(/\/$/, '');
-const roomsJson = JSON.parse(readFileSync('content/rooms.json', 'utf8'));
+const roomsJson = JSON.parse(readFileSync((existsSync('content/rooms.generated.json') ? 'content/rooms.generated.json' : 'content/rooms.json'), 'utf8'));
 const branchesJson = JSON.parse(readFileSync('content/branches.json', 'utf8'));
 const ui = JSON.parse(readFileSync('content/ui.json', 'utf8'));
 // each room's availability as the build resolved it from the dashboard (dist/_availability.json, written by build.py —

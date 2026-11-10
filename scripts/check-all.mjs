@@ -288,10 +288,13 @@ if (!live && built && plan.sampleQa) {
     PARTNER_LOGOS_FIXTURE: 'scripts/fixtures/partner-logos-sample.json',
     BLOG_FIXTURE: 'scripts/fixtures/blog-sample.json',
     OFFERS_FIXTURE: 'scripts/fixtures/offers-sample.json',
+    // «الغرف» (10 Nov 2026): a type added, one renamed, one hidden, one deleted, unit counts entered
+    ROOMS_FIXTURE: 'scripts/fixtures/rooms-sample.json',
   };
   const b = await run('sample build', PYTHON, ['build.py'], { env });
   results.push(b);
   if (!b.code) results.push(await run('sample qa', PYTHON, ['qa.py'], { env }));
+  if (!b.code) results.push(await run('rooms-site-check', process.execPath, ['scripts/rooms-site-check.mjs', '--sample'], { env }));
   if (!staged && !commit && !plan.ci) results.push(await run('build (restored)', PYTHON, ['build.py']));
 }
 removeSnapshots();

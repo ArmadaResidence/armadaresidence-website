@@ -209,6 +209,14 @@ export function arabicError(e: Raw, what: string): string {
   if (e?.code === 'PGRST301' || /jwt expired|^sign in$/i.test(m)) return SESSION_ENDED;
   const changed = m.match(/^changed:(\d+)/);
   if (changed) return `تغيّرت الخلية أثناء التعديل (المتبقي الآن ${changed[1]}). أغلق وأعد الفتح.`;
+  // «الغرف» (10 Nov 2026): the website's inventory never exceeds a room type's physical units
+  const over = m.match(/^over_units:(\d+)/);
+  if (over) return `لا يمكن أن يزيد المعروض على الموقع (المتبقي مع المحجوز) عن عدد الوحدات الفعلي لهذا النوع (${over[1]}). عدّل العدد الفعلي في «الغرف» أولًا إن كان أكبر.`;
+  const below = m.match(/^units_below_inventory:(\d+)/);
+  if (below) return `عدد الوحدات الفعلي لا يمكن أن يقل عمّا يعرضه الموقع في ليلة قادمة (${below[1]} مع المحجوز). خفّض المخزون في «المخزون» أولًا.`;
+  if (/^has_bookings/.test(m)) return 'لهذا النوع حجوزات سابقة، فلا يُحذف حتى تبقى الحجوزات القديمة كما هي. أخفِه من الموقع بدلًا من ذلك.';
+  if (/^not_ready/.test(m)) return 'لا يظهر هذا النوع على الموقع قبل استكمال بياناته.';
+  if (/^slug_locked/.test(m)) return 'رابط صفحة نوع الغرفة ثابت ولا يتغير.';
   for (const [re, text] of KNOWN) if (re.test(m)) return text;
   const detail = INVALID_DETAIL.find(([re]) => re.test(m));
   if (detail) return `القيمة غير صالحة: ${detail[1]}.`;

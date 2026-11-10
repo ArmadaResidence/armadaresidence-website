@@ -36,7 +36,7 @@ const ui = J('content/ui.json');
 const contact = J('content/contact.json');
 const club = J('content/club.json');
 const halls = J('content/halls.json');
-const roomsJson = J('content/rooms.json').rooms.filter((r) => r.show_on_site);
+const roomsJson = J((existsSync('content/rooms.generated.json') ? 'content/rooms.generated.json' : 'content/rooms.json')).rooms.filter((r) => r.show_on_site);
 const avail = existsSync(join(DIST, '_availability.json')) ? J(join(DIST, '_availability.json')) : { rooms: {}, home: {} };
 const reviewsFile = existsSync('content/reviews.generated.json') ? 'content/reviews.generated.json' : 'content/reviews.json';
 const reviews = J(reviewsFile).items.filter((r) => r.show_home !== false);

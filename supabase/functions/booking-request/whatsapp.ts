@@ -55,6 +55,8 @@ export interface WaBooking {
   branch: string;
   /** room type slug; '' = «أي غرفة متاحة» */
   room: string;
+  /** the room-type name the booking was made with (reservations.room_name_ar / _en, 10 Nov 2026) — wins over content */
+  roomName?: { ar: string | null; en: string | null } | null;
   check_in: string;
   check_out: string;
   name: string;
@@ -96,7 +98,7 @@ export function waParams(c: Content, template: WaTemplate, d: WaBooking, metaNam
   }
   if (template === 'booking_request_received' || template === 'booking_cancelled') return [d.name, d.ref, branch, checkIn, checkOut].map(clean);
   const r = d.room ? c.rooms.find((x: { slug: string; branch: string }) => x.slug === d.room && x.branch === d.branch) : null;
-  const room = r ? String(r[`name_${L}`]) : String(c.labels[L].any_room);
+  const room = d.room && d.roomName?.[L] ? String(d.roomName[L]) : r ? String(r[`name_${L}`]) : String(c.labels[L].any_room);
   if (!d.quote) throw new Error('booking_confirmed needs the quote');
   return [d.name, branch, d.ref, checkIn, checkOut, room, sar(d.quote.total, L), String(b.maps_url)].map(clean);
 }
