@@ -5,3 +5,6 @@
 // admin sees them, management does not; the publish filter of «السجل» for the admin only). Offline as well.
 await import('../admin/tests/audit-actors-check.mjs');
 await import('../admin/tests/test-delete-check.mjs');
+// 10 Nov 2026: the update bar keeps the site's last update and its GitHub link on screen for the system admin only
+// (admin/tests/deploy-bar-check.mjs — offline as well).
+await import('../admin/tests/deploy-bar-check.mjs');

@@ -2877,3 +2877,16 @@ toggles (rates, inventory and photos lived elsewhere; names, sizes, beds, featur
   and the temporary secret — ask again with the cost. SQL on that branch: room-types.sql **84 / 84**; the whole earlier
   suite **1492 / 1492** after the migration (session4 C0 updated for the 12 retired fields; site-deploys.sql not run —
   it needs an admin row inserted, unrelated). Ahmed still has to enter each room type's physical units in «الغرف».
+- **The publish status for the system admin (follow-up, Ahmed's question of 10 Nov 2026).** Ahmed no longer saw the
+  site-update status at the top of the dashboard. Cause, checked on production with real sessions (read-only): **not**
+  session 23 — as the role admin, `site_deploy_status()` returned the status with its run_url, `media_job_links` 5 of 5
+  links and «السجل» 176 publish entries; a reception session got the status without a link, no link, no entry, and
+  `run_url` refused; the deployed dashboard bundle reads exactly those. The update bar has, since 6 Nov 2026, shown the
+  site's state only while a deploy runs, after a failure, or for 30 minutes after a success (and never a link on a
+  success); Ahmed had not published since 8 Nov and the last deploy finished 15:35 UTC, so the bar was gone after
+  16:05. Ahmed's decision (10 Nov 2026): **the system admin sees it always.** `barShowsDeploy(…, admin)` /
+  `deployLine(…, admin)`: for the staff role admin the bar shows the last update at all times with its «سجل التشغيل»
+  link (a success included); everyone else unchanged (the server still sends run_url to the system admin only).
+  Checks: `deploy-alert-check` (+4), `admin/tests/deploy-bar-check.mjs` (offline, inside `admin-audit-check`: admin /
+  management / reception × 1280 / 375), and `scripts/publish-log-check.mjs` on a preview branch (a real sign-in as the
+  admin and as management).

@@ -8,12 +8,17 @@ import { useAnyDirty } from '../lib/dirty';
 import { useSiteDeploy } from '../lib/siteDeploy';
 import { barShowsDeploy, deployView } from '../lib/siteDeployText';
 import SiteDeployStatus from './SiteDeployStatus';
+import { useSession } from '../lib/session';
 
 export default function UpdateBar() {
   const newer = useNewVersion();
   const dirty = useAnyDirty();
   const { data, requestedAt, now } = useSiteDeploy();
-  const site = barShowsDeploy(data, requestedAt, now);
+  // the system admin (the staff role admin — the only one the server sends the run links to) sees the site's last
+  // update at all times, with its GitHub link (Ahmed, 10 Nov 2026); everyone else while it runs, after a failure and
+  // for 30 minutes after a success, without a link
+  const admin = useSession().me?.role === 'admin';
+  const site = barShowsDeploy(data, requestedAt, now, admin);
   if (!newer && !site) return null;
   return (
     <div className={`update-bar${site && deployView(data, requestedAt, now) === 'failed' ? ' update-bar-alert' : ''}`} role="status" data-update-bar>
@@ -24,7 +29,7 @@ export default function UpdateBar() {
           <button type="button" className="btn btn-primary btn-sm" onClick={() => window.location.reload()} data-action="update-now">تحديث الآن</button>
         </span>
       )}
-      {site && <SiteDeployStatus compact />}
+      {site && <SiteDeployStatus compact admin={admin} />}
     </div>
   );
 }

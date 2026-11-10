@@ -63,13 +63,15 @@ export const DEPLOY_TEXT = {
   runLink: 'سجل التشغيل',
 };
 
-export function deployLine(d: SiteDeploy | null, requestedAt: number | null, now: number): DeployLine {
+/** `admin` (10 Nov 2026, Ahmed): the system admin's bar keeps the last update on screen with its run link, a success
+ *  included (the server sends run_url to the system admin only — public.site_deploy_status) */
+export function deployLine(d: SiteDeploy | null, requestedAt: number | null, now: number, admin = false): DeployLine {
   const view = deployView(d, requestedAt, now);
   if (view === 'running') {
     const own = d?.status === 'running' && (requestedAt === null || startedAfter(d, requestedAt));
     return { view, text: own ? DEPLOY_TEXT.running(deployTime(d?.started_at)) : DEPLOY_TEXT.requested(deployTime(requestedAt)), detail: null, link: own ? d?.run_url ?? null : null };
   }
-  if (view === 'succeeded') return { view, text: DEPLOY_TEXT.succeeded(deployTime(d?.finished_at ?? d?.started_at)), detail: null, link: null };
+  if (view === 'succeeded') return { view, text: DEPLOY_TEXT.succeeded(deployTime(d?.finished_at ?? d?.started_at)), detail: null, link: admin ? d?.run_url ?? null : null };
   if (view === 'failed') {
     return { view, text: DEPLOY_TEXT.failed(deployTime(d?.finished_at ?? d?.started_at)), detail: DEPLOY_TEXT.failedDetail(d?.last_success_at ? deployTime(d.last_success_at) : null), link: d?.run_url ?? null };
   }
@@ -77,8 +79,10 @@ export function deployLine(d: SiteDeploy | null, requestedAt: number | null, now
 }
 
 /** the update bar shows the site's state while a deploy runs, after a failure, and for a while after a success */
-export function barShowsDeploy(d: SiteDeploy | null, requestedAt: number | null, now: number): boolean {
+export function barShowsDeploy(d: SiteDeploy | null, requestedAt: number | null, now: number, admin = false): boolean {
   const view = deployView(d, requestedAt, now);
+  // the system admin sees the site's last update at all times (Ahmed, 10 Nov 2026); everyone else as before
+  if (admin && view !== 'unknown') return true;
   if (view === 'running' || view === 'failed') return true;
   return view === 'succeeded' && now - t(d?.finished_at) < RECENT_MS;
 }

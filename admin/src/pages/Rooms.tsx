@@ -137,7 +137,7 @@ export default function Rooms() {
           أنواع الغرف في كل فرع: أضف نوعًا جديدًا أو عدّل بياناته، وأظهره على الموقع أو أخفِه، ورتّبها. رابط صفحة النوع يُصنع مرة واحدة من الاسم الإنجليزي ولا يتغير بتغيير الاسم. «متاحة للحجز على الموقع» تعرض النوع الظاهر في نموذج الحجز وتسمح بحجزه، و«في الصفحة الرئيسية» تعرضه في قسم «الغرف والأجنحة». كل تغيير يصل إلى الموقع بعد تحديثه.{editable ? '' : ' صلاحيتك هنا للعرض فقط.'}
         </p>
         {/* once only (6 Nov 2026): while the update bar shows the site's state, the page leaves its own line out */}
-        {!barShowsDeploy(deploy.data, deploy.requestedAt, deploy.now) && <p className="mt-2" data-rooms-deploy><SiteDeployStatus /></p>}
+        {!barShowsDeploy(deploy.data, deploy.requestedAt, deploy.now, me?.role === 'admin') && <p className="mt-2" data-rooms-deploy><SiteDeployStatus /></p>}
         {note && <p className={`text-sm mt-2 font-semibold ${note.tone === 'error' ? 'text-error' : note.tone === 'ok' ? 'text-ok' : 'text-ink-muted'}`} role="status" data-rooms-note={note.tone}>{note.text}</p>}
       </div>
       <ErrorBox error={error} />

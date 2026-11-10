@@ -142,6 +142,11 @@ E('no report yet', deployLine({ status: null }, null, T0).text === DEPLOY_TEXT.u
 E('bar: running and failed always shown', barShowsDeploy(running, null, T0) && barShowsDeploy(failed, null, T0 + 86400000));
 E('bar: a success only for 30 min', barShowsDeploy(ok, null, T0) && !barShowsDeploy(ok, null, Date.parse(ok.finished_at) + RECENT_MS + 1));
 E('bar: nothing before any report', !barShowsDeploy(null, null, T0));
+// the system admin's bar (10 Nov 2026): the last update at all times, with its link on a success too; nobody else's
+E('bar (admin): a success shown days later', barShowsDeploy(ok, null, Date.parse(ok.finished_at) + 3 * 86400000, true));
+E('bar (admin): nothing before any report', !barShowsDeploy(null, null, T0, true));
+E('succeeded line (admin) carries the run link', deployLine(ok, null, T0, true).link === ok.run_url);
+E('succeeded line (anyone else) carries no link', deployLine(ok, null, T0).link === null);
 // «الغرف» after a change saved at T0
 E('rooms: dispatched, the old success → saved and waiting', roomsNote('dispatched', ok, T0).text === ROOMS_NOTE.saved);
 E('rooms: the run for the change is running → saved and waiting', roomsNote('dispatched', running, T0).text === ROOMS_NOTE.saved);

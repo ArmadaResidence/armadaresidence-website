@@ -3,9 +3,9 @@
 import { useSiteDeploy } from '../lib/siteDeploy';
 import { DEPLOY_TEXT, deployLine } from '../lib/siteDeployText';
 
-export default function SiteDeployStatus({ compact = false }: { compact?: boolean }) {
+export default function SiteDeployStatus({ compact = false, admin = false }: { compact?: boolean; admin?: boolean }) {
   const { data, requestedAt, now } = useSiteDeploy();
-  const line = deployLine(data, requestedAt, now);
+  const line = deployLine(data, requestedAt, now, admin);
   const tone = line.view === 'failed' ? 'text-error' : line.view === 'succeeded' ? 'text-ok' : 'text-ink-muted';
   return (
     <span className={`site-deploy ${compact ? 'site-deploy-compact' : ''}`} data-site-deploy={line.view} role={compact ? undefined : 'status'}>
