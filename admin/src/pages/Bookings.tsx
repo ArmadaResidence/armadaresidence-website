@@ -13,7 +13,7 @@ import { supabase } from '../lib/supabase';
 import * as api from '../lib/api';
 import type { Reservation, RoomType, StatusHistory, CalendarCell, WhatsAppMessage } from '../lib/api';
 import { useSession } from '../lib/session';
-import { BRANCH_FULL, BRANCH_NAMES, NOTIFY_FAILED, REASON_LABELS, STATUS_LABELS, WA_STATUS_LABELS, WA_TEMPLATE_LABELS, adultsWord, childrenWord, dateRange, longDate, nightsWord, riyadhDateTimeLong, roomsLeft, sar, toCsv, riyadhToday, waError } from '../lib/format';
+import { BRANCH_FULL, BRANCH_NAMES, NOTIFY_FAILED, REASON_LABELS, STATUS_LABELS, WA_STATUS_LABELS, WA_TEMPLATE_LABELS, adultsWord, childrenWord, dateRange, longDate, nightsWord, riyadhDateTimeLong, roomsLeft, sar, toCsv, riyadhToday, waError, west } from '../lib/format';
 import { BranchSelect, CancelButton, Confirm, Drawer, Empty, ErrorBox, Field, Loading, Modal, Spinner, useToast } from '../components/ui';
 import DateField from '../components/DateField';
 import { BookingGuestBadges } from './Guests';
@@ -112,6 +112,7 @@ export default function Bookings() {
 
   // the guided tour's «التأكيد» step opens the first request in the list
   const firstRequest = useMemo(() => rows?.find((r) => r.status === 'request')?.id ?? null, [rows]);
+  const firstTest = useMemo(() => (me?.role === 'admin' ? rows?.find((r) => r.status === 'cancelled' && r.cancel_reason_code === 'test_booking')?.id ?? null : null), [rows, me]);
   const counts = useMemo(() => {
     const c = { request: 0, confirmed: 0, cancelled: 0, coord: 0 };
     for (const r of rows ?? []) {
@@ -202,7 +203,7 @@ export default function Bookings() {
         <ul className="grid gap-2" data-list="bookings">
           {rows.map((r, i) => (
             <li key={r.id} className="reveal" style={{ animationDelay: `${Math.min(i, 10) * 60}ms` }}>
-              <button type="button" onClick={() => setOpen(r)} className="card w-full text-start p-3 sm:p-4 hover:border-bronze transition-colors grid grid-cols-[auto_1fr_auto] gap-3 items-center" data-ref={r.ref} data-status={r.status} data-tour={[i === 0 ? 'booking-row' : '', r.id === firstRequest ? 'booking-request-row' : ''].join(' ').trim() || undefined}>
+              <button type="button" onClick={() => setOpen(r)} className="card w-full text-start p-3 sm:p-4 hover:border-bronze transition-colors grid grid-cols-[auto_1fr_auto] gap-3 items-center" data-ref={r.ref} data-status={r.status} data-tour={[i === 0 ? 'booking-row' : '', r.id === firstRequest ? 'booking-request-row' : '', r.id === firstTest ? 'booking-test-row' : ''].join(' ').trim() || undefined}>
                 <span className={`chip chip-${r.status}`}>{STATUS_LABELS[r.status]}</span>
                 <span className="min-w-0">
                   <span className="block font-bold truncate">
@@ -245,6 +246,10 @@ function Details({ r, roomTypes, editable, onClose, onChanged }: { r: Reservatio
   const [busy, setBusy] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [cancelOpen, setCancelOpen] = useState(false);
+  // «حذف نهائي» (10 Nov 2026): the system admin only, a booking cancelled as «حجز تجريبي»; the ref typed back enables it
+  const { me } = useSession();
+  const [delOpen, setDelOpen] = useState(false);
+  const [delRef, setDelRef] = useState('');
   // 9 Nov 2026: a picked reason (required — its phrase reaches the guest) + an optional internal note (never sent)
   const [reason, setReason] = useState('');
   const [cancelNote, setCancelNote] = useState('');
@@ -304,6 +309,22 @@ function Details({ r, roomTypes, editable, onClose, onChanged }: { r: Reservatio
       setCancelOpen(false);
       if (out.notify_failed) return onChanged(NOTIFY_FAILED.cancel, 'error');
       onChanged(`أُلغي الحجز ${r!.ref}${r!.status === 'confirmed' ? ' وأُعيدت الغرف إلى المخزون' : ''}${out.guest_notified === false ? ' — لم يُرسَل شيء للضيف' : ''}`);
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+  const canDelete = me?.role === 'admin' && r?.status === 'cancelled' && r?.cancel_reason_code === 'test_booking';
+  const refTyped = west(delRef).trim().toUpperCase() === r?.ref;
+  async function doDelete() {
+    if (!refTyped) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const out = await api.deleteTestBooking(r!.id, west(delRef).trim().toUpperCase());
+      setDelOpen(false);
+      onChanged(`حُذف الحجز التجريبي ${out.ref} نهائيًا — يمكن استرجاعه من «السجل»`);
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -429,7 +450,9 @@ function Details({ r, roomTypes, editable, onClose, onChanged }: { r: Reservatio
         {editable && r.status !== 'cancelled' && <button type="button" className="btn btn-danger" onClick={() => { setReason(''); setCancelNote(''); setError(null); setCancelOpen(true); }} data-action="cancel">إلغاء الحجز</button>}
         <a className="btn btn-ghost" href={waTemplate()} target="_blank" rel="noopener">واتساب الضيف</a>
         <button type="button" className="btn btn-ghost" onClick={() => window.print()} data-action="print">طباعة</button>
+        {canDelete && <button type="button" className="btn btn-danger" onClick={() => { setDelRef(''); setError(null); setDelOpen(true); }} data-action="delete-test" data-tour="booking-delete-test">حذف نهائي</button>}
       </div>
+      {canDelete && <p className="text-xs text-ink-muted mb-5" data-delete-test-hint>حجز تجريبي ملغي: «حذف نهائي» يزيله من كل القوائم والتقارير، ويُحفظ في «السجل» لاسترجاعه.</p>}
       {editable && r.status !== 'cancelled' && <p className="text-xs text-ink-muted mb-5">التأكيد والإلغاء يُرسَلان للضيف بالبريد وواتساب، وللاستقبال بالبريد، لذلك لا يمكن التراجع عنهما.</p>}
       {!editable && <p className="text-xs text-ink-muted mb-5">صلاحيتك هنا للعرض فقط.</p>}
 
@@ -528,6 +551,23 @@ function Details({ r, roomTypes, editable, onClose, onChanged }: { r: Reservatio
         </Field>
         <ErrorBox error={error} />
       </Confirm>
+      <Modal open={delOpen} onClose={() => { setDelOpen(false); setError(null); }} title="حذف نهائي للحجز التجريبي" draftKey={`delete-test:${r.ref}`} busy={busy}>
+        <p className="text-sm mb-3">يُحذف هذا الحجز من كل القوائم والتقارير، ومعه سجل حالته ورسائل واتساب الخاصة به، وملف الضيف إن كان هذا الحجز هو من أنشأه. التوفر لا يتغير: الحجز ملغي ولا يشغل غرفة. تُحفظ نسخة كاملة، ويمكن استرجاعه من «السجل».</p>
+        <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-sm mb-4 num-ar card p-3 bg-soft" data-delete-summary>
+          <dt className="text-ink-muted">رقم الحجز</dt><dd className="font-semibold num" dir="ltr">{r.ref}</dd>
+          <dt className="text-ink-muted">الفرع</dt><dd className="font-semibold">{BRANCH_NAMES[r.branch]}</dd>
+          <dt className="text-ink-muted">التواريخ</dt><dd className="font-semibold">{dateRange(r.check_in, r.check_out)} · {nightsWord(r.nights)}</dd>
+          <dt className="text-ink-muted">المبلغ</dt><dd className="font-semibold">{r.total !== null ? sar(r.total) : '—'}</dd>
+        </dl>
+        <Field label="اكتب رقم الحجز للتأكيد" id="delete-ref" hint={`كما يظهر أعلاه: ${r.ref}`}>
+          <input id="delete-ref" className="field num" dir="ltr" autoComplete="off" spellCheck={false} value={delRef} onChange={(e) => { setDelRef(e.target.value); setError(null); }} />
+        </Field>
+        <ErrorBox error={error} />
+        <div className="flex gap-2 justify-end mt-5">
+          <CancelButton disabled={busy} />
+          <button type="button" className="btn btn-danger" onClick={doDelete} disabled={busy || !refTyped} data-action="delete-test-go">{busy && <Spinner />} حذف نهائي</button>
+        </div>
+      </Modal>
       {createPortal(<PrintSheet r={r} room={rtName(r.room_type_id)} />, document.body)}
     </Drawer>
   );

@@ -53,10 +53,70 @@ const VIEWPORTS = [
   { width: 1440, height: 900 },
 ];
 
-const browser = await chromium.launch({ channel: 'chrome' });
+// A hang never eats the shard (10 Nov 2026, DECISIONS.md «The datepicker-check hang»): every Playwright action has a
+// 15 s limit, every scenario (one form at one width, ~6 s on a good run) SCENARIO_MS, the whole check TOTAL_MS. A
+// scenario that runs out is a failure naming its step and the requests still open; its browser is closed (or
+// abandoned) and a fresh one serves the next scenario. DP_TRACE=<dir>: a timed log of every step + a Playwright trace
+// of each failed scenario in <dir>.
+const SCENARIO_MS = Number(process.env.DP_SCENARIO_MS || 90000);
+const TOTAL_MS = Number(process.env.DP_TOTAL_MS || 8 * 60000);
+const TRACE = process.env.DP_TRACE || null;
+if (TRACE) mkdirSync(TRACE, { recursive: true });
+const T0 = Date.now();
+const cur = { tag: 'launch', step: 'launch' };
+const log = (msg) => TRACE && console.log(`[${((Date.now() - T0) / 1000).toFixed(1)} s] ${msg}`);
+const setStep = (s) => {
+  cur.step = s;
+  log(`${cur.tag} · ${s}`);
+};
+const within = (p, ms, what) => {
+  let t;
+  return Promise.race([p, new Promise((_, no) => (t = setTimeout(() => no(new Error(`timed out after ${ms / 1000} s (${what})`)), ms)))]).finally(() => clearTimeout(t));
+};
+setTimeout(() => {
+  console.log(`datepicker-check: stopped after ${TOTAL_MS / 60000} min at ${cur.tag} [${cur.step}]`);
+  for (const f of fails) console.log(`  ✗ ${f}`);
+  process.exit(1);
+}, TOTAL_MS).unref();
+const launch = () => within(chromium.launch({ channel: 'chrome' }), 60000, 'launch the browser');
+let browser = await launch();
+const opened = new Set(); // the contexts of the running scenario: { ctx, pending }
+
+/** Run one scenario under SCENARIO_MS; any error or a timeout is one failure `tag [step]: …`. */
+async function scenario(tag, body) {
+  cur.tag = tag;
+  setStep('start');
+  let stuck = false;
+  try {
+    await within(body(), SCENARIO_MS, `${tag} [${cur.step}]`);
+  } catch (e) {
+    const msg = String(e).split('\n')[0];
+    stuck = /timed out after/.test(msg);
+    const open = [...opened].flatMap((o) => [...o.pending]).slice(0, 8);
+    fails.push(`${tag} [${cur.step}]: ${msg}${stuck && open.length ? ` — requests still open: ${open.join(' · ')}` : ''}`);
+    if (process.env.DEBUG) console.log(String(e));
+  }
+  for (const o of opened) {
+    if (TRACE) await within(o.ctx.tracing.stop(fails.at(-1)?.startsWith(tag) ? { path: `${TRACE}/${tag.replace(/[^\w-]+/g, '_')}.zip` } : {}), 20000, 'save the trace').catch(() => {});
+    await within(o.ctx.close(), 10000, 'close the context').catch(() => (stuck = true));
+  }
+  opened.clear();
+  if (stuck) {
+    await within(browser.close(), 10000, 'close the browser').catch(() => {});
+    browser = await launch();
+  }
+}
 
 async function newContext(vp, extra = {}) {
   const ctx = await browser.newContext({ viewport: { width: vp.width, height: vp.height }, isMobile: !!vp.mobile, hasTouch: !!vp.mobile, ...extra });
+  const pending = new Set();
+  opened.add({ ctx, pending });
+  ctx.setDefaultTimeout(15000);
+  ctx.setDefaultNavigationTimeout(30000);
+  ctx.on('request', (q) => pending.add(q.url().slice(0, 120)));
+  ctx.on('requestfinished', (q) => pending.delete(q.url().slice(0, 120)));
+  ctx.on('requestfailed', (q) => (pending.delete(q.url().slice(0, 120)), log(`request failed: ${q.url().slice(0, 120)} ${q.failure()?.errorText ?? ''}`)));
+  if (TRACE) await ctx.tracing.start({ screenshots: true, snapshots: true });
   const posts = [];
   const cors = { 'access-control-allow-origin': '*', 'access-control-allow-headers': '*', 'access-control-allow-methods': 'POST, OPTIONS' };
   await ctx.route('**/functions/v1/**', (r) => {
@@ -115,13 +175,14 @@ for (const vp of VIEWPORTS) {
     if (process.env.ONLY && !`${vp.width}-${c.lang}-${c.kind}`.includes(process.env.ONLY)) continue;
     const m = { mobile: !!vp.mobile };
     const D = ui[c.lang].datepicker;
-    const { ctx, posts } = await newContext(vp);
-    const page = await ctx.newPage();
+    await scenario(tag, async () => {
+    const { posts } = await newContext(vp);
+    const page = await [...opened].at(-1).ctx.newPage();
     const errors = [];
-    page.on('console', (msg) => msg.type() === 'error' && !/Failed to load resource/.test(msg.text()) && errors.push(msg.text()));
+    page.on('console', (msg) => (msg.type() === 'error' && !/Failed to load resource/.test(msg.text()) && errors.push(msg.text()), TRACE && msg.type() === 'error' && log(`console: ${msg.text().slice(0, 160)}`)));
     page.on('pageerror', (e) => errors.push(String(e)));
-    let step = 'open the form';
-    try {
+    setStep('open the form');
+    {
       const form = await openForm(page, c, vp);
 
       // fields are buttons; the values are hidden inputs; no native date / text date input is left
@@ -148,7 +209,7 @@ for (const vp of VIEWPORTS) {
       });
 
       // 1. a tap on the arrival field opens the picker
-      step = '1. a tap on the arrival field opens the picker';
+      setStep('1. a tap on the arrival field opens the picker');
       let dlg = await openPicker(page, form, 'start', m);
       const box = await dlg.boundingBox();
       const months = await dlg.locator('.dp-month').count();
@@ -199,7 +260,7 @@ for (const vp of VIEWPORTS) {
       check((await status(dlg)) === D.pick_check_in, `${tag}: status is not «${D.pick_check_in}»`);
 
       // 2. past days are disabled and cannot be picked
-      step = '2. past days are disabled and cannot be picked';
+      setStep('2. past days are disabled and cannot be picked');
       const yesterday = addDays(TODAY, -1);
       const yCell = dlg.locator(`td[data-date="${yesterday}"]`);
       if (await yCell.count()) {
@@ -209,7 +270,7 @@ for (const vp of VIEWPORTS) {
       }
 
       // 3. arrival; the arrival day is not a departure; a day before it restarts the range; departure
-      step = '3. arrival; the arrival day is not a departure; a day before it restarts the range; departure';
+      setStep('3. arrival; the arrival day is not a departure; a day before it restarts the range; departure');
       const A = addDays(TODAY, 20);
       await tapDay(dlg, A, m);
       check((await hidden(form, 'start')) === A && (await hidden(form, 'end')) === '', `${tag}: arrival not set to ${A}`);
@@ -224,21 +285,27 @@ for (const vp of VIEWPORTS) {
       await tapDay(dlg, B, m);
       check((await hidden(form, 'start')) === A2 && (await hidden(form, 'end')) === B, `${tag}: range is not ${A2} → ${B}`);
       check((await status(dlg)) === nightsText(c.lang, 3), `${tag}: night count «${await status(dlg)}» ≠ «${nightsText(c.lang, 3)}»`);
-      check((await dlg.locator('td.in-range').count()) === 2, `${tag}: the stay band does not cover the 2 nights in between`);
+      // the band covers exactly the 2 nights in between that the picker shows (10 Nov 2026: when the stay crosses a month
+      // end, the phone sheet shows only the departure's month — the nights of the month before are not on screen)
+      const band = await dlg.evaluate((d, between) => ({
+        inRange: [...d.querySelectorAll('td.in-range')].map((t) => t.getAttribute('data-date')).sort().join(),
+        shown: between.filter((x) => d.querySelector(`td[data-date="${x}"]`)).sort().join(),
+      }), [addDays(A2, 1), addDays(A2, 2)]);
+      check(band.inRange === band.shown, `${tag}: the stay band covers «${band.inRange}», not the nights in between shown «${band.shown}»`);
       if (SHOTS) await page.waitForTimeout(300); // let the last day's colour transition settle
       if (SHOTS && vp.mobile && c.lang === 'ar' && c.kind === 'booking') await page.screenshot({ path: `${SHOTS}/375-ar-booking-range.png` });
       if (SHOTS && !vp.mobile && c.lang === 'en' && c.kind === 'booking') await page.screenshot({ path: `${SHOTS}/1440-en-booking-two-months.png` });
       if (SHOTS && c.kind === 'partners') await page.screenshot({ path: `${SHOTS}/${vp.width}-${c.lang}-partners.png` });
 
       // 4. Done closes, focus returns to the field that opened it, the fields show the dates
-      step = '4. Done closes, focus returns to the field that opened it, the fields show the dates';
+      setStep('4. Done closes, focus returns to the field that opened it, the fields show the dates');
       await done(form, m);
       check(await form.locator('[data-dr-trigger="start"]').evaluate((b) => b === document.activeElement), `${tag}: focus did not return to the arrival field`);
       const shown = await Promise.all(['start', 'end'].map((w) => form.locator(`[data-dr-trigger="${w}"] [data-dr-display]`).textContent()));
       check(shown[0] === formatDate(D.field_format, A2, D) && shown[1] === formatDate(D.field_format, B, D), `${tag}: fields show «${shown.join(' / ')}»`);
 
       // 5. plurals (1, 2, 11 nights) and Clear
-      step = '5. plurals (1, 2, 11 nights) and Clear';
+      setStep('5. plurals (1, 2, 11 nights) and Clear');
       dlg = await openPicker(page, form, 'start', m);
       const C = addDays(TODAY, 40);
       for (const n of [1, 2, 11]) {
@@ -257,7 +324,7 @@ for (const vp of VIEWPORTS) {
       await done(form, m);
 
       // 6. keyboard (desktop): Enter opens on the departure, arrows follow the screen, Home, PageDown, Esc
-      step = '6. keyboard (desktop): Enter opens on the departure, arrows follow the screen, Home, PageDown, Esc';
+      setStep('6. keyboard (desktop): Enter opens on the departure, arrows follow the screen, Home, PageDown, Esc');
       if (!vp.mobile) {
         await press(form.locator('[data-dr-trigger="start"]'));
         dlg = form.locator('dialog[data-dr-dialog][open]');
@@ -303,7 +370,7 @@ for (const vp of VIEWPORTS) {
       check(kb.length === 0, `${tag}: keyboard fields took focus while picking dates: ${kb.join(', ')}`);
 
       // 7. submit: the request carries ISO dates (endpoint stubbed)
-      step = '7. submit: the request carries ISO dates (endpoint stubbed)';
+      setStep('7. submit: the request carries ISO dates (endpoint stubbed)');
       const S1 = addDays(TODAY, 30);
       const E1 = addDays(TODAY, 33);
       dlg = await openPicker(page, form, 'start', m);
@@ -337,11 +404,8 @@ for (const vp of VIEWPORTS) {
         console.log('note: this build has no PUBLIC_BOOKING_ENDPOINT — the submitted values were checked as form data only');
       }
       check(errors.length === 0, `${tag}: console errors: ${errors.join(' | ')}`);
-    } catch (e) {
-      fails.push(`${tag} [${step}]: ${String(e).split('\n')[0]}`);
-      if (process.env.DEBUG) console.log(String(e));
     }
-    await ctx.close();
+    });
   }
 }
 
@@ -349,8 +413,9 @@ for (const vp of VIEWPORTS) {
 // picker open (and the day picked); a press from the backdrop into the panel keeps it open; a real backdrop click closes
 for (const vp of VIEWPORTS) {
   const tag = `@${vp.width} outside-press`;
-  const { ctx } = await newContext(vp);
-  const page = await ctx.newPage();
+  await scenario(tag, async () => {
+  await newContext(vp);
+  const page = await [...opened].at(-1).ctx.newPage();
   await page.goto(`${BASE}/booking/`, { waitUntil: 'load' });
   const form = page.locator('main form[data-booking-form]');
   const dlg = await openPicker(page, form, 'start', { mobile: !!vp.mobile });
@@ -382,14 +447,15 @@ for (const vp of VIEWPORTS) {
     console.log(`${tag}: the sheet fills the viewport — no backdrop to press (skipped)`);
     await page.keyboard.press('Escape');
   }
-  await ctx.close();
+  });
 }
 
 // reduced motion: the picker opens and closes at once
 for (const vp of VIEWPORTS) {
   const tag = `@${vp.width} reduced-motion`;
-  const { ctx } = await newContext(vp, { reducedMotion: 'reduce' });
-  const page = await ctx.newPage();
+  await scenario(tag, async () => {
+  await newContext(vp, { reducedMotion: 'reduce' });
+  const page = await [...opened].at(-1).ctx.newPage();
   await page.goto(`${BASE}/en/booking/`, { waitUntil: 'load' });
   const form = page.locator('main form[data-booking-form]');
   await press(form.locator('[data-dr-trigger="start"]'), !!vp.mobile);
@@ -400,10 +466,10 @@ for (const vp of VIEWPORTS) {
   await page.keyboard.press('Escape');
   await page.waitForTimeout(60);
   check(!(await form.locator('dialog[data-dr-dialog]').evaluate((d) => d.open)), `${tag}: Esc did not close at once`);
-  await ctx.close();
+  });
 }
 
-await browser.close();
+await within(browser.close(), 10000, 'close the browser').catch(() => {});
 console.log(`datepicker-check: ${checks} checks, ${fails.length} failures`);
 for (const f of fails) console.log(`  ✗ ${f}`);
 process.exit(fails.length ? 1 : 0);

@@ -413,6 +413,42 @@ export const resendWhatsApp = (id: string, template: string) => edge<{ ok: boole
 /** 9 Nov 2026: a picked reason (required) + an optional internal note (never sent to the guest) */
 export const cancelReservation = (id: string, reasonCode: string, note: string) => edge<{ ok: boolean; already?: boolean; emails?: Record<string, string | null> | null; notify_failed?: boolean; guest_notified?: boolean; whatsapp?: { accepted: boolean; status: string; error_code: string | null; fallback?: boolean } | null }>('booking-admin', { action: 'cancel', id, reason_code: reasonCode, note });
 
+/** «حذف نهائي» (10 Nov 2026): the system admin deletes a booking cancelled as «حجز تجريبي», after typing its ref back.
+ *  public.admin_test_booking_delete archives the booking and every row it alone created first (deleted_test_bookings). */
+export async function deleteTestBooking(id: string, ref: string): Promise<{ ok: boolean; ref: string; batch_id: string; profile_deleted: boolean }> {
+  const { data, error } = await supabase.rpc('admin_test_booking_delete', { p_id: id, p_ref: ref });
+  if (error) fail(error, 'admin_test_booking_delete');
+  return data as { ok: boolean; ref: string; batch_id: string; profile_deleted: boolean };
+}
+/** «استرجاع» of a deleted test booking from its delete batch («السجل»): it comes back cancelled, same ref */
+export async function restoreTestBooking(batchId: string): Promise<{ ok: boolean; ref: string; already?: boolean }> {
+  const { data, error } = await supabase.rpc('admin_test_booking_restore', { p_batch: batchId });
+  if (error) fail(error, 'admin_test_booking_restore');
+  return data as { ok: boolean; ref: string; already?: boolean };
+}
+export interface DeletedTestBooking {
+  batch_id: string;
+  ref: string;
+  branch: string;
+  check_in: string;
+  check_out: string;
+  total: number | null;
+  deleted_at: string;
+  deleted_by_label: string;
+  restored_at: string | null;
+  restored_by_label: string | null;
+}
+/** the archive entries of these delete batches — the system admin only (RLS); anyone else gets none */
+export async function deletedTestBookings(batchIds: string[]): Promise<DeletedTestBooking[]> {
+  if (!batchIds.length) return [];
+  const { data, error } = await supabase
+    .from('deleted_test_bookings')
+    .select('batch_id,ref,branch,check_in,check_out,total,deleted_at,deleted_by_label,restored_at,restored_by_label')
+    .in('batch_id', batchIds);
+  if (error) return [];
+  return (data ?? []) as DeletedTestBooking[];
+}
+
 /** 9 Nov 2026: is the YCloud webhook registered (opt-outs arrive)? — public.wa_webhook, readable with settings or eyab_wa view */
 export async function waWebhookRegistered(): Promise<boolean> {
   const { data, error } = await supabase.from('wa_webhook').select('registered_at').limit(1);
@@ -776,14 +812,26 @@ export async function mediaItems(target: MediaTarget, key: string, archived = fa
   if (error) fail(error, 'media_library');
   return (data ?? []) as MediaItem[];
 }
+/** The publish jobs' columns the dashboard reads (10 Nov 2026: run_url is not among them — the GitHub run link is for the
+ *  system admin only, read through public.media_job_links(), which answers no row for anyone else). */
+export const JOB_COLS = 'id,targets,dry_run,status,dispatch,requested_label,requested_at,started_at,finished_at,error';
+/** the jobs with their run links filled in when the caller is the system admin (else run_url stays null) */
+export async function withRunLinks(jobs: MediaJob[]): Promise<MediaJob[]> {
+  const out = jobs.map((j) => ({ ...j, run_url: null as string | null }));
+  if (!out.length) return out;
+  const { data, error } = await supabase.rpc('media_job_links', { p_ids: out.map((j) => j.id) });
+  if (error || !data) return out; // a link is never needed to read a job
+  const links = new Map((data as { id: string; run_url: string }[]).map((x) => [x.id, x.run_url]));
+  return out.map((j) => ({ ...j, run_url: links.get(j.id) ?? null }));
+}
 export async function mediaJobs(limit = 8): Promise<MediaJob[]> {
   const { data, error } = await supabase
     .from('media_publish_jobs')
-    .select('id,targets,dry_run,status,dispatch,requested_label,requested_at,started_at,finished_at,run_url,error')
+    .select(JOB_COLS)
     .order('requested_at', { ascending: false })
     .limit(limit);
   if (error) fail(error, 'media_publish_jobs');
-  return (data ?? []) as MediaJob[];
+  return withRunLinks((data ?? []) as MediaJob[]);
 }
 export async function mediaFindSha(shas: string[]): Promise<MediaShaHit[]> {
   if (!shas.length) return [];
@@ -925,13 +973,13 @@ export async function diningVenues(): Promise<DiningVenue[]> {
 export async function diningJobs(limit = 8): Promise<MediaJob[]> {
   const { data, error } = await supabase
     .from('media_publish_jobs')
-    .select('id,targets,dry_run,status,dispatch,requested_label,requested_at,started_at,finished_at,run_url,error')
+    .select(JOB_COLS)
     // jsonb containment needs the JSON text (an array would be sent as a Postgres array literal)
     .contains('targets', JSON.stringify([{ target: 'venue' }]))
     .order('requested_at', { ascending: false })
     .limit(limit);
   if (error) fail(error, 'media_publish_jobs');
-  return (data ?? []) as MediaJob[];
+  return withRunLinks((data ?? []) as MediaJob[]);
 }
 export async function diningSave(id: string | null, f: DiningFields): Promise<Saved & { id: string }> {
   const { data, error } = await supabase.rpc('dining_save', { p_id: id, p: f });

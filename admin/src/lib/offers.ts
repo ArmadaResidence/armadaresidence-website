@@ -5,7 +5,7 @@
 // audit batch each, never undoable. A publish creates a site job; the page then asks site-rebuild (reason offers).
 import { supabase, SUPABASE_URL } from './supabase';
 import { CONNECTION, SESSION_ENDED, arabicError } from './errors';
-import { fail, type MediaJob, type Saved } from './api';
+import { JOB_COLS, fail, withRunLinks, type MediaJob, type Saved } from './api';
 import { west } from './format.ts';
 
 export type OfferCategory = 'individuals' | 'b2b' | 'dining';
@@ -320,7 +320,7 @@ export const popupDelete = (id: string) => one('popup_delete', id);
 
 /** the site-publish jobs of the offers and the pop-up */
 export async function offersJobs(limit = 8): Promise<MediaJob[]> {
-  const cols = 'id,targets,dry_run,status,dispatch,requested_label,requested_at,started_at,finished_at,run_url,error';
+  const cols = JOB_COLS;
   const [a, b] = await Promise.all(
     ['offer', 'popup'].map((t) =>
       supabase.from('media_publish_jobs').select(cols).contains('targets', JSON.stringify([{ target: t }])).order('requested_at', { ascending: false }).limit(limit),
@@ -328,5 +328,5 @@ export async function offersJobs(limit = 8): Promise<MediaJob[]> {
   );
   if (a.error) fail(a.error, 'media_publish_jobs');
   if (b.error) fail(b.error, 'media_publish_jobs');
-  return ([...(a.data ?? []), ...(b.data ?? [])] as MediaJob[]).sort((x, y) => y.requested_at.localeCompare(x.requested_at)).slice(0, limit);
+  return withRunLinks(([...(a.data ?? []), ...(b.data ?? [])] as MediaJob[]).sort((x, y) => y.requested_at.localeCompare(x.requested_at)).slice(0, limit));
 }

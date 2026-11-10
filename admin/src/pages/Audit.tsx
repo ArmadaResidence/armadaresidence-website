@@ -2,9 +2,12 @@
 // per group (revert_batch: refused for booking status changes, for groups the caller may not edit, and when the
 // current values moved on — conflict → nothing changes); groups already reverted show «مُسترجَع»; revert groups say
 // which change they reversed. Date filter = the site's picker (past allowed); «تحميل المزيد» pages by id.
+// 10 Nov 2026: the publish entries (media_publish_jobs, with their GitHub run links) reach the system admin only — the
+// database's row-level security, the type filter follows; a test booking deleted with «حذف نهائي» shows its chip and
+// «استرجاع الحجز» (admin_test_booking_restore) to the system admin.
 import { useEffect, useMemo, useState } from 'react';
 import * as api from '../lib/api';
-import type { AuditActor, AuditRow } from '../lib/api';
+import type { AuditActor, AuditRow, DeletedTestBooking } from '../lib/api';
 import { useSession } from '../lib/session';
 import { BRANCH_NAMES, longDate, riyadhDateTime, riyadhDateTimeLong, rowsWord, sar } from '../lib/format';
 import DateField from '../components/DateField';
@@ -29,7 +32,7 @@ function securityLine(r: AuditRow): string {
   return String(r.new?.event ?? '');
 }
 const ACTOR: Record<string, string> = { website: 'الموقع', seed: 'الاستيراد الأول', migration: 'تحديث النظام', auth: 'نظام الدخول', system: 'النظام' };
-const FIELD: Record<string, string> = { sanity_flag: 'تنبيه السعر', sanity_base: 'الأساسي عند الحفظ', sanity_multiplier: 'المضاعف عند الحفظ', is_default: 'الافتراضي', kind: 'النوع', saved_at: 'وقت الحفظ', base_rate: 'السعر الأساسي', bookable: 'متاحة على الموقع', active: 'فعّال', slug: 'المعرّف', date_from: 'من', date_to: 'إلى', weekdays: 'أيام الأسبوع', price: 'السعر', label: 'التسمية', label_en: 'التسمية بالإنجليزية', night: 'الليلة', rooms_to_sell: 'المتبقي', booked: 'المحجوز', stop_sell: 'مغلق', value: 'القيمة', full_name: 'الاسم', role: 'القالب', branch: 'الفرع', ref: 'رقم الحجز', status: 'الحالة', confirmation: 'التأكيد', fallback_reason: 'السبب', room_type_id: 'نوع الغرفة', check_in: 'الوصول', check_out: 'المغادرة', total: 'الإجمالي', payment_status: 'الدفع', cancel_reason: 'سبب الإلغاء', internal_notes: 'ملاحظات داخلية', level: 'المستوى', created_at: 'أُنشئ',
+const FIELD: Record<string, string> = { sanity_flag: 'تنبيه السعر', sanity_base: 'الأساسي عند الحفظ', sanity_multiplier: 'المضاعف عند الحفظ', is_default: 'الافتراضي', kind: 'النوع', saved_at: 'وقت الحفظ', base_rate: 'السعر الأساسي', bookable: 'متاحة على الموقع', active: 'فعّال', slug: 'المعرّف', date_from: 'من', date_to: 'إلى', weekdays: 'أيام الأسبوع', price: 'السعر', label: 'التسمية', label_en: 'التسمية بالإنجليزية', night: 'الليلة', rooms_to_sell: 'المتبقي', booked: 'المحجوز', stop_sell: 'مغلق', value: 'القيمة', full_name: 'الاسم', role: 'القالب', branch: 'الفرع', ref: 'رقم الحجز', status: 'الحالة', confirmation: 'التأكيد', fallback_reason: 'السبب', room_type_id: 'نوع الغرفة', check_in: 'الوصول', check_out: 'المغادرة', total: 'الإجمالي', payment_status: 'الدفع', cancel_reason: 'ملاحظة الإلغاء', cancel_reason_code: 'سبب الإلغاء', internal_notes: 'ملاحظات داخلية', level: 'المستوى', created_at: 'أُنشئ',
   // media «الصور» (1 Nov 2026)
   target: 'الصفحة', target_key: 'المفتاح', slot: 'الخانة', sort: 'الترتيب', alt_ar: 'النص البديل', alt_en: 'النص البديل بالإنجليزية', focal_x: 'التركيز أفقيًا', focal_y: 'التركيز رأسيًا',
   file_name: 'الملف', bytes: 'الحجم', upload_state: 'الرفع', published_at: 'نُشرت', targets: 'الصفحات', dry_run: 'تجربة', dispatch: 'طلب البناء', run_url: 'سجل البناء', error: 'الخطأ' };
@@ -89,6 +92,15 @@ export default function Audit() {
   const [to, setTo] = useState('');
   const [confirm, setConfirm] = useState<{ key: string; rows: AuditRow[] } | null>(null);
   const [busy, setBusy] = useState(false);
+  // «حذف نهائي» of a test booking (10 Nov 2026): its delete batch → the archive entry (the system admin only — RLS
+  // answers nobody else), for the chip and «استرجاع الحجز»
+  const [deletedTests, setDeletedTests] = useState<Map<string, DeletedTestBooking>>(new Map());
+  const [restoreOf, setRestoreOf] = useState<DeletedTestBooking | null>(null);
+  const loadDeletedTests = async (all: AuditRow[]) => {
+    if (me?.role !== 'admin') return setDeletedTests(new Map());
+    const ids = Array.from(new Set(all.filter((x) => x.entity === 'reservations' && x.action === 'delete' && x.batch_id).map((x) => x.batch_id as string)));
+    setDeletedTests(new Map((await api.deletedTestBookings(ids)).map((d) => [d.batch_id, d])));
+  };
   // who made each change (8 Nov 2026): name + sign-in email by actor_id; «—» when none was recorded
   const [actors, setActors] = useState<AuditActor[]>([]);
   useEffect(() => {
@@ -108,6 +120,7 @@ export default function Audit() {
       const ids = Array.from(new Set(r.map((x) => x.batch_id).filter((x): x is string => !!x)));
       setReverted(await api.revertedBatches(ids));
       setRestores(await api.defaultsBatches(ids));
+      await loadDeletedTests(r);
     } catch (e) {
       setError((e as Error).message);
       setRows([]);
@@ -128,6 +141,7 @@ export default function Audit() {
       const ids = Array.from(new Set(all.map((x) => x.batch_id).filter((x): x is string => !!x)));
       setReverted(await api.revertedBatches(ids));
       setRestores(await api.defaultsBatches(ids));
+      await loadDeletedTests(all);
     } catch (e) {
       toast((e as Error).message, 'error');
     } finally {
@@ -178,6 +192,23 @@ export default function Audit() {
     }
   }
 
+  async function doRestoreTest() {
+    if (!restoreOf) return;
+    setBusy(true);
+    try {
+      const out = await api.restoreTestBooking(restoreOf.batch_id);
+      setRestoreOf(null);
+      toast(out.already ? `الحجز ${out.ref} مُسترجَع من قبل` : `استُرجع الحجز التجريبي ${out.ref} — يعود ملغيًا بنفس الرقم`);
+      await load();
+    } catch (e) {
+      setRestoreOf(null);
+      toast((e as Error).message, 'error');
+      await load();
+    } finally {
+      setBusy(false);
+    }
+  }
+
   return (
     <div>
       <h1 className="text-2xl font-bold mb-4">سجل التدقيق</h1>
@@ -185,7 +216,7 @@ export default function Audit() {
         <Field label="النوع" id="a-entity">
           <select id="a-entity" className="field" value={entity} onChange={(e) => setEntity(e.target.value)}>
             <option value="">الكل</option>
-            {Object.entries(ENTITY).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+            {Object.entries(ENTITY).filter(([k]) => k !== 'media_publish_jobs' || me?.role === 'admin').map(([k, v]) => <option key={k} value={k}>{v}</option>)}
           </select>
         </Field>
         <BranchSelect id="a-branch" branches={Object.entries(BRANCH_NAMES).map(([slug, name_ar]) => ({ slug, name_ar }))} value={branch} onChange={setBranch} allLabel="الكل" />
@@ -228,7 +259,11 @@ export default function Audit() {
                     {Array.from(new Set(g.rows.map((x) => String(x.new?.sanity_flag ?? '')).filter((f) => f in SANITY_TAG))).map((f) => (
                       <span key={f} className="chip chip-request" data-sanity={f}>{SANITY_TAG[f]}</span>
                     ))}
+                    {!!r.batch_id && deletedTests.has(r.batch_id) && <span className="chip chip-flag" data-deleted-test={deletedTests.get(r.batch_id)!.ref}>حذف نهائي لحجز تجريبي · <span className="num" dir="ltr">{deletedTests.get(r.batch_id)!.ref}</span></span>}
                     {wasReverted && <span className="chip chip-cancelled" style={{ textDecoration: 'none' }}>مُسترجَع</span>}
+                    {!!r.batch_id && deletedTests.has(r.batch_id) && !deletedTests.get(r.batch_id)!.restored_at && !wasReverted && (
+                      <button type="button" className="btn btn-ghost btn-sm ms-auto" onClick={() => setRestoreOf(deletedTests.get(r.batch_id!)!)} data-action="restore-test">استرجاع الحجز</button>
+                    )}
                     {canRevert(g) && (
                       <button type="button" className="btn btn-ghost btn-sm ms-auto" onClick={() => setConfirm(g)} data-action="revert">استرجاع هذا التغيير</button>
                     )}
@@ -255,6 +290,18 @@ export default function Audit() {
         </>
       )}
 
+      <Modal open={!!restoreOf} onClose={() => setRestoreOf(null)} title="استرجاع الحجز التجريبي" busy={busy}>
+        {restoreOf && (
+          <>
+            <p className="text-sm mb-3">يعود الحجز <span className="num font-semibold" dir="ltr">{restoreOf.ref}</span> ملغيًا بنفس الرقم، ومعه لياليه وسجل حالته ورسائل واتساب الخاصة به كما كانت. لا يُرسَل شيء للضيف، ولا يتغير التوفر. الاسترجاع نفسه يُسجَّل.</p>
+            <p className="text-sm text-ink-muted mb-3 num-ar">{BRANCH_NAMES[restoreOf.branch]} · {longDate(restoreOf.check_in)} · {restoreOf.total !== null ? sar(restoreOf.total) : '—'} · حذفه {restoreOf.deleted_by_label} في {riyadhDateTimeLong(restoreOf.deleted_at)}</p>
+            <div className="flex gap-2 justify-end">
+              <CancelButton disabled={busy} />
+              <button type="button" className="btn btn-primary" onClick={doRestoreTest} disabled={busy} data-action="restore-test-go">{busy && <Spinner />} استرجاع</button>
+            </div>
+          </>
+        )}
+      </Modal>
       <Modal open={!!confirm} onClose={() => setConfirm(null)} title="استرجاع هذا التغيير" busy={busy}>
         {confirm && (
           <>

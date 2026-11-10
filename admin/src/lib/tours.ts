@@ -50,6 +50,8 @@ export const PAGE_TOURS: Record<string, Tour> = {
       // the confirm button lives in a request's details: the tour opens the first request in the list
       { target: [t('booking-confirm')], open: t('booking-request-row'), needs: editBookings, title: 'التأكيد', text: 'التأكيد يخصم من المخزون ويرسل التأكيد للضيف بالبريد وواتساب، ولا يمكن التراجع عنه.' },
       { target: [t('booking-confirm')], open: t('booking-request-row'), needs: editBookings, title: 'بعد كل حجز مؤكد', text: 'أغلق الغرفة نفسها على Booking.com والمنصات الأخرى فورًا، حتى لا تُباع مرتين.' },
+      // 10 Nov 2026: «حذف نهائي» — the system admin only, in the details of a booking cancelled as «حجز تجريبي»
+      { target: [t('booking-delete-test')], open: t('booking-test-row'), needs: (me) => me?.role === 'admin', title: 'حذف حجز تجريبي', text: 'يظهر «حذف نهائي» لك وحدك، وعلى الحجوزات الملغاة بسبب «حجز تجريبي» فقط. اكتب رقم الحجز للتأكيد، فيختفي من كل القوائم والتقارير، ويمكنك استرجاعه من «السجل».' },
     ],
   },
   '/inventory': {
