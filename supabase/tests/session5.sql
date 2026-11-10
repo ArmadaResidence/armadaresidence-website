@@ -13,8 +13,9 @@
 --       recent one stay, the audit names no personal field;
 --   G8  the import of public.club_signups (fake rows): counts, the original consent time and version, the source and
 --       UTM, a phone that also has bookings joins its profile, idempotent, the check raises on a missing row;
---   G9  qa_fixture purge removes test profiles; the policies' operator texts follow their section to index 9; the book
---       labels migration left no «اطلب حجزًا» link in the seeded articles.
+--   G9  qa_fixture purge removes test profiles; the policies' operator texts follow their section to index 10 (9 on
+--       3 Nov 2026; 10 since the «ملفات تعريف الارتباط» section of 7 Nov 2026 — DECISIONS.md 2026-11-07 «Launch
+--       preparation», migration 20261107400100); the book labels migration left no «اطلب حجزًا» link in the seeded articles.
 -- ONE transaction, ROLLED BACK at the end — nothing persists. Run on a preview branch after the earlier suites
 -- (F:/armada-scratch/pgtool/run.mjs <branch-get.json> supabase/tests/session5.sql); every row of _r must have ok = true.
 begin;
@@ -293,8 +294,10 @@ select pg_temp._root();
 select pg_temp._save('pg', public.qa_fixture('purge', '{}'::jsonb, 'qa-s5-sql-token'));
 select pg_temp._check('G9 qa_fixture purge removes the test profiles (and keeps the others)',
   not exists (select 1 from public.guest_profiles where is_test) and exists (select 1 from public.guest_profiles where id = pg_temp._id('p1')));
-select pg_temp._check('G9 the operator texts follow their section to index 9',
-  (select bool_and(path_ar[3] = '9' and path_en[3] = '9' and anchor = '[{"path": ["page", "sections", "9", "id"], "value": "operator"}]'::jsonb)
+-- policies.json → page.sections: «ملفات تعريف الارتباط» was added at [7] on 7 Nov 2026, so «الجهة المشغّلة» is [10]
+-- (DECISIONS.md 2026-11-07 «Launch preparation», migration 20261107400100). Both fields, both languages, the anchor.
+select pg_temp._check('G9 the operator texts follow their section to index 10',
+  (select count(*) = 2 and bool_and(path_ar[3] = '10' and path_en[3] = '10' and anchor = '[{"path": ["page", "sections", "10", "id"], "value": "operator"}]'::jsonb)
      from public.content_fields where key in ('policy.operator.heading', 'policy.operator.body')));
 select pg_temp._check('G9 no seeded article still links «اطلب حجزًا» / "Request a booking"',
   not exists (select 1 from public.articles where not is_test and (body_ar like '%[اطلب حجزًا%' or body_en like '%[Request a booking%' or coalesce(live ->> 'body_ar', '') like '%[اطلب حجزًا%' or coalesce(live ->> 'body_en', '') like '%[Request a booking%')));

@@ -2765,3 +2765,19 @@ pushed and the CI proof that `booking-nav-check` fails on an inert booking form 
   deploy) — both **green**, all shards; datepicker-check 629 checks, 0 failures, 113 s in the first. GitHub was
   operational all day, but the runners' apt step was slow (up to 22 min on `checks · static`), so the waiting ran about
   20 minutes past the 30-minute cap to finish the second run.
+
+## 2026-11-10 — Standing rules: spending and the language of notes; the session5 G9 expectation (Ahmed, 10 Nov 2026)
+
+- **Spending.** Before anything that costs money, however small — a Supabase preview branch or any paid add-on, paid
+  API calls, a purchase or a plan change — stop and ask Ahmed, stating the expected cost. Session 23 created the test
+  branch `s23-test-delete` without asking; testing on a branch was right, the missing OK was not. The standing approval
+  of 3 Nov 2026 for test-only secrets on a preview branch covers the secrets only, never creating the branch.
+- **Language.** Every progress note, question and hand-off to Ahmed is in Arabic (Egyptian Arabic is fine); code, file
+  names and commands as they are. Never another language (a note in Chinese appeared in session 23).
+- Both are in CLAUDE.md §12 «Working rules»; every earlier rule there is unchanged.
+- **session5.sql G9 — an outdated expectation, not a regression.** The check «the operator texts follow their section
+  to index 9» was written on 3 Nov 2026, when «الجهة المشغّلة» was `policies.json → page.sections[9]`. On 7 Nov 2026
+  (2026-11-07 «Launch preparation») the «ملفات تعريف الارتباط» section was added at [7], and migration `20261107400100`
+  moved `policy.operator.heading` / `policy.operator.body` to [10] with their anchor. Production holds exactly that
+  (both fields, both languages, anchor `sections[10].id = operator`, read 10 Nov 2026) and the file's [10] is
+  `operator`. The check now expects 10 — same strictness, plus both rows required.
