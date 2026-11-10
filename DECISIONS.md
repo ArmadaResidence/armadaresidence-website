@@ -2666,3 +2666,102 @@ pushed and the CI proof that `booking-nav-check` fails on an inert booking form 
   minutes. The stall is on GitHub's side, not the size of the site. `deploy.yml` now gives the step 20 minutes
   (`timeout: 1200000`, job limit 30 min); the deploy alert and every other step are unchanged.
 
+
+## 2026-11-10 — Session 23: «حذف نهائي» of a test booking, the publish log for the system admin only, the datepicker-check hang (Ahmed, 10 Nov 2026)
+
+### 1. The system admin deletes a test booking from the dashboard
+
+- **Who.** The system admin is the staff role `admin` itself — `internal.is_system_admin()` (an active staff row with
+  the role admin whose session passed the email-code step). Not users:edit (`internal.is_admin()`): a management user
+  given users:edit still cannot delete. Today that is Ahmed alone.
+- **What.** «حذف نهائي» in the booking details, only on a booking cancelled with the reason «حجز تجريبي»
+  (`test_booking`); any other booking and any other user never sees it. The dialog shows the ref, the branch, the dates
+  and nights and the amount, and its button stays disabled until the ref is typed back (case, spaces and
+  Arabic-Indic digits forgiven); «إلغاء» / × as every dialog.
+- **The server decides** — `public.admin_test_booking_delete(p_id, p_ref)` (migration `20261110100000`): 42501 for
+  anyone but the role admin (anon, reception, management, management + users:edit), `test_delete_not_test` unless the
+  booking is cancelled with test_booking, `test_delete_ref` unless the typed ref matches.
+- **Archive first.** One entry in `public.deleted_test_bookings` (RLS: the system admin reads, nobody writes): the
+  reservation row, its nights, status history, WhatsApp log rows (by reservation and by ref), the consents it carried,
+  the inventory rows of its nights as they stood, and — only when this booking created the guest profile (the same
+  transaction) and nothing else ever used it (no other booking, no consent of another origin, no merge) — the profile
+  with its consents and «إياب» messages. A guest who existed before is kept; a kept profile's consents stay with it
+  (they are its consent state), unlinked from the deleted booking.
+- **Availability.** A cancelled booking holds no room — the cancellation gave its nights back, a request never took
+  one — so the delete touches no inventory row.
+- **Audit.** The delete runs in one audit batch; the reservation's `delete` row names who and when. In «السجل» the
+  system admin sees the chip «حذف نهائي لحجز تجريبي · {ref}» and «استرجاع الحجز».
+- **«استرجاع».** `public.admin_test_booking_restore(p_batch)`: the booking comes back cancelled with the same id and
+  ref, its nights, history and WhatsApp rows (a queued one comes back `skipped` — nothing is ever sent), the profile
+  exactly as archived (its consent values put back after the consent trigger re-applies them), no «إياب» welcome
+  queued (`app.no_wa`, honoured by `internal.eyab_welcome_queue`); the audit insert carries `reverts_batch` = the delete
+  batch, so «السجل» shows the delete as «مُسترجَع». A ref taken again in the meantime → `test_restore_exists`.
+- **Tour.** «شرح هذه الصفحة» on «الحجوزات» has a step for «حذف نهائي», for the role admin only and only while a test
+  booking cancelled as «حجز تجريبي» is in the list.
+
+### 2. AR-20261110-FYG5 deleted
+
+- Confirmed first: cancelled with `test_booking` (by Ahmed, 13:03 UTC), Airport Road, 1 → 2 Dec 2026, 1 night,
+  SAR 195, instant, `is_test` false; its guest profile existed since 3 Nov 2026 («إياب» sign-up) — kept.
+- Backup `reports/session23-db-backup/AR-20261110-FYG5.json` (gitignored — guest data; its README.md lists the
+  hashes): the booking, 1 night, 2 status rows, 1 WhatsApp row, 0 consents, the inventory row and the 2 audit rows,
+  5,321 bytes, md5 `37a0f41592b92b19963aa4ca6c7590f7` = `md5(j::text)` in the database, checked again right before
+  the delete.
+- Deleted 13:47:09 UTC through `public.admin_test_booking_delete` — run by Claude from the session on Ahmed's
+  instruction, inside Ahmed's own staff identity (his verified session as `request.jwt.claims`), so the audit row
+  (5891) names him; not a raw DELETE. Archive `71a2b51e-f294-46d9-bc27-24d42327096f`, batch
+  `537f3653-4d1a-4d54-ba79-ffe30d4b703d`; the archived reservation's md5 = the backup's (`5f5138913b…`).
+- Availability on 1 Dec 2026, that room type: `rooms_to_sell` 3, `booked` 0, `stop_sell` false — before the booking
+  (audit, 28 Oct) and after the delete. «التقارير» as Ahmed in the same transaction: `report_cancellations`
+  (1 Nov – 31 Dec) cancelled 1 / confirmed 1 / rate 100 % before → 0 / 0 / none after; `overview_recent` 1 booking →
+  none; `overview_forward` unchanged (sold 0). Production now holds no reservation.
+
+### 3. The publish log is for the system admin only
+
+- Three places carried a GitHub Actions link: «السجل» (the audit rows of `media_publish_jobs` — every publish job with
+  its `run_url`), the publish jobs themselves («سجل البناء» in «الصور», «العروض», «المطاعم والمقاهي»), and
+  `site_deploy_status()` («حالة تحديث الموقع» in «الغرف» and the update bar). `site_deploys` itself was never readable
+  by the dashboard and is not audited.
+- Migration `20261110100100`: `audit_read` adds `entity not in ('media_publish_jobs', 'site_deploys') or
+  internal.is_system_admin()`; `media_publish_jobs.run_url` is no longer granted to `authenticated` (column privilege
+  — every other column still is), the links come through `public.media_job_links(ids)`, which answers the system
+  admin only (no row for anyone else); `site_deploy_status()` returns `run_url` only to the system admin. The
+  dashboard selects the jobs without `run_url` (`JOB_COLS`, `withRunLinks`) and the «النوع» filter of «السجل» offers
+  «نشر على الموقع» to the admin only. Status, times and the plain error text stay visible to the users who see the
+  publish screens.
+- Proof: `supabase/tests/session23.sql` 56/56 and `scripts/publish-log-check.mjs` 13/13 on preview branch
+  `s23-test-delete` (deleted after) — the latter signs in for real (password, then the email code issued through
+  `login_code_issue` with the branch's service role) as a management user holding audit:view + media:view: zero
+  publish entries, no audit row with a GitHub link, `run_url` refused, `media_job_links` empty, `site_deploy_status`
+  without the link, «حذف نهائي» / «استرجاع» 42501; the admin gets all three. Offline: `admin/tests/test-delete-check.mjs`
+  (inside `admin-audit-check`). Regressions on the branch: media 84/84, phase2a 82/82, phase2a1 100/100, wa-automation
+  67/67, cancel-reasons 27/27, audit-actors 12/12, eyab-invite 26/26, offers 124/124, dining 77/77, site-deploys 26/26
+  (with a QA admin added — the file needs one), session5 55/56 (G9, the operator section's index, stale since the
+  later policy sections — unrelated).
+- Rollout: the dashboard deployed first (it reads either schema), then the migrations (dry run, then `db push`).
+
+### 4. The datepicker-check hang
+
+- Live-checks run 42690854200 (`3ad37c2`, 9 Nov 20:13 UTC): **green**, all 8 jobs; booking-2 4 min 16 s
+  (datepicker-check 99 s, 629 checks).
+- The hangs: runs 42639306280 (`2d4a56c`) and 42660527525 (`a717d44`) — datepicker-check printed its first line and
+  nothing else until the shard's 20-minute limit (it reported only at its end). Before today the check had no limit of
+  its own on `page.evaluate`, the keyboard / mouse and `context.close()` (Playwright sets none on those), and no limit
+  on a scenario or on the whole run.
+- Reproduction today, the check alone against the live site on a branch-only workflow (never merged; the branch
+  deleted after): 23 runs in 12 parallel jobs — no hang. 18 passed; 5 failed on a separate, date-dependent defect:
+  «the stay band does not cover the 2 nights in between» at 375 px on all six forms. Cause: the range is
+  today+18 → today+21, which today crosses a month end (28 Nov → 1 Dec); the phone sheet shows one month, so the two
+  nights in between are not on screen. It would have failed every live and CI run until the range left the month
+  end. Fixed: the band must cover exactly the in-between nights the picker shows.
+- The hang itself was not reproduced, so its exact trigger is not known; what is known is that the check could wait
+  without end. Fix: every action 15 s, every navigation 30 s, every scenario (one form at one width, ~6 s when well)
+  90 s, the whole check 8 min (`DP_SCENARIO_MS`, `DP_TOTAL_MS`); a scenario that runs out is a failure naming its
+  step and the requests still open, its context and browser closed (or abandoned after 10 s) and a fresh browser
+  takes the next one; `DP_TRACE=<dir>` writes a timed step log and a Playwright trace of each failed scenario. A
+  repeat of the hang now fails booking-2 in minutes and names where.
+- **Proof, live.** `7f495f9` deployed by run 42827096552 (every check job green; the dashboard deployed first by
+  admin run 42827163754). Live-checks run 42831380908 (after the deploy) and run 42833442798 (dispatched on the same
+  deploy) — both **green**, all shards; datepicker-check 629 checks, 0 failures, 113 s in the first. GitHub was
+  operational all day, but the runners' apt step was slow (up to 22 min on `checks · static`), so the waiting ran about
+  20 minutes past the 30-minute cap to finish the second run.
