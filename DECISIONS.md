@@ -2890,3 +2890,14 @@ toggles (rates, inventory and photos lived elsewhere; names, sizes, beds, featur
   Checks: `deploy-alert-check` (+4), `admin/tests/deploy-bar-check.mjs` (offline, inside `admin-audit-check`: admin /
   management / reception × 1280 / 375), and `scripts/publish-log-check.mjs` on a preview branch (a real sign-in as the
   admin and as management).
+- **Finished the same evening (10 Nov 2026).** Ahmed approved the permission prompts: `booking-request` and
+  `booking-admin` deployed to production (CORS live checks 37/37 + 102/102). GitHub Actions came back at 17:44 UTC;
+  pushed aac1dd7 → 2539fed → 86f37cc (the two extra commits fixed this session's own checks: two «إغلاق» buttons in a
+  dialog, the e2e's permission upsert, and a type that is not bookable being — by design — out of the sitemap). The
+  dashboard: admin run 42868115703, live. The site: deploy run 42872900005, live (`/version.json` = 86f37cc); run
+  42870248734 had failed on `email-print-check` («Unable to capture screenshot», the Windows runner). The CI end to end
+  `rooms-e2e.yml` run 42872902481 on preview branch `s25-e2e`: **25 / 25 steps** — add (slug `rooms-e2e-suite`, «إظهار»
+  refused until the cover), page + form 247 checks, rename with the same address 247, hidden 232, deleted 225.
+  `publish-log-check` on the same branch: 13 / 13 (a real sign-in as management and as the admin). The temporary secret
+  `E2E_BRANCH_SERVICE_KEY` and the branch (≈ 42 minutes) were deleted; only `main` remains. The earlier status line
+  above («not pushed», «functions refused», «e2e not run») is superseded.
