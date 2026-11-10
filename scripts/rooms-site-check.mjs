@@ -70,7 +70,9 @@ for (const r of shown) {
     const ld = [...html.matchAll(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/g)].map((m) => m[1]).join('\n');
     ok(/"@type":"HotelRoom"/.test(ld) && ld.includes(JSON.stringify(name).slice(1, -1)), `${path}: no HotelRoom JSON-LD named «${name}»`);
     ok(html.includes(`<link rel="canonical" href="https://armadaresidence.com${path}"`), `${path}: canonical is not the page's own`);
-    ok(sitemap.includes(`https://armadaresidence.com${path}<`), `${path}: not in the sitemap`);
+    // a type shown but not bookable («غير متاح حاليًا») is noindex and out of the sitemap by design (§5); a bookable one is in it
+    if (r.availability === "sold_out") ok(!sitemap.includes(`https://armadaresidence.com${path}<`) && /<meta name="robots" content="noindex/.test(html), `${path}: a type not bookable must be noindex and out of the sitemap`);
+    else ok(sitemap.includes(`https://armadaresidence.com${path}<`), `${path}: not in the sitemap`);
     const desc = (L === 'ar' ? r.description_ar : r.description_en).split('\n')[0].slice(0, 40);
     ok(!desc || has(html, desc) || decode(html).includes(desc), `${path}: the description from the dashboard is not on the page`);
   }
