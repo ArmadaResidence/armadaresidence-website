@@ -2,7 +2,7 @@
 -- 20261107300200_home_texts; DECISIONS.md 2026-11-07 «Home sections»):
 --   R  «في الصفحة الرئيسية» of a room type: the six of the design on, the others off; site_room_types (anon) carries it;
 --      set_room_home — rooms edit + branch scope, refusals, one audit batch with show_home, undone by revert_batch;
---   G  «آراء الضيوف»: the six seeded reviews published (3 ar + 3 en, the approved texts), the service-only manifest in
+--   G  «آراء الضيوف»: the eight seeded reviews published (5 ar + 3 en, the approved texts), the service-only manifest in
 --      order, RLS (anon none, content none → nothing, view reads), save (levels, refusals), the problems that block
 --      «نشر» (language, forbidden term, source link, Arabic outside the font, digits), publish (publish level, blocked list,
 --      the job), «في الصفحة الرئيسية» off → out of the manifest after «نشر», delete (only never published), reorder;
@@ -120,9 +120,11 @@ select pg_temp._check('R4 an availability batch still reverts (rolled back with 
 select pg_temp._root();
 
 -- ══ G — «آراء الضيوف» ══
-select pg_temp._check('G1 six seeded reviews, published, all on the home page, 3 ar + 3 en',
-  (select count(*) from public.guest_reviews where not is_test and live is not null and show_home and first_published_at is not null) = 6
-  and (select count(*) from public.guest_reviews where not is_test and lang = 'ar') = 3 and (select count(*) from public.guest_reviews where not is_test and lang = 'en') = 3);
+-- Eight seeded reviews: the six of 7 Nov 2026 (migration 20261107300100) + غند and نواف, approved and published the same
+-- day by migration 20261107400100 (DECISIONS.md 2026-11-07 «Launch preparation» — «Two reviews»), after the others.
+select pg_temp._check('G1 eight seeded reviews, published, all on the home page, 5 ar + 3 en',
+  (select count(*) from public.guest_reviews where not is_test and live is not null and show_home and first_published_at is not null) = 8
+  and (select count(*) from public.guest_reviews where not is_test and lang = 'ar') = 5 and (select count(*) from public.guest_reviews where not is_test and lang = 'en') = 3);
 select pg_temp._check('G1 the approved texts, verbatim, with the branch listing',
   exists (select 1 from public.guest_reviews where first_name = 'Enad' and branch = 'shafa-road' and stars = 5 and lang = 'ar'
            and body like 'الغرفة كانت شرحة وواسعة ومطابقة للصور تمامًا،%وحسن التعامل.' and source_url = 'https://maps.google.com/?cid=13015077371000401026')
@@ -130,9 +132,9 @@ select pg_temp._check('G1 the approved texts, verbatim, with the branch listing'
            and body = 'Clean, big rooms, friendly staff and good service' and source_url = 'https://maps.google.com/?cid=12464971408374595043'));
 select pg_temp._service();
 select pg_temp._save('m1', public.reviews_site_manifest());
-select pg_temp._check('G1 the manifest (service role): six, in order', jsonb_array_length(pg_temp._j('m1') -> 'items') = 6
+select pg_temp._check('G1 the manifest (service role): eight, in order', jsonb_array_length(pg_temp._j('m1') -> 'items') = 8
   and (select array_agg(e ->> 'first_name' order by n) from jsonb_array_elements(pg_temp._j('m1') -> 'items') with ordinality as x(e, n))
-      = array['Enad', 'Reham', 'Nasser', 'Fayez', 'Donna', 'Abey']);
+      = array['Enad', 'Reham', 'Nasser', 'Fayez', 'Donna', 'Abey', 'غند', 'نواف']);
 select pg_temp._anon();
 select pg_temp._fails('G2 anon cannot read the reviews', $$select count(*) from public.guest_reviews$$, '42501');
 select pg_temp._fails('G2 anon cannot read the manifest', $$select public.reviews_site_manifest()$$, '42501');
@@ -140,7 +142,7 @@ select pg_temp._as('mgmt');
 select pg_temp._check('G2 content none: no row', (select count(*) from public.guest_reviews_library) = 0);
 select pg_temp._as('viewer');
 select pg_temp._check('G2 content view: the list with pending false and no problem',
-  (select count(*) from public.guest_reviews_library where not pending and jsonb_array_length(problems) = 0) = 6);
+  (select count(*) from public.guest_reviews_library where not pending and jsonb_array_length(problems) = 0) = 8);
 select pg_temp._fails('G2 view cannot save', $$select public.reviews_save(null, pg_temp._rv())$$, '42501');
 select pg_temp._as('editor');
 select pg_temp._fails('G3 a bad branch refused', $$select public.reviews_save(null, pg_temp._rv('{"branch": "taif"}'))$$, 'review_branch');
@@ -149,7 +151,7 @@ select pg_temp._fails('G3 6 stars refused', $$select public.reviews_save(null, p
 select pg_temp._save('s1', public.reviews_save(null, pg_temp._rv()));
 insert into _ids values ('rv1', (pg_temp._j('s1') ->> 'id')::uuid);
 select pg_temp._check('G3 a new review: a draft at the end, no problem, pending',
-  (select sort = 6 and live is null and pending and jsonb_array_length(problems) = 0 from public.guest_reviews_library where id = pg_temp._id('rv1')));
+  (select sort = 8 and live is null and pending and jsonb_array_length(problems) = 0 from public.guest_reviews_library where id = pg_temp._id('rv1')));
 select pg_temp._fails('G4 edit cannot publish', $$select public.reviews_publish()$$, '42501');
 select pg_temp._save('s2', public.reviews_save(null, pg_temp._rv('{"first_name": "Lina", "text": "Quiet and clean.", "source_url": "http://maps.google.com/x"}')));
 insert into _ids values ('rv2', (pg_temp._j('s2') ->> 'id')::uuid);
@@ -174,7 +176,7 @@ select pg_temp._check('G5 nothing left to publish', pg_temp._j('p3') ->> 'reason
 select pg_temp._service();
 select pg_temp._save('m2', public.reviews_site_manifest());
 select pg_temp._check('G5 the manifest: the new one at the end, the one off the home page left out',
-  jsonb_array_length(pg_temp._j('m2') -> 'items') = 7 and pg_temp._j('m2') -> 'items' -> 6 ->> 'first_name' = 'Salem'
+  jsonb_array_length(pg_temp._j('m2') -> 'items') = 9 and pg_temp._j('m2') -> 'items' -> 8 ->> 'first_name' = 'Salem'
   and not (pg_temp._j('m2')::text like '%Lina%'));
 select pg_temp._as('editor');
 select pg_temp._fails('G6 a published review cannot be deleted', format($$select public.reviews_delete(%L)$$, pg_temp._id('rv1')), 'review_published');

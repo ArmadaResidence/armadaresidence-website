@@ -2781,3 +2781,15 @@ pushed and the CI proof that `booking-nav-check` fails on an inert booking form 
   moved `policy.operator.heading` / `policy.operator.body` to [10] with their anchor. Production holds exactly that
   (both fields, both languages, anchor `sections[10].id = operator`, read 10 Nov 2026) and the file's [10] is
   `operator`. The check now expects 10 — same strictness, plus both rows required.
+- **home-sections.sql G1 / G2 / G3 / G5 — the same kind of outdated expectation**, found by the full run. Written for the
+  six reviews seeded by `20261107300100`; the same day migration `20261107400100` (2026-11-07 «Launch preparation» —
+  «Two reviews») added غند and نواف, published, after the others: 8 reviews (5 ar + 3 en). The checks now expect 8, the
+  order Enad … Abey, غند, نواف, a new draft at sort 8 and 9 manifest items with Salem last — nothing loosened.
+- **The whole SQL suite, 10 Nov 2026**, on preview branch `s24-sql-suite` (Ahmed's OK with the cost first: ≈ 0.013 USD
+  an hour, about 10 minutes used; deleted after): 29 files, **1518 / 1518** — phase2a 82, phase2a1 100, phase2a2 106,
+  phase2b 41, phase2c-whatsapp 37, careers 53, media 84, media-copy 30, media-mobile 36, hero-photos 34, dining 77,
+  gallery-partners 31, offers 124, blog 64, session4 107, session5 56, session5b 48, session5c 10, session6 55, tours 15,
+  texts-session 15, home-sections 35, partner-logos 64, wa-automation 67, cancel-reasons 27, audit-actors 12,
+  eyab-invite 26, session23 56, site-deploys 26 (with a QA admin inserted inside its own transaction — the file needs
+  one active admin and a fresh branch has none). The branch needed the usual grants to `service_role` (tables,
+  functions, sequences).
