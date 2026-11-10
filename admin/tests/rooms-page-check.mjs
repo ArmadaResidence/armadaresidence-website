@@ -163,7 +163,7 @@ for (const [w, h] of [[1280, 900], [375, 812]]) {
   const ed = dialog(page, '[data-room-form]');
   await ed.waitFor({ timeout: 10000 });
   check(((await ed.textContent()) ?? '').includes('/airport-road/twin-room/') && ((await ed.textContent()) ?? '').includes('لا الرابط'), `${tag}: the edit dialog does not say the address is fixed`);
-  await ed.getByRole('button', { name: 'إلغاء' }).click();
+  await ed.locator('[data-action="dialog-cancel"]').click();
   await page.waitForTimeout(300);
 
   // show an incomplete type: the missing list, no call
@@ -174,7 +174,7 @@ for (const [w, h] of [[1280, 900], [375, 812]]) {
   const items = await miss.locator('[data-missing]').evaluateAll((els) => els.map((e) => e.getAttribute('data-missing')));
   check(JSON.stringify(items) === '["units","cover"]' && ((await miss.textContent()) ?? '').includes('صورة غلاف'), `${tag}: the missing list — ${JSON.stringify(items)}`);
   check(!calls.slice(before).some((c) => c.fn === 'room_type_set_on_site'), `${tag}: «إظهار» was sent for an incomplete type`);
-  await miss.getByRole('button', { name: 'إغلاق' }).click();
+  await miss.locator('[data-action="dialog-cancel"]').click();
   await page.waitForTimeout(300);
 
   // delete: booked → explained + hide offered; never booked → confirm + call

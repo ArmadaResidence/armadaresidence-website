@@ -39,7 +39,7 @@ const step = (name, ok, detail = '') => {
   if (!ok) throw new Error(`${name}: ${detail}`);
 };
 async function call(path, { method = 'POST', headers = svc, body } = {}) {
-  const res = await fetch(`${URL_}${path}`, { method, headers: { ...headers, Prefer: 'return=representation' }, body: body === undefined ? undefined : JSON.stringify(body) });
+  const res = await fetch(`${URL_}${path}`, { method, headers: { ...headers, Prefer: ['return=representation', headers.Prefer].filter(Boolean).join(',') }, body: body === undefined ? undefined : JSON.stringify(body) });
   const text = await res.text();
   let json = null;
   try {
