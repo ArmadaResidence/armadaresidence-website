@@ -48,6 +48,8 @@ import { serveDist } from './serve-dist.mjs';
 const REVIEW_URL = 'https://armadaresidence.com'; // the live site since launch day (8 Nov 2026)
 // live only: the deployed functions' CORS / preflight / gateway JWT handling from every dashboard origin
 const LIVE_CHECKS = ['admin-cors-check'];
+// live only: hero-scrim-check over the published hero (11 Nov 2026), in the shard of the other hero checks
+const LIVE_HERO_SHARD = 'home-phones';
 const args = process.argv.slice(2);
 const live = args.includes('--live');
 const commitAt = args.indexOf('--commit');
@@ -240,6 +242,13 @@ if (base) {
   for (const name of live ? liveChecks : browser) {
     const env = name === 'a11y-check' && plan.a11yPages ? { ONLY: plan.a11yPages.join(',') } : {};
     results.push(await run(name, process.execPath, [`scripts/${name}.mjs`, base], { env }));
+  }
+  // live only (Ahmed, 11 Nov 2026): the hero's text — eyebrow, the h1 line, the slogan, subtitle, outline button — and
+  // the «فرعانا» cards over the PUBLISHED photo and its measured scrim, every pixel, AR + EN × 5 widths × light + dark:
+  // the deployed build's dist/ (unpacked by the live-checks job) with the live hero put in (--poster)
+  if (live && (!shard || shard === LIVE_HERO_SHARD)) {
+    if (existsSync(join(cwd, 'dist', 'index.html'))) results.push(await run('hero-scrim-check', process.execPath, ['scripts/hero-scrim-check.mjs', 'dist', 'live', '--poster', base]));
+    else results.push({ label: 'hero-scrim-check (dist/ of the deployed build missing)', code: 1, s: 0 });
   }
 }
 // pixel guard: a second tree (HEAD for a routed run with ARMADA_INVISIBLE=1, <sha> for --pixel) built in a snapshot,

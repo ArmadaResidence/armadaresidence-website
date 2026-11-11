@@ -2993,3 +2993,18 @@ toggles (rates, inventory and photos lived elsewhere; names, sizes, beds, featur
 - **Visual check.** CLAUDE.md has no procedure called «visual baseline»; the closest is the pixel guard: these
   commits carry no `Armada-Invisible`, so the CI pixel guard runs as a report (`pixel-diff` artifact) and the pages it
   lists were compared with the pages expected to change.
+
+## 2026-11-11 — hero-scrim-check in the live checks; a correction on the café description's audit entry (Ahmed, 11 Nov 2026)
+
+- **hero-scrim-check after every deploy.** `check-all --live` runs it in the `home-phones` shard (and in a full
+  `--live` run): `node scripts/hero-scrim-check.mjs dist live --poster <live URL>` — the deployed build's `dist/`
+  (the live-checks job unpacks it) with the live hero's picture and measured scrim put in; every hero text, the new h1
+  line included (small text: 4.5:1), and the «فرعانا» cards, AR + EN × 375 / 768 / 1280 / 1440 / 1920 × light + dark.
+  A failure fails the live run and alerts the admins like any live check.
+- **Correction (the entry above, «Row 11»).** It says the direct UPDATE of the café description left no «السجل»
+  entry. That is wrong: `dining_venues` carries the audit trigger `dining_venues_audit`, which wrote entry 5909
+  (2026-11-11 10:58:19 UTC, action update, actor «النظام» — no `actor_id`, `actor_label` system — no batch) with
+  the exact before and after values of both descriptions; «السجل» lists it as «مطعم أو مقهى». It cannot be undone
+  from «السجل»: `revert_batch` covers room types, rates, inventory, settings, staff, permissions and site defaults,
+  and no dining change (the dashboard's own included) is revertible — by design (§9 «never undoable»). Going back is
+  the venue's description in «المطاعم والمقاهي» + «نشر», or the backup in `reports/session26-db-backup/`.
