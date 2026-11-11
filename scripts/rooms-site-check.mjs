@@ -40,6 +40,9 @@ if (!existsSync(genFile)) {
 const gen = JSON.parse(readFileSync(genFile, 'utf8'));
 const seed = JSON.parse(readFileSync('content/rooms.json', 'utf8')).rooms;
 const branchesSeed = JSON.parse(readFileSync('content/branches.json', 'utf8')).branches;
+// a title approved for one page instead of the template (seo.json → room_templates.title_overrides, SEO audit row 4,
+// 11 Nov 2026): that page carries exactly the override, its size filled in; every other page names its room
+const titleOverrides = JSON.parse(readFileSync('content/seo.json', 'utf8')).room_templates.title_overrides ?? {};
 const contentGen = existsSync('content/content.generated.json') ? JSON.parse(readFileSync('content/content.generated.json', 'utf8')) : { hidden: { branches: [], rooms: [] } };
 const hiddenBranches = new Set(contentGen.hidden?.branches ?? []);
 const page = (p) => {
@@ -65,7 +68,9 @@ for (const r of shown) {
     ok(html, `${path}: no page for a shown room type`);
     if (!html) continue;
     const name = L === 'ar' ? r.name_ar : r.name_en;
-    ok(decode(title(html)).includes(name), `${path}: <title> «${decode(title(html))}» does not name «${name}»`);
+    const override = titleOverrides[`${r.branch}/${r.slug}`]?.[`title_${L}`];
+    if (override) ok(decode(title(html)).replace(/\u00a0/g, ' ') === override.replace('{size}', String(r.size_m2)), `${path}: <title> «${decode(title(html))}» is not the approved override «${override}»`);
+    else ok(decode(title(html)).includes(name), `${path}: <title> «${decode(title(html))}» does not name «${name}»`);
     ok(decode(h1(html)).includes(name), `${path}: <h1> «${decode(h1(html))}» is not «${name}»`);
     const ld = [...html.matchAll(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/g)].map((m) => m[1]).join('\n');
     ok(/"@type":"HotelRoom"/.test(ld) && ld.includes(JSON.stringify(name).slice(1, -1)), `${path}: no HotelRoom JSON-LD named «${name}»`);
