@@ -3095,3 +3095,28 @@ interaction (`Base.astro`), so a visitor from an ad who moved on quickly could l
   the pixel guard's automated browser, so it shows no difference for it).
 - **Ahmed's decision (11 Nov 2026, the same session):** «قبول الكل» keeps Bronze Deep `#976E47` (white text 4.53:1);
   `#A97C50` stays the outline of «الضروري فقط». The request's `#A97C50` fill is not used.
+
+## 2026-11-11 — Browser checks in the Playwright image (Ahmed, 11 Nov 2026)
+
+- **Why.** Deploys 43035178077 (cbf64da) and 43039981640 (28f040b) published nothing: in every browser shard and in
+  `checks · static` the step «The browsers' system libraries» (`npx playwright install-deps chromium webkit`, i.e.
+  apt) hung on «Temporary failure resolving archive.ubuntu.com» until the 20-minute job limit, and the jobs were
+  cancelled; the banner screenshots (43035181289) stopped at the same step. githubstatus.com showed Actions and Pages
+  operational throughout — the runners could not reach the Ubuntu mirrors. The deploy watchdog did not retry within
+  the session either.
+- **Now.** The browser jobs run in the official image `mcr.microsoft.com/playwright:v1.64.0-noble` (the tag = the
+  installed Playwright version), which holds Chromium, WebKit and their system libraries: no apt, no browser
+  download, no browser cache — `checks · browser (<shard>)` in deploy.yml, `live · <shard>` in live-checks.yml and
+  banner-shots.yml. `checks · static` stays on the runner without any install step: its browser checks (the
+  dashboard's sidebar, «السجل», «الغرف») use the runner's Google Chrome, which needs no apt (the pixel guard already ran
+  that way and passed during the outage). The Windows print job is unchanged (no apt there).
+- **Chrome → the image's Chromium.** The image has no Google Chrome and the checks ask for `channel: 'chrome'`;
+  `scripts/pw-bundled.mjs`, preloaded with `NODE_OPTIONS=--import` and `ARMADA_PW_BUNDLED=1` in those jobs only, turns
+  that into `channel: 'chromium'` (the full Chromium in the new headless mode — Chrome's engine and rendering path)
+  when no Chrome is installed. The one known difference is Chrome-only codecs (H.264): the live home hero is a
+  slideshow, so `hero-video-check` skips; a hero video later would show a failure there, never a silent pass. The
+  live-guard preload (`check-all --live`) is added to the same NODE_OPTIONS.
+- **Guard.** `deploy-alert-check` asserts the three jobs use the image of the installed Playwright version with the
+  preload, and that none of them nor `checks · static` runs `install-deps`, `--with-deps` or `apt-get` — a Playwright
+  upgrade without the image tag fails the fast checks. The remaining apt in the deploy is the build's ffmpeg, installed
+  only when a hero video or a HEIC photo must be processed (none today).
