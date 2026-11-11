@@ -144,6 +144,15 @@ jobs:
         run: echo "SUPABASE_URL=${PUBLIC_BOOKING_ENDPOINT%%/functions/*}" >> "$GITHUB_ENV"
       - name: Run the live checks
         run: node scripts/check-all.mjs --live "${{ needs.gate.outputs.url }}" --shard ${{ matrix.shard }}
+      # 11 Nov 2026 (scripts/live-guard.mjs): a page that is not this site's — its HTML, every response header, the
+      # server address, the DNS answer and the time — kept with the run
+      - name: Evidence of a foreign page
+        if: ${{ failure() && hashFiles('reports/live-guard/**') != '' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: foreign-page-${{ matrix.shard }}
+          path: reports/live-guard/
+          retention-days: 30
 
   # 9 Nov 2026: the alert test (workflow_dispatch force_fail) — one job that fails on purpose, nothing else runs
   forced:

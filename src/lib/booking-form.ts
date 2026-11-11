@@ -6,6 +6,7 @@
  */
 import { firstTouch } from '@lib/visit';
 import { hashedUserData } from '@lib/user-data';
+import { withClickIds } from '@lib/click-ids';
 import { turnstileToken } from '@lib/turnstile';
 import { bindOnce } from '@lib/client';
 import { initDateRange } from '@lib/daterange';
@@ -921,7 +922,9 @@ function initForm(form: HTMLFormElement) {
         /* storage unavailable: no conversion event (never one that could repeat) */
       }
       leaving = true;
-      location.assign(`${data.successPath}?${params.toString()}`);
+      // the ad click IDs of this page (11 Nov 2026 — src/lib/click-ids.ts): the success page is the conversion page, so
+      // while ads consent is not granted the click ID travels to it in the URL (url passthrough)
+      location.assign(withClickIds(`${data.successPath}?${params.toString()}`));
     } catch {
       showFallback(S.errors.server);
     } finally {

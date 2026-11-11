@@ -1,0 +1,73 @@
+name: Lighthouse (by hand)
+
+# Lighthouse in GitHub Actions (Ahmed, 11 Nov 2026 — DECISIONS.md 2026-11-11 «Ad click IDs»): this machine has 4 GB of
+# memory and runs no browser, so a before / after measurement of the live site runs here. `scripts/lh.mjs <label> <url>`
+# — the median of RUNS runs per page and form factor; the summary (scores, LCP, TBT, CLS, the first-party weight before
+# the load event) is the job summary and the `lighthouse-<label>` artifact, with the /version.json the site served.
+# Nothing is sent anywhere but the page's own requests (GTM loads on the real domain as for any visitor without an ad
+# click ID: 3.5 s after load, so it is usually outside the measured window).
+on:
+  workflow_dispatch:
+    inputs:
+      label:
+        description: the report's label (e.g. s27-before / s27-after)
+        required: true
+      url:
+        description: the site to measure (empty = content/seo.json → live_url)
+        required: false
+        default: ''
+      pages:
+        description: lh.mjs PAGES (home, branch, room, offers, careers, blog, article)
+        required: false
+        default: home
+      forms:
+        description: lh.mjs FORMS (mobile, desktop)
+        required: false
+        default: mobile
+      runs:
+        description: runs per page and form factor (the median is reported)
+        required: false
+        default: '7'
+
+permissions:
+  contents: read
+
+jobs:
+  lighthouse:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Lighthouse CLI
+        run: npm i -g lighthouse@12.8.2
+      - name: The site measured
+        id: site
+        run: |
+          URL="${{ inputs.url }}"
+          [ -n "$URL" ] || URL=$(node -e "process.stdout.write(require('./content/seo.json').live_url.replace(/\/$/, ''))")
+          echo "url=$URL" >> "$GITHUB_OUTPUT"
+          echo "### $URL — /version.json before" >> "$GITHUB_STEP_SUMMARY"
+          { echo '```json'; curl -fsS "$URL/version.json?v=$(date +%s)" || echo '{}'; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+      - name: Measure
+        env:
+          RUNS: ${{ inputs.runs }}
+          PAGES: ${{ inputs.pages }}
+          FORMS: ${{ inputs.forms }}
+          CHROME_PATH: /usr/bin/google-chrome
+        run: node scripts/lh.mjs "${{ inputs.label }}" "${{ steps.site.outputs.url }}"
+      - name: Summary
+        if: always()
+        run: |
+          f="reports/lighthouse/${{ inputs.label }}-summary.md"
+          [ -f "$f" ] && cat "$f" >> "$GITHUB_STEP_SUMMARY"
+          echo "### /version.json after" >> "$GITHUB_STEP_SUMMARY"
+          { echo '```json'; curl -fsS "${{ steps.site.outputs.url }}/version.json?v=$(date +%s)" || echo '{}'; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: lighthouse-${{ inputs.label }}
+          path: reports/lighthouse/${{ inputs.label }}*
+          retention-days: 30

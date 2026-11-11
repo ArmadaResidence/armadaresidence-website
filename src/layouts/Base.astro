@@ -5,6 +5,7 @@ import fontAr400 from '../assets/fonts/ibm-plex-sans-arabic-arabic-400-subset.wo
 import fontAr600 from '../assets/fonts/ibm-plex-sans-arabic-arabic-600-subset.woff2?url';
 import fontAr700 from '../assets/fonts/ibm-plex-sans-arabic-arabic-700-subset.woff2?url';
 import fontEn from '@fontsource-variable/manrope/files/manrope-latin-wght-normal.woff2?url';
+import { CLICK_IDS } from '@lib/click-ids';
 import { GTM_ID, absoluteUrl, dir, localePath, seo, siteName, turnstileKey, type BookingContext, type Locale } from '@lib/content';
 import Header from '@components/Header.astro';
 import Footer from '@components/Footer.astro';
@@ -68,6 +69,9 @@ const {
 } = Astro.props;
 
 const canonical = canonicalHref ?? absoluteUrl(localePath(locale, path));
+// the commit this page was built from (11 Nov 2026 — build.py ARMADA_BUILD): the live checks confirm by it that a page
+// they received is this site's (scripts/live-guard.mjs); nothing personal
+const buildId = process.env.ARMADA_BUILD || 'local';
 // the hosts that load the GTM container (9 Nov 2026): the canonical domain and its www — nothing else
 const siteHost = new URL(seo.site_url).hostname;
 const GTM_HOSTS = [siteHost, `www.${siteHost}`];
@@ -103,6 +107,7 @@ const preloadFonts = locale === 'ar' ? (path === '/' ? [fontAr400, fontAr600, fo
     <meta charset="utf-8" />
     {turnstileKey && <meta name="armada-turnstile" content={turnstileKey} />}
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="armada-build" content={buildId} />
     <meta name="color-scheme" content="light" />
     <meta name="theme-color" content="#F3EFE7" data-theme-color />
     <script is:inline>
@@ -206,6 +211,12 @@ const preloadFonts = locale === 'ar' ? (path === '/' ? [fontAr400, fontAr600, fo
           var a = c.analytics ? 'granted' : 'denied', m = c.ads ? 'granted' : 'denied';
           w.gtag('consent', 'update', { analytics_storage: a, ad_storage: m, ad_user_data: m, ad_personalization: m });
         }
+        // ad click IDs (Ahmed, 11 Nov 2026 — DECISIONS.md 2026-11-11 «Ad click IDs»): while ad_storage is denied Google's
+        // tags carry the click ID in the URL of internal links (url_passthrough) and send nothing that identifies the
+        // visitor (ads_data_redaction); once the visitor accepts, it is stored as usual (after the
+        // defaults and a stored choice, which consent-check expects right after them — both before GTM)
+        w.gtag('set', 'url_passthrough', true);
+        w.gtag('set', 'ads_data_redaction', true);
         function apply() {
           if (!ok && (!navigator.webdriver || test)) d.documentElement.setAttribute('data-consent-open', '');
         }
@@ -219,7 +230,7 @@ const preloadFonts = locale === 'ar' ? (path === '/' ? [fontAr400, fontAr600, fo
         });
       })(window, document);
     </script>
-    <script is:inline define:vars={{ GTM_ID, GTM_HOSTS }}>
+    <script is:inline define:vars={{ GTM_ID, GTM_HOSTS, CLICK_IDS }}>
       // GTM (decision 10 Oct 2026, tightened 11 Oct): the dataLayer exists from the first byte and queues every push
       // (gtm.start/gtm.js, page events, booking_request…); the container script itself is injected on the first
       // interaction or 3.5 s after window.load, whichever comes first, so the ~1 MB of tags it pulls (GA4, Ads,
@@ -229,10 +240,17 @@ const preloadFonts = locale === 'ar' ? (path === '/' ? [fontAr400, fontAr600, fo
       // only when the page is served from armadaresidence.com or www.armadaresidence.com (GTM_HOSTS, from seo.json →
       // site_url) — never on a github.io preview, localhost or a check build, so no test visit reaches GA4 or the ad
       // platforms. The dataLayer, the consent defaults above and every push run everywhere, as before.
-      (function (w, d, l, i, hosts) {
+      // Ad landings (Ahmed, 11 Nov 2026 — DECISIONS.md 2026-11-11 «Ad click IDs»): a landing URL that carries an ad click
+      // ID (CLICK_IDS — src/lib/click-ids.ts: gclid, gbraid, wbraid, dclid, fbclid, ttclid, ScCid, msclkid, Google's _gl)
+      // injects the container at once, so the click ID is read before the visitor can move on; every other visit keeps
+      // the delay. Still only on the real domain; the consent defaults above always run first. scripts/click-id-check.mjs
+      // (an automated browser with localStorage armada-gtm-test = 1, its gtm.js stubbed) is the one exception to the hosts.
+      (function (w, d, l, i, hosts, ids) {
         w[l] = w[l] || [];
         w[l].push({ 'gtm.start': new Date().getTime(), event: 'gtm.js' });
-        var loaded = hosts.indexOf(location.hostname) < 0;
+        var test = false;
+        try { test = !!navigator.webdriver && localStorage.getItem('armada-gtm-test') === '1'; } catch (e) {}
+        var loaded = hosts.indexOf(location.hostname) < 0 && !test;
         function load() {
           if (loaded) return;
           loaded = true;
@@ -241,6 +259,13 @@ const preloadFonts = locale === 'ar' ? (path === '/' ? [fontAr400, fontAr600, fo
           j.src = 'https://www.googletagmanager.com/gtm.js?id=' + i + (l != 'dataLayer' ? '&l=' + l : '');
           d.head.appendChild(j);
         }
+        var ad = false;
+        location.search.replace(/[?&]([^=&#]+)=([^&#]*)/g, function (m, k, v) {
+          try { k = decodeURIComponent(k); } catch (e) {}
+          if (v && ids.indexOf(k.toLowerCase()) >= 0) ad = true;
+          return m;
+        });
+        if (ad) load();
         var evs = ['pointerdown', 'keydown', 'touchstart', 'scroll'];
         evs.forEach(function (e) { w.addEventListener(e, load, { once: true, passive: true }); });
         function afterLoad() {
@@ -257,7 +282,7 @@ const preloadFonts = locale === 'ar' ? (path === '/' ? [fontAr400, fontAr600, fo
           if (first) { first = false; return; }
           w[l].push({ event: 'virtual_page_view', page_path: location.pathname, page_location: location.href, page_title: d.title });
         });
-      })(window, document, 'dataLayer', GTM_ID, GTM_HOSTS);
+      })(window, document, 'dataLayer', GTM_ID, GTM_HOSTS, CLICK_IDS);
     </script>
   </head>
   <body class="min-h-screen flex flex-col bg-porcelain text-ink">
@@ -295,6 +320,8 @@ const preloadFonts = locale === 'ar' ? (path === '/' ? [fontAr400, fontAr600, fo
       import '@lib/drawer';
       import '@lib/photo';
       import '@lib/consent';
+      // ad click IDs (11 Nov 2026): carried in the URL while ads consent is not granted
+      import '@lib/click-ids';
       import '@lib/slider';
       import '@lib/marquee';
       // 9 Nov 2026 (mobile LCP): the header, the WhatsApp button and the booking form / date picker loaders were the

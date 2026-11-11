@@ -42,6 +42,7 @@ import { execFileSync, spawn } from 'node:child_process';
 import { appendFileSync, existsSync, lstatSync, mkdtempSync, readFileSync, rmSync, symlinkSync, unlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
+import { pathToFileURL } from 'node:url';
 import { BROWSER_CHECKS, CI_SHARDS, CI_WINDOWS_CHECKS, STATIC_CHECKS, describe, fastPlan, planFor, stagedFiles } from './check-plan.mjs';
 import { serveDist } from './serve-dist.mjs';
 
@@ -235,12 +236,28 @@ if (built && browser.length) {
   server = await serveDist(0, { dist: join(cwd, 'dist') });
   base = server.url;
 }
+// --live only (11 Nov 2026 — scripts/live-guard.mjs): every browser check first confirms that each page it receives is
+// this site's (lang + <meta name="armada-build">; the build of this deploy = dist/version.json of the deployed build,
+// unpacked by the live-checks job); a foreign page → its HTML, headers, server address, DNS and time in
+// reports/live-guard/ (the job's artifact) and the check fails with exit 86
+let liveGuard = {};
+if (live) {
+  let expect = '';
+  try {
+    expect = JSON.parse(readFileSync(join(cwd, 'dist', 'version.json'), 'utf8')).commit || '';
+  } catch {
+    /* no deployed build here: the identity is still checked, the build only noted */
+  }
+  const guard = pathToFileURL(join(cwd, 'scripts', 'live-guard.mjs')).href;
+  liveGuard = { NODE_OPTIONS: `${process.env.NODE_OPTIONS ? `${process.env.NODE_OPTIONS} ` : ''}--import=${guard}`, ARMADA_LIVE_BASE: base, ARMADA_LIVE_EXPECT: expect, ARMADA_LIVE_EVIDENCE: join(cwd, 'reports', 'live-guard') };
+  console.log(`live-guard: every page must be this site's${expect ? ` (build ${expect.slice(0, 12)})` : ''}`);
+}
 if (base) {
   console.log(`\nbrowser checks against ${base}`);
   // --live --shard <name> (the live-checks workflow, 9 Nov 2026): that shard's browser checks only; cors: none
   const liveChecks = !shard ? BROWSER_CHECKS : (CI_SHARDS[shard] ?? []);
   for (const name of live ? liveChecks : browser) {
-    const env = name === 'a11y-check' && plan.a11yPages ? { ONLY: plan.a11yPages.join(',') } : {};
+    const env = { ...(name === 'a11y-check' && plan.a11yPages ? { ONLY: plan.a11yPages.join(',') } : {}), ...(live ? liveGuard : {}) };
     results.push(await run(name, process.execPath, [`scripts/${name}.mjs`, base], { env }));
   }
   // live only (Ahmed, 11 Nov 2026): the hero's text — eyebrow, the h1 line, the slogan, subtitle, outline button — and

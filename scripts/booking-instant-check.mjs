@@ -192,7 +192,8 @@ async function run(width, lang) {
   check((await page.locator('form[data-booking-form] select[name="room"]').first().inputValue()) === 'accessible-room', `${tag} rooms: a link to the newly offered room preselects it`);
 
   // ── booking page: quote flow ──
-  await page.goto(`${BASE}${pre}/booking/?branch=airport-road`, { waitUntil: 'networkidle' });
+  // an ad landing (11 Nov 2026): ?gclid= on the form's page; advertising consent is granted before the submit below
+  await page.goto(`${BASE}${pre}/booking/?branch=airport-road&gclid=qa-granted`, { waitUntil: 'networkidle' });
   await page.waitForSelector('form[data-booking-ready]');
   const form = page.locator('form[data-booking-form]').first();
   const quoteBox = form.locator('[data-quote]');
@@ -302,6 +303,8 @@ async function run(width, lang) {
   check(new URL(page.url()).searchParams.get('mc') === '1' && (await page.locator('[data-eyab-invite]').isHidden()), `${tag} consent: ticked → mc=1, no «انضم إلى إياب» card on the success page`);
   check(!(await page.evaluate(() => Object.keys(sessionStorage).some((k) => k.startsWith('armada_invite_')))), `${tag} invite: ticked → no invite kept for the page`);
   const url = new URL(page.url());
+  // ads consent granted: Google's own cookie keeps the click ID — the success URL stays plain (src/lib/click-ids.ts)
+  check(!url.searchParams.has('gclid'), `${tag} click ID: ads consent granted → the success URL carries no gclid`, url.search);
   check(url.searchParams.get('s') === 'confirmed' && !url.search.includes('guest') && !url.search.includes('0500'), `${tag} confirm: success URL carries the status and no personal data`);
   await page.waitForSelector('[data-breakdown]:not(.hidden)', { timeout: 8000 });
   check((await page.locator('[data-heading]').textContent()) === S.success.confirmed_heading, `${tag} success: confirmed heading`);
@@ -332,7 +335,8 @@ async function run(width, lang) {
   // ── sold out at submit → request page with the reason; the WhatsApp message failed (stubbed YCloud error) ──
   mode.submit = 'sold_out';
   mode.wa = false;
-  await page.goto(`${BASE}${pre}/booking/?branch=airport-road&room=king-room`, { waitUntil: 'networkidle' });
+  // an ad landing with no consent stored (11 Nov 2026): the click ID must reach the success page — the conversion page
+  await page.goto(`${BASE}${pre}/booking/?branch=airport-road&room=king-room&gclid=test`, { waitUntil: 'networkidle' });
   await page.waitForSelector('form[data-booking-ready]');
   const f2 = page.locator('form[data-booking-form]').first();
   await pickRange(page, f2, CI, CO);
@@ -343,6 +347,10 @@ async function run(width, lang) {
   await f2.locator('[data-submit]').click();
   await page.waitForURL(/\/booking\/success\//, { timeout: 15000 });
   await page.waitForSelector('[data-fallback]:not(.hidden)', { timeout: 8000 });
+  {
+    const u = new URL(page.url());
+    check(u.searchParams.get('gclid') === 'test' && u.searchParams.get('s') === 'request' && u.searchParams.get('ref')?.startsWith('AR-'), `${tag} click ID: consent not granted → the success URL keeps gclid=test (url passthrough)`, u.search);
+  }
   check((await page.locator('[data-fallback]').textContent()) === S.success.fallback_line.replace('{reason}', S.success.sold_out_race), `${tag} fallback: sold-out line on the request page`);
   check((await page.locator('[data-heading]').textContent()) === S.success.heading, `${tag} fallback: request heading`);
   check((await page.title()) === seo.pages['booking-success'][`title_${L}`], `${tag} fallback: request keeps today's document title`, await page.title());

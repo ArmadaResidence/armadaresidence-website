@@ -842,17 +842,25 @@ def run(cmd: list[str]) -> None:
         fail(f"{cmd[0]} exited with {res.returncode}")
 
 
-def write_version() -> None:
-    """dist/version.json (5 Nov 2026 — the deploy watchdog, .github/workflows/deploy-watchdog.yml, compares it with main's
-    HEAD): the commit this site was built from, when, by which run and event, and the snapshot of the dashboard's published
-    photos it carries (media-build's manifest_at). Served at /version.json; nothing personal."""
-    from datetime import datetime, timezone
+def build_commit() -> str:
+    """The commit this build is made from: GITHUB_SHA in CI, else git's HEAD, else "unknown" (an exported snapshot — the
+    check suite — has no .git). Also every page's <meta name="armada-build"> (11 Nov 2026 — the live checks confirm that
+    a page they received is this site's, scripts/live-guard.mjs)."""
     commit = os.environ.get("GITHUB_SHA", "")
     if not commit:
         try:
             commit = subprocess.run(["git", "rev-parse", "HEAD"], cwd=ROOT, capture_output=True, text=True, check=True).stdout.strip()
         except Exception:
-            commit = "unknown"  # an exported snapshot (the check suite) has no .git
+            commit = "unknown"
+    return commit
+
+
+def write_version() -> None:
+    """dist/version.json (5 Nov 2026 — the deploy watchdog, .github/workflows/deploy-watchdog.yml, compares it with main's
+    HEAD): the commit this site was built from, when, by which run and event, and the snapshot of the dashboard's published
+    photos it carries (media-build's manifest_at). Served at /version.json; nothing personal."""
+    from datetime import datetime, timezone
+    commit = build_commit()
     media_at = None
     report = ROOT / ".media-build" / "report.json"
     if report.is_file():
@@ -907,6 +915,8 @@ def main() -> int:
     run(["node", "scripts/email-logo.mjs"])
     os.environ["ROOM_AVAILABILITY"] = json.dumps(availability["rooms"])
     os.environ["ROOM_HOME"] = json.dumps(availability["home"])
+    # every page names the commit it was built from (<meta name="armada-build">, 11 Nov 2026)
+    os.environ["ARMADA_BUILD"] = build_commit()
     run(["npx", "astro", "build"])
     # the menu's dining offers are written into dist/menu/ first, so the typesetting pass covers them too (7 Nov 2026)
     menu_offers(content)
