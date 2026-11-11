@@ -258,6 +258,8 @@ jobs:
       - name: Run the browser checks
         env:
           ARMADA_PW_BUNDLED: '1'
+          # team-device-check (11 Nov 2026): the internal device's token, to exercise ?team=<token>
+          TEAM_DEVICE_TOKEN: ${{ secrets.TEAM_DEVICE_TOKEN }}
         run: NODE_OPTIONS="--import=$GITHUB_WORKSPACE/scripts/pw-bundled.mjs" node scripts/check-all.mjs --shard ${{ matrix.shard }}
 
   # the pixel guard on a push (or by hand with pixel_before): the pushed range's parent and this commit, both built

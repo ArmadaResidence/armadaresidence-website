@@ -145,6 +145,8 @@ export interface BookingInput {
   notes?: string;
   /** an offer's promo code (2 Nov 2026) — optional; the database decides whether it applies */
   promo_code?: string;
+  /** «مصدر الحجز» (11 Nov 2026): asked and required on internal devices only (ctx.internal); ignored otherwise */
+  booking_source?: string;
 }
 
 export type FieldError =
@@ -163,7 +165,8 @@ export type FieldError =
   | 'organisation'
   | 'phone'
   | 'email'
-  | 'format';
+  | 'format'
+  | 'booking_source';
 
 export interface RuleContext {
   branches: string[];
@@ -171,6 +174,8 @@ export interface RuleContext {
   today: string;
   /** Returns the E.164 number when `raw` is a valid number for `country` (or a valid international number). */
   phone: (raw: string, country: string) => string | null;
+  /** an internal device (a valid team token — teamTokenOk, 11 Nov 2026): «مصدر الحجز» is required; otherwise website */
+  internal?: boolean;
 }
 
 export interface ValidBooking {
@@ -195,6 +200,39 @@ export interface ValidBooking {
   notes: string;
   /** the promo code upper-cased ('' = none) */
   promo_code: string;
+  /** «مصدر الحجز» (11 Nov 2026): the staff's pick on an internal device, else always 'website' («الموقع مباشرة») */
+  booking_source: BookingSource;
+}
+
+/** «مصدر الحجز» (Ahmed, 11 Nov 2026 — DECISIONS.md «Internal devices and the booking source»): what staff pick on an
+ *  internal device, in the form's order; every other booking is 'website'. The same list is the check constraint of
+ *  public.reservations.booking_source (migration 20261111100000) and the dashboard's labels (admin/src/lib/format.ts). */
+export const STAFF_BOOKING_SOURCES = ['instagram', 'whatsapp', 'phone', 'snapchat', 'tiktok', 'facebook', 'walk_in', 'other'] as const;
+export const DIRECT_BOOKING_SOURCE = 'website';
+export type BookingSource = (typeof STAFF_BOOKING_SOURCES)[number] | typeof DIRECT_BOOKING_SOURCE;
+
+/** The source a booking is stored with: a visitor's booking is always 'website', whatever the request carries; an
+ *  internal device must name one of STAFF_BOOKING_SOURCES (null = missing / unknown → the field's error). */
+export function resolveBookingSource(raw: unknown, internal: boolean): BookingSource | null {
+  if (!internal) return DIRECT_BOOKING_SOURCE;
+  const v = String(raw ?? '').trim();
+  return (STAFF_BOOKING_SOURCES as readonly string[]).includes(v) ? (v as BookingSource) : null;
+}
+
+/** An internal device's token is valid when its SHA-256 (hex) is one of `hashes` (content/team.json → token_sha256).
+ *  Web Crypto — the same code in the browser, Deno and Node. Anything but a short printable string is refused. */
+export async function teamTokenOk(token: unknown, hashes: readonly string[]): Promise<boolean> {
+  if (typeof token !== 'string' || !token || token.length > 200 || !/^[!-~]+$/.test(token) || !hashes.length) return false;
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(token));
+  const hex = Array.from(new Uint8Array(buf), (b) => b.toString(16).padStart(2, '0')).join('');
+  let hit = false;
+  for (const h of hashes) {
+    // compare every listed hash in full (no early exit on the first differing character)
+    let diff = h.length ^ hex.length;
+    for (let i = 0; i < hex.length; i++) diff |= hex.charCodeAt(i) ^ (h.charCodeAt(i) || 0);
+    if (diff === 0) hit = true;
+  }
+  return hit;
 }
 
 /** An offer's promo code (2 Nov 2026, «العروض»): letters A–Z, digits and hyphens, 3–20 characters, upper case. */
@@ -277,6 +315,9 @@ export function validateBooking(p: BookingInput, ctx: RuleContext): { ok: true; 
   const promo = normalisePromo(p.promo_code);
   if (promo === null) errors.promo_code = 'format';
 
+  const source = resolveBookingSource(p.booking_source, Boolean(ctx.internal));
+  if (source === null) errors.booking_source = 'booking_source';
+
   if (Object.keys(errors).length) return { ok: false, errors };
   return {
     ok: true,
@@ -298,6 +339,7 @@ export function validateBooking(p: BookingInput, ctx: RuleContext): { ok: true; 
       email,
       notes: String(p.notes ?? '').trim().slice(0, 1000),
       promo_code: promo as string,
+      booking_source: source as BookingSource,
     },
   };
 }

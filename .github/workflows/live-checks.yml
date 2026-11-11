@@ -131,6 +131,8 @@ jobs:
       - name: Run the live checks
         env:
           ARMADA_PW_BUNDLED: '1'
+          # team-device-check (11 Nov 2026): the internal device's token, to exercise ?team=<token>
+          TEAM_DEVICE_TOKEN: ${{ secrets.TEAM_DEVICE_TOKEN }}
         run: NODE_OPTIONS="--import=$GITHUB_WORKSPACE/scripts/pw-bundled.mjs" node scripts/check-all.mjs --live "${{ needs.gate.outputs.url }}" --shard ${{ matrix.shard }}
       # 11 Nov 2026 (scripts/live-guard.mjs): a page that is not this site's — its HTML, every response header, the
       # server address, the DNS answer and the time — kept with the run

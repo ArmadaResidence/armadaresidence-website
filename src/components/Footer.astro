@@ -160,6 +160,8 @@ const social: { name: string; url: string }[] = [
       <p class="text-xs text-porcelain/70">{footerLine(locale)}</p>
       {/* reopens the cookie banner on its customize view (7 Nov 2026; src/lib/consent.ts) */}
       <button type="button" class="text-xs text-porcelain/80 underline underline-offset-2 py-2 hover:text-bronze" data-cookie-settings>{t.cookies.settings}</button>
+      {/* internal devices (11 Nov 2026 — Base.astro, content/team.json): shown only under <html data-team> (global.css) */}
+      <span class="team-badge text-xs text-porcelain border border-bronze/60 rounded-full px-3 py-1" title={t.footer.team_device_title} data-team-badge>{t.footer.team_device}</span>
     </div>
   </div>
 </footer>

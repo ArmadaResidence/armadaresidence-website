@@ -622,6 +622,19 @@ footer :focus-visible,
   max-height: calc(100vh - 6rem);
   overflow-y: auto;
 }
+/* internal devices (11 Nov 2026 — Base.astro, content/team.json): the footer's «جهاز داخلي» and the booking form's
+   «مصدر الحجز» exist in every page but show only on a marked browser */
+.team-badge,
+[data-team-only] {
+  display: none;
+}
+html[data-team] .team-badge {
+  display: inline-block;
+}
+html[data-team] [data-team-only] {
+  display: block;
+}
+
 html[data-consent-open] .cookie-banner {
   display: block;
 }

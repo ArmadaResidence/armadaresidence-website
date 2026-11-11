@@ -66,6 +66,11 @@ export interface SourcesReport {
   sources: { key: string; bookings: number; nights: number; revenue?: number; revenue_share?: number | null }[];
   campaigns: { campaign: string; platform: string; bookings: number; revenue?: number; avg_value?: number }[];
 }
+/** «حسب مصدر الحجز» (11 Nov 2026 — public.report_booking_sources): confirmed bookings by reservations.booking_source */
+export interface BookingSourcesReport {
+  bookings: number;
+  sources: { key: string; bookings: number; nights: number; revenue?: number; revenue_share?: number | null }[];
+}
 export interface Cancellations {
   confirmed: number; cancelled: number; rate: number | null; declined: number;
   buckets: Record<'0' | '1-3' | '4-7' | '8-30' | '30+', number>;
@@ -93,6 +98,7 @@ export const reportPerformance = (branch: string, p: Period, c: Period | null) =
   rpc<Performance>('report_performance', { p_branch: b(branch), p_from: p.from, p_to: p.to, p_cmp_from: c?.from ?? null, p_cmp_to: c?.to ?? null });
 export const reportBehaviour = (branch: string, p: Period) => rpc<Behaviour>('report_behaviour', { p_branch: b(branch), p_from: p.from, p_to: p.to });
 export const reportSources = (branch: string, p: Period) => rpc<SourcesReport>('report_sources', { p_branch: b(branch), p_from: p.from, p_to: p.to });
+export const reportBookingSources = (branch: string, p: Period) => rpc<BookingSourcesReport>('report_booking_sources', { p_branch: b(branch), p_from: p.from, p_to: p.to });
 export const reportCancellations = (branch: string, p: Period) => rpc<Cancellations>('report_cancellations', { p_branch: b(branch), p_from: p.from, p_to: p.to });
 export const reportClubPartners = (branch: string, p: Period) => rpc<ClubPartners>('report_club_partners', { p_branch: b(branch), p_from: p.from, p_to: p.to });
 
@@ -222,6 +228,7 @@ export const HOW = {
   weekdays: 'نسبة المباع من مخزون الموقع حسب ليلة الأسبوع خلال الفترة.',
   losDist: 'توزيع الحجوزات المؤكدة المسجّلة في الفترة حسب عدد الليالي.',
   srcTable: 'الحجوزات المؤكدة المسجّلة في الفترة حسب مصدر أول زيارة، وإيراد غرفها كاملًا.',
+  bookingSources: 'الحجوزات المؤكدة المسجّلة في الفترة حسب مصدر الحجز: «الموقع مباشرة» لحجوزات الزوّار، وما اختاره الفريق على الأجهزة الداخلية (انستجرام، واتساب…)، وإيراد غرفها كاملًا.',
   campaigns: 'الحجوزات المؤكدة التي حملت اسم حملة (utm_campaign)؛ متوسط قيمة الحجز = إيراد الغرف ÷ عدد الحجوزات.',
   cancelRate: 'الحجوزات التي أُلغيت بعد تأكيدها ÷ كل الحجوزات التي تأكدت، من الحجوزات المسجّلة في الفترة.',
   cancelBuckets: 'الأيام بين الإلغاء ويوم الوصول.',

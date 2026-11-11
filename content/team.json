@@ -1,0 +1,5 @@
+{
+  "_note": "Internal devices (Ahmed, 11 Nov 2026 — DECISIONS.md 2026-11-11 «Internal devices and the booking source»). Opening any page with ?team=<token> marks that browser as internal for max_age_days (a first-party cookie armada_team + localStorage armada-team); ?team=off removes the mark. Only the SHA-256 (hex) of the token is here — the token itself is never committed (Ahmed has it; CI has it as the repository secret TEAM_DEVICE_TOKEN). On an internal device the site never loads GTM (no GA4, no ad pixels, no Clarity) unless the URL carries gtm_debug (GTM Preview — then for that tab), the footer shows «جهاز داخلي», and the booking form asks «مصدر الحجز»; booking-request accepts a source only with a token whose hash is listed here, every other booking is stored as website («الموقع مباشرة»). To rotate: replace the hash (several may be listed while staff move over), rebuild and redeploy booking-request; a device holding an old token loses the mark on its next page view.",
+  "token_sha256": ["3378968ea5007115ea46b5787853e93ae72b61f17d60a7c8aa5b66a4013e4aac"],
+  "max_age_days": 365
+}

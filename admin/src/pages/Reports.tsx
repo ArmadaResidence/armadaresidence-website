@@ -14,7 +14,7 @@ import * as api from '../lib/api';
 import * as m from '../lib/metrics';
 import { workbook, type Sheet } from '../lib/xlsx';
 import { useSession } from '../lib/session';
-import { BRANCH_NAMES, DAY, NIGHT, dateRange, longDate, measureWord, nightsWord, riyadhDateTimeLong, riyadhToday, sar, shortDate } from '../lib/format';
+import { BRANCH_NAMES, DAY, NIGHT, bookingSourceLabel, dateRange, longDate, measureWord, nightsWord, riyadhDateTimeLong, riyadhToday, sar, shortDate } from '../lib/format';
 import { BranchSelect, ErrorBox, Field } from '../components/ui';
 import DateField from '../components/DateField';
 import { AnimatedNumber, Bars, ChartCard, DataTable, HBars, HowTip, Legend, Lines, useFirstLoad } from '../components/charts';
@@ -50,6 +50,7 @@ export default function Reports() {
   const [perf, setPerf] = useState<Sect<m.Performance>>(empty);
   const [beh, setBeh] = useState<Sect<m.Behaviour>>(empty);
   const [src, setSrc] = useState<Sect<m.SourcesReport>>(empty);
+  const [bsrc, setBsrc] = useState<Sect<m.BookingSourcesReport>>(empty);
   const [can, setCan] = useState<Sect<m.Cancellations>>(empty);
   const [cp, setCp] = useState<Sect<m.ClubPartners>>(empty);
   const first = useFirstLoad(!!perf.data);
@@ -70,6 +71,7 @@ export default function Reports() {
       run(m.reportPerformance(branch, period, cmp), setPerf),
       run(m.reportBehaviour(branch, period), setBeh),
       run(m.reportSources(branch, period), setSrc),
+      run(m.reportBookingSources(branch, period), setBsrc),
       run(m.reportCancellations(branch, period), setCan),
       run(m.reportClubPartners(branch, period), setCp),
     ]);
@@ -81,7 +83,7 @@ export default function Reports() {
   const cmpText = cmp ? dateRange(cmp.from, cmp.to) : null;
 
   function exportXlsx() {
-    const sheets = buildSheets({ perf: perf.data, beh: beh.data, src: src.data, can: can.data, cp: cp.data, money, scope, periodText, cmpText });
+    const sheets = buildSheets({ perf: perf.data, beh: beh.data, src: src.data, bsrc: bsrc.data, can: can.data, cp: cp.data, money, scope, periodText, cmpText });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(workbook(sheets));
     a.download = `armada-reports-${period.from}-${period.to}.xlsx`;
@@ -139,7 +141,7 @@ export default function Reports() {
       <p className="text-sm text-ink-muted note-scope" data-scope-note>كل الأرقام من الحجوزات المسجّلة في اللوحة. حجوزات المنصات الأخرى تدخل بعد ربط مدير القنوات.</p>
       <Performance s={perf} money={money} first={first} hasCmp={!!cmp} />
       <BehaviourSection s={beh} first={first} />
-      <SourcesSection s={src} money={money} first={first} />
+      <SourcesSection s={src} bs={bsrc} money={money} first={first} />
       <CancelSection s={can} first={first} />
       <ClubSection s={cp} first={first} />
       </td></tr></tbody>
@@ -253,11 +255,23 @@ function BehaviourSection({ s, first }: { s: Sect<m.Behaviour>; first: boolean }
 }
 
 // ───────────────────────── المصادر والحملات ─────────────────────────
-function SourcesSection({ s, money, first }: { s: Sect<m.SourcesReport>; money: boolean; first: boolean }) {
+function SourcesSection({ s, bs, money, first }: { s: Sect<m.SourcesReport>; bs: Sect<m.BookingSourcesReport>; money: boolean; first: boolean }) {
   const d = s.data;
+  const e = bs.data;
   return (
     <section id="sources" aria-labelledby="sources-h" className="grid gap-3 report-section" data-section="sources">
       <SectionHead id="sources" title="المصادر والحملات" />
+      <ErrorBox error={bs.error} />
+      {/* «حسب مصدر الحجز» (11 Nov 2026): website = a visitor; the others were picked by staff on an internal device */}
+      {e && (
+        <ChartCard title="حسب مصدر الحجز" how={m.HOW.bookingSources} id="booking-src"
+          summary={e.bookings ? `الحجوزات المؤكدة حسب مصدر الحجز: ${e.sources.map((x) => `${bookingSourceLabel(x.key)} ${x.bookings}`).join('، ')}.` : 'لا حجوزات مؤكدة في الفترة.'}
+          table={{ head: ['مصدر الحجز', 'الحجوزات', 'الليالي', ...(money ? ['الإيراد', 'حصة الإيراد'] : [])], rows: e.sources.map((x) => [bookingSourceLabel(x.key), x.bookings, x.nights, ...(money ? [sar(x.revenue ?? 0), m.pctText(x.revenue_share)] : [])]) }}>
+          {e.bookings === 0 ? <p className="text-sm text-ink-muted">لا حجوزات مؤكدة في الفترة.</p> : (
+            <HBars first={first} rows={e.sources.map((x) => ({ key: x.key, label: bookingSourceLabel(x.key), value: x.bookings, text: money && x.revenue !== undefined ? `${x.bookings} · ${sar(x.revenue)} · ${m.pctText(x.revenue_share)}` : `${x.bookings} · ${nightsWord(x.nights)}` }))} />
+          )}
+        </ChartCard>
+      )}
       <ErrorBox error={s.error} />
       {d && (
         <div className="grid lg:grid-cols-2 gap-4">
@@ -348,7 +362,7 @@ function ClubSection({ s, first }: { s: Sect<m.ClubPartners>; first: boolean }) 
 }
 
 // ───────────────────────── Excel ─────────────────────────
-function buildSheets(x: { perf: m.Performance | null; beh: m.Behaviour | null; src: m.SourcesReport | null; can: m.Cancellations | null; cp: m.ClubPartners | null; money: boolean; scope: string; periodText: string; cmpText: string | null }): Sheet[] {
+function buildSheets(x: { perf: m.Performance | null; beh: m.Behaviour | null; src: m.SourcesReport | null; bsrc: m.BookingSourcesReport | null; can: m.Cancellations | null; cp: m.ClubPartners | null; money: boolean; scope: string; periodText: string; cmpText: string | null }): Sheet[] {
   const head = `${x.scope} · ${x.periodText}${x.cmpText ? ` · المقارنة: ${x.cmpText}` : ''} · كل الأرقام من الحجوزات المسجّلة في اللوحة`;
   const sheets: Sheet[] = [];
   const p = x.perf;
@@ -378,7 +392,9 @@ function buildSheets(x: { perf: m.Performance | null; beh: m.Behaviour | null; s
     { title: 'توزيع مدة الإقامة', rows: [['المدة', 'الحجوزات'], ...m.LOS_BUCKETS.map((k) => [k.label, b.los[k.key]])] },
   ] });
   const s = x.src;
+  const bs = x.bsrc;
   if (s) sheets.push({ name: 'المصادر والحملات', blocks: [
+    ...(bs ? [{ title: `حسب مصدر الحجز · ${head}`, rows: [['مصدر الحجز', 'الحجوزات', 'الليالي', ...(x.money ? ['الإيراد', 'حصة الإيراد (٪)'] : [])], ...bs.sources.map((r) => [bookingSourceLabel(r.key), r.bookings, r.nights, ...(x.money ? [num(r.revenue), num(r.revenue_share)] : [])])] }] : []),
     { title: head, rows: [['المصدر', 'الحجوزات', 'الليالي', ...(x.money ? ['الإيراد', 'حصة الإيراد (٪)'] : [])], ...s.sources.map((r) => [m.sourceLabel(r.key), r.bookings, r.nights, ...(x.money ? [num(r.revenue), num(r.revenue_share)] : [])])] },
     { title: 'الحملات', rows: [['الحملة', 'المنصة', 'الحجوزات', ...(x.money ? ['الإيراد', 'متوسط قيمة الحجز'] : [])], ...s.campaigns.map((c) => [c.campaign, m.sourceLabel(c.platform), c.bookings, ...(x.money ? [num(c.revenue), num(c.avg_value)] : [])])] },
   ] });

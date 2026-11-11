@@ -9,6 +9,7 @@ import { hashedUserData } from '@lib/user-data';
 import { withClickIds } from '@lib/click-ids';
 import { turnstileToken } from '@lib/turnstile';
 import { bindOnce } from '@lib/client';
+import { teamToken } from '@lib/team';
 import { initDateRange } from '@lib/daterange';
 import {
   bedsNeeded,
@@ -128,6 +129,19 @@ function initForm(form: HTMLFormElement) {
   let promoState: string | null = null;
   const touched = new Set<string>();
   let sending = false;
+  // «مصدر الحجز» (Ahmed, 11 Nov 2026): internal devices only (src/lib/team.ts). The select stays disabled — out of the
+  // form data, never sent — on a visitor's browser; on a marked one it is enabled and required. The mark can arrive
+  // after this form started (?team=<token> on this very page): Base.astro then dispatches armada:team.
+  const sourceSel = form.querySelector<HTMLSelectElement>('[data-booking-source]');
+  const internal = () => teamToken() !== null && !!sourceSel;
+  const syncTeam = () => {
+    if (!sourceSel) return;
+    const on = internal();
+    sourceSel.disabled = !on;
+    sourceSel.required = on;
+  };
+  syncTeam();
+  document.addEventListener('armada:team', syncTeam);
   /** once the guest sets the extra beds themselves, the auto-fill stops overriding them */
   let bedsTouched = false;
 
@@ -278,6 +292,7 @@ function initForm(form: HTMLFormElement) {
     rooms: data.rooms,
     today: riyadhToday(),
     phone: (raw: string, country: string) => phoneToE164(raw, country),
+    internal: internal(),
   });
   const collect = (): BookingInput => {
     const fd = new FormData(form);
@@ -302,12 +317,14 @@ function initForm(form: HTMLFormElement) {
       email: v('email'),
       notes: v('notes'),
       promo_code: v('promo_code'),
+      booking_source: v('booking_source'),
     };
   };
   const FIELD_OF: Record<string, string> = { children: 'adults' };
   const message = (field: string, code: FieldError): string => {
     const e = S.errors;
     if (code === 'extra_beds') return e.extra_beds;
+    if (code === 'booking_source') return e.booking_source ?? e.required;
     if (code === 'required' && field === 'breakfast') return e.breakfast;
     const map: Partial<Record<FieldError, string>> = {
       required: e.required, branch: e.required, room: e.required, date_format: e.date_format, past: e.past, dates: e.dates,
@@ -337,7 +354,7 @@ function initForm(form: HTMLFormElement) {
       adultsIn.setAttribute('aria-invalid', msg ? 'true' : 'false');
     } else control(field)?.setAttribute('aria-invalid', msg ? 'true' : 'false');
   }
-  const FIELDS = ['branch', 'room', 'check_in', 'check_out', 'adults', 'extra_beds', 'breakfast', 'children_ages', ...(promoIn ? ['promo_code'] : []), 'name', 'phone', 'email'];
+  const FIELDS = ['booking_source', 'branch', 'room', 'check_in', 'check_out', 'adults', 'extra_beds', 'breakfast', 'children_ages', ...(promoIn ? ['promo_code'] : []), 'name', 'phone', 'email'];
   function errorsNow() {
     const r = validateBooking(collect(), ctx());
     return r.ok ? {} : (r.errors as Record<string, FieldError>);
@@ -360,7 +377,7 @@ function initForm(form: HTMLFormElement) {
     if (first) first.focus();
     return !first;
   }
-  for (const f of ['branch', 'room', 'check_in', 'check_out', 'name', 'email']) {
+  for (const f of ['booking_source', 'branch', 'room', 'check_in', 'check_out', 'name', 'email']) {
     const c = control(f);
     c?.addEventListener('blur', () => {
       if (f === 'name' && (c as HTMLInputElement).value.trim() === '' && !touched.has(f)) return;
@@ -860,6 +877,8 @@ function initForm(form: HTMLFormElement) {
         ...(marketing ? { consent_version: data.consentVersion } : {}),
         // the visit's first-touch source (3 Nov 2026, part G): no personal data (src/lib/visit.ts)
         ...(firstTouch() ? { visit: firstTouch() } : {}),
+        // «مصدر الحجز» + the device's team token — internal devices only (the server checks the token, 11 Nov 2026)
+        ...(internal() ? { booking_source: d.booking_source, team_token: teamToken() } : {}),
       };
       // Cloudflare Turnstile (content/turnstile.json — src/lib/turnstile.ts): a fresh token per submission
       const ts = await turnstileToken(form);

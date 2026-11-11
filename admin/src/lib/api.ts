@@ -93,6 +93,8 @@ export interface Reservation {
   room_name_ar: string | null;
   room_name_en: string | null;
   source: string;
+  /** «مصدر الحجز» (11 Nov 2026): website, or what staff picked on an internal device (format.ts BOOKING_SOURCE_LABELS) */
+  booking_source: string;
   branch: string;
   room_type_id: string | null;
   check_in: string;
@@ -332,6 +334,8 @@ export interface ReservationFilter {
   /** «الوصول اليوم» / «المغادرة اليوم» from the overview (4 Nov 2026): an exact arrival / departure date */
   arriveOn?: string;
   departOn?: string;
+  /** «مصدر الحجز» (11 Nov 2026): one reservations.booking_source key */
+  bookingSource?: string;
 }
 export async function reservations(f: ReservationFilter, limit = 200): Promise<Reservation[]> {
   let q = supabase.from('reservations').select('*').order('created_at', { ascending: false }).limit(limit);
@@ -345,6 +349,7 @@ export async function reservations(f: ReservationFilter, limit = 200): Promise<R
   if (f.stayTo) q = q.lte('check_in', f.stayTo);
   if (f.arriveOn) q = q.eq('check_in', f.arriveOn);
   if (f.departOn) q = q.eq('check_out', f.departOn);
+  if (f.bookingSource) q = q.eq('booking_source', f.bookingSource);
   if (f.createdFrom) q = q.gte('created_at', f.createdFrom + 'T00:00:00+03:00');
   if (f.createdTo) q = q.lte('created_at', f.createdTo + 'T23:59:59+03:00');
   if (f.search) {

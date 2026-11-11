@@ -298,6 +298,19 @@
       "email": "البريد الإلكتروني (اختياري)",
       "notes": "ملاحظات (اختياري)",
       "notes_hint": "وقت الوصول المتوقع، طلبات خاصة، أو أي استفسار.",
+      "booking_source": "مصدر الحجز",
+      "booking_source_choose": "اختر مصدر الحجز",
+      "booking_source_hint": "يظهر على الأجهزة الداخلية فقط: من أين جاء هذا الضيف؟",
+      "booking_sources": {
+        "instagram": "انستجرام",
+        "whatsapp": "واتساب",
+        "phone": "اتصال هاتفي",
+        "snapchat": "سناب شات",
+        "tiktok": "تيك توك",
+        "facebook": "فيسبوك",
+        "walk_in": "حضور مباشر",
+        "other": "أخرى"
+      },
       "promo": "كود العرض (اختياري)",
       "submit": "أرسل الطلب",
       "sending": "جارٍ الإرسال…",
@@ -305,6 +318,7 @@
       "consent_link": "الشروط والسياسات",
       "errors": {
         "required": "هذا الحقل مطلوب.",
+        "booking_source": "اختر مصدر الحجز.",
         "dates": "تاريخ المغادرة يجب أن يكون بعد تاريخ الوصول.",
         "date_format": "اختر التاريخ من التقويم.",
         "past": "تاريخ الوصول لا يمكن أن يكون في الماضي.",
@@ -410,6 +424,8 @@
       "settings": "إعدادات ملفات تعريف الارتباط"
     },
     "footer": {
+      "team_device": "جهاز داخلي",
+      "team_device_title": "هذا الجهاز معلَّم كجهاز داخلي: لا يُحمَّل عليه أي تتبّع أو إعلانات، ويُسأل عن مصدر الحجز.",
       "branches": "الفرعان",
       "site": "الموقع",
       "contact": "تواصل",
@@ -1095,6 +1111,19 @@
       "email": "Email (optional)",
       "notes": "Notes (optional)",
       "notes_hint": "Expected arrival time, special requests or any question.",
+      "booking_source": "Booking source",
+      "booking_source_choose": "Choose the booking source",
+      "booking_source_hint": "Shown on internal devices only: where did this guest come from?",
+      "booking_sources": {
+        "instagram": "Instagram",
+        "whatsapp": "WhatsApp",
+        "phone": "Phone call",
+        "snapchat": "Snapchat",
+        "tiktok": "TikTok",
+        "facebook": "Facebook",
+        "walk_in": "Walk-in",
+        "other": "Other"
+      },
       "promo": "Promo code (optional)",
       "submit": "Send request",
       "sending": "Sending…",
@@ -1102,6 +1131,7 @@
       "consent_link": "terms and policies",
       "errors": {
         "required": "This field is required.",
+        "booking_source": "Choose the booking source.",
         "dates": "Check-out must be after check-in.",
         "date_format": "Choose the date from the calendar.",
         "past": "Check-in cannot be in the past.",
@@ -1207,6 +1237,8 @@
       "settings": "Cookie settings"
     },
     "footer": {
+      "team_device": "Internal device",
+      "team_device_title": "This browser is marked as an internal device: no tracking or ads load on it, and bookings ask for their source.",
       "branches": "Properties",
       "site": "Site",
       "contact": "Contact",

@@ -20,7 +20,7 @@ import { pathToFileURL } from 'node:url';
 
 // the suite, in the order check-all runs it
 export const STATIC_CHECKS = ['typecheck', 'admin-digits-check', 'admin-format-check', 'admin-sidebar-check', 'admin-audit-check', 'admin-rooms-check', 'auth-emails-check', 'whatsapp-check', 'email-print-check', 'offers-engine-check', 'turnstile-check', 'deploy-alert-check', 'wa-automation-check', 'storage-backup-check'];
-export const BROWSER_CHECKS = ['booking-nav-check', 'drawer-check', 'booking-whatsapp-check', 'datepicker-check', 'click-id-check', 'motion-check', 'booking-instant-check', 'partners-form-check', 'careers-form-check', 'dining-site-check', 'gallery-site-check', 'offers-site-check', 'blog-site-check', 'faq-site-check', 'content-site-check', 'club-site-check', 'home-sections-check', 'consent-check', 'partners-button-check', 'theme-check', 'hero-video-check', 'hero-slides-check', 'mobile-forms-check', 'a11y-check'];
+export const BROWSER_CHECKS = ['booking-nav-check', 'drawer-check', 'booking-whatsapp-check', 'datepicker-check', 'click-id-check', 'team-device-check', 'motion-check', 'booking-instant-check', 'partners-form-check', 'careers-form-check', 'dining-site-check', 'gallery-site-check', 'offers-site-check', 'blog-site-check', 'faq-site-check', 'content-site-check', 'club-site-check', 'home-sections-check', 'consent-check', 'partners-button-check', 'theme-check', 'hero-video-check', 'hero-slides-check', 'mobile-forms-check', 'a11y-check'];
 // the static checks that open a browser (the dashboard's sidebar and «السجل» pages, the emails' print layout): CI only
 export const STATIC_BROWSER_CHECKS = ['admin-sidebar-check', 'admin-audit-check', 'admin-rooms-check', 'email-print-check'];
 // measured with the reader's system fonts (the emails name 'Segoe UI', Tahoma, Arial after IBM Plex Sans Arabic, which
@@ -33,7 +33,7 @@ export const FAST_CHECKS = STATIC_CHECKS.filter((c) => !STATIC_BROWSER_CHECKS.in
 // not placed fails every run instead of silently never running.
 export const CI_SHARDS = {
   'booking-1': ['booking-nav-check', 'drawer-check', 'dining-site-check', 'gallery-site-check', 'blog-site-check', 'faq-site-check', 'content-site-check'],
-  'booking-2': ['booking-whatsapp-check', 'datepicker-check', 'click-id-check'],
+  'booking-2': ['booking-whatsapp-check', 'datepicker-check', 'click-id-check', 'team-device-check'],
   'motion-offers': ['motion-check', 'booking-instant-check', 'offers-site-check'],
   'forms': ['partners-form-check', 'careers-form-check', 'club-site-check', 'consent-check', 'partners-button-check'],
   'home-phones': ['home-sections-check', 'theme-check', 'hero-video-check', 'hero-slides-check', 'mobile-forms-check'],

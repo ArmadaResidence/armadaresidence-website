@@ -20,6 +20,7 @@ import partnersPagesJson from '../../content/partners-pages.json';
 import careersJson from '../../content/careers.json';
 import clubJson from '../../content/club.json';
 import turnstileJson from '../../content/turnstile.json';
+import teamJson from '../../content/team.json';
 import { sarText } from '../../supabase/functions/booking-request/rules.ts';
 
 export type Locale = 'ar' | 'en';
@@ -299,6 +300,9 @@ export const siteTexts = withTexts('site-texts.json', siteTextsJson);
 export const seo = seoJson;
 /** Cloudflare Turnstile's public site key while the setting is on (content/turnstile.json, 4 Nov 2026); '' = off */
 export const turnstileKey: string = turnstileJson.enabled && turnstileJson.site_key ? String(turnstileJson.site_key) : '';
+/** internal devices (content/team.json, 11 Nov 2026): the SHA-256 of the team tokens and how long a mark lasts */
+export const teamHashes: string[] = teamJson.token_sha256;
+export const teamMaxDays: number = teamJson.max_age_days;
 
 export type UI = (typeof uiJson)['ar'];
 export const ui = (locale: Locale): UI => uiJson[locale] as UI;

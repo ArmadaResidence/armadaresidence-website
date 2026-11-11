@@ -41,7 +41,7 @@
 import { parsePhoneNumberFromString } from 'npm:libphonenumber-js@1.12.10/min';
 import { siteOrigins } from '../_shared/site-cors.ts';
 import content from './content.generated.json' with { type: 'json' };
-import { EMAIL, intIn, ISO_DATE, nightsBetween, riyadhToday, validateBooking, validatePartnerContact, type ValidBooking } from './rules.ts';
+import { EMAIL, intIn, ISO_DATE, nightsBetween, riyadhToday, teamTokenOk, validateBooking, validatePartnerContact, type BookingSource, type ValidBooking } from './rules.ts';
 import {
   bookingCancelled,
   bookingConfirmation,
@@ -93,6 +93,11 @@ interface Payload {
   consent_version?: string;
   /** the visit's first-touch source (part G): utm values, click-id presence, referrer domain, landing path */
   visit?: Record<string, unknown>;
+  /** «مصدر الحجز» (11 Nov 2026): taken only together with a valid team_token (an internal device); otherwise ignored and
+   *  the booking is stored as website */
+  booking_source?: string;
+  /** the internal device's token (content/team.json → token_sha256 holds its SHA-256) */
+  team_token?: string;
   /** honeypot — hidden on the form, must stay empty */
   website?: string;
   /** QA only, with a valid test token: 'staff-emails' sends the dashboard staff emails as [TEST] samples to `to`;
@@ -488,6 +493,8 @@ interface Row {
   marketingConsent?: boolean;
   consentVersion?: string;
   visit?: Record<string, unknown> | null;
+  /** «مصدر الحجز» (11 Nov 2026): bookings only — website unless an internal device named one */
+  bookingSource?: BookingSource;
 }
 
 type Validation = { ok: true; row: Row } | { ok: false; error: string; fields?: Record<string, string> };
@@ -530,7 +537,7 @@ async function liveRooms(): Promise<LiveRoom[] | null> {
   }
 }
 
-function validate(p: Payload, test = false, live: LiveRoom[] | null = null): Validation {
+function validate(p: Payload, test = false, live: LiveRoom[] | null = null, internal = false): Validation {
   const locale: Locale = p.locale === 'en' ? 'en' : 'ar';
   const requestType = String(p.request_type ?? 'booking').trim();
   if (requestType !== 'booking' && !content.enquiry_types.includes(requestType)) return { ok: false, error: 'invalid request_type' };
@@ -555,12 +562,15 @@ function validate(p: Payload, test = false, live: LiveRoom[] | null = null): Val
         email: p.email,
         notes: p.notes,
         promo_code: p.promo_code,
+        booking_source: p.booking_source,
       },
       {
         branches: KNOWN_BRANCHES,
         rooms: test ? [...(live ?? content.rooms), ...QA_ROOMS] : live ?? content.rooms,
         today: riyadhToday(),
         phone: phoneE164,
+        // «مصدر الحجز» (11 Nov 2026): only an internal device may name one; a visitor's value is dropped (website)
+        internal,
       },
     );
     if (!r.ok) return { ok: false, error: 'invalid booking request', fields: r.errors as Record<string, string> };
@@ -570,7 +580,8 @@ function validate(p: Payload, test = false, live: LiveRoom[] | null = null): Val
       row: { locale, requestType, branch: d.branch, check_in: d.check_in, check_out: d.check_out, nights: d.nights, adults: d.adults, children: d.children, childrenAges: d.children_ages, extraBeds: d.extra_beds, needsCoordination: d.needs_coordination, capacity: d.capacity, room: d.room, breakfast: d.breakfast, name: d.name, phone: d.phone, email: d.email, notes: d.notes, page, organisation: '', roomsRequested: null, meals: '', promoCode: d.promo_code,
         marketingConsent: p.marketing_consent === true || p.marketing_consent === 'true' || p.marketing_consent === 'yes',
         consentVersion: String(p.consent_version ?? ''),
-        visit: p.visit && typeof p.visit === 'object' && !Array.isArray(p.visit) ? p.visit : null },
+        visit: p.visit && typeof p.visit === 'object' && !Array.isArray(p.visit) ? p.visit : null,
+        bookingSource: d.booking_source },
     };
   }
 
@@ -674,7 +685,8 @@ async function submitBooking(ref: string, d: Row, ua: string, quoted: string | n
   const env = serviceEnv();
   if (!env) return null;
   try {
-    const res = await fetch(`${env.url}/rest/v1/rpc/submit_booking`, {
+    // submit_booking_sourced (11 Nov 2026) = submit_booking with «مصدر الحجز» set on the stored row (service role only)
+    const res = await fetch(`${env.url}/rest/v1/rpc/submit_booking_sourced`, {
       method: 'POST',
       headers: serviceHeaders(env.key),
       body: JSON.stringify({
@@ -706,6 +718,8 @@ async function submitBooking(ref: string, d: Row, ua: string, quoted: string | n
           consent_version: d.consentVersion || null,
           // stored by submit_booking through internal.clean_visit (anything but the known keys dropped)
           visit: d.visit ?? null,
+          // «مصدر الحجز»: website unless validate() saw a valid team token (the database checks the list again)
+          booking_source: d.bookingSource ?? 'website',
         },
       }),
     });
@@ -847,7 +861,10 @@ Deno.serve(async (req) => {
   if (token && payload.preview === 'wa-log') return previewWaLog(req, payload);
   if (token && payload.preview === 'cancel-email') return previewCancelEmail(req, payload);
   if (token && payload.preview === 'guest-email') return previewGuestEmail(req, payload);
-  if (limitApplies(req, token, 'ip') && (await rateLimited(req, Boolean(token)))) return json(req, 429, { ok: false, error: 'too many requests' });
+  // an internal device (content/team.json, 11 Nov 2026): staff take many bookings from one office address, so the per-IP
+  // limit does not apply to a valid team token (the per-phone / per-email limits and Turnstile still do)
+  const teamOk = await teamTokenOk(payload.team_token, (content as { team_token_sha256?: string[] }).team_token_sha256 ?? []);
+  if (!teamOk && limitApplies(req, token, 'ip') && (await rateLimited(req, Boolean(token)))) return json(req, 429, { ok: false, error: 'too many requests' });
 
   // Cloudflare Turnstile (content/turnstile.json; test mode skips it)
   if (!token) {
@@ -856,7 +873,7 @@ Deno.serve(async (req) => {
   }
 
   const live = await liveRooms();
-  const v = validate(payload, Boolean(token), live);
+  const v = validate(payload, Boolean(token), live, teamOk);
   if (!v.ok) return json(req, 422, { ok: false, error: v.error, ...(v.fields ? { fields: v.fields } : {}) });
   const d = v.row;
   // the room-type name the booking is made with (the reservation stores the same, reservations.room_name_*)

@@ -13,7 +13,7 @@ import { supabase } from '../lib/supabase';
 import * as api from '../lib/api';
 import type { Reservation, RoomType, StatusHistory, CalendarCell, WhatsAppMessage } from '../lib/api';
 import { useSession } from '../lib/session';
-import { BRANCH_FULL, BRANCH_NAMES, NOTIFY_FAILED, REASON_LABELS, STATUS_LABELS, WA_STATUS_LABELS, WA_TEMPLATE_LABELS, adultsWord, childrenWord, dateRange, longDate, nightsWord, riyadhDateTimeLong, roomsLeft, sar, toCsv, riyadhToday, waError, west } from '../lib/format';
+import { BOOKING_SOURCE_LABELS, BRANCH_FULL, BRANCH_NAMES, NOTIFY_FAILED, bookingSourceLabel, REASON_LABELS, STATUS_LABELS, WA_STATUS_LABELS, WA_TEMPLATE_LABELS, adultsWord, childrenWord, dateRange, longDate, nightsWord, riyadhDateTimeLong, roomsLeft, sar, toCsv, riyadhToday, waError, west } from '../lib/format';
 import { BranchSelect, CancelButton, Confirm, Drawer, Empty, ErrorBox, Field, Loading, Modal, Spinner, useToast } from '../components/ui';
 import DateField from '../components/DateField';
 import { BookingGuestBadges } from './Guests';
@@ -35,6 +35,8 @@ export default function Bookings() {
   const ISO = /^\d{4}-\d{2}-\d{2}$/;
   const [arriveOn, setArriveOn] = useState(ISO.test(params.get('arrive') ?? '') ? params.get('arrive')! : '');
   const [departOn, setDepartOn] = useState(ISO.test(params.get('depart') ?? '') ? params.get('depart')! : '');
+  // «مصدر الحجز» (11 Nov 2026): ?src=<key>
+  const [bookingSource, setBookingSource] = useState(BOOKING_SOURCE_LABELS[params.get('src') ?? ''] ? params.get('src')! : '');
   const [search, setSearch] = useState('');
   const [query, setQuery] = useState('');
   const [stayFrom, setStayFrom] = useState('');
@@ -79,13 +81,13 @@ export default function Bookings() {
   const load = useCallback(async () => {
     try {
       setError(null);
-      const list = await api.reservations({ branch: branch || undefined, status: status || undefined, needsCoordination: coord, confirmation: kind || undefined, search: query, arriveOn: arriveOn || undefined, departOn: departOn || undefined, stayFrom: stayFrom || undefined, stayTo: stayTo || undefined, createdFrom: createdFrom || undefined, createdTo: createdTo || undefined });
+      const list = await api.reservations({ branch: branch || undefined, status: status || undefined, needsCoordination: coord, confirmation: kind || undefined, search: query, arriveOn: arriveOn || undefined, departOn: departOn || undefined, bookingSource: bookingSource || undefined, stayFrom: stayFrom || undefined, stayTo: stayTo || undefined, createdFrom: createdFrom || undefined, createdTo: createdTo || undefined });
       setRows(list);
     } catch (e) {
       setError((e as Error).message);
       setRows([]);
     }
-  }, [branch, status, coord, kind, query, arriveOn, departOn, stayFrom, stayTo, createdFrom, createdTo]);
+  }, [branch, status, coord, kind, query, arriveOn, departOn, bookingSource, stayFrom, stayTo, createdFrom, createdTo]);
 
   useEffect(() => {
     load();
@@ -96,8 +98,9 @@ export default function Bookings() {
     if (kind) p.set('kind', kind);
     if (arriveOn) p.set('arrive', arriveOn);
     if (departOn) p.set('depart', departOn);
+    if (bookingSource) p.set('src', bookingSource);
     setParams(p, { replace: true });
-  }, [load, branch, status, coord, kind, arriveOn, departOn, locked, setParams]);
+  }, [load, branch, status, coord, kind, arriveOn, departOn, bookingSource, locked, setParams]);
 
   // realtime: a new or changed booking refreshes the list (RLS filters what each user receives)
   useEffect(() => {
@@ -129,7 +132,7 @@ export default function Bookings() {
       { key: 'check_in', label: 'الوصول' }, { key: 'check_out', label: 'المغادرة' }, { key: 'nights', label: 'الليالي' }, { key: 'adults', label: 'البالغون' },
       { key: 'children', label: 'الأطفال' }, { key: 'extra_beds', label: 'أسرّة إضافية' }, { key: 'breakfast_ar', label: 'الإفطار' }, { key: 'guest_name', label: 'الاسم' },
       { key: 'phone', label: 'الجوال' }, { key: 'email', label: 'البريد' }, { key: 'total', label: 'الإجمالي' }, { key: 'needs_coordination', label: 'يحتاج تنسيق' },
-      { key: 'fallback_ar', label: 'سبب الطلب' }, { key: 'created', label: 'وقت الطلب' }, { key: 'notes', label: 'ملاحظات الضيف' }, { key: 'internal_notes', label: 'ملاحظات داخلية' },
+      { key: 'fallback_ar', label: 'سبب الطلب' }, { key: 'booking_source_ar', label: 'مصدر الحجز' }, { key: 'created', label: 'وقت الطلب' }, { key: 'notes', label: 'ملاحظات الضيف' }, { key: 'internal_notes', label: 'ملاحظات داخلية' },
     ];
     const data = rows.map((r) => ({
       ...r,
@@ -139,6 +142,7 @@ export default function Bookings() {
       breakfast_ar: r.breakfast === 'with' ? 'مع الإفطار' : 'بدون إفطار',
       needs_coordination: r.needs_coordination ? 'نعم' : '',
       fallback_ar: r.fallback_reason ? REASON_LABELS[r.fallback_reason] ?? r.fallback_reason : '',
+      booking_source_ar: bookingSourceLabel(r.booking_source),
       created: riyadhDateTimeLong(r.created_at),
     }));
     const blob = new Blob([toCsv(data, cols)], { type: 'text/csv;charset=utf-8' });
@@ -171,6 +175,12 @@ export default function Bookings() {
             <option value="instant">تأكيد فوري</option>
             <option value="staff">أكّده الفريق</option>
             <option value="request">طلبات</option>
+          </select>
+        </Field>
+        <Field label="مصدر الحجز" id="f-source">
+          <select id="f-source" className="field" value={bookingSource} onChange={(e) => setBookingSource(e.target.value)} data-filter="booking-source">
+            <option value="">الكل</option>
+            {Object.entries(BOOKING_SOURCE_LABELS).map(([k, l]) => <option key={k} value={k}>{l}</option>)}
           </select>
         </Field>
         <Field label="بحث" id="f-q" hint="رقم الحجز، الاسم أو الجوال">
@@ -218,6 +228,7 @@ export default function Bookings() {
                     {r.confirmation === 'instant' && <span className="chip chip-request">تأكيد فوري</span>}
                     {r.status === 'request' && r.fallback_reason && <span className="chip chip-request">{REASON_LABELS[r.fallback_reason] ?? r.fallback_reason}</span>}
                     {r.extra_beds > 0 && <span className="chip chip-request num-ar">أسرّة إضافية: {r.extra_beds}</span>}
+                    {r.booking_source && r.booking_source !== 'website' && <span className="chip chip-request" data-row-source={r.booking_source}>{bookingSourceLabel(r.booking_source)}</span>}
                   </span>
                 </span>
                 <span className="text-end">
@@ -408,6 +419,7 @@ function Details({ r, roomTypes, editable, onClose, onChanged }: { r: Reservatio
         <dt className="text-ink-muted">الجوال</dt><dd className="font-semibold num"><a className="underline" href={`tel:${r.phone}`}>{r.phone}</a></dd>
         <dt className="text-ink-muted">البريد</dt><dd className="font-semibold latin">{r.email ? <a className="underline" href={`mailto:${r.email}`}>{r.email}</a> : '—'}</dd>
         {r.notes && (<><dt className="text-ink-muted">ملاحظات الضيف</dt><dd className="whitespace-pre-wrap">{r.notes}</dd></>)}
+        <dt className="text-ink-muted">مصدر الحجز</dt><dd className="font-semibold" data-booking-source={r.booking_source ?? 'website'}>{bookingSourceLabel(r.booking_source)}</dd>
         <dt className="text-ink-muted">المصدر</dt><dd>{r.source === 'website' ? 'الموقع' : 'اللوحة'} · {r.locale === 'en' ? 'النسخة الإنجليزية' : 'النسخة العربية'} · {riyadhDateTimeLong(r.created_at)}</dd>
         {r.status === 'cancelled' && r.cancel_reason_code && (
           <>
@@ -631,6 +643,7 @@ function PrintSheet({ r, room }: { r: Reservation; room: string }) {
       <p className="sheet-meta">
         <span>الحالة: <b>{STATUS_LABELS[r.status]}{r.confirmation === 'instant' ? ' (تأكيد فوري من الموقع)' : ''}</b></span>
         <span>تاريخ الحجز: <b>{riyadhDateTimeLong(r.created_at)}</b></span>
+        <span data-sheet-source>مصدر الحجز: <b>{bookingSourceLabel(r.booking_source)}</b></span>
         {r.is_test && <span><b>حجز تجريبي</b></span>}
       </p>
       <dl className="sheet-fields">

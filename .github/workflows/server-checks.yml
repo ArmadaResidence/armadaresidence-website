@@ -1,0 +1,75 @@
+# Server checks (Ahmed, 11 Nov 2026 — DECISIONS.md 2026-11-11 «Internal devices and the booking source»): the database
+# and the booking function, proved on the runner — free (public repository), never against a Supabase project.
+#   sql      — `supabase db start`: a LOCAL Postgres with every migration of this commit applied to an empty database,
+#              then the SQL test files (each one transaction, rolled back) through scripts/sql-test-run.mjs, which refuses
+#              any database that is not localhost.
+#   function — the real booking-request function under Deno against a stub Supabase origin
+#              (scripts/booking-source-server-check.mjs): a forged «مصدر الحجز» is stored as website; the team token
+#              (repository secret TEAM_DEVICE_TOKEN) is needed for a staff source.
+# Runs on a push to main that touches the database, the functions or these checks, and by hand.
+name: Server checks
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'supabase/migrations/**'
+      - 'supabase/tests/**'
+      - 'supabase/functions/booking-request/**'
+      - 'content/team.json'
+      - 'scripts/sql-test-run.mjs'
+      - 'scripts/booking-source-server-check.mjs'
+      - '.github/workflows/server-checks.yml'
+  workflow_dispatch:
+    inputs:
+      files:
+        description: SQL test files of supabase/tests (space-separated)
+        required: false
+        default: booking-source.sql
+
+permissions:
+  contents: read
+
+concurrency:
+  group: server-checks-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  sql:
+    name: server · SQL tests (local database)
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - uses: supabase/setup-cli@v1
+        with:
+          version: 2.120.0
+      - name: The local database (every migration of this commit)
+        run: supabase db start
+      - name: The SQL tests
+        run: node scripts/sql-test-run.mjs ${{ inputs.files || 'booking-source.sql' }}
+
+  function:
+    name: server · booking-request (Deno, stub database)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+      - name: The function's generated content
+        run: python build.py --content-only
+      - name: «مصدر الحجز» on the server
+        env:
+          TEAM_DEVICE_TOKEN: ${{ secrets.TEAM_DEVICE_TOKEN }}
+        run: node scripts/booking-source-server-check.mjs

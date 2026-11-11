@@ -13,6 +13,7 @@ import Icon from './Icon.astro';
 import DateRangeField from './DateRangeField.astro';
 import PhoneField from './PhoneField.astro';
 import MarketingConsent from './MarketingConsent.astro';
+import { STAFF_BOOKING_SOURCES } from '../../supabase/functions/booking-request/rules.ts';
 
 interface Props {
   locale: Locale;
@@ -83,6 +84,19 @@ const stepper = (name: 'adults' | 'children' | 'extra_beds', value: number, min:
 
 <form id={id('booking-form')} class:list={['booking-form space-y-6', className]} novalidate data-booking-form>
   <div class="grid gap-5 sm:grid-cols-2">
+    {/* 0. «مصدر الحجز» (Ahmed, 11 Nov 2026): internal devices only — hidden by global.css unless <html data-team>, and
+        disabled until src/lib/booking-form.ts finds the device's team token, so a visitor's form never sends it (and the
+        server ignores it without a valid token). Required there; the dashboard shows it on the booking. */}
+    <div class="sm:col-span-2 field field-select" data-team-only>
+      <select id={id('booking_source')} name="booking_source" autocomplete="off" disabled class={inputClass} aria-describedby={`${id('booking_source-hint')} ${err('booking_source')}`} data-booking-source>
+        <option value="">{f.booking_source_choose}</option>
+        {STAFF_BOOKING_SOURCES.map((k) => <option value={k}>{f.booking_sources[k]}</option>)}
+      </select>
+      <label for={id('booking_source')} class="field-label">{f.booking_source}</label>
+      <p id={id('booking_source-hint')} class="text-xs text-ink-muted mt-1">{f.booking_source_hint}</p>
+      <p id={err('booking_source')} class="field-error hidden" data-error-for="booking_source"></p>
+    </div>
+
     {/* 1. Branch first */}
     <div class="sm:col-span-2 field field-select">
       <select id={id('branch')} name="branch" required autocomplete="off" class={inputClass} aria-describedby={err('branch')}>

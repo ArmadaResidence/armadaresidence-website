@@ -5,6 +5,19 @@ export const BRANCH_FULL: Record<string, string> = { 'airport-road': 'أرماد
 
 export const ROLE_LABELS: Record<string, string> = { admin: 'مدير النظام', management: 'الإدارة', sales: 'المبيعات', reception: 'الاستقبال' };
 export const STATUS_LABELS: Record<string, string> = { request: 'طلب', confirmed: 'مؤكد', cancelled: 'ملغي' };
+/** «مصدر الحجز» (11 Nov 2026 — reservations.booking_source; the list = rules.ts STAFF_BOOKING_SOURCES + website), in the form's order */
+export const BOOKING_SOURCE_LABELS: Record<string, string> = {
+  website: 'الموقع مباشرة',
+  instagram: 'انستجرام',
+  whatsapp: 'واتساب',
+  phone: 'اتصال هاتفي',
+  snapchat: 'سناب شات',
+  tiktok: 'تيك توك',
+  facebook: 'فيسبوك',
+  walk_in: 'حضور مباشر',
+  other: 'أخرى',
+};
+export const bookingSourceLabel = (k: string | null | undefined): string => (k ? BOOKING_SOURCE_LABELS[k] ?? k : BOOKING_SOURCE_LABELS.website);
 export const REASON_LABELS: Record<string, string> = {
   any_room: 'لم يُحدَّد نوع الغرفة',
   not_bookable: 'النوع غير متاح للحجز الفوري',

@@ -51,7 +51,7 @@ EMAIL = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 REQUIRED_FILES = [
     "branches.json", "rooms.json", "pricing.json", "policies.json", "contact.json",
     "legal.json", "offers.json", "site-texts.json", "seo.json", "ui.json",
-    "taif-guide.json", "partners.json", "partners-pages.json", "halls.json", "careers.json", "club.json", "turnstile.json",
+    "taif-guide.json", "partners.json", "partners-pages.json", "halls.json", "careers.json", "club.json", "turnstile.json", "team.json",
 ]
 
 
@@ -455,6 +455,16 @@ def resolve_fees(content: dict[str, dict]) -> dict:
     return out
 
 
+def team_hashes(team: dict) -> list[str]:
+    """content/team.json → token_sha256 (11 Nov 2026): 64-hex SHA-256 values only — the token itself is never committed."""
+    hashes = team.get("token_sha256", [])
+    if not isinstance(hashes, list) or not hashes or not all(isinstance(h, str) and re.fullmatch(r"[0-9a-f]{64}", h) for h in hashes):
+        fail("content/team.json: token_sha256 must be a non-empty list of lower-case 64-hex SHA-256 values")
+    if not isinstance(team.get("max_age_days"), int) or not 1 <= team["max_age_days"] <= 400:
+        fail("content/team.json: max_age_days must be a whole number of days (1-400)")
+    return hashes
+
+
 def generate_function_content(content: dict[str, dict], fees: dict) -> None:
     """Everything the Edge Function needs from content/, regenerated on every build."""
     branches = content["branches.json"]["branches"]
@@ -472,6 +482,8 @@ def generate_function_content(content: dict[str, dict], fees: dict) -> None:
         "site_url": content["seo.json"]["site_url"],
         # Cloudflare Turnstile (4 Nov 2026): the functions verify a token only while the setting is on with a site key
         "turnstile": {"enabled": bool(content["turnstile.json"].get("enabled") and content["turnstile.json"].get("site_key"))},
+        # internal devices (11 Nov 2026): the SHA-256 of the team tokens; booking-request takes «مصدر الحجز» only from one
+        "team_token_sha256": team_hashes(content["team.json"]),
         # where the site answers today (4 Nov 2026): every link in the emails (club, member offers, ?go=, dining) and the
         # email logo — the review address until switch day, then https://armadaresidence.com (seo.json → live_url)
         "live_url": content["seo.json"]["live_url"].rstrip("/"),

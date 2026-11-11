@@ -6,7 +6,7 @@ import fontAr600 from '../assets/fonts/ibm-plex-sans-arabic-arabic-600-subset.wo
 import fontAr700 from '../assets/fonts/ibm-plex-sans-arabic-arabic-700-subset.woff2?url';
 import fontEn from '@fontsource-variable/manrope/files/manrope-latin-wght-normal.woff2?url';
 import { CLICK_IDS } from '@lib/click-ids';
-import { GTM_ID, absoluteUrl, dir, localePath, seo, siteName, turnstileKey, type BookingContext, type Locale } from '@lib/content';
+import { GTM_ID, absoluteUrl, dir, localePath, seo, siteName, teamHashes, teamMaxDays, turnstileKey, type BookingContext, type Locale } from '@lib/content';
 import Header from '@components/Header.astro';
 import Footer from '@components/Footer.astro';
 import WhatsAppButton from '@components/WhatsAppButton.astro';
@@ -230,6 +230,94 @@ const preloadFonts = locale === 'ar' ? (path === '/' ? [fontAr400, fontAr600, fo
         });
       })(window, document);
     </script>
+    <script is:inline define:vars={{ teamHashes, teamDays: teamMaxDays }}>
+      // Internal devices (Ahmed, 11 Nov 2026 — DECISIONS.md 2026-11-11 «Internal devices and the booking source»; content/team.json).
+      // ?team=<token> marks this browser as internal for teamDays — once the token's SHA-256 is one of teamHashes: a
+      // first-party cookie armada_team + localStorage armada-team {k: token, t: time}; ?team=off removes both. The
+      // parameter is taken out of the address either way (history.replaceState), so it is never shared or bookmarked.
+      // An internal device: <html data-team> (the footer's «جهاز داخلي», the booking form's «مصدر الحجز») and no GTM at
+      // all (the loader below asks window.armadaTeamHold()) — unless the address carries gtm_debug (GTM Preview), which
+      // lets GTM load as usual in this tab (sessionStorage armada-gtm-debug) so the tags can still be tested. A page opened
+      // with ?team=<anything but off> loads no GTM either while its token is checked. A stored mark whose token is no
+      // longer listed (a rotated token) is removed. src/lib/team.ts reads the mark for the booking form.
+      (function (w, d) {
+        var KEY = 'armada-team', COOKIE = 'armada_team';
+        function stored() {
+          var k = null;
+          try {
+            var s = JSON.parse(localStorage.getItem(KEY) || 'null');
+            if (s && typeof s.k === 'string' && typeof s.t === 'number' && Date.now() - s.t < teamDays * 864e5) k = s.k;
+          } catch (e) {}
+          if (!k) {
+            var m = d.cookie.match(/(?:^|;\s*)armada_team=([^;]+)/);
+            if (m) try { k = decodeURIComponent(m[1]); } catch (e) {}
+          }
+          return k;
+        }
+        function cookie(v, age) {
+          d.cookie = COOKIE + '=' + v + '; max-age=' + age + '; path=/; SameSite=Lax' + (location.protocol === 'https:' ? '; Secure' : '');
+        }
+        function clear() {
+          try { localStorage.removeItem(KEY); } catch (e) {}
+          cookie('', 0);
+        }
+        function mark(on) {
+          var was = d.documentElement.hasAttribute('data-team');
+          if (on) d.documentElement.setAttribute('data-team', '');
+          else d.documentElement.removeAttribute('data-team');
+          if (was !== on) try { d.dispatchEvent(new CustomEvent('armada:team')); } catch (e) {}
+        }
+        function sha(text) {
+          if (!w.crypto || !crypto.subtle || !w.TextEncoder) return Promise.resolve('');
+          return crypto.subtle.digest('SHA-256', new TextEncoder().encode(text)).then(function (b) {
+            return Array.prototype.map.call(new Uint8Array(b), function (x) { return ('0' + x.toString(16)).slice(-2); }).join('');
+          });
+        }
+        var q = null, pending = false, debug = false;
+        try { q = new URLSearchParams(location.search); } catch (e) {}
+        var param = q ? q.get('team') : null;
+        if (q && q.has('gtm_debug')) {
+          debug = true;
+          try { sessionStorage.setItem('armada-gtm-debug', '1'); } catch (e) {}
+        }
+        try { debug = debug || sessionStorage.getItem('armada-gtm-debug') === '1'; } catch (e) {}
+        function strip() {
+          try {
+            var u = new URL(location.href);
+            u.searchParams.delete('team');
+            history.replaceState(history.state, '', u.pathname + u.search + u.hash);
+          } catch (e) {}
+        }
+        if (param !== null) {
+          if (param === 'off') clear();
+          else if (param) {
+            pending = true;
+            sha(param).then(function (h) {
+              pending = false;
+              if (h && teamHashes.indexOf(h) >= 0) {
+                try { localStorage.setItem(KEY, JSON.stringify({ k: param, t: Date.now() })); } catch (e) {}
+                cookie(encodeURIComponent(param), teamDays * 86400);
+                mark(true);
+              }
+            }, function () { pending = false; });
+          }
+          strip();
+        }
+        var held = stored();
+        mark(!!held);
+        // a stored token that is no longer listed (rotated): the mark goes
+        if (held && param === null) {
+          sha(held).then(function (h) {
+            if (h && teamHashes.indexOf(h) < 0) { clear(); mark(false); }
+          });
+        }
+        // the GTM loader asks this before it injects the container
+        w.armadaTeamHold = function () { return !debug && (pending || !!stored()); };
+        w.armadaTeamToken = stored;
+        // a view-transition swap replaces the <html> attributes with the new page's
+        d.addEventListener('astro:after-swap', function () { mark(!!stored()); });
+      })(window, document);
+    </script>
     <script is:inline define:vars={{ GTM_ID, GTM_HOSTS, CLICK_IDS }}>
       // GTM (decision 10 Oct 2026, tightened 11 Oct): the dataLayer exists from the first byte and queues every push
       // (gtm.start/gtm.js, page events, booking_request…); the container script itself is injected on the first
@@ -253,6 +341,9 @@ const preloadFonts = locale === 'ar' ? (path === '/' ? [fontAr400, fontAr600, fo
         var loaded = hosts.indexOf(location.hostname) < 0 && !test;
         function load() {
           if (loaded) return;
+          // an internal device (the script above, 11 Nov 2026): never the container — GA4, the ad pixels and Clarity live
+          // in it — before or after consent, ad landing or not; GTM Preview (gtm_debug) excepted
+          if (w.armadaTeamHold && w.armadaTeamHold()) return;
           loaded = true;
           var j = d.createElement('script');
           j.async = true;
