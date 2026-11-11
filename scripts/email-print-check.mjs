@@ -156,17 +156,38 @@ for (const [kind, mail] of internal(NOTES_MAX, STAY)) {
 }
 
 // ── 2. screen unchanged: the internal emails look the same at 600 px with and without the print CSS; guest emails carry none ──
-const shot = async (html) => {
-  await cPage.setViewportSize({ width: 600, height: 900 });
-  await cPage.setContent(html, { waitUntil: 'load' });
-  return cPage.screenshot({ fullPage: true });
+// The screen shots use their OWN page (11 Nov 2026, session 26). On the GitHub Windows runner the first capture on the
+// page that had just printed ten PDFs and toggled print media failed now and then with «Unable to capture screenshot»
+// (4 runs in 3 days, always that first capture, line `const a = await shot(...)`; the next run passed): Chrome had no
+// fresh compositor frame for it. So: a page that never prints, already 600 × 900, two animation frames and the fonts
+// before each capture — and, on exactly that protocol error, ONE more attempt, logged (and a GitHub warning) so a
+// recurrence is visible; any other error, or a second failure, still fails the check. What is compared is unchanged.
+const sPage = await cr.newPage({ viewport: { width: 600, height: 900 } });
+let shotRetries = 0;
+const CAPTURE_FLAKE = /Page\.captureScreenshot\): Unable to capture screenshot/;
+const shot = async (html, label = 'screen') => {
+  await sPage.setContent(html, { waitUntil: 'load' });
+  const capture = async () => {
+    await sPage.evaluate(() => document.fonts.ready.then(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)))));
+    return sPage.screenshot({ fullPage: true });
+  };
+  try {
+    return await capture();
+  } catch (e) {
+    if (!CAPTURE_FLAKE.test(String(e?.message ?? e))) throw e;
+    shotRetries++;
+    const msg = `email-print-check: retried the screen capture «${label}» once after «Unable to capture screenshot»`;
+    console.log(`retried: ${msg}`);
+    if (process.env.GITHUB_ACTIONS) console.log(`::warning title=email-print-check retry::${msg}`);
+    return capture();
+  }
 };
 for (const [kind, mail] of internal(200, 7).slice(0, 1)) {
   const noPrint = mail.html
     .replace(/\n  \.print-logo \{ display:none; \}[\s\S]*?\n  \}(?=\n<\/style>)/, '')
     .replace(/<!--\[if !mso\]><!--><img[^>]*class="print-logo"[^>]*><!--<!\[endif\]-->/, '');
-  const a = await shot(mail.html);
-  const b = await shot(noPrint);
+  const a = await shot(mail.html, `${kind} with print CSS`);
+  const b = await shot(noPrint, `${kind} without print CSS`);
   check(noPrint !== mail.html && Buffer.compare(a, b) === 0, `${kind}: screen rendering changed by the print stylesheet`);
 }
 const g1 = bookingConfirmation(content, booking('—'));
@@ -180,11 +201,11 @@ for (const [kind, mail] of [...internal(200, 7), ['guest-request', g1], ['guest-
   check(mail.html.includes(`bgcolor="#142A3B" align="center" style="${fixed('#142A3B')} padding:28px 24px;"`) && mail.html.includes(`bgcolor="#A97C50" height="2" style="${fixed('#A97C50')} height:2px;`), `${kind}: header band without the dark-mode background image`);
 }
 const plain = g2.html.replace(/ background-color:(#[0-9A-F]{6}); background-image:linear-gradient\(\1, \1\);/g, '');
-check(plain !== g2.html && Buffer.compare(await shot(g2.html), await shot(plain)) === 0, 'guest-confirmed: the dark-mode background image changes the light rendering');
+check(plain !== g2.html && Buffer.compare(await shot(g2.html, 'guest-confirmed'), await shot(plain, 'guest-confirmed without the gradient')) === 0, 'guest-confirmed: the dark-mode background image changes the light rendering');
 
 await cr.close();
 await wk.close();
-console.log(`${checks} checks in ${Math.round((Date.now() - t0) / 1000)}s`);
+console.log(`${checks} checks in ${Math.round((Date.now() - t0) / 1000)}s${shotRetries ? ` — ${shotRetries} screen capture(s) retried once (logged above)` : ''}`);
 if (notesFit < NOTES_MAX) console.log(`notes: the longest length that fits one A4 page at ≥ 9 pt is ${notesFit} characters (maximum ${NOTES_MAX})`);
 if (fails.length) {
   console.log(`FAIL (${fails.length})`);
