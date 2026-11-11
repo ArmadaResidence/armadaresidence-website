@@ -37,6 +37,7 @@ import {
   photosOf,
   policies,
   roomsFor,
+  seo,
   telHref,
   TODO,
   ui,
@@ -60,6 +61,9 @@ const t = ui(locale);
 const s = pageSeo(locale, branch.slug);
 const c = branchContact(branch.slug);
 const name = L(locale, branch, 'name');
+// the h1 names what the branch is (SEO audit rows 6–7, approved 11 Nov 2026: seo.json → pages.<branch>.h1_*); the
+// breadcrumb and everything else keep the name
+const pageH1 = ((seo.pages as unknown as Record<string, Record<string, string>>)[branch.slug]?.[`h1_${locale}`]) || name;
 const cover = photosOf(branch)[0];
 const rooms = roomsFor(branch.slug);
 const other = branches.find((b) => b.slug !== branch.slug);
@@ -94,7 +98,7 @@ const COVER_SIZES = '(min-width: 1152px) 1120px, 100vw';
       <span class="text-midnight">{name}</span>
     </nav>
     <p class="mt-6 text-xs font-semibold uppercase tracking-wide text-bronze-text">{L(locale, branch, 'type')}</p>
-    <h1 class="mt-1 text-3xl md:text-4xl font-bold text-midnight">{name}</h1>
+    <h1 class="mt-1 text-3xl md:text-4xl font-bold text-midnight">{pageH1}</h1>
     <p class="mt-2 text-lg text-ink-muted">{L(locale, branch, 'tagline')}</p>
     <div class="reveal reveal-lg enter mt-8">
       {

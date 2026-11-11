@@ -2953,3 +2953,43 @@ toggles (rates, inventory and photos lived elsewhere; names, sizes, beds, featur
 - **CLAUDE.md** §7: the branches are `Hotel`, the room pages `HotelRoom` without `offers` (the reason), the Organization
   with `legalName`, `/sitemap.xml`. §5: a room type switched off in «الغرف» is `noindex` and out of the sitemap — the
   stale «still in the sitemap» corrected to match §7 and the build.
+
+## 2026-11-11 — The approved SEO texts (Ahmed's review of docs/seo-audit-2026-11.md §3, 11 Nov 2026)
+
+- **Decided by Ahmed:** rows 1, 2, 4, 6, 7, 8, 10–18 approved as proposed; row 5 and row 9 changed; row 3 rejected
+  (the title of /shafa-road/accessible-room/ stays). The doc's §3 carries each row's status.
+- **Room pages (rows 1, 2, 4)** — `seo.json → room_templates` + `content.ts → roomSeo`: «{room} بمساحة {size} م²
+  {الضيوف بالكلمات} في أرمادا ريزيدنس – {branch}، الطائف: {bed}، {features}.» / "{size} m² {room} for {n} guests at
+  Armada Residence {branch}, Taif: {bed}, {features}.", then the short cancellation sentence of `policies.json` while
+  the whole stays ≤ 155 (dropped first when over, then the size, then the features). The guest count in words is
+  Ahmed's list («لشخص واحد», «لشخصين», «لثلاثة أشخاص», «لأربعة أشخاص», «لخمسة أشخاص», «لستة أشخاص»), extended in the same
+  pattern to 7–10 and «لـ{n} شخصًا» from 11, so a type added in «الغرف» never breaks the build; English «for 1 guest» /
+  «for {n} guests». The bed is left out when the name already names it (`bedInName`, judged on both languages: King
+  Room / «غرفة بسرير كينج», Twin Room / «غرفة سريرين منفصلين»). Row 4: `room_templates.title_overrides` — the English
+  title of shafa-road/two-bedroom-jacuzzi-suite, its size filled from the room data.
+- **h1s (rows 5, 6, 7, 14, 18)** — `seo.json → pages.<page>.h1_*` for the home page, both branch pages and /menu/;
+  `ui.json → blog.h1` for /blog/ (the breadcrumb and the RSS title keep «المدونة» / "Blog"; a branch page's breadcrumb
+  keeps the branch name). Home (row 5 as changed): the h1 «فندق وشقق فندقية في الطائف — أرمادا ريزيدنس» / "Hotel & Hotel
+  Apartments in Taif — Armada Residence" is a smaller line (`.hero-h1`, 16 / 18 px semibold, Porcelain) between the
+  eyebrow and the slogan; the slogan keeps its classes, words and motion as `<p class="hero-title">`. The hero's soft
+  text shadow covers the new line; `hero-scrim-check` measures it at 4.5:1 (small text), `hero-slides-check` and
+  `content-site-check` find the slogan by `.hero-title`. /menu/: `menu-publish.py` reads the h1 from seo.json; the two
+  committed copies (`public/menu`, `public/en/menu`) had exactly their head block and h1 replaced with what the script
+  writes — the café app was not re-copied.
+- **Titles / descriptions (rows 8, 9, 12, 13, 15, 16, 17)** — `seo.json → pages`; row 10 — `venue_templates.title_*`
+  («{name} – {branch}، الطائف» / "{name} – {branch}, Taif", every venue).
+- **Row 11, the only dashboard field** — the café venue's description in «المطاعم والمقاهي» (it is the venue page's
+  meta description and also its visible description): before the write, the whole row was saved byte-exact to
+  `reports/session26-db-backup/dining_venues-armada-residence-cafe.json` (md5 5e4f6228… = the database's); then
+  `description_ar` / `description_en` and the same keys of `live` were set in one UPDATE guarded by the old values
+  (130 / 154 characters). The dashboard RPCs (`dining_save` / `dining_publish`) were not used: running them as Ahmed
+  from MCP needs his session, and reading it was refused by the auto-mode classifier — so the change has no
+  «السجل» actor and no publish job; the next deploy builds it from `live`.
+- **qa.py** — every built page, the menu app included, has a title ≤ `max_title_chars` (60) and a description ≤
+  `max_description_chars` (155) (the menu was skipped before); titles and descriptions unique across all pages; every
+  page entry of seo.json within the limits, present and unique per language (covers the pages a local build leaves
+  out — /dining/, the gallery, a hidden section); the h1 of /, both branch pages, /menu/ and /blog/ = the approved text.
+  Each rule was proven by spoiling a built page.
+- **Visual check.** CLAUDE.md has no procedure called «visual baseline»; the closest is the pixel guard: these
+  commits carry no `Armada-Invisible`, so the CI pixel guard runs as a report (`pixel-diff` artifact) and the pages it
+  lists were compared with the pages expected to change.

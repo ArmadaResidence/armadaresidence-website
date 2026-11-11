@@ -79,7 +79,8 @@ def bar(lang: str, home: str, brand: str, other: str) -> str:
     site = SEO["site_name_ar"] if ar else SEO["site_name_en"]
     back = "العودة إلى الموقع" if ar else "Back to the site"
     other_label, other_lang = ("English", "en") if ar else ("العربية", "ar")
-    h1 = "قائمة Armada Residence Café & Restaurant" if ar else "Armada Residence Café & Restaurant menu"
+    # the screen-reader h1 from seo.json → pages.menu.h1_* (SEO audit row 14, approved 11 Nov 2026)
+    h1 = SEO["pages"]["menu"]["h1_ar" if ar else "h1_en"]  # written as before (a bare & is valid HTML text)
     return (
         f'<nav class="site-bar" aria-label="{site}">'
         f'<h1 class="sr">{h1}</h1>'

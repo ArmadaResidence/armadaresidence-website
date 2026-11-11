@@ -125,7 +125,7 @@ async function visit(engine, ctxOpts, label, { expect, init, path = '/' } = {}) 
     // the text stays (7 Nov 2026): its state before the change, then mid cross-fade
     const textState = () => page.evaluate(() => {
       const box = document.querySelector('section.hero > .relative');
-      const h1 = box.querySelector('h1');
+      const h1 = box.querySelector('.hero-title'); // the slogan (the page's h1 is the smaller line above it since 11 Nov 2026)
       const r = h1.getBoundingClientRect();
       const top = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
       const scrim = document.querySelector('[data-hero-scrim]');

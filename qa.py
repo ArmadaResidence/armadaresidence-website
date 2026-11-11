@@ -457,6 +457,27 @@ def main() -> int:
 
         # title / description / canonical / hreflang
         t, d = p.title.strip(), p.metas.get("description", "").strip()
+        # every page, the menu app included (SEO audit, 11 Nov 2026): a title within max_title_chars and a description
+        # within max_description_chars, in both languages (uniqueness: after the loop)
+        if len(t) > max_title:
+            rep.f("seo", f"{path}: <title> is {len(t)} chars (limit {max_title}): {t!r}")
+        if len(d) > max_desc:
+            rep.f("seo", f"{path}: meta description is {len(d)} chars (limit {max_desc}): {d!r}")
+        # the approved h1s (SEO audit rows 5, 6, 7, 14, 18 — 11 Nov 2026): the page's one h1 is the text of seo.json
+        # (pages.<page>.h1_*) or, for /blog/, ui.json blog.h1
+        h1_want = None
+        lang_ = "en" if en else "ar"
+        h1_page = {"/": "home", "/airport-road/": "airport-road", "/shafa-road/": "shafa-road", "/menu/": "menu"}.get(logical(path))
+        if h1_page:
+            h1_want = content["seo.json"]["pages"][h1_page].get(f"h1_{lang_}")
+            if not h1_want:
+                rep.f("headings", f"{path}: seo.json pages.{h1_page}.h1_{lang_} missing")
+        elif logical(path) == "/blog/":
+            h1_want = ui[lang_]["blog"].get("h1")
+        if h1_want:
+            h1s = [re.sub(r"\s+", " ", html_mod.unescape(re.sub(r"<[^>]+>", " ", m))).strip() for m in re.findall(r"<h1(?:\s[^>]*)?>([\s\S]*?)</h1>", html)]
+            if h1s != [h1_want]:
+                rep.f("headings", f"{path}: h1 {h1s!r} != the approved {h1_want!r}")
         if legacy_app(path):
             if not t or not d:
                 rep.f("seo", f"{path}: legacy app page needs a title and description")
@@ -512,10 +533,6 @@ def main() -> int:
             rep.f("seo", f"{path}: empty <title>")
         if not d:
             rep.f("seo", f"{path}: empty meta description")
-        if len(t) > max_title:
-            rep.f("seo", f"{path}: <title> is {len(t)} chars (limit {max_title}): {t!r}")
-        if len(d) > max_desc:
-            rep.f("seo", f"{path}: meta description is {len(d)} chars (limit {max_desc})")
         titles[t].append(path)
         descs[d].append(path)
         # the 404 page is served at every unknown URL: no canonical, hreflang or og:url of its own (30 Oct 2026)
@@ -829,6 +846,28 @@ def main() -> int:
     for t, ps in titles.items():
         if len(ps) > 1:
             rep.f("seo", f"duplicate <title> {t!r}: {ps}")
+    # the source (SEO audit, 11 Nov 2026): every page entry of seo.json — the pages a build may leave out (/dining/, the
+    # gallery, a hidden section) included — within the limits and unique per language, both languages present
+    for lang_ in ("ar", "en"):
+        seen_t: dict[str, str] = {}
+        seen_d: dict[str, str] = {}
+        for key, pg in content["seo.json"]["pages"].items():
+            if key.startswith("_") or not isinstance(pg, dict):
+                continue
+            st, sd = str(pg.get(f"title_{lang_}", "")).strip(), str(pg.get(f"description_{lang_}", "")).strip()
+            if not st or not sd:
+                rep.f("seo", f"seo.json pages.{key}: title_{lang_} / description_{lang_} missing")
+                continue
+            if len(st) > max_title:
+                rep.f("seo", f"seo.json pages.{key}.title_{lang_} is {len(st)} chars (limit {max_title})")
+            if len(sd) > max_desc:
+                rep.f("seo", f"seo.json pages.{key}.description_{lang_} is {len(sd)} chars (limit {max_desc})")
+            if st in seen_t:
+                rep.f("seo", f"seo.json pages.{key}.title_{lang_} = pages.{seen_t[st]} ({st!r})")
+            if sd in seen_d:
+                rep.f("seo", f"seo.json pages.{key}.description_{lang_} = pages.{seen_d[sd]}")
+            seen_t.setdefault(st, key)
+            seen_d.setdefault(sd, key)
     for d, ps in descs.items():
         if len(ps) > 1:
             rep.f("seo", f"duplicate description on {ps}")

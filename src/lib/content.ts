@@ -534,45 +534,72 @@ export function pageSeo(locale: Locale, key: string): PageSeo {
 
 const tidy = (s: string) => s.replace(/\s{2,}/g, ' ').replace(/\s+([،,.])/g, '$1').trim();
 
+/** the room's name already names its bed (SEO audit row 2, 11 Nov 2026): King Room / «غرفة بسرير كينج» with a king
+ *  bed, Twin Room / «غرفة سريرين منفصلين» with two single beds — judged on both languages, so a type added in «الغرف»
+ *  follows the same rule */
+const BED_NAMED: [RegExp, RegExp][] = [
+  [/كينج|\bking\b/i, /كينج|\bking\b/i],
+  [/سريرين|\btwin\b/i, /سريران|سريرين|\bsingle\b|\btwin\b/i],
+];
+export const bedInName = (room: Room): boolean =>
+  BED_NAMED.some(([n, b]) => (n.test(room.name_ar) || n.test(room.name_en)) && (b.test(room.bed_ar) || b.test(room.bed_en)));
+
+/** the guest count in words (seo.json → room_templates.capacity_words_*; Ahmed, 11 Nov 2026: «لشخص واحد», «لشخصين» …) */
+function capacityWords(locale: Locale, n: number, t: Record<string, unknown>): string {
+  const words = t[`capacity_words_${locale}`] as Record<string, string>;
+  return fill(words[String(n)] ?? words.other, { n });
+}
+
 /**
- * Room page title/description from seo.json → room_templates, filled from rooms.json.
- * Keeps within max_title_chars / max_description_chars by dropping, in order,
- * the size clause (title) and the size clause then the features clause (description).
+ * Room page title/description from seo.json → room_templates, filled from rooms.json (the dashboard «الغرف»).
+ * Description (SEO audit rows 1–2, 11 Nov 2026): the room, its size, the guests in words, the branch, then the bed
+ * (unless the name names it) and the features, then the short cancellation sentence of policies.json while it fits.
+ * Keeps within max_title_chars / max_description_chars by dropping, in order: the size clause (title); the
+ * cancellation sentence, the size clause, then the features (description). `title_overrides` (row 4) replaces the
+ * template for one page whose template cannot fit.
  */
 export function roomSeo(locale: Locale, room: Room): PageSeo {
-  const t = seo.room_templates as unknown as Record<string, string | number>;
+  const t = seo.room_templates as unknown as Record<string, unknown>;
   const maxT = Number(t.max_title_chars ?? 60);
   const maxD = Number(t.max_description_chars ?? 155);
   const name = L(locale, room, 'name');
   const short = branchShort(locale, room.branch);
   const bed = L(locale, room, 'bed');
   const sep = locale === 'ar' ? '، ' : ', ';
-  const feats = SEO_FEATURE_KEYS.filter((k) => room.features[k] === true).map((k) => featureLabel(locale, k));
-  const featuresClause = feats.length ? sep + (locale === 'en' ? feats.map((f) => f.toLowerCase()) : feats).join(sep) : '';
+  const lower = (s: string) => (locale === 'en' ? s.toLowerCase() : s);
+  const feats = SEO_FEATURE_KEYS.filter((k) => room.features[k] === true).map((k) => lower(featureLabel(locale, k)));
+  const detailsOf = (withFeats: boolean) => {
+    const parts = [...(bedInName(room) ? [] : [lower(bed)]), ...(withFeats ? feats : [])];
+    return parts.length ? `: ${parts.join(sep)}` : '';
+  };
   const vars: Record<string, string | number> = {
     room: name,
-    room_lower: locale === 'en' ? name.toLowerCase() : name,
+    room_lower: lower(name),
     branch_short: short,
     size: room.size_m2,
     capacity: room.capacity,
+    capacity_words: capacityWords(locale, room.capacity, t),
     bed,
-    bed_lower: locale === 'en' ? bed.toLowerCase() : bed,
+    bed_lower: lower(bed),
     price: room.base_price,
     size_clause: fill(String(t[`size_clause_${locale}`]), { size: room.size_m2 }),
     size_clause_short: fill(String(t[`size_clause_short_${locale}`]), { size: room.size_m2 }),
-    features_clause: featuresClause,
+    details_clause: detailsOf(true),
   };
-  const titleTpl = String(t[`title_${locale}`]);
+  const override = (t.title_overrides as Record<string, Record<string, string>> | undefined)?.[`${room.branch}/${room.slug}`]?.[`title_${locale}`];
+  const titleTpl = override ?? String(t[`title_${locale}`]);
   const descTpl = String(t[`description_${locale}`]);
 
   let title = tidy(fill(titleTpl, vars));
   if (title.length > maxT) title = tidy(fill(titleTpl, { ...vars, size_clause_short: '' }));
   if (title.length > maxT) title = tidy(`${name} – ${short}`);
 
-  // Over the limit: drop the size clause first (the size is already in the title), then the features clause.
-  let description = tidy(fill(descTpl, vars));
-  if (description.length > maxD) description = tidy(fill(descTpl, { ...vars, size_clause: '' }));
-  if (description.length > maxD) description = tidy(fill(descTpl, { ...vars, size_clause: '', features_clause: '' }));
+  const cancel = `${cancellationText(locale, 'short')}.`;
+  const plain = (v: Record<string, string | number>) => tidy(fill(descTpl, v));
+  let description = `${plain(vars)} ${cancel}`;
+  if (description.length > maxD) description = plain(vars);
+  if (description.length > maxD) description = plain({ ...vars, size_clause: '' });
+  if (description.length > maxD) description = plain({ ...vars, size_clause: '', details_clause: detailsOf(false) });
 
   return { title, description, noindex: room.availability === 'sold_out' };
 }

@@ -17,29 +17,36 @@
       "en": "Shafa Road"
     }
   },
+  "_h1_note": "h1_ar / h1_en (SEO audit, approved 11 Nov 2026 — docs/seo-audit-2026-11.md rows 5, 6, 7, 14): the page's <h1> where it is not the page's own name — home (a smaller line above the slogan, which stays the large visual line), the two branch pages, /menu/ (read by scripts/menu-publish.py). qa.py checks each page's h1 against it.",
   "pages": {
     "home": {
       "title_ar": "فنادق وشقق فندقية في الطائف | أرمادا ريزيدنس",
       "description_ar": "فرعان في الطائف: شقق فندقية على طريق المطار وفندق على طريق الشفا. غرف وأجنحة واسعة، أسعار شاملة الضريبة، مواقف مجانية، واستقبال على مدار الساعة.",
       "title_en": "Hotels & Hotel Apartments in Taif | Armada Residence",
-      "description_en": "Hotel apartments on Airport Road and a hotel on Shafa Road, Taif. Spacious rooms and suites, VAT-inclusive prices, free parking, 24-hour reception."
+      "description_en": "Hotel apartments on Airport Road and a hotel on Shafa Road, Taif. Spacious rooms and suites, VAT-inclusive prices, free parking, 24-hour reception.",
+      "h1_ar": "فندق وشقق فندقية في الطائف — أرمادا ريزيدنس",
+      "h1_en": "Hotel & Hotel Apartments in Taif — Armada Residence"
     },
     "airport-road": {
       "title_ar": "شقق فندقية على طريق المطار بالطائف | أرمادا ريزيدنس",
       "description_ar": "شقق فندقية من 50 إلى 75 م² على طريق المطار بالطائف. أجنحة بمطبخ، بوفيه إفطار يومي، مواقف مجانية وقاعة اجتماعات. إلغاء مجاني حتى 2:00 ظهرًا يوم الوصول.",
       "title_en": "Hotel Apartments on Airport Road, Taif | Armada Residence",
-      "description_en": "50–75 m² hotel apartments on Airport Road, Taif. Kitchen suites, breakfast, free parking, meeting hall. Free cancellation until 2:00 pm on arrival day."
+      "description_en": "50–75 m² hotel apartments on Airport Road, Taif. Kitchen suites, breakfast, free parking, meeting hall. Free cancellation until 2:00 pm on arrival day.",
+      "h1_ar": "أرمادا ريزيدنس – شقق فندقية على طريق المطار",
+      "h1_en": "Armada Residence – Hotel Apartments on Airport Road"
     },
     "shafa-road": {
       "title_ar": "فندق على طريق الشفا بالطائف | أرمادا ريزيدنس",
       "description_ar": "فندق هادئ على طريق الشفا بالطائف: غرف كينج، غرفة ببلكونة، استديو بجاكوزي وأجنحة عائلية. إفطار يومي، مواقف مجانية، وإلغاء مجاني حتى 2:00 ظهرًا يوم الوصول.",
       "title_en": "Hotel on Shafa Road, Taif | Armada Residence",
-      "description_en": "Shafa Road hotel in Taif: king and balcony rooms, jacuzzi studio, family suites, breakfast, free parking. Free cancellation until 2:00 pm on arrival day."
+      "description_en": "Shafa Road hotel in Taif: king and balcony rooms, jacuzzi studio, family suites, breakfast, free parking. Free cancellation until 2:00 pm on arrival day.",
+      "h1_ar": "أرمادا ريزيدنس – فندق على طريق الشفا",
+      "h1_en": "Armada Residence – Hotel on Shafa Road"
     },
     "gallery": {
-      "title_ar": "معرض الصور | أرمادا ريزيدنس",
+      "title_ar": "معرض الصور | فنادق أرمادا ريزيدنس في الطائف",
       "description_ar": "صور فرعي أرمادا ريزيدنس في الطائف: الغرف والأجنحة، والمطاعم والمقاهي، والقاعة، في طريق المطار وطريق الشفا.",
-      "title_en": "Gallery | Armada Residence",
+      "title_en": "Photo Gallery | Armada Residence Hotels, Taif",
       "description_en": "Photos of Armada Residence in Taif: rooms and suites, dining and the hall at Airport Road and Shafa Road."
     },
     "airport-road-hall": {
@@ -67,9 +74,9 @@
       "description_en": "Booking, cancellation, check-in/out and privacy policies for both Armada Residence properties in Taif. Free cancellation until 2:00 pm on arrival day."
     },
     "booking": {
-      "title_ar": "طلب حجز | أرمادا ريزيدنس",
+      "title_ar": "احجز إقامتك في الطائف | أرمادا ريزيدنس",
       "description_ar": "احجز إقامتك في أرمادا ريزيدنس بالطائف: شقق فندقية على طريق المطار وفندق على طريق الشفا، مع تأكيد فوري عند توفره والدفع عند الوصول.",
-      "title_en": "Request a Booking | Armada Residence",
+      "title_en": "Book Your Stay in Taif | Armada Residence",
       "description_en": "Book Armada Residence in Taif: hotel apartments on Airport Road, a hotel on Shafa Road. Instant confirmation when available, and pay on arrival."
     },
     "booking-success": {
@@ -98,7 +105,7 @@
     "dining": {
       "title_ar": "المطاعم والمقاهي | أرمادا ريزيدنس",
       "description_ar": "مطاعم ومقاهي أرمادا ريزيدنس في الطائف: مطعم ومقهى على مدار الساعة في طريق المطار، وبوفيه إفطار يومي في الفرعين.",
-      "title_en": "Dining | Armada Residence",
+      "title_en": "Restaurants & Cafés in Taif | Armada Residence",
       "description_en": "Dining at Armada Residence, Taif: a 24-hour restaurant and café at Airport Road and a daily breakfast buffet at both properties."
     },
     "partners": {
@@ -138,9 +145,9 @@
       "description_en": "Practical guides to visiting Taif: rose season, Al Shafa in winter, Souq Okaz, Umrah via Taif and family trips — with the nearest property for each."
     },
     "about": {
-      "title_ar": "من نحن | أرمادا ريزيدنس",
+      "title_ar": "من نحن | أرمادا ريزيدنس، فندق وشقق فندقية في الطائف",
       "description_ar": "أرمادا ريزيدنس علامة ضيافة سعودية بدأت من الطائف: فندق على طريق الشفا منذ 2024، وشقق فندقية على طريق المطار منذ 2025.",
-      "title_en": "About us | Armada Residence",
+      "title_en": "About Us | Armada Residence – Hotel & Apartments, Taif",
       "description_en": "Armada Residence is a Saudi hospitality brand that began in Taif: a Shafa Road hotel since 2024 and Airport Road hotel apartments since 2025."
     },
     "club": {
@@ -165,28 +172,53 @@
     "faq": {
       "title_ar": "الأسئلة الشائعة | أرمادا ريزيدنس الطائف",
       "description_ar": "إجابات عن الوصول والمغادرة، والإلغاء، والدفع، والإفطار، والمواقف في أرمادا ريزيدنس بالطائف: طريق المطار وطريق الشفا.",
-      "title_en": "FAQ | Armada Residence Taif",
+      "title_en": "Frequently Asked Questions | Armada Residence Taif",
       "description_en": "Answers on check-in and check-out, cancellation, payment, breakfast and parking at Armada Residence, Taif: Airport Road and Shafa Road."
     },
     "menu": {
-      "title_ar": "قائمة الطعام | أرمادا ريزيدنس",
-      "description_ar": "تصفّح قائمة المطعم والمقهى في أرمادا ريزيدنس بالطائف.",
-      "title_en": "Menu | Armada Residence",
-      "description_en": "Browse the restaurant and café menu at Armada Residence in Taif."
+      "title_ar": "قائمة مطعم ومقهى أرمادا ريزيدنس | الطائف",
+      "description_ar": "قائمة مطعم ومقهى أرمادا ريزيدنس في لوبي طريق المطار بالطائف، مفتوح على مدار الساعة للنزلاء والزوار.",
+      "title_en": "Café & Restaurant Menu | Armada Residence Taif",
+      "description_en": "The menu of Armada Residence Café & Restaurant in the Airport Road lobby, Taif — open around the clock to guests and visitors.",
+      "h1_ar": "قائمة مطعم ومقهى أرمادا ريزيدنس",
+      "h1_en": "Armada Residence Café & Restaurant menu"
     }
   },
   "room_templates": {
     "title_ar": "{room} {size_clause_short} – {branch_short} | أرمادا ريزيدنس",
     "title_en": "{room} {size_clause_short} – {branch_short} | Armada Residence",
-    "description_ar": "{room}{size_clause} لـ{capacity} أشخاص في أرمادا ريزيدنس {branch_short} بالطائف، {bed}{features_clause}.",
-    "description_en": "{size} m² {room_lower} for {capacity} at Armada Residence {branch_short}, Taif — {bed_lower}{features_clause}.",
-    "size_clause_ar": " بمساحة {size} مترًا مربعًا",
+    "description_ar": "{room}{size_clause} {capacity_words} في أرمادا ريزيدنس – {branch_short}، الطائف{details_clause}.",
+    "description_en": "{size} m² {room_lower} {capacity_words} at Armada Residence {branch_short}, Taif{details_clause}.",
+    "size_clause_ar": " بمساحة {size} م²",
     "size_clause_en": " of {size} m²",
     "size_clause_short_ar": "{size} م²",
     "size_clause_short_en": "{size} m²",
     "features_clause_note": "comma-joined true features from rooms.json features (kitchen/living_room/balcony/jacuzzi/fridge) in the page language; empty string if none",
     "max_title_chars": 60,
-    "max_description_chars": 155
+    "max_description_chars": 155,
+    "capacity_words_ar": {
+      "1": "لشخص واحد",
+      "2": "لشخصين",
+      "3": "لثلاثة أشخاص",
+      "4": "لأربعة أشخاص",
+      "5": "لخمسة أشخاص",
+      "6": "لستة أشخاص",
+      "7": "لسبعة أشخاص",
+      "8": "لثمانية أشخاص",
+      "9": "لتسعة أشخاص",
+      "10": "لعشرة أشخاص",
+      "other": "لـ{n} شخصًا"
+    },
+    "capacity_words_en": {
+      "1": "for 1 guest",
+      "other": "for {n} guests"
+    },
+    "title_overrides": {
+      "shafa-road/two-bedroom-jacuzzi-suite": {
+        "title_en": "Two-Bedroom Jacuzzi Suite {size} m² | Armada Residence"
+      }
+    },
+    "_template_note": "SEO audit, approved 11 Nov 2026 (docs/seo-audit-2026-11.md rows 1, 2, 4): {capacity_words} = the guest count in words (Ahmed: «لشخص واحد», «لشخصين», «لثلاثة أشخاص» … «لستة أشخاص»; 7–10 the same pattern; 11+ «لـ{n} شخصًا»); {details_clause} = ': ' + the bed and the features, the bed left out when the room's name already names it (King Room / غرفة بسرير كينج, Twin Room / غرفة سريرين منفصلين); then the short cancellation sentence of policies.json while the whole stays within max_description_chars. title_overrides: a page whose template title cannot fit (key branch/slug, the size filled in)."
   },
   "verified": true,
   "pending": [
@@ -195,8 +227,8 @@
   "blog_note": "Article <title>/description come from content/articles frontmatter (seo_title / seo_description, ≤ 60 / ≤ 155), never from here.",
   "venue_templates": {
     "_note": "Dining venue pages /dining/<slug>/ (2 Nov 2026): the title from the venue's name and branch; the description is the venue's own description (cut to max_description_chars at a word) or, for a coming-soon teaser, the template. Venues come from the dashboard «المطاعم والمقاهي».",
-    "title_ar": "{name} | أرمادا ريزيدنس {branch}",
-    "title_en": "{name} | Armada Residence {branch}",
+    "title_ar": "{name} – {branch}، الطائف",
+    "title_en": "{name} – {branch}, Taif",
     "teaser_description_ar": "{name} يفتح قريبًا في أرمادا ريزيدنس {branch} بالطائف. اترك بريدك ونبلغك برسالة واحدة عند الافتتاح.",
     "teaser_description_en": "{name} opens soon at Armada Residence {branch}, Taif. Leave your email and we will send you one message when it opens.",
     "max_title_chars": 60,

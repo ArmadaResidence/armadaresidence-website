@@ -765,6 +765,7 @@
     "blog": {
       "_note": "Blog UI strings (12 Oct 2026). Article content lives in content/articles/<slug>.<lang>.md.",
       "heading": "المدونة",
+      "h1": "المدونة: أدلة زيارة الطائف",
       "intro": "أدلة قصيرة لزيارة الطائف: المواسم، الوجهات، والعمرة — ومن أين تنطلق في رحلتك.",
       "filter_label": "تصفية حسب الوسم",
       "all": "الكل",
@@ -1514,6 +1515,7 @@
     },
     "blog": {
       "heading": "Blog",
+      "h1": "Blog: Taif travel guides",
       "intro": "Short guides to visiting Taif: the seasons, the places and Umrah — and where to start your trip from.",
       "filter_label": "Filter by tag",
       "all": "All",

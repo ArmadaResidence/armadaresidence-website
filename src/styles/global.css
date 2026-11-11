@@ -402,9 +402,9 @@ body {
     --scrim-a: var(--scrim-lg-ltr, 0.9);
   }
 }
-/* a soft shadow under the hero's eyebrow, headline and subtitle over a photo (7 Nov 2026) — a help to reading, never
+/* a soft shadow under the hero's eyebrow, h1 line, headline and subtitle over a photo (7 Nov 2026; the h1 line 11 Nov) — a help to reading, never
    counted in the AA measure (hero-scrim-check removes it before measuring) */
-.hero-over-photo :is(.hero-eyebrow, h1, .hero-sub) {
+.hero-over-photo :is(.hero-eyebrow, .hero-h1, .hero-title, .hero-sub) {
   text-shadow:
     0 1px 2px rgb(20 42 59 / 0.5),
     0 2px 18px rgb(20 42 59 / 0.45);

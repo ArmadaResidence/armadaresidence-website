@@ -81,7 +81,7 @@ for (const lang of ['ar', 'en']) {
   }
   // published texts
   for (const t of gen.texts) {
-    if (t.key === 'home.hero.title') check(((/<h1[^>]*>([\s\S]*?)<\/h1>/.exec(home) || [])[1] || '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim() === t[lang], `${lang}: the published hero title is not the home page's <h1>`);
+    if (t.key === 'home.hero.title') check(((/<p class="hero-title[^"]*"[^>]*>([\s\S]*?)<\/p>/.exec(home) || [])[1] || '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim() === t[lang], `${lang}: the published hero title is not the home page's slogan (.hero-title)`);
     if (t.key === 'policy.guests.body') {
       const pol = read(L('policies/index.html'));
       const tail = lang === 'ar' ? 'نص اختبار مضاف.' : 'QA sample sentence.';

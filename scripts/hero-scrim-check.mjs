@@ -80,7 +80,8 @@ try {
       await page.waitForTimeout(300);
       const texts = await page.evaluate(() => {
         const box = document.querySelector('.hero > .relative');
-        const els = [box.querySelector('p'), ...box.querySelectorAll('h1 .hero-word'), box.querySelector('.hero-sub'), ...box.querySelectorAll('a, button')];
+        // the h1 line above the slogan (11 Nov 2026) is small text: measured at 4.5:1 like the eyebrow
+        const els = [box.querySelector('p'), box.querySelector('.hero-h1'), ...box.querySelectorAll('.hero-title .hero-word'), box.querySelector('.hero-sub'), ...box.querySelectorAll('a, button')];
         // the «فرعانا» cards (7 Nov 2026): over a published cover only (a placeholder card has no gradient to judge)
         for (const body of document.querySelectorAll('.split-pane:has(.split-photo) .split-body')) {
           els.push(...body.querySelectorAll(':scope > p, .split-title-text, .split-phone span'));

@@ -25,6 +25,7 @@ import {
   pageSeo,
   paragraphs,
   policies,
+  seo,
   siteStats,
   siteTexts,
   ui,
@@ -41,6 +42,8 @@ const { locale } = Astro.props;
 const t = ui(locale);
 const s = pageSeo(locale, 'home');
 const hero = siteTexts.hero;
+// the page's h1 (SEO audit row 5, Ahmed 11 Nov 2026): a smaller line above the slogan, which stays the large visual line
+const homeH1 = (seo.pages.home as Record<string, string>)[`h1_${locale}`];
 
 // Hero (specs approved 30 Oct 2026): content/images/hero/hero.json, written by scripts/photos-import.mjs with the files
 // (synced to public/images/ by build.py). The poster is the LCP — <picture> with a 4:5 crop for phones and 16:9 for
@@ -225,14 +228,17 @@ const quickFacts = fill(t.home.quick_facts, {
     <div class:list={['relative w-full mx-auto max-w-6xl px-4 py-14 md:py-28', heroMedia && 'hero-over-photo']}>
       {/* hero (9 Oct 2026): eyebrow = "فنادق أرمادا ريزيدنس", h1 = the slogan; no price line, no city name */}
       <p class={`hero-eyebrow ${heroMedia ? 'text-bronze-bright' : 'text-bronze'} font-semibold tracking-wide mb-4`}>{locale === 'ar' ? heroCopy.eyebrow_ar : heroCopy.eyebrow_en}</p>
-      <h1 class="text-3xl md:text-5xl font-bold leading-tight max-w-3xl" style={`--hero-rule-delay:${heroRuleDelay}ms`}>
+      {/* SEO audit row 5 (Ahmed, 11 Nov 2026): the h1 is the smaller line naming what Armada is; the slogan below keeps
+          its size, words and motion as the large visual line (.hero-title) */}
+      <h1 class="hero-h1 text-base md:text-lg font-semibold leading-snug text-porcelain mb-3 max-w-3xl">{homeH1}</h1>
+      <p class="hero-title text-3xl md:text-5xl font-bold leading-tight max-w-3xl" style={`--hero-rule-delay:${heroRuleDelay}ms`}>
         {heroWords.map((w, i) => (
           <>
             <span class="hero-word" style={`--i:${i}`}>{w}</span>
             {i < heroWords.length - 1 && ' '}
           </>
         ))}
-      </h1>
+      </p>
       <span class="hero-rule" aria-hidden="true" style={`--hero-rule-delay:${heroRuleDelay}ms`}></span>
       <p class="hero-sub mt-5 text-lg md:text-xl text-porcelain/85 max-w-2xl leading-relaxed" style={`--hero-rule-delay:${heroRuleDelay}ms`}>
         {locale === 'ar' ? hero.subtitle_ar : hero.subtitle_en}

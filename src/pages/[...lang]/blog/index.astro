@@ -48,7 +48,7 @@ const jsonld = [
 <Base locale={locale} path="/blog/" title={s.title} description={s.description} jsonld={jsonld}>
   <link slot="head" rel="alternate" type="application/rss+xml" title={`${b.heading} — ${siteName(locale)}`} href={`${localePath(locale, '/blog/')}rss.xml`} />
   <section class="mx-auto max-w-6xl px-4 pt-10 pb-14">
-    <h1 class="text-3xl md:text-4xl font-bold text-midnight">{b.heading}</h1>
+    <h1 class="text-3xl md:text-4xl font-bold text-midnight">{b.h1}</h1>
     <p class="mt-3 max-w-[60ch] text-ink-muted leading-relaxed">{b.intro}</p>
 
     <div class="blog-filter mt-8" data-blog-filter data-labels={JSON.stringify(labels)}>

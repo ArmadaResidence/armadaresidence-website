@@ -172,7 +172,7 @@ Both existing subdomain sites are merged into this project as sections; the subd
 
 ## 7. SEO & technical requirements (each page)
 
-- Unique `<title>` and `<meta description>` per page per language — taken from `content/seo.json`, never written in templates. Pages with `noindex: true` get `<meta name="robots" content="noindex">` and are excluded from the sitemap.
+- Unique `<title>` and `<meta description>` per page per language — taken from `content/seo.json`, never written in templates. qa.py holds every title ≤ 60 and every description ≤ 155 characters, unique, on every built page (the menu included) and every page entry of seo.json (11 Nov 2026). The h1 of the home page (a smaller line above the slogan), the branch pages and /menu/ comes from `seo.json → pages.<page>.h1_*`, /blog/'s from `ui.json → blog.h1` (SEO audit, approved 11 Nov 2026 — `docs/seo-audit-2026-11.md`); room descriptions follow `room_templates` (the guests in words, the bed left out when the name names it, the short cancellation sentence while it fits). Pages with `noindex: true` get `<meta name="robots" content="noindex">` and are excluded from the sitemap.
 - Self-referencing canonical per page (never pointing to home).
 - `hreflang` ar / en / x-default on every page.
 - `lang="ar" dir="rtl"` on Arabic pages, `lang="en" dir="ltr"` on English.
