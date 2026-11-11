@@ -3009,3 +3009,62 @@ toggles (rates, inventory and photos lived elsewhere; names, sizes, beds, featur
   and no dining change (the dashboard's own included) is revertible — by design (§9 «never undoable»). Going back is
   the venue's description in «المطاعم والمقاهي» + «نشر», or the backup in `reports/session26-db-backup/`.
 - **Ahmed's decision (11 Nov 2026):** entry 5909 stays as it is — actor «— (النظام)», no relabel, no second entry.
+
+## 2026-11-11 — Ad click IDs are no longer lost; the foreign page of live-checks run 42875109350 (Ahmed, 11 Nov 2026)
+
+Context: Google Ads conversion tracking went into GTM-5JVH7R37 on 11 Nov 2026 (Conversion Linker on All Pages, the
+conversion tags on `booking_confirmed` / `booking_request`). GTM was injected 3.5 s after the load event or on the first
+interaction (`Base.astro`), so a visitor from an ad who moved on quickly could lose the click ID before anything read it.
+
+- **Ad landings load GTM at once.** A landing URL with a non-empty `gclid`, `gbraid`, `wbraid`, `dclid`, `fbclid`,
+  `ttclid`, `ScCid`, `msclkid` — or Google's own linker parameter `_gl` (added: it is what url passthrough puts on a
+  full-page navigation) — injects the container immediately (names compared case-insensitively; the one list is
+  `src/lib/click-ids.ts → CLICK_IDS`, passed to the inline loader by `define:vars`). Every other visit keeps the delay,
+  so the mobile score of an ordinary visit is unchanged. Unchanged too: GTM only on armadaresidence.com / www
+  (`GTM_HOSTS`), and the consent defaults always run first. The one exception to the hosts: an automated browser with
+  localStorage `armada-gtm-test` = 1 (`click-id-check`, which stubs gtm.js) — `navigator.webdriver` is required, so a
+  real visitor can never turn GTM on off the domain.
+- **The click ID is kept until consent.** The consent block sets `gtag('set', 'url_passthrough', true)` and
+  `gtag('set', 'ads_data_redaction', true)` — after the defaults and a stored choice (consent-check expects the update
+  right after the default), before the gtm.js event. Our own navigations are covered as well, since Google's link
+  decoration needs its tag loaded and never sees a scripted navigation: while advertising consent is not granted
+  (no stored choice, «الضروري فقط», analytics only, a choice of an older policy version or past 12 months),
+  `src/lib/click-ids.ts` adds the current URL's click IDs (+ `gclsrc`) to every same-origin link the visitor follows
+  (pointer-down / click / aux-click, capture phase — before the view-transition router reads the href; tel:, mailto:,
+  outside links and same-page `#` links untouched; a parameter the link already has is not repeated) and the booking
+  form adds them to the success URL (`withClickIds`) — /booking/success/ is the conversion page. In the URL only:
+  never a cookie, never localStorage / sessionStorage (`visit.ts` keeps only booleans, as before). With ads consent
+  granted the links stay plain and Google's cookie keeps the ID.
+- **GTM side (Ahmed, in the container — `docs/gtm-changes-session27.md`):** tick «Enable URL passthrough» on the
+  Conversion Linker tag too (Google documents both the dataLayer `set` command and the tag setting; the setting makes
+  it independent of how the container reads the command), then check in GTM Preview with `?gclid=test` and consent
+  denied that the internal links carry it and no `_gcl_*` cookie is written.
+- **Checks (CI, never on this machine).** `scripts/click-id-check.mjs` (new browser check, shard `booking-2`, also in
+  the live checks): each click ID → gtm.js before the load event with no interaction (desktop + phone, AR + EN); none,
+  utm only, an empty `gclid=` → nothing for 2.5 s after load, then the delayed load; off the domain without the flag →
+  nothing; the dataLayer order (defaults denied → the two `set` commands → gtm.js); consent denied → the footer link and
+  then the next link carry gclid + fbclid, the language switch too, outside / tel: / mailto: links unchanged;
+  analytics-only, an old policy version → carried; ads granted → plain; no ad cookie and the value nowhere in storage.
+  `booking-instant-check`: from `/booking/?…&gclid=test` with no consent the success URL keeps `gclid=test`; with ads
+  consent granted it carries none. Lighthouse: `.github/workflows/lighthouse.yml` (by hand: `scripts/lh.mjs` with
+  Lighthouse 12.8.2 on the runner, the medians, /version.json before and after) — the home page on mobile without a
+  click ID, measured on the live site before and after this deploy.
+- **The foreign page (Part 4).** Live-checks run 42875109350 (a11y shard, `/contact/` @375 dark, 10 Nov 2026) judged
+  a page with no `lang` and a `.logo-img-1x` link. Found: `logo-img-1x` appears in this repository only in that day's
+  DECISIONS entry (git log -S); the café menu app (armadaresidence.github.io/armada-residence-menu/) has `lang="ar"` and
+  no such class; the DNS of armadaresidence.com is GitHub Pages only (A 185.199.108–111.153, AAAA 2606:50c0:8000–8003::153,
+  www CNAME armadaresidence.github.io — 11 Nov 2026, Google DNS), so the old Hostinger site cannot answer. GitHub Pages'
+  own «Site not found · GitHub Pages» 404 page (fetched from an unknown *.github.io name) is exactly that markup:
+  `<html>` without lang, `<a class="logo logo-img-1x">`, images without alt. So GitHub Pages answered that one
+  request as if no site were configured for the domain, while the next deploy (219228f, 18:28 UTC) was being
+  published. Not reproducible on demand; nothing on our side to fix.
+- **Every live check confirms the page is ours.** Every page now carries `<meta name="armada-build" content="<commit>">`
+  (build.py `build_commit()` → `ARMADA_BUILD`; the same commit as /version.json). `check-all --live` preloads
+  `scripts/live-guard.mjs` into each browser check (`NODE_OPTIONS=--import`): every HTML document received from the
+  live origin (Playwright main-frame navigations of every context, and Node `fetch`) must have `<html lang="ar|en">`
+  and the marker — or be an Astro redirect page, or the menu app (`lang`), or (until the CDN forgets pre-marker copies)
+  carry our GTM container ID. Otherwise: the HTML, every response and request header, the server address the browser
+  connected to, the DNS answer then and the time go to `reports/live-guard/` (the job's artifact `foreign-page-<shard>`,
+  30 days), and the check exits 86 with «FOREIGN PAGE — … answered by <ip>:<port> (Server, X-GitHub-Request-Id) …».
+  A page of ours from another build (a CDN copy, a newer deploy mid-run) is a `::warning::`, never a failure. Not a
+  dropped connection: never retried.
