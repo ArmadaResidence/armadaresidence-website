@@ -2939,3 +2939,17 @@ toggles (rates, inventory and photos lived elsewhere; names, sizes, beds, featur
   which is runtime by decision). Also noted: CLAUDE.md §5 still says a switched-off accessible room stays «still in the
   sitemap», while §7 and the build (commit 86f37cc, DECISIONS 2026-10) exclude every noindex page — the §5 wording is
   stale.
+
+## 2026-11-11 — No Offer on the room pages; CLAUDE.md §5 / §7 (Ahmed, 11 Nov 2026)
+
+- **Ahmed's decision on the SEO audit's §4: `offers` removed from the room pages' JSON-LD** (all 24, AR + EN).
+  schema.org defines `offers` for products, services, events and creative works, not for `HotelRoom` (a Place); Google
+  takes hotel prices from Hotel Center, not from page markup, and a fixed price in the markup goes stale. The room node
+  keeps name, description, url, image, containedInPlace (the branch `Hotel`), floorSize, bed, occupancy and the
+  amenities in the page language. The offline schema.org validation of every JSON-LD block of the build now passes
+  with no finding. qa.py: a HotelRoom with `offers` or any Offer / AggregateOffer inside it fails, and so does a
+  HotelRoom typed Product (the old «Offer missing availability» rule is gone). Proven by putting an Offer back into a
+  built page.
+- **CLAUDE.md** §7: the branches are `Hotel`, the room pages `HotelRoom` without `offers` (the reason), the Organization
+  with `legalName`, `/sitemap.xml`. §5: a room type switched off in «الغرف» is `noindex` and out of the sitemap — the
+  stale «still in the sitemap» corrected to match §7 and the build.
