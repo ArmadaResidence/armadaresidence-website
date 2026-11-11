@@ -3008,3 +3008,4 @@ toggles (rates, inventory and photos lived elsewhere; names, sizes, beds, featur
   from «السجل»: `revert_batch` covers room types, rates, inventory, settings, staff, permissions and site defaults,
   and no dining change (the dashboard's own included) is revertible — by design (§9 «never undoable»). Going back is
   the venue's description in «المطاعم والمقاهي» + «نشر», or the backup in `reports/session26-db-backup/`.
+- **Ahmed's decision (11 Nov 2026):** entry 5909 stays as it is — actor «— (النظام)», no relabel, no second entry.
