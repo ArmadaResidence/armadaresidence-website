@@ -3068,3 +3068,28 @@ interaction (`Base.astro`), so a visitor from an ad who moved on quickly could l
   30 days), and the check exits 86 with «FOREIGN PAGE — … answered by <ip>:<port> (Server, X-GitHub-Request-Id) …».
   A page of ours from another build (a CDN copy, a newer deploy mid-run) is a `::warning::`, never a failure. Not a
   dropped connection: never retried.
+
+## 2026-11-11 — Cookie banner design: the choices' visual weight (Ahmed, 11 Nov 2026)
+
+- **What changed — the look only.** The three choices, their order (reading and Tab: the policy link, «قبول الكل»,
+  «الضروري فقط», «تخصيص»), the banner text, the consent logic, the consent version and what each choice grants are
+  unchanged (`CookieConsent.astro` lost only its flex utility classes; `src/lib/consent.ts` untouched).
+  - «قبول الكل» — the primary button, filled bronze under white text, first of the three.
+  - «الضروري فقط» — the SAME size (the two share a row in equal halves: `.cookie-actions` grid 1fr 1fr, from 768 px
+    1fr 1fr auto), outlined: a 1.5 px Armada Bronze `#A97C50` border, no fill, Bronze Text `#8A6239` (5.4:1 on the
+    white banner); dark: the same border (3.7:1 on `#182F41`, a non-text edge ≥ 3:1), `--dk-bronze-text` `#C9A27A`
+    (5.9:1). Hover: the border and text darken, still no fill.
+  - «تخصيص» — a text link (underlined Bronze Text, no fill, no border), below the buttons on phones, at the end of
+    their row from 768 px; still a 44 px target. In the customize view «حفظ» takes a full row.
+- **The fill: Bronze Deep `#976E47`, not `#A97C50` (flagged to Ahmed the same day).** The request named `#A97C50`
+  with light text AND 4.5:1. White on `#A97C50` is 3.7:1 and Porcelain 3.2:1 (Midnight 4.0:1), so no text colour
+  meets 4.5:1 on it; CLAUDE.md §3 already makes Bronze Deep (4.53:1 under white) the fill of primary buttons for
+  exactly this reason, and a11y-check would block the deploy otherwise. The button keeps Bronze Deep; Armada Bronze is
+  the outline of «الضروري فقط».
+- **Checks.** `consent-check` (CI, AR + EN × 375 + 1440 × light + dark) also asserts: «قبول الكل» and «الضروري فقط»
+  the same width and height (±1 px); «قبول الكل» computed Bronze Deep under white; «الضروري فقط» transparent with an
+  `#A97C50` border; «تخصيص» no fill, no border, underlined; the three in that order — beside its existing 44 px, keyboard
+  order and axe (contrast) checks. Before / after screenshots: `.github/workflows/banner-shots.yml`
+  (`scripts/cookie-banner-shots.mjs`, AR + EN × 375 + 1280 × light + dark, artifact `banner-<label>`).
+- A visible change: committed without `Armada-Invisible`, so the CI pixel guard reports (the banner is hidden in
+  the pixel guard's automated browser, so it shows no difference for it).
