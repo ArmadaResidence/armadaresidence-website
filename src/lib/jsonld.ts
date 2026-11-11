@@ -1,9 +1,11 @@
 /**
- * JSON-LD builders (schema.org). Organization on home, Hotel / LodgingBusiness per branch,
+ * JSON-LD builders (schema.org). Organization on home, a Hotel per branch (LODGING_TYPE),
  * HotelRoom + Offer per room page. All values come from content/ via content.ts.
  */
 import {
   absoluteUrl,
+  amenityLabel,
+  featureLabel,
   ogImageOf,
   branchContact,
   branchPath,
@@ -27,20 +29,13 @@ import {
   type Locale,
   type Room,
   type Venue,
+  ui,
 } from './content';
 
-const AMENITY_SCHEMA: Record<string, string> = {
-  breakfast_buffet_daily: 'Breakfast buffet',
-  coffee_shop: 'Café',
-  daily_housekeeping: 'Rooms cleaned daily',
-  events_hall: 'Meeting hall',
-  free_parking: 'Free parking',
-  laundry: 'Laundry service',
-  restaurant: 'Restaurant',
-  room_service_24h: '24-hour in-room dining',
-  security_24h: '24-hour security',
-  wifi: 'Free Wi-Fi',
-};
+/** Both properties are schema.org Hotels (11 Nov 2026, SEO audit): Airport Road's hotel apartments are let by the night
+ *  with reception, daily cleaning and in-room dining — a Hotel (a LodgingBusiness subtype). One type, used by the branch
+ *  node and by every reference to it (rooms, venues, articles), so an @id never meets two types. */
+export const LODGING_TYPE = 'Hotel';
 
 function logoUrl(): string {
   return absoluteUrl('/brand/logo-horizontal.svg');
@@ -89,7 +84,7 @@ export function lodging(locale: Locale, b: Branch) {
   const min = minPriceFor(b.slug);
   const node: Record<string, unknown> = {
     '@context': 'https://schema.org',
-    '@type': b.slug === 'shafa-road' ? 'Hotel' : 'LodgingBusiness',
+    '@type': LODGING_TYPE,
     '@id': absoluteUrl(branchPath(locale, b.slug)) + '#lodging',
     name: L(locale, b, 'name'),
     description: L(locale, b, 'tagline'),
@@ -104,9 +99,11 @@ export function lodging(locale: Locale, b: Branch) {
     checkoutTime: b.check_out,
     currenciesAccepted: pricing.currency,
     parentOrganization: { '@type': 'Organization', name: siteName(locale), url: absoluteUrl(localePath(locale, '/')) },
+    // the amenity names the branch page shows, in the page language (ui.json → amenities; 11 Nov 2026 — they were
+    // English on the Arabic pages)
     amenityFeature: b.amenities.map((a) => ({
       '@type': 'LocationFeatureSpecification',
-      name: AMENITY_SCHEMA[a] ?? a,
+      name: amenityLabel(locale, a),
       value: true,
     })),
   };
@@ -139,7 +136,7 @@ export function foodEstablishment(locale: Locale, b: Branch, d: Dining) {
     url: absoluteUrl(localePath(locale, d.menu_url)),
     hasMenu: absoluteUrl(localePath(locale, d.menu_url)),
     address: postalAddress(locale, b),
-    containedInPlace: { '@type': b.slug === 'shafa-road' ? 'Hotel' : 'LodgingBusiness', '@id': absoluteUrl(branchPath(locale, b.slug)) + '#lodging' },
+    containedInPlace: { '@type': LODGING_TYPE, '@id': absoluteUrl(branchPath(locale, b.slug)) + '#lodging' },
     publicAccess: d.open_to_public,
   };
   if (d.hours === '24h') {
@@ -164,7 +161,7 @@ export function hotelRoom(locale: Locale, room: Room, b: Branch) {
     url,
     image: ogImage(ogImageOf(room) ?? ogImageOf(b)),
     containedInPlace: {
-      '@type': b.slug === 'shafa-road' ? 'Hotel' : 'LodgingBusiness',
+      '@type': LODGING_TYPE,
       '@id': absoluteUrl(branchPath(locale, b.slug)) + '#lodging',
       name: L(locale, b, 'name'),
     },
@@ -172,23 +169,12 @@ export function hotelRoom(locale: Locale, room: Room, b: Branch) {
   node.floorSize = { '@type': 'QuantitativeValue', value: room.size_m2, unitCode: 'MTK' };
   node.bed = { '@type': 'BedDetails', typeOfBed: L(locale, room, 'bed') };
   node.occupancy = { '@type': 'QuantitativeValue', maxValue: room.capacity, unitCode: 'C62' };
-  const FEATURE_NAMES: Record<string, string> = {
-    kitchen: 'Kitchen',
-    living_room: 'Separate living room',
-    balcony: 'Private balcony',
-    jacuzzi: 'Jacuzzi',
-    fridge: 'Fridge',
-    kettle: 'Kettle',
-    washer: 'Washing machine',
-    wifi: 'Free Wi-Fi',
-    tv: 'TV',
-    safe: 'Safe',
-    air_conditioning: 'Air conditioning',
-    iron: 'Iron',
-  };
+  // the feature and equipment names the room page shows, in the page language (ui.json → room.features / room.in_room;
+  // 11 Nov 2026 — they were English on the Arabic pages, and a key without a name went out as the raw key)
+  const inRoom = ui(locale).room.in_room as Record<string, string>;
   const names = new Set<string>();
-  for (const [k, v] of Object.entries(room.features)) if (v === true) names.add(FEATURE_NAMES[k] ?? k);
-  for (const k of room.in_room_amenities) names.add(FEATURE_NAMES[k] ?? k);
+  for (const [k, v] of Object.entries(room.features)) if (v === true) names.add(featureLabel(locale, k));
+  for (const k of room.in_room_amenities) names.add(inRoom[k] ?? featureLabel(locale, k));
   node.amenityFeature = Array.from(names).map((name) => ({ '@type': 'LocationFeatureSpecification', name, value: true }));
   const plan = visibleRatePlans(room)[0];
   const price = plan?.base_price ?? room.base_price;
@@ -252,7 +238,7 @@ export function article(locale: Locale, a: ArticleLd) {
     author: { '@type': 'Organization', name: a.author, url: absoluteUrl(localePath(locale, '/')) },
     publisher: publisher(locale),
     isPartOf: { '@type': 'Blog', '@id': absoluteUrl(localePath(locale, '/blog/')) },
-    about: a.branchSlugs.map((s) => ({ '@type': s === 'shafa-road' ? 'Hotel' : 'LodgingBusiness', '@id': absoluteUrl(branchPath(locale, s)) + '#lodging' })),
+    about: a.branchSlugs.map((s) => ({ '@type': LODGING_TYPE, '@id': absoluteUrl(branchPath(locale, s)) + '#lodging' })),
   };
 }
 
@@ -340,7 +326,7 @@ export function venueLd(locale: Locale, v: Venue) {
     url: absoluteUrl(venuePath(locale, v)),
     image: ogImage(venueOg(v) ?? ogImageOf(b)),
     address: postalAddress(locale, b),
-    containedInPlace: { '@type': b.slug === 'shafa-road' ? 'Hotel' : 'LodgingBusiness', '@id': absoluteUrl(branchPath(locale, b.slug)) + '#lodging' },
+    containedInPlace: { '@type': LODGING_TYPE, '@id': absoluteUrl(branchPath(locale, b.slug)) + '#lodging' },
   };
   const description = locale === 'ar' ? v.description_ar : v.description_en;
   if (description) node.description = description;

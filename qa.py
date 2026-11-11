@@ -669,9 +669,10 @@ def main() -> int:
                 if node.get("@context") != "https://schema.org":
                     rep.f("json-ld", f"{path}: @context must be https://schema.org")
                 req = {
-                    "Organization": ["name", "url", "logo"],
-                    "Hotel": ["name", "address", "geo", "telephone", "image", "url"],
-                    "LodgingBusiness": ["name", "address", "geo", "telephone", "image", "url"],
+                    "Organization": ["name", "legalName", "url", "logo"],
+                    # both properties are Hotels (11 Nov 2026, SEO audit — Airport Road was a LodgingBusiness): a
+                    # LodgingBusiness node is now an unexpected type
+                    "Hotel": ["name", "address", "geo", "telephone", "image", "url", "checkinTime", "checkoutTime", "amenityFeature"],
                     "HotelRoom": ["name", "url", "containedInPlace", "description"],
                     "BlogPosting": ["headline", "description", "image", "datePublished", "dateModified", "author",
                                 "publisher", "mainEntityOfPage", "inLanguage", "url"],
@@ -691,7 +692,40 @@ def main() -> int:
                 for k in req:
                     if not node.get(k):
                         rep.f("json-ld", f"{path}: {t_} missing {k}")
-                if t_ in ("Hotel", "LodgingBusiness"):
+                # every reference to a branch node (#lodging: rooms, venues, articles) carries the branch's one type (11 Nov 2026)
+                def refs(o):
+                    if isinstance(o, dict):
+                        if str(o.get("@id", "")).endswith("#lodging") and o.get("@type") != "Hotel":
+                            rep.f("json-ld", f"{path}: {o.get('@id')} referenced as {o.get('@type')!r} (the branches are Hotel)")
+                        for v_ in o.values():
+                            refs(v_)
+                    elif isinstance(o, list):
+                        for v_ in o:
+                            refs(v_)
+                refs(node)
+                # amenity names in the page language, never a raw key (11 Nov 2026: they were English on the Arabic pages)
+                for af in node.get("amenityFeature") or []:
+                    nm = str(af.get("name", "")) if isinstance(af, dict) else ""
+                    if not nm or re.fullmatch(r"[a-z0-9_]+", nm) or any(m in nm for m in TODO_MARKERS) or (ARABIC.search(nm) is None) != en:
+                        rep.f("json-ld", f"{path}: {t_} amenityFeature name {nm!r} is not a label in the page language")
+                if t_ == "Organization" and node.get("legalName") != json.loads((CONTENT / "legal.json").read_text(encoding="utf-8"))["entity_ar"]:
+                    rep.f("json-ld", f"{path}: Organization legalName {node.get('legalName')!r} != legal.json entity_ar")
+                if t_ == "Hotel":
+                    br = next((b for b in content["branches.json"]["branches"] if node.get("@id") == f"{site}{'/en' if en else ''}/{b['slug']}/#lodging"), None)
+                    if br is None:
+                        rep.f("json-ld", f"{path}: Hotel @id {node.get('@id')!r} is not a branch page's #lodging")
+                    else:
+                        if node.get("checkinTime") != br.get("check_in") or node.get("checkoutTime") != br.get("check_out"):
+                            rep.f("json-ld", f"{path}: Hotel check-in / check-out != branches.json ({node.get('checkinTime')} / {node.get('checkoutTime')})")
+                        if node.get("telephone") != contact["branches"][br["slug"]]["phone"]:
+                            rep.f("json-ld", f"{path}: Hotel telephone != that branch's number in contact.json")
+                    addr = node.get("address") or {}
+                    geo = node.get("geo") or {}
+                    if addr.get("@type") != "PostalAddress" or not all(addr.get(k) for k in ("streetAddress", "addressLocality", "postalCode", "addressCountry")):
+                        rep.f("json-ld", f"{path}: Hotel address must be a full PostalAddress")
+                    if geo.get("@type") != "GeoCoordinates" or not all(isinstance(geo.get(k), (int, float)) for k in ("latitude", "longitude")):
+                        rep.f("json-ld", f"{path}: Hotel geo must be GeoCoordinates with numeric latitude / longitude")
+                if t_ == "Hotel":
                     if node.get("telephone") not in known_phones:
                         rep.f("json-ld", f"{path}: {t_} telephone not in contact.json")
                     # priceRange only while prices are shown; none while display_mode is hidden (decision 9 Oct 2026)
@@ -729,8 +763,8 @@ def main() -> int:
                             rep.f("json-ld", f"{path}: Offer currency != pricing.json")
         if lp == "/" and "Organization" not in types:
             rep.f("json-ld", f"{path}: home must carry Organization")
-        if lp in ("/airport-road/", "/shafa-road/") and not ({"Hotel", "LodgingBusiness"} & set(types)):
-            rep.f("json-ld", f"{path}: branch page must carry Hotel/LodgingBusiness")
+        if lp in ("/airport-road/", "/shafa-road/") and "Hotel" not in types:
+            rep.f("json-ld", f"{path}: branch page must carry Hotel")
         if lp in room_by_path and "HotelRoom" not in types:
             rep.f("json-ld", f"{path}: room page must carry HotelRoom")
         if re.fullmatch(r"/blog/[a-z0-9-]+/", lp) and "BlogPosting" not in types:
@@ -913,6 +947,23 @@ def main() -> int:
     for name in ("robots.txt", "CNAME", ".nojekyll"):
         if not (DIST / name).is_file():
             rep.f("hosting", f"dist/{name} missing")
+    # /sitemap.xml = the sitemap index (11 Nov 2026, SEO audit: it answered 404); robots.txt names sitemaps that exist on
+    # the canonical domain, and disallows no page that is in the sitemap
+    if not (DIST / "sitemap.xml").is_file() or not sm_index.is_file() or (DIST / "sitemap.xml").read_bytes() != sm_index.read_bytes():
+        rep.f("sitemap", "dist/sitemap.xml must be a copy of sitemap-index.xml (build.py)")
+    robots_txt = (DIST / "robots.txt").read_text(encoding="utf-8") if (DIST / "robots.txt").is_file() else ""
+    sm_lines = re.findall(r"(?im)^sitemap:\s*(\S+)", robots_txt)
+    if not sm_lines:
+        rep.f("robots", "robots.txt names no sitemap")
+    for u in sm_lines:
+        if not u.startswith(site + "/") or not (DIST / u[len(site) + 1:]).is_file():
+            rep.f("robots", f"robots.txt sitemap {u} is not a built file on {site}")
+    if not re.search(r"(?im)^user-agent:\s*\*", robots_txt) or re.search(r"(?im)^disallow:\s*/\s*$", robots_txt):
+        rep.f("robots", "robots.txt must address every user agent and must not disallow the whole site")
+    for dis in re.findall(r"(?im)^disallow:\s*(\S+)", robots_txt):
+        for pth in sm_paths if sm_index.is_file() else ():
+            if pth.startswith(dis):
+                rep.f("robots", f"robots.txt disallows {dis}, which covers the sitemap page {pth}")
 
     # ---- home transfer size: first-party resources only (DECISIONS.md 2026-11-01) — the GTM container and the ad
     # pixels it loads are third party, reported separately by scripts/lh.mjs and never counted here. The 1 MB is the

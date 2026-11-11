@@ -914,6 +914,9 @@ def main() -> int:
     run(["node", "scripts/typeset.mjs"])
     (DIST / "_availability.json").write_text(json.dumps(availability, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     write_version()
+    # /sitemap.xml (11 Nov 2026, SEO audit): @astrojs/sitemap writes sitemap-index.xml + sitemap-0.xml only, and crawlers
+    # and tools that ask for the conventional /sitemap.xml got the 404 page — the same index, byte for byte (qa.py checks)
+    shutil.copyfile(DIST / "sitemap-index.xml", DIST / "sitemap.xml")
 
     pages = sorted(p.relative_to(DIST).as_posix() for p in DIST.rglob("*.html"))
     print(f"\n✓ {len(pages)} HTML files in dist/:")
