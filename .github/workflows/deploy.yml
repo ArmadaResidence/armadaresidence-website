@@ -188,24 +188,8 @@ jobs:
           python-version: '3.12'
       - run: npm ci
       - run: npm ci --prefix admin
-      # Playwright's browsers from the cache, keyed on the installed Playwright version (9 Nov 2026): a slow
-      # download (15 min once on a GitHub incident day) can no longer eat a job's time limit
-      - name: Playwright version
-        id: pw
-        shell: bash
-        run: echo "version=$(node -p "require('playwright/package.json').version")" >> "$GITHUB_OUTPUT"
-      - name: Browsers from the cache
-        id: pw-cache
-        uses: actions/cache@v4
-        with:
-          path: ~/.cache/ms-playwright
-          key: playwright-${{ runner.os }}-${{ steps.pw.outputs.version }}-chromium-webkit
-      - name: Browsers (chromium, webkit; Google Chrome is on the runner) — downloaded only on a cache miss
-        if: ${{ steps.pw-cache.outputs.cache-hit != 'true' }}
-        run: npx playwright install --with-deps chromium webkit
-      - name: The browsers' system libraries (cache hit)
-        if: ${{ steps.pw-cache.outputs.cache-hit == 'true' }}
-        run: npx playwright install-deps chromium webkit
+      # its browser checks (the dashboard's sidebar, «السجل», «الغرف») use the runner's Google Chrome: nothing to
+      # install, no apt (11 Nov 2026)
       - name: Run the static checks
         run: node scripts/check-all.mjs --ci-static
 
@@ -248,6 +232,12 @@ jobs:
     name: checks · browser (${{ matrix.shard }})
     needs: build
     runs-on: ubuntu-latest
+    # the official Playwright image (11 Nov 2026 — DECISIONS.md «Browser checks in the Playwright image»): Chromium,
+    # WebKit and their system libraries are in the image, so no apt and no download — a mirror outage cannot block a
+    # deploy (two did on 11 Nov). The tag = the installed Playwright version (deploy-alert-check asserts it).
+    container:
+      image: mcr.microsoft.com/playwright:v1.64.0-noble
+      options: --ipc=host
     timeout-minutes: 20 # about 3x the longest shard (~7 min); a hung check must not hold the run (9 Nov 2026)
     strategy:
       fail-fast: false
@@ -260,31 +250,15 @@ jobs:
           node-version: 24
           cache: npm
       - run: npm ci
-      # Playwright's browsers from the cache, keyed on the installed Playwright version (9 Nov 2026): a slow
-      # download (15 min once on a GitHub incident day) can no longer eat a job's time limit
-      - name: Playwright version
-        id: pw
-        shell: bash
-        run: echo "version=$(node -p "require('playwright/package.json').version")" >> "$GITHUB_OUTPUT"
-      - name: Browsers from the cache
-        id: pw-cache
-        uses: actions/cache@v4
-        with:
-          path: ~/.cache/ms-playwright
-          key: playwright-${{ runner.os }}-${{ steps.pw.outputs.version }}-chromium-webkit
-      - name: Browsers (chromium, webkit; Google Chrome is on the runner) — downloaded only on a cache miss
-        if: ${{ steps.pw-cache.outputs.cache-hit != 'true' }}
-        run: npx playwright install --with-deps chromium webkit
-      - name: The browsers' system libraries (cache hit)
-        if: ${{ steps.pw-cache.outputs.cache-hit == 'true' }}
-        run: npx playwright install-deps chromium webkit
       - name: This run's build
         uses: actions/download-artifact@v4
         with:
           name: site-build
       - run: tar -xf site-build.tar && rm site-build.tar
       - name: Run the browser checks
-        run: node scripts/check-all.mjs --shard ${{ matrix.shard }}
+        env:
+          ARMADA_PW_BUNDLED: '1'
+        run: NODE_OPTIONS="--import=$GITHUB_WORKSPACE/scripts/pw-bundled.mjs" node scripts/check-all.mjs --shard ${{ matrix.shard }}
 
   # the pixel guard on a push (or by hand with pixel_before): the pushed range's parent and this commit, both built
   # without the service key, every page AR + EN × 375 + 1440 × light + dark compared pixel by pixel

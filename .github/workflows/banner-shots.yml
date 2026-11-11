@@ -20,6 +20,12 @@ permissions:
 jobs:
   shots:
     runs-on: ubuntu-latest
+    # the official Playwright image (11 Nov 2026 — DECISIONS.md «Browser checks in the Playwright image»): Chromium,
+    # WebKit and their system libraries are in the image, so no apt and no download — a mirror outage cannot block a
+    # deploy (two did on 11 Nov). The tag = the installed Playwright version (deploy-alert-check asserts it).
+    container:
+      image: mcr.microsoft.com/playwright:v1.64.0-noble
+      options: --ipc=host
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
@@ -28,24 +34,13 @@ jobs:
           node-version: 24
           cache: npm
       - run: npm ci
-      - name: Playwright version
-        id: pw
-        run: echo "version=$(node -p "require('playwright/package.json').version")" >> "$GITHUB_OUTPUT"
-      - name: Browsers from the cache
-        id: pw-cache
-        uses: actions/cache@v4
-        with:
-          path: ~/.cache/ms-playwright
-          key: playwright-${{ runner.os }}-${{ steps.pw.outputs.version }}-chromium-webkit
-      - name: Browser libraries
-        run: npx playwright install-deps chromium
       - name: Shoot
         run: |
           URL="${{ inputs.url }}"
           [ -n "$URL" ] || URL=$(node -e "process.stdout.write(require('./content/seo.json').live_url.replace(/\/$/, ''))")
           echo "### $URL — /version.json" >> "$GITHUB_STEP_SUMMARY"
-          { echo '```json'; curl -fsS "$URL/version.json?v=$(date +%s)" || echo '{}'; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
-          node scripts/cookie-banner-shots.mjs "$URL" screenshots/cookie-banner "${{ inputs.label }}"
+          { echo '```json'; node -e "fetch(process.argv[1]).then((r) => r.text()).then((t) => process.stdout.write(t)).catch(() => process.stdout.write('{}'))" "$URL/version.json?v=$(date +%s)"; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+          ARMADA_PW_BUNDLED=1 NODE_OPTIONS="--import=$GITHUB_WORKSPACE/scripts/pw-bundled.mjs" node scripts/cookie-banner-shots.mjs "$URL" screenshots/cookie-banner "${{ inputs.label }}"
       - uses: actions/upload-artifact@v4
         with:
           name: banner-${{ inputs.label }}

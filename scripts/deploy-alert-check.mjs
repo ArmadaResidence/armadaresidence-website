@@ -179,6 +179,23 @@ for (const [k, v] of Object.entries({ ...ROOMS_NOTE, failed: ROOMS_NOTE.failed(t
     { name: 'live · forced failure (alert test)', conclusion: 'failure' }, { name: 'live · alert the admins', conclusion: 'failure' }];
   E('live: failedJobs = the failed ones, the alert job left out', JSON.stringify(failedJobs(jobs)) === JSON.stringify(['live · booking', 'live · forced failure (alert test)']));
   const lw = readFileSync(new URL('../.github/workflows/live-checks.yml', import.meta.url), 'utf8');
+  // the browser jobs in the official Playwright image (11 Nov 2026): its tag = the installed Playwright version, and no
+  // browser job installs system libraries with apt (two deploys stopped on an Ubuntu mirror outage that day)
+  {
+    const pwv = JSON.parse(readFileSync(new URL('../node_modules/playwright/package.json', import.meta.url), 'utf8')).version;
+    const dw = readFileSync(new URL('../.github/workflows/deploy.yml', import.meta.url), 'utf8');
+    const bw = readFileSync(new URL('../.github/workflows/banner-shots.yml', import.meta.url), 'utf8');
+    const job = (y, name, next) => y.slice(y.indexOf(`
+  ${name}:`), next ? y.indexOf(`
+  ${next}:`) : undefined);
+    const img = `image: mcr.microsoft.com/playwright:v${pwv}-noble`;
+    const jobs = [['deploy.yml checks-browser', job(dw, 'checks-browser', 'checks-pixel')], ['live-checks.yml live', job(lw, 'live', 'forced')], ['banner-shots.yml shots', bw]];
+    for (const [n, y] of jobs) {
+      E(`${n}: in the Playwright image of the installed version (v${pwv})`, y.includes(img), (y.match(/image: \S+/) || ['no image'])[0]);
+      E(`${n}: the preload that maps Chrome to the image's Chromium`, /ARMADA_PW_BUNDLED: '1'|ARMADA_PW_BUNDLED=1/.test(y) && y.includes('scripts/pw-bundled.mjs'));
+    }
+    for (const [n, y] of [...jobs, ['deploy.yml checks-static', job(dw, 'checks-static', 'checks-windows')]]) E(`${n}: no apt (no playwright install-deps / --with-deps)`, !/install-deps|--with-deps|apt-get/.test(y));
+  }
   E('live-checks.yml: the alert job after gate, live and forced, only on a failure', /alert:\n\s+name: live · alert the admins\n\s+needs: \[gate, live, forced\]\n\s+if: \$\{\{ always\(\) && \(needs\.gate\.result == 'failure' \|\| needs\.live\.result == 'failure' \|\| needs\.forced\.result == 'failure'\) \}\}/.test(lw));
   E('live-checks.yml: the alert reports with the service key', /SUPABASE_SERVICE_ROLE_KEY: \$\{\{ secrets\.SUPABASE_SERVICE_ROLE_KEY \}\}[\s\S]*node scripts\/site-deploy-report\.mjs live/.test(lw));
   E('live-checks.yml: force_fail skips the gate and fails one job', /force_fail:\n\s+description:/.test(lw) && /&& !inputs\.force_fail\)/.test(lw) && /forced:\n[\s\S]{0,200}inputs\.force_fail/.test(lw));

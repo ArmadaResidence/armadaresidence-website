@@ -94,6 +94,12 @@ jobs:
     needs: gate
     if: ${{ needs.gate.outputs.check == 'true' }}
     runs-on: ubuntu-latest
+    # the official Playwright image (11 Nov 2026 — DECISIONS.md «Browser checks in the Playwright image»): Chromium,
+    # WebKit and their system libraries are in the image, so no apt and no download — a mirror outage cannot block a
+    # deploy (two did on 11 Nov). The tag = the installed Playwright version (deploy-alert-check asserts it).
+    container:
+      image: mcr.microsoft.com/playwright:v1.64.0-noble
+      options: --ipc=host
     timeout-minutes: 20 # about 3x the longest shard (~7 min); a hung check must not hold the run (9 Nov 2026)
     strategy:
       fail-fast: false
@@ -110,26 +116,6 @@ jobs:
           node-version: 24
           cache: npm
       - run: npm ci
-      # Playwright's browsers from the cache, keyed on the installed Playwright version (9 Nov 2026): a slow
-      # download (15 min once on a GitHub incident day) can no longer eat a job's time limit
-      - name: Playwright version
-        id: pw
-        if: ${{ matrix.shard != 'cors' }}
-        shell: bash
-        run: echo "version=$(node -p "require('playwright/package.json').version")" >> "$GITHUB_OUTPUT"
-      - name: Browsers from the cache
-        id: pw-cache
-        if: ${{ matrix.shard != 'cors' }}
-        uses: actions/cache@v4
-        with:
-          path: ~/.cache/ms-playwright
-          key: playwright-${{ runner.os }}-${{ steps.pw.outputs.version }}-chromium-webkit
-      - name: Browsers (chromium, webkit; Google Chrome is on the runner) — downloaded only on a cache miss
-        if: ${{ matrix.shard != 'cors' && steps.pw-cache.outputs.cache-hit != 'true' }}
-        run: npx playwright install --with-deps chromium webkit
-      - name: The browsers' system libraries (cache hit)
-        if: ${{ matrix.shard != 'cors' && steps.pw-cache.outputs.cache-hit == 'true' }}
-        run: npx playwright install-deps chromium webkit
       - name: The deployed build's content files
         if: ${{ matrix.shard != 'cors' }}
         uses: actions/download-artifact@v4
@@ -143,7 +129,9 @@ jobs:
       - name: The project URL for the CORS checks
         run: echo "SUPABASE_URL=${PUBLIC_BOOKING_ENDPOINT%%/functions/*}" >> "$GITHUB_ENV"
       - name: Run the live checks
-        run: node scripts/check-all.mjs --live "${{ needs.gate.outputs.url }}" --shard ${{ matrix.shard }}
+        env:
+          ARMADA_PW_BUNDLED: '1'
+        run: NODE_OPTIONS="--import=$GITHUB_WORKSPACE/scripts/pw-bundled.mjs" node scripts/check-all.mjs --live "${{ needs.gate.outputs.url }}" --shard ${{ matrix.shard }}
       # 11 Nov 2026 (scripts/live-guard.mjs): a page that is not this site's — its HTML, every response header, the
       # server address, the DNS answer and the time — kept with the run
       - name: Evidence of a foreign page
