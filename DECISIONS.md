@@ -3156,7 +3156,7 @@ browser and trained the ad platforms on staff behaviour.
   staff take many bookings from one office address); the per-phone / per-email limits and Turnstile still apply.
 - **Database (migration `20261111100000_booking_source`).** `reservations.booking_source` text not null default
   `website`, check = website + the eight. `public.submit_booking` is not touched: `public.submit_booking_sourced(p)`
-  (service role only) sets the transaction-local `app.booking_source` and calls it; a BEFORE INSERT trigger copies it onto
+  (service role only) sets the transaction-local `app.booking_source`, calls it and clears the setting right after (a local setting outlives the function — the first CI run of the SQL test caught it leaking into later inserts of the same transaction); a BEFORE INSERT trigger copies it onto
   the row, and turns an explicit NULL into website (the «استرجاع» of an archived test booking from before the column).
   Staff have no column privilege on it. `public.report_booking_sources(branch, from, to)`: confirmed bookings booked in
   the period by source — bookings, nights, revenue and its share (the money keys withheld without «الأرقام المالية»,

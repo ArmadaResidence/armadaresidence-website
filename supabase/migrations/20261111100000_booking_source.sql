@@ -32,13 +32,19 @@ create trigger reservations_booking_source before insert on public.reservations
 -- booking-request (service role): the same contract as submit_booking, plus p ->> 'booking_source'
 create function public.submit_booking_sourced(p jsonb) returns jsonb
 language plpgsql security definer set search_path = '' as $$
-declare v text := coalesce(nullif(btrim(p ->> 'booking_source'), ''), 'website');
+declare
+  v text := coalesce(nullif(btrim(p ->> 'booking_source'), ''), 'website');
+  v_out jsonb;
 begin
   if v not in ('website', 'instagram', 'whatsapp', 'phone', 'snapchat', 'tiktok', 'facebook', 'walk_in', 'other') then
     raise exception 'booking_source' using errcode = '22023';
   end if;
   perform set_config('app.booking_source', v, true);
-  return public.submit_booking(p);
+  v_out := public.submit_booking(p);
+  -- a transaction-local setting outlives the function: cleared at once, so nothing else in the same transaction takes it
+  -- (supabase/tests/booking-source.sql S5)
+  perform set_config('app.booking_source', '', true);
+  return v_out;
 end;
 $$;
 revoke all on function public.submit_booking_sourced(jsonb) from public, anon, authenticated;
