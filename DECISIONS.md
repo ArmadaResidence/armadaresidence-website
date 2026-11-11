@@ -2901,3 +2901,41 @@ toggles (rates, inventory and photos lived elsewhere; names, sizes, beds, featur
   `publish-log-check` on the same branch: 13 / 13 (a real sign-in as management and as the admin). The temporary secret
   `E2E_BRANCH_SERVICE_KEY` and the branch (≈ 42 minutes) were deleted; only `main` remains. The earlier status line
   above («not pushed», «functions refused», «e2e not run») is superseded.
+
+## 2026-11-11 — Session 26: the flaky Windows email-print check, the SEO audit of the live site (Ahmed's brief of 11 Nov 2026)
+
+- **Part 0 — the last runs of session 25.** The docs deploy of 219228f: run 42875492019 (push) succeeded and its live
+  checks, run 42876964060, passed (all shards). Live-checks run 42875109350 (for 86f37cc, started 18:25 UTC) failed in
+  the a11y shard only, on one URL and one variant (`/contact/` @375 dark): `html-has-lang`, an `img[width="200"]`
+  without alt, a `.logo-img-1x` link without a name — markup that is not this site's, i.e. a page the host served in
+  place of ours for that one request while the next deploy (219228f, pushed 18:28) was starting. Every other page and
+  variant passed; the next live run passed. No change to the site.
+- **Part 1 — `email-print-check` on the Windows runner.** Four failures in three days (runs 42576855394, 42630144215,
+  42748887466, 42870248734), all `page.screenshot: Protocol error (Page.captureScreenshot): Unable to capture
+  screenshot` at the same place: the FIRST screen capture of section 2, on the Chromium page that had just printed ten
+  A4 PDFs and toggled print media; never a later capture, and the next run always passed. Cause: Chrome had no fresh
+  compositor frame for that page right after the PDF / print-media work (software compositing on the GPU-less runner).
+  Fix: the screen captures use their own page (never printed, already 600 × 900), wait for the fonts and two animation
+  frames before each capture; and, on exactly that protocol error, ONE more attempt — logged on stdout («retried: …»),
+  as a GitHub `::warning::` annotation and in the summary line, so a recurrence is visible. Any other error, or a second
+  failure, still fails the check; what is compared (the pixel-identical renderings) is unchanged.
+- **Part 2 — SEO audit of the live site** (82 sitemap pages, 412 linked URLs, schema.org validated offline): report
+  `docs/seo-audit-2026-11.md`. Titles, descriptions, h1, canonical, hreflang, Open Graph, sitemap, noindex, internal
+  links and image alts all pass. Technical fixes made: `/sitemap.xml` (it answered 404) = a copy of
+  `sitemap-index.xml` written by build.py; Airport Road's JSON-LD is a `Hotel` like Shafa Road
+  (`jsonld.ts → LODGING_TYPE`, every `#lodging` reference included); the amenity names in JSON-LD are the labels the
+  page shows, in its language (they were English on the Arabic pages). qa.py now fails on: `dist/sitemap.xml` missing
+  or ≠ the index; a robots.txt `Sitemap:` that is not a built file on the domain, `Disallow: /`, or a disallowed
+  sitemap page; a `LodgingBusiness` node or a `#lodging` reference not typed `Hotel`; a Hotel without `checkinTime`,
+  `checkoutTime`, `amenityFeature`, a full PostalAddress or numeric geo, or whose times / telephone differ from
+  branches.json / contact.json; an amenity name not in the page's script (or a raw key); an Organization without
+  `legalName` = legal.json `entity_ar`. Each new rule was proven by mutating a built page.
+- **Not changed (visitor text): 18 proposals** in the report's section 3 (room description template, two titles that
+  lose size / brand, home and branch h1s, /booking/ «طلب حجز», the café venue and /menu/ titles and descriptions, short
+  English titles) for the reviewer's approval.
+- **For Ahmed's decision:** `offers` is not a schema.org property of `HotelRoom` (a Place) — the only offline-validation
+  finding, on all 24 room pages. CLAUDE.md §7 asks for HotelRoom + Offer, so it stays; recommendation in the report §4:
+  remove it (Google has no HotelRoom rich result, and `["HotelRoom","Product"]` would make Google ask for a price,
+  which is runtime by decision). Also noted: CLAUDE.md §5 still says a switched-off accessible room stays «still in the
+  sitemap», while §7 and the build (commit 86f37cc, DECISIONS 2026-10) exclude every noindex page — the §5 wording is
+  stale.
