@@ -3120,3 +3120,69 @@ interaction (`Base.astro`), so a visitor from an ad who moved on quickly could l
   preload, and that none of them nor `checks · static` runs `install-deps`, `--with-deps` or `apt-get` — a Playwright
   upgrade without the image tag fails the fast checks. The remaining apt in the deploy is the build's ffmpeg, installed
   only when a hero video or a HEIC photo must be processed (none today).
+
+## 2026-11-11 — Internal devices and the booking source «مصدر الحجز» (session 28, Ahmed's brief of 11 Nov 2026)
+
+Context: staff book on the public site for guests who write on Instagram or WhatsApp (AR-20261111-T8KA, Shafa Road,
+made by Ahmed from his own computer for a guest who wrote on Instagram). Those bookings fired Purchase from a staff
+browser and trained the ad platforms on staff behaviour.
+
+- **The mark.** Any page opened with `?team=<token>` marks that browser as internal for `content/team.json →
+  max_age_days` (365): a first-party cookie `armada_team` (path /, SameSite Lax, Secure on https) and localStorage
+  `armada-team` {k: token, t: time} — either one is enough. `?team=off` removes both. The parameter is taken out of the
+  address either way (`history.replaceState`, other parameters kept). Only the token's SHA-256 is in the repository
+  (`team.json → token_sha256`, several allowed while staff move to a new one); the token itself was given to Ahmed in the
+  hand-off and is the repository secret `TEAM_DEVICE_TOKEN` for CI. The browser checks the hash (Web Crypto) before it
+  writes the mark; a stored token that is no longer listed (a rotation) loses its mark on the next page view. The inline
+  script of `Base.astro` does all of it before GTM is queued; `src/lib/team.ts` only reads the mark for the booking form.
+- **No GTM on an internal device.** The GTM loader asks `window.armadaTeamHold()` before it injects the container: a
+  marked browser never loads it — before or after consent, on an ad landing (a click ID) or not — so no GA4, no ad pixel,
+  no Clarity (they all live in the container). A page opened with `?team=<anything but off>` loads none either while its
+  token is checked (a wrong token: the normal delayed load follows). **Exception:** an address with `gtm_debug` (GTM
+  Preview / Tag Assistant) loads GTM as usual, and the tab remembers it (sessionStorage `armada-gtm-debug`) so the next
+  pages of the preview load it too; another tab does not. The Consent Mode defaults and the dataLayer pushes run as
+  everywhere (nothing reads them without the container).
+- **«جهاز داخلي».** A small outlined label in the footer's bottom row (`ui.json → footer.team_device`, "Internal device"),
+  shown only under `<html data-team>` (`global.css`); nothing changes for a visitor.
+- **«مصدر الحجز».** On a marked browser only, the booking form (drawer and /booking/) shows a required select first:
+  انستجرام، واتساب، اتصال هاتفي، سناب شات، تيك توك، فيسبوك، حضور مباشر، أخرى (`rules.ts → STAFF_BOOKING_SOURCES`;
+  `ui.json → form.booking_sources`). For a visitor the select is hidden and disabled, so it is never in the request; the
+  form adds `booking_source` + `team_token` only on a marked browser. Validation is the shared rule (`validateBooking` with
+  `ctx.internal`, error «اختر مصدر الحجز.»).
+- **The server decides.** booking-request computes `teamTokenOk(team_token, team_token_sha256)` (the hashes reach the
+  function through `content.generated.json`, build.py `team_hashes`); with a valid token the source is required and must
+  be one of the eight (else 422 `fields.booking_source`); without one any `booking_source` is dropped and the booking is
+  `website` («الموقع مباشرة»). The token never reaches the database. A valid token also skips the per-IP limit (5 an hour —
+  staff take many bookings from one office address); the per-phone / per-email limits and Turnstile still apply.
+- **Database (migration `20261111100000_booking_source`).** `reservations.booking_source` text not null default
+  `website`, check = website + the eight. `public.submit_booking` is not touched: `public.submit_booking_sourced(p)`
+  (service role only) sets the transaction-local `app.booking_source` and calls it; a BEFORE INSERT trigger copies it onto
+  the row, and turns an explicit NULL into website (the «استرجاع» of an archived test booking from before the column).
+  Staff have no column privilege on it. `public.report_booking_sources(branch, from, to)`: confirmed bookings booked in
+  the period by source — bookings, nights, revenue and its share (the money keys withheld without «الأرقام المالية»,
+  reports view required, branch scope), the same definitions as `report_sources`.
+- **Dashboard.** «الحجوزات»: a filter «مصدر الحجز» (`?src=`), a chip on the row when it is not «الموقع مباشرة», the row
+  «مصدر الحجز» in the details, a column in the CSV, «مصدر الحجز: …» in the A4 sheet's status line (one line, so the sheet
+  stays one page). «التقارير» → «المصادر والحملات»: the card «حسب مصدر الحجز» (bars + table) and its block in the Excel
+  sheet. Labels: `admin/src/lib/format.ts → BOOKING_SOURCE_LABELS`.
+- **Unchanged on purpose:** the guest's emails and WhatsApp messages, the confirmation logic, the reception email (it
+  does not name the source), the WhatsApp hand-off text. Flagged, not changed: on a staff device the success page still
+  offers «انضم إلى إياب» with the guest's booking details, and the form's marketing box is still there — staff must not
+  tick or press either for a guest who did not agree.
+- **Checks (CI, never on this machine).** `scripts/team-device-check.mjs` (browser, shard `booking-2`, also in the live
+  checks; needs the secret `TEAM_DEVICE_TOKEN`): a visitor loads GTM; the mark (address cleaned, cookie for a year,
+  storage, the label AR + EN, 1440 + 375); no gtm.js and no pixel request on the marked browser with consent denied, after
+  «قبول الكل», on an ad landing, on other pages and after a client-side navigation; `gtm_debug` loads it in that tab only;
+  `?team=off` and a wrong / rotated token; the form — hidden and not sent for a visitor, even when the select is forced
+  enabled; required, then sent with the token, on the marked browser. `.github/workflows/server-checks.yml` (on a push
+  touching the database or the function, and by hand): `sql` — `supabase db start` (every migration on an empty local
+  database) + `supabase/tests/booking-source.sql` through `scripts/sql-test-run.mjs` (refuses any non-local database);
+  `function` — the real booking-request under Deno against a stub Supabase origin
+  (`scripts/booking-source-server-check.mjs`): a forged source without / with a wrong token is stored as website, a valid
+  token stores instagram / walk_in, a missing or unknown one is 422 and nothing stored, submit_booking itself never
+  called. Lighthouse (mobile, live home without the mark): `lighthouse.yml` before (run 43076276396) and after the deploy.
+- **AR-20261111-T8KA** gets `booking_source = instagram` (Ahmed's approval for exactly this field on exactly this row);
+  the row before is in `reports/session28-db-backup/before.json` (gitignored — guest data), checked equal to the
+  database row (jsonb equality) before the write.
+- **Order of release:** the migration first, then booking-request (it calls `submit_booking_sourced`), then the site and
+  the dashboard. The site alone is harmless before them (an old function ignores the two new keys).
