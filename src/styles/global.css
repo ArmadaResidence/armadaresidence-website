@@ -668,17 +668,43 @@ body.has-room-bar .cookie-banner {
 .cookie-btn-primary:hover {
   background: var(--color-bronze-text);
 }
+/* the choices' weight (Ahmed, 11 Nov 2026 — DECISIONS.md 2026-11-11 «Cookie banner design»): «قبول الكل» the filled
+   primary (Bronze Deep under white, 4.53:1), «الضروري فقط» the SAME size outlined in bronze (Armada Bronze border,
+   no fill, Bronze Text 5.4:1 on white), «تخصيص» a text link; the order (reading and Tab) is the markup's, unchanged.
+   Phones: the two buttons share a row in equal halves, the link below; from 768 px the link ends the same row. */
+.cookie-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+}
+@media (min-width: 768px) {
+  .cookie-actions {
+    grid-template-columns: 1fr 1fr auto;
+  }
+}
+.cookie-actions [data-cookie-save] {
+  grid-column: 1 / -1;
+}
 .cookie-btn-secondary {
-  border: 1px solid var(--color-midnight);
-  color: var(--color-midnight);
+  border: 1.5px solid var(--color-bronze);
+  background: transparent;
+  color: var(--color-bronze-text);
 }
 .cookie-btn-secondary:hover {
-  background: var(--color-porcelain);
+  border-color: var(--color-bronze-text);
+  color: var(--color-midnight);
 }
 .cookie-btn-ghost {
+  justify-self: start;
+  padding-inline: 0.25rem;
   color: var(--color-bronze-text);
   text-decoration: underline;
   text-underline-offset: 3px;
+}
+@media (max-width: 767.98px) {
+  .cookie-btn-ghost {
+    grid-column: 1 / -1;
+  }
 }
 .cookie-btn-ghost:hover {
   color: var(--color-midnight);
@@ -730,8 +756,13 @@ body.has-room-bar .cookie-banner {
   border-color: rgba(243, 239, 231, 0.16);
   box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
 }
+[data-theme='dark'] .cookie-btn-secondary {
+  border-color: var(--color-bronze);
+  color: var(--dk-bronze-text);
+}
 [data-theme='dark'] .cookie-btn-secondary:hover {
-  background: rgba(243, 239, 231, 0.08);
+  border-color: var(--dk-bronze-text);
+  color: var(--color-porcelain);
 }
 [data-theme='dark'] .cookie-btn-ghost {
   color: var(--dk-bronze-text);

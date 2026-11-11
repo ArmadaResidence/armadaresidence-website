@@ -114,6 +114,26 @@ for (const lang of ['ar', 'en']) {
       check(href.endsWith(`${lang === 'en' ? '/en' : ''}/policies/#cookies`), `${tag}: the policy link`, href);
       const small = await page.$$eval('[data-cookie-banner] button:not([hidden])', (bs) => bs.filter((b) => b.getBoundingClientRect().height < 44).length);
       check(small === 0, `${tag}: a banner button under 44 px`);
+      // the choices' weight (11 Nov 2026): «قبول الكل» filled Bronze Deep, «الضروري فقط» the same size outlined in bronze with
+      // no fill, «تخصيص» a text link (no fill, no border, underlined); the colours by their computed values
+      const w8 = await page.evaluate(() => {
+        const q = (s) => document.querySelector(`[data-cookie-banner] [${s}]`);
+        const box = (e) => e.getBoundingClientRect();
+        const st = (e) => getComputedStyle(e);
+        const [a, e, cz] = [q('data-cookie-accept'), q('data-cookie-essential'), q('data-cookie-customize')];
+        return {
+          aw: box(a).width, ah: box(a).height, ew: box(e).width, eh: box(e).height,
+          abg: st(a).backgroundColor, afg: st(a).color, ebg: st(e).backgroundColor, ebd: st(e).borderTopColor, ebw: parseFloat(st(e).borderTopWidth),
+          cbg: st(cz).backgroundColor, cbw: parseFloat(st(cz).borderTopWidth), cdec: st(cz).textDecorationLine,
+          order: [a, e, cz].map((x) => [...x.parentElement.children].indexOf(x)),
+        };
+      });
+      const clear = (c) => c === 'rgba(0, 0, 0, 0)' || c === 'transparent';
+      check(Math.abs(w8.aw - w8.ew) <= 1 && Math.abs(w8.ah - w8.eh) <= 1, `${tag}: «${t.essential_only}» is not the same size as «${t.accept_all}»`, JSON.stringify(w8));
+      check(w8.abg === 'rgb(151, 110, 71)' && w8.afg === 'rgb(255, 255, 255)', `${tag}: «${t.accept_all}» is not filled Bronze Deep under white`, `${w8.abg} / ${w8.afg}`);
+      check(clear(w8.ebg) && w8.ebd === 'rgb(169, 124, 80)' && w8.ebw >= 1, `${tag}: «${t.essential_only}» is not outlined in bronze with no fill`, `${w8.ebg} / ${w8.ebd} ${w8.ebw}px`);
+      check(clear(w8.cbg) && !w8.cbw && w8.cdec.includes('underline'), `${tag}: «${t.customize}» is not a text link`, `${w8.cbg} / ${w8.cbw}px / ${w8.cdec}`);
+      check(w8.order[0] < w8.order[1] && w8.order[1] < w8.order[2], `${tag}: the choices out of order`, w8.order.join(','));
       // the page behind stays usable: the header logo / home link still takes a click
       const usable = await page.evaluate(() => {
         const a = document.querySelector('header a[href]');

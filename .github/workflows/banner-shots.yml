@@ -1,0 +1,53 @@
+name: Cookie banner screenshots (by hand)
+
+# The cookie banner, AR + EN × 375 + 1280 × light + dark (Ahmed, 11 Nov 2026 — DECISIONS.md 2026-11-11 «Cookie banner
+# design»): `scripts/cookie-banner-shots.mjs` against the live site (or another URL), the PNGs as the artifact
+# `banner-<label>`. In GitHub Actions because this machine runs no browser. Nothing is sent (GTM and pixels stubbed).
+on:
+  workflow_dispatch:
+    inputs:
+      label:
+        description: the screenshots' label (e.g. before / after)
+        required: true
+      url:
+        description: the site (empty = content/seo.json → live_url)
+        required: false
+        default: ''
+
+permissions:
+  contents: read
+
+jobs:
+  shots:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: Playwright version
+        id: pw
+        run: echo "version=$(node -p "require('playwright/package.json').version")" >> "$GITHUB_OUTPUT"
+      - name: Browsers from the cache
+        id: pw-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ steps.pw.outputs.version }}-chromium-webkit
+      - name: Browser libraries
+        run: npx playwright install-deps chromium
+      - name: Shoot
+        run: |
+          URL="${{ inputs.url }}"
+          [ -n "$URL" ] || URL=$(node -e "process.stdout.write(require('./content/seo.json').live_url.replace(/\/$/, ''))")
+          echo "### $URL — /version.json" >> "$GITHUB_STEP_SUMMARY"
+          { echo '```json'; curl -fsS "$URL/version.json?v=$(date +%s)" || echo '{}'; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+          node scripts/cookie-banner-shots.mjs "$URL" screenshots/cookie-banner "${{ inputs.label }}"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: banner-${{ inputs.label }}
+          path: screenshots/cookie-banner/
+          retention-days: 30
