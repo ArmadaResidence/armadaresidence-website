@@ -3093,3 +3093,5 @@ interaction (`Base.astro`), so a visitor from an ad who moved on quickly could l
   (`scripts/cookie-banner-shots.mjs`, AR + EN × 375 + 1280 × light + dark, artifact `banner-<label>`).
 - A visible change: committed without `Armada-Invisible`, so the CI pixel guard reports (the banner is hidden in
   the pixel guard's automated browser, so it shows no difference for it).
+- **Ahmed's decision (11 Nov 2026, the same session):** «قبول الكل» keeps Bronze Deep `#976E47` (white text 4.53:1);
+  `#A97C50` stays the outline of «الضروري فقط». The request's `#A97C50` fill is not used.
