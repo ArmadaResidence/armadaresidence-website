@@ -14,6 +14,8 @@
 //   debug    — ?gtm_debug=x on the marked browser loads gtm.js; the same tab keeps it for the next page; a new tab does not
 //   off      — /?team=off: the mark, the cookie and the storage gone, the parameter gone, GTM loads as usual again
 //   wrong    — /?team=<wrong>: no mark, nothing stored, GTM still loads; a stored token no longer listed loses its mark
+//   consent  — the marked browser never shows the marketing-consent box nor «انضم إلى إياب» on the success page, and sends
+//              marketing_consent false even when the box is forced ticked; a visitor still sees both
 //   form     — a visitor's /booking/: «مصدر الحجز» not visible and disabled; the request carries no booking_source and no
 //              team_token — also after the select is forced enabled and set (a forged value is never sent); the marked
 //              browser: the field visible and required (submit without → the error, the focus, nothing sent), then
@@ -57,6 +59,7 @@ const check = (ok, label, detail = '') => {
 const url = (lang, p) => `${BASE}${lang === 'en' ? '/en' : ''}${p}`;
 const PIXEL = /(google-analytics\.com|analytics\.google\.com|doubleclick\.net|googleadservices\.com|googlesyndication\.com|connect\.facebook\.net|facebook\.com\/tr|analytics\.tiktok\.com|tiktok\.com\/i18n\/pixel|sc-static\.net|tr\.snapchat\.com|clarity\.ms|bat\.bing\.com)/;
 const pixels = [];
+const INVITE = '00000000-0000-4000-8000-000000000001.0123456789abcdef0123456789abcdef';
 
 const browser = await chromium.launch({ channel: 'chrome' });
 
@@ -81,13 +84,16 @@ async function ctx({ phone = false, init = null } = {}) {
     const body = JSON.parse(r.request().postData() || '{}');
     noteTurnstile(body);
     posts.push(body);
-    return r.fulfill({ status: 200, contentType: 'application/json', headers: { 'access-control-allow-origin': '*' }, body: JSON.stringify({ ok: true, ref: 'AR-20991231-TD01', stored: true, status: 'request', reason: 'any_room' }) });
+    return r.fulfill({ status: 200, contentType: 'application/json', headers: { 'access-control-allow-origin': '*' }, body: JSON.stringify({ ok: true, ref: 'AR-20991231-TD01', stored: true, status: 'request', reason: 'any_room', ...(body.marketing_consent ? {} : { eyab_invite: INVITE }) }) });
   });
   // a local build has no PUBLIC_BOOKING_ENDPOINT: give the page a stub endpoint (the route above answers it)
   await c.route((u) => u.origin === new URL(BASE).origin, async (route) => {
     if (route.request().resourceType() !== 'document') return route.continue();
     const res = await route.fetch();
-    const body = (await res.text()).replace(/"endpoint":""/g, '"endpoint":"https://stub.supabase.invalid/functions/v1/booking-request"').replace(/"anonKey":""/g, '"anonKey":"stub-key"');
+    const body = (await res.text())
+      .replace(/"endpoint":""/g, '"endpoint":"https://stub.supabase.invalid/functions/v1/booking-request"')
+      .replace(/"clubEndpoint":""/g, '"clubEndpoint":"https://stub.supabase.invalid/functions/v1/club"')
+      .replace(/"anonKey":""/g, '"anonKey":"stub-key"');
     return route.fulfill({ response: res, body, headers: { ...res.headers(), 'content-type': 'text/html; charset=utf-8' } });
   });
   await c.addInitScript((init) => {
@@ -246,9 +252,12 @@ for (const lang of ['ar', 'en']) {
     const sel = form.locator('select[name="booking_source"]');
     check((await sel.count()) === 1 && !(await sel.isVisible()) && (await sel.isDisabled()), `${lang} form, visitor: «مصدر الحجز» not visible and disabled`);
     check(!(await form.locator('label[for$="booking_source"]').isVisible()), `${lang} form, visitor: its label not visible`);
+    check(await form.locator('[data-marketing-consent]').isVisible(), `${lang} form, visitor: the marketing-consent box is shown`);
     await form.locator('[data-submit]').click();
-    await page.waitForTimeout(1500);
+    await page.waitForURL(/\/booking\/success\//, { timeout: 10000 }).catch(() => {});
+    await page.waitForTimeout(1200);
     check(posts.length === 1 && !('booking_source' in posts[0]) && !('team_token' in posts[0]), `${lang} form, visitor: the request carries no booking_source and no team_token`, JSON.stringify(Object.keys(posts[0] ?? {})));
+    check(await page.locator('[data-eyab-invite]').isVisible(), `${lang} success, visitor: «انضم إلى إياب» is offered`);
     // forged in the browser: the select enabled and set by hand → still never sent
     const page2 = await c.newPage();
     const form2 = await fill(page2, lang);
@@ -278,8 +287,16 @@ for (const lang of ['ar', 'en']) {
     await sel.selectOption('instagram');
     await page.waitForTimeout(200);
     check(!(await err.isVisible()), `${lang} form, internal: the error goes once a source is picked`);
+    const box = form.locator('[data-marketing-consent]');
+    check(!(await box.isVisible()), `${lang} form, internal: the marketing-consent box is not shown`);
+    // forced ticked (devtools): still never sent as a consent
+    await box.evaluate((b) => { b.checked = true; });
     await form.locator('[data-submit]').click();
-    await page.waitForTimeout(1500);
+    await page.waitForURL(/\/booking\/success\//, { timeout: 10000 }).catch(() => {});
+    await page.waitForTimeout(1200);
+    check(posts[0]?.marketing_consent === false && !('consent_version' in (posts[0] ?? {})), `${lang} form, internal: marketing_consent false even with the box forced ticked`, String(posts[0]?.marketing_consent));
+    check(/\/booking\/success\//.test(page.url()) && !(await page.locator('[data-eyab-invite]').isVisible()), `${lang} success, internal: no «انضم إلى إياب»`, page.url().replace(BASE, ''));
+    check(await page.evaluate(() => Object.keys(sessionStorage).every((k) => !k.startsWith('armada_invite_'))), `${lang} success, internal: no invite kept for the page`);
     check(posts.length === 1 && posts[0].booking_source === 'instagram' && posts[0].team_token === TOKEN, `${lang} form, internal: the request carries booking_source instagram + the team token`, JSON.stringify({ ...posts[0], team_token: posts[0]?.team_token ? '<token>' : undefined }).slice(0, 240));
     await c.close();
   }

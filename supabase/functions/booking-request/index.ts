@@ -578,7 +578,8 @@ function validate(p: Payload, test = false, live: LiveRoom[] | null = null, inte
     return {
       ok: true,
       row: { locale, requestType, branch: d.branch, check_in: d.check_in, check_out: d.check_out, nights: d.nights, adults: d.adults, children: d.children, childrenAges: d.children_ages, extraBeds: d.extra_beds, needsCoordination: d.needs_coordination, capacity: d.capacity, room: d.room, breakfast: d.breakfast, name: d.name, phone: d.phone, email: d.email, notes: d.notes, page, organisation: '', roomsRequested: null, meals: '', promoCode: d.promo_code,
-        marketingConsent: p.marketing_consent === true || p.marketing_consent === 'true' || p.marketing_consent === 'yes',
+        // an internal device (a valid team token, 11 Nov 2026): never a marketing consent — staff do not consent for a guest
+        marketingConsent: !internal && (p.marketing_consent === true || p.marketing_consent === 'true' || p.marketing_consent === 'yes'),
         consentVersion: String(p.consent_version ?? ''),
         visit: p.visit && typeof p.visit === 'object' && !Array.isArray(p.visit) ? p.visit : null,
         bookingSource: d.booking_source },

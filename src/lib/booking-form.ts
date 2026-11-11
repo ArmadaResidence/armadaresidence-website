@@ -849,7 +849,8 @@ function initForm(form: HTMLFormElement) {
         headers['Authorization'] = `Bearer ${data.anonKey}`;
         headers['apikey'] = data.anonKey;
       }
-      const marketing = Boolean(form.querySelector<HTMLInputElement>('[data-marketing-consent]')?.checked);
+      // never on an internal device (11 Nov 2026): the box is hidden there and the consent is the guest's own, not staff's
+      const marketing = !internal() && Boolean(form.querySelector<HTMLInputElement>('[data-marketing-consent]')?.checked);
       const body = {
         locale: data.locale,
         branch: d.branch,
@@ -924,7 +925,8 @@ function initForm(form: HTMLFormElement) {
         }
         // «انضم إلى إياب» (9 Nov 2026): the booking's signed invite (no personal data) for the success page's card;
         // absent for a member or a ticked box
-        if (typeof json.eyab_invite === 'string') sessionStorage.setItem(`armada_invite_${json.ref}`, json.eyab_invite);
+        // never on an internal device (11 Nov 2026): staff must not join a guest from the success page
+        if (typeof json.eyab_invite === 'string' && !internal()) sessionStorage.setItem(`armada_invite_${json.ref}`, json.eyab_invite);
       } catch {
         /* storage unavailable: the success page shows the ref and the generic text */
       }

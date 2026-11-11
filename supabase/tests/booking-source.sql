@@ -84,9 +84,9 @@ begin
             case when p_status = 'confirmed' then 2 * p_price end, case when p_status = 'confirmed' then now() end)
     returning id into v;
   else
-    insert into public.reservations (ref, status, source, branch, room_type_id, check_in, check_out, adults, children, extra_beds, breakfast, guest_name, phone, locale, is_test, total, confirmed_at, booking_source)
+    insert into public.reservations (ref, status, source, branch, room_type_id, check_in, check_out, adults, children, extra_beds, breakfast, guest_name, phone, locale, is_test, total, confirmed_at, cancelled_at, booking_source)
     values (p_ref, p_status::public.reservation_status, 'website', p_branch, v_rt, pg_temp._d(40), pg_temp._d(42), 2, 0, 0, 'without', 'QA source', '+966500000971', 'ar', false,
-            case when p_status = 'confirmed' then 2 * p_price end, case when p_status = 'confirmed' then now() end, p_source)
+            case when p_status = 'confirmed' then 2 * p_price end, case when p_status = 'confirmed' then now() end, case when p_status = 'cancelled' then now() end, p_source)
     returning id into v;
   end if;
   if p_status = 'confirmed' then

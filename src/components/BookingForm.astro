@@ -270,7 +270,9 @@ const stepper = (name: 'adults' | 'children' | 'extra_beds', value: number, min:
 
     {/* 9. Marketing consent (Ahmed, 3 Nov 2026): one optional box, unticked; never required to book, never changes the
         price or the confirmation — offers by WhatsApp and email and ads on the platforms (club.json → consent) */}
-    <div class="sm:col-span-2">
+    {/* internal devices (Ahmed, 11 Nov 2026): never shown there — staff never give consent on a guest's behalf; the form
+        sends false and booking-request stores false for a valid team token (global.css [data-team-hide]) */}
+    <div class="sm:col-span-2" data-team-hide>
       <MarketingConsent locale={locale} id={id('marketing_consent')} name="marketing_consent" hook="data-marketing-consent" />
     </div>
   </div>

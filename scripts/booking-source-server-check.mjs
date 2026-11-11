@@ -7,6 +7,8 @@
 //   visitor  — a request without booking_source is stored as website
 //   internal — with the device's token (TEAM_DEVICE_TOKEN): instagram is stored as instagram; no source / an unknown one
 //              → 422 fields.booking_source and nothing stored
+//   consent  — a visitor's ticked box reaches the database as marketing_consent true; with a valid team token it is
+//              always false (staff never consent for a guest)
 //   wrapper  — every booking goes through submit_booking_sourced, never submit_booking itself
 // CI: .github/workflows/server-checks.yml (Deno on the runner). By hand: deno on PATH, TEAM_DEVICE_TOKEN in the env or .env.
 //   node scripts/booking-source-server-check.mjs
@@ -69,7 +71,7 @@ await new Promise((r) => stub.listen(54998, '127.0.0.1', r));
 
 // ── the function ──
 const PORT = 8000;
-const deno = spawn('deno', ['run', '--allow-net', '--allow-env', '--allow-read', '--no-prompt', 'supabase/functions/booking-request/index.ts'], {
+const deno = spawn('deno', ['run', '--allow-net', '--allow-env', '--allow-read', '--no-prompt', '--node-modules-dir=none', 'supabase/functions/booking-request/index.ts'], {
   env: { ...process.env, SUPABASE_URL: 'http://127.0.0.1:54998', SUPABASE_SERVICE_ROLE_KEY: 'stub-service-key', RESEND_API_KEY: '', YCLOUD_API_KEY: '', TURNSTILE_SECRET_KEY: '', BOOKING_TEST_TOKEN: '' },
   stdio: ['ignore', 'pipe', 'pipe'],
   shell: process.platform === 'win32',
@@ -132,6 +134,13 @@ for (const [label, extra] of [
   const r = await post(extra);
   check(r.status === 422 && r.json.fields?.booking_source === 'booking_source', `${label} fields.booking_source`, `${r.status} ${JSON.stringify(r.json).slice(0, 160)}`);
   check(r.stored.length === 0, `${label}: nothing stored`);
+}
+const CONSENT_VERSION = JSON.parse(readFileSync('content/club.json', 'utf8')).consent.version;
+{
+  const r = await post({ marketing_consent: true, consent_version: CONSENT_VERSION });
+  check(r.stored[0]?.body?.p?.marketing_consent === true, 'consent: a visitor ticked the box → marketing_consent true', String(r.stored[0]?.body?.p?.marketing_consent));
+  const t = await post({ marketing_consent: true, consent_version: CONSENT_VERSION, booking_source: 'instagram', team_token: TOKEN });
+  check(t.status === 200 && t.stored[0]?.body?.p?.marketing_consent === false, 'consent: the box ticked on an internal device → marketing_consent false', `${t.status} ${String(t.stored[0]?.body?.p?.marketing_consent)}`);
 }
 check(!calls.some((c) => c.path === '/rest/v1/rpc/submit_booking'), 'wrapper: submit_booking itself is never called');
 

@@ -634,6 +634,10 @@ html[data-team] .team-badge {
 html[data-team] [data-team-only] {
   display: block;
 }
+/* … and what staff must never do for a guest there: the booking form's marketing consent, «انضم إلى إياب» (11 Nov 2026) */
+html[data-team] [data-team-hide] {
+  display: none !important;
+}
 
 html[data-consent-open] .cookie-banner {
   display: block;

@@ -3166,9 +3166,14 @@ browser and trained the ad platforms on staff behaviour.
   stays one page). «التقارير» → «المصادر والحملات»: the card «حسب مصدر الحجز» (bars + table) and its block in the Excel
   sheet. Labels: `admin/src/lib/format.ts → BOOKING_SOURCE_LABELS`.
 - **Unchanged on purpose:** the guest's emails and WhatsApp messages, the confirmation logic, the reception email (it
-  does not name the source), the WhatsApp hand-off text. Flagged, not changed: on a staff device the success page still
-  offers «انضم إلى إياب» with the guest's booking details, and the form's marketing box is still there — staff must not
-  tick or press either for a guest who did not agree.
+  does not name the source), the WhatsApp hand-off text.
+- **No consent on a guest's behalf (Ahmed's addition, the same session).** On an internal device the booking form's
+  marketing-consent box is not shown and the success page never offers «انضم إلى إياب» (`[data-team-hide]` in
+  `global.css`, the form sends `marketing_consent: false` and keeps no invite, the success page checks `isTeamDevice()`).
+  booking-request stores marketing consent as false for every booking with a valid team token, whatever the request
+  says. The guest's own emails keep their «إياب» line (the guest's choice, not staff's). Checked by team-device-check
+  (box hidden, forced ticked → false, no card, no invite kept; a visitor still sees both) and
+  booking-source-server-check (a visitor's ticked box → true; with the token → false).
 - **Checks (CI, never on this machine).** `scripts/team-device-check.mjs` (browser, shard `booking-2`, also in the live
   checks; needs the secret `TEAM_DEVICE_TOKEN`): a visitor loads GTM; the mark (address cleaned, cookie for a year,
   storage, the label AR + EN, 1440 + 375); no gtm.js and no pixel request on the marked browser with consent denied, after

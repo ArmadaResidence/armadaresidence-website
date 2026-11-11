@@ -66,7 +66,7 @@ const clientData = {
       {/* «انضم إلى إياب» (Ahmed, 9 Nov 2026): only for a guest who is not a member and did not tick the booking form's
           box — the booking function hands the page a signed invite (sessionStorage, never the URL); the button joins
           with the booking's own name, phone and email once the ONE consent is ticked (source booking-page) */}
-      <div class="hidden mt-6 rounded border border-line bg-porcelain p-5" data-eyab-invite>
+      <div class="hidden mt-6 rounded border border-line bg-porcelain p-5" data-eyab-invite data-team-hide>
         <div data-invite-form>
           <h2 class="text-lg font-bold text-midnight">{club.invite.title}</h2>
           <p class="mt-1 text-sm leading-relaxed text-ink">{club.invite.text}</p>
@@ -124,6 +124,7 @@ const clientData = {
 </Base>
 
 <script>
+  import { isTeamDevice } from '@lib/team';
   import { bindOnce, onPageLoad } from '@lib/client';
   import { money, type Quote } from '@lib/prices';
   import { adUserDataGranted, type UserData } from '@lib/user-data';
@@ -295,7 +296,8 @@ const clientData = {
       /* storage unavailable: no card */
     }
     const card = el('[data-eyab-invite]');
-    if (card && ref && q.get('mc') !== '1' && /^[0-9a-f-]{36}\.[0-9a-f]{32}$/.test(invite) && data.invite.clubEndpoint) {
+    // an internal device (11 Nov 2026 — src/lib/team.ts): never the card — staff do not join a guest on the guest's behalf
+    if (card && ref && !isTeamDevice() && q.get('mc') !== '1' && /^[0-9a-f-]{36}\.[0-9a-f]{32}$/.test(invite) && data.invite.clubEndpoint) {
       card.classList.remove('hidden');
       const box = card.querySelector<HTMLInputElement>('[data-invite-consent]')!;
       const err = card.querySelector<HTMLElement>('[data-invite-error]')!;
