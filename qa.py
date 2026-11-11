@@ -9,7 +9,7 @@ Checks:
   - unique title / description / canonical; canonical is self-referencing; hreflang ar/en/x-default resolve both ways
   - internal links and assets resolve; same-page anchors exist
   - sitemap entries match built pages; redirects.json valid and targets exist
-  - JSON-LD present and well-formed (Organization / Hotel / LodgingBusiness / HotelRoom + Offer)
+  - JSON-LD present and well-formed (Organization / Hotel / HotelRoom without Offer)
   - forbidden strings; terminology («شقق فندقية» on Airport Road pages)
   - date fields: no typed date inputs; check-in / check-out values only as the calendar picker's hidden inputs
   - phones / WhatsApp / emails match content/contact.json exactly; sales line only on /offers
@@ -748,19 +748,13 @@ def main() -> int:
                             rep.f("json-ld", f"{path}: FoodEstablishment name must be the Armada Residence Café & Restaurant sub-brand")
                     elif lp == "/airport-road/":
                         rep.f("json-ld", f"{path}: Airport Road lodging must carry the café as containsPlace")
+                # no Offer on a room (Ahmed, 11 Nov 2026): `offers` is not a HotelRoom property in schema.org, Google takes
+                # hotel prices from Hotel Center, and a fixed price in the markup goes stale — never let it come back
                 if t_ == "HotelRoom":
-                    offer = node.get("offers")
-                    if not offer:
-                        rep.todo(f"{path}: HotelRoom has no Offer (base_price missing)")
-                    else:
-                        hidden_mode = pricing.get("display_mode") in ("hidden", "runtime")
-                        for k in (("availability",) if hidden_mode else ("price", "priceCurrency", "availability")):
-                            if offer.get(k) in (None, ""):
-                                rep.f("json-ld", f"{path}: Offer missing {k}")
-                        if hidden_mode and offer.get("price") not in (None, ""):
-                            rep.f("json-ld", f"{path}: Offer carries a price while prices are hidden")
-                        if not hidden_mode and offer.get("priceCurrency") != pricing["currency"]:
-                            rep.f("json-ld", f"{path}: Offer currency != pricing.json")
+                    if "offers" in node or re.search(r'"@type"\s*:\s*"(Offer|AggregateOffer)"', json.dumps(node)):
+                        rep.f("json-ld", f"{path}: HotelRoom carries an Offer / offers (removed 11 Nov 2026 — DECISIONS.md)")
+                    if "Product" in (node.get("@type") if isinstance(node.get("@type"), list) else [node.get("@type")]):
+                        rep.f("json-ld", f"{path}: HotelRoom must not be typed Product (Google would require a price)")
         if lp == "/" and "Organization" not in types:
             rep.f("json-ld", f"{path}: home must carry Organization")
         if lp in ("/airport-road/", "/shafa-road/") and "Hotel" not in types:

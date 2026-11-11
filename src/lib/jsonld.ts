@@ -1,6 +1,6 @@
 /**
  * JSON-LD builders (schema.org). Organization on home, a Hotel per branch (LODGING_TYPE),
- * HotelRoom + Offer per room page. All values come from content/ via content.ts.
+ * HotelRoom per room page (no Offer — 11 Nov 2026). All values come from content/ via content.ts.
  */
 import {
   absoluteUrl,
@@ -24,7 +24,6 @@ import {
   venueOg,
   venueOpening,
   venuePath,
-  visibleRatePlans,
   type Branch,
   type Locale,
   type Room,
@@ -176,25 +175,9 @@ export function hotelRoom(locale: Locale, room: Room, b: Branch) {
   for (const [k, v] of Object.entries(room.features)) if (v === true) names.add(featureLabel(locale, k));
   for (const k of room.in_room_amenities) names.add(inRoom[k] ?? featureLabel(locale, k));
   node.amenityFeature = Array.from(names).map((name) => ({ '@type': 'LocationFeatureSpecification', name, value: true }));
-  const plan = visibleRatePlans(room)[0];
-  const price = plan?.base_price ?? room.base_price;
-  // prices hidden (9 Oct 2026): the Offer keeps availability only — no price, no priceSpecification
-  node.offers = pricesHidden(room)
-    ? { '@type': 'Offer', url, availability: room.availability === 'sold_out' ? 'https://schema.org/SoldOut' : 'https://schema.org/InStock' }
-    : {
-        '@type': 'Offer',
-        url,
-        price,
-        priceCurrency: room.currency || pricing.currency,
-        availability: room.availability === 'sold_out' ? 'https://schema.org/SoldOut' : 'https://schema.org/InStock',
-        priceSpecification: {
-          '@type': 'UnitPriceSpecification',
-          price,
-          priceCurrency: room.currency || pricing.currency,
-          valueAddedTaxIncluded: true,
-          unitText: 'night',
-        },
-      };
+  // no `offers` (Ahmed, 11 Nov 2026 — DECISIONS.md 2026-11-11): schema.org defines it for products, services and events,
+  // not for a HotelRoom (a Place); Google takes hotel prices from Hotel Center, not from page markup, and a fixed price
+  // in the markup goes stale. qa.py fails if it comes back.
   return node;
 }
 
