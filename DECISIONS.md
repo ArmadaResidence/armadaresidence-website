@@ -3191,3 +3191,26 @@ browser and trained the ad platforms on staff behaviour.
   database row (jsonb equality) before the write.
 - **Order of release:** the migration first, then booking-request (it calls `submit_booking_sourced`), then the site and
   the dashboard. The site alone is harmless before them (an old function ignores the two new keys).
+
+## 2026-11-12 — The sitemap lists exactly the indexable pages (session 29, Ahmed's brief of 12 Nov 2026)
+
+- **Trigger.** Search Console's URL inspection said https://armadaresidence.com/contact/ was not found in any sitemap.
+- **Finding: nothing was missing.** The live `sitemap-0.xml` (build of `0dc3e89`, 12 Nov 2026 02:11 UTC) lists 82 URLs,
+  `/contact/` and `/en/contact/` among them; `/sitemap.xml` and `/sitemap-index.xml` both point at it and robots.txt
+  names the index. A crawl of the live site (every internal link and hreflang alternate from both home pages and every
+  sitemap URL: 84 HTML pages) found no indexable page outside the sitemap and no sitemap URL that is not indexable; the
+  local build (74 URLs) the same. The only pages left out are the noindex ones (`/booking/success/`, `/club/unsubscribe/`,
+  404, the sold-out `/airport-road/accessible-room/` in both languages) and the redirect pages. Search Console's
+  message is therefore not a missing entry: the URL was discovered by a link before Google read the sitemap, or the
+  sitemap has not been submitted / processed in Search Console yet (still open in `docs/launch-runbook.md`: submit
+  `https://armadaresidence.com/sitemap-index.xml` in Search Console → Sitemaps — Ahmed's, in his account).
+- **One real gap closed.** An article whose canonical (the editor's SEO field) points to another URL was not noindex, so
+  `@astrojs/sitemap` would have listed it. `astro.config.mjs → canonicalElsewhere` reads `content/articles.generated`
+  and leaves such an article out of the sitemap (per language). No live article uses it today.
+- **qa.py rule (§7).** Indexable = a built page, not a redirect page, without robots noindex, whose canonical is its own
+  URL. qa.py fails when an indexable page is missing from the sitemap («is indexable … but missing from the sitemap»),
+  and when a sitemap URL is a redirect page, not a built page, noindex, or carries a canonical other than itself. The
+  earlier rule judged noindex only. Proved on purpose on the local build: `/contact/` + `/en/contact/` removed from the
+  sitemap, a redirect page added, `/policies/` made noindex, `/about/`'s canonical pointed at home → 6 sitemap failures,
+  exit 1; restored → pass. An English-only fixture article with a canonical to `/blog/` was left out of the sitemap by
+  the build (qa passes); forced back into the sitemap → the canonical failure.

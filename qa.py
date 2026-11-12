@@ -901,15 +901,23 @@ def main() -> int:
                 continue
             pth = loc[len(site):]
             sm_paths.add(pth)
-            if pth not in pages:
+            if pth in redirect_pages:
+                rep.f("sitemap", f"{loc}: a redirect page, not an indexable page")
+            elif pth not in pages:
                 rep.f("sitemap", f"{loc}: not a built page")
-        # CLAUDE.md §7: noindex pages (sold-out rooms, booking success, 404) are excluded; everything else is in.
+        # CLAUDE.md §7 (12 Nov 2026, Search Console): the sitemap lists exactly the indexable pages. Indexable = a built
+        # page (not a redirect page) with no robots noindex whose canonical is its own URL. Every indexable page is in the
+        # sitemap, both languages; every sitemap URL is indexable — a noindex page (sold-out rooms, booking success, 404,
+        # the unsubscribe page) or a page whose canonical points elsewhere (an article's own canonical) is not.
         for path, p in pages.items():
             if noindex(p):
                 if path in sm_paths:
                     rep.f("sitemap", f"{path} is noindex and must not be in the sitemap")
+            elif p.canonical != site + path:
+                if path in sm_paths:
+                    rep.f("sitemap", f"{path}: canonical {p.canonical or '(none)'!r} is not the page itself, so it must not be in the sitemap")
             elif path not in sm_paths:
-                rep.f("sitemap", f"{path} missing from sitemap")
+                rep.f("sitemap", f"{path} is indexable (no noindex, canonical = itself) but missing from the sitemap")
 
     # ---- redirects.json
     try:

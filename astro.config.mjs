@@ -2,7 +2,7 @@
 import { defineConfig } from 'astro/config';
 import sitemap from '@astrojs/sitemap';
 import tailwindcss from '@tailwindcss/vite';
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
 
 const seo = JSON.parse(readFileSync(new URL('./content/seo.json', import.meta.url), 'utf8'));
 /** the room types: the dashboard's «الغرف» when build.py resolved them (content/rooms.generated.json, 10 Nov 2026), else
@@ -38,9 +38,36 @@ const noindexPaths = [
     .filter((r) => r.show_on_site && (availabilityOverride[`${r.branch}/${r.slug}`] ?? r.availability) === 'sold_out')
     .map((r) => `/${r.branch}/${r.slug}/`),
 ];
+/** an article whose canonical (the editor's SEO field) points to another URL is not indexable in its own right, so it
+ *  stays out of the sitemap (12 Nov 2026 — qa.py: every sitemap URL is indexable = no noindex + canonical = itself).
+ *  Read from the files the site builds from (content/articles.generated, scripts/blog-build.mjs); full paths, per language. */
+const canonicalElsewhere = (() => {
+  const dir = new URL('./content/articles.generated/', import.meta.url);
+  if (!existsSync(dir)) return [];
+  const out = [];
+  for (const name of readdirSync(dir)) {
+    const m = /^([a-z0-9]+(?:-[a-z0-9]+)*)\.(ar|en)\.md$/.exec(name);
+    if (!m) continue;
+    const fm = /^---\r?\n([\s\S]*?)\r?\n---/.exec(readFileSync(new URL(name, dir), 'utf8'));
+    const line = fm && /^canonical:\s*(.+)$/m.exec(fm[1]);
+    if (!line) continue;
+    let value;
+    try {
+      value = JSON.parse(line[1].trim());
+    } catch {
+      value = line[1].trim();
+    }
+    if (!value || typeof value !== 'string') continue;
+    const path = `${m[2] === 'en' ? '/en' : ''}/blog/${m[1]}/`;
+    const abs = /^https:\/\//.test(value) ? value : `${seo.site_url.replace(/\/$/, '')}${value}`;
+    if (abs !== `${seo.site_url.replace(/\/$/, '')}${path}`) out.push(path);
+  }
+  return out;
+})();
 const isNoindex = (page) => {
-  const path = new URL(page).pathname.replace(/^\/en\//, '/');
-  return noindexPaths.includes(path);
+  const full = new URL(page).pathname;
+  if (canonicalElsewhere.includes(full)) return true;
+  return noindexPaths.includes(full.replace(/^\/en\//, '/'));
 };
 
 /** Old-site URLs → new slugs (CLAUDE.md §7). Kept in redirects.json; exact entries become static redirect pages,
