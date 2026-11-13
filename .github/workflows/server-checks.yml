@@ -57,7 +57,7 @@ jobs:
         run: node scripts/sql-test-run.mjs ${{ inputs.files || 'booking-source.sql guest_hub_units.sql guest_hub_ingest.sql guest_hub_retention.sql wa-automation.sql' }}
 
   function:
-    name: server · functions (Deno: hub type-check, booking-request on a stub database)
+    name: server · functions (Deno — hub type-check, booking-request on a stub database)
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
