@@ -323,6 +323,54 @@ select pg_temp._fails('G4 without guests: view no drawer read', format('select p
 select pg_temp._as('admin');
 select pg_temp._check('G5 the badge counts waiting conversations in the caller''s units', public.hub_inbox_badge() >= 2);
 
+-- ══ P — a reply sent from the phone (whatsapp.smb.message.echoes) counts as a staff answer (H4 step 0b, 14 Nov 2026) ══
+select pg_temp._service();
+select pg_temp._in('YC3-P1', '+966500009321', 'سؤال');
+select pg_temp._root();
+update public.hub_conversations set waiting_since = now() - interval '31 minutes' where id = pg_temp._conv('+966500009321');
+select pg_temp._as('admin');
+select pg_temp._save('p0', jsonb_build_object('badge', public.hub_inbox_badge(),
+  'listed', exists (select 1 from jsonb_array_elements(public.hub_inbox_list('{"tab": "waiting"}') -> 'rows') r where r ->> 'id' = pg_temp._conv('+966500009321')::text)));
+select pg_temp._check('P0 a guest message waits: «بانتظار موظف» lists it and the badge counts it', (pg_temp._j('p0') ->> 'listed')::boolean, pg_temp._j('p0')::text);
+-- the reception replies from the WhatsApp Business app on the phone
+select pg_temp._service();
+select pg_temp._save('p1', public.hub_ingest_echo(jsonb_build_object('channel', '+966536622277', 'phone', '+966500009321', 'provider_id', 'YC3-P-ECHO-1',
+  'sent_at', now(), 'kind', 'text', 'body', 'أهلًا بك، نعم.')));
+select pg_temp._root();
+select pg_temp._check('P1 the phone reply clears waiting_since, owner «الجوال», the first response set',
+  (pg_temp._j('p1') ->> 'stored')::boolean
+  and (select waiting_since is null and owner_kind = 'phone' and state = 'human' and first_response_at is not null and escalated_at is null
+         from public.hub_conversations where id = pg_temp._conv('+966500009321')), pg_temp._j('p1')::text);
+select pg_temp._as('admin');
+select pg_temp._check('P2 … out of «بانتظار موظف» and one fewer in the sidebar badge',
+  not exists (select 1 from jsonb_array_elements(public.hub_inbox_list('{"tab": "waiting"}') -> 'rows') r where r ->> 'id' = pg_temp._conv('+966500009321')::text)
+  and public.hub_inbox_badge() = (pg_temp._j('p0') ->> 'badge')::int - 1);
+select pg_temp._service();
+select pg_temp._save('p3', public.hub_escalations_claim());
+select pg_temp._root();
+select pg_temp._check('P3 … and no «محادثة بانتظار الرد» email for that waiting period',
+  not exists (select 1 from jsonb_array_elements(pg_temp._j('p3')) e where e ->> 'id' = pg_temp._conv('+966500009321')::text)
+  and (select escalated_at is null from public.hub_conversations where id = pg_temp._conv('+966500009321')), pg_temp._j('p3')::text);
+select pg_temp._check('P4 the change reached the dashboard as a signal (unit + branch, no text)',
+  exists (select 1 from public.dashboard_signals where unit_id = pg_temp._unit('airport-road') and kind in ('hub_state', 'hub_handoff')));
+-- the guest writes again → a new waiting period; escalated once, then a phone reply ends it too
+select pg_temp._service();
+select pg_temp._in('YC3-P2', '+966500009321', 'شكرًا، وسؤال آخر');
+select pg_temp._root();
+update public.hub_conversations set waiting_since = now() - interval '40 minutes' where id = pg_temp._conv('+966500009321');
+select pg_temp._service();
+select pg_temp._save('p5', public.hub_escalations_claim());
+select public.hub_ingest_echo(jsonb_build_object('channel', '+966536622277', 'phone', '+966500009321', 'provider_id', 'YC3-P-ECHO-2', 'sent_at', now(), 'kind', 'text', 'body', 'تفضل'));
+select pg_temp._save('p6', public.hub_escalations_claim());
+select pg_temp._root();
+select pg_temp._check('P5 a new guest message waits again and may escalate once',
+  exists (select 1 from jsonb_array_elements(pg_temp._j('p5')) e where e ->> 'id' = pg_temp._conv('+966500009321')::text), pg_temp._j('p5')::text);
+select pg_temp._check('P6 a phone reply after the email: not waiting, the period reset, never claimed again',
+  (select waiting_since is null and escalated_at is null from public.hub_conversations where id = pg_temp._conv('+966500009321'))
+  and not exists (select 1 from jsonb_array_elements(pg_temp._j('p6')) e where e ->> 'id' = pg_temp._conv('+966500009321')::text));
+select pg_temp._check('P7 the phone replies are stored as «من الجوال» messages in the thread',
+  (select count(*) = 2 from public.hub_messages where conversation_id = pg_temp._conv('+966500009321') and author = 'phone' and direction = 'out'));
+
 -- ══ W — the webhook's events ══
 select pg_temp._root();
 insert into public.wa_webhook (endpoint_id, events, registered_by) values ('we_hub3', array['whatsapp.inbound_message.received', 'whatsapp.message.updated'], pg_temp._id('admin'))

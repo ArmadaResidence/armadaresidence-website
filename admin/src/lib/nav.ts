@@ -67,6 +67,9 @@ export const NAV_GROUPS: NavGroup[] = [
     title: 'مركز الضيوف',
     items: [
       { to: '/inbox', label: 'المحادثات', section: 'inbox', icon: 'inbox' },
+      // H4 (14 Nov 2026): the knowledge base and the read-only services price list (both under knowledge)
+      { to: '/knowledge', label: 'قاعدة المعرفة', section: 'knowledge', icon: 'knowledge' },
+      { to: '/service-prices', label: 'أسعار الخدمات', section: 'knowledge', icon: 'prices', id: 'service-prices' },
       { to: '/assistant', label: 'إعدادات المساعد', section: 'assistant', icon: 'assistant' },
     ],
   },

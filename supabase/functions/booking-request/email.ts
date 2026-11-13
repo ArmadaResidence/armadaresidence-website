@@ -1569,3 +1569,43 @@ ${buttons(L, [button(L, url, M.button, 'bronze')])}`,
   const text = [lead, state, '', `${M.button}: ${url}`, '', legalText(c, 'ar')].join('\n');
   return { subject, html, text };
 }
+
+// ══ Guest Hub H4 (14 Nov 2026): «تنبيهات مركز الضيوف» — knowledge cards and offers ending soon, to the active admins ══
+// copy.md §7 row 5: subject «تنبيهات مركز الضيوف — {date} — AR-HUB-{yyyymmdd}»; heading «تنتهي قريبًا»; one line per item
+// «بطاقة: {title} — تنتهي {date}» / «عرض: {name} — ينتهي {date}»; the button «فتح قاعدة المعرفة». Sent only with a list.
+export interface HubExpiryItem {
+  type: 'card' | 'offer';
+  title: string;
+  /** the Riyadh date it ends (YYYY-MM-DD) */
+  ends: string;
+}
+export interface HubExpiryMail {
+  /** the Riyadh date of the run (YYYY-MM-DD) */
+  date: string;
+  items: HubExpiryItem[];
+  test?: boolean;
+}
+export function hubExpiryLines(c: Content, items: HubExpiryItem[]): string[] {
+  const M = c.staff_email.ar.hub_expiry;
+  return items.map((i) => i.type === 'card'
+    ? fill(M.card_line, { title: i.title, date: longDate(c, i.ends, 'ar') })
+    : fill(M.offer_line, { name: i.title, date: longDate(c, i.ends, 'ar') }));
+}
+export function hubExpiryMail(c: Content, d: HubExpiryMail): Mail {
+  const L: Locale = 'ar';
+  const M = c.staff_email.ar.hub_expiry;
+  const D = c.staff_email.ar.deploy_alert;
+  const subject = `${d.test ? D.test_prefix : ''}${fill(M.subject, { date: longDate(c, d.date, 'ar'), yyyymmdd: d.date.replace(/-/g, '') })}`;
+  const lines = hubExpiryLines(c, d.items);
+  const url = `${String(c.admin_url ?? 'https://admin.armadaresidence.com').replace(/\/$/, '')}/knowledge?tab=expiring`;
+  const inner = section(
+    L,
+    `${headline(L, M.heading)}
+${lines.map((l) => para(L, l)).join('\n')}
+<div style="height:18px; line-height:18px; font-size:0;">&nbsp;</div>
+${buttons(L, [button(L, url, M.button, 'bronze')])}`,
+  );
+  const html = doc({ lang: 'ar', title: subject, preheader: lines[0] ?? M.heading, body: header(c, undefined, true) + card(inner) + footer(c, ['ar']), print: true });
+  const text = [M.heading, '', ...lines, '', `${M.button}: ${url}`, '', legalText(c, 'ar')].join('\n');
+  return { subject, html, text };
+}

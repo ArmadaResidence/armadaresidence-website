@@ -231,7 +231,7 @@ export const OWNER_FILTERS: { value: string; label: string }[] = [
 export const LANGUAGE_FILTERS: { value: string; label: string }[] = [{ value: '', label: 'كل اللغات' }, { value: 'ar', label: 'العربية' }, { value: 'en', label: 'الإنجليزية' }];
 export const ACTIONS = {
   take_over: 'تولّي المحادثة', release: 'إعادة للمساعد', transfer: 'تحويل', close: 'إغلاق المحادثة', note: 'ملاحظة', template: 'إرسال قالب', held: 'إرسال عند رد الضيف',
-  block: 'حظر الرقم', unblock: 'إلغاء حظر الرقم', unanswered: 'إلى «لم أعرف الإجابة»', send: 'إرسال', retry: 'إعادة الإرسال',
+  block: 'حظر الرقم', unblock: 'إلغاء حظر الرقم', unanswered: 'المساعد لم يعرف', send: 'إرسال', retry: 'إعادة الإرسال',
 } as const;
 export const MARKS = { note: 'ملاحظة داخلية — لا تصل للضيف', phone: 'من الجوال', media_gone: 'وسائط محذوفة', test: 'تجربة', template: 'قالب' } as const;
 

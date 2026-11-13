@@ -566,6 +566,14 @@
         "ratings": {"GREEN": "مرتفع", "HIGH": "مرتفع", "YELLOW": "متوسط", "MEDIUM": "متوسط", "RED": "منخفض", "LOW": "منخفض", "FLAGGED": "منخفض"},
         "button": "فتح إعدادات المساعد"
       },
+      "hub_expiry": {
+        "_note": "Guest Hub H4 (14 Nov 2026, copy.md §7 row 5 — the wording of Ahmed's brief): once a day (08:00 Riyadh), when a knowledge card ends within hub_card_expiry_alert_days or an offer within hub_offer_expiry_alert_days and the list was not yet sent — every item ending soon, one line each. To the active admins. No guest words.",
+        "subject": "تنبيهات مركز الضيوف — {date} — AR-HUB-{yyyymmdd}",
+        "heading": "تنتهي قريبًا",
+        "card_line": "بطاقة: {title} — تنتهي {date}",
+        "offer_line": "عرض: {name} — ينتهي {date}",
+        "button": "فتح قاعدة المعرفة"
+      },
       "hub_waiting": {
         "_note": "Guest Hub H3 (13 Nov 2026, copy.md §7 row 1): a conversation waiting for staff past hub_escalate_min — once per waiting period, to the branch's reception recipients (the central ones when the branch has none). No guest words, no phone. States: copy.md §6.",
         "subject": "محادثة بانتظار الرد — {unit_name} — AR-HUB-{id}",

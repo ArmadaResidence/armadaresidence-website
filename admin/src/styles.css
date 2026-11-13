@@ -945,3 +945,9 @@ body {
 /* the back / «الضيف» buttons belong to the stacked screens only (a plain rule: .btn is unlayered and beats xl:hidden) */
 @media (min-width: 1280px) { .inbox .inbox-narrow { display: none; } }
 .inbox-bubble .inbox-chip, .inbox-note .inbox-chip, .inbox-bubble .btn, .inbox-bubble .inbox-link { justify-self: start; }
+
+/* «قاعدة المعرفة» (Guest Hub H4, 14 Nov 2026): a card's text keeps its line breaks; the preview reads like a reply */
+.kn-text { white-space: pre-line; overflow-wrap: anywhere; }
+.kn-bubble { white-space: pre-line; overflow-wrap: anywhere; max-width: 36rem; padding: 0.6rem 0.8rem; border-radius: 0.9rem; border: 1px solid var(--line); background: var(--soft); font-size: 0.875rem; line-height: 1.6; }
+.kn-prices th { text-align: start; font-weight: 600; }
+.kn-prices td, .kn-prices th { padding: 0.55rem 0.5rem; border-bottom: 1px solid var(--line); vertical-align: top; }

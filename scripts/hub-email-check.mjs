@@ -10,11 +10,14 @@
 //   3. the wiring: wa-automation sends the waiting email from hub_escalations_claim (once per waiting period, the
 //      branch's reception recipients, the central ones when none) through the admins' sender; the claim returns no
 //      text and no phone; copy.md carries both rows.
+//   4. H4 (14 Nov 2026) «تنبيهات مركز الضيوف» (hubExpiryMail): copy.md §7 row 5 word for word — the subject with AR-HUB-
+//      {yyyymmdd}, the heading «تنتهي قريبًا», one line per card / offer with the date, «فتح قاعدة المعرفة» to the
+//      «تنتهي قريبًا» tab; the claim / tick: ONE email to the active admins, only with a list, each alert sent once.
 //   node scripts/hub-email-check.mjs
 import { readFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { existsSync } from 'node:fs';
-import { hubDuration, hubQualityMail, hubQualityRating, hubWaitingMail } from '../supabase/functions/booking-request/email.ts';
+import { hubDuration, hubExpiryLines, hubExpiryMail, hubQualityMail, hubQualityRating, hubWaitingMail } from '../supabase/functions/booking-request/email.ts';
 
 const read = (p) => readFileSync(new URL(`../${p}`, import.meta.url), 'utf8').replace(/\r\n/g, '\n');
 const GEN = new URL('../supabase/functions/booking-request/content.generated.json', import.meta.url);
@@ -74,6 +77,24 @@ check(/if tg_op = 'UPDATE' and new\.waiting_since is distinct from old\.waiting_
 check(/body\.action === 'hub-escalate'/.test(FN) && /hubWaitingMail\(content, \{ conversation_id: e\.id/.test(FN) && /sendAdminMail\(e\.recipients/.test(FN), 'wa-automation sends it (cron token), from the admins\' sender');
 check(/ALERT_FROM = 'لوحة أرمادا ريزيدنس <no-reply@armadaresidence\.com>'/.test(FN), 'the sender is no-reply@ (the mailbox filter)');
 check(/cron\.schedule\('hub-inbox', '\*\/2 \* \* \* \*'/.test(MIG), 'one pg_cron job hub-inbox');
+
+// ── 4. H4: the expiry alerts email ──
+{
+  const MIG4 = read('supabase/migrations/20261114100000_guest_hub_knowledge.sql');
+  const items = [{ type: 'card', title: 'السعر المباشر', ends: '2026-11-24' }, { type: 'offer', title: 'عرض الشتاء', ends: '2026-11-19' }];
+  const x = hubExpiryMail(C, { date: '2026-11-14', items });
+  check(/^تنبيهات مركز الضيوف — .+ 14 نوفمبر 2026 — AR-HUB-20261114$/.test(x.subject), `expiry: the subject of copy.md §7 row 5 — ${x.subject}`);
+  const lines = hubExpiryLines(C, items);
+  check(/^بطاقة: السعر المباشر — تنتهي .+ 24 نوفمبر 2026$/.test(lines[0]) && /^عرض: عرض الشتاء — ينتهي .+ 19 نوفمبر 2026$/.test(lines[1]), `expiry: one line per item — ${lines.join(' | ')}`);
+  check(x.text.startsWith('تنتهي قريبًا\n\n') && x.text.includes(lines[0]) && x.text.includes(lines[1]) && x.html.includes('تنتهي قريبًا'), 'expiry: the heading «تنتهي قريبًا» and both lines');
+  check(x.text.includes('فتح قاعدة المعرفة: https://admin.armadaresidence.com/knowledge?tab=expiring') && x.html.includes('/knowledge?tab=expiring'), 'expiry: «فتح قاعدة المعرفة» opens the «تنتهي قريبًا» tab');
+  check(/<html[^>]*lang="ar"/.test(x.html) && /@media print/.test(x.html) && !/[٠-٩]/.test(x.subject + x.text), 'expiry: the shared layout, its print sheet, Western digits');
+  check(COPY.includes('«تنبيهات مركز الضيوف — {date} — AR-HUB-{yyyymmdd}»') && COPY.includes('«بطاقة: {title} — تنتهي {date}»') && COPY.includes('«عرض: {name} — ينتهي {date}»') && COPY.includes('«فتح قاعدة المعرفة»'), 'copy.md §7: the expiry row (row 5)');
+  const claim = MIG4.slice(MIG4.indexOf('create function public.hub_expiry_claim'), MIG4.indexOf('\n$$;', MIG4.indexOf('create function public.hub_expiry_claim')));
+  check(/site_deploy_alert_recipients\(\)/.test(claim) && /return jsonb_build_object\('items', '\[\]'::jsonb/.test(claim) && /set sent_at = p_now/.test(claim), 'the claim: the active admins, an empty list when nothing new, each alert sent once');
+  check(/body\.action === 'hub-expiry'/.test(FN) && /hubExpiryMail\(content, \{ date: r\.data\.date, items \}\)/.test(FN) && /if \(!items\.length \|\| !r\.data\.date\) return/.test(FN), 'wa-automation sends ONE email, only with a list');
+  check(/cron\.schedule\('hub-expiry', '0 5 \* \* \*'/.test(MIG4), 'pg_cron hub-expiry at 05:00 UTC = 08:00 Riyadh');
+}
 
 if (fails.length) {
   for (const f of fails) console.error(`✗ ${f}`);

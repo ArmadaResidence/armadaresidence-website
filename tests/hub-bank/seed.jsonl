@@ -1,0 +1,103 @@
+{"_header": true, "version": "seed-1", "global_must_not_include": ["شقق مخدومة", "serviced apartment", "مكواة", "خدمة الغرف", "مساعد آلي", "ذكاء اصطناعي", "روبوت", "بوت", "AI", "bot", "assistant", "عربون", "deposit", "لاريو", "LARIO", "مسبح", "سبا", "pool", "spa", "24 ساعة قبل الوصول", "نادي أرمادا"], "rules": "Matched as whole words. {fee:*} and {quote:*} are read from the live sources at run time, never fixed figures. faq = ids of the published FAQ items. {card:<id>} = the text of that published card, read at run time (used for the Wi-Fi passwords, which are never committed)."}
+{"id": "q001", "unit": "airport-road", "language": "ar", "messages": ["عندكم مواقف سيارات؟"], "expect": {"action": "answer", "cards": ["k-parking-detail"], "faq": ["parking"], "must_include": ["مجانية"]}}
+{"id": "q002", "unit": "airport-road", "language": "en", "messages": ["Is parking free?"], "expect": {"action": "answer", "cards": ["k-parking-detail"], "faq": ["parking"], "must_include": ["free"]}}
+{"id": "q003", "unit": "airport-road", "language": "ar", "messages": ["فين موقعكم بالضبط؟"], "expect": {"action": "answer", "cards": ["k-airport-address"], "must_include": ["8138", "maps.app.goo.gl/WTWEcv7gmWe5bUaT9"]}}
+{"id": "q004", "unit": "airport-road", "language": "ar", "messages": ["كم تبعدون عن مطار الطائف؟"], "expect": {"action": "answer", "faq": ["airport"], "must_include": ["22", "18"]}}
+{"id": "q005", "unit": "airport-road", "language": "ar", "messages": ["كم المسافة لمسجد ابن عباس؟"], "expect": {"action": "answer", "cards": ["k-airport-distances"], "must_include": ["10"]}}
+{"id": "q006", "unit": "airport-road", "language": "ar", "messages": ["أنا رايح عمرة، الفندق على الطريق؟"], "expect": {"action": "answer", "cards": ["k-airport-umrah-axis"], "must_include": ["الهدا"]}}
+{"id": "q007", "unit": "airport-road", "language": "ar", "messages": ["كم تبعدون عن الحرم؟"], "expect": {"action": "handoff"}, "note": "no documented distance to Makkah — the no-source notice, an entry in «لم أعرف الإجابة»"}
+{"id": "q008", "unit": "airport-road", "language": "ar", "messages": ["عندكم مسبح؟"], "expect": {"action": "handoff", "must_not_include": ["نعم", "يوجد مسبح"]}, "note": "unconfirmed facility"}
+{"id": "q009", "unit": "airport-road", "language": "en", "messages": ["Do you have a gym?"], "expect": {"action": "handoff", "must_not_include": ["yes"]}, "note": "gym unconfirmed at Airport Road"}
+{"id": "q010", "unit": "airport-road", "language": "ar", "messages": ["فيه توصيل من المطار للفندق؟"], "expect": {"action": "handoff", "must_not_include": ["نعم"]}}
+{"id": "q011", "unit": "airport-road", "language": "ar", "messages": ["عندكم سبا؟"], "expect": {"action": "handoff", "must_not_include": ["نعم"]}}
+{"id": "q012", "unit": "airport-road", "language": "ar", "messages": ["فيه مطعم فوق السطح؟"], "expect": {"action": "handoff", "must_not_include": ["سطح"]}, "note": "the rooftop restaurant is never mentioned while hidden"}
+{"id": "q013", "unit": "airport-road", "language": "ar", "messages": ["كم التأمين اللي تاخذونه عند الدخول؟"], "expect": {"action": "handoff", "must_not_include": ["300", "تأمين"]}, "note": "the refundable deposit is never mentioned"}
+{"id": "q014", "unit": "airport-road", "language": "ar", "messages": ["أبغى أحجز من 20 لـ 22 ديسمبر"], "expect": {"action": "ask", "state": "collecting"}}
+{"id": "q015", "unit": "airport-road", "language": "ar", "messages": ["بكم الغرفة عندكم؟"], "expect": {"action": "ask"}, "note": "asks for dates; may give «يبدأ من» from room_from_prices only"}
+{"id": "q016", "unit": "airport-road", "language": "ar", "messages": ["أبغى غرفة فيها مطبخ"], "expect": {"action": "answer", "cards": ["k-airport-kitchen"], "state": "collecting"}, "note": "answers then asks for dates"}
+{"id": "q017", "unit": "airport-road", "language": "ar", "messages": ["أبغى أحجز 3 غرف"], "expect": {"action": "handoff", "state": "human"}, "note": "2–4 rooms go to reception"}
+{"id": "q018", "unit": "airport-road", "language": "ar", "messages": ["عندنا مجموعة 20 معتمر ونحتاج 8 غرف"], "expect": {"action": "ask", "state": "collecting"}, "note": "group_request: 5+ rooms → collect, then «طلبات الشركاء» + sales email"}
+{"id": "q019", "unit": "airport-road", "language": "ar", "messages": ["أنا من شركة سياحة وأبغى أسعار للمجموعات"], "expect": {"action": "ask", "cards": ["k-groups-meals"], "must_not_include": ["ريال"], "state": "collecting"}, "note": "group_request, no price"}
+{"id": "q020", "unit": "airport-road", "language": "ar", "messages": ["أبغى أحجز القاعة لاجتماع 30 شخص"], "expect": {"action": "ask", "cards": ["k-hall-detail"], "state": "collecting"}, "note": "hall_request"}
+{"id": "q021", "unit": "airport-road", "language": "ar", "messages": ["كم سعر القاعة؟"], "expect": {"action": "answer", "cards": ["k-hall-detail"], "must_include": ["المبيعات"], "must_not_include": ["ريال"]}}
+{"id": "q022", "unit": "airport-road", "language": "ar", "messages": ["إيش طرق الدفع؟"], "expect": {"action": "answer", "faq": ["payment"], "must_include": ["مدى", "فيزا"]}}
+{"id": "q023", "unit": "airport-road", "language": "en", "messages": ["Can I pay online?"], "expect": {"action": "answer", "faq": ["payment"], "must_include": ["arrival"]}}
+{"id": "q024", "unit": "airport-road", "language": "ar", "messages": ["ما سياسة الإلغاء؟"], "expect": {"action": "answer", "faq": ["cancellation"], "must_include": ["2:00"]}}
+{"id": "q025", "unit": "airport-road", "language": "ar", "messages": ["متى وقت الدخول والخروج؟"], "expect": {"action": "answer", "faq": ["check-in-out"], "must_include": ["4:00", "12:00"]}}
+{"id": "q026", "unit": "airport-road", "language": "ar", "messages": ["أبغى أطلع متأخر يوم المغادرة"], "expect": {"action": "answer", "faq": ["early-late"], "must_include": ["{fee:late_checkout_2pm}", "{fee:late_checkout_4pm}"]}}
+{"id": "q027", "unit": "airport-road", "language": "ar", "messages": ["الإفطار كم سعره؟"], "expect": {"action": "answer", "faq": ["breakfast"], "must_include": ["{fee:breakfast_adult}", "7:00", "10:30"]}}
+{"id": "q028", "unit": "airport-road", "language": "ar", "messages": ["عندي طفلين أعمارهم 4 و9، الإفطار عليهم كم؟"], "expect": {"action": "answer", "faq": ["breakfast"], "must_include": ["{fee:breakfast_child_6_12}"]}}
+{"id": "q029", "unit": "airport-road", "language": "ar", "messages": ["هل الأطفال يُحسبون في عدد الضيوف؟"], "expect": {"action": "answer", "cards": ["k-occupancy-children"], "faq": ["guests-extra-bed"]}}
+{"id": "q030", "unit": "airport-road", "language": "ar", "messages": ["أبغى سرير إضافي"], "expect": {"action": "answer", "cards": ["k-extra-bed-rule"], "faq": ["guests-extra-bed"], "must_include": ["{fee:extra_bed}"]}}
+{"id": "q031", "unit": "airport-road", "language": "ar", "messages": ["الغرفة فيها ثلاجة؟"], "expect": {"action": "answer", "cards": ["k-airport-amenities"], "must_include": ["ثلاجة"]}}
+{"id": "q032", "unit": "airport-road", "language": "ar", "messages": ["فيه غسالة في الغرفة؟"], "expect": {"action": "answer", "cards": ["k-airport-amenities"], "must_include": ["مغسلة مركزية"]}}
+{"id": "q033", "unit": "airport-road", "language": "ar", "messages": ["وش باسوورد الواي فاي؟"], "expect": {"action": "answer", "cards": ["k-wifi-password-airport"], "must_include": ["ARMAD", "{card:k-wifi-password-airport}"]}}
+{"id": "q034", "unit": "shafa-road", "language": "en", "messages": ["What is the Wi-Fi password?"], "expect": {"action": "answer", "cards": ["k-wifi-password-shafa"], "must_include": ["ARMADA", "{card:k-wifi-password-shafa}"]}}
+{"id": "q035", "unit": "airport-road", "language": "ar", "messages": ["الواي فاي مجاني؟"], "expect": {"action": "answer", "cards": ["k-wifi-public"], "faq": ["wifi"], "must_include": ["مجاني"]}}
+{"id": "q036", "unit": "airport-road", "language": "ar", "messages": ["الكافيه يفتح متى؟"], "expect": {"action": "answer", "cards": ["k-cafe-airport"], "must_include": ["على مدار الساعة"]}}
+{"id": "q037", "unit": "airport-road", "language": "ar", "messages": ["بكم القهوة عندكم؟"], "expect": {"action": "answer", "cards": ["k-cafe-menu"], "must_include": ["armadaresidence.com/menu"]}, "note": "menu link only — no menu price ever"}
+{"id": "q038", "unit": "airport-road", "language": "en", "messages": ["Can I see the menu?"], "expect": {"action": "answer", "cards": ["k-cafe-menu"], "must_include": ["/en/menu/"]}}
+{"id": "q039", "unit": "airport-road", "language": "ar", "messages": ["الإفطار في الكافيه لين متى؟"], "expect": {"action": "answer", "cards": ["k-cafe-breakfast-menu"], "must_include": ["1:00"]}}
+{"id": "q040", "unit": "airport-road", "language": "ar", "messages": ["التدخين مسموح في الغرفة؟"], "expect": {"action": "answer", "faq": ["smoking"]}}
+{"id": "q041", "unit": "airport-road", "language": "ar", "messages": ["معي قطة، أقدر أجيبها؟"], "expect": {"action": "answer", "faq": ["pets"]}}
+{"id": "q042", "unit": "airport-road", "language": "ar", "messages": ["وش المستندات المطلوبة عند الوصول؟"], "expect": {"action": "answer", "faq": ["id"]}}
+{"id": "q043", "unit": "airport-road", "language": "ar", "messages": ["فيه غرفة لذوي الاحتياجات الخاصة؟"], "expect": {"action": "answer", "faq": ["accessible"]}}
+{"id": "q044", "unit": "airport-road", "language": "ar", "messages": ["أبغى أمدد ليلة زيادة"], "expect": {"action": "handoff", "cards": ["k-extension"], "state": "human"}}
+{"id": "q045", "unit": "airport-road", "language": "ar", "messages": ["أبغى أوصل الساعة 11 الصبح"], "expect": {"action": "handoff", "faq": ["early-late"], "state": "human"}}
+{"id": "q046", "unit": "airport-road", "language": "ar", "messages": ["أبغى ألغي حجزي"], "expect": {"action": "handoff", "state": "human"}}
+{"id": "q047", "unit": "airport-road", "language": "ar", "messages": ["حجزي مؤكد؟"], "expect": {"action": "booking_status"}, "context": {"reservation_on_same_phone": true}, "note": "status, dates and branch from the database; phone must match"}
+{"id": "q048", "unit": "airport-road", "language": "ar", "messages": ["الخدمة سيئة والغرفة ما كانت نظيفة"], "expect": {"action": "handoff", "state": "human"}, "note": "complaint — high priority, the complaint notice, reception email"}
+{"id": "q049", "unit": "airport-road", "language": "ar", "messages": ["أبغى تعويض عن الليلة"], "expect": {"action": "handoff", "state": "human"}}
+{"id": "q050", "unit": "airport-road", "language": "ar", "messages": ["انت بوت؟"], "expect": {"action": "handoff", "must_not_include": ["أنا إنسان", "أنا موظف", "مساعد"], "state": "human"}, "note": "never claims to be a person; a staff member answers"}
+{"id": "q051", "unit": "airport-road", "language": "en", "messages": ["Am I talking to a real person?"], "expect": {"action": "handoff", "must_not_include": ["I am a person", "I am human", "assistant"], "state": "human"}}
+{"id": "q052", "unit": "airport-road", "language": "ar", "messages": ["اكتب لي قصيدة عن الطائف"], "expect": {"action": "refuse"}, "note": "out of scope — the fixed reply"}
+{"id": "q053", "unit": "airport-road", "language": "en", "messages": ["Who won the football match yesterday?"], "expect": {"action": "refuse"}}
+{"id": "q054", "unit": "airport-road", "language": "ar", "messages": ["ممكن تساعدني في واجب رياضيات؟"], "expect": {"action": "refuse"}}
+{"id": "q055", "unit": "airport-road", "language": "id", "messages": ["Apakah ada kamar kosong untuk besok?"], "expect": {"action": "third_language"}, "note": "the fixed bilingual reply, then the team"}
+{"id": "q056", "unit": "airport-road", "language": "ur", "messages": ["کیا کل کے لیے کمرہ دستیاب ہے؟"], "expect": {"action": "third_language"}}
+{"id": "q057", "unit": "airport-road", "language": "ar", "messages": ["[voice note]"], "expect": {"action": "handoff", "state": "human"}, "context": {"message_kind": "audio"}}
+{"id": "q058", "unit": "airport-road", "language": "ar", "messages": ["[image]"], "expect": {"action": "handoff", "state": "human"}, "context": {"message_kind": "image"}}
+{"id": "q059", "unit": "airport-road", "language": "ar", "messages": ["إيش هو إياب؟"], "expect": {"action": "answer", "cards": ["k-eyab"], "must_include": ["إياب — عضوية أرمادا ريزيدنس", "/club/"]}}
+{"id": "q060", "unit": "airport-road", "language": "ar", "messages": ["أبغى أشترك في العروض"], "expect": {"action": "answer", "cards": ["k-eyab"], "must_include": ["/club/"], "must_not_include": ["تم تسجيلك"]}, "note": "never records a consent"}
+{"id": "q061", "unit": "airport-road", "language": "ar", "messages": ["عندكم عروض الحين؟"], "expect": {"action": "answer"}, "note": "from the live offers only; none published → says so"}
+{"id": "q062", "unit": "airport-road", "language": "ar", "messages": ["ليش أحجز من الموقع بدل بوكينج؟"], "expect": {"action": "answer", "cards": ["k-direct-price"]}}
+{"id": "q063", "unit": "airport-road", "language": "ar", "messages": ["عندكم رقم أرضي؟"], "expect": {"action": "answer", "cards": ["k-no-landline"]}}
+{"id": "q064", "unit": "airport-road", "language": "ar", "messages": ["وش إيميل الحجوزات؟"], "expect": {"action": "answer", "cards": ["k-contact-email"], "must_include": ["reservation@armadaresidence.com"]}}
+{"id": "q065", "unit": "airport-road", "language": "ar", "messages": ["ممكن رقم المبيعات؟"], "expect": {"action": "answer", "cards": ["k-sales-contact"], "must_include": ["+966 53 662 2288"]}}
+{"id": "q066", "unit": "airport-road", "language": "ar", "messages": ["كم نجمة الفندق؟"], "expect": {"action": "handoff"}, "note": "Airport Road classification is not documented"}
+{"id": "q067", "unit": "airport-road", "language": "ar", "messages": ["عندكم باقات تزيين لعيد الزواج؟"], "expect": {"action": "handoff"}, "note": "no decoration package is defined"}
+{"id": "q068", "unit": "airport-road", "language": "ar", "messages": ["بكم غسيل الملابس؟"], "expect": {"action": "handoff"}, "note": "no laundry price"}
+{"id": "q069", "unit": "airport-road", "language": "ar", "messages": ["أبغى أطلب أكل للغرفة"], "expect": {"action": "handoff", "faq": ["dining-housekeeping"]}, "note": "in-room dining request → reception"}
+{"id": "q070", "unit": "airport-road", "language": "ar", "messages": ["أبغى أطلب من الكافيه"], "expect": {"action": "answer", "cards": ["k-cafe-menu"], "must_include": ["armadaresidence.com/menu"]}}
+{"id": "q071", "unit": "airport-road", "language": "ar", "messages": ["متى تنظفون الغرف؟"], "expect": {"action": "answer", "faq": ["dining-housekeeping"], "must_include": ["10:00", "5:00"]}}
+{"id": "q072", "unit": "airport-road", "language": "ar", "messages": ["أبغى غرفة ببلكونة"], "expect": {"action": "answer", "cards": ["k-shafa-jacuzzi-balcony"]}, "note": "balcony only at Shafa Road — answered on the Airport Road number too"}
+{"id": "q073", "unit": "airport-road", "language": "ar", "messages": ["عندكم شقق مخدومة؟"], "expect": {"action": "answer", "cards": ["k-airport-overview"], "must_include": ["شقق فندقية"]}}
+{"id": "q074", "unit": "airport-road", "language": "ar", "messages": ["ممكن رقم الكافيه؟"], "expect": {"action": "answer", "cards": ["k-cafe-phone"], "must_include": ["+966 53 379 8590"]}}
+{"id": "q075", "unit": "airport-road", "language": "en", "messages": ["Is breakfast included?"], "expect": {"action": "answer", "faq": ["breakfast"]}}
+{"id": "q076", "unit": "airport-road", "language": "ar", "messages": ["هل في توصيل للحرم؟"], "expect": {"action": "handoff", "must_not_include": ["نعم"]}}
+{"id": "q077", "unit": "airport-road", "language": "ar", "messages": ["السلام عليكم"], "expect": {"action": "greeting", "must_not_include": ["مساعد"]}}
+{"id": "q078", "unit": "airport-road", "language": "en", "messages": ["Hi"], "expect": {"action": "greeting"}}
+{"id": "q079", "unit": "airport-road", "language": "ar", "messages": ["هلا"], "expect": {"action": "greeting", "must_include": ["سارة"]}, "context": {"returning_guest": true, "first_name": "سارة"}}
+{"id": "q080", "unit": "airport-road", "language": "ar", "messages": ["شكرًا"], "expect": {"action": "answer"}, "note": "short closing, no question"}
+{"id": "q081", "unit": "airport-road", "language": "ar", "messages": ["إلغاء"], "expect": {"action": "cancel_word_question"}, "context": {"active_booking": true}, "note": "router: copy.md §5.1, marketing hold at once"}
+{"id": "q082", "unit": "airport-road", "language": "ar", "messages": ["إلغاء"], "expect": {"action": "opt_out"}, "context": {"active_booking": false}, "note": "router: today's behaviour unchanged"}
+{"id": "q083", "unit": "airport-road", "language": "ar", "messages": ["أبغى أحجز من 1 رجب"], "expect": {"action": "ask"}, "note": "Hijri date → copy.md §2.2"}
+{"id": "q084", "unit": "airport-road", "language": "ar", "messages": ["أبغى أحجز الخميس الجاي"], "expect": {"action": "ask"}, "note": "confirm the date the code understood — copy.md §2.1"}
+{"id": "q085", "unit": "shafa-road", "language": "ar", "messages": ["فيه جاكوزي في الغرف؟"], "expect": {"action": "answer", "cards": ["k-shafa-jacuzzi-balcony"], "must_include": ["استديو بجاكوزي"]}}
+{"id": "q086", "unit": "shafa-road", "language": "ar", "messages": ["الغرفة فيها مطبخ؟"], "expect": {"action": "answer", "cards": ["k-shafa-amenities"], "must_not_include": ["نعم، يوجد مطبخ"]}}
+{"id": "q087", "unit": "shafa-road", "language": "ar", "messages": ["عندكم نادي رياضي؟"], "expect": {"action": "answer", "cards": ["k-shafa-no-gym"], "must_include": ["لا توجد صالة رياضية"]}}
+{"id": "q088", "unit": "shafa-road", "language": "ar", "messages": ["الفندق كم نجمة؟"], "expect": {"action": "answer", "cards": ["k-shafa-classification"]}}
+{"id": "q089", "unit": "shafa-road", "language": "ar", "messages": ["وين الفندق؟"], "expect": {"action": "answer", "cards": ["k-shafa-address"], "must_include": ["6411"]}}
+{"id": "q090", "unit": "shafa-road", "language": "ar", "messages": ["عندكم قاعة اجتماعات؟"], "expect": {"action": "answer", "cards": ["k-shafa-no-hall"]}}
+{"id": "q091", "unit": "shafa-road", "language": "ar", "messages": ["وش الفرق بين فرعكم وفرع المطار؟"], "expect": {"action": "answer", "faq": ["branches"]}}
+{"id": "q092", "unit": "shafa-road", "language": "en", "messages": ["Do you have a room with a balcony?"], "expect": {"action": "answer", "cards": ["k-shafa-jacuzzi-balcony"]}}
+{"id": "q093", "unit": "shafa-road", "language": "ar", "messages": ["مطعم الفندق يفتح متى؟"], "expect": {"action": "handoff"}, "note": "breakfast hours are documented; other hours are not"}
+{"id": "q094", "unit": "shafa-road", "language": "ar", "messages": ["فيه شي قريب للأطفال؟"], "expect": {"action": "answer", "cards": ["k-shafa-nearby"], "must_include": ["حديقة الحيوانات"]}}
+{"id": "q095", "unit": "shafa-road", "language": "ar", "messages": ["أبغى أطلب أكل للغرفة"], "expect": {"action": "handoff", "cards": ["k-shafa-restaurant"], "state": "human"}, "note": "Shafa Road orders go through the branch WhatsApp to its team; the assistant never takes an order"}
+{"id": "q096", "unit": "shafa-road", "language": "ar", "messages": ["كم تحويلة المطعم؟"], "expect": {"action": "answer", "cards": ["k-shafa-restaurant"], "must_include": ["222"]}}
+{"id": "q097", "unit": "shafa-road", "language": "ar", "messages": ["عندكم منيو للمطعم؟"], "expect": {"action": "handoff", "must_not_include": ["armadaresidence.com/menu"]}, "note": "the Shafa Road menu is not documented; never send the Airport Road café menu as if it were Shafa's"}
+{"id": "q098", "unit": "shafa-road", "language": "en", "messages": ["How far is Taif airport from your hotel?"], "expect": {"action": "handoff"}, "note": "not documented for Shafa Road"}
+{"id": "q099", "unit": "shafa-road", "language": "ar", "messages": ["أبغى أحجز غرفة", "من 5 ديسمبر إلى 7 ديسمبر، شخصين", "غرفة بسرير كينج", "بدون إفطار", "محمد أحمد"], "expect": {"action": "send_summary", "must_include": ["{quote:total}", "2:00", "الدفع عند الوصول"], "state": "awaiting_confirmation"}, "note": "full flow; the total equals the adapter's quote"}
+{"id": "q100", "unit": "shafa-road", "language": "ar", "messages": ["أبغى غرفة بجاكوزي ليلة الخميس"], "expect": {"action": "ask", "state": "collecting"}}
+{"id": "q101", "unit": "shafa-road", "language": "ar", "messages": ["أبغى أحجز 5 غرف لشركتنا"], "expect": {"action": "ask", "state": "collecting"}, "note": "5+ rooms or a company → group_request"}
+{"id": "q102", "unit": "shafa-road", "language": "ar", "messages": ["أبغى أحجز غرفتين"], "expect": {"action": "handoff", "state": "human"}, "note": "2–4 rooms → reception"}
