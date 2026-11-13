@@ -194,7 +194,8 @@ for (const [role, level] of [['admin', 'edit'], ['management', 'view']]) {
         await page.waitForFunction(() => true);
         await page.locator('[data-action="templates-refresh"]').click();
         await page.waitForTimeout(500);
-        const hub = calls.filter((c) => c.fn === 'hub-admin').map((c) => c.body);
+        // (the «تحديث أحداث الاستقبال» click above is checked on its own)
+        const hub = calls.filter((c) => c.fn === 'hub-admin' && c.body?.action !== 'update_webhook_events').map((c) => c.body);
         check(hub.length === 2 && hub[0].action === 'verify_channel' && hub[0].channel === id(101) && hub[1].action === 'refresh_templates', `${tag}: hub-admin called with verify_channel and refresh_templates only — ${JSON.stringify(hub)}`);
 
         // the morning summary: active only after the filter
