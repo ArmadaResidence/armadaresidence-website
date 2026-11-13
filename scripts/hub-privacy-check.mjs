@@ -64,13 +64,21 @@ check(calls >= 25, `the log lines were found (${calls})`);
 check(/console\.log\('wa-automation: referral', describe\(ev\)\);/.test(SRC['wa-automation/index.ts']), 'the referral is logged by its keys only (describe)');
 check(/whsec_\[A-Za-z0-9\]\+\/g, 'whsec_…'/.test(SRC['hub-admin/index.ts']), 'hub-admin masks a signing secret in any YCloud answer it logs');
 
-// ── 2. signals ──
+// ── 2. signals ── (H3, 13 Nov 2026: the hub kinds come with the inbox — kind, branch, unit and time, never text)
+const MIG3 = read('supabase/migrations/20261113300000_guest_hub_inbox.sql');
 const sigDefs = [...ALL.matchAll(/create (?:or replace )?function internal\.dashboard_signal\(\)[\s\S]*?\n\$\$;/g)].map((x) => x[0]);
 const lastSig = sigDefs.at(-1) ?? '';
-check(sigDefs.length > 0 && (lastSig.match(/insert into public\.dashboard_signals/g) ?? []).length === 1 && /insert into public\.dashboard_signals \(kind, branch\) values \(v_kind, v_branch\);/.test(lastSig)
-  && !/alter table public\.dashboard_signals add column/.test(ALL), 'dashboard_signals: kind, branch and time only');
+check(sigDefs.length > 0 && (lastSig.match(/insert into public\.dashboard_signals/g) ?? []).length === 1 && /insert into public\.dashboard_signals \(kind, branch\) values \(v_kind, v_branch\);/.test(lastSig),
+  'dashboard_signals (bookings, partners, club): kind, branch and time only');
+const hubSig = MIG3.slice(MIG3.indexOf('create function internal.hub_signal()'), MIG3.indexOf('\n$$;', MIG3.indexOf('create function internal.hub_signal()')));
+check(hubSig.length > 0 && (hubSig.match(/insert into public\.dashboard_signals/g) ?? []).length === 1 && /insert into public\.dashboard_signals \(kind, branch, unit_id\) values \(v_kind, v_branch, v_unit\);/.test(hubSig)
+  && !/body|phone|wa_profile_name|full_name|guest_profiles/.test(hubSig.replace(/--[^\n]*/g, '')), 'the hub signals: kind, branch, unit and time only — never a text, a name or a phone');
 check(!/dashboard_signals/.test(MIG), 'the H2 migration writes no signal');
-check(/kind text not null check \(kind in \('booking', 'partner', 'club'\)\)/.test(ALL) && !/alter table public\.dashboard_signals (add|drop|alter)/.test(ALL), 'no hub kind in the signals yet (H3 adds them with this check extended)');
+const sigAdds = [...ALL.matchAll(/alter table public\.dashboard_signals add column (\w+)/g)].map((x) => x[1]);
+check(sigAdds.join() === 'unit_id', `dashboard_signals gains the unit only — ${sigAdds.join()}`);
+check(/check \(kind in \('booking', 'partner', 'club', 'hub_message', 'hub_state', 'hub_handoff', 'hub_booking', 'hub_order'\)\)/.test(MIG3), 'the hub kinds of spec §3.1');
+check(/create policy dashboard_signals_read on public\.dashboard_signals for select to authenticated\s+using \(\(unit_id is null and internal\.can\('overview', 'view'\)[\s\S]{0,120}\(unit_id is not null and internal\.can_unit\(unit_id, 'view'\)\)\);/.test(MIG3),
+  'a hub signal is read through the unit scope');
 
 // ── 3. exports and reports ──
 const fnBodies = [...ALL.matchAll(/create (?:or replace )?function (public\.[a-z_0-9]+)\([\s\S]*?\n\$\$;/g)];
@@ -84,8 +92,8 @@ const walk = (dir) => {
   }
 };
 walk('admin/src');
-const touching = adminFiles.filter((f) => /hub_messages|translation_ar|translation_en/.test(read(f)));
-check(touching.length === 0, `no dashboard file reads hub_messages yet (the inbox is H3) — ${touching.join(', ')}`);
+const touching = adminFiles.filter((f) => /hub_messages|translation_ar|translation_en|hub_thread|hub_inbox_list/.test(read(f)));
+check(touching.every((f) => ['admin/src/lib/inbox.ts', 'admin/src/pages/Inbox.tsx'].includes(f)), `only the inbox reads conversation text in the dashboard (H3) — ${touching.join(', ')}`);
 
 // ── 4. the logs, events, alerts and the audit ──
 for (const t of ['whatsapp_messages', 'eyab_messages']) {
