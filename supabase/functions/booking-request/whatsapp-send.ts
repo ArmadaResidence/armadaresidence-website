@@ -13,6 +13,12 @@
 // fallback when the primary one is refused (FALLBACK_ON) — a second log row, so the dashboard shows both; logged with
 // console.error. Every row records the Meta template sent (meta_template) and, for a cancellation, the reason code.
 // Secret: YCLOUD_API_KEY. Missing → the attempt fails with 'not_configured'.
+//
+// Session sends (Guest Hub H2, 13 Nov 2026 — spec §3.7 «One sender», §6.2): sendSession() sends a free-form message —
+// interactive reply buttons (today only the «إلغاء» question of T32) or plain text (its hand-off notice) — through the
+// same YCloud call: only while the guest's 24-hour window is open (else 'window_closed', nothing sent), test mode builds
+// and logs as 'test', never retried after a timeout or a network error, and the outcome goes to its log row
+// (public.wa_finish: status, YCloud id, error code, the sending number — never the text or the phone).
 import { WA_FALLBACK_NAMES, WA_TEMPLATE_NAMES, waErrorCode, waPayload, type WaBooking, type WaTemplate } from './whatsapp.ts';
 
 // deno-lint-ignore no-explicit-any
@@ -157,6 +163,125 @@ export async function sendWhatsApp(c: Content, s: WaSend): Promise<WaResult> {
     return { ...out, fallback: true };
   } catch (e) {
     console.error('whatsapp send crashed', ref, s.template, String(e));
+    return fail('network');
+  }
+}
+
+// ═══════════════════════════════ session sends (Guest Hub H2, 13 Nov 2026) ═══════════════════════════════
+
+/** WhatsApp's limits for reply buttons (spec §6.2, read from YCloud 13 Nov 2026): 1–3 buttons, a title ≤ 20 characters */
+export const BUTTONS_MAX = 3;
+export const BUTTON_TITLE_MAX = 20;
+export const SESSION_BODY_MAX = 1024;
+
+export interface ReplyButton {
+  /** routed by the webhook before anything else (spec §2.5 rule 12) */
+  id: string;
+  title: string;
+}
+export interface SessionPayload {
+  from: string;
+  to: string;
+  type: 'interactive' | 'text';
+  externalId?: string;
+  interactive?: { type: 'button'; body: { text: string }; action: { buttons: { type: 'reply'; reply: { id: string; title: string } }[] } };
+  text?: { body: string };
+}
+
+const E164 = /^\+[1-9][0-9]{7,14}$/;
+
+/** the YCloud body of a reply-buttons message; throws on anything WhatsApp would refuse */
+export function buttonsPayload(from: string, to: string, body: string, buttons: ReplyButton[], externalId?: string): SessionPayload {
+  if (!E164.test(from) || !E164.test(to)) throw new Error('buttons: from / to must be E.164');
+  const text = String(body ?? '').trim();
+  if (!text || text.length > SESSION_BODY_MAX) throw new Error('buttons: the body is empty or too long');
+  if (!buttons.length || buttons.length > BUTTONS_MAX) throw new Error(`buttons: 1–${BUTTONS_MAX} buttons`);
+  const ids = new Set<string>();
+  for (const b of buttons) {
+    const t = String(b.title ?? '').trim();
+    if (!t || [...t].length > BUTTON_TITLE_MAX) throw new Error(`buttons: a title of 1–${BUTTON_TITLE_MAX} characters («${t}»)`);
+    if (!/^[a-z0-9:_-]{1,256}$/.test(b.id) || ids.has(b.id)) throw new Error('buttons: ids are unique, [a-z0-9:_-]');
+    ids.add(b.id);
+  }
+  return {
+    from,
+    to,
+    type: 'interactive',
+    ...(externalId ? { externalId } : {}),
+    interactive: { type: 'button', body: { text }, action: { buttons: buttons.map((b) => ({ type: 'reply' as const, reply: { id: b.id, title: b.title.trim() } })) } },
+  };
+}
+
+/** the YCloud body of a plain session text */
+export function textPayload(from: string, to: string, body: string, externalId?: string): SessionPayload {
+  if (!E164.test(from) || !E164.test(to)) throw new Error('text: from / to must be E.164');
+  const text = String(body ?? '').trim();
+  if (!text || text.length > 4096) throw new Error('text: the body is empty or too long');
+  return { from, to, type: 'text', ...(externalId ? { externalId } : {}), text: { body: text } };
+}
+
+/** free-form messages only within 24 h of the guest's last message (spec §6.3) */
+export function windowOpen(expiresAt: string | number | Date | null | undefined, now: number = Date.now()): boolean {
+  if (expiresAt === null || expiresAt === undefined || expiresAt === '') return false;
+  const t = expiresAt instanceof Date ? expiresAt.getTime() : typeof expiresAt === 'number' ? expiresAt : Date.parse(expiresAt);
+  return Number.isFinite(t) && t > now;
+}
+
+export interface SessionSend {
+  payload: SessionPayload;
+  /** the end of the guest's 24-hour window (their last message + 24 h) */
+  windowExpiresAt: string | number | Date | null;
+  test: boolean;
+  /** the log row already written (eyab_messages / whatsapp_messages, status pending) */
+  log: { table: 'eyab_messages' | 'whatsapp_messages'; id: string } | null;
+}
+
+async function finishLog(log: SessionSend['log'], r: WaResult, error: string | null, from: string): Promise<void> {
+  const env = service();
+  if (!env || !log) return;
+  const res = await fetch(`${env.url}/rest/v1/rpc/wa_finish`, {
+    method: 'POST',
+    headers: headers(env.key),
+    body: JSON.stringify({ p_table: log.table, p_id: log.id, p_status: r.status, p_ycloud_id: r.messageId, p_error_code: r.errorCode, p_error: error, p_from: from }),
+  });
+  if (!res.ok) console.error('whatsapp session log update failed', log.table, log.id, res.status);
+}
+
+/** One free-form send. Never throws, never retries. The console line names the kind and the outcome only. */
+export async function sendSession(s: SessionSend): Promise<WaResult> {
+  const fail = (errorCode: string): WaResult => ({ accepted: false, status: 'failed', messageId: null, errorCode });
+  const kind = s.payload.type === 'interactive' ? 'buttons' : 'text';
+  const done = async (r: WaResult, error: string | null = null) => {
+    await finishLog(s.log, r, error, s.payload.from);
+    console.log(`whatsapp session ${kind} ${r.status}`, r.messageId ? `id=${r.messageId}` : '', r.errorCode ?? '', s.test ? 'TEST' : '');
+    return r;
+  };
+  try {
+    if (!windowOpen(s.windowExpiresAt)) return await done(fail('window_closed'), 'the 24-hour window is closed');
+    if (s.test) return await done({ accepted: true, status: 'test', messageId: null, errorCode: null });
+    const key = Deno.env.get('YCLOUD_API_KEY');
+    if (!key) return await done(fail('not_configured'), 'YCLOUD_API_KEY missing');
+    let res: Response;
+    try {
+      res = await fetch(YCLOUD_SEND, { method: 'POST', headers: { 'X-API-Key': key, 'Content-Type': 'application/json' }, body: JSON.stringify(s.payload), signal: AbortSignal.timeout(TIMEOUT_MS) });
+    } catch (e) {
+      // never retried: the first may still arrive
+      return await done(fail((e as Error)?.name === 'TimeoutError' ? 'timeout' : 'network'), String(e).slice(0, 400));
+    }
+    const text = await res.text();
+    let body: { id?: string; status?: string; errorCode?: string; errorMessage?: string; whatsappApiError?: unknown } = {};
+    try {
+      body = JSON.parse(text);
+    } catch { /* not JSON */ }
+    if (!res.ok) return await done(fail(waErrorCode(res.status, text)), text.slice(0, 400));
+    if (body.status === 'failed') {
+      const detail = `${body.errorCode ?? ''} ${body.errorMessage ?? ''} ${body.whatsappApiError ? JSON.stringify(body.whatsappApiError) : ''}`.trim();
+      return await done({ ...fail(waErrorCode(res.status, detail)), messageId: body.id ?? null }, detail.slice(0, 400));
+    }
+    const st = String(body.status);
+    return await done({ accepted: true, status: SENT.has(st) && st !== 'test' ? st : 'accepted', messageId: body.id ?? null, errorCode: null });
+  } catch (e) {
+    console.error('whatsapp session send crashed', kind, String(e).slice(0, 200));
     return fail('network');
   }
 }

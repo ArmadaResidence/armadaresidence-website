@@ -235,7 +235,7 @@ select pg_temp._fails('R5 … nor an update', $$update public.hub_conversations 
 select pg_temp._fails('R6 staff cannot call the ingest', $$select public.hub_ingest_inbound('{}')$$, '42501');
 select pg_temp._fails('R6 … nor the «إلغاء» start', $$select public.hub_cancel_word_start('+966500009102', 'airport-road', 'ar', false)$$, '42501');
 select pg_temp._anon();
-select pg_temp._check('R7 anon sees nothing', (select count(*) = 0 from public.hub_conversations));
+select pg_temp._fails('R7 anon cannot read the conversations at all', $$select count(*) from public.hub_conversations$$, '42501');
 select pg_temp._root();
 select pg_temp._as('admin');
 select pg_temp._save('w4', public.hub_setting_set('hub_inbox_on', 'false'));
@@ -278,6 +278,18 @@ select pg_temp._check('C5 «إلغاء حجزي»: the hold lifted, nothing pend
   and (select marketing_hold_at is null and cancel_word_pending_at is null and wa_opt_out_at is null from public.guest_profiles where phone = '+966500009113' and not is_test)
   and (select template = 'cancel_booking_notice' and branch = 'shafa-road' and language = 'en' from public.eyab_messages where id = (pg_temp._j('c7') ->> 'log_id')::uuid),
   pg_temp._j('c7')::text);
+-- a typed answer counts only while the question waits
+select pg_temp._service();
+select pg_temp._save('c7b', public.hub_cancel_word_resolve('+966500009113', 'offers', '+966536663030', 'en', false, true));
+select pg_temp._root();
+select pg_temp._check('C5b a typed «Stop offer messages» with nothing waiting does nothing (no opt-out)', (pg_temp._j('c7b') ->> 'skipped')::boolean
+  and (select wa_opt_out_at is null from public.guest_profiles where phone = '+966500009113' and not is_test), pg_temp._j('c7b')::text);
+select pg_temp._service();
+select pg_temp._save('c7c', public.hub_cancel_word_resolve('+966500009113', 'booking', '+966536663030', 'en', false));
+select pg_temp._root();
+select pg_temp._check('C5c the same tap delivered again: nothing changes, no second notice', not (pg_temp._j('c7c') ->> 'resolved')::boolean
+  and (select count(*) = 1 from public.eyab_messages m join public.guest_profiles g on g.id = m.profile_id where g.phone = '+966500009113' and m.template = 'cancel_booking_notice'),
+  pg_temp._j('c7c')::text);
 -- T33: «إيقاف رسائل العروض»
 select pg_temp._res_insert('AR-20991231-QH05', 'airport-road', '+966500009114', 'request', 1, 3);
 select pg_temp._service();

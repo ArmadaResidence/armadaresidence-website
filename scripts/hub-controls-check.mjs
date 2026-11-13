@@ -7,8 +7,11 @@
 //      migration (the hub_summary recipient is inserted on production only — CLAUDE.md §8);
 //   3. the dashboard asks for nothing it may not do: every mode but «متوقف» and every switch-on show the gates first,
 //      the labels of the modes = copy.md §6;
-//   4. hub-admin reads YCloud only (GET; never the webhook, a send, a template change) and its helpers parse YCloud's
-//      lists correctly (unit tests on recorded shapes);
+//   4. hub-admin reads YCloud (GET; never a send or a template change) and its helpers parse YCloud's lists correctly
+//      (unit tests on recorded shapes); its ONE write since H2 is the PATCH of the one endpoint's events (system admin,
+//      «تحديث أحداث الاستقبال») — never a POST, PUT or DELETE (scripts/hub-webhook-check.mjs tests the merge);
+//   (H2, 13 Nov 2026) «تخزين المحادثات» may be switched on — its gate is true from 20261113200000 — while the engine
+//   gate stays false and the H2 migration switches nothing on;
 //   5. the SQL tests that prove the server side exist (supabase/tests/guest_hub_units.sql, run in server-checks.yml).
 //   node scripts/hub-controls-check.mjs
 import { readFileSync } from 'node:fs';
@@ -16,6 +19,7 @@ import { channelFacts, pageOf, phoneNumbersUrl, pickPhone, templateRows, templat
 
 const read = (p) => readFileSync(new URL(`../${p}`, import.meta.url), 'utf8').replace(/\r\n/g, '\n');
 const MIG = read('supabase/migrations/20261113100000_guest_hub_foundation.sql');
+const MIG2 = read('supabase/migrations/20261113200000_guest_hub_inbound.sql');
 const SPEC = read('docs/guest-hub/GUEST-HUB-SPEC.md');
 const COPY = read('docs/guest-hub/copy.md');
 const HUB = read('admin/src/lib/hub.ts');
@@ -47,6 +51,11 @@ check(/constraint hub_channels_send_verified check \(not sending_enabled or veri
 check(/constraint hub_units_hidden_off check \(status = 'active' or assistant_mode = 'off'\)/.test(MIG), 'a hidden unit is never on (constraint)');
 check(/create function internal\.hub_engine_ready\(\) returns boolean\s+language sql immutable set search_path = '' as \$\$ select false \$\$;/.test(MIG), 'the engine gate is false in H1');
 check(/create function internal\.hub_inbox_ready\(\) returns boolean\s+language sql immutable set search_path = '' as \$\$ select false \$\$;/.test(MIG), 'the inbox gate is false in H1');
+check(/create or replace function internal\.hub_inbox_ready\(\) returns boolean\s+language sql immutable set search_path = '' as \$\$ select true \$\$;/.test(MIG2), 'H2: the inbox gate is true («تخزين المحادثات» may be switched on)');
+check(!/hub_engine_ready\(\) returns/.test(MIG2), 'H2 leaves the engine gate false (the assistant stays refused)');
+check(!/update public\.hub_units set assistant_mode/.test(MIG2) && !/update public\.settings set value/.test(MIG2) && !/insert into public\.settings/.test(MIG2), 'H2 switches nothing on and adds no setting');
+check(/if not internal\.hub_setting_bool\('hub_inbox_on'\) then return jsonb_build_object\('stored', false, 'reason', 'inbox_off'\); end if;/.test(MIG2.slice(MIG2.indexOf('create function public.hub_ingest_inbound'), MIG2.indexOf('create function public.hub_ingest_echo')))
+  && /if not internal\.hub_setting_bool\('hub_inbox_on'\) then return jsonb_build_object\('stored', false, 'reason', 'inbox_off'\); end if;/.test(MIG2.slice(MIG2.indexOf('create function public.hub_ingest_echo'), MIG2.indexOf('create function public.hub_media_set'))), 'H2: nothing is stored while «تخزين المحادثات» is off (inbound and echo)');
 check(/create trigger hub_units_mode_guard before insert or update on public\.hub_units/.test(MIG) && /v := internal\.hub_unit_gates\(new\);/.test(MIG), 'every path that sets a mode passes the unit gates (trigger)');
 check(/if not internal\.hub_engine_ready\(\) then v := v \|\| '"engine"'::jsonb; end if;/.test(MIG), 'a unit lacks the engine while it is not ready');
 check(/if v = 'true'::jsonb then\s+g := internal\.hub_switch_gates\(p_key\);/.test(MIG), 'switching a global switch on passes its gates (settings check)');
@@ -74,10 +83,15 @@ check(/if \(on && gates\.length\) \{\s+setBlocked/.test(PAGE), 'a switch-on show
 check(/key: 'hub_assistant_on', label: 'المساعد يعمل'/.test(HUB) && /key: 'hub_inbox_on', label: 'تخزين المحادثات'/.test(HUB), 'the two global switches named as the spec names them');
 check(!/sending_enabled/.test(HUB.replace(/sending_enabled: boolean;/, '')) || !/settingSet\('sending/.test(PAGE), 'the page never turns a channel\'s sending on');
 
-// ── 4. hub-admin: YCloud reads only ──
+// ── 4. hub-admin: YCloud reads, and the one PATCH of the endpoint's events ──
 check(/\[functions\.hub-admin\]\nverify_jwt = true/.test(CONFIG), 'hub-admin: verify_jwt = true');
-check(!/webhookEndpoints|sendDirectly|\/messages|method: '(POST|PATCH|PUT|DELETE)'[^\n]*X-API-Key/.test(FN + YC), 'hub-admin never calls the webhook, a send or a write on YCloud');
-check((FN.match(/'X-API-Key'/g) ?? []).length === 1 && /method: 'GET', headers: \{ 'X-API-Key': key/.test(FN), 'the one YCloud request is a GET');
+const ycMethods = [...FN.matchAll(/fetch\((make\(page\)|webhookEndpointUrl\(id\.data\)), \{\s*method: '(\w+)'/g)].map((x) => x[2]);
+check(!/sendDirectly|\/messages|rotateSecret/.test(FN + YC) && !/fetch\(`?\$\{?YCLOUD/.test(FN) && ycMethods.length === 3 && ycMethods.every((x) => x === 'GET' || x === 'PATCH'),
+  `hub-admin never sends, never creates or deletes anything on YCloud, never rotates the secret — its YCloud calls: ${ycMethods.join(', ')}`);
+check((FN.match(/'X-API-Key'/g) ?? []).length === 3 && (FN.match(/method: 'GET', headers: \{ 'X-API-Key': key/g) ?? []).length === 2, 'two GETs (the lists, the one endpoint) and one more call');
+check((FN.match(/method: 'PATCH'/g) ?? []).length === 1 && /fetch\(webhookEndpointUrl\(id\.data\), \{\s+method: 'PATCH',[\s\S]{0,200}body: JSON\.stringify\(eventsPatchBody\(m\.events\)\)/.test(FN), 'the one write: a PATCH of the one endpoint with its events only');
+check(/rpc<\{ system_admin: boolean; registered: boolean; events: string\[\] \}>\('hub_webhook_status', \{\}, jwt\);\s+if \(!st\.ok \|\| !st\.data\?\.system_admin\) return json\(req, 403/.test(FN), 'update_webhook_events: the system admin only (judged as the user)');
+check(/if \(!before \|\| !isOurEndpoint\(ep\)\)/.test(FN) && /if \(!now \|\| !eventsKept\(before, now\)\)/.test(FN), 'update_webhook_events: our endpoint only, and YCloud\'s answer checked (nothing removed)');
 check(/hub_admin_gate/.test(FN) && /rpc<\{ ok: boolean; user: string \| null \}>\('hub_admin_gate', \{\}, jwt\)/.test(FN), 'the caller is judged as the user (hub_admin_gate with the JWT)');
 check(phoneNumbersUrl('3187536471439127') === 'https://api.ycloud.com/v2/whatsapp/phoneNumbers?filter.wabaId=3187536471439127&limit=100&page=1', 'the phone-number list URL');
 check(templatesUrl('329667206894245', 2) === 'https://api.ycloud.com/v2/whatsapp/templates?filter.wabaId=329667206894245&limit=100&page=2', 'the template list URL');

@@ -558,6 +558,19 @@
         "button": "افتح سجل التشغيل على GitHub",
         "foot": "يُرسَل هذا التنبيه مرة واحدة لكل تشغيل فاشل للنسخ الاحتياطي، إلى مديري النظام في لوحة أرمادا ريزيدنس."
       },
+      "hub_quality": {
+        "_note": "Guest Hub H2 (13 Nov 2026, spec §6.6 / §7.5): a WhatsApp number's quality rating fell below High (YCloud event whatsapp.phone_number.quality_updated). Arabic only; to the dashboard's active admins (the deploy alert's recipients); once per open alert. The subject carries AR-HUB- (copy.md §7, the mailbox filter of CLAUDE.md §8).",
+        "subject": "انخفاض جودة رقم واتساب — {unit} — AR-HUB-{date}",
+        "lead": "انخفضت جودة رقم واتساب لدى Meta عن «عالية».",
+        "meaning": "عندما تنخفض الجودة قد تقيّد Meta عدد الرسائل التي يرسلها الرقم. تجنّب أي إرسال جماعي من هذا الرقم حتى تعود الجودة «عالية»، وراجع آخر الرسائل المرسلة منه.",
+        "label_unit": "الوحدة",
+        "label_number": "الرقم",
+        "label_rating": "الجودة الآن",
+        "label_time": "وقت الإشعار",
+        "ratings": {"YELLOW": "متوسطة", "MEDIUM": "متوسطة", "RED": "منخفضة", "LOW": "منخفضة", "FLAGGED": "مُعلَّمة"},
+        "button": "افتح «إعدادات المساعد»",
+        "foot": "يُرسَل هذا التنبيه مرة واحدة لكل انخفاض، إلى مديري النظام في لوحة أرمادا ريزيدنس، ويظهر أيضًا في «إعدادات المساعد» ← «التنبيهات»."
+      },
       "deploy_alert": {
         "_note": "The site-deploy alert to the dashboard's active admins (6 Nov 2026, approved by Ahmed). Arabic only.",
         "test_prefix": "[تجربة] ",

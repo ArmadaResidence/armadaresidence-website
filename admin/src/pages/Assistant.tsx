@@ -5,7 +5,10 @@
 //     «تحقق من القناة» — YCloud read through hub-admin: quality and messaging limit), each unit's team («تعديل الفريق»,
 //     the shared Modal and its dirty guard) and its mode (off · test · shadow · licensed) with what it still lacks —
 //     every mode but «متوقف» is refused by the server in H1, and the page says so before asking it;
-//   - «المفاتيح العامة»: «المساعد يعمل» and «تخزين المحادثات», both off, with the same note;
+//   - «المفاتيح العامة»: «المساعد يعمل» (refused until the engine exists) and «تخزين المحادثات» (may be switched on
+//     since H2, 13 Nov 2026 — off until Ahmed switches it), with the same note;
+//   - «استقبال واتساب» (H2): the events of the one YCloud webhook and, for the system admin only, «تحديث أحداث
+//     الاستقبال» (hub-admin update_webhook_events: adds the echo and quality events, never removes one);
 //   - «قوالب واتساب»: «تحديث حالة القوالب» (YCloud read) and the table of hub_templates;
 //   - «ملخص الصباح»: the recipients of the morning summary (scope hub_summary) — an address is active only once its
 //     mailbox filter is confirmed (CLAUDE.md §8); a page-level form with its own «حفظ»;
@@ -17,9 +20,9 @@ import { useEffect, useMemo, useState } from 'react';
 import * as api from '../lib/api';
 import { BRANCH_NAMES, ROLE_LABELS, riyadhDateTime } from '../lib/format';
 import {
-  ALERT_LABELS, CATEGORY_LABELS, EMAIL_RE, KIND_LABELS, LANGUAGE_LABELS, MODES, MODE_LABELS, NOT_YET, STATUS_LABELS, SWITCHES, eligible, gateText, gatesOf,
-  membersSet, modeSet, overview, phoneText, qualityText, recipientsSet, refreshTemplates, settingSet, templateStatus, unitSave, verifyChannel, verifyError,
-  type HubOverview, type HubUnit, type UnitMode,
+  ALERT_LABELS, CATEGORY_LABELS, EMAIL_RE, KIND_LABELS, LANGUAGE_LABELS, MODES, MODE_LABELS, NOT_YET, STATUS_LABELS, SWITCHES, WEBHOOK_EVENTS, eligible, gateText, gatesOf,
+  membersSet, modeSet, overview, phoneText, qualityText, recipientsSet, refreshTemplates, settingSet, templateStatus, unitSave, updateWebhookEvents, verifyChannel, verifyError,
+  webhookError, webhookStatus, type HubOverview, type HubUnit, type UnitMode, type WebhookStatus,
 } from '../lib/hub';
 import { CancelButton, DirtyScope, ErrorBox, Field, Loading, Modal, Spinner, useToast } from '../components/ui';
 
@@ -34,11 +37,14 @@ export default function Assistant() {
   const [naming, setNaming] = useState<HubUnit | null>(null);
   const [blocked, setBlocked] = useState<{ title: string; gates: string[] } | null>(null);
   const [formBusy, setFormBusy] = useState(false);
+  const [hook, setHook] = useState<WebhookStatus | null>(null);
 
   const load = async () => {
     try {
       setError(null);
       setO(await overview());
+      // the webhook's events: shown when the server answers (an older server without the RPC simply hides the card)
+      setHook(await webhookStatus().catch(() => null));
     } catch (e) {
       setError((e as Error).message);
     }
@@ -102,6 +108,21 @@ export default function Assistant() {
       const r = await verifyChannel(channelId);
       if (!r.ok) toast(verifyError(r.error), 'error');
       else toast(`تم التحقق من قناة ${u.name_ar} — الجودة: ${qualityText(r.quality_rating ?? null)}، حد الرسائل: ${r.messaging_limit ?? 'غير معروف'}`);
+      await load();
+    } catch (e) {
+      toast((e as Error).message, 'error');
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function addWebhookEvents() {
+    setBusy('webhook');
+    try {
+      const r = await updateWebhookEvents();
+      if (!r.ok) toast(webhookError(r.error), 'error');
+      else if (r.unchanged) toast('الأحداث الأربعة مفعّلة بالفعل في YCloud — لم يتغير شيء.');
+      else toast('أُضيف حدثا «الردود من جوال الفرع» و«جودة الرقم» إلى استقبال واتساب، وبقيت الأحداث السابقة كما هي.');
       await load();
     } catch (e) {
       toast((e as Error).message, 'error');
@@ -183,6 +204,39 @@ export default function Assistant() {
           })}
         </ul>
       </section>
+
+      {/* ── استقبال واتساب (H2) ── */}
+      {hook && (
+        <section className="card p-4 grid gap-3" aria-labelledby="hub-webhook-h" data-tour="hub-webhook" data-hub-webhook>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h2 id="hub-webhook-h" className="font-bold text-lg">استقبال واتساب</h2>
+            {hook.system_admin && hook.registered && WEBHOOK_EVENTS.some((e) => !hook.events.includes(e.key)) && (
+              <button type="button" className="btn btn-ghost btn-sm" disabled={busy !== null} onClick={addWebhookEvents} data-action="webhook-events">
+                {busy === 'webhook' && <Spinner />} تحديث أحداث الاستقبال
+              </button>
+            )}
+          </div>
+          <p className="text-xs text-ink-muted">
+            ما يصل من واتساب إلى عنوان الاستقبال الوحيد في YCloud (المسجَّل في «عروض إياب على واتساب»). الزر يضيف الحدثين الجديدين فقط ولا يحذف أي حدث، ويظهر لمدير النظام وحده.
+          </p>
+          {!hook.registered ? (
+            <p className="text-sm text-ink-muted" data-webhook-none>استقبال ردود واتساب غير مسجَّل بعد.</p>
+          ) : (
+            <ul className="grid gap-1 text-sm" data-webhook-events>
+              {WEBHOOK_EVENTS.map((e) => {
+                const on = hook.events.includes(e.key);
+                return (
+                  <li key={e.key} className="flex flex-wrap items-center gap-2" data-webhook-event={e.key} data-on={on ? 'yes' : 'no'}>
+                    <span className={`font-semibold ${on ? 'text-ok' : 'text-ink-muted'}`}>{on ? 'مفعّل' : 'غير مفعّل'}</span>
+                    <span>{e.label}</span>
+                    <span className="latin text-xs text-ink-muted" dir="ltr">{e.key}</span>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </section>
+      )}
 
       {/* ── الوحدات ── */}
       <section className="grid gap-4" aria-labelledby="hub-units-h" data-tour="hub-units">

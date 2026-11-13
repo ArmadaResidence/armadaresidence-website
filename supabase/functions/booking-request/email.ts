@@ -1490,3 +1490,42 @@ ${para(L, M.foot, { muted: true, size: 12 })}`,
   const text = [M.lead, '', M.meaning, '', textRows(rows), '', `${M.button}: ${d.run_url}`, '', M.foot, '', legalText(c, 'ar')].join('\n');
   return { subject, html, text };
 }
+
+// ══ Guest Hub (H2, 13 Nov 2026): a WhatsApp number's quality fell below High — to the active admins, Arabic only ═══════
+export interface HubQualityMail {
+  unit_name: string;
+  /** E.164 */
+  address: string;
+  rating: string;
+  /** ISO time of the event */
+  at: string;
+  test?: boolean;
+}
+export function hubQualityMail(c: Content, d: HubQualityMail): Mail {
+  const L: Locale = 'ar';
+  const M = c.staff_email.ar.hub_quality;
+  const D = c.staff_email.ar.deploy_alert;
+  const day = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Riyadh', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(d.at)).replace(/-/g, '');
+  const subject = `${d.test ? D.test_prefix : ''}${fill(M.subject, { unit: d.unit_name, date: day })}`;
+  const spaced = d.address.replace(/^\+(\d{3})(\d{2})(\d{3})(\d{4})$/, '+$1 $2 $3 $4');
+  const rows: [string, string][] = [
+    [M.label_unit, d.unit_name],
+    [M.label_number, `\u2066${spaced}\u2069`],
+    [M.label_rating, M.ratings[String(d.rating).toUpperCase()] ?? String(d.rating)],
+    [M.label_time, `${riyadhStamp(c, d.at, L)}${D.time_suffix}`],
+  ];
+  const url = `${String(c.admin_url ?? 'https://admin.armadaresidence.com').replace(/\/$/, '')}/assistant`;
+  const inner = section(
+    L,
+    `${headline(L, M.lead)}
+${para(L, M.meaning)}
+${kvCard(L, rows)}
+<div style="height:18px; line-height:18px; font-size:0;">&nbsp;</div>
+${buttons(L, [button(L, url, M.button, 'bronze')])}
+<div style="height:8px; line-height:8px; font-size:0;">&nbsp;</div>
+${para(L, M.foot, { muted: true, size: 12 })}`,
+  );
+  const html = doc({ lang: 'ar', title: subject, preheader: M.lead, body: header(c, undefined, true) + card(inner) + footer(c, ['ar']), print: true });
+  const text = [M.lead, '', M.meaning, '', textRows(rows), '', `${M.button}: ${url}`, '', M.foot, '', legalText(c, 'ar')].join('\n');
+  return { subject, html, text };
+}

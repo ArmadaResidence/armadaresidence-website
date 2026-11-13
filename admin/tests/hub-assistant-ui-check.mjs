@@ -5,8 +5,10 @@
 // templates hub_reply_ready ar + en APPROVED on both numbers, no alert, no recipient.
 // Checked at 1440 and 375, light and dark, for the system admin (assistant edit) and for management (view):
 //   - the page, the «not yet» note, four unit cards with the two dining units «مخفية», every mode «متوقف», the gates;
-//   - nothing switches on from the page: «المساعد يعمل» / «تخزين المحادثات» and every mode but «متوقف» open «لا يُشغَّل…»
-//     with the gates and never call hub_setting_set / hub_unit_mode_set;
+//   - nothing the server refuses is asked: «المساعد يعمل» and every mode but «متوقف» open «لا يُشغَّل…» with the gates and
+//     never call hub_setting_set / hub_unit_mode_set; «تخزين المحادثات» (no gate left since H2) goes to hub_setting_set;
+//   - «استقبال واتساب» (H2): the four events with their state; «تحديث أحداث الاستقبال» for the system admin only, calling
+//     hub-admin update_webhook_events and nothing else;
 //   - «تعديل الفريق»: the shared Modal, its dirty guard (× on a change asks «تعديلات غير محفوظة»), «حفظ الفريق» sends the
 //     whole list to hub_unit_members_set, then the «تراجع» toast;
 //   - «تحقق من القناة» and «تحديث حالة القوالب» call hub-admin with their actions only; the templates table shows «معتمد»;
@@ -50,7 +52,7 @@ const member = (s) => ({ ...s, active: true });
 const GATES = ['channel', 'persona', 'skills', 'test_lab', 'engine'];
 const ch = (n, address, waba) => ({ id: id(100 + n), kind: 'whatsapp', address, waba_id: waba, display_name: null, connected: true, verified_at: null, provider_status: null, quality_rating: null, messaging_limit: null, sending_enabled: false });
 const OVERVIEW = (canEdit) => ({
-  can_edit: canEdit, all_branches: true, engine_ready: false, inbox_ready: false,
+  can_edit: canEdit, all_branches: true, engine_ready: false, inbox_ready: true,
   units: [
     { id: id(11), key: 'airport-road', kind: 'branch', name_ar: 'فرع طريق المطار', name_en: 'Airport Road', branch: 'airport-road', status: 'active', mode: 'off', skills: [], sort: 10, persona_published: false, venue: null, channels: [ch(1, '+966536622277', '3187536471439127')], members: [member(STAFF[0]), member(STAFF[1]), member(STAFF[2])], gates: GATES },
     { id: id(12), key: 'shafa-road', kind: 'branch', name_ar: 'فرع طريق الشفا', name_en: 'Shafa Road', branch: 'shafa-road', status: 'active', mode: 'off', skills: [], sort: 20, persona_published: false, venue: null, channels: [ch(2, '+966536663030', '329667206894245')], members: [member(STAFF[0]), member(STAFF[1]), member(STAFF[3])], gates: GATES },
@@ -59,7 +61,7 @@ const OVERVIEW = (canEdit) => ({
   ],
   staff: STAFF,
   settings: { hub_assistant_on: false, hub_inbox_on: false, hub_summary_time: '08:00', hub_summary_money: false },
-  switch_gates: { hub_assistant_on: ['engine', 'inbox_on'], hub_inbox_on: ['inbox_engine'] },
+  switch_gates: { hub_assistant_on: ['engine', 'inbox_on'], hub_inbox_on: [] },
   recipients: [],
   templates: ['airport-road', 'shafa-road'].flatMap((u, i) => ['ar', 'en'].map((language) => ({ channel_id: id(101 + i), unit: u, name: 'hub_reply_ready', language, category: 'UTILITY', status: 'APPROVED', reason: null, read_at: '2026-11-13T12:00:00Z' }))),
   alerts: [],
@@ -70,7 +72,7 @@ const exp = Math.floor(Date.now() / 1000) + 3600;
 const USER = { id: id(1), aud: 'authenticated', role: 'authenticated', email: 'qa@example.invalid', app_metadata: {}, user_metadata: {}, created_at: new Date().toISOString() };
 const TOKEN = `${b64({ alg: 'HS256', typ: 'JWT' })}.${b64({ sub: USER.id, role: 'authenticated', aud: 'authenticated', exp, session_id: 'qa-stub' })}.qa`;
 const SESSION = { access_token: TOKEN, refresh_token: 'qa-stub', token_type: 'bearer', expires_in: 3600, expires_at: exp, user: USER };
-const TOUR = ['hub-switches', 'hub-units', 'hub-verify', 'hub-team', 'hub-mode', 'hub-templates', 'hub-summary', 'hub-alerts'];
+const TOUR = ['hub-switches', 'hub-webhook', 'hub-units', 'hub-verify', 'hub-team', 'hub-mode', 'hub-templates', 'hub-summary', 'hub-alerts'];
 
 const failures = [];
 let checks = 0;
@@ -97,6 +99,9 @@ for (const [role, level] of [['admin', 'edit'], ['management', 'view']]) {
         if (fn) calls.push({ fn, body });
         if (fn === 'my_staff') return ok(me(role, level));
         if (fn === 'hub_assistant_overview') return ok(OVERVIEW(edit));
+        if (fn === 'hub_webhook_status') return ok({ system_admin: role === 'admin', registered: true, events: ['whatsapp.inbound_message.received', 'whatsapp.message.updated'], registered_at: '2026-11-09T07:44:00Z' });
+        if (fn === 'hub_setting_set') return ok({ ok: true, batch_id: id(901) });
+        if (fn === 'hub-admin' && body?.action === 'update_webhook_events') return ok({ ok: true, added: ['whatsapp.smb.message.echoes', 'whatsapp.phone_number.quality_updated'], events: [] });
         if (fn === 'hub_unit_members_set' || fn === 'hub_summary_recipients_set') return ok({ ok: true, batch_id: id(900), count: 1 });
         if (fn === 'hub-admin' && body?.action === 'verify_channel') return ok({ ok: true, display_name: 'أرمادا ريزيدنس طريق المطار', status: 'CONNECTED', quality_rating: 'GREEN', messaging_limit: 'TIER_2K' });
         if (fn === 'hub-admin' && body?.action === 'refresh_templates') return ok({ ok: true, results: [{ channel: id(101), ok: true, count: 2 }, { channel: id(102), ok: true, count: 2 }] });
@@ -124,6 +129,9 @@ for (const [role, level] of [['admin', 'edit'], ['management', 'view']]) {
       check((await page.locator('[data-template-status="APPROVED"]').count()) === 4 && (await page.locator('[data-templates] tbody').textContent()).includes('معتمد'), `${tag}: hub_reply_ready ar + en «معتمد» on both numbers`);
       check((await page.locator('[data-channel="+966536622277"]').textContent()).includes('+966 53 662 2277'), `${tag}: the Airport Road number spaced`);
       check(await page.locator('[data-alerts-empty]').isVisible(), `${tag}: «لا تنبيهات مفتوحة»`);
+      const hookRows = await page.$$eval('[data-webhook-event]', (a) => a.map((x) => x.getAttribute('data-on')));
+      check(hookRows.join() === 'yes,yes,no,no', `${tag}: «استقبال واتساب» lists four events, the two hub events not yet on — ${hookRows.join()}`);
+      check((await page.locator('[data-action="webhook-events"]').count()) === (role === 'admin' ? 1 : 0), `${tag}: «تحديث أحداث الاستقبال» shown to the system admin only`);
       for (const tk of TOUR) {
         if (tk === 'hub-verify' && !edit) continue;
         check((await page.locator(`[data-tour~="${tk}"]`).count()) > 0, `${tag}: the tour target ${tk} exists`);
@@ -152,6 +160,19 @@ for (const [role, level] of [['admin', 'edit'], ['management', 'view']]) {
         check((await page.locator('[data-hub-blocked] [data-gate="hidden"]').count()) === 1, `${tag}: the hidden rooftop says it is never switched on`);
         await page.locator('dialog[open] [data-action="dialog-cancel"]').click();
         check(!calls.some((c) => c.fn === 'hub_setting_set' || c.fn === 'hub_unit_mode_set'), `${tag}: no switch-on request left the page — ${JSON.stringify(calls.map((c) => c.fn))}`);
+
+        // H2: «تخزين المحادثات» has no gate left — the switch asks the server (which audits it; «تراجع» follows)
+        await page.locator('[data-switch-input="hub_inbox_on"]').click();
+        await page.waitForTimeout(400);
+        const inbox = calls.find((c) => c.fn === 'hub_setting_set');
+        check(inbox && inbox.body.p_key === 'hub_inbox_on' && inbox.body.p_value === true, `${tag}: «تخزين المحادثات» → hub_setting_set(hub_inbox_on, true) — ${JSON.stringify(inbox?.body)}`);
+        check((await page.locator('[data-hub-blocked]').count()) === 0, `${tag}: «تخزين المحادثات» opens no «لا يُشغَّل…»`);
+
+        // H2: «تحديث أحداث الاستقبال» — the system admin only, one call to hub-admin
+        await page.locator('[data-action="webhook-events"]').click();
+        await page.waitForTimeout(400);
+        const wh = calls.filter((c) => c.fn === 'hub-admin' && c.body?.action === 'update_webhook_events');
+        check(wh.length === 1 && Object.keys(wh[0].body).join() === 'action', `${tag}: «تحديث أحداث الاستقبال» calls hub-admin update_webhook_events once, with nothing else — ${JSON.stringify(wh)}`);
 
         // the team dialog and its dirty guard
         await page.locator('[data-unit="shafa-road"] [data-action="team-edit"]').click();

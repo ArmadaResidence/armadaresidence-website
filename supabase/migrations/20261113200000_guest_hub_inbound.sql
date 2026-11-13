@@ -23,6 +23,8 @@
 --      unaffected.
 --   6. Status events for the hub's messages (wa_status_update now covers hub_messages too, forward only); the quality
 --      event of a number (hub_quality_update: below High → one open hub_alerts row; the function emails the admins).
+--   8. «تحديث أحداث الاستقبال»: hub_webhook_status (assistant: view) and the stores hub-admin uses after it added the two hub
+--      events to the one endpoint (system admin only; never a removal, never a new endpoint; audited).
 --   7. Retention (spec §3.5): public.hub_retention() — message text and translations NULL after hub_retention_months
 --      (12), media files deleted after hub_media_retention_days (90) by the function; monthly pg_cron hub-retention;
 --      one audit row with counts only.
@@ -424,8 +426,11 @@ $$;
 -- T33 / T34: the answer — offers → the opt-out exactly as today (wa_opt_out: changed = the one reply is due); booking →
 -- the hold lifted, the hand-off notice logged for the caller to send, and — while «تخزين المحادثات» is on — the open
 -- conversation goes to the team (reason cancel_booking). resolved = false: nothing was waiting (an answer after the wait
--- ended, or a repeated tap) — offers still opts out (no second reply when already out); booking still gets the notice.
-create function public.hub_cancel_word_resolve(p_phone text, p_choice text, p_channel text, p_language text, p_test boolean default false) returns jsonb
+-- ended, or a repeated delivery of the same tap) — offers still opts out (no second reply when already out); booking
+-- changes and logs nothing, so a repeated delivery never sends the notice twice.
+-- p_only_pending (a TYPED answer — the button titles written out): acts only while the question waits, else nothing.
+create function public.hub_cancel_word_resolve(p_phone text, p_choice text, p_channel text, p_language text, p_test boolean default false,
+                                               p_only_pending boolean default false) returns jsonb
 language plpgsql security definer set search_path = '' as $$
 declare
   g public.guest_profiles;
@@ -442,6 +447,7 @@ begin
   perform set_config('app.actor', 'whatsapp', true);
   g := internal.hub_profile_for(p_phone, p_test);
   v_pending := g.cancel_word_pending_at is not null;
+  if p_only_pending and not v_pending then return jsonb_build_object('ok', true, 'resolved', false, 'skipped', true); end if;
   select * into ch from public.hub_channels x where x.kind = 'whatsapp' and x.address = p_channel;
   select u.branch_slug into v_branch from public.hub_units u where u.id = ch.unit_id;
   if p_choice = 'offers' then
@@ -449,6 +455,7 @@ begin
     v_out := public.wa_opt_out(p_phone, p_test);
     return v_out || jsonb_build_object('resolved', v_pending, 'choice', 'offers', 'branch', v_branch);
   end if;
+  if not v_pending then return jsonb_build_object('ok', true, 'resolved', false, 'choice', 'booking', 'profile_id', g.id, 'handed_off', false); end if;
   update public.guest_profiles set marketing_hold_at = null, cancel_word_pending_at = null where id = g.id;
   if v_branch is not null then
     insert into public.eyab_messages (template, profile_id, language, branch, status, is_test, trigger)
@@ -785,18 +792,57 @@ select cron.schedule('hub-cancel-word', '*/5 * * * *', 'select public.hub_cancel
 -- No audit trigger on the conversation store — its volume belongs to hub_conversation_events (spec §3.6); the profile
 -- columns above are audited through guest_profiles_audit.
 
--- ───────────────────────────────────────────── 10. grants ─────────────────────────────────────────────
+-- ───────────────────────────────────────────── 10. «تحديث أحداث الاستقبال» (hub-admin update_webhook_events) ─────────────────────────────────────────────
+
+-- the one YCloud endpoint's events as recorded, for «إعدادات المساعد» (assistant: view); system_admin = the button is shown
+create function public.hub_webhook_status() returns jsonb
+language plpgsql stable security definer set search_path = '' as $$
+begin
+  if not internal.can('assistant', 'view') then raise exception 'not allowed' using errcode = '42501'; end if;
+  return jsonb_build_object(
+    'system_admin', internal.is_system_admin(),
+    'registered', exists (select 1 from public.wa_webhook),
+    'events', coalesce((select to_jsonb(w.events) from public.wa_webhook w limit 1), '[]'::jsonb),
+    'registered_at', (select w.registered_at from public.wa_webhook w limit 1));
+end;
+$$;
+
+-- the endpoint's id for hub-admin (service role), after the caller passed hub_webhook_status as a system admin
+create function public.hub_webhook_endpoint() returns text
+language sql stable security definer set search_path = '' as $$ select w.endpoint_id from public.wa_webhook w limit 1 $$;
+
+-- what YCloud answered after the update: the events recorded and one audit row (the events only — never the secret)
+create function public.hub_webhook_events_store(p_user uuid, p_before text[], p_after text[]) returns jsonb
+language plpgsql security definer set search_path = '' as $$
+declare v_batch uuid := gen_random_uuid();
+begin
+  if p_user is null or not exists (select 1 from public.staff s where s.user_id = p_user and s.active and s.role = 'admin') then
+    raise exception 'hub_actor' using errcode = '22023';
+  end if;
+  if not (coalesce(p_after, '{}') @> coalesce(p_before, '{}')) then raise exception 'hub_webhook_events_removed' using errcode = '22023'; end if;
+  update public.wa_webhook set events = p_after;
+  insert into public.audit_log (actor_id, actor_label, entity, entity_id, branch, action, old, new, batch_id)
+  values (p_user, coalesce((select s.full_name from public.staff s where s.user_id = p_user), 'staff'), 'wa_webhook',
+          coalesce((select w.endpoint_id from public.wa_webhook w limit 1), '?'), null, 'update',
+          jsonb_build_object('events', p_before), jsonb_build_object('events', p_after), v_batch);
+  return jsonb_build_object('ok', true, 'batch_id', v_batch);
+end;
+$$;
+
+-- ───────────────────────────────────────────── 11. grants ─────────────────────────────────────────────
 
 revoke execute on function internal.hub_setting_bool(text), internal.hub_setting_int(text, integer), internal.hub_active_booking(text, boolean),
   internal.hub_profile_for(text, boolean), internal.hub_conversation_for(public.hub_channels, uuid, boolean, jsonb), internal.hub_clean_referral(jsonb),
   internal.eyab_campaign_ok(public.guest_profiles), internal.hub_quality_low(text) from public, anon, authenticated;
 
 revoke execute on function public.hub_ingest_inbound(jsonb), public.hub_ingest_echo(jsonb), public.hub_media_set(uuid, text, text, integer),
-  public.hub_cancel_word_start(text, text, text, boolean), public.hub_cancel_word_resolve(text, text, text, text, boolean), public.hub_cancel_word_tick(timestamptz),
+  public.hub_cancel_word_start(text, text, text, boolean), public.hub_cancel_word_resolve(text, text, text, text, boolean, boolean), public.hub_cancel_word_tick(timestamptz),
   public.hub_quality_update(text, text, text), public.hub_alert_sent(uuid, text[]), public.hub_retention(timestamptz), public.hub_media_due(integer),
-  public.hub_media_done(uuid[]) from public, anon, authenticated;
+  public.hub_media_done(uuid[]), public.hub_webhook_endpoint(), public.hub_webhook_events_store(uuid, text[], text[]) from public, anon, authenticated;
 grant execute on function public.hub_ingest_inbound(jsonb), public.hub_ingest_echo(jsonb), public.hub_media_set(uuid, text, text, integer),
-  public.hub_cancel_word_start(text, text, text, boolean), public.hub_cancel_word_resolve(text, text, text, text, boolean), public.hub_cancel_word_tick(timestamptz),
+  public.hub_cancel_word_start(text, text, text, boolean), public.hub_cancel_word_resolve(text, text, text, text, boolean, boolean), public.hub_cancel_word_tick(timestamptz),
   public.hub_quality_update(text, text, text), public.hub_alert_sent(uuid, text[]), public.hub_retention(timestamptz), public.hub_media_due(integer),
-  public.hub_media_done(uuid[]) to service_role;
+  public.hub_media_done(uuid[]), public.hub_webhook_endpoint(), public.hub_webhook_events_store(uuid, text[], text[]) to service_role;
+revoke execute on function public.hub_webhook_status() from public, anon;
+grant execute on function public.hub_webhook_status() to authenticated, service_role;
 -- wa_opt_out, wa_claim, wa_status_update, eyab_send_begin: create or replace keeps their grants

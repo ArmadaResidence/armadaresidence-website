@@ -1,0 +1,94 @@
+{
+  "_note": "YCloud webhook events in the shapes of YCloud's documented examples (docs.ycloud.com → Guides → Webhook examples: «WhatsApp inbound message webhook examples» and «Webhook payload examples», read 13 Nov 2026 for Guest Hub session H2). Field names and nesting as documented; ids, numbers and texts are fake (the +9665000009xx test numbers and the two branch numbers). Used by scripts/hub-webhook-check.mjs only.",
+  "text": {
+    "id": "evt_text_1", "type": "whatsapp.inbound_message.received", "apiVersion": "v2", "createTime": "2026-11-13T10:00:01.000Z",
+    "whatsappInboundMessage": {
+      "id": "63f5d1e0a1b2c3d4e5f60001", "wamid": "wamid.HBgMOTY2NTAwMDA5OTAxFQIAEhgUM0E5", "wabaId": "3187536471439127",
+      "from": "+966500009901", "customerProfile": { "name": "Guest QA" }, "to": "+966536622277", "sendTime": "2026-11-13T10:00:00.000Z",
+      "type": "text", "text": { "body": "هل يتوفر موقف سيارات؟" }
+    }
+  },
+  "text_cancel": {
+    "id": "evt_text_2", "type": "whatsapp.inbound_message.received", "apiVersion": "v2", "createTime": "2026-11-13T10:01:01.000Z",
+    "whatsappInboundMessage": {
+      "id": "63f5d1e0a1b2c3d4e5f60002", "wamid": "wamid.2", "wabaId": "3187536471439127", "from": "+966500009901",
+      "customerProfile": { "name": "Guest QA" }, "to": "+966536622277", "sendTime": "2026-11-13T10:01:00.000Z", "type": "text", "text": { "body": "إلغاء" }
+    }
+  },
+  "button_reply": {
+    "id": "evt_btn_1", "type": "whatsapp.inbound_message.received", "apiVersion": "v2", "createTime": "2026-11-13T10:02:01.000Z",
+    "whatsappInboundMessage": {
+      "id": "63f5d1e0a1b2c3d4e5f60003", "wamid": "wamid.3", "wabaId": "3187536471439127", "from": "+966500009901",
+      "customerProfile": { "name": "Guest QA" }, "to": "+966536622277", "sendTime": "2026-11-13T10:02:00.000Z",
+      "type": "interactive", "context": { "from": "+966536622277", "id": "wamid.question" },
+      "interactive": { "type": "button_reply", "button_reply": { "id": "hubcw:booking", "title": "إلغاء حجزي" } }
+    }
+  },
+  "template_quick_reply": {
+    "id": "evt_qr_1", "type": "whatsapp.inbound_message.received", "apiVersion": "v2", "createTime": "2026-11-13T10:03:01.000Z",
+    "whatsappInboundMessage": {
+      "id": "63f5d1e0a1b2c3d4e5f60004", "wamid": "wamid.4", "wabaId": "329667206894245", "from": "+966500009902",
+      "customerProfile": { "name": "Member QA" }, "to": "+966536663030", "sendTime": "2026-11-13T10:03:00.000Z",
+      "type": "button", "context": { "from": "+966536663030", "id": "wamid.offer" },
+      "button": { "payload": "إلغاء الاشتراك", "text": "إلغاء الاشتراك" }
+    }
+  },
+  "image": {
+    "id": "evt_img_1", "type": "whatsapp.inbound_message.received", "apiVersion": "v2", "createTime": "2026-11-13T10:04:01.000Z",
+    "whatsappInboundMessage": {
+      "id": "63f5d1e0a1b2c3d4e5f60005", "wamid": "wamid.5", "wabaId": "3187536471439127", "from": "+966500009901",
+      "customerProfile": { "name": "Guest QA" }, "to": "+966536622277", "sendTime": "2026-11-13T10:04:00.000Z", "type": "image",
+      "image": { "link": "https://api.ycloud.com/v2/whatsapp/media/download/1234567890", "caption": "صورة الغرفة", "id": "1234567890", "sha256": "abc", "mime_type": "image/jpeg" }
+    }
+  },
+  "location": {
+    "id": "evt_loc_1", "type": "whatsapp.inbound_message.received", "apiVersion": "v2", "createTime": "2026-11-13T10:05:01.000Z",
+    "whatsappInboundMessage": {
+      "id": "63f5d1e0a1b2c3d4e5f60006", "wamid": "wamid.6", "wabaId": "3187536471439127", "from": "+966500009901", "to": "+966536622277",
+      "sendTime": "2026-11-13T10:05:00.000Z", "type": "location",
+      "location": { "latitude": 21.437, "longitude": 40.512, "name": "مطار الطائف", "address": "الطائف", "url": "" }
+    }
+  },
+  "referral": {
+    "id": "evt_ref_1", "type": "whatsapp.inbound_message.received", "apiVersion": "v2", "createTime": "2026-11-13T10:06:01.000Z",
+    "whatsappInboundMessage": {
+      "id": "63f5d1e0a1b2c3d4e5f60007", "wamid": "wamid.7", "wabaId": "3187536471439127", "from": "+966500009903",
+      "customerProfile": { "name": "Ad QA" }, "to": "+966536622277", "sendTime": "2026-11-13T10:06:00.000Z", "type": "text",
+      "text": { "body": "أريد تفاصيل العرض" },
+      "referral": {
+        "source_url": "https://fb.me/abcdef", "source_type": "ad", "source_id": "120200000000000001", "headline": "عرض الإقامة",
+        "media_type": "image", "image_url": "https://scontent.example/x.jpg", "ctwa_clid": "ARAkLkA8rmlFeiCktEJQ"
+      }
+    }
+  },
+  "echo": {
+    "id": "evt_echo_1", "type": "whatsapp.smb.message.echoes", "apiVersion": "v2", "createTime": "2026-11-13T10:07:01.000Z",
+    "whatsappMessage": {
+      "id": "64a1b2c3d4e5f6a7b8c90001", "wamid": "wamid.echo1", "wabaId": "3187536471439127", "from": "+966536622277", "to": "+966500009901",
+      "type": "text", "text": { "body": "نعم، الموقف مجاني." }, "status": "sent", "createTime": "2026-11-13T10:07:00.000Z",
+      "sendTime": "2026-11-13T10:07:00.000Z", "customerProfile": { "username": "" }
+    }
+  },
+  "status": {
+    "id": "evt_status_1", "type": "whatsapp.message.updated", "apiVersion": "v2", "createTime": "2026-11-13T10:08:01.000Z",
+    "whatsappMessage": {
+      "id": "64a1b2c3d4e5f6a7b8c90001", "wabaId": "3187536471439127", "from": "+966536622277", "to": "+966500009901", "type": "text",
+      "status": "delivered", "pricingCategory": "service", "bidPricingFlag": false, "totalPrice": 0.0, "currency": "USD"
+    }
+  },
+  "status_failed": {
+    "id": "evt_status_2", "type": "whatsapp.message.updated", "apiVersion": "v2", "createTime": "2026-11-13T10:09:01.000Z",
+    "whatsappMessage": { "id": "64a1b2c3d4e5f6a7b8c90002", "status": "failed", "errorCode": "131047", "errorMessage": "Re-engagement message" }
+  },
+  "quality": {
+    "id": "evt_q_1", "type": "whatsapp.phone_number.quality_updated", "apiVersion": "v2", "createTime": "2026-11-13T10:10:01.000Z",
+    "whatsappPhoneNumber": {
+      "id": "ph_1", "phoneNumber": "+966536622277", "displayPhoneNumber": "+966 53 662 2277", "wabaId": "3187536471439127",
+      "qualityRating": "YELLOW", "messagingLimit": "TIER_1K", "whatsappBusinessManagerMessagingLimit": "TIER_2K", "qualityUpdateEvent": "FLAGGED"
+    }
+  },
+  "other": {
+    "id": "evt_contact_1", "type": "contact.attributes_changed", "apiVersion": "v2", "createTime": "2026-11-13T10:11:01.000Z",
+    "contact": { "id": "c1", "phoneNumber": "+966500009904" }
+  }
+}

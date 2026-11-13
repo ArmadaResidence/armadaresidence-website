@@ -3,7 +3,8 @@
 #   sql      — `supabase db start`: a LOCAL Postgres with every migration of this commit applied to an empty database,
 #              then the SQL test files (each one transaction, rolled back) through scripts/sql-test-run.mjs, which refuses
 #              any database that is not localhost.
-#   function — the real booking-request function under Deno against a stub Supabase origin
+#   function — `deno check` of wa-automation and hub-admin (Guest Hub H2, 13 Nov 2026), then the real booking-request
+#              function under Deno against a stub Supabase origin
 #              (scripts/booking-source-server-check.mjs): a forged «مصدر الحجز» is stored as website; the team token
 #              (repository secret TEAM_DEVICE_TOKEN) is needed for a staff source.
 # Runs on a push to main that touches the database, the functions or these checks, and by hand.
@@ -16,6 +17,9 @@ on:
       - 'supabase/migrations/**'
       - 'supabase/tests/**'
       - 'supabase/functions/booking-request/**'
+      - 'supabase/functions/wa-automation/**'
+      - 'supabase/functions/_shared/hub/**'
+      - 'supabase/functions/hub-admin/**'
       - 'content/team.json'
       - 'scripts/sql-test-run.mjs'
       - 'scripts/booking-source-server-check.mjs'
@@ -25,7 +29,7 @@ on:
       files:
         description: SQL test files of supabase/tests (space-separated)
         required: false
-        default: booking-source.sql guest_hub_units.sql
+        default: booking-source.sql guest_hub_units.sql guest_hub_ingest.sql guest_hub_retention.sql wa-automation.sql
 
 permissions:
   contents: read
@@ -50,10 +54,10 @@ jobs:
       - name: The local database (every migration of this commit)
         run: supabase db start
       - name: The SQL tests
-        run: node scripts/sql-test-run.mjs ${{ inputs.files || 'booking-source.sql guest_hub_units.sql' }}
+        run: node scripts/sql-test-run.mjs ${{ inputs.files || 'booking-source.sql guest_hub_units.sql guest_hub_ingest.sql guest_hub_retention.sql wa-automation.sql' }}
 
   function:
-    name: server · booking-request (Deno, stub database)
+    name: server · functions (Deno: hub type-check, booking-request on a stub database)
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
@@ -69,6 +73,8 @@ jobs:
           deno-version: v2.x
       - name: The function's generated content
         run: python build.py --content-only
+      - name: The Guest Hub functions type-check (Deno; session H2)
+        run: deno check supabase/functions/wa-automation/index.ts supabase/functions/hub-admin/index.ts
       - name: «مصدر الحجز» on the server
         env:
           TEAM_DEVICE_TOKEN: ${{ secrets.TEAM_DEVICE_TOKEN }}
