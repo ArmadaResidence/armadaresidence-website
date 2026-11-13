@@ -202,8 +202,8 @@ begin
 end;
 $$;
 
--- the Riyadh day (expiry and alerts are Riyadh dates)
-create function internal.riyadh_today(p_now timestamptz default now()) returns date
+-- the Riyadh day of a moment (expiry and alerts are Riyadh dates; internal.riyadh_today() is today's)
+create function internal.hub_riyadh_day(p_now timestamptz) returns date
 language sql stable set search_path = '' as $$ select (p_now at time zone 'Asia/Riyadh')::date $$;
 
 -- a SAR amount in a guest sentence — rules.ts sarText, the same forms: «20 ريالًا», «200 ريال», «3 ريالات» / "SAR 20"
@@ -747,7 +747,7 @@ $$;
 create function public.hub_expiry_tick(p_now timestamptz default now()) returns jsonb
 language plpgsql security definer set search_path = '' as $$
 declare
-  v_items jsonb := internal.hub_expiring_items(internal.riyadh_today(p_now));
+  v_items jsonb := internal.hub_expiring_items(internal.hub_riyadh_day(p_now));
   v_new integer;
   v_closed integer;
   v_req bigint;
@@ -800,7 +800,7 @@ begin
     into v_items from public.hub_alerts a where a.kind in ('card_expiring', 'offer_ending') and a.acknowledged_at is null and not a.is_test;
   update public.hub_alerts set sent_at = p_now, sent_to = v_to
    where kind in ('card_expiring', 'offer_ending') and acknowledged_at is null and sent_at is null and not is_test;
-  return jsonb_build_object('items', v_items, 'recipients', to_jsonb(v_to), 'date', internal.riyadh_today(p_now));
+  return jsonb_build_object('items', v_items, 'recipients', to_jsonb(v_to), 'date', internal.hub_riyadh_day(p_now));
 end;
 $$;
 
@@ -852,11 +852,11 @@ $$;
 
 revoke execute on function internal.hub_forbidden_terms(), internal.hub_known_phones(), internal.hub_without_known_phones(text),
   internal.hub_card_snapshot(public.hub_knowledge_cards), internal.hub_card_pending(public.hub_knowledge_cards), internal.hub_card_check(public.hub_knowledge_cards),
-  internal.hub_card_get(uuid, public.perm_level), internal.riyadh_today(timestamptz), internal.hub_sar_text(numeric, text), internal.hub_fill_fees(text, text),
+  internal.hub_card_get(uuid, public.perm_level), internal.hub_riyadh_day(timestamptz), internal.hub_sar_text(numeric, text), internal.hub_fill_fees(text, text),
   internal.hub_knowledge_gate(uuid[]), internal.hub_words(text), internal.hub_similar(text[], text[]), internal.hub_expiring_items(date) from public, anon;
 grant execute on function internal.hub_forbidden_terms(), internal.hub_known_phones(), internal.hub_without_known_phones(text),
   internal.hub_card_snapshot(public.hub_knowledge_cards), internal.hub_card_pending(public.hub_knowledge_cards), internal.hub_card_check(public.hub_knowledge_cards),
-  internal.riyadh_today(timestamptz), internal.hub_sar_text(numeric, text), internal.hub_fill_fees(text, text), internal.hub_words(text), internal.hub_similar(text[], text[])
+  internal.hub_riyadh_day(timestamptz), internal.hub_sar_text(numeric, text), internal.hub_fill_fees(text, text), internal.hub_words(text), internal.hub_similar(text[], text[])
   to authenticated, service_role;
 grant execute on function internal.hub_card_get(uuid, public.perm_level), internal.hub_knowledge_gate(uuid[]), internal.hub_expiring_items(date) to service_role;
 

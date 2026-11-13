@@ -39,6 +39,8 @@
 //   - pg_cron hub-inbox (every 2 minutes, public.hub_inbox_tick) → {action: 'hub-escalate'}: «محادثة بانتظار الرد» to the
 //     branch's reception recipients for each conversation waiting past hub_escalate_min, once per waiting period
 //     (public.hub_escalations_claim; hubWaitingMail — no guest words, no phone).
+//   - pg_cron hub-expiry (daily 05:00 UTC, public.hub_expiry_tick) → {action: 'hub-expiry'} (H4, 14 Nov 2026): «تنبيهات مركز
+//     الضيوف» — the cards and offers ending soon, one email to the active admins (public.hub_expiry_claim; hubExpiryMail).
 //   - the dashboard (POST with the staff member's JWT; the dashboard's origins — _shared/cors.ts):
 //       {action: 'test', id} — «إرسال تجربة لنفسي»: public.eyab_test_begin AS THE USER (eyab_wa edit, the user's own
 //         number, 20 a day), then the real send of each language to that number;
@@ -53,7 +55,7 @@
 import content from '../booking-request/content.generated.json' with { type: 'json' };
 import { waErrorCode } from '../booking-request/whatsapp.ts';
 import { buttonsPayload, sendSession, textPayload } from '../booking-request/whatsapp-send.ts';
-import { hubQualityMail, hubWaitingMail } from '../booking-request/email.ts';
+import { hubExpiryMail, hubQualityMail, hubWaitingMail } from '../booking-request/email.ts';
 import { allowedOrigins, ALLOWED_HEADERS } from '../_shared/cors.ts';
 import {
   EVENT_ECHO, EVENT_INBOUND, EVENT_QUALITY, EVENT_STATUS, HUB_EVENTS, MEDIA_MAX_BYTES, cancelQuestion, describe, e164, mediaExt, parseEcho, parseInbound, parseQuality,
@@ -419,6 +421,20 @@ async function escalate(): Promise<{ sent: number; failed: number }> {
   return { sent, failed };
 }
 
+/** «تنبيهات مركز الضيوف» (H4, copy.md §7 row 5): cards and offers ending soon — ONE email to the active admins, only with a list */
+async function expiry(): Promise<{ sent: boolean; items: number }> {
+  const r = await rpc<{ items: { type: 'card' | 'offer'; title: string | null; ends: string }[]; recipients: string[]; date?: string }>('hub_expiry_claim', {});
+  if (!r.ok) {
+    console.error('wa-automation: expiry claim failed', r.status, r.message.slice(0, 120));
+    return { sent: false, items: 0 };
+  }
+  const items = (r.data?.items ?? []).map((i) => ({ type: i.type, title: i.title ?? '—', ends: i.ends }));
+  if (!items.length || !r.data.date) return { sent: false, items: 0 };
+  const sent = await sendAdminMail(r.data.recipients ?? [], hubExpiryMail(content, { date: r.data.date, items }));
+  console.log('wa-automation: hub expiry', `items=${items.length}`, sent ? 'sent' : 'not sent');
+  return { sent, items: items.length };
+}
+
 // deno-lint-ignore no-explicit-any
 async function handleQuality(raw: any, test: boolean, at: string | null): Promise<Record<string, unknown>> {
   const q = parseQuality(raw);
@@ -586,6 +602,7 @@ Deno.serve(async (req) => {
     if (body.action === 'drain') return json(req, 200, { ok: true, ...(await drain()) });
     if (body.action === 'hub-media-purge') return json(req, 200, { ok: true, ...(await mediaPurge()) });
     if (body.action === 'hub-escalate') return json(req, 200, { ok: true, ...(await escalate()) });
+    if (body.action === 'hub-expiry') return json(req, 200, { ok: true, ...(await expiry()) });
     return json(req, 400, { ok: false });
   }
   if (same(req.headers.get('x-armada-test') ?? '', Deno.env.get('BOOKING_TEST_TOKEN') ?? '')) return await qa(req, body);
