@@ -284,7 +284,8 @@ select pg_temp._save('t10', public.hub_unit_members_set(pg_temp._unit('airport-r
 select public.revert_batch((pg_temp._j('t10') ->> 'batch_id')::uuid);
 select pg_temp._check('T10 «تراجع» of a removal puts the members back', (select count(*) = 3 from public.hub_unit_members where unit_id = pg_temp._unit('airport-road')));
 select pg_temp._anon();
-select pg_temp._check('T11 anon sees nothing', (select count(*) = 0 from public.hub_units) and (select count(*) = 0 from public.hub_channels));
+select pg_temp._fails('T11 anon cannot read the units', $$select count(*) from public.hub_units$$, '42501');
+select pg_temp._fails('T11 anon cannot read the channels', $$select count(*) from public.hub_channels$$, '42501');
 select pg_temp._fails('T11 anon cannot call the overview', $$select public.hub_assistant_overview()$$, '42501');
 select pg_temp._root();
 
