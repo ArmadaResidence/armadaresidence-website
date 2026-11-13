@@ -309,13 +309,14 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     timeout-minutes: 30
     steps:
-      # 20 minutes, not the action's default 10 (9 Nov 2026): that day GitHub's Pages backend left several deploys in
-      # «syncing_files» / «deployment_queued» past 10 minutes (the same 175 MB artifact deploys in 8–16 s when it
-      # works), and each timeout failed the whole run; a slow sync now has time to finish
+      # 10 minutes = the action's maximum (13 Nov 2026): the 20 minutes asked for on 9 Nov (Pages left several deploys in
+      # «syncing_files» / «deployment_queued» past 10 minutes that day) were always cut to 600000 ms by deploy-pages
+      # itself («timeout value is greater than the allowed maximum»); a deploy that times out fails the run, alerts the
+      # admins and the deploy watchdog dispatches it again
       - id: deployment
         uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1
         with:
-          timeout: 1200000
+          timeout: 600000
 
   # the dashboard's publish jobs: published / failed with this run's link. A run cancelled midway (by hand — the
   # concurrency group never cancels a running deploy) puts its own job back to «queued» (never left «building»): the

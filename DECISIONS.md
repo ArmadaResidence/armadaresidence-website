@@ -3243,3 +3243,11 @@ browser and trained the ad platforms on staff behaviour.
   other than the engines major, a `node-version-file`, a job that runs node / npm without `setup-node`, a Playwright
   image whose tag is not the installed version or whose Node (recorded per tag) is not the engines major, another
   container image, and the two package.json engines or Playwright versions disagreeing.
+- **The deploy timeout.** With the warnings gone, deploy 43423627319 showed one more: deploy-pages caps `timeout` at
+  600000 ms («greater than the allowed maximum»). The cap is in v4.0.5 too, so the 20 minutes of 9 Nov never took
+  effect; the workflow now asks for 600000 (10 minutes — a timeout fails the run, alerts the admins and the watchdog
+  dispatches again) and `deploy-alert-check` fails on a larger value.
+- **Proof (13 Nov 2026, commit 329c5c0).** Deploy 43423627319 (every check job incl. the blocking pixel guard, then the
+  deploy), live checks 43424820125 (7 shards), server checks 43423627340, Lighthouse 43424924403 (live home, mobile,
+  7 runs: performance 99, LCP 2.13 s) and the backup by hand 43423670301 (1107 files unchanged, nothing uploaded, check
+  OK) — all green; no run carries a Node 20 or ubuntu-latest annotation any more.

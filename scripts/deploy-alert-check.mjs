@@ -281,6 +281,7 @@ for (const [k, v] of Object.entries({ ...ROOMS_NOTE, failed: ROOMS_NOTE.failed(t
     for (const [, v] of y.matchAll(/node-version: (.+)$/gm)) E(`${f}: node-version ${v.trim()} = engines (${node})`, v.trim() === String(node));
     E(`${f}: no node-version-file`, !/node-version-file/.test(y));
     for (const [, tag] of y.matchAll(/image: mcr\.microsoft\.com\/playwright:v(\S+)-noble/g)) E(`${f}: Playwright image v${tag} = installed v${pwv}`, tag === pwv);
+    for (const [, t] of y.matchAll(/uses: actions\/deploy-pages@[\s\S]*?timeout: (\d+)/g)) E(`${f}: deploy-pages timeout within its maximum (600000 ms)`, Number(t) <= 600000, t);
     E(`${f}: no other container image`, [...y.matchAll(/^\s+image: (\S+)/gm)].every(([, i]) => i.startsWith('mcr.microsoft.com/playwright:v')));
   }
 }
