@@ -225,6 +225,22 @@ const KNOWN: [RegExp, string][] = [
   [/^hub_unanswered_guest_only/, 'تُضاف رسائل الضيف وحدها إلى «لم أعرف الإجابة».'],
   [/^hub_channel_unverified/, 'تحقّق من القناة أولًا («تحقق من القناة»)، ثم شغّل الإرسال منها.'],
   [/^hub_retry/, 'لا تُعاد إلا رسالة تعذّر إرسالها.'],
+  // «قاعدة المعرفة» (14 Nov 2026, Guest Hub H4)
+  [/^hub_card_fields/, 'بيانات البطاقة غير مكتملة.'],
+  [/^hub_card_unit/, 'اختر وحدة من وحدات مركز الضيوف.'],
+  [/^hub_card_topic/, 'اختر موضوعًا من القائمة.'],
+  [/^hub_card_too_long/, 'النص أطول من الحد: العنوان 120 حرفًا، والنص 1200، والمصدر 300.'],
+  [/^hub_card_title/, 'اكتب عنوان البطاقة.'],
+  [/^hub_card_date/, 'التاريخ غير صالح.'],
+  [/^hub_card_source_future/, 'تاريخ المصدر لا يكون في المستقبل.'],
+  [/^hub_card_archived/, 'البطاقة مؤرشفة؛ استرجعها أولًا ثم عدّلها.'],
+  [/^hub_card_key_locked/, 'معرّف البطاقة ثابت بعد نشرها.'],
+  [/^hub_card_key_taken/, 'هذا المعرّف مستخدم لبطاقة أخرى.'],
+  [/^hub_card_key/, 'المعرّف يبدأ بـ k- ثم حروف إنجليزية صغيرة وأرقام وشرطات.'],
+  [/^hub_resolve_action/, 'اختر ما يُفعل بالسؤال.'],
+  [/^hub_resolve_done/, 'عولج هذا السؤال من قبل.'],
+  [/^hub_resolve_card/, 'اختر بطاقة موجودة غير مؤرشفة.'],
+  [/^hub_status/, 'الحالة غير صالحة.'],
 ];
 
 /** Arabic message for a database or function refusal; `what` (the call) goes to the console only. */

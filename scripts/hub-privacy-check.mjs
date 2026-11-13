@@ -137,6 +137,26 @@ check(/revoke all on table public\.hub_conversations, public\.hub_messages, publ
 check(/set body = null, translation_ar = null, translation_en = null, purged_at = p_now/.test(ret) && /make_interval\(months => v_months\)/.test(ret), 'the text is purged after hub_retention_months');
 check(/create policy hub_media_read on storage\.objects for select to authenticated\s+using \(bucket_id = 'hub-media'[\s\S]{0,200}internal\.can_unit\(c\.unit_id, 'view'\)/.test(MIG) && /values \('hub-media', 'hub-media', false/.test(MIG), 'hub-media: private, read through the unit scope');
 
+// ── 6. H4 (14 Nov 2026): «لم أعرف الإجابة» keeps the question's words under the same rules ──
+{
+  const MIG4 = read('supabase/migrations/20261114100000_guest_hub_knowledge.sql');
+  const fn4 = (name) => MIG4.slice(MIG4.indexOf(`function public.${name}(`), MIG4.indexOf('\n$$;', MIG4.indexOf(`function public.${name}(`)));
+  const list = fn4('hub_unanswered_list');
+  check(/y\.question_excerpt is not null and internal\.can_unit\(y\.unit_id, 'view'\)/.test(list) && /'hidden_excerpts', count\(\*\) filter \(where g\.question_excerpt is not null and not internal\.can_unit\(g\.unit_id, 'view'\)\)/.test(list),
+    'the queue shows the question\'s words only through the unit scope (else the count)');
+  check(/create trigger hub_unanswered_audit after update on public\.hub_unanswered\s+for each row execute function internal\.audit\('status', 'topic_key', 'cluster_id', 'resolved_card_id', 'resolved_faq_id'\);/.test(MIG4), 'the queue\'s audit never holds the excerpt');
+  check(/update public\.hub_unanswered set question_excerpt = null\s+where question_excerpt is not null and created_at < p_now - make_interval\(months => v_months\);/.test(MIG4), 'the excerpts are cleared after hub_retention_months');
+  check(/v_excerpt := nullif\(left\(btrim\(regexp_replace\(coalesce\(m\.body, ''\), '\\s\+', ' ', 'g'\)\), 300\), ''\);/.test(MIG4), 'the excerpt is at most 300 characters of the message');
+  const kf = fn4('hub_knowledge_for');
+  check(!/hub_messages|hub_unanswered|question_excerpt|guest_profiles/.test(kf), 'the engine\'s knowledge read touches no guest text');
+  const exp = fn4('hub_expiry_claim') + fn4('hub_expiry_tick');
+  check(!/hub_messages|question_excerpt|guest_profiles|phone/.test(exp), 'the expiry alerts carry no guest text and no phone');
+  const resolve = fn4('hub_unanswered_resolve');
+  check(!/question_excerpt/.test(resolve), 'resolving never copies the guest\'s words into a card or a FAQ question');
+  const readsQueue = adminFiles.filter((f) => /hub_unanswered_list|question_excerpt|excerpts/.test(read(f)));
+  check(readsQueue.every((f) => ['admin/src/lib/knowledge.ts', 'admin/src/pages/Knowledge.tsx'].includes(f)), `only «قاعدة المعرفة» reads the queue's words in the dashboard — ${readsQueue.join(', ')}`);
+}
+
 if (fails.length) {
   for (const f of fails) console.error(`✗ ${f}`);
   console.error(`hub-privacy-check: ${fails.length} of ${n} failed`);

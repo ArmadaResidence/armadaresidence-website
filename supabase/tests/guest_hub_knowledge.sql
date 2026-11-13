@@ -146,6 +146,10 @@ select pg_temp._check('L3 sales (knowledge: view) reads the cards and the librar
 select pg_temp._fails('L3 … but cannot save', format('select public.hub_card_save(null, %L)', pg_temp._cf('x', 'نص', 'text')), '42501');
 select pg_temp._fails('L4 no direct write for staff', format('update public.hub_knowledge_cards set title_ar = %L where key = %L', 'x', 'k-parking-detail'), '42501');
 select pg_temp._as('recA');
+select pg_temp._check('L5b the editor''s meta: four units (the rooftop excluded), 56 topics, the alert windows',
+  jsonb_array_length(public.hub_knowledge_meta() -> 'units') = 4 and jsonb_array_length(public.hub_knowledge_meta() -> 'topics') = 56
+  and exists (select 1 from jsonb_array_elements(public.hub_knowledge_meta() -> 'units') e where e ->> 'key' = 'rooftop' and (e ->> 'knowledge_hidden')::boolean)
+  and (public.hub_knowledge_meta() ->> 'card_days')::int = 14);
 select pg_temp._check('L5 reception (knowledge: view) reads; the service prices answer', (select count(*) >= 37 from public.hub_knowledge_cards)
   and (public.hub_service_prices() -> 'breakfast' ->> 'adult')::numeric = 20 and (public.hub_service_prices() ->> 'extra_bed_per_night') is not null);
 

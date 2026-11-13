@@ -32,6 +32,8 @@ import Guests from './pages/Guests';
 import EyabWhatsApp from './pages/EyabWhatsApp';
 import Assistant from './pages/Assistant';
 import Inbox from './pages/Inbox';
+import Knowledge from './pages/Knowledge';
+import ServicePrices from './pages/ServicePrices';
 import Content from './pages/Content';
 import Settings from './pages/Settings';
 import Users from './pages/Users';
@@ -186,6 +188,8 @@ export default function App() {
                     <Route path="guests" element={<Allowed section="guests"><Guests /></Allowed>} />
                     <Route path="eyab-whatsapp" element={<Allowed section="eyab_wa"><EyabWhatsApp /></Allowed>} />
                     <Route path="inbox" element={<Allowed section="inbox"><Inbox /></Allowed>} />
+                    <Route path="knowledge" element={<Allowed section="knowledge"><Knowledge /></Allowed>} />
+                    <Route path="service-prices" element={<Allowed section="knowledge"><ServicePrices /></Allowed>} />
                     <Route path="assistant" element={<Allowed section="assistant"><Assistant /></Allowed>} />
                     <Route path="settings" element={<Allowed section="settings"><Settings /></Allowed>} />
                     <Route path="users" element={<Allowed section="users"><Users /></Allowed>} />

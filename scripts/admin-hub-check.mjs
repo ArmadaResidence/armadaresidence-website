@@ -6,3 +6,6 @@ await import('../admin/tests/hub-assistant-ui-check.mjs');
 // «المحادثات» (Guest Hub H3, 13 Nov 2026): the inbox and the guest drawer's «المحادثات» — offline too
 // (admin/tests/hub-inbox-ui-check.mjs).
 await import('../admin/tests/hub-inbox-ui-check.mjs');
+// «قاعدة المعرفة» and «أسعار الخدمات» (Guest Hub H4, 14 Nov 2026): the cards, the queue, the FAQ as read, «تنتهي قريبًا»,
+// the read-only price list — offline too (admin/tests/hub-knowledge-ui-check.mjs).
+await import('../admin/tests/hub-knowledge-ui-check.mjs');

@@ -127,6 +127,13 @@ for (const [name, sql] of [['H1', MIG], ['H2', MIG2], ['H3', MIG3], ['H4', read(
   const known = name === 'H2' ? bad.filter((x) => !/update public\.wa_webhook set events = p_after;/.test(x)) : bad;
   check(known.length === 0, `${name}: every UPDATE / DELETE has a WHERE (production's pg_safeupdate) — ${known.map((x) => x.slice(0, 80)).join(' | ')}`);
 }
+// H4 (14 Nov 2026): the knowledge migration switches nothing on and its publish gate is the one hook H6 replaces
+{
+  const MIG4 = read('supabase/migrations/20261114100000_guest_hub_knowledge.sql').replace(/--[^\n]*/g, '');
+  check(!/sending_enabled = true|assistant_mode = '(test|shadow|licensed)'|hub_assistant_on|hub_inbox_on|hub_engine_ready|hub_inbox_ready/.test(MIG4), 'the H4 migration switches nothing on (no mode, no switch, no channel, no gate)');
+  check(/create function internal\.hub_knowledge_gate\(p_cards uuid\[\]\) returns jsonb/.test(MIG4) && /v_gate := internal\.hub_knowledge_gate\(v_ids\);/.test(MIG4), 'publish calls one test-lab gate hook (H6 replaces it)');
+  check(/update public\.hub_units set knowledge_hidden = true where key = 'rooftop';/.test(MIG4) && (MIG4.match(/knowledge_hidden = true/g) ?? []).length === 1, 'knowledge_hidden is set for the rooftop unit only');
+}
 check(phoneNumbersUrl('3187536471439127') === 'https://api.ycloud.com/v2/whatsapp/phoneNumbers?filter.wabaId=3187536471439127&limit=100&page=1', 'the phone-number list URL');
 check(templatesUrl('329667206894245', 2) === 'https://api.ycloud.com/v2/whatsapp/templates?filter.wabaId=329667206894245&limit=100&page=2', 'the template list URL');
 const phones = [

@@ -18,7 +18,7 @@
 --      count); hub_unanswered_topic_set, hub_unanswered_resolve (to a card, a FAQ draft in «الأسئلة الشائعة», both, or
 --      dismissed — every entry of the cluster), hub_unanswered_list (the excerpt only through the unit scope).
 --   4. RPCs: hub_card_save, hub_card_archive, hub_card_restore, hub_knowledge_publish (never undoable; the test-lab gate
---      of H6 hooks into internal.hub_knowledge_gate), hub_knowledge_faq, hub_service_prices, hub_expiring; the engine's read
+--      of H6 hooks into internal.hub_knowledge_gate), hub_knowledge_meta, hub_knowledge_faq, hub_service_prices, hub_expiring; the engine's read
 --      hub_knowledge_for (service role only).
 --   5. The expiry alerts: pg_cron hub-expiry daily 05:00 UTC (08:00 Riyadh) → hub_expiry_tick: one hub_alerts row per card
 --      ending within hub_card_expiry_alert_days and per offer ending within hub_offer_expiry_alert_days; when a new one
@@ -688,6 +688,25 @@ $$;
 
 -- ───────────────────────────────────────────── 9. reads for «قاعدة المعرفة» and «أسعار الخدمات» ─────────────────────────────────────────────
 
+-- what «قاعدة المعرفة» needs to edit a card (knowledge: view): the units (their names; the rooftop's exclusion), the
+-- topics (labels, parents, always handed off) and the alert windows
+create function public.hub_knowledge_meta() returns jsonb
+language plpgsql stable security definer set search_path = '' as $$
+begin
+  if not internal.can('knowledge', 'view') then raise exception 'not allowed' using errcode = '42501'; end if;
+  return jsonb_build_object(
+    'units', coalesce((select jsonb_agg(jsonb_build_object('key', u.key, 'kind', u.kind, 'name_ar', coalesce(v.name_ar, u.name_ar), 'status', u.status,
+                                                           'knowledge_hidden', u.knowledge_hidden) order by u.sort, u.key)
+                         from public.hub_units u left join public.dining_venues v on v.id = u.dining_venue_id where not u.is_test), '[]'::jsonb),
+    'topics', coalesce((select jsonb_agg(jsonb_build_object('key', t.key, 'label_ar', t.label_ar, 'parent_key', t.parent_key, 'always_handoff', t.always_handoff,
+                                                            'faq_keys', to_jsonb(t.faq_keys)) order by t.sort, t.key)
+                          from public.hub_topics t where t.status = 'active' and not t.is_test), '[]'::jsonb),
+    'card_days', internal.hub_setting_int('hub_card_expiry_alert_days', 14),
+    'offer_days', internal.hub_setting_int('hub_offer_expiry_alert_days', 7),
+    'today', internal.riyadh_today());
+end;
+$$;
+
 -- the published FAQ as the engine reads it (read-only tab «الأسئلة الشائعة»): every published, shown question, the fees
 -- filled from Settings, and the topics that read it
 create function public.hub_knowledge_faq() returns jsonb
@@ -934,10 +953,10 @@ grant execute on function internal.hub_card_get(uuid, public.perm_level), intern
 
 revoke execute on function public.hub_card_save(uuid, jsonb), public.hub_card_archive(uuid), public.hub_card_restore(uuid), public.hub_knowledge_publish(boolean),
   public.hub_unanswered_topic_set(uuid, text), public.hub_unanswered_resolve(uuid, jsonb), public.hub_unanswered_list(text), public.hub_knowledge_faq(),
-  public.hub_service_prices(), public.hub_expiring(), public.hub_mark_unanswered(uuid) from public, anon;
+  public.hub_service_prices(), public.hub_expiring(), public.hub_mark_unanswered(uuid), public.hub_knowledge_meta() from public, anon;
 grant execute on function public.hub_card_save(uuid, jsonb), public.hub_card_archive(uuid), public.hub_card_restore(uuid), public.hub_knowledge_publish(boolean),
   public.hub_unanswered_topic_set(uuid, text), public.hub_unanswered_resolve(uuid, jsonb), public.hub_unanswered_list(text), public.hub_knowledge_faq(),
-  public.hub_service_prices(), public.hub_expiring(), public.hub_mark_unanswered(uuid) to authenticated, service_role;
+  public.hub_service_prices(), public.hub_expiring(), public.hub_mark_unanswered(uuid), public.hub_knowledge_meta() to authenticated, service_role;
 
 revoke execute on function public.hub_knowledge_for(text, text[], text), public.hub_expiry_tick(timestamptz), public.hub_expiry_claim(timestamptz),
   public.hub_retention(timestamptz) from public, anon, authenticated;
