@@ -91,7 +91,9 @@ insert into public.staff (user_id, full_name, role, branch, active) values
   (pg_temp._id('mgmtS'), 'QA hub editor Shafa', 'management', 'shafa-road', true);
 create function pg_temp._lvl(p_k text, p_section text) returns text language sql stable as $$
   select level::text from public.staff_permissions where user_id = pg_temp._id(p_k) and section = p_section $$;
-create function pg_temp._unit(p_key text) returns uuid language sql stable as $$ select id from public.hub_units where key = p_key $$;
+insert into _ids select 'u:' || key, id from public.hub_units;
+-- read from _ids (filled as postgres): a caller whom RLS hides a unit from still names it
+create function pg_temp._unit(p_key text) returns uuid language sql stable as $$ select id from _ids where k = 'u:' || p_key $$;
 grant execute on function pg_temp._unit(text) to authenticated, anon, service_role;
 
 -- ══ A — sections, levels, presets ══
@@ -172,7 +174,7 @@ select pg_temp._check('S1 defaults: switches off, timers and limits as listed',
 select pg_temp._check('S1 the values Ahmed confirms later are null: the budgets and the model prices',
   (select bool_and(jsonb_typeof(value) = 'null') from public.settings where key in ('hub_budget_daily_usd', 'hub_budget_monthly_usd', 'hub_model_prices')));
 select pg_temp._check('S1 none is in the site defaults', not (internal.default_setting_keys() && internal.hub_setting_keys()));
-select pg_temp._fails('S1 the key list still refuses an unknown key', $$insert into public.settings (key, value) values ('hub_unknown', '1')$$, '23514');
+select pg_temp._fails('S1 an unknown key is still refused (the check trigger before the key list)', $$insert into public.settings (key, value) values ('hub_unknown', '1')$$, '20000');
 
 select pg_temp._as('admin');
 select pg_temp._save('s2', public.hub_setting_set('hub_burst_ms', '5000'));
@@ -295,19 +297,28 @@ select pg_temp._fails('R1 an active address needs its mailbox filter confirmed',
 select pg_temp._fails('R1 a malformed address', $$select public.hub_summary_recipients_set('[{"email": "not-an-address", "active": false}]')$$, 'hub_recipient_email');
 select pg_temp._fails('R1 the same address twice', $$select public.hub_summary_recipients_set('[{"email": "a@hub.qa.invalid"}, {"email": "A@hub.qa.invalid"}]')$$, 'hub_recipient_duplicate');
 select pg_temp._save('r2', public.hub_summary_recipients_set('[{"email": "Summary@Hub.qa.invalid", "active": true, "filter_confirmed": true}, {"email": "later@hub.qa.invalid", "active": false, "filter_confirmed": false}]'));
+select pg_temp._root();
 select pg_temp._check('R2 saved lower-cased under the scope hub_summary, one active with its filter, one inactive',
   (select count(*) = 2 from public.booking_notification_recipients where scope = 'hub_summary')
   and exists (select 1 from public.booking_notification_recipients where scope = 'hub_summary' and email = 'summary@hub.qa.invalid' and active and filter_confirmed_at is not null)
   and exists (select 1 from public.booking_notification_recipients where scope = 'hub_summary' and email = 'later@hub.qa.invalid' and not active and filter_confirmed_at is null), pg_temp._j('r2')::text);
 select pg_temp._check('R2 audited in one batch', (select count(*) = 2 from public.audit_log a where a.batch_id = (pg_temp._j('r2') ->> 'batch_id')::uuid and a.entity = 'booking_notification_recipients'));
+insert into _ids select 'rcp', id from public.booking_notification_recipients where email = 'summary@hub.qa.invalid';
+select pg_temp._as('admin');
 select pg_temp._check('R2 the overview lists them', (select jsonb_array_length(public.hub_assistant_overview() -> 'recipients') = 2));
 select pg_temp._save('r3', public.hub_summary_recipients_set(jsonb_build_array(
-  jsonb_build_object('id', (select id from public.booking_notification_recipients where email = 'summary@hub.qa.invalid'), 'email', 'summary@hub.qa.invalid', 'active', true, 'filter_confirmed', true))));
+  jsonb_build_object('id', pg_temp._id('rcp'), 'email', 'summary@hub.qa.invalid', 'active', true, 'filter_confirmed', true))));
+select pg_temp._root();
 select pg_temp._check('R3 a removal deletes the row', not exists (select 1 from public.booking_notification_recipients where email = 'later@hub.qa.invalid'));
+select pg_temp._as('admin');
 select public.revert_batch((pg_temp._j('r3') ->> 'batch_id')::uuid);
+select pg_temp._root();
 select pg_temp._check('R3 «تراجع» brings it back', exists (select 1 from public.booking_notification_recipients where email = 'later@hub.qa.invalid' and scope = 'hub_summary'));
+select pg_temp._as('admin');
 select public.revert_batch((pg_temp._j('r2') ->> 'batch_id')::uuid);
+select pg_temp._root();
 select pg_temp._check('R4 «تراجع» of the first save removes both', not exists (select 1 from public.booking_notification_recipients where scope = 'hub_summary'));
+insert into public.booking_notification_recipients (scope, email, active, filter_confirmed_at) values ('hub_summary', 'kept@hub.qa.invalid', true, now());
 select pg_temp._as('mgmt');
 select pg_temp._fails('R5 management cannot change the recipients', $$select public.hub_summary_recipients_set('[]')$$, '42501');
 select pg_temp._check('R5 nor read the table directly (no policy for staff)', (select count(*) = 0 from public.booking_notification_recipients));
