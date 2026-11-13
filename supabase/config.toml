@@ -53,6 +53,11 @@ verify_jwt = true
 [functions.partners-purge]
 verify_jwt = false
 
+# «مركز الضيوف» (13 Nov 2026, Guest Hub H1): hub-admin — «تحقق من القناة» and «تحديث حالة القوالب» (YCloud reads only),
+# signed-in dashboard users with assistant: edit on every branch (checked as the user through public.hub_admin_gate)
+[functions.hub-admin]
+verify_jwt = true
+
 # Dashboard password rule (Ahmed, 26 Oct 2026): at least 8 characters, no required character classes — the dashboard
 # itself refuses spaces and anything outside printable ASCII before the call (admin/src/lib/password.ts). Leaked-password
 # protection (HaveIBeenPwned) is NOT a key of this file: `config push` cannot change it, and it stays ON in the project.

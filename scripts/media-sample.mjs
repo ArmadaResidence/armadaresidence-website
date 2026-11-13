@@ -105,7 +105,7 @@ writeFileSync(join(dir, 'manifest.json'), JSON.stringify({ at: new Date().toISOS
 const logo = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 60"><rect width="200" height="60" rx="8" fill="#142A3B"/><circle cx="30" cy="30" r="14" fill="#A97C50"/></svg>';
 const venue = (o) => ({ id: o.slug, branch: 'airport-road', kind: 'restaurant_cafe', location: 'lobby', location_note_ar: '', location_note_en: '', hours: null, audience: null, phone: null, whatsapp: null, extension: null, menu: 'none', menu_url: null, description_ar: '', description_en: '', sort: 0, ...o });
 writeFileSync(join(dir, 'venues.json'), JSON.stringify({ at: new Date().toISOString(), sample: true, venues: [
-  venue({ slug: 'armada-residence-cafe', name_ar: 'مطعم ومقهى أرمادا ريزيدنس', name_en: 'Armada Residence Café & Restaurant', status: 'active', hours: { mode: '24h' }, menu: 'internal', audience: 'public', phone: '+966533798590', whatsapp: '+966533798590', extension: '9', logo_svg: logo,
+  venue({ slug: 'armada-residence-cafe', name_ar: 'مقهى ومطعم أرمادا ريزيدنس', name_en: 'Armada Residence Café & Restaurant', status: 'active', hours: { mode: '24h' }, menu: 'internal', audience: 'public', phone: '+966533798590', whatsapp: '+966533798590', extension: '9', logo_svg: logo,
     description_ar: 'نص تجريبي لوصف المقهى في عينة الاختبار.', description_en: 'Sample text describing the café in the test sample.' }),
   venue({ slug: 'lario', name_ar: 'لاريو — مطعم ومقهى عالمي', name_en: 'LARIO — International Dining & Café', location: 'rooftop', status: 'coming_soon', sort: 1 }),
   venue({ slug: 'sample-hidden', name_ar: 'منشأة مخفية للاختبار', name_en: 'Hidden test venue', status: 'hidden', sort: 2 }),

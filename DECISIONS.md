@@ -3251,3 +3251,86 @@ browser and trained the ad platforms on staff behaviour.
   deploy), live checks 43424820125 (7 shards), server checks 43423627340, Lighthouse 43424924403 (live home, mobile,
   7 runs: performance 99, LCP 2.13 s) and the backup by hand 43423670301 (1107 files unchanged, nothing uploaded, check
   OK) — all green; no run carries a Node 20 or ubuntu-latest annotation any more.
+
+## 2026-11-12 — Guest Hub «مركز الضيوف»: the spec review (Ahmed, 12 Nov 2026)
+
+Ahmed reviewed `GUEST-HUB-SPEC.md` v0.1 (12 Nov 2026) and decided the items below. The spec v0.2 (13 Nov 2026) applies them, marked «مقرر — 12 نوفمبر 2026»; everything else in the spec stays proposed until approved. Nothing is built. The spec, `templates.md` and `copy.md` go to `docs/guest-hub/` in session H1.
+
+**Source corrections (12 Nov 2026).** `GUEST-HUB-BRIEF.md` and `Armada_Website_Facts.md` were corrected: inbound replies (the YCloud webhook of `wa-automation`, «تفعيل استقبال الردود») were not registered on 9 Nov 2026 and their state is being checked; the arrival reminder, the review request and the «إياب» welcome are built with their switches created off, running state unconfirmed. DECISIONS.md 2026-11-09 was right. The three booking templates (request, confirmed, cancelled) run.
+
+**Decisions**
+
+1. **Inbound replies.** Ahmed checks their current state read-only (result to follow). They must be on before the first «إياب» offers campaign so opt-outs are processed. Not tied to any hub session; the assistant stays off; hub sessions never press it.
+2. **Retention.** Message text 12 months, media 90 days. The AR + EN privacy sentence is drafted in step 2 and published before any message text is stored. *(The privacy sentence is superseded on 13 Nov 2026 — below.)*
+3. **Sales number.** Stays outside the system. Group and hall requests go to the partner-requests table (`partner_enquiries`, «طلبات الشركاء») and to the sales email only.
+4. **Café number.** Connected to YCloud before the dining session.
+5. **Rooftop restaurant.** Its unit is created now, hidden, with no number until one is set. Its knowledge is excluded from every reply on every number until opening.
+6. **Inventory.** The dashboard now; Nazeel only after their written reply.
+7. **Verification.** One Claude in Chrome session before the first coding session; it also checks whether both branch numbers are in the same Meta portfolio. Until then the counter treats them as one shared limit.
+8. **Persona.** Warm and professional, no emoji. Name «مساعد أرمادا ريزيدنس», no human name; its first reply says it is an automated assistant and that the team is available. Both adjustable from the persona settings. *(The name and the first-reply statement are superseded on 13 Nov 2026 — below.)*
+9. **Topic licences.** Activated manually by Ahmed only, no threshold. The dashboard shows each topic's approval rate as information and never activates anything by itself.
+10. **Menus.** The assistant sends the menu link only, never menu prices. No menu import in v1.
+11. **Services price list.** Existing fees only (breakfast, extra bed, late check-out, lost key card), read-only. The hall stays with sales; decoration when packages are defined.
+12. **Models and budget.** `claude-haiku-5-5` for understanding, topic tagging and translation; `claude-sonnet-5-5` for composing. A temporary cap for the first trial week; the real budget set from the actual cost.
+13. **Languages.** Arabic and English only in v1.
+14. **Back to the assistant.** Only by the «إعادة للمساعد» button; a staff conversation closes 72 hours after the last staff message if no guest message is waiting.
+15. **Names.** The «الآن» screen shows counts and times only. Most guests are unsaved numbers with no name: the inbox shows the WhatsApp profile name until the guest gives a real name when booking.
+16. **Café Arabic name.** «مقهى ومطعم أرمادا ريزيدنس» everywhere; the dashboard and the home page are aligned to it.
+17. **Lobby café.** It takes no table bookings. Its skill is the menu link, offers and cart orders. The assistant never handles cart orders: they land in the inbox tagged «طلب» for the café team, who reply themselves, with no automatic status messages to the guest. Table booking for the rooftop restaurant is decided before its opening.
+18. **Groups.** To sales instead of reception: 5 rooms or more, or any company or Umrah office. 2 to 4 rooms stay with reception.
+19. **Portfolio.** Merged into 7.
+20. **Booking template.** After a booking made in the chat, the official confirmation template is also sent, as for site bookings.
+21. **A typed «إلغاء».** From a guest with an active booking, the assistant asks whether they mean the offers or the booking. Booking → hand-off to staff. No answer → offers stop as a precaution. The «إلغاء الاشتراك» button stays an immediate opt-out, unchanged.
+22. **Booking source.** A new value «مساعد واتساب», separate from «واتساب».
+23. **Staff alerts.** Never by WhatsApp. Reception (new booking, conversation waiting): in the dashboard and by email. Sales (group and hall requests): the sales email only. Morning summary for management: by email to info@armadaresidence.com, more addresses addable in Settings. The hub needs no staff WhatsApp templates.
+24. **Inbox device.** Reception reviews shadow-mode drafts on the reception computer, so the inbox is designed desktop-first, still working at 375.
+
+**Consequences recorded in the spec v0.2:** four units (Airport Road, Shafa Road, the lobby café, the rooftop restaurant hidden) — no sales unit; no editable services table, no dining tables in v1; one new WhatsApp template in v1, `hub_reply_ready` (Utility, ar + en, both branch numbers now, the café after connection); a storage switch «تخزين المحادثات» off until Ahmed switches it on; a marketing hold while the «إلغاء» question waits; hub email subjects carry an `AR-` token for the mailbox filter (proposed).
+
+## 2026-11-13 — Guest Hub: no AI shown to the guest, no privacy text, MSA only, step 2 approved (Ahmed, 13 Nov 2026)
+
+Two amendments to the review of 12 Nov 2026 (items 2 and 8).
+
+- **Nothing tells the guest it is AI.** No introduction, no assistant name, no signature, no automated wording in any guest message; replies speak as the property in the first person plural. Replaces item 8's name and first-reply statement; the tone (warm and professional, no emoji) stays. The assistant never claims to be a person either: a guest who asks whether they are talking to a person or a machine is handed to the team at once, and a staff member answers. The guard refuses AI / bot / assistant wording and any claim to be a person (spec §2.4.2 rule 8, §2.5 rule 16).
+- **No privacy text.** Nothing about privacy is added to the chat, and the step-2 privacy sentence is dropped. «تخزين المحادثات» no longer waits for it. Nothing new is added to the /policies/ page either (Ahmed, the same day). The Claude in Chrome session C1 also reads whether Meta's WhatsApp Business policy requires telling users that replies are automated (O12).
+- **Dialect.** Guest replies stay in Modern Standard Arabic only, warm and simple — no Saudi dialect, not even a short list of greeting phrases (Ahmed chose this over «MSA + approved Saudi phrases»). «حيّاك دايم» stays the one exception, as the «إياب» slogan.
+- **Step 2 approved.** `docs/guest-hub/templates.md` (`hub_reply_ready`, UTILITY, ar + en, both branch numbers now, the café after connection) and `docs/guest-hub/copy.md` approved as written.
+- **The «إلغاء» question.** No answer within 12 hours → offers stop as a precaution. «Active booking» = a request or confirmed booking on the same phone whose check-out date is today or later.
+- **Staff emails.** Every hub email subject carries the `AR-HUB-` token, so the current Hostinger filter passes it unchanged.
+- **Morning summary.** At 08:00 Riyadh, without money lines.
+- **A third language.** A fixed reply in Arabic and English that we help in both languages; the conversation goes to the team.
+- **Room booking on the café number.** Transferred to the Airport Road reception team, who reply in the same chat from the café number.
+- **Inbound replies.** Their state is read (read-only) in the Claude in Chrome session, Part A, before the template is submitted.
+
+## 2026-11-13 — Guest Hub: channel verification and the template submitted (Claude in Chrome, 13 Nov 2026)
+
+Read-only checks, then the approved template submitted. Nothing else was changed on any platform.
+
+- **Inbound replies are ON** since 9 Nov 2026 10:44 (added by Ahmed): one YCloud webhook endpoint, `wa-automation`, active, subscribed to `whatsapp.inbound_message.received` and `whatsapp.message.updated`, receiving both branch accounts; the last 50 deliveries succeeded. In the dashboard it is a status line, not a button: «استقبال ردود واتساب (إيقاف العروض)» — «مفعّل منذ 09/11/2026 10:44», on «عروض إياب على واتساب». The facts file and the brief («[يُؤكَّد]») are superseded.
+- **The three automation switches are ON** at both branches: «ترحيب إياب على واتساب», «تذكير الوصول», «طلب التقييم بعد المغادرة».
+- **YCloud facts:** echo event `whatsapp.smb.message.echoes`; quality event `whatsapp.phone_number.quality_updated`; history sync `whatsapp.smb.history` (optional, at connection only); 3 reply buttons, 20 characters a button title, 10 list rows, 24 / 72 characters a row title / description, a template quick reply 25 characters; image header allowed; typing indicator + mark-read endpoint; coexistence throughput 5 messages a second; WhatsApp Flows supported (free plan too); Messenger supported, Instagram DMs not documented. Plan `Free`: 2 channels of 2 used — connecting the café number needs `Growth` (USD 39 a month or USD 468 a year, 3 channels), a further channel USD 5 a month.
+- **Meta:** both branch accounts in one business portfolio, «Armada Residence» `984451191409274`, limit 2,000, quality High on both; two more accounts in the portfolio outside the hub («Armada Marketing», «Armada Residence Hotels Sales» — both show a missing-payment-method warning). The café number is not connected anywhere yet. The Messaging Policy (updated 23 Sep 2026) has no disclosure requirement for automated replies and requires an escalation path to a person; §4.7 «AI Providers» of the platform terms (updated 23 Sep 2026) bans AI as the primary functionality and allows a business's AI solution provider that does not train on platform data — Anthropic's Commercial Terms say it may not train on customer content.
+- **`hub_reply_ready` submitted and approved:** ar + en on both branch accounts, UTILITY, no header or footer, one quick reply; all four «In review» at submission, then APPROVED by Meta the same day (Ahmed, 13 Nov 2026).
+
+## 2026-11-13 — Guest Hub: the café postponed; nothing added for the Anthropic terms notice (Ahmed, 13 Nov 2026)
+
+- **The lobby café is postponed.** No YCloud plan upgrade (connecting a third number needs `Growth`); no café session in v1. Its hub unit stays created, off, with no channel. The branch numbers still answer café questions from the knowledge cards and send the menu link (never a menu price); cart orders keep reaching the café's own WhatsApp as today. Later, one dining session covers the café and the rooftop restaurant together. v1 is now eight sessions.
+- **Anthropic Commercial Terms D.3** (the customer notifies its users that factual statements in outputs should be checked): Ahmed chose to add nothing to the guest messages. The design keeps every fact, price and date tied to a system source (spec §4.1).
+
+## 2026-11-13 — Guest Hub H1 — foundations (session H1, Ahmed's brief of 13 Nov 2026; spec §13 row H1)
+
+- **Docs.** `docs/guest-hub/` holds `GUEST-HUB-SPEC.md` (v0.6), `templates.md`, `copy.md` (from `guest-hub-files.zip`; the zip is not committed). The four entries above were appended from `DECISIONS-guest-hub-2026-11-12.md`; CLAUDE.md gained §14 and the three corrections (§1 units 106 / 60, §4 the café's Arabic name, §11 the terrace confirmed).
+- **Migration `20261113100000_guest_hub_foundation`** (production 13 Nov 2026, after a dry run that listed only it): the sections inbox / now / knowledge / assistant / radar with the presets of spec §5.1; `hub_units` (four, all off; lobby-cafe and rooftop hidden), `hub_channels` (the two branch numbers and their WABA; connected, not verified, sending off), `hub_unit_members` (seeded on production: the admin and the two management users in every unit, each reception login in its branch unit — 14 rows), `hub_templates`, `hub_alerts`; `internal.can_unit`; RLS; the RPCs `hub_unit_save`, `hub_unit_members_set`, `hub_unit_mode_set`, `hub_setting_set`, `hub_summary_recipients_set` (+ `hub_assistant_overview`, `hub_admin_gate`, service `hub_channel_store` / `hub_templates_store`); the 35 settings keys of §7.6; the recipients' scope `hub_summary` + `filter_confirmed_at`.
+- **Choices made in the session (the spec left them open):**
+  - *Nothing switches on, on every path.* The refusal sits in triggers (the `hub_units` mode guard; `internal.check_setting` → `internal.hub_setting_check`) as well as in the RPCs, so a revert or a direct statement cannot switch anything on either; the gates are `internal.hub_engine_ready()` / `hub_inbox_ready()` (false until H5 / H2). `hub_summary_money` is refused on (13 Nov: no money lines). A hidden unit can never be on: a table constraint.
+  - *Undecided values are null, not guessed:* `hub_budget_daily_usd`, `hub_budget_monthly_usd`, `hub_model_prices` ([يُؤكَّد] in the spec). `hub_models` and `hub_model_prices` are read-only through `hub_setting_set`.
+  - *Skills and persona are not seeded* (the per-unit skills of §1.4 are «مقترح»): every unit starts with no skill and no published persona, both counted as missing gates.
+  - *Unit names.* Branch units «فرع طريق المطار» / «فرع طريق الشفا»; a dining unit is named in «المطاعم والمقاهي» (`hub_unit_save` refuses) and the page shows its venue's name. The rooftop unit is stored «لاريو» / LARIO (staff only).
+  - *Teams.* A member must be an active staff user of the unit's branch or of every branch (a Shafa Road login can never join an Airport Road or café unit). The global items (switches, recipients, YCloud reads) need assistant: edit on every branch.
+  - *Recipients.* An active `hub_summary` row needs `filter_confirmed_at` (constraint — CLAUDE.md §8 «Delivery»); only the hub_summary rows are audited. The one recipient of the brief (the info mailbox, already an active central recipient, so its filter exists) was inserted by a one-off statement on production, never in a file.
+  - *hub-admin* reads the number from the WABA's phone-number list and every template of each WABA (all of them, so the inbox picker can later list the approved ones); GET only, audited as the staff member, never undone.
+- **SQL tests without a preview branch.** `supabase/tests/guest_hub_units.sql` (115 checks) runs in `server-checks.yml` on a local database (free, as in session 28), so no paid branch was created. Runs on branch `h1-guest-hub`: 43445341238, 43445901205, 43446453312 (fixes to the tests and one regex — Postgres caps `{m,n}` at 255), 43447150570 green (115/115).
+- **Release (13 Nov 2026):** migration → `hub-admin` deployed (live CORS / JWT check 119/119) → the dashboard deployed from `h1-guest-hub` (armadaresidence-admin run 43448735749: build, deploy, verify green) → the site from main.
+- **The café's Arabic name.** Files: `content/ui.json` (the home section's heading), `content/seo.json` (/menu/ title, description, h1), `public/menu/index.html`, the sample fixture, comments; `home-sections-check` asserts the heading. **Not done by the session:** the dashboard venue «مطعم ومقهى أرمادا ريزيدنس» and the ten published photo descriptions of `dining:armada-residence-cafe` that name it (and one archived home photo). Running `dining_save` / `media_update` and the publishes as Ahmed's session through SQL was refused by the session's permission classifier, so Ahmed does it in the dashboard («المطاعم والمقاهي» → the café → the Arabic name → حفظ → نشر; «الصور» → the café → each description → نشر). A backup of those rows was taken first; nothing was changed.
+- **Not tested live:** «تحقق من القناة» and «تحديث حالة القوالب» need a signed-in staff JWT, which the session does not have; `hub_reply_ready`'s statuses are read when Ahmed presses the button (expected APPROVED, ar + en, both numbers).
+- **Open, outside H1:** the 11 Nov fix to `submit_booking_sourced` (commit 0dc3e89, «not yet applied anywhere») is still not on production — `db push` never re-applies an edited migration; it needs a new migration in a later session.

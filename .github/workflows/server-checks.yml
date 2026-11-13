@@ -25,7 +25,7 @@ on:
       files:
         description: SQL test files of supabase/tests (space-separated)
         required: false
-        default: booking-source.sql
+        default: booking-source.sql guest_hub_units.sql
 
 permissions:
   contents: read
@@ -50,7 +50,7 @@ jobs:
       - name: The local database (every migration of this commit)
         run: supabase db start
       - name: The SQL tests
-        run: node scripts/sql-test-run.mjs ${{ inputs.files || 'booking-source.sql' }}
+        run: node scripts/sql-test-run.mjs ${{ inputs.files || 'booking-source.sql guest_hub_units.sql' }}
 
   function:
     name: server · booking-request (Deno, stub database)

@@ -6,7 +6,8 @@
 //     counts the room types shown on the site; one card per flagged open room with «الفرع · النوع», its name and its
 //     page; no price anywhere in the section; the stats row (room types, units, 24, the hall's capacity); the six «لماذا
 //     أرمادا» cards with no unfilled placeholder; the café section — the menu link, the café WhatsApp from contact.json,
-//     «تحويلة {ext}», the terrace exactly when branches.json confirms one (7 Nov 2026); every review of the page's
+//     «تحويلة {ext}», the terrace exactly when branches.json confirms one (7 Nov 2026), the Arabic heading = branches.json's
+//     «مقهى ومطعم أرمادا ريزيدنس» and the old order nowhere in the section (13 Nov 2026); every review of the page's
 //     language in order (twelve at most — the carousel since 7 Nov 2026), quoted, with «الاسم · الفرع · N على Google» and a
 //     https source link opening in a new tab; NO Review / AggregateRating structured data; three Discover Taif places
 //     linking to their card; the «إياب» band (descriptor, the approved line, two benefits, /club/); the footer «تابعنا»
@@ -44,6 +45,7 @@ const AXE = readFileSync(createRequire(import.meta.url).resolve('axe-core/axe.mi
 const ORDER = ['rooms', 'offers', 'why', 'dining', 'gallery', 'reviews', 'places', 'blog', 'about', 'partners', 'club'];
 const logosFile = 'content/partner-logos.generated.json';
 const logos = existsSync(logosFile) ? J(logosFile).items : [];
+const CAFE_AR = J('content/branches.json').branches.find((b) => b.slug === 'airport-road')?.dining?.name_ar ?? '';
 const terrace = (J('content/branches.json').branches.find((b) => b.slug === 'airport-road')?.dining?.seating ?? []).includes('terrace');
 const fails = [];
 let checks = 0;
@@ -99,6 +101,11 @@ for (const lang of ['ar', 'en']) {
   check(din.includes(`href="${lang === 'en' ? '/en' : ''}${contact.menu_url}"`), `${lang}: the menu link`);
   check(strip(din).includes(contact.cafe.room_extension), `${lang}: the room extension`);
   check(/تراس|terrace/i.test(strip(din)) === terrace, `${lang}: the terrace ${terrace ? 'is missing although branches.json confirms it' : 'is named without content/ confirming one'}`);
+  // the café's Arabic name (Ahmed, 12 Nov 2026 — DECISIONS.md 2026-11-12 «Guest Hub — the spec review» item 16): «مقهى ومطعم
+  // أرمادا ريزيدنس» = branches.json → dining.name_ar, never the old order «مطعم ومقهى …»
+  const dinH = strip((din.match(/<h2[^>]*id="home-dining-heading"[^>]*>([\s\S]*?)<\/h2>/) || [])[1] || '').trim();
+  if (lang === 'ar') check(dinH === CAFE_AR && CAFE_AR === 'مقهى ومطعم أرمادا ريزيدنس', `${lang}: the café heading is not «مقهى ومطعم أرمادا ريزيدنس» (branches.json dining.name_ar)`, dinH);
+  check(!/مطعم ومقهى أرمادا/.test(strip(din)), `${lang}: the old café name «مطعم ومقهى أرمادا ريزيدنس» in the café section`);
 
   // reviews
   const rv = sec('reviews');
