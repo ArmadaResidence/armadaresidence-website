@@ -7,7 +7,7 @@
 //     page; no price anywhere in the section; the stats row (room types, units, 24, the hall's capacity); the six «لماذا
 //     أرمادا» cards with no unfilled placeholder; the café section — the menu link, the café WhatsApp from contact.json,
 //     «تحويلة {ext}», the terrace exactly when branches.json confirms one (7 Nov 2026), the Arabic heading = branches.json's
-//     «مقهى ومطعم أرمادا ريزيدنس» and the old order nowhere in the section (13 Nov 2026); every review of the page's
+//     «مقهى ومطعم أرمادا ريزيدنس» and the old order nowhere on the page (13 Nov 2026; the whole page since session H2); every review of the page's
 //     language in order (twelve at most — the carousel since 7 Nov 2026), quoted, with «الاسم · الفرع · N على Google» and a
 //     https source link opening in a new tab; NO Review / AggregateRating structured data; three Discover Taif places
 //     linking to their card; the «إياب» band (descriptor, the approved line, two benefits, /club/); the footer «تابعنا»
@@ -105,7 +105,9 @@ for (const lang of ['ar', 'en']) {
   // أرمادا ريزيدنس» = branches.json → dining.name_ar, never the old order «مطعم ومقهى …»
   const dinH = strip((din.match(/<h2[^>]*id="home-dining-heading"[^>]*>([\s\S]*?)<\/h2>/) || [])[1] || '').trim();
   if (lang === 'ar') check(dinH === CAFE_AR && CAFE_AR === 'مقهى ومطعم أرمادا ريزيدنس', `${lang}: the café heading is not «مقهى ومطعم أرمادا ريزيدنس» (branches.json dining.name_ar)`, dinH);
-  check(!/مطعم ومقهى أرمادا/.test(strip(din)), `${lang}: the old café name «مطعم ومقهى أرمادا ريزيدنس» in the café section`);
+  // full scope since 13 Nov 2026 (session H2): Ahmed renamed the dashboard venue and published its ten photo descriptions
+  // that day, so the old order may appear nowhere on the page — text, alt attributes and data-* (the gallery strip) alike
+  check(!/مطعم ومقهى أرمادا/.test(html), `${lang}: the old café name «مطعم ومقهى أرمادا ريزيدنس» on the home page (text, alt or data-*)`);
 
   // reviews
   const rv = sec('reviews');

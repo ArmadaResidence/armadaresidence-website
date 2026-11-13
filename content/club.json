@@ -60,7 +60,12 @@
       "cta": "احجز الآن"
     },
     "whatsapp": {
-      "optout_reply": "أوقفنا رسائل عروض إياب — عضوية أرمادا ريزيدنس على واتساب. رسائل حجوزاتك تصلك كالمعتاد."
+      "optout_reply": "أوقفنا رسائل عروض إياب — عضوية أرمادا ريزيدنس على واتساب. رسائل حجوزاتك تصلك كالمعتاد.",
+      "_cancel_note": "Guest Hub H2 (13 Nov 2026): a typed «إلغاء» from a guest with an active booking — docs/guest-hub/copy.md §5.1 (the question, its two buttons) and §5 «Change or cancel an existing booking» (the notice), approved by Ahmed 13 Nov 2026. Never edited here without copy.md.",
+      "cancel_question": "وصلتنا كلمة «إلغاء». هل تقصد إيقاف رسائل العروض، أم إلغاء حجزك؟",
+      "cancel_button_offers": "إيقاف رسائل العروض",
+      "cancel_button_booking": "إلغاء حجزي",
+      "cancel_booking_notice": "تعديل الحجز أو إلغاؤه يتم مع فريق الاستقبال، وسيكمل معك أحدهم في هذه المحادثة."
     },
     "invite": {
       "_note": "«انضم إلى إياب» after a booking (Ahmed, 9 Nov 2026): the success page's card and the one line in the request / confirmed emails, for guests who are not members and did not tick the booking form's box. Wording approved by Ahmed (the brief of 9 Nov 2026).",
@@ -119,7 +124,11 @@
       "cta": "Book now"
     },
     "whatsapp": {
-      "optout_reply": "We have stopped Eyab — Armada Residence membership offers on WhatsApp. Messages about your bookings will still reach you."
+      "optout_reply": "We have stopped Eyab — Armada Residence membership offers on WhatsApp. Messages about your bookings will still reach you.",
+      "cancel_question": "We received the word «إلغاء». Do you mean stopping offer messages, or cancelling your booking?",
+      "cancel_button_offers": "Stop offer messages",
+      "cancel_button_booking": "Cancel my booking",
+      "cancel_booking_notice": "Changes and cancellations are handled by our reception team; one of them will continue with you in this chat."
     },
     "invite": {
       "title": "Join Eyab",

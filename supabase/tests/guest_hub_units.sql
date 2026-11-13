@@ -4,7 +4,7 @@
 --   U — the seeded units (four, all off, the dining units hidden and tied to their venues) and the two branch channels
 --       (connected, not verified, sending off); the key lock; sending only after verification; one open alert per kind;
 --   G — nothing switches on in H1: a hidden unit never on, an active unit never off «متوقف» while its gates miss (the
---       engine always does), «المساعد يعمل» / «تخزين المحادثات» / the summary's money lines refused — by the RPC and by a
+--       engine always does), «المساعد يعمل» / the summary's money lines refused («تخزين المحادثات» may be on since H2) — by the RPC and by a
 --       direct statement alike; an undo that would switch on passes the gates again;
 --   S — the 35 settings keys of spec §7.6 at their defaults, none in the site defaults, hub_setting_set's checks, the
 --       read-only model ids, assistant edit on every branch, undo through revert_batch (and not with settings: edit);
@@ -153,9 +153,10 @@ select pg_temp._fails('G2 an active unit cannot leave «متوقف» while its g
 select pg_temp._check('G2 the gates of Airport Road name the channel, persona, skills, test lab and the engine',
   (select internal.hub_unit_gates(u) @> '["channel", "persona", "skills", "test_lab", "engine"]'::jsonb and not internal.hub_unit_gates(u) ? 'hidden' from public.hub_units u where key = 'airport-road'));
 select pg_temp._check('G2 the gates of the rooftop add «hidden» and the menu link', (select internal.hub_unit_gates(u) @> '["hidden", "engine"]'::jsonb from public.hub_units u where key = 'rooftop'));
-select pg_temp._check('G2 the engine is not ready in H1', not internal.hub_engine_ready() and not internal.hub_inbox_ready());
+select pg_temp._check('G2 the engine is not ready; the inbox is (session H2 built the router and the store)', not internal.hub_engine_ready() and internal.hub_inbox_ready());
 select pg_temp._fails('G3 «المساعد يعمل» cannot be switched on — even by a direct statement', $$update public.settings set value = 'true' where key = 'hub_assistant_on'$$, 'hub_not_ready');
-select pg_temp._fails('G3 «تخزين المحادثات» cannot be switched on — even by a direct statement', $$update public.settings set value = 'true' where key = 'hub_inbox_on'$$, 'hub_not_ready');
+-- «تخزين المحادثات» may be switched on since H2 (guest_hub_ingest.sql tests it); it stays off by default
+select pg_temp._check('G3 «تخزين المحادثات» is off and has no gate left', (select value = 'false' from public.settings where key = 'hub_inbox_on') and internal.hub_switch_gates('hub_inbox_on') = '[]'::jsonb);
 select pg_temp._fails('G3 the summary''s money lines stay off (Ahmed, 13 Nov 2026)', $$update public.settings set value = 'true' where key = 'hub_summary_money'$$, 'hub_not_ready');
 
 -- ══ S — the settings keys of spec §7.6 ══
@@ -189,7 +190,7 @@ select pg_temp._fails('S2 the model ids are read-only', $$select public.hub_sett
 select pg_temp._fails('S2 an unknown key', $$select public.hub_setting_set('show_prices', '{}')$$, '22023');
 select pg_temp._fails('S2 the same value is nothing to change', $$select public.hub_setting_set('hub_burst_ms', '5000')$$, '22023');
 select pg_temp._fails('S2 «المساعد يعمل» refused through the RPC', $$select public.hub_setting_set('hub_assistant_on', 'true')$$, 'hub_not_ready');
-select pg_temp._fails('S2 «تخزين المحادثات» refused through the RPC', $$select public.hub_setting_set('hub_inbox_on', 'true')$$, 'hub_not_ready');
+select pg_temp._fails('S2 «المساعد يعمل» still refused with «تخزين المحادثات» off — both gates', $$select public.hub_setting_set('hub_assistant_on', 'true')$$, 'hub_not_ready');
 select pg_temp._save('s3', public.hub_setting_set('hub_budget_daily_usd', '5'));
 select pg_temp._check('S3 a budget accepts a number', (select value = '5' from public.settings where key = 'hub_budget_daily_usd'));
 select pg_temp._as('mgmt');
