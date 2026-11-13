@@ -139,3 +139,65 @@ export function usePartnersBadge(me: Me | null): number | null {
   }, [allowed]);
   return count;
 }
+
+// «المحادثات» (Guest Hub H3, 13 Nov 2026): the conversations waiting for staff in the user's units, live through the
+// signals (public.dashboard_signals — kind, unit and time only; Realtime applies their RLS: a hub signal reaches only the
+// unit's team). A new waiting conversation can raise a browser notification and the chime, both opt-in per user (off
+// by default); the text is the unit and «محادثة جديدة» / «بانتظار موظف» — never a guest word, a name or a number.
+export function hubNotifyText(unit: string | null, fresh: boolean) {
+  return { title: 'مركز الضيوف', body: `${unit ? `${unit} — ` : ''}${fresh ? 'محادثة جديدة' : 'بانتظار موظف'}` };
+}
+export function useHubBadge(me: Me | null, alerts: () => { hubNotify: boolean; hubSound: boolean }): number | null {
+  const [count, setCount] = useState<number | null>(null);
+  const allowed = canView(me, 'inbox');
+  const alertsRef = useRef(alerts);
+  alertsRef.current = alerts;
+  useEffect(() => {
+    if (!allowed) {
+      setCount(null);
+      return;
+    }
+    let alive = true;
+    let timer = 0;
+    let last: number | null = null;
+    const units = new Map<string, string>();
+    void supabase.from('hub_units').select('id,name_ar').then(({ data }) => {
+      for (const u of (data ?? []) as { id: string; name_ar: string }[]) units.set(u.id, u.name_ar);
+    });
+    const recount = (sig?: { kind: string; unit_id: string | null }) => {
+      window.clearTimeout(timer);
+      timer = window.setTimeout(async () => {
+        const { data, error } = await supabase.rpc('hub_inbox_badge', { p_test: testEvents() });
+        if (!alive || error) return;
+        const n = Number(data ?? 0);
+        if (sig && last !== null && n > last) {
+          const a = alertsRef.current();
+          const t = hubNotifyText(sig.unit_id ? units.get(sig.unit_id) ?? null : null, sig.kind === 'hub_handoff');
+          if (a.hubNotify && 'Notification' in window && Notification.permission === 'granted') {
+            try {
+              new Notification(t.title, { body: t.body, tag: `hub:${sig.unit_id ?? ''}`, lang: 'ar', dir: 'rtl' });
+            } catch { /* some browsers only notify from a service worker */ }
+          }
+          if (a.hubSound) chime();
+        }
+        last = n;
+        setCount(n);
+      }, 300);
+    };
+    recount();
+    const ch = supabase
+      .channel('nav-hub-badge')
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'dashboard_signals' }, (p) => {
+        const row = p.new as { kind?: string; unit_id?: string | null } | null;
+        if (!row?.kind?.startsWith('hub_')) return;
+        recount({ kind: row.kind, unit_id: row.unit_id ?? null });
+      })
+      .subscribe();
+    return () => {
+      alive = false;
+      window.clearTimeout(timer);
+      void supabase.removeChannel(ch);
+    };
+  }, [allowed]);
+  return count;
+}

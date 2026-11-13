@@ -221,6 +221,43 @@ check(JSON.stringify(eventsPatchBody(['a'])) === '{"enabledEvents":["a"]}' && we
 const store = fnOf(MIG, 'hub_webhook_events_store');
 check(/if not \(coalesce\(p_after, '\{\}'\) @> coalesce\(p_before, '\{\}'\)\) then raise exception 'hub_webhook_events_removed'/.test(store) && /insert into public\.audit_log/.test(store), 'the database refuses a removed event and audits the change');
 
+// ── 8. H3 (13 Nov 2026): «إرسال عند رد الضيف» — the held answer goes ONCE, on the guest's next message or the quick-reply tap ──
+{
+  const tsFn = (src, name) => {
+    const i = src.indexOf(`async function ${name}(`);
+    return i < 0 ? '' : src.slice(i, src.indexOf('\n}\n', i) + 2);
+  };
+  const MIG3 = read('supabase/migrations/20261113300000_guest_hub_inbox.sql');
+  const T3 = read('supabase/tests/guest_hub_inbox.sql');
+  const { HUB_REPLY_READY_PAYLOAD } = await import('../supabase/functions/_shared/hub/send.ts');
+  const hi3 = tsFn(FN, 'handleInbound');
+  const iStored = hi3.indexOf('stored = true;');
+  const iRelease = hi3.indexOf('await releaseHeld(ing.data.conversation_id)');
+  const iDup = hi3.indexOf("ing.data.reason === 'duplicate'");
+  const iRoute = hi3.indexOf('const r = route(m, content.club_whatsapp);');
+  check(iStored > 0 && iRelease > iStored && iRelease < iDup && iRelease < iRoute, 'the held answers are released only after the guest\'s message is STORED — a repeated delivery (duplicate) returns before, never releasing twice');
+  const rel = tsFn(FN, 'releaseHeld');
+  check(/rpc<[\s\S]*?>\(\s*'hub_held_claim', \{ p_conversation: conversation \}\)/.test(rel) && /sendSession\(\{ payload: textPayload\(c\.data\.from!, c\.data\.to!, h\.body, h\.id\), windowExpiresAt: c\.data\.window_expires_at \?\? null, test: !!c\.data\.test, log: null \}\)/.test(rel)
+    && /rpc\('hub_send_finish', \{ p_message: h\.id,/.test(rel), 'releaseHeld: the database claims them (held → queued, once), each goes inside the new window, its outcome recorded');
+  check(!/retry/i.test(rel), 'releaseHeld: never retried by itself');
+  const claim = MIG3.slice(MIG3.indexOf('create function public.hub_held_claim'), MIG3.indexOf('\n$$;', MIG3.indexOf('create function public.hub_held_claim')));
+  check(/with x as \(update public\.hub_messages set status = 'queued' where conversation_id = c\.id and status = 'held' returning id, body, created_at\)/.test(claim) && /for update;/.test(claim),
+    'hub_held_claim: one atomic held → queued under the conversation\'s lock (two deliveries cannot both send it)');
+  check(/when not ch\.sending_enabled then 'sending_off' when g\.hub_blocked_at is not null then 'blocked'/.test(claim) && /when not \(c\.window_expires_at > now\(\)\) then 'window_closed'/.test(claim),
+    'hub_held_claim: nothing goes from a number switched off, to a blocked number, or outside the window');
+  check(/S12 the guest''s tap opens the window: the held answer is handed back ONCE/.test(T3) && /S11 nothing is released before the guest writes/.test(T3), 'the SQL proof (guest_hub_inbox.sql S11–S12) exists');
+  // the quick reply «متابعة المحادثة» of hub_reply_ready arrives as a template button: just a guest message — never an
+  // opt-out, never a hub button by id; stored, it releases the held answer like any message
+  const tap = parseInbound({ id: 'YC-TAP-1', from: '966500009301', to: '966536622277', type: 'button', button: { text: 'متابعة المحادثة', payload: HUB_REPLY_READY_PAYLOAD }, sendTime: '2026-11-13T20:00:00Z' });
+  check(tap.kind === 'button_reply' && tap.buttonSource === 'template' && tap.buttonId === HUB_REPLY_READY_PAYLOAD && tap.text === 'متابعة المحادثة', 'the quick-reply tap parses as a template button reply');
+  check(route(tap, C.club_whatsapp).kind === 'none', `the quick-reply tap is no opt-out and no hub button: route = ${route(tap, C.club_whatsapp).kind}`);
+  const tapEn = parseInbound({ id: 'YC-TAP-2', from: '966500009301', to: '966536622277', type: 'button', button: { text: 'Continue the chat', payload: HUB_REPLY_READY_PAYLOAD } });
+  check(route(tapEn, C.club_whatsapp).kind === 'none' && !isOptOut('متابعة المحادثة') && !isOptOut('Continue the chat'), 'the English tap too; neither title is an opt-out word');
+  check(!/^hub/.test(HUB_REPLY_READY_PAYLOAD) || !HUB_REPLY_READY_PAYLOAD.startsWith('hubcw:'), 'the payload is not the «إلغاء» question\'s');
+  // echoes while «تخزين المحادثات» is off: acknowledged, logged by the reason only
+  check(/else if \(!r\.data\.stored\) console\.log\('wa-automation: echo acknowledged', r\.data\.reason \?\? ''\);/.test(tsFn(FN, 'handleEcho')), 'an echo while storage is off is acknowledged and logged by its reason only');
+}
+
 // ── the SQL proof exists and runs in CI ──
 for (const name of ['N6 a repeated event', 'E1 an echo', 'S2 read stays read', 'C8 after 12 hours', 'H2 a queued «إياب» offer to a held member', 'I1 «تخزين المحادثات» off', 'T1 text older than 12 months', 'R2 Airport Road reception sees Airport Road only']) {
   check(TESTS.includes(name), `the SQL test «${name}» exists`);

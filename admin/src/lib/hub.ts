@@ -144,6 +144,10 @@ export const WEBHOOK_ERRORS: Record<string, string> = {
   hub_store: 'أُضيفت الأحداث في YCloud لكن تعذّر حفظها هنا، اضغط الزر مرة أخرى.',
 };
 export const webhookError = (code: string | undefined) => WEBHOOK_ERRORS[code ?? ''] ?? WEBHOOK_ERRORS.hub_ycloud;
+/** H3 (13 Nov 2026): READ the one endpoint's events at YCloud (GET only) and record them — the page shows what YCloud has */
+export const readWebhookEvents = () => api.edge<{ ok: boolean; error?: string; events?: string[]; changed?: boolean }>('hub-admin', { action: 'read_webhook_events' });
+/** H3: «الإرسال من المركز» of a channel (assistant: edit, every branch; a verified channel only — spec §7.1) */
+export const channelSendingSet = (channel: string, on: boolean) => saved('hub_channel_sending_set', { p_channel: channel, p_on: on });
 export const updateWebhookEvents = () =>
   api.edge<{ ok: boolean; error?: string; added?: string[]; unchanged?: boolean; events?: string[] }>('hub-admin', { action: 'update_webhook_events' });
 

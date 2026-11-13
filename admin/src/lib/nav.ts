@@ -60,12 +60,15 @@ export const NAV_GROUPS: NavGroup[] = [
       { to: '/eyab-whatsapp', label: 'عروض إياب على واتساب', section: 'eyab_wa', icon: 'whatsapp' },
     ],
   },
-  // «مركز الضيوف» (13 Nov 2026, Guest Hub H1): «إعدادات المساعد» first; the inbox, knowledge, radar and «الآن» join it
+  // «مركز الضيوف» (13 Nov 2026, Guest Hub H1): «المحادثات» (H3) then «إعدادات المساعد»; knowledge, radar and «الآن» join
   // in their sessions (sections inbox / knowledge / radar / now exist since H1)
   {
     key: 'hub',
     title: 'مركز الضيوف',
-    items: [{ to: '/assistant', label: 'إعدادات المساعد', section: 'assistant', icon: 'assistant' }],
+    items: [
+      { to: '/inbox', label: 'المحادثات', section: 'inbox', icon: 'inbox' },
+      { to: '/assistant', label: 'إعدادات المساعد', section: 'assistant', icon: 'assistant' },
+    ],
   },
   {
     key: 'partners',
@@ -115,14 +118,17 @@ export interface NavPrefs {
   notify: boolean;
   /** a short sound for new booking requests (off by default) */
   sound: boolean;
+  /** «المحادثات» (H3): a browser notification / a sound when a conversation waits for staff (off by default) */
+  hubNotify: boolean;
+  hubSound: boolean;
 }
 const prefsKey = (email: string | null | undefined) => `armada-nav:${email ?? ''}`;
 export function readPrefs(email: string | null | undefined): NavPrefs {
   try {
     const v = JSON.parse(localStorage.getItem(prefsKey(email)) ?? '{}') as Partial<NavPrefs>;
-    return { collapsed: !!v.collapsed, notify: !!v.notify, sound: !!v.sound };
+    return { collapsed: !!v.collapsed, notify: !!v.notify, sound: !!v.sound, hubNotify: !!v.hubNotify, hubSound: !!v.hubSound };
   } catch {
-    return { collapsed: false, notify: false, sound: false };
+    return { collapsed: false, notify: false, sound: false, hubNotify: false, hubSound: false };
   }
 }
 export function writePrefs(email: string | null | undefined, p: NavPrefs) {

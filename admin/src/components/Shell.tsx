@@ -20,7 +20,7 @@ import { useSession } from '../lib/session';
 import { canView } from '../lib/api';
 import { BRANCH_NAMES, ROLE_LABELS } from '../lib/format';
 import { docTitle, EXTRA_TITLES, itemOf, readPrefs, visibleGroups, writePrefs, type NavGroup, type NavPrefs } from '../lib/nav';
-import { useBookingBadge, usePartnersBadge } from '../lib/live';
+import { useBookingBadge, useHubBadge, usePartnersBadge } from '../lib/live';
 import { onOutsidePress } from '../../../src/lib/client';
 import { useLeaveGuard } from './ui';
 import { Icon } from './icons';
@@ -137,9 +137,10 @@ function AccountMenu({ collapsed, prefs, setPrefs, onGo }: { collapsed: boolean;
     return () => removeEventListener('keydown', k);
   }, [open]);
   const canBookings = canView(me, 'bookings');
-  const askNotify = async (on: boolean) => {
+  const canInbox = canView(me, 'inbox');
+  const askNotify = async (on: boolean, key: 'notify' | 'hubNotify' = 'notify') => {
     if (on && 'Notification' in window && Notification.permission === 'default') setPerm(await Notification.requestPermission());
-    setPrefs({ ...prefs, notify: on });
+    setPrefs({ ...prefs, [key]: on });
   };
   const role = me ? `${ROLE_LABELS[me.role] ?? me.role}${me.branch ? ` · ${BRANCH_NAMES[me.branch] ?? me.branch}` : ''}` : '';
   return (
@@ -178,6 +179,20 @@ function AccountMenu({ collapsed, prefs, setPrefs, onGo }: { collapsed: boolean;
                 <span>صوت التنبيه</span>
               </label>
               <p className="text-[11px] text-ink-muted px-3 pb-1">أثناء فتح اللوحة فقط؛ رقم الحجز والفرع دون بيانات الضيف.</p>
+            </fieldset>
+          )}
+          {canInbox && (
+            <fieldset className="account-alerts" data-hub-alerts-prefs>
+              <legend className="text-xs font-bold text-ink-muted px-3 pt-2">تنبيه بالمحادثات المنتظرة</legend>
+              <label className="account-check">
+                <input type="checkbox" checked={prefs.hubNotify && perm === 'granted'} disabled={perm === 'denied'} onChange={(e) => void askNotify(e.target.checked, 'hubNotify')} data-pref="hubNotify" data-no-dirty />
+                <span>إشعار المتصفح{perm === 'denied' ? ' (محظور في إعدادات المتصفح)' : ''}</span>
+              </label>
+              <label className="account-check">
+                <input type="checkbox" checked={prefs.hubSound} onChange={(e) => setPrefs({ ...prefs, hubSound: e.target.checked })} data-pref="hubSound" data-no-dirty />
+                <span>صوت التنبيه</span>
+              </label>
+              <p className="text-[11px] text-ink-muted px-3 pb-1">أثناء فتح اللوحة فقط؛ اسم الوحدة دون كلام الضيف أو رقمه.</p>
             </fieldset>
           )}
           <button type="button" className="account-item" onClick={() => guard.run(() => void signOut())} data-action="sign-out">
@@ -253,7 +268,8 @@ export default function Shell({ children }: { children: ReactNode }) {
   prefsRef.current = prefs;
   const badge = useBookingBadge(me, () => prefsRef.current);
   const partnersBadge = usePartnersBadge(me);
-  const badges = useMemo(() => ({ bookings: badge, partners: partnersBadge }), [badge, partnersBadge]);
+  const hubBadge = useHubBadge(me, () => prefsRef.current);
+  const badges = useMemo(() => ({ bookings: badge, partners: partnersBadge, inbox: hubBadge }), [badge, partnersBadge, hubBadge]);
   const groups = useMemo(() => visibleGroups(me), [me]);
   const [drawer, setDrawer] = useState(false);
   const [search, setSearch] = useState(false);
@@ -304,7 +320,7 @@ export default function Shell({ children }: { children: ReactNode }) {
           <header id="app-topbar" className="topbar">
             <button type="button" className="side-icon-btn md:hidden" onClick={() => setDrawer(true)} aria-label="القائمة" aria-expanded={drawer} aria-haspopup="dialog" data-action="nav-open" data-tour="nav-open">
               <Icon name="menu" size={22} />
-              {badge || partnersBadge ? <span className="side-dot" aria-hidden="true" /> : null}
+              {badge || partnersBadge || hubBadge ? <span className="side-dot" aria-hidden="true" /> : null}
             </button>
             {trail.length > 1 ? (
               <nav aria-label="مسار الصفحة" className="topbar-title min-w-0" data-breadcrumb>

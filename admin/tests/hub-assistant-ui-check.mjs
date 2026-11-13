@@ -102,6 +102,9 @@ for (const [role, level] of [['admin', 'edit'], ['management', 'view']]) {
         if (fn === 'hub_webhook_status') return ok({ system_admin: role === 'admin', registered: true, events: ['whatsapp.inbound_message.received', 'whatsapp.message.updated'], registered_at: '2026-11-09T07:44:00Z' });
         if (fn === 'hub_setting_set') return ok({ ok: true, batch_id: id(901) });
         if (fn === 'hub-admin' && body?.action === 'update_webhook_events') return ok({ ok: true, added: ['whatsapp.smb.message.echoes', 'whatsapp.phone_number.quality_updated'], events: [] });
+        // H3: the page reads the endpoint's events from YCloud on load (GET only, recorded by the server)
+        if (fn === 'hub-admin' && body?.action === 'read_webhook_events') return ok({ ok: true, events: ['whatsapp.inbound_message.received', 'whatsapp.message.updated'], changed: false });
+        if (fn === 'hub_channel_sending_set') return ok({ ok: true, batch_id: id(902) });
         if (fn === 'hub_unit_members_set' || fn === 'hub_summary_recipients_set') return ok({ ok: true, batch_id: id(900), count: 1 });
         if (fn === 'hub-admin' && body?.action === 'verify_channel') return ok({ ok: true, display_name: 'أرمادا ريزيدنس طريق المطار', status: 'CONNECTED', quality_rating: 'GREEN', messaging_limit: 'TIER_2K' });
         if (fn === 'hub-admin' && body?.action === 'refresh_templates') return ok({ ok: true, results: [{ channel: id(101), ok: true, count: 2 }, { channel: id(102), ok: true, count: 2 }] });
@@ -132,6 +135,12 @@ for (const [role, level] of [['admin', 'edit'], ['management', 'view']]) {
       const hookRows = await page.$$eval('[data-webhook-event]', (a) => a.map((x) => x.getAttribute('data-on')));
       check(hookRows.join() === 'yes,yes,no,no', `${tag}: «استقبال واتساب» lists four events, the two hub events not yet on — ${hookRows.join()}`);
       check((await page.locator('[data-action="webhook-events"]').count()) === (role === 'admin' ? 1 : 0), `${tag}: «تحديث أحداث الاستقبال» shown to the system admin only`);
+      // H3: the events are read from YCloud on load, once, by those who may read YCloud (a GET — never the update)
+      const reads = calls.filter((c) => c.fn === 'hub-admin' && c.body?.action === 'read_webhook_events');
+      check(reads.length === (edit ? 1 : 0) && reads.every((c) => Object.keys(c.body).join() === 'action'), `${tag}: read_webhook_events on load (${reads.length}) for an editor only`);
+      check(!calls.some((c) => c.fn === 'hub-admin' && c.body?.action === 'update_webhook_events'), `${tag}: nothing is updated at YCloud by opening the page`);
+      // H3: «الإرسال من المركز» per channel — off, for every-branch editors only
+      check((await page.locator('[data-channel-sending]').count()) === (edit ? 2 : 0) && (await page.$$eval('[data-channel-sending]', (a) => a.every((x) => !x.checked))), `${tag}: «الإرسال من المركز» off on both channels (editors only)`);
       for (const tk of TOUR) {
         if (tk === 'hub-verify' && !edit) continue;
         check((await page.locator(`[data-tour~="${tk}"]`).count()) > 0, `${tag}: the tour target ${tk} exists`);
@@ -168,6 +177,10 @@ for (const [role, level] of [['admin', 'edit'], ['management', 'view']]) {
         check(inbox && inbox.body.p_key === 'hub_inbox_on' && inbox.body.p_value === true, `${tag}: «تخزين المحادثات» → hub_setting_set(hub_inbox_on, true) — ${JSON.stringify(inbox?.body)}`);
         check((await page.locator('[data-hub-blocked]').count()) === 0, `${tag}: «تخزين المحادثات» opens no «لا يُشغَّل…»`);
 
+        // H3: «الإرسال من المركز» needs a verified channel (the stub's channels are not verified: disabled)
+        check(await page.$$eval('[data-channel-sending]', (a) => a.every((x) => x.disabled)), `${tag}: «الإرسال من المركز» waits for «تحقق من القناة»`);
+        check(!calls.some((c) => c.fn === 'hub_channel_sending_set'), `${tag}: no sending switch-on left the page`);
+
         // H2: «تحديث أحداث الاستقبال» — the system admin only, one call to hub-admin
         await page.locator('[data-action="webhook-events"]').click();
         await page.waitForTimeout(400);
@@ -195,7 +208,7 @@ for (const [role, level] of [['admin', 'edit'], ['management', 'view']]) {
         await page.locator('[data-action="templates-refresh"]').click();
         await page.waitForTimeout(500);
         // (the «تحديث أحداث الاستقبال» click above is checked on its own)
-        const hub = calls.filter((c) => c.fn === 'hub-admin' && c.body?.action !== 'update_webhook_events').map((c) => c.body);
+        const hub = calls.filter((c) => c.fn === 'hub-admin' && !['update_webhook_events', 'read_webhook_events'].includes(c.body?.action)).map((c) => c.body);
         check(hub.length === 2 && hub[0].action === 'verify_channel' && hub[0].channel === id(101) && hub[1].action === 'refresh_templates', `${tag}: hub-admin called with verify_channel and refresh_templates only — ${JSON.stringify(hub)}`);
 
         // the morning summary: active only after the filter

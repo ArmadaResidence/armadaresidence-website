@@ -95,6 +95,23 @@ walk('admin/src');
 const touching = adminFiles.filter((f) => /hub_messages|translation_ar|translation_en|hub_thread|hub_inbox_list/.test(read(f)));
 check(touching.every((f) => ['admin/src/lib/inbox.ts', 'admin/src/pages/Inbox.tsx'].includes(f)), `only the inbox reads conversation text in the dashboard (H3) — ${touching.join(', ')}`);
 
+// ── 3b. H3 (13 Nov 2026): the inbox's other outputs carry no guest words ──
+const fnOf3 = (name) => MIG3.slice(MIG3.indexOf(`create function public.${name}(`), MIG3.indexOf('\n$$;', MIG3.indexOf(`create function public.${name}(`)));
+const stripSql = (s) => s.replace(/--[^\n]*/g, '');
+check(!/\bbody\b|translation_|wa_profile_name|phone/.test(stripSql(fnOf3('hub_guest_conversations'))), 'the guest drawer\'s «المحادثات» (hub_guest_conversations): no message text, no WhatsApp name, no phone — counts, units, states, dates, topics');
+check(!/\bbody\b|phone/.test(stripSql(fnOf3('hub_inbox_badge'))), 'the badge counts only');
+check(!/\bbody\b|phone|wa_profile_name|guest_profiles/.test(stripSql(fnOf3('hub_escalations_claim'))), 'the escalation claim (the waiting email) holds no text, name or phone');
+check(!/\bbody\b(?! :=)|phone/.test(stripSql(fnOf3('hub_inbox_tick'))), 'the timers job holds no text (its only «body» is the request to wa-automation)');
+const LIVE = read('admin/src/lib/live.ts');
+const hubLive = LIVE.slice(LIVE.indexOf('export function hubNotifyText'));
+check(/body: `\$\{unit \? `\$\{unit\} — ` : ''\}\$\{fresh \? 'محادثة جديدة' : 'بانتظار موظف'\}`/.test(hubLive) && !/hub_messages|\.body\b|phone|wa_profile_name/.test(hubLive.replace(/body: `[^`]*`[^`]*`[^`]*`[^`]*`/, '')),
+  'the browser notification says the unit and «محادثة جديدة» / «بانتظار موظف» — never a guest word, a name or a number');
+check(/\.on\('postgres_changes', \{ event: 'INSERT', schema: 'public', table: 'dashboard_signals' \}/.test(hubLive) && !/table: 'hub_messages'/.test(hubLive), 'the sidebar badge listens to the signals, not to the messages');
+const ESC = read('supabase/functions/booking-request/email.ts');
+const waitMail = ESC.slice(ESC.indexOf('export function hubWaitingMail'), ESC.indexOf('\n}\n', ESC.indexOf('export function hubWaitingMail')));
+check(!/\.body\b|phone|wa_name|guest/.test(waitMail.replace(/\/\/[^\n]*/g, '').replace(/body: header/g, '')), 'the waiting email is built from the unit, the state and the minutes only');
+check(!/hub_messages/.test(read('admin/src/pages/Guests.tsx')) && !/hub_messages|hub_thread/.test(read('admin/src/pages/Overview.tsx') + read('admin/src/pages/Reports.tsx')), 'no report, overview or guests screen reads a conversation\'s text');
+
 // ── 4. the logs, events, alerts and the audit ──
 for (const t of ['whatsapp_messages', 'eyab_messages']) {
   const at = ALL.search(new RegExp(`create table (if not exists )?public\\.${t} \\(`));

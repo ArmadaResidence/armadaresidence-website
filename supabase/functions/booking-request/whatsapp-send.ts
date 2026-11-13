@@ -237,8 +237,9 @@ export interface SessionSend {
 }
 
 async function finishLog(log: SessionSend['log'], r: WaResult, error: string | null, from: string): Promise<void> {
+  if (!log) return;
   const env = service();
-  if (!env || !log) return;
+  if (!env) return;
   const res = await fetch(`${env.url}/rest/v1/rpc/wa_finish`, {
     method: 'POST',
     headers: headers(env.key),

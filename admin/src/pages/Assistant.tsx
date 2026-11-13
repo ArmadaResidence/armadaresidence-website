@@ -16,12 +16,12 @@
 // Every change is one audited batch with the 30 s «تراجع» toast (the YCloud reads mirror YCloud and are not undone).
 // assistant: view sees everything read-only; edit changes it; the channels, templates, switches and recipients need
 // every branch (a single-branch editor sees its branch's units only).
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import * as api from '../lib/api';
 import { BRANCH_NAMES, ROLE_LABELS, riyadhDateTime } from '../lib/format';
 import {
   ALERT_LABELS, CATEGORY_LABELS, EMAIL_RE, KIND_LABELS, LANGUAGE_LABELS, MODES, MODE_LABELS, NOT_YET, STATUS_LABELS, SWITCHES, WEBHOOK_EVENTS, eligible, gateText, gatesOf,
-  membersSet, modeSet, overview, phoneText, qualityText, recipientsSet, refreshTemplates, settingSet, templateStatus, unitSave, updateWebhookEvents, verifyChannel, verifyError,
+  channelSendingSet, membersSet, modeSet, overview, phoneText, qualityText, readWebhookEvents, recipientsSet, refreshTemplates, settingSet, templateStatus, unitSave, updateWebhookEvents, verifyChannel, verifyError,
   webhookError, webhookStatus, type HubOverview, type HubUnit, type UnitMode, type WebhookStatus,
 } from '../lib/hub';
 import { CancelButton, DirtyScope, ErrorBox, Field, Loading, Modal, Spinner, useToast } from '../components/ui';
@@ -38,11 +38,18 @@ export default function Assistant() {
   const [blocked, setBlocked] = useState<{ title: string; gates: string[] } | null>(null);
   const [formBusy, setFormBusy] = useState(false);
   const [hook, setHook] = useState<WebhookStatus | null>(null);
+  const readOnce = useRef(false);
 
   const load = async () => {
     try {
       setError(null);
-      setO(await overview());
+      const ov = await overview();
+      setO(ov);
+      // H3: the events as YCloud has them (a GET, recorded) — for those who may read YCloud; the others see the record
+      if (ov.can_edit && ov.all_branches && !readOnce.current) {
+        readOnce.current = true;
+        await readWebhookEvents().catch(() => null);
+      }
       // the webhook's events: shown when the server answers (an older server without the RPC simply hides the card)
       setHook(await webhookStatus().catch(() => null));
     } catch (e) {
@@ -108,6 +115,23 @@ export default function Assistant() {
       const r = await verifyChannel(channelId);
       if (!r.ok) toast(verifyError(r.error), 'error');
       else toast(`تم التحقق من قناة ${u.name_ar} — الجودة: ${qualityText(r.quality_rating ?? null)}، حد الرسائل: ${r.messaging_limit ?? 'غير معروف'}`);
+      await load();
+    } catch (e) {
+      toast((e as Error).message, 'error');
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  /** «الإرسال من المركز» (H3): staff replies leave this number only while it is on; «تراجع» switches it back */
+  async function setSending(u: HubUnit, channelId: string, on: boolean) {
+    setBusy(`sending:${channelId}`);
+    try {
+      await channelSendingSet(channelId, on);
+      toast.undo(`${u.name_ar} — الإرسال من المركز ${on ? 'مفعّل' : 'متوقف'}`, async () => {
+        await channelSendingSet(channelId, !on);
+        await load();
+      });
       await load();
     } catch (e) {
       toast((e as Error).message, 'error');
@@ -217,7 +241,7 @@ export default function Assistant() {
             )}
           </div>
           <p className="text-xs text-ink-muted">
-            ما يصل من واتساب إلى عنوان الاستقبال الوحيد في YCloud (المسجَّل في «عروض إياب على واتساب»). الزر يضيف الحدثين الجديدين فقط ولا يحذف أي حدث، ويظهر لمدير النظام وحده.
+            ما يصل من واتساب إلى عنوان الاستقبال الوحيد في YCloud (المسجَّل في «عروض إياب على واتساب»)، كما يقرؤه هذا القسم من YCloud عند فتح الصفحة. الزر يضيف ما ينقص من الحدثين الجديدين فقط ولا يحذف أي حدث، ويظهر لمدير النظام وحده حين ينقص حدث.
           </p>
           {!hook.registered ? (
             <p className="text-sm text-ink-muted" data-webhook-none>استقبال ردود واتساب غير مسجَّل بعد.</p>
@@ -278,9 +302,16 @@ export default function Assistant() {
                       {c.waba_id && <div className="text-xs text-ink-muted">حساب واتساب للأعمال: <span className="latin" dir="ltr">{c.waba_id}</span></div>}
                     </div>
                     {global && (
-                      <button type="button" className="btn btn-ghost btn-sm" disabled={busy !== null} onClick={() => verify(u, c.id)} data-action="channel-verify" data-tour="hub-verify">
-                        {busy === `verify:${c.id}` && <Spinner />} تحقق من القناة
-                      </button>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <label className="flex items-center gap-2 text-sm min-h-11" title={c.verified_at ? undefined : 'تحقّق من القناة أولًا'}>
+                          <input type="checkbox" role="switch" className="size-5 accent-bronze-deep" checked={c.sending_enabled} aria-checked={c.sending_enabled}
+                            disabled={busy !== null || !c.verified_at} onChange={(e) => setSending(u, c.id, e.target.checked)} data-channel-sending={c.address} />
+                          الإرسال من المركز
+                        </label>
+                        <button type="button" className="btn btn-ghost btn-sm" disabled={busy !== null} onClick={() => verify(u, c.id)} data-action="channel-verify" data-tour="hub-verify">
+                          {busy === `verify:${c.id}` && <Spinner />} تحقق من القناة
+                        </button>
+                      </div>
                     )}
                   </div>
                 ))
