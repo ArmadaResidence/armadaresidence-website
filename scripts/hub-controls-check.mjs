@@ -83,16 +83,50 @@ check(/if \(on && gates\.length\) \{\s+setBlocked/.test(PAGE), 'a switch-on show
 check(/key: 'hub_assistant_on', label: 'المساعد يعمل'/.test(HUB) && /key: 'hub_inbox_on', label: 'تخزين المحادثات'/.test(HUB), 'the two global switches named as the spec names them');
 check(!/sending_enabled/.test(HUB.replace(/sending_enabled: boolean;/, '')) || !/settingSet\('sending/.test(PAGE), 'the page never turns a channel\'s sending on');
 
-// ── 4. hub-admin: YCloud reads, and the one PATCH of the endpoint's events ──
+// ── 4. hub-admin: YCloud reads, the one PATCH of the endpoint's events, and (H3) the staff sends ──
+// Since H3 (13 Nov 2026) hub-admin also sends — the inbox's staff replies and hub_reply_ready — but ONLY through the one
+// sender (booking-request/whatsapp-send.ts: sendSession / sendTemplate); its own YCloud calls stay the reads, the PATCH and
+// the typing indicator.
 check(/\[functions\.hub-admin\]\nverify_jwt = true/.test(CONFIG), 'hub-admin: verify_jwt = true');
-const ycMethods = [...FN.matchAll(/fetch\((make\(page\)|webhookEndpointUrl\(id\.data\)), \{\s*method: '(\w+)'/g)].map((x) => x[2]);
-check(!/sendDirectly|\/messages|rotateSecret/.test(FN + YC) && !/fetch\(`?\$\{?YCLOUD/.test(FN) && ycMethods.length === 3 && ycMethods.every((x) => x === 'GET' || x === 'PATCH'),
-  `hub-admin never sends, never creates or deletes anything on YCloud, never rotates the secret — its YCloud calls: ${ycMethods.join(', ')}`);
-check((FN.match(/'X-API-Key'/g) ?? []).length === 3 && (FN.match(/method: 'GET', headers: \{ 'X-API-Key': key/g) ?? []).length === 2, 'two GETs (the lists, the one endpoint) and one more call');
+const ycCalls = [...FN.matchAll(/fetch\((make\(page\)|webhookEndpointUrl\(id(?:\.data)?\)|typingUrl\(id\)), \{\s*method: '(\w+)'/g)].map((x) => `${x[1].replace(/\(.*$/, '')}:${x[2]}`);
+check(JSON.stringify(ycCalls) === JSON.stringify(['make:GET', 'typingUrl:POST', 'webhookEndpointUrl:GET', 'webhookEndpointUrl:PATCH']),
+  `hub-admin's own YCloud calls: the typing indicator, the endpoint read, the lists, the one PATCH — ${ycCalls.join(', ')}`);
+check(!/sendDirectly|\/messages|rotateSecret|webhookEndpoints`|method: '(PUT|DELETE)'/.test(FN + YC) && !/fetch\(`?\$\{?YCLOUD/.test(FN),
+  'hub-admin never calls YCloud\'s send route itself, never creates, replaces or deletes anything, never rotates the secret');
+check(/import \{ sendSession, sendTemplate, textPayload, type WaResult \} from '\.\.\/booking-request\/whatsapp-send\.ts';/.test(FN) && /await sendSession\(\{ payload: textPayload\(/.test(FN) && /await sendTemplate\(hubReplyReadyPayload\(/.test(FN),
+  'the staff sends go through the one sender (sendSession for text, sendTemplate for hub_reply_ready)');
 check((FN.match(/method: 'PATCH'/g) ?? []).length === 1 && /fetch\(webhookEndpointUrl\(id\.data\), \{\s+method: 'PATCH',[\s\S]{0,200}body: JSON\.stringify\(eventsPatchBody\(m\.events\)\)/.test(FN), 'the one write: a PATCH of the one endpoint with its events only');
 check(/rpc<\{ system_admin: boolean; registered: boolean; events: string\[\] \}>\('hub_webhook_status', \{\}, jwt\);\s+if \(!st\.ok \|\| !st\.data\?\.system_admin\) return json\(req, 403/.test(FN), 'update_webhook_events: the system admin only (judged as the user)');
-check(/if \(!before \|\| !isOurEndpoint\(ep\)\)/.test(FN) && /if \(!now \|\| !eventsKept\(before, now\)\)/.test(FN), 'update_webhook_events: our endpoint only, and YCloud\'s answer checked (nothing removed)');
+// H3: «تحديث أحداث الاستقبال» READS first and PATCHes only when an event is missing (the H2 press already added them)
+const upd = FN.slice(FN.indexOf("if (body.action === 'update_webhook_events')"));
+const iRead = upd.indexOf('await readEndpoint(id.data, key)');
+const iNone = upd.indexOf('if (!m.added.length) {');
+const iPatch = upd.indexOf("method: 'PATCH'");
+check(iRead > 0 && iNone > iRead && iPatch > iNone && /if \(!m\.added\.length\) \{[\s\S]{0,260}hub_webhook_events_sync[\s\S]{0,120}return json\(req, 200, \{ ok: true, unchanged: true/.test(upd),
+  'update_webhook_events: read first; every event there → no PATCH, the record only follows YCloud; the PATCH only when an event is missing');
+check(/if \(!before \|\| !isOurEndpoint\(r\.ep\)\)/.test(FN) && /if \(!now \|\| !eventsKept\(before, now\)\)/.test(FN), 'update_webhook_events: our endpoint only, and YCloud\'s answer checked (nothing removed)');
+const rd = FN.slice(FN.indexOf("if (body.action === 'read_webhook_events')"), FN.indexOf("if (body.action === 'verify_channel')"));
+check(rd.length > 0 && !/PATCH|POST/.test(rd) && /readEndpoint\(id\.data, key\)/.test(rd) && /hub_webhook_events_sync/.test(rd) && /isOurEndpoint\(r\.ep\)/.test(rd),
+  'read_webhook_events: a GET of our endpoint only, recorded through hub_webhook_events_sync — never a write to YCloud');
 check(/hub_admin_gate/.test(FN) && /rpc<\{ ok: boolean; user: string \| null \}>\('hub_admin_gate', \{\}, jwt\)/.test(FN), 'the caller is judged as the user (hub_admin_gate with the JWT)');
+check(/rpc<Begin>\('hub_send_begin', \{[^}]*\}, jwt\)/.test(FN) && /rpc<Begin>\('hub_send_retry', \{ p_message: id \}, jwt\)/.test(FN), 'the inbox sends are judged AS THE USER (hub_send_begin / hub_send_retry with the JWT: inbox: edit in the unit)');
+const MIG3 = read('supabase/migrations/20261113300000_guest_hub_inbox.sql');
+check(/if not ch\.sending_enabled then raise exception 'hub_sending_off'/.test(MIG3) && /if not internal\.hub_setting_bool\('hub_inbox_on'\) then raise exception 'hub_inbox_off'/.test(MIG3) && /if g\.hub_blocked_at is not null then raise exception 'hub_blocked'/.test(MIG3),
+  'a staff send needs «تخزين المحادثات», the channel\'s «الإرسال من المركز» and a number that is not blocked');
+check(/if p_on and ch\.verified_at is null then raise exception 'hub_channel_unverified'/.test(MIG3) && /if not internal\.can\('assistant', 'edit'\) or not internal\.all_branches\(\) then raise exception 'not allowed'/.test(MIG3.slice(MIG3.indexOf('create function public.hub_channel_sending_set'))),
+  '«الإرسال من المركز»: assistant: edit on every branch, a verified channel only');
+check(!/update public\.hub_channels set sending_enabled = true/.test(MIG3) && !/sending_enabled = true/.test(MIG3), 'the H3 migration switches no channel on');
+check(/raise exception 'hub_no_assistant'/.test(MIG3) && /if not internal\.hub_engine_ready\(\) or not internal\.hub_setting_bool\('hub_assistant_on'\)/.test(MIG3), '«إعادة للمساعد» refused while no assistant exists');
+// production loads pg_safeupdate for the API roles: every UPDATE / DELETE of a hub migration carries a WHERE (13 Nov 2026 —
+// the H2 store without one failed on production only)
+for (const [name, sql] of [['H1', MIG], ['H2', MIG2], ['H3', MIG3]]) {
+  const body = sql.replace(/--[^\n]*/g, '');
+  const stmts = [...body.matchAll(/\b(update|delete from)\s+(public|internal|storage)\.[a-z_]+[\s\S]*?;/gi)].map((x) => x[0]);
+  const bad = stmts.filter((x) => !/\bwhere\b/i.test(x) && !/^update [a-z_.]+ (set|as)\b[\s\S]*\bfrom\b[\s\S]*where/i.test(x));
+  // H2's hub_webhook_events_store (replaced by H3) is the known one
+  const known = name === 'H2' ? bad.filter((x) => !/update public\.wa_webhook set events = p_after;/.test(x)) : bad;
+  check(known.length === 0, `${name}: every UPDATE / DELETE has a WHERE (production's pg_safeupdate) — ${known.map((x) => x.slice(0, 80)).join(' | ')}`);
+}
 check(phoneNumbersUrl('3187536471439127') === 'https://api.ycloud.com/v2/whatsapp/phoneNumbers?filter.wabaId=3187536471439127&limit=100&page=1', 'the phone-number list URL');
 check(templatesUrl('329667206894245', 2) === 'https://api.ycloud.com/v2/whatsapp/templates?filter.wabaId=329667206894245&limit=100&page=2', 'the template list URL');
 const phones = [

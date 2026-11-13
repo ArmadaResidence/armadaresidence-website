@@ -215,6 +215,16 @@ const KNOWN: [RegExp, string][] = [
   [/^hub_recipient_email/, 'أحد العناوين ليس بريدًا صحيحًا.'],
   [/^hub_recipient_duplicate/, 'البريد نفسه مكرر في القائمة.'],
   [/^hub_setting_read_only/, 'هذا الإعداد للعرض فقط.'],
+  // «المحادثات» (13 Nov 2026, Guest Hub H3) — the same texts as lib/inbox.ts SEND_ERRORS for the RPC refusals
+  [/^hub_closed/, 'هذه المحادثة مغلقة.'],
+  [/^hub_no_assistant/, 'لا يوجد مساعد بعد، فتبقى المحادثة مع الفريق.'],
+  [/^hub_unit_off/, 'المساعد متوقف في هذه الوحدة.'],
+  [/^hub_note/, 'اكتب ملاحظة (حتى 2000 حرف؛ والتحويل يحتاج ملاحظة من حرفين على الأقل).'],
+  [/^hub_transfer_unit/, 'اختر وحدة ظاهرة غير هذه الوحدة.'],
+  [/^hub_assign_staff/, 'لا يُسند إلا لعضو في فريق الوحدة يملك صلاحية الرد في «المحادثات».'],
+  [/^hub_unanswered_guest_only/, 'تُضاف رسائل الضيف وحدها إلى «لم أعرف الإجابة».'],
+  [/^hub_channel_unverified/, 'تحقّق من القناة أولًا («تحقق من القناة»)، ثم شغّل الإرسال منها.'],
+  [/^hub_retry/, 'لا تُعاد إلا رسالة تعذّر إرسالها.'],
 ];
 
 /** Arabic message for a database or function refusal; `what` (the call) goes to the console only. */

@@ -33,6 +33,12 @@
 //       whatsapp.phone_number.quality_updated — public.hub_quality_update; below High → one alert and one email to the
 //         active admins.
 //       Anything else → acknowledged, logged by its type only. No log line carries a text, a name or a phone number.
+//       The inbox (H3, 13 Nov 2026): after a guest message is stored, every answer staff held with «إرسال عند رد الضيف»
+//       goes ONCE inside the window that message opened (public.hub_held_claim → sendSession → public.hub_send_finish)
+//       — the quick reply «متابعة المحادثة» of hub_reply_ready is such a message too.
+//   - pg_cron hub-inbox (every 2 minutes, public.hub_inbox_tick) → {action: 'hub-escalate'}: «محادثة بانتظار الرد» to the
+//     branch's reception recipients for each conversation waiting past hub_escalate_min, once per waiting period
+//     (public.hub_escalations_claim; hubWaitingMail — no guest words, no phone).
 //   - the dashboard (POST with the staff member's JWT; the dashboard's origins — _shared/cors.ts):
 //       {action: 'test', id} — «إرسال تجربة لنفسي»: public.eyab_test_begin AS THE USER (eyab_wa edit, the user's own
 //         number, 20 a day), then the real send of each language to that number;
@@ -47,7 +53,7 @@
 import content from '../booking-request/content.generated.json' with { type: 'json' };
 import { waErrorCode } from '../booking-request/whatsapp.ts';
 import { buttonsPayload, sendSession, textPayload } from '../booking-request/whatsapp-send.ts';
-import { hubQualityMail } from '../booking-request/email.ts';
+import { hubQualityMail, hubWaitingMail } from '../booking-request/email.ts';
 import { allowedOrigins, ALLOWED_HEADERS } from '../_shared/cors.ts';
 import {
   EVENT_ECHO, EVENT_INBOUND, EVENT_QUALITY, EVENT_STATUS, HUB_EVENTS, MEDIA_MAX_BYTES, cancelQuestion, describe, e164, mediaExt, parseEcho, parseInbound, parseQuality,
@@ -259,6 +265,32 @@ async function storeMedia(m: Inbound, unit: string, conversation: string, messag
   }
 }
 
+/** the answers staff held for this conversation (H3): claimed once by the database, each sent inside the new window */
+async function releaseHeld(conversation: string): Promise<number> {
+  const c = await rpc<{ ok: boolean; messages: { id: string; body: string }[]; from?: string; to?: string; window_expires_at?: string; test?: boolean; reason?: string }>(
+    'hub_held_claim', { p_conversation: conversation });
+  if (!c.ok) {
+    console.error('wa-automation: held claim failed', c.status, c.message.slice(0, 120));
+    return 0;
+  }
+  if (c.data.reason) console.log('wa-automation: held answers not sent —', c.data.reason);
+  let n = 0;
+  for (const h of c.data.messages ?? []) {
+    let r;
+    try {
+      r = await sendSession({ payload: textPayload(c.data.from!, c.data.to!, h.body, h.id), windowExpiresAt: c.data.window_expires_at ?? null, test: !!c.data.test, log: null });
+    } catch (e) {
+      console.error('wa-automation: held payload refused', String(e).slice(0, 120));
+      r = { accepted: false, status: 'failed', messageId: null, errorCode: 'payload' };
+    }
+    const f = await rpc('hub_send_finish', { p_message: h.id, p_status: r.accepted ? r.status : 'failed', p_ycloud_id: r.messageId, p_error_code: r.errorCode });
+    if (!f.ok) console.error('wa-automation: held outcome not recorded', f.status);
+    if (r.accepted) n++;
+  }
+  if (n) console.log('wa-automation: held answers sent', `n=${n}`);
+  return n;
+}
+
 // deno-lint-ignore no-explicit-any
 async function handleInbound(ev: any, test: boolean): Promise<Record<string, unknown>> {
   const m = parseInbound(ev?.whatsappInboundMessage);
@@ -276,6 +308,8 @@ async function handleInbound(ev: any, test: boolean): Promise<Record<string, unk
       if (ing.data.media_wanted && !test && ing.data.unit && ing.data.conversation_id && ing.data.message_id) {
         await storeMedia(m, ing.data.unit, ing.data.conversation_id, ing.data.message_id);
       }
+      // «إرسال عند رد الضيف» (H3): the guest wrote — the held answers go now, once
+      if (ing.data.conversation_id) await releaseHeld(ing.data.conversation_id);
     } else if (ing.data.reason === 'duplicate') {
       // the same message delivered again: everything below already ran for it
       return { kind: 'inbound', stored: false, duplicate: true };
@@ -342,13 +376,15 @@ async function handleEcho(raw: any, test: boolean): Promise<Record<string, unkno
     p: { channel: e.from, phone: e.to, provider_id: e.id, sent_at: e.sentAt, kind: e.kind, body: e.text || null, payload: e.payload, is_test: test },
   });
   if (!r.ok) console.error('wa-automation: hub echo failed', r.status, r.message.slice(0, 120));
+  // acknowledged either way; while «تخزين المحادثات» is off nothing is stored (the reason only — never the text)
+  else if (!r.data.stored) console.log('wa-automation: echo acknowledged', r.data.reason ?? '');
   return { kind: 'echo', stored: r.ok && r.data.stored, reason: r.ok ? r.data.reason ?? null : 'error' };
 }
 
 async function sendAdminMail(to: string[], mail: { subject: string; html: string; text: string }): Promise<boolean> {
   const key = Deno.env.get('RESEND_API_KEY');
   if (!key || !to.length) {
-    console.error('wa-automation: quality alert not sent —', key ? 'no active admin' : 'RESEND_API_KEY missing');
+    console.error('wa-automation: staff email not sent —', key ? 'no recipient' : 'RESEND_API_KEY missing');
     return false;
   }
   try {
@@ -363,6 +399,24 @@ async function sendAdminMail(to: string[], mail: { subject: string; html: string
     console.error('wa-automation: resend', String(e).slice(0, 200));
     return false;
   }
+}
+
+/** «محادثة بانتظار الرد» (H3, copy.md §7): one email per conversation per waiting period, to the branch's reception */
+async function escalate(): Promise<{ sent: number; failed: number }> {
+  const r = await rpc<{ id: string; short: string; unit_name: string; state: string; waiting_min: number; recipients: string[] }[]>('hub_escalations_claim', {});
+  if (!r.ok) {
+    console.error('wa-automation: escalations claim failed', r.status, r.message.slice(0, 120));
+    return { sent: 0, failed: 0 };
+  }
+  let sent = 0;
+  let failed = 0;
+  for (const e of r.data ?? []) {
+    const mail = hubWaitingMail(content, { conversation_id: e.id, short: e.short, unit_name: e.unit_name, state: e.state, waiting_min: e.waiting_min });
+    if (await sendAdminMail(e.recipients ?? [], mail)) sent++;
+    else failed++;
+  }
+  if (sent || failed) console.log('wa-automation: hub escalations', `sent=${sent}`, `failed=${failed}`);
+  return { sent, failed };
 }
 
 // deno-lint-ignore no-explicit-any
@@ -531,6 +585,7 @@ Deno.serve(async (req) => {
     if (!ok.ok || ok.data !== true) return json(req, 403, { ok: false });
     if (body.action === 'drain') return json(req, 200, { ok: true, ...(await drain()) });
     if (body.action === 'hub-media-purge') return json(req, 200, { ok: true, ...(await mediaPurge()) });
+    if (body.action === 'hub-escalate') return json(req, 200, { ok: true, ...(await escalate()) });
     return json(req, 400, { ok: false });
   }
   if (same(req.headers.get('x-armada-test') ?? '', Deno.env.get('BOOKING_TEST_TOKEN') ?? '')) return await qa(req, body);

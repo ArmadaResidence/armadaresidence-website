@@ -31,6 +31,7 @@ import Partners from './pages/Partners';
 import Guests from './pages/Guests';
 import EyabWhatsApp from './pages/EyabWhatsApp';
 import Assistant from './pages/Assistant';
+import Inbox from './pages/Inbox';
 import Content from './pages/Content';
 import Settings from './pages/Settings';
 import Users from './pages/Users';
@@ -54,6 +55,7 @@ const SCREENS: { path: string; section: string }[] = [
   { path: 'partners', section: 'partners' },
   { path: 'guests', section: 'guests' },
   { path: 'eyab-whatsapp', section: 'eyab_wa' },
+  { path: 'inbox', section: 'inbox' },
   { path: 'assistant', section: 'assistant' },
   { path: 'settings', section: 'settings' },
   { path: 'users', section: 'users' },
@@ -183,6 +185,7 @@ export default function App() {
                     <Route path="partners" element={<Allowed section="partners"><Partners /></Allowed>} />
                     <Route path="guests" element={<Allowed section="guests"><Guests /></Allowed>} />
                     <Route path="eyab-whatsapp" element={<Allowed section="eyab_wa"><EyabWhatsApp /></Allowed>} />
+                    <Route path="inbox" element={<Allowed section="inbox"><Inbox /></Allowed>} />
                     <Route path="assistant" element={<Allowed section="assistant"><Assistant /></Allowed>} />
                     <Route path="settings" element={<Allowed section="settings"><Settings /></Allowed>} />
                     <Route path="users" element={<Allowed section="users"><Users /></Allowed>} />

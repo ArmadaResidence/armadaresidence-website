@@ -17,7 +17,9 @@ import {
   merge, PLATFORMS, recordConsent, save, SOURCE_LABEL, type ClubTotals, type ConsentEvent, type Guest, type GuestBooking, type GuestFilter, type Platform,
 } from '../lib/guests';
 import { CancelButton, Confirm, Drawer, Empty, ErrorBox, Field, Loading, Modal, Spinner, useToast } from '../components/ui';
+import { guestConversations, STATE_LABELS as HUB_STATES } from '../lib/inbox';
 import DateField from '../components/DateField';
+const CONVERSATION: CountNoun = { zero: 'لا محادثات', one: 'محادثة واحدة', two: 'محادثتان', few: 'محادثات', many: 'محادثة', gen: 'محادثة' };
 
 const GUEST: CountNoun = { zero: 'لا عملاء', one: 'عميل واحد', two: 'عميلان', few: 'عملاء', many: 'عميلًا', gen: 'عميل' };
 const MEMBER: CountNoun = { zero: 'لا أعضاء', one: 'عضو واحد', two: 'عضوان', few: 'أعضاء', many: 'عضوًا', gen: 'عضو' };
@@ -390,6 +392,8 @@ function GuestDetails({ id, editable, onChanged, onOpen }: { id: string; editabl
         )}
       </section>
 
+      <GuestConversations id={g.id} />
+
       {editable && (
         <section aria-labelledby="gd-merge" className="grid gap-2">
           <h3 id="gd-merge" className="font-bold">ملف مكرر؟</h3>
@@ -540,3 +544,36 @@ export function BookingGuestBadges({ reservation, editable }: { reservation: str
     </div>
   );
 }
+
+/** «المحادثات» in the guest drawer (Guest Hub H3, 13 Nov 2026 — spec §5.3): the episodes by unit with their state, dates and
+ *  topics, each opening its thread in «المحادثات» for a user with inbox: view in that unit; the counts only for everyone
+ *  else. Never a message's text (public.hub_guest_conversations). */
+function GuestConversations({ id }: { id: string }) {
+  const [d, setD] = useState<Awaited<ReturnType<typeof guestConversations>> | null>(null);
+  useEffect(() => {
+    guestConversations(id).then(setD).catch(() => setD(null));
+  }, [id]);
+  if (!d) return null;
+  return (
+    <section aria-labelledby="gd-hub" className="grid gap-2" data-guest-conversations>
+      <h3 id="gd-hub" className="font-bold">المحادثات <span className="text-sm text-ink-muted font-normal">({countWord(d.total, CONVERSATION)}{d.open ? ` · مفتوحة: ${d.open}` : ''})</span></h3>
+      {d.total === 0 ? <p className="text-sm text-ink-muted">لا محادثات واتساب لهذا العميل.</p> : d.can_open && d.episodes.length ? (
+        <ul className="grid gap-1.5 text-sm" data-guest-episodes>
+          {d.episodes.map((e) => (
+            <li key={e.id} className="flex flex-wrap gap-x-3" data-episode={e.id}>
+              <a className="link" href={`inbox?c=${encodeURIComponent(e.id)}`} data-open-thread>{e.unit_name}</a>
+              <span>{HUB_STATES[e.state] ?? e.state}</span>
+              <span className="num">{shortDate(e.created_at.slice(0, 10))}{e.closed_at ? ` ← ${shortDate(e.closed_at.slice(0, 10))}` : ''}</span>
+              {e.topics.length > 0 && <span className="text-ink-muted">{e.topics.join('، ')}</span>}
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <ul className="grid gap-1 text-sm" data-guest-episode-counts>
+          {d.by_unit.map((u) => <li key={u.unit_name}>{u.unit_name}: <span className="num">{u.count}</span></li>)}
+        </ul>
+      )}
+    </section>
+  );
+}
+

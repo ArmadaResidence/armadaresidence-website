@@ -3,3 +3,6 @@
 // a stubbed session, no Supabase project and no YCloud reached); run here as part of the suite (CI static — it opens a
 // browser).
 await import('../admin/tests/hub-assistant-ui-check.mjs');
+// «المحادثات» (Guest Hub H3, 13 Nov 2026): the inbox and the guest drawer's «المحادثات» — offline too
+// (admin/tests/hub-inbox-ui-check.mjs).
+await import('../admin/tests/hub-inbox-ui-check.mjs');

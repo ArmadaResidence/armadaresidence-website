@@ -29,7 +29,7 @@ on:
       files:
         description: SQL test files of supabase/tests (space-separated)
         required: false
-        default: booking-source.sql guest_hub_units.sql guest_hub_ingest.sql guest_hub_retention.sql wa-automation.sql
+        default: booking-source.sql guest_hub_units.sql guest_hub_ingest.sql guest_hub_retention.sql guest_hub_inbox.sql wa-automation.sql
 
 permissions:
   contents: read
@@ -54,7 +54,7 @@ jobs:
       - name: The local database (every migration of this commit)
         run: supabase db start
       - name: The SQL tests
-        run: node scripts/sql-test-run.mjs ${{ inputs.files || 'booking-source.sql guest_hub_units.sql guest_hub_ingest.sql guest_hub_retention.sql wa-automation.sql' }}
+        run: node scripts/sql-test-run.mjs ${{ inputs.files || 'booking-source.sql guest_hub_units.sql guest_hub_ingest.sql guest_hub_retention.sql guest_hub_inbox.sql wa-automation.sql' }}
 
   function:
     name: server · functions (Deno — hub type-check, booking-request on a stub database)

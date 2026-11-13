@@ -168,6 +168,57 @@ E(429, 'Too many requests', 'rate_limited');
 E(500, 'internal error', 'rejected');
 
 // ── live (test mode) ──
+// ── Guest Hub H3 (13 Nov 2026): the inbox's sends — hub_reply_ready against its definition (templates.md §1, approved by
+// Meta ar + en on both numbers) and the session sends (free text only inside the 24-hour window, test mode never sends) ──
+{
+  // the sender runs under Deno; here only its test-mode paths run (no key, no network)
+  globalThis.Deno ??= { env: { get: () => undefined } };
+  const { HUB_TEMPLATE_DEFS, HUB_REPLY_READY_PAYLOAD, hubReplyReadyPayload, unitTemplateName } = await import('../supabase/functions/_shared/hub/send.ts');
+  const { sendSession, sendTemplate, textPayload, windowOpen } = await import('../supabase/functions/booking-request/whatsapp-send.ts');
+  const def = HUB_TEMPLATE_DEFS.hub_reply_ready;
+  const TPL = readFileSync('docs/guest-hub/templates.md', 'utf8').replace(/\r\n/g, '\n');
+  for (const L of ['ar', 'en']) {
+    check(TPL.includes(def[L].body), `hub_reply_ready ${L}: the definition = templates.md word for word`);
+    check(TPL.includes(`Button: \`${def[L].quick_reply}\``), `hub_reply_ready ${L}: the quick reply = templates.md («${def[L].quick_reply}»)`);
+    const vars = (def[L].body.match(/\{\{\d+\}\}/g) ?? []).length;
+    for (const b of content.branches) {
+      const p = hubReplyReadyPayload(content, b.whatsapp, '+966500009999', L, { kind: 'branch', branch: b.slug }, 'msg-1');
+      const body = p.template.components.find((x) => x.type === 'body');
+      const btn = p.template.components.find((x) => x.type === 'button');
+      check(p.template.name === 'hub_reply_ready' && p.template.language.code === L && p.from === b.whatsapp && p.to === '+966500009999' && p.type === 'template',
+        `hub_reply_ready ${L} ${b.slug}: the template, its language, from the branch's own number`);
+      check(body.parameters.length === vars && vars === 1, `hub_reply_ready ${L} ${b.slug}: ${vars} variable(s) as approved`);
+      // {{1}} = the branch name exactly as the booking templates fill it (waParams booking_request_received {{3}})
+      const booking = waParams(content, 'booking_request_received', { ref: 'AR-20991231-QA01', locale: L, branch: b.slug, room: '', check_in: '2099-12-30', check_out: '2099-12-31', name: 'QA', phone: '+966500009999' });
+      check(body.parameters[0].text === booking[2] && body.parameters[0].text === b[`name_${L}`], `hub_reply_ready ${L} ${b.slug}: {{1}} = the branch name of the booking templates («${body.parameters[0].text}»)`);
+      check(!/[\r\n\t]| {5}/.test(body.parameters[0].text), `hub_reply_ready ${L} ${b.slug}: a single-line variable`);
+      check(btn && btn.sub_type === 'quick_reply' && btn.index === '0' && btn.parameters[0].payload === HUB_REPLY_READY_PAYLOAD, `hub_reply_ready ${L} ${b.slug}: the quick reply carries the hub payload`);
+      check(p.externalId === 'msg-1', `hub_reply_ready ${L} ${b.slug}: the message id as externalId`);
+    }
+  }
+  check(unitTemplateName(content, { kind: 'dining', branch: 'airport-road', venue_ar: 'مقهى ومطعم أرمادا ريزيدنس', venue_en: 'Armada Residence Café & Restaurant' }, 'ar') === 'مقهى ومطعم أرمادا ريزيدنس', 'hub_reply_ready: a dining unit is named by its venue');
+  check(unitTemplateName(content, { kind: 'dining', branch: 'airport-road', venue_ar: null }, 'ar') === content.branches.find((b) => b.slug === 'airport-road').name_ar, 'hub_reply_ready: a dining unit without a venue name falls back to its branch');
+  let threw = false;
+  try {
+    hubReplyReadyPayload(content, '0536622277', '+966500009999', 'ar', { kind: 'branch', branch: 'airport-road' });
+  } catch {
+    threw = true;
+  }
+  check(threw, 'hub_reply_ready: a number that is not E.164 is refused before YCloud');
+  const past = Date.now() - 60_000;
+  const later = Date.now() + 3_600_000;
+  check(!windowOpen(past) && windowOpen(later) && !windowOpen(null), 'session sends: the 24-hour window decides');
+  const closed = await sendSession({ payload: textPayload('+966536622277', '+966500009999', 'نعم'), windowExpiresAt: past, test: true, log: null });
+  check(!closed.accepted && closed.errorCode === 'window_closed', 'session sends: free text after the window is refused, nothing sent');
+  const open = await sendSession({ payload: textPayload('+966536622277', '+966500009999', 'نعم'), windowExpiresAt: later, test: true, log: null });
+  check(open.accepted && open.status === 'test' && open.messageId === null, 'session sends: test mode builds, never sends');
+  const tpl = await sendTemplate(hubReplyReadyPayload(content, '+966536622277', '+966500009999', 'ar', { kind: 'branch', branch: 'airport-road' }), true);
+  check(tpl.accepted && tpl.status === 'test', 'hub_reply_ready: test mode builds, never sends (no window check for a template)');
+  const send = readFileSync('supabase/functions/booking-request/whatsapp-send.ts', 'utf8');
+  const st = send.slice(send.indexOf('export async function sendTemplate'));
+  check(/never retried after a timeout/.test(send) && !/retry/i.test(st.replace(/never retried[^\n]*/g, '').replace(/\/\/[^\n]*/g, '').replace(/\/\*[\s\S]*?\*\//g, '')), 'hub_reply_ready: never retried by itself');
+}
+
 if (process.argv.includes('--live')) {
   const env = Object.fromEntries(readFileSync('.env', 'utf8').split(/\r?\n/).filter((l) => l.includes('=') && !l.startsWith('#')).map((l) => [l.slice(0, l.indexOf('=')).trim(), l.slice(l.indexOf('=') + 1).trim()]));
   const H = { apikey: env.SUPABASE_ANON_KEY, Authorization: `Bearer ${env.SUPABASE_ANON_KEY}`, 'Content-Type': 'application/json', 'x-armada-test': env.BOOKING_TEST_TOKEN };

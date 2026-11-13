@@ -192,6 +192,8 @@ await page.fill('#gf-q', phoneBook.slice(-7));
 await page.locator(`[data-guest="${phoneBook}"]`).click();
 await page.waitForSelector('[data-guest-details]');
 check(await until(async () => (await page.locator('[data-consent-event="grant:booking"]').count()) === 1), 'the drawer: the consent history names the booking form');
+// Guest Hub H3 (13 Nov 2026): «المحادثات» in the drawer — this booking guest has none (the full check: hub-inbox-ui-check)
+check(await until(async () => (await page.locator('[data-guest-conversations]').textContent().catch(() => ''))?.includes('لا محادثات واتساب لهذا العميل')), 'the drawer: «المحادثات» (none for this guest)');
 await page.fill('#gd-tags', 'عائلة، شتاء');
 await page.click('[data-action="guest-save"]');
 check(await until(async () => JSON.stringify((await rest(`guest_profiles?phone=eq.${encodeURIComponent(phoneBook)}&select=tags`))[0].tags) === '["شتاء","عائلة"]'), 'tags saved (trimmed, sorted)');
