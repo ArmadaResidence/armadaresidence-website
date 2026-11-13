@@ -119,7 +119,7 @@ check(!/update public\.hub_channels set sending_enabled = true/.test(MIG3) && !/
 check(/raise exception 'hub_no_assistant'/.test(MIG3) && /if not internal\.hub_engine_ready\(\) or not internal\.hub_setting_bool\('hub_assistant_on'\)/.test(MIG3), '«إعادة للمساعد» refused while no assistant exists');
 // production loads pg_safeupdate for the API roles: every UPDATE / DELETE of a hub migration carries a WHERE (13 Nov 2026 —
 // the H2 store without one failed on production only)
-for (const [name, sql] of [['H1', MIG], ['H2', MIG2], ['H3', MIG3]]) {
+for (const [name, sql] of [['H1', MIG], ['H2', MIG2], ['H3', MIG3], ['H4', read('supabase/migrations/20261114100000_guest_hub_knowledge.sql')]]) {
   const body = sql.replace(/--[^\n]*/g, '');
   const stmts = [...body.matchAll(/\b(update|delete from)\s+(public|internal|storage)\.[a-z_]+[\s\S]*?;/gi)].map((x) => x[0]);
   const bad = stmts.filter((x) => !/\bwhere\b/i.test(x) && !/^update [a-z_.]+ (set|as)\b[\s\S]*\bfrom\b[\s\S]*where/i.test(x));

@@ -1,0 +1,397 @@
+{
+ "version": "seed-1",
+ "topics": [
+  {
+   "key": "greeting",
+   "label_ar": "تحية",
+   "label_en": "Greeting",
+   "parent_key": null,
+   "always_handoff": false
+  },
+  {
+   "key": "thanks_closing",
+   "label_ar": "شكر وختام",
+   "label_en": "Thanks and closing",
+   "parent_key": null,
+   "always_handoff": false
+  },
+  {
+   "key": "booking_new",
+   "label_ar": "حجز جديد",
+   "label_en": "New booking",
+   "parent_key": null,
+   "always_handoff": false
+  },
+  {
+   "key": "price",
+   "label_ar": "الأسعار",
+   "label_en": "Prices",
+   "parent_key": "booking_new",
+   "always_handoff": false
+  },
+  {
+   "key": "availability",
+   "label_ar": "التوافر",
+   "label_en": "Availability",
+   "parent_key": "booking_new",
+   "always_handoff": false
+  },
+  {
+   "key": "offers",
+   "label_ar": "العروض",
+   "label_en": "Offers",
+   "parent_key": "booking_new",
+   "always_handoff": false
+  },
+  {
+   "key": "room_types",
+   "label_ar": "أنواع الغرف",
+   "label_en": "Room types",
+   "parent_key": null,
+   "always_handoff": false
+  },
+  {
+   "key": "room_amenities",
+   "label_ar": "تجهيزات الغرف",
+   "label_en": "Room equipment",
+   "parent_key": "room_types",
+   "always_handoff": false
+  },
+  {
+   "key": "kitchen",
+   "label_ar": "المطبخ",
+   "label_en": "Kitchen",
+   "parent_key": "room_types",
+   "always_handoff": false
+  },
+  {
+   "key": "jacuzzi_balcony",
+   "label_ar": "الجاكوزي والبلكونة",
+   "label_en": "Jacuzzi and balcony",
+   "parent_key": "room_types",
+   "always_handoff": false
+  },
+  {
+   "key": "accessible",
+   "label_ar": "الغرف المهيأة",
+   "label_en": "Accessible rooms",
+   "parent_key": "room_types",
+   "always_handoff": false
+  },
+  {
+   "key": "occupancy",
+   "label_ar": "عدد الضيوف",
+   "label_en": "Number of guests",
+   "parent_key": null,
+   "always_handoff": false
+  },
+  {
+   "key": "children",
+   "label_ar": "الأطفال",
+   "label_en": "Children",
+   "parent_key": "occupancy",
+   "always_handoff": false
+  },
+  {
+   "key": "extra_bed",
+   "label_ar": "السرير الإضافي",
+   "label_en": "Extra bed",
+   "parent_key": "occupancy",
+   "always_handoff": false
+  },
+  {
+   "key": "breakfast",
+   "label_ar": "الإفطار",
+   "label_en": "Breakfast",
+   "parent_key": null,
+   "always_handoff": false
+  },
+  {
+   "key": "cancellation_policy",
+   "label_ar": "سياسة الإلغاء",
+   "label_en": "Cancellation policy",
+   "parent_key": null,
+   "always_handoff": false
+  },
+  {
+   "key": "payment",
+   "label_ar": "الدفع",
+   "label_en": "Payment",
+   "parent_key": null,
+   "always_handoff": false
+  },
+  {
+   "key": "checkin_checkout",
+   "label_ar": "الوصول والمغادرة",
+   "label_en": "Check-in and check-out",
+   "parent_key": null,
+   "always_handoff": false
+  },
+  {
+   "key": "early_late",
+   "label_ar": "الوصول المبكر والمغادرة المتأخرة",
+   "label_en": "Early check-in and late check-out",
+   "parent_key": "checkin_checkout",
+   "always_handoff": false
+  },
+  {
+   "key": "extension",
+   "label_ar": "تمديد الإقامة",
+   "label_en": "Extending a stay",
+   "parent_key": "checkin_checkout",
+   "always_handoff": false
+  },
+  {
+   "key": "documents",
+   "label_ar": "المستندات",
+   "label_en": "Documents",
+   "parent_key": "checkin_checkout",
+   "always_handoff": false
+  },
+  {
+   "key": "house_rules",
+   "label_ar": "قواعد الإقامة",
+   "label_en": "House rules",
+   "parent_key": null,
+   "always_handoff": false
+  },
+  {
+   "key": "key_card",
+   "label_ar": "بطاقة الغرفة",
+   "label_en": "Room key card",
+   "parent_key": "house_rules",
+   "always_handoff": false
+  },
+  {
+   "key": "wifi",
+   "label_ar": "الواي فاي",
+   "label_en": "Wi-Fi",
+   "parent_key": null,
+   "always_handoff": false
+  },
+  {
+   "key": "parking",
+   "label_ar": "المواقف",
+   "label_en": "Parking",
+   "parent_key": null,
+   "always_handoff": false
+  },
+  {
+   "key": "housekeeping",
+   "label_ar": "تنظيف الغرف",
+   "label_en": "Housekeeping",
+   "parent_key": null,
+   "always_handoff": false
+  },
+  {
+   "key": "in_room_dining",
+   "label_ar": "توصيل الطعام إلى الغرف",
+   "label_en": "In-room dining",
+   "parent_key": null,
+   "always_handoff": false
+  },
+  {
+   "key": "laundry",
+   "label_ar": "الغسيل",
+   "label_en": "Laundry",
+   "parent_key": null,
+   "always_handoff": false
+  },
+  {
+   "key": "reception_contact",
+   "label_ar": "التواصل مع الاستقبال",
+   "label_en": "Contacting reception",
+   "parent_key": null,
+   "always_handoff": false
+  },
+  {
+   "key": "location_directions",
+   "label_ar": "الموقع والوصول",
+   "label_en": "Location and directions",
+   "parent_key": null,
+   "always_handoff": false
+  },
+  {
+   "key": "distances",
+   "label_ar": "المسافات",
+   "label_en": "Distances",
+   "parent_key": "location_directions",
+   "always_handoff": false
+  },
+  {
+   "key": "nearby_attractions",
+   "label_ar": "أماكن قريبة",
+   "label_en": "Nearby places",
+   "parent_key": "location_directions",
+   "always_handoff": false
+  },
+  {
+   "key": "umrah",
+   "label_ar": "العمرة",
+   "label_en": "Umrah",
+   "parent_key": null,
+   "always_handoff": false
+  },
+  {
+   "key": "branch_info",
+   "label_ar": "معلومات الفرع",
+   "label_en": "Branch information",
+   "parent_key": null,
+   "always_handoff": false
+  },
+  {
+   "key": "branch_compare",
+   "label_ar": "الفرق بين الفرعين",
+   "label_en": "Comparing the branches",
+   "parent_key": "branch_info",
+   "always_handoff": false
+  },
+  {
+   "key": "classification",
+   "label_ar": "التصنيف",
+   "label_en": "Classification",
+   "parent_key": "branch_info",
+   "always_handoff": false
+  },
+  {
+   "key": "facilities",
+   "label_ar": "المرافق",
+   "label_en": "Facilities",
+   "parent_key": null,
+   "always_handoff": false
+  },
+  {
+   "key": "cafe_restaurant",
+   "label_ar": "المقهى والمطعم",
+   "label_en": "Café and restaurant",
+   "parent_key": null,
+   "always_handoff": false
+  },
+  {
+   "key": "menu",
+   "label_ar": "قائمة الطعام",
+   "label_en": "Menu",
+   "parent_key": "cafe_restaurant",
+   "always_handoff": false
+  },
+  {
+   "key": "cafe_ordering",
+   "label_ar": "الطلب من المقهى",
+   "label_en": "Ordering from the café",
+   "parent_key": "cafe_restaurant",
+   "always_handoff": false
+  },
+  {
+   "key": "hall",
+   "label_ar": "القاعة",
+   "label_en": "Meeting hall",
+   "parent_key": null,
+   "always_handoff": false
+  },
+  {
+   "key": "groups_corporate",
+   "label_ar": "المجموعات والشركات",
+   "label_en": "Groups and companies",
+   "parent_key": null,
+   "always_handoff": false
+  },
+  {
+   "key": "eyab",
+   "label_ar": "«إياب»",
+   "label_en": "Eyab",
+   "parent_key": null,
+   "always_handoff": false
+  },
+  {
+   "key": "website",
+   "label_ar": "الموقع",
+   "label_en": "Website",
+   "parent_key": null,
+   "always_handoff": false
+  },
+  {
+   "key": "social",
+   "label_ar": "حسابات التواصل",
+   "label_en": "Social accounts",
+   "parent_key": null,
+   "always_handoff": false
+  },
+  {
+   "key": "booking_status",
+   "label_ar": "حالة حجز",
+   "label_en": "Booking status",
+   "parent_key": null,
+   "always_handoff": false
+  },
+  {
+   "key": "booking_change",
+   "label_ar": "تعديل أو إلغاء حجز",
+   "label_en": "Changing or cancelling a booking",
+   "parent_key": null,
+   "always_handoff": true
+  },
+  {
+   "key": "complaint",
+   "label_ar": "شكوى",
+   "label_en": "Complaint",
+   "parent_key": null,
+   "always_handoff": true
+  },
+  {
+   "key": "compensation",
+   "label_ar": "تعويض",
+   "label_en": "Compensation",
+   "parent_key": null,
+   "always_handoff": true
+  },
+  {
+   "key": "deposit",
+   "label_ar": "التأمين",
+   "label_en": "Deposit",
+   "parent_key": null,
+   "always_handoff": true
+  },
+  {
+   "key": "unconfirmed_facilities",
+   "label_ar": "مرافق غير مؤكدة",
+   "label_en": "Unconfirmed facilities",
+   "parent_key": "facilities",
+   "always_handoff": true
+  },
+  {
+   "key": "rooftop",
+   "label_ar": "مطعم السطح",
+   "label_en": "Rooftop restaurant",
+   "parent_key": null,
+   "always_handoff": true
+  },
+  {
+   "key": "decoration",
+   "label_ar": "التزيين والمناسبات",
+   "label_en": "Decoration and occasions",
+   "parent_key": null,
+   "always_handoff": true
+  },
+  {
+   "key": "lost_found",
+   "label_ar": "المفقودات",
+   "label_en": "Lost and found",
+   "parent_key": null,
+   "always_handoff": true
+  },
+  {
+   "key": "human_request",
+   "label_ar": "طلب موظف",
+   "label_en": "Asking for a person",
+   "parent_key": null,
+   "always_handoff": true
+  },
+  {
+   "key": "out_of_scope",
+   "label_ar": "خارج الخدمات",
+   "label_en": "Outside our services",
+   "parent_key": null,
+   "always_handoff": false
+  }
+ ]
+}

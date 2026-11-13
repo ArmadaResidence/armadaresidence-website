@@ -1,0 +1,639 @@
+{
+ "version": "seed-1",
+ "prepared": "2026-11-13",
+ "status": "approved by Ahmed, 13 Nov 2026",
+ "notes": [
+  "Facts only from Armada_Website_Facts.md (12 Nov 2026), the content files and DECISIONS.md, each with its source.",
+  "No room rate, fee or unit count is written in a card: rates come from the rate calendar, fees from Settings (breakfast, child tiers, extra bed) and policies.json (late check-out, lost key card).",
+  "The published FAQ is read as cards and is not copied here.",
+  "Café cards are tagged airport-road: the lobby-cafe unit is hidden only because its channel is postponed (13 Nov 2026), and its facts stay answerable on the branch numbers. The knowledge exclusion applies to the rooftop restaurant only.",
+  "Approved by Ahmed on 13 Nov 2026 (all 37 cards; the Shafa Road classification, the direct-booking price, the sales and café numbers included).",
+  "The two Wi-Fi cards (k-wifi-password-airport, k-wifi-password-shafa) are NOT in this file: the repository is public. They are in wifi-cards.json, loaded once on production and never committed."
+ ],
+ "cards": [
+  {
+   "id": "k-airport-overview",
+   "unit_keys": [
+    "airport-road"
+   ],
+   "topic_keys": [
+    "branch_info",
+    "branch_compare"
+   ],
+   "title_ar": "فرع طريق المطار — نبذة",
+   "title_en": "Airport Road — overview",
+   "text_ar": "فرع طريق المطار شقق فندقية في الطائف، افتُتح في سبتمبر 2025، ويضم غرفًا وأجنحة، بعض الأجنحة فيها مطبخ وصالة. في الفرع مقهى ومطعم في اللوبي يعمل على مدار الساعة، وقاعة اجتماعات تتسع حتى 50 شخصًا.",
+   "text_en": "The Airport Road branch is hotel apartments in Taif, opened in September 2025, with rooms and suites — some suites have a kitchen and a living room. It has a café & restaurant in the lobby, open around the clock, and a meeting hall for up to 50 people.",
+   "source": "branches.json؛ أحمد 6 نوفمبر 2026 (الافتتاح)؛ halls.json",
+   "source_date": "2026-11-06",
+   "expires_on": null
+  },
+  {
+   "id": "k-airport-address",
+   "unit_keys": [
+    "airport-road"
+   ],
+   "topic_keys": [
+    "location_directions"
+   ],
+   "title_ar": "فرع طريق المطار — العنوان والخريطة",
+   "title_en": "Airport Road — address and map",
+   "text_ar": "عنوان فرع طريق المطار: 8138 طريق المطار، حي القيم الأعلى، الطائف 26561. العنوان الوطني المختصر: TAPB8138. الموقع على الخريطة: https://maps.app.goo.gl/WTWEcv7gmWe5bUaT9",
+   "text_en": "Airport Road branch: 8138 Airport Road, Al Qaim Al Aala district, Taif 26561. Short national address: TAPB8138. Map: https://maps.app.goo.gl/WTWEcv7gmWe5bUaT9",
+   "source": "branches.json (من إثبات العنوان الوطني)",
+   "source_date": "2026-10-09",
+   "expires_on": null
+  },
+  {
+   "id": "k-airport-umrah-axis",
+   "unit_keys": [
+    "airport-road"
+   ],
+   "topic_keys": [
+    "umrah",
+    "location_directions"
+   ],
+   "title_ar": "فرع طريق المطار — على طريق العمرة",
+   "title_en": "Airport Road — on the Umrah route",
+   "text_ar": "يقع فرع طريق المطار على محور الهدا باتجاه مكة المكرمة، فيناسب الإقامة في الطريق إلى العمرة. وهو الأقرب من الفرعين إلى ميقاتي قرن المنازل (السيل الكبير) ووادي محرم (طريق الهدا).",
+   "text_en": "The Airport Road branch is on the Al Hada axis towards Makkah, which suits a stay on the way to Umrah. Of the two branches it is the nearer one to the Qarn al-Manazil (Al Sail Al Kabir) and Wadi Muhrim (Al Hada road) miqats.",
+   "source": "قرار 9 أكتوبر 2026؛ taif-guide.json (إسناد جغرافي بلا مسافات)",
+   "source_date": "2026-10-09",
+   "expires_on": null
+  },
+  {
+   "id": "k-airport-distances",
+   "unit_keys": [
+    "airport-road"
+   ],
+   "topic_keys": [
+    "distances",
+    "nearby_attractions"
+   ],
+   "title_ar": "فرع طريق المطار — أزمنة الوصول بالسيارة",
+   "title_en": "Airport Road — driving times",
+   "text_ar": "بالسيارة من فرع طريق المطار: مسجد عبدالله بن عباس أقل من 10 دقائق، ووسط الطائف 15 دقيقة، وجوري مول 12 دقيقة، وتيرا مول 15 دقيقة، ومنطقة الهدا السياحية 25 دقيقة.",
+   "text_en": "By car from the Airport Road branch: Abdullah bin Abbas Mosque under 10 minutes, Taif city centre 15 minutes, Jouri Mall 12 minutes, Terra Mall 15 minutes, the Al Hada tourist area 25 minutes.",
+   "source": "أحمد 9 أكتوبر 2026 (مطار الطائف في الأسئلة الشائعة)",
+   "source_date": "2026-10-09",
+   "expires_on": null
+  },
+  {
+   "id": "k-airport-nearest",
+   "unit_keys": [
+    "airport-road"
+   ],
+   "topic_keys": [
+    "nearby_attractions"
+   ],
+   "title_ar": "وجهات «اكتشف الطائف» الأقرب إلى طريق المطار",
+   "title_en": "Discover Taif places nearer to Airport Road",
+   "text_ar": "من وجهات «اكتشف الطائف»، الأقرب إلى فرع طريق المطار: الهدا والتلفريك وقرية الكر، ومنتزه الطائف الوطني بسيسد، ومنتجع جسر اللوزية، وسوق عكاظ، وقصر شبرا، وقصر الكعكي، ومتحف الشريف، وسوق البلد، ومسجد عبدالله بن عباس، وتجربة الورد الطائفي، وقرية التوت ومزارع الفراولة، وباب الحزم. التفاصيل في https://armadaresidence.com/discover-taif/",
+   "text_en": "Of the Discover Taif places, these are nearer to the Airport Road branch: Al Hada with the cable car and Al Kar village, Saysad National Park, Jisr Al Lawziyah resort, Souq Okaz, Shubra Palace, Al Kaki Palace, Al Sharif Museum, Souq Al Balad, Abdullah bin Abbas Mosque, the Taif rose experience, the berry village and strawberry farms, and Bab Al Hazm. Details: https://armadaresidence.com/en/discover-taif/",
+   "source": "taif-guide.json (إسناد جغرافي فقط، بلا مسافات)",
+   "source_date": "2026-10-09",
+   "expires_on": null
+  },
+  {
+   "id": "k-airport-amenities",
+   "unit_keys": [
+    "airport-road"
+   ],
+   "topic_keys": [
+    "room_amenities",
+    "laundry"
+   ],
+   "title_ar": "فرع طريق المطار — تجهيزات الوحدات",
+   "title_en": "Airport Road — in-unit equipment",
+   "text_ar": "في كل وحدات فرع طريق المطار: واي فاي، وتلفاز 65 بوصة، وخزنة، وتكييف، وغلاية، وثلاجة، وكواية. لا توجد غسالات في الغرف، وفي الفرع مغسلة مركزية.",
+   "text_en": "Every unit at the Airport Road branch has Wi-Fi, a 65-inch TV, a safe, air conditioning, a kettle, a fridge and an iron. There are no washing machines in the rooms; the branch has a central laundry.",
+   "source": "rooms.json وbranches.json",
+   "source_date": "2026-10-08",
+   "expires_on": null
+  },
+  {
+   "id": "k-airport-kitchen",
+   "unit_keys": [
+    "airport-road"
+   ],
+   "topic_keys": [
+    "kitchen",
+    "room_types"
+   ],
+   "title_ar": "المطبخ — فرع طريق المطار فقط",
+   "title_en": "Kitchens — Airport Road only",
+   "text_ar": "المطبخ متوفر في «جناح بغرفة وصالة» و«جناح بغرفتي نوم وصالة» في فرع طريق المطار. لا توجد مطابخ في فرع طريق الشفا.",
+   "text_en": "A kitchen comes with the One-Bedroom Suite and the Two-Bedroom Suite at the Airport Road branch. There are no kitchens at the Shafa Road branch.",
+   "source": "rooms.json (تأكيد أحمد 8 أكتوبر 2026)",
+   "source_date": "2026-10-08",
+   "expires_on": null
+  },
+  {
+   "id": "k-shafa-overview",
+   "unit_keys": [
+    "shafa-road"
+   ],
+   "topic_keys": [
+    "branch_info",
+    "branch_compare"
+   ],
+   "title_ar": "فرع طريق الشفا — نبذة",
+   "title_en": "Shafa Road — overview",
+   "text_ar": "فرع طريق الشفا فندق في الطائف على الطريق الصاعد إلى مرتفعات الشفا، ويضم غرفًا وأجنحة، منها وحدات بجاكوزي خاص وغرفة ببلكونة. وفي الفرع مطعم ومقهى.",
+   "text_en": "The Shafa Road branch is a hotel in Taif on the road up to the Al Shafa heights, with rooms and suites — some with a private jacuzzi, and a room with a balcony. The branch has a restaurant and café.",
+   "source": "branches.json (اعتماد 12 أكتوبر 2026)",
+   "source_date": "2026-10-12",
+   "expires_on": null
+  },
+  {
+   "id": "k-shafa-address",
+   "unit_keys": [
+    "shafa-road"
+   ],
+   "topic_keys": [
+    "location_directions"
+   ],
+   "title_ar": "فرع طريق الشفا — العنوان والخريطة",
+   "title_en": "Shafa Road — address and map",
+   "text_ar": "عنوان فرع طريق الشفا: 6411 طريق الشفا، حي السداد، الطائف 26514. العنوان الوطني المختصر: TAAA6411. الموقع على الخريطة: https://maps.app.goo.gl/yfo3wdoSwtFAFRhHA",
+   "text_en": "Shafa Road branch: 6411 Al Shafa Road, Al Sadad district, Taif 26514. Short national address: TAAA6411. Map: https://maps.app.goo.gl/yfo3wdoSwtFAFRhHA",
+   "source": "branches.json (من إثبات العنوان الوطني)",
+   "source_date": "2026-10-09",
+   "expires_on": null
+  },
+  {
+   "id": "k-shafa-nearby",
+   "unit_keys": [
+    "shafa-road"
+   ],
+   "topic_keys": [
+    "distances",
+    "nearby_attractions"
+   ],
+   "title_ar": "فرع طريق الشفا — قريب منه",
+   "title_en": "Shafa Road — close by",
+   "text_ar": "بالسيارة من فرع طريق الشفا: منتزه الردف 4 دقائق، وحديقة الحيوانات بالطائف 8 دقائق. ومن وجهات «اكتشف الطائف» الأقرب إليه أيضًا مرتفعات الشفا وجبل دكا. التفاصيل في https://armadaresidence.com/discover-taif/",
+   "text_en": "By car from the Shafa Road branch: Al Radaf Park 4 minutes, Taif Zoo 8 minutes. Of the Discover Taif places, Al Shafa heights and Jabal Daka are also nearer to it. Details: https://armadaresidence.com/en/discover-taif/",
+   "source": "أحمد 9 أكتوبر 2026؛ taif-guide.json",
+   "source_date": "2026-10-09",
+   "expires_on": null
+  },
+  {
+   "id": "k-shafa-amenities",
+   "unit_keys": [
+    "shafa-road"
+   ],
+   "topic_keys": [
+    "room_amenities",
+    "kitchen"
+   ],
+   "title_ar": "فرع طريق الشفا — تجهيزات الوحدات",
+   "title_en": "Shafa Road — in-unit equipment",
+   "text_ar": "في كل وحدات فرع طريق الشفا: واي فاي، وتلفاز 42 بوصة، وخزنة، وتكييف، وغلاية، وكواية. لا توجد ثلاجة ولا مطبخ في أي نوع من الغرف.",
+   "text_en": "Every unit at the Shafa Road branch has Wi-Fi, a 42-inch TV, a safe, air conditioning, a kettle and an iron. No room type has a fridge or a kitchen.",
+   "source": "rooms.json وpartners.json",
+   "source_date": "2026-10-08",
+   "expires_on": null
+  },
+  {
+   "id": "k-shafa-jacuzzi-balcony",
+   "unit_keys": [
+    "shafa-road"
+   ],
+   "topic_keys": [
+    "jacuzzi_balcony",
+    "room_types"
+   ],
+   "title_ar": "الجاكوزي والبلكونة — فرع طريق الشفا",
+   "title_en": "Jacuzzi and balcony — Shafa Road",
+   "text_ar": "الجاكوزي في فرع طريق الشفا فقط، في «استديو بجاكوزي» و«جناح بغرفتي نوم وجاكوزي»، وهذا الجناح بلا صالة. والبلكونة في نوع «غرفة مع بلكونة» فقط.",
+   "text_en": "Jacuzzis are only at the Shafa Road branch, in the Jacuzzi Studio and the Two-Bedroom Jacuzzi Suite — that suite has no living room. A balcony comes only with the Balcony Room.",
+   "source": "rooms.json؛ قرار 8 أكتوبر 2026",
+   "source_date": "2026-10-08",
+   "expires_on": null
+  },
+  {
+   "id": "k-shafa-no-gym",
+   "unit_keys": [
+    "shafa-road"
+   ],
+   "topic_keys": [
+    "facilities"
+   ],
+   "title_ar": "لا صالة رياضية في فرع طريق الشفا",
+   "title_en": "No gym at Shafa Road",
+   "text_ar": "لا توجد صالة رياضية في فرع طريق الشفا.",
+   "text_en": "There is no gym at the Shafa Road branch.",
+   "source": "أحمد 9 نوفمبر 2026",
+   "source_date": "2026-11-09",
+   "expires_on": null
+  },
+  {
+   "id": "k-shafa-no-hall",
+   "unit_keys": [
+    "shafa-road"
+   ],
+   "topic_keys": [
+    "hall"
+   ],
+   "title_ar": "القاعة في طريق المطار فقط",
+   "title_en": "The hall is at Airport Road only",
+   "text_ar": "لا توجد قاعة اجتماعات في فرع طريق الشفا؛ قاعة أرمادا ريزيدنس في فرع طريق المطار.",
+   "text_en": "There is no meeting hall at the Shafa Road branch; the Armada Residence Hall is at the Airport Road branch.",
+   "source": "halls.json",
+   "source_date": "2026-10-09",
+   "expires_on": null
+  },
+  {
+   "id": "k-shafa-restaurant",
+   "unit_keys": [
+    "shafa-road"
+   ],
+   "topic_keys": [
+    "cafe_restaurant",
+    "breakfast"
+   ],
+   "title_ar": "مطعم ومقهى فرع طريق الشفا",
+   "title_en": "Shafa Road restaurant and café",
+   "text_ar": "في فرع طريق الشفا مطعم ومقهى، ويُقدَّم فيه بوفيه الإفطار. الطلب منه يكون عبر واتساب الفرع نفسه، فلا يوجد واتساب منفصل له، ومن هاتف الغرفة: تحويلة 222.",
+   "text_en": "The Shafa Road branch has a restaurant and café, where the breakfast buffet is served. Orders go through the branch's own WhatsApp — it has no separate WhatsApp — and from the room phone: extension 222.",
+   "source": "branches.json؛ pricing.json؛ أحمد 13 نوفمبر 2026 (الطلب والتحويلة)",
+   "source_date": "2026-11-13",
+   "expires_on": null
+  },
+  {
+   "id": "k-parking-detail",
+   "unit_keys": [
+    "airport-road",
+    "shafa-road"
+   ],
+   "topic_keys": [
+    "parking"
+   ],
+   "title_ar": "المواقف بالتفصيل",
+   "title_en": "Parking in detail",
+   "text_ar": "المواقف مجانية في الفرعين: في طريق المطار في الطابقين السفليين B1 وB2 مع مصعد مباشر إلى اللوبي، وفي طريق الشفا في الطابق السفلي. ومواقف الحافلات متوفرة في الفرعين.",
+   "text_en": "Parking is free at both branches: at Airport Road on levels B1 and B2 with a lift straight to the lobby, at Shafa Road on the basement level. Bus parking is available at both branches.",
+   "source": "branches.json؛ أحمد 2 نوفمبر 2026؛ partners.json (22 أكتوبر 2026)",
+   "source_date": "2026-11-02",
+   "expires_on": null
+  },
+  {
+   "id": "k-reception-security",
+   "unit_keys": [
+    "airport-road",
+    "shafa-road"
+   ],
+   "topic_keys": [
+    "reception_contact"
+   ],
+   "title_ar": "الاستقبال والأمن",
+   "title_en": "Reception and security",
+   "text_ar": "الاستقبال والأمن على مدار الساعة في الفرعين.",
+   "text_en": "Reception and security are available around the clock at both branches.",
+   "source": "أحمد 30 أكتوبر 2026",
+   "source_date": "2026-10-30",
+   "expires_on": null
+  },
+  {
+   "id": "k-wifi-public",
+   "unit_keys": [
+    "airport-road",
+    "shafa-road"
+   ],
+   "topic_keys": [
+    "wifi"
+   ],
+   "title_ar": "الواي فاي في المناطق العامة",
+   "title_en": "Wi-Fi in public areas",
+   "text_ar": "الواي فاي مجاني في كل الوحدات والمناطق العامة في الفرعين.",
+   "text_en": "Wi-Fi is free in every unit and in the public areas at both branches.",
+   "source": "أحمد 22 أكتوبر 2026",
+   "source_date": "2026-10-22",
+   "expires_on": null
+  },
+  {
+   "id": "k-occupancy-children",
+   "unit_keys": [
+    "airport-road",
+    "shafa-road"
+   ],
+   "topic_keys": [
+    "occupancy",
+    "children"
+   ],
+   "title_ar": "عدد الضيوف والأطفال",
+   "title_en": "Guests and children",
+   "text_ar": "عدد البالغين في الغرفة بحسب عدد الأسرّة. الأطفال لا يُحسبون ضمن العدد المشمول في السعر، ولا حد لعددهم في الغرفة، وهم تحت مسؤولية ذويهم طوال الإقامة.",
+   "text_en": "The number of adults in a room follows its beds. Children are not counted in the guests included in the rate, there is no limit on their number in the room, and they remain their parents' responsibility throughout the stay.",
+   "source": "أحمد 23 أكتوبر 2026؛ policies.json",
+   "source_date": "2026-10-23",
+   "expires_on": null
+  },
+  {
+   "id": "k-extra-bed-rule",
+   "unit_keys": [
+    "airport-road",
+    "shafa-road"
+   ],
+   "topic_keys": [
+    "extra_bed"
+   ],
+   "title_ar": "السرير الإضافي",
+   "title_en": "Extra bed",
+   "text_ar": "يُضاف سرير إضافي واحد كحد أقصى في أنواع الغرف التي تقبله، ويُحتسب لليلة أيًّا كان من ينام عليه. الحجز مع سرير إضافي يصبح طلب حجز يراجعه الاستقبال، لا تأكيدًا فوريًا.",
+   "text_en": "At most one extra bed can be added, in the room types that take one, charged per night whoever sleeps in it. A booking with an extra bed becomes a booking request reviewed by reception, not an instant confirmation.",
+   "source": "أحمد 23 أكتوبر 2026؛ قرار 25 أكتوبر و2 نوفمبر 2026 (الرسم من الإعدادات)",
+   "source_date": "2026-11-02",
+   "expires_on": null
+  },
+  {
+   "id": "k-extension",
+   "unit_keys": [
+    "airport-road",
+    "shafa-road"
+   ],
+   "topic_keys": [
+    "extension"
+   ],
+   "title_ar": "تمديد الإقامة",
+   "title_en": "Extending a stay",
+   "text_ar": "تمديد الإقامة حسب التوافر، ويُطلب من الاستقبال قبل موعد المغادرة.",
+   "text_en": "Extending a stay depends on availability and is requested from reception before the check-out time.",
+   "source": "policies.json",
+   "source_date": "2026-10-08",
+   "expires_on": null
+  },
+  {
+   "id": "k-house-visitors",
+   "unit_keys": [
+    "airport-road",
+    "shafa-road"
+   ],
+   "topic_keys": [
+    "house_rules"
+   ],
+   "title_ar": "الزوار",
+   "title_en": "Visitors",
+   "text_ar": "لا يُسمح باستضافة أشخاص غير مسجلين في الحجز.",
+   "text_en": "Guests who are not registered on the booking may not stay.",
+   "source": "policies.json (قرار 8 أكتوبر 2026)",
+   "source_date": "2026-10-08",
+   "expires_on": null
+  },
+  {
+   "id": "k-breakfast-daily",
+   "unit_keys": [
+    "airport-road",
+    "shafa-road"
+   ],
+   "topic_keys": [
+    "breakfast"
+   ],
+   "title_ar": "بوفيه الإفطار كل يوم",
+   "title_en": "Breakfast buffet every day",
+   "text_ar": "بوفيه الإفطار يُقدَّم يوميًا في مطعم كل فرع، أيًّا كان عدد النزلاء.",
+   "text_en": "The breakfast buffet is served every day in each branch's restaurant, whatever the number of guests.",
+   "source": "أحمد 8 أكتوبر 2026",
+   "source_date": "2026-10-08",
+   "expires_on": null
+  },
+  {
+   "id": "k-direct-price",
+   "unit_keys": [
+    "airport-road",
+    "shafa-road"
+   ],
+   "topic_keys": [
+    "price",
+    "booking_new"
+   ],
+   "title_ar": "سعر الموقع الرسمي",
+   "title_en": "The official website rate",
+   "text_ar": "سعر الحجز المباشر من الموقع الرسمي أقل من المنصات الأخرى.",
+   "text_en": "Booking direct on the official website costs less than on other platforms.",
+   "source": "أحمد 10 نوفمبر 2026؛ التزام دائم (أحمد، 13 نوفمبر 2026)",
+   "source_date": "2026-11-13",
+   "expires_on": null
+  },
+  {
+   "id": "k-website-links",
+   "unit_keys": [
+    "airport-road",
+    "shafa-road"
+   ],
+   "topic_keys": [
+    "website",
+    "booking_new"
+   ],
+   "title_ar": "روابط الموقع",
+   "title_en": "Website links",
+   "text_ar": "الحجز من الموقع: https://armadaresidence.com/booking/ — العروض: https://armadaresidence.com/offers/ — الأسئلة الشائعة: https://armadaresidence.com/faq/ — الشروط والسياسات: https://armadaresidence.com/policies/",
+   "text_en": "Book on the website: https://armadaresidence.com/en/booking/ — Offers: https://armadaresidence.com/en/offers/ — FAQ: https://armadaresidence.com/en/faq/ — Policies: https://armadaresidence.com/en/policies/",
+   "source": "CLAUDE.md (صفحات الموقع)",
+   "source_date": "2026-11-05",
+   "expires_on": null
+  },
+  {
+   "id": "k-contact-email",
+   "unit_keys": [
+    "airport-road",
+    "shafa-road"
+   ],
+   "topic_keys": [
+    "reception_contact"
+   ],
+   "title_ar": "البريد الإلكتروني",
+   "title_en": "Email",
+   "text_ar": "البريد الإلكتروني: الحجوزات reservation@armadaresidence.com، والاستفسارات العامة info@armadaresidence.com، والمبيعات والشركاء sales@armadaresidence.com، والتوظيف jobs@armadaresidence.com.",
+   "text_en": "Email: bookings reservation@armadaresidence.com, general enquiries info@armadaresidence.com, sales and partners sales@armadaresidence.com, careers jobs@armadaresidence.com.",
+   "source": "contact.json",
+   "source_date": "2026-10-08",
+   "expires_on": null
+  },
+  {
+   "id": "k-no-landline",
+   "unit_keys": [
+    "airport-road",
+    "shafa-road"
+   ],
+   "topic_keys": [
+    "reception_contact"
+   ],
+   "title_ar": "لا هاتف أرضي",
+   "title_en": "No landline",
+   "text_ar": "لا يوجد هاتف أرضي للفندق؛ التواصل مع استقبال كل فرع عبر واتساب الفرع، والاستقبال متاح على مدار الساعة.",
+   "text_en": "The hotel has no landline; each branch's reception is reached on the branch's WhatsApp, around the clock.",
+   "source": "أحمد 22–23 أكتوبر 2026",
+   "source_date": "2026-10-23",
+   "expires_on": null
+  },
+  {
+   "id": "k-social",
+   "unit_keys": [
+    "airport-road",
+    "shafa-road"
+   ],
+   "topic_keys": [
+    "social"
+   ],
+   "title_ar": "حسابات التواصل الاجتماعي",
+   "title_en": "Social accounts",
+   "text_ar": "حسابات أرمادا ريزيدنس: إنستجرام https://www.instagram.com/ArmadaR25 — تيك توك https://www.tiktok.com/@armadar25 — سناب شات https://www.snapchat.com/@armadar25 — فيسبوك https://www.facebook.com/profile.php?id=61586163807495 — إكس https://x.com/ArmadaR25 — يوتيوب https://www.youtube.com/@ArmadR25",
+   "text_en": "Armada Residence accounts: Instagram https://www.instagram.com/ArmadaR25 — TikTok https://www.tiktok.com/@armadar25 — Snapchat https://www.snapchat.com/@armadar25 — Facebook https://www.facebook.com/profile.php?id=61586163807495 — X https://x.com/ArmadaR25 — YouTube https://www.youtube.com/@ArmadR25",
+   "source": "contact.json",
+   "source_date": "2026-10-08",
+   "expires_on": null
+  },
+  {
+   "id": "k-eyab",
+   "unit_keys": [
+    "airport-road",
+    "shafa-road"
+   ],
+   "topic_keys": [
+    "eyab"
+   ],
+   "title_ar": "«إياب» — كيف أنضم",
+   "title_en": "Eyab — how to join",
+   "text_ar": "«إياب — عضوية أرمادا ريزيدنس»: التسجيل مجاني برقم الجوال، ويصل الأعضاء عروض وأكواد خاصة بهم. يمكن الانضمام من صفحة البرنامج https://armadaresidence.com/club/ أو من الاستقبال أو من رمز طاولات الإفطار، أو بالموافقة على العروض عند الحجز من الموقع. حيّاك دايم.",
+   "text_en": "“Eyab — Armada Residence membership”: free sign-up with a mobile number; members receive their own offers and codes. Join on the programme page https://armadaresidence.com/en/club/, at reception, with the QR code on the breakfast tables, or by agreeing to offers when booking on the website. Always welcome.",
+   "source": "أحمد 3 و6 نوفمبر 2026؛ قرار 3–4 نوفمبر 2026؛ CLAUDE.md §4 (الوصف الثابت)",
+   "source_date": "2026-11-06",
+   "expires_on": null
+  },
+  {
+   "id": "k-cafe-airport",
+   "unit_keys": [
+    "airport-road"
+   ],
+   "topic_keys": [
+    "cafe_restaurant"
+   ],
+   "title_ar": "مقهى ومطعم أرمادا ريزيدنس",
+   "title_en": "Armada Residence Café & Restaurant",
+   "text_ar": "مقهى ومطعم أرمادا ريزيدنس في لوبي فرع طريق المطار، يعمل على مدار الساعة للنزلاء ولغير النزلاء.",
+   "text_en": "The Armada Residence Café & Restaurant is in the lobby of the Airport Road branch, open around the clock to guests and visitors.",
+   "source": "قرار 2 نوفمبر 2026 (الاسم، وأحمد 12 نوفمبر 2026)؛ أحمد 9 و30 أكتوبر 2026",
+   "source_date": "2026-11-12",
+   "expires_on": null
+  },
+  {
+   "id": "k-cafe-menu",
+   "unit_keys": [
+    "airport-road"
+   ],
+   "topic_keys": [
+    "menu",
+    "cafe_ordering"
+   ],
+   "title_ar": "قائمة مقهى طريق المطار والطلب منها",
+   "title_en": "The Airport Road café menu and ordering",
+   "text_ar": "قائمة مقهى ومطعم أرمادا ريزيدنس وأسعارها في https://armadaresidence.com/menu/ ويمكن إرسال الطلب منها مباشرة على واتساب المقهى. ومن هاتف الغرفة في فرع طريق المطار: تحويلة 333.",
+   "text_en": "The Armada Residence Café & Restaurant menu and prices are at https://armadaresidence.com/en/menu/, and an order can be sent straight from it to the café's WhatsApp. From the room phone at the Airport Road branch: extension 333.",
+   "source": "قرار 9 و10 أكتوبر 2026؛ contact.json",
+   "source_date": "2026-10-10",
+   "expires_on": null
+  },
+  {
+   "id": "k-cafe-breakfast-menu",
+   "unit_keys": [
+    "airport-road"
+   ],
+   "topic_keys": [
+    "menu",
+    "breakfast"
+   ],
+   "title_ar": "إفطار المقهى غير بوفيه الفندق",
+   "title_en": "Café breakfast vs the hotel buffet",
+   "text_ar": "قسم الإفطار في قائمة المقهى يظهر من 6:00 صباحًا إلى 1:00 ظهرًا، وهو غير بوفيه الإفطار في مطعم الفندق.",
+   "text_en": "The breakfast section of the café menu is shown from 6:00 am to 1:00 pm; it is separate from the hotel's breakfast buffet.",
+   "source": "قرار 9 أكتوبر 2026",
+   "source_date": "2026-10-09",
+   "expires_on": null
+  },
+  {
+   "id": "k-cafe-phone",
+   "unit_keys": [
+    "airport-road"
+   ],
+   "topic_keys": [
+    "cafe_ordering"
+   ],
+   "title_ar": "رقم المقهى والمطعم",
+   "title_en": "Café & restaurant number",
+   "text_ar": "رقم مقهى ومطعم أرمادا ريزيدنس للطلبات (هاتف وواتساب): +966 53 379 8590. ومن هاتف الغرفة في فرع طريق المطار: تحويلة 333.",
+   "text_en": "Armada Residence Café & Restaurant for orders (phone and WhatsApp): +966 53 379 8590. From the room phone at the Airport Road branch: extension 333.",
+   "source": "أحمد 9 أكتوبر 2026؛ contact.json (التحويلة)",
+   "source_date": "2026-10-09",
+   "expires_on": null
+  },
+  {
+   "id": "k-hall-detail",
+   "unit_keys": [
+    "airport-road"
+   ],
+   "topic_keys": [
+    "hall"
+   ],
+   "title_ar": "قاعة أرمادا ريزيدنس",
+   "title_en": "Armada Residence Hall",
+   "text_ar": "قاعة أرمادا ريزيدنس في فرع طريق المطار تتسع حتى 50 شخصًا، ومجهزة ببروجكتر وشاشة عرض ونظام صوتي وسبورة وتكييف مستقل، ولها خمسة أنماط جلوس: مسرح، وصف دراسي، وشكل U، وطاولة اجتماعات، وطاولات مستديرة. وتتوفر الضيافة والكوفي بريك من مطبخ الفندق. السعر حسب الإتاحة والباقة عن طريق فريق المبيعات، ويصلك رد مكتوب بالإتاحة خلال يوم عمل واحد. صفحة القاعة: https://armadaresidence.com/airport-road/hall/",
+   "text_en": "The Armada Residence Hall at the Airport Road branch seats up to 50, with a projector and screen, a sound system, a whiteboard and its own air conditioning, and five seating layouts: theatre, classroom, U-shape, boardroom and round tables. Coffee breaks and hospitality come from the hotel kitchen. The price depends on availability and the package, through the sales team, with a written answer on availability within one business day. Hall page: https://armadaresidence.com/en/airport-road/hall/",
+   "source": "halls.json؛ أحمد 8–9 أكتوبر 2026؛ partners.json (22 أكتوبر 2026)",
+   "source_date": "2026-10-22",
+   "expires_on": null
+  },
+  {
+   "id": "k-groups-meals",
+   "unit_keys": [
+    "airport-road",
+    "shafa-road"
+   ],
+   "topic_keys": [
+    "groups_corporate"
+   ],
+   "title_ar": "وجبات المجموعات",
+   "title_en": "Group meals",
+   "text_ar": "للمجموعات: بوفيه إفطار وغداء وعشاء من مطبخ الفندق بإشراف شيف تنفيذي، بقوائم عربية وآسيوية وعالمية تشمل الماليزية والإندونيسية والتايلاندية. الإفطار مشمول في أسعار المجموعات، والغداء والعشاء باتفاق مسبق. الأسعار عن طريق فريق المبيعات، ويصلك رد مكتوب بالإتاحة خلال يوم عمل واحد.",
+   "text_en": "For groups: breakfast, lunch and dinner buffets from the hotel kitchen under an executive chef, with Arabic, Asian and international menus including Malaysian, Indonesian and Thai. Breakfast is included in group rates; lunch and dinner by prior arrangement. Prices through the sales team, with a written answer on availability within one business day.",
+   "source": "partners.json (تأكيد 22 أكتوبر 2026)",
+   "source_date": "2026-10-22",
+   "expires_on": null
+  },
+  {
+   "id": "k-sales-contact",
+   "unit_keys": [
+    "airport-road",
+    "shafa-road"
+   ],
+   "topic_keys": [
+    "groups_corporate",
+    "hall"
+   ],
+   "title_ar": "فريق المبيعات",
+   "title_en": "The sales team",
+   "text_ar": "للمجموعات والقاعة والشركات: فريق المبيعات على +966 53 662 2288 أو sales@armadaresidence.com، وصفحة الشركاء https://armadaresidence.com/partners/",
+   "text_en": "For groups, the hall and companies: the sales team on +966 53 662 2288 or sales@armadaresidence.com; partners page https://armadaresidence.com/en/partners/",
+   "source": "contact.json؛ أحمد 22 أكتوبر 2026",
+   "source_date": "2026-10-22",
+   "expires_on": null
+  },
+  {
+   "id": "k-shafa-classification",
+   "unit_keys": [
+    "shafa-road"
+   ],
+   "topic_keys": [
+    "classification"
+   ],
+   "title_ar": "تصنيف فرع طريق الشفا",
+   "title_en": "Shafa Road classification",
+   "text_ar": "فندق طريق الشفا مصنف رسميًا بنجمة واحدة من وزارة السياحة.",
+   "text_en": "The Shafa Road hotel holds an official one-star classification from the Ministry of Tourism.",
+   "source": "أحمد 9 نوفمبر 2026",
+   "source_date": "2026-11-09",
+   "expires_on": null
+  }
+ ]
+}

@@ -258,6 +258,25 @@ check(/if not \(coalesce\(p_after, '\{\}'\) @> coalesce\(p_before, '\{\}'\)\) th
   check(/else if \(!r\.data\.stored\) console\.log\('wa-automation: echo acknowledged', r\.data\.reason \?\? ''\);/.test(tsFn(FN, 'handleEcho')), 'an echo while storage is off is acknowledged and logged by its reason only');
 }
 
+// ── 9. H4 step 0b (14 Nov 2026): a reply from the phone counts as a staff answer, exactly like one from the inbox ──
+// «بانتظار موظف», the sidebar badge and the 30-minute email all key on waiting_since; the echo clears it the way
+// hub_send_finish does for an inbox reply, and the trigger resets escalated_at with it (one email per waiting period).
+{
+  const MIG3 = read('supabase/migrations/20261113300000_guest_hub_inbox.sql');
+  const T3 = read('supabase/tests/guest_hub_inbox.sql');
+  const finish = fnOf(MIG3, 'hub_send_finish');
+  check(/first_response_at = coalesce\(first_response_at, case when waiting_since is not null then v_at end\),\s+waiting_since = null/.test(echo)
+    && /first_response_at = coalesce\(first_response_at, case when waiting_since is not null then now\(\) end\), waiting_since = null/.test(finish),
+    'a phone reply clears waiting_since and sets the first response exactly as an inbox reply does');
+  check(/c\.state = 'human' and c\.waiting_since is not null as t_waiting/.test(MIG3), '«بانتظار موظف» = with staff AND waiting_since set');
+  check(/where c\.state = 'human' and c\.waiting_since is not null and g\.hub_blocked_at is null/.test(fnOf(MIG3, 'hub_inbox_badge')), 'the sidebar badge counts waiting_since only');
+  check(/c\.waiting_since is not null and c\.escalated_at is null/.test(fnOf(MIG3, 'hub_escalations_claim')), 'the waiting email claims only a conversation still waiting');
+  check(/if tg_op = 'UPDATE' and new\.waiting_since is distinct from old\.waiting_since then new\.escalated_at := null; end if;/.test(MIG3), 'escalated_at resets with waiting_since (a new period may email once)');
+  for (const name of ['P1 the phone reply clears waiting_since', 'P2 … out of «بانتظار موظف»', 'P3 … and no «محادثة بانتظار الرد» email', 'P6 a phone reply after the email']) {
+    check(T3.includes(name), `the SQL test «${name}» exists`);
+  }
+}
+
 // ── the SQL proof exists and runs in CI ──
 for (const name of ['N6 a repeated event', 'E1 an echo', 'S2 read stays read', 'C8 after 12 hours', 'H2 a queued «إياب» offer to a held member', 'I1 «تخزين المحادثات» off', 'T1 text older than 12 months', 'R2 Airport Road reception sees Airport Road only']) {
   check(TESTS.includes(name), `the SQL test «${name}» exists`);

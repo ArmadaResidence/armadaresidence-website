@@ -25,6 +25,9 @@ public/flags/
 Armada Residence Knowledge Base/
 الهوية النهائية لفنادق أرمادا ريزدنس/
 DECISIONS_append_*.md
+# the two Wi-Fi password cards (Guest Hub H4, 13 Nov 2026): loaded once on production, never committed — the repo is public
+wifi-cards.json
+guest-hub-h4-files*.zip
 
 # os / editors
 .DS_Store
