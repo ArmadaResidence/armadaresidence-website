@@ -433,6 +433,7 @@ All `hub_*` tables carry `created_at`, `updated_at`, `is_test`. Text columns tha
 - **Assistant (assistant: edit):** `hub_unit_save`, `hub_unit_clone`, `hub_unit_members_set`, `hub_unit_mode_set`, `hub_persona_save` + publish through the eval, `hub_setting_set` (wraps `set_setting` for the hub keys), `hub_summary_recipients_set` (the `hub_summary` scope), `hub_test_item_save`. **`hub_licence_set` refuses everyone but the system admin** (`internal.is_system_admin()`) [مقرر — 12 نوفمبر 2026].
 - **Service role:** `hub_ingest_inbound`, `hub_ingest_echo`, `hub_apply_status`, `hub_turn_claim` / `hub_turn_finish`, `hub_book_draft`, `hub_partner_enquiry_from_draft`, `hub_cancel_word_start` / `hub_cancel_word_resolve` (T32–T35), `hub_portfolio_headroom()`, `hub_usage_add`, `hub_morning_summary()`, `hub_retention()`.
 - **Read (view levels):** `hub_inbox_list`, `hub_thread`, `hub_guest_conversations`, `hub_radar_*`, `hub_now_*`, `report_hub_*` (money keys withheld without `finance`, as `internal.no_money` does).
+- **Built in H3 (13 Nov 2026, migration `20261113300000_guest_hub_inbox`):** the inbox actions above except `hub_pause_unit` and `hub_flag_wrong` (they come with the assistant); `hub_release` refuses while no assistant exists; the sends are `hub_send_begin` / `hub_send_retry` AS THE USER through `hub-admin` (`send`, `retry`) and `hub_send_finish` / `hub_held_claim` for the service role; `hub_inbox_badge`; the timers `hub_inbox_tick` (pg_cron `hub-inbox`, every 2 minutes) and `hub_escalations_claim`; `hub_channel_sending_set` (§7.1); `hub_webhook_events_sync`. `hub_unanswered` exists from H3 (its excerpt is filled by H4).
 
 ### 3.5 Retention [مقرر — 12 نوفمبر 2026: message text 12 months, media 90 days]
 
@@ -738,7 +739,7 @@ Western digits everywhere; the site's date picker for every date; dialogs close 
 | «تخزين المحادثات» (`hub_inbox_on`, default **off**) | messages are stored and shown in the inbox; switched on by Ahmed when the inbox goes live (§3.5). Off: the webhook keeps today's behaviour only (opt-out, statuses) | assistant: edit |
 | Unit mode `off` | no assistant output for one unit | assistant: edit |
 | «إيقاف مؤقت» of a unit | the same, from the inbox, for a unit the user is a member of | inbox: edit (resume: assistant: edit) |
-| Channel `sending_enabled` (default **off** until verified) | nothing at all is sent from that number by the hub (staff replies included) | assistant: edit |
+| Channel `sending_enabled` (default **off** until verified) | nothing at all is sent from that number by the hub (staff replies included) — «الإرسال من المركز» in «إعدادات المساعد», `hub_channel_sending_set`, a verified channel only (H3, 13 Nov 2026) | assistant: edit |
 | The existing switches «رسائل واتساب التلقائية» per branch | unchanged; the hub never touches them | as today |
 | Inbound replies («استقبال ردود واتساب (إيقاف العروض)») | ON since 9 Nov 2026 10:44 (C1, Claude in Chrome, 13 Nov 2026); Ahmed's, independent of the hub [مقرر — 12 نوفمبر 2026] | system admin |
 
