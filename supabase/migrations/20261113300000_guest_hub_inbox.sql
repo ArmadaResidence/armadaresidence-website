@@ -536,7 +536,7 @@ $$;
 -- ───────────────────────────────────────────── 6. reads ─────────────────────────────────────────────
 
 -- «المحادثات»: the list. p: {tab: waiting | assistant | drafts | all | closed, unit, state, owner (me | none | phone |
--- assistant | <uuid>), channel, language, topic, blocked (true: only blocked numbers), q (name / number / AR- ref),
+-- assistant | <uuid>), channel, language, topic, tag (order = «طلبات» of a dining unit), blocked (true: only blocked numbers), q (name / number / AR- ref),
 -- before (a cursor: the last row's last_at), limit}
 create function public.hub_inbox_list(p jsonb default '{}'::jsonb) returns jsonb
 language plpgsql stable security definer set search_path = '' as $$
@@ -572,6 +572,7 @@ begin
        and (nullif(p ->> 'channel', '') is null or ch.kind = p ->> 'channel')
        and (nullif(p ->> 'language', '') is null or coalesce(c.language, g.language) = p ->> 'language')
        and (nullif(p ->> 'topic', '') is null or (p ->> 'topic') = any (c.topics))
+       and (nullif(p ->> 'tag', '') is null or (p ->> 'tag') = any (c.tags))
        and (nullif(p ->> 'owner', '') is null
             or (p ->> 'owner' = 'me' and c.owner_kind = 'staff' and c.owner_staff_id = auth.uid())
             or (p ->> 'owner' = 'none' and c.owner_kind is null)
@@ -608,7 +609,7 @@ begin
                       from public.hub_messages l where l.conversation_id = x.id and l.kind <> 'note' order by l.sent_at desc, l.created_at desc limit 1))
            order by x.last_at desc, x.id desc) from page x), '[]'::jsonb)
     into v_counts, v_rows;
-  select coalesce(jsonb_agg(jsonb_build_object('id', u.id, 'key', u.key, 'name', coalesce(v.name_ar, u.name_ar), 'status', u.status) order by u.sort), '[]') into v_units
+  select coalesce(jsonb_agg(jsonb_build_object('id', u.id, 'key', u.key, 'kind', u.kind, 'name', coalesce(v.name_ar, u.name_ar), 'status', u.status) order by u.sort), '[]') into v_units
     from public.hub_units u left join public.dining_venues v on v.id = u.dining_venue_id where internal.can_unit(u.id, 'view');
   return jsonb_build_object('rows', case when jsonb_array_length(v_rows) > v_limit then v_rows - v_limit else v_rows end,
                             'more', jsonb_array_length(v_rows) > v_limit, 'counts', v_counts, 'units', v_units, 'timers', internal.hub_timers(),

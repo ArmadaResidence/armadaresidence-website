@@ -79,6 +79,13 @@ export interface WaPayload {
 function branchOf(c: Content, slug: string) {
   return c.branches.find((b: { slug: string }) => b.slug === slug) ?? null;
 }
+/** The branch name every template variable carries, in the message's language (branches.json → name_ar / name_en).
+ *  The booking templates and the Guest Hub's hub_reply_ready {{1}} (H3, 13 Nov 2026 — templates.md) both use it. */
+export function branchName(c: Content, slug: string, L: Locale): string {
+  const b = branchOf(c, slug);
+  if (!b) throw new Error(`unknown branch ${slug}`);
+  return String(b[`name_${L}`]);
+}
 
 /** The body variables of a template, in order ({{1}} first). `metaName` = the Meta template sent (default: the primary
  *  one, WA_TEMPLATE_NAMES) — booking_cancelled_v2 carries the reason as {{6}}, the v1 fallback does not. */
@@ -86,7 +93,7 @@ export function waParams(c: Content, template: WaTemplate, d: WaBooking, metaNam
   const L: Locale = d.locale === 'en' ? 'en' : 'ar';
   const b = branchOf(c, d.branch);
   if (!b) throw new Error(`unknown branch ${d.branch}`);
-  const branch = String(b[`name_${L}`]);
+  const branch = branchName(c, d.branch, L);
   const checkIn = longDate(c, d.check_in, L);
   const checkOut = longDate(c, d.check_out, L);
   // WhatsApp refuses a parameter with a newline, a tab or more than four spaces in a row

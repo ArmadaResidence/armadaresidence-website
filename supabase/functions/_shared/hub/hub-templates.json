@@ -1,0 +1,17 @@
+{
+  "_note": "The Guest Hub's own WhatsApp templates as Meta approved them (docs/guest-hub/templates.md §1 — submitted and APPROVED 13 Nov 2026, ar + en on both branch numbers, UTILITY, no header or footer, one quick reply; the statuses are read from YCloud into public.hub_templates by «تحديث حالة القوالب»). Never edited from here: a change is a new template name. scripts/whatsapp-check.mjs builds the payload against this definition.",
+  "hub_reply_ready": {
+    "category": "UTILITY",
+    "variables": ["unit_name"],
+    "ar": {
+      "body": "مرحبًا، لدى فريق {{1}} رد على رسالتك الأخيرة.\nاضغط «متابعة المحادثة» أو اكتب لنا هنا لنكمل معك.",
+      "sample": ["أرمادا ريزيدنس طريق المطار"],
+      "quick_reply": "متابعة المحادثة"
+    },
+    "en": {
+      "body": "Hello, the {{1}} team has a reply to your last message.\nTap “Continue the chat” or write to us here, and we’ll carry on with you.",
+      "sample": ["Armada Residence Airport Road"],
+      "quick_reply": "Continue the chat"
+    }
+  }
+}

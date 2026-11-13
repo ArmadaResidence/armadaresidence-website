@@ -75,7 +75,7 @@ language sql as $$
                                                       'body', p_body, 'profile_name', 'Guest QA3'))
 $$;
 create function pg_temp._conv(p_phone text) returns uuid language sql stable as $$
-  select c.id from public.hub_conversations c join public.guest_profiles g on g.id = c.guest_profile_id where g.phone = p_phone order by c.created_at desc limit 1
+  select c.id from public.hub_conversations c join public.guest_profiles g on g.id = c.guest_profile_id where g.phone = p_phone order by (c.state <> 'closed') desc, c.created_at desc limit 1
 $$;
 grant execute on function pg_temp._conv(text) to authenticated, service_role;
 

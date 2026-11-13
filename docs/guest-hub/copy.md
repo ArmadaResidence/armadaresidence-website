@@ -219,6 +219,7 @@ Every subject carries an `AR-` token so the Hostinger filter «From contains no-
 | Conversation waiting | the branch's reception recipients | «محادثة بانتظار الرد — {unit_name} — AR-HUB-{id}» | «محادثة في {unit_name} تنتظر الرد منذ {duration}.» · «الحالة: {state_label}» · button «فتح المحادثة» |
 | Complaint | the branch's reception recipients | «شكوى من ضيف — {unit_name} — AR-HUB-{id}» | «وصلت شكوى في محادثة على {unit_name}، وانتقلت المحادثة إلى الفريق.» · button «فتح المحادثة» |
 | Morning summary | the `hub_summary` recipients (info@armadaresidence.com + those added in Settings) | «ملخص مركز الضيوف — {date} — AR-HUB-{yyyymmdd}» | heading «أمس في مركز الضيوف»; per unit: «المحادثات» · «ردود المساعد» · «تحويلات للفريق» · «بانتظار الرد الآن» · «حجوزات المساعد (فوري / طلب)» · «طلبات القاعة والمجموعات» · «أكثر المواضيع سؤالًا» · «تكلفة المساعد والرسائل»; footer «للاستخدام الداخلي» |
+| Number quality dropped [مقرر — 13 نوفمبر 2026] | the active admins | «جودة رقم واتساب — {unit_name} — AR-HUB-{yyyymmdd}» | «انخفض تقييم جودة رقم واتساب {unit_name} إلى «{rating}» حسب ميتا.» · «راجع الرسائل والحملات الأخيرة المرسلة من هذا الرقم قبل بدء أي حملة جديدة.» · button «فتح إعدادات المساعد». `{rating}`: High «مرتفع» · Medium «متوسط» · Low «منخفض» |
 
 ---
 

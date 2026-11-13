@@ -1491,41 +1491,81 @@ ${para(L, M.foot, { muted: true, size: 12 })}`,
   return { subject, html, text };
 }
 
-// ══ Guest Hub (H2, 13 Nov 2026): a WhatsApp number's quality fell below High — to the active admins, Arabic only ═══════
+// ══ Guest Hub: a WhatsApp number's quality fell below High — to the active admins, Arabic only ══════════════════════════
+// The wording approved by Ahmed (13 Nov 2026, copy.md §7 row 4; it replaces the H2 draft): subject «جودة رقم واتساب —
+// {unit_name} — AR-HUB-{yyyymmdd}», two sentences and «فتح إعدادات المساعد». Ratings: High «مرتفع», Medium «متوسط», Low «منخفض».
 export interface HubQualityMail {
   unit_name: string;
-  /** E.164 */
+  /** E.164 (not in the approved body; kept for the caller's log) */
   address: string;
   rating: string;
   /** ISO time of the event */
   at: string;
   test?: boolean;
 }
+/** Meta's / YCloud's rating → the approved Arabic word (GREEN / HIGH, YELLOW / MEDIUM, RED / LOW; FLAGGED reads as low) */
+export function hubQualityRating(c: Content, rating: string): string {
+  const R = c.staff_email.ar.hub_quality.ratings as Record<string, string>;
+  const k = String(rating ?? '').toUpperCase();
+  return R[k] ?? k;
+}
 export function hubQualityMail(c: Content, d: HubQualityMail): Mail {
   const L: Locale = 'ar';
   const M = c.staff_email.ar.hub_quality;
   const D = c.staff_email.ar.deploy_alert;
   const day = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Riyadh', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(d.at)).replace(/-/g, '');
-  const subject = `${d.test ? D.test_prefix : ''}${fill(M.subject, { unit: d.unit_name, date: day })}`;
-  const spaced = d.address.replace(/^\+(\d{3})(\d{2})(\d{3})(\d{4})$/, '+$1 $2 $3 $4');
-  const rows: [string, string][] = [
-    [M.label_unit, d.unit_name],
-    [M.label_number, `\u2066${spaced}\u2069`],
-    [M.label_rating, M.ratings[String(d.rating).toUpperCase()] ?? String(d.rating)],
-    [M.label_time, `${riyadhStamp(c, d.at, L)}${D.time_suffix}`],
-  ];
+  const subject = `${d.test ? D.test_prefix : ''}${fill(M.subject, { unit_name: d.unit_name, yyyymmdd: day })}`;
+  const lead = fill(M.lead, { unit_name: d.unit_name, rating: hubQualityRating(c, d.rating) });
   const url = `${String(c.admin_url ?? 'https://admin.armadaresidence.com').replace(/\/$/, '')}/assistant`;
   const inner = section(
     L,
-    `${headline(L, M.lead)}
+    `${headline(L, lead)}
 ${para(L, M.meaning)}
-${kvCard(L, rows)}
 <div style="height:18px; line-height:18px; font-size:0;">&nbsp;</div>
-${buttons(L, [button(L, url, M.button, 'bronze')])}
-<div style="height:8px; line-height:8px; font-size:0;">&nbsp;</div>
-${para(L, M.foot, { muted: true, size: 12 })}`,
+${buttons(L, [button(L, url, M.button, 'bronze')])}`,
   );
-  const html = doc({ lang: 'ar', title: subject, preheader: M.lead, body: header(c, undefined, true) + card(inner) + footer(c, ['ar']), print: true });
-  const text = [M.lead, '', M.meaning, '', textRows(rows), '', `${M.button}: ${url}`, '', M.foot, '', legalText(c, 'ar')].join('\n');
+  const html = doc({ lang: 'ar', title: subject, preheader: lead, body: header(c, undefined, true) + card(inner) + footer(c, ['ar']), print: true });
+  const text = [lead, '', M.meaning, '', `${M.button}: ${url}`, '', legalText(c, 'ar')].join('\n');
+  return { subject, html, text };
+}
+
+// ══ Guest Hub H3 (13 Nov 2026): «محادثة بانتظار الرد» — to the branch's reception recipients, Arabic only ══════════════
+// copy.md §7 row 1: subject «محادثة بانتظار الرد — {unit_name} — AR-HUB-{id}»; «محادثة في {unit_name} تنتظر الرد منذ
+// {duration}.» · «الحالة: {state_label}» · «فتح المحادثة». No guest words and no phone number (spec §2.6, §5.9).
+export interface HubWaitingMail {
+  conversation_id: string;
+  /** the short id of the subject (8 hex, upper case) */
+  short: string;
+  unit_name: string;
+  /** hub_conversations.state */
+  state: string;
+  waiting_min: number;
+  test?: boolean;
+}
+/** «35 دقيقة» / «دقيقتان» / «ساعة واحدة» / «3 ساعات» / «يومان» — counted nouns (ui.json forms) */
+export function hubDuration(c: Content, minutes: number): string {
+  const M = c.staff_email.ar.hub_waiting;
+  const m = Math.max(1, Math.floor(Number(minutes) || 0));
+  if (m < 60) return pluralForm(M.minutes, m);
+  if (m < 48 * 60) return pluralForm(M.hours, Math.floor(m / 60));
+  return pluralForm(M.days, Math.floor(m / 1440));
+}
+export function hubWaitingMail(c: Content, d: HubWaitingMail): Mail {
+  const L: Locale = 'ar';
+  const M = c.staff_email.ar.hub_waiting;
+  const D = c.staff_email.ar.deploy_alert;
+  const subject = `${d.test ? D.test_prefix : ''}${fill(M.subject, { unit_name: d.unit_name, id: d.short })}`;
+  const lead = fill(M.lead, { unit_name: d.unit_name, duration: hubDuration(c, d.waiting_min) });
+  const state = fill(M.state, { state_label: M.states[d.state] ?? d.state });
+  const url = `${String(c.admin_url ?? 'https://admin.armadaresidence.com').replace(/\/$/, '')}/inbox?c=${encodeURIComponent(d.conversation_id)}`;
+  const inner = section(
+    L,
+    `${headline(L, lead)}
+${para(L, state)}
+<div style="height:18px; line-height:18px; font-size:0;">&nbsp;</div>
+${buttons(L, [button(L, url, M.button, 'bronze')])}`,
+  );
+  const html = doc({ lang: 'ar', title: subject, preheader: lead, body: header(c, undefined, true) + card(inner) + footer(c, ['ar']), print: true });
+  const text = [lead, state, '', `${M.button}: ${url}`, '', legalText(c, 'ar')].join('\n');
   return { subject, html, text };
 }

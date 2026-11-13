@@ -285,3 +285,40 @@ export async function sendSession(s: SessionSend): Promise<WaResult> {
     return fail('network');
   }
 }
+
+/** One hub template send (Guest Hub H3, 13 Nov 2026 — hub_reply_ready from the inbox): a template may go outside the
+ *  24-hour window, so there is no window check; everything else as sendSession — test mode builds only, never retried
+ *  after a timeout or a network error, never throws. The caller records the outcome (public.hub_send_finish). */
+export async function sendTemplate(payload: { from: string; to: string; type: 'template' }, test: boolean): Promise<WaResult> {
+  const fail = (errorCode: string): WaResult => ({ accepted: false, status: 'failed', messageId: null, errorCode });
+  const done = (r: WaResult) => {
+    console.log(`whatsapp hub template ${r.status}`, r.messageId ? `id=${r.messageId}` : '', r.errorCode ?? '', test ? 'TEST' : '');
+    return r;
+  };
+  try {
+    if (test) return done({ accepted: true, status: 'test', messageId: null, errorCode: null });
+    const key = Deno.env.get('YCLOUD_API_KEY');
+    if (!key) return done(fail('not_configured'));
+    let res: Response;
+    try {
+      res = await fetch(YCLOUD_SEND, { method: 'POST', headers: { 'X-API-Key': key, 'Content-Type': 'application/json' }, body: JSON.stringify(payload), signal: AbortSignal.timeout(TIMEOUT_MS) });
+    } catch (e) {
+      return done(fail((e as Error)?.name === 'TimeoutError' ? 'timeout' : 'network'));
+    }
+    const text = await res.text();
+    let body: { id?: string; status?: string; errorCode?: string; errorMessage?: string; whatsappApiError?: unknown } = {};
+    try {
+      body = JSON.parse(text);
+    } catch { /* not JSON */ }
+    if (!res.ok) return done(fail(waErrorCode(res.status, text)));
+    if (body.status === 'failed') {
+      const detail = `${body.errorCode ?? ''} ${body.errorMessage ?? ''} ${body.whatsappApiError ? JSON.stringify(body.whatsappApiError) : ''}`.trim();
+      return done({ ...fail(waErrorCode(res.status, detail)), messageId: body.id ?? null });
+    }
+    const st = String(body.status);
+    return done({ accepted: true, status: SENT.has(st) && st !== 'test' ? st : 'accepted', messageId: body.id ?? null, errorCode: null });
+  } catch (e) {
+    console.error('whatsapp hub template crashed', String(e).slice(0, 200));
+    return fail('network');
+  }
+}

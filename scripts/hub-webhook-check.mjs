@@ -204,8 +204,9 @@ check(/insert into public\.hub_alerts \(kind, unit_id, payload\)\s+values \('qua
 check(new RegExp(`'${EVENT_QUALITY.replace(/\./g, '\\.')}'`).test(read('supabase/functions/_shared/hub/webhook.ts')) && /if \(test \|\| !q\.phone\) return/.test(FN) && /hubQualityMail\(content,/.test(FN), 'quality: a QA event never writes the channel; the email from the shared layout');
 
 const qm = hubQualityMail(C, { unit_name: 'فرع طريق المطار', address: '+966536622277', rating: 'YELLOW', at: '2026-11-13T10:10:00Z' });
-check(qm.subject === 'انخفاض جودة رقم واتساب — فرع طريق المطار — AR-HUB-20261113' && /AR-HUB-/.test(qm.subject), `the quality email: its subject carries AR-HUB- (the mailbox filter) — ${qm.subject}`);
-check(qm.text.includes('متوسطة') && qm.text.includes('+966 53 662 2277') && qm.text.includes('/assistant') && /<html[^>]*lang="ar"/.test(qm.html) && /@media print/.test(qm.html), 'the quality email: the rating in Arabic, our number spaced, the link to «إعدادات المساعد», the shared layout and its print sheet');
+// the wording approved by Ahmed on 13 Nov 2026 (copy.md §7 row 4) — every detail in scripts/hub-email-check.mjs
+check(qm.subject === 'جودة رقم واتساب — فرع طريق المطار — AR-HUB-20261113' && /AR-HUB-/.test(qm.subject), `the quality email: its subject carries AR-HUB- (the mailbox filter) — ${qm.subject}`);
+check(qm.text.includes('«متوسط»') && qm.text.includes('/assistant') && /<html[^>]*lang="ar"/.test(qm.html) && /@media print/.test(qm.html), 'the quality email: the rating in Arabic, the link to «إعدادات المساعد», the shared layout and its print sheet');
 
 // ── 7. «تحديث أحداث الاستقبال» ──
 const two = ['whatsapp.inbound_message.received', 'whatsapp.message.updated'];
