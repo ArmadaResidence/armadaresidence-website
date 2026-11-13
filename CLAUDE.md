@@ -2,6 +2,17 @@
 > whole hand-off to Ahmed are in **Arabic** (Egyptian Arabic is fine) — code, file names and commands stay as they are.
 > Never a note or a hand-off in English or any other language (sessions 23, 24 and 27 broke this). Code, commits and
 > docs stay in English.
+>
+> **SESSION-END MARKERS (Ahmed, 13 Nov 2026).** Only when the whole task is finished and you write the final hand-off —
+> never when pausing to wait for CI, a deploy or a background task — end that final message with the exact line:
+> ✅ انتهت الجلسة
+>
+> When you stop because you need Ahmed's answer or decision before you can continue (a question asked in plain text,
+> without the question dialog), end that message with the exact line:
+> ❓ محتاج ردّك
+>
+> The Stop hook (`~/.claude/hooks/twilio-call.ps1`) phones Ahmed only when it sees one of these lines; any other stop
+> only sends the ntfy notification.
 
 # CLAUDE.md — Armada Residence Website (armadaresidence.com)
 
