@@ -152,7 +152,17 @@ const { ctx, page } = await login('admin@qa.invalid');
   await page.locator('[data-action="theme-top"]').click();
 }
 
-// ══ the imported club member (the runner imported a fake club_signups row on the branch: +966500000921, breakfast-airport) ══
+// ══ the imported club member ══
+// public.club_signups was imported (internal.club_import) and dropped on 3 Nov 2026, so an import cannot run again: the
+// run writes the member exactly as club_import wrote it (14 Nov 2026, H4 — the check is unchanged): the profile with
+// its club source and join time, and one club grant of the first text version at its original time.
+{
+  const have = await rest('guest_profiles?phone=eq.%2B966500000921&select=id');
+  let pid = have[0]?.id;
+  if (!pid) pid = (await rest('guest_profiles', { method: 'POST', body: JSON.stringify({ phone: '+966500000921', name: 'عضو مستورد', language: 'ar', club_joined_at: '2026-11-03T04:45:00+00:00', club_source: 'breakfast-airport' }) }))[0].id;
+  const had = await rest(`guest_consents?profile_id=eq.${pid}&source=eq.club&select=id`);
+  if (!had.length) await rest('guest_consents', { method: 'POST', body: JSON.stringify({ profile_id: pid, action: 'grant', text_version: '2026-11-03', language: 'ar', source: 'club', src: 'breakfast-airport', at: '2026-11-03T04:45:00+00:00' }) });
+}
 {
   const imp = (await rest('guest_profiles_library?phone=eq.%2B966500000921&select=club_source,consent,club_joined_at'))[0];
   check(imp?.club_source === 'breakfast-airport' && imp.consent === 'granted', 'the imported club member: its source and consent', JSON.stringify(imp));
@@ -166,7 +176,7 @@ await page.waitForSelector('[data-list="guests"], [data-guests-count]');
 await shot(page, 'guests-list');
 const totals = await page.evaluate(() => Object.fromEntries([...document.querySelectorAll('[data-club-sources] tr[data-source]')].map((tr) => [tr.dataset.source, [...tr.querySelectorAll('td')].map((td) => Number(td.textContent))])));
 // test-mode sign-ups are left out of the totals by design: the imported (real) breakfast-airport member is counted
-check((totals['breakfast-airport']?.[0] ?? 0) >= 1 && Object.keys(totals).join() === 'breakfast-airport,breakfast-shafa,site,reception,booking,other', 'club totals by source: the imported breakfast-airport member counted', JSON.stringify(totals));
+check((totals['breakfast-airport']?.[0] ?? 0) >= 1 && Object.keys(totals).join() === 'breakfast-airport,breakfast-shafa,site,reception,booking,booking-page,booking-email,other', 'club totals by source: the imported breakfast-airport member counted', JSON.stringify(totals));
 // search
 await page.fill('#gf-q', phoneBook.slice(-7));
 await until(async () => (await page.locator('[data-list="guests"] [data-guest]').count()) === 1);
