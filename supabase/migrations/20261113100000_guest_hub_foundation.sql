@@ -123,7 +123,7 @@ create index hub_unit_members_staff on public.hub_unit_members (staff_id);
 create table public.hub_templates (
   id uuid primary key default gen_random_uuid(),
   channel_id uuid not null references public.hub_channels (id) on delete cascade,
-  name text not null check (name ~ '^[a-z0-9_]{1,512}$'),
+  name text not null check (name ~ '^[a-z0-9_]+$' and char_length(name) <= 512),
   language text not null check (language ~ '^[a-z]{2,3}(_[A-Z]{2})?$'),
   category text check (category is null or char_length(category) <= 40),
   -- as YCloud reports it (APPROVED, PENDING, REJECTED, PAUSED, DISABLED …); the hub sends only APPROVED (later sessions)
@@ -828,7 +828,7 @@ begin
   perform internal.hub_act_as(p_user);
   v_batch := internal.begin_batch();
   for r in select * from jsonb_array_elements(p_items) loop
-    continue when coalesce(r ->> 'name', '') !~ '^[a-z0-9_]{1,512}$' or coalesce(r ->> 'language', '') !~ '^[a-z]{2,3}(_[A-Z]{2})?$'
+    continue when coalesce(r ->> 'name', '') !~ '^[a-z0-9_]+$' or char_length(r ->> 'name') > 512 or coalesce(r ->> 'language', '') !~ '^[a-z]{2,3}(_[A-Z]{2})?$'
                or char_length(coalesce(r ->> 'status', '')) not between 1 and 40;
     insert into public.hub_templates as t (channel_id, name, language, category, status, reason, read_at)
     values (p_channel, r ->> 'name', r ->> 'language', nullif(left(coalesce(r ->> 'category', ''), 40), ''), upper(r ->> 'status'),
