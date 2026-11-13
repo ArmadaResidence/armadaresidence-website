@@ -28,7 +28,8 @@ const DEFAULT_ORIGINS = PUBLIC
 // label-suggest (C4, 28 Oct 2026): the translation suggestion of the dashboard's bilingual label fields (user JWT)
 // dining-notify (2 Nov 2026): public like the forms (verify_jwt off — the send action checks the user itself)
 // partners-admin (3 Nov 2026): the quote PDFs of «طلبات الشركاء» (user JWT)
-const DEFAULT_FUNCTIONS = PUBLIC ? ['booking-request', 'job-application', 'dining-notify'] : ['booking-admin', 'admin-users', 'site-rebuild', 'login-code', 'label-suggest', 'partners-admin'];
+// hub-admin (13 Nov 2026): «تحقق من القناة» / «تحديث حالة القوالب» of «إعدادات المساعد» (user JWT)
+const DEFAULT_FUNCTIONS = PUBLIC ? ['booking-request', 'job-application', 'dining-notify'] : ['booking-admin', 'admin-users', 'site-rebuild', 'login-code', 'label-suggest', 'partners-admin', 'hub-admin'];
 // what the dashboard's fetch() and supabase-js functions.invoke() put in Access-Control-Request-Headers (the site's
 // forms: BookingForm, partners-enquiry, CareersForm send authorization + apikey + content-type)
 const REQUEST_HEADERS = PUBLIC ? ['authorization', 'apikey', 'content-type'] : ['authorization', 'apikey', 'content-type', 'x-client-info'];

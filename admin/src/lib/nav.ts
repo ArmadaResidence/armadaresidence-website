@@ -60,6 +60,13 @@ export const NAV_GROUPS: NavGroup[] = [
       { to: '/eyab-whatsapp', label: 'عروض إياب على واتساب', section: 'eyab_wa', icon: 'whatsapp' },
     ],
   },
+  // «مركز الضيوف» (13 Nov 2026, Guest Hub H1): «إعدادات المساعد» first; the inbox, knowledge, radar and «الآن» join it
+  // in their sessions (sections inbox / knowledge / radar / now exist since H1)
+  {
+    key: 'hub',
+    title: 'مركز الضيوف',
+    items: [{ to: '/assistant', label: 'إعدادات المساعد', section: 'assistant', icon: 'assistant' }],
+  },
   {
     key: 'partners',
     title: 'الشركاء',
