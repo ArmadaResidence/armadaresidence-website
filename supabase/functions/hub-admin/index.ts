@@ -8,10 +8,18 @@
 //     verifiedName, status) and stores verified_at, the quality rating and the messaging limit («تحقق من القناة»);
 //   - refresh_templates {}: reads every template of each channel's WABA into hub_templates (name, language, category,
 //     status, read_at) — «تحديث حالة القوالب».
-// It never creates, edits or deletes anything in YCloud and never touches the webhook (the one endpoint stays
-// wa-automation's). Later sessions add the staff sends, approvals and template sends here.
+//   - update_webhook_events {} (session H2, 13 Nov 2026 — «تحديث أحداث الاستقبال», the SYSTEM ADMIN only,
+//     public.hub_webhook_status): reads the one endpoint registered on 9 Nov 2026 (wa-automation's), ADDS
+//     whatsapp.smb.message.echoes and whatsapp.phone_number.quality_updated to its events (keeping every one it has),
+//     checks YCloud's answer and records it (public.hub_webhook_events_store, audited). The only write to YCloud: never
+//     a new endpoint, never a removed event, never another endpoint, never its URL, status or secret.
+// Otherwise it never creates, edits or deletes anything in YCloud. Later sessions add the staff sends, approvals and
+// template sends here.
 import { cors, preflight } from '../_shared/cors.ts';
-import { channelFacts, pageOf, phoneNumbersUrl, pickPhone, templateRows, templatesUrl, type PhoneItem, type TemplateItem } from './ycloud.ts';
+import {
+  channelFacts, eventsKept, eventsOf, eventsPatchBody, isOurEndpoint, mergeEvents, pageOf, phoneNumbersUrl, pickPhone, templateRows, templatesUrl, webhookEndpointUrl,
+  type PhoneItem, type TemplateItem,
+} from './ycloud.ts';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 const TIMEOUT_MS = 15000;
@@ -140,6 +148,69 @@ Deno.serve(async (req) => {
       results.push(s.ok ? { channel: ch.id, ok: true, count: s.data.count } : { channel: ch.id, ok: false, error: 'hub_store' });
     }
     return json(req, 200, { ok: results.every((x) => x.ok), results });
+  }
+
+  if (body.action === 'update_webhook_events') {
+    const st = await rpc<{ system_admin: boolean; registered: boolean; events: string[] }>('hub_webhook_status', {}, jwt);
+    if (!st.ok || !st.data?.system_admin) return json(req, 403, { ok: false, error: 'not allowed' });
+    const id = await rpc<string | null>('hub_webhook_endpoint', {}, null);
+    if (!id.ok || !id.data) return json(req, 409, { ok: false, error: 'hub_webhook_not_registered' });
+    // 1. read the endpoint as it is now (never a blind update)
+    let res: Response;
+    try {
+      res = await fetch(webhookEndpointUrl(id.data), { method: 'GET', headers: { 'X-API-Key': key, Accept: 'application/json' }, signal: AbortSignal.timeout(TIMEOUT_MS) });
+    } catch (e) {
+      console.error('hub-admin: YCloud unreachable', String(e).slice(0, 120));
+      return json(req, 502, { ok: false, error: 'hub_ycloud', status: 0 });
+    }
+    const text = await res.text();
+    let ep: unknown = null;
+    try {
+      ep = JSON.parse(text);
+    } catch { /* not JSON */ }
+    if (!res.ok) {
+      console.error('hub-admin: webhook read refused', res.status, text.replace(/whsec_[A-Za-z0-9]+/g, 'whsec_…').slice(0, 200));
+      return json(req, 502, { ok: false, error: 'hub_ycloud', status: res.status });
+    }
+    const before = eventsOf(ep);
+    if (!before || !isOurEndpoint(ep)) return json(req, 409, { ok: false, error: 'hub_webhook_unexpected' });
+    const m = mergeEvents(before);
+    if (!m.added.length) {
+      const s = await rpc<{ ok: boolean; batch_id: string }>('hub_webhook_events_store', { p_user: user, p_before: st.data.events ?? [], p_after: before }, null);
+      return json(req, 200, { ok: true, unchanged: true, events: before, batch_id: s.ok ? s.data.batch_id : null });
+    }
+    // 2. the one update: the full list (nothing removed)
+    let up: Response;
+    try {
+      up = await fetch(webhookEndpointUrl(id.data), {
+        method: 'PATCH',
+        headers: { 'X-API-Key': key, 'Content-Type': 'application/json', Accept: 'application/json' },
+        body: JSON.stringify(eventsPatchBody(m.events)),
+        signal: AbortSignal.timeout(TIMEOUT_MS),
+      });
+    } catch (e) {
+      console.error('hub-admin: YCloud unreachable (update)', String(e).slice(0, 120));
+      return json(req, 502, { ok: false, error: 'hub_ycloud', status: 0 });
+    }
+    const t2 = await up.text();
+    let after: unknown = null;
+    try {
+      after = JSON.parse(t2);
+    } catch { /* not JSON */ }
+    if (!up.ok) {
+      console.error('hub-admin: webhook update refused', up.status, t2.replace(/whsec_[A-Za-z0-9]+/g, 'whsec_…').slice(0, 200));
+      return json(req, 502, { ok: false, error: 'hub_ycloud', status: up.status });
+    }
+    // 3. YCloud's answer must keep every event and hold the two new ones
+    const now = eventsOf(after);
+    if (!now || !eventsKept(before, now)) {
+      console.error('hub-admin: webhook update answer unexpected', JSON.stringify(now ?? []).slice(0, 300));
+      return json(req, 502, { ok: false, error: 'hub_webhook_unexpected', events: now ?? [] });
+    }
+    const s = await rpc<{ ok: boolean; batch_id: string }>('hub_webhook_events_store', { p_user: user, p_before: before, p_after: now }, null);
+    if (!s.ok) return json(req, 500, { ok: false, error: 'hub_store' });
+    console.log('hub-admin: webhook events added', m.added.join(','));
+    return json(req, 200, { ok: true, added: m.added, events: now, batch_id: s.data.batch_id });
   }
 
   return json(req, 400, { ok: false, error: 'unknown action' });

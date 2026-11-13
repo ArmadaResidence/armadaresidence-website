@@ -1,6 +1,7 @@
-// hub-admin's YCloud reads (13 Nov 2026 — Guest Hub H1, spec §6.1 / §6.4): pure helpers, shared with the offline check
-// scripts/hub-controls-check.mjs. READ ONLY: this module builds GET requests only — never a POST, PATCH or DELETE to
-// YCloud, never the webhook (the one endpoint stays wa-automation's, CLAUDE.md §14).
+// hub-admin's YCloud calls (13 Nov 2026 — Guest Hub H1, spec §6.1 / §6.4; H2 the same day): pure helpers, shared with the
+// offline checks scripts/hub-controls-check.mjs and scripts/hub-webhook-check.mjs. GET requests only, with ONE exception
+// since H2: «تحديث أحداث الاستقبال» PATCHes the enabled events of the one endpoint (wa-automation's) to add the two hub
+// events — never a POST (no new endpoint), never a DELETE, never another endpoint, never an event removed (CLAUDE.md §14).
 export const YCLOUD = 'https://api.ycloud.com/v2';
 export const PAGE = 100;
 
@@ -79,4 +80,55 @@ export function pageOf<T>(body: unknown): { items: T[]; more: boolean } {
   const total = typeof b.total === 'number' ? b.total : null;
   const more = total !== null ? (b.offset ?? 0) + items.length < total : items.length >= PAGE;
   return { items, more };
+}
+
+// ═══ «تحديث أحداث الاستقبال» (Guest Hub H2, 13 Nov 2026 — spec §3.7): the ONE write this module prepares ═══
+// The one endpoint registered on 9 Nov 2026 (wa-automation?hook=…) gains the two events the router now handles. One GET
+// of that endpoint, then one PATCH with the FULL list (YCloud does not document whether enabledEvents replaces or merges,
+// so the union is sent and works either way), then the answer is checked: nothing removed, both added. Never a new
+// endpoint, never a removal, never another endpoint (its URL must be wa-automation's), never the URL, status or secret.
+
+/** the events session H2 adds (the router handles both) */
+export const HUB_ADD_EVENTS = ['whatsapp.smb.message.echoes', 'whatsapp.phone_number.quality_updated'];
+
+/** GET (read) and PATCH (the one update) of the one endpoint */
+export const webhookEndpointUrl = (id: string) => `${YCLOUD}/webhookEndpoints/${encodeURIComponent(id)}`;
+
+/** an endpoint's enabled events, whatever their shape (strings, or objects carrying the type) */
+export function eventsOf(body: unknown): string[] | null {
+  const b = (body ?? {}) as { enabledEvents?: unknown };
+  if (!Array.isArray(b.enabledEvents)) return null;
+  const out: string[] = [];
+  for (const e of b.enabledEvents) {
+    const v = typeof e === 'string' ? e : e && typeof e === 'object' ? String((e as { type?: unknown; name?: unknown; event?: unknown }).type ?? (e as { name?: unknown }).name ?? (e as { event?: unknown }).event ?? '') : '';
+    if (/^[a-z0-9_.]{3,120}$/.test(v) && !out.includes(v)) out.push(v);
+  }
+  return out;
+}
+
+/** the endpoint is ours: its URL is the wa-automation function (with its hook token) */
+export function isOurEndpoint(body: unknown): boolean {
+  const u = String((body as { url?: unknown } | null)?.url ?? '');
+  return /^https:\/\/[a-z0-9-]+\.supabase\.co\/functions\/v1\/wa-automation\?hook=[0-9a-f]{16,}$/i.test(u);
+}
+
+/** the current events + the hub's, never fewer: { events (to send), added } */
+export function mergeEvents(current: string[], add: string[] = HUB_ADD_EVENTS): { events: string[]; added: string[] } {
+  const events = [...current];
+  const added: string[] = [];
+  for (const e of add) {
+    if (!events.includes(e)) {
+      events.push(e);
+      added.push(e);
+    }
+  }
+  return { events, added };
+}
+
+/** the PATCH body: the events only */
+export const eventsPatchBody = (events: string[]) => ({ enabledEvents: events });
+
+/** YCloud's answer kept every event it had and holds the hub's */
+export function eventsKept(before: string[], after: string[] | null, add: string[] = HUB_ADD_EVENTS): boolean {
+  return !!after && before.every((e) => after.includes(e)) && add.every((e) => after.includes(e));
 }

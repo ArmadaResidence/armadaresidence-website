@@ -1,8 +1,10 @@
 // «مركز الضيوف» — the dashboard side of session H1 (13 Nov 2026; docs/guest-hub/GUEST-HUB-SPEC.md §5.6, copy.md §6;
 // DECISIONS.md 2026-11-13 «Guest Hub H1 — foundations»): the calls of «إعدادات المساعد» and every label it shows.
 // The server decides every rule (public.hub_* in supabase/migrations/20261113100000_guest_hub_foundation.sql); this file
-// words them. Nothing here switches anything on: the gates come from the server, and in H1 the engine gate is always
-// missing, so every mode but «متوقف» and both global switches stay off.
+// words them. Nothing here switches anything on by itself: the gates come from the server — the engine gate is missing
+// until H5, so every mode but «متوقف» and «المساعد يعمل» stay off; «تخزين المحادثات» may be switched on since H2 (13 Nov
+// 2026) and stays off until Ahmed switches it. H2 adds «استقبال واتساب»: the one webhook's events and, for the system
+// admin, «تحديث أحداث الاستقبال» (hub-admin update_webhook_events).
 import { supabase } from './supabase';
 import * as api from './api';
 import type { Saved } from './api';
@@ -115,6 +117,36 @@ export interface VerifyResult {
   quality_rating?: string | null;
   messaging_limit?: string | null;
 }
+// ── «استقبال واتساب» (H2, 13 Nov 2026): the one YCloud webhook's events ──
+/** the events of the one endpoint, as the page names them */
+export const WEBHOOK_EVENTS: { key: string; label: string; hub: boolean }[] = [
+  { key: 'whatsapp.inbound_message.received', label: 'الرسائل الواردة', hub: false },
+  { key: 'whatsapp.message.updated', label: 'حالات التسليم', hub: false },
+  { key: 'whatsapp.smb.message.echoes', label: 'الردود من جوال الفرع', hub: true },
+  { key: 'whatsapp.phone_number.quality_updated', label: 'جودة الرقم', hub: true },
+];
+export interface WebhookStatus {
+  system_admin: boolean;
+  registered: boolean;
+  events: string[];
+  registered_at: string | null;
+}
+export async function webhookStatus(): Promise<WebhookStatus> {
+  const { data, error } = await supabase.rpc('hub_webhook_status');
+  if (error) api.fail(error, 'hub_webhook_status');
+  return data as WebhookStatus;
+}
+export const WEBHOOK_ERRORS: Record<string, string> = {
+  hub_webhook_not_registered: 'لم يُسجَّل استقبال ردود واتساب بعد.',
+  hub_webhook_unexpected: 'ردّ YCloud بما لم نتوقعه، فلم يُغيَّر شيء. أعد المحاولة أو راجع حساب YCloud.',
+  hub_ycloud: 'تعذّر الاتصال بـ YCloud الآن، أعد المحاولة بعد قليل.',
+  hub_ycloud_not_configured: 'مفتاح YCloud غير مضبوط على الخادم.',
+  hub_store: 'أُضيفت الأحداث في YCloud لكن تعذّر حفظها هنا، اضغط الزر مرة أخرى.',
+};
+export const webhookError = (code: string | undefined) => WEBHOOK_ERRORS[code ?? ''] ?? WEBHOOK_ERRORS.hub_ycloud;
+export const updateWebhookEvents = () =>
+  api.edge<{ ok: boolean; error?: string; added?: string[]; unchanged?: boolean; events?: string[] }>('hub-admin', { action: 'update_webhook_events' });
+
 export const verifyChannel = (channel: string) => api.edge<VerifyResult>('hub-admin', { action: 'verify_channel', channel });
 export const refreshTemplates = () => api.edge<{ ok: boolean; results: { channel: string; ok: boolean; count?: number; error?: string }[] }>('hub-admin', { action: 'refresh_templates' });
 
@@ -141,7 +173,7 @@ export const SWITCHES: { key: 'hub_assistant_on' | 'hub_inbox_on'; label: string
   { key: 'hub_assistant_on', label: 'المساعد يعمل', text: 'المفتاح العام: عند إيقافه لا يكتب المساعد شيئًا في أي وحدة، وتبقى الرسائل التلقائية الحالية كما هي.' },
   { key: 'hub_inbox_on', label: 'تخزين المحادثات', text: 'تخزين رسائل واتساب وعرضها في «المحادثات» (نص الرسالة يُحفظ 12 شهرًا والوسائط 90 يومًا).' },
 ];
-export const NOT_YET = 'التشغيل يأتي في جلسات لاحقة: كل الوحدات والمفاتيح متوقفة الآن، والخادم يرفض تشغيل أي منها قبل اكتمال ما ينقصه.';
+export const NOT_YET = 'المساعد يأتي في جلسات لاحقة: كل الوحدات و«المساعد يعمل» متوقفة، والخادم يرفض تشغيلها قبل اكتمال ما ينقصها. «تخزين المحادثات» جاهز للتشغيل ويبقى متوقفًا حتى تشغّله.';
 
 /** YCloud's template status in Arabic (the raw value stays beside it) */
 export const TEMPLATE_STATUS: Record<string, string> = {
