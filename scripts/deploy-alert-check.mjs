@@ -9,7 +9,7 @@
 //   - the dashboard texts (admin/src/lib/siteDeployText.ts): «جارٍ / نجح / فشل + الوقت», the bar's visibility, and the
 //     «الغرف» line after a change (saved and waiting / on the room pages / saved but not on the site).
 //   node scripts/deploy-alert-check.mjs   (after build.py — it reads supabase/functions/booking-request/content.generated.json)
-import { readFileSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
 import { backupAlertMail, deployAlertMail, deployStepKey, deployTriggerKey, liveAlertMail } from '../supabase/functions/booking-request/email.ts';
 import { failedJobs, failedStepFrom, finalStatus, functionUrl, resolveEvent } from './site-deploy-report.mjs';
 import { usesDebounce } from '../supabase/functions/site-rebuild/debounce.ts';
@@ -57,7 +57,7 @@ E('no last success recorded', w.text.includes('آخر تحديث ناجح للم
 const stepCases = [
   ['build › QA gate (qa.py exits non-zero on any failure)', 'qa'], ['build › Build (build.py → media → astro build)', 'build'],
   ['build › Sub-path rewrite for the project site (no-op when PUBLIC_BASE_PATH is empty)', 'build'], ['build › Media plan (ffmpeg only when a hero video or a HEIC photo must be processed)', 'media'],
-  ['build › ffmpeg', 'media'], ['build › Run npm ci', 'setup'], ['build › Run actions/checkout@v4', 'setup'], ['build › Set up job', 'setup'],
+  ['build › ffmpeg', 'media'], ['build › Run npm ci', 'setup'], ['build › Run actions/checkout@v4', 'setup'], ['build › Set up job', 'setup'], ['build › Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1', 'setup'], ['build › Run actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1', 'setup'],
   ['build › Run actions/upload-pages-artifact@v3', 'deploy'], ['deploy › Run actions/deploy-pages@v4', 'deploy'], ['deploy', 'deploy'], ['build', 'build'],
   [null, 'unknown'], ['report › something new', 'unknown'],
   // the check jobs that gate the deploy (9 Nov 2026)
@@ -217,6 +217,72 @@ for (const [k, v] of Object.entries({ ...ROOMS_NOTE, failed: ROOMS_NOTE.failed(t
   E('site-deploy-report: the backup_failed stage proves the service role and mails the admins', /body\.stage === 'backup_failed'[\s\S]{0,400}probe\.status !== 400[\s\S]{0,1400}site_deploy_alert_recipients[\s\S]{0,600}backupAlertMail/.test(fn));
   const rp = readFileSync(new URL('./site-deploy-report.mjs', import.meta.url), 'utf8');
   E('site-deploy-report.mjs: the backup mode reads backup-result.json', /mode === 'backup'[\s\S]{0,400}backup-result\.json[\s\S]{0,600}stage: 'backup_failed'/.test(rp));
+}
+
+// ── CI pinning (13 Nov 2026, DECISIONS.md 2026-11-13 «CI pinned: runners, actions, Node 26»): every job on an explicit
+// runner image (never *-latest — ubuntu-latest moves to Ubuntu 26 from 19 Oct 2026), every action pinned to the full
+// commit SHA of a release verified to run on Node 24 (the version in a comment), and ONE Node everywhere: setup-node,
+// the Playwright image's Node and package.json engines. An action / SHA not in the table below fails: verify its
+// action.yml (`runs.using` node24, or a composite whose inner actions are) and add it here in the same commit.
+{
+  const ACTIONS = {
+    'actions/checkout': { sha: '3d3c42e5aac5ba805825da76410c181273ba90b1', version: 'v7.0.1', runs: 'node24' },
+    'actions/setup-node': { sha: '949feb2413d6458794dcd2491c4babbbce0c15c1', version: 'v7.1.0', runs: 'node24' },
+    'actions/setup-python': { sha: '6d4fd22b20465ccc0f7354476588e8df7c9ca0e0', version: 'v7.1.0', runs: 'node24' },
+    'actions/cache': { sha: '55cc8345863c7cc4c66a329aec7e433d2d1c52a9', version: 'v6.1.0', runs: 'node24' },
+    'actions/cache/restore': { sha: '55cc8345863c7cc4c66a329aec7e433d2d1c52a9', version: 'v6.1.0', runs: 'node24' },
+    'actions/cache/save': { sha: '55cc8345863c7cc4c66a329aec7e433d2d1c52a9', version: 'v6.1.0', runs: 'node24' },
+    'actions/upload-artifact': { sha: 'cf430e030ddbb5b0abf93d22962f4752f3646cd9', version: 'v7.0.2', runs: 'node24' },
+    'actions/download-artifact': { sha: '9000827ccba6bdab643e8b6fd33ac0654aef8333', version: 'v8.0.2', runs: 'node24' },
+    'actions/configure-pages': { sha: '45bfe0192ca1faeb007ade9deae92b16b8254a0d', version: 'v6.0.0', runs: 'node24' },
+    // composite: actions/upload-artifact v7.0.0 (node24) inside
+    'actions/upload-pages-artifact': { sha: 'fc324d3547104276b827a68afc52ff2a11cc49c9', version: 'v5.0.0', runs: 'composite/node24' },
+    'actions/deploy-pages': { sha: '368f82528645a54fb793d4d04e342629a3f51346', version: 'v5.0.1', runs: 'node24' },
+    // composite: actions/setup-node v7.1.0 + oven-sh/setup-bun v2.2.0 (both node24) inside
+    'supabase/setup-cli': { sha: '689adcfb80d947100a1eab127289b97d1fb07b13', version: 'v3.2.0', runs: 'composite/node24' },
+    'denoland/setup-deno': { sha: '22d081ff2d3a40755e97629de92e3bcbfa7cf2ed', version: 'v2.0.5', runs: 'node24' },
+  };
+  // the Node.js major each official Playwright image tag ships (its utils/docker/Dockerfile.noble → NODE_VERSION)
+  const PW_IMAGE_NODE = { '1.65.0': 26 };
+  const RUNNER = /^(ubuntu-\d{2}\.\d{2}|windows-\d{4})$/;
+  const pkg = (p) => JSON.parse(readFileSync(new URL(p, import.meta.url), 'utf8'));
+  const major = (range) => Number((/^\^?(\d+)/.exec(range ?? '') || [])[1]);
+  const node = major(pkg('../package.json').engines?.node);
+  E('package.json engines: one Node major (^N)', Number.isInteger(node) && /^\^\d+$/.test(pkg('../package.json').engines.node), String(pkg('../package.json').engines?.node));
+  E('admin/package.json engines = package.json engines', pkg('../admin/package.json').engines?.node === pkg('../package.json').engines?.node, String(pkg('../admin/package.json').engines?.node));
+  const pwv = pkg('../node_modules/playwright/package.json').version;
+  E(`the Playwright image of v${pwv} ships the project's Node (${node})`, PW_IMAGE_NODE[pwv] === node, `${pwv} → ${PW_IMAGE_NODE[pwv] ?? 'not recorded in PW_IMAGE_NODE'}`);
+  E('admin Playwright = site Playwright', pkg('../admin/node_modules/playwright/package.json').version === pwv);
+  for (const [a, v] of Object.entries(ACTIONS)) E(`${a}: recorded on Node 24 (no Node 20 action)`, /node24$/.test(v.runs) && /^[0-9a-f]{40}$/.test(v.sha) && /^v\d+\.\d+\.\d+$/.test(v.version));
+  const dir = new URL('../.github/workflows/', import.meta.url);
+  const files = readdirSync(dir).filter((f) => /\.ya?ml$/.test(f));
+  E('the workflows are found', files.length >= 8, files.join(', '));
+  for (const f of files) {
+    const y = readFileSync(new URL(f, dir), 'utf8').replace(/\r\n/g, '\n');
+    const body = y.slice(y.indexOf('\njobs:\n'));
+    // jobs = the keys two spaces under `jobs:`
+    const starts = [...body.matchAll(/^ {2}([\w-]+):\s*$/gm)];
+    E(`${f}: has jobs`, starts.length > 0);
+    starts.forEach((m, i) => {
+      const job = body.slice(m.index, starts[i + 1]?.index);
+      const n = `${f} ${m[1]}`;
+      const ro = (/^ {4}runs-on: (.+)$/m.exec(job) || [])[1]?.trim();
+      E(`${n}: an explicit runner image (never *-latest)`, !!ro && RUNNER.test(ro), ro ?? 'no runs-on');
+      const runsNode = /^\s+(?:- )?run: [\s\S]*?\b(node|npm|npx)\s/m.test(job) || /^\s+run: \|[\s\S]*?\b(node|npm|npx)\s/m.test(job);
+      if (runsNode) E(`${n}: runs node after setup-node (not the runner's default Node)`, /uses: actions\/setup-node@/.test(job));
+    });
+    for (const [, line] of y.matchAll(/^\s*(?:- )?uses: (.+)$/gm)) {
+      const u = /^([\w.-]+\/[\w./-]+)@([0-9a-f]{40}) # (v\d+\.\d+\.\d+)$/.exec(line.trim());
+      E(`${f}: «${line.trim()}» pinned to a full commit SHA with its version`, !!u);
+      if (!u) continue;
+      const known = ACTIONS[u[1]];
+      E(`${f}: ${u[1]} is a recorded Node 24 release (SHA + version = the table)`, !!known && known.sha === u[2] && known.version === u[3], known ? `${u[2]} ${u[3]} ≠ ${known.sha} ${known.version}` : 'not in ACTIONS');
+    }
+    for (const [, v] of y.matchAll(/node-version: (.+)$/gm)) E(`${f}: node-version ${v.trim()} = engines (${node})`, v.trim() === String(node));
+    E(`${f}: no node-version-file`, !/node-version-file/.test(y));
+    for (const [, tag] of y.matchAll(/image: mcr\.microsoft\.com\/playwright:v(\S+)-noble/g)) E(`${f}: Playwright image v${tag} = installed v${pwv}`, tag === pwv);
+    E(`${f}: no other container image`, [...y.matchAll(/^\s+image: (\S+)/gm)].every(([, i]) => i.startsWith('mcr.microsoft.com/playwright:v')));
+  }
 }
 
 if (fails.length) {

@@ -39,7 +39,7 @@ jobs:
   gate:
     name: live · the deploy is live
     if: ${{ (github.event_name == 'workflow_dispatch' && !inputs.force_fail) || github.event.workflow_run.conclusion == 'success' }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
     outputs:
       run: ${{ steps.gate.outputs.run }}
@@ -51,15 +51,15 @@ jobs:
       REPO: ${{ github.repository }}
       RUN_ID: ${{ github.event.workflow_run.id || inputs.deploy_run }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           sparse-checkout: |
             content/seo.json
             scripts/check-plan.mjs
           sparse-checkout-cone-mode: false
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
-          node-version: 24
+          node-version: 26
       - name: Did this run deploy, and is it what the site serves?
         id: gate
         run: |
@@ -93,12 +93,12 @@ jobs:
     name: live · ${{ matrix.shard }}
     needs: gate
     if: ${{ needs.gate.outputs.check == 'true' }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     # the official Playwright image (11 Nov 2026 — DECISIONS.md «Browser checks in the Playwright image»): Chromium,
     # WebKit and their system libraries are in the image, so no apt and no download — a mirror outage cannot block a
     # deploy (two did on 11 Nov). The tag = the installed Playwright version (deploy-alert-check asserts it).
     container:
-      image: mcr.microsoft.com/playwright:v1.64.0-noble
+      image: mcr.microsoft.com/playwright:v1.65.0-noble
       options: --ipc=host
     timeout-minutes: 20 # about 3x the longest shard (~7 min); a hung check must not hold the run (9 Nov 2026)
     strategy:
@@ -108,17 +108,17 @@ jobs:
     env:
       PUBLIC_BOOKING_ENDPOINT: ${{ vars.PUBLIC_BOOKING_ENDPOINT }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ github.event.workflow_run.head_sha || github.sha }}
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
-          node-version: 24
+          node-version: 26
           cache: npm
       - run: npm ci
       - name: The deployed build's content files
         if: ${{ matrix.shard != 'cors' }}
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: site-build
           run-id: ${{ needs.gate.outputs.run }}
@@ -138,7 +138,7 @@ jobs:
       # server address, the DNS answer and the time — kept with the run
       - name: Evidence of a foreign page
         if: ${{ failure() && hashFiles('reports/live-guard/**') != '' }}
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: foreign-page-${{ matrix.shard }}
           path: reports/live-guard/
@@ -148,7 +148,7 @@ jobs:
   forced:
     name: live · forced failure (alert test)
     if: ${{ github.event_name == 'workflow_dispatch' && inputs.force_fail }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 2
     steps:
       - run: echo "forced failure — the live-checks alert test" && exit 1
@@ -160,16 +160,16 @@ jobs:
     name: live · alert the admins
     needs: [gate, live, forced]
     if: ${{ always() && (needs.gate.result == 'failure' || needs.live.result == 'failure' || needs.forced.result == 'failure') }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           sparse-checkout: scripts/site-deploy-report.mjs
           sparse-checkout-cone-mode: false
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
-          node-version: 24
+          node-version: 26
       - name: Email the admins
         env:
           GH_TOKEN: ${{ github.token }}

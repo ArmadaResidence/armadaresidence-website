@@ -3214,3 +3214,32 @@ browser and trained the ad platforms on staff behaviour.
   sitemap, a redirect page added, `/policies/` made noindex, `/about/`'s canonical pointed at home → 6 sitemap failures,
   exit 1; restored → pass. An English-only fixture article with a canonical to `/blog/` was left out of the sitemap by
   the build (qa passes); forced back into the sitemap → the canonical failure.
+
+## 2026-11-13 — CI pinned: runners, actions, Node 26 (session 31, Ahmed's brief of 13 Nov 2026)
+
+- **Trigger.** The scheduled backup run 43370892173 (13 Nov 2026) warned «Node.js 20 is deprecated … actions/checkout@v4,
+  actions/setup-node@v4, actions/upload-artifact@v4 … forced to run on Node.js 24» and noted that `ubuntu-latest`
+  migrates to Ubuntu 26 from 19 Oct 2026. Every workflow used `@vN` tags of Node 20 actions and `*-latest` runners.
+- **Runners.** Every Linux job `runs-on: ubuntu-24.04`, the Windows print job `windows-2025` (what `windows-latest`
+  resolved to). A move to Ubuntu 26 is now a deliberate change, never GitHub's.
+- **Actions** — each the latest release (read from GitHub 13 Nov 2026), verified to run on Node 24 (`runs.using:
+  node24`, or a composite whose inner actions are), pinned to the full commit SHA with the version in a comment:
+  checkout v7.0.1, setup-node v7.1.0, setup-python v7.1.0, cache (+ restore / save) v6.1.0, upload-artifact v7.0.2,
+  download-artifact v8.0.2, configure-pages v6.0.0, upload-pages-artifact v5.0.0 (composite → upload-artifact v7.0.0),
+  deploy-pages v5.0.1, supabase/setup-cli v3.2.0 (composite → setup-node v7.1.0 + setup-bun v2.2.0; the CLI from npm,
+  still pinned to 2.120.0), denoland/setup-deno v2.0.5. upload-pages-artifact v4+ drops dotfiles by default:
+  `include-hidden-files: true` keeps `dist/.nojekyll` (qa.py requires it) in the Pages artifact as before.
+- **Node 26 everywhere.** Node 26 «Lithium» is the Active LTS since 28 Oct 2026 (Node 24 is in maintenance since 20 Oct
+  2026). Our dependencies allow it (astro `>=22.12.0`, vite `^20.19.0 || >=22.12.0`, sharp `>=20.9.0`, playwright
+  `>=20`; no native install scripts). The official Playwright image ships Node 26 from v1.65.0 (1.64.0 shipped 24), so
+  Playwright moves to 1.65.0 in the site and the dashboard and the image to `v1.65.0-noble`. Every `setup-node` is
+  `node-version: 26` (the build, report, status and rooms-e2e jobs were on 22, the deploy watchdog on the runner's
+  default — it now sets Node too, and the build sets Node before its first `node` command); `package.json` and
+  `admin/package.json` declare `"engines": { "node": "^26" }`. The developer's machine runs Node 24.20.0: the local
+  fast checks still pass on it (npm only warns on engines), but it should move to Node 26 to match CI.
+- **Guard.** `deploy-alert-check` (a fast check) fails on a job without an explicit runner image (`ubuntu-NN.NN` /
+  `windows-NNNN`), an action not pinned to a 40-character SHA with its `# vX.Y.Z`, an action / SHA not in its table of
+  verified Node 24 releases (a new or updated action is verified and added there in the same commit), a `node-version`
+  other than the engines major, a `node-version-file`, a job that runs node / npm without `setup-node`, a Playwright
+  image whose tag is not the installed version or whose Node (recorded per tag) is not the engines major, another
+  container image, and the two package.json engines or Playwright versions disagreeing.
