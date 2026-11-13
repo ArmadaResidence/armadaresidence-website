@@ -397,10 +397,10 @@ select pg_temp._check('Q4 the alert records that it was sent', (select sent_at i
 -- (the reservation fixtures audit their own phone by design — the hub's entities may not)
 select pg_temp._check('P1 the audit rows of the profiles, the hub and the settings hold no message text and no phone',
   not exists (select 1 from public.audit_log a where a.at > now() - interval '1 hour' and a.entity <> 'reservations'
-                and (a.new::text ~ '9665000091|9665000092|موقف سيارات|Guest QA' or coalesce(a.old::text, '') ~ '9665000091|9665000092|موقف سيارات|Guest QA'))
+                and (a.new::text ~ '9665000091|9665000092|يتوفر موقف|Guest QA' or coalesce(a.old::text, '') ~ '9665000091|9665000092|يتوفر موقف|Guest QA'))
   and exists (select 1 from public.audit_log a where a.at > now() - interval '1 hour' and a.entity = 'guest_profiles' and a.new ? 'marketing_hold_at'),
   (select string_agg(a.entity || ':' || left(coalesce(a.new::text, a.old::text), 160), ' | ') from public.audit_log a where a.at > now() - interval '1 hour' and a.entity <> 'reservations'
-     and (a.new::text ~ '9665000091|9665000092|موقف سيارات|Guest QA' or coalesce(a.old::text, '') ~ '9665000091|9665000092|موقف سيارات|Guest QA')));
+     and (a.new::text ~ '9665000091|9665000092|يتوفر موقف|Guest QA' or coalesce(a.old::text, '') ~ '9665000091|9665000092|يتوفر موقف|Guest QA')));
 select pg_temp._check('P2 the events hold codes only', not exists (select 1 from public.hub_conversation_events where reason !~ '^[a-z_]+$'));
 select pg_temp._check('P3 the logs (eyab_messages) hold no text or phone column', not exists (select 1 from information_schema.columns
   where table_schema = 'public' and table_name = 'eyab_messages' and column_name in ('body', 'text', 'phone')));
