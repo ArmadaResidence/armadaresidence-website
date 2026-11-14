@@ -5,7 +5,7 @@
 // no content), sales (knowledge view, no inbox), Airport Road reception (member of its unit).
 //   1. the seed: 37 committed cards published, 56 topics, the editor's meta (the rooftop excluded);
 //   2. levels: sales cannot save, management cannot publish or archive a published card, no direct write for anyone;
-//   3. a card: save (checks in both languages), publish, the engine's read (shafa-road only — never airport-road), an
+//   3. a card: save (checks in both languages), publish, the engine's read (first on shafa-road, after airport-road's own cards there — H5), an
 //      edit pending until «نشر», archive / restore;
 //   4. «لم أعرف الإجابة»: two close questions marked by reception → one cluster «سُئل مرتين»; sales sees the count, never
 //      the words; a topic for the cluster; management cannot add a FAQ draft; the admin resolves «both» → the card and a
@@ -71,7 +71,8 @@ try {
   check(p1.status === 200 && p1.json?.ok && p1.json.count >= 1, 'the admin publishes (through PostgREST: every UPDATE has its WHERE)', p1.text.slice(0, 200));
   const k1 = await c.rpc('hub_knowledge_for', { p_unit: 'shafa-road', p_topics: ['facilities'], p_language: 'ar' });
   const k2 = await c.rpc('hub_knowledge_for', { p_unit: 'airport-road', p_topics: ['facilities'], p_language: 'ar' });
-  check(keys(k1).includes(`k-e2e-${RUN}`) && !keys(k2).includes(`k-e2e-${RUN}`), 'the engine reads it on shafa-road only', `${keys(k1)} | ${keys(k2)}`);
+  // H5 (Ahmed, 14 Nov 2026): every published card on both branch numbers, the number's own branch first
+  check(keys(k1).includes(`k-e2e-${RUN}`) && keys(k2).includes(`k-e2e-${RUN}`), 'the engine reads it on both branch numbers (the order: hub-retrieval-check and the SQL test)', `${keys(k1)} | ${keys(k2)}`);
   const k3 = await c.rpc('hub_knowledge_for', { p_unit: 'shafa-road', p_topics: ['facilities'], p_language: 'ar' }, A);
   check(k3.status >= 400, 'the engine\'s read is refused to staff', `${k3.status}`);
   await c.rpc('hub_card_save', { p_id: cid, p: card({ text_ar: 'لا يوجد مسبح في الفرع.' }) }, M);
@@ -86,7 +87,10 @@ try {
   const k5 = await c.rpc('hub_knowledge_for', { p_unit: 'shafa-road', p_topics: ['facilities'], p_language: 'ar' });
   check(keys(k5).includes(`k-e2e-${RUN}`), '«تراجع» (restore): back in the read');
   const k6 = await c.rpc('hub_knowledge_for', { p_unit: 'shafa-road', p_topics: ['menu', 'cafe_restaurant'], p_language: 'ar' });
-  check(!keys(k6).includes('k-cafe-menu') && !keys(k6).some((k) => k.startsWith('k-cafe-')), 'the Airport Road café cards never on shafa-road', keys(k6).join());
+  const ONLY = ['k-cafe-menu', 'k-cafe-phone', 'k-cafe-breakfast-menu'];
+  check(!keys(k6).some((k) => ONLY.includes(k)), 'the café menu / ordering cards never on shafa-road while no branch is named', keys(k6).join());
+  const k6b = await c.rpc('hub_knowledge_for', { p_unit: 'shafa-road', p_topics: ['menu', 'cafe_restaurant'], p_language: 'ar', p_branch: 'airport-road' });
+  check(keys(k6b).includes('k-cafe-menu'), '… and on shafa-road when the guest names Airport Road', keys(k6b).join());
   const k7 = await c.rpc('hub_knowledge_for', { p_unit: 'rooftop', p_topics: ['menu'], p_language: 'ar' });
   check(k7.json?.cards?.length === 0, 'the rooftop reads nothing');
 
