@@ -115,7 +115,7 @@ update public.hub_unanswered set cluster_id = id where message_id = (select firs
 -- ══ R1 — the codes of a turn ══
 select pg_temp._root();
 select pg_temp._check('R1 the turn keeps its topics and outcome as codes',
-  (select topics = '{parking,location_directions}' and outcome = 'handoff' from public.hub_turns where id = pg_temp._id('t3'))
+  (select topics @> '{parking,location_directions}' and topics <@ '{parking,location_directions}' and outcome = 'handoff' from public.hub_turns where id = pg_temp._id('t3'))
   and (select outcome = 'answered' from public.hub_turns where id = pg_temp._id('t1')) and (select outcome = 'unanswered' from public.hub_turns where id = pg_temp._id('t8')));
 update public.hub_turns set understanding = null, purged_at = now() where id = pg_temp._id('t6');
 select pg_temp._check('R1 … kept when the understanding is purged (retention)', (select topics = '{parking}' and understanding is null from public.hub_turns where id = pg_temp._id('t6')));

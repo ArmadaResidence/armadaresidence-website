@@ -322,7 +322,7 @@ select pg_temp._check('L1 every unit × topic has a licence: shadow, always_hand
 select pg_temp._as('mgr');
 select pg_temp._fails('L2 a licence is the system admin''s only', format('select public.hub_licence_set(%L, %L, %L)', pg_temp._unit('airport-road'), 'parking', 'auto'), 'hub_system_admin_only');
 select pg_temp._as('admin');
-select pg_temp._fails('L3 an always_handoff topic is never licensed', format('select public.hub_licence_set(%L, %L, %L, %L)', pg_temp._unit('airport-road'), 'complaint', 'auto', 'QA'), 'hub_licence_always_handoff');
+select pg_temp._fails('L3 an always_handoff topic is never licensed', format('select public.hub_licence_set(%L, %L, %L, %L)', pg_temp._unit('airport-road'), 'complaint', 'auto', 'QA always'), 'hub_licence_always_handoff');
 select pg_temp._fails('L3 … and a licence change needs a reason (H6)', format('select public.hub_licence_set(%L, %L, %L)', pg_temp._unit('airport-road'), 'parking', 'auto'), 'hub_reason');
 select pg_temp._save('l4', public.hub_licence_set(pg_temp._unit('airport-road'), 'parking', 'auto', 'QA reason'));
 select pg_temp._root();
