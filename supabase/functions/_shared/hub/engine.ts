@@ -7,7 +7,7 @@
  * Everything that does I/O is injected (Deps), so scripts/hub-machine-check.mjs and the fixture replay run it offline.
  * Nothing here logs a guest's words or the understanding.
  */
-import { decide, handoffNote, type Action, type Decision, type Draft, type Event, type State } from './machine.ts';
+import { decide, handoffNote, replyLicence, type Action, type Decision, type Draft, type Event, type State } from './machine.ts';
 import { applyFloor, extractJson, recheckDates, understandUser, validateUnderstanding, type Lists, type Understanding } from './understand.ts';
 import { fixed, greeting, quickReplies, statusText, thirdLanguage, type Lang, type Persona } from './copy.ts';
 import { composeExamples, composeSystem, composeUser, parseComposed, understandSchema, understandSystem, withGreeting } from './compose/index.ts';
@@ -384,8 +384,9 @@ export async function runTurn(claim: Json, deps: Deps): Promise<Outcome> {
     const g = greeting(unit.persona as Persona, L, unitName(deps.content, unit, L), claim.guest?.first_name ?? null);
     answers[0] = { ...answers[0], body: withGreeting(g, answers[0].body) };
   }
-  // licensed mode: a reply goes by itself only when every topic of the turn holds the «رد تلقائي» licence
-  const licensed = (finish.topics.length > 0) && finish.topics.every((k) => claim.licences?.[k] === 'auto');
+  // licensed mode: a reply goes by itself only when every topic of the turn holds the «رد تلقائي» licence — the most
+  // restrictive licence among all the turn's topics (machine.ts replyLicence)
+  const licensed = replyLicence(finish.topics, claim.licences ?? {}) === 'auto';
   finish.messages = answers.map((m) => ({ ...m, licensed: claim.turn.mode === 'live' && licensed }));
   finish.state = final.next;
   finish.reason = final.reason;

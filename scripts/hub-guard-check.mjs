@@ -87,6 +87,12 @@ check(refused('القائمة هنا: https://example.com/menu', 'link'), '2 a f
 check(ok('القائمة هنا: https://armadaresidence.com/menu/'), '2 armadaresidence.com passes');
 check(ok('الموقع على الخريطة: https://maps.app.goo.gl/WTWEcv7gmWe5bUaT9'), '2 the payload\'s maps link passes');
 check(refused('الموقع: https://maps.app.goo.gl/other', 'link'), '2 another maps link is refused');
+// the careers card k-f0c957c4cf (H6 pass 3, 14 Nov 2026): its two links go through, with the card's own words in the payload
+{
+  const PC = { text: 'للتقديم على الوظائف في أرمادا ريزيدنس، يمكنك تعبئة طلب التوظيف من صفحة «انضم إلى فريقنا» على موقعنا: https://armadaresidence.com/careers/ To apply for a job at Armada Residence, fill in the application on our “Join our team” page: https://armadaresidence.com/en/careers/', cancellation_sentence: CANCEL_AR, offers: [] };
+  check(ok('يمكنك التقديم من صفحة «انضم إلى فريقنا» على موقعنا: https://armadaresidence.com/careers/', OA, PC), '2 the careers link (Arabic) passes');
+  check(ok('You can apply on our “Join our team” page: https://armadaresidence.com/en/careers/', OE, PC), '2 the careers link (English) passes');
+}
 
 // 3 · the forbidden list, the plural address, deposit, rooftop, facilities, the old cancellation strings
 for (const w of ['شقق مخدومة', 'serviced apartment', 'مكواة', 'خدمة الغرف', 'نادي أرمادا', 'لاريو', '24 ساعة قبل الوصول', 'same-day cancellation']) {

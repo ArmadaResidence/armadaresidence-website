@@ -65,7 +65,14 @@ const gates = body(ALL, 'create function internal.hub_unit_gates_mode(');
 check(/p_mode in \('shadow', 'licensed'\) and not internal\.hub_test_lab_ready\(u\)/.test(gates), '«بموافقة الفريق» and «يرد تلقائيًا» need the test lab');
 check(/raise exception 'hub_system_admin_only'/.test(body(ALL, 'create or replace function public.hub_setting_set(')), '«المساعد يعمل» and the budgets stay the system admin\'s');
 const engine = read('supabase/functions/_shared/hub/engine.ts');
-check(/finish\.topics\.every\(\(k\) => claim\.licences\?\.\[k\] === 'auto'\)/.test(engine) && /licensed: claim\.turn\.mode === 'live' && licensed/.test(engine), 'in «يرد تلقائيًا» only a reply whose every topic is «رد تلقائي» goes by itself');
+check(/replyLicence\(finish\.topics, claim\.licences \?\? \{\}\) === 'auto'/.test(engine) && /licensed: claim\.turn\.mode === 'live' && licensed/.test(engine), 'in «يرد تلقائيًا» only a reply whose every topic is «رد تلقائي» goes by itself (machine.ts replyLicence)');
+{
+  // the rule itself (H6 pass 3): the most restrictive licence among ALL the turn's topics
+  const { replyLicence } = await import('../supabase/functions/_shared/hub/machine.ts');
+  const L = { price: 'auto', laundry: 'shadow', wifi: 'auto', complaint: 'blocked' };
+  check(replyLicence(['price', 'laundry'], L) === 'shadow' && replyLicence(['laundry', 'price'], L) === 'shadow' && replyLicence(['price', 'complaint'], L) === 'blocked'
+    && replyLicence(['price', 'wifi'], L) === 'auto' && replyLicence([], L) === 'shadow', 'replyLicence: auto + shadow → shadow, auto + blocked → blocked, auto + auto → auto, none → shadow');
+}
 const finish = body(ALL, 'create function public.hub_turn_finish(');
 check(/t\.mode = 'shadow' or not coalesce\(\(m ->> 'licensed'\)::boolean, false\)\) then 'pending_approval'/.test(finish), '… every other reply waits for one tap (pending_approval); «بموافقة الفريق» always');
 

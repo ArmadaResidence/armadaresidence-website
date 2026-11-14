@@ -4,7 +4,7 @@
 // the invariants: one open draft; «مع الفريق» silent; no booking without a confirm tap; a cart message never answered.
 // The skills of H5 (room_booking, hall_request, group_request OFF) and of H8 (ON) are both exercised.
 //   node scripts/hub-machine-check.mjs
-import { decide, handoffNote, missingSlots, noteSlots, ASSISTANT_STATES } from '../supabase/functions/_shared/hub/machine.ts';
+import { decide, handoffNote, missingSlots, noteSlots, replyLicence, ASSISTANT_STATES } from '../supabase/functions/_shared/hub/machine.ts';
 
 let n = 0;
 const fails = [];
@@ -299,6 +299,23 @@ violations = [...new Set(violations)];
 check(violations.length === 0, `random sequences keep the invariants — ${violations.slice(0, 5).join(' | ')}`);
 check(books > 0, `the random walk reached bookings through confirm taps (${books})`);
 check(ASSISTANT_STATES.length === 6, 'six assistant states');
+
+// ── a turn with several topics takes the MOST restrictive licence among them (spec §2.10; H6 pass 3, 14 Nov 2026) ──
+{
+  const L = { price: 'auto', laundry: 'shadow', parking: 'auto', complaint: 'blocked', wifi: 'auto' };
+  check(replyLicence(['laundry', 'price'], L) === 'shadow' && replyLicence(['price', 'laundry'], L) === 'shadow',
+    'licence: auto + shadow → shadow, whichever topic comes first («بكم غسيل الملابس؟» = laundry + price is a draft)');
+  check(replyLicence(['price', 'complaint'], L) === 'blocked' && replyLicence(['complaint', 'price', 'laundry'], L) === 'blocked', 'licence: auto + blocked → blocked');
+  check(replyLicence(['price', 'parking'], L) === 'auto' && replyLicence(['wifi'], L) === 'auto', 'licence: auto + auto → auto');
+  check(replyLicence([], L) === 'shadow' && replyLicence(['price', 'careers'], L) === 'shadow', 'licence: no topic, or a topic without a licence row → shadow');
+  // the decide step: a blocked licence anywhere in the turn hands off, as the engine sends nothing by itself for a shadow one
+  const dl = run('new', guest(U({ intents: ['price_question'], topics: ['price', 'parking'] })), { licences: { price: 'auto', parking: 'blocked' }, always_handoff: [] });
+  check(dl.next === 'human' && ho(dl)?.reason === 'always_handoff', 'decide: auto + blocked (the second topic) → the team');
+  const da = run('new', guest(U({ intents: ['facility_question'], topics: ['parking', 'wifi'] })), { licences: { parking: 'auto', wifi: 'auto' }, always_handoff: [] });
+  check(da.next !== 'human' && acts(da).includes('answer'), 'decide: auto + auto → answered');
+  const ds = run('new', guest(U({ intents: ['price_question'], topics: ['laundry', 'price'] })), { licences: { price: 'auto', laundry: 'shadow' }, always_handoff: [] });
+  check(ds.next !== 'human' && acts(ds).includes('answer') && !acts(ds).includes('from_price'), 'decide: laundry + price → an answer from the laundry cards (never the room list), sent as a draft (shadow)');
+}
 
 // every transition of the spec has a case above
 const SPEC = (await import('node:fs')).readFileSync(new URL('../docs/guest-hub/GUEST-HUB-SPEC.md', import.meta.url), 'utf8');

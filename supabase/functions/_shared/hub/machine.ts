@@ -134,6 +134,17 @@ export const earlyArrival = (datesText: string | null | undefined): boolean => {
 /** the topics of a mixed message the answer takes (the request's own topics stay with the hand-off) */
 export const answerTopics = (u: Understanding): string[] => u.topics.filter((k) => !REQUEST_TOPICS.has(k));
 
+/** the licence a reply of these topics carries (spec §2.10): the MOST restrictive among ALL the turn's topics, never the
+ *  first or the main one — «للفريق دائمًا» (blocked) over «بموافقة الفريق» (shadow) over «رد تلقائي» (auto); a turn with no
+ *  topic, or a topic with no licence row, is shadow (H6 pass 3, Ahmed 14 Nov 2026: «بكم غسيل الملابس؟» = laundry + price
+ *  must never go by itself while laundry is shadow) */
+export type LicenceMode = 'auto' | 'shadow' | 'blocked';
+export function replyLicence(topics: string[], licences: Record<string, string>): LicenceMode {
+  if (!topics.length) return 'shadow';
+  if (topics.some((k) => licences[k] === 'blocked')) return 'blocked';
+  return topics.every((k) => licences[k] === 'auto') ? 'auto' : 'shadow';
+}
+
 const isAssistant = (s: State) => ASSISTANT_STATES.includes(s);
 type Note = { intent: string; slots: Record<string, unknown>; stopped: string };
 const handoff = (reason: string, notice: NoticeKey | null, note: Note, priority?: 'high'): Action => ({ type: 'handoff', reason, notice, note, ...(priority ? { priority } : {}) });
@@ -321,7 +332,7 @@ export function decide(input: DecideInput): Decision {
     t.push('T20');
     return out({ next: 'human', actions: [handoff('booking_change', 'change_cancel', note(has('booking_cancel') ? 'booking_cancel' : 'booking_change'))], reason: 'booking_change', failed: 'reset' });
   }
-  if (u.topics.some((k) => ctx.always_handoff.includes(k) || ctx.licences[k] === 'blocked')) return H('always_handoff', 'handoff', u.intents[0] ?? 'other');
+  if (u.topics.some((k) => ctx.always_handoff.includes(k)) || replyLicence(u.topics, ctx.licences) === 'blocked') return H('always_handoff', 'handoff', u.intents[0] ?? 'other');
   if (has('order_status') || has('table_booking')) return H(has('table_booking') ? 'table_booking' : 'order_status', 'handoff', has('table_booking') ? 'table_booking' : 'order_status');
   // an order written on the Shafa Road number goes to its team (13 Nov 2026); on Airport Road the menu link answers
   if (has('dining_order') && ctx.unit_branch === 'shafa-road') return H('dining_order', 'handoff', 'dining_order');
