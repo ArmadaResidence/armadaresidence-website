@@ -16,7 +16,8 @@ import { BANK, CONTENT, PRICES, claimFor, engineItems, h5Expect, knowledgeFor, o
 const env = Object.fromEntries(readFileSync(new URL('../.env', import.meta.url), 'utf8').split(/\r?\n/).filter((l) => /^[A-Z_]+=/.test(l)).map((l) => [l.slice(0, l.indexOf('=')), l.slice(l.indexOf('=') + 1).trim()]));
 const KEY = process.env.ANTHROPIC_API_KEY || env.ANTHROPIC_API_KEY || '';
 const dry = process.argv.includes('--dry-run');
-const onlyArg = process.argv[process.argv.indexOf('--only') + 1];
+const onlyAt = process.argv.indexOf('--only');
+const onlyArg = onlyAt >= 0 ? process.argv[onlyAt + 1] : null;
 if (!KEY && !dry) {
   console.error('hub-fixtures-record: ANTHROPIC_API_KEY is not in .env — ask Ahmed for the key of his Console organization (never the production secret)');
   process.exit(2);
