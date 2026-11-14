@@ -1,6 +1,6 @@
 {
  "id": "q072",
- "recorded_at": "2026-11-14T14:29:49.321Z",
+ "recorded_at": "2026-11-14T15:25:33.150Z",
  "question": {
   "unit": "airport-road",
   "language": "ar",
@@ -14,19 +14,28 @@
    "layer": "understand",
    "model": "claude-haiku-5-5",
    "ok": true,
-   "text": "{\"intents\":[\"stay_booking\"],\"topics\":[\"room_types\"],\"new_topic_hint\":null,\"branch\":null,\"check_in\":null,\"check_out\":null,\"nights\":null,\"dates_text\":null,\"dates_calendar\":null,\"room_type\":null,\"breakfast\":null,\"adults\":null,\"children\":null,\"child_ages\":null,\"extra_beds\":null,\"rooms_count\":null,\"guest_name\":null,\"booking_ref\":null,\"language\":\"ar\",\"complaint\":false,\"confidence\":{\"intents\":0.85,\"topics\":0.8,\"language\":0.98}}",
+   "text": "{\"intents\":[\"stay_booking\"],\"topics\":[\"room_types\"],\"new_topic_hint\":null,\"branch\":null,\"check_in\":null,\"check_out\":null,\"nights\":null,\"dates_text\":null,\"dates_calendar\":null,\"room_type\":\"balcony-room\",\"breakfast\":null,\"adults\":null,\"children\":null,\"child_ages\":null,\"extra_beds\":null,\"rooms_count\":null,\"guest_name\":null,\"booking_ref\":null,\"language\":\"ar\",\"complaint\":false,\"confidence\":{\"intents\":0.85,\"topics\":0.8,\"branch\":0.2,\"room_type\":0.55,\"language\":0.99}}",
    "input_tokens": 3697,
-   "output_tokens": 192,
-   "latency_ms": 1318
+   "output_tokens": 213,
+   "latency_ms": 1610
   },
   {
    "layer": "compose",
    "model": "claude-sonnet-5-5",
    "ok": true,
-   "text": "{\"reply\": \"البلكونة متوفرة في نوع «غرفة مع بلكونة» في فرع طريق الشفا فقط. أما فرع طريق المطار الذي تتواصل معنا عليه فلا تتوفر لدينا عنه معلومة عن البلكونة. هل ترغب أن نفيدك بتفاصيل فرع طريق الشفا؟\", \"used_card_ids\": [\"k-shafa-jacuzzi-balcony\"], \"unanswered\": [\"balconies at the Airport Road branch\"]}",
-   "input_tokens": 3053,
-   "output_tokens": 186,
-   "latency_ms": 2696
+   "text": "{\"reply\": \"البلكونة متوفرة في فرع طريق الشفا، في نوع «غرفة مع بلكونة» فقط. أما فرع طريق المطار فلا تتوفر لدينا عنه معلومة عن البلكونات. هل تفضّل الإقامة في فرع طريق الشفا؟\", \"used_card_ids\": [\"k-shafa-jacuzzi-balcony\"], \"unanswered\": [\"balcony availability at Airport Road branch\"]}",
+   "input_tokens": 3168,
+   "output_tokens": 167,
+   "latency_ms": 2183
+  },
+  {
+   "layer": "compose",
+   "model": "claude-sonnet-5-5",
+   "ok": true,
+   "text": "{\"reply\": \"البلكونة متوفرة في نوع «غرفة مع بلكونة» في فرع طريق الشفا.\", \"used_card_ids\": [\"k-shafa-jacuzzi-balcony\"], \"unanswered\": [\"balcony availability in the Airport Road branch\"]}",
+   "input_tokens": 3320,
+   "output_tokens": 101,
+   "latency_ms": 1868
   }
  ],
  "adapter": {
@@ -218,15 +227,19 @@
   ],
   "messages": [
    {
-    "body": "مرحبًا بك في أرمادا ريزيدنس – طريق المطار.\nالبلكونة متوفرة في نوع «غرفة مع بلكونة» في فرع طريق الشفا فقط. أما فرع طريق المطار الذي تتواصل معنا عليه فلا تتوفر لدينا عنه معلومة عن البلكونة. هل ترغب أن نفيدك بتفاصيل فرع طريق الشفا؟\n\nسيكمل معك أحد أفراد فريقنا في هذه المحادثة.",
+    "body": "مرحبًا بك في أرمادا ريزيدنس – طريق المطار.\nالبلكونة متوفرة في نوع «غرفة مع بلكونة» في فرع طريق الشفا.\n\nسيكمل معك أحد أفراد فريقنا في هذه المحادثة.",
     "notice": false
    }
   ],
-  "guard_refusals": [],
-  "cost_usd": 0.008432
+  "guard_refusals": [
+   [
+    "non_answer"
+   ]
+  ],
+  "cost_usd": 0.016132
  },
  "first_try": {
-  "guard": true,
+  "guard": false,
   "expect": true
  }
 }

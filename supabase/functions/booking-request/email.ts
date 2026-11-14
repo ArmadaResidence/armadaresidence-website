@@ -1690,6 +1690,8 @@ export function hubFlaggedMail(c: Content, d: HubFlaggedMail): Mail {
 /** «ارتفاع في سؤال» (copy.md §7, the session's wording): a topic asked more than hub_spike_factor × its daily average */
 export interface HubSpikeMail {
   topic: string;
+  /** the unit the spike was counted in (Ahmed, 14 Nov 2026) */
+  unit_name: string;
   count: number;
   avg: number;
   factor: number;
@@ -1707,6 +1709,6 @@ export function hubSpikeMail(c: Content, d: HubSpikeMail): Mail {
   const M = c.staff_email.ar.hub_spike;
   const D = c.staff_email.ar.deploy_alert;
   const subject = `${d.test ? D.test_prefix : ''}${fill(M.subject, { topic: d.topic, yyyymmdd: hubDay(d.at) })}`;
-  const line = fill(M.lead, { topic: d.topic, count: hubSpikeCount(c, d.count), factor: String(d.factor), avg: String(Math.round(d.avg * 10) / 10) });
+  const line = fill(M.lead, { topic: d.topic, unit_name: d.unit_name, count: hubSpikeCount(c, d.count), factor: String(d.factor), avg: String(Math.round(d.avg * 10) / 10) });
   return hubPlainMail(c, subject, [line, M.next], hubAdmin(c, '/radar'), M.button);
 }

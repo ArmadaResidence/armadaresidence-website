@@ -158,6 +158,9 @@ do $$ begin
   for i in 1..60 loop perform pg_temp._turn(100 + i, 'airport-road', '{extension}', 'live', 'inquiry', '{answer}', make_interval(days => 2 + (i % 26))); end loop;
   for i in 1..60 loop perform pg_temp._turn(200 + i, 'airport-road', '{extension}', 'live', 'inquiry', '{answer}', make_interval(days => 2 + (i % 26), hours => 3)); end loop;
   for i in 1..6 loop perform pg_temp._turn(400 + i, 'airport-road', '{payment}', 'live', 'inquiry', '{answer}', make_interval(hours => i), null, true); end loop;
+  -- (14 Nov 2026, per unit) laundry: 3 at Airport Road + 3 at Shafa Road — 6 together, under the minimum in each unit
+  for i in 1..3 loop perform pg_temp._turn(500 + i, 'airport-road', '{laundry}', 'live', 'inquiry', '{answer}', make_interval(hours => i)); end loop;
+  for i in 1..3 loop perform pg_temp._turn(510 + i, 'shafa-road', '{laundry}', 'live', 'inquiry', '{answer}', make_interval(hours => i)); end loop;
 end $$;
 select pg_temp._service();
 select pg_temp._save('r4', public.hub_radar_tick());
@@ -165,6 +168,9 @@ select pg_temp._root();
 select pg_temp._check('R4 a spike: breakfast (6 in 24 h, the factor met) → one alert; extension (a high average) and test rows (payment) none',
   (select count(*) = 1 from public.hub_alerts where kind = 'spike' and payload ->> 'topic' = 'breakfast' and (payload ->> 'count')::int = 6)
   and not exists (select 1 from public.hub_alerts where kind = 'spike' and payload ->> 'topic' in ('extension', 'payment')), pg_temp._j('r4')::text);
+select pg_temp._check('R4 … counted per unit (14 Nov 2026): the alert names Airport Road; laundry split 3 + 3 across the units is no spike',
+  (select unit_id = (select u.id from public.hub_units u where u.key = 'airport-road') from public.hub_alerts where kind = 'spike' and payload ->> 'topic' = 'breakfast')
+  and not exists (select 1 from public.hub_alerts where kind = 'spike' and payload ->> 'topic' = 'laundry'));
 select pg_temp._service();
 select pg_temp._save('r4b', public.hub_radar_tick());
 select pg_temp._check('R4 … the same day again: no second alert', (pg_temp._j('r4b') ->> 'new')::int = 0 and (select count(*) = 1 from public.hub_alerts where kind = 'spike'));

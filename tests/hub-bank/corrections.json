@@ -5,8 +5,40 @@
       "date": "2026-11-14",
       "migration": "20261114600000_guest_hub_gaps.sql",
       "why": "must_include asked for the word \"arrival\"; the approved FAQ answer (content/faq.json payment) says \"when you arrive\" — the stem \"arriv\" holds both",
-      "old": { "action": "answer", "faq": ["payment"], "must_include": ["arrival"] },
-      "expect": { "action": "answer", "faq": ["payment"], "must_include": ["arriv"] }
+      "old": {
+        "action": "answer",
+        "faq": [
+          "payment"
+        ],
+        "must_include": [
+          "arrival"
+        ]
+      },
+      "expect": {
+        "action": "answer",
+        "faq": [
+          "payment"
+        ],
+        "must_include": [
+          "arriv"
+        ]
+      }
+    },
+    "q100": {
+      "date": "2026-11-14",
+      "migration": "20261114700000_guest_hub_gaps_2.sql",
+      "why": "expected «ask» (the team while room_booking is off); the mixed outcome — the jacuzzi answered from k-shafa-jacuzzi-balcony, then the stay to the team — is the right behaviour under the mixed-message rule (B1, Ahmed 14 Nov 2026), as q016",
+      "old": {
+        "action": "ask",
+        "state": "collecting"
+      },
+      "expect": {
+        "action": "answer",
+        "cards": [
+          "k-shafa-jacuzzi-balcony"
+        ],
+        "state": "collecting"
+      }
     }
   }
 }

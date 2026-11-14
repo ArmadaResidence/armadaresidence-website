@@ -192,7 +192,7 @@ async function labAlerts(): Promise<void> {
   const label = (k: string) => topics.find((t) => t.key === k)?.label_ar ?? k;
   for (const x of alerts) {
     const m = x.kind === 'spike'
-      ? hubSpikeMail(content, { topic: label(String(x.payload?.topic ?? '')), count: Number(x.payload?.count ?? 0), avg: Number(x.payload?.avg ?? 0), factor, at: x.at })
+      ? hubSpikeMail(content, { topic: label(String(x.payload?.topic ?? '')), unit_name: String(units.find((u) => u.id === x.unit_id)?.name_ar ?? ''), count: Number(x.payload?.count ?? 0), avg: Number(x.payload?.avg ?? 0), factor, at: x.at })
       : hubFlaggedMail(content, { conversation_id: String(x.payload?.conversation_id ?? ''), unit_name: String(units.find((u) => u.id === x.unit_id)?.name_ar ?? ''),
           topics: ((x.payload?.topics ?? []) as string[]).map(label), at: x.at });
     const ok = await mail(a.recipients ?? [], m);

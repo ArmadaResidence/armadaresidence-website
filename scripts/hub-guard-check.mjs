@@ -60,6 +60,25 @@ check(refused('اكتب لنا على info@armadaresidence.com.', 'email', OA, P
 check(refused('Write to someone@gmail.com.', 'email', OE, PC), '1a another email is refused');
 check(ok('الإفطار 20 ريالًا، ويُقدَّم من 7:00 إلى 10:30.', OA, { ...PC, text: `${PC.text} من 7:00 إلى 10:30` }) && ok('الأسعار: 185 و200 و240 ريالًا.', OA, { ...PC, text: `${PC.text} 185 200 240` }), '1a prices and times are never read as a phone');
 check(ok('من 2026-11-14 إلى 2026-11-16.', OA, { ...PC, text: `${PC.text} 2026-11-14 2026-11-16` }), '1a an ISO date is never read as a phone');
+// 8b · the first person singular (Ahmed, 14 Nov 2026 — q100 wrote «فلا أستطيع تأكيدهما هنا»): whole words refused
+for (const w of ['أنا', 'أستطيع', 'أقدر', 'أعرف', 'أؤكد', 'أتأكد', 'سأتأكد', 'أرسل', 'سأرسل', 'أنصح', 'أقترح', 'أعتقد', 'أرى', 'أعتذر', 'أملك']) {
+  check(refused(`المواقف مجانية، و${w} ذلك.`, 'first_person'), `8b the first-person «${w}» is refused`);
+}
+check(refused('أما توفر الغرف ليلة الخميس فلا أستطيع تأكيدهما هنا.', 'first_person'), '8b q100\'s line «فلا أستطيع تأكيدهما هنا» is refused');
+check(refused('أنصحك بالجناح.', 'first_person') && refused('سأرسل لك الرابط.', 'first_person'), '8b … with a joined suffix or after «لك» too');
+for (const t of ['أفضل', 'أكثر', 'أقل', 'أيام', 'أسعار', 'أرمادا', 'أجنحة']) {
+  check(!why(`${t} المواقف مجانية.`).includes('first_person'), `8b the clean twin «${t}» passes`);
+}
+check(!why('أرسل لنا تاريخ الوصول.').includes('first_person') && !why('نستطيع تأكيد ذلك، ويسعدنا خدمتك.').includes('first_person'), '8b the imperative to the guest «أرسل لنا…» and the plural «نستطيع» pass');
+check(/first person plural/.test(retryReason(['first_person'])), '8b the retry asks for the first person plural');
+// 8c · no line about what cannot be answered (Ahmed, 14 Nov 2026 — prompts.md §2 FACTS)
+for (const t of ['أما أسعار الغسيل فلا تتوفر لدينا هنا، وسيوافيك الاستقبال بها.', 'أما فرع طريق المطار فلا تتوفر لدينا معلومة عن البلكونات فيه.', 'لا يمكننا تأكيد التوفر ليلة الخميس.',
+  'أما فرع طريق المطار فلا تتوفر لدينا عنه معلومة عن وجود بلكونات.', 'ليست لدينا تفاصيل عن ذلك.', 'لا نملك معلومة عن السعر.']) {
+  check(refused(t, 'non_answer'), `8c «${t}» is refused`);
+}
+check(refused("We don't have that information here.", 'non_answer', OE) && refused('We can’t confirm availability.', 'non_answer', OE), '8c … in English too');
+check(ok('لا توجد غسالات في الغرف، ويوجد في الفرع مغسلة مركزية.', OA, { ...P, text: `${P.text} لا توجد غسالات في الغرف، ويوجد في الفرع مغسلة مركزية.` }), '8c a fact «لا توجد…» passes');
+check(/hand-off notice/.test(retryReason(['non_answer'])), '8c the retry says the notice comes from the system');
 check(refused('الإفطار ٢٠ ريالًا.', 'digits'), '1 Arabic-Indic digits are refused');
 check(ok(`الإلغاء: ${CANCEL_AR}`), '1 the times of the cancellation sentence pass');
 

@@ -43,6 +43,33 @@ export const DEPOSIT_WORDS = ['عربون', 'تأمين', 'مبلغ تأمين',
 export const SELF_WORDS_AR = ['ذكاء اصطناعي', 'الذكاء الاصطناعي', 'روبوت', 'بوت', 'مساعد', 'مساعد آلي', 'أنا', 'اسمي', 'موظف خدمة العملاء', 'إنسان', 'شخص حقيقي'];
 /** «آلي» is matched by its exact letters: unified it would read «إلى» */
 export const SELF_EXACT_AR = /(^|[^ء-ي])(?:و|ف|ب|ك|ل)?(?:ال)?آلي(?:ًا|ا)?(?![ء-ي])/u;
+/** the first person singular (Ahmed, 14 Nov 2026 — the H6 gaps: q100 wrote «فلا أستطيع تأكيدهما هنا»): the reply speaks
+ *  as the property, «نحن» — these verbs as whole words are refused. «أرسل» is also the singular imperative to the guest
+ *  («أرسل لنا…»), which passes */
+export const FIRST_PERSON_AR = ['أنا', 'أستطيع', 'أقدر', 'أعرف', 'أؤكد', 'أتأكد', 'سأتأكد', 'أرسل', 'سأرسل', 'أنصح', 'أقترح', 'أعتقد', 'أرى', 'أعتذر', 'أملك'];
+const IMPERATIVE_SEND = /(^|[^ء-ي])(?:و|ف)?أرسل\s+(?:لنا|إلينا)(?![ء-ي])/gu;
+/** a first-person verb by its exact letters (unified, «أرسل» would read «ارسل» = the imperative too) */
+export function firstPerson(text: string): string | null {
+  const t = String(text ?? '').replace(IMPERATIVE_SEND, ' ');
+  for (const w of FIRST_PERSON_AR) {
+    const e = w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    if (new RegExp(`(^|[^\\u0621-\\u064A])(?:و|ف|ب|ك|ل)?${e}(?:ك|ه|ها|هما|هم)?(?![\\u0621-\\u064A])`, 'u').test(t)) return w;
+  }
+  return null;
+}
+/** a line about what the reply cannot answer or confirm (Ahmed, 14 Nov 2026 — prompts.md §2 FACTS): the reply answers
+ *  what the payload covers; the hand-off notice after it says the team continues. A fact «لا توجد…» is not one of these */
+/** matched on the unified text (أ إ آ → ا, ة → ه): a few words may sit between the parts («لا تتوفر لدينا عنه معلومة») */
+export const NON_ANSWER_AR: RegExp[] = [
+  /لا (?:تتوفر|يتوفر|توجد|يوجد) (?:لدينا|عندنا)(?:\s+\S+){0,3}?\s+(?:معلومه|معلومات|تفاصيل|بيانات)/u,
+  /(?:ليس|ليست) (?:لدينا|عندنا)(?:\s+\S+){0,2}?\s+(?:معلومه|معلومات|تفاصيل)/u,
+  /لا (?:نملك|نعرف|نعلم)(?:\s+\S+){0,2}?\s*(?:معلومه|معلومات|تفاصيل)?/u,
+  /لا (?:نستطيع|يمكننا|نقدر)(?: ان)? (?:نؤكد|تاكيد|نجزم|الجزم|نحدد|تحديد)/u,
+  /لا (?:تتوفر|يتوفر) (?:لدينا )?هنا/u,
+  /سيوافيك|سيفيدك/u,
+];
+export const NON_ANSWER_EN = ["we don't have that information", "we don't have information", 'we do not have information', "we can't confirm", 'we cannot confirm', "i can't confirm",
+  'the reception will let you know', 'the team will let you know'];
 export const SELF_WORDS_EN = ['ai', 'a.i.', 'bot', 'chatbot', 'robot', 'automated', 'automatic', 'assistant', 'virtual', 'i', "i'm", 'my name', 'human', 'real person', 'language model'];
 
 const lower = (s: string) => s.toLowerCase();
@@ -169,6 +196,10 @@ export function guard(reply: string, p: GuardPayload, o: GuardOptions): GuardRes
   if ((text.match(/!/g) ?? []).length > 1) r.push('exclamation');
   // 8 · no self-description, no claim to be a person («مساعدتك» passes — a whole word only)
   if (SELF_WORDS_AR.some((w) => arWord(text, w)) || SELF_EXACT_AR.test(text) || SELF_WORDS_EN.some((w) => enWord(text, w))) r.push('self_description');
+  // 8b · the first person singular (H6 gaps): «نحن», never «أستطيع» / «أؤكد» …
+  if (firstPerson(text)) r.push('first_person');
+  // 8c · no line about what the reply cannot answer or confirm (the notice after it does that)
+  if (NON_ANSWER_AR.some((re) => re.test(unify(text))) || NON_ANSWER_EN.some((w) => text.toLowerCase().replace(/’/g, "'").includes(w))) r.push('non_answer');
   // 9 · the cancellation policy: the approved sentence, word for word
   if (/إلغاء|الإلغاء|cancel/i.test(text) && p.cancellation_sentence && !text.includes(p.cancellation_sentence)) r.push('cancellation');
   return { ok: r.length === 0, reasons: [...new Set(r)] };
@@ -195,6 +226,8 @@ export const RETRY_REASONS: Record<string, string> = {
   exclamation: 'At most one exclamation mark.',
   self_description: 'Never describe yourself and never use the words assistant, bot, AI, automated, or I. Speak as the property in the plural.',
   cancellation: 'Quote the PAYLOAD cancellation_sentence word for word, or do not mention cancellation.',
+  non_answer: 'Delete every sentence about what the PAYLOAD does not cover, about what you cannot confirm, or about who will tell the guest later (e.g. «لا تتوفر لدينا معلومة…», «سيوافيك الاستقبال…»). Keep only the facts the PAYLOAD gives and list the rest in "unanswered" — the system adds the hand-off notice after your reply.',
+  first_person: 'Speak as the property in the first person plural («نستطيع», «نؤكد», «لدينا»), never the singular («أستطيع», «أؤكد», «أنا»). Do not mention what you cannot answer.',
 };
 export const retryReason = (reasons: string[]) =>
   reasons.map((x) => (x.startsWith('forbidden:') ? 'A forbidden term was used; follow the WORDS rules.' : RETRY_REASONS[x] ?? x)).join(' ');

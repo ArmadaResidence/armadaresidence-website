@@ -123,15 +123,18 @@ check(/cron\.schedule\('hub-inbox', '\*\/2 \* \* \* \*'/.test(MIG), 'one pg_cron
   check(/insert into public\.hub_alerts \(kind, payload\) values \('api_credit'/.test(MIG5) && /on conflict do nothing returning id into v_id;/.test(MIG5), 'one api_credit alert while it lasts (the one-open index)');
   check(/'complaint', u\.id, jsonb_build_object\('item', c\.id::text\)/.test(MIG5), 'one complaint email per conversation (the alert keyed by the conversation)');
 }
-// ── H6 (14 Nov 2026): a sent reply flagged wrong, a question spike (copy.md §7, the session's wording) ──
+// ── H6 (14 Nov 2026): a sent reply flagged wrong, a question spike (copy.md §7 — approved by Ahmed, 14 Nov 2026) ──
 {
   const COPY = read('docs/guest-hub/copy.md');
   const fl = hubFlaggedMail(C, { conversation_id: '00000000-0000-4000-8000-000000000124', unit_name: 'فرع طريق المطار', topics: ['المواقف'], at: '2026-11-14T06:00:00Z' });
   check(fl.subject === 'رد خاطئ أُرسل لضيف — فرع طريق المطار — AR-HUB-20261114', `the flagged-reply subject with AR-HUB- — ${fl.subject}`);
   check(fl.text.includes('أبلغ أحد الموظفين أن ردًا أرسله المساعد لضيف في فرع طريق المطار كان خاطئًا.') && fl.text.includes('الموضوع: المواقف') && fl.text.includes('لم يتغيّر أي ترخيص')
     && fl.text.includes('/inbox?c=00000000-0000-4000-8000-000000000124'), 'the flagged-reply body: who flagged (no name), the topic, no licence changed, the conversation');
-  const sp = hubSpikeMail(C, { topic: 'المواقف', count: 6, avg: 0.07, factor: 3, at: '2026-11-14T06:00:00Z' });
-  check(sp.subject === 'ارتفاع في سؤال — المواقف — AR-HUB-20261114' && sp.text.includes('سُئل عن «المواقف» 6 مرات خلال آخر 24 ساعة') && sp.text.includes('/radar'), `the spike email: subject, the counted noun, the radar — ${sp.subject}`);
+  const sp = hubSpikeMail(C, { topic: 'المواقف', unit_name: 'فرع طريق المطار', count: 6, avg: 0.07, factor: 3, at: '2026-11-14T06:00:00Z' });
+  check(sp.subject === 'ارتفاع في سؤال — المواقف — AR-HUB-20261114' && sp.text.includes('سُئل عن «المواقف» 6 مرات خلال آخر 24 ساعة في فرع طريق المطار، أي أكثر من 3 أضعاف') && sp.text.includes('/radar'), `the spike email: subject, the counted noun, the unit (Ahmed, 14 Nov 2026), the radar — ${sp.subject}`);
+  check(read('supabase/functions/hub-agent/index.ts').includes("unit_name: String(units.find((u) => u.id === x.unit_id)?.name_ar ?? ''), count:"), 'the agent names the spike\'s unit');
+  const G2 = read('supabase/migrations/20261114700000_guest_hub_gaps_2.sql');
+  check(G2.includes('group by t.unit_id, k') && G2.includes("values ('spike', r.unit_id,"), 'the spike is counted per unit, one alert per unit, topic and day');
   check(hubSpikeCount(C, 1) === 'مرة واحدة' && hubSpikeCount(C, 2) === 'مرتين' && hubSpikeCount(C, 11) === '11 مرة' && hubSpikeCount(C, 103) === '103 مرات', 'the spike count in Arabic (1, 2, 3–10, 11+)');
   for (const k of ['hub_flagged', 'hub_spike']) {
     const M = C.staff_email.ar[k];
