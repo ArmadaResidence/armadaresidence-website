@@ -150,6 +150,25 @@ for (const kind of ['rate_limit', 'overloaded', 'timeout']) {
   check(o.finish.state === 'human' && bodies(o).join('') === HANDOFF_AR && o.finish.models.length === 0, `«حجز إقامة» with booking off: the hand-off notice (${JSON.stringify(bodies(o))})`);
 }
 
+// Ahmed's rule (22:55): only a real button payload is a button reply — any typed text goes through understanding, also the
+// text right after the greeting with its quick replies; an unsupported message kind gets the media notice
+{
+  const seen = [];
+  const spy = async (c) => { seen.push(c.layer); return { ok: true, text: understanding({ intents: ['other'], topics: [] }), input_tokens: 10, output_tokens: 5, latency_ms: 1 }; };
+  const c = claim(Q('t-after-quick', 'كيف الحال'), { conversation: { first_reply: false, state: 'inquiry' } });
+  c.history = [{ author: 'guest', body: 'هلا' }, { author: 'us', body: 'مرحبًا بك في أرمادا ريزيدنس – طريق المطار. كيف نساعدك؟' }];
+  const o = await runTurn(c, deps(spy));
+  check(seen[0] === 'understand' && o.finish.understanding, `a typed text after the quick replies is understood (calls: ${seen.join(',')})`);
+  const typedTitle = claim(Q('t-typed-title', 'حجز إقامة'), { conversation: { first_reply: false, state: 'inquiry' } });
+  seen.length = 0;
+  await runTurn(typedTitle, deps(spy));
+  check(seen[0] === 'understand', 'the title of a quick reply typed as text (no button payload) is understood, not taken as the button');
+  const un = claim(Q('t-unsupported', ''), { conversation: { first_reply: false, state: 'inquiry' } });
+  un.messages = [{ id: 'm-un', kind: 'unsupported', body: null, payload: {} }];
+  const ou = await runTurn(un, deps(err('other')));
+  check(ou.finish.state === 'human' && ou.finish.reason === 'media' && !bodies(ou).join('').includes('كيف نساعدك'), `an unsupported message kind: the media notice and the team (${ou.finish.reason})`);
+}
+
 if (fails.length) {
   for (const f of fails) console.error(`✗ ${f}`);
   console.error(`hub-failure-check: ${fails.length} of ${n} failed`);

@@ -85,7 +85,9 @@ export interface Outcome {
  *  model.ts has already retried the transient ones with backoff */
 export const MODEL_DOWN = new Set(['rate_limit', 'overloaded', 'network', 'timeout', 'other', 'bad_request', 'not_configured']);
 
-const MEDIA = new Set(['image', 'audio', 'video', 'document', 'location', 'sticker', 'contacts']);
+// 'unsupported' (a kind the router does not read — a poll, an unknown type) is answered as media: the media notice and the
+// team, never the failed-understanding path (H6 pass 4, 14 Nov 2026)
+const MEDIA = new Set(['image', 'audio', 'video', 'document', 'location', 'sticker', 'contacts', 'unsupported']);
 const NOTICE_KEYS = new Set(['third_language']);
 
 /** the unit's name in a guest message (copy.md §1: branches.json name, or the venue's) */
