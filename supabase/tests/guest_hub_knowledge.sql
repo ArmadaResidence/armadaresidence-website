@@ -1,6 +1,6 @@
 -- Guest Hub H4 SQL tests (14 Nov 2026 — migration 20261114100000_guest_hub_knowledge; docs/guest-hub/GUEST-HUB-SPEC.md §13 H4,
 -- DECISIONS.md 2026-11-14 «Guest Hub H4 — the knowledge base»):
---   K — the seed: 37 committed cards published and clean, 56 topics (9 always handed off), the FAQ keys, the rooftop's flag
+--   K — the seed: 37 committed cards published and clean, 56 topics + careers (9 always handed off), the FAQ keys, the rooftop's flag
 --       only, the café cards tagged airport-road, no Wi-Fi password card in an empty database (2 on production only);
 --   L — levels and RLS: knowledge view / edit / publish, no direct write, anon nothing;
 --   C — the checks on save in both languages (internal.copy_problems + the shared forbidden list, the property's numbers
@@ -132,8 +132,10 @@ select pg_temp._check('K2 no Wi-Fi password card in the committed seed (the two 
 select pg_temp._check('K3 every seed card passes the check (nothing blocks)',
   not exists (select 1 from public.hub_knowledge_cards c where jsonb_array_length(internal.hub_card_check(c) -> 'missing') > 0),
   (select string_agg(c.key || ':' || (internal.hub_card_check(c) -> 'missing')::text, ' | ') from public.hub_knowledge_cards c where jsonb_array_length(internal.hub_card_check(c) -> 'missing') > 0));
-select pg_temp._check('K4 56 topics, 9 always handed off, the parents set',
-  (select count(*) = 56 and count(*) filter (where always_handoff) = 9 from public.hub_topics)
+select pg_temp._check('K4 57 topics (the 56 of the seed + careers, H6 pass 3), 9 always handed off, the parents set',
+  (select count(*) = 57 and count(*) filter (where always_handoff) = 9 from public.hub_topics)
+  and (select label_ar = 'التوظيف' and label_en = 'Careers' and parent_key is null and not always_handoff and status = 'active' from public.hub_topics where key = 'careers')
+  and (select count(*) = (select count(*) from public.hub_units) and bool_and(mode = 'shadow') from public.hub_licences where topic_key = 'careers')
   and (select parent_key = 'cafe_restaurant' from public.hub_topics where key = 'menu') and (select parent_key is null from public.hub_topics where key = 'rooftop'));
 select pg_temp._check('K5 the topics read the FAQ by key (parking, wifi, breakfast …) and every FAQ key exists',
   (select 'parking' = any (faq_keys) from public.hub_topics where key = 'parking')
@@ -158,8 +160,8 @@ select pg_temp._check('L3 sales (knowledge: view) reads the cards and the librar
 select pg_temp._fails('L3 … but cannot save', format('select public.hub_card_save(null, %L)', pg_temp._cf('x', 'نص', 'text')), '42501');
 select pg_temp._fails('L4 no direct write for staff', format('update public.hub_knowledge_cards set title_ar = %L where key = %L', 'x', 'k-parking-detail'), '42501');
 select pg_temp._as('recA');
-select pg_temp._check('L5b the editor''s meta: four units (the rooftop excluded), 56 topics, the alert windows',
-  jsonb_array_length(public.hub_knowledge_meta() -> 'units') = 4 and jsonb_array_length(public.hub_knowledge_meta() -> 'topics') = 56
+select pg_temp._check('L5b the editor''s meta: four units (the rooftop excluded), 57 topics, the alert windows',
+  jsonb_array_length(public.hub_knowledge_meta() -> 'units') = 4 and jsonb_array_length(public.hub_knowledge_meta() -> 'topics') = 57
   and exists (select 1 from jsonb_array_elements(public.hub_knowledge_meta() -> 'units') e where e ->> 'key' = 'rooftop' and (e ->> 'knowledge_hidden')::boolean)
   and (public.hub_knowledge_meta() ->> 'card_days')::int = 14);
 select pg_temp._check('L5 reception (knowledge: view) reads; the service prices answer', (select count(*) >= 37 from public.hub_knowledge_cards)
