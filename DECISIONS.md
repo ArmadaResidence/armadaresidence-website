@@ -3458,3 +3458,16 @@ What was built is listed in CLAUDE.md §14 «Built in session H5». The choices 
 - **The seven that still differ — for Ahmed, not fixed:** q016 «أبغى غرفة فيها مطبخ», q072 «أبغى غرفة ببلكونة» and q030 «أبغى سرير إضافي» are read as a stay request and go to the team (H5 by design; the bank expects the facility answer first); q092 "Do you have a room with a balcony?" is read as an availability question and goes to the team; q021 «كم سعر القاعة؟» is a hall request and goes to the team (the bank expects «عن طريق المبيعات» from the card); q023 "Can I pay online?" is answered from the FAQ and then handed to the team because the FAQ does not say whether online payment exists; q065 «ممكن رقم المبيعات؟» finds no topic — the card `k-sales-contact` is tagged `groups_corporate` and `hall` only (a tagging question for Ahmed in «قاعدة المعرفة»).
 - **The preview-branch e2e `hub-assistant-check`** (Ahmed's OK, «Yes, open it»): built and run on branch `h5-assistant` (created 10:42, deleted ≈ 10:57 UTC, under USD 0.01) — 26/26 on the first run; the model calls stubbed with the recorded fixtures, test turns only, nothing sent. Secrets on the branch: `BOOKING_TEST_TOKEN` only (standing approval; the deny restored and the temp file deleted right after).
 
+
+## 2026-11-14 — Guest Hub: review requests for guests booked outside the site (Ahmed, 14 Nov 2026)
+
+- **Review request for every departing guest, not only site bookings.** Guests booked in Nazeel (walk-in, OTA, reception) get the same approved `stay_review` template at 10:00 Riyadh the day after check-out, from the branch's number, with the branch's Google review link.
+- **How the system learns who left:** «قائمة المغادرين» in the dashboard — reception uploads Nazeel's daily departures report (file format [يُؤكَّد]: Ahmed is asking reception whether Nazeel exports it to Excel), plus a manual add for one guest. If Nazeel later offers a direct connection, the list fills itself.
+- **Rules:** once per stay (a guest who also has a site booking leaving the same day gets one message); never to an opted-out or blocked number; asked of every departing guest, never filtered by satisfaction; counted in the shared 2,000 limit. Stored: phone, first name, branch, check-out date only; deleted after 30 days; never a marketing consent.
+- **Built in H9** (with the shared sending limit), about two hours more. The session asks Ahmed for a sample export on his own machine; no guest data goes through the planning chat.
+- **Arrival reminder for Nazeel guests:** a later phase.
+
+## 2026-11-14 — Guest Hub: test mode at Airport Road, and the H6 spending pre-approval (Ahmed, 14 Nov 2026)
+
+- **Test mode switched on at Airport Road by Ahmed after H5** (the audit records the unit's mode «تجربة» at 11:19 UTC, 14 Nov 2026); Shafa Road stays «متوقف». «تخزين المحادثات» is on, «الإرسال من المركز» is on for both numbers and «المساعد يعمل» is on — all Ahmed's; session H6 changes none of them.
+- **H6 spending pre-approval:** up to USD 3 of real model calls in session H6, paid from the Ultra plan's API credits through the local hub-dev key in `.env`, and ONE paid preview branch (a few cents) for the e2e checks, closed right after. Ahmed is asked only if either would go above that.

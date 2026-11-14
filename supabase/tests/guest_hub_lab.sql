@@ -150,6 +150,8 @@ select pg_temp._save('e1', public.hub_eval_plan('manual', null, 'qa-e1'));
 select pg_temp._check('E1 the plan: the items and the estimated cost first (the H5 measure × 1.15 with no history), within the budget',
   (pg_temp._j('e1') ->> 'items')::int = 98 and (pg_temp._j('e1') ->> 'est_cost_usd')::numeric = round(98 * 0.0066 * 1.15, 6)
   and not (pg_temp._j('e1') ->> 'would_pass_cap')::boolean, pg_temp._j('e1')::text);
+select pg_temp._service();
+select pg_temp._check('E1 … the service role plans a full run too (scripts/hub-eval.mjs, the production baseline)', (public.hub_eval_plan('manual', null, 'qa-e1') ->> 'items')::int = 98);
 select pg_temp._root();
 update public.settings set value = '0.5' where key = 'hub_budget_daily_usd';
 select pg_temp._as('mgr');

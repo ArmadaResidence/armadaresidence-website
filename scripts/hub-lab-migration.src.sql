@@ -80,7 +80,8 @@ create table public.hub_test_items (
   -- q001 … from the seed; s-… from staff and the simulator
   key text not null unique check (key ~ '^[a-z][a-z0-9-]{1,40}$'),
   unit_key text not null references public.hub_units (key) on update cascade,
-  language text not null check (language in ('ar', 'en')),
+  -- ar / en; the bank's two third-language questions (id, ur) keep theirs
+  language text not null check (language ~ '^[a-z]{2,3}$'),
   -- one or more guest turns (test text — never a real guest's words)
   messages jsonb not null check (jsonb_typeof(messages) = 'array' and jsonb_array_length(messages) between 1 and 10),
   context jsonb not null default '{}'::jsonb check (jsonb_typeof(context) = 'object'),
@@ -269,6 +270,12 @@ language sql stable security definer set search_path = '' as $$
    order by r.finished_at desc limit 1
 $$;
 
+-- the caller is the service role (scripts/hub-eval.mjs, the deliberate production baseline): no staff permission applies
+create function internal.hub_is_service() returns boolean
+language sql stable set search_path = '' as $$
+  select coalesce(nullif(current_setting('request.jwt.claims', true), '')::jsonb ->> 'role', '') = 'service_role'
+$$;
+
 -- what a run would do and cost (as the user): {kind, units, items, live_items, candidate_items, est_cost_usd, budget,
 -- would_pass_cap, nothing}. manual / baseline: assistant: edit; knowledge: knowledge: publish; persona: assistant: edit
 -- in the unit's branch.
@@ -288,7 +295,9 @@ declare
   i uuid;
 begin
   if p_kind not in ('manual', 'baseline', 'knowledge', 'persona') then raise exception 'hub_eval_kind' using errcode = '22023'; end if;
-  if p_kind = 'knowledge' then
+  if internal.hub_is_service() then
+    null; -- the service role (a full run from scripts/hub-eval.mjs)
+  elsif p_kind = 'knowledge' then
     if not internal.can('knowledge', 'publish') then raise exception 'not allowed' using errcode = '42501'; end if;
   elsif not internal.can('assistant', 'edit') then
     raise exception 'not allowed' using errcode = '42501';
@@ -296,7 +305,7 @@ begin
   if p_unit is not null then
     select * into u from public.hub_units where key = p_unit;
     if u.id is null then raise exception 'hub_unit' using errcode = '22023'; end if;
-    if not internal.can_branch(u.branch_slug) then raise exception 'not allowed' using errcode = '42501'; end if;
+    if not internal.hub_is_service() and not internal.can_branch(u.branch_slug) then raise exception 'not allowed' using errcode = '42501'; end if;
   elsif p_kind = 'persona' then
     raise exception 'hub_unit' using errcode = '22023';
   end if;
