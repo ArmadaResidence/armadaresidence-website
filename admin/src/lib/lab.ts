@@ -183,6 +183,10 @@ export interface SimResult {
   error?: string;
   replies: { body: string; notice: boolean; kind: string; buttons: string[] }[];
   understanding: Record<string, unknown> | null;
+  /** H6 pass 4: the calls that failed (their kind) and the turn's error code — the real reason when there is no understanding */
+  model_errors?: { layer: string; error: string }[];
+  error_code?: string | null;
+  message_kind?: string;
   decision: { from: string; to: string; actions: string[]; transitions: string[]; reason: string | null };
   sources: { cards: { key: string; title: string }[]; read: { key: string; title: string }[]; faq: { key: string; q: string }[] };
   guard: { ok: boolean; refusals: string[][] };
@@ -193,6 +197,28 @@ export interface SimResult {
 }
 export const simulate = (unit: string, text: string, sim: SimState, language: 'ar' | 'en', drafts: boolean, persona: Persona | null) =>
   api.edge<SimResult>('hub-admin', { action: 'simulate', unit, text, sim, language, drafts, persona });
+/** why a simulated turn has no understanding (H6 pass 4) — the failed call's kind, in Arabic, with the HTTP class */
+export const MODEL_ERROR_LABELS: Record<string, string> = {
+  credit: 'رفضت أنثروبيك الطلب: نفد الرصيد أو بلغت المساحة حد الإنفاق المضبوط في لوحة المطورين',
+  rate_limit: 'رفضت أنثروبيك الطلب: تجاوز حد الطلبات (429)',
+  overloaded: 'رفضت أنثروبيك الطلب: ضغط على الخدمة (529)',
+  timeout: 'انتهت مهلة الطلب قبل أن يرد النموذج',
+  network: 'انقطع الاتصال بخدمة أنثروبيك',
+  bad_request: 'رفضت أنثروبيك الطلب (400)',
+  refusal: 'رفض النموذج الإجابة',
+  max_tokens: 'تجاوز الرد الطول المسموح',
+  not_configured: 'مفتاح أنثروبيك غير مضبوط',
+  other: 'خطأ من خدمة أنثروبيك',
+};
+export function noUnderstandingReason(r: Pick<SimResult, 'model_errors' | 'error_code' | 'message_kind' | 'decision'>): string {
+  const e = (r.model_errors ?? []).find((m) => m.layer === 'understand' || m.layer === 'tag') ?? (r.model_errors ?? [])[0];
+  if (e) return `لم يُفهم النص لأن ${MODEL_ERROR_LABELS[e.error] ?? MODEL_ERROR_LABELS.other}.`;
+  if (r.error_code === 'api_credit' || r.decision.reason === 'api_credit') return `لم يُفهم النص لأن ${MODEL_ERROR_LABELS.credit}.`;
+  if (r.error_code === 'repeated' || r.decision.reason === 'repeated') return 'لم يُرسل النص إلى النموذج: تكررت الرسالة نفسها في 10 دقائق.';
+  if (r.decision.reason === 'rate_limit') return 'لم يُرسل النص إلى النموذج: بلغت المحادثة حد الرسائل في الساعة.';
+  if (r.message_kind && r.message_kind !== 'text') return 'لا فهم لهذه الرسالة (وسائط أو زر).';
+  return 'لم يُرجع النموذج فهمًا صالحًا لهذا النص.';
+}
 export const SIM_ERRORS: Record<string, string> = {
   hub_budget_cap: 'بلغت التكلفة حد الميزانية، فلا يعمل المحاكي الآن.',
   hub_engine: 'تعذّر تشغيل المحرك لهذه الرسالة، أعد المحاولة.',

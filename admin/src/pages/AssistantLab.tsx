@@ -761,7 +761,7 @@ function SimDetails({ r }: { r: L.SimResult }) {
           <dl className="grid grid-cols-[8rem_1fr] gap-x-2 gap-y-0.5" data-sim-understanding>
             {keys.map((k) => <div key={k} className="contents"><dt className="text-ink-muted">{LABELS[k]}</dt><dd className="latin-ok" dir="auto">{v(u[k])}</dd></div>)}
           </dl>
-        ) : <p className="text-ink-muted">لا فهم لهذه الرسالة (وسائط أو زر).</p>}
+        ) : <p className="text-ink-muted" data-sim-no-understanding>{L.noUnderstandingReason(r)}</p>}
       </div>
       <div data-sim-decision>
         <h4 className="label">القرار</h4>

@@ -422,6 +422,11 @@ Deno.serve(async (req) => {
       ok: true,
       replies: f.messages.map((m) => ({ body: m.body, notice: !!m.notice, kind: m.kind, buttons: Array.isArray((m.payload as any)?.buttons) ? (m.payload as any).buttons.map((b: any) => String(b.title ?? b.text ?? '')) : [] })),
       understanding: f.understanding ?? null,
+      // H6 pass 4 (Ahmed, 14 Nov 2026): why there is no understanding — the failed calls' kinds and the turn's error code, so
+      // the trace names the real reason (the credit or usage limit, a rate limit, a timeout …), never «وسائط أو زر» for text
+      model_errors: (f.models ?? []).filter((m) => !m.ok).map((m) => ({ layer: m.layer, error: m.error ?? 'other' })),
+      error_code: f.error ?? null,
+      message_kind: 'text',
       decision: { from: sim.state, to: f.state ?? sim.state, actions: f.decision?.actions ?? [], transitions: f.decision?.transitions ?? [], reason: f.reason ?? null },
       sources: {
         cards: [...new Set(f.messages.flatMap((m) => m.source_card_ids ?? []))].map((id) => allCards.find((x) => x.id === id)).filter(Boolean).map((x: any) => ({ key: x.key, title: x.title })),

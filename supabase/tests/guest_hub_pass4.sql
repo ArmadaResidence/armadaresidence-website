@@ -221,5 +221,18 @@ select pg_temp._check('G5 the claim hands over the unit and its name (the «في
   (pg_temp._j('g5') #>> '{alerts,0,unit_name}') = (select name_ar from public.hub_units where key = 'airport-road')
   and (pg_temp._j('g5') #>> '{alerts,0,unit_id}')::uuid = (select id from public.hub_units where key = 'airport-road'), pg_temp._j('g5')::text);
 
+-- ══ L — the test lab never counts against the live guests' budget (migration 20261114920000) ══
+delete from public.hub_usage_daily where day = internal.riyadh_today();
+insert into public.hub_usage_daily (day, unit_id, layer, source, calls, input_tokens, output_tokens, cost_usd)
+values (internal.riyadh_today(), pg_temp._id('unit'), 'compose', 'test_lab', 100, 0, 0, 25), (internal.riyadh_today(), pg_temp._id('unit'), 'understand', 'turn', 3, 0, 0, 0.5);
+select pg_temp._check('L1 25 USD of lab today (daily budget 20): the live guests are NOT capped; the lab is',
+  not (internal.hub_budget_state() ->> 'capped')::boolean and (internal.hub_budget_state() ->> 'lab_capped')::boolean
+  and (internal.hub_budget_state() ->> 'daily_spent')::numeric = 0.5 and (internal.hub_budget_state() ->> 'total_daily_spent')::numeric = 25.5
+  and (internal.hub_assistant_state((select u from public.hub_units u where u.key = 'airport-road')) ->> 'active')::boolean, internal.hub_budget_state()::text);
+select pg_temp._service();
+select pg_temp._save('l2', public.hub_eval_plan('manual', null, 'qa-l2'));
+select pg_temp._root();
+select pg_temp._check('L2 … and a lab run is refused at the plan (would pass the cap)', (pg_temp._j('l2') ->> 'would_pass_cap')::boolean, pg_temp._j('l2')::text);
+
 select n, test, ok, detail from _r order by n;
 rollback;
