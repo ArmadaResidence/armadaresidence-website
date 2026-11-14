@@ -304,6 +304,10 @@ select pg_temp._service();
 select pg_temp._save('r0', pg_temp._in('YC5-R1', '+966500009501', 'وكم السعر؟'));
 select pg_temp._save('r0', pg_temp._in('YC5-R2', '+966500009501', 'وكم السعر؟'));
 -- H6 pass 4 (A): a repeat is suppressed only when the assistant already answered that text — the earlier copies' reply turns
+-- (rows of one transaction share now(): the copies get their real order in time first)
+select pg_temp._root();
+update public.hub_messages set created_at = now() - interval '2 minutes', sent_at = now() - interval '2 minutes' where provider_message_id = 'YC5-Q2';
+update public.hub_messages set created_at = now() - interval '1 minute', sent_at = now() - interval '1 minute' where provider_message_id = 'YC5-R1';
 select pg_temp._root();
 insert into public.hub_turns (conversation_id, unit_id, inbound_message_ids, first_inbound_id, status, kind)
 select m.conversation_id, c.unit_id, array[m.id], m.id, 'done', 'reply' from public.hub_messages m join public.hub_conversations c on c.id = m.conversation_id

@@ -215,7 +215,7 @@ begin
                                   from public.hub_messages m2
                                  where m2.conversation_id = c.id and m2.direction = 'in' and m2.author = 'guest' and not (m2.id = any (t.inbound_message_ids))
                                    and btrim(lower(coalesce(m2.body, ''))) = btrim(lower(coalesce(v_text, '')))
-                                 order by m2.created_at desc limit 1), false),
+                                 order by m2.created_at desc, m2.sent_at desc, m2.id desc limit 1), false),
     'phone_max', internal.hub_setting_int('hub_rate_phone_hour', 30), 'replies_max', internal.hub_setting_int('hub_rate_replies_hour', 20));
   return jsonb_build_object(
     'claimed', true,
