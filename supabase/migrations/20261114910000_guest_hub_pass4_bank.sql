@@ -30,3 +30,8 @@ begin
   on conflict (key) do nothing;
 end;
 $$;
+
+-- q080 (tests/hub-bank/corrections.json): «شكرًا» alone now gets the approved thanks reply (copy.md §1.6)
+update public.hub_test_items
+   set expect = '{"action": "greeting", "must_include": ["العفو"]}'::jsonb
+ where key = 'q080' and added_from = 'seed' and expect = '{"action": "answer"}'::jsonb;

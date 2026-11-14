@@ -206,14 +206,16 @@ begin
                   and not (m.id = any (t.inbound_message_ids)) and m.created_at > now() - interval '10 minutes'
                   and btrim(lower(coalesce(m.body, ''))) = btrim(lower(coalesce(v_text, ''))) and coalesce(v_text, '') <> '')
                   -- Ahmed, 14 Nov 2026 (H6 pass 4): a repeat is suppressed ONLY when the assistant already answered that same text in
-                  -- this episode — an earlier copy whose reply turn sent the guest a message; copies that got no reply from the
-                  -- assistant (the team owned the conversation, the model failed …) never silence a later one
-                  and exists (select 1 from public.hub_messages m2 join public.hub_turns z on z.conversation_id = c.id and m2.id = any (z.inbound_message_ids)
-                               where m2.conversation_id = c.id and m2.direction = 'in' and m2.author = 'guest' and not (m2.id = any (t.inbound_message_ids))
-                                 and btrim(lower(coalesce(m2.body, ''))) = btrim(lower(coalesce(v_text, '')))
-                                 and z.kind = 'reply' and z.status = 'done'
-                                 and exists (select 1 from public.hub_messages o where o.turn_id = z.id and o.direction = 'out' and o.author = 'assistant'
-                                              and o.status not in ('test', 'rejected', 'superseded', 'failed'))),
+                  -- this episode, and answered its LATEST earlier copy (that copy's reply turn sent the guest a message) — so a copy
+                  -- whose earlier copies got no reply from the assistant (the team owned the conversation, the model failed …) is
+                  -- answered; 21:51 of 14 Nov: the 21:48 copies came while the phone owned it, so the third is answered
+                  and coalesce((select exists (select 1 from public.hub_turns z join public.hub_messages o on o.turn_id = z.id
+                                                where z.conversation_id = c.id and m2.id = any (z.inbound_message_ids) and z.kind = 'reply' and z.status = 'done'
+                                                  and o.direction = 'out' and o.author = 'assistant' and o.status not in ('test', 'rejected', 'superseded', 'failed'))
+                                  from public.hub_messages m2
+                                 where m2.conversation_id = c.id and m2.direction = 'in' and m2.author = 'guest' and not (m2.id = any (t.inbound_message_ids))
+                                   and btrim(lower(coalesce(m2.body, ''))) = btrim(lower(coalesce(v_text, '')))
+                                 order by m2.created_at desc limit 1), false),
     'phone_max', internal.hub_setting_int('hub_rate_phone_hour', 30), 'replies_max', internal.hub_setting_int('hub_rate_replies_hour', 20));
   return jsonb_build_object(
     'claimed', true,

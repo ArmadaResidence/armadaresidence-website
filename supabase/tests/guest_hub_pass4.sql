@@ -148,7 +148,7 @@ select pg_temp._save('a2', public.hub_turn_claim(pg_temp._id('t3')));
 select pg_temp._root();
 select pg_temp._check('A2 earlier copies processed but never answered (no reply message): NOT repeated — answered (Ahmed, 14 Nov 2026)',
   not (pg_temp._j('a2') #>> '{rate,repeated}')::boolean, pg_temp._j('a2') -> 'rate' #>> '{}');
--- the assistant answered the first copy: the third is a repeat, suppressed
+-- the assistant answered the FIRST copy only (21:47 of 14 Nov), the latest earlier copy got no reply: still answered
 insert into public.hub_messages (conversation_id, channel_id, direction, author, kind, body, idempotency_key, status, sent_at, turn_id, is_test)
 select pg_temp._id('conv'), pg_temp._id('ch'), 'out', 'assistant', 'interactive', 'وعليكم السلام، مرحبًا بك.', 'qa-p4:ans-1', 'delivered', now() - interval '4 minutes', z.id, false
   from public.hub_turns z where z.first_inbound_id = pg_temp._id('m1');
@@ -156,8 +156,18 @@ update public.hub_turns set status = 'pending', claimed_at = null where id = pg_
 select pg_temp._service();
 select pg_temp._save('a3', public.hub_turn_claim(pg_temp._id('t3')));
 select pg_temp._root();
-select pg_temp._check('A3 … the assistant already answered that text in this episode: repeated (suppressed, nothing sent)',
-  (pg_temp._j('a3') #>> '{rate,repeated}')::boolean, pg_temp._j('a3') -> 'rate' #>> '{}');
+select pg_temp._check('A3 the first copy answered, the latest earlier copy not: NOT repeated — answered (21:51 of 14 Nov)',
+  not (pg_temp._j('a3') #>> '{rate,repeated}')::boolean, pg_temp._j('a3') -> 'rate' #>> '{}');
+-- the assistant answered the latest earlier copy too: the third is a repeat, suppressed
+insert into public.hub_messages (conversation_id, channel_id, direction, author, kind, body, idempotency_key, status, sent_at, turn_id, is_test)
+select pg_temp._id('conv'), pg_temp._id('ch'), 'out', 'assistant', 'interactive', 'وعليكم السلام، كيف نساعدك؟', 'qa-p4:ans-2', 'delivered', now() - interval '3 minutes', z.id, false
+  from public.hub_turns z where z.first_inbound_id = pg_temp._id('m2');
+update public.hub_turns set status = 'pending', claimed_at = null where id = pg_temp._id('t3');
+select pg_temp._service();
+select pg_temp._save('a4', public.hub_turn_claim(pg_temp._id('t3')));
+select pg_temp._root();
+select pg_temp._check('A4 … the assistant answered the latest earlier copy of that text: repeated (suppressed, nothing sent)',
+  (pg_temp._j('a4') #>> '{rate,repeated}')::boolean, pg_temp._j('a4') -> 'rate' #>> '{}');
 
 -- ══ E — «المساعد لم يعرف» only on what the assistant processed ══
 update public.hub_turns set kind = 'tag' where first_inbound_id = pg_temp._id('m1');
