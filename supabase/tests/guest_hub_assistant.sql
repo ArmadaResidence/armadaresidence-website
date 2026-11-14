@@ -324,7 +324,7 @@ select pg_temp._fails('L2 a licence is the system admin''s only', format('select
 select pg_temp._as('admin');
 select pg_temp._fails('L3 an always_handoff topic is never licensed', format('select public.hub_licence_set(%L, %L, %L, %L)', pg_temp._unit('airport-road'), 'complaint', 'auto', 'QA'), 'hub_licence_always_handoff');
 select pg_temp._fails('L3 … and a licence change needs a reason (H6)', format('select public.hub_licence_set(%L, %L, %L)', pg_temp._unit('airport-road'), 'parking', 'auto'), 'hub_reason');
-select pg_temp._save('l4', public.hub_licence_set(pg_temp._unit('airport-road'), 'parking', 'auto', 'QA'));
+select pg_temp._save('l4', public.hub_licence_set(pg_temp._unit('airport-road'), 'parking', 'auto', 'QA reason'));
 select pg_temp._root();
 select pg_temp._check('L4 the system admin sets «رد تلقائي», audited, by a person', (select mode = 'auto' and set_by = pg_temp._id('admin') from public.hub_licences where unit_id = pg_temp._unit('airport-road') and topic_key = 'parking')
   and exists (select 1 from public.audit_log where batch_id = (pg_temp._j('l4') ->> 'batch_id')::uuid and entity = 'hub_licences'));
@@ -338,7 +338,7 @@ select pg_temp._save('l6', public.hub_licence_rows(pg_temp._unit('airport-road')
 select pg_temp._check('L6 «التراخيص»: every active topic with its mode, since, by whom and the 30-day counters; not the system admin',
   jsonb_array_length(pg_temp._j('l6') -> 'rows') = (select count(*) from public.hub_topics where status = 'active' and not is_test)
   and not (pg_temp._j('l6') ->> 'system_admin')::boolean
-  and exists (select 1 from jsonb_array_elements(pg_temp._j('l6') -> 'rows') r where r ->> 'topic' = 'parking' and r ->> 'mode' = 'auto' and r ->> 'set_by_name' = 'QA hub5 admin' and r ->> 'reason' = 'QA' and r ? 'approved_pct'),
+  and exists (select 1 from jsonb_array_elements(pg_temp._j('l6') -> 'rows') r where r ->> 'topic' = 'parking' and r ->> 'mode' = 'auto' and r ->> 'set_by_name' = 'QA hub5 admin' and r ->> 'reason' = 'QA reason' and r ? 'approved_pct'),
   left(pg_temp._j('l6')::text, 300));
 select pg_temp._as('recA');
 select pg_temp._fails('L6 … not for the reception (assistant: none)', format('select public.hub_licence_rows(%L)', pg_temp._unit('airport-road')), '42501');

@@ -223,7 +223,7 @@ select public.hub_eval_finish((x ->> 'result_id')::uuid, jsonb_build_object('sta
   from jsonb_array_elements(pg_temp._j('g4c') -> 'items') x;
 select pg_temp._root();
 select pg_temp._check('G4 … a candidate that fails while its live side passed is tried once more before it counts',
-  (select status = 'pending' and attempt = 2 from public.hub_eval_results r join public.hub_test_items i on i.id = r.item_id where r.run_id = pg_temp._id('run2') and r.config = 'candidate' and i.key = 'q002')
+  (select r.status = 'pending' and r.attempt = 2 from public.hub_eval_results r join public.hub_test_items i on i.id = r.item_id where r.run_id = pg_temp._id('run2') and r.config = 'candidate' and i.key = 'q002')
   and (select status = 'running' from public.hub_eval_runs where id = pg_temp._id('run2')));
 select pg_temp._service();
 select pg_temp._save('g5n', jsonb_build_object('n', pg_temp._drain(array['q002'])));
@@ -257,7 +257,7 @@ select pg_temp._save('g8n', jsonb_build_object('n', pg_temp._drain(array['q001']
 select pg_temp._root();
 select pg_temp._check('G8 an item failing on both sides is a known gap and does not block (no retry either)',
   (select verdict = 'pass' and known_gaps @> '[{"key": "q001"}]'::jsonb and blocked_items = '[]'::jsonb from public.hub_eval_runs where id = pg_temp._id('run4'))
-  and (select attempt = 1 from public.hub_eval_results r join public.hub_test_items i on i.id = r.item_id where r.run_id = pg_temp._id('run4') and r.config = 'candidate' and i.key = 'q001'),
+  and (select r.attempt = 1 from public.hub_eval_results r join public.hub_test_items i on i.id = r.item_id where r.run_id = pg_temp._id('run4') and r.config = 'candidate' and i.key = 'q001'),
   (select row_to_json(r)::text from (select verdict, known_gaps, blocked_items from public.hub_eval_runs where id = pg_temp._id('run4')) r));
 select pg_temp._as('admin');
 select pg_temp._save('g8p', public.hub_knowledge_publish(false, pg_temp._id('run4')));

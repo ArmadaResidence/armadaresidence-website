@@ -73,7 +73,7 @@ declare
   v_g uuid;
 begin
   select * into v_ch from public.hub_channels c join public.hub_units u on u.id = c.unit_id where u.key = p_unit limit 1;
-  insert into public.guest_profiles (phone, is_test) values ('+9665000096' || lpad(p_n::text, 2, '0'), p_test) returning id into v_g;
+  insert into public.guest_profiles (phone, is_test) values ('+9665009' || lpad(p_n::text, 5, '0'), p_test) returning id into v_g;
   insert into public.hub_conversations (unit_id, channel_id, guest_profile_id, state, is_test, created_at)
   values (v_ch.unit_id, v_ch.id, v_g, 'human', p_test, now() - p_ago) returning id into v_conv;
   insert into public.hub_messages (conversation_id, channel_id, direction, author, kind, body, idempotency_key, status, sent_at, is_test, created_at)
