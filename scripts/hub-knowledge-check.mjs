@@ -65,10 +65,27 @@ try {
   if (cid) created.cards.push(cid);
   const s2 = await c.rpc('hub_card_save', { p_id: cid, p: card() }, M);
   check(s2.status === 200 && s2.json.check.missing.length === 0, 'management fixes it: nothing missing', s2.text.slice(0, 200));
+  // H6 (14 Nov 2026): «نشر» goes through the test lab — a gate run on the pending cards, worked here through the service
+  // RPCs (the engine itself is hub-assistant-check's); the publish names the run
+  const gateRun = async (H) => {
+    const g = await c.rpc('hub_eval_start', { p_kind: 'knowledge', p_unit: null, p_engine: 'qa-e2e-kn' }, H);
+    const run = g.json?.run_id;
+    for (let i = 0; i < 50 && run; i++) {
+      const cl = await c.rpc('hub_eval_claim', { p_limit: 20 });
+      const items = cl.json?.items ?? [];
+      if (!items.length) break;
+      for (const x of items) await c.rpc('hub_eval_finish', { p_result: x.result_id, p: { status: 'pass', reasons: [], replies: [], outcome: { kind: 'answer' }, models: [] } });
+    }
+    return { g, run };
+  };
   const p0 = await c.rpc('hub_knowledge_publish', { p_dry_run: false }, M);
   check(p0.status >= 400 && /42501|not allowed/.test(p0.text), 'management cannot publish', `${p0.status}`);
-  const p1 = await c.rpc('hub_knowledge_publish', { p_dry_run: false }, A);
-  check(p1.status === 200 && p1.json?.ok && p1.json.count >= 1, 'the admin publishes (through PostgREST: every UPDATE has its WHERE)', p1.text.slice(0, 200));
+  const p1a = await c.rpc('hub_knowledge_publish', { p_dry_run: false }, A);
+  check(p1a.json?.gate?.gate === 'eval_required', 'without a test-lab run «نشر» names the gate (H6)', p1a.text.slice(0, 200));
+  const G1 = await gateRun(A);
+  check(G1.g.status === 200 && G1.run, 'the admin starts the gate run (the cost first; within the budget)', G1.g.text.slice(0, 200));
+  const p1 = await c.rpc('hub_knowledge_publish', { p_dry_run: false, p_eval_run: G1.run }, A);
+  check(p1.status === 200 && p1.json?.ok && p1.json.count >= 1, 'the admin publishes with the passing run (through PostgREST: every UPDATE has its WHERE)', p1.text.slice(0, 200));
   const k1 = await c.rpc('hub_knowledge_for', { p_unit: 'shafa-road', p_topics: ['facilities'], p_language: 'ar' });
   const k2 = await c.rpc('hub_knowledge_for', { p_unit: 'airport-road', p_topics: ['facilities'], p_language: 'ar' });
   // H5 (Ahmed, 14 Nov 2026): every published card on both branch numbers, the number's own branch first
@@ -99,7 +116,7 @@ try {
   inboxBefore = inb.json?.[0]?.value ?? false;
   // «تخزين المحادثات» on, the dashboard's way (the system admin, assistant: edit)
   const on = await c.rpc('hub_setting_set', { p_key: 'hub_inbox_on', p_value: true }, A);
-  check(on.status === 200, '«تخزين المحادثات» switched on by the admin (hub_setting_set)', on.text.slice(0, 160));
+  check(on.status === 200 || /nothing to change/.test(on.text), '«تخزين المحادثات» switched on by the admin (hub_setting_set; or on from an earlier run)', on.text.slice(0, 160));
   const ids = [];
   for (const [i, body] of [['1', 'هل يوجد مسبح في الفندق؟'], ['2', 'هل في الفندق مسبح ؟']]) {
     const r = await c.rpc('hub_ingest_inbound', { p: { channel: '+966536622277', phone: PHONES[Number(i) - 1], provider_id: `E2E-H4-${RUN}-${i}`, sent_at: new Date().toISOString(), kind: 'text', body, profile_name: 'E2E H4' } });
@@ -132,7 +149,8 @@ try {
   check(bf && !/\{(breakfast|extra_bed)\}/.test(JSON.stringify(fr.json)) && /ريال/.test(bf.a_ar), 'the FAQ as read: the fees filled from Settings', bf?.a_ar?.slice(0, 120));
   const e1 = await c.rpc('hub_card_save', { p_id: null, p: card({ key: `k-e2e-exp-${RUN}`, unit_keys: [], expires_on: plus(5), title_ar: 'بطاقة تنتهي', title_en: 'Ending card' }) }, A);
   if (e1.json?.id) created.cards.push(e1.json.id);
-  await c.rpc('hub_knowledge_publish', { p_dry_run: false }, A);
+  const G2 = await gateRun(A);
+  await c.rpc('hub_knowledge_publish', { p_dry_run: false, p_eval_run: G2.run }, A);
   const ex = await c.rpc('hub_expiring', {}, M);
   check(ex.json?.items?.some((x) => x.key === `k-e2e-exp-${RUN}`), '«تنتهي قريبًا» lists the card ending in 5 days', ex.text.slice(0, 200));
   const tk = await c.rpc('hub_expiry_tick', {});
