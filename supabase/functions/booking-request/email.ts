@@ -1705,10 +1705,22 @@ export function hubSpikeCount(c: Content, n: number): string {
   if (n === 2) return T.two;
   return fill(m >= 3 && m <= 10 ? T.few : T.many, { n: String(n) });
 }
+/** «تعذّر الوصول إلى نموذج المساعد» (copy.md §7, H6 pass 3 — the session's wording): three turns in 30 minutes in one unit
+ *  could not reach the model; each went to the team with the no-source notice. Codes and counts only. */
+export interface HubModelErrorMail { unit_name: string; count: number; kinds: string[]; at: string; test?: boolean }
+export function hubModelErrorMail(c: Content, d: HubModelErrorMail): Mail {
+  const M = c.staff_email.ar.hub_model_error;
+  const D = c.staff_email.ar.deploy_alert;
+  const subject = `${d.test ? D.test_prefix : ''}${fill(M.subject, { unit_name: d.unit_name, yyyymmdd: hubDay(d.at) })}`;
+  const kinds = [...new Set(d.kinds.map((k) => M.kinds[k] ?? M.kinds.other))].join('، ');
+  const line = fill(M.lead, { unit_name: d.unit_name, count: hubSpikeCount(c, d.count), kinds });
+  return hubPlainMail(c, subject, [line, M.next], hubAdmin(c, '/assistant'), M.button);
+}
+
 export function hubSpikeMail(c: Content, d: HubSpikeMail): Mail {
   const M = c.staff_email.ar.hub_spike;
   const D = c.staff_email.ar.deploy_alert;
   const subject = `${d.test ? D.test_prefix : ''}${fill(M.subject, { topic: d.topic, yyyymmdd: hubDay(d.at) })}`;
-  const line = fill(M.lead, { topic: d.topic, unit_name: d.unit_name, count: hubSpikeCount(c, d.count), factor: String(d.factor), avg: String(Math.round(d.avg * 10) / 10) });
+  const line = fill(M.lead, { topic: d.topic, unit_name: d.unit_name, count: hubSpikeCount(c, d.count), factor: String(d.factor) });
   return hubPlainMail(c, subject, [line, M.next], hubAdmin(c, '/radar'), M.button);
 }

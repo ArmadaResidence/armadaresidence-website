@@ -17,7 +17,7 @@
 import { readFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { existsSync } from 'node:fs';
-import { hubApiCreditMail, hubBudgetMail, hubComplaintMail, hubFlaggedMail, hubSpikeMail, hubSpikeCount, hubDuration, hubExpiryLines, hubExpiryMail, hubQualityMail, hubQualityRating, hubWaitingMail } from '../supabase/functions/booking-request/email.ts';
+import { hubApiCreditMail, hubBudgetMail, hubComplaintMail, hubFlaggedMail, hubModelErrorMail, hubSpikeMail, hubSpikeCount, hubDuration, hubExpiryLines, hubExpiryMail, hubQualityMail, hubQualityRating, hubWaitingMail } from '../supabase/functions/booking-request/email.ts';
 
 const read = (p) => readFileSync(new URL(`../${p}`, import.meta.url), 'utf8').replace(/\r\n/g, '\n');
 const GEN = new URL('../supabase/functions/booking-request/content.generated.json', import.meta.url);
@@ -132,7 +132,23 @@ check(/cron\.schedule\('hub-inbox', '\*\/2 \* \* \* \*'/.test(MIG), 'one pg_cron
     && fl.text.includes('/inbox?c=00000000-0000-4000-8000-000000000124'), 'the flagged-reply body: who flagged (no name), the topic, no licence changed, the conversation');
   const sp = hubSpikeMail(C, { topic: 'المواقف', unit_name: 'فرع طريق المطار', count: 6, avg: 0.07, factor: 3, at: '2026-11-14T06:00:00Z' });
   check(sp.subject === 'ارتفاع في سؤال — المواقف — AR-HUB-20261114' && sp.text.includes('سُئل عن «المواقف» 6 مرات خلال آخر 24 ساعة في فرع طريق المطار، أي أكثر من 3 أضعاف') && sp.text.includes('/radar'), `the spike email: subject, the counted noun, the unit (Ahmed, 14 Nov 2026), the radar — ${sp.subject}`);
-  check(read('supabase/functions/hub-agent/index.ts').includes("unit_name: String(units.find((u) => u.id === x.unit_id)?.name_ar ?? ''), count:"), 'the agent names the spike\'s unit');
+  check(read('supabase/functions/hub-agent/index.ts').includes("unit_name: String(x.unit_name ?? units.find((u) => u.id === x.unit_id)?.name_ar ?? ''), count:"), 'the agent names the spike\'s unit (the claim hands it over — H6 pass 4)');
+  // G (Ahmed, 14 Nov 2026): no «(0)» figure; the unit's name filled for each unit
+  check(!/\(\s*[\d.]+\s*\)/.test(sp.text) && !C.staff_email.ar.hub_spike.lead.includes('{avg}'), 'the spike email carries no average figure («(0)» removed)');
+  for (const u of ['أرمادا ريزيدنس – طريق المطار', 'أرمادا ريزيدنس – طريق الشفا']) {
+    const m = hubSpikeMail(C, { topic: 'الواي فاي', unit_name: u, count: 8, avg: 0, factor: 3, at: '2026-11-14T19:17:00Z' });
+    check(m.text.includes(`خلال آخر 24 ساعة في ${u}،`) && !m.text.includes('في ،'), `the spike email names ${u}`);
+  }
+  const P4 = read('supabase/migrations/20261114900000_guest_hub_pass4.sql');
+  check(P4.includes("k not in ('greeting', 'thanks_closing')") && P4.includes("h.first_live <= p_now - interval '7 days'")
+    && P4.includes("z.payload ->> 'topic' = r.topic and z.created_at > p_now - interval '24 hours'") && P4.includes("'unit_name', (select u.name_ar from public.hub_units u where u.id = x.unit_id)"),
+    'the spike: never greeting / thanks, 7 days of live history, once per unit and topic in 24 hours, the claim hands over the unit');
+  // the model-error email (H6 pass 3)
+  const me = hubModelErrorMail(C, { unit_name: 'أرمادا ريزيدنس – طريق المطار', count: 3, kinds: ['rate_limit', 'overloaded', 'bad_request'], at: '2026-11-14T19:00:00Z' });
+  check(me.subject === 'تعذّر الوصول إلى نموذج المساعد — أرمادا ريزيدنس – طريق المطار — AR-HUB-20261114', `the model-error subject with AR-HUB- — ${me.subject}`);
+  check(me.text.includes('تعذّر الوصول إلى نموذج المساعد 3 مرات خلال آخر 30 دقيقة في أرمادا ريزيدنس – طريق المطار (تجاوز حد الطلبات، ضغط على الخدمة، خطأ من الخدمة)')
+    && me.text.includes('/assistant') && !/rate_limit|overloaded|bad_request/.test(me.text), 'the model-error body: the count, the unit, the kinds in Arabic, no code');
+  check(COPY.includes(`«${C.staff_email.ar.hub_model_error.subject}»`) && COPY.includes(`«${C.staff_email.ar.hub_model_error.lead}»`), 'hub_model_error: ui.json = copy.md §7');
   const G2 = read('supabase/migrations/20261114700000_guest_hub_gaps_2.sql');
   check(G2.includes('group by t.unit_id, k') && G2.includes("values ('spike', r.unit_id,"), 'the spike is counted per unit, one alert per unit, topic and day');
   check(hubSpikeCount(C, 1) === 'مرة واحدة' && hubSpikeCount(C, 2) === 'مرتين' && hubSpikeCount(C, 11) === '11 مرة' && hubSpikeCount(C, 103) === '103 مرات', 'the spike count in Arabic (1, 2, 3–10, 11+)');

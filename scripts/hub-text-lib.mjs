@@ -84,6 +84,18 @@ export function parseCopy(md = read('docs/guest-hub/copy.md')) {
   out.greeting_new = pick(s1, '**1.1 New guest**');
   out.greeting_returning = pick(s1, '**1.2 Returning guest**');
   out.how_help = pick(s1, '**1.4 A greeting with no question**');
+  // 1.5 the salaam (Arabic only — English replies are unchanged): the first reply's opening, a later greeting, the line
+  // before a later answer
+  {
+    const i = s1.indexOf('**1.5 Salaam**');
+    if (i < 0) throw new Error('copy.md §1: **1.5 Salaam** missing');
+    const b = codeBlocks(s1.slice(i, s1.indexOf('**1.6')));
+    if (b.length !== 3) throw new Error('copy.md §1.5: three lines expected');
+    out.salaam_new = { ar: b[0], en: null };
+    out.salaam_how_help = { ar: b[1], en: null };
+    out.salaam_line = { ar: b[2], en: null };
+  }
+  out.thanks = pick(s1, '**1.6 Thanks with nothing else**');
   const qr = (label) => {
     const line = s1.split('\n').find((l) => l.startsWith(label));
     if (!line) throw new Error(`copy.md §1: ${label} missing`);

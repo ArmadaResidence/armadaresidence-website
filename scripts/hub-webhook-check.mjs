@@ -322,6 +322,18 @@ for (const name of ['N6 a repeated event', 'E1 an echo', 'S2 read stays read', '
 }
 check(/guest_hub_ingest\.sql/.test(WF) && /guest_hub_retention\.sql/.test(WF), 'server-checks.yml runs guest_hub_ingest.sql and guest_hub_retention.sql');
 
+// D (H6 pass 4): an echo of a tap on one of our buttons keeps its title, id and the message it answers
+{
+  const e1 = parseEcho({ id: 'yc-1', from: '+966536622277', to: '+966500009901', type: 'interactive', interactive: { type: 'button_reply', button_reply: { id: 'hubq:book', title: 'حجز إقامة' } }, context: { wamid: 'wamid.ours' }, sendTime: '2026-11-14T18:47:38Z' });
+  check(e1.kind === 'interactive' && e1.payload.button_title === 'حجز إقامة' && e1.payload.button_id === 'hubq:book' && e1.payload.context_id === 'wamid.ours' && e1.text === '',
+    `an interactive button-reply echo: title, id, context — ${JSON.stringify(e1.payload)}`);
+  const e2 = parseEcho({ id: 'yc-2', from: '+966536622277', to: '+966500009901', type: 'interactive', sendTime: '2026-11-14T18:47:51Z' });
+  check(e2.kind === 'interactive' && !e2.payload.button_title && !e2.payload.context_id, 'an interactive echo with no detail: nothing invented (the database decides by the time and our last buttons)');
+  const P4 = readFileSync(new URL('../supabase/migrations/20261114900000_guest_hub_pass4.sql', import.meta.url), 'utf8');
+  check(P4.includes("'ضغطة زر من الجوال'") && P4.includes("v_kind in ('interactive', 'text')") && P4.includes("interval '10 minutes'") && P4.includes("'tap', true"),
+    'the database: a tap on our buttons within 10 minutes is the note «ضغطة زر من الجوال», never T23');
+}
+
 if (fails.length) {
   for (const f of fails) console.error(`✗ ${f}`);
   console.error(`hub-webhook-check: ${fails.length} of ${n} failed`);

@@ -13,6 +13,22 @@
    "ar": "كيف نساعدك؟",
    "en": "How can we help?"
   },
+  "salaam_new": {
+   "ar": "وعليكم السلام، مرحبًا بك في {unit_name}.",
+   "en": null
+  },
+  "salaam_how_help": {
+   "ar": "وعليكم السلام، كيف نساعدك؟",
+   "en": null
+  },
+  "salaam_line": {
+   "ar": "وعليكم السلام.",
+   "en": null
+  },
+  "thanks": {
+   "ar": "العفو، يسعدنا خدمتك في أي وقت.",
+   "en": "You’re welcome — we are happy to help any time."
+  },
   "quick_branch": {
    "ar": [
     "حجز إقامة",

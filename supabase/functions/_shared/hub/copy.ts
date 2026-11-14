@@ -56,6 +56,15 @@ export function greeting(p: Persona | null | undefined, L: Lang, unitName: strin
   return fill(t, { unit_name: unitName });
 }
 
+/** the guest's salaam («السلام عليكم» and its variants — diacritics, tatweel, «سلام عليكم», «اسلام عليكم», «السلام عليك»)
+ *  (copy.md §1.5, Ahmed 14 Nov 2026): the Arabic reply then opens with «وعليكم السلام» */
+export function hasSalaam(text: string | null | undefined): boolean {
+  const s = String(text ?? '').replace(/[\u064B-\u065F\u0670\u0640]/g, '').replace(/[ی]/g, 'ي').replace(/[ک]/g, 'ك');
+  return /(?:^|[^\u0621-\u064A])(?:ال|ا)?سلام\s*(?:عليكم|عليك|عليكما)(?![\u0621-\u064A])/.test(s);
+}
+/** the first line of an episode's first reply with a salaam: «وعليكم السلام، مرحبًا بك في {unit_name}.» */
+export const salaamGreeting = (g: string) => `${C.salaam_line.ar.replace(/\.$/, '')}، ${g}`;
+
 /** the ids of the hub's own buttons — routed by id before the opt-out matcher (spec §2.5 rule 12) */
 export const QUICK_IDS = {
   branch: ['hubq:book', 'hubq:question', 'hubq:team'],

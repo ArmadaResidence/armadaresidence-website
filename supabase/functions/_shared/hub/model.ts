@@ -58,9 +58,45 @@ export function errorKind(status: number, body: string): NonNullable<ModelResult
   return 'other';
 }
 
+/** the retry rule of a live call (H6 pass 3, Ahmed 14 Nov 2026): a rate limit (429), an overload (529 / 503), another 5xx
+ *  or a network error is tried again up to `retries` more times, a timeout once; the wait is the provider's retry-after
+ *  (capped) or an exponential backoff with jitter. A credit, a bad request, a refusal or max_tokens is never retried. */
+export interface RetryOpts {
+  retries?: number;
+  baseMs?: number;
+  maxWaitMs?: number;
+  sleep?: (ms: number) => Promise<void>;
+}
+export const RETRY_STATUS = new Set([429, 500, 502, 503, 504, 529]);
+export function backoffMs(attempt: number, retryAfter: string | null, o: RetryOpts = {}): number {
+  const cap = o.maxWaitMs ?? 8000;
+  const ra = retryAfter !== null && retryAfter !== '' ? Number(retryAfter) : NaN;
+  if (Number.isFinite(ra) && ra >= 0) return Math.min(ra * 1000, cap);
+  return Math.min((o.baseMs ?? 1000) * 2 ** attempt + Math.floor(Math.random() * 250), cap);
+}
+
 /** the live call (Deno: fetch; the key from the function's environment) */
-export function anthropicModel(key: string, fetchFn: typeof fetch = fetch, timeoutMs = 25000): ModelFn {
+export function anthropicModel(key: string, fetchFn: typeof fetch = fetch, timeoutMs = 25000, retry: RetryOpts = {}): ModelFn {
+  const retries = retry.retries ?? 2;
+  const sleep = retry.sleep ?? ((ms: number) => new Promise<void>((r) => setTimeout(r, ms)));
+  const once = callOnce(key, fetchFn, timeoutMs);
   return async (c) => {
+    let r = await once(c);
+    let timeouts = r.error === 'timeout' ? 1 : 0;
+    for (let n = 0; n < retries && !r.ok && r.retry !== undefined; n++) {
+      if (r.error === 'timeout' && timeouts > 1) break;
+      await sleep(backoffMs(n, r.retry, retry));
+      r = await once(c);
+      if (r.error === 'timeout') timeouts++;
+    }
+    const { retry: _drop, ...result } = r;
+    return result;
+  };
+}
+
+/** one call; `retry` is set (the retry-after header, or '') when the failure is worth another try */
+function callOnce(key: string, fetchFn: typeof fetch, timeoutMs: number) {
+  return async (c: ModelCall): Promise<ModelResult & { retry?: string }> => {
     if (!key) return { ok: false, text: '', input_tokens: 0, output_tokens: 0, latency_ms: 0, error: 'not_configured' };
     const t0 = Date.now();
     const send = (thinking: boolean) =>
@@ -78,11 +114,15 @@ export function anthropicModel(key: string, fetchFn: typeof fetch = fetch, timeo
         if (/thinking/i.test(t) && !/credit/i.test(t)) res = await send(false);
       }
     } catch (e) {
-      return { ok: false, text: '', input_tokens: 0, output_tokens: 0, latency_ms: Date.now() - t0, error: (e as Error)?.name === 'TimeoutError' ? 'timeout' : 'network' };
+      return { ok: false, text: '', input_tokens: 0, output_tokens: 0, latency_ms: Date.now() - t0, error: (e as Error)?.name === 'TimeoutError' ? 'timeout' : 'network', retry: '' };
     }
     const raw = await res.text();
     const latency = Date.now() - t0;
-    if (!res.ok) return { ok: false, text: '', input_tokens: 0, output_tokens: 0, latency_ms: latency, error: errorKind(res.status, raw) };
+    if (!res.ok) {
+      const kind = errorKind(res.status, raw);
+      const again = kind !== 'credit' && RETRY_STATUS.has(res.status);
+      return { ok: false, text: '', input_tokens: 0, output_tokens: 0, latency_ms: latency, error: kind, ...(again ? { retry: res.headers.get('retry-after') ?? '' } : {}) };
+    }
     // deno-lint-ignore no-explicit-any
     let m: any = {};
     try {

@@ -9,7 +9,7 @@
  */
 import { decide, handoffNote, replyLicence, type Action, type Decision, type Draft, type Event, type State } from './machine.ts';
 import { applyFloor, extractJson, recheckDates, understandUser, validateUnderstanding, type Lists, type Understanding } from './understand.ts';
-import { fixed, greeting, quickReplies, statusText, thirdLanguage, type Lang, type Persona } from './copy.ts';
+import { fixed, greeting, hasSalaam, quickReplies, salaamGreeting, statusText, thirdLanguage, type Lang, type Persona } from './copy.ts';
 import { composeExamples, composeSystem, composeUser, parseComposed, understandSchema, understandSystem, withGreeting } from './compose/index.ts';
 import { buildPayload, cardIds, guardPayload, hasSource, offersFor, type Payload } from './sources/index.ts';
 import { guard, retryReason } from './guard.ts';
@@ -76,7 +76,14 @@ export interface Outcome {
   complaint: boolean;
   /** a model call answered that the credit balance is too low / one succeeded */
   credit: 'exhausted' | 'ok' | null;
+  /** H6 pass 3: the model could not be reached for this turn (after model.ts's own retries) — the error kind; the turn went
+   *  to the team with the no-source notice and hub-agent raises the «model_error» alert */
+  model_error?: string | null;
 }
+
+/** model errors that mean "the model could not be reached" (never "it answered something invalid") — no retry here:
+ *  model.ts has already retried the transient ones with backoff */
+export const MODEL_DOWN = new Set(['rate_limit', 'overloaded', 'network', 'timeout', 'other', 'bad_request', 'not_configured']);
 
 const MEDIA = new Set(['image', 'audio', 'video', 'document', 'location', 'sticker', 'contacts']);
 const NOTICE_KEYS = new Set(['third_language']);
@@ -102,8 +109,22 @@ export async function runTurn(claim: Json, deps: Deps): Promise<Outcome> {
   const msgs: Json[] = claim.messages ?? [];
   const texts = msgs.map((m) => String(m.body ?? '')).filter((x) => x.trim());
   const finish: Finish = { status: 'done', models: [], guard_refusals: [], topics: [], failed: 'keep', messages: [] };
-  const out: Outcome = { finish, complaint: false, credit: null };
+  const out: Outcome = { finish, complaint: false, credit: null, model_error: null };
   let L: Lang = conv.language === 'en' ? 'en' : 'ar';
+  // a turn the model cannot serve (the credit, or the model unreachable after its retries): never the plain greeting, never
+  // silence — the no-source notice and the team (Ahmed, 14 Nov 2026, H6 pass 3)
+  const downNotice = (): OutMsg => ({ seq: 1, kind: 'text', body: fixed('no_source', L), payload: {}, source_card_ids: [], notice: true });
+  const modelDown = (kind: string): Outcome => {
+    out.model_error = kind;
+    finish.state = turnKind === 'tag' ? undefined : 'human';
+    finish.reason = 'model_error';
+    finish.status = 'failed';
+    finish.error = `model_error:${kind}`.slice(0, 40);
+    finish.messages = turnKind === 'tag' ? [] : [downNotice()];
+    finish.note = turnKind === 'tag' ? undefined : 'توقف عند: تعذّر الوصول إلى نموذج المساعد — الرسالة للفريق';
+    finish.decision = { actions: turnKind === 'tag' ? ['tag'] : ['handoff'], reason: 'model_error', transitions: turnKind === 'tag' ? [] : ['T29'] };
+    return out;
+  };
 
   const record = (layer: Layer, model: string, r: ModelResult) => {
     finish.models.push({ layer, model, input_tokens: r.input_tokens, output_tokens: r.output_tokens, latency_ms: r.latency_ms, ok: r.ok, ...(r.error ? { error: r.error } : {}),
@@ -114,15 +135,22 @@ export async function runTurn(claim: Json, deps: Deps): Promise<Outcome> {
 
   // ── the rate limits of spec §7.4 (no model call; the conversation flagged for staff) ──
   if (turnKind === 'reply') {
+    // the same text a third time in 10 minutes (spec §7.4), or a rate limit: no model call — but never silence while the
+    // assistant owns the conversation (Ahmed, 14 Nov 2026): the general hand-off notice and the team
     if (claim.rate?.repeated) {
       finish.status = 'skipped';
       finish.error = 'repeated';
-      finish.decision = { actions: ['noop'], reason: 'repeated' };
+      finish.state = 'human';
+      finish.reason = 'repeated';
+      finish.messages = [{ seq: 1, kind: 'text', body: fixed('handoff', L), payload: {}, source_card_ids: [], notice: true }];
+      finish.note = 'توقف عند: الرسالة نفسها تكررت — الرسالة للفريق';
+      finish.decision = { actions: ['handoff'], reason: 'repeated', transitions: ['T29'] };
       return out;
     }
     if (claim.rate && (claim.rate.phone_hour >= claim.rate.phone_max || claim.rate.replies_hour >= claim.rate.replies_max)) {
       finish.state = 'human';
       finish.reason = 'rate_limit';
+      finish.messages = [{ seq: 1, kind: 'text', body: fixed('handoff', L), payload: {}, source_card_ids: [], notice: true }];
       finish.decision = { actions: ['handoff'], reason: 'rate_limit', transitions: ['T29'] };
       return out;
     }
@@ -154,11 +182,16 @@ export async function runTurn(claim: Json, deps: Deps): Promise<Outcome> {
       today: claim.today, unit: unit.key, state: conv.state, draft: claim.draft?.fields ?? null, history: claim.history ?? [], turn: texts,
     });
     let note = '';
+    let down: string | null = null;
     for (let attempt = 0; attempt < 2 && !u; attempt++) {
       const r = await deps.model({ layer, model, system: understandSystem(), user: note ? `${user}\n\nYOUR PREVIOUS ANSWER WAS INVALID: ${note}. Return the JSON object only.` : user });
       record(layer, model, r);
       if (!r.ok) {
         if (r.error === 'credit') break;
+        if (MODEL_DOWN.has(String(r.error))) {
+          down = String(r.error);
+          break;
+        }
         note = r.error ?? 'error';
         continue;
       }
@@ -176,9 +209,11 @@ export async function runTurn(claim: Json, deps: Deps): Promise<Outcome> {
       finish.reason = 'api_credit';
       finish.status = 'failed';
       finish.error = 'api_credit';
+      finish.messages = turnKind === 'tag' ? [] : [downNotice()];
       finish.decision = { actions: ['handoff'], reason: 'api_credit', transitions: ['T29'] };
       return out;
     }
+    if (!u && down) return modelDown(down);
     if (u) {
       finish.topics = u.topics;
       finish.understanding = u;
@@ -215,7 +250,9 @@ export async function runTurn(claim: Json, deps: Deps): Promise<Outcome> {
   let answered = false;
   // «لم أعرف الإجابة» holds only real knowledge gaps (Ahmed, 14 Nov 2026): a question with no source, the part of an
   // answer it could not give — never media, out of scope, a request for a person, a complaint or a request hand-off
+  let composeDown: string | null = null;
   const gap = () => {
+    if (composeDown) return;
     if (lastGuest && !unanswered.includes(lastGuest) && msgs.some((m) => m.id === lastGuest && m.kind === 'text')) unanswered.push(lastGuest);
   };
 
@@ -314,6 +351,7 @@ export async function runTurn(claim: Json, deps: Deps): Promise<Outcome> {
 
   type Composed = { reply: string; used_card_ids: string[]; unanswered: string[] };
   const compose = async (payload: Payload): Promise<Composed | 'credit' | 'guard' | 'error'> => {
+    if (composeDown) return 'error';
     const model = String(models.compose ?? 'claude-sonnet-5-5');
     const persona: Persona = unit.persona ?? {};
     const system = composeSystem(unitName(deps.content, unit, L), L, persona.tone ?? 2);
@@ -325,6 +363,11 @@ export async function runTurn(claim: Json, deps: Deps): Promise<Outcome> {
       record('compose', model, r);
       if (!r.ok) {
         if (r.error === 'credit') return 'credit';
+        if (MODEL_DOWN.has(String(r.error))) {
+          // the model could not be reached (model.ts retried): the team takes it, never «لم أعرف الإجابة»
+          composeDown = String(r.error);
+          return 'error';
+        }
         if (attempt === 1) return 'error';
         reason = 'Return the JSON object only.';
         continue;
@@ -362,9 +405,20 @@ export async function runTurn(claim: Json, deps: Deps): Promise<Outcome> {
     finish.reason = 'api_credit';
     finish.status = 'failed';
     finish.error = 'api_credit';
-    finish.messages = [];
+    finish.messages = [downNotice()];
     finish.decision = { actions: ['handoff'], reason: 'api_credit', transitions: ['T29'] };
     return out;
+  }
+  // compose could not reach the model: what was already composed goes, then the no-source notice and the team — the
+  // decision that followed the failed answer hands off already; if it did not, the turn is handed off here
+  if (composeDown) {
+    out.model_error = composeDown;
+    finish.error = `model_error:${composeDown}`.slice(0, 40);
+    if (final.next !== 'human') {
+      answers.push({ seq: answers.length + 1, kind: 'text', body: fixed('no_source', L), payload: {}, source_card_ids: [], notice: true });
+      note = note ?? 'توقف عند: تعذّر الوصول إلى نموذج المساعد — الرسالة للفريق';
+      final = { ...final, next: 'human', reason: 'model_error', transitions: [...final.transitions, 'T29'] };
+    }
   }
 
   // an answer followed by the hand-off notice is ONE message (H6 gaps, Ahmed 14 Nov 2026): the answer, then the notice
@@ -379,10 +433,15 @@ export async function runTurn(claim: Json, deps: Deps): Promise<Outcome> {
     m.seq = i + 1;
     delete m.handoff;
   });
-  // the first reply of an episode opens with the greeting line (copy.md §1), added by code
+  // the first reply of an episode opens with the greeting line (copy.md §1), added by code; a salaam in the guest's Arabic
+  // message opens it with «وعليكم السلام» (copy.md §1.5, Ahmed 14 Nov 2026) — on the first reply and later in the episode
+  const salaam = L === 'ar' && texts.some(hasSalaam);
   if (conv.first_reply && answers.length) {
-    const g = greeting(unit.persona as Persona, L, unitName(deps.content, unit, L), claim.guest?.first_name ?? null);
-    answers[0] = { ...answers[0], body: withGreeting(g, answers[0].body) };
+    const g0 = greeting(unit.persona as Persona, L, unitName(deps.content, unit, L), claim.guest?.first_name ?? null);
+    answers[0] = { ...answers[0], body: withGreeting(salaam ? salaamGreeting(g0) : g0, answers[0].body) };
+  } else if (salaam && answers.length) {
+    const b = answers[0].body;
+    answers[0] = { ...answers[0], body: b === fixed('how_help', 'ar') ? fixed('salaam_how_help', 'ar') : `${fixed('salaam_line', 'ar')}\n${b}` };
   }
   // licensed mode: a reply goes by itself only when every topic of the turn holds the «رد تلقائي» licence — the most
   // restrictive licence among all the turn's topics (machine.ts replyLicence)

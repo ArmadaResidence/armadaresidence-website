@@ -229,7 +229,7 @@ check(d.next === 'human' && ho(d).notice === 'handoff' && ho(d).reason === 'guar
 d = run('inquiry', guest(null, { kind: 'button', button_id: 'hubq:team' }));
 check(d.next === 'human', 'the quick reply «التحدث مع موظف» → the team');
 d = run('inquiry', guest(U({ intents: ['thanks_or_closing'] })));
-check(d.actions[0].type === 'noop' && d.next === 'inquiry', 'thanks → nothing to answer');
+check(d.actions[0].type === 'fixed' && d.actions[0].key === 'thanks' && d.next === 'inquiry', 'thanks → the thanks reply (copy.md §1.6), never silence (H6 pass 4)');
 
 // ── the note (spec §2.6) ──
 const note = handoffNote({ intent: 'stay_booking', slots: noteSlots(U({ ...full })), stopped: 'inquiry' }, 'أُجيب عن سؤال');
@@ -315,6 +315,46 @@ check(ASSISTANT_STATES.length === 6, 'six assistant states');
   check(da.next !== 'human' && acts(da).includes('answer'), 'decide: auto + auto → answered');
   const ds = run('new', guest(U({ intents: ['price_question'], topics: ['laundry', 'price'] })), { licences: { price: 'auto', laundry: 'shadow' }, always_handoff: [] });
   check(ds.next !== 'human' && acts(ds).includes('answer') && !acts(ds).includes('from_price'), 'decide: laundry + price → an answer from the laundry cards (never the room list), sent as a draft (shadow)');
+}
+
+// ── never silent (H6 pass 4, Ahmed 14 Nov 2026): in every assistant-owned state a guest message always gets something —
+// an answer, a question, a fixed reply, or the hand-off with its notice; never «لم أعرف الإجابة» for a greeting or thanks ──
+{
+  const SAYS = new Set(['answer', 'ask', 'quote', 'send_room_cards', 'send_summary', 'from_price', 'fixed', 'booking_status', 'partner_enquiry']);
+  const speaks = (dd) => dd.actions.some((a) => SAYS.has(a.type) || (a.type === 'handoff' && a.notice));
+  const EVENTS = [
+    ['a greeting', guest(U({ intents: ['greeting'], topics: ['greeting'] }))],
+    ['thanks', guest(U({ intents: ['thanks_or_closing'], topics: ['thanks_closing'] }))],
+    ['a greeting + thanks', guest(U({ intents: ['greeting', 'thanks_or_closing'] }))],
+    ['a sourced question', guest(U({ intents: ['facility_question'], topics: ['parking'] }))],
+    ['a question with no topic', guest(U({ intents: ['other'] }))],
+    ['a failed understanding', guest(null)],
+    ['media', guest(null, { kind: 'media' })],
+    ['«حجز إقامة»', guest(null, { kind: 'button', button_id: 'hubq:book' })],
+    ['«لدي سؤال»', guest(null, { kind: 'button', button_id: 'hubq:question' })],
+    ['«التحدث مع موظف»', guest(null, { kind: 'button', button_id: 'hubq:team' })],
+    ['a stay request', guest(U({ intents: ['stay_booking'], topics: ['booking_new'], check_in: '2026-12-01', check_out: '2026-12-03' }))],
+    ['out of scope', guest(U({ intents: ['out_of_scope'], topics: ['out_of_scope'] }))],
+    ['a complaint', guest(U({ intents: ['other'], complaint: true }))],
+    ['a person asked for', guest(U({ intents: ['human_request'] }))],
+  ];
+  const silent = [];
+  for (const st of ASSISTANT_STATES) {
+    for (const skills of [H5, H8]) {
+      for (const [label, ev] of EVENTS) {
+        const dd = run(st, ev, { skills, first_reply: st === 'new' }, st === 'new' || st === 'inquiry' ? null : DRAFT);
+        if (!speaks(dd)) silent.push(`${st}/${skills === H5 ? 'H5' : 'H8'}: ${label} → ${acts(dd).join(',') || 'nothing'}`);
+      }
+    }
+  }
+  check(silent.length === 0, `never silent in an assistant-owned state — ${silent.slice(0, 6).join(' | ')}`);
+  for (const st of ASSISTANT_STATES.filter((x) => x !== 'new')) {
+    const g = run(st, guest(U({ intents: ['greeting'], topics: ['greeting'] })), { first_reply: false }, st === 'inquiry' ? null : DRAFT);
+    check(g.actions.length === 1 && g.actions[0].type === 'fixed' && g.actions[0].key === 'how_help' && g.actions[0].buttons === 'quick',
+      `${st}: a greeting mid-episode → «كيف نساعدك؟» with the quick replies`);
+    const th = run(st, guest(U({ intents: ['thanks_or_closing'], topics: ['thanks_closing'] })), { first_reply: false }, st === 'inquiry' ? null : DRAFT);
+    check(th.actions.length === 1 && th.actions[0].type === 'fixed' && th.actions[0].key === 'thanks', `${st}: thanks mid-episode → the thanks reply`);
+  }
 }
 
 // every transition of the spec has a case above

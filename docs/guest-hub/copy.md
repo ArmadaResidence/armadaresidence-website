@@ -44,6 +44,35 @@ How can we help?
 Quick replies — branch numbers: «حجز إقامة» · «لدي سؤال» · «التحدث مع موظف» / “Book a stay” · “I have a question” · “Talk to our team”.
 Quick replies — dining numbers: «قائمة الطعام» · «العروض» · «التحدث مع موظف» / “Menu” · “Offers” · “Talk to our team”.
 
+A greeting with no question later in the episode (any state but the first message) gets the same «كيف نساعدك؟» and quick replies, without the greeting line [مقرر — 14 نوفمبر 2026].
+
+**1.5 Salaam** [مقرر — اعتماد أحمد، 14 نوفمبر 2026] — when the guest's message contains a salaam («السلام عليكم» and its variants), the Arabic reply opens with «وعليكم السلام». English replies are unchanged. The first reply of an episode:
+
+```
+وعليكم السلام، مرحبًا بك في {unit_name}.
+```
+
+…then, when the message has no question, «كيف نساعدك؟» and the quick replies (1.4). Later in the episode, a greeting with no question:
+
+```
+وعليكم السلام، كيف نساعدك؟
+```
+
+Later in the episode, a salaam with a question — this line, then the answer (the same rule; this line's wording is the session's, for Ahmed's review):
+
+```
+وعليكم السلام.
+```
+
+**1.6 Thanks with nothing else** («شكرًا»، "thanks") [مقترح — بانتظار اعتماد أحمد، 14 نوفمبر 2026] — never silence, never «لم أعرف الإجابة»:
+
+```
+العفو، يسعدنا خدمتك في أي وقت.
+```
+```
+You’re welcome — we are happy to help any time.
+```
+
 ---
 
 ## 2. Dates
@@ -224,7 +253,8 @@ Every subject carries an `AR-` token so the Hostinger filter «From contains no-
 | Budget alert [session H5 — wording for Ahmed's review] | the active admins | «ميزانية المساعد — {budget_label} — AR-HUB-{yyyymmdd}» | «بلغت تكلفة المساعد {spent} من {budget} ({pct}%) {period_label}.» · at 100 %: «بلغت التكلفة الحد، فكل المحادثات الجديدة تذهب إلى الفريق حتى تبدأ الفترة التالية أو تُرفع الميزانية.» · button «فتح إعدادات المساعد». Once per budget and period |
 | Ending soon [مقرر — Ahmed's brief of 14 Nov 2026, session H4] | the active admins | «تنبيهات مركز الضيوف — {date} — AR-HUB-{yyyymmdd}» | heading «تنتهي قريبًا»; one line per item: «بطاقة: {title} — تنتهي {date}» or «عرض: {name} — ينتهي {date}»; button «فتح قاعدة المعرفة». Once a day (08:00 Riyadh), only when the list is not empty and holds an item not yet sent: knowledge cards ending within 14 days, offers within 7 (Settings) |
 | Reply flagged wrong [مقرر — Ahmed, 14 Nov 2026] | the active admins | «رد خاطئ أُرسل لضيف — {unit_name} — AR-HUB-{yyyymmdd}» | «أبلغ أحد الموظفين أن ردًا أرسله المساعد لضيف في {unit_name} كان خاطئًا.» · «الموضوع: {topics}» · «لم يتغيّر أي ترخيص؛ السؤال أُضيف إلى «لم أعرف الإجابة» لتصحيح البطاقة أو كتابة بطاقة جديدة.» · button «فتح المحادثة». Once per flagged reply |
-| Question spike [مقرر — Ahmed, 14 Nov 2026] | the active admins | «ارتفاع في سؤال — {topic} — AR-HUB-{yyyymmdd}» | «سُئل عن «{topic}» {count} خلال آخر 24 ساعة في {unit_name}، أي أكثر من {factor} أضعاف المعدل اليومي ({avg}).» · «راجع الأسئلة في «رادار الأسئلة»، وأضف بطاقة إن لم تكن الإجابة موجودة.» · button «فتح رادار الأسئلة». `{count}`: «مرة واحدة» · «مرتين» · «{n} مرات» (3–10) · «{n} مرة». Once per unit, topic and day — counted per unit (Settings `hub_spike_factor`, `hub_spike_min`) |
+| Question spike [مقرر — Ahmed, 14 Nov 2026] | the active admins | «ارتفاع في سؤال — {topic} — AR-HUB-{yyyymmdd}» | «سُئل عن «{topic}» {count} خلال آخر 24 ساعة في {unit_name}، أي أكثر من {factor} أضعاف المعدل اليومي.» · «راجع الأسئلة في «رادار الأسئلة»، وأضف بطاقة إن لم تكن الإجابة موجودة.» · button «فتح رادار الأسئلة». `{count}`: «مرة واحدة» · «مرتين» · «{n} مرات» (3–10) · «{n} مرة». At most once per unit and topic in 24 hours — counted per unit (Settings `hub_spike_factor`, `hub_spike_min`); never for «تحية» or «شكر وختام»; never before the unit has 7 days of live history; the unit's name always filled [مقرر — Ahmed, 14 Nov 2026, H6 pass 4: the figure «(0)» removed] |
+| The model cannot be reached [مقترح — بانتظار اعتماد أحمد، 14 Nov 2026, H6 pass 3] | the active admins | «تعذّر الوصول إلى نموذج المساعد — {unit_name} — AR-HUB-{yyyymmdd}» | «تعذّر الوصول إلى نموذج المساعد {count} خلال آخر 30 دقيقة في {unit_name} ({kinds})، فحُوّلت هذه المحادثات إلى الفريق مع رسالة «سنتأكد من الفريق».» · «إن تكرر ذلك، راجع حالة خدمة أنثروبيك وحدود الاستخدام في لوحة المطورين.» · button «فتح إعدادات المساعد». `{kinds}`: «تجاوز حد الطلبات» · «ضغط على الخدمة» · «انتهاء المهلة» · «انقطاع الاتصال» · «خطأ من الخدمة». Once per unit while the alert is open, from the third failed turn in 30 minutes; an alert quiet for an hour closes |
 
 ---
 

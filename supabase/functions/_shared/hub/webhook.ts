@@ -222,7 +222,18 @@ export function parseEcho(m: Json): Echo {
     if (str(m[type]?.id, 200)) payload.media_id = str(m[type]?.id, 200);
   } else if (type === 'template') {
     if (str(m.template?.name, 512)) payload.template = str(m.template?.name, 512);
-  } else if (type === 'interactive') text = String(m.interactive?.body?.text ?? '');
+  } else if (type === 'interactive') {
+    text = String(m.interactive?.body?.text ?? '');
+    // a tap on a button of one of our own messages (H6 pass 4): its title, its id, the message it answers — so the database can
+    // tell a staff member's tap in the Business app from a message staff wrote (D: the tap never pauses the assistant)
+    const reply = m.interactive?.button_reply ?? m.interactive?.list_reply ?? null;
+    if (str(reply?.title, 40)) payload.button_title = str(reply?.title, 40);
+    if (str(reply?.id, 200)) payload.button_id = str(reply?.id, 200);
+  } else if (type === 'button') {
+    if (str(m.button?.text, 40)) payload.button_title = str(m.button?.text, 40);
+  }
+  const ctx = str(m.context?.wamid, 200) ?? str(m.context?.id, 200);
+  if (ctx) payload.context_id = ctx;
   return { id: str(m.id, 200), from: e164(m.from), to: e164(m.to), sentAt: iso(m.sendTime) ?? iso(m.createTime), kind, text: text.slice(0, 8000), payload };
 }
 

@@ -392,9 +392,10 @@ export function decide(input: DecideInput): Decision {
     t.push('T4');
     return out({ next: state === 'new' ? 'inquiry' : state, actions: [{ type: 'fixed', key: 'how_help', buttons: 'quick' }], failed: 'reset' });
   }
-  // thanks or closing: nothing to answer
+  // thanks or closing with nothing else: the thanks reply (copy.md §1.6) — never silence, never «لم أعرف الإجابة» (H6 pass 4)
   if (u.intents.every((i) => i === 'thanks_or_closing' || i === 'greeting')) {
-    return out({ next: state === 'new' ? 'inquiry' : state, actions: [{ type: 'noop' }], failed: 'reset' });
+    t.push(state === 'new' ? 'T4' : 'T6');
+    return out({ next: state === 'new' ? 'inquiry' : state, actions: [{ type: 'fixed', key: 'thanks' }], failed: 'reset' });
   }
 
   // a question with a source (T5 / T6 / T18): compose answers from the payload; no source → T21 (answer_result)

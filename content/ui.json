@@ -600,10 +600,18 @@
       "hub_spike": {
         "_note": "Guest Hub H6 (14 Nov 2026, copy.md §7 — approved by Ahmed, 14 Nov 2026): a topic asked in one unit at least hub_spike_min times in 24 hours and more than hub_spike_factor × its daily average of the 28 days before — once per topic per day, to the active admins.",
         "subject": "ارتفاع في سؤال — {topic} — AR-HUB-{yyyymmdd}",
-        "lead": "سُئل عن «{topic}» {count} خلال آخر 24 ساعة في {unit_name}، أي أكثر من {factor} أضعاف المعدل اليومي ({avg}).",
+        "lead": "سُئل عن «{topic}» {count} خلال آخر 24 ساعة في {unit_name}، أي أكثر من {factor} أضعاف المعدل اليومي.",
         "next": "راجع الأسئلة في «رادار الأسئلة»، وأضف بطاقة إن لم تكن الإجابة موجودة.",
         "button": "فتح رادار الأسئلة",
         "times": {"one": "مرة واحدة", "two": "مرتين", "few": "{n} مرات", "many": "{n} مرة"}
+      },
+      "hub_model_error": {
+        "_note": "Guest Hub H6 pass 3 (14 Nov 2026, copy.md §7 — the session's wording, for Ahmed's review): the model could not be reached for three turns in 30 minutes in one unit (after model.ts's retries); each of those turns went to the team with the no-source notice. ONE email to the active admins while the alert is open.",
+        "subject": "تعذّر الوصول إلى نموذج المساعد — {unit_name} — AR-HUB-{yyyymmdd}",
+        "lead": "تعذّر الوصول إلى نموذج المساعد {count} خلال آخر 30 دقيقة في {unit_name} ({kinds})، فحُوّلت هذه المحادثات إلى الفريق مع رسالة «سنتأكد من الفريق».",
+        "next": "إن تكرر ذلك، راجع حالة خدمة أنثروبيك وحدود الاستخدام في لوحة المطورين.",
+        "button": "فتح إعدادات المساعد",
+        "kinds": {"rate_limit": "تجاوز حد الطلبات", "overloaded": "ضغط على الخدمة", "timeout": "انتهاء المهلة", "network": "انقطاع الاتصال", "other": "خطأ من الخدمة", "bad_request": "خطأ من الخدمة", "not_configured": "خطأ من الخدمة"}
       },
       "hub_quality": {
         "_note": "Guest Hub (spec §6.6 / §7.5): a WhatsApp number's quality rating fell below High (YCloud event whatsapp.phone_number.quality_updated). Arabic only; to the dashboard's active admins; once per open alert. The wording approved by Ahmed on 13 Nov 2026 (copy.md §7 row 4 — replaces the H2 draft). FLAGGED (not in the approved list) reads as «منخفض».",

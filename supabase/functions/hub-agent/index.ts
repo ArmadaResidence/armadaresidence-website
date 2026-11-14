@@ -26,7 +26,7 @@
 // Secrets: ANTHROPIC_API_KEY (label-suggest's), YCLOUD_API_KEY, RESEND_API_KEY; SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY.
 import content from '../booking-request/content.generated.json' with { type: 'json' };
 import { buttonsPayload, sendSession, textPayload, type WaResult } from '../booking-request/whatsapp-send.ts';
-import { hubApiCreditMail, hubBudgetMail, hubComplaintMail, hubFlaggedMail, hubSpikeMail, longDate } from '../booking-request/email.ts';
+import { hubApiCreditMail, hubBudgetMail, hubComplaintMail, hubFlaggedMail, hubModelErrorMail, hubSpikeMail, longDate } from '../booking-request/email.ts';
 import { sarText } from '../booking-request/rules.ts';
 import { typingUrl } from '../_shared/hub/send.ts';
 import { runTurn, type Deps, type Outcome } from '../_shared/hub/engine.ts';
@@ -192,8 +192,8 @@ async function labAlerts(): Promise<void> {
   const label = (k: string) => topics.find((t) => t.key === k)?.label_ar ?? k;
   for (const x of alerts) {
     const m = x.kind === 'spike'
-      ? hubSpikeMail(content, { topic: label(String(x.payload?.topic ?? '')), unit_name: String(units.find((u) => u.id === x.unit_id)?.name_ar ?? ''), count: Number(x.payload?.count ?? 0), avg: Number(x.payload?.avg ?? 0), factor, at: x.at })
-      : hubFlaggedMail(content, { conversation_id: String(x.payload?.conversation_id ?? ''), unit_name: String(units.find((u) => u.id === x.unit_id)?.name_ar ?? ''),
+      ? hubSpikeMail(content, { topic: label(String(x.payload?.topic ?? '')), unit_name: String(x.unit_name ?? units.find((u) => u.id === x.unit_id)?.name_ar ?? ''), count: Number(x.payload?.count ?? 0), avg: Number(x.payload?.avg ?? 0), factor, at: x.at })
+      : hubFlaggedMail(content, { conversation_id: String(x.payload?.conversation_id ?? ''), unit_name: String(x.unit_name ?? units.find((u) => u.id === x.unit_id)?.name_ar ?? ''),
           topics: ((x.payload?.topics ?? []) as string[]).map(label), at: x.at });
     const ok = await mail(a.recipients ?? [], m);
     console.log('hub-agent: alert', x.kind, ok ? 'sent' : 'not sent');
@@ -206,13 +206,25 @@ async function rest<T>(path: string): Promise<T> {
   return (await res.json()) as T;
 }
 
-/** the test lab (H6): the claimed items of the active run, each through the real engine in test mode, graded by code */
+/** a guest's turn waits or runs (live, any unit): the test lab gives way — it shares the API organisation's rate limits */
+export const LAB_GAP_MS = 2000;
+async function liveWaiting(): Promise<boolean> {
+  const rows = await rest<Json[]>('hub_turns?select=id&status=in.(pending,running)&is_test=eq.false&limit=1').catch(() => null);
+  // unknown → give way (a lab question can wait; a guest cannot)
+  return rows === null || rows.length > 0;
+}
+
+/** the test lab (H6): the claimed items of the active run, each through the real engine in test mode, graded by code.
+ *  H6 pass 3 (Ahmed, 14 Nov 2026): ONE question at a time, a short gap between questions, and it stops for this run of
+ *  hub-agent whenever a live guest turn is waiting or running — a lab run can never starve a live guest */
 async function evalStep(model: ModelFn, deadline: number): Promise<number> {
   const ver = await engineVersion();
   const ctxs = new Map<string, Json>();
   let done = 0;
   while (Date.now() < deadline - 25_000) {
-    const c = await rpc<Json>('hub_eval_claim', { p_limit: 4 }).catch((e) => {
+    if (await liveWaiting()) break;
+    if (done > 0) await sleep(LAB_GAP_MS);
+    const c = await rpc<Json>('hub_eval_claim', { p_limit: 1 }).catch((e) => {
       console.error('hub-agent: eval claim failed', String(e).slice(0, 80));
       return null;
     });
@@ -303,6 +315,22 @@ async function process(turnId: string, model: ModelFn, deadline: number): Promis
     await rpc('hub_api_credit_mark', { p_exhausted: false }).catch(() => null);
   }
   const sent = await sendAll(fin);
+  // the model could not be reached for this turn (after model.ts's retries): the turn went to the team with the no-source
+  // notice; logged by its kind (never a guest's words) and counted on the unit's «model_error» alert — from the third in 30
+  // minutes ONE email to the active admins (H6 pass 3, Ahmed 14 Nov 2026)
+  if (outcome.model_error) {
+    console.error('hub-agent: model_error', outcome.model_error, claim.turn.kind, claim.turn.mode);
+    if (claim.turn.mode !== 'test' && !claim.conversation.is_test && claim.unit?.id) {
+      const a = await rpc<Json>('hub_model_error_note', { p_unit: claim.unit.id, p_kind: outcome.model_error, p_test: false }).catch((e) => {
+        console.error('hub-agent: model_error note failed', String(e).slice(0, 80));
+        return null;
+      });
+      if (a?.email) {
+        const ok = await mail(a.recipients ?? [], hubModelErrorMail(content, { unit_name: String(a.unit_name ?? ''), count: Number(a.count ?? 0), kinds: (a.kinds ?? []) as string[], at: String(a.at ?? new Date().toISOString()) }));
+        console.log('hub-agent: alert model_error', ok ? 'sent' : 'not sent');
+      }
+    }
+  }
   if (outcome.complaint && claim.turn.mode !== 'test' && !claim.conversation.is_test) {
     const c = await rpc<Json>('hub_complaint_claim', { p_conversation: claim.conversation.id }).catch(() => null);
     if (c?.ok) await mail(c.recipients ?? [], hubComplaintMail(content, { conversation_id: c.id, short: c.short, unit_name: c.unit_name }));
