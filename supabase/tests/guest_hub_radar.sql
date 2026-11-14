@@ -159,8 +159,8 @@ do $$ begin
   for i in 1..60 loop perform pg_temp._turn(200 + i, 'airport-road', '{extension}', 'live', 'inquiry', '{answer}', make_interval(days => 2 + (i % 26), hours => 3)); end loop;
   for i in 1..6 loop perform pg_temp._turn(400 + i, 'airport-road', '{payment}', 'live', 'inquiry', '{answer}', make_interval(hours => i), null, true); end loop;
   -- (14 Nov 2026, per unit) laundry: 3 at Airport Road + 3 at Shafa Road — 6 together, under the minimum in each unit
-  for i in 1..3 loop perform pg_temp._turn(500 + i, 'airport-road', '{laundry}', 'live', 'inquiry', '{answer}', make_interval(hours => i)); end loop;
-  for i in 1..3 loop perform pg_temp._turn(510 + i, 'shafa-road', '{laundry}', 'live', 'inquiry', '{answer}', make_interval(hours => i)); end loop;
+  for i in 1..3 loop perform pg_temp._turn(600 + i, 'airport-road', '{laundry}', 'live', 'inquiry', '{answer}', make_interval(hours => i)); end loop;
+  for i in 1..3 loop perform pg_temp._turn(610 + i, 'shafa-road', '{laundry}', 'live', 'inquiry', '{answer}', make_interval(hours => i)); end loop;
 end $$;
 select pg_temp._service();
 select pg_temp._save('r4', public.hub_radar_tick());
