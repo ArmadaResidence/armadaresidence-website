@@ -3435,3 +3435,20 @@ Read-only checks, then the approved template submitted. Nothing else was changed
 - **Budget:** monthly USD 200 (the Ultra plan's monthly API credits); daily USD 20 as a protective default, changeable in «الميزانية». The Console organization that holds the hub's API key is linked to the Ultra plan's credits (Claude in Chrome).
 - **Credit watch:** a weekly scheduled task outside the repository (Sundays 09:59 Riyadh) reads Anthropic's pages and notifies Ahmed if the Ultra plan's API credits change or end. In the hub, an API answer that the credit balance is too low sends one alert email to the active admins and moves every conversation to staff until a model call succeeds again (H5).
 - **Session plan:** nine sessions. H6 the test lab, simulator, licences, radar and the staff-reply draft cards; then the shadow period at Airport Road; H7 voice and images; H8 booking in the chat, «الآن», reports and the morning summary; H9 Shafa Road on and the shared sending limit.
+
+## 2026-11-14 — Guest Hub H5 — the engine (session H5, unattended)
+
+What was built is listed in CLAUDE.md §14 «Built in session H5». The choices the session made where the spec left room:
+
+- **«تجربة» keeps a person on every real conversation.** A conversation on a unit in test mode is stored with staff (`human_reason` test_mode, waiting as usual); the assistant's own run is followed in `hub_conversations.test_state`, so its replies (status `test`, shown «تجربة») and its state never change what the guest gets or the inbox's queue. No complaint email, no «لم أعرف الإجابة» entry and no licence counter from a test run.
+- **Only the system admin switches the engine on.** `hub_assistant_on = true`, any unit mode other than off and the two budgets need `internal.is_system_admin()` (the role admin), in the RPC, the unit trigger and the settings check alike. The gates are checked first, so a missing gate is named before the permission. Any inbox editor of the unit may pause it («إيقاف المساعد مؤقتًا», audited).
+- **Gates per mode.** «تجربة»: an active unit, a verified channel, the persona, at least one skill, both budgets set, the engine. «بموافقة الفريق» / «يرد تلقائيًا» add the test lab (`internal.hub_test_lab_ready()` false until H6). A NULL budget is a gate on every mode and on «المساعد يعمل».
+- **Budget alert email** (copy.md §7, new row): the wording is the session's and waits for Ahmed's review; the API-credit email is Ahmed's wording as given. Both go to the active admins only, each once per period (budget) or once while it lasts (credit).
+- **The cross-branch exception list** (k-cafe-menu, k-cafe-phone, k-cafe-breakfast-menu) lives in SQL (`internal.hub_branch_only_cards()`) and in `retrieval.ts → BRANCH_ONLY`; `hub-retrieval-check` asserts both are the same list.
+- **One open draft, replaced not stacked.** A new kind of request (a group after a stay, say) closes the open draft (`draft_replace`) instead of keeping two; a room tap is accepted only on a stay draft.
+- **Members-only offers are never in the payload** (their code is only for «إياب» members, and the assistant does not know who is one); the assistant names public offers only.
+- **The per-phone booking limit** moved to `supabase/functions/booking-request/limits.ts` so the hub reads the same number instead of copying it.
+- **Model prices** read from Anthropic's pricing page on 14 Nov 2026 and stored with that date (`hub_model_prices.read_at`); a change on the page is a new settings value, never a code change.
+- **No thinking, effort low** on every hub call (Haiku `{type: disabled}`; Sonnet 5.5 `{type: between_tools}`, which with no tool is none); a refusal that names the thinking field is retried once without it, so a model update cannot stop the hub.
+- **The licence counters** (drafts, approved, edited, rejected) are cumulative and information only; nothing activates or deactivates a licence by itself (as decided 12 Nov 2026).
+- **Nothing was switched on.** Every unit stays «متوقف», «المساعد يعمل» off, «تخزين المحادثات» as Ahmed left it.

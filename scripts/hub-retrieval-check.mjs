@@ -108,6 +108,11 @@ check(SEED.filter((c) => c.id.startsWith('k-cafe-')).every((c) => JSON.stringify
 
 // ── 6. the SQL function (the H5 migration) states the same rule ──
 const MIG5 = read('supabase/migrations/20261114200000_guest_hub_assistant.sql');
+{
+  const m = MIG5.match(/function internal\.hub_branch_only_cards\(\)[^$]*\$\$ select array\[([^\]]*)\] \$\$/);
+  const sql = m ? [...m[1].matchAll(/'([^']+)'/g)].map((x) => x[1]) : null;
+  check(JSON.stringify(sql) === JSON.stringify(BRANCH_ONLY), `the SQL list internal.hub_branch_only_cards() = retrieval.ts BRANCH_ONLY — ${sql}`);
+}
 const fn = MIG5.slice(MIG5.indexOf('create function public.hub_knowledge_for('), MIG5.indexOf('\n$$;', MIG5.indexOf('create function public.hub_knowledge_for(')));
 check(/drop function public\.hub_knowledge_for\(text, text\[\], text\);/.test(MIG5), 'SQL: the H4 function is replaced (a new argument, p_branch)');
 check(/if u\.knowledge_hidden or cardinality\(coalesce\(p_topics, '\{\}'\)\) = 0 then/.test(fn), 'SQL: a knowledge_hidden unit, or no topic → nothing');
