@@ -588,6 +588,23 @@
           "monthly": "هذا الشهر"
         }
       },
+      "hub_flagged": {
+        "_note": "Guest Hub H6 (14 Nov 2026, copy.md §7 — the session's wording, for Ahmed's review): a staff member flagged a sent assistant reply as wrong — once per reply, to the active admins. No guest words, no phone. It never changes a licence.",
+        "subject": "رد خاطئ أُرسل لضيف — {unit_name} — AR-HUB-{yyyymmdd}",
+        "lead": "أبلغ أحد الموظفين أن ردًا أرسله المساعد لضيف في {unit_name} كان خاطئًا.",
+        "topics": "الموضوع: {topics}",
+        "no_topic": "بلا موضوع",
+        "licence": "لم يتغيّر أي ترخيص؛ السؤال أُضيف إلى «لم أعرف الإجابة» لتصحيح البطاقة أو كتابة بطاقة جديدة.",
+        "button": "فتح المحادثة"
+      },
+      "hub_spike": {
+        "_note": "Guest Hub H6 (14 Nov 2026, copy.md §7 — the session's wording, for Ahmed's review): a topic asked at least hub_spike_min times in 24 hours and more than hub_spike_factor × its daily average of the 28 days before — once per topic per day, to the active admins.",
+        "subject": "ارتفاع في سؤال — {topic} — AR-HUB-{yyyymmdd}",
+        "lead": "سُئل عن «{topic}» {count} خلال آخر 24 ساعة، أي أكثر من {factor} أضعاف المعدل اليومي ({avg}).",
+        "next": "راجع الأسئلة في «رادار الأسئلة»، وأضف بطاقة إن لم تكن الإجابة موجودة.",
+        "button": "فتح رادار الأسئلة",
+        "times": {"one": "مرة واحدة", "two": "مرتين", "few": "{n} مرات", "many": "{n} مرة"}
+      },
       "hub_quality": {
         "_note": "Guest Hub (spec §6.6 / §7.5): a WhatsApp number's quality rating fell below High (YCloud event whatsapp.phone_number.quality_updated). Arabic only; to the dashboard's active admins; once per open alert. The wording approved by Ahmed on 13 Nov 2026 (copy.md §7 row 4 — replaces the H2 draft). FLAGGED (not in the approved list) reads as «منخفض».",
         "subject": "جودة رقم واتساب — {unit_name} — AR-HUB-{yyyymmdd}",

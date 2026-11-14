@@ -78,7 +78,7 @@ check(/'hub_summary'\)\);/.test(MIG) && /booking_notification_recipients_hub_fil
 // ── 3. the dashboard ──
 const modeRow = (COPY.match(/\| Unit modes \|([^\n]+)/) ?? [])[1] ?? '';
 for (const [k, v] of [...modeRow.matchAll(/`(\w+)` «([^»]+)»/g)].map((m) => [m[1], m[2]])) check(HUB.includes(`${k}: '${v}'`), `the mode label ${k} = copy.md «${v}»`);
-check(/const need: string\[\] = mode === 'test' \? u\.gates : \(u\.gates_shadow \?\? u\.gates\);/.test(PAGE) && /if \(mode !== 'off' && gates\.length\) \{\s+setBlocked/.test(PAGE), 'a mode other than «متوقف» shows the gates of that mode before asking the server (H5: «تجربة» / «بموافقة الفريق»)');
+check(/const gates: string\[\] = mode === 'test' \? u\.gates : \(u\.gates_shadow \?\? u\.gates\);/.test(PAGE) && /if \(mode !== 'off' && gates\.length\) \{\s+setBlocked/.test(PAGE), 'a mode other than «متوقف» shows the gates of that mode before asking the server (H5 «تجربة»; H6 «بموافقة الفريق» with the test lab)');
 check(/if \(on && gates\.length\) \{\s+setBlocked/.test(PAGE), 'a switch-on shows the gates before asking the server');
 check(/key: 'hub_assistant_on', label: 'المساعد يعمل'/.test(HUB) && /key: 'hub_inbox_on', label: 'تخزين المحادثات'/.test(HUB), 'the two global switches named as the spec names them');
 check(!/sending_enabled/.test(HUB.replace(/sending_enabled: boolean;/, '')) || !/settingSet\('sending/.test(PAGE), 'the page never turns a channel\'s sending on');

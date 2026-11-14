@@ -1,0 +1,10 @@
+{
+ "id": "dc02",
+ "recorded_at": "2026-11-14T12:18:32.230Z",
+ "ok": true,
+ "error": null,
+ "text": "{\"draft\": {\"title_ar\": \"تأجير الدراجات\", \"title_en\": \"Bicycle rental\", \"text_ar\": \"يتوفر لدينا تأجير الدراجات عند الاستقبال.\", \"text_en\": \"Bicycle rental is available at reception.\", \"topic_keys\": [\"facilities\"], \"unit_keys\": [\"airport-road\"], \"price_note\": \"30 ريال للساعة / 30 SAR per hour\"}}",
+ "input_tokens": 1478,
+ "output_tokens": 151,
+ "cost_usd": 0.004466
+}

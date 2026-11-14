@@ -1,0 +1,10 @@
+{
+ "id": "dc07",
+ "recorded_at": "2026-11-14T12:18:41.811Z",
+ "ok": true,
+ "error": null,
+ "text": "{\"draft\": {\"title_ar\": \"توصيل الطعام إلى الغرف في فرع الشفا\", \"title_en\": \"In-room dining at the Shafa Road branch\", \"text_ar\": \"في فرع الشفا نوصل الطعام إلى الغرف يوميًا من مطعم الفرع. يتم الطلب عبر واتساب الفرع.\", \"text_en\": \"At the Shafa Road branch, food is delivered to the rooms daily from the branch restaurant. Orders are placed via the branch's WhatsApp.\", \"topic_keys\": [\"in_room_dining\"], \"unit_keys\": [\"shafa-road\"], \"price_note\": null}}",
+ "input_tokens": 1502,
+ "output_tokens": 224,
+ "cost_usd": 0.005244
+}

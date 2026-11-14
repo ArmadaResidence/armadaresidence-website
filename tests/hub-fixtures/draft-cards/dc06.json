@@ -1,0 +1,10 @@
+{
+ "id": "dc06",
+ "recorded_at": "2026-11-14T12:18:39.305Z",
+ "ok": true,
+ "error": null,
+ "text": "{\"draft\": {\"title_ar\": \"المكواة ولوح الكي في الشقة\", \"title_en\": \"Iron and ironing board in the apartment\", \"text_ar\": \"تتوفر في كل شقة مكواة ولوح كي. وإذا لم تجدهما في شقتك، يمكنك التواصل مع الاستقبال.\", \"text_en\": \"Every apartment has an iron and an ironing board. If they are missing from your apartment, please contact reception.\", \"topic_keys\": [\"room_amenities\"], \"unit_keys\": [\"airport-road\"], \"price_note\": null}}",
+ "input_tokens": 1477,
+ "output_tokens": 196,
+ "cost_usd": 0.004914
+}

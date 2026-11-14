@@ -51,7 +51,29 @@ export interface HubUnit {
   gates: GateCode[];
   /** what «بموافقة الفريق» / «يرد تلقائيًا» still lack — the test lab of H6 among them */
   gates_shadow?: GateCode[];
-  persona?: { tone?: number; emoji?: boolean } | null;
+  persona?: Persona | null;
+  /** H6: the persona being edited (not yet published) and the latest full test-lab run of the unit */
+  persona_draft?: Persona | Record<string, never>;
+  persona_pending?: boolean;
+  knowledge_hidden?: boolean;
+  lab?: UnitLab;
+}
+export interface Persona {
+  tone: number;
+  emoji: boolean;
+  greeting_new_ar: string;
+  greeting_new_en: string;
+  greeting_returning_ar: string;
+  greeting_returning_en: string;
+}
+export interface UnitLab {
+  run_id: string | null;
+  finished_at?: string;
+  trigger?: string;
+  items?: number;
+  passed?: number;
+  blocking?: string[];
+  gaps?: string[];
 }
 export interface HubStaff {
   staff_id: string;
@@ -148,8 +170,9 @@ export async function budgetOverview(): Promise<BudgetOverview> {
   if (error) api.fail(error, 'hub_budget_overview');
   return data as BudgetOverview;
 }
-export const LAYER_LABELS: Record<string, string> = { understand: 'الفهم', tag: 'تصنيف المواضيع', compose: 'كتابة الرد', translate: 'الترجمة', suggest: 'الاقتراحات' };
-export const SOURCE_LABELS: Record<string, string> = { turn: 'المحادثات', staff: 'طلبات الفريق', test_lab: 'مختبر الاختبار' };
+export const LAYER_LABELS: Record<string, string> = { understand: 'الفهم', tag: 'تصنيف المواضيع', compose: 'كتابة الرد', translate: 'الترجمة', suggest: 'الاقتراحات', draft_card: 'مسودات البطاقات' };
+// H6 (14 Nov 2026): the test lab and the simulator are counted apart (spec §7.3)
+export const SOURCE_LABELS: Record<string, string> = { turn: 'المحادثات', staff: 'طلبات الفريق', test_lab: 'مختبر الاختبار', simulator: 'المحاكي' };
 export const MODEL_LABELS: Record<string, string> = { understand: 'الفهم', tag: 'تصنيف المواضيع', translate: 'الترجمة', compose: 'كتابة الرد', suggest: 'الاقتراحات' };
 /** USD as the page writes it: «4.25 دولار» (Western digits) */
 export const usd = (n: number | null | undefined) => `${(Math.round(Number(n ?? 0) * 100) / 100).toFixed(2)} دولار`;
@@ -218,7 +241,7 @@ export const GATE_LABELS: Record<GateCode, string> = {
   persona: 'نشر شخصية الوحدة (الأسلوب والتحية)',
   skills: 'مهارة واحدة على الأقل',
   menu_link: 'رابط قائمة الطعام في «المطاعم والمقاهي»',
-  test_lab: 'نجاح أسئلة الوحدة في مختبر الاختبار — يُبنى في الجلسة التالية',
+  test_lab: 'آخر تشغيل كامل لأسئلة الوحدة في «مختبر الاختبار» بلا سؤال راسب إلا «فجوة معروفة»',
   engine: 'محرك المساعد',
   budget: 'تحديد الميزانية اليومية والشهرية في «الميزانية»',
   system_admin: 'يشغّله مدير النظام وحده',
@@ -234,7 +257,7 @@ export const SWITCHES: { key: 'hub_assistant_on' | 'hub_inbox_on'; label: string
   { key: 'hub_assistant_on', label: 'المساعد يعمل', text: 'المفتاح العام: عند إيقافه لا يكتب المساعد شيئًا في أي وحدة، وتبقى الرسائل التلقائية الحالية كما هي.' },
   { key: 'hub_inbox_on', label: 'تخزين المحادثات', text: 'تخزين رسائل واتساب وعرضها في «المحادثات» (نص الرسالة يُحفظ 12 شهرًا والوسائط 90 يومًا).' },
 ];
-export const NOT_YET = 'المحرك جاهز للتجربة: يشغّل مدير النظام «المساعد يعمل» ووضع «تجربة» لوحدة بعد اكتمال ما ينقصها، وفي «تجربة» لا يصل شيء للضيف وتبقى المحادثة مع الفريق. «بموافقة الفريق» و«يرد تلقائيًا» ينتظران مختبر الاختبار في الجلسة التالية.';
+export const NOT_YET = 'في «تجربة» لا يصل شيء للضيف وتبقى المحادثة مع الفريق. «بموافقة الفريق» يحتاج آخر تشغيل كامل لأسئلة الوحدة في «مختبر الاختبار» بلا سؤال راسب إلا «فجوة معروفة»، ثم ينتظر كل رد ضغطة من الفريق. «يرد تلقائيًا» يرسل وحده فقط في المواضيع التي فعّلها مدير النظام في «التراخيص».';
 
 /** YCloud's template status in Arabic (the raw value stays beside it) */
 export const TEMPLATE_STATUS: Record<string, string> = {
@@ -265,6 +288,7 @@ export const ALERT_LABELS: Record<string, string> = {
   webhook_silent: 'لم تصل رسائل من واتساب منذ مدة',
   template_rejected: 'قالب واتساب مرفوض أو موقوف',
   api_credit: 'رصيد كلود انتهى',
+  flagged_wrong: 'رد خاطئ أُرسل لضيف',
 };
 export const VERIFY_ERRORS: Record<string, string> = {
   hub_channel_not_found: 'لم يُعثر على هذا الرقم في حساب واتساب للأعمال على YCloud.',

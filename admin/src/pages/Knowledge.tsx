@@ -10,6 +10,10 @@
 //     — never the guest's details) with «وأضفه للأسئلة الشائعة» (a DRAFT there, content: edit), «ربط ببطاقة», «تجاهل».
 //   - «الأسئلة الشائعة»: read-only — what the engine reads from the published FAQ, the fees filled from Settings.
 //   - «تنتهي قريبًا»: cards ending within 14 days and offers within 7 (the daily email lists the same).
+// H6 (14 Nov 2026): «نشر» goes through the test lab (components/EvalGate.tsx — the estimated cost first, then the bank on
+// the candidate cards; a regression blocks with the list); a question answered by a staff member shows the DRAFT card
+// written from that reply (prompts.md §7) with «مراجعة ونشر» — the price the reply stated apart, never in the text;
+// ?new=<topic>&faq=1 (from «رادار الأسئلة») opens a new card on that topic with «وأضف مسودة للأسئلة الشائعة».
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import * as api from '../lib/api';
@@ -19,6 +23,8 @@ import { FAQ_CATEGORIES } from '../lib/faq';
 import * as K from '../lib/knowledge';
 import type { Card, CardFields, CardProblem, ExpiringItem, FaqRead, KnowledgeMeta, QueueRow } from '../lib/knowledge';
 import DateField from '../components/DateField';
+import EvalGate from '../components/EvalGate';
+import { faqDraftFromCard } from '../lib/lab';
 import { CancelButton, Empty, ErrorBox, Field, Loading, Modal, Segmented, Spinner, useToast } from '../components/ui';
 
 const CARD: CountNoun = { zero: 'لا بطاقات', one: 'بطاقة واحدة', two: 'بطاقتان', few: 'بطاقات', many: 'بطاقة', gen: 'بطاقة' };
@@ -34,7 +40,7 @@ const TABS: { key: Tab; label: string }[] = [
 ];
 const timesText = (n: number) => (n <= 2 ? countWord(n, TIMES) : `سُئل ${countWord(n, TIMES)}`);
 
-type Editing = { card: Card | null; from?: QueueRow };
+type Editing = { card: Card | null; from?: QueueRow; topic?: string | null; offerFaq?: boolean };
 
 export default function Knowledge() {
   const { me } = useSession();
@@ -56,6 +62,7 @@ export default function Knowledge() {
   const [publishing, setPublishing] = useState(false);
   const [blocked, setBlocked] = useState<K.PublishResult | null>(null);
   const [link, setLink] = useState<QueueRow | null>(null);
+  const [gate, setGate] = useState(false);
   const [filter, setFilter] = useState({ unit: 'all', topic: '', state: 'live', search: '' });
 
   const load = useCallback(async () => {
@@ -75,6 +82,16 @@ export default function Knowledge() {
   useEffect(() => {
     void load();
   }, [load]);
+  // «إنشاء بطاقة» from «رادار الأسئلة»: ?new=<topic>[&faq=1] opens the editor once
+  useEffect(() => {
+    const t = params.get('new');
+    if (t === null || !editable) return;
+    setEditing({ card: null, topic: t || null, offerFaq: params.get('faq') === '1' });
+    const p = new URLSearchParams(params);
+    p.delete('new');
+    p.delete('faq');
+    setParams(p, { replace: true });
+  }, [params, editable, setParams]);
 
   const shown = useMemo(() => {
     const s = filter.search.trim().toLowerCase();
@@ -96,19 +113,33 @@ export default function Knowledge() {
   async function doPublish() {
     setPublishing(true);
     try {
-      const r = await K.publish();
-      if (r.ok) {
-        setBlocked(null);
-        toast(`نُشرت ${countWord(r.count ?? 0, CARD)}؛ يقرؤها المساعد من الآن. لا تراجع عن النشر: عدّل ثم انشر من جديد.`);
-        await load();
-      } else if (r.reason === 'nothing') toast('لا تغييرات للنشر.');
-      else setBlocked(r);
+      // the problems first; then the test lab (spec §4.8) — the publish itself names the run that passed
+      const r = await K.publishCheck();
+      if (r.reason === 'nothing') toast('لا تغييرات للنشر.');
+      else if (r.reason === 'blocked') setBlocked(r);
+      else setGate(true);
     } catch (e) {
       toast((e as Error).message, 'error');
     } finally {
       setPublishing(false);
     }
   }
+  const publishWith = useCallback(async (run: string) => {
+    try {
+      const r = await K.publish(run);
+      if (r.ok) {
+        setGate(false);
+        setBlocked(null);
+        toast(`نُشرت ${countWord(r.count ?? 0, CARD)} بعد نجاح الاختبار؛ يقرؤها المساعد من الآن. لا تراجع عن النشر: عدّل ثم انشر من جديد.`);
+        await load();
+      } else if (r.reason === 'blocked') {
+        setGate(false);
+        setBlocked(r);
+      } else toast('تغيّرت البطاقات أثناء الاختبار؛ اضغط «نشر» من جديد.', 'error');
+    } catch (e) {
+      toast((e as Error).message, 'error');
+    }
+  }, [load, toast]);
   async function archive(c: Card) {
     try {
       await K.archiveCard(c.id);
@@ -287,6 +318,18 @@ export default function Knowledge() {
                     )}
                   </div>
                 )}
+                {qStatus === 'open' && r.draft_card && (
+                  <div className="kn-draft grid gap-1 p-2 rounded-lg" data-draft-card={r.draft_card.key}>
+                    <p className="text-xs font-semibold">مسودة بطاقة من رد الفريق — تحتاج اعتمادك</p>
+                    <p className="font-semibold">{r.draft_card.title_ar || r.draft_card.title_en}</p>
+                    <p className="text-xs text-ink-muted">{r.draft_card.source}</p>
+                    {r.draft_card.price_note && <p className="text-xs note-amber" data-price-note>سعر ذكره الرد (لا يُكتب في البطاقة): {r.draft_card.price_note}</p>}
+                    {r.draft_card.problems > 0 && <p className="text-xs">{countWord(r.draft_card.problems, PROBLEM)}</p>}
+                    {editable && (
+                      <button type="button" className="btn btn-primary btn-sm justify-self-start" onClick={() => setEditing({ card: list.find((c) => c.id === r.draft_card!.id) ?? null, from: r })} data-action="draft-review">مراجعة ونشر</button>
+                    )}
+                  </div>
+                )}
                 {qStatus !== 'open' && r.resolved_card_id && <p className="text-xs text-ink-muted">أُجيب ببطاقة{r.resolved_faq_id ? ' وسؤال في «الأسئلة الشائعة»' : ''}.</p>}
               </li>
             ))}
@@ -341,10 +384,10 @@ export default function Knowledge() {
       )}
 
       <Modal open={editing !== null} onClose={() => setEditing(null)} wide busy={busy}
-        title={editing?.from ? 'بطاقة من سؤال لم يُعرف' : editing?.card ? (editable && editing.card.status !== 'archived' ? 'تعديل البطاقة' : 'البطاقة') : 'إضافة بطاقة'}
+        title={editing?.from && editing.card ? 'مراجعة مسودة من رد الفريق' : editing?.from ? 'بطاقة من سؤال لم يُعرف' : editing?.card ? (editable && editing.card.status !== 'archived' ? 'تعديل البطاقة' : 'البطاقة') : 'إضافة بطاقة'}
         draftKey={editing ? (editing.card ? `card:${editing.card.id}` : editing.from ? `card:queue:${editing.from.id}` : 'card:new') : undefined}>
         {editing !== null && (
-          <CardForm key={editing.card?.id ?? editing.from?.id ?? 'new'} card={editing.card} from={editing.from} meta={m} me={me}
+          <CardForm key={editing.card?.id ?? editing.from?.id ?? 'new'} card={editing.card} from={editing.from} topic={editing.topic} offerFaq={editing.offerFaq} meta={m} me={me}
             editable={editable && editing.card?.status !== 'archived'} contentEdit={contentEdit} busy={busy} setBusy={setBusy}
             onSaved={async () => {
               setEditing(null);
@@ -354,6 +397,9 @@ export default function Knowledge() {
       </Modal>
       <Modal open={!!link} onClose={() => setLink(null)} title="ربط السؤال ببطاقة موجودة" busy={busy}>
         {link && <LinkForm row={link} cards={(list ?? []).filter((c) => c.status !== 'archived')} busy={busy} setBusy={setBusy} onDone={async () => { setLink(null); await load(); }} />}
+      </Modal>
+      <Modal open={gate} onClose={() => setGate(false)} title="اختبار قبل النشر">
+        {gate && <EvalGate kind="knowledge" title="نشر البطاقات" onPassed={publishWith} />}
       </Modal>
       <Modal open={!!blocked} onClose={() => setBlocked(null)} title="ما يمنع النشر" busy={publishing}>
         {blocked && (
@@ -375,11 +421,11 @@ export default function Knowledge() {
   );
 }
 
-function CardForm({ card, from, meta, me, editable, contentEdit, busy, setBusy, onSaved }: {
-  card: Card | null; from?: QueueRow; meta: KnowledgeMeta; me: api.Me | null; editable: boolean; contentEdit: boolean; busy: boolean; setBusy: (b: boolean) => void; onSaved: () => Promise<void>;
+function CardForm({ card, from, topic, offerFaq, meta, me, editable, contentEdit, busy, setBusy, onSaved }: {
+  card: Card | null; from?: QueueRow; topic?: string | null; offerFaq?: boolean; meta: KnowledgeMeta; me: api.Me | null; editable: boolean; contentEdit: boolean; busy: boolean; setBusy: (b: boolean) => void; onSaved: () => Promise<void>;
 }) {
   const toast = useToast();
-  const [f, setF] = useState<CardFields>(() => (card ? K.pickCard(card) : K.blankCard(from?.topic_key, from?.excerpts[0] ?? '')));
+  const [f, setF] = useState<CardFields>(() => (card ? K.pickCard(card) : K.blankCard(from?.topic_key ?? topic ?? null, from?.excerpts[0] ?? '')));
   const [toFaq, setToFaq] = useState(false);
   const [faqCat, setFaqCat] = useState<K.FaqDraft['category']>('stay');
   const [error, setError] = useState<string | null>(null);
@@ -406,6 +452,8 @@ function CardForm({ card, from, meta, me, editable, contentEdit, busy, setBusy, 
       if (from) {
         const both = toFaq && contentEdit;
         await K.resolve(from.id, { action: both ? 'both' : 'card', card_id: r.id, ...(both ? { faq: { category: faqCat, q_ar: f.title_ar, q_en: f.title_en, a_ar: f.text_ar, a_en: f.text_en } } : {}) });
+      } else if (offerFaq && toFaq && contentEdit) {
+        await faqDraftFromCard(r.id, faqCat);
       }
       setProblems(r.check.missing);
       toast(r.check.missing.length ? 'حُفظت المسودة؛ فيها ملاحظات تمنع النشر.' : from && toFaq ? 'حُفظت البطاقة وأُضيف السؤال مسودةً في «الأسئلة الشائعة»؛ لا تصل للمساعد قبل «نشر».' : 'حُفظت؛ لا يقرؤها المساعد قبل «نشر».', r.check.missing.length ? 'error' : undefined);
@@ -429,6 +477,12 @@ function CardForm({ card, from, meta, me, editable, contentEdit, busy, setBusy, 
     <div className="grid gap-4" data-card-form>
       {card?.live && card.pending && <p className="note-amber text-sm" role="status">فيها تعديلات لم تُنشر؛ المساعد يقرأ آخر نسخة منشورة.</p>}
       {from && <p className="text-sm text-ink-muted" data-from-queue>من سؤال {timesText(from.count)}. اكتب الإجابة كما تعرفها من مصدرها؛ لا تنسخ بيانات الضيف.</p>}
+      {card?.draft_origin?.kind === 'staff_reply' && (
+        <p className="note-amber text-sm" role="note" data-draft-origin>كتبها النظام من رد الفريق على الضيف. راجع كل جملة قبل الحفظ والنشر: لا يُنشر شيء وحده، ولا يقرؤها المساعد قبل «نشر» بعد نجاح الاختبار.</p>
+      )}
+      {card?.price_note && (
+        <p className="text-sm kn-price-note" data-price-note>سعر ذكره رد الفريق: <strong>{card.price_note}</strong> — لا يُكتب في نص البطاقة؛ الأسعار من التقويم والرسوم من الإعدادات.</p>
+      )}
       <fieldset className="grid gap-1.5">
         <legend className="label">الوحدات</legend>
         <p className="text-xs text-ink-muted">بلا اختيار = كل الوحدات. البطاقة الموسومة بوحدة تأتي أولًا على رقم تلك الوحدة، وتُقرأ على رقم الفرع الآخر أيضًا.</p>
@@ -494,7 +548,7 @@ function CardForm({ card, from, meta, me, editable, contentEdit, busy, setBusy, 
         <span className="label">كيف تُقرأ في الرد</span>
         <div className="kn-bubble" lang="ar" dir="rtl">{f.text_ar || '—'}</div>
       </div>
-      {from && contentEdit && editable && (
+      {(from || offerFaq) && contentEdit && editable && (
         <div className="grid gap-2">
           <label className="flex items-center gap-2 text-sm font-semibold min-h-11">
             <input type="checkbox" className="size-4 accent-bronze-deep" checked={toFaq} onChange={(e) => setToFaq(e.target.checked)} data-field="to-faq" />

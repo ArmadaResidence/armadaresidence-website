@@ -9,7 +9,14 @@
 //   - pg_cron hub-agent (every minute, public.hub_agent_kick) when a turn is due: {action: 'sweep'} — what the router's
 //     call missed and the stuck runs (public.hub_turns_due).
 //   - QA (header x-armada-test = BOOKING_TEST_TOKEN, a preview branch): {action: 'qa-turn', turn, stub} — the same turn
-//     with the model calls answered by `stub` ({layer: text}); nothing is sent (test conversations only).
+//     with the model calls answered by `stub` ({layer: text}); nothing is sent (test conversations only); and (H6)
+//     {action: 'qa-eval', stub} / {action: 'qa-cards', stub} — the test lab's items and the draft-card jobs with stubbed
+//     model answers.
+// H6 (14 Nov 2026): the sweep also runs the test lab's pending items (public.hub_eval_claim → _shared/hub/eval.ts, the
+// real engine in test mode: nothing stored but the result, nothing sent; graded by code — _shared/hub/grade.ts →
+// public.hub_eval_finish) and the draft cards from staff replies (public.hub_card_job_claim → prompts.md §7 →
+// _shared/hub/draft-card.ts checks → public.hub_card_job_finish: a DRAFT card, never published); {action: 'alerts'}
+// sends the alerts that wait for their email (a reply flagged wrong, a question spike).
 // Sending: only rows hub_turn_finish handed back as queued (live, a notice in «بموافقة الفريق»); «تجربة» rows are stored
 // as test and never sent; through the one sender (booking-request/whatsapp-send.ts → sendSession, the 24-hour window
 // checked again), YCloud's typing call for the guest's last message just before (spec §6.2 — only when a reply really
@@ -19,13 +26,16 @@
 // Secrets: ANTHROPIC_API_KEY (label-suggest's), YCLOUD_API_KEY, RESEND_API_KEY; SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY.
 import content from '../booking-request/content.generated.json' with { type: 'json' };
 import { buttonsPayload, sendSession, textPayload, type WaResult } from '../booking-request/whatsapp-send.ts';
-import { hubApiCreditMail, hubBudgetMail, hubComplaintMail, longDate } from '../booking-request/email.ts';
+import { hubApiCreditMail, hubBudgetMail, hubComplaintMail, hubFlaggedMail, hubSpikeMail, longDate } from '../booking-request/email.ts';
 import { sarText } from '../booking-request/rules.ts';
 import { typingUrl } from '../_shared/hub/send.ts';
 import { runTurn, type Deps, type Outcome } from '../_shared/hub/engine.ts';
 import { anthropicModel, type ModelCall, type ModelFn } from '../_shared/hub/model.ts';
 import { dashboardAdapter } from '../_shared/hub/adapter/index.ts';
 import { fixed } from '../_shared/hub/copy.ts';
+import { engineVersion, runItem } from '../_shared/hub/eval.ts';
+import { grade, type Item } from '../_shared/hub/grade.ts';
+import { checkDraft, dateText, draftCardSystem, draftCardUser, type CardJob } from '../_shared/hub/draft-card.ts';
 
 const ALERT_FROM = 'لوحة أرمادا ريزيدنس <no-reply@armadaresidence.com>';
 const BUDGET_MS = 50_000;
@@ -82,11 +92,14 @@ async function mail(to: string[], m: { subject: string; html: string; text: stri
   }
 }
 
-function deps(model: ModelFn): Deps {
+function deps(model: ModelFn, cards: string[] | null = null): Deps {
   const rpcAny = (fn: string, args: Record<string, unknown>) => rpc<unknown>(fn, args);
   return {
     model,
-    knowledge: (unit, topics, lang, branch) => rpc('hub_knowledge_for', { p_unit: unit, p_topics: topics, p_language: lang, p_branch: branch }),
+    // a test-lab item judged on a candidate reads the candidate cards as their draft (hub_knowledge_for_eval)
+    knowledge: (unit, topics, lang, branch) => cards
+      ? rpc('hub_knowledge_for_eval', { p_unit: unit, p_topics: topics, p_language: lang, p_branch: branch, p_cards: cards })
+      : rpc('hub_knowledge_for', { p_unit: unit, p_topics: topics, p_language: lang, p_branch: branch }),
     offers: async () => {
       const res = await fetch(`${url()}/rest/v1/offers?select=live&live=not.is.null&archived_at=is.null&is_test=eq.false`, {
         headers: { apikey: serviceKey(), Authorization: `Bearer ${serviceKey()}` },
@@ -161,6 +174,102 @@ async function alerts(): Promise<void> {
   }
 }
 
+/** the H6 alerts that wait for their email: a sent reply flagged wrong, a question spike (once each) */
+async function labAlerts(): Promise<void> {
+  let a: Json;
+  try {
+    a = await rpc('hub_alerts_claim', { p_kinds: ['flagged_wrong', 'spike'] });
+  } catch (e) {
+    console.error('hub-agent: alerts claim failed', String(e).slice(0, 80));
+    return;
+  }
+  const alerts = (a?.alerts ?? []) as Json[];
+  if (!alerts.length) return;
+  // the names the emails use: the units and the topics (codes → labels; never a guest's words)
+  const units = await rest<Json[]>('hub_units?select=id,key,name_ar').catch(() => [] as Json[]);
+  const topics = await rest<Json[]>('hub_topics?select=key,label_ar').catch(() => [] as Json[]);
+  const factor = await rest<Json[]>('settings?select=value&key=eq.hub_spike_factor').then((r) => Number(r[0]?.value ?? 3)).catch(() => 3);
+  const label = (k: string) => topics.find((t) => t.key === k)?.label_ar ?? k;
+  for (const x of alerts) {
+    const m = x.kind === 'spike'
+      ? hubSpikeMail(content, { topic: label(String(x.payload?.topic ?? '')), count: Number(x.payload?.count ?? 0), avg: Number(x.payload?.avg ?? 0), factor, at: x.at })
+      : hubFlaggedMail(content, { conversation_id: String(x.payload?.conversation_id ?? ''), unit_name: String(units.find((u) => u.id === x.unit_id)?.name_ar ?? ''),
+          topics: ((x.payload?.topics ?? []) as string[]).map(label), at: x.at });
+    const ok = await mail(a.recipients ?? [], m);
+    console.log('hub-agent: alert', x.kind, ok ? 'sent' : 'not sent');
+  }
+}
+
+async function rest<T>(path: string): Promise<T> {
+  const res = await fetch(`${url()}/rest/v1/${path}`, { headers: { apikey: serviceKey(), Authorization: `Bearer ${serviceKey()}` } });
+  if (!res.ok) throw new Error(`${path.split('?')[0]} ${res.status}`);
+  return (await res.json()) as T;
+}
+
+/** the test lab (H6): the claimed items of the active run, each through the real engine in test mode, graded by code */
+async function evalStep(model: ModelFn, deadline: number): Promise<number> {
+  const ver = await engineVersion();
+  const ctxs = new Map<string, Json>();
+  let done = 0;
+  while (Date.now() < deadline - 25_000) {
+    const c = await rpc<Json>('hub_eval_claim', { p_limit: 4 }).catch((e) => {
+      console.error('hub-agent: eval claim failed', String(e).slice(0, 80));
+      return null;
+    });
+    const items = (c?.items ?? []) as Json[];
+    if (!items.length) break;
+    await Promise.all(items.map(async (r: Json) => {
+      const it = r.item as Json;
+      const item: Item = { key: it.key, unit_key: it.unit_key, language: it.language === 'en' ? 'en' : 'ar', messages: it.messages ?? [], context: it.context ?? {}, expect: it.expect ?? { action: 'answer' }, note: it.note ?? null };
+      try {
+        if (!ctxs.has(item.unit_key)) ctxs.set(item.unit_key, await rpc<Json>('hub_eval_context', { p_unit: item.unit_key }));
+        const ctx = ctxs.get(item.unit_key);
+        const cards: string[] | null = r.config === 'candidate' && Array.isArray(r.cards) ? (r.cards as string[]) : null;
+        const run = await runItem(ctx, item, deps(model, cards ?? []), r.config === 'candidate' && r.persona ? r.persona : null);
+        const g = grade(item, run.outcome, { fees: ctx.fees, cards: ctx.cards, skills: ctx.unit?.skills ?? [] });
+        await rpc('hub_eval_finish', {
+          p_result: r.result_id,
+          p: { status: run.outcome.error ? 'error' : g.pass ? 'pass' : 'fail', reasons: g.reasons, replies: run.outcome.replies.map((x) => x.body).slice(0, 10),
+               outcome: { kind: run.outcome.kind, state: run.outcome.state, reason: run.outcome.reason, transitions: run.outcome.transitions, topics: run.outcome.topics,
+                          card_keys: run.outcome.card_keys, faq_keys: run.outcome.faq_keys, guard_refusals: run.outcome.guard_refusals, expected: g.expected, engine: ver },
+               models: run.models },
+        });
+        done++;
+      } catch (e) {
+        console.error('hub-agent: eval item failed', String((e as Error)?.message ?? e).slice(0, 100));
+        await rpc('hub_eval_finish', { p_result: r.result_id, p: { status: 'error', reasons: ['error:engine'], replies: [], outcome: null, models: [] } }).catch(() => null);
+      }
+    }));
+  }
+  return done;
+}
+
+/** the draft cards from staff replies (H6, prompts.md §7): never published — a draft for Ahmed's review */
+async function cardJobs(model: ModelFn, deadline: number): Promise<number> {
+  let done = 0;
+  while (Date.now() < deadline - 20_000) {
+    const c = await rpc<Json>('hub_card_job_claim', { p_limit: 3 }).catch(() => null);
+    const jobs = (c?.jobs ?? []) as CardJob[];
+    if (!jobs.length) break;
+    const ctx = await rpc<Json>('hub_eval_context', { p_unit: jobs[0].unit_key }).catch(() => null);
+    const modelId = String(ctx?.settings?.models?.draft_card ?? 'claude-sonnet-5-5');
+    const forbidden: string[] = ctx?.forbidden ?? [];
+    for (const j of jobs) {
+      const r = await model({ layer: 'compose', model: modelId, system: draftCardSystem(), user: draftCardUser(j) });
+      const used = [{ layer: 'draft_card', model: modelId, input_tokens: r.input_tokens, output_tokens: r.output_tokens }];
+      const res = r.ok ? checkDraft(r.text, j, forbidden) : { status: 'failed' as const, reason: r.error === 'credit' ? 'api_credit' : 'model' };
+      await rpc('hub_card_job_finish', {
+        p_job: j.job_id,
+        p: { status: res.status, reason: 'reason' in res ? res.reason : null, draft: res.status === 'done' ? res.draft : null, models: used,
+             staff_first_name: j.staff_first_name, date: j.date, date_text: dateText(j.date) },
+      }).catch((e) => console.error('hub-agent: card job not recorded', String(e).slice(0, 80)));
+      console.log('hub-agent: draft card', res.status, 'reason' in res ? res.reason : '');
+      done++;
+    }
+  }
+  return done;
+}
+
 /** one turn: wait for its burst, claim, run, finish, send */
 async function process(turnId: string, model: ModelFn, deadline: number): Promise<string> {
   let claim: Json = null;
@@ -220,6 +329,8 @@ Deno.serve(async (req) => {
   const test = req.headers.get('x-armada-test');
   if (test) {
     if (!same(test, Deno.env.get('BOOKING_TEST_TOKEN') ?? '')) return json(403, { ok: false });
+    if (body.action === 'qa-eval') return json(200, { ok: true, done: await evalStep(stubModel(body.stub ?? {}), Date.now() + BUDGET_MS) });
+    if (body.action === 'qa-cards') return json(200, { ok: true, done: await cardJobs(stubModel(body.stub ?? {}), Date.now() + BUDGET_MS) });
     if (body.action !== 'qa-turn' || typeof body.turn !== 'string') return json(400, { ok: false });
     // a test conversation only: the turn must be is_test
     const r = await fetch(`${url()}/rest/v1/hub_turns?select=is_test&id=eq.${encodeURIComponent(body.turn)}`, { headers: { apikey: serviceKey(), Authorization: `Bearer ${serviceKey()}` } });
@@ -251,7 +362,15 @@ Deno.serve(async (req) => {
       if (Date.now() > deadline) break;
       done.push(await process(id, model, deadline).catch(() => 'error'));
     }
-    return json(200, { ok: true, due: (due ?? []).length, done: done.length });
+    // a guest's turn first; then the alerts, the draft cards and the test lab with the time that is left
+    await labAlerts();
+    const cards = await cardJobs(model, deadline).catch(() => 0);
+    const lab = await evalStep(model, deadline).catch(() => 0);
+    return json(200, { ok: true, due: (due ?? []).length, done: done.length, cards, lab });
+  }
+  if (body.action === 'alerts') {
+    await labAlerts();
+    return json(200, { ok: true });
   }
   return json(400, { ok: false, error: 'unknown action' });
 });

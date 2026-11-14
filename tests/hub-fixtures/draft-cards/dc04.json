@@ -1,0 +1,10 @@
+{
+ "id": "dc04",
+ "recorded_at": "2026-11-14T12:18:35.678Z",
+ "ok": true,
+ "error": null,
+ "text": "{\"draft\": {\"title_ar\": \"المصلى في الفندق\", \"title_en\": \"Prayer rooms at the hotel\", \"text_ar\": \"نعم، يتوفر في الفندق مصلى للرجال في الطابق الأرضي بجانب المصعد، ومصلى للنساء في الطابق الأول.\", \"text_en\": \"Yes, the hotel has a men's prayer room on the ground floor next to the elevator and a women's prayer room on the first floor.\", \"topic_keys\": [\"facilities\"], \"unit_keys\": [\"shafa-road\"], \"price_note\": null}}",
+ "input_tokens": 1495,
+ "output_tokens": 198,
+ "cost_usd": 0.00497
+}

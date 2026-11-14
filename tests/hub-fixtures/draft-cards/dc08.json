@@ -1,0 +1,10 @@
+{
+ "id": "dc08",
+ "recorded_at": "2026-11-14T12:18:43.775Z",
+ "ok": true,
+ "error": null,
+ "text": "{\"draft\": {\"title_ar\": \"الشقق الفندقية بغرفتين\", \"title_en\": \"Two-bedroom serviced apartments\", \"text_ar\": \"نعم، لدينا شقق فندقية من غرفتين مع مطبخ كامل.\", \"text_en\": \"Yes, we have two-bedroom serviced apartments with a full kitchen.\", \"topic_keys\": [\"room_types\", \"kitchen\"], \"unit_keys\": [\"airport-road\"], \"price_note\": null}}",
+ "input_tokens": 1472,
+ "output_tokens": 167,
+ "cost_usd": 0.004614
+}

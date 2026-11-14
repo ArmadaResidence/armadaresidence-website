@@ -1668,3 +1668,45 @@ export function hubBudgetMail(c: Content, d: HubBudgetMail): Mail {
   const line = fill(M.line, { spent: usd(d.spent), budget: usd(d.limit), pct: String(Math.round(d.pct)), period_label: M.period_labels[d.budget] });
   return hubPlainMail(c, subject, d.cap ? [line, M.cap_line] : [line], hubAdmin(c, '/assistant'), M.button);
 }
+
+// ══ Guest Hub H6 (14 Nov 2026): a sent reply flagged wrong, a question spike — to the active admins, no guest words ═══
+/** «رد خاطئ أُرسل لضيف» (copy.md §7, the session's wording for Ahmed's review): once per flagged reply */
+export interface HubFlaggedMail {
+  conversation_id: string;
+  unit_name: string;
+  /** the topics' Arabic labels */
+  topics: string[];
+  at: string;
+  test?: boolean;
+}
+export function hubFlaggedMail(c: Content, d: HubFlaggedMail): Mail {
+  const M = c.staff_email.ar.hub_flagged;
+  const D = c.staff_email.ar.deploy_alert;
+  const subject = `${d.test ? D.test_prefix : ''}${fill(M.subject, { unit_name: d.unit_name, yyyymmdd: hubDay(d.at) })}`;
+  const lines = [fill(M.lead, { unit_name: d.unit_name }), fill(M.topics, { topics: d.topics.length ? d.topics.join('، ') : M.no_topic }), M.licence];
+  return hubPlainMail(c, subject, lines, hubAdmin(c, `/inbox?c=${encodeURIComponent(d.conversation_id)}`), M.button);
+}
+
+/** «ارتفاع في سؤال» (copy.md §7, the session's wording): a topic asked more than hub_spike_factor × its daily average */
+export interface HubSpikeMail {
+  topic: string;
+  count: number;
+  avg: number;
+  factor: number;
+  at: string;
+  test?: boolean;
+}
+export function hubSpikeCount(c: Content, n: number): string {
+  const T = c.staff_email.ar.hub_spike.times;
+  const m = n % 100;
+  if (n === 1) return T.one;
+  if (n === 2) return T.two;
+  return fill(m >= 3 && m <= 10 ? T.few : T.many, { n: String(n) });
+}
+export function hubSpikeMail(c: Content, d: HubSpikeMail): Mail {
+  const M = c.staff_email.ar.hub_spike;
+  const D = c.staff_email.ar.deploy_alert;
+  const subject = `${d.test ? D.test_prefix : ''}${fill(M.subject, { topic: d.topic, yyyymmdd: hubDay(d.at) })}`;
+  const line = fill(M.lead, { topic: d.topic, count: hubSpikeCount(c, d.count), factor: String(d.factor), avg: String(Math.round(d.avg * 10) / 10) });
+  return hubPlainMail(c, subject, [line, M.next], hubAdmin(c, '/radar'), M.button);
+}

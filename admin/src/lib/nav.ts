@@ -70,6 +70,8 @@ export const NAV_GROUPS: NavGroup[] = [
       // H4 (14 Nov 2026): the knowledge base and the read-only services price list (both under knowledge)
       { to: '/knowledge', label: 'قاعدة المعرفة', section: 'knowledge', icon: 'knowledge' },
       { to: '/service-prices', label: 'أسعار الخدمات', section: 'knowledge', icon: 'prices', id: 'service-prices' },
+      // H6 (14 Nov 2026): «رادار الأسئلة» (radar: view)
+      { to: '/radar', label: 'رادار الأسئلة', section: 'radar', icon: 'radar' },
       { to: '/assistant', label: 'إعدادات المساعد', section: 'assistant', icon: 'assistant' },
     ],
   },

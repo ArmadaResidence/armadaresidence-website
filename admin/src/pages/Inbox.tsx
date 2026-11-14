@@ -31,6 +31,7 @@ import {
   type Filters, type HubState, type InboxList, type InboxRow, type Msg, type RejectReason, type Tab, type Thread,
 } from '../lib/inbox';
 import { CancelButton, Confirm, DirtyScope, ErrorBox, Field, Loading, Modal, Spinner, useToast } from '../components/ui';
+import { flagWrong, flaggedIn } from '../lib/lab';
 
 type View = 'list' | 'thread' | 'panel';
 
@@ -368,6 +369,31 @@ function ThreadView({ t, now, edit, unitNames, composerRef, onBack, onPanel, onC
   }, [t.messages.length, c.id]);
   const mine = c.owner_kind === 'staff';
   const closed = c.state === 'closed';
+  // H6 (14 Nov 2026): «إبلاغ: رد خاطئ» on an assistant reply that went to the guest — the counters of «التراخيص», an entry
+  // in «لم أعرف الإجابة» and one alert to the admins; never a licence change by itself
+  const [flagged, setFlagged] = useState<string[]>([]);
+  const [flagging, setFlagging] = useState<Msg | null>(null);
+  const [flagNote, setFlagNote] = useState('');
+  const [flagBusy, setFlagBusy] = useState(false);
+  useEffect(() => {
+    flaggedIn(c.id).then(setFlagged).catch(() => setFlagged([]));
+  }, [c.id, t.messages.length]);
+  async function doFlag() {
+    if (!flagging) return;
+    setFlagBusy(true);
+    try {
+      await flagWrong(flagging.id, flagNote.trim() || null);
+      setFlagged((x) => [...x, flagging.id]);
+      setFlagging(null);
+      setFlagNote('');
+      toast('سُجّل أن الرد خاطئ: أُضيف السؤال إلى «لم أعرف الإجابة» ووصل تنبيه لمدير النظام. لم يتغير أي ترخيص.');
+      await onChanged();
+    } catch (e) {
+      toast((e as Error).message, 'error');
+    } finally {
+      setFlagBusy(false);
+    }
+  }
 
   async function openMedia(m: Msg) {
     try {
@@ -487,6 +513,9 @@ function ThreadView({ t, now, edit, unitNames, composerRef, onBack, onPanel, onC
                 {out && <> · <span className={st.tone === 'error' ? 'text-error' : st.tone === 'ok' ? 'text-ok' : ''} data-msg-status>{st.text}</span></>}
               </span>
               {out && m.status === 'failed' && edit && !closed && <button type="button" className="btn btn-ghost btn-sm" onClick={() => void doRetry(m)} data-action="retry">{ACTIONS.retry}</button>}
+              {m.author === 'assistant' && ['queued', 'accepted', 'sent', 'delivered', 'read'].includes(m.status) && (flagged.includes(m.id)
+                ? <span className="text-xs text-ink-muted" data-flagged>أُبلغ أنه رد خاطئ</span>
+                : edit && <button type="button" className="inbox-link" onClick={() => setFlagging(m)} data-action="flag-wrong">إبلاغ: رد خاطئ</button>)}
               {!out && edit && m.author === 'guest' && (m.unanswered
                 ? <span className="text-xs text-ink-muted" data-unanswered>في «لم أعرف الإجابة»</span>
                 : <button type="button" className="inbox-link" onClick={() => onUnanswered(m.id)} data-action="unanswered">{ACTIONS.unanswered}</button>)}
@@ -495,6 +524,20 @@ function ThreadView({ t, now, edit, unitNames, composerRef, onBack, onPanel, onC
         })}
       </div>
       {edit && !closed && <Composer key={c.id} t={t} now={now} composerRef={composerRef} onSent={onChanged} onTemplate={() => onDialog('template')} />}
+      {flagging && <Modal open onClose={() => setFlagging(null)} title="إبلاغ: رد خاطئ" busy={flagBusy} draftKey={`flag:${flagging.id}`}>
+        {(
+          <div className="grid gap-3" data-flag-form>
+            <p className="text-sm text-ink-muted">يُضاف سؤال الضيف إلى «لم أعرف الإجابة» لتصحيح البطاقة، ويصل تنبيه لمدير النظام، ويُحسب في أرقام «التراخيص». لا يتغير أي ترخيص تلقائيًا.</p>
+            <Field label="ما الخطأ؟ (ملاحظة داخلية، اختيارية)" id="flag-note">
+              <textarea id="flag-note" className="field min-h-20" maxLength={500} value={flagNote} onChange={(e) => setFlagNote(e.target.value)} disabled={flagBusy} data-field="flag-note" />
+            </Field>
+            <div className="flex justify-end gap-2">
+              <CancelButton disabled={flagBusy} />
+              <button type="button" className="btn btn-primary" onClick={() => void doFlag()} disabled={flagBusy} data-action="flag-save">{flagBusy && <Spinner />} تسجيل أنه خاطئ</button>
+            </div>
+          </div>
+        )}
+      </Modal>}
       {!edit && <p className="p-3 text-xs text-ink-muted border-t border-line">صلاحيتك هنا للعرض فقط.</p>}
       {closed && edit && <p className="p-3 text-xs text-ink-muted border-t border-line" data-closed-note>المحادثة مغلقة. إن كتب الضيف تبدأ محادثة جديدة.</p>}
     </div>

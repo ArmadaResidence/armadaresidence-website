@@ -141,7 +141,10 @@ select pg_temp._root();
 update public.settings set value = '20' where key = 'hub_budget_daily_usd';
 select pg_temp._as('mgr');
 select pg_temp._fails('G3 only the system admin switches «المساعد يعمل» on', $$select public.hub_setting_set('hub_assistant_on', 'true')$$, 'hub_system_admin_only');
-select pg_temp._fails('G3 … and a unit to «تجربة»', format('select public.hub_unit_mode_set(%L, %L)', pg_temp._unit('airport-road'), 'test'), 'hub_system_admin_only');
+-- H6 (Ahmed's brief, 14 Nov 2026): a unit's mode is assistant: edit's (the gates of each mode still apply)
+select pg_temp._save('g3m', public.hub_unit_mode_set(pg_temp._unit('shafa-road'), 'test'));
+select pg_temp._check('G3 … a unit''s mode is assistant: edit''s since H6 (Shafa Road to «تجربة» and back)', (select assistant_mode = 'test' from public.hub_units where key = 'shafa-road'));
+select pg_temp._save('g3o', public.hub_unit_mode_set(pg_temp._unit('shafa-road'), 'off'));
 select pg_temp._fails('G3 … and a budget', $$select public.hub_setting_set('hub_budget_daily_usd', '30')$$, 'hub_system_admin_only');
 select pg_temp._as('admin');
 select pg_temp._save('g4', public.hub_setting_set('hub_assistant_on', 'true'));
@@ -150,7 +153,7 @@ select pg_temp._root();
 select pg_temp._check('G4 the system admin: «المساعد يعمل» on, Airport Road in «تجربة»', internal.hub_setting_bool('hub_assistant_on')
   and (select assistant_mode = 'test' from public.hub_units where key = 'airport-road'));
 select pg_temp._as('admin');
-select pg_temp._fails('G5 «بموافقة الفريق» refused (the test lab, H6)', format('select public.hub_unit_mode_set(%L, %L)', pg_temp._unit('shafa-road'), 'shadow'), 'hub_not_ready');
+select pg_temp._fails('G5 «بموافقة الفريق» refused without a test-lab run (H6)', format('select public.hub_unit_mode_set(%L, %L)', pg_temp._unit('shafa-road'), 'shadow'), 'hub_not_ready');
 select pg_temp._fails('G5 a hidden unit never', format('select public.hub_unit_mode_set(%L, %L)', pg_temp._unit('rooftop'), 'test'), 'unit_hidden');
 select pg_temp._check('G6 the overview shows the gates of each mode and the budget', (public.hub_assistant_overview() -> 'budget' ->> 'monthly_budget')::numeric = 200
   and exists (select 1 from jsonb_array_elements(public.hub_assistant_overview() -> 'units') u where u ->> 'key' = 'shafa-road' and u -> 'gates_shadow' ? 'test_lab'));
@@ -319,11 +322,80 @@ select pg_temp._check('L1 every unit × topic has a licence: shadow, always_hand
 select pg_temp._as('mgr');
 select pg_temp._fails('L2 a licence is the system admin''s only', format('select public.hub_licence_set(%L, %L, %L)', pg_temp._unit('airport-road'), 'parking', 'auto'), 'hub_system_admin_only');
 select pg_temp._as('admin');
-select pg_temp._fails('L3 an always_handoff topic is never licensed', format('select public.hub_licence_set(%L, %L, %L)', pg_temp._unit('airport-road'), 'complaint', 'auto'), 'hub_licence_always_handoff');
+select pg_temp._fails('L3 an always_handoff topic is never licensed', format('select public.hub_licence_set(%L, %L, %L, %L)', pg_temp._unit('airport-road'), 'complaint', 'auto', 'QA'), 'hub_licence_always_handoff');
+select pg_temp._fails('L3 … and a licence change needs a reason (H6)', format('select public.hub_licence_set(%L, %L, %L)', pg_temp._unit('airport-road'), 'parking', 'auto'), 'hub_reason');
 select pg_temp._save('l4', public.hub_licence_set(pg_temp._unit('airport-road'), 'parking', 'auto', 'QA'));
 select pg_temp._root();
 select pg_temp._check('L4 the system admin sets «رد تلقائي», audited, by a person', (select mode = 'auto' and set_by = pg_temp._id('admin') from public.hub_licences where unit_id = pg_temp._unit('airport-road') and topic_key = 'parking')
   and exists (select 1 from public.audit_log where batch_id = (pg_temp._j('l4') ->> 'batch_id')::uuid and entity = 'hub_licences'));
+
+-- ══ L (H6) — the counters are information only; a sent reply flagged wrong; the shadow gate ══
+select pg_temp._root();
+update public.hub_licences set drafts = drafts + 50, approved_unedited = approved_unedited + 50 where unit_id = pg_temp._unit('airport-road') and topic_key = 'wifi';
+select pg_temp._check('L5 the counters never change a licence', (select mode = 'shadow' from public.hub_licences where unit_id = pg_temp._unit('airport-road') and topic_key = 'wifi'));
+select pg_temp._as('mgr');
+select pg_temp._save('l6', public.hub_licence_rows(pg_temp._unit('airport-road')));
+select pg_temp._check('L6 «التراخيص»: every active topic with its mode, since, by whom and the 30-day counters; not the system admin',
+  jsonb_array_length(pg_temp._j('l6') -> 'rows') = (select count(*) from public.hub_topics where status = 'active' and not is_test)
+  and not (pg_temp._j('l6') ->> 'system_admin')::boolean
+  and exists (select 1 from jsonb_array_elements(pg_temp._j('l6') -> 'rows') r where r ->> 'topic' = 'parking' and r ->> 'mode' = 'auto' and r ->> 'set_by_name' = 'QA hub5 admin' and r ->> 'reason' = 'QA' and r ? 'approved_pct'),
+  left(pg_temp._j('l6')::text, 300));
+select pg_temp._as('recA');
+select pg_temp._fails('L6 … not for the reception (assistant: none)', format('select public.hub_licence_rows(%L)', pg_temp._unit('airport-road')), '42501');
+select pg_temp._root();
+insert into public.hub_messages (conversation_id, channel_id, direction, author, kind, body, payload, idempotency_key, status, sent_at, turn_id)
+select c.id, c.channel_id, 'out', 'assistant', 'text', 'QA reply', '{"topics": ["parking"], "notice": false}', 'qa6:flag:sent', 'sent', now(), pg_temp._id('tQ')
+  from public.hub_conversations c where c.id = pg_temp._id('cQ');
+insert into _ids values ('fsent', (select id from public.hub_messages where idempotency_key = 'qa6:flag:sent'));
+insert into public.hub_messages (conversation_id, channel_id, direction, author, kind, body, payload, idempotency_key, status, sent_at)
+select c.id, c.channel_id, 'out', 'assistant', 'text', 'QA draft', '{"topics": ["parking"]}', 'qa6:flag:draft', 'pending_approval', now() from public.hub_conversations c where c.id = pg_temp._id('cQ');
+insert into _ids values ('fdraft', (select id from public.hub_messages where idempotency_key = 'qa6:flag:draft'));
+select pg_temp._save('l7b', jsonb_build_object('flagged', (select flagged_wrong from public.hub_licences where unit_id = pg_temp._unit('airport-road') and topic_key = 'parking')));
+select pg_temp._as('recS');
+select pg_temp._fails('L7 «إبلاغ: رد خاطئ» only by the unit''s team', format('select public.hub_flag_wrong(%L)', pg_temp._id('fsent')), '42501');
+select pg_temp._as('recA');
+select pg_temp._fails('L7 … only a reply that went to the guest', format('select public.hub_flag_wrong(%L)', pg_temp._id('fdraft')), 'hub_flag_not_sent');
+select pg_temp._save('l7', public.hub_flag_wrong(pg_temp._id('fsent'), 'QA: the fact was wrong'));
+select pg_temp._save('l7x', public.hub_flag_wrong(pg_temp._id('fsent')));
+select pg_temp._root();
+select pg_temp._check('L7 a sent reply flagged wrong: marked, counted, the question in «لم أعرف الإجابة», one alert, an event, the note internal',
+  (pg_temp._j('l7') ->> 'changed')::boolean and not (pg_temp._j('l7x') ->> 'changed')::boolean
+  and (select flagged_wrong_at is not null and flagged_wrong_by = pg_temp._id('recA') from public.hub_messages where id = pg_temp._id('fsent'))
+  and (select flagged_wrong from public.hub_licences where unit_id = pg_temp._unit('airport-road') and topic_key = 'parking') = (pg_temp._j('l7b') ->> 'flagged')::int + 1
+  and exists (select 1 from public.hub_unanswered q join public.hub_turns t on t.first_inbound_id = q.message_id where t.id = pg_temp._id('tQ'))
+  and (select count(*) = 1 from public.hub_alerts where kind = 'flagged_wrong' and payload ->> 'message_id' = pg_temp._id('fsent')::text and payload ? 'topics' and not payload ? 'body')
+  and exists (select 1 from public.hub_conversation_events where conversation_id = pg_temp._id('cQ') and kind = 'flag')
+  and exists (select 1 from public.hub_messages where idempotency_key = 'flag:' || pg_temp._id('fsent') and kind = 'note' and status = 'internal'));
+select pg_temp._check('L7 … the licence itself unchanged', (select mode = 'auto' from public.hub_licences where unit_id = pg_temp._unit('airport-road') and topic_key = 'parking'));
+select pg_temp._as('recA');
+select pg_temp._check('L7 … and the inbox lists it as flagged', pg_temp._id('fsent') = any (public.hub_flagged_in(pg_temp._id('cQ'))));
+select pg_temp._root();
+select pg_temp._check('L8 the shadow gate: no full test-lab run yet → «بموافقة الفريق» names test_lab', internal.hub_unit_gates_mode((select u from public.hub_units u where key = 'shafa-road'), 'shadow') ? 'test_lab');
+insert into public.hub_eval_runs (trigger, units, live_hash, status, verdict, finished_at, items_total) values ('baseline', '{shafa-road}', 'qa6', 'done', 'pass', now() - interval '1 hour', 2);
+insert into _ids values ('run6', (select id from public.hub_eval_runs where live_hash = 'qa6'));
+insert into public.hub_eval_results (run_id, item_id, config, status, finished_at)
+select pg_temp._id('run6'), i.id, 'live', 'pass', now() - interval '1 hour' from public.hub_test_items i where i.key in ('q085', 'q086');
+select pg_temp._check('L8 … a full run with every Shafa Road question passing → ready', internal.hub_test_lab_ready((select u from public.hub_units u where key = 'shafa-road')));
+update public.hub_eval_results set status = 'fail' where run_id = pg_temp._id('run6') and item_id = (select id from public.hub_test_items where key = 'q086');
+select pg_temp._check('L8 … one failing question that is not a known gap → not ready, and the overview names it',
+  not internal.hub_test_lab_ready((select u from public.hub_units u where key = 'shafa-road'))
+  and internal.hub_unit_lab((select u from public.hub_units u where key = 'shafa-road')) -> 'blocking' ? 'q086');
+select pg_temp._as('admin');
+select pg_temp._save('l8g', public.hub_test_item_gap((select id from public.hub_test_items where key = 'q086'), true, 'QA known gap'));
+select pg_temp._root();
+select pg_temp._check('L8 … marked «فجوة معروفة» → ready again', internal.hub_test_lab_ready((select u from public.hub_units u where key = 'shafa-road')));
+select pg_temp._as('mgr');
+select pg_temp._save('l9', public.hub_unit_mode_set(pg_temp._unit('shafa-road'), 'shadow'));
+select pg_temp._root();
+select pg_temp._check('L9 «بموافقة الفريق» with assistant: edit once the gate holds (Ahmed''s H6 brief)', (select assistant_mode = 'shadow' from public.hub_units where key = 'shafa-road'));
+select pg_temp._as('mgr');
+select pg_temp._save('l9b', public.hub_unit_mode_set(pg_temp._unit('shafa-road'), 'licensed'));
+select pg_temp._root();
+select pg_temp._check('L9 … and «يرد تلقائيًا» the same', (select assistant_mode = 'licensed' from public.hub_units where key = 'shafa-road'));
+select pg_temp._as('mgr');
+select pg_temp._save('l9c', public.hub_unit_mode_set(pg_temp._unit('shafa-road'), 'off'));
+select pg_temp._as('recA');
+select pg_temp._fails('L9 … never the reception', format('select public.hub_unit_mode_set(%L, %L)', pg_temp._unit('shafa-road'), 'shadow'), '42501');
 
 -- ══ P — pause and release ══
 select pg_temp._as('recA');

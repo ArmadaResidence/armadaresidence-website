@@ -131,7 +131,8 @@ for (const [role, perms] of ROLES) {
         const cors = { 'access-control-allow-origin': '*', 'access-control-expose-headers': 'content-range' };
         if (r.request().method() === 'OPTIONS') return r.fulfill({ status: 204, headers: { ...cors, 'access-control-allow-headers': '*', 'access-control-allow-methods': '*' } });
         const ok = (body) => r.fulfill({ status: 200, contentType: 'application/json', headers: cors, body: JSON.stringify(body) });
-        const fn = (u.match(/\/rest\/v1\/rpc\/([a-z_]+)/) ?? [])[1];
+        // H6: the test lab's gate goes through hub-admin (/functions/v1/)
+        const fn = (u.match(/\/rest\/v1\/rpc\/([a-z_]+)/) ?? u.match(/\/functions\/v1\/([a-z-]+)/) ?? [])[1];
         let body = null;
         try { body = r.request().postDataJSON(); } catch { /* none */ }
         if (fn) calls.push({ fn, body });
@@ -146,11 +147,16 @@ for (const [role, perms] of ROLES) {
         if (fn === 'hub_card_archive' || fn === 'hub_card_restore') return ok({ ok: true, batch_id: id(901), changed: true });
         if (fn === 'hub_unanswered_resolve') return ok({ ok: true, batch_id: id(902), count: 3, card_id: id(99), faq_id: body?.p?.faq ? id(98) : null });
         if (fn === 'hub_unanswered_topic_set') return ok({ ok: true, batch_id: id(903) });
+        // H6: «نشر» checks first (p_dry_run: the problems, then the test lab's gate); the publish names the run that passed
         if (fn === 'hub_knowledge_publish') {
+          if (!body?.p_dry_run) return ok(body?.p_eval_run === id(950) ? { ok: true, count: 1, batch_id: id(904), gate: { ok: true, gate: 'eval' } } : { ok: false, reason: 'gate', gate: { gate: 'eval_required' } });
           const blockedNow = publishBlocked;
           publishBlocked = false;
-          return ok(blockedNow ? { ok: false, reason: 'blocked', blocked: [{ id: id(2), key: 'k-qa-draft', title_ar: 'مسودة فحص', missing: [{ part: 'meta', code: 'source_required' }] }] } : { ok: true, count: 1, batch_id: id(904) });
+          return ok(blockedNow ? { ok: false, reason: 'blocked', blocked: [{ id: id(2), key: 'k-qa-draft', title_ar: 'مسودة فحص', missing: [{ part: 'meta', code: 'source_required' }] }] } : { ok: false, reason: 'gate', gate: { gate: 'eval_required' }, count: 1 });
         }
+        if (fn === 'hub-admin' && body?.action === 'eval_plan') return ok({ ok: true, kind: 'knowledge', units: ['airport-road', 'shafa-road'], items: 3, live_items: 0, candidate_items: 3, cards: 1, est_cost_usd: 0.0228, nothing: false, would_pass_cap: false, busy: false });
+        if (fn === 'hub-admin' && body?.action === 'eval_run') return ok({ ok: true, run_id: id(950) });
+        if (fn === 'hub_eval_run') return ok({ run: { id: id(950), trigger: 'knowledge', units: ['airport-road'], status: 'done', verdict: 'pass', items_total: 3, items_done: 3, passed: 3, failed: 0, errors: 0, est_cost_usd: 0.0228, cost_usd: 0.019, blocked: [], known_gaps: [], stop_reason: null, candidate_cards: [], persona_unit: null }, results: [] });
         if (/\/auth\/v1\/user/.test(u)) return ok(USER);
         if (fn) return ok(null);
         return ok([]);
@@ -216,8 +222,15 @@ for (const [role, perms] of ROLES) {
         await page.locator('dialog[open] [data-action="dialog-cancel"]').click();
         await page.waitForTimeout(300);
         await page.locator('[data-action="kn-publish"]').click();
-        await page.waitForTimeout(400);
-        check(calls.filter((c) => c.fn === 'hub_knowledge_publish').length === 2, `${tag}: «نشر» → hub_knowledge_publish`);
+        // H6: the test lab first — the cost, then the run, then the publish with its id
+        await page.locator('[data-eval-cost]').waitFor({ timeout: 8000 }).catch(() => {});
+        await page.screenshot({ path: join(SHOTS, `kn-gate-${tag.replace(/ /g, '-')}.png`) });
+        check((await page.locator('[data-eval-cost]').innerText()).includes('0.02 دولار'), `${tag}: the gate shows the estimated cost before the run — ${(await page.locator('[data-eval-gate]').innerText()).slice(150, 600)}`);
+        await page.locator('[data-action="eval-start"]').click();
+        await page.waitForFunction(() => !document.querySelector('[data-eval-gate]'), null, { timeout: 8000 }).catch(() => {});
+        const pubs = calls.filter((c) => c.fn === 'hub_knowledge_publish');
+        check(pubs.length === 3 && pubs[2].body.p_dry_run === false && pubs[2].body.p_eval_run === id(950), `${tag}: «نشر» → the check, the gate run, then hub_knowledge_publish with the run — ${JSON.stringify(pubs.map((c) => c.body))}`);
+        check(calls.some((c) => c.fn === 'hub-admin' && c.body?.action === 'eval_run' && c.body?.kind === 'knowledge'), `${tag}: the gate run is a knowledge run`);
         await page.locator('[data-card="k-qa-1"] [data-action="card-archive"]').click();
         await page.locator('[data-toast="undo"]').waitFor({ timeout: 5000 });
         check(calls.some((c) => c.fn === 'hub_card_archive' && c.body.p_id === id(1)), `${tag}: «أرشفة» → hub_card_archive`);

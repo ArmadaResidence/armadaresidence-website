@@ -34,6 +34,7 @@ import Assistant from './pages/Assistant';
 import Inbox from './pages/Inbox';
 import Knowledge from './pages/Knowledge';
 import ServicePrices from './pages/ServicePrices';
+import Radar from './pages/Radar';
 import Content from './pages/Content';
 import Settings from './pages/Settings';
 import Users from './pages/Users';
@@ -59,6 +60,7 @@ const SCREENS: { path: string; section: string }[] = [
   { path: 'eyab-whatsapp', section: 'eyab_wa' },
   { path: 'inbox', section: 'inbox' },
   { path: 'assistant', section: 'assistant' },
+  { path: 'radar', section: 'radar' },
   { path: 'settings', section: 'settings' },
   { path: 'users', section: 'users' },
   { path: 'audit', section: 'audit' },
@@ -191,6 +193,7 @@ export default function App() {
                     <Route path="knowledge" element={<Allowed section="knowledge"><Knowledge /></Allowed>} />
                     <Route path="service-prices" element={<Allowed section="knowledge"><ServicePrices /></Allowed>} />
                     <Route path="assistant" element={<Allowed section="assistant"><Assistant /></Allowed>} />
+                    <Route path="radar" element={<Allowed section="radar"><Radar /></Allowed>} />
                     <Route path="settings" element={<Allowed section="settings"><Settings /></Allowed>} />
                     <Route path="users" element={<Allowed section="users"><Users /></Allowed>} />
                     <Route path="audit" element={<Allowed section="audit"><Audit /></Allowed>} />

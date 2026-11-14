@@ -953,3 +953,23 @@ body {
 .kn-bubble { white-space: pre-line; overflow-wrap: anywhere; max-width: 36rem; padding: 0.6rem 0.8rem; border-radius: 0.9rem; border: 1px solid var(--line); background: var(--soft); font-size: 0.875rem; line-height: 1.6; }
 .kn-prices th { text-align: start; font-weight: 600; }
 .kn-prices td, .kn-prices th { padding: 0.55rem 0.5rem; border-bottom: 1px solid var(--line); vertical-align: top; }
+
+/* Guest Hub H6 (14 Nov 2026): a draft card from a staff reply under its question; «المحاكي» — a phone-shaped chat */
+.kn-draft { border: 1px dashed var(--color-bronze); background: var(--soft); }
+.kn-price-note { padding: 0.5rem 0.7rem; border-radius: 0.6rem; border: 1px solid var(--line); background: var(--soft); }
+.sim-phone { display: grid; grid-template-rows: auto 1fr auto; width: 100%; max-width: 22rem; min-height: 32rem; max-height: 70vh; border: 1px solid var(--line); border-radius: 1.6rem; overflow: hidden; background: var(--card, #fff); justify-self: center; }
+:root[data-theme="dark"] .sim-phone { background: #0f2230; }
+.sim-phone-top { padding: 0.75rem 1rem; font-weight: 600; border-bottom: 1px solid var(--line); background: var(--soft); }
+.sim-phone-body { display: grid; align-content: start; gap: 0.5rem; padding: 0.75rem; overflow-y: auto; }
+.sim-phone-input { display: flex; gap: 0.4rem; padding: 0.6rem; border-top: 1px solid var(--line); }
+.sim-phone-input .field { min-width: 0; flex: 1; }
+.sim-bubble { max-width: 85%; padding: 0.5rem 0.7rem; border-radius: 0.9rem; font-size: 0.875rem; line-height: 1.6; white-space: pre-line; overflow-wrap: anywhere; border: 1px solid var(--line); }
+.sim-guest { justify-self: end; background: var(--soft); }
+.sim-us { justify-self: start; background: #e8f3ec; color: #12321f; }
+.sim-us.is-on { outline: 2px solid var(--color-bronze); outline-offset: 1px; }
+:root[data-theme="dark"] .sim-us { background: #173a2a; color: #e3f3e8; }
+.sim-note { justify-self: start; font-size: 0.75rem; color: var(--ink-muted, #6b6b6b); background: transparent; }
+.sim-error { justify-self: start; color: #9b1c1c; background: #fdecec; }
+:root[data-theme="dark"] .sim-error { color: #ffd0d0; background: rgb(155 28 28 / 0.3); }
+.sim-buttons { display: flex; flex-wrap: wrap; gap: 0.3rem; margin-top: 0.4rem; }
+.sim-btn { padding: 0.15rem 0.5rem; border-radius: 999px; border: 1px solid currentColor; font-size: 0.75rem; }

@@ -43,6 +43,8 @@ export interface OutMsg {
   source_card_ids: string[];
   notice?: boolean;
   licensed?: boolean;
+  /** H6: the ids the composed reply cited (cards, faq:<key>) — read by the test lab's grading, not stored */
+  used?: string[];
 }
 export interface Finish {
   status: 'done' | 'failed' | 'skipped';
@@ -256,7 +258,7 @@ export async function runTurn(claim: Json, deps: Deps): Promise<Outcome> {
           if (composed === 'credit') return null;
           if (composed === 'guard') return decide({ state: dec.next, event: { type: 'guard_failed' }, draft, ctx });
           if (composed === 'error' || !composed.reply) return decide({ state: dec.next, event: { type: 'answer_result', ok: false }, draft, ctx });
-          push(composed.reply, { source_card_ids: cardIds(payload, composed.used_card_ids) });
+          push(composed.reply, { source_card_ids: cardIds(payload, composed.used_card_ids), used: composed.used_card_ids });
           lastAction = 'أُجيب عن سؤال';
           if (composed.unanswered.length) {
             // the answer goes; the part it could not answer goes to the team and into «لم أعرف الإجابة»

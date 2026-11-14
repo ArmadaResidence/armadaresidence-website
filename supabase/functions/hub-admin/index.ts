@@ -34,6 +34,15 @@
 //   - suggest { conversation } — «اقتراحات»: three replies from the knowledge (prompts.md §3, Sonnet), each passed through
 //     the guard; counted in the budget. A suggestion staff send goes through `send` with suggestion: true — the guard
 //     runs on it again before it leaves.
+// The test lab and the simulator (session H6, 14 Nov 2026 — spec §4.8, §4.9), AS THE USER:
+//   - eval_plan { kind: manual | baseline | knowledge | persona, unit? } — what a run would do and cost (public.hub_eval_plan
+//     with the engine's version, so a gate reuses the live side judged on the same engine);
+//   - eval_run { kind, unit? } — public.hub_eval_start (refused past the budget cap, one run at a time); hub-agent runs the
+//     items (the sweep, kicked by the database);
+//   - simulate { unit, text, sim, drafts, persona? } — «المحاكي»: ONE guest turn of a phone-shaped chat through the real
+//     engine in test mode (public.hub_sim_context — assistant: edit in the unit's branch): nothing stored but the model
+//     usage (source simulator), nothing sent, no booking; the pending cards read as published when `drafts`; an unsaved
+//     persona applies. Answers the replies, the understanding, the decision, the sources, the guard's verdict and the cost.
 // Otherwise it never creates, edits or deletes anything in YCloud.
 import content from '../booking-request/content.generated.json' with { type: 'json' };
 import { sendSession, sendTemplate, textPayload, type WaResult } from '../booking-request/whatsapp-send.ts';
@@ -44,6 +53,12 @@ import { composeUser, parseSuggestions, suggestSystem, translateSystem } from '.
 import { buildPayload, guardPayload, type Payload } from '../_shared/hub/sources/index.ts';
 import { guard, type GuardResult } from '../_shared/hub/guard.ts';
 import { cors, preflight } from '../_shared/cors.ts';
+import { claimOf, engineVersion, nextState, type SimState } from '../_shared/hub/eval.ts';
+import { runTurn, type Deps } from '../_shared/hub/engine.ts';
+import { costOf, type ModelFn } from '../_shared/hub/model.ts';
+import { dashboardAdapter } from '../_shared/hub/adapter/index.ts';
+import { longDate } from '../booking-request/email.ts';
+import { sarText } from '../booking-request/rules.ts';
 import {
   channelFacts, eventsKept, eventsOf, eventsPatchBody, isOurEndpoint, mergeEvents, pageOf, phoneNumbersUrl, pickPhone, templateRows, templatesUrl, webhookEndpointUrl,
   type PhoneItem, type TemplateItem,
@@ -237,6 +252,28 @@ async function assistContext(conv: string, jwt: string): Promise<{ ok: true; dat
 }
 const guardOf = (text: string, p: Payload, L: 'ar' | 'en', forbidden: string[]): GuardResult => guard(text, guardPayload(p), { language: L, max_chars: 4096, forbidden });
 
+/** «المحاكي»: the run's state as the page holds it (bounded) */
+function simState(x: unknown): SimState {
+  const o = (x && typeof x === 'object' ? x : {}) as Record<string, any>;
+  const states = ['new', 'inquiry', 'collecting', 'quoted', 'awaiting_confirmation', 'booked', 'human', 'closed'];
+  return {
+    state: states.includes(o.state) ? o.state : 'new',
+    first_reply: o.first_reply !== false,
+    history: (Array.isArray(o.history) ? o.history : []).slice(-12).filter((h: any) => h && (h.author === 'guest' || h.author === 'us') && typeof h.body === 'string')
+      .map((h: any) => ({ author: h.author, body: String(h.body).slice(0, 1500) })),
+    draft: o.draft && typeof o.draft === 'object' && typeof o.draft.kind === 'string' ? { id: 'sim-draft', kind: o.draft.kind, version: Number(o.draft.version ?? 1), fields: o.draft.fields ?? {}, quote: o.draft.quote ?? null } : null,
+    failed_understandings: Math.max(0, Math.min(10, Number(o.failed_understandings ?? 0) || 0)),
+    out_of_scope: Math.max(0, Math.min(10, Number(o.out_of_scope ?? 0) || 0)),
+  };
+}
+/** an unsaved persona (only its known fields) */
+function personaOf(p: Record<string, unknown>): Record<string, unknown> {
+  const t = Number(p.tone);
+  const g = (k: string) => (typeof p[k] === 'string' ? String(p[k]).slice(0, 160) : '');
+  return { tone: t >= 1 && t <= 5 ? Math.round(t) : 2, emoji: p.emoji === true,
+    greeting_new_ar: g('greeting_new_ar'), greeting_new_en: g('greeting_new_en'), greeting_returning_ar: g('greeting_returning_ar'), greeting_returning_en: g('greeting_returning_en') };
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return preflight(req);
   if (req.method !== 'POST') return json(req, 405, { ok: false, error: 'method not allowed' });
@@ -316,6 +353,86 @@ Deno.serve(async (req) => {
     }
     const L = ctx.data.language === 'en' ? 'en' : 'ar';
     return json(req, 200, { ok: true, suggestions: list.map((text) => ({ text, ...guardOf(text, ctx.payload, L, ctx.forbidden) })) });
+  }
+
+  // ── the test lab and the simulator (H6): the user's own rights decide ──
+  if (body.action === 'eval_plan' || body.action === 'eval_run') {
+    const kind = String(body.kind ?? '');
+    const unit = typeof body.unit === 'string' && /^[a-z0-9-]{2,40}$/.test(body.unit) ? body.unit : null;
+    if (!['manual', 'baseline', 'knowledge', 'persona'].includes(kind)) return json(req, 400, { ok: false, error: 'invalid body' });
+    const r = await rpc<Record<string, unknown>>(body.action === 'eval_plan' ? 'hub_eval_plan' : 'hub_eval_start', { p_kind: kind, p_unit: unit, p_engine: await engineVersion() }, jwt);
+    if (!r.ok) return refused(req, r);
+    return json(req, 200, { ok: true, ...r.data });
+  }
+  if (body.action === 'simulate') {
+    const unit = typeof body.unit === 'string' && /^[a-z0-9-]{2,40}$/.test(body.unit) ? body.unit : '';
+    const text = typeof body.text === 'string' ? body.text.trim().slice(0, 1000) : '';
+    if (!unit || !text) return json(req, 400, { ok: false, error: 'invalid body' });
+    const ctx = await rpc<Record<string, any>>('hub_sim_context', { p_unit: unit, p_drafts: body.drafts === true }, jwt);
+    if (!ctx.ok) return refused(req, ctx);
+    const c = ctx.data;
+    if (c.budget?.capped || c.budget?.unset) return json(req, 200, { ok: false, error: 'hub_budget_cap' });
+    const sim = simState(body.sim);
+    const persona = body.persona && typeof body.persona === 'object' ? personaOf(body.persona as Record<string, unknown>) : null;
+    const language = body.language === 'en' ? 'en' : 'ar';
+    const cards = Array.isArray(c.draft_cards) ? (c.draft_cards as string[]) : [];
+    const read: { cards: any[]; faq: any[] }[] = [];
+    const live = anthropicModel(Deno.env.get('ANTHROPIC_API_KEY') ?? '');
+    const calls: { layer: string; model: string; input_tokens: number; output_tokens: number }[] = [];
+    const model: ModelFn = async (call) => {
+      const r = await live(call);
+      calls.push({ layer: call.layer, model: call.model, input_tokens: r.input_tokens, output_tokens: r.output_tokens });
+      return r;
+    };
+    const deps: Deps = {
+      model,
+      knowledge: async (u, t, L, b) => {
+        const k = await rpc<any>(cards.length ? 'hub_knowledge_for_eval' : 'hub_knowledge_for',
+          cards.length ? { p_unit: u, p_topics: t, p_language: L, p_branch: b, p_cards: cards } : { p_unit: u, p_topics: t, p_language: L, p_branch: b }, null);
+        const v = k.ok ? k.data : { cards: [], faq: [] };
+        read.push({ cards: v?.cards ?? [], faq: v?.faq ?? [] });
+        return v;
+      },
+      offers: async () => {
+        const res = await fetch(`${url()}/rest/v1/offers?select=live&live=not.is.null&archived_at=is.null&is_test=eq.false`, { headers: { apikey: serviceKey(), Authorization: `Bearer ${serviceKey()}` } });
+        return res.ok ? await res.json() : [];
+      },
+      adapter: dashboardAdapter((fn: string, args: Record<string, unknown>) => rpc<unknown>(fn, args, null).then((x) => { if (!x.ok) throw new Error(x.error); return x.data; })),
+      content,
+      longDate: (iso, L) => longDate(content, iso, L),
+      sarText: (n, L) => sarText(n, L),
+    };
+    let out;
+    try {
+      out = await runTurn(claimOf(c, { key: 'sim', language, context: {} }, text, sim, persona, sim.history.length), deps);
+    } catch (e) {
+      console.error('hub-admin: simulate failed', String((e as Error)?.message ?? e).slice(0, 100));
+      return json(req, 200, { ok: false, error: 'hub_engine' });
+    }
+    let cost = 0;
+    for (const m of calls) {
+      if (m.input_tokens + m.output_tokens <= 0) continue;
+      const layer = m.layer === 'tag' ? 'tag' : m.layer === 'compose' ? 'compose' : 'understand';
+      const u = await rpc<{ cost_usd: number }>('hub_sim_usage', { p_unit: c.unit.id, p_layer: layer, p_model: m.model, p_in: m.input_tokens, p_out: m.output_tokens }, null);
+      cost += u.ok ? Number(u.data?.cost_usd ?? 0) : costOf(c.settings?.prices, m.model, m.input_tokens, m.output_tokens);
+    }
+    const f = out.finish;
+    const allCards = read.flatMap((r) => r.cards);
+    return json(req, 200, {
+      ok: true,
+      replies: f.messages.map((m) => ({ body: m.body, notice: !!m.notice, kind: m.kind, buttons: Array.isArray((m.payload as any)?.buttons) ? (m.payload as any).buttons.map((b: any) => String(b.title ?? b.text ?? '')) : [] })),
+      understanding: f.understanding ?? null,
+      decision: { from: sim.state, to: f.state ?? sim.state, actions: f.decision?.actions ?? [], transitions: f.decision?.transitions ?? [], reason: f.reason ?? null },
+      sources: {
+        cards: [...new Set(f.messages.flatMap((m) => m.source_card_ids ?? []))].map((id) => allCards.find((x) => x.id === id)).filter(Boolean).map((x: any) => ({ key: x.key, title: x.title })),
+        read: allCards.map((x: any) => ({ key: x.key, title: x.title })), faq: read.flatMap((r) => r.faq.map((x: any) => ({ key: x.key, q: x.q }))),
+      },
+      guard: { ok: (f.guard_refusals ?? []).length < 2, refusals: f.guard_refusals ?? [] },
+      note: f.note ?? null,
+      cost_usd: Math.round(cost * 1e6) / 1e6,
+      credit: out.credit,
+      sim: nextState(sim, text, f),
+    });
   }
 
   // ── «إعدادات المساعد»: assistant: edit on every branch ──

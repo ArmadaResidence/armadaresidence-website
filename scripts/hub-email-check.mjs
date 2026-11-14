@@ -17,7 +17,7 @@
 import { readFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { existsSync } from 'node:fs';
-import { hubApiCreditMail, hubBudgetMail, hubComplaintMail, hubDuration, hubExpiryLines, hubExpiryMail, hubQualityMail, hubQualityRating, hubWaitingMail } from '../supabase/functions/booking-request/email.ts';
+import { hubApiCreditMail, hubBudgetMail, hubComplaintMail, hubFlaggedMail, hubSpikeMail, hubSpikeCount, hubDuration, hubExpiryLines, hubExpiryMail, hubQualityMail, hubQualityRating, hubWaitingMail } from '../supabase/functions/booking-request/email.ts';
 
 const read = (p) => readFileSync(new URL(`../${p}`, import.meta.url), 'utf8').replace(/\r\n/g, '\n');
 const GEN = new URL('../supabase/functions/booking-request/content.generated.json', import.meta.url);
@@ -122,6 +122,26 @@ check(/cron\.schedule\('hub-inbox', '\*\/2 \* \* \* \*'/.test(MIG), 'one pg_cron
   check(/select u\.email from public\.staff s join auth\.users u on u\.id = s\.user_id where s\.active and s\.role = 'admin'/.test(MIG5), 'the alerts go to the active admins');
   check(/insert into public\.hub_alerts \(kind, payload\) values \('api_credit'/.test(MIG5) && /on conflict do nothing returning id into v_id;/.test(MIG5), 'one api_credit alert while it lasts (the one-open index)');
   check(/'complaint', u\.id, jsonb_build_object\('item', c\.id::text\)/.test(MIG5), 'one complaint email per conversation (the alert keyed by the conversation)');
+}
+// ── H6 (14 Nov 2026): a sent reply flagged wrong, a question spike (copy.md §7, the session's wording) ──
+{
+  const COPY = read('docs/guest-hub/copy.md');
+  const fl = hubFlaggedMail(C, { conversation_id: '00000000-0000-4000-8000-000000000124', unit_name: 'فرع طريق المطار', topics: ['المواقف'], at: '2026-11-14T06:00:00Z' });
+  check(fl.subject === 'رد خاطئ أُرسل لضيف — فرع طريق المطار — AR-HUB-20261114', `the flagged-reply subject with AR-HUB- — ${fl.subject}`);
+  check(fl.text.includes('أبلغ أحد الموظفين أن ردًا أرسله المساعد لضيف في فرع طريق المطار كان خاطئًا.') && fl.text.includes('الموضوع: المواقف') && fl.text.includes('لم يتغيّر أي ترخيص')
+    && fl.text.includes('/inbox?c=00000000-0000-4000-8000-000000000124'), 'the flagged-reply body: who flagged (no name), the topic, no licence changed, the conversation');
+  const sp = hubSpikeMail(C, { topic: 'المواقف', count: 6, avg: 0.07, factor: 3, at: '2026-11-14T06:00:00Z' });
+  check(sp.subject === 'ارتفاع في سؤال — المواقف — AR-HUB-20261114' && sp.text.includes('سُئل عن «المواقف» 6 مرات خلال آخر 24 ساعة') && sp.text.includes('/radar'), `the spike email: subject, the counted noun, the radar — ${sp.subject}`);
+  check(hubSpikeCount(C, 1) === 'مرة واحدة' && hubSpikeCount(C, 2) === 'مرتين' && hubSpikeCount(C, 11) === '11 مرة' && hubSpikeCount(C, 103) === '103 مرات', 'the spike count in Arabic (1, 2, 3–10, 11+)');
+  for (const k of ['hub_flagged', 'hub_spike']) {
+    const M = C.staff_email.ar[k];
+    check(COPY.includes(`«${M.subject}»`) && COPY.includes(`«${M.lead}»`), `${k}: ui.json = copy.md §7`);
+  }
+  for (const [name, m] of [['flagged', fl], ['spike', sp]]) {
+    check(/<html/.test(m.html) && /@media print|@page/.test(m.html) && !/\+?9665\d{8}|[٠-٩]/.test(m.text), `${name}: the shared layout, no phone, Western digits`);
+  }
+  const AG = read('supabase/functions/hub-agent/index.ts');
+  check(/rpc\('hub_alerts_claim', \{ p_kinds: \['flagged_wrong', 'spike'\] \}\)/.test(AG), 'the agent claims the flagged-reply and spike alerts once each');
 }
 
 if (fails.length) {

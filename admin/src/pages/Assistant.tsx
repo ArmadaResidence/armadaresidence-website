@@ -16,10 +16,16 @@
 //   - «الميزانية» (H5, 14 Nov 2026): the daily and monthly budget (USD) and the alert percentage — the system admin edits
 //     them —, spent today and this month by unit and by layer, the model prices with the date they were read, and the
 //     Claude API credit state; the gates of each mode («تجربة» first; «بموافقة الفريق» waits for the test lab of H6).
+// H6 (14 Nov 2026): the page is in tabs (?tab=) — «الإعدادات» (all of the above), «الشخصية», «التراخيص», «مختبر الاختبار»
+// and «المحاكي» (pages/AssistantLab.tsx). «بموافقة الفريق» and «يرد تلقائيًا» may now be chosen with assistant: edit once
+// the unit's latest full test-lab run has no failing question but a known gap (the server checks it).
 // Every change is one audited batch with the 30 s «تراجع» toast (the YCloud reads mirror YCloud and are not undone).
 // assistant: view sees everything read-only; edit changes it; the channels, templates, switches and recipients need
 // every branch (a single-branch editor sees its branch's units only).
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
+import { LabPanel, LicencesPanel, PersonaPanel, SimulatorPanel } from './AssistantLab';
+import type { Persona } from '../lib/hub';
 import * as api from '../lib/api';
 import { BRANCH_NAMES, ROLE_LABELS, riyadhDateTime, west } from '../lib/format';
 import {
@@ -31,6 +37,14 @@ import {
 import { CancelButton, DirtyScope, ErrorBox, Field, Loading, Modal, Spinner, useToast } from '../components/ui';
 
 type Row = { id?: string; email: string; active: boolean; filter_confirmed: boolean };
+type Tab = 'settings' | 'persona' | 'licences' | 'lab' | 'sim';
+const TABS: { key: Tab; label: string }[] = [
+  { key: 'settings', label: 'الإعدادات' },
+  { key: 'persona', label: 'الشخصية' },
+  { key: 'licences', label: 'التراخيص' },
+  { key: 'lab', label: 'مختبر الاختبار' },
+  { key: 'sim', label: 'المحاكي' },
+];
 
 export default function Assistant() {
   const toast = useToast();
@@ -43,6 +57,17 @@ export default function Assistant() {
   const [formBusy, setFormBusy] = useState(false);
   const [hook, setHook] = useState<WebhookStatus | null>(null);
   const readOnce = useRef(false);
+  const [params, setParams] = useSearchParams();
+  const tab = (TABS.some((t) => t.key === params.get('tab')) ? params.get('tab') : 'settings') as Tab;
+  const setTab = (t: Tab) => {
+    const p = new URLSearchParams(params);
+    if (t === 'settings') p.delete('tab');
+    else p.set('tab', t);
+    setParams(p, { replace: true });
+  };
+  // the persona being edited in «الشخصية», for «المحاكي» (an unsaved persona may be tried there)
+  const [editingPersona, setEditingPersona] = useState<Record<string, Persona>>({});
+  const onEditing = useCallback((unit: string, p: Persona) => setEditingPersona((x) => (x[unit] === p ? x : { ...x, [unit]: p })), []);
 
   const load = async () => {
     try {
@@ -78,10 +103,9 @@ export default function Assistant() {
 
   async function setMode(u: HubUnit, mode: UnitMode) {
     if (mode === u.mode) return;
-    // the gates of that mode: «تجربة» first; «بموافقة الفريق» / «يرد تلقائيًا» also wait for the test lab (H6); and only
-    // the system admin switches a unit on (14 Nov 2026)
-    const need: string[] = mode === 'test' ? u.gates : (u.gates_shadow ?? u.gates);
-    const gates = mode !== 'off' && !o?.system_admin && need.length === 0 ? ['system_admin'] : need;
+    // the gates of that mode: «تجربة» first; «بموافقة الفريق» / «يرد تلقائيًا» also need the test lab (H6). Any user with
+    // assistant: edit chooses the mode (Ahmed's H6 brief, 14 Nov 2026)
+    const gates: string[] = mode === 'test' ? u.gates : (u.gates_shadow ?? u.gates);
     if (mode !== 'off' && gates.length) {
       setBlocked({ title: `لا يُشغَّل المساعد في ${u.name_ar} الآن`, gates });
       return;
@@ -191,7 +215,7 @@ export default function Assistant() {
   const unitName = (key: string | null) => o.units.find((u) => u.key === key)?.name_ar ?? key ?? 'كل الوحدات';
 
   return (
-    <div className="grid gap-5 max-w-5xl" data-page="assistant">
+    <div className="grid gap-5 max-w-5xl min-w-0 [&>*]:min-w-0" data-page="assistant">
       <div>
         <h1 className="text-2xl font-bold">إعدادات المساعد</h1>
         <p className="text-sm text-ink-muted mt-1">
@@ -203,6 +227,18 @@ export default function Assistant() {
         )}
       </div>
       <ErrorBox error={error} />
+      <div className="inbox-tabs" role="tablist" aria-label="أقسام إعدادات المساعد" data-tour="hub-tabs">
+        {TABS.map((t) => (
+          <button key={t.key} type="button" role="tab" aria-selected={tab === t.key} className={`inbox-tab ${tab === t.key ? 'is-on' : ''}`} onClick={() => setTab(t.key)} data-tab={t.key}>
+            {t.label}
+          </button>
+        ))}
+      </div>
+      {tab === 'persona' && <PersonaPanel o={o} edit={edit} onChanged={load} onEditing={onEditing} />}
+      {tab === 'licences' && <LicencesPanel o={o} />}
+      {tab === 'lab' && <LabPanel o={o} edit={edit} onChanged={load} />}
+      {tab === 'sim' && (edit ? <SimulatorPanel o={o} editingPersona={editingPersona} /> : <p className="card p-4 text-sm text-ink-muted" data-sim-view-only>المحاكي لمن يملك صلاحية التعديل في «إعدادات المساعد».</p>)}
+      {tab === 'settings' && (<>
 
       {/* ── المفاتيح العامة ── */}
       <section className="card p-4" aria-labelledby="hub-switches-h" data-tour="hub-switches" data-hub-switches>
@@ -383,10 +419,19 @@ export default function Assistant() {
                 <p className="text-xs text-ink-muted" data-unit-gates>قبل «تجربة» ينقص: {u.gates.map(gateText).join('، ')}.</p>
               )}
               {u.status === 'active' && u.gates.length === 0 && (
-                <p className="text-xs text-ink-muted" data-unit-gates-ok>«تجربة» جاهزة ويشغّلها مدير النظام: في «تجربة» لا يصل شيء للضيف، وتظهر ردود المساعد في «المحادثات» موسومة «تجربة».</p>
+                <p className="text-xs text-ink-muted" data-unit-gates-ok>«تجربة» جاهزة: في «تجربة» لا يصل شيء للضيف، وتظهر ردود المساعد في «المحادثات» موسومة «تجربة».</p>
               )}
               {u.status === 'active' && (u.gates_shadow ?? []).length > 0 && (
                 <p className="text-xs text-ink-muted" data-unit-gates-shadow>قبل «بموافقة الفريق» ينقص: {(u.gates_shadow ?? []).map(gateText).join('، ')}.</p>
+              )}
+              {u.status === 'active' && u.lab && (
+                <p className="text-xs text-ink-muted" data-unit-lab>
+                  {u.lab.run_id
+                    ? <>آخر تشغيل كامل لمختبر الاختبار: <span className="num">{riyadhDateTime(u.lab.finished_at ?? '')}</span> — نجح <span className="num">{u.lab.passed ?? 0} / {u.lab.items ?? 0}</span>
+                      {(u.lab.blocking ?? []).length ? <>، وراسب بلا «فجوة معروفة»: <span className="num latin" dir="ltr">{(u.lab.blocking ?? []).join(', ')}</span></> : '، ولا سؤال راسب إلا فجوة معروفة'}
+                      {(u.lab.gaps ?? []).length ? <> · فجوات معروفة: <span className="num">{(u.lab.gaps ?? []).length}</span></> : null}.</>
+                    : 'لم يُشغَّل مختبر الاختبار لهذه الوحدة بعد.'}
+                </p>
               )}
             </div>
           </article>
@@ -456,6 +501,7 @@ export default function Assistant() {
           </ul>
         )}
       </section>
+      </>)}
 
       <Modal open={!!team} onClose={() => setTeam(null)} title={team ? `فريق ${team.kind === 'dining' && team.venue ? team.venue.name_ar : team.name_ar}` : ''} draftKey={team ? `hub-team:${team.id}` : undefined} busy={formBusy}>
         {team && (

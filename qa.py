@@ -1445,7 +1445,7 @@ def check_ui_parity(rep: "Report") -> None:
     G = "ui.json parity"
     ui = json.loads((CONTENT / "ui.json").read_text(encoding="utf-8"))
     # notes ("_…") are comments; the deploy alert (6 Nov 2026) and the live-checks alert (9 Nov 2026) are Arabic-only staff emails
-    ARABIC_ONLY = {"staff_email.deploy_alert", "staff_email.live_alert", "staff_email.backup_alert", "staff_email.hub_quality", "staff_email.hub_waiting", "staff_email.hub_expiry", "staff_email.hub_complaint", "staff_email.hub_api_credit", "staff_email.hub_budget"}
+    ARABIC_ONLY = {"staff_email.deploy_alert", "staff_email.live_alert", "staff_email.backup_alert", "staff_email.hub_quality", "staff_email.hub_waiting", "staff_email.hub_expiry", "staff_email.hub_complaint", "staff_email.hub_api_credit", "staff_email.hub_budget", "staff_email.hub_flagged", "staff_email.hub_spike"}
 
     def kind(v):
         return "group" if isinstance(v, dict) else "list" if isinstance(v, list) else "text"

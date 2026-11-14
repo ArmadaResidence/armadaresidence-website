@@ -1,0 +1,10 @@
+{
+ "id": "dc01",
+ "recorded_at": "2026-11-14T12:18:30.443Z",
+ "ok": true,
+ "error": null,
+ "text": "{\"draft\": {\"title_ar\": \"الحيوانات الأليفة\", \"title_en\": \"Pets\", \"text_ar\": \"لا نسمح بالحيوانات الأليفة في الغرف.\", \"text_en\": \"Pets are not allowed in the rooms.\", \"topic_keys\": [\"house_rules\"], \"unit_keys\": [], \"price_note\": null}}",
+ "input_tokens": 1502,
+ "output_tokens": 122,
+ "cost_usd": 0.004224
+}

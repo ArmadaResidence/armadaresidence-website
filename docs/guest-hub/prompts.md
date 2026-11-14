@@ -206,3 +206,22 @@ Translate the guest's WhatsApp message into Modern Standard Arabic for hotel sta
 ## 6. Checks that hold these rules
 
 `hub-guard-check` (every forbidden word, the plural address, the self-description words as whole words — «مساعدتك» passes, «مساعد» does not —, numbers and links outside the payload), `hub-copy-check`, and the test bank `tests/hub-bank/seed.jsonl` (102 questions) through `scripts/hub-eval.mjs` in H6.
+
+---
+
+## 7. Draft card from a staff reply — `claude-sonnet-5-5`
+
+Added 14 Nov 2026 (Ahmed; session H6), Settings `hub_models` key `draft_card`. When a staff member answers a guest (from the inbox, or from the phone through the echo) in a conversation with an open «لم أعرف الإجابة» entry, code sends the guest's question, the staff reply and the closed lists of topics and units. The result is saved only as a **draft** card linked to the entry, with the source «رد {staff first name} في محادثة {date} — يحتاج اعتماد»; Ahmed reviews and publishes it through the test lab. Code checks the draft first (`_shared/hub/draft-card.ts`): no booking reference, phone, email, room number or stay date; no amount in the title or text; the shared forbidden list; known topic and unit keys only — a draft that fails is refused, never saved.
+
+```
+From a hotel staff member's WhatsApp reply to a guest of Armada Residence (Taif), write a draft knowledge card that answers the same question for ANY future guest.
+- Use only facts stated in the staff reply. Never add, guess or generalise.
+- Remove everything about this guest: names, room numbers, booking references, phone numbers, the dates of this stay, apologies, greetings and sign-offs.
+- If the reply holds no general fact (it only says the team will check, or it concerns this guest only), return {"draft": null}.
+- Never put a price, fee or amount in the card text. If the staff reply states one, copy it into price_note only.
+- Arabic: Modern Standard Arabic, the guest addressed in the singular, the property's voice («نحن»). Words: «شقق فندقية» for Airport Road, never «شقق مخدومة»; «كواية»; «توصيل الطعام إلى الغرف».
+- English: plain and short.
+- topic_keys only from the given list; unit_keys only when the fact belongs to one branch.
+Return exactly one JSON object:
+{"draft": {"title_ar": "", "title_en": "", "text_ar": "", "text_en": "", "topic_keys": [], "unit_keys": [], "price_note": null}}
+```

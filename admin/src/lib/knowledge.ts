@@ -59,6 +59,9 @@ export interface Card extends CardFields {
   live: (CardFields & { sort: number }) | null;
   pending: boolean;
   check: { missing: CardProblem[] };
+  /** H6: a draft written from a staff reply keeps the price that reply stated apart (never in the text) */
+  price_note?: string | null;
+  draft_origin?: { kind: 'staff_reply'; job: string; unanswered: string; cluster: string; date: string } | null;
   verified_by: string | null;
   verified_by_name: string | null;
   verified_at: string | null;
@@ -81,6 +84,8 @@ export interface QueueRow {
   resolved_card_id: string | null;
   resolved_faq_id: string | null;
   resolved_at: string | null;
+  /** H6: the draft card written from a staff reply to this question (prompts.md §7) — never published by itself */
+  draft_card?: { id: string; key: string; title_ar: string; title_en: string; source: string; price_note: string | null; status: string; problems: number } | null;
 }
 export interface FaqRead {
   id: string;
@@ -104,6 +109,8 @@ export interface PublishResult {
   ok: boolean;
   reason?: 'blocked' | 'nothing' | 'gate';
   count?: number;
+  /** H6: the test lab's gate — eval_required (a run is needed), eval_running, eval_blocked (the list), eval_stale */
+  gate?: { ok?: boolean; gate: string; run_id?: string; blocked?: { key: string; unit: string }[]; known_gaps?: { key: string }[] };
   blocked?: { id: string; key: string; title_ar: string; missing: CardProblem[] }[];
 }
 
@@ -122,7 +129,9 @@ export const meta = () => rpc<KnowledgeMeta>('hub_knowledge_meta');
 export const saveCard = (id: string | null, f: CardFields) => rpc<Saved & { id: string; key: string; check: { missing: CardProblem[] } }>('hub_card_save', { p_id: id, p: f });
 export const archiveCard = (id: string) => rpc<Saved & { changed: boolean }>('hub_card_archive', { p_id: id });
 export const restoreCard = (id: string) => rpc<Saved & { changed: boolean }>('hub_card_restore', { p_id: id });
-export const publish = () => rpc<PublishResult>('hub_knowledge_publish', { p_dry_run: false });
+/** «نشر» through the test lab (H6): a dry run says what blocks; the publish names the gate run that passed */
+export const publish = (run: string | null = null) => rpc<PublishResult>('hub_knowledge_publish', { p_dry_run: false, p_eval_run: run });
+export const publishCheck = () => rpc<PublishResult>('hub_knowledge_publish', { p_dry_run: true, p_eval_run: null });
 export const queue = (status: 'open' | 'answered' | 'dismissed' = 'open') => rpc<{ rows: QueueRow[]; open: number }>('hub_unanswered_list', { p_status: status });
 export const setQueueTopic = (id: string, topic: string | null) => rpc<Saved>('hub_unanswered_topic_set', { p_id: id, p_topic: topic });
 export interface FaqDraft {

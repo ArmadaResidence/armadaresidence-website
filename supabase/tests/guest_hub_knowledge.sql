@@ -91,6 +91,18 @@ create function pg_temp._cf(p_title text, p_ar text, p_en text, p_units text[] d
                             'text_ar', p_ar, 'text_en', p_en, 'source', p_source, 'source_date', '2026-11-10', 'expires_on', p_expires)
 $$;
 grant execute on function pg_temp._cf(text, text, text, text[], text[], text, date) to authenticated;
+-- H6 (14 Nov 2026): «نشر» needs a passing test-lab gate run on the pending cards — the run itself is H6's
+-- (guest_hub_lab.sql); here a finished passing run on exactly the pending set stands in for it (as root)
+create function pg_temp._gate() returns uuid language plpgsql as $$
+declare
+  v uuid;
+  ids uuid[] := array(select c.id from public.hub_knowledge_cards c where internal.hub_card_pending(c) and not c.is_test order by c.sort, c.key);
+begin
+  insert into public.hub_eval_runs (trigger, units, live_hash, status, verdict, finished_at, candidate)
+  values ('knowledge', '{airport-road}', 'qa-h4', 'done', 'pass', now(), jsonb_build_object('cards', to_jsonb(ids), 'cards_hash', internal.hub_cards_hash(ids)))
+  returning id into v;
+  return v;
+end $$;
 
 -- ══ fixtures ══
 insert into _ids values ('admin', gen_random_uuid()), ('mgmt', gen_random_uuid()), ('sales', gen_random_uuid()), ('recA', gen_random_uuid()), ('none', gen_random_uuid());
@@ -179,9 +191,14 @@ select pg_temp._save('c7', public.hub_knowledge_publish());
 select pg_temp._check('C7 «نشر» is blocked while a pending card has a problem — the list comes back',
   not (pg_temp._j('c7') ->> 'ok')::boolean and pg_temp._j('c7') ->> 'reason' = 'blocked' and jsonb_array_length(pg_temp._j('c7') -> 'blocked') = 3, pg_temp._j('c7')::text);
 select public.hub_card_archive((pg_temp._j('c1') ->> 'id')::uuid), public.hub_card_archive((pg_temp._j('c2') ->> 'id')::uuid), public.hub_card_archive((pg_temp._j('c4') ->> 'id')::uuid);
-select pg_temp._save('c8', public.hub_knowledge_publish());
-select pg_temp._check('C8 then «نشر» publishes the clean card (the gate hook passes), live = the snapshot, nothing pending',
-  (pg_temp._j('c8') ->> 'ok')::boolean and (pg_temp._j('c8') ->> 'count')::int = 1 and pg_temp._j('c8') #>> '{gate,gate}' = 'none'
+select pg_temp._save('c8g', public.hub_knowledge_publish());
+select pg_temp._check('C8 a clean card still needs the test lab (H6): the gate names eval_required', pg_temp._j('c8g') #>> '{gate,gate}' = 'eval_required', pg_temp._j('c8g')::text);
+select pg_temp._root();
+insert into _ids values ('gate1', pg_temp._gate());
+select pg_temp._as('admin');
+select pg_temp._save('c8', public.hub_knowledge_publish(false, pg_temp._id('gate1')));
+select pg_temp._check('C8 then «نشر» with the passing gate run publishes the clean card, live = the snapshot, nothing pending',
+  (pg_temp._j('c8') ->> 'ok')::boolean and (pg_temp._j('c8') ->> 'count')::int = 1 and pg_temp._j('c8') #>> '{gate,gate}' = 'eval'
   and (select status = 'published' and live = internal.hub_card_snapshot(k) and not internal.hub_card_pending(k) from public.hub_knowledge_cards k where id = (pg_temp._j('c3') ->> 'id')::uuid), pg_temp._j('c8')::text);
 select pg_temp._check('C9 nothing left to publish', public.hub_knowledge_publish() ->> 'reason' = 'nothing');
 select pg_temp._fails('C10 the key is fixed once published', format('select public.hub_card_save(%L, %L)', pg_temp._j('c3') ->> 'id', pg_temp._cf('مواقف QA', 'المواقف مجانية.', 'Parking is free.') || '{"key": "k-other-key"}'::jsonb), 'hub_card_key_locked');
@@ -391,7 +408,7 @@ select pg_temp._root();
 select pg_temp._check('P1 retention clears the queue''s excerpts after 12 months (the entry and its decision stay)',
   (select question_excerpt is null and status = 'dismissed' from public.hub_unanswered where message_id = pg_temp._msg('YC4-Q3'))
   and (select question_excerpt is not null from public.hub_unanswered where message_id = pg_temp._msg('YC4-Q1')) and (pg_temp._j('p1') ->> 'excerpts')::int = 1, pg_temp._j('p1')::text);
-select pg_temp._check('P2 the test-lab gate hook exists and passes until H6', (internal.hub_knowledge_gate(array[gen_random_uuid()]) ->> 'ok')::boolean);
+select pg_temp._check('P2 the H4 gate hook no longer passes alone: a publish needs a test-lab run (H6)', internal.hub_knowledge_gate(array[gen_random_uuid()]) ->> 'gate' = 'eval_required');
 select pg_temp._check('P3 the daily job hub-expiry is scheduled (08:00 Riyadh)', exists (select 1 from cron.job where jobname = 'hub-expiry' and schedule = '0 5 * * *'));
 
 select n, test, ok, detail from _r order by n;

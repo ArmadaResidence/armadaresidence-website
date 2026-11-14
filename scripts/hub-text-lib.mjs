@@ -135,6 +135,8 @@ export function parsePrompts(md = read('docs/guest-hub/prompts.md')) {
   const s3 = section(md, '## 3. Suggested replies for staff');
   const s4 = section(md, '## 4. Translation for staff');
   const s5 = section(md, '## 5. Tone steps');
+  // H6 (14 Nov 2026): the draft card from a staff reply
+  const s7 = section(md, '## 7. Draft card from a staff reply');
   const one = (s, n) => {
     const b = codeBlocks(s);
     if (!b.length) throw new Error(`prompts.md: no block in ${n}`);
@@ -162,6 +164,7 @@ export function parsePrompts(md = read('docs/guest-hub/prompts.md')) {
     compose_examples: examples,
     suggest_system: one(s3, '3'),
     translate_system: one(s4, '4'),
+    draft_card_system: one(s7, '7'),
     tones,
   };
 }

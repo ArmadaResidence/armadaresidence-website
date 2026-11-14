@@ -1,0 +1,210 @@
+{
+ "_note": "The grades of the recorded fixtures through the test lab (scripts/hub-eval-check.mjs --write) — a change here is deliberate.",
+ "passed": 35,
+ "total": 44,
+ "grades": {
+  "q001": {
+   "pass": true,
+   "reasons": []
+  },
+  "q002": {
+   "pass": true,
+   "reasons": []
+  },
+  "q003": {
+   "pass": true,
+   "reasons": []
+  },
+  "q005": {
+   "pass": true,
+   "reasons": []
+  },
+  "q008": {
+   "pass": true,
+   "reasons": []
+  },
+  "q009": {
+   "pass": true,
+   "reasons": []
+  },
+  "q010": {
+   "pass": true,
+   "reasons": []
+  },
+  "q013": {
+   "pass": true,
+   "reasons": []
+  },
+  "q014": {
+   "pass": true,
+   "reasons": []
+  },
+  "q015": {
+   "pass": true,
+   "reasons": []
+  },
+  "q016": {
+   "pass": false,
+   "reasons": [
+    "action:answer:handoff",
+    "state:collecting:human"
+   ]
+  },
+  "q017": {
+   "pass": true,
+   "reasons": []
+  },
+  "q018": {
+   "pass": true,
+   "reasons": []
+  },
+  "q020": {
+   "pass": true,
+   "reasons": []
+  },
+  "q021": {
+   "pass": false,
+   "reasons": [
+    "action:answer:handoff",
+    "must_include:0"
+   ]
+  },
+  "q023": {
+   "pass": false,
+   "reasons": [
+    "action:answer:handoff",
+    "must_include:0"
+   ]
+  },
+  "q024": {
+   "pass": true,
+   "reasons": []
+  },
+  "q027": {
+   "pass": false,
+   "reasons": [
+    "faq:breakfast",
+    "must_include:0",
+    "must_include:1",
+    "must_include:2"
+   ]
+  },
+  "q030": {
+   "pass": false,
+   "reasons": [
+    "action:answer:handoff",
+    "must_include:0"
+   ]
+  },
+  "q031": {
+   "pass": true,
+   "reasons": []
+  },
+  "q035": {
+   "pass": true,
+   "reasons": []
+  },
+  "q037": {
+   "pass": false,
+   "reasons": [
+    "card:k-cafe-menu",
+    "must_include:0"
+   ]
+  },
+  "q038": {
+   "pass": true,
+   "reasons": []
+  },
+  "q044": {
+   "pass": true,
+   "reasons": []
+  },
+  "q046": {
+   "pass": true,
+   "reasons": []
+  },
+  "q047": {
+   "pass": true,
+   "reasons": []
+  },
+  "q048": {
+   "pass": true,
+   "reasons": []
+  },
+  "q049": {
+   "pass": true,
+   "reasons": []
+  },
+  "q050": {
+   "pass": true,
+   "reasons": []
+  },
+  "q051": {
+   "pass": true,
+   "reasons": []
+  },
+  "q052": {
+   "pass": true,
+   "reasons": []
+  },
+  "q053": {
+   "pass": true,
+   "reasons": []
+  },
+  "q055": {
+   "pass": true,
+   "reasons": []
+  },
+  "q057": {
+   "pass": true,
+   "reasons": []
+  },
+  "q059": {
+   "pass": true,
+   "reasons": []
+  },
+  "q065": {
+   "pass": false,
+   "reasons": [
+    "action:answer:handoff",
+    "must_include:0"
+   ]
+  },
+  "q072": {
+   "pass": false,
+   "reasons": [
+    "action:answer:handoff"
+   ]
+  },
+  "q077": {
+   "pass": true,
+   "reasons": []
+  },
+  "q078": {
+   "pass": true,
+   "reasons": []
+  },
+  "q085": {
+   "pass": true,
+   "reasons": []
+  },
+  "q087": {
+   "pass": true,
+   "reasons": []
+  },
+  "q092": {
+   "pass": false,
+   "reasons": [
+    "action:answer:handoff"
+   ]
+  },
+  "q097": {
+   "pass": true,
+   "reasons": []
+  },
+  "q098": {
+   "pass": true,
+   "reasons": []
+  }
+ }
+}
