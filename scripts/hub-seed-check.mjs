@@ -126,7 +126,13 @@ const block = (tag) => {
   return m ? JSON.parse(m[1]) : null;
 };
 check(JSON.stringify(block('seed_topics')) === JSON.stringify(TOPICS), 'the migration\'s topics = docs/guest-hub/topics.json (an applied migration is never edited — later changes go through the dashboard)');
-check(JSON.stringify(block('seed_cards')) === JSON.stringify(cards), 'the migration\'s cards = docs/guest-hub/knowledge-seed.json');
+// a card corrected after the seed (knowledge-seed.json → corrections: the date, who, why and the seeded wording) is compared
+// with the wording the migration seeded; every other card exactly (H6 pass 3, 14 Nov 2026: k-airport-amenities)
+const CORR = SEED.corrections ?? {};
+check(Object.entries(CORR).every(([k, c]) => cards.some((x) => x.id === k) && /^\d{4}-\d{2}-\d{2}$/.test(c.date ?? '') && c.by && c.why && c.seeded && Object.keys(c.seeded).length),
+  'every seed correction names a seed card, its date, who, why and the seeded wording');
+const asSeeded = cards.map((c) => (CORR[c.id] ? { ...c, ...CORR[c.id].seeded } : c));
+check(JSON.stringify(block('seed_cards')) === JSON.stringify(asSeeded), 'the migration\'s cards = docs/guest-hub/knowledge-seed.json (its dated corrections undone)');
 const phones = [...new Set((CONTACT.match(/\+966\d{9}/g) ?? []).map((p) => p.slice(1)))].sort();
 const known = (MIG.match(/create function internal\.hub_known_phones\(\)[\s\S]*?array\[([^\]]+)\]/) ?? [])[1]?.match(/\d+/g)?.sort() ?? [];
 check(JSON.stringify(phones) === JSON.stringify(known), `the property's numbers = content/contact.json — ${known.join(',')} vs ${phones.join(',')}`);

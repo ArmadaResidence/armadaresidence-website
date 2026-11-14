@@ -177,20 +177,25 @@ def main() -> None:
     pa["near"] = near_rows(airport)
     ps["near"] = near_rows(shafa)
     svc_ar, svc_en = airport["services_ar"], airport["services_en"]
+    # each property's own services (14 Nov 2026: Airport Road has no laundry — Ahmed); the shared ones are both properties'
+    s_svc_ar, s_svc_en = shafa["services_ar"], shafa["services_en"]
+    both_ar = [x for x in svc_ar if x in s_svc_ar]
+    both_en = [x for x in svc_en if x in s_svc_en]
+    only_shafa = [(a, e) for a, e in zip(s_svc_ar, s_svc_en) if a not in svc_ar]
     pa["feats"] = [
         [{"en": "Meeting hall", "ar": "قاعة اجتماعات"}, {"en": f"Up to {f['hall']['capacity']} people — equipment and seating confirmed", "ar": f"حتى {f['hall']['capacity']} شخصًا — تجهيزات وأنماط جلوس مؤكدة"}],
         [{"en": "Restaurant & coffee shop", "ar": "مطعم وكوفي شوب"}, {"en": "Group buffets served in-house", "ar": "بوفيهات المجموعات من مطبخنا"}],
         [{"en": "Coach parking", "ar": "مواقف الحافلات"}, {"en": "On-site, tour-coach capacity", "ar": "داخل الموقع، تتّسع لحافلة سياحية"}],
         [{"en": "Free Wi-Fi", "ar": "واي فاي مجاني"}, {"en": "All units and public areas", "ar": "كل الوحدات والمناطق العامة"}],
         [{"en": "24-hour reception", "ar": "استقبال على مدار الساعة"}, {"en": "Organised group arrivals", "ar": "وصول جماعي منظَّم"}],
-        [{"en": " · ".join(svc_en), "ar": " · ".join(svc_ar)}, {"en": "At both properties", "ar": "في الفرعين"}],
+        [{"en": " · ".join(svc_en), "ar": " · ".join(svc_ar)}, {"en": "At both properties", "ar": "في الفرعين"} if svc_ar == both_ar else {"en": "At this property", "ar": "في هذا الفندق"}],
     ]
     ps["feats"] = [
         [{"en": "Restaurant & café", "ar": "مطعم ومقهى"}, {"en": "Daily breakfast buffet and group meals", "ar": "بوفيه إفطار يومي ووجبات المجموعات"}],
         [{"en": "Coach parking", "ar": "مواقف الحافلات"}, {"en": "On-site, tour-coach capacity", "ar": "داخل الموقع، تتّسع لحافلة سياحية"}],
         [{"en": "Free Wi-Fi", "ar": "واي فاي مجاني"}, {"en": "All units and public areas", "ar": "كل الوحدات والمناطق العامة"}],
         [{"en": "24-hour reception", "ar": "استقبال على مدار الساعة"}, {"en": "Organised group arrivals", "ar": "وصول جماعي منظَّم"}],
-        [{"en": " · ".join(svc_en), "ar": " · ".join(svc_ar)}, {"en": "At both properties", "ar": "في الفرعين"}],
+        [{"en": " · ".join(s_svc_en), "ar": " · ".join(s_svc_ar)}, {"en": "At both properties", "ar": "في الفرعين"} if s_svc_ar == both_ar else {"en": "At this property", "ar": "في هذا الفندق"}],
     ]
     removed.append("Shafa feats 'Armada Residence Café — coffee · teas · juices · pastries', 'Breakfast restaurant seating for the whole party', 'Accessible units — on request'; Airport 'Free high-speed Wi-Fi' → Wi-Fi (speed not confirmed)")
     pa["gallery"] = [["function-hall", {"en": "The function hall", "ar": "قاعة المناسبات"}], ["suite-living", {"en": "Suite living room", "ar": "صالة الجناح"}]]
@@ -275,7 +280,8 @@ def main() -> None:
         {"en": "Electric kettle · iron", "ar": "غلاية مياه · كواية"},
         {"en": "Refrigerator in every Airport Road unit", "ar": "ثلاجة في كل وحدات طريق المطار"},
         {"en": "Kitchen in the Airport Road one- and two-bedroom suites", "ar": "مطبخ في أجنحة طريق المطار بغرفة أو غرفتين"},
-        {"en": " · ".join(svc_en) + " — both properties", "ar": " · ".join(svc_ar) + " — في الفرعين"},
+        {"en": " · ".join(both_en) + " — both properties", "ar": " · ".join(both_ar) + " — في الفرعين"},
+        *[{"en": f"{e} — Al Shafa Road", "ar": f"{a} — في طريق الشفا"} for a, e in only_shafa],
     ]
     removed.append("In-unit list: Smart TV 65\"/42\", ironing board, premium amenities, extra mattresses/blankets/pillows, walk-in shower, cotton towels, 'kitchenette in the two-bedroom suites' (kitchens: both Airport Road suites), accessible units with handrails")
     out["group_services"] = [

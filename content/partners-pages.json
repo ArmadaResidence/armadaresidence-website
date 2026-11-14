@@ -662,8 +662,8 @@
         ],
         [
           {
-            "en": "Laundry · Rooms cleaned daily · 24-hour security",
-            "ar": "غسيل ملابس · تنظيف يومي للغرف · أمن على مدار الساعة"
+            "en": "Rooms cleaned daily · 24-hour security",
+            "ar": "تنظيف يومي للغرف · أمن على مدار الساعة"
           },
           {
             "en": "At both properties",
@@ -845,8 +845,8 @@
             "ar": "غسيل ملابس · تنظيف يومي للغرف · أمن على مدار الساعة"
           },
           {
-            "en": "At both properties",
-            "ar": "في الفرعين"
+            "en": "At this property",
+            "ar": "في هذا الفندق"
           }
         ]
       ],
@@ -1316,8 +1316,12 @@
       "ar": "مطبخ في أجنحة طريق المطار بغرفة أو غرفتين"
     },
     {
-      "en": "Laundry · Rooms cleaned daily · 24-hour security — both properties",
-      "ar": "غسيل ملابس · تنظيف يومي للغرف · أمن على مدار الساعة — في الفرعين"
+      "en": "Rooms cleaned daily · 24-hour security — both properties",
+      "ar": "تنظيف يومي للغرف · أمن على مدار الساعة — في الفرعين"
+    },
+    {
+      "en": "Laundry — Shafa Road",
+      "ar": "غسيل ملابس — في طريق الشفا"
     }
   ],
   "group_services": [
@@ -1711,6 +1715,18 @@
       "en": "Request number",
       "ar": "رقم الطلب"
     },
+    "what_to_send": {
+      "en": "<b>What to send.</b> The programme, the dates and the party size are enough for a first answer. A rooming list can follow.",
+      "ar": "<b>ما الذي ترسله.</b> البرنامج والتواريخ وعدد الأفراد تكفي للحصول على أول إجابة. وقائمة التسكين يمكن أن تتبع."
+    },
+    "direct_lines": {
+      "en": "Direct lines",
+      "ar": "خطوط مباشرة"
+    },
+    "our_addresses": {
+      "en": "Our addresses",
+      "ar": "عناويننا"
+    },
     "errors": {
       "company": {
         "en": "Enter the company name: at least 2 characters, with letters (not digits only).",
@@ -1731,18 +1747,6 @@
         "en": "Clear details",
         "ar": "مسح البيانات"
       }
-    },
-    "what_to_send": {
-      "en": "<b>What to send.</b> The programme, the dates and the party size are enough for a first answer. A rooming list can follow.",
-      "ar": "<b>ما الذي ترسله.</b> البرنامج والتواريخ وعدد الأفراد تكفي للحصول على أول إجابة. وقائمة التسكين يمكن أن تتبع."
-    },
-    "direct_lines": {
-      "en": "Direct lines",
-      "ar": "خطوط مباشرة"
-    },
-    "our_addresses": {
-      "en": "Our addresses",
-      "ar": "عناويننا"
     }
   },
   "disclaimer": {

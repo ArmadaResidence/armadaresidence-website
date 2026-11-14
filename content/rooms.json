@@ -1,5 +1,5 @@
 {
-  "_note": "Updated 8 Oct 2026 (second batch). All prices incl. VAT, sizes/capacities approved. `base_price` = starting-from price of the room_only plan; breakfast is a rate-plan attribute (see rate_plans here and in pricing.json), never a room attribute. pricing_mode starting_from now → calendar in phase 2. Accessible rooms are shown with availability: sold_out. Features confirmed: fridge (Airport all rooms), kettle (both branches), kitchen (Airport suites only), no washers (central laundry), balcony (Shafa balcony room only). In-room: Wi-Fi, TV, safe, AC confirmed in all rooms (8 Oct). 9 Oct: pricing_mode set to hidden on all rooms — no price rendered until phase 2 calendar.",
+  "_note": "Updated 8 Oct 2026 (second batch). All prices incl. VAT, sizes/capacities approved. `base_price` = starting-from price of the room_only plan; breakfast is a rate-plan attribute (see rate_plans here and in pricing.json), never a room attribute. pricing_mode starting_from now → calendar in phase 2. Accessible rooms are shown with availability: sold_out. Features confirmed: fridge (Airport all rooms), kettle (both branches), kitchen (Airport suites only), no washers anywhere; a central laundry at Shafa Road only — Airport Road has no laundry (Ahmed, 14 Nov 2026), balcony (Shafa balcony room only). In-room: Wi-Fi, TV, safe, AC confirmed in all rooms (8 Oct). 9 Oct: pricing_mode set to hidden on all rooms — no price rendered until phase 2 calendar.",
   "rooms": [
     {
       "slug": "twin-room",
@@ -35,9 +35,7 @@
         "jacuzzi": false,
         "washer": false,
         "fridge": true,
-        "kettle": true,
-        "laundry_ar": "مغسلة مركزية في الفندق",
-        "laundry_en": "Central laundry service"
+        "kettle": true
       },
       "active": true,
       "show_on_site": true,
@@ -101,9 +99,7 @@
         "jacuzzi": false,
         "washer": false,
         "fridge": true,
-        "kettle": true,
-        "laundry_ar": "مغسلة مركزية في الفندق",
-        "laundry_en": "Central laundry service"
+        "kettle": true
       },
       "active": true,
       "show_on_site": true,
@@ -167,9 +163,7 @@
         "jacuzzi": false,
         "washer": false,
         "fridge": true,
-        "kettle": true,
-        "laundry_ar": "مغسلة مركزية في الفندق",
-        "laundry_en": "Central laundry service"
+        "kettle": true
       },
       "active": true,
       "show_on_site": true,
@@ -235,9 +229,7 @@
         "jacuzzi": false,
         "washer": false,
         "fridge": true,
-        "kettle": true,
-        "laundry_ar": "مغسلة مركزية في الفندق",
-        "laundry_en": "Central laundry service"
+        "kettle": true
       },
       "active": true,
       "show_on_site": true,
@@ -301,9 +293,7 @@
         "jacuzzi": false,
         "washer": false,
         "fridge": true,
-        "kettle": true,
-        "laundry_ar": "مغسلة مركزية في الفندق",
-        "laundry_en": "Central laundry service"
+        "kettle": true
       },
       "active": false,
       "show_on_site": true,

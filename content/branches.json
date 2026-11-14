@@ -42,7 +42,6 @@
         "daily_housekeeping",
         "events_hall",
         "free_parking",
-        "laundry",
         "restaurant",
         "room_service_24h",
         "security_24h",
@@ -70,12 +69,10 @@
       "drive_time_airport_note": "18 minutes by car, about 22 km — Ahmed, 2 Nov 2026 (recorded 9 Nov 2026; was 15 min, 9 Oct 2026) — may be shown",
       "bus_parking": true,
       "services_ar": [
-        "غسيل ملابس",
         "تنظيف يومي للغرف",
         "أمن على مدار الساعة"
       ],
       "services_en": [
-        "Laundry",
         "Rooms cleaned daily",
         "24-hour security"
       ],

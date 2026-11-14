@@ -88,8 +88,8 @@ export const COPY = {
     eyebrow: { en: 'PROPERTY ONE', ar: 'الفندق الأول' },
     h2: { en: 'Airport Road', ar: 'طريق المطار' },
     lead: {
-      en: 'One hundred and eight hotel apartments {corridor_lc}. This is the property we place organised groups in — the larger inventory, the multi-bed rooming, the function hall, and parking that accommodates a tour coach.',
-      ar: 'مئة وثماني شقق فندقية {corridor}. الفندق الذي نُسكن فيه المجموعات المنظّمة — السعة الأكبر، والتسكين متعدد الأسرّة، والقاعة المجهّزة، والمواقف التي تتّسع لحافلة سياحية',
+      en: 'One hundred and six hotel apartments {corridor_lc}. This is the property we place organised groups in — the larger inventory, the multi-bed rooming, the function hall, and parking that accommodates a tour coach.',
+      ar: 'مئة وست شقق فندقية {corridor}. الفندق الذي نُسكن فيه المجموعات المنظّمة — السعة الأكبر، والتسكين متعدد الأسرّة، والقاعة المجهّزة، والمواقف التي تتّسع لحافلة سياحية',
     },
     stats: [
       { n: '{units_airport}', l: { en: 'APARTMENTS', ar: 'شقة' } },
@@ -103,7 +103,7 @@ export const COPY = {
       { t: { en: 'Coach parking', ar: 'مواقف الحافلات' }, s: { en: 'On-site, tour-coach capacity', ar: 'داخل الفندق وتتّسع للحافلات' } },
       { t: { en: 'Free Wi-Fi', ar: 'إنترنت مجاني' }, s: { en: 'All units and public areas', ar: 'في كل الوحدات والمرافق' } },
       { t: { en: '24-hour reception', ar: 'استقبال 24 ساعة' }, s: { en: 'Organised group arrivals', ar: 'وصول جماعي منظّم' } },
-      { t: { en: 'Laundry service', ar: 'خدمة المغسلة' }, s: { en: 'Available throughout the stay', ar: 'متاحة طوال الإقامة' } },
+      { t: { en: 'Rooms cleaned daily', ar: 'تنظيف يومي للغرف' }, s: { en: 'Every day, 10:00 am – 5:00 pm', ar: 'يوميًا من 10:00 صباحًا حتى 5:00 مساءً' } },
     ],
     captions: {
       exterior: { en: 'AIRPORT ROAD, {district_airport} DISTRICT, TAIF {postal_airport}', ar: 'طريق المطار، حي {district_airport}، الطائف {postal_airport}' },
@@ -137,7 +137,7 @@ export const COPY = {
       { en: 'Iron · electric kettle · refrigerator at Airport Road', ar: 'كواية · غلاية مياه · ثلاجة في طريق المطار' },
       { en: 'Free Wi-Fi in every unit', ar: 'إنترنت مجاني في كل وحدة' },
       { en: 'Rooms cleaned daily', ar: 'تنظيف يومي للغرف' },
-      { en: '24-hour in-room dining · laundry service', ar: 'توصيل الطعام إلى الغرف على مدار الساعة · خدمة مغسلة' },
+      { en: '24-hour in-room dining · laundry at Al Shafa', ar: 'توصيل الطعام إلى الغرف على مدار الساعة · مغسلة في الشفا' },
       { en: 'Kitchen in the Airport Road one- and two-bedroom suites', ar: 'مطبخ في أجنحة طريق المطار بغرفة أو غرفتين' },
       { en: 'Accessible room at each property — availability on enquiry', ar: 'غرفة لذوي الهمم في كل فندق — يُؤكَّد التوافر عند الطلب' },
     ],

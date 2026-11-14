@@ -10,6 +10,17 @@
   "Approved by Ahmed on 13 Nov 2026 (all 37 cards; the Shafa Road classification, the direct-booking price, the sales and café numbers included).",
   "The two Wi-Fi cards (k-wifi-password-airport, k-wifi-password-shafa) are NOT in this file: the repository is public. They are in wifi-cards.json, loaded once on production and never committed."
  ],
+ "corrections": {
+  "k-airport-amenities": {
+   "date": "2026-11-14",
+   "by": "Ahmed",
+   "why": "Airport Road has no washing machines in the units and no laundry in the branch (corrects «مغسلة مركزية»); the production card was corrected from the dashboard the same day. The H4 migration seeded the earlier wording below and is never edited.",
+   "seeded": {
+    "text_ar": "في كل وحدات فرع طريق المطار: واي فاي، وتلفاز 65 بوصة، وخزنة، وتكييف، وغلاية، وثلاجة، وكواية. لا توجد غسالات في الغرف، وفي الفرع مغسلة مركزية.",
+    "text_en": "Every unit at the Airport Road branch has Wi-Fi, a 65-inch TV, a safe, air conditioning, a kettle, a fridge and an iron. There are no washing machines in the rooms; the branch has a central laundry."
+   }
+  }
+ },
  "cards": [
   {
    "id": "k-airport-overview",
@@ -105,8 +116,8 @@
    ],
    "title_ar": "فرع طريق المطار — تجهيزات الوحدات",
    "title_en": "Airport Road — in-unit equipment",
-   "text_ar": "في كل وحدات فرع طريق المطار: واي فاي، وتلفاز 65 بوصة، وخزنة، وتكييف، وغلاية، وثلاجة، وكواية. لا توجد غسالات في الغرف، وفي الفرع مغسلة مركزية.",
-   "text_en": "Every unit at the Airport Road branch has Wi-Fi, a 65-inch TV, a safe, air conditioning, a kettle, a fridge and an iron. There are no washing machines in the rooms; the branch has a central laundry.",
+   "text_ar": "في كل وحدات فرع طريق المطار: واي فاي، وتلفاز 65 بوصة، وخزنة، وتكييف، وغلاية، وثلاجة، وكواية. لا توجد غسالات في الوحدات، ولا توجد مغسلة في الفرع.",
+   "text_en": "Every unit at the Airport Road branch has Wi-Fi, a 65-inch TV, a safe, air conditioning, a kettle, a fridge and an iron. There are no washing machines in the units, and the branch has no laundry.",
    "source": "rooms.json وbranches.json",
    "source_date": "2026-10-08",
    "expires_on": null
