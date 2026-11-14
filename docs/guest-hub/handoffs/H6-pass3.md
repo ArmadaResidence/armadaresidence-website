@@ -54,7 +54,7 @@ Decisions: DECISIONS.md 2026-11-14 «Ahmed's note before the report» and «Gues
 | 2b / F | the guest's own tap «حجز إقامة» (booking in the chat not built — H8) | «سيكمل معك أحد أفراد فريقنا في هذه المحادثة.» and the team |
 | 3 | «السلام عليكم…» while the team owns it (after 2b) | silent by design (`human`: tagging only); never an «لم أعرف الإجابة» entry; the inbox refuses «المساعد لم يعرف» on it |
 | 4 | «إعادة للمساعد» | — |
-| 5 | «السلام عليكم ورحمة الله وبركاته» | «وعليكم السلام، كيف نساعدك؟» + the three quick replies (the earlier copies were not the assistant's, so it is not a repeat) |
+| 5 | «السلام عليكم ورحمة الله وبركاته» | «وعليكم السلام، كيف نساعدك؟» + the three quick replies (the assistant never answered the 21:48 copies, so it is not a repeat — Ahmed's rule) |
 
 ## Not done in this session — and why
 

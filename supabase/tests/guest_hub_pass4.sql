@@ -2,7 +2,7 @@
 --   M  the «model_error» alert: counted per unit, ONE email from the third failure in 30 minutes, a quiet alert closes;
 --   D  a staff tap on the assistant's own buttons (an interactive echo with no text after an assistant interactive message,
 --      or a text equal to one of its button titles) is the note «ضغطة زر من الجوال» — no T23; every other echo pauses;
---   A  the repeat rule counts only the copies the assistant processed (a reply turn done);
+--   A  a repeat is suppressed only when the assistant already answered that same text in this episode;
 --   E  «المساعد لم يعرف» only on a guest message the assistant processed;
 --   G  the spike: never greeting / thanks, never before 7 days of live history, once per unit and topic in 24 hours, and
 --      hub_alerts_claim hands over the unit's name.
@@ -140,14 +140,24 @@ select pg_temp._save('a1', public.hub_turn_claim(pg_temp._id('t3')));
 select pg_temp._root();
 select pg_temp._check('A1 two earlier copies left unanswered while the phone owned it: the third is NOT repeated (21:51)',
   (pg_temp._j('a1') ->> 'claimed')::boolean and not (pg_temp._j('a1') #>> '{rate,repeated}')::boolean, pg_temp._j('a1') -> 'rate' #>> '{}');
--- the same three when the assistant processed the two earlier ones: repeated
+-- the earlier copies processed by the assistant (reply turns) but no reply sent (the model failed): still NOT repeated
 update public.hub_turns set kind = 'reply' where conversation_id = pg_temp._id('conv') and first_inbound_id in (pg_temp._id('m1'), pg_temp._id('m2'));
 update public.hub_turns set status = 'pending', claimed_at = null where id = pg_temp._id('t3');
 select pg_temp._service();
 select pg_temp._save('a2', public.hub_turn_claim(pg_temp._id('t3')));
 select pg_temp._root();
-select pg_temp._check('A2 … when the assistant answered both earlier copies: repeated (the engine then hands off with the notice)',
-  (pg_temp._j('a2') #>> '{rate,repeated}')::boolean, pg_temp._j('a2') -> 'rate' #>> '{}');
+select pg_temp._check('A2 earlier copies processed but never answered (no reply message): NOT repeated — answered (Ahmed, 14 Nov 2026)',
+  not (pg_temp._j('a2') #>> '{rate,repeated}')::boolean, pg_temp._j('a2') -> 'rate' #>> '{}');
+-- the assistant answered the first copy: the third is a repeat, suppressed
+insert into public.hub_messages (conversation_id, channel_id, direction, author, kind, body, idempotency_key, status, sent_at, turn_id, is_test)
+select pg_temp._id('conv'), pg_temp._id('ch'), 'out', 'assistant', 'interactive', 'وعليكم السلام، مرحبًا بك.', 'qa-p4:ans-1', 'delivered', now() - interval '4 minutes', z.id, false
+  from public.hub_turns z where z.first_inbound_id = pg_temp._id('m1');
+update public.hub_turns set status = 'pending', claimed_at = null where id = pg_temp._id('t3');
+select pg_temp._service();
+select pg_temp._save('a3', public.hub_turn_claim(pg_temp._id('t3')));
+select pg_temp._root();
+select pg_temp._check('A3 … the assistant already answered that text in this episode: repeated (suppressed, nothing sent)',
+  (pg_temp._j('a3') #>> '{rate,repeated}')::boolean, pg_temp._j('a3') -> 'rate' #>> '{}');
 
 -- ══ E — «المساعد لم يعرف» only on what the assistant processed ══
 update public.hub_turns set kind = 'tag' where first_inbound_id = pg_temp._id('m1');

@@ -64,7 +64,7 @@ Later in the episode, a salaam with a question — this line, then the answer (t
 وعليكم السلام.
 ```
 
-**1.6 Thanks with nothing else** («شكرًا»، "thanks") [مقترح — بانتظار اعتماد أحمد، 14 نوفمبر 2026] — never silence, never «لم أعرف الإجابة»:
+**1.6 Thanks with nothing else** («شكرًا»، "thanks") [مقرر — اعتماد أحمد، 14 نوفمبر 2026; the English line is the session's, kept as Ahmed asked] — never silence, never «لم أعرف الإجابة»:
 
 ```
 العفو، يسعدنا خدمتك في أي وقت.

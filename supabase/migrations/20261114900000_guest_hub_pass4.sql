@@ -4,8 +4,8 @@
 --   2. D — a staff member's tap on the assistant's own buttons in the WhatsApp Business app comes back as an interactive echo:
 --      stored as the staff note «ضغطة زر من الجوال», never T23 (no pause), never the guest's choice. Every other echo still
 --      pauses the assistant (T23).
---   3. A — the repeat rule (spec §7.4) counts only the earlier copies the assistant processed itself (a reply turn done):
---      messages left unanswered while the phone owned the conversation never make a later one «repeated».
+--   3. A — the repeat rule (spec §7.4): a repeat is suppressed only when the assistant already answered that same text in this
+--      episode; copies that got no reply from the assistant never silence a later one (Ahmed, 14 Nov 2026).
 --   4. E — «المساعد لم يعرف» from the inbox only on a guest message the assistant processed (a reply turn); never on one that
 --      arrived while the conversation was with the team.
 --   5. G — the spike alert: never for greeting / thanks_closing; never before the unit has 7 days of live history (the daily
@@ -204,9 +204,16 @@ begin
                       and m.created_at > now() - interval '1 hour' and not coalesce((m.payload ->> 'notice')::boolean, false)),
     'repeated', (select count(*) >= 2 from public.hub_messages m where m.conversation_id = c.id and m.direction = 'in' and m.author = 'guest'
                   and not (m.id = any (t.inbound_message_ids)) and m.created_at > now() - interval '10 minutes'
-                  -- only the copies the assistant processed itself (H6 pass 4): none left unanswered while the team owned it
-                  and exists (select 1 from public.hub_turns z where z.conversation_id = c.id and z.kind = 'reply' and z.status = 'done' and m.id = any (z.inbound_message_ids))
-                  and btrim(lower(coalesce(m.body, ''))) = btrim(lower(coalesce(v_text, ''))) and coalesce(v_text, '') <> ''),
+                  and btrim(lower(coalesce(m.body, ''))) = btrim(lower(coalesce(v_text, ''))) and coalesce(v_text, '') <> '')
+                  -- Ahmed, 14 Nov 2026 (H6 pass 4): a repeat is suppressed ONLY when the assistant already answered that same text in
+                  -- this episode — an earlier copy whose reply turn sent the guest a message; copies that got no reply from the
+                  -- assistant (the team owned the conversation, the model failed …) never silence a later one
+                  and exists (select 1 from public.hub_messages m2 join public.hub_turns z on z.conversation_id = c.id and m2.id = any (z.inbound_message_ids)
+                               where m2.conversation_id = c.id and m2.direction = 'in' and m2.author = 'guest' and not (m2.id = any (t.inbound_message_ids))
+                                 and btrim(lower(coalesce(m2.body, ''))) = btrim(lower(coalesce(v_text, '')))
+                                 and z.kind = 'reply' and z.status = 'done'
+                                 and exists (select 1 from public.hub_messages o where o.turn_id = z.id and o.direction = 'out' and o.author = 'assistant'
+                                              and o.status not in ('test', 'rejected', 'superseded', 'failed'))),
     'phone_max', internal.hub_setting_int('hub_rate_phone_hour', 30), 'replies_max', internal.hub_setting_int('hub_rate_replies_hour', 20));
   return jsonb_build_object(
     'claimed', true,

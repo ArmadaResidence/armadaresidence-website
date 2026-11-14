@@ -116,7 +116,10 @@ for (const kind of ['rate_limit', 'overloaded', 'timeout']) {
 }
 {
   const o = await runTurn(claim(Q('r-rep', 'السلام عليكم'), { rate: { repeated: true } }), deps(err('other')));
-  check(o.finish.state === 'human' && bodies(o).join('') === HANDOFF_AR && o.finish.models.length === 0, 'the same text a third time: no model call, the hand-off notice — never silence');
+  check(o.finish.status === 'skipped' && !o.finish.state && bodies(o).length === 0 && o.finish.models.length === 0,
+    'a repeat the assistant already answered (the database decides, guest_hub_pass4.sql A): suppressed — no model call, nothing sent, the state kept');
+  const fresh = await runTurn(claim(Q('r-fresh', 'السلام عليكم'), { rate: { repeated: false } }), deps(layered({ understand: understanding({}) })));
+  check(bodies(fresh)[0]?.startsWith('وعليكم السلام') && fresh.finish.status === 'done', 'the same text whose earlier copies got no reply (not «repeated»): answered as any message');
   const r = await runTurn(claim(Q('r-rate', 'سؤال'), { rate: { phone_hour: 99 } }), deps(err('other')));
   check(r.finish.state === 'human' && bodies(r).join('') === HANDOFF_AR, 'a rate limit: the hand-off notice — never silence');
 }

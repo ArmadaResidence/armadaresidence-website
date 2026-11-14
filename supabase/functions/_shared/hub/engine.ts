@@ -137,18 +137,16 @@ export async function runTurn(claim: Json, deps: Deps): Promise<Outcome> {
 
   // ── the rate limits of spec §7.4 (no model call; the conversation flagged for staff) ──
   if (turnKind === 'reply') {
-    // the same text a third time in 10 minutes (spec §7.4), or a rate limit: no model call — but never silence while the
-    // assistant owns the conversation (Ahmed, 14 Nov 2026): the general hand-off notice and the team
+    // the same text a third time in 10 minutes (spec §7.4) that the assistant ALREADY ANSWERED in this episode (hub_turn_claim
+    // decides — Ahmed, 14 Nov 2026): suppressed, no model call and nothing sent, because the guest has that answer; a copy
+    // that got no reply from the assistant is never «repeated» and is answered as any message
     if (claim.rate?.repeated) {
       finish.status = 'skipped';
       finish.error = 'repeated';
-      finish.state = 'human';
-      finish.reason = 'repeated';
-      finish.messages = [{ seq: 1, kind: 'text', body: fixed('handoff', L), payload: {}, source_card_ids: [], notice: true }];
-      finish.note = 'توقف عند: الرسالة نفسها تكررت — الرسالة للفريق';
-      finish.decision = { actions: ['handoff'], reason: 'repeated', transitions: ['T29'] };
+      finish.decision = { actions: ['noop'], reason: 'repeated' };
       return out;
     }
+    // a rate limit: no model call — never silence: the general hand-off notice and the team
     if (claim.rate && (claim.rate.phone_hour >= claim.rate.phone_max || claim.rate.replies_hour >= claim.rate.replies_max)) {
       finish.state = 'human';
       finish.reason = 'rate_limit';
