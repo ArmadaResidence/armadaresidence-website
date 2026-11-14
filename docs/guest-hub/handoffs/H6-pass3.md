@@ -78,3 +78,12 @@ hub-agent version 9, hub-admin version 11, wa-automation version 9 (production n
 2. `npx supabase@2.120.0 db push --linked --dry-run` must list exactly `20261114900000`, `20261114910000`, `20261114920000`; then push.
 3. Functions from `h6-guest-hub`: hub-agent, hub-admin, wa-automation (the echo parser). Rollback: hub-agent 9, hub-admin 11, wa-automation 9 = commit 3890493's functions (production today).
 4. The dashboard (simulator label, the «المساعد لم يعرف» message) and the site (laundry) through the normal deploys.
+
+## Deployed (14 Nov 2026, ~20:43 UTC, after «Limit raised»)
+
+- Rate limits (both models): 4,000 requests, 2,000,000 input and 400,000 output tokens a minute.
+- Full bank on the new code (local, throttled): 113 / 113 after the q080 correction. Branch replay of Ahmed's sequence (signed events, branch `h6-pass4-replay`, deleted): 10 / 10.
+- Production: migrations `20261114900000`, `20261114910000`, `20261114920000` (dry run listed exactly these); wa-automation 10, hub-agent 10, hub-admin 12 (engine `h6-1dcabcbbec75`). Rollback: wa-automation 9, hub-agent 9, hub-admin 11 = the functions of commit 3890493.
+- main fast-forwarded to `h6-guest-hub` (b04df05): the site deploy and the dashboard deploy green; the live Airport Road pages (5 rooms + the branch, AR + EN), /partners/ and /partners/corporate/ carry no laundry claim (the remaining «مغسلة» are photo descriptions of a washbasin); both fact-sheet PDFs live = the rebuilt files.
+- Unit modes and licences untouched by the session; Ahmed paused Airport Road (20:00 UTC) and set six licences to auto (20:16–20:17 UTC) himself.
+- The production run of the full bank on the deployed engine: 115 / 115 (Airport Road 90, Shafa Road 25), USD 0.67 — the check of the deploy (the simulator itself needs a signed-in staff session; it runs the same engine).
