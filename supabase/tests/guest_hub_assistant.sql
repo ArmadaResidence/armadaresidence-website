@@ -184,6 +184,9 @@ select pg_temp._check('Q6 claimed: running, the test run''s state «new», both 
   and jsonb_typeof(pg_temp._j('q6') -> 'licences') = 'object' and pg_temp._j('q6') -> 'forbidden' ? 'لاريو' and pg_temp._j('q6') #>> '{unit,persona,tone}' = '2'
   and (select status = 'running' from public.hub_turns where id = pg_temp._id('tQ')), left(pg_temp._j('q6')::text, 600));
 select pg_temp._check('Q6 … the claim never carries the guest''s phone', strpos(pg_temp._j('q6')::text, '966500009501') = 0);
+select pg_temp._check('Q6 … every topic with both labels (prompts.md §0; 20261114300000)',
+  (select bool_and(t ? 'label_en' and t ? 'label_ar') from jsonb_array_elements(pg_temp._j('q6') -> 'topics') t)
+  and exists (select 1 from jsonb_array_elements(pg_temp._j('q6') -> 'topics') t where t ->> 'key' = 'eyab' and t ->> 'label_ar' = '«إياب»'));
 select pg_temp._save('q7', public.hub_turn_claim(pg_temp._id('tQ')));
 select pg_temp._check('Q7 a second claim takes nothing', not (pg_temp._j('q7') ->> 'claimed')::boolean);
 select pg_temp._save('q8', public.hub_turn_finish(pg_temp._id('tQ'), jsonb_build_object(

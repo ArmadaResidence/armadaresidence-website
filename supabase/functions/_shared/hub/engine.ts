@@ -133,6 +133,7 @@ export async function runTurn(claim: Json, deps: Deps): Promise<Outcome> {
   let u: Understanding | null = null;
   const lists: Lists = {
     topics: (claim.topics as Json[]).map((t) => t.key),
+    topic_labels: Object.fromEntries((claim.topics as Json[]).map((t) => [t.key, { en: t.label_en ?? null, ar: t.label_ar ?? null }])),
     room_types: [],
   };
   if (!media && !cart && !buttonId && texts.length) {

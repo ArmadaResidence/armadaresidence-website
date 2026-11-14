@@ -43,6 +43,8 @@ export interface Understanding {
 
 export interface Lists {
   topics: string[];
+  /** the topics' labels (prompts.md §0: «topics with their labels») — key → English / Arabic label */
+  topic_labels?: Record<string, { en?: string | null; ar?: string | null }>;
   room_types: { key: string; branch: string; name_ar: string; name_en: string }[];
 }
 
@@ -158,7 +160,11 @@ export function understandUser(schema: string, lists: Lists, t: TurnInput): stri
     `CONVERSATION STATE: ${t.state}`,
     `OPEN DRAFT: ${t.draft ? JSON.stringify(t.draft) : 'none'}`,
     `INTENTS (choose only from): ${(t.intents ?? INTENTS).join(', ')}`,
-    `TOPICS (choose only from): ${lists.topics.join(', ')}`,
+    `TOPICS (choose only from; key: English label / Arabic label):\n${lists.topics.map((k) => {
+      const l = lists.topic_labels?.[k];
+      const names = [l?.en, l?.ar].filter((x) => x && String(x).trim()).join(' / ');
+      return names ? `${k}: ${names}` : k;
+    }).join('\n')}`,
     `ROOM TYPES (key (branch): Arabic / English):\n${rooms}`,
     `SCHEMA:\n${schema}`,
     `LAST MESSAGES (oldest first):\n${t.history.map((h) => `${h.author}: ${scrub(h.body).slice(0, 500)}`).join('\n') || '(none)'}`,

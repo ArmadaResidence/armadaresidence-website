@@ -1,0 +1,223 @@
+{
+ "id": "q055",
+ "recorded_at": "2026-11-14T10:16:14.959Z",
+ "question": {
+  "unit": "airport-road",
+  "language": "id",
+  "messages": [
+   "Apakah ada kamar kosong untuk besok?"
+  ]
+ },
+ "expect_h5": "third_language",
+ "calls": [
+  {
+   "layer": "understand",
+   "model": "claude-haiku-5-5",
+   "ok": true,
+   "text": "{\"intents\":[\"availability_question\"],\"topics\":[\"availability\"],\"new_topic_hint\":null,\"branch\":null,\"check_in\":\"2026-11-15\",\"check_out\":null,\"nights\":null,\"dates_text\":\"besok\",\"dates_calendar\":\"gregorian\",\"room_type\":null,\"breakfast\":null,\"adults\":null,\"children\":null,\"child_ages\":null,\"extra_beds\":null,\"rooms_count\":null,\"guest_name\":null,\"booking_ref\":null,\"language\":\"other:id\",\"complaint\":false,\"confidence\":{\"intents\":0.95,\"topics\":0.9,\"branch\":0.2,\"check_in\":0.9,\"dates_text\":0.95,\"dates_calendar\":0.9,\"language\":0.97,\"complaint\":0.98}}",
+   "input_tokens": 3174,
+   "output_tokens": 248,
+   "latency_ms": 1529
+  }
+ ],
+ "adapter": {
+  "rooms": {
+   "airport-road": [
+    {
+     "branch": "airport-road",
+     "key": "twin-room",
+     "name_ar": "غرفة سريرين منفصلين",
+     "name_en": "Twin Room",
+     "size_m2": 57,
+     "bed_ar": "سريران مفردان",
+     "bed_en": "Two single beds",
+     "capacity": 2,
+     "extra_beds_max": 0,
+     "bookable": true,
+     "sort": 0
+    },
+    {
+     "branch": "airport-road",
+     "key": "king-room",
+     "name_ar": "غرفة بسرير كينج",
+     "name_en": "King Room",
+     "size_m2": 50,
+     "bed_ar": "سرير كينج",
+     "bed_en": "King bed",
+     "capacity": 2,
+     "extra_beds_max": 0,
+     "bookable": true,
+     "sort": 1
+    },
+    {
+     "branch": "airport-road",
+     "key": "one-bedroom-suite",
+     "name_ar": "جناح بغرفة وصالة",
+     "name_en": "One-Bedroom Suite",
+     "size_m2": 65,
+     "bed_ar": "سرير كينج",
+     "bed_en": "King bed",
+     "capacity": 2,
+     "extra_beds_max": 1,
+     "bookable": true,
+     "sort": 2
+    },
+    {
+     "branch": "airport-road",
+     "key": "two-bedroom-suite",
+     "name_ar": "جناح بغرفتي نوم وصالة",
+     "name_en": "Two-Bedroom Suite",
+     "size_m2": 75,
+     "bed_ar": "سرير كينج + سريران مفردان",
+     "bed_en": "King bed + two single beds",
+     "capacity": 4,
+     "extra_beds_max": 1,
+     "bookable": true,
+     "sort": 3
+    },
+    {
+     "branch": "airport-road",
+     "key": "accessible-room",
+     "name_ar": "غرفة مهيأة لذوي الاحتياجات الخاصة",
+     "name_en": "Accessible Room",
+     "size_m2": 50,
+     "bed_ar": "سرير كينج",
+     "bed_en": "King bed",
+     "capacity": 2,
+     "extra_beds_max": 0,
+     "bookable": false,
+     "sort": 4
+    }
+   ],
+   "shafa-road": [
+    {
+     "branch": "shafa-road",
+     "key": "king-room",
+     "name_ar": "غرفة بسرير كينج",
+     "name_en": "King Room",
+     "size_m2": 35,
+     "bed_ar": "سرير كينج",
+     "bed_en": "King bed",
+     "capacity": 2,
+     "extra_beds_max": 0,
+     "bookable": true,
+     "sort": 5
+    },
+    {
+     "branch": "shafa-road",
+     "key": "balcony-room",
+     "name_ar": "غرفة مع بلكونة",
+     "name_en": "Room with Balcony",
+     "size_m2": 45,
+     "bed_ar": "سرير كينج",
+     "bed_en": "King bed",
+     "capacity": 2,
+     "extra_beds_max": 1,
+     "bookable": true,
+     "sort": 6
+    },
+    {
+     "branch": "shafa-road",
+     "key": "jacuzzi-studio",
+     "name_ar": "استديو بجاكوزي",
+     "name_en": "Studio with Jacuzzi",
+     "size_m2": 40,
+     "bed_ar": "سرير كينج",
+     "bed_en": "King bed",
+     "capacity": 2,
+     "extra_beds_max": 0,
+     "bookable": true,
+     "sort": 7
+    },
+    {
+     "branch": "shafa-road",
+     "key": "one-bedroom-suite",
+     "name_ar": "جناح بغرفة وصالة",
+     "name_en": "One-Bedroom Suite",
+     "size_m2": 45,
+     "bed_ar": "سرير كينج",
+     "bed_en": "King bed",
+     "capacity": 2,
+     "extra_beds_max": 1,
+     "bookable": true,
+     "sort": 8
+    },
+    {
+     "branch": "shafa-road",
+     "key": "two-bedroom-suite",
+     "name_ar": "جناح بغرفتي نوم وصالة",
+     "name_en": "Two-Bedroom Suite",
+     "size_m2": 65,
+     "bed_ar": "سرير كينج + سريران مفردان",
+     "bed_en": "King bed + two single beds",
+     "capacity": 4,
+     "extra_beds_max": 1,
+     "bookable": true,
+     "sort": 9
+    },
+    {
+     "branch": "shafa-road",
+     "key": "two-bedroom-jacuzzi-suite",
+     "name_ar": "جناح بغرفتي نوم وجاكوزي",
+     "name_en": "Two-Bedroom Suite with Jacuzzi",
+     "size_m2": 45,
+     "bed_ar": "سرير كينج + سريران مفردان",
+     "bed_en": "King bed + two single beds",
+     "capacity": 4,
+     "extra_beds_max": 1,
+     "bookable": true,
+     "sort": 10
+    },
+    {
+     "branch": "shafa-road",
+     "key": "accessible-room",
+     "name_ar": "غرفة مهيأة لذوي الاحتياجات الخاصة",
+     "name_en": "Accessible Room",
+     "size_m2": 45,
+     "bed_ar": "سرير كينج",
+     "bed_en": "King bed",
+     "capacity": 2,
+     "extra_beds_max": 0,
+     "bookable": true,
+     "sort": 11
+    }
+   ]
+  },
+  "from": {
+   "shafa-road/balcony-room": 195,
+   "airport-road/two-bedroom-suite": 240,
+   "shafa-road/two-bedroom-suite": 240,
+   "shafa-road/king-room": 185,
+   "airport-road/king-room": 185,
+   "shafa-road/jacuzzi-studio": 200,
+   "airport-road/one-bedroom-suite": 200,
+   "shafa-road/accessible-room": 185,
+   "shafa-road/one-bedroom-suite": 200,
+   "airport-road/twin-room": 185,
+   "shafa-road/two-bedroom-jacuzzi-suite": 240
+  }
+ },
+ "outcome": {
+  "kind": "third_language",
+  "state": "human",
+  "reason": "third_language",
+  "transitions": [
+   "T2"
+  ],
+  "topics": [
+   "availability"
+  ],
+  "messages": [
+   {
+    "body": "مرحبًا بك في أرمادا ريزيدنس – طريق المطار.\nنستطيع مساعدتك بالعربية أو الإنجليزية، وسيطّلع الفريق على رسالتك أيضًا.\nWe can help you in Arabic or English, and the team will also see your message.",
+    "notice": true
+   }
+  ],
+  "guard_refusals": [],
+  "cost_usd": 0.000441
+ },
+ "first_try": {
+  "guard": true,
+  "expect": true
+ }
+}

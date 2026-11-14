@@ -11,6 +11,7 @@
 import { readdirSync, readFileSync, existsSync } from 'node:fs';
 import { runTurn } from '../supabase/functions/_shared/hub/engine.ts';
 import { guard } from '../supabase/functions/_shared/hub/guard.ts';
+import { understandUser } from '../supabase/functions/_shared/hub/understand.ts';
 import { longDate } from '../supabase/functions/booking-request/email.ts';
 import { sarText } from '../supabase/functions/booking-request/rules.ts';
 import { BANK, CONTENT, FORBIDDEN, claimFor, h5Expect, knowledgeFor, outcomeKind } from './hub-fixtures-lib.mjs';
@@ -26,6 +27,15 @@ const files = existsSync(DIR) ? readdirSync(DIR).filter((f) => /^q\d+\.json$/.te
 if (!files.length) {
   console.log('hub-fixtures-check: no fixture recorded yet (scripts/hub-fixtures-record.mjs, with Ahmed\'s OK) — nothing to replay');
   process.exit(0);
+}
+// prompts.md §0: understand gets the topics WITH their labels (the recorded fixtures were made with them; the claim
+// carries label_ar since 20261114300000)
+{
+  const u = understandUser('{}', { topics: ['eyab'], topic_labels: { eyab: { en: 'Eyab', ar: '«إياب»' } }, room_types: [] },
+    { today: '2026-11-14', unit: 'airport-road', state: 'new', draft: null, history: [], turn: ['x'] });
+  check(u.includes('eyab: Eyab / «إياب»'), 'understand lists each topic with its English and Arabic labels');
+  const mig = readFileSync(new URL('../supabase/migrations/20261114300000_guest_hub_topic_labels.sql', import.meta.url), 'utf8');
+  check(/'label_en', x\.label_en, 'label_ar', x\.label_ar/.test(mig), 'hub_turn_claim hands the engine both labels');
 }
 const header = BANK.find((x) => x._header);
 const MUST_NOT = header?.global_must_not_include ?? [];

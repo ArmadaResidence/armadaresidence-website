@@ -81,7 +81,7 @@ export function claimFor(q) {
     draft: null,
     bookings: q.id === 'q047' ? [{ ref: 'AR-20261201-QA47', status: 'confirmed', branch: 'airport-road', check_in: '2026-12-01', check_out: '2026-12-03' }] : [],
     licences: Object.fromEntries(TOPICS.map((t) => [t.key, t.always_handoff ? 'blocked' : 'shadow'])),
-    topics: TOPICS.map((t, i) => ({ key: t.key, label_en: t.label_en, parent_key: t.parent_key, always_handoff: t.always_handoff, sort: i })),
+    topics: TOPICS.map((t, i) => ({ key: t.key, label_en: t.label_en, label_ar: t.label_ar, parent_key: t.parent_key, always_handoff: t.always_handoff, sort: i })),
     settings: { confidence_floor: 0.7, cards_per_turn: 5, reply_max_chars: 600, failed_max: 2, group_min_rooms: 5, models: MODELS, prices: PRICES, show_prices: true },
     forbidden: FORBIDDEN,
     rate: { phone_hour: 0, replies_hour: 0, repeated: false, phone_max: 30, replies_max: 20 },
@@ -93,6 +93,8 @@ export function claimFor(q) {
 /** what the engine should decide for a bank item in H5 (room_booking, hall and group requests OFF → the team) */
 export function h5Expect(q) {
   const a = q.expect.action;
+  // the H5 brief: a price question without dates gets the site's «يبدأ من» lines (the bank's note allows it: q015)
+  if (a === 'ask' && /يبدأ من/.test(q.note ?? '')) return 'answer';
   if (['ask', 'send_summary', 'quote'].includes(a)) return 'handoff';
   if (a === 'refuse') return 'out_of_scope';
   if (a === 'greeting') return 'greeting';

@@ -1,0 +1,407 @@
+{
+ "recorded_at": "2026-11-14T10:16:42.560Z",
+ "fixtures": 44,
+ "guard_first_try": 44,
+ "expect_first_try": 37,
+ "total_usd": 0.122502,
+ "per_turn_usd": 0.002849,
+ "per_turn_understand_compose_usd": 0.006559,
+ "items": [
+  {
+   "id": "q001",
+   "kind": "answer",
+   "expect": "answer",
+   "guard": true,
+   "match": true,
+   "cost": 0.006314,
+   "calls": 2
+  },
+  {
+   "id": "q002",
+   "kind": "answer",
+   "expect": "answer",
+   "guard": true,
+   "match": true,
+   "cost": 0.005949,
+   "calls": 2
+  },
+  {
+   "id": "q003",
+   "kind": "answer",
+   "expect": "answer",
+   "guard": true,
+   "match": true,
+   "cost": 0.008222,
+   "calls": 2
+  },
+  {
+   "id": "q005",
+   "kind": "answer",
+   "expect": "answer",
+   "guard": true,
+   "match": true,
+   "cost": 0.00747,
+   "calls": 2
+  },
+  {
+   "id": "q008",
+   "kind": "handoff",
+   "expect": "handoff",
+   "guard": true,
+   "match": true,
+   "cost": 0.005234,
+   "calls": 2
+  },
+  {
+   "id": "q009",
+   "kind": "handoff",
+   "expect": "handoff",
+   "guard": true,
+   "match": true,
+   "cost": 0.005631,
+   "calls": 2
+  },
+  {
+   "id": "q010",
+   "kind": "handoff",
+   "expect": "handoff",
+   "guard": true,
+   "match": true,
+   "cost": 0.005414,
+   "calls": 2
+  },
+  {
+   "id": "q013",
+   "kind": "handoff",
+   "expect": "handoff",
+   "guard": true,
+   "match": true,
+   "cost": 0.000421,
+   "calls": 1
+  },
+  {
+   "id": "q014",
+   "kind": "handoff",
+   "expect": "handoff",
+   "guard": true,
+   "match": true,
+   "cost": 0.000458,
+   "calls": 1
+  },
+  {
+   "id": "q015",
+   "kind": "answer",
+   "expect": "answer",
+   "guard": true,
+   "match": true,
+   "cost": 0.000417,
+   "calls": 1
+  },
+  {
+   "id": "q016",
+   "kind": "handoff",
+   "expect": "answer",
+   "guard": true,
+   "match": false,
+   "cost": 0.000424,
+   "calls": 1
+  },
+  {
+   "id": "q017",
+   "kind": "handoff",
+   "expect": "handoff",
+   "guard": true,
+   "match": true,
+   "cost": 0.000425,
+   "calls": 1
+  },
+  {
+   "id": "q018",
+   "kind": "handoff",
+   "expect": "handoff",
+   "guard": true,
+   "match": true,
+   "cost": 0.000435,
+   "calls": 1
+  },
+  {
+   "id": "q020",
+   "kind": "handoff",
+   "expect": "handoff",
+   "guard": true,
+   "match": true,
+   "cost": 0.000415,
+   "calls": 1
+  },
+  {
+   "id": "q021",
+   "kind": "handoff",
+   "expect": "answer",
+   "guard": true,
+   "match": false,
+   "cost": 0.000419,
+   "calls": 1
+  },
+  {
+   "id": "q023",
+   "kind": "handoff",
+   "expect": "answer",
+   "guard": true,
+   "match": false,
+   "cost": 0.005656,
+   "calls": 2
+  },
+  {
+   "id": "q024",
+   "kind": "answer",
+   "expect": "answer",
+   "guard": true,
+   "match": true,
+   "cost": 0.00715,
+   "calls": 2
+  },
+  {
+   "id": "q027",
+   "kind": "answer",
+   "expect": "answer",
+   "guard": true,
+   "match": true,
+   "cost": 0.000418,
+   "calls": 1
+  },
+  {
+   "id": "q030",
+   "kind": "handoff",
+   "expect": "answer",
+   "guard": true,
+   "match": false,
+   "cost": 0.000425,
+   "calls": 1
+  },
+  {
+   "id": "q031",
+   "kind": "answer",
+   "expect": "answer",
+   "guard": true,
+   "match": true,
+   "cost": 0.007392,
+   "calls": 2
+  },
+  {
+   "id": "q035",
+   "kind": "answer",
+   "expect": "answer",
+   "guard": true,
+   "match": true,
+   "cost": 0.005768,
+   "calls": 2
+  },
+  {
+   "id": "q037",
+   "kind": "answer",
+   "expect": "answer",
+   "guard": true,
+   "match": true,
+   "cost": 0.000416,
+   "calls": 1
+  },
+  {
+   "id": "q038",
+   "kind": "answer",
+   "expect": "answer",
+   "guard": true,
+   "match": true,
+   "cost": 0.006675,
+   "calls": 2
+  },
+  {
+   "id": "q044",
+   "kind": "handoff",
+   "expect": "handoff",
+   "guard": true,
+   "match": true,
+   "cost": 0.000425,
+   "calls": 1
+  },
+  {
+   "id": "q046",
+   "kind": "handoff",
+   "expect": "handoff",
+   "guard": true,
+   "match": true,
+   "cost": 0.000419,
+   "calls": 1
+  },
+  {
+   "id": "q047",
+   "kind": "booking_status",
+   "expect": "booking_status",
+   "guard": true,
+   "match": true,
+   "cost": 0.000418,
+   "calls": 1
+  },
+  {
+   "id": "q048",
+   "kind": "handoff",
+   "expect": "handoff",
+   "guard": true,
+   "match": true,
+   "cost": 0.000423,
+   "calls": 1
+  },
+  {
+   "id": "q049",
+   "kind": "handoff",
+   "expect": "handoff",
+   "guard": true,
+   "match": true,
+   "cost": 0.000432,
+   "calls": 1
+  },
+  {
+   "id": "q050",
+   "kind": "handoff",
+   "expect": "handoff",
+   "guard": true,
+   "match": true,
+   "cost": 0.000414,
+   "calls": 1
+  },
+  {
+   "id": "q051",
+   "kind": "handoff",
+   "expect": "handoff",
+   "guard": true,
+   "match": true,
+   "cost": 0.000416,
+   "calls": 1
+  },
+  {
+   "id": "q052",
+   "kind": "out_of_scope",
+   "expect": "out_of_scope",
+   "guard": true,
+   "match": true,
+   "cost": 0.000421,
+   "calls": 1
+  },
+  {
+   "id": "q053",
+   "kind": "out_of_scope",
+   "expect": "out_of_scope",
+   "guard": true,
+   "match": true,
+   "cost": 0.000418,
+   "calls": 1
+  },
+  {
+   "id": "q055",
+   "kind": "third_language",
+   "expect": "third_language",
+   "guard": true,
+   "match": true,
+   "cost": 0.000441,
+   "calls": 1
+  },
+  {
+   "id": "q057",
+   "kind": "handoff",
+   "expect": "handoff",
+   "guard": true,
+   "match": true,
+   "cost": 0,
+   "calls": 0
+  },
+  {
+   "id": "q059",
+   "kind": "answer",
+   "expect": "answer",
+   "guard": true,
+   "match": true,
+   "cost": 0.007065,
+   "calls": 2
+  },
+  {
+   "id": "q065",
+   "kind": "handoff",
+   "expect": "answer",
+   "guard": true,
+   "match": false,
+   "cost": 0.000415,
+   "calls": 1
+  },
+  {
+   "id": "q072",
+   "kind": "handoff",
+   "expect": "answer",
+   "guard": true,
+   "match": false,
+   "cost": 0.000428,
+   "calls": 1
+  },
+  {
+   "id": "q077",
+   "kind": "greeting",
+   "expect": "greeting",
+   "guard": true,
+   "match": true,
+   "cost": 0.000411,
+   "calls": 1
+  },
+  {
+   "id": "q078",
+   "kind": "greeting",
+   "expect": "greeting",
+   "guard": true,
+   "match": true,
+   "cost": 0.00041,
+   "calls": 1
+  },
+  {
+   "id": "q085",
+   "kind": "answer",
+   "expect": "answer",
+   "guard": true,
+   "match": true,
+   "cost": 0.006924,
+   "calls": 2
+  },
+  {
+   "id": "q087",
+   "kind": "answer",
+   "expect": "answer",
+   "guard": true,
+   "match": true,
+   "cost": 0.005561,
+   "calls": 2
+  },
+  {
+   "id": "q092",
+   "kind": "handoff",
+   "expect": "answer",
+   "guard": true,
+   "match": false,
+   "cost": 0.000429,
+   "calls": 1
+  },
+  {
+   "id": "q097",
+   "kind": "handoff",
+   "expect": "handoff",
+   "guard": true,
+   "match": true,
+   "cost": 0.007227,
+   "calls": 2
+  },
+  {
+   "id": "q098",
+   "kind": "handoff",
+   "expect": "handoff",
+   "guard": true,
+   "match": true,
+   "cost": 0.007857,
+   "calls": 2
+  }
+ ]
+}
