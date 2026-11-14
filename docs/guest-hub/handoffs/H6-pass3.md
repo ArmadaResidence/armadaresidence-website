@@ -66,3 +66,15 @@ Decisions: DECISIONS.md 2026-11-14 «Ahmed's note before the report» and «Gues
 ## Rollback point (unchanged — nothing of pass 3 / 4 is deployed)
 
 hub-agent version 9, hub-admin version 11, wa-automation version 9 (production now). The migrations `20261114900000` / `20261114910000` are not applied.
+
+## Ahmed's evidence of 22:50 — the simulator and the live counters
+
+- Not the hub budget (2.77 of 20 USD today; nothing capped). Not a button mix-up: since go-live every typed text got its understanding or tagging call; after 21:57 each failed with HTTP 400, zero tokens (the workspace usage limit), which the old trace labelled «وسائط أو زر». Fixed (not deployed): the trace names the real reason; an unsupported message kind gets the media notice; a typed text after the quick replies is always understood (test).
+- Migration `20261114920000_guest_hub_lab_budget` (not applied): the live cap counts live turns and staff tools only; the lab is bounded by the totals.
+
+## To deploy, in this order (once the Anthropic workspace limit is raised)
+
+1. `node scripts/hub-ratelimits.mjs` (the limits now readable) and the full bank on the new code (local runner, then production through the throttled lab).
+2. `npx supabase@2.120.0 db push --linked --dry-run` must list exactly `20261114900000`, `20261114910000`, `20261114920000`; then push.
+3. Functions from `h6-guest-hub`: hub-agent, hub-admin, wa-automation (the echo parser). Rollback: hub-agent 9, hub-admin 11, wa-automation 9 = commit 3890493's functions (production today).
+4. The dashboard (simulator label, the «المساعد لم يعرف» message) and the site (laundry) through the normal deploys.
