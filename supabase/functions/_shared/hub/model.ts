@@ -49,7 +49,9 @@ export function requestBody(c: ModelCall, thinking = true): Record<string, unkno
 
 /** the error kind of an API answer */
 export function errorKind(status: number, body: string): NonNullable<ModelResult['error']> {
-  if (/credit balance is too low|insufficient.{0,20}credit|billing/i.test(body)) return 'credit';
+  // the workspace's own spend limit in the Anthropic Console counts as the credit too (14 Nov 2026: "You have reached your
+  // specified workspace API usage limits" came back as a plain 400, so turns failed one by one instead of going to the team)
+  if (/credit balance is too low|insufficient.{0,20}credit|billing|reached your specified (?:workspace |organization )?api usage limits|usage limits?.{0,40}regain access/i.test(body)) return 'credit';
   if (status === 429) return 'rate_limit';
   if (status === 529 || status === 503 || /overloaded/i.test(body)) return 'overloaded';
   if (status === 400) return 'bad_request';

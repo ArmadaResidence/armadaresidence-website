@@ -196,6 +196,17 @@ check(pageOf(null).items.length === 0, 'pageOf: no body → no item');
 check(/G1 a hidden unit cannot be on/.test(TESTS) && /G3 «المساعد يعمل» cannot be switched on/.test(TESTS) && /S6 undoing an «off» cannot switch/.test(TESTS), 'the SQL tests prove the refusals (guest_hub_units.sql)');
 check(/guest_hub_units\.sql/.test(WF), 'server-checks.yml runs guest_hub_units.sql');
 
+// the API credit stop (spec §7.3): every answer that means "no more API calls" is the credit, so the conversations go to the
+// team at once with one alert — the workspace spend limit of the Anthropic Console included (14 Nov 2026, H6 pass 3)
+{
+  const { errorKind } = await import('../supabase/functions/_shared/hub/model.ts');
+  const limit = '{"type":"error","error":{"type":"invalid_request_error","message":"You have reached your specified workspace API usage limits. You will regain access on 2026-12-01 at 00:00 UTC."}}';
+  check(errorKind(400, limit) === 'credit', 'the workspace usage limit (400) is the credit');
+  check(errorKind(400, '{"error":{"message":"Your credit balance is too low to access the Anthropic API."}}') === 'credit', 'a low credit balance is the credit');
+  check(errorKind(400, '{"error":{"type":"invalid_request_error","message":"messages: field required"}}') === 'bad_request', 'any other 400 stays a bad request');
+  check(errorKind(429, '{}') === 'rate_limit' && errorKind(529, '{}') === 'overloaded', 'a rate limit and an overload are not the credit');
+}
+
 if (fails.length) {
   for (const f of fails) console.error(`✗ ${f}`);
   console.error(`hub-controls-check: ${fails.length} of ${n} failed`);
