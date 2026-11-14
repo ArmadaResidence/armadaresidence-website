@@ -30,7 +30,7 @@ const URL_RE = /\b(?:https?:\/\/|www\.)[^\s<>()«»"“”]+|\b[a-z0-9.-]+\.(?:c
 const EMOJI_RE = /\p{Extended_Pictographic}/u;
 
 /** the plural address forms of the guest (Ahmed, 4 Nov 2026 — singular only), as whole words */
-export const PLURAL_ADDRESS = ['يمكنكم', 'بإمكانكم', 'تستطيعون', 'تواصلوا', 'احجزوا', 'راسلونا', 'اتصلوا', 'أرسلوا', 'اختاروا', 'زوروا', 'لديكم', 'خدمتكم',
+export const PLURAL_ADDRESS = ['يمكنكم', 'بإمكانكم', 'تستطيعون', 'تواصلوا', 'احجزوا', 'راسلونا', 'اتصلوا', 'أرسلوا', 'اختاروا', 'زوروا', 'لديكم', 'معكم', 'خدمتكم',
   'إقامتكم', 'حجزكم', 'نرحب بكم', 'تفضلوا'];
 /** facilities never affirmed unless a card in the payload states them (spec §2.5 rule 8) */
 export const FACILITY_WORDS = ['مسبح', 'حمام سباحة', 'سبا', 'ساونا', 'توصيل من المطار', 'توصيل إلى المطار', 'نقل من المطار', 'نقل إلى المطار', 'جيم', 'نادي رياضي',
@@ -70,6 +70,10 @@ export const NON_ANSWER_AR: RegExp[] = [
 ];
 export const NON_ANSWER_EN = ["we don't have that information", "we don't have information", 'we do not have information', "we can't confirm", 'we cannot confirm', "i can't confirm",
   'the reception will let you know', 'the team will let you know'];
+/** dialect words (Modern Standard Arabic only — 13 Nov 2026; H6 pass 5: the model now writes small talk), as whole words;
+ *  a word the payload itself holds passes (the «إياب» slogan «حيّاك دايم») */
+export const DIALECT_AR = ['وش', 'ايش', 'إيش', 'أبغى', 'ابغى', 'تبغى', 'تبي', 'أبي', 'زين', 'الحين', 'دحين', 'عشان', 'علشان', 'ليش', 'شلون', 'وايد', 'بس',
+  'هلا', 'هلا والله', 'مو', 'يعطيك العافية', 'يعطيكم العافية', 'أبشر', 'ابشر', 'تامر', 'تأمر', 'طال عمرك', 'ازيك', 'إزيك', 'كده', 'دلوقتي'];
 export const SELF_WORDS_EN = ['ai', 'a.i.', 'bot', 'chatbot', 'robot', 'automated', 'automatic', 'assistant', 'virtual', 'i', "i'm", 'my name', 'human', 'real person', 'language model'];
 
 const lower = (s: string) => s.toLowerCase();
@@ -194,6 +198,11 @@ export function guard(reply: string, p: GuardPayload, o: GuardOptions): GuardRes
   if (/^\s*#/m.test(text) || /\*\*|__/.test(text)) r.push('markdown');
   if (!o.emoji_allowed && EMOJI_RE.test(text)) r.push('emoji');
   if ((text.match(/!/g) ?? []).length > 1) r.push('exclamation');
+  // 6b · Modern Standard Arabic only (the payload's own words pass)
+  if (o.language === 'ar') for (const w of DIALECT_AR) if (arWord(text, w) && !arWord(pay, w)) {
+    r.push('dialect');
+    break;
+  }
   // 8 · no self-description, no claim to be a person («مساعدتك» passes — a whole word only)
   if (SELF_WORDS_AR.some((w) => arWord(text, w)) || SELF_EXACT_AR.test(text) || SELF_WORDS_EN.some((w) => enWord(text, w))) r.push('self_description');
   // 8b · the first person singular (H6 gaps): «نحن», never «أستطيع» / «أؤكد» …
@@ -223,6 +232,7 @@ export const RETRY_REASONS: Record<string, string> = {
   questions: 'Ask at most two questions.',
   markdown: 'No headings and no bold.',
   emoji: 'No emoji.',
+  dialect: 'Write Modern Standard Arabic only, never dialect words (e.g. «وش», «أبغى», «زين», «الحين», «هلا», «أبشر», «يعطيك العافية»).',
   exclamation: 'At most one exclamation mark.',
   self_description: 'Never describe yourself and never use the words assistant, bot, AI, automated, or I. Speak as the property in the plural.',
   cancellation: 'Quote the PAYLOAD cancellation_sentence word for word, or do not mention cancellation.',

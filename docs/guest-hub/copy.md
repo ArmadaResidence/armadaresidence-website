@@ -73,6 +73,22 @@ Later in the episode, a salaam with a question — this line, then the answer (t
 You’re welcome — we are happy to help any time.
 ```
 
+**1.7 The quick replies' answers** [مقرر — اعتماد أحمد، 15 نوفمبر 2026] — routed by the button's id before the model; the same words typed by the guest get the same answer.
+
+- «لدي سؤال» / “I have a question”:
+
+```
+تفضّل، اكتب سؤالك.
+```
+```
+Go ahead and type your question.
+```
+
+- «التحدث مع موظف» / “Talk to our team”: the general hand-off notice (§5), the team at once.
+- «حجز إقامة» / “Book a stay”: the booking conversation (§4.0).
+
+**1.8 Small talk is written by the model** [مقرر — أحمد، 15 نوفمبر 2026]. Greetings, «كيف الحال», courtesy, thanks, compliments and goodbyes get a short natural reply written by the model within the rules (prompts.md §2, ACTION chat: Modern Standard Arabic, «نحن», no emoji, no fact, no automated wording); a message that is not clear gets one short clarifying question (ACTION clarify) and a message outside Armada's services a short polite redirect (ACTION redirect). The code still adds the greeting line of 1.1 / 1.2 to the first reply and «وعليكم السلام» to a reply to a salaam (1.5). The fixed lines of 1.4, 1.6 and §5 «Outside Armada's services» are kept only as the fallback when the model cannot be used. A bare acknowledgement right after our answer («تمام»، «أوكي»، 👍, a reaction) may get no reply.
+
 ---
 
 ## 2. Dates
@@ -129,6 +145,37 @@ Header: «الغرف المتاحة لتواريخك» / “Rooms for your dates
 ---
 
 ## 4. The booking summary and the results
+
+**4.0 Booking from the chat before H8** [مقرر — أحمد، 15 نوفمبر 2026; the lines' wording is the session's, for Ahmed's review] — «حجز إقامة», or a guest who asks to book: the model asks for the dates and the number of guests (prompts.md §2, ACTION ask); once both are known the code quotes every room type of the branch from the rate calendar (the adapter, `quote_stay`) and ends with the website's booking link and the team.
+
+The question when the model cannot be used:
+
+```
+متى موعد وصولك ومغادرتك، وكم عدد الضيوف؟
+```
+```
+When do you arrive and leave, and how many guests are staying?
+```
+
+The quote's first line (then one line per room type: «{room_name}: {total}»):
+
+```
+الأسعار لإقامتك من {check_in} إلى {check_out}، شاملة الضريبة:
+```
+```
+Prices for your stay from {check_in} to {check_out}, VAT included:
+```
+
+The last line, with the quick reply «التحدث مع موظف» / “Talk to our team” (`{booking_url}` from the card «روابط الموقع»):
+
+```
+يمكنك إكمال الحجز من الموقع: {booking_url}
+أو اختر «التحدث مع موظف» ليكمل معك فريقنا.
+```
+```
+You can complete your booking on our website: {booking_url}
+Or choose “Talk to our team” and our team will continue with you.
+```
 
 **4.1 Summary** (lines in brackets appear only when they apply)
 

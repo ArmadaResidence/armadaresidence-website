@@ -15,7 +15,22 @@ export const INTENTS = [
 ] as const;
 export type Intent = (typeof INTENTS)[number];
 
+/** the turn's one outcome class (H6 pass 5, Ahmed 15 Nov 2026 — the natural-conversation policy): what the message is FOR.
+ *  small_talk (greetings, salaam, «كيف الحال», thanks, compliments, goodbye) · hotel_question · staff_request (something the
+ *  team must do: an extension, a late check-out, maintenance, an order to the room, a booking change) · booking (a new
+ *  stay) · unclear (cannot tell whether it concerns the hotel) · out_of_scope · sensitive (a person asked for, "are you a
+ *  bot?", abuse or threats). A greeting with a question is the question's kind. */
+export const KINDS = ['small_talk', 'hotel_question', 'staff_request', 'booking', 'unclear', 'out_of_scope', 'sensitive'] as const;
+export type Kind = (typeof KINDS)[number];
+export const SENSITIVE = ['human', 'bot', 'abuse'] as const;
+
 export interface Understanding {
+  /** H6 pass 5: the outcome class; derived from the intents when a recorded answer has none (deriveKind) */
+  kind: Kind;
+  /** sensitive only: a person asked for, "are you a bot?", or abuse / threats */
+  sensitive: (typeof SENSITIVE)[number] | null;
+  /** small talk that is only an acknowledgement («تمام»، «أوكي»، 👍) — no reply needed right after our answer */
+  ack_only: boolean;
   intents: Intent[];
   topics: string[];
   new_topic_hint: string | null;
@@ -87,12 +102,17 @@ export function validateUnderstanding(raw: unknown, lists: Lists): { ok: true; v
   if (!nullOr<string>(o.booking_ref, (x) => typeof x === 'string' && /^AR-[A-Z0-9-]{4,40}$/.test(x))) e.push('booking_ref');
   if (typeof o.language !== 'string' || !/^(ar|en|other:[a-z]{2,3})$/.test(o.language)) e.push('language');
   if (typeof o.complaint !== 'boolean') e.push('complaint');
+  if (!nullOr<string>(o.kind, (x) => (KINDS as readonly string[]).includes(String(x)))) e.push('kind');
+  if (!nullOr<string>(o.sensitive, (x) => (SENSITIVE as readonly string[]).includes(String(x)))) e.push('sensitive');
+  if (!nullOr<boolean>(o.ack_only, (x) => typeof x === 'boolean')) e.push('ack_only');
   const conf = o.confidence && typeof o.confidence === 'object' && !Array.isArray(o.confidence) ? o.confidence : {};
   for (const [k, v] of Object.entries(conf)) if (typeof v !== 'number' || v < 0 || v > 1 || k.length > 40) e.push('confidence');
   if (e.length) return { ok: false, errors: [...new Set(e)] };
+  const kind: Kind = o.kind ?? deriveKind(intents as Intent[]);
   return {
     ok: true,
     value: {
+      kind, sensitive: kind === 'sensitive' ? (o.sensitive ?? (intents.includes('human_request') ? 'human' : null)) : null, ack_only: kind === 'small_talk' && o.ack_only === true,
       intents: [...new Set(intents as Intent[])], topics: [...new Set(topics as string[])], new_topic_hint: o.new_topic_hint ?? null, branch: o.branch ?? null,
       check_in: o.check_in ?? null, check_out: o.check_out ?? null, nights: o.nights ?? null, dates_text: o.dates_text ?? null, dates_calendar: o.dates_calendar ?? null,
       room_type: o.room_type ?? null, breakfast: o.breakfast ?? null, adults: o.adults ?? null, children: o.children ?? null, child_ages: o.child_ages ?? null,
@@ -100,6 +120,17 @@ export function validateUnderstanding(raw: unknown, lists: Lists): { ok: true; v
       language: o.language, complaint: o.complaint, confidence: conf as Record<string, number>,
     },
   };
+}
+
+/** the kind of an answer that names none (the fixtures recorded before H6 pass 5): from its intents */
+export function deriveKind(intents: readonly string[]): Kind {
+  const has = (i: string) => intents.includes(i);
+  if (has('human_request')) return 'sensitive';
+  if (intents.length && intents.every((i) => i === 'greeting' || i === 'thanks_or_closing')) return 'small_talk';
+  if (has('out_of_scope') && intents.every((i) => ['out_of_scope', 'greeting', 'thanks_or_closing'].includes(i))) return 'out_of_scope';
+  if (has('booking_change') || has('booking_cancel') || has('compensation_request')) return 'staff_request';
+  if (has('stay_booking') || has('availability_question')) return 'booking';
+  return 'hotel_question';
 }
 
 const SLOT_FIELDS = ['branch', 'check_in', 'check_out', 'nights', 'room_type', 'breakfast', 'adults', 'children', 'child_ages', 'extra_beds', 'rooms_count', 'guest_name', 'booking_ref'] as const;

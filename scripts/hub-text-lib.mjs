@@ -96,6 +96,8 @@ export function parseCopy(md = read('docs/guest-hub/copy.md')) {
     out.salaam_line = { ar: b[2], en: null };
   }
   out.thanks = pick(s1, '**1.6 Thanks with nothing else**');
+  // H6 pass 5 (15 Nov 2026): «لدي سؤال»'s answer
+  out.ask_question = pick(s1, '**1.7 The quick replies');
   const qr = (label) => {
     const line = s1.split('\n').find((l) => l.startsWith(label));
     if (!line) throw new Error(`copy.md §1: ${label} missing`);
@@ -112,6 +114,15 @@ export function parseCopy(md = read('docs/guest-hub/copy.md')) {
   out.dates_confirm.buttons = { ar: allQuoted(btn.split(' / ')[0], '«', '»'), en: allQuoted(btn.split(' / ')[1], '“', '”') };
   const b22 = codeBlocks(s2.slice(s2.indexOf('**2.2')));
   out.dates_hijri = { ar: b22[0], en: b22[1] };
+  // H6 pass 5 (15 Nov 2026): booking from the chat before H8 (§4.0) — the question, the quote's first line, the last line
+  {
+    const s40 = md.slice(md.indexOf('**4.0 Booking from the chat'), md.indexOf('**4.1 Summary**'));
+    const b = codeBlocks(s40);
+    if (b.length !== 6) throw new Error('copy.md §4.0: three bilingual lines expected');
+    out.booking_ask = { ar: b[0], en: b[1] };
+    out.booking_quote_head = { ar: b[2], en: b[3] };
+    out.booking_link = { ar: b[4], en: b[5] };
+  }
   const results = md.slice(md.indexOf('**4.2 Results**'), md.indexOf('## 5. Notices'));
   for (const body of [results, section(md, '## 5. Notices and other fixed replies')]) {
     for (const r of tableRows(body)) {

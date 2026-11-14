@@ -60,7 +60,31 @@ export function greeting(p: Persona | null | undefined, L: Lang, unitName: strin
  *  (copy.md §1.5, Ahmed 14 Nov 2026): the Arabic reply then opens with «وعليكم السلام» */
 export function hasSalaam(text: string | null | undefined): boolean {
   const s = String(text ?? '').replace(/[\u064B-\u065F\u0670\u0640]/g, '').replace(/[ی]/g, 'ي').replace(/[ک]/g, 'ك');
-  return /(?:^|[^\u0621-\u064A])(?:ال|ا)?سلام\s*(?:عليكم|عليك|عليكما)(?![\u0621-\u064A])/.test(s);
+  if (/(?:^|[^ء-ي])(?:ال|ا)?سلام\s*(?:عليكم|عليك|عليكما)(?![ء-ي])/.test(s)) return true;
+  // «سلام» on its own (H6 pass 5 — Ahmed's test of 15 Nov 00:16: it got no «وعليكم السلام»)
+  return /^\s*(?:ال)?سلام\s*[.!،,؟?]*\s*$/.test(s);
+}
+
+const looseKey = (t: string) => String(t ?? '').toLowerCase().replace(/[ً-ٰٟـ]/g, '').replace(/[أإآ]/g, 'ا').replace(/ة/g, 'ه').replace(/ى/g, 'ي')
+  .replace(/[“”"«».,!?؟،]/g, '').replace(/\s+/g, ' ').trim();
+/** the guest typed one of our quick replies' titles (Ahmed, 15 Nov 2026: the same result as the button) — its id */
+export function buttonForText(text: string, kind: 'branch' | 'dining'): string | null {
+  const k = looseKey(text);
+  if (!k) return null;
+  for (const L of ['ar', 'en'] as const) for (const b of quickReplies(kind, L)) if (looseKey(b.title) === k) return b.id;
+  return null;
+}
+
+/** a model-written reply without the greeting lines the code adds itself («وعليكم السلام»، «مرحبًا بك في …», "Welcome to …") */
+export function stripOpening(reply: string): string {
+  let r = String(reply ?? '').trim();
+  for (let i = 0; i < 2; i++) {
+    r = r.replace(/^وعليكم\s+السلام(?:\s+ورحمة\s+الله(?:\s+وبركاته)?)?\s*[،,.!]?\s*/u, '')
+      .replace(/^(?:مرحبًا|مرحبا|أهلًا|أهلا)\s+بك\s+في\s+[^.!\n]*[.!]?\s*/u, '')
+      .replace(/^welcome to [^.!\n]*[.!]?\s*/i, '')
+      .trim();
+  }
+  return r;
 }
 /** the first line of an episode's first reply with a salaam: «وعليكم السلام، مرحبًا بك في {unit_name}.» */
 export const salaamGreeting = (g: string) => `${C.salaam_line.ar.replace(/\.$/, '')}، ${g}`;

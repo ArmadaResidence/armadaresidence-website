@@ -1,6 +1,6 @@
 {
  "id": "q077",
- "recorded_at": "2026-11-14T14:29:51.160Z",
+ "recorded_at": "2026-11-14T22:30:51.149Z",
  "question": {
   "unit": "airport-road",
   "language": "ar",
@@ -8,16 +8,25 @@
    "السلام عليكم"
   ]
  },
- "expect_h5": "greeting",
+ "expect_h5": "reply",
  "calls": [
   {
    "layer": "understand",
    "model": "claude-haiku-5-5",
    "ok": true,
-   "text": "{\"intents\":[\"greeting\"],\"topics\":[\"greeting\"],\"new_topic_hint\":null,\"branch\":null,\"check_in\":null,\"check_out\":null,\"nights\":null,\"dates_text\":null,\"dates_calendar\":null,\"room_type\":null,\"breakfast\":null,\"adults\":null,\"children\":null,\"child_ages\":null,\"extra_beds\":null,\"rooms_count\":null,\"guest_name\":null,\"booking_ref\":null,\"language\":\"ar\",\"complaint\":false,\"confidence\":{\"intents\":0.99,\"topics\":0.99,\"language\":0.99}}",
-   "input_tokens": 3690,
-   "output_tokens": 190,
-   "latency_ms": 1837
+   "text": "{\"intents\":[\"greeting\"],\"topics\":[\"greeting\"],\"new_topic_hint\":null,\"branch\":null,\"check_in\":null,\"check_out\":null,\"nights\":null,\"dates_text\":null,\"dates_calendar\":null,\"room_type\":null,\"breakfast\":null,\"adults\":null,\"children\":null,\"child_ages\":null,\"extra_beds\":null,\"rooms_count\":null,\"guest_name\":null,\"booking_ref\":null,\"language\":\"ar\",\"complaint\":false,\"kind\":\"small_talk\",\"sensitive\":null,\"ack_only\":false,\"confidence\":{\"intents\":0.99,\"topics\":0.99,\"language\":0.99,\"kind\":0.99}}",
+   "input_tokens": 5307,
+   "output_tokens": 223,
+   "latency_ms": 1204
+  },
+  {
+   "layer": "compose",
+   "model": "claude-sonnet-5-5",
+   "ok": true,
+   "text": "{\"reply\": \"كيف نساعدك اليوم؟\", \"used_card_ids\": [], \"unanswered\": []}",
+   "input_tokens": 3627,
+   "output_tokens": 41,
+   "latency_ms": 1551
   }
  ],
  "adapter": {
@@ -198,7 +207,7 @@
   }
  },
  "outcome": {
-  "kind": "greeting",
+  "kind": "reply",
   "state": "inquiry",
   "reason": null,
   "transitions": [
@@ -209,12 +218,12 @@
   ],
   "messages": [
    {
-    "body": "مرحبًا بك في أرمادا ريزيدنس – طريق المطار.\nكيف نساعدك؟",
+    "body": "وعليكم السلام، مرحبًا بك في أرمادا ريزيدنس – طريق المطار.\nكيف نساعدك اليوم؟",
     "notice": false
    }
   ],
   "guard_refusals": [],
-  "cost_usd": 0.000464
+  "cost_usd": 0.008306
  },
  "first_try": {
   "guard": true,

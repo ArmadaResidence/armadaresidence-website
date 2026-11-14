@@ -33,12 +33,14 @@ export const understandSystem = () => P.understand_system;
 export const understandSchema = () => P.understand_schema;
 
 export interface ComposeInput {
-  action: 'answer' | 'ask';
+  action: 'answer' | 'ask' | 'chat' | 'clarify' | 'redirect';
   ask_for?: string[];
   branch: string;
   turn: string[];
   history: { author: 'guest' | 'us'; body: string }[];
   payload: Payload;
+  /** H6 pass 5: the line the system puts before the reply (the greeting of copy.md §1, «وعليكم السلام»), or null */
+  opening?: string | null;
 }
 
 /** the user message of compose (prompts.md §2.2), built by code */
@@ -46,8 +48,9 @@ export function composeUser(i: ComposeInput): string {
   const p = i.payload;
   const lines = [
     `ACTION: ${i.action}`,
-    ...(i.action === 'ask' ? [`ASK_FOR: ${JSON.stringify((i.ask_for ?? []).slice(0, 2))}`] : []),
+    ...(i.action === 'ask' || (i.action === 'answer' && i.ask_for?.length) ? [`ASK_FOR: ${JSON.stringify((i.ask_for ?? []).slice(0, 2))}`] : []),
     `BRANCH_OF_THIS_NUMBER: ${i.branch}`,
+    `OPENING_ADDED_BY_SYSTEM: ${i.opening ? JSON.stringify(i.opening) : 'none'}`,
     `GUEST_TURN: ${i.turn.map(scrub).join('\n')}`,
     `LAST_MESSAGES: ${i.history.map((h) => `${h.author}: ${scrub(h.body).slice(0, 500)}`).join('\n') || '(none)'}`,
     'PAYLOAD:',

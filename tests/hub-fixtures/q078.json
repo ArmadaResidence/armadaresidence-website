@@ -1,6 +1,6 @@
 {
  "id": "q078",
- "recorded_at": "2026-11-14T14:29:52.343Z",
+ "recorded_at": "2026-11-14T22:30:54.062Z",
  "question": {
   "unit": "airport-road",
   "language": "en",
@@ -8,16 +8,25 @@
    "Hi"
   ]
  },
- "expect_h5": "greeting",
+ "expect_h5": "reply",
  "calls": [
   {
    "layer": "understand",
    "model": "claude-haiku-5-5",
    "ok": true,
-   "text": "{\"intents\":[\"greeting\"],\"topics\":[\"greeting\"],\"new_topic_hint\":null,\"branch\":null,\"check_in\":null,\"check_out\":null,\"nights\":null,\"dates_text\":null,\"dates_calendar\":null,\"room_type\":null,\"breakfast\":null,\"adults\":null,\"children\":null,\"child_ages\":null,\"extra_beds\":null,\"rooms_count\":null,\"guest_name\":null,\"booking_ref\":null,\"language\":\"en\",\"complaint\":false,\"confidence\":{\"intents\":0.99,\"topics\":0.99,\"language\":0.97}}",
-   "input_tokens": 3686,
-   "output_tokens": 189,
-   "latency_ms": 1181
+   "text": "{\"intents\":[\"greeting\"],\"topics\":[\"greeting\"],\"new_topic_hint\":null,\"branch\":null,\"check_in\":null,\"check_out\":null,\"nights\":null,\"dates_text\":null,\"dates_calendar\":null,\"room_type\":null,\"breakfast\":null,\"adults\":null,\"children\":null,\"child_ages\":null,\"extra_beds\":null,\"rooms_count\":null,\"guest_name\":null,\"booking_ref\":null,\"language\":\"en\",\"complaint\":false,\"kind\":\"small_talk\",\"sensitive\":null,\"ack_only\":false,\"confidence\":{\"intents\":0.98,\"topics\":0.95,\"language\":0.97,\"kind\":0.97}}",
+   "input_tokens": 5303,
+   "output_tokens": 222,
+   "latency_ms": 1311
+  },
+  {
+   "layer": "compose",
+   "model": "claude-sonnet-5-5",
+   "ok": true,
+   "text": "{\"reply\": \"How can we help you today?\", \"used_card_ids\": [], \"unanswered\": []}",
+   "input_tokens": 3557,
+   "output_tokens": 34,
+   "latency_ms": 1597
   }
  ],
  "adapter": {
@@ -198,7 +207,7 @@
   }
  },
  "outcome": {
-  "kind": "greeting",
+  "kind": "reply",
   "state": "inquiry",
   "reason": null,
   "transitions": [
@@ -209,12 +218,12 @@
   ],
   "messages": [
    {
-    "body": "Welcome to Armada Residence – Airport Road.\nHow can we help?",
+    "body": "Welcome to Armada Residence – Airport Road.\nHow can we help you today?",
     "notice": false
    }
   ],
   "guard_refusals": [],
-  "cost_usd": 0.000463
+  "cost_usd": 0.008095
  },
  "first_try": {
   "guard": true,

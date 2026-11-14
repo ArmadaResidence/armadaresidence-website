@@ -1,11 +1,11 @@
 {
- "recorded_at": "2026-11-14T15:25:33.182Z",
+ "recorded_at": "2026-11-14T22:30:54.092Z",
  "fixtures": 44,
- "guard_first_try": 43,
+ "guard_first_try": 41,
  "expect_first_try": 44,
- "total_usd": 0.199577,
- "per_turn_usd": 0.004641,
- "per_turn_understand_compose_usd": 0.007641,
+ "total_usd": 0.261141,
+ "per_turn_usd": 0.006073,
+ "per_turn_understand_compose_usd": 0.008499,
  "items": [
   {
    "id": "q001",
@@ -81,12 +81,12 @@
   },
   {
    "id": "q014",
-   "kind": "handoff",
-   "expect": "handoff",
-   "guard": true,
+   "kind": "ask",
+   "expect": "ask",
+   "guard": false,
    "match": true,
-   "cost": 0.000517,
-   "calls": 1
+   "cost": 0.016919,
+   "calls": 3
   },
   {
    "id": "q015",
@@ -101,10 +101,10 @@
    "id": "q016",
    "kind": "answer",
    "expect": "answer",
-   "guard": true,
+   "guard": false,
    "match": true,
-   "cost": 0.007655,
-   "calls": 2
+   "cost": 0.021038,
+   "calls": 3
   },
   {
    "id": "q017",
@@ -279,21 +279,21 @@
   },
   {
    "id": "q052",
-   "kind": "out_of_scope",
-   "expect": "out_of_scope",
+   "kind": "redirect",
+   "expect": "redirect",
    "guard": true,
    "match": true,
-   "cost": 0.00047,
-   "calls": 1
+   "cost": 0.008814,
+   "calls": 2
   },
   {
    "id": "q053",
-   "kind": "out_of_scope",
-   "expect": "out_of_scope",
+   "kind": "redirect",
+   "expect": "redirect",
    "guard": true,
    "match": true,
-   "cost": 0.000467,
-   "calls": 1
+   "cost": 0.008428,
+   "calls": 2
   },
   {
    "id": "q055",
@@ -342,21 +342,21 @@
   },
   {
    "id": "q077",
-   "kind": "greeting",
-   "expect": "greeting",
+   "kind": "reply",
+   "expect": "reply",
    "guard": true,
    "match": true,
-   "cost": 0.000464,
-   "calls": 1
+   "cost": 0.008306,
+   "calls": 2
   },
   {
    "id": "q078",
-   "kind": "greeting",
-   "expect": "greeting",
+   "kind": "reply",
+   "expect": "reply",
    "guard": true,
    "match": true,
-   "cost": 0.000463,
-   "calls": 1
+   "cost": 0.008095,
+   "calls": 2
   },
   {
    "id": "q085",

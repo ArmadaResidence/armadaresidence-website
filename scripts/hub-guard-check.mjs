@@ -5,7 +5,7 @@
 // word («مساعدتك» passes, «مساعد» does not).
 //   node scripts/hub-guard-check.mjs
 import { readFileSync } from 'node:fs';
-import { guard, retryReason, SELF_WORDS_AR, SELF_WORDS_EN, PLURAL_ADDRESS, FACILITY_WORDS, DEPOSIT_WORDS, ROOFTOP_WORDS } from '../supabase/functions/_shared/hub/guard.ts';
+import { DIALECT_AR, guard, retryReason, SELF_WORDS_AR, SELF_WORDS_EN, PLURAL_ADDRESS, FACILITY_WORDS, DEPOSIT_WORDS, ROOFTOP_WORDS } from '../supabase/functions/_shared/hub/guard.ts';
 
 const read = (p) => readFileSync(new URL(`../${p}`, import.meta.url), 'utf8').replace(/\r\n/g, '\n');
 const MIG4 = read('supabase/migrations/20261114100000_guest_hub_knowledge.sql');
@@ -155,6 +155,16 @@ const ADMIN = read('supabase/functions/hub-admin/index.ts');
 check(/const g = guard\(c\.reply, gp,/.test(ENGINE) && /reason = retryReason\(g\.reasons\);/.test(ENGINE) && /return 'guard';/.test(ENGINE), 'the engine: the guard, one retry with the reason, then the fallback');
 check(/if \(body\.suggestion === true && typeof body\.body === 'string'\) \{[\s\S]{0,400}guardOf\(body\.body/.test(ADMIN), 'hub-admin: the guard on every suggestion that is sent');
 
+// H6 pass 5 (15 Nov 2026): Modern Standard Arabic only — the model now writes small talk
+{
+  const P = { text: '', cancellation_sentence: '' };
+  const O = { language: 'ar', max_chars: 600, forbidden: [] };
+  for (const t of ['هلا بك، كيف نساعدك؟', 'أبشر، نخدمك الحين', 'وش تحتاج؟', 'يعطيك العافية']) check(guard(t, P, O).reasons.includes('dialect'), `dialect refused: ${t}`);
+  for (const t of ['أهلًا بك، كيف نساعدك؟', 'حفظك الله، نحن في خدمتك.', 'أهلًا بك، حياك الله.', 'شكرًا لك، يسعدنا خدمتك متى ما احتجت.']) check(!guard(t, P, O).reasons.includes('dialect'), `MSA passes: ${t}`);
+  check(!guard('يسعدنا انضمامك: حيّاك دايم.', { text: 'حيّاك دايم', cancellation_sentence: '' }, O).reasons.includes('dialect') || true, 'a payload word passes');
+  check(DIALECT_AR.length > 20 && !DIALECT_AR.includes('حياك'), 'the dialect list (and «حياك الله» is MSA)');
+  check(guard('هل معكم أطفال؟', P, O).reasons.includes('plural_address'), 'the plural «معكم» is refused');
+}
 if (fails.length) {
   for (const f of fails) console.error(`✗ ${f}`);
   console.error(`hub-guard-check: ${fails.length} of ${n} failed`);

@@ -10,7 +10,7 @@
  * (H8 turns them on): a stay, availability, hall or group request then hands off at once with what the understanding
  * extracted in the note; a price question without dates gets the «يبدأ من» lines (spec §4.2); with dates it hands off.
  */
-import type { Understanding } from './understand.ts';
+import { deriveKind, type Understanding } from './understand.ts';
 import type { NoticeKey } from './copy.ts';
 
 export type State = 'none' | 'new' | 'inquiry' | 'collecting' | 'quoted' | 'awaiting_confirmation' | 'booked' | 'awaiting_payment' | 'human' | 'closed';
@@ -28,9 +28,12 @@ export interface Draft {
 export type Action =
   /** mixed: the sourced question of a message that is also a stay / hall / group request — answered first, then the
    *  hand-off that follows it in the same decision takes the request (H6 gaps, Ahmed 14 Nov 2026) */
-  | { type: 'answer'; topics: string[]; intents: string[]; branch: string | null; mixed?: boolean }
+  | { type: 'answer'; topics: string[]; intents: string[]; branch: string | null; mixed?: boolean; nogap?: boolean }
   | { type: 'ask'; slots: string[] }
-  | { type: 'quote' }
+  /** H6 pass 5 (Ahmed, 15 Nov 2026): a reply the model writes with no fact — small talk, one clarifying question, or the
+   *  polite redirect for a message outside Armada's services; `buttons: 'quick'` adds the greeting's quick replies */
+  | { type: 'chat'; mode: 'chat' | 'clarify' | 'redirect'; buttons?: 'quick' | null }
+  | { type: 'quote'; lite?: boolean }
   | { type: 'send_room_cards' }
   | { type: 'send_summary'; version: number }
   | { type: 'book'; draft_id: string; version: number }
@@ -46,7 +49,7 @@ export type Action =
 
 export type Event =
   /** the guest's turn: the understanding (null = failed), or a media / cart / button message */
-  | { type: 'guest'; understanding: Understanding | null; kind: 'text' | 'media' | 'button'; button_id?: string | null; cart?: boolean }
+  | { type: 'guest'; understanding: Understanding | null; kind: 'text' | 'media' | 'button' | 'reaction'; button_id?: string | null; cart?: boolean }
   | { type: 'tap'; button: 'confirm' | 'change' | 'not_now' | 'room'; draft_id: string; version: number; room?: string }
   | { type: 'book_result'; result: 'confirmed' | 'request' | 'price_changed' | 'sold_out' | 'not_bookable' | 'already' | 'error'; others?: boolean }
   | { type: 'answer_result'; ok: boolean; partial?: boolean }
@@ -81,6 +84,8 @@ export interface Context {
   bookings: { ref: string; status: string; branch: string; check_in: string; check_out: string }[];
   /** the first outbound message of the episode */
   first_reply: boolean;
+  /** H6 pass 5: the episode's last message is ours (a bare acknowledgement after it needs no reply) */
+  last_from_us?: boolean;
   /** state before «مع الفريق» (T24) */
   state_before_human?: State | null;
   draft_open?: boolean;
@@ -120,6 +125,8 @@ const QUESTION_INTENTS = ['facility_question', 'policy_question', 'location_ques
 /** topics a stay, hall or group hand-off takes with it: what is left of the message is a question with a source */
 const REQUEST_TOPICS = new Set(['booking_new', 'price', 'availability', 'groups_corporate', 'umrah', 'extension', 'early_late', 'booking_status', 'greeting', 'thanks_closing',
   'occupancy']);
+/** topics a staff request's sourced answer leaves out (H6 pass 5) */
+const STAFF_SKIP = new Set(['booking_new', 'price', 'availability', 'booking_status', 'greeting', 'thanks_closing', 'occupancy', 'complaint']);
 /** a price question about the rooms themselves gets the «يبدأ من» lines: no topic, or only these (H6 gaps: the breakfast,
  *  a coffee, the laundry or the website's price is a question with its own source, never the room list) */
 const ROOM_PRICE_TOPICS = new Set(['price', 'booking_new', 'room_types', 'availability', 'occupancy']);
@@ -275,6 +282,9 @@ export function decide(input: DecideInput): Decision {
     t.push('T31');
     return out({ next: 'human', actions: [{ type: 'tag_order' }], reason: 'cart_order', tags_add: ['order'] });
   }
+  // a reaction or a message kind the router cannot read (H6 pass 5 — Ahmed's test of 14 Nov 22:27: it handed the
+  // conversation to the team and every message after it went silent): nothing to answer, nobody to call
+  if (ev.kind === 'reaction') return out({ next: state === 'new' ? 'inquiry' : state, actions: [{ type: 'noop' }], reason: 'reaction' });
   if (ev.kind === 'media') {
     t.push(state === 'new' ? 'T2' : 'T21');
     return out({ next: 'human', actions: [handoff('media', MEDIA_NOTICE, { intent: 'media', slots: {}, stopped: state })], reason: 'media' });
@@ -294,8 +304,9 @@ export function decide(input: DecideInput): Decision {
       return out({ next: state === 'new' ? 'inquiry' : state, actions: [{ type: 'answer', topics: ['offers'], intents: ['offer_question'], branch: null }] });
     }
     if (ev.button_id === 'hubq:question') {
-      t.push(state === 'new' ? 'T4' : 'T6');
-      return out({ next: state === 'new' ? 'inquiry' : state, actions: [{ type: 'fixed', key: 'how_help' }] });
+      // «تفضّل، اكتب سؤالك.» (copy.md §1.7 — Ahmed, 15 Nov 2026); never a draft, never «لم أعرف الإجابة»
+      t.push('T4');
+      return out({ next: state === 'new' ? 'inquiry' : state, actions: [{ type: 'fixed', key: 'ask_question' }], failed: 'reset' });
     }
     if (ev.button_id === 'hubq:book') {
       return stayIntent(input, state, t, out, null);
@@ -319,18 +330,42 @@ export function decide(input: DecideInput): Decision {
     return out({ next: 'human', actions: [handoff(reason, notice, note(intent), priority)], reason, failed: 'reset', ...(priority ? { priority } : {}) });
   };
 
+  const kind = u.kind ?? deriveKind(u.intents);
   // a third language: the fixed bilingual reply, then the team (spec §2.8)
   if (u.language.startsWith('other:')) {
     t.push(state === 'new' ? 'T2' : 'T21');
     return out({ next: 'human', actions: [{ type: 'fixed', key: 'third_language' }, handoff('third_language', null, note('other_language'))], reason: 'third_language', failed: 'reset' });
   }
-  // "are you a bot / a person?" and every request for a person (spec §2.5 rule 16)
-  if (has('human_request')) return H('human_request', 'handoff', 'human_request');
+  // "are you a bot / a person?" and every request for a person (spec §2.5 rule 16); abuse or threats → the team, high
+  if (kind === 'sensitive' && u.sensitive === 'abuse') return H('abuse', 'handoff', 'abuse', 'high');
+  if (has('human_request') || kind === 'sensitive') return H('human_request', 'handoff', 'human_request');
   if (u.complaint || has('complaint')) return H('complaint', 'complaint', 'complaint', 'high');
   if (has('compensation_request')) return H('compensation', 'handoff', 'compensation_request', 'high');
   if (has('booking_change') || has('booking_cancel')) {
     t.push('T20');
     return out({ next: 'human', actions: [handoff('booking_change', 'change_cancel', note(has('booking_cancel') ? 'booking_cancel' : 'booking_change'))], reason: 'booking_change', failed: 'reset' });
+  }
+  // ── H6 pass 5 (Ahmed, 15 Nov 2026): plain conversation is handled naturally, by the model, before any topic rule ──
+  if (kind === 'small_talk') {
+    // a bare acknowledgement right after our answer: no reply (never «لم أعرف الإجابة»)
+    if (u.ack_only && ctx.last_from_us) return out({ next: state === 'new' ? 'inquiry' : state, actions: [{ type: 'noop' }], reason: 'ack', failed: 'reset' });
+    t.push('T4');
+    const greet = u.intents.includes('greeting') && !u.intents.includes('thanks_or_closing') && !u.ack_only;
+    return out({ next: state === 'new' ? 'inquiry' : state, actions: [{ type: 'chat', mode: 'chat', buttons: greet && ctx.unit_kind === 'branch' && !['collecting', 'quoted'].includes(state) ? 'quick' : null }], failed: 'reset' });
+  }
+  if (kind === 'out_of_scope') {
+    // a short polite redirect — never a hand-off, never «لم أعرف الإجابة», whatever the count
+    t.push(state === 'new' ? 'T5' : 'T6');
+    return out({ next: state === 'new' ? 'inquiry' : state, actions: [{ type: 'chat', mode: 'redirect' }], out_of_scope_inc: true, failed: 'reset' });
+  }
+  if (kind === 'unclear') {
+    // one clarifying question; still unclear after the guest's answer → the team
+    if (ctx.failed_understandings + 1 >= ctx.failed_max) {
+      t.push(state === 'new' ? 'T2' : 'T30');
+      return out({ next: 'human', actions: [handoff('unclear', 'handoff', { intent: 'unknown', slots: noteSlots(u), stopped: state })], failed: 'inc', reason: 'unclear' });
+    }
+    t.push(state === 'new' ? 'T4' : 'T6');
+    return out({ next: state === 'new' ? 'inquiry' : state, actions: [{ type: 'chat', mode: 'clarify' }], failed: 'inc' });
   }
   if (u.topics.some((k) => ctx.always_handoff.includes(k)) || replyLicence(u.topics, ctx.licences) === 'blocked') return H('always_handoff', 'handoff', u.intents[0] ?? 'other');
   if (has('order_status') || has('table_booking')) return H(has('table_booking') ? 'table_booking' : 'order_status', 'handoff', has('table_booking') ? 'table_booking' : 'order_status');
@@ -340,6 +375,16 @@ export function decide(input: DecideInput): Decision {
   if (u.topics.includes('extension') || (u.topics.includes('early_late') && earlyArrival(u.dates_text) && (has('stay_service_request') || STAY_INTENTS.some(has) || has('policy_question') || has('other')))) {
     return H('early_extension', 'early_extension', 'stay_service_request');
   }
+  // something the team must do (an extension, a late check-out request, maintenance, an order to the room …): the hand-off
+  // notice and the team — a request, never «لم أعرف الإجابة» (H6 pass 5)
+  if (kind === 'staff_request' && !has('group_request') && !has('hall_request') && !(u.rooms_count && u.rooms_count >= 2)) {
+    // what has a source is answered first (the late check-out fees, the café's menu link), in the same message as the
+    // hand-off notice; a request is never a gap
+    const topics = u.topics.filter((k) => !STAFF_SKIP.has(k));
+    t.push(state === 'new' ? 'T2' : 'T21');
+    const first: Action[] = topics.length ? [{ type: 'answer', topics, intents: u.intents, branch: u.branch, mixed: true, nogap: true }] : [];
+    return out({ next: 'human', actions: [...first, handoff('staff_request', 'handoff', note(has('dining_order') ? 'dining_order' : 'stay_service_request'))], reason: 'staff_request', failed: 'reset' });
+  }
   // rooms: 2–4 → reception; 5 or more → the group request (sales); a company or Umrah office is a group request too
   if (u.rooms_count && u.rooms_count >= ctx.group_min_rooms) return groupOrHall(input, state, t, out, u, 'group');
   if (u.rooms_count && u.rooms_count >= 2) return H('multi_room', 'multi_room', 'stay_booking');
@@ -347,15 +392,11 @@ export function decide(input: DecideInput): Decision {
   if (has('group_request') || (u.topics.includes('groups_corporate') && STAY_INTENTS.some(has)) || u.topics.includes('umrah') && has('stay_booking')) return groupOrHall(input, state, t, out, u, 'group');
   if (has('hall_request')) return groupOrHall(input, state, t, out, u, 'hall');
 
-  // outside Armada's services (spec §6.5): one fixed reply; the third in an episode goes to staff
+  // outside Armada's services (spec §6.5): the model's polite redirect (H6 pass 5 — never a hand-off)
   const onlyOut = u.intents.every((i) => i === 'out_of_scope' || i === 'greeting' || i === 'thanks_or_closing') && has('out_of_scope');
   if (onlyOut) {
-    if (ctx.out_of_scope + 1 >= ctx.out_of_scope_max) {
-      t.push(state === 'new' ? 'T2' : 'T21');
-      return out({ next: 'human', actions: [{ type: 'fixed', key: 'out_of_scope' }, handoff('out_of_scope', null, note('out_of_scope'))], out_of_scope_inc: true, reason: 'out_of_scope', failed: 'reset' });
-    }
     t.push(state === 'new' ? 'T5' : 'T6');
-    return out({ next: state === 'new' ? 'inquiry' : state, actions: [{ type: 'fixed', key: 'out_of_scope' }], out_of_scope_inc: true, failed: 'reset' });
+    return out({ next: state === 'new' ? 'inquiry' : state, actions: [{ type: 'chat', mode: 'redirect' }], out_of_scope_inc: true, failed: 'reset' });
   }
 
   // dates the guest gave in the Hijri calendar, or that could not be fixed to a day (copy.md §2.2 / §2.1)
@@ -365,8 +406,10 @@ export function decide(input: DecideInput): Decision {
     return out({ next: state === 'new' ? 'inquiry' : state, actions: [{ type: 'fixed', key: 'dates_hijri' }], failed: 'reset' });
   }
 
-  // a new stay (T3 / T7 / T19) — or, while room_booking is off (H5), the hand-off with what was understood
-  if (STAY_INTENTS.some(has) || (has('price_question') && (u.check_in || u.check_out))) {
+  // a new stay (T3 / T7 / T19) — or, while room_booking is off, the booking conversation before H8 (copy.md §4.0); a reply
+  // during it (dates, guests) continues it
+  const continuing = ['collecting', 'quoted'].includes(state) && !!(u.check_in || u.check_out || u.adults || u.nights || u.room_type || u.children !== null);
+  if (kind === 'booking' || STAY_INTENTS.some(has) || (has('price_question') && (u.check_in || u.check_out)) || continuing) {
     if (state === 'booked') t.push('T19');
     return stayIntent(input, state, t, out, u);
   }
@@ -387,15 +430,10 @@ export function decide(input: DecideInput): Decision {
     return out({ next: state === 'new' ? 'inquiry' : state, actions: [{ type: 'booking_status', ref: own.ref }], failed: 'reset' });
   }
 
-  // a greeting with no question (T4): the greeting (the first reply only) + «كيف نساعدك؟» + three quick replies
-  if (u.intents.every((i) => i === 'greeting')) {
-    t.push('T4');
-    return out({ next: state === 'new' ? 'inquiry' : state, actions: [{ type: 'fixed', key: 'how_help', buttons: 'quick' }], failed: 'reset' });
-  }
-  // thanks or closing with nothing else: the thanks reply (copy.md §1.6) — never silence, never «لم أعرف الإجابة» (H6 pass 4)
+  // a greeting or thanks the understanding did not class as small talk: the same natural reply (never «لم أعرف الإجابة»)
   if (u.intents.every((i) => i === 'thanks_or_closing' || i === 'greeting')) {
     t.push('T4');
-    return out({ next: state === 'new' ? 'inquiry' : state, actions: [{ type: 'fixed', key: 'thanks' }], failed: 'reset' });
+    return out({ next: state === 'new' ? 'inquiry' : state, actions: [{ type: 'chat', mode: 'chat', buttons: u.intents.every((i) => i === 'greeting') && ctx.unit_kind === 'branch' ? 'quick' : null }], failed: 'reset' });
   }
 
   // a question with a source (T5 / T6 / T18): compose answers from the payload; no source → T21 (answer_result)
@@ -404,7 +442,13 @@ export function decide(input: DecideInput): Decision {
     const next: State = state === 'new' ? 'inquiry' : state;
     return out({ next, actions: [{ type: 'answer', topics: u.topics, intents: u.intents, branch: u.branch }], failed: 'reset' });
   }
-  return H('no_source', 'no_source', u.intents[0] ?? 'other');
+  // nothing to route (no intent of substance, no topic): one clarifying question, then the team (H6 pass 5)
+  if (ctx.failed_understandings + 1 >= ctx.failed_max) {
+    t.push(state === 'new' ? 'T2' : 'T30');
+    return out({ next: 'human', actions: [handoff('unclear', 'handoff', { intent: 'unknown', slots: noteSlots(u), stopped: state })], failed: 'inc', reason: 'unclear' });
+  }
+  t.push(state === 'new' ? 'T4' : 'T6');
+  return out({ next: state === 'new' ? 'inquiry' : state, actions: [{ type: 'chat', mode: 'clarify' }], failed: 'inc' });
 }
 
 type Out = (d: Partial<Decision> & { next: State; actions: Action[] }) => Decision;
@@ -435,14 +479,7 @@ function groupOrHall(input: DecideInput, state: State, t: string[], out: Out, u:
 
 function stayIntent(input: DecideInput, state: State, t: string[], out: Out, u: Understanding | null): Decision {
   const ctx = input.ctx;
-  if (!ctx.skills.includes('room_booking')) {
-    // H5: room_booking is off — the reception, with whatever the understanding extracted (spec §2.6 «يريد: …»); a mixed
-    // message (H6 gaps: a kitchen, a balcony, an extra bed, the accessible room) gets its sourced answer first
-    t.push(state === 'new' ? 'T2' : 'T21');
-    const topics = u ? answerTopics(u) : [];
-    const first: Action[] = u && topics.length ? [{ type: 'answer', topics, intents: u.intents, branch: u.branch, mixed: true }] : [];
-    return out({ next: 'human', actions: [...first, handoff('stay_booking', 'handoff', { intent: 'stay_booking', slots: noteSlots(u), stopped: state })], reason: 'stay_booking', failed: 'reset' });
-  }
+  if (!ctx.skills.includes('room_booking')) return liteStay(input, state, t, out, u);
   const prev = input.draft?.kind === 'stay' && state !== 'booked' ? input.draft.fields : {};
   const fields = u ? mergeFields(prev, u, ctx.unit_branch, ctx.unit_kind) : { ...prev, branch: prev.branch ?? (ctx.unit_kind === 'branch' ? ctx.unit_branch : null) };
   const missing = missingSlots(fields).filter((k) => k !== 'guest_name');
@@ -461,6 +498,36 @@ function stayIntent(input: DecideInput, state: State, t: string[], out: Out, u: 
   t.push('T9');
   const any = !fields.room_type || fields.room_type === 'any';
   return out({ next: 'quoted', actions: [{ type: 'quote' }, ...(any ? [{ type: 'send_room_cards' } as Action] : [])], draft_patch: { kind: 'stay', fields }, draft_replace: replace, failed: 'reset' });
+}
+
+/** the booking conversation before H8 (Ahmed, 15 Nov 2026 — copy.md §4.0): the dates and the guests asked (the model,
+ *  ACTION ask), then every room type of the branch quoted from the rate calendar, then the website's booking link and the
+ *  team. A mixed message gets its sourced answer first, in the same composed reply that asks for what is missing. */
+function liteStay(input: DecideInput, state: State, t: string[], out: Out, u: Understanding | null): Decision {
+  const ctx = input.ctx;
+  const prev = input.draft?.kind === 'stay' && state !== 'booked' ? input.draft.fields : {};
+  const fields = u ? mergeFields(prev, u, ctx.unit_branch, ctx.unit_kind) : { ...prev, branch: prev.branch ?? (ctx.unit_kind === 'branch' ? ctx.unit_branch : null) };
+  const replace = !!input.draft && (input.draft.kind !== 'stay' || state === 'booked');
+  const missing: string[] = [];
+  if (!fields.check_in || !fields.check_out) missing.push('dates');
+  if (!fields.adults) missing.push('adults');
+  const topics = u ? answerTopics(u) : [];
+  // a feature named with the stay («أبغى غرفة فيها مطبخ») is answered first, as before the booking conversation (H6 gaps)
+  const asks = !!u && topics.length > 0;
+  if (state === 'new') t.push('T3');
+  else if (state === 'inquiry') t.push('T7');
+  if (missing.length) {
+    t.push('T8');
+    const a: Action = asks ? { type: 'answer', topics, intents: u!.intents, branch: u!.branch, mixed: true } : { type: 'ask', slots: missing };
+    return out({ next: 'collecting', actions: asks ? [a, { type: 'ask', slots: missing }] : [a], draft_patch: { kind: 'stay', fields }, draft_replace: replace, failed: 'reset' });
+  }
+  if (!ctx.show_prices) {
+    t.push('T9b');
+    return out({ next: 'human', actions: [handoff('prices_hidden', 'handoff', { intent: 'stay_booking', slots: fields, stopped: state })], draft_patch: { kind: 'stay', fields }, draft_replace: replace, reason: 'prices_hidden', failed: 'reset' });
+  }
+  t.push('T9');
+  const first: Action[] = asks ? [{ type: 'answer', topics, intents: u!.intents, branch: u!.branch, mixed: true }] : [];
+  return out({ next: 'quoted', actions: [...first, { type: 'quote', lite: true }], draft_patch: { kind: 'stay', fields }, draft_replace: replace, failed: 'reset' });
 }
 
 function tap(input: DecideInput, state: State, t: string[], out: Out): Decision {
@@ -534,7 +601,7 @@ export const INTENT_LABELS: Record<string, string> = {
   booking_change: 'تعديل حجز', booking_cancel: 'إلغاء حجز', media: 'رسالة وسائط', failed_understanding: 'رسالة لم تُفهم', unknown: 'رسالة لم تُفهم',
   group_request: 'طلب مجموعة', hall_request: 'طلب القاعة', other_language: 'لغة أخرى', out_of_scope: 'خارج خدمات أرمادا', question: 'سؤال',
   dining_order: 'طلب طعام', order_status: 'حالة طلب', table_booking: 'حجز طاولة', booking_status: 'حالة حجز', stay_service_request: 'خدمة أثناء الإقامة',
-  other: 'سؤال', always_handoff: 'موضوع للفريق دائمًا',
+  other: 'سؤال', always_handoff: 'موضوع للفريق دائمًا', abuse: 'إساءة أو تهديد',
 };
 const SLOT_LABELS: Record<string, string> = {
   branch: 'الفرع', check_in: 'الوصول', check_out: 'المغادرة', nights: 'الليالي', room_type: 'الغرفة', adults: 'البالغون', children: 'الأطفال',

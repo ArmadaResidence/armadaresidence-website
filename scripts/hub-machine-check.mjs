@@ -45,7 +45,7 @@ check(has(d, 'T3') && has(d, 'T8') && d.next === 'collecting' && d.actions[0].ty
 d = run('collecting', guest(U({ intents: ['hall_request'], check_in: '2026-12-01', adults: 40, guest_name: 'شركة' })), { skills: H8 }, { ...DRAFT, kind: 'hall', fields: { check_in: '2026-12-01', adults: 40 } });
 check(has(d, 'T3b') && d.next === 'inquiry' && acts(d).includes('partner_enquiry'), 'T3b (H8): a complete hall request → the partner enquiry, back to «استفسار»');
 d = run('new', guest(U({ intents: ['greeting'] })));
-check(has(d, 'T4') && d.actions[0].type === 'fixed' && d.actions[0].key === 'how_help' && d.actions[0].buttons === 'quick', 'T4: a greeting only → «كيف نساعدك؟» with the three quick replies');
+check(has(d, 'T4') && d.actions[0].type === 'chat' && d.actions[0].mode === 'chat' && d.actions[0].buttons === 'quick', 'T4: a greeting only → the model reply with the three quick replies (H6 pass 5)');
 d = run('new', guest(U({ intents: ['facility_question'], topics: ['parking'] })));
 check(has(d, 'T5') && d.next === 'inquiry' && d.actions[0].type === 'answer', 'T5: a question → answer, «استفسار»');
 d = run('quoted', guest(U({ intents: ['facility_question'], topics: ['parking'] })), { skills: H8 }, DRAFT);
@@ -132,11 +132,11 @@ check(has(d, 'T34') && d.next === 'human' && ho(d).notice === 'change_cancel' &&
 d = run('inquiry', { type: 'cancel_timeout' });
 check(has(d, 'T35') && d.optout && d.hold === 'lift', 'T35: no answer → the opt-out as a precaution');
 
-// ── H5: the skills of H8 are off ──
+// ── the skills of H8 are off: the booking conversation before H8 (H6 pass 5, copy.md §4.0) ──
 d = run('new', guest(U({ intents: ['stay_booking'], ...full })));
-check(d.next === 'human' && ho(d)?.reason === 'stay_booking' && ho(d).note.slots.check_in === '2026-12-01' && !d.draft_patch, 'H5: a stay request hands off at once, the note carries what was understood');
+check(d.next === 'quoted' && d.actions.some((a) => a.type === 'quote' && a.lite) && d.draft_patch?.fields?.check_in === '2026-12-01', 'pass 5: a complete stay request → quoted from the rate calendar, the draft kept');
 d = run('new', guest(U({ intents: ['availability_question'], check_in: '2026-12-01', check_out: '2026-12-03' })));
-check(d.next === 'human' && ho(d)?.reason === 'stay_booking', 'H5: an availability question hands off');
+check(d.next === 'collecting' && d.actions[0].type === 'ask' && d.actions[0].slots.join() === 'adults', 'pass 5: an availability question with dates → the number of guests asked');
 d = run('new', guest(U({ intents: ['hall_request'], adults: 60 })));
 check(d.next === 'human' && ho(d)?.reason === 'hall_request', 'H5: a hall request hands off (to staff — the partner enquiry is H8)');
 d = run('new', guest(U({ intents: ['group_request'], rooms_count: 8 })));
@@ -148,20 +148,21 @@ check(d.actions[0].type === 'from_price' && d.actions[0].branch === 'shafa-road'
 d = run('new', guest(U({ intents: ['price_question'] })), { show_prices: false });
 check(d.next === 'human', 'H5: prices hidden → the reception (spec §2.5 rule 11)');
 d = run('new', guest(U({ intents: ['price_question'], check_in: '2026-12-01', check_out: '2026-12-03' })));
-check(d.next === 'human' && ho(d)?.reason === 'stay_booking', 'H5: a price question with dates hands off');
+check(d.next === 'collecting' && d.actions[0].type === 'ask', 'pass 5: a price question with dates → the booking conversation');
 d = run('new', guest(U({ intents: ['stay_booking'], rooms_count: 3 })));
 check(d.next === 'human' && ho(d)?.notice === 'multi_room', '2–4 rooms → the reception (the multi-room notice)');
 d = run('new', guest(U({ intents: ['stay_booking'], dates_calendar: 'hijri', dates_text: '١٥ رجب' })));
 check(d.actions[0].type === 'fixed' && d.actions[0].key === 'dates_hijri', 'a Hijri date → copy.md §2.2');
 
 // ── the H6 gaps (14 Nov 2026): mixed messages, the price questions that are not about rooms, contacts, early check-in ──
+const ansThenAsk = (d) => d.next === 'collecting' && d.actions[0]?.type === 'answer' && d.actions[0].mixed === true && d.actions[1]?.type === 'ask';
 const ansThenTeam = (d, reason) => d.next === 'human' && d.actions[0]?.type === 'answer' && d.actions[0].mixed === true && d.actions[1]?.type === 'handoff' && ho(d).reason === reason && ho(d).notice === 'handoff';
 d = run('new', guest(U({ intents: ['stay_booking', 'facility_question'], topics: ['booking_new', 'kitchen'] })));
-check(ansThenTeam(d, 'stay_booking') && JSON.stringify(d.actions[0].topics) === '["kitchen"]', 'gaps: «أبغى غرفة فيها مطبخ» → the kitchen answered first (its topic only), then the stay to the team');
+check(ansThenAsk(d) && JSON.stringify(d.actions[0].topics) === '["kitchen"]', 'gaps / pass 5: «أبغى غرفة فيها مطبخ» → the kitchen answered first (its topic only), then the dates asked');
 d = run('new', guest(U({ intents: ['stay_booking'], topics: ['extra_bed'] })));
-check(ansThenTeam(d, 'stay_booking'), 'gaps: an extra bed asked as a booking → the rule and fee answered, then the team');
+check(ansThenAsk(d), 'gaps / pass 5: an extra bed asked as a booking → the rule and fee answered, then the stay details asked');
 d = run('new', guest(U({ intents: ['availability_question'], topics: ['accessible'] })));
-check(ansThenTeam(d, 'stay_booking'), 'gaps: the accessible room asked as availability → answered, then the team');
+check(ansThenAsk(d), 'gaps / pass 5: the accessible room asked as availability → answered, then the stay details asked');
 d = run('new', guest(U({ intents: ['price_question', 'hall_request'], topics: ['price', 'hall'] })));
 check(ansThenTeam(d, 'hall_request') && JSON.stringify(d.actions[0].topics) === '["hall"]', 'gaps: «كم سعر القاعة؟» → the hall card («عن طريق المبيعات») first, then the hall request to the team');
 d = run('new', guest(U({ intents: ['hall_request', 'facility_question'], topics: ['hall'] })), { unit_branch: 'shafa-road' });
@@ -171,7 +172,7 @@ check(d.next === 'human' && acts(d).join() === 'handoff' && ho(d).reason === 'ha
 d = run('new', guest(U({ intents: ['group_request'], topics: ['groups_corporate'], rooms_count: 8 })));
 check(d.next === 'human' && acts(d).join() === 'handoff', 'gaps: a group request alone → the team only');
 d = run('new', guest(U({ intents: ['stay_booking'], topics: ['booking_new', 'price'], ...full })));
-check(d.next === 'human' && acts(d).join() === 'handoff', 'gaps: a plain stay request (no other topic) still hands off alone');
+check(d.next === 'quoted' && acts(d).join() === 'quote', 'pass 5: a plain complete stay request → the quote alone');
 d = run('new', guest(U({ intents: ['stay_booking', 'facility_question'], topics: ['kitchen'] })), { skills: H8 });
 check(d.next === 'collecting' && acts(d)[0] === 'ask', 'gaps: with room_booking on (H8) the stay path is unchanged');
 for (const [topics, what] of [[['breakfast'], 'the breakfast'], [['menu'], 'a coffee'], [['laundry', 'price'], 'the laundry'], [['website', 'price'], 'booking on the website'], [['eyab'], 'the membership']]) {
@@ -201,9 +202,9 @@ check(d.actions[0].type === 'answer', 'gaps: the early / late policy asked with 
 d = run('new', guest(U({ intents: ['human_request'], topics: ['human_request'] })));
 check(d.next === 'human' && ho(d).notice === 'handoff', '"are you a bot / a person?" → human_request → the team at once');
 d = run('inquiry', guest(U({ intents: ['out_of_scope'], topics: ['out_of_scope'] })), { out_of_scope: 0 });
-check(d.next === 'inquiry' && d.actions[0].key === 'out_of_scope' && d.out_of_scope_inc, 'out of scope → copy.md §5, counted');
+check(d.next === 'inquiry' && d.actions[0].type === 'chat' && d.actions[0].mode === 'redirect' && d.out_of_scope_inc, 'out of scope → the polite redirect, counted (H6 pass 5)');
 d = run('inquiry', guest(U({ intents: ['out_of_scope'] })), { out_of_scope: 2 });
-check(d.next === 'human' && d.actions[0].key === 'out_of_scope', 'the third out-of-scope message → the reply, then the team');
+check(d.next === 'inquiry' && d.actions[0].mode === 'redirect' && !acts(d).includes('handoff'), 'the third out-of-scope message → still the redirect, never a hand-off (H6 pass 5)');
 d = run('new', guest(U({ intents: ['other'], language: 'other:fr' })));
 check(d.next === 'human' && d.actions[0].key === 'third_language' && acts(d).includes('handoff'), 'a third language → the bilingual reply, then the team');
 d = run('inquiry', guest(null, { kind: 'media' }));
@@ -229,7 +230,40 @@ check(d.next === 'human' && ho(d).notice === 'handoff' && ho(d).reason === 'guar
 d = run('inquiry', guest(null, { kind: 'button', button_id: 'hubq:team' }));
 check(d.next === 'human', 'the quick reply «التحدث مع موظف» → the team');
 d = run('inquiry', guest(U({ intents: ['thanks_or_closing'] })));
-check(d.actions[0].type === 'fixed' && d.actions[0].key === 'thanks' && d.next === 'inquiry', 'thanks → the thanks reply (copy.md §1.6), never silence (H6 pass 4)');
+check(d.actions[0].type === 'chat' && d.actions[0].mode === 'chat' && d.next === 'inquiry', 'thanks → a model-written reply (fallback copy.md §1.6), never silence (H6 pass 5)');
+
+// ── H6 pass 5 (Ahmed, 15 Nov 2026): the natural-conversation policy ──
+d = run('inquiry', guest(U({ kind: 'small_talk', intents: ['greeting'], ack_only: true })), { last_from_us: true });
+check(acts(d).join() === 'noop' && d.next === 'inquiry', 'pass 5: a bare acknowledgement right after our answer → no reply, no gap');
+d = run('inquiry', guest(U({ kind: 'small_talk', intents: ['greeting'], ack_only: true })), { last_from_us: false });
+check(d.actions[0].type === 'chat', 'pass 5: an acknowledgement with nothing of ours before it → a reply');
+d = run('inquiry', guest(null, { kind: 'reaction' }));
+check(acts(d).join() === 'noop' && d.next === 'inquiry', 'pass 5: a reaction (or an unreadable kind) → nothing, never the team');
+d = run('new', guest(U({ kind: 'small_talk', intents: ['greeting'] })));
+check(d.actions[0].type === 'chat' && d.actions[0].buttons === 'quick' && d.next === 'inquiry', 'pass 5: a greeting → the model reply with the quick replies');
+d = run('inquiry', guest(U({ kind: 'unclear', intents: ['other'] })), { failed_understandings: 0 });
+check(d.actions[0].type === 'chat' && d.actions[0].mode === 'clarify' && d.failed === 'inc', 'pass 5: unclear → one clarifying question');
+d = run('inquiry', guest(U({ kind: 'unclear', intents: ['other'] })), { failed_understandings: 1 });
+check(d.next === 'human' && ho(d).notice === 'handoff' && ho(d).reason === 'unclear', 'pass 5: still unclear after the question → the team (not a gap)');
+d = run('inquiry', guest(U({ kind: 'out_of_scope', intents: ['other'] })));
+check(d.actions[0].mode === 'redirect' && d.next === 'inquiry', 'pass 5: out of scope by kind → the redirect');
+d = run('inquiry', guest(U({ kind: 'sensitive', sensitive: 'abuse', intents: ['other'] })));
+check(d.next === 'human' && d.priority === 'high' && ho(d).reason === 'abuse', 'pass 5: abuse or threats → the team, high');
+d = run('inquiry', guest(U({ kind: 'sensitive', sensitive: 'bot', intents: ['other'] })));
+check(d.next === 'human' && ho(d).reason === 'human_request', 'pass 5: are you a bot → the team at once');
+d = run('inquiry', guest(U({ kind: 'staff_request', intents: ['stay_service_request'], topics: ['housekeeping'] })));
+check(d.next === 'human' && ho(d).reason === 'staff_request' && d.actions[0].type === 'answer' && d.actions[0].nogap, 'pass 5: a staff request → its sourced part answered (never a gap), then the team');
+d = run('inquiry', guest(U({ kind: 'staff_request', intents: ['stay_service_request'] })));
+check(d.next === 'human' && acts(d).join() === 'handoff', 'pass 5: a staff request with no source → the team only');
+d = run('inquiry', guest(null, { kind: 'button', button_id: 'hubq:question' }));
+check(d.actions[0].type === 'fixed' && d.actions[0].key === 'ask_question', 'pass 5: «لدي سؤال» → «تفضّل، اكتب سؤالك.»');
+d = run('new', guest(null, { kind: 'button', button_id: 'hubq:book' }));
+check(d.next === 'collecting' && d.actions[0].type === 'ask' && d.actions[0].slots.join() === 'dates,adults', 'pass 5: «حجز إقامة» → the dates and the guests asked (room_booking off)');
+const DR = { id: 'd1', kind: 'stay', version: 1, fields: { branch: 'airport-road', check_in: '2026-12-01', check_out: '2026-12-03' } };
+d = run('collecting', guest(U({ kind: 'booking', intents: ['stay_booking'], adults: 2 })), {}, DR);
+check(d.next === 'quoted' && d.actions.some((a) => a.type === 'quote' && a.lite), 'pass 5: dates and guests known → the quote from the rate calendar');
+d = run('collecting', guest(U({ kind: 'booking', intents: ['stay_booking'], adults: 2 })), { show_prices: false }, DR);
+check(d.next === 'human' && ho(d).reason === 'prices_hidden', 'pass 5: prices hidden → the team');
 
 // ── the note (spec §2.6) ──
 const note = handoffNote({ intent: 'stay_booking', slots: noteSlots(U({ ...full })), stopped: 'inquiry' }, 'أُجيب عن سؤال');
@@ -320,7 +354,7 @@ check(ASSISTANT_STATES.length === 6, 'six assistant states');
 // ── never silent (H6 pass 4, Ahmed 14 Nov 2026): in every assistant-owned state a guest message always gets something —
 // an answer, a question, a fixed reply, or the hand-off with its notice; never «لم أعرف الإجابة» for a greeting or thanks ──
 {
-  const SAYS = new Set(['answer', 'ask', 'quote', 'send_room_cards', 'send_summary', 'from_price', 'fixed', 'booking_status', 'partner_enquiry']);
+  const SAYS = new Set(['answer', 'ask', 'quote', 'send_room_cards', 'send_summary', 'from_price', 'fixed', 'booking_status', 'partner_enquiry', 'chat']);
   const speaks = (dd) => dd.actions.some((a) => SAYS.has(a.type) || (a.type === 'handoff' && a.notice));
   const EVENTS = [
     ['a greeting', guest(U({ intents: ['greeting'], topics: ['greeting'] }))],
@@ -350,10 +384,10 @@ check(ASSISTANT_STATES.length === 6, 'six assistant states');
   check(silent.length === 0, `never silent in an assistant-owned state — ${silent.slice(0, 6).join(' | ')}`);
   for (const st of ASSISTANT_STATES.filter((x) => x !== 'new')) {
     const g = run(st, guest(U({ intents: ['greeting'], topics: ['greeting'] })), { first_reply: false }, st === 'inquiry' ? null : DRAFT);
-    check(g.actions.length === 1 && g.actions[0].type === 'fixed' && g.actions[0].key === 'how_help' && g.actions[0].buttons === 'quick',
-      `${st}: a greeting mid-episode → «كيف نساعدك؟» with the quick replies`);
+    check(g.actions.length === 1 && g.actions[0].type === 'chat' && g.actions[0].mode === 'chat' && (g.actions[0].buttons === 'quick') === !['collecting', 'quoted'].includes(st),
+      `${st}: a greeting mid-episode → the model reply (the quick replies outside a booking)`);
     const th = run(st, guest(U({ intents: ['thanks_or_closing'], topics: ['thanks_closing'] })), { first_reply: false }, st === 'inquiry' ? null : DRAFT);
-    check(th.actions.length === 1 && th.actions[0].type === 'fixed' && th.actions[0].key === 'thanks', `${st}: thanks mid-episode → the thanks reply`);
+    check(th.actions.length === 1 && th.actions[0].type === 'chat' && th.actions[0].mode === 'chat', `${st}: thanks mid-episode → the model reply`);
   }
 }
 

@@ -6,6 +6,7 @@
 // hub-fixtures-check.mjs replays them in CI. A Wi-Fi password card never enters a fixture (its text → its placeholder).
 import { readFileSync, existsSync } from 'node:fs';
 import { retrieve } from '../supabase/functions/_shared/hub/retrieval.ts';
+import { expectedAction, outcomeKind as gradeOutcomeKind } from '../supabase/functions/_shared/hub/grade.ts';
 import { sarText } from '../supabase/functions/booking-request/rules.ts';
 
 const read = (p) => readFileSync(new URL(`../${p}`, import.meta.url), 'utf8').replace(/\r\n/g, '\n');
@@ -93,31 +94,16 @@ export function claimFor(q) {
   };
 }
 
-/** what the engine should decide for a bank item in H5 (room_booking, hall and group requests OFF → the team) */
+/** what the engine should decide for a bank item with the H5 skills (room_booking, hall and group requests OFF) — the
+ *  lab's own rule (grade.ts expectedAction; H6 pass 5: a stay is collected and quoted in the chat, small talk a reply,
+ *  off-topic a redirect) */
 export function h5Expect(q) {
-  const a = q.expect.action;
-  // the H5 brief: a price question without dates gets the site's «يبدأ من» lines (the bank's note allows it: q015)
-  if (a === 'ask' && /يبدأ من/.test(q.note ?? '')) return 'answer';
-  if (['ask', 'send_summary', 'quote'].includes(a)) return 'handoff';
-  if (a === 'refuse') return 'out_of_scope';
-  if (a === 'greeting') return 'greeting';
-  return a;
+  return expectedAction({ key: q.id, unit_key: q.unit, language: q.language, messages: q.messages, expect: q.expect, note: q.note ?? null }, ['shared_knowledge', 'stay_services']).action;
 }
-/** the kind of outcome the engine produced */
+/** the kind of outcome the engine produced — the lab's (grade.ts outcomeKind), a mixed stay or staff answer counted as the answer */
 export function outcomeKind(finish) {
-  const acts = finish.decision?.actions ?? [];
-  // H6 gaps: a mixed message — the sourced question answered, then the stay / hall / group part to the team — meets an
-  // expected answer while those skills are off (grade.ts answerThenTeam says the same)
-  if (finish.state === 'human' && finish.decision?.answered === true && ['stay_booking', 'hall_request', 'group_request'].includes(finish.reason)) return 'answer';
-  if (acts.includes('handoff') && finish.messages?.some((m) => /third_language/.test(JSON.stringify(m)))) return 'third_language';
-  if (finish.state === 'human') return finish.reason === 'third_language' ? 'third_language' : finish.reason === 'out_of_scope' ? 'out_of_scope' : 'handoff';
-  if (acts.includes('booking_status')) return 'booking_status';
-  if (acts.includes('fixed') && (finish.decision?.transitions ?? []).includes('T4')) return 'greeting';
-  if (acts.includes('fixed') && finish.messages?.length && finish.out_of_scope_inc) return 'out_of_scope';
-  if (acts.includes('from_price')) return 'answer';
-  if (acts.includes('answer')) return 'answer';
-  if (acts.includes('noop')) return 'answer';
-  return acts[0] ?? 'none';
+  const k = gradeOutcomeKind(finish);
+  return k === 'answer_handoff' ? 'answer' : k;
 }
 
 /** the bank items the engine runs (the router's own items — the «إلغاء» word, an opt-out — are not engine turns; the two

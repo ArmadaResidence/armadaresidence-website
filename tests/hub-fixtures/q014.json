@@ -1,6 +1,6 @@
 {
  "id": "q014",
- "recorded_at": "2026-11-14T14:28:44.020Z",
+ "recorded_at": "2026-11-14T22:30:36.346Z",
  "question": {
   "unit": "airport-road",
   "language": "ar",
@@ -8,16 +8,34 @@
    "أبغى أحجز من 20 لـ 22 ديسمبر"
   ]
  },
- "expect_h5": "handoff",
+ "expect_h5": "ask",
  "calls": [
   {
    "layer": "understand",
    "model": "claude-haiku-5-5",
    "ok": true,
-   "text": "{\"intents\":[\"stay_booking\"],\"topics\":[\"booking_new\",\"availability\"],\"new_topic_hint\":null,\"branch\":\"airport-road\",\"check_in\":\"2026-12-20\",\"check_out\":\"2026-12-22\",\"nights\":2,\"dates_text\":\"من 20 لـ 22 ديسمبر\",\"dates_calendar\":\"gregorian\",\"room_type\":null,\"breakfast\":null,\"adults\":null,\"children\":null,\"child_ages\":null,\"extra_beds\":null,\"rooms_count\":null,\"guest_name\":null,\"booking_ref\":null,\"language\":\"ar\",\"complaint\":false,\"confidence\":{\"intents\":0.95,\"topics\":0.9,\"branch\":0.6,\"check_in\":0.95,\"check_out\":0.95,\"nights\":0.9,\"dates_text\":0.95,\"dates_calendar\":0.95,\"language\":0.99,\"complaint\":0.99}}",
-   "input_tokens": 3707,
-   "output_tokens": 292,
-   "latency_ms": 1477
+   "text": "{\"intents\":[\"stay_booking\"],\"topics\":[\"booking_new\",\"availability\"],\"new_topic_hint\":null,\"branch\":\"airport-road\",\"check_in\":\"2026-12-20\",\"check_out\":\"2026-12-22\",\"nights\":2,\"dates_text\":\"من 20 لـ 22 ديسمبر\",\"dates_calendar\":\"gregorian\",\"room_type\":null,\"breakfast\":null,\"adults\":null,\"children\":null,\"child_ages\":null,\"extra_beds\":null,\"rooms_count\":null,\"guest_name\":null,\"booking_ref\":null,\"language\":\"ar\",\"complaint\":false,\"kind\":\"booking\",\"sensitive\":null,\"ack_only\":false,\"confidence\":{\"intents\":0.95,\"topics\":0.9,\"branch\":0.8,\"check_in\":0.95,\"check_out\":0.95,\"nights\":0.9,\"dates_text\":1.0,\"dates_calendar\":0.95,\"language\":0.99,\"kind\":0.95}}",
+   "input_tokens": 5324,
+   "output_tokens": 314,
+   "latency_ms": 2929
+  },
+  {
+   "layer": "compose",
+   "model": "claude-sonnet-5-5",
+   "ok": true,
+   "text": "{\"reply\": \"يسعدنا استقبالك من 20 إلى 22 ديسمبر. كم عدد الضيوف، وهل يرافقكم أطفال؟\", \"used_card_ids\": [], \"unanswered\": []}",
+   "input_tokens": 3650,
+   "output_tokens": 81,
+   "latency_ms": 1971
+  },
+  {
+   "layer": "compose",
+   "model": "claude-sonnet-5-5",
+   "ok": true,
+   "text": "{\"reply\": \"يسعدنا مساعدتك في الحجز. كم عدد الضيوف، وهل يرافقك أطفال؟\", \"used_card_ids\": [], \"unanswered\": []}",
+   "input_tokens": 3710,
+   "output_tokens": 70,
+   "latency_ms": 1979
   }
  ],
  "adapter": {
@@ -198,11 +216,12 @@
   }
  },
  "outcome": {
-  "kind": "handoff",
-  "state": "human",
-  "reason": "stay_booking",
+  "kind": "ask",
+  "state": "collecting",
+  "reason": null,
   "transitions": [
-   "T2"
+   "T3",
+   "T8"
   ],
   "topics": [
    "booking_new",
@@ -210,15 +229,19 @@
   ],
   "messages": [
    {
-    "body": "مرحبًا بك في أرمادا ريزيدنس – طريق المطار.\nسيكمل معك أحد أفراد فريقنا في هذه المحادثة.",
-    "notice": true
+    "body": "مرحبًا بك في أرمادا ريزيدنس – طريق المطار.\nيسعدنا مساعدتك في الحجز. كم عدد الضيوف، وهل يرافقك أطفال؟",
+    "notice": false
    }
   ],
-  "guard_refusals": [],
-  "cost_usd": 0.000517
+  "guard_refusals": [
+   [
+    "number"
+   ]
+  ],
+  "cost_usd": 0.016919
  },
  "first_try": {
-  "guard": true,
+  "guard": false,
   "expect": true
  }
 }

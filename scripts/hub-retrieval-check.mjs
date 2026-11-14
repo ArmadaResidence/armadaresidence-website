@@ -168,12 +168,12 @@ for (const name of ['K1 a Shafa Road card is read on the Airport Road number', '
     && /مغسلة مركزية/.test(f.messages[0].body) && /سنتأكد من الفريق/.test(f.messages[0].body), `gaps: the laundry: what the cards say, then the price to the team — ONE message, the part unanswered in the queue — ${JSON.stringify(f.messages.map((m) => m.body))}`);
   check(!/\d+\s*(ريال|SAR)/.test(f.messages[0].body), 'gaps: … and no laundry price');
   f = await turn('أبغى غرفة فيها مطبخ', U({ intents: ['stay_booking', 'facility_question'], topics: ['booking_new', 'kitchen'] }), { reply: 'المطبخ متوفر في جناح بغرفة وصالة.', used_card_ids: ['k-airport-kitchen'], unanswered: [] });
-  check(f.state === 'human' && f.reason === 'stay_booking' && f.decision.answered === true && f.unanswered.length === 0 && f.messages.length === 1 && f.messages[0].payload.handoff === true
-    && /سيكمل معك أحد أفراد فريقنا/.test(f.messages[0].body), 'gaps: a mixed message → the answer, then the stay to the team, one message; nothing in the queue');
+  check(f.state === 'collecting' && f.decision.answered === true && f.unanswered.length === 0 && f.messages.length === 1 && !f.messages[0].notice,
+    'gaps / pass 5: a mixed message → the answer, which also asks for the stay details (one composed message); nothing in the queue');
   f = await turn('أبغى غرفة فيها مطبخ', U({ intents: ['stay_booking', 'facility_question'], topics: ['booking_new', 'kitchen'] }), NONE);
-  check(f.state === 'human' && f.reason === 'stay_booking' && f.unanswered.length === 1 && f.messages.length === 1 && f.messages[0].notice, 'gaps: … its question with no source is a gap; the stay still goes to the team with its notice');
+  check(f.state === 'collecting' && f.unanswered.length === 1 && f.messages.length === 1 && /متى موعد وصولك/.test(f.messages[0].body), 'gaps / pass 5: … its question with no source is a gap; the stay details are still asked');
   f = await turn('أبغى أحجز من 20 إلى 22 نوفمبر', U({ intents: ['stay_booking'], topics: ['booking_new'], check_in: '2026-11-20', check_out: '2026-11-22' }), NONE);
-  check(f.state === 'human' && f.unanswered.length === 0 && !f.decision.gap, 'gaps: a booking hand-off never enters the queue');
+  check(f.state === 'collecting' && f.unanswered.length === 0 && !f.decision.gap, 'gaps / pass 5: a booking never enters the queue');
   f = await turn('الغرفة غير نظيفة', U({ intents: ['complaint'], complaint: true }), NONE);
   check(f.state === 'human' && f.unanswered.length === 0, 'gaps: … nor a complaint');
   f = await turn('أبغى أكلم موظف', U({ intents: ['human_request'] }), NONE);

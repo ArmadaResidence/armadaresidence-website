@@ -7,7 +7,7 @@
  * offline replay of scripts/hub-eval-check.mjs.
  */
 import { runTurn, type Deps, type Finish } from './engine.ts';
-import { outcomeKind, type Item, type Outcome } from './grade.ts';
+import { outcomeKind, type Item, type Outcome, type StepOutcome } from './grade.ts';
 import type { ModelFn } from './model.ts';
 import text from './text.generated.json' with { type: 'json' };
 
@@ -17,8 +17,8 @@ type Json = any;
 /** the engine's version a run is judged with: the instructions of prompts.md and copy.md as loaded, + this module */
 export async function engineVersion(): Promise<string> {
   // the leading code marks a change of the engine's code that the texts do not show: e2 = the H6 gaps (mixed messages,
-  // the room-only «يبدأ من», the guard's phones, emails and first person); e3 = H6 pass 3 (replyLicence; the workspace usage limit read as the credit) — bump it with any such change
-  const data = new TextEncoder().encode(`e3|${JSON.stringify((text as Json).prompts)}|${JSON.stringify((text as Json).copy)}`);
+  // the room-only «يبدأ من», the guard's phones, emails and first person); e3 = H6 pass 3 (replyLicence; the workspace usage limit read as the credit); e4 = H6 pass 5 (the natural-conversation policy: kinds, chat / clarify / redirect, the booking conversation, no drafts in «يرد تلقائيًا») — bump it with any such change
+  const data = new TextEncoder().encode(`e4|${JSON.stringify((text as Json).prompts)}|${JSON.stringify((text as Json).copy)}`);
   const h = new Uint8Array(await crypto.subtle.digest('SHA-256', data));
   return `h6-${[...h.slice(0, 6)].map((b) => b.toString(16).padStart(2, '0')).join('')}`;
 }
@@ -46,8 +46,11 @@ export function claimOf(ctx: Json, item: Pick<Item, 'key' | 'language' | 'contex
     unit: { ...ctx.unit, mode: 'test', persona: persona ?? ctx.unit?.persona ?? null },
     channel: ctx.channel ?? { address: null, sending_enabled: false },
     guest: { first_name: typeof c.first_name === 'string' ? c.first_name : null, returning: !!c.returning_guest, language: L },
-    messages: [kind === 'text' ? { id: `m-${item.key}-${n}`, kind: 'text', body: message, payload: {} } : { id: `m-${item.key}-${n}`, kind, body: null, payload: { media_id: 'eval' } }],
-    history: st.history.slice(-6),
+    // «[button:<id>]» = a tap on our own quick reply (the conversation bank, H6 pass 5)
+    messages: [/^\[button:(hub[a-z]?:[a-z_]+)\]$/.test(message)
+      ? { id: `m-${item.key}-${n}`, kind: 'button_reply', body: message, payload: { button_id: /^\[button:(.+)\]$/.exec(message)![1] } }
+      : kind === 'text' ? { id: `m-${item.key}-${n}`, kind: 'text', body: message, payload: {} } : { id: `m-${item.key}-${n}`, kind, body: null, payload: { media_id: 'eval' } }],
+    history: st.history.slice(-12),
     draft: st.draft,
     // a booking on the same phone (the bank's context): a synthetic one, for the booking-status answer
     bookings: c.reservation_on_same_phone ? [{ ref: 'AR-20991231-EVAL', status: 'confirmed', branch: ctx.unit?.branch ?? 'airport-road', check_in: '2099-12-01', check_out: '2099-12-03' }] : [],
@@ -142,6 +145,9 @@ export async function runItem(ctx: Json, item: Item, deps: Deps, persona: Json |
     replies: finishes.flatMap((f) => f.messages.map((m) => ({ body: m.body, notice: !!m.notice }))),
     guard_refusals: finishes.flatMap((f) => f.guard_refusals ?? []),
     error: error ?? (last?.error === 'engine_error' ? 'engine_error' : null),
+    // H6 pass 5: what each guest message got (the conversation bank grades every step)
+    steps: finishes.map((f): StepOutcome => ({ kind: outcomeKind(f), state: f.state ?? null, replies: f.messages.map((m) => ({ body: m.body, notice: !!m.notice })),
+      gap: (f.decision as Json)?.gap === true, guard_refusals: (f.guard_refusals ?? []).length })),
   };
   return { outcome, finishes, models: finishes.flatMap((f) => f.models), understanding: finishes.map((f) => f.understanding ?? null) };
 }

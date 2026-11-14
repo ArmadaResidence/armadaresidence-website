@@ -1,3 +1,4 @@
+import COPYJSON from '../supabase/functions/_shared/hub/text.generated.json' with { type: 'json' };
 // Guest Hub — the fixed messages (14 Nov 2026, session H5; docs/guest-hub/copy.md, prompts.md; spec §2.1, §2.5 rule 12,
 // rule 16; DECISIONS.md 2026-11-14 «Guest Hub H5 — the engine»). OFFLINE and fast (FAST_CHECKS):
 //   1. supabase/functions/_shared/hub/text.generated.json = copy.md and prompts.md read again (run
@@ -96,6 +97,16 @@ check(/dates_calendar/.test(P.understand_schema) && /"intents"/.test(P.understan
 check(/Never describe yourself/.test(P.compose_system) && /Never claim to be a person/.test(P.compose_system), 'compose: no self-description, no claim to be a person');
 check(/Return only the translation\./.test(P.translate_system) && /"suggestions"/.test(P.suggest_system), 'the translation and suggestion instructions');
 
+// H6 pass 5 (15 Nov 2026): the buttons' words typed, «سلام», the greeting the model must not write twice
+{
+  const { buttonForText, hasSalaam, stripOpening } = await import('../supabase/functions/_shared/hub/copy.ts');
+  check(buttonForText('لدي سؤال', 'branch') === 'hubq:question' && buttonForText(' حجز إقامة. ', 'branch') === 'hubq:book' && buttonForText('Talk to our team', 'branch') === 'hubq:team', 'a typed button title = the button');
+  check(buttonForText('لدي سؤال عن المواقف', 'branch') === null, 'a longer text is never a button');
+  check(hasSalaam('سلام') && hasSalaam('السلام') && !hasSalaam('سلامات للجميع'), '«سلام» on its own is a salaam');
+  check(stripOpening('وعليكم السلام ورحمة الله، كيف نساعدك؟') === 'كيف نساعدك؟' && stripOpening('مرحبًا بك في أرمادا ريزيدنس – طريق المطار. كيف نساعدك؟') === 'كيف نساعدك؟', 'a greeting the model wrote is taken out (the code adds its own)');
+  check(!!COPYJSON.copy.ask_question?.ar && COPYJSON.copy.ask_question.ar === 'تفضّل، اكتب سؤالك.' && COPYJSON.copy.ask_question.en === 'Go ahead and type your question.', '«لدي سؤال» → copy.md §1.7 (approved 15 Nov 2026)');
+  check(['booking_ask', 'booking_quote_head', 'booking_link'].every((k) => COPYJSON.copy[k]?.ar && COPYJSON.copy[k]?.en), 'the booking conversation lines (copy.md §4.0)');
+}
 if (fails.length) {
   for (const f of fails) console.error(`✗ ${f}`);
   console.error(`hub-copy-check: ${fails.length} of ${n} failed`);

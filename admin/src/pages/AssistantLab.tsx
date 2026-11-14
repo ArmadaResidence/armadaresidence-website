@@ -285,6 +285,8 @@ export function LabPanel({ o, edit, onChanged }: { o: HubOverview; edit: boolean
   const [runs, setRuns] = useState<L.EvalRunRow[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState({ unit: '', language: '', status: 'active', last: '' });
+  // H6 pass 5: the single questions and the conversation bank side by side
+  const [bank, setBank] = useState<'questions' | 'conversations'>('questions');
   const [runFor, setRunFor] = useState<string | null>(null);
   const [plan, setPlan] = useState<L.EvalPlan | null>(null);
   const [detail, setDetail] = useState<string | null>(null);
@@ -310,8 +312,8 @@ export function LabPanel({ o, edit, onChanged }: { o: HubOverview; edit: boolean
     const t = setTimeout(() => void load(), 4000);
     return () => clearTimeout(t);
   }, [active, runs, load]);
-  const shown = useMemo(() => (items ?? []).filter((i) => (!filter.unit || i.unit_key === filter.unit) && (!filter.language || i.language === filter.language)
-    && (filter.status === 'all' || i.status === filter.status) && (!filter.last || (filter.last === 'none' ? !i.last : i.last?.status === filter.last))), [items, filter]);
+  const shown = useMemo(() => (items ?? []).filter((i) => (bank === 'conversations') === L.isConversation(i) && (!filter.unit || i.unit_key === filter.unit) && (!filter.language || i.language === filter.language)
+    && (filter.status === 'all' || i.status === filter.status) && (!filter.last || (filter.last === 'none' ? !i.last : i.last?.status === filter.last))), [items, filter, bank]);
 
   async function openRun(unit: string) {
     setRunFor(unit);
@@ -392,7 +394,11 @@ export function LabPanel({ o, edit, onChanged }: { o: HubOverview; edit: boolean
       </div>
 
       <div className="card p-4 grid gap-3" data-lab-bank>
-        <h3 className="font-bold">بنك الأسئلة</h3>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h3 className="font-bold">{bank === 'conversations' ? 'بنك المحادثات' : 'بنك الأسئلة'}</h3>
+          <Segmented value={bank} onChange={(v) => setBank(v as 'questions' | 'conversations')} label="البنك" options={[{ value: 'questions', label: 'أسئلة مفردة' }, { value: 'conversations', label: 'محادثات' }]} />
+        </div>
+        {bank === 'conversations' && <p className="text-sm text-ink-muted" data-lab-conv-note>محادثات من عدة رسائل؛ لكل رسالة نتيجة متوقعة. يجب أن ينجح هذا البنك وبنك الأسئلة قبل أي نشر لمركز الضيوف.</p>}
         <div className="grid gap-3 sm:grid-cols-4">
           <Field label="الوحدة" id="lab-f-unit">
             <select id="lab-f-unit" className="field" value={filter.unit} onChange={(e) => setFilter({ ...filter, unit: e.target.value })}>
@@ -423,7 +429,16 @@ export function LabPanel({ o, edit, onChanged }: { o: HubOverview; edit: boolean
             <li key={i.id} className="border-b border-line pb-2 grid gap-1" data-item={i.key} data-item-last={i.last?.status ?? 'none'}>
               <div className="flex flex-wrap items-start justify-between gap-2">
                 <div className="min-w-0 flex-1">
-                  <p className="text-sm font-semibold" lang={i.language} dir={i.language === 'ar' ? 'rtl' : 'ltr'}>{i.messages.join(' ← ')}</p>
+                  {L.isConversation(i) ? (
+                    <ol className="grid gap-0.5 text-sm" data-conv-steps>
+                      {i.messages.map((m, n) => (
+                        <li key={n} className="flex flex-wrap gap-2">
+                          <span className="font-semibold" lang={i.language} dir={i.language === 'ar' ? 'rtl' : 'ltr'}>{m.startsWith('[button:') ? 'زر سريع' : m}</span>
+                          <span className="text-ink-muted">← {L.stepLabel(i.expect.steps?.[n]?.outcome ?? '')}</span>
+                        </li>
+                      ))}
+                    </ol>
+                  ) : <p className="text-sm font-semibold" lang={i.language} dir={i.language === 'ar' ? 'rtl' : 'ltr'}>{i.messages.join(' ← ')}</p>}
                   <div className="flex flex-wrap gap-1.5 mt-1">
                     <span className="chip num">{i.key}</span>
                     <span className="chip">{unitName(o, i.unit_key)}</span>

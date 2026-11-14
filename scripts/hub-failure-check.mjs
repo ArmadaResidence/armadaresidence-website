@@ -146,11 +146,12 @@ for (const kind of ['rate_limit', 'overloaded', 'timeout']) {
   o = await runTurn(claim(Q('s7', 'السلام عليكم، هل المواقف مجانية؟'), { conversation: { first_reply: false, state: 'inquiry' } }),
     deps(layered({ understand: understanding({ intents: ['greeting', 'facility_question'], topics: ['parking'] }), compose: JSON.stringify({ reply: 'نعم، المواقف مجانية.', used_card_ids: ['k-parking-detail'], unanswered: [] }) })));
   check(bodies(o)[0] === 'وعليكم السلام.\nنعم، المواقف مجانية.', `a salaam with a question later: «وعليكم السلام.» then the answer (${JSON.stringify(bodies(o)[0])})`);
-  // the guest's own «حجز إقامة» while booking in the chat is not built (H8): the hand-off notice, never silence
+  // the guest's own «حجز إقامة» (H6 pass 5, Ahmed 15 Nov 2026): the booking conversation — the dates and the guests asked;
+  // the model down → the fixed question of copy.md §4.0, never the team, never silence
   const tap = claim(Q('f-book', 'حجز إقامة'), { conversation: { first_reply: false, state: 'inquiry' } });
   tap.messages = [{ id: 'm-tap', kind: 'button_reply', body: 'حجز إقامة', payload: { button_id: 'hubq:book' } }];
   o = await runTurn(tap, deps(err('other')));
-  check(o.finish.state === 'human' && bodies(o).join('') === HANDOFF_AR && o.finish.models.length === 0, `«حجز إقامة» with booking off: the hand-off notice (${JSON.stringify(bodies(o))})`);
+  check(o.finish.state === 'collecting' && bodies(o).join('') === 'متى موعد وصولك ومغادرتك، وكم عدد الضيوف؟', `«حجز إقامة»: the dates and guests asked (fallback when the model is down) (${JSON.stringify(bodies(o))})`);
 }
 
 // Ahmed's rule (22:55): only a real button payload is a button reply — any typed text goes through understanding, also the
@@ -165,11 +166,11 @@ for (const kind of ['rate_limit', 'overloaded', 'timeout']) {
   const typedTitle = claim(Q('t-typed-title', 'حجز إقامة'), { conversation: { first_reply: false, state: 'inquiry' } });
   seen.length = 0;
   await runTurn(typedTitle, deps(spy));
-  check(seen[0] === 'understand', 'the title of a quick reply typed as text (no button payload) is understood, not taken as the button');
+  check(!seen.includes('understand'), 'the title of a quick reply typed as text gets the button\'s result (H6 pass 5, Ahmed 15 Nov 2026)');
   const un = claim(Q('t-unsupported', ''), { conversation: { first_reply: false, state: 'inquiry' } });
   un.messages = [{ id: 'm-un', kind: 'unsupported', body: null, payload: {} }];
   const ou = await runTurn(un, deps(err('other')));
-  check(ou.finish.state === 'human' && ou.finish.reason === 'media' && !bodies(ou).join('').includes('كيف نساعدك'), `an unsupported message kind: the media notice and the team (${ou.finish.reason})`);
+  check(ou.finish.state !== 'human' && !bodies(ou).length && ou.finish.models.length === 0, `an unsupported message kind or a reaction: nothing, never the team (H6 pass 5) (${ou.finish.reason})`);
 }
 
 if (fails.length) {

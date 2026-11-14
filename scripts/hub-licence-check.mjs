@@ -6,7 +6,7 @@
 //     «تفعيل الرد التلقائي» / «إيقاف الرد التلقائي» for the system admin only;
 //   - the shadow gate (spec §1.8 gate 5): «بموافقة الفريق» and «يرد تلقائيًا» need the unit's latest full test-lab run with
 //     no failing item but a known gap; the modes are assistant: edit's (Ahmed's H6 brief) with every gate;
-//   - in «يرد تلقائيًا» only a reply whose every topic holds «رد تلقائي» goes by itself; every other waits for one tap;
+//   - in «يرد تلقائيًا» every reply goes at once (H6 pass 5 — no drafts); only «للفريق دائمًا» blocks (decide hands it off);
 //   - a sent reply flagged wrong alerts the admins and never changes a licence.
 //   node scripts/hub-licence-check.mjs
 import { readFileSync, readdirSync } from 'node:fs';
@@ -65,7 +65,7 @@ const gates = body(ALL, 'create function internal.hub_unit_gates_mode(');
 check(/p_mode in \('shadow', 'licensed'\) and not internal\.hub_test_lab_ready\(u\)/.test(gates), '«بموافقة الفريق» and «يرد تلقائيًا» need the test lab');
 check(/raise exception 'hub_system_admin_only'/.test(body(ALL, 'create or replace function public.hub_setting_set(')), '«المساعد يعمل» and the budgets stay the system admin\'s');
 const engine = read('supabase/functions/_shared/hub/engine.ts');
-check(/replyLicence\(finish\.topics, claim\.licences \?\? \{\}\) === 'auto'/.test(engine) && /licensed: claim\.turn\.mode === 'live' && licensed/.test(engine), 'in «يرد تلقائيًا» only a reply whose every topic is «رد تلقائي» goes by itself (machine.ts replyLicence)');
+check(/replyLicence\(finish\.topics, claim\.licences \?\? \{\}\) !== 'blocked'/.test(engine) && /licensed: claim\.turn\.mode === 'live' && licensed/.test(engine), 'in «يرد تلقائيًا» every reply goes at once — no drafts; only «للفريق دائمًا» blocks (H6 pass 5, Ahmed 15 Nov 2026)');
 {
   // the rule itself (H6 pass 3): the most restrictive licence among ALL the turn's topics
   const { replyLicence } = await import('../supabase/functions/_shared/hub/machine.ts');

@@ -164,8 +164,23 @@ guest_name         as written, or none
 booking_ref        an AR- reference if written, or none
 language           ar | en | other:<ISO code>
 complaint          true | false
+kind               small_talk | hotel_question | staff_request | booking | unclear | out_of_scope | sensitive
+                   [مقرر — أحمد، 15 نوفمبر 2026, H6 pass 5]: what the message is FOR, read in context like a sensible
+                   front-desk agent; a greeting with a question is the question's kind
+sensitive          human | bot | abuse | none (kind sensitive only)
+ack_only           true for a bare acknowledgement («تمام»، «أوكي»، 👍)
 confidence         0–1 per field
 ```
+
+- **The turn's one outcome by `kind`** [مقرر — أحمد، 15 نوفمبر 2026, H6 pass 5 — the natural-conversation policy, DECISIONS.md 2026-11-15]: every guest message ends in exactly one outcome, sent at once — never a draft in «يرد تلقائيًا», never silence:
+  - `small_talk` → a short natural reply written by the model in context (prompts.md §2 ACTION chat), in the property's voice; code adds the greeting line to the first reply and «وعليكم السلام» to a salaam; the quick replies follow a plain greeting outside a booking; a bare acknowledgement right after our answer (or a reaction) may get no reply; never «لم أعرف الإجابة».
+  - `hotel_question` → the answer from a source (§4); no source → the hand-off notice and «لم أعرف الإجابة».
+  - `staff_request` (an extension, a late check-out request, maintenance, an order to the room, a booking change) → what has a source answered first (in the same message), then the hand-off notice and the team; never a gap.
+  - `booking` → the booking conversation (copy.md §4.0): the dates and the guests asked, then every room type quoted from the rate calendar, then the website's booking link and «التحدث مع موظف» (until H8).
+  - `unclear` → one clarifying question written by the model; still unclear after the guest's answer → the team (not a gap).
+  - `out_of_scope` (general knowledge, news, sport, politics, writing or coding, romance, anything illegal) → a short polite redirect written by the model, offering help with stays, bookings and services; never the off-topic content; never a hand-off, never a gap.
+  - `sensitive` → «انت إنسان؟» / «انت بوت؟» / a person asked for → the team at once (13 Nov 2026); abuse or threats → the team, high priority.
+- **Context:** understanding and composing receive the episode's last 12 messages (`hub_turn_claim`, was 6), so a follow-up («طيب والأطفال؟») resolves against the answer before it. A message with no letters (an emoji, «؟») is never a third language.
 
 - Dates: the model returns ISO dates plus the guest's words; code re-checks them (no past date in Asia/Riyadh, departure after arrival, up to 31 Dec of next year — the booking form's rules in `booking-request/rules.ts`, imported, never copied). A Hijri date or an ambiguous one ("الخميس الجاي") is asked back as a Gregorian date with the date the code understood. «مقترح — بانتظار اعتماد أحمد».
 - A field below the confidence floor (proposed default 0.7) is treated as missing and asked.
@@ -193,7 +208,7 @@ A `hub_conversations` row is one episode between one guest (one `guest_profiles`
 
 Orthogonal flags on the conversation (not states): `window_open` (§6.3), `priority` (complaint), `mode_effective` (§2.10), `owner_staff_id`, `failed_understandings`.
 
-**Never silent** [مقرر — 14 نوفمبر 2026, H6 pass 4]: in every assistant-owned state (`new` … `booked`) a guest message always gets something — an answer, a question, a fixed reply, or the no-source / hand-off notice with the hand-off. A greeting alone mid-episode → «كيف نساعدك؟» with the quick replies; thanks alone → copy.md §1.6; a salaam opens the Arabic reply with «وعليكم السلام» (copy.md §1.5). A model call that fails after its retries → the no-source notice and the team (`model_error`, §7.3); a rate limit of §7.4 → the general hand-off notice and the team; a repeat is suppressed only when the assistant already answered that text (§7.4). `hub-machine-check` asserts it for every state and guest event; `hub-failure-check` forces each failure. Only `human` and `closed` are silent.
+**Never silent** [مقرر — 14 نوفمبر 2026, H6 pass 4; small talk model-written since 15 Nov 2026, H6 pass 5]: in every assistant-owned state (`new` … `booked`) a guest message always gets something — an answer, a question, a model-written reply, or the no-source / hand-off notice with the hand-off; the one exception is a bare acknowledgement right after our answer, or a reaction, which may get none. A greeting alone mid-episode → the model's short reply (the quick replies outside a booking); thanks alone → the model's reply (copy.md §1.6 is the fallback); a salaam opens the Arabic reply with «وعليكم السلام» (copy.md §1.5). A model call that fails after its retries → the no-source notice and the team (`model_error`, §7.3); a rate limit of §7.4 → the general hand-off notice and the team; a repeat is suppressed only when the assistant already answered that text (§7.4). `hub-machine-check` asserts it for every state and guest event; `hub-failure-check` forces each failure. Only `human` and `closed` are silent.
 
 Drafts carry a `kind`: `stay` (room booking), `hall`, `group`. Hall and group drafts never reach `quoted`: when complete they create the `partner_enquiries` row (the sales email follows), the guest gets the fixed acknowledgement, and the conversation returns to `inquiry` with the assistant — no reception hand-off [مقرر — 12 نوفمبر 2026: requests go to the partner-requests table and the sales email only]. A cart order is not a draft: it moves the conversation to `human` for the café team (T31).
 
@@ -363,6 +378,8 @@ The guest never sees the note. The notices are in `copy.md`; none promises a tim
 | Global | «المساعد يعمل» on / off (the global kill switch) | assistant: edit |
 | Unit | `off` · `test` (runs, sends nothing) · `shadow` (drafts for staff approval) · `licensed` (topics with a licence send by themselves) | assistant: edit; any inbox-edit member of the unit can **pause** it (audited); only assistant: edit resumes |
 | Topic licence (per unit) | `shadow` · `auto` · `blocked` (always hand-off) | **Ahmed only, by hand** — the system admin (staff role `admin`, `internal.is_system_admin()`) [مقرر — 12 نوفمبر 2026]. No threshold: the dashboard shows each topic's approval rate as information and never activates anything by itself. |
+
+**No drafts in «يرد تلقائيًا»** [مقرر — أحمد، 15 نوفمبر 2026, H6 pass 5]: in a `licensed` unit only «للفريق دائمًا» (`blocked`) holds a topic back — it hands off. A topic still in `shadow`, or a turn with no topic, follows the outcomes of §2.2 and is sent at once (`engine.ts`: `licensed` unless blocked). Drafts exist only in a unit whose own mode is `shadow` («بموافقة الفريق»). (This replaces, for `licensed` units, the rule below that a reply goes by itself only when every topic is `auto`.)
 
 Effective mode of a reply = the most restrictive of: global, unit, the topic's licence, the budget state (§7.3). **A turn tagged with several topics takes the most restrictive licence among ALL of them** — `blocked` over `shadow` over `auto`; a turn with no topic, or a topic with no licence row, counts as `shadow` [مقرر — 14 نوفمبر 2026, H6 pass 3: «بكم غسيل الملابس؟» must never go by itself while «الغسيل» is held]. One pure function states it (`machine.ts → replyLicence`), used by decide (a blocked topic anywhere in the turn hands off) and by the engine's `licensed` flag; `hub-machine-check` and `hub-licence-check` test auto + shadow, auto + blocked and auto + auto.
 

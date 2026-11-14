@@ -1,6 +1,6 @@
 {
  "id": "q053",
- "recorded_at": "2026-11-14T14:29:36.883Z",
+ "recorded_at": "2026-11-14T22:30:48.389Z",
  "question": {
   "unit": "airport-road",
   "language": "en",
@@ -8,16 +8,25 @@
    "Who won the football match yesterday?"
   ]
  },
- "expect_h5": "out_of_scope",
+ "expect_h5": "redirect",
  "calls": [
   {
    "layer": "understand",
    "model": "claude-haiku-5-5",
    "ok": true,
-   "text": "{\"intents\":[\"out_of_scope\"],\"topics\":[\"out_of_scope\"],\"new_topic_hint\":null,\"branch\":null,\"check_in\":null,\"check_out\":null,\"nights\":null,\"dates_text\":null,\"dates_calendar\":null,\"room_type\":null,\"breakfast\":null,\"adults\":null,\"children\":null,\"child_ages\":null,\"extra_beds\":null,\"rooms_count\":null,\"guest_name\":null,\"booking_ref\":null,\"language\":\"en\",\"complaint\":false,\"confidence\":{\"intents\":0.97,\"topics\":0.95,\"language\":0.99}}",
-   "input_tokens": 3694,
-   "output_tokens": 195,
-   "latency_ms": 1088
+   "text": "{\"intents\":[\"out_of_scope\"],\"topics\":[\"out_of_scope\"],\"new_topic_hint\":null,\"branch\":null,\"check_in\":null,\"check_out\":null,\"nights\":null,\"dates_text\":null,\"dates_calendar\":null,\"room_type\":null,\"breakfast\":null,\"adults\":null,\"children\":null,\"child_ages\":null,\"extra_beds\":null,\"rooms_count\":null,\"guest_name\":null,\"booking_ref\":null,\"language\":\"en\",\"complaint\":false,\"kind\":\"out_of_scope\",\"sensitive\":null,\"ack_only\":false,\"confidence\":{\"intents\":0.97,\"topics\":0.95,\"language\":0.98,\"kind\":0.97}}",
+   "input_tokens": 5311,
+   "output_tokens": 230,
+   "latency_ms": 1374
+  },
+  {
+   "layer": "compose",
+   "model": "claude-sonnet-5-5",
+   "ok": true,
+   "text": "{\"reply\": \"Here we can only help with stays, bookings and services at Armada Residence. Is there anything about your stay we can help you with?\", \"used_card_ids\": [], \"unanswered\": []}",
+   "input_tokens": 3566,
+   "output_tokens": 65,
+   "latency_ms": 1749
   }
  ],
  "adapter": {
@@ -198,7 +207,7 @@
   }
  },
  "outcome": {
-  "kind": "out_of_scope",
+  "kind": "redirect",
   "state": "inquiry",
   "reason": null,
   "transitions": [
@@ -209,12 +218,12 @@
   ],
   "messages": [
    {
-    "body": "Welcome to Armada Residence – Airport Road.\nHere we can help only with bookings, stays and Armada Residence services.",
+    "body": "Welcome to Armada Residence – Airport Road.\nHere we can only help with stays, bookings and services at Armada Residence. Is there anything about your stay we can help you with?",
     "notice": false
    }
   ],
   "guard_refusals": [],
-  "cost_usd": 0.000467
+  "cost_usd": 0.008428
  },
  "first_try": {
   "guard": true,

@@ -1,6 +1,6 @@
 {
  "id": "q052",
- "recorded_at": "2026-11-14T14:29:35.793Z",
+ "recorded_at": "2026-11-14T22:30:45.239Z",
  "question": {
   "unit": "airport-road",
   "language": "ar",
@@ -8,16 +8,25 @@
    "اكتب لي قصيدة عن الطائف"
   ]
  },
- "expect_h5": "out_of_scope",
+ "expect_h5": "redirect",
  "calls": [
   {
    "layer": "understand",
    "model": "claude-haiku-5-5",
    "ok": true,
-   "text": "{\"intents\":[\"out_of_scope\"],\"topics\":[],\"new_topic_hint\":\"poem about Taif\",\"branch\":null,\"check_in\":null,\"check_out\":null,\"nights\":null,\"dates_text\":null,\"dates_calendar\":null,\"room_type\":null,\"breakfast\":null,\"adults\":null,\"children\":null,\"child_ages\":null,\"extra_beds\":null,\"rooms_count\":null,\"guest_name\":null,\"booking_ref\":null,\"language\":\"ar\",\"complaint\":false,\"confidence\":{\"intents\":0.97,\"new_topic_hint\":0.9,\"language\":0.98}}",
-   "input_tokens": 3700,
-   "output_tokens": 199,
-   "latency_ms": 1222
+   "text": "{\"intents\":[\"out_of_scope\"],\"topics\":[],\"new_topic_hint\":\"poem about Taif\",\"branch\":null,\"check_in\":null,\"check_out\":null,\"nights\":null,\"dates_text\":null,\"dates_calendar\":null,\"room_type\":null,\"breakfast\":null,\"adults\":null,\"children\":null,\"child_ages\":null,\"extra_beds\":null,\"rooms_count\":null,\"guest_name\":null,\"booking_ref\":null,\"language\":\"ar\",\"complaint\":false,\"kind\":\"out_of_scope\",\"sensitive\":null,\"ack_only\":false,\"confidence\":{\"intents\":0.97,\"topics\":0.9,\"language\":0.98,\"kind\":0.97}}",
+   "input_tokens": 5317,
+   "output_tokens": 229,
+   "latency_ms": 1225
+  },
+  {
+   "layer": "compose",
+   "model": "claude-sonnet-5-5",
+   "ok": true,
+   "text": "{\"reply\": \"نقتصر هنا على مساعدتك في الإقامة والحجوزات والخدمات في أرمادا ريزيدنس، ويسعدنا خدمتك في ذلك.\", \"used_card_ids\": [], \"unanswered\": []}",
+   "input_tokens": 3629,
+   "output_tokens": 91,
+   "latency_ms": 2072
   }
  ],
  "adapter": {
@@ -198,7 +207,7 @@
   }
  },
  "outcome": {
-  "kind": "out_of_scope",
+  "kind": "redirect",
   "state": "inquiry",
   "reason": null,
   "transitions": [
@@ -207,12 +216,12 @@
   "topics": [],
   "messages": [
    {
-    "body": "مرحبًا بك في أرمادا ريزيدنس – طريق المطار.\nنستطيع مساعدتك هنا في الحجز والإقامة وخدمات أرمادا ريزيدنس فقط.",
+    "body": "مرحبًا بك في أرمادا ريزيدنس – طريق المطار.\nنقتصر هنا على مساعدتك في الإقامة والحجوزات والخدمات في أرمادا ريزيدنس، ويسعدنا خدمتك في ذلك.",
     "notice": false
    }
   ],
   "guard_refusals": [],
-  "cost_usd": 0.00047
+  "cost_usd": 0.008814
  },
  "first_try": {
   "guard": true,

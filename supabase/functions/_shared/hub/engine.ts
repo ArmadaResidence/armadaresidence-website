@@ -9,7 +9,7 @@
  */
 import { decide, handoffNote, replyLicence, type Action, type Decision, type Draft, type Event, type State } from './machine.ts';
 import { applyFloor, extractJson, recheckDates, understandUser, validateUnderstanding, type Lists, type Understanding } from './understand.ts';
-import { fixed, greeting, hasSalaam, quickReplies, salaamGreeting, statusText, thirdLanguage, type Lang, type Persona } from './copy.ts';
+import { buttonForText, fixed, greeting, hasSalaam, quickReplies, salaamGreeting, statusText, stripOpening, thirdLanguage, type Lang, type Persona } from './copy.ts';
 import { composeExamples, composeSystem, composeUser, parseComposed, understandSchema, understandSystem, withGreeting } from './compose/index.ts';
 import { buildPayload, cardIds, guardPayload, hasSource, offersFor, type Payload } from './sources/index.ts';
 import { guard, retryReason } from './guard.ts';
@@ -87,7 +87,9 @@ export const MODEL_DOWN = new Set(['rate_limit', 'overloaded', 'network', 'timeo
 
 // 'unsupported' (a kind the router does not read — a poll, an unknown type) is answered as media: the media notice and the
 // team, never the failed-understanding path (H6 pass 4, 14 Nov 2026)
-const MEDIA = new Set(['image', 'audio', 'video', 'document', 'location', 'sticker', 'contacts', 'unsupported']);
+const MEDIA = new Set(['image', 'audio', 'video', 'document', 'location', 'sticker', 'contacts']);
+/** a reaction, or a kind the router does not read: no reply and no hand-off (H6 pass 5 — Ahmed's test of 14 Nov 22:27) */
+const SILENT = new Set(['reaction', 'unsupported']);
 const NOTICE_KEYS = new Set(['third_language']);
 
 /** the unit's name in a guest message (copy.md §1: branches.json name, or the venue's) */
@@ -158,8 +160,11 @@ export async function runTurn(claim: Json, deps: Deps): Promise<Outcome> {
 
   // ── what kind of turn: media, a /menu/ cart message, our own button, or text ──
   const kinds = msgs.map((m) => String(m.kind));
-  const buttonId = msgs.map((m) => m.payload?.button_id).find((x) => typeof x === 'string' && x.startsWith('hub')) ?? null;
+  // our own button by its id — or the guest typing a button's title (H6 pass 5: the same result)
+  const buttonId = msgs.map((m) => m.payload?.button_id).find((x) => typeof x === 'string' && x.startsWith('hub')) ??
+    (texts.length === 1 ? buttonForText(texts[0], unit.kind) : null);
   const media = kinds.some((k) => MEDIA.has(k)) && !texts.length;
+  const silent = !media && !texts.length && kinds.length > 0 && kinds.every((k) => SILENT.has(k));
   const cart = unit.kind === 'dining' && texts.some(isCartMessage);
 
   // ── 1. understand (also for tagging while the conversation is with staff) ──
@@ -214,6 +219,8 @@ export async function runTurn(claim: Json, deps: Deps): Promise<Outcome> {
       return out;
     }
     if (!u && down) return modelDown(down);
+    // a message with no letters (an emoji, «؟») is never a third language (H6 pass 5 — «👍» got the bilingual reply)
+    if (u && u.language.startsWith('other:') && !/\p{L}/u.test(texts.join(''))) u = { ...u, language: L };
     if (u) {
       finish.topics = u.topics;
       finish.understanding = u;
@@ -234,9 +241,10 @@ export async function runTurn(claim: Json, deps: Deps): Promise<Outcome> {
     window_open: !!conv.window_expires_at && Date.parse(conv.window_expires_at) > Date.now(), failed_understandings: Number(conv.failed_understandings ?? 0),
     failed_max: Number(set.failed_max ?? 2), out_of_scope: Number(conv.out_of_scope ?? 0), out_of_scope_max: 3, group_min_rooms: Number(set.group_min_rooms ?? 5),
     licences: claim.licences ?? {}, always_handoff: always, bookings: claim.bookings ?? [], first_reply: !!conv.first_reply,
+    last_from_us: ((claim.history ?? []) as Json[]).slice(-1)[0]?.author === 'us',
   };
   const draft: Draft | null = claim.draft ? { id: claim.draft.id, kind: claim.draft.kind, version: claim.draft.version, fields: claim.draft.fields ?? {}, quote: claim.draft.quote } : null;
-  const ev: Event = { type: 'guest', understanding: u, kind: media ? 'media' : buttonId ? 'button' : 'text', button_id: buttonId, cart };
+  const ev: Event = { type: 'guest', understanding: u, kind: silent ? 'reaction' : media ? 'media' : buttonId ? 'button' : 'text', button_id: buttonId, cart };
   let d = decide({ state: conv.state as State, event: ev, draft, ctx });
 
   // ── 3. execute ──
@@ -245,6 +253,19 @@ export async function runTurn(claim: Json, deps: Deps): Promise<Outcome> {
   const push = (body: string, extra: Partial<OutMsg> = {}) => answers.push({ seq: ++seq, kind: 'text', body, payload: {}, source_card_ids: [], ...extra });
   let note: string | undefined;
   let lastAction = 'أول رسالة';
+  let skipAsk = false;
+  // the line the code puts before the first message (told to the model so it does not welcome or return the salaam twice)
+  const openingLine = (): string | null => {
+    const sal = L === 'ar' && texts.some(hasSalaam);
+    if (conv.first_reply && !answers.length) {
+      const g0 = greeting(unit.persona as Persona, L, unitName(deps.content, unit, L), claim.guest?.first_name ?? null);
+      return sal ? salaamGreeting(g0) : g0;
+    }
+    return sal && !answers.length ? fixed('salaam_line', 'ar') : null;
+  };
+  let noQuote = false;
+  const t2 = (x: string) => d.transitions.push(x);
+  const emptyPayload = (): Payload => buildPayload({ cards: [], faq: [] }, { offers: null, venue: null, first_name: claim.guest?.first_name ?? null, cancellation: String(deps.content.cancellation_line[L]) });
   const unanswered: string[] = [];
   const lastGuest = msgs[msgs.length - 1]?.id as string | undefined;
   let answered = false;
@@ -300,23 +321,27 @@ export async function runTurn(claim: Json, deps: Deps): Promise<Outcome> {
           const venue = unit.kind === 'dining' && unit.venue ? { name: L === 'en' ? unit.venue.name_en : unit.venue.name_ar, menu_url: unit.venue.menu ?? null } : null;
           const payload: Payload = buildPayload(k, { offers, venue, first_name: claim.guest?.first_name ?? null, cancellation: String(deps.content.cancellation_line[L]) });
           // a mixed message (H6 gaps): the hand-off after this answer happens whatever the answer gives; a question it could
-          // not answer from a source is a real gap («لم أعرف الإجابة»), a refused or failed reply is simply left out
+          // not answer from a source is a real gap («لم أعرف الإجابة»), a refused or failed reply is simply left out. During
+          // the booking conversation (H6 pass 5) the same reply asks for what is missing (ASK_FOR) and the ask is skipped
           if (a.mixed) {
+            const nextAsk = dec.actions[dec.actions.indexOf(a) + 1];
+            const askFor = nextAsk?.type === 'ask' ? nextAsk.slots : undefined;
             if (!hasSource(payload)) {
-              gap();
+              if (!a.nogap) gap();
               break;
             }
-            const c = await compose(payload);
+            const c = await compose(payload, 'answer', askFor);
+            if (askFor && c !== 'credit' && c !== 'guard' && c !== 'error' && c.reply) skipAsk = true;
             if (c === 'credit') return null;
             if (c === 'guard' || c === 'error') break;
             if (!c.reply) {
-              gap();
+              if (!a.nogap) gap();
               break;
             }
             push(c.reply, { source_card_ids: cardIds(payload, c.used_card_ids), used: c.used_card_ids });
             answered = true;
             lastAction = 'أُجيب عن سؤال';
-            if (c.unanswered.length) gap();
+            if (c.unanswered.length && !a.nogap) gap();
             break;
           }
           if (!hasSource(payload)) return decide({ state: dec.next, event: { type: 'answer_result', ok: false }, draft, ctx });
@@ -331,6 +356,57 @@ export async function runTurn(claim: Json, deps: Deps): Promise<Outcome> {
             // the answer goes; the part it could not answer goes to the team and into «لم أعرف الإجابة»
             return decide({ state: dec.next, event: { type: 'answer_result', ok: true, partial: true }, draft, ctx });
           }
+          break;
+        }
+        case 'chat': {
+          // small talk, a clarifying question or the redirect — written by the model with no fact (Ahmed, 15 Nov 2026);
+          // the fixed line of copy.md only when the model cannot be used or its reply is refused
+          const c = await compose(emptyPayload(), a.mode);
+          if (c === 'credit') return null;
+          const fallback = a.mode === 'redirect' ? fixed('out_of_scope', L) : a.mode === 'clarify' ? fixed('how_help', L)
+            : (u?.intents ?? []).includes('thanks_or_closing') ? fixed('thanks', L) : fixed('how_help', L);
+          const body = c === 'guard' || c === 'error' || !c.reply ? fallback : stripOpening(c.reply) || fallback;
+          if (a.buttons === 'quick') push(body, { kind: 'interactive', payload: { buttons: quickReplies(unit.kind, L) } });
+          else push(body);
+          lastAction = a.mode === 'redirect' ? 'أُرسل رد خارج الخدمات' : a.mode === 'clarify' ? 'سؤال توضيحي' : 'رد على المحادثة';
+          break;
+        }
+        case 'ask': {
+          // the booking conversation before H8 (copy.md §4.0): the model asks for the dates and the guests
+          if (skipAsk) {
+            skipAsk = false;
+            lastAction = 'سؤال عن تفاصيل الإقامة';
+            break;
+          }
+          const c = await compose(emptyPayload(), 'ask', a.slots);
+          if (c === 'credit') return null;
+          push(c === 'guard' || c === 'error' || !c.reply ? fixed('booking_ask', L) : stripOpening(c.reply) || fixed('booking_ask', L));
+          lastAction = 'سؤال عن تفاصيل الإقامة';
+          break;
+        }
+        case 'quote': {
+          if (!a.lite) return decide({ state: dec.next, event: { type: 'answer_result', ok: false }, draft, ctx });
+          const f = dec.draft_patch?.fields ?? draft?.fields ?? {};
+          const branch = String(f.branch ?? unit.branch);
+          const rooms = (await deps.adapter.roomTypes(branch).catch(() => [])).filter((r) => !f.room_type || f.room_type === 'any' || r.key === f.room_type);
+          const lines: string[] = [];
+          for (const r of rooms) {
+            const q = await deps.adapter.quote({ branch, room_type: r.key, check_in: String(f.check_in), check_out: String(f.check_out), adults: Number(f.adults ?? 1),
+              children: Number(f.children ?? 0), child_ages: Array.isArray(f.child_ages) ? f.child_ages as number[] : null, extra_beds: 0, breakfast: 'without' }).catch(() => null);
+            if (q && q.kind === 'quote') lines.push(`${L === 'en' ? r.name_en : r.name_ar}: ${deps.sarText(q.total, L)}`);
+          }
+          if (!lines.length) {
+            // nothing quoted for those dates (sold out, closed, no rate): the team, with the details in the note
+            t2('T14');
+            const h: Extract<Action, { type: 'handoff' }> = { type: 'handoff', reason: 'no_quote', notice: 'handoff', note: { intent: 'stay_booking', slots: f, stopped: 'collecting' } };
+            doHandoff(h);
+            noQuote = true;
+            break;
+          }
+          push(`${fixed('booking_quote_head', L, { check_in: deps.longDate(String(f.check_in), L), check_out: deps.longDate(String(f.check_out), L) })}\n${lines.join('\n')}`, { payload: { quote: true } });
+          const link = bookingUrl(await deps.knowledge(unit.key, ['website'], L, null).catch(() => ({ cards: [], faq: [] })), L);
+          push(fixed('booking_link', L, { booking_url: link }), { kind: 'interactive', payload: { buttons: quickReplies(unit.kind, L).filter((b) => b.id === 'hubq:team') } });
+          lastAction = 'أُرسلت أسعار الإقامة ورابط الحجز';
           break;
         }
         case 'handoff':
@@ -350,12 +426,14 @@ export async function runTurn(claim: Json, deps: Deps): Promise<Outcome> {
   };
 
   type Composed = { reply: string; used_card_ids: string[]; unanswered: string[] };
-  const compose = async (payload: Payload): Promise<Composed | 'credit' | 'guard' | 'error'> => {
+  // a reply with no fact (chat, clarify, redirect, ask) has a fixed fallback: the model being down never hands it off
+  const compose = async (payload: Payload, action: 'answer' | 'ask' | 'chat' | 'clarify' | 'redirect' = 'answer', askFor?: string[]): Promise<Composed | 'credit' | 'guard' | 'error'> => {
+    const soft = action !== 'answer';
     if (composeDown) return 'error';
     const model = String(models.compose ?? 'claude-sonnet-5-5');
     const persona: Persona = unit.persona ?? {};
     const system = composeSystem(unitName(deps.content, unit, L), L, persona.tone ?? 2);
-    const user = composeUser({ action: 'answer', branch: unit.branch, turn: texts, history: claim.history ?? [], payload });
+    const user = composeUser({ action, ask_for: askFor, branch: unit.branch, turn: texts, history: claim.history ?? [], payload, opening: openingLine() });
     const gp = guardPayload(payload);
     let reason = '';
     for (let attempt = 0; attempt < 2; attempt++) {
@@ -364,7 +442,12 @@ export async function runTurn(claim: Json, deps: Deps): Promise<Outcome> {
       if (!r.ok) {
         if (r.error === 'credit') return 'credit';
         if (MODEL_DOWN.has(String(r.error))) {
-          // the model could not be reached (model.ts retried): the team takes it, never «لم أعرف الإجابة»
+          // the model could not be reached (model.ts retried): the team takes it, never «لم أعرف الإجابة» — a reply with a
+          // fixed fallback (chat, clarify, redirect, ask) sends the fallback instead and raises the model_error alert
+          if (soft) {
+            out.model_error = String(r.error);
+            return 'error';
+          }
           composeDown = String(r.error);
           return 'error';
         }
@@ -380,6 +463,8 @@ export async function runTurn(claim: Json, deps: Deps): Promise<Outcome> {
         reason = 'Return exactly one JSON object with reply, used_card_ids and unanswered.';
         continue;
       }
+      if (!c.reply) return c;
+      if (action !== 'answer') c.reply = stripOpening(c.reply);
       if (!c.reply) return c;
       const g = guard(c.reply, gp, { language: L, max_chars: Number(set.reply_max_chars ?? 600), forbidden: deps.forbidden ?? claim.forbidden ?? [], emoji_allowed: !!persona.emoji });
       if (g.ok) return c;
@@ -400,6 +485,7 @@ export async function runTurn(claim: Json, deps: Deps): Promise<Outcome> {
     d = { ...next, transitions: [...final.transitions, ...next.transitions] };
     final = d;
   }
+  if (noQuote && final) final = { ...final, next: 'human', reason: 'no_quote' };
   if (out.credit === 'exhausted' || final === null) {
     finish.state = 'human';
     finish.reason = 'api_credit';
@@ -443,9 +529,10 @@ export async function runTurn(claim: Json, deps: Deps): Promise<Outcome> {
     const b = answers[0].body;
     answers[0] = { ...answers[0], body: b === fixed('how_help', 'ar') ? fixed('salaam_how_help', 'ar') : `${fixed('salaam_line', 'ar')}\n${b}` };
   }
-  // licensed mode: a reply goes by itself only when every topic of the turn holds the «رد تلقائي» licence — the most
-  // restrictive licence among all the turn's topics (machine.ts replyLicence)
-  const licensed = replyLicence(finish.topics, claim.licences ?? {}) === 'auto';
+  // «يرد تلقائيًا» (H6 pass 5, Ahmed 15 Nov 2026): every reply goes at once — no drafts in a licensed unit. A topic held
+  // «للفريق دائمًا» (blocked) never reaches here: decide hands it off (its notice goes); «بموافقة الفريق» is the unit's own
+  // mode, where the database holds every reply for one tap (hub_turn_finish)
+  const licensed = replyLicence(finish.topics, claim.licences ?? {}) !== 'blocked' || final.next === 'human';
   finish.messages = answers.map((m) => ({ ...m, licensed: claim.turn.mode === 'live' && licensed }));
   finish.state = final.next;
   finish.reason = final.reason;
@@ -459,8 +546,16 @@ export async function runTurn(claim: Json, deps: Deps): Promise<Outcome> {
   finish.note = note;
   finish.unanswered = unanswered;
   // answered: a composed answer went into the reply (a mixed message's answer included); gap: «لم أعرف الإجابة» was fed
-  finish.decision = { actions: final.actions.map((a) => a.type), next: final.next, reason: final.reason ?? null, transitions: final.transitions, answered, gap: unanswered.length > 0 };
+  finish.decision = { actions: final.actions.map((a) => a.type), chat: (final.actions.find((a) => a.type === 'chat') as Extract<Action, { type: 'chat' }> | undefined)?.mode ?? null, next: final.next, reason: final.reason ?? null, transitions: final.transitions, answered, gap: unanswered.length > 0 };
   return out;
+}
+
+/** the website's booking link (copy.md §4.0): from the card «روابط الموقع» (k-website-links), else the site's own address */
+export function bookingUrl(k: { cards: Json[] }, L: Lang): string {
+  const all = (k?.cards ?? []).map((c) => `${c.text ?? ''} ${c.text_ar ?? ''} ${c.text_en ?? ''}`).join(' ');
+  const want = L === 'en' ? /https:\/\/armadaresidence\.com\/en\/booking\/?/ : /https:\/\/armadaresidence\.com\/booking\/?/;
+  const m = want.exec(all);
+  return m ? m[0] : L === 'en' ? 'https://armadaresidence.com/en/booking/' : 'https://armadaresidence.com/booking/';
 }
 
 /** in live mode, a message waits for one tap unless its topics are licensed (the database decides with `licensed`) */

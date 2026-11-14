@@ -82,6 +82,8 @@ export interface Expect {
   must_include?: string[];
   must_not_include?: string[];
   state?: string;
+  /** H6 pass 5: a conversation — one expectation per guest message */
+  steps?: { outcome: string | string[]; must_include?: string[]; must_not_include?: string[]; gap?: boolean; salaam?: boolean; greeting?: boolean }[];
 }
 export interface TestItem {
   id: string;
@@ -107,8 +109,14 @@ export const testItemGap = (id: string, gap: boolean, reason: string | null) => 
 
 export const ACTION_LABELS: Record<string, string> = {
   answer: 'يجيب', answer_handoff: 'يجيب ثم يحوّل الطلب للفريق', fixed: 'رد ثابت', ask: 'يسأل عن التفاصيل', quote: 'يعرض السعر', handoff: 'يحوّل للفريق', booking_status: 'حالة الحجز', refuse: 'خارج خدماتنا',
-  out_of_scope: 'خارج خدماتنا', third_language: 'لغة ثالثة', greeting: 'تحية', send_summary: 'ملخص الحجز', cancel_word_question: 'سؤال «إلغاء»', opt_out: 'إيقاف الرسائل', none: '—',
+  out_of_scope: 'خارج خدماتنا', third_language: 'لغة ثالثة', greeting: 'تحية', send_summary: 'ملخص الحجز', cancel_word_question: 'سؤال «إلغاء»', opt_out: 'إيقاف الرسائل', none: 'بلا رد',
+  // H6 pass 5 (15 Nov 2026): the natural-conversation policy and the conversation bank
+  reply: 'رد على المحادثة', clarify: 'سؤال توضيحي', redirect: 'خارج خدماتنا (رد مهذب)', conversation: 'محادثة',
 };
+/** the conversation bank's items carry this tag (H6 pass 5) */
+export const isConversation = (i: { tags?: string[]; expect?: Expect }) => (i.tags ?? []).includes('conversation') || i.expect?.action === 'conversation';
+/** one step of a conversation: the outcome(s) it expects, in Arabic */
+export const stepLabel = (o: string | string[]) => ([] as string[]).concat(o).map((k) => ACTION_LABELS[k] ?? k).join(' أو ');
 export const TRIGGER_LABELS: Record<EvalKind, string> = { manual: 'تشغيل يدوي', baseline: 'تشغيل أساسي', knowledge: 'قبل نشر البطاقات', persona: 'قبل نشر الشخصية' };
 export const RUN_STATUS: Record<EvalRunRow['status'], string> = { queued: 'في الانتظار', running: 'يعمل', done: 'انتهى', failed: 'توقف', cancelled: 'أُوقف' };
 export const VERDICT_LABELS: Record<string, string> = { pass: 'ناجح', blocked: 'فيه أسئلة راسبة', failed: 'لم يكتمل' };
@@ -121,6 +129,29 @@ export const STATE_LABELS: Record<string, string> = {
 /** a grading reason (codes from _shared/hub/grade.ts) in Arabic */
 export function reasonText(r: string, e?: Expect): string {
   const [code, a, b] = r.split(':');
+  // a conversation step (H6 pass 5): s<n>:<what>
+  const step = /^s(\d+)$/.exec(code);
+  if (step) {
+    const n = `الرسالة ${step[1]}: `;
+    const [, , c, d] = r.split(':');
+    switch (a) {
+      case 'silent': return `${n}لم يصل أي رد`;
+      case 'gap': return `${n}دخلت «لم أعرف الإجابة» ولا ينبغي`;
+      case 'no_gap': return `${n}كان ينبغي أن تدخل «لم أعرف الإجابة»`;
+      case 'salaam': return `${n}لم يُرد السلام بـ«وعليكم السلام»`;
+      case 'greeting': return `${n}غاب سطر الترحيب`;
+      case 'greeting_again': return `${n}تكرر سطر الترحيب`;
+      case 'natural': return `${n}الرد غير طبيعي بحسب المراجعة`;
+      case 'guard': return `${n}رفض الحارس الرد مرتين`;
+      case 'language': return `${n}الرد بغير لغة الضيف`;
+      case 'global': return `${n}ظهرت كلمة من القائمة الممنوعة العامة`;
+      case 'must_include': return `${n}غابت عبارة مطلوبة`;
+      case 'must_not_include': return `${n}ظهرت عبارة ممنوعة`;
+      default: return `${n}المتوقع «${stepLabel(a.split('|'))}» وحدث «${ACTION_LABELS[b] ?? b}»`;
+    }
+    void c; void d;
+  }
+  if (code === 'steps') return `توقفت المحادثة بعد ${b} من ${a} رسائل`;
   switch (code) {
     case 'action': return `المتوقع «${ACTION_LABELS[a] ?? a}» وحدث «${ACTION_LABELS[b] ?? b}»`;
     case 'state': return `الحالة المتوقعة «${STATE_LABELS[a] ?? a}» وانتهت «${STATE_LABELS[b] ?? b}»`;
