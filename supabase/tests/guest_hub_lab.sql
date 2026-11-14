@@ -214,7 +214,9 @@ select pg_temp._root();
 select pg_temp._check('G3 the gate run: the candidate (the pending card and its hash), two candidate items, their live side copied (no model call)',
   (select candidate -> 'cards' ? (pg_temp._j('g1c') ->> 'id') and candidate ? 'cards_hash' from public.hub_eval_runs where id = pg_temp._id('run2'))
   and (select count(*) filter (where config = 'candidate' and status = 'pending') = 2 and count(*) filter (where config = 'live' and status = 'pass' and cost_usd = 0) = 2
-         from public.hub_eval_results where run_id = pg_temp._id('run2')));
+         from public.hub_eval_results where run_id = pg_temp._id('run2')),
+  (select json_agg(json_build_object('key', i.key, 'config', r.config, 'status', r.status, 'cost', r.cost_usd)) from public.hub_eval_results r join public.hub_test_items i on i.id = r.item_id where r.run_id = pg_temp._id('run2'))::text
+  || ' fail1=' || (select key from public.hub_test_items where id = pg_temp._id('fail1')));
 select pg_temp._service();
 select pg_temp._save('g4c', public.hub_eval_claim(10));
 select pg_temp._check('G4 a candidate item carries the candidate cards', (pg_temp._j('g4c') #> '{items,0,cards}') ? (pg_temp._j('g1c') ->> 'id'), left(pg_temp._j('g4c')::text, 300));

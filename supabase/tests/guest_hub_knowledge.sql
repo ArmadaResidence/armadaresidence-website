@@ -456,8 +456,8 @@ update public.hub_unanswered q
  where q.marked_by is null and q.status = 'open'
    and not internal.hub_unanswered_gap((select c from public.hub_conversations c where c.id = q.conversation_id), q.message_id);
 select pg_temp._check('G7 the cleanup dismisses it with «خارج نطاق القائمة» — kept, never deleted; real gaps and a person''s marks stay open',
-  (select status = 'dismissed' and dismiss_reason = 'خارج نطاق القائمة' from public.hub_unanswered q join public.hub_messages m on m.id = q.message_id where m.provider_message_id = 'YC4-G4')
-  and (select bool_and(status = 'open') from public.hub_unanswered q join public.hub_messages m on m.id = q.message_id where m.provider_message_id in ('YC4-G1', 'YC4-G6', 'YC4-G2')));
+  (select q.status = 'dismissed' and q.dismiss_reason = 'خارج نطاق القائمة' from public.hub_unanswered q join public.hub_messages m on m.id = q.message_id where m.provider_message_id = 'YC4-G4')
+  and (select bool_and(q.status = 'open') from public.hub_unanswered q join public.hub_messages m on m.id = q.message_id where m.provider_message_id in ('YC4-G1', 'YC4-G6', 'YC4-G2')));
 select pg_temp._root();
 alter table public.hub_units disable trigger hub_units_mode_guard;
 update public.hub_units set assistant_mode = 'off' where key = 'airport-road';

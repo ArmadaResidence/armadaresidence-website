@@ -429,9 +429,8 @@ select pg_temp._check('X5 … and changes nothing else: not with the team, no ow
   (select state = 'inquiry' and owner_kind = 'assistant' and waiting_since is not null and last_staff_at is null and first_response_at is null
      from public.hub_conversations where id = pg_temp._conv('+966500009342'))
   and not exists (select 1 from public.hub_conversation_events e where e.conversation_id = pg_temp._conv('+966500009342') and e.reason = 'phone_reply'));
-select pg_temp._as('admin');
-update public.hub_conversations set waiting_since = now() - interval '40 minutes' where id = pg_temp._conv('+966500009342');
 select pg_temp._root();
+update public.hub_conversations set waiting_since = now() - interval '40 minutes' where id = pg_temp._conv('+966500009342');
 update public.hub_conversations set state = 'human', human_reason = 'assistant_off', owner_kind = null where id = pg_temp._conv('+966500009342');
 select pg_temp._service();
 select pg_temp._save('x6', public.hub_escalations_claim());
