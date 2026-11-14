@@ -215,6 +215,8 @@ select public.hub_unit_mode_set(pg_temp._unit('airport-road'), 'test');
 
 -- ══ B — budgets ══
 select pg_temp._root();
+-- the Q turns' own usage (0.0078) set aside: the budget rows below are the whole spend
+delete from public.hub_usage_daily where unit_id = pg_temp._unit('airport-road');
 insert into public.hub_usage_daily (day, unit_id, layer, source, calls, input_tokens, output_tokens, cost_usd)
 values (internal.riyadh_today(), pg_temp._unit('airport-road'), 'compose', 'turn', 1, 0, 0, 16);
 select internal.hub_budget_alerts();

@@ -429,7 +429,7 @@ function tap(input: DecideInput, state: State, t: string[], out: Out): Decision 
     return out({ next: state, actions: [{ type: 'fixed', key: 'result_older_summary' }, ...(d ? [{ type: 'send_summary', version: d.version } as Action] : [])] });
   }
   if (ev.button === 'room') {
-    const fields = { ...d.fields, room_type: ev.room ?? d.fields.room_type };
+    const fields: Record<string, unknown> = { ...d.fields, room_type: ev.room ?? d.fields.room_type };
     if (!fields.guest_name) {
       t.push('T11b');
       return out({ next: 'collecting', actions: [{ type: 'ask', slots: ['guest_name'] }], draft_patch: { kind: 'stay', fields } });
