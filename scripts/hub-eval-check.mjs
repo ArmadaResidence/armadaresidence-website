@@ -68,6 +68,10 @@ check(grade(item({ action: 'answer' }), out({ guard_refusals: [['x']] }), ctx).p
 check(grade(item({ action: 'answer' }), out({ replies: [{ body: 'Yes, parking is free.', notice: false }] }), ctx).reasons.includes('language'), 'G the language');
 check(expectedAction(item({ action: 'ask' }), SK).action === 'handoff' && expectedAction(item({ action: 'ask' }), [...SK, 'room_booking']).action === 'ask', 'G with room_booking off a stay request is the team’s');
 check(expectedAction(item({ action: 'refuse' }), SK).action === 'out_of_scope', 'G refuse = out of scope');
+check(expectedAction(item({ action: 'ask' }, { note: 'Hijri date → copy.md §2.2' }), SK).action === 'fixed' && expectedAction(item({ action: 'ask' }, { note: 'may give «يبدأ من»' }), SK).action === 'answer',
+  'G the bank’s notes: a Hijri date gets the fixed reply, a price without dates «يبدأ من»');
+const NOTE = read('supabase/migrations/20261114500000_guest_hub_lab_note.sql');
+check(/'expect', i\.expect, 'note', i\.note\)/.test(NOTE) && /create or replace function public\.hub_eval_claim/.test(NOTE), 'the claim hands the grading each question’s note (the follow-up migration)');
 check(grade(item({ action: 'ask', state: 'collecting', must_include: ['تاريخ'] }), out({ kind: 'handoff', state: 'human', replies: [] }), ctx).pass, 'G a mapped item: only the mapped action and state apply');
 check(grade(item({ action: 'answer' }), out({ error: 'api_credit' }), ctx).reasons[0] === 'error:api_credit', 'G an engine error is an error, not a pass');
 check(GLOBAL_MUST_NOT.length === 21, 'the header list has its 21 words');

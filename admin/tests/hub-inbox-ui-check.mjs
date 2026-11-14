@@ -83,6 +83,8 @@ const THREAD = (r, edit) => ({
     msg(6, 'out', 'assistant', 'نعم، المواقف مجانية في الطابقين B1 وB2.', { status: 'pending_approval', sources: [{ id: id(950), key: 'k-parking-detail', title: 'المواقف' }] }),
     msg(7, 'out', 'assistant', 'مرحبًا بك.', { status: 'test' }),
     msg(8, 'in', 'guest', 'Is breakfast included?', { language: 'en' }),
+    // H6: an assistant reply that went to the guest — «إبلاغ: رد خاطئ»
+    msg(9, 'out', 'assistant', 'المواقف مجانية.', { status: 'delivered' }),
   ],
   templates: [{ source: 'booking', template: 'booking_confirmed', meta_template: 'booking_confirmed_v2', status: 'read', ref: 'AR-20261020-ABCD', branch: 'airport-road', language: 'ar', at: ago(10000) }],
   events: [{ kind: 'state', from: null, to: 'human', reason: 'assistant_off', at: ago(40), actor: null }],
@@ -218,6 +220,19 @@ for (const [role, level] of [['reception', 'edit'], ['management', 'view']]) {
           `${tag}: a «تجربة» reply is marked and never sent`);
         check((await page.locator(`[data-msg="${id(508)}"] [data-action="translate"]`).count()) === 1 && (await page.locator(`[data-msg="${id(501)}"] [data-action="translate"]`).count()) === 0, `${tag}: «الترجمة» on the English message only`);
         check((await page.locator('[data-action="release"]').count()) === 1 && (await page.locator('[data-action="pause"]').count()) === 1, `${tag}: «إعادة للمساعد» and «إيقاف المساعد مؤقتًا»`);
+        // H6: «إبلاغ: رد خاطئ» only on an assistant reply that went to the guest (never a draft or a «تجربة» reply)
+        check((await page.locator(`[data-msg="${id(509)}"] [data-action="flag-wrong"]`).count()) === 1 && (await page.locator(`[data-msg="${id(506)}"] [data-action="flag-wrong"], [data-msg="${id(507)}"] [data-action="flag-wrong"]`).count()) === 0,
+          `${tag}: «إبلاغ: رد خاطئ» on a sent reply only`);
+        if (scheme === 'dark') {
+          await page.locator(`[data-msg="${id(509)}"] [data-action="flag-wrong"]`).click();
+          await page.locator('[data-flag-form]').waitFor({ timeout: 5000 });
+          await page.locator('[data-field="flag-note"]').fill('السعر خطأ');
+          await page.locator('[data-action="flag-save"]').click();
+          await page.waitForTimeout(400);
+          const fw = calls.find((c) => c.fn === 'hub_flag_wrong');
+          check(fw && fw.body.p_message === id(509) && fw.body.p_note === 'السعر خطأ', `${tag}: «تسجيل أنه خاطئ» → hub_flag_wrong with the note — ${JSON.stringify(fw?.body)}`);
+          check((await page.locator(`[data-msg="${id(509)}"] [data-flagged]`).count()) === 1, `${tag}: the reply then marked «أُبلغ أنه رد خاطئ»`);
+        }
         if (scheme === 'light') {
           await page.locator(`[data-msg="${id(506)}"] [data-action="draft-send"]`).click();
           await page.waitForTimeout(400);

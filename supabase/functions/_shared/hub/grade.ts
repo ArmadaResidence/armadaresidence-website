@@ -71,6 +71,8 @@ export function expectedAction(item: Item, skills: string[]): { action: string; 
   const booking = skills.includes('room_booking');
   // the H5 brief: a price question without dates gets the site's «يبدأ من» lines (the bank's note allows it: q015)
   if (a === 'ask' && /يبدأ من/.test(item.note ?? '')) return { action: 'answer', applies: false };
+  // a Hijri date is answered by code with copy.md §2.2 (H5 — the understanding's dates_calendar), whatever the skills
+  if (a === 'ask' && /hijri/i.test(item.note ?? '')) return { action: 'fixed', applies: false };
   if (!booking && ['ask', 'send_summary', 'quote'].includes(a)) return { action: 'handoff', applies: false };
   if (a === 'refuse') return { action: 'out_of_scope', applies: true };
   return { action: a, applies: true };
