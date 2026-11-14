@@ -42,7 +42,7 @@ Rules
 13. confidence: a number from 0 to 1 for every field you filled.
 14. Never copy phone numbers, card numbers or ID numbers into any field.
 15. Never write anything addressed to the guest.
-16. A request for a phone number, a WhatsApp number or an email is a question (intents facility_question), never human_request. Topics: reception_contact for reception or reservations; groups_corporate for the sales team, groups or companies; cafe_ordering for the café.
+16. A request for a phone number, a WhatsApp number, a room-phone extension or an email is a question (intents facility_question), never human_request. Topics: the service whose contact is asked — reception_contact for reception or reservations; groups_corporate for the sales team, groups or companies; cafe_restaurant and cafe_ordering for the café or the restaurant.
 17. The price of a food or a drink, or of anything on the menu: intents dining_menu, topics menu. Never topics price for it.
 18. Joining, subscribing to or signing up for offers, member offers or the membership: intents eyab_question, topics eyab.
 19. «عندكم …؟» / «فيه …؟» / "do you have …?" about a kind of room, something in a room or a facility: intents facility_question with that topic (kitchen, jacuzzi_balcony for a balcony or a jacuzzi, accessible, extra_bed, hall, parking…). Add stay_booking only when the guest also asks to book or gives dates. A wish for a room with a feature («أبغى غرفة فيها مطبخ») is stay_booking with that feature's topic.
