@@ -149,6 +149,11 @@ select pg_temp._fails('A4 assign to sales (no inbox: edit) is refused', format('
 select public.hub_assign(pg_temp._id('cA'), pg_temp._id('admin'));
 select pg_temp._root();
 select pg_temp._check('A4 assign to a member with inbox: edit', (select owner_staff_id = pg_temp._id('admin') from public.hub_conversations where id = pg_temp._id('cA')));
+-- H6 pass 4 (E, Ahmed 14 Nov 2026): «المساعد لم يعرف» only on a message the assistant processed — the fixture's reply turn
+select pg_temp._root();
+insert into public.hub_turns (conversation_id, unit_id, inbound_message_ids, first_inbound_id, status, kind)
+select m.conversation_id, c.unit_id, array[m.id], m.id, 'done', 'reply' from public.hub_messages m join public.hub_conversations c on c.id = m.conversation_id
+ where m.provider_message_id = 'YC3-A1' on conflict do nothing;
 select pg_temp._as('recA');
 select pg_temp._save('a5', public.hub_mark_unanswered((select id from public.hub_messages where provider_message_id = 'YC3-A1')));
 select pg_temp._check('A5 «لم أعرف الإجابة»: queued once', (pg_temp._j('a5') ->> 'changed')::boolean

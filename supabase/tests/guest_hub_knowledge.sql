@@ -303,6 +303,11 @@ select pg_temp._in('YC4-Q1', '+966500009401', 'هل يوجد مسبح في ال�
 select pg_temp._in('YC4-Q2', '+966500009402', 'هل في الفندق مسبح ؟');
 select pg_temp._in('YC4-Q3', '+966500009403', 'كم تبعد الحديقة الكبرى؟');
 select pg_temp._in('YC4-Q4', '+966500009404', 'هل يوجد مسبح؟', '+966536663030');
+-- H6 pass 4 (E, Ahmed 14 Nov 2026): «المساعد لم يعرف» only on a message the assistant processed — the fixture's reply turn
+select pg_temp._root();
+insert into public.hub_turns (conversation_id, unit_id, inbound_message_ids, first_inbound_id, status, kind)
+select m.conversation_id, c.unit_id, array[m.id], m.id, 'done', 'reply' from public.hub_messages m join public.hub_conversations c on c.id = m.conversation_id
+ where m.provider_message_id in ('YC4-Q1', 'YC4-Q2', 'YC4-Q3', 'YC4-Q4') on conflict do nothing;
 select pg_temp._as('recA');
 select pg_temp._save('q1', public.hub_mark_unanswered(pg_temp._msg('YC4-Q1')));
 select pg_temp._save('q2', public.hub_mark_unanswered(pg_temp._msg('YC4-Q2')));

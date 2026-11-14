@@ -394,7 +394,7 @@ export function decide(input: DecideInput): Decision {
   }
   // thanks or closing with nothing else: the thanks reply (copy.md §1.6) — never silence, never «لم أعرف الإجابة» (H6 pass 4)
   if (u.intents.every((i) => i === 'thanks_or_closing' || i === 'greeting')) {
-    t.push(state === 'new' ? 'T4' : 'T6');
+    t.push('T4');
     return out({ next: state === 'new' ? 'inquiry' : state, actions: [{ type: 'fixed', key: 'thanks' }], failed: 'reset' });
   }
 

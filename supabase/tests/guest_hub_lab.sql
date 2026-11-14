@@ -331,6 +331,11 @@ select pg_temp._save('c0', pg_temp._in('YC6-C1', '+966500009601', 'هل تسمح
 select pg_temp._root();
 insert into _ids values ('mC', (pg_temp._j('c0') ->> 'message_id')::uuid);
 insert into _ids values ('cC', (select conversation_id from public.hub_messages where id = pg_temp._id('mC')));
+-- H6 pass 4 (E, Ahmed 14 Nov 2026): «المساعد لم يعرف» only on a message the assistant processed — the fixture's reply turn
+select pg_temp._root();
+insert into public.hub_turns (conversation_id, unit_id, inbound_message_ids, first_inbound_id, status, kind)
+select m.conversation_id, c.unit_id, array[m.id], m.id, 'done', 'reply' from public.hub_messages m join public.hub_conversations c on c.id = m.conversation_id
+ where m.id = pg_temp._id('mC') on conflict do nothing;
 select pg_temp._as('recA');
 select pg_temp._save('c1', public.hub_mark_unanswered(pg_temp._id('mC')));
 select pg_temp._root();
@@ -373,6 +378,11 @@ select pg_temp._root();
 insert into _ids values ('mC2', (pg_temp._j('c6m') ->> 'message_id')::uuid);
 insert into public.hub_messages (conversation_id, channel_id, direction, author, kind, body, idempotency_key, status, sent_at)
 select m.conversation_id, m.channel_id, 'out', 'phone', 'text', 'سيفتح قريبًا وسنعلن موعده.', 'qa6:c:reply3', 'sent', now() + interval '1 second' from public.hub_messages m where m.id = pg_temp._id('mC2');
+-- H6 pass 4 (E, Ahmed 14 Nov 2026): «المساعد لم يعرف» only on a message the assistant processed — the fixture's reply turn
+select pg_temp._root();
+insert into public.hub_turns (conversation_id, unit_id, inbound_message_ids, first_inbound_id, status, kind)
+select m.conversation_id, c.unit_id, array[m.id], m.id, 'done', 'reply' from public.hub_messages m join public.hub_conversations c on c.id = m.conversation_id
+ where m.id = pg_temp._id('mC2') on conflict do nothing;
 select pg_temp._as('recA');
 select pg_temp._save('c6', public.hub_mark_unanswered(pg_temp._id('mC2')));
 select pg_temp._service();

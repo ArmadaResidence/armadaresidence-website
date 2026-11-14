@@ -193,6 +193,8 @@ A `hub_conversations` row is one episode between one guest (one `guest_profiles`
 
 Orthogonal flags on the conversation (not states): `window_open` (§6.3), `priority` (complaint), `mode_effective` (§2.10), `owner_staff_id`, `failed_understandings`.
 
+**Never silent** [مقرر — 14 نوفمبر 2026, H6 pass 4]: in every assistant-owned state (`new` … `booked`) a guest message always gets something — an answer, a question, a fixed reply, or the no-source / hand-off notice with the hand-off. A greeting alone mid-episode → «كيف نساعدك؟» with the quick replies; thanks alone → copy.md §1.6; a salaam opens the Arabic reply with «وعليكم السلام» (copy.md §1.5). A model call that fails after its retries → the no-source notice and the team (`model_error`, §7.3); the repeat rule and the rate limits of §7.4 → the general hand-off notice and the team. `hub-machine-check` asserts it for every state and guest event; `hub-failure-check` forces each failure. Only `human` and `closed` are silent.
+
 Drafts carry a `kind`: `stay` (room booking), `hall`, `group`. Hall and group drafts never reach `quoted`: when complete they create the `partner_enquiries` row (the sales email follows), the guest gets the fixed acknowledgement, and the conversation returns to `inquiry` with the assistant — no reception hand-off [مقرر — 12 نوفمبر 2026: requests go to the partner-requests table and the sales email only]. A cart order is not a draft: it moves the conversation to `human` for the café team (T31).
 
 #### 2.3.3 Transitions (each has its own test in `scripts/hub-machine-check.mjs`)
@@ -420,7 +422,7 @@ All `hub_*` tables carry `created_at`, `updated_at`, `is_test`. Text columns tha
 - **`hub_test_items`** — the question bank: `id`, `unit_key`, `language`, `messages` (jsonb: one or more guest turns), `context` (state, draft), `expect` (jsonb: action — answer | ask | quote | handoff; required card ids; required phrases or numbers; forbidden phrases; expected state), `tags`, `status` (active | retired), `added_from` (seed | queue | staff). Seeded from `tests/hub-bank/*.jsonl` (step 3).
 - **`hub_eval_runs`** + **`hub_eval_results`** — `run_id`, `trigger` (publish | manual | nightly), `candidate` (what is being published: card ids / persona version), `baseline_run_id`, per item: pass / fail, the reply, the reason, the cost; `verdict` (pass | blocked), `blocked_items`.
 - **`hub_usage_daily`** — per day × unit × layer: calls, tokens, cost (model, test-lab runs apart); WhatsApp messages by category and their estimated cost (Settings `wa_message_cost`); written by the agent, read by «إعدادات المساعد», the reports and the morning summary.
-- **`hub_alerts`** — `kind` (budget_pct | budget_cap | portfolio_pct | quality_drop | offer_ending | card_expiring | spike | escalation | complaint | webhook_silent | template_rejected), `unit_id`, `payload` (numbers only), `sent_to`, `sent_at`, `acknowledged_by`. One open alert per kind and unit.
+- **`hub_alerts`** — `kind` (budget_pct | budget_cap | portfolio_pct | quality_drop | offer_ending | card_expiring | spike | escalation | complaint | webhook_silent | template_rejected | api_credit | flagged_wrong | model_error — the last: the model could not be reached for three turns in 30 minutes, ONE email, H6 pass 3), `unit_id`, `payload` (numbers only), `sent_to`, `sent_at`, `acknowledged_by`. One open alert per kind and unit.
 - **`hub_templates`** — the templates the hub may send, per number: `name`, `language`, `category`, `channel_id`, `status` (as read from YCloud), `read_at`, `variables` (the order and what fills each). Refreshed by a daily read and by «تحديث حالة القوالب». The hub refuses to send a template whose row is not APPROVED. (The booking and «إياب» templates keep their existing snapshots and senders; this table covers the hub's new templates and lets the inbox picker list the approved ones.)
 - **No dining tables in v1** [مقرر — 12 نوفمبر 2026]: no menu import (the menu link only), no order tickets (a cart order is a conversation tagged «طلب»), no table requests (the lobby café takes none).
 
@@ -643,7 +645,7 @@ One read-only page (knowledge: view): breakfast (adult, child tiers) and the ext
 ### 5.7 «رادار الأسئلة»
 
 - Ranking of topics for this week / this month (and a custom range — the site's date picker), filters by unit and channel; per topic: times asked, answered by the assistant, handed off, unanswered, trend vs the previous period, a sample of questions (only for users who may read that unit's text).
-- **Spike alert:** a topic asked more than 3× its daily average of the last 4 weeks and at least 5 times in 24 h (proposed defaults) → an alert to Ahmed and a red mark in the radar.
+- **Spike alert:** a topic asked more than 3× its daily average and at least 5 times in 24 h (Settings `hub_spike_factor`, `hub_spike_min`) in one unit → an alert to the active admins and a red mark in the radar. [مقرر — 14 نوفمبر 2026, H6 pass 4] Never for «تحية» (greeting) or «شكر وختام» (thanks_closing); never before the unit has 7 days of live history (the average is taken over that history, at most 28 days — on the first live day every topic would have alerted); at most one email per unit and topic in 24 hours; the email names the unit and carries no average figure.
 - One click from a topic → «إنشاء بطاقة» + optional FAQ draft (§4.7).
 - Proposed topics (`new_topic_hint` repeats) to accept, rename or merge.
 - v2: the weekly radar report with content and ad suggestions (brief §9).
@@ -775,10 +777,10 @@ Every switch is audited and undoable, never part of the site defaults, and also 
 
 | Limit | Proposed default | Beyond it |
 |---|---|---|
-| Guest messages processed by the model, per phone per hour (`hub_rate_phone_hour`) | 30 | stored, no model call, the conversation flagged for staff |
+| Guest messages processed by the model, per phone per hour (`hub_rate_phone_hour`) | 30 | stored, no model call, the general hand-off notice and the team |
 | Assistant replies per conversation per hour (`hub_rate_replies_hour`) | 20 | the assistant stops for that hour, flags staff |
 | Bookings per phone per 24 h | 6 — the rule `booking-request` already enforces (reused, not copied) | the engine's refusal; hand-off |
-| The same text repeated | 3 times in 10 minutes | only the first is processed |
+| The same text repeated | 3 times in 10 minutes — counting only the copies the assistant processed (a reply turn), never those that came while the team owned the conversation [مقرر — 14 نوفمبر 2026] | no model call; the general hand-off notice and the team — never silence (H6 pass 4) |
 | Blocked number (staff action, audited, on the profile) | — | stored, never answered by the assistant, hidden from the default inbox view |
 
 ### 7.5 Every quota alerts before it is reached [مقرر — brief §13 lesson 6]

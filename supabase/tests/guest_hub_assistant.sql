@@ -303,6 +303,12 @@ select pg_temp._id('cQ'), pg_temp._unit('airport-road'), array(select gen_random
 select pg_temp._service();
 select pg_temp._save('r0', pg_temp._in('YC5-R1', '+966500009501', 'وكم السعر؟'));
 select pg_temp._save('r0', pg_temp._in('YC5-R2', '+966500009501', 'وكم السعر؟'));
+-- H6 pass 4 (A): the repeat rule counts the copies the assistant processed — the two earlier ones had reply turns
+select pg_temp._root();
+insert into public.hub_turns (conversation_id, unit_id, inbound_message_ids, first_inbound_id, status, kind)
+select m.conversation_id, c.unit_id, array[m.id], m.id, 'done', 'reply' from public.hub_messages m join public.hub_conversations c on c.id = m.conversation_id
+ where m.provider_message_id in ('YC5-Q2', 'YC5-R1') on conflict do nothing;
+select pg_temp._service();
 select pg_temp._save('r1', public.hub_turn_queue(pg_temp._id('cQ'), (pg_temp._j('r0') ->> 'message_id')::uuid));
 select pg_temp._root();
 update public.hub_turns set due_at = now() - interval '1 second' where id = (pg_temp._j('r1') ->> 'turn_id')::uuid;
