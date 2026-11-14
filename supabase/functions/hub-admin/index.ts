@@ -26,10 +26,23 @@
 //     goes out, YCloud's typing call for the guest's last message (it marks it read). Never retried by itself after a
 //     timeout; the outcome → public.hub_send_finish. The same press twice (its key) sends nothing again.
 //   - retry { message } — «إعادة الإرسال» of a failed one (public.hub_send_retry), then the same send.
+// The assistant (session H5, 14 Nov 2026 — spec §5.2, §2.7, prompts.md §3–§4), AS THE USER (inbox: edit in the unit):
+//   - approve { message, body? } — a draft «إرسال» / «تعديل ثم إرسال»: public.hub_draft_approve is a compare-and-set
+//     (pending_approval → queued, once; a newer guest message superseded it), then the same send as a staff reply;
+//   - translate { message } — «الترجمة»: Haiku translates a guest message for staff (prompts.md §4), stored on the message,
+//     counted in the budget (public.hub_translation_store); never sent;
+//   - suggest { conversation } — «اقتراحات»: three replies from the knowledge (prompts.md §3, Sonnet), each passed through
+//     the guard; counted in the budget. A suggestion staff send goes through `send` with suggestion: true — the guard
+//     runs on it again before it leaves.
 // Otherwise it never creates, edits or deletes anything in YCloud.
 import content from '../booking-request/content.generated.json' with { type: 'json' };
 import { sendSession, sendTemplate, textPayload, type WaResult } from '../booking-request/whatsapp-send.ts';
 import { hubReplyReadyPayload, typingUrl, type HubUnitRef } from '../_shared/hub/send.ts';
+import { buttonsPayload } from '../booking-request/whatsapp-send.ts';
+import { anthropicModel } from '../_shared/hub/model.ts';
+import { composeUser, parseSuggestions, suggestSystem, translateSystem } from '../_shared/hub/compose/index.ts';
+import { buildPayload, guardPayload, type Payload } from '../_shared/hub/sources/index.ts';
+import { guard, type GuardResult } from '../_shared/hub/guard.ts';
 import { cors, preflight } from '../_shared/cors.ts';
 import {
   channelFacts, eventsKept, eventsOf, eventsPatchBody, isOurEndpoint, mergeEvents, pageOf, phoneNumbersUrl, pickPhone, templateRows, templatesUrl, webhookEndpointUrl,
@@ -109,7 +122,8 @@ async function listAll<T>(make: (page: number) => string, key: string): Promise<
 
 interface BeginMsg {
   id: string;
-  kind: 'text' | 'template';
+  kind: 'text' | 'template' | 'interactive';
+  payload?: { buttons?: unknown } | null;
   body?: string | null;
   language?: 'ar' | 'en' | null;
   send: boolean;
@@ -147,12 +161,16 @@ async function deliver(req: Request, b: Begin): Promise<Response> {
   for (const m of b.messages.filter((x) => x.send)) {
     let r: WaResult;
     try {
-      if (m.kind === 'text') {
+      if (m.kind === 'text' || m.kind === 'interactive') {
         if (!typed && b.typing_id && !test && key) {
           typed = true;
           await typing(b.typing_id, key);
         }
-        r = await sendSession({ payload: textPayload(b.from!, b.to!, String(m.body ?? ''), m.id), windowExpiresAt: b.window_expires_at ?? null, test, log: null });
+        const btns = m.payload?.buttons;
+        const payload = m.kind === 'interactive' && Array.isArray(btns)
+          ? buttonsPayload(b.from!, b.to!, String(m.body ?? ''), btns as { id: string; title: string }[], m.id)
+          : textPayload(b.from!, b.to!, String(m.body ?? ''), m.id);
+        r = await sendSession({ payload, windowExpiresAt: b.window_expires_at ?? null, test, log: null });
       } else {
         r = await sendTemplate(hubReplyReadyPayload(content, b.from!, b.to!, m.language === 'en' ? 'en' : 'ar', b.unit!, m.id), test);
       }
@@ -196,6 +214,29 @@ async function readEndpoint(id: string, key: string): Promise<{ ok: true; ep: un
   return { ok: true, ep };
 }
 
+interface AssistCtx {
+  unit_id: string;
+  unit_key: string;
+  unit_name_ar: string;
+  branch: string;
+  language: string;
+  topics: string[];
+  test: boolean;
+  models?: Record<string, string>;
+  history?: { author: 'guest' | 'us'; body: string }[];
+  forbidden?: string[];
+}
+/** the conversation's context for «اقتراحات» (as the user) and the PAYLOAD from the knowledge (service role) */
+async function assistContext(conv: string, jwt: string): Promise<{ ok: true; data: AssistCtx; payload: Payload; forbidden: string[] } | { ok: false; status: number; error: string }> {
+  const c = await rpc<AssistCtx>('hub_assist_context', { p_kind: 'suggest', p_id: conv }, jwt);
+  if (!c.ok) return c;
+  const L = c.data.language === 'en' ? 'en' : 'ar';
+  const k = await rpc<{ cards: unknown[]; faq: unknown[] }>('hub_knowledge_for', { p_unit: c.data.unit_key, p_topics: c.data.topics ?? [], p_language: L, p_branch: null }, null);
+  // deno-lint-ignore no-explicit-any
+  return { ok: true, data: c.data, payload: buildPayload(k.ok ? (k.data as any) : null, { cancellation: String(content.cancellation_line[L]) }), forbidden: c.data.forbidden ?? [] };
+}
+const guardOf = (text: string, p: Payload, L: 'ar' | 'en', forbidden: string[]): GuardResult => guard(text, guardPayload(p), { language: L, max_chars: 4096, forbidden });
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return preflight(req);
   if (req.method !== 'POST') return json(req, 405, { ok: false, error: 'method not allowed' });
@@ -215,6 +256,13 @@ Deno.serve(async (req) => {
     const mode = String(body.mode ?? '');
     if (!UUID.test(conv) || !UUID.test(k) || !['text', 'template', 'held'].includes(mode)) return json(req, 400, { ok: false, error: 'invalid body' });
     const lang = body.language === 'en' || body.language === 'ar' ? body.language : null;
+    if (body.suggestion === true && typeof body.body === 'string') {
+      // a suggested reply (prompts.md §3) passes the guard before it leaves (spec §2.4.2)
+      const ctx = await assistContext(conv, jwt);
+      if (!ctx.ok) return refused(req, ctx);
+      const g = guardOf(body.body, ctx.payload, ctx.data.language === 'en' ? 'en' : 'ar', ctx.forbidden);
+      if (!g.ok) return json(req, 200, { ok: false, error: 'hub_guard', reasons: g.reasons });
+    }
     const b = await rpc<Begin>('hub_send_begin', { p_conversation: conv, p_mode: mode, p_body: typeof body.body === 'string' ? body.body : null, p_key: k, p_language: lang }, jwt);
     if (!b.ok) return refused(req, b);
     return await deliver(req, b.data);
@@ -225,6 +273,49 @@ Deno.serve(async (req) => {
     const b = await rpc<Begin>('hub_send_retry', { p_message: id }, jwt);
     if (!b.ok) return refused(req, b);
     return await deliver(req, b.data);
+  }
+
+  // ── the assistant's drafts, translation and suggestions (H5): the user's own rights decide ──
+  if (body.action === 'approve') {
+    const id = String(body.message ?? '');
+    if (!UUID.test(id)) return json(req, 400, { ok: false, error: 'invalid body' });
+    const b = await rpc<Begin>('hub_draft_approve', { p_message: id, p_body: typeof body.body === 'string' ? body.body : null }, jwt);
+    if (!b.ok) return refused(req, b);
+    return await deliver(req, b.data);
+  }
+  if (body.action === 'translate') {
+    const id = String(body.message ?? '');
+    if (!UUID.test(id)) return json(req, 400, { ok: false, error: 'invalid body' });
+    const c = await rpc<{ ok: boolean; cached?: boolean; translation?: string; body?: string; models?: Record<string, string> }>(
+      'hub_assist_context', { p_kind: 'translate', p_id: id }, jwt);
+    if (!c.ok) return refused(req, c);
+    if (c.data.cached) return json(req, 200, { ok: true, translation: c.data.translation });
+    const model = String(c.data.models?.translate ?? 'claude-haiku-5-5');
+    const r = await anthropicModel(Deno.env.get('ANTHROPIC_API_KEY') ?? '')({ layer: 'translate', model, system: translateSystem(), user: String(c.data.body ?? '') });
+    if (!r.ok) return json(req, 200, { ok: false, error: r.error === 'credit' ? 'hub_api_credit' : 'hub_model' });
+    const t = r.text.trim();
+    const st = await rpc('hub_translation_store', { p_message: id, p_text: t, p_model: model, p_in: r.input_tokens, p_out: r.output_tokens }, null);
+    if (!st.ok) console.error('hub-admin: translation not stored', st.status);
+    return json(req, 200, { ok: true, translation: t });
+  }
+  if (body.action === 'suggest') {
+    const conv = String(body.conversation ?? '');
+    if (!UUID.test(conv)) return json(req, 400, { ok: false, error: 'invalid body' });
+    const ctx = await assistContext(conv, jwt);
+    if (!ctx.ok) return refused(req, ctx);
+    const model = String(ctx.data.models?.suggest ?? 'claude-sonnet-5-5');
+    const user = composeUser({ action: 'answer', branch: ctx.data.branch, turn: [], history: ctx.data.history ?? [], payload: ctx.payload });
+    const r = await anthropicModel(Deno.env.get('ANTHROPIC_API_KEY') ?? '')({ layer: 'suggest', model, system: suggestSystem(ctx.data.unit_name_ar), user });
+    await rpc('hub_usage_record', { p_unit: ctx.data.unit_id, p_layer: 'suggest', p_model: model, p_in: r.input_tokens, p_out: r.output_tokens, p_test: !!ctx.data.test }, null);
+    if (!r.ok) return json(req, 200, { ok: false, error: r.error === 'credit' ? 'hub_api_credit' : 'hub_model' });
+    let list: string[] = [];
+    try {
+      list = parseSuggestions(r.text).suggestions;
+    } catch {
+      return json(req, 200, { ok: false, error: 'hub_model' });
+    }
+    const L = ctx.data.language === 'en' ? 'en' : 'ar';
+    return json(req, 200, { ok: true, suggestions: list.map((text) => ({ text, ...guardOf(text, ctx.payload, L, ctx.forbidden) })) });
   }
 
   // ── «إعدادات المساعد»: assistant: edit on every branch ──

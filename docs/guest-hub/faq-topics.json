@@ -1,0 +1,24 @@
+{
+ "_note": "Topics of the 19 published FAQ items (faq.json ids), for retrieval. unit_keys only rank an item first on that number; every item stays answerable on both numbers. Prepared 14 Nov 2026 from the approved FAQ and topics.json.",
+ "faq_topics": {
+  "confirmation":        {"topics": ["booking_status", "booking_new"], "unit_keys": []},
+  "cancellation":        {"topics": ["cancellation_policy"], "unit_keys": []},
+  "payment":             {"topics": ["payment"], "unit_keys": []},
+  "guests-extra-bed":    {"topics": ["occupancy", "extra_bed", "children"], "unit_keys": []},
+  "check-in-out":        {"topics": ["checkin_checkout"], "unit_keys": []},
+  "early-late":          {"topics": ["early_late"], "unit_keys": []},
+  "breakfast":           {"topics": ["breakfast", "children"], "unit_keys": []},
+  "id":                  {"topics": ["documents"], "unit_keys": []},
+  "wifi":                {"topics": ["wifi"], "unit_keys": []},
+  "dining-housekeeping": {"topics": ["in_room_dining", "housekeeping"], "unit_keys": []},
+  "smoking":             {"topics": ["house_rules"], "unit_keys": []},
+  "pets":                {"topics": ["house_rules"], "unit_keys": []},
+  "accessible":          {"topics": ["accessible", "room_types"], "unit_keys": []},
+  "parking":             {"topics": ["parking"], "unit_keys": []},
+  "branches":            {"topics": ["branch_compare", "branch_info"], "unit_keys": []},
+  "contact":             {"topics": ["reception_contact"], "unit_keys": []},
+  "airport":             {"topics": ["distances", "location_directions"], "unit_keys": ["airport-road"]},
+  "hall":                {"topics": ["hall"], "unit_keys": ["airport-road"]},
+  "groups":              {"topics": ["groups_corporate"], "unit_keys": []}
+ }
+}

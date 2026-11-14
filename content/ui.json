@@ -558,6 +558,36 @@
         "button": "افتح سجل التشغيل على GitHub",
         "foot": "يُرسَل هذا التنبيه مرة واحدة لكل تشغيل فاشل للنسخ الاحتياطي، إلى مديري النظام في لوحة أرمادا ريزيدنس."
       },
+      "hub_complaint": {
+        "_note": "Guest Hub H5 (14 Nov 2026, copy.md §7 row 2): a complaint handed to the team — once per conversation, to the branch's reception recipients (the central ones when the branch has none). No guest words, no phone.",
+        "subject": "شكوى من ضيف — {unit_name} — AR-HUB-{id}",
+        "lead": "وصلت شكوى في محادثة على {unit_name}، وانتقلت المحادثة إلى الفريق.",
+        "button": "فتح المحادثة"
+      },
+      "hub_api_credit": {
+        "_note": "Guest Hub H5 (14 Nov 2026, copy.md §7 — Ahmed's brief of 14 Nov 2026): the Anthropic API refused for a low credit balance — ONE email to the active admins while the alert is open.",
+        "subject": "رصيد كلود انتهى — المساعد متوقف — AR-HUB-{yyyymmdd}",
+        "lines": [
+          "رفضت أنثروبيك طلبات المساعد لأن رصيد المطورين انتهى، فكل المحادثات الجديدة تذهب إلى الفريق حتى يعود الرصيد.",
+          "يعود الرصيد الشهري مع بداية دورة الاشتراك التالية، أو يمكن إضافة رصيد مدفوع من لوحة المطورين في أنثروبيك."
+        ],
+        "button": "فتح إعدادات المساعد"
+      },
+      "hub_budget": {
+        "_note": "Guest Hub H5 (14 Nov 2026, copy.md §7 — the session's wording, for Ahmed's review): a model budget reached hub_budget_alert_pct or its cap — once per budget and period, to the active admins.",
+        "subject": "ميزانية المساعد — {budget_label} — AR-HUB-{yyyymmdd}",
+        "line": "بلغت تكلفة المساعد {spent} من {budget} ({pct}%) {period_label}.",
+        "cap_line": "بلغت التكلفة الحد، فكل المحادثات الجديدة تذهب إلى الفريق حتى تبدأ الفترة التالية أو تُرفع الميزانية.",
+        "button": "فتح إعدادات المساعد",
+        "budget_labels": {
+          "daily": "الميزانية اليومية",
+          "monthly": "الميزانية الشهرية"
+        },
+        "period_labels": {
+          "daily": "اليوم",
+          "monthly": "هذا الشهر"
+        }
+      },
       "hub_quality": {
         "_note": "Guest Hub (spec §6.6 / §7.5): a WhatsApp number's quality rating fell below High (YCloud event whatsapp.phone_number.quality_updated). Arabic only; to the dashboard's active admins; once per open alert. The wording approved by Ahmed on 13 Nov 2026 (copy.md §7 row 4 — replaces the H2 draft). FLAGGED (not in the approved list) reads as «منخفض».",
         "subject": "جودة رقم واتساب — {unit_name} — AR-HUB-{yyyymmdd}",

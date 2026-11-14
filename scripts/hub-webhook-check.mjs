@@ -67,7 +67,17 @@ check(/if \(!v\.data\.secret \|\| !\(await verifySignature\(v\.data\.secret, req
   && wh.indexOf('verifySignature') < wh.indexOf('handleEvent'), 'the endpoint refuses an unsigned call (401) before handling anything');
 check(/rt\.waitUntil\(work\)/.test(wh) && /return new Response\('\{"ok":true\}', \{ status: 200/.test(wh), 'the endpoint answers 200 at once; the event runs after (EdgeRuntime.waitUntil)');
 check(/\[functions\.wa-automation\]\nverify_jwt = false/.test(CONFIG), 'wa-automation: verify_jwt = false (YCloud signs, the gateway does not)');
-check(!/hub-inbound/.test(CONFIG) && !/functions\/v1\/hub-/.test(FN), 'one endpoint: no second webhook function, the URL unchanged (wa-automation?hook=…)');
+check(!/hub-inbound/.test(CONFIG) && !/functions\/v1\/hub-(?!agent`)/.test(FN), 'one endpoint: no second webhook function, the URL unchanged (wa-automation?hook=…)');
+// H5 (14 Nov 2026): the router calls the worker hub-agent — not a webhook: it never reads a YCloud signature or event
+{
+  const AG = readFileSync(new URL('../supabase/functions/hub-agent/index.ts', import.meta.url), 'utf8');
+  check(!/ycloud-signature|verifySignature|whatsapp\.inbound_message/i.test(AG) && /x-armada-agent/.test(AG), 'hub-agent is a worker, never a second webhook (no signature, no YCloud event)');
+  check(/'hub_turn_queue', \{ p_conversation: conversation, p_message: message \}/.test(FN) && /\/functions\/v1\/hub-agent`/.test(FN), 'the router queues the turn and asks hub-agent to run it');
+  const hi = FN.slice(FN.indexOf('async function handleInbound('));
+  check(hi.indexOf("route(m, content.club_whatsapp)") < hi.indexOf('queueTurn(convId, msgId, test)') && /if \(r\.kind === 'none' \|\| r\.kind === 'hub_button'\) \{/.test(hi),
+    'a turn only after the route: never for an opt-out word, a typed «إلغاء» or its answers');
+  check(/const turn = stored && convId && msgId \? await queueTurn/.test(hi), 'a turn only for a stored message («تخزين المحادثات» on)');
+}
 
 // ── 2. parsing ──
 const txt = parseInbound(EV.text.whatsappInboundMessage);

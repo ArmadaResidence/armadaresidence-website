@@ -78,7 +78,7 @@ check(/'hub_summary'\)\);/.test(MIG) && /booking_notification_recipients_hub_fil
 // ── 3. the dashboard ──
 const modeRow = (COPY.match(/\| Unit modes \|([^\n]+)/) ?? [])[1] ?? '';
 for (const [k, v] of [...modeRow.matchAll(/`(\w+)` «([^»]+)»/g)].map((m) => [m[1], m[2]])) check(HUB.includes(`${k}: '${v}'`), `the mode label ${k} = copy.md «${v}»`);
-check(/if \(mode !== 'off' && u\.gates\.length\) \{\s+setBlocked/.test(PAGE), 'a mode other than «متوقف» shows the gates before asking the server');
+check(/const need: string\[\] = mode === 'test' \? u\.gates : \(u\.gates_shadow \?\? u\.gates\);/.test(PAGE) && /if \(mode !== 'off' && gates\.length\) \{\s+setBlocked/.test(PAGE), 'a mode other than «متوقف» shows the gates of that mode before asking the server (H5: «تجربة» / «بموافقة الفريق»)');
 check(/if \(on && gates\.length\) \{\s+setBlocked/.test(PAGE), 'a switch-on shows the gates before asking the server');
 check(/key: 'hub_assistant_on', label: 'المساعد يعمل'/.test(HUB) && /key: 'hub_inbox_on', label: 'تخزين المحادثات'/.test(HUB), 'the two global switches named as the spec names them');
 check(!/sending_enabled/.test(HUB.replace(/sending_enabled: boolean;/, '')) || !/settingSet\('sending/.test(PAGE), 'the page never turns a channel\'s sending on');
@@ -93,7 +93,7 @@ check(JSON.stringify(ycCalls) === JSON.stringify(['make:GET', 'typingUrl:POST', 
   `hub-admin's own YCloud calls: the typing indicator, the endpoint read, the lists, the one PATCH — ${ycCalls.join(', ')}`);
 check(!/sendDirectly|\/messages|rotateSecret|webhookEndpoints`|method: '(PUT|DELETE)'/.test(FN + YC) && !/fetch\(`?\$\{?YCLOUD/.test(FN),
   'hub-admin never calls YCloud\'s send route itself, never creates, replaces or deletes anything, never rotates the secret');
-check(/import \{ sendSession, sendTemplate, textPayload, type WaResult \} from '\.\.\/booking-request\/whatsapp-send\.ts';/.test(FN) && /await sendSession\(\{ payload: textPayload\(/.test(FN) && /await sendTemplate\(hubReplyReadyPayload\(/.test(FN),
+check(/import \{ sendSession, sendTemplate, textPayload, type WaResult \} from '\.\.\/booking-request\/whatsapp-send\.ts';/.test(FN) && /await sendSession\(\{ payload(: textPayload\(|, windowExpiresAt)/.test(FN) && /await sendTemplate\(hubReplyReadyPayload\(/.test(FN),
   'the staff sends go through the one sender (sendSession for text, sendTemplate for hub_reply_ready)');
 check((FN.match(/method: 'PATCH'/g) ?? []).length === 1 && /fetch\(webhookEndpointUrl\(id\.data\), \{\s+method: 'PATCH',[\s\S]{0,200}body: JSON\.stringify\(eventsPatchBody\(m\.events\)\)/.test(FN), 'the one write: a PATCH of the one endpoint with its events only');
 check(/rpc<\{ system_admin: boolean; registered: boolean; events: string\[\] \}>\('hub_webhook_status', \{\}, jwt\);\s+if \(!st\.ok \|\| !st\.data\?\.system_admin\) return json\(req, 403/.test(FN), 'update_webhook_events: the system admin only (judged as the user)');
@@ -133,6 +133,39 @@ for (const [name, sql] of [['H1', MIG], ['H2', MIG2], ['H3', MIG3], ['H4', read(
   check(!/sending_enabled = true|assistant_mode = '(test|shadow|licensed)'|hub_assistant_on|hub_inbox_on|hub_engine_ready|hub_inbox_ready/.test(MIG4), 'the H4 migration switches nothing on (no mode, no switch, no channel, no gate)');
   check(/create function internal\.hub_knowledge_gate\(p_cards uuid\[\]\) returns jsonb/.test(MIG4) && /v_gate := internal\.hub_knowledge_gate\(v_ids\);/.test(MIG4), 'publish calls one test-lab gate hook (H6 replaces it)');
   check(/update public\.hub_units set knowledge_hidden = true where key = 'rooftop';/.test(MIG4) && (MIG4.match(/knowledge_hidden = true/g) ?? []).length === 1, 'knowledge_hidden is set for the rooftop unit only');
+}
+// H5 (14 Nov 2026): the engine — the gates, the budgets, the system admin, nothing switched on
+{
+  const RAW5 = read('supabase/migrations/20261114200000_guest_hub_assistant.sql');
+  const MIG5 = RAW5.replace(/--[^\n]*/g, '');
+  const body = MIG5;
+  const stmts = [...body.matchAll(/\b(update|delete from)\s+(public|internal|storage)\.[a-z_]+[\s\S]*?;/gi)].map((x) => x[0]);
+  const bad = stmts.filter((x) => !/\bwhere\b/i.test(x));
+  check(bad.length === 0, `H5: every UPDATE / DELETE has a WHERE — ${bad.map((x) => x.slice(0, 80)).join(' | ')}`);
+  check(/create or replace function internal\.hub_engine_ready\(\) returns boolean\s+language sql immutable set search_path = '' as \$\$ select true \$\$;/.test(MIG5), 'H5: the engine gate is true');
+  check(/create function internal\.hub_test_lab_ready\(u public\.hub_units\) returns boolean\s+language sql stable set search_path = '' as \$\$ select false \$\$;/.test(MIG5)
+    && /if p_mode in \('shadow', 'licensed'\) and not internal\.hub_test_lab_ready\(u\) then v := v \|\| '"test_lab"'::jsonb; end if;/.test(MIG5), 'H5: «بموافقة الفريق» and «يرد تلقائيًا» wait for the test lab (H6) — refused now');
+  check(/if not internal\.hub_budgets_set\(\) then v := v \|\| '"budget"'::jsonb; end if;/.test(MIG5) && /\|\| \(case when internal\.hub_budgets_set\(\) then '\[\]'::jsonb else '\["budget"\]'::jsonb end\)/.test(MIG5),
+    'H5: a NULL budget refuses every mode and «المساعد يعمل»');
+  check(/\|\| \(case when internal\.is_system_admin\(\) then '\[\]'::jsonb else '\["system_admin"\]'::jsonb end\)/.test(MIG5)
+    && /v := internal\.hub_unit_gates_mode\(new, new\.assistant_mode\);[\s\S]{0,200}if not internal\.is_system_admin\(\) then\s+raise exception 'hub_system_admin_only'/.test(MIG5),
+    'H5: only the system admin switches «المساعد يعمل» or a unit on — on every path (the trigger, the settings check)');
+  check(/if p_key = 'hub_assistant_on' and p_value = 'true'::jsonb and not internal\.is_system_admin\(\) then/.test(MIG5)
+    && /if p_key in \('hub_budget_daily_usd', 'hub_budget_monthly_usd', 'hub_budget_alert_pct'\) and not internal\.is_system_admin\(\) then/.test(MIG5), 'H5: the budgets are the system admin\'s («الميزانية»)');
+  check(/update public\.settings set value = '200' where key = 'hub_budget_monthly_usd';/.test(MIG5) && /update public\.settings set value = '20' where key = 'hub_budget_daily_usd';/.test(MIG5), 'H5: the budgets of 14 Nov 2026 (200 a month, 20 a day)');
+  check(/"read_at": "2026-11-14"/.test(MIG5) && /"claude-haiku-5-5": \{"input": 0\.10, "output": 0\.50/.test(MIG5) && /"claude-sonnet-5-5": \{"input": 2, "output": 10/.test(MIG5), 'H5: the model prices read on 14 Nov 2026, with the date');
+  check(/"suggest": "claude-sonnet-5-5"/.test(MIG5) && /"understand": "claude-haiku-5-5", "tag": "claude-haiku-5-5", "translate": "claude-haiku-5-5", "compose": "claude-sonnet-5-5"/.test(MIG5), 'H5: the models as decided (Haiku: understand, tag, translate; Sonnet: compose, suggest)');
+  check(!/assistant_mode = '(test|shadow|licensed)'/.test(MIG5) && !/set value = 'true' where key = 'hub_(assistant|inbox)_on'/.test(MIG5) && !/sending_enabled = true/.test(MIG5), 'H5 switches nothing on (no mode, no switch, no channel)');
+  check(/constraint hub_units_skills_h8 check \(not \(skills && array\['room_booking', 'hall_request', 'group_request'\]\)\)/.test(MIG5), 'H5: room_booking, hall_request and group_request stay off (H8)');
+  check(/not \(persona_live \? 'name'\)/.test(MIG5) && !/"name":/.test(MIG5.slice(MIG5.indexOf('set persona ='), MIG5.indexOf("where key in ('airport-road', 'shafa-road')"))), 'H5: the persona has no name');
+  check(/create unique index hub_turns_one_running on public\.hub_turns \(conversation_id\) where status = 'running';/.test(MIG5) && /first_inbound_id uuid not null unique/.test(MIG5), 'H5: one running turn per conversation, one turn per first inbound message');
+  check(/create unique index hub_drafts_one_open on public\.hub_drafts \(conversation_id, sim\) where status = 'open';/.test(MIG5), 'H5: one open draft per conversation');
+  check(/when v_test then 'test'/.test(MIG5) && /'test_mode'/.test(MIG5), 'H5: «تجربة» stores test rows and keeps the conversation with staff');
+  check(/update public\.hub_messages\s+set status = 'queued', approved_by = auth\.uid\(\)[\s\S]{0,140}where id = m\.id and status = 'pending_approval';/.test(MIG5), 'H5: an approval is a compare-and-set');
+  const AG = read('supabase/functions/hub-agent/index.ts');
+  check(/\[functions\.hub-agent\]\nverify_jwt = false/.test(CONFIG) && /rpc<boolean>\('hub_agent_check', \{ p_token: token \}\)/.test(AG), 'hub-agent: verify_jwt off, the Vault token checked on every call');
+  check(!/sendDirectly|method: '(PUT|DELETE|PATCH)'/.test(AG) && /await sendSession\(\{ payload, windowExpiresAt/.test(AG), 'hub-agent sends through the one sender only (sendSession), never YCloud\'s send route itself');
+  check(/if \(!rows\[0\]\?\.is_test\) return json\(403/.test(AG), 'hub-agent QA turns: test turns only');
 }
 check(phoneNumbersUrl('3187536471439127') === 'https://api.ycloud.com/v2/whatsapp/phoneNumbers?filter.wabaId=3187536471439127&limit=100&page=1', 'the phone-number list URL');
 check(templatesUrl('329667206894245', 2) === 'https://api.ycloud.com/v2/whatsapp/templates?filter.wabaId=329667206894245&limit=100&page=2', 'the template list URL');

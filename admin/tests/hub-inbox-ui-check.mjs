@@ -68,7 +68,9 @@ const THREAD = (r, edit) => ({
   conversation: { id: r.id, unit_id: UNIT_A, unit_key: 'airport-road', unit_kind: 'branch', branch: 'airport-road', unit_name: 'فرع طريق المطار', channel_kind: 'whatsapp', channel_address: '+966536622277',
     sending_enabled: true, state: r.state, owner_kind: null, owner_staff_id: null, owner_name: null, human_reason: 'assistant_off', priority: 'normal', language: 'ar',
     window_expires_at: r.window_expires_at, waiting_since: r.waiting_since, last_guest_at: ago(20), last_staff_at: null, tags: [], topics: [], referral: null, created_at: ago(40), closed_at: null,
-    is_test: false, can_edit: edit, templates_approved: ['ar'] },
+    is_test: false, can_edit: edit, templates_approved: ['ar'],
+    // H5: the unit's assistant in «بموافقة الفريق» (the stub) — «إعادة للمساعد» and «إيقاف المساعد مؤقتًا» offered
+    unit_mode: 'shadow', assistant: { active: true, mode: 'shadow', reason: null }, can_release: edit, can_pause: edit, test_state: null },
   guest: { id: id(900), name: null, wa_name: r.name, label: r.name, phone: '+966500009301', language: 'ar', member: true, consent: 'granted', opted_out: false, blocked: false, marketing_hold: false,
     tags: [], notes: null, stays: 2, last_stay: '2026-10-02', bookings: [{ id: id(800), ref: 'AR-20261020-ABCD', status: 'confirmed', branch: 'airport-road', check_in: '2026-10-20', check_out: '2026-10-22' }] },
   messages: [
@@ -77,6 +79,10 @@ const THREAD = (r, edit) => ({
     msg(3, 'out', 'staff', 'رسالة لم تصل', { status: 'failed', error_code: 'rejected' }),
     msg(4, 'out', 'staff', 'اتصلت بالضيف', { kind: 'note', status: 'internal' }),
     msg(5, 'in', 'guest', null, { kind: 'image', media_path: 'airport-road/x/y.jpg', media_mime: 'image/jpeg' }),
+    // H5: a draft of the assistant (with its source card), a «تجربة» reply, a guest message in English
+    msg(6, 'out', 'assistant', 'نعم، المواقف مجانية في الطابقين B1 وB2.', { status: 'pending_approval', sources: [{ id: id(950), key: 'k-parking-detail', title: 'المواقف' }] }),
+    msg(7, 'out', 'assistant', 'مرحبًا بك.', { status: 'test' }),
+    msg(8, 'in', 'guest', 'Is breakfast included?', { language: 'en' }),
   ],
   templates: [{ source: 'booking', template: 'booking_confirmed', meta_template: 'booking_confirmed_v2', status: 'read', ref: 'AR-20261020-ABCD', branch: 'airport-road', language: 'ar', at: ago(10000) }],
   events: [{ kind: 'state', from: null, to: 'human', reason: 'assistant_off', at: ago(40), actor: null }],
@@ -137,6 +143,11 @@ async function context(browser, role, perms, w, h, scheme) {
         episodes: can ? [{ id: A.id, unit_name: 'فرع طريق المطار', state: 'human', created_at: ago(40), closed_at: null, topics: [], closed_reason: null }] : [] });
     }
     if (fn === 'guest_club_totals') return ok({ today: '2026-11-13', week_from: '2026-11-08', all: 1, today_all: 0, week_all: 0, sources: {} });
+    if (fn === 'hub_draft_reject' || fn === 'hub_release') return ok({ ok: true, changed: true, state: 'inquiry' });
+    if (fn === 'hub_pause_unit') return ok({ ok: true, batch_id: id(903) });
+    if (fn === 'hub_engine_banner') return ok({ assistant_on: true, capped: false, api_credit: false, alert: false });
+    if (fn === 'hub-admin' && body?.action === 'translate') return ok({ ok: true, translation: 'هل الإفطار مشمول؟' });
+    if (fn === 'hub-admin' && body?.action === 'suggest') return ok({ ok: true, suggestions: [{ text: 'نعم، المواقف مجانية.', ok: true, reasons: [] }, { text: 'المواقف 50 ريالًا.', ok: false, reasons: ['number'] }] });
     if (fn === 'hub-admin') return ok({ ok: true, results: [{ id: id(600), kind: body?.mode === 'held' ? 'template' : 'text', status: 'accepted', error_code: null }] });
     if (/\/storage\/v1\/object\/sign\//.test(u)) return ok({ signedURL: '/object/sign/hub-media/x.jpg?token=qa' });
     if (/\/rest\/v1\/hub_units/.test(u)) return ok([{ id: UNIT_A, name_ar: 'فرع طريق المطار' }]);
@@ -200,6 +211,52 @@ for (const [role, level] of [['reception', 'edit'], ['management', 'view']]) {
         check(await visible(page, 'text=صلاحيتك هنا للعرض فقط'), `${tag}: «للعرض فقط»`);
       } else {
         check((await page.locator('[data-composer]').getAttribute('data-window-open')) === 'yes' && (await page.locator('[data-window]').textContent())?.includes('تنتهي نافذة الرد خلال'), `${tag}: the window open, its time left`);
+        // H5: the draft bubble, its source, the «تجربة» reply, the translation, «إعادة للمساعد»
+        check((await page.locator(`[data-msg="${id(506)}"][data-status="pending_approval"] [data-draft-actions] button`).count()) === 3, `${tag}: a draft carries «إرسال» · «تعديل ثم إرسال» · «رفض»`);
+        check((await page.locator(`[data-msg="${id(506)}"] [data-msg-sources]`).textContent())?.includes('المواقف'), `${tag}: the draft shows the card it drew from`);
+        check((await page.locator(`[data-msg="${id(507)}"] [data-assistant-chip]`).textContent())?.includes('تجربة') && (await page.locator(`[data-msg="${id(507)}"] [data-msg-status]`).textContent())?.includes('لم تُرسل'),
+          `${tag}: a «تجربة» reply is marked and never sent`);
+        check((await page.locator(`[data-msg="${id(508)}"] [data-action="translate"]`).count()) === 1 && (await page.locator(`[data-msg="${id(501)}"] [data-action="translate"]`).count()) === 0, `${tag}: «الترجمة» on the English message only`);
+        check((await page.locator('[data-action="release"]').count()) === 1 && (await page.locator('[data-action="pause"]').count()) === 1, `${tag}: «إعادة للمساعد» and «إيقاف المساعد مؤقتًا»`);
+        if (scheme === 'light') {
+          await page.locator(`[data-msg="${id(506)}"] [data-action="draft-send"]`).click();
+          await page.waitForTimeout(400);
+          const ap = calls.find((c) => c.fn === 'hub-admin' && c.body?.action === 'approve');
+          check(ap && ap.body.message === id(506) && ap.body.body === null, `${tag}: «إرسال» → hub-admin approve (the draft as written) — ${JSON.stringify(ap?.body)}`);
+          await page.locator(`[data-msg="${id(506)}"] [data-action="draft-edit"]`).click();
+          await page.locator('[data-draft-edit-dialog]').waitFor({ timeout: 5000 });
+          await page.waitForTimeout(450);
+          await page.locator('#draft-edit-text').fill('نعم، المواقف مجانية.');
+          await page.locator('[data-action="draft-edit-send"]').click();
+          await page.waitForTimeout(400);
+          const ap2 = calls.filter((c) => c.fn === 'hub-admin' && c.body?.action === 'approve')[1];
+          check(ap2 && ap2.body.body === 'نعم، المواقف مجانية.', `${tag}: «تعديل ثم إرسال» → approve with the edited text — ${JSON.stringify(ap2?.body)}`);
+          await page.locator(`[data-msg="${id(506)}"] [data-action="draft-reject"]`).click();
+          await page.locator('[data-draft-reject-dialog]').waitFor({ timeout: 5000 });
+          await page.locator('[data-action="draft-reject-go"]').click();
+          check(await visible(page, '[data-draft-reject-dialog] [role="alert"]'), `${tag}: «رفض» without a reason is refused on the page`);
+          await page.locator('[data-reject-reason="wrong_info"]').check();
+          await page.locator('[data-action="draft-reject-go"]').click();
+          await page.waitForTimeout(400);
+          const rj = calls.find((c) => c.fn === 'hub_draft_reject');
+          check(rj && rj.body.p_message === id(506) && rj.body.p_reason === 'wrong_info', `${tag}: «رفض» → hub_draft_reject with the reason — ${JSON.stringify(rj?.body)}`);
+          await page.locator(`[data-msg="${id(508)}"] [data-action="translate"]`).click();
+          await page.locator(`[data-msg="${id(508)}"] [data-msg-translation]`).waitFor({ timeout: 5000 }).catch(() => {});
+          check((await page.locator(`[data-msg="${id(508)}"] [data-msg-translation]`).textContent().catch(() => ''))?.includes('هل الإفطار مشمول؟'), `${tag}: «الترجمة» shown beside the original`);
+          await page.locator('[data-action="suggestions"]').click();
+          await page.locator('[data-suggestions]').waitFor({ timeout: 5000 }).catch(() => {});
+          check((await page.locator('[data-suggestion-ok="yes"]').count()) === 1 && (await page.locator('[data-suggestion-ok="no"]').count()) === 1, `${tag}: «اقتراحات»: a refused suggestion cannot be used`);
+          await page.locator('[data-action="suggestion-use"]').click();
+          check((await page.locator('[data-reply]').inputValue()) === 'نعم، المواقف مجانية.', `${tag}: a suggestion fills the composer`);
+          await page.locator('[data-action="send"]').click();
+          await page.waitForTimeout(400);
+          const sg = calls.find((c) => c.fn === 'hub-admin' && c.body?.action === 'send' && c.body?.suggestion === true);
+          check(sg && sg.body.body === 'نعم، المواقف مجانية.', `${tag}: a suggestion is sent with suggestion: true (the guard runs on it) — ${JSON.stringify(sg?.body)}`);
+          await page.locator('[data-action="release"]').click();
+          await page.waitForTimeout(300);
+          check(calls.some((c) => c.fn === 'hub_release' && c.body?.p_conversation === A.id), `${tag}: «إعادة للمساعد» → hub_release`);
+          for (const c of calls.filter((x) => x.fn === 'hub-admin' && (['approve', 'translate', 'suggest'].includes(x.body?.action) || x.body?.suggestion))) calls.splice(calls.indexOf(c), 1);
+        }
         if (scheme === 'light') {
           // send inside the window
           await page.locator('[data-reply]').fill('نعم، الموقف مجاني ومتاح.');

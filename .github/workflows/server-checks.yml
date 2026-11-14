@@ -20,6 +20,7 @@ on:
       - 'supabase/functions/wa-automation/**'
       - 'supabase/functions/_shared/hub/**'
       - 'supabase/functions/hub-admin/**'
+      - 'supabase/functions/hub-agent/**'
       - 'content/team.json'
       - 'scripts/sql-test-run.mjs'
       - 'scripts/booking-source-server-check.mjs'
@@ -29,7 +30,7 @@ on:
       files:
         description: SQL test files of supabase/tests (space-separated)
         required: false
-        default: booking-source.sql guest_hub_units.sql guest_hub_ingest.sql guest_hub_retention.sql guest_hub_inbox.sql guest_hub_knowledge.sql wa-automation.sql
+        default: booking-source.sql guest_hub_units.sql guest_hub_ingest.sql guest_hub_retention.sql guest_hub_inbox.sql guest_hub_knowledge.sql guest_hub_assistant.sql wa-automation.sql
 
 permissions:
   contents: read
@@ -54,7 +55,7 @@ jobs:
       - name: The local database (every migration of this commit)
         run: supabase db start
       - name: The SQL tests
-        run: node scripts/sql-test-run.mjs ${{ inputs.files || 'booking-source.sql guest_hub_units.sql guest_hub_ingest.sql guest_hub_retention.sql guest_hub_inbox.sql guest_hub_knowledge.sql wa-automation.sql' }}
+        run: node scripts/sql-test-run.mjs ${{ inputs.files || 'booking-source.sql guest_hub_units.sql guest_hub_ingest.sql guest_hub_retention.sql guest_hub_inbox.sql guest_hub_knowledge.sql guest_hub_assistant.sql wa-automation.sql' }}
 
   function:
     name: server · functions (Deno — hub type-check, booking-request on a stub database)
@@ -74,7 +75,7 @@ jobs:
       - name: The function's generated content
         run: python build.py --content-only
       - name: The Guest Hub functions type-check (Deno; session H2)
-        run: deno check supabase/functions/wa-automation/index.ts supabase/functions/hub-admin/index.ts
+        run: deno check supabase/functions/wa-automation/index.ts supabase/functions/hub-admin/index.ts supabase/functions/hub-agent/index.ts
       - name: «مصدر الحجز» on the server
         env:
           TEAM_DEVICE_TOKEN: ${{ secrets.TEAM_DEVICE_TOKEN }}

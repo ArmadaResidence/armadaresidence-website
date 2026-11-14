@@ -104,3 +104,8 @@ file_size_limit = "300MiB"
 # wa-automation (9 Nov 2026): Eyab WhatsApp welcome / offers, the arrival reminder, the review request, the YCloud webhook
 [functions.wa-automation]
 verify_jwt = false
+
+# «مركز الضيوف» (14 Nov 2026, Guest Hub H5): hub-agent — the assistant's worker. Not a webhook: called by wa-automation
+# and pg_cron (hub-agent, every minute) with the Vault token hub_agent_token (header x-armada-agent)
+[functions.hub-agent]
+verify_jwt = false

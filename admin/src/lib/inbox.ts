@@ -1,6 +1,8 @@
 // «المحادثات» — Guest Hub «مركز الضيوف», session H3 (13 Nov 2026; docs/guest-hub/GUEST-HUB-SPEC.md §5.2, §5.3, §6.2–§6.4;
 // copy.md §6; DECISIONS.md 2026-11-13 «Guest Hub H3 — the inbox»). The calls of the inbox and every label it shows.
-// There is no assistant yet: every conversation is handled by staff. The server decides every rule
+// Since H5 (14 Nov 2026) the assistant writes: its replies wait as drafts («بموافقة الفريق») for «إرسال» / «تعديل ثم
+// إرسال» / «رفض» (a compare-and-set on the server), its «تجربة» replies are shown and never sent, «إعادة للمساعد» returns
+// a conversation to it, and «الترجمة» / «اقتراحات» call the models through hub-admin (counted in the budget). The server decides every rule
 // (supabase/migrations/20261113300000_guest_hub_inbox.sql: inbox: edit + the unit scope, the 24-hour window, the
 // approved template, «الإرسال من المركز», a blocked number); this file words them. Message text is read here and in
 // pages/Inbox.tsx only (scripts/hub-privacy-check.mjs) — never in an export, a report or a notification.
@@ -87,6 +89,14 @@ export interface Msg {
   sent_at: string;
   purged: boolean;
   unanswered: boolean;
+  /** H5: the staff translation (Arabic) of a guest message — on demand, never sent */
+  translation?: string | null;
+  approved_by_name?: string | null;
+  approved_at?: string | null;
+  edited_before_send?: boolean;
+  turn_id?: string | null;
+  /** the knowledge cards an assistant reply drew from */
+  sources?: { id: string; key: string; title: string }[];
 }
 export interface TemplateLog {
   source: 'booking' | 'eyab';
@@ -136,6 +146,12 @@ export interface Thread {
     is_test: boolean;
     can_edit: boolean;
     templates_approved: string[];
+    /** H5 */
+    test_state?: HubState | null;
+    unit_mode?: 'off' | 'test' | 'shadow' | 'licensed';
+    assistant?: { active: boolean; mode: string | null; reason: string | null };
+    can_release?: boolean;
+    can_pause?: boolean;
   };
   guest: {
     id: string;
@@ -202,6 +218,36 @@ export interface SendResult {
 export const send = (conversation: string, mode: 'text' | 'template' | 'held', body: string | null, key: string, language?: 'ar' | 'en') =>
   api.edge<SendResult>('hub-admin', { action: 'send', conversation, mode, body, key, ...(language ? { language } : {}) });
 export const retry = (message: string) => api.edge<SendResult>('hub-admin', { action: 'retry', message });
+/** H5: a staff send of a suggested reply — the guard runs on it in hub-admin before it leaves */
+export const sendSuggestion = (conversation: string, body: string, key: string, language?: 'ar' | 'en') =>
+  api.edge<SendResult & { reasons?: string[] }>('hub-admin', { action: 'send', conversation, mode: 'text', body, key, suggestion: true, ...(language ? { language } : {}) });
+/** H5: a draft «إرسال» (body null) or «تعديل ثم إرسال» (the edited text) — a compare-and-set, then the send */
+export const approve = (message: string, body: string | null) => api.edge<SendResult>('hub-admin', { action: 'approve', message, body });
+export const reject = (message: string, reason: RejectReason, note: string | null) => rpc<{ ok: boolean; changed: boolean }>('hub_draft_reject', { p_message: message, p_reason: reason, p_note: note });
+export const translate = (message: string) => api.edge<{ ok: boolean; translation?: string; error?: string }>('hub-admin', { action: 'translate', message });
+export const suggest = (conversation: string) =>
+  api.edge<{ ok: boolean; error?: string; suggestions?: { text: string; ok: boolean; reasons: string[] }[] }>('hub-admin', { action: 'suggest', conversation });
+export const release = (id: string) => rpc<{ ok: boolean; state: HubState }>('hub_release', { p_conversation: id });
+export const pauseUnit = (unit: string) => rpc<Saved>('hub_pause_unit', { p_unit: unit });
+export const banner = () => rpc<{ assistant_on: boolean; capped: boolean; api_credit: boolean; alert: boolean }>('hub_engine_banner');
+/** «رفض» reasons (copy.md §6) */
+export type RejectReason = 'wrong_info' | 'tone' | 'needs_team' | 'other';
+export const REJECT_REASONS: { key: RejectReason; label: string }[] = [
+  { key: 'wrong_info', label: 'معلومة غير صحيحة' }, { key: 'tone', label: 'أسلوب غير مناسب' }, { key: 'needs_team', label: 'يحتاج الفريق' }, { key: 'other', label: 'سبب آخر' },
+];
+/** a refusal of the assistant's calls, in Arabic */
+export const ASSIST_ERRORS: Record<string, string> = {
+  hub_budget_cap: 'بلغت تكلفة المساعد الحد أو لم تُحدَّد الميزانية، فلا ترجمة ولا اقتراحات الآن.',
+  hub_api_credit: 'رصيد كلود انتهى، فلا ترجمة ولا اقتراحات الآن.',
+  hub_model: 'تعذّر الحصول على الرد من النموذج، أعد المحاولة بعد قليل.',
+  hub_nothing_to_translate: 'لا نص في هذه الرسالة.',
+  hub_guard: 'الرد لا يجتاز قواعد الرد (رقم أو رابط أو كلمة غير مسموحة)، فعدّله قبل الإرسال.',
+  hub_no_assistant: '«المساعد يعمل» متوقف.',
+  hub_unit_off: 'المساعد متوقف في هذه الوحدة.',
+  hub_unit_test: 'الوحدة في «تجربة»: تبقى المحادثة مع الفريق.',
+  'not allowed': 'لا صلاحية لهذا الإجراء.',
+};
+export const assistError = (code: string | null | undefined) => (code ? ASSIST_ERRORS[code] ?? SEND_ERRORS[code] ?? 'تعذّر تنفيذ الطلب.' : 'تعذّر تنفيذ الطلب.');
 export const newKey = () => crypto.randomUUID();
 
 /** a short-lived link (5 minutes) to an inbound media file in the private bucket hub-media — the unit's RLS decides */
@@ -232,8 +278,14 @@ export const LANGUAGE_FILTERS: { value: string; label: string }[] = [{ value: ''
 export const ACTIONS = {
   take_over: 'تولّي المحادثة', release: 'إعادة للمساعد', transfer: 'تحويل', close: 'إغلاق المحادثة', note: 'ملاحظة', template: 'إرسال قالب', held: 'إرسال عند رد الضيف',
   block: 'حظر الرقم', unblock: 'إلغاء حظر الرقم', unanswered: 'المساعد لم يعرف', send: 'إرسال', retry: 'إعادة الإرسال',
+  suggestions: 'اقتراحات', translate: 'الترجمة', pause: 'إيقاف المساعد مؤقتًا',
 } as const;
 export const MARKS = { note: 'ملاحظة داخلية — لا تصل للضيف', phone: 'من الجوال', media_gone: 'وسائط محذوفة', test: 'تجربة', template: 'قالب' } as const;
+/** the draft bubble's actions (copy.md §6) */
+export const DRAFT_ACTIONS = { send: 'إرسال', edit: 'تعديل ثم إرسال', reject: 'رفض' } as const;
+/** a guest message worth translating for staff: not Arabic (spec §2.8 — on demand) */
+export const needsTranslation = (m: Pick<Msg, 'direction' | 'body' | 'language'>) =>
+  m.direction === 'in' && !!m.body && (m.language ? m.language !== 'ar' : (m.body.match(/[A-Za-z]/g) ?? []).length > (m.body.match(/[\u0621-\u064A]/g) ?? []).length);
 
 /** the delivery state of an outbound message */
 export function statusText(m: Pick<Msg, 'status' | 'error_code'>): { text: string; tone: 'ok' | 'muted' | 'error' } {
@@ -246,6 +298,9 @@ export function statusText(m: Pick<Msg, 'status' | 'error_code'>): { text: strin
     case 'held': return { text: 'تُرسل عند رد الضيف', tone: 'muted' };
     case 'test': return { text: 'تجربة — لم تُرسل', tone: 'muted' };
     case 'superseded': return { text: 'لم تُرسل (أُغلقت المحادثة)', tone: 'muted' };
+    case 'pending_approval': return { text: 'بانتظار الموافقة', tone: 'muted' };
+    case 'approved': return { text: 'وافق عليها الفريق', tone: 'muted' };
+    case 'rejected': return { text: 'رفضها الفريق', tone: 'muted' };
     case 'failed': return { text: `تعذّر الإرسال${m.error_code ? ` — ${sendError(m.error_code)}` : ''}`, tone: 'error' };
     default: return { text: m.status, tone: 'muted' };
   }
@@ -280,6 +335,14 @@ export const sendError = (code: string | null | undefined) => (code ? SEND_ERROR
 const REASONS: Record<string, string> = {
   assistant_off: 'لا مساعد بعد', phone_reply: 'رد من الجوال', take_over: 'تولّاها موظف', staff_reply: 'رد موظف', assign: 'إسناد', transfer: 'تحويل',
   cancel_booking: 'طلب إلغاء حجز', staff: 'موظف', idle: 'خمول', human_timeout: '72 ساعة بعد آخر رد', blocked: 'حظر الرقم', release: 'إعادة للمساعد',
+  // H5: why the assistant handed a conversation to the team (codes only)
+  test_mode: 'الوحدة في «تجربة»', budget_cap: 'بلغت التكلفة الحد', budget_unset: 'الميزانية غير محددة', api_credit: 'رصيد كلود انتهى', rate_limit: 'تجاوز حد الرسائل',
+  engine_error: 'خطأ في المحرك', no_source: 'لا مصدر للإجابة', guard: 'لم يجتز الرد القواعد', complaint: 'شكوى', compensation: 'طلب تعويض', human_request: 'طلب موظفًا',
+  media: 'رسالة وسائط', third_language: 'لغة أخرى', out_of_scope: 'خارج خدمات أرمادا', failed_understanding: 'لم تُفهم الرسالة', draft_rejected: 'رُفضت المسودة',
+  booking_change: 'تعديل حجز أو إلغاؤه', multi_room: 'أكثر من غرفة', early_extension: 'وصول مبكر أو تمديد', stay_booking: 'حجز إقامة', hall_request: 'طلب القاعة',
+  group_request: 'طلب مجموعة', prices_hidden: 'الأسعار مخفية', always_handoff: 'موضوع للفريق دائمًا', dining_order: 'طلب طعام', cart_order: 'طلب من القائمة',
+  order_status: 'حالة طلب', table_booking: 'حجز طاولة', booking_status: 'حالة حجز', assistant: 'المساعد', handoff: 'تحويل للفريق', unit_off: 'الوحدة متوقفة',
+  wrong_info: 'معلومة غير صحيحة', tone: 'أسلوب غير مناسب', needs_team: 'يحتاج الفريق', other: 'سبب آخر', draft: 'مسودة المساعد',
 };
 export function eventText(e: HubEvent, units: Record<string, string> = {}): string {
   const who = e.actor ? ` — ${e.actor}` : '';
@@ -294,6 +357,9 @@ export function eventText(e: HubEvent, units: Record<string, string> = {}): stri
     case 'unanswered': return `أُضيفت رسالة إلى «لم أعرف الإجابة»${who}`;
     case 'cancel_word': return `كلمة «إلغاء»${why ? ` (${why})` : ''}`;
     case 'resume': return `إعادة للمساعد${who}`;
+    case 'test': return `تجربة: ${STATE_LABELS[e.to as HubState] ?? e.to}${why ? ` (${why})` : ''}`;
+    case 'approve': return `أُرسلت مسودة المساعد${e.to === 'edited' ? ' بعد تعديلها' : ''}${who}`;
+    case 'reject': return `رُفضت مسودة المساعد (${REASONS[e.to ?? ''] ?? e.to})${who}`;
     default: return `${e.kind}${who}`;
   }
 }

@@ -10,7 +10,7 @@ import * as api from './api';
 import type { Saved } from './api';
 
 export type UnitMode = 'off' | 'test' | 'shadow' | 'licensed';
-export type GateCode = 'hidden' | 'channel' | 'persona' | 'skills' | 'menu_link' | 'test_lab' | 'engine' | 'inbox_engine' | 'inbox_on' | 'decided_off';
+export type GateCode = 'hidden' | 'channel' | 'persona' | 'skills' | 'menu_link' | 'test_lab' | 'engine' | 'inbox_engine' | 'inbox_on' | 'decided_off' | 'budget' | 'system_admin';
 
 export interface HubChannel {
   id: string;
@@ -47,7 +47,11 @@ export interface HubUnit {
   venue: { id: string; slug: string; name_ar: string; name_en: string; status: string; menu: string } | null;
   channels: HubChannel[];
   members: HubMember[];
+  /** what «تجربة» still lacks (H5) */
   gates: GateCode[];
+  /** what «بموافقة الفريق» / «يرد تلقائيًا» still lack — the test lab of H6 among them */
+  gates_shadow?: GateCode[];
+  persona?: { tone?: number; emoji?: boolean } | null;
 }
 export interface HubStaff {
   staff_id: string;
@@ -78,8 +82,29 @@ export interface HubAlert {
   payload: Record<string, unknown>;
   created_at: string;
 }
+/** spent and left (spec §7.3) — internal.hub_budget_state */
+export interface BudgetState {
+  day: string;
+  month: string;
+  alert_pct: number;
+  daily_budget: number | null;
+  monthly_budget: number | null;
+  daily_spent: number;
+  monthly_spent: number;
+  unset: boolean;
+  capped: boolean;
+  daily_capped: boolean;
+  monthly_capped: boolean;
+  daily_alert: boolean;
+  monthly_alert: boolean;
+  api_credit: boolean;
+  api_credit_since: string | null;
+  api_credit_last_try: string | null;
+}
 export interface HubOverview {
   can_edit: boolean;
+  system_admin?: boolean;
+  budget?: BudgetState;
   all_branches: boolean;
   engine_ready: boolean;
   inbox_ready: boolean;
@@ -106,6 +131,36 @@ export const unitSave = (id: string, nameAr: string, nameEn: string) => saved('h
 export const membersSet = (unit: string, staff: string[]) => saved('hub_unit_members_set', { p_unit: unit, p_staff: staff });
 export const modeSet = (unit: string, mode: UnitMode) => saved('hub_unit_mode_set', { p_unit: unit, p_mode: mode });
 export const settingSet = (key: string, value: unknown) => saved('hub_setting_set', { p_key: key, p_value: value });
+/** «إيقاف مؤقت» of a unit (H5): any inbox: edit member; resuming is the system admin's (hub_unit_mode_set) */
+export const pauseUnit = (unit: string) => saved('hub_pause_unit', { p_unit: unit });
+
+// ── «الميزانية» (H5, 14 Nov 2026 — spec §5.6 item 5, §7.3) ──
+export interface BudgetOverview {
+  state: BudgetState;
+  system_admin: boolean;
+  prices: Record<string, { input: number; output: number; long_from?: number; long_input?: number; long_output?: number; read_at?: string; source?: string }> | null;
+  models: Record<string, string> | null;
+  by_unit: { unit: string; name: string; today: number | null; month: number | null }[];
+  by_layer: { layer: string; source: string; calls: number; today: number | null; month: number | null }[];
+}
+export async function budgetOverview(): Promise<BudgetOverview> {
+  const { data, error } = await supabase.rpc('hub_budget_overview');
+  if (error) api.fail(error, 'hub_budget_overview');
+  return data as BudgetOverview;
+}
+export const LAYER_LABELS: Record<string, string> = { understand: 'الفهم', tag: 'تصنيف المواضيع', compose: 'كتابة الرد', translate: 'الترجمة', suggest: 'الاقتراحات' };
+export const SOURCE_LABELS: Record<string, string> = { turn: 'المحادثات', staff: 'طلبات الفريق', test_lab: 'مختبر الاختبار' };
+export const MODEL_LABELS: Record<string, string> = { understand: 'الفهم', tag: 'تصنيف المواضيع', translate: 'الترجمة', compose: 'كتابة الرد', suggest: 'الاقتراحات' };
+/** USD as the page writes it: «4.25 دولار» (Western digits) */
+export const usd = (n: number | null | undefined) => `${(Math.round(Number(n ?? 0) * 100) / 100).toFixed(2)} دولار`;
+/** the state line of the budget: capped, the credit, an alert, or fine */
+export function budgetLine(b: BudgetState): { tone: 'error' | 'amber' | 'ok'; text: string } {
+  if (b.api_credit) return { tone: 'error', text: 'رصيد كلود انتهى: كل المحادثات الجديدة تذهب إلى الفريق حتى يعود الرصيد. نجرّب طلبًا واحدًا كل 30 دقيقة.' };
+  if (b.unset) return { tone: 'amber', text: 'الميزانية غير محددة، فلا يعمل المساعد في أي وحدة.' };
+  if (b.capped) return { tone: 'error', text: 'بلغت التكلفة الحد: كل المحادثات تذهب إلى الفريق حتى تبدأ الفترة التالية أو تُرفع الميزانية.' };
+  if (b.daily_alert || b.monthly_alert) return { tone: 'amber', text: `بلغت التكلفة ${b.alert_pct}% من الميزانية ${b.daily_alert ? 'اليومية' : 'الشهرية'}.` };
+  return { tone: 'ok', text: 'التكلفة داخل الميزانية.' };
+}
 export const recipientsSet = (list: { id?: string; email: string; active: boolean; filter_confirmed: boolean }[]) =>
   saved('hub_summary_recipients_set', { p_recipients: list });
 
@@ -163,8 +218,10 @@ export const GATE_LABELS: Record<GateCode, string> = {
   persona: 'نشر شخصية الوحدة (الأسلوب والتحية)',
   skills: 'مهارة واحدة على الأقل',
   menu_link: 'رابط قائمة الطعام في «المطاعم والمقاهي»',
-  test_lab: 'نجاح أسئلة الوحدة في مختبر الاختبار',
-  engine: 'محرك المساعد — يُبنى في جلسة لاحقة',
+  test_lab: 'نجاح أسئلة الوحدة في مختبر الاختبار — يُبنى في الجلسة التالية',
+  engine: 'محرك المساعد',
+  budget: 'تحديد الميزانية اليومية والشهرية في «الميزانية»',
+  system_admin: 'يشغّله مدير النظام وحده',
   inbox_engine: 'استقبال الرسائل وتخزينها — يُبنى في الجلسة التالية',
   inbox_on: 'تشغيل «تخزين المحادثات» أولًا',
   decided_off: 'قرار 13 نوفمبر 2026: ملخص الصباح بلا أرقام مالية',
@@ -177,7 +234,7 @@ export const SWITCHES: { key: 'hub_assistant_on' | 'hub_inbox_on'; label: string
   { key: 'hub_assistant_on', label: 'المساعد يعمل', text: 'المفتاح العام: عند إيقافه لا يكتب المساعد شيئًا في أي وحدة، وتبقى الرسائل التلقائية الحالية كما هي.' },
   { key: 'hub_inbox_on', label: 'تخزين المحادثات', text: 'تخزين رسائل واتساب وعرضها في «المحادثات» (نص الرسالة يُحفظ 12 شهرًا والوسائط 90 يومًا).' },
 ];
-export const NOT_YET = 'المساعد يأتي في جلسات لاحقة: كل الوحدات و«المساعد يعمل» متوقفة، والخادم يرفض تشغيلها قبل اكتمال ما ينقصها. «تخزين المحادثات» جاهز للتشغيل ويبقى متوقفًا حتى تشغّله.';
+export const NOT_YET = 'المحرك جاهز للتجربة: يشغّل مدير النظام «المساعد يعمل» ووضع «تجربة» لوحدة بعد اكتمال ما ينقصها، وفي «تجربة» لا يصل شيء للضيف وتبقى المحادثة مع الفريق. «بموافقة الفريق» و«يرد تلقائيًا» ينتظران مختبر الاختبار في الجلسة التالية.';
 
 /** YCloud's template status in Arabic (the raw value stays beside it) */
 export const TEMPLATE_STATUS: Record<string, string> = {
@@ -207,6 +264,7 @@ export const ALERT_LABELS: Record<string, string> = {
   complaint: 'شكوى من ضيف',
   webhook_silent: 'لم تصل رسائل من واتساب منذ مدة',
   template_rejected: 'قالب واتساب مرفوض أو موقوف',
+  api_credit: 'رصيد كلود انتهى',
 };
 export const VERIFY_ERRORS: Record<string, string> = {
   hub_channel_not_found: 'لم يُعثر على هذا الرقم في حساب واتساب للأعمال على YCloud.',

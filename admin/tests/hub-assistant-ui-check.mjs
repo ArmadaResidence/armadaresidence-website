@@ -1,8 +1,13 @@
 // «إعدادات المساعد» (Guest Hub H1, 13 Nov 2026 — DECISIONS.md 2026-11-13 «Guest Hub H1 — foundations»). OFFLINE — no
 // Supabase project and no YCloud is reached: the dashboard runs on a Vite dev server whose Supabase URL is a stub origin,
 // with a fake session (as admin/tests/audit-actors-check.mjs). The stub answers hub_assistant_overview with the four
-// units of H1 (the café and the rooftop hidden, every mode off, the engine gate missing), the two branch channels, the
-// templates hub_reply_ready ar + en APPROVED on both numbers, no alert, no recipient.
+// units (the café and the rooftop hidden, every mode off; since H5, 14 Nov 2026, the engine ready, the budgets 20 / 200,
+// what «تجربة» lacks = the unverified channel, «بموافقة الفريق» also the test lab), the two branch channels, the
+// templates hub_reply_ready ar + en APPROVED on both numbers, no alert, no recipient; hub_budget_overview with the
+// prices read on 14 Nov 2026.
+// H5: «الميزانية» — the budgets shown, editable by the system admin only (hub_setting_set per changed key), read-only for
+// a viewer; the prices with their date; a mode or «المساعد يعمل» asks nothing the server refuses (the test lab, the
+// system admin).
 // Checked at 1440 and 375, light and dark, for the system admin (assistant edit) and for management (view):
 //   - the page, the «not yet» note, four unit cards with the two dining units «مخفية», every mode «متوقف», the gates;
 //   - nothing the server refuses is asked: «المساعد يعمل» and every mode but «متوقف» open «لا يُشغَّل…» with the gates and
@@ -49,19 +54,22 @@ const STAFF = [
   { staff_id: id(4), full_name: 'استقبال طريق الشفا', role: 'reception', branch: 'shafa-road' },
 ];
 const member = (s) => ({ ...s, active: true });
-const GATES = ['channel', 'persona', 'skills', 'test_lab', 'engine'];
+const GATES = ['channel'];
+const GATES_SHADOW = ['channel', 'test_lab'];
+const BUDGET = { day: '2026-11-14', month: '2026-11', alert_pct: 80, daily_budget: 20, monthly_budget: 200, daily_spent: 0.42, monthly_spent: 3.1, unset: false, capped: false,
+  daily_capped: false, monthly_capped: false, daily_alert: false, monthly_alert: false, api_credit: false, api_credit_since: null, api_credit_last_try: null };
 const ch = (n, address, waba) => ({ id: id(100 + n), kind: 'whatsapp', address, waba_id: waba, display_name: null, connected: true, verified_at: null, provider_status: null, quality_rating: null, messaging_limit: null, sending_enabled: false });
-const OVERVIEW = (canEdit) => ({
-  can_edit: canEdit, all_branches: true, engine_ready: false, inbox_ready: true,
+const OVERVIEW = (canEdit, sysAdmin) => ({
+  can_edit: canEdit, system_admin: sysAdmin, all_branches: true, engine_ready: true, inbox_ready: true, budget: BUDGET,
   units: [
-    { id: id(11), key: 'airport-road', kind: 'branch', name_ar: 'فرع طريق المطار', name_en: 'Airport Road', branch: 'airport-road', status: 'active', mode: 'off', skills: [], sort: 10, persona_published: false, venue: null, channels: [ch(1, '+966536622277', '3187536471439127')], members: [member(STAFF[0]), member(STAFF[1]), member(STAFF[2])], gates: GATES },
-    { id: id(12), key: 'shafa-road', kind: 'branch', name_ar: 'فرع طريق الشفا', name_en: 'Shafa Road', branch: 'shafa-road', status: 'active', mode: 'off', skills: [], sort: 20, persona_published: false, venue: null, channels: [ch(2, '+966536663030', '329667206894245')], members: [member(STAFF[0]), member(STAFF[1]), member(STAFF[3])], gates: GATES },
-    { id: id(13), key: 'lobby-cafe', kind: 'dining', name_ar: 'مقهى ومطعم أرمادا ريزيدنس', name_en: 'Armada Residence Café & Restaurant', branch: 'airport-road', status: 'hidden', mode: 'off', skills: [], sort: 30, persona_published: false, venue: { id: id(21), slug: 'armada-residence-cafe', name_ar: 'مقهى ومطعم أرمادا ريزيدنس', name_en: 'Armada Residence Café & Restaurant', status: 'active', menu: 'internal' }, channels: [], members: [member(STAFF[0]), member(STAFF[1])], gates: ['hidden', ...GATES] },
-    { id: id(14), key: 'rooftop', kind: 'dining', name_ar: 'لاريو', name_en: 'LARIO', branch: 'airport-road', status: 'hidden', mode: 'off', skills: [], sort: 40, persona_published: false, venue: { id: id(22), slug: 'lario', name_ar: 'مطعم ومقهى عالمي', name_en: 'International Dining & Café', status: 'hidden', menu: 'none' }, channels: [], members: [member(STAFF[0]), member(STAFF[1])], gates: ['hidden', ...GATES, 'menu_link'] },
+    { id: id(11), key: 'airport-road', kind: 'branch', name_ar: 'فرع طريق المطار', name_en: 'Airport Road', branch: 'airport-road', status: 'active', mode: 'off', skills: [], sort: 10, persona_published: true, venue: null, channels: [ch(1, '+966536622277', '3187536471439127')], members: [member(STAFF[0]), member(STAFF[1]), member(STAFF[2])], gates: GATES, gates_shadow: GATES_SHADOW },
+    { id: id(12), key: 'shafa-road', kind: 'branch', name_ar: 'فرع طريق الشفا', name_en: 'Shafa Road', branch: 'shafa-road', status: 'active', mode: 'off', skills: [], sort: 20, persona_published: true, venue: null, channels: [ch(2, '+966536663030', '329667206894245')], members: [member(STAFF[0]), member(STAFF[1]), member(STAFF[3])], gates: GATES, gates_shadow: GATES_SHADOW },
+    { id: id(13), key: 'lobby-cafe', kind: 'dining', name_ar: 'مقهى ومطعم أرمادا ريزيدنس', name_en: 'Armada Residence Café & Restaurant', branch: 'airport-road', status: 'hidden', mode: 'off', skills: [], sort: 30, persona_published: false, venue: { id: id(21), slug: 'armada-residence-cafe', name_ar: 'مقهى ومطعم أرمادا ريزيدنس', name_en: 'Armada Residence Café & Restaurant', status: 'active', menu: 'internal' }, channels: [], members: [member(STAFF[0]), member(STAFF[1])], gates: ['hidden', 'channel', 'persona', 'skills'], gates_shadow: ['hidden', 'channel', 'persona', 'skills', 'test_lab'] },
+    { id: id(14), key: 'rooftop', kind: 'dining', name_ar: 'لاريو', name_en: 'LARIO', branch: 'airport-road', status: 'hidden', mode: 'off', skills: [], sort: 40, persona_published: false, venue: { id: id(22), slug: 'lario', name_ar: 'مطعم ومقهى عالمي', name_en: 'International Dining & Café', status: 'hidden', menu: 'none' }, channels: [], members: [member(STAFF[0]), member(STAFF[1])], gates: ['hidden', 'channel', 'persona', 'skills', 'menu_link'], gates_shadow: ['hidden', 'channel', 'persona', 'skills', 'menu_link', 'test_lab'] },
   ],
   staff: STAFF,
-  settings: { hub_assistant_on: false, hub_inbox_on: false, hub_summary_time: '08:00', hub_summary_money: false },
-  switch_gates: { hub_assistant_on: ['engine', 'inbox_on'], hub_inbox_on: [] },
+  settings: { hub_assistant_on: false, hub_inbox_on: false, hub_summary_time: '08:00', hub_summary_money: false, hub_budget_daily_usd: 20, hub_budget_monthly_usd: 200, hub_budget_alert_pct: 80 },
+  switch_gates: { hub_assistant_on: sysAdmin ? ['inbox_on'] : ['inbox_on', 'system_admin'], hub_inbox_on: [] },
   recipients: [],
   templates: ['airport-road', 'shafa-road'].flatMap((u, i) => ['ar', 'en'].map((language) => ({ channel_id: id(101 + i), unit: u, name: 'hub_reply_ready', language, category: 'UTILITY', status: 'APPROVED', reason: null, read_at: '2026-11-13T12:00:00Z' }))),
   alerts: [],
@@ -72,7 +80,14 @@ const exp = Math.floor(Date.now() / 1000) + 3600;
 const USER = { id: id(1), aud: 'authenticated', role: 'authenticated', email: 'qa@example.invalid', app_metadata: {}, user_metadata: {}, created_at: new Date().toISOString() };
 const TOKEN = `${b64({ alg: 'HS256', typ: 'JWT' })}.${b64({ sub: USER.id, role: 'authenticated', aud: 'authenticated', exp, session_id: 'qa-stub' })}.qa`;
 const SESSION = { access_token: TOKEN, refresh_token: 'qa-stub', token_type: 'bearer', expires_in: 3600, expires_at: exp, user: USER };
-const TOUR = ['hub-switches', 'hub-webhook', 'hub-units', 'hub-verify', 'hub-team', 'hub-mode', 'hub-templates', 'hub-summary', 'hub-alerts'];
+const TOUR = ['hub-switches', 'hub-budget', 'hub-webhook', 'hub-units', 'hub-verify', 'hub-team', 'hub-mode', 'hub-templates', 'hub-summary', 'hub-alerts'];
+const BUDGET_OVERVIEW = (sysAdmin) => ({
+  state: BUDGET, system_admin: sysAdmin,
+  prices: { 'claude-haiku-5-5': { input: 0.1, output: 0.5, read_at: '2026-11-14' }, 'claude-sonnet-5-5': { input: 2, output: 10, read_at: '2026-11-14' } },
+  models: { understand: 'claude-haiku-5-5', tag: 'claude-haiku-5-5', translate: 'claude-haiku-5-5', compose: 'claude-sonnet-5-5', suggest: 'claude-sonnet-5-5' },
+  by_unit: [{ unit: 'airport-road', name: 'فرع طريق المطار', today: 0.42, month: 3.1 }],
+  by_layer: [{ layer: 'understand', source: 'turn', calls: 12, today: 0.02, month: 0.3 }, { layer: 'compose', source: 'turn', calls: 9, today: 0.4, month: 2.8 }],
+});
 
 const failures = [];
 let checks = 0;
@@ -98,7 +113,8 @@ for (const [role, level] of [['admin', 'edit'], ['management', 'view']]) {
         try { body = r.request().postDataJSON(); } catch { /* none */ }
         if (fn) calls.push({ fn, body });
         if (fn === 'my_staff') return ok(me(role, level));
-        if (fn === 'hub_assistant_overview') return ok(OVERVIEW(edit));
+        if (fn === 'hub_assistant_overview') return ok(OVERVIEW(edit, role === 'admin'));
+        if (fn === 'hub_budget_overview') return ok(BUDGET_OVERVIEW(role === 'admin'));
         if (fn === 'hub_webhook_status') return ok({ system_admin: role === 'admin', registered: true, events: ['whatsapp.inbound_message.received', 'whatsapp.message.updated'], registered_at: '2026-11-09T07:44:00Z' });
         if (fn === 'hub_setting_set') return ok({ ok: true, batch_id: id(901) });
         if (fn === 'hub-admin' && body?.action === 'update_webhook_events') return ok({ ok: true, added: ['whatsapp.smb.message.echoes', 'whatsapp.phone_number.quality_updated'], events: [] });
@@ -127,7 +143,18 @@ for (const [role, level] of [['admin', 'edit'], ['management', 'view']]) {
       check(units.every((x) => x.mode === 'off'), `${tag}: every mode off`);
       check((await page.locator('[data-unit="lobby-cafe"] h3').textContent())?.includes('مقهى ومطعم أرمادا ريزيدنس'), `${tag}: the café unit carries «مقهى ومطعم أرمادا ريزيدنس»`);
       check(await page.locator('[data-hub-not-yet]').isVisible(), `${tag}: the «switching on comes later» note is on screen`);
-      check((await page.locator('[data-unit="airport-road"] [data-unit-gates]').textContent())?.includes('محرك المساعد'), `${tag}: the gates name the engine`);
+      check((await page.locator('[data-unit="airport-road"] [data-unit-gates]').textContent())?.includes('قناة واتساب'), `${tag}: «تجربة» lacks the verified channel only`);
+      check((await page.locator('[data-unit="airport-road"] [data-unit-gates-shadow]').textContent())?.includes('مختبر الاختبار'), `${tag}: «بموافقة الفريق» also waits for the test lab`);
+      // H5: «الميزانية»
+      await page.locator('[data-budget-prices]').waitFor({ timeout: 10000 }).catch(() => {});
+      check(await page.locator('[data-hub-budget]').isVisible(), `${tag}: «الميزانية» is on the page`);
+      check((await page.locator('[data-budget="daily"]').inputValue()) === '20' && (await page.locator('[data-budget="monthly"]').inputValue()) === '200' && (await page.locator('[data-budget="pct"]').inputValue()) === '80',
+        `${tag}: the budgets 20 / 200 and the alert at 80 %`);
+      check((await page.locator('[data-budget-spent]').innerText()).includes('0.42 دولار'), `${tag}: spent today in dollars`);
+      check((await page.locator('[data-budget-prices]').innerText()).includes('2026-11-14') && (await page.locator('[data-budget-model]').count()) === 5, `${tag}: the five models and their prices with the date read`);
+      check((await page.locator('[data-api-credit="ok"]').count()) === 1, `${tag}: the Claude credit «متاح»`);
+      check((await page.locator('[data-action="budget-save"]').count()) === (role === 'admin' ? 1 : 0) && (await page.locator('[data-budget="daily"]').isDisabled()) === (role !== 'admin'),
+        `${tag}: the budgets editable by the system admin only`);
       check((await page.locator('[data-switch-input]').count()) === 2 && (await page.$$eval('[data-switch-input]', (a) => a.every((x) => !x.checked))), `${tag}: both global switches off`);
       check((await page.locator('[data-template-status="APPROVED"]').count()) === 4 && (await page.locator('[data-templates] tbody').textContent()).includes('معتمد'), `${tag}: hub_reply_ready ar + en «معتمد» on both numbers`);
       check((await page.locator('[data-channel="+966536622277"]').textContent()).includes('+966 53 662 2277'), `${tag}: the Airport Road number spaced`);
@@ -158,17 +185,29 @@ for (const [role, level] of [['admin', 'edit'], ['management', 'view']]) {
         // nothing switches on from the page
         await page.locator('[data-switch-input="hub_assistant_on"]').click();
         await page.locator('[data-hub-blocked]').waitFor({ timeout: 5000 }).catch(() => {});
-        check((await page.locator('[data-hub-blocked] [data-gate]').count()) === 2, `${tag}: «المساعد يعمل» opens «لا يُشغَّل…» with its two gates`);
+        check((await page.locator('[data-hub-blocked] [data-gate]').count()) === 1 && (await page.locator('[data-hub-blocked] [data-gate="inbox_on"]').count()) === 1, `${tag}: «المساعد يعمل» opens «لا يُشغَّل…» with its gate («تخزين المحادثات» first)`);
         await page.locator('dialog[open] [data-action="dialog-cancel"]').click();
         await page.locator('[data-unit="airport-road"] [data-mode="shadow"]').click();
         await page.locator('[data-hub-blocked]').waitFor({ timeout: 5000 }).catch(() => {});
-        check((await page.locator('[data-hub-blocked] [data-gate="engine"]').count()) === 1, `${tag}: «بموافقة الفريق» opens the gates (the engine among them)`);
+        check((await page.locator('[data-hub-blocked] [data-gate="test_lab"]').count()) === 1, `${tag}: «بموافقة الفريق» opens the gates (the test lab of H6 among them)`);
+        await page.locator('dialog[open] [data-action="dialog-cancel"]').click();
+        await page.locator('[data-unit="airport-road"] [data-mode="test"]').click();
+        await page.locator('[data-hub-blocked]').waitFor({ timeout: 5000 }).catch(() => {});
+        check((await page.locator('[data-hub-blocked] [data-gate="channel"]').count()) === 1, `${tag}: «تجربة» opens the gates (the channel not verified)`);
         await page.locator('dialog[open] [data-action="dialog-cancel"]').click();
         await page.locator('[data-unit="rooftop"] [data-mode="test"]').click();
         await page.locator('[data-hub-blocked] [data-gate="hidden"]').waitFor({ timeout: 5000 }).catch(() => {});
         check((await page.locator('[data-hub-blocked] [data-gate="hidden"]').count()) === 1, `${tag}: the hidden rooftop says it is never switched on`);
         await page.locator('dialog[open] [data-action="dialog-cancel"]').click();
         check(!calls.some((c) => c.fn === 'hub_setting_set' || c.fn === 'hub_unit_mode_set'), `${tag}: no switch-on request left the page — ${JSON.stringify(calls.map((c) => c.fn))}`);
+
+        // H5: the budget — a changed daily budget goes to hub_setting_set, one key
+        await page.locator('[data-budget="daily"]').fill('25');
+        await page.locator('[data-action="budget-save"]').click();
+        await page.waitForTimeout(500);
+        const bset = calls.filter((c) => c.fn === 'hub_setting_set' && /^hub_budget/.test(c.body?.p_key ?? ''));
+        check(bset.length === 1 && bset[0].body.p_key === 'hub_budget_daily_usd' && bset[0].body.p_value === 25, `${tag}: «حفظ الميزانية» sends the changed key only — ${JSON.stringify(bset.map((c) => c.body))}`);
+        for (const c of bset) calls.splice(calls.indexOf(c), 1);
 
         // H2: «تخزين المحادثات» has no gate left — the switch asks the server (which audits it; «تراجع» follows)
         await page.locator('[data-switch-input="hub_inbox_on"]').click();

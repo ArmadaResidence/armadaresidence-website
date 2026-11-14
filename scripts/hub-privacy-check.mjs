@@ -21,6 +21,11 @@ const SRC = {
   '_shared/hub/webhook.ts': read('supabase/functions/_shared/hub/webhook.ts'),
   'booking-request/whatsapp-send.ts': read('supabase/functions/booking-request/whatsapp-send.ts'),
   'hub-admin/index.ts': read('supabase/functions/hub-admin/index.ts'),
+  // H5 (14 Nov 2026): the engine and its worker
+  'hub-agent/index.ts': read('supabase/functions/hub-agent/index.ts'),
+  '_shared/hub/engine.ts': read('supabase/functions/_shared/hub/engine.ts'),
+  '_shared/hub/model.ts': read('supabase/functions/_shared/hub/model.ts'),
+  '_shared/hub/compose/index.ts': read('supabase/functions/_shared/hub/compose/index.ts'),
 };
 
 let n = 0;
@@ -155,6 +160,35 @@ check(/create policy hub_media_read on storage\.objects for select to authentica
   check(!/question_excerpt/.test(resolve), 'resolving never copies the guest\'s words into a card or a FAQ question');
   const readsQueue = adminFiles.filter((f) => /hub_unanswered_list|question_excerpt|excerpts/.test(read(f)));
   check(readsQueue.every((f) => ['admin/src/lib/knowledge.ts', 'admin/src/pages/Knowledge.tsx'].includes(f)), `only «قاعدة المعرفة» reads the queue's words in the dashboard — ${readsQueue.join(', ')}`);
+}
+
+// ── 6. H5: the understanding (guest text) and the turn ──
+{
+  const MIG5 = read('supabase/migrations/20261114200000_guest_hub_assistant.sql');
+  const strip = (x) => x.replace(/--[^\n]*/g, '');
+  const fn5 = (name) => MIG5.slice(MIG5.indexOf(`function public.${name}(`), MIG5.indexOf('\n$$;', MIG5.indexOf(`function public.${name}(`)));
+  check(/create policy hub_turns_read on public\.hub_turns for select to authenticated using \(internal\.can_unit\(unit_id, 'view'\)\);/.test(MIG5), 'hub_turns (the understanding): readable only through the unit scope');
+  check(/create policy hub_drafts_read on public\.hub_drafts for select to authenticated\s+using \(exists \(select 1 from public\.hub_conversations c where c\.id = conversation_id and internal\.can_unit\(c\.unit_id, 'view'\)\)\);/.test(MIG5), 'hub_drafts (the fields): readable only through the unit scope');
+  check(/update public\.hub_turns set understanding = null, purged_at = p_now/.test(MIG5) && /update public\.hub_drafts set fields = '\{\}'::jsonb, purged_at = p_now/.test(MIG5), 'the understanding and the draft fields purged at 12 months');
+  check(!/understanding|hub_turns|hub_drafts/.test(strip(fn5('hub_budget_overview')) + strip(fn5('hub_engine_banner')) + strip(fn5('hub_alerts_claim'))), 'the budget screen, the banner and the alerts never read the understanding or a draft');
+  check(!/dashboard_signals/.test(strip(MIG5)), 'the H5 migration writes no signal (the hub kinds stay kind, branch, unit, time)');
+  check(!/understanding|phone|\bbody\b/.test(strip(fn5('hub_complaint_claim'))), 'the complaint email claim holds no text and no phone');
+  const claim = strip(fn5('hub_turn_claim')).replace(/where r\.phone = g\.phone/, '');
+  check(!/'phone'|wa_profile_name/.test(claim), 'the claim hands the engine no phone and no WhatsApp name (the bookings found by phone inside the database)');
+  const readers5 = [...MIG5.matchAll(/create (?:or replace )?function (public\.[a-z_0-9]+)\([\s\S]*?\n\$\$;/g)].filter((x) => /understanding/.test(strip(x[0]))).map((x) => x[1]);
+  check(readers5.every((f) => ['public.hub_turn_finish', 'public.hub_retention'].includes(f)), `only the turn's finish and the retention touch the understanding — ${readers5.join(', ')}`);
+  check(!/understanding/.test(consoleCalls(SRC['hub-agent/index.ts']).join('\n')) && !/understanding/.test(consoleCalls(SRC['_shared/hub/engine.ts']).join('\n')), 'no log line carries the understanding');
+  check(!consoleCalls(SRC['hub-admin/index.ts']).some((c) => /\br\.text\b|\(t\)|, t\b|\bt\.slice|\blist\b|suggestions\b|translation:/.test(c)), 'hub-admin never logs a translation or a suggestion (only that one was not stored)');
+  const files = [];
+  const walk2 = (dir) => {
+    for (const e of readdirSync(new URL(`../${dir}/`, import.meta.url), { withFileTypes: true })) {
+      if (e.isDirectory()) walk2(`${dir}/${e.name}`);
+      else if (/\.(ts|tsx)$/.test(e.name)) files.push(`${dir}/${e.name}`);
+    }
+  };
+  walk2('admin/src');
+  const und = files.filter((f) => /understanding|hub_turns/.test(read(f)));
+  check(und.length === 0, `no dashboard file reads the understanding (H5) — ${und.join(', ')}`);
 }
 
 if (fails.length) {

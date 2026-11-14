@@ -431,7 +431,7 @@ function CardForm({ card, from, meta, me, editable, contentEdit, busy, setBusy, 
       {from && <p className="text-sm text-ink-muted" data-from-queue>من سؤال {timesText(from.count)}. اكتب الإجابة كما تعرفها من مصدرها؛ لا تنسخ بيانات الضيف.</p>}
       <fieldset className="grid gap-1.5">
         <legend className="label">الوحدات</legend>
-        <p className="text-xs text-ink-muted">بلا اختيار = كل الوحدات. البطاقة الموسومة بوحدة لا تُقرأ إلا على رقمها.</p>
+        <p className="text-xs text-ink-muted">بلا اختيار = كل الوحدات. البطاقة الموسومة بوحدة تأتي أولًا على رقم تلك الوحدة، وتُقرأ على رقم الفرع الآخر أيضًا.</p>
         <div className="flex flex-wrap gap-1.5">
           {meta.units.filter((u) => !u.knowledge_hidden).map((u) => (
             <button key={u.key} type="button" className={`chip-toggle ${f.unit_keys.includes(u.key) ? 'is-on' : ''}`} aria-pressed={f.unit_keys.includes(u.key)} disabled={dis} onClick={() => toggle('unit_keys', u.key)} data-unit-toggle={u.key}>

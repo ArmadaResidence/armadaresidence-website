@@ -222,7 +222,8 @@ select pg_temp._check('R3 the lobby café unit reads its branch''s cards (Englis
 select pg_temp._save('r4', public.hub_knowledge_for('airport-road', '{location_directions,distances,nearby_attractions,umrah,branch_info,branch_compare,parking,reception_contact}', 'ar'));
 select pg_temp._check('R4 at most hub_cards_per_turn (5) cards, the unit''s own first',
   jsonb_array_length(pg_temp._j('r4') -> 'cards') = 5 and (pg_temp._j('r4') #>> '{cards,0,unit_keys}') = '["airport-road"]', pg_temp._j('r4')::text);
-select pg_temp._check('R5 never a card about the other branch alone', not exists (select 1 from jsonb_array_elements(pg_temp._j('r4') -> 'cards') e where e -> 'unit_keys' = '["shafa-road"]'));
+-- 14 Nov 2026 (Ahmed): every card on both branch numbers, the number's own first — here the own cards fill the limit
+select pg_temp._check('R5 the own branch''s cards fill the limit before the other branch''s', not exists (select 1 from jsonb_array_elements(pg_temp._j('r4') -> 'cards') e where e -> 'unit_keys' = '["shafa-road"]'));
 select pg_temp._root();
 update public.settings set value = '3'::jsonb where key = 'hub_cards_per_turn';
 select pg_temp._service();
@@ -245,9 +246,11 @@ select pg_temp._check('R8 the rooftop unit reads nothing', jsonb_array_length(pu
 select pg_temp._check('R9 an expired card is excluded; one ending today still counts', not ('k-qa-expired' = any (pg_temp._keys(pg_temp._j('r7')))) and 'k-qa-today' = any (pg_temp._keys(pg_temp._j('r7'))));
 select pg_temp._check('R10 no topic → nothing', jsonb_array_length(public.hub_knowledge_for('airport-road', '{}', 'ar') -> 'cards') = 0);
 select pg_temp._check('R11 a parent topic reads its children''s cards (cafe_restaurant → menu)', 'k-cafe-menu' = any (pg_temp._keys(public.hub_knowledge_for('airport-road', '{cafe_restaurant}', 'ar'))));
-select pg_temp._check('R12 the Shafa Road restaurant card on shafa-road, never on airport-road',
-  'k-shafa-restaurant' = any (pg_temp._keys(public.hub_knowledge_for('shafa-road', '{cafe_restaurant}', 'ar')))
-  and not ('k-shafa-restaurant' = any (pg_temp._keys(public.hub_knowledge_for('airport-road', '{cafe_restaurant}', 'ar')))));
+-- 14 Nov 2026 (Ahmed): the other branch's card is answerable, after the number's own
+select pg_temp._check('R12 the Shafa Road restaurant card first on shafa-road; on airport-road only after its own cards',
+  (pg_temp._keys(public.hub_knowledge_for('shafa-road', '{cafe_restaurant}', 'ar')))[1] = 'k-shafa-restaurant'
+  and coalesce(array_position(pg_temp._keys(public.hub_knowledge_for('airport-road', '{cafe_restaurant}', 'ar')), 'k-shafa-restaurant'), 99)
+      > (select count(*) from jsonb_array_elements(public.hub_knowledge_for('airport-road', '{cafe_restaurant}', 'ar') -> 'cards') e where e -> 'unit_keys' = '["airport-road"]'));
 
 -- ══ F — the FAQ read live, fees from Settings ══
 select pg_temp._save('f1', public.hub_knowledge_for('airport-road', '{breakfast}', 'ar'));

@@ -58,6 +58,7 @@ import {
 } from './email.ts';
 import { makeRef } from '../_shared/ref.ts';
 import { emailKey, phoneKey, platformClientIp } from '../_shared/client-ip.ts';
+import { BOOKING_LIMIT_WINDOW_SECONDS, BOOKING_PHONE_LIMIT } from './limits.ts';
 import { verifyTurnstile } from '../_shared/turnstile.ts';
 import { eyabInvite } from '../_shared/eyab-invite.ts';
 import { sendWhatsApp } from './whatsapp-send.ts';
@@ -138,12 +139,13 @@ const BOTH = 'both';
 
 const RATE_LIMIT = 5;
 const RATE_WINDOW_SECONDS = 3600;
-/** per normalised phone and per email, over 24 h (Ahmed, 4 Nov 2026): a guest may try several dates in a day */
-const PHONE_LIMIT = 6;
+/** per normalised phone and per email, over 24 h (Ahmed, 4 Nov 2026): a guest may try several dates in a day — the phone
+ *  rule lives in limits.ts, read here and by the Guest Hub's adapter (14 Nov 2026) */
+const PHONE_LIMIT = BOOKING_PHONE_LIMIT;
 const EMAIL_LIMIT = 6;
 /** partner enquiries: per phone and per email, over 24 h */
 const PARTNER_LIMIT = 4;
-const DAY_SECONDS = 86400;
+const DAY_SECONDS = BOOKING_LIMIT_WINDOW_SECONDS;
 
 /** Resend's delivered-sink: test-mode emails land here instead of the hotel mailboxes. */
 const TEST_SINK = 'delivered@resend.dev';

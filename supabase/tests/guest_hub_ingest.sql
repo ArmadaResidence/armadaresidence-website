@@ -128,8 +128,13 @@ select pg_temp._check('W1 «تخزين المحادثات» switched on through 
 select public.revert_batch((pg_temp._j('w1') ->> 'batch_id')::uuid);
 select pg_temp._check('W1 … and undone', (select value = 'false' from public.settings where key = 'hub_inbox_on'));
 select pg_temp._save('w1', public.hub_setting_set('hub_inbox_on', 'true'));
-select pg_temp._fails('W2 «المساعد يعمل» is still refused (the engine)', $$select public.hub_setting_set('hub_assistant_on', 'true')$$, 'hub_not_ready');
-select pg_temp._fails('W2 every unit mode is still refused', format('select public.hub_unit_mode_set(%L, %L)', pg_temp._unit('airport-road'), 'shadow'), 'hub_not_ready');
+-- H5 (14 Nov 2026): the engine exists and the budgets are set — the system admin may switch «المساعد يعمل» on now
+select pg_temp._save('w2', public.hub_setting_set('hub_assistant_on', 'true'));
+select pg_temp._check('W2 «المساعد يعمل» may be switched on by the system admin since H5 (with «تخزين المحادثات» on)',
+  (select value = 'true' from public.settings where key = 'hub_assistant_on'), pg_temp._j('w2')::text);
+select public.revert_batch((pg_temp._j('w2') ->> 'batch_id')::uuid);
+select pg_temp._check('W2 … and undone', (select value = 'false' from public.settings where key = 'hub_assistant_on'));
+select pg_temp._fails('W2 «بموافقة الفريق» is still refused (the test lab of H6, and here the channel)', format('select public.hub_unit_mode_set(%L, %L)', pg_temp._unit('airport-road'), 'shadow'), 'hub_not_ready');
 select pg_temp._as('sales');
 select pg_temp._fails('W3 sales (assistant none) cannot switch it', $$select public.hub_setting_set('hub_inbox_on', 'false')$$, '42501');
 

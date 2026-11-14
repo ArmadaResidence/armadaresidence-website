@@ -17,7 +17,7 @@
 import { readFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { existsSync } from 'node:fs';
-import { hubDuration, hubExpiryLines, hubExpiryMail, hubQualityMail, hubQualityRating, hubWaitingMail } from '../supabase/functions/booking-request/email.ts';
+import { hubApiCreditMail, hubBudgetMail, hubComplaintMail, hubDuration, hubExpiryLines, hubExpiryMail, hubQualityMail, hubQualityRating, hubWaitingMail } from '../supabase/functions/booking-request/email.ts';
 
 const read = (p) => readFileSync(new URL(`../${p}`, import.meta.url), 'utf8').replace(/\r\n/g, '\n');
 const GEN = new URL('../supabase/functions/booking-request/content.generated.json', import.meta.url);
@@ -94,6 +94,34 @@ check(/cron\.schedule\('hub-inbox', '\*\/2 \* \* \* \*'/.test(MIG), 'one pg_cron
   check(/site_deploy_alert_recipients\(\)/.test(claim) && /return jsonb_build_object\('items', '\[\]'::jsonb/.test(claim) && /set sent_at = p_now/.test(claim), 'the claim: the active admins, an empty list when nothing new, each alert sent once');
   check(/body\.action === 'hub-expiry'/.test(FN) && /hubExpiryMail\(content, \{ date: r\.data\.date, items \}\)/.test(FN) && /if \(!items\.length \|\| !r\.data\.date\) return/.test(FN), 'wa-automation sends ONE email, only with a list');
   check(/cron\.schedule\('hub-expiry', '0 5 \* \* \*'/.test(MIG4), 'pg_cron hub-expiry at 05:00 UTC = 08:00 Riyadh');
+}
+
+// ── 5. H5 (14 Nov 2026): the complaint, the Claude API credit, the budget alerts ──
+{
+  const comp = hubComplaintMail(C, { conversation_id: '00000000-0000-4000-8000-000000000123', short: 'ABCD1234', unit_name: 'فرع طريق المطار' });
+  check(comp.subject === 'شكوى من ضيف — فرع طريق المطار — AR-HUB-ABCD1234', `the complaint subject = copy.md §7 row 2, with AR-HUB- — ${comp.subject}`);
+  check(comp.text.includes('وصلت شكوى في محادثة على فرع طريق المطار، وانتقلت المحادثة إلى الفريق.') && comp.text.includes('فتح المحادثة: ') && comp.text.includes('/inbox?c=00000000-0000-4000-8000-000000000123'),
+    'the complaint body and its button to the conversation');
+  const cred = hubApiCreditMail(C, { at: '2026-11-14T06:00:00Z' });
+  check(cred.subject === 'رصيد كلود انتهى — المساعد متوقف — AR-HUB-20261114', `the API-credit subject = Ahmed's wording with AR-HUB-{yyyymmdd} — ${cred.subject}`);
+  check(cred.text.includes('رفضت أنثروبيك طلبات المساعد لأن رصيد المطورين انتهى، فكل المحادثات الجديدة تذهب إلى الفريق حتى يعود الرصيد.')
+    && cred.text.includes('يعود الرصيد الشهري مع بداية دورة الاشتراك التالية، أو يمكن إضافة رصيد مدفوع من لوحة المطورين في أنثروبيك.') && cred.text.includes('فتح إعدادات المساعد: '),
+    'the API-credit body: both sentences and «فتح إعدادات المساعد»');
+  const bud = hubBudgetMail(C, { budget: 'daily', spent: 16.4, limit: 20, pct: 82, cap: false, at: '2026-11-14T06:00:00Z' });
+  check(/AR-HUB-20261114$/.test(bud.subject) && bud.text.includes('16.4 دولار') && bud.text.includes('20 دولار') && bud.text.includes('(82%)'), `the budget alert: the AR- token, the dollars, the percentage — ${bud.subject}`);
+  const cap = hubBudgetMail(C, { budget: 'monthly', spent: 201, limit: 200, pct: 100, cap: true, at: '2026-11-14T06:00:00Z' });
+  check(cap.text.includes('بلغت التكلفة الحد') && cap.subject.includes('الميزانية الشهرية'), 'the cap email adds the hard-cap line');
+  for (const [name, m] of [['complaint', comp], ['credit', cred], ['budget', bud]]) {
+    check(/<html/.test(m.html) && /@media print|@page/.test(m.html), `${name}: the shared layout with its print stylesheet`);
+    check(!/\+?9665\d{8}|[٠-٩]/.test(m.text), `${name}: no phone number, Western digits`);
+  }
+  const AG = read('supabase/functions/hub-agent/index.ts');
+  check(/if \(outcome\.complaint && claim\.turn\.mode !== 'test' && !claim\.conversation\.is_test\)/.test(AG) && /rpc<Json>\('hub_complaint_claim'/.test(AG), 'the complaint email: never from «تجربة» or a test conversation, claimed once');
+  check(/x\.kind === 'api_credit'\s+\? hubApiCreditMail/.test(AG) && /rpc\('hub_alerts_claim', \{\}\)/.test(AG), 'the agent emails the budget and credit alerts it claims');
+  const MIG5 = read('supabase/migrations/20261114200000_guest_hub_assistant.sql');
+  check(/select u\.email from public\.staff s join auth\.users u on u\.id = s\.user_id where s\.active and s\.role = 'admin'/.test(MIG5), 'the alerts go to the active admins');
+  check(/insert into public\.hub_alerts \(kind, payload\) values \('api_credit'/.test(MIG5) && /on conflict do nothing returning id into v_id;/.test(MIG5), 'one api_credit alert while it lasts (the one-open index)');
+  check(/'complaint', u\.id, jsonb_build_object\('item', c\.id::text\)/.test(MIG5), 'one complaint email per conversation (the alert keyed by the conversation)');
 }
 
 if (fails.length) {

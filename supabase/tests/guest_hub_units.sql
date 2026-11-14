@@ -150,10 +150,13 @@ delete from public.hub_alerts;
 select pg_temp._fails('G1 a hidden unit cannot be on — even by a direct statement', $$update public.hub_units set assistant_mode = 'shadow' where key = 'rooftop'$$, 'unit_hidden');
 select pg_temp._fails('G1 the hidden-off constraint holds without the trigger too', $$insert into public.hub_units (key, kind, name_ar, name_en, branch_slug, status, assistant_mode) values ('qa-x', 'branch', 'تجربة', 'Test', 'airport-road', 'hidden', 'test')$$, 'unit_hidden');
 select pg_temp._fails('G2 an active unit cannot leave «متوقف» while its gates are missing — even by a direct statement', $$update public.hub_units set assistant_mode = 'test' where key = 'airport-road'$$, 'hub_not_ready');
-select pg_temp._check('G2 the gates of Airport Road name the channel, persona, skills, test lab and the engine',
-  (select internal.hub_unit_gates(u) @> '["channel", "persona", "skills", "test_lab", "engine"]'::jsonb and not internal.hub_unit_gates(u) ? 'hidden' from public.hub_units u where key = 'airport-road'));
-select pg_temp._check('G2 the gates of the rooftop add «hidden» and the menu link', (select internal.hub_unit_gates(u) @> '["hidden", "engine"]'::jsonb from public.hub_units u where key = 'rooftop'));
-select pg_temp._check('G2 the engine is not ready; the inbox is (session H2 built the router and the store)', not internal.hub_engine_ready() and internal.hub_inbox_ready());
+-- H5 (14 Nov 2026): the engine exists, both branch units have their persona and skills, the budgets are set — what is
+-- left for «تجربة» is the verified channel; «بموافقة الفريق» also waits for the test lab (H6)
+select pg_temp._check('G2 the gates of Airport Road for «تجربة»: the channel only (persona, skills, budget and engine in place)',
+  (select internal.hub_unit_gates(u) = '["channel"]'::jsonb from public.hub_units u where key = 'airport-road'));
+select pg_temp._check('G2 … and for «بموافقة الفريق» the test lab too', (select internal.hub_unit_gates_mode(u, 'shadow') = '["channel", "test_lab"]'::jsonb from public.hub_units u where key = 'airport-road'));
+select pg_temp._check('G2 the gates of the rooftop add «hidden»', (select internal.hub_unit_gates(u) ? 'hidden' and not internal.hub_unit_gates(u) ? 'engine' from public.hub_units u where key = 'rooftop'));
+select pg_temp._check('G2 the engine is ready (H5) and the inbox (H2)', internal.hub_engine_ready() and internal.hub_inbox_ready());
 select pg_temp._fails('G3 «المساعد يعمل» cannot be switched on — even by a direct statement', $$update public.settings set value = 'true' where key = 'hub_assistant_on'$$, 'hub_not_ready');
 -- «تخزين المحادثات» may be switched on since H2 (guest_hub_ingest.sql tests it); it stays off by default
 select pg_temp._check('G3 «تخزين المحادثات» is off and has no gate left', (select value = 'false' from public.settings where key = 'hub_inbox_on') and internal.hub_switch_gates('hub_inbox_on') = '[]'::jsonb);
@@ -172,8 +175,10 @@ select pg_temp._check('S1 defaults: switches off, timers and limits as listed',
     "hub_offer_expiry_alert_days": 7, "hub_card_expiry_alert_days": 14, "hub_retention_months": 12, "hub_media_retention_days": 90,
     "hub_spike_factor": 3, "hub_spike_min": 5,
     "hub_models": {"understand": "claude-haiku-5-5", "tag": "claude-haiku-5-5", "translate": "claude-haiku-5-5", "compose": "claude-sonnet-5-5"}}'::jsonb);
-select pg_temp._check('S1 the values Ahmed confirms later are null: the budgets and the model prices',
-  (select bool_and(jsonb_typeof(value) = 'null') from public.settings where key in ('hub_budget_daily_usd', 'hub_budget_monthly_usd', 'hub_model_prices')));
+-- H5 (14 Nov 2026, Ahmed): USD 20 a day and USD 200 a month; the prices read from Anthropic's page with their date
+select pg_temp._check('S1 the budgets (20 a day, 200 a month) and the model prices with the date read',
+  (select value = '20' from public.settings where key = 'hub_budget_daily_usd') and (select value = '200' from public.settings where key = 'hub_budget_monthly_usd')
+  and (select value -> 'claude-haiku-5-5' ->> 'read_at' = '2026-11-14' and (value -> 'claude-sonnet-5-5' ->> 'output')::numeric = 10 from public.settings where key = 'hub_model_prices'));
 select pg_temp._check('S1 none is in the site defaults', not (internal.default_setting_keys() && internal.hub_setting_keys()));
 select pg_temp._fails('S1 an unknown key is still refused (the check trigger before the key list)', $$insert into public.settings (key, value) values ('hub_unknown', '1')$$, '20000');
 

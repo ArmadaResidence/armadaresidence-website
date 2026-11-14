@@ -1609,3 +1609,62 @@ ${buttons(L, [button(L, url, M.button, 'bronze')])}`,
   const text = [M.heading, '', ...lines, '', `${M.button}: ${url}`, '', legalText(c, 'ar')].join('\n');
   return { subject, html, text };
 }
+
+// ══ Guest Hub H5 (14 Nov 2026): the engine's staff emails — Arabic only, no guest words, no phone number ══════════════
+const hubDay = (at: string | Date) =>
+  new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Riyadh', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(at)).replace(/-/g, '');
+const hubAdmin = (c: Content, path: string) => `${String(c.admin_url ?? 'https://admin.armadaresidence.com').replace(/\/$/, '')}${path}`;
+function hubPlainMail(c: Content, subject: string, lines: string[], url: string, label: string): Mail {
+  const L: Locale = 'ar';
+  const inner = section(
+    L,
+    `${headline(L, lines[0])}
+${lines.slice(1).map((l) => para(L, l)).join('\n')}
+<div style="height:18px; line-height:18px; font-size:0;">&nbsp;</div>
+${buttons(L, [button(L, url, label, 'bronze')])}`,
+  );
+  const html = doc({ lang: 'ar', title: subject, preheader: lines[0], body: header(c, undefined, true) + card(inner) + footer(c, ['ar']), print: true });
+  const text = [...lines, '', `${label}: ${url}`, '', legalText(c, 'ar')].join('\n');
+  return { subject, html, text };
+}
+
+/** «شكوى من ضيف» (copy.md §7 row 2): to the branch's reception recipients, once per conversation */
+export interface HubComplaintMail {
+  conversation_id: string;
+  short: string;
+  unit_name: string;
+  test?: boolean;
+}
+export function hubComplaintMail(c: Content, d: HubComplaintMail): Mail {
+  const M = c.staff_email.ar.hub_complaint;
+  const D = c.staff_email.ar.deploy_alert;
+  const subject = `${d.test ? D.test_prefix : ''}${fill(M.subject, { unit_name: d.unit_name, id: d.short })}`;
+  return hubPlainMail(c, subject, [fill(M.lead, { unit_name: d.unit_name })], hubAdmin(c, `/inbox?c=${encodeURIComponent(d.conversation_id)}`), M.button);
+}
+
+/** «رصيد كلود انتهى — المساعد متوقف» (copy.md §7, Ahmed's brief of 14 Nov 2026): ONE email to the active admins */
+export function hubApiCreditMail(c: Content, d: { at: string; test?: boolean }): Mail {
+  const M = c.staff_email.ar.hub_api_credit;
+  const D = c.staff_email.ar.deploy_alert;
+  const subject = `${d.test ? D.test_prefix : ''}${fill(M.subject, { yyyymmdd: hubDay(d.at) })}`;
+  return hubPlainMail(c, subject, M.lines as string[], hubAdmin(c, '/assistant'), M.button);
+}
+
+/** «ميزانية المساعد» (copy.md §7, the session's wording): at the alert percentage and at the cap, once per budget and period */
+export interface HubBudgetMail {
+  budget: 'daily' | 'monthly';
+  spent: number;
+  limit: number;
+  pct: number;
+  cap: boolean;
+  at: string;
+  test?: boolean;
+}
+export function hubBudgetMail(c: Content, d: HubBudgetMail): Mail {
+  const M = c.staff_email.ar.hub_budget;
+  const D = c.staff_email.ar.deploy_alert;
+  const usd = (n: number) => `${Math.round(n * 100) / 100} دولار`;
+  const subject = `${d.test ? D.test_prefix : ''}${fill(M.subject, { budget_label: M.budget_labels[d.budget], yyyymmdd: hubDay(d.at) })}`;
+  const line = fill(M.line, { spent: usd(d.spent), budget: usd(d.limit), pct: String(Math.round(d.pct)), period_label: M.period_labels[d.budget] });
+  return hubPlainMail(c, subject, d.cap ? [line, M.cap_line] : [line], hubAdmin(c, '/assistant'), M.button);
+}

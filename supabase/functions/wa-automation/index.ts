@@ -293,12 +293,39 @@ async function releaseHeld(conversation: string): Promise<number> {
   return n;
 }
 
+/** Guest Hub H5: queue the assistant's turn and ask hub-agent to run it (the one-minute sweep catches a missed call) */
+async function queueTurn(conversation: string, message: string, test: boolean): Promise<string> {
+  const q = await rpc<{ queued: boolean; joined?: boolean; turn_id?: string; reason?: string }>('hub_turn_queue', { p_conversation: conversation, p_message: message });
+  if (!q.ok) {
+    console.error('wa-automation: turn queue failed', q.status, q.message.slice(0, 120));
+    return 'error';
+  }
+  if (!q.data.queued) return q.data.reason ?? 'not_queued';
+  // a message that joined a pending turn: the call made for that turn will run it
+  if (q.data.joined || !q.data.turn_id || test) return q.data.joined ? 'joined' : 'queued';
+  const tok = await rpc<string>('hub_agent_token', {});
+  if (!tok.ok || !tok.data) return 'queued';
+  try {
+    await fetch(`${url()}/functions/v1/hub-agent`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-armada-agent': tok.data },
+      body: JSON.stringify({ action: 'run', turn: q.data.turn_id }),
+      signal: AbortSignal.timeout(5000),
+    });
+  } catch {
+    // the sweep (pg_cron hub-agent, every minute) runs it
+  }
+  return 'queued';
+}
+
 // deno-lint-ignore no-explicit-any
 async function handleInbound(ev: any, test: boolean): Promise<Record<string, unknown>> {
   const m = parseInbound(ev?.whatsappInboundMessage);
   if (m.referral) console.log('wa-automation: referral', describe(ev));
   // 0. storage — only while «تخزين المحادثات» is on (the RPC decides; nothing is stored otherwise)
   let stored = false;
+  let convId: string | null = null;
+  let msgId: string | null = null;
   if (m.id && m.from && m.to) {
     const ing = await rpc<{ stored: boolean; reason?: string; conversation_id?: string; message_id?: string; unit?: string; media_wanted?: boolean }>('hub_ingest_inbound', {
       p: { channel: m.to, phone: m.from, provider_id: m.id, sent_at: m.sentAt, kind: m.kind, body: m.text || null, payload: m.payload,
@@ -307,6 +334,8 @@ async function handleInbound(ev: any, test: boolean): Promise<Record<string, unk
     if (!ing.ok) console.error('wa-automation: hub ingest failed', ing.status, ing.message.slice(0, 120));
     else if (ing.data.stored) {
       stored = true;
+      convId = ing.data.conversation_id ?? null;
+      msgId = ing.data.message_id ?? null;
       if (ing.data.media_wanted && !test && ing.data.unit && ing.data.conversation_id && ing.data.message_id) {
         await storeMedia(m, ing.data.unit, ing.data.conversation_id, ing.data.message_id);
       }
@@ -319,7 +348,12 @@ async function handleInbound(ev: any, test: boolean): Promise<Record<string, unk
   }
   // 1–3. the route (spec §3.7: a hub button by its id, then the opt-out words, then the typed «إلغاء»)
   const r = route(m, content.club_whatsapp);
-  if (r.kind === 'none' || r.kind === 'hub_button') return { kind: 'inbound', stored, route: r.kind };
+  if (r.kind === 'none' || r.kind === 'hub_button') {
+    // the assistant's turn (H5): after the «إلغاء» handling above, only for a stored message, only while «المساعد يعمل»
+    // is on and the unit's mode is not «متوقف» (public.hub_turn_queue decides); hub-agent runs it after the burst
+    const turn = stored && convId && msgId ? await queueTurn(convId, msgId, test) : null;
+    return { kind: 'inbound', stored, route: r.kind, ...(turn ? { turn } : {}) };
+  }
   const branch = branchOfNumber(m.to);
   if (!m.from || !branch) {
     console.warn('wa-automation: a reply from an unknown number pair — ignored');

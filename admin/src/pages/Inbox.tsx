@@ -12,18 +12,23 @@
 //   - The composer: free text inside the 24-hour window; after it «إرسال عند رد الضيف» (the answer held, hub_reply_ready
 //     now) and «إرسال قالب». A failed send shows «إعادة الإرسال».
 //   - The actions: «تولّي المحادثة», «تحويل» (a note required), «إغلاق المحادثة», «ملاحظة», «حظر الرقم» (with «تراجع»),
-//     the owner. Not shown before their sessions: «إعادة للمساعد», «اقتراحات», «بطاقات الغرف», the translation.
+//     the owner. H5 (14 Nov 2026): «إعادة للمساعد» (T24, only while the unit's assistant may write), «إيقاف المساعد
+//     مؤقتًا» (any inbox: edit member), the assistant's drafts («إرسال» · «تعديل ثم إرسال» · «رفض» with a reason — a
+//     compare-and-set on the server) with the cards they drew from, its «تجربة» replies (never sent), «الترجمة» of a
+//     guest message and «اقتراحات» (three replies; the guard runs on the one sent). «بطاقات الغرف» comes with H8.
 //   - Shortcuts (Alt + N / R / T / C), live updates (Realtime on hub_conversations / hub_messages under RLS, and
 //     dashboard_signals), Western digits, the shared dialogs and their dirty guard, light and dark, the page tour.
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
+import * as api from '../lib/api';
 import { BRANCH_NAMES, riyadhDateTime, shortDate, STATUS_LABELS, west } from '../lib/format';
 import tplDefs from '../../../supabase/functions/_shared/hub/hub-templates.json';
 import {
-  ACTIONS, LANGUAGE_FILTERS, MARKS, OWNER_FILTERS, SHORTCUTS, STATE_LABELS, TABS, TAB_LABELS, TAG_LABELS, TEMPLATE_LABELS, assign, block, close, eventText, list, markUnanswered,
-  mediaUrl, newKey, ownerText, retry, send, sendError, statusText, takeOver, thread, timerTone, transfer, waitingText, windowState, addNote,
-  type Filters, type HubState, type InboxList, type InboxRow, type Msg, type Tab, type Thread,
+  ACTIONS, DRAFT_ACTIONS, LANGUAGE_FILTERS, MARKS, OWNER_FILTERS, REJECT_REASONS, SHORTCUTS, STATE_LABELS, TABS, TAB_LABELS, TAG_LABELS, TEMPLATE_LABELS, approve, assign, assistError, banner,
+  block, close, eventText, list, markUnanswered, mediaUrl, needsTranslation, newKey, ownerText, pauseUnit, reject, release, retry, send, sendError, sendSuggestion, statusText, suggest, takeOver,
+  thread, timerTone, transfer, translate, waitingText, windowState, addNote,
+  type Filters, type HubState, type InboxList, type InboxRow, type Msg, type RejectReason, type Tab, type Thread,
 } from '../lib/inbox';
 import { CancelButton, Confirm, DirtyScope, ErrorBox, Field, Loading, Modal, Spinner, useToast } from '../components/ui';
 
@@ -53,6 +58,11 @@ export default function Inbox() {
   const composerRef = useRef<HTMLTextAreaElement>(null);
   const [dialog, setDialog] = useState<null | 'transfer' | 'note' | 'close' | 'block' | 'template'>(null);
   const [media, setMedia] = useState<{ url: string; mime: string | null } | null>(null);
+  const [draft, setDraft] = useState<{ kind: 'edit' | 'reject'; m: Msg } | null>(null);
+  const [engine, setEngine] = useState<{ assistant_on: boolean; capped: boolean; api_credit: boolean; alert: boolean } | null>(null);
+  useEffect(() => {
+    banner().then(setEngine).catch(() => setEngine(null));
+  }, []);
 
   const setParam = useCallback((patch: Record<string, string | null>) => {
     setSp((p) => {
@@ -182,12 +192,17 @@ export default function Inbox() {
       <div className="flex flex-wrap items-end justify-between gap-2">
         <div>
           <h1 className="text-2xl font-bold">المحادثات</h1>
-          <p className="text-sm text-ink-muted">محادثات واتساب لوحداتك. لا يوجد مساعد بعد: كل محادثة مع الفريق.</p>
+          <p className="text-sm text-ink-muted">محادثات واتساب لوحداتك. مسودات المساعد تنتظر موافقتك في «مسودات للموافقة»، وردود «تجربة» لا تصل للضيف.</p>
         </div>
         <p className="text-xs text-ink-muted max-lg:hidden" data-tour="inbox-shortcuts" data-shortcuts>
           {SHORTCUTS.map((s) => <span key={s.code} className="ms-3"><kbd className="num">{s.keys}</kbd> {s.label}</span>)}
         </p>
       </div>
+      {engine?.assistant_on && (engine.api_credit || engine.capped) && (
+        <p className="note-amber text-sm" role="status" data-engine-banner>
+          {engine.api_credit ? 'رصيد كلود انتهى: كل المحادثات الجديدة تذهب إلى الفريق حتى يعود الرصيد.' : 'بلغت تكلفة المساعد الحد: كل المحادثات الجديدة تذهب إلى الفريق حتى تبدأ الفترة التالية.'}
+        </p>
+      )}
       {data && !data.inbox_on && (
         <p className="note-amber text-sm" role="note" data-inbox-off>«تخزين المحادثات» متوقف: لا تُحفظ الرسائل الجديدة ولا يُرسل شيء من هنا حتى يُشغَّل من «إعدادات المساعد».</p>
       )}
@@ -273,7 +288,15 @@ export default function Inbox() {
           ) : (
             <ThreadView t={t} now={now} edit={edit} unitNames={unitNames} composerRef={composerRef}
               onBack={() => setView('list')} onPanel={() => setView('panel')} onChanged={reload}
-              onTakeOver={() => void doTakeOver()} onDialog={setDialog} onMedia={setMedia}
+              onTakeOver={() => void doTakeOver()} onDialog={setDialog} onMedia={setMedia} onDraft={setDraft}
+              onRelease={() => c && act('release', () => release(c.id), 'عادت المحادثة إلى المساعد.')}
+              onPause={() => c && act('pause', async () => {
+                const r = await pauseUnit(c.unit_id);
+                toast.undo('أُوقف المساعد في هذه الوحدة مؤقتًا — يعيد تشغيله مدير النظام', async () => {
+                  await api.revertBatch(r.batch_id);
+                  await reload();
+                });
+              })}
               onUnanswered={(id) => act('unanswered', () => markUnanswered(id), 'أُضيفت الرسالة إلى «لم أعرف الإجابة».')} />
           )}
         </section>
@@ -289,6 +312,8 @@ export default function Inbox() {
           <TransferDialog open={dialog === 'transfer'} t={t} onClose={() => setDialog(null)} onDone={async () => { setDialog(null); await reload(); }} />
           <NoteDialog open={dialog === 'note'} id={c.id} onClose={() => setDialog(null)} onDone={async () => { setDialog(null); await reload(); }} />
           <TemplateDialog open={dialog === 'template'} t={t} onClose={() => setDialog(null)} onDone={async () => { setDialog(null); await reload(); }} />
+          <DraftEditDialog open={draft?.kind === 'edit'} m={draft?.m ?? null} onClose={() => setDraft(null)} onDone={async () => { setDraft(null); await reload(); }} />
+          <DraftRejectDialog open={draft?.kind === 'reject'} m={draft?.m ?? null} onClose={() => setDraft(null)} onDone={async () => { setDraft(null); await reload(); }} />
           <Confirm open={dialog === 'close'} title={ACTIONS.close} onClose={() => setDialog(null)} confirmLabel={ACTIONS.close}
             body="تُغلق هذه المحادثة. إن كتب الضيف بعدها تبدأ محادثة جديدة، ولا يُرسل رد مؤجَّل بعد الإغلاق."
             onConfirm={() => { setDialog(null); void act('close', () => close(c.id), 'أُغلقت المحادثة.'); }} />
@@ -324,10 +349,11 @@ export default function Inbox() {
 
 type Item = { at: string; kind: 'msg'; m: Msg } | { at: string; kind: 'tpl'; i: Thread['templates'][number] } | { at: string; kind: 'event'; e: Thread['events'][number] };
 
-function ThreadView({ t, now, edit, unitNames, composerRef, onBack, onPanel, onChanged, onTakeOver, onDialog, onMedia, onUnanswered }: {
+function ThreadView({ t, now, edit, unitNames, composerRef, onBack, onPanel, onChanged, onTakeOver, onDialog, onMedia, onUnanswered, onDraft, onRelease, onPause }: {
   t: Thread; now: number; edit: boolean; unitNames: Record<string, string>; composerRef: React.RefObject<HTMLTextAreaElement | null>;
   onBack: () => void; onPanel: () => void; onChanged: () => Promise<void>; onTakeOver: () => void;
   onDialog: (d: 'transfer' | 'note' | 'close' | 'block' | 'template') => void; onMedia: (m: { url: string; mime: string | null }) => void; onUnanswered: (id: string) => void;
+  onDraft: (d: { kind: 'edit' | 'reject'; m: Msg }) => void; onRelease: () => void; onPause: () => void;
 }) {
   const toast = useToast();
   const c = t.conversation;
@@ -346,6 +372,31 @@ function ThreadView({ t, now, edit, unitNames, composerRef, onBack, onPanel, onC
   async function openMedia(m: Msg) {
     try {
       onMedia({ url: await mediaUrl(m.media_path!), mime: m.media_mime });
+    } catch (e) {
+      toast((e as Error).message, 'error');
+    }
+  }
+  const [busyDraft, setBusyDraft] = useState<string | null>(null);
+  const [translations, setTranslations] = useState<Record<string, string>>({});
+  async function sendDraft(m: Msg) {
+    if (busyDraft) return;
+    setBusyDraft(m.id);
+    try {
+      const r = await approve(m.id, null);
+      if (!r.ok) toast(sendError(r.error ?? r.results?.[0]?.error_code), 'error');
+      else toast(r.existing ? 'هذه المسودة أُرسلت أو تجاوزتها رسالة أحدث.' : 'أُرسل رد المساعد.');
+      await onChanged();
+    } catch (e) {
+      toast((e as Error).message, 'error');
+    } finally {
+      setBusyDraft(null);
+    }
+  }
+  async function doTranslate(m: Msg) {
+    try {
+      const r = await translate(m.id);
+      if (!r.ok || !r.translation) toast(assistError(r.error), 'error');
+      else setTranslations((x) => ({ ...x, [m.id]: r.translation! }));
     } catch (e) {
       toast((e as Error).message, 'error');
     }
@@ -380,6 +431,8 @@ function ThreadView({ t, now, edit, unitNames, composerRef, onBack, onPanel, onC
           <button type="button" className="btn btn-ghost btn-sm" onClick={() => onDialog('note')} data-action="note">{ACTIONS.note}</button>
           <button type="button" className="btn btn-ghost btn-sm" onClick={() => onDialog('close')} data-action="close" aria-keyshortcuts="Alt+C">{ACTIONS.close}</button>
           {!t.guest.blocked && <button type="button" className="btn btn-ghost btn-sm text-error" onClick={() => onDialog('block')} data-action="block">{ACTIONS.block}</button>}
+          {c.can_release && <button type="button" className="btn btn-ghost btn-sm" onClick={onRelease} data-action="release" data-tour="inbox-release">{ACTIONS.release}</button>}
+          {c.can_pause && <button type="button" className="btn btn-ghost btn-sm" onClick={onPause} data-action="pause">{ACTIONS.pause}</button>}
         </div>
       )}
       <div className="inbox-scroll" ref={scroller} data-timeline aria-live="polite">
@@ -406,13 +459,29 @@ function ThreadView({ t, now, edit, unitNames, composerRef, onBack, onPanel, onC
           }
           const st = statusText(m);
           return (
-            <div key={m.id} className={`inbox-bubble ${out ? 'is-out' : 'is-in'}`} data-msg={m.id} data-author={m.author} data-status={m.status}>
+            <div key={m.id} className={`inbox-bubble ${out ? 'is-out' : 'is-in'} ${m.status === 'pending_approval' ? 'is-draft' : ''}`} data-msg={m.id} data-author={m.author} data-status={m.status}
+              data-tour={m.status === 'pending_approval' ? 'inbox-draft' : undefined}>
               {m.author === 'phone' && <span className="inbox-chip">{MARKS.phone}</span>}
+              {m.author === 'assistant' && <span className="inbox-chip" data-assistant-chip>{m.status === 'test' ? MARKS.test : m.status === 'pending_approval' ? 'مسودة المساعد' : 'المساعد'}</span>}
               {m.kind === 'template' && <span className="inbox-chip">{MARKS.template} · {TEMPLATE_LABELS[String(m.payload?.template ?? '')] ?? String(m.payload?.template ?? '')}</span>}
               {m.purged ? <p className="text-ink-muted text-xs">حُذف النص بعد 12 شهرًا.</p> : m.body ? <p className="whitespace-pre-wrap" dir="auto">{m.body}</p> : null}
               {m.media_path && !m.media_purged && <button type="button" className="btn btn-ghost btn-sm" onClick={() => void openMedia(m)} data-action="media">عرض الوسائط</button>}
               {(m.media_purged || (!m.media_path && ['image', 'audio', 'video', 'document', 'sticker'].includes(m.kind))) && <p className="text-xs text-ink-muted">{m.media_purged ? MARKS.media_gone : 'وسائط لم تُحفظ'}</p>}
               {m.kind === 'location' && <p className="text-xs text-ink-muted">موقع</p>}
+              {m.author === 'assistant' && (m.sources?.length ?? 0) > 0 && (
+                <p className="text-xs text-ink-muted" data-msg-sources>المصدر: {m.sources!.map((x) => x.title).join('، ')}</p>
+              )}
+              {(m.translation || translations[m.id]) && <p className="text-xs border-t border-line pt-1" data-msg-translation>الترجمة: {m.translation || translations[m.id]}</p>}
+              {needsTranslation(m) && !m.translation && !translations[m.id] && edit && (
+                <button type="button" className="inbox-link" onClick={() => void doTranslate(m)} data-action="translate">{ACTIONS.translate}</button>
+              )}
+              {m.author === 'assistant' && m.status === 'pending_approval' && edit && !closed && (
+                <span className="flex flex-wrap gap-2" data-draft-actions>
+                  <button type="button" className="btn btn-primary btn-sm" disabled={!!busyDraft} onClick={() => void sendDraft(m)} data-action="draft-send">{busyDraft === m.id && <Spinner />} {DRAFT_ACTIONS.send}</button>
+                  <button type="button" className="btn btn-ghost btn-sm" disabled={!!busyDraft} onClick={() => onDraft({ kind: 'edit', m })} data-action="draft-edit">{DRAFT_ACTIONS.edit}</button>
+                  <button type="button" className="btn btn-ghost btn-sm" disabled={!!busyDraft} onClick={() => onDraft({ kind: 'reject', m })} data-action="draft-reject">{DRAFT_ACTIONS.reject}</button>
+                </span>
+              )}
               <span className="inbox-meta">
                 {out && m.staff_name ? `${m.staff_name} · ` : ''}<span className="num">{riyadhDateTime(m.sent_at)}</span>
                 {out && <> · <span className={st.tone === 'error' ? 'text-error' : st.tone === 'ok' ? 'text-ok' : ''} data-msg-status>{st.text}</span></>}
@@ -439,7 +508,23 @@ function Composer({ t, now, composerRef, onSent, onTemplate }: { t: Thread; now:
   const [busy, setBusy] = useState(false);
   const [version, setVersion] = useState(0);
   const key = useRef<string | null>(null);
+  const [fromSuggestion, setFromSuggestion] = useState(false);
+  const [sugs, setSugs] = useState<{ text: string; ok: boolean; reasons: string[] }[] | null>(null);
+  const [sugBusy, setSugBusy] = useState(false);
   const w = windowState(c.window_expires_at, now);
+  async function getSuggestions() {
+    if (sugBusy) return;
+    setSugBusy(true);
+    try {
+      const r = await suggest(c.id);
+      if (!r.ok) toast(assistError(r.error), 'error');
+      else setSugs(r.suggestions ?? []);
+    } catch (e) {
+      toast((e as Error).message, 'error');
+    } finally {
+      setSugBusy(false);
+    }
+  }
   const blocker = t.guest.blocked ? 'hub_blocked' : !c.sending_enabled ? 'hub_sending_off' : null;
 
   async function go(mode: 'text' | 'held') {
@@ -448,13 +533,16 @@ function Composer({ t, now, composerRef, onSent, onTemplate }: { t: Thread; now:
     key.current ??= newKey();
     setBusy(true);
     try {
-      const r = await send(c.id, mode, body, key.current, (c.language === 'en' ? 'en' : 'ar'));
+      const L = c.language === 'en' ? 'en' : 'ar';
+      const r = fromSuggestion && mode === 'text' ? await sendSuggestion(c.id, body, key.current, L) : await send(c.id, mode, body, key.current, L);
       if (!r.ok) {
-        toast(sendError(r.error ?? r.results?.find((x) => x.status === 'failed')?.error_code), 'error');
+        toast(r.error === 'hub_guard' ? assistError('hub_guard') : sendError(r.error ?? r.results?.find((x) => x.status === 'failed')?.error_code), 'error');
       } else {
         toast(mode === 'held' ? 'أُرسل قالب «لدى الفريق رد»، ويُرسل ردك عندما يكتب الضيف.' : r.existing ? 'أُرسل هذا الرد من قبل.' : 'أُرسل الرد.');
         setText('');
         key.current = null;
+        setFromSuggestion(false);
+        setSugs(null);
         setVersion((v) => v + 1);
       }
       await onSent();
@@ -473,7 +561,21 @@ function Composer({ t, now, composerRef, onSent, onTemplate }: { t: Thread; now:
       <textarea id={`reply-${c.id}`} ref={composerRef} className="field" rows={3} maxLength={4096} value={text} disabled={busy || !!blocker}
         placeholder={w.open ? 'اكتب ردك…' : 'اكتب ردك؛ يُرسل عندما يكتب الضيف'} onChange={(e) => setText(e.target.value)}
         onKeyDown={(e) => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); void go(w.open ? 'text' : 'held'); } }} data-reply aria-keyshortcuts="Alt+R" />
+      {sugs && (
+        <ul className="grid gap-1" data-suggestions>
+          {sugs.length === 0 && <li className="text-xs text-ink-muted">لا اقتراحات من المعرفة لهذا السؤال.</li>}
+          {sugs.map((x, i) => (
+            <li key={i} className="inbox-note flex flex-wrap items-start justify-between gap-2" data-suggestion={i} data-suggestion-ok={x.ok ? 'yes' : 'no'}>
+              <span className="whitespace-pre-wrap min-w-0" dir="auto">{x.text}</span>
+              {x.ok
+                ? <button type="button" className="btn btn-ghost btn-sm" onClick={() => { setText(x.text); setFromSuggestion(true); }} data-action="suggestion-use">استخدام</button>
+                : <span className="text-xs text-error">لا يجتاز قواعد الرد</span>}
+            </li>
+          ))}
+        </ul>
+      )}
       <div className="flex flex-wrap items-center justify-end gap-2">
+        {w.open && <button type="button" className="btn btn-ghost btn-sm" onClick={() => void getSuggestions()} disabled={busy || sugBusy || !!blocker} data-action="suggestions" data-tour="inbox-suggestions">{sugBusy && <Spinner />} {ACTIONS.suggestions}</button>}
         {!w.open && <button type="button" className="btn btn-ghost btn-sm" onClick={onTemplate} disabled={busy || !!blocker} data-action="template">{ACTIONS.template}</button>}
         {w.open
           ? <button type="button" className="btn btn-primary btn-sm" onClick={() => void go('text')} disabled={busy || !!blocker || !text.trim()} data-action="send">{busy && <Spinner />} {ACTIONS.send}</button>
@@ -678,5 +780,95 @@ function GuestPanel({ t, edit, onBack, onOpen, onAssign }: { t: Thread; edit: bo
         </section>
       )}
     </div>
+  );
+}
+
+/** «تعديل ثم إرسال» (H5): the draft's text edited by the staff member, then the same compare-and-set and send */
+function DraftEditDialog({ open, m, onClose, onDone }: { open: boolean; m: Msg | null; onClose: () => void; onDone: () => Promise<void> }) {
+  const toast = useToast();
+  const [text, setText] = useState(m?.body ?? '');
+  const [busy, setBusy] = useState(false);
+  useEffect(() => setText(m?.body ?? ''), [m?.id]);
+  async function go() {
+    if (!m || !text.trim()) return;
+    setBusy(true);
+    try {
+      const r = await approve(m.id, text.trim());
+      if (!r.ok) toast(sendError(r.error ?? r.results?.[0]?.error_code), 'error');
+      else {
+        toast(r.existing ? 'هذه المسودة أُرسلت أو تجاوزتها رسالة أحدث.' : 'أُرسل الرد بعد تعديله.');
+        setBusy(false);
+        await onDone();
+        return;
+      }
+    } catch (e) {
+      toast((e as Error).message, 'error');
+    }
+    setBusy(false);
+  }
+  return (
+    <Modal open={open} onClose={onClose} title={DRAFT_ACTIONS.edit} busy={busy} draftKey={m ? `inbox-draft-edit:${m.id}` : undefined}>
+      <div className="grid gap-3" data-draft-edit-dialog>
+        <p className="text-sm text-ink-muted">عدّل رد المساعد ثم أرسله. يُرسل باسم الفرع من الرقم نفسه.</p>
+        <Field label="الرد" id="draft-edit-text">
+          <textarea id="draft-edit-text" className="field" rows={5} maxLength={4096} value={text} onChange={(e) => setText(e.target.value)} disabled={busy} dir="auto" />
+        </Field>
+        <div className="flex justify-end gap-2">
+          <CancelButton disabled={busy} />
+          <button type="button" className="btn btn-primary" onClick={() => void go()} disabled={busy || !text.trim()} data-action="draft-edit-send">{busy && <Spinner />} {ACTIONS.send}</button>
+        </div>
+      </div>
+    </Modal>
+  );
+}
+
+/** «رفض» (copy.md §6): a reason from the short list + an optional note; the conversation goes to the staff member */
+function DraftRejectDialog({ open, m, onClose, onDone }: { open: boolean; m: Msg | null; onClose: () => void; onDone: () => Promise<void> }) {
+  const toast = useToast();
+  const [reason, setReason] = useState<RejectReason | ''>('');
+  const [note, setNote] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+  useEffect(() => {
+    setReason('');
+    setNote('');
+    setErr(null);
+  }, [m?.id]);
+  async function go() {
+    if (!m) return;
+    if (!reason) return setErr('اختر سبب الرفض.');
+    setBusy(true);
+    try {
+      await reject(m.id, reason, note.trim() || null);
+      toast('رُفضت المسودة، والمحادثة معك الآن.');
+      setBusy(false);
+      await onDone();
+    } catch (e) {
+      setErr((e as Error).message);
+      setBusy(false);
+    }
+  }
+  return (
+    <Modal open={open} onClose={onClose} title={DRAFT_ACTIONS.reject} busy={busy} draftKey={m ? `inbox-draft-reject:${m.id}` : undefined}>
+      <div className="grid gap-3" data-draft-reject-dialog>
+        <fieldset className="grid gap-1">
+          <legend className="label">سبب الرفض</legend>
+          {REJECT_REASONS.map((r) => (
+            <label key={r.key} className="flex items-center gap-2 min-h-8 text-sm">
+              <input type="radio" name="draft-reason" className="size-4 accent-bronze-deep" checked={reason === r.key} onChange={() => setReason(r.key)} disabled={busy} data-reject-reason={r.key} />
+              {r.label}
+            </label>
+          ))}
+        </fieldset>
+        <Field label="ملاحظة (اختيارية، لا تصل للضيف)" id="draft-reject-note">
+          <textarea id="draft-reject-note" className="field" rows={3} maxLength={500} value={note} onChange={(e) => setNote(e.target.value)} disabled={busy} />
+        </Field>
+        {err && <p className="text-sm media-err" role="alert">{err}</p>}
+        <div className="flex justify-end gap-2">
+          <CancelButton disabled={busy} />
+          <button type="button" className="btn btn-primary" onClick={() => void go()} disabled={busy} data-action="draft-reject-go">{busy && <Spinner />} {DRAFT_ACTIONS.reject}</button>
+        </div>
+      </div>
+    </Modal>
   );
 }

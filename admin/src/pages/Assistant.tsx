@@ -13,14 +13,18 @@
 //   - «ملخص الصباح»: the recipients of the morning summary (scope hub_summary) — an address is active only once its
 //     mailbox filter is confirmed (CLAUDE.md §8); a page-level form with its own «حفظ»;
 //   - «التنبيهات»: the open alerts of hub_alerts (none in H1).
+//   - «الميزانية» (H5, 14 Nov 2026): the daily and monthly budget (USD) and the alert percentage — the system admin edits
+//     them —, spent today and this month by unit and by layer, the model prices with the date they were read, and the
+//     Claude API credit state; the gates of each mode («تجربة» first; «بموافقة الفريق» waits for the test lab of H6).
 // Every change is one audited batch with the 30 s «تراجع» toast (the YCloud reads mirror YCloud and are not undone).
 // assistant: view sees everything read-only; edit changes it; the channels, templates, switches and recipients need
 // every branch (a single-branch editor sees its branch's units only).
 import { useEffect, useMemo, useRef, useState } from 'react';
 import * as api from '../lib/api';
-import { BRANCH_NAMES, ROLE_LABELS, riyadhDateTime } from '../lib/format';
+import { BRANCH_NAMES, ROLE_LABELS, riyadhDateTime, west } from '../lib/format';
 import {
-  ALERT_LABELS, CATEGORY_LABELS, EMAIL_RE, KIND_LABELS, LANGUAGE_LABELS, MODES, MODE_LABELS, NOT_YET, STATUS_LABELS, SWITCHES, WEBHOOK_EVENTS, eligible, gateText, gatesOf,
+  ALERT_LABELS, CATEGORY_LABELS, EMAIL_RE, KIND_LABELS, LANGUAGE_LABELS, LAYER_LABELS, MODEL_LABELS, MODES, MODE_LABELS, NOT_YET, SOURCE_LABELS, STATUS_LABELS, SWITCHES,
+  WEBHOOK_EVENTS, budgetLine, budgetOverview, eligible, gateText, gatesOf, usd, type BudgetOverview,
   channelSendingSet, membersSet, modeSet, overview, phoneText, qualityText, readWebhookEvents, recipientsSet, refreshTemplates, settingSet, templateStatus, unitSave, updateWebhookEvents, verifyChannel, verifyError,
   webhookError, webhookStatus, type HubOverview, type HubUnit, type UnitMode, type WebhookStatus,
 } from '../lib/hub';
@@ -74,8 +78,12 @@ export default function Assistant() {
 
   async function setMode(u: HubUnit, mode: UnitMode) {
     if (mode === u.mode) return;
-    if (mode !== 'off' && u.gates.length) {
-      setBlocked({ title: `لا يُشغَّل المساعد في ${u.name_ar} الآن`, gates: u.gates });
+    // the gates of that mode: «تجربة» first; «بموافقة الفريق» / «يرد تلقائيًا» also wait for the test lab (H6); and only
+    // the system admin switches a unit on (14 Nov 2026)
+    const need: string[] = mode === 'test' ? u.gates : (u.gates_shadow ?? u.gates);
+    const gates = mode !== 'off' && !o?.system_admin && need.length === 0 ? ['system_admin'] : need;
+    if (mode !== 'off' && gates.length) {
+      setBlocked({ title: `لا يُشغَّل المساعد في ${u.name_ar} الآن`, gates });
       return;
     }
     setBusy(`mode:${u.id}`);
@@ -190,6 +198,9 @@ export default function Assistant() {
           وحدات «مركز الضيوف» وفرقها وقنواتها ومفاتيحها. {o.can_edit ? '' : 'صلاحيتك هنا للعرض فقط.'}
         </p>
         <p className="note-amber text-sm mt-3" role="note" data-hub-not-yet>{NOT_YET}</p>
+        {o.budget && budgetLine(o.budget).tone !== 'ok' && (
+          <p className="note-amber text-sm mt-3" role="status" data-budget-banner>{budgetLine(o.budget).text}</p>
+        )}
       </div>
       <ErrorBox error={error} />
 
@@ -228,6 +239,16 @@ export default function Assistant() {
           })}
         </ul>
       </section>
+
+      {/* ── الميزانية (H5) ── */}
+      <BudgetCard key={JSON.stringify([o.settings.hub_budget_daily_usd, o.settings.hub_budget_monthly_usd, o.settings.hub_budget_alert_pct])}
+        o={o} onSaved={async (batches, label) => {
+          toast.undo(label, async () => {
+            for (const b of [...batches].reverse()) await api.revertBatch(b);
+            await load();
+          });
+          await load();
+        }} />
 
       {/* ── استقبال واتساب (H2) ── */}
       {hook && (
@@ -359,7 +380,13 @@ export default function Assistant() {
                 ))}
               </div>
               {u.gates.length > 0 && (
-                <p className="text-xs text-ink-muted" data-unit-gates>قبل التشغيل ينقص: {u.gates.map(gateText).join('، ')}.</p>
+                <p className="text-xs text-ink-muted" data-unit-gates>قبل «تجربة» ينقص: {u.gates.map(gateText).join('، ')}.</p>
+              )}
+              {u.status === 'active' && u.gates.length === 0 && (
+                <p className="text-xs text-ink-muted" data-unit-gates-ok>«تجربة» جاهزة ويشغّلها مدير النظام: في «تجربة» لا يصل شيء للضيف، وتظهر ردود المساعد في «المحادثات» موسومة «تجربة».</p>
+              )}
+              {u.status === 'active' && (u.gates_shadow ?? []).length > 0 && (
+                <p className="text-xs text-ink-muted" data-unit-gates-shadow>قبل «بموافقة الفريق» ينقص: {(u.gates_shadow ?? []).map(gateText).join('، ')}.</p>
               )}
             </div>
           </article>
@@ -644,6 +671,117 @@ function Summary({ o, edit, onSaved }: { o: HubOverview; edit: boolean; onSaved:
           </div>
         )}
       </DirtyScope>
+    </section>
+  );
+}
+
+const MODELS_ORDER = ['understand', 'tag', 'translate', 'compose', 'suggest'];
+
+/** «الميزانية» (H5, spec §5.6 item 5, §7.3): the system admin sets the budgets; everyone with assistant: view reads them */
+function BudgetCard({ o, onSaved }: { o: HubOverview; onSaved: (batches: string[], label: string) => Promise<void> }) {
+  const toast = useToast();
+  const [b, setB] = useState<BudgetOverview | null>(null);
+  const [daily, setDaily] = useState(o.settings.hub_budget_daily_usd === null || o.settings.hub_budget_daily_usd === undefined ? '' : String(o.settings.hub_budget_daily_usd));
+  const [monthly, setMonthly] = useState(o.settings.hub_budget_monthly_usd === null || o.settings.hub_budget_monthly_usd === undefined ? '' : String(o.settings.hub_budget_monthly_usd));
+  const [pct, setPct] = useState(String(o.settings.hub_budget_alert_pct ?? 80));
+  const [busy, setBusy] = useState(false);
+  const [version, setVersion] = useState(0);
+  useEffect(() => {
+    budgetOverview().then(setB).catch(() => setB(null));
+  }, [o]);
+  const admin = !!o.system_admin;
+  const st = b?.state ?? o.budget;
+  async function save() {
+    const num = (x: string) => (x.trim() === '' ? null : Number(west(x).trim()));
+    const want: [string, number | null][] = [['hub_budget_daily_usd', num(daily)], ['hub_budget_monthly_usd', num(monthly)], ['hub_budget_alert_pct', num(pct)]];
+    if (want.some(([k, v]) => (v === null && k === 'hub_budget_alert_pct') || (v !== null && (!Number.isFinite(v) || v < 0 || (k === 'hub_budget_alert_pct' && (v < 1 || v > 100 || !Number.isInteger(v))))))) {
+      toast('اكتب أرقامًا صحيحة: الميزانية بالدولار، ونسبة التنبيه من 1 إلى 100.', 'error');
+      return;
+    }
+    setBusy(true);
+    const batches: string[] = [];
+    try {
+      for (const [k, v] of want) {
+        if (JSON.stringify(o.settings[k] ?? null) === JSON.stringify(v)) continue;
+        const r = await settingSet(k, v);
+        batches.push(r.batch_id);
+      }
+      setVersion((x) => x + 1);
+      if (batches.length) await onSaved(batches, 'حُفظت الميزانية');
+      else toast('لا تغيير.');
+    } catch (e) {
+      toast((e as Error).message, 'error');
+    } finally {
+      setBusy(false);
+    }
+  }
+  const line = st ? budgetLine(st) : null;
+  return (
+    <section className="card p-4 grid gap-3" aria-labelledby="hub-budget-h" data-tour="hub-budget" data-hub-budget>
+      <h2 id="hub-budget-h" className="font-bold text-lg">الميزانية</h2>
+      <p className="text-xs text-ink-muted">تكلفة نماذج كلود لكل المحادثات والترجمة والاقتراحات. عند نسبة التنبيه يصل بريد لمديري النظام، وعند بلوغ الحد تذهب كل المحادثات إلى الفريق حتى تبدأ الفترة التالية. الأيام والأشهر بتوقيت الرياض.</p>
+      {line && <p className={`text-sm font-semibold ${line.tone === 'error' ? 'text-error' : line.tone === 'amber' ? 'text-ink' : 'text-ok'}`} data-budget-state={line.tone}>{line.text}</p>}
+      {st && (
+        <dl className="inbox-dl text-sm" data-budget-spent>
+          <dt>اليوم</dt><dd className="num">{usd(st.daily_spent)} من {st.daily_budget === null ? 'غير محددة' : usd(st.daily_budget)}</dd>
+          <dt>هذا الشهر</dt><dd className="num">{usd(st.monthly_spent)} من {st.monthly_budget === null ? 'غير محددة' : usd(st.monthly_budget)}</dd>
+          <dt>رصيد كلود</dt><dd data-api-credit={st.api_credit ? 'out' : 'ok'}>{st.api_credit ? `انتهى منذ ${riyadhDateTime(st.api_credit_since ?? '')}` : 'متاح'}</dd>
+        </dl>
+      )}
+      <DirtyScope version={version} draftKey="hub-budget" className="grid gap-2 sm:grid-cols-3" data-budget-form>
+        <Field label="الميزانية اليومية (دولار)" id="hub-budget-daily">
+          <input id="hub-budget-daily" className="field num" inputMode="decimal" value={daily} onChange={(e) => setDaily(e.target.value)} disabled={!admin || busy} data-budget="daily" />
+        </Field>
+        <Field label="الميزانية الشهرية (دولار)" id="hub-budget-monthly">
+          <input id="hub-budget-monthly" className="field num" inputMode="decimal" value={monthly} onChange={(e) => setMonthly(e.target.value)} disabled={!admin || busy} data-budget="monthly" />
+        </Field>
+        <Field label="نسبة التنبيه (%)" id="hub-budget-pct">
+          <input id="hub-budget-pct" className="field num" inputMode="numeric" value={pct} onChange={(e) => setPct(e.target.value)} disabled={!admin || busy} data-budget="pct" />
+        </Field>
+        {admin && (
+          <div className="sm:col-span-3 flex justify-end">
+            <button type="button" className="btn btn-primary btn-sm" onClick={() => void save()} disabled={busy} data-action="budget-save">{busy && <Spinner />} حفظ الميزانية</button>
+          </div>
+        )}
+      </DirtyScope>
+      {!admin && <p className="text-xs text-ink-muted" data-budget-readonly>يعدّل الميزانية مدير النظام وحده.</p>}
+      {b && (
+        <div className="grid gap-3 lg:grid-cols-2">
+          <div className="min-w-0 overflow-x-auto">
+            <h3 className="label mb-1">حسب الوحدة</h3>
+            {b.by_unit.length ? (
+              <table className="w-full text-sm" data-budget-units>
+                <thead><tr><th className="text-start">الوحدة</th><th className="text-start">اليوم</th><th className="text-start">الشهر</th></tr></thead>
+                <tbody>{b.by_unit.map((x) => <tr key={x.unit}><td>{x.name}</td><td className="num">{usd(x.today)}</td><td className="num">{usd(x.month)}</td></tr>)}</tbody>
+              </table>
+            ) : <p className="text-sm text-ink-muted" data-budget-none>لا تكلفة هذا الشهر بعد.</p>}
+          </div>
+          <div className="min-w-0 overflow-x-auto">
+            <h3 className="label mb-1">حسب المرحلة</h3>
+            {b.by_layer.length ? (
+              <table className="w-full text-sm" data-budget-layers>
+                <thead><tr><th className="text-start">المرحلة</th><th className="text-start">الطلبات</th><th className="text-start">الشهر</th></tr></thead>
+                <tbody>{b.by_layer.map((x) => <tr key={`${x.layer}:${x.source}`}><td>{LAYER_LABELS[x.layer] ?? x.layer} · {SOURCE_LABELS[x.source] ?? x.source}</td><td className="num">{x.calls}</td><td className="num">{usd(x.month)}</td></tr>)}</tbody>
+              </table>
+            ) : <p className="text-sm text-ink-muted">لا طلبات بعد.</p>}
+          </div>
+          <div className="lg:col-span-2">
+            <h3 className="label mb-1">النماذج وأسعارها</h3>
+            <ul className="grid gap-1 text-sm" data-budget-prices>
+              {MODELS_ORDER.filter((k) => b.models?.[k]).map((k) => {
+                const m = b.models![k];
+                const p = b.prices?.[m];
+                return (
+                  <li key={k} data-budget-model={k}>
+                    {MODEL_LABELS[k]}: <span className="latin" dir="ltr">{m}</span>
+                    {p ? <> — <span className="num">{p.input} / {p.output}</span> دولار لكل مليون رمز (دخل / خرج){p.read_at ? <>، قُرئت من صفحة أسعار أنثروبيك <span className="num">{p.read_at}</span></> : null}</> : ' — بلا سعر مسجّل'}
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        </div>
+      )}
     </section>
   );
 }

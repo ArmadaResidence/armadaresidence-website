@@ -545,6 +545,9 @@ def generate_function_content(content: dict[str, dict], fees: dict) -> None:
         # the cancellation reasons (9 Nov 2026): the code staff pick → the guest phrase of booking_cancelled_v2 {{6}} and of
         # the cancellation email; notify false = nothing to the guest (cancellation_reason_problems checks the list)
         "cancel_reasons": content["policies.json"]["cancellation_reasons"],
+        # Guest Hub H5 (14 Nov 2026): the site's «يبدأ من» sentence (spec §4.2) and the booking form's request reasons, reused
+        "price_from_line": {loc: ui[loc]["price"]["from_line"] for loc in ("ar", "en")},
+        "quote_reasons": {loc: ui[loc]["quote"]["reasons"] for loc in ("ar", "en")},
         "partner_reply_line": content["partners-pages.json"]["form"]["sent_body"],
         "legal_line": {loc: content["legal.json"][f"footer_line_{loc}"] for loc in ("ar", "en")},
         # the two-line email footer (Ahmed, 26 Oct 2026): entity, then CR · VAT — from legal.json, never typed in email.ts

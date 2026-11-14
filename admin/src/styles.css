@@ -930,6 +930,8 @@ body {
 .inbox-bubble.is-in { align-self: flex-start; background: var(--soft); border-start-start-radius: 0.2rem; }
 .inbox-bubble.is-out { align-self: flex-end; border-start-end-radius: 0.2rem; border-color: var(--color-bronze); }
 .inbox-bubble.is-template { border-style: dashed; color: var(--ink-muted); font-size: 0.8rem; }
+/* H5: a draft of the assistant waiting for one tap */
+.inbox-bubble.is-draft { border-style: dashed; border-width: 2px; }
 .inbox-note { align-self: stretch; padding: 0.5rem 0.75rem; border-radius: 0.5rem; background: #fff4d6; color: #5c4000; border: 1px solid #f0d58a; font-size: 0.85rem; display: grid; gap: 0.25rem; }
 .inbox-meta { font-size: 0.7rem; color: var(--ink-muted); }
 .inbox-note .inbox-meta { color: #6b4a00; }
