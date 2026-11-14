@@ -19,15 +19,17 @@
 --      القائمة» (never deleted).
 -- B  · an answer and its hand-off notice are one message now (payload handoff = true): when it is sent, the conversation
 --      keeps waiting for the team (hub_send_finish), as after a notice.
+-- B  · the test lab claims the questions of a run in the bank's order (sort, key) — every result of a run shares its
+--      created_at, so the order was the rows' physical order (the H6 SQL test depended on it).
 -- B  · the bank's q023 expected the word "arrival", which the approved FAQ answer does not use ("when you arrive"):
 --      corrected to "arriv" (tests/hub-bank/corrections.json).
 
 -- ───────────────────────────────────────────── A1 · automatic phone messages ─────────────────────────────────────────────
 
--- the text of an automatic message as it is compared: line ends unified, trimmed
+-- the text of an automatic message as it is compared: line ends unified, spaces, tabs and line breaks trimmed
 create function internal.hub_auto_text(p text) returns text
 language sql immutable set search_path = '' as $$
-  select btrim(replace(replace(coalesce(p, ''), E'\r\n', E'\n'), E'\r', E'\n'))
+  select btrim(replace(replace(coalesce(p, ''), E'\r\n', E'\n'), E'\r', E'\n'), E' \t\n')
 $$;
 
 create table public.hub_phone_auto_texts (
@@ -273,6 +275,48 @@ begin
   return jsonb_build_object('ok', true);
 end;
 $$;
+
+-- ───────────────────────────────────────────── B · the test lab's claim in the bank's order ─────────────────────────────────────────────
+
+-- the claim (20261114500000, copied): + ties of created_at (every result of a run) broken by the bank's order, so a run
+-- works its questions in a fixed order
+create or replace function public.hub_eval_claim(p_limit integer default 6) returns jsonb
+language plpgsql security definer set search_path = '' as $$
+declare
+  run public.hub_eval_runs;
+  b jsonb := internal.hub_budget_state();
+  v_out jsonb;
+  v_ids uuid[];
+begin
+  select * into run from public.hub_eval_runs where status in ('queued', 'running') order by created_at limit 1 for update skip locked;
+  if run.id is null then return jsonb_build_object('items', '[]'::jsonb); end if;
+  if coalesce((b ->> 'capped')::boolean, false) or coalesce((b ->> 'unset')::boolean, false) then
+    perform internal.hub_eval_stop(run.id, 'budget_cap');
+    return jsonb_build_object('items', '[]'::jsonb, 'stopped', 'budget_cap');
+  end if;
+  update public.hub_eval_results set status = case when attempt >= 3 then 'error' else 'pending' end, attempt = least(attempt + 1, 3),
+         reasons = case when attempt >= 3 then array['stuck'] else reasons end, finished_at = case when attempt >= 3 then now() end
+   where run_id = run.id and status = 'running' and claimed_at < now() - interval '4 minutes';
+  update public.hub_eval_runs set status = 'running' where id = run.id and status = 'queued';
+  with picked as (
+    select r.id from public.hub_eval_results r join public.hub_test_items i on i.id = r.item_id where r.run_id = run.id and r.status = 'pending'
+     order by case r.config when 'live' then 0 else 1 end, r.created_at, i.sort, i.key limit least(greatest(coalesce(p_limit, 6), 1), 20) for update of r skip locked),
+  upd as (update public.hub_eval_results r set status = 'running', claimed_at = now() from picked where r.id = picked.id returning r.id)
+  select coalesce(array_agg(upd.id), '{}') into v_ids from upd;
+  select coalesce(jsonb_agg(jsonb_build_object(
+           'result_id', r.id, 'run_id', r.run_id, 'config', r.config, 'attempt', r.attempt, 'trigger', run.trigger,
+           'item', jsonb_build_object('id', i.id, 'key', i.key, 'unit_key', i.unit_key, 'language', i.language, 'messages', i.messages, 'context', i.context, 'expect', i.expect, 'note', i.note),
+           'cards', case when r.config = 'candidate' then run.candidate -> 'cards' end,
+           'persona', case when r.config = 'candidate' and run.candidate ->> 'unit' = i.unit_key then run.candidate -> 'persona' end) order by r.created_at, i.sort, i.key), '[]'::jsonb)
+    into v_out
+    from public.hub_eval_results r join public.hub_test_items i on i.id = r.item_id
+   where r.id = any (v_ids);
+  return jsonb_build_object('items', v_out, 'run_id', run.id);
+end;
+$$;
+
+revoke execute on function public.hub_eval_claim(integer) from public, anon, authenticated;
+grant execute on function public.hub_eval_claim(integer) to service_role;
 
 -- ───────────────────────────────────────────── B · a corrected bank expectation ─────────────────────────────────────────────
 

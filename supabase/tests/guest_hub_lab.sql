@@ -168,20 +168,23 @@ select pg_temp._check('E3 the run: queued, 98 live results pending, the estimate
   and (select count(*) = 98 and bool_and(status = 'pending' and config = 'live') from public.hub_eval_results where run_id = pg_temp._id('run1')));
 select pg_temp._service();
 select pg_temp._save('e4', public.hub_eval_claim(4));
-select pg_temp._check('E4 the claim: four items with their question and expectation, running', jsonb_array_length(pg_temp._j('e4') -> 'items') = 4
+select pg_temp._check('E4 the claim: four items in the bank''s order (q001 first) with their question and expectation, running', jsonb_array_length(pg_temp._j('e4') -> 'items') = 4
+  and (pg_temp._j('e4') #>> '{items,0,item,key}') = 'q001' and (pg_temp._j('e4') #>> '{items,3,item,key}') = 'q004'
   and (pg_temp._j('e4') #>> '{items,0,item,key}') is not null and (pg_temp._j('e4') #> '{items,0,item,expect}') ? 'action'
   and (select count(*) = 4 from public.hub_eval_results where run_id = pg_temp._id('run1') and status = 'running'), left(pg_temp._j('e4')::text, 300));
-select pg_temp._save('e5', public.hub_eval_finish((pg_temp._j('e4') #>> '{items,0,result_id}')::uuid,
+select pg_temp._save('e5', public.hub_eval_finish((pg_temp._j('e4') #>> '{items,3,result_id}')::uuid,
   '{"status": "fail", "reasons": ["action:answer:handoff"], "replies": ["x"], "outcome": {"kind": "handoff"}, "models": [{"layer": "understand", "model": "claude-haiku-5-5", "input_tokens": 1000, "output_tokens": 100}, {"layer": "compose", "model": "claude-sonnet-5-5", "input_tokens": 1000, "output_tokens": 100}]}'));
 select pg_temp._root();
 select pg_temp._check('E5 a failure in a full run is tried once more (attempt 2, pending); the cost counted as test_lab',
   (pg_temp._j('e5') ->> 'retry')::boolean
-  and (select status = 'pending' and attempt = 2 and cost_usd > 0 from public.hub_eval_results where id = (pg_temp._j('e4') #>> '{items,0,result_id}')::uuid)
+  and (select status = 'pending' and attempt = 2 and cost_usd > 0 from public.hub_eval_results where id = (pg_temp._j('e4') #>> '{items,3,result_id}')::uuid)
   and exists (select 1 from public.hub_usage_daily where source = 'test_lab' and layer = 'compose' and calls >= 1), pg_temp._j('e5')::text);
-insert into _ids values ('fail1', (select item_id from public.hub_eval_results where id = (pg_temp._j('e4') #>> '{items,0,result_id}')::uuid));
+insert into _ids values ('fail1', (select item_id from public.hub_eval_results where id = (pg_temp._j('e4') #>> '{items,3,result_id}')::uuid));
 select pg_temp._service();
-select public.hub_eval_finish((x ->> 'result_id')::uuid, '{"status": "pass", "reasons": [], "replies": [], "outcome": {"kind": "answer", "topics": ["other_qa"]}, "models": []}')
-  from jsonb_array_elements(pg_temp._j('e4') -> 'items') with ordinality as t(x, o) where o > 1;
+-- (the claim takes the bank's order — 20261114600000: the first four are q001–q004; q001 and q002 keep their parking topics)
+select public.hub_eval_finish((x ->> 'result_id')::uuid, jsonb_build_object('status', 'pass', 'reasons', '[]'::jsonb, 'replies', '[]'::jsonb, 'models', '[]'::jsonb,
+         'outcome', jsonb_build_object('kind', 'answer', 'topics', coalesce('{"q001": ["parking"], "q002": ["parking"]}'::jsonb -> (x #>> '{item,key}'), '["other_qa"]'::jsonb))))
+  from jsonb_array_elements(pg_temp._j('e4') -> 'items') with ordinality as t(x, o) where o < 4;
 -- the rest: every item passes but the one that fails twice; q001 and q002 understood as parking
 select pg_temp._save('e6', jsonb_build_object('n', pg_temp._drain(array[(select key from public.hub_test_items where id = pg_temp._id('fail1'))], '{"q001": ["parking"], "q002": ["parking"]}')));
 select pg_temp._root();
