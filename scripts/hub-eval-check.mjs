@@ -36,6 +36,16 @@ const rules = JSON.parse(read('supabase/functions/_shared/hub/bank-rules.generat
 check(JSON.stringify(rules) === JSON.stringify(bankRules()), 'bank-rules.generated.json = the bank header and policies.json (node scripts/hub-lab-migration.mjs --rules-only)');
 const seed = JSON.parse(MIG.slice(MIG.indexOf('$seed_bank$') + 11, MIG.indexOf('$seed_bank$', MIG.indexOf('$seed_bank$') + 11)));
 check(seed.length === 102 && JSON.stringify(seed) === JSON.stringify(bankItems()), `the seeded bank = tests/hub-bank/seed.jsonl (${seed.length})`);
+// a correction of the bank after it was seeded: its migration updates exactly that row, from the seeded expect to the new one
+const CORR = JSON.parse(read('tests/hub-bank/corrections.json')).items;
+for (const [id, c] of Object.entries(CORR)) {
+  const s = seed.find((x) => x.id === id);
+  check(!!s && JSON.stringify(s.expect) === JSON.stringify(c.old), `correction ${id}: "old" = the seeded expect`);
+  const later = read(`supabase/migrations/${c.migration}`);
+  const sql = (o) => JSON.stringify(o).replace(/":/g, '": ').replace(/,"/g, ', "');
+  check(later.includes(`set expect = '${sql(c.expect)}'::jsonb\n where key = '${id}' and added_from = 'seed' and expect = '${sql(c.old)}'::jsonb;`), `correction ${id}: ${c.migration} updates the seeded row only (old → new)`);
+  check(typeof c.why === 'string' && c.why.length > 20, `correction ${id}: says why`);
+}
 check(!/k-wifi-password-[a-z]+\b[^}]{0,3}"(text|title)/.test(MIG) && !/كلمة (المرور|السر)\s*[:：]\s*\S/.test(MIG), 'no Wi-Fi password text in the migration (only {card:} placeholders)');
 const evalFn = knowledgeForEval();
 check(MIG.includes(evalFn) && evalFn.includes(CARD_SOURCE_EVAL), 'hub_knowledge_for_eval is the H5 function with the candidate cards read as their draft — nothing else changed');

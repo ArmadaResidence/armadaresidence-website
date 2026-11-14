@@ -1,11 +1,11 @@
 {
- "recorded_at": "2026-11-14T10:16:42.560Z",
+ "recorded_at": "2026-11-14T14:30:54.254Z",
  "fixtures": 44,
  "guard_first_try": 44,
- "expect_first_try": 37,
- "total_usd": 0.122502,
- "per_turn_usd": 0.002849,
- "per_turn_understand_compose_usd": 0.006559,
+ "expect_first_try": 44,
+ "total_usd": 0.191877,
+ "per_turn_usd": 0.004462,
+ "per_turn_understand_compose_usd": 0.007333,
  "items": [
   {
    "id": "q001",
@@ -13,7 +13,7 @@
    "expect": "answer",
    "guard": true,
    "match": true,
-   "cost": 0.006314,
+   "cost": 0.006852,
    "calls": 2
   },
   {
@@ -22,7 +22,7 @@
    "expect": "answer",
    "guard": true,
    "match": true,
-   "cost": 0.005949,
+   "cost": 0.006327,
    "calls": 2
   },
   {
@@ -31,7 +31,7 @@
    "expect": "answer",
    "guard": true,
    "match": true,
-   "cost": 0.008222,
+   "cost": 0.009461,
    "calls": 2
   },
   {
@@ -40,7 +40,7 @@
    "expect": "answer",
    "guard": true,
    "match": true,
-   "cost": 0.00747,
+   "cost": 0.007813,
    "calls": 2
   },
   {
@@ -49,7 +49,7 @@
    "expect": "handoff",
    "guard": true,
    "match": true,
-   "cost": 0.005234,
+   "cost": 0.005593,
    "calls": 2
   },
   {
@@ -58,7 +58,7 @@
    "expect": "handoff",
    "guard": true,
    "match": true,
-   "cost": 0.005631,
+   "cost": 0.006074,
    "calls": 2
   },
   {
@@ -67,7 +67,7 @@
    "expect": "handoff",
    "guard": true,
    "match": true,
-   "cost": 0.005414,
+   "cost": 0.005773,
    "calls": 2
   },
   {
@@ -76,7 +76,7 @@
    "expect": "handoff",
    "guard": true,
    "match": true,
-   "cost": 0.000421,
+   "cost": 0.000474,
    "calls": 1
   },
   {
@@ -85,7 +85,7 @@
    "expect": "handoff",
    "guard": true,
    "match": true,
-   "cost": 0.000458,
+   "cost": 0.000517,
    "calls": 1
   },
   {
@@ -94,17 +94,17 @@
    "expect": "answer",
    "guard": true,
    "match": true,
-   "cost": 0.000417,
+   "cost": 0.000464,
    "calls": 1
   },
   {
    "id": "q016",
-   "kind": "handoff",
+   "kind": "answer",
    "expect": "answer",
    "guard": true,
-   "match": false,
-   "cost": 0.000424,
-   "calls": 1
+   "match": true,
+   "cost": 0.007655,
+   "calls": 2
   },
   {
    "id": "q017",
@@ -112,7 +112,7 @@
    "expect": "handoff",
    "guard": true,
    "match": true,
-   "cost": 0.000425,
+   "cost": 0.000477,
    "calls": 1
   },
   {
@@ -121,7 +121,7 @@
    "expect": "handoff",
    "guard": true,
    "match": true,
-   "cost": 0.000435,
+   "cost": 0.000491,
    "calls": 1
   },
   {
@@ -130,25 +130,25 @@
    "expect": "handoff",
    "guard": true,
    "match": true,
-   "cost": 0.000415,
+   "cost": 0.00047,
    "calls": 1
   },
   {
    "id": "q021",
-   "kind": "handoff",
+   "kind": "answer",
    "expect": "answer",
    "guard": true,
-   "match": false,
-   "cost": 0.000419,
-   "calls": 1
+   "match": true,
+   "cost": 0.008725,
+   "calls": 2
   },
   {
    "id": "q023",
-   "kind": "handoff",
+   "kind": "answer",
    "expect": "answer",
    "guard": true,
-   "match": false,
-   "cost": 0.005656,
+   "match": true,
+   "cost": 0.00591,
    "calls": 2
   },
   {
@@ -157,7 +157,7 @@
    "expect": "answer",
    "guard": true,
    "match": true,
-   "cost": 0.00715,
+   "cost": 0.007507,
    "calls": 2
   },
   {
@@ -166,17 +166,17 @@
    "expect": "answer",
    "guard": true,
    "match": true,
-   "cost": 0.000418,
-   "calls": 1
+   "cost": 0.008919,
+   "calls": 2
   },
   {
    "id": "q030",
-   "kind": "handoff",
+   "kind": "answer",
    "expect": "answer",
    "guard": true,
-   "match": false,
-   "cost": 0.000425,
-   "calls": 1
+   "match": true,
+   "cost": 0.008173,
+   "calls": 2
   },
   {
    "id": "q031",
@@ -184,7 +184,7 @@
    "expect": "answer",
    "guard": true,
    "match": true,
-   "cost": 0.007392,
+   "cost": 0.007832,
    "calls": 2
   },
   {
@@ -193,7 +193,7 @@
    "expect": "answer",
    "guard": true,
    "match": true,
-   "cost": 0.005768,
+   "cost": 0.006121,
    "calls": 2
   },
   {
@@ -202,8 +202,8 @@
    "expect": "answer",
    "guard": true,
    "match": true,
-   "cost": 0.000416,
-   "calls": 1
+   "cost": 0.007825,
+   "calls": 2
   },
   {
    "id": "q038",
@@ -211,7 +211,7 @@
    "expect": "answer",
    "guard": true,
    "match": true,
-   "cost": 0.006675,
+   "cost": 0.006893,
    "calls": 2
   },
   {
@@ -220,7 +220,7 @@
    "expect": "handoff",
    "guard": true,
    "match": true,
-   "cost": 0.000425,
+   "cost": 0.000478,
    "calls": 1
   },
   {
@@ -229,7 +229,7 @@
    "expect": "handoff",
    "guard": true,
    "match": true,
-   "cost": 0.000419,
+   "cost": 0.000467,
    "calls": 1
   },
   {
@@ -238,7 +238,7 @@
    "expect": "booking_status",
    "guard": true,
    "match": true,
-   "cost": 0.000418,
+   "cost": 0.000465,
    "calls": 1
   },
   {
@@ -247,7 +247,7 @@
    "expect": "handoff",
    "guard": true,
    "match": true,
-   "cost": 0.000423,
+   "cost": 0.000479,
    "calls": 1
   },
   {
@@ -256,7 +256,7 @@
    "expect": "handoff",
    "guard": true,
    "match": true,
-   "cost": 0.000432,
+   "cost": 0.000484,
    "calls": 1
   },
   {
@@ -265,7 +265,7 @@
    "expect": "handoff",
    "guard": true,
    "match": true,
-   "cost": 0.000414,
+   "cost": 0.00047,
    "calls": 1
   },
   {
@@ -274,7 +274,7 @@
    "expect": "handoff",
    "guard": true,
    "match": true,
-   "cost": 0.000416,
+   "cost": 0.000464,
    "calls": 1
   },
   {
@@ -283,7 +283,7 @@
    "expect": "out_of_scope",
    "guard": true,
    "match": true,
-   "cost": 0.000421,
+   "cost": 0.00047,
    "calls": 1
   },
   {
@@ -292,7 +292,7 @@
    "expect": "out_of_scope",
    "guard": true,
    "match": true,
-   "cost": 0.000418,
+   "cost": 0.000467,
    "calls": 1
   },
   {
@@ -301,7 +301,7 @@
    "expect": "third_language",
    "guard": true,
    "match": true,
-   "cost": 0.000441,
+   "cost": 0.00049,
    "calls": 1
   },
   {
@@ -319,26 +319,26 @@
    "expect": "answer",
    "guard": true,
    "match": true,
-   "cost": 0.007065,
+   "cost": 0.007443,
    "calls": 2
   },
   {
    "id": "q065",
-   "kind": "handoff",
+   "kind": "answer",
    "expect": "answer",
    "guard": true,
-   "match": false,
-   "cost": 0.000415,
-   "calls": 1
+   "match": true,
+   "cost": 0.007215,
+   "calls": 2
   },
   {
    "id": "q072",
-   "kind": "handoff",
+   "kind": "answer",
    "expect": "answer",
    "guard": true,
-   "match": false,
-   "cost": 0.000428,
-   "calls": 1
+   "match": true,
+   "cost": 0.008432,
+   "calls": 2
   },
   {
    "id": "q077",
@@ -346,7 +346,7 @@
    "expect": "greeting",
    "guard": true,
    "match": true,
-   "cost": 0.000411,
+   "cost": 0.000464,
    "calls": 1
   },
   {
@@ -355,7 +355,7 @@
    "expect": "greeting",
    "guard": true,
    "match": true,
-   "cost": 0.00041,
+   "cost": 0.000463,
    "calls": 1
   },
   {
@@ -364,7 +364,7 @@
    "expect": "answer",
    "guard": true,
    "match": true,
-   "cost": 0.006924,
+   "cost": 0.007826,
    "calls": 2
   },
   {
@@ -373,17 +373,17 @@
    "expect": "answer",
    "guard": true,
    "match": true,
-   "cost": 0.005561,
+   "cost": 0.005919,
    "calls": 2
   },
   {
    "id": "q092",
-   "kind": "handoff",
+   "kind": "answer",
    "expect": "answer",
    "guard": true,
-   "match": false,
-   "cost": 0.000429,
-   "calls": 1
+   "match": true,
+   "cost": 0.006969,
+   "calls": 2
   },
   {
    "id": "q097",
@@ -391,7 +391,7 @@
    "expect": "handoff",
    "guard": true,
    "match": true,
-   "cost": 0.007227,
+   "cost": 0.00732,
    "calls": 2
   },
   {
@@ -400,7 +400,7 @@
    "expect": "handoff",
    "guard": true,
    "match": true,
-   "cost": 0.007857,
+   "cost": 0.008746,
    "calls": 2
   }
  ]

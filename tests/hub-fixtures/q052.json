@@ -1,6 +1,6 @@
 {
  "id": "q052",
- "recorded_at": "2026-11-14T10:16:11.951Z",
+ "recorded_at": "2026-11-14T14:29:35.793Z",
  "question": {
   "unit": "airport-road",
   "language": "ar",
@@ -14,10 +14,10 @@
    "layer": "understand",
    "model": "claude-haiku-5-5",
    "ok": true,
-   "text": "{\"intents\":[\"out_of_scope\"],\"topics\":[],\"new_topic_hint\":\"Poem about Taif\",\"branch\":null,\"check_in\":null,\"check_out\":null,\"nights\":null,\"dates_text\":null,\"dates_calendar\":null,\"room_type\":null,\"breakfast\":null,\"adults\":null,\"children\":null,\"child_ages\":null,\"extra_beds\":null,\"rooms_count\":null,\"guest_name\":null,\"booking_ref\":null,\"language\":\"ar\",\"complaint\":false,\"confidence\":{\"intents\":0.97,\"topics\":0.9,\"new_topic_hint\":0.9,\"language\":0.98}}",
-   "input_tokens": 3173,
-   "output_tokens": 208,
-   "latency_ms": 1382
+   "text": "{\"intents\":[\"out_of_scope\"],\"topics\":[],\"new_topic_hint\":\"poem about Taif\",\"branch\":null,\"check_in\":null,\"check_out\":null,\"nights\":null,\"dates_text\":null,\"dates_calendar\":null,\"room_type\":null,\"breakfast\":null,\"adults\":null,\"children\":null,\"child_ages\":null,\"extra_beds\":null,\"rooms_count\":null,\"guest_name\":null,\"booking_ref\":null,\"language\":\"ar\",\"complaint\":false,\"confidence\":{\"intents\":0.97,\"new_topic_hint\":0.9,\"language\":0.98}}",
+   "input_tokens": 3700,
+   "output_tokens": 199,
+   "latency_ms": 1222
   }
  ],
  "adapter": {
@@ -212,7 +212,7 @@
    }
   ],
   "guard_refusals": [],
-  "cost_usd": 0.000421
+  "cost_usd": 0.00047
  },
  "first_try": {
   "guard": true,

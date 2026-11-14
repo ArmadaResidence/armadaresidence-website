@@ -1,6 +1,6 @@
 {
  "id": "q092",
- "recorded_at": "2026-11-14T10:16:35.332Z",
+ "recorded_at": "2026-11-14T14:30:02.198Z",
  "question": {
   "unit": "shafa-road",
   "language": "en",
@@ -14,10 +14,19 @@
    "layer": "understand",
    "model": "claude-haiku-5-5",
    "ok": true,
-   "text": "{\"intents\":[\"availability_question\"],\"topics\":[\"room_types\"],\"new_topic_hint\":null,\"branch\":\"shafa-road\",\"check_in\":null,\"check_out\":null,\"nights\":null,\"dates_text\":null,\"dates_calendar\":null,\"room_type\":\"balcony-room\",\"breakfast\":null,\"adults\":null,\"children\":null,\"child_ages\":null,\"extra_beds\":null,\"rooms_count\":null,\"guest_name\":null,\"booking_ref\":null,\"language\":\"en\",\"complaint\":false,\"confidence\":{\"intents\":0.95,\"topics\":0.9,\"branch\":0.85,\"room_type\":0.9,\"language\":0.99,\"complaint\":0.99}}",
-   "input_tokens": 3169,
-   "output_tokens": 224,
-   "latency_ms": 1454
+   "text": "{\"intents\":[\"facility_question\"],\"topics\":[\"room_types\",\"jacuzzi_balcony\"],\"new_topic_hint\":null,\"branch\":\"shafa-road\",\"check_in\":null,\"check_out\":null,\"nights\":null,\"dates_text\":null,\"dates_calendar\":null,\"room_type\":\"balcony-room\",\"breakfast\":null,\"adults\":null,\"children\":null,\"child_ages\":null,\"extra_beds\":null,\"rooms_count\":null,\"guest_name\":null,\"booking_ref\":null,\"language\":\"en\",\"complaint\":false,\"confidence\":{\"intents\":0.95,\"topics\":0.93,\"branch\":0.85,\"room_type\":0.8,\"language\":0.99,\"complaint\":0.99}}",
+   "input_tokens": 3696,
+   "output_tokens": 235,
+   "latency_ms": 1476
+  },
+  {
+   "layer": "compose",
+   "model": "claude-sonnet-5-5",
+   "ok": true,
+   "text": "{\"reply\": \"Yes, at our Shafa Road branch the Balcony Room comes with a balcony. It is the only room type there with one.\", \"used_card_ids\": [\"k-shafa-jacuzzi-balcony\"], \"unanswered\": []}",
+   "input_tokens": 2821,
+   "output_tokens": 84,
+   "latency_ms": 1889
   }
  ],
  "adapter": {
@@ -198,26 +207,27 @@
   }
  },
  "outcome": {
-  "kind": "handoff",
-  "state": "human",
-  "reason": "stay_booking",
+  "kind": "answer",
+  "state": "inquiry",
+  "reason": null,
   "transitions": [
-   "T2"
+   "T5"
   ],
   "topics": [
-   "room_types"
+   "room_types",
+   "jacuzzi_balcony"
   ],
   "messages": [
    {
-    "body": "Welcome to Armada Residence – Shafa Road.\nA member of our team will continue with you in this chat.",
-    "notice": true
+    "body": "Welcome to Armada Residence – Shafa Road.\nYes, at our Shafa Road branch the Balcony Room comes with a balcony. It is the only room type there with one.",
+    "notice": false
    }
   ],
   "guard_refusals": [],
-  "cost_usd": 0.000429
+  "cost_usd": 0.006969
  },
  "first_try": {
   "guard": true,
-  "expect": false
+  "expect": true
  }
 }

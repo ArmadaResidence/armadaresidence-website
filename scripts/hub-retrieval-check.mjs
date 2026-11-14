@@ -138,6 +138,66 @@ for (const name of ['K1 a Shafa Road card is read on the Airport Road number', '
   check(T.includes(name), `the SQL test «${name}» exists`);
 }
 
+// ── 7. «لم أعرف الإجابة» holds only real knowledge gaps (H6 gaps, Ahmed 14 Nov 2026) ──
+// the real engine (runTurn) with scripted model answers: only a question with no source, or the part of an answer the
+// sources did not settle, feeds the queue — never media, out of scope, a request for a person, a complaint or a request
+// hand-off; and an answer followed by its hand-off notice is ONE message (payload handoff)
+{
+  const { runTurn } = await import('../supabase/functions/_shared/hub/engine.ts');
+  const { claimFor, knowledgeFor, CONTENT } = await import('./hub-fixtures-lib.mjs');
+  const { longDate } = await import('../supabase/functions/booking-request/email.ts');
+  const { sarText } = await import('../supabase/functions/booking-request/rules.ts');
+  const U = (o) => JSON.stringify({ intents: ['other'], topics: [], new_topic_hint: null, branch: null, check_in: null, check_out: null, nights: null, dates_text: null, dates_calendar: null,
+    room_type: null, breakfast: null, adults: null, children: null, child_ages: null, extra_beds: null, rooms_count: null, guest_name: null, booking_ref: null, language: 'ar', complaint: false,
+    confidence: { intents: 0.95, topics: 0.95 }, ...o });
+  const turn = async (msg, understanding, composed, o = {}) => {
+    const q = { id: 'gap', unit: 'airport-road', language: 'ar', messages: [msg] };
+    const claim = claimFor(q);
+    if (o.media) claim.messages = [{ id: 'm-gap-0', kind: 'image', body: null, payload: { media_id: 'x' } }];
+    const model = async (c) => ({ ok: true, text: c.layer === 'compose' ? JSON.stringify(composed) : understanding, input_tokens: 10, output_tokens: 10, latency_ms: 1 });
+    const deps = { model, knowledge: async (u, t, L, b) => knowledgeFor(u, t, L, b), offers: async () => [],
+      adapter: { source: 'x', roomTypes: async () => [], fromPrice: async () => null, quote: async () => ({ kind: 'not_bookable' }), book: async () => ({ kind: 'not_bookable' }) },
+      content: CONTENT, longDate: (iso, L) => longDate(CONTENT, iso, L), sarText: (x, L) => sarText(x, L) };
+    return (await runTurn(claim, deps)).finish;
+  };
+  const NONE = { reply: '', used_card_ids: [], unanswered: ['laundry price'] };
+  let f = await turn('هل يوجد مسبح؟', U({ intents: ['facility_question'], topics: ['facilities'] }), NONE);
+  check(f.state === 'human' && f.unanswered.length === 1 && f.decision.gap === true, 'gaps: a question with no source → the queue (decision.gap)');
+  f = await turn('بكم غسيل الملابس؟', U({ intents: ['price_question'], topics: ['laundry', 'price'] }), { reply: 'لا توجد غسالات في الغرف، ويوجد في الفرع مغسلة مركزية.', used_card_ids: ['k-airport-amenities'], unanswered: ['laundry price'] });
+  check(f.state === 'human' && f.unanswered.length === 1 && f.messages.length === 1 && f.messages[0].payload.handoff === true && !f.messages[0].notice
+    && /مغسلة مركزية/.test(f.messages[0].body) && /سنتأكد من الفريق/.test(f.messages[0].body), `gaps: the laundry: what the cards say, then the price to the team — ONE message, the part unanswered in the queue — ${JSON.stringify(f.messages.map((m) => m.body))}`);
+  check(!/\d+\s*(ريال|SAR)/.test(f.messages[0].body), 'gaps: … and no laundry price');
+  f = await turn('أبغى غرفة فيها مطبخ', U({ intents: ['stay_booking', 'facility_question'], topics: ['booking_new', 'kitchen'] }), { reply: 'المطبخ متوفر في جناح بغرفة وصالة.', used_card_ids: ['k-airport-kitchen'], unanswered: [] });
+  check(f.state === 'human' && f.reason === 'stay_booking' && f.decision.answered === true && f.unanswered.length === 0 && f.messages.length === 1 && f.messages[0].payload.handoff === true
+    && /سيكمل معك أحد أفراد فريقنا/.test(f.messages[0].body), 'gaps: a mixed message → the answer, then the stay to the team, one message; nothing in the queue');
+  f = await turn('أبغى غرفة فيها مطبخ', U({ intents: ['stay_booking', 'facility_question'], topics: ['booking_new', 'kitchen'] }), NONE);
+  check(f.state === 'human' && f.reason === 'stay_booking' && f.unanswered.length === 1 && f.messages.length === 1 && f.messages[0].notice, 'gaps: … its question with no source is a gap; the stay still goes to the team with its notice');
+  f = await turn('أبغى أحجز من 20 إلى 22 نوفمبر', U({ intents: ['stay_booking'], topics: ['booking_new'], check_in: '2026-11-20', check_out: '2026-11-22' }), NONE);
+  check(f.state === 'human' && f.unanswered.length === 0 && !f.decision.gap, 'gaps: a booking hand-off never enters the queue');
+  f = await turn('الغرفة غير نظيفة', U({ intents: ['complaint'], complaint: true }), NONE);
+  check(f.state === 'human' && f.unanswered.length === 0, 'gaps: … nor a complaint');
+  f = await turn('أبغى أكلم موظف', U({ intents: ['human_request'] }), NONE);
+  check(f.state === 'human' && f.unanswered.length === 0, 'gaps: … nor a request for a person');
+  f = await turn('اكتب لي قصيدة', U({ intents: ['out_of_scope'] }), NONE);
+  check(f.unanswered.length === 0, 'gaps: … nor out of scope');
+  f = await turn('', U({}), NONE, { media: true });
+  check(f.state === 'human' && f.unanswered.length === 0, 'gaps: … nor media');
+  f = await turn('كم سعر القاعة؟', U({ intents: ['price_question', 'hall_request'], topics: ['price', 'hall'] }), { reply: 'السعر عن طريق فريق المبيعات على +966 53 662 2288.', used_card_ids: ['k-hall-detail', 'k-sales-contact'], unanswered: [] });
+  check(f.state === 'human' && f.reason === 'hall_request' && f.messages.length === 1 && /المبيعات/.test(f.messages[0].body) && f.unanswered.length === 0, 'gaps: the hall price → «عن طريق المبيعات» first, then the hall request to the team');
+}
+// the database keeps the same rule: a system entry must be a real gap, in a unit that is not off; the cleanup dismisses
+// (never deletes) with «خارج نطاق القائمة»
+{
+  const G = read('supabase/migrations/20261114600000_guest_hub_gaps.sql');
+  const add = G.slice(G.indexOf('create or replace function internal.hub_unanswered_add('), G.indexOf('\n$$;', G.indexOf('create or replace function internal.hub_unanswered_add(')));
+  check(/if p_by is null and not internal\.hub_unanswered_gap\(c, m\.id\) then return null; end if;/.test(add), 'gaps (SQL): a system entry must pass internal.hub_unanswered_gap; a person\'s mark is unchanged');
+  const gap = G.slice(G.indexOf('create function internal.hub_unanswered_gap('), G.indexOf('\n$$;', G.indexOf('create function internal.hub_unanswered_gap(')));
+  check(/u\.assistant_mode <> 'off'/.test(gap) && /m\.kind = 'text'/.test(gap) && /t\.kind = 'reply' and t\.mode <> 'test'/.test(gap) && /decision ->> 'gap'/.test(gap), 'gaps (SQL): … a unit not off, a text message, a reply turn (never a test run) that the engine marked a gap');
+  check(/update public\.hub_unanswered q\s+set status = 'dismissed', dismiss_reason = 'خارج نطاق القائمة'/.test(G) && !/delete from public\.hub_unanswered/.test(G), 'gaps (SQL): the cleanup dismisses with «خارج نطاق القائمة» and never deletes');
+  const T = read('supabase/tests/guest_hub_knowledge.sql');
+  for (const name of ['G1 a question with no source', 'G3 never a booking hand-off', 'G3 … never media', 'G4 never a unit whose mode is off', 'G7 the cleanup dismisses']) check(T.includes(name), `the SQL test «${name}» exists`);
+}
+
 if (fails.length) {
   for (const f of fails) console.error(`✗ ${f}`);
   console.error(`hub-retrieval-check: ${fails.length} of ${n} failed`);

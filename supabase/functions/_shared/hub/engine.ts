@@ -45,6 +45,9 @@ export interface OutMsg {
   licensed?: boolean;
   /** H6: the ids the composed reply cited (cards, faq:<key>) — read by the test lab's grading, not stored */
   used?: string[];
+  /** a hand-off notice (H6 gaps): merged into the answer before it, so the guest gets one message; the stored payload says
+   *  `handoff: true` and the conversation keeps waiting for the team when it is sent (hub_send_finish) */
+  handoff?: boolean;
 }
 export interface Finish {
   status: 'done' | 'failed' | 'skipped';
@@ -209,12 +212,18 @@ export async function runTurn(claim: Json, deps: Deps): Promise<Outcome> {
   let lastAction = 'أول رسالة';
   const unanswered: string[] = [];
   const lastGuest = msgs[msgs.length - 1]?.id as string | undefined;
+  let answered = false;
+  // «لم أعرف الإجابة» holds only real knowledge gaps (Ahmed, 14 Nov 2026): a question with no source, the part of an
+  // answer it could not give — never media, out of scope, a request for a person, a complaint or a request hand-off
+  const gap = () => {
+    if (lastGuest && !unanswered.includes(lastGuest) && msgs.some((m) => m.id === lastGuest && m.kind === 'text')) unanswered.push(lastGuest);
+  };
 
   const doHandoff = (a: Extract<Action, { type: 'handoff' }>) => {
-    if (a.notice) push(fixed(a.notice, L), { notice: true });
+    if (a.notice) push(fixed(a.notice, L), { notice: true, handoff: true });
     note = handoffNote(a.note, lastAction);
     if (a.reason === 'complaint') out.complaint = true;
-    if (a.reason === 'no_source' && lastGuest) unanswered.push(lastGuest);
+    if (a.reason === 'no_source') gap();
   };
 
   const execute = async (dec: Decision): Promise<Decision | null> => {
@@ -253,12 +262,33 @@ export async function runTurn(claim: Json, deps: Deps): Promise<Outcome> {
           const offers = wantOffers ? offersFor(await deps.offers().catch(() => []), unit.branch, L, claim.today) : null;
           const venue = unit.kind === 'dining' && unit.venue ? { name: L === 'en' ? unit.venue.name_en : unit.venue.name_ar, menu_url: unit.venue.menu ?? null } : null;
           const payload: Payload = buildPayload(k, { offers, venue, first_name: claim.guest?.first_name ?? null, cancellation: String(deps.content.cancellation_line[L]) });
+          // a mixed message (H6 gaps): the hand-off after this answer happens whatever the answer gives; a question it could
+          // not answer from a source is a real gap («لم أعرف الإجابة»), a refused or failed reply is simply left out
+          if (a.mixed) {
+            if (!hasSource(payload)) {
+              gap();
+              break;
+            }
+            const c = await compose(payload);
+            if (c === 'credit') return null;
+            if (c === 'guard' || c === 'error') break;
+            if (!c.reply) {
+              gap();
+              break;
+            }
+            push(c.reply, { source_card_ids: cardIds(payload, c.used_card_ids), used: c.used_card_ids });
+            answered = true;
+            lastAction = 'أُجيب عن سؤال';
+            if (c.unanswered.length) gap();
+            break;
+          }
           if (!hasSource(payload)) return decide({ state: dec.next, event: { type: 'answer_result', ok: false }, draft, ctx });
           const composed = await compose(payload);
           if (composed === 'credit') return null;
           if (composed === 'guard') return decide({ state: dec.next, event: { type: 'guard_failed' }, draft, ctx });
           if (composed === 'error' || !composed.reply) return decide({ state: dec.next, event: { type: 'answer_result', ok: false }, draft, ctx });
           push(composed.reply, { source_card_ids: cardIds(payload, composed.used_card_ids), used: composed.used_card_ids });
+          answered = true;
           lastAction = 'أُجيب عن سؤال';
           if (composed.unanswered.length) {
             // the answer goes; the part it could not answer goes to the team and into «لم أعرف الإجابة»
@@ -337,6 +367,18 @@ export async function runTurn(claim: Json, deps: Deps): Promise<Outcome> {
     return out;
   }
 
+  // an answer followed by the hand-off notice is ONE message (H6 gaps, Ahmed 14 Nov 2026): the answer, then the notice
+  for (let i = 0; i + 1 < answers.length; i++) {
+    const a = answers[i];
+    const b = answers[i + 1];
+    if (!a.notice && a.kind === 'text' && b.notice && b.handoff && b.kind === 'text') {
+      answers.splice(i, 2, { ...a, body: `${a.body}\n\n${b.body}`, payload: { ...a.payload, handoff: true } });
+    }
+  }
+  answers.forEach((m, i) => {
+    m.seq = i + 1;
+    delete m.handoff;
+  });
   // the first reply of an episode opens with the greeting line (copy.md §1), added by code
   if (conv.first_reply && answers.length) {
     const g = greeting(unit.persona as Persona, L, unitName(deps.content, unit, L), claim.guest?.first_name ?? null);
@@ -356,7 +398,8 @@ export async function runTurn(claim: Json, deps: Deps): Promise<Outcome> {
   finish.tags_add = final.tags_add;
   finish.note = note;
   finish.unanswered = unanswered;
-  finish.decision = { actions: final.actions.map((a) => a.type), next: final.next, reason: final.reason ?? null, transitions: final.transitions };
+  // answered: a composed answer went into the reply (a mixed message's answer included); gap: «لم أعرف الإجابة» was fed
+  finish.decision = { actions: final.actions.map((a) => a.type), next: final.next, reason: final.reason ?? null, transitions: final.transitions, answered, gap: unanswered.length > 0 };
   return out;
 }
 

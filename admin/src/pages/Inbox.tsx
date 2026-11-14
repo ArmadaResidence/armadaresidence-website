@@ -31,7 +31,8 @@ import {
   type Filters, type HubState, type InboxList, type InboxRow, type Msg, type RejectReason, type Tab, type Thread,
 } from '../lib/inbox';
 import { CancelButton, Confirm, DirtyScope, ErrorBox, Field, Loading, Modal, Spinner, useToast } from '../components/ui';
-import { flagWrong, flaggedIn } from '../lib/lab';
+import { flagWrong, flaggedIn, phoneAutoAdd } from '../lib/lab';
+import { useSession } from '../lib/session';
 
 type View = 'list' | 'thread' | 'panel';
 
@@ -395,6 +396,26 @@ function ThreadView({ t, now, edit, unitNames, composerRef, onBack, onPanel, onC
     }
   }
 
+  // H6 gaps (14 Nov 2026): «رسالة تلقائية من الجوال» — the system admin marks a greeting or an away message the WhatsApp
+  // Business app sent by itself; its text is saved for this number, and the next one stays with the assistant and keeps the wait
+  const sysAdmin = useSession().me?.role === 'admin';
+  const [autoAsk, setAutoAsk] = useState<Msg | null>(null);
+  const [autoBusy, setAutoBusy] = useState(false);
+  async function doAuto() {
+    if (!autoAsk) return;
+    setAutoBusy(true);
+    try {
+      await phoneAutoAdd(autoAsk.id);
+      setAutoAsk(null);
+      toast('حُفظ نص الرسالة لهذا الرقم: إذا أرسلها الجوال مرة أخرى تظهر «رسالة تلقائية من الجوال» ولا تنتقل المحادثة إلى الفريق.');
+      await onChanged();
+    } catch (e) {
+      toast((e as Error).message, 'error');
+    } finally {
+      setAutoBusy(false);
+    }
+  }
+
   async function openMedia(m: Msg) {
     try {
       onMedia({ url: await mediaUrl(m.media_path!), mime: m.media_mime });
@@ -488,6 +509,7 @@ function ThreadView({ t, now, edit, unitNames, composerRef, onBack, onPanel, onC
             <div key={m.id} className={`inbox-bubble ${out ? 'is-out' : 'is-in'} ${m.status === 'pending_approval' ? 'is-draft' : ''}`} data-msg={m.id} data-author={m.author} data-status={m.status}
               data-tour={m.status === 'pending_approval' ? 'inbox-draft' : undefined}>
               {m.author === 'phone' && <span className="inbox-chip">{MARKS.phone}</span>}
+              {m.author === 'phone_auto' && <span className="inbox-chip" data-auto-chip>{MARKS.phone_auto}</span>}
               {m.author === 'assistant' && <span className="inbox-chip" data-assistant-chip>{m.status === 'test' ? MARKS.test : m.status === 'pending_approval' ? 'مسودة المساعد' : 'المساعد'}</span>}
               {m.kind === 'template' && <span className="inbox-chip">{MARKS.template} · {TEMPLATE_LABELS[String(m.payload?.template ?? '')] ?? String(m.payload?.template ?? '')}</span>}
               {m.purged ? <p className="text-ink-muted text-xs">حُذف النص بعد 12 شهرًا.</p> : m.body ? <p className="whitespace-pre-wrap" dir="auto">{m.body}</p> : null}
@@ -516,6 +538,7 @@ function ThreadView({ t, now, edit, unitNames, composerRef, onBack, onPanel, onC
               {m.author === 'assistant' && ['queued', 'accepted', 'sent', 'delivered', 'read'].includes(m.status) && (flagged.includes(m.id)
                 ? <span className="text-xs text-ink-muted" data-flagged>أُبلغ أنه رد خاطئ</span>
                 : edit && <button type="button" className="inbox-link" onClick={() => setFlagging(m)} data-action="flag-wrong">إبلاغ: رد خاطئ</button>)}
+              {m.author === 'phone' && m.kind === 'text' && sysAdmin && <button type="button" className="inbox-link" onClick={() => setAutoAsk(m)} data-action="phone-auto">{MARKS.phone_auto}</button>}
               {!out && edit && m.author === 'guest' && (m.unanswered
                 ? <span className="text-xs text-ink-muted" data-unanswered>في «لم أعرف الإجابة»</span>
                 : <button type="button" className="inbox-link" onClick={() => onUnanswered(m.id)} data-action="unanswered">{ACTIONS.unanswered}</button>)}
@@ -524,6 +547,9 @@ function ThreadView({ t, now, edit, unitNames, composerRef, onBack, onPanel, onC
         })}
       </div>
       {edit && !closed && <Composer key={c.id} t={t} now={now} composerRef={composerRef} onSent={onChanged} onTemplate={() => onDialog('template')} />}
+      {autoAsk && <Confirm open title={MARKS.phone_auto} onClose={() => setAutoAsk(null)} busy={autoBusy} confirmLabel="حفظ نصها لهذا الرقم"
+        body="استخدمها لرسالة يرسلها تطبيق واتساب للأعمال من الجوال تلقائيًا، مثل رسالة الترحيب أو رسالة الغياب. يُحفظ نصها كما هو لهذا الرقم، وإذا وصلت مرة أخرى بالنص نفسه تظهر «رسالة تلقائية من الجوال»: لا تنتقل المحادثة إلى الفريق، ولا يتوقف المساعد، ولا تُحسب ردًا من الفريق. تُعرض النصوص المحفوظة في «إعدادات المساعد» ويمكن حذفها من هناك."
+        onConfirm={() => void doAuto()} />}
       {flagging && <Modal open onClose={() => setFlagging(null)} title="إبلاغ: رد خاطئ" busy={flagBusy} draftKey={`flag:${flagging.id}`}>
         {(
           <div className="grid gap-3" data-flag-form>

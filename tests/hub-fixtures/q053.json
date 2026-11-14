@@ -1,6 +1,6 @@
 {
  "id": "q053",
- "recorded_at": "2026-11-14T10:16:13.427Z",
+ "recorded_at": "2026-11-14T14:29:36.883Z",
  "question": {
   "unit": "airport-road",
   "language": "en",
@@ -14,10 +14,10 @@
    "layer": "understand",
    "model": "claude-haiku-5-5",
    "ok": true,
-   "text": "{\"intents\":[\"out_of_scope\"],\"topics\":[],\"new_topic_hint\":\"football match results\",\"branch\":null,\"check_in\":null,\"check_out\":null,\"nights\":null,\"dates_text\":null,\"dates_calendar\":null,\"room_type\":null,\"breakfast\":null,\"adults\":null,\"children\":null,\"child_ages\":null,\"extra_beds\":null,\"rooms_count\":null,\"guest_name\":null,\"booking_ref\":null,\"language\":\"en\",\"complaint\":false,\"confidence\":{\"intents\":0.97,\"topics\":0.9,\"new_topic_hint\":0.9,\"language\":0.98}}",
-   "input_tokens": 3167,
-   "output_tokens": 203,
-   "latency_ms": 1475
+   "text": "{\"intents\":[\"out_of_scope\"],\"topics\":[\"out_of_scope\"],\"new_topic_hint\":null,\"branch\":null,\"check_in\":null,\"check_out\":null,\"nights\":null,\"dates_text\":null,\"dates_calendar\":null,\"room_type\":null,\"breakfast\":null,\"adults\":null,\"children\":null,\"child_ages\":null,\"extra_beds\":null,\"rooms_count\":null,\"guest_name\":null,\"booking_ref\":null,\"language\":\"en\",\"complaint\":false,\"confidence\":{\"intents\":0.97,\"topics\":0.95,\"language\":0.99}}",
+   "input_tokens": 3694,
+   "output_tokens": 195,
+   "latency_ms": 1088
   }
  ],
  "adapter": {
@@ -204,7 +204,9 @@
   "transitions": [
    "T5"
   ],
-  "topics": [],
+  "topics": [
+   "out_of_scope"
+  ],
   "messages": [
    {
     "body": "Welcome to Armada Residence – Airport Road.\nHere we can help only with bookings, stays and Armada Residence services.",
@@ -212,7 +214,7 @@
    }
   ],
   "guard_refusals": [],
-  "cost_usd": 0.000418
+  "cost_usd": 0.000467
  },
  "first_try": {
   "guard": true,

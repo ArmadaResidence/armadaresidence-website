@@ -389,5 +389,78 @@ select pg_temp._check('W3 a YCloud read that differs: the record follows YCloud,
   and (select cardinality(events) = 2 from public.wa_webhook)
   and exists (select 1 from public.audit_log where entity = 'wa_webhook' and actor_label = 'YCloud' and actor_id is null));
 
+-- ══ X — automatic messages from the phone (H6 gaps, 14 Nov 2026 — 20261114600000_guest_hub_gaps) ══
+create function pg_temp._echo(p_pid text, p_phone text, p_body text) returns jsonb language sql as $$
+  select public.hub_ingest_echo(jsonb_build_object('channel', '+966536622277', 'phone', p_phone, 'provider_id', p_pid, 'sent_at', now(), 'kind', 'text', 'body', p_body))
+$$;
+select pg_temp._service();
+select pg_temp._save('x0', pg_temp._in('YC3-X-IN1', '+966500009341', 'السلام عليكم'));
+select pg_temp._save('x1', pg_temp._echo('YC3-X-E1', '+966500009341', 'مرحبًا بك في أرمادا ريزيدنس، سنرد عليك قريبًا.'));
+select pg_temp._root();
+select pg_temp._check('X1 before its text is saved, an automatic phone message is a phone reply (T23): with the team, owner «الجوال»',
+  (select state = 'human' and owner_kind = 'phone' and waiting_since is null from public.hub_conversations where id = pg_temp._conv('+966500009341'))
+  and (select author = 'phone' from public.hub_messages where provider_message_id = 'YC3-X-E1'));
+select pg_temp._as('recA');
+select pg_temp._fails('X2 reception cannot mark «رسالة تلقائية من الجوال» (the system admin only)',
+  format('select public.hub_phone_auto_add(%L)', (pg_temp._j('x1') ->> 'message_id')), 'hub_system_admin_only');
+select pg_temp._as('viewer');
+select pg_temp._fails('X2 … nor management', format('select public.hub_phone_auto_add(%L)', (pg_temp._j('x1') ->> 'message_id')), 'hub_system_admin_only');
+select pg_temp._as('admin');
+select pg_temp._fails('X2 … a guest message is never one', format('select public.hub_phone_auto_add(%L)', (pg_temp._j('x0') ->> 'message_id')), 'hub_phone_auto_message');
+select pg_temp._save('x3', public.hub_phone_auto_add((pg_temp._j('x1') ->> 'message_id')::uuid));
+select pg_temp._root();
+select pg_temp._check('X3 the system admin saves its exact text for that number; the stored message is marked; one audited batch',
+  (pg_temp._j('x3') ->> 'ok')::boolean and (pg_temp._j('x3') ->> 'marked')::int = 1
+  and exists (select 1 from public.hub_phone_auto_texts a join public.hub_channels ch on ch.id = a.channel_id where ch.address = '+966536622277' and a.body = 'مرحبًا بك في أرمادا ريزيدنس، سنرد عليك قريبًا.')
+  and (select author = 'phone_auto' from public.hub_messages where provider_message_id = 'YC3-X-E1')
+  and exists (select 1 from public.audit_log where batch_id = (pg_temp._j('x3') ->> 'batch_id')::uuid and entity = 'hub_phone_auto_texts' and actor_id = pg_temp._id('admin')), pg_temp._j('x3')::text);
+select pg_temp._check('X3 … metadata only: the conversation is not moved back', (select state = 'human' and owner_kind = 'phone' from public.hub_conversations where id = pg_temp._conv('+966500009341')));
+-- a new guest, the assistant's conversation (inquiry), waiting: the same text arrives again (other line ends, spaces around)
+select pg_temp._service();
+select pg_temp._save('x4', pg_temp._in('YC3-X-IN2', '+966500009342', 'هل يتوفر موقف؟'));
+select pg_temp._root();
+update public.hub_conversations set state = 'inquiry', owner_kind = 'assistant', human_reason = null, waiting_since = now() - interval '3 minutes' where id = pg_temp._conv('+966500009342');
+select pg_temp._service();
+select pg_temp._save('x5', pg_temp._echo('YC3-X-E2', '+966500009342', E'  مرحبًا بك في أرمادا ريزيدنس، سنرد عليك قريبًا.\r\n '));
+select pg_temp._root();
+select pg_temp._check('X4 an echo equal to a saved text is «رسالة تلقائية من الجوال» (author phone_auto)',
+  (pg_temp._j('x5') ->> 'auto')::boolean and (select author = 'phone_auto' and direction = 'out' from public.hub_messages where provider_message_id = 'YC3-X-E2'), pg_temp._j('x5')::text);
+select pg_temp._check('X5 … and changes nothing else: not with the team, no owner «الجوال», the wait kept, never a staff answer',
+  (select state = 'inquiry' and owner_kind = 'assistant' and waiting_since is not null and last_staff_at is null and first_response_at is null
+     from public.hub_conversations where id = pg_temp._conv('+966500009342'))
+  and not exists (select 1 from public.hub_conversation_events e where e.conversation_id = pg_temp._conv('+966500009342') and e.reason = 'phone_reply'));
+select pg_temp._as('admin');
+update public.hub_conversations set waiting_since = now() - interval '40 minutes' where id = pg_temp._conv('+966500009342');
+select pg_temp._root();
+update public.hub_conversations set state = 'human', human_reason = 'assistant_off', owner_kind = null where id = pg_temp._conv('+966500009342');
+select pg_temp._service();
+select pg_temp._save('x6', public.hub_escalations_claim());
+select pg_temp._root();
+select pg_temp._check('X6 … so «محادثة بانتظار الرد» still goes for it', exists (select 1 from jsonb_array_elements(pg_temp._j('x6')) e where e ->> 'id' = pg_temp._conv('+966500009342')::text), pg_temp._j('x6')::text);
+select pg_temp._service();
+select pg_temp._save('x7', pg_temp._echo('YC3-X-E3', '+966500009342', 'تمام، نرسل لك التفاصيل الآن'));
+select pg_temp._root();
+select pg_temp._check('X7 any other text from the phone is still a phone reply (T23)', not (pg_temp._j('x7') ->> 'auto')::boolean
+  and (select author = 'phone' from public.hub_messages where provider_message_id = 'YC3-X-E3')
+  and (select owner_kind = 'phone' and waiting_since is null from public.hub_conversations where id = pg_temp._conv('+966500009342')));
+select pg_temp._check('X7 … an automatic message never queues a draft card (only staff and phone replies do)',
+  not exists (select 1 from public.hub_card_jobs j join public.hub_messages m on m.id = j.staff_message_id where m.author = 'phone_auto'));
+select pg_temp._as('viewer');
+select pg_temp._save('x8', public.hub_phone_auto_list());
+select pg_temp._fails('X8 management cannot remove a saved text', format('select public.hub_phone_auto_remove(%L)', (pg_temp._j('x3') ->> 'id')), 'hub_system_admin_only');
+select pg_temp._check('X8 «إعدادات المساعد» lists the saved text under its number; no remove for management',
+  exists (select 1 from jsonb_array_elements(pg_temp._j('x8') -> 'rows') r where r ->> 'address' = '+966536622277' and r ->> 'body' like 'مرحبًا بك%')
+  and not (pg_temp._j('x8') ->> 'can_edit')::boolean, pg_temp._j('x8')::text);
+select pg_temp._as('admin');
+select pg_temp._save('x9', public.hub_phone_auto_remove((pg_temp._j('x3') ->> 'id')::uuid));
+select pg_temp._service();
+select pg_temp._save('x10', pg_temp._echo('YC3-X-E4', '+966500009343', 'مرحبًا بك في أرمادا ريزيدنس، سنرد عليك قريبًا.'));
+select pg_temp._root();
+select pg_temp._check('X9 the system admin removes it (audited); the same text is a phone reply again; the marked messages keep their label',
+  (pg_temp._j('x9') ->> 'ok')::boolean
+  and exists (select 1 from public.audit_log where batch_id = (pg_temp._j('x9') ->> 'batch_id')::uuid and entity = 'hub_phone_auto_texts' and action = 'delete')
+  and not (pg_temp._j('x10') ->> 'auto')::boolean
+  and (select author = 'phone_auto' from public.hub_messages where provider_message_id = 'YC3-X-E2'));
+
 select n, test, ok, detail from _r order by n;
 rollback;

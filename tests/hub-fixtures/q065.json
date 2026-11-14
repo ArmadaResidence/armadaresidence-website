@@ -1,6 +1,6 @@
 {
  "id": "q065",
- "recorded_at": "2026-11-14T10:16:19.742Z",
+ "recorded_at": "2026-11-14T14:29:45.304Z",
  "question": {
   "unit": "airport-road",
   "language": "ar",
@@ -14,10 +14,19 @@
    "layer": "understand",
    "model": "claude-haiku-5-5",
    "ok": true,
-   "text": "{\"intents\":[\"other\"],\"topics\":[],\"new_topic_hint\":\"Sales phone number request\",\"branch\":null,\"check_in\":null,\"check_out\":null,\"nights\":null,\"dates_text\":null,\"dates_calendar\":null,\"room_type\":null,\"breakfast\":null,\"adults\":null,\"children\":null,\"child_ages\":null,\"extra_beds\":null,\"rooms_count\":null,\"guest_name\":null,\"booking_ref\":null,\"language\":\"ar\",\"complaint\":false,\"confidence\":{\"intents\":0.7,\"new_topic_hint\":0.8,\"language\":0.95}}",
-   "input_tokens": 3170,
-   "output_tokens": 195,
-   "latency_ms": 1318
+   "text": "{\"intents\":[\"facility_question\"],\"topics\":[\"groups_corporate\"],\"new_topic_hint\":null,\"branch\":null,\"check_in\":null,\"check_out\":null,\"nights\":null,\"dates_text\":null,\"dates_calendar\":null,\"room_type\":null,\"breakfast\":null,\"adults\":null,\"children\":null,\"child_ages\":null,\"extra_beds\":null,\"rooms_count\":null,\"guest_name\":null,\"booking_ref\":null,\"language\":\"ar\",\"complaint\":false,\"confidence\":{\"intents\":0.95,\"topics\":0.9,\"language\":0.99}}",
+   "input_tokens": 3697,
+   "output_tokens": 194,
+   "latency_ms": 1317
+  },
+  {
+   "layer": "compose",
+   "model": "claude-sonnet-5-5",
+   "ok": true,
+   "text": "{\"reply\": \"يمكنك التواصل مع فريق المبيعات على +966 53 662 2288 أو عبر sales@armadaresidence.com. وللشركات والمجموعات صفحة الشركاء: https://armadaresidence.com/partners/\", \"used_card_ids\": [\"k-sales-contact\"], \"unanswered\": []}",
+   "input_tokens": 2784,
+   "output_tokens": 118,
+   "latency_ms": 2132
   }
  ],
  "adapter": {
@@ -198,25 +207,26 @@
   }
  },
  "outcome": {
-  "kind": "handoff",
-  "state": "human",
-  "reason": "no_source",
+  "kind": "answer",
+  "state": "inquiry",
+  "reason": null,
   "transitions": [
-   "T5",
-   "T21"
+   "T5"
   ],
-  "topics": [],
+  "topics": [
+   "groups_corporate"
+  ],
   "messages": [
    {
-    "body": "مرحبًا بك في أرمادا ريزيدنس – طريق المطار.\nسنتأكد من الفريق، وسيكمل معك أحدهم في هذه المحادثة.",
-    "notice": true
+    "body": "مرحبًا بك في أرمادا ريزيدنس – طريق المطار.\nيمكنك التواصل مع فريق المبيعات على +966 53 662 2288 أو عبر sales@armadaresidence.com. وللشركات والمجموعات صفحة الشركاء: https://armadaresidence.com/partners/",
+    "notice": false
    }
   ],
   "guard_refusals": [],
-  "cost_usd": 0.000415
+  "cost_usd": 0.007215
  },
  "first_try": {
   "guard": true,
-  "expect": false
+  "expect": true
  }
 }

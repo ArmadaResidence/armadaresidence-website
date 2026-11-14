@@ -287,6 +287,35 @@ check(/if not \(coalesce\(p_after, '\{\}'\) @> coalesce\(p_before, '\{\}'\)\) th
   }
 }
 
+// ── 10. H6 gaps (14 Nov 2026): an automatic message from the phone (the WhatsApp Business app's greeting or away
+// message) is «رسالة تلقائية من الجوال» once its text is saved for that number — never a staff answer ──
+{
+  const G = read('supabase/migrations/20261114600000_guest_hub_gaps.sql');
+  const T3 = read('supabase/tests/guest_hub_inbox.sql');
+  const echo6 = fnOf(G, 'hub_ingest_echo');
+  check(/v_auto := v_kind = 'text' and exists \(select 1 from public\.hub_phone_auto_texts a where a\.channel_id = ch\.id and a\.body = internal\.hub_auto_text\(p ->> 'body'\)\)/.test(echo6),
+    'an echo is automatic only when its text (trimmed, line ends unified) equals a saved text of THAT number');
+  const early = echo6.indexOf('if v_auto then');
+  check(early > 0 && early < echo6.indexOf("'phone_reply'") && early < echo6.indexOf('waiting_since = null') && /case when v_auto then 'phone_auto' else 'phone' end/.test(echo6),
+    '… stored with author phone_auto, then nothing else: no hand-off (T23), no owner «الجوال», the wait and its email kept');
+  check(/execute function internal\.hub_unit_mode_guard|new\.author in \('staff', 'phone'\)/.test(read('supabase/migrations/20261114400000_guest_hub_lab.sql')) && !/author in \([^)]*phone_auto/.test(read('supabase/migrations/20261114400000_guest_hub_lab.sql')),
+    '… never a draft card (the job trigger takes staff and phone replies only)');
+  const claim = fnOf(read('supabase/migrations/20261114300000_guest_hub_topic_labels.sql'), 'hub_turn_claim');
+  check(/v_first := not exists \(select 1 from public\.hub_messages m where m\.conversation_id = c\.id and m\.direction = 'out' and m\.kind <> 'note'/.test(claim) && !/v_first := not exists[^;]*author/.test(claim),
+    '… and an automatic greeting already sent means the first reply carries no greeting line (first_reply counts every outbound message)');
+  const add = fnOf(G, 'hub_phone_auto_add');
+  check(/if not internal\.is_system_admin\(\) then raise exception 'hub_system_admin_only'/.test(add) && /m\.author not in \('phone', 'phone_auto'\) or m\.kind <> 'text'/.test(add)
+    && /internal\.begin_batch\(\)/.test(add) && /set author = 'phone_auto'\s+where channel_id = m\.channel_id and direction = 'out' and author = 'phone'/.test(add),
+    '«رسالة تلقائية من الجوال»: the system admin, a text sent from the phone, audited; the messages already stored with it are marked (metadata only)');
+  check(/if not internal\.is_system_admin\(\)/.test(fnOf(G, 'hub_phone_auto_remove')) && /internal\.audit\('id', 'channel_id', 'body'\)/.test(G), 'the remove is the system admin\'s, every change audited');
+  check(/author in \('guest', 'assistant', 'staff', 'phone', 'phone_auto', 'system'\)/.test(G), 'the author phone_auto is allowed');
+  const inbox = read('admin/src/pages/Inbox.tsx');
+  check(/m\.author === 'phone' && m\.kind === 'text' && sysAdmin/.test(inbox) && /useSession\(\)\.me\?\.role === 'admin'/.test(inbox), 'the inbox offers it to the system admin on a phone text only');
+  for (const name of ['X1 before its text is saved', 'X3 the system admin saves its exact text', 'X4 an echo equal to a saved text', 'X5 … and changes nothing else', 'X6 … so «محادثة بانتظار الرد» still goes', 'X9 the system admin removes it']) {
+    check(T3.includes(name), `the SQL test «${name}» exists`);
+  }
+}
+
 // ── the SQL proof exists and runs in CI ──
 for (const name of ['N6 a repeated event', 'E1 an echo', 'S2 read stays read', 'C8 after 12 hours', 'H2 a queued «إياب» offer to a held member', 'I1 «تخزين المحادثات» off', 'T1 text older than 12 months', 'R2 Airport Road reception sees Airport Road only']) {
   check(TESTS.includes(name), `the SQL test «${name}» exists`);

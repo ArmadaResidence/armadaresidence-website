@@ -1,6 +1,6 @@
 {
  "id": "q046",
- "recorded_at": "2026-11-14T10:16:02.675Z",
+ "recorded_at": "2026-11-14T14:29:28.509Z",
  "question": {
   "unit": "airport-road",
   "language": "ar",
@@ -14,10 +14,10 @@
    "layer": "understand",
    "model": "claude-haiku-5-5",
    "ok": true,
-   "text": "{\"intents\":[\"booking_cancel\"],\"topics\":[\"booking_change\"],\"new_topic_hint\":null,\"branch\":\"airport-road\",\"check_in\":null,\"check_out\":null,\"nights\":null,\"dates_text\":null,\"dates_calendar\":null,\"room_type\":null,\"breakfast\":null,\"adults\":null,\"children\":null,\"child_ages\":null,\"extra_beds\":null,\"rooms_count\":null,\"guest_name\":null,\"booking_ref\":null,\"language\":\"ar\",\"complaint\":false,\"confidence\":{\"intents\":0.95,\"topics\":0.9,\"branch\":0.6,\"language\":0.98}}",
-   "input_tokens": 3168,
-   "output_tokens": 205,
-   "latency_ms": 1228
+   "text": "{\"intents\":[\"booking_cancel\"],\"topics\":[\"booking_change\"],\"new_topic_hint\":null,\"branch\":null,\"check_in\":null,\"check_out\":null,\"nights\":null,\"dates_text\":null,\"dates_calendar\":null,\"room_type\":null,\"breakfast\":null,\"adults\":null,\"children\":null,\"child_ages\":null,\"extra_beds\":null,\"rooms_count\":null,\"guest_name\":null,\"booking_ref\":null,\"language\":\"ar\",\"complaint\":false,\"confidence\":{\"intents\":0.95,\"topics\":0.9,\"language\":0.99}}",
+   "input_tokens": 3695,
+   "output_tokens": 194,
+   "latency_ms": 1065
   }
  ],
  "adapter": {
@@ -214,7 +214,7 @@
    }
   ],
   "guard_refusals": [],
-  "cost_usd": 0.000419
+  "cost_usd": 0.000467
  },
  "first_try": {
   "guard": true,

@@ -62,8 +62,29 @@ function enWord(text: string, word: string): boolean {
 }
 const has = (text: string, word: string) => (/[\u0600-\u06FF]/.test(word) ? arWord(text, word) : enWord(text, word));
 
-/** every run of Western digits (a time 2:00 is two runs; a phone in any spacing is its runs) */
+/** every run of Western digits (a time 2:00 is two runs) */
 export const numberRuns = (s: string) => (s.match(/\d+/g) ?? []).map((x) => x.replace(/^0+(?=\d)/, ''));
+
+/** digit groups on one line, with spaces, hyphens, dots or brackets between them (a candidate phone number) */
+const DIGIT_GROUPS = /[+(]?\d[\d  ().-]*\d/g;
+/** a phone number in any common spacing (H6 gaps) — +966 53 662 2288 · +966536622288 · 00966 53 662 2288 ·
+ *  053 662 2288 · 053-662-2288 · (053) 662 2288 · 536622288 — as its number: digits only, the international prefix and a
+ *  Saudi trunk 0 resolved (05… = 9665…). Null for anything that is not a phone (a price, a time, a date, a list). */
+export function phoneKey(raw: string): string | null {
+  const s = raw.trim();
+  let d = s.replace(/\D/g, '');
+  if (d.length < 9 || d.length > 15) return null;
+  if (s.startsWith('+')) return d;
+  if (d.startsWith('00')) return d.slice(2);
+  if (d.startsWith('966')) return d;
+  if (d.startsWith('0')) return `966${d.slice(1)}`;
+  if (/^5\d{8}$/.test(d)) return `966${d}`;
+  return null;
+}
+/** every phone number of a text, with the span it takes */
+export const phonesIn = (s: string) => [...String(s ?? '').matchAll(DIGIT_GROUPS)].map((m) => ({ raw: m[0], key: phoneKey(m[0]) })).filter((x): x is { raw: string; key: string } => !!x.key);
+export const EMAIL_RE = /[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)*\.[A-Za-z]{2,}/g;
+export const emailsIn = (s: string) => (String(s ?? '').match(EMAIL_RE) ?? []).map((e) => e.toLowerCase());
 
 export interface GuardResult {
   ok: boolean;
@@ -75,8 +96,19 @@ export function guard(reply: string, p: GuardPayload, o: GuardOptions): GuardRes
   const text = String(reply ?? '').trim();
   if (!text) return { ok: false, reasons: ['empty'] };
   const pay = p.text ?? '';
+  // 1a · emails and phone numbers (H6 gaps): each one must be in the payload — a phone in any common spacing, an email
+  // whatever its case — and is then taken out, so its domain is not read as a link nor its digits as numbers
+  const payEmails = new Set(emailsIn(pay));
+  let rest = text;
+  for (const e of emailsIn(text)) if (!payEmails.has(e)) r.push('email');
+  rest = rest.replace(EMAIL_RE, ' ');
+  const payPhones = new Set(phonesIn(pay).map((x) => x.key));
+  for (const ph of phonesIn(rest)) {
+    if (!payPhones.has(ph.key)) r.push('phone');
+    rest = rest.replace(ph.raw, ' ');
+  }
   // 2 · links (checked first, then taken out so their digits do not count as numbers)
-  const urls = text.match(URL_RE) ?? [];
+  const urls = rest.match(URL_RE) ?? [];
   for (const u of urls) {
     const clean = u.replace(/[.,،؛!?؟]+$/, '');
     let host = '';
@@ -87,7 +119,7 @@ export function guard(reply: string, p: GuardPayload, o: GuardOptions): GuardRes
     }
     if (!(host === 'armadaresidence.com' || host === 'www.armadaresidence.com' || pay.includes(clean))) r.push('link');
   }
-  const noUrls = text.replace(URL_RE, ' ');
+  const noUrls = rest.replace(URL_RE, ' ');
   // 1 · numbers: every one in the payload
   if (AR_DIGITS.test(text)) r.push('digits');
   const allowed = new Set(numberRuns(pay));
@@ -147,6 +179,8 @@ export const RETRY_REASONS: Record<string, string> = {
   empty: 'The reply was empty.',
   digits: 'Use Western digits (0-9) only.',
   number: 'A number in the reply is not in the PAYLOAD. Use only numbers written in the PAYLOAD.',
+  phone: 'A phone number in the reply is not in the PAYLOAD. Give only the phone numbers written in the PAYLOAD.',
+  email: 'An email address in the reply is not in the PAYLOAD. Give only the email addresses written in the PAYLOAD.',
   link: 'A link in the reply is not allowed. Use only links written in the PAYLOAD.',
   plural_address: 'Address the guest in the singular, never the plural.',
   deposit: 'Never mention a deposit or a security amount.',

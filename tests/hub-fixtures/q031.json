@@ -1,6 +1,6 @@
 {
  "id": "q031",
- "recorded_at": "2026-11-14T10:15:51.677Z",
+ "recorded_at": "2026-11-14T14:29:16.944Z",
  "question": {
   "unit": "airport-road",
   "language": "ar",
@@ -14,19 +14,19 @@
    "layer": "understand",
    "model": "claude-haiku-5-5",
    "ok": true,
-   "text": "{\"intents\":[\"facility_question\"],\"topics\":[\"room_amenities\"],\"new_topic_hint\":null,\"branch\":null,\"check_in\":null,\"check_out\":null,\"nights\":null,\"dates_text\":null,\"dates_calendar\":null,\"room_type\":null,\"breakfast\":null,\"adults\":null,\"children\":null,\"child_ages\":null,\"extra_beds\":null,\"rooms_count\":null,\"guest_name\":null,\"booking_ref\":null,\"language\":\"ar\",\"complaint\":false,\"confidence\":{\"intents\":0.95,\"topics\":0.9,\"branch\":0.3,\"language\":0.99}}",
-   "input_tokens": 3172,
-   "output_tokens": 201,
-   "latency_ms": 1257
+   "text": "{\"intents\":[\"facility_question\"],\"topics\":[\"room_amenities\"],\"new_topic_hint\":null,\"branch\":\"airport-road\",\"check_in\":null,\"check_out\":null,\"nights\":null,\"dates_text\":null,\"dates_calendar\":null,\"room_type\":null,\"breakfast\":null,\"adults\":null,\"children\":null,\"child_ages\":null,\"extra_beds\":null,\"rooms_count\":null,\"guest_name\":null,\"booking_ref\":null,\"language\":\"ar\",\"complaint\":false,\"confidence\":{\"intents\":0.9,\"topics\":0.85,\"branch\":0.6,\"language\":0.98}}",
+   "input_tokens": 3699,
+   "output_tokens": 204,
+   "latency_ms": 1209
   },
   {
    "layer": "compose",
    "model": "claude-sonnet-5-5",
    "ok": true,
-   "text": "{\"reply\": \"نعم، تتوفر ثلاجة في كل وحدات فرع طريق المطار. أما في فرع طريق الشفا فلا توجد ثلاجة في أي نوع من الغرف.\", \"used_card_ids\": [\"k-airport-amenities\", \"k-shafa-amenities\"], \"unanswered\": []}",
-   "input_tokens": 2902,
-   "output_tokens": 117,
-   "latency_ms": 2068
+   "text": "{\"reply\": \"نعم، في كل وحدات فرع طريق المطار ثلاجة. وتجدر الإشارة إلى أنه لا توجد ثلاجة في أي نوع من الغرف في فرع طريق الشفا.\", \"used_card_ids\": [\"k-airport-amenities\", \"k-shafa-amenities\"], \"unanswered\": []}",
+   "input_tokens": 3055,
+   "output_tokens": 125,
+   "latency_ms": 1910
   }
  ],
  "adapter": {
@@ -218,12 +218,12 @@
   ],
   "messages": [
    {
-    "body": "مرحبًا بك في أرمادا ريزيدنس – طريق المطار.\nنعم، تتوفر ثلاجة في كل وحدات فرع طريق المطار. أما في فرع طريق الشفا فلا توجد ثلاجة في أي نوع من الغرف.",
+    "body": "مرحبًا بك في أرمادا ريزيدنس – طريق المطار.\nنعم، في كل وحدات فرع طريق المطار ثلاجة. وتجدر الإشارة إلى أنه لا توجد ثلاجة في أي نوع من الغرف في فرع طريق الشفا.",
     "notice": false
    }
   ],
   "guard_refusals": [],
-  "cost_usd": 0.007392
+  "cost_usd": 0.007832
  },
  "first_try": {
   "guard": true,

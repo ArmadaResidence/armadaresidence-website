@@ -106,7 +106,7 @@ export const testItemRetire = (id: string, retired: boolean) => call<Saved & { c
 export const testItemGap = (id: string, gap: boolean, reason: string | null) => call<Saved & { changed: boolean }>('hub_test_item_gap', { p_id: id, p_gap: gap, p_reason: reason });
 
 export const ACTION_LABELS: Record<string, string> = {
-  answer: 'يجيب', ask: 'يسأل عن التفاصيل', quote: 'يعرض السعر', handoff: 'يحوّل للفريق', booking_status: 'حالة الحجز', refuse: 'خارج خدماتنا',
+  answer: 'يجيب', answer_handoff: 'يجيب ثم يحوّل الطلب للفريق', fixed: 'رد ثابت', ask: 'يسأل عن التفاصيل', quote: 'يعرض السعر', handoff: 'يحوّل للفريق', booking_status: 'حالة الحجز', refuse: 'خارج خدماتنا',
   out_of_scope: 'خارج خدماتنا', third_language: 'لغة ثالثة', greeting: 'تحية', send_summary: 'ملخص الحجز', cancel_word_question: 'سؤال «إلغاء»', opt_out: 'إيقاف الرسائل', none: '—',
 };
 export const TRIGGER_LABELS: Record<EvalKind, string> = { manual: 'تشغيل يدوي', baseline: 'تشغيل أساسي', knowledge: 'قبل نشر البطاقات', persona: 'قبل نشر الشخصية' };
@@ -231,6 +231,13 @@ export const licenceSet = (unit: string, topic: string, mode: LicenceMode, reaso
 export const flagWrong = (message: string, note: string | null) => call<{ ok: boolean; changed: boolean }>('hub_flag_wrong', { p_message: message, p_note: note });
 /** the assistant replies of a conversation already flagged wrong (inbox: view in the unit) */
 export const flaggedIn = (conversation: string) => call<string[]>('hub_flagged_in', { p_conversation: conversation }).then((x) => x ?? []);
+
+// ── «رسالة تلقائية من الجوال» (H6 gaps, 14 Nov 2026): the texts the WhatsApp Business app sends by itself from a branch
+// phone — an echo equal to one of its number stays with the assistant and keeps the wait (the system admin saves / removes)
+export interface PhoneAutoRow { id: string; channel_id: string; unit: string; address: string; body: string; created_at: string; created_by: string | null }
+export const phoneAutoAdd = (message: string) => call<Saved & { id: string; marked: number }>('hub_phone_auto_add', { p_message: message });
+export const phoneAutoRemove = (id: string) => call<Saved>('hub_phone_auto_remove', { p_id: id });
+export const phoneAutoList = () => call<{ can_edit: boolean; rows: PhoneAutoRow[] }>('hub_phone_auto_list', {});
 
 // ── «رادار الأسئلة» ──
 export interface RadarRow {

@@ -85,6 +85,9 @@ const THREAD = (r, edit) => ({
     msg(8, 'in', 'guest', 'Is breakfast included?', { language: 'en' }),
     // H6: an assistant reply that went to the guest — «إبلاغ: رد خاطئ»
     msg(9, 'out', 'assistant', 'المواقف مجانية.', { status: 'delivered' }),
+    // H6 gaps: a message sent from the phone, and an automatic one already recognised («رسالة تلقائية من الجوال»)
+    msg(10, 'out', 'phone', 'مرحبًا بك في أرمادا ريزيدنس، سنرد عليك قريبًا.', { status: 'sent' }),
+    msg(11, 'out', 'phone_auto', 'نحن خارج أوقات العمل الآن.', { status: 'sent' }),
   ],
   templates: [{ source: 'booking', template: 'booking_confirmed', meta_template: 'booking_confirmed_v2', status: 'read', ref: 'AR-20261020-ABCD', branch: 'airport-road', language: 'ar', at: ago(10000) }],
   events: [{ kind: 'state', from: null, to: 'human', reason: 'assistant_off', at: ago(40), actor: null }],
@@ -147,6 +150,7 @@ async function context(browser, role, perms, w, h, scheme) {
     if (fn === 'guest_club_totals') return ok({ today: '2026-11-13', week_from: '2026-11-08', all: 1, today_all: 0, week_all: 0, sources: {} });
     if (fn === 'hub_draft_reject' || fn === 'hub_release') return ok({ ok: true, changed: true, state: 'inquiry' });
     if (fn === 'hub_pause_unit') return ok({ ok: true, batch_id: id(903) });
+    if (fn === 'hub_phone_auto_add') return ok({ ok: true, changed: true, batch_id: id(904), id: id(905), marked: 1 });
     if (fn === 'hub_engine_banner') return ok({ assistant_on: true, capped: false, api_credit: false, alert: false });
     if (fn === 'hub-admin' && body?.action === 'translate') return ok({ ok: true, translation: 'هل الإفطار مشمول؟' });
     if (fn === 'hub-admin' && body?.action === 'suggest') return ok({ ok: true, suggestions: [{ text: 'نعم، المواقف مجانية.', ok: true, reasons: [] }, { text: 'المواقف 50 ريالًا.', ok: false, reasons: ['number'] }] });
@@ -206,6 +210,9 @@ for (const [role, level] of [['reception', 'edit'], ['management', 'view']]) {
       check((await page.locator('[data-kind="note"]').textContent())?.includes('ملاحظة داخلية — لا تصل للضيف'), `${tag}: the internal note and its mark`);
       check((await page.locator('[data-event="state"]').count()) === 1, `${tag}: the timeline`);
       check((await page.locator(`[data-msg="${id(502)}"] [data-msg-status]`).textContent())?.includes('قُرئت'), `${tag}: the delivery ticks`);
+      check((await page.locator(`[data-msg="${id(511)}"] [data-auto-chip]`).textContent())?.includes('رسالة تلقائية من الجوال') && (await page.locator(`[data-msg="${id(510)}"] [data-auto-chip]`).count()) === 0,
+        `${tag}: an automatic phone message carries «رسالة تلقائية من الجوال»; a phone reply does not`);
+      check((await page.locator('[data-action="phone-auto"]').count()) === 0, `${tag}: «رسالة تلقائية من الجوال» (to mark one) is the system admin's only`);
       await page.screenshot({ path: join(SHOTS, `inbox-${role}-${w}-${scheme}.png`), fullPage: false });
 
       if (!edit) {
@@ -376,6 +383,24 @@ for (const [role, level] of [['reception', 'edit'], ['management', 'view']]) {
       await ctx.close();
     }
   }
+}
+
+// ── H6 gaps: the system admin marks a phone message «رسالة تلقائية من الجوال» ──
+{
+  const { ctx, page, calls, errors } = await context(browser, 'admin', { inbox: 'edit' }, 1440, 900, 'light');
+  await page.goto(`${BASE}/inbox?c=${A.id}`, { waitUntil: 'load' });
+  await page.locator(`[data-thread="${A.id}"]`).waitFor({ timeout: 30000 });
+  check((await page.locator(`[data-msg="${id(510)}"] [data-action="phone-auto"]`).count()) === 1 && (await page.locator('[data-action="phone-auto"]').count()) === 1,
+    'admin: «رسالة تلقائية من الجوال» on the phone message only (never on a guest, staff, assistant or already-automatic one)');
+  await page.locator(`[data-msg="${id(510)}"] [data-action="phone-auto"]`).click();
+  await page.waitForTimeout(450);
+  check(await visible(page, 'text=يُحفظ نصها كما هو لهذا الرقم'), 'admin: the confirm says what it does');
+  await page.locator('[data-action="confirm-go"]').click();
+  await page.waitForTimeout(400);
+  const pa = calls.find((c) => c.fn === 'hub_phone_auto_add');
+  check(pa && pa.body.p_message === id(510), `admin: «حفظ نصها لهذا الرقم» → hub_phone_auto_add with the message — ${JSON.stringify(pa?.body)}`);
+  check(!errors.length, `admin: no page error — ${errors.join(' | ').slice(0, 300)}`);
+  await ctx.close();
 }
 
 // ── «العملاء» → the guest drawer's «المحادثات» ──

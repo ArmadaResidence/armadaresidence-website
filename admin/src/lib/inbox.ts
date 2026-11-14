@@ -74,7 +74,7 @@ export interface Filters {
 export interface Msg {
   id: string;
   direction: 'in' | 'out';
-  author: 'guest' | 'assistant' | 'staff' | 'phone' | 'system';
+  author: 'guest' | 'assistant' | 'staff' | 'phone' | 'phone_auto' | 'system';
   staff_id: string | null;
   staff_name: string | null;
   kind: string;
@@ -280,7 +280,7 @@ export const ACTIONS = {
   block: 'حظر الرقم', unblock: 'إلغاء حظر الرقم', unanswered: 'المساعد لم يعرف', send: 'إرسال', retry: 'إعادة الإرسال',
   suggestions: 'اقتراحات', translate: 'الترجمة', pause: 'إيقاف المساعد مؤقتًا',
 } as const;
-export const MARKS = { note: 'ملاحظة داخلية — لا تصل للضيف', phone: 'من الجوال', media_gone: 'وسائط محذوفة', test: 'تجربة', template: 'قالب' } as const;
+export const MARKS = { note: 'ملاحظة داخلية — لا تصل للضيف', phone: 'من الجوال', phone_auto: 'رسالة تلقائية من الجوال', media_gone: 'وسائط محذوفة', test: 'تجربة', template: 'قالب' } as const;
 /** the draft bubble's actions (copy.md §6) */
 export const DRAFT_ACTIONS = { send: 'إرسال', edit: 'تعديل ثم إرسال', reject: 'رفض' } as const;
 /** a guest message worth translating for staff: not Arabic (spec §2.8 — on demand) */

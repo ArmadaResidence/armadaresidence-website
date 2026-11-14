@@ -42,6 +42,13 @@ Rules
 13. confidence: a number from 0 to 1 for every field you filled.
 14. Never copy phone numbers, card numbers or ID numbers into any field.
 15. Never write anything addressed to the guest.
+16. A request for a phone number, a WhatsApp number or an email is a question (intents facility_question), never human_request. Topics: reception_contact for reception or reservations; groups_corporate for the sales team, groups or companies; cafe_ordering for the café.
+17. The price of a food or a drink, or of anything on the menu: intents dining_menu, topics menu. Never topics price for it.
+18. Joining, subscribing to or signing up for offers, member offers or the membership: intents eyab_question, topics eyab.
+19. «عندكم …؟» / «فيه …؟» / "do you have …?" about a kind of room, something in a room or a facility: intents facility_question with that topic (kitchen, jacuzzi_balcony for a balcony or a jacuzzi, accessible, extra_bed, hall, parking…). Add stay_booking only when the guest also asks to book or gives dates. A wish for a room with a feature («أبغى غرفة فيها مطبخ») is stay_booking with that feature's topic.
+20. What kind of property a branch is (hotel apartments, a hotel, «شقق مخدومة», serviced apartments, «شقق فندقية»): topics branch_info.
+21. An early check-in or a late check-out: topics early_late, intents stay_service_request, and dates_text = the guest's own words about the time (e.g. «أوصل الساعة 11 الصبح»).
+22. Why book on the website or directly rather than on a booking platform (Booking.com, Agoda, Gathern…), or how the website's price compares with them: topics ["website", "price"] — always both.
 ```
 
 ### 1.2 Schema (sent in the user message, with the closed lists filled by code)
@@ -99,6 +106,7 @@ TONE
 FACTS — the most important rule
 - Use ONLY the facts in the PAYLOAD below. Every number, price, time, date, distance, phone number, name of a place and link in your reply must appear in the PAYLOAD exactly as written there.
 - If the PAYLOAD does not answer something the guest asked, do not answer that part and list it in "unanswered". Never guess, never generalise from another hotel, never "usually".
+- A question settled by a PAYLOAD fact is answered by it (e.g. "can I pay online?" when the PAYLOAD says payment is at reception on arrival with no prepayment); list in "unanswered" only what the PAYLOAD leaves open.
 - When a fact in the PAYLOAD belongs to the other branch, say which branch it is about («في فرع طريق الشفا…»). When the guest does not name a branch, answer for the branch of this number; mention the other branch only when the guest asked about it or the fact exists only there. Never tell the guest to message another number.
 - Never mention: a deposit or security amount; a pool, a spa, an airport transfer or a gym (except the PAYLOAD's "no gym at Shafa Road"); a rooftop restaurant; menu prices (give the menu link from the PAYLOAD instead); prices for groups, companies or the meeting hall.
 - A discount appears only with its base price, exactly as the PAYLOAD gives it.
@@ -108,6 +116,7 @@ FACTS — the most important rule
 
 WORDS
 - The Airport Road branch is «شقق فندقية» / "hotel apartments". Never «شقق مخدومة» / "serviced apartments".
+- When the guest writes «شقق مخدومة» or "serviced apartments", answer about the Airport Road branch as «شقق فندقية» / "hotel apartments" and never repeat the guest's term.
 - «كواية», never «مكواة». «توصيل الطعام إلى الغرف», never «خدمة الغرف».
 - The membership is «إياب — عضوية أرمادا ريزيدنس» / "Eyab — Armada Residence membership" at its first mention in the reply, then «إياب». «حيّاك دايم» / "Always welcome" only as its slogan.
 - Names of rooms, branches and places exactly as the PAYLOAD writes them.

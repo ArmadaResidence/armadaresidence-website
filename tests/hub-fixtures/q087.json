@@ -1,6 +1,6 @@
 {
  "id": "q087",
- "recorded_at": "2026-11-14T10:16:33.876Z",
+ "recorded_at": "2026-11-14T14:29:58.830Z",
  "question": {
   "unit": "shafa-road",
   "language": "ar",
@@ -14,19 +14,19 @@
    "layer": "understand",
    "model": "claude-haiku-5-5",
    "ok": true,
-   "text": "{\"intents\":[\"facility_question\"],\"topics\":[\"facilities\"],\"new_topic_hint\":null,\"branch\":\"shafa-road\",\"check_in\":null,\"check_out\":null,\"nights\":null,\"dates_text\":null,\"dates_calendar\":null,\"room_type\":null,\"breakfast\":null,\"adults\":null,\"children\":null,\"child_ages\":null,\"extra_beds\":null,\"rooms_count\":null,\"guest_name\":null,\"booking_ref\":null,\"language\":\"ar\",\"complaint\":false,\"confidence\":{\"intents\":0.9,\"topics\":0.85,\"branch\":0.6,\"language\":0.98}}",
-   "input_tokens": 3170,
+   "text": "{\"intents\":[\"facility_question\"],\"topics\":[\"facilities\"],\"new_topic_hint\":null,\"branch\":\"shafa-road\",\"check_in\":null,\"check_out\":null,\"nights\":null,\"dates_text\":null,\"dates_calendar\":null,\"room_type\":null,\"breakfast\":null,\"adults\":null,\"children\":null,\"child_ages\":null,\"extra_beds\":null,\"rooms_count\":null,\"guest_name\":null,\"booking_ref\":null,\"language\":\"ar\",\"complaint\":false,\"confidence\":{\"intents\":0.9,\"topics\":0.8,\"branch\":0.6,\"language\":0.99}}",
+   "input_tokens": 3697,
    "output_tokens": 203,
-   "latency_ms": 2296
+   "latency_ms": 1209
   },
   {
    "layer": "compose",
    "model": "claude-sonnet-5-5",
    "ok": true,
    "text": "{\"reply\": \"لا توجد صالة رياضية في فرع طريق الشفا.\", \"used_card_ids\": [\"k-shafa-no-gym\"], \"unanswered\": []}",
-   "input_tokens": 2256,
+   "input_tokens": 2409,
    "output_tokens": 63,
-   "latency_ms": 1740
+   "latency_ms": 1959
   }
  ],
  "adapter": {
@@ -223,7 +223,7 @@
    }
   ],
   "guard_refusals": [],
-  "cost_usd": 0.005561
+  "cost_usd": 0.005919
  },
  "first_try": {
   "guard": true,

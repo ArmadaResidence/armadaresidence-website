@@ -1,6 +1,6 @@
 {
  "id": "q038",
- "recorded_at": "2026-11-14T10:15:59.265Z",
+ "recorded_at": "2026-11-14T14:29:26.024Z",
  "question": {
   "unit": "airport-road",
   "language": "en",
@@ -14,19 +14,19 @@
    "layer": "understand",
    "model": "claude-haiku-5-5",
    "ok": true,
-   "text": "{\"intents\":[\"dining_menu\"],\"topics\":[\"menu\"],\"new_topic_hint\":null,\"branch\":null,\"check_in\":null,\"check_out\":null,\"nights\":null,\"dates_text\":null,\"dates_calendar\":null,\"room_type\":null,\"breakfast\":null,\"adults\":null,\"children\":null,\"child_ages\":null,\"extra_beds\":null,\"rooms_count\":null,\"guest_name\":null,\"booking_ref\":null,\"language\":\"en\",\"complaint\":false,\"confidence\":{\"intents\":0.95,\"topics\":0.95,\"branch\":0.3,\"language\":0.99}}",
-   "input_tokens": 3164,
-   "output_tokens": 198,
-   "latency_ms": 1184
+   "text": "{\"intents\":[\"dining_menu\"],\"topics\":[\"menu\"],\"new_topic_hint\":null,\"branch\":null,\"check_in\":null,\"check_out\":null,\"nights\":null,\"dates_text\":null,\"dates_calendar\":null,\"room_type\":null,\"breakfast\":null,\"adults\":null,\"children\":null,\"child_ages\":null,\"extra_beds\":null,\"rooms_count\":null,\"guest_name\":null,\"booking_ref\":null,\"language\":\"en\",\"complaint\":false,\"confidence\":{\"intents\":0.95,\"topics\":0.95,\"branch\":0,\"language\":0.99}}",
+   "input_tokens": 3691,
+   "output_tokens": 196,
+   "latency_ms": 1202
   },
   {
    "layer": "compose",
    "model": "claude-sonnet-5-5",
    "ok": true,
-   "text": "{\"reply\": \"Of course. The Armada Residence Café & Restaurant menu and prices are here: https://armadaresidence.com/en/menu/. You can send an order straight from it to the café's WhatsApp, or dial extension 333 from the room phone.\", \"used_card_ids\": [\"k-cafe-menu\"], \"unanswered\": []}",
-   "input_tokens": 2555,
-   "output_tokens": 115,
-   "latency_ms": 1774
+   "text": "{\"reply\": \"Of course. You can see the Armada Residence Café & Restaurant menu and prices at https://armadaresidence.com/en/menu/, and send your order straight from it to the café's WhatsApp.\", \"used_card_ids\": [\"k-cafe-menu\"], \"unanswered\": []}",
+   "input_tokens": 2708,
+   "output_tokens": 101,
+   "latency_ms": 1684
   }
  ],
  "adapter": {
@@ -218,12 +218,12 @@
   ],
   "messages": [
    {
-    "body": "Welcome to Armada Residence – Airport Road.\nOf course. The Armada Residence Café & Restaurant menu and prices are here: https://armadaresidence.com/en/menu/. You can send an order straight from it to the café's WhatsApp, or dial extension 333 from the room phone.",
+    "body": "Welcome to Armada Residence – Airport Road.\nOf course. You can see the Armada Residence Café & Restaurant menu and prices at https://armadaresidence.com/en/menu/, and send your order straight from it to the café's WhatsApp.",
     "notice": false
    }
   ],
   "guard_refusals": [],
-  "cost_usd": 0.006675
+  "cost_usd": 0.006893
  },
  "first_try": {
   "guard": true,

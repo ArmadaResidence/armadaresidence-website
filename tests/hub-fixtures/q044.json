@@ -1,6 +1,6 @@
 {
  "id": "q044",
- "recorded_at": "2026-11-14T10:16:01.444Z",
+ "recorded_at": "2026-11-14T14:29:27.443Z",
  "question": {
   "unit": "airport-road",
   "language": "ar",
@@ -14,10 +14,10 @@
    "layer": "understand",
    "model": "claude-haiku-5-5",
    "ok": true,
-   "text": "{\"intents\":[\"booking_change\"],\"topics\":[\"extension\"],\"new_topic_hint\":null,\"branch\":null,\"check_in\":null,\"check_out\":null,\"nights\":1,\"dates_text\":\"ليلة زيادة\",\"dates_calendar\":null,\"room_type\":null,\"breakfast\":null,\"adults\":null,\"children\":null,\"child_ages\":null,\"extra_beds\":null,\"rooms_count\":null,\"guest_name\":null,\"booking_ref\":null,\"language\":\"ar\",\"complaint\":false,\"confidence\":{\"intents\":0.95,\"topics\":0.9,\"nights\":0.85,\"dates_text\":0.9,\"language\":0.98}}",
-   "input_tokens": 3172,
-   "output_tokens": 215,
-   "latency_ms": 2178
+   "text": "{\"intents\":[\"stay_service_request\"],\"topics\":[\"extension\"],\"new_topic_hint\":null,\"branch\":null,\"check_in\":null,\"check_out\":null,\"nights\":1,\"dates_text\":\"ليلة زيادة\",\"dates_calendar\":null,\"room_type\":null,\"breakfast\":null,\"adults\":null,\"children\":null,\"child_ages\":null,\"extra_beds\":null,\"rooms_count\":null,\"guest_name\":null,\"booking_ref\":null,\"language\":\"ar\",\"complaint\":false,\"confidence\":{\"intents\":0.9,\"topics\":0.9,\"nights\":0.85,\"dates_text\":0.8,\"language\":0.98}}",
+   "input_tokens": 3699,
+   "output_tokens": 217,
+   "latency_ms": 1416
   }
  ],
  "adapter": {
@@ -200,21 +200,21 @@
  "outcome": {
   "kind": "handoff",
   "state": "human",
-  "reason": "booking_change",
+  "reason": "early_extension",
   "transitions": [
-   "T20"
+   "T2"
   ],
   "topics": [
    "extension"
   ],
   "messages": [
    {
-    "body": "مرحبًا بك في أرمادا ريزيدنس – طريق المطار.\nتعديل الحجز أو إلغاؤه يتم مع فريق الاستقبال، وسيكمل معك أحدهم في هذه المحادثة.",
+    "body": "مرحبًا بك في أرمادا ريزيدنس – طريق المطار.\nالوصول المبكر وتمديد الإقامة حسب التوافر، ويؤكدهما فريق الاستقبال. سيكمل معك أحدهم في هذه المحادثة.",
     "notice": true
    }
   ],
   "guard_refusals": [],
-  "cost_usd": 0.000425
+  "cost_usd": 0.000478
  },
  "first_try": {
   "guard": true,

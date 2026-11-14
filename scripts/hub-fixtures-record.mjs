@@ -74,6 +74,14 @@ for (const q of items) {
   summary.push({ id: q.id, kind, expect: fixture.expect_h5, guard: fixture.first_try.guard, match: fixture.first_try.expect, cost: fixture.outcome.cost_usd, calls: calls.length });
   console.log(`${q.id} ${fixture.first_try.expect ? '✓' : '✗'} ${kind} (expected ${fixture.expect_h5}) guard ${fixture.first_try.guard ? 'first try' : 'retried'} $${fixture.outcome.cost_usd}`);
 }
+// --only re-records some fixtures: the others keep their place in the summary (14 Nov 2026)
+if (only) {
+  try {
+    const prev = JSON.parse(readFileSync(new URL('../tests/hub-fixtures/_summary.json', import.meta.url), 'utf8')).items ?? [];
+    for (const x of prev) if (!summary.some((y) => y.id === x.id)) summary.push(x);
+    summary.sort((a, b) => a.id.localeCompare(b.id));
+  } catch { /* no earlier summary */ }
+}
 const total = summary.reduce((s, x) => s + x.cost, 0);
 const withModel = summary.filter((x) => x.calls > 0);
 const res = {

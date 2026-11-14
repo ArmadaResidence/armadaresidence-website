@@ -1,6 +1,6 @@
 {
  "id": "q055",
- "recorded_at": "2026-11-14T10:16:14.959Z",
+ "recorded_at": "2026-11-14T14:29:38.271Z",
  "question": {
   "unit": "airport-road",
   "language": "id",
@@ -14,10 +14,10 @@
    "layer": "understand",
    "model": "claude-haiku-5-5",
    "ok": true,
-   "text": "{\"intents\":[\"availability_question\"],\"topics\":[\"availability\"],\"new_topic_hint\":null,\"branch\":null,\"check_in\":\"2026-11-15\",\"check_out\":null,\"nights\":null,\"dates_text\":\"besok\",\"dates_calendar\":\"gregorian\",\"room_type\":null,\"breakfast\":null,\"adults\":null,\"children\":null,\"child_ages\":null,\"extra_beds\":null,\"rooms_count\":null,\"guest_name\":null,\"booking_ref\":null,\"language\":\"other:id\",\"complaint\":false,\"confidence\":{\"intents\":0.95,\"topics\":0.9,\"branch\":0.2,\"check_in\":0.9,\"dates_text\":0.95,\"dates_calendar\":0.9,\"language\":0.97,\"complaint\":0.98}}",
-   "input_tokens": 3174,
-   "output_tokens": 248,
-   "latency_ms": 1529
+   "text": "{\"intents\":[\"availability_question\"],\"topics\":[\"availability\"],\"new_topic_hint\":null,\"branch\":null,\"check_in\":\"2026-11-15\",\"check_out\":null,\"nights\":null,\"dates_text\":\"besok\",\"dates_calendar\":\"gregorian\",\"room_type\":null,\"breakfast\":null,\"adults\":null,\"children\":null,\"child_ages\":null,\"extra_beds\":null,\"rooms_count\":null,\"guest_name\":null,\"booking_ref\":null,\"language\":\"other:id\",\"complaint\":false,\"confidence\":{\"intents\":0.95,\"topics\":0.95,\"branch\":0.2,\"check_in\":0.9,\"dates_text\":0.95,\"dates_calendar\":0.9,\"language\":0.98}}",
+   "input_tokens": 3701,
+   "output_tokens": 239,
+   "latency_ms": 1385
   }
  ],
  "adapter": {
@@ -214,7 +214,7 @@
    }
   ],
   "guard_refusals": [],
-  "cost_usd": 0.000441
+  "cost_usd": 0.00049
  },
  "first_try": {
   "guard": true,

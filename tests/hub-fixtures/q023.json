@@ -1,6 +1,6 @@
 {
  "id": "q023",
- "recorded_at": "2026-11-14T10:15:42.002Z",
+ "recorded_at": "2026-11-14T14:29:03.756Z",
  "question": {
   "unit": "airport-road",
   "language": "en",
@@ -14,19 +14,19 @@
    "layer": "understand",
    "model": "claude-haiku-5-5",
    "ok": true,
-   "text": "{\"intents\":[\"payment_question\"],\"topics\":[\"payment\"],\"new_topic_hint\":null,\"branch\":\"airport-road\",\"check_in\":null,\"check_out\":null,\"nights\":null,\"dates_text\":null,\"dates_calendar\":null,\"room_type\":null,\"breakfast\":null,\"adults\":null,\"children\":null,\"child_ages\":null,\"extra_beds\":null,\"rooms_count\":null,\"guest_name\":null,\"booking_ref\":null,\"language\":\"en\",\"complaint\":false,\"confidence\":{\"intents\":0.9,\"topics\":0.9,\"branch\":0.6,\"language\":0.98}}",
-   "input_tokens": 3163,
-   "output_tokens": 200,
-   "latency_ms": 1211
+   "text": "{\"intents\":[\"payment_question\"],\"topics\":[\"payment\"],\"new_topic_hint\":null,\"branch\":null,\"check_in\":null,\"check_out\":null,\"nights\":null,\"dates_text\":null,\"dates_calendar\":null,\"room_type\":null,\"breakfast\":null,\"adults\":null,\"children\":null,\"child_ages\":null,\"extra_beds\":null,\"rooms_count\":null,\"guest_name\":null,\"booking_ref\":null,\"language\":\"en\",\"complaint\":false,\"confidence\":{\"intents\":0.97,\"topics\":0.95,\"language\":0.99}}",
+   "input_tokens": 3690,
+   "output_tokens": 189,
+   "latency_ms": 1246
   },
   {
    "layer": "compose",
    "model": "claude-sonnet-5-5",
    "ok": true,
-   "text": "{\"reply\": \"Payment is made at reception when you arrive, and no prepayment is required. We accept mada, Visa and cash. We don't have information on paying online.\", \"used_card_ids\": [\"faq:payment\"], \"unanswered\": [\"online payment option\"]}",
-   "input_tokens": 2185,
-   "output_tokens": 87,
-   "latency_ms": 1919
+   "text": "{\"reply\": \"There's no need to pay online: you pay at reception when you arrive, and no prepayment is required. We accept mada, Visa and cash.\", \"used_card_ids\": [\"faq:payment\"], \"unanswered\": []}",
+   "input_tokens": 2338,
+   "output_tokens": 77,
+   "latency_ms": 1435
   }
  ],
  "adapter": {
@@ -207,31 +207,26 @@
   }
  },
  "outcome": {
-  "kind": "handoff",
-  "state": "human",
-  "reason": "no_source",
+  "kind": "answer",
+  "state": "inquiry",
+  "reason": null,
   "transitions": [
-   "T5",
-   "T21"
+   "T5"
   ],
   "topics": [
    "payment"
   ],
   "messages": [
    {
-    "body": "Welcome to Armada Residence – Airport Road.\nPayment is made at reception when you arrive, and no prepayment is required. We accept mada, Visa and cash. We don't have information on paying online.",
+    "body": "Welcome to Armada Residence – Airport Road.\nThere's no need to pay online: you pay at reception when you arrive, and no prepayment is required. We accept mada, Visa and cash.",
     "notice": false
-   },
-   {
-    "body": "We’ll check with the team, and one of them will continue with you in this chat.",
-    "notice": true
    }
   ],
   "guard_refusals": [],
-  "cost_usd": 0.005656
+  "cost_usd": 0.00591
  },
  "first_try": {
   "guard": true,
-  "expect": false
+  "expect": true
  }
 }

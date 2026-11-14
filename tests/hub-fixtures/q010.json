@@ -1,6 +1,6 @@
 {
  "id": "q010",
- "recorded_at": "2026-11-14T10:15:26.190Z",
+ "recorded_at": "2026-11-14T14:28:41.393Z",
  "question": {
   "unit": "airport-road",
   "language": "ar",
@@ -14,19 +14,19 @@
    "layer": "understand",
    "model": "claude-haiku-5-5",
    "ok": true,
-   "text": "{\"intents\":[\"facility_question\"],\"topics\":[\"facilities\"],\"new_topic_hint\":null,\"branch\":\"airport-road\",\"check_in\":null,\"check_out\":null,\"nights\":null,\"dates_text\":null,\"dates_calendar\":null,\"room_type\":null,\"breakfast\":null,\"adults\":null,\"children\":null,\"child_ages\":null,\"extra_beds\":null,\"rooms_count\":null,\"guest_name\":null,\"booking_ref\":null,\"language\":\"ar\",\"complaint\":false,\"confidence\":{\"intents\":0.9,\"topics\":0.6,\"branch\":0.7,\"language\":0.98}}",
-   "input_tokens": 3173,
+   "text": "{\"intents\":[\"facility_question\"],\"topics\":[\"facilities\"],\"new_topic_hint\":null,\"branch\":\"airport-road\",\"check_in\":null,\"check_out\":null,\"nights\":null,\"dates_text\":null,\"dates_calendar\":null,\"room_type\":null,\"breakfast\":null,\"adults\":null,\"children\":null,\"child_ages\":null,\"extra_beds\":null,\"rooms_count\":null,\"guest_name\":null,\"booking_ref\":null,\"language\":\"ar\",\"complaint\":false,\"confidence\":{\"intents\":0.8,\"topics\":0.6,\"branch\":0.5,\"language\":0.99}}",
+   "input_tokens": 3700,
    "output_tokens": 202,
-   "latency_ms": 1336
+   "latency_ms": 1102
   },
   {
    "layer": "compose",
    "model": "claude-sonnet-5-5",
    "ok": true,
    "text": "{\"reply\": \"\", \"used_card_ids\": [], \"unanswered\": [\"airport transfer / pickup from the airport to the hotel\"]}",
-   "input_tokens": 2258,
+   "input_tokens": 2411,
    "output_tokens": 48,
-   "latency_ms": 1672
+   "latency_ms": 1610
   }
  ],
  "adapter": {
@@ -224,7 +224,7 @@
    }
   ],
   "guard_refusals": [],
-  "cost_usd": 0.005414
+  "cost_usd": 0.005773
  },
  "first_try": {
   "guard": true,

@@ -1,6 +1,6 @@
 {
  "id": "q024",
- "recorded_at": "2026-11-14T10:15:45.709Z",
+ "recorded_at": "2026-11-14T14:29:06.940Z",
  "question": {
   "unit": "airport-road",
   "language": "ar",
@@ -14,19 +14,19 @@
    "layer": "understand",
    "model": "claude-haiku-5-5",
    "ok": true,
-   "text": "{\"intents\":[\"policy_question\"],\"topics\":[\"cancellation_policy\"],\"new_topic_hint\":null,\"branch\":\"airport-road\",\"check_in\":null,\"check_out\":null,\"nights\":null,\"dates_text\":null,\"dates_calendar\":null,\"room_type\":null,\"breakfast\":null,\"adults\":null,\"children\":null,\"child_ages\":null,\"extra_beds\":null,\"rooms_count\":null,\"guest_name\":null,\"booking_ref\":null,\"language\":\"ar\",\"complaint\":false,\"confidence\":{\"intents\":0.95,\"topics\":0.95,\"branch\":0.5,\"language\":0.99}}",
-   "input_tokens": 3170,
-   "output_tokens": 206,
-   "latency_ms": 1314
+   "text": "{\"intents\":[\"policy_question\"],\"topics\":[\"cancellation_policy\"],\"new_topic_hint\":null,\"branch\":null,\"check_in\":null,\"check_out\":null,\"nights\":null,\"dates_text\":null,\"dates_calendar\":null,\"room_type\":null,\"breakfast\":null,\"adults\":null,\"children\":null,\"child_ages\":null,\"extra_beds\":null,\"rooms_count\":null,\"guest_name\":null,\"booking_ref\":null,\"language\":\"ar\",\"complaint\":false,\"confidence\":{\"intents\":0.97,\"topics\":0.97,\"branch\":0.5,\"language\":0.99}}",
+   "input_tokens": 3697,
+   "output_tokens": 203,
+   "latency_ms": 1054
   },
   {
    "layer": "compose",
    "model": "claude-sonnet-5-5",
    "ok": true,
    "text": "{\"reply\": \"الإلغاء مجاني حتى الساعة 2:00 ظهرًا يوم الوصول. إذا ألغيت بعد ذلك أو لم تحضر، تُحتسب عليك قيمة الليلة الأولى. تنطبق هذه السياسة على الحجز المباشر عبر الموقع والواتساب والاستقبال؛ أما الحجوزات عبر منصات الحجز الأخرى فتخضع لسياسة المنصة.\", \"used_card_ids\": [\"faq:cancellation\"], \"unanswered\": []}",
-   "input_tokens": 2375,
+   "input_tokens": 2528,
    "output_tokens": 198,
-   "latency_ms": 2347
+   "latency_ms": 2126
   }
  ],
  "adapter": {
@@ -223,7 +223,7 @@
    }
   ],
   "guard_refusals": [],
-  "cost_usd": 0.00715
+  "cost_usd": 0.007507
  },
  "first_try": {
   "guard": true,

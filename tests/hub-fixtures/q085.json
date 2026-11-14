@@ -1,6 +1,6 @@
 {
  "id": "q085",
- "recorded_at": "2026-11-14T10:16:29.836Z",
+ "recorded_at": "2026-11-14T14:29:55.658Z",
  "question": {
   "unit": "shafa-road",
   "language": "ar",
@@ -14,19 +14,19 @@
    "layer": "understand",
    "model": "claude-haiku-5-5",
    "ok": true,
-   "text": "{\"intents\":[\"facility_question\"],\"topics\":[\"jacuzzi_balcony\"],\"new_topic_hint\":null,\"branch\":\"shafa-road\",\"check_in\":null,\"check_out\":null,\"nights\":null,\"dates_text\":null,\"dates_calendar\":null,\"room_type\":null,\"breakfast\":null,\"adults\":null,\"children\":null,\"child_ages\":null,\"extra_beds\":null,\"rooms_count\":null,\"guest_name\":null,\"booking_ref\":null,\"language\":\"ar\",\"complaint\":false,\"confidence\":{\"intents\":0.95,\"topics\":0.9,\"branch\":0.8,\"language\":0.99}}",
-   "input_tokens": 3173,
-   "output_tokens": 210,
-   "latency_ms": 1700
+   "text": "{\"intents\":[\"facility_question\"],\"topics\":[\"jacuzzi_balcony\",\"room_amenities\"],\"new_topic_hint\":null,\"branch\":\"shafa-road\",\"check_in\":null,\"check_out\":null,\"nights\":null,\"dates_text\":null,\"dates_calendar\":null,\"room_type\":null,\"breakfast\":null,\"adults\":null,\"children\":null,\"child_ages\":null,\"extra_beds\":null,\"rooms_count\":null,\"guest_name\":null,\"booking_ref\":null,\"language\":\"ar\",\"complaint\":false,\"confidence\":{\"intents\":0.9,\"topics\":0.9,\"branch\":0.8,\"language\":0.98,\"complaint\":0.99}}",
+   "input_tokens": 3700,
+   "output_tokens": 225,
+   "latency_ms": 1488
   },
   {
    "layer": "compose",
    "model": "claude-sonnet-5-5",
    "ok": true,
-   "text": "{\"reply\": \"نعم، يتوفر الجاكوزي في فرع طريق الشفا في «استديو بجاكوزي» و«جناح بغرفتي نوم وجاكوزي»، علمًا بأن هذا الجناح بلا صالة.\", \"used_card_ids\": [\"k-shafa-jacuzzi-balcony\"], \"unanswered\": []}",
-   "input_tokens": 2606,
-   "output_tokens": 129,
-   "latency_ms": 2046
+   "text": "{\"reply\": \"نعم، الجاكوزي متوفر في فرع طريق الشفا، في «استديو بجاكوزي» و«جناح بغرفتي نوم وجاكوزي»، وهذا الجناح بلا صالة.\", \"used_card_ids\": [\"k-shafa-jacuzzi-balcony\"], \"unanswered\": []}",
+   "input_tokens": 3057,
+   "output_tokens": 123,
+   "latency_ms": 1823
   }
  ],
  "adapter": {
@@ -214,16 +214,17 @@
    "T5"
   ],
   "topics": [
-   "jacuzzi_balcony"
+   "jacuzzi_balcony",
+   "room_amenities"
   ],
   "messages": [
    {
-    "body": "مرحبًا بك في أرمادا ريزيدنس – طريق الشفا.\nنعم، يتوفر الجاكوزي في فرع طريق الشفا في «استديو بجاكوزي» و«جناح بغرفتي نوم وجاكوزي»، علمًا بأن هذا الجناح بلا صالة.",
+    "body": "مرحبًا بك في أرمادا ريزيدنس – طريق الشفا.\nنعم، الجاكوزي متوفر في فرع طريق الشفا، في «استديو بجاكوزي» و«جناح بغرفتي نوم وجاكوزي»، وهذا الجناح بلا صالة.",
     "notice": false
    }
   ],
   "guard_refusals": [],
-  "cost_usd": 0.006924
+  "cost_usd": 0.007826
  },
  "first_try": {
   "guard": true,

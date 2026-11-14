@@ -1,6 +1,6 @@
 {
  "id": "q001",
- "recorded_at": "2026-11-14T10:15:06.226Z",
+ "recorded_at": "2026-11-14T14:28:22.438Z",
  "question": {
   "unit": "airport-road",
   "language": "ar",
@@ -15,18 +15,18 @@
    "model": "claude-haiku-5-5",
    "ok": true,
    "text": "{\"intents\":[\"facility_question\"],\"topics\":[\"parking\"],\"new_topic_hint\":null,\"branch\":\"airport-road\",\"check_in\":null,\"check_out\":null,\"nights\":null,\"dates_text\":null,\"dates_calendar\":null,\"room_type\":null,\"breakfast\":null,\"adults\":null,\"children\":null,\"child_ages\":null,\"extra_beds\":null,\"rooms_count\":null,\"guest_name\":null,\"booking_ref\":null,\"language\":\"ar\",\"complaint\":false,\"confidence\":{\"intents\":0.95,\"topics\":0.95,\"branch\":0.6,\"language\":0.99}}",
-   "input_tokens": 3170,
+   "input_tokens": 3697,
    "output_tokens": 201,
-   "latency_ms": 1603
+   "latency_ms": 1563
   },
   {
    "layer": "compose",
    "model": "claude-sonnet-5-5",
    "ok": true,
-   "text": "{\"reply\": \"نعم، المواقف مجانية في فرع طريق المطار، في الطابقين السفليين B1 وB2 مع مصعد مباشر إلى اللوبي. ومواقف الحافلات متوفرة كذلك.\", \"used_card_ids\": [\"k-parking-detail\"], \"unanswered\": []}",
-   "input_tokens": 2373,
-   "output_tokens": 115,
-   "latency_ms": 1733
+   "text": "{\"reply\": \"نعم، المواقف مجانية في الفرعين. في فرع طريق المطار تجدها في الطابقين السفليين B1 وB2 مع مصعد مباشر إلى اللوبي، ومواقف الحافلات متوفرة أيضًا.\", \"used_card_ids\": [\"k-parking-detail\", \"faq:parking\"], \"unanswered\": []}",
+   "input_tokens": 2526,
+   "output_tokens": 133,
+   "latency_ms": 2027
   }
  ],
  "adapter": {
@@ -218,12 +218,12 @@
   ],
   "messages": [
    {
-    "body": "مرحبًا بك في أرمادا ريزيدنس – طريق المطار.\nنعم، المواقف مجانية في فرع طريق المطار، في الطابقين السفليين B1 وB2 مع مصعد مباشر إلى اللوبي. ومواقف الحافلات متوفرة كذلك.",
+    "body": "مرحبًا بك في أرمادا ريزيدنس – طريق المطار.\nنعم، المواقف مجانية في الفرعين. في فرع طريق المطار تجدها في الطابقين السفليين B1 وB2 مع مصعد مباشر إلى اللوبي، ومواقف الحافلات متوفرة أيضًا.",
     "notice": false
    }
   ],
   "guard_refusals": [],
-  "cost_usd": 0.006314
+  "cost_usd": 0.006852
  },
  "first_try": {
   "guard": true,

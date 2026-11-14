@@ -1,6 +1,6 @@
 {
  "id": "q027",
- "recorded_at": "2026-11-14T10:15:47.065Z",
+ "recorded_at": "2026-11-14T14:29:10.445Z",
  "question": {
   "unit": "airport-road",
   "language": "ar",
@@ -14,10 +14,19 @@
    "layer": "understand",
    "model": "claude-haiku-5-5",
    "ok": true,
-   "text": "{\"intents\":[\"price_question\"],\"topics\":[\"breakfast\"],\"new_topic_hint\":null,\"branch\":\"airport-road\",\"check_in\":null,\"check_out\":null,\"nights\":null,\"dates_text\":null,\"dates_calendar\":null,\"room_type\":null,\"breakfast\":null,\"adults\":null,\"children\":null,\"child_ages\":null,\"extra_beds\":null,\"rooms_count\":null,\"guest_name\":null,\"booking_ref\":null,\"language\":\"ar\",\"complaint\":false,\"confidence\":{\"intents\":0.9,\"topics\":0.9,\"branch\":0.6,\"language\":0.98}}",
-   "input_tokens": 3168,
-   "output_tokens": 202,
-   "latency_ms": 1354
+   "text": "{\"intents\":[\"price_question\",\"dining_menu\"],\"topics\":[\"price\",\"breakfast\"],\"new_topic_hint\":null,\"branch\":\"airport-road\",\"check_in\":null,\"check_out\":null,\"nights\":null,\"dates_text\":null,\"dates_calendar\":null,\"room_type\":null,\"breakfast\":null,\"adults\":null,\"children\":null,\"child_ages\":null,\"extra_beds\":null,\"rooms_count\":null,\"guest_name\":null,\"booking_ref\":null,\"language\":\"ar\",\"complaint\":false,\"confidence\":{\"intents\":0.85,\"topics\":0.8,\"branch\":0.6,\"language\":0.99}}",
+   "input_tokens": 3695,
+   "output_tokens": 210,
+   "latency_ms": 1184
+  },
+  {
+   "layer": "compose",
+   "model": "claude-sonnet-5-5",
+   "ok": true,
+   "text": "{\"reply\": \"الإفطار اختياري تختاره عند الحجز، ورسومه 20 ريالًا للشخص في الليلة. الأطفال حتى 5 سنوات مجانًا، ومن 6 إلى 12 سنة بنصف الرسوم. ويُقدَّم بوفيه الإفطار يوميًا في مطعم الفرع من 7:00 إلى 10:30 صباحًا.\", \"used_card_ids\": [\"faq:breakfast\", \"k-breakfast-daily\"], \"unanswered\": []}",
+   "input_tokens": 3282,
+   "output_tokens": 188,
+   "latency_ms": 2316
   }
  ],
  "adapter": {
@@ -205,16 +214,17 @@
    "T5"
   ],
   "topics": [
+   "price",
    "breakfast"
   ],
   "messages": [
    {
-    "body": "مرحبًا بك في أرمادا ريزيدنس – طريق المطار.\nغرفة سريرين منفصلين: يبدأ من 185 ريالًا لليلة شامل الضريبة\nغرفة بسرير كينج: يبدأ من 185 ريالًا لليلة شامل الضريبة\nجناح بغرفة وصالة: يبدأ من 200 ريال لليلة شامل الضريبة\nجناح بغرفتي نوم وصالة: يبدأ من 240 ريالًا لليلة شامل الضريبة",
+    "body": "مرحبًا بك في أرمادا ريزيدنس – طريق المطار.\nالإفطار اختياري تختاره عند الحجز، ورسومه 20 ريالًا للشخص في الليلة. الأطفال حتى 5 سنوات مجانًا، ومن 6 إلى 12 سنة بنصف الرسوم. ويُقدَّم بوفيه الإفطار يوميًا في مطعم الفرع من 7:00 إلى 10:30 صباحًا.",
     "notice": false
    }
   ],
   "guard_refusals": [],
-  "cost_usd": 0.000418
+  "cost_usd": 0.008919
  },
  "first_try": {
   "guard": true,

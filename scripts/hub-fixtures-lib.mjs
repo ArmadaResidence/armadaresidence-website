@@ -13,7 +13,10 @@ export const SEED = JSON.parse(read('docs/guest-hub/knowledge-seed.json')).cards
 export const TOPICS = JSON.parse(read('docs/guest-hub/topics.json')).topics;
 export const FAQ_TOPICS = JSON.parse(read('docs/guest-hub/faq-topics.json')).faq_topics;
 export const FAQ = JSON.parse(read('content/faq.json')).items;
-export const BANK = read('tests/hub-bank/seed.jsonl').split('\n').filter((l) => l.trim()).map((l) => JSON.parse(l));
+/** the bank as it stands on production: seed.jsonl with tests/hub-bank/corrections.json applied */
+export const CORRECTIONS = JSON.parse(read('tests/hub-bank/corrections.json')).items;
+export const BANK = read('tests/hub-bank/seed.jsonl').split('\n').filter((l) => l.trim()).map((l) => JSON.parse(l))
+  .map((q) => (CORRECTIONS[q.id] ? { ...q, expect: CORRECTIONS[q.id].expect } : q));
 export const CONTENT = JSON.parse(read('supabase/functions/booking-request/content.generated.json'));
 const MIG4 = read('supabase/migrations/20261114100000_guest_hub_knowledge.sql');
 const fdef = MIG4.slice(MIG4.indexOf('create function internal.hub_forbidden_terms()'), MIG4.indexOf('$$;', MIG4.indexOf('create function internal.hub_forbidden_terms()')));
@@ -103,6 +106,9 @@ export function h5Expect(q) {
 /** the kind of outcome the engine produced */
 export function outcomeKind(finish) {
   const acts = finish.decision?.actions ?? [];
+  // H6 gaps: a mixed message — the sourced question answered, then the stay / hall / group part to the team — meets an
+  // expected answer while those skills are off (grade.ts answerThenTeam says the same)
+  if (finish.state === 'human' && finish.decision?.answered === true && ['stay_booking', 'hall_request', 'group_request'].includes(finish.reason)) return 'answer';
   if (acts.includes('handoff') && finish.messages?.some((m) => /third_language/.test(JSON.stringify(m)))) return 'third_language';
   if (finish.state === 'human') return finish.reason === 'third_language' ? 'third_language' : finish.reason === 'out_of_scope' ? 'out_of_scope' : 'handoff';
   if (acts.includes('booking_status')) return 'booking_status';

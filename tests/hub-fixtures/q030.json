@@ -1,6 +1,6 @@
 {
  "id": "q030",
- "recorded_at": "2026-11-14T10:15:48.340Z",
+ "recorded_at": "2026-11-14T14:29:13.821Z",
  "question": {
   "unit": "airport-road",
   "language": "ar",
@@ -14,10 +14,19 @@
    "layer": "understand",
    "model": "claude-haiku-5-5",
    "ok": true,
-   "text": "{\"intents\":[\"stay_booking\"],\"topics\":[\"extra_bed\"],\"new_topic_hint\":null,\"branch\":\"airport-road\",\"check_in\":null,\"check_out\":null,\"nights\":null,\"dates_text\":null,\"dates_calendar\":null,\"room_type\":null,\"breakfast\":null,\"adults\":null,\"children\":null,\"child_ages\":null,\"extra_beds\":1,\"rooms_count\":null,\"guest_name\":null,\"booking_ref\":null,\"language\":\"ar\",\"complaint\":false,\"confidence\":{\"intents\":0.85,\"topics\":0.9,\"branch\":0.6,\"extra_beds\":0.9,\"language\":0.98}}",
-   "input_tokens": 3167,
+   "text": "{\"intents\":[\"stay_booking\"],\"topics\":[\"extra_bed\"],\"new_topic_hint\":null,\"branch\":\"airport-road\",\"check_in\":null,\"check_out\":null,\"nights\":null,\"dates_text\":null,\"dates_calendar\":null,\"room_type\":null,\"breakfast\":null,\"adults\":null,\"children\":null,\"child_ages\":null,\"extra_beds\":1,\"rooms_count\":null,\"guest_name\":null,\"booking_ref\":null,\"language\":\"ar\",\"complaint\":false,\"confidence\":{\"intents\":0.8,\"topics\":0.9,\"branch\":0.5,\"extra_beds\":0.8,\"language\":0.95}}",
+   "input_tokens": 3694,
    "output_tokens": 216,
-   "latency_ms": 1273
+   "latency_ms": 1207
+  },
+  {
+   "layer": "compose",
+   "model": "claude-sonnet-5-5",
+   "ok": true,
+   "text": "{\"reply\": \"يمكن إضافة سرير إضافي واحد كحد أقصى في أنواع الغرف التي تقبله، برسوم 50 ريالًا لليلة، وتختاره عند الحجز. والحجز مع سرير إضافي يصبح طلب حجز يراجعه الاستقبال، لا تأكيدًا فوريًا. هل تخبرنا بنوع الغرفة وتواريخ إقامتك؟\", \"used_card_ids\": [\"k-extra-bed-rule\", \"faq:guests-extra-bed\"], \"unanswered\": []}",
+   "input_tokens": 2838,
+   "output_tokens": 202,
+   "latency_ms": 2164
   }
  ],
  "adapter": {
@@ -198,7 +207,7 @@
   }
  },
  "outcome": {
-  "kind": "handoff",
+  "kind": "answer",
   "state": "human",
   "reason": "stay_booking",
   "transitions": [
@@ -209,15 +218,15 @@
   ],
   "messages": [
    {
-    "body": "مرحبًا بك في أرمادا ريزيدنس – طريق المطار.\nسيكمل معك أحد أفراد فريقنا في هذه المحادثة.",
-    "notice": true
+    "body": "مرحبًا بك في أرمادا ريزيدنس – طريق المطار.\nيمكن إضافة سرير إضافي واحد كحد أقصى في أنواع الغرف التي تقبله، برسوم 50 ريالًا لليلة، وتختاره عند الحجز. والحجز مع سرير إضافي يصبح طلب حجز يراجعه الاستقبال، لا تأكيدًا فوريًا. هل تخبرنا بنوع الغرفة وتواريخ إقامتك؟\n\nسيكمل معك أحد أفراد فريقنا في هذه المحادثة.",
+    "notice": false
    }
   ],
   "guard_refusals": [],
-  "cost_usd": 0.000425
+  "cost_usd": 0.008173
  },
  "first_try": {
   "guard": true,
-  "expect": false
+  "expect": true
  }
 }

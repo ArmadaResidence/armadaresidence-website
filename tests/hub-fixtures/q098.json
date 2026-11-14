@@ -1,6 +1,6 @@
 {
  "id": "q098",
- "recorded_at": "2026-11-14T10:16:42.558Z",
+ "recorded_at": "2026-11-14T14:30:09.254Z",
  "question": {
   "unit": "shafa-road",
   "language": "en",
@@ -14,19 +14,19 @@
    "layer": "understand",
    "model": "claude-haiku-5-5",
    "ok": true,
-   "text": "{\"intents\":[\"location_question\"],\"topics\":[\"distances\"],\"new_topic_hint\":null,\"branch\":\"shafa-road\",\"check_in\":null,\"check_out\":null,\"nights\":null,\"dates_text\":null,\"dates_calendar\":null,\"room_type\":null,\"breakfast\":null,\"adults\":null,\"children\":null,\"child_ages\":null,\"extra_beds\":null,\"rooms_count\":null,\"guest_name\":null,\"booking_ref\":null,\"language\":\"en\",\"complaint\":false,\"confidence\":{\"intents\":0.95,\"topics\":0.9,\"branch\":0.8,\"language\":0.99}}",
-   "input_tokens": 3171,
+   "text": "{\"intents\":[\"location_question\"],\"topics\":[\"distances\"],\"new_topic_hint\":null,\"branch\":\"shafa-road\",\"check_in\":null,\"check_out\":null,\"nights\":null,\"dates_text\":null,\"dates_calendar\":null,\"room_type\":null,\"breakfast\":null,\"adults\":null,\"children\":null,\"child_ages\":null,\"extra_beds\":null,\"rooms_count\":null,\"guest_name\":null,\"booking_ref\":null,\"language\":\"en\",\"complaint\":false,\"confidence\":{\"intents\":0.95,\"topics\":0.9,\"branch\":0.85,\"language\":0.99}}",
+   "input_tokens": 3698,
    "output_tokens": 200,
-   "latency_ms": 1288
+   "latency_ms": 1154
   },
   {
    "layer": "compose",
    "model": "claude-sonnet-5-5",
    "ok": true,
-   "text": "{\"reply\": \"We don't have the driving distance from the Shafa Road branch to Taif airport. For the Airport Road branch, it is about 22 km from Taif International Airport, around 18 minutes by car. From Shafa Road, Al Radaf Park is 4 minutes away by car and Taif Zoo is 8 minutes.\", \"used_card_ids\": [\"faq:airport\", \"k-shafa-nearby\"], \"unanswered\": [\"driving distance from Shafa Road branch to Taif airport\"]}",
-   "input_tokens": 2865,
-   "output_tokens": 171,
-   "latency_ms": 2279
+   "text": "{\"reply\": \"We don't have the distance from our Shafa Road branch to Taif airport. The only airport figure we have is for our Airport Road branch: about 22 km from Taif International Airport, around 18 minutes by car. From Shafa Road, Al Radaf Park is 4 minutes away by car and Taif Zoo 8 minutes. Our Shafa Road address is 6411 Al Shafa Road, Al Sadad district, Taif 26514.\", \"used_card_ids\": [\"faq:airport\", \"k-shafa-nearby\", \"k-shafa-address\"], \"unanswered\": [\"driving distance or time from Shafa Road branch to Taif airport\"]}",
+   "input_tokens": 3018,
+   "output_tokens": 224,
+   "latency_ms": 2302
   }
  ],
  "adapter": {
@@ -219,16 +219,12 @@
   ],
   "messages": [
    {
-    "body": "Welcome to Armada Residence – Shafa Road.\nWe don't have the driving distance from the Shafa Road branch to Taif airport. For the Airport Road branch, it is about 22 km from Taif International Airport, around 18 minutes by car. From Shafa Road, Al Radaf Park is 4 minutes away by car and Taif Zoo is 8 minutes.",
+    "body": "Welcome to Armada Residence – Shafa Road.\nWe don't have the distance from our Shafa Road branch to Taif airport. The only airport figure we have is for our Airport Road branch: about 22 km from Taif International Airport, around 18 minutes by car. From Shafa Road, Al Radaf Park is 4 minutes away by car and Taif Zoo 8 minutes. Our Shafa Road address is 6411 Al Shafa Road, Al Sadad district, Taif 26514.\n\nWe’ll check with the team, and one of them will continue with you in this chat.",
     "notice": false
-   },
-   {
-    "body": "We’ll check with the team, and one of them will continue with you in this chat.",
-    "notice": true
    }
   ],
   "guard_refusals": [],
-  "cost_usd": 0.007857
+  "cost_usd": 0.008746
  },
  "first_try": {
   "guard": true,

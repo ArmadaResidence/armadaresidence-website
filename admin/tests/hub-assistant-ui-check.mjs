@@ -121,6 +121,9 @@ for (const [role, level] of [['admin', 'edit'], ['management', 'view']]) {
         // H3: the page reads the endpoint's events from YCloud on load (GET only, recorded by the server)
         if (fn === 'hub-admin' && body?.action === 'read_webhook_events') return ok({ ok: true, events: ['whatsapp.inbound_message.received', 'whatsapp.message.updated'], changed: false });
         if (fn === 'hub_channel_sending_set') return ok({ ok: true, batch_id: id(902) });
+        // H6 gaps: the texts the WhatsApp Business app sends by itself, per number
+        if (fn === 'hub_phone_auto_list') return ok({ can_edit: role === 'admin', rows: [{ id: id(960), channel_id: id(101), unit: 'airport-road', address: '+966536622277', body: 'نحن خارج أوقات العمل الآن.', created_at: '2026-11-14T10:00:00Z', created_by: 'مدير النظام' }] });
+        if (fn === 'hub_phone_auto_remove') return ok({ ok: true, batch_id: id(961) });
         if (fn === 'hub_unit_members_set' || fn === 'hub_summary_recipients_set') return ok({ ok: true, batch_id: id(900), count: 1 });
         if (fn === 'hub-admin' && body?.action === 'verify_channel') return ok({ ok: true, display_name: 'أرمادا ريزيدنس طريق المطار', status: 'CONNECTED', quality_rating: 'GREEN', messaging_limit: 'TIER_2K' });
         if (fn === 'hub-admin' && body?.action === 'refresh_templates') return ok({ ok: true, results: [{ channel: id(101), ok: true, count: 2 }, { channel: id(102), ok: true, count: 2 }] });
@@ -159,6 +162,18 @@ for (const [role, level] of [['admin', 'edit'], ['management', 'view']]) {
       check((await page.locator('[data-template-status="APPROVED"]').count()) === 4 && (await page.locator('[data-templates] tbody').textContent()).includes('معتمد'), `${tag}: hub_reply_ready ar + en «معتمد» on both numbers`);
       check((await page.locator('[data-channel="+966536622277"]').textContent()).includes('+966 53 662 2277'), `${tag}: the Airport Road number spaced`);
       check(await page.locator('[data-alerts-empty]').isVisible(), `${tag}: «لا تنبيهات مفتوحة»`);
+      // H6 gaps: «الرسائل التلقائية من الجوال» under each number; the remove for the system admin only
+      check((await page.locator('[data-phone-autos="+966536622277"]').textContent())?.includes('نحن خارج أوقات العمل الآن.') && (await page.locator('[data-phone-autos="+966536663030"]').textContent())?.includes('لا توجد'),
+        `${tag}: the saved automatic texts listed under their number`);
+      check((await page.locator('[data-action="phone-auto-remove"]').count()) === (role === 'admin' ? 1 : 0), `${tag}: «حذف النص» for the system admin only`);
+      if (role === 'admin' && w === 1440 && scheme === 'light') {
+        await page.locator('[data-action="phone-auto-remove"]').click();
+        await page.waitForTimeout(450);
+        await page.locator('[data-action="confirm-go"]').click();
+        await page.waitForTimeout(400);
+        const rm = calls.find((c) => c.fn === 'hub_phone_auto_remove');
+        check(rm && rm.body.p_id === id(960), `${tag}: «حذف النص» (after its confirm) → hub_phone_auto_remove — ${JSON.stringify(rm?.body)}`);
+      }
       const hookRows = await page.$$eval('[data-webhook-event]', (a) => a.map((x) => x.getAttribute('data-on')));
       check(hookRows.join() === 'yes,yes,no,no', `${tag}: «استقبال واتساب» lists four events, the two hub events not yet on — ${hookRows.join()}`);
       check((await page.locator('[data-action="webhook-events"]').count()) === (role === 'admin' ? 1 : 0), `${tag}: «تحديث أحداث الاستقبال» shown to the system admin only`);

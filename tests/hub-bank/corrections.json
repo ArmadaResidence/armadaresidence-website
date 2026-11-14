@@ -1,0 +1,12 @@
+{
+  "_note": "Corrections to tests/hub-bank/seed.jsonl after it was seeded (20261114400000_guest_hub_lab.sql — applied, never edited). Each one is applied to production by a later migration (an UPDATE of public.hub_test_items that names the old and the new expect); scripts/hub-eval-check.mjs checks the two agree. seed.jsonl itself stays as seeded.",
+  "items": {
+    "q023": {
+      "date": "2026-11-14",
+      "migration": "20261114600000_guest_hub_gaps.sql",
+      "why": "must_include asked for the word \"arrival\"; the approved FAQ answer (content/faq.json payment) says \"when you arrive\" — the stem \"arriv\" holds both",
+      "old": { "action": "answer", "faq": ["payment"], "must_include": ["arrival"] },
+      "expect": { "action": "answer", "faq": ["payment"], "must_include": ["arriv"] }
+    }
+  }
+}

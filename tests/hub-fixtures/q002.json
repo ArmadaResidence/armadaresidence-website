@@ -1,6 +1,6 @@
 {
  "id": "q002",
- "recorded_at": "2026-11-14T10:15:10.029Z",
+ "recorded_at": "2026-11-14T14:28:25.540Z",
  "question": {
   "unit": "airport-road",
   "language": "en",
@@ -15,18 +15,18 @@
    "model": "claude-haiku-5-5",
    "ok": true,
    "text": "{\"intents\":[\"facility_question\"],\"topics\":[\"parking\"],\"new_topic_hint\":null,\"branch\":null,\"check_in\":null,\"check_out\":null,\"nights\":null,\"dates_text\":null,\"dates_calendar\":null,\"room_type\":null,\"breakfast\":null,\"adults\":null,\"children\":null,\"child_ages\":null,\"extra_beds\":null,\"rooms_count\":null,\"guest_name\":null,\"booking_ref\":null,\"language\":\"en\",\"complaint\":false,\"confidence\":{\"intents\":0.95,\"topics\":0.95,\"branch\":0.3,\"language\":0.99}}",
-   "input_tokens": 3162,
+   "input_tokens": 3689,
    "output_tokens": 197,
-   "latency_ms": 1991
+   "latency_ms": 1105
   },
   {
    "layer": "compose",
    "model": "claude-sonnet-5-5",
    "ok": true,
-   "text": "{\"reply\": \"Yes, parking is free at Airport Road, on levels B1 and B2 with a lift straight to the lobby. It is also free at our Shafa Road branch, on the basement level.\", \"used_card_ids\": [\"k-parking-detail\", \"faq:parking\"], \"unanswered\": []}",
-   "input_tokens": 2262,
-   "output_tokens": 101,
-   "latency_ms": 1782
+   "text": "{\"reply\": \"Yes, parking is free at both of our branches. At Airport Road it is on levels B1 and B2, with a lift straight to the lobby. At Shafa Road it is on the basement level.\", \"used_card_ids\": [\"k-parking-detail\", \"faq:parking\"], \"unanswered\": []}",
+   "input_tokens": 2415,
+   "output_tokens": 103,
+   "latency_ms": 1981
   }
  ],
  "adapter": {
@@ -218,12 +218,12 @@
   ],
   "messages": [
    {
-    "body": "Welcome to Armada Residence – Airport Road.\nYes, parking is free at Airport Road, on levels B1 and B2 with a lift straight to the lobby. It is also free at our Shafa Road branch, on the basement level.",
+    "body": "Welcome to Armada Residence – Airport Road.\nYes, parking is free at both of our branches. At Airport Road it is on levels B1 and B2, with a lift straight to the lobby. At Shafa Road it is on the basement level.",
     "notice": false
    }
   ],
   "guard_refusals": [],
-  "cost_usd": 0.005949
+  "cost_usd": 0.006327
  },
  "first_try": {
   "guard": true,

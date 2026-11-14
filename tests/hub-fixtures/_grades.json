@@ -1,6 +1,6 @@
 {
  "_note": "The grades of the recorded fixtures through the test lab (scripts/hub-eval-check.mjs --write) — a change here is deliberate.",
- "passed": 35,
+ "passed": 44,
  "total": 44,
  "grades": {
   "q001": {
@@ -44,11 +44,8 @@
    "reasons": []
   },
   "q016": {
-   "pass": false,
-   "reasons": [
-    "action:answer:handoff",
-    "state:collecting:human"
-   ]
+   "pass": true,
+   "reasons": []
   },
   "q017": {
    "pass": true,
@@ -63,38 +60,24 @@
    "reasons": []
   },
   "q021": {
-   "pass": false,
-   "reasons": [
-    "action:answer:handoff",
-    "must_include:0"
-   ]
+   "pass": true,
+   "reasons": []
   },
   "q023": {
-   "pass": false,
-   "reasons": [
-    "action:answer:handoff",
-    "must_include:0"
-   ]
+   "pass": true,
+   "reasons": []
   },
   "q024": {
    "pass": true,
    "reasons": []
   },
   "q027": {
-   "pass": false,
-   "reasons": [
-    "faq:breakfast",
-    "must_include:0",
-    "must_include:1",
-    "must_include:2"
-   ]
+   "pass": true,
+   "reasons": []
   },
   "q030": {
-   "pass": false,
-   "reasons": [
-    "action:answer:handoff",
-    "must_include:0"
-   ]
+   "pass": true,
+   "reasons": []
   },
   "q031": {
    "pass": true,
@@ -105,11 +88,8 @@
    "reasons": []
   },
   "q037": {
-   "pass": false,
-   "reasons": [
-    "card:k-cafe-menu",
-    "must_include:0"
-   ]
+   "pass": true,
+   "reasons": []
   },
   "q038": {
    "pass": true,
@@ -164,17 +144,12 @@
    "reasons": []
   },
   "q065": {
-   "pass": false,
-   "reasons": [
-    "action:answer:handoff",
-    "must_include:0"
-   ]
+   "pass": true,
+   "reasons": []
   },
   "q072": {
-   "pass": false,
-   "reasons": [
-    "action:answer:handoff"
-   ]
+   "pass": true,
+   "reasons": []
   },
   "q077": {
    "pass": true,
@@ -193,10 +168,8 @@
    "reasons": []
   },
   "q092": {
-   "pass": false,
-   "reasons": [
-    "action:answer:handoff"
-   ]
+   "pass": true,
+   "reasons": []
   },
   "q097": {
    "pass": true,

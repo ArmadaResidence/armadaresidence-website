@@ -1,6 +1,6 @@
 {
  "id": "q077",
- "recorded_at": "2026-11-14T10:16:24.723Z",
+ "recorded_at": "2026-11-14T14:29:51.160Z",
  "question": {
   "unit": "airport-road",
   "language": "ar",
@@ -14,10 +14,10 @@
    "layer": "understand",
    "model": "claude-haiku-5-5",
    "ok": true,
-   "text": "{\"intents\":[\"greeting\"],\"topics\":[\"greeting\"],\"new_topic_hint\":null,\"branch\":null,\"check_in\":null,\"check_out\":null,\"nights\":null,\"dates_text\":null,\"dates_calendar\":null,\"room_type\":null,\"breakfast\":null,\"adults\":null,\"children\":null,\"child_ages\":null,\"extra_beds\":null,\"rooms_count\":null,\"guest_name\":null,\"booking_ref\":null,\"language\":\"ar\",\"complaint\":false,\"confidence\":{\"intents\":0.98,\"topics\":0.98,\"language\":0.99}}",
-   "input_tokens": 3163,
+   "text": "{\"intents\":[\"greeting\"],\"topics\":[\"greeting\"],\"new_topic_hint\":null,\"branch\":null,\"check_in\":null,\"check_out\":null,\"nights\":null,\"dates_text\":null,\"dates_calendar\":null,\"room_type\":null,\"breakfast\":null,\"adults\":null,\"children\":null,\"child_ages\":null,\"extra_beds\":null,\"rooms_count\":null,\"guest_name\":null,\"booking_ref\":null,\"language\":\"ar\",\"complaint\":false,\"confidence\":{\"intents\":0.99,\"topics\":0.99,\"language\":0.99}}",
+   "input_tokens": 3690,
    "output_tokens": 190,
-   "latency_ms": 1233
+   "latency_ms": 1837
   }
  ],
  "adapter": {
@@ -214,7 +214,7 @@
    }
   ],
   "guard_refusals": [],
-  "cost_usd": 0.000411
+  "cost_usd": 0.000464
  },
  "first_try": {
   "guard": true,

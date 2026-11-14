@@ -1,6 +1,6 @@
 {
  "id": "q050",
- "recorded_at": "2026-11-14T10:16:09.127Z",
+ "recorded_at": "2026-11-14T14:29:33.480Z",
  "question": {
   "unit": "airport-road",
   "language": "ar",
@@ -14,10 +14,10 @@
    "layer": "understand",
    "model": "claude-haiku-5-5",
    "ok": true,
-   "text": "{\"intents\":[\"human_request\"],\"topics\":[],\"new_topic_hint\":\"Asking if talking to a bot\",\"branch\":null,\"check_in\":null,\"check_out\":null,\"nights\":null,\"dates_text\":null,\"dates_calendar\":null,\"room_type\":null,\"breakfast\":null,\"adults\":null,\"children\":null,\"child_ages\":null,\"extra_beds\":null,\"rooms_count\":null,\"guest_name\":null,\"booking_ref\":null,\"language\":\"ar\",\"complaint\":false,\"confidence\":{\"intents\":0.9,\"human_request\":0.9,\"language\":0.95}}",
-   "input_tokens": 3163,
-   "output_tokens": 196,
-   "latency_ms": 1373
+   "text": "{\"intents\":[\"human_request\"],\"topics\":[\"human_request\"],\"new_topic_hint\":null,\"branch\":\"airport-road\",\"check_in\":null,\"check_out\":null,\"nights\":null,\"dates_text\":null,\"dates_calendar\":null,\"room_type\":null,\"breakfast\":null,\"adults\":null,\"children\":null,\"child_ages\":null,\"extra_beds\":null,\"rooms_count\":null,\"guest_name\":null,\"booking_ref\":null,\"language\":\"ar\",\"complaint\":false,\"confidence\":{\"intents\":0.95,\"topics\":0.95,\"branch\":0.5,\"language\":0.98}}",
+   "input_tokens": 3690,
+   "output_tokens": 201,
+   "latency_ms": 1222
   }
  ],
  "adapter": {
@@ -204,7 +204,9 @@
   "transitions": [
    "T2"
   ],
-  "topics": [],
+  "topics": [
+   "human_request"
+  ],
   "messages": [
    {
     "body": "مرحبًا بك في أرمادا ريزيدنس – طريق المطار.\nسيكمل معك أحد أفراد فريقنا في هذه المحادثة.",
@@ -212,7 +214,7 @@
    }
   ],
   "guard_refusals": [],
-  "cost_usd": 0.000414
+  "cost_usd": 0.00047
  },
  "first_try": {
   "guard": true,

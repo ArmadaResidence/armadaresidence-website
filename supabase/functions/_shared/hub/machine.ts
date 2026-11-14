@@ -26,7 +26,9 @@ export interface Draft {
 }
 
 export type Action =
-  | { type: 'answer'; topics: string[]; intents: string[]; branch: string | null }
+  /** mixed: the sourced question of a message that is also a stay / hall / group request — answered first, then the
+   *  hand-off that follows it in the same decision takes the request (H6 gaps, Ahmed 14 Nov 2026) */
+  | { type: 'answer'; topics: string[]; intents: string[]; branch: string | null; mixed?: boolean }
   | { type: 'ask'; slots: string[] }
   | { type: 'quote' }
   | { type: 'send_room_cards' }
@@ -114,6 +116,23 @@ const STAY_INTENTS = ['stay_booking', 'availability_question'];
 const STAY_SLOTS_ORDER = ['branch', 'check_in', 'room_type', 'adults', 'extra_beds', 'breakfast', 'child_ages', 'guest_name'];
 const QUESTION_INTENTS = ['facility_question', 'policy_question', 'location_question', 'offer_question', 'eyab_question', 'payment_question', 'stay_service_request',
   'dining_menu', 'price_question', 'other', 'booking_status'];
+
+/** topics a stay, hall or group hand-off takes with it: what is left of the message is a question with a source */
+const REQUEST_TOPICS = new Set(['booking_new', 'price', 'availability', 'groups_corporate', 'umrah', 'extension', 'early_late', 'booking_status', 'greeting', 'thanks_closing',
+  'occupancy']);
+/** a price question about the rooms themselves gets the «يبدأ من» lines: no topic, or only these (H6 gaps: the breakfast,
+ *  a coffee, the laundry or the website's price is a question with its own source, never the room list) */
+const ROOM_PRICE_TOPICS = new Set(['price', 'booking_new', 'room_types', 'availability', 'occupancy']);
+/** the guest's words about the time (prompts.md §1 rule 4 / 21): an early arrival, never a late departure */
+const EARLY_RE = /early|earlier|مبكر|بدري|قبل موعد|قبل وقت|before check.?in/i;
+const ARRIVE_RE = /arriv|check.?in|أوصل|نوصل|اوصل|وصول|الوصول|أدخل|ادخل|دخول|الدخول|نجي|أجي|اجي/i;
+const LEAVE_RE = /late|later|check.?out|leave|متأخر|تأخير|أطلع|اطلع|نطلع|خروج|الخروج|مغادرة|المغادرة|أغادر|اغادر/i;
+export const earlyArrival = (datesText: string | null | undefined): boolean => {
+  const s = String(datesText ?? '');
+  return EARLY_RE.test(s) || (ARRIVE_RE.test(s) && !LEAVE_RE.test(s));
+};
+/** the topics of a mixed message the answer takes (the request's own topics stay with the hand-off) */
+export const answerTopics = (u: Understanding): string[] => u.topics.filter((k) => !REQUEST_TOPICS.has(k));
 
 const isAssistant = (s: State) => ASSISTANT_STATES.includes(s);
 type Note = { intent: string; slots: Record<string, unknown>; stopped: string };
@@ -306,13 +325,15 @@ export function decide(input: DecideInput): Decision {
   if (has('order_status') || has('table_booking')) return H(has('table_booking') ? 'table_booking' : 'order_status', 'handoff', has('table_booking') ? 'table_booking' : 'order_status');
   // an order written on the Shafa Road number goes to its team (13 Nov 2026); on Airport Road the menu link answers
   if (has('dining_order') && ctx.unit_branch === 'shafa-road') return H('dining_order', 'handoff', 'dining_order');
-  if (u.topics.includes('extension') || (has('stay_service_request') && u.topics.includes('early_late') && /early|مبكر/i.test(u.dates_text ?? ''))) {
+  // an extension, or an early check-in (the guest's words about an arrival time): the fixed notice AND the team (H6 gaps)
+  if (u.topics.includes('extension') || (u.topics.includes('early_late') && earlyArrival(u.dates_text) && (has('stay_service_request') || STAY_INTENTS.some(has) || has('policy_question') || has('other')))) {
     return H('early_extension', 'early_extension', 'stay_service_request');
   }
   // rooms: 2–4 → reception; 5 or more → the group request (sales); a company or Umrah office is a group request too
   if (u.rooms_count && u.rooms_count >= ctx.group_min_rooms) return groupOrHall(input, state, t, out, u, 'group');
   if (u.rooms_count && u.rooms_count >= 2) return H('multi_room', 'multi_room', 'stay_booking');
-  if (has('group_request') || u.topics.includes('groups_corporate') || u.topics.includes('umrah') && has('stay_booking')) return groupOrHall(input, state, t, out, u, 'group');
+  // the groups topic alone (e.g. "the sales number?") is a question; a group request needs the intent or a stay with it
+  if (has('group_request') || (u.topics.includes('groups_corporate') && STAY_INTENTS.some(has)) || u.topics.includes('umrah') && has('stay_booking')) return groupOrHall(input, state, t, out, u, 'group');
   if (has('hall_request')) return groupOrHall(input, state, t, out, u, 'hall');
 
   // outside Armada's services (spec §6.5): one fixed reply; the third in an episode goes to staff
@@ -338,7 +359,8 @@ export function decide(input: DecideInput): Decision {
     if (state === 'booked') t.push('T19');
     return stayIntent(input, state, t, out, u);
   }
-  if (has('price_question') && !u.check_in && !u.check_out) {
+  const roomPrice = u.topics.every((k) => ROOM_PRICE_TOPICS.has(k)) && !has('dining_menu') && !has('eyab_question');
+  if (has('price_question') && !u.check_in && !u.check_out && roomPrice) {
     // the «يبدأ من» line per room type (spec §4.2); a hidden price → the reception (T9b)
     if (!ctx.show_prices) return H('prices_hidden', 'handoff', 'price_question');
     t.push(state === 'new' ? 'T5' : 'T6');
@@ -379,7 +401,12 @@ function groupOrHall(input: DecideInput, state: State, t: string[], out: Out, u:
   const skill = kind === 'hall' ? 'hall_request' : 'group_request';
   if (!input.ctx.skills.includes(skill)) {
     t.push(state === 'new' ? 'T2' : 'T21');
-    return out({ next: 'human', actions: [handoff(kind === 'hall' ? 'hall_request' : 'group_request', 'handoff', { intent: skill, slots: noteSlots(u), stopped: state })],
+    // a mixed message (H6 gaps): a question asked with the request («كم سعر القاعة؟») is answered first («عن طريق
+    // المبيعات», "no hall at Shafa Road"), then the team; a request alone («أبغى أحجز القاعة لـ 30 شخص») goes to the team
+    const topics = answerTopics(u);
+    const asks = u.intents.some((i) => QUESTION_INTENTS.includes(i) && i !== 'other' && i !== 'booking_status');
+    const first: Action[] = topics.length && asks ? [{ type: 'answer', topics, intents: u.intents, branch: u.branch, mixed: true }] : [];
+    return out({ next: 'human', actions: [...first, handoff(kind === 'hall' ? 'hall_request' : 'group_request', 'handoff', { intent: skill, slots: noteSlots(u), stopped: state })],
       reason: kind === 'hall' ? 'hall_request' : 'group_request', failed: 'reset' });
   }
   // H8: collect the details, then the partner enquiry (T3 → T3b)
@@ -397,9 +424,12 @@ function groupOrHall(input: DecideInput, state: State, t: string[], out: Out, u:
 function stayIntent(input: DecideInput, state: State, t: string[], out: Out, u: Understanding | null): Decision {
   const ctx = input.ctx;
   if (!ctx.skills.includes('room_booking')) {
-    // H5: room_booking is off — the reception, with whatever the understanding extracted (spec §2.6 «يريد: …»)
+    // H5: room_booking is off — the reception, with whatever the understanding extracted (spec §2.6 «يريد: …»); a mixed
+    // message (H6 gaps: a kitchen, a balcony, an extra bed, the accessible room) gets its sourced answer first
     t.push(state === 'new' ? 'T2' : 'T21');
-    return out({ next: 'human', actions: [handoff('stay_booking', 'handoff', { intent: 'stay_booking', slots: noteSlots(u), stopped: state })], reason: 'stay_booking', failed: 'reset' });
+    const topics = u ? answerTopics(u) : [];
+    const first: Action[] = u && topics.length ? [{ type: 'answer', topics, intents: u.intents, branch: u.branch, mixed: true }] : [];
+    return out({ next: 'human', actions: [...first, handoff('stay_booking', 'handoff', { intent: 'stay_booking', slots: noteSlots(u), stopped: state })], reason: 'stay_booking', failed: 'reset' });
   }
   const prev = input.draft?.kind === 'stay' && state !== 'booked' ? input.draft.fields : {};
   const fields = u ? mergeFields(prev, u, ctx.unit_branch, ctx.unit_kind) : { ...prev, branch: prev.branch ?? (ctx.unit_kind === 'branch' ? ctx.unit_branch : null) };

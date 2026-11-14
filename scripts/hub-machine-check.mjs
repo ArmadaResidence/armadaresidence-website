@@ -154,6 +154,49 @@ check(d.next === 'human' && ho(d)?.notice === 'multi_room', '2–4 rooms → the
 d = run('new', guest(U({ intents: ['stay_booking'], dates_calendar: 'hijri', dates_text: '١٥ رجب' })));
 check(d.actions[0].type === 'fixed' && d.actions[0].key === 'dates_hijri', 'a Hijri date → copy.md §2.2');
 
+// ── the H6 gaps (14 Nov 2026): mixed messages, the price questions that are not about rooms, contacts, early check-in ──
+const ansThenTeam = (d, reason) => d.next === 'human' && d.actions[0]?.type === 'answer' && d.actions[0].mixed === true && d.actions[1]?.type === 'handoff' && ho(d).reason === reason && ho(d).notice === 'handoff';
+d = run('new', guest(U({ intents: ['stay_booking', 'facility_question'], topics: ['booking_new', 'kitchen'] })));
+check(ansThenTeam(d, 'stay_booking') && JSON.stringify(d.actions[0].topics) === '["kitchen"]', 'gaps: «أبغى غرفة فيها مطبخ» → the kitchen answered first (its topic only), then the stay to the team');
+d = run('new', guest(U({ intents: ['stay_booking'], topics: ['extra_bed'] })));
+check(ansThenTeam(d, 'stay_booking'), 'gaps: an extra bed asked as a booking → the rule and fee answered, then the team');
+d = run('new', guest(U({ intents: ['availability_question'], topics: ['accessible'] })));
+check(ansThenTeam(d, 'stay_booking'), 'gaps: the accessible room asked as availability → answered, then the team');
+d = run('new', guest(U({ intents: ['price_question', 'hall_request'], topics: ['price', 'hall'] })));
+check(ansThenTeam(d, 'hall_request') && JSON.stringify(d.actions[0].topics) === '["hall"]', 'gaps: «كم سعر القاعة؟» → the hall card («عن طريق المبيعات») first, then the hall request to the team');
+d = run('new', guest(U({ intents: ['hall_request', 'facility_question'], topics: ['hall'] })), { unit_branch: 'shafa-road' });
+check(ansThenTeam(d, 'hall_request'), 'gaps: a hall question with a request on Shafa Road → "no hall here" answered, then the team');
+d = run('new', guest(U({ intents: ['hall_request'], topics: ['hall'], adults: 30 })));
+check(d.next === 'human' && acts(d).join() === 'handoff' && ho(d).reason === 'hall_request', 'gaps: a hall request alone («أبغى أحجز القاعة لاجتماع 30 شخص») → the team only');
+d = run('new', guest(U({ intents: ['group_request'], topics: ['groups_corporate'], rooms_count: 8 })));
+check(d.next === 'human' && acts(d).join() === 'handoff', 'gaps: a group request alone → the team only');
+d = run('new', guest(U({ intents: ['stay_booking'], topics: ['booking_new', 'price'], ...full })));
+check(d.next === 'human' && acts(d).join() === 'handoff', 'gaps: a plain stay request (no other topic) still hands off alone');
+d = run('new', guest(U({ intents: ['stay_booking', 'facility_question'], topics: ['kitchen'] })), { skills: H8 });
+check(d.next === 'collecting' && acts(d)[0] === 'ask', 'gaps: with room_booking on (H8) the stay path is unchanged');
+for (const [topics, what] of [[['breakfast'], 'the breakfast'], [['menu'], 'a coffee'], [['laundry', 'price'], 'the laundry'], [['website', 'price'], 'booking on the website'], [['eyab'], 'the membership']]) {
+  d = run('new', guest(U({ intents: ['price_question'], topics })));
+  check(d.actions[0].type === 'answer' && d.next === 'inquiry', `gaps: the price of ${what} → its own source, never the room «يبدأ من» list`);
+}
+d = run('new', guest(U({ intents: ['price_question', 'dining_menu'], topics: ['price'] })));
+check(d.actions[0].type === 'answer', 'gaps: a menu price question → the menu link (dining_menu), never the room list');
+for (const topics of [[], ['price'], ['price', 'room_types'], ['booking_new', 'price', 'availability']]) {
+  d = run('new', guest(U({ intents: ['price_question'], topics })));
+  check(d.actions[0].type === 'from_price', `gaps: a room price question (${topics.join(', ') || 'no topic'}) still gets the «يبدأ من» lines`);
+}
+d = run('new', guest(U({ intents: ['facility_question'], topics: ['groups_corporate'] })));
+check(d.actions[0].type === 'answer' && d.next === 'inquiry', 'gaps: "the sales number?" (groups topic, a question) → answered, not a group request');
+d = run('new', guest(U({ intents: ['stay_booking'], topics: ['groups_corporate'] })));
+check(d.next === 'human' && ho(d)?.reason === 'group_request', 'gaps: a company asking to book → still the group request');
+d = run('new', guest(U({ intents: ['stay_service_request'], topics: ['early_late'], dates_text: 'أبغى أوصل الساعة 11 الصبح' })));
+check(d.next === 'human' && ho(d)?.notice === 'early_extension', 'gaps: «أبغى أوصل الساعة 11 الصبح» → the early check-in notice AND the team');
+d = run('new', guest(U({ intents: ['stay_service_request'], topics: ['early_late'], dates_text: 'Can I check in early, around 10?' })));
+check(d.next === 'human' && ho(d)?.notice === 'early_extension', 'gaps: an early check-in in English → the notice and the team');
+d = run('new', guest(U({ intents: ['stay_service_request'], topics: ['early_late'], dates_text: 'أبغى أطلع الساعة 4 العصر' })));
+check(d.actions[0].type === 'answer' && d.next === 'inquiry', 'gaps: a late check-out → answered from its fees (never the early notice)');
+d = run('new', guest(U({ intents: ['policy_question'], topics: ['early_late'] })));
+check(d.actions[0].type === 'answer', 'gaps: the early / late policy asked with no time → answered');
+
 // ── hand-offs of spec §2.6 ──
 d = run('new', guest(U({ intents: ['human_request'], topics: ['human_request'] })));
 check(d.next === 'human' && ho(d).notice === 'handoff', '"are you a bot / a person?" → human_request → the team at once');

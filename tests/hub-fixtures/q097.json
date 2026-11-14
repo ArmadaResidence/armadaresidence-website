@@ -1,6 +1,6 @@
 {
  "id": "q097",
- "recorded_at": "2026-11-14T10:16:38.988Z",
+ "recorded_at": "2026-11-14T14:30:05.794Z",
  "question": {
   "unit": "shafa-road",
   "language": "ar",
@@ -14,19 +14,19 @@
    "layer": "understand",
    "model": "claude-haiku-5-5",
    "ok": true,
-   "text": "{\"intents\":[\"dining_menu\"],\"topics\":[\"menu\"],\"new_topic_hint\":null,\"branch\":\"shafa-road\",\"check_in\":null,\"check_out\":null,\"nights\":null,\"dates_text\":null,\"dates_calendar\":null,\"room_type\":null,\"breakfast\":null,\"adults\":null,\"children\":null,\"child_ages\":null,\"extra_beds\":null,\"rooms_count\":null,\"guest_name\":null,\"booking_ref\":null,\"language\":\"ar\",\"complaint\":false,\"confidence\":{\"intents\":0.95,\"topics\":0.95,\"branch\":0.6,\"language\":0.99}}",
-   "input_tokens": 3171,
-   "output_tokens": 203,
-   "latency_ms": 1410
+   "text": "{\"intents\":[\"dining_menu\"],\"topics\":[\"menu\",\"cafe_restaurant\"],\"new_topic_hint\":null,\"branch\":\"shafa-road\",\"check_in\":null,\"check_out\":null,\"nights\":null,\"dates_text\":null,\"dates_calendar\":null,\"room_type\":null,\"breakfast\":null,\"adults\":null,\"children\":null,\"child_ages\":null,\"extra_beds\":null,\"rooms_count\":null,\"guest_name\":null,\"booking_ref\":null,\"language\":\"ar\",\"complaint\":false,\"confidence\":{\"intents\":0.95,\"topics\":0.9,\"branch\":0.6,\"language\":0.98}}",
+   "input_tokens": 3698,
+   "output_tokens": 212,
+   "latency_ms": 1523
   },
   {
    "layer": "compose",
    "model": "claude-sonnet-5-5",
    "ok": true,
-   "text": "{\"reply\": \"في فرع طريق الشفا مطعم ومقهى، ويُقدَّم فيه بوفيه الإفطار. يمكنك الطلب منه عبر واتساب الفرع نفسه، فلا يوجد واتساب منفصل له، أو من هاتف الغرفة على التحويلة 222. أما رابط القائمة فلا يتوفر لدينا هنا.\", \"used_card_ids\": [\"k-shafa-restaurant\"], \"unanswered\": [\"menu link for the Shafa Road restaurant\"]}",
-   "input_tokens": 2454,
-   "output_tokens": 190,
-   "latency_ms": 2242
+   "text": "{\"reply\": \"في فرع طريق الشفا مطعم ومقهى، ويُقدَّم فيه بوفيه الإفطار. الطلب منه يكون عبر واتساب الفرع نفسه، فلا يوجد واتساب منفصل له، ومن هاتف الغرفة على تحويلة 222.\", \"used_card_ids\": [\"k-shafa-restaurant\"], \"unanswered\": [\"menu link or menu contents for Shafa Road\"]}",
+   "input_tokens": 2607,
+   "output_tokens": 163,
+   "latency_ms": 2068
   }
  ],
  "adapter": {
@@ -215,20 +215,17 @@
    "T21"
   ],
   "topics": [
-   "menu"
+   "menu",
+   "cafe_restaurant"
   ],
   "messages": [
    {
-    "body": "مرحبًا بك في أرمادا ريزيدنس – طريق الشفا.\nفي فرع طريق الشفا مطعم ومقهى، ويُقدَّم فيه بوفيه الإفطار. يمكنك الطلب منه عبر واتساب الفرع نفسه، فلا يوجد واتساب منفصل له، أو من هاتف الغرفة على التحويلة 222. أما رابط القائمة فلا يتوفر لدينا هنا.",
+    "body": "مرحبًا بك في أرمادا ريزيدنس – طريق الشفا.\nفي فرع طريق الشفا مطعم ومقهى، ويُقدَّم فيه بوفيه الإفطار. الطلب منه يكون عبر واتساب الفرع نفسه، فلا يوجد واتساب منفصل له، ومن هاتف الغرفة على تحويلة 222.\n\nسنتأكد من الفريق، وسيكمل معك أحدهم في هذه المحادثة.",
     "notice": false
-   },
-   {
-    "body": "سنتأكد من الفريق، وسيكمل معك أحدهم في هذه المحادثة.",
-    "notice": true
    }
   ],
   "guard_refusals": [],
-  "cost_usd": 0.007227
+  "cost_usd": 0.00732
  },
  "first_try": {
   "guard": true,

@@ -1,6 +1,6 @@
 {
  "id": "q035",
- "recorded_at": "2026-11-14T10:15:54.875Z",
+ "recorded_at": "2026-11-14T14:29:19.939Z",
  "question": {
   "unit": "airport-road",
   "language": "ar",
@@ -14,19 +14,19 @@
    "layer": "understand",
    "model": "claude-haiku-5-5",
    "ok": true,
-   "text": "{\"intents\":[\"facility_question\"],\"topics\":[\"wifi\"],\"new_topic_hint\":null,\"branch\":\"airport-road\",\"check_in\":null,\"check_out\":null,\"nights\":null,\"dates_text\":null,\"dates_calendar\":null,\"room_type\":null,\"breakfast\":null,\"adults\":null,\"children\":null,\"child_ages\":null,\"extra_beds\":null,\"rooms_count\":null,\"guest_name\":null,\"booking_ref\":null,\"language\":\"ar\",\"complaint\":false,\"confidence\":{\"intents\":0.95,\"topics\":0.95,\"branch\":0.6,\"language\":0.99}}",
-   "input_tokens": 3168,
-   "output_tokens": 202,
-   "latency_ms": 1231
+   "text": "{\"intents\":[\"facility_question\"],\"topics\":[\"wifi\"],\"new_topic_hint\":null,\"branch\":null,\"check_in\":null,\"check_out\":null,\"nights\":null,\"dates_text\":null,\"dates_calendar\":null,\"room_type\":null,\"breakfast\":null,\"adults\":null,\"children\":null,\"child_ages\":null,\"extra_beds\":null,\"rooms_count\":null,\"guest_name\":null,\"booking_ref\":null,\"language\":\"ar\",\"complaint\":false,\"confidence\":{\"intents\":0.97,\"topics\":0.97,\"language\":0.99}}",
+   "input_tokens": 3695,
+   "output_tokens": 191,
+   "latency_ms": 1096
   },
   {
    "layer": "compose",
    "model": "claude-sonnet-5-5",
    "ok": true,
    "text": "{\"reply\": \"نعم، الواي فاي مجاني في كل الوحدات والمناطق العامة في الفرعين.\", \"used_card_ids\": [\"k-wifi-public\"], \"unanswered\": []}",
-   "input_tokens": 2310,
+   "input_tokens": 2463,
    "output_tokens": 73,
-   "latency_ms": 1964
+   "latency_ms": 1894
   }
  ],
  "adapter": {
@@ -223,7 +223,7 @@
    }
   ],
   "guard_refusals": [],
-  "cost_usd": 0.005768
+  "cost_usd": 0.006121
  },
  "first_try": {
   "guard": true,

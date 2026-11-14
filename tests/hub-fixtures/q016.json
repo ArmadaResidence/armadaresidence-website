@@ -1,6 +1,6 @@
 {
  "id": "q016",
- "recorded_at": "2026-11-14T10:15:32.987Z",
+ "recorded_at": "2026-11-14T14:28:48.527Z",
  "question": {
   "unit": "airport-road",
   "language": "ar",
@@ -14,10 +14,19 @@
    "layer": "understand",
    "model": "claude-haiku-5-5",
    "ok": true,
-   "text": "{\"intents\":[\"stay_booking\",\"facility_question\"],\"topics\":[\"booking_new\",\"kitchen\"],\"new_topic_hint\":null,\"branch\":\"airport-road\",\"check_in\":null,\"check_out\":null,\"nights\":null,\"dates_text\":null,\"dates_calendar\":null,\"room_type\":null,\"breakfast\":null,\"adults\":null,\"children\":null,\"child_ages\":null,\"extra_beds\":null,\"rooms_count\":null,\"guest_name\":null,\"booking_ref\":null,\"language\":\"ar\",\"complaint\":false,\"confidence\":{\"intents\":0.9,\"topics\":0.9,\"branch\":0.6,\"language\":0.98}}",
-   "input_tokens": 3172,
+   "text": "{\"intents\":[\"stay_booking\",\"facility_question\"],\"topics\":[\"booking_new\",\"kitchen\"],\"new_topic_hint\":null,\"branch\":\"airport-road\",\"check_in\":null,\"check_out\":null,\"nights\":null,\"dates_text\":null,\"dates_calendar\":null,\"room_type\":null,\"breakfast\":null,\"adults\":null,\"children\":null,\"child_ages\":null,\"extra_beds\":null,\"rooms_count\":null,\"guest_name\":null,\"booking_ref\":null,\"language\":\"ar\",\"complaint\":false,\"confidence\":{\"intents\":0.9,\"topics\":0.9,\"branch\":0.7,\"language\":0.98}}",
+   "input_tokens": 3699,
    "output_tokens": 214,
-   "latency_ms": 2567
+   "latency_ms": 1242
+  },
+  {
+   "layer": "compose",
+   "model": "claude-sonnet-5-5",
+   "ok": true,
+   "text": "{\"reply\": \"المطبخ متوفر في فرعنا هذا، فرع طريق المطار، في نوعين من الوحدات: «جناح بغرفة وصالة» و«جناح بغرفتي نوم وصالة». هل تود أن نساعدك في اختيار الأنسب لك؟\", \"used_card_ids\": [\"k-airport-kitchen\"], \"unanswered\": []}",
+   "input_tokens": 2904,
+   "output_tokens": 137,
+   "latency_ms": 2183
   }
  ],
  "adapter": {
@@ -198,7 +207,7 @@
   }
  },
  "outcome": {
-  "kind": "handoff",
+  "kind": "answer",
   "state": "human",
   "reason": "stay_booking",
   "transitions": [
@@ -210,15 +219,15 @@
   ],
   "messages": [
    {
-    "body": "مرحبًا بك في أرمادا ريزيدنس – طريق المطار.\nسيكمل معك أحد أفراد فريقنا في هذه المحادثة.",
-    "notice": true
+    "body": "مرحبًا بك في أرمادا ريزيدنس – طريق المطار.\nالمطبخ متوفر في فرعنا هذا، فرع طريق المطار، في نوعين من الوحدات: «جناح بغرفة وصالة» و«جناح بغرفتي نوم وصالة». هل تود أن نساعدك في اختيار الأنسب لك؟\n\nسيكمل معك أحد أفراد فريقنا في هذه المحادثة.",
+    "notice": false
    }
   ],
   "guard_refusals": [],
-  "cost_usd": 0.000424
+  "cost_usd": 0.007655
  },
  "first_try": {
   "guard": true,
-  "expect": false
+  "expect": true
  }
 }

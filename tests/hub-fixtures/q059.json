@@ -1,6 +1,6 @@
 {
  "id": "q059",
- "recorded_at": "2026-11-14T10:16:18.422Z",
+ "recorded_at": "2026-11-14T14:29:41.851Z",
  "question": {
   "unit": "airport-road",
   "language": "ar",
@@ -14,19 +14,19 @@
    "layer": "understand",
    "model": "claude-haiku-5-5",
    "ok": true,
-   "text": "{\"intents\":[\"eyab_question\"],\"topics\":[\"eyab\"],\"new_topic_hint\":null,\"branch\":null,\"check_in\":null,\"check_out\":null,\"nights\":null,\"dates_text\":null,\"dates_calendar\":null,\"room_type\":null,\"breakfast\":null,\"adults\":null,\"children\":null,\"child_ages\":null,\"extra_beds\":null,\"rooms_count\":null,\"guest_name\":null,\"booking_ref\":null,\"language\":\"ar\",\"complaint\":false,\"confidence\":{\"intents\":0.95,\"topics\":0.95,\"language\":0.98}}",
-   "input_tokens": 3166,
+   "text": "{\"intents\":[\"eyab_question\"],\"topics\":[\"eyab\"],\"new_topic_hint\":null,\"branch\":null,\"check_in\":null,\"check_out\":null,\"nights\":null,\"dates_text\":null,\"dates_calendar\":null,\"room_type\":null,\"breakfast\":null,\"adults\":null,\"children\":null,\"child_ages\":null,\"extra_beds\":null,\"rooms_count\":null,\"guest_name\":null,\"booking_ref\":null,\"language\":\"ar\",\"complaint\":false,\"confidence\":{\"intents\":0.95,\"topics\":0.95,\"language\":0.99}}",
+   "input_tokens": 3693,
    "output_tokens": 192,
-   "latency_ms": 1343
+   "latency_ms": 1239
   },
   {
    "layer": "compose",
    "model": "claude-sonnet-5-5",
    "ok": true,
-   "text": "{\"reply\": \"«إياب — عضوية أرمادا ريزيدنس» هي عضوية التسجيل فيها مجاني برقم الجوال، ويصل الأعضاء عروض وأكواد خاصة بهم. يمكنك الانضمام من صفحة البرنامج https://armadaresidence.com/club/ أو من الاستقبال أو من رمز طاولات الإفطار، أو بالموافقة على العروض عند الحجز من الموقع.\", \"used_card_ids\": [\"k-eyab\"], \"unanswered\": []}",
-   "input_tokens": 2371,
-   "output_tokens": 191,
-   "latency_ms": 2117
+   "text": "{\"reply\": \"«إياب — عضوية أرمادا ريزيدنس» برنامج عضوية التسجيل فيه مجاني برقم الجوال، ويصل الأعضاء عروض وأكواد خاصة بهم. يمكنك الانضمام من صفحة البرنامج https://armadaresidence.com/club/ أو من الاستقبال أو من رمز طاولات الإفطار، أو بالموافقة على العروض عند الحجز من الموقع.\", \"used_card_ids\": [\"k-eyab\"], \"unanswered\": []}",
+   "input_tokens": 2524,
+   "output_tokens": 193,
+   "latency_ms": 2334
   }
  ],
  "adapter": {
@@ -218,12 +218,12 @@
   ],
   "messages": [
    {
-    "body": "مرحبًا بك في أرمادا ريزيدنس – طريق المطار.\n«إياب — عضوية أرمادا ريزيدنس» هي عضوية التسجيل فيها مجاني برقم الجوال، ويصل الأعضاء عروض وأكواد خاصة بهم. يمكنك الانضمام من صفحة البرنامج https://armadaresidence.com/club/ أو من الاستقبال أو من رمز طاولات الإفطار، أو بالموافقة على العروض عند الحجز من الموقع.",
+    "body": "مرحبًا بك في أرمادا ريزيدنس – طريق المطار.\n«إياب — عضوية أرمادا ريزيدنس» برنامج عضوية التسجيل فيه مجاني برقم الجوال، ويصل الأعضاء عروض وأكواد خاصة بهم. يمكنك الانضمام من صفحة البرنامج https://armadaresidence.com/club/ أو من الاستقبال أو من رمز طاولات الإفطار، أو بالموافقة على العروض عند الحجز من الموقع.",
     "notice": false
    }
   ],
   "guard_refusals": [],
-  "cost_usd": 0.007065
+  "cost_usd": 0.007443
  },
  "first_try": {
   "guard": true,

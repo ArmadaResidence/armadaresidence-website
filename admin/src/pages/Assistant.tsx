@@ -25,6 +25,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { LabPanel, LicencesPanel, PersonaPanel, SimulatorPanel } from './AssistantLab';
+import { phoneAutoList, phoneAutoRemove, type PhoneAutoRow } from '../lib/lab';
 import type { Persona } from '../lib/hub';
 import * as api from '../lib/api';
 import { BRANCH_NAMES, ROLE_LABELS, riyadhDateTime, west } from '../lib/format';
@@ -34,7 +35,7 @@ import {
   channelSendingSet, membersSet, modeSet, overview, phoneText, qualityText, readWebhookEvents, recipientsSet, refreshTemplates, settingSet, templateStatus, unitSave, updateWebhookEvents, verifyChannel, verifyError,
   webhookError, webhookStatus, type HubOverview, type HubUnit, type UnitMode, type WebhookStatus,
 } from '../lib/hub';
-import { CancelButton, DirtyScope, ErrorBox, Field, Loading, Modal, Spinner, useToast } from '../components/ui';
+import { CancelButton, Confirm, DirtyScope, ErrorBox, Field, Loading, Modal, Spinner, useToast } from '../components/ui';
 
 type Row = { id?: string; email: string; active: boolean; filter_confirmed: boolean };
 type Tab = 'settings' | 'persona' | 'licences' | 'lab' | 'sim';
@@ -56,6 +57,9 @@ export default function Assistant() {
   const [blocked, setBlocked] = useState<{ title: string; gates: string[] } | null>(null);
   const [formBusy, setFormBusy] = useState(false);
   const [hook, setHook] = useState<WebhookStatus | null>(null);
+  // H6 gaps: the texts the WhatsApp Business app sends by itself, per number («رسالة تلقائية من الجوال»)
+  const [autos, setAutos] = useState<{ can_edit: boolean; rows: PhoneAutoRow[] } | null>(null);
+  const [autoDel, setAutoDel] = useState<PhoneAutoRow | null>(null);
   const readOnce = useRef(false);
   const [params, setParams] = useSearchParams();
   const tab = (TABS.some((t) => t.key === params.get('tab')) ? params.get('tab') : 'settings') as Tab;
@@ -81,6 +85,7 @@ export default function Assistant() {
       }
       // the webhook's events: shown when the server answers (an older server without the RPC simply hides the card)
       setHook(await webhookStatus().catch(() => null));
+      setAutos(await phoneAutoList().catch(() => null));
     } catch (e) {
       setError((e as Error).message);
     }
@@ -164,6 +169,21 @@ export default function Assistant() {
         await channelSendingSet(channelId, !on);
         await load();
       });
+      await load();
+    } catch (e) {
+      toast((e as Error).message, 'error');
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  /** remove a saved automatic text (the system admin; audited): the same text from that phone is a phone reply again */
+  async function removeAuto(row: PhoneAutoRow) {
+    setBusy(`auto:${row.id}`);
+    try {
+      await phoneAutoRemove(row.id);
+      setAutoDel(null);
+      toast('حُذف النص المحفوظ. إذا أرسل الجوال هذه الرسالة مرة أخرى تُعامل كرد من الجوال.');
       await load();
     } catch (e) {
       toast((e as Error).message, 'error');
@@ -357,6 +377,26 @@ export default function Assistant() {
                         {' · '}الإرسال من المركز: {c.sending_enabled ? 'مفعّل' : 'متوقف'}
                       </div>
                       {c.waba_id && <div className="text-xs text-ink-muted">حساب واتساب للأعمال: <span className="latin" dir="ltr">{c.waba_id}</span></div>}
+                      {autos && (
+                        <div className="mt-2 grid gap-1" data-phone-autos={c.address}>
+                          <div className="text-xs font-semibold">الرسائل التلقائية من الجوال</div>
+                          {autos.rows.filter((a) => a.channel_id === c.id).length === 0 ? (
+                            <p className="text-xs text-ink-muted">لا توجد. يحفظها مدير النظام من «المحادثات» على رسالة أرسلها الجوال تلقائيًا (ترحيب أو غياب).</p>
+                          ) : (
+                            autos.rows.filter((a) => a.channel_id === c.id).map((a) => (
+                              <div key={a.id} className="flex flex-wrap items-start justify-between gap-2 rounded-md border border-line p-2" data-phone-auto={a.id}>
+                                <p className="text-xs whitespace-pre-wrap min-w-0 break-words">{a.body}</p>
+                                <span className="flex items-center gap-2">
+                                  <span className="text-xs text-ink-muted num">{riyadhDateTime(a.created_at)}{a.created_by ? ` · ${a.created_by}` : ''}</span>
+                                  {autos.can_edit && (
+                                    <button type="button" className="btn btn-ghost btn-sm" disabled={busy !== null} onClick={() => setAutoDel(a)} data-action="phone-auto-remove">حذف النص</button>
+                                  )}
+                                </span>
+                              </div>
+                            ))
+                          )}
+                        </div>
+                      )}
                     </div>
                     {global && (
                       <div className="flex flex-wrap items-center gap-2">
@@ -535,6 +575,11 @@ export default function Assistant() {
         )}
       </Modal>
 
+      {autoDel && (
+        <Confirm open title="حذف نص رسالة تلقائية" danger confirmLabel="حذف النص" busy={busy === `auto:${autoDel.id}`} onClose={() => setAutoDel(null)}
+          body="إذا أرسل الجوال هذه الرسالة مرة أخرى تُعامل كرد من الجوال: تنتقل المحادثة إلى الفريق. الرسائل التي ظهرت «رسالة تلقائية من الجوال» من قبل تبقى كما هي."
+          onConfirm={() => void removeAuto(autoDel)} />
+      )}
       <Modal open={!!blocked} onClose={() => setBlocked(null)} title={blocked?.title ?? ''}>
         {blocked && (
           <div className="grid gap-3" data-hub-blocked>

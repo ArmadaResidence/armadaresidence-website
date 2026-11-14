@@ -1,6 +1,6 @@
 {
  "id": "q021",
- "recorded_at": "2026-11-14T10:15:38.862Z",
+ "recorded_at": "2026-11-14T14:30:54.254Z",
  "question": {
   "unit": "airport-road",
   "language": "ar",
@@ -14,10 +14,19 @@
    "layer": "understand",
    "model": "claude-haiku-5-5",
    "ok": true,
-   "text": "{\"intents\":[\"price_question\",\"hall_request\"],\"topics\":[\"price\",\"hall\"],\"new_topic_hint\":null,\"branch\":null,\"check_in\":null,\"check_out\":null,\"nights\":null,\"dates_text\":null,\"dates_calendar\":null,\"room_type\":null,\"breakfast\":null,\"adults\":null,\"children\":null,\"child_ages\":null,\"extra_beds\":null,\"rooms_count\":null,\"guest_name\":null,\"booking_ref\":null,\"language\":\"ar\",\"complaint\":false,\"confidence\":{\"intents\":0.95,\"topics\":0.9,\"branch\":0.2,\"language\":0.99}}",
-   "input_tokens": 3167,
-   "output_tokens": 204,
-   "latency_ms": 1353
+   "text": "{\"intents\":[\"price_question\",\"hall_request\"],\"topics\":[\"price\",\"hall\"],\"new_topic_hint\":null,\"branch\":\"airport-road\",\"check_in\":null,\"check_out\":null,\"nights\":null,\"dates_text\":null,\"dates_calendar\":null,\"room_type\":null,\"breakfast\":null,\"adults\":null,\"children\":null,\"child_ages\":null,\"extra_beds\":null,\"rooms_count\":null,\"guest_name\":null,\"booking_ref\":null,\"language\":\"ar\",\"complaint\":false,\"confidence\":{\"intents\":0.9,\"topics\":0.9,\"branch\":0.6,\"language\":0.99}}",
+   "input_tokens": 3694,
+   "output_tokens": 207,
+   "latency_ms": 1167
+  },
+  {
+   "layer": "compose",
+   "model": "claude-sonnet-5-5",
+   "ok": true,
+   "text": "{\"reply\": \"سعر قاعة أرمادا ريزيدنس في فرع طريق المطار يكون حسب الإتاحة والباقة، ويحدده فريق المبيعات. يمكنك التواصل معهم على +966 53 662 2288 أو sales@armadaresidence.com، أو طلب عرض سعر من صفحة القاعة: https://armadaresidence.com/airport-road/hall/. ويصلك رد مكتوب بالإتاحة خلال يوم عمل واحد.\", \"used_card_ids\": [\"k-hall-detail\", \"k-sales-contact\", \"faq:hall\"], \"unanswered\": []}",
+   "input_tokens": 3016,
+   "output_tokens": 222,
+   "latency_ms": 2536
   }
  ],
  "adapter": {
@@ -198,7 +207,7 @@
   }
  },
  "outcome": {
-  "kind": "handoff",
+  "kind": "answer",
   "state": "human",
   "reason": "hall_request",
   "transitions": [
@@ -210,15 +219,15 @@
   ],
   "messages": [
    {
-    "body": "مرحبًا بك في أرمادا ريزيدنس – طريق المطار.\nسيكمل معك أحد أفراد فريقنا في هذه المحادثة.",
-    "notice": true
+    "body": "مرحبًا بك في أرمادا ريزيدنس – طريق المطار.\nسعر قاعة أرمادا ريزيدنس في فرع طريق المطار يكون حسب الإتاحة والباقة، ويحدده فريق المبيعات. يمكنك التواصل معهم على +966 53 662 2288 أو sales@armadaresidence.com، أو طلب عرض سعر من صفحة القاعة: https://armadaresidence.com/airport-road/hall/. ويصلك رد مكتوب بالإتاحة خلال يوم عمل واحد.\n\nسيكمل معك أحد أفراد فريقنا في هذه المحادثة.",
+    "notice": false
    }
   ],
   "guard_refusals": [],
-  "cost_usd": 0.000419
+  "cost_usd": 0.008725
  },
  "first_try": {
   "guard": true,
-  "expect": false
+  "expect": true
  }
 }

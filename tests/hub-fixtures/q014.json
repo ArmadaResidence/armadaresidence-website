@@ -1,6 +1,6 @@
 {
  "id": "q014",
- "recorded_at": "2026-11-14T10:15:29.220Z",
+ "recorded_at": "2026-11-14T14:28:44.020Z",
  "question": {
   "unit": "airport-road",
   "language": "ar",
@@ -14,10 +14,10 @@
    "layer": "understand",
    "model": "claude-haiku-5-5",
    "ok": true,
-   "text": "{\"intents\":[\"stay_booking\"],\"topics\":[\"booking_new\"],\"new_topic_hint\":null,\"branch\":\"airport-road\",\"check_in\":\"2026-12-20\",\"check_out\":\"2026-12-22\",\"nights\":2,\"dates_text\":\"من 20 لـ 22 ديسمبر\",\"dates_calendar\":\"gregorian\",\"room_type\":null,\"breakfast\":null,\"adults\":null,\"children\":null,\"child_ages\":null,\"extra_beds\":null,\"rooms_count\":null,\"guest_name\":null,\"booking_ref\":null,\"language\":\"ar\",\"complaint\":false,\"confidence\":{\"intents\":0.9,\"topics\":0.9,\"branch\":0.7,\"check_in\":0.95,\"check_out\":0.95,\"nights\":0.9,\"dates_text\":0.95,\"dates_calendar\":0.95,\"language\":0.98}}",
-   "input_tokens": 3180,
-   "output_tokens": 280,
-   "latency_ms": 1574
+   "text": "{\"intents\":[\"stay_booking\"],\"topics\":[\"booking_new\",\"availability\"],\"new_topic_hint\":null,\"branch\":\"airport-road\",\"check_in\":\"2026-12-20\",\"check_out\":\"2026-12-22\",\"nights\":2,\"dates_text\":\"من 20 لـ 22 ديسمبر\",\"dates_calendar\":\"gregorian\",\"room_type\":null,\"breakfast\":null,\"adults\":null,\"children\":null,\"child_ages\":null,\"extra_beds\":null,\"rooms_count\":null,\"guest_name\":null,\"booking_ref\":null,\"language\":\"ar\",\"complaint\":false,\"confidence\":{\"intents\":0.95,\"topics\":0.9,\"branch\":0.6,\"check_in\":0.95,\"check_out\":0.95,\"nights\":0.9,\"dates_text\":0.95,\"dates_calendar\":0.95,\"language\":0.99,\"complaint\":0.99}}",
+   "input_tokens": 3707,
+   "output_tokens": 292,
+   "latency_ms": 1477
   }
  ],
  "adapter": {
@@ -205,7 +205,8 @@
    "T2"
   ],
   "topics": [
-   "booking_new"
+   "booking_new",
+   "availability"
   ],
   "messages": [
    {
@@ -214,7 +215,7 @@
    }
   ],
   "guard_refusals": [],
-  "cost_usd": 0.000458
+  "cost_usd": 0.000517
  },
  "first_try": {
   "guard": true,

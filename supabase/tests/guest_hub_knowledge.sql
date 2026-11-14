@@ -411,5 +411,57 @@ select pg_temp._check('P1 retention clears the queue''s excerpts after 12 months
 select pg_temp._check('P2 the H4 gate hook no longer passes alone: a publish needs a test-lab run (H6)', internal.hub_knowledge_gate(array[gen_random_uuid()]) ->> 'gate' = 'eval_required');
 select pg_temp._check('P3 the daily job hub-expiry is scheduled (08:00 Riyadh)', exists (select 1 from cron.job where jobname = 'hub-expiry' and schedule = '0 5 * * *'));
 
+-- ══ G — «لم أعرف الإجابة» holds only real gaps (H6 gaps, 14 Nov 2026 — 20261114600000_guest_hub_gaps) ══
+select pg_temp._root();
+alter table public.hub_units disable trigger hub_units_mode_guard;
+update public.hub_units set assistant_mode = 'shadow' where key = 'airport-road';
+alter table public.hub_units enable trigger hub_units_mode_guard;
+select pg_temp._service();
+select pg_temp._in('YC4-G1', '+966500009451', 'كم سعر غسيل الملابس؟');
+select pg_temp._in('YC4-G2', '+966500009452', 'أبغى أحجز من 20 إلى 22 نوفمبر');
+select pg_temp._in('YC4-G3', '+966500009453', 'الغرفة غير نظيفة');
+select public.hub_ingest_inbound(jsonb_build_object('channel', '+966536622277', 'phone', '+966500009454', 'provider_id', 'YC4-G4', 'sent_at', now(), 'kind', 'image', 'profile_name', 'Guest QA4'));
+select pg_temp._in('YC4-G5', '+966500009455', 'كم سعر الكواية؟', '+966536663030');
+select pg_temp._in('YC4-G6', '+966500009456', 'أبغى غرفة فيها مطبخ وغسالة');
+select pg_temp._in('YC4-G7', '+966500009457', 'هل يوجد مسبح؟');
+select pg_temp._in('YC4-G8', '+966500009458', 'كم سعر الكي؟');
+select pg_temp._root();
+-- the turns as hub_turn_finish leaves them (the decision written before the queue entry, in one transaction)
+insert into public.hub_turns (conversation_id, unit_id, inbound_message_ids, first_inbound_id, status, kind, mode, decision)
+select m.conversation_id, c.unit_id, array[m.id], m.id, 'done', 'reply', d.mode, d.decision::jsonb
+  from (values ('YC4-G1', 'shadow', '{"reason": "no_source", "gap": true}'), ('YC4-G2', 'shadow', '{"reason": "stay_booking", "gap": false}'),
+               ('YC4-G3', 'shadow', '{"reason": "complaint", "gap": false}'), ('YC4-G4', 'shadow', '{"reason": "media", "gap": false}'),
+               ('YC4-G5', 'shadow', '{"reason": "no_source", "gap": true}'), ('YC4-G6', 'shadow', '{"reason": "stay_booking", "gap": true, "answered": true}'),
+               ('YC4-G7', 'test', '{"reason": "no_source", "gap": true}'), ('YC4-G8', 'shadow', '{"reason": "human_request"}')) d (pid, mode, decision)
+  join public.hub_messages m on m.provider_message_id = d.pid join public.hub_conversations c on c.id = m.conversation_id;
+create function pg_temp._add(p_pid text, p_by uuid default null) returns uuid language sql as $$
+  select internal.hub_unanswered_add(c, m.id, p_by, null) from public.hub_conversations c join public.hub_messages m on m.conversation_id = c.id where m.provider_message_id = p_pid
+$$;
+select pg_temp._check('G1 a question with no source enters the queue', pg_temp._add('YC4-G1') is not null);
+select pg_temp._check('G2 the part of a mixed message the sources did not settle enters it (the hand-off took the booking)', pg_temp._add('YC4-G6') is not null);
+select pg_temp._check('G3 never a booking hand-off', pg_temp._add('YC4-G2') is null);
+select pg_temp._check('G3 … never a complaint', pg_temp._add('YC4-G3') is null);
+select pg_temp._check('G3 … never media', pg_temp._add('YC4-G4') is null);
+select pg_temp._check('G3 … never a request for a person', pg_temp._add('YC4-G8') is null);
+select pg_temp._check('G4 never a unit whose mode is off (Shafa Road)', pg_temp._add('YC4-G5') is null);
+select pg_temp._check('G4 … never a test run', pg_temp._add('YC4-G7') is null);
+select pg_temp._check('G5 none of the refused ones is in the queue', not exists (select 1 from public.hub_unanswered q join public.hub_messages m on m.id = q.message_id
+  where m.provider_message_id in ('YC4-G2', 'YC4-G3', 'YC4-G4', 'YC4-G5', 'YC4-G7', 'YC4-G8')));
+select pg_temp._check('G6 a person may still mark any guest message («المساعد لم يعرف»)', pg_temp._add('YC4-G2', pg_temp._id('admin')) is not null);
+-- an entry the system made against the rule (inserted directly, as before the rule) is dismissed by the migration's statement
+insert into public.hub_unanswered (unit_id, conversation_id, message_id, marked_by, question_excerpt, is_test)
+select c.unit_id, c.id, m.id, null, null, false from public.hub_messages m join public.hub_conversations c on c.id = m.conversation_id where m.provider_message_id = 'YC4-G4';
+update public.hub_unanswered q
+   set status = 'dismissed', dismiss_reason = 'خارج نطاق القائمة', resolved_at = now()
+ where q.marked_by is null and q.status = 'open'
+   and not internal.hub_unanswered_gap((select c from public.hub_conversations c where c.id = q.conversation_id), q.message_id);
+select pg_temp._check('G7 the cleanup dismisses it with «خارج نطاق القائمة» — kept, never deleted; real gaps and a person''s marks stay open',
+  (select status = 'dismissed' and dismiss_reason = 'خارج نطاق القائمة' from public.hub_unanswered q join public.hub_messages m on m.id = q.message_id where m.provider_message_id = 'YC4-G4')
+  and (select bool_and(status = 'open') from public.hub_unanswered q join public.hub_messages m on m.id = q.message_id where m.provider_message_id in ('YC4-G1', 'YC4-G6', 'YC4-G2')));
+select pg_temp._root();
+alter table public.hub_units disable trigger hub_units_mode_guard;
+update public.hub_units set assistant_mode = 'off' where key = 'airport-road';
+alter table public.hub_units enable trigger hub_units_mode_guard;
+
 select n, test, ok, detail from _r order by n;
 rollback;

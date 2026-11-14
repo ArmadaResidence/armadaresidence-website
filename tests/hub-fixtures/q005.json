@@ -1,6 +1,6 @@
 {
  "id": "q005",
- "recorded_at": "2026-11-14T10:15:17.229Z",
+ "recorded_at": "2026-11-14T14:28:32.898Z",
  "question": {
   "unit": "airport-road",
   "language": "ar",
@@ -14,19 +14,19 @@
    "layer": "understand",
    "model": "claude-haiku-5-5",
    "ok": true,
-   "text": "{\"intents\":[\"location_question\"],\"topics\":[\"distances\"],\"new_topic_hint\":null,\"branch\":\"airport-road\",\"check_in\":null,\"check_out\":null,\"nights\":null,\"dates_text\":null,\"dates_calendar\":null,\"room_type\":null,\"breakfast\":null,\"adults\":null,\"children\":null,\"child_ages\":null,\"extra_beds\":null,\"rooms_count\":null,\"guest_name\":null,\"booking_ref\":null,\"language\":\"ar\",\"complaint\":false,\"confidence\":{\"intents\":0.95,\"topics\":0.9,\"branch\":0.6,\"language\":0.99}}",
-   "input_tokens": 3175,
-   "output_tokens": 200,
-   "latency_ms": 1310
+   "text": "{\"intents\":[\"location_question\"],\"topics\":[\"distances\"],\"new_topic_hint\":null,\"branch\":null,\"check_in\":null,\"check_out\":null,\"nights\":null,\"dates_text\":null,\"dates_calendar\":null,\"room_type\":null,\"breakfast\":null,\"adults\":null,\"children\":null,\"child_ages\":null,\"extra_beds\":null,\"rooms_count\":null,\"guest_name\":null,\"booking_ref\":null,\"language\":\"ar\",\"complaint\":false,\"confidence\":{\"intents\":0.95,\"topics\":0.9,\"language\":0.98}}",
+   "input_tokens": 3702,
+   "output_tokens": 189,
+   "latency_ms": 1554
   },
   {
    "layer": "compose",
    "model": "claude-sonnet-5-5",
    "ok": true,
-   "text": "{\"reply\": \"يبعد مسجد عبدالله بن عباس عن فرع طريق المطار أقل من 10 دقائق بالسيارة.\", \"used_card_ids\": [\"k-airport-distances\"], \"unanswered\": []}",
-   "input_tokens": 3111,
-   "output_tokens": 83,
-   "latency_ms": 2457
+   "text": "{\"reply\": \"يبعد مسجد عبدالله بن عباس أقل من 10 دقائق بالسيارة من فرع طريق المطار.\", \"used_card_ids\": [\"k-airport-distances\"], \"unanswered\": []}",
+   "input_tokens": 3264,
+   "output_tokens": 82,
+   "latency_ms": 2058
   }
  ],
  "adapter": {
@@ -218,12 +218,12 @@
   ],
   "messages": [
    {
-    "body": "مرحبًا بك في أرمادا ريزيدنس – طريق المطار.\nيبعد مسجد عبدالله بن عباس عن فرع طريق المطار أقل من 10 دقائق بالسيارة.",
+    "body": "مرحبًا بك في أرمادا ريزيدنس – طريق المطار.\nيبعد مسجد عبدالله بن عباس أقل من 10 دقائق بالسيارة من فرع طريق المطار.",
     "notice": false
    }
   ],
   "guard_refusals": [],
-  "cost_usd": 0.00747
+  "cost_usd": 0.007813
  },
  "first_try": {
   "guard": true,

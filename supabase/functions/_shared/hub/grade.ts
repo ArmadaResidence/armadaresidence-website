@@ -65,6 +65,12 @@ export interface Grade {
 export const GLOBAL_MUST_NOT: string[] = (rules as Json).global_must_not_include;
 export const BANK_VERSION: string = (rules as Json).version;
 
+/** a request hand-off → the skill that would take it in the chat (H8) */
+export const REQUEST_REASONS: Record<string, string> = { stay_booking: 'room_booking', hall_request: 'hall_request', group_request: 'group_request' };
+/** an expected answer met by «the answer, then the team» — only while the skill that would take the request is off */
+export const answerThenTeam = (want: string, o: Pick<Outcome, 'kind' | 'reason'>, skills: string[]): boolean =>
+  want === 'answer' && o.kind === 'answer_handoff' && !!REQUEST_REASONS[o.reason ?? ''] && !skills.includes(REQUEST_REASONS[o.reason ?? '']);
+
 /** the action the engine should take for an item with the unit's skills today */
 export function expectedAction(item: Item, skills: string[]): { action: string; applies: boolean } {
   const a = item.expect.action;
@@ -82,6 +88,8 @@ export function expectedAction(item: Item, skills: string[]): { action: string; 
 export function outcomeKind(finish: Json): string {
   const acts: string[] = finish.decision?.actions ?? [];
   const tr: string[] = finish.decision?.transitions ?? [];
+  // a mixed message (H6 gaps): the sourced question answered, then the stay / hall / group request to the team
+  if (finish.state === 'human' && finish.decision?.answered === true && REQUEST_REASONS[finish.reason ?? '']) return 'answer_handoff';
   if (finish.state === 'human') return finish.reason === 'third_language' ? 'third_language' : finish.reason === 'out_of_scope' ? 'out_of_scope' : 'handoff';
   if (acts.includes('booking_status')) return 'booking_status';
   if (acts.includes('fixed') && tr.includes('T4')) return 'greeting';
@@ -150,12 +158,16 @@ export function grade(item: Item, o: Outcome, ctx: GradeCtx): Grade {
   if (o.error) {
     return { pass: false, reasons: [`error:${String(o.error).replace(/[^a-z_]/g, '').slice(0, 40) || 'engine'}`], expected: action, applies };
   }
-  if (o.kind !== action) reasons.push(`action:${action}:${o.kind}`.slice(0, 80));
-  const wantState = applies ? item.expect.state : action === 'handoff' ? 'human' : undefined;
+  const mixed = answerThenTeam(action, o, ctx.skills);
+  if (o.kind !== action && !mixed) reasons.push(`action:${action}:${o.kind}`.slice(0, 80));
+  // «answers then asks for dates» (q016) is H8's: with room_booking off the stay part goes to the team
+  const collecting = item.expect.state === 'collecting' && !ctx.skills.includes('room_booking');
+  const wantState = applies ? (collecting ? 'human' : item.expect.state) : action === 'handoff' ? 'human' : undefined;
   if (wantState && (o.state ?? '') !== wantState) reasons.push(`state:${wantState}:${o.state ?? 'none'}`);
+  // a merged message (the answer, then the hand-off notice) is graded as what the engine composed
   const said = o.replies.filter((r) => !r.notice).map((r) => r.body).join('\n');
   const everything = o.replies.map((r) => r.body).join('\n');
-  if (applies && action === 'answer' && o.kind === 'answer') {
+  if (applies && action === 'answer' && (o.kind === 'answer' || mixed)) {
     for (const c of item.expect.cards ?? []) if (!o.card_keys.includes(c)) reasons.push(`card:${c}`);
     for (const f of item.expect.faq ?? []) if (!o.faq_keys.includes(f) && !o.faq_read.includes(f)) reasons.push(`faq:${f}`);
   }

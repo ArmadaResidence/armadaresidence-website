@@ -43,7 +43,23 @@ check(ok(clean), `a clean reply passes — ${why(clean)}`);
 check(refused('الإفطار 25 ريالًا للشخص.', 'number'), '1 a number not in the payload is refused');
 check(ok('الإفطار 20 ريالًا للشخص.'), '1 … the payload\'s number passes');
 check(ok('يمكنك الاتصال بالاستقبال على +966 53 662 2277.'), '1 a phone of the payload, as written, passes');
-check(refused('اتصل على +966 50 000 0000.', 'number'), '1 another phone is refused');
+check(refused('اتصل على +966 50 000 0000.', 'phone'), '1 another phone is refused');
+// 1a · a phone of the payload in any common spacing passes; any other phone is refused, even one made of payload digit
+// groups; an email must be the payload's (H6 gaps, 14 Nov 2026)
+const PC = { ...P, text: `${P.text}\nالمبيعات: +966 53 662 2288 أو sales@armadaresidence.com. المقهى: +966 53 379 8590.` };
+for (const t of ['+966 53 662 2288', '+966536622288', '00966 53 662 2288', '053 662 2288', '0536622288', '053-662-2288', '(053) 662 2288', '536622288', '966536622288', '+966-53-662-2288']) {
+  check(ok(`تواصل مع المبيعات على ${t}.`, OA, PC), `1a the payload's phone written ${t} passes — ${why(`تواصل مع المبيعات على ${t}.`, OA, PC)}`);
+}
+check(ok('Call the café on 0533798590.', OE, PC), '1a … in English too');
+check(refused('تواصل مع المبيعات على +966 53 662 2278.', 'phone', OA, PC), '1a a phone one digit off is refused');
+check(refused('تواصل على +966 53 379 2277.', 'phone', OA, PC), '1a a phone stitched from payload digit groups (966 · 53 · 379 · 2277, each in the payload, never one number) is refused');
+check(refused('تواصل على 0551234567.', 'phone', OA, PC), '1a a local mobile not in the payload is refused');
+check(refused('Call +44 20 7946 0958.', 'phone', OE, PC), '1a a foreign phone not in the payload is refused');
+check(ok('اكتب لنا على sales@armadaresidence.com.', OA, PC) && ok('Write to SALES@ArmadaResidence.com.', OE, PC), '1a the payload\'s email passes, whatever its case');
+check(refused('اكتب لنا على info@armadaresidence.com.', 'email', OA, PC), '1a an email of our own domain that the payload does not hold is refused');
+check(refused('Write to someone@gmail.com.', 'email', OE, PC), '1a another email is refused');
+check(ok('الإفطار 20 ريالًا، ويُقدَّم من 7:00 إلى 10:30.', OA, { ...PC, text: `${PC.text} من 7:00 إلى 10:30` }) && ok('الأسعار: 185 و200 و240 ريالًا.', OA, { ...PC, text: `${PC.text} 185 200 240` }), '1a prices and times are never read as a phone');
+check(ok('من 2026-11-14 إلى 2026-11-16.', OA, { ...PC, text: `${PC.text} 2026-11-14 2026-11-16` }), '1a an ISO date is never read as a phone');
 check(refused('الإفطار ٢٠ ريالًا.', 'digits'), '1 Arabic-Indic digits are refused');
 check(ok(`الإلغاء: ${CANCEL_AR}`), '1 the times of the cancellation sentence pass');
 
