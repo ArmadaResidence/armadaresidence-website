@@ -527,6 +527,12 @@ Carried over from the 12 Oct 2026 version (still open, not in the list above):
 
 Rules decided by Ahmed (12–13 Nov 2026):
 
+- **Live since 14 Nov 2026** (DECISIONS.md 2026-11-14 «Guest Hub: live without a shadow week»): both units in «يرد تلقائيًا في المواضيع المفعّلة»; no shadow review by reception. A topic left in «بموافقة الفريق» means the team on the phone answers. Unit modes and licences are changed only by Ahmed (system admin) in the dashboard; sessions never change them.
+- **A turn tagged with several topics takes the most restrictive licence among them** (`machine.ts → replyLicence`: blocked over shadow over auto; no topic = shadow).
+- **price = room and stay prices only**; a service's price → that service's topic (prompts.md §1 rule 23).
+- **Careers → topic careers** («التوظيف»), the careers page link only (card k-f0c957c4cf; rule 25).
+- **Airport Road: no washing machines and no laundry; never state otherwise** (site, partners pages, fact sheets, cards). Shafa Road keeps its laundry.
+
 - **One YCloud webhook, extended — never a second endpoint.** The endpoint is `wa-automation`'s, active since 9 Nov 2026 10:44 (the dashboard shows it as «استقبال ردود واتساب (إيقاف العروض)» on «عروض إياب على واتساب»), subscribed to `whatsapp.inbound_message.received` and `whatsapp.message.updated` and receiving both branch accounts. Session H2 adds `whatsapp.smb.message.echoes` and `whatsapp.phone_number.quality_updated` to this same endpoint, after its router handles them. Hub sessions test with signed simulated events on a preview branch.
 - **Storage switch.** Message text is stored only while «تخزين المحادثات» (`hub_inbox_on`) is on; Ahmed switches it on. Retention: message text 12 months, media 90 days. No privacy text in the chat and nothing new on the /policies/ page (13 Nov 2026).
 - **No fact without a source.** The assistant states a price, availability, offer or fact only from the rate calendar (through the adapter), the offers module, the existing fees (Settings and policies), the venue's menu link, knowledge cards and the published FAQ. No source → hand-off. **Never a menu price** — the menu link only; no menu import in v1.
