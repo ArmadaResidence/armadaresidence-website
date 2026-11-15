@@ -138,15 +138,16 @@ Total: {total} incl. VAT
 - `{badge}`: the booking form's own labels, reused from `ui.json` — «تأكيد فوري» or «طلب حجز — يؤكده الاستقبال».
 - Button: «احجز» / “Book”.
 
-**More than three room types — one list message**
+- `{badge}` for a request carries the reason on the next line: the booking form's reason text (`quote_reasons`), reused.
+- `{beds}`: the room catalog's bed line («الغرف»); a card whose type needs an extra bed for the party adds «· {extra_beds_text}».
 
-Header: «الغرف المتاحة لتواريخك» / “Rooms for your dates”. Button: «عرض الغرف» / “View rooms”. Row title: the room name (a name longer than WhatsApp's row-title limit [يُؤكَّد in C1] is cut with «…» and shown in full in the row's description); row description: «{total} شامل الضريبة · {badge}».
+**Photo cards only, three at a time** [مقرر — أحمد، 16 نوفمبر 2026, H8 — replaces the list message of v0.2]: the room types are ALWAYS photo cards with the type's published cover from «الصور» as the header — never a text list instead. At most three cards at a time: the types that fit the party (adults ≤ capacity) first, and a returning guest's previous type (a confirmed past stay on the same phone) first of all when it is offered for these dates; then the instant ones before the requests, then the catalog's order. When more types fit, the last card is followed by one line with the button «غرف أخرى» / “More rooms”, which sends the next three. A bookable type without a published cover is sent as the same card without an image (and named in the session report). The «إياب» members' price applies only when the profile is a member with recorded consent, by code (the members' offer code passed to `quote_stay`).
 
 ---
 
 ## 4. The booking summary and the results
 
-**4.0 Booking from the chat before H8** [مقرر — أحمد، 15 نوفمبر 2026; the lines' wording is the session's, for Ahmed's review] — «حجز إقامة», or a guest who asks to book: the model asks for the dates and the number of guests (prompts.md §2, ACTION ask); once both are known the code quotes every room type of the branch from the rate calendar (the adapter, `quote_stay`) and ends with the website's booking link and the team.
+**4.0 The booking link — the fallback only** [مقرر — أحمد، 15 نوفمبر 2026; since H8 (16 نوفمبر 2026) the fallback only; the lines' wording is the session's, for Ahmed's review] — before H8 this was the whole booking conversation; since H8 the booking is made in the chat (§3, 4.1–4.3) and these lines are sent only when the branch's `show_prices` or `instant_booking` is off, or the engine cannot quote: the model asks for the dates and the number of guests (prompts.md §2, ACTION ask); once both are known the code quotes every room type of the branch from the rate calendar (the adapter, `quote_stay`) and ends with the website's booking link and the team.
 
 The question when the model cannot be used:
 
@@ -230,6 +231,30 @@ Payment on arrival at the hotel.
 | An older summary tapped | «تغيّر هذا الملخص، وهذا هو الملخص الحالي:» | “This summary has changed; here is the current one:” |
 | Summary refreshed | «حدّثنا لك السعر والتوافر:» | “We’ve refreshed the price and availability for you:” |
 | «ليس الآن» | «حسنًا. متى أردت المتابعة، اكتب لنا هنا.» | “All right. Whenever you’d like to continue, write to us here.” |
+
+
+**4.3 Booking in the chat — the lines the code fills** [مقرر — أحمد، 16 نوفمبر 2026, H8; the wording is the session's except the summary (4.1) and the results (4.2), for Ahmed's review]
+
+The model asks for what is missing (prompts.md §2, ACTION ask) — the branch, the dates and the guests together, then breakfast (with or without — required, no default), then the children's ages only when breakfast is chosen with children, then (after the room is picked) the full name. These lines are its fallbacks and the code's own pieces:
+
+| Case | Arabic | English |
+|---|---|---|
+| Book button | «احجز» | “Book” |
+| More rooms line | «لدينا غرف أخرى تناسب إقامتك.» | “We have more rooms for your stay.” |
+| More rooms button | «غرف أخرى» | “More rooms” |
+| Summary buttons | «تأكيد الحجز» «تعديل» «ليس الآن» | “Confirm booking” “Change” “Not now” |
+| Breakfast question | «هل تريد الإقامة مع الإفطار أو بدونه؟» | “Would you like your stay with breakfast or without?” |
+| Children's ages question | «كم عمر كل طفل؟ نحتاج الأعمار لحساب الإفطار فقط.» | “How old is each child? We need the ages only to price breakfast.” |
+| Full name question | «ما الاسم الكامل للحجز؟» | “What is the full name for the booking?” |
+| Change question | «ما الذي تريد تغييره في حجزك؟» | “What would you like to change in your booking?” |
+| Instant line | «يتأكد حجزك فورًا عند الضغط على «تأكيد الحجز».» | “Your booking is confirmed instantly when you tap “Confirm booking”.” |
+| Request line | «هذا طلب حجز يراجعه الاستقبال ويؤكده لك. السبب: {reason}» | “This is a booking request that reception reviews and confirms with you. Reason: {reason}” |
+| Breakfast text | «مع الإفطار» «بدون إفطار» | “With breakfast” “Without breakfast” |
+| Total line | «الإجمالي: {total} شامل الضريبة» | “Total: {total} incl. VAT” |
+
+- `{nights_text}`, `{guests_text}`, `{extra_beds_text}`: counted by code with Arabic number agreement («ليلة واحدة»، «ليلتان»، «3 ليالٍ»، «11 ليلة»; «بالغ واحد»، «بالغان»، «3 بالغين»؛ «طفل واحد»، «طفلان»، «3 أطفال»؛ «سرير إضافي واحد»، «سريران إضافيان») — “1 night”, “2 adults”, “1 child”, “1 extra bed”.
+- After «تأكيد الحجز» the guest gets exactly what a website booking sends: the official template `booking_confirmed_v2` or `booking_request_received` first, then the result line of 4.2; a second tap answers «حجزك مسجّل برقم {ref}.» and sends nothing else.
+- A number with «يُعامَل كضيف للتجربة» on books a TEST reservation: the same messages and the same template reach the phone; it never takes a room, no reception email, and it is cancelled by itself after one hour without any message.
 
 ---
 

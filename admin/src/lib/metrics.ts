@@ -101,6 +101,24 @@ export const reportSources = (branch: string, p: Period) => rpc<SourcesReport>('
 export const reportBookingSources = (branch: string, p: Period) => rpc<BookingSourcesReport>('report_booking_sources', { p_branch: b(branch), p_from: p.from, p_to: p.to });
 export const reportCancellations = (branch: string, p: Period) => rpc<Cancellations>('report_cancellations', { p_branch: b(branch), p_from: p.from, p_to: p.to });
 export const reportClubPartners = (branch: string, p: Period) => rpc<ClubPartners>('report_club_partners', { p_branch: b(branch), p_from: p.from, p_to: p.to });
+/** «المحادثات والمساعد» (Guest Hub H8, 16 Nov 2026 — public.report_hub; spec §5.9): by unit, the assistant's bookings, the
+ *  requests sent to sales, the top topics and the cost; revenue withheld without «الأرقام المالية» */
+export interface HubReportUnit {
+  key: string; name_ar: string; branch: string; conversations: number; handed_off: number; assistant_only: number;
+  ai_median_min: number | null; ai_p90_min: number | null; staff_median_min: number | null; staff_p90_min: number | null;
+  quoted: number; booked: number; model_cost_usd: number;
+}
+export interface HubReport {
+  period: Period;
+  units: HubReportUnit[];
+  bookings: { instant: number; request: number; confirmed: number; revenue?: number };
+  sales_requests: { hall: number; group: number };
+  topics: { key: string; label_ar: string; count: number }[];
+  whatsapp: { templates: number; estimate_usd: number };
+}
+/** «الآن» (Guest Hub H8 — public.hub_now): counts and times only; the page casts it to its NowData */
+export const hubNow = (branch: string) => rpc<unknown>('hub_now', { p_branch: b(branch) });
+export const reportHub = (branch: string, p: Period) => rpc<HubReport>('report_hub', { p_branch: b(branch), p_from: p.from, p_to: p.to });
 
 // ───────────────────────── periods ─────────────────────────
 export interface Period { from: string; to: string }
@@ -228,6 +246,13 @@ export const HOW = {
   weekdays: 'نسبة المباع من مخزون الموقع حسب ليلة الأسبوع خلال الفترة.',
   losDist: 'توزيع الحجوزات المؤكدة المسجّلة في الفترة حسب عدد الليالي.',
   srcTable: 'الحجوزات المؤكدة المسجّلة في الفترة حسب مصدر أول زيارة، وإيراد غرفها كاملًا.',
+  hubConversations: 'المحادثات التي بدأت في الفترة مع وحدات مركز الضيوف (دون محادثات الاختبار): ما أجاب عنه المساعد دون تحويل، وما حُوّل إلى الفريق.',
+  hubFirstReply: 'من أول رسالة للضيف إلى أول رد للمساعد، ومن تحويل المحادثة إلى أول رد من الفريق؛ الوسيط ونسبة 90٪ (90٪ من الردود أسرع من هذا الرقم).',
+  hubConversion: 'حجوزات الإقامة في المحادثة التي عُرض فيها السعر، وكم منها صار حجزًا.',
+  hubBookings: 'الحجوزات التي سجّلها المساعد في المحادثة («مساعد واتساب»): تأكيد فوري أو طلب حجز يراجعه الاستقبال؛ الإيراد للحجوزات المؤكدة بتعريف التقارير نفسه.',
+  hubSales: 'طلبات القاعة والمجموعات التي جمعها المساعد وأرسلها للمبيعات («طلبات الشركاء»).',
+  hubTopics: 'أكثر المواضيع في رسائل الضيوف في الفترة، دون التحية والشكر.',
+  hubCost: 'تكلفة نماذج المساعد للمحادثات الحقيقية (دون مختبر الاختبار والمحاكي) بالدولار، وتقدير رسائل واتساب بالقوالب حسب سعر الرسالة في الإعدادات.',
   bookingSources: 'الحجوزات المؤكدة المسجّلة في الفترة حسب مصدر الحجز: «الموقع مباشرة» لحجوزات الزوّار، وما اختاره الفريق على الأجهزة الداخلية (انستجرام، واتساب…)، وإيراد غرفها كاملًا.',
   campaigns: 'الحجوزات المؤكدة التي حملت اسم حملة (utm_campaign)؛ متوسط قيمة الحجز = إيراد الغرف ÷ عدد الحجوزات.',
   cancelRate: 'الحجوزات التي أُلغيت بعد تأكيدها ÷ كل الحجوزات التي تأكدت، من الحجوزات المسجّلة في الفترة.',

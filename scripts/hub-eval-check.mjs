@@ -106,7 +106,7 @@ check(grade(item({ action: 'ask' }, { note: 'may give «يبدأ من»' }), out
   const CONV = read('tests/hub-bank/conversations.jsonl').split(/\r?\n/).filter((l) => l.trim()).map((l) => JSON.parse(l)).filter((x) => !x._header);
   check(CONV.length >= 40 && CONV.every((c) => c.messages.length === c.expect.steps.length && c.expect.action === 'conversation' && /^c\d{3}$/.test(c.id)), `C the conversation bank: ${CONV.length} conversations, one expectation per message`);
   check(new Set(CONV.map((c) => c.unit)).size === 2 && CONV.some((c) => c.language === 'en') && CONV.some((c) => (c.tags ?? []).includes('live-sequence')), 'C both units, both languages, Ahmed\'s live sequences');
-  check(CONV.every((c) => c.expect.steps.every((s) => [].concat(s.outcome).every((k) => ['reply', 'answer', 'ask', 'quote', 'clarify', 'redirect', 'handoff', 'none', 'answer_handoff', 'partner_enquiry', 'request_update'].includes(k)))), 'C every step names a known outcome');
+  check(CONV.every((c) => c.expect.steps.every((s) => [].concat(s.outcome).every((k) => ['reply', 'answer', 'ask', 'quote', 'clarify', 'redirect', 'handoff', 'none', 'answer_handoff', 'partner_enquiry', 'request_update', 'summary', 'booked', 'booking_status'].includes(k)))), 'C every step names a known outcome');
   // the migration that seeds it on production = the file (scripts/hub-conv-migration.mjs)
   const MIG = read('supabase/migrations/20261115100000_guest_hub_conversation.sql');
   const TAG = '$conv_bank' + '$';
@@ -126,7 +126,22 @@ check(grade(item({ action: 'ask' }, { note: 'may give «يبدأ من»' }), out
       const M9 = read('supabase/migrations/20261115800000_guest_hub_groups.sql');
       const T9 = '$group_bank' + '$';
       return JSON.parse(M9.slice(M9.indexOf(T9) + T9.length, M9.lastIndexOf(T9)));
+    })(),
+    // H8 (16 Nov 2026): the booking conversations, seeded by the booking migration (tag $booking_bank$)
+    ...(() => {
+      const M10 = read('supabase/migrations/20261116100000_guest_hub_booking.sql');
+      const T10 = '$booking_bank' + '$';
+      return JSON.parse(M10.slice(M10.indexOf(T10) + T10.length, M10.lastIndexOf(T10)));
     })()];
+  // H8: c034 / c035 corrected by the same migration (tag $booking_fix$) — no longer the booking link
+  {
+    const M10 = read('supabase/migrations/20261116100000_guest_hub_booking.sql');
+    const TF = '$booking_fix' + '$';
+    for (const f of JSON.parse(M10.slice(M10.indexOf(TF) + TF.length, M10.lastIndexOf(TF)))) {
+      const r = seeded.find((x) => x.key === f.key);
+      if (r) r.expect = f.expect;
+    }
+  }
   check(seeded.length === CONV.length && seeded.every((r, i) => r.key === CONV[i].id && JSON.stringify(r.messages) === JSON.stringify(CONV[i].messages) && JSON.stringify(r.expect) === JSON.stringify(CONV[i].expect)),
     'C the migration seeds exactly tests/hub-bank/conversations.jsonl');
   check(/order by m\.sent_at desc limit 12\) h\)/.test(MIG) && !/limit 6\) h\)/.test(MIG), 'C hub_turn_claim hands the model the last 12 messages of the episode');

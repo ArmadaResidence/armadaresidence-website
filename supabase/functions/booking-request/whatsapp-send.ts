@@ -184,18 +184,23 @@ export interface SessionPayload {
   to: string;
   type: 'interactive' | 'text';
   externalId?: string;
-  interactive?: { type: 'button'; body: { text: string }; action: { buttons: { type: 'reply'; reply: { id: string; title: string } }[] } };
+  interactive?: { type: 'button'; header?: { type: 'image'; image: { link: string } }; body: { text: string }; action: { buttons: { type: 'reply'; reply: { id: string; title: string } }[] } };
   text?: { body: string };
 }
 
 const E164 = /^\+[1-9][0-9]{7,14}$/;
 
-/** the YCloud body of a reply-buttons message; throws on anything WhatsApp would refuse */
-export function buttonsPayload(from: string, to: string, body: string, buttons: ReplyButton[], externalId?: string): SessionPayload {
+/** an image header WhatsApp accepts: an https JPEG or PNG on our own site (the room covers, Guest Hub H8) */
+export const HEADER_IMAGE = /^https:\/\/(www\.)?armadaresidence\.com\/[A-Za-z0-9/_.-]+\.(jpe?g|png)$/;
+
+/** the YCloud body of a reply-buttons message (H8: optionally with an image header — a room card); throws on anything
+ *  WhatsApp would refuse */
+export function buttonsPayload(from: string, to: string, body: string, buttons: ReplyButton[], externalId?: string, headerImage?: string | null): SessionPayload {
   if (!E164.test(from) || !E164.test(to)) throw new Error('buttons: from / to must be E.164');
   const text = String(body ?? '').trim();
   if (!text || text.length > SESSION_BODY_MAX) throw new Error('buttons: the body is empty or too long');
   if (!buttons.length || buttons.length > BUTTONS_MAX) throw new Error(`buttons: 1–${BUTTONS_MAX} buttons`);
+  if (headerImage && !HEADER_IMAGE.test(headerImage)) throw new Error('buttons: the header image must be an https JPEG / PNG of the site');
   const ids = new Set<string>();
   for (const b of buttons) {
     const t = String(b.title ?? '').trim();
@@ -208,7 +213,12 @@ export function buttonsPayload(from: string, to: string, body: string, buttons: 
     to,
     type: 'interactive',
     ...(externalId ? { externalId } : {}),
-    interactive: { type: 'button', body: { text }, action: { buttons: buttons.map((b) => ({ type: 'reply' as const, reply: { id: b.id, title: b.title.trim() } })) } },
+    interactive: {
+      type: 'button',
+      ...(headerImage ? { header: { type: 'image' as const, image: { link: headerImage } } } : {}),
+      body: { text },
+      action: { buttons: buttons.map((b) => ({ type: 'reply' as const, reply: { id: b.id, title: b.title.trim() } })) },
+    },
   };
 }
 

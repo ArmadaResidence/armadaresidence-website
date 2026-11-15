@@ -4,8 +4,9 @@
  * below — the same RPCs as the website: site_room_catalog, room_from_prices, quote_stay; and, from H8,
  * submit_booking_sourced through hub_book_draft). Nazeel comes only after their written reply (12 Nov 2026), as a second
  * implementation of the same interface; scripts/hub-adapter-check.mjs runs every implementation through the same cases.
- * `book` is declared for H8 and answers `not_bookable` now; `modify` and `cancel` exist in the interface and are never
- * callable by the assistant in v1 (staff only, spec §2.5).
+ * `book` (H8, 16 Nov 2026): «تأكيد الحجز» on the current summary → public.hub_book_draft (one reservation per draft, the
+ * website's own transaction); `modify` and `cancel` exist in the interface and are never callable by the assistant in v1
+ * (staff only, spec §2.5).
  */
 import { BOOKING_LIMIT_WINDOW_SECONDS, BOOKING_PHONE_LIMIT } from '../../../booking-request/limits.ts';
 
@@ -39,10 +40,16 @@ export interface QuoteLine {
   price: number;
 }
 export type AdapterResult =
-  | { kind: 'confirmed'; ref: string; total: number }
-  | { kind: 'request'; ref: string; total: number | null; reason: string }
-  | { kind: 'quote'; total: number; base_total: number | null; instant: boolean; reason: string | null; nights: QuoteLine[]; offer: string | null }
+  | { kind: 'confirmed'; ref: string; total: number; booking?: Record<string, unknown> }
+  | { kind: 'request'; ref: string; total: number | null; reason: string; booking?: Record<string, unknown> }
+  | { kind: 'quote'; total: number; base_total: number | null; instant: boolean; reason: string | null; nights: QuoteLine[]; offer: string | null; offer_en?: string | null; promo?: string | null; extra_beds?: number }
   | { kind: 'price_changed'; new_total: number }
+  /** H8: a second tap on «تأكيد الحجز» — the reservation that draft already made (nothing sent twice) */
+  | { kind: 'already'; ref: string; status: string }
+  /** H8: a tap on an older summary, a draft no longer open, details missing, the per-phone limit */
+  | { kind: 'stale' }
+  | { kind: 'incomplete' }
+  | { kind: 'limit' }
   | { kind: 'sold_out' }
   | { kind: 'not_bookable'; reason: string }
   | { kind: 'error'; error: string };
@@ -53,7 +60,7 @@ export interface InventoryAdapter {
   /** the lowest open rate over the next 60 nights («يبدأ من»), null when none is published or prices are hidden */
   fromPrice(branch: string, type: string): Promise<number | null>;
   quote(stay: Stay): Promise<AdapterResult>;
-  book(draft: { id: string; version: number }): Promise<AdapterResult>;
+  book(draft: { id: string; version: number; ref: string }): Promise<AdapterResult>;
   modify?(ref: string): Promise<AdapterResult>;
   cancel?(ref: string): Promise<AdapterResult>;
 }
@@ -108,11 +115,44 @@ export function dashboardAdapter(rpc: Rpc): InventoryAdapter {
       }
       return quoteResult(q);
     },
-    async book() {
-      // H8 (booking in the chat): hub_book_draft → submit_booking_sourced. Not before.
-      return { kind: 'not_bookable', reason: 'skill_off' };
+    async book(d) {
+      // H8 (16 Nov 2026): hub_book_draft → submit_booking_sourced, ONE reservation per draft (spec §2.7)
+      let r: Json;
+      try {
+        r = await rpc('hub_book_draft', { p_draft: d.id, p_version: d.version, p_ref: d.ref });
+      } catch (e) {
+        return { kind: 'error', error: String((e as Error)?.message ?? e).slice(0, 80) };
+      }
+      return bookResult(r);
     },
   };
+}
+
+/** hub_book_draft's answer → the one result shape (the stored booking's details ride along for the notifications) */
+export function bookResult(r: Json): AdapterResult {
+  switch (r?.status) {
+    case 'confirmed':
+      return { kind: 'confirmed', ref: String(r.ref), total: Number(r.quote?.total ?? 0), booking: r };
+    case 'request':
+      return { kind: 'request', ref: String(r.ref), total: Number.isFinite(Number(r.quote?.total)) ? Number(r.quote.total) : null, reason: String(r.reason ?? 'request'), booking: r };
+    case 'already':
+      return { kind: 'already', ref: String(r.ref), status: String(r.booking_status ?? '') };
+    case 'price_changed':
+      return { kind: 'price_changed', new_total: Number(r.new_total) };
+    case 'sold_out':
+      return { kind: 'sold_out' };
+    case 'not_bookable':
+      return { kind: 'not_bookable', reason: String(r.reason ?? 'not_bookable') };
+    case 'stale':
+    case 'not_found':
+      return { kind: 'stale' };
+    case 'incomplete':
+      return { kind: 'incomplete' };
+    case 'limit':
+      return { kind: 'limit' };
+    default:
+      return { kind: 'error', error: String(r?.status ?? 'no_answer').slice(0, 40) };
+  }
 }
 
 /** quote_stay's answer ({ok, prices, instant, reason, quote: {nights, total, base_total, offer …}}) → the one result shape */
@@ -132,5 +172,9 @@ export function quoteResult(q: Json): AdapterResult {
     kind: 'quote', total, base_total: Number.isFinite(base) && base > total ? base : null,
     instant: q.instant === true, reason: q.instant === true ? null : r ?? 'request', nights,
     offer: x.offer && typeof x.offer === 'object' ? String(x.offer.title_ar ?? x.offer.title ?? x.offer.slug ?? '') || null : null,
+    offer_en: x.offer && typeof x.offer === 'object' ? String(x.offer.title_en ?? x.offer.title_ar ?? '') || null : null,
+    // H8: the code's verdict (an «إياب» members' code is kept only when applied) and the extra beds priced
+    promo: typeof q.promo?.status === 'string' ? String(q.promo.status) : null,
+    extra_beds: Number.isFinite(Number(x.extra_beds)) ? Number(x.extra_beds) : undefined,
   };
 }

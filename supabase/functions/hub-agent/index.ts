@@ -40,6 +40,7 @@ import { grade, type Item } from '../_shared/hub/grade.ts';
 import { runReplyJobs, runTeachJobs } from '../_shared/hub/learn-run.ts';
 import { drainStaff } from '../_shared/hub/staff-send.ts';
 import { openaiTranscribe } from '../_shared/hub/media.ts';
+import { chatBooking, notifyChatBooking } from '../booking-request/notify.ts';
 
 const ALERT_FROM = 'لوحة أرمادا ريزيدنس <no-reply@armadaresidence.com>';
 const BUDGET_MS = 50_000;
@@ -116,6 +117,24 @@ async function mediaFile(m: Json): Promise<{ bytes: Uint8Array; mime: string } |
   }
 }
 
+/** H8: the room types' published covers — the site's /_room-covers.json (build.py, from the photos published in «الصور»),
+ *  {'<branch>/<slug>': the cover's 1200 × 630 JPEG}; read once per 10 minutes per isolate; a type missing = no image */
+let coversCache: { at: number; map: Record<string, string> } | null = null;
+async function roomCovers(): Promise<Record<string, string>> {
+  if (coversCache && Date.now() - coversCache.at < 600_000) return coversCache.map;
+  try {
+    const base = String((content as Json).live_url ?? 'https://armadaresidence.com').replace(/\/$/, '');
+    const res = await fetch(`${base}/_room-covers.json`, { signal: AbortSignal.timeout(4000) });
+    const j = res.ok ? await res.json() : {};
+    const map: Record<string, string> = {};
+    for (const [k, v] of Object.entries(j?.covers ?? {})) if (typeof v === 'string' && /^https:\/\/[^\s]+\.(jpe?g|png)$/.test(v)) map[k] = v;
+    coversCache = { at: Date.now(), map };
+    return map;
+  } catch {
+    return coversCache?.map ?? {};
+  }
+}
+
 function deps(model: ModelFn, cards: string[] | null = null): Deps {
   const rpcAny = (fn: string, args: Record<string, unknown>) => rpc<unknown>(fn, args);
   return {
@@ -133,6 +152,7 @@ function deps(model: ModelFn, cards: string[] | null = null): Deps {
       return res.ok ? ((await res.json()) as Json[]) : [];
     },
     adapter: dashboardAdapter(rpcAny),
+    covers: roomCovers,
     content,
     longDate: (iso, L) => longDate(content, iso, L),
     sarText: (n, L) => sarText(n, L),
@@ -161,7 +181,7 @@ async function sendAll(fin: Json, typedAlready = false): Promise<number> {
     let r: WaResult;
     try {
       const payload = m.kind === 'interactive' && Array.isArray(m.payload?.buttons)
-        ? buttonsPayload(ctx.from, ctx.to, m.body, m.payload.buttons, m.id)
+        ? buttonsPayload(ctx.from, ctx.to, m.body, m.payload.buttons, m.id, typeof m.payload?.header_image === 'string' ? m.payload.header_image : null)
         : textPayload(ctx.from, ctx.to, m.body, m.id);
       if (!typed && !ctx.test) {
         typed = true;
@@ -340,6 +360,15 @@ async function process(turnId: string, model: ModelFn, deadline: number): Promis
         messages: [{ seq: 1, kind: 'text', body: fixed('handoff', L), payload: {}, source_card_ids: [], notice: true }], note: 'توقف عند: خطأ في المحرك — الرسالة للفريق' },
     };
   }
+  // H8: a reservation made in the chat — the official template and the reception emails exactly as for a website booking,
+  // BEFORE the turn's own result line («تم تأكيد حجزك رقم …» follows the template); never in a test run (simulated there)
+  const bk = outcome.finish.booking ? chatBooking(outcome.finish.booking.data) : null;
+  if (bk && claim.turn.mode !== 'test') {
+    const n = await notifyChatBooking(content, bk, { url: url(), key: serviceKey() }).catch(() => ({ whatsapp: 'failed', emails: 0 }));
+    console.log('hub-agent: chat booking', bk.status, bk.test ? 'qa' : bk.test_guest ? 'test-guest' : 'live', `whatsapp=${n.whatsapp}`, `emails=${n.emails}`);
+  }
+  // the booking's details stay out of the turn's record (hub_turn_finish never stores them)
+  if (outcome.finish.booking) outcome.finish.booking = { status: outcome.finish.booking.status, ref: outcome.finish.booking.ref, data: {} };
   const fin = await rpc<Json>('hub_turn_finish', { p_turn: turnId, p: outcome.finish });
   if (outcome.credit === 'exhausted') {
     const r = await rpc<Json>('hub_api_credit_mark', { p_exhausted: true }).catch(() => null);

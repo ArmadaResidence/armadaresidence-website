@@ -117,7 +117,8 @@ export function ChartCard({ title, how, summary, table, children, actions, id, c
 
 export function DataTable({ data, caption, foot }: { data: TableData; caption?: string; foot?: (string | number)[][] }) {
   return (
-    <div className="overflow-x-auto relative">
+    // a wide table scrolls sideways on a phone: the scroll area takes the keyboard focus (WCAG — scrollable-region-focusable)
+    <div className="overflow-x-auto relative" tabIndex={0} role="region" aria-label={caption ?? 'جدول'}>
       <table className="viz-table w-full text-sm" data-viz-table>
         {caption && <caption className="sr-only">{caption}</caption>}
         <thead><tr>{data.head.map((h, i) => <th key={i} scope="col">{h}</th>)}</tr></thead>

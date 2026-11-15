@@ -78,6 +78,22 @@ const COPY_CASES = {
   '«ليس الآن»': 'result_not_now',
 };
 
+// copy.md §4.3 (H8, 16 Nov 2026)
+const BOOKING_CASES = {
+  'Book button': 'btn_book',
+  'More rooms line': 'cards_more',
+  'More rooms button': 'btn_more',
+  'Summary buttons': 'btn_summary',
+  'Breakfast question': 'ask_breakfast',
+  "Children's ages question": 'ask_child_ages',
+  'Full name question': 'ask_guest_name',
+  'Change question': 'ask_change',
+  'Instant line': 'instant_line',
+  'Request line': 'request_line',
+  'Breakfast text': 'breakfast_text',
+  'Total line': 'total_line',
+};
+
 /** the fixed guest messages of copy.md: {key: {ar, en, extra?}} */
 export function parseCopy(md = read('docs/guest-hub/copy.md')) {
   const out = {};
@@ -123,7 +139,7 @@ export function parseCopy(md = read('docs/guest-hub/copy.md')) {
   out.dates_hijri = { ar: b22[0], en: b22[1] };
   // H6 pass 5 (15 Nov 2026): booking from the chat before H8 (§4.0) — the question, the quote's first line, the last line
   {
-    const s40 = md.slice(md.indexOf('**4.0 Booking from the chat'), md.indexOf('**4.1 Summary**'));
+    const s40 = md.slice(md.indexOf('**4.0 The booking link'), md.indexOf('**4.1 Summary**'));
     const b = codeBlocks(s40);
     if (b.length !== 6) throw new Error('copy.md §4.0: three bilingual lines expected');
     out.booking_ask = { ar: b[0], en: b[1] };
@@ -143,6 +159,28 @@ export function parseCopy(md = read('docs/guest-hub/copy.md')) {
     }
   }
   for (const k of new Set(Object.values(COPY_CASES))) if (!out[k]) throw new Error(`copy.md: the message ${k} is missing`);
+  // H8 (16 Nov 2026): the room card (§3), the summary (§4.1) and the booking lines the code fills (§4.3)
+  {
+    const s3 = section(md, '## 3. Room cards');
+    const b3 = codeBlocks(s3);
+    if (b3.length < 2) throw new Error('copy.md §3: the card body (ar, en) is missing');
+    out.room_card = { ar: b3[0], en: b3[1] };
+    const s41 = md.slice(md.indexOf('**4.1 Summary**'), md.indexOf('**4.2 Results**'));
+    const b41 = codeBlocks(s41);
+    if (b41.length !== 2) throw new Error('copy.md §4.1: the summary (ar, en) is missing');
+    out.summary = { ar: b41[0], en: b41[1] };
+    const s43 = md.slice(md.indexOf('**4.3 Booking in the chat'), md.indexOf('## 5. Notices'));
+    for (const r of tableRows(s43)) {
+      const key = BOOKING_CASES[r[0]];
+      if (!key) continue;
+      const ar = allQuoted(r[1], '«', '»');
+      const en = allQuoted(r[2], '“', '”');
+      if (!ar.length || !en.length) throw new Error(`copy.md §4.3: ${r[0]} has no quoted text`);
+      out[key] = { ar: ar[0], en: en[0] };
+      if (ar.length > 1) out[key].extra = { ar: ar.slice(1), en: en.slice(1) };
+    }
+    for (const k of Object.values(BOOKING_CASES)) if (!out[k]) throw new Error(`copy.md §4.3: the line ${k} is missing`);
+  }
   const s7 = section(md, '## 7. Staff emails');
   const credit = tableRows(s7).find((r) => r[0].startsWith('Claude API credit exhausted'));
   if (!credit) throw new Error('copy.md §7: the API credit email is missing');

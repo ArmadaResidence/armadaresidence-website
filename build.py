@@ -740,6 +740,26 @@ def resolve_rooms(content: dict[str, dict]) -> dict:
             "home": {k: bool(r.get("show_home")) for k, r in by_key.items()}}
 
 
+def write_room_covers() -> None:
+    """Guest Hub H8 (16 Nov 2026): dist/_room-covers.json — each room type's PUBLISHED cover from «الصور» as its 1200 × 630
+    JPEG ({'<branch>/<slug>': absolute https URL}). WhatsApp image headers take JPEG / PNG only, so the room cards of the
+    chat use the cover's OG crop; a type without its own published cover is absent (its card goes without an image — never
+    the branch's photo or a placeholder). Read at run time by hub-agent; the file exists in every build (empty without media)."""
+    covers: dict[str, str] = {}
+    gen = ROOT / "content" / "media.generated.json"
+    base = json.loads((ROOT / "content" / "seo.json").read_text(encoding="utf-8")).get("live_url", "https://armadaresidence.com").rstrip("/")
+    try:
+        media = json.loads(gen.read_text(encoding="utf-8")) if gen.exists() else {}
+    except json.JSONDecodeError:
+        media = {}
+    for key, entry in sorted((media.get("rooms") or {}).items()):
+        og = (entry or {}).get("og_image")
+        if isinstance(og, str) and re.fullmatch(r"/images/media/[A-Za-z0-9._-]+\.og\.jpg", og) and (DIST / og.lstrip("/")).exists():
+            covers[key] = f"{base}{og}"
+    (DIST / "_room-covers.json").write_text(json.dumps({"covers": covers}, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    print(f"✓ dist/_room-covers.json: {len(covers)} room cover(s) for the chat's room cards")
+
+
 def resolve_availability(content: dict[str, dict]) -> dict:
     """Room availability on the website (phase 2a.1, dashboard «الغرف»). The dashboard's room_types.bookable, read with
     the publishable key through the read-only RPC site_room_types on the booking endpoint's project, decides each
@@ -946,6 +966,7 @@ def main() -> int:
     # every number and its unit joined by a no-break space in the built pages (6 Nov 2026 — scripts/typeset.mjs)
     run(["node", "scripts/typeset.mjs"])
     (DIST / "_availability.json").write_text(json.dumps(availability, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    write_room_covers()
     write_version()
     # /sitemap.xml (11 Nov 2026, SEO audit): @astrojs/sitemap writes sitemap-index.xml + sitemap-0.xml only, and crawlers
     # and tools that ask for the conventional /sitemap.xml got the 404 page — the same index, byte for byte (qa.py checks)

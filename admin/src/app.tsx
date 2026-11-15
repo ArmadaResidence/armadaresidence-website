@@ -36,6 +36,7 @@ import Inbox from './pages/Inbox';
 import Knowledge from './pages/Knowledge';
 import ServicePrices from './pages/ServicePrices';
 import Radar from './pages/Radar';
+import Now from './pages/Now';
 import HubTeam from './pages/HubTeam';
 import { alertOpen } from './lib/team';
 import Content from './pages/Content';
@@ -64,6 +65,7 @@ const SCREENS: { path: string; section: string }[] = [
   { path: 'inbox', section: 'inbox' },
   { path: 'assistant', section: 'assistant' },
   { path: 'radar', section: 'radar' },
+  { path: 'now', section: 'now' },
   { path: 'hub-team', section: 'hub_team' },
   { path: 'settings', section: 'settings' },
   { path: 'users', section: 'users' },
@@ -120,6 +122,8 @@ function Home() {
   const hubC = q.get('hub_c');
   const hubR = q.get('hub_r');
   if (hubC) return <HubLink token={hubC} />;
+  // H8 (16 Nov 2026): the daily report opens «التقارير» → «المحادثات والمساعد» for that day (else «الفريق والتقارير» as before)
+  if (hubR && /^\d{4}-\d{2}-\d{2}$/.test(hubR) && canView(me, 'reports')) return <Navigate to={`/reports?day=${hubR}`} replace />;
   if (hubR && /^\d{4}-\d{2}-\d{2}$/.test(hubR) && canView(me, 'hub_team')) return <Navigate to={`/hub-team?tab=reports&day=${hubR}`} replace />;
   const to = landing(me);
   try {
@@ -228,6 +232,7 @@ export default function App() {
                     <Route path="service-prices" element={<Allowed section="knowledge"><ServicePrices /></Allowed>} />
                     <Route path="assistant" element={<Allowed section="assistant"><Assistant /></Allowed>} />
                     <Route path="radar" element={<Allowed section="radar"><Radar /></Allowed>} />
+                    <Route path="now" element={<Allowed section="now"><Now /></Allowed>} />
                     <Route path="hub-team" element={<Allowed section="hub_team"><HubTeam /></Allowed>} />
                     <Route path="settings" element={<Allowed section="settings"><Settings /></Allowed>} />
                     <Route path="users" element={<Allowed section="users"><Users /></Allowed>} />

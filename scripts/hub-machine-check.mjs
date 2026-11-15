@@ -61,7 +61,7 @@ check(has(d, 'T9') && acts(d).includes('send_room_cards'), 'T9 (H8): «any» roo
 d = run('collecting', guest(U({ intents: ['stay_booking'], ...full })), { skills: H8, show_prices: false }, { ...DRAFT, fields: {} });
 check(has(d, 'T9b') && d.next === 'human', 'T9b (H8): prices hidden → the reception');
 d = run('quoted', guest(U({ intents: ['stay_booking'], adults: 3 })), { skills: H8 }, DRAFT);
-check(has(d, 'T10') && ['quoted', 'collecting'].includes(d.next), 'T10 (H8): a changed slot → re-quote or ask');
+check(has(d, 'T10') && ['quoted', 'collecting', 'awaiting_confirmation'].includes(d.next) && acts(d).includes('quote'), 'T10 (H8): a changed slot → re-quote (the room and the name known: straight to the new summary)');
 d = run('quoted', { type: 'tap', button: 'room', draft_id: 'd1', version: 2, room: 'twin-room' }, { skills: H8 }, DRAFT);
 check(has(d, 'T11') && d.next === 'awaiting_confirmation' && acts(d).includes('send_summary'), 'T11 (H8): a room picked, the name known → the summary');
 d = run('quoted', { type: 'tap', button: 'room', draft_id: 'd1', version: 2, room: 'twin-room' }, { skills: H8 }, { ...DRAFT, fields: { ...DRAFT.fields, guest_name: null } });
@@ -191,7 +191,7 @@ check(d.next === 'collecting' && acts(d).join() === 'ask', 'gaps / 15 Nov: a gro
 d = run('new', guest(U({ intents: ['stay_booking'], topics: ['booking_new', 'price'], ...full })));
 check(d.next === 'quoted' && acts(d).join() === 'quote', 'pass 5: a plain complete stay request → the quote alone');
 d = run('new', guest(U({ intents: ['stay_booking', 'facility_question'], topics: ['kitchen'] })), { skills: H8 });
-check(d.next === 'collecting' && acts(d)[0] === 'ask', 'gaps: with room_booking on (H8) the stay path is unchanged');
+check(d.next === 'collecting' && acts(d).join() === 'answer,ask', 'gaps / H8: a stay that names a feature → the feature answered, then the details of the stay asked');
 for (const [topics, what] of [[['breakfast'], 'the breakfast'], [['menu'], 'a coffee'], [['laundry', 'price'], 'the laundry'], [['website', 'price'], 'booking on the website'], [['eyab'], 'the membership']]) {
   d = run('new', guest(U({ intents: ['price_question'], topics })));
   check(d.actions[0].type === 'answer' && d.next === 'inquiry', `gaps: the price of ${what} → its own source, never the room «يبدأ من» list`);
@@ -336,7 +336,9 @@ for (let s = 0; s < 400; s++) {
     // a booking only after a confirm tap on the current summary
     if (out.actions.some((a) => a.type === 'book')) {
       books++;
-      if (!(ev.type === 'tap' && ev.button === 'confirm' && draft && ev.version === draft.version && state === 'awaiting_confirmation')) violations.push('a booking without a confirm tap');
+      const look = out.actions.find((a) => a.type === 'book')?.lookup === true;
+      // a look-up (H8): a confirm tap on a draft no longer open — the database answers its reservation or stale, never a new one
+      if (look ? !(ev.type === 'tap' && ev.button === 'confirm' && (!draft || draft.id !== ev.draft_id)) : !(ev.type === 'tap' && ev.button === 'confirm' && draft && ev.version === draft.version && state === 'awaiting_confirmation')) violations.push('a booking without a confirm tap');
     }
     // a cart message on a dining number is never answered
     if (ev.type === 'guest' && ev.cart && kind === 'dining' && state !== 'human' && out.actions.some((a) => ['answer', 'fixed', 'handoff', 'from_price'].includes(a.type))) violations.push('a cart message answered');

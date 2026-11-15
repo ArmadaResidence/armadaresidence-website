@@ -67,6 +67,8 @@ export const NAV_GROUPS: NavGroup[] = [
     title: 'مركز الضيوف',
     items: [
       { to: '/inbox', label: 'المحادثات', section: 'inbox', icon: 'inbox' },
+      // H8 (16 Nov 2026): «الآن» — the live screen (counts and times only; now: view)
+      { to: '/now', label: 'الآن', section: 'now', icon: 'overview', id: 'now' },
       // H4 (14 Nov 2026): the knowledge base and the read-only services price list (both under knowledge)
       { to: '/knowledge', label: 'قاعدة المعرفة', section: 'knowledge', icon: 'knowledge' },
       { to: '/service-prices', label: 'أسعار الخدمات', section: 'knowledge', icon: 'prices', id: 'service-prices' },
