@@ -104,6 +104,7 @@ select pg_temp._check('S5 «تراجع» of the switch-off by the system admin: 
 select pg_temp._as('admin');
 select pg_temp._fails('S6 never on a hidden unit (the rooftop)', format('select public.hub_unit_media_set(%L, true, null)', pg_temp._unit('rooftop')), 'hub_unit_hidden');
 -- the constraint itself (the switch-on guard set aside for this one statement, inside the rolled-back transaction)
+select pg_temp._root();
 alter table public.hub_units disable trigger hub_units_media_guard;
 select pg_temp._fails('S6 … nor by a direct statement (the constraint)', $$update public.hub_units set images_on = true where key = 'rooftop'$$, '23514');
 alter table public.hub_units enable trigger hub_units_media_guard;
