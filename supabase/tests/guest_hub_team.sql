@@ -324,10 +324,12 @@ select pg_temp._check('R5 … to the signed-in user''s own number when it is in 
 select pg_temp._check('R6 ?hub_r= reads the stored report with its sends', (pg_temp._j('r6') ->> 'stored')::boolean and pg_temp._j('r6') ? 'sends', pg_temp._j('r6')::text);
 
 -- ══ L — ?hub_c= ══
+select pg_temp._save('tok6', jsonb_build_object('t', (select token from public.hub_handoffs where id = pg_temp._id('h6'))));
+select pg_temp._save('tok4', jsonb_build_object('t', (select token from public.hub_handoffs where id = pg_temp._id('h4'))));
 select pg_temp._as('admin');
-select pg_temp._save('l1', public.hub_alert_open((select token from public.hub_handoffs where id = pg_temp._id('h6'))));
+select pg_temp._save('l1', public.hub_alert_open(pg_temp._j('tok6') ->> 't'));
 select pg_temp._as('mgr');
-select pg_temp._save('l2', public.hub_alert_open((select token from public.hub_handoffs where id = pg_temp._id('h4'))));
+select pg_temp._save('l2', public.hub_alert_open(pg_temp._j('tok4') ->> 't'));
 select pg_temp._root();
 select pg_temp._check('L1 a member of the unit: the conversation, the opening recorded as the link',
   (pg_temp._j('l1') ->> 'allowed')::boolean and (pg_temp._j('l1') ->> 'conversation_id')::uuid = pg_temp._id('conv')
