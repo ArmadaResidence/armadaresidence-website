@@ -4,8 +4,7 @@
 // src/lib/phone.ts); no country list with Israel (src/lib/countries.ts → EXCLUDED).
 import { supabase } from './supabase';
 import * as api from './api';
-import { cleanPhone, loadPhoneLib, phoneToE164 } from '../../../src/lib/phone';
-import { countWord, MINUTE } from './format';
+import { countWord, MINUTE, west } from './format';
 
 export interface Slot {
   id: string;
@@ -141,13 +140,20 @@ export const COUNTRIES: { cc: string; dial: string; name: string }[] = [
   { cc: 'PK', dial: '92', name: 'باكستان' }, { cc: 'IN', dial: '91', name: 'الهند' }, { cc: 'BD', dial: '880', name: 'بنغلاديش' }, { cc: 'PH', dial: '63', name: 'الفلبين' },
   { cc: 'ID', dial: '62', name: 'إندونيسيا' }, { cc: 'OTHER', dial: '', name: 'دولة أخرى (اكتب الرقم كاملًا بـ +)' },
 ];
-export const preparePhone = () => loadPhoneLib();
+// the site's rule (src/lib/phone.ts), on the dashboard's own copy of libphonenumber-js (min metadata, loaded on first use):
+// Arabic-Indic digits → Western, spaces / dashes / dots / brackets dropped, 00 → +, then valid for the chosen country
+type PhoneLib = typeof import('libphonenumber-js/min');
+let lib: PhoneLib | null = null;
+export const preparePhone = () => import('libphonenumber-js/min').then((m) => (lib = m)).catch(() => null);
+const cleanPhone = (raw: string) => west(raw).replace(/[\s\-().]/g, '').replace(/^00/, '+');
 /** a typed number → E.164 for the chosen country (the full +… number for «دولة أخرى»), or null */
 export function toE164(raw: string, cc: string): string | null {
   const v = cleanPhone(raw);
   if (!v) return null;
   if (cc === 'OTHER' && !v.startsWith('+')) return null;
-  return phoneToE164(v, cc === 'OTHER' ? 'SA' : cc);
+  if (!lib) return /^\+[1-9]\d{7,14}$/.test(v) ? v : null;
+  const n = v.startsWith('+') ? lib.parsePhoneNumberFromString(v) : lib.parsePhoneNumberFromString(v, cc as never);
+  return n && n.isValid() ? n.number : null;
 }
 /** E.164 → the country of the list and the national part (for editing) */
 export function splitE164(e164: string): { cc: string; national: string } {
