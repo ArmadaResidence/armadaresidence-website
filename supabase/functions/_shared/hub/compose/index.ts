@@ -54,7 +54,7 @@ export function composeUser(i: ComposeInput): string {
   const p = i.payload;
   const lines = [
     `ACTION: ${i.action}`,
-    ...(i.action === 'ask' || (i.action === 'answer' && i.ask_for?.length) ? [`ASK_FOR: ${JSON.stringify((i.ask_for ?? []).slice(0, 3))}`] : []),
+    ...(i.action === 'ask' || (i.action === 'answer' && i.ask_for?.length) ? [`ASK_FOR: ${JSON.stringify((i.ask_for ?? []).slice(0, 2))}`] : []),
     `BRANCH_OF_THIS_NUMBER: ${i.branch}`,
     `OPENING_ADDED_BY_SYSTEM: ${i.opening ? JSON.stringify(i.opening) : 'none'}`,
     `GUEST_TURN: ${i.turn.map(scrub).join('\n')}`,
