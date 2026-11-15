@@ -67,6 +67,11 @@ begin
 end;
 $$;
 create trigger hub_units_media_guard before update of voice_on, images_on on public.hub_units for each row execute function internal.hub_units_media_guard();
+-- the switches are audited like the unit's mode (who, when, old → new) — «تراجع» and «السجل» read them
+drop trigger hub_units_audit on public.hub_units;
+create trigger hub_units_audit after insert or update or delete on public.hub_units
+  for each row execute function internal.audit('key', 'kind', 'name_ar', 'name_en', 'branch_slug', 'status', 'assistant_mode', 'skills', 'knowledge_tags', 'sort', 'is_test',
+                                               'voice_on', 'images_on');
 
 -- «الفويس» / «الصور» of one unit (assistant: edit in the unit's branch; audited, «تراجع» through revert_batch)
 create function public.hub_unit_media_set(p_unit uuid, p_voice boolean, p_images boolean) returns jsonb

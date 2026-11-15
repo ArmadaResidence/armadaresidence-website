@@ -856,6 +856,274 @@ begin
 end;
 $$;
 
+-- public.revert_batch (20261113100000, copied): «تراجع» of «الفويس» / «الصور» (H7)
+
+create or replace function public.revert_batch(p_batch uuid) returns jsonb
+language plpgsql security definer set search_path = '' as $$
+declare
+  r public.audit_log;
+  v_me public.staff := internal.me();
+  v_new uuid;
+  v_n integer := 0;
+  v_section text;
+  v_cur jsonb;
+  v_keys text[];
+  v_rt uuid;
+  v_night date;
+  v_last_revert uuid;
+  v_conflicts jsonb := '[]'::jsonb;
+begin
+  if v_me.user_id is null then raise exception 'not allowed' using errcode = '42501'; end if;
+  if not exists (select 1 from public.audit_log a where a.batch_id = p_batch) then raise exception 'not_found' using errcode = '22023'; end if;
+  -- permission on every row first (before anything about the batch is revealed): nothing is written unless the whole
+  -- batch may be reverted by this caller
+  for r in select * from public.audit_log a where a.batch_id = p_batch loop
+    v_section := internal.audit_section(r);
+    if v_section is null or not internal.can(v_section, 'edit') or (r.branch is not null and not internal.can_branch(r.branch))
+       or (r.branch is null and not internal.all_branches()) or (r.is_test and not internal.is_admin()) then
+      raise exception 'not allowed' using errcode = '42501';
+    end if;
+  end loop;
+  -- a batch that was reverted stays reverted unless that revert was itself reverted
+  select a.batch_id into v_last_revert from public.audit_log a where a.reverts_batch = p_batch order by a.id desc limit 1;
+  if v_last_revert is not null and not exists (select 1 from public.audit_log a where a.reverts_batch = v_last_revert) then
+    raise exception 'already_reverted' using errcode = 'P0001';
+  end if;
+  if exists (select 1 from public.audit_log a where a.batch_id = p_batch and a.entity = 'reservations') then
+    raise exception 'not_revertable' using errcode = 'P0001', hint = 'booking confirm / cancel send emails and are never undone';
+  end if;
+
+  v_new := internal.begin_batch();
+  perform set_config('app.revert_of', p_batch::text, true);
+
+  for r in select * from public.audit_log a where a.batch_id = p_batch order by a.id desc loop
+    v_n := v_n + 1;
+    case r.entity
+      when 'inventory_days' then
+        v_rt := split_part(r.entity_id, ':', 1)::uuid;
+        v_night := split_part(r.entity_id, ':', 2)::date;
+        v_keys := array['rooms_to_sell', 'stop_sell'];
+        select internal.jsonb_pick(to_jsonb(i), v_keys) into v_cur from public.inventory_days i where i.room_type_id = v_rt and i.night = v_night for update;
+        if r.action in ('insert', 'update') then
+          if v_cur is null or v_cur <> internal.jsonb_pick(r.new, v_keys) then
+            v_conflicts := v_conflicts || jsonb_build_object('entity', r.entity, 'id', r.entity_id, 'expected', internal.jsonb_pick(r.new, v_keys), 'current', v_cur);
+          elsif r.action = 'update' then
+            update public.inventory_days set rooms_to_sell = (r.old ->> 'rooms_to_sell')::int, stop_sell = (r.old ->> 'stop_sell')::boolean
+             where room_type_id = v_rt and night = v_night;
+          elsif exists (select 1 from public.inventory_days i where i.room_type_id = v_rt and i.night = v_night and i.booked > 0) then
+            v_conflicts := v_conflicts || jsonb_build_object('entity', r.entity, 'id', r.entity_id, 'reason', 'booked');
+          else
+            delete from public.inventory_days where room_type_id = v_rt and night = v_night;
+          end if;
+        else -- delete: the night must still be absent
+          if v_cur is not null then
+            v_conflicts := v_conflicts || jsonb_build_object('entity', r.entity, 'id', r.entity_id, 'expected', null, 'current', v_cur);
+          else
+            insert into public.inventory_days (room_type_id, night, rooms_to_sell, booked, stop_sell)
+            values (v_rt, v_night, (r.old ->> 'rooms_to_sell')::int, coalesce((r.old ->> 'booked')::int, 0), (r.old ->> 'stop_sell')::boolean);
+          end if;
+        end if;
+
+      when 'room_types' then
+        -- 10 Nov 2026: add, edit and delete of a room type are undone; only the keys this row changed are compared
+        -- (with the values the batch wrote) and restored — a later edit of another field is no conflict
+        v_rt := r.entity_id::uuid;
+        select to_jsonb(rt) into v_cur from public.room_types rt where rt.id = v_rt for update;
+        if r.action = 'update' then
+          v_keys := array(select k from jsonb_object_keys(r.new) k where (r.old -> k) is distinct from (r.new -> k));
+          if v_cur is null then
+            v_conflicts := v_conflicts || jsonb_build_object('entity', r.entity, 'id', r.entity_id, 'reason', 'missing');
+          elsif internal.jsonb_pick(v_cur, v_keys) <> internal.jsonb_pick(r.new, v_keys) then
+            v_conflicts := v_conflicts || jsonb_build_object('entity', r.entity, 'id', r.entity_id, 'expected', internal.jsonb_pick(r.new, v_keys), 'current', internal.jsonb_pick(v_cur, v_keys));
+          else
+            perform internal.room_type_apply(v_rt, internal.jsonb_pick(r.old, v_keys));
+          end if;
+        elsif r.action = 'insert' then
+          v_keys := array(select jsonb_object_keys(r.new));
+          if v_cur is null then
+            v_conflicts := v_conflicts || jsonb_build_object('entity', r.entity, 'id', r.entity_id, 'reason', 'missing');
+          elsif internal.room_type_booked(v_rt) then
+            v_conflicts := v_conflicts || jsonb_build_object('entity', r.entity, 'id', r.entity_id, 'reason', 'booked');
+          elsif internal.jsonb_pick(v_cur, array_remove(v_keys, 'sort')) <> (r.new - 'sort') then
+            v_conflicts := v_conflicts || jsonb_build_object('entity', r.entity, 'id', r.entity_id, 'expected', r.new, 'current', internal.jsonb_pick(v_cur, v_keys));
+          else
+            delete from public.inventory_days where room_type_id = v_rt;
+            delete from public.rate_overrides where room_type_id = v_rt;
+            delete from public.room_types where id = v_rt;
+          end if;
+        else -- delete: the room type must still be absent, and its address free
+          if v_cur is not null or not (r.old ? 'name_ar')
+             or exists (select 1 from public.room_types rt where rt.branch = r.old ->> 'branch' and rt.slug = r.old ->> 'slug') then
+            v_conflicts := v_conflicts || jsonb_build_object('entity', r.entity, 'id', r.entity_id, 'reason', 'exists');
+          else
+            insert into public.room_types
+            select * from jsonb_populate_record(null::public.room_types, jsonb_build_object('created_at', now(), 'updated_at', now()) || r.old);
+          end if;
+        end if;
+
+      when 'rate_overrides' then
+        v_keys := array['date_from', 'date_to', 'weekdays', 'price', 'label', 'label_en', 'active'];
+        select internal.jsonb_pick(to_jsonb(o), v_keys) into v_cur from public.rate_overrides o where o.id = r.entity_id::uuid for update;
+        if r.action in ('insert', 'update') then
+          if v_cur is null or v_cur <> internal.jsonb_pick(r.new, v_keys) then
+            v_conflicts := v_conflicts || jsonb_build_object('entity', r.entity, 'id', r.entity_id, 'expected', internal.jsonb_pick(r.new, v_keys), 'current', v_cur);
+          elsif r.action = 'update' then
+            update public.rate_overrides set active = (r.old ->> 'active')::boolean, label = r.old ->> 'label', label_en = r.old ->> 'label_en' where id = r.entity_id::uuid;
+          else
+            delete from public.rate_overrides where id = r.entity_id::uuid;
+          end if;
+        else
+          if v_cur is not null then
+            v_conflicts := v_conflicts || jsonb_build_object('entity', r.entity, 'id', r.entity_id, 'expected', null, 'current', v_cur);
+          else
+            insert into public.rate_overrides (id, room_type_id, date_from, date_to, weekdays, price, label, label_en, active, created_by, created_at)
+            values (r.entity_id::uuid, (r.old ->> 'room_type_id')::uuid, (r.old ->> 'date_from')::date, (r.old ->> 'date_to')::date, (r.old ->> 'weekdays')::int,
+                    (r.old ->> 'price')::numeric, r.old ->> 'label', r.old ->> 'label_en', (r.old ->> 'active')::boolean, auth.uid(),
+                    coalesce((r.old ->> 'created_at')::timestamptz, clock_timestamp()));
+          end if;
+        end if;
+
+      when 'settings' then
+        select internal.jsonb_pick(to_jsonb(s), array['value']) into v_cur from public.settings s where s.key = r.entity_id for update;
+        if r.action <> 'update' or v_cur is null then
+          v_conflicts := v_conflicts || jsonb_build_object('entity', r.entity, 'id', r.entity_id, 'reason', 'unsupported');
+        elsif v_cur <> r.new then
+          v_conflicts := v_conflicts || jsonb_build_object('entity', r.entity, 'id', r.entity_id, 'expected', r.new, 'current', v_cur);
+        else
+          update public.settings set value = r.old -> 'value' where key = r.entity_id;
+        end if;
+
+      when 'staff' then
+        v_keys := array['full_name', 'role', 'branch', 'active'];
+        select internal.jsonb_pick(to_jsonb(s), v_keys) into v_cur from public.staff s where s.user_id = r.entity_id::uuid for update;
+        if r.action <> 'update' or v_cur is null then
+          v_conflicts := v_conflicts || jsonb_build_object('entity', r.entity, 'id', r.entity_id, 'reason', 'unsupported');
+        elsif v_cur <> internal.jsonb_pick(r.new, v_keys) then
+          v_conflicts := v_conflicts || jsonb_build_object('entity', r.entity, 'id', r.entity_id, 'expected', internal.jsonb_pick(r.new, v_keys), 'current', v_cur);
+        else
+          update public.staff set full_name = r.old ->> 'full_name', role = (r.old ->> 'role')::public.staff_role, branch = r.old ->> 'branch', active = (r.old ->> 'active')::boolean
+           where user_id = r.entity_id::uuid;
+        end if;
+
+      when 'staff_permissions' then
+        select internal.jsonb_pick(to_jsonb(p), array['level']) into v_cur from public.staff_permissions p
+         where p.user_id = split_part(r.entity_id, ':', 1)::uuid and p.section = split_part(r.entity_id, ':', 2) for update;
+        if r.action in ('insert', 'update') then
+          if v_cur is null or v_cur <> r.new then
+            v_conflicts := v_conflicts || jsonb_build_object('entity', r.entity, 'id', r.entity_id, 'expected', r.new, 'current', v_cur);
+          elsif r.action = 'update' then
+            update public.staff_permissions set level = (r.old ->> 'level')::public.perm_level, updated_by = auth.uid()
+             where user_id = split_part(r.entity_id, ':', 1)::uuid and section = split_part(r.entity_id, ':', 2);
+          else
+            delete from public.staff_permissions where user_id = split_part(r.entity_id, ':', 1)::uuid and section = split_part(r.entity_id, ':', 2);
+          end if;
+        else
+          if v_cur is not null then
+            v_conflicts := v_conflicts || jsonb_build_object('entity', r.entity, 'id', r.entity_id, 'expected', null, 'current', v_cur);
+          else
+            insert into public.staff_permissions (user_id, section, level, updated_by)
+            values (split_part(r.entity_id, ':', 1)::uuid, split_part(r.entity_id, ':', 2), (r.old ->> 'level')::public.perm_level, auth.uid());
+          end if;
+        end if;
+
+      -- a save of site defaults (phase 2a.2 D): its insert is undone by removing the row, the step-down of the previous
+      -- default by restoring the flag; both only while the row still holds the value the batch wrote
+      when 'site_defaults' then
+        select internal.jsonb_pick(to_jsonb(d), array['is_default']) into v_cur from public.site_defaults d where d.id = r.entity_id::uuid for update;
+        if r.action not in ('insert', 'update') or v_cur is null then
+          v_conflicts := v_conflicts || jsonb_build_object('entity', r.entity, 'id', r.entity_id, 'reason', 'unsupported');
+        elsif v_cur <> internal.jsonb_pick(r.new, array['is_default']) then
+          v_conflicts := v_conflicts || jsonb_build_object('entity', r.entity, 'id', r.entity_id, 'expected', internal.jsonb_pick(r.new, array['is_default']), 'current', v_cur);
+        elsif r.action = 'insert' then
+          delete from public.site_defaults where id = r.entity_id::uuid;
+        else
+          update public.site_defaults set is_default = (r.old ->> 'is_default')::boolean where id = r.entity_id::uuid;
+        end if;
+
+      -- 13 Nov 2026, Guest Hub: a unit's names / order / mode (a mode other than off passes the unit's gates again —
+      -- internal.hub_unit_mode_guard raises and nothing is reverted), a team, the morning-summary recipients
+      when 'hub_units' then
+        v_keys := array(select k from jsonb_object_keys(coalesce(r.new, '{}'::jsonb)) k where (r.old -> k) is distinct from (r.new -> k)
+                          and k in ('name_ar', 'name_en', 'sort', 'assistant_mode', 'skills', 'knowledge_tags', 'voice_on', 'images_on'));
+        select to_jsonb(u) into v_cur from public.hub_units u where u.id = r.entity_id::uuid for update;
+        if r.action <> 'update' or v_cur is null or cardinality(v_keys) = 0 then
+          v_conflicts := v_conflicts || jsonb_build_object('entity', r.entity, 'id', r.entity_id, 'reason', 'unsupported');
+        elsif internal.jsonb_pick(v_cur, v_keys) <> internal.jsonb_pick(r.new, v_keys) then
+          v_conflicts := v_conflicts || jsonb_build_object('entity', r.entity, 'id', r.entity_id, 'expected', internal.jsonb_pick(r.new, v_keys), 'current', internal.jsonb_pick(v_cur, v_keys));
+        else
+          update public.hub_units u
+             set name_ar = case when 'name_ar' = any(v_keys) then r.old ->> 'name_ar' else u.name_ar end,
+                 name_en = case when 'name_en' = any(v_keys) then r.old ->> 'name_en' else u.name_en end,
+                 sort = case when 'sort' = any(v_keys) then (r.old ->> 'sort')::int else u.sort end,
+                 assistant_mode = case when 'assistant_mode' = any(v_keys) then r.old ->> 'assistant_mode' else u.assistant_mode end,
+                 -- H7: «الفويس» / «الصور» (switching one back on passes internal.hub_units_media_guard: the system admin)
+                 voice_on = case when 'voice_on' = any(v_keys) then (r.old ->> 'voice_on')::boolean else u.voice_on end,
+                 images_on = case when 'images_on' = any(v_keys) then (r.old ->> 'images_on')::boolean else u.images_on end,
+                 skills = case when 'skills' = any(v_keys) then array(select jsonb_array_elements_text(r.old -> 'skills')) else u.skills end,
+                 knowledge_tags = case when 'knowledge_tags' = any(v_keys) then array(select jsonb_array_elements_text(r.old -> 'knowledge_tags')) else u.knowledge_tags end
+           where u.id = r.entity_id::uuid;
+        end if;
+
+      when 'hub_unit_members' then
+        select jsonb_build_object('unit_id', m.unit_id, 'staff_id', m.staff_id, 'is_test', m.is_test) into v_cur from public.hub_unit_members m
+         where m.unit_id = split_part(r.entity_id, ':', 1)::uuid and m.staff_id = split_part(r.entity_id, ':', 2)::uuid for update;
+        if r.action = 'insert' then
+          if v_cur is null then
+            v_conflicts := v_conflicts || jsonb_build_object('entity', r.entity, 'id', r.entity_id, 'reason', 'missing');
+          else
+            delete from public.hub_unit_members where unit_id = split_part(r.entity_id, ':', 1)::uuid and staff_id = split_part(r.entity_id, ':', 2)::uuid;
+          end if;
+        elsif r.action = 'delete' then
+          if v_cur is not null then
+            v_conflicts := v_conflicts || jsonb_build_object('entity', r.entity, 'id', r.entity_id, 'reason', 'exists');
+          elsif not exists (select 1 from public.hub_units u join public.staff s on s.user_id = split_part(r.entity_id, ':', 2)::uuid
+                             where u.id = split_part(r.entity_id, ':', 1)::uuid and s.active and (s.branch is null or s.branch = u.branch_slug)) then
+            v_conflicts := v_conflicts || jsonb_build_object('entity', r.entity, 'id', r.entity_id, 'reason', 'staff');
+          else
+            insert into public.hub_unit_members (unit_id, staff_id, added_by, is_test)
+            values (split_part(r.entity_id, ':', 1)::uuid, split_part(r.entity_id, ':', 2)::uuid, auth.uid(), coalesce((r.old ->> 'is_test')::boolean, false));
+          end if;
+        else
+          v_conflicts := v_conflicts || jsonb_build_object('entity', r.entity, 'id', r.entity_id, 'reason', 'unsupported');
+        end if;
+
+      when 'booking_notification_recipients' then
+        v_keys := array['email', 'active', 'filter_confirmed_at'];
+        select internal.jsonb_pick(to_jsonb(x), v_keys) into v_cur from public.booking_notification_recipients x where x.id = r.entity_id::uuid for update;
+        if coalesce(r.new ->> 'scope', r.old ->> 'scope') <> 'hub_summary' then
+          v_conflicts := v_conflicts || jsonb_build_object('entity', r.entity, 'id', r.entity_id, 'reason', 'unsupported');
+        elsif r.action in ('insert', 'update') then
+          if v_cur is null or v_cur <> internal.jsonb_pick(r.new, v_keys) then
+            v_conflicts := v_conflicts || jsonb_build_object('entity', r.entity, 'id', r.entity_id, 'reason', 'changed');
+          elsif r.action = 'update' then
+            update public.booking_notification_recipients
+               set email = r.old ->> 'email', active = (r.old ->> 'active')::boolean, filter_confirmed_at = (r.old ->> 'filter_confirmed_at')::timestamptz
+             where id = r.entity_id::uuid;
+          else
+            delete from public.booking_notification_recipients where id = r.entity_id::uuid;
+          end if;
+        else
+          if v_cur is not null or exists (select 1 from public.booking_notification_recipients x where x.scope = 'hub_summary' and x.email = r.old ->> 'email') then
+            v_conflicts := v_conflicts || jsonb_build_object('entity', r.entity, 'id', r.entity_id, 'reason', 'exists');
+          else
+            insert into public.booking_notification_recipients (id, scope, branch_slug, email, active, filter_confirmed_at)
+            values (r.entity_id::uuid, 'hub_summary', null, r.old ->> 'email', (r.old ->> 'active')::boolean, (r.old ->> 'filter_confirmed_at')::timestamptz);
+          end if;
+        end if;
+
+      else
+        v_conflicts := v_conflicts || jsonb_build_object('entity', r.entity, 'id', r.entity_id, 'reason', 'unsupported');
+    end case;
+  end loop;
+
+  if jsonb_array_length(v_conflicts) > 0 then
+    -- the exception rolls back every write of this function: nothing changes
+    raise exception 'conflict' using errcode = 'P0001', detail = v_conflicts::text;
+  end if;
+  return jsonb_build_object('ok', true, 'batch_id', v_new, 'rows', v_n);
+end;
+$$;
+
 -- ───────────────────────────────────────────── 3. settings ─────────────────────────────────────────────
 insert into public.settings (key, value) values ('hub_voice_daily_minutes', '60') on conflict (key) do nothing;
 update public.settings set value = value || '{"transcribe": "gpt-transcribe", "vision": "claude-haiku-5-5"}'::jsonb
@@ -878,6 +1146,11 @@ begin
 end;
 $$;
 create trigger hub_units_media_guard before update of voice_on, images_on on public.hub_units for each row execute function internal.hub_units_media_guard();
+-- the switches are audited like the unit's mode (who, when, old → new) — «تراجع» and «السجل» read them
+drop trigger hub_units_audit on public.hub_units;
+create trigger hub_units_audit after insert or update or delete on public.hub_units
+  for each row execute function internal.audit('key', 'kind', 'name_ar', 'name_en', 'branch_slug', 'status', 'assistant_mode', 'skills', 'knowledge_tags', 'sort', 'is_test',
+                                               'voice_on', 'images_on');
 
 -- «الفويس» / «الصور» of one unit (assistant: edit in the unit's branch; audited, «تراجع» through revert_batch)
 create function public.hub_unit_media_set(p_unit uuid, p_voice boolean, p_images boolean) returns jsonb

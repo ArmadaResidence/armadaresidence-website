@@ -31,6 +31,7 @@ export const SOURCES = {
   'public.hub_assistant_overview': 'supabase/migrations/20261114400000_guest_hub_lab.sql',
   'public.hub_sim_usage': 'supabase/migrations/20261114400000_guest_hub_lab.sql',
   'public.hub_budget_overview': 'supabase/migrations/20261114200000_guest_hub_assistant.sql',
+  'public.revert_batch': 'supabase/migrations/20261113100000_guest_hub_foundation.sql',
 };
 
 export function replaced() {
@@ -200,6 +201,16 @@ begin`);
     'by_layer', coalesce((select jsonb_agg(jsonb_build_object('layer', x.layer, 'source', x.source, 'calls', x.calls, 'today', x.today, 'month', x.month, 'seconds', x.seconds) order by x.layer, x.source)
                             from (select d.layer, d.source, sum(d.calls) as calls, sum(d.cost_usd) filter (where d.day = v_today) as today, sum(d.cost_usd) as month, sum(d.audio_seconds) as seconds`);
   out.push('-- public.hub_budget_overview (20261114200000, copied): the transcription has its own line (H7)', bo);
+
+  let rb = get('public.revert_batch');
+  rb = edit(rb, 'revert', `and k in ('name_ar', 'name_en', 'sort', 'assistant_mode', 'skills', 'knowledge_tags'));`,
+    `and k in ('name_ar', 'name_en', 'sort', 'assistant_mode', 'skills', 'knowledge_tags', 'voice_on', 'images_on'));`);
+  rb = edit(rb, 'revert', `                 assistant_mode = case when 'assistant_mode' = any(v_keys) then r.old ->> 'assistant_mode' else u.assistant_mode end,`,
+    `                 assistant_mode = case when 'assistant_mode' = any(v_keys) then r.old ->> 'assistant_mode' else u.assistant_mode end,
+                 -- H7: «الفويس» / «الصور» (switching one back on passes internal.hub_units_media_guard: the system admin)
+                 voice_on = case when 'voice_on' = any(v_keys) then (r.old ->> 'voice_on')::boolean else u.voice_on end,
+                 images_on = case when 'images_on' = any(v_keys) then (r.old ->> 'images_on')::boolean else u.images_on end,`);
+  out.push('-- public.revert_batch (20261113100000, copied): «تراجع» of «الفويس» / «الصور» (H7)', rb);
 
   return out.join('\n\n');
 }
