@@ -377,7 +377,7 @@ declare
   v_seq integer := 0;
   v_unit uuid;
   v_ready boolean;
-  x jsonb;
+  v_mx jsonb;
   v_capped boolean := false;
 begin
   select * into t from public.hub_turns where id = p_turn for update;
@@ -394,22 +394,22 @@ begin
   end loop;
   -- H7: the transcriptions (OpenAI, per minute — never in the Claude budget) and what each voice note / image became: the
   -- transcript, its length and language, the image's category, the outcome — never anything read from an image
-  for x in select * from jsonb_array_elements(coalesce(p -> 'audio', '[]'::jsonb)) loop
-    if coalesce((x ->> 'seconds')::numeric, 0) > 0 and coalesce(x ->> 'model', '') ~ '^gpt-[a-z0-9.-]{3,60}$' then
-      perform internal.hub_audio_add(t.unit_id, 'turn', x ->> 'model', (x ->> 'seconds')::numeric, t.is_test);
+  for v_mx in select * from jsonb_array_elements(coalesce(p -> 'audio', '[]'::jsonb)) loop
+    if coalesce((v_mx ->> 'seconds')::numeric, 0) > 0 and coalesce(v_mx ->> 'model', '') ~ '^gpt-[a-z0-9.-]{3,60}$' then
+      perform internal.hub_audio_add(t.unit_id, 'turn', v_mx ->> 'model', (v_mx ->> 'seconds')::numeric, t.is_test);
     end if;
   end loop;
-  for x in select * from jsonb_array_elements(coalesce(p -> 'media', '[]'::jsonb)) loop
-    if coalesce(x ->> 'id', '') ~ '^[0-9a-f-]{36}$' then
+  for v_mx in select * from jsonb_array_elements(coalesce(p -> 'media', '[]'::jsonb)) loop
+    if coalesce(v_mx ->> 'id', '') ~ '^[0-9a-f-]{36}$' then
       update public.hub_messages
-         set transcript = case when x ->> 'status' = 'transcribed' then left(nullif(btrim(x ->> 'transcript'), ''), 8000) else transcript end,
-             transcript_seconds = coalesce(case when jsonb_typeof(x -> 'seconds') = 'number' then round((x ->> 'seconds')::numeric, 2) end, transcript_seconds),
-             transcript_language = coalesce(case when coalesce(x ->> 'language', '') ~ '^[a-z]{2,8}$' then x ->> 'language' end, transcript_language),
-             media_category = coalesce(case when x ->> 'category' in ('id_document', 'payment', 'screenshot', 'problem', 'place', 'other') then x ->> 'category' end, media_category),
-             media_status = case when x ->> 'status' in ('transcribed', 'classified', 'too_long', 'voice_capped', 'failed_download', 'failed_transcribe', 'empty', 'unknown_language', 'failed_vision')
-                                 then x ->> 'status' else media_status end
-       where id = (x ->> 'id')::uuid and conversation_id = t.conversation_id and direction = 'in';
-      if x ->> 'status' = 'voice_capped' then v_capped := true; end if;
+         set transcript = case when v_mx ->> 'status' = 'transcribed' then left(nullif(btrim(v_mx ->> 'transcript'), ''), 8000) else transcript end,
+             transcript_seconds = coalesce(case when jsonb_typeof(v_mx -> 'seconds') = 'number' then round((v_mx ->> 'seconds')::numeric, 2) end, transcript_seconds),
+             transcript_language = coalesce(case when coalesce(v_mx ->> 'language', '') ~ '^[a-z]{2,8}$' then v_mx ->> 'language' end, transcript_language),
+             media_category = coalesce(case when v_mx ->> 'category' in ('id_document', 'payment', 'screenshot', 'problem', 'place', 'other') then v_mx ->> 'category' end, media_category),
+             media_status = case when v_mx ->> 'status' in ('transcribed', 'classified', 'too_long', 'voice_capped', 'failed_download', 'failed_transcribe', 'empty', 'unknown_language', 'failed_vision')
+                                 then v_mx ->> 'status' else media_status end
+       where id = (v_mx ->> 'id')::uuid and conversation_id = t.conversation_id and direction = 'in';
+      if v_mx ->> 'status' = 'voice_capped' then v_capped := true; end if;
     end if;
   end loop;
   -- the unit's daily minutes used up: ONE alert email to the active admins per unit and Riyadh day (hub-agent); an alert

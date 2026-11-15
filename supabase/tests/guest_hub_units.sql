@@ -163,8 +163,8 @@ select pg_temp._check('G3 «تخزين المحادثات» is off and has no ga
 select pg_temp._fails('G3 the summary''s money lines stay off (Ahmed, 13 Nov 2026)', $$update public.settings set value = 'true' where key = 'hub_summary_money'$$, 'hub_not_ready');
 
 -- ══ S — the settings keys of spec §7.6 ══
-select pg_temp._check('S1 35 hub keys, each seeded',
-  (select count(*) = 35 from public.settings where key = any(internal.hub_setting_keys())) and cardinality(internal.hub_setting_keys()) = 35);
+select pg_temp._check('S1 36 hub keys (spec §7.6 + H7''s hub_voice_daily_minutes), each seeded',
+  (select count(*) = 36 from public.settings where key = any(internal.hub_setting_keys())) and cardinality(internal.hub_setting_keys()) = 36);
 select pg_temp._check('S1 defaults: switches off, timers and limits as listed',
   (select jsonb_object_agg(key, value) from public.settings where key = any(internal.hub_setting_keys())) @> '{
     "hub_assistant_on": false, "hub_inbox_on": false, "hub_summary_money": false, "hub_summary_time": "08:00", "hub_budget_alert_pct": 80,
