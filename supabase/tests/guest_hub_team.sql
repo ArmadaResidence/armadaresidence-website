@@ -152,9 +152,9 @@ select pg_temp._check('N3 «يُعامَل كضيف للتجربة» on: the num
 update public.hub_staff_slots set test_as_guest = false where id = pg_temp._id('s_off');
 -- a stay_review queued for a booking on a staff number: skipped by wa_claim
 with g as (insert into public.guest_profiles (phone, is_test) values ('+15550100001', false) returning id) insert into _ids select 'gs', id from g;
-insert into _ids select 'rsv', id from (
-  insert into public.reservations (ref, branch, check_in, check_out, adults, children, breakfast, guest_name, phone, status)
-  values ('AR-20991201-TEAM', 'airport-road', current_date + 3, current_date + 4, 1, 0, 'without', 'سالم الموظف', '+15550100001', 'request') returning id) x;
+with r as (insert into public.reservations (ref, branch, check_in, check_out, adults, children, breakfast, guest_name, phone, status)
+  values ('AR-20991201-TEAM', 'airport-road', current_date + 3, current_date + 4, 1, 0, 'without', 'سالم الموظف', '+15550100001', 'request') returning id)
+insert into _ids select 'rsv', id from r;
 insert into public.whatsapp_messages (reservation_id, ref, template, language, branch, status, is_test, trigger)
 values (pg_temp._id('rsv'), 'AR-20991201-TEAM', 'stay_review', 'ar', 'airport-road', 'queued', false, 'cron');
 select pg_temp._service();
@@ -274,8 +274,9 @@ alter table public.hub_units enable trigger user;
 update public.hub_conversations set state = 'inquiry', owner_kind = 'assistant', human_reason = null where id = pg_temp._id('conv');
 update public.hub_conversations set state = 'human', human_reason = 'no_source', owner_kind = null, state_before_human = 'inquiry', waiting_since = now() - interval '2 minutes' where id = pg_temp._id('conv');
 insert into _ids select 'h6', (pg_temp._conv()).handoff_id;
-insert into _ids select 'mw', id from (insert into public.hub_messages (conversation_id, channel_id, direction, author, kind, body, idempotency_key, status, sent_at, is_test)
-  values (pg_temp._id('conv'), pg_temp._id('ch'), 'in', 'guest', 'text', 'عندكم مواقف؟', 'qa-team:in-1', 'received', now(), false) returning id) x;
+with m as (insert into public.hub_messages (conversation_id, channel_id, direction, author, kind, body, idempotency_key, status, sent_at, is_test)
+  values (pg_temp._id('conv'), pg_temp._id('ch'), 'in', 'guest', 'text', 'عندكم مواقف؟', 'qa-team:in-1', 'received', now(), false) returning id)
+insert into _ids select 'mw', id from m;
 select pg_temp._service();
 select pg_temp._save('w1', public.hub_turn_queue(pg_temp._id('conv'), pg_temp._id('mw')));
 select pg_temp._root();
