@@ -163,7 +163,7 @@ export function checkFacts(raw: string, c: CheckContext, known: string[] = ['966
     const card: CardFacts = {
       title_ar: str(f.title_ar, 120), title_en: str(f.title_en, 120), text_ar: str(f.text_ar, 1200), text_en: str(f.text_en, 1200),
       short_ar: str(f.short_ar, 80).replace(/[.。]+$/, ''), service_price: f.service_price === true,
-      topic_keys: [...new Set((Array.isArray(f.topic_keys) ? f.topic_keys : []).filter((k: unknown) => typeof k === 'string' && c.topics.includes(k as string)) as string[])].slice(0, 3),
+      topic_keys: [...new Set((Array.isArray(f.topic_keys) ? f.topic_keys : []).filter((k: unknown) => typeof k === 'string' && c.topics.includes(k as string)) as string[])].slice(0, 4),
     };
     const reason = cardRefusal(card, c, known);
     if (reason) {
@@ -204,15 +204,16 @@ export function cardRefusal(card: CardFacts, c: CheckContext, known: string[]): 
  *  else (a guest's detail, a one-off promise, an opinion, nothing general) is dropped */
 export function replyOutcome(facts: Fact[]): { learn: { card: CardFacts }[]; decision: { kind: 'price' | 'contradiction'; conflicts: string[] } | null } {
   const learn: { card: CardFacts }[] = [];
-  let decision: { kind: 'price' | 'contradiction'; conflicts: string[] } | null = null;
+  const conflicts: string[] = [];
+  let price = false;
   for (const f of facts) {
     if (f.verdict === 'card') {
-      if (f.contradicts.length) decision = { kind: 'contradiction', conflicts: [...new Set([...(decision?.conflicts ?? []), ...f.contradicts])] };
+      if (f.contradicts.length) conflicts.push(...f.contradicts.filter((k) => !conflicts.includes(k)));
       else learn.push({ card: f.card });
-    } else if (['room_price', 'availability', 'offer', 'price', 'service_price'].includes(f.reason)) {
-      decision = decision ?? { kind: 'price', conflicts: [] };
-    }
+    } else if (['room_price', 'availability', 'offer', 'price', 'service_price'].includes(f.reason)) price = true;
   }
+  // a contradiction wins over a price (it names the cards to look at)
+  const decision = conflicts.length ? { kind: 'contradiction' as const, conflicts } : price ? { kind: 'price' as const, conflicts: [] as string[] } : null;
   return { learn, decision };
 }
 

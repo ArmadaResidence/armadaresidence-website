@@ -106,7 +106,7 @@ Button: «فتح المحادثة» → `https://admin.armadaresidence.com/?hub_
 | Category | UTILITY |
 | Languages | `ar` |
 | Numbers | both branch numbers (sent from the Airport Road number) |
-| Variables | `{{1}}` the date (DD/MM/YYYY) · `{{2}}`–`{{6}}`, `{{8}}`, `{{9}}` «المطار X · الشفا Y» · `{{7}}` «خروج X · تمديد Y · لم يرد Z», or «لم يُفعَّل بعد» until H9 · `{{10}}` one total · `{{11}}` the faults as a short line, or «لا يوجد». Never money. |
+| Variables | `{{1}}` the date (DD/MM/YYYY) · `{{2}}`–`{{6}}`, `{{8}}`, `{{9}}` «المطار X · الشفا Y» · `{{7}}` «خروج X · تمديد Y · لم يرد Z», or «لم يُفعَّل بعد» until H9 · `{{10}}` (H7b, 15 Nov 2026) the facts learned that day as ONE line — «3: 1) … · 2) … · 3) … · يحتاج قرارك: 1», each fact about 60 characters, the whole ≤ 300, longer → «3 — التفاصيل في اللوحة», nothing → «لا يوجد», dashboard cards «· من اللوحة: K»; the numbers are what «امسح N» removes · `{{11}}` the faults as a short line, or «لا يوجد». Never money, never a newline. |
 | Button | URL `https://admin.armadaresidence.com/?hub_r={{1}}` — the button's own `{{1}}` is the day (YYYY-MM-DD) |
 
 **Body — Arabic**

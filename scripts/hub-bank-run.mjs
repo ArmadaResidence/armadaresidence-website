@@ -276,7 +276,7 @@ async function learnOne(q) {
       reply = (s0?.replies ?? []).map((x) => x.body).join('\n');
       if (e.must_include_any && !e.must_include_any.some((w) => reply.includes(w))) reasons.push(`${tag}:must_include_any`);
     }
-    steps.push({ step: Object.keys(st).find((k) => k !== 'expect'), got, replies: reply ? [reply] : [] });
+    steps.push({ step: Object.keys(st).find((k) => k !== 'expect'), got, replies: reply ? [reply] : [], cards: mem.cards.map((c) => `${c.id}:${c.topic_keys.join('+')}`) });
   }
   return { id: q.id, unit: q.unit, bank: 'learning', pass: reasons.length === 0, reasons, steps };
 }

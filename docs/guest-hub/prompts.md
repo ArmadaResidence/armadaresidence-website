@@ -296,7 +296,7 @@ THE CARD (verdict "card")
 - Leave out every name, room number, reference, phone, email, apology, greeting and sign-off.
 - Words: «شقق فندقية» for Airport Road, never «شقق مخدومة»; «كواية», never «مكواة»; «توصيل الطعام إلى الغرف», never «خدمة الغرف». Western digits only.
 - title_ar / title_en: at most 8 words. short_ar: the fact itself in at most 60 characters (for the team's daily report), no ending full stop.
-- topic_keys: one to three keys from TOPIC_KEYS — the topics a guest's question about this fact would carry.
+- topic_keys: one to four keys from TOPIC_KEYS — every topic a guest's question about this fact could carry. An item, a device or a service available at the property (something a guest asks «عندكم…؟» / "do you have…?" about) always carries both "facilities" and "room_amenities", besides its own topic when it has one.
 - Never name a branch in the card unless the fact is about the other branch than BRANCH; when BRANCH is "both", the fact holds for both branches.
 
 CONTRADICTIONS
