@@ -263,7 +263,7 @@ Drafts carry a `kind`: `stay` (room booking), `hall`, `group`. Hall and group dr
 
 | Timer | Proposed default | Effect |
 |---|---|---|
-| `hub_burst_ms` | 4000 ms | messages from one guest within this time after the first are answered as one turn |
+| `hub_burst_ms` | 2000 ms (at most 3000 — Ahmed, 15 Nov 2026, reply speed; was 4000) | messages from one guest within this time after the first are answered as one turn |
 | `hub_quote_ttl_min` | 30 min | an older quote is refreshed before the summary is built |
 | `hub_confirm_ttl_min` | 60 min | an older summary is rebuilt (fresh quote) when its button is tapped |
 | `hub_idle_close_hours` | 24 h | T26 |
@@ -858,7 +858,7 @@ Model budgets (§7.3) and the API credit (`api_credit`, §7.3 — USD 200 a mont
 | `hub_budget_daily_usd`, `hub_budget_monthly_usd` | the temporary first-week cap, then the measured budget — [مقرر — 12 نوفمبر 2026]; values [يُؤكَّد] Ahmed |
 | `hub_budget_alert_pct` | 80 |
 | `hub_confidence_floor` | 0.7 |
-| `hub_burst_ms`, `hub_quote_ttl_min`, `hub_confirm_ttl_min`, `hub_idle_close_hours` | 4000, 30, 60, 24 |
+| `hub_burst_ms`, `hub_quote_ttl_min`, `hub_confirm_ttl_min`, `hub_idle_close_hours` | 2000 (at most 3000, 15 Nov 2026), 30, 60, 24 |
 | `hub_human_close_hours` | 72 — [مقرر — 12 نوفمبر 2026] |
 | `hub_cancel_word_wait_hours` | 12 — [مقرر — 13 نوفمبر 2026] |
 | `hub_reply_amber_min`, `hub_reply_red_min`, `hub_escalate_min` | 5, 15, 30 |

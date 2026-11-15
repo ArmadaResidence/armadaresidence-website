@@ -188,6 +188,11 @@ export async function runTurn(claim: Json, deps: Deps): Promise<Outcome> {
   }
 
   // ── H7: voice notes and images — transcribed / classified first (each behind its unit switch) ──
+  // reply speed (15 Nov 2026): what does not depend on the understanding starts now and runs beside it — the room types
+  // of both branches (one read each, together) and the live offers (used only for an offer question)
+  const roomsP = Promise.all([deps.adapter.roomTypes('airport-road'), deps.adapter.roomTypes('shafa-road')]).then(([a, b]) => [...a, ...b]);
+  roomsP.catch(() => undefined);
+  const offersP = deps.offers().catch(() => [] as Json[]);
   const prep = await prepareMedia(claim, msgs, deps, finish, record, L);
   texts = prep.texts;
 
@@ -210,7 +215,7 @@ export async function runTurn(claim: Json, deps: Deps): Promise<Outcome> {
   };
   if (!media && !cart && !buttonId && texts.length) {
     try {
-      const rooms = [...(await deps.adapter.roomTypes('airport-road')), ...(await deps.adapter.roomTypes('shafa-road'))];
+      const rooms = await roomsP;
       lists.room_types = rooms.map((r) => ({ key: r.key, branch: r.branch, name_ar: r.name_ar, name_en: r.name_en }));
     } catch {
       lists.room_types = [];
@@ -366,7 +371,7 @@ export async function runTurn(claim: Json, deps: Deps): Promise<Outcome> {
         case 'answer': {
           const k = await deps.knowledge(unit.key, a.topics.length ? a.topics : [], L, a.branch && a.branch !== 'both' ? a.branch : null).catch(() => ({ cards: [], faq: [] }));
           const wantOffers = a.intents.includes('offer_question') || a.topics.includes('offers');
-          const offers = wantOffers ? offersFor(await deps.offers().catch(() => []), unit.branch, L, claim.today) : null;
+          const offers = wantOffers ? offersFor(await offersP, unit.branch, L, claim.today) : null;
           const venue = unit.kind === 'dining' && unit.venue ? { name: L === 'en' ? unit.venue.name_en : unit.venue.name_ar, menu_url: unit.venue.menu ?? null } : null;
           const payload: Payload = buildPayload(k, { offers, venue, first_name: claim.guest?.first_name ?? null, cancellation: String(deps.content.cancellation_line[L]) });
           // a mixed message (H6 gaps): the hand-off after this answer happens whatever the answer gives; a question it could

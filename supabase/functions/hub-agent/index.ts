@@ -152,11 +152,11 @@ async function typing(id: string | null | undefined): Promise<void> {
 }
 
 /** the replies hub_turn_finish handed back as queued: each sent once, the outcome recorded */
-async function sendAll(fin: Json): Promise<number> {
+async function sendAll(fin: Json, typedAlready = false): Promise<number> {
   if (!fin?.send || !Array.isArray(fin.messages) || !fin.context) return 0;
   const ctx = fin.context;
   let sent = 0;
-  let typed = false;
+  let typed = typedAlready;
   for (const m of fin.messages as Json[]) {
     let r: WaResult;
     try {
@@ -320,6 +320,13 @@ async function process(turnId: string, model: ModelFn, deadline: number): Promis
     await sleep(wait);
   }
   if (!claim?.claimed) return 'not_claimed';
+  // reply speed (Ahmed, 15 Nov 2026): «يكتب…» (it also marks the guest's message read — YCloud's typing indicator) the
+  // moment a live reply turn starts, beside the model calls; never for a test, a draft («بموافقة الفريق»), a turn that
+  // only tags (the team is on it), a closed window or a number whose sending is off
+  const lastIn = (claim.messages ?? []).at(-1)?.provider_message_id ?? null;
+  const early = !!lastIn && claim.turn?.kind === 'reply' && claim.turn?.mode === 'live' && !claim.conversation?.is_test
+    && claim.channel?.sending_enabled !== false && Date.parse(claim.conversation?.window_expires_at ?? '') > Date.now();
+  const typingP = early ? typing(lastIn) : Promise.resolve();
   let outcome: Outcome;
   try {
     outcome = await runTurn(claim, deps(model));
@@ -340,7 +347,8 @@ async function process(turnId: string, model: ModelFn, deadline: number): Promis
   } else if (outcome.credit === 'ok' && claim.budget?.api_credit) {
     await rpc('hub_api_credit_mark', { p_exhausted: false }).catch(() => null);
   }
-  const sent = await sendAll(fin);
+  await typingP;
+  const sent = await sendAll(fin, early);
   // H6c: a new hand-off queued its staff alert (hub_staff_alert to the on-shift slots): sent now, from the branch's number
   if (fin?.alerts) await drainStaff((n, a) => rpc(n, a), content).catch((e) => console.error('hub-agent: staff alerts', String(e).slice(0, 80)));
   // the model could not be reached for this turn (after model.ts's retries): the turn went to the team with the no-source

@@ -168,7 +168,7 @@ select pg_temp._check('S1 36 hub keys (spec §7.6 + H7''s hub_voice_daily_minute
 select pg_temp._check('S1 defaults: switches off, timers and limits as listed',
   (select jsonb_object_agg(key, value) from public.settings where key = any(internal.hub_setting_keys())) @> '{
     "hub_assistant_on": false, "hub_inbox_on": false, "hub_summary_money": false, "hub_summary_time": "08:00", "hub_budget_alert_pct": 80,
-    "hub_confidence_floor": 0.7, "hub_burst_ms": 4000, "hub_quote_ttl_min": 30, "hub_confirm_ttl_min": 60, "hub_idle_close_hours": 24,
+    "hub_confidence_floor": 0.7, "hub_burst_ms": 2000, "hub_quote_ttl_min": 30, "hub_confirm_ttl_min": 60, "hub_idle_close_hours": 24,
     "hub_human_close_hours": 72, "hub_cancel_word_wait_hours": 12, "hub_reply_amber_min": 5, "hub_reply_red_min": 15, "hub_escalate_min": 30,
     "hub_failed_understanding_max": 2, "hub_cards_per_turn": 5, "hub_reply_max_chars": 600, "hub_group_min_rooms": 5, "hub_rate_phone_hour": 30,
     "hub_rate_replies_hour": 20, "hub_portfolio_limit": 2000, "hub_portfolio_reserve": 300, "hub_wave_size": 200, "hub_wave_pause_min": 10,
@@ -183,8 +183,8 @@ select pg_temp._check('S1 none is in the site defaults', not (internal.default_s
 select pg_temp._fails('S1 an unknown key is still refused (the check trigger before the key list)', $$insert into public.settings (key, value) values ('hub_unknown', '1')$$, '20000');
 
 select pg_temp._as('admin');
-select pg_temp._save('s2', public.hub_setting_set('hub_burst_ms', '5000'));
-select pg_temp._check('S2 hub_setting_set saves a value in one batch', (select value = '5000' from public.settings where key = 'hub_burst_ms')
+select pg_temp._save('s2', public.hub_setting_set('hub_burst_ms', '2500'));
+select pg_temp._check('S2 hub_setting_set saves a value in one batch', (select value = '2500' from public.settings where key = 'hub_burst_ms')
   and exists (select 1 from public.audit_log a where a.batch_id = (pg_temp._j('s2') ->> 'batch_id')::uuid and a.entity = 'settings' and a.entity_id = 'hub_burst_ms'
                 and a.actor_id = pg_temp._id('admin')), pg_temp._j('s2')::text);
 select pg_temp._fails('S2 a value out of its range', $$select public.hub_setting_set('hub_burst_ms', '70000')$$, '22023');
@@ -193,7 +193,7 @@ select pg_temp._fails('S2 the cancel-word wait stays inside the 24-hour window',
 select pg_temp._fails('S2 a bad time', $$select public.hub_setting_set('hub_summary_time', '"8:00"')$$, '22023');
 select pg_temp._fails('S2 the model ids are read-only', $$select public.hub_setting_set('hub_models', '{"understand": "claude-x-1", "tag": "claude-x-1", "translate": "claude-x-1", "compose": "claude-x-1"}')$$, 'hub_setting_read_only');
 select pg_temp._fails('S2 an unknown key', $$select public.hub_setting_set('show_prices', '{}')$$, '22023');
-select pg_temp._fails('S2 the same value is nothing to change', $$select public.hub_setting_set('hub_burst_ms', '5000')$$, '22023');
+select pg_temp._fails('S2 the same value is nothing to change', $$select public.hub_setting_set('hub_burst_ms', '2500')$$, '22023');
 select pg_temp._fails('S2 «المساعد يعمل» refused through the RPC', $$select public.hub_setting_set('hub_assistant_on', 'true')$$, 'hub_not_ready');
 select pg_temp._fails('S2 «المساعد يعمل» still refused with «تخزين المحادثات» off — both gates', $$select public.hub_setting_set('hub_assistant_on', 'true')$$, 'hub_not_ready');
 select pg_temp._save('s3', public.hub_setting_set('hub_budget_daily_usd', '5'));
@@ -205,7 +205,7 @@ select pg_temp._as('mgmtS');
 select pg_temp._fails('S4 a single-branch editor cannot set a global key', $$select public.hub_setting_set('hub_burst_ms', '3000')$$, '42501');
 select pg_temp._as('admin');
 select public.revert_batch((pg_temp._j('s2') ->> 'batch_id')::uuid);
-select pg_temp._check('S5 «تراجع» restores the value', (select value = '4000' from public.settings where key = 'hub_burst_ms'));
+select pg_temp._check('S5 «تراجع» restores the value', (select value = '2000' from public.settings where key = 'hub_burst_ms'));
 select pg_temp._root();
 -- a revert that would put a switch on passes the gates again (here: an audit entry as if it had been on, then off)
 update public.settings set value = 'false' where key = 'hub_assistant_on';

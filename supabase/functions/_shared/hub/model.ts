@@ -44,11 +44,20 @@ export const CEILINGS: Record<Layer, { max_tokens: number; max_input_chars: numb
   vision: { max_tokens: 500, max_input_chars: 3000 },
 };
 
+/** below about 512 tokens a cache mark does nothing (the API caches from 512 tokens on Haiku 5.5 / Sonnet 5.5) */
+export const CACHE_MIN_CHARS = 1500;
+
 /** the request body of one call (exported for the checks) */
 export function requestBody(c: ModelCall, thinking = true): Record<string, unknown> {
   const ceil = CEILINGS[c.layer];
   const msgs: { role: 'user' | 'assistant'; content: unknown }[] = [];
-  for (const e of c.examples ?? []) msgs.push({ role: 'user', content: e.user }, { role: 'assistant', content: e.assistant });
+  // prompt caching (15 Nov 2026, reply speed): the fixed instruction and the few-shot examples are the same on every call
+  // of a layer, so they are marked as a cached prefix (ephemeral, 5 minutes; Haiku 5.5 and Sonnet 5.5 cache from 512
+  // tokens — a shorter block simply is not cached). Everything that changes per turn comes after the last mark.
+  const cache = { type: 'ephemeral' };
+  const ex = c.examples ?? [];
+  ex.forEach((e, i) => msgs.push({ role: 'user', content: e.user },
+    { role: 'assistant', content: i === ex.length - 1 ? [{ type: 'text', text: e.assistant, cache_control: cache }] : e.assistant }));
   const userText = c.user.slice(0, ceil.max_input_chars);
   msgs.push({
     role: 'user',
@@ -56,7 +65,8 @@ export function requestBody(c: ModelCall, thinking = true): Record<string, unkno
       ? [...c.images.map((i) => ({ type: 'image', source: { type: 'base64', media_type: i.media_type, data: i.data } })), { type: 'text', text: userText }]
       : userText,
   });
-  const body: Record<string, unknown> = { model: c.model, max_tokens: ceil.max_tokens, system: c.system, messages: msgs, output_config: { effort: 'low' } };
+  const system = c.system.length >= CACHE_MIN_CHARS ? [{ type: 'text', text: c.system, cache_control: cache }] : c.system;
+  const body: Record<string, unknown> = { model: c.model, max_tokens: ceil.max_tokens, system, messages: msgs, output_config: { effort: 'low' } };
   if (thinking) body.thinking = /sonnet/.test(c.model) ? { type: 'between_tools' } : { type: 'disabled' };
   return body;
 }
