@@ -57,9 +57,10 @@ export async function runTeachJobs(call: Call, model: ModelFn, opts: RunOpts): P
       const out = r.ok
         ? teachOutcome(checkFacts(r.text, { mode: 'teach', topics: topics.map((t) => t.key), cards: cards.map((k) => k.key), forbidden: c.forbidden ?? [], prices: !!j.teacher?.owner }, c.known_phones ?? undefined))
         : { status: 'failed' as const, reason: r.error === 'credit' ? 'api_credit' : 'model' };
+      const o = out as { status: string; reason?: string; card?: unknown; conflicts?: string[] };
       const fin = await call<Json>('hub_teach_finish', {
         p_job: j.job_id,
-        p: { status: out.status, reason: 'reason' in out ? out.reason : null, card: 'card' in out ? out.card : null, conflicts: out.status === 'ask' ? out.conflicts : [], models: used(modelId, r) },
+        p: { status: o.status, reason: o.reason ?? null, card: o.card ?? null, conflicts: o.conflicts ?? [], models: used(modelId, r) },
       }).catch((e) => {
         console.error('hub learn: teach job not recorded', String(e).slice(0, 80));
         return null;

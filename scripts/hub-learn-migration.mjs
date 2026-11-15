@@ -50,8 +50,8 @@ export function migration() {
     -- H7b: the facts learned that day (teaching and staff replies), numbered for «امسح N» — still active; and what needs Ahmed's decision
     'learned', (select coalesce(jsonb_agg(jsonb_build_object('n', k.learn_no, 'short', coalesce(k.learn_short, k.title_ar), 'branch', k.learn_scope, 'kind', k.learn_kind,
                                                             'by', k.learn_by_name) order by k.learn_no), '[]'::jsonb)
-                  from public.hub_knowledge_cards k where not k.is_test and k.learn_day = p_day and k.learn_no is not null and k.status <> 'archived' and k.learned_at < v_to),
-    'decisions', (select count(*) from public.hub_card_jobs j where not j.is_test and j.decision is not null and j.finished_at >= v_from and j.finished_at < v_to),`);
+                  from public.hub_knowledge_cards k where not k.is_test and k.learn_day = p_day and k.learn_no is not null and k.status <> 'archived' and k.learned_at <= v_to),
+    'decisions', (select count(*) from public.hub_card_jobs j where not j.is_test and j.decision is not null and j.finished_at >= v_from and j.finished_at <= v_to),`);
 
   let ul = get('public.hub_unanswered_list');
   ul = edit(ul, 'unanswered', `                              from public.hub_knowledge_cards k where k.id = (max(g.draft_card_id::text))::uuid and k.status <> 'archived'),`,
