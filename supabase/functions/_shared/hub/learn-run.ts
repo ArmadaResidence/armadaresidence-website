@@ -11,7 +11,7 @@
  */
 import { sendSession, textPayload, type WaResult } from '../../booking-request/whatsapp-send.ts';
 import { checkFacts, learnCommand, learnLine, learnSystem, learnUser, refusalLine, replyOutcome, teachOutcome, textRefusal, type LineKey, type Scope } from './learn.ts';
-import type { ModelFn } from './model.ts';
+import type { ModelFn, ModelResult } from './model.ts';
 
 // deno-lint-ignore no-explicit-any
 type Json = any;
@@ -55,7 +55,7 @@ export async function runTeachJobs(call: Call, model: ModelFn, opts: RunOpts): P
       const body = cmd && cmd.kind === 'teach' ? cmd.body : String(j.text ?? '');
       // a room price, or a service price from a manager: refused by code, no model call
       const pre = textRefusal(body, 'teach', !!j.teacher?.owner);
-      const r = pre ? { ok: true, text: '', input_tokens: 0, output_tokens: 0, error: null } as Awaited<ReturnType<ModelFn>>
+      const r: ModelResult = pre ? { ok: true, text: '', input_tokens: 0, output_tokens: 0, latency_ms: 0 }
         : await model({ layer: 'compose', model: modelId, system: learnSystem(), user: learnUser({ mode: 'teach', scope: j.scope, today: String(c.today), text: body, topics, cards }) });
       const out = pre ? { status: 'refused' as const, reason: pre } : r.ok
         ? teachOutcome(checkFacts(r.text, { mode: 'teach', topics: topics.map((t) => t.key), cards: cards.map((k) => k.key), forbidden: c.forbidden ?? [], prices: !!j.teacher?.owner }, c.known_phones ?? undefined))
@@ -92,7 +92,7 @@ export async function runReplyJobs(call: Call, model: ModelFn, opts: RunOpts): P
     for (const j of jobs) {
       // a staff reply with a price is never learned: «يحتاج قرارك» at once, no model call
       const pre = textRefusal(String(j.reply ?? ''), 'staff_reply', false);
-      const r = pre ? { ok: true, text: '', input_tokens: 0, output_tokens: 0, error: null } as Awaited<ReturnType<ModelFn>>
+      const r: ModelResult = pre ? { ok: true, text: '', input_tokens: 0, output_tokens: 0, latency_ms: 0 }
         : await model({ layer: 'compose', model: modelId, system: learnSystem(),
           user: learnUser({ mode: 'staff_reply', scope: j.branch, today: String(c.today), question: j.question, reply: String(j.reply ?? ''), topics, cards }) });
       let p: Json;
