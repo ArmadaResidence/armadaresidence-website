@@ -126,7 +126,7 @@ select pg_temp._check('K5 … and hub_topics.faq_keys follows the same file (wif
 -- ══ G — the gates ══
 select pg_temp._root();
 select pg_temp._check('G1 the budgets set by the migration (20 / 200) and the persona and skills of the branch units',
-  internal.hub_budgets_set() and (select bool_and(persona_live ->> 'tone' = '2' and persona_live ->> 'emoji' = 'false' and skills = '{shared_knowledge,stay_services}')
+  internal.hub_budgets_set() and (select bool_and(persona_live ->> 'tone' = '2' and persona_live ->> 'emoji' = 'false' and skills = '{shared_knowledge,stay_services,room_booking}')
                                    from public.hub_units where kind = 'branch'));
 -- H8 (16 Nov 2026): room_booking is on; a hall or group skill still refused (their flow is collected without them)
 select pg_temp._fails('G1 hall_request stays off (H8 turned room_booking on)', $$update public.hub_units set skills = '{shared_knowledge,hall_request}' where key = 'airport-road'$$, '23514');

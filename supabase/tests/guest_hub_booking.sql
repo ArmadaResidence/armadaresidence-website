@@ -167,7 +167,9 @@ select pg_temp._check('T2 … it never takes a room and has no nights',
 select pg_temp._check('T3 … the setting cleared (a website booking in the same transaction is real)', coalesce(current_setting('app.hub_test_booking', true), '') = '');
 select pg_temp._check('T4 the tick cancels nothing before an hour', internal.hub_test_bookings_tick() = 0);
 update public.reservations set created_at = now() - interval '2 hours' where ref = 'AR-20991231-HB08';
-select pg_temp._check('T5 after an hour: cancelled (test_booking), its history row', internal.hub_test_bookings_tick() = 1
+select pg_temp._save('tick', to_jsonb(internal.hub_test_bookings_tick()));
+-- (a separate statement: a check in the same statement as the tick reads the rows as they were before it)
+select pg_temp._check('T5 after an hour: cancelled (test_booking), its history row', pg_temp._j('tick')::int = 1
   and exists (select 1 from public.reservations where ref = 'AR-20991231-HB08' and status = 'cancelled' and cancel_reason_code = 'test_booking')
   and exists (select 1 from public.reservation_status_history h join public.reservations r on r.id = h.reservation_id where r.ref = 'AR-20991231-HB08' and h.to_status = 'cancelled'));
 select pg_temp._check('T6 … the inventory still untouched, and a real booking is never cancelled by the tick',

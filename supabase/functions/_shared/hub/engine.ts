@@ -349,7 +349,7 @@ export async function runTurn(claim: Json, deps: Deps): Promise<Outcome> {
   const fieldsOf = (dec: Decision): Record<string, unknown> => dec.draft_patch?.fields ?? lastPatch?.fields ?? draft?.fields ?? {};
   const fmt: Fmt = { sarText: deps.sarText, longDate: deps.longDate, content: deps.content, limits: set.limits ?? null };
   let coversP: Promise<Record<string, string>> | null = null;
-  const covers = () => (coversP ??= (deps.covers ? deps.covers().catch(() => ({})) : Promise.resolve({})));
+  const covers = (): Promise<Record<string, string>> => (coversP ??= (deps.covers ? deps.covers().catch((): Record<string, string> => ({})) : Promise.resolve({} as Record<string, string>)));
   const lastRoom = claim.guest?.last_room ?? null;
   const memberCodes: string[] = claim.guest?.member === true && Array.isArray(claim.member_codes) ? claim.member_codes.filter((x: unknown) => typeof x === 'string') : [];
   /** every bookable type that can take the party (or the named one), quoted for the stay through the adapter — the
