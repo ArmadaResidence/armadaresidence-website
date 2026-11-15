@@ -183,7 +183,7 @@ for (const name of ['K1 a Shafa Road card is read on the Airport Road number', '
   f = await turn('', U({}), NONE, { media: true });
   check(f.state === 'human' && f.unanswered.length === 0, 'gaps: … nor media');
   f = await turn('كم سعر القاعة؟', U({ intents: ['price_question', 'hall_request'], topics: ['price', 'hall'] }), { reply: 'السعر عن طريق فريق المبيعات على +966 53 662 2288.', used_card_ids: ['k-hall-detail', 'k-sales-contact'], unanswered: [] });
-  check(f.state === 'human' && f.reason === 'hall_request' && f.messages.length === 1 && /المبيعات/.test(f.messages[0].body) && f.unanswered.length === 0, 'gaps: the hall price → «عن طريق المبيعات» first, then the hall request to the team');
+  check(f.state === 'collecting' && /المبيعات/.test(f.messages[0].body) && f.unanswered.length === 0, 'gaps / 15 Nov: the hall price → «عن طريق المبيعات» first, then the hall details asked (never a gap) — was: the hall request to the team');
 }
 // the database keeps the same rule: a system entry must be a real gap, in a unit that is not off; the cleanup dismisses
 // (never deletes) with «خارج نطاق القائمة»

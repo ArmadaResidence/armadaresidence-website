@@ -71,7 +71,7 @@ export function migration() {
   v_jobs := v_jobs + (select count(*) from public.hub_teach_jobs t where t.status = 'pending' or (t.status = 'running' and t.claimed_at < now() - interval '4 minutes'));`);
 
   const bank = read('tests/hub-bank/conversations.jsonl').split('\n').filter((l) => l.trim()).map((l) => JSON.parse(l))
-    .filter((x) => !x._header && (x.tags ?? []).includes('h7b'))
+    .filter((x) => !x._header && ['c110', 'c111', 'c112', 'c113', 'c114'].includes(x.id))
     .map((x) => ({ key: x.id, unit: x.unit, language: x.language, messages: x.messages, expect: x.expect, note: x.note ?? null, tags: x.tags }));
   if (bank.length !== 5) throw new Error(`the H7b conversations: ${bank.length}, expected 5`);
   const lab = `

@@ -264,7 +264,31 @@ select pg_temp._fails('S5 the reception reads the switches but never runs a lear
 select pg_temp._fails('S6 … nor a teach job', $q$select public.hub_teach_claim(1)$q$, '42501');
 select pg_temp._root();
 select pg_temp._check('S7 the reception sees both switches off, not editable', not (pg_temp._j('s5') ->> 'learn_teach')::boolean and not (pg_temp._j('s5') ->> 'can_edit')::boolean, pg_temp._j('s5')::text);
-select pg_temp._check('S8 the lab: the H7b conversations are test items', (select count(*) = 5 from public.hub_test_items where 'h7b' = any (tags) and status = 'active'));
+select pg_temp._check('S8 the lab: the H7b conversations (the voice fixes and the groups) are test items', (select count(*) = 10 from public.hub_test_items where 'h7b' = any (tags) and status = 'active'));
+
+-- ══ G — a group or hall request for sales, collected in the chat (15 Nov 2026) ══
+insert into public.hub_turns (conversation_id, unit_id, inbound_message_ids, first_inbound_id, status, kind)
+select m.conversation_id, c.unit_id, array[m.id], m.id, 'done', 'reply' from public.hub_messages m join public.hub_conversations c on c.id = m.conversation_id
+ where m.id = pg_temp._id('mD') on conflict do nothing;
+insert into _ids select 'tD', id from public.hub_turns where first_inbound_id = pg_temp._id('mD');
+select pg_temp._service();
+select pg_temp._save('g1', public.hub_partner_from_turn(pg_temp._id('tD'), '{"ref": "AR-20261115-QAGR", "kind": "group", "update": false,
+  "fields": {"rooms_count": 8, "check_in": "2026-12-20", "check_out": "2026-12-23", "adults": 16, "guest_name": "هدى", "organisation": "نجوم الطائف"}}'));
+select pg_temp._save('g2', public.hub_partner_from_turn(pg_temp._id('tD'), '{"ref": "AR-20261115-QAGR", "kind": "group", "update": true, "fields": {"rooms_count": 9}}'));
+select pg_temp._save('g3', public.hub_partner_from_turn(pg_temp._id('tD'), '{"ref": "AR-20261115-QAGR", "kind": "group", "update": false, "fields": {}}'));
+select pg_temp._root();
+select pg_temp._check('G1 a sales request from the chat: ONE partner enquiry (corporate, the details, the guest''s number from the profile) and what the sales email needs',
+  (select count(*) = 1 and bool_and(request_type = 'corporate' and branch = 'airport-road' and rooms = 9 and guests = 16 and check_in = '2026-12-20' and organisation = 'نجوم الطائف'
+          and contact_name = 'هدى' and phone = '+15550200050' and page_url = 'whatsapp') from public.partner_enquiries where ref = 'AR-20261115-QAGR')
+  and pg_temp._j('g1') #>> '{mail,ref}' = 'AR-20261115-QAGR' and (pg_temp._j('g1') #>> '{mail,nights}')::int = 3 and jsonb_typeof(pg_temp._j('g1') -> 'to') = 'array', pg_temp._j('g1')::text);
+select pg_temp._check('G2 a later detail updates the same enquiry (a note event), never a second one; the same ref again creates nothing',
+  (pg_temp._j('g2') ->> 'updated')::boolean and (pg_temp._j('g3') ->> 'already')::boolean
+  and exists (select 1 from public.partner_enquiry_events v join public.partner_enquiries e on e.id = v.enquiry_id where e.ref = 'AR-20261115-QAGR' and v.kind = 'note'));
+select pg_temp._service();
+select pg_temp._fails('G3 a malformed reference is refused', format('select public.hub_partner_from_turn(%L, %L)', pg_temp._id('tD'), '{"ref": "x", "kind": "group"}'), 'hub_partner_fields');
+select pg_temp._as('rec');
+select pg_temp._fails('G4 never a dashboard user', format('select public.hub_partner_from_turn(%L, %L)', pg_temp._id('tD'), '{"ref": "AR-20261115-QAGZ", "kind": "group"}'), '42501');
+select pg_temp._root();
 
 select n, test, ok, detail from _r order by n;
 rollback;

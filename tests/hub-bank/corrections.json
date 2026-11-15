@@ -53,6 +53,32 @@
           "العفو"
         ]
       }
+    },
+    "q017": {
+      "date": "2026-11-15",
+      "migration": "20261115800000_guest_hub_groups.sql",
+      "why": "Ahmed, 15 Nov 2026 21:20: a group of 2–4 rooms collects the missing details (dates, guests, name) before it goes to reception — routed once, with the details",
+      "old": {
+        "action": "handoff",
+        "state": "human"
+      },
+      "expect": {
+        "action": "ask",
+        "state": "collecting"
+      }
+    },
+    "q102": {
+      "date": "2026-11-15",
+      "migration": "20261115800000_guest_hub_groups.sql",
+      "why": "Ahmed, 15 Nov 2026 21:20: a group of 2–4 rooms collects the missing details (dates, guests, name) before it goes to reception — routed once, with the details",
+      "old": {
+        "action": "handoff",
+        "state": "human"
+      },
+      "expect": {
+        "action": "ask",
+        "state": "collecting"
+      }
     }
   }
 }

@@ -49,6 +49,10 @@ export interface Understanding {
   rooms_count: number | null;
   guest_name: string | null;
   booking_ref: string | null;
+  /** 15 Nov 2026 (groups and the hall): the company or office the guest names; the hall's layout and coffee break */
+  organisation?: string | null;
+  layout?: string | null;
+  coffee_break?: boolean | null;
   language: string;
   complaint: boolean;
   confidence: Record<string, number>;
@@ -100,6 +104,9 @@ export function validateUnderstanding(raw: unknown, lists: Lists): { ok: true; v
   if (!nullOr<number>(o.rooms_count, (x) => isInt(x, 1, 500))) e.push('rooms_count');
   if (!nullOr<string>(o.guest_name, (x) => typeof x === 'string' && x.length <= 120 && !/\d{5,}/.test(x))) e.push('guest_name');
   if (!nullOr<string>(o.booking_ref, (x) => typeof x === 'string' && /^AR-[A-Z0-9-]{4,40}$/.test(x))) e.push('booking_ref');
+  if (!nullOr<string>(o.organisation, (x) => typeof x === 'string' && x.length <= 120 && !/\d{5,}/.test(x))) e.push('organisation');
+  if (!nullOr<string>(o.layout, (x) => typeof x === 'string' && x.length <= 60)) e.push('layout');
+  if (!nullOr<boolean>(o.coffee_break, (x) => typeof x === 'boolean')) e.push('coffee_break');
   if (typeof o.language !== 'string' || !/^(ar|en|other:[a-z]{2,3})$/.test(o.language)) e.push('language');
   if (typeof o.complaint !== 'boolean') e.push('complaint');
   if (!nullOr<string>(o.kind, (x) => (KINDS as readonly string[]).includes(String(x)))) e.push('kind');
@@ -117,6 +124,7 @@ export function validateUnderstanding(raw: unknown, lists: Lists): { ok: true; v
       check_in: o.check_in ?? null, check_out: o.check_out ?? null, nights: o.nights ?? null, dates_text: o.dates_text ?? null, dates_calendar: o.dates_calendar ?? null,
       room_type: o.room_type ?? null, breakfast: o.breakfast ?? null, adults: o.adults ?? null, children: o.children ?? null, child_ages: o.child_ages ?? null,
       extra_beds: o.extra_beds ?? null, rooms_count: o.rooms_count ?? null, guest_name: o.guest_name ?? null, booking_ref: o.booking_ref ?? null,
+      organisation: o.organisation ?? null, layout: o.layout ?? null, coffee_break: o.coffee_break ?? null,
       language: o.language, complaint: o.complaint, confidence: conf as Record<string, number>,
     },
   };

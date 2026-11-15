@@ -138,9 +138,9 @@ check(d.next === 'quoted' && d.actions.some((a) => a.type === 'quote' && a.lite)
 d = run('new', guest(U({ intents: ['availability_question'], check_in: '2026-12-01', check_out: '2026-12-03' })));
 check(d.next === 'collecting' && d.actions[0].type === 'ask' && d.actions[0].slots.join() === 'adults', 'pass 5: an availability question with dates → the number of guests asked');
 d = run('new', guest(U({ intents: ['hall_request'], adults: 60 })));
-check(d.next === 'human' && ho(d)?.reason === 'hall_request', 'H5: a hall request hands off (to staff — the partner enquiry is H8)');
+check(d.next === 'collecting' && d.actions[0].type === 'ask' && d.actions[0].slots.join() === 'event_date,layout,coffee_break', '15 Nov: a hall request → the missing details asked first (date, layout, coffee break)', JSON.stringify(d.actions));
 d = run('new', guest(U({ intents: ['group_request'], rooms_count: 8 })));
-check(d.next === 'human' && ho(d)?.reason === 'group_request', 'H5: a group request hands off');
+check(d.next === 'collecting' && d.actions[0].type === 'ask' && d.actions[0].slots.join() === 'dates,adults,guest_name,organisation', '15 Nov: a group request → the dates, the guests, the name and (optional) the company asked', JSON.stringify(d.actions));
 d = run('new', guest(U({ intents: ['price_question'] })));
 check(d.next === 'inquiry' && d.actions[0].type === 'from_price' && d.actions[0].branch === 'airport-road', 'H5: a price question without dates → the «يبدأ من» lines of the number\'s branch');
 d = run('new', guest(U({ intents: ['price_question'], branch: 'shafa-road' })));
@@ -150,7 +150,24 @@ check(d.next === 'human', 'H5: prices hidden → the reception (spec §2.5 rule 
 d = run('new', guest(U({ intents: ['price_question'], check_in: '2026-12-01', check_out: '2026-12-03' })));
 check(d.next === 'collecting' && d.actions[0].type === 'ask', 'pass 5: a price question with dates → the booking conversation');
 d = run('new', guest(U({ intents: ['stay_booking'], rooms_count: 3 })));
-check(d.next === 'human' && ho(d)?.notice === 'multi_room', '2–4 rooms → the reception (the multi-room notice)');
+check(d.next === 'collecting' && d.actions[0].type === 'ask' && d.draft_patch?.kind === 'group', '15 Nov: 3 rooms → the details first (a group draft)');
+// the group flow (Ahmed, 15 Nov 2026 21:20): ask what is missing (at most twice), route ONCE, a later detail updates the request
+{
+  const G = (fields) => ({ id: 'g1', kind: 'group', status: 'open', version: 1, fields });
+  let g = run('collecting', guest(U({ intents: ['stay_booking'], kind: 'booking', check_in: '2026-12-01', check_out: '2026-12-04', adults: 6, guest_name: 'سالم' })), {}, G({ rooms_count: 3, _asks: 1 }));
+  check(g.next === 'human' && ho(g)?.reason === 'multi_room' && ho(g)?.notice === 'multi_room' && ho(g).note.slots.rooms_count === 3 && ho(g).note.slots.guest_name === 'سالم' && g.draft_patch.fields._routed === true,
+    'group: 3 rooms with every detail → the reception ONCE, the details in the note (the staff alert line)', JSON.stringify(g.actions));
+  g = run('collecting', guest(U({ intents: ['stay_booking'], kind: 'booking', adults: 20 })), {}, G({ rooms_count: 6, _asks: 2 }));
+  check(acts(g).join() === 'partner_enquiry' && g.next === 'inquiry' && g.draft_patch.fields._route === 'sales', 'group: 6 rooms, partial details after two questions → sales (the partner enquiry), never a third question', JSON.stringify(g.actions));
+  g = run('new', guest(U({ intents: ['stay_booking'], kind: 'booking', topics: ['umrah'], rooms_count: 4, check_in: '2026-12-01', check_out: '2026-12-03', adults: 12, guest_name: 'مكتب', organisation: 'مكتب النور للعمرة' })));
+  check(acts(g).join() === 'partner_enquiry', 'group: an Umrah office (4 rooms) → sales');
+  g = run('human', guest(U({ intents: ['stay_booking'], kind: 'booking', rooms_count: 6 })), { human_phase: 'waiting' }, G({ rooms_count: 3, guest_name: 'سالم', _routed: true, _route: 'reception' }));
+  check(acts(g).join() === 'request_update' && !acts(g).includes('handoff_add') && !acts(g).includes('handoff'), 'group: «أكثر من ٥ غرف» after the hand-off → that request updated, never a new hand-off', JSON.stringify(g.actions));
+  g = run('inquiry', guest(U({ intents: ['stay_booking'], kind: 'booking', check_in: '2026-12-10', check_out: '2026-12-12' })), {}, G({ rooms_count: 8, _routed: true, _route: 'sales', _ref: 'AR-20261115-ABCD' }));
+  check(acts(g).join() === 'request_update' && g.actions[0].route === 'sales' && g.actions[0].fields._ref === 'AR-20261115-ABCD', 'group: a date after the sales request → the enquiry updated (its ref)');
+  const h = run('collecting', guest(U({ intents: ['hall_request'], kind: 'booking', check_in: '2026-12-05', adults: 40, layout: 'مسرح', coffee_break: true, guest_name: 'هدى' })), {}, { id: 'h1', kind: 'hall', status: 'open', version: 1, fields: { _asks: 1 } });
+  check(acts(h).join() === 'partner_enquiry' && h.draft_patch.kind === 'hall', 'hall: every detail → sales (the partner enquiry)', JSON.stringify(h.actions));
+}
 d = run('new', guest(U({ intents: ['stay_booking'], dates_calendar: 'hijri', dates_text: '١٥ رجب' })));
 check(d.actions[0].type === 'fixed' && d.actions[0].key === 'dates_hijri', 'a Hijri date → copy.md §2.2');
 
@@ -164,13 +181,13 @@ check(ansThenAsk(d), 'gaps / pass 5: an extra bed asked as a booking → the rul
 d = run('new', guest(U({ intents: ['availability_question'], topics: ['accessible'] })));
 check(ansThenAsk(d), 'gaps / pass 5: the accessible room asked as availability → answered, then the stay details asked');
 d = run('new', guest(U({ intents: ['price_question', 'hall_request'], topics: ['price', 'hall'] })));
-check(ansThenTeam(d, 'hall_request') && JSON.stringify(d.actions[0].topics) === '["hall"]', 'gaps: «كم سعر القاعة؟» → the hall card («عن طريق المبيعات») first, then the hall request to the team');
+check(d.next === 'collecting' && d.actions[0]?.type === 'answer' && d.actions[0].mixed === true && d.actions[1]?.type === 'ask' && JSON.stringify(d.actions[0].topics) === '["hall"]', 'gaps / 15 Nov: «كم سعر القاعة؟» → the hall card («عن طريق المبيعات») first, then the details asked');
 d = run('new', guest(U({ intents: ['hall_request', 'facility_question'], topics: ['hall'] })), { unit_branch: 'shafa-road' });
-check(ansThenTeam(d, 'hall_request'), 'gaps: a hall question with a request on Shafa Road → "no hall here" answered, then the team');
+check(d.actions[0]?.type === 'answer' && d.actions[1]?.type === 'ask', 'gaps / 15 Nov: a hall question with a request on Shafa Road → "no hall here" answered, then the details');
 d = run('new', guest(U({ intents: ['hall_request'], topics: ['hall'], adults: 30 })));
-check(d.next === 'human' && acts(d).join() === 'handoff' && ho(d).reason === 'hall_request', 'gaps: a hall request alone («أبغى أحجز القاعة لاجتماع 30 شخص») → the team only');
+check(d.next === 'collecting' && acts(d).join() === 'ask', 'gaps / 15 Nov: a hall request alone («أبغى أحجز القاعة لاجتماع 30 شخص») → the missing details only');
 d = run('new', guest(U({ intents: ['group_request'], topics: ['groups_corporate'], rooms_count: 8 })));
-check(d.next === 'human' && acts(d).join() === 'handoff', 'gaps: a group request alone → the team only');
+check(d.next === 'collecting' && acts(d).join() === 'ask', 'gaps / 15 Nov: a group request alone → the missing details only');
 d = run('new', guest(U({ intents: ['stay_booking'], topics: ['booking_new', 'price'], ...full })));
 check(d.next === 'quoted' && acts(d).join() === 'quote', 'pass 5: a plain complete stay request → the quote alone');
 d = run('new', guest(U({ intents: ['stay_booking', 'facility_question'], topics: ['kitchen'] })), { skills: H8 });
@@ -188,7 +205,7 @@ for (const topics of [[], ['price'], ['price', 'room_types'], ['booking_new', 'p
 d = run('new', guest(U({ intents: ['facility_question'], topics: ['groups_corporate'] })));
 check(d.actions[0].type === 'answer' && d.next === 'inquiry', 'gaps: "the sales number?" (groups topic, a question) → answered, not a group request');
 d = run('new', guest(U({ intents: ['stay_booking'], topics: ['groups_corporate'] })));
-check(d.next === 'human' && ho(d)?.reason === 'group_request', 'gaps: a company asking to book → still the group request');
+check(d.next === 'collecting' && d.draft_patch?.kind === 'group', 'gaps / 15 Nov: a company asking to book → still the group request (its details first)');
 d = run('new', guest(U({ intents: ['stay_service_request'], topics: ['early_late'], dates_text: 'أبغى أوصل الساعة 11 الصبح' })));
 check(d.next === 'human' && ho(d)?.notice === 'early_extension', 'gaps: «أبغى أوصل الساعة 11 الصبح» → the early check-in notice AND the team');
 d = run('new', guest(U({ intents: ['stay_service_request'], topics: ['early_late'], dates_text: 'Can I check in early, around 10?' })));
@@ -325,7 +342,7 @@ for (let s = 0; s < 400; s++) {
     if (ev.type === 'guest' && ev.cart && kind === 'dining' && state !== 'human' && out.actions.some((a) => ['answer', 'fixed', 'handoff', 'from_price'].includes(a.type))) violations.push('a cart message answered');
     // one open draft: a patch never opens a second kind while one is open (the database keeps one; the machine patches)
     if (out.draft_patch && draft && out.draft_patch.kind !== draft.kind && !out.draft_replace) violations.push(`two drafts (${state} ${draft.kind} → ${out.draft_patch.kind} ${out.transitions})`);
-    if (!out.transitions.every((t) => /^T\d+b?$/.test(t))) violations.push(`a bad transition name ${out.transitions}`);
+    if (!out.transitions.every((t) => /^T\d+[bc]?$/.test(t))) violations.push(`a bad transition name ${out.transitions}`);
     state = out.next;
     if (out.draft_replace) draft = null;
     if (out.draft_patch) draft = { id: draft?.id ?? `d${s}`, kind: out.draft_patch.kind, version: (draft?.version ?? 0) + 1, fields: out.draft_patch.fields };

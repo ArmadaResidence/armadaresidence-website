@@ -80,15 +80,15 @@ check(grade(item({ action: 'answer' }), out({ guard_refusals: [['x']] }), ctx).p
 check(grade(item({ action: 'answer' }), out({ guard_refusals: [['x'], ['y']], steps: [{ kind: 'answer', state: 'inquiry', replies: [], gap: false, guard_refusals: 1 }, { kind: 'answer', state: 'inquiry', replies: [], gap: false, guard_refusals: 1 }] }), ctx).pass,
   'G pass 5: one retry in each of two turns is not a guard failure (per turn)');
 check(grade(item({ action: 'answer' }), out({ replies: [{ body: 'Yes, parking is free.', notice: false }] }), ctx).reasons.includes('language'), 'G the language');
-check(expectedAction(item({ action: 'ask' }), SK).action === 'ask' && expectedAction(item({ action: 'ask' }, { note: 'group_request, no price' }), SK).action === 'handoff'
-  && expectedAction(item({ action: 'ask' }, { note: 'hall_request' }), SK).action === 'handoff', 'G pass 5: a stay is collected in the chat; a group or hall request with its skill off is the team’s');
+check(expectedAction(item({ action: 'ask' }), SK).action === 'ask' && expectedAction(item({ action: 'ask' }, { note: 'group_request, no price' }), SK).action === 'ask'
+  && expectedAction(item({ action: 'ask' }, { note: 'hall_request' }), SK).action === 'ask', 'G 15 Nov: a stay, a group and a hall request are all collected in the chat (graded as written)');
 check(expectedAction(item({ action: 'refuse' }), SK).action === 'redirect' && expectedAction(item({ action: 'greeting' }), SK).action === 'reply', 'G pass 5: refuse = the redirect, a greeting = a reply');
 check(expectedAction(item({ action: 'send_summary' }), SK).action === 'quote', 'G pass 5: a summary expectation before H8 = the quote with the website link');
 check(expectedAction(item({ action: 'ask' }, { note: 'Hijri date → copy.md §2.2' }), SK).action === 'fixed' && expectedAction(item({ action: 'ask' }, { note: 'may give «يبدأ من»' }), SK).action === 'answer',
   'G the bank’s notes: a Hijri date gets the fixed reply, a price without dates «يبدأ من»');
 const NOTE = read('supabase/migrations/20261114500000_guest_hub_lab_note.sql');
 check(/'expect', i\.expect, 'note', i\.note\)/.test(NOTE) && /create or replace function public\.hub_eval_claim/.test(NOTE), 'the claim hands the grading each question’s note (the follow-up migration)');
-check(grade(item({ action: 'ask', state: 'collecting', must_include: ['تاريخ'] }, { note: 'group_request' }), out({ kind: 'handoff', state: 'human', replies: [] }), ctx).pass, 'G a mapped item: only the mapped action and state apply');
+check(grade(item({ action: 'ask' }, { note: 'may give «يبدأ من»' }), out({ kind: 'answer', state: 'inquiry', replies: [] }), ctx).pass, 'G a mapped item: only the mapped action and state apply');
 {
   // the conversation bank (H6 pass 5): every step graded
   const conv = { key: 'c900', unit_key: 'airport-road', language: 'ar', messages: ['السلام عليكم', 'أحبك', 'كم نجمة؟'], expect: { action: 'conversation', steps: [{ outcome: 'reply', salaam: true }, { outcome: 'redirect' }, { outcome: 'handoff', gap: true }] } };
@@ -106,7 +106,7 @@ check(grade(item({ action: 'ask', state: 'collecting', must_include: ['تاري�
   const CONV = read('tests/hub-bank/conversations.jsonl').split(/\r?\n/).filter((l) => l.trim()).map((l) => JSON.parse(l)).filter((x) => !x._header);
   check(CONV.length >= 40 && CONV.every((c) => c.messages.length === c.expect.steps.length && c.expect.action === 'conversation' && /^c\d{3}$/.test(c.id)), `C the conversation bank: ${CONV.length} conversations, one expectation per message`);
   check(new Set(CONV.map((c) => c.unit)).size === 2 && CONV.some((c) => c.language === 'en') && CONV.some((c) => (c.tags ?? []).includes('live-sequence')), 'C both units, both languages, Ahmed\'s live sequences');
-  check(CONV.every((c) => c.expect.steps.every((s) => [].concat(s.outcome).every((k) => ['reply', 'answer', 'ask', 'quote', 'clarify', 'redirect', 'handoff', 'none', 'answer_handoff'].includes(k)))), 'C every step names a known outcome');
+  check(CONV.every((c) => c.expect.steps.every((s) => [].concat(s.outcome).every((k) => ['reply', 'answer', 'ask', 'quote', 'clarify', 'redirect', 'handoff', 'none', 'answer_handoff', 'partner_enquiry', 'request_update'].includes(k)))), 'C every step names a known outcome');
   // the migration that seeds it on production = the file (scripts/hub-conv-migration.mjs)
   const MIG = read('supabase/migrations/20261115100000_guest_hub_conversation.sql');
   const TAG = '$conv_bank' + '$';
@@ -120,6 +120,12 @@ check(grade(item({ action: 'ask', state: 'collecting', must_include: ['تاري�
       const M8 = read('supabase/migrations/20261115600000_guest_hub_learning.sql');
       const T8 = '$learn_bank' + '$';
       return JSON.parse(M8.slice(M8.indexOf(T8) + T8.length, M8.lastIndexOf(T8)));
+    })(),
+    // 15 Nov 2026: the group / hall conversations, seeded by the groups migration (tag $group_bank$)
+    ...(() => {
+      const M9 = read('supabase/migrations/20261115800000_guest_hub_groups.sql');
+      const T9 = '$group_bank' + '$';
+      return JSON.parse(M9.slice(M9.indexOf(T9) + T9.length, M9.lastIndexOf(T9)));
     })()];
   check(seeded.length === CONV.length && seeded.every((r, i) => r.key === CONV[i].id && JSON.stringify(r.messages) === JSON.stringify(CONV[i].messages) && JSON.stringify(r.expect) === JSON.stringify(CONV[i].expect)),
     'C the migration seeds exactly tests/hub-bank/conversations.jsonl');

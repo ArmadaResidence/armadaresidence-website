@@ -39,6 +39,9 @@ export type Action =
   | { type: 'send_summary'; version: number }
   | { type: 'book'; draft_id: string; version: number }
   | { type: 'partner_enquiry'; kind: 'hall' | 'group' }
+  /** 15 Nov 2026 (Ahmed): a detail added to a group or hall request already sent («أكثر من ٥ غرف», a date, a name) —
+   *  that request updated, a short fixed acknowledgement, never a new hand-off and never «أيضًا» */
+  | { type: 'request_update'; kind: 'hall' | 'group'; route: 'sales' | 'reception'; fields: Record<string, unknown> }
   | { type: 'from_price'; branch: string }
   | { type: 'fixed'; key: string; buttons?: 'quick' | 'dates' | 'team' | null; vars?: Record<string, string | number> }
   | { type: 'booking_status'; ref: string }
@@ -202,10 +205,36 @@ export function missingSlots(fields: Record<string, unknown>): string[] {
 function mergeFields(f: Record<string, unknown>, u: Understanding, unitBranch: string, kind: 'branch' | 'dining'): Record<string, unknown> {
   const out: Record<string, unknown> = { ...f };
   if (!out.branch) out.branch = kind === 'branch' ? unitBranch : u.branch !== 'both' ? u.branch : null;
-  for (const k of ['check_in', 'check_out', 'nights', 'room_type', 'breakfast', 'adults', 'children', 'child_ages', 'extra_beds', 'guest_name', 'rooms_count'] as const) {
+  for (const k of ['check_in', 'check_out', 'nights', 'room_type', 'breakfast', 'adults', 'children', 'child_ages', 'extra_beds', 'guest_name', 'rooms_count',
+                   'organisation', 'layout', 'coffee_break'] as const) {
     if (u[k] !== null && u[k] !== undefined) out[k] = u[k];
   }
   return out;
+}
+
+/** a group or the hall (Ahmed, 15 Nov 2026 21:20): what is still missing before the request is routed — asked in one or
+ *  two natural questions, never more than twice; the company or office is asked once, as optional */
+export function missingGroup(kind: 'hall' | 'group', f: Record<string, unknown>): string[] {
+  const m: string[] = [];
+  const none = (k: string) => f[k] === null || f[k] === undefined || f[k] === '';
+  if (kind === 'hall') {
+    if (none('check_in')) m.push('event_date');
+    if (none('adults')) m.push('attendees');
+    if (none('layout')) m.push('layout');
+    if (none('coffee_break')) m.push('coffee_break');
+  } else {
+    if (none('rooms_count')) m.push('rooms');
+    if (none('check_in') || none('check_out')) m.push('dates');
+    if (none('adults')) m.push('adults');
+  }
+  if (none('guest_name')) m.push('guest_name');
+  return m;
+}
+/** sales (a partner enquiry and the sales email) or reception: 5 rooms or more, a company or an office, an Umrah group or
+ *  the hall → sales; 2–4 rooms → reception (12 Nov 2026) */
+export function groupRoute(kind: 'hall' | 'group', f: Record<string, unknown>, minRooms: number): 'sales' | 'reception' {
+  if (kind === 'hall' || f._umrah === true || (typeof f.organisation === 'string' && f.organisation.trim())) return 'sales';
+  return Number(f.rooms_count ?? 0) >= minRooms || !f.rooms_count ? 'sales' : 'reception';
 }
 
 const stopped = (s: State) => s;
@@ -410,7 +439,8 @@ export function decide(input: DecideInput): Decision {
   }
   // something the team must do (an extension, a late check-out request, maintenance, an order to the room …): the hand-off
   // notice and the team — a request, never «لم أعرف الإجابة» (H6 pass 5)
-  if (kind === 'staff_request' && !has('group_request') && !has('hall_request') && !(u.rooms_count && u.rooms_count >= 2)) {
+  if (kind === 'staff_request' && !has('group_request') && !has('hall_request') && !(u.rooms_count && u.rooms_count >= 2)
+      && !((input.draft?.kind === 'group' || input.draft?.kind === 'hall') && (u.rooms_count || u.guest_name || u.organisation || u.check_in || u.adults))) {
     // what has a source is answered first (the late check-out fees, the café's menu link), in the same message as the
     // hand-off notice; a request is never a gap
     const topics = u.topics.filter((k) => !STAFF_SKIP.has(k));
@@ -418,9 +448,14 @@ export function decide(input: DecideInput): Decision {
     const first: Action[] = topics.length ? [{ type: 'answer', topics, intents: u.intents, branch: u.branch, mixed: true, nogap: true }] : [];
     return out({ next: 'human', actions: [...first, handoff('staff_request', 'handoff', note(has('dining_order') ? 'dining_order' : 'stay_service_request'))], reason: 'staff_request', failed: 'reset' });
   }
-  // rooms: 2–4 → reception; 5 or more → the group request (sales); a company or Umrah office is a group request too
-  if (u.rooms_count && u.rooms_count >= ctx.group_min_rooms) return groupOrHall(input, state, t, out, u, 'group');
-  if (u.rooms_count && u.rooms_count >= 2) return H('multi_room', 'multi_room', 'stay_booking');
+  // a detail for a group or hall request being collected or already sent («أكثر من ٥ غرف», a date, a name): that request
+  const openKind = input.draft?.kind === 'group' || input.draft?.kind === 'hall' ? input.draft.kind : null;
+  if (openKind && (u.kind === 'booking' || STAY_INTENTS.some(has) || has('group_request') || has('hall_request') || u.rooms_count || u.guest_name || u.organisation || u.check_in)) {
+    return groupOrHall(input, state, t, out, u, openKind);
+  }
+  // rooms: 2–4 → reception; 5 or more → the group request (sales) — both collect the details first (15 Nov 2026); a
+  // company or Umrah office is a group request too
+  if (u.rooms_count && u.rooms_count >= 2) return groupOrHall(input, state, t, out, u, 'group');
   // the groups topic alone (e.g. "the sales number?") is a question; a group request needs the intent or a stay with it
   if (has('group_request') || (u.topics.includes('groups_corporate') && STAY_INTENTS.some(has)) || u.topics.includes('umrah') && has('stay_booking')) return groupOrHall(input, state, t, out, u, 'group');
   if (has('hall_request')) return groupOrHall(input, state, t, out, u, 'hall');
@@ -529,14 +564,39 @@ function humanTurn(input: DecideInput, t: string[]): Decision {
 function groupOrHall(input: DecideInput, state: State, t: string[], out: Out, u: Understanding, kind: 'hall' | 'group'): Decision {
   const skill = kind === 'hall' ? 'hall_request' : 'group_request';
   if (!input.ctx.skills.includes(skill)) {
-    t.push(state === 'new' ? 'T2' : 'T21');
-    // a mixed message (H6 gaps): a question asked with the request («كم سعر القاعة؟») is answered first («عن طريق
-    // المبيعات», "no hall at Shafa Road"), then the team; a request alone («أبغى أحجز القاعة لـ 30 شخص») goes to the team
+    // Ahmed, 15 Nov 2026 21:20: the details first (one or two natural questions, at most twice), then ONE routing with
+    // them — reception for 2–4 rooms (the staff alert's line), sales for 5+ rooms, a company or office, Umrah or the hall
+    // (a partner enquiry, the sales email, one confirmation with the sales contacts); a later detail updates that request
+    const ctx = input.ctx;
+    const prev = input.draft?.kind === kind ? input.draft.fields : {};
+    const fields = mergeFields(prev, u, ctx.unit_branch, ctx.unit_kind);
+    if (u.topics.includes('umrah')) fields._umrah = true;
+    const replace = !!input.draft && input.draft.kind !== kind;
+    // a question asked with the request («كم سعر القاعة؟») is answered first (H6 gaps)
     const topics = answerTopics(u);
-    const asks = u.intents.some((i) => QUESTION_INTENTS.includes(i) && i !== 'other' && i !== 'booking_status');
-    const first: Action[] = topics.length && asks ? [{ type: 'answer', topics, intents: u.intents, branch: u.branch, mixed: true }] : [];
-    return out({ next: 'human', actions: [...first, handoff(kind === 'hall' ? 'hall_request' : 'group_request', 'handoff', { intent: skill, slots: noteSlots(u), stopped: state })],
-      reason: kind === 'hall' ? 'hall_request' : 'group_request', failed: 'reset' });
+    const asksQ = u.intents.some((i) => QUESTION_INTENTS.includes(i) && i !== 'other' && i !== 'booking_status');
+    const first: Action[] = topics.length && asksQ ? [{ type: 'answer', topics, intents: u.intents, branch: u.branch, mixed: true }] : [];
+    if (prev._routed) {
+      t.push('T3c');
+      const route = prev._route === 'reception' ? 'reception' : 'sales';
+      return out({ next: state, actions: [...first, { type: 'request_update', kind, route, fields }], draft_patch: { kind, fields }, failed: 'reset' });
+    }
+    const missing = missingGroup(kind, fields);
+    const asked = Number(prev._asks ?? 0);
+    if (missing.length && asked < 2) {
+      t.push(state === 'collecting' ? 'T8' : 'T3');
+      const slots = asked === 0 && kind === 'group' && !fields.organisation ? [...missing.slice(0, 3), 'organisation'] : missing.slice(0, 3);
+      return out({ next: 'collecting', actions: [...first, { type: 'ask', slots }], draft_patch: { kind, fields: { ...fields, _asks: asked + 1 } }, draft_replace: replace, failed: 'reset' });
+    }
+    const route = groupRoute(kind, fields, ctx.group_min_rooms);
+    const routed = { ...fields, _routed: true, _route: route };
+    if (route === 'sales') {
+      t.push('T3b');
+      return out({ next: 'inquiry', actions: [...first, { type: 'partner_enquiry', kind }], draft_patch: { kind, fields: routed }, draft_replace: replace, failed: 'reset' });
+    }
+    t.push(state === 'new' ? 'T2' : 'T21');
+    return out({ next: 'human', actions: [...first, handoff('multi_room', 'multi_room', { intent: 'stay_booking', slots: routed, stopped: state })],
+      draft_patch: { kind, fields: routed }, draft_replace: replace, reason: 'multi_room', failed: 'reset' });
   }
   // H8: collect the details, then the partner enquiry (T3 → T3b)
   const fields = mergeFields(input.draft?.kind === kind ? input.draft.fields : {}, u, input.ctx.unit_branch, input.ctx.unit_kind);
@@ -690,12 +750,14 @@ export const INTENT_LABELS: Record<string, string> = {
 const SLOT_LABELS: Record<string, string> = {
   branch: 'الفرع', check_in: 'الوصول', check_out: 'المغادرة', nights: 'الليالي', room_type: 'الغرفة', adults: 'البالغون', children: 'الأطفال',
   child_ages: 'أعمار الأطفال', extra_beds: 'أسرّة إضافية', breakfast: 'الإفطار', rooms_count: 'الغرف', booking_ref: 'رقم الحجز',
+  // 15 Nov 2026: the group / hall details the assistant collected
+  guest_name: 'الاسم', organisation: 'الجهة', layout: 'ترتيب القاعة', coffee_break: 'استراحة قهوة',
 };
 const BRANCH_AR: Record<string, string> = { 'airport-road': 'طريق المطار', 'shafa-road': 'طريق الشفا', both: 'الفرعان' };
 export function handoffNote(note: { intent: string; slots: Record<string, unknown>; stopped: string }, lastAction: string): string {
   const slots = Object.entries(note.slots)
     .filter(([k]) => SLOT_LABELS[k])
-    .map(([k, v]) => `${SLOT_LABELS[k]}: ${k === 'branch' ? BRANCH_AR[String(v)] ?? v : k === 'breakfast' ? (v === 'with' ? 'مع الإفطار' : 'بدون إفطار') : Array.isArray(v) ? v.join('، ') : v}`)
+    .map(([k, v]) => `${SLOT_LABELS[k]}: ${k === 'branch' ? BRANCH_AR[String(v)] ?? v : k === 'breakfast' ? (v === 'with' ? 'مع الإفطار' : 'بدون إفطار') : k === 'coffee_break' ? (v ? 'نعم' : 'لا') : Array.isArray(v) ? v.join('، ') : v}`)
     .join(' · ');
   return `يريد: ${INTENT_LABELS[note.intent] ?? note.intent}${slots ? ` — ${slots}` : ''}\nتوقف عند: ${STATE_LABELS[note.stopped] ?? note.stopped} — ${lastAction}`;
 }

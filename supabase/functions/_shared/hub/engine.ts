@@ -17,6 +17,7 @@ import { guard, retryReason } from './guard.ts';
 import { costOf, type Layer, type ModelFn, type ModelResult } from './model.ts';
 import { isCartMessage, usableSkills } from './skills/index.ts';
 import type { InventoryAdapter } from './adapter/index.ts';
+import { makeRef } from '../ref.ts';
 import {
   SENSITIVE, TRANSCRIBE_MODEL, TRANSCRIBE_PROMPT, VOICE_LANGUAGES, VOICE_MAX_SECONDS, audioSeconds, imageLine, mediaGate, mediaLine, parseVision, problemLineOk,
   transcriptVerdict, visionSystem, visionUser, type MediaResult, type MediaRoute, type TranscribeResult, type Vision,
@@ -99,6 +100,9 @@ export interface Finish {
   media?: MediaResult[];
   /** H7: the transcriptions made (hub_usage_daily layer transcribe, per minute) */
   audio?: { model: string; seconds: number; ok: boolean; error?: string }[];
+  /** 15 Nov 2026 (Ahmed): a group or hall request for sales — the partner enquiry to store and email (hub-agent:
+   *  public.hub_partner_from_turn → the sales email), or the details added to one already sent (update) */
+  partner?: { ref: string; kind: 'hall' | 'group'; fields: Record<string, unknown>; update: boolean } | null;
 }
 export interface Outcome {
   finish: Finish;
@@ -480,7 +484,9 @@ export async function runTurn(claim: Json, deps: Deps): Promise<Outcome> {
           // «بانتظار موظف» (H6c): a further request joins the same hand-off — the model's short acknowledgement (never the
           // fixed notice again), a note line for the team, no new staff alert
           // a problem photo's acknowledgement was just written: no second line (H7)
-          if (!ackDone) {
+          // a group request routed once with its details (15 Nov 2026): its own fixed line — never «أيضًا»
+          if (!ackDone && a.note.slots?._routed) push(fixed('multi_room', L), { handoff: true });
+          else if (!ackDone) {
             const c = await compose(emptyPayload(), 'handoff_ack');
             if (c === 'credit') return null;
             const body = c === 'guard' || c === 'error' || !c.reply ? fixed('handoff_added', L) : stripOpening(c.reply) || fixed('handoff_added', L);
@@ -491,6 +497,26 @@ export async function runTurn(claim: Json, deps: Deps): Promise<Outcome> {
           if (a.reason === 'no_source') gap();
           handoffAdd = true;
           lastAction = 'أُضيف طلب إلى التحويل';
+          break;
+        }
+        case 'partner_enquiry': {
+          // a group or the hall for sales (15 Nov 2026): ONE confirmation with the request's reference and the sales
+          // contacts from content; the enquiry row and the sales email are hub-agent's (never in a test run)
+          const ref = makeRef();
+          const f = { ...(dec.draft_patch?.fields ?? {}), _ref: ref };
+          if (dec.draft_patch) dec.draft_patch = { ...dec.draft_patch, fields: f };
+          push(fixed('group_sales_ack', L, { ref, sales_phone: String(deps.content.sales_phone_display ?? ''), sales_email: String(deps.content.sales_email ?? '') }));
+          out.finish.partner = { ref, kind: a.kind, fields: publicFields(f), update: false };
+          note = `طلب للمبيعات برقم ${ref} — ${handoffNote({ intent: a.kind === 'hall' ? 'hall_request' : 'group_request', slots: f, stopped: 'collecting' }, 'أُرسل للمبيعات')}`;
+          lastAction = 'أُرسل الطلب للمبيعات';
+          break;
+        }
+        case 'request_update': {
+          // a detail for a request already sent: that request updated, one short fixed line (never a new hand-off)
+          push(fixed('request_updated', L));
+          if (a.route === 'sales' && typeof a.fields._ref === 'string') out.finish.partner = { ref: a.fields._ref, kind: a.kind, fields: publicFields(a.fields), update: true };
+          note = `تحديث الطلب — ${handoffNote({ intent: a.kind === 'hall' ? 'hall_request' : 'group_request', slots: a.fields, stopped: 'inquiry' }, 'أُضيفت تفاصيل')}`;
+          lastAction = 'أُضيفت تفاصيل إلى الطلب';
           break;
         }
         case 'tag_order':
@@ -650,6 +676,11 @@ export async function runTurn(claim: Json, deps: Deps): Promise<Outcome> {
   // answered: a composed answer went into the reply (a mixed message's answer included); gap: «لم أعرف الإجابة» was fed
   finish.decision = { actions: final.actions.map((a) => a.type), chat: (final.actions.find((a) => a.type === 'chat') as Extract<Action, { type: 'chat' }> | undefined)?.mode ?? null, next: final.next, reason: final.reason ?? null, transitions: final.transitions, answered, gap: unanswered.length > 0, ...(phase ? { phase } : {}) };
   return out;
+}
+
+/** a request's details without the machine's own keys (_asks, _routed, _route, _ref, _umrah) */
+export function publicFields(f: Record<string, unknown>): Record<string, unknown> {
+  return Object.fromEntries(Object.entries(f).filter(([k, v]) => !k.startsWith('_') && v !== null && v !== undefined && v !== ''));
 }
 
 /** the website's booking link (copy.md §4.0): from the card «روابط الموقع» (k-website-links), else the site's own address */

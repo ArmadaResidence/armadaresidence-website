@@ -55,6 +55,8 @@ const COPY_CASES = {
   'Early check-in or extension': 'early_extension',
   'Voice note, image, file, location': 'media',
   'Hall or group request received': 'hall_group_ack',
+  'Group or hall request sent to sales, with the sales contacts (15 Nov 2026, Ahmed — the details collected first, one confirmation)': 'group_sales_ack',
+  'A detail added to a group or hall request already sent (15 Nov 2026 — never a new hand-off)': 'request_updated',
   'Menu link': 'menu_link',
   'Booking status (same phone only)': 'booking_status',
   "Outside Armada's services": 'out_of_scope',

@@ -497,6 +497,8 @@ def generate_function_content(content: dict[str, dict], fees: dict) -> None:
         # sales line for the partner confirmation's WhatsApp link (public number). Recipient addresses are
         # never generated here: they live only in Supabase booking_notification_recipients.
         "sales_phone_display": contact["sales"]["phone_display"],
+        # 15 Nov 2026 (Guest Hub): the sales email the assistant gives with a group or hall request
+        "sales_email": contact["sales"]["email"],
         "sales_whatsapp": contact["sales"]["whatsapp"],
         # partner-form labels and request-type names for the reception email (Arabic) and confirmation
         "partner_labels": {loc: {k: v[loc] for k, v in content["partners-pages.json"]["form"]["fields"].items()} for loc in ("ar", "en")},

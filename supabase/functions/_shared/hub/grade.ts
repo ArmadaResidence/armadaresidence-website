@@ -117,9 +117,8 @@ export function expectedAction(item: Item, skills: string[]): { action: string; 
   if (a === 'ask' && /يبدأ من/.test(item.note ?? '')) return { action: 'answer', applies: false };
   // a Hijri date is answered by code with copy.md §2.2 (H5 — the understanding's dates_calendar), whatever the skills
   if (a === 'ask' && /hijri/i.test(item.note ?? '')) return { action: 'fixed', applies: false };
-  // a hall or group request still goes to the team while its skill is off (H8)
-  if (a === 'ask' && /hall_request/.test(item.note ?? '') && !skills.includes('hall_request')) return { action: 'handoff', applies: false };
-  if (a === 'ask' && /group_request/.test(item.note ?? '') && !skills.includes('group_request')) return { action: 'handoff', applies: false };
+  // 15 Nov 2026 (Ahmed): a hall or group request collects its details in the chat whatever the H8 skills say — the bank's
+  // «ask» is graded as written (it was «handoff» while the request went to the team at once)
   // H6 pass 5 (Ahmed, 15 Nov 2026): before H8 a stay is collected and quoted in the chat (copy.md §4.0) — the summary and
   // the booking itself are H8's, so a summary expectation is met by the quote with the website's link
   if (!booking && a === 'send_summary') return { action: 'quote', applies: false };

@@ -28,7 +28,7 @@
 // Secrets: ANTHROPIC_API_KEY (label-suggest's), YCLOUD_API_KEY, RESEND_API_KEY; SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY.
 import content from '../booking-request/content.generated.json' with { type: 'json' };
 import { buttonsPayload, sendSession, textPayload, type WaResult } from '../booking-request/whatsapp-send.ts';
-import { hubApiCreditMail, hubBudgetMail, hubComplaintMail, hubFlaggedMail, hubModelErrorMail, hubSpikeMail, hubVoiceCapMail, longDate } from '../booking-request/email.ts';
+import { hubApiCreditMail, hubBudgetMail, hubComplaintMail, hubFlaggedMail, hubModelErrorMail, hubSpikeMail, hubVoiceCapMail, longDate, partnerNotification, type PartnerMail } from '../booking-request/email.ts';
 import { sarText } from '../booking-request/rules.ts';
 import { typingUrl } from '../_shared/hub/send.ts';
 import { runTurn, type Deps, type Outcome } from '../_shared/hub/engine.ts';
@@ -349,6 +349,20 @@ async function process(turnId: string, model: ModelFn, deadline: number): Promis
   }
   await typingP;
   const sent = await sendAll(fin, early);
+  // 15 Nov 2026 (Ahmed): a group or hall request for sales, collected in the chat → ONE partner enquiry (its row, the guest's
+  // number from the profile) and the existing sales email; a later detail updates the same enquiry. Never in a test run.
+  const partner = outcome.finish.partner;
+  if (partner && claim.turn.mode !== 'test' && !claim.conversation?.is_test) {
+    const pr = await rpc<Json>('hub_partner_from_turn', { p_turn: turnId, p: partner }).catch((e) => {
+      console.error('hub-agent: partner enquiry not stored', String(e).slice(0, 80));
+      return null;
+    });
+    if (pr?.mail) {
+      const to = [...new Set([...((pr.to ?? []) as string[]), ...((pr.cc ?? []) as string[])])];
+      const ok = await mail(to, partnerNotification(content, pr.mail as PartnerMail));
+      console.log('hub-agent: partner enquiry', partner.kind, ok ? 'emailed' : 'email not sent');
+    }
+  }
   // H6c: a new hand-off queued its staff alert (hub_staff_alert to the on-shift slots): sent now, from the branch's number
   if (fin?.alerts) await drainStaff((n, a) => rpc(n, a), content).catch((e) => console.error('hub-agent: staff alerts', String(e).slice(0, 80)));
   // the model could not be reached for this turn (after model.ts's retries): the turn went to the team with the no-source
