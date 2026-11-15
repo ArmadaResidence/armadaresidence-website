@@ -17,6 +17,10 @@ import { guard, retryReason } from './guard.ts';
 import { costOf, type Layer, type ModelFn, type ModelResult } from './model.ts';
 import { isCartMessage, usableSkills } from './skills/index.ts';
 import type { InventoryAdapter } from './adapter/index.ts';
+import {
+  SENSITIVE, TRANSCRIBE_MODEL, TRANSCRIBE_PROMPT, VOICE_LANGUAGES, VOICE_MAX_SECONDS, audioSeconds, imageLine, mediaGate, mediaLine, parseVision, problemLineOk,
+  transcriptVerdict, visionSystem, visionUser, type MediaResult, type MediaRoute, type TranscribeResult, type Vision,
+} from './media.ts';
 
 // deno-lint-ignore no-explicit-any
 type Json = any;
@@ -34,6 +38,17 @@ export interface Deps {
   forbidden?: string[];
   longDate: (iso: string, L: Lang) => string;
   sarText: (amount: number, L: Lang) => string;
+  /** H7: voice notes and images — absent = every voice note and image goes to the team as before */
+  media?: MediaDeps;
+}
+
+/** H7: the media of a turn — the file, the transcription (OpenAI), and optionally a recorded classification */
+export interface MediaDeps {
+  /** the file's bytes: hub-media (live), the upload («المحاكي»), or a recorded fixture; null = not stored or unreadable */
+  load: (m: Json) => Promise<{ bytes: Uint8Array; mime: string } | null>;
+  transcribe: (f: { bytes: Uint8Array; mime: string }, o: { model: string; languages?: string[]; prompt?: string }) => Promise<TranscribeResult>;
+  /** a recorded classification (the test lab, the fixtures): skips the vision call */
+  classify?: (m: Json) => Promise<Vision | null | undefined>;
 }
 
 export interface OutMsg {
@@ -80,6 +95,10 @@ export interface Finish {
   /** H6c: the staff alert's «المطلوب» line (the model's, checked) and the booking ref or room the guest gave */
   handoff_summary?: string | null;
   handoff_ref?: string | null;
+  /** H7: what each voice note / image of the turn became (stored on hub_messages; never a screenshot's reading) */
+  media?: MediaResult[];
+  /** H7: the transcriptions made (hub_usage_daily layer transcribe, per minute) */
+  audio?: { model: string; seconds: number; ok: boolean; error?: string }[];
 }
 export interface Outcome {
   finish: Finish;
@@ -121,7 +140,7 @@ export async function runTurn(claim: Json, deps: Deps): Promise<Outcome> {
   const prices = set.prices ?? {};
   const turnKind: 'reply' | 'tag' = claim.turn.kind;
   const msgs: Json[] = claim.messages ?? [];
-  const texts = msgs.map((m) => String(m.body ?? '')).filter((x) => x.trim());
+  let texts = msgs.map((m) => String(m.body ?? '')).filter((x) => x.trim());
   const finish: Finish = { status: 'done', models: [], guard_refusals: [], topics: [], failed: 'keep', messages: [] };
   const out: Outcome = { finish, complaint: false, credit: null, model_error: null };
   let L: Lang = conv.language === 'en' ? 'en' : 'ar';
@@ -168,13 +187,18 @@ export async function runTurn(claim: Json, deps: Deps): Promise<Outcome> {
     }
   }
 
+  // ── H7: voice notes and images — transcribed / classified first (each behind its unit switch) ──
+  const prep = await prepareMedia(claim, msgs, deps, finish, record, L);
+  texts = prep.texts;
+
   // ── what kind of turn: media, a /menu/ cart message, our own button, or text ──
-  const kinds = msgs.map((m) => String(m.kind));
+  const kinds = msgs.filter((m) => !prep.resolved.has(m.id)).map((m) => String(m.kind));
   // our own button by its id — or the guest typing a button's title (H6 pass 5: the same result)
   const buttonId = msgs.map((m) => m.payload?.button_id).find((x) => typeof x === 'string' && x.startsWith('hub')) ??
     (texts.length === 1 ? buttonForText(texts[0], unit.kind) : null);
-  const media = kinds.some((k) => MEDIA.has(k)) && !texts.length;
-  const silent = !media && !texts.length && kinds.length > 0 && kinds.every((k) => SILENT.has(k));
+  const media = !!prep.route || (kinds.some((k) => MEDIA.has(k)) && !texts.length);
+  const sticker = !media && prep.sticker && !texts.length;
+  const silent = !media && !sticker && !texts.length && kinds.length > 0 && kinds.every((k) => SILENT.has(k));
   const cart = unit.kind === 'dining' && texts.some(isCartMessage);
 
   // ── 1. understand (also for tagging while the conversation is with staff) ──
@@ -257,7 +281,10 @@ export async function runTurn(claim: Json, deps: Deps): Promise<Outcome> {
     human_phase: phase,
   };
   const draft: Draft | null = claim.draft ? { id: claim.draft.id, kind: claim.draft.kind, version: claim.draft.version, fields: claim.draft.fields ?? {}, quote: claim.draft.quote } : null;
-  const ev: Event = { type: 'guest', understanding: u, kind: silent ? 'reaction' : media ? 'media' : buttonId ? 'button' : 'text', button_id: buttonId, cart };
+  const ev: Event = { type: 'guest', understanding: u, kind: silent ? 'reaction' : media ? 'media' : sticker ? 'sticker' : buttonId ? 'button' : 'text', button_id: buttonId, cart,
+    media: prep.route ? { reason: prep.route.reason, ...(prep.route.priority ? { priority: prep.route.priority } : {}), ...(prep.route.ack ? { ack: true } : {}) } : null };
+  // a problem photo's acknowledgement reads the photo's staff line with the caption (never an identity or payment image)
+  if (prep.route?.reason === 'problem_photo') texts = [...prep.captions, L === 'en' ? `[A photo of a problem: ${prep.route.summary}]` : `[صورة لمشكلة: ${prep.route.summary}]`];
   let d = decide({ state: conv.state as State, event: ev, draft, ctx });
   // a resumed turn decides as the flow before the hand-off; what follows it is an ordinary turn (H6c)
   if (phase === 'resume') ctx.human_phase = null;
@@ -280,6 +307,7 @@ export async function runTurn(claim: Json, deps: Deps): Promise<Outcome> {
     return sal && !answers.length ? fixed('salaam_line', 'ar') : null;
   };
   let noQuote = false;
+  let ackDone = false;
   const t2 = (x: string) => d.transitions.push(x);
   const emptyPayload = (): Payload => buildPayload({ cards: [], faq: [] }, { offers: null, venue: null, first_name: claim.guest?.first_name ?? null, cancellation: String(deps.content.cancellation_line[L]) });
   const unanswered: string[] = [];
@@ -380,6 +408,16 @@ export async function runTurn(claim: Json, deps: Deps): Promise<Outcome> {
           break;
         }
         case 'chat': {
+          if (a.mode === 'problem_ack') {
+            // H7: a problem photo — one short sentence written by the model (sorry, the team has the photo), never a
+            // diagnosis or a time; the fixed line of copy.md when the model cannot be used; the hand-off notice follows
+            const c = await compose(emptyPayload(), 'problem_ack');
+            if (c === 'credit') return null;
+            push(c === 'guard' || c === 'error' || !c.reply ? fixed('problem_ack', L) : stripOpening(c.reply) || fixed('problem_ack', L));
+            ackDone = true;
+            lastAction = 'أُرسل إقرار بصورة المشكلة';
+            break;
+          }
           // small talk, a clarifying question or the redirect — written by the model with no fact (Ahmed, 15 Nov 2026);
           // the fixed line of copy.md only when the model cannot be used or its reply is refused
           const c = await compose(emptyPayload(), a.mode);
@@ -436,10 +474,13 @@ export async function runTurn(claim: Json, deps: Deps): Promise<Outcome> {
         case 'handoff_add': {
           // «بانتظار موظف» (H6c): a further request joins the same hand-off — the model's short acknowledgement (never the
           // fixed notice again), a note line for the team, no new staff alert
-          const c = await compose(emptyPayload(), 'handoff_ack');
-          if (c === 'credit') return null;
-          const body = c === 'guard' || c === 'error' || !c.reply ? fixed('handoff_added', L) : stripOpening(c.reply) || fixed('handoff_added', L);
-          push(body, { handoff: true });
+          // a problem photo's acknowledgement was just written: no second line (H7)
+          if (!ackDone) {
+            const c = await compose(emptyPayload(), 'handoff_ack');
+            if (c === 'credit') return null;
+            const body = c === 'guard' || c === 'error' || !c.reply ? fixed('handoff_added', L) : stripOpening(c.reply) || fixed('handoff_added', L);
+            push(body, { handoff: true });
+          }
           note = `إضافة إلى التحويل — ${handoffNote(a.note, lastAction)}`;
           if (a.reason === 'complaint') out.complaint = true;
           if (a.reason === 'no_source') gap();
@@ -462,7 +503,7 @@ export async function runTurn(claim: Json, deps: Deps): Promise<Outcome> {
 
   type Composed = { reply: string; used_card_ids: string[]; unanswered: string[] };
   // a reply with no fact (chat, clarify, redirect, ask) has a fixed fallback: the model being down never hands it off
-  const compose = async (payload: Payload, action: 'answer' | 'ask' | 'chat' | 'clarify' | 'redirect' | 'handoff_ack' = 'answer', askFor?: string[]): Promise<Composed | 'credit' | 'guard' | 'error'> => {
+  const compose = async (payload: Payload, action: 'answer' | 'ask' | 'chat' | 'clarify' | 'redirect' | 'handoff_ack' | 'problem_ack' = 'answer', askFor?: string[]): Promise<Composed | 'credit' | 'guard' | 'error'> => {
     const soft = action !== 'answer';
     if (composeDown) return 'error';
     const model = String(models.compose ?? 'claude-sonnet-5-5');
@@ -587,11 +628,14 @@ export async function runTurn(claim: Json, deps: Deps): Promise<Outcome> {
   if (phase === 'resume' && final.next !== 'human') finish.reason = final.reason ?? 'resume';
   // the staff alert of a NEW hand-off: its «المطلوب» line (Haiku, prompts.md §8 — checked, else the code's line from the
   // reason) and the booking ref or room the guest gave; never in a test run (no alert reaches a team)
+  // H7: a media hand-off's line is the code's (copy.md §5.2) or the problem photo's checked line — no model call, also in a
+  // test run (the lab grades it; no alert reaches a team in test mode)
+  if (final.next === 'human' && prep.route) finish.handoff_summary = prep.route.summary;
   if (final.next === 'human' && claim.turn.mode !== 'test') {
     finish.handoff_ref = refOrRoom(u?.booking_ref ?? null, texts);
     const newHandoff = conv.state !== 'human' || phase === 'resume';
     const line = (note ?? '').split(String.fromCharCode(10))[0];
-    if (newHandoff && texts.length && line) {
+    if (!prep.route && newHandoff && texts.length && line) {
       const model = String(models.understand ?? 'claude-haiku-5-5');
       const r = await deps.model({ layer: 'summary', model, system: summarySystem(), user: summaryUser(line, texts) });
       record('summary', model, r);
@@ -613,3 +657,157 @@ export function bookingUrl(k: { cards: Json[] }, L: Lang): string {
 
 /** in live mode, a message waits for one tap unless its topics are licensed (the database decides with `licensed`) */
 export const isLive = (mode: string) => mode === 'live';
+
+// ═══════════════════════════════════════════ H7: voice notes and images ═══════════════════════════════════════════
+
+export interface MediaPrep {
+  /** the turn's text: typed messages, transcripts, captions and the readings of resolved images, in order */
+  texts: string[];
+  /** the captions of the turn's images (a problem photo's acknowledgement reads them) */
+  captions: string[];
+  /** a voice note / image the turn hands to the team instead of answering */
+  route: MediaRoute | null;
+  /** the ids of the media messages handled here (no longer «media» for the kind rules) */
+  resolved: Set<string>;
+  /** a sticker read like an emoji (only with «الصور» on) */
+  sticker: boolean;
+}
+
+/** the order in which a hand-off route wins: an identity or payment image over a problem photo over a failure */
+const ROUTE_RANK: Record<MediaRoute['reason'], number> = { id_document: 4, problem_photo: 3, voice_failed: 2, image_failed: 2, voice_too_long: 1, voice_capped: 1 };
+
+/**
+ * Each voice note (with «الفويس» on) → the file → its length → the 5-minute rule and the unit's daily minutes →
+ * gpt-transcribe → the transcript is the guest's text; each image (with «الصور» on) → the file → ONE vision call that
+ * classifies it first. The results go to finish.media (stored by hub_turn_finish: the transcript, the length, the category —
+ * never a reading) and finish.audio (the minutes, counted apart from the Claude budget). Never throws.
+ */
+export async function prepareMedia(
+  claim: Json, msgs: Json[], deps: Deps, finish: Finish, record: (layer: Layer, model: string, r: ModelResult) => void, L: Lang,
+): Promise<MediaPrep> {
+  const gate = mediaGate(claim);
+  const out: MediaPrep = { texts: [], captions: [], route: null, resolved: new Set(), sticker: false };
+  const results: MediaResult[] = [];
+  const models = claim.settings?.models ?? {};
+  const forbidden: string[] = deps.forbidden ?? claim.forbidden ?? [];
+  let left = gate.voice_left_seconds ?? 0;
+  const setRoute = (r: MediaRoute) => {
+    if (!out.route || ROUTE_RANK[r.reason] > ROUTE_RANK[out.route.reason]) out.route = r;
+  };
+  const voiceFail = (id: string, status: MediaResult['status'], seconds: number | null = null) => {
+    results.push({ id, kind: 'audio', status, seconds });
+    setRoute({ reason: 'voice_failed', summary: mediaLine('voice_failed') });
+  };
+  for (const m of msgs) {
+    const kind = String(m.kind);
+    const body = String(m.body ?? '').trim();
+    if (kind === 'audio' && gate.voice && deps.media) {
+      out.resolved.add(m.id);
+      // a retried turn: the note was transcribed already (hub_messages.transcript)
+      if (typeof m.transcript === 'string' && m.transcript.trim()) {
+        out.texts.push(m.transcript.trim());
+        continue;
+      }
+      const f = await deps.media.load(m).catch(() => null);
+      if (!f || !f.bytes.length) {
+        voiceFail(m.id, 'failed_download');
+        continue;
+      }
+      const len = audioSeconds(f.bytes, f.mime);
+      const secs = Math.round(len.seconds * 100) / 100;
+      if (len.seconds > VOICE_MAX_SECONDS) {
+        results.push({ id: m.id, kind: 'audio', status: 'too_long', seconds: secs });
+        setRoute({ reason: 'voice_too_long', summary: mediaLine('voice_too_long') });
+        continue;
+      }
+      if (len.seconds > left) {
+        results.push({ id: m.id, kind: 'audio', status: 'voice_capped', seconds: secs });
+        setRoute({ reason: 'voice_capped', summary: mediaLine('voice_capped') });
+        continue;
+      }
+      const model = String(models.transcribe ?? TRANSCRIBE_MODEL);
+      const tr = await deps.media.transcribe(f, { model, languages: VOICE_LANGUAGES, prompt: TRANSCRIBE_PROMPT }).catch(
+        (): TranscribeResult => ({ ok: false, text: '', languages: [], seconds: null, latency_ms: 0, error: 'other' }));
+      const billed = Math.max(0, Number(tr.seconds ?? len.seconds) || 0);
+      (finish.audio ??= []).push({ model, seconds: Math.round(billed * 100) / 100, ok: tr.ok, ...(tr.error ? { error: tr.error } : {}) });
+      if (!tr.ok) {
+        voiceFail(m.id, 'failed_transcribe', secs);
+        continue;
+      }
+      left -= billed;
+      const v = transcriptVerdict(tr);
+      if (!v.ok) {
+        voiceFail(m.id, v.status, secs);
+        continue;
+      }
+      const transcript = tr.text.trim().slice(0, 8000);
+      results.push({ id: m.id, kind: 'audio', status: 'transcribed', transcript, seconds: secs, language: v.language });
+      out.texts.push(transcript);
+      continue;
+    }
+    if (kind === 'image' && gate.images && deps.media) {
+      out.resolved.add(m.id);
+      if (body) out.captions.push(body);
+      // a recorded classification (undefined = none recorded: the real vision call)
+      let vis: Vision | null | undefined = deps.media.classify ? await deps.media.classify(m).catch(() => null) : undefined;
+      if (vis === undefined) {
+        vis = null;
+        const f = await deps.media.load(m).catch(() => null);
+        if (!f || !f.bytes.length) {
+          results.push({ id: m.id, kind: 'image', status: 'failed_download' });
+          setRoute({ reason: 'image_failed', summary: mediaLine('image_failed') });
+          continue;
+        }
+        const mime = /^image\/(jpeg|png|webp|gif)$/.test(f.mime) ? f.mime : null;
+        // Claude reads JPEG, PNG, WebP and GIF of at most 5 MB
+        if (mime && f.bytes.length <= 5 * 1024 * 1024) {
+          const model = String(models.vision ?? models.understand ?? 'claude-haiku-5-5');
+          const r = await deps.model({ layer: 'vision', model, system: visionSystem(), user: visionUser(body, claim.conversation?.language ?? L),
+            images: [{ media_type: mime, data: b64(f.bytes) }] });
+          record('vision', model, r);
+          if (r.ok) vis = parseVision(r.text);
+        }
+      }
+      if (!vis) {
+        results.push({ id: m.id, kind: 'image', status: 'failed_vision' });
+        setRoute({ reason: 'image_failed', summary: mediaLine('image_failed') });
+        continue;
+      }
+      results.push({ id: m.id, kind: 'image', status: 'classified', category: vis.category });
+      if (SENSITIVE.has(vis.category)) {
+        // an identity or payment image: the team, nothing read or kept from it, never to compose; the caption stays out too
+        setRoute({ reason: 'id_document', summary: mediaLine('id_document') });
+        continue;
+      }
+      if (vis.category === 'problem') {
+        setRoute({ reason: 'problem_photo', priority: 'high', ack: true, summary: problemLineOk(vis.problem_line, forbidden) ? vis.problem_line : mediaLine('problem_photo') });
+        continue;
+      }
+      // a screenshot, a room or place, anything else: read with the caption and the conversation (the understanding decides;
+      // an unclear one gets one clarifying question)
+      if (body) out.texts.push(body);
+      const line = imageLine(vis, claim.conversation?.language === 'en' ? 'en' : L);
+      if (line) out.texts.push(line);
+      else if (!body) out.texts.push(L === 'en' ? '[The guest sent a photo]' : '[أرسل الضيف صورة]');
+      continue;
+    }
+    if (kind === 'sticker' && gate.images) {
+      out.resolved.add(m.id);
+      out.sticker = true;
+      continue;
+    }
+    if (body) out.texts.push(body);
+  }
+  // an identity or payment image never lets its turn's words reach compose (only the hand-off notice goes)
+  if (out.route?.reason === 'id_document') out.texts = [];
+  if (results.length) finish.media = results;
+  return out;
+}
+
+/** base64 of bytes (no Buffer: Deno and Node alike) */
+export function b64(bytes: Uint8Array): string {
+  let s = '';
+  const CH = 0x8000;
+  for (let i = 0; i < bytes.length; i += CH) s += String.fromCharCode(...bytes.subarray(i, i + CH));
+  return btoa(s);
+}

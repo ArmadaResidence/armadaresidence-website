@@ -189,6 +189,11 @@ export function faultsText(data: Json): string {
   const budget = n(data?.budget_alerts);
   if (model) parts.push(`فشل النموذج ${model}`);
   if (send) parts.push(`فشل الإرسال ${send}`);
+  // H7: the voice notes and images that failed (download, transcription, an empty or unknown-language note, the vision call)
+  const voice = sum('voice_failures');
+  const image = sum('image_failures');
+  if (voice) parts.push(`فشل الصوت ${voice}`);
+  if (image) parts.push(`فشل الصور ${image}`);
   if (budget) parts.push(`تنبيه الميزانية ${budget}`);
   return parts.length ? parts.join(' · ') : 'لا يوجد';
 }

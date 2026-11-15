@@ -88,6 +88,10 @@ const THREAD = (r, edit) => ({
     // H6 gaps: a message sent from the phone, and an automatic one already recognised («رسالة تلقائية من الجوال»)
     msg(10, 'out', 'phone', 'مرحبًا بك في أرمادا ريزيدنس، سنرد عليك قريبًا.', { status: 'sent' }),
     msg(11, 'out', 'phone_auto', 'نحن خارج أوقات العمل الآن.', { status: 'sent' }),
+    // H7: a voice note with its transcript («تفريغ صوتي»), an image with its category, a voice note that could not be transcribed
+    msg(12, 'in', 'guest', null, { kind: 'audio', media_path: 'airport-road/x/v.ogg', media_mime: 'audio/ogg', transcript: 'هل عندكم مواقف للسيارات؟', transcript_seconds: 6.4, media_status: 'transcribed' }),
+    msg(13, 'in', 'guest', 'المكيف', { kind: 'image', media_path: 'airport-road/x/p.jpg', media_mime: 'image/jpeg', media_category: 'problem', media_status: 'classified' }),
+    msg(14, 'in', 'guest', null, { kind: 'audio', media_path: 'airport-road/x/f.ogg', media_mime: 'audio/ogg', media_status: 'failed_transcribe' }),
   ],
   templates: [{ source: 'booking', template: 'booking_confirmed', meta_template: 'booking_confirmed_v2', status: 'read', ref: 'AR-20261020-ABCD', branch: 'airport-road', language: 'ar', at: ago(10000) }],
   events: [{ kind: 'state', from: null, to: 'human', reason: 'assistant_off', at: ago(40), actor: null }],
@@ -291,8 +295,14 @@ for (const [role, level] of [['reception', 'edit'], ['management', 'view']]) {
           await page.locator(`[data-msg="${id(503)}"] [data-action="retry"]`).click();
           await page.waitForTimeout(300);
           check(calls.some((c) => c.fn === 'hub-admin' && c.body?.action === 'retry' && c.body.message === id(503)), `${tag}: «إعادة الإرسال» → hub-admin retry`);
-          // media through a signed link
-          await page.locator('[data-action="media"]').first().click();
+          // H7: the image and the voice notes inline (signed links), «تفريغ صوتي», the category, a failure's label
+          check((await page.locator('[data-inline-image]').count()) >= 2 && (await page.locator('[data-inline-audio]').count()) === 2, `${tag}: images and voice notes shown inline`);
+          check((await page.locator(`[data-msg="${id(512)}"] [data-msg-transcript]`).innerText()).includes('تفريغ صوتي') && (await page.locator(`[data-msg="${id(512)}"] [data-msg-transcript]`).innerText()).includes('هل عندكم مواقف'),
+            `${tag}: the voice note's transcript labelled «تفريغ صوتي»`);
+          check((await page.locator(`[data-msg="${id(513)}"] [data-media-category="problem"]`).innerText()).includes('صورة مشكلة'), `${tag}: the image's category «صورة مشكلة»`);
+          check((await page.locator(`[data-msg="${id(514)}"] [data-media-status="failed_transcribe"]`).innerText()).includes('تعذّر التفريغ'), `${tag}: a failed voice note says «تعذّر التفريغ»`);
+          // media through a signed link: the inline image opens the viewer
+          await page.locator('[data-inline-image]').first().click();
           await page.locator('[data-media-viewer]').waitFor({ timeout: 5000 }).catch(() => {});
           check(await visible(page, '[data-media-viewer] img'), `${tag}: «عرض الوسائط» opens the viewer (a signed link)`);
           await page.keyboard.press('Escape');

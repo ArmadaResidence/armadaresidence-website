@@ -1745,6 +1745,18 @@ export function hubModelErrorMail(c: Content, d: HubModelErrorMail): Mail {
   return hubPlainMail(c, subject, [line, M.next], hubAdmin(c, '/assistant'), M.button);
 }
 
+/** «حد الرسائل الصوتية اليومي» (copy.md §7, H7 — the session's wording): a unit's transcribed voice minutes reached the daily cap
+ *  (Settings hub_voice_daily_minutes); once per unit and Riyadh day. Codes and counts only. */
+export interface HubVoiceCapMail { unit_name: string; minutes: number; at: string; test?: boolean }
+export function hubVoiceCapMail(c: Content, d: HubVoiceCapMail): Mail {
+  const M = c.staff_email.ar.hub_voice_cap;
+  const D = c.staff_email.ar.deploy_alert;
+  const subject = `${d.test ? D.test_prefix : ''}${fill(M.subject, { unit_name: d.unit_name, yyyymmdd: hubDay(d.at) })}`;
+  const n = Math.max(0, Math.round(d.minutes));
+  const minutes = n === 1 ? 'دقيقة واحدة' : n === 2 ? 'دقيقتان' : n % 100 >= 3 && n % 100 <= 10 ? `${n} دقائق` : `${n} دقيقة`;
+  return hubPlainMail(c, subject, [fill(M.lead, { unit_name: d.unit_name, minutes }), M.next], hubAdmin(c, '/assistant'), M.button);
+}
+
 export function hubSpikeMail(c: Content, d: HubSpikeMail): Mail {
   const M = c.staff_email.ar.hub_spike;
   const D = c.staff_email.ar.deploy_alert;

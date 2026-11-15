@@ -32,7 +32,7 @@ import { BRANCH_NAMES, ROLE_LABELS, riyadhDateTime, west } from '../lib/format';
 import {
   ALERT_LABELS, CATEGORY_LABELS, EMAIL_RE, KIND_LABELS, LANGUAGE_LABELS, LAYER_LABELS, MODEL_LABELS, MODES, MODE_LABELS, NOT_YET, SOURCE_LABELS, STATUS_LABELS, SWITCHES,
   WEBHOOK_EVENTS, budgetLine, budgetOverview, eligible, gateText, gatesOf, usd, type BudgetOverview,
-  channelSendingSet, membersSet, modeSet, overview, phoneText, qualityText, readWebhookEvents, recipientsSet, refreshTemplates, settingSet, templateStatus, unitSave, updateWebhookEvents, verifyChannel, verifyError,
+  MEDIA_SWITCHES, mediaSet, minutesOf, channelSendingSet, membersSet, modeSet, overview, phoneText, qualityText, readWebhookEvents, recipientsSet, refreshTemplates, settingSet, templateStatus, unitSave, updateWebhookEvents, verifyChannel, verifyError,
   webhookError, webhookStatus, type HubOverview, type HubUnit, type UnitMode, type WebhookStatus,
 } from '../lib/hub';
 import { CancelButton, Confirm, DirtyScope, ErrorBox, Field, Loading, Modal, Spinner, useToast } from '../components/ui';
@@ -60,6 +60,8 @@ export default function Assistant() {
   // H6 gaps: the texts the WhatsApp Business app sends by itself, per number («رسالة تلقائية من الجوال»)
   const [autos, setAutos] = useState<{ can_edit: boolean; rows: PhoneAutoRow[] } | null>(null);
   const [autoDel, setAutoDel] = useState<PhoneAutoRow | null>(null);
+  // H7: switching «الفويس» / «الصور» on asks first (the system admin, after a test in «المحاكي»)
+  const [mediaOn, setMediaOn] = useState<{ u: HubUnit; k: 'voice' | 'images' } | null>(null);
   const readOnce = useRef(false);
   const [params, setParams] = useSearchParams();
   const tab = (TABS.some((t) => t.key === params.get('tab')) ? params.get('tab') : 'settings') as Tab;
@@ -153,6 +155,20 @@ export default function Assistant() {
       if (!r.ok) toast(verifyError(r.error), 'error');
       else toast(`تم التحقق من قناة ${u.name_ar} — الجودة: ${qualityText(r.quality_rating ?? null)}، حد الرسائل: ${r.messaging_limit ?? 'غير معروف'}`);
       await load();
+    } catch (e) {
+      toast((e as Error).message, 'error');
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  /** H7: «الفويس» / «الصور» — on: the system admin (asked first); off: any assistant: edit holder of the branch; «تراجع» */
+  async function setMedia(u: HubUnit, k: 'voice' | 'images', on: boolean) {
+    setBusy(`media:${u.id}:${k}`);
+    try {
+      const r = await mediaSet(u.id, k === 'voice' ? on : null, k === 'images' ? on : null);
+      setMediaOn(null);
+      await after(r.batch_id, `${u.name_ar} — «${MEDIA_SWITCHES[k].label}» ${on ? 'مفعّل' : 'متوقف'}`);
     } catch (e) {
       toast((e as Error).message, 'error');
     } finally {
@@ -476,6 +492,39 @@ export default function Assistant() {
                 </p>
               )}
             </div>
+
+            {/* H7: voice notes and images — each behind its switch, off until the system admin switches it on */}
+            {u.status === 'active' && (
+              <div className="grid gap-2" data-unit-media data-tour="hub-media">
+                <h4 className="label">الرسائل الصوتية والصور</h4>
+                <div className="flex flex-wrap gap-2">
+                  {(['voice', 'images'] as const).map((k) => {
+                    const on = k === 'voice' ? !!u.voice_on : !!u.images_on;
+                    const canOn = !!o.system_admin && edit;
+                    return (
+                      <button
+                        key={k}
+                        type="button"
+                        role="switch"
+                        aria-checked={on}
+                        className={`btn btn-sm ${on ? 'btn-primary' : 'btn-ghost'}`}
+                        disabled={busy !== null || !edit || (!on && !canOn)}
+                        onClick={() => (on ? void setMedia(u, k, false) : setMediaOn({ u, k }))}
+                        data-media-switch={k}
+                        data-on={on ? 'true' : 'false'}
+                      >
+                        «{MEDIA_SWITCHES[k].label}»: {on ? 'مفعّل' : 'متوقف'}
+                      </button>
+                    );
+                  })}
+                </div>
+                <p className="text-xs text-ink-muted" data-media-state>
+                  {u.voice_on ? MEDIA_SWITCHES.voice.on : MEDIA_SWITCHES.voice.off}. {u.images_on ? MEDIA_SWITCHES.images.on : MEDIA_SWITCHES.images.off}.
+                  {u.voice_on ? <> التفريغ اليوم: <span className="num">{minutesOf(u.voice_used_seconds)}</span> من <span className="num">{minutesOf((o.settings.hub_voice_daily_minutes as number ?? 60) * 60)}</span>.</> : null}
+                </p>
+                {!o.system_admin && <p className="text-xs text-ink-muted" data-media-admin>يشغّلهما مدير النظام بعد تجربتهما في «المحاكي»، ويستطيع من يملك التعديل إيقافهما.</p>}
+              </div>
+            )}
           </article>
         ))}
       </section>
@@ -577,6 +626,14 @@ export default function Assistant() {
         )}
       </Modal>
 
+      {mediaOn && (
+        <Confirm open title={`تشغيل «${MEDIA_SWITCHES[mediaOn.k].label}» في ${mediaOn.u.name_ar}`} confirmLabel={`تشغيل «${MEDIA_SWITCHES[mediaOn.k].label}»`}
+          busy={busy === `media:${mediaOn.u.id}:${mediaOn.k}`} onClose={() => setMediaOn(null)}
+          body={mediaOn.k === 'voice'
+            ? 'من الآن تُفرَّغ كل رسالة صوتية تصل إلى هذا الرقم ويُرد عليها نصًا. الرسالة الأطول من خمس دقائق، أو بعد بلوغ حد التفريغ اليومي، أو التي يتعذّر تفريغها تذهب إلى الفريق. جرّب رسالة صوتية في «المحاكي» قبل التشغيل.'
+            : 'من الآن تُصنَّف كل صورة تصل إلى هذا الرقم أولًا: الهوية والجواز وإيصال الدفع والبطاقة البنكية تذهب إلى الفريق دون قراءة، ولقطات الشاشة يُرد عليها، وصور المشاكل تذهب إلى الفريق بأولوية عالية. جرّب صورة في «المحاكي» قبل التشغيل.'}
+          onConfirm={() => void setMedia(mediaOn.u, mediaOn.k, true)} />
+      )}
       {autoDel && (
         <Confirm open title="حذف نص رسالة تلقائية" danger confirmLabel="حذف النص" busy={busy === `auto:${autoDel.id}`} onClose={() => setAutoDel(null)}
           body="إذا أرسل الجوال هذه الرسالة مرة أخرى تُعامل كرد من الجوال: تنتقل المحادثة إلى الفريق. الرسائل التي ظهرت «رسالة تلقائية من الجوال» من قبل تبقى كما هي."
@@ -768,7 +825,7 @@ function Summary({ o, edit, onSaved }: { o: HubOverview; edit: boolean; onSaved:
   );
 }
 
-const MODELS_ORDER = ['understand', 'tag', 'translate', 'compose', 'suggest'];
+const MODELS_ORDER = ['understand', 'tag', 'translate', 'compose', 'suggest', 'vision', 'transcribe'];
 
 /** «الميزانية» (H5, spec §5.6 item 5, §7.3): the system admin sets the budgets; everyone with assistant: view reads them */
 function BudgetCard({ o, onSaved }: { o: HubOverview; onSaved: (batches: string[], label: string) => Promise<void> }) {
@@ -777,6 +834,8 @@ function BudgetCard({ o, onSaved }: { o: HubOverview; onSaved: (batches: string[
   const [daily, setDaily] = useState(o.settings.hub_budget_daily_usd === null || o.settings.hub_budget_daily_usd === undefined ? '' : String(o.settings.hub_budget_daily_usd));
   const [monthly, setMonthly] = useState(o.settings.hub_budget_monthly_usd === null || o.settings.hub_budget_monthly_usd === undefined ? '' : String(o.settings.hub_budget_monthly_usd));
   const [pct, setPct] = useState(String(o.settings.hub_budget_alert_pct ?? 80));
+  // H7: the daily transcription minutes per unit (the system admin's)
+  const [voiceMin, setVoiceMin] = useState(String(o.settings.hub_voice_daily_minutes ?? 60));
   const [busy, setBusy] = useState(false);
   const [version, setVersion] = useState(0);
   useEffect(() => {
@@ -786,9 +845,11 @@ function BudgetCard({ o, onSaved }: { o: HubOverview; onSaved: (batches: string[
   const st = b?.state ?? o.budget;
   async function save() {
     const num = (x: string) => (x.trim() === '' ? null : Number(west(x).trim()));
-    const want: [string, number | null][] = [['hub_budget_daily_usd', num(daily)], ['hub_budget_monthly_usd', num(monthly)], ['hub_budget_alert_pct', num(pct)]];
-    if (want.some(([k, v]) => (v === null && k === 'hub_budget_alert_pct') || (v !== null && (!Number.isFinite(v) || v < 0 || (k === 'hub_budget_alert_pct' && (v < 1 || v > 100 || !Number.isInteger(v))))))) {
-      toast('اكتب أرقامًا صحيحة: الميزانية بالدولار، ونسبة التنبيه من 1 إلى 100.', 'error');
+    const want: [string, number | null][] = [['hub_budget_daily_usd', num(daily)], ['hub_budget_monthly_usd', num(monthly)], ['hub_budget_alert_pct', num(pct)], ['hub_voice_daily_minutes', num(voiceMin)]];
+    const whole = (k: string) => k === 'hub_budget_alert_pct' || k === 'hub_voice_daily_minutes';
+    if (want.some(([k, v]) => (v === null && whole(k)) || (v !== null && (!Number.isFinite(v) || v < 0 || (k === 'hub_budget_alert_pct' && (v < 1 || v > 100 || !Number.isInteger(v)))
+      || (k === 'hub_voice_daily_minutes' && (v < 1 || v > 1440 || !Number.isInteger(v))))))) {
+      toast('اكتب أرقامًا صحيحة: الميزانية بالدولار، ونسبة التنبيه من 1 إلى 100، ودقائق التفريغ من 1 إلى 1440.', 'error');
       return;
     }
     setBusy(true);
@@ -831,6 +892,9 @@ function BudgetCard({ o, onSaved }: { o: HubOverview; onSaved: (batches: string[
         <Field label="نسبة التنبيه (%)" id="hub-budget-pct">
           <input id="hub-budget-pct" className="field num" inputMode="numeric" value={pct} onChange={(e) => setPct(e.target.value)} disabled={!admin || busy} data-budget="pct" />
         </Field>
+        <Field label="حد تفريغ الرسائل الصوتية لكل وحدة يوميًا (دقيقة)" id="hub-voice-min">
+          <input id="hub-voice-min" className="field num" inputMode="numeric" value={voiceMin} onChange={(e) => setVoiceMin(e.target.value)} disabled={!admin || busy} data-budget="voice-minutes" />
+        </Field>
         {admin && (
           <div className="sm:col-span-3 flex justify-end">
             <button type="button" className="btn btn-primary btn-sm" onClick={() => void save()} disabled={busy} data-action="budget-save">{busy && <Spinner />} حفظ الميزانية</button>
@@ -838,6 +902,17 @@ function BudgetCard({ o, onSaved }: { o: HubOverview; onSaved: (batches: string[
         )}
       </DirtyScope>
       {!admin && <p className="text-xs text-ink-muted" data-budget-readonly>يعدّل الميزانية مدير النظام وحده.</p>}
+      {b?.audio && (
+        <div className="grid gap-1" data-budget-audio>
+          <h3 className="label">تفريغ الرسائل الصوتية (OpenAI)</h3>
+          <p className="text-xs text-ink-muted">تُحسب بالدقيقة على حساب OpenAI، خارج ميزانية كلود أعلاه. عند بلوغ حد الوحدة اليومي تذهب الرسائل الصوتية إلى الفريق حتى نهاية اليوم، ويصل بريد واحد لمديري النظام.</p>
+          <dl className="inbox-dl text-sm">
+            <dt>اليوم</dt><dd className="num">{minutesOf(b.audio.today_seconds)} — {usd(b.audio.today_usd)}</dd>
+            <dt>هذا الشهر</dt><dd className="num">{minutesOf(b.audio.month_seconds)} — {usd(b.audio.month_usd)}</dd>
+            <dt>الحد لكل وحدة يوميًا</dt><dd className="num">{minutesOf(b.audio.cap_minutes * 60)}</dd>
+          </dl>
+        </div>
+      )}
       {b && (
         <div className="grid gap-3 lg:grid-cols-2">
           <div className="min-w-0 overflow-x-auto">
@@ -867,7 +942,9 @@ function BudgetCard({ o, onSaved }: { o: HubOverview; onSaved: (batches: string[
                 return (
                   <li key={k} data-budget-model={k}>
                     {MODEL_LABELS[k]}: <span className="latin" dir="ltr">{m}</span>
-                    {p ? <> — <span className="num">{p.input} / {p.output}</span> دولار لكل مليون رمز (دخل / خرج){p.read_at ? <>، قُرئت من صفحة أسعار أنثروبيك <span className="num">{p.read_at}</span></> : null}</> : ' — بلا سعر مسجّل'}
+                    {p && typeof (p as { per_minute?: number }).per_minute === 'number'
+                      ? <> — <span className="num">{(p as { per_minute?: number }).per_minute}</span> دولار للدقيقة{p.read_at ? <>، قُرئت من صفحة أسعار OpenAI <span className="num">{p.read_at}</span></> : null}</>
+                      : p ? <> — <span className="num">{p.input} / {p.output}</span> دولار لكل مليون رمز (دخل / خرج){p.read_at ? <>، قُرئت من صفحة أسعار أنثروبيك <span className="num">{p.read_at}</span></> : null}</> : ' — بلا سعر مسجّل'}
                   </li>
                 );
               })}

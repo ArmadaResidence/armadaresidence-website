@@ -38,7 +38,7 @@ export const understandSchema = () => P.understand_schema;
 
 export interface ComposeInput {
   /** handoff_ack (H6c): «بانتظار موظف» — a short acknowledgement that a further request joined the team's hand-off */
-  action: 'answer' | 'ask' | 'chat' | 'clarify' | 'redirect' | 'handoff_ack';
+  action: 'answer' | 'ask' | 'chat' | 'clarify' | 'redirect' | 'handoff_ack' | 'problem_ack';
   ask_for?: string[];
   branch: string;
   turn: string[];

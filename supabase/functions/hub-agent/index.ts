@@ -26,17 +26,18 @@
 // Secrets: ANTHROPIC_API_KEY (label-suggest's), YCLOUD_API_KEY, RESEND_API_KEY; SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY.
 import content from '../booking-request/content.generated.json' with { type: 'json' };
 import { buttonsPayload, sendSession, textPayload, type WaResult } from '../booking-request/whatsapp-send.ts';
-import { hubApiCreditMail, hubBudgetMail, hubComplaintMail, hubFlaggedMail, hubModelErrorMail, hubSpikeMail, longDate } from '../booking-request/email.ts';
+import { hubApiCreditMail, hubBudgetMail, hubComplaintMail, hubFlaggedMail, hubModelErrorMail, hubSpikeMail, hubVoiceCapMail, longDate } from '../booking-request/email.ts';
 import { sarText } from '../booking-request/rules.ts';
 import { typingUrl } from '../_shared/hub/send.ts';
 import { runTurn, type Deps, type Outcome } from '../_shared/hub/engine.ts';
 import { anthropicModel, type ModelCall, type ModelFn } from '../_shared/hub/model.ts';
 import { dashboardAdapter } from '../_shared/hub/adapter/index.ts';
 import { fixed } from '../_shared/hub/copy.ts';
-import { engineVersion, runItem } from '../_shared/hub/eval.ts';
+import { claimOf, engineVersion, freshState, runItem } from '../_shared/hub/eval.ts';
 import { grade, type Item } from '../_shared/hub/grade.ts';
 import { checkDraft, dateText, draftCardSystem, draftCardUser, type CardJob } from '../_shared/hub/draft-card.ts';
 import { drainStaff } from '../_shared/hub/staff-send.ts';
+import { openaiTranscribe } from '../_shared/hub/media.ts';
 
 const ALERT_FROM = 'لوحة أرمادا ريزيدنس <no-reply@armadaresidence.com>';
 const BUDGET_MS = 50_000;
@@ -93,10 +94,32 @@ async function mail(to: string[], m: { subject: string; html: string; text: stri
   }
 }
 
+/** H7: a stored inbound file of hub-media (the private bucket; the service role reads it — never a public link) */
+async function mediaFile(m: Json): Promise<{ bytes: Uint8Array; mime: string } | null> {
+  const path = typeof m?.media_path === 'string' ? m.media_path : '';
+  if (!/^[a-z0-9-]+\/[0-9a-f-]{36}\/[0-9a-f-]{36}\.[a-z0-9]{1,8}$/.test(path)) return null;
+  try {
+    const res = await fetch(`${url()}/storage/v1/object/hub-media/${path}`, {
+      headers: { apikey: serviceKey(), Authorization: `Bearer ${serviceKey()}` }, signal: AbortSignal.timeout(20_000),
+    });
+    if (!res.ok) {
+      console.warn('hub-agent: media read refused', res.status);
+      return null;
+    }
+    const bytes = new Uint8Array(await res.arrayBuffer());
+    return bytes.length ? { bytes, mime: String(m.media_mime ?? res.headers.get('content-type') ?? 'application/octet-stream').split(';')[0].trim() } : null;
+  } catch {
+    console.warn('hub-agent: media read failed');
+    return null;
+  }
+}
+
 function deps(model: ModelFn, cards: string[] | null = null): Deps {
   const rpcAny = (fn: string, args: Record<string, unknown>) => rpc<unknown>(fn, args);
   return {
     model,
+    // H7: voice notes (OpenAI gpt-transcribe — OPENAI_API_KEY, Supabase only) and images; each behind its unit switch
+    media: { load: mediaFile, transcribe: openaiTranscribe(Deno.env.get('OPENAI_API_KEY') ?? '') },
     // a test-lab item judged on a candidate reads the candidate cards as their draft (hub_knowledge_for_eval)
     knowledge: (unit, topics, lang, branch) => cards
       ? rpc('hub_knowledge_for_eval', { p_unit: unit, p_topics: topics, p_language: lang, p_branch: branch, p_cards: cards })
@@ -172,6 +195,18 @@ async function alerts(): Promise<void> {
           pct: Number(x.payload?.pct ?? 0), cap: x.kind === 'budget_cap', at: x.at });
     const ok = await mail(a.recipients ?? [], m);
     console.log('hub-agent: alert', x.kind, ok ? 'sent' : 'not sent');
+  }
+  // H7: a unit's voice minutes used up for the day — ONE email per unit and day
+  let v: Json;
+  try {
+    v = await rpc('hub_alerts_claim', { p_kinds: ['voice_cap'] });
+  } catch (e) {
+    console.error('hub-agent: voice alerts claim failed', String(e).slice(0, 80));
+    return;
+  }
+  for (const x of (v?.alerts ?? []) as Json[]) {
+    const ok = await mail(v.recipients ?? [], hubVoiceCapMail(content, { unit_name: String(x.unit_name ?? ''), minutes: Number(x.payload?.minutes ?? 0), at: x.at }));
+    console.log('hub-agent: alert voice_cap', ok ? 'sent' : 'not sent');
   }
 }
 
@@ -349,6 +384,58 @@ const stubModel = (stub: Record<string, string>): ModelFn => async (c: ModelCall
     ? { ok: true, text: stub[c.layer], input_tokens: 100, output_tokens: 50, latency_ms: 1 }
     : { ok: false, text: '', input_tokens: 0, output_tokens: 0, latency_ms: 1, error: 'other' };
 
+/**
+ * H7: the voice accuracy test (scripts/hub-voice-accuracy.mjs — test token only; nothing stored, nothing sent): ONE voice
+ * note through the deployed path in test mode — gpt-transcribe, then the real engine on the transcript — and the written
+ * sentence through the same engine, so the two understandings can be compared (intent, dates, guests, room, time). The
+ * transcript goes back to the caller only (never logged, never stored); the minutes and the model calls are counted on
+ * the test lab's lines.
+ */
+async function voiceAccuracy(body: Json): Promise<Json> {
+  const unit = typeof body.unit === 'string' && /^[a-z0-9-]{2,40}$/.test(body.unit) ? body.unit : 'airport-road';
+  const mime = typeof body.mime === 'string' && /^audio\/(ogg|opus|mpeg|mp4|m4a|x-m4a|aac|wav|webm)$/.test(body.mime) ? (body.mime === 'audio/opus' ? 'audio/ogg' : body.mime) : '';
+  const data = typeof body.data === 'string' && body.data.length <= 14_000_000 ? body.data : '';
+  if (!mime || !data) return { ok: false, error: 'invalid body' };
+  const bytes = Uint8Array.from(atob(data), (ch) => ch.charCodeAt(0));
+  const ctx = await rpc<Json>('hub_eval_context', { p_unit: unit });
+  const live = anthropicModel(Deno.env.get('ANTHROPIC_API_KEY') ?? '');
+  const calls: Json[] = [];
+  const model: ModelFn = async (c) => {
+    const r = await live(c);
+    calls.push({ layer: c.layer, model: c.model, input_tokens: r.input_tokens, output_tokens: r.output_tokens });
+    return r;
+  };
+  const d = { ...deps(model), media: { load: async () => ({ bytes, mime }), transcribe: openaiTranscribe(Deno.env.get('OPENAI_API_KEY') ?? '') } };
+  const L = body.language === 'en' ? 'en' : 'ar';
+  const pick = (f: Json) => {
+    const u = f?.understanding ?? null;
+    return u ? { kind: u.kind ?? null, intents: u.intents ?? [], topics: u.topics ?? [], check_in: u.check_in ?? null, check_out: u.check_out ?? null, nights: u.nights ?? null,
+      adults: u.adults ?? null, children: u.children ?? null, room_type: u.room_type ?? null, rooms_count: u.rooms_count ?? null, dates_text: u.dates_text ?? null,
+      booking_ref: u.booking_ref ?? null, branch: u.branch ?? null, language: u.language ?? null } : null;
+  };
+  const voice = await runTurn(claimOf(ctx, { key: 'voice-acc', language: L, context: {} }, '', freshState(), null, 0, { kind: 'audio', mime, bytes }), d as Deps);
+  const written = typeof body.text === 'string' && body.text.trim() ? await runTurn(claimOf(ctx, { key: 'voice-acc-text', language: L, context: {} }, body.text.trim().slice(0, 2000), freshState(), null, 0), d as Deps) : null;
+  let cost = 0;
+  for (const a of voice.finish.audio ?? []) {
+    const u = await rpc<Json>('hub_sim_audio', { p_unit: ctx.unit?.id, p_model: a.model, p_seconds: a.seconds, p_source: 'test_lab' }).catch(() => null);
+    cost += Number(u?.cost_usd ?? 0);
+  }
+  for (const m of calls) {
+    if (m.input_tokens + m.output_tokens <= 0) continue;
+    const layer = ['tag', 'compose', 'vision', 'summary'].includes(m.layer) ? m.layer : 'understand';
+    const u = await rpc<Json>('hub_sim_usage', { p_unit: ctx.unit?.id, p_layer: layer, p_model: m.model, p_in: m.input_tokens, p_out: m.output_tokens }).catch(() => null);
+    cost += Number(u?.cost_usd ?? 0);
+  }
+  const mres = voice.finish.media?.[0] ?? null;
+  return {
+    ok: true,
+    media: mres ? { status: mres.status, transcript: mres.transcript ?? null, seconds: mres.seconds ?? null, language: mres.language ?? null } : null,
+    voice: { understanding: pick(voice.finish), reason: voice.finish.reason ?? null, state: voice.finish.state ?? null, replies: voice.finish.messages.map((m) => m.body) },
+    written: written ? { understanding: pick(written.finish), reason: written.finish.reason ?? null, state: written.finish.state ?? null } : null,
+    cost_usd: Math.round(cost * 1e6) / 1e6,
+  };
+}
+
 Deno.serve(async (req) => {
   if (req.method !== 'POST') return json(405, { ok: false });
   let body: Json = {};
@@ -362,6 +449,7 @@ Deno.serve(async (req) => {
     if (!same(test, Deno.env.get('BOOKING_TEST_TOKEN') ?? '')) return json(403, { ok: false });
     if (body.action === 'qa-eval') return json(200, { ok: true, done: await evalStep(stubModel(body.stub ?? {}), Date.now() + BUDGET_MS) });
     if (body.action === 'qa-cards') return json(200, { ok: true, done: await cardJobs(stubModel(body.stub ?? {}), Date.now() + BUDGET_MS) });
+    if (body.action === 'qa-voice') return json(200, await voiceAccuracy(body));
     if (body.action !== 'qa-turn' || typeof body.turn !== 'string') return json(400, { ok: false });
     // a test conversation only: the turn must be is_test
     const r = await fetch(`${url()}/rest/v1/hub_turns?select=is_test&id=eq.${encodeURIComponent(body.turn)}`, { headers: { apikey: serviceKey(), Authorization: `Bearer ${serviceKey()}` } });

@@ -34,6 +34,7 @@ import { CancelButton, Confirm, DirtyScope, ErrorBox, Field, Loading, Modal, Spi
 import { flagWrong, flaggedIn, phoneAutoAdd } from '../lib/lab';
 import { useSession } from '../lib/session';
 import { handoffSeen } from '../lib/team';
+import { MEDIA_CATEGORY_LABELS, MEDIA_STATUS_LABELS } from '../lib/hub';
 
 type View = 'list' | 'thread' | 'panel';
 
@@ -516,7 +517,20 @@ function ThreadView({ t, now, edit, unitNames, composerRef, onBack, onPanel, onC
               {m.author === 'assistant' && <span className="inbox-chip" data-assistant-chip>{m.status === 'test' ? MARKS.test : m.status === 'pending_approval' ? 'مسودة المساعد' : 'المساعد'}</span>}
               {m.kind === 'template' && <span className="inbox-chip">{MARKS.template} · {TEMPLATE_LABELS[String(m.payload?.template ?? '')] ?? String(m.payload?.template ?? '')}</span>}
               {m.purged ? <p className="text-ink-muted text-xs">حُذف النص بعد 12 شهرًا.</p> : m.body ? <p className="whitespace-pre-wrap" dir="auto">{m.body}</p> : null}
-              {m.media_path && !m.media_purged && <button type="button" className="btn btn-ghost btn-sm" onClick={() => void openMedia(m)} data-action="media">عرض الوسائط</button>}
+              {m.media_path && !m.media_purged && (m.kind === 'image' || m.kind === 'audio')
+                ? <InlineMedia m={m} onOpen={() => void openMedia(m)} />
+                : m.media_path && !m.media_purged && <button type="button" className="btn btn-ghost btn-sm" onClick={() => void openMedia(m)} data-action="media">عرض الوسائط</button>}
+              {/* H7: «تفريغ صوتي» (guest text, the 12-month retention), an image's category (nothing read from it), the outcome */}
+              {m.transcript && !m.purged && (
+                <div className="grid gap-1 border-t border-line pt-1" data-msg-transcript>
+                  <span className="inbox-chip w-fit">تفريغ صوتي{m.transcript_seconds ? <> · <span className="num">{Math.max(1, Math.round(m.transcript_seconds))}</span> ث</> : null}</span>
+                  <p className="whitespace-pre-wrap" dir="auto">{m.transcript}</p>
+                </div>
+              )}
+              {m.media_category && <span className="inbox-chip w-fit" data-media-category={m.media_category}>{MEDIA_CATEGORY_LABELS[m.media_category] ?? m.media_category}</span>}
+              {m.media_status && !['transcribed', 'classified'].includes(m.media_status) && (
+                <p className="text-xs text-ink-muted" data-media-status={m.media_status}>{MEDIA_STATUS_LABELS[m.media_status] ?? m.media_status}</p>
+              )}
               {(m.media_purged || (!m.media_path && ['image', 'audio', 'video', 'document', 'sticker'].includes(m.kind))) && <p className="text-xs text-ink-muted">{m.media_purged ? MARKS.media_gone : 'وسائط لم تُحفظ'}</p>}
               {m.kind === 'location' && <p className="text-xs text-ink-muted">موقع</p>}
               {m.author === 'assistant' && (m.sources?.length ?? 0) > 0 && (
@@ -942,5 +956,27 @@ function DraftRejectDialog({ open, m, onClose, onDone }: { open: boolean; m: Msg
         </div>
       </div>
     </Modal>
+  );
+}
+
+/** H7: an image or a voice note shown in the thread — a 5-minute signed link of hub-media (the unit's RLS decides), loaded
+ *  when the bubble mounts; the image opens the viewer */
+function InlineMedia({ m, onOpen }: { m: Msg; onOpen: () => void }) {
+  const [url, setUrl] = useState<string | null>(null);
+  const [failed, setFailed] = useState(false);
+  useEffect(() => {
+    let live = true;
+    mediaUrl(m.media_path!).then((u) => live && setUrl(u)).catch(() => live && setFailed(true));
+    return () => {
+      live = false;
+    };
+  }, [m.media_path]);
+  if (failed) return <button type="button" className="btn btn-ghost btn-sm" onClick={onOpen} data-action="media">عرض الوسائط</button>;
+  if (!url) return <p className="text-xs text-ink-muted" data-media-loading>جارٍ تحميل الوسائط…</p>;
+  if (m.kind === 'audio') return <audio src={url} controls preload="metadata" className="w-full max-w-xs" data-inline-audio aria-label="رسالة صوتية من الضيف" />;
+  return (
+    <button type="button" className="inbox-media-thumb" onClick={onOpen} data-inline-image aria-label="فتح الصورة">
+      <img src={url} alt="صورة أرسلها الضيف" className="max-h-56 max-w-full rounded" loading="lazy" />
+    </button>
   );
 }

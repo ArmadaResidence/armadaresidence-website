@@ -57,6 +57,10 @@ export interface HubUnit {
   persona_pending?: boolean;
   knowledge_hidden?: boolean;
   lab?: UnitLab;
+  /** H7: «الفويس» / «الصور» (off until the system admin switches one on) and today's transcribed seconds */
+  voice_on?: boolean;
+  images_on?: boolean;
+  voice_used_seconds?: number;
 }
 export interface Persona {
   tone: number;
@@ -155,6 +159,21 @@ export const modeSet = (unit: string, mode: UnitMode) => saved('hub_unit_mode_se
 export const settingSet = (key: string, value: unknown) => saved('hub_setting_set', { p_key: key, p_value: value });
 /** «إيقاف مؤقت» of a unit (H5): any inbox: edit member; resuming is the system admin's (hub_unit_mode_set) */
 export const pauseUnit = (unit: string) => saved('hub_pause_unit', { p_unit: unit });
+/** H7: «الفويس» / «الصور» of one unit — on: the system admin; off: any assistant: edit holder of the branch (null = unchanged) */
+export const mediaSet = (unit: string, voice: boolean | null, images: boolean | null) => saved('hub_unit_media_set', { p_unit: unit, p_voice: voice, p_images: images });
+export const MEDIA_SWITCHES = {
+  voice: { label: 'الفويس', on: 'تُفرَّغ الرسائل الصوتية ويُرد عليها نصًا', off: 'تذهب الرسائل الصوتية إلى الفريق دون تفريغ' },
+  images: { label: 'الصور', on: 'تُصنَّف الصور أولًا ويُرد على لقطات الشاشة، وتذهب المستندات وصور المشاكل إلى الفريق', off: 'تذهب الصور إلى الفريق دون قراءة' },
+} as const;
+/** H7: an image's category (copy.md §6) — the only thing stored about an image */
+export const MEDIA_CATEGORY_LABELS: Record<string, string> = {
+  id_document: 'مستند هوية', payment: 'إيصال دفع أو بطاقة', screenshot: 'لقطة شاشة', problem: 'صورة مشكلة', place: 'صورة غرفة أو مكان', other: 'صورة أخرى',
+};
+/** H7: what a voice note or an image became (copy.md §6) */
+export const MEDIA_STATUS_LABELS: Record<string, string> = {
+  transcribed: 'فُرّغت', classified: 'صُنّفت', too_long: 'أطول من خمس دقائق — للفريق', voice_capped: 'بعد حد التفريغ اليومي — للفريق',
+  failed_download: 'تعذّر تنزيل الملف', failed_transcribe: 'تعذّر التفريغ', empty: 'لا كلام في التسجيل', unknown_language: 'لغة لم تُعرف', failed_vision: 'تعذّرت قراءة الصورة',
+};
 
 // ── «الميزانية» (H5, 14 Nov 2026 — spec §5.6 item 5, §7.3) ──
 export interface BudgetOverview {
@@ -163,17 +182,29 @@ export interface BudgetOverview {
   prices: Record<string, { input: number; output: number; long_from?: number; long_input?: number; long_output?: number; read_at?: string; source?: string }> | null;
   models: Record<string, string> | null;
   by_unit: { unit: string; name: string; today: number | null; month: number | null }[];
-  by_layer: { layer: string; source: string; calls: number; today: number | null; month: number | null }[];
+  by_layer: { layer: string; source: string; calls: number; today: number | null; month: number | null; seconds?: number | null }[];
+  /** H7: OpenAI's transcription — its own line, outside the Claude budget */
+  audio?: { today_seconds: number; month_seconds: number; today_usd: number; month_usd: number; cap_minutes: number } | null;
 }
 export async function budgetOverview(): Promise<BudgetOverview> {
   const { data, error } = await supabase.rpc('hub_budget_overview');
   if (error) api.fail(error, 'hub_budget_overview');
   return data as BudgetOverview;
 }
-export const LAYER_LABELS: Record<string, string> = { understand: 'الفهم', tag: 'تصنيف المواضيع', compose: 'كتابة الرد', translate: 'الترجمة', suggest: 'الاقتراحات', draft_card: 'مسودات البطاقات' };
+export const LAYER_LABELS: Record<string, string> = { understand: 'الفهم', tag: 'تصنيف المواضيع', compose: 'كتابة الرد', translate: 'الترجمة', suggest: 'الاقتراحات', draft_card: 'مسودات البطاقات',
+  summary: 'سطر تنبيه الفريق', staff_chat: 'محادثة الزملاء', vision: 'قراءة الصور', transcribe: 'تفريغ الرسائل الصوتية (OpenAI)' };
+/** H7: whole minutes of seconds, in words (Western digits) */
+export function minutesOf(seconds: number | null | undefined): string {
+  const m = Math.round(Math.max(0, Number(seconds ?? 0)) / 60);
+  if (m === 0) return 'أقل من دقيقة';
+  if (m === 1) return 'دقيقة واحدة';
+  if (m === 2) return 'دقيقتان';
+  return m % 100 >= 3 && m % 100 <= 10 ? `${m} دقائق` : `${m} دقيقة`;
+}
 // H6 (14 Nov 2026): the test lab and the simulator are counted apart (spec §7.3)
 export const SOURCE_LABELS: Record<string, string> = { turn: 'المحادثات', staff: 'طلبات الفريق', test_lab: 'مختبر الاختبار', simulator: 'المحاكي' };
-export const MODEL_LABELS: Record<string, string> = { understand: 'الفهم', tag: 'تصنيف المواضيع', translate: 'الترجمة', compose: 'كتابة الرد', suggest: 'الاقتراحات' };
+export const MODEL_LABELS: Record<string, string> = { understand: 'الفهم', tag: 'تصنيف المواضيع', translate: 'الترجمة', compose: 'كتابة الرد', suggest: 'الاقتراحات',
+  vision: 'قراءة الصور', transcribe: 'تفريغ الرسائل الصوتية' };
 /** USD as the page writes it: «4.25 دولار» (Western digits) */
 export const usd = (n: number | null | undefined) => `${(Math.round(Number(n ?? 0) * 100) / 100).toFixed(2)} دولار`;
 /** the state line of the budget: capped, the credit, an alert, or fine */

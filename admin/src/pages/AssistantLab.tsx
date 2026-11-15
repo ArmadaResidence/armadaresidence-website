@@ -15,7 +15,7 @@
 // Western digits, the shared Modal with its dirty guard, counted nouns, RTL; every refusal in Arabic.
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { countWord, longDate, riyadhDateTime, type CountNoun } from '../lib/format';
-import { usd, type HubOverview, type HubUnit, type Persona, MODE_LABELS } from '../lib/hub';
+import { usd, type HubOverview, type HubUnit, type Persona, MODE_LABELS, MEDIA_CATEGORY_LABELS, MEDIA_STATUS_LABELS } from '../lib/hub';
 import * as L from '../lib/lab';
 import EvalGate from '../components/EvalGate';
 import { CancelButton, DirtyScope, Empty, ErrorBox, Field, Loading, Modal, Segmented, Spinner, useToast } from '../components/ui';
@@ -629,7 +629,8 @@ function ItemForm({ o, busy, setBusy, initial, onSaved }: {
 
 // ══════════════════════════════════ «المحاكي» ══════════════════════════════════
 
-type SimTurn = { guest: string; r: L.SimResult | null; error?: string };
+/** H7: a turn may carry an uploaded voice note or image (shown from the browser's own copy — never stored) */
+type SimTurn = { guest: string; r: L.SimResult | null; error?: string; media?: { kind: 'audio' | 'image'; url: string; name: string } };
 export function SimulatorPanel({ o, editingPersona }: { o: HubOverview; editingPersona: Record<string, Persona> }) {
   const toast = useToast();
   const units = usable(o);
@@ -643,6 +644,9 @@ export function SimulatorPanel({ o, editingPersona }: { o: HubOverview; editingP
   const [text, setText] = useState('');
   const [busy, setBusy] = useState(false);
   const [open, setOpen] = useState<number | null>(null);
+  // H7: a voice note or an image to send with (or instead of) the text — its caption
+  const [file, setFile] = useState<File | null>(null);
+  const [fileKey, setFileKey] = useState(0);
   const [saving, setSaving] = useState(false);
   const [formBusy, setFormBusy] = useState(false);
   const reset = () => {
@@ -654,15 +658,34 @@ export function SimulatorPanel({ o, editingPersona }: { o: HubOverview; editingP
   if (!u) return <Empty text="لا وحدة ظاهرة." />;
   const total = turns.reduce((s, t) => s + (t.r?.cost_usd ?? 0), 0);
 
+  function pick(f: File | null) {
+    if (!f) return setFile(null);
+    if (!L.simMediaKind(f)) {
+      toast(L.SIM_ERRORS.hub_media_invalid, 'error');
+      setFileKey((k) => k + 1);
+      return;
+    }
+    if (f.size > L.SIM_MEDIA_MAX) {
+      toast(L.SIM_ERRORS.hub_media_too_large, 'error');
+      setFileKey((k) => k + 1);
+      return;
+    }
+    setFile(f);
+  }
   async function send() {
     const msg = text.trim();
-    if (!msg || busy) return;
+    if ((!msg && !file) || busy) return;
     setBusy(true);
     setText('');
     const i = turns.length;
-    setTurns((x) => [...x, { guest: msg, r: null }]);
+    const f = file;
+    const kind = f ? L.simMediaKind(f) : null;
+    setFile(null);
+    setFileKey((k) => k + 1);
+    setTurns((x) => [...x, { guest: msg, r: null, ...(f && kind ? { media: { kind, url: URL.createObjectURL(f), name: f.name } } : {}) }]);
     try {
-      const r = await L.simulate(u.key, msg, sim, language, drafts, persona === 'editing' ? editingPersona[u.key] ?? null : null);
+      const media = f && kind ? { kind, mime: f.type || (kind === 'audio' ? 'audio/ogg' : 'image/jpeg'), data: await L.fileBase64(f) } : null;
+      const r = await L.simulate(u.key, msg, sim, language, drafts, persona === 'editing' ? editingPersona[u.key] ?? null : null, media);
       if (!r.ok) {
         setTurns((x) => x.map((t, j) => (j === i ? { ...t, error: L.SIM_ERRORS[r.error ?? ''] ?? 'تعذّر تشغيل المحاكي.' } : t)));
       } else {
@@ -719,7 +742,18 @@ export function SimulatorPanel({ o, editingPersona }: { o: HubOverview; editingP
             {!turns.length && <p className="text-xs text-ink-muted text-center p-4">اكتب رسالة كما يكتبها الضيف.</p>}
             {turns.map((t, i) => (
               <div key={i} className="grid gap-1">
-                <div className="sim-bubble sim-guest" lang={language} dir="auto" data-sim-guest>{t.guest}</div>
+                <div className="sim-bubble sim-guest" lang={language} dir="auto" data-sim-guest>
+                  {t.media?.kind === 'audio' && <audio src={t.media.url} controls preload="metadata" className="sim-audio" data-sim-audio aria-label="الرسالة الصوتية المرفوعة" />}
+                  {t.media?.kind === 'image' && <img src={t.media.url} alt="الصورة المرفوعة للتجربة" className="max-h-40 max-w-full rounded" data-sim-image />}
+                  {t.guest}
+                </div>
+                {t.r?.media?.map((x, j) => (
+                  <div key={`m${j}`} className="sim-bubble sim-note text-start" data-sim-media={x.status}>
+                    {x.kind === 'audio' && x.transcript ? <><span className="font-semibold">تفريغ صوتي:</span> <span dir="auto">{x.transcript}</span></>
+                      : x.category ? <><span className="font-semibold">تصنيف الصورة:</span> {MEDIA_CATEGORY_LABELS[x.category] ?? x.category}</>
+                      : MEDIA_STATUS_LABELS[x.status] ?? x.status}
+                  </div>
+                ))}
                 {t.error && <div className="sim-bubble sim-error" role="alert">{t.error}</div>}
                 {!t.r && !t.error && <div className="sim-bubble sim-us"><Spinner /></div>}
                 {t.r?.replies.map((m, j) => (
@@ -735,8 +769,20 @@ export function SimulatorPanel({ o, editingPersona }: { o: HubOverview; editingP
           <div className="sim-phone-input">
             <label htmlFor="sim-text" className="sr-only">رسالة الضيف</label>
             <input id="sim-text" className="field" value={text} onChange={(e) => setText(e.target.value)} maxLength={1000} disabled={busy}
-              onKeyDown={(e) => { if (e.key === 'Enter') void send(); }} dir="auto" data-field="sim-text" />
-            <button type="button" className="btn btn-primary" onClick={send} disabled={busy || !text.trim()} data-action="sim-send">{busy && <Spinner />} إرسال</button>
+              onKeyDown={(e) => { if (e.key === 'Enter') void send(); }} dir="auto" data-field="sim-text" placeholder={file ? 'تعليق على الملف (اختياري)' : undefined} />
+            <button type="button" className="btn btn-primary" onClick={send} disabled={busy || (!text.trim() && !file)} data-action="sim-send">{busy && <Spinner />} إرسال</button>
+          </div>
+          <div className="sim-phone-file" data-sim-file>
+            <label htmlFor="sim-file" className="text-xs font-semibold">رسالة صوتية أو صورة للتجربة</label>
+            <input key={fileKey} id="sim-file" type="file" className="text-xs" accept="audio/ogg,audio/opus,.ogg,.opus,.oga,audio/mpeg,audio/mp4,audio/x-m4a,audio/wav,audio/webm,image/jpeg,image/png,image/webp"
+              onChange={(e) => pick(e.target.files?.[0] ?? null)} disabled={busy} data-field="sim-file" />
+            {file && (
+              <p className="text-xs text-ink-muted" data-sim-file-chosen>
+                {L.simMediaKind(file) === 'audio' ? 'رسالة صوتية' : 'صورة'}: <span className="latin" dir="ltr">{file.name}</span> ·{' '}
+                <button type="button" className="inbox-link" onClick={() => { setFile(null); setFileKey((k) => k + 1); }} data-action="sim-file-clear">إزالة الملف</button>
+              </p>
+            )}
+            <p className="text-xs text-ink-muted">تُقرأ الرسالة الصوتية والصورة هنا حتى لو كان «الفويس» أو «الصور» متوقفًا في الوحدة، ولا يُحفظ الملف. لا ترفع مستندًا أو صورة حقيقية لشخص.</p>
           </div>
         </div>
         <div className="card p-4 grid gap-3 content-start" data-sim-details>
@@ -778,6 +824,20 @@ function SimDetails({ r }: { r: L.SimResult }) {
           </dl>
         ) : <p className="text-ink-muted" data-sim-no-understanding>{L.noUnderstandingReason(r)}</p>}
       </div>
+      {(r.media?.length ?? 0) > 0 && (
+        <div data-sim-media-detail>
+          <h4 className="label">الملف</h4>
+          {r.media!.map((x, i) => (
+            <p key={i}>
+              {x.kind === 'audio' ? 'رسالة صوتية' : 'صورة'}: {MEDIA_STATUS_LABELS[x.status] ?? x.status}
+              {x.seconds ? <> · <span className="num">{Math.max(1, Math.round(x.seconds))}</span> ث</> : null}
+              {x.category ? <> · {MEDIA_CATEGORY_LABELS[x.category] ?? x.category}</> : null}
+            </p>
+          ))}
+          {r.priority === 'high' && <p className="font-semibold" data-sim-priority>أولوية عالية</p>}
+          {r.staff_line && <p className="text-xs text-ink-muted" data-sim-staff-line>سطر «المطلوب» في تنبيه الفريق: {r.staff_line}</p>}
+        </div>
+      )}
       <div data-sim-decision>
         <h4 className="label">القرار</h4>
         <p data-sim-state={r.decision.to}>{L.simStateText(r.decision.from)} ← {L.simStateText(r.decision.to)}</p>

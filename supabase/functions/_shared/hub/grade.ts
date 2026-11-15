@@ -27,6 +27,14 @@ export interface StepExpect {
   salaam?: boolean;
   /** the reply carries the greeting line «مرحبًا بك في …» / "Welcome to …" */
   greeting?: boolean;
+  /** H7: a voice note / image status the turn must record (transcribed, too_long, failed_transcribe …) */
+  media?: string;
+  /** H7: an image category the turn must record */
+  category?: string;
+  /** H7: the hand-off's priority (a problem photo: high) */
+  priority?: string;
+  /** H7: words the staff alert's «المطلوب» line must hold */
+  summary_includes?: string;
 }
 export interface Expect {
   action: string;
@@ -70,6 +78,12 @@ export interface StepOutcome {
   replies: { body: string; notice: boolean }[];
   gap: boolean;
   guard_refusals: number;
+  /** H7: the media statuses of the turn (transcribed, classified, failed_transcribe …), the image categories, the
+   *  priority and the staff alert's «المطلوب» line */
+  media?: string[];
+  categories?: string[];
+  priority?: string | null;
+  summary?: string | null;
 }
 export interface GradeCtx {
   /** settings.breakfast and extra_bed_per_night (Settings) — the rest of the fees come from bank-rules (policies.json) */
@@ -231,6 +245,11 @@ export function gradeConversation(item: Item, o: Outcome): Grade {
     if (e.greeting === true && !/مرحبًا بك في|أهلًا بعودتك|Welcome (to|back)/.test(text)) reasons.push(`s${i + 1}:greeting`);
     if (e.greeting === false && /مرحبًا بك في|Welcome to/.test(text)) reasons.push(`s${i + 1}:greeting_again`);
     if (g.guard_refusals >= 2) reasons.push(`s${i + 1}:guard`);
+    // H7: the voice note / image's outcome, its priority, the staff line and what must never reach the reply
+    if (e.media && !(g.media ?? []).includes(e.media)) reasons.push(`s${i + 1}:media:${e.media}:${(g.media ?? []).join('|') || 'none'}`.slice(0, 80));
+    if (e.category && !(g.categories ?? []).includes(e.category)) reasons.push(`s${i + 1}:category:${e.category}`);
+    if (e.priority && (g.priority ?? null) !== e.priority) reasons.push(`s${i + 1}:priority:${e.priority}:${g.priority ?? 'none'}`);
+    if (e.summary_includes && !norm(g.summary ?? '').includes(norm(e.summary_includes))) reasons.push(`s${i + 1}:summary`);
     const said = g.replies.filter((x) => !x.notice).map((x) => x.body).join('\n');
     GLOBAL_MUST_NOT.forEach((p, j) => {
       if (hasWord(said, p)) reasons.push(`s${i + 1}:global:${j}`);

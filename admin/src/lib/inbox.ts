@@ -84,6 +84,11 @@ export interface Msg {
   media_path: string | null;
   media_mime: string | null;
   media_purged: boolean;
+  /** H7: a voice note's transcript («تفريغ صوتي» — guest text), its length; an image's category; what the media became */
+  transcript?: string | null;
+  transcript_seconds?: number | null;
+  media_category?: string | null;
+  media_status?: string | null;
   status: string;
   error_code: string | null;
   sent_at: string;

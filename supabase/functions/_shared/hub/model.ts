@@ -10,13 +10,17 @@
  */
 
 /** H6c: summary = the staff alert's line (Haiku); staff_chat = the colleague chat with a staff or report number */
-export type Layer = 'understand' | 'tag' | 'compose' | 'translate' | 'suggest' | 'summary' | 'staff_chat';
+/** H7: vision = the image classification and reading (prompts.md §10, Haiku); transcribe = OpenAI's voice transcription
+ *  (counted per minute in hub_usage_daily — never through this module) */
+export type Layer = 'understand' | 'tag' | 'compose' | 'translate' | 'suggest' | 'summary' | 'staff_chat' | 'vision';
 export interface ModelCall {
   layer: Layer;
   model: string;
   system: string;
   user: string;
   examples?: { user: string; assistant: string }[];
+  /** H7: images sent before the user text (the vision layer only) — base64, never logged */
+  images?: { media_type: string; data: string }[];
 }
 export interface ModelResult {
   ok: boolean;
@@ -37,14 +41,21 @@ export const CEILINGS: Record<Layer, { max_tokens: number; max_input_chars: numb
   translate: { max_tokens: 800, max_input_chars: 6000 },
   summary: { max_tokens: 120, max_input_chars: 4000 },
   staff_chat: { max_tokens: 400, max_input_chars: 8000 },
+  vision: { max_tokens: 500, max_input_chars: 3000 },
 };
 
 /** the request body of one call (exported for the checks) */
 export function requestBody(c: ModelCall, thinking = true): Record<string, unknown> {
   const ceil = CEILINGS[c.layer];
-  const msgs: { role: 'user' | 'assistant'; content: string }[] = [];
+  const msgs: { role: 'user' | 'assistant'; content: unknown }[] = [];
   for (const e of c.examples ?? []) msgs.push({ role: 'user', content: e.user }, { role: 'assistant', content: e.assistant });
-  msgs.push({ role: 'user', content: c.user.slice(0, ceil.max_input_chars) });
+  const userText = c.user.slice(0, ceil.max_input_chars);
+  msgs.push({
+    role: 'user',
+    content: c.images?.length
+      ? [...c.images.map((i) => ({ type: 'image', source: { type: 'base64', media_type: i.media_type, data: i.data } })), { type: 'text', text: userText }]
+      : userText,
+  });
   const body: Record<string, unknown> = { model: c.model, max_tokens: ceil.max_tokens, system: c.system, messages: msgs, output_config: { effort: 'low' } };
   if (thinking) body.thinking = /sonnet/.test(c.model) ? { type: 'between_tools' } : { type: 'disabled' };
   return body;

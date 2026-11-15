@@ -6,7 +6,8 @@
  * engine wrote; grade.ts judges it. Used by hub-agent (eval-step), hub-admin (simulate — one turn of «المحاكي») and the
  * offline replay of scripts/hub-eval-check.mjs.
  */
-import { runTurn, type Deps, type Finish } from './engine.ts';
+import { runTurn, type Deps, type Finish, type MediaDeps } from './engine.ts';
+import { IMAGE_CATEGORIES, SENSITIVE, type ImageCategory, type TranscribeResult, type Vision } from './media.ts';
 import { outcomeKind, type Item, type Outcome, type StepOutcome } from './grade.ts';
 import type { ModelFn } from './model.ts';
 import text from './text.generated.json' with { type: 'json' };
@@ -17,8 +18,8 @@ type Json = any;
 /** the engine's version a run is judged with: the instructions of prompts.md and copy.md as loaded, + this module */
 export async function engineVersion(): Promise<string> {
   // the leading code marks a change of the engine's code that the texts do not show: e2 = the H6 gaps (mixed messages,
-  // the room-only «يبدأ من», the guard's phones, emails and first person); e3 = H6 pass 3 (replyLicence; the workspace usage limit read as the credit); e4 = H6 pass 5 (the natural-conversation policy: kinds, chat / clarify / redirect, the booking conversation, no drafts in «يرد تلقائيًا»); e5 = no second quote when nothing it depends on changed; the guard graded per turn; e6 = H6c «بانتظار موظف» / «مع موظف» and the alert line — bump it with any such change
-  const data = new TextEncoder().encode(`e6|${JSON.stringify((text as Json).prompts)}|${JSON.stringify((text as Json).copy)}`);
+  // the room-only «يبدأ من», the guard's phones, emails and first person); e3 = H6 pass 3 (replyLicence; the workspace usage limit read as the credit); e4 = H6 pass 5 (the natural-conversation policy: kinds, chat / clarify / redirect, the booking conversation, no drafts in «يرد تلقائيًا»); e5 = no second quote when nothing it depends on changed; the guard graded per turn; e6 = H6c «بانتظار موظف» / «مع موظف» and the alert line; e7 = H7 voice notes and images — bump it with any such change
+  const data = new TextEncoder().encode(`e7|${JSON.stringify((text as Json).prompts)}|${JSON.stringify((text as Json).copy)}`);
   const h = new Uint8Array(await crypto.subtle.digest('SHA-256', data));
   return `h6-${[...h.slice(0, 6)].map((b) => b.toString(16).padStart(2, '0')).join('')}`;
 }
@@ -44,10 +45,73 @@ export const STAFF_LINE = /^\[staff\]\s*([\s\S]+)$/;
 export const WAIT_LINE = /^\[wait:(\d{1,4})\]$/;
 export const isGuestLine = (m: string) => !STAFF_LINE.test(m) && !WAIT_LINE.test(m);
 
+/**
+ * H7: a media message of the bank, recorded instead of a real file (the voices belong to staff; images are synthetic):
+ *   «[voice] <transcript>» — a voice note and its recorded transcript; «[voice:fail]» (the transcription fails), «[voice:empty]»
+ *   (nothing said), «[voice:long]» (longer than 5 minutes), «[voice:capped]» (the unit's daily minutes are used up);
+ *   «[image:<category>] <reading or the problem's staff line> ‖ <caption>» — an image and its recorded classification;
+ *   «[sticker]», «[video]», «[document]», «[location]».
+ * The legacy «[voice note]» / «[image]» (no fixture) stay media with nothing recorded: the team, as before H7.
+ */
+export interface BankMedia {
+  kind: 'audio' | 'image' | 'sticker' | 'video' | 'document' | 'location';
+  caption: string | null;
+  transcript?: string | null;
+  voice?: 'ok' | 'fail' | 'empty' | 'long' | 'capped';
+  vision?: Vision | null;
+}
+const MEDIA_TOKEN = /^\[(voice(?::(fail|empty|long|capped))?|image:([a-z_]+)|sticker|video|document|location)\]\s*([\s\S]*)$/;
+export function bankMedia(message: string): BankMedia | null {
+  const m = MEDIA_TOKEN.exec(String(message ?? '').trim());
+  if (!m) return null;
+  const rest = (m[4] ?? '').trim();
+  if (m[1].startsWith('voice')) {
+    const v = (m[2] ?? 'ok') as BankMedia['voice'];
+    return { kind: 'audio', caption: null, voice: v, transcript: v === 'ok' ? rest : null };
+  }
+  if (m[3]) {
+    const cat = m[3] as ImageCategory;
+    if (!IMAGE_CATEGORIES.includes(cat)) throw new Error(`bank: unknown image category ${cat}`);
+    const [reading, caption] = rest.split('‖').map((x) => x.trim());
+    const vision: Vision = SENSITIVE.has(cat) ? { category: cat, reading: '', problem_line: '' }
+      : cat === 'problem' ? { category: cat, reading: '', problem_line: reading ?? '' } : { category: cat, reading: reading ?? '', problem_line: '' };
+    return { kind: 'image', caption: caption || null, vision };
+  }
+  return { kind: m[1] as BankMedia['kind'], caption: rest || null };
+}
+
+/** the recorded media of the bank (no OpenAI call, no vision call): the turn's message carries its fixture; a real upload
+ *  («المحاكي») carries its bytes as `inline` and goes through the injected transcription and the real vision call */
+export function fixtureMedia(live?: MediaDeps): MediaDeps {
+  let cur: Json = null;
+  return {
+    load: async (m) => {
+      cur = m;
+      if (m?.inline?.bytes) return { bytes: m.inline.bytes, mime: String(m.inline.mime ?? 'application/octet-stream') };
+      const f = m?.fixture as BankMedia | undefined;
+      if (!f) return null;
+      // a length the 5-minute rule reads from the size (16 kbps Ogg Opus): 10 s, or 5 min 1 s for «[voice:long]»
+      return { bytes: new Uint8Array(f.voice === 'long' ? 602000 : 20000), mime: 'audio/ogg' };
+    },
+    transcribe: async (f, o): Promise<TranscribeResult> => {
+      if (cur?.inline?.bytes) return live ? live.transcribe(f, o) : { ok: false, text: '', languages: [], seconds: null, latency_ms: 0, error: 'not_configured' };
+      const fx = cur?.fixture as BankMedia | undefined;
+      if (!fx || fx.voice === 'fail') return { ok: false, text: '', languages: [], seconds: 10, latency_ms: 0, error: 'other' };
+      if (fx.voice === 'empty') return { ok: true, text: '', languages: [], seconds: 10, latency_ms: 0 };
+      const t = String(fx.transcript ?? '');
+      return { ok: true, text: t, languages: /[\u0600-\u06FF]/.test(t) ? ['ar'] : ['en'], seconds: 10, latency_ms: 0 };
+    },
+    // undefined = no recording: the real vision call (an upload); null = the classification failed
+    classify: async (m) => (m?.inline?.bytes ? undefined : (m?.fixture as BankMedia | undefined)?.vision ?? null) as Vision | null,
+  };
+}
+
 /** the claim of one guest turn of an item, as hub_turn_claim would hand it over in «تجربة» */
-export function claimOf(ctx: Json, item: Pick<Item, 'key' | 'language' | 'context'>, message: string, st: SimState, persona: Json | null, n: number): Json {
+export function claimOf(ctx: Json, item: Pick<Item, 'key' | 'language' | 'context'>, message: string, st: SimState, persona: Json | null, n: number,
+  inline?: { kind: 'audio' | 'image'; mime: string; bytes: Uint8Array } | null): Json {
   const L = item.language === 'en' ? 'en' : 'ar';
   const c = item.context ?? {};
+  const bm = inline ? null : bankMedia(message);
   const kind = c.message_kind === 'audio' || message === '[voice note]' ? 'audio' : c.message_kind === 'image' || message === '[image]' ? 'image' : 'text';
   return {
     claimed: true,
@@ -55,11 +119,17 @@ export function claimOf(ctx: Json, item: Pick<Item, 'key' | 'language' | 'contex
     conversation: { id: `eval-${item.key}`, state: st.state, real_state: 'human', language: L, window_expires_at: '2099-01-01T00:00:00Z',
       failed_understandings: st.failed_understandings, priority: 'normal', topics: [], tags: [], out_of_scope: st.out_of_scope, first_reply: st.first_reply, is_test: true,
       human_phase: st.state === 'human' ? st.human_phase : null, state_before_human: st.state_before_human },
-    unit: { ...ctx.unit, mode: 'test', persona: persona ?? ctx.unit?.persona ?? null },
+    // H7: the test lab and «المحاكي» read voice notes and images whatever the unit's switches say (they are tested before
+    // Ahmed switches them on); the daily minutes are a whole hour, or none for «[voice:capped]»
+    unit: { ...ctx.unit, mode: 'test', persona: persona ?? ctx.unit?.persona ?? null, media: { voice: true, images: true } },
+    voice: { cap_seconds: bm?.voice === 'capped' ? 0 : 3600, used_seconds: 0 },
     channel: ctx.channel ?? { address: null, sending_enabled: false },
     guest: { first_name: typeof c.first_name === 'string' ? c.first_name : null, returning: !!c.returning_guest, language: L },
     // «[button:<id>]» = a tap on our own quick reply (the conversation bank, H6 pass 5)
-    messages: [/^\[button:(hub[a-z]?:[a-z_]+)\]$/.test(message)
+    messages: [inline
+      ? { id: `m-${item.key}-${n}`, kind: inline.kind, body: message || null, payload: { media_id: 'sim' }, inline: { mime: inline.mime, bytes: inline.bytes } }
+      : bm ? { id: `m-${item.key}-${n}`, kind: bm.kind, body: bm.caption, payload: { media_id: 'eval' }, fixture: bm }
+      : /^\[button:(hub[a-z]?:[a-z_]+)\]$/.test(message)
       ? { id: `m-${item.key}-${n}`, kind: 'button_reply', body: message, payload: { button_id: /^\[button:(.+)\]$/.exec(message)![1] } }
       : kind === 'text' ? { id: `m-${item.key}-${n}`, kind: 'text', body: message, payload: {} } : { id: `m-${item.key}-${n}`, kind, body: null, payload: { media_id: 'eval' } }],
     history: st.history.slice(-12),
@@ -110,6 +180,8 @@ export async function runItem(ctx: Json, item: Item, deps: Deps, persona: Json |
   const read: { cards: Json[]; faq: Json[] }[] = [];
   const d: Deps = {
     ...deps,
+    // H7: the bank's voice notes and images are recorded (fixtureMedia) — the lab never sends a file anywhere
+    media: fixtureMedia(deps.media),
     knowledge: async (u, t, L, b) => {
       const k = await deps.knowledge(u, t, L, b);
       read.push({ cards: k?.cards ?? [], faq: k?.faq ?? [] });
@@ -193,7 +265,10 @@ export async function runItem(ctx: Json, item: Item, deps: Deps, persona: Json |
     error: error ?? (last?.error === 'engine_error' ? 'engine_error' : null),
     // H6 pass 5: what each guest message got (the conversation bank grades every step)
     steps: finishes.map((f): StepOutcome => ({ kind: outcomeKind(f), state: f.state ?? null, replies: f.messages.map((m) => ({ body: m.body, notice: !!m.notice })),
-      gap: (f.decision as Json)?.gap === true, guard_refusals: (f.guard_refusals ?? []).length })),
+      gap: (f.decision as Json)?.gap === true, guard_refusals: (f.guard_refusals ?? []).length,
+      // H7: what the voice notes and images became, the priority and the staff alert's line
+      media: (f.media ?? []).map((x) => x.status), categories: (f.media ?? []).map((x) => x.category).filter((x): x is ImageCategory => !!x),
+      priority: f.priority ?? null, summary: f.handoff_summary ?? null })),
   };
   return { outcome, finishes, models: finishes.flatMap((f) => f.models), understanding: finishes.map((f) => f.understanding ?? null) };
 }

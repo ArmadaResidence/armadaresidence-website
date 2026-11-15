@@ -81,7 +81,7 @@ export const reportTest = () => call<{ ok: boolean; recipient: string; mine: boo
 
 export interface ReportBranch {
   conversations: number; assistant: number; handed: number; reply_avg_min: number | null; replied: number; bookings: number; reviews: number; unanswered: number;
-  model_failures: number; send_failures: number; alerts_sent: number; alerts_delivered: number; alerts_read: number; escalated: number; opened: number;
+  model_failures: number; send_failures: number; voice_failures?: number; image_failures?: number; alerts_sent: number; alerts_delivered: number; alerts_read: number; escalated: number; opened: number;
   opened_link: number; email_only: number; reasons: Record<string, number>;
 }
 export interface ReportData {
@@ -183,7 +183,9 @@ export function reportLines(r: ReportData): { label: string; value: string }[] {
   const per = (k: keyof ReportBranch, f: (v: never) => string = (v) => String(v ?? 0)) =>
     (['airport-road', 'shafa-road'] as const).map((b) => `${SHORT[b]} ${f(r.branches?.[b]?.[k] as never)}`).join(' · ');
   const sum = (k: keyof ReportBranch) => (['airport-road', 'shafa-road'] as const).reduce((a, b) => a + Number(r.branches?.[b]?.[k] ?? 0), 0);
+  // H7: the voice notes and images that failed (staff.ts → faultsText, the same order)
   const faults = [sum('model_failures') ? `فشل النموذج ${sum('model_failures')}` : '', sum('send_failures') ? `فشل الإرسال ${sum('send_failures')}` : '',
+    sum('voice_failures') ? `فشل الصوت ${sum('voice_failures')}` : '', sum('image_failures') ? `فشل الصور ${sum('image_failures')}` : '',
     r.budget_alerts ? `تنبيه الميزانية ${r.budget_alerts}` : ''].filter(Boolean).join(' · ') || 'لا يوجد';
   return [
     { label: 'المحادثات', value: per('conversations') },

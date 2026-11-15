@@ -15,3 +15,6 @@ await import('../admin/tests/hub-lab-ui-check.mjs');
 // H6c (15 Nov 2026): «الفريق والتقارير» — the staff slots, the branch settings, the daily report and ?hub_c / ?hub_r —
 // offline too (admin/tests/hub-team-ui-check.mjs).
 await import('../admin/tests/hub-team-ui-check.mjs');
+// H7 (15 Nov 2026): «الفويس» / «الصور», the voice minutes and «المحاكي»'s upload — offline too
+// (admin/tests/hub-media-ui-check.mjs).
+await import('../admin/tests/hub-media-ui-check.mjs');

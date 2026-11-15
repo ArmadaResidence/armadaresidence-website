@@ -244,6 +244,7 @@ Payment on arrival at the hotel.
 | 2 to 4 rooms | «حجز أكثر من غرفة يرتّبه فريق الاستقبال، وسيكمل معك أحدهم في هذه المحادثة.» | “Bookings for more than one room are arranged by our reception team; one of them will continue with you in this chat.” |
 | Early check-in or extension | «الوصول المبكر وتمديد الإقامة حسب التوافر، ويؤكدهما فريق الاستقبال. سيكمل معك أحدهم في هذه المحادثة.» | “Early check-in and extensions depend on availability and are confirmed by our reception team. One of them will continue with you in this chat.” |
 | Voice note, image, file, location | «وصلتنا رسالتك، وسيطّلع عليها أحد أفراد فريقنا ويرد عليك هنا.» | “We’ve received your message; a member of our team will look at it and reply here.” |
+| Problem photo acknowledgement (the fallback of the model-written line) | «نأسف لذلك، وصلت الصورة إلى فريقنا.» | “We’re sorry about that; the photo has reached our team.” |
 | Hall or group request received | «وصلنا طلبك برقم {ref}، وسيتواصل معك فريق المبيعات.» | “We’ve received your request {ref}; our sales team will contact you.” |
 | Menu link | «تجد قائمة {venue_name} وأسعارها هنا، ويمكنك إرسال طلبك منها مباشرة: {menu_url}» | “You’ll find the {venue_name} menu and its prices here, and you can send your order straight from it: {menu_url}” |
 | Booking status (same phone only) | «حجزك رقم {ref} في {branch_name} من {check_in} إلى {check_out}: {status_text}.» — «مؤكد» / «طلب يراجعه الاستقبال» / «ملغي» | “Booking {ref} at {branch_name}, {check_in} to {check_out}: {status_text}.” — “confirmed” / “a request under review by reception” / “cancelled” |
@@ -253,6 +254,27 @@ Payment on arrival at the hotel.
 | Colleague chat fallback (a staff or report number; the model's reply refused or unreachable) | «وصلت رسالتك 👍 للمحادثات المنتظرة افتح «المحادثات» في لوحة التحكم.» | “Got your message 👍 For the waiting chats, open «المحادثات» in the dashboard.” |
 
 `{menu_url}`: `https://armadaresidence.com/menu/` (Arabic) or `https://armadaresidence.com/en/menu/` (English) for the lobby café — from `dining_venues`.
+
+**5.0 Voice notes and images** [H7 — 15 Nov 2026; each behind its unit switch «الفويس» / «الصور», off until Ahmed switches it on]
+
+- A voice note is transcribed and answered as text, in text. One that cannot be transcribed (not downloaded, transcription failed, nothing said, no language), longer than 5 minutes, or past the unit's daily minutes → the "Hand-off (general)" notice above and the team.
+- An identity, passport, residence permit, payment receipt, bank transfer or bank card image → the "Hand-off (general)" notice and the team; nothing is read from it.
+- A screenshot → read and answered under the normal rules (only sourced facts; a price only from the rate calendar or the offers).
+- A photo of a problem → ONE short sentence written by the model (prompts.md §2 ACTION problem_ack: sorry, the photo has reached the team — never a diagnosis, a time, a repair or a refund), then the "Hand-off (general)" notice, in one message; the fallback line is the row "Problem photo acknowledgement" above.
+- A room or place photo, or anything else → answered when the caption or the conversation makes it a hotel question; otherwise one clarifying question (model-written).
+- A sticker alone → like an emoji: the short greeting reply «كيف نساعدك؟» only as the first message of an episode, otherwise nothing.
+- A video, a file, a location or a contact card → the "Voice note, image, file, location" notice and the team (unchanged).
+
+**5.2 The staff alert line of a media hand-off** (staff-facing, Arabic — `hub_staff_alert` {{5}} «المطلوب»; code's lines, no model call)
+
+| Key | Line |
+|---|---|
+| voice_failed | «أرسل رسالة صوتية تعذّر تفريغها — يرجى الاستماع إليها في المحادثة» |
+| voice_too_long | «أرسل رسالة صوتية أطول من خمس دقائق — يرجى الاستماع إليها في المحادثة» |
+| voice_capped | «أرسل رسالة صوتية بعد بلوغ حد التفريغ اليومي — يرجى الاستماع إليها في المحادثة» |
+| id_document | «أرسل صورة مستند (هوية أو جواز أو إقامة أو إيصال دفع أو بطاقة بنكية) — يرجى مراجعتها في المحادثة» |
+| image_failed | «أرسل صورة تعذّرت قراءتها — يرجى الاطلاع عليها في المحادثة» |
+| problem_photo | «أرسل صورة لمشكلة في الغرفة — يرجى الاطلاع عليها بسرعة» (the fallback; normally the photo's own line written by the model, prompts.md §10) |
 
 **5.1 The «إلغاء» question** (a typed «إلغاء» from a guest with an active booking — [مقرر — 12 نوفمبر 2026])
 
@@ -300,6 +322,7 @@ Every subject carries an `AR-` token so the Hostinger filter «From contains no-
 | Number quality dropped [مقرر — 13 نوفمبر 2026] | the active admins | «جودة رقم واتساب — {unit_name} — AR-HUB-{yyyymmdd}» | «انخفض تقييم جودة رقم واتساب {unit_name} إلى «{rating}» حسب ميتا.» · «راجع الرسائل والحملات الأخيرة المرسلة من هذا الرقم قبل بدء أي حملة جديدة.» · button «فتح إعدادات المساعد». `{rating}`: High «مرتفع» · Medium «متوسط» · Low «منخفض» |
 | Claude API credit exhausted [مقرر — Ahmed's brief of 14 Nov 2026, session H5] | the active admins | «رصيد كلود انتهى — المساعد متوقف — AR-HUB-{yyyymmdd}» | «رفضت أنثروبيك طلبات المساعد لأن رصيد المطورين انتهى، فكل المحادثات الجديدة تذهب إلى الفريق حتى يعود الرصيد.» · «يعود الرصيد الشهري مع بداية دورة الاشتراك التالية، أو يمكن إضافة رصيد مدفوع من لوحة المطورين في أنثروبيك.» · button «فتح إعدادات المساعد». Once per exhausted period (the alert stays open until a model call succeeds) |
 | Budget alert [session H5 — wording for Ahmed's review] | the active admins | «ميزانية المساعد — {budget_label} — AR-HUB-{yyyymmdd}» | «بلغت تكلفة المساعد {spent} من {budget} ({pct}%) {period_label}.» · at 100 %: «بلغت التكلفة الحد، فكل المحادثات الجديدة تذهب إلى الفريق حتى تبدأ الفترة التالية أو تُرفع الميزانية.» · button «فتح إعدادات المساعد». Once per budget and period |
+| Voice minutes cap [session H7 — wording for Ahmed's review] | the active admins | «حد الرسائل الصوتية اليومي — {unit_name} — AR-HUB-{yyyymmdd}» | «بلغ تفريغ الرسائل الصوتية في {unit_name} حده اليومي ({minutes}).» · «تذهب الرسائل الصوتية الجديدة إلى الفريق دون تفريغ حتى نهاية اليوم، ويمكن رفع الحد من «الميزانية» في إعدادات المساعد.» · button «فتح إعدادات المساعد». Once per unit and Riyadh day (Settings `hub_voice_daily_minutes`) |
 | Ending soon [مقرر — Ahmed's brief of 14 Nov 2026, session H4] | the active admins | «تنبيهات مركز الضيوف — {date} — AR-HUB-{yyyymmdd}» | heading «تنتهي قريبًا»; one line per item: «بطاقة: {title} — تنتهي {date}» or «عرض: {name} — ينتهي {date}»; button «فتح قاعدة المعرفة». Once a day (08:00 Riyadh), only when the list is not empty and holds an item not yet sent: knowledge cards ending within 14 days, offers within 7 (Settings) |
 | Reply flagged wrong [مقرر — Ahmed, 14 Nov 2026] | the active admins | «رد خاطئ أُرسل لضيف — {unit_name} — AR-HUB-{yyyymmdd}» | «أبلغ أحد الموظفين أن ردًا أرسله المساعد لضيف في {unit_name} كان خاطئًا.» · «الموضوع: {topics}» · «لم يتغيّر أي ترخيص؛ السؤال أُضيف إلى «لم أعرف الإجابة» لتصحيح البطاقة أو كتابة بطاقة جديدة.» · button «فتح المحادثة». Once per flagged reply |
 | Question spike [مقرر — Ahmed, 14 Nov 2026] | the active admins | «ارتفاع في سؤال — {topic} — AR-HUB-{yyyymmdd}» | «سُئل عن «{topic}» {count} خلال آخر 24 ساعة في {unit_name}، أي أكثر من {factor} أضعاف المعدل اليومي.» · «راجع الأسئلة في «رادار الأسئلة»، وأضف بطاقة إن لم تكن الإجابة موجودة.» · button «فتح رادار الأسئلة». `{count}`: «مرة واحدة» · «مرتين» · «{n} مرات» (3–10) · «{n} مرة». At most once per unit and topic in 24 hours — counted per unit (Settings `hub_spike_factor`, `hub_spike_min`); never for «تحية» or «شكر وختام»; never before the unit has 7 days of live history; the unit's name always filled [مقرر — Ahmed, 14 Nov 2026, H6 pass 4: the figure «(0)» removed] |

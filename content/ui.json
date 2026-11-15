@@ -605,6 +605,13 @@
         "button": "فتح رادار الأسئلة",
         "times": {"one": "مرة واحدة", "two": "مرتين", "few": "{n} مرات", "many": "{n} مرة"}
       },
+      "hub_voice_cap": {
+        "_note": "Guest Hub H7 (15 Nov 2026, copy.md §7 — the session's wording, for Ahmed's review): a unit's transcribed voice minutes reached Settings hub_voice_daily_minutes — ONE email to the active admins per unit and Riyadh day; voice notes go to the team untranscribed until the day ends.",
+        "subject": "حد الرسائل الصوتية اليومي — {unit_name} — AR-HUB-{yyyymmdd}",
+        "lead": "بلغ تفريغ الرسائل الصوتية في {unit_name} حده اليومي ({minutes}).",
+        "next": "تذهب الرسائل الصوتية الجديدة إلى الفريق دون تفريغ حتى نهاية اليوم، ويمكن رفع الحد من «الميزانية» في إعدادات المساعد.",
+        "button": "فتح إعدادات المساعد"
+      },
       "hub_model_error": {
         "_note": "Guest Hub H6 pass 3 (14 Nov 2026, copy.md §7 — the session's wording, for Ahmed's review): the model could not be reached for three turns in 30 minutes in one unit (after model.ts's retries); each of those turns went to the team with the no-source notice. ONE email to the active admins while the alert is open.",
         "subject": "تعذّر الوصول إلى نموذج المساعد — {unit_name} — AR-HUB-{yyyymmdd}",

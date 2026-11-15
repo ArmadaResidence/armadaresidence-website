@@ -32,7 +32,8 @@ export type Action =
   | { type: 'ask'; slots: string[] }
   /** H6 pass 5 (Ahmed, 15 Nov 2026): a reply the model writes with no fact — small talk, one clarifying question, or the
    *  polite redirect for a message outside Armada's services; `buttons: 'quick'` adds the greeting's quick replies */
-  | { type: 'chat'; mode: 'chat' | 'clarify' | 'redirect'; buttons?: 'quick' | null }
+  /** problem_ack (H7): a problem photo — a short acknowledgement written by the model, then the hand-off notice */
+  | { type: 'chat'; mode: 'chat' | 'clarify' | 'redirect' | 'problem_ack'; buttons?: 'quick' | null }
   | { type: 'quote'; lite?: boolean }
   | { type: 'send_room_cards' }
   | { type: 'send_summary'; version: number }
@@ -52,7 +53,10 @@ export type Action =
 
 export type Event =
   /** the guest's turn: the understanding (null = failed), or a media / cart / button message */
-  | { type: 'guest'; understanding: Understanding | null; kind: 'text' | 'media' | 'button' | 'reaction'; button_id?: string | null; cart?: boolean }
+  | { type: 'guest'; understanding: Understanding | null; kind: 'text' | 'media' | 'button' | 'reaction' | 'sticker'; button_id?: string | null; cart?: boolean;
+      /** H7: a voice note or an image that did not become text (media.ts → MediaRoute); absent = the media notice (a video, a
+       *  file, a location, a contact, or a voice note / image while its switch is off) */
+      media?: { reason: string; priority?: 'high'; ack?: boolean } | null }
   | { type: 'tap'; button: 'confirm' | 'change' | 'not_now' | 'room'; draft_id: string; version: number; room?: string }
   | { type: 'book_result'; result: 'confirmed' | 'request' | 'price_changed' | 'sold_out' | 'not_bookable' | 'already' | 'error'; others?: boolean }
   | { type: 'answer_result'; ok: boolean; partial?: boolean }
@@ -301,9 +305,22 @@ export function decide(input: DecideInput): Decision {
   // a reaction or a message kind the router cannot read (H6 pass 5 — Ahmed's test of 14 Nov 22:27: it handed the
   // conversation to the team and every message after it went silent): nothing to answer, nobody to call
   if (ev.kind === 'reaction') return out({ next: state === 'new' ? 'inquiry' : state, actions: [{ type: 'noop' }], reason: 'reaction' });
+  // H7 (Ahmed, 15 Nov 2026): a sticker alone is read like an emoji — no hand-off, never «لم أعرف الإجابة»; the first
+  // message of an episode gets the short greeting reply, any later one nothing
+  if (ev.kind === 'sticker') {
+    if (!ctx.first_reply) return out({ next: state === 'new' ? 'inquiry' : state, actions: [{ type: 'noop' }], reason: 'sticker' });
+    t.push('T4');
+    return out({ next: state === 'new' ? 'inquiry' : state, actions: [{ type: 'fixed', key: 'how_help', buttons: ctx.unit_kind === 'branch' ? 'quick' : null }], reason: 'sticker', failed: 'reset' });
+  }
   if (ev.kind === 'media') {
     t.push(state === 'new' ? 'T2' : 'T21');
-    return out({ next: 'human', actions: [handoff('media', MEDIA_NOTICE, { intent: 'media', slots: {}, stopped: state })], reason: 'media' });
+    const m = ev.media;
+    if (!m) return out({ next: 'human', actions: [handoff('media', MEDIA_NOTICE, { intent: 'media', slots: {}, stopped: state })], reason: 'media' });
+    // H7: a voice note that could not be transcribed, an identity or payment image, an unreadable image → the hand-off
+    // notice; a problem photo → a short acknowledgement and the notice, high priority
+    const acts: Action[] = m.ack ? [{ type: 'chat', mode: 'problem_ack' }] : [];
+    acts.push(handoff(m.reason, 'handoff', { intent: m.reason === 'problem_photo' ? 'maintenance' : m.reason.startsWith('voice') ? 'voice_note' : 'image', slots: {}, stopped: state }, m.priority));
+    return out({ next: 'human', actions: acts, reason: m.reason, ...(m.priority ? { priority: m.priority } : {}) });
   }
   // the greeting's quick replies (copy.md §1.4) — our own buttons, by id
   if (ev.kind === 'button' && ev.button_id) {
@@ -665,7 +682,7 @@ export const STATE_LABELS: Record<string, string> = {
 export const HUMAN_PHASE_LABELS = { waiting: 'بانتظار موظف', staff: 'مع موظف' } as const;
 export const INTENT_LABELS: Record<string, string> = {
   stay_booking: 'حجز إقامة', price_question: 'سؤال عن السعر', human_request: 'التحدث مع موظف', complaint: 'شكوى', compensation_request: 'تعويض',
-  booking_change: 'تعديل حجز', booking_cancel: 'إلغاء حجز', media: 'رسالة وسائط', failed_understanding: 'رسالة لم تُفهم', unknown: 'رسالة لم تُفهم',
+  booking_change: 'تعديل حجز', booking_cancel: 'إلغاء حجز', media: 'رسالة وسائط', maintenance: 'مشكلة في الغرفة (صورة)', voice_note: 'رسالة صوتية', image: 'صورة', failed_understanding: 'رسالة لم تُفهم', unknown: 'رسالة لم تُفهم',
   group_request: 'طلب مجموعة', hall_request: 'طلب القاعة', other_language: 'لغة أخرى', out_of_scope: 'خارج خدمات أرمادا', question: 'سؤال',
   dining_order: 'طلب طعام', order_status: 'حالة طلب', table_booking: 'حجز طاولة', booking_status: 'حالة حجز', stay_service_request: 'خدمة أثناء الإقامة',
   other: 'سؤال', always_handoff: 'موضوع للفريق دائمًا', abuse: 'إساءة أو تهديد',

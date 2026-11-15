@@ -110,7 +110,11 @@ check(grade(item({ action: 'ask', state: 'collecting', must_include: ['تاري�
   // the migration that seeds it on production = the file (scripts/hub-conv-migration.mjs)
   const MIG = read('supabase/migrations/20261115100000_guest_hub_conversation.sql');
   const TAG = '$conv_bank' + '$';
-  const seeded = JSON.parse(MIG.slice(MIG.indexOf(TAG) + TAG.length, MIG.lastIndexOf(TAG)));
+  // H7 (15 Nov 2026): the media conversations are seeded by the H7 migration (tag $media_bank$), after the 46 of pass 5
+  const MIG7 = read('supabase/migrations/20261115400000_guest_hub_media.sql');
+  const TAG7 = '$media_bank' + '$';
+  const seeded = [...JSON.parse(MIG.slice(MIG.indexOf(TAG) + TAG.length, MIG.lastIndexOf(TAG))),
+    ...JSON.parse(MIG7.slice(MIG7.indexOf(TAG7) + TAG7.length, MIG7.lastIndexOf(TAG7))).map((x) => ({ key: x.id, messages: x.messages, expect: x.expect }))];
   check(seeded.length === CONV.length && seeded.every((r, i) => r.key === CONV[i].id && JSON.stringify(r.messages) === JSON.stringify(CONV[i].messages) && JSON.stringify(r.expect) === JSON.stringify(CONV[i].expect)),
     'C the migration seeds exactly tests/hub-bank/conversations.jsonl');
   check(/order by m\.sent_at desc limit 12\) h\)/.test(MIG) && !/limit 6\) h\)/.test(MIG), 'C hub_turn_claim hands the model the last 12 messages of the episode');

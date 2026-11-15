@@ -55,6 +55,7 @@ import { guard, type GuardResult } from '../_shared/hub/guard.ts';
 import { cors, preflight } from '../_shared/cors.ts';
 import { claimOf, engineVersion, nextState, type SimState } from '../_shared/hub/eval.ts';
 import { runTurn, type Deps } from '../_shared/hub/engine.ts';
+import { openaiTranscribe, type TranscribeResult } from '../_shared/hub/media.ts';
 import { costOf, type ModelFn } from '../_shared/hub/model.ts';
 import { dashboardAdapter } from '../_shared/hub/adapter/index.ts';
 import { longDate } from '../booking-request/email.ts';
@@ -372,7 +373,26 @@ Deno.serve(async (req) => {
   if (body.action === 'simulate') {
     const unit = typeof body.unit === 'string' && /^[a-z0-9-]{2,40}$/.test(body.unit) ? body.unit : '';
     const text = typeof body.text === 'string' ? body.text.trim().slice(0, 1000) : '';
-    if (!unit || !text) return json(req, 400, { ok: false, error: 'invalid body' });
+    // H7: a voice note (ogg, opus, mp3, m4a, wav, webm) or an image (jpeg, png, webp) uploaded in «المحاكي» — at most 10 MB;
+    // the text, if any, is its caption. Never stored: the bytes live for this one turn only.
+    let inline: { kind: 'audio' | 'image'; mime: string; bytes: Uint8Array } | null = null;
+    if (body.media && typeof body.media === 'object') {
+      const m = body.media as Record<string, unknown>;
+      const kind = m.kind === 'audio' || m.kind === 'image' ? m.kind : null;
+      const mime = typeof m.mime === 'string' ? m.mime.toLowerCase().split(';')[0].trim() : '';
+      const okMime = kind === 'audio' ? /^audio\/(ogg|opus|mpeg|mp3|mp4|m4a|x-m4a|aac|wav|x-wav|webm)$/.test(mime) : /^image\/(jpeg|png|webp)$/.test(mime);
+      const data = typeof m.data === 'string' && m.data.length <= 14_000_000 ? m.data : '';
+      if (!kind || !okMime || !data) return json(req, 400, { ok: false, error: 'hub_media_invalid' });
+      let bytes: Uint8Array;
+      try {
+        bytes = Uint8Array.from(atob(data), (ch) => ch.charCodeAt(0));
+      } catch {
+        return json(req, 400, { ok: false, error: 'hub_media_invalid' });
+      }
+      if (!bytes.length || bytes.length > 10 * 1024 * 1024) return json(req, 400, { ok: false, error: 'hub_media_too_large' });
+      inline = { kind, mime: mime === 'audio/opus' ? 'audio/ogg' : mime, bytes };
+    }
+    if (!unit || (!text && !inline)) return json(req, 400, { ok: false, error: 'invalid body' });
     const ctx = await rpc<Record<string, any>>('hub_sim_context', { p_unit: unit, p_drafts: body.drafts === true }, jwt);
     if (!ctx.ok) return refused(req, ctx);
     const c = ctx.data;
@@ -389,8 +409,19 @@ Deno.serve(async (req) => {
       calls.push({ layer: call.layer, model: call.model, input_tokens: r.input_tokens, output_tokens: r.output_tokens });
       return r;
     };
+    // H7: the upload's transcription, counted on «المحاكي»'s line (the real vision call goes through `model` above)
+    const live = openaiTranscribe(Deno.env.get('OPENAI_API_KEY') ?? '');
+    const audio: { model: string; seconds: number }[] = [];
+    const transcribe = async (f: { bytes: Uint8Array; mime: string }, o: { model: string; languages?: string[]; prompt?: string }): Promise<TranscribeResult> => {
+      const r = await live(f, o);
+      return r;
+    };
     const deps: Deps = {
       model,
+      media: {
+        load: async (m) => (m?.inline?.bytes ? { bytes: m.inline.bytes as Uint8Array, mime: String(m.inline.mime) } : null),
+        transcribe,
+      },
       knowledge: async (u, t, L, b) => {
         const k = await rpc<any>(cards.length ? 'hub_knowledge_for_eval' : 'hub_knowledge_for',
           cards.length ? { p_unit: u, p_topics: t, p_language: L, p_branch: b, p_cards: cards } : { p_unit: u, p_topics: t, p_language: L, p_branch: b }, null);
@@ -409,7 +440,7 @@ Deno.serve(async (req) => {
     };
     let out;
     try {
-      out = await runTurn(claimOf(c, { key: 'sim', language, context: {} }, text, sim, persona, sim.history.length), deps);
+      out = await runTurn(claimOf(c, { key: 'sim', language, context: {} }, text, sim, persona, sim.history.length, inline), deps);
     } catch (e) {
       console.error('hub-admin: simulate failed', String((e as Error)?.message ?? e).slice(0, 100));
       return json(req, 200, { ok: false, error: 'hub_engine' });
@@ -417,11 +448,17 @@ Deno.serve(async (req) => {
     let cost = 0;
     for (const m of calls) {
       if (m.input_tokens + m.output_tokens <= 0) continue;
-      const layer = m.layer === 'tag' ? 'tag' : m.layer === 'compose' ? 'compose' : 'understand';
+      const layer = m.layer === 'tag' ? 'tag' : m.layer === 'compose' ? 'compose' : m.layer === 'vision' ? 'vision' : m.layer === 'summary' ? 'summary' : 'understand';
       const u = await rpc<{ cost_usd: number }>('hub_sim_usage', { p_unit: c.unit.id, p_layer: layer, p_model: m.model, p_in: m.input_tokens, p_out: m.output_tokens }, null);
       cost += u.ok ? Number(u.data?.cost_usd ?? 0) : costOf(c.settings?.prices, m.model, m.input_tokens, m.output_tokens);
     }
     const f = out.finish;
+    for (const a of f.audio ?? []) {
+      if (!(a.seconds > 0)) continue;
+      const u = await rpc<{ cost_usd: number }>('hub_sim_audio', { p_unit: c.unit.id, p_model: a.model, p_seconds: a.seconds }, null);
+      cost += u.ok ? Number(u.data?.cost_usd ?? 0) : 0;
+      audio.push({ model: a.model, seconds: a.seconds });
+    }
     const allCards = read.flatMap((r) => r.cards);
     return json(req, 200, {
       ok: true,
@@ -431,7 +468,11 @@ Deno.serve(async (req) => {
       // the trace names the real reason (the credit or usage limit, a rate limit, a timeout …), never «وسائط أو زر» for text
       model_errors: (f.models ?? []).filter((m) => !m.ok).map((m) => ({ layer: m.layer, error: m.error ?? 'other' })),
       error_code: f.error ?? null,
-      message_kind: 'text',
+      message_kind: inline?.kind ?? 'text',
+      // H7: what the upload became — «تفريغ صوتي» (the transcript, its length) or the image's category; never a reading
+      media: (f.media ?? []).map((x) => ({ kind: x.kind, status: x.status, transcript: x.transcript ?? null, seconds: x.seconds ?? null, category: x.category ?? null })),
+      priority: f.priority ?? null,
+      staff_line: f.handoff_summary ?? null,
       decision: { from: sim.state, to: f.state ?? sim.state, actions: f.decision?.actions ?? [], transitions: f.decision?.transitions ?? [], reason: f.reason ?? null,
         // H6c: the half of «مع الفريق» the conversation is in after this turn, and the flow kept under the hand-off
         human_phase: (f.state ?? sim.state) === 'human' ? 'waiting' : null,
@@ -444,7 +485,7 @@ Deno.serve(async (req) => {
       note: f.note ?? null,
       cost_usd: Math.round(cost * 1e6) / 1e6,
       credit: out.credit,
-      sim: nextState(sim, text, f),
+      sim: nextState(sim, inline ? (f.media?.[0]?.transcript ?? text) || (inline.kind === 'audio' ? '[رسالة صوتية]' : '[صورة]') : text, f),
     });
   }
 

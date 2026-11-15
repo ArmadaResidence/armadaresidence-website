@@ -223,6 +223,11 @@ export interface SimResult {
   model_errors?: { layer: string; error: string }[];
   error_code?: string | null;
   message_kind?: string;
+  /** H7: what an uploaded voice note or image became — the transcript, its length; the image's category (never a reading) */
+  media?: { kind: 'audio' | 'image'; status: string; transcript: string | null; seconds: number | null; category: string | null }[];
+  priority?: string | null;
+  /** H7: the staff alert's «المطلوب» line of a hand-off */
+  staff_line?: string | null;
   decision: { from: string; to: string; actions: string[]; transitions: string[]; reason: string | null; human_phase?: 'waiting' | 'resume' | null; state_before_human?: string | null };
   sources: { cards: { key: string; title: string }[]; read: { key: string; title: string }[]; faq: { key: string; q: string }[] };
   guard: { ok: boolean; refusals: string[][] };
@@ -231,8 +236,24 @@ export interface SimResult {
   credit: string | null;
   sim: SimState;
 }
-export const simulate = (unit: string, text: string, sim: SimState, language: 'ar' | 'en', drafts: boolean, persona: Persona | null) =>
-  api.edge<SimResult>('hub-admin', { action: 'simulate', unit, text, sim, language, drafts, persona });
+export const simulate = (unit: string, text: string, sim: SimState, language: 'ar' | 'en', drafts: boolean, persona: Persona | null,
+  media: { kind: 'audio' | 'image'; mime: string; data: string } | null = null) =>
+  api.edge<SimResult>('hub-admin', { action: 'simulate', unit, text, sim, language, drafts, persona, ...(media ? { media } : {}) });
+/** H7: a file «المحاكي» accepts — a voice note (ogg, opus, mp3, m4a, wav, webm) or an image (jpeg, png, webp), at most 10 MB */
+export const SIM_MEDIA_MAX = 10 * 1024 * 1024;
+export function simMediaKind(f: File): 'audio' | 'image' | null {
+  const t = (f.type || '').toLowerCase();
+  if (/^audio\/(ogg|opus|mpeg|mp3|mp4|m4a|x-m4a|aac|wav|x-wav|webm)$/.test(t) || /\.(ogg|opus|oga)$/i.test(f.name)) return 'audio';
+  if (/^image\/(jpeg|png|webp)$/.test(t)) return 'image';
+  return null;
+}
+/** the file as base64 (no data: prefix) */
+export async function fileBase64(f: File): Promise<string> {
+  const bytes = new Uint8Array(await f.arrayBuffer());
+  let s = '';
+  for (let i = 0; i < bytes.length; i += 0x8000) s += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+  return btoa(s);
+}
 /** why a simulated turn has no understanding (H6 pass 4) — the failed call's kind, in Arabic, with the HTTP class */
 export const MODEL_ERROR_LABELS: Record<string, string> = {
   credit: 'رفضت أنثروبيك الطلب: نفد الرصيد أو بلغت المساحة حد الإنفاق المضبوط في لوحة المطورين',
@@ -258,6 +279,8 @@ export function noUnderstandingReason(r: Pick<SimResult, 'model_errors' | 'error
 export const SIM_ERRORS: Record<string, string> = {
   hub_budget_cap: 'بلغت التكلفة حد الميزانية، فلا يعمل المحاكي الآن.',
   hub_engine: 'تعذّر تشغيل المحرك لهذه الرسالة، أعد المحاولة.',
+  hub_media_invalid: 'نوع الملف غير مقبول: رسالة صوتية (ogg أو mp3 أو m4a أو wav) أو صورة (jpg أو png أو webp).',
+  hub_media_too_large: 'الملف أكبر من 10 ميغابايت.',
   unit_hidden: 'لا يعمل المحاكي لوحدة مخفية.',
   'not allowed': 'لا صلاحية لهذا الإجراء.',
 };
