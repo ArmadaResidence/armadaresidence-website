@@ -282,16 +282,31 @@ const SEO_FEATURE_KEYS: (keyof RoomFeatures)[] = ['kitchen', 'living_room', 'bal
 export const pricing = withTexts('pricing.json', pricingJson);
 /** The fees the static site states (E1, 2 Nov 2026): Settings read at build time by build.py (resolve_fees →
  *  content/fees.generated.json, gitignored), pricing.json as the seed / fallback (astro dev). */
-const feeFiles = import.meta.glob<{ extra_bed_per_night: number; breakfast_adult: number }>('../../content/fees.generated.json', { eager: true, import: 'default' });
-export const fees: { extra_bed_per_night: number; breakfast_adult: number } = Object.values(feeFiles)[0] ?? {
+type Fees = { extra_bed_per_night: number; breakfast_adult: number; breakfast_child_tiers?: { max_age: number; price: number }[] };
+const feeFiles = import.meta.glob<Fees>('../../content/fees.generated.json', { eager: true, import: 'default' });
+export const fees: Fees = Object.values(feeFiles)[0] ?? {
   extra_bed_per_night: pricingJson.extra_bed_per_night,
   breakfast_adult: pricingJson.breakfast.addon_price_per_person,
+  breakfast_child_tiers: pricingJson.breakfast.child_tiers,
 };
+/** the children's breakfast (Ahmed, 15 Nov 2026) from Settings' child tiers: free up to the age of the last free tier,
+ *  the first paid tier's price up to its age, the adult price above — the ONE derivation (qa.py and the hub's
+ *  internal.hub_fill_fees state the same rule) */
+export function breakfastChildren(f: Fees = fees): { free_age: number; child_age: number; child_price: number } {
+  const tiers = [...(f.breakfast_child_tiers ?? pricingJson.breakfast.child_tiers)].sort((a, b) => a.max_age - b.max_age);
+  const free = tiers.filter((t) => t.price === 0);
+  const paid = tiers.find((t) => t.price > 0) ?? tiers[tiers.length - 1];
+  return { free_age: free.length ? free[free.length - 1].max_age : 0, child_age: paid.max_age, child_price: paid.price };
+}
 /** a fee in the page language through the riyal formatter (rules.ts → sarText): «50 ريالًا» / "SAR 50" */
 export const feeText = (locale: Locale, amount: number): string => sarText(amount, locale);
 /** a guest text with its placeholders filled: the fees {extra_bed}, {breakfast}, then the facts of withFacts */
 export const withFees = (locale: Locale, text: string): string =>
-  withFacts(locale, text.replace(/\{extra_bed\}/g, feeText(locale, fees.extra_bed_per_night)).replace(/\{breakfast\}/g, feeText(locale, fees.breakfast_adult)));
+  withFacts(locale, (() => {
+    const k = breakfastChildren();
+    return text.replace(/\{extra_bed\}/g, feeText(locale, fees.extra_bed_per_night)).replace(/\{breakfast\}/g, feeText(locale, fees.breakfast_adult))
+      .replace(/\{breakfast_free_age\}/g, String(k.free_age)).replace(/\{breakfast_child_age\}/g, String(k.child_age)).replace(/\{breakfast_child\}/g, feeText(locale, k.child_price));
+  })());
 export const policies = withTexts('policies.json', policiesJson);
 export const contact = contactJson;
 export const legal = legalJson;

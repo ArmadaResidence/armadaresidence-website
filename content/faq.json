@@ -76,9 +76,9 @@
       "id": "breakfast",
       "category": "stay",
       "q_ar": "هل الإفطار مشمول؟",
-      "a_ar": "الإفطار اختياري تختاره عند الحجز، ورسومه {breakfast} للشخص في الليلة، والأطفال حتى 5 سنوات مجانًا ومن 6 إلى 12 سنة بنصف الرسوم. يُقدَّم بوفيه الإفطار يوميًا في مطعم كل فرع من 7:00 إلى 10:30 صباحًا.",
+      "a_ar": "الإفطار اختياري تختاره عند الحجز، ورسومه {breakfast} للشخص في اليوم شاملة الضريبة؛ والأطفال حتى {breakfast_free_age} سنوات مجانًا، ومن هم حتى {breakfast_child_age} سنة رسومهم {breakfast_child}، وفوق {breakfast_child_age} سنة بسعر البالغ. يُقدَّم بوفيه الإفطار يوميًا في مطعم كل فرع من 7:00 إلى 10:30 صباحًا.",
       "q_en": "Is breakfast included?",
-      "a_en": "Breakfast is optional and chosen when you book, at {breakfast} per person per night; children up to 5 eat free and ages 6 to 12 pay half. The breakfast buffet is served daily in each property's restaurant from 7:00 to 10:30 am."
+      "a_en": "Breakfast is optional and chosen when you book, at {breakfast} per person per day, VAT included; children up to {breakfast_free_age} eat free, children up to {breakfast_child_age} pay {breakfast_child}, and over {breakfast_child_age} the adult price. The breakfast buffet is served daily in each property's restaurant from 7:00 to 10:30 am."
     },
     {
       "id": "id",

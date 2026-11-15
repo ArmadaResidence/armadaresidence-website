@@ -1,6 +1,6 @@
 {
  "id": "q027",
- "recorded_at": "2026-11-14T14:29:10.445Z",
+ "recorded_at": "2026-11-15T12:19:59.045Z",
  "question": {
   "unit": "airport-road",
   "language": "ar",
@@ -14,19 +14,19 @@
    "layer": "understand",
    "model": "claude-haiku-5-5",
    "ok": true,
-   "text": "{\"intents\":[\"price_question\",\"dining_menu\"],\"topics\":[\"price\",\"breakfast\"],\"new_topic_hint\":null,\"branch\":\"airport-road\",\"check_in\":null,\"check_out\":null,\"nights\":null,\"dates_text\":null,\"dates_calendar\":null,\"room_type\":null,\"breakfast\":null,\"adults\":null,\"children\":null,\"child_ages\":null,\"extra_beds\":null,\"rooms_count\":null,\"guest_name\":null,\"booking_ref\":null,\"language\":\"ar\",\"complaint\":false,\"confidence\":{\"intents\":0.85,\"topics\":0.8,\"branch\":0.6,\"language\":0.99}}",
-   "input_tokens": 3695,
-   "output_tokens": 210,
-   "latency_ms": 1184
+   "text": "{\"intents\":[\"price_question\",\"dining_menu\"],\"topics\":[\"breakfast\"],\"new_topic_hint\":null,\"branch\":\"airport-road\",\"check_in\":null,\"check_out\":null,\"nights\":null,\"dates_text\":null,\"dates_calendar\":null,\"room_type\":null,\"breakfast\":null,\"adults\":null,\"children\":null,\"child_ages\":null,\"extra_beds\":null,\"rooms_count\":null,\"guest_name\":null,\"booking_ref\":null,\"language\":\"ar\",\"complaint\":false,\"kind\":\"hotel_question\",\"sensitive\":null,\"ack_only\":false,\"confidence\":{\"intents\":0.9,\"topics\":0.9,\"branch\":0.8,\"language\":0.99,\"kind\":0.95}}",
+   "input_tokens": 5312,
+   "output_tokens": 242,
+   "latency_ms": 1763
   },
   {
    "layer": "compose",
    "model": "claude-sonnet-5-5",
    "ok": true,
-   "text": "{\"reply\": \"الإفطار اختياري تختاره عند الحجز، ورسومه 20 ريالًا للشخص في الليلة. الأطفال حتى 5 سنوات مجانًا، ومن 6 إلى 12 سنة بنصف الرسوم. ويُقدَّم بوفيه الإفطار يوميًا في مطعم الفرع من 7:00 إلى 10:30 صباحًا.\", \"used_card_ids\": [\"faq:breakfast\", \"k-breakfast-daily\"], \"unanswered\": []}",
-   "input_tokens": 3282,
-   "output_tokens": 188,
-   "latency_ms": 2316
+   "text": "{\"reply\": \"الإفطار اختياري تختاره عند الحجز، ورسومه 25 ريالًا للشخص في اليوم شاملة الضريبة. الأطفال حتى 6 سنوات مجانًا، ومن هم حتى 12 سنة رسومهم 12.50 ريال، وفوق 12 سنة بسعر البالغ. يُقدَّم بوفيه الإفطار يوميًا في المطعم من 7:00 إلى 10:30 صباحًا.\", \"used_card_ids\": [\"faq:breakfast\", \"k-breakfast-daily\"], \"unanswered\": []}",
+   "input_tokens": 4406,
+   "output_tokens": 214,
+   "latency_ms": 2353
   }
  ],
  "adapter": {
@@ -214,17 +214,16 @@
    "T5"
   ],
   "topics": [
-   "price",
    "breakfast"
   ],
   "messages": [
    {
-    "body": "مرحبًا بك في أرمادا ريزيدنس – طريق المطار.\nالإفطار اختياري تختاره عند الحجز، ورسومه 20 ريالًا للشخص في الليلة. الأطفال حتى 5 سنوات مجانًا، ومن 6 إلى 12 سنة بنصف الرسوم. ويُقدَّم بوفيه الإفطار يوميًا في مطعم الفرع من 7:00 إلى 10:30 صباحًا.",
+    "body": "مرحبًا بك في أرمادا ريزيدنس – طريق المطار.\nالإفطار اختياري تختاره عند الحجز، ورسومه 25 ريالًا للشخص في اليوم شاملة الضريبة. الأطفال حتى 6 سنوات مجانًا، ومن هم حتى 12 سنة رسومهم 12.50 ريال، وفوق 12 سنة بسعر البالغ. يُقدَّم بوفيه الإفطار يوميًا في المطعم من 7:00 إلى 10:30 صباحًا.",
     "notice": false
    }
   ],
   "guard_refusals": [],
-  "cost_usd": 0.008919
+  "cost_usd": 0.011604
  },
  "first_try": {
   "guard": true,

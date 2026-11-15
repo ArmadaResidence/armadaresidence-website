@@ -29,7 +29,6 @@ export function bankRules() {
       late_checkout_2pm: pol.late_checkout['until_14:00'],
       late_checkout_4pm: pol.late_checkout['until_16:00'],
       key_card: pol.key_card_loss_sar,
-      breakfast_child_6_12: pol.children.breakfast['6_to_12'],
     },
   };
 }

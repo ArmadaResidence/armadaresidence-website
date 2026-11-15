@@ -23,15 +23,19 @@ const MIG4 = read('supabase/migrations/20261114100000_guest_hub_knowledge.sql');
 const fdef = MIG4.slice(MIG4.indexOf('create function internal.hub_forbidden_terms()'), MIG4.indexOf('$$;', MIG4.indexOf('create function internal.hub_forbidden_terms()')));
 export const FORBIDDEN = [...fdef.slice(fdef.indexOf('select array[') + 13, fdef.lastIndexOf(']')).matchAll(/'([^']+)'/g)].map((m) => m[1]);
 const fees = existsSync(new URL('../content/fees.generated.json', import.meta.url)) ? JSON.parse(read('content/fees.generated.json')) : JSON.parse(read('content/pricing.json'));
-let breakfast = Number(fees.breakfast?.adult ?? fees.breakfast_adult ?? fees.breakfast?.price ?? 20);
+let breakfast = Number(fees.breakfast?.adult ?? fees.breakfast_adult ?? fees.breakfast?.price ?? 25);
 let extraBed = Number(fees.extra_bed_per_night ?? 50);
+let childTiers = fees.breakfast_child_tiers ?? fees.child_tiers ?? [{ max_age: 6, price: 0 }, { max_age: 12, price: 12.5 }];
+/** the fees as Settings has them (a bank run's grading reads the same — scripts/hub-bank-run.mjs) */
+export const liveFees = () => ({ breakfast: { adult: breakfast, child_tiers: childTiers }, extra_bed_per_night: extraBed });
 /** the fees of Settings when the 44 fixtures were recorded (14 Nov 2026): a REPLAY fills the FAQ with these, so a fee
  *  changed in Settings since (breakfast 20 → 25 on 15 Nov 2026) never turns a recorded answer into a guard refusal; a
  *  bank run with real model calls keeps the live fees (H6c, 15 Nov 2026) */
-export const RECORDED_FEES = { breakfast: 20, extra_bed: 50 };
+export const RECORDED_FEES = { breakfast: 25, extra_bed: 50, child_tiers: [{ max_age: 6, price: 0 }, { max_age: 12, price: 12.5 }] };
 export function useRecordedFees() {
   breakfast = RECORDED_FEES.breakfast;
   extraBed = RECORDED_FEES.extra_bed;
+  childTiers = RECORDED_FEES.child_tiers;
 }
 
 export const UNITS = [
@@ -48,7 +52,14 @@ export const PRICES = {
 };
 export const TODAY = '2026-11-14';
 
-const fillFees = (t, L) => String(t ?? '').replaceAll('{breakfast}', sarText(breakfast, L)).replaceAll('{extra_bed}', sarText(extraBed, L));
+const kids = () => {
+  const s = [...childTiers].sort((a, b) => a.max_age - b.max_age);
+  const free = s.filter((t) => t.price === 0);
+  const paid = s.find((t) => t.price > 0) ?? s[s.length - 1];
+  return { free: free.length ? free[free.length - 1].max_age : 0, age: paid.max_age, price: paid.price };
+};
+const fillFees = (t, L) => String(t ?? '').replaceAll('{breakfast_free_age}', String(kids().free)).replaceAll('{breakfast_child_age}', String(kids().age))
+  .replaceAll('{breakfast_child}', sarText(kids().price, L)).replaceAll('{breakfast}', sarText(breakfast, L)).replaceAll('{extra_bed}', sarText(extraBed, L));
 /** the Wi-Fi password cards stay on production: a fixture never holds their text */
 const scrubCard = (c) => (/^k-wifi-password-/.test(c.id) ? { ...c, text_ar: `{card:${c.id}}`, text_en: `{card:${c.id}}` } : c);
 

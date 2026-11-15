@@ -1,11 +1,11 @@
 {
- "recorded_at": "2026-11-14T22:30:54.092Z",
- "fixtures": 44,
- "guard_first_try": 41,
- "expect_first_try": 44,
- "total_usd": 0.261141,
- "per_turn_usd": 0.006073,
- "per_turn_understand_compose_usd": 0.008499,
+ "recorded_at": "2026-11-15T12:20:03.504Z",
+ "fixtures": 45,
+ "guard_first_try": 42,
+ "expect_first_try": 45,
+ "total_usd": 0.276225,
+ "per_turn_usd": 0.006278,
+ "per_turn_understand_compose_usd": 0.008711,
  "items": [
   {
    "id": "q001",
@@ -166,7 +166,16 @@
    "expect": "answer",
    "guard": true,
    "match": true,
-   "cost": 0.008919,
+   "cost": 0.011604,
+   "calls": 2
+  },
+  {
+   "id": "q028",
+   "kind": "answer",
+   "expect": "answer",
+   "guard": true,
+   "match": true,
+   "cost": 0.012399,
    "calls": 2
   },
   {

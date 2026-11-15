@@ -15,7 +15,7 @@ import { anthropicModel, costOf } from '../supabase/functions/_shared/hub/model.
 import { dashboardAdapter } from '../supabase/functions/_shared/hub/adapter/index.ts';
 import { longDate } from '../supabase/functions/booking-request/email.ts';
 import { sarText } from '../supabase/functions/booking-request/rules.ts';
-import { CONTENT, PRICES, claimFor, engineItems, knowledgeFor, SEED } from './hub-fixtures-lib.mjs';
+import { CONTENT, PRICES, claimFor, engineItems, knowledgeFor, liveFees, SEED } from './hub-fixtures-lib.mjs';
 
 const arg = (k) => {
   const i = process.argv.indexOf(k);
@@ -160,7 +160,8 @@ async function one(q) {
     content: CONTENT, longDate: (iso, L) => longDate(CONTENT, iso, L), sarText: (n, L) => sarText(n, L),
   };
   const run = await runItem(ctx, item, deps);
-  const g = grade(item, run.outcome, { fees: { breakfast: fees.breakfast ?? null, extra_bed_per_night: fees.extra_bed_per_night ?? null }, cards: {}, skills: ctx.unit.skills });
+  // the bank's {fee:*} expectations read the fees of Settings at run time (content/fees.generated.json — the build's read)
+  const g = grade(item, run.outcome, { fees: liveFees(), cards: {}, skills: ctx.unit.skills });
   const reasons = [...g.reasons];
   const nat = [];
   if (q.expect.action === 'conversation') {

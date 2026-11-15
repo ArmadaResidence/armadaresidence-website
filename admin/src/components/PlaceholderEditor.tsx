@@ -11,6 +11,10 @@ import { useEffect, useLayoutEffect, useRef } from 'react';
 export const PLACEHOLDERS: Record<string, string> = {
   breakfast: 'سعر الإفطار',
   extra_bed: 'رسم السرير الإضافي',
+  // the children's breakfast (15 Nov 2026): from Settings' child tiers, never typed
+  breakfast_free_age: 'عمر الإفطار المجاني للأطفال',
+  breakfast_child_age: 'عمر شريحة الأطفال',
+  breakfast_child: 'سعر إفطار الطفل',
   // the facts of the «من نحن» page (6 Nov 2026): filled at build time from branches.json / rooms.json (site content.ts →
   // factValues); the same names are the only ones internal.copy_problems allows besides the fees
   shafa_opened: 'تاريخ افتتاح طريق الشفا',
@@ -23,10 +27,13 @@ export const PLACEHOLDERS: Record<string, string> = {
   suite_max: 'أكبر جناح (م²)',
 };
 /** the fees staff may insert in the FAQ answers (the facts stay where the file put them: «من نحن») */
-export const FEE_PLACEHOLDERS = ['breakfast', 'extra_bed'] as const;
+export const FEE_PLACEHOLDERS = ['breakfast', 'breakfast_child', 'breakfast_free_age', 'breakfast_child_age', 'extra_bed'] as const;
 export const PLACEHOLDERS_EN: Record<string, string> = {
   breakfast: 'breakfast price',
   extra_bed: 'extra-bed fee',
+  breakfast_free_age: "children's free breakfast age",
+  breakfast_child_age: "children's tier age",
+  breakfast_child: "child's breakfast price",
   shafa_opened: 'Shafa Road opening date',
   airport_opened: 'Airport Road opening date',
   shafa_units: 'Shafa Road units',
@@ -195,7 +202,7 @@ export default function PlaceholderEditor({
           // a placeholder typed by hand becomes a chip
           if (!ref.current) return;
           const v = read(ref.current);
-          if (/\{(breakfast|extra_bed)\}/.test(v) && ref.current.querySelectorAll('[data-ph]').length !== (v.match(/\{(breakfast|extra_bed)\}/g) ?? []).length) {
+          if (/\{(breakfast|breakfast_child|breakfast_free_age|breakfast_child_age|extra_bed)\}/.test(v) && ref.current.querySelectorAll('[data-ph]').length !== (v.match(/\{(breakfast|breakfast_child|breakfast_free_age|breakfast_child_age|extra_bed)\}/g) ?? []).length) {
             render(ref.current, v, lang, protect);
           }
         }}

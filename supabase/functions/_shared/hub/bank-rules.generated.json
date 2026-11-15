@@ -27,7 +27,6 @@
  "fees": {
   "late_checkout_2pm": 100,
   "late_checkout_4pm": 200,
-  "key_card": 10,
-  "breakfast_child_6_12": 10
+  "key_card": 10
  }
 }

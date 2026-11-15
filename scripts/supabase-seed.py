@@ -33,13 +33,10 @@ def main():
     slugs = [b["slug"] for b in branches]
 
     bf = pricing["breakfast"]
-    kids = pricing["children"]["breakfast"]
     adult = bf["addon_price_per_person"]
-    # pricing.json child ladder: up_to_5 / 6_to_12 / 13_plus (13+ = the adult price)
-    assert set(kids) == {"up_to_5", "6_to_12", "13_plus"}, kids
-    assert kids["13_plus"] == adult, "13_plus must equal the adult breakfast price"
+    # pricing.json → breakfast.child_tiers (15 Nov 2026): [{max_age, price}], above the last the adult price
     settings = {
-        "breakfast": {"adult": adult, "child_tiers": [{"max_age": 5, "price": kids["up_to_5"]}, {"max_age": 12, "price": kids["6_to_12"]}]},
+        "breakfast": {"adult": adult, "child_tiers": bf["child_tiers"]},
         "extra_bed_per_night": pricing["extra_bed_per_night"],
         "instant_booking": {s: False for s in slugs},
         "show_prices": {s: False for s in slugs},

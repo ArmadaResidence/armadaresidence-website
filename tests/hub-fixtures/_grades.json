@@ -1,7 +1,7 @@
 {
  "_note": "The grades of the recorded fixtures through the test lab (scripts/hub-eval-check.mjs --write) — a change here is deliberate.",
- "passed": 44,
- "total": 44,
+ "passed": 45,
+ "total": 45,
  "grades": {
   "q001": {
    "pass": true,
@@ -72,6 +72,10 @@
    "reasons": []
   },
   "q027": {
+   "pass": true,
+   "reasons": []
+  },
+  "q028": {
    "pass": true,
    "reasons": []
   },

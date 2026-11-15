@@ -62,14 +62,14 @@ check(/coalesce\(\(b ->> 'capped'\)::boolean, false\)[\s\S]{0,200}hub_eval_stop\
 const item = (expect, extra = {}) => ({ key: 'x', unit_key: 'airport-road', language: 'ar', messages: ['x'], expect, ...extra });
 const out = (o) => ({ kind: 'answer', state: 'inquiry', reason: null, transitions: [], topics: [], card_keys: [], faq_keys: [], faq_read: [], replies: [{ body: 'نعم، المواقف مجانية.', notice: false }], guard_refusals: [], ...o });
 const SK = ['shared_knowledge', 'stay_services'];
-const ctx = { skills: SK, fees: { breakfast: { adult: 20, child_tiers: [{ price: 0, max_age: 5 }, { price: 10, max_age: 12 }] }, extra_bed_per_night: 50 }, cards: { 'k-wifi-password-airport': { ar: 'كلمة مرور الواي فاي: Armada@2026x', en: 'Wi-Fi password: Armada@2026x' } } };
+const ctx = { skills: SK, fees: { breakfast: { adult: 25, child_tiers: [{ price: 0, max_age: 6 }, { price: 12.5, max_age: 12 }] }, extra_bed_per_night: 50 }, cards: { 'k-wifi-password-airport': { ar: 'كلمة مرور الواي فاي: Armada@2026x', en: 'Wi-Fi password: Armada@2026x' } } };
 check(grade(item({ action: 'answer', cards: ['k-parking-detail'], must_include: ['مجانية'] }), out({ card_keys: ['k-parking-detail'] }), ctx).pass, 'G pass: the action, the card, the phrase');
 check(grade(item({ action: 'answer' }), out({ kind: 'handoff', state: 'human' }), ctx).reasons.includes('action:answer:handoff'), 'G the action');
 check(grade(item({ action: 'answer', cards: ['k-parking-detail'] }), out({}), ctx).reasons.includes('card:k-parking-detail'), 'G a required card not used');
 check(grade(item({ action: 'answer', faq: ['parking'] }), out({ faq_read: ['parking'] }), ctx).pass, 'G a FAQ item read for the turn counts');
 check(grade(item({ action: 'answer', must_include: ['{fee:late_checkout_2pm}'] }), out({ replies: [{ body: 'حتى الثانية بـ 100 ريال', notice: false }] }), ctx).pass, 'G {fee:late_checkout_2pm} = 100 from policies.json');
 check(!grade(item({ action: 'answer', must_include: ['{fee:late_checkout_2pm}'] }), out({ replies: [{ body: 'حتى الثانية بـ 1000 ريال', notice: false }] }), ctx).pass, 'G … 1000 is not 100');
-check(feeAmount('breakfast_child_6_12', ctx) === 10 && feeAmount('breakfast_adult', ctx) === 20 && feeAmount('extra_bed', ctx) === 50, 'G the fees from Settings (child tiers by max_age)');
+check(feeAmount('breakfast_child_6_12', ctx) === 12.5 && feeAmount('breakfast_child', ctx) === 12.5 && feeAmount('breakfast_adult', ctx) === 25 && feeAmount('extra_bed', ctx) === 50, 'G the fees from Settings (child tiers by max_age)');
 check(grade(item({ action: 'answer', must_include: ['{card:k-wifi-password-airport}'] }), out({ replies: [{ body: 'كلمة المرور Armada@2026x', notice: false }] }), ctx).pass, 'G {card:<id>} at run time');
 check(!grade(item({ action: 'answer', must_include: ['{card:k-wifi-password-airport}'] }), out({ replies: [{ body: 'كلمة المرور لدى الاستقبال', notice: false }] }), ctx).pass, 'G … the password missing fails');
 check(grade(item({ action: 'answer' }), out({ replies: [{ body: 'نحن نجيبك الآن، لست بوت', notice: false }] }), ctx).reasons.some((r) => r.startsWith('global:')), 'G the global list (بوت)');

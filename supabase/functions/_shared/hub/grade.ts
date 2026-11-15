@@ -160,7 +160,11 @@ export function hasWord(text: string, term: string): boolean {
     ? new RegExp(`(^|[^\\u0621-\\u064A])(?:و|ف|ب|ك|ل)?(?:ال)?${w}(?![\\u0621-\\u064A])`, 'u').test(t)
     : new RegExp(`(^|[^a-z0-9])${w}(?![a-z0-9])`, 'i').test(t);
 }
-const numberIn = (text: string, n: number) => new RegExp(`(^|[^0-9])${String(n)}([^0-9]|$)`).test(text.replace(/[,٬]/g, ''));
+// an amount as the replies write it: 25, 12.5 or 12.50 (the riyal formatter writes two decimals — 15 Nov 2026)
+const numberIn = (text: string, n: number) => {
+  const forms = Number.isInteger(n) ? [String(n)] : [n.toFixed(2), String(n)];
+  return forms.some((f) => new RegExp(`(^|[^0-9.])${f.replace('.', '\\.')}([^0-9]|$)`).test(text.replace(/[,٬]/g, '')));
+};
 
 /** a {fee:*} placeholder's amount (SAR), or null when unknown */
 export function feeAmount(name: string, ctx: GradeCtx): number | null {
@@ -173,12 +177,13 @@ export function feeAmount(name: string, ctx: GradeCtx): number | null {
       return typeof f[name] === 'number' ? f[name] : null;
     case 'breakfast_adult':
       return typeof b?.adult === 'number' ? b.adult : null;
+    case 'breakfast_child':
     case 'breakfast_child_6_12': {
-      // Settings breakfast.child_tiers: [{price, max_age}] in order (0–5 free, 6–12 …) — the first tier that covers 12
+      // Settings breakfast.child_tiers [{price, max_age}] at run time (15 Nov 2026): the first PAID tier — the child's
+      // price, whatever its ages (the key's old name is kept for the bank's q028)
       const tiers: Json[] = Array.isArray(b?.child_tiers) ? [...b.child_tiers].sort((x, y) => Number(x.max_age) - Number(y.max_age)) : [];
-      const t = tiers.find((x) => Number(x?.max_age) >= 12 && Number(x?.max_age) >= 6);
-      if (t && typeof t.price === 'number') return Number(t.price);
-      return typeof f[name] === 'number' ? f[name] : null;
+      const t = tiers.find((x) => Number(x?.price) > 0);
+      return t && typeof t.price === 'number' ? Number(t.price) : null;
     }
     case 'extra_bed':
       return typeof ctx.fees?.extra_bed_per_night === 'number' ? ctx.fees.extra_bed_per_night : null;

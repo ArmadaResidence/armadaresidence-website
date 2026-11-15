@@ -232,6 +232,10 @@ def main() -> int:
     fees = json.loads(fees_file.read_text(encoding="utf-8")) if fees_file.is_file() else {"extra_bed_per_night": pricing["extra_bed_per_night"], "breakfast_adult": pricing["breakfast"]["addon_price_per_person"]}
     fee = fees["extra_bed_per_night"]
     breakfast_fee = fees["breakfast_adult"]
+    # the children's breakfast (15 Nov 2026): the same derivation as content.ts → breakfastChildren
+    tiers = sorted(fees.get("breakfast_child_tiers") or pricing["breakfast"]["child_tiers"], key=lambda t: t["max_age"])
+    paid = next((t for t in tiers if t["price"] > 0), tiers[-1])
+    child_fee = paid["price"]
     allowed_fee_lines = [ui[loc]["form"]["extra_bed_fee"].replace("{fee}", sar_text(fee, loc)) for loc in ("ar", "en")]
     # «العروض» (2 Nov 2026): a restaurant / café offer states its own explicit price (CLAUDE.md §5) — exactly that line,
     # built from the offers data and ui.json, is removed before the price rules; any other price still fails
@@ -246,13 +250,15 @@ def main() -> int:
         # no amount typed in the policies: the placeholders {extra_bed} / {breakfast}, filled from Settings at build time
         for loc in ("ar", "en"):
             body = guests_sec[f"body_{loc}"]
-            if "{extra_bed}" not in body or "{breakfast}" not in body:
-                rep.f("pricing", f"policies.json guests ({loc}): the extra-bed and breakfast fees must be the {{extra_bed}} / {{breakfast}} placeholders")
+            if any(f"{{{ph}}}" not in body for ph in ("extra_bed", "breakfast", "breakfast_free_age", "breakfast_child_age", "breakfast_child")):
+                rep.f("pricing", f"policies.json guests ({loc}): the fees and the children's ages must be the {{extra_bed}} / {{breakfast}} / {{breakfast_free_age}} / {{breakfast_child_age}} / {{breakfast_child}} placeholders")
+            if re.search(r"\d+\s*(?:سنوات|سنة|years?)\b|up to \d", body):
+                rep.f("pricing", f"policies.json guests ({loc}): a child's age is typed in the text — use the placeholders")
             if re.search(r"\d[\d,.]*\s*(?:ريال|SAR)|SAR\s*\d", body):
                 rep.f("pricing", f"policies.json guests ({loc}): an amount is typed in the text — use the placeholders")
         policies_fee_lines = {
-            "ar": [f"السرير الإضافي {sar_text(fee, 'ar')} لليلة", f"{sar_text(breakfast_fee, 'ar')} للشخص في الليلة"],
-            "en": [f"An extra bed is {sar_text(fee, 'en')} per night", f"at {sar_text(breakfast_fee, 'en')} per person per night"],
+            "ar": [f"السرير الإضافي {sar_text(fee, 'ar')} لليلة", f"{sar_text(breakfast_fee, 'ar')} للشخص في اليوم شاملة الضريبة", f"رسومهم {sar_text(child_fee, 'ar')}"],
+            "en": [f"An extra bed is {sar_text(fee, 'en')} per night", f"at {sar_text(breakfast_fee, 'en')} per person per day, VAT included", f"pay {sar_text(child_fee, 'en')}"],
         }
         if re.search(r"الشخص الإضافي|extra guest", guests_sec["body_ar"] + guests_sec["body_en"], re.I):
             rep.f("pricing", "policies.json guests: the extra-person fee was abolished on 23 Oct 2026")
@@ -423,7 +429,7 @@ def main() -> int:
             # /faq/ (3 Nov 2026): the answers state the breakfast and extra-bed fees through {breakfast} / {extra_bed},
             # filled from Settings at build time — exactly those amounts are removed; a room rate typed there still fails
             if lp == "/faq/":
-                for amount in (fee, breakfast_fee):
+                for amount in (fee, breakfast_fee, child_fee):
                     for loc in ("ar", "en"):
                         price_text = price_text.replace(sar_text(amount, loc), " ")
             for m in re.finditer(r"\d[\d,.]*\s*(?:ريال|ر\.س|SAR)\b|SAR\s*\d", price_text):
