@@ -81,6 +81,10 @@ for (const f of files) {
   if (fx.first_try?.expect) expectFirst++;
   const now = kind === h5Expect(q);
   if (fx.first_try?.expect) check(now, `${fx.id}: met «${h5Expect(q)}» when recorded and still does (now ${kind})`);
+  // why a replay changed (codes only — the decision, the guard's reasons, the model errors; never a guest's words)
+  if (fx.first_try?.expect && !now) {
+    console.error(`  ${fx.id}: decision ${JSON.stringify(out.finish.decision ?? null)} guard ${JSON.stringify(out.finish.guard_refusals ?? [])} models ${JSON.stringify((out.finish.models ?? []).map((m) => `${m.layer}:${m.ok ? 'ok' : m.error}`))} error ${out.finish.error ?? ''}`);
+  }
   else if (now) improved++;
   if (kind === fx.outcome.kind) replayMatch++;
   if (fx.calls.length) costs.push(fx.outcome.cost_usd);
