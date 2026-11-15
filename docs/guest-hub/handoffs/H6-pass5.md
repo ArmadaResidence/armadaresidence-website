@@ -19,11 +19,12 @@
 
 - **Local (real model calls):** questions — every question that changed with this pass passes; the 4 careers questions need production's own card and topic (they pass there). Conversations — 46 / 46 by the code grading; the naturalness grader (Haiku) passed all but one after its rubric was fixed (c041: the grader read the guest's «هلا والله» as the reply's dialect).
 - **Preview branch** (`pass5-conv`, signed YCloud events through the real `wa-automation`, the turn by the same engine code): 16 conversations, 32 / 32 (every step as expected, no draft). It found a branch-only artefact first (sending off → the reply stored as failed → the greeting repeated); with sending on (no YCloud key, no hub-agent on the branch) it matches production. Branch deleted.
-- **Production lab run** (manual, test mode, engine `h6-7ed78762067d`): see the final report / DECISIONS.md.
+- **Production lab run** (manual, test mode): 160 / 161 on engine `h6-7ed78762067d` (USD 1.91); q099 fixed (no second quote; guard graded per turn), engine `h6-af32b8b7e08e` redeployed, Shafa Road rerun 38 / 38 (USD 0.48). Both units' readiness gate met.
+- **Deployed:** migration `20261115100000`; wa-automation, hub-agent, hub-admin; the dashboard (lab page) from main 820e1ba; the site from main.
 
 ## Rollback
 
-hub-agent 10, hub-admin 12, wa-automation 10 = the functions of commit `b04df05` (production before this pass). The migration's function change is `hub_turn_claim` only (history 12 → back to 6 by re-creating the pass-4 definition in a new migration); the lab items can be retired from «مختبر الاختبار».
+hub-agent 10, hub-admin 12, wa-automation 10 = the functions of commit `b04df05` (now: hub-agent 12, hub-admin 14, wa-automation 11) (production before this pass). The migration's function change is `hub_turn_claim` only (history 12 → back to 6 by re-creating the pass-4 definition in a new migration); the lab items can be retired from «مختبر الاختبار».
 
 ## For Ahmed
 
