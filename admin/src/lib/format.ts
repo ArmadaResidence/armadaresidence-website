@@ -16,6 +16,8 @@ export const BOOKING_SOURCE_LABELS: Record<string, string> = {
   facebook: 'فيسبوك',
   walk_in: 'حضور مباشر',
   other: 'أخرى',
+  // Guest Hub H8 (16 Nov 2026): a booking the assistant made in the WhatsApp chat — separate from the staff value «واتساب»
+  assistant_whatsapp: 'مساعد واتساب',
 };
 export const bookingSourceLabel = (k: string | null | undefined): string => (k ? BOOKING_SOURCE_LABELS[k] ?? k : BOOKING_SOURCE_LABELS.website);
 export const REASON_LABELS: Record<string, string> = {

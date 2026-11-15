@@ -1,8 +1,8 @@
 /**
  * Guest Hub — the skills (session H5, 14 Nov 2026; spec §1.5). A skill is code with a fixed contract: the intents it
  * handles, the slots it collects, the sources it may read, its hand-off conditions. A unit turns skills on or off (its
- * `skills`); a skill's code never changes per unit. In H5 room_booking, hall_request and group_request are OFF for every
- * unit (a table constraint and LATER below — H8 turns them on).
+ * `skills`); a skill's code never changes per unit. room_booking is on for the branch units since H8 (16 Nov 2026);
+ * hall_request and group_request stay off (a table constraint and LATER below).
  */
 
 export interface Skill {
@@ -33,8 +33,9 @@ export const SKILLS: Record<string, Skill> = {
   cart_order_routing: { key: 'cart_order_routing', intents: ['dining_order'], slots: [], sources: [], handoff: ['cart_order'] },
 };
 
-/** the skills H8 turns on — refused until then (the database refuses them too: hub_units_skills_h8) */
-export const LATER = ['room_booking', 'hall_request', 'group_request'];
+/** skills still refused (the database refuses them too: hub_units_skills_h8). H8 (16 Nov 2026) turned room_booking on;
+ *  a hall or group request is collected in the chat without these two (15 Nov 2026) */
+export const LATER = ['hall_request', 'group_request'];
 /** a unit's skills as the engine may use them in this session */
 export const usableSkills = (skills: string[]) => (skills ?? []).filter((s) => s in SKILLS && !LATER.includes(s));
 

@@ -6,12 +6,17 @@
  * random sequences that keep the invariants (one open draft; «مع الفريق» silent; no booking without a confirm tap; a
  * cart message never answered).
  *
- * Skills (spec §1.5) come from the unit; in H5 room_booking, hall_request and group_request are OFF for every unit
- * (H8 turns them on): a stay, availability, hall or group request then hands off at once with what the understanding
- * extracted in the note; a price question without dates gets the «يبدأ من» lines (spec §4.2); with dates it hands off.
+ * Skills (spec §1.5) come from the unit. H8 (16 Nov 2026) turns room_booking on for the branch units: a stay is collected
+ * in the chat (branch, dates, guests, breakfast, the children's ages only with breakfast), quoted through the adapter as
+ * photo cards (three at a time, «غرف أخرى»), the full name asked, the summary (version N) with «تأكيد الحجز» / «تعديل» /
+ * «ليس الآن», and «تأكيد الحجز» on the current version books ONCE (hub_book_draft → submit_booking_sourced). Without the
+ * skill, or while the branch's show_prices / instant_booking is off, the booking conversation of copy.md §4.0 (the quote
+ * lines and the website's link) stays the fallback. hall_request / group_request stay off: their collected flow runs
+ * without them (15 Nov 2026).
  */
 import { deriveKind, type Understanding } from './understand.ts';
 import type { NoticeKey } from './copy.ts';
+import { quoteKey, type DraftQuote, type TapButton } from './booking.ts';
 
 export type State = 'none' | 'new' | 'inquiry' | 'collecting' | 'quoted' | 'awaiting_confirmation' | 'booked' | 'awaiting_payment' | 'human' | 'closed';
 export const ASSISTANT_STATES: State[] = ['new', 'inquiry', 'collecting', 'quoted', 'awaiting_confirmation', 'booked'];
@@ -34,10 +39,14 @@ export type Action =
    *  polite redirect for a message outside Armada's services; `buttons: 'quick'` adds the greeting's quick replies */
   /** problem_ack (H7): a problem photo — a short acknowledgement written by the model, then the hand-off notice */
   | { type: 'chat'; mode: 'chat' | 'clarify' | 'redirect' | 'problem_ack'; buttons?: 'quick' | null }
-  | { type: 'quote'; lite?: boolean }
-  | { type: 'send_room_cards' }
+  /** H8: every bookable type that can take the party (or the one the guest named), quoted for the stay; `exclude`: a type
+   *  that just sold out (T14) */
+  | { type: 'quote'; lite?: boolean; exclude?: string[] }
+  /** H8: up to three photo cards from `page` (+ «غرف أخرى»); `all` = also when no type is instant (after «سجّل طلب حجز») */
+  | { type: 'send_room_cards'; page?: number; all?: boolean }
   | { type: 'send_summary'; version: number }
-  | { type: 'book'; draft_id: string; version: number }
+  /** lookup: a tap on a summary whose draft is no longer open — the database answers its reservation or stale, never a new one */
+  | { type: 'book'; draft_id: string; version: number; lookup?: boolean }
   | { type: 'partner_enquiry'; kind: 'hall' | 'group' }
   /** 15 Nov 2026 (Ahmed): a detail added to a group or hall request already sent («أكثر من ٥ غرف», a date, a name) —
    *  that request updated, a short fixed acknowledgement, never a new hand-off and never «أيضًا» */
@@ -60,8 +69,8 @@ export type Event =
       /** H7: a voice note or an image that did not become text (media.ts → MediaRoute); absent = the media notice (a video, a
        *  file, a location, a contact, or a voice note / image while its switch is off) */
       media?: { reason: string; priority?: 'high'; ack?: boolean } | null }
-  | { type: 'tap'; button: 'confirm' | 'change' | 'not_now' | 'room'; draft_id: string; version: number; room?: string }
-  | { type: 'book_result'; result: 'confirmed' | 'request' | 'price_changed' | 'sold_out' | 'not_bookable' | 'already' | 'error'; others?: boolean }
+  | { type: 'tap'; button: TapButton; draft_id: string; version: number; room?: string; page?: number }
+  | { type: 'book_result'; result: 'confirmed' | 'request' | 'price_changed' | 'sold_out' | 'not_bookable' | 'already' | 'stale' | 'limit' | 'incomplete' | 'error'; others?: boolean; room?: string }
   | { type: 'answer_result'; ok: boolean; partial?: boolean }
   | { type: 'guard_failed' }
   | { type: 'staff_take_over' }
@@ -81,6 +90,8 @@ export interface Context {
   unit_branch: string;
   skills: string[];
   show_prices: boolean;
+  /** H8: the branch's «الحجز الفوري» switch — off keeps the booking link of copy.md §4.0 as the fallback */
+  instant_booking?: boolean;
   window_open: boolean;
   failed_understandings: number;
   failed_max: number;
@@ -476,7 +487,8 @@ export function decide(input: DecideInput): Decision {
 
   // a new stay (T3 / T7 / T19) — or, while room_booking is off, the booking conversation before H8 (copy.md §4.0); a reply
   // during it (dates, guests) continues it
-  const continuing = ['collecting', 'quoted'].includes(state) && !!(u.check_in || u.check_out || u.adults || u.nights || u.room_type || u.children !== null);
+  const continuing = ['collecting', 'quoted', 'awaiting_confirmation'].includes(state) && (input.draft?.kind === 'stay' || !input.draft) && !!(u.check_in || u.check_out || u.adults || u.nights
+    || u.room_type || u.children !== null || u.breakfast || u.guest_name || Array.isArray(u.child_ages) || (u.extra_beds !== null && u.extra_beds !== undefined));
   if (kind === 'booking' || STAY_INTENTS.some(has) || (has('price_question') && (u.check_in || u.check_out)) || continuing) {
     if (state === 'booked') t.push('T19');
     return stayIntent(input, state, t, out, u);
@@ -610,27 +622,68 @@ function groupOrHall(input: DecideInput, state: State, t: string[], out: Out, u:
   return out({ next: 'inquiry', actions: [{ type: 'partner_enquiry', kind }], draft_patch: { kind, fields }, draft_replace: replace, draft_close: 'confirmed', failed: 'reset' });
 }
 
+/** H8: what a stay still needs before the quote, in the booking form's order — the branch (a dining number), the dates
+ *  and the guests (asked together), breakfast (required, no default), the children's ages only with breakfast */
+export function bookingMissing(f: Record<string, unknown>, unitKind: 'branch' | 'dining' = 'branch'): string[] {
+  const m: string[] = [];
+  if (!f.branch && unitKind === 'dining') m.push('branch');
+  if (!f.check_in || !f.check_out) m.push('dates');
+  if (!f.adults) m.push('adults');
+  if (f.breakfast !== 'with' && f.breakfast !== 'without') m.push('breakfast');
+  else if (f.breakfast === 'with' && Number(f.children ?? 0) > 0 && !(Array.isArray(f.child_ages) && f.child_ages.length === Number(f.children))) m.push('child_ages');
+  return m;
+}
+/** the slots one question asks: the branch, the dates and the guests together; then breakfast; then the ages */
+export function askGroup(missing: string[]): string[] {
+  const first = missing.filter((k) => k === 'branch' || k === 'dates' || k === 'adults');
+  return first.length ? first : missing.slice(0, 1);
+}
+const QUESTION_ONLY = ['facility_question', 'policy_question', 'location_question', 'offer_question', 'eyab_question', 'payment_question', 'dining_menu'];
+
 function stayIntent(input: DecideInput, state: State, t: string[], out: Out, u: Understanding | null): Decision {
   const ctx = input.ctx;
-  if (!ctx.skills.includes('room_booking')) return liteStay(input, state, t, out, u);
+  if (!ctx.skills.includes('room_booking') || ctx.instant_booking === false) return liteStay(input, state, t, out, u);
   const prev = input.draft?.kind === 'stay' && state !== 'booked' ? input.draft.fields : {};
   const fields = u ? mergeFields(prev, u, ctx.unit_branch, ctx.unit_kind) : { ...prev, branch: prev.branch ?? (ctx.unit_kind === 'branch' ? ctx.unit_branch : null) };
-  const missing = missingSlots(fields).filter((k) => k !== 'guest_name');
-  if (state === 'new') t.push('T3');
-  else if (state === 'inquiry') t.push('T7');
-  else if (state === 'quoted') t.push('T10');
   const replace = !!input.draft && (input.draft.kind !== 'stay' || state === 'booked');
+  if (state === 'new') t.push('T3');
+  else if (state === 'inquiry' || state === 'booked') t.push('T7');
+  else if (state === 'quoted' || state === 'awaiting_confirmation') t.push('T10');
+  // a question asked with the stay («أبغى غرفة فيها مطبخ») is answered first, in the same reply that asks what is missing
+  const topics = u ? answerTopics(u) : [];
+  const asks = !!u && topics.length > 0 && u.intents.some((i) => QUESTION_ONLY.includes(i));
+  const first: Action[] = asks ? [{ type: 'answer', topics, intents: u!.intents, branch: u!.branch, mixed: true, nogap: true }] : [];
+  const missing = bookingMissing(fields, ctx.unit_kind);
   if (missing.length) {
     t.push('T8');
-    return out({ next: 'collecting', actions: [{ type: 'ask', slots: missing.slice(0, 2) }], draft_patch: { kind: 'stay', fields }, draft_replace: replace, failed: 'reset' });
+    return out({ next: 'collecting', actions: [...first, { type: 'ask', slots: askGroup(missing) }], draft_patch: { kind: 'stay', fields }, draft_replace: replace, failed: 'reset' });
   }
   if (!ctx.show_prices) {
     t.push('T9b');
     return out({ next: 'human', actions: [handoff('prices_hidden', 'handoff', { intent: 'stay_booking', slots: fields, stopped: state })], draft_patch: { kind: 'stay', fields }, draft_replace: replace, reason: 'prices_hidden', failed: 'reset' });
   }
+  const d = replace ? null : input.draft;
+  const dq = (d?.quote ?? null) as DraftQuote | null;
+  const picked = fields.room_type && fields.room_type !== 'any' ? String(fields.room_type) : null;
+  const same = !!dq && Array.isArray(dq.cards) && dq.key === quoteKey(fields) && (!picked || dq.cards.some((c) => c.room === picked));
+  const version = d ? d.version + 1 : 1;
+  if (same && picked) {
+    if (!String(fields.guest_name ?? '').trim()) {
+      // the room is picked (by name or «احجز»): the full name before the summary (T11b)
+      t.push('T11b');
+      return out({ next: 'collecting', actions: [...first, { type: 'ask', slots: ['guest_name'] }], draft_patch: { kind: 'stay', fields }, failed: 'reset' });
+    }
+    t.push('T11');
+    return out({ next: 'awaiting_confirmation', actions: [...first, { type: 'send_summary', version }], draft_patch: { kind: 'stay', fields }, failed: 'reset' });
+  }
+  if (same && !picked) {
+    // nothing the quote depends on changed (a name, a remark): the first cards again
+    return out({ next: 'quoted', actions: [...first, { type: 'send_room_cards', page: 0 }], draft_patch: { kind: 'stay', fields }, failed: 'reset' });
+  }
   t.push('T9');
-  const any = !fields.room_type || fields.room_type === 'any';
-  return out({ next: 'quoted', actions: [{ type: 'quote' }, ...(any ? [{ type: 'send_room_cards' } as Action] : [])], draft_patch: { kind: 'stay', fields }, draft_replace: replace, failed: 'reset' });
+  const named = !!picked && !!String(fields.guest_name ?? '').trim();
+  return out({ next: named ? 'awaiting_confirmation' : 'quoted', actions: [...first, { type: 'quote' }, named ? { type: 'send_summary', version } : { type: 'send_room_cards', page: 0 }],
+    draft_patch: { kind: 'stay', fields }, draft_replace: replace, failed: 'reset' });
 }
 
 /** the booking conversation before H8 (Ahmed, 15 Nov 2026 — copy.md §4.0): the dates and the guests asked (the model,
@@ -675,34 +728,64 @@ function liteStay(input: DecideInput, state: State, t: string[], out: Out, u: Un
 function tap(input: DecideInput, state: State, t: string[], out: Out): Decision {
   const ev = input.event as Extract<Event, { type: 'tap' }>;
   const d = input.draft;
+  const ctx = input.ctx;
+  // «تأكيد الحجز» on a summary whose draft is no longer open (already booked, or replaced): the database answers — the
+  // same reservation («حجزك مسجّل برقم …», nothing sent twice) or stale
+  if (ev.button === 'confirm' && (!d || d.id !== ev.draft_id)) {
+    if (!ctx.window_open) return out({ next: state, actions: [{ type: 'noop' }] });
+    t.push('T12');
+    return out({ next: state, actions: [{ type: 'book', draft_id: ev.draft_id, version: ev.version, lookup: true }] });
+  }
   if (!d || d.id !== ev.draft_id || d.kind !== 'stay') {
     t.push('T16');
-    return out({ next: state, actions: [{ type: 'fixed', key: 'result_older_summary' }, ...(d ? [{ type: 'send_summary', version: d.version } as Action] : [])] });
+    return out({ next: state, actions: d && d.kind === 'stay' && state === 'awaiting_confirmation'
+      ? [{ type: 'fixed', key: 'result_older_summary' }, { type: 'send_summary', version: d.version }]
+      : [{ type: 'fixed', key: 'how_help' }] });
+  }
+  // a card or «غرف أخرى» from an older quote (the stay changed since): the quote refreshed, the first cards again
+  if ((ev.button === 'room' || ev.button === 'more' || ev.button === 'request') && ev.version < d.version) {
+    t.push('T10');
+    const fields = { ...d.fields, room_type: 'any' };
+    return out({ next: 'quoted', actions: [{ type: 'fixed', key: 'result_refreshed' }, { type: 'quote' }, { type: 'send_room_cards', page: 0 }], draft_patch: { kind: 'stay', fields } });
+  }
+  if (ev.button === 'more') return out({ next: state === 'awaiting_confirmation' ? 'quoted' : state, actions: [{ type: 'send_room_cards', page: Math.max(0, ev.page ?? 1) }] });
+  if (ev.button === 'request') {
+    // «سجّل طلب حجز» (nothing instant): the cards with their request badges
+    t.push('T14');
+    return out({ next: 'quoted', actions: [{ type: 'send_room_cards', page: 0, all: true }] });
+  }
+  if (ev.button === 'other_dates') {
+    t.push('T15');
+    const fields = { ...d.fields, check_in: null, check_out: null, nights: null, room_type: 'any' };
+    return out({ next: 'collecting', actions: [{ type: 'ask', slots: ['dates'] }], draft_patch: { kind: 'stay', fields } });
   }
   if (ev.button === 'room') {
     const fields: Record<string, unknown> = { ...d.fields, room_type: ev.room ?? d.fields.room_type };
-    if (!fields.guest_name) {
+    if (!String(fields.guest_name ?? '').trim()) {
       t.push('T11b');
       return out({ next: 'collecting', actions: [{ type: 'ask', slots: ['guest_name'] }], draft_patch: { kind: 'stay', fields } });
     }
     t.push('T11');
     return out({ next: 'awaiting_confirmation', actions: [{ type: 'send_summary', version: d.version + 1 }], draft_patch: { kind: 'stay', fields } });
   }
-  if (state !== 'awaiting_confirmation') return out({ next: state, actions: [{ type: 'noop' }] });
+  if (state !== 'awaiting_confirmation') {
+    // a summary button after the guest went back (a card, a change): the current step again, never silence
+    return out({ next: state, actions: state === 'quoted' ? [{ type: 'send_room_cards', page: 0 }] : [{ type: 'fixed', key: 'how_help' }] });
+  }
   if (ev.version < d.version) {
     t.push('T16');
     return out({ next: state, actions: [{ type: 'fixed', key: 'result_older_summary' }, { type: 'send_summary', version: d.version }] });
   }
   if (ev.button === 'change') {
     t.push('T15');
-    return out({ next: 'collecting', actions: [{ type: 'ask', slots: [] }] });
+    return out({ next: 'collecting', actions: [{ type: 'ask', slots: ['change'] }] });
   }
   if (ev.button === 'not_now') {
     t.push('T17');
-    return out({ next: 'quoted', actions: [{ type: 'fixed', key: 'result_not_now' }] });
+    return out({ next: 'quoted', actions: [{ type: 'fixed', key: 'result_not_now' }], reason: 'not_now' });
   }
   // «تأكيد الحجز» with the current version (T12): book, only inside the window
-  if (!input.ctx.window_open) return out({ next: state, actions: [{ type: 'noop' }] });
+  if (!ctx.window_open) return out({ next: state, actions: [{ type: 'noop' }] });
   t.push('T12');
   return out({ next: state, actions: [{ type: 'book', draft_id: d.id, version: d.version }] });
 }
@@ -713,20 +796,39 @@ function bookResult(input: DecideInput, state: State, t: string[], out: Out): De
   switch (ev.result) {
     case 'confirmed':
       t.push('T12');
-      return out({ next: 'booked', actions: [{ type: 'fixed', key: 'result_confirmed' }], draft_close: 'confirmed' });
+      return out({ next: 'booked', actions: [{ type: 'fixed', key: 'result_confirmed' }], draft_close: 'confirmed', reason: 'booked' });
     case 'request':
       t.push('T12');
-      return out({ next: 'booked', actions: [{ type: 'fixed', key: 'result_request' }], draft_close: 'confirmed' });
+      return out({ next: 'booked', actions: [{ type: 'fixed', key: 'result_request' }], draft_close: 'confirmed', reason: 'booked' });
     case 'already':
       t.push('T12');
-      return out({ next: 'booked', actions: [{ type: 'fixed', key: 'result_second_tap' }] });
+      return out({ next: 'booked', actions: [{ type: 'fixed', key: 'result_second_tap' }], reason: 'already' });
+    case 'stale':
+      t.push('T16');
+      return out({ next: state, actions: d && d.kind === 'stay' && state === 'awaiting_confirmation'
+        ? [{ type: 'fixed', key: 'result_older_summary' }, { type: 'send_summary', version: d.version }] : [{ type: 'fixed', key: 'how_help' }] });
     case 'price_changed':
       t.push('T13');
-      return out({ next: 'awaiting_confirmation', actions: [{ type: 'fixed', key: 'result_price_changed' }, { type: 'send_summary', version: (d?.version ?? 1) + 1 }] });
+      return out({ next: 'awaiting_confirmation', actions: [{ type: 'fixed', key: 'result_price_changed' }, { type: 'send_summary', version: (d?.version ?? 0) + 1 }],
+        draft_patch: d?.kind === 'stay' ? { kind: 'stay', fields: d.fields } : null });
     case 'sold_out':
-    case 'not_bookable':
+    case 'not_bookable': {
       t.push('T14');
-      return out({ next: 'quoted', actions: ev.others ? [{ type: 'fixed', key: 'result_sold_out' }, { type: 'send_room_cards' }] : [{ type: 'fixed', key: 'result_nothing_instant' }] });
+      const room = ev.room ?? (d?.fields.room_type ? String(d.fields.room_type) : null);
+      const fields = { ...(d?.fields ?? {}), room_type: 'any' };
+      return out({ next: 'quoted', actions: [{ type: 'fixed', key: 'result_sold_out' }, { type: 'quote', exclude: room ? [room] : [] }, { type: 'send_room_cards', page: 0 }],
+        draft_patch: d?.kind === 'stay' ? { kind: 'stay', fields } : null, reason: 'sold_out' });
+    }
+    case 'incomplete':
+      if (d && !String(d.fields.guest_name ?? '').trim()) {
+        t.push('T11b');
+        return out({ next: 'collecting', actions: [{ type: 'ask', slots: ['guest_name'] }] });
+      }
+      t.push('T21');
+      return out({ next: 'human', actions: [handoff('book_error', 'handoff', { intent: 'stay_booking', slots: d?.fields ?? {}, stopped: state })], reason: 'book_error' });
+    case 'limit':
+      t.push('T21');
+      return out({ next: 'human', actions: [handoff('booking_limit', 'handoff', { intent: 'stay_booking', slots: d?.fields ?? {}, stopped: state })], reason: 'booking_limit' });
     default:
       t.push('T21');
       return out({ next: 'human', actions: [handoff('book_error', 'handoff', { intent: 'stay_booking', slots: d?.fields ?? {}, stopped: state })], reason: 'book_error' });
@@ -741,7 +843,7 @@ export const STATE_LABELS: Record<string, string> = {
 /** H6c (copy.md §6): the two halves of «مع الفريق» */
 export const HUMAN_PHASE_LABELS = { waiting: 'بانتظار موظف', staff: 'مع موظف' } as const;
 export const INTENT_LABELS: Record<string, string> = {
-  stay_booking: 'حجز إقامة', price_question: 'سؤال عن السعر', human_request: 'التحدث مع موظف', complaint: 'شكوى', compensation_request: 'تعويض',
+  stay_booking: 'حجز إقامة', booking_limit: 'حجوزات كثيرة من الرقم نفسه', price_question: 'سؤال عن السعر', human_request: 'التحدث مع موظف', complaint: 'شكوى', compensation_request: 'تعويض',
   booking_change: 'تعديل حجز', booking_cancel: 'إلغاء حجز', media: 'رسالة وسائط', maintenance: 'مشكلة في الغرفة (صورة)', voice_note: 'رسالة صوتية', image: 'صورة', failed_understanding: 'رسالة لم تُفهم', unknown: 'رسالة لم تُفهم',
   group_request: 'طلب مجموعة', hall_request: 'طلب القاعة', other_language: 'لغة أخرى', out_of_scope: 'خارج خدمات أرمادا', question: 'سؤال',
   dining_order: 'طلب طعام', order_status: 'حالة طلب', table_booking: 'حجز طاولة', booking_status: 'حالة حجز', stay_service_request: 'خدمة أثناء الإقامة',

@@ -132,5 +132,7 @@ export function allButtonTitles(): string[] {
     ...c.quick_branch.ar, ...c.quick_branch.en, ...c.quick_dining.ar, ...c.quick_dining.en,
     ...c.dates_confirm.buttons.ar, ...c.dates_confirm.buttons.en,
     ...c.result_nothing_instant.extra.ar, ...c.result_nothing_instant.extra.en,
+    // H8 (16 Nov 2026): the room card's «احجز», «غرف أخرى», the summary's three
+    c.btn_book.ar, c.btn_book.en, c.btn_more.ar, c.btn_more.en, c.btn_summary.ar, c.btn_summary.en, ...c.btn_summary.extra.ar, ...c.btn_summary.extra.en,
   ];
 }

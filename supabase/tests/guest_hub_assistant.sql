@@ -128,7 +128,8 @@ select pg_temp._root();
 select pg_temp._check('G1 the budgets set by the migration (20 / 200) and the persona and skills of the branch units',
   internal.hub_budgets_set() and (select bool_and(persona_live ->> 'tone' = '2' and persona_live ->> 'emoji' = 'false' and skills = '{shared_knowledge,stay_services}')
                                    from public.hub_units where kind = 'branch'));
-select pg_temp._fails('G1 room_booking stays off until H8', $$update public.hub_units set skills = '{shared_knowledge,room_booking}' where key = 'airport-road'$$, '23514');
+-- H8 (16 Nov 2026): room_booking is on; a hall or group skill still refused (their flow is collected without them)
+select pg_temp._fails('G1 hall_request stays off (H8 turned room_booking on)', $$update public.hub_units set skills = '{shared_knowledge,hall_request}' where key = 'airport-road'$$, '23514');
 select pg_temp._fails('G1 a persona never carries a name', $$update public.hub_units set persona_live = persona_live || '{"name": "x"}' where key = 'airport-road'$$, '23514');
 update public.settings set value = 'null' where key = 'hub_budget_daily_usd';
 select pg_temp._check('G2 a NULL budget: «المساعد يعمل» names the budget', internal.hub_switch_gates('hub_assistant_on') ? 'budget');

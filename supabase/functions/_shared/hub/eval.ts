@@ -18,8 +18,8 @@ type Json = any;
 /** the engine's version a run is judged with: the instructions of prompts.md and copy.md as loaded, + this module */
 export async function engineVersion(): Promise<string> {
   // the leading code marks a change of the engine's code that the texts do not show: e2 = the H6 gaps (mixed messages,
-  // the room-only «يبدأ من», the guard's phones, emails and first person); e3 = H6 pass 3 (replyLicence; the workspace usage limit read as the credit); e4 = H6 pass 5 (the natural-conversation policy: kinds, chat / clarify / redirect, the booking conversation, no drafts in «يرد تلقائيًا»); e5 = no second quote when nothing it depends on changed; the guard graded per turn; e6 = H6c «بانتظار موظف» / «مع موظف» and the alert line; e7 = H7 voice notes and images — bump it with any such change
-  const data = new TextEncoder().encode(`e7|${JSON.stringify((text as Json).prompts)}|${JSON.stringify((text as Json).copy)}`);
+  // the room-only «يبدأ من», the guard's phones, emails and first person); e3 = H6 pass 3 (replyLicence; the workspace usage limit read as the credit); e4 = H6 pass 5 (the natural-conversation policy: kinds, chat / clarify / redirect, the booking conversation, no drafts in «يرد تلقائيًا»); e5 = no second quote when nothing it depends on changed; the guard graded per turn; e6 = H6c «بانتظار موظف» / «مع موظف» and the alert line; e7 = H7 voice notes and images; e8 = H8 booking in the chat (cards, summary, book) — bump it with any such change
+  const data = new TextEncoder().encode(`e8|${JSON.stringify((text as Json).prompts)}|${JSON.stringify((text as Json).copy)}`);
   const h = new Uint8Array(await crypto.subtle.digest('SHA-256', data));
   return `h6-${[...h.slice(0, 6)].map((b) => b.toString(16).padStart(2, '0')).join('')}`;
 }
@@ -37,8 +37,24 @@ export interface SimState {
   /** the simulated clock (ms) and the last staff message's time — a «[staff] …» and a «[wait:N]» line of the bank move them */
   clock: number;
   staff_at: number | null;
+  /** H8: the room cards of the last cards message (their order) and the draft version they carry — a «[tap:book:N]» line */
+  cards?: string[];
 }
-export const freshState = (): SimState => ({ state: 'new', first_reply: true, history: [], draft: null, failed_understandings: 0, out_of_scope: 0, human_phase: null, state_before_human: null, clock: 0, staff_at: null });
+export const freshState = (): SimState => ({ state: 'new', first_reply: true, history: [], draft: null, failed_understandings: 0, out_of_scope: 0, human_phase: null, state_before_human: null, clock: 0, staff_at: null, cards: [] });
+
+/** H8: a booking button of the bank — «[tap:book:N]» (the Nth room card shown), «[tap:confirm]», «[tap:change]»,
+ *  «[tap:notnow]», «[tap:more]», «[tap:request]» — resolved to the hub's own button id from the button the engine last sent */
+export const TAP_LINE = /^\[tap:(book:\d|confirm|change|notnow|more|request|otherdates)\]$/;
+export function tapId(message: string, st: SimState, f: Finish | null): string | null {
+  const m = TAP_LINE.exec(String(message ?? '').trim());
+  if (!m) return null;
+  const sent = (f?.messages ?? []).flatMap((x) => ((x.payload?.buttons ?? []) as { id: string }[]).map((b) => b.id));
+  if (m[1].startsWith('book:')) {
+    const room = (st.cards ?? [])[Number(m[1].slice(5)) - 1];
+    return sent.find((id) => id.startsWith('hub:book:') && id.split(':')[3] === room) ?? null;
+  }
+  return sent.find((id) => id.startsWith(`hub:${m[1]}:`)) ?? null;
+}
 
 /** a conversation-bank line that is not a guest message (H6c): «[staff] text» (a staff reply), «[wait:16]» (minutes pass) */
 export const STAFF_LINE = /^\[staff\]\s*([\s\S]+)$/;
@@ -124,12 +140,15 @@ export function claimOf(ctx: Json, item: Pick<Item, 'key' | 'language' | 'contex
     unit: { ...ctx.unit, mode: 'test', persona: persona ?? ctx.unit?.persona ?? null, media: { voice: true, images: true } },
     voice: { cap_seconds: bm?.voice === 'capped' ? 0 : 3600, used_seconds: 0 },
     channel: ctx.channel ?? { address: null, sending_enabled: false },
-    guest: { first_name: typeof c.first_name === 'string' ? c.first_name : null, returning: !!c.returning_guest, language: L },
+    guest: { first_name: typeof c.first_name === 'string' ? c.first_name : null, returning: !!c.returning_guest, language: L,
+      // H8: a member with recorded consent (the members' code), a returning guest's previous room, a test guest
+      member: c.member === true, last_room: c.last_room ?? null, test_guest: c.test_guest === true },
+    member_codes: Array.isArray(c.member_codes) ? c.member_codes : [],
     // «[button:<id>]» = a tap on our own quick reply (the conversation bank, H6 pass 5)
     messages: [inline
       ? { id: `m-${item.key}-${n}`, kind: inline.kind, body: message || null, payload: { media_id: 'sim' }, inline: { mime: inline.mime, bytes: inline.bytes } }
       : bm ? { id: `m-${item.key}-${n}`, kind: bm.kind, body: bm.caption, payload: { media_id: 'eval' }, fixture: bm }
-      : /^\[button:(hub[a-z]?:[a-z_]+)\]$/.test(message)
+      : /^\[button:(hub[a-z]?:[a-z0-9_:-]+)\]$/.test(message)
       ? { id: `m-${item.key}-${n}`, kind: 'button_reply', body: message, payload: { button_id: /^\[button:(.+)\]$/.exec(message)![1] } }
       : kind === 'text' ? { id: `m-${item.key}-${n}`, kind: 'text', body: message, payload: {} } : { id: `m-${item.key}-${n}`, kind, body: null, payload: { media_id: 'eval' } }],
     history: st.history.slice(-12),
@@ -160,7 +179,15 @@ export function nextState(st: SimState, message: string, f: Finish): SimState {
     staff_at: to === 'human' ? st.staff_at : null,
     first_reply: st.first_reply && replies.length === 0,
     history: [...st.history, { author: 'guest' as const, body: message }, ...replies.map((b) => ({ author: 'us' as const, body: b }))].slice(-12),
-    draft: f.draft_close ? null : f.draft ? { id: st.draft?.id ?? 'eval-draft', kind: f.draft.kind, version: (st.draft?.version ?? 0) + 1, fields: f.draft.fields, quote: st.draft?.quote ?? null } : st.draft,
+    // H8: the draft keeps the id its buttons carry, its version (a new draft starts at 1), and the turn's quote
+    draft: f.draft_close ? null : f.draft
+      ? { id: f.draft.id ?? st.draft?.id ?? 'eval-draft', kind: f.draft.kind, version: f.draft_replace || !st.draft ? 1 : st.draft.version + 1, fields: f.draft.fields,
+          quote: f.draft.quote ?? (f.draft_replace ? null : st.draft?.quote ?? null) }
+      : st.draft,
+    cards: (() => {
+      const c = f.messages.map((m) => m.payload?.room_card).filter((x): x is string => typeof x === 'string');
+      return c.length ? c : st.cards ?? [];
+    })(),
     failed_understandings: f.failed === 'reset' ? 0 : f.failed === 'inc' ? st.failed_understandings + 1 : st.failed_understandings,
     out_of_scope: st.out_of_scope + (f.out_of_scope_inc ? 1 : 0),
   };
@@ -189,6 +216,7 @@ export async function runItem(ctx: Json, item: Item, deps: Deps, persona: Json |
     },
   };
   let error: string | null = null;
+  let lastFinish: Finish | null = null;
   // a conversation of the bank keeps going after a hand-off (H6c: «بانتظار موظف» answers what it can); a single question
   // stops there as before
   const conversation = item.expect?.action === 'conversation';
@@ -217,7 +245,14 @@ export async function runItem(ctx: Json, item: Item, deps: Deps, persona: Json |
       }
     }
     try {
-      const out = await runTurn(claimOf(ctx, item, msg, st, persona, i), d);
+      // H8: a «[tap:…]» line taps the button the engine last sent (its draft id and version)
+      const tid = TAP_LINE.test(msg.trim()) ? tapId(msg, st, lastFinish) : null;
+      if (TAP_LINE.test(msg.trim()) && !tid) {
+        error = 'tap_missing';
+        break;
+      }
+      const out = await runTurn(claimOf(ctx, item, tid ? `[button:${tid}]` : msg, st, persona, i), d);
+      lastFinish = out.finish;
       finishes.push(out.finish);
       if (out.credit === 'exhausted') {
         error = 'api_credit';
@@ -268,7 +303,8 @@ export async function runItem(ctx: Json, item: Item, deps: Deps, persona: Json |
       gap: (f.decision as Json)?.gap === true, guard_refusals: (f.guard_refusals ?? []).length,
       // H7: what the voice notes and images became, the priority and the staff alert's line
       media: (f.media ?? []).map((x) => x.status), categories: (f.media ?? []).map((x) => x.category).filter((x): x is ImageCategory => !!x),
-      priority: f.priority ?? null, summary: f.handoff_summary ?? null })),
+      priority: f.priority ?? null, summary: f.handoff_summary ?? null,
+      cards: f.messages.filter((m) => typeof m.payload?.room_card === 'string').length })),
   };
   return { outcome, finishes, models: finishes.flatMap((f) => f.models), understanding: finishes.map((f) => f.understanding ?? null) };
 }

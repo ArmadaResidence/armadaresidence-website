@@ -17,8 +17,11 @@ type Json = any;
 
 /** one guest message of a conversation and what must follow it (H6 pass 5 — the conversation bank) */
 export interface StepExpect {
-  /** reply (small talk) · answer · ask · quote · clarify · redirect · handoff · none (no reply) — one or a list */
+  /** reply (small talk) · answer · ask · quote · clarify · redirect · handoff · none (no reply) — one or a list; H8: quote =
+   *  the room cards, summary = the booking summary, booked = «تأكيد الحجز» made the booking */
   outcome: string | string[];
+  /** H8: how many room cards the step sends, [min, max] */
+  cards?: [number, number];
   must_include?: string[];
   must_not_include?: string[];
   /** a hand-off whose question must (true) or must not (false) enter «لم أعرف الإجابة»; default: only a no-source hand-off may */
@@ -84,6 +87,8 @@ export interface StepOutcome {
   categories?: string[];
   priority?: string | null;
   summary?: string | null;
+  /** H8: the room cards this step sent */
+  cards?: number;
 }
 export interface GradeCtx {
   /** settings.breakfast and extra_bed_per_night (Settings) — the rest of the fees come from bank-rules (policies.json) */
@@ -146,6 +151,11 @@ export function outcomeKind(finish: Json): string {
   if (chat === 'clarify') return 'clarify';
   if (chat === 'chat') return 'reply';
   if (!finish.messages?.length && acts.every((a) => a === 'noop')) return 'none';
+  // H8: the booking in the chat — booked («تأكيد الحجز»), the summary, the room cards, «ليس الآن»
+  if (finish.state === 'booked' && tr.includes('T12')) return 'booked';
+  if (finish.decision?.reason === 'not_now') return 'reply';
+  if (acts.includes('send_summary') && finish.state === 'awaiting_confirmation') return 'summary';
+  if (acts.includes('send_room_cards')) return 'quote';
   if (acts.includes('quote')) return 'quote';
   // quoted, and the guest added nothing the quote depends on: the booking link again — still the quote step
   if (finish.state === 'quoted' && acts.includes('fixed')) return 'quote';
@@ -249,6 +259,7 @@ export function gradeConversation(item: Item, o: Outcome): Grade {
     if (e.category && !(g.categories ?? []).includes(e.category)) reasons.push(`s${i + 1}:category:${e.category}`);
     if (e.priority && (g.priority ?? null) !== e.priority) reasons.push(`s${i + 1}:priority:${e.priority}:${g.priority ?? 'none'}`);
     if (e.summary_includes && !norm(g.summary ?? '').includes(norm(e.summary_includes))) reasons.push(`s${i + 1}:summary`);
+    if (e.cards && !((g.cards ?? 0) >= e.cards[0] && (g.cards ?? 0) <= e.cards[1])) reasons.push(`s${i + 1}:cards:${e.cards.join('-')}:${g.cards ?? 0}`);
     const said = g.replies.filter((x) => !x.notice).map((x) => x.body).join('\n');
     GLOBAL_MUST_NOT.forEach((p, j) => {
       if (hasWord(said, p)) reasons.push(`s${i + 1}:global:${j}`);

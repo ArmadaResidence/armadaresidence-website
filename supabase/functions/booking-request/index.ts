@@ -62,6 +62,7 @@ import { BOOKING_LIMIT_WINDOW_SECONDS, BOOKING_PHONE_LIMIT } from './limits.ts';
 import { verifyTurnstile } from '../_shared/turnstile.ts';
 import { eyabInvite } from '../_shared/eyab-invite.ts';
 import { sendWhatsApp } from './whatsapp-send.ts';
+import { route } from './notify.ts';
 import { WA_TEMPLATES, type WaTemplate } from './whatsapp.ts';
 import { testEcho } from './test-echo.ts';
 import { guestReason, isCancelReason, reasonNotifies } from './cancel-reasons.ts';
@@ -765,29 +766,8 @@ async function loadRecipients(ref: string): Promise<Recipient[]> {
   }
 }
 
-function unique(list: string[]): string[] {
-  return Array.from(new Set(list.map((s) => s.trim().toLowerCase()).filter(Boolean)));
-}
-
-/**
- * Bookings: To = the branch's active recipients. Partner enquiries: To = the active partners recipients.
- * CC = the active central recipients. No primary recipient → the central recipients become To.
- * Never the same address twice. `primary` is what the confirmation's Reply-To points at.
- */
-function route(rows: Recipient[], branchSlug: string, isPartner: boolean): { to: string[]; cc: string[]; primary: string[]; central: string[] } {
-  const primary = unique(
-    rows.filter((r) => (isPartner ? r.scope === 'partners' : r.scope === 'branch' && r.branch_slug === branchSlug)).map((r) => r.email),
-  );
-  const central = unique(rows.filter((r) => r.scope === 'central').map((r) => r.email));
-  let to = primary;
-  let cc = central;
-  if (to.length === 0) {
-    to = central;
-    cc = [];
-  }
-  cc = cc.filter((e) => !to.includes(e));
-  return { to, cc, primary, central };
-}
+// the routing rule (To = the branch's / the partners' recipients, CC = the central ones; none → the central ones become To)
+// lives in ./notify.ts since 16 Nov 2026 (Guest Hub H8), shared with the bookings made in the WhatsApp chat
 
 interface Envelope {
   from: string;

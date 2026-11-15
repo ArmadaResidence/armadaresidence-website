@@ -21,3 +21,6 @@ await import('../admin/tests/hub-media-ui-check.mjs');
 // H7b (15 Nov 2026): «التعلّم» — the learned cards in «قاعدة المعرفة» («تعلّمها المساعد», «إيقاف» / «تراجع», «يحتاج قرارك») and
 // the section «التعلّم» of «الفريق والتقارير» — offline too (admin/tests/hub-learn-ui-check.mjs).
 await import('../admin/tests/hub-learn-ui-check.mjs');
+// H8 (16 Nov 2026): «الآن» (counts and times only, money with «الأرقام المالية», live, «وضع الشاشة») and «التقارير» →
+// «المحادثات والمساعد» (?day= from the daily report) — offline too (admin/tests/hub-now-ui-check.mjs).
+await import('../admin/tests/hub-now-ui-check.mjs');

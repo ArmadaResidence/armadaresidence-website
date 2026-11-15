@@ -2,7 +2,7 @@
 // DECISIONS.md 2026-11-14 «Guest Hub H5 — the engine»). OFFLINE and fast (FAST_CHECKS): every implementation runs
 // through the same cases — today the dashboard source, on a stubbed RPC shaped like the website's own answers
 // (site_room_catalog, room_from_prices, quote_stay): instant, a request with each reason, price changed, sold out on the
-// last room, a hidden type, nights without a rate, prices hidden, an error; book() answers not_bookable until H8; the
+// last room, a hidden type, nights without a rate, prices hidden, an error; book() (H8) → hub_book_draft and every answer; the
 // per-phone booking limit is booking-request's own (limits.ts), never copied.
 //   node scripts/hub-adapter-check.mjs
 import { readFileSync } from 'node:fs';
@@ -43,7 +43,24 @@ const stub = (answer) => async (fn, args) => {
     if (answer === 'error') throw new Error('quote_stay 500');
     return CASES[answer];
   }
+  if (fn === 'hub_book_draft') {
+    calls.push(['hub_book_draft', args]);
+    if (answer === 'error') throw new Error('hub_book_draft 500');
+    return BOOK[answer] ?? BOOK.confirmed;
+  }
   throw new Error(`unexpected ${fn}`);
+};
+// H8: hub_book_draft's answers
+const BOOK = {
+  confirmed: { status: 'confirmed', ref: 'AR-20261201-AB12', id: 'r1', reason: null, quote: { total: 400 }, phone: '+15550100' },
+  request: { status: 'request', ref: 'AR-20261201-AB13', id: 'r2', reason: 'extra_beds', quote: { total: 450 } },
+  already: { status: 'already', ref: 'AR-20261201-AB12', booking_status: 'confirmed' },
+  price_changed: { status: 'price_changed', new_total: 420 },
+  sold_out: { status: 'sold_out' },
+  stale: { status: 'stale', version: 3 },
+  not_found: { status: 'not_found' },
+  limit: { status: 'limit' },
+  incomplete: { status: 'incomplete' },
 };
 const STAY = { branch: 'airport-road', room_type: 'twin-room', check_in: '2026-12-01', check_out: '2026-12-03', adults: 2, children: 0, child_ages: null, extra_beds: 0, breakfast: 'without' };
 
@@ -80,8 +97,19 @@ for (const [name, make] of Object.entries(implementations)) {
   const args = calls.find((c) => c[0] === 'quote_stay')?.[1] ?? {};
   check(args.p_branch === 'airport-road' && args.p_room === 'twin-room' && args.p_check_in === '2026-12-01' && args.p_breakfast === 'without' && args.p_promo_code === 'WINTER',
     `${name}: quote_stay receives the booking form's parameters`);
-  r = await a.book({ id: 'd', version: 1 });
-  check(r.kind === 'not_bookable' && r.reason === 'skill_off', `${name}: book — not_bookable until H8`);
+  calls.length = 0;
+  r = await make('confirmed').book({ id: 'd', version: 2, ref: 'AR-20261201-AB12' });
+  check(r.kind === 'confirmed' && r.ref === 'AR-20261201-AB12' && r.total === 400 && r.booking?.phone === '+15550100', `${name}: book (H8) — confirmed, the reference and the stored booking's details`);
+  check(calls.some((c) => c[0] === 'hub_book_draft' && c[1].p_draft === 'd' && c[1].p_version === 2 && c[1].p_ref === 'AR-20261201-AB12'), `${name}: book — hub_book_draft with the draft, its version and the reference`);
+  check((await make('request').book({ id: 'd', version: 2, ref: 'x' })).kind === 'request', `${name}: book — a booking request with its reason`);
+  r = await make('already').book({ id: 'd', version: 2, ref: 'x' });
+  check(r.kind === 'already' && r.ref === 'AR-20261201-AB12', `${name}: book — a second tap answers the same reservation`);
+  r = await make('price_changed').book({ id: 'd', version: 2, ref: 'x' });
+  check(r.kind === 'price_changed' && r.new_total === 420, `${name}: book — price changed carries the new total (T13)`);
+  check((await make('sold_out').book({ id: 'd', version: 2, ref: 'x' })).kind === 'sold_out', `${name}: book — the last room taken → sold out (T14)`);
+  check((await make('stale').book({ id: 'd', version: 1, ref: 'x' })).kind === 'stale' && (await make('not_found').book({ id: 'd', version: 1, ref: 'x' })).kind === 'stale', `${name}: book — an older version / no draft → stale (T16)`);
+  check((await make('limit').book({ id: 'd', version: 2, ref: 'x' })).kind === 'limit' && (await make('incomplete').book({ id: 'd', version: 2, ref: 'x' })).kind === 'incomplete', `${name}: book — the per-phone limit, missing details`);
+  check((await make('error').book({ id: 'd', version: 2, ref: 'x' })).kind === 'error', `${name}: book — an error never throws`);
   check(typeof a.modify === 'undefined' && typeof a.cancel === 'undefined', `${name}: modify / cancel are not callable by the assistant in v1`);
 }
 check(quoteResult(null).kind === 'error' && quoteResult({ ok: false, reason: 'not_bookable' }).kind === 'not_bookable', 'quoteResult: nothing → error; a refusal → not_bookable');

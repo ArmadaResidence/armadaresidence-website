@@ -8,7 +8,10 @@
 // and footer («طُبع في …» · «للاستخدام الداخلي») repeat on every page — a real <table> frame (Chrome repeats a table's
 // <thead> / <tfoot> on every page, even when its one cell runs over many; CSS display: table does not), transparent on
 // screen (display: contents); @page has no margin, so the browser prints none of its own (no URL). styles.css.
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
+// Guest Hub H8 (16 Nov 2026): a sixth section «المحادثات والمساعد» (public.report_hub, spec §5.9); the daily WhatsApp
+// report's ?hub_r=YYYY-MM-DD lands here with ?day= — that day as the period, scrolled to the section.
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { flushSync } from 'react-dom';
 import * as api from '../lib/api';
 import * as m from '../lib/metrics';
@@ -31,7 +34,10 @@ const SECTIONS = [
   { id: 'sources', label: 'المصادر والحملات' },
   { id: 'cancellations', label: 'الإلغاء والرد' },
   { id: 'club', label: 'إياب والشركاء' },
+  { id: 'hub', label: 'المحادثات والمساعد' },
 ];
+/** a model or WhatsApp cost in US dollars (the budget's own currency) */
+const usd = (n: number | null | undefined) => `${Number(n ?? 0).toFixed(2)} دولار`;
 const bname = (slug: string) => BRANCH_NAMES[slug] ?? slug;
 const num = (n: number | null | undefined) => (n === null || n === undefined ? '' : Number(n));
 
@@ -41,8 +47,11 @@ export default function Reports() {
   const today = riyadhToday();
   const [branches, setBranches] = useState<api.Branch[]>([]);
   const [branch, setBranch] = useState(me?.branch ?? '');
-  const [periodKey, setPeriodKey] = useState<m.PeriodKey>('30');
-  const [custom, setCustom] = useState<m.Period>(() => m.periodOf('30'));
+  // ?day=YYYY-MM-DD (the daily report's link): that one day, «المحادثات والمساعد» in view
+  const [params] = useSearchParams();
+  const dayParam = /^\d{4}-\d{2}-\d{2}$/.test(params.get('day') ?? '') ? params.get('day')! : null;
+  const [periodKey, setPeriodKey] = useState<m.PeriodKey>(dayParam ? 'custom' : '30');
+  const [custom, setCustom] = useState<m.Period>(() => (dayParam ? { from: dayParam, to: dayParam } : m.periodOf('30')));
   const [cmpKey, setCmpKey] = useState<m.CompareKey>('previous');
   const [cmpCustom, setCmpCustom] = useState<m.Period>(() => m.compareOf('previous', m.periodOf('30'))!);
   const period = useMemo(() => m.periodOf(periodKey, custom), [periodKey, custom]);
@@ -53,6 +62,8 @@ export default function Reports() {
   const [bsrc, setBsrc] = useState<Sect<m.BookingSourcesReport>>(empty);
   const [can, setCan] = useState<Sect<m.Cancellations>>(empty);
   const [cp, setCp] = useState<Sect<m.ClubPartners>>(empty);
+  const [hub, setHub] = useState<Sect<m.HubReport>>(empty);
+  const scrolled = useRef(false);
   const first = useFirstLoad(!!perf.data);
   // the time on the printout: the moment of printing (set synchronously before the print layout)
   const [printedAt, setPrintedAt] = useState(() => new Date().toISOString());
@@ -74,16 +85,22 @@ export default function Reports() {
       run(m.reportBookingSources(branch, period), setBsrc),
       run(m.reportCancellations(branch, period), setCan),
       run(m.reportClubPartners(branch, period), setCp),
+      run(m.reportHub(branch, period), setHub),
     ]);
   }, [branch, period, cmp]);
   useEffect(() => void load(), [load]);
+  useEffect(() => {
+    if (!dayParam || scrolled.current || !hub.data) return;
+    scrolled.current = true;
+    document.getElementById('hub')?.scrollIntoView({ block: 'start' });
+  }, [dayParam, hub.data]);
 
   const scope = branch ? bname(branch) : (perf.data?.branches.map((b) => bn(b)).join(' و') || 'الفرعان');
   const periodText = dateRange(period.from, period.to);
   const cmpText = cmp ? dateRange(cmp.from, cmp.to) : null;
 
   function exportXlsx() {
-    const sheets = buildSheets({ perf: perf.data, beh: beh.data, src: src.data, bsrc: bsrc.data, can: can.data, cp: cp.data, money, scope, periodText, cmpText });
+    const sheets = buildSheets({ perf: perf.data, beh: beh.data, src: src.data, bsrc: bsrc.data, can: can.data, cp: cp.data, hub: hub.data, money, scope, periodText, cmpText });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(workbook(sheets));
     a.download = `armada-reports-${period.from}-${period.to}.xlsx`;
@@ -144,6 +161,7 @@ export default function Reports() {
       <SourcesSection s={src} bs={bsrc} money={money} first={first} />
       <CancelSection s={can} first={first} />
       <ClubSection s={cp} first={first} />
+      <HubSection s={hub} money={money} first={first} />
       </td></tr></tbody>
       <tfoot className="report-print-foot" aria-hidden="true" data-print-foot><tr><td>
         <div className="report-print-foot-in">
@@ -361,8 +379,58 @@ function ClubSection({ s, first }: { s: Sect<m.ClubPartners>; first: boolean }) 
   );
 }
 
+// ───────────────────────── المحادثات والمساعد (Guest Hub H8) ─────────────────────────
+function HubSection({ s, money, first }: { s: Sect<m.HubReport>; money: boolean; first: boolean }) {
+  const d = s.data;
+  const t = d ? d.units.reduce((a, u) => ({ conv: a.conv + u.conversations, ai: a.ai + u.assistant_only, ho: a.ho + u.handed_off, q: a.q + u.quoted, bk: a.bk + u.booked, cost: a.cost + Number(u.model_cost_usd ?? 0) }),
+    { conv: 0, ai: 0, ho: 0, q: 0, bk: 0, cost: 0 }) : null;
+  const share = (a: number, b: number) => (b ? Math.round((a / b) * 1000) / 10 : null);
+  return (
+    <section id="hub" aria-labelledby="hub-h" className="grid gap-3 report-section" data-section="hub">
+      <SectionHead id="hub" title="المحادثات والمساعد" />
+      <ErrorBox error={s.error} />
+      {d && t && (
+        <>
+          <div className={`grid grid-cols-2 ${money ? 'md:grid-cols-6' : 'md:grid-cols-5'} gap-3`}>
+            <Kpi k="hub-conv" title="المحادثات" how={m.HOW.hubConversations} value={<AnimatedNumber value={t.conv} first={first} />} />
+            <Kpi k="hub-ai" title="أجاب عنها المساعد" how={m.HOW.hubConversations} value={<span className="num-ar">{m.pctText(share(t.ai, t.conv))}</span>} />
+            <Kpi k="hub-handoff" title="حُوّلت إلى الفريق" how={m.HOW.hubConversations} value={<span className="num-ar">{m.pctText(share(t.ho, t.conv))}</span>} />
+            <Kpi k="hub-conversion" title="من عرض السعر إلى الحجز" how={m.HOW.hubConversion} value={<span className="num-ar">{t.q ? `${t.bk} من ${t.q}` : '—'}</span>} />
+            <Kpi k="hub-bookings" title="حجوزات المساعد" how={m.HOW.hubBookings} value={<span className="num-ar">فوري {d.bookings.instant} · طلب {d.bookings.request}</span>} />
+            {money && d.bookings.revenue !== undefined && <Kpi k="hub-revenue" title="إيراد حجوزات المساعد" how={m.HOW.hubBookings} value={<AnimatedNumber value={d.bookings.revenue} first={first} format={(x) => sar(Math.round(x))} />} />}
+          </div>
+          <section className="card p-4" aria-labelledby="hub-units-h" data-hub-units>
+            <div className="flex items-start gap-2 mb-3"><h3 id="hub-units-h" className="font-bold">حسب الوحدة</h3><HowTip text={m.HOW.hubFirstReply} /></div>
+            <DataTable caption="المحادثات حسب الوحدة"
+              data={{ head: ['الوحدة', 'المحادثات', 'المساعد وحده', 'حُوّلت', 'أول رد للمساعد (الوسيط · 90٪)', 'أول رد للفريق (الوسيط · 90٪)', 'عُرض السعر', 'حُجز', 'تكلفة النماذج'],
+                rows: d.units.map((u) => [u.name_ar, u.conversations, u.assistant_only, u.handed_off,
+                  `${m.durationText(u.ai_median_min)} · ${m.durationText(u.ai_p90_min)}`, `${m.durationText(u.staff_median_min)} · ${m.durationText(u.staff_p90_min)}`,
+                  u.quoted, u.booked, usd(u.model_cost_usd)]) }}
+              foot={[['الإجمالي', t.conv, t.ai, t.ho, '', '', t.q, t.bk, usd(t.cost)]]} />
+          </section>
+          <div className="grid lg:grid-cols-2 gap-4">
+            <ChartCard title="أكثر المواضيع" how={m.HOW.hubTopics} id="hub-topics"
+              summary={d.topics.length ? `أكثر المواضيع في الفترة: ${d.topics.map((x) => `${x.label_ar} ${x.count}`).join('، ')}.` : 'لا رسائل في الفترة.'}
+              table={{ head: ['الموضوع', 'المرات'], rows: d.topics.map((x) => [x.label_ar, x.count]) }}>
+              {d.topics.length === 0 ? <p className="text-sm text-ink-muted">لا رسائل في الفترة.</p> : (
+                <HBars first={first} rows={d.topics.map((x) => ({ key: x.key, label: x.label_ar, value: x.count, text: String(x.count) }))} />
+              )}
+            </ChartCard>
+            <section className="card p-4 grid gap-2 content-start" aria-labelledby="hub-cost-h" data-hub-cost>
+              <div className="flex items-start gap-2"><h3 id="hub-cost-h" className="font-bold">المبيعات والتكلفة</h3><HowTip text={m.HOW.hubCost} /></div>
+              <p className="text-sm num-ar" data-hub-sales>طلبات للمبيعات: القاعة {d.sales_requests.hall} · المجموعات {d.sales_requests.group}</p>
+              <p className="text-sm num-ar" data-hub-model>تكلفة النماذج: {usd(t.cost)}</p>
+              <p className="text-sm num-ar" data-hub-wa>رسائل واتساب بالقوالب: {d.whatsapp.templates} · تقدير {usd(d.whatsapp.estimate_usd)}</p>
+            </section>
+          </div>
+        </>
+      )}
+    </section>
+  );
+}
+
 // ───────────────────────── Excel ─────────────────────────
-function buildSheets(x: { perf: m.Performance | null; beh: m.Behaviour | null; src: m.SourcesReport | null; bsrc: m.BookingSourcesReport | null; can: m.Cancellations | null; cp: m.ClubPartners | null; money: boolean; scope: string; periodText: string; cmpText: string | null }): Sheet[] {
+function buildSheets(x: { perf: m.Performance | null; beh: m.Behaviour | null; src: m.SourcesReport | null; bsrc: m.BookingSourcesReport | null; can: m.Cancellations | null; cp: m.ClubPartners | null; hub: m.HubReport | null; money: boolean; scope: string; periodText: string; cmpText: string | null }): Sheet[] {
   const head = `${x.scope} · ${x.periodText}${x.cmpText ? ` · المقارنة: ${x.cmpText}` : ''} · كل الأرقام من الحجوزات المسجّلة في اللوحة`;
   const sheets: Sheet[] = [];
   const p = x.perf;
@@ -410,6 +478,14 @@ function buildSheets(x: { perf: m.Performance | null; beh: m.Behaviour | null; s
     { title: 'أعضاء جدد كل أسبوع', rows: [['الأسبوع من', 'الأعضاء الجدد'], ...cp.weeks.map((w) => [w.week_from, w.members])] },
     { title: 'الأعضاء حسب المصدر', rows: [['المصدر', 'الأعضاء', 'الجدد في الفترة'], ...m.CLUB_SOURCE_LABELS.map((k) => [k.label, cp.sources[k.key]?.all ?? 0, cp.sources[k.key]?.joined ?? 0])] },
     { title: 'مسار طلبات الشركاء', rows: [['الحالة الأخيرة', 'الطلبات'], ...m.FUNNEL.map((f) => [f.label, cp.funnel[f.key] ?? 0]), ['مؤرشف', cp.funnel.archived ?? 0]] },
+  ] });
+  const h = x.hub;
+  if (h) sheets.push({ name: 'المحادثات والمساعد', blocks: [
+    { title: head, rows: [['الوحدة', 'المحادثات', 'المساعد وحده', 'حُوّلت', 'أول رد للمساعد — الوسيط (دقيقة)', 'أول رد للمساعد — 90٪ (دقيقة)', 'أول رد للفريق — الوسيط (دقيقة)', 'أول رد للفريق — 90٪ (دقيقة)', 'عُرض السعر', 'حُجز', 'تكلفة النماذج (دولار)'],
+      ...h.units.map((u) => [u.name_ar, u.conversations, u.assistant_only, u.handed_off, num(u.ai_median_min), num(u.ai_p90_min), num(u.staff_median_min), num(u.staff_p90_min), u.quoted, u.booked, num(u.model_cost_usd)])] },
+    { title: 'حجوزات المساعد', rows: [['المؤشر', 'القيمة'], ['تأكيد فوري', h.bookings.instant], ['طلب حجز', h.bookings.request], ['مؤكدة', h.bookings.confirmed], ...(x.money ? [['الإيراد', num(h.bookings.revenue)]] : []),
+      ['طلبات القاعة للمبيعات', h.sales_requests.hall], ['طلبات المجموعات للمبيعات', h.sales_requests.group], ['رسائل واتساب بالقوالب', h.whatsapp.templates], ['تقدير تكلفة واتساب (دولار)', num(h.whatsapp.estimate_usd)]] },
+    { title: 'أكثر المواضيع', rows: [['الموضوع', 'المرات'], ...h.topics.map((t) => [t.label_ar, t.count])] },
   ] });
   return sheets;
 }
