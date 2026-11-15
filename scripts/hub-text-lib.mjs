@@ -57,6 +57,8 @@ const COPY_CASES = {
   'Hall or group request received': 'hall_group_ack',
   'Group or hall request sent to sales, with the sales contacts (15 Nov 2026, Ahmed — the details collected first, one confirmation)': 'group_sales_ack',
   'A detail added to a group or hall request already sent (15 Nov 2026 — never a new hand-off)': 'request_updated',
+  'Group details question (the fallback of the model-written question; 15 Nov 2026)': 'group_ask',
+  'Hall details question (the fallback of the model-written question; 15 Nov 2026)': 'hall_ask',
   'Menu link': 'menu_link',
   'Booking status (same phone only)': 'booking_status',
   "Outside Armada's services": 'out_of_scope',

@@ -448,7 +448,10 @@ export async function runTurn(claim: Json, deps: Deps): Promise<Outcome> {
           }
           const c = await compose(emptyPayload(), 'ask', a.slots);
           if (c === 'credit') return null;
-          push(c === 'guard' || c === 'error' || !c.reply ? fixed('booking_ask', L) : stripOpening(c.reply) || fixed('booking_ask', L));
+          // the fallback names what this request needs (a group's rooms and name, the hall's event — 15 Nov 2026)
+          const fb = a.slots.some((k) => ['event_date', 'attendees', 'layout', 'coffee_break'].includes(k)) ? 'hall_ask'
+            : a.slots.some((k) => ['rooms', 'organisation'].includes(k)) ? 'group_ask' : 'booking_ask';
+          push(c === 'guard' || c === 'error' || !c.reply ? fixed(fb, L) : stripOpening(c.reply) || fixed(fb, L));
           lastAction = 'سؤال عن تفاصيل الإقامة';
           break;
         }
