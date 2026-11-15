@@ -39,6 +39,19 @@ if (!K.url || !K.service || !K.db || K.url.includes(PROD) || !K.url.includes(REF
   console.error('hub-booking-branch: refused — the branch values do not name this preview branch');
   process.exit(2);
 }
+// --setup: this tree's migrations pushed to the branch (the database URL as an argument, never written), the webhook's
+// function deployed there; hub-agent is NOT deployed (the turns run here — no model key on the branch)
+if (process.argv.includes('--setup')) {
+  const push = spawnSync('npx', ['--yes', 'supabase@2.120.0', 'db', 'push', '--db-url', `"${K.db}"`, '--include-all', '--yes'], { cwd: new URL('..', import.meta.url), encoding: 'utf8', shell: true });
+  const scrub = (s) => String(s ?? '').split(K.db).join('<branch-db>').replace(/postgres(ql)?:\/\/\S+/g, '<db>');
+  console.log(scrub(push.stdout).split('\n').filter((l) => /Applying|Finished|up to date|error/i.test(l)).join('\n'));
+  if (push.status !== 0) {
+    console.error(scrub(push.stderr).slice(-800));
+    process.exit(1);
+  }
+  cli(['functions', 'deploy', 'wa-automation', '--project-ref', REF, '--no-verify-jwt']);
+  console.log('setup: migrations pushed, wa-automation deployed to the branch');
+}
 // the code hub-agent runs reads Deno.env: the branch's URL and service key only (no YCloud key, no Resend key — nothing leaves)
 globalThis.Deno = { env: { get: (k) => ({ SUPABASE_URL: K.url, SUPABASE_SERVICE_ROLE_KEY: K.service })[k] } };
 const { runTurn } = await import('../supabase/functions/_shared/hub/engine.ts');
@@ -67,11 +80,14 @@ const svc = async (fn, args) => {
 
 // ── setup: the switches, a test-guest slot, the signing secret, inventory and the published covers ──
 const D = (n) => new Date(Date.now() + 3 * 3600e3 + n * 86400e3).toISOString().slice(0, 10);
-const GUEST = '+15550100811';
-const TESTER = '+15550100812';
+// fresh fictional numbers each run (the repeat rule would suppress a third identical message from one number)
+const R3 = String(100 + Math.floor(Math.random() * 800));
+const GUEST = `+15550100${R3}`;
+const TESTER = `+15550101${R3}`;
 const secret = `whsec_qa${randomBytes(16).toString('hex')}`;
 await q(`grant all on all tables in schema public to service_role; grant all on all sequences in schema public to service_role;
-         grant usage on schema internal to service_role; grant execute on all functions in schema internal to service_role;`);
+         grant usage on schema internal to service_role; grant execute on all functions in schema internal to service_role;
+         grant execute on all functions in schema public to service_role;`);
 await q(`alter table public.settings disable trigger user;
   update public.settings set value = 'true' where key in ('hub_inbox_on', 'hub_assistant_on');
   update public.settings set value = '20' where key = 'hub_budget_daily_usd';
@@ -110,6 +126,12 @@ const deps = {
   covers: async () => COVERS,
 };
 
+if (process.env.H8DBG) {
+  const cat = await svc('site_room_catalog', {});
+  const one = (cat ?? []).find((x) => x.branch === 'airport-road' && x.on_site);
+  console.log('catalog', (cat ?? []).length, one ? `${one.slug} on_site=${one.on_site} bookable=${one.bookable}` : 'none');
+  if (one) console.log('quote', JSON.stringify(await svc('quote_stay', { p_branch: 'airport-road', p_room: one.slug, p_check_in: D(20), p_check_out: D(22), p_adults: 2, p_children: 0, p_children_ages: null, p_extra_beds: 0, p_breakfast: 'without' })).slice(0, 400));
+}
 // ── the webhook ──
 const RUN = String(Date.now()).slice(-6);
 const sign = (raw) => {
@@ -153,6 +175,7 @@ const btn = (msgs, prefix) => msgs.flatMap((m) => m.payload?.buttons ?? []).filt
 const dates = `من ${D(20).slice(8)} ${['', 'يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو', 'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'][Number(D(20).slice(5, 7))]} إلى ${D(22).slice(8)} ${['', 'يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو', 'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'][Number(D(22).slice(5, 7))]}`;
 check(await inbound(GUEST, `أبغى أحجز غرفة ${dates} لشخصين بدون إفطار`) === 200, '1 the signed message accepted by the branch webhook');
 let r = await turn(GUEST);
+if (process.env.H8DBG) console.log(JSON.stringify({ u: r?.out?.finish.understanding, d: r?.out?.finish.decision, m: r?.out?.finish.messages?.map((x) => x.body) }).slice(0, 1500));
 let msgs = await outbound(GUEST);
 const cards = msgs.filter((m) => typeof m.payload?.room_card === 'string');
 check(r?.out?.finish.state === 'quoted' && cards.length >= 1 && cards.length <= 3, '2 the stay → at most three room cards', `${r?.out?.finish.state} ${cards.length}`);
@@ -161,6 +184,7 @@ const book = btn(msgs, 'hub:book:');
 check(!!book && book.title === 'احجز', '2 the card\'s «احجز» button (hub:book:<draft>:<type>:<version>)', book?.id);
 await inbound(GUEST, 'احجز', book.id);
 r = await turn(GUEST);
+if (process.env.H8DBG) console.log('tap', book.id, JSON.stringify({ claim: r?.claim?.claimed === false ? r.claim : undefined, draft: r?.claim?.draft ? { id: r.claim.draft.id, v: r.claim.draft.version, k: r.claim.draft.kind } : null, st: r?.claim?.conversation?.state, d: r?.out?.finish.decision, m: r?.out?.finish.messages?.map((x) => x.body) }).slice(0, 900));
 check(r?.out?.finish.state === 'collecting', '2 «احجز» → the full name asked', r?.out?.finish.state);
 await inbound(GUEST, 'سالم عبدالله الحربي');
 r = await turn(GUEST);
@@ -180,6 +204,7 @@ check(r?.notify?.emails === 0, '3 no email left this process (no Resend key)');
 const n1 = (await q(`select count(*)::int as n from public.reservations where booking_source = 'assistant_whatsapp' and phone = $1`, [GUEST]))[0].n;
 await inbound(GUEST, 'تأكيد الحجز', confirm.id);
 r = await turn(GUEST);
+if (process.env.H8DBG) console.log('tap2', JSON.stringify({ claim: r?.claim?.claimed === false ? r.claim : undefined, st: r?.claim?.conversation?.state, d: r?.out?.finish.decision, m: r?.out?.finish.messages?.map((x) => x.body) }).slice(0, 700));
 const n2 = (await q(`select count(*)::int as n from public.reservations where booking_source = 'assistant_whatsapp' and phone = $1`, [GUEST]))[0].n;
 check(n1 === 1 && n2 === 1 && /حجزك مسجّل برقم/.test(r?.out?.finish.messages.map((m) => m.body).join(' ') ?? '') && !r?.notify, '1 a second tap → «حجزك مسجّل برقم …», still ONE reservation, nothing sent twice');
 
@@ -194,6 +219,7 @@ if (tbook && !btn(msgs, 'hub:confirm:')) {
   msgs = await outbound(TESTER);
 }
 const tconfirm = btn(msgs, 'hub:confirm:');
+if (process.env.H8DBG) console.log('tester', JSON.stringify({ claim: r?.claim?.claimed === false ? r.claim : undefined, st: r?.claim?.conversation?.state, d: r?.out?.finish.decision, u: r?.out?.finish.understanding?.intents, m: r?.out?.finish.messages?.map((x) => x.body) }).slice(0, 900));
 check(!!tconfirm, '4 the test guest reaches the summary', r?.out?.finish.state);
 const inv0 = (await q(`select coalesce(sum(booked), 0)::int as b from public.inventory_days i join public.room_types rt on rt.id = i.room_type_id where rt.branch = 'airport-road' and i.night between $1 and $2`, [D(20), D(21)]))[0].b;
 if (tconfirm) await inbound(TESTER, 'تأكيد الحجز', tconfirm.id);
