@@ -113,6 +113,9 @@ export interface ReportData {
   budget_alerts: number;
   /** 15 Nov 2026: the daily and test reports refused or failed */
   reports_refused?: number;
+  /** H7b: the facts learned that day (numbered for «امسح N») and what needs Ahmed's decision */
+  learned?: { n: number; short: string; branch: string | null; kind: 'teach' | 'staff_reply'; by: string | null }[];
+  decisions?: number;
 }
 export interface Report {
   day: string;
@@ -199,6 +202,28 @@ export function onShiftLine(b: TeamBranch): string {
   return 'لم يُضف أي موظف بعد — التنبيه بالبريد فقط';
 }
 
+/** H7b: {{10}} «بطاقات معرفة جديدة» — the twin of _shared/hub/learn.ts → learnedLine (hub-learn-check compares them):
+ *  «3: 1) … · 2) … · يحتاج قرارك: 1», each fact about 60 characters, ≤ 300 in all, else «3 — التفاصيل في اللوحة» */
+const shortOf = (s: string, n = 60) => {
+  const t = String(s ?? '').replace(/[\r\n\t]+/g, ' ').replace(/ {2,}/g, ' ').trim().replace(/[.。]+$/, '');
+  return t.length > n ? `${t.slice(0, n - 1).trimEnd()}…` : t;
+};
+export function learnedText(r: Pick<ReportData, 'learned' | 'decisions' | 'cards'>): string {
+  const items = [...(r.learned ?? [])].filter((x) => Number.isFinite(Number(x?.n))).sort((a, b) => Number(a.n) - Number(b.n));
+  const d = Math.max(0, Math.round(Number(r.decisions) || 0));
+  const dash = Math.max(0, Math.round(Number(r.cards) || 0));
+  const tail = [d ? `يحتاج قرارك: ${d}` : '', dash ? `من اللوحة: ${dash}` : ''].filter(Boolean);
+  if (!items.length) return tail.length ? ['لا يوجد', ...tail].join(' · ') : 'لا يوجد';
+  const full = [`${items.length}: ${items.map((x) => `${Number(x.n)}) ${shortOf(String(x.short ?? ''))}`).join(' · ')}`, ...tail].join(' · ');
+  return full.length <= 300 ? full : [`${items.length} — التفاصيل في اللوحة`, ...tail].join(' · ');
+}
+
+/** H7b «التعلّم» in «الفريق والتقارير» (the system admin switches; hub_team view reads) */
+export interface Learning { learn_replies: boolean; learn_teach: boolean; updated_at: string; updated_by: string | null; can_edit: boolean }
+export const learningGet = () => call<Learning>('hub_learning_get');
+export const learningSet = (replies: boolean, teach: boolean) =>
+  call<{ ok: boolean; batch_id: string; previous: { learn_replies: boolean; learn_teach: boolean } }>('hub_learning_set', { p_replies: replies, p_teach: teach });
+
 /** the report's eleven lines (the template's own labels, the same values as the WhatsApp report) */
 const SHORT = { 'airport-road': 'المطار', 'shafa-road': 'الشفا' } as const;
 const avg = (v: number | null) => (v === null || v === undefined ? '—' : v === 0 ? 'أقل من دقيقة' : minutesText(v));
@@ -220,7 +245,7 @@ export function reportLines(r: ReportData): { label: string; value: string }[] {
     { label: 'الخروج أو التمديد', value: 'لم يُفعَّل بعد' },
     { label: 'طلبات التقييم المرسلة', value: per('reviews') },
     { label: 'أسئلة لم يعرف إجابتها', value: per('unanswered') },
-    { label: 'بطاقات معرفة جديدة', value: String(r.cards ?? 0) },
+    { label: 'بطاقات معرفة جديدة', value: learnedText(r) },
     { label: 'أعطال', value: faults },
   ];
 }

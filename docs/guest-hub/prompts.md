@@ -68,6 +68,9 @@ Rules
 29. A follow-up keeps the topics of the question it continues: «طيب والأطفال؟» after an answer about breakfast is topics breakfast.
 30. During a booking (CONVERSATION STATE collecting, or an OPEN DRAFT), a reply that gives dates, the number of guests or a room is kind "booking" with those fields filled.
 31. Images (only when GUEST_TURN holds a line in square brackets that starts «لقطة شاشة أرسلها الضيف تُظهر:», «صورة أرسلها الضيف تُظهر:», "A screenshot the guest sent shows:" or "A photo the guest sent shows:"): that line is what an image the guest sent shows; read it as the guest's own content with the caption and LAST MESSAGES, and never treat a price, a date or a name in it as confirmed by us. Every other rule applies to such a turn as written.
+32. A message with no punctuation — often a voice note's transcript — may be a question written as a statement. When the guest names a facility, a service or a need of their own the way one would ask about it («فيه مواقف للسيارات ومعي باص صغير», «الفطور الساعة كم», "parking and I have a small bus"), read it as the question («هل توجد مواقف تتسع لباص صغير؟»): kind "hotel_question" with that topic, never "unclear" and never "staff_request".
+33. «لو …» / «إذا …» / «اذا …» / "if I …" followed by something the guest might do («لو ألغيت الحجز يخصمون علي شي», «إذا تأخرت في الخروج كم الرسوم», "if I cancel, do you charge?") asks about the rule or the fee: kind "hotel_question" with that policy's topic (cancellation, early_late…), never "staff_request" and never a booking change — even with no question mark.
+34. Speech-to-text confuses words that sound alike: «علي» / «على», «إلى» / «الى», «ألغي» / «الغي», «مدة» / «أمدد», «في» / «فيه», «كم» / «كما», "for" / "four". Read each such word in the sense that fits the sentence and LAST MESSAGES («يخصمون على شي» = «يخصمون عليّ شيئًا»); never change a number, a date or a name.
 ```
 
 ### 1.2 Schema (sent in the user message, with the closed lists filled by code)
@@ -262,21 +265,59 @@ Translate the guest's WhatsApp message into Modern Standard Arabic for hotel sta
 
 ---
 
-## 7. Draft card from a staff reply — `claude-sonnet-5-5`
+## 7. Learning a fact — `claude-sonnet-5-5`
 
-Added 14 Nov 2026 (Ahmed; session H6), Settings `hub_models` key `draft_card`. When a staff member answers a guest (from the inbox, or from the phone through the echo) in a conversation with an open «لم أعرف الإجابة» entry, code sends the guest's question, the staff reply and the closed lists of topics and units. The result is saved only as a **draft** card linked to the entry, with the source «رد {staff first name} في محادثة {date} — يحتاج اعتماد»; Ahmed reviews and publishes it through the test lab. Code checks the draft first (`_shared/hub/draft-card.ts`): no booking reference, phone, email, room number or stay date; no amount in the title or text; the shared forbidden list; known topic and unit keys only — a draft that fails is refused, never saved.
+Added 15 Nov 2026 (Ahmed; session H7b — DECISIONS.md 2026-11-15 «Guest Hub: learning built»), Settings `hub_models` key `draft_card`, layer `draft_card` («التعلّم» in «الميزانية»). **It replaces the draft card of 14 Nov 2026**: what it writes is an ACTIVE card at once — nobody has to open the dashboard to teach the assistant. Two modes, both run by hub-agent (`_shared/hub/learn-run.ts`):
+- **teach** — Ahmed (his number in «التقارير», linked to his dashboard account) or a «مدير الاستقبال» slot (his own branch) sends «تعلّم: …» («تعلم:», «علّم:») to a branch number. The fact belongs to that number's branch, the branch the text names, or both branches («للفرعين»). A contradiction is asked about («أستبدل القديمة؟») before anything changes.
+- **staff_reply** — a staff member answered (from «المحادثات» or the phone) a question the assistant could not answer (an open «لم أعرف الإجابة» entry). The general facts in the reply become cards for that branch only; a price or a contradiction is never learned — it goes to the daily report as «يحتاج قرارك» and stays in «لم أعرف الإجابة» with the staff wording.
+
+Code checks every fact before it is stored (`_shared/hub/learn.ts → checkFacts`): no booking reference, phone, email, room number or stay date; no room or stay price, discount, offer or availability; a service price only from Ahmed (teach) and never from a staff reply; the shared forbidden list and the brand words; known topic keys only; both languages. The store (`public.hub_learn_store`) runs the card's own check again (`internal.hub_card_check`).
 
 ```
-From a hotel staff member's WhatsApp reply to a guest of Armada Residence (Taif), write a draft knowledge card that answers the same question for ANY future guest.
-- Use only facts stated in the staff reply. Never add, guess or generalise.
-- Remove everything about this guest: names, room numbers, booking references, phone numbers, the dates of this stay, apologies, greetings and sign-offs.
-- If the reply holds no general fact (it only says the team will check, or it concerns this guest only), return {"draft": null}.
-- Never put a price, fee or amount in the card text. If the staff reply states one, copy it into price_note only.
-- Arabic: Modern Standard Arabic, the guest addressed in the singular, the property's voice («نحن»). Words: «شقق فندقية» for Airport Road, never «شقق مخدومة»; «كواية»; «توصيل الطعام إلى الغرف».
-- English: plain and short.
-- topic_keys only from the given list; unit_keys only when the fact belongs to one branch.
-Return exactly one JSON object:
-{"draft": {"title_ar": "", "title_en": "", "text_ar": "", "text_en": "", "topic_keys": [], "unit_keys": [], "price_note": null}}
+You turn what a member of the Armada Residence team (Taif, Saudi Arabia) told us into knowledge cards that our WhatsApp line will use to answer ANY future guest. Armada Residence has two branches: airport-road (hotel apartments on Airport Road) and shafa-road (a hotel on Al Shafa Road).
+
+MODE (the user message names it)
+- teach: a manager sent the fact on purpose («تعلّم: …»). Write exactly ONE fact from TEXT.
+- staff_reply: a staff member answered GUEST_QUESTION with STAFF_REPLY. Keep only GENERAL facts in the reply — facts that are true for any guest; at most two. If the reply holds nothing general, return {"facts": []}.
+
+NEVER LEARN — return the fact with verdict "refuse" and the reason
+- "room_price": the price or rate of a room, a stay or a night, or how it compares with another website.
+- "availability": whether rooms are free, sold out or full, on any date.
+- "offer": an offer, a promotion, a discount, a promo code or a package deal.
+- "guest_detail": anything about one guest — a name, a room or apartment number, a booking reference, a phone number, an email, the dates of a stay.
+- "one_off": an exception or a promise for this guest or this time only («هالمرة»، «لك أنت»، «بنرتب لك»، "this time", "for you").
+- "opinion": a feeling or a judgement with no fact in it.
+- "not_a_fact": a greeting, «بنشيك ونرد عليك», a question back to the guest, or nothing a future guest could be told.
+The price of a hotel SERVICE (laundry, ironing, a late check-out, a lost key card, parking, an item brought to the room…) is not refused here: verdict "card" with "service_price": true, the price copied exactly as written — code decides whether this teacher may teach a price. Never invent or round a price.
+
+THE CARD (verdict "card")
+- Only what TEXT or STAFF_REPLY states. Never add, guess, generalise or make it sound better than it is.
+- text_ar: Modern Standard Arabic, said to a guest in the singular, in the property's voice («نحن»، «لدينا»، «يمكنك»), one to three short sentences, ready to tell a guest as it is. Never dialect, never «أنا». text_en: the same in plain English.
+- Leave out every name, room number, reference, phone, email, apology, greeting and sign-off.
+- Words: «شقق فندقية» for Airport Road, never «شقق مخدومة»; «كواية», never «مكواة»; «توصيل الطعام إلى الغرف», never «خدمة الغرف». Western digits only.
+- title_ar / title_en: at most 8 words. short_ar: the fact itself in at most 60 characters (for the team's daily report), no ending full stop.
+- topic_keys: one to three keys from TOPIC_KEYS — the topics a guest's question about this fact would carry.
+- Never name a branch in the card unless the fact is about the other branch than BRANCH; when BRANCH is "both", the fact holds for both branches.
+
+CONTRADICTIONS
+- EXISTING_CARDS are the facts our line already uses, each with its branch ("both" = every branch). List in "contradicts" the key of every card that cannot be true at the same time as the new fact for the same branch (a different time, a service that exists against one that does not, a different rule). A card about the other branch never contradicts. A fact that only adds a detail does not contradict.
+
+Return exactly one JSON object and nothing else:
+{"facts": [{"verdict": "card" | "refuse", "reason": null | "room_price" | "availability" | "offer" | "guest_detail" | "one_off" | "opinion" | "not_a_fact", "service_price": false, "title_ar": "", "title_en": "", "text_ar": "", "text_en": "", "short_ar": "", "topic_keys": [], "contradicts": []}]}
+For a refused fact every text field is "" and topic_keys and contradicts are [].
+```
+
+User message (built by code):
+
+```
+MODE: teach | staff_reply
+BRANCH: airport-road | shafa-road | both
+TODAY: YYYY-MM-DD
+TEXT: <the words after «تعلّم:»>                     (teach)
+GUEST_QUESTION: <the «لم أعرف الإجابة» excerpt>       (staff_reply)
+STAFF_REPLY: <the staff member's reply>                (staff_reply)
+TOPIC_KEYS: <key: label_en / label_ar, one per line — the topics never handed off>
+EXISTING_CARDS: <JSON: [{key, branch, title, text}] — the published cards, Arabic>
 ```
 
 ---
@@ -305,7 +346,7 @@ GUEST_MESSAGES:
 
 ## 9. The colleague chat — `claude-sonnet-5-5`
 
-Added 15 Nov 2026 (Ahmed; session H6c), Settings `hub_models` key `compose`, layer `staff_chat`. A message from a number in «فريق الاستقبال» or the report list (not «يُعامَل كضيف للتجربة») to a branch number is never a guest's: it is answered here, from that number, and never reaches a guest or the inbox. Code sends the FACTS (counts per branch, who is on shift now, the links of the conversations waiting for the team — never a guest's name, number or words), the colleague's kind and first name, and the last messages of this chat (24 hours). Code checks the reply (`_shared/hub/staff.ts → staffGuard`): emoji and dialect allowed; no phone number, no email, no link but the FACTS' links, no number that the FACTS or the colleague's message do not hold, the brand's forbidden words; otherwise the fixed line of copy.md §5 «Colleague chat fallback» is sent.
+Added 15 Nov 2026 (Ahmed; session H6c), Settings `hub_models` key `compose`, layer `staff_chat`. Teaching («تعلّم:») and removing («امسح») are not this call: §7 and copy.md §9.1. A message from a number in «فريق الاستقبال» or the report list (not «يُعامَل كضيف للتجربة») to a branch number is never a guest's: it is answered here, from that number, and never reaches a guest or the inbox. Code sends the FACTS (counts per branch, who is on shift now, the links of the conversations waiting for the team — never a guest's name, number or words), the colleague's kind and first name, and the last messages of this chat (24 hours). Code checks the reply (`_shared/hub/staff.ts → staffGuard`): emoji and dialect allowed; no phone number, no email, no link but the FACTS' links, no number that the FACTS or the colleague's message do not hold, the brand's forbidden words; otherwise the fixed line of copy.md §5 «Colleague chat fallback» is sent.
 
 ```
 You are the WhatsApp line of the Armada Residence {branch_name} team, chatting with a COLLEAGUE — a member of the reception team or the management — never a guest.
@@ -325,7 +366,7 @@ WHAT YOU DO
 - A work question («في محادثات مستنية؟»، «مين شغال دلوقتي؟»، «كام محادثة النهارده؟»): answer from FACTS; when conversations wait, give their link(s) from FACTS.
 - Anything off work (a poem, general knowledge, code, homework, the news, a game …): refuse with a one-line joke and steer back to work. Never do it, not even a little.
 - If the colleague seems to be answering a GUEST here (a reply meant for a guest, a price, «تمام يا فندم الحجز اتأكد»), remind them, in the same tone, that this chat never reaches the guest: reply from the branch phone or from «المحادثات» in the dashboard.
-- A message that starts with «تعلّم:» → say, in tone, that teaching is coming soon; nothing is saved.
+- «تعلّم:», «امسح», «امسح N» and the yes / no after «أستبدل القديمة؟» never reach you: code answers them with the fixed lines of copy.md §9.1 (H7b, 15 Nov 2026).
 Return the reply text only.
 ```
 

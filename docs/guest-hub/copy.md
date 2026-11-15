@@ -345,7 +345,37 @@ A number in «الفريق والتقارير» (a staff slot or the report list
 | A staff slot («مدير الاستقبال» / «موظف استقبال») | Playful and short (one or two lines), in the colleague's own dialect, one or two emoji welcome; light teasing («فاضي ولا إيه؟») that always steers back to work; never about religion, nationality, origin, appearance, gender or family |
 | A report-only number (management) | Respectful and warm, short, no teasing, at most one emoji |
 
-Both answer work questions from the system only — how many conversations wait for the team in their branch, who is on shift now, today's counts, and the links of the waiting conversations (`?hub_c=`) — never a guest's name, number or words. No daily cap. Off-work requests (a poem, general knowledge, code) get a joking refusal and back to work (Meta's business-use policy). A reply that seems meant for a guest is never relayed: they are reminded, in tone, to reply from the branch phone or from «المحادثات». A message starting with «تعلّم:» is reserved for the next session: the reply says teaching is coming soon and nothing is saved.
+Both answer work questions from the system only — how many conversations wait for the team in their branch, who is on shift now, today's counts, and the links of the waiting conversations (`?hub_c=`) — never a guest's name, number or words. No daily cap. Off-work requests (a poem, general knowledge, code) get a joking refusal and back to work (Meta's business-use policy). A reply that seems meant for a guest is never relayed: they are reminded, in tone, to reply from the branch phone or from «المحادثات». Teaching («تعلّم:») and removing («امسح», «امسح N») are answered by the fixed lines of §9.1 — never by the model (H7b, 15 Nov 2026).
 
 **Sample** (Ahmed's): a colleague writes «إزيك يا بوت» → «أهلاً يا سالم! بوت إيه بس 😄 في محادثتين مستنيين الفريق دلوقتي: …» with the links.
 
+### 9.1 Teaching and removing by WhatsApp [مقرر — Ahmed, 15 Nov 2026, H7b; the session's wording except `saved`, for Ahmed's review]
+
+Who may teach: Ahmed (his number in «التقارير», linked to his dashboard account — any branch, both branches, a service price) and a «مدير الاستقبال» slot (his own branch only). Anyone else gets `not_allowed`. These lines are fixed (each quotes the exact guest wording or the fact removed, so they are never written by the model); `{wording}` is the card's Arabic text as the guests will read it, `{old}` the card it would replace, `{n}` the fact's number in the daily report, `{branch}` the branch's name, `{link}` the dashboard's «العروض» page. A staff or report number only (never a guest).
+
+| Key | When | Line |
+|---|---|---|
+| saved | «تعلّم: …» stored for one branch (Ahmed's wording) | «اتسجلت ✅ هقولها للضيوف كده: «{wording}». لو فيها غلط ابعت «امسح».» |
+| saved_both | stored for both branches («للفرعين») | «اتسجلت للفرعين ✅ هقولها للضيوف كده: «{wording}». لو فيها غلط ابعت «امسح».» |
+| ask_replace | the fact contradicts a card — nothing changes until the answer | «فيه معلومة قديمة بتقول: «{old}». والجديدة: «{wording}». أستبدل القديمة؟ رد بـ «نعم» أو «لا».» |
+| replaced | «نعم» | «تمام، استبدلت القديمة ✅ هقولها للضيوف كده: «{wording}». لو فيها غلط ابعت «امسح».» |
+| conflict_shared | a manager's fact contradicts a card of both branches or of the other branch — nothing changes | «المعلومة دي بتعارض معلومة مسجلة للفرعين: «{old}». تغييرها لأحمد بس 🙏 ابعتها له.» |
+| kept | «لا» | «تمام، سبت القديمة زي ما هي ومسجلتش الجديدة 👍» |
+| removed | «امسح» / «امسح آخر معلومة» right after teaching | «اتمسحت ✅ مش هقولها للضيوف تاني: «{wording}». ولو رجعت فيها، «استرجاع» من قاعدة المعرفة في اللوحة.» |
+| removed_n | «امسح N» (the number of the daily report's line) | «اتمسحت رقم {n} ✅ مش هقولها للضيوف تاني: «{wording}».» |
+| remove_none | «امسح» with nothing taught recently | «مفيش معلومة اتعلمتها منك قريب أمسحها 🤔» |
+| remove_n_none | «امسح N» with no such number | «مش لاقي معلومة رقم {n} 🤔 الأرقام موجودة في سطر «بطاقات معرفة جديدة» في التقرير.» |
+| remove_n_other | «امسح N» from a manager, for another branch's fact | «رقم {n} معلومة تخص فرع تاني 🙏 يمسحها مديره أو أحمد.» |
+| not_allowed | «تعلّم:» or «امسح» from a number that may not teach | «التعليم بـ «تعلّم:» لأحمد ومديري الاستقبال بس 😄 لو عندك معلومة جديدة قولها لمدير الاستقبال.» |
+| other_branch | a manager teaching for another branch or for both | «تقدر تعلّمني معلومات فرعك بس 😉 معلومات {branch} يعلّمها مديره أو أحمد.» |
+| room_price | a room price, a stay price or availability | «أسعار الغرف والتوافر بتيجي من تقويم الأسعار في اللوحة، فمش هحفظها هنا 🙏 والعروض من صفحة «العروض»: {link}» |
+| offer | an offer, a discount, a promo code — and «عرض: …» from Ahmed | «العروض بتتضاف من صفحة «العروض» في اللوحة، علشان نفس العرض يظهر في الموقع ويدخل في سعر الحجز: {link}» |
+| service_price | a service price from a manager | «أسعار الخدمات بيعلّمها أحمد بس 🙏 ابعتها له.» |
+| guest_detail | a guest's name, room, phone, email, booking or dates | «دي تفاصيل ضيف بعينه، ومش هحفظها للكل 🙏 ابعت المعلومة العامة من غير اسم أو رقم أو غرفة أو تاريخ.» |
+| one_off | an exception or a promise for one guest | «دي حاجة لمرة واحدة أو لضيف معيّن، فمش هحفظها كمعلومة عامة 🙏» |
+| not_a_fact | an opinion, a greeting, nothing general | «مش لاقي فيها معلومة عامة أحفظها 🤔 اكتبها جملة واضحة بعد «تعلّم:».» |
+| empty | «تعلّم:» with nothing after it | «اكتب المعلومة بعد «تعلّم:» 🙂 مثال: تعلّم: فيه ميكروويف في لوبي الفرع.» |
+| teach_off | «التعليم بـ تعلّم:» switched off in «الفريق والتقارير» | «التعليم بـ «تعلّم:» متوقف دلوقتي من اللوحة.» |
+| failed | the model or the store failed | «معرفتش أسجلها دلوقتي 😅 جرّب تاني بعد شوية.» |
+
+**Learned from a staff reply** (no message to anyone): the fact is active at once for that branch, its source «رد الفريق — {name} — {date}», numbered in the next daily report («بطاقات معرفة جديدة: 2: 1) … · 2) …»); a price or a contradiction is not learned — «يحتاج قرارك» in the report and the staff wording in «لم أعرف الإجابة».

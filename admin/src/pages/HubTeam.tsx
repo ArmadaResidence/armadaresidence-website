@@ -8,7 +8,7 @@
 //     breakdown for every viewer; the recipients (up to three), the send time and «إرسال تجربة لي» for the system admin.
 // Every save returns the row as it was: «تراجع» saves it back. Dialogs close only through × / «إلغاء» (the shared Modal).
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import DateField from '../components/DateField';
 import { CancelButton, Confirm, DirtyScope, Empty, ErrorBox, Field, Loading, Modal, NumberField, Segmented, Spinner, useToast } from '../components/ui';
 import { addDays, longDate, riyadhDateTime, riyadhToday } from '../lib/format';
@@ -310,8 +310,79 @@ function ReportsTab({ data, reload, day, onDay }: { data: T.TeamData; reload: ()
           <ul className="grid gap-1 text-sm">{data.report.recipients.map((r) => <li key={r.id}>{r.name} · <span className="latin num" dir="ltr">{r.phone}</span></li>)}</ul>
         </section>
       )}
+      <LearningSection />
       <ReportView day={day} onDay={onDay} />
     </div>
+  );
+}
+
+/** H7b «التعلّم» (Ahmed, 15 Nov 2026): the assistant learns by itself from the team — two switches, the system admin's;
+ *  each change at once with «تراجع» (the same as the hub's other switches) */
+function LearningSection() {
+  const toast = useToast();
+  const [cfg, setCfg] = useState<T.Learning | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+  const load = useCallback(async () => {
+    try {
+      setCfg(await T.learningGet());
+    } catch (e) {
+      setErr((e as Error).message);
+    }
+  }, []);
+  useEffect(() => {
+    load();
+  }, [load]);
+  async function set(replies: boolean, teach: boolean, msg: string) {
+    setBusy(true);
+    try {
+      const r = await T.learningSet(replies, teach);
+      await load();
+      toast.undo(msg, async () => {
+        await T.learningSet(r.previous.learn_replies, r.previous.learn_teach);
+        await load();
+      });
+    } catch (e) {
+      toast((e as Error).message, 'error');
+    } finally {
+      setBusy(false);
+    }
+  }
+  if (!cfg) return err ? <ErrorBox error={err} /> : null;
+  const rows: { key: 'learn_replies' | 'learn_teach'; label: string; hint: string }[] = [
+    { key: 'learn_replies', label: 'التعلّم من ردود الفريق', hint: 'إذا رد الفريق على سؤال لم يعرف المساعد إجابته، يتعلّم المعلومة العامة فورًا لفرع المحادثة. الأسعار والتعارض لا يتعلّمها؛ تظهر في التقرير «يحتاج قرارك».' },
+    { key: 'learn_teach', label: 'التعليم بـ «تعلّم:»', hint: 'رسالة تبدأ بـ «تعلّم:» من رقمك أو من رقم مدير الاستقبال (لفرعه) إلى رقم الفرع؛ يرد المساعد بالصياغة التي سيقولها للضيوف، و«امسح» يحذفها.' },
+  ];
+  return (
+    <section className="card p-4 grid gap-3" aria-labelledby="learn-h" data-learning data-tour="team-learning">
+      <div>
+        <h2 id="learn-h" className="text-lg font-bold">التعلّم</h2>
+        <p className="text-sm text-ink-muted mt-1">
+          المعلومات المتعلَّمة تعمل فورًا وتظهر مرقّمة في سطر «بطاقات معرفة جديدة» بالتقرير اليومي؛ الرد على التقرير بـ «امسح 2» يحذف المعلومة رقم 2.
+          تجدها كلها في «قاعدة المعرفة» ← المصدر «تعلّمها المساعد». {cfg.can_edit ? '' : 'تشغيلها وإيقافها لمدير النظام وحده.'}
+        </p>
+      </div>
+      <ul className="grid gap-2">
+        {rows.map((r) => (
+          <li key={r.key} className="rounded-md border border-line p-3 flex flex-wrap items-start justify-between gap-3" data-learn-switch={r.key}>
+            <div className="min-w-0 flex-1">
+              <p className="font-semibold">{r.label} <span className={`chip ${cfg[r.key] ? 'chip-confirmed' : 'chip-cancelled'}`} data-state>{cfg[r.key] ? 'يعمل' : 'متوقف'}</span></p>
+              <p className="text-sm text-ink-muted mt-0.5">{r.hint}</p>
+            </div>
+            {cfg.can_edit && (
+              <button type="button" className="btn btn-ghost btn-sm" disabled={busy} data-action={`learn-${r.key}`}
+                onClick={() => {
+                  const on = !cfg[r.key];
+                  set(r.key === 'learn_replies' ? on : cfg.learn_replies, r.key === 'learn_teach' ? on : cfg.learn_teach, `${on ? 'شُغِّل' : 'أُوقف'} «${r.label}».`);
+                }}>
+                {cfg[r.key] ? 'إيقاف' : 'تشغيل'}
+              </button>
+            )}
+          </li>
+        ))}
+      </ul>
+      <Link to="/knowledge?source=learned" className="link-bronze text-sm justify-self-start" data-link="learned-cards">ما تعلّمه المساعد</Link>
+    </section>
   );
 }
 

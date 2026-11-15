@@ -18,3 +18,6 @@ await import('../admin/tests/hub-team-ui-check.mjs');
 // H7 (15 Nov 2026): «الفويس» / «الصور», the voice minutes and «المحاكي»'s upload — offline too
 // (admin/tests/hub-media-ui-check.mjs).
 await import('../admin/tests/hub-media-ui-check.mjs');
+// H7b (15 Nov 2026): «التعلّم» — the learned cards in «قاعدة المعرفة» («تعلّمها المساعد», «إيقاف» / «تراجع», «يحتاج قرارك») and
+// the section «التعلّم» of «الفريق والتقارير» — offline too (admin/tests/hub-learn-ui-check.mjs).
+await import('../admin/tests/hub-learn-ui-check.mjs');

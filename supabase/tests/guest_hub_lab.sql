@@ -324,7 +324,7 @@ select pg_temp._check('P6 a passing persona run: «نشر» → persona_live = t
 select pg_temp._as('recA');
 select pg_temp._fails('P7 the persona is not the reception''s', format('select public.hub_persona_save(%L, %L)', pg_temp._id('u:airport-road'), '{"tone": 2, "emoji": false}'), '42501');
 
--- ══ C — draft cards from staff replies ══
+-- ══ C — learning from staff replies (H7b, 15 Nov 2026 — replaces the draft cards of H6) ══
 select pg_temp._root();
 update public.settings set value = 'true' where key = 'hub_inbox_on';
 update public.hub_channels set verified_at = now(), sending_enabled = true where address = '+966536622277';
@@ -351,28 +351,28 @@ select pg_temp._id('cC'), c.channel_id, 'out', 'staff', 'note', 'ملاحظة', 
 select pg_temp._check('C1 … an internal note queues nothing', (select count(*) = 1 from public.hub_card_jobs j where j.conversation_id = pg_temp._id('cC')));
 select pg_temp._service();
 select pg_temp._save('c2', public.hub_card_job_claim(3));
-select pg_temp._check('C2 the claim: the question (the queue''s excerpt), the staff reply, the staff member''s first name, the topics and units',
+select pg_temp._check('C2 the claim: the question (the queue''s excerpt), the staff reply, the staff member''s first name, the branch, the topics and the published cards',
   pg_temp._j('c2') #>> '{jobs,0,question}' = 'هل تسمحون بالحيوانات الأليفة؟' and pg_temp._j('c2') #>> '{jobs,0,reply}' like '%لا نسمح بالحيوانات%'
-  and pg_temp._j('c2') #>> '{jobs,0,staff_first_name}' = 'سارة' and jsonb_array_length(pg_temp._j('c2') #> '{jobs,0,topics}') > 40
-  and not (pg_temp._j('c2') #> '{jobs,0,topics}') @> '[{"key": "complaint"}]' and not (pg_temp._j('c2') #> '{jobs,0,units}') ? 'rooftop', left(pg_temp._j('c2')::text, 400));
-select pg_temp._save('c3', public.hub_card_job_finish((pg_temp._j('c2') #>> '{jobs,0,job_id}')::uuid, jsonb_build_object('status', 'done', 'staff_first_name', 'سارة', 'date', '2026-11-14',
-  'date_text', '14 نوفمبر 2026', 'models', '[{"layer": "draft_card", "model": "claude-sonnet-5-5", "input_tokens": 800, "output_tokens": 200}]'::jsonb,
-  'draft', '{"title_ar": "الحيوانات الأليفة", "title_en": "Pets", "text_ar": "لا نسمح بالحيوانات الأليفة في الغرف.", "text_en": "Pets are not allowed in the rooms.", "topic_keys": ["house_rules", "nope"], "unit_keys": [], "price_note": null}'::jsonb)));
+  and pg_temp._j('c2') #>> '{jobs,0,staff_first_name}' = 'سارة' and pg_temp._j('c2') #>> '{jobs,0,branch}' = 'airport-road' and jsonb_array_length(pg_temp._j('c2') -> 'topics') > 40
+  and not (pg_temp._j('c2') -> 'topics') @> '[{"key": "complaint"}]' and jsonb_array_length(pg_temp._j('c2') -> 'cards') > 20, left(pg_temp._j('c2')::text, 400));
+select pg_temp._save('c3', public.hub_card_job_finish((pg_temp._j('c2') #>> '{jobs,0,job_id}')::uuid, jsonb_build_object('status', 'learned', 'staff_name', 'سارة',
+  'models', '[{"layer": "draft_card", "model": "claude-sonnet-5-5", "input_tokens": 800, "output_tokens": 200}]'::jsonb,
+  'facts', '[{"title_ar": "الحيوانات الأليفة", "title_en": "Pets", "text_ar": "لا نسمح بالحيوانات الأليفة في الغرف.", "text_en": "Pets are not allowed in the rooms.", "short_ar": "لا حيوانات أليفة في الغرف", "topic_keys": ["house_rules", "nope"]}]'::jsonb)));
 select pg_temp._root();
-select pg_temp._check('C3 a DRAFT card (never published), its source «رد سارة في محادثة 14 نوفمبر 2026 — يحتاج اعتماد», unknown topics dropped, linked to the entry, the cost counted',
-  (select status = 'draft' and live is null and source = 'رد سارة في محادثة 14 نوفمبر 2026 — يحتاج اعتماد' and topic_keys = '{house_rules}' and source_date = '2026-11-14'
-          and draft_origin ->> 'kind' = 'staff_reply' and verified_by is null
-     from public.hub_knowledge_cards where id = (pg_temp._j('c3') ->> 'card_id')::uuid)
-  and (select draft_card_id = (pg_temp._j('c3') ->> 'card_id')::uuid from public.hub_unanswered where message_id = pg_temp._id('mC'))
+select pg_temp._check('C3 an ACTIVE card at once (published, live), its source «رد الفريق — سارة — {date}», for the branch only, unknown topics dropped, the question answered, the cost counted',
+  (select status = 'published' and live is not null and source = 'رد الفريق — سارة — ' || internal.hub_date_ar(internal.riyadh_today()) and topic_keys = '{house_rules}'
+          and learn_kind = 'staff_reply' and learn_scope = 'airport-road' and unit_keys = '{airport-road}' and learn_no >= 1 and verified_by = pg_temp._id('mgr')
+     from public.hub_knowledge_cards where id = (pg_temp._j('c3') #>> '{cards,0}')::uuid)
+  and (select status = 'answered' and resolved_card_id = (pg_temp._j('c3') #>> '{cards,0}')::uuid from public.hub_unanswered where message_id = pg_temp._id('mC'))
   and exists (select 1 from public.hub_usage_daily where layer = 'draft_card' and source = 'staff'), pg_temp._j('c3')::text);
 select pg_temp._as('admin');
-select pg_temp._save('c4', public.hub_unanswered_list('open'));
-select pg_temp._check('C4 «لم أعرف الإجابة» shows the draft under its question',
-  exists (select 1 from jsonb_array_elements(pg_temp._j('c4') -> 'rows') r where r #>> '{draft_card,id}' = pg_temp._j('c3') ->> 'card_id' and r #>> '{draft_card,source}' like 'رد سارة%'), left(pg_temp._j('c4')::text, 400));
+select pg_temp._save('c4', public.hub_unanswered_list('answered'));
+select pg_temp._check('C4 «لم أعرف الإجابة»: the question is answered by the learned card',
+  exists (select 1 from jsonb_array_elements(pg_temp._j('c4') -> 'rows') r where r ->> 'resolved_card_id' = pg_temp._j('c3') #>> '{cards,0}'), left(pg_temp._j('c4')::text, 400));
 select pg_temp._root();
 insert into public.hub_messages (conversation_id, channel_id, direction, author, kind, body, idempotency_key, status, sent_at)
 select pg_temp._id('cC'), c.channel_id, 'out', 'phone', 'text', 'ونرحب بك دائمًا.', 'qa6:c:reply2', 'sent', now() + interval '3 seconds' from public.hub_conversations c where c.id = pg_temp._id('cC');
-select pg_temp._check('C5 once the question has a draft, a later reply queues nothing', (select count(*) = 1 from public.hub_card_jobs j where j.conversation_id = pg_temp._id('cC')));
+select pg_temp._check('C5 once the question was learned, a later reply queues nothing', (select count(*) = 1 from public.hub_card_jobs j where j.conversation_id = pg_temp._id('cC')));
 -- an entry marked AFTER the staff member answered
 select pg_temp._service();
 select pg_temp._save('c6m', pg_temp._in('YC6-C2', '+966500009602', 'هل يوجد مطعم على السطح؟'));

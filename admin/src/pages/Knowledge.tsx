@@ -14,6 +14,9 @@
 // the candidate cards; a regression blocks with the list); a question answered by a staff member shows the DRAFT card
 // written from that reply (prompts.md §7) with «مراجعة ونشر» — the price the reply stated apart, never in the text;
 // ?new=<topic>&faq=1 (from «رادار الأسئلة») opens a new card on that topic with «وأضف مسودة للأسئلة الشائعة».
+// H7b «التعلّم» (15 Nov 2026): the filter «المصدر» → «تعلّمها المساعد» lists what the assistant learned by WhatsApp
+// («تعلّم:») and from staff replies — the source, who, when, the report's number — with «إيقاف» and «تراجع»; a staff reply
+// that was not learned (a price, a contradiction) shows «يحتاج قرارك» with the staff wording under its question.
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import * as api from '../lib/api';
@@ -63,7 +66,7 @@ export default function Knowledge() {
   const [blocked, setBlocked] = useState<K.PublishResult | null>(null);
   const [link, setLink] = useState<QueueRow | null>(null);
   const [gate, setGate] = useState(false);
-  const [filter, setFilter] = useState({ unit: 'all', topic: '', state: 'live', search: '' });
+  const [filter, setFilter] = useState({ unit: 'all', topic: '', state: 'live', search: '', source: params.get('source') === 'learned' ? 'learned' : 'all' });
 
   const load = useCallback(async () => {
     try {
@@ -99,6 +102,7 @@ export default function Knowledge() {
       (filter.state === 'all' || (filter.state === 'live' ? c.state !== 'archived' : c.state === filter.state))
       && (filter.unit === 'all' || (filter.unit === 'shared' ? c.unit_keys.length !== 1 : c.unit_keys.includes(filter.unit)))
       && (!filter.topic || c.topic_keys.includes(filter.topic))
+      && (filter.source === 'all' || (filter.source === 'learned' ? K.isLearned(c) : !K.isLearned(c)))
       && (!s || `${c.title_ar} ${c.title_en} ${c.text_ar} ${c.text_en} ${c.key}`.toLowerCase().includes(s)));
   }, [list, filter]);
   const pending = (list ?? []).filter((c) => c.pending).length;
@@ -143,7 +147,7 @@ export default function Knowledge() {
   async function archive(c: Card) {
     try {
       await K.archiveCard(c.id);
-      toast.undo(`أُرشفت «${c.title_ar}» وخرجت من الردود.`, async () => {
+      toast.undo(K.isLearned(c) ? `أُوقفت «${c.title_ar}»؛ لم يعد المساعد يقولها للضيوف.` : `أُرشفت «${c.title_ar}» وخرجت من الردود.`, async () => {
         await K.restoreCard(c.id);
         await load();
       });
@@ -216,7 +220,7 @@ export default function Knowledge() {
 
       {tab === 'cards' && (
         <section className="grid gap-3" aria-label="البطاقات" data-tour="kn-cards">
-          <div className="card p-3 grid gap-3 sm:grid-cols-4" data-kn-filters>
+          <div className="card p-3 grid gap-3 sm:grid-cols-5" data-kn-filters>
             <Field label="الوحدة" id="kn-unit">
               <select id="kn-unit" className="field" value={filter.unit} onChange={(e) => setFilter({ ...filter, unit: e.target.value })}>
                 <option value="all">كل البطاقات</option>
@@ -240,6 +244,11 @@ export default function Knowledge() {
                 <option value="all">الكل</option>
               </select>
             </Field>
+            <Field label="المصدر" id="kn-source">
+              <select id="kn-source" className="field" value={filter.source} onChange={(e) => setFilter({ ...filter, source: e.target.value as 'all' | 'learned' | 'dashboard' })} data-tour="kn-source">
+                {K.SOURCE_FILTER.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+              </select>
+            </Field>
             <Field label="بحث" id="kn-search">
               <input id="kn-search" className="field" value={filter.search} onChange={(e) => setFilter({ ...filter, search: e.target.value })} placeholder="العنوان أو النص" />
             </Field>
@@ -260,17 +269,30 @@ export default function Knowledge() {
                       {c.check.missing.length > 0 && c.state !== 'archived' && <span className="chip chip-test" data-missing>{countWord(c.check.missing.length, PROBLEM)}</span>}
                       <span className="chip" data-units>{K.unitsText(c.unit_keys, m.units)}</span>
                       {c.topic_keys.map((t) => <span key={t} className="chip" data-topic={t}>{K.topicLabel(t, m.topics)}</span>)}
+                      {K.isLearned(c) && (
+                        <span className="chip chip-request" data-learned={c.learn_kind}>
+                          {K.LEARN_LABEL[c.learn_kind as 'teach' | 'staff_reply']}{c.learn_no ? <> · رقم <span className="num">{c.learn_no}</span></> : null}
+                        </span>
+                      )}
                     </div>
                     <p className="text-xs text-ink-muted mt-1">
                       المصدر: {c.source || '—'}{c.source_date ? <> · <span className="num">{longDate(c.source_date)}</span></> : null}
                       {c.verified_by_name ? <> · تحقّق منها {c.verified_by_name}</> : null}
                       {c.expires_on ? <> · تنتهي <span className="num">{longDate(c.expires_on)}</span></> : null}
                     </p>
+                    {K.isLearned(c) && (
+                      <p className="text-xs text-ink-muted" data-learned-by>
+                        تعلّمها المساعد{c.learn_by_name ? <> من {c.learn_by_name}</> : null}
+                        {c.learned_at ? <> · <span className="num">{longDate(K.riyadhDay(c.learned_at))}</span></> : null}
+                        {c.learn_no && c.learn_day ? <> · رقمها في تقرير <span className="num">{longDate(c.learn_day)}</span>: <span className="num">{c.learn_no}</span></> : null}
+                        {c.replaces_keys?.length ? <> · حلّت محل بطاقة أقدم</> : null}
+                      </p>
+                    )}
                   </div>
                   <div className="flex flex-wrap items-center gap-1.5">
                     <button type="button" className="btn btn-ghost btn-sm" onClick={() => setEditing({ card: c })} data-action="card-edit">{editable && c.status !== 'archived' ? 'تعديل' : 'عرض'}</button>
                     {editable && c.status !== 'archived' && (!c.live || publisher) && (
-                      <button type="button" className="btn btn-ghost btn-sm" onClick={() => archive(c)} aria-label={`أرشفة «${c.title_ar}»`} data-action="card-archive">أرشفة</button>
+                      <button type="button" className="btn btn-ghost btn-sm" onClick={() => archive(c)} aria-label={`${K.isLearned(c) ? 'إيقاف' : 'أرشفة'} «${c.title_ar}»`} data-action="card-archive">{K.isLearned(c) ? 'إيقاف' : 'أرشفة'}</button>
                     )}
                     {editable && c.status === 'archived' && (!c.live || publisher) && (
                       <button type="button" className="btn btn-ghost btn-sm" onClick={() => restore(c)} aria-label={`استرجاع «${c.title_ar}»`} data-action="card-restore">استرجاع</button>
@@ -316,6 +338,15 @@ export default function Knowledge() {
                         <button type="button" className="btn btn-ghost btn-sm" onClick={() => dismiss(r)} aria-label="تجاهل هذا السؤال" data-action="queue-dismiss">تجاهل</button>
                       </>
                     )}
+                  </div>
+                )}
+                {qStatus === 'open' && r.decision && (
+                  <div className="kn-draft grid gap-1 p-2 rounded-lg" data-decision={r.decision.kind}>
+                    <p className="text-xs font-semibold">يحتاج قرارك — {K.DECISION_LABEL[r.decision.kind]}</p>
+                    {r.decision.reply ? <p className="text-sm kn-text" data-decision-reply>رد الفريق: «{r.decision.reply}»</p>
+                      : <p className="text-xs text-ink-muted">رد الفريق متاح لفريق الوحدة فقط.</p>}
+                    {r.decision.conflicts.length > 0 && <p className="text-xs">يتعارض مع: {r.decision.conflicts.map((x) => `«${x.title_ar}»`).join('، ')}</p>}
+                    <p className="text-xs text-ink-muted">إن كان صحيحًا فأنشئ بطاقة أو عدّل البطاقة القديمة؛ أسعار الغرف من التقويم، والعروض من صفحة «العروض».</p>
                   </div>
                 )}
                 {qStatus === 'open' && r.draft_card && (

@@ -13,6 +13,7 @@
  */
 import defs from './hub-templates.json' with { type: 'json' };
 import text from './text.generated.json' with { type: 'json' };
+import { isTeach as teachCommand, learnedLine } from './learn.ts';
 
 // deno-lint-ignore no-explicit-any
 type Json = any;
@@ -212,7 +213,8 @@ export function reportVars(day: string, data: Json): string[] {
     'لم يُفعَّل بعد',
     perBranch(data, 'reviews'),
     perBranch(data, 'unanswered'),
-    String(n(data?.cards)),
+    // H7b: the facts learned that day, numbered for «امسح N», and what needs Ahmed's decision (learn.ts → learnedLine)
+    learnedLine(data),
     faultsText(data),
   ];
 }
@@ -276,8 +278,8 @@ export function staffUser(i: StaffChatInput): string {
 }
 export const staffSystemFor = (tpl: string, branchName: string) => tpl.replace(/\{branch_name\}/g, branchName);
 
-/** «تعلّم:» (with or without the shadda, Arabic or Latin colon) */
-export const isTeach = (s: string) => /^\s*تعل(?:ّ)?م\s*[:：]/.test(String(s ?? ''));
+/** «تعلّم:» / «تعلم:» / «علّم:» (learn.ts — H7b) */
+export const isTeach = (s: string) => teachCommand(s);
 
 /** every number and link the FACTS hold (the guard's allow-list) */
 function factTokens(facts: Json): { numbers: Set<string>; links: Set<string> } {

@@ -106,7 +106,7 @@ check(grade(item({ action: 'ask', state: 'collecting', must_include: ['تاري�
   const CONV = read('tests/hub-bank/conversations.jsonl').split(/\r?\n/).filter((l) => l.trim()).map((l) => JSON.parse(l)).filter((x) => !x._header);
   check(CONV.length >= 40 && CONV.every((c) => c.messages.length === c.expect.steps.length && c.expect.action === 'conversation' && /^c\d{3}$/.test(c.id)), `C the conversation bank: ${CONV.length} conversations, one expectation per message`);
   check(new Set(CONV.map((c) => c.unit)).size === 2 && CONV.some((c) => c.language === 'en') && CONV.some((c) => (c.tags ?? []).includes('live-sequence')), 'C both units, both languages, Ahmed\'s live sequences');
-  check(CONV.every((c) => c.expect.steps.every((s) => [].concat(s.outcome).every((k) => ['reply', 'answer', 'ask', 'quote', 'clarify', 'redirect', 'handoff', 'none'].includes(k)))), 'C every step names a known outcome');
+  check(CONV.every((c) => c.expect.steps.every((s) => [].concat(s.outcome).every((k) => ['reply', 'answer', 'ask', 'quote', 'clarify', 'redirect', 'handoff', 'none', 'answer_handoff'].includes(k)))), 'C every step names a known outcome');
   // the migration that seeds it on production = the file (scripts/hub-conv-migration.mjs)
   const MIG = read('supabase/migrations/20261115100000_guest_hub_conversation.sql');
   const TAG = '$conv_bank' + '$';
@@ -114,7 +114,13 @@ check(grade(item({ action: 'ask', state: 'collecting', must_include: ['تاري�
   const MIG7 = read('supabase/migrations/20261115400000_guest_hub_media.sql');
   const TAG7 = '$media_bank' + '$';
   const seeded = [...JSON.parse(MIG.slice(MIG.indexOf(TAG) + TAG.length, MIG.lastIndexOf(TAG))),
-    ...JSON.parse(MIG7.slice(MIG7.indexOf(TAG7) + TAG7.length, MIG7.lastIndexOf(TAG7))).map((x) => ({ key: x.id, messages: x.messages, expect: x.expect }))];
+    ...JSON.parse(MIG7.slice(MIG7.indexOf(TAG7) + TAG7.length, MIG7.lastIndexOf(TAG7))).map((x) => ({ key: x.id, messages: x.messages, expect: x.expect })),
+    // H7b (15 Nov 2026): the voice-fix conversations, seeded by the learning migration (tag $learn_bank$)
+    ...(() => {
+      const M8 = read('supabase/migrations/20261115600000_guest_hub_learning.sql');
+      const T8 = '$learn_bank' + '$';
+      return JSON.parse(M8.slice(M8.indexOf(T8) + T8.length, M8.lastIndexOf(T8)));
+    })()];
   check(seeded.length === CONV.length && seeded.every((r, i) => r.key === CONV[i].id && JSON.stringify(r.messages) === JSON.stringify(CONV[i].messages) && JSON.stringify(r.expect) === JSON.stringify(CONV[i].expect)),
     'C the migration seeds exactly tests/hub-bank/conversations.jsonl');
   check(/order by m\.sent_at desc limit 12\) h\)/.test(MIG) && !/limit 6\) h\)/.test(MIG), 'C hub_turn_claim hands the model the last 12 messages of the episode');

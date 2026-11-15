@@ -63,11 +63,13 @@ const fillFees = (t, L) => String(t ?? '').replaceAll('{breakfast_free_age}', St
 /** the Wi-Fi password cards stay on production: a fixture never holds their text */
 const scrubCard = (c) => (/^k-wifi-password-/.test(c.id) ? { ...c, text_ar: `{card:${c.id}}`, text_en: `{card:${c.id}}` } : c);
 
-/** hub_knowledge_for, offline: the seed's cards by the retrieval rule, the FAQ by faq-topics.json */
-export function knowledgeFor(unit, topics, L, branch) {
-  const cards = SEED.map((c, i) => ({ key: c.id, unit_keys: c.unit_keys, topic_keys: c.topic_keys, expires_on: c.expires_on ?? null, sort: i }));
+/** hub_knowledge_for, offline: the seed's cards by the retrieval rule, the FAQ by faq-topics.json. H7b: `extra` = the
+ *  cards learned in a bank conversation ({id, unit_keys, topic_keys, title_ar, …}) and the seed cards it archived */
+export function knowledgeFor(unit, topics, L, branch, extra = { cards: [], removed: [] }) {
+  const all = [...SEED.filter((c) => !(extra.removed ?? []).includes(c.id)), ...(extra.cards ?? [])];
+  const cards = all.map((c, i) => ({ key: c.id, unit_keys: c.unit_keys, topic_keys: c.topic_keys, expires_on: c.expires_on ?? null, sort: i }));
   const got = retrieve(UNITS, TOPICS, cards, unit, topics, TODAY, 5, branch ?? null);
-  const byId = Object.fromEntries(SEED.map((c) => [c.id, scrubCard(c)]));
+  const byId = Object.fromEntries(all.map((c) => [c.id, scrubCard(c)]));
   const rel = new Set(TOPICS.filter((t) => (topics.includes(t.key) && t.parent_key) || (t.parent_key && topics.includes(t.parent_key))).flatMap((t) => [t.parent_key, t.key]).filter(Boolean));
   const u = UNITS.find((x) => x.key === unit);
   const faq = u?.knowledge_hidden ? [] : FAQ.map((f, i) => {

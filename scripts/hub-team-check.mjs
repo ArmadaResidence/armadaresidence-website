@@ -58,8 +58,8 @@ const DATA = { branches: {
   'shafa-road': { conversations: 6, assistant: 5, handed: 1, reply_avg_min: null, bookings: 0, reviews: 2, unanswered: 0, model_failures: 0, send_failures: 2 } }, cards: 4, budget_alerts: 0 };
 const rv = S.reportVars('2026-11-14', DATA);
 check(rv.length === 11 && rv.length === DEFS.hub_daily_report.variables.length, 'reportVars: eleven variables');
-check(rv[0] === '14/11/2026' && rv[1] === 'المطار 14 · الشفا 6' && rv[4] === 'المطار 7 دقائق · الشفا —' && rv[6] === 'لم يُفعَّل بعد' && rv[9] === '4',
-  'reportVars: DD/MM/YYYY, «المطار X · الشفا Y», minutes in words or «—», «لم يُفعَّل بعد» until H9, one total of cards');
+check(rv[0] === '14/11/2026' && rv[1] === 'المطار 14 · الشفا 6' && rv[4] === 'المطار 7 دقائق · الشفا —' && rv[6] === 'لم يُفعَّل بعد' && rv[9] === 'لا يوجد · من اللوحة: 4',
+  'reportVars: DD/MM/YYYY, «المطار X · الشفا Y», minutes in words or «—», «لم يُفعَّل بعد» until H9, {{10}} the learned facts (H7b) and the dashboard cards');
 check(rv[10] === 'فشل النموذج 1 · فشل الإرسال 2' && S.faultsText({ branches: {} }) === 'لا يوجد', 'reportVars: the faults line, or «لا يوجد»');
 check(!/ريال|SAR|\$|USD|تكلفة/.test(rv.join(' ')), 'reportVars: never money');
 check([0, 1, 2, 3, 10, 11].map(S.minutesText).join('|') === 'أقل من دقيقة|دقيقة واحدة|دقيقتان|3 دقائق|10 دقائق|11 دقيقة', 'minutesText: Arabic number agreement, Western digits');

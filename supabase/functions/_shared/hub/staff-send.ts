@@ -16,6 +16,7 @@ import type { ModelFn } from './model.ts';
 import { costOf } from './model.ts';
 import { alertPayload, isTeach, reportPayload, reportVars, staffFallback, staffGuard, staffSystemFor, staffUser, templateNeedsRead, templateReady } from './staff.ts';
 import { pageOf, templateRows, templatesUrl, type TemplateItem } from '../../hub-admin/ycloud.ts';
+import { learnCommand, learnLine, teachScope, yesNo, type Branch, type LineKey } from './learn.ts';
 
 // deno-lint-ignore no-explicit-any
 type Json = any;
@@ -155,6 +156,28 @@ export async function staffChat(call: Call, content: Json, model: ModelFn, m: { 
   if (!ctx.ok) return { staff: true, reason: ctx.reason ?? 'not_ok' };
   if (!ctx.gate) return { staff: true, reason: 'assistant_off' };
   const text = String(m.text ?? '').trim();
+  // H7b «التعلّم» (Ahmed, 15 Nov 2026): «تعلّم:», «امسح», «امسح N», «عرض:» and the yes / no after «أستبدل القديمة؟» —
+  // fixed lines (copy.md §9.1); a teaching is queued for hub-agent (the model writes the card, then it replies)
+  const cmd = text ? learnCommand(text) : null;
+  const yn = cmd ? null : yesNo(text);
+  if (cmd || yn) {
+    const branch = String(ctx.unit?.branch ?? 'airport-road') as Branch;
+    const lc = await call<Json>('hub_learn_command', {
+      p: { phone: m.from, channel: m.to, message_id: ctx.message_id, command: cmd?.kind ?? yn, n: cmd?.kind === 'remove_n' ? cmd.n : null,
+           scope: cmd?.kind === 'teach' ? teachScope(cmd.body, branch) : null, body: cmd && 'body' in cmd ? cmd.body : null, is_test: test },
+    }).catch((e) => {
+      console.error('hub learn: command failed', String(e).slice(0, 80));
+      return { handled: true, line: 'failed' };
+    });
+    if (lc?.handled) {
+      if (lc.queued !== undefined) return { staff: true, kind: ctx.kind, learn: lc.queued ? 'queued' : 'duplicate' };
+      const body = learnLine((lc.line ?? 'failed') as LineKey, lc.vars ?? {});
+      const sent = await sendSession({ payload: textPayload(m.to, m.from, body, ctx.message_id), windowExpiresAt: new Date((Date.parse(m.sentAt ?? '') || Date.now()) + DAY_MS).toISOString(), test, log: null });
+      await call('hub_staff_chat_finish', { p_message: ctx.message_id, p: { body, status: sent.accepted ? sent.status : 'failed', provider_id: sent.messageId, error_code: sent.errorCode, models: [] } })
+        .catch((e) => console.error('hub learn: answer not recorded', String(e).slice(0, 80)));
+      return { staff: true, kind: ctx.kind, learn: lc.line ?? 'failed', sent: sent.status };
+    }
+  }
   const models = ctx.models ?? {};
   const modelId = String(models.compose ?? 'claude-sonnet-5-5');
   const used: Json[] = [];

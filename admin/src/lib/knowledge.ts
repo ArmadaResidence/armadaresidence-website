@@ -70,7 +70,23 @@ export interface Card extends CardFields {
   faq_item_id: string | null;
   sort: number;
   is_test: boolean;
+  /** H7b «التعلّم» (15 Nov 2026): learned by WhatsApp («تعلّم:») or from a staff reply — active at once, no «نشر» */
+  learn_kind?: 'teach' | 'staff_reply' | null;
+  learn_scope?: 'airport-road' | 'shafa-road' | 'both' | null;
+  learn_by_name?: string | null;
+  learn_day?: string | null;
+  learn_no?: number | null;
+  learned_at?: string | null;
+  replaces_keys?: string[] | null;
 }
+/** «تعلّمها المساعد» (H7b): how a learned card came in, for its chip */
+export const LEARN_LABEL: Record<'teach' | 'staff_reply', string> = { teach: 'تعليم واتساب', staff_reply: 'من رد الفريق' };
+export const SOURCE_FILTER = [
+  { value: 'all', label: 'كل المصادر' },
+  { value: 'learned', label: 'تعلّمها المساعد' },
+  { value: 'dashboard', label: 'من اللوحة' },
+] as const;
+export const isLearned = (c: Pick<Card, 'learn_kind'>) => c.learn_kind === 'teach' || c.learn_kind === 'staff_reply';
 export interface QueueRow {
   id: string;
   count: number;
@@ -86,7 +102,13 @@ export interface QueueRow {
   resolved_at: string | null;
   /** H6: the draft card written from a staff reply to this question (prompts.md §7) — never published by itself */
   draft_card?: { id: string; key: string; title_ar: string; title_en: string; source: string; price_note: string | null; status: string; problems: number } | null;
+  /** H7b «يحتاج قرارك»: a staff reply that was not learned (a price, a contradiction) — the staff wording for the unit's team only */
+  decision?: { kind: 'price' | 'contradiction'; at: string; reply: string | null; conflicts: { key: string; title_ar: string }[] } | null;
 }
+export const DECISION_LABEL: Record<'price' | 'contradiction', string> = {
+  price: 'فيه سعر — لم يتعلّمه المساعد',
+  contradiction: 'يتعارض مع بطاقة منشورة — لم يتعلّمه المساعد',
+};
 export interface FaqRead {
   id: string;
   key: string;
