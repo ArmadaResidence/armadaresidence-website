@@ -39,7 +39,7 @@ export type Action =
   | { type: 'book'; draft_id: string; version: number }
   | { type: 'partner_enquiry'; kind: 'hall' | 'group' }
   | { type: 'from_price'; branch: string }
-  | { type: 'fixed'; key: string; buttons?: 'quick' | 'dates' | null; vars?: Record<string, string | number> }
+  | { type: 'fixed'; key: string; buttons?: 'quick' | 'dates' | 'team' | null; vars?: Record<string, string | number> }
   | { type: 'booking_status'; ref: string }
   | { type: 'handoff'; reason: string; notice: NoticeKey | null; priority?: 'high'; note: { intent: string; slots: Record<string, unknown>; stopped: string } }
   | { type: 'transfer'; unit: string }
@@ -524,6 +524,15 @@ function liteStay(input: DecideInput, state: State, t: string[], out: Out, u: Un
   if (!ctx.show_prices) {
     t.push('T9b');
     return out({ next: 'human', actions: [handoff('prices_hidden', 'handoff', { intent: 'stay_booking', slots: fields, stopped: state })], draft_patch: { kind: 'stay', fields }, draft_replace: replace, reason: 'prices_hidden', failed: 'reset' });
+  }
+  // already quoted and nothing the quote depends on changed (the guest's name, «بدون إفطار»): no second quote — the answer
+  // to what was asked, or the website's booking link again (H6 pass 5: q099 got the same quote after every message)
+  const QUOTE_KEYS = ['branch', 'check_in', 'check_out', 'adults', 'children', 'room_type'];
+  if (state === 'quoted' && !replace && QUOTE_KEYS.every((k) => JSON.stringify(prev[k] ?? null) === JSON.stringify(fields[k] ?? null))) {
+    t.push('T10');
+    // the link always closes the reply, so a refused answer never leaves the guest without one
+    const a: Action[] = [...(asks ? [{ type: 'answer', topics, intents: u!.intents, branch: u!.branch, mixed: true, nogap: true } as Action] : []), { type: 'fixed', key: 'booking_link', buttons: 'team' }];
+    return out({ next: 'quoted', actions: a, draft_patch: { kind: 'stay', fields }, failed: 'reset' });
   }
   t.push('T9');
   const first: Action[] = asks ? [{ type: 'answer', topics, intents: u!.intents, branch: u!.branch, mixed: true }] : [];

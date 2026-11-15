@@ -262,6 +262,10 @@ check(d.next === 'collecting' && d.actions[0].type === 'ask' && d.actions[0].slo
 const DR = { id: 'd1', kind: 'stay', version: 1, fields: { branch: 'airport-road', check_in: '2026-12-01', check_out: '2026-12-03' } };
 d = run('collecting', guest(U({ kind: 'booking', intents: ['stay_booking'], adults: 2 })), {}, DR);
 check(d.next === 'quoted' && d.actions.some((a) => a.type === 'quote' && a.lite), 'pass 5: dates and guests known → the quote from the rate calendar');
+d = run('quoted', guest(U({ kind: 'booking', intents: ['stay_booking'], guest_name: 'محمد أحمد' })), {}, { ...DR, fields: { ...DR.fields, adults: 2 } });
+check(d.next === 'quoted' && acts(d).join() === 'fixed' && d.actions[0].key === 'booking_link' && d.actions[0].buttons === 'team', 'pass 5: quoted, nothing the quote depends on changed → the booking link again, no second quote');
+d = run('quoted', guest(U({ kind: 'booking', intents: ['stay_booking'], adults: 3 })), {}, { ...DR, fields: { ...DR.fields, adults: 2 } });
+check(d.next === 'quoted' && d.actions.some((a) => a.type === 'quote'), 'pass 5: quoted, the guests changed → quoted again');
 d = run('collecting', guest(U({ kind: 'booking', intents: ['stay_booking'], adults: 2 })), { show_prices: false }, DR);
 check(d.next === 'human' && ho(d).reason === 'prices_hidden', 'pass 5: prices hidden → the team');
 

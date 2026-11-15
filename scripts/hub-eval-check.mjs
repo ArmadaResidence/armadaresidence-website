@@ -75,6 +75,8 @@ check(hasWord('هذا البوت', 'بوت') && !hasWord('تابوت', 'بوت')
 check(grade(item({ action: 'third_language' }), out({ kind: 'third_language', state: 'human', replies: [{ body: 'Our assistant… فريقنا', notice: true }] }), ctx).pass, 'G a notice may name the assistant in English');
 check(grade(item({ action: 'answer' }), out({ guard_refusals: [['x'], ['y']] }), ctx).reasons.includes('guard'), 'G the guard refused twice');
 check(grade(item({ action: 'answer' }), out({ guard_refusals: [['x']] }), ctx).pass, 'G … once then accepted passes');
+check(grade(item({ action: 'answer' }), out({ guard_refusals: [['x'], ['y']], steps: [{ kind: 'answer', state: 'inquiry', replies: [], gap: false, guard_refusals: 1 }, { kind: 'answer', state: 'inquiry', replies: [], gap: false, guard_refusals: 1 }] }), ctx).pass,
+  'G pass 5: one retry in each of two turns is not a guard failure (per turn)');
 check(grade(item({ action: 'answer' }), out({ replies: [{ body: 'Yes, parking is free.', notice: false }] }), ctx).reasons.includes('language'), 'G the language');
 check(expectedAction(item({ action: 'ask' }), SK).action === 'ask' && expectedAction(item({ action: 'ask' }, { note: 'group_request, no price' }), SK).action === 'handoff'
   && expectedAction(item({ action: 'ask' }, { note: 'hall_request' }), SK).action === 'handoff', 'G pass 5: a stay is collected in the chat; a group or hall request with its skill off is the team’s');

@@ -289,6 +289,11 @@ export async function runTurn(claim: Json, deps: Deps): Promise<Outcome> {
       switch (a.type) {
         case 'fixed': {
           if (a.key === 'third_language') push(thirdLanguage(), { notice: true });
+          else if (a.key === 'booking_link') {
+            // the website's booking link again, with «التحدث مع موظف» (copy.md §4.0)
+            const link = bookingUrl(await deps.knowledge(unit.key, ['website'], L, null).catch(() => ({ cards: [], faq: [] })), L);
+            push(fixed('booking_link', L, { booking_url: link }), { kind: 'interactive', payload: { buttons: quickReplies(unit.kind, L).filter((b) => b.id === 'hubq:team') } });
+          }
           else if (a.buttons === 'quick') {
             push(fixed(a.key, L), { kind: 'interactive', payload: { buttons: quickReplies(unit.kind, L) } });
           } else push(fixed(a.key, L, a.vars ?? {}), { notice: NOTICE_KEYS.has(a.key) });

@@ -130,6 +130,8 @@ export function outcomeKind(finish: Json): string {
   if (chat === 'chat') return 'reply';
   if (!finish.messages?.length && acts.every((a) => a === 'noop')) return 'none';
   if (acts.includes('quote')) return 'quote';
+  // quoted, and the guest added nothing the quote depends on: the booking link again — still the quote step
+  if (finish.state === 'quoted' && acts.includes('fixed')) return 'quote';
   if (acts.includes('fixed') && tr.includes('T4')) return 'reply';
   if (acts.includes('fixed') && finish.messages?.length && finish.out_of_scope_inc) return 'out_of_scope';
   if (acts.includes('from_price')) return 'answer';
@@ -282,7 +284,8 @@ export function grade(item: Item, o: Outcome, ctx: GradeCtx): Grade {
     if (hasWord(said, p) || (!/^(AI|bot|assistant)$/i.test(p) && hasWord(notices, p))) reasons.push(`global:${i}`);
   });
   // the guard: a reply refused twice fell back to the hand-off (spec §2.4.2)
-  if (o.guard_refusals.length >= 2) reasons.push('guard');
+  // (per turn: a multi-turn item whose turns each needed one retry is not a guard failure — H6 pass 5, q099)
+  if (o.steps?.length ? o.steps.some((s) => s.guard_refusals >= 2) : o.guard_refusals.length >= 2) reasons.push('guard');
   // the language of what the engine composed (the third-language notice is bilingual by design)
   if (said.trim() && action !== 'third_language') {
     const ar = (said.match(AR_LETTERS) ?? []).length;
