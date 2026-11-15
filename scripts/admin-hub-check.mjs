@@ -12,3 +12,6 @@ await import('../admin/tests/hub-knowledge-ui-check.mjs');
 // H6 (14 Nov 2026): «الشخصية», «التراخيص», «مختبر الاختبار», «المحاكي», «رادار الأسئلة» and the draft cards from staff
 // replies in «لم أعرف الإجابة» — offline too (admin/tests/hub-lab-ui-check.mjs).
 await import('../admin/tests/hub-lab-ui-check.mjs');
+// H6c (15 Nov 2026): «الفريق والتقارير» — the staff slots, the branch settings, the daily report and ?hub_c / ?hub_r —
+// offline too (admin/tests/hub-team-ui-check.mjs).
+await import('../admin/tests/hub-team-ui-check.mjs');

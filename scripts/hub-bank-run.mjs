@@ -7,7 +7,9 @@
 // wording) — the code grading (grade.ts) decides pass / fail; a naturalness failure is a failure too.
 //   node scripts/hub-bank-run.mjs [--bank questions|conversations|both] [--only c001,q014] [--unit airport-road] [--out <file>]
 import { readFileSync, writeFileSync } from 'node:fs';
-import { runItem } from '../supabase/functions/_shared/hub/eval.ts';
+import { isGuestLine, runItem } from '../supabase/functions/_shared/hub/eval.ts';
+import { alertTargets, escalationTargets, humanPhase, routeNumber, staffGuard, staffSystemFor, staffUser } from '../supabase/functions/_shared/hub/staff.ts';
+import { staffSystem } from '../supabase/functions/_shared/hub/compose/index.ts';
 import { grade } from '../supabase/functions/_shared/hub/grade.ts';
 import { anthropicModel, costOf } from '../supabase/functions/_shared/hub/model.ts';
 import { dashboardAdapter } from '../supabase/functions/_shared/hub/adapter/index.ts';
@@ -29,7 +31,9 @@ const bank = arg('--bank') ?? 'both';
 const only = arg('--only')?.split(',') ?? null;
 const unitOnly = arg('--unit');
 const read = (p) => readFileSync(new URL(`../${p}`, import.meta.url), 'utf8');
-const CONV = read('tests/hub-bank/conversations.jsonl').split(/\r?\n/).filter((l) => l.trim()).map((l) => JSON.parse(l)).filter((x) => !x._header);
+const jsonl = (f) => read(f).split(/\r?\n/).filter((l) => l.trim()).map((l) => JSON.parse(l)).filter((x) => !x._header);
+// H6c (15 Nov 2026): the team bank — guest conversations with «[staff] …» / «[wait:N]», the colleague chat, the alert rules
+const CONV = [...jsonl('tests/hub-bank/conversations.jsonl'), ...jsonl('tests/hub-bank/conversations-team.jsonl')];
 const items = [
   // q032 / q068 are retired on production (the Airport Road laundry, H6 pass 3)
   ...(bank === 'conversations' ? [] : engineItems().filter((q) => !['q032', 'q068'].includes(q.id))),
@@ -84,7 +88,67 @@ async function natural(guest, history, reply, tries = 2) {
   }
 }
 
+const STAFF_TONE = `You review one WhatsApp reply written by the WhatsApp line of a hotel's reception team (Armada Residence, Taif) to a COLLEAGUE — not a guest. COLLEAGUE_KIND staff = a reception colleague: the reply should be friendly, short (one or two lines), may tease lightly and use one or two emoji, may use the colleague's dialect, and must steer back to work. COLLEAGUE_KIND management = a manager: respectful, warm, short, no teasing. FAIL only for a CLEAR violation: (1) rude, cold or long-winded; (2) for management: teasing or joking at the manager; (3) a joke about religion, nationality, origin, appearance or family; (4) it does an off-work task it was asked (writes a poem, answers general knowledge, writes code) instead of refusing with a joke; (5) it writes a guest's name or phone number; (6) CHECK, when given, is not met. When in doubt, PASS. Return exactly one JSON object, the reason first: {"why": "<at most 15 English words>", "pass": true|false}.`;
+const CHECKS = {
+  back_to_work: 'it steers back to work (waiting conversations, the shift, or how it can help with work)',
+  refuses_off_work: 'it refuses the off-work request (no poem written) with a light joke and steers back to work',
+  reminds_guest_channel: 'it reminds the colleague that this chat never reaches the guest and to reply from the branch phone or from «المحادثات» in the dashboard',
+  teach_soon: 'it says that teaching / saving information is coming soon (nothing saved now)',
+};
+async function staffOne(q) {
+  const facts = q.facts ?? {};
+  const system = staffSystemFor(staffSystem(), q.unit === 'shafa-road' ? 'أرمادا ريزيدنس – طريق الشفا' : 'أرمادا ريزيدنس – طريق المطار');
+  const msg = q.messages[0];
+  const user = staffUser({ branch: q.unit, kind: q.who === 'report' ? 'report' : 'staff', first_name: q.name ?? '', now: '10:30', facts, history: [], message: msg });
+  const reasons = [];
+  let reply = '';
+  for (let i = 0; i < 2 && !reply; i++) {
+    const r = await counted({ layer: 'staff_chat', model: 'claude-sonnet-5-5', system, user });
+    if (!r.ok) {
+      reasons.push(`model:${r.error}`);
+      break;
+    }
+    const g = staffGuard(r.text, facts, msg, '10:30');
+    if (g.ok) reply = r.text.trim();
+    else if (i === 1) reasons.push(`guard:${g.reasons.join('+')}`);
+  }
+  const e = q.expect ?? {};
+  if (reply) {
+    for (const w of e.must_not_include ?? []) if (reply.includes(w)) reasons.push(`must_not_include:${w}`);
+    if (e.must_include_any && !e.must_include_any.some((w) => reply.includes(w))) reasons.push('must_include_any');
+    const check = Object.keys(CHECKS).filter((k) => e[k]).map((k) => CHECKS[k]).join('; ');
+    const r = await counted({ layer: 'compose', model: 'claude-haiku-5-5', system: STAFF_TONE, user: `COLLEAGUE_KIND: ${q.who === 'report' ? 'management' : 'staff'}\nCHECK: ${check || '(none)'}\nCOLLEAGUE: ${msg}\nREPLY: ${reply}` });
+    let v = { pass: true, why: 'grader unavailable' };
+    try {
+      if (r.ok) v = JSON.parse(r.text.slice(r.text.indexOf('{'), r.text.lastIndexOf('}') + 1));
+    } catch {
+      const m = /"pass"\s*:\s*(true|false)/.exec(r.text ?? '');
+      v = { pass: m ? m[1] === 'true' : false, why: 'cut answer' };
+    }
+    if (!v.pass) reasons.push(`tone:${v.why}`);
+  }
+  return { id: q.id, unit: q.unit, bank: 'conversations', pass: reasons.length === 0, reasons, steps: [{ guest: msg, kind: 'staff_chat', replies: reply ? [reply] : [] }] };
+}
+function teamOne(q) {
+  const reasons = [];
+  const e = q.expect ?? {};
+  const slots = (q.slots ?? []).map((s) => ({ active: true, ...s }));
+  let got;
+  if (q.case === 'on_shift') got = alertTargets(slots, new Date(q.at)).map((s) => s.id);
+  else if (q.case === 'escalation') got = escalationTargets(slots, q.alerted ?? [], new Date(q.created), new Date(q.at), q.minutes ?? 10, !!q.opened, !!q.replied).map((s) => s.id);
+  else if (q.case === 'route') got = routeNumber(q.lookup);
+  else if (q.case === 'phase') {
+    const at = new Date('2026-11-16T10:00:00+03:00');
+    got = humanPhase({ ...q.conversation, staff_active_at: q.staff_minutes_ago === null ? null : new Date(at.getTime() - q.staff_minutes_ago * 60_000) }, at, q.resume ?? 15);
+  }
+  const want = e.targets ?? e.route ?? e.phase;
+  if (JSON.stringify(got) !== JSON.stringify(want)) reasons.push(`${q.case}:${JSON.stringify(want)}:${JSON.stringify(got)}`);
+  return { id: q.id, unit: q.unit ?? 'airport-road', bank: 'conversations', pass: reasons.length === 0, reasons, steps: [] };
+}
+
 async function one(q) {
+  if (q.kind === 'staff_chat') return staffOne(q);
+  if (q.kind === 'team') return teamOne(q);
   const claim = claimFor({ ...q, messages: ['x'] });
   const ctx = {
     unit: { ...claim.unit, persona: claim.unit.persona }, channel: claim.channel, licences: Object.fromEntries(Object.entries(claim.licences).map(([k, v]) => [k, v === 'blocked' ? 'blocked' : 'auto'])),
@@ -102,21 +166,23 @@ async function one(q) {
   if (q.expect.action === 'conversation') {
     // naturalness of every model-written reply (small talk, clarify, redirect, ask)
     let hist = [];
+    // the guest's own lines (H6c: «[staff] …» and «[wait:N]» are not guest messages and have no step)
+    const guestMsgs = q.messages.filter(isGuestLine);
     for (let i = 0; i < run.outcome.steps.length; i++) {
       const st = run.outcome.steps[i];
       const said = st.replies.filter((x) => !x.notice).map((x) => x.body).join('\n');
-      if (['reply', 'clarify', 'redirect', 'ask'].includes(st.kind) && said.trim() && !/^\[button:/.test(q.messages[i])) {
+      if (['reply', 'clarify', 'redirect', 'ask', 'handoff_add'].includes(st.kind) && said.trim() && !/^\[button:/.test(guestMsgs[i])) {
         // the code's own opening line (the greeting, «وعليكم السلام») is approved copy, not the model's: graded without it
         const body = said.replace(/^(?:وعليكم السلام|مرحبًا بك في|أهلًا بعودتك|Welcome to|Welcome back)[^\n]*\n/, '');
-        const v = await natural(q.messages[i], hist.slice(-8), body);
+        const v = await natural(guestMsgs[i], hist.slice(-8), body);
         nat.push({ step: i + 1, ...v });
         if (!v.pass) reasons.push(`s${i + 1}:natural`);
       }
-      hist = [...hist, { author: 'guest', body: q.messages[i] }, ...st.replies.map((x) => ({ author: 'us', body: x.body }))];
+      hist = [...hist, { author: 'guest', body: guestMsgs[i] }, ...st.replies.map((x) => ({ author: 'us', body: x.body }))];
     }
   }
   return { id: q.id, unit: q.unit, bank: q.expect.action === 'conversation' ? 'conversations' : 'questions', pass: reasons.length === 0, reasons, nat,
-    steps: (run.outcome.steps ?? []).map((s, i) => ({ guest: q.messages[i], kind: s.kind, state: s.state, gap: s.gap, replies: s.replies.map((x) => x.body),
+    steps: (run.outcome.steps ?? []).map((s, i) => ({ guest: q.messages.filter(isGuestLine)[i], kind: s.kind, state: s.state, gap: s.gap, replies: s.replies.map((x) => x.body),
       reason: run.finishes[i]?.reason ?? null, guard: run.finishes[i]?.guard_refusals ?? [], intents: run.finishes[i]?.understanding?.intents ?? null, ukind: run.finishes[i]?.understanding?.kind ?? null })) };
 }
 

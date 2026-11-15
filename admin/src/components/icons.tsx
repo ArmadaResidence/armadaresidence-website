@@ -51,6 +51,8 @@ const P = {
   download: 'M12 3v12M7 10l5 5 5-5M5 21h14',
   print: 'M6 9V3h12v6M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2M6 14h12v7H6z',
   user: 'M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z',
+  // «الفريق والتقارير» (H6c): two people and a clock
+  team: 'M15 21v-1.5a3.5 3.5 0 0 0-3.5-3.5h-5A3.5 3.5 0 0 0 3 19.5V21M9 12.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7zM18 15a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM18 9v2l1.3 1',
 } as const;
 export type IconName = keyof typeof P;
 

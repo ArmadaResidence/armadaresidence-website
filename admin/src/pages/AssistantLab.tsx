@@ -728,7 +728,7 @@ export function SimulatorPanel({ o, editingPersona }: { o: HubOverview; editingP
                     {m.buttons.length > 0 && <span className="sim-buttons">{m.buttons.map((b) => <span key={b} className="sim-btn">{b}</span>)}</span>}
                   </button>
                 ))}
-                {t.r && !t.r.replies.length && <button type="button" className="sim-bubble sim-note text-start" onClick={() => setOpen(i)}>لا رد — {t.r.decision.to === 'human' ? 'المحادثة للفريق' : 'لا شيء يُرسل'}</button>}
+                {t.r && !t.r.replies.length && <button type="button" className="sim-bubble sim-note text-start" onClick={() => setOpen(i)}>لا رد — {t.r.decision.to === 'human' ? 'بانتظار موظف' : 'لا شيء يُرسل'}</button>}
               </div>
             ))}
           </div>
@@ -780,7 +780,7 @@ function SimDetails({ r }: { r: L.SimResult }) {
       </div>
       <div data-sim-decision>
         <h4 className="label">القرار</h4>
-        <p>{L.STATE_LABELS[r.decision.from] ?? r.decision.from} ← {L.STATE_LABELS[r.decision.to] ?? r.decision.to}</p>
+        <p data-sim-state={r.decision.to}>{L.simStateText(r.decision.from)} ← {L.simStateText(r.decision.to)}</p>
         <p className="text-ink-muted">{r.decision.actions.map((a) => L.ACTION_CODE_LABELS[a] ?? a).join('، ') || '—'} · <span className="num latin" dir="ltr">{r.decision.transitions.join(' ')}</span>{r.decision.reason ? ` · ${r.decision.reason}` : ''}</p>
         {r.note && <p className="text-xs text-ink-muted mt-1">ملاحظة التحويل: {r.note}</p>}
       </div>

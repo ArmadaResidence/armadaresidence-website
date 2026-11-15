@@ -23,7 +23,7 @@
 // assistant: view sees everything read-only; edit changes it; the channels, templates, switches and recipients need
 // every branch (a single-branch editor sees its branch's units only).
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { LabPanel, LicencesPanel, PersonaPanel, SimulatorPanel } from './AssistantLab';
 import { phoneAutoList, phoneAutoRemove, type PhoneAutoRow } from '../lib/lab';
 import type { Persona } from '../lib/hub';
@@ -419,6 +419,8 @@ export default function Assistant() {
             <div className="grid gap-1" data-unit-team data-tour="hub-team">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <h4 className="label">الفريق</h4>
+                {/* H6c: who gets the WhatsApp alerts lives in «الفريق والتقارير» */}
+                <Link to="/hub-team" className="inbox-link text-sm" data-action="team-page">موظفو التنبيهات في «الفريق والتقارير»</Link>
                 {edit && (
                   <button type="button" className="btn btn-ghost btn-sm" onClick={() => setTeam(u)} data-action="team-edit">تعديل الفريق</button>
                 )}

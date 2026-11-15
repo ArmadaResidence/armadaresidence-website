@@ -203,11 +203,16 @@ export function personaProblemsOf(e: unknown): { code: string; field: string }[]
 export interface SimState {
   state: string;
   first_reply: boolean;
-  history: { author: 'guest' | 'us'; body: string }[];
+  history: { author: 'guest' | 'us' | 'staff'; body: string }[];
   draft: Record<string, unknown> | null;
   failed_understandings: number;
   out_of_scope: number;
+  /** H6c: «مع الفريق» in the simulator is «بانتظار موظف» — the assistant keeps answering what it can */
+  human_phase?: 'waiting' | 'resume' | null;
+  state_before_human?: string | null;
 }
+/** H6c: the simulator's state label — «مع الفريق» is «بانتظار موظف» there (no staff reply in a simulation) */
+export const simStateText = (s: string) => (s === 'human' ? 'بانتظار موظف' : STATE_LABELS[s] ?? s);
 export const freshSim = (): SimState => ({ state: 'new', first_reply: true, history: [], draft: null, failed_understandings: 0, out_of_scope: 0 });
 export interface SimResult {
   ok: boolean;
@@ -218,7 +223,7 @@ export interface SimResult {
   model_errors?: { layer: string; error: string }[];
   error_code?: string | null;
   message_kind?: string;
-  decision: { from: string; to: string; actions: string[]; transitions: string[]; reason: string | null };
+  decision: { from: string; to: string; actions: string[]; transitions: string[]; reason: string | null; human_phase?: 'waiting' | 'resume' | null; state_before_human?: string | null };
   sources: { cards: { key: string; title: string }[]; read: { key: string; title: string }[]; faq: { key: string; q: string }[] };
   guard: { ok: boolean; refusals: string[][] };
   note: string | null;

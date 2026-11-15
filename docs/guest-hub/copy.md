@@ -273,7 +273,7 @@ Buttons: «إيقاف رسائل العروض» · «إلغاء حجزي» / “
 
 | Item | Labels |
 |---|---|
-| States | `new` «جديدة» · `inquiry` «استفسار» · `collecting` «جمع التفاصيل» · `quoted` «عُرض السعر» · `awaiting_confirmation` «بانتظار تأكيد الضيف» · `booked` «تم الحجز» · `awaiting_payment` «بانتظار الدفع» · `human` «مع الفريق» · `closed` «مغلقة» |
+| States | `new` «جديدة» · `inquiry` «استفسار» · `collecting` «جمع التفاصيل» · `quoted` «عُرض السعر» · `awaiting_confirmation` «بانتظار تأكيد الضيف» · `booked` «تم الحجز» · `awaiting_payment` «بانتظار الدفع» · `human` «مع الفريق» — in two halves since 15 Nov 2026 (H6c): «بانتظار موظف» (handed, no staff reply yet) · «مع موظف» (a staff member replied or took it) · `closed` «مغلقة» |
 | Owner | «المساعد» · the staff member's name · «الجوال» |
 | Tag | «طلب» |
 | Unit modes | `off` «متوقف» · `test` «تجربة» · `shadow` «بموافقة الفريق» · `licensed` «يرد تلقائيًا في المواضيع المفعّلة» |
@@ -310,3 +310,19 @@ Every subject carries an `AR-` token so the Hostinger filter «From contains no-
 ## 8. Privacy
 
 No privacy text in the chat, and nothing new on the /policies/ page [مقرر — 13 نوفمبر 2026].
+
+---
+
+## 9. The colleague chat — staff and management numbers [مقرر — Ahmed, 15 Nov 2026, H6c]
+
+A number in «الفريق والتقارير» (a staff slot or the report list) writing to a branch number is a colleague, never a guest. The replies are written by the model (prompts.md §9); these are the tone rules it keeps, and the only fixed line is the fallback of §5 «Colleague chat fallback».
+
+| Who | Tone |
+|---|---|
+| A staff slot («مدير الاستقبال» / «موظف استقبال») | Playful and short (one or two lines), in the colleague's own dialect, one or two emoji welcome; light teasing («فاضي ولا إيه؟») that always steers back to work; never about religion, nationality, origin, appearance, gender or family |
+| A report-only number (management) | Respectful and warm, short, no teasing, at most one emoji |
+
+Both answer work questions from the system only — how many conversations wait for the team in their branch, who is on shift now, today's counts, and the links of the waiting conversations (`?hub_c=`) — never a guest's name, number or words. No daily cap. Off-work requests (a poem, general knowledge, code) get a joking refusal and back to work (Meta's business-use policy). A reply that seems meant for a guest is never relayed: they are reminded, in tone, to reply from the branch phone or from «المحادثات». A message starting with «تعلّم:» is reserved for the next session: the reply says teaching is coming soon and nothing is saved.
+
+**Sample** (Ahmed's): a colleague writes «إزيك يا بوت» → «أهلاً يا سالم! بوت إيه بس 😄 في محادثتين مستنيين الفريق دلوقتي: …» with the links.
+

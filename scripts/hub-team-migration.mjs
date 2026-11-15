@@ -153,10 +153,19 @@ export function replaced() {
   return out.join('\n\n');
 }
 
+/** the guest conversations of the team bank (kind guest — the staff chat and the alert rules are not engine items) */
+export function teamBankItems() {
+  return read('tests/hub-bank/conversations-team.jsonl').split(String.fromCharCode(10)).filter((l) => l.trim()).map((l) => JSON.parse(l))
+    .filter((x) => !x._header && (x.kind ?? 'guest') === 'guest')
+    .map((x) => ({ id: x.id, unit: x.unit, language: x.language, messages: x.messages, expect: x.expect, note: x.note ?? null, tags: x.tags }));
+}
 export function migration() {
   const src = read('scripts/hub-team-migration.src.sql');
-  if (!src.includes('/*@REPLACED@*/')) throw new Error('the marker moved');
-  return src.replace('/*@REPLACED@*/', () => replaced());
+  if (!src.includes('/*@REPLACED@*/') || !src.includes('/*@TEAM_BANK@*/')) throw new Error('a marker moved');
+  const bank = JSON.stringify(teamBankItems());
+  if (bank.includes('$team_bank$')) throw new Error('a dollar-quote tag inside the bank');
+  // function replacers: a replacement string would read `$'` / `$$` as patterns
+  return src.replace('/*@REPLACED@*/', () => replaced()).replace('/*@TEAM_BANK@*/', () => bank);
 }
 
 if (process.argv[1]?.endsWith('hub-team-migration.mjs')) {

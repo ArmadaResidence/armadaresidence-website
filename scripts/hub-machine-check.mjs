@@ -395,6 +395,47 @@ check(ASSISTANT_STATES.length === 6, 'six assistant states');
   }
 }
 
+// ── H6c (Ahmed, 15 Nov 2026): «مع الفريق» in two halves — «بانتظار موظف» and «مع موظف» ──
+{
+  const W = { human_phase: 'waiting', state_before_human: 'inquiry', first_reply: false };
+  let w = run('human', guest(U({ intents: ['facility_question'], topics: ['parking'] })), W);
+  check(has(w, 'T36') && w.next === 'human' && acts(w).includes('answer') && w.resume_state === 'inquiry',
+    'T36: «بانتظار موظف» — a sourced question is answered in place, the conversation stays with the team');
+  w = run('human', guest(U({ intents: ['greeting'], topics: ['greeting'], kind: 'small_talk' })), W);
+  check(has(w, 'T36') && w.next === 'human' && acts(w).includes('chat'), 'T36: «بانتظار موظف» — small talk gets the model reply, still with the team');
+  w = run('human', guest(U({ intents: ['human_request'] })), W);
+  check(has(w, 'T37') && w.next === 'human' && acts(w).join() === 'handoff_add' && !w.actions.some((x) => x.type === 'handoff'),
+    'T37: «بانتظار موظف» — a second thing for the team joins the SAME hand-off (handoff_add, never the fixed notice again)');
+  w = run('human', guest(null, { kind: 'media' }), W);
+  check(has(w, 'T37') && acts(w).join() === 'handoff_add' && w.actions[0].reason === 'media', 'T37: «بانتظار موظف» — media joins the hand-off with an acknowledgement');
+  w = run('human', { type: 'answer_result', ok: false }, W);
+  check(has(w, 'T37') && acts(w).join() === 'handoff_add' && w.actions[0].reason === 'no_source' && w.next === 'human', 'T37: «بانتظار موظف» — no source for a question: added to the hand-off (and «لم أعرف الإجابة»)');
+  w = run('human', guest(U({ intents: ['complaint'], complaint: true })), W);
+  check(has(w, 'T37') && w.actions[0].type === 'handoff_add' && w.actions[0].priority === 'high' && w.priority === 'high', 'T37: a complaint while waiting raises the priority, no second notice');
+  w = run('human', guest(U({ intents: ['stay_booking'], kind: 'booking', check_in: '2026-12-01', check_out: '2026-12-03' })), W);
+  check(has(w, 'T36') && w.next === 'human' && w.resume_state === 'collecting' && acts(w).includes('ask'),
+    'T36: a booking asked while waiting goes on (the dates and the guests), the conversation stays with the team, its flow kept');
+  w = run('human', guest(U({ intents: ['facility_question'], topics: ['parking'] })), { human_phase: null, state_before_human: 'inquiry' });
+  check(w.next === 'human' && acts(w).join() === 'noop', '«مع موظف» (a staff reply, the branch minutes not passed): silent');
+  w = run('human', guest(U({ intents: ['facility_question'], topics: ['parking'] })), { human_phase: 'resume', state_before_human: 'quoted' }, DRAFT);
+  check(has(w, 'T38') && w.resumed === true && w.next === 'quoted' && acts(w).includes('answer'),
+    'T38: after the branch\'s «عودة المساعد» minutes of staff silence the guest\'s message resumes the assistant, in the flow before');
+  w = run('human', guest(U({ intents: ['human_request'] })), { human_phase: 'resume', state_before_human: 'inquiry' });
+  check(has(w, 'T38') && w.resumed === true && w.next === 'human' && ho(w)?.notice === 'handoff', 'T38: a resumed turn that hands off again is a NEW hand-off (its notice, its own staff alert)');
+  w = run('human', guest(U({ intents: ['facility_question'], topics: ['parking'] })), { human_phase: 'waiting', state_before_human: 'new' });
+  check(w.resume_state === 'inquiry', 'a hand-off from «جديدة» continues as «استفسار»');
+  // the random invariant, both halves: a waiting turn never leaves «مع الفريق» and never repeats the notice
+  const pool = [U({ intents: ['facility_question'], topics: ['parking'] }), U({ intents: ['human_request'] }), U({ intents: ['complaint'], complaint: true }), U({ intents: ['greeting'], kind: 'small_talk' }),
+    U({ intents: ['out_of_scope'], kind: 'out_of_scope' }), U({ intents: ['booking_cancel'] }), null];
+  let bad = 0;
+  for (let i = 0; i < 300; i++) {
+    const u = pool[i % pool.length];
+    const r = run('human', u ? guest(u) : guest(null, { kind: 'media' }), { ...W, state_before_human: ASSISTANT_STATES[i % ASSISTANT_STATES.length] }, i % 2 ? DRAFT : null);
+    if (r.next !== 'human' || r.actions.some((x) => x.type === 'handoff')) bad++;
+  }
+  check(bad === 0, `300 waiting turns: always «مع الفريق», never a second hand-off notice (${bad} broke it)`);
+}
+
 // every transition of the spec has a case above
 const SPEC = (await import('node:fs')).readFileSync(new URL('../docs/guest-hub/GUEST-HUB-SPEC.md', import.meta.url), 'utf8');
 const named = [...new Set([...SPEC.matchAll(/^\| (T\d+b?) \|/gm)].map((m) => m[1]))];

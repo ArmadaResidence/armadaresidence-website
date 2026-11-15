@@ -919,6 +919,25 @@ $$;
 -- ───────────────────────────────────────────── 10. the functions this session changes (copies of the latest definitions) ─────────────────────────────────────────────
 /*@REPLACED@*/
 
+-- ───────────────────────────────────────────── 10b. the team bank in the test lab ─────────────────────────────────────────────
+-- The guest conversations of tests/hub-bank/conversations-team.jsonl (tags conversation + h6c): «بانتظار موظف» answers,
+-- a second thing joined to the same hand-off, a staff reply then silence, the resume after 15 minutes. A line «[staff] …»
+-- is a staff reply and «[wait:N]» lets N minutes pass (eval.ts); one expectation per GUEST line. One audit batch.
+do $team$
+declare
+  v_batch uuid := internal.begin_batch();
+  v_sort integer;
+begin
+  perform set_config('app.actor', 'H6c — migration, Ahmed''s brief', true);
+  v_sort := coalesce((select max(x.sort) + 1 from public.hub_test_items x), 0);
+  insert into public.hub_test_items (key, unit_key, language, messages, expect, note, tags, added_from, sort)
+  select e ->> 'id', e ->> 'unit', e ->> 'language', e -> 'messages', e -> 'expect', e ->> 'note',
+         array(select jsonb_array_elements_text(e -> 'tags')), 'seed', v_sort + (o - 1)::integer
+    from jsonb_array_elements($team_bank$/*@TEAM_BANK@*/$team_bank$::jsonb) with ordinality as x(e, o)
+  on conflict (key) do nothing;
+end;
+$team$;
+
 -- ───────────────────────────────────────────── 11. grants ─────────────────────────────────────────────
 revoke execute on function internal.hub_slot_covers(public.hub_staff_slots, timestamptz), internal.hub_staff_lookup(text), internal.hub_staff_excluded(text),
   internal.hub_resume_minutes(text), internal.hub_human_phase(public.hub_conversations, public.hub_units, timestamptz), internal.hub_branch_channel(text),

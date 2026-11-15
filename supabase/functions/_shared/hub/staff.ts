@@ -331,3 +331,10 @@ export function humanPhase(c: { state: string; human_reason?: string | null; own
   if (['staff', 'phone'].includes(c.owner_kind) && c.staff_active_at && at.getTime() - c.staff_active_at.getTime() >= resumeMinutes * 60_000) return 'resume';
   return null;
 }
+
+/** the router's decision for a number writing to a branch number (wa-automation): a staff slot → the playful colleague
+ *  chat; a report-only number → the respectful one; «يُعامَل كضيف للتجربة», or no match → the guest path */
+export function routeNumber(lookup: { kind?: string; test_as_guest?: boolean } | null | undefined): 'staff' | 'report' | 'guest' {
+  if (!lookup || lookup.test_as_guest) return 'guest';
+  return lookup.kind === 'report' ? 'report' : 'staff';
+}

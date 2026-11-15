@@ -25,7 +25,7 @@ import * as api from '../lib/api';
 import { BRANCH_NAMES, riyadhDateTime, shortDate, STATUS_LABELS, west } from '../lib/format';
 import tplDefs from '../../../supabase/functions/_shared/hub/hub-templates.json';
 import {
-  ACTIONS, DRAFT_ACTIONS, LANGUAGE_FILTERS, MARKS, OWNER_FILTERS, REJECT_REASONS, SHORTCUTS, STATE_LABELS, TABS, TAB_LABELS, TAG_LABELS, TEMPLATE_LABELS, approve, assign, assistError, banner,
+  stateText, ACTIONS, DRAFT_ACTIONS, LANGUAGE_FILTERS, MARKS, OWNER_FILTERS, REJECT_REASONS, SHORTCUTS, STATE_LABELS, TABS, TAB_LABELS, TAG_LABELS, TEMPLATE_LABELS, approve, assign, assistError, banner,
   block, close, eventText, list, markUnanswered, mediaUrl, needsTranslation, newKey, ownerText, pauseUnit, reject, release, retry, send, sendError, sendSuggestion, statusText, suggest, takeOver,
   thread, timerTone, transfer, translate, waitingText, windowState, addNote,
   type Filters, type HubState, type InboxList, type InboxRow, type Msg, type RejectReason, type Tab, type Thread,
@@ -33,6 +33,7 @@ import {
 import { CancelButton, Confirm, DirtyScope, ErrorBox, Field, Loading, Modal, Spinner, useToast } from '../components/ui';
 import { flagWrong, flaggedIn, phoneAutoAdd } from '../lib/lab';
 import { useSession } from '../lib/session';
+import { handoffSeen } from '../lib/team';
 
 type View = 'list' | 'thread' | 'panel';
 
@@ -94,6 +95,8 @@ export default function Inbox() {
     }
     try {
       setT(await thread(selected));
+      // H6c: opening the thread counts as opening its waiting hand-off (the escalation to the manager then waits)
+      void handoffSeen(selected);
       setTError(null);
     } catch (e) {
       setT(null);
@@ -263,7 +266,7 @@ export default function Inbox() {
                     <span className="flex flex-wrap items-center gap-1 text-xs">
                       <span className="inbox-chip" data-row-unit>{r.unit_name}</span>
                       <span className="inbox-chip" title="واتساب">واتساب</span>
-                      <span className="inbox-chip" data-row-state>{STATE_LABELS[r.state]}</span>
+                      <span className="inbox-chip" data-row-state data-phase={r.state === 'human' ? (r.owner_kind === 'staff' || r.owner_kind === 'phone' ? 'staff' : 'waiting') : undefined}>{stateText(r.state, r.owner_kind)}</span>
                       {r.tags.map((g) => <span key={g} className="inbox-chip is-bronze">{TAG_LABELS[g] ?? g}</span>)}
                       {r.is_test && <span className="inbox-chip is-test">{MARKS.test}</span>}
                     </span>
@@ -466,7 +469,7 @@ function ThreadView({ t, now, edit, unitNames, composerRef, onBack, onPanel, onC
         <div className="min-w-0 grow">
           <h2 className="font-bold truncate" data-thread-name>{t.guest.label}</h2>
           <p className="text-xs text-ink-muted">
-            {c.unit_name} · {STATE_LABELS[c.state]} · {ownerText(c.owner_kind, c.owner_name)}{c.is_test ? ` · ${MARKS.test}` : ''}
+            {c.unit_name} · <span data-thread-state>{stateText(c.state, c.owner_kind, c.human_reason)}</span> · {ownerText(c.owner_kind, c.owner_name)}{c.is_test ? ` · ${MARKS.test}` : ''}
           </p>
         </div>
         <button type="button" className="btn btn-ghost btn-sm inbox-narrow" onClick={onPanel} data-action="open-panel">الضيف</button>

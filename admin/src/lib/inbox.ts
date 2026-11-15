@@ -262,6 +262,14 @@ export const STATE_LABELS: Record<HubState, string> = {
   new: 'جديدة', inquiry: 'استفسار', collecting: 'جمع التفاصيل', quoted: 'عُرض السعر', awaiting_confirmation: 'بانتظار تأكيد الضيف', booked: 'تم الحجز',
   awaiting_payment: 'بانتظار الدفع', human: 'مع الفريق', closed: 'مغلقة',
 };
+/** H6c (Ahmed, 15 Nov 2026 — copy.md §6): «مع الفريق» in two halves — «بانتظار موظف» (handed, no staff reply yet: the
+ *  assistant keeps answering what it can) and «مع موظف» (a staff member replied or took it: the assistant is silent until
+ *  the branch's «عودة المساعد» minutes of staff silence) */
+export function stateText(state: HubState, owner_kind?: string | null, human_reason?: string | null): string {
+  if (state !== 'human') return STATE_LABELS[state] ?? state;
+  if (human_reason === 'test_mode' || human_reason === 'cart_order') return STATE_LABELS.human;
+  return owner_kind === 'staff' || owner_kind === 'phone' ? 'مع موظف' : 'بانتظار موظف';
+}
 export const TAB_LABELS: Record<Tab, string> = { waiting: 'بانتظار موظف', assistant: 'مع المساعد', drafts: 'مسودات للموافقة', all: 'الكل', closed: 'مغلقة', orders: 'طلبات' };
 export const TABS: Tab[] = ['waiting', 'assistant', 'drafts', 'all', 'closed'];
 export const TAG_LABELS: Record<string, string> = { order: 'طلب' };

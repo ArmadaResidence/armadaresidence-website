@@ -4,7 +4,8 @@
 // without backup codes → /backup-codes once per tab («لاحقًا» continues); a screen the matrix does not grant → the
 // first granted screen (phase 2a.1: the matrix, not the role, decides what shows). An empty matrix sees «لا صلاحية».
 // Signing in lands on «النظرة العامة» for those who hold it, else «الحجوزات» (lib/nav.ts landing(), 4 Nov 2026).
-import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import { SessionProvider, useSession } from './lib/session';
 import { canView } from './lib/api';
 import { landing } from './lib/nav';
@@ -35,6 +36,8 @@ import Inbox from './pages/Inbox';
 import Knowledge from './pages/Knowledge';
 import ServicePrices from './pages/ServicePrices';
 import Radar from './pages/Radar';
+import HubTeam from './pages/HubTeam';
+import { alertOpen } from './lib/team';
 import Content from './pages/Content';
 import Settings from './pages/Settings';
 import Users from './pages/Users';
@@ -61,6 +64,7 @@ const SCREENS: { path: string; section: string }[] = [
   { path: 'inbox', section: 'inbox' },
   { path: 'assistant', section: 'assistant' },
   { path: 'radar', section: 'radar' },
+  { path: 'hub-team', section: 'hub_team' },
   { path: 'settings', section: 'settings' },
   { path: 'users', section: 'users' },
   { path: 'audit', section: 'audit' },
@@ -110,6 +114,13 @@ function Unreachable({ onRetry }: { onRetry: () => Promise<void> }) {
 /** «النظرة العامة», else «الحجوزات», else the first screen the matrix grants (4 Nov 2026), or «لا صلاحية». */
 function Home() {
   const { me } = useSession();
+  const loc = useLocation();
+  // H6c: the WhatsApp alert's ?hub_c=<token> and the daily report's ?hub_r=YYYY-MM-DD, after the sign-in
+  const q = new URLSearchParams(loc.search);
+  const hubC = q.get('hub_c');
+  const hubR = q.get('hub_r');
+  if (hubC) return <HubLink token={hubC} />;
+  if (hubR && /^d{4}-d{2}-d{2}$/.test(hubR) && canView(me, 'hub_team')) return <Navigate to={`/hub-team?tab=reports&day=${hubR}`} replace />;
   const to = landing(me);
   try {
     sessionStorage.removeItem('armada-signed-out');
@@ -117,6 +128,29 @@ function Home() {
   if (to) return <Navigate to={to} replace />;
   const first = SCREENS.find((s) => canView(me, s.section));
   return first ? <Navigate to={`/${first.path}`} replace /> : <NoAccess sectionless />;
+}
+
+/** ?hub_c=<token>: open the alert's conversation when this user may see it (the first opening is recorded), else land */
+function HubLink({ token }: { token: string }) {
+  const navigate = useNavigate();
+  const { me } = useSession();
+  const [denied, setDenied] = useState(false);
+  useEffect(() => {
+    let live = true;
+    alertOpen(token)
+      .then((r) => {
+        if (!live) return;
+        if (r.allowed && r.conversation_id) navigate(`/inbox?c=${r.conversation_id}`, { replace: true });
+        else setDenied(true);
+      })
+      .catch(() => live && setDenied(true));
+    return () => {
+      live = false;
+    };
+  }, [token, navigate]);
+  if (!denied) return <Splash />;
+  const to = landing(me) ?? `/${SCREENS.find((s) => canView(me, s.section))?.path ?? ''}`;
+  return <Navigate to={to} replace state={{ notice: 'hub_c_denied' }} />;
 }
 
 function Allowed({ section, children }: { section: string; children: React.ReactNode }) {
@@ -194,6 +228,7 @@ export default function App() {
                     <Route path="service-prices" element={<Allowed section="knowledge"><ServicePrices /></Allowed>} />
                     <Route path="assistant" element={<Allowed section="assistant"><Assistant /></Allowed>} />
                     <Route path="radar" element={<Allowed section="radar"><Radar /></Allowed>} />
+                    <Route path="hub-team" element={<Allowed section="hub_team"><HubTeam /></Allowed>} />
                     <Route path="settings" element={<Allowed section="settings"><Settings /></Allowed>} />
                     <Route path="users" element={<Allowed section="users"><Users /></Allowed>} />
                     <Route path="audit" element={<Allowed section="audit"><Audit /></Allowed>} />
