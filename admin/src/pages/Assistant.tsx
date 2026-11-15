@@ -863,7 +863,9 @@ function BudgetCard({ o, onSaved }: { o: HubOverview; onSaved: (batches: string[
     const batches: string[] = [];
     try {
       for (const [k, v] of want) {
-        if (JSON.stringify(o.settings[k] ?? null) === JSON.stringify(v)) continue;
+        // a key not stored yet reads as its default (the voice minutes: 60) — only a changed field is saved
+        const was = o.settings[k] ?? (k === 'hub_voice_daily_minutes' ? 60 : null);
+        if (JSON.stringify(was) === JSON.stringify(v)) continue;
         const r = await settingSet(k, v);
         batches.push(r.batch_id);
       }
