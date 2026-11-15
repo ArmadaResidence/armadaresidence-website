@@ -91,6 +91,8 @@ for (const [role, branch, perms, sys] of ROLES) {
     for (const scheme of ['light', 'dark']) {
       const tag = `${role} ${w} ${scheme}`;
       const calls = [];
+      // the branch settings as saved (the page re-baselines its form on the values the server returns)
+      const saved = {};
       const ctx = await browser.newContext({ viewport: { width: w, height: h }, locale: 'ar-SA', colorScheme: scheme });
       await ctx.route(`${STUB}/**`, async (r) => {
         const u = r.request().url();
@@ -103,14 +105,17 @@ for (const [role, branch, perms, sys] of ROLES) {
         if (fn) calls.push({ fn, body });
         if (fn === 'my_staff') return ok(me(role, branch, perms));
         if (fn === 'hub_team_get') {
-          const bs = (branch ? BRANCHES.filter((b) => b.slug === branch) : BRANCHES).map((b) => ({ ...b, can_edit: edit, slots: b.slots.map((s) => (edit ? s : { ...s, phone: '•••• 678' })) }));
+          const bs = (branch ? BRANCHES.filter((b) => b.slug === branch) : BRANCHES).map((b) => ({ ...b, ...(saved[b.slug] ?? {}), can_edit: edit, slots: b.slots.map((s) => (edit ? s : { ...s, phone: '•••• 678' })) }));
           return ok({ now: new Date().toISOString(), can_edit: edit, is_system_admin: sys, branches: bs,
             report: { send_time: '08:00', recipients: [{ id: id(40), position: 1, name: 'أحمد', phone: sys ? EX : '•••• 678', staff_user_id: id(1), staff_name: 'مستخدم تجريبي للفحص', active: true, test_as_guest: false, consent_at: '2026-11-15T08:00:00Z', mine: true }],
               email_recipients: 1, last: { day: '2026-11-14', built_at: '2026-11-15T05:00:00Z' }, staff_users: sys ? [{ id: id(1), name: 'مستخدم تجريبي للفحص' }] : null } });
         }
         if (fn === 'hub_staff_slot_save') return ok({ ok: true, id: body?.p?.id ?? id(99), batch_id: id(900), previous: body?.p?.id ? { ...slot(1, {}), branch: 'airport-road', consent: true } : null });
         if (fn === 'hub_staff_slot_delete') return ok({ ok: true, batch_id: id(901), previous: { ...slot(1, {}), branch: 'airport-road', consent: true } });
-        if (fn === 'hub_team_branch_save') return ok({ ok: true, batch_id: id(902), previous: { resume_minutes: 15, escalate_minutes: 10 } });
+        if (fn === 'hub_team_branch_save') {
+          saved[body.p_branch] = { resume_minutes: body.p_resume, escalate_minutes: body.p_escalate };
+          return ok({ ok: true, batch_id: id(902), previous: { resume_minutes: 15, escalate_minutes: 10 } });
+        }
         if (fn === 'hub_report_test') return ok({ ok: true, recipient: 'أحمد', mine: true });
         if (fn === 'hub_report_config_save') return ok({ ok: true, batch_id: id(903), previous: '08:00' });
         if (fn === 'hub_report_get') return ok(REPORT(body?.p_day));
@@ -155,10 +160,12 @@ for (const [role, branch, perms, sys] of ROLES) {
         check(await page.locator('[data-action="slot-save"]').isDisabled(), `${tag}: «حفظ» waits for the name, the number and the consent`);
         await page.locator('#slot-name').fill('ريم');
         // the dirty guard: × on a typed name asks first
-        await page.locator('dialog[open] [aria-label="إغلاق"], dialog[open] button.modal-close').first().click().catch(() => {});
-        await page.waitForTimeout(300);
-        check((await page.locator('text=تعديلات غير محفوظة').count()) >= 1, `${tag}: × on a typed slot asks «تعديلات غير محفوظة»`);
-        await page.locator('button:has-text("متابعة التعديل")').click().catch(() => {});
+        await page.locator('[data-slot-dialog]').locator('xpath=ancestor::dialog').locator('[data-action="dialog-close"]').click();
+        await page.locator('dialog[data-unsaved-confirm][open]').waitFor({ timeout: 5000 }).catch(() => {});
+        check((await page.locator('dialog[data-unsaved-confirm][open]').count()) === 1, `${tag}: × on a typed slot asks «تعديلات غير محفوظة»`);
+        await page.locator('dialog[data-unsaved-confirm][open] [data-action="keep-editing"]').click();
+        await page.waitForTimeout(200);
+        check((await page.locator('#slot-name').inputValue()) === 'ريم', `${tag}: «متابعة التعديل» keeps the typed name`);
         await page.locator('#slot-phone').fill('0512');
         await page.waitForTimeout(200);
         check((await page.locator('[data-slot-problem]').textContent()).includes('رقم واتساب غير صحيح'), `${tag}: a short number is refused by the site's rules`);
@@ -196,6 +203,7 @@ for (const [role, branch, perms, sys] of ROLES) {
       await page.goto(`${BASE}/?hub_r=2026-11-14`, { waitUntil: 'load' });
       await page.locator('[data-report-view="2026-11-14"]').waitFor({ timeout: 30000 });
       check(page.url().includes('/hub-team?tab=reports&day=2026-11-14'), `${tag}: ?hub_r= lands on that day's report — ${page.url()}`);
+      await page.locator('[data-report-lines] > div').first().waitFor({ timeout: 15000 });
       const lines = await page.$$eval('[data-report-lines] > div', (a) => a.map((x) => [x.querySelector('dt').textContent, x.querySelector('dd').textContent]));
       check(lines.length === 10 && lines[0][1] === 'المطار 14 · الشفا 6' && lines[3][1] === 'المطار 7 دقائق · الشفا —' && lines[5][1] === 'لم يُفعَّل بعد' && lines[9][1] === 'فشل النموذج 1',
         `${tag}: the report's ten lines as on WhatsApp — ${JSON.stringify(lines.slice(0, 4))}`);

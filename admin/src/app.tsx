@@ -120,7 +120,7 @@ function Home() {
   const hubC = q.get('hub_c');
   const hubR = q.get('hub_r');
   if (hubC) return <HubLink token={hubC} />;
-  if (hubR && /^d{4}-d{2}-d{2}$/.test(hubR) && canView(me, 'hub_team')) return <Navigate to={`/hub-team?tab=reports&day=${hubR}`} replace />;
+  if (hubR && /^\d{4}-\d{2}-\d{2}$/.test(hubR) && canView(me, 'hub_team')) return <Navigate to={`/hub-team?tab=reports&day=${hubR}`} replace />;
   const to = landing(me);
   try {
     sessionStorage.removeItem('armada-signed-out');

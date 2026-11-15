@@ -148,7 +148,7 @@ function BranchCard({ b, reload, first }: { b: T.TeamBranch; reload: () => Promi
                 <p className="font-semibold">
                   {s.name} <span className="chip chip-request ms-1">{T.ROLE_TEXT[s.role]}</span>
                   {s.on_shift && <span className="chip chip-confirmed ms-1" data-chip="on-shift">في الوردية الآن</span>}
-                  {!s.active && <span className="chip chip-cancelled ms-1" data-chip="inactive">غير نشط</span>}
+                  {!s.active && <span className="chip chip-request ms-1" data-chip="inactive">غير نشط</span>}
                   {s.test_as_guest && <span className="chip chip-test ms-1" data-chip="test-as-guest">يُعامَل كضيف للتجربة</span>}
                 </p>
                 <p className="text-sm"><span className="latin num" dir="ltr">{T.phoneShow(s.phone)}</span></p>
@@ -394,7 +394,7 @@ function ReportSettings({ data, reload }: { data: T.TeamData; reload: () => Prom
               <div className="grid gap-1">
                 <p className="font-semibold">{r.name}
                   {r.staff_name && <span className="chip chip-request ms-1">{r.staff_name}</span>}
-                  {!r.active && <span className="chip chip-cancelled ms-1">غير نشط</span>}
+                  {!r.active && <span className="chip chip-request ms-1">غير نشط</span>}
                   {r.test_as_guest && <span className="chip chip-test ms-1">يُعامَل كضيف للتجربة</span>}
                 </p>
                 <p className="text-sm"><span className="latin num" dir="ltr">{T.phoneShow(r.phone)}</span></p>
@@ -525,7 +525,7 @@ function ReportView({ day, onDay }: { day: string; onDay: (d: string) => void })
               </div>
             ))}
           </dl>
-          <div className="overflow-x-auto" data-report-breakdown>
+          <div className="overflow-x-auto" tabIndex={0} role="region" aria-label="تنبيهات الفريق والتحويلات" data-report-breakdown>
             <table className="table text-sm min-w-[36rem]">
               <caption className="text-start font-semibold mb-2">تنبيهات الفريق والتحويلات</caption>
               <thead><tr><th scope="col">الفرع</th><th scope="col">تحويلات</th><th scope="col">تنبيهات أُرسلت</th><th scope="col">وصلت</th><th scope="col">قُرئت</th><th scope="col">فُتحت</th><th scope="col">تصعيد</th><th scope="col">بريد فقط</th><th scope="col">رُد عليها</th></tr></thead>
