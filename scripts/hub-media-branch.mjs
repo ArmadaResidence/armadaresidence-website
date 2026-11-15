@@ -35,7 +35,7 @@ const svc = async (fn, args) => {
 const NUM = Object.fromEntries((K.channels ?? []).map((x) => [x.key, x.address]));
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const RUN = String(Date.now()).slice(-5);
-const guestPhone = (n) => `+9665${RUN}${String(n).padStart(4, '0')}`.slice(0, 13);
+const guestPhone = (n) => `+9665${RUN}${String(n).padStart(3, '0')}`;
 const STAFF = `+1${5550100001}`;
 
 // ── the recorded answers ──
@@ -127,9 +127,9 @@ await alerts();
 // ── 1. a voice note: downloaded, transcribed, answered in text ──
 let r = await guest('airport-road', guestPhone(1), 'audio', audio(K.media.ogg));
 check(!r.error, '1 the voice note through the webhook → stored → its turn', r.error);
-check(/^airport-road\/[0-9a-f-]{36}\/[0-9a-f-]{36}\.ogg$/.test(r.m?.media_path ?? ''), '1 wa-automation downloaded the file into hub-media', r.m?.media_path);
+check(/^airport-road\/[0-9a-f-]{36}\/[0-9a-f-]{36}\.ogg$/.test(r.after?.media_path ?? ''), '1 wa-automation downloaded the file into hub-media', r.after?.media_path);
 check(r.claim?.unit?.media?.voice === true && r.claim?.voice?.cap_seconds === 3600, '1 the claim: «الفويس» on, 60 minutes', JSON.stringify(r.claim?.unit?.media));
-check(r.loads?.[0] === r.m?.media_path, '1 the engine read the stored file');
+check(!!r.loads?.[0] && r.loads[0] === r.after?.media_path, '1 the engine read the stored file');
 check(r.after?.media_status === 'transcribed' && r.after?.transcript === 'هل عندكم مواقف للسيارات؟' && Number(r.after?.transcript_seconds) > 11, '1 the transcript stored on the message', JSON.stringify(r.after));
 check(r.finish?.state !== 'human' && r.replies.some((b) => b.includes('المواقف مجانية')), '1 answered in text, queued (never sent: the branch has no YCloud key)', JSON.stringify(r.replies));
 const usage = (await c.rest(`/rest/v1/hub_usage_daily?select=audio_seconds,cost_usd,source&layer=eq.transcribe`)).json ?? [];
