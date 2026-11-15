@@ -14,6 +14,12 @@
 
 See DECISIONS.md 2026-11-15 «Guest Hub: learning built» → «Results».
 
+## Added the same evening (Ahmed 21:10 and 21:20)
+
+- **Reply speed:** the burst wait at most 3 s (2000 ms), «يكتب…» as soon as a live reply turn starts, room types and offers read beside the understanding, the fixed prompt blocks cached. Measured before: text median 14.3 s from the guest's send to YCloud (4.2 s of it the burst). The after numbers: `docs/guest-hub/latency.sql` once live turns come in.
+- **Group and hall requests:** the missing details collected first (at most twice), routed ONCE (2–4 rooms → reception with the details; 5+, a company, Umrah, the hall → a partner enquiry, the sales email and one confirmation with the sales contacts); a later detail updates the same request, never «أيضًا».
+- Migrations `20261115700000_guest_hub_speed`, `20261115800000_guest_hub_groups`; wa-automation 16, hub-agent 18, hub-admin 19 (rollback 15 / 17 / 18); the production lab 185 / 185.
+
 ## Rollback
 
 Functions before this session: wa-automation 14, hub-agent 16, hub-admin 17. To roll the behaviour back without code: «الفريق والتقارير» → «التعلّم» → both «إيقاف» (the commands then answer «متوقف» and staff replies queue nothing); the learned cards stay archivable one by one. A code rollback re-deploys those versions; the migration's tables can stay.
