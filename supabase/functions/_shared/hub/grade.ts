@@ -127,6 +127,8 @@ export function expectedAction(item: Item, skills: string[]): { action: string; 
   // H6 pass 5 (Ahmed, 15 Nov 2026): before H8 a stay is collected and quoted in the chat (copy.md §4.0) — the summary and
   // the booking itself are H8's, so a summary expectation is met by the quote with the website's link
   if (!booking && a === 'send_summary') return { action: 'quote', applies: false };
+  // H8: the summary is the engine's outcome «summary»
+  if (booking && a === 'send_summary') return { action: 'summary', applies: true };
   // the natural-conversation policy: small talk is a model-written reply, off-topic a polite redirect
   if (a === 'refuse') return { action: 'redirect', applies: true };
   if (a === 'greeting') return { action: 'reply', applies: true };

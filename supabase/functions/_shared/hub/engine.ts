@@ -388,6 +388,19 @@ export async function runTurn(claim: Json, deps: Deps): Promise<Outcome> {
     return orderCards(cards, lastRoom && lastRoom.branch === branch ? String(lastRoom.room ?? '') : null);
   };
   const t2 = (x: string) => d.transitions.push(x);
+  // H8: what the guest already gave for the stay (or the group / hall request) — a question about the rest may repeat it
+  // («من 20 إلى 22 ديسمبر لشخصين — هل تريدها مع الإفطار؟») without the guard refusing the guest's own numbers
+  const stayKnown = (dec: Decision): Record<string, unknown> | null => {
+    const f = dec.draft_patch?.fields ?? lastPatch?.fields ?? draft?.fields ?? null;
+    if (!f) return null;
+    const k: Record<string, unknown> = {};
+    if (f.check_in) k.arrival = deps.longDate(String(f.check_in), L);
+    if (f.check_out) k.departure = deps.longDate(String(f.check_out), L);
+    for (const x of ['adults', 'children', 'rooms_count', 'nights'] as const) if (typeof f[x] === 'number') k[x] = f[x];
+    if (Array.isArray(f.child_ages)) k.child_ages = f.child_ages;
+    if (typeof f.guest_name === 'string' && f.guest_name.trim()) k.guest_name = f.guest_name;
+    return Object.keys(k).length ? { guest_gave: k } : null;
+  };
   const emptyPayload = (): Payload => buildPayload({ cards: [], faq: [] }, { offers: null, venue: null, first_name: claim.guest?.first_name ?? null, cancellation: String(deps.content.cancellation_line[L]) });
   const unanswered: string[] = [];
   const lastGuest = msgs[msgs.length - 1]?.id as string | undefined;
@@ -470,7 +483,7 @@ export async function runTurn(claim: Json, deps: Deps): Promise<Outcome> {
               if (!a.nogap) gap();
               break;
             }
-            const c = await compose(payload, 'answer', askFor);
+            const c = await compose(askFor ? { ...payload, quote: stayKnown(dec) ?? payload.quote } : payload, 'answer', askFor);
             if (askFor && c !== 'credit' && c !== 'guard' && c !== 'error' && c.reply) skipAsk = true;
             if (c === 'credit') return null;
             if (c === 'guard' || c === 'error') break;
@@ -528,7 +541,7 @@ export async function runTurn(claim: Json, deps: Deps): Promise<Outcome> {
             lastAction = 'سؤال عن تفاصيل الإقامة';
             break;
           }
-          const c = await compose(emptyPayload(), 'ask', a.slots);
+          const c = await compose({ ...emptyPayload(), quote: stayKnown(dec) }, 'ask', a.slots);
           if (c === 'credit') return null;
           // the fallback names what this request needs (a group's rooms and name, the hall's event — 15 Nov 2026)
           const fb = a.slots.some((k) => ['event_date', 'attendees', 'layout', 'coffee_break'].includes(k)) ? 'hall_ask'
