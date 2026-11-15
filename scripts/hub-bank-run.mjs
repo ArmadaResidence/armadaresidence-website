@@ -185,6 +185,7 @@ async function learnOne(q) {
         const v = L.scopeVerdict(t, scope);
         if (st.teach.who !== 'owner' && st.teach.who !== 'manager') got = 'not_allowed';
         else if (v !== 'ok') got = v;
+        else if (L.textRefusal(cmd.body, 'teach', t.owner)) got = L.refusalLine(L.textRefusal(cmd.body, 'teach', t.owner));
         else {
           const out = L.teachOutcome(await learnCall('teach', scope, { text: cmd.body }, t.owner));
           if (out.status === 'learned') {
@@ -244,8 +245,13 @@ async function learnOne(q) {
       } else got = 'not_a_command';
       if (e.line && got !== e.line) reasons.push(`${tag}:line:${e.line}:${got}`);
     } else if (st.staff_reply) {
-      const r = await learnCall('staff_reply', q.unit, { question: st.staff_reply.question, reply: st.staff_reply.reply }, false);
-      if (!r.ok) got = 'failed';
+      const pre = L.textRefusal(st.staff_reply.reply, 'staff_reply', false);
+      const r = pre ? { ok: true, facts: [] } : await learnCall('staff_reply', q.unit, { question: st.staff_reply.question, reply: st.staff_reply.reply }, false);
+      if (pre) {
+        got = 'decision';
+        reply = 'decision:price';
+        if (e.kind && e.kind !== 'price') reasons.push(`${tag}:decision:${e.kind}:price`);
+      } else if (!r.ok) got = 'failed';
       else {
         const o = L.replyOutcome(r.facts);
         got = o.learn.length ? 'learned' : o.decision ? 'decision' : 'empty';

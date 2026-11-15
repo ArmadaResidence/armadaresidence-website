@@ -87,6 +87,11 @@ const user = L.learnUser({ mode: 'staff_reply', scope: 'airport-road', today: '2
 check(/^MODE: staff_reply\nBRANCH: airport-road\nTODAY: 2026-11-15\nGUEST_QUESTION: هل يوجد ميكروويف؟\nSTAFF_REPLY: نعم في المطبخ\nTOPIC_KEYS:\nfacilities: Facilities \/ المرافق\nEXISTING_CARDS: \[/.test(user), 'the user message of prompts.md §7 (one line per field)', user.slice(0, 200));
 check(L.cardScope(['airport-road']) === 'airport-road' && L.cardScope([]) === 'both' && L.cardScope(['airport-road', 'shafa-road']) === 'both' && L.cardScope(['lobby-cafe']) === 'both', 'a card\'s branch for EXISTING_CARDS');
 
+check(L.textRefusal('الكواية بـ 15 ريال للقطعة', 'staff_reply', false) === 'price' && L.textRefusal('نعم نوفر شماسي مجانًا', 'staff_reply', false) === null, 'a staff reply with a price is never learned (code, before any model call)');
+check(L.textRefusal('سعر الاستديو 250 ريال في الليلة', 'teach', true) === 'room_price' && L.textRefusal('الكواية بـ 15 ريال', 'teach', false) === 'service_price' && L.textRefusal('الكواية بـ 15 ريال', 'teach', true) === null, 'teaching: a room price never, a service price only from Ahmed');
+const run = read('supabase/functions/_shared/hub/learn-run.ts');
+check((run.match(/textRefusal\(/g) ?? []).length === 2 && run.indexOf('textRefusal(String(j.reply') < run.indexOf("mode: 'staff_reply', scope"), 'the jobs check the words before the model');
+
 // ── the fixed lines ──
 const g = generated();
 check(eq(g.learn_lines, JSON.parse(read('supabase/functions/_shared/hub/text.generated.json')).learn_lines), 'copy.md §9.1 = text.generated.json (run scripts/hub-text-build.mjs after editing copy.md)');

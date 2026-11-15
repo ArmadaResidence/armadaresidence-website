@@ -200,6 +200,16 @@ export function cardRefusal(card: CardFacts, c: CheckContext, known: string[]): 
   return null;
 }
 
+/** what code refuses from the colleague's own words, before any model call: a price in a staff reply is never learned
+ *  (Ahmed: «a candidate that carries a price is not learned»); a room price is never taught; a service price only by Ahmed */
+export function textRefusal(text: string, mode: Mode, prices: boolean): RefuseReason | null {
+  const t = west(String(text ?? ''));
+  if (!AMOUNT.test(t)) return null;
+  if (ROOM_WORDS.test(t)) return 'room_price';
+  if (mode === 'staff_reply') return 'price';
+  return prices ? null : 'service_price';
+}
+
 /** a staff reply's facts: the cards to learn, and what needs Ahmed's decision (a price, a contradiction); everything
  *  else (a guest's detail, a one-off promise, an opinion, nothing general) is dropped */
 export function replyOutcome(facts: Fact[]): { learn: { card: CardFacts }[]; decision: { kind: 'price' | 'contradiction'; conflicts: string[] } | null } {

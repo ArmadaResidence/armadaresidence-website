@@ -10,7 +10,7 @@
  * Never logs a text, a name or a number.
  */
 import { sendSession, textPayload, type WaResult } from '../../booking-request/whatsapp-send.ts';
-import { checkFacts, learnCommand, learnLine, learnSystem, learnUser, refusalLine, replyOutcome, teachOutcome, type LineKey, type Scope } from './learn.ts';
+import { checkFacts, learnCommand, learnLine, learnSystem, learnUser, refusalLine, replyOutcome, teachOutcome, textRefusal, type LineKey, type Scope } from './learn.ts';
 import type { ModelFn } from './model.ts';
 
 // deno-lint-ignore no-explicit-any
@@ -53,8 +53,11 @@ export async function runTeachJobs(call: Call, model: ModelFn, opts: RunOpts): P
     for (const j of jobs) {
       const cmd = learnCommand(String(j.text ?? ''));
       const body = cmd && cmd.kind === 'teach' ? cmd.body : String(j.text ?? '');
-      const r = await model({ layer: 'compose', model: modelId, system: learnSystem(), user: learnUser({ mode: 'teach', scope: j.scope, today: String(c.today), text: body, topics, cards }) });
-      const out = r.ok
+      // a room price, or a service price from a manager: refused by code, no model call
+      const pre = textRefusal(body, 'teach', !!j.teacher?.owner);
+      const r = pre ? { ok: true, text: '', input_tokens: 0, output_tokens: 0, error: null } as Awaited<ReturnType<ModelFn>>
+        : await model({ layer: 'compose', model: modelId, system: learnSystem(), user: learnUser({ mode: 'teach', scope: j.scope, today: String(c.today), text: body, topics, cards }) });
+      const out = pre ? { status: 'refused' as const, reason: pre } : r.ok
         ? teachOutcome(checkFacts(r.text, { mode: 'teach', topics: topics.map((t) => t.key), cards: cards.map((k) => k.key), forbidden: c.forbidden ?? [], prices: !!j.teacher?.owner }, c.known_phones ?? undefined))
         : { status: 'failed' as const, reason: r.error === 'credit' ? 'api_credit' : 'model' };
       const o = out as { status: string; reason?: string; card?: unknown; conflicts?: string[] };
@@ -87,10 +90,14 @@ export async function runReplyJobs(call: Call, model: ModelFn, opts: RunOpts): P
     const topics = (c.topics ?? []) as { key: string; label_en: string; label_ar: string }[];
     const cards = (c.cards ?? []) as { key: string; branch: Scope; title: string; text: string }[];
     for (const j of jobs) {
-      const r = await model({ layer: 'compose', model: modelId, system: learnSystem(),
-        user: learnUser({ mode: 'staff_reply', scope: j.branch, today: String(c.today), question: j.question, reply: String(j.reply ?? ''), topics, cards }) });
+      // a staff reply with a price is never learned: «يحتاج قرارك» at once, no model call
+      const pre = textRefusal(String(j.reply ?? ''), 'staff_reply', false);
+      const r = pre ? { ok: true, text: '', input_tokens: 0, output_tokens: 0, error: null } as Awaited<ReturnType<ModelFn>>
+        : await model({ layer: 'compose', model: modelId, system: learnSystem(),
+          user: learnUser({ mode: 'staff_reply', scope: j.branch, today: String(c.today), question: j.question, reply: String(j.reply ?? ''), topics, cards }) });
       let p: Json;
-      if (!r.ok) p = { status: 'failed', reason: r.error === 'credit' ? 'api_credit' : 'model' };
+      if (pre) p = { status: 'decision', decision: { kind: 'price', conflicts: [] }, facts: [], staff_name: j.staff_first_name };
+      else if (!r.ok) p = { status: 'failed', reason: r.error === 'credit' ? 'api_credit' : 'model' };
       else {
         const chk = checkFacts(r.text, { mode: 'staff_reply', topics: topics.map((t) => t.key), cards: cards.map((k) => k.key), forbidden: c.forbidden ?? [], prices: false }, c.known_phones ?? undefined);
         if (!chk.ok) p = { status: 'failed', reason: chk.reason };
