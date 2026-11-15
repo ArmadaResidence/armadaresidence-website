@@ -621,6 +621,14 @@
         "ratings": {"GREEN": "مرتفع", "HIGH": "مرتفع", "YELLOW": "متوسط", "MEDIUM": "متوسط", "RED": "منخفض", "LOW": "منخفض", "FLAGGED": "منخفض"},
         "button": "فتح إعدادات المساعد"
       },
+      "hub_daily": {
+        "_note": "Guest Hub H6c (15 Nov 2026, copy.md §7 «Morning summary» — the email archive of the daily WhatsApp report hub_daily_report, the same figures, never money): once a day after the report is sent, to the hub_summary recipients (filter confirmed). No guest words, no phone.",
+        "subject": "ملخص مركز الضيوف — {date} — AR-HUB-{yyyymmdd}",
+        "heading": "أمس في مركز الضيوف",
+        "lines": ["المحادثات: {conversations}", "رد عليها المساعد: {assistant}", "حُوّلت للفريق: {handed}", "متوسط رد الفريق على التحويل: {reply_avg}", "حجوزات من المحادثة: {bookings}", "الخروج أو التمديد: {checkout}", "طلبات التقييم المرسلة: {reviews}", "أسئلة لم يعرف إجابتها: {unanswered}", "بطاقات معرفة جديدة: {cards}", "أعطال: {faults}"],
+        "button": "فتح التقرير",
+        "footer": "للاستخدام الداخلي"
+      },
       "hub_expiry": {
         "_note": "Guest Hub H4 (14 Nov 2026, copy.md §7 row 5 — the wording of Ahmed's brief): once a day (08:00 Riyadh), when a knowledge card ends within hub_card_expiry_alert_days or an offer within hub_offer_expiry_alert_days and the list was not yet sent — every item ending soon, one line each. To the active admins. No guest words.",
         "subject": "تنبيهات مركز الضيوف — {date} — AR-HUB-{yyyymmdd}",

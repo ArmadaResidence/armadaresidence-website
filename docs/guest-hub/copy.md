@@ -249,6 +249,8 @@ Payment on arrival at the hotel.
 | Booking status (same phone only) | «حجزك رقم {ref} في {branch_name} من {check_in} إلى {check_out}: {status_text}.» — «مؤكد» / «طلب يراجعه الاستقبال» / «ملغي» | “Booking {ref} at {branch_name}, {check_in} to {check_out}: {status_text}.” — “confirmed” / “a request under review by reception” / “cancelled” |
 | Outside Armada's services | «نستطيع مساعدتك هنا في الحجز والإقامة وخدمات أرمادا ريزيدنس فقط.» | “Here we can help only with bookings, stays and Armada Residence services.” |
 | A third language (both lines sent) | «نستطيع مساعدتك بالعربية أو الإنجليزية، وسيطّلع الفريق على رسالتك أيضًا.» | “We can help you in Arabic or English, and the team will also see your message.” |
+| Added to a waiting hand-off (the fallback of the model-written line) | «أضفنا ذلك إلى طلبك لدى الفريق، وسيكمل معك أحدهم في هذه المحادثة.» | “We’ve added that to your request with the team; one of them will continue with you in this chat.” |
+| Colleague chat fallback (a staff or report number; the model's reply refused or unreachable) | «وصلت رسالتك 👍 للمحادثات المنتظرة افتح «المحادثات» في لوحة التحكم.» | “Got your message 👍 For the waiting chats, open «المحادثات» in the dashboard.” |
 
 `{menu_url}`: `https://armadaresidence.com/menu/` (Arabic) or `https://armadaresidence.com/en/menu/` (English) for the lobby café — from `dining_venues`.
 

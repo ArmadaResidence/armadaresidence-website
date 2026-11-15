@@ -259,11 +259,16 @@ function simState(x: unknown): SimState {
   return {
     state: states.includes(o.state) ? o.state : 'new',
     first_reply: o.first_reply !== false,
-    history: (Array.isArray(o.history) ? o.history : []).slice(-12).filter((h: any) => h && (h.author === 'guest' || h.author === 'us') && typeof h.body === 'string')
+    history: (Array.isArray(o.history) ? o.history : []).slice(-12).filter((h: any) => h && (h.author === 'guest' || h.author === 'us' || h.author === 'staff') && typeof h.body === 'string')
       .map((h: any) => ({ author: h.author, body: String(h.body).slice(0, 1500) })),
     draft: o.draft && typeof o.draft === 'object' && typeof o.draft.kind === 'string' ? { id: 'sim-draft', kind: o.draft.kind, version: Number(o.draft.version ?? 1), fields: o.draft.fields ?? {}, quote: o.draft.quote ?? null } : null,
     failed_understandings: Math.max(0, Math.min(10, Number(o.failed_understandings ?? 0) || 0)),
     out_of_scope: Math.max(0, Math.min(10, Number(o.out_of_scope ?? 0) || 0)),
+    // H6c: «مع الفريق» in the simulator is «بانتظار موظف» (no staff reply in a simulation) — the assistant keeps answering
+    human_phase: o.state === 'human' ? 'waiting' : null,
+    state_before_human: states.includes(o.state_before_human) && o.state_before_human !== 'human' && o.state_before_human !== 'closed' ? o.state_before_human : null,
+    clock: 0,
+    staff_at: null,
   };
 }
 /** an unsaved persona (only its known fields) */
@@ -427,7 +432,10 @@ Deno.serve(async (req) => {
       model_errors: (f.models ?? []).filter((m) => !m.ok).map((m) => ({ layer: m.layer, error: m.error ?? 'other' })),
       error_code: f.error ?? null,
       message_kind: 'text',
-      decision: { from: sim.state, to: f.state ?? sim.state, actions: f.decision?.actions ?? [], transitions: f.decision?.transitions ?? [], reason: f.reason ?? null },
+      decision: { from: sim.state, to: f.state ?? sim.state, actions: f.decision?.actions ?? [], transitions: f.decision?.transitions ?? [], reason: f.reason ?? null,
+        // H6c: the half of «مع الفريق» the conversation is in after this turn, and the flow kept under the hand-off
+        human_phase: (f.state ?? sim.state) === 'human' ? 'waiting' : null,
+        state_before_human: (f.state ?? sim.state) === 'human' ? (sim.state !== 'human' ? sim.state : f.resume_state ?? sim.state_before_human) : null },
       sources: {
         cards: [...new Set(f.messages.flatMap((m) => m.source_card_ids ?? []))].map((id) => allCards.find((x) => x.id === id)).filter(Boolean).map((x: any) => ({ key: x.key, title: x.title })),
         read: allCards.map((x: any) => ({ key: x.key, title: x.title })), faq: read.flatMap((r) => r.faq.map((x: any) => ({ key: x.key, q: x.q }))),

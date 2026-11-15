@@ -36,6 +36,7 @@ import { fixed } from '../_shared/hub/copy.ts';
 import { engineVersion, runItem } from '../_shared/hub/eval.ts';
 import { grade, type Item } from '../_shared/hub/grade.ts';
 import { checkDraft, dateText, draftCardSystem, draftCardUser, type CardJob } from '../_shared/hub/draft-card.ts';
+import { drainStaff } from '../_shared/hub/staff-send.ts';
 
 const ALERT_FROM = 'لوحة أرمادا ريزيدنس <no-reply@armadaresidence.com>';
 const BUDGET_MS = 50_000;
@@ -315,6 +316,8 @@ async function process(turnId: string, model: ModelFn, deadline: number): Promis
     await rpc('hub_api_credit_mark', { p_exhausted: false }).catch(() => null);
   }
   const sent = await sendAll(fin);
+  // H6c: a new hand-off queued its staff alert (hub_staff_alert to the on-shift slots): sent now, from the branch's number
+  if (fin?.alerts) await drainStaff((n, a) => rpc(n, a), content).catch((e) => console.error('hub-agent: staff alerts', String(e).slice(0, 80)));
   // the model could not be reached for this turn (after model.ts's retries): the turn went to the team with the no-source
   // notice; logged by its kind (never a guest's words) and counted on the unit's «model_error» alert — from the third in 30
   // minutes ONE email to the active admins (H6 pass 3, Ahmed 14 Nov 2026)

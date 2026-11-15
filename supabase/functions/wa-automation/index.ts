@@ -62,6 +62,8 @@ import {
   parseStatus, route, type Inbound,
 } from '../_shared/hub/webhook.ts';
 import { autoPayload, cleanParam, replyLocale, verifySignature, type AutoMessage, type AutoTemplate, type Locale, type OfferVars } from './templates.ts';
+import { drainStaff, emailReports, staffChat, type Call } from '../_shared/hub/staff-send.ts';
+import { anthropicModel } from '../_shared/hub/model.ts';
 
 const YCLOUD = 'https://api.ycloud.com/v2';
 const TIMEOUT_MS = 8000;
@@ -318,10 +320,39 @@ async function queueTurn(conversation: string, message: string, test: boolean): 
   return 'queued';
 }
 
+/** H6c: a database call that throws (the shared staff sender's shape) */
+const call: Call = async <T,>(name: string, args: Record<string, unknown>): Promise<T> => {
+  const r = await rpc<T>(name, args);
+  if (!r.ok) throw new Error(`${name} ${r.status} ${r.message.slice(0, 120)}`);
+  return r.data;
+};
+
+/** H6c: the staff alerts and daily reports waiting, then the reports' email archive (pg_cron hub-team, «إرسال تجربة لي») */
+async function staffQueue(): Promise<Record<string, unknown>> {
+  const d = await drainStaff(call, content);
+  const emails = await emailReports(call, content, sendAdminMail);
+  return { ...d, emails };
+}
+
 // deno-lint-ignore no-explicit-any
 async function handleInbound(ev: any, test: boolean): Promise<Record<string, unknown>> {
   const m = parseInbound(ev?.whatsappInboundMessage);
   if (m.referral) console.log('wa-automation: referral', describe(ev));
+  // H6c (Ahmed, 15 Nov 2026): a number in «فريق الاستقبال» or the report list is never a guest — no episode, no opt-out
+  // words, no marketing: the colleague chat answers it (unless its «يُعامَل كضيف للتجربة» is on)
+  if (m.from && m.to) {
+    const who = await rpc<{ kind: string; test_as_guest: boolean } | null>('hub_staff_number', { p_phone: m.from });
+    if (!who.ok) console.error('wa-automation: staff lookup failed', who.status);
+    else if (who.data && !who.data.test_as_guest) {
+      if (m.kind !== 'text' && m.kind !== 'interactive' && m.kind !== 'button_reply') return { kind: 'staff', handled: false, message_kind: m.kind };
+      const model = anthropicModel(Deno.env.get('ANTHROPIC_API_KEY') ?? '');
+      const r = await staffChat(call, content, model, { from: m.from, to: m.to, text: m.text, id: m.id ?? '', sentAt: m.sentAt, kind: m.kind }, test).catch((e) => {
+        console.error('wa-automation: staff chat failed', String(e).slice(0, 120));
+        return { staff: true, error: true };
+      });
+      return { kind: 'staff', ...r };
+    }
+  }
   // 0. storage — only while «تخزين المحادثات» is on (the RPC decides; nothing is stored otherwise)
   let stored = false;
   let convId: string | null = null;
@@ -408,6 +439,9 @@ async function handleInbound(ev: any, test: boolean): Promise<Record<string, unk
 async function handleEcho(raw: any, test: boolean): Promise<Record<string, unknown>> {
   const e = parseEcho(raw);
   if (!e.id || !e.from || !e.to) return { kind: 'echo', stored: false };
+  // H6c: the branch phone writing to a colleague is never a guest conversation
+  const who = await rpc<{ kind: string; test_as_guest: boolean } | null>('hub_staff_number', { p_phone: e.to });
+  if (who.ok && who.data && !who.data.test_as_guest) return { kind: 'echo', stored: false, reason: 'staff_number' };
   const r = await rpc<{ stored: boolean; reason?: string }>('hub_ingest_echo', {
     p: { channel: e.from, phone: e.to, provider_id: e.id, sent_at: e.sentAt, kind: e.kind, body: e.text || null, payload: e.payload, is_test: test },
   });
@@ -597,6 +631,12 @@ async function dashboard(req: Request, body: Record<string, unknown>, jwt: strin
 
 async function qa(req: Request, body: Record<string, unknown>): Promise<Response> {
   if (body.action === 'qa-drain') return json(req, 200, { ok: true, ...(await drain()) });
+  // H6c (a preview branch): the TEST staff alerts and reports — each payload built and handed back, recorded test, never sent
+  if (body.action === 'qa-staff') {
+    const payloads: { kind: string; payload: unknown }[] = [];
+    const r = await drainStaff(call, content, { test: true, collect: (kind, payload) => payloads.push({ kind, payload }) });
+    return json(req, 200, { ok: true, ...r, payloads });
+  }
   if (body.action === 'qa-hook') return json(req, 200, { ok: true, result: await handleEvent(body.payload, true) });
   if (body.action === 'qa-send') {
     const template = String(body.template ?? '') as AutoTemplate;
@@ -637,6 +677,7 @@ Deno.serve(async (req) => {
     if (body.action === 'hub-media-purge') return json(req, 200, { ok: true, ...(await mediaPurge()) });
     if (body.action === 'hub-escalate') return json(req, 200, { ok: true, ...(await escalate()) });
     if (body.action === 'hub-expiry') return json(req, 200, { ok: true, ...(await expiry()) });
+    if (body.action === 'hub-staff') return json(req, 200, { ok: true, ...(await staffQueue()) });
     return json(req, 400, { ok: false });
   }
   if (same(req.headers.get('x-armada-test') ?? '', Deno.env.get('BOOKING_TEST_TOKEN') ?? '')) return await qa(req, body);

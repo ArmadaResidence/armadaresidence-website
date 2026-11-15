@@ -9,7 +9,8 @@
  * Pure apart from the injected fetch; the checks replay recorded answers through `replayModel`.
  */
 
-export type Layer = 'understand' | 'tag' | 'compose' | 'translate' | 'suggest';
+/** H6c: summary = the staff alert's line (Haiku); staff_chat = the colleague chat with a staff or report number */
+export type Layer = 'understand' | 'tag' | 'compose' | 'translate' | 'suggest' | 'summary' | 'staff_chat';
 export interface ModelCall {
   layer: Layer;
   model: string;
@@ -34,6 +35,8 @@ export const CEILINGS: Record<Layer, { max_tokens: number; max_input_chars: numb
   compose: { max_tokens: 900, max_input_chars: 16000 },
   suggest: { max_tokens: 1200, max_input_chars: 16000 },
   translate: { max_tokens: 800, max_input_chars: 6000 },
+  summary: { max_tokens: 120, max_input_chars: 4000 },
+  staff_chat: { max_tokens: 400, max_input_chars: 8000 },
 };
 
 /** the request body of one call (exported for the checks) */

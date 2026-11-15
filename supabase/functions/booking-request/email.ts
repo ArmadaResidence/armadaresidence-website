@@ -1610,6 +1610,34 @@ ${buttons(L, [button(L, url, M.button, 'bronze')])}`,
   return { subject, html, text };
 }
 
+/** «ملخص مركز الضيوف» (H6c, 15 Nov 2026 — copy.md §7 «Morning summary»): the email archive of the daily WhatsApp report —
+ *  the same eleven figures (the template's lines, «المطار X · الشفا Y»), never money; to the hub_summary recipients */
+export interface HubDailyMail {
+  day: string;
+  /** reportVars() of _shared/hub/staff.ts — the eleven values of hub_daily_report */
+  vars: string[];
+}
+export function hubDailyMail(c: Content, d: HubDailyMail): Mail {
+  const L: Locale = 'ar';
+  const M = c.staff_email.ar.hub_daily;
+  const v = d.vars;
+  const keys = { conversations: v[1], assistant: v[2], handed: v[3], reply_avg: v[4], bookings: v[5], checkout: v[6], reviews: v[7], unanswered: v[8], cards: v[9], faults: v[10] };
+  const subject = fill(M.subject, { date: longDate(c, d.day, 'ar'), yyyymmdd: d.day.slice(0, 10).replace(/-/g, '') });
+  const lines = (M.lines as string[]).map((l) => fill(l, keys));
+  const url = `${String(c.admin_url ?? 'https://admin.armadaresidence.com').replace(/\/$/, '')}/?hub_r=${d.day.slice(0, 10)}`;
+  const inner = section(
+    L,
+    `${headline(L, M.heading)}
+${lines.map((l) => para(L, l)).join('\n')}
+<div style="height:18px; line-height:18px; font-size:0;">&nbsp;</div>
+${buttons(L, [button(L, url, M.button, 'bronze')])}
+${para(L, M.footer)}`,
+  );
+  const html = doc({ lang: 'ar', title: subject, preheader: lines[0] ?? M.heading, body: header(c, undefined, true) + card(inner) + footer(c, ['ar']), print: true });
+  const text = [M.heading, '', ...lines, '', `${M.button}: ${url}`, M.footer, '', legalText(c, 'ar')].join('\n');
+  return { subject, html, text };
+}
+
 // ══ Guest Hub H5 (14 Nov 2026): the engine's staff emails — Arabic only, no guest words, no phone number ══════════════
 const hubDay = (at: string | Date) =>
   new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Riyadh', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(at)).replace(/-/g, '');

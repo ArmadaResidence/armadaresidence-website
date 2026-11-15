@@ -119,6 +119,10 @@ export function expectedAction(item: Item, skills: string[]): { action: string; 
 export function outcomeKind(finish: Json): string {
   const acts: string[] = finish.decision?.actions ?? [];
   const tr: string[] = finish.decision?.transitions ?? [];
+  // H6c: «مع موظف» — silent; «بانتظار موظف» — a further request added to the hand-off (T37), or answered in place (T36)
+  if (finish.decision?.silent) return 'none';
+  if (tr.includes('T37')) return finish.decision?.answered ? 'answer_handoff' : 'handoff_add';
+  if (tr.includes('T36') && finish.state === 'human') return outcomeKind({ ...finish, state: finish.resume_state ?? 'inquiry', decision: { ...finish.decision, transitions: tr.filter((x: string) => x !== 'T36') } });
   // a mixed message (H6 gaps): the sourced question answered, then the stay / hall / group request to the team
   if (finish.state === 'human' && finish.decision?.answered === true && REQUEST_REASONS[finish.reason ?? '']) return 'answer_handoff';
   if (finish.state === 'human') return finish.reason === 'third_language' ? 'third_language' : finish.reason === 'out_of_scope' ? 'out_of_scope' : 'handoff';
@@ -208,7 +212,7 @@ export function gradeConversation(item: Item, o: Outcome): Grade {
     const okKind = want.includes(kind) || (g.kind === 'answer_handoff' && want.includes('handoff'));
     if (!okKind) reasons.push(`s${i + 1}:${want.join('|')}:${g.kind}`.slice(0, 80));
     if (!g.replies.length && !want.includes('none')) reasons.push(`s${i + 1}:silent`);
-    const gapAllowed = e.gap ?? (kind === 'handoff' ? null : false);
+    const gapAllowed = e.gap ?? (kind === 'handoff' || kind === 'handoff_add' ? null : false);
     if (gapAllowed === false && g.gap) reasons.push(`s${i + 1}:gap`);
     if (e.gap === true && !g.gap) reasons.push(`s${i + 1}:no_gap`);
     const text = g.replies.map((x) => x.body).join('\n');

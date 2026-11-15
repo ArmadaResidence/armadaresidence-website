@@ -12,6 +12,7 @@ import { scrub } from '../understand.ts';
 // deno-lint-ignore no-explicit-any
 const P = (text as any).prompts as {
   understand_system: string; understand_schema: string; compose_system: string; compose_user: string; suggest_system: string; translate_system: string;
+  summary_system: string; staff_system: string;
   compose_examples: { branch: string; guest: string; output: string }[]; tones: Record<string, { label: string; line: string }>;
 };
 export const PROMPTS = P;
@@ -29,15 +30,20 @@ export function suggestSystem(unitName: string): string {
   return P.suggest_system.replace(/\{unit_name\}/g, unitName);
 }
 export const translateSystem = () => P.translate_system;
+/** H6c: prompts.md §8 (the staff alert's line) and §9 (the colleague chat) */
+export const summarySystem = () => P.summary_system;
+export const staffSystem = () => P.staff_system;
 export const understandSystem = () => P.understand_system;
 export const understandSchema = () => P.understand_schema;
 
 export interface ComposeInput {
-  action: 'answer' | 'ask' | 'chat' | 'clarify' | 'redirect';
+  /** handoff_ack (H6c): «بانتظار موظف» — a short acknowledgement that a further request joined the team's hand-off */
+  action: 'answer' | 'ask' | 'chat' | 'clarify' | 'redirect' | 'handoff_ack';
   ask_for?: string[];
   branch: string;
   turn: string[];
-  history: { author: 'guest' | 'us'; body: string }[];
+  /** 'staff' (H6c): a message a staff member sent (the inbox or the branch phone) — the reply never contradicts it */
+  history: { author: 'guest' | 'us' | 'staff'; body: string }[];
   payload: Payload;
   /** H6 pass 5: the line the system puts before the reply (the greeting of copy.md §1, «وعليكم السلام»), or null */
   opening?: string | null;

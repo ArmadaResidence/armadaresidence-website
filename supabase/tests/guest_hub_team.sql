@@ -304,15 +304,17 @@ select pg_temp._check('W4 the answer sent while waiting does not clear the wait 
 -- ══ R — the daily report ══
 delete from public.hub_staff_sends where kind in ('report', 'report_test');
 delete from public.hub_daily_reports where day is not null;
-select pg_temp._save('r1', internal.hub_report_data((now() at time zone 'Asia/Riyadh')::date, now()));
+-- (inside one transaction now() is its start: the rows written by it end at now(), so the window ends a minute later)
+select pg_temp._save('r1', internal.hub_report_data((now() at time zone 'Asia/Riyadh')::date, now() + interval '1 minute'));
 select pg_temp._check('R1 the day''s figures per branch: conversations, hand-offs, the alerts, the replied average — counts only, no money key',
   pg_temp._j('r1') #> '{branches,airport-road}' ? 'handed' and pg_temp._j('r1') #> '{branches,airport-road}' ? 'alerts_sent'
   and (pg_temp._j('r1') #>> '{branches,airport-road,handed}')::int >= 1 and pg_temp._j('r1')::text !~ '(cost|usd|price|revenue|sar)', pg_temp._j('r1')::text);
 select pg_temp._check('R2 before the send time: nothing', internal.hub_report_tick(((current_date::timestamp + time '07:00') at time zone 'Asia/Riyadh')) = 0);
+select pg_temp._save('r3a', to_jsonb(internal.hub_report_tick(((current_date::timestamp + time '08:05') at time zone 'Asia/Riyadh'))));
+select pg_temp._save('r3b', to_jsonb(internal.hub_report_tick(((current_date::timestamp + time '08:06') at time zone 'Asia/Riyadh'))));
 select pg_temp._check('R3 at the send time: yesterday''s report stored once, one send per active recipient; a second tick sends nothing',
-  internal.hub_report_tick(((current_date::timestamp + time '08:05') at time zone 'Asia/Riyadh')) = 2
-  and internal.hub_report_tick(((current_date::timestamp + time '08:06') at time zone 'Asia/Riyadh')) = 0
-  and (select count(*) = 1 from public.hub_staff_sends where kind = 'report' and template = 'hub_daily_report'));
+  pg_temp._j('r3a')::int = 2 and pg_temp._j('r3b')::int = 0
+  and (select count(*) = 1 from public.hub_staff_sends where kind = 'report' and template = 'hub_daily_report'), pg_temp._j('r3a')::text || ' ' || pg_temp._j('r3b')::text);
 select pg_temp._as('mgr');
 select pg_temp._fails('R4 «إرسال تجربة لي» is the system admin''s', $q$select public.hub_report_test()$q$, '42501');
 select pg_temp._as('admin');

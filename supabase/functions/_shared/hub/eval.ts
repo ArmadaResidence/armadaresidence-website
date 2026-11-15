@@ -17,8 +17,8 @@ type Json = any;
 /** the engine's version a run is judged with: the instructions of prompts.md and copy.md as loaded, + this module */
 export async function engineVersion(): Promise<string> {
   // the leading code marks a change of the engine's code that the texts do not show: e2 = the H6 gaps (mixed messages,
-  // the room-only «يبدأ من», the guard's phones, emails and first person); e3 = H6 pass 3 (replyLicence; the workspace usage limit read as the credit); e4 = H6 pass 5 (the natural-conversation policy: kinds, chat / clarify / redirect, the booking conversation, no drafts in «يرد تلقائيًا»); e5 = no second quote when nothing it depends on changed; the guard graded per turn — bump it with any such change
-  const data = new TextEncoder().encode(`e5|${JSON.stringify((text as Json).prompts)}|${JSON.stringify((text as Json).copy)}`);
+  // the room-only «يبدأ من», the guard's phones, emails and first person); e3 = H6 pass 3 (replyLicence; the workspace usage limit read as the credit); e4 = H6 pass 5 (the natural-conversation policy: kinds, chat / clarify / redirect, the booking conversation, no drafts in «يرد تلقائيًا»); e5 = no second quote when nothing it depends on changed; the guard graded per turn; e6 = H6c «بانتظار موظف» / «مع موظف» and the alert line — bump it with any such change
+  const data = new TextEncoder().encode(`e6|${JSON.stringify((text as Json).prompts)}|${JSON.stringify((text as Json).copy)}`);
   const h = new Uint8Array(await crypto.subtle.digest('SHA-256', data));
   return `h6-${[...h.slice(0, 6)].map((b) => b.toString(16).padStart(2, '0')).join('')}`;
 }
@@ -26,12 +26,23 @@ export async function engineVersion(): Promise<string> {
 export interface SimState {
   state: string;
   first_reply: boolean;
-  history: { author: 'guest' | 'us'; body: string }[];
+  history: { author: 'guest' | 'us' | 'staff'; body: string }[];
   draft: Json | null;
   failed_understandings: number;
   out_of_scope: number;
+  /** H6c: «مع الفريق» — waiting (handed, no staff reply), resume (staff silent long enough), or null (a staff member is on it) */
+  human_phase: 'waiting' | 'resume' | null;
+  state_before_human: string | null;
+  /** the simulated clock (ms) and the last staff message's time — a «[staff] …» and a «[wait:N]» line of the bank move them */
+  clock: number;
+  staff_at: number | null;
 }
-export const freshState = (): SimState => ({ state: 'new', first_reply: true, history: [], draft: null, failed_understandings: 0, out_of_scope: 0 });
+export const freshState = (): SimState => ({ state: 'new', first_reply: true, history: [], draft: null, failed_understandings: 0, out_of_scope: 0, human_phase: null, state_before_human: null, clock: 0, staff_at: null });
+
+/** a conversation-bank line that is not a guest message (H6c): «[staff] text» (a staff reply), «[wait:16]» (minutes pass) */
+export const STAFF_LINE = /^\[staff\]\s*([\s\S]+)$/;
+export const WAIT_LINE = /^\[wait:(\d{1,4})\]$/;
+export const isGuestLine = (m: string) => !STAFF_LINE.test(m) && !WAIT_LINE.test(m);
 
 /** the claim of one guest turn of an item, as hub_turn_claim would hand it over in «تجربة» */
 export function claimOf(ctx: Json, item: Pick<Item, 'key' | 'language' | 'context'>, message: string, st: SimState, persona: Json | null, n: number): Json {
@@ -42,7 +53,8 @@ export function claimOf(ctx: Json, item: Pick<Item, 'key' | 'language' | 'contex
     claimed: true,
     turn: { id: `eval-${item.key}-${n}`, kind: 'reply', mode: 'test', attempts: 1, is_test: true },
     conversation: { id: `eval-${item.key}`, state: st.state, real_state: 'human', language: L, window_expires_at: '2099-01-01T00:00:00Z',
-      failed_understandings: st.failed_understandings, priority: 'normal', topics: [], tags: [], out_of_scope: st.out_of_scope, first_reply: st.first_reply, is_test: true },
+      failed_understandings: st.failed_understandings, priority: 'normal', topics: [], tags: [], out_of_scope: st.out_of_scope, first_reply: st.first_reply, is_test: true,
+      human_phase: st.state === 'human' ? st.human_phase : null, state_before_human: st.state_before_human },
     unit: { ...ctx.unit, mode: 'test', persona: persona ?? ctx.unit?.persona ?? null },
     channel: ctx.channel ?? { address: null, sending_enabled: false },
     guest: { first_name: typeof c.first_name === 'string' ? c.first_name : null, returning: !!c.returning_guest, language: L },
@@ -67,8 +79,15 @@ export function claimOf(ctx: Json, item: Pick<Item, 'key' | 'language' | 'contex
 /** a turn's finish → the next turn's state */
 export function nextState(st: SimState, message: string, f: Finish): SimState {
   const replies = f.messages.map((m) => m.body).filter(Boolean);
+  const to = f.state ?? st.state;
+  // H6c: into «مع الفريق» → waiting; a turn while waiting keeps it waiting; a resumed turn that hands off again → waiting
+  const phase: SimState['human_phase'] = to !== 'human' ? null : 'waiting';
   return {
-    state: f.state ?? st.state,
+    state: to,
+    human_phase: phase,
+    state_before_human: to === 'human' ? (st.state !== 'human' ? st.state : f.resume_state ?? st.state_before_human) : st.state_before_human,
+    clock: st.clock,
+    staff_at: to === 'human' ? st.staff_at : null,
     first_reply: st.first_reply && replies.length === 0,
     history: [...st.history, { author: 'guest' as const, body: message }, ...replies.map((b) => ({ author: 'us' as const, body: b }))].slice(-12),
     draft: f.draft_close ? null : f.draft ? { id: st.draft?.id ?? 'eval-draft', kind: f.draft.kind, version: (st.draft?.version ?? 0) + 1, fields: f.draft.fields, quote: st.draft?.quote ?? null } : st.draft,
@@ -98,16 +117,43 @@ export async function runItem(ctx: Json, item: Item, deps: Deps, persona: Json |
     },
   };
   let error: string | null = null;
+  // a conversation of the bank keeps going after a hand-off (H6c: «بانتظار موظف» answers what it can); a single question
+  // stops there as before
+  const conversation = item.expect?.action === 'conversation';
+  const resumeMin = Number(ctx.settings?.resume_minutes ?? 15);
   for (let i = 0; i < item.messages.length; i++) {
+    const msg = item.messages[i];
+    const staff = STAFF_LINE.exec(msg);
+    const wait = WAIT_LINE.exec(msg);
+    if (staff) {
+      // a staff reply: «مع موظف» (the assistant silent) from now on, until the branch's minutes of staff silence
+      st = { ...st, history: [...st.history, { author: 'staff' as const, body: staff[1].trim() }].slice(-12), state: 'human',
+        human_phase: null, staff_at: st.clock, state_before_human: st.state === 'human' ? st.state_before_human : st.state };
+      continue;
+    }
+    if (wait) {
+      st = { ...st, clock: st.clock + Number(wait[1]) * 60_000 };
+      continue;
+    }
+    if (st.state === 'human' && st.human_phase === null && st.staff_at !== null) {
+      if (st.clock - st.staff_at >= resumeMin * 60_000) st = { ...st, human_phase: 'resume' };
+      else {
+        // «مع موظف»: silent — the message only tagged (no reply)
+        finishes.push({ status: 'done', models: [], guard_refusals: [], topics: [], failed: 'keep', messages: [], state: 'human', decision: { actions: ['noop'], silent: true, transitions: [] } });
+        st = { ...st, history: [...st.history, { author: 'guest' as const, body: msg }].slice(-12) };
+        continue;
+      }
+    }
     try {
-      const out = await runTurn(claimOf(ctx, item, item.messages[i], st, persona, i), d);
+      const out = await runTurn(claimOf(ctx, item, msg, st, persona, i), d);
       finishes.push(out.finish);
       if (out.credit === 'exhausted') {
         error = 'api_credit';
         break;
       }
-      st = nextState(st, item.messages[i], out.finish);
-      if (out.finish.state === 'human' || out.finish.state === 'closed') break;
+      st = nextState(st, msg, out.finish);
+      if (!conversation && (out.finish.state === 'human' || out.finish.state === 'closed')) break;
+      if (out.finish.state === 'closed') break;
     } catch (e) {
       error = String((e as Error)?.name ?? 'engine').toLowerCase().replace(/[^a-z_]/g, '') || 'engine';
       break;

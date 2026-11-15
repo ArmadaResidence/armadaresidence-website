@@ -1,17 +1,65 @@
 {
-  "_note": "The Guest Hub's own WhatsApp templates as Meta approved them (docs/guest-hub/templates.md §1 — submitted and APPROVED 13 Nov 2026, ar + en on both branch numbers, UTILITY, no header or footer, one quick reply; the statuses are read from YCloud into public.hub_templates by «تحديث حالة القوالب»). Never edited from here: a change is a new template name. scripts/whatsapp-check.mjs builds the payload against this definition.",
+  "_note": "The Guest Hub's own WhatsApp templates as Meta approved them (docs/guest-hub/templates.md §1 — submitted and APPROVED 13 Nov 2026, ar + en on both branch numbers, UTILITY, no header or footer, one quick reply; the statuses are read from YCloud into public.hub_templates by «تحديث حالة القوالب»). Never edited from here: a change is a new template name. scripts/whatsapp-check.mjs builds the payload against this definition. H6c (15 Nov 2026): hub_staff_alert and hub_daily_report (approved by Meta, UTILITY, ar, both branch numbers — templates.md §4 and §5) — each sent only after its status and body are read back from YCloud and the body equals this one.",
   "hub_reply_ready": {
     "category": "UTILITY",
-    "variables": ["unit_name"],
+    "variables": [
+      "unit_name"
+    ],
     "ar": {
       "body": "مرحبًا، لدى فريق {{1}} رد على رسالتك الأخيرة.\nاضغط «متابعة المحادثة» أو اكتب لنا هنا لنكمل معك.",
-      "sample": ["أرمادا ريزيدنس طريق المطار"],
+      "sample": [
+        "أرمادا ريزيدنس طريق المطار"
+      ],
       "quick_reply": "متابعة المحادثة"
     },
     "en": {
       "body": "Hello, the {{1}} team has a reply to your last message.\nTap “Continue the chat” or write to us here, and we’ll carry on with you.",
-      "sample": ["Armada Residence Airport Road"],
+      "sample": [
+        "Armada Residence Airport Road"
+      ],
       "quick_reply": "Continue the chat"
+    }
+  },
+  "hub_staff_alert": {
+    "category": "UTILITY",
+    "variables": [
+      "branch_name",
+      "guest_name",
+      "guest_phone",
+      "ref_or_room",
+      "needed"
+    ],
+    "button": {
+      "type": "url",
+      "url": "https://admin.armadaresidence.com/?hub_c={{1}}",
+      "title": "فتح المحادثة"
+    },
+    "ar": {
+      "body": "طلب جديد يحتاج رد الاستقبال في {{1}}.\nالضيف: {{2}} — {{3}}\nالحجز أو الغرفة: {{4}}\nالمطلوب: {{5}}\nيرجى الرد من جوال الفرع أو من لوحة المحادثات."
+    }
+  },
+  "hub_daily_report": {
+    "category": "UTILITY",
+    "variables": [
+      "date",
+      "conversations",
+      "assistant",
+      "handed",
+      "reply_avg",
+      "chat_bookings",
+      "checkout",
+      "reviews",
+      "unanswered",
+      "cards",
+      "faults"
+    ],
+    "button": {
+      "type": "url",
+      "url": "https://admin.armadaresidence.com/?hub_r={{1}}",
+      "title": "فتح التقرير"
+    },
+    "ar": {
+      "body": "تقرير مركز الضيوف ليوم {{1}}:\nالمحادثات: {{2}}\nرد عليها المساعد: {{3}}\nحُوّلت للفريق: {{4}}\nمتوسط رد الفريق على التحويل: {{5}}\nحجوزات من المحادثة: {{6}}\nالخروج أو التمديد: {{7}}\nطلبات التقييم المرسلة: {{8}}\nأسئلة لم يعرف إجابتها: {{9}}\nبطاقات معرفة جديدة: {{10}}\nأعطال: {{11}}\nالتفاصيل الكاملة في لوحة التحكم."
     }
   }
 }

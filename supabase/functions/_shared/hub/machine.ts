@@ -42,6 +42,9 @@ export type Action =
   | { type: 'fixed'; key: string; buttons?: 'quick' | 'dates' | 'team' | null; vars?: Record<string, string | number> }
   | { type: 'booking_status'; ref: string }
   | { type: 'handoff'; reason: string; notice: NoticeKey | null; priority?: 'high'; note: { intent: string; slots: Record<string, unknown>; stopped: string } }
+  /** H6c (Ahmed, 15 Nov 2026): «بانتظار موظف» — a second thing the assistant cannot answer joins the SAME waiting hand-off:
+   *  a short acknowledgement written by the model (never the fixed notice again), a note line, no new staff alert */
+  | { type: 'handoff_add'; reason: string; priority?: 'high'; note: { intent: string; slots: Record<string, unknown>; stopped: string } }
   | { type: 'transfer'; unit: string }
   | { type: 'tag_order' }
   | { type: 'close' }
@@ -88,6 +91,10 @@ export interface Context {
   last_from_us?: boolean;
   /** state before «مع الفريق» (T24) */
   state_before_human?: State | null;
+  /** H6c: the half of «مع الفريق» — 'waiting' («بانتظار موظف»: handed, no staff reply yet — the assistant keeps answering
+   *  what it can), 'resume' (a staff reply, then no staff message for the branch's «عودة المساعد» minutes — the guest's
+   *  message resumes the assistant), null («مع موظف» — silent) */
+  human_phase?: 'waiting' | 'resume' | null;
   draft_open?: boolean;
 }
 
@@ -114,6 +121,10 @@ export interface Decision {
   /** the profile's marketing hold (T32 sets, T33/T34 lift) */
   hold?: 'set' | 'lift' | null;
   optout?: boolean;
+  /** H6c: the turn resumed the assistant after a staff reply (T38) */
+  resumed?: boolean;
+  /** H6c: «بانتظار موظف» — where the assistant's flow stands while the hand-off waits (state_before_human) */
+  resume_state?: State | null;
 }
 
 const MEDIA_NOTICE = 'media' as const;
@@ -258,8 +269,13 @@ export function decide(input: DecideInput): Decision {
     t.push('T1');
     state = 'new';
   }
-  // «مع الفريق»: the assistant is fully silent (tagging only, by the executor)
-  if (state === 'human') return out({ next: 'human', actions: [{ type: 'noop' }] });
+  // «مع الفريق» (H6c, Ahmed 15 Nov 2026): «بانتظار موظف» — the assistant keeps answering what it can, and a second thing it
+  // cannot answer joins the same hand-off (T36 / T37); after a staff reply it is silent («مع موظف») until the branch's
+  // «عودة المساعد» minutes of staff silence, then the guest's message resumes it (T38); otherwise fully silent (tagging)
+  if (state === 'human') {
+    if (ctx.human_phase === 'waiting' || ctx.human_phase === 'resume') return humanTurn(input, t);
+    return out({ next: 'human', actions: [{ type: 'noop' }] });
+  }
 
   if (ev.type === 'answer_result') {
     if (ev.ok && !ev.partial) return out({ next: state === 'new' ? 'inquiry' : state, actions: [], failed: 'reset' });
@@ -453,6 +469,46 @@ export function decide(input: DecideInput): Decision {
 
 type Out = (d: Partial<Decision> & { next: State; actions: Action[] }) => Decision;
 
+/** the flow a «مع الفريق» turn continues: the state before the hand-off (a new episode's «جديدة» counts as «استفسار») */
+export function baseState(ctx: Context): State {
+  const s = ctx.state_before_human;
+  return s && ASSISTANT_STATES.includes(s) && s !== 'new' ? s : 'inquiry';
+}
+
+/** H6c: a guest turn while «مع الفريق» and not silent. waiting → the decision of the flow before the hand-off, its
+ *  hand-offs turned into additions to the waiting one (handoff_add, no notice), the state kept «مع الفريق» (T36 answered
+ *  in place, T37 added to the hand-off); resume → the same decision as if the hand-off had not happened (T38); a hand-off
+ *  from it is a new one (the database alerts again) */
+function humanTurn(input: DecideInput, t: string[]): Decision {
+  const ctx = input.ctx;
+  const base = baseState(ctx);
+  const inner = decide({ ...input, state: base, ctx: { ...ctx, human_phase: null } });
+  if (ctx.human_phase === 'resume') {
+    return { ...inner, transitions: ['T38', ...inner.transitions.filter((x) => x !== 'T1')], resumed: true, reason: inner.next === 'human' ? inner.reason : inner.reason ?? 'resume' };
+  }
+  let added = false;
+  const actions: Action[] = [];
+  for (const a of inner.actions) {
+    if (a.type === 'handoff') {
+      added = true;
+      actions.push({ type: 'handoff_add', reason: a.reason, note: a.note, ...(a.priority ? { priority: a.priority } : {}) });
+    } else if (a.type === 'fixed' && a.key === 'third_language' && inner.next === 'human') {
+      // the bilingual line once is enough: the team already has the conversation
+      added = true;
+    } else actions.push(a);
+  }
+  const transitions = [...t, added ? 'T37' : 'T36', ...inner.transitions.filter((x) => x !== 'T1')];
+  return {
+    ...inner,
+    next: 'human',
+    actions: actions.length ? actions : [{ type: 'noop' }],
+    transitions,
+    // the flow continues under the hand-off: a booking asked while waiting keeps its draft and its state for the resume
+    resume_state: inner.next === 'human' || inner.next === 'closed' ? base : inner.next,
+    reason: added ? inner.reason : 'waiting',
+  };
+}
+
 function groupOrHall(input: DecideInput, state: State, t: string[], out: Out, u: Understanding, kind: 'hall' | 'group'): Decision {
   const skill = kind === 'hall' ? 'hall_request' : 'group_request';
   if (!input.ctx.skills.includes(skill)) {
@@ -605,6 +661,8 @@ export const STATE_LABELS: Record<string, string> = {
   new: 'جديدة', inquiry: 'استفسار', collecting: 'جمع التفاصيل', quoted: 'عُرض السعر', awaiting_confirmation: 'بانتظار تأكيد الضيف', booked: 'تم الحجز',
   awaiting_payment: 'بانتظار الدفع', human: 'مع الفريق', closed: 'مغلقة', none: 'جديدة',
 };
+/** H6c (copy.md §6): the two halves of «مع الفريق» */
+export const HUMAN_PHASE_LABELS = { waiting: 'بانتظار موظف', staff: 'مع موظف' } as const;
 export const INTENT_LABELS: Record<string, string> = {
   stay_booking: 'حجز إقامة', price_question: 'سؤال عن السعر', human_request: 'التحدث مع موظف', complaint: 'شكوى', compensation_request: 'تعويض',
   booking_change: 'تعديل حجز', booking_cancel: 'إلغاء حجز', media: 'رسالة وسائط', failed_understanding: 'رسالة لم تُفهم', unknown: 'رسالة لم تُفهم',

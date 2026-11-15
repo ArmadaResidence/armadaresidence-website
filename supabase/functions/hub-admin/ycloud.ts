@@ -53,12 +53,13 @@ export interface TemplateItem {
   status?: string;
   reason?: string;
   wabaId?: string;
+  components?: { type?: string; text?: string }[];
 }
 
 /** a WABA's templates as hub_templates_store takes them; malformed rows left out, one row per name + language */
-export function templateRows(items: TemplateItem[], waba: string): { name: string; language: string; category: string | null; status: string; reason: string | null }[] {
+export function templateRows(items: TemplateItem[], waba: string): { name: string; language: string; category: string | null; status: string; reason: string | null; body: string | null }[] {
   const seen = new Set<string>();
-  const out: { name: string; language: string; category: string | null; status: string; reason: string | null }[] = [];
+  const out: { name: string; language: string; category: string | null; status: string; reason: string | null; body: string | null }[] = [];
   for (const t of items) {
     if (t.wabaId && String(t.wabaId) !== String(waba)) continue;
     const name = String(t.name ?? '');
@@ -68,7 +69,9 @@ export function templateRows(items: TemplateItem[], waba: string): { name: strin
     const k = `${name}|${language}`;
     if (seen.has(k)) continue;
     seen.add(k);
-    out.push({ name, language, category: clip(t.category, 40), status, reason: clip(t.reason, 300) });
+    // H6c: the BODY's text as YCloud stores it — a hub template whose body differs from templates.md is never sent
+    const body = (Array.isArray(t.components) ? t.components : []).find((c) => String(c?.type ?? '').toUpperCase() === 'BODY')?.text;
+    out.push({ name, language, category: clip(t.category, 40), status, reason: clip(t.reason, 300), body: typeof body === 'string' ? body.slice(0, 2000) : null });
   }
   return out;
 }

@@ -7,10 +7,11 @@
  * Everything that does I/O is injected (Deps), so scripts/hub-machine-check.mjs and the fixture replay run it offline.
  * Nothing here logs a guest's words or the understanding.
  */
-import { decide, handoffNote, replyLicence, type Action, type Decision, type Draft, type Event, type State } from './machine.ts';
+import { decide, handoffNote, replyLicence, type Action, type Context, type Decision, type Draft, type Event, type State } from './machine.ts';
 import { applyFloor, extractJson, recheckDates, understandUser, validateUnderstanding, type Lists, type Understanding } from './understand.ts';
 import { buttonForText, fixed, greeting, hasSalaam, quickReplies, salaamGreeting, statusText, stripOpening, thirdLanguage, type Lang, type Persona } from './copy.ts';
-import { composeExamples, composeSystem, composeUser, parseComposed, understandSchema, understandSystem, withGreeting } from './compose/index.ts';
+import { composeExamples, composeSystem, composeUser, parseComposed, summarySystem, understandSchema, understandSystem, withGreeting } from './compose/index.ts';
+import { cleanSummary, refOrRoom, summaryOk, summaryUser } from './staff.ts';
 import { buildPayload, cardIds, guardPayload, hasSource, offersFor, type Payload } from './sources/index.ts';
 import { guard, retryReason } from './guard.ts';
 import { costOf, type Layer, type ModelFn, type ModelResult } from './model.ts';
@@ -70,6 +71,15 @@ export interface Finish {
   note?: string;
   unanswered?: string[];
   tags_add?: string[];
+  /** H6c: the turn resumed the assistant after a staff reply (a hand-off from it is a new one) */
+  resumed?: boolean;
+  /** H6c: «بانتظار موظف» — the assistant's flow under the waiting hand-off */
+  resume_state?: State | null;
+  /** H6c: a further request joined the waiting hand-off */
+  handoff_add?: boolean;
+  /** H6c: the staff alert's «المطلوب» line (the model's, checked) and the booking ref or room the guest gave */
+  handoff_summary?: string | null;
+  handoff_ref?: string | null;
 }
 export interface Outcome {
   finish: Finish;
@@ -236,16 +246,22 @@ export async function runTurn(claim: Json, deps: Deps): Promise<Outcome> {
   // ── 2. decide ──
   const always = (claim.topics as Json[]).filter((t) => t.always_handoff).map((t) => t.key);
   const showPrices = set.show_prices === true;
-  const ctx = {
+  const phase: 'waiting' | 'resume' | null = conv.human_phase === 'waiting' || conv.human_phase === 'resume' ? conv.human_phase : null;
+  const ctx: Context = {
     unit_kind: unit.kind, unit_branch: unit.branch, skills: usableSkills(unit.skills ?? []), show_prices: showPrices,
     window_open: !!conv.window_expires_at && Date.parse(conv.window_expires_at) > Date.now(), failed_understandings: Number(conv.failed_understandings ?? 0),
     failed_max: Number(set.failed_max ?? 2), out_of_scope: Number(conv.out_of_scope ?? 0), out_of_scope_max: 3, group_min_rooms: Number(set.group_min_rooms ?? 5),
     licences: claim.licences ?? {}, always_handoff: always, bookings: claim.bookings ?? [], first_reply: !!conv.first_reply,
     last_from_us: ((claim.history ?? []) as Json[]).slice(-1)[0]?.author === 'us',
+    state_before_human: (conv.state_before_human ?? null) as State | null,
+    human_phase: phase,
   };
   const draft: Draft | null = claim.draft ? { id: claim.draft.id, kind: claim.draft.kind, version: claim.draft.version, fields: claim.draft.fields ?? {}, quote: claim.draft.quote } : null;
   const ev: Event = { type: 'guest', understanding: u, kind: silent ? 'reaction' : media ? 'media' : buttonId ? 'button' : 'text', button_id: buttonId, cart };
   let d = decide({ state: conv.state as State, event: ev, draft, ctx });
+  // a resumed turn decides as the flow before the hand-off; what follows it is an ordinary turn (H6c)
+  if (phase === 'resume') ctx.human_phase = null;
+  let handoffAdd = false;
 
   // ── 3. execute ──
   const answers: OutMsg[] = [];
@@ -417,6 +433,20 @@ export async function runTurn(claim: Json, deps: Deps): Promise<Outcome> {
         case 'handoff':
           doHandoff(a);
           break;
+        case 'handoff_add': {
+          // «بانتظار موظف» (H6c): a further request joins the same hand-off — the model's short acknowledgement (never the
+          // fixed notice again), a note line for the team, no new staff alert
+          const c = await compose(emptyPayload(), 'handoff_ack');
+          if (c === 'credit') return null;
+          const body = c === 'guard' || c === 'error' || !c.reply ? fixed('handoff_added', L) : stripOpening(c.reply) || fixed('handoff_added', L);
+          push(body, { handoff: true });
+          note = `إضافة إلى التحويل — ${handoffNote(a.note, lastAction)}`;
+          if (a.reason === 'complaint') out.complaint = true;
+          if (a.reason === 'no_source') gap();
+          handoffAdd = true;
+          lastAction = 'أُضيف طلب إلى التحويل';
+          break;
+        }
         case 'tag_order':
         case 'noop':
         case 'close':
@@ -432,7 +462,7 @@ export async function runTurn(claim: Json, deps: Deps): Promise<Outcome> {
 
   type Composed = { reply: string; used_card_ids: string[]; unanswered: string[] };
   // a reply with no fact (chat, clarify, redirect, ask) has a fixed fallback: the model being down never hands it off
-  const compose = async (payload: Payload, action: 'answer' | 'ask' | 'chat' | 'clarify' | 'redirect' = 'answer', askFor?: string[]): Promise<Composed | 'credit' | 'guard' | 'error'> => {
+  const compose = async (payload: Payload, action: 'answer' | 'ask' | 'chat' | 'clarify' | 'redirect' | 'handoff_ack' = 'answer', askFor?: string[]): Promise<Composed | 'credit' | 'guard' | 'error'> => {
     const soft = action !== 'answer';
     if (composeDown) return 'error';
     const model = String(models.compose ?? 'claude-sonnet-5-5');
@@ -516,7 +546,7 @@ export async function runTurn(claim: Json, deps: Deps): Promise<Outcome> {
   for (let i = 0; i + 1 < answers.length; i++) {
     const a = answers[i];
     const b = answers[i + 1];
-    if (!a.notice && a.kind === 'text' && b.notice && b.handoff && b.kind === 'text') {
+    if (!a.notice && !a.handoff && a.kind === 'text' && b.handoff && b.kind === 'text') {
       answers.splice(i, 2, { ...a, body: `${a.body}\n\n${b.body}`, payload: { ...a.payload, handoff: true } });
     }
   }
@@ -550,8 +580,26 @@ export async function runTurn(claim: Json, deps: Deps): Promise<Outcome> {
   finish.tags_add = final.tags_add;
   finish.note = note;
   finish.unanswered = unanswered;
+  // H6c: «مع الفريق» split in two — the flow under a waiting hand-off, a resumed turn, an addition to the hand-off
+  finish.resumed = phase === 'resume';
+  finish.resume_state = final.resume_state ?? null;
+  finish.handoff_add = handoffAdd;
+  if (phase === 'resume' && final.next !== 'human') finish.reason = final.reason ?? 'resume';
+  // the staff alert of a NEW hand-off: its «المطلوب» line (Haiku, prompts.md §8 — checked, else the code's line from the
+  // reason) and the booking ref or room the guest gave; never in a test run (no alert reaches a team)
+  if (final.next === 'human' && claim.turn.mode !== 'test') {
+    finish.handoff_ref = refOrRoom(u?.booking_ref ?? null, texts);
+    const newHandoff = conv.state !== 'human' || phase === 'resume';
+    const line = (note ?? '').split(String.fromCharCode(10))[0];
+    if (newHandoff && texts.length && line) {
+      const model = String(models.understand ?? 'claude-haiku-5-5');
+      const r = await deps.model({ layer: 'summary', model, system: summarySystem(), user: summaryUser(line, texts) });
+      record('summary', model, r);
+      if (r.ok && summaryOk(r.text, [...texts, line], deps.forbidden ?? claim.forbidden ?? [])) finish.handoff_summary = cleanSummary(r.text);
+    }
+  }
   // answered: a composed answer went into the reply (a mixed message's answer included); gap: «لم أعرف الإجابة» was fed
-  finish.decision = { actions: final.actions.map((a) => a.type), chat: (final.actions.find((a) => a.type === 'chat') as Extract<Action, { type: 'chat' }> | undefined)?.mode ?? null, next: final.next, reason: final.reason ?? null, transitions: final.transitions, answered, gap: unanswered.length > 0 };
+  finish.decision = { actions: final.actions.map((a) => a.type), chat: (final.actions.find((a) => a.type === 'chat') as Extract<Action, { type: 'chat' }> | undefined)?.mode ?? null, next: final.next, reason: final.reason ?? null, transitions: final.transitions, answered, gap: unanswered.length > 0, ...(phase ? { phase } : {}) };
   return out;
 }
 
