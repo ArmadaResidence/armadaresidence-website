@@ -67,7 +67,7 @@ Rules
 28. ack_only: true only for small talk that is a bare acknowledgement with nothing else («تمام», «أوكي», «طيب», «ok», «👍», «تم»); false for thanks, greetings and everything else.
 29. A follow-up keeps the topics of the question it continues: «طيب والأطفال؟» after an answer about breakfast is topics breakfast.
 30. During a booking (CONVERSATION STATE collecting, or an OPEN DRAFT), a reply that gives dates, the number of guests or a room is kind "booking" with those fields filled.
-31. A line in square brackets that starts «لقطة شاشة أرسلها الضيف تُظهر:» / "A screenshot the guest sent shows:" or «صورة أرسلها الضيف تُظهر:» / "A photo the guest sent shows:" is what an image the guest sent shows: read it as the guest's own content, together with the caption and LAST MESSAGES. A screenshot of a booking, a price, an app, the website or a map asks about what it shows (a booking's status, a price, the location…). A photo with no caption that nothing in LAST MESSAGES asks for («[أرسل الضيف صورة]», a room or a view on its own) is kind "unclear". Never treat a price, a date or a name in such a line as confirmed by us.
+31. Images (only when GUEST_TURN holds a line in square brackets that starts «لقطة شاشة أرسلها الضيف تُظهر:», «صورة أرسلها الضيف تُظهر:», "A screenshot the guest sent shows:" or "A photo the guest sent shows:"): that line is what an image the guest sent shows; read it as the guest's own content with the caption and LAST MESSAGES, and never treat a price, a date or a name in it as confirmed by us. Every other rule applies to such a turn as written.
 ```
 
 ### 1.2 Schema (sent in the user message, with the closed lists filled by code)
