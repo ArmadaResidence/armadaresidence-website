@@ -3629,3 +3629,6 @@ Recorded on 15 Nov 2026 (session H6c) from Ahmed's planning chat of 14 Nov 2026;
 - Ahmed and the reception managers teach by WhatsApp with «تعلّم:»; the assistant confirms the guest-facing wording, and «امسح» removes it.
 - From staff replies in taken-over conversations the assistant learns general facts only, active at once, listed numbered in the daily report and removable by replying «امسح N».
 - Never prices, discounts, offers, guest-specific details or anything that contradicts a card; those go to the report for Ahmed.
+
+**H6c results (15 Nov 2026).** Both banks locally (real calls): questions 95 / 96 (q099 flaky on the previous engine too), conversations 65 / 65; the preview branch `h6c-team` 19 / 19 (signed events, the queued alerts and the report asserted, nothing sent; deleted); the production lab 165 / 166 (USD 2.08) — q028 fails because Settings' breakfast became 25 / children free to 6 / 12.5 to 12 today while the FAQ text still says 5 and «بنصف الرسوم» (Ahmed's content to update). Deployed: migration `20261115200000`, wa-automation 12, hub-agent 13, hub-admin 15 (rollback 11 / 12 / 14), the dashboard and the site from main. No unit mode, licence or switch changed; no slot or recipient entered (Ahmed's). Spending ≈ USD 4.6 + one preview branch.
+
