@@ -23,8 +23,16 @@ const MIG4 = read('supabase/migrations/20261114100000_guest_hub_knowledge.sql');
 const fdef = MIG4.slice(MIG4.indexOf('create function internal.hub_forbidden_terms()'), MIG4.indexOf('$$;', MIG4.indexOf('create function internal.hub_forbidden_terms()')));
 export const FORBIDDEN = [...fdef.slice(fdef.indexOf('select array[') + 13, fdef.lastIndexOf(']')).matchAll(/'([^']+)'/g)].map((m) => m[1]);
 const fees = existsSync(new URL('../content/fees.generated.json', import.meta.url)) ? JSON.parse(read('content/fees.generated.json')) : JSON.parse(read('content/pricing.json'));
-const breakfast = Number(fees.breakfast?.adult ?? fees.breakfast_adult ?? fees.breakfast?.price ?? 20);
-const extraBed = Number(fees.extra_bed_per_night ?? 50);
+let breakfast = Number(fees.breakfast?.adult ?? fees.breakfast_adult ?? fees.breakfast?.price ?? 20);
+let extraBed = Number(fees.extra_bed_per_night ?? 50);
+/** the fees of Settings when the 44 fixtures were recorded (14 Nov 2026): a REPLAY fills the FAQ with these, so a fee
+ *  changed in Settings since (breakfast 20 → 25 on 15 Nov 2026) never turns a recorded answer into a guard refusal; a
+ *  bank run with real model calls keeps the live fees (H6c, 15 Nov 2026) */
+export const RECORDED_FEES = { breakfast: 20, extra_bed: 50 };
+export function useRecordedFees() {
+  breakfast = RECORDED_FEES.breakfast;
+  extraBed = RECORDED_FEES.extra_bed;
+}
 
 export const UNITS = [
   { key: 'airport-road', kind: 'branch', branch: 'airport-road', knowledge_hidden: false, name_ar: 'فرع طريق المطار', name_en: 'Airport Road' },

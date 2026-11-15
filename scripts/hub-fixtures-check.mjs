@@ -14,7 +14,9 @@ import { guard } from '../supabase/functions/_shared/hub/guard.ts';
 import { understandUser } from '../supabase/functions/_shared/hub/understand.ts';
 import { longDate } from '../supabase/functions/booking-request/email.ts';
 import { sarText } from '../supabase/functions/booking-request/rules.ts';
-import { BANK, CONTENT, FORBIDDEN, claimFor, h5Expect, knowledgeFor, outcomeKind } from './hub-fixtures-lib.mjs';
+import { BANK, CONTENT, FORBIDDEN, claimFor, h5Expect, knowledgeFor, outcomeKind, useRecordedFees } from './hub-fixtures-lib.mjs';
+// a replay fills the FAQ with the fees of the recording, never today's Settings
+useRecordedFees();
 
 const DIR = new URL('../tests/hub-fixtures/', import.meta.url);
 let n = 0;
@@ -80,11 +82,11 @@ for (const f of files) {
   if (fx.first_try?.guard) guardFirst++;
   if (fx.first_try?.expect) expectFirst++;
   const now = kind === h5Expect(q);
-  if (fx.first_try?.expect) check(now, `${fx.id}: met «${h5Expect(q)}» when recorded and still does (now ${kind})`);
   // why a replay changed (codes only — the decision, the guard's reasons, the model errors; never a guest's words)
   if (fx.first_try?.expect && !now) {
     console.error(`  ${fx.id}: decision ${JSON.stringify(out.finish.decision ?? null)} guard ${JSON.stringify(out.finish.guard_refusals ?? [])} models ${JSON.stringify((out.finish.models ?? []).map((m) => `${m.layer}:${m.ok ? 'ok' : m.error}`))} error ${out.finish.error ?? ''}`);
   }
+  if (fx.first_try?.expect) check(now, `${fx.id}: met «${h5Expect(q)}» when recorded and still does (now ${kind})`);
   else if (now) improved++;
   if (kind === fx.outcome.kind) replayMatch++;
   if (fx.calls.length) costs.push(fx.outcome.cost_usd);

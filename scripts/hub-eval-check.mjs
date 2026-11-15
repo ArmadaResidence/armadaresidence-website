@@ -19,7 +19,9 @@ import { grade, gateVerdict, expectedAction, hasWord, feeAmount, GLOBAL_MUST_NOT
 import { runItem, engineVersion } from '../supabase/functions/_shared/hub/eval.ts';
 import { longDate } from '../supabase/functions/booking-request/email.ts';
 import { sarText } from '../supabase/functions/booking-request/rules.ts';
-import { BANK, CONTENT, claimFor, h5Expect, knowledgeFor } from './hub-fixtures-lib.mjs';
+import { BANK, CONTENT, claimFor, h5Expect, knowledgeFor, useRecordedFees } from './hub-fixtures-lib.mjs';
+// a replay fills the FAQ with the fees of the recording, never today's Settings
+useRecordedFees();
 
 const read = (p) => readFileSync(new URL(`../${p}`, import.meta.url), 'utf8').replace(/\r\n/g, '\n');
 let n = 0;
