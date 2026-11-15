@@ -410,11 +410,10 @@ Deno.serve(async (req) => {
       return r;
     };
     // H7: the upload's transcription, counted on «المحاكي»'s line (the real vision call goes through `model` above)
-    const live = openaiTranscribe(Deno.env.get('OPENAI_API_KEY') ?? '');
+    const transcriber = openaiTranscribe(Deno.env.get('OPENAI_API_KEY') ?? '');
     const audio: { model: string; seconds: number }[] = [];
     const transcribe = async (f: { bytes: Uint8Array; mime: string }, o: { model: string; languages?: string[]; prompt?: string }): Promise<TranscribeResult> => {
-      const r = await live(f, o);
-      return r;
+      return await transcriber(f, o);
     };
     const deps: Deps = {
       model,

@@ -175,7 +175,7 @@ export function openaiTranscribe(key: string, fetchFn: typeof fetch = fetch, tim
     const t0 = Date.now();
     const form = new FormData();
     form.append('model', o.model);
-    form.append('file', new Blob([f.bytes], { type: f.mime }), `voice.${extOf(f.mime)}`);
+    form.append('file', new Blob([f.bytes as unknown as BlobPart], { type: f.mime }), `voice.${extOf(f.mime)}`);
     for (const l of o.languages ?? []) form.append('languages[]', l);
     if (o.prompt) form.append('prompt', o.prompt);
     try {
