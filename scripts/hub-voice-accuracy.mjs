@@ -14,7 +14,7 @@ import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 const argv = process.argv.slice(2);
-const dir = argv.find((a) => !a.startsWith('--'));
+const dir = argv.find((a, i) => !a.startsWith('--') && argv[i - 1] !== '--only');
 const PROD_REF = 'wwzxwettsuwtakwwbfly';
 if (!argv.includes('--production')) {
   console.error('hub-voice-accuracy: pass --production (the transcription key lives only in production; nothing is stored or sent)');
@@ -52,7 +52,9 @@ if (!dir || !existsSync(dir)) {
   console.error(`hub-voice-accuracy: the folder ${dir ?? '(none)'} does not exist — record 01.ogg … 12.ogg there first (an optional notes.txt with corrections)`);
   process.exit(2);
 }
-const files = readdirSync(dir).filter((f) => /^(0[1-9]|1[0-2])\.(ogg|opus)$/i.test(f)).sort();
+// --only 08,09 (H7b, 15 Nov 2026): the re-test of some recordings
+const only = argv.includes('--only') ? String(argv[argv.indexOf('--only') + 1] ?? '').split(',').filter(Boolean) : null;
+const files = readdirSync(dir).filter((f) => /^(0[1-9]|1[0-2])\.(ogg|opus)$/i.test(f) && (!only || only.some((o) => f.startsWith(o)))).sort();
 const missing = Object.keys(SENTENCES).filter((k) => !files.some((f) => f.startsWith(k)));
 if (missing.length) console.warn(`hub-voice-accuracy: missing ${missing.join(', ')} — running the ${files.length} present`);
 const notes = existsSync(join(dir, 'notes.txt')) ? readFileSync(join(dir, 'notes.txt'), 'utf8') : '';
@@ -102,4 +104,4 @@ for (const f of files) {
   if (notes && norm(notes).includes(k)) console.log('   notes.txt mentions this file — compare by hand');
 }
 console.log(`\nhub-voice-accuracy: ${passed} of ${files.length} pass · cost ≈ USD ${total.toFixed(4)} (OpenAI + Claude, test-lab lines)`);
-process.exit(passed === files.length && files.length === 12 ? 0 : 1);
+process.exit(passed === files.length && (only ? files.length === only.length : files.length === 12) ? 0 : 1);
