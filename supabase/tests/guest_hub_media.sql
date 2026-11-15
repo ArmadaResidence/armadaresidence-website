@@ -103,10 +103,10 @@ select pg_temp._root();
 select pg_temp._check('S5 «تراجع» of the switch-off by the system admin: «الفويس» on again', (select voice_on from public.hub_units where key = 'airport-road'), pg_temp._j('s5')::text);
 select pg_temp._as('admin');
 select pg_temp._fails('S6 never on a hidden unit (the rooftop)', format('select public.hub_unit_media_set(%L, true, null)', pg_temp._unit('rooftop')), 'hub_unit_hidden');
--- the service role passes the switch-on guard (the preview-branch checks): the hidden-unit constraint still refuses
-select pg_temp._service();
+-- the constraint itself (the switch-on guard set aside for this one statement, inside the rolled-back transaction)
+alter table public.hub_units disable trigger hub_units_media_guard;
 select pg_temp._fails('S6 … nor by a direct statement (the constraint)', $$update public.hub_units set images_on = true where key = 'rooftop'$$, '23514');
-select pg_temp._root();
+alter table public.hub_units enable trigger hub_units_media_guard;
 select pg_temp._fails('S7 a direct statement as a plain role cannot switch one on (the trigger)', $$update public.hub_units set voice_on = true where key = 'shafa-road'$$, 'hub_system_admin_only');
 select pg_temp._as('mgr');
 select pg_temp._check('S8 the overview shows the switches and today''s seconds', exists (select 1 from jsonb_array_elements(public.hub_assistant_overview() -> 'units') u
