@@ -414,6 +414,12 @@ export function decide(input: DecideInput): Decision {
   if (has('human_request') || kind === 'sensitive') return H('human_request', 'handoff', 'human_request');
   if (u.complaint || has('complaint')) return H('complaint', 'complaint', 'complaint', 'high');
   if (has('compensation_request')) return H('compensation', 'handoff', 'compensation_request', 'high');
+  // H8: «غيّر التواريخ» while the booking is still being made in this chat (a stay draft, not booked) changes the draft,
+  // never an existing booking (the understanding may call it booking_change)
+  if (has('booking_change') && !has('booking_cancel') && input.draft?.kind === 'stay' && ['collecting', 'quoted', 'awaiting_confirmation'].includes(state)
+      && ctx.skills.includes('room_booking')) {
+    return stayIntent(input, state, t, out, u);
+  }
   if (has('booking_change') || has('booking_cancel')) {
     t.push('T20');
     return out({ next: 'human', actions: [handoff('booking_change', 'change_cancel', note(has('booking_cancel') ? 'booking_cancel' : 'booking_change'))], reason: 'booking_change', failed: 'reset' });

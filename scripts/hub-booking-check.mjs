@@ -254,6 +254,10 @@ const live = (ctx, msg, st, draft) => {
   check(x.actions[0].type === 'book' && x.actions[0].lookup === true, 'a confirm tap after the booking → a look-up only (the database answers its reservation)');
   x = decide({ state: 'quoted', event: { type: 'guest', kind: 'text', understanding: U({ intents: ['stay_booking'], ...D, adults: 2, breakfast: 'without' }) }, draft: null, ctx: { ...ctx, instant_booking: false } });
   check(x.actions.some((y) => y.type === 'quote' && y.lite), '«الحجز الفوري» off → the booking conversation of copy.md §4.0');
+  x = decide({ state: 'collecting', event: { type: 'guest', kind: 'text', understanding: U({ intents: ['booking_change'], check_in: '2026-12-11', check_out: '2026-12-13' }) }, draft: dq, ctx });
+  check(x.next !== 'human' && x.draft_patch?.fields.check_in === '2026-12-11', '«غيّر التواريخ» while the booking is being made → the draft changed, never the team (c123)');
+  x = decide({ state: 'booked', event: { type: 'guest', kind: 'text', understanding: U({ intents: ['booking_change'] }) }, draft: null, ctx });
+  check(x.next === 'human' && x.transitions.includes('T20'), 'a change to a booking already made → the team (T20)');
 }
 
 // ── the wiring ──

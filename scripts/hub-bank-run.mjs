@@ -267,8 +267,8 @@ async function learnOne(q) {
       if (reply.length > 300 || /[\r\n]/.test(reply)) reasons.push(`${tag}:report_shape`);
     } else if (st.guest) {
       const claim = claimFor({ id: `${q.id}-${i}`, unit: q.unit, language: 'ar', messages: ['x'] });
-      const ctx = { unit: { ...claim.unit, persona: claim.unit.persona }, channel: claim.channel, licences: Object.fromEntries(Object.entries(claim.licences).map(([k, v]) => [k, v === 'blocked' ? 'blocked' : 'auto'])),
-        topics: claim.topics, settings: claim.settings, forbidden: claim.forbidden, today: riyadhToday };
+      const ctx = { unit: { ...claim.unit, persona: claim.unit.persona, skills: [...claim.unit.skills, 'room_booking'] }, channel: claim.channel, licences: Object.fromEntries(Object.entries(claim.licences).map(([k, v]) => [k, v === 'blocked' ? 'blocked' : 'auto'])),
+        topics: claim.topics, settings: { ...claim.settings, instant_booking: true, limits: { max_nights: 90, same_day_cutoff: '23:45' } }, forbidden: claim.forbidden, today: riyadhToday };
       const item = { key: `${q.id}-${i}`, unit_key: q.unit, language: 'ar', messages: [st.guest], context: {}, expect: { action: 'conversation', steps: [{ outcome: e.outcome, must_not_include: e.must_not_include ?? [] }] }, note: null };
       const deps = {
         model: counted, knowledge: async (u, t, Lg, b) => knowledgeFor(u, t, Lg, b, { cards: mem.cards, removed: mem.removed }), offers: async () => q.offers ?? [], adapter,
@@ -292,9 +292,11 @@ async function one(q) {
   if (q.kind === 'staff_chat') return staffOne(q);
   if (q.kind === 'team') return teamOne(q);
   const claim = claimFor({ ...q, messages: ['x'] });
+  // H8 (16 Nov 2026): the branch units as production has them — room_booking on, both switches on, the instant limits
   const ctx = {
-    unit: { ...claim.unit, persona: claim.unit.persona }, channel: claim.channel, licences: Object.fromEntries(Object.entries(claim.licences).map(([k, v]) => [k, v === 'blocked' ? 'blocked' : 'auto'])),
-    topics: claim.topics, settings: claim.settings, forbidden: claim.forbidden, today: riyadhToday,
+    unit: { ...claim.unit, persona: claim.unit.persona, skills: claim.unit.kind === 'branch' ? [...claim.unit.skills, 'room_booking'] : claim.unit.skills },
+    channel: claim.channel, licences: Object.fromEntries(Object.entries(claim.licences).map(([k, v]) => [k, v === 'blocked' ? 'blocked' : 'auto'])),
+    topics: claim.topics, settings: { ...claim.settings, instant_booking: true, limits: { max_nights: 90, same_day_cutoff: '23:45' } }, forbidden: claim.forbidden, today: riyadhToday,
   };
   const item = { key: q.id, unit_key: q.unit, language: q.language === 'en' ? 'en' : 'ar', messages: q.messages, context: q.context ?? {}, expect: q.expect, note: q.note ?? null };
   const deps = {
@@ -314,7 +316,7 @@ async function one(q) {
     for (let i = 0; i < run.outcome.steps.length; i++) {
       const st = run.outcome.steps[i];
       const said = st.replies.filter((x) => !x.notice).map((x) => x.body).join('\n');
-      if (['reply', 'clarify', 'redirect', 'ask', 'handoff_add'].includes(st.kind) && said.trim() && !/^\[button:/.test(guestMsgs[i])) {
+      if (['reply', 'clarify', 'redirect', 'ask', 'handoff_add'].includes(st.kind) && said.trim() && !/^\[(button|tap):/.test(guestMsgs[i])) {
         // the code's own opening line (the greeting, «وعليكم السلام») is approved copy, not the model's: graded without it
         const body = said.replace(/^(?:وعليكم السلام|مرحبًا بك في|أهلًا بعودتك|Welcome to|Welcome back)[^\n]*\n/, '');
         const v = await natural(guestMsgs[i], hist.slice(-8), body);
