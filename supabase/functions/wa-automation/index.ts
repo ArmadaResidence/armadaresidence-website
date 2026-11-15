@@ -62,7 +62,7 @@ import {
   parseStatus, route, type Inbound,
 } from '../_shared/hub/webhook.ts';
 import { autoPayload, cleanParam, replyLocale, verifySignature, type AutoMessage, type AutoTemplate, type Locale, type OfferVars } from './templates.ts';
-import { drainStaff, emailReports, staffChat, type Call } from '../_shared/hub/staff-send.ts';
+import { drainStaff, emailReports, refreshDueTemplates, staffChat, type Call } from '../_shared/hub/staff-send.ts';
 import { anthropicModel } from '../_shared/hub/model.ts';
 
 const YCLOUD = 'https://api.ycloud.com/v2';
@@ -329,9 +329,12 @@ const call: Call = async <T,>(name: string, args: Record<string, unknown>): Prom
 
 /** H6c: the staff alerts and daily reports waiting, then the reports' email archive (pg_cron hub-team, «إرسال تجربة لي») */
 async function staffQueue(): Promise<Record<string, unknown>> {
+  // 15 Nov 2026 (Ahmed): the hub templates' status read again from YCloud once a day (and right before a send when missing,
+  // not «معتمد» or different — ensureTemplate), so an approval at Meta is never missed
+  const templates = await refreshDueTemplates(call).catch(() => 0);
   const d = await drainStaff(call, content);
   const emails = await emailReports(call, content, sendAdminMail);
-  return { ...d, emails };
+  return { ...d, emails, templates };
 }
 
 // deno-lint-ignore no-explicit-any

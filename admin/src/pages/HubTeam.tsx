@@ -363,8 +363,20 @@ function ReportSettings({ data, reload }: { data: T.TeamData; reload: () => Prom
     setErr(null);
     try {
       const r = await T.reportTest();
+      // 15 Nov 2026 (Ahmed): never silent — the real outcome, or the reason in Arabic
+      const s = r.send_id ? await T.waitSend(r.send_id) : null;
       setTesting(false);
-      toast(`أُرسل تقرير اليوم حتى الآن إلى ${r.recipient}${r.mine ? ' (رقمك)' : ''}.`);
+      const to = `${r.recipient}${r.mine ? ' (رقمك)' : ''}`;
+      if (s && ['accepted', 'sent', 'delivered', 'read'].includes(s.status)) toast(`أُرسل تقرير اليوم حتى الآن إلى ${to}.`);
+      else if (s) {
+        const why = `لم يُرسل التقرير إلى ${to}: ${T.sendRefusalText(s.error_code)}. سُجّل ذلك في التنبيهات وفي «أعطال» التقرير اليومي.`;
+        setErr(why);
+        toast(why, 'error');
+      } else {
+        const why = 'لم تصل نتيجة الإرسال بعد. افتح «التنبيهات» في «إعدادات المساعد» بعد دقيقة لمعرفة ما حدث.';
+        setErr(why);
+        toast(why, 'error');
+      }
     } catch (e) {
       setErr((e as Error).message);
       setTesting(false);

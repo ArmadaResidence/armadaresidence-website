@@ -14,7 +14,8 @@ import { hubDailyMail } from '../../booking-request/email.ts';
 import { staffSystem } from './compose/index.ts';
 import type { ModelFn } from './model.ts';
 import { costOf } from './model.ts';
-import { alertPayload, isTeach, reportPayload, reportVars, staffFallback, staffGuard, staffSystemFor, staffUser, templateReady, templateUrl, ycloudTemplate } from './staff.ts';
+import { alertPayload, isTeach, reportPayload, reportVars, staffFallback, staffGuard, staffSystemFor, staffUser, templateNeedsRead, templateReady } from './staff.ts';
+import { pageOf, templateRows, templatesUrl, type TemplateItem } from '../../hub-admin/ycloud.ts';
 
 // deno-lint-ignore no-explicit-any
 type Json = any;
@@ -23,26 +24,59 @@ export type Call = <T = Json>(name: string, args: Record<string, unknown>) => Pr
 
 const DAY_MS = 24 * 3600_000;
 
-/** the template's status and body: read from YCloud when unread or older than a day, stored, then judged */
-export async function ensureTemplate(call: Call, it: Json): Promise<{ ok: boolean; reason: string | null }> {
-  let t: Json = await call('hub_template_get', { p_channel: it.channel_id, p_name: it.template, p_language: it.language ?? 'ar' }).catch(() => ({}));
-  const stale = !t?.status || !t?.body || !t?.read_at || Date.now() - Date.parse(t.read_at) > DAY_MS;
-  const key = Deno.env.get('YCLOUD_API_KEY');
-  if (stale && key && it.waba_id) {
-    try {
-      const res = await fetch(templateUrl(it.waba_id, it.template, it.language ?? 'ar'), { headers: { 'X-API-Key': key, Accept: 'application/json' }, signal: AbortSignal.timeout(8000) });
-      if (res.ok) {
-        const y = ycloudTemplate(await res.json());
-        if (y.name && y.status) {
-          await call('hub_template_read_store', { p_channel: it.channel_id, p_item: { name: y.name, language: y.language || 'ar', status: y.status, category: y.category, body: y.body } });
-          t = { status: y.status, body: y.body };
-        }
-      } else console.warn('hub staff: template read refused', it.template, res.status);
-    } catch {
-      console.warn('hub staff: template read unreachable', it.template);
+/**
+ * A WABA's whole template list from YCloud (the list read of «تحديث حالة القوالب» — the single-template read failed on every
+ * attempt in production, 15 Nov 2026), each row stored (status, category, body; read_at now). Returns the rows, or null when
+ * YCloud could not be read (the reason logged by its kind, never a text).
+ */
+export async function readTemplates(call: Call, channelId: string, waba: string, fetchFn: typeof fetch = fetch, key = Deno.env.get('YCLOUD_API_KEY') ?? ''): Promise<ReturnType<typeof templateRows> | null> {
+  if (!key || !waba) return null;
+  const items: TemplateItem[] = [];
+  try {
+    for (let page = 1; page <= 10; page++) {
+      const res = await fetchFn(templatesUrl(waba, page), { method: 'GET', headers: { 'X-API-Key': key, Accept: 'application/json' }, signal: AbortSignal.timeout(8000) });
+      if (!res.ok) {
+        console.warn('hub staff: template list refused', res.status);
+        return null;
+      }
+      const p = pageOf<TemplateItem>(await res.json());
+      items.push(...p.items);
+      if (!p.more) break;
     }
+  } catch (e) {
+    console.warn('hub staff: template list unreachable', String((e as Error)?.name ?? 'error').slice(0, 40));
+    return null;
+  }
+  const rows = templateRows(items, waba);
+  for (const r of rows) {
+    await call('hub_template_read_store', { p_channel: channelId, p_item: r }).catch((e) => console.warn('hub staff: template not stored', r.name, String(e).slice(0, 60)));
+  }
+  return rows;
+}
+
+/** the template's status and body: read again from YCloud right before a send when it is missing from the list, not
+ *  «معتمد», its body differs from templates.md, or it was read more than a day ago (Ahmed, 15 Nov 2026); then judged */
+export async function ensureTemplate(call: Call, it: Json, fetchFn: typeof fetch = fetch, key = Deno.env.get('YCLOUD_API_KEY') ?? ''): Promise<{ ok: boolean; reason: string | null }> {
+  let t: Json = await call('hub_template_get', { p_channel: it.channel_id, p_name: it.template, p_language: it.language ?? 'ar' }).catch(() => ({}));
+  if (templateNeedsRead(t, it.template, Date.now(), DAY_MS) && it.waba_id) {
+    const rows = await readTemplates(call, it.channel_id, it.waba_id, fetchFn, key);
+    const y = rows?.find((r) => r.name === it.template && r.language === (it.language ?? 'ar'));
+    if (y) t = { status: y.status, body: y.body, read_at: new Date().toISOString() };
+    else if (rows) t = {};
   }
   return templateReady(t, it.template);
+}
+
+/** the daily refresh (Ahmed, 15 Nov 2026): every channel whose hub templates were not read in 24 hours (or are missing
+ *  or not «معتمد») — public.hub_templates_due — read again from YCloud. Called by wa-automation's minute drain. */
+export async function refreshDueTemplates(call: Call, fetchFn: typeof fetch = fetch, key = Deno.env.get('YCLOUD_API_KEY') ?? ''): Promise<number> {
+  const due = await call<Json[]>('hub_templates_due', {}).catch(() => [] as Json[]);
+  let n = 0;
+  for (const ch of due ?? []) {
+    const rows = await readTemplates(call, ch.channel_id, ch.waba_id, fetchFn, key);
+    if (rows) n++;
+  }
+  return n;
 }
 
 /** the queued alerts and reports, each sent once (test rows: payload built, recorded `test`) */

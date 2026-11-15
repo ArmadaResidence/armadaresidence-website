@@ -187,6 +187,8 @@ export function faultsText(data: Json): string {
   const model = sum('model_failures');
   const send = sum('send_failures');
   const budget = n(data?.budget_alerts);
+  // 15 Nov 2026 (Ahmed): a staff alert or a report refused or failed is a fault too
+  const refused = sum('staff_refused') + n(data?.reports_refused);
   if (model) parts.push(`فشل النموذج ${model}`);
   if (send) parts.push(`فشل الإرسال ${send}`);
   // H7: the voice notes and images that failed (download, transcription, an empty or unknown-language note, the vision call)
@@ -194,6 +196,7 @@ export function faultsText(data: Json): string {
   const image = sum('image_failures');
   if (voice) parts.push(`فشل الصوت ${voice}`);
   if (image) parts.push(`فشل الصور ${image}`);
+  if (refused) parts.push(`رسائل للفريق لم تُرسل ${refused}`);
   if (budget) parts.push(`تنبيه الميزانية ${budget}`);
   return parts.length ? parts.join(' · ') : 'لا يوجد';
 }
@@ -233,6 +236,20 @@ export const templateReady = (t: { status?: string | null; body?: string | null 
   !t || !t.status ? { ok: false, reason: 'template_unread' }
     : String(t.status).toUpperCase() !== 'APPROVED' ? { ok: false, reason: 'template_not_approved' }
     : !bodyMatches(t.body, name) ? { ok: false, reason: 'template_mismatch' } : { ok: true, reason: null };
+/** read the template again before a send (Ahmed, 15 Nov 2026): missing from the list, not «معتمد», no body, a body that
+ *  differs from templates.md, or read more than a day ago */
+export const templateNeedsRead = (t: { status?: string | null; body?: string | null; read_at?: string | null } | null | undefined, name: string, now: number, maxAgeMs: number): boolean =>
+  !t || !t.status || String(t.status).toUpperCase() !== 'APPROVED' || !t.body || !bodyMatches(t.body, name) || !t.read_at || now - Date.parse(t.read_at) > maxAgeMs;
+/** the reason a staff send was refused or failed, in Arabic (the dashboard and the email) */
+export const SEND_REFUSALS: Record<string, string> = {
+  template_unread: 'تعذّرت قراءة حالة القالب من YCloud',
+  template_not_approved: 'القالب غير معتمد من Meta',
+  template_mismatch: 'نص القالب في YCloud يختلف عن النص المعتمد',
+  sending_off: '«الإرسال من المركز» متوقف لهذا الرقم',
+  payload: 'تعذّر تجهيز الرسالة',
+};
+export const sendRefusalText = (code: string | null | undefined): string =>
+  SEND_REFUSALS[String(code ?? '')] ?? (code ? `رفضت YCloud الإرسال (${String(code).replace(/[^a-z0-9_]/gi, '').slice(0, 40)})` : 'لم يُرسل');
 export const templateUrl = (waba: string, name: string, language: string) =>
   `https://api.ycloud.com/v2/whatsapp/templates/${encodeURIComponent(waba)}/${encodeURIComponent(name)}/${encodeURIComponent(language)}`;
 

@@ -116,7 +116,9 @@ for (const [role, branch, perms, sys] of ROLES) {
           saved[body.p_branch] = { resume_minutes: body.p_resume, escalate_minutes: body.p_escalate };
           return ok({ ok: true, batch_id: id(902), previous: { resume_minutes: 15, escalate_minutes: 10 } });
         }
-        if (fn === 'hub_report_test') return ok({ ok: true, recipient: 'أحمد', mine: true });
+        if (fn === 'hub_report_test') return ok({ ok: true, recipient: 'أحمد', mine: true, send_id: id(990) });
+        // 15 Nov 2026 (Ahmed): the real outcome — refused (light runs) or delivered (dark runs)
+        if (fn === 'hub_staff_send_status') return ok(scheme === 'light' ? { status: 'skipped', error_code: 'template_unread', template: 'hub_daily_report' } : { status: 'delivered', error_code: null, template: 'hub_daily_report' });
         if (fn === 'hub_report_config_save') return ok({ ok: true, batch_id: id(903), previous: '08:00' });
         if (fn === 'hub_report_get') return ok(REPORT(body?.p_day));
         if (fn === 'hub_alert_open') return ok(body?.p_token === 'f'.repeat(32) ? { allowed: true, conversation_id: id(70) } : { allowed: false });
@@ -218,6 +220,12 @@ for (const [role, branch, perms, sys] of ROLES) {
         await page.locator('dialog[open] button:has-text("إرسال التجربة")').click();
         await page.waitForTimeout(400);
         check(calls.some((c) => c.fn === 'hub_report_test'), `${tag}: … then hub_report_test`);
+        // never silent: the outcome is waited for and said — the reason in Arabic when refused, «أُرسل» only when it was
+        await page.waitForTimeout(800);
+        const said = await page.locator('main').innerText();
+        if (scheme === 'light') check(said.includes('لم يُرسل التقرير إلى أحمد (رقمك)') && said.includes('تعذّرت قراءة حالة القالب من YCloud') && calls.some((c) => c.fn === 'hub_staff_send_status' && c.body?.p_send === id(990)),
+          `${tag}: a refused test report says why, on screen`);
+        else check(!said.includes('لم يُرسل التقرير') && calls.some((c) => c.fn === 'hub_staff_send_status'), `${tag}: a delivered test report — no refusal shown`);
       }
       if (w === 1440 && role === 'admin') await page.screenshot({ path: join(SHOTS, `team-reports-${scheme}.png`), fullPage: true });
       await sane(page, `${tag} reports`);

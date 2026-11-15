@@ -320,6 +320,9 @@ export const ALERT_LABELS: Record<string, string> = {
   template_rejected: 'قالب واتساب مرفوض أو موقوف',
   api_credit: 'رصيد كلود انتهى',
   flagged_wrong: 'رد خاطئ أُرسل لضيف',
+  model_error: 'تعذّر الوصول إلى نموذج المساعد',
+  voice_cap: 'بلغ تفريغ الرسائل الصوتية حده اليومي',
+  staff_send: 'رسالة للفريق لم تُرسل (تنبيه أو تقرير)',
 };
 export const VERIFY_ERRORS: Record<string, string> = {
   hub_channel_not_found: 'لم يُعثر على هذا الرقم في حساب واتساب للأعمال على YCloud.',

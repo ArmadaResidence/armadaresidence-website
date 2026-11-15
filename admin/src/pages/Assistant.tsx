@@ -36,6 +36,7 @@ import {
   webhookError, webhookStatus, type HubOverview, type HubUnit, type UnitMode, type WebhookStatus,
 } from '../lib/hub';
 import { CancelButton, Confirm, DirtyScope, ErrorBox, Field, Loading, Modal, Spinner, useToast } from '../components/ui';
+import { sendRefusalText } from '../lib/team';
 
 type Row = { id?: string; email: string; active: boolean; filter_confirmed: boolean };
 type Tab = 'settings' | 'persona' | 'licences' | 'lab' | 'sim';
@@ -587,6 +588,12 @@ export default function Assistant() {
             {o.alerts.map((a) => (
               <li key={a.id} className="text-sm" data-alert={a.kind}>
                 {ALERT_LABELS[a.kind] ?? a.kind} — {unitName(a.unit)} <span className="text-xs text-ink-muted num-ar">{riyadhDateTime(a.created_at)}</span>
+                {/* 15 Nov 2026: a staff send refused or failed — why, and how many since the alert opened */}
+                {a.kind === 'staff_send' && (
+                  <span className="block text-xs text-ink-muted" data-alert-detail>
+                    {sendRefusalText(String((a.payload as Record<string, unknown> | null)?.last_code ?? ''))} · العدد: <span className="num">{Number((a.payload as Record<string, unknown> | null)?.count ?? 1)}</span>
+                  </span>
+                )}
               </li>
             ))}
           </ul>

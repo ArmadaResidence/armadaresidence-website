@@ -77,11 +77,32 @@ export type RecipientInput = { id?: string; position?: number; name: string; pho
 export const recipientSave = (p: RecipientInput) => call<Previous<RecipientInput>>('hub_report_recipient_save', { p });
 export const recipientDelete = (id: string) => call<Previous<RecipientInput>>('hub_report_recipient_delete', { p_id: id });
 export const reportTimeSave = (t: string) => call<{ ok: boolean; batch_id: string; previous: string }>('hub_report_config_save', { p_send_time: t });
-export const reportTest = () => call<{ ok: boolean; recipient: string; mine: boolean }>('hub_report_test');
+export const reportTest = () => call<{ ok: boolean; recipient: string; mine: boolean; send_id?: string }>('hub_report_test');
+/** a staff send's outcome (15 Nov 2026 — never «أُرسل» before it is) */
+export const sendStatus = (id: string) => call<{ status: string; error_code: string | null; template: string }>('hub_staff_send_status', { p_send: id });
+/** the reason a staff send was refused or failed, in Arabic (= _shared/hub/staff.ts → SEND_REFUSALS) */
+export const SEND_REFUSALS: Record<string, string> = {
+  template_unread: 'تعذّرت قراءة حالة القالب من YCloud',
+  template_not_approved: 'القالب غير معتمد من Meta',
+  template_mismatch: 'نص القالب في YCloud يختلف عن النص المعتمد',
+  sending_off: '«الإرسال من المركز» متوقف لهذا الرقم',
+  payload: 'تعذّر تجهيز الرسالة',
+};
+export const sendRefusalText = (code: string | null | undefined): string =>
+  SEND_REFUSALS[String(code ?? '')] ?? (code ? `رفضت YCloud الإرسال (${String(code).replace(/[^a-z0-9_]/gi, '').slice(0, 40)})` : 'لم يُرسل');
+/** wait for a queued staff send's outcome (the drain runs right away; at most ~25 s) */
+export async function waitSend(id: string, tries = 12, ms = 2000): Promise<{ status: string; error_code: string | null } | null> {
+  for (let i = 0; i < tries; i++) {
+    const s = await sendStatus(id).catch(() => null);
+    if (s && s.status !== 'pending' && s.status !== 'queued') return s;
+    await new Promise((r) => setTimeout(r, ms));
+  }
+  return null;
+}
 
 export interface ReportBranch {
   conversations: number; assistant: number; handed: number; reply_avg_min: number | null; replied: number; bookings: number; reviews: number; unanswered: number;
-  model_failures: number; send_failures: number; voice_failures?: number; image_failures?: number; alerts_sent: number; alerts_delivered: number; alerts_read: number; escalated: number; opened: number;
+  model_failures: number; send_failures: number; voice_failures?: number; image_failures?: number; staff_refused?: number; alerts_sent: number; alerts_delivered: number; alerts_read: number; escalated: number; opened: number;
   opened_link: number; email_only: number; reasons: Record<string, number>;
 }
 export interface ReportData {
@@ -90,6 +111,8 @@ export interface ReportData {
   branches: Record<'airport-road' | 'shafa-road', ReportBranch>;
   cards: number;
   budget_alerts: number;
+  /** 15 Nov 2026: the daily and test reports refused or failed */
+  reports_refused?: number;
 }
 export interface Report {
   day: string;
@@ -186,6 +209,7 @@ export function reportLines(r: ReportData): { label: string; value: string }[] {
   // H7: the voice notes and images that failed (staff.ts → faultsText, the same order)
   const faults = [sum('model_failures') ? `فشل النموذج ${sum('model_failures')}` : '', sum('send_failures') ? `فشل الإرسال ${sum('send_failures')}` : '',
     sum('voice_failures') ? `فشل الصوت ${sum('voice_failures')}` : '', sum('image_failures') ? `فشل الصور ${sum('image_failures')}` : '',
+    sum('staff_refused') + Number(r.reports_refused ?? 0) ? `رسائل للفريق لم تُرسل ${sum('staff_refused') + Number(r.reports_refused ?? 0)}` : '',
     r.budget_alerts ? `تنبيه الميزانية ${r.budget_alerts}` : ''].filter(Boolean).join(' · ') || 'لا يوجد';
   return [
     { label: 'المحادثات', value: per('conversations') },
