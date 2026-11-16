@@ -59,13 +59,14 @@ export async function readTemplates(call: Call, channelId: string, waba: string,
  *  «معتمد», its body differs from templates.md, or it was read more than a day ago (Ahmed, 15 Nov 2026); then judged */
 export async function ensureTemplate(call: Call, it: Json, fetchFn: typeof fetch = fetch, key = Deno.env.get('YCLOUD_API_KEY') ?? ''): Promise<{ ok: boolean; reason: string | null }> {
   let t: Json = await call('hub_template_get', { p_channel: it.channel_id, p_name: it.template, p_language: it.language ?? 'ar' }).catch(() => ({}));
-  if (templateNeedsRead(t, it.template, Date.now(), DAY_MS) && it.waba_id) {
+  const lang: 'ar' | 'en' = it.language === 'en' ? 'en' : 'ar';
+  if (templateNeedsRead(t, it.template, Date.now(), DAY_MS, lang) && it.waba_id) {
     const rows = await readTemplates(call, it.channel_id, it.waba_id, fetchFn, key);
     const y = rows?.find((r) => r.name === it.template && r.language === (it.language ?? 'ar'));
     if (y) t = { status: y.status, body: y.body, read_at: new Date().toISOString() };
     else if (rows) t = {};
   }
-  return templateReady(t, it.template);
+  return templateReady(t, it.template, lang);
 }
 
 /** the daily refresh (Ahmed, 15 Nov 2026): every channel whose hub templates were not read in 24 hours (or are missing

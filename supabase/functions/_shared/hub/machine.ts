@@ -59,6 +59,9 @@ export type Action =
    *  a short acknowledgement written by the model (never the fixed notice again), a note line, no new staff alert */
   | { type: 'handoff_add'; reason: string; priority?: 'high'; note: { intent: string; slots: Record<string, unknown>; stopped: string } }
   | { type: 'transfer'; unit: string }
+  /** H9 (16 Nov 2026): the guest's answer to the departure check — recorded on «قائمة المغادرين» (leave → the review
+   *  request at 19:00; extend → no review), then the fixed reply of copy.md §5 */
+  | { type: 'departure'; choice: 'leave' | 'extend' }
   | { type: 'tag_order' }
   | { type: 'close' }
   | { type: 'noop' };
@@ -114,6 +117,8 @@ export interface Context {
    *  message resumes the assistant), null («مع موظف» — silent) */
   human_phase?: 'waiting' | 'resume' | null;
   draft_open?: boolean;
+  /** H9: a departure check (stay_checkout_check) sent this morning and not answered yet — its row and Nazeel number */
+  departure?: { id: string; ref: string } | null;
 }
 
 export interface DecideInput {
@@ -250,6 +255,24 @@ export function groupRoute(kind: 'hall' | 'group', f: Record<string, unknown>, m
 
 const stopped = (s: State) => s;
 
+/** H9: the departure check's two quick replies by their id (hubo:leave / hubo:extend, the row's id after them) */
+export const DEPARTURE_IDS = { leave: 'hubo:leave', extend: 'hubo:extend' } as const;
+export function departureButton(id: string | null | undefined): 'leave' | 'extend' | null {
+  const s = String(id ?? '');
+  if (s === DEPARTURE_IDS.leave || s.startsWith(`${DEPARTURE_IDS.leave}:`)) return 'leave';
+  if (s === DEPARTURE_IDS.extend || s.startsWith(`${DEPARTURE_IDS.extend}:`)) return 'extend';
+  return null;
+}
+/** the answer of this turn to a waiting departure check: a tapped button, or the understanding's leave / extend (a late
+ *  check-out question is an ordinary question — prompts.md §1 rule 36) */
+export function departureChoice(ev: Event, ctx: Context): 'leave' | 'extend' | null {
+  if (!ctx.departure || ev.type !== 'guest') return null;
+  const b = departureButton(ev.button_id);
+  if (b) return b;
+  const d = ev.understanding?.departure;
+  return d === 'leave' || d === 'extend' ? d : null;
+}
+
 /** the turn's decision */
 export function decide(input: DecideInput): Decision {
   const { event: ev, ctx } = input;
@@ -337,6 +360,19 @@ export function decide(input: DecideInput): Decision {
 
   // ev.type === 'guest'
   const draft = input.draft;
+  // H9: the answer to this morning's departure check (T39 extend → the team, tagged «تمديد», no review; T40 leave → thanks,
+  // the review request at 19:00); one fixed reply each (copy.md §5), no greeting line
+  const dep = departureChoice(ev, ctx);
+  if (dep === 'extend') {
+    t.push('T39');
+    return out({ next: 'human', actions: [{ type: 'departure', choice: 'extend' }, { type: 'fixed', key: 'departure_extend' },
+      handoff('extension', null, { intent: 'extension', slots: ctx.departure ? { nazeel_ref: ctx.departure.ref } : {}, stopped: stopped(state) })],
+      reason: 'extension', tags_add: ['تمديد'] });
+  }
+  if (dep === 'leave') {
+    t.push('T40');
+    return out({ next: state === 'new' ? 'inquiry' : state, actions: [{ type: 'departure', choice: 'leave' }, { type: 'fixed', key: 'departure_leave' }], failed: 'reset' });
+  }
   // a /menu/ cart message on a dining number (T31): the café team, nothing to the guest
   if (ev.cart && ctx.unit_kind === 'dining') {
     t.push('T31');
@@ -856,12 +892,15 @@ export const INTENT_LABELS: Record<string, string> = {
   group_request: 'طلب مجموعة', hall_request: 'طلب القاعة', other_language: 'لغة أخرى', out_of_scope: 'خارج خدمات أرمادا', question: 'سؤال',
   dining_order: 'طلب طعام', order_status: 'حالة طلب', table_booking: 'حجز طاولة', booking_status: 'حالة حجز', stay_service_request: 'خدمة أثناء الإقامة',
   other: 'سؤال', always_handoff: 'موضوع للفريق دائمًا', abuse: 'إساءة أو تهديد',
+  // H9: the answer «أرغب في التمديد» to the departure check
+  extension: 'تمديد الإقامة',
 };
 const SLOT_LABELS: Record<string, string> = {
   branch: 'الفرع', check_in: 'الوصول', check_out: 'المغادرة', nights: 'الليالي', room_type: 'الغرفة', adults: 'البالغون', children: 'الأطفال',
   child_ages: 'أعمار الأطفال', extra_beds: 'أسرّة إضافية', breakfast: 'الإفطار', rooms_count: 'الغرف', booking_ref: 'رقم الحجز',
   // 15 Nov 2026: the group / hall details the assistant collected
   guest_name: 'الاسم', organisation: 'الجهة', layout: 'ترتيب القاعة', coffee_break: 'استراحة قهوة',
+  nazeel_ref: 'رقم الحجز في نزيل',
 };
 const BRANCH_AR: Record<string, string> = { 'airport-road': 'طريق المطار', 'shafa-road': 'طريق الشفا', both: 'الفرعان' };
 export function handoffNote(note: { intent: string; slots: Record<string, unknown>; stopped: string }, lastAction: string): string {

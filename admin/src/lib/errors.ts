@@ -287,6 +287,13 @@ const KNOWN: [RegExp, string][] = [
   [/^hub_topic_label/, 'اكتب اسم الموضوع بالعربية والإنجليزية (من حرفين إلى 80 حرفًا).'],
   [/^hub_topic_parent/, 'اختر موضوعًا رئيسيًا من القائمة.'],
   [/^faq_category/, 'اختر قسم الأسئلة الشائعة.'],
+  // H9 «قائمة المغادرين» (16 Nov 2026)
+  [/^hub_departures_date/, 'تاريخ المغادرة من اليوم حتى سبعة أيام قادمة.'],
+  [/^hub_departures_branch/, 'اختر الفرع.'],
+  [/^hub_departures_rows/, 'الملف أكبر من المتوقع (أكثر من 600 صف).'],
+  [/^hub_departure_sent/, 'أُرسلت الرسالة لهذا الضيف؛ لا يُعدَّل بعد الإرسال.'],
+  [/^hub_departure_answered/, 'أجاب الضيف بنفسه؛ لا يُغيَّر جوابه.'],
+  [/^hub_departure_not_marked/, 'لم يُعلَّم «تمديد» من الاستقبال لهذا الضيف.'],
 ];
 
 /** Arabic message for a database or function refusal; `what` (the call) goes to the console only. */

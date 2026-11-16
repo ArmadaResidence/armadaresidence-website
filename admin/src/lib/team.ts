@@ -5,6 +5,7 @@
 import { supabase } from './supabase';
 import * as api from './api';
 import { countWord, MINUTE, west } from './format';
+import { departureFaults, departuresText } from '../../../supabase/functions/_shared/hub/departures';
 
 export interface Slot {
   id: string;
@@ -104,6 +105,8 @@ export interface ReportBranch {
   conversations: number; assistant: number; handed: number; reply_avg_min: number | null; replied: number; bookings: number; reviews: number; unanswered: number;
   model_failures: number; send_failures: number; voice_failures?: number; image_failures?: number; staff_refused?: number; alerts_sent: number; alerts_delivered: number; alerts_read: number; escalated: number; opened: number;
   opened_link: number; email_only: number; reasons: Record<string, number>;
+  // H9 «قائمة المغادرين»: the day's departures, their answers, a missing evening list, checks too late
+  dep_on?: boolean; dep_rows?: number; dep_sent?: number; dep_leave?: number; dep_extend?: number; dep_none?: number; dep_dry?: number; dep_late?: number; dep_missing?: boolean;
 }
 export interface ReportData {
   day: string;
@@ -116,6 +119,8 @@ export interface ReportData {
   /** H7b: the facts learned that day (numbered for «امسح N») and what needs Ahmed's decision */
   learned?: { n: number; short: string; branch: string | null; kind: 'teach' | 'staff_reply'; by: string | null }[];
   decisions?: number;
+  /** H9: the sends held back by the shared limit that day */
+  limit_deferred?: number;
 }
 export interface Report {
   day: string;
@@ -235,14 +240,14 @@ export function reportLines(r: ReportData): { label: string; value: string }[] {
   const faults = [sum('model_failures') ? `فشل النموذج ${sum('model_failures')}` : '', sum('send_failures') ? `فشل الإرسال ${sum('send_failures')}` : '',
     sum('voice_failures') ? `فشل الصوت ${sum('voice_failures')}` : '', sum('image_failures') ? `فشل الصور ${sum('image_failures')}` : '',
     sum('staff_refused') + Number(r.reports_refused ?? 0) ? `رسائل للفريق لم تُرسل ${sum('staff_refused') + Number(r.reports_refused ?? 0)}` : '',
-    r.budget_alerts ? `تنبيه الميزانية ${r.budget_alerts}` : ''].filter(Boolean).join(' · ') || 'لا يوجد';
+    r.budget_alerts ? `تنبيه الميزانية ${r.budget_alerts}` : '', ...departureFaults(r)].filter(Boolean).join(' · ') || 'لا يوجد';
   return [
     { label: 'المحادثات', value: per('conversations') },
     { label: 'رد عليها المساعد', value: per('assistant') },
     { label: 'حُوّلت للفريق', value: per('handed') },
     { label: 'متوسط رد الفريق على التحويل', value: per('reply_avg_min', avg as never) },
     { label: 'حجوزات من المحادثة', value: per('bookings') },
-    { label: 'الخروج أو التمديد', value: 'لم يُفعَّل بعد' },
+    { label: 'الخروج أو التمديد', value: departuresText(r) },
     { label: 'طلبات التقييم المرسلة', value: per('reviews') },
     { label: 'أسئلة لم يعرف إجابتها', value: per('unanswered') },
     { label: 'بطاقات معرفة جديدة', value: learnedText(r) },

@@ -66,6 +66,9 @@ const COPY_CASES = {
   'Added to a waiting hand-off (the fallback of the model-written line)': 'handoff_added',
   // H7 (15 Nov 2026): a problem photo's acknowledgement when the model cannot write it
   'Problem photo acknowledgement (the fallback of the model-written line)': 'problem_ack',
+  // H9 (16 Nov 2026): the two fixed replies of the departure check (stay_checkout_check)
+  'Departure check — leaving as planned (H9, Ahmed 16 Nov 2026: «سأغادر في موعدي» or the same answer typed)': 'departure_leave',
+  'Departure check — extending the stay (H9, Ahmed 16 Nov 2026: «أرغب في التمديد» or the same answer typed; then the hand-off tagged «تمديد»)': 'departure_extend',
   // copy.md §4.2
   'Confirmed (after the official template)': 'result_confirmed',
   'Request (after the official template)': 'result_request',

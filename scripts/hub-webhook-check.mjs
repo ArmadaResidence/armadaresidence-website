@@ -74,7 +74,7 @@ check(!/hub-inbound/.test(CONFIG) && !/functions\/v1\/hub-(?!agent`)/.test(FN), 
   check(!/ycloud-signature|verifySignature|whatsapp\.inbound_message/i.test(AG) && /x-armada-agent/.test(AG), 'hub-agent is a worker, never a second webhook (no signature, no YCloud event)');
   check(/'hub_turn_queue', \{ p_conversation: conversation, p_message: message \}/.test(FN) && /\/functions\/v1\/hub-agent`/.test(FN), 'the router queues the turn and asks hub-agent to run it');
   const hi = FN.slice(FN.indexOf('async function handleInbound('));
-  check(hi.indexOf("route(m, content.club_whatsapp)") < hi.indexOf('queueTurn(convId, msgId, test)') && /if \(r\.kind === 'none' \|\| r\.kind === 'hub_button'\) \{/.test(hi),
+  check(hi.indexOf("route(m, content.club_whatsapp)") < hi.indexOf('queueTurn(convId, msgId, test)') && /if \(r\.kind === 'none' \|\| r\.kind === 'hub_button'(?: \|\| r\.kind === 'departure_answer')?\) \{/.test(hi),
     'a turn only after the route: never for an opt-out word, a typed «إلغاء» or its answers');
   check(/const turn = stored && convId && msgId \? await queueTurn/.test(hi), 'a turn only for a stored message («تخزين المحادثات» on)');
 }

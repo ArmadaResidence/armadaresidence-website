@@ -18,8 +18,8 @@ type Json = any;
 /** the engine's version a run is judged with: the instructions of prompts.md and copy.md as loaded, + this module */
 export async function engineVersion(): Promise<string> {
   // the leading code marks a change of the engine's code that the texts do not show: e2 = the H6 gaps (mixed messages,
-  // the room-only «يبدأ من», the guard's phones, emails and first person); e3 = H6 pass 3 (replyLicence; the workspace usage limit read as the credit); e4 = H6 pass 5 (the natural-conversation policy: kinds, chat / clarify / redirect, the booking conversation, no drafts in «يرد تلقائيًا»); e5 = no second quote when nothing it depends on changed; the guard graded per turn; e6 = H6c «بانتظار موظف» / «مع موظف» and the alert line; e7 = H7 voice notes and images; e8 = H8 booking in the chat (cards, summary, book) — bump it with any such change
-  const data = new TextEncoder().encode(`e8|${JSON.stringify((text as Json).prompts)}|${JSON.stringify((text as Json).copy)}`);
+  // the room-only «يبدأ من», the guard's phones, emails and first person); e3 = H6 pass 3 (replyLicence; the workspace usage limit read as the credit); e4 = H6 pass 5 (the natural-conversation policy: kinds, chat / clarify / redirect, the booking conversation, no drafts in «يرد تلقائيًا»); e5 = no second quote when nothing it depends on changed; the guard graded per turn; e6 = H6c «بانتظار موظف» / «مع موظف» and the alert line; e7 = H7 voice notes and images; e8 = H8 booking in the chat (cards, summary, book); e9 = H9 the departure check's answers — bump it with any such change
+  const data = new TextEncoder().encode(`e9|${JSON.stringify((text as Json).prompts)}|${JSON.stringify((text as Json).copy)}`);
   const h = new Uint8Array(await crypto.subtle.digest('SHA-256', data));
   return `h6-${[...h.slice(0, 6)].map((b) => b.toString(16).padStart(2, '0')).join('')}`;
 }
@@ -144,6 +144,8 @@ export function claimOf(ctx: Json, item: Pick<Item, 'key' | 'language' | 'contex
       // H8: a member with recorded consent (the members' code), a returning guest's previous room, a test guest
       member: c.member === true, last_room: c.last_room ?? null, test_guest: c.test_guest === true },
     member_codes: Array.isArray(c.member_codes) ? c.member_codes : [],
+    // H9: a departure check sent this morning and not answered yet (the bank's context departure_check)
+    departure: c.departure_check ? { id: `eval-departure-${item.key}`, ref: '100245' } : null,
     // «[button:<id>]» = a tap on our own quick reply (the conversation bank, H6 pass 5)
     messages: [inline
       ? { id: `m-${item.key}-${n}`, kind: inline.kind, body: message || null, payload: { media_id: 'sim' }, inline: { mime: inline.mime, bytes: inline.bytes } }

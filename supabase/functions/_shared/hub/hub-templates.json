@@ -1,5 +1,5 @@
 {
-  "_note": "The Guest Hub's own WhatsApp templates as Meta approved them (docs/guest-hub/templates.md §1 — submitted and APPROVED 13 Nov 2026, ar + en on both branch numbers, UTILITY, no header or footer, one quick reply; the statuses are read from YCloud into public.hub_templates by «تحديث حالة القوالب»). Never edited from here: a change is a new template name. scripts/whatsapp-check.mjs builds the payload against this definition. H6c (15 Nov 2026): hub_staff_alert and hub_daily_report (approved by Meta, UTILITY, ar, both branch numbers — templates.md §4 and §5) — each sent only after its status and body are read back from YCloud and the body equals this one.",
+  "_note": "The Guest Hub's own WhatsApp templates as Meta approved them (docs/guest-hub/templates.md §1 — submitted and APPROVED 13 Nov 2026, ar + en on both branch numbers, UTILITY, no header or footer, one quick reply; the statuses are read from YCloud into public.hub_templates by «تحديث حالة القوالب»). Never edited from here: a change is a new template name. scripts/whatsapp-check.mjs builds the payload against this definition. H6c (15 Nov 2026): hub_staff_alert and hub_daily_report (approved by Meta, UTILITY, ar, both branch numbers — templates.md §4 and §5) — each sent only after its status and body are read back from YCloud and the body equals this one. H9 (16 Nov 2026): stay_checkout_check (approved by Meta, UTILITY, ar + en, both branch numbers — templates.md §6), two quick replies whose payloads carry the row of «قائمة المغادرين»; sent only after its status and body (in that language) are read back from YCloud.",
   "hub_reply_ready": {
     "category": "UTILITY",
     "variables": [
@@ -60,6 +60,28 @@
     },
     "ar": {
       "body": "تقرير مركز الضيوف ليوم {{1}}:\nالمحادثات: {{2}}\nرد عليها المساعد: {{3}}\nحُوّلت للفريق: {{4}}\nمتوسط رد الفريق على التحويل: {{5}}\nحجوزات من المحادثة: {{6}}\nالخروج أو التمديد: {{7}}\nطلبات التقييم المرسلة: {{8}}\nأسئلة لم يعرف إجابتها: {{9}}\nبطاقات معرفة جديدة: {{10}}\nأعطال: {{11}}\nالتفاصيل الكاملة في لوحة التحكم."
+    }
+  },
+  "stay_checkout_check": {
+    "category": "UTILITY",
+    "variables": [
+      "branch_name",
+      "checkout_time"
+    ],
+    "quick_replies": true,
+    "ar": {
+      "body": "مرحبًا، نذكّرك بأن موعد المغادرة من {{1}} اليوم حتى الساعة {{2}}.\nهل ستغادر في موعدك، أم ترغب في تمديد إقامتك؟",
+      "buttons": [
+        "سأغادر في موعدي",
+        "أرغب في التمديد"
+      ]
+    },
+    "en": {
+      "body": "Hello, a reminder that check-out from {{1}} is today by {{2}}.\nWill you be leaving as planned, or would you like to extend your stay?",
+      "buttons": [
+        "Leaving as planned",
+        "Extend my stay"
+      ]
     }
   }
 }

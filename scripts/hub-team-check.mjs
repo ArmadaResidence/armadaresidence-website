@@ -150,7 +150,7 @@ check(/body\.action === 'hub-staff'/.test(WA) && /body\.action === 'qa-staff'/.t
 const AG = read('supabase/functions/hub-agent/index.ts');
 check(/if \(fin\?\.alerts\) await drainStaff/.test(AG), 'hub-agent: a new hand-off\'s alert goes right after the turn');
 const SEND = read('supabase/functions/_shared/hub/staff-send.ts');
-check(/ensureTemplate\(call, it\)/.test(SEND) && /templateReady\(t, it\.template\)/.test(SEND), 'staff-send: the template read back from YCloud and judged before the send');
+check(/ensureTemplate\(call, it\)/.test(SEND) && /templateReady\(t, it\.template(?:, lang)?\)/.test(SEND), 'staff-send: the template read back from YCloud and judged before the send');
 check(!/console\.(log|error|warn)\([^)]*(it\.to|guest_phone|guest_name|\.text\b|reply)/.test(SEND), 'staff-send: no log line with a number, a name or a text');
 
 // ── the team bank ──

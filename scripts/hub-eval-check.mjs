@@ -106,7 +106,7 @@ check(grade(item({ action: 'ask' }, { note: 'may give «يبدأ من»' }), out
   const CONV = read('tests/hub-bank/conversations.jsonl').split(/\r?\n/).filter((l) => l.trim()).map((l) => JSON.parse(l)).filter((x) => !x._header);
   check(CONV.length >= 40 && CONV.every((c) => c.messages.length === c.expect.steps.length && c.expect.action === 'conversation' && /^c\d{3}$/.test(c.id)), `C the conversation bank: ${CONV.length} conversations, one expectation per message`);
   check(new Set(CONV.map((c) => c.unit)).size === 2 && CONV.some((c) => c.language === 'en') && CONV.some((c) => (c.tags ?? []).includes('live-sequence')), 'C both units, both languages, Ahmed\'s live sequences');
-  check(CONV.every((c) => c.expect.steps.every((s) => [].concat(s.outcome).every((k) => ['reply', 'answer', 'ask', 'quote', 'clarify', 'redirect', 'handoff', 'none', 'answer_handoff', 'partner_enquiry', 'request_update', 'summary', 'booked', 'booking_status'].includes(k)))), 'C every step names a known outcome');
+  check(CONV.every((c) => c.expect.steps.every((s) => [].concat(s.outcome).every((k) => ['reply', 'answer', 'ask', 'quote', 'clarify', 'redirect', 'handoff', 'none', 'answer_handoff', 'partner_enquiry', 'request_update', 'summary', 'booked', 'booking_status', 'departure_leave', 'departure_extend'].includes(k)))), 'C every step names a known outcome');
   // the migration that seeds it on production = the file (scripts/hub-conv-migration.mjs)
   const MIG = read('supabase/migrations/20261115100000_guest_hub_conversation.sql');
   const TAG = '$conv_bank' + '$';
@@ -132,6 +132,12 @@ check(grade(item({ action: 'ask' }, { note: 'may give «يبدأ من»' }), out
       const M10 = read('supabase/migrations/20261116100000_guest_hub_booking.sql');
       const T10 = '$booking_bank' + '$';
       return JSON.parse(M10.slice(M10.indexOf(T10) + T10.length, M10.lastIndexOf(T10)));
+    })(),
+    // H9 (16 Nov 2026): the departure-check conversations, seeded by the departures migration (tag $departures_bank$)
+    ...(() => {
+      const M11 = read('supabase/migrations/20261116200000_guest_hub_departures.sql');
+      const T11 = '$departures_bank' + '$';
+      return JSON.parse(M11.slice(M11.indexOf(T11) + T11.length, M11.lastIndexOf(T11)));
     })()];
   // H8: c034 / c035 corrected by the same migration (tag $booking_fix$) — no longer the booking link
   {

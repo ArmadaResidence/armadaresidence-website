@@ -37,6 +37,7 @@ import {
 } from '../lib/hub';
 import { CancelButton, Confirm, DirtyScope, ErrorBox, Field, Loading, Modal, Spinner, useToast } from '../components/ui';
 import { sendRefusalText } from '../lib/team';
+import { sendLimitStatus, type LimitStatus } from '../lib/hub';
 
 type Row = { id?: string; email: string; active: boolean; filter_confirmed: boolean };
 type Tab = 'settings' | 'persona' | 'licences' | 'lab' | 'sim';
@@ -322,6 +323,9 @@ export default function Assistant() {
           });
           await load();
         }} />
+
+      {/* ── حد الإرسال المشترك (H9) ── */}
+      <SendLimitCard />
 
       {/* ── استقبال واتساب (H2) ── */}
       {hook && (
@@ -835,6 +839,36 @@ function Summary({ o, edit, onSaved }: { o: HubOverview; edit: boolean; onSaved:
 const MODELS_ORDER = ['understand', 'tag', 'translate', 'compose', 'suggest', 'vision', 'transcribe'];
 
 /** «الميزانية» (H5, spec §5.6 item 5, §7.3): the system admin sets the budgets; everyone with assistant: view reads them */
+// «حد الإرسال المشترك» (H9, 16 Nov 2026): the unique recipients of templates in the last 24 hours across both branch
+// numbers (one Meta portfolio, 2,000 — the tier read from YCloud), the 20 % reserve kept for booking confirmations, staff
+// alerts and hub_reply_ready, and what the limit holds back now (kept and tried again, never dropped)
+function SendLimitCard() {
+  const [s, setS] = useState<LimitStatus | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  useEffect(() => {
+    sendLimitStatus().then(setS, (e: Error) => setError(e.message));
+  }, []);
+  return (
+    <section className="card p-4 grid gap-3" aria-labelledby="hub-limit-h" data-tour="hub-limit" data-hub-limit>
+      <h2 id="hub-limit-h" className="font-bold text-lg">حد الإرسال المشترك</h2>
+      <p className="text-sm text-ink-muted max-w-3xl">
+        رقما الفرعين في حساب Meta واحد: حد مشترك لعدد من تصلهم قوالب واتساب خلال آخر 24 ساعة (ومنها عروض «إياب»). يبقى 20% احتياطيًا لتأكيدات الحجز وتنبيهات الفريق ورسالة «لدى الفريق رد». الأولوية: الرسائل الأساسية، ثم رسائل الخروج، ثم طلبات التقييم، ثم التسويق — وما يقترب من الحد يتأجل ولا يضيع.
+      </p>
+      <ErrorBox error={error} />
+      {!s && !error && <Loading />}
+      {s && (
+        <dl className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm" data-limit-figures>
+          <div><dt className="text-ink-muted">المستخدم الآن</dt><dd className="num text-lg font-semibold" data-used>{s.used} <span className="text-sm font-normal text-ink-muted">({s.pct}%)</span></dd></div>
+          <div><dt className="text-ink-muted">الحد</dt><dd className="num text-lg font-semibold" data-limit>{s.limit}</dd></div>
+          <div><dt className="text-ink-muted">الاحتياطي</dt><dd className="num text-lg font-semibold" data-reserve>{s.reserve}</dd></div>
+          <div><dt className="text-ink-muted">مؤجَّل الآن</dt><dd className="num text-lg font-semibold" data-deferred>{s.deferred}</dd></div>
+        </dl>
+      )}
+      {s && <p className="text-xs text-ink-muted">مستوى الحساب كما قرأناه من YCloud: {s.tiers.map((t) => `${t.unit === 'airport-road' ? 'طريق المطار' : 'طريق الشفا'} ${t.tier ?? 'لم يُقرأ بعد'}`).join(' · ') || 'لم يُقرأ بعد'}. يتغير الحد وحده عندما ترفعه Meta.</p>}
+    </section>
+  );
+}
+
 function BudgetCard({ o, onSaved }: { o: HubOverview; onSaved: (batches: string[], label: string) => Promise<void> }) {
   const toast = useToast();
   const [b, setB] = useState<BudgetOverview | null>(null);

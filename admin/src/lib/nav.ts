@@ -76,6 +76,8 @@ export const NAV_GROUPS: NavGroup[] = [
       { to: '/radar', label: 'رادار الأسئلة', section: 'radar', icon: 'radar' },
       // H6c (15 Nov 2026): «الفريق والتقارير» — the reception staff who get the WhatsApp alerts, and the daily report
       { to: '/hub-team', label: 'الفريق والتقارير', section: 'hub_team', icon: 'team' },
+      // H9 (16 Nov 2026): «قائمة المغادرين» — the evening upload of Nazeel's departures, the departure check, the review requests
+      { to: '/departures', label: 'قائمة المغادرين', section: 'departures', icon: 'bookings', id: 'departures' },
       { to: '/assistant', label: 'إعدادات المساعد', section: 'assistant', icon: 'assistant' },
     ],
   },

@@ -355,3 +355,13 @@ export function phoneText(e164: string): string {
 }
 
 export const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+
+/** H9 «حد الإرسال المشترك» (assistant: view): the unique recipients of templates in the last 24 hours, the limit, the 20 %
+ *  reserve, what is held back now, and the tier each number reports */
+export interface LimitStatus { limit: number; reserve: number; used: number; checks: number; reviews: number; deferred: number; pct: number; at: string;
+  tiers: { unit: string; tier: string | null; quality: string | null }[] }
+export async function sendLimitStatus(): Promise<LimitStatus> {
+  const { data, error } = await supabase.rpc('hub_send_limit_status');
+  if (error) api.fail(error, 'hub_send_limit_status');
+  return data as LimitStatus;
+}

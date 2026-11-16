@@ -141,6 +141,9 @@ export function outcomeKind(finish: Json): string {
   const tr: string[] = finish.decision?.transitions ?? [];
   // H6c: «مع موظف» — silent; «بانتظار موظف» — a further request added to the hand-off (T37), or answered in place (T36)
   if (finish.decision?.silent) return 'none';
+  // H9: the answer to the departure check — «سأغادر في موعدي» (T40) / «أرغب في التمديد» (T39)
+  if (tr.includes('T40')) return 'departure_leave';
+  if (tr.includes('T39')) return 'departure_extend';
   if (tr.includes('T37')) return finish.decision?.answered ? 'answer_handoff' : 'handoff_add';
   if (tr.includes('T36') && finish.state === 'human') return outcomeKind({ ...finish, state: finish.resume_state ?? 'inquiry', decision: { ...finish.decision, transitions: tr.filter((x: string) => x !== 'T36') } });
   // a mixed message (H6 gaps): the sourced question answered, then the stay / hall / group request to the team

@@ -14,6 +14,7 @@
 import defs from './hub-templates.json' with { type: 'json' };
 import text from './text.generated.json' with { type: 'json' };
 import { isTeach as teachCommand, learnedLine } from './learn.ts';
+import { departureFaults, departuresText } from './departures.ts';
 
 // deno-lint-ignore no-explicit-any
 type Json = any;
@@ -199,6 +200,8 @@ export function faultsText(data: Json): string {
   if (image) parts.push(`فشل الصور ${image}`);
   if (refused) parts.push(`رسائل للفريق لم تُرسل ${refused}`);
   if (budget) parts.push(`تنبيه الميزانية ${budget}`);
+  // H9: a missing evening list, checks too late to send, sends held back by the shared limit
+  parts.push(...departureFaults(data));
   return parts.length ? parts.join(' · ') : 'لا يوجد';
 }
 /** hub_daily_report's eleven variables (templates.md §5) — never money */
@@ -210,7 +213,8 @@ export function reportVars(day: string, data: Json): string[] {
     perBranch(data, 'handed'),
     perBranch(data, 'reply_avg_min', minutesText),
     perBranch(data, 'bookings'),
-    'لم يُفعَّل بعد',
+    // H9: «الخروج أو التمديد» — per branch «خروج X · تمديد Y · لم يرد Z», or «لم يُفعَّل بعد»
+    departuresText(data),
     perBranch(data, 'reviews'),
     perBranch(data, 'unanswered'),
     // H7b: the facts learned that day, numbered for «امسح N», and what needs Ahmed's decision (learn.ts → learnedLine)
@@ -234,14 +238,15 @@ const norm = (s: string) => String(s ?? '').replace(/\r\n/g, '\n').replace(/[ \t
 export const bodyMatches = (stored: string | null | undefined, name: string, language: 'ar' | 'en' = 'ar'): boolean =>
   !!stored && norm(stored) === norm(STAFF_TEMPLATE_DEFS[name]?.[language]?.body ?? '');
 /** the template may be sent: APPROVED and the body as approved */
-export const templateReady = (t: { status?: string | null; body?: string | null } | null | undefined, name: string): { ok: boolean; reason: string | null } =>
+export const templateReady = (t: { status?: string | null; body?: string | null } | null | undefined, name: string, language: 'ar' | 'en' = 'ar'): { ok: boolean; reason: string | null } =>
   !t || !t.status ? { ok: false, reason: 'template_unread' }
     : String(t.status).toUpperCase() !== 'APPROVED' ? { ok: false, reason: 'template_not_approved' }
-    : !bodyMatches(t.body, name) ? { ok: false, reason: 'template_mismatch' } : { ok: true, reason: null };
+    : !bodyMatches(t.body, name, language) ? { ok: false, reason: 'template_mismatch' } : { ok: true, reason: null };
 /** read the template again before a send (Ahmed, 15 Nov 2026): missing from the list, not «معتمد», no body, a body that
  *  differs from templates.md, or read more than a day ago */
-export const templateNeedsRead = (t: { status?: string | null; body?: string | null; read_at?: string | null } | null | undefined, name: string, now: number, maxAgeMs: number): boolean =>
-  !t || !t.status || String(t.status).toUpperCase() !== 'APPROVED' || !t.body || !bodyMatches(t.body, name) || !t.read_at || now - Date.parse(t.read_at) > maxAgeMs;
+export const templateNeedsRead = (t: { status?: string | null; body?: string | null; read_at?: string | null } | null | undefined, name: string, now: number, maxAgeMs: number,
+  language: 'ar' | 'en' = 'ar'): boolean =>
+  !t || !t.status || String(t.status).toUpperCase() !== 'APPROVED' || !t.body || !bodyMatches(t.body, name, language) || !t.read_at || now - Date.parse(t.read_at) > maxAgeMs;
 /** the reason a staff send was refused or failed, in Arabic (the dashboard and the email) */
 export const SEND_REFUSALS: Record<string, string> = {
   template_unread: 'تعذّرت قراءة حالة القالب من YCloud',

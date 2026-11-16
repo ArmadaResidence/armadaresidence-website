@@ -53,6 +53,9 @@ export interface Understanding {
   organisation?: string | null;
   layout?: string | null;
   coffee_break?: boolean | null;
+  /** H9 (16 Nov 2026): the answer to the departure check of this morning — only while one waits (TurnInput.departure);
+   *  leave = as planned, extend = longer, late = a late check-out question (an ordinary question) */
+  departure?: 'leave' | 'extend' | 'late' | null;
   language: string;
   complaint: boolean;
   confidence: Record<string, number>;
@@ -107,6 +110,7 @@ export function validateUnderstanding(raw: unknown, lists: Lists): { ok: true; v
   if (!nullOr<string>(o.organisation, (x) => typeof x === 'string' && x.length <= 120 && !/\d{5,}/.test(x))) e.push('organisation');
   if (!nullOr<string>(o.layout, (x) => typeof x === 'string' && x.length <= 60)) e.push('layout');
   if (!nullOr<boolean>(o.coffee_break, (x) => typeof x === 'boolean')) e.push('coffee_break');
+  if (!nullOr<string>(o.departure, (x) => ['leave', 'extend', 'late'].includes(String(x)))) e.push('departure');
   if (typeof o.language !== 'string' || !/^(ar|en|other:[a-z]{2,3})$/.test(o.language)) e.push('language');
   if (typeof o.complaint !== 'boolean') e.push('complaint');
   if (!nullOr<string>(o.kind, (x) => (KINDS as readonly string[]).includes(String(x)))) e.push('kind');
@@ -124,7 +128,7 @@ export function validateUnderstanding(raw: unknown, lists: Lists): { ok: true; v
       check_in: o.check_in ?? null, check_out: o.check_out ?? null, nights: o.nights ?? null, dates_text: o.dates_text ?? null, dates_calendar: o.dates_calendar ?? null,
       room_type: o.room_type ?? null, breakfast: o.breakfast ?? null, adults: o.adults ?? null, children: o.children ?? null, child_ages: o.child_ages ?? null,
       extra_beds: o.extra_beds ?? null, rooms_count: o.rooms_count ?? null, guest_name: o.guest_name ?? null, booking_ref: o.booking_ref ?? null,
-      organisation: o.organisation ?? null, layout: o.layout ?? null, coffee_break: o.coffee_break ?? null,
+      organisation: o.organisation ?? null, layout: o.layout ?? null, coffee_break: o.coffee_break ?? null, departure: o.departure ?? null,
       language: o.language, complaint: o.complaint, confidence: conf as Record<string, number>,
     },
   };
@@ -184,6 +188,8 @@ export interface TurnInput {
   history: { author: 'guest' | 'us'; body: string }[];
   turn: string[];
   intents?: readonly string[];
+  /** H9: a departure check waits for this guest's answer (prompts.md §1 rule 36) */
+  departure?: boolean;
 }
 
 /** a guest's words to the model: phone, card and ID numbers taken out (prompts.md §0 — no phone numbers) */
@@ -198,6 +204,8 @@ export function understandUser(schema: string, lists: Lists, t: TurnInput): stri
     `UNIT: ${t.unit}`,
     `CONVERSATION STATE: ${t.state}`,
     `OPEN DRAFT: ${t.draft ? JSON.stringify(t.draft) : 'none'}`,
+    // H9: only while a departure check waits for its answer (prompts.md §1 rule 36)
+    ...(t.departure ? ['DEPARTURE CHECK: this morning the guest was asked whether they leave as planned today or extend the stay; no answer yet'] : []),
     `INTENTS (choose only from): ${(t.intents ?? INTENTS).join(', ')}`,
     `TOPICS (choose only from; key: English label / Arabic label):\n${lists.topics.map((k) => {
       const l = lists.topic_labels?.[k];

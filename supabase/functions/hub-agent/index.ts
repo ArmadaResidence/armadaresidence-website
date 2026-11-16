@@ -376,6 +376,19 @@ async function process(turnId: string, model: ModelFn, deadline: number): Promis
   } else if (outcome.credit === 'ok' && claim.budget?.api_credit) {
     await rpc('hub_api_credit_mark', { p_exhausted: false }).catch(() => null);
   }
+  // H9: the guest answered this morning's departure check in words («بمدد يومين», «طالع الساعة 11») — recorded on «قائمة
+  // المغادرين» (leave → the review request at 19:00; extend → none); the hand-off and the reply are this turn's own
+  const dep = outcome.finish.departure;
+  if (dep && claim.turn.mode !== 'test' && claim.conversation?.id) {
+    const r = await rpc<Json>('hub_departure_answer', {
+      p_phone: null, p_channel: null, p_choice: dep.choice, p_via: 'typed', p_id: dep.id, p_conversation: claim.conversation.id,
+      p_body: null, p_test: !!claim.conversation.is_test,
+    }).catch((e) => {
+      console.error('hub-agent: departure answer not recorded', String(e).slice(0, 80));
+      return null;
+    });
+    console.log('hub-agent: departure answer', dep.choice, r?.matched ? (r.already ? 'already' : 'recorded') : 'no row');
+  }
   await typingP;
   const sent = await sendAll(fin, early);
   // 15 Nov 2026 (Ahmed): a group or hall request for sales, collected in the chat → ONE partner enquiry (its row, the guest's

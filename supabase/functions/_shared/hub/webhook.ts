@@ -31,6 +31,28 @@ export const HUB_EVENTS = [EVENT_INBOUND, EVENT_STATUS, EVENT_ECHO, EVENT_QUALIT
 export const CANCEL_BUTTON_IDS = { offers: 'hubcw:offers', booking: 'hubcw:booking' } as const;
 /** a reply to any hub button carries this prefix */
 export const HUB_BUTTON_PREFIX = 'hub';
+/** H9 (16 Nov 2026): the departure check's two quick replies (stay_checkout_check) — the payload set when it is sent:
+ *  hubo:leave:<row id> / hubo:extend:<row id>; routed by id before the opt-out matcher */
+export const DEPARTURE_PREFIX = { leave: 'hubo:leave', extend: 'hubo:extend' } as const;
+/** the template's button titles (templates.md §6): Meta sends the title as the payload when none was set */
+export const DEPARTURE_TITLES = { leave: ['سأغادر في موعدي', 'Leaving as planned'], extend: ['أرغب في التمديد', 'Extend my stay'] } as const;
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+/** a departure answer: the choice and the row's id from the button's payload */
+export function departureTap(buttonId: string | null, text: string, source: Inbound['buttonSource']): { choice: 'leave' | 'extend'; id: string | null } | null {
+  const b = String(buttonId ?? '');
+  for (const choice of ['leave', 'extend'] as const) {
+    const p = DEPARTURE_PREFIX[choice];
+    if (b === p || b.startsWith(`${p}:`)) {
+      const id = b.slice(p.length + 1);
+      return { choice, id: UUID.test(id) ? id : null };
+    }
+  }
+  if (source === 'template') {
+    const n = normalizeReply(buttonId || text);
+    for (const choice of ['leave', 'extend'] as const) if (DEPARTURE_TITLES[choice].some((t) => normalizeReply(t) === n)) return { choice, id: null };
+  }
+  return null;
+}
 
 export type MsgKind = 'text' | 'interactive' | 'button_reply' | 'image' | 'audio' | 'video' | 'document' | 'location' | 'sticker' | 'contacts' | 'reaction' | 'order' | 'template' | 'unsupported';
 const MEDIA = new Set(['image', 'audio', 'video', 'document', 'sticker']);
@@ -158,6 +180,8 @@ export type Route =
   | { kind: 'cancel_answer'; choice: 'offers' | 'booking'; typed: true }
   /** another hub button: never the opt-out matcher (nothing in H2 sends one) */
   | { kind: 'hub_button' }
+  /** H9: a quick reply of the departure check (stay_checkout_check) — by its payload, or its title for a template reply */
+  | { kind: 'departure_answer'; choice: 'leave' | 'extend'; id: string | null }
   /** an opt-out word or the templates' «إلغاء الاشتراك» button: today's immediate effect */
   | { kind: 'optout' }
   /** a TYPED «إلغاء» (any spelling the matcher accepts): the question when a booking is active, else today's opt-out */
@@ -177,6 +201,11 @@ export function cancelTitles(club: Json): { offers: Set<string>; booking: Set<st
 
 /** the routing order of spec §3.7: a button by its id first, then the opt-out words, then the typed answers */
 export function route(m: Inbound, club: Json): Route {
+  // H9: the departure check's buttons first (a template's quick reply — never the opt-out matcher)
+  if (m.kind === 'button_reply') {
+    const d = departureTap(m.buttonId, m.text, m.buttonSource);
+    if (d) return { kind: 'departure_answer', choice: d.choice, id: d.id };
+  }
   if (m.buttonId && m.buttonSource === 'interactive') {
     if (m.buttonId === CANCEL_BUTTON_IDS.offers) return { kind: 'cancel_answer', choice: 'offers', typed: false };
     if (m.buttonId === CANCEL_BUTTON_IDS.booking) return { kind: 'cancel_answer', choice: 'booking', typed: false };

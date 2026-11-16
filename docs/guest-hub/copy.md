@@ -280,6 +280,8 @@ The model asks for what is missing (prompts.md §2, ACTION ask) — the branch, 
 | Outside Armada's services | «نستطيع مساعدتك هنا في الحجز والإقامة وخدمات أرمادا ريزيدنس فقط.» | “Here we can help only with bookings, stays and Armada Residence services.” |
 | A third language (both lines sent) | «نستطيع مساعدتك بالعربية أو الإنجليزية، وسيطّلع الفريق على رسالتك أيضًا.» | “We can help you in Arabic or English, and the team will also see your message.” |
 | Added to a waiting hand-off (the fallback of the model-written line) | «أضفنا ذلك إلى طلبك لدى الفريق، وسيكمل معك أحدهم في هذه المحادثة.» | “We’ve added that to your request with the team; one of them will continue with you in this chat.” |
+| Departure check — leaving as planned (H9, Ahmed 16 Nov 2026: «سأغادر في موعدي» or the same answer typed) | «شكرًا لك على إقامتك معنا، ونتمنى لك طريقًا آمنًا.» | “Thank you for staying with us, and we wish you a safe journey.” |
+| Departure check — extending the stay (H9, Ahmed 16 Nov 2026: «أرغب في التمديد» or the same answer typed; then the hand-off tagged «تمديد») | «يسعدنا ذلك. سيكمل معك فريق الاستقبال في هذه المحادثة لإتمام التمديد.» | “We’d be glad to. Our reception team will continue with you in this chat to arrange the extension.” |
 | Colleague chat fallback (a staff or report number; the model's reply refused or unreachable) | «وصلت رسالتك 👍 للمحادثات المنتظرة افتح «المحادثات» في لوحة التحكم.» | “Got your message 👍 For the waiting chats, open «المحادثات» in the dashboard.” |
 
 `{menu_url}`: `https://armadaresidence.com/menu/` (Arabic) or `https://armadaresidence.com/en/menu/` (English) for the lobby café — from `dining_venues`.

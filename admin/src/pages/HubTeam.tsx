@@ -11,16 +11,17 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import DateField from '../components/DateField';
 import { CancelButton, Confirm, DirtyScope, Empty, ErrorBox, Field, Loading, Modal, NumberField, Segmented, Spinner, useToast } from '../components/ui';
-import { addDays, longDate, riyadhDateTime, riyadhToday } from '../lib/format';
+import { addDays, BRANCH_NAMES, longDate, riyadhDateTime, riyadhToday } from '../lib/format';
 import * as T from '../lib/team';
+import * as D from '../lib/departures';
 
-type Tab = 'team' | 'reports';
-const TABS: { key: Tab; label: string }[] = [{ key: 'team', label: 'فريق الاستقبال' }, { key: 'reports', label: 'التقارير' }];
+type Tab = 'team' | 'reports' | 'departures';
+const TABS: { key: Tab; label: string }[] = [{ key: 'team', label: 'فريق الاستقبال' }, { key: 'reports', label: 'التقارير' }, { key: 'departures', label: 'قائمة المغادرين' }];
 const ISO_DAY = /^\d{4}-\d{2}-\d{2}$/;
 
 export default function HubTeam() {
   const [params, setParams] = useSearchParams();
-  const tab: Tab = params.get('tab') === 'reports' ? 'reports' : 'team';
+  const tab: Tab = params.get('tab') === 'reports' ? 'reports' : params.get('tab') === 'departures' ? 'departures' : 'team';
   const [data, setData] = useState<T.TeamData | null>(null);
   const [error, setError] = useState<string | null>(null);
   const load = useCallback(async () => {
@@ -59,8 +60,89 @@ export default function HubTeam() {
           </button>
         ))}
       </div>
-      {tab === 'team' ? <TeamTab data={data} reload={load} /> : <ReportsTab data={data} reload={load} day={ISO_DAY.test(params.get('day') ?? '') ? params.get('day')! : addDays(riyadhToday(), -1)}
+      {tab === 'departures' ? <DeparturesTab /> : tab === 'team' ? <TeamTab data={data} reload={load} /> : <ReportsTab data={data} reload={load} day={ISO_DAY.test(params.get('day') ?? '') ? params.get('day')! : addDays(riyadhToday(), -1)}
         onDay={(d) => { const p = new URLSearchParams(params); p.set('tab', 'reports'); p.set('day', d); setParams(p, { replace: true }); }} />}
+    </div>
+  );
+}
+
+// ═══ «قائمة المغادرين» (H9, 16 Nov 2026): the two switches per branch — the system admin's, both OFF; everyone else reads ═══
+const DEP_SWITCH = {
+  check: { label: 'رسالة الخروج أو التمديد', on: 'تصل كل ضيف في قائمة الفرع رسالة «الخروج أو التمديد» صباح يوم المغادرة الساعة 9:30 من رقم الفرع.' },
+  review: { label: 'طلبات التقييم من قائمة المغادرين', on: 'يصل كل ضيف في القائمة طلب التقييم: 7:00 مساءً بعد «سأغادر في موعدي»، أو 10:00 صباح اليوم التالي إن لم يرد — مرة واحدة لكل إقامة، ولا يتكرر مع طلب تقييم حجز الموقع.' },
+} as const;
+function DeparturesTab() {
+  const toast = useToast();
+  const [o, setO] = useState<D.DepOverview | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [ask, setAsk] = useState<{ branch: string; kind: 'check' | 'review' } | null>(null);
+  const [busy, setBusy] = useState(false);
+  const load = useCallback(async () => {
+    try {
+      setO(await D.overview());
+      setError(null);
+    } catch (e) {
+      setError((e as Error).message);
+    }
+  }, []);
+  useEffect(() => {
+    void load();
+  }, [load]);
+  const apply = async (branch: string, kind: 'check' | 'review', on: boolean) => {
+    setBusy(true);
+    try {
+      const r = await D.switchSet(branch, kind === 'check' ? on : null, kind === 'review' ? on : null);
+      setAsk(null);
+      await load();
+      toast.undo(`${on ? 'شُغّل' : 'أُوقف'} «${DEP_SWITCH[kind].label}» لـ${BRANCH_NAMES[branch]}.`, async () => {
+        await D.switchSet(branch, r.previous.check_on, r.previous.review_on);
+        await load();
+      });
+    } catch (e) {
+      toast((e as Error).message, 'error');
+    } finally {
+      setBusy(false);
+    }
+  };
+  if (error) return <ErrorBox error={error} />;
+  if (!o) return <Loading />;
+  return (
+    <div className="grid gap-4" data-tour="team-departures">
+      <p className="text-sm text-ink-muted max-w-3xl">
+        يرفع الاستقبال كل مساء قائمة الغد من نزيل في <Link className="link-bronze" to="/departures">«قائمة المغادرين»</Link>. المفتاحان لكل فرع يشغّلهما مدير النظام وحده، وهما متوقفان
+        افتراضيًا؛ وما داما متوقفين تعرض القائمة ما كان سيُرسل ومتى دون إرسال.
+      </p>
+      {o.branches.map((b) => (
+        <div key={b.branch} className="card p-4 grid gap-3" data-dep-branch={b.branch}>
+          <div className="flex flex-wrap items-baseline justify-between gap-2">
+            <h2 className="font-semibold">{BRANCH_NAMES[b.branch] ?? b.branch}</h2>
+            <span className="text-sm text-ink-muted">
+              {b.last_upload ? `آخر قائمة: ${longDate(b.last_upload.date)} — ${b.last_upload.kept} ${b.last_upload.kept === 1 ? 'ضيف' : 'ضيوف'}` : 'لم تُرفع قائمة بعد'}
+              {b.tomorrow_uploaded ? ' · قائمة الغد مرفوعة' : ' · قائمة الغد لم تُرفع'}
+            </span>
+          </div>
+          {(['check', 'review'] as const).map((k) => {
+            const on = k === 'check' ? b.check_on : b.review_on;
+            return (
+              <div key={k} className="flex flex-wrap items-center justify-between gap-3" data-switch={k}>
+                <div>
+                  <p className="font-medium">{DEP_SWITCH[k].label}</p>
+                  <p className="text-sm text-ink-muted">{on ? 'يعمل' : 'متوقف — تجربة بدون إرسال'}</p>
+                </div>
+                {o.system_admin ? (
+                  <button type="button" className={`btn btn-sm ${on ? 'btn-ghost' : 'btn-primary'}`} disabled={busy}
+                    onClick={() => (on ? apply(b.branch, k, false) : setAsk({ branch: b.branch, kind: k }))} data-action={on ? 'switch-off' : 'switch-on'}
+                    aria-label={`${on ? 'إيقاف' : 'تشغيل'} «${DEP_SWITCH[k].label}» لـ${BRANCH_NAMES[b.branch]}`}>
+                    {on ? 'إيقاف' : 'تشغيل'}
+                  </button>
+                ) : <span className="text-xs text-ink-muted">لمدير النظام وحده</span>}
+              </div>
+            );
+          })}
+        </div>
+      ))}
+      <Confirm open={!!ask} title={ask ? `تشغيل «${DEP_SWITCH[ask.kind].label}» لـ${BRANCH_NAMES[ask.branch]}؟` : ''} body={ask ? DEP_SWITCH[ask.kind].on : ''}
+        confirmLabel="تشغيل" busy={busy} onConfirm={() => ask && apply(ask.branch, ask.kind, true)} onClose={() => setAsk(null)} />
     </div>
   );
 }

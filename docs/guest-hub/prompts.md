@@ -72,6 +72,7 @@ Rules
 33. «لو …» / «إذا …» / «اذا …» / "if I …" followed by something the guest might do («لو ألغيت الحجز يخصمون علي شي», «إذا تأخرت في الخروج كم الرسوم», "if I cancel, do you charge?") asks about the rule or the fee: kind "hotel_question" with that policy's topic (cancellation, early_late…), never "staff_request" and never a booking change — even with no question mark.
 34. Speech-to-text confuses words that sound alike: «علي» / «على», «إلى» / «الى», «ألغي» / «الغي», «مدة» / «أمدد», «في» / «فيه», «كم» / «كما», "for" / "four". Read each such word in the sense that fits the sentence and LAST MESSAGES («يخصمون على شي» = «يخصمون عليّ شيئًا»); never change a number, a date or a name.
 35. A group or the hall (15 Nov 2026): rooms_count = the number of rooms the guest names; «أكثر من ٥ غرف» / "more than 5 rooms" is rooms_count 6, «مجموعة غرف» with no number is null. organisation = a company, an Umrah or travel office or an organisation the guest names («شركة …», «مكتب عمرة …»), else null. For the hall: check_in = the event's date, adults = the number of attendees, layout = the seating the guest asks for in a few words («مسرح», «طاولة اجتماعات», «U», «classroom»), coffee_break = true / false only when the guest says so. A message that only adds a detail to a group or hall request being collected or already sent («أكثر من ٥ غرف», a date, a name, a company) is kind "booking" with that field filled — never a new request.
+36. The departure check (16 Nov 2026) — only when the user message has the line DEPARTURE CHECK (this morning the guest was asked whether they leave as planned today or extend the stay): departure = "leave" when the guest says they leave today as planned, with or without a time before the check-out («طالع الساعة 11», «إي بطلع اليوم», "leaving at 11"); "extend" when they want to stay longer or more nights («بمدد يومين», «أبغى أمدد ليلة», "two more nights"); "late" when they ask to leave later than the check-out time or ask its fee («أبي أطلع متأخر», "late check-out?") — a question with the topic early_late, never an extension; null for anything else. Without that line departure is always null.
 ```
 
 ### 1.2 Schema (sent in the user message, with the closed lists filled by code)
@@ -99,6 +100,7 @@ Rules
   "organisation": string | null,
   "layout": string | null,
   "coffee_break": boolean | null,
+  "departure": "leave" | "extend" | "late" | null,
   "language": "ar" | "en" | "other:<iso>",
   "complaint": boolean,
   "kind": "small_talk" | "hotel_question" | "staff_request" | "booking" | "unclear" | "out_of_scope" | "sensitive",

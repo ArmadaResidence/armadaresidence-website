@@ -109,6 +109,8 @@ export interface Finish {
   /** 15 Nov 2026 (Ahmed): a group or hall request for sales — the partner enquiry to store and email (hub-agent:
    *  public.hub_partner_from_turn → the sales email), or the details added to one already sent (update) */
   partner?: { ref: string; kind: 'hall' | 'group'; fields: Record<string, unknown>; update: boolean } | null;
+  /** H9: the guest answered the departure check (hub-agent records it: public.hub_departure_answer) */
+  departure?: { id: string; choice: 'leave' | 'extend'; via: 'button' | 'typed' } | null;
   /** H8 (16 Nov 2026): a reservation the chat made this turn — hub-agent sends the official template and the reception
    *  emails exactly as for a website booking, BEFORE the turn's own messages (never in a test run: simulated there) */
   booking?: { status: 'confirmed' | 'request'; ref: string; data: Record<string, unknown> } | null;
@@ -134,7 +136,7 @@ export const MODEL_DOWN = new Set(['rate_limit', 'overloaded', 'network', 'timeo
 const MEDIA = new Set(['image', 'audio', 'video', 'document', 'location', 'sticker', 'contacts']);
 /** a reaction, or a kind the router does not read: no reply and no hand-off (H6 pass 5 — Ahmed's test of 14 Nov 22:27) */
 const SILENT = new Set(['reaction', 'unsupported']);
-const NOTICE_KEYS = new Set(['third_language']);
+const NOTICE_KEYS = new Set(['third_language', 'departure_extend']);
 
 /** the unit's name in a guest message (copy.md §1: branches.json name, or the venue's) */
 export function unitName(c: Json, unit: Json, L: Lang): string {
@@ -243,6 +245,7 @@ export async function runTurn(claim: Json, deps: Deps): Promise<Outcome> {
     const model = String(models[layer] ?? models.understand ?? 'claude-haiku-5-5');
     const user = understandUser(understandSchema(), lists, {
       today: claim.today, unit: unit.key, state: conv.state, draft: claim.draft?.fields ?? null, history: claim.history ?? [], turn: texts,
+      departure: !!claim.departure,
     });
     let note = '';
     let down: string | null = null;
@@ -304,6 +307,8 @@ export async function runTurn(claim: Json, deps: Deps): Promise<Outcome> {
     last_from_us: ((claim.history ?? []) as Json[]).slice(-1)[0]?.author === 'us',
     state_before_human: (conv.state_before_human ?? null) as State | null,
     human_phase: phase,
+    // H9: a departure check sent this morning and not answered yet
+    departure: claim.departure && typeof claim.departure.id === 'string' ? { id: String(claim.departure.id), ref: String(claim.departure.ref ?? '') } : null,
   };
   const draft: Draft | null = claim.draft ? { id: claim.draft.id, kind: claim.draft.kind, version: claim.draft.version, fields: claim.draft.fields ?? {}, quote: claim.draft.quote } : null;
   const ev: Event = tapped
@@ -730,6 +735,11 @@ export async function runTurn(claim: Json, deps: Deps): Promise<Outcome> {
           lastAction = 'أُضيفت تفاصيل إلى الطلب';
           break;
         }
+        case 'departure':
+          // H9: recorded by hub-agent after the turn (public.hub_departure_answer) — the fixed reply follows in this decision
+          if (ctx.departure) finish.departure = { id: ctx.departure.id, choice: a.choice, via: buttonId ? 'button' : 'typed' };
+          lastAction = a.choice === 'extend' ? 'طلب تمديد الإقامة' : 'أكّد المغادرة في موعده';
+          break;
         case 'tag_order':
         case 'noop':
         case 'close':
@@ -845,7 +855,9 @@ export async function runTurn(claim: Json, deps: Deps): Promise<Outcome> {
   // the first reply of an episode opens with the greeting line (copy.md §1), added by code; a salaam in the guest's Arabic
   // message opens it with «وعليكم السلام» (copy.md §1.5, Ahmed 14 Nov 2026) — on the first reply and later in the episode
   const salaam = L === 'ar' && texts.some(hasSalaam);
-  if (conv.first_reply && answers.length) {
+  // H9: the answer to the departure check is not a new conversation — its fixed reply has no greeting line
+  const departureTurn = final.transitions.includes('T39') || final.transitions.includes('T40');
+  if (conv.first_reply && answers.length && !departureTurn) {
     const g0 = greeting(unit.persona as Persona, L, unitName(deps.content, unit, L), claim.guest?.first_name ?? null);
     answers[0] = { ...answers[0], body: withGreeting(salaam ? salaamGreeting(g0) : g0, answers[0].body) };
   } else if (salaam && answers.length) {
@@ -885,7 +897,11 @@ export async function runTurn(claim: Json, deps: Deps): Promise<Outcome> {
     finish.handoff_ref = refOrRoom(u?.booking_ref ?? null, texts);
     const newHandoff = conv.state !== 'human' || phase === 'resume';
     const line = (note ?? '').split(String.fromCharCode(10))[0];
-    if (!prep.route && newHandoff && texts.length && line) {
+    if (departureTurn && ctx.departure) {
+      // H9: the extension's staff alert — «يطلب تمديد الإقامة» and the Nazeel booking number (no model call)
+      finish.handoff_summary = 'يطلب تمديد الإقامة';
+      finish.handoff_ref = ctx.departure.ref ? `نزيل ${ctx.departure.ref}`.slice(0, 40) : finish.handoff_ref;
+    } else if (!prep.route && newHandoff && texts.length && line) {
       const model = String(models.understand ?? 'claude-haiku-5-5');
       const r = await deps.model({ layer: 'summary', model, system: summarySystem(), user: summaryUser(line, texts) });
       record('summary', model, r);

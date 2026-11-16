@@ -62,8 +62,10 @@ import {
   parseStatus, route, type Inbound,
 } from '../_shared/hub/webhook.ts';
 import { autoPayload, cleanParam, replyLocale, verifySignature, type AutoMessage, type AutoTemplate, type Locale, type OfferVars } from './templates.ts';
-import { drainStaff, emailReports, refreshDueTemplates, staffChat, type Call } from '../_shared/hub/staff-send.ts';
+import { drainStaff, emailReports, ensureTemplate, refreshDueTemplates, staffChat, type Call } from '../_shared/hub/staff-send.ts';
 import { anthropicModel } from '../_shared/hub/model.ts';
+import { CHECKOUT_TEMPLATE, checkoutPayload } from '../_shared/hub/departures.ts';
+import { fixed } from '../_shared/hub/copy.ts';
 
 const YCLOUD = 'https://api.ycloud.com/v2';
 const TIMEOUT_MS = 8000;
@@ -182,21 +184,72 @@ async function deliver(item: Claimed, test = item.is_test): Promise<Outcome & { 
   return { ...o, from: payload.from };
 }
 
+interface DepClaimed { id: string; kind: 'check' | 'review'; branch: string; language: Locale; phone: string; first_name: string; ref: string; is_test: boolean; channel_id: string | null; waba_id: string | null }
+
+/** H9: one departure check (stay_checkout_check — its status and body read back from YCloud first, in that language) or one
+ *  review request of «قائمة المغادرين» (stay_review, unchanged); the outcome recorded (public.hub_departure_finish) */
+async function deliverDeparture(it: DepClaimed, ready: Map<string, { ok: boolean; reason: string | null }>, test = it.is_test): Promise<string> {
+  let status = 'failed';
+  let pid: string | null = null;
+  let code: string | null = null;
+  try {
+    let payload: unknown = null;
+    if (it.kind === 'check') {
+      const key = `${it.channel_id}|${it.language}`;
+      if (!test && !ready.has(key)) {
+        ready.set(key, it.channel_id ? await ensureTemplate(call, { channel_id: it.channel_id, waba_id: it.waba_id, template: CHECKOUT_TEMPLATE, language: it.language })
+          : { ok: false, reason: 'template_unread' });
+      }
+      const r0 = test ? { ok: true, reason: null } : ready.get(key)!;
+      if (!r0.ok) {
+        status = 'skipped';
+        code = r0.reason;
+      } else payload = checkoutPayload(content, { branch: it.branch, language: it.language, phone: it.phone, id: it.id }, it.id);
+    } else {
+      payload = autoPayload(content, { template: 'stay_review', locale: it.language, branch: it.branch, to: it.phone, logId: it.id, name: it.first_name });
+    }
+    if (payload) {
+      const o = test ? { status: 'test', id: null, errorCode: null, error: null } : await ycloudSend(payload);
+      status = o.status;
+      pid = o.id;
+      code = o.errorCode;
+    }
+  } catch (e) {
+    console.error('wa-automation: departure payload refused', it.kind, String((e as Error)?.message ?? e).slice(0, 80));
+    status = 'failed';
+    code = 'payload';
+  }
+  const f = await rpc('hub_departure_finish', { p_id: it.id, p_kind: it.kind, p_status: status, p_ycloud_id: pid, p_error_code: code });
+  if (!f.ok) console.error('wa-automation: departure outcome not recorded', f.status);
+  console.log(`wa-automation: departure ${it.kind} ${status}`, it.language, it.branch, code ?? '', test ? 'TEST' : '');
+  return status;
+}
+
 /** send what is queued until nothing is left or the time budget is spent */
 async function drain(): Promise<{ sent: number; failed: number; rounds: number }> {
   const start = Date.now();
   let sent = 0, failed = 0, rounds = 0;
+  const ready = new Map<string, { ok: boolean; reason: string | null }>();
   while (Date.now() - start < BUDGET_MS) {
     const r = await rpc<Claimed[]>('wa_claim', { p_limit: 20 });
+    // H9: the departure checks (09:30) and the list's review requests, judged by the shared limit in their claim
+    const dq = await rpc<DepClaimed[]>('hub_departures_claim', { p_limit: 20, p_test: false });
     rounds++;
-    if (!r.ok) {
-      console.error('wa-automation: claim failed', r.status, r.message);
-      break;
-    }
-    if (!r.data?.length) break;
-    for (const item of r.data) {
+    if (!r.ok) console.error('wa-automation: claim failed', r.status, r.message);
+    if (!dq.ok) console.error('wa-automation: departures claim failed', dq.status, dq.message.slice(0, 120));
+    const items = r.ok ? r.data ?? [] : [];
+    const deps = dq.ok ? dq.data ?? [] : [];
+    if (!items.length && !deps.length) break;
+    for (const item of items) {
       const o = await deliver(item);
       if (o.status === 'failed') failed++;
+      else sent++;
+      await sleep(PACE_MS);
+      if (Date.now() - start > BUDGET_MS) break;
+    }
+    for (const it of deps) {
+      const st = await deliverDeparture(it, ready);
+      if (st === 'failed') failed++;
       else sent++;
       await sleep(PACE_MS);
       if (Date.now() - start > BUDGET_MS) break;
@@ -382,7 +435,13 @@ async function handleInbound(ev: any, test: boolean): Promise<Record<string, unk
   }
   // 1–3. the route (spec §3.7: a hub button by its id, then the opt-out words, then the typed «إلغاء»)
   const r = route(m, content.club_whatsapp);
-  if (r.kind === 'none' || r.kind === 'hub_button') {
+  // H9: «سأغادر في موعدي» / «أرغب في التمديد» of the departure check (a service message: the offers opt-out never stops it)
+  if (r.kind === 'departure_answer') {
+    const done = await departureAnswer(m, r.choice, r.id, convId, test);
+    if (done) return { kind: 'departure_answer', choice: r.choice, stored, ...done };
+    // nothing waits for that answer (an old check, another number): the message goes on as any other
+  }
+  if (r.kind === 'none' || r.kind === 'hub_button' || r.kind === 'departure_answer') {
     // the assistant's turn (H5): after the «إلغاء» handling above, only for a stored message, only while «المساعد يعمل»
     // is on and the unit's mode is not «متوقف» (public.hub_turn_queue decides); hub-agent runs it after the burst
     const turn = stored && convId && msgId ? await queueTurn(convId, msgId, test) : null;
@@ -436,6 +495,51 @@ async function handleInbound(ev: any, test: boolean): Promise<Record<string, unk
     log: { table: 'eyab_messages', id: a.data.log_id },
   });
   return { kind: 'cancel_answer', choice: 'booking', resolved: true, notice: notice.status, handed_off: !!a.data.handed_off, stored };
+}
+
+/** H9: the departure check's answer by its button — recorded once (public.hub_departure_answer: leave → the review request
+ *  at 19:00, extend → the hand-off tagged «تمديد» with its staff alert, no review), then the fixed reply of copy.md §5 inside
+ *  the window the tap opened; null when no check waits for it */
+async function departureAnswer(m: Inbound, choice: 'leave' | 'extend', id: string | null, conversation: string | null, test: boolean): Promise<Record<string, unknown> | null> {
+  const L: Locale = replyLocale(m.text);
+  const body = fixed(choice === 'extend' ? 'departure_extend' : 'departure_leave', L);
+  const a = await rpc<{ matched: boolean; already?: boolean; language?: Locale; message_id?: string | null; context?: { from: string; to: string; window_expires_at: string | null } | null;
+                        handoff_id?: string | null }>('hub_departure_answer', {
+    p_phone: m.from, p_channel: m.to, p_choice: choice, p_via: 'button', p_id: id, p_conversation: conversation, p_body: body, p_test: test,
+  });
+  if (!a.ok) {
+    console.error('wa-automation: departure answer failed', a.status, a.message.slice(0, 120));
+    return null;
+  }
+  if (!a.data.matched) return null;
+  if (a.data.already) {
+    console.log('wa-automation: departure answer', choice, 'already answered');
+    return { already: true };
+  }
+  // the reply: logged in the conversation (when stored) and sent once
+  let status = 'test';
+  if (a.data.message_id && a.data.context) {
+    let s;
+    try {
+      s = await sendSession({ payload: textPayload(a.data.context.from, a.data.context.to, body, a.data.message_id), windowExpiresAt: a.data.context.window_expires_at, test, log: null });
+    } catch {
+      s = { accepted: false, status: 'failed', messageId: null, errorCode: 'payload' };
+    }
+    status = s.accepted ? s.status : 'failed';
+    await rpc('hub_send_finish', { p_message: a.data.message_id, p_status: status, p_ycloud_id: s.messageId, p_error_code: s.errorCode });
+  } else if (!a.data.message_id && !conversation && m.to && m.from) {
+    // «تخزين المحادثات» is off: the reply still goes (nothing is stored)
+    try {
+      const s = await sendSession({ payload: textPayload(m.to, m.from, body), windowExpiresAt: windowOf(m.sentAt), test, log: null });
+      status = s.accepted ? s.status : 'failed';
+    } catch {
+      status = 'failed';
+    }
+  }
+  // the extension's staff alert (hub_staff_alert: «يطلب تمديد الإقامة», the Nazeel number) — now, from the branch's number
+  if (choice === 'extend' && a.data.handoff_id && !test) await drainStaff(call, content).catch((e) => console.error('wa-automation: staff alert', String(e).slice(0, 80)));
+  console.log('wa-automation: departure answer', choice, `reply=${status}`, test ? 'TEST' : '');
+  return { already: false, reply: status };
 }
 
 // deno-lint-ignore no-explicit-any
