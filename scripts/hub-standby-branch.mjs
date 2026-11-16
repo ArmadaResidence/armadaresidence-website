@@ -168,6 +168,12 @@ const t4 = await wait(async () => { const t = await turnOf(G.g4); return t?.stan
 check(await inbound(G.g4, { type: 'interactive', interactive: { type: 'button_reply', button_reply: { id: 'hub:notnow:00000000-0000-4000-8000-000000000000:1', title: 'ليس الآن' } } }) === 200, '4 the tap accepted');
 const w4 = await wait(async () => { const t = await turnOf(G.g4); return t && t.inbound_message_ids.length === 2 && t.left_s < 4 ? t : null; }, 15000);
 check(!!w4 && t4 && w4.id === t4.id, '4 the tap ends the wait at once (the same turn due within the burst)', JSON.stringify(w4 && { left: Math.round(w4.left_s) }));
+if (w4) {
+  await sleep(Math.max(0, w4.left_s * 1000) + 300);
+  const c4 = await svc('hub_turn_claim', { p_turn: w4.id });
+  check(c4?.claimed && (await turnOf(G.g4)).standby_outcome === 'assistant', '4 … claimed right away by the assistant (outcome «assistant»; nothing run — no model call)');
+  await q(`update public.hub_turns set status = 'done', finished_at = now() where id = $1`, [w4.id]);
+}
 
 // ── 5. nobody on shift; the switch off ──
 const t5 = await wait(async () => await turnOf(G.g5));
