@@ -24,5 +24,5 @@ Before the release: main `21dd663`, wa-automation 19, hub-agent 22, hub-admin 23
 
 ## For Ahmed
 
-1. The production lab (208 items, estimate USD 3.22) waits for the spending OK (it would pass the USD 6 approved).
+1. The production lab ran after Ahmed's OK: 207 / 208 (c115, a 3-room group request, the guard refused two drafts on its first step — model variance), USD 2.79. Airport Road's readiness gate is red until a new full run passes (only matters when its mode is changed); Shafa Road green.
 2. To try it: «الفريق والتقارير» → «فريق الاستقبال» → Airport Road → tick the switch, 2 minutes, «حفظ وضع الاستعداد»; make sure a staff slot is on shift now; message the Airport Road number from a number with «يُعامَل كضيف للتجربة» on.
