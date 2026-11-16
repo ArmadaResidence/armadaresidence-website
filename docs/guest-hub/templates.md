@@ -67,6 +67,8 @@ Button: `Continue the chat`
 
 `booking_confirmed_v2`, `booking_request_received` (after a booking made in the chat, as for site bookings [مقرر — 12 نوفمبر 2026]), `booking_cancelled_v2` (+ the v1 fallback), `arrival_reminder`, `stay_review`, `eyab_welcome`, `eyab_offer`. `booking_confirmed` (v1, with the old cancellation footer) is never sent.
 
+**`stay_review` from H9 (16 Nov 2026):** two flows, never both for one stay. (1) The site's own (since 9 Nov 2026): `wa_review_tick` at 10:00 Riyadh for every booking of this system that left yesterday (website, «مساعد واتساب», staff), the branch's `wa_stay_review` switch. (2) «قائمة المغادرين»: 19:00 the same day after «سأغادر في موعدي», else 10:00 the next day — never after «أرغب في التمديد» or reception's «تمديد»; its switch «طلبات التقييم من قائمة المغادرين» per branch (OFF). The list gives way to a site booking of the same phone and branch leaving that day, and the site's tick skips a phone the list already sent its review in 36 hours (one lock). Never to an opted-out or blocked number. {{1}} the first name (the list's «العميل», first word), {{2}} the branch, {{3}} its Google review link — the same builder as the site's.
+
 ---
 
 ## 4. `hub_staff_alert` — approved by Meta (Ahmed, 14 Nov 2026)
@@ -158,6 +160,8 @@ Will you be leaving as planned, or would you like to extend your stay?
 ```
 
 Buttons: “Leaving as planned” · “Extend my stay”
+
+**How the hub uses it (H9, 16 Nov 2026 — DECISIONS.md 2026-11-16 «Guest Hub H9»):** from «قائمة المغادرين» (the evening Nazeel upload), at 09:30 Riyadh on the departure day, from the branch's own number, Arabic for Saudi and Arab country codes and English for the others; {{1}} = `branchName()` (the booking templates' function), {{2}} = the check-out time of `content/policies.json` (`check_out_ar` / `check_out_en` → «12:00 ظهرًا» / "12:00 noon", read from the file); the two quick replies carry the payloads `hubo:leave:<row>` and `hubo:extend:<row>` (routed by id before the opt-out matcher; a reply without a payload by its title). Before its first use, and again after 24 hours, its status and body (in that language) are read back from YCloud — a body that differs from this one or a status other than APPROVED stops the send. Never to a blocked number; the offers opt-out does not stop it (a service message); once per stay; a check not sent by the check-out time is skipped. Its switch «رسالة الخروج أو التمديد» per branch is the system admin's (OFF until he turns it on). Counts toward the shared sending limit (priority 2).
 
 The flow (DECISIONS.md 2026-11-14 «Departures (for H9)»): sent 09:30 on the departure day; «سأغادر في موعدي» → «شكرًا لك على إقامتك معنا، ونتمنى لك طريقًا آمنًا.» then `stay_review` at 19:00; «أرغب في التمديد» → «يسعدنا ذلك. سيكمل معك فريق الاستقبال في هذه المحادثة لإتمام التمديد.», a hand-off tagged «تمديد», no review; no answer → `stay_review` at 10:00 the next day, unless the booking reappears in a later upload or reception marks «تمديد».
 

@@ -137,7 +137,7 @@ for (const [role, branch, perms, sys] of ROLES) {
       await page.goto(`${BASE}/hub-team`, { waitUntil: 'load' });
       await page.locator('[data-page="hub-team"] [data-team-branch]').first().waitFor({ timeout: 30000 });
       const tabs = await page.$$eval('[data-page="hub-team"] [role="tab"]', (a) => a.map((x) => x.getAttribute('data-tab')));
-      check(tabs.join() === 'team,reports', `${tag}: the two tabs — ${tabs.join()}`);
+      check(tabs.join() === 'team,reports,departures', `${tag}: the three tabs (H9: «قائمة المغادرين») — ${tabs.join()}`);
       const branches = await page.$$eval('[data-team-branch]', (a) => a.map((x) => x.getAttribute('data-team-branch')));
       check(branches.join() === (branch ? branch : 'airport-road,shafa-road'), `${tag}: the branches in scope — ${branches.join()}`);
       if (!branch) {
