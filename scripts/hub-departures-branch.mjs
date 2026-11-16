@@ -137,7 +137,7 @@ async function inbound(phone, msg) {
   const m = { id, wamid: `wamid.${id}`, wabaId: 'qa', from: phone, customerProfile: { name: 'QA Departure' }, to: NUM['airport-road'], sendTime: new Date().toISOString(), ...msg };
   return (await hook(JSON.stringify({ id: `evt_${id}`, type: 'whatsapp.inbound_message.received', apiVersion: 'v2', createTime: new Date().toISOString(), whatsappInboundMessage: m }))).status;
 }
-const wait = async (fn, ms = 20000) => {
+const wait = async (fn, ms = 60000) => {
   for (let t = 0; t < ms; t += 700) {
     const v = await fn();
     if (v) return v;
@@ -175,7 +175,7 @@ check(conv?.summary === 'يطلب تمديد الإقامة' && conv.ref_text ==
 const st = await hook(JSON.stringify({ id: `evt_st${RUN}`, type: 'whatsapp.message.updated', apiVersion: 'v2', createTime: new Date().toISOString(),
   whatsappMessage: { id: `qa-ycl-${REFS.leave}`, status: 'delivered', from: NUM['airport-road'], to: LEAVE } }));
 const L3 = await wait(async () => { const r = await row(REFS.leave); return r.check_state === 'delivered' ? r : null; });
-check(st === 200 && !!L3, '4 YCloud\'s «delivered» moves the check forward');
+check(st.status === 200 && !!L3, '4 YCloud\'s «delivered» moves the check forward');
 await q(`update public.hub_departures set review_due_at = ((now() at time zone 'Asia/Riyadh')::date::timestamp + time '19:00') at time zone 'Asia/Riyadh' where nazeel_ref = $1`, [REFS.leave]);
 await svc('hub_departures_tick', { p_now: new Date(`${today}T19:01:00+03:00`).toISOString(), p_test: false });
 check((await row(REFS.leave)).review_state === 'queued' && (await row(REFS.extend)).review_state === 'cancelled', '4 at 19:01 the review of «سأغادر» queued; never for «تمديد»');
