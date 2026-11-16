@@ -170,7 +170,7 @@ export default function Departures() {
       <ErrorBox error={error} />
       {!data && !error && <Loading />}
       {data && (
-        <div className="card p-2 overflow-x-auto" data-tour="dep-table" tabIndex={0} aria-label="قائمة المغادرين">
+        <div className="card p-2 overflow-x-auto relative" data-tour="dep-table" tabIndex={0} aria-label="قائمة المغادرين">
           <div className="flex flex-wrap gap-x-5 gap-y-1 px-2 pt-2 pb-3 text-sm" data-summary>
             <span>{countWord(rows.length, GUEST)}</span>
             <span>أُرسلت رسالة الخروج: {sum((r) => SENT.has(r.check.state))}</span>

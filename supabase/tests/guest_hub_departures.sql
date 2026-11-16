@@ -257,8 +257,9 @@ select pg_temp._check('X7 the staff marks are audited (never the phone or the na
 -- ══ D — never two review requests for one stay ══
 -- the site's own booking leaving today on 100908's phone, with the site's review switch on: the list leaves it to the site
 update public.settings set value = jsonb_set(coalesce(value, '{}'::jsonb), '{airport-road}', 'true') where key = 'wa_stay_review';
-insert into public.reservations (ref, branch, guest_name, phone, check_in, check_out, adults, children, status, breakfast_choice, is_test)
-values ('AR-20991231-H901', 'airport-road', 'QA H9', '+15550100908', pg_temp._d(-2), pg_temp._d(0), 1, 0, 'confirmed', 'without', false);
+insert into public.reservations (ref, status, source, branch, room_type_id, check_in, check_out, adults, children, extra_beds, breakfast, guest_name, phone, email, locale, is_test, total, confirmed_at)
+values ('AR-20991231-H901', 'confirmed', 'website', 'airport-road', (select id from public.room_types where branch = 'airport-road' and not is_test order by sort, slug limit 1),
+        pg_temp._d(-2), pg_temp._d(0), 1, 0, 0, 'without', 'QA H9', '+15550100908', null, 'ar', false, 500, now());
 update public.hub_departures set review_state = 'scheduled', review_due_at = pg_temp._at(1, '10:00') where nazeel_ref = '100908';
 select pg_temp._tick(1, '10:02');
 select pg_temp._check('D1 the site''s booking leaving the same day → the list''s review skipped (site_review)', (select review_state = 'skipped' and review_code = 'site_review' from pg_temp._row('100908')));
@@ -267,8 +268,9 @@ select pg_temp._service();
 select public.hub_departure_finish((pg_temp._row('100901')).id, 'review', 'accepted', 'ycl-h9-r-100901', null)
   from (select public.hub_departures_claim(50, false)) x;
 select pg_temp._root();
-insert into public.reservations (ref, branch, guest_name, phone, check_in, check_out, adults, children, status, breakfast_choice, is_test)
-values ('AR-20991231-H902', 'airport-road', 'QA H9', '+15550100901', pg_temp._d(-3), pg_temp._d(-1), 1, 0, 'confirmed', 'without', false);
+insert into public.reservations (ref, status, source, branch, room_type_id, check_in, check_out, adults, children, extra_beds, breakfast, guest_name, phone, email, locale, is_test, total, confirmed_at)
+values ('AR-20991231-H902', 'confirmed', 'website', 'airport-road', (select id from public.room_types where branch = 'airport-road' and not is_test order by sort, slug limit 1),
+        pg_temp._d(-3), pg_temp._d(-1), 1, 0, 0, 'without', 'QA H9', '+15550100901', null, 'en', false, 500, now());
 select pg_temp._service();
 select public.wa_review_tick(false);
 select pg_temp._root();

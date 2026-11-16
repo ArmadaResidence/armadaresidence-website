@@ -24,3 +24,6 @@ await import('../admin/tests/hub-learn-ui-check.mjs');
 // H8 (16 Nov 2026): «الآن» (counts and times only, money with «الأرقام المالية», live, «وضع الشاشة») and «التقارير» →
 // «المحادثات والمساعد» (?day= from the daily report) — offline too (admin/tests/hub-now-ui-check.mjs).
 await import('../admin/tests/hub-now-ui-check.mjs');
+// H9 (16 Nov 2026): «قائمة المغادرين» (the upload read in the browser, the preview, «استبعاد» / «تمديد» with «تراجع», the dry run),
+// the switches in «الفريق والتقارير» — offline too (admin/tests/hub-departures-ui-check.mjs).
+await import('../admin/tests/hub-departures-ui-check.mjs');
