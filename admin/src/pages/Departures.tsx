@@ -193,7 +193,7 @@ export default function Departures() {
       <div className="max-w-3xl">
         <h1 className="text-2xl font-bold">قائمة المغادرين</h1>
         <p className="text-sm text-ink-muted mt-1">
-          كل صباح قبل الساعة 7:00: ارفع من نزيل قائمة «مغادرين اليوم» لكل فرع. الساعة 9:30 تصل الضيف رسالة «الخروج أو التمديد» من رقم الفرع، ثم طلب التقييم.
+          كل صباح قبل الساعة 7:00: ارفع من نزيل قائمة المغادرة لليوم لكل فرع. الساعة 9:30 تصل الضيف رسالة «الخروج أو التمديد» من رقم الفرع، ثم طلب التقييم.
           إن رُفعت القائمة بعد 9:30 وقبل 11:00 تُرسل الرسائل خلال 5 دقائق، وبعد 11:00 لا تُرسل رسالة الخروج ذلك اليوم.
           يُقرأ الملف في المتصفح ولا يُحفظ؛ يُحفظ رقم الجوال والاسم الأول ورقم الحجز فقط، ويُحذف بعد 30 يومًا.
         </p>
@@ -237,7 +237,7 @@ export default function Departures() {
                   رفع ملف نزيل
                 </button>
                 <p className="text-sm text-ink-muted">أو اسحب الملف وأفلته هنا</p>
-                <p id="dep-drop-hint" className="text-xs text-ink-muted" data-hint>تقرير الحجوزات ← مغادرين اليوم ← تصدير إكسل (xlsx)</p>
+                <p id="dep-drop-hint" className="text-xs text-ink-muted" data-hint>{D.NAZEEL_STEPS}</p>
               </div>
             ) : (
               <div className="dep-file" data-file>

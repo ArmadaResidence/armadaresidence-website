@@ -46,9 +46,9 @@ const id = (n) => `00000000-0000-4000-8000-${String(n).padStart(12, '0')}`;
 const EX = '+966512345678';
 const slot = (n, o) => ({ id: id(n), position: n, name: 'سالم', phone: EX, role: 'staff', days: [0, 1, 2, 3, 4, 5, 6], start_time: '08:00', end_time: '16:00', active: true, test_as_guest: false, consent_at: '2026-11-15T08:00:00Z', on_shift: true, ...o });
 const BRANCHES = [
-  { slug: 'airport-road', name: 'طريق المطار', can_edit: true, resume_minutes: 15, escalate_minutes: 10, channel: true,
+  { slug: 'airport-road', name: 'طريق المطار', can_edit: true, resume_minutes: 15, escalate_minutes: 10, standby_on: false, standby_minutes: 5, channel: true,
     slots: [slot(1, {}), slot(2, { name: 'هدى', role: 'manager', days: [0, 1, 2, 3, 4], start_time: '23:00', end_time: '07:00', on_shift: false }), slot(3, { name: 'خالد', active: false, on_shift: false, test_as_guest: true })] },
-  { slug: 'shafa-road', name: 'طريق الشفا', can_edit: true, resume_minutes: 20, escalate_minutes: 10, channel: false, slots: [] },
+  { slug: 'shafa-road', name: 'طريق الشفا', can_edit: true, resume_minutes: 20, escalate_minutes: 10, standby_on: true, standby_minutes: 3, channel: false, slots: [] },
 ];
 const REPORT = (day) => ({
   day, stored: true, built_at: '2026-11-15T05:00:00Z', sends: { sent: 2, delivered: 2, read: 1, failed: 0 },
@@ -116,6 +116,12 @@ for (const [role, branch, perms, sys] of ROLES) {
           saved[body.p_branch] = { resume_minutes: body.p_resume, escalate_minutes: body.p_escalate };
           return ok({ ok: true, batch_id: id(902), previous: { resume_minutes: 15, escalate_minutes: 10 } });
         }
+        // «وضع الاستعداد» (H9 fix 2)
+        if (fn === 'hub_team_standby_save') {
+          const before = { standby_on: BRANCHES.find((b) => b.slug === body.p_branch)?.standby_on ?? false, standby_minutes: BRANCHES.find((b) => b.slug === body.p_branch)?.standby_minutes ?? 5, ...(saved[body.p_branch] ?? {}) };
+          saved[body.p_branch] = { ...(saved[body.p_branch] ?? {}), standby_on: body.p_on, standby_minutes: body.p_minutes };
+          return ok({ ok: true, batch_id: id(904), previous: { standby_on: before.standby_on, standby_minutes: before.standby_minutes } });
+        }
         if (fn === 'hub_report_test') return ok({ ok: true, recipient: 'أحمد', mine: true, send_id: id(990) });
         // 15 Nov 2026 (Ahmed): the real outcome — refused (light runs) or delivered (dark runs)
         if (fn === 'hub_staff_send_status') return ok(scheme === 'light' ? { status: 'skipped', error_code: 'template_unread', template: 'hub_daily_report' } : { status: 'delivered', error_code: null, template: 'hub_daily_report' });
@@ -149,7 +155,12 @@ for (const [role, branch, perms, sys] of ROLES) {
       check((await page.locator('[data-action="slot-add"]').count()) === (edit ? branches.length : 0), `${tag}: «إضافة موظف» for editors only`);
       check((await page.locator('[data-action="slot-delete"]').count()) === (edit && !branch ? 3 : 0), `${tag}: «حذف الموظف» for editors only`);
       check((await page.locator('[data-action="team-settings-save"]').count()) === (edit ? branches.length : 0), `${tag}: the branch settings' «حفظ» for editors only`);
-      const TOUR = ['team-tabs', 'team-on-shift', 'team-settings', ...(edit ? ['team-add'] : []), ...(edit && !branch ? ['team-slots'] : [])];
+      // «وضع الاستعداد» (H9 fix 2): the switch and the minutes per branch, read-only without the edit right
+      check((await page.locator('[data-standby]').count()) === branches.length && (await page.locator('[data-field="standby-on"]').count()) === branches.length, `${tag}: «وضع الاستعداد» in every branch card`);
+      check((await page.locator('[data-standby]').first().textContent()).includes('وضع الاستعداد: انتظر رد الفريق قبل رد المساعد') && (await page.locator('[data-standby]').first().textContent()).includes('مدة الانتظار (دقائق)'), `${tag}: the switch and «مدة الانتظار (دقائق)»`);
+      if (!branch) check((await page.locator('[data-standby="airport-road"] [data-chip="standby"]').textContent()) === 'متوقف' && (await page.locator('[data-standby="shafa-road"] [data-chip="standby"]').textContent()) === 'مفعّل · 3 دقائق', `${tag}: the state chips (OFF / on with its minutes)`);
+      check((await page.locator('[data-action="team-standby-save"]').count()) === (edit ? branches.length : 0) && (await page.locator('[data-field="standby-on"]:disabled').count()) === (edit ? 0 : branches.length), `${tag}: «حفظ وضع الاستعداد» for editors only; the switch read-only otherwise`);
+      const TOUR = ['team-tabs', 'team-on-shift', 'team-settings', 'team-standby', ...(edit ? ['team-add'] : []), ...(edit && !branch ? ['team-slots'] : [])];
       for (const t of TOUR) check((await page.locator(`[data-tour~="${t}"]`).count()) >= 1, `${tag}: the page tour target «${t}» exists`);
       if (w === 1440 && role === 'admin') await page.screenshot({ path: join(SHOTS, `team-${scheme}.png`), fullPage: true });
       await sane(page, `${tag} team`);
@@ -193,6 +204,26 @@ for (const [role, branch, perms, sys] of ROLES) {
         await page.waitForTimeout(400);
         const bs = calls.find((c) => c.fn === 'hub_team_branch_save');
         check(bs?.body?.p_branch === branches[0] && bs.body.p_resume === 25, `${tag}: hub_team_branch_save — ${JSON.stringify(bs?.body ?? null)}`);
+        // «وضع الاستعداد»: on, the minutes checked (1–30), saved with the right values, «تراجع»
+        const sb = page.locator(`[data-standby="${branches[0]}"]`);
+        const sbBefore = await sb.locator('[data-field="standby-on"]').isChecked();
+        await sb.locator('[data-field="standby-on"]').setChecked(!sbBefore);
+        await sb.locator(`#standby-${branches[0]}`).fill('');
+        await page.waitForTimeout(150);
+        check(await sb.locator('[data-error="standby-minutes"]').isVisible() && await sb.locator('[data-action="team-standby-save"]').isDisabled(), `${tag}: no minutes → «اكتب مدة من 1 إلى 30 دقيقة.», no save`);
+        await sb.locator(`#standby-${branches[0]}`).fill('45');
+        await page.waitForTimeout(150);
+        check(!(await sb.locator('[data-error="standby-minutes"]').count()) && (await sb.locator('[data-action="team-standby-save"]').isEnabled()), `${tag}: 45 is held at the field's maximum (30), never sent above it`);
+        await sb.locator(`#standby-${branches[0]}`).fill('2');
+        await sb.locator('[data-action="team-standby-save"]').click();
+        await page.waitForTimeout(400);
+        const ss = calls.find((c) => c.fn === 'hub_team_standby_save');
+        check(ss?.body?.p_branch === branches[0] && ss.body.p_on === !sbBefore && ss.body.p_minutes === 2, `${tag}: hub_team_standby_save with the switch and 2 minutes — ${JSON.stringify(ss?.body ?? null)}`);
+        check((await page.locator('[data-toast="undo"]').count()) >= 1, `${tag}: the «تراجع» toast after the standby save`);
+        await page.locator('[data-toast="undo"] [data-action="undo"]').last().click();
+        await page.waitForTimeout(400);
+        const undo = calls.filter((c) => c.fn === 'hub_team_standby_save').at(-1);
+        check(undo?.body?.p_on === sbBefore && undo.body.p_minutes === (branches[0] === 'shafa-road' ? 3 : 5), `${tag}: «تراجع» saves the values before — ${JSON.stringify(undo?.body ?? null)}`);
         if (!branch) {
           await page.locator('[data-team-branch="airport-road"] [data-action="slot-delete"]').first().click();
           await page.locator('dialog[open] button:has-text("حذف الموظف")').click();

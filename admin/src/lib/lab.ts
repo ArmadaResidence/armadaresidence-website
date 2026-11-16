@@ -239,6 +239,13 @@ export interface SimResult {
 export const simulate = (unit: string, text: string, sim: SimState, language: 'ar' | 'en', drafts: boolean, persona: Persona | null,
   media: { kind: 'audio' | 'image'; mime: string; data: string } | null = null) =>
   api.edge<SimResult>('hub-admin', { action: 'simulate', unit, text, sim, language, drafts, persona, ...(media ? { media } : {}) });
+/** «وضع الاستعداد» (16 Nov 2026): the unit's branch switch, its minutes and whether a staff slot is on shift now */
+export interface StandbyStatus { on: boolean; minutes: number; on_shift: boolean }
+export async function standbyStatus(unit: string): Promise<StandbyStatus> {
+  const { data, error } = await supabase.rpc('hub_standby_status', { p_unit: unit });
+  if (error) api.fail(error, 'hub_standby_status');
+  return data as StandbyStatus;
+}
 /** H7: a file «المحاكي» accepts — a voice note (ogg, opus, mp3, m4a, wav, webm) or an image (jpeg, png, webp), at most 10 MB */
 export const SIM_MEDIA_MAX = 10 * 1024 * 1024;
 export function simMediaKind(f: File): 'audio' | 'image' | null {

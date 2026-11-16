@@ -17,6 +17,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { countWord, longDate, riyadhDateTime, type CountNoun } from '../lib/format';
 import { usd, type HubOverview, type HubUnit, type Persona, MODE_LABELS, MEDIA_CATEGORY_LABELS, MEDIA_STATUS_LABELS } from '../lib/hub';
 import * as L from '../lib/lab';
+import { standbyText } from '../lib/inbox';
 import EvalGate from '../components/EvalGate';
 import { CancelButton, DirtyScope, Empty, ErrorBox, Field, Loading, Modal, Segmented, Spinner, useToast } from '../components/ui';
 
@@ -630,7 +631,7 @@ function ItemForm({ o, busy, setBusy, initial, onSaved }: {
 // ══════════════════════════════════ «المحاكي» ══════════════════════════════════
 
 /** H7: a turn may carry an uploaded voice note or image (shown from the browser's own copy — never stored) */
-type SimTurn = { guest: string; r: L.SimResult | null; error?: string; media?: { kind: 'audio' | 'image'; url: string; name: string } };
+type SimTurn = { guest: string; r: L.SimResult | null; error?: string; media?: { kind: 'audio' | 'image'; url: string; name: string }; waiting?: boolean; note?: string };
 export function SimulatorPanel({ o, editingPersona }: { o: HubOverview; editingPersona: Record<string, Persona> }) {
   const toast = useToast();
   const units = usable(o);
@@ -649,10 +650,17 @@ export function SimulatorPanel({ o, editingPersona }: { o: HubOverview; editingP
   const [fileKey, setFileKey] = useState(0);
   const [saving, setSaving] = useState(false);
   const [formBusy, setFormBusy] = useState(false);
+  const [standby, setStandby] = useState<{ until: number; texts: string[]; last: number } | null>(null);
+  const [engaged, setEngaged] = useState(false);
+  const [staffOn, setStaffOn] = useState(false);
+  const [tick, setTick] = useState(() => Date.now());
   const reset = () => {
     setSim(L.freshSim());
     setTurns([]);
     setOpen(null);
+    setStandby(null);
+    setEngaged(false);
+    setStaffOn(false);
   };
   useEffect(reset, [key]);
   if (!u) return <Empty text="لا وحدة ظاهرة." />;
@@ -672,17 +680,11 @@ export function SimulatorPanel({ o, editingPersona }: { o: HubOverview; editingP
     }
     setFile(f);
   }
-  async function send() {
-    const msg = text.trim();
-    if ((!msg && !file) || busy) return;
+  // «وضع الاستعداد» (16 Nov 2026): the branch's wait for a staff reply, simulated with a real clock — the guest's messages
+  // during it join one reply at its end; «رد موظف» stands the assistant down (then «مع موظف»: silent here until a restart)
+  async function run(msg: string, f: File | null, i: number) {
     setBusy(true);
-    setText('');
-    const i = turns.length;
-    const f = file;
     const kind = f ? L.simMediaKind(f) : null;
-    setFile(null);
-    setFileKey((k) => k + 1);
-    setTurns((x) => [...x, { guest: msg, r: null, ...(f && kind ? { media: { kind, url: URL.createObjectURL(f), name: f.name } } : {}) }]);
     try {
       const media = f && kind ? { kind, mime: f.type || (kind === 'audio' ? 'audio/ogg' : 'image/jpeg'), data: await L.fileBase64(f) } : null;
       const r = await L.simulate(u.key, msg, sim, language, drafts, persona === 'editing' ? editingPersona[u.key] ?? null : null, media);
@@ -692,6 +694,7 @@ export function SimulatorPanel({ o, editingPersona }: { o: HubOverview; editingP
         setTurns((x) => x.map((t, j) => (j === i ? { ...t, r } : t)));
         setSim(r.sim);
         setOpen(i);
+        if (r.replies.length) setEngaged(true);
       }
     } catch (e) {
       setTurns((x) => x.map((t, j) => (j === i ? { ...t, error: (e as Error).message } : t)));
@@ -699,6 +702,64 @@ export function SimulatorPanel({ o, editingPersona }: { o: HubOverview; editingP
       setBusy(false);
     }
   }
+  async function send() {
+    const msg = text.trim();
+    if ((!msg && !file) || busy) return;
+    const i = turns.length;
+    const f = file;
+    const kind = f ? L.simMediaKind(f) : null;
+    setText('');
+    setFile(null);
+    setFileKey((k) => k + 1);
+    if (!f && staffOn) {
+      setTurns((x) => [...x, { guest: msg, r: null, note: 'مع موظف: المساعد صامت (يعود بعد دقائق «عودة المساعد» من صمت الفريق)' }]);
+      return;
+    }
+    if (!f && standby) {
+      setTurns((x) => [...x, { guest: msg, r: null, waiting: true }]);
+      setStandby({ ...standby, texts: [...standby.texts, msg], last: i });
+      return;
+    }
+    setTurns((x) => [...x, { guest: msg, r: null, ...(f && kind ? { media: { kind, url: URL.createObjectURL(f), name: f.name } } : {}) }]);
+    if (!f && !engaged) {
+      let st: L.StandbyStatus | null = null;
+      try {
+        st = await L.standbyStatus(u.key);
+      } catch {
+        st = null;
+      }
+      if (st && st.on && st.on_shift && st.minutes >= 1 && st.minutes <= 30) {
+        setTurns((x) => x.map((t, j) => (j === i ? { ...t, waiting: true } : t)));
+        const now = Date.now();
+        setTick(now);
+        setStandby({ until: now + st.minutes * 60_000, texts: [msg], last: i });
+        return;
+      }
+    }
+    await run(msg, f, i);
+  }
+  async function endStandby() {
+    const p = standby;
+    if (!p || busy) return;
+    setStandby(null);
+    setTurns((x) => x.map((t) => (t.waiting ? { ...t, waiting: false } : t)));
+    await run(p.texts.join(' '), null, p.last);
+  }
+  function staffReply() {
+    setStandby(null);
+    setTurns((x) => x.map((t) => (t.waiting ? { ...t, waiting: false, note: t === x.filter((y) => y.waiting).at(-1) ? 'ردّ موظف خلال الانتظار، فتوقف المساعد.' : undefined } : t)));
+    setStaffOn(true);
+    setEngaged(false);
+  }
+  useEffect(() => {
+    if (!standby) return;
+    const id = window.setInterval(() => setTick(Date.now()), 1000);
+    return () => window.clearInterval(id);
+  }, [standby]);
+  useEffect(() => {
+    if (standby && tick >= standby.until) void endStandby();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tick, standby]);
   const last = [...turns].reverse().find((t) => t.r)?.r ?? null;
   const shownTurn = open !== null ? turns[open] : null;
   const outcomeAction = (r: L.SimResult | null) => {
@@ -755,7 +816,8 @@ export function SimulatorPanel({ o, editingPersona }: { o: HubOverview; editingP
                   </div>
                 ))}
                 {t.error && <div className="sim-bubble sim-error" role="alert">{t.error}</div>}
-                {!t.r && !t.error && <div className="sim-bubble sim-us"><Spinner /></div>}
+                {t.note && <div className="sim-bubble sim-note text-start" data-sim-note>{t.note}</div>}
+                {!t.r && !t.error && !t.waiting && !t.note && <div className="sim-bubble sim-us"><Spinner /></div>}
                 {t.r?.replies.map((m, j) => (
                   <button key={j} type="button" className={`sim-bubble sim-us text-start ${open === i ? 'is-on' : ''}`} onClick={() => setOpen(i)} lang={language} dir="auto" data-sim-reply data-notice={m.notice || undefined}>
                     {m.body}
@@ -765,6 +827,16 @@ export function SimulatorPanel({ o, editingPersona }: { o: HubOverview; editingP
                 {t.r && !t.r.replies.length && <button type="button" className="sim-bubble sim-note text-start" onClick={() => setOpen(i)}>لا رد — {t.r.decision.to === 'human' ? 'بانتظار موظف' : 'لا شيء يُرسل'}</button>}
               </div>
             ))}
+            {standby && (
+              <div className="sim-bubble sim-note text-start grid gap-2" data-sim-standby>
+                <span className="font-semibold" role="timer">{standbyText(standby.until - tick)}</span>
+                <span className="text-xs text-ink-muted">وضع الاستعداد: الرسالة غير مقروءة على جوال الفرع ولا يظهر أن أحدًا يكتب.</span>
+                <span className="flex flex-wrap gap-2">
+                  <button type="button" className="btn btn-ghost btn-sm" onClick={staffReply} data-action="sim-staff-reply">رد موظف</button>
+                  <button type="button" className="btn btn-ghost btn-sm" onClick={() => void endStandby()} data-action="sim-standby-skip">تخطّي الانتظار</button>
+                </span>
+              </div>
+            )}
           </div>
           <div className="sim-phone-input">
             <label htmlFor="sim-text" className="sr-only">رسالة الضيف</label>

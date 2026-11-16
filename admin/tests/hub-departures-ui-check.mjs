@@ -151,7 +151,8 @@ for (const [role, branch, perms] of ROLES) {
       // ── the upload control (H9 fix 1) ──
       const up = page.locator('[data-tour~="dep-upload"]');
       check(await up.locator('[data-dropzone]').count() === 1 && /أو اسحب الملف وأفلته هنا/.test(await up.innerText()), `${tag}: the drop zone with «أو اسحب الملف وأفلته هنا»`);
-      check(/تقرير الحجوزات ← مغادرين اليوم ← تصدير إكسل \(xlsx\)/.test(await up.locator('[data-hint]').innerText()), `${tag}: the hint names Nazeel's path`);
+      check(/لوحة المعلومات ← الحجوزات ← تبويب «المغادرة» ← «اليوم» ← أيقونة الطباعة ← التنزيل ← Excel Worksheet/.test(await up.locator('[data-hint]').innerText())
+        && !/مغادرين اليوم|تصدير إكسل/.test(await up.locator('[data-hint]').innerText()), `${tag}: the hint names Nazeel's real steps (H9 fix 2)`);
       const pick = up.locator('[data-action="pick"]');
       check(await pick.innerText() === 'رفع ملف نزيل' && /btn-primary/.test(await pick.getAttribute('class')), `${tag}: the bronze primary «رفع ملف نزيل» button`);
       check(await pick.getAttribute('aria-describedby') === 'dep-drop-hint' && await page.locator('#dep-file').getAttribute('tabindex') === '-1', `${tag}: keyboard reaches the button (the bare input is out of the tab order), the hint described`);
@@ -166,7 +167,7 @@ for (const [role, branch, perms] of ROLES) {
       // a file that cannot be read: its precise reason inside the card — never a toast
       await page.setInputFiles('#dep-file', { name: 'list.xlsx', mimeType: XLSX_MIME, buffer: Buffer.from('not a zip at all') });
       await page.locator('[data-read-error]').waitFor({ timeout: 10000 });
-      check(/ليس ملف Excel يمكن قراءته/.test(await page.locator('[data-read-error]').innerText()) && await page.locator('[data-toast]').count() === 0, `${tag}: a broken file → its reason in the card, no toast`);
+      check(/ليس ملف Excel يمكن قراءته[^]*تبويب «المغادرة» ← «اليوم»/.test(await page.locator('[data-read-error]').innerText()) && await page.locator('[data-toast]').count() === 0, `${tag}: a broken file → its reason in the card, no toast`);
       check(/list\.xlsx/.test(await page.locator('[data-file-name]').innerText()) && /ك\.ب/.test(await page.locator('[data-file-size]').innerText()), `${tag}: the file's name and size`);
       check(await page.locator('[data-action="save"]').isDisabled(), `${tag}: «حفظ القائمة» stays disabled after an unreadable file`);
       await page.locator('[data-action="remove"]').click();

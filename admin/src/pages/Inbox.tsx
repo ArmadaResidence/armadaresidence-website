@@ -27,7 +27,7 @@ import tplDefs from '../../../supabase/functions/_shared/hub/hub-templates.json'
 import {
   stateText, ACTIONS, DRAFT_ACTIONS, LANGUAGE_FILTERS, MARKS, OWNER_FILTERS, REJECT_REASONS, SHORTCUTS, STATE_LABELS, TABS, TAB_LABELS, TAG_LABELS, TEMPLATE_LABELS, approve, assign, assistError, banner,
   block, close, eventText, list, markUnanswered, mediaUrl, needsTranslation, newKey, ownerText, pauseUnit, reject, release, retry, send, sendError, sendSuggestion, statusText, suggest, takeOver,
-  thread, timerTone, transfer, translate, waitingText, windowState, addNote,
+  standbyText, thread, timerTone, transfer, translate, waitingText, windowState, addNote,
   type Filters, type HubState, type InboxList, type InboxRow, type Msg, type RejectReason, type Tab, type Thread,
 } from '../lib/inbox';
 import { CancelButton, Confirm, DirtyScope, ErrorBox, Field, Loading, Modal, Spinner, useToast } from '../components/ui';
@@ -270,6 +270,7 @@ export default function Inbox() {
                       <span className="inbox-chip" data-row-state data-phase={r.state === 'human' ? (r.owner_kind === 'staff' || r.owner_kind === 'phone' ? 'staff' : 'waiting') : undefined}>{stateText(r.state, r.owner_kind)}</span>
                       {r.tags.map((g) => <span key={g} className="inbox-chip is-bronze">{TAG_LABELS[g] ?? g}</span>)}
                       {r.is_test && <span className="inbox-chip is-test">{MARKS.test}</span>}
+                      {r.standby_until && <StandbyCountdown until={r.standby_until} className="inbox-chip is-bronze" />}
                     </span>
                     <span className="text-xs text-ink-muted truncate" data-row-last>{r.last?.kind === 'template' ? MARKS.template : r.last?.line || (r.last ? 'وسائط أو رسالة بلا نص' : '')}</span>
                     <span className="flex items-center justify-between gap-2 text-xs text-ink-muted">
@@ -472,6 +473,7 @@ function ThreadView({ t, now, edit, unitNames, composerRef, onBack, onPanel, onC
           <p className="text-xs text-ink-muted">
             {c.unit_name} · <span data-thread-state>{stateText(c.state, c.owner_kind, c.human_reason)}</span> · {ownerText(c.owner_kind, c.owner_name)}{c.is_test ? ` · ${MARKS.test}` : ''}
           </p>
+          {c.standby_until && <StandbyCountdown until={c.standby_until} className="text-xs font-semibold text-bronze-text" onEnd={() => window.setTimeout(() => void onChanged(), 12_000)} />}
         </div>
         <button type="button" className="btn btn-ghost btn-sm inbox-narrow" onClick={onPanel} data-action="open-panel">الضيف</button>
       </header>
@@ -979,4 +981,25 @@ function InlineMedia({ m, onOpen }: { m: Msg; onOpen: () => void }) {
       <img src={url} alt="صورة أرسلها الضيف" className="max-h-56 max-w-full rounded" loading="lazy" />
     </button>
   );
+}
+
+/** «وضع الاستعداد»: «المساعد يرد بعد m:ss», counting down each second; gone at 0:00 (the reply arrives through Realtime) */
+function StandbyCountdown({ until, className, onEnd }: { until: string; className?: string; onEnd?: () => void }) {
+  const end = Date.parse(until);
+  const [left, setLeft] = useState(() => end - Date.now());
+  useEffect(() => {
+    setLeft(end - Date.now());
+    const i = window.setInterval(() => {
+      const l = end - Date.now();
+      setLeft(l);
+      if (l <= 0) {
+        window.clearInterval(i);
+        onEnd?.();
+      }
+    }, 1000);
+    return () => window.clearInterval(i);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [end]);
+  if (!Number.isFinite(end) || left <= 0) return null;
+  return <span className={className} role="timer" aria-live="off" data-standby>{standbyText(left)}</span>;
 }
