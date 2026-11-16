@@ -9,8 +9,9 @@
  *     No message to anyone.
  * Never logs a text, a name or a number.
  */
-import { sendSession, textPayload, type WaResult } from '../../booking-request/whatsapp-send.ts';
-import { checkFacts, learnCommand, learnLine, learnSystem, learnUser, refusalLine, replyOutcome, teachOutcome, textRefusal, type LineKey, type Scope } from './learn.ts';
+import { buttonsPayload, sendSession, textPayload, type WaResult } from '../../booking-request/whatsapp-send.ts';
+import content from '../../booking-request/content.generated.json' with { type: 'json' };
+import { checkFacts, confirmButtons, confirmedLinks, learnCommand, linksOf, learnLine, learnSystem, learnUser, refusalLine, replyOutcome, teachOutcome, textRefusal, type LineKey, type Scope } from './learn.ts';
 import type { ModelFn, ModelResult } from './model.ts';
 
 // deno-lint-ignore no-explicit-any
@@ -19,17 +20,21 @@ export type Call = <T = Json>(name: string, args: Record<string, unknown>) => Pr
 export interface RunOpts {
   deadline: number;
   /** the sender (sendSession by default; the branch e2e passes a recorder) */
-  send?: (payload: ReturnType<typeof textPayload>, windowExpiresAt: string, test: boolean) => Promise<WaResult>;
+  send?: (payload: ReturnType<typeof textPayload> | ReturnType<typeof buttonsPayload>, windowExpiresAt: string, test: boolean) => Promise<WaResult>;
 }
+/** H9 fix 1: the confirmed links a teaching may give guests (content/contact.json → social) */
+export const LINKS = confirmedLinks(content);
 const DAY_MS = 24 * 3600_000;
 const used = (modelId: string, r: { input_tokens: number; output_tokens: number }) => [{ layer: 'draft_card', model: modelId, input_tokens: r.input_tokens, output_tokens: r.output_tokens }];
 
 /** a reply to a colleague: sent from the number they wrote to, recorded in their chat (hub_staff_chat_finish) */
-export async function replyToColleague(call: Call, j: { from: string; to: string; message_id: string; sent_at: string | null; is_test: boolean }, body: string, opts: RunOpts): Promise<WaResult> {
+export async function replyToColleague(call: Call, j: { from: string; to: string; message_id: string; sent_at: string | null; is_test: boolean }, body: string, opts: RunOpts,
+  buttons?: { id: string; title: string }[]): Promise<WaResult> {
   const win = new Date((Date.parse(j.sent_at ?? '') || Date.now()) + DAY_MS).toISOString();
   let sent: WaResult;
   try {
-    const payload = textPayload(j.from, j.to, body, j.message_id);
+    // H9 fix 1: a saved card's confirmation carries its quick replies («تمام» / «للفرعين» / «عدّل» / «امسح»)
+    const payload = buttons?.length && body.length <= 1000 ? buttonsPayload(j.from, j.to, body, buttons, j.message_id) : textPayload(j.from, j.to, body, j.message_id);
     sent = opts.send ? await opts.send(payload, win, !!j.is_test) : await sendSession({ payload, windowExpiresAt: win, test: !!j.is_test, log: null });
   } catch {
     sent = { accepted: false, status: 'failed', messageId: null, errorCode: 'payload' };
@@ -56,21 +61,24 @@ export async function runTeachJobs(call: Call, model: ModelFn, opts: RunOpts): P
       // a room price, or a service price from a manager: refused by code, no model call
       const pre = textRefusal(body, 'teach', !!j.teacher?.owner);
       const r: ModelResult = pre ? { ok: true, text: '', input_tokens: 0, output_tokens: 0, latency_ms: 0 }
-        : await model({ layer: 'compose', model: modelId, system: learnSystem(), user: learnUser({ mode: 'teach', scope: j.scope, today: String(c.today), text: body, topics, cards }) });
+        : await model({ layer: 'compose', model: modelId, system: learnSystem(),
+          user: learnUser({ mode: 'teach', scope: j.scope, today: String(c.today), text: body, topics, cards: cards.filter((k) => k.key !== j.revises?.key), links: LINKS, revising: j.revises ?? null }) });
       const out = pre ? { status: 'refused' as const, reason: pre } : r.ok
-        ? teachOutcome(checkFacts(r.text, { mode: 'teach', topics: topics.map((t) => t.key), cards: cards.map((k) => k.key), forbidden: c.forbidden ?? [], prices: !!j.teacher?.owner }, c.known_phones ?? undefined))
+        ? teachOutcome(checkFacts(r.text, { mode: 'teach', topics: topics.map((t) => t.key), cards: cards.map((k) => k.key).filter((k) => k !== j.revises?.key), forbidden: c.forbidden ?? [],
+          prices: !!j.teacher?.owner, links: [...Object.values(LINKS), ...linksOf(body)], today: String(c.today) }, c.known_phones ?? undefined))
         : { status: 'failed' as const, reason: r.error === 'credit' ? 'api_credit' : 'model' };
-      const o = out as { status: string; reason?: string; card?: unknown; conflicts?: string[] };
+      const o = out as { status: string; reason?: string; card?: unknown; conflicts?: string[]; name?: string };
       const fin = await call<Json>('hub_teach_finish', {
         p_job: j.job_id,
-        p: { status: o.status, reason: o.reason ?? null, card: o.card ?? null, conflicts: o.conflicts ?? [], models: used(modelId, r) },
+        p: { status: o.status, reason: o.reason ?? null, card: o.card ?? null, conflicts: o.conflicts ?? [], name: o.name ?? null, models: used(modelId, r) },
       }).catch((e) => {
         console.error('hub learn: teach job not recorded', String(e).slice(0, 80));
         return null;
       });
       const line: LineKey = (fin?.line as LineKey | null) ?? (out.status === 'refused' ? refusalLine(out.reason) : 'failed');
       lines.push(line);
-      if (j.from && j.to) await replyToColleague(call, j, learnLine(line, fin?.vars ?? {}), opts);
+      const buttons = ['saved', 'saved_both', 'revised'].includes(line) && fin?.card_id ? confirmButtons(String(fin.card_id), (fin.scope ?? j.scope) as Scope, !!fin.owner) : undefined;
+      if (j.from && j.to) await replyToColleague(call, j, learnLine(line, fin?.vars ?? {}), opts, buttons);
       console.log('hub learn: teach', out.status, line);
       done++;
     }
@@ -94,12 +102,12 @@ export async function runReplyJobs(call: Call, model: ModelFn, opts: RunOpts): P
       const pre = textRefusal(String(j.reply ?? ''), 'staff_reply', false);
       const r: ModelResult = pre ? { ok: true, text: '', input_tokens: 0, output_tokens: 0, latency_ms: 0 }
         : await model({ layer: 'compose', model: modelId, system: learnSystem(),
-          user: learnUser({ mode: 'staff_reply', scope: j.branch, today: String(c.today), question: j.question, reply: String(j.reply ?? ''), topics, cards }) });
+          user: learnUser({ mode: 'staff_reply', scope: j.branch, today: String(c.today), question: j.question, reply: String(j.reply ?? ''), topics, cards, links: LINKS }) });
       let p: Json;
       if (pre) p = { status: 'decision', decision: { kind: 'price', conflicts: [] }, facts: [], staff_name: j.staff_first_name };
       else if (!r.ok) p = { status: 'failed', reason: r.error === 'credit' ? 'api_credit' : 'model' };
       else {
-        const chk = checkFacts(r.text, { mode: 'staff_reply', topics: topics.map((t) => t.key), cards: cards.map((k) => k.key), forbidden: c.forbidden ?? [], prices: false }, c.known_phones ?? undefined);
+        const chk = checkFacts(r.text, { mode: 'staff_reply', topics: topics.map((t) => t.key), cards: cards.map((k) => k.key), forbidden: c.forbidden ?? [], prices: false, links: Object.values(LINKS), today: String(c.today) }, c.known_phones ?? undefined);
         if (!chk.ok) p = { status: 'failed', reason: chk.reason };
         else {
           const o = replyOutcome(chk.facts);

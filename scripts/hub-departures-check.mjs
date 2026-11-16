@@ -19,14 +19,17 @@
 //   S  the migration = its generator, a WHERE on every UPDATE / DELETE, both switches OFF, no unit mode / licence / global
 //      switch changed, no phone number; the limit's formula (reserve 20 %, the priorities) in the SQL.
 import { readFileSync } from 'node:fs';
-import { nazeelXlsx, nazeelRows, xlsx, EXPECT } from './fixtures/nazeel-sample.mjs';
-import { ARAB_CODES, checkoutPayload, checkoutTime, departureFaults, departuresText, HEADERS, IGNORED, normalizePhone, parseNazeel, phoneLanguage, readXlsx, uploadRows } from '../supabase/functions/_shared/hub/departures.ts';
+import { nazeelXlsx, nazeelRows, nazeelPrefixedXlsx, xlsx, EXPECT, X_EXPECT, X_GUESTS } from './fixtures/nazeel-sample.mjs';
+import { parseXml, kids, ARAB_CODES, checkoutPayload, checkoutTime, departureFaults, departuresText, HEADERS, IGNORED, normalizePhone, parseNazeel, phoneLanguage, readXlsx, uploadRows } from '../supabase/functions/_shared/hub/departures.ts';
 import { departureTap, parseInbound, route } from '../supabase/functions/_shared/hub/webhook.ts';
 import { decide, departureButton } from '../supabase/functions/_shared/hub/machine.ts';
 import { reportVars } from '../supabase/functions/_shared/hub/staff.ts';
 import { fixed } from '../supabase/functions/_shared/hub/copy.ts';
 import { understandUser } from '../supabase/functions/_shared/hub/understand.ts';
 import { migration, OUT_PATH } from './hub-departures-migration.mjs';
+import { migration as fixMigration, OUT_PATH as FIX_PATH } from './hub-h9fix-migration.mjs';
+import { branchShort, reminderFallback, uploadReminderPayload, STAFF_TEMPLATE_DEFS } from '../supabase/functions/_shared/hub/staff.ts';
+import { drainReminders } from '../supabase/functions/_shared/hub/staff-send.ts';
 
 const read = (p) => readFileSync(new URL(`../${p}`, import.meta.url), 'utf8').replace(/\r\n/g, '\n');
 const content = JSON.parse(read('supabase/functions/booking-request/content.generated.json'));
@@ -76,6 +79,41 @@ check(HEADERS.ref === 'رقم الحجز' && HEADERS.name === 'العميل' && 
   const parser = SRC.slice(SRC.indexOf('export function parseNazeel'), SRC.indexOf('export const uploadRows'));
   check(!/IGNORED|الرصيد|الوحدات|الحالة/.test(parser), 'P11 parseNazeel never names an ignored column');
   check(!/fetch\(|XMLHttpRequest|navigator\.sendBeacon/.test(SRC), 'P12 the file is read locally — no network in the module');
+}
+
+// ── X: Nazeel's real export (H9 fix 1, 16 Nov 2026): every SpreadsheetML element prefixed x:, a BOM before every part,
+// random relationship ids, a drawing, 142 merges, the header on row 12 (C F I P Y AB), 17 guests, footer rows 31 and 33 ──
+for (const deflate of [true, false]) {
+  const s = await readXlsx(nazeelPrefixedXlsx({ deflate }));
+  const p = parseNazeel(s);
+  const tag = deflate ? 'deflated' : 'stored';
+  check(p.ok && p.header_row === X_EXPECT.header_row, `X1 ${tag}: the prefixed file read by namespace — the header on row 12 (${p.header_row}, ${p.error ?? 'ok'})`);
+  check(same(uploadRows(p), X_EXPECT.kept), `X2 ${tag}: the 16 guests with a phone — first word of «العميل», rich-text runs joined, the phonetic run left out, the duplicate phone kept for the server's check`);
+  check(same(p.no_phone, X_EXPECT.no_phone) && p.rows.length + p.no_phone.length === X_GUESTS.length, `X3 ${tag}: 17 booking lines; the one without a phone skipped by its first name`);
+  check(s.merges.length === 142 && p.ignored_lines === 2, `X4 ${tag}: 142 merged ranges read; the two footer lines are not guests (${s.merges.length}, ${p.ignored_lines})`);
+  check(!JSON.stringify(p.rows).match(/1250|75\.50|مغادر"|"10[1-9]"|"20[1-7]"|الفلتر|الطباعة|جون/), `X5 ${tag}: «الرصيد»، «الوحدات»، «الحالة», the filter label, the printed date and the phonetic run never read`);
+}
+{
+  const a = parseNazeel(await readXlsx(nazeelPrefixedXlsx({ prefix: false })));
+  check(a.ok && same(uploadRows(a), X_EXPECT.kept), 'X6 the same sheet without a prefix (a default namespace) → the same guests');
+  const none = parseNazeel(await readXlsx(nazeelPrefixedXlsx({ rows: false })));
+  check(!none.ok && none.error === 'no_rows' && none.header_row === 11, 'X7 the header found but no booking line → no_rows (a precise reason, never «فارغ»)');
+  let e = null;
+  try {
+    await readXlsx(nazeelPrefixedXlsx({ sheet: false }));
+  } catch (x) {
+    e = x.message;
+  }
+  check(e === 'no_sheet', `X8 a workbook whose sheet is missing → no_sheet (${e})`);
+  const blank = parseNazeel({ rows: [[], ['', ' ']], merges: [] });
+  check(!blank.ok && blank.error === 'empty', 'X9 a sheet without a single cell → empty');
+  const x = parseXml('﻿<?xml version="1.0"?><x:a xmlns:x="urn:m" xmlns:y="urn:o"><x:b y:k="1" k="2">t<![CDATA[<c>]]></x:b><y:b/><b/></x:a>');
+  check(x.local === 'a' && x.ns === 'urn:m' && kids(x, 'b', ['urn:m']).length === 1 && kids(x, 'b', ['urn:o']).length === 1 && kids(x, 'b', ['']).length === 1
+    && kids(x, 'b', ['urn:m'])[0].attrs['{urn:o}k'] === '1' && kids(x, 'b', ['urn:m'])[0].attrs.k === '2' && kids(x, 'b', ['urn:m'])[0].text === 't<c>',
+    'X10 the XML reader: a BOM, prefixes resolved by namespace (never by their text), attributes by namespace, CDATA');
+  const SRC = read('supabase/functions/_shared/hub/departures.ts');
+  const rx = SRC.slice(SRC.indexOf('export async function readXlsx'), SRC.indexOf('// ═══ the departure check ═══'));
+  check(!/matchAll\(\/<|<row\b|<c\b|<si>|<t\(/.test(rx), 'X11 readXlsx never matches a tag by its text');
 }
 
 // ── G: language, time, template ──
@@ -169,7 +207,7 @@ check(fixed('departure_leave', 'en') === 'Thank you for staying with us, and we 
   const data = { branches: { 'airport-road': { dep_on: true, dep_leave: 3, dep_extend: 1, dep_none: 2, reviews: 4, dep_missing: false, dep_late: 1 }, 'shafa-road': { dep_on: false, dep_missing: true } }, limit_deferred: 5 };
   check(departuresText(data) === 'المطار: خروج 3 · تمديد 1 · لم يرد 2 — الشفا: لم يُفعَّل بعد', `T1 {{7}} per branch — ${departuresText(data)}`);
   check(departuresText({ branches: {} }) === 'لم يُفعَّل بعد', 'T2 neither branch → «لم يُفعَّل بعد»');
-  check(same(departureFaults(data), ['لم تُرفع قائمة المغادرين: الشفا', 'رسائل خروج فات موعدها 1', 'تأجيل بسبب حد الإرسال 5']), `T3 the faults — ${departureFaults(data).join(' | ')}`);
+  check(same(departureFaults(data), ['لم تُرفع قائمة المغادرين حتى 8:30: الشفا', 'رسائل خروج فات موعدها 1', 'تأجيل بسبب حد الإرسال 5']), `T3 the faults — ${departureFaults(data).join(' | ')}`);
   const v = reportVars('2026-11-16', data);
   check(v.length === 11 && v[6] === departuresText(data) && /لم تُرفع قائمة المغادرين/.test(v[10]) && !/[\n\t]/.test(v.join('')), 'T4 reportVars: {{7}} and {{11}}, one line each');
   const TEAM = read('admin/src/lib/team.ts');
@@ -208,6 +246,90 @@ check(fixed('departure_leave', 'en') === 'Thank you for staying with us, and we 
   check(/pg_advisory_xact_lock\(hashtext\('armada_stay_review'\)\)/.test(MIG) && (MIG.match(/pg_advisory_xact_lock\(hashtext\('armada_stay_review'\)\)/g) ?? []).length === 2, 'S8 the site’s review tick and the list share one lock');
   check(/'\*\/5 \* \* \* \*', 'select public\.hub_departures_tick\(\)'/.test(SRC), 'S9 the clock every 5 minutes');
   check(/departure_date < v_today - 30/.test(SRC), 'S10 deleted 30 days after the departure date');
+}
+
+// ── F: H9 fix 1 — the morning list of TODAY, the upload reminders ──
+{
+  const FX = read(FIX_PATH);
+  check(fixMigration() === FX, 'F1 the fix migration = its generator');
+  const SRC = read('scripts/hub-h9fix-migration.src.sql');
+  const stmts = FX.replace(/--[^\n]*/g, '').split(/;\s*\n/);
+  const noWhere = stmts.filter((x) => /\b(update public\.|delete from public\.)/i.test(x) && !/\bwhere\b/i.test(x));
+  check(noWhere.length === 0, `F2 a WHERE on every UPDATE / DELETE — ${noWhere.map((x) => x.trim().slice(0, 60)).join(' | ')}`);
+  check(!/\+\d{9,}/.test(FX), 'F3 no phone number in the migration');
+  check(!/update public\.hub_units|update public\.hub_licences|update public\.settings|update public\.hub_departure_config|update public\.hub_learning_config|hub_setting_set\(|hub_licence_set\(|hub_unit_mode_set\(/.test(FX),
+    'F4 no unit mode, licence, switch or setting changed');
+  check(/internal\.hub_departure_check_cutoff\(\) returns time\s+language sql immutable set search_path = '' as \$\$ select '11:00'::time \$\$/.test(FX), 'F5 the departure check’s cutoff 11:00');
+  const tick = FX.slice(FX.indexOf('create or replace function public.hub_departures_tick'), FX.indexOf('$$;', FX.indexOf('create or replace function public.hub_departures_tick')));
+  check(!/time '23:00'/.test(tick) && /v_time >= time '07:00'/.test(tick) && /v_time < time '08:00' then v_rem := v_rem \+ internal\.hub_upload_reminders_queue\(b, v_today, 'r1'/.test(tick)
+    && /v_time < time '08:30' then v_rem := v_rem \+ internal\.hub_upload_reminders_queue\(b, v_today, 'r2'/.test(tick) && /'r3', p_now, p_test\)/.test(tick)
+    && /values \('departures_missing', v_unit, jsonb_build_object\('date', v_today/.test(tick), 'F6 07:00 / 08:00 the staff, 08:30 the managers and «التنبيهات» (today); the 23:00 evening alert gone');
+  check(/v_time >= internal\.hub_departure_check_cutoff\(\) then 'late'/.test(tick) && !/hub_checkout_time/.test(tick), 'F7 from 11:00 no departure check (the cutoff, not the check-out time)');
+  check(/d\.answer is null and v_today = d\.departure_date \+ 1 and v_time < internal\.hub_departure_check_cutoff\(\)/.test(tick), 'F8 the no-answer review waits until 11:00 for that morning’s list');
+  check(/s\.role = 'staff' and internal\.hub_slot_covers\(s, p_now\)/.test(SRC) && /s\.active and s\.role = 'manager'/.test(SRC), 'F9 the staff on shift, else the managers');
+  check(/if p_date = v_today and internal\.hub_upload_reminders_queue\(p_branch, p_date, 'thanks'/.test(FX) && /r\.round <> 'thanks' and exists \(select 1 from public\.hub_departure_uploads u/.test(SRC),
+    'F10 the upload: no more reminders that day, a thank-you to whoever was reminded');
+  check(/if r\.round = 'thanks' and v_win is null then/.test(SRC), 'F11 a thank-you only inside the window');
+  check(/internal\.hub_staff_window\(r\.slot_id, r\.channel_id, now\(\)\)/.test(SRC) && /'link', 'https:\/\/admin\.armadaresidence\.com\/\?hub_d=' \|\| r\.branch_slug/.test(SRC), 'F12 the claim: the window’s end, the link ?hub_d=');
+  check(/union all\s+-- H9 fix 1: the upload reminders sent as a template/.test(FX), 'F13 the template reminders count in the shared limit');
+  check(/'dep_missing', coalesce\(p_to, now\(\)\) >= \(\(p_day\)::timestamp \+ time '08:30'\)/.test(FX), 'F14 the report’s fault: not uploaded by 08:30');
+  // the template = templates.md §7
+  const TM = read('docs/guest-hub/templates.md');
+  const s7 = TM.slice(TM.indexOf('### hub_upload_reminder'));
+  const block = [...s7.matchAll(/```\n([\s\S]*?)\n```/g)].map((m) => m[1])[0];
+  const def = STAFF_TEMPLATE_DEFS.hub_upload_reminder;
+  check(def && block === def.ar.body && def.category === 'UTILITY' && def.button.url === 'https://admin.armadaresidence.com/?hub_d={{1}}' && def.button.title === 'رفع القائمة' && !def.en,
+    'F15 hub_upload_reminder = templates.md §7 (Ahmed\'s wording, ar only, the URL button «رفع القائمة»)');
+  const b = content.branches.find((x) => x.slug === 'airport-road');
+  const pl = uploadReminderPayload(b.whatsapp, '+15550100905', 'سالم', b.name_ar, 'airport-road', 'rem-1');
+  check(pl.from === b.whatsapp && pl.template.name === 'hub_upload_reminder' && pl.template.language.code === 'ar' && same(pl.template.components[0].parameters.map((x) => x.text), ['سالم', 'طريق المطار'])
+    && pl.template.components[1].sub_type === 'url' && pl.template.components[1].parameters[0].text === 'airport-road', 'F16 the payload: from the branch number, {{1}} the first name, {{2}} the short branch name, the button suffix the branch code');
+  check(branchShort('أرمادا ريزيدنس – طريق الشفا') === 'طريق الشفا' && /صباح الخير سالم ☀️/.test(reminderFallback('سالم', b.name_ar, 'airport-road'))
+    && reminderFallback('سالم', b.name_ar, 'airport-road').includes('\nhttps://admin.armadaresidence.com/?hub_d=airport-road\n'), 'F17 the fallback line: the template\'s wording, the link on its own line');
+  const AP = read('admin/src/App.tsx');
+  check(/q\.get\('hub_d'\)/.test(AP) && /\/departures\?branch=\$\{hubD\}/.test(AP), 'F18 ?hub_d=<branch> opens «قائمة المغادرين» on that branch');
+}
+// drainReminders on stubs: the window open → the model's line (guarded; the link kept); a refused line → the fallback;
+// the window closed → the template only when approved; a thank-you with no window → nothing
+{
+  const fin = [];
+  const items = [
+    { id: 'r1', round: 'r1', branch: 'airport-road', is_test: true, channel_id: 'c1', from: '+966536622277', waba_id: 'w', sending_enabled: true, to: '+15550100905', first_name: 'سالم', role: 'staff',
+      window_expires_at: new Date(Date.now() + 3600e3).toISOString(), link: 'https://admin.armadaresidence.com/?hub_d=airport-road', history: [], earlier: [], models: {} },
+    { id: 'r2', round: 'r2', branch: 'airport-road', is_test: true, channel_id: 'c1', from: '+966536622277', waba_id: 'w', sending_enabled: true, to: '+15550100906', first_name: 'نادر', role: 'manager',
+      window_expires_at: null, link: 'https://admin.armadaresidence.com/?hub_d=airport-road', history: [], earlier: [], models: {} },
+    { id: 'r3', round: 'r1', branch: 'shafa-road', is_test: true, channel_id: 'c2', from: '+966536663030', waba_id: 'w', sending_enabled: true, to: '+15550100907', first_name: 'هدى', role: 'manager',
+      window_expires_at: new Date(Date.now() + 3600e3).toISOString(), link: 'https://admin.armadaresidence.com/?hub_d=shafa-road', history: [], earlier: [], models: {} },
+  ];
+  let claimed = false;
+  const call = async (fn, args) => {
+    if (fn === 'hub_upload_reminders_claim') {
+      if (claimed) return [];
+      claimed = true;
+      return items;
+    }
+    if (fn === 'hub_upload_reminder_finish') fin.push({ id: args.p_id, ...args.p });
+    return {};
+  };
+  const lines = { 'سالم': 'صباح الفل يا سالم ☕ قائمة النهارده لسه ما اترفعتش، ارفعها من هنا https://admin.armadaresidence.com/?hub_d=airport-road علشان رسايل 9:30 توصل في وقتها',
+    'هدى': 'صباح الخير يا هدى، رقم 0555555555 للتواصل' };
+  const model = async (o) => ({ ok: true, text: lines[/FIRST_NAME: (\S+)/.exec(o.user)?.[1]] ?? '', input_tokens: 10, output_tokens: 10, latency_ms: 1 });
+  const got = [];
+  const r = await drainReminders(call, content, model, { test: true, collect: (kind, payload) => got.push({ kind, payload }) });
+  const f1 = fin.find((x) => x.id === 'r1');
+  check(f1?.mode === 'session' && f1.status === 'test' && f1.body === lines['سالم'], `F19 the window open → the model's line, kept with its link (${JSON.stringify(f1)?.slice(0, 120)})`);
+  const f3 = fin.find((x) => x.id === 'r3');
+  check(f3?.mode === 'session' && /صباح الخير هدى ☀️/.test(f3.body ?? '') && !/0555555555/.test(f3.body ?? ''), 'F20 a line the guard refuses (a phone number) → the template\'s own wording with the link');
+  const f2 = fin.find((x) => x.id === 'r2');
+  check(f2?.mode === 'template' && got.some((g) => g.kind === 'reminder_template' && g.payload.to === '+15550100906'), 'F21 the window closed → the template (a TEST row is built, never sent)');
+  check(r.sent === 3 && fin.every((x) => Array.isArray(x.models)), `F22 every outcome recorded with its model use (${JSON.stringify(r)})`);
+  const SS = read('supabase/functions/_shared/hub/staff-send.ts');
+  const dr = SS.slice(SS.indexOf('export async function drainReminders'));
+  check(/ensureTemplate\(call, \{ channel_id: it\.channel_id, waba_id: it\.waba_id, template: HUB_UPLOAD_REMINDER, language: 'ar' \}\)/.test(dr) && /else code = 'no_window'/.test(dr),
+    'F23 the template only once YCloud shows it approved with templates.md\'s body; a thank-you never as a template');
+  check(!/console\.(log|error|warn)\([^)]*(it\.to|it\.first_name|body\b)/.test(dr), 'F24 no log line with a phone, a name or a text');
+  const WA = read('supabase/functions/wa-automation/index.ts');
+  check(/drainReminders\(call, content, anthropicModel/.test(WA), 'F25 the minute drain sends the reminders');
 }
 
 if (fails.length) {

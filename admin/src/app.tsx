@@ -124,6 +124,9 @@ function Home() {
   const hubC = q.get('hub_c');
   const hubR = q.get('hub_r');
   if (hubC) return <HubLink token={hubC} />;
+  // H9 fix 1 (16 Nov 2026): the upload reminder's ?hub_d=<branch> opens «قائمة المغادرين» on that branch
+  const hubD = q.get('hub_d');
+  if (hubD && /^(airport-road|shafa-road)$/.test(hubD) && canView(me, 'departures')) return <Navigate to={`/departures?branch=${hubD}`} replace />;
   // H8 (16 Nov 2026): the daily report opens «التقارير» → «المحادثات والمساعد» for that day (else «الفريق والتقارير» as before)
   if (hubR && /^\d{4}-\d{2}-\d{2}$/.test(hubR) && canView(me, 'reports')) return <Navigate to={`/reports?day=${hubR}`} replace />;
   if (hubR && /^\d{4}-\d{2}-\d{2}$/.test(hubR) && canView(me, 'hub_team')) return <Navigate to={`/hub-team?tab=reports&day=${hubR}`} replace />;

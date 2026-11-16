@@ -83,5 +83,20 @@
         "Extend my stay"
       ]
     }
+  },
+  "hub_upload_reminder": {
+    "category": "UTILITY",
+    "variables": [
+      "first_name",
+      "branch_name"
+    ],
+    "button": {
+      "type": "url",
+      "url": "https://admin.armadaresidence.com/?hub_d={{1}}",
+      "title": "رفع القائمة"
+    },
+    "ar": {
+      "body": "صباح الخير {{1}} ☀️\nتذكير لطيف: نحتاج قائمة مغادرين اليوم لفرع {{2}} من نزيل، حتى تصل رسائل الخروج للضيوف في موعدها الساعة 9:30.\nارفعها من الزر بالأسفل، وشكرًا لك."
+    }
   }
 }

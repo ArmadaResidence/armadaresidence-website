@@ -62,7 +62,7 @@ import {
   parseStatus, route, type Inbound,
 } from '../_shared/hub/webhook.ts';
 import { autoPayload, cleanParam, replyLocale, verifySignature, type AutoMessage, type AutoTemplate, type Locale, type OfferVars } from './templates.ts';
-import { drainStaff, emailReports, ensureTemplate, refreshDueTemplates, staffChat, type Call } from '../_shared/hub/staff-send.ts';
+import { drainReminders, drainStaff, emailReports, ensureTemplate, refreshDueTemplates, staffChat, type Call } from '../_shared/hub/staff-send.ts';
 import { anthropicModel } from '../_shared/hub/model.ts';
 import { CHECKOUT_TEMPLATE, checkoutPayload } from '../_shared/hub/departures.ts';
 import { fixed } from '../_shared/hub/copy.ts';
@@ -386,8 +386,13 @@ async function staffQueue(): Promise<Record<string, unknown>> {
   // not «معتمد» or different — ensureTemplate), so an approval at Meta is never missed
   const templates = await refreshDueTemplates(call).catch(() => 0);
   const d = await drainStaff(call, content);
+  // H9 fix 1 (16 Nov 2026): the reminders that today's «قائمة المغادرين» is missing, and the thank-you after the upload
+  const reminders = await drainReminders(call, content, anthropicModel(Deno.env.get('ANTHROPIC_API_KEY') ?? '')).catch((e) => {
+    console.error('wa-automation: reminders failed', String(e).slice(0, 120));
+    return { sent: 0, skipped: 0, failed: 0 };
+  });
   const emails = await emailReports(call, content, sendAdminMail);
-  return { ...d, emails, templates };
+  return { ...d, reminders, emails, templates };
 }
 
 // deno-lint-ignore no-explicit-any
@@ -402,7 +407,7 @@ async function handleInbound(ev: any, test: boolean): Promise<Record<string, unk
     else if (who.data && !who.data.test_as_guest) {
       if (m.kind !== 'text' && m.kind !== 'interactive' && m.kind !== 'button_reply') return { kind: 'staff', handled: false, message_kind: m.kind };
       const model = anthropicModel(Deno.env.get('ANTHROPIC_API_KEY') ?? '');
-      const r = await staffChat(call, content, model, { from: m.from, to: m.to, text: m.text, id: m.id ?? '', sentAt: m.sentAt, kind: m.kind }, test).catch((e) => {
+      const r = await staffChat(call, content, model, { from: m.from, to: m.to, text: m.text, id: m.id ?? '', sentAt: m.sentAt, kind: m.kind, buttonId: m.buttonId }, test).catch((e) => {
         console.error('wa-automation: staff chat failed', String(e).slice(0, 120));
         return { staff: true, error: true };
       });
@@ -742,7 +747,9 @@ async function qa(req: Request, body: Record<string, unknown>): Promise<Response
   if (body.action === 'qa-staff') {
     const payloads: { kind: string; payload: unknown }[] = [];
     const r = await drainStaff(call, content, { test: true, collect: (kind, payload) => payloads.push({ kind, payload }) });
-    return json(req, 200, { ok: true, ...r, payloads });
+    // H9 fix 1: the TEST upload reminders — the model writes the free-form line (a real call on the branch), never sent
+    const rem = await drainReminders(call, content, anthropicModel(Deno.env.get('ANTHROPIC_API_KEY') ?? ''), { test: true, collect: (kind, payload) => payloads.push({ kind, payload }) });
+    return json(req, 200, { ok: true, ...r, reminders: rem, payloads });
   }
   if (body.action === 'qa-hook') return json(req, 200, { ok: true, result: await handleEvent(body.payload, true) });
   if (body.action === 'qa-send') {

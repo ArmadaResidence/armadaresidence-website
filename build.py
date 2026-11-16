@@ -586,6 +586,9 @@ def generate_function_content(content: dict[str, dict], fees: dict) -> None:
         "club_consent_version": content["club.json"]["consent"]["version"],
         # versions a page loaded before a wording change may still send (accepted; the one the guest saw is recorded)
         "club_consent_previous": content["club.json"]["consent"].get("previous", []),
+        # H9 fix 1 (16 Nov 2026): the confirmed links a WhatsApp teaching may give guests (contact.json -> social; the
+        # hotel Linktree, never the cafe one) - learn.ts confirmedLinks
+        "social": contact["social"],
         "email_logo_url": os.environ.get("EMAIL_ASSETS_BASE", content["seo.json"]["live_url"]).rstrip("/") + "/email/armada-residence-logo-reversed@2x.png",
     }
     FUNC_DIR.mkdir(parents=True, exist_ok=True)

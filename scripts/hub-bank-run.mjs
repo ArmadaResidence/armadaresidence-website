@@ -152,21 +152,153 @@ function teamOne(q) {
 
 
 // H7b (15 Nov 2026): the learning bank (tests/hub-bank/conversations-learn.jsonl) — the REAL learning prompt and the REAL
-// guest engine; the learned cards kept in memory (the store's own rules are the database's: guest_hub_learning.sql)
+// guest engine; the learned cards kept in memory (the store's own rules are the database's: guest_hub_learning.sql,
+// guest_hub_h9_fix1.sql). H9 fix 1 (16 Nov 2026): every colleague message goes through the SAME route as WhatsApp
+// (learn.ts teachRoute → the REAL intent call of prompts.md §9.2 → intentAction → the REAL teaching call of §7), with the
+// follow-ups, the quick replies («تمام» / «للفرعين» / «عدّل» / «امسح», «سجّلها» / «لا») and the links of content/contact.json.
 const TEACHERS = { owner: { owner: true, manager_branches: [] }, manager: { owner: false, manager_branches: ['shafa-road'] }, staff: { owner: false, manager_branches: [] } };
 const LEARN_TOPICS = TOPICS_ALL.filter((t) => !t.always_handoff).map((t) => ({ key: t.key, label_en: t.label_en, label_ar: t.label_ar }));
+const LINKS = L.confirmedLinks(CONTENT);
 async function learnOne(q) {
   const reasons = [];
   const steps = [];
-  const mem = { cards: [], removed: [], pending: null, last: null, n: 0 };
+  const mem = { cards: [], removed: [], pending: null, last: null, n: 0, followup: null, lastSent: null, history: [], lines: [], replies: [] };
   const live = () => [...SEED.filter((c) => !mem.removed.includes(c.id)), ...mem.cards].map((c) => ({ key: c.id, branch: L.cardScope(c.unit_keys), title: c.title_ar, text: c.text_ar }));
   const toCard = (card, scope) => ({ id: `k-learn${++mem.n}`, n: mem.n, unit_keys: scope === 'both' ? [] : [scope], topic_keys: card.topic_keys, title_ar: card.title_ar, title_en: card.title_en,
-    text_ar: card.text_ar, text_en: card.text_en, short: card.short_ar });
+    text_ar: card.text_ar, text_en: card.text_en, short: card.short_ar, expires_on: card.expires_on ?? null, scope });
   const learnCall = async (mode, scope, fields, prices) => {
-    const cards = live();
-    const r = await counted({ layer: 'compose', model: 'claude-sonnet-5-5', system: L.learnSystem(), user: L.learnUser({ mode, scope, today: riyadhToday, topics: LEARN_TOPICS, cards, ...fields }) });
+    const cards = live().filter((c) => c.key !== fields.revising?.key);
+    const r = await counted({ layer: 'compose', model: 'claude-sonnet-5-5', system: L.learnSystem(), user: L.learnUser({ mode, scope, today: riyadhToday, topics: LEARN_TOPICS, cards, links: LINKS, ...fields }) });
     if (!r.ok) return { ok: false, reason: `model:${r.error}` };
-    return L.checkFacts(r.text, { mode, topics: LEARN_TOPICS.map((t) => t.key), cards: cards.map((c) => c.key), forbidden: FORBIDDEN, prices });
+    return L.checkFacts(r.text, { mode, topics: LEARN_TOPICS.map((t) => t.key), cards: cards.map((c) => c.key), forbidden: FORBIDDEN, prices,
+      links: [...Object.values(LINKS), ...L.linksOf(fields.text ?? fields.reply ?? '')], today: riyadhToday });
+  };
+  const cardOf = (id) => mem.cards.find((c) => c.id === id);
+  /** the teaching itself (hub-agent's job): learned / revised / asked / a link asked for / refused */
+  const doTeach = async (t, body, scope, revises, tag, e) => {
+    const v = L.scopeVerdict(t, scope);
+    if (v !== 'ok') return { got: v, reply: L.learnLine(v, { branch: scope === 'both' ? 'airport-road' : scope }) };
+    const pre = L.textRefusal(body, 'teach', t.owner);
+    if (pre) return { got: L.refusalLine(pre), reply: L.learnLine(L.refusalLine(pre), {}) };
+    const old = revises ? cardOf(revises) : null;
+    const out = L.teachOutcome(await learnCall('teach', scope, { text: body, revising: old ? { key: old.id, text: old.text_ar } : null }, t.owner));
+    if (out.status === 'learned') {
+      if (old) mem.cards = mem.cards.filter((x) => x.id !== old.id);
+      const c = toCard(out.card, scope);
+      mem.cards.push(c);
+      mem.last = c.id;
+      mem.lastSent = { kind: 'confirm', card_id: c.id };
+      const got = old ? 'revised' : scope === 'both' ? 'saved_both' : 'saved';
+      if (e.scope && e.scope !== scope) reasons.push(`${tag}:scope:${scope}`);
+      return { got, reply: L.learnLine(got, { wording: c.text_ar, branch: scope, expiry: c.expires_on }), buttons: L.confirmButtons(c.id, scope, t.owner).map((b) => b.title) };
+    }
+    if (out.status === 'link') {
+      mem.followup = { id: `f${mem.n + 1}`, kind: 'link', card_id: revises, body, scope, link_name: out.name };
+      return { got: 'link_ask', reply: L.learnLine('link_ask', { name: out.name }) };
+    }
+    // a contradiction only with the teacher's own recent card is a follow-up: the new card replaces it (the SQL
+    // hub_teach_finish does the same)
+    if (out.status === 'ask' && out.conflicts.every((k) => cardOf(k))) {
+      mem.cards = mem.cards.filter((x) => !out.conflicts.includes(x.id));
+      const c = toCard(out.card, scope);
+      mem.cards.push(c);
+      mem.last = c.id;
+      mem.lastSent = { kind: 'confirm', card_id: c.id };
+      return { got: 'revised', reply: L.learnLine('revised', { wording: c.text_ar, branch: scope, expiry: c.expires_on }), buttons: L.confirmButtons(c.id, scope, t.owner).map((x) => x.title) };
+    }
+    if (out.status === 'ask') {
+      const scopes = out.conflicts.map((k) => L.cardScope((SEED.find((c) => c.id === k) ?? cardOf(k))?.unit_keys));
+      if (L.sharedConflict(t, scopes)) return { got: 'conflict_shared', reply: L.learnLine('conflict_shared', {}) };
+      mem.pending = { card: out.card, scope, conflicts: out.conflicts };
+      if (e.conflicts && !e.conflicts.every((k) => out.conflicts.includes(k))) reasons.push(`${tag}:conflicts:${out.conflicts.join('|')}`);
+      return { got: 'ask_replace', reply: L.learnLine('ask_replace', { wording: out.card.text_ar, old: (SEED.find((c) => c.id === out.conflicts[0]) ?? cardOf(out.conflicts[0]))?.text_ar }) };
+    }
+    const got = out.status === 'refused' ? L.refusalLine(out.reason) : 'failed';
+    return { got, reply: L.learnLine(got, { link: L.OFFERS_LINK }) };
+  };
+  /** one colleague message (the staff path of wa-automation) */
+  const staffMsg = async (who, text, button, channel, tag, e) => {
+    const t = TEACHERS[who] ?? TEACHERS.staff;
+    const last = mem.last && cardOf(mem.last) ? { id: mem.last, text_ar: cardOf(mem.last).text_ar, scope: cardOf(mem.last).scope, minutes: 1 } : null;
+    const btnId = button ? (button === 'save' || button === 'no' ? `hubl:${button}:${'0'.repeat(8)}-0000-4000-8000-${'0'.repeat(12)}` : `hubl:${button}:${'0'.repeat(8)}-0000-4000-8000-000000000001`) : null;
+    const turn = { text, buttonId: btnId, teacher: t, channelBranch: channel, followup: mem.followup, last, lastSent: mem.lastSent };
+    const route = L.teachRoute(turn);
+    let res = { got: 'chat', reply: '' };
+    if (route.kind === 'button') {
+      const card = mem.lastSent?.kind === 'confirm' ? cardOf(mem.lastSent.card_id) : null;
+      if (route.action === 'ok') res = { got: 'ok_ack', reply: L.learnLine('ok_ack') };
+      else if (route.action === 'del') {
+        if (card) mem.cards = mem.cards.filter((x) => x.id !== card.id);
+        res = { got: card ? 'removed' : 'remove_none', reply: L.learnLine(card ? 'removed' : 'remove_none', { wording: card?.text_ar }) };
+      } else if (route.action === 'edit') {
+        mem.followup = card ? { id: 'fe', kind: 'edit', card_id: card.id, body: card.text_ar, scope: card.scope } : null;
+        res = { got: 'edit_ask', reply: L.learnLine('edit_ask') };
+      } else if (route.action === 'both') {
+        if (L.scopeVerdict(t, 'both') !== 'ok' || !card) res = { got: 'other_branch', reply: L.learnLine('other_branch', { branch: 'airport-road' }) };
+        else {
+          card.unit_keys = [];
+          card.scope = 'both';
+          res = { got: 'saved_both', reply: L.learnLine('saved_both', { wording: card.text_ar, expiry: card.expires_on }) };
+        }
+      } else if (route.action === 'save') {
+        const f = mem.followup;
+        mem.followup = null;
+        res = f ? await doTeach(t, f.body, f.scope, null, tag, e) : { got: 'failed', reply: '' };
+      } else if (route.action === 'no') {
+        mem.followup = null;
+        res = { got: 'intent_no', reply: L.learnLine('intent_no') };
+      }
+    } else if (route.kind === 'command') {
+      const cmd = route.command;
+      if (cmd.kind === 'remove_last') {
+        const c = cardOf(mem.last);
+        if (c) {
+          mem.cards = mem.cards.filter((x) => x.id !== c.id);
+          mem.last = null;
+          res = { got: 'removed', reply: L.learnLine('removed', { wording: c.text_ar }) };
+        } else res = { got: 'remove_none', reply: L.learnLine('remove_none') };
+      } else if (cmd.kind === 'remove_n') {
+        const c = mem.cards.find((x) => x.n === cmd.n);
+        if (c) {
+          mem.cards = mem.cards.filter((x) => x.id !== c.id);
+          res = { got: 'removed_n', reply: L.learnLine('removed_n', { n: cmd.n, wording: c.text_ar }) };
+        } else res = { got: 'remove_n_none', reply: L.learnLine('remove_n_none', { n: cmd.n }) };
+      }
+    } else if (route.kind === 'not_allowed') res = { got: 'not_allowed', reply: L.learnLine('not_allowed') };
+    else if (route.kind === 'teach') {
+      mem.followup = null;
+      res = await doTeach(t, route.body, route.scope, route.revises, tag, e);
+    } else if (route.kind === 'classify' || route.kind === 'chat') {
+      // the yes / no after «أستبدل القديمة؟» (only while it waits)
+      const yn = mem.pending ? L.yesNo(text) : null;
+      if (yn === 'no') {
+        mem.pending = null;
+        res = { got: 'kept', reply: L.learnLine('kept') };
+      } else if (yn === 'yes') {
+        const c = toCard(mem.pending.card, mem.pending.scope);
+        mem.cards.push(c);
+        mem.removed.push(...mem.pending.conflicts);
+        mem.last = c.id;
+        mem.pending = null;
+        res = { got: 'replaced', reply: L.learnLine('replaced', { wording: c.text_ar }) };
+      } else if (route.kind === 'classify') {
+        const r = await counted({ layer: 'staff_chat', model: 'claude-haiku-5-5', system: L.intentSystem(),
+          user: L.intentUser({ branch: channel, teacher: t.owner ? 'owner' : 'manager', message: text, last_teaching: last?.text_ar ?? null, history: mem.history, starts_with_teach_word: L.isTeach(text) }) });
+        const act = L.intentAction(turn, r.ok ? L.parseIntent(r.text) : null);
+        if (act.kind === 'teach') res = await doTeach(t, act.body, act.scope, act.revises, tag, e);
+        else if (act.kind === 'ask') {
+          mem.followup = { id: 'fi', kind: 'intent', card_id: null, body: act.body, scope: act.scope };
+          mem.lastSent = { kind: 'intent', followup_id: 'fi' };
+          res = { got: 'intent_ask', reply: L.learnLine('intent_ask'), buttons: ['سجّلها', 'لا'] };
+        } else if (act.kind === 'offer') res = { got: 'offer', reply: L.learnLine('offer', { link: L.OFFERS_LINK }) };
+        else res = { got: 'chat', reply: '' };
+      }
+    }
+    mem.history.push({ author: 'colleague', body: text });
+    if (res.reply) mem.history.push({ author: 'us', body: res.reply });
+    mem.lines.push(res.got);
+    if (res.reply) mem.replies.push(res.reply);
+    return res;
   };
   for (let i = 0; i < q.steps.length; i++) {
     const st = q.steps[i];
@@ -174,76 +306,16 @@ async function learnOne(q) {
     const tag = `s${i + 1}`;
     let got = '';
     let reply = '';
-    if (st.teach) {
-      const t = TEACHERS[st.teach.who] ?? TEACHERS.staff;
-      const channel = st.teach.channel ?? q.teach_channel ?? q.unit;
-      const cmd = L.learnCommand(st.teach.text);
-      if (cmd?.kind === 'offer') got = t.owner ? 'offer' : 'chat';
-      else if (cmd?.kind !== 'teach') got = 'not_a_command';
-      else {
-        const scope = L.teachScope(cmd.body, channel);
-        const v = L.scopeVerdict(t, scope);
-        if (st.teach.who !== 'owner' && st.teach.who !== 'manager') got = 'not_allowed';
-        else if (v !== 'ok') got = v;
-        else if (L.textRefusal(cmd.body, 'teach', t.owner)) got = L.refusalLine(L.textRefusal(cmd.body, 'teach', t.owner));
-        else {
-          const out = L.teachOutcome(await learnCall('teach', scope, { text: cmd.body }, t.owner));
-          if (out.status === 'learned') {
-            const c = toCard(out.card, scope);
-            mem.cards.push(c);
-            mem.last = c.id;
-            got = scope === 'both' ? 'saved_both' : 'saved';
-            reply = L.learnLine(got, { wording: c.text_ar });
-            if (e.scope && e.scope !== scope) reasons.push(`${tag}:scope:${scope}`);
-          } else if (out.status === 'ask') {
-            const scopes = out.conflicts.map((k) => L.cardScope((SEED.find((c) => c.id === k) ?? mem.cards.find((c) => c.id === k))?.unit_keys));
-            if (L.sharedConflict(t, scopes)) got = 'conflict_shared';
-            else {
-              mem.pending = { card: out.card, scope, conflicts: out.conflicts };
-              got = 'ask_replace';
-              reply = L.learnLine(got, { wording: out.card.text_ar, old: SEED.find((c) => c.id === out.conflicts[0])?.text_ar });
-              if (e.conflicts && !e.conflicts.every((k) => out.conflicts.includes(k))) reasons.push(`${tag}:conflicts:${out.conflicts.join('|')}`);
-            }
-          } else got = out.status === 'refused' ? L.refusalLine(out.reason) : 'failed';
-        }
-      }
-      if (!reply) reply = L.learnLine(got, { link: L.OFFERS_LINK });
+    if (st.teach || st.staff || st.answer || st.remove) {
+      const s0 = st.staff ?? st.teach ?? { who: st.who ?? 'owner', text: st.answer ?? st.remove };
+      const channel = s0.channel ?? q.teach_channel ?? q.unit;
+      const r = await staffMsg(s0.who ?? 'owner', s0.text ?? '', s0.button ?? null, channel, tag, e);
+      got = r.got;
+      reply = r.reply;
       if (e.line && got !== e.line) reasons.push(`${tag}:line:${e.line}:${got}`);
-    } else if (st.answer) {
-      const yn = L.yesNo(st.answer);
-      if (!mem.pending) got = 'chat';
-      else if (yn === 'no') {
-        got = 'kept';
-        mem.pending = null;
-      } else if (yn === 'yes') {
-        const c = toCard(mem.pending.card, mem.pending.scope);
-        mem.cards.push(c);
-        mem.removed.push(...mem.pending.conflicts);
-        mem.last = c.id;
-        mem.pending = null;
-        got = 'replaced';
-        reply = L.learnLine(got, { wording: c.text_ar });
-      }
-      if (e.line && got !== e.line) reasons.push(`${tag}:line:${e.line}:${got}`);
-    } else if (st.remove) {
-      const cmd = L.learnCommand(st.remove);
-      if (cmd?.kind === 'remove_last') {
-        const c = mem.cards.find((x) => x.id === mem.last);
-        if (c) {
-          mem.cards = mem.cards.filter((x) => x.id !== c.id);
-          mem.last = null;
-          got = 'removed';
-          reply = L.learnLine(got, { wording: c.text_ar });
-        } else got = 'remove_none';
-      } else if (cmd?.kind === 'remove_n') {
-        const c = mem.cards.find((x) => x.n === cmd.n);
-        if (c) {
-          mem.cards = mem.cards.filter((x) => x.id !== c.id);
-          got = 'removed_n';
-          reply = L.learnLine(got, { n: cmd.n, wording: c.text_ar });
-        } else got = 'remove_n_none';
-      } else got = 'not_a_command';
-      if (e.line && got !== e.line) reasons.push(`${tag}:line:${e.line}:${got}`);
+      if (e.line_any && !e.line_any.includes(got)) reasons.push(`${tag}:line_any:${e.line_any.join('|')}:${got}`);
+      if (e.buttons && JSON.stringify(r.buttons ?? []) !== JSON.stringify(e.buttons)) reasons.push(`${tag}:buttons:${(r.buttons ?? []).join('|')}`);
+      if (e.expires && !(mem.cards.find((c) => c.id === mem.last)?.expires_on)) reasons.push(`${tag}:no_expiry`);
     } else if (st.staff_reply) {
       const pre = L.textRefusal(st.staff_reply.reply, 'staff_reply', false);
       const r = pre ? { ok: true, facts: [] } : await learnCall('staff_reply', q.unit, { question: st.staff_reply.question, reply: st.staff_reply.reply }, false);
@@ -265,11 +337,23 @@ async function learnOne(q) {
       got = 'report';
       if (e.pattern && !new RegExp(e.pattern).test(reply)) reasons.push(`${tag}:report`);
       if (reply.length > 300 || /[\r\n]/.test(reply)) reasons.push(`${tag}:report_shape`);
+    } else if (st.check) {
+      // the state after the colleague's messages (H9 fix 1): how many taught cards are active, their words, what never happened
+      got = 'check';
+      const c = st.check;
+      const mine = mem.cards;
+      if (c.cards_active !== undefined && mine.length !== c.cards_active) reasons.push(`${tag}:cards_active:${mine.length}`);
+      for (const w of c.card_includes ?? []) if (!mine.some((x) => x.text_ar.includes(w) && (/[؀-ۿ]/.test(w) || x.text_en.includes(w)))) reasons.push(`${tag}:card_lacks:${w}`);
+      for (const l of c.no_line ?? []) if (mem.lines.includes(l)) reasons.push(`${tag}:line_seen:${l}`);
+      if (c.no_reply_pattern && mem.replies.some((x) => new RegExp(c.no_reply_pattern).test(x))) reasons.push(`${tag}:reply_pattern`);
+      if (c.scope && !mine.every((x) => x.scope === c.scope)) reasons.push(`${tag}:scope:${mine.map((x) => x.scope).join('|')}`);
+      reply = mine.map((x) => x.text_ar).join(' | ');
     } else if (st.guest) {
-      const claim = claimFor({ id: `${q.id}-${i}`, unit: q.unit, language: 'ar', messages: ['x'] });
+      const unit = st.unit ?? q.unit;
+      const claim = claimFor({ id: `${q.id}-${i}`, unit, language: 'ar', messages: ['x'] });
       const ctx = { unit: { ...claim.unit, persona: claim.unit.persona, skills: [...claim.unit.skills, 'room_booking'] }, channel: claim.channel, licences: Object.fromEntries(Object.entries(claim.licences).map(([k, v]) => [k, v === 'blocked' ? 'blocked' : 'auto'])),
         topics: claim.topics, settings: { ...claim.settings, instant_booking: true, limits: { max_nights: 90, same_day_cutoff: '23:45' } }, forbidden: claim.forbidden, today: riyadhToday };
-      const item = { key: `${q.id}-${i}`, unit_key: q.unit, language: 'ar', messages: [st.guest], context: {}, expect: { action: 'conversation', steps: [{ outcome: e.outcome, must_not_include: e.must_not_include ?? [] }] }, note: null };
+      const item = { key: `${q.id}-${i}`, unit_key: unit, language: 'ar', messages: [st.guest], context: {}, expect: { action: 'conversation', steps: [{ outcome: e.outcome, must_not_include: e.must_not_include ?? [] }] }, note: null };
       const deps = {
         model: counted, knowledge: async (u, t, Lg, b) => knowledgeFor(u, t, Lg, b, { cards: mem.cards, removed: mem.removed }), offers: async () => q.offers ?? [], adapter,
         content: CONTENT, longDate: (iso, Lg) => longDate(CONTENT, iso, Lg), sarText: (x, Lg) => sarText(x, Lg),

@@ -84,7 +84,7 @@ check(sr([{ ...card, text_ar: 'الكواية بـ 15 ريال.', text_en: 'SAR 
 check(sr([{ ...card, contradicts: ['k-wifi-public'] }]).decision?.kind === 'contradiction', 'a staff reply that contradicts a card → «يحتاج قرارك» (contradiction)');
 check(eq(sr([{ verdict: 'refuse', reason: 'guest_detail' }]), { learn: [], decision: null }) && eq(sr([]), { learn: [], decision: null }), 'a guest detail or nothing general → nothing, no decision');
 const user = L.learnUser({ mode: 'staff_reply', scope: 'airport-road', today: '2026-11-15', question: 'هل يوجد ميكروويف؟', reply: 'نعم\nفي المطبخ', topics: [{ key: 'facilities', label_en: 'Facilities', label_ar: 'المرافق' }], cards: [{ key: 'k-x', branch: 'both', title: 't', text: 'x' }] });
-check(/^MODE: staff_reply\nBRANCH: airport-road\nTODAY: 2026-11-15\nGUEST_QUESTION: هل يوجد ميكروويف؟\nSTAFF_REPLY: نعم في المطبخ\nTOPIC_KEYS:\nfacilities: Facilities \/ المرافق\nEXISTING_CARDS: \[/.test(user), 'the user message of prompts.md §7 (one line per field)', user.slice(0, 200));
+check(/^MODE: staff_reply\nBRANCH: airport-road\nTODAY: 2026-11-15\nGUEST_QUESTION: هل يوجد ميكروويف؟\nSTAFF_REPLY: نعم في المطبخ\nLINKS: \{\}\nTOPIC_KEYS:\nfacilities: Facilities \/ المرافق\nEXISTING_CARDS: \[/.test(user), 'the user message of prompts.md §7 (one line per field)', user.slice(0, 200));
 check(L.cardScope(['airport-road']) === 'airport-road' && L.cardScope([]) === 'both' && L.cardScope(['airport-road', 'shafa-road']) === 'both' && L.cardScope(['lobby-cafe']) === 'both', 'a card\'s branch for EXISTING_CARDS');
 
 check(L.textRefusal('الكواية بـ 15 ريال للقطعة', 'staff_reply', false) === 'price' && L.textRefusal('نعم نوفر شماسي مجانًا', 'staff_reply', false) === null, 'a staff reply with a price is never learned (code, before any model call)');
@@ -92,14 +92,85 @@ check(L.textRefusal('سعر الاستديو 250 ريال في الليلة', 't
 const run = read('supabase/functions/_shared/hub/learn-run.ts');
 check((run.match(/textRefusal\(/g) ?? []).length === 2 && run.indexOf('textRefusal(String(j.reply') < run.indexOf("mode: 'staff_reply', scope"), 'the jobs check the words before the model');
 
+// ── teaching v2 (H9 fix 1, 16 Nov 2026) ──
+check(eq(C('تعلّم كان فيه عرض على فطور'), { kind: 'teach', body: 'كان فيه عرض على فطور' }) && C('تعلم الفطور من 7')?.kind === 'teach' && C('علّم: x')?.kind === 'teach',
+  'v2: «تعلّم» / «تعلم» / «علّم» without the colon too (Ahmed\'s message of 16 Nov 2026)');
+{
+  const OW = { owner: true, manager_branches: [] };
+  const MG = { owner: false, manager_branches: ['shafa-road'] };
+  const ST = { owner: false, manager_branches: [] };
+  const T = (over) => ({ text: '', buttonId: null, teacher: OW, channelBranch: 'shafa-road', followup: null, last: null, lastSent: null, ...over });
+  const cid = '11111111-2222-4333-8444-555555555555';
+  check(eq(L.teachRoute(T({ buttonId: `hubl:both:${cid}`, text: 'للفرعين' })), { kind: 'button', action: 'both', id: cid }), 'route: a quick reply by its id first');
+  check(eq(L.teachRoute(T({ text: 'للفرعين', lastSent: { kind: 'confirm', card_id: cid } })), { kind: 'button', action: 'both', id: cid })
+    && L.teachRoute(T({ text: 'للفرعين' })).kind === 'classify', 'route: a typed «للفرعين» only right after a confirmation');
+  check(eq(L.teachRoute(T({ text: 'سجّلها', lastSent: { kind: 'intent', followup_id: cid } })), { kind: 'button', action: 'save', id: cid }), 'route: a typed «سجّلها» after the question');
+  check(L.teachRoute(T({ text: 'امسح' })).kind === 'command' && L.teachRoute(T({ text: 'امسح 2' })).kind === 'command', 'route: «امسح» / «امسح N» stay fixed commands');
+  check(L.teachRoute(T({ text: 'تعلّم: x', teacher: ST })).kind === 'not_allowed' && L.teachRoute(T({ text: 'إزيك', teacher: ST })).kind === 'chat', 'route: a staff slot\'s «تعلّم» → not_allowed; other words → the chat (no model call for the intent)');
+  const ed = L.teachRoute(T({ text: 'خليها انستجرام', followup: { id: cid, kind: 'edit', card_id: cid, body: 'تابعنا على تيك توك', scope: 'shafa-road' } }));
+  check(ed.kind === 'teach' && ed.revises === cid && /CORRECTION: خليها انستجرام/.test(ed.body) && ed.followup === cid, 'route: after «عدّل» the next message is the correction of that card');
+  const lk = L.teachRoute(T({ text: 'https://example.invalid/x', followup: { id: cid, kind: 'link', card_id: null, body: 'تابعنا على سناب', scope: 'shafa-road', link_name: 'سناب شات' } }));
+  check(lk.kind === 'teach' && /THE LINK سناب شات: https:\/\/example\.invalid\/x/.test(lk.body), 'route: a link asked for completes the teaching');
+  check(L.teachRoute(T({ text: 'كان فيه عرض على فطور ب 10 ريال' })).kind === 'classify' && L.teachRoute(T({ text: 'العرض انتهى', teacher: MG })).kind === 'classify', 'route: a teacher\'s other message → the intent (§9.2)');
+  const last = { id: cid, text_ar: 'انتهى عرض الإفطار.', scope: 'shafa-road', minutes: 3 };
+  check(eq(L.intentAction(T({ text: 'العرض انتهى خلاص', last }), { intent: 'revise', fact: 'انتهى عرض الإفطار، تابعنا', both: false }), { kind: 'teach', body: 'انتهى عرض الإفطار، تابعنا', scope: 'shafa-road', revises: cid }),
+    'intent: revise → the same teaching, replacing the last card (never a request to resend)');
+  check(L.intentAction(T({ text: 'x' }), { intent: 'revise', fact: 'جديد', both: false }).revises === null, 'intent: revise with no last teaching → a new teaching');
+  const other = L.intentAction(T({ text: 'فيه مكيف متنقل في فرع المطار', channelBranch: 'airport-road', teacher: MG, last }), { intent: 'revise', fact: 'فيه مكيف متنقل في فرع المطار', both: false });
+  check(other.revises === null && other.scope === 'airport-road', 'intent: a follow-up for the other branch is a new teaching for that branch (a manager is then refused)');
+  check(L.intentAction(T({ text: 'اعمل خصم 20% على الفطور' }), { intent: 'bookable_offer', fact: '', both: false }).kind === 'offer', 'intent: a bookable offer → «العروض»');
+  check(L.intentAction(T({ text: 'خلي بالك الدور مقفول' }), { intent: 'unsure', fact: 'الدور مقفول', both: false }).kind === 'ask'
+    && L.intentAction(T({ text: 'تعلّم الدور مقفول' }), { intent: 'unsure', fact: 'الدور مقفول', both: false }).kind === 'teach', 'intent: unsure → asked once; with «تعلّم» → taught');
+  check(L.intentAction(T({ text: 'تعلم: الفطور من 7' }), null).kind === 'teach' && L.intentAction(T({ text: 'الفطور من 7' }), null).kind === 'chat', 'intent: the model failed → «تعلّم» still taught, else the chat');
+  check(L.intentAction(T({ text: 'x' }), { intent: 'teach', fact: 'معلومة للفرعين', both: true }).scope === 'both', 'intent: «للفرعين» → both');
+  check(L.parseIntent('not json').intent === 'unsure' && L.parseIntent('{"intent":"teach","fact":""}').intent === 'unsure' && L.parseIntent('```json\n{"intent":"chat","fact":""}\n```').intent === 'chat', 'intent: a broken or empty answer → unsure');
+  const ob = L.confirmButtons(cid, 'shafa-road', true).map((b) => b.title);
+  const mb = L.confirmButtons(cid, 'shafa-road', false).map((b) => b.title);
+  check(eq(ob, ['للفرعين', 'عدّل', 'امسح']) && eq(mb, ['تمام', 'عدّل', 'امسح']) && eq(L.confirmButtons(cid, 'both', true).map((b) => b.title), ['تمام', 'عدّل', 'امسح']),
+    'the confirmation\'s three quick replies (WhatsApp\'s limit): «للفرعين» in place of «تمام» for Ahmed on a card of one branch');
+  check([...L.confirmButtons(cid, 'shafa-road', true), ...L.intentButtons(cid)].every((b) => [...b.title].length <= 20 && /^hubl:[a-z]+:[0-9a-f-]{36}$/.test(b.id) && eq(L.parseLearnButton(b.id)?.id, cid)),
+    'the buttons: titles ≤ 20 characters, ids hubl:<action>:<id> parsed back');
+  check(eq(L.intentButtons(cid).map((b) => b.title), ['سجّلها', 'لا']), '«أسجّلها معلومة للضيوف؟» with «سجّلها» / «لا»');
+  const opt = ['إلغاء', 'الغاء', 'إيقاف', 'stop', 'unsubscribe', 'إلغاء الاشتراك'];
+  check(!Object.values(L.LEARN_BUTTONS).some((t) => opt.includes(t)), 'no button title is an opt-out word');
+}
+{
+  const links = L.confirmedLinks(JSON.parse(read('supabase/functions/booking-request/content.generated.json')));
+  check(links.tiktok === 'https://www.tiktok.com/@armadar25' && links.linktree === 'https://linktr.ee/ArmadaR', 'LINKS: TikTok and the hotel Linktree from content/contact.json');
+  const K = ctx({ topics: ['offers', 'breakfast', 'social'], links: Object.values(links), today: '2026-11-16' });
+  const ans = (f) => JSON.stringify({ facts: [{ verdict: 'card', reason: null, service_price: false, title_ar: 'عرض الإفطار', title_en: 'Breakfast offer', short_ar: 'انتهى عرض الإفطار', topic_keys: ['offers', 'breakfast'], contradicts: [], ...f }] });
+  const ended = ans({ offer_kind: 'reply_rule', text_ar: 'كان لدينا عرض على الإفطار بـ 10 ريالات، وقد انتهى العرض في 15 نوفمبر 2026. تابعنا على تيك توك https://www.tiktok.com/@armadar25 وعلى https://linktr.ee/ArmadaR لمعرفة العروض القادمة.',
+    text_en: 'We had a breakfast offer at SAR 10; it ended on 15 November 2026. Follow us on https://www.tiktok.com/@armadar25 and https://linktr.ee/ArmadaR for the next offers.' });
+  const r1 = L.teachOutcome(L.checkFacts(ended, K));
+  check(r1.status === 'learned' && r1.card.offer_kind === 'reply_rule', `checkFacts: a reply rule about an ENDED offer, its old price and the two links → a card (Ahmed\'s message of 16 Nov 2026) — ${JSON.stringify(r1).slice(0, 120)}`);
+  check(L.teachOutcome(L.checkFacts(ans({ offer_kind: 'bookable', text_ar: 'خصم 20% على الإفطار.', text_en: '20% off breakfast.' }), K)).status === 'refused', 'checkFacts: a bookable offer → refused (offer)');
+  check(L.teachOutcome(L.checkFacts(ans({ offer_kind: 'reply_rule', short_ar: 'عرض الإفطار بـ 10 ريالات', text_ar: 'لدينا عرض على الإفطار بـ 10 ريالات.', text_en: 'Breakfast offer at SAR 10.' }), K)).status === 'refused', 'checkFacts: an offer price that is not ended → refused (never a current price)');
+  check(L.teachOutcome(L.checkFacts(ans({ offer_kind: 'none', text_ar: 'العروض القادمة على https://www.snapchat.invalid/x', text_en: 'Next offers at https://www.snapchat.invalid/x' }), K)).status === 'link', 'checkFacts: a link not in LINKS → asked for, never kept');
+  check(L.teachOutcome(L.checkFacts(JSON.stringify({ facts: [{ verdict: 'ask_link', link_name: 'سناب شات' }] }), K)).status === 'link', 'checkFacts: the model\'s ask_link');
+  const exp = (e) => L.checkFacts(ans({ offer_kind: 'none', topic_keys: ['breakfast'], title_ar: 'صيانة المطعم', title_en: 'Restaurant maintenance', short_ar: 'المطعم مغلق للصيانة', text_ar: 'مطعم الإفطار مغلق للصيانة.', text_en: 'The breakfast restaurant is closed for maintenance.', expires_on: e }), K);
+  check(exp('2026-11-30').facts[0].card.expires_on === '2026-11-30' && exp('2026-11-01').facts[0].card.expires_on === null && exp('2030-01-01').facts[0].card.expires_on === null,
+    'checkFacts: an expiry from today up to 400 days; an end in the past → a standing answer');
+  const u = L.learnUser({ mode: 'teach', scope: 'shafa-road', today: '2026-11-16', text: 'x', topics: [], cards: [], links: { tiktok: 'https://www.tiktok.com/@armadar25' }, revising: { key: 'k-1', text: 'قديم' } });
+  check(/LINKS: \{"tiktok":"https:\/\/www\.tiktok\.com\/@armadar25"\}/.test(u) && /REVISING: \{"key":"k-1","text":"قديم"\}/.test(u), 'the teach user message carries LINKS and REVISING');
+  const iu = L.intentUser({ branch: 'shafa-road', teacher: 'owner', message: 'العرض انتهى خلاص', last_teaching: 'انتهى عرض الإفطار.', history: [{ author: 'colleague', body: 'تعلّم كان فيه عرض' }], starts_with_teach_word: false });
+  check(/^BRANCH_OF_THIS_NUMBER: shafa-road\nSENDER: owner\nSTARTS_WITH_TEACH_WORD: no\nLAST_TEACHING: انتهى عرض الإفطار\.\nLAST_MESSAGES:\ncolleague: تعلّم كان فيه عرض\nMESSAGE: العرض انتهى خلاص$/.test(iu), 'the intent\'s user message = prompts.md §9.2');
+  const P = read('docs/guest-hub/prompts.md');
+  check(/Never ask a colleague to resend a message «بصيغة» or to start it with «تعلّم:»/.test(P) && generated().prompts.staff_intent_system.includes('"bookable_offer"') && generated().prompts.learn_system.includes('"reply_rule"')
+    && generated().prompts.learn_system.includes('ask_link'), 'prompts.md: §9 never asks to resend; §9.2 the intent; §7 the reply rule, the links, the expiry');
+}
+
 // ── the fixed lines ──
 const g = generated();
 check(eq(g.learn_lines, JSON.parse(read('supabase/functions/_shared/hub/text.generated.json')).learn_lines), 'copy.md §9.1 = text.generated.json (run scripts/hub-text-build.mjs after editing copy.md)');
-check(L.learnLine('saved', { wording: 'لدينا ميكروويف في اللوبي.' }) === 'اتسجلت ✅ هقولها للضيوف كده: «لدينا ميكروويف في اللوبي». لو فيها غلط ابعت «امسح».', 'Ahmed\'s confirmation word for word, the wording without its own full stop');
+check(L.learnLine('saved', { wording: 'لدينا ميكروويف في اللوبي.', branch: 'airport-road' }) === 'اتسجلت لفرع طريق المطار ✅ هقولها للضيوف كده: «لدينا ميكروويف في اللوبي». لو فيها غلط اضغط «عدّل» أو «امسح».',
+  'Ahmed\'s confirmation word for word (H9 fix 1: the branch named, «عدّل» / «امسح»), the wording without its own full stop', L.learnLine('saved', { wording: 'لدينا ميكروويف في اللوبي.', branch: 'airport-road' }));
+check(L.learnLine('saved', { wording: 'العرض حتى آخر الشهر.', branch: 'shafa-road', expiry: '2026-11-30' }).includes('». وهقولها لحد 30 نوفمبر 2026 بس. لو فيها غلط'), 'the expiry in the confirmation');
+check(L.learnLine('intent_ask', {}) === 'أسجّلها معلومة للضيوف؟', 'Ahmed\'s question word for word: «أسجّلها معلومة للضيوف؟»');
+check(!/تعلّم:|بصيغة|من أول/.test(L.learnLine('not_a_fact', {})), 'no line asks to resend in a format (not_a_fact)');
 check(L.learnLine('offer', {}).includes('https://admin.armadaresidence.com/offers') && L.learnLine('room_price', {}).includes('https://admin.armadaresidence.com/offers'), 'the offers and room-price lines carry the «العروض» link');
 check(L.learnLine('other_branch', { branch: 'airport-road' }).includes('فرع طريق المطار') && L.learnLine('removed_n', { n: 2, wording: 'x' }).includes('رقم 2'), 'the branch name and the number filled');
-check(Object.values(L.LINES).every((t) => t.length <= 400 && !/[٠-٩]/.test(t)) && Object.keys(L.LINES).length === 22, 'every line ≤ 400 characters, Western digits, 22 lines');
-check(!/\{(?!wording|old|n|branch|link)[a-z_]+\}/.test(Object.values(L.LINES).join('')), 'no unknown placeholder in the lines');
+check(Object.values(L.LINES).every((t) => t.length <= 400 && !/[٠-٩]/.test(t)) && Object.keys(L.LINES).length === 28, 'every line ≤ 400 characters, Western digits, 28 lines');
+check(!/\{(?!wording|old|n|branch|link|expiry|name)[a-z_]+\}/.test(Object.values(L.LINES).join('')), 'no unknown placeholder in the lines');
 
 // ── the report's {{10}} ──
 const rep = (learned, decisions = 0, cards = 0) => reportVars('2026-11-15', { branches: {}, learned, decisions, cards })[9];
@@ -117,7 +188,12 @@ check(prompts.includes('## 7. Learning a fact') && !prompts.includes('## 7. Draf
 check(['32. A message with no punctuation', '33. «لو …»', '34. Speech-to-text confuses'].every((r) => g.prompts.understand_system.includes(r)), 'prompts.md §1 rules 32–34 (the voice fixes) reach the understanding');
 check(!existsSync(new URL('../supabase/functions/_shared/hub/draft-card.ts', import.meta.url)), 'draft-card.ts is retired');
 const staffSend = read('supabase/functions/_shared/hub/staff-send.ts');
-check(/learnCommand\(text\)/.test(staffSend) && /hub_learn_command/.test(staffSend) && staffSend.indexOf('hub_learn_command') < staffSend.indexOf("layer: 'staff_chat'"), 'the colleague chat: a learning command before any model call');
+{
+  const sc = staffSend.slice(staffSend.indexOf('export async function staffChat'), staffSend.indexOf('export async function drainReminders'));
+  check(/teachRoute\(turn\)/.test(sc) && sc.indexOf("route.kind === 'button'") < sc.indexOf('intentSystem()') && sc.indexOf("route.kind === 'command'") < sc.indexOf('intentSystem()')
+    && sc.indexOf('intentSystem()') < sc.indexOf('staffSystemFor('), 'the colleague chat: the quick replies and the fixed commands before any model call; the intent (§9.2) before the chat (§9)');
+  check(/buttonId: m\.buttonId/.test(read('supabase/functions/wa-automation/index.ts')), 'wa-automation hands the button id to the staff path');
+}
 const agent = read('supabase/functions/hub-agent/index.ts');
 check(/runTeachJobs/.test(agent) && /runReplyJobs/.test(agent) && !/draft-card/.test(agent), 'hub-agent works the learning jobs (no draft card)');
 check(read(OUT_PATH) === migration(), `${OUT_PATH} = scripts/hub-learn-migration.mjs (an applied migration is never edited)`);

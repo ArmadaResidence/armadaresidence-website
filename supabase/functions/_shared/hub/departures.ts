@@ -5,8 +5,10 @@
  * under Node on a synthetic file made to match Nazeel's layout.
  *
  *   - readXlsx: a .xlsx (a zip of XML) → the first sheet's cells and merged ranges (DecompressionStream 'deflate-raw' —
- *     the browser, Deno and Node all have it); never a library, never a network call.
- *   - parseNazeel: Nazeel's «تقرير الحجوزات» (المغادرة-غدا): title rows on top and the printing information at the bottom; the
+ *     the browser, Deno and Node all have it); never a library, never a network call. Since H9 fix 1 (16 Nov 2026) the
+ *     XML is read by NAMESPACE and local name (Nazeel prefixes every element x: and starts every part with a BOM; the
+ *     sheet and the shared strings are found through the workbook's relationships) — never by tag text or a prefix.
+ *   - parseNazeel: Nazeel's «تقرير الحجوزات» (مغادرين اليوم — each morning since H9 fix 1; the evening المغادرة-غدا before): title rows on top and the printing information at the bottom; the
  *     header row found by its labels; ONLY «رقم الجوال» (international format, +), «العميل» (its first word) and «رقم الحجز»
  *     read, by their headers, never by position — a header owns the columns up to the next header (sparse and merged
  *     columns); «الرصيد», «الوحدات» and «الحالة» never read. A row with a booking number and no phone is skipped (its first
@@ -59,7 +61,9 @@ export interface Sheet {
 }
 export interface Parsed {
   ok: boolean;
-  error?: 'no_header' | 'not_xlsx' | 'empty';
+  /** not_xlsx: not an Excel file · no_sheet: a workbook without a worksheet · empty: a sheet without a single cell ·
+   *  no_header: the three headers not found · no_rows: the header found, no booking line under it */
+  error?: 'no_header' | 'not_xlsx' | 'empty' | 'no_sheet' | 'no_rows';
   header_row?: number;
   rows: { ref: string; first_name: string; phone: string; raw_phone: string }[];
   /** a booking number and no (valid) phone: the first names only */
@@ -74,7 +78,7 @@ export interface Parsed {
 export function parseNazeel(sheet: Sheet): Parsed {
   const out: Parsed = { ok: false, rows: [], no_phone: [], bad_phone: [], ignored_lines: 0 };
   const rows = sheet.rows;
-  if (!rows.length) return { ...out, error: 'empty' };
+  if (!rows.some((r) => r.some((c) => String(c ?? '').trim()))) return { ...out, error: 'empty' };
   const want = [HEADERS.ref, HEADERS.name, HEADERS.phone].map(norm);
   const h = rows.findIndex((r) => want.every((w) => r.some((c) => norm(c) === w)));
   if (h < 0) return { ...out, error: 'no_header' };
@@ -120,8 +124,9 @@ export function parseNazeel(sheet: Sheet): Parsed {
     }
     out.rows.push({ ref, first_name: name, phone, raw_phone: raw });
   }
-  out.ok = true;
   out.header_row = h;
+  if (!out.rows.length && !out.no_phone.length && !out.bad_phone.length) return { ...out, error: 'no_rows' };
+  out.ok = true;
   return out;
 }
 
@@ -130,6 +135,8 @@ export const uploadRows = (p: Parsed) => p.rows.map((r) => ({ ref: r.ref, first_
 
 // ═══ reading a .xlsx ═══
 const td = new TextDecoder('utf-8');
+/** a part's text, its UTF-8 BOM removed (Nazeel writes one before every part) */
+const utf8 = (b: Uint8Array) => td.decode(b).replace(/^\uFEFF/, '');
 const u16 = (b: Uint8Array, o: number) => b[o] | (b[o + 1] << 8);
 const u32 = (b: Uint8Array, o: number) => (b[o] | (b[o + 1] << 8) | (b[o + 2] << 16) | (b[o + 3] << 24)) >>> 0;
 
@@ -168,7 +175,7 @@ export async function unzip(buf: Uint8Array, wanted: (name: string) => boolean):
     const raw = buf.subarray(start, start + csize);
     const data = method === 0 ? raw : method === 8 ? await inflate(raw) : null;
     if (!data) throw new Error('not_xlsx');
-    out.set(name, td.decode(data));
+    out.set(name, utf8(data));
   }
   return out;
 }
@@ -176,58 +183,176 @@ export async function unzip(buf: Uint8Array, wanted: (name: string) => boolean):
 const XML_ENT: Record<string, string> = { amp: '&', lt: '<', gt: '>', quot: '"', apos: "'" };
 const unxml = (s: string) => s.replace(/&(#x[0-9a-f]+|#[0-9]+|[a-z]+);/gi, (m, k: string) =>
   k[0] === '#' ? String.fromCodePoint(k[1] === 'x' || k[1] === 'X' ? parseInt(k.slice(2), 16) : parseInt(k.slice(1), 10)) : XML_ENT[k] ?? m);
-const texts = (xml: string) => [...xml.matchAll(/<t(?:\s[^>]*)?>([\s\S]*?)<\/t>/g)].map((m) => unxml(m[1])).join('');
 /** "AB12" → {r: 11, c: 27} (0-based) */
 export function cellRef(ref: string): { r: number; c: number } {
-  const m = /^([A-Z]+)([0-9]+)$/.exec(ref);
+  const m = /^\$?([A-Z]+)\$?([0-9]+)$/.exec(String(ref ?? '').toUpperCase());
   if (!m) return { r: -1, c: -1 };
   let c = 0;
   for (const ch of m[1]) c = c * 26 + (ch.charCodeAt(0) - 64);
   return { r: Number(m[2]) - 1, c: c - 1 };
 }
 
-/** a .xlsx's first sheet → its cells' text and merged ranges */
+// ═══ a namespace-aware reading of the XML parts (H9 fix 1, 16 Nov 2026) ═══
+// Nazeel writes every SpreadsheetML element with a prefix (<x:worksheet>, <x:row>, <x:c>, <x:si>, <x:t> — x bound to the
+// main namespace), a UTF-8 BOM before each part and random relationship ids. Elements are matched by their NAMESPACE and
+// local name, never by tag text or a fixed prefix; Excel's own files (no prefix, a default namespace) read the same way.
+const NS = {
+  main: ['http://schemas.openxmlformats.org/spreadsheetml/2006/main', 'http://purl.oclc.org/ooxml/spreadsheetml/main'],
+  rel: ['http://schemas.openxmlformats.org/officeDocument/2006/relationships', 'http://purl.oclc.org/ooxml/officeDocument/relationships'],
+  pkg: ['http://schemas.openxmlformats.org/package/2006/relationships'],
+} as const;
+export interface XNode {
+  ns: string;
+  local: string;
+  /** attributes: unprefixed by their local name, prefixed by "{namespace}local" */
+  attrs: Record<string, string>;
+  children: XNode[];
+  /** the element's own text (CDATA included), its children's excluded */
+  text: string;
+}
+const TOKEN = /<!--[\s\S]*?-->|<\?[\s\S]*?\?>|<!\[CDATA\[([\s\S]*?)\]\]>|<!DOCTYPE[^>]*>|<(\/?)([^\s/>!?]+)((?:\s+[^\s=/>]+\s*=\s*(?:"[^"]*"|'[^']*'))*)\s*(\/?)>|([^<]+)/g;
+const ATTR = /([^\s=/>]+)\s*=\s*(?:"([^"]*)"|'([^']*)')/g;
+/** one XML part → its root element (a BOM and the declaration skipped); throws 'xml' on a part with no element */
+export function parseXml(src: string): XNode {
+  const s = String(src ?? '').replace(/^﻿/, '');
+  const root: XNode = { ns: '', local: '#document', attrs: {}, children: [], text: '' };
+  const stack: { node: XNode; scope: Record<string, string> }[] = [{ node: root, scope: { xml: 'http://www.w3.org/XML/1998/namespace' } }];
+  for (const m of s.matchAll(TOKEN)) {
+    const top = stack[stack.length - 1];
+    if (m[1] !== undefined) {
+      top.node.text += m[1];
+      continue;
+    }
+    if (m[6] !== undefined) {
+      if (stack.length > 1) top.node.text += unxml(m[6]);
+      continue;
+    }
+    if (!m[3]) continue; // a comment, a declaration, a doctype
+    const qname = m[3];
+    if (m[2] === '/') {
+      if (stack.length > 1) stack.pop();
+      continue;
+    }
+    const raw: [string, string][] = [...(m[4] ?? '').matchAll(ATTR)].map((a) => [a[1], unxml(a[2] ?? a[3] ?? '')]);
+    const scope = { ...top.scope };
+    for (const [k, v] of raw) {
+      if (k === 'xmlns') scope[''] = v;
+      else if (k.startsWith('xmlns:')) scope[k.slice(6)] = v;
+    }
+    const i = qname.indexOf(':');
+    const node: XNode = { ns: scope[i < 0 ? '' : qname.slice(0, i)] ?? '', local: i < 0 ? qname : qname.slice(i + 1), attrs: {}, children: [], text: '' };
+    for (const [k, v] of raw) {
+      if (k === 'xmlns' || k.startsWith('xmlns:')) continue;
+      const j = k.indexOf(':');
+      node.attrs[j < 0 ? k : `{${scope[k.slice(0, j)] ?? ''}}${k.slice(j + 1)}`] = v;
+    }
+    top.node.children.push(node);
+    if (m[5] !== '/') stack.push({ node, scope });
+  }
+  const el = root.children[0];
+  if (!el) throw new Error('xml');
+  return el;
+}
+const isNs = (n: XNode, ns: readonly string[]) => ns.includes(n.ns);
+/** the children of an element with this local name in one of these namespaces */
+export const kids = (n: XNode | undefined, local: string, ns: readonly string[] = NS.main): XNode[] => (n?.children ?? []).filter((c) => c.local === local && isNs(c, ns));
+const kid = (n: XNode | undefined, local: string, ns: readonly string[] = NS.main) => kids(n, local, ns)[0];
+/** an attribute in one of these namespaces ("{ns}local") */
+const nsAttr = (n: XNode | undefined, local: string, ns: readonly string[]) => ns.map((u) => n?.attrs[`{${u}}${local}`]).find((v) => v !== undefined);
+/** a shared or inline string: its <t> plus every run's <t>; the phonetic runs (<rPh>) left out */
+function richText(n: XNode | undefined): string {
+  if (!n) return '';
+  return [...kids(n, 't').map((t) => t.text), ...kids(n, 'r').map((r) => kids(r, 't').map((t) => t.text).join(''))].join('');
+}
+/** a path inside the zip, relative to the part that names it ("../x", "./x", "/x") */
+function resolvePart(base: string, target: string): string {
+  if (target.startsWith('/')) return target.slice(1);
+  const parts = base.split('/').slice(0, -1);
+  for (const seg of target.split('/')) {
+    if (seg === '..') parts.pop();
+    else if (seg && seg !== '.') parts.push(seg);
+  }
+  return parts.join('/');
+}
+const relsOf = (part: string) => {
+  const i = part.lastIndexOf('/');
+  return `${part.slice(0, i + 1)}_rels/${part.slice(i + 1)}.rels`;
+};
+/** a part's relationships: id → {type, target (resolved)} */
+function rels(files: Map<string, string>, part: string): Map<string, { type: string; target: string }> {
+  const out = new Map<string, { type: string; target: string }>();
+  const xml = files.get(relsOf(part));
+  if (!xml) return out;
+  let root: XNode;
+  try {
+    root = parseXml(xml);
+  } catch {
+    return out;
+  }
+  for (const r of kids(root, 'Relationship', NS.pkg)) {
+    if (r.attrs.Id && r.attrs.Target && r.attrs.TargetMode !== 'External') out.set(r.attrs.Id, { type: r.attrs.Type ?? '', target: resolvePart(part, r.attrs.Target) });
+  }
+  return out;
+}
+const parsed = (xml: string | undefined, err: string): XNode => {
+  if (xml === undefined) throw new Error(err);
+  try {
+    return parseXml(xml);
+  } catch {
+    throw new Error(err);
+  }
+};
+
+/** why a file cannot be read: not a zip / an Excel workbook, or a workbook without a worksheet */
+export type ReadError = 'not_xlsx' | 'no_sheet';
+
+/** a .xlsx's first sheet → its cells' text and merged ranges (throws 'not_xlsx' or 'no_sheet') */
 export async function readXlsx(buf: Uint8Array): Promise<Sheet> {
   if (buf.length < 22 || buf[0] !== 0x50 || buf[1] !== 0x4b) throw new Error('not_xlsx');
-  const files = await unzip(buf, (n) => n === 'xl/sharedStrings.xml' || n === 'xl/workbook.xml' || n === 'xl/_rels/workbook.xml.rels' || /^xl\/worksheets\/sheet[0-9]+\.xml$/.test(n));
-  const shared = [...(files.get('xl/sharedStrings.xml') ?? '').matchAll(/<si>([\s\S]*?)<\/si>/g)].map((m) => texts(m[1]));
-  // the first sheet of the workbook (its relationship), else sheet1.xml
-  let path = 'xl/worksheets/sheet1.xml';
-  const first = /<sheet\b[^>]*\br:id="([^"]+)"/.exec(files.get('xl/workbook.xml') ?? '')?.[1];
-  if (first) {
-    const t = new RegExp(`<Relationship\\b[^>]*\\bId="${first}"[^>]*\\bTarget="([^"]+)"`).exec(files.get('xl/_rels/workbook.xml.rels') ?? '')?.[1]
-      ?? new RegExp(`<Relationship\\b[^>]*\\bTarget="([^"]+)"[^>]*\\bId="${first}"`).exec(files.get('xl/_rels/workbook.xml.rels') ?? '')?.[1];
-    if (t) path = t.startsWith('/') ? t.slice(1) : `xl/${t.replace(/^\.\//, '')}`;
-  }
-  const xml = files.get(path) ?? [...files.entries()].find(([k]) => /^xl\/worksheets\/sheet[0-9]+\.xml$/.test(k))?.[1];
-  if (!xml) throw new Error('not_xlsx');
+  const files = await unzip(buf, (n) => /\.(xml|rels)$/i.test(n));
+  // the workbook: the package's officeDocument relationship, else xl/workbook.xml
+  let wbPath = 'xl/workbook.xml';
+  for (const r of rels(files, '').values()) if (/\/officeDocument$/.test(r.type) && files.has(r.target)) wbPath = r.target;
+  const wb = parsed(files.get(wbPath), 'not_xlsx');
+  if (wb.local !== 'workbook' || !isNs(wb, NS.main)) throw new Error('not_xlsx');
+  const wbRels = rels(files, wbPath);
+  // the first sheet of the workbook, through its relationship (the ids are random in Nazeel's file)
+  const first = kids(kid(wb, 'sheets'), 'sheet')[0];
+  const rid = nsAttr(first, 'id', NS.rel);
+  let path = rid ? wbRels.get(rid)?.target : undefined;
+  if (!path || !files.has(path)) path = [...wbRels.values()].find((r) => /\/worksheet$/.test(r.type) && files.has(r.target))?.target;
+  if (!path) throw new Error('no_sheet');
+  // the shared strings, through the workbook's relationship (else the usual path)
+  const ssPath = [...wbRels.values()].find((r) => /\/sharedStrings$/.test(r.type))?.target ?? 'xl/sharedStrings.xml';
+  const shared = files.has(ssPath) ? kids(parsed(files.get(ssPath), 'not_xlsx'), 'si').map((si) => richText(si)) : [];
+  const ws = parsed(files.get(path), 'no_sheet');
+  if (ws.local !== 'worksheet' || !isNs(ws, NS.main)) throw new Error('no_sheet');
   const rows: string[][] = [];
-  for (const rm of xml.matchAll(/<row\b([^>]*?)(?:\/>|>([\s\S]*?)<\/row>)/g)) {
-    const rr = /\br="([0-9]+)"/.exec(rm[1]);
-    const r = rr ? Number(rr[1]) - 1 : rows.length;
+  for (const rowEl of kids(kid(ws, 'sheetData'), 'row')) {
+    const r = rowEl.attrs.r ? Number(rowEl.attrs.r) - 1 : rows.length;
+    if (!Number.isInteger(r) || r < 0 || r > 100000) continue;
     const row: string[] = rows[r] ?? [];
-    for (const cm of (rm[2] ?? '').matchAll(/<c\b([^>]*?)(?:\/>|>([\s\S]*?)<\/c>)/g)) {
-      const at = cm[1];
-      const ref = /\br="([A-Z]+[0-9]+)"/.exec(at)?.[1];
+    for (const cEl of kids(rowEl, 'c')) {
+      const ref = cEl.attrs.r;
       const c = ref ? cellRef(ref).c : row.length;
-      const t = /\bt="([^"]+)"/.exec(at)?.[1] ?? 'n';
-      const body = cm[2] ?? '';
-      const v = /<v>([\s\S]*?)<\/v>/.exec(body)?.[1];
+      if (c < 0 || c > 16383) continue;
+      const t = cEl.attrs.t ?? 'n';
+      const v = kid(cEl, 'v')?.text;
       let val = '';
       if (t === 's') val = shared[Number(v)] ?? '';
-      else if (t === 'inlineStr') val = texts(body);
-      else if (v !== undefined) val = unxml(v);
+      else if (t === 'inlineStr') val = richText(kid(cEl, 'is'));
+      else if (v !== undefined) val = v;
       while (row.length < c) row.push('');
       row[c] = val;
     }
     while (rows.length < r) rows.push([]);
     rows[r] = row;
   }
-  const merges = [...xml.matchAll(/<mergeCell\b[^>]*\bref="([A-Z]+[0-9]+):([A-Z]+[0-9]+)"/g)].map((m) => {
-    const a = cellRef(m[1]);
-    const b = cellRef(m[2]);
+  const merges = kids(kid(ws, 'mergeCells'), 'mergeCell').map((m) => String(m.attrs.ref ?? '').split(':')).filter((x) => x.length === 2).map(([x, y]) => {
+    const a = cellRef(x);
+    const b = cellRef(y);
     return { r0: a.r, c0: a.c, r1: b.r, c1: b.c };
-  });
+  }).filter((m) => m.r0 >= 0 && m.c0 >= 0 && m.r1 >= 0 && m.c1 >= 0);
   return { rows, merges };
 }
 
@@ -271,7 +396,7 @@ export const STATE_AR: Record<string, string> = {
   failed: 'تعذّر الإرسال', skipped: 'لم تُرسل', dry_run: 'تجربة بدون إرسال', cancelled: 'أُلغيت', test: 'تجربة', none: '—',
 };
 export const CODE_AR: Record<string, string> = {
-  switch_off: 'المفتاح متوقف — ما كان سيُرسل', excluded: 'مستبعد', extended: 'تمديد', late: 'بعد موعد المغادرة', limit_late: 'أُجّلت بسبب حد الإرسال حتى فات موعدها',
+  switch_off: 'المفتاح متوقف — ما كان سيُرسل', excluded: 'مستبعد', extended: 'تمديد', late: 'فات موعد رسالة الخروج (11:00)', limit_late: 'أُجّلت بسبب حد الإرسال حتى فات موعدها',
   staff_number: 'رقم موظف', blocked: 'رقم محظور', opted_out: 'أوقف الرسائل', site_review: 'أُرسل طلب التقييم من حجز الموقع', duplicate: 'أُرسل لهذا الرقم من حجز آخر',
   template_unread: 'تعذّرت قراءة حالة القالب', template_not_approved: 'القالب غير معتمد', template_mismatch: 'نص القالب مختلف', payload: 'تعذّر تجهيز الرسالة',
 };
@@ -299,7 +424,7 @@ export function departuresText(data: Json): string {
 export function departureFaults(data: Json): string[] {
   const out: string[] = [];
   const missing = BRS.filter((b) => data?.branches?.[b]?.dep_missing === true).map((b) => SHORT_AR[b]);
-  if (missing.length) out.push(`لم تُرفع قائمة المغادرين: ${missing.join(' و')}`);
+  if (missing.length) out.push(`لم تُرفع قائمة المغادرين حتى 8:30: ${missing.join(' و')}`);
   const late = BRS.reduce((a, b) => a + cnt(data?.branches?.[b]?.dep_late), 0);
   if (late) out.push(`رسائل خروج فات موعدها ${late}`);
   const held = cnt(data?.limit_deferred);

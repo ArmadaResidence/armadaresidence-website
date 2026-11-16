@@ -980,3 +980,28 @@ body {
 :root[data-theme="dark"] .sim-error { color: #ffd0d0; background: rgb(155 28 28 / 0.3); }
 .sim-buttons { display: flex; flex-wrap: wrap; gap: 0.3rem; margin-top: 0.4rem; }
 .sim-btn { padding: 0.15rem 0.5rem; border-radius: 999px; border: 1px solid currentColor; font-size: 0.75rem; }
+
+/* «قائمة المغادرين» — the upload control (H9 fix 1, 16 Nov 2026): a drop zone card with the bronze «رفع ملف نزيل»
+   button, the chosen file's row, and the reading error inside the card (never a toast); light and dark */
+.dep-drop {
+  display: grid; justify-items: center; gap: 0.5rem; text-align: center;
+  padding: 1.5rem 1rem; border: 2px dashed var(--line); border-radius: var(--radius-card); background: var(--soft);
+  transition: border-color var(--motion-fast) var(--ease-out), background-color var(--motion-fast) var(--ease-out);
+}
+.dep-drop.is-drag { border-color: var(--color-bronze); background: color-mix(in srgb, var(--color-bronze) 8%, var(--soft)); }
+.dep-drop-icon {
+  display: inline-grid; place-items: center; width: 3rem; height: 3rem; border-radius: 999px;
+  color: var(--accent-text); background: color-mix(in srgb, var(--color-bronze) 14%, var(--card));
+}
+:root[data-theme="dark"] .dep-drop-icon { color: var(--color-bronze-bright); background: color-mix(in srgb, var(--color-bronze) 22%, var(--card)); }
+.dep-file {
+  display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap;
+  padding: 0.75rem 1rem; border: 1px solid var(--line); border-radius: var(--radius-card); background: var(--soft);
+}
+.dep-file .dep-drop-icon { width: 2.5rem; height: 2.5rem; }
+.dep-error {
+  padding: 0.75rem 1rem; border-radius: var(--radius-card); border: 1px solid rgb(153 27 27 / 0.35);
+  border-inline-start-width: 4px; border-inline-start-color: var(--color-error); background: rgb(153 27 27 / 0.06); color: var(--ink);
+}
+:root[data-theme="dark"] .dep-error { border-color: rgb(254 202 202 / 0.35); border-inline-start-color: #fca5a5; background: rgb(153 27 27 / 0.28); }
+@media (prefers-reduced-motion: reduce) { .dep-drop { transition: none; } }

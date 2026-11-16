@@ -21,6 +21,8 @@ type Json = any;
 
 export const HUB_STAFF_ALERT = 'hub_staff_alert';
 export const HUB_DAILY_REPORT = 'hub_daily_report';
+/** H9 fix 1 (16 Nov 2026): the reminder that today's «قائمة المغادرين» is missing (templates.md §7) */
+export const HUB_UPLOAD_REMINDER = 'hub_upload_reminder';
 export const ADMIN_ORIGIN = 'https://admin.armadaresidence.com';
 // deno-lint-ignore no-explicit-any
 export const STAFF_TEMPLATE_DEFS = defs as any;
@@ -225,6 +227,21 @@ export function reportVars(day: string, data: Json): string[] {
 export const reportPayload = (from: string, to: string, day: string, data: Json, externalId?: string) =>
   templatePayload(HUB_DAILY_REPORT, from, to, reportVars(day, data), String(day).slice(0, 10), externalId);
 export const reportLink = (day: string) => `${ADMIN_ORIGIN}/?hub_r=${String(day).slice(0, 10)}`;
+/** H9 fix 1: «لفرع {{2}}» — the branch's short name (the part after the dash: «طريق المطار») */
+export const branchShort = (name: string): string => String(name ?? '').split(/\s[–-]\s/).pop()!.trim();
+/** hub_upload_reminder: {{1}} the staff member's first name, {{2}} the branch's short name; the URL button's suffix is the
+ *  branch code (https://admin.armadaresidence.com/?hub_d={{1}} → «قائمة المغادرين» on that branch) */
+export const uploadReminderPayload = (from: string, to: string, firstName: string, branchName: string, branchSlug: string, externalId?: string) =>
+  templatePayload(HUB_UPLOAD_REMINDER, from, to, [oneLine(firstName, 40) || 'زميلنا', branchShort(branchName)], branchSlug, externalId);
+export const departuresLink = (branch: string) => `${ADMIN_ORIGIN}/?hub_d=${branch}`;
+/** the free-form reminder when the model cannot write it: the template's own approved wording, the link instead of the button */
+export function reminderFallback(firstName: string, branchName: string, branch: string): string {
+  const body = String(STAFF_TEMPLATE_DEFS[HUB_UPLOAD_REMINDER]?.ar?.body ?? '');
+  return body.replace('{{1}}', oneLine(firstName, 40) || 'زميلنا').replace('{{2}}', branchShort(branchName))
+    .replace('ارفعها من الزر بالأسفل، وشكرًا لك.', `ارفعها من هنا:
+${departuresLink(branch)}
+وشكرًا لك.`);
+}
 
 // ═══ a template's body as YCloud stores it ═══
 /** YCloud's template item → {status, body} (the BODY component's text) */

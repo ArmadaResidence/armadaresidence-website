@@ -118,7 +118,7 @@ function DeparturesTab() {
             <h2 className="font-semibold">{BRANCH_NAMES[b.branch] ?? b.branch}</h2>
             <span className="text-sm text-ink-muted">
               {b.last_upload ? `آخر قائمة: ${longDate(b.last_upload.date)} — ${b.last_upload.kept} ${b.last_upload.kept === 1 ? 'ضيف' : 'ضيوف'}` : 'لم تُرفع قائمة بعد'}
-              {b.tomorrow_uploaded ? ' · قائمة الغد مرفوعة' : ' · قائمة الغد لم تُرفع'}
+              {b.today_uploaded ? ' · قائمة اليوم مرفوعة' : ' · قائمة اليوم لم تُرفع'}
             </span>
           </div>
           {(['check', 'review'] as const).map((k) => {

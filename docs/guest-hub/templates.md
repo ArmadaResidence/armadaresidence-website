@@ -161,7 +161,29 @@ Will you be leaving as planned, or would you like to extend your stay?
 
 Buttons: “Leaving as planned” · “Extend my stay”
 
-**How the hub uses it (H9, 16 Nov 2026 — DECISIONS.md 2026-11-16 «Guest Hub H9»):** from «قائمة المغادرين» (the evening Nazeel upload), at 09:30 Riyadh on the departure day, from the branch's own number, Arabic for Saudi and Arab country codes and English for the others; {{1}} = `branchName()` (the booking templates' function), {{2}} = the check-out time of `content/policies.json` (`check_out_ar` / `check_out_en` → «12:00 ظهرًا» / "12:00 noon", read from the file); the two quick replies carry the payloads `hubo:leave:<row>` and `hubo:extend:<row>` (routed by id before the opt-out matcher; a reply without a payload by its title). Before its first use, and again after 24 hours, its status and body (in that language) are read back from YCloud — a body that differs from this one or a status other than APPROVED stops the send. Never to a blocked number; the offers opt-out does not stop it (a service message); once per stay; a check not sent by the check-out time is skipped. Its switch «رسالة الخروج أو التمديد» per branch is the system admin's (OFF until he turns it on). Counts toward the shared sending limit (priority 2).
+**How the hub uses it (H9, 16 Nov 2026 — DECISIONS.md 2026-11-16 «Guest Hub H9»; the morning list since H9 fix 1 the same day):** from «قائمة المغادرين» (the MORNING Nazeel upload of today, by 07:00), at 09:30 Riyadh on the departure day — a list uploaded after 09:30 and before 11:00 sends within 5 minutes, none from 11:00 —, from the branch's own number, Arabic for Saudi and Arab country codes and English for the others; {{1}} = `branchName()` (the booking templates' function), {{2}} = the check-out time of `content/policies.json` (`check_out_ar` / `check_out_en` → «12:00 ظهرًا» / "12:00 noon", read from the file); the two quick replies carry the payloads `hubo:leave:<row>` and `hubo:extend:<row>` (routed by id before the opt-out matcher; a reply without a payload by its title). Before its first use, and again after 24 hours, its status and body (in that language) are read back from YCloud — a body that differs from this one or a status other than APPROVED stops the send. Never to a blocked number; the offers opt-out does not stop it (a service message); once per stay; a check not sent by 11:00 is skipped. Its switch «رسالة الخروج أو التمديد» per branch is the system admin's (OFF until he turns it on). Counts toward the shared sending limit (priority 2).
 
-The flow (DECISIONS.md 2026-11-14 «Departures (for H9)»): sent 09:30 on the departure day; «سأغادر في موعدي» → «شكرًا لك على إقامتك معنا، ونتمنى لك طريقًا آمنًا.» then `stay_review` at 19:00; «أرغب في التمديد» → «يسعدنا ذلك. سيكمل معك فريق الاستقبال في هذه المحادثة لإتمام التمديد.», a hand-off tagged «تمديد», no review; no answer → `stay_review` at 10:00 the next day, unless the booking reappears in a later upload or reception marks «تمديد».
+The flow (DECISIONS.md 2026-11-14 «Departures (for H9)»): sent 09:30 on the departure day; «سأغادر في موعدي» → «شكرًا لك على إقامتك معنا، ونتمنى لك طريقًا آمنًا.» then `stay_review` at 19:00; «أرغب في التمديد» → «يسعدنا ذلك. سيكمل معك فريق الاستقبال في هذه المحادثة لإتمام التمديد.», a hand-off tagged «تمديد», no review; no answer → `stay_review` at 10:00 the next day, unless the same booking number appears in the next morning's upload (an extension; the review waits until 11:00 for that list) or reception marks «تمديد».
 
+## 7. `hub_upload_reminder` — submitted to Meta by Ahmed (16 Nov 2026); used only once approved (H9 fix 1)
+
+### hub_upload_reminder
+
+| Field | Value |
+|---|---|
+| Name | `hub_upload_reminder` |
+| Category | UTILITY |
+| Languages | `ar` |
+| Numbers | both branch numbers |
+| Variables | `{{1}}` the staff member's first name (from the slot) · `{{2}}` the branch name (short: «طريق المطار» / «طريق الشفا») |
+| Button | URL «رفع القائمة» → `https://admin.armadaresidence.com/?hub_d={{1}}` (the branch code: `airport-road` / `shafa-road`) |
+
+**Body — Arabic** (Ahmed's wording)
+
+```
+صباح الخير {{1}} ☀️
+تذكير لطيف: نحتاج قائمة مغادرين اليوم لفرع {{2}} من نزيل، حتى تصل رسائل الخروج للضيوف في موعدها الساعة 9:30.
+ارفعها من الزر بالأسفل، وشكرًا لك.
+```
+
+**How the hub uses it (H9 fix 1, 16 Nov 2026 — DECISIONS.md 2026-11-16 «Guest Hub H9 fix 1»):** each morning, when a branch in use has no «قائمة المغادرين» for today: 07:00 and 08:00 → the branch's staff slots on shift (nobody on shift → its «مدير الاستقبال» slots), 08:30 → the «مدير الاستقبال» slots (plus «التنبيهات» and the daily report's fault line). Inside the staff member's 24-hour window with that branch number the reminder is a free-form line written by the model in the colleague tone (prompts.md §9.3 — a different line each day, the link `?hub_d=<branch>`); outside it, this template — only once `hub_templates` shows it APPROVED with this body (the automatic refresh; read again before a send when missing, not approved, different or a day old); otherwise nothing is sent and the reason is recorded (the page «قائمة المغادرين» shows today's reminders). Never after the upload or after 11:00. After the upload, a short thank-you in the colleague tone to whoever was reminded — inside the window only, never this template. Counts toward the shared sending limit (staff sends). `?hub_d=<branch>` opens «قائمة المغادرين» on that branch.

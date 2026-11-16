@@ -323,6 +323,8 @@ export const ALERT_LABELS: Record<string, string> = {
   model_error: 'تعذّر الوصول إلى نموذج المساعد',
   voice_cap: 'بلغ تفريغ الرسائل الصوتية حده اليومي',
   staff_send: 'رسالة للفريق لم تُرسل (تنبيه أو تقرير)',
+  departures_missing: 'لم تُرفع قائمة المغادرين اليوم حتى 8:30',
+  send_limit: 'رسائل أُجّلت بسبب حد الإرسال المشترك',
 };
 export const VERIFY_ERRORS: Record<string, string> = {
   hub_channel_not_found: 'لم يُعثر على هذا الرقم في حساب واتساب للأعمال على YCloud.',

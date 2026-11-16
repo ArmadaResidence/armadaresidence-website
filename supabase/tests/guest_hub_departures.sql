@@ -14,7 +14,7 @@
 --   X  «استبعاد» / «تمديد» marked by staff and their «تراجع»; refused after a send;
 --   D  no duplicate with the site's own review flow, both ways (the same lock);
 --   L  the shared limit: the tiers, the reserve, the priorities, a deferral kept queued with its alert;
---   R  the daily report's figures; 23:00 → the missing-upload alert; the 30-day retention; no direct table access.
+--   R  the daily report's figures; no 23:00 alert since H9 fix 1 (the morning reminders); the 30-day retention; no direct table access.
 -- ONE transaction, ROLLED BACK at the end. The numbers are fictional (+1 555 09xx and a Saudi test range).
 begin;
 set constraints all immediate;
@@ -218,7 +218,10 @@ select pg_temp._tick(0, '19:01');
 select pg_temp._check('A8 at 19:00 the review request of «سأغادر في موعدي» is queued', (select review_state = 'queued' from pg_temp._row('100901')));
 select pg_temp._check('A9 … but nobody without an answer yet (their review is at 10:00 tomorrow)', (select review_state = 'scheduled' from pg_temp._row('100906')));
 select pg_temp._tick(1, '10:01');
-select pg_temp._check('A10 no answer → the review request at 10:00 the next day', (select review_state = 'queued' from pg_temp._row('100906')));
+-- H9 fix 1: the no-answer review waits until 11:00 for that morning's list (an extension would be in it)
+select pg_temp._check('A10 no answer, no morning list yet at 10:01 → the review waits', (select review_state = 'scheduled' from pg_temp._row('100906')));
+select pg_temp._tick(1, '11:01');
+select pg_temp._check('A10 … from 11:00 without that morning''s list it goes (the review request of the next day)', (select review_state = 'queued' from pg_temp._row('100906')));
 select pg_temp._check('A11 the opted-out number: no review request', (select review_state = 'skipped' and review_code = 'opted_out' from pg_temp._row('100913')));
 
 -- ══ M — an extension in a later upload ══
@@ -322,14 +325,10 @@ select pg_temp._root();
 select pg_temp._tick(0, '09:35');
 select pg_temp._check('R3 a branch with its switch off: a dry run (what would have been sent, and when)', (select check_state = 'dry_run' and check_code = 'switch_off' and check_at is not null from pg_temp._row('200901')));
 select pg_temp._tick(0, '23:01');
-select pg_temp._check('R4 23:00: Shafa Road (in use) has no list for tomorrow → «التنبيهات»',
-  exists (select 1 from public.hub_alerts a join public.hub_units u on u.id = a.unit_id where a.kind = 'departures_missing' and u.branch_slug = 'shafa-road' and a.acknowledged_at is null and (a.payload ->> 'date')::date = pg_temp._d(1)));
-select pg_temp._check('R4 … and Airport Road (its list for tomorrow uploaded) has none',
-  not exists (select 1 from public.hub_alerts a join public.hub_units u on u.id = a.unit_id where a.kind = 'departures_missing' and u.branch_slug = 'airport-road' and a.acknowledged_at is null));
-select pg_temp._as('recs');
-select public.hub_departures_upload('shafa-road', pg_temp._d(1), jsonb_build_array(jsonb_build_object('ref', '200902', 'first_name', 'Sami', 'phone', '+15550100922')), '{}'::jsonb, false);
-select pg_temp._root();
-select pg_temp._check('R5 the upload answers the alert', not exists (select 1 from public.hub_alerts a join public.hub_units u on u.id = a.unit_id where a.kind = 'departures_missing' and u.branch_slug = 'shafa-road' and a.acknowledged_at is null));
+-- H9 fix 1: the list is uploaded each MORNING — no 23:00 alert for tomorrow any more (the reminders of
+-- supabase/tests/guest_hub_h9_fix1.sql replace it)
+select pg_temp._check('R4 23:00: no evening alert for tomorrow''s list (replaced by the morning reminders)',
+  not exists (select 1 from public.hub_alerts a where a.kind = 'departures_missing' and a.acknowledged_at is null and (a.payload ->> 'date')::date = pg_temp._d(1)));
 insert into public.hub_departures (branch_slug, nazeel_ref, phone, first_name, language, departure_date) values ('airport-road', '100999', '+15550100999', 'Old', 'en', pg_temp._d(-31));
 select pg_temp._tick(0, '09:40');
 select pg_temp._check('R6 deleted 30 days after the departure date', not exists (select 1 from public.hub_departures where nazeel_ref = '100999'));

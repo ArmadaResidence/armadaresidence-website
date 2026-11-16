@@ -213,6 +213,9 @@ export function parsePrompts(md = read('docs/guest-hub/prompts.md')) {
   // H6c (15 Nov 2026): the staff alert's line and the colleague chat
   const s8 = section(md, '## 8. The staff alert line');
   const s9 = section(md, '## 9. The colleague chat');
+  // H9 fix 1 (16 Nov 2026): the staff intent (teaching from the meaning) and the upload reminder
+  const s92 = section(md, '### 9.2 Staff intent');
+  const s93 = section(md, '### 9.3 The upload reminder');
   // H7 (15 Nov 2026): the image's classification and reading
   const s10 = section(md, '## 10. The image');
   const one = (s, n) => {
@@ -246,6 +249,8 @@ export function parsePrompts(md = read('docs/guest-hub/prompts.md')) {
     learn_system: one(s7, '7'),
     summary_system: one(s8, '8'),
     staff_system: one(s9, '9'),
+    staff_intent_system: one(s92, '9.2'),
+    reminder_system: one(s93, '9.3'),
     vision_system: one(s10, '10'),
     tones,
   };
@@ -277,7 +282,8 @@ export function parseMediaLines(md = read('docs/guest-hub/copy.md')) {
 
 /** H7b: the fixed lines of teaching and removing by WhatsApp (copy.md §9.1 — staff-facing): {key: line} */
 export const LEARN_LINE_KEYS = ['saved', 'saved_both', 'ask_replace', 'replaced', 'kept', 'removed', 'removed_n', 'remove_none', 'remove_n_none', 'remove_n_other',
-  'not_allowed', 'other_branch', 'conflict_shared', 'room_price', 'offer', 'service_price', 'guest_detail', 'one_off', 'not_a_fact', 'empty', 'teach_off', 'failed'];
+  'not_allowed', 'other_branch', 'conflict_shared', 'room_price', 'offer', 'service_price', 'guest_detail', 'one_off', 'not_a_fact', 'empty', 'teach_off', 'failed',
+  'revised', 'intent_ask', 'intent_no', 'ok_ack', 'edit_ask', 'link_ask'];
 export function parseLearnLines(md = read('docs/guest-hub/copy.md')) {
   const s = section(md, '### 9.1 Teaching and removing by WhatsApp');
   const out = {};

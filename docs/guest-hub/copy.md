@@ -382,12 +382,18 @@ Both answer work questions from the system only — how many conversations wait 
 
 ### 9.1 Teaching and removing by WhatsApp [مقرر — Ahmed, 15 Nov 2026, H7b; the session's wording except `saved`, for Ahmed's review]
 
-Who may teach: Ahmed (his number in «التقارير», linked to his dashboard account — any branch, both branches, a service price) and a «مدير الاستقبال» slot (his own branch only). Anyone else gets `not_allowed`. These lines are fixed (each quotes the exact guest wording or the fact removed, so they are never written by the model); `{wording}` is the card's Arabic text as the guests will read it, `{old}` the card it would replace, `{n}` the fact's number in the daily report, `{branch}` the branch's name, `{link}` the dashboard's «العروض» page. A staff or report number only (never a guest).
+Who may teach: Ahmed (his number in «التقارير», linked to his dashboard account — any branch, both branches, a service price) and a «مدير الاستقبال» slot (his own branch only). Anyone else gets `not_allowed`. These lines are fixed (each quotes the exact guest wording or the fact removed, so they are never written by the model); `{wording}` is the card's Arabic text as the guests will read it, `{old}` the card it would replace, `{n}` the fact's number in the daily report, `{branch}` the branch's name, `{link}` the dashboard's «العروض» page, `{expiry}` « وهقولها لحد {date} بس.» when the fact has an end (nothing otherwise), `{name}` the link asked for. Since H9 fix 1 (16 Nov 2026) a teaching is read for its meaning (prompts.md §9.2) — with or without «تعلّم» and the colon —, a follow-up completes the same card, and a saved card's confirmation carries three quick replies: «تمام» (for Ahmed on a card of one branch: «للفرعين»), «عدّل», «امسح» — WhatsApp allows three. A staff or report number only (never a guest).
 
 | Key | When | Line |
 |---|---|---|
-| saved | «تعلّم: …» stored for one branch (Ahmed's wording) | «اتسجلت ✅ هقولها للضيوف كده: «{wording}». لو فيها غلط ابعت «امسح».» |
-| saved_both | stored for both branches («للفرعين») | «اتسجلت للفرعين ✅ هقولها للضيوف كده: «{wording}». لو فيها غلط ابعت «امسح».» |
+| saved | a teaching stored for one branch (Ahmed's wording; H9 fix 1 adds the branch, the expiry and the quick replies) | «اتسجلت ل{branch} ✅ هقولها للضيوف كده: «{wording}».{expiry} لو فيها غلط اضغط «عدّل» أو «امسح».» |
+| saved_both | stored for both branches («للفرعين» — written or the quick reply) | «اتسجلت للفرعين ✅ هقولها للضيوف كده: «{wording}».{expiry} لو فيها غلط اضغط «عدّل» أو «امسح».» |
+| revised | a follow-up or «عدّل» replaced the card just taught (H9 fix 1) | «اتعدّلت ✅ هقولها للضيوف كده: «{wording}».{expiry} لو فيها غلط اضغط «عدّل» أو «امسح».» |
+| intent_ask | the message may be teaching, the model could not tell — asked once, with «سجّلها» / «لا» (Ahmed's wording, H9 fix 1) | «أسجّلها معلومة للضيوف؟» |
+| intent_no | «لا» to that question | «تمام، مش هسجلها 👍» |
+| ok_ack | «تمام» on a confirmation | «تمام 👍» |
+| edit_ask | «عدّل» — the next message is the correction | «تمام، ابعتلي التعديل في رسالة واحدة وأنا أعدّلها ✍️» |
+| link_ask | the teaching asks for a link that content/contact.json does not hold — never invented | «محتاج لينك {name} علشان أحطه في الرد 🙏 ابعتهولي وأنا أكمّل المعلومة.» |
 | ask_replace | the fact contradicts a card — nothing changes until the answer | «فيه معلومة قديمة بتقول: «{old}». والجديدة: «{wording}». أستبدل القديمة؟ رد بـ «نعم» أو «لا».» |
 | replaced | «نعم» | «تمام، استبدلت القديمة ✅ هقولها للضيوف كده: «{wording}». لو فيها غلط ابعت «امسح».» |
 | conflict_shared | a manager's fact contradicts a card of both branches or of the other branch — nothing changes | «المعلومة دي بتعارض معلومة مسجلة للفرعين: «{old}». تغييرها لأحمد بس 🙏 ابعتها له.» |
@@ -404,7 +410,7 @@ Who may teach: Ahmed (his number in «التقارير», linked to his dashboar
 | service_price | a service price from a manager | «أسعار الخدمات بيعلّمها أحمد بس 🙏 ابعتها له.» |
 | guest_detail | a guest's name, room, phone, email, booking or dates | «دي تفاصيل ضيف بعينه، ومش هحفظها للكل 🙏 ابعت المعلومة العامة من غير اسم أو رقم أو غرفة أو تاريخ.» |
 | one_off | an exception or a promise for one guest | «دي حاجة لمرة واحدة أو لضيف معيّن، فمش هحفظها كمعلومة عامة 🙏» |
-| not_a_fact | an opinion, a greeting, nothing general | «مش لاقي فيها معلومة عامة أحفظها 🤔 اكتبها جملة واضحة بعد «تعلّم:».» |
+| not_a_fact | an opinion, a greeting, nothing general (H9 fix 1: never asks to resend in a format) | «مش لاقي فيها معلومة عامة أقولها للضيوف 🤔 قولّي إيه اللي عايزني أرد بيه على الضيف.» |
 | empty | «تعلّم:» with nothing after it | «اكتب المعلومة بعد «تعلّم:» 🙂 مثال: تعلّم: فيه ميكروويف في لوبي الفرع.» |
 | teach_off | «التعليم بـ تعلّم:» switched off in «الفريق والتقارير» | «التعليم بـ «تعلّم:» متوقف دلوقتي من اللوحة.» |
 | failed | the model or the store failed | «معرفتش أسجلها دلوقتي 😅 جرّب تاني بعد شوية.» |
