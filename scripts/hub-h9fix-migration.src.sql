@@ -57,7 +57,6 @@ declare
   v_who text := t ->> 'who';
   f public.hub_teach_followups;
   c public.hub_knowledge_cards;
-  j public.hub_teach_jobs;
 begin
   if v_who is null then return jsonb_build_object('teacher', t); end if;
   delete from public.hub_teach_followups x where x.who = v_who and x.created_at < now() - interval '24 hours';
@@ -65,13 +64,13 @@ begin
   select * into c from public.hub_knowledge_cards k
    where k.learn_who = v_who and k.learn_kind = 'teach' and k.status = 'published' and k.learned_at > now() - interval '2 hours'
    order by k.learned_at desc limit 1;
-  select * into j from public.hub_teach_jobs x where x.who = v_who and x.finished_at > now() - interval '2 hours' order by x.finished_at desc limit 1;
   return jsonb_build_object('teacher', t,
     'followup', case when f.id is null then null else jsonb_build_object('id', f.id, 'kind', f.kind, 'card_id', f.card_id, 'body', f.body, 'scope', f.scope, 'link_name', f.link_name) end,
     'last', case when c.id is null then null else jsonb_build_object('id', c.id, 'text_ar', c.text_ar, 'scope', internal.hub_card_scope(c),
                                                                        'minutes', floor(extract(epoch from now() - c.learned_at) / 60)::int) end,
     'last_sent', case when f.kind = 'intent' then jsonb_build_object('kind', 'intent', 'followup_id', f.id)
-                      when j.status = 'learned' and j.card_id is not null and c.id = j.card_id then jsonb_build_object('kind', 'confirm', 'card_id', j.card_id) end);
+                      when c.id is not null and exists (select 1 from public.hub_teach_jobs x where x.who = v_who and x.status = 'learned' and x.card_id = c.id)
+                        then jsonb_build_object('kind', 'confirm', 'card_id', c.id) end);
 end;
 $$;
 

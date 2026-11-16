@@ -255,6 +255,9 @@ update public.hub_departure_config set review_on = false where branch_slug = 'ai
 -- ══ R — the upload reminders ══
 delete from public.hub_departure_uploads where true;
 delete from public.hub_departures where true;
+-- the S section's late ticks (10:00–11:30) queued their own catch-up reminders: a clean slate
+delete from public.hub_upload_reminders where true;
+delete from public.hub_alerts where kind = 'departures_missing';
 -- both branches in use: a list yesterday
 insert into public.hub_departure_uploads (branch_slug, departure_date, kept, created_at) values
   ('airport-road', pg_temp._d(-1), 3, now() - interval '1 day'), ('shafa-road', pg_temp._d(-1), 2, now() - interval '1 day');
