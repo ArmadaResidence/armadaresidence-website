@@ -408,6 +408,13 @@ function HubSection({ s, money, first }: { s: Sect<m.HubReport>; money: boolean;
                   u.quoted, u.booked, usd(u.model_cost_usd)]) }}
               foot={[['الإجمالي', t.conv, t.ai, t.ho, '', '', t.q, t.bk, usd(t.cost)]]} />
           </section>
+          <section className="card p-4" aria-labelledby="hub-standby-h" data-hub-standby>
+            <div className="flex items-start gap-2 mb-3"><h3 id="hub-standby-h" className="font-bold">وضع الاستعداد</h3><HowTip text={m.HOW.hubStandby} /></div>
+            <DataTable caption="وضع الاستعداد حسب الوحدة"
+              data={{ head: ['الوحدة', 'رد الفريق خلال الانتظار', 'رد المساعد بعد الانتظار'],
+                rows: d.units.map((u) => [u.name_ar, u.standby_staff ?? 0, u.standby_assistant ?? 0]) }}
+              foot={[['الإجمالي', d.units.reduce((a, u) => a + (u.standby_staff ?? 0), 0), d.units.reduce((a, u) => a + (u.standby_assistant ?? 0), 0)]]} />
+          </section>
           <div className="grid lg:grid-cols-2 gap-4">
             <ChartCard title="أكثر المواضيع" how={m.HOW.hubTopics} id="hub-topics"
               summary={d.topics.length ? `أكثر المواضيع في الفترة: ${d.topics.map((x) => `${x.label_ar} ${x.count}`).join('، ')}.` : 'لا رسائل في الفترة.'}
@@ -485,6 +492,7 @@ function buildSheets(x: { perf: m.Performance | null; beh: m.Behaviour | null; s
       ...h.units.map((u) => [u.name_ar, u.conversations, u.assistant_only, u.handed_off, num(u.ai_median_min), num(u.ai_p90_min), num(u.staff_median_min), num(u.staff_p90_min), u.quoted, u.booked, num(u.model_cost_usd)])] },
     { title: 'حجوزات المساعد', rows: [['المؤشر', 'القيمة'], ['تأكيد فوري', h.bookings.instant], ['طلب حجز', h.bookings.request], ['مؤكدة', h.bookings.confirmed], ...(x.money ? [['الإيراد', num(h.bookings.revenue)]] : []),
       ['طلبات القاعة للمبيعات', h.sales_requests.hall], ['طلبات المجموعات للمبيعات', h.sales_requests.group], ['رسائل واتساب بالقوالب', h.whatsapp.templates], ['تقدير تكلفة واتساب (دولار)', num(h.whatsapp.estimate_usd)]] },
+    { title: 'وضع الاستعداد', rows: [['الوحدة', 'رد الفريق خلال الانتظار', 'رد المساعد بعد الانتظار'], ...h.units.map((u) => [u.name_ar, u.standby_staff ?? 0, u.standby_assistant ?? 0])] },
     { title: 'أكثر المواضيع', rows: [['الموضوع', 'المرات'], ...h.topics.map((t) => [t.label_ar, t.count])] },
   ] });
   return sheets;

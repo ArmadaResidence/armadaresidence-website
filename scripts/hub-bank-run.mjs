@@ -18,6 +18,7 @@ import { longDate } from '../supabase/functions/booking-request/email.ts';
 import { sarText } from '../supabase/functions/booking-request/rules.ts';
 import { CONTENT, FORBIDDEN, PRICES, claimFor, engineItems, knowledgeFor, liveFees, SEED, TOPICS as TOPICS_ALL } from './hub-fixtures-lib.mjs';
 import * as L from '../supabase/functions/_shared/hub/learn.ts';
+import { gradeStandby } from '../supabase/functions/_shared/hub/standby.ts';
 
 const arg = (k) => {
   const i = process.argv.indexOf(k);
@@ -37,10 +38,12 @@ const jsonl = (f) => read(f).split(/\r?\n/).filter((l) => l.trim()).map((l) => J
 // H6c (15 Nov 2026): the team bank — guest conversations with «[staff] …» / «[wait:N]», the colleague chat, the alert rules
 const CONV = [...jsonl('tests/hub-bank/conversations.jsonl'), ...jsonl('tests/hub-bank/conversations-team.jsonl')];
 const LEARN = jsonl('tests/hub-bank/conversations-learn.jsonl');
+// H9 fix 2 (16 Nov 2026): «وضع الاستعداد» — guest conversations («[burst]», «[held]») and the wait's timelines (kind standby, in code)
+const STANDBY = jsonl('tests/hub-bank/conversations-standby.jsonl');
 const items = [
   // q032 / q068 are retired on production (the Airport Road laundry, H6 pass 3)
   ...(['conversations', 'learning'].includes(bank) ? [] : engineItems().filter((q) => !['q032', 'q068'].includes(q.id))),
-  ...(['questions', 'learning'].includes(bank) ? [] : CONV),
+  ...(['questions', 'learning'].includes(bank) ? [] : [...CONV, ...STANDBY]),
   ...(['questions', 'conversations'].includes(bank) ? [] : LEARN),
   // --extra <file.jsonl>: more single questions (e.g. the production bank's own items)
   ...(arg('--extra') ? readFileSync(arg('--extra'), 'utf8').split(/\r?\n/).filter((l) => l.trim()).map((l) => JSON.parse(l)).map((q) => ({ ...q, extra: true })) : []),
@@ -375,6 +378,10 @@ async function one(q) {
   if (q.kind === 'learn') return learnOne(q);
   if (q.kind === 'staff_chat') return staffOne(q);
   if (q.kind === 'team') return teamOne(q);
+  if (q.kind === 'standby') {
+    const g = gradeStandby(q);
+    return { id: q.id, unit: q.unit ?? 'airport-road', bank: 'conversations', pass: g.pass, reasons: g.reasons, steps: [], cost_usd: 0 };
+  }
   const claim = claimFor({ ...q, messages: ['x'] });
   // H8 (16 Nov 2026): the branch units as production has them — room_booking on, both switches on, the instant limits
   const ctx = {

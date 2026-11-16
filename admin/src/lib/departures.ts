@@ -92,13 +92,15 @@ export const preview = (branch: string, date: string, p: Parsed) =>
 export const save = (branch: string, date: string, p: Parsed) =>
   call<Preview>('hub_departures_upload', { p_branch: branch, p_date: date, p_rows: rowsOf(p), p_skipped: { no_phone: p.no_phone }, p_dry_run: false });
 
-/** why a file was not read — precise, in Arabic (H9 fix 1: never a bare «الملف فارغ») */
+/** Nazeel's real steps to the departures file (Ahmed, 16 Nov 2026 — H9 fix 2; replaces the old export-filter hint) */
+export const NAZEEL_STEPS = 'لوحة المعلومات ← الحجوزات ← تبويب «المغادرة» ← «اليوم» ← أيقونة الطباعة ← التنزيل ← Excel Worksheet';
+/** why a file was not read — precise, in Arabic (H9 fix 1: never a bare «الملف فارغ»); each names Nazeel's steps */
 export const READ_ERRORS: Record<string, string> = {
-  not_xlsx: 'هذا الملف ليس ملف Excel يمكن قراءته. صدّر «تقرير الحجوزات» من نزيل بصيغة Excel ‏(xlsx) وارفعه كما هو دون فتحه وحفظه.',
-  no_sheet: 'الملف لا يحتوي على ورقة بيانات. صدّر «تقرير الحجوزات» من نزيل مرة أخرى.',
-  empty: 'ورقة الملف فارغة تمامًا، لا توجد فيها أي خلية. تأكد أنك صدّرت التقرير بعد اختيار «مغادرين اليوم».',
-  no_header: 'لم نجد في الملف صف العناوين «رقم الحجز» و«العميل» و«رقم الجوال». تأكد أنه «تقرير الحجوزات» من نزيل بفلتر «مغادرين اليوم».',
-  no_rows: 'وجدنا صف العناوين لكن لا توجد تحته أي حجوزات. تأكد من فلتر «مغادرين اليوم» والتاريخ في نزيل قبل التصدير.',
+  not_xlsx: `هذا الملف ليس ملف Excel يمكن قراءته. نزّله من نزيل بهذه الخطوات: ${NAZEEL_STEPS}، وارفعه كما هو دون فتحه وحفظه.`,
+  no_sheet: `الملف لا يحتوي على ورقة بيانات. نزّله من نزيل مرة أخرى: ${NAZEEL_STEPS}.`,
+  empty: `ورقة الملف فارغة تمامًا، لا توجد فيها أي خلية. نزّله مرة أخرى بعد اختيار «اليوم» في تبويب «المغادرة»: ${NAZEEL_STEPS}.`,
+  no_header: `لم نجد في الملف صف العناوين «رقم الحجز» و«العميل» و«رقم الجوال». تأكد أنه ملف المغادرة من نزيل: ${NAZEEL_STEPS}.`,
+  no_rows: `وجدنا صف العناوين لكن لا توجد تحته أي حجوزات. تأكد من اختيار «اليوم» في تبويب «المغادرة» قبل التنزيل: ${NAZEEL_STEPS}.`,
 };
 export const REMINDER_ROUND: Record<string, string> = { r1: '7:00', r2: '8:00', r3: '8:30 (مدير الاستقبال)', thanks: 'شكر بعد الرفع' };
 export const REMINDER_HOW: Record<string, string> = { session: 'رسالة واتساب', template: 'قالب واتساب', none: 'لم تُرسل' };

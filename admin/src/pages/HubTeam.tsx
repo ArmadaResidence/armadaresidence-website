@@ -11,7 +11,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import DateField from '../components/DateField';
 import { CancelButton, Confirm, DirtyScope, Empty, ErrorBox, Field, Loading, Modal, NumberField, Segmented, Spinner, useToast } from '../components/ui';
-import { addDays, BRANCH_NAMES, longDate, riyadhDateTime, riyadhToday } from '../lib/format';
+import { addDays, BRANCH_NAMES, longDate, minutesWord, riyadhDateTime, riyadhToday } from '../lib/format';
 import * as T from '../lib/team';
 import * as D from '../lib/departures';
 
@@ -109,7 +109,7 @@ function DeparturesTab() {
   return (
     <div className="grid gap-4" data-tour="team-departures">
       <p className="text-sm text-ink-muted max-w-3xl">
-        يرفع الاستقبال كل مساء قائمة الغد من نزيل في <Link className="link-bronze" to="/departures">«قائمة المغادرين»</Link>. المفتاحان لكل فرع يشغّلهما مدير النظام وحده، وهما متوقفان
+        كل صباح قبل الساعة 7:00 يرفع الاستقبال من نزيل قائمة المغادرة لليوم لكل فرع في <Link className="link-bronze" to="/departures">«قائمة المغادرين»</Link>. المفتاحان لكل فرع يشغّلهما مدير النظام وحده، وهما متوقفان
         افتراضيًا؛ وما داما متوقفين تعرض القائمة ما كان سيُرسل ومتى دون إرسال.
       </p>
       {o.branches.map((b) => (
@@ -161,6 +161,9 @@ function BranchCard({ b, reload, first }: { b: T.TeamBranch; reload: () => Promi
   const toast = useToast();
   const [resume, setResume] = useState<number | null>(b.resume_minutes);
   const [escalate, setEscalate] = useState<number | null>(b.escalate_minutes);
+  // «وضع الاستعداد» (Ahmed, 16 Nov 2026)
+  const [standbyOn, setStandbyOn] = useState(b.standby_on);
+  const [standbyMin, setStandbyMin] = useState<number | null>(b.standby_minutes);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [editing, setEditing] = useState<T.Slot | 'new' | null>(null);
@@ -169,6 +172,30 @@ function BranchCard({ b, reload, first }: { b: T.TeamBranch; reload: () => Promi
     setResume(b.resume_minutes);
     setEscalate(b.escalate_minutes);
   }, [b.resume_minutes, b.escalate_minutes]);
+  useEffect(() => {
+    setStandbyOn(b.standby_on);
+    setStandbyMin(b.standby_minutes);
+  }, [b.standby_on, b.standby_minutes]);
+  const standbyValid = standbyMin !== null && standbyMin >= T.STANDBY_MIN && standbyMin <= T.STANDBY_MAX;
+
+  async function saveStandby() {
+    if (!standbyValid || standbyMin === null) return;
+    setBusy(true);
+    setErr(null);
+    try {
+      const r = await T.standbySave(b.slug, standbyOn, standbyMin);
+      const prev = r.previous;
+      toast.undo(`${b.name} — ${standbyOn ? 'وضع الاستعداد مفعّل' : 'وضع الاستعداد متوقف'}`, async () => {
+        if (prev) await T.standbySave(b.slug, prev.standby_on, prev.standby_minutes);
+        await reload();
+      });
+      await reload();
+    } catch (e) {
+      setErr((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
 
   async function saveSettings() {
     if (resume === null || escalate === null) return;
@@ -261,6 +288,32 @@ function BranchCard({ b, reload, first }: { b: T.TeamBranch; reload: () => Promi
             {busy && <Spinner />} حفظ الإعدادات
           </button>
         )}
+      </DirtyScope>
+      <DirtyScope className="grid gap-3 border-t border-line pt-3" version={`${b.standby_on}|${b.standby_minutes}`} data-standby={b.slug} {...(first ? { 'data-tour': 'team-standby' } : {})}>
+        <div className="flex flex-wrap items-center gap-2">
+          <h3 className="font-semibold">وضع الاستعداد</h3>
+          <span className={`chip ${b.standby_on ? 'chip-confirmed' : 'chip-request'}`} data-chip="standby">{b.standby_on ? `مفعّل · ${minutesWord(b.standby_minutes)}` : 'متوقف'}</span>
+        </div>
+        <label className="flex items-start gap-2 text-sm font-semibold">
+          <input type="checkbox" className="mt-1 size-4 accent-bronze-deep" checked={standbyOn} onChange={(e) => setStandbyOn(e.target.checked)} disabled={!b.can_edit || busy} data-field="standby-on" />
+          <span>وضع الاستعداد: انتظر رد الفريق قبل رد المساعد</span>
+        </label>
+        <p className="text-xs text-ink-muted max-w-3xl">
+          حين يكون مفعّلًا وفي الوردية موظف واحد على الأقل، ينتظر المساعد هذه المدة قبل أن يرد على أول رسالة في المحادثة وعلى رسالة الضيف بعد رد موظف. لا يظهر للضيف
+          أنه يكتب، ولا تُعلَّم الرسالة مقروءة على جوال الفرع. إن رد موظف خلالها يتوقف المساعد؛ وإن لم يرد أحد يرد المساعد على كل ما وصل في رسالة واحدة. ولا انتظار حين
+          لا يكون أحد في الوردية، ولا لضغطات أزرار المساعد، ولا لكلمات إيقاف العروض.
+        </p>
+        <div className="grid gap-3 sm:grid-cols-[minmax(0,16rem)_auto] items-end">
+          <Field label="مدة الانتظار (دقائق)" id={`standby-${b.slug}`} hint="من 1 إلى 30 دقيقة.">
+            <NumberField id={`standby-${b.slug}`} value={standbyMin} onChange={setStandbyMin} min={T.STANDBY_MIN} max={T.STANDBY_MAX} />
+            {!standbyValid && <p className="text-xs text-error mt-1" role="alert" data-error="standby-minutes">اكتب مدة من 1 إلى 30 دقيقة.</p>}
+          </Field>
+          {b.can_edit && (
+            <button type="button" className="btn btn-primary" disabled={busy || !standbyValid || (standbyOn === b.standby_on && standbyMin === b.standby_minutes)} onClick={saveStandby} data-action="team-standby-save">
+              {busy && <Spinner />} حفظ وضع الاستعداد
+            </button>
+          )}
+        </div>
       </DirtyScope>
       {editing && <SlotDialog branch={b} slot={editing === 'new' ? null : editing} onClose={() => setEditing(null)} reload={reload} />}
       <Confirm open={!!deleting} title="حذف الموظف" body={deleting ? `لن تصل ${deleting.name} تنبيهات هذا الفرع بعد الحذف.` : ''} confirmLabel="حذف الموظف" danger busy={busy}

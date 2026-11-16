@@ -44,6 +44,8 @@ import { chatBooking, notifyChatBooking } from '../booking-request/notify.ts';
 
 const ALERT_FROM = 'لوحة أرمادا ريزيدنس <no-reply@armadaresidence.com>';
 const BUDGET_MS = 50_000;
+// «وضع الاستعداد»: a turn due later than this is left to pg_cron hub-standby (the burst is at most 3 s)
+const STANDBY_HOLD_MS = 8_000;
 const url = () => Deno.env.get('SUPABASE_URL') ?? '';
 const serviceKey = () => Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
 
@@ -335,7 +337,10 @@ async function process(turnId: string, model: ModelFn, deadline: number): Promis
     claim = await rpc<Json>('hub_turn_claim', { p_turn: turnId });
     if (claim?.claimed) break;
     if (claim?.reason !== 'not_due' && claim?.reason !== 'busy') return String(claim?.reason ?? 'not_claimed');
-    const wait = claim.reason === 'not_due' ? Math.max(0, Math.min(Date.parse(claim.due_at) - Date.now() + 50, 6000)) : 1500;
+    // «وضع الاستعداد» (16 Nov 2026): a turn waiting minutes for a staff reply first is not held here — pg_cron hub-standby
+    // (every 10 seconds) asks for it when its wait ends; nothing (no typing call, so no read receipt) before then
+    if (claim.reason === 'not_due' && Date.parse(claim.due_at) - Date.now() > STANDBY_HOLD_MS) return 'later';
+    const wait =claim.reason === 'not_due' ? Math.max(0, Math.min(Date.parse(claim.due_at) - Date.now() + 50, 6000)) : 1500;
     if (Date.now() + wait > deadline) return 'later';
     await sleep(wait);
   }

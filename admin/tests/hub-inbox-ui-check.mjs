@@ -53,7 +53,8 @@ const row = (n, name, state, waitingMin, windowMin, extra = {}) => ({
   tags: [], topics: [], priority: 'normal', language: 'ar', waiting_since: waitingMin === null ? null : ago(waitingMin), window_expires_at: ahead(windowMin), is_test: false, blocked: false,
   name, phone_last4: '9301', last_at: ago(waitingMin ?? 60), unread: 1, last: { author: 'guest', kind: 'text', line: 'هل يتوفر موقف؟', at: ago(waitingMin ?? 60) }, ...extra,
 });
-const A = row(1, 'Guest Alpha', 'human', 20, 600);
+// «وضع الاستعداد» (H9 fix 2): A's assistant waits for a staff reply — 2 minutes left
+const A = row(1, 'Guest Alpha', 'human', 20, 600, { standby_until: ahead(25) });
 const B = row(2, 'Guest Beta', 'human', 7, -30);
 const Cc = row(3, 'Guest Closed', 'closed', null, -600);
 const TIMERS = { amber: 5, red: 15, escalate: 30, human_close_hours: 72 };
@@ -67,7 +68,7 @@ const msg = (k, direction, author, body, extra = {}) => ({ id: id(500 + k), dire
 const THREAD = (r, edit) => ({
   conversation: { id: r.id, unit_id: UNIT_A, unit_key: 'airport-road', unit_kind: 'branch', branch: 'airport-road', unit_name: 'فرع طريق المطار', channel_kind: 'whatsapp', channel_address: '+966536622277',
     sending_enabled: true, state: r.state, owner_kind: null, owner_staff_id: null, owner_name: null, human_reason: 'assistant_off', priority: 'normal', language: 'ar',
-    window_expires_at: r.window_expires_at, waiting_since: r.waiting_since, last_guest_at: ago(20), last_staff_at: null, tags: [], topics: [], referral: null, created_at: ago(40), closed_at: null,
+    window_expires_at: r.window_expires_at, waiting_since: r.waiting_since, standby_until: r.standby_until ?? null, last_guest_at: ago(20), last_staff_at: null, tags: [], topics: [], referral: null, created_at: ago(40), closed_at: null,
     is_test: false, can_edit: edit, templates_approved: ['ar'],
     // H5: the unit's assistant in «بموافقة الفريق» (the stub) — «إعادة للمساعد» and «إيقاف المساعد مؤقتًا» offered
     unit_mode: 'shadow', assistant: { active: true, mode: 'shadow', reason: null }, can_release: edit, can_pause: edit, test_state: null },
@@ -191,12 +192,21 @@ for (const [role, level] of [['reception', 'edit'], ['management', 'view']]) {
       check((await page.locator('[data-conv-row]').count()) === 2, `${tag}: the waiting tab lists two conversations`);
       check((await page.locator('[data-count="waiting"]').textContent())?.trim() === '2' && (await page.locator('[data-count="closed"]').textContent())?.trim() === '1', `${tag}: the tab counts`);
       check((await page.locator(`[data-conv-row="${A.id}"]`).getAttribute('data-tone')) === 'red' && (await page.locator(`[data-conv-row="${B.id}"]`).getAttribute('data-tone')) === 'amber', `${tag}: the timers — red after 15 minutes, amber after 5`);
-      check((await page.locator(`[data-conv-row="${A.id}"] [data-timer]`).textContent())?.includes('ينتظر منذ 20 دقيقة'), `${tag}: «ينتظر منذ 20 دقيقة»`);
+      check((await page.locator(`[data-conv-row="${A.id}"] [data-timer]`).textContent())?.match(/ينتظر منذ 2[01] دقيقة/), `${tag}: «ينتظر منذ 20 دقيقة» (21 on a slow run)`);
       await page.waitForTimeout(500);
       if (w === 1440) check((await page.locator('[data-badge="inbox"]').textContent().catch(() => ''))?.trim() === '2', `${tag}: the sidebar badge counts the waiting conversations`);
 
+      // «وضع الاستعداد»: «المساعد يرد بعد m:ss» counting down each second, only on the waiting conversation
+      const cd = page.locator(`[data-conv-row="${A.id}"] [data-standby]`);
+      const t1 = (await cd.textContent()) ?? '';
+      // the tick is checked once (the run's first view), so the fixture's times stay within their minute
+      if (role === 'admin' && w === 1440 && scheme === 'light') await page.waitForTimeout(1300);
+      const t2 = role === 'admin' && w === 1440 && scheme === 'light' ? (await cd.textContent()) ?? '' : `${t1}·`;
+      check(/^المساعد يرد بعد \d{1,2}:[0-5]\d$/.test(t1) && /^المساعد يرد بعد \d{1,2}:[0-5]\d·?$/.test(t2) && t1 !== t2 && (await page.locator(`[data-conv-row="${B.id}"] [data-standby]`).count()) === 0,
+        `${tag}: the list's countdown «المساعد يرد بعد m:ss», Western digits, every second — ${t1} → ${t2}`);
       await page.locator(`[data-conv-row="${A.id}"]`).click();
       await page.locator(`[data-thread="${A.id}"]`).waitFor({ timeout: 10000 });
+      check(/^المساعد يرد بعد \d{1,2}:[0-5]\d$/.test((await page.locator(`[data-thread="${A.id}"] header [data-standby]`).textContent()) ?? ''), `${tag}: the thread's countdown under the guest's name`);
       check(page.url().includes(`c=${A.id}`), `${tag}: the URL carries ?c=`);
       if (w === 1440) {
         const boxes = await Promise.all(['list', 'thread', 'panel'].map((p) => page.locator(`[data-pane="${p}"]`).boundingBox()));

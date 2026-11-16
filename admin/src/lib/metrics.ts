@@ -107,6 +107,8 @@ export interface HubReportUnit {
   key: string; name_ar: string; branch: string; conversations: number; handed_off: number; assistant_only: number;
   ai_median_min: number | null; ai_p90_min: number | null; staff_median_min: number | null; staff_p90_min: number | null;
   quoted: number; booked: number; model_cost_usd: number;
+  /** «وضع الاستعداد» (16 Nov 2026): the waits answered by staff inside them / by the assistant after them */
+  standby_staff?: number; standby_assistant?: number;
 }
 export interface HubReport {
   period: Period;
@@ -252,6 +254,7 @@ export const HOW = {
   hubBookings: 'الحجوزات التي سجّلها المساعد في المحادثة («مساعد واتساب»): تأكيد فوري أو طلب حجز يراجعه الاستقبال؛ الإيراد للحجوزات المؤكدة بتعريف التقارير نفسه.',
   hubSales: 'طلبات القاعة والمجموعات التي جمعها المساعد وأرسلها للمبيعات («طلبات الشركاء»).',
   hubTopics: 'أكثر المواضيع في رسائل الضيوف في الفترة، دون التحية والشكر.',
+  hubStandby: 'المرات التي انتظر فيها المساعد رد الفريق أولًا («وضع الاستعداد» في «الفريق والتقارير»): ردّ موظف خلال مدة الانتظار فتوقف المساعد، أو انتهت المدة دون رد فأجاب المساعد. محادثات الاختبار غير محسوبة.',
   hubCost: 'تكلفة نماذج المساعد للمحادثات الحقيقية (دون مختبر الاختبار والمحاكي) بالدولار، وتقدير رسائل واتساب بالقوالب حسب سعر الرسالة في الإعدادات.',
   bookingSources: 'الحجوزات المؤكدة المسجّلة في الفترة حسب مصدر الحجز: «الموقع مباشرة» لحجوزات الزوّار، وما اختاره الفريق على الأجهزة الداخلية (انستجرام، واتساب…)، وإيراد غرفها كاملًا.',
   campaigns: 'الحجوزات المؤكدة التي حملت اسم حملة (utm_campaign)؛ متوسط قيمة الحجز = إيراد الغرف ÷ عدد الحجوزات.',

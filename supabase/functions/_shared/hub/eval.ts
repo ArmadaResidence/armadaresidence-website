@@ -60,6 +60,15 @@ export function tapId(message: string, st: SimState, f: Finish | null): string |
 export const STAFF_LINE = /^\[staff\]\s*([\s\S]+)$/;
 export const WAIT_LINE = /^\[wait:(\d{1,4})\]$/;
 export const isGuestLine = (m: string) => !STAFF_LINE.test(m) && !WAIT_LINE.test(m);
+/** «وضع الاستعداد» (16 Nov 2026): «[burst] a ‖ b» = guest messages that arrived during the wait and are answered in ONE turn
+ *  at its end; «[held] a» = a guest message held by the wait and answered by staff inside it (the assistant never ran —
+ *  silent; the next line is the «[staff] …» reply) */
+export const BURST_LINE = /^\[burst\]\s*([\s\S]+)$/;
+export const HELD_LINE = /^\[held\]\s*([\s\S]+)$/;
+export const burstParts = (m: string): string[] | null => {
+  const b = BURST_LINE.exec(m.trim());
+  return b ? b[1].split(/\s*‖\s*/).map((x) => x.trim()).filter(Boolean) : null;
+};
 
 /**
  * H7: a media message of the bank, recorded instead of a real file (the voices belong to staff; images are synthetic):
@@ -237,6 +246,15 @@ export async function runItem(ctx: Json, item: Item, deps: Deps, persona: Json |
       st = { ...st, clock: st.clock + Number(wait[1]) * 60_000 };
       continue;
     }
+    const held = HELD_LINE.exec(msg.trim());
+    if (held) {
+      // the assistant waited and a staff member answered inside the wait: no turn ran (nothing was sent, nothing read)
+      finishes.push({ status: 'done', models: [], guard_refusals: [], topics: [], failed: 'keep', messages: [], state: st.state as Finish['state'], decision: { actions: ['noop'], silent: true, transitions: [] } });
+      st = { ...st, history: [...st.history, { author: 'guest' as const, body: held[1].trim() }].slice(-12) };
+      continue;
+    }
+    const parts = burstParts(msg);
+    const text = parts ? parts.join(' ') : msg;
     if (st.state === 'human' && st.human_phase === null && st.staff_at !== null) {
       if (st.clock - st.staff_at >= resumeMin * 60_000) st = { ...st, human_phase: 'resume' };
       else {
@@ -253,14 +271,17 @@ export async function runItem(ctx: Json, item: Item, deps: Deps, persona: Json |
         error = 'tap_missing';
         break;
       }
-      const out = await runTurn(claimOf(ctx, item, tid ? `[button:${tid}]` : msg, st, persona, i), d);
+      const claim = claimOf(ctx, item, tid ? `[button:${tid}]` : text, st, persona, i);
+      // a burst: every message of the wait in the one turn, as public.hub_turn_claim hands them
+      if (parts) claim.messages = parts.map((body, k) => ({ id: `m-${item.key}-${i}-${k}`, kind: 'text', body, payload: {} }));
+      const out = await runTurn(claim, d);
       lastFinish = out.finish;
       finishes.push(out.finish);
       if (out.credit === 'exhausted') {
         error = 'api_credit';
         break;
       }
-      st = nextState(st, msg, out.finish);
+      st = nextState(st, text, out.finish);
       if (!conversation && (out.finish.state === 'human' || out.finish.state === 'closed')) break;
       if (out.finish.state === 'closed') break;
     } catch (e) {

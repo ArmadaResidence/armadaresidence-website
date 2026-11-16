@@ -145,6 +145,7 @@ for (const [role, perms] of ROLES) {
     for (const scheme of ['light', 'dark']) {
       const tag = `${role} ${w} ${scheme}`;
       const calls = [];
+      const standby = { on: false };
       let personaRefuse = true;
       const ctx = await browser.newContext({ viewport: { width: w, height: h }, locale: 'ar-SA', colorScheme: scheme });
       await ctx.route(`${STUB}/**`, async (r) => {
@@ -177,6 +178,8 @@ for (const [role, perms] of ROLES) {
         if (fn === 'hub-admin' && body?.action === 'eval_plan') return ok({ ok: true, kind: body.kind, units: ['airport-road', 'shafa-road'], items: 98, est_cost_usd: 0.7438, nothing: false, would_pass_cap: false, busy: false });
         if (fn === 'hub-admin' && body?.action === 'eval_run') return ok({ ok: true, run_id: id(701) });
         if (fn === 'hub-admin' && body?.action === 'simulate') return ok(SIM);
+        // «وضع الاستعداد» (H9 fix 2): off until the check turns it on
+        if (fn === 'hub_standby_status') return ok(standby.on ? { on: true, minutes: 1, on_shift: true } : { on: false, minutes: 5, on_shift: true });
         if (fn === 'hub_radar') return ok(RADAR);
         if (fn === 'hub_topic_hint_decide') return ok({ ok: true, batch_id: id(904), key: 'pets' });
         if (fn === 'hub_knowledge_meta') return ok(META);
@@ -297,6 +300,35 @@ for (const [role, perms] of ROLES) {
         await page.waitForTimeout(400);
         const is = calls.find((c) => c.fn === 'hub_test_item_save');
         check(is && is.body.p.added_from === 'simulator' && is.body.p.expect.action === 'answer' && JSON.stringify(is.body.p.messages) === '["عندكم مواقف؟"]', `${tag}: → hub_test_item_save from the simulator — ${JSON.stringify(is?.body)}`);
+        // «وضع الاستعداد»: the countdown, the messages of the wait in ONE simulated turn, «رد موظف»
+        standby.on = true;
+        await page.locator('[data-action="sim-reset"]').click();
+        const before = calls.filter((c) => c.body?.action === 'simulate').length;
+        await page.locator('[data-field="sim-text"]').fill('السلام عليكم');
+        await page.locator('[data-action="sim-send"]').click();
+        await page.locator('[data-sim-standby]').waitFor({ timeout: 5000 });
+        await page.locator('[data-field="sim-text"]').fill('عندكم مواقف؟');
+        await page.locator('[data-action="sim-send"]').click();
+        await page.waitForTimeout(300);
+        check(/المساعد يرد بعد (1:00|0:5\d)/.test(await page.locator('[data-sim-standby]').innerText()) && calls.filter((c) => c.body?.action === 'simulate').length === before,
+          `${tag}: «المحاكي» waits: «المساعد يرد بعد m:ss», nothing sent to the engine yet`);
+        await page.locator('[data-action="sim-standby-skip"]').click();
+        await page.locator('[data-sim-reply]').first().waitFor({ timeout: 5000 });
+        const joined = calls.filter((c) => c.body?.action === 'simulate').at(-1);
+        check(calls.filter((c) => c.body?.action === 'simulate').length === before + 1 && joined?.body?.text === 'السلام عليكم عندكم مواقف؟' && !(await page.locator('[data-sim-standby]').count()),
+          `${tag}: at the wait's end ONE turn with both messages — ${joined?.body?.text}`);
+        await page.locator('[data-action="sim-reset"]').click();
+        await page.locator('[data-field="sim-text"]').fill('عندكم مواقف؟');
+        await page.locator('[data-action="sim-send"]').click();
+        await page.locator('[data-sim-standby]').waitFor({ timeout: 5000 });
+        await page.locator('[data-action="sim-staff-reply"]').click();
+        await page.locator('[data-field="sim-text"]').fill('شكرًا');
+        await page.locator('[data-action="sim-send"]').click();
+        await page.waitForTimeout(300);
+        check((await page.locator('[data-sim-note]').count()) === 2 && calls.filter((c) => c.body?.action === 'simulate').length === before + 1 && !(await page.locator('[data-sim-standby]').count()),
+          `${tag}: «رد موظف» during the wait → the assistant stands down; the next message stays with staff`);
+        standby.on = false;
+        await page.locator('[data-action="sim-reset"]').click();
         await sane(page, `${tag} simulator`);
         await page.screenshot({ path: join(SHOTS, `lab-sim-${role}-${w}-${scheme}.png`), fullPage: true });
       } else {

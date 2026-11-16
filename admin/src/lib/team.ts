@@ -27,6 +27,9 @@ export interface TeamBranch {
   can_edit: boolean;
   resume_minutes: number;
   escalate_minutes: number;
+  /** «وضع الاستعداد» (16 Nov 2026): wait for a staff reply before the assistant replies */
+  standby_on: boolean;
+  standby_minutes: number;
   channel: boolean | null;
   slots: Slot[];
 }
@@ -74,6 +77,11 @@ export const slotSave = (p: SlotInput) => call<Previous<SlotInput>>('hub_staff_s
 export const slotDelete = (id: string) => call<Previous<SlotInput>>('hub_staff_slot_delete', { p_id: id });
 export const branchSave = (branch: string, resume: number, escalate: number) =>
   call<Previous<{ resume_minutes: number; escalate_minutes: number }>>('hub_team_branch_save', { p_branch: branch, p_resume: resume, p_escalate: escalate });
+/** «وضع الاستعداد»: the switch and «مدة الانتظار (دقائق)» (1–30); the answer carries the values before, for «تراجع» */
+export const standbySave = (branch: string, on: boolean, minutes: number) =>
+  call<Previous<{ standby_on: boolean; standby_minutes: number }>>('hub_team_standby_save', { p_branch: branch, p_on: on, p_minutes: minutes });
+export const STANDBY_MIN = 1;
+export const STANDBY_MAX = 30;
 export type RecipientInput = { id?: string; position?: number; name: string; phone: string; staff_user_id: string | null; active: boolean; test_as_guest: boolean; consent: boolean; consent_at?: string | null };
 export const recipientSave = (p: RecipientInput) => call<Previous<RecipientInput>>('hub_report_recipient_save', { p });
 export const recipientDelete = (id: string) => call<Previous<RecipientInput>>('hub_report_recipient_delete', { p_id: id });

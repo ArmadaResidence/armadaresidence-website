@@ -30,6 +30,8 @@ export interface InboxRow {
   language: string | null;
   waiting_since: string | null;
   window_expires_at: string | null;
+  /** «وضع الاستعداد»: the end of the assistant's wait for a staff reply (null = none running) */
+  standby_until?: string | null;
   is_test: boolean;
   blocked: boolean;
   name: string;
@@ -141,6 +143,7 @@ export interface Thread {
     language: string | null;
     window_expires_at: string | null;
     waiting_since: string | null;
+    standby_until?: string | null;
     last_guest_at: string | null;
     last_staff_at: string | null;
     tags: string[];
@@ -415,3 +418,10 @@ export const SHORTCUTS: { code: string; keys: string; label: string }[] = [
   { code: 'KeyT', keys: 'Alt + T', label: 'تولّي المحادثة' },
   { code: 'KeyC', keys: 'Alt + C', label: 'إغلاق المحادثة' },
 ];
+
+/** «وضع الاستعداد» (16 Nov 2026): the countdown «المساعد يرد بعد m:ss» — the twin of _shared/hub/standby.ts → standbyLabel */
+export function countdownText(ms: number): string {
+  const s = Math.max(0, Math.ceil(ms / 1000));
+  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+}
+export const standbyText = (ms: number) => `المساعد يرد بعد ${countdownText(ms)}`;

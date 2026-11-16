@@ -350,14 +350,18 @@ async function releaseHeld(conversation: string): Promise<number> {
 
 /** Guest Hub H5: queue the assistant's turn and ask hub-agent to run it (the one-minute sweep catches a missed call) */
 async function queueTurn(conversation: string, message: string, test: boolean): Promise<string> {
-  const q = await rpc<{ queued: boolean; joined?: boolean; turn_id?: string; reason?: string }>('hub_turn_queue', { p_conversation: conversation, p_message: message });
+  const q = await rpc<{ queued: boolean; joined?: boolean; turn_id?: string; reason?: string; standby_until?: string | null; woke?: boolean }>('hub_turn_queue', { p_conversation: conversation, p_message: message });
   if (!q.ok) {
     console.error('wa-automation: turn queue failed', q.status, q.message.slice(0, 120));
     return 'error';
   }
   if (!q.data.queued) return q.data.reason ?? 'not_queued';
   // a message that joined a pending turn: the call made for that turn will run it
-  if (q.data.joined || !q.data.turn_id || test) return q.data.joined ? 'joined' : 'queued';
+  // (a tap on our own button that ended a wait of «وضع الاستعداد» is the exception: it runs now)
+  if ((q.data.joined && !q.data.woke) || !q.data.turn_id || test) return q.data.joined ? (q.data.standby_until ? 'standby' : 'joined') : 'queued';
+  // «وضع الاستعداد» (16 Nov 2026): the turn waits minutes for a staff reply first — no call now (nothing marks the message
+  // read); pg_cron hub-standby asks hub-agent for it when the wait ends
+  if (q.data.standby_until) return 'standby';
   const tok = await rpc<string>('hub_agent_token', {});
   if (!tok.ok || !tok.data) return 'queued';
   try {
