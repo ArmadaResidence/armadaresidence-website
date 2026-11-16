@@ -126,7 +126,7 @@ select pg_temp._check('T4 saved: on, 5 minutes; the answer carries the values be
   and pg_temp._j('t4') -> 'previous' = '{"standby_on": false, "standby_minutes": 5}'::jsonb
   and exists (select 1 from jsonb_array_elements(pg_temp._j('tg') -> 'branches') b where b ->> 'slug' = 'airport-road' and (b ->> 'standby_on')::boolean and (b ->> 'standby_minutes')::int = 5), pg_temp._j('t4')::text);
 select pg_temp._check('T5 audited: the change of standby_on in the audit log with the staff member',
-  exists (select 1 from public.audit_log a where a.entity = 'hub_team_branches' and a.entity_id = 'airport-road' and a.actor_id = pg_temp._id('admin')
+  exists (select 1 from public.audit_log a where a.entity = 'hub_team_branches' and a.new ->> 'branch_slug' = 'airport-road' and a.actor_id = pg_temp._id('admin')
             and (a.new ->> 'standby_on')::boolean and not (a.old ->> 'standby_on')::boolean));
 select pg_temp._as('mgr');
 select pg_temp._fails('T6 a single-branch editor cannot change the other branch', $q$select public.hub_team_standby_save('airport-road', false, 5)$q$, '42501');
@@ -217,7 +217,10 @@ update public.hub_turns set status = 'done' where id = (pg_temp._j('q4') ->> 'tu
 -- 16 minutes later the staff member has been silent: the guest's next message waits again (a message after a staff reply)
 update public.hub_messages set created_at = now() - interval '16 minutes' where conversation_id = pg_temp._id('c2') and direction = 'out';
 update public.hub_turns set claimed_at = now() - interval '18 minutes' where id = (pg_temp._j('q4') ->> 'turn_id')::uuid;
-update public.hub_conversations set staff_active_at = now() - interval '16 minutes', last_staff_at = now() - interval '16 minutes' where id = pg_temp._id('c2');
+-- the conversation's own triggers stamp «now»; the clock is moved with them off
+alter table public.hub_conversations disable trigger user;
+update public.hub_conversations set staff_active_at = now() - interval '16 minutes', last_staff_at = now() - interval '16 minutes', state_changed_at = now() - interval '16 minutes' where id = pg_temp._id('c2');
+alter table public.hub_conversations enable trigger user;
 select pg_temp._in('c2', 'm5', 'وكم سعر الإفطار؟');
 select pg_temp._queue('c2', 'm5', 'q5');
 select pg_temp._check('S5 after a staff reply and the branch''s 15 minutes of silence, the guest''s message waits again',
@@ -236,6 +239,7 @@ select pg_temp._queue('c4', 'm8', 'q8');
 select pg_temp._check('N2 a tap during a wait ends it at once: the same turn due within the burst, the router told to run it',
   (pg_temp._j('q8') ->> 'woke')::boolean and (pg_temp._turn('q7')).due_at <= now() + interval '3 seconds' and (pg_temp._turn('q7')).standby_until = now()
   and pg_temp._j('q8') ->> 'standby_until' is null and internal.hub_standby_until(pg_temp._id('c4')) is null, pg_temp._j('q8')::text);
+update public.hub_turns set due_at = now() - interval '1 second' where id = (pg_temp._j('q7') ->> 'turn_id')::uuid;
 select pg_temp._service();
 select pg_temp._save('cl8', public.hub_turn_claim((pg_temp._j('q7') ->> 'turn_id')::uuid));
 select pg_temp._root();
