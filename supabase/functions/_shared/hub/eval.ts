@@ -249,7 +249,7 @@ export async function runItem(ctx: Json, item: Item, deps: Deps, persona: Json |
     const held = HELD_LINE.exec(msg.trim());
     if (held) {
       // the assistant waited and a staff member answered inside the wait: no turn ran (nothing was sent, nothing read)
-      finishes.push({ status: 'done', models: [], guard_refusals: [], topics: [], failed: 'keep', messages: [], state: st.state, decision: { actions: ['noop'], silent: true, transitions: [] } });
+      finishes.push({ status: 'done', models: [], guard_refusals: [], topics: [], failed: 'keep', messages: [], state: st.state as Finish['state'], decision: { actions: ['noop'], silent: true, transitions: [] } });
       st = { ...st, history: [...st.history, { author: 'guest' as const, body: held[1].trim() }].slice(-12) };
       continue;
     }

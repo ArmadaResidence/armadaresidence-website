@@ -187,7 +187,7 @@ select pg_temp._check('Q6 at its end the kick asks for the turn once (not again 
   (pg_temp._j('k1') ->> 'due')::int = 1 and (pg_temp._j('k2') ->> 'due')::int = 0 and pg_temp._j('due') ? (pg_temp._j('q1') ->> 'turn_id'), pg_temp._j('k1')::text);
 select pg_temp._check('Q7 the claim: ONE reply turn with both pending messages, outcome «assistant»',
   (pg_temp._j('cl1') ->> 'claimed')::boolean and pg_temp._j('cl1') #>> '{turn,kind}' = 'reply' and jsonb_array_length(pg_temp._j('cl1') -> 'messages') = 2
-  and (pg_temp._turn('q1')).standby_outcome = 'assistant', pg_temp._j('cl1') -> 'turn');
+  and (pg_temp._turn('q1')).standby_outcome = 'assistant', (pg_temp._j('cl1') -> 'turn')::text);
 update public.hub_turns set status = 'done', finished_at = now() where id = (pg_temp._j('q1') ->> 'turn_id')::uuid;
 select pg_temp._in('c1', 'm3', 'من 20 إلى 22 ديسمبر');
 select pg_temp._queue('c1', 'm3', 'q3');
@@ -212,7 +212,7 @@ select pg_temp._service();
 select pg_temp._save('cl2', public.hub_turn_claim((pg_temp._j('q4') ->> 'turn_id')::uuid));
 select pg_temp._root();
 select pg_temp._check('S4 its claim stays a tag (no reply; «مع موظف» and «عودة المساعد» as for any staff reply), outcome kept «staff»',
-  pg_temp._j('cl2') #>> '{turn,kind}' = 'tag' and (pg_temp._turn('q4')).standby_outcome = 'staff', pg_temp._j('cl2') -> 'turn');
+  pg_temp._j('cl2') #>> '{turn,kind}' = 'tag' and (pg_temp._turn('q4')).standby_outcome = 'staff', (pg_temp._j('cl2') -> 'turn')::text);
 update public.hub_turns set status = 'done' where id = (pg_temp._j('q4') ->> 'turn_id')::uuid;
 -- 16 minutes later the staff member has been silent: the guest's next message waits again (a message after a staff reply)
 update public.hub_messages set created_at = now() - interval '16 minutes' where conversation_id = pg_temp._id('c2') and direction = 'out';
