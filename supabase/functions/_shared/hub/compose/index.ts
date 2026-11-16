@@ -35,6 +35,8 @@ export const summarySystem = () => P.summary_system;
 export const staffSystem = () => P.staff_system;
 export const understandSystem = () => P.understand_system;
 export const understandSchema = () => P.understand_schema;
+/** H9: prompts.md §1.3 — added to the user message only while a departure check waits */
+export const understandDeparture = () => P.understand_departure as string;
 
 export interface ComposeInput {
   /** handoff_ack (H6c): «بانتظار موظف» — a short acknowledgement that a further request joined the team's hand-off */

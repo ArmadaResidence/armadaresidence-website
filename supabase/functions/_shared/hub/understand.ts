@@ -53,7 +53,7 @@ export interface Understanding {
   organisation?: string | null;
   layout?: string | null;
   coffee_break?: boolean | null;
-  /** H9 (16 Nov 2026): the answer to the departure check of this morning — only while one waits (TurnInput.departure);
+  /** H9 (16 Nov 2026): the answer to the departure check of this morning — only while one waits (TurnInput.departure, prompts.md §1.3);
    *  leave = as planned, extend = longer, late = a late check-out question (an ordinary question) */
   departure?: 'leave' | 'extend' | 'late' | null;
   language: string;
@@ -188,8 +188,8 @@ export interface TurnInput {
   history: { author: 'guest' | 'us'; body: string }[];
   turn: string[];
   intents?: readonly string[];
-  /** H9: a departure check waits for this guest's answer (prompts.md §1 rule 36) */
-  departure?: boolean;
+  /** H9: a departure check waits for this guest's answer — prompts.md §1.3, added only then (every other turn unchanged) */
+  departure?: string | null;
 }
 
 /** a guest's words to the model: phone, card and ID numbers taken out (prompts.md §0 — no phone numbers) */
@@ -204,8 +204,8 @@ export function understandUser(schema: string, lists: Lists, t: TurnInput): stri
     `UNIT: ${t.unit}`,
     `CONVERSATION STATE: ${t.state}`,
     `OPEN DRAFT: ${t.draft ? JSON.stringify(t.draft) : 'none'}`,
-    // H9: only while a departure check waits for its answer (prompts.md §1 rule 36)
-    ...(t.departure ? ['DEPARTURE CHECK: this morning the guest was asked whether they leave as planned today or extend the stay; no answer yet'] : []),
+    // H9: only while a departure check waits for its answer (prompts.md §1.3)
+    ...(t.departure ? [String(t.departure)] : []),
     `INTENTS (choose only from): ${(t.intents ?? INTENTS).join(', ')}`,
     `TOPICS (choose only from; key: English label / Arabic label):\n${lists.topics.map((k) => {
       const l = lists.topic_labels?.[k];

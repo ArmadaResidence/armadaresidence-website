@@ -200,6 +200,8 @@ export function parseCopy(md = read('docs/guest-hub/copy.md')) {
 export function parsePrompts(md = read('docs/guest-hub/prompts.md')) {
   const s11 = section(md, '### 1.1 System');
   const s12 = section(md, '### 1.2 Schema');
+  // H9 (16 Nov 2026): the departure check — added to the user message only while one waits
+  const s13 = section(md, '### 1.3 The departure check');
   const s21 = section(md, '### 2.1 System');
   const s22 = section(md, '### 2.2 User message');
   const s23 = section(md, '### 2.3 Examples');
@@ -235,6 +237,7 @@ export function parsePrompts(md = read('docs/guest-hub/prompts.md')) {
   return {
     understand_system: one(s11, '1.1'),
     understand_schema: one(s12, '1.2'),
+    understand_departure: one(s13, '1.3'),
     compose_system: one(s21, '2.1'),
     compose_user: one(s22, '2.2'),
     compose_examples: examples,

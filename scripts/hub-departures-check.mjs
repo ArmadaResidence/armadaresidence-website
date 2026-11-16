@@ -155,10 +155,13 @@ check(fixed('departure_leave', 'ar') === 'شكرًا لك على إقامتك م
 check(fixed('departure_leave', 'en') === 'Thank you for staying with us, and we wish you a safe journey.' && /continue with you in this chat to arrange the extension/.test(fixed('departure_extend', 'en')), 'C2 … and their English');
 {
   const PR = read('docs/guest-hub/prompts.md');
-  check(/^36\. The departure check/m.test(PR) && /"departure": "leave" \| "extend" \| "late" \| null/.test(PR), 'C3 prompts.md §1 rule 36 and the schema’s departure');
+  const TXT = JSON.parse(read('supabase/functions/_shared/hub/text.generated.json')).prompts;
+  check(/^### 1\.3 The departure check/m.test(PR) && /^DEPARTURE CHECK:/.test(TXT.understand_departure) && /"departure": "leave" \| "extend" \| "late" \| null/.test(TXT.understand_departure),
+    'C3 prompts.md §1.3: the departure block and its field');
+  check(!/departure|DEPARTURE/.test(TXT.understand_system) && !/departure/.test(TXT.understand_schema), 'C4 §1.1 and §1.2 unchanged for every other turn (no departure rule, no field)');
   const base = { today: '2026-11-16', unit: 'airport-road', state: 'new', draft: null, history: [], turn: ['بمدد يومين'] };
-  check(/DEPARTURE CHECK/.test(understandUser('{}', { topics: [], room_types: [] }, { ...base, departure: true })) && !/DEPARTURE CHECK/.test(understandUser('{}', { topics: [], room_types: [] }, base)),
-    'C4 the DEPARTURE CHECK line only while a check waits');
+  check(/DEPARTURE CHECK/.test(understandUser('{}', { topics: [], room_types: [] }, { ...base, departure: TXT.understand_departure })) && !/DEPARTURE CHECK/.test(understandUser('{}', { topics: [], room_types: [] }, base)),
+    'C5 the block only while a check waits');
 }
 
 // ── T: the daily report ──

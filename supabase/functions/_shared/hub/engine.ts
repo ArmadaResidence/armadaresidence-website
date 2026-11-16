@@ -10,7 +10,7 @@
 import { decide, handoffNote, replyLicence, type Action, type Context, type Decision, type Draft, type Event, type State } from './machine.ts';
 import { applyFloor, extractJson, recheckDates, understandUser, validateUnderstanding, type Lists, type Understanding } from './understand.ts';
 import { buttonForText, fixed, greeting, hasSalaam, quickReplies, salaamGreeting, statusText, stripOpening, thirdLanguage, type Lang, type Persona } from './copy.ts';
-import { composeExamples, composeSystem, composeUser, parseComposed, summarySystem, understandSchema, understandSystem, withGreeting } from './compose/index.ts';
+import { composeExamples, composeSystem, composeUser, parseComposed, summarySystem, understandDeparture, understandSchema, understandSystem, withGreeting } from './compose/index.ts';
 import { cleanSummary, refOrRoom, summaryOk, summaryUser } from './staff.ts';
 import { buildPayload, cardIds, guardPayload, hasSource, offersFor, type Payload } from './sources/index.ts';
 import { guard, retryReason } from './guard.ts';
@@ -245,7 +245,7 @@ export async function runTurn(claim: Json, deps: Deps): Promise<Outcome> {
     const model = String(models[layer] ?? models.understand ?? 'claude-haiku-5-5');
     const user = understandUser(understandSchema(), lists, {
       today: claim.today, unit: unit.key, state: conv.state, draft: claim.draft?.fields ?? null, history: claim.history ?? [], turn: texts,
-      departure: !!claim.departure,
+      departure: claim.departure ? understandDeparture() : null,
     });
     let note = '';
     let down: string | null = null;
