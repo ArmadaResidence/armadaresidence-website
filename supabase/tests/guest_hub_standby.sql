@@ -253,7 +253,7 @@ select pg_temp._queue('c6', 'm10', 'q10');
 select pg_temp._check('N5 the switch off: today''s behaviour (the burst, no wait)', (pg_temp._turn('q10')).standby_until is null and (pg_temp._turn('q10')).due_at <= now() + interval '3 seconds', pg_temp._j('q10')::text);
 -- ══ R — «التقارير» and the clock ══
 select pg_temp._as('admin');
-select pg_temp._save('rh', public.report_hub('all', internal.riyadh_today(), internal.riyadh_today()));
+select pg_temp._save('rh', public.report_hub(null, internal.riyadh_today(), internal.riyadh_today()));
 select pg_temp._root();
 select pg_temp._check('R1 «المحادثات والمساعد»: Airport Road — answered by staff in the wait 1, by the assistant after it 2',
   exists (select 1 from jsonb_array_elements(pg_temp._j('rh') -> 'units') u where u ->> 'key' = 'airport-road' and (u ->> 'standby_staff')::int = 1 and (u ->> 'standby_assistant')::int = 2),
