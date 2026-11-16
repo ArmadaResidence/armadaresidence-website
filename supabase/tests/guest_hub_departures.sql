@@ -162,6 +162,7 @@ select pg_temp._fails('U7 sales (no «قائمة المغادرين») cannot', 
 select pg_temp._as('rec');
 select pg_temp._save('up', public.hub_departures_upload('airport-road', pg_temp._d(0), pg_temp._rows(), '{"no_phone": ["Kamal"]}'::jsonb, false));
 select pg_temp._root();
+insert into _ids select 'r' || nazeel_ref, id from public.hub_departures where not is_test on conflict (k) do nothing;
 select pg_temp._check('U8 saved: 10 rows, one upload with counts only (no name, no number)',
   (select count(*) = 10 from public.hub_departures) and (select count(*) = 1 from public.hub_departure_uploads where kept = 10 and skipped::text !~ 'Kamal'));
 select pg_temp._check('U9 stored: phone, first name, branch, date, booking number — and no other column of the file',
@@ -233,21 +234,21 @@ select pg_temp._check('M2 … what was scheduled for the old date is replaced: t
 -- 100908: sent; 100909 / 100910 reset to scheduled for the staff marks
 update public.hub_departures set check_state = 'scheduled', check_ycloud_id = null where nazeel_ref in ('100909', '100910');
 select pg_temp._as('rec');
-select pg_temp._save('x1', public.hub_departure_exclude((pg_temp._row('100909')).id, true));
+select pg_temp._save('x1', public.hub_departure_exclude(pg_temp._id('r100909'), true));
 select pg_temp._root();
 select pg_temp._check('X1 «استبعاد» before the send: the check and the review cancelled', (select excluded_at is not null and check_state = 'cancelled' and check_code = 'excluded' and review_state = 'cancelled' from pg_temp._row('100909')));
 select pg_temp._as('rec');
-select public.hub_departure_exclude((pg_temp._row('100909')).id, false);
+select public.hub_departure_exclude(pg_temp._id('r100909'), false);
 select pg_temp._root();
 select pg_temp._check('X2 its «تراجع»: back to scheduled', (select excluded_at is null and check_state = 'scheduled' and review_state = 'scheduled' from pg_temp._row('100909')));
 select pg_temp._as('rec');
-select pg_temp._fails('X3 «استبعاد» after the check was sent is refused', format('select public.hub_departure_exclude(%L, true)', (pg_temp._row('100908')).id), 'hub_departure_sent');
-select public.hub_departure_mark_extend((pg_temp._row('100910')).id, true);
+select pg_temp._fails('X3 «استبعاد» after the check was sent is refused', format('select public.hub_departure_exclude(%L, true)', pg_temp._id('r100908')), 'hub_departure_sent');
+select public.hub_departure_mark_extend(pg_temp._id('r100910'), true);
 select pg_temp._root();
 select pg_temp._check('X4 «تمديد» by reception: answer extend (staff), the check and the review cancelled', (select answer = 'extend' and answer_via = 'staff' and check_state = 'cancelled' and review_state = 'cancelled' from pg_temp._row('100910')));
 select pg_temp._as('rec');
-select public.hub_departure_mark_extend((pg_temp._row('100910')).id, false);
-select pg_temp._fails('X5 a guest''s own answer cannot be overwritten by staff', format('select public.hub_departure_mark_extend(%L, true)', (pg_temp._row('100901')).id), 'hub_departure_answered');
+select public.hub_departure_mark_extend(pg_temp._id('r100910'), false);
+select pg_temp._fails('X5 a guest''s own answer cannot be overwritten by staff', format('select public.hub_departure_mark_extend(%L, true)', pg_temp._id('r100901')), 'hub_departure_answered');
 select pg_temp._root();
 select pg_temp._check('X6 «تراجع» of «تمديد»: scheduled again, the review back at 10:00 the next day', (select answer is null and check_state = 'scheduled' and review_state = 'scheduled' and review_due_at = pg_temp._at(1, '10:00') from pg_temp._row('100910')));
 select pg_temp._check('X7 the staff marks are audited (never the phone or the name)', exists (select 1 from public.audit_log where entity = 'hub_departures' and actor_id = pg_temp._id('rec'))
