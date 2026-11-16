@@ -297,7 +297,10 @@ update public.hub_channels set messaging_limit = 'TIER_1' where true;
 update public.hub_departures set check_state = 'queued', check_deferred_at = null where nazeel_ref = '100909';
 select pg_temp._save('cl2', pg_temp._claim());
 select pg_temp._check('L7 near the limit a departure check is deferred — kept queued, never dropped', (select check_state = 'queued' and check_deferred_at is not null from pg_temp._row('100909'))
-  and not exists (select 1 from jsonb_array_elements(pg_temp._j('cl2')) e where e ->> 'ref' = '100909'));
+  and not exists (select 1 from jsonb_array_elements(pg_temp._j('cl2')) e where e ->> 'ref' = '100909'),
+  (select json_build_object('row', json_build_object('check', d.check_state, 'code', d.check_code, 'deferred', d.check_deferred_at), 'state', internal.hub_limit_state(),
+     'recent', cardinality(internal.hub_limit_recent()), 'channels', (select json_agg(json_build_object('t', messaging_limit, 'test', is_test)) from public.hub_channels),
+     'claimed', pg_temp._j('cl2'))::text from public.hub_departures d where d.nazeel_ref = '100909'));
 select pg_temp._check('L8 … one open «حد الإرسال المشترك» alert', (select count(*) = 1 from public.hub_alerts where kind = 'send_limit' and acknowledged_at is null and not is_test));
 select pg_temp._save('cl3', pg_temp._claim());
 select pg_temp._check('L9 a deferred send is not claimed again for 10 minutes', not exists (select 1 from jsonb_array_elements(pg_temp._j('cl3')) e where e ->> 'ref' = '100909'));
