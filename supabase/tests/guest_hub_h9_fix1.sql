@@ -320,7 +320,8 @@ select pg_temp._service();
 select pg_temp._save('cl3', public.hub_upload_reminders_claim(20, false));
 select pg_temp._root();
 select pg_temp._check('R18 a thank-you with the window closed → skipped (no template for a thank-you)',
-  (select status = 'skipped' and error_code = 'no_window' from public.hub_upload_reminders where round = 'thanks'));
+  (select count(*) >= 1 and bool_and(status = 'skipped' and error_code = 'no_window') from public.hub_upload_reminders where round = 'thanks'),
+  (select string_agg(branch_slug || ':' || status || ':' || coalesce(error_code, '-'), ' ') from public.hub_upload_reminders where round = 'thanks'));
 select pg_temp._tick(0, '07:00');
 select pg_temp._check('R19 a branch with today''s list: no reminder', (select count(*) from public.hub_upload_reminders where branch_slug = 'airport-road' and round = 'r1') = 1);
 select pg_temp._check('R20 the template sends count in the shared limit', pg_get_functiondef('internal.hub_limit_recent(timestamptz)'::regprocedure) like '%hub_upload_reminders%');

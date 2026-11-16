@@ -143,7 +143,7 @@ select pg_temp._check('T1 a manager teaching his branch: queued for hub-agent (o
 select pg_temp._finish('t2', jsonb_build_object('status', 'learned', 'card', pg_temp._card('A'),
   'models', '[{"model": "claude-sonnet-5-5", "input_tokens": 3000, "output_tokens": 200}]'::jsonb));
 select pg_temp._check('T2 the claim: the text, the number to reply to and from, the topics (never one always handed off), the published cards',
-  pg_temp._j('t2:claim') #>> '{jobs,0,text}' like 'تعلّم:%' and pg_temp._j('t2:claim') #>> '{jobs,0,to}' = '+15550200003' and pg_temp._j('t2:claim') #>> '{jobs,0,from}' = '+966536663030'
+  pg_temp._j('t2:claim') #>> '{jobs,0,text}' like 'يوجد ميكروويف%' and pg_temp._j('t2:claim') #>> '{jobs,0,to}' = '+15550200003' and pg_temp._j('t2:claim') #>> '{jobs,0,from}' = '+966536663030'
   and not (pg_temp._j('t2:claim') -> 'topics') @> '[{"key": "complaint"}]' and jsonb_array_length(pg_temp._j('t2:claim') -> 'cards') > 20, left(pg_temp._j('t2:claim')::text, 300));
 insert into _ids values ('cardA', (pg_temp._j('t2') ->> 'card_id')::uuid);
 select pg_temp._check('T3 an ACTIVE card at once: published and live, «تعليم واتساب — هدى — {date}», Shafa Road only, numbered, the cost counted',

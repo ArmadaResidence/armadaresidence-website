@@ -149,7 +149,7 @@ begin`);
     -- H9 fix 1: a contradiction only with the teacher's OWN card of the last 2 hours is a follow-up — the new card replaces
     -- it, never «أستبدل القديمة؟» (Ahmed sent the same teaching twice on 16 Nov 2026)
     if v_status = 'ask' and not exists (select 1 from public.hub_knowledge_cards k where k.key = any (v_conflicts)
-                                         and not (k.learn_who = j.who and k.learn_kind = 'teach' and k.learned_at > now() - interval '2 hours')) then
+                                         and not coalesce(k.learn_who = j.who and k.learn_kind = 'teach' and k.learned_at > now() - interval '2 hours', false)) then
       v_own := v_conflicts;
       v_status := 'learned';
     end if;`);

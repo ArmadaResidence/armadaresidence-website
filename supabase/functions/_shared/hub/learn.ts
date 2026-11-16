@@ -270,7 +270,7 @@ export function replyOutcome(facts: Fact[]): { learn: { card: CardFacts }[]; dec
     if (f.verdict === 'card') {
       if (f.contradicts.length) conflicts.push(...f.contradicts.filter((k) => !conflicts.includes(k)));
       else learn.push({ card: f.card });
-    } else if (['room_price', 'availability', 'offer', 'price', 'service_price'].includes(f.reason)) price = true;
+    } else if (f.verdict === 'refuse' && ['room_price', 'availability', 'offer', 'price', 'service_price'].includes(f.reason)) price = true;
   }
   // a contradiction wins over a price (it names the cards to look at)
   const decision = conflicts.length ? { kind: 'contradiction' as const, conflicts } : price ? { kind: 'price' as const, conflicts: [] as string[] } : null;
