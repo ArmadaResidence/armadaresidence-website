@@ -286,7 +286,7 @@ check(fixed('departure_leave', 'en') === 'Thank you for staying with us, and we 
     && pl.template.components[1].sub_type === 'url' && pl.template.components[1].parameters[0].text === 'airport-road', 'F16 the payload: from the branch number, {{1}} the first name, {{2}} the short branch name, the button suffix the branch code');
   check(branchShort('أرمادا ريزيدنس – طريق الشفا') === 'طريق الشفا' && /صباح الخير سالم ☀️/.test(reminderFallback('سالم', b.name_ar, 'airport-road'))
     && reminderFallback('سالم', b.name_ar, 'airport-road').includes('\nhttps://admin.armadaresidence.com/?hub_d=airport-road\n'), 'F17 the fallback line: the template\'s wording, the link on its own line');
-  const AP = read('admin/src/App.tsx');
+  const AP = read('admin/src/app.tsx');
   check(/q\.get\('hub_d'\)/.test(AP) && /\/departures\?branch=\$\{hubD\}/.test(AP), 'F18 ?hub_d=<branch> opens «قائمة المغادرين» on that branch');
 }
 // drainReminders on stubs: the window open → the model's line (guarded; the link kept); a refused line → the fallback;
