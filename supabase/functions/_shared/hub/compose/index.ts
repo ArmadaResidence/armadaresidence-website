@@ -11,7 +11,7 @@ import { scrub } from '../understand.ts';
 
 // deno-lint-ignore no-explicit-any
 const P = (text as any).prompts as {
-  understand_system: string; understand_schema: string; compose_system: string; compose_user: string; suggest_system: string; translate_system: string;
+  understand_system: string; understand_schema: string; understand_departure: string; compose_system: string; compose_user: string; suggest_system: string; translate_system: string;
   summary_system: string; staff_system: string;
   compose_examples: { branch: string; guest: string; output: string }[]; tones: Record<string, { label: string; line: string }>;
 };
@@ -36,7 +36,7 @@ export const staffSystem = () => P.staff_system;
 export const understandSystem = () => P.understand_system;
 export const understandSchema = () => P.understand_schema;
 /** H9: prompts.md §1.3 — added to the user message only while a departure check waits */
-export const understandDeparture = () => P.understand_departure as string;
+export const understandDeparture = () => P.understand_departure;
 
 export interface ComposeInput {
   /** handoff_ack (H6c): «بانتظار موظف» — a short acknowledgement that a further request joined the team's hand-off */
