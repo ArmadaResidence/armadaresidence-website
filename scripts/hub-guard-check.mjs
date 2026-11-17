@@ -152,7 +152,7 @@ check(!guard('', P, OA).ok, 'an empty reply is refused');
 // the engine runs the guard before sending or drafting; hub-admin on a sent suggestion
 const ENGINE = read('supabase/functions/_shared/hub/engine.ts');
 const ADMIN = read('supabase/functions/hub-admin/index.ts');
-check(/const g = guard\(c\.reply, gp,/.test(ENGINE) && /reason = retryReason\(g\.reasons\);/.test(ENGINE) && /return 'guard';/.test(ENGINE), 'the engine: the guard, one retry with the reason, then the fallback');
+check(/const g = guard\(c\.reply, gp,/.test(ENGINE) && /reason = retryReason\(g\.reasons, g\.detail\);/.test(ENGINE) && /return 'guard';/.test(ENGINE), 'the engine: the guard, one retry with the reason, then the fallback');
 check(/if \(body\.suggestion === true && typeof body\.body === 'string'\) \{[\s\S]{0,400}guardOf\(body\.body/.test(ADMIN), 'hub-admin: the guard on every suggestion that is sent');
 
 // H6 pass 5 (15 Nov 2026): Modern Standard Arabic only — the model now writes small talk
@@ -165,6 +165,22 @@ check(/if \(body\.suggestion === true && typeof body\.body === 'string'\) \{[\s\
   check(DIALECT_AR.length > 20 && !DIALECT_AR.includes('حياك'), 'the dialect list (and «حياك الله» is MSA)');
   check(guard('هل معكم أطفال؟', P, O).reasons.includes('plural_address'), 'the plural «معكم» is refused');
 }
+// ── H9 fix 3 (Ahmed, 17 Nov 2026): room prices only by date; the group plural forms named in the retry ──
+const PQ = { ...P, text: `${P.text}\nالإجمالي 310 ريالات من الخميس 19 نوفمبر 2026 (9 جمادى الآخرة 1448)` };
+check(refused('تبدأ أسعار الغرف من 310 ريالات لليلة.', 'from_price', OA, PQ), 'from_price: «تبدأ أسعار الغرف من 310 ريالات» refused even with the amount in the payload');
+check(refused('يبدأ السعر من 310 ريالات.', 'from_price', OA, PQ) && refused('ابتداءً من 310 ريالات لليلة.', 'from_price', OA, PQ), 'from_price: «يبدأ السعر من» / «ابتداءً من» refused');
+check(refused('هذا أقل سعر لدينا.', 'from_price'), 'from_price: «أقل سعر» refused');
+check(refused('Rooms starting at 310 SAR a night.', 'from_price', OE, { ...PQ, text: `${PQ.text}\n310 SAR` }), 'from_price: "starting at 310 SAR" refused');
+check(!refused('يبدأ الإفطار من الساعة 6:30 صباحًا.', 'from_price', OA, { ...P, text: `${P.text}\nيبدأ الإفطار من الساعة 6:30` }), 'from_price: «يبدأ الإفطار من الساعة 6:30» (a time, not a price) passes');
+check(ok('إجمالي إقامتك من الخميس 19 نوفمبر 2026 (9 جمادى الآخرة 1448) 310 ريالات شامل الضريبة.', OA, PQ), `a total for the guest's dates passes — ${why('إجمالي إقامتك من الخميس 19 نوفمبر 2026 (9 جمادى الآخرة 1448) 310 ريالات شامل الضريبة.', OA, PQ)}`);
+for (const w of ['تحتاجون', 'وصولكم', 'لكم', 'أنتم', 'تريدون']) check(refused(`ما عدد الغرف التي ${w}؟`, 'plural_address') || refused(`نرحب ${w}.`, 'plural_address'), `plural: «${w}» refused`);
+{
+  const g = guard('كم غرفة تحتاجون؟', P, OA);
+  const rr = retryReason(g.reasons, g.detail);
+  check(g.detail?.plural === 'تحتاجون' && rr.includes('«تحتاجون»') && rr.includes('«تحتاج»'), 'the retry names the plural word and its singular form');
+}
+check(ok('كم غرفة تحتاج، وما الاسم الذي نسجّل به الطلب؟'), 'the singular group question passes');
+
 if (fails.length) {
   for (const f of fails) console.error(`✗ ${f}`);
   console.error(`hub-guard-check: ${fails.length} of ${n} failed`);

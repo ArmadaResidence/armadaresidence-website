@@ -51,7 +51,9 @@ export type Action =
   /** 15 Nov 2026 (Ahmed): a detail added to a group or hall request already sent («أكثر من ٥ غرف», a date, a name) —
    *  that request updated, a short fixed acknowledgement, never a new hand-off and never «أيضًا» */
   | { type: 'request_update'; kind: 'hall' | 'group'; route: 'sales' | 'reception'; fields: Record<string, unknown> }
-  | { type: 'from_price'; branch: string }
+  /** H9 fix 3 (Ahmed, 17 Nov 2026): the dates the resolver could not settle — ONE short question showing the candidate(s)
+   *  (copy.md §2); `pending` = the dates a «نعم» / «hubd:yes» accepts */
+  | { type: 'dates_question'; why: string; status: string; candidates: string[]; pending?: { check_in: string | null; check_out: string | null } | null }
   | { type: 'fixed'; key: string; buttons?: 'quick' | 'dates' | 'team' | null; vars?: Record<string, string | number> }
   | { type: 'booking_status'; ref: string }
   | { type: 'handoff'; reason: string; notice: NoticeKey | null; priority?: 'high'; note: { intent: string; slots: Record<string, unknown>; stopped: string } }
@@ -69,6 +71,8 @@ export type Action =
 export type Event =
   /** the guest's turn: the understanding (null = failed), or a media / cart / button message */
   | { type: 'guest'; understanding: Understanding | null; kind: 'text' | 'media' | 'button' | 'reaction' | 'sticker'; button_id?: string | null; cart?: boolean;
+      /** H9 fix 3: the message is a plain yes («نعم», «إيه», «صح», "yes") — accepts dates waiting for a confirm */
+      affirm?: boolean;
       /** H7: a voice note or an image that did not become text (media.ts → MediaRoute); absent = the media notice (a video, a
        *  file, a location, a contact, or a voice note / image while its switch is off) */
       media?: { reason: string; priority?: 'high'; ack?: boolean } | null }
@@ -148,6 +152,8 @@ export interface Decision {
   resumed?: boolean;
   /** H6c: «بانتظار موظف» — where the assistant's flow stands while the hand-off waits (state_before_human) */
   resume_state?: State | null;
+  /** H9 fix 3: the guest was annoyed with the conversation — the reply opens with one short apology (copy.md §2) */
+  apology?: boolean;
 }
 
 const MEDIA_NOTICE = 'media' as const;
@@ -161,8 +167,9 @@ const REQUEST_TOPICS = new Set(['booking_new', 'price', 'availability', 'groups_
   'occupancy']);
 /** topics a staff request's sourced answer leaves out (H6 pass 5) */
 const STAFF_SKIP = new Set(['booking_new', 'price', 'availability', 'booking_status', 'greeting', 'thanks_closing', 'occupancy', 'complaint']);
-/** a price question about the rooms themselves gets the «يبدأ من» lines: no topic, or only these (H6 gaps: the breakfast,
- *  a coffee, the laundry or the website's price is a question with its own source, never the room list) */
+/** a price question about the rooms themselves (H6 gaps: the breakfast, a coffee, the laundry or the website's price is a
+ *  question with its own source, never the room list). H9 fix 3 (Ahmed, 17 Nov 2026): it is quoted ONLY for dates — no
+ *  «يبدأ من», no lowest price: the dates and the guests are asked, then the stay is quoted by the website's engine */
 const ROOM_PRICE_TOPICS = new Set(['price', 'booking_new', 'room_types', 'availability', 'occupancy']);
 /** the guest's words about the time (prompts.md §1 rule 4 / 21): an early arrival, never a late departure */
 const EARLY_RE = /early|earlier|مبكر|بدري|قبل موعد|قبل وقت|before check.?in/i;
@@ -273,8 +280,20 @@ export function departureChoice(ev: Event, ctx: Context): 'leave' | 'extend' | n
   return d === 'leave' || d === 'extend' ? d : null;
 }
 
-/** the turn's decision */
+/** H9 fix 3: the dates waiting for a «نعم» (a confirm question), on the open stay draft */
+const pendingDates = (d: Draft | null): { check_in: string | null; check_out: string | null } | null => {
+  const p = d?.kind === 'stay' ? (d.fields._dates_pending as { check_in?: string | null; check_out?: string | null } | null | undefined) : null;
+  return p && typeof p.check_in === 'string' ? { check_in: p.check_in, check_out: typeof p.check_out === 'string' ? p.check_out : null } : null;
+};
+
+/** the turn's decision (H9 fix 3: a guest annoyed with the conversation gets one short apology first — never a hand-off) */
 export function decide(input: DecideInput): Decision {
+  const d = decideCore(input);
+  if (input.event.type === 'guest' && input.event.understanding?.frustrated && d.actions.some((a) => a.type !== 'noop')) d.apology = true;
+  return d;
+}
+
+function decideCore(input: DecideInput): Decision {
   const { event: ev, ctx } = input;
   let state: State = input.state;
   const t: string[] = [];
@@ -420,6 +439,17 @@ export function decide(input: DecideInput): Decision {
     if (ev.button_id === 'hubq:book') {
       return stayIntent(input, state, t, out, null);
     }
+    // H9 fix 3: the dates confirm question (copy.md §2.1) — «نعم» takes the dates shown, «تواريخ أخرى» asks again
+    const pend = pendingDates(input.draft);
+    if (ev.button_id === 'hubd:yes' && pend) {
+      t.push('T42');
+      return stayIntent(input, state, t, out, null, { fields: { ...input.draft!.fields, check_in: pend.check_in, check_out: pend.check_out ?? input.draft!.fields.check_out ?? null, _dates_pending: null } });
+    }
+    if (ev.button_id === 'hubd:other' || (ev.button_id === 'hubd:yes' && !pend)) {
+      t.push('T15');
+      const fields = { ...(input.draft?.kind === 'stay' ? input.draft.fields : {}), check_in: null, check_out: null, nights: null, _dates_pending: null };
+      return out({ next: 'collecting', actions: [{ type: 'ask', slots: ['dates'] }], draft_patch: { kind: 'stay', fields }, failed: 'reset' });
+    }
   }
 
   const u = ev.understanding;
@@ -446,9 +476,18 @@ export function decide(input: DecideInput): Decision {
     return out({ next: 'human', actions: [{ type: 'fixed', key: 'third_language' }, handoff('third_language', null, note('other_language'))], reason: 'third_language', failed: 'reset' });
   }
   // "are you a bot / a person?" and every request for a person (spec §2.5 rule 16); abuse or threats → the team, high
-  if (kind === 'sensitive' && u.sensitive === 'abuse') return H('abuse', 'handoff', 'abuse', 'high');
-  if (has('human_request') || kind === 'sensitive') return H('human_request', 'handoff', 'human_request');
-  if (u.complaint || has('complaint')) return H('complaint', 'complaint', 'complaint', 'high');
+  // H9 fix 3 (Ahmed, 17 Nov 2026): annoyance with the conversation («لا تضحك علي»، «أقول لك…») is a correction — never a
+  // complaint, never «abuse», never a hand-off; a complaint is a problem with the stay or the service only
+  const frustrated = u.frustrated === true;
+  if (kind === 'sensitive' && u.sensitive === 'abuse' && !frustrated) return H('abuse', 'handoff', 'abuse', 'high');
+  if (has('human_request') || (kind === 'sensitive' && !frustrated)) return H('human_request', 'handoff', 'human_request');
+  if ((u.complaint || has('complaint')) && !frustrated) return H('complaint', 'complaint', 'complaint', 'high');
+  // a plain «نعم» to a dates confirm question: the dates shown
+  const pend = pendingDates(input.draft);
+  if (ev.affirm && pend && !(u.dates_read && u.dates_read.status !== 'none')) {
+    t.push('T42');
+    return stayIntent(input, state, t, out, null, { fields: { ...input.draft!.fields, check_in: pend.check_in, check_out: pend.check_out ?? input.draft!.fields.check_out ?? null, _dates_pending: null } });
+  }
   if (has('compensation_request')) return H('compensation', 'handoff', 'compensation_request', 'high');
   // H8: «غيّر التواريخ» while the booking is still being made in this chat (a stay draft, not booked) changes the draft,
   // never an existing booking (the understanding may call it booking_change)
@@ -520,28 +559,24 @@ export function decide(input: DecideInput): Decision {
     return out({ next: state === 'new' ? 'inquiry' : state, actions: [{ type: 'chat', mode: 'redirect' }], out_of_scope_inc: true, failed: 'reset' });
   }
 
-  // dates the guest gave in the Hijri calendar, or that could not be fixed to a day (copy.md §2.2 / §2.1)
-  const stayish = STAY_INTENTS.some(has) || (has('price_question') && (u.check_in || u.dates_text));
-  if (stayish && u.dates_calendar === 'hijri') {
-    t.push(state === 'new' ? 'T3' : 'T8');
-    return out({ next: state === 'new' ? 'inquiry' : state, actions: [{ type: 'fixed', key: 'dates_hijri' }], failed: 'reset' });
-  }
+  // H9 fix 3: Hijri dates are read by code (Umm al-Qura) like any other date — no refusal of the Hijri calendar
+  const datesWords = !!u.dates_read && u.dates_read.status !== 'none';
 
   // a new stay (T3 / T7 / T19) — or, while room_booking is off, the booking conversation before H8 (copy.md §4.0); a reply
   // during it (dates, guests) continues it
-  const continuing = ['collecting', 'quoted', 'awaiting_confirmation'].includes(state) && (input.draft?.kind === 'stay' || !input.draft) && !!(u.check_in || u.check_out || u.adults || u.nights
+  const continuing = ['collecting', 'quoted', 'awaiting_confirmation'].includes(state) && (input.draft?.kind === 'stay' || !input.draft) && !!(u.check_in || u.check_out || u.adults || u.nights || datesWords
     || u.room_type || u.children !== null || u.breakfast || u.guest_name || Array.isArray(u.child_ages) || (u.extra_beds !== null && u.extra_beds !== undefined));
-  if (kind === 'booking' || STAY_INTENTS.some(has) || (has('price_question') && (u.check_in || u.check_out)) || continuing) {
+  if (kind === 'booking' || STAY_INTENTS.some(has) || (has('price_question') && (u.check_in || u.check_out || datesWords)) || continuing) {
     if (state === 'booked') t.push('T19');
     return stayIntent(input, state, t, out, u);
   }
   const roomPrice = u.topics.every((k) => ROOM_PRICE_TOPICS.has(k)) && !has('dining_menu') && !has('eyab_question');
   if (has('price_question') && !u.check_in && !u.check_out && roomPrice) {
-    // the «يبدأ من» line per room type (spec §4.2); a hidden price → the reception (T9b)
+    // H9 fix 3 (Ahmed, 17 Nov 2026): a room price only for dates — the dates and the guests asked, then the real total of
+    // those nights from the website's engine (quote_stay, the room cards); never «يبدأ من» or a lowest price. A hidden
+    // price → the reception (T9b)
     if (!ctx.show_prices) return H('prices_hidden', 'handoff', 'price_question');
-    t.push(state === 'new' ? 'T5' : 'T6');
-    const branch = ctx.unit_kind === 'branch' ? (u.branch && u.branch !== 'both' ? u.branch : ctx.unit_branch) : (u.branch && u.branch !== 'both' ? u.branch : ctx.unit_branch);
-    return out({ next: state === 'new' ? 'inquiry' : state, actions: [{ type: 'from_price', branch }], failed: 'reset' });
+    return stayIntent(input, state, t, out, u, { price: true });
   }
 
   // a booking's status: only the guest's own booking (same phone, spec §2.5 rule 10)
@@ -669,7 +704,9 @@ function groupOrHall(input: DecideInput, state: State, t: string[], out: Out, u:
 export function bookingMissing(f: Record<string, unknown>, unitKind: 'branch' | 'dining' = 'branch'): string[] {
   const m: string[] = [];
   if (!f.branch && unitKind === 'dining') m.push('branch');
-  if (!f.check_in || !f.check_out) m.push('dates');
+  // H9 fix 3: the arrival known, only the departure (or the nights) is asked
+  if (!f.check_in) m.push('dates');
+  else if (!f.check_out) m.push('departure');
   if (!f.adults) m.push('adults');
   if (f.breakfast !== 'with' && f.breakfast !== 'without') m.push('breakfast');
   else if (f.breakfast === 'with' && Number(f.children ?? 0) > 0 && !(Array.isArray(f.child_ages) && f.child_ages.length === Number(f.children))) m.push('child_ages');
@@ -677,29 +714,59 @@ export function bookingMissing(f: Record<string, unknown>, unitKind: 'branch' | 
 }
 /** the slots one question asks: the branch, the dates and the guests together; then breakfast; then the ages */
 export function askGroup(missing: string[]): string[] {
-  const first = missing.filter((k) => k === 'branch' || k === 'dates' || k === 'adults');
+  const first = missing.filter((k) => k === 'branch' || k === 'dates' || k === 'departure' || k === 'adults');
   return first.length ? first : missing.slice(0, 1);
 }
 const QUESTION_ONLY = ['facility_question', 'policy_question', 'location_question', 'offer_question', 'eyab_question', 'payment_question', 'dining_menu'];
 
-function stayIntent(input: DecideInput, state: State, t: string[], out: Out, u: Understanding | null): Decision {
+type StayOpts = { price?: boolean; fields?: Record<string, unknown> };
+
+/** H9 fix 3: the dates the resolver could not settle (a past date, a departure before the arrival, the weekend, «الأسبوع
+ *  الجاي», a weekday that does not match the day, a bare day that passed) — ONE question with the candidate(s), the rest of
+ *  the stay kept; a confirm keeps the dates shown as pending for «نعم» */
+function datesQuestion(u: Understanding | null, prev: Record<string, unknown>, ctx: Context, t: string[], out: Out, replace: boolean): Decision | null {
+  const r = u?.dates_read;
+  if (!r || r.status === 'exact' || r.status === 'none') return null;
+  const fields = mergeFields(prev, { ...u!, check_in: null, check_out: null, nights: null } as Understanding, ctx.unit_branch, ctx.unit_kind);
+  const pending = r.status === 'confirm' && r.check_in ? { check_in: r.check_in, check_out: r.check_out } : null;
+  t.push('T41');
+  return out({ next: 'collecting', actions: [{ type: 'dates_question', why: r.why ?? r.status, status: r.status, candidates: r.candidates, pending }],
+    draft_patch: { kind: 'stay', fields: { ...fields, _dates_pending: pending } }, draft_replace: replace, failed: 'reset' });
+}
+
+function stayIntent(input: DecideInput, state: State, t: string[], out: Out, u: Understanding | null, opts: StayOpts = {}): Decision {
   const ctx = input.ctx;
-  if (!ctx.skills.includes('room_booking') || ctx.instant_booking === false) return liteStay(input, state, t, out, u);
+  if (!ctx.skills.includes('room_booking') || ctx.instant_booking === false) return liteStay(input, state, t, out, u, opts);
   const prev = input.draft?.kind === 'stay' && state !== 'booked' ? input.draft.fields : {};
-  const fields = u ? mergeFields(prev, u, ctx.unit_branch, ctx.unit_kind) : { ...prev, branch: prev.branch ?? (ctx.unit_kind === 'branch' ? ctx.unit_branch : null) };
+  {
+    const q = datesQuestion(u, prev, ctx, t, out, !!input.draft && (input.draft.kind !== 'stay' || state === 'booked'));
+    if (q) return q;
+  }
+  const base = opts.fields ?? prev;
+  const fields0 = u ? mergeFields(base, u, ctx.unit_branch, ctx.unit_kind) : { ...base, branch: base.branch ?? (ctx.unit_kind === 'branch' ? ctx.unit_branch : null) };
+  // new dates clear a confirm that was waiting; a price question counts how often the dates were asked for it
+  const fields: Record<string, unknown> = u?.dates_read?.status === 'exact' ? { ...fields0, _dates_pending: null } : fields0;
+  if (opts.price) fields._price_asks = Number(prev._price_asks ?? 0) + 1;
   const replace = !!input.draft && (input.draft.kind !== 'stay' || state === 'booked');
   if (state === 'new') t.push('T3');
   else if (state === 'inquiry' || state === 'booked') t.push('T7');
   else if (state === 'quoted' || state === 'awaiting_confirmation') t.push('T10');
   // a question asked with the stay («أبغى غرفة فيها مطبخ») is answered first, in the same reply that asks what is missing
   // (a topic the message only FILLS — breakfast given as «بدون إفطار», the children, an extra bed — is no question)
-  const filled = new Set([...(u?.breakfast ? ['breakfast'] : []), ...(u?.children || u?.child_ages ? ['children'] : []), ...(u?.extra_beds ? ['extra_bed'] : [])]);
+  const filled = new Set([...(u?.breakfast ? ['breakfast'] : []), ...(u?.children || u?.child_ages ? ['children'] : []), ...(u?.extra_beds ? ['extra_bed'] : []),
+    // H9 fix 3: a room type named fills the room slot («غرفة كينج») — no answer about room types beside the booking
+    ...(u?.room_type ? ['room_types'] : [])]);
   const topics = u ? answerTopics(u).filter((k) => !filled.has(k)) : [];
   const asks = !!u && topics.length > 0 && (u.intents.some((i) => QUESTION_ONLY.includes(i)) || state === 'new' || state === 'inquiry');
   const first: Action[] = asks ? [{ type: 'answer', topics, intents: u!.intents, branch: u!.branch, mixed: true, nogap: true }] : [];
   const missing = bookingMissing(fields, ctx.unit_kind);
   if (missing.length) {
     t.push('T8');
+    // a guest who asks the price again without dates (H9 fix 3): the price depends on the dates — any date checked, and the
+    // website's booking link; never a price
+    if (opts.price && Number(prev._price_asks ?? 0) >= 1 && (missing.includes('dates') || missing.includes('departure'))) {
+      return out({ next: 'collecting', actions: [{ type: 'fixed', key: 'price_needs_dates' }], draft_patch: { kind: 'stay', fields }, draft_replace: replace, failed: 'reset' });
+    }
     return out({ next: 'collecting', actions: [...first, { type: 'ask', slots: askGroup(missing) }], draft_patch: { kind: 'stay', fields }, draft_replace: replace, failed: 'reset' });
   }
   if (!ctx.show_prices) {
@@ -733,13 +800,21 @@ function stayIntent(input: DecideInput, state: State, t: string[], out: Out, u: 
 /** the booking conversation before H8 (Ahmed, 15 Nov 2026 — copy.md §4.0): the dates and the guests asked (the model,
  *  ACTION ask), then every room type of the branch quoted from the rate calendar, then the website's booking link and the
  *  team. A mixed message gets its sourced answer first, in the same composed reply that asks for what is missing. */
-function liteStay(input: DecideInput, state: State, t: string[], out: Out, u: Understanding | null): Decision {
+function liteStay(input: DecideInput, state: State, t: string[], out: Out, u: Understanding | null, opts: StayOpts = {}): Decision {
   const ctx = input.ctx;
   const prev = input.draft?.kind === 'stay' && state !== 'booked' ? input.draft.fields : {};
-  const fields = u ? mergeFields(prev, u, ctx.unit_branch, ctx.unit_kind) : { ...prev, branch: prev.branch ?? (ctx.unit_kind === 'branch' ? ctx.unit_branch : null) };
   const replace = !!input.draft && (input.draft.kind !== 'stay' || state === 'booked');
+  {
+    const q = datesQuestion(u, prev, ctx, t, out, replace);
+    if (q) return q;
+  }
+  const base = opts.fields ?? prev;
+  const fields: Record<string, unknown> = u ? mergeFields(base, u, ctx.unit_branch, ctx.unit_kind) : { ...base, branch: base.branch ?? (ctx.unit_kind === 'branch' ? ctx.unit_branch : null) };
+  if (u?.dates_read?.status === 'exact') fields._dates_pending = null;
+  if (opts.price) fields._price_asks = Number(prev._price_asks ?? 0) + 1;
   const missing: string[] = [];
-  if (!fields.check_in || !fields.check_out) missing.push('dates');
+  if (!fields.check_in) missing.push('dates');
+  else if (!fields.check_out) missing.push('departure');
   if (!fields.adults) missing.push('adults');
   const topics = u ? answerTopics(u) : [];
   // a feature named with the stay («أبغى غرفة فيها مطبخ») is answered first, as before the booking conversation (H6 gaps)
@@ -748,6 +823,9 @@ function liteStay(input: DecideInput, state: State, t: string[], out: Out, u: Un
   else if (state === 'inquiry') t.push('T7');
   if (missing.length) {
     t.push('T8');
+    if (opts.price && Number(prev._price_asks ?? 0) >= 1 && (missing.includes('dates') || missing.includes('departure'))) {
+      return out({ next: 'collecting', actions: [{ type: 'fixed', key: 'price_needs_dates' }], draft_patch: { kind: 'stay', fields }, draft_replace: replace, failed: 'reset' });
+    }
     const a: Action = asks ? { type: 'answer', topics, intents: u!.intents, branch: u!.branch, mixed: true } : { type: 'ask', slots: missing };
     return out({ next: 'collecting', actions: asks ? [a, { type: 'ask', slots: missing }] : [a], draft_patch: { kind: 'stay', fields }, draft_replace: replace, failed: 'reset' });
   }

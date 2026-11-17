@@ -34,16 +34,17 @@ const CARD: CountNoun = { zero: 'لا بطاقات', one: 'بطاقة واحدة
 const TIMES: CountNoun = { zero: 'لم يُسأل', one: 'سُئل مرة واحدة', two: 'سُئل مرتين', few: 'مرات', many: 'مرة', gen: 'مرة' };
 const DAYS: CountNoun = { zero: 'اليوم', one: 'يوم واحد', two: 'يومان', few: 'أيام', many: 'يومًا', gen: 'يوم' };
 const PROBLEM: CountNoun = { zero: '', one: 'ملاحظة تمنع النشر', two: 'ملاحظتان تمنعان النشر', few: 'ملاحظات تمنع النشر', many: 'ملاحظة تمنع النشر', gen: 'ملاحظة' };
-type Tab = 'cards' | 'queue' | 'faq' | 'expiring';
+type Tab = 'cards' | 'queue' | 'decisions' | 'faq' | 'expiring';
 const TABS: { key: Tab; label: string }[] = [
   { key: 'cards', label: 'البطاقات' },
   { key: 'queue', label: 'لم أعرف الإجابة' },
+  { key: 'decisions', label: 'يحتاج قرارك' },
   { key: 'faq', label: 'الأسئلة الشائعة' },
   { key: 'expiring', label: 'تنتهي قريبًا' },
 ];
 const timesText = (n: number) => (n <= 2 ? countWord(n, TIMES) : `سُئل ${countWord(n, TIMES)}`);
 
-type Editing = { card: Card | null; from?: QueueRow; topic?: string | null; offerFaq?: boolean };
+type Editing = { card: Card | null; from?: QueueRow; topic?: string | null; offerFaq?: boolean; decision?: K.Decision };
 
 export default function Knowledge() {
   const { me } = useSession();
@@ -59,6 +60,7 @@ export default function Knowledge() {
   const [qStatus, setQStatus] = useState<'open' | 'answered' | 'dismissed'>('open');
   const [faq, setFaq] = useState<FaqRead[] | null>(null);
   const [exp, setExp] = useState<{ today: string; card_days: number; offer_days: number; items: ExpiringItem[] } | null>(null);
+  const [dec, setDec] = useState<K.Decision[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [editing, setEditing] = useState<Editing | null>(null);
   const [busy, setBusy] = useState(false);
@@ -71,7 +73,8 @@ export default function Knowledge() {
   const load = useCallback(async () => {
     try {
       setError(null);
-      const [mm, cc, qq, ff, ee] = await Promise.all([K.meta(), K.cards(), K.queue(qStatus), K.faqRead(), K.expiring()]);
+      const [mm, cc, qq, ff, ee, dd] = await Promise.all([K.meta(), K.cards(), K.queue(qStatus), K.faqRead(), K.expiring(), K.decisions().catch(() => [] as K.Decision[])]);
+      setDec(dd);
       setM(mm);
       setList(cc);
       setQ(qq);
@@ -112,6 +115,16 @@ export default function Knowledge() {
     if (t === 'cards') p.delete('tab');
     else p.set('tab', t);
     setParams(p, { replace: true });
+  }
+
+  async function dismissDecision(d: K.Decision) {
+    try {
+      await K.decide(d.id, 'dismissed');
+      await load();
+      toast('أُزيل من «يحتاج قرارك».');
+    } catch (e) {
+      toast((e as Error).message, 'error');
+    }
   }
 
   async function doPublish() {
@@ -368,6 +381,33 @@ export default function Knowledge() {
         </section>
       )}
 
+      {tab === 'decisions' && (
+        <section className="grid gap-3" aria-label="يحتاج قرارك" data-decisions>
+          <p className="text-sm text-ink-muted">ردود الفريق التي لم يتعلّمها المساعد وحده: سعر في الرد، أو معلومة تخالف بطاقة مسجّلة. «اعتماد كمعلومة» يفتح بطاقة من الرد تراجعها ثم تحفظها؛ «تجاهل» يزيلها من هنا. أسعار الغرف من التقويم، والعروض من صفحة «العروض».</p>
+          {!dec?.length && <Empty text="لا شيء يحتاج قرارك." />}
+          <ul className="grid gap-2">
+            {(dec ?? []).map((d) => (
+              <li key={d.id} className="card p-3 grid gap-2" data-decision-row={d.id}>
+                <div className="flex flex-wrap items-center gap-2 text-sm">
+                  <span className="chip is-bronze">{K.DECISION_KIND[d.kind] ?? d.kind}</span>
+                  <span className="chip">{d.unit}</span>
+                  <span className="text-xs text-ink-muted">{d.staff} · <span className="num">{longDate(K.riyadhDay(d.at))}</span></span>
+                </div>
+                {d.question ? <p className="font-semibold kn-text">سؤال الضيف: «{d.question}»</p> : <p className="text-xs text-ink-muted">نص السؤال متاح لفريق الوحدة فقط.</p>}
+                {d.reply ? <p className="text-sm kn-text" data-decision-reply>رد الفريق: «{d.reply}»</p> : <p className="text-xs text-ink-muted">رد الفريق متاح لفريق الوحدة فقط.</p>}
+                {d.conflicts.length > 0 && <p className="text-xs">يتعارض مع: {d.conflicts.map((x) => `«${x.title_ar}»`).join('، ')}</p>}
+                {editable && (
+                  <div className="flex flex-wrap gap-2">
+                    <button type="button" className="btn btn-primary btn-sm" onClick={() => setEditing({ card: null, topic: d.topic_key, decision: d })} data-action="decision-approve">اعتماد كمعلومة</button>
+                    <button type="button" className="btn btn-ghost btn-sm" onClick={() => dismissDecision(d)} data-action="decision-dismiss" aria-label="تجاهل هذا الرد">تجاهل</button>
+                  </div>
+                )}
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
       {tab === 'faq' && (
         <section className="grid gap-3" aria-label="الأسئلة الشائعة كما يقرؤها المساعد" data-tour="kn-faq">
           <div className="flex flex-wrap items-center justify-between gap-2">
@@ -418,7 +458,7 @@ export default function Knowledge() {
         title={editing?.from && editing.card ? 'مراجعة مسودة من رد الفريق' : editing?.from ? 'بطاقة من سؤال لم يُعرف' : editing?.card ? (editable && editing.card.status !== 'archived' ? 'تعديل البطاقة' : 'البطاقة') : 'إضافة بطاقة'}
         draftKey={editing ? (editing.card ? `card:${editing.card.id}` : editing.from ? `card:queue:${editing.from.id}` : 'card:new') : undefined}>
         {editing !== null && (
-          <CardForm key={editing.card?.id ?? editing.from?.id ?? 'new'} card={editing.card} from={editing.from} topic={editing.topic} offerFaq={editing.offerFaq} meta={m} me={me}
+          <CardForm key={editing.card?.id ?? editing.from?.id ?? editing.decision?.id ?? 'new'} card={editing.card} from={editing.from} topic={editing.topic} offerFaq={editing.offerFaq} decision={editing.decision} meta={m} me={me}
             editable={editable && editing.card?.status !== 'archived'} contentEdit={contentEdit} busy={busy} setBusy={setBusy}
             onSaved={async () => {
               setEditing(null);
@@ -452,11 +492,13 @@ export default function Knowledge() {
   );
 }
 
-function CardForm({ card, from, topic, offerFaq, meta, me, editable, contentEdit, busy, setBusy, onSaved }: {
-  card: Card | null; from?: QueueRow; topic?: string | null; offerFaq?: boolean; meta: KnowledgeMeta; me: api.Me | null; editable: boolean; contentEdit: boolean; busy: boolean; setBusy: (b: boolean) => void; onSaved: () => Promise<void>;
+function CardForm({ card, from, topic, offerFaq, decision, meta, me, editable, contentEdit, busy, setBusy, onSaved }: {
+  card: Card | null; from?: QueueRow; topic?: string | null; offerFaq?: boolean; decision?: K.Decision; meta: KnowledgeMeta; me: api.Me | null; editable: boolean; contentEdit: boolean; busy: boolean; setBusy: (b: boolean) => void; onSaved: () => Promise<void>;
 }) {
   const toast = useToast();
-  const [f, setF] = useState<CardFields>(() => (card ? K.pickCard(card) : K.blankCard(from?.topic_key ?? topic ?? null, from?.excerpts[0] ?? '')));
+  const [f, setF] = useState<CardFields>(() => (card ? K.pickCard(card) : decision
+    ? { ...K.blankCard(decision.topic_key ?? null, decision.question ?? ''), text_ar: decision.reply ?? '' }
+    : K.blankCard(from?.topic_key ?? topic ?? null, from?.excerpts[0] ?? '')));
   const [toFaq, setToFaq] = useState(false);
   const [faqCat, setFaqCat] = useState<K.FaqDraft['category']>('stay');
   const [error, setError] = useState<string | null>(null);
@@ -486,6 +528,8 @@ function CardForm({ card, from, topic, offerFaq, meta, me, editable, contentEdit
       } else if (offerFaq && toFaq && contentEdit) {
         await faqDraftFromCard(r.id, faqCat);
       }
+      // H9 fix 3: «اعتماد كمعلومة» — the decision answered with the card made from it
+      if (decision) await K.decide(decision.id, 'approved', r.id);
       setProblems(r.check.missing);
       toast(r.check.missing.length ? 'حُفظت المسودة؛ فيها ملاحظات تمنع النشر.' : from && toFaq ? 'حُفظت البطاقة وأُضيف السؤال مسودةً في «الأسئلة الشائعة»؛ لا تصل للمساعد قبل «نشر».' : 'حُفظت؛ لا يقرؤها المساعد قبل «نشر».', r.check.missing.length ? 'error' : undefined);
       setBusy(false);

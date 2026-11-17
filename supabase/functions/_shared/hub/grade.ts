@@ -118,10 +118,8 @@ export const answerThenTeam = (want: string, o: Pick<Outcome, 'kind' | 'reason'>
 export function expectedAction(item: Item, skills: string[]): { action: string; applies: boolean } {
   const a = item.expect.action;
   const booking = skills.includes('room_booking');
-  // the H5 brief: a price question without dates gets the site's «يبدأ من» lines (the bank's note allows it: q015)
-  if (a === 'ask' && /يبدأ من/.test(item.note ?? '')) return { action: 'answer', applies: false };
-  // a Hijri date is answered by code with copy.md §2.2 (H5 — the understanding's dates_calendar), whatever the skills
-  if (a === 'ask' && /hijri/i.test(item.note ?? '')) return { action: 'fixed', applies: false };
+  // H9 fix 3 (Ahmed, 17 Nov 2026): a room price without dates asks for the dates (never «يبدأ من»), and a Hijri date is
+  // read by code like any date — the H5 remaps of q015 and q083 are gone; the bank's «ask» stands
   // 15 Nov 2026 (Ahmed): a hall or group request collects its details in the chat whatever the H8 skills say — the bank's
   // «ask» is graded as written (it was «handoff» while the request went to the team at once)
   // H6 pass 5 (Ahmed, 15 Nov 2026): before H8 a stay is collected and quoted in the chat (copy.md §4.0) — the summary and
@@ -164,6 +162,9 @@ export function outcomeKind(finish: Json): string {
   if (acts.includes('quote')) return 'quote';
   // quoted, and the guest added nothing the quote depends on: the booking link again — still the quote step
   if (finish.state === 'quoted' && acts.includes('fixed')) return 'quote';
+  // H9 fix 3: a question about the dates (copy.md §2.3) and «the price depends on the dates» are the booking's own asks
+  if (acts.includes('dates_question')) return 'ask';
+  if (acts.includes('fixed') && finish.state === 'collecting') return 'ask';
   if (acts.includes('fixed') && tr.includes('T4')) return 'reply';
   if (acts.includes('fixed') && finish.messages?.length && finish.out_of_scope_inc) return 'out_of_scope';
   if (acts.includes('from_price')) return 'answer';

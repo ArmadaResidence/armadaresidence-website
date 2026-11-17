@@ -81,6 +81,18 @@ const COPY_CASES = {
   '«ليس الآن»': 'result_not_now',
 };
 
+// copy.md §2.3 (H9 fix 3, 17 Nov 2026)
+const DATE_CASES = {
+  "Confirm an arrival only (a day that has passed this month → next month's; «أول الشهر»)": 'dates_confirm_arrival',
+  'A weekday that does not match the day': 'dates_which',
+  'A date that has passed': 'dates_past',
+  'A departure on or before the arrival': 'dates_order',
+  '«الأسبوع الجاي» without a day': 'dates_week',
+  'Dates that cannot be read': 'dates_unclear',
+  'The apology (a guest annoyed with the conversation — one line before the fix, never a hand-off)': 'apology',
+  "A room price asked again without dates (never a price; the website's link)": 'price_needs_dates',
+};
+
 // copy.md §4.3 (H8, 16 Nov 2026)
 const BOOKING_CASES = {
   'Book button': 'btn_book',
@@ -90,6 +102,7 @@ const BOOKING_CASES = {
   'Breakfast question': 'ask_breakfast',
   "Children's ages question": 'ask_child_ages',
   'Full name question': 'ask_guest_name',
+  'Departure question (the arrival known — H9 fix 3)': 'ask_departure',
   'Change question': 'ask_change',
   'Instant line': 'instant_line',
   'Request line': 'request_line',
@@ -138,8 +151,18 @@ export function parseCopy(md = read('docs/guest-hub/copy.md')) {
   out.dates_confirm = { ar: b21[0], en: b21[1] };
   const btn = d1.split('\n').find((l) => l.startsWith('Buttons:'));
   out.dates_confirm.buttons = { ar: allQuoted(btn.split(' / ')[0], '«', '»'), en: allQuoted(btn.split(' / ')[1], '“', '”') };
-  const b22 = codeBlocks(s2.slice(s2.indexOf('**2.2')));
+  const b22 = codeBlocks(s2.slice(s2.indexOf('**2.2'), s2.indexOf('**2.3')));
   out.dates_hijri = { ar: b22[0], en: b22[1] };
+  // H9 fix 3 (17 Nov 2026): the date questions and the apology
+  for (const r of tableRows(s2.slice(s2.indexOf('**2.3')))) {
+    const key = DATE_CASES[r[0]];
+    if (!key) continue;
+    const ar = allQuoted(r[1], '«', '»');
+    const en = allQuoted(r[2], '“', '”');
+    if (!ar.length || !en.length) throw new Error(`copy.md §2.3: ${r[0]} has no quoted text`);
+    out[key] = { ar: ar[0], en: en[0] };
+  }
+  for (const k of Object.values(DATE_CASES)) if (!out[k]) throw new Error(`copy.md §2.3: the line ${k} is missing`);
   // H6 pass 5 (15 Nov 2026): booking from the chat before H8 (§4.0) — the question, the quote's first line, the last line
   {
     const s40 = md.slice(md.indexOf('**4.0 The booking link'), md.indexOf('**4.1 Summary**'));
@@ -283,7 +306,7 @@ export function parseMediaLines(md = read('docs/guest-hub/copy.md')) {
 /** H7b: the fixed lines of teaching and removing by WhatsApp (copy.md §9.1 — staff-facing): {key: line} */
 export const LEARN_LINE_KEYS = ['saved', 'saved_both', 'ask_replace', 'replaced', 'kept', 'removed', 'removed_n', 'remove_none', 'remove_n_none', 'remove_n_other',
   'not_allowed', 'other_branch', 'conflict_shared', 'room_price', 'offer', 'service_price', 'guest_detail', 'one_off', 'not_a_fact', 'empty', 'teach_off', 'failed',
-  'revised', 'intent_ask', 'intent_no', 'ok_ack', 'edit_ask', 'link_ask'];
+  'revised', 'intent_ask', 'intent_no', 'ok_ack', 'edit_ask', 'link_ask', 'rule_saved', 'rule_saved_part', 'rule_conflict', 'rule_owner', 'voice_failed'];
 export function parseLearnLines(md = read('docs/guest-hub/copy.md')) {
   const s = section(md, '### 9.1 Teaching and removing by WhatsApp');
   const out = {};

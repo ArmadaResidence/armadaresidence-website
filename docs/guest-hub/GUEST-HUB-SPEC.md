@@ -153,8 +153,16 @@ intents[]          closed list: greeting, stay_booking, price_question, availabi
                    human_request, payment_question, thanks_or_closing, out_of_scope, other
 topics[]           closed list = hub_topics.key (the radar taxonomy, §4.7); new_topic_hint (text ≤ 40) when none fits
 branch             airport-road | shafa-road | both | none
-check_in, check_out ISO dates resolved against today (Asia/Riyadh); nights; dates_text (the guest's words)
-dates_calendar     gregorian | hijri | unclear | none [مقرر — 14 نوفمبر 2026]: hijri → copy.md §2.2, unclear → §2.1
+arrival_text, departure_text  the guest's own date words [مقرر — 17 نوفمبر 2026, H9 fix 3]; nights (stated only); dates_text (every
+                   date or time word). The MODEL NEVER COMPUTES A DATE: `_shared/hub/dates.ts` resolves the words against today in
+                   Asia/Riyadh (weekdays with «الجاي» / «اللي جاي» / «القادم» / «هذا» = the coming one, today's weekday → next
+                   week's; «بكرة», «بعد بكرة», «الليلة»; «ليلة الجمعة» = check-in Thursday; «الويكند» = Thursday → Saturday,
+                   confirmed; «الأسبوع الجاي» alone asked; «أول الشهر الجاي»; spoken numbers; Hijri via Umm al-Qura) into
+                   check_in / check_out and a status: exact, or confirm / ambiguous / past / order → ONE question with the
+                   candidate(s) (copy.md §2.1, §2.3; T41), «نعم» or hubd:yes takes them (T42). Every stay date the guest reads
+                   shows the weekday, the Gregorian and the Hijri date.
+frustrated         true for annoyance with the conversation («لا تضحك علي») — a correction with one apology, never a complaint
+dates_calendar     hijri | null — informative only since H9 fix 3 (a Hijri date is read like any date; copy.md §2.2 no longer sent)
 room_type          a room_types key of the branch, or "any", or none
 breakfast          with | without | none
 adults, children   integers or none; child_ages[] (0–17) or none
@@ -259,6 +267,8 @@ Drafts carry a `kind`: `stay` (room booking), `hall`, `group`. Hall and group dr
 | T35 | after T32 | no answer within `hub_cancel_word_wait_hours` | — | opt-out recorded as a precaution [مقرر — 12 نوفمبر 2026], the existing reply sent while the window is open | unchanged |
 | T36 | `human` «بانتظار موظف» [مقرر — 15 نوفمبر 2026, H6c] | guest message the assistant can answer (small talk, a sourced question, the booking conversation) | — | the decision of the flow before the hand-off, executed in place; the flow kept for the resume (`state_before_human`); the wait for the team kept (the answer never clears it) | `human` (still waiting) |
 | T37 | `human` «بانتظار موظف» [مقرر — 15 نوفمبر 2026, H6c] | guest message it cannot answer (no source, a request for the team, media, a complaint …) | — | `handoff_add`: a short acknowledgement written by the model (copy.md §5 «Added to a waiting hand-off» as its fallback), a note line «إضافة إلى التحويل — …»; the same hand-off (no new staff alert); a complaint raises the priority | `human` (still waiting) |
+| T41 | any stay state [مقرر — 17 نوفمبر 2026, H9 fix 3] | date words the resolver cannot settle (a past date, a departure on or before the arrival, the weekend, «الأسبوع الجاي» alone, a weekday that does not match the day, a bare day that has passed) | — | ONE question with the candidate(s) (copy.md §2.1 / §2.3); a confirm keeps the dates as `_dates_pending`; the rest of the stay kept; never an old summary resent |
+| T42 | after T41 (a confirm) [H9 fix 3] | «نعم» (hubd:yes, or the word typed) | — | the dates shown taken; the booking continues (stayIntent) — «تواريخ أخرى» (hubd:other) asks the dates again (T15) |
 | T38 | `human` «مع موظف» [مقرر — 15 نوفمبر 2026, H6c] | guest message after the branch's «عودة المساعد» minutes (default 15) with no staff message | not test mode, not a cart order, not abuse | resume: the decision of the flow before the hand-off; a hand-off from it is a NEW hand-off (its own staff alert) | that flow's next state, or `human` «بانتظار موظف» |
 
 #### 2.3.4 Timers — every value is a Setting
@@ -566,7 +576,7 @@ The existing `admin/src/pages/Guests.tsx` (guest record) is extended, not copied
 ### 4.2 Rate calendar and availability (through the adapter, §8.1)
 
 - A stay price only for exact dates, from `quote_stay` (per night, breakfast, extra beds, total incl. VAT, `instant` and its reason), with the members' code when the profile is an «إياب» member with consent and a members-only offer is live.
-- «يبدأ من» for a room type without dates: `room_from_prices` (the lowest open rate over the next 60 nights) with the site's own sentence «يبدأ من {x} ريالًا لليلة شامل الضريبة» [مقرر — 25 Oct 2026], and a prompt for the dates.
+- ~~«يبدأ من» for a room type without dates~~ — replaced by Ahmed, 17 Nov 2026 (H9 fix 3): a room price question without dates asks for the arrival and departure dates (or nights) and the guests in one natural question, then quotes the real total of those nights from `quote_stay` (the room cards); never «يبدأ من», «ابتداءً من», "from", "starting at" or a lowest price in a guest reply (the guard refuses them); a guest who insists without dates gets copy.md §2.3 «تختلف أسعار الغرف حسب تواريخ الإقامة…» with the website's booking link, no price. `room_from_prices` stays the website's (room pages), never the assistant's.
 - Availability is never said in general ("we have rooms") — only as the quote's answer for those dates.
 - Only room types the site offers (`site_room_types` / `internal.site_visible`); a hidden type does not exist for the assistant.
 - The website and WhatsApp sell from the same inventory (3 units of each type per night today [مقرر — Ahmed, 28 Oct 2026]); nights after the last entered date (31 Dec 2026 today) are closed — the rate falls back to the base rate but the inventory is closed (Facts §0) — so a stay into them becomes a booking request; the assistant says so with the engine's reason.

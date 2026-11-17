@@ -45,10 +45,15 @@ export const UNITS = [
   { key: 'rooftop', kind: 'dining', branch: 'airport-road', knowledge_hidden: true },
 ];
 export const PERSONA = { tone: 2, emoji: false, greeting_new_ar: 'مرحبًا بك في {unit_name}.', greeting_new_en: 'Welcome to {unit_name}.', greeting_returning_ar: 'أهلًا بعودتك، {first_name}.', greeting_returning_en: 'Welcome back, {first_name}.' };
-export const MODELS = { understand: 'claude-haiku-5-5', tag: 'claude-haiku-5-5', translate: 'claude-haiku-5-5', compose: 'claude-sonnet-5-5', suggest: 'claude-sonnet-5-5' };
+// H9 fix 3 (Ahmed, 17 Nov 2026): understanding, tagging, translation and images on Sonnet 5.5, the staff path on Opus 5.5;
+// HUB_MODEL_SET=h9 runs the models before it (Haiku understanding) — to measure the cost per guest message before / after
+export const MODELS = process.env.HUB_MODEL_SET === 'h9'
+  ? { understand: 'claude-haiku-5-5', tag: 'claude-haiku-5-5', translate: 'claude-haiku-5-5', vision: 'claude-haiku-5-5', compose: 'claude-sonnet-5-5', suggest: 'claude-sonnet-5-5', staff: 'claude-sonnet-5-5' }
+  : { understand: 'claude-sonnet-5-5', tag: 'claude-sonnet-5-5', translate: 'claude-sonnet-5-5', vision: 'claude-sonnet-5-5', compose: 'claude-sonnet-5-5', suggest: 'claude-sonnet-5-5', staff: 'claude-opus-5-5' };
 export const PRICES = {
   'claude-haiku-5-5': { input: 0.1, output: 0.5, long_from: 100000, long_input: 0.5, long_output: 2.5, read_at: '2026-11-14' },
-  'claude-sonnet-5-5': { input: 2, output: 10, read_at: '2026-11-14' },
+  'claude-sonnet-5-5': { input: 2, output: 10, cache_read: 0.1, read_at: '2026-11-14' },
+  'claude-opus-5-5': { input: 4, output: 20, cache_read: 0.2, read_at: '2026-11-17' },
 };
 export const TODAY = '2026-11-14';
 
@@ -66,7 +71,9 @@ const scrubCard = (c) => (/^k-wifi-password-/.test(c.id) ? { ...c, text_ar: `{ca
 /** hub_knowledge_for, offline: the seed's cards by the retrieval rule, the FAQ by faq-topics.json. H7b: `extra` = the
  *  cards learned in a bank conversation ({id, unit_keys, topic_keys, title_ar, …}) and the seed cards it archived */
 export function knowledgeFor(unit, topics, L, branch, extra = { cards: [], removed: [] }) {
-  const all = [...SEED.filter((c) => !(extra.removed ?? []).includes(c.id)), ...(extra.cards ?? [])];
+  // H9 fix 3: a reply rule (card_kind rule) is never a fact — it travels apart, as public.hub_knowledge_for returns it
+  const rulesAll = (extra.cards ?? []).filter((c) => c.card_kind === 'rule');
+  const all = [...SEED.filter((c) => !(extra.removed ?? []).includes(c.id)), ...(extra.cards ?? []).filter((c) => c.card_kind !== 'rule')];
   const cards = all.map((c, i) => ({ key: c.id, unit_keys: c.unit_keys, topic_keys: c.topic_keys, expires_on: c.expires_on ?? null, sort: i }));
   const got = retrieve(UNITS, TOPICS, cards, unit, topics, TODAY, 5, branch ?? null);
   const byId = Object.fromEntries(all.map((c) => [c.id, scrubCard(c)]));
@@ -85,6 +92,8 @@ export function knowledgeFor(unit, topics, L, branch, extra = { cards: [], remov
         branch: UNITS.find((x) => x.key === s.unit_keys[0])?.branch ?? null };
     }),
     faq,
+    rules: rulesAll.filter((c) => (c.topic_keys ?? []).some((k) => topics.includes(k))).slice(0, 5)
+      .map((c) => ({ id: c.id, key: c.id, title: L === 'en' ? c.title_en : c.title_ar, text: L === 'en' ? c.text_en : c.text_ar, card_kind: 'rule' })),
   };
 }
 

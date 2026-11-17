@@ -63,6 +63,8 @@ import {
 } from '../_shared/hub/webhook.ts';
 import { autoPayload, cleanParam, replyLocale, verifySignature, type AutoMessage, type AutoTemplate, type Locale, type OfferVars } from './templates.ts';
 import { drainReminders, drainStaff, emailReports, ensureTemplate, refreshDueTemplates, staffChat, type Call } from '../_shared/hub/staff-send.ts';
+import { staffVoiceText } from '../_shared/hub/staff-voice.ts';
+import { openaiTranscribe } from '../_shared/hub/media.ts';
 import { anthropicModel } from '../_shared/hub/model.ts';
 import { CHECKOUT_TEMPLATE, checkoutPayload } from '../_shared/hub/departures.ts';
 import { fixed } from '../_shared/hub/copy.ts';
@@ -285,25 +287,31 @@ async function optOutReply(profileId: string, m: Inbound, branch: string, L: Loc
   return o.status;
 }
 
+/** an inbound message's media file from YCloud (the key to YCloud's own hosts only); null when it cannot be fetched */
+async function downloadMedia(m: Inbound): Promise<{ buf: Uint8Array<ArrayBuffer>; mime: string } | null> {
+  if (!m.media?.link) return null;
+  const link = new URL(m.media.link);
+  if (link.protocol !== 'https:') return null;
+  const key = Deno.env.get('YCLOUD_API_KEY');
+  const headers: Record<string, string> = key && (link.hostname === 'ycloud.com' || link.hostname.endsWith('.ycloud.com')) ? { 'X-API-Key': key } : {};
+  const res = await fetch(link, { headers, signal: AbortSignal.timeout(20_000) });
+  if (!res.ok) {
+    console.warn('wa-automation: media download refused', res.status);
+    return null;
+  }
+  const len = Number(res.headers.get('content-length') ?? 0);
+  if (len > MEDIA_MAX_BYTES) return null;
+  const buf = new Uint8Array(await res.arrayBuffer());
+  if (!buf.length || buf.length > MEDIA_MAX_BYTES) return null;
+  return { buf, mime: (m.media.mime ?? res.headers.get('content-type') ?? 'application/octet-stream').split(';')[0].trim() };
+}
+
 /** a media file of an inbound message → hub-media (only while stored; never in test mode); never throws */
 async function storeMedia(m: Inbound, unit: string, conversation: string, message: string): Promise<boolean> {
   try {
-    if (!m.media?.link) return false;
-    const link = new URL(m.media.link);
-    if (link.protocol !== 'https:') return false;
-    const key = Deno.env.get('YCLOUD_API_KEY');
-    // the API key goes to YCloud's own hosts only
-    const headers: Record<string, string> = key && (link.hostname === 'ycloud.com' || link.hostname.endsWith('.ycloud.com')) ? { 'X-API-Key': key } : {};
-    const res = await fetch(link, { headers, signal: AbortSignal.timeout(20_000) });
-    if (!res.ok) {
-      console.warn('wa-automation: media download refused', res.status);
-      return false;
-    }
-    const len = Number(res.headers.get('content-length') ?? 0);
-    if (len > MEDIA_MAX_BYTES) return false;
-    const buf = new Uint8Array(await res.arrayBuffer());
-    if (!buf.length || buf.length > MEDIA_MAX_BYTES) return false;
-    const mime = (m.media.mime ?? res.headers.get('content-type') ?? 'application/octet-stream').split(';')[0].trim();
+    const got = await downloadMedia(m);
+    if (!got) return false;
+    const { buf, mime } = got;
     const path = `${unit}/${conversation}/${message}.${mediaExt(mime)}`;
     const up = await fetch(`${url()}/storage/v1/object/hub-media/${path}`, {
       method: 'POST',
@@ -409,9 +417,23 @@ async function handleInbound(ev: any, test: boolean): Promise<Record<string, unk
     const who = await rpc<{ kind: string; test_as_guest: boolean } | null>('hub_staff_number', { p_phone: m.from });
     if (!who.ok) console.error('wa-automation: staff lookup failed', who.status);
     else if (who.data && !who.data.test_as_guest) {
-      if (m.kind !== 'text' && m.kind !== 'interactive' && m.kind !== 'button_reply') return { kind: 'staff', handled: false, message_kind: m.kind };
+      // H9 fix 3 (Ahmed, 17 Nov 2026): a staff or management voice note — transcribed (the unit's daily minutes), then its
+      // transcript is the colleague's text on the staff path; one that cannot be heard gets «اكتبها لي»
+      let voice: { text: string; seconds: number } | null = null;
+      let voiceFailed = false;
+      if (m.kind === 'audio') {
+        const gate = await rpc<{ ok: boolean; left_seconds?: number; model?: string }>('hub_staff_voice_gate', { p_channel: m.to });
+        const got = await downloadMedia(m).catch(() => null);
+        const v = await staffVoiceText({ bytes: got?.buf ?? null, mime: got?.mime ?? 'audio/ogg', leftSeconds: gate.ok && gate.data?.ok ? Number(gate.data.left_seconds ?? 0) : 0,
+          model: String(gate.ok ? gate.data?.model ?? 'gpt-transcribe' : 'gpt-transcribe'), transcribe: openaiTranscribe(Deno.env.get('OPENAI_API_KEY') ?? '') });
+        if (v.seconds > 0 && (v.ok || (v.reason !== 'capped' && v.reason !== 'too_long' && v.reason !== 'download'))) await rpc('hub_staff_voice_add', { p_channel: m.to, p_seconds: v.seconds, p_test: test });
+        if (v.ok) voice = { text: v.text, seconds: v.seconds };
+        else voiceFailed = true;
+        console.log('wa-automation: staff voice', v.ok ? 'transcribed' : v.reason);
+      } else if (m.kind !== 'text' && m.kind !== 'interactive' && m.kind !== 'button_reply') return { kind: 'staff', handled: false, message_kind: m.kind };
       const model = anthropicModel(Deno.env.get('ANTHROPIC_API_KEY') ?? '');
-      const r = await staffChat(call, content, model, { from: m.from, to: m.to, text: m.text, id: m.id ?? '', sentAt: m.sentAt, kind: m.kind, buttonId: m.buttonId }, test).catch((e) => {
+      const r = await staffChat(call, content, model, { from: m.from, to: m.to, text: voice ? voice.text : m.text, id: m.id ?? '', sentAt: m.sentAt, kind: m.kind, buttonId: m.buttonId,
+        audioSeconds: voice?.seconds ?? null, voiceFailed }, test).catch((e) => {
         console.error('wa-automation: staff chat failed', String(e).slice(0, 120));
         return { staff: true, error: true };
       });

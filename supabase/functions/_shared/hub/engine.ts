@@ -8,8 +8,9 @@
  * Nothing here logs a guest's words or the understanding.
  */
 import { decide, handoffNote, replyLicence, type Action, type Context, type Decision, type Draft, type Event, type State } from './machine.ts';
-import { applyFloor, extractJson, recheckDates, understandUser, validateUnderstanding, type Lists, type Understanding } from './understand.ts';
-import { buttonForText, fixed, greeting, hasSalaam, quickReplies, salaamGreeting, statusText, stripOpening, thirdLanguage, type Lang, type Persona } from './copy.ts';
+import { applyDates, applyFloor, extractJson, understandStatic, understandUser, validateUnderstanding, type Lists, type Understanding } from './understand.ts';
+import { normalize as normDates, stayDateText } from './dates.ts';
+import { buttonForText, COPY, fixed, greeting, hasSalaam, quickReplies, salaamGreeting, statusText, stripOpening, thirdLanguage, type Lang, type Persona } from './copy.ts';
 import { composeExamples, composeSystem, composeUser, parseComposed, summarySystem, understandDeparture, understandSchema, understandSystem, withGreeting } from './compose/index.ts';
 import { cleanSummary, refOrRoom, summaryOk, summaryUser } from './staff.ts';
 import { buildPayload, cardIds, guardPayload, hasSource, offersFor, type Payload } from './sources/index.ts';
@@ -33,7 +34,7 @@ type Json = any;
 export interface Deps {
   model: ModelFn;
   /** public.hub_knowledge_for */
-  knowledge: (unit: string, topics: string[], lang: Lang, branch: string | null) => Promise<{ cards: Json[]; faq: Json[] }>;
+  knowledge: (unit: string, topics: string[], lang: Lang, branch: string | null) => Promise<{ cards: Json[]; faq: Json[]; rules?: Json[] }>;
   /** the offers' live snapshot rows */
   offers: () => Promise<Json[]>;
   adapter: InventoryAdapter;
@@ -149,6 +150,9 @@ const branchName = (c: Json, slug: string, L: Lang) => {
   return String(b ? (L === 'en' ? b.name_en : b.name_ar) : slug);
 };
 
+/** H9 fix 3: a plain yes to a question we asked («نعم», «إيه», «صح», «تمام», "yes") — accepts dates waiting for a confirm */
+export const isYes = (t: string): boolean => /^(?:نعم|ايوه|ايوا|ايو|اي|ايه|اه|صح|صحيح|بالضبط|مضبوط|تمام|اكيد|طيب|اوكي|ok|okay|yes|yeah|yep|correct|right)(?:\s+(?:نعم|صح|تمام|كذا|هيك))?$/.test(normDates(t));
+
 export async function runTurn(claim: Json, deps: Deps): Promise<Outcome> {
   const conv = claim.conversation;
   const unit = claim.unit;
@@ -242,7 +246,7 @@ export async function runTurn(claim: Json, deps: Deps): Promise<Outcome> {
       lists.room_types = [];
     }
     const layer: Layer = turnKind === 'tag' ? 'tag' : 'understand';
-    const model = String(models[layer] ?? models.understand ?? 'claude-haiku-5-5');
+    const model = String(models[layer] ?? models.understand ?? 'claude-sonnet-5-5');
     const user = understandUser(understandSchema(), lists, {
       today: claim.today, unit: unit.key, state: conv.state, draft: claim.draft?.fields ?? null, history: claim.history ?? [], turn: texts,
       departure: claim.departure ? understandDeparture() : null,
@@ -250,7 +254,8 @@ export async function runTurn(claim: Json, deps: Deps): Promise<Outcome> {
     let note = '';
     let down: string | null = null;
     for (let attempt = 0; attempt < 2 && !u; attempt++) {
-      const r = await deps.model({ layer, model, system: understandSystem(), user: note ? `${user}\n\nYOUR PREVIOUS ANSWER WAS INVALID: ${note}. Return the JSON object only.` : user });
+      // H9 fix 3: the closed lists and the schema after the system block — the cached prefix (the turn's parts after it)
+      const r = await deps.model({ layer, model, system: `${understandSystem()}\n\n${understandStatic(understandSchema(), lists)}`, user: note ? `${user}\n\nYOUR PREVIOUS ANSWER WAS INVALID: ${note}. Return the JSON object only.` : user });
       record(layer, model, r);
       if (!r.ok) {
         if (r.error === 'credit') break;
@@ -263,7 +268,8 @@ export async function runTurn(claim: Json, deps: Deps): Promise<Outcome> {
       }
       try {
         const v = validateUnderstanding(extractJson(r.text), lists);
-        if (v.ok) u = recheckDates(applyFloor(v.value, Number(set.confidence_floor ?? 0.7)), claim.today);
+        // H9 fix 3: the dates from the guest's words, resolved by code against today (the open draft's dates for a correction)
+        if (v.ok) u = applyDates(applyFloor(v.value, Number(set.confidence_floor ?? 0.7)), claim.today, claim.draft?.kind === 'stay' ? claim.draft.fields ?? null : null);
         else note = `invalid fields: ${v.errors.join(', ')}`;
       } catch {
         note = 'not a JSON object';
@@ -314,6 +320,7 @@ export async function runTurn(claim: Json, deps: Deps): Promise<Outcome> {
   const ev: Event = tapped
     ? { type: 'tap', button: tapped.button, draft_id: tapped.draft_id, version: tapped.version, ...(tapped.room ? { room: tapped.room } : {}), ...(tapped.page !== undefined ? { page: tapped.page } : {}) }
     : { type: 'guest', understanding: u, kind: silent ? 'reaction' : media ? 'media' : sticker ? 'sticker' : buttonId ? 'button' : 'text', button_id: buttonId, cart,
+        affirm: texts.length === 1 && isYes(texts[0]),
         media: prep.route ? { reason: prep.route.reason, ...(prep.route.priority ? { priority: prep.route.priority } : {}), ...(prep.route.ack ? { ack: true } : {}) } : null };
   // a problem photo's acknowledgement reads the photo's staff line with the caption (never an identity or payment image)
   if (prep.route?.reason === 'problem_photo') texts = [...prep.captions, L === 'en' ? `[A photo of a problem: ${prep.route.summary}]` : `[صورة لمشكلة: ${prep.route.summary}]`];
@@ -332,11 +339,13 @@ export async function runTurn(claim: Json, deps: Deps): Promise<Outcome> {
   // the line the code puts before the first message (told to the model so it does not welcome or return the salaam twice)
   const openingLine = (): string | null => {
     const sal = L === 'ar' && texts.some(hasSalaam);
+    // H9 fix 3: the apology the code puts first (a guest annoyed with the conversation) — compose never apologizes again
+    const apo = d.apology && !answers.length ? fixed('apology', L) : null;
     if (conv.first_reply && !answers.length) {
       const g0 = greeting(unit.persona as Persona, L, unitName(deps.content, unit, L), claim.guest?.first_name ?? null);
-      return sal ? salaamGreeting(g0) : g0;
+      return [sal ? salaamGreeting(g0) : g0, apo].filter(Boolean).join('\n');
     }
-    return sal && !answers.length ? fixed('salaam_line', 'ar') : null;
+    return [sal && !answers.length ? fixed('salaam_line', 'ar') : null, apo].filter(Boolean).join('\n') || null;
   };
   let noQuote = false;
   let ackDone = false;
@@ -352,7 +361,10 @@ export async function runTurn(claim: Json, deps: Deps): Promise<Outcome> {
   const draftIdFor = (dec: Decision): string => (draft && !dec.draft_replace && !replaced) ? draft.id : (newDraftId ??= crypto.randomUUID());
   const versionFor = (dec: Decision): number => (dec.draft_patch || lastPatch) ? ((draft && !dec.draft_replace && !replaced) ? draft.version + 1 : 1) : (draft?.version ?? 1);
   const fieldsOf = (dec: Decision): Record<string, unknown> => dec.draft_patch?.fields ?? lastPatch?.fields ?? draft?.fields ?? {};
-  const fmt: Fmt = { sarText: deps.sarText, longDate: deps.longDate, content: deps.content, limits: set.limits ?? null };
+  // H9 fix 3: every stay date the guest reads (the summary, the cards, a question) shows the weekday, the Gregorian date and
+  // the Umm al-Qura date: «الخميس 19 نوفمبر 2026 (9 جمادى الآخرة 1448)»
+  const stayDate = (iso: string, LL: Lang) => stayDateText(deps.longDate, iso, LL);
+  const fmt: Fmt = { sarText: deps.sarText, longDate: stayDate, content: deps.content, limits: set.limits ?? null };
   let coversP: Promise<Record<string, string>> | null = null;
   const covers = (): Promise<Record<string, string>> => (coversP ??= (deps.covers ? deps.covers().catch((): Record<string, string> => ({})) : Promise.resolve({} as Record<string, string>)));
   const lastRoom = claim.guest?.last_room ?? null;
@@ -399,13 +411,17 @@ export async function runTurn(claim: Json, deps: Deps): Promise<Outcome> {
     const f = dec.draft_patch?.fields ?? lastPatch?.fields ?? draft?.fields ?? null;
     if (!f) return null;
     const k: Record<string, unknown> = {};
-    if (f.check_in) k.arrival = deps.longDate(String(f.check_in), L);
-    if (f.check_out) k.departure = deps.longDate(String(f.check_out), L);
+    if (f.check_in) k.arrival = stayDate(String(f.check_in), L);
+    if (f.check_out) k.departure = stayDate(String(f.check_out), L);
     for (const x of ['adults', 'children', 'rooms_count', 'nights'] as const) if (typeof f[x] === 'number') k[x] = f[x];
     if (Array.isArray(f.child_ages)) k.child_ages = f.child_ages;
     if (typeof f.guest_name === 'string' && f.guest_name.trim()) k.guest_name = f.guest_name;
     return Object.keys(k).length ? { guest_gave: k } : null;
   };
+  // H9 fix 3: the owner's reply rules for this turn's topics (one read, started now) — compose follows them on every action
+  const rulesP: Promise<Json[]> = u && u.topics.length
+    ? deps.knowledge(unit.key, u.topics, L, u.branch && u.branch !== 'both' ? u.branch : null).then((k) => ((k as Json).rules ?? []) as Json[]).catch(() => [])
+    : Promise.resolve([]);
   const emptyPayload = (): Payload => buildPayload({ cards: [], faq: [] }, { offers: null, venue: null, first_name: claim.guest?.first_name ?? null, cancellation: String(deps.content.cancellation_line[L]) });
   const unanswered: string[] = [];
   const lastGuest = msgs[msgs.length - 1]?.id as string | undefined;
@@ -442,6 +458,11 @@ export async function runTurn(claim: Json, deps: Deps): Promise<Outcome> {
           } else if (a.key === 'result_nothing_instant') {
             push(fixed(a.key, L), { kind: 'interactive', payload: { buttons: nothingInstantButtons(draftIdFor(dec), versionFor(dec), L) } });
           }
+          else if (a.key === 'price_needs_dates') {
+            // H9 fix 3: the price depends on the dates — any date checked, and the website's booking link; never a price
+            const link = bookingUrl(await deps.knowledge(unit.key, ['website'], L, null).catch(() => ({ cards: [], faq: [] })), L);
+            push(fixed('price_needs_dates', L, { booking_url: link }));
+          }
           else if (a.key === 'booking_link') {
             // the website's booking link again, with «التحدث مع موظف» (copy.md §4.0)
             const link = bookingUrl(await deps.knowledge(unit.key, ['website'], L, null).catch(() => ({ cards: [], faq: [] })), L);
@@ -460,16 +481,23 @@ export async function runTurn(claim: Json, deps: Deps): Promise<Outcome> {
           lastAction = 'أُرسلت حالة الحجز';
           break;
         }
-        case 'from_price': {
-          const rooms = await deps.adapter.roomTypes(a.branch).catch(() => []);
-          const lines: string[] = [];
-          for (const r of rooms) {
-            const p = await deps.adapter.fromPrice(a.branch, r.key).catch(() => null);
-            if (p) lines.push(`${L === 'en' ? r.name_en : r.name_ar}: ${String(deps.content.price_from_line[L]).replace('{amount}', deps.sarText(p, L))}`);
-          }
-          if (!lines.length) return decide({ state: dec.next, event: { type: 'answer_result', ok: false }, draft, ctx });
-          push((a.branch !== unit.branch ? `${branchName(deps.content, a.branch, L)}\n` : '') + lines.join('\n'));
-          lastAction = 'أُرسلت أسعار «يبدأ من»';
+        case 'dates_question': {
+          // H9 fix 3: ONE short question showing the resolved candidate(s) (copy.md §2); a confirm with «نعم» / «تواريخ أخرى»
+          const c0 = a.candidates[0] ? stayDate(a.candidates[0], L) : '';
+          const c1 = a.candidates[1] ? stayDate(a.candidates[1], L) : '';
+          if (a.status === 'confirm' && a.pending?.check_in) {
+            const body = a.pending.check_out
+              ? fixed('dates_confirm', L, { check_in: stayDate(a.pending.check_in, L), check_out: stayDate(a.pending.check_out, L) })
+              : a.why === 'weekday_mismatch' && c1 ? fixed('dates_which', L, { date_a: c0, date_b: c1 })
+              : fixed('dates_confirm_arrival', L, { check_in: stayDate(a.pending.check_in, L) });
+            const titles = (L === 'en' ? COPY.dates_confirm.buttons.en : COPY.dates_confirm.buttons.ar) as string[];
+            if (a.why === 'weekday_mismatch' && c1 && !a.pending.check_out) push(body);
+            else push(body, { kind: 'interactive', payload: { buttons: [{ id: 'hubd:yes', title: titles[0] }, { id: 'hubd:other', title: titles[1] }] } });
+          } else if (a.status === 'past' && c0) push(fixed('dates_past', L, { date: c0 }));
+          else if (a.status === 'order' && c0) push(fixed('dates_order', L, { check_in: c0 }));
+          else if (a.why === 'week' && c0) push(fixed('dates_week', L, { date: c0 }));
+          else push(fixed('dates_unclear', L));
+          lastAction = 'سؤال لتأكيد التواريخ';
           break;
         }
         case 'answer': {
@@ -488,7 +516,8 @@ export async function runTurn(claim: Json, deps: Deps): Promise<Outcome> {
               if (!a.nogap) gap();
               break;
             }
-            const c = await compose(askFor ? { ...payload, quote: stayKnown(dec) ?? payload.quote } : payload, 'answer', askFor);
+            // the guest's own stay details (H8; H9 fix 3: also without ASK_FOR) so a repeated date or count is never refused
+            const c = await compose({ ...payload, quote: stayKnown(dec) ?? payload.quote }, 'answer', askFor);
             if (askFor && c !== 'credit' && c !== 'guard' && c !== 'error' && c.reply) skipAsk = true;
             if (c === 'credit') return null;
             if (c === 'guard' || c === 'error') break;
@@ -553,7 +582,9 @@ export async function runTurn(claim: Json, deps: Deps): Promise<Outcome> {
             : a.slots.some((k) => ['rooms', 'organisation'].includes(k)) ? 'group_ask'
             // H8 (copy.md §4.3): the booking's later questions
             : a.slots.includes('change') ? 'ask_change' : a.slots[0] === 'guest_name' && a.slots.length === 1 ? 'ask_guest_name'
-            : a.slots[0] === 'breakfast' ? 'ask_breakfast' : a.slots[0] === 'child_ages' ? 'ask_child_ages' : 'booking_ask';
+            : a.slots[0] === 'breakfast' ? 'ask_breakfast' : a.slots[0] === 'child_ages' ? 'ask_child_ages'
+            // H9 fix 3: the arrival known — only the departure or the nights
+            : a.slots.length === 1 && a.slots[0] === 'departure' ? 'ask_departure' : 'booking_ask';
           push(c === 'guard' || c === 'error' || !c.reply ? fixed(fb, L) : stripOpening(c.reply) || fixed(fb, L));
           lastAction = 'سؤال عن تفاصيل الإقامة';
           break;
@@ -763,6 +794,10 @@ export async function runTurn(claim: Json, deps: Deps): Promise<Outcome> {
     const model = String(models.compose ?? 'claude-sonnet-5-5');
     const persona: Persona = unit.persona ?? {};
     const system = composeSystem(unitName(deps.content, unit, L), L, persona.tone ?? 2);
+    if (!payload.rules?.length) {
+      const rr = (await rulesP).map((c) => ({ id: String(c.id), title: String(c.title ?? ''), text: String(c.text ?? '') })).filter((r) => r.text);
+      if (rr.length) payload = { ...payload, rules: rr.slice(0, 5) };
+    }
     const user = composeUser({ action, ask_for: askFor, branch: unit.branch, turn: texts, history: claim.history ?? [], payload, opening: openingLine() });
     const gp = guardPayload(payload);
     let reason = '';
@@ -799,7 +834,7 @@ export async function runTurn(claim: Json, deps: Deps): Promise<Outcome> {
       const g = guard(c.reply, gp, { language: L, max_chars: Number(set.reply_max_chars ?? 600), forbidden: deps.forbidden ?? claim.forbidden ?? [], emoji_allowed: !!persona.emoji });
       if (g.ok) return c;
       finish.guard_refusals.push(g.reasons);
-      reason = retryReason(g.reasons);
+      reason = retryReason(g.reasons, g.detail);
     }
     return 'guard';
   };
@@ -852,6 +887,10 @@ export async function runTurn(claim: Json, deps: Deps): Promise<Outcome> {
     m.seq = i + 1;
     delete m.handoff;
   });
+  // H9 fix 3 (Ahmed, 17 Nov 2026): a guest annoyed with the conversation — one short apology before the fix (copy.md §2)
+  if (final.apology && answers.length && !final.transitions.includes('T21')) {
+    answers[0] = { ...answers[0], body: `${fixed('apology', L)}\n${answers[0].body}` };
+  }
   // the first reply of an episode opens with the greeting line (copy.md §1), added by code; a salaam in the guest's Arabic
   // message opens it with «وعليكم السلام» (copy.md §1.5, Ahmed 14 Nov 2026) — on the first reply and later in the episode
   const salaam = L === 'ar' && texts.some(hasSalaam);

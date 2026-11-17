@@ -11,7 +11,8 @@
 // Guest Hub H8 (16 Nov 2026): a sixth section «المحادثات والمساعد» (public.report_hub, spec §5.9); the daily WhatsApp
 // report's ?hub_r=YYYY-MM-DD lands here with ?day= — that day as the period, scrolled to the section.
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
+import * as K from '../lib/knowledge';
 import { flushSync } from 'react-dom';
 import * as api from '../lib/api';
 import * as m from '../lib/metrics';
@@ -380,6 +381,22 @@ function ClubSection({ s, first }: { s: Sect<m.ClubPartners>; first: boolean }) 
 }
 
 // ───────────────────────── المحادثات والمساعد (Guest Hub H8) ─────────────────────────
+/** H9 fix 3 (Ahmed, 17 Nov 2026): the daily report's link (?hub_r=) lands here — «يحتاج قرارك» one click away */
+function DecisionsLink() {
+  const { me } = useSession();
+  const [n, setN] = useState<number | null>(null);
+  useEffect(() => {
+    if (!api.canView(me, 'knowledge')) return;
+    K.decisions().then((r) => setN(r.length)).catch(() => setN(null));
+  }, [me]);
+  if (!n) return null;
+  return (
+    <p className="note-amber text-sm no-print" role="status" data-decisions-link>
+      يحتاج قرارك: <span className="num">{n}</span> — <Link className="link-bronze" to="/knowledge?tab=decisions">فتح «يحتاج قرارك» في قاعدة المعرفة</Link>
+    </p>
+  );
+}
+
 function HubSection({ s, money, first }: { s: Sect<m.HubReport>; money: boolean; first: boolean }) {
   const d = s.data;
   const t = d ? d.units.reduce((a, u) => ({ conv: a.conv + u.conversations, ai: a.ai + u.assistant_only, ho: a.ho + u.handed_off, q: a.q + u.quoted, bk: a.bk + u.booked, cost: a.cost + Number(u.model_cost_usd ?? 0) }),
@@ -389,6 +406,7 @@ function HubSection({ s, money, first }: { s: Sect<m.HubReport>; money: boolean;
     <section id="hub" aria-labelledby="hub-h" className="grid gap-3 report-section" data-section="hub">
       <SectionHead id="hub" title="المحادثات والمساعد" />
       <ErrorBox error={s.error} />
+      <DecisionsLink />
       {d && t && (
         <>
           <div className={`grid grid-cols-2 ${money ? 'md:grid-cols-6' : 'md:grid-cols-5'} gap-3`}>

@@ -94,7 +94,8 @@ const deps = (a, m, extra = {}) => ({
   model: m, knowledge: async (u, t, L, b) => knowledgeFor(u, t, L, b), offers: async () => [], adapter: a, content: CONTENT,
   longDate: (iso, L) => longDate(CONTENT, iso, L), sarText: (x, L) => sarText(x, L), covers: async () => COVERS, ...extra,
 });
-const D = { check_in: '2026-12-08', check_out: '2026-12-10' };
+// H9 fix 3: the guest's date words (the engine resolves them in code; check_in / check_out kept for the direct decide() cases)
+const D = { check_in: '2026-12-08', check_out: '2026-12-10', arrival_text: '8 ديسمبر', departure_text: '10 ديسمبر' };
 const item = (messages, context = {}, language = 'ar') => ({ key: 'h8', unit_key: 'shafa-road', language, messages, context, expect: { action: 'conversation', steps: [] } });
 const cardsOf = (f) => f.messages.filter((m) => typeof m.payload?.room_card === 'string');
 const buttonsOf = (f) => f.messages.flatMap((m) => m.payload?.buttons ?? []).map((b) => b.id);
@@ -236,7 +237,7 @@ const live = (ctx, msg, st, draft) => {
   const card = { room: 'x', name_ar: 'غرفة', name_en: 'Room', size_m2: null, bed_ar: null, bed_en: null, capacity: 2, extra_beds: 0, total: 400, base_total: null, instant: true, reason: null, offer: null, promo_code: null, fits: true, sort: 1 };
   const fmt = { sarText, longDate: (i, L) => longDate(CONTENT, i, L), content: CONTENT, limits: { max_nights: 90, same_day_cutoff: '23:45' } };
   const f = { ...D, adults: 2, breakfast: 'without', guest_name: 'Sara Ali', branch: 'shafa-road' };
-  check(!/m²|م²/.test(cardBody(card, f, 'ar', fmt)) && cardBody(card, f, 'ar', fmt).split('\n').length === 4, 'card: no size and no beds → that line left out');
+  check(!/m²|م²/.test(cardBody(card, f, 'ar', fmt)) && cardBody(card, f, 'ar', fmt).split('\n').length === 5, 'card: no size and no beds → that line left out (H9 fix 3: the dates line kept)');
   const req = { ...card, instant: false, reason: 'too_long', extra_beds: 1 };
   const en = summaryBody(req, f, 'en', fmt, 'Shafa Road');
   check(en.includes('Extra bed: 1 extra bed') && en.includes('Stays longer than 90 nights are confirmed by the reception.') && en.includes(String(CONTENT.cancellation_line.en)) && en.includes('Payment on arrival at the hotel.'), 'summary (en): the extra-bed line, the request reason with its limit, the cancellation sentence, payment on arrival');

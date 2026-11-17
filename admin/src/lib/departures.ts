@@ -39,6 +39,9 @@ export interface DepBranch {
   branch: string;
   check_on: boolean;
   review_on: boolean;
+  /** H9 fix 3 (Ahmed, 17 Nov 2026): «تذكير رفع القائمة» — the 07:00 / 08:00 reminders and the 08:30 alert, ON by default,
+   *  independent of the two sending switches */
+  remind_on?: boolean;
   last_upload: { date: string; at: string; kept: number } | null;
   tomorrow_uploaded: boolean;
   /** H9 fix 1: the list of TODAY (uploaded each morning by 07:00) and today's reminders */
@@ -65,6 +68,8 @@ export const overview = () => call<DepOverview>('hub_departures_overview');
 export const list = (branch: string, date: string) => call<DepList>('hub_departures_list', { p_branch: branch, p_date: date });
 export const exclude = (id: string, on: boolean) => call<{ ok: boolean; row: DepRow }>('hub_departure_exclude', { p_id: id, p_on: on });
 export const markExtend = (id: string, on: boolean) => call<{ ok: boolean; row: DepRow }>('hub_departure_mark_extend', { p_id: id, p_on: on });
+export const remindSet = (branch: string, on: boolean) =>
+  call<{ ok: boolean; previous: { remind_on: boolean } }>('hub_departure_remind_set', { p_branch: branch, p_on: on });
 export const switchSet = (branch: string, check: boolean | null, review: boolean | null) =>
   call<{ ok: boolean; previous: { check_on: boolean; review_on: boolean } }>('hub_departure_switch_set', { p_branch: branch, p_check: check, p_review: review });
 

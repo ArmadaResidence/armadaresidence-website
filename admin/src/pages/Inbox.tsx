@@ -22,18 +22,20 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import * as api from '../lib/api';
+import { canEdit } from '../lib/api';
 import { BRANCH_NAMES, riyadhDateTime, shortDate, STATUS_LABELS, west } from '../lib/format';
 import tplDefs from '../../../supabase/functions/_shared/hub/hub-templates.json';
 import {
   stateText, ACTIONS, DRAFT_ACTIONS, LANGUAGE_FILTERS, MARKS, OWNER_FILTERS, REJECT_REASONS, SHORTCUTS, STATE_LABELS, TABS, TAB_LABELS, TAG_LABELS, TEMPLATE_LABELS, approve, assign, assistError, banner,
   block, close, eventText, list, markUnanswered, mediaUrl, needsTranslation, newKey, ownerText, pauseUnit, reject, release, retry, send, sendError, sendSuggestion, statusText, suggest, takeOver,
-  standbyText, thread, timerTone, transfer, translate, waitingText, windowState, addNote,
+  standbyReasonText, standbyText, thread, timerTone, transfer, translate, waitingText, windowState, addNote,
   type Filters, type HubState, type InboxList, type InboxRow, type Msg, type RejectReason, type Tab, type Thread,
 } from '../lib/inbox';
 import { CancelButton, Confirm, DirtyScope, ErrorBox, Field, Loading, Modal, Spinner, useToast } from '../components/ui';
 import { flagWrong, flaggedIn, phoneAutoAdd } from '../lib/lab';
 import { useSession } from '../lib/session';
 import { handoffSeen } from '../lib/team';
+import StaffThreads from '../components/StaffThreads';
 import { MEDIA_CATEGORY_LABELS, MEDIA_STATUS_LABELS } from '../lib/hub';
 
 type View = 'list' | 'thread' | 'panel';
@@ -192,7 +194,27 @@ export default function Inbox() {
   const unitNames = useMemo(() => Object.fromEntries((data?.units ?? []).map((u) => [u.key, u.name])), [data]);
   const diningLive = (data?.units ?? []).some((u) => u.kind === 'dining' && u.status === 'active');
   const tabs: Tab[] = diningLive ? [...TABS.slice(0, 4), 'orders', 'closed'] : TABS;
+  // H9 fix 3: «الفريق» — the staff and management numbers' conversations (the system admin; «الفريق والتقارير» edit: its branches)
+  const { me } = useSession();
+  const staffTab = me?.role === 'admin' || canEdit(me, 'hub_team');
+  const teamOn = staffTab && sp.get('tab') === 'team';
 
+  const tabBar = (
+    <div className="inbox-tabs" role="tablist" aria-label="تبويبات المحادثات" data-tour="inbox-tabs">
+      {tabs.map((k) => {
+        const n = k === 'orders' ? null : data?.counts[k as keyof InboxList['counts']];
+        return (
+          <button key={k} type="button" role="tab" aria-selected={filters.tab === k} className={`inbox-tab ${filters.tab === k ? 'is-on' : ''}`}
+            onClick={() => setParam({ tab: k === 'waiting' ? null : k })} data-tab={k}>
+            {TAB_LABELS[k]}{n !== null && n !== undefined ? <span className="num inbox-count" data-count={k}>{n}</span> : null}
+          </button>
+        );
+      })}
+      {staffTab && (
+        <button type="button" role="tab" aria-selected={teamOn} className={`inbox-tab ${teamOn ? 'is-on' : ''}`} onClick={() => setParam({ tab: 'team', c: null })} data-tab="team">الفريق</button>
+      )}
+    </div>
+  );
   return (
     <div className="inbox grid gap-3" data-page="inbox" data-view={view}>
       <div className="flex flex-wrap items-end justify-between gap-2">
@@ -214,20 +236,16 @@ export default function Inbox() {
       )}
       <ErrorBox error={error} />
 
+      {teamOn ? (
+        <div className="grid gap-2" data-team-tab>
+          <div className="card">{tabBar}</div>
+          <StaffThreads />
+        </div>
+      ) : (
       <div className="inbox-grid">
         {/* ── the list ── */}
         <section className="inbox-pane pane-list card" aria-label="قائمة المحادثات" data-pane="list" data-tour="inbox-list">
-          <div className="inbox-tabs" role="tablist" aria-label="تبويبات المحادثات" data-tour="inbox-tabs">
-            {tabs.map((k) => {
-              const n = k === 'orders' ? null : data?.counts[k as keyof InboxList['counts']];
-              return (
-                <button key={k} type="button" role="tab" aria-selected={filters.tab === k} className={`inbox-tab ${filters.tab === k ? 'is-on' : ''}`}
-                  onClick={() => setParam({ tab: k === 'waiting' ? null : k })} data-tab={k}>
-                  {TAB_LABELS[k]}{n !== null && n !== undefined ? <span className="num inbox-count" data-count={k}>{n}</span> : null}
-                </button>
-              );
-            })}
-          </div>
+          {tabBar}
           <form className="grid gap-2 p-3 border-b border-line" data-tour="inbox-filters" data-filters role="search" onSubmit={(e) => { e.preventDefault(); setParam({ q: west(q).trim() || null }); }}>
             <label className="sr-only" htmlFor="inbox-q">بحث بالاسم أو الرقم أو رقم الحجز</label>
             <input id="inbox-q" className="field" type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder="الاسم أو الرقم أو AR-…" autoComplete="off" data-no-dirty data-search />
@@ -313,6 +331,7 @@ export default function Inbox() {
           {t ? <GuestPanel t={t} edit={edit} onBack={() => setView('thread')} onOpen={open} onAssign={(s) => act('assign', () => assign(t.conversation.id, s), 'أُسند المسؤول.')} /> : <p className="p-6 text-sm text-ink-muted">بيانات الضيف تظهر هنا.</p>}
         </aside>
       </div>
+      )}
 
       {t && c && (
         <>
@@ -473,7 +492,14 @@ function ThreadView({ t, now, edit, unitNames, composerRef, onBack, onPanel, onC
           <p className="text-xs text-ink-muted">
             {c.unit_name} · <span data-thread-state>{stateText(c.state, c.owner_kind, c.human_reason)}</span> · {ownerText(c.owner_kind, c.owner_name)}{c.is_test ? ` · ${MARKS.test}` : ''}
           </p>
+          {c.standby_until && <span className="text-xs text-bronze-text" data-standby-reason="waiting">ينتظر رد الفريق —</span>}
           {c.standby_until && <StandbyCountdown until={c.standby_until} className="text-xs font-semibold text-bronze-text" onEnd={() => window.setTimeout(() => void onChanged(), 12_000)} />}
+          {/* H9 fix 3: why the last turn waited or not */}
+          {!c.standby_until && c.standby_last?.reason && c.standby_last.reason !== 'tag' && (
+            <span className="text-xs text-ink-muted" data-standby-reason={c.standby_last.reason}>
+              {c.standby_last.reason === 'waiting' ? (c.standby_last.outcome === 'staff' ? 'انتظر رد الفريق — ردّ الفريق' : 'انتظر رد الفريق ثم ردّ المساعد') : standbyReasonText(c.standby_last.reason)}
+            </span>
+          )}
         </div>
         <button type="button" className="btn btn-ghost btn-sm inbox-narrow" onClick={onPanel} data-action="open-panel">الضيف</button>
       </header>

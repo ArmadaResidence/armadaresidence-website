@@ -17,7 +17,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { countWord, longDate, riyadhDateTime, type CountNoun } from '../lib/format';
 import { usd, type HubOverview, type HubUnit, type Persona, MODE_LABELS, MEDIA_CATEGORY_LABELS, MEDIA_STATUS_LABELS } from '../lib/hub';
 import * as L from '../lib/lab';
-import { standbyText } from '../lib/inbox';
+import { standbyReasonText, standbyText } from '../lib/inbox';
 import EvalGate from '../components/EvalGate';
 import { CancelButton, DirtyScope, Empty, ErrorBox, Field, Loading, Modal, Segmented, Spinner, useToast } from '../components/ui';
 
@@ -631,7 +631,9 @@ function ItemForm({ o, busy, setBusy, initial, onSaved }: {
 // ══════════════════════════════════ «المحاكي» ══════════════════════════════════
 
 /** H7: a turn may carry an uploaded voice note or image (shown from the browser's own copy — never stored) */
-type SimTurn = { guest: string; r: L.SimResult | null; error?: string; media?: { kind: 'audio' | 'image'; url: string; name: string }; waiting?: boolean; note?: string };
+type SimTurn = { guest: string; r: L.SimResult | null; error?: string; media?: { kind: 'audio' | 'image'; url: string; name: string }; waiting?: boolean; note?: string;
+  /** H9 fix 3: why the turn waited or not («لم ينتظر: …») */
+  standby?: string };
 export function SimulatorPanel({ o, editingPersona }: { o: HubOverview; editingPersona: Record<string, Persona> }) {
   const toast = useToast();
   const units = usable(o);
@@ -721,12 +723,18 @@ export function SimulatorPanel({ o, editingPersona }: { o: HubOverview; editingP
       return;
     }
     setTurns((x) => [...x, { guest: msg, r: null, ...(f && kind ? { media: { kind, url: URL.createObjectURL(f), name: f.name } } : {}) }]);
+    // H9 fix 3: the reason it waited or not, on every simulated turn
+    if (!f && engaged) setTurns((x) => x.map((t, j) => (j === i ? { ...t, standby: standbyReasonText('engaged') } : t)));
     if (!f && !engaged) {
       let st: L.StandbyStatus | null = null;
       try {
         st = await L.standbyStatus(u.key);
       } catch {
         st = null;
+      }
+      if (st && !(st.on && st.on_shift && st.minutes >= 1 && st.minutes <= 30)) {
+        const why = !st.on || !(st.minutes >= 1 && st.minutes <= 30) ? 'off' : 'no_shift';
+        setTurns((x) => x.map((t, j) => (j === i ? { ...t, standby: standbyReasonText(why) } : t)));
       }
       if (st && st.on && st.on_shift && st.minutes >= 1 && st.minutes <= 30) {
         setTurns((x) => x.map((t, j) => (j === i ? { ...t, waiting: true } : t)));
@@ -816,6 +824,7 @@ export function SimulatorPanel({ o, editingPersona }: { o: HubOverview; editingP
                   </div>
                 ))}
                 {t.error && <div className="sim-bubble sim-error" role="alert">{t.error}</div>}
+                {t.standby && <div className="text-xs text-ink-muted" data-sim-standby-reason>{t.standby}</div>}
                 {t.note && <div className="sim-bubble sim-note text-start" data-sim-note>{t.note}</div>}
                 {!t.r && !t.error && !t.waiting && !t.note && <div className="sim-bubble sim-us"><Spinner /></div>}
                 {t.r?.replies.map((m, j) => (
@@ -829,6 +838,7 @@ export function SimulatorPanel({ o, editingPersona }: { o: HubOverview; editingP
             ))}
             {standby && (
               <div className="sim-bubble sim-note text-start grid gap-2" data-sim-standby>
+                <span className="text-xs" data-sim-standby-waiting>{standbyReasonText('waiting', standby.until - tick).split(' — ')[0]}</span>
                 <span className="font-semibold" role="timer">{standbyText(standby.until - tick)}</span>
                 <span className="text-xs text-ink-muted">وضع الاستعداد: الرسالة غير مقروءة على جوال الفرع ولا يظهر أن أحدًا يكتب.</span>
                 <span className="flex flex-wrap gap-2">

@@ -30,6 +30,8 @@ export interface TeamBranch {
   /** «وضع الاستعداد» (16 Nov 2026): wait for a staff reply before the assistant replies */
   standby_on: boolean;
   standby_minutes: number;
+  /** H9 fix 3: «الآن: ينتظر / لا ينتظر — السبب» (public.hub_standby_now, Asia/Riyadh) */
+  standby_now?: { on: boolean; minutes: number; reason: 'waiting' | 'off' | 'no_shift'; riyadh: string; on_shift: string[] } | null;
   channel: boolean | null;
   slots: Slot[];
 }
@@ -49,6 +51,8 @@ export interface TeamData {
   now: string;
   can_edit: boolean;
   is_system_admin: boolean;
+  /** H9 fix 3: «أرقام التجربة» (the system admin only; [] for anyone else) */
+  test_numbers?: TestNumber[];
   branches: TeamBranch[];
   report: {
     send_time: string;
@@ -262,3 +266,20 @@ export function reportLines(r: ReportData): { label: string; value: string }[] {
     { label: 'أعطال', value: faults },
   ];
 }
+
+/** H9 fix 3 (Ahmed, 17 Nov 2026): «الآن: ينتظر / لا ينتظر — السبب» on the standby card */
+export function standbyNowText(n: NonNullable<TeamBranch['standby_now']>): string {
+  if (n.reason === 'waiting') return `الآن: ينتظر — ${n.minutes === 1 ? 'دقيقة واحدة' : n.minutes === 2 ? 'دقيقتان' : n.minutes <= 10 ? `${n.minutes} دقائق` : `${n.minutes} دقيقة`} لرد الفريق (في الوردية: ${n.on_shift.join('، ')})`;
+  return n.reason === 'off' ? 'الآن: لا ينتظر — وضع الاستعداد متوقف' : 'الآن: لا ينتظر — لا يوجد موظف في الوردية الآن';
+}
+
+/** H9 fix 3: «أرقام التجربة» — up to 5 numbers on the guest path whose chat bookings are test reservations */
+export interface TestNumber { id: string; phone: string; label: string; created_at: string }
+export const TEST_NUMBERS_MAX = 5;
+export const testNumberSave = (phone: string, label: string) => call<{ ok: boolean; id: string }>('hub_test_number_save', { p_phone: phone, p_label: label });
+export const testNumberDelete = (id: string) => call<{ ok: boolean; previous: { phone: string; label: string } }>('hub_test_number_delete', { p_id: id });
+export const TEST_NUMBER_ERRORS: Record<string, string> = {
+  invalid_phone: 'اكتب الرقم بالصيغة الدولية، مثل +9665xxxxxxxx.',
+  staff_number: 'هذا رقم في «فريق الاستقبال» أو «التقارير»؛ استخدم «يُعامَل كضيف للتجربة» عنده بدلًا من ذلك.',
+  too_many: 'خمسة أرقام تجربة على الأكثر.',
+};

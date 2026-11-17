@@ -31,7 +31,21 @@ const EMOJI_RE = /\p{Extended_Pictographic}/u;
 
 /** the plural address forms of the guest (Ahmed, 4 Nov 2026 — singular only), as whole words */
 export const PLURAL_ADDRESS = ['يمكنكم', 'بإمكانكم', 'تستطيعون', 'تواصلوا', 'احجزوا', 'راسلونا', 'اتصلوا', 'أرسلوا', 'اختاروا', 'زوروا', 'لديكم', 'معكم', 'خدمتكم',
-  'إقامتكم', 'حجزكم', 'نرحب بكم', 'تفضلوا'];
+  'إقامتكم', 'حجزكم', 'نرحب بكم', 'تفضلوا',
+  // H9 fix 3 (c115, the simulator 17 Nov 2026): the group and booking forms the model reached for
+  'تحتاجون', 'تحتاجونها', 'تريدون', 'ترغبون', 'تودون', 'وصولكم', 'مغادرتكم', 'اسمكم', 'أسماءكم', 'غرفتكم', 'حجزتم', 'وصلتم', 'تصلون', 'ستصلون', 'أنتم',
+  'لكم', 'بكم', 'إليكم', 'عندكم', 'منكم', 'لخدمتكم', 'تخبرونا', 'أخبرونا', 'زودونا', 'اكتبوا', 'أرسلوا لنا'];
+/** H9 fix 3 (Ahmed, 17 Nov 2026): a room price is the total of the guest's dates only — never «يبدأ من» / a lowest price */
+export const FROM_PRICE_RE: RegExp[] = [
+  /(?:يبد[أا]|تبد[أا]|ابتداء[ًا]?|بدء[ًا]?|اعتبارا|اعتبارًا)\s+(?:\S+\s+){0,2}?من\s+\d[\d,.]*\s*(?:ريال|ريالا|ريالات|ر\.س|sar)/u,
+  /(?:أقل|اقل|أدنى|ادنى|أرخص|ارخص)\s+(?:سعر|الأسعار|الاسعار|الأسعار)/u,
+  /\b(?:starting (?:at|from)|as low as|from)\s+sar\s*\d|\b(?:starting (?:at|from)|as low as)\s+\d[\d,.]*\s*(?:sar|riyals?)|\b(?:lowest|cheapest) (?:price|rate)s?\b/i,
+];
+/** the first plural-address word of a text (named in the retry) */
+export function pluralWord(text: string): string | null {
+  for (const w of PLURAL_ADDRESS) if (has(text, w)) return w;
+  return null;
+}
 /** facilities never affirmed unless a card in the payload states them (spec §2.5 rule 8) */
 export const FACILITY_WORDS = ['مسبح', 'حمام سباحة', 'سبا', 'ساونا', 'توصيل من المطار', 'توصيل إلى المطار', 'نقل من المطار', 'نقل إلى المطار', 'جيم', 'نادي رياضي',
   'صالة رياضية', 'pool', 'swimming', 'spa', 'sauna', 'airport transfer', 'airport pickup', 'shuttle', 'gym', 'fitness'];
@@ -120,6 +134,8 @@ export const emailsIn = (s: string) => (String(s ?? '').match(EMAIL_RE) ?? []).m
 export interface GuardResult {
   ok: boolean;
   reasons: string[];
+  /** H9 fix 3: what the retry names (the plural word found) */
+  detail?: Record<string, string>;
 }
 
 export function guard(reply: string, p: GuardPayload, o: GuardOptions): GuardResult {
@@ -165,10 +181,10 @@ export function guard(reply: string, p: GuardPayload, o: GuardOptions): GuardRes
     r.push(`forbidden:${w}`);
     break;
   }
-  for (const w of PLURAL_ADDRESS) if (has(text, w)) {
-    r.push('plural_address');
-    break;
-  }
+  const plural = pluralWord(text);
+  if (plural) r.push('plural_address');
+  // H9 fix 3: no «يبدأ من» / lowest price
+  if (FROM_PRICE_RE.some((re) => re.test(text))) r.push('from_price');
   for (const w of DEPOSIT_WORDS) if (has(text, w)) {
     r.push('deposit');
     break;
@@ -211,7 +227,7 @@ export function guard(reply: string, p: GuardPayload, o: GuardOptions): GuardRes
   if (NON_ANSWER_AR.some((re) => re.test(unify(text))) || NON_ANSWER_EN.some((w) => text.toLowerCase().replace(/’/g, "'").includes(w))) r.push('non_answer');
   // 9 · the cancellation policy: the approved sentence, word for word
   if (/إلغاء|الإلغاء|cancel/i.test(text) && p.cancellation_sentence && !text.includes(p.cancellation_sentence)) r.push('cancellation');
-  return { ok: r.length === 0, reasons: [...new Set(r)] };
+  return { ok: r.length === 0, reasons: [...new Set(r)], ...(plural ? { detail: { plural } } : {}) };
 }
 
 /** the reason handed back to the model on the one retry (English, short) */
@@ -222,7 +238,8 @@ export const RETRY_REASONS: Record<string, string> = {
   phone: 'A phone number in the reply is not in the PAYLOAD. Give only the phone numbers written in the PAYLOAD.',
   email: 'An email address in the reply is not in the PAYLOAD. Give only the email addresses written in the PAYLOAD.',
   link: 'A link in the reply is not allowed. Use only links written in the PAYLOAD.',
-  plural_address: 'Address the guest in the singular, never the plural.',
+  plural_address: 'Address the guest in the singular, never the plural — the guest is one person even when booking for a group («تحتاج»، «لديك»، «وصولك»، «اسمك»، «لك»), never «تحتاجون»، «لديكم»، «وصولكم»، «لكم».',
+  from_price: 'Never write «يبدأ من», a lowest price or "starting at": a room price is only the total of the guest\'s own dates from the PAYLOAD quote.',
   deposit: 'Never mention a deposit or a security amount.',
   rooftop: 'Never mention a rooftop restaurant.',
   facility: 'Never mention a pool, spa, airport transfer or gym unless the PAYLOAD states it.',
@@ -239,5 +256,7 @@ export const RETRY_REASONS: Record<string, string> = {
   non_answer: 'Delete every sentence about what the PAYLOAD does not cover, about what you cannot confirm, or about who will tell the guest later (e.g. «لا تتوفر لدينا معلومة…», «سيوافيك الاستقبال…»). Keep only the facts the PAYLOAD gives and list the rest in "unanswered" — the system adds the hand-off notice after your reply.',
   first_person: 'Speak as the property in the first person plural («نستطيع», «نؤكد», «لدينا»), never the singular («أستطيع», «أؤكد», «أنا»). Do not mention what you cannot answer.',
 };
-export const retryReason = (reasons: string[]) =>
-  reasons.map((x) => (x.startsWith('forbidden:') ? 'A forbidden term was used; follow the WORDS rules.' : RETRY_REASONS[x] ?? x)).join(' ');
+export const retryReason = (reasons: string[], detail?: Record<string, string>) =>
+  reasons.map((x) => (x.startsWith('forbidden:') ? 'A forbidden term was used; follow the WORDS rules.'
+    : x === 'plural_address' && detail?.plural ? `${RETRY_REASONS[x]} The plural word «${detail.plural}» must become its singular form.`
+    : RETRY_REASONS[x] ?? x)).join(' ');

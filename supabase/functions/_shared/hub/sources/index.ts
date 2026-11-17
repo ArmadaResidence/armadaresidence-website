@@ -36,6 +36,9 @@ export interface Payload {
   venue: { name: string; menu_url: string | null } | null;
   first_name: string | null;
   cancellation_sentence: string;
+  /** H9 fix 3 (Ahmed, 17 Nov 2026): the owner's reply rules for the turn's topics — HOW to answer, never a fact (not a
+   *  source, never in the guard's facts) */
+  rules?: { id: string; title: string; text: string }[];
 }
 
 // deno-lint-ignore no-explicit-any
@@ -59,9 +62,14 @@ export function offersFor(rows: Json[], branch: string, L: 'ar' | 'en', today: s
     .slice(0, 5);
 }
 
-export function buildPayload(k: { cards?: Json[]; faq?: Json[] } | null, x: { offers?: OfferItem[] | null; venue?: Payload['venue']; first_name?: string | null; cancellation: string; quote?: Payload['quote'] }): Payload {
+export function buildPayload(k: { cards?: Json[]; faq?: Json[]; rules?: Json[] } | null, x: { offers?: OfferItem[] | null; venue?: Payload['venue']; first_name?: string | null; cancellation: string; quote?: Payload['quote'] }): Payload {
+  // a rule card is never a fact: kept apart even when a read returns it among the cards
+  const isRule = (c: Json) => c?.card_kind === 'rule';
+  const rules = [...(k?.rules ?? []), ...(k?.cards ?? []).filter(isRule)]
+    .map((c: Json) => ({ id: String(c.id), title: String(c.title ?? ''), text: String(c.text ?? '') })).filter((r) => r.text).slice(0, 5);
   return {
-    cards: (k?.cards ?? []).map((c: Json) => ({ id: String(c.id), key: String(c.key), branch: c.branch ?? null, title: String(c.title ?? ''), text: String(c.text ?? '') })),
+    ...(rules.length ? { rules } : {}),
+    cards: (k?.cards ?? []).filter((c: Json) => !isRule(c)).map((c: Json) => ({ id: String(c.id), key: String(c.key), branch: c.branch ?? null, title: String(c.title ?? ''), text: String(c.text ?? '') })),
     faq: (k?.faq ?? []).map((f: Json) => ({ id: `faq:${f.key}`, question: String(f.q ?? ''), answer: String(f.a ?? '') })),
     quote: x.quote ?? null,
     offers: x.offers && x.offers.length ? x.offers : null,

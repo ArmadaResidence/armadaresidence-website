@@ -69,6 +69,8 @@ export function composeUser(i: ComposeInput): string {
     `  venue: ${p.venue ? JSON.stringify(p.venue) : 'null'}`,
     `  first_name: ${p.first_name ? JSON.stringify(p.first_name) : 'null'}`,
     `  cancellation_sentence: ${JSON.stringify(p.cancellation_sentence)}`,
+    // H9 fix 3: the owner's reply rules (how to answer — never facts); only when the turn has some (no change to other turns)
+    ...(p.rules?.length ? [`  rules: ${JSON.stringify(p.rules)}`] : []),
   ];
   return lines.join('\n');
 }

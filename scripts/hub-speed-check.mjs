@@ -5,7 +5,7 @@
 //     beside the model calls — never for a test, a draft, a tag-only turn; the send does not repeat it;
 //   - what does not depend on the understanding runs beside it (the room types of both branches together, the offers);
 //   - prompt caching marks the fixed blocks only (the system instruction ≥ 512 tokens, the last few-shot example) —
-//     everything that changes per turn comes after the last mark; understanding stays on the lighter model.
+//     everything that changes per turn comes after the last mark; understanding's fixed lists sit in the cached prefix (H9 fix 3).
 import { readFileSync } from 'node:fs';
 import { CACHE_MIN_CHARS, requestBody } from '../supabase/functions/_shared/hub/model.ts';
 import { migration, OUT_PATH } from './hub-speed-migration.mjs';
@@ -47,7 +47,10 @@ check(Array.isArray(b.system) && b.system[0].cache_control?.type === 'ephemeral'
 check(b.messages[1].content === 'a1' && b.messages[3].content[0].cache_control?.type === 'ephemeral' && b.messages.at(-1).content === 'the guest', 'the last example closes the cached prefix; the guest turn stays after it');
 const s = requestBody({ layer: 'understand', model: 'claude-haiku-5-5', system: 'short', user: 'u' });
 check(s.system === 'short', 'a short system stays plain (below the cache minimum)');
-check(!/understand: 'claude-sonnet/.test(read('scripts/hub-fixtures-lib.mjs')), 'understanding stays on the lighter model');
+// H9 fix 3 (Ahmed, 17 Nov 2026): understanding moved to claude-sonnet-5-5 — its fixed lists and schema join the cached
+// system block (understandStatic), so only the turn's own lines are new input on each call
+check(/understand: 'claude-sonnet-5-5'/.test(read('scripts/hub-fixtures-lib.mjs')) && read('supabase/functions/_shared/hub/engine.ts').includes('system: `${understandSystem()}\\n\\n${understandStatic('),
+  'understanding on Sonnet 5.5 with its fixed lists inside the cached prefix (H9 fix 3)');
 
 console.log(fails ? `hub-speed-check: ${fails} of ${n} failed` : `✓ hub-speed-check: ${n} checks`);
 process.exit(fails ? 1 : 0);

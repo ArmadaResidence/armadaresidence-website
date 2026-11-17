@@ -99,7 +99,9 @@ export function scopeVerdict(t: Teacher | null | undefined, scope: Scope): 'ok' 
 
 // ═══ the model's answer (prompts.md §7) ═══
 export type Mode = 'teach' | 'staff_reply';
-export type RefuseReason = 'room_price' | 'availability' | 'offer' | 'guest_detail' | 'one_off' | 'opinion' | 'not_a_fact' | 'service_price' | 'price' | 'forbidden' | 'missing';
+export type RefuseReason = 'room_price' | 'availability' | 'offer' | 'guest_detail' | 'one_off' | 'opinion' | 'not_a_fact' | 'service_price' | 'price' | 'forbidden' | 'missing'
+  /** H9 fix 3: a reply rule that cannot apply at all (it breaks a safety rule) */
+  | 'rule_conflict';
 export interface CardFacts {
   title_ar: string;
   title_en: string;
@@ -113,12 +115,16 @@ export interface CardFacts {
   /** H9 fix 1: none · reply_rule (how to answer about an offer that ended, is coming or is not on the site — a card) ·
    *  bookable (a discount or price for bookings or the site — the «العروض» page, never a card) */
   offer_kind?: 'none' | 'reply_rule' | 'bookable';
+  /** H9 fix 3 (Ahmed, 17 Nov 2026): fact (what guests are told) or rule (HOW to answer a topic — «قاعدة رد», Ahmed only) */
+  card_kind?: 'fact' | 'rule';
 }
 export type Fact =
   | { verdict: 'card'; card: CardFacts; contradicts: string[] }
   | { verdict: 'refuse'; reason: RefuseReason }
   /** H9 fix 1: the teaching asks for a link that LINKS does not hold — asked for, never invented */
-  | { verdict: 'ask_link'; link_name: string };
+  | { verdict: 'ask_link'; link_name: string }
+  /** H9 fix 3: a reply rule — how to answer a topic; `part` = what of it cannot apply (a safety rule wins), else '' */
+  | { verdict: 'rule'; card: CardFacts; part: string };
 export interface CheckContext {
   mode: Mode;
   /** the topic keys the card may carry (never an always_handoff topic) */
@@ -135,7 +141,7 @@ export interface CheckContext {
   today?: string;
 }
 
-const MODEL_REASONS: RefuseReason[] = ['room_price', 'availability', 'offer', 'guest_detail', 'one_off', 'opinion', 'not_a_fact'];
+const MODEL_REASONS: RefuseReason[] = ['room_price', 'availability', 'offer', 'guest_detail', 'one_off', 'opinion', 'not_a_fact', 'rule_conflict'];
 const AMOUNT = /([0-9][0-9,.]*\s*(ريال|ريالًا|ريالا|ر\.\s?س|sar|riyals?|﷼|رس\b)|(sar|﷼)\s*[0-9])/i;
 const ROOM_WORDS = /(ليل[هة]|ليالي|night|غرف[هة]|room|جناح|suite|استوديو|ستوديو|studio|شق[هة]|apartment|الإقامة|stay)/i;
 const OFFER_WORDS = /(خصم|تخفيض|تخفيضات|كوبون|كود الخصم|برومو|promo|discount|coupon|[0-9]\s*[%٪]|عرض خاص|عروض)/i;
@@ -186,7 +192,30 @@ export function checkFacts(raw: string, c: CheckContext, known: string[] = ['966
   for (const f of o.facts.slice(0, c.mode === 'teach' ? 1 : 2)) {
     if (!f || typeof f !== 'object') return { ok: false, reason: 'shape' };
     if (f.verdict === 'refuse') {
-      facts.push({ verdict: 'refuse', reason: MODEL_REASONS.includes(f.reason) ? f.reason : 'not_a_fact' });
+      facts.push({ verdict: 'refuse', reason: MODEL_REASONS.includes(f.reason) && (f.reason !== 'rule_conflict' || c.mode === 'teach') ? f.reason : 'not_a_fact', ...(f.reason === 'rule_conflict' ? { part: str(f.part, 200) } : {}) } as Fact);
+      continue;
+    }
+    // H9 fix 3: a reply rule (teach only — a staff reply never makes one): how to answer, never a fact; a room price, an
+    // amount, a guest's detail or a forbidden word is still refused
+    if (f.verdict === 'rule') {
+      if (c.mode !== 'teach') {
+        facts.push({ verdict: 'refuse', reason: 'not_a_fact' });
+        continue;
+      }
+      const card: CardFacts = {
+        title_ar: str(f.title_ar, 120), title_en: str(f.title_en, 120), text_ar: str(f.text_ar, 1200), text_en: str(f.text_en, 1200),
+        short_ar: str(f.short_ar, 80).replace(/[.。]+$/, ''), service_price: false, card_kind: 'rule', offer_kind: 'none', expires_on: null,
+        topic_keys: [...new Set((Array.isArray(f.topic_keys) ? f.topic_keys : []).filter((k: unknown) => typeof k === 'string' && c.topics.includes(k as string)) as string[])].slice(0, 4),
+      };
+      const reason = ruleRefusal(card, c, known);
+      if (reason) {
+        facts.push({ verdict: 'refuse', reason });
+        continue;
+      }
+      if (!card.title_ar) card.title_ar = card.short_ar || card.text_ar.slice(0, 60);
+      if (!card.title_en) card.title_en = card.text_en.slice(0, 60);
+      if (!card.short_ar) card.short_ar = shortOf(card.title_ar || card.text_ar, 60);
+      facts.push({ verdict: 'rule', card, part: str(f.part, 200) });
       continue;
     }
     if (f.verdict === 'ask_link' && c.mode === 'teach') {
@@ -250,6 +279,21 @@ export function cardRefusal(card: CardFacts, c: CheckContext, known: string[]): 
   return null;
 }
 
+/** H9 fix 3: what code refuses in a reply rule — never an amount (a rule never carries a price), a guest's detail, an
+ *  unknown link or a forbidden word; a rule ABOUT prices or offers («اسأله عن التواريخ أولًا») is fine */
+export function ruleRefusal(card: CardFacts, c: CheckContext, known: string[]): RefuseReason | null {
+  if (!card.text_ar || !card.text_en) return 'missing';
+  const body = [card.title_ar, card.title_en, card.text_ar, card.text_en, card.short_ar].join('\n');
+  if (AMOUNT.test(body)) return ROOM_WORDS.test(body) ? 'room_price' : 'service_price';
+  const bare = withoutKnownPhones(body, known).replace(/https?:\/\/\S+/g, ' ');
+  if (BOOKING_REF.test(bare) || PHONE.test(bare) || EMAIL.test(bare) || ROOM_NO.test(bare) || DATE.test(bare)) return 'guest_detail';
+  if (linksOf(body).some((u) => !linkKnown(u, c.links ?? []))) return 'guest_detail';
+  const low = body.toLowerCase();
+  if ([...BRAND, ...c.forbidden].some((t) => t && low.includes(String(t).toLowerCase()))) return 'forbidden';
+  if (!card.topic_keys.length) return 'missing';
+  return null;
+}
+
 /** what code refuses from the colleague's own words, before any model call: a price in a staff reply is never learned
  *  (Ahmed: «a candidate that carries a price is not learned»); a room price is never taught; a service price only by Ahmed */
 export function textRefusal(text: string, mode: Mode, prices: boolean): RefuseReason | null {
@@ -295,6 +339,8 @@ export function refusalLine(reason: RefuseReason): LineKey {
     case 'opinion':
     case 'not_a_fact':
       return 'not_a_fact';
+    case 'rule_conflict':
+      return 'rule_conflict';
     default:
       return 'failed';
   }
@@ -338,14 +384,16 @@ export function cardScope(unitKeys: string[] | null | undefined): Scope {
 
 // ═══ the fixed lines (copy.md §9.1) ═══
 export type LineKey = 'saved' | 'saved_both' | 'revised' | 'intent_ask' | 'intent_no' | 'ok_ack' | 'edit_ask' | 'link_ask' | 'ask_replace' | 'replaced' | 'kept' | 'removed' | 'removed_n' | 'remove_none' | 'remove_n_none' | 'remove_n_other'
-  | 'not_allowed' | 'other_branch' | 'room_price' | 'offer' | 'service_price' | 'guest_detail' | 'one_off' | 'not_a_fact' | 'empty' | 'teach_off' | 'failed' | 'conflict_shared';
+  | 'not_allowed' | 'other_branch' | 'room_price' | 'offer' | 'service_price' | 'guest_detail' | 'one_off' | 'not_a_fact' | 'empty' | 'teach_off' | 'failed' | 'conflict_shared'
+  // H9 fix 3: the reply rules and a staff voice note that could not be heard
+  | 'rule_saved' | 'rule_saved_part' | 'rule_conflict' | 'rule_owner' | 'voice_failed';
 export const LINES = (text as Json).learn_lines as Record<LineKey, string>;
 export const OFFERS_LINK = 'https://admin.armadaresidence.com/offers';
 export const BRANCH_NAMES: Record<Branch, string> = { 'airport-road': 'فرع طريق المطار', 'shafa-road': 'فرع طريق الشفا' };
 /** a fixed line with its placeholders filled ({wording}, {old}, {n}, {branch}, {link}) */
 export function learnLine(key: LineKey, vars: Record<string, string | number | null | undefined> = {}): string {
   const tpl = LINES[key] ?? LINES.failed;
-  return tpl.replace(/\{(wording|old|n|branch|link|expiry|name)\}/g, (_, k) => {
+  return tpl.replace(/\{(wording|old|n|branch|link|expiry|name|part)\}/g, (_, k) => {
     if (k === 'link') return String(vars.link ?? OFFERS_LINK);
     if (k === 'expiry') return vars.expiry ? ` ${expiryLine(String(vars.expiry))}` : '';
     if (k === 'name') return String(vars.name ?? 'المطلوب').trim();
@@ -379,15 +427,19 @@ export type TeachOutcome =
   | { status: 'learned'; card: CardFacts }
   | { status: 'link'; name: string }
   | { status: 'ask'; card: CardFacts; conflicts: string[] }
-  | { status: 'refused'; reason: RefuseReason }
-  | { status: 'failed'; reason: string };
+  | { status: 'refused'; reason: RefuseReason; part?: string }
+  | { status: 'failed'; reason: string }
+  /** H9 fix 3: a reply rule — stored only for the owner (hub_teach_finish refuses anyone else) */
+  | { status: 'rule'; card: CardFacts; part: string };
 /** «تعلّم:»'s checked answer → stored (learned), asked about (a contradiction), refused with its line, or failed */
 export function teachOutcome(r: ReturnType<typeof checkFacts>): TeachOutcome {
   if (!r.ok) return { status: 'failed', reason: r.reason };
   const f = r.facts[0];
   if (!f) return { status: 'refused', reason: 'not_a_fact' };
-  if (f.verdict === 'refuse') return { status: 'refused', reason: f.reason };
+  // deno-lint-ignore no-explicit-any
+  if (f.verdict === 'refuse') return { status: 'refused', reason: f.reason, ...((f as any).part ? { part: String((f as any).part) } : {}) };
   if (f.verdict === 'ask_link') return { status: 'link', name: f.link_name };
+  if (f.verdict === 'rule') return { status: 'rule', card: f.card, part: f.part };
   return f.contradicts.length ? { status: 'ask', card: f.card, conflicts: f.contradicts } : { status: 'learned', card: f.card };
 }
 /** a reception manager never replaces a card of both branches or of the other branch (the SQL hub_teach_finish's twin) */
@@ -545,5 +597,8 @@ export function intentAction(t: TeachTurn, r: { intent: Intent; fact: string; bo
   }
   if (r.intent === 'teach' || r.intent === 'revise') return { kind: 'teach', body: body(r.fact), scope: scopeOf(body(r.fact), r.both), revises: null };
   if (r.intent === 'unsure') return prefixed ? { kind: 'teach', body: body(r.fact), scope: scopeOf(body(r.fact), r.both), revises: null } : { kind: 'ask', body: body(r.fact), scope: scopeOf(body(r.fact), r.both) };
+  // H9 fix 3: a message that starts with «تعلّم» is always a teaching — the teaching itself decides a fact, a reply rule
+  // or an explained refusal (Ahmed's «تعلّم: … قوله إنك موظف» must get «مش هقدر أطبّقها», never silence)
+  if (prefixed) return { kind: 'teach', body: body(r.fact), scope: scopeOf(body(r.fact), r.both), revises: null };
   return { kind: 'chat' };
 }

@@ -52,7 +52,8 @@ export async function runTeachJobs(call: Call, model: ModelFn, opts: RunOpts): P
     const c = await call<Json>('hub_teach_claim', { p_limit: 3 }).catch(() => null);
     const jobs = (c?.jobs ?? []) as Json[];
     if (!jobs.length) break;
-    const modelId = String(c?.models?.draft_card ?? 'claude-sonnet-5-5');
+    // H9 fix 3 (Ahmed, 17 Nov 2026): the staff path runs on hub_models.staff (claude-opus-5-5)
+    const modelId = String(c?.models?.staff ?? c?.models?.draft_card ?? 'claude-opus-5-5');
     const topics = (c.topics ?? []) as { key: string; label_en: string; label_ar: string }[];
     const cards = (c.cards ?? []) as { key: string; branch: Scope; title: string; text: string }[];
     for (const j of jobs) {
@@ -67,18 +68,19 @@ export async function runTeachJobs(call: Call, model: ModelFn, opts: RunOpts): P
         ? teachOutcome(checkFacts(r.text, { mode: 'teach', topics: topics.map((t) => t.key), cards: cards.map((k) => k.key).filter((k) => k !== j.revises?.key), forbidden: c.forbidden ?? [],
           prices: !!j.teacher?.owner, links: [...Object.values(LINKS), ...linksOf(body)], today: String(c.today) }, c.known_phones ?? undefined))
         : { status: 'failed' as const, reason: r.error === 'credit' ? 'api_credit' : 'model' };
-      const o = out as { status: string; reason?: string; card?: unknown; conflicts?: string[]; name?: string };
+      const o = out as { status: string; reason?: string; card?: unknown; conflicts?: string[]; name?: string; part?: string };
       const fin = await call<Json>('hub_teach_finish', {
         p_job: j.job_id,
-        p: { status: o.status, reason: o.reason ?? null, card: o.card ?? null, conflicts: o.conflicts ?? [], name: o.name ?? null, models: used(modelId, r) },
+        // H9 fix 3: a reply rule goes as status «rule» (the database stores it only for the owner) with what cannot apply
+        p: { status: o.status, reason: o.reason ?? null, card: o.card ?? null, conflicts: o.conflicts ?? [], name: o.name ?? null, part: o.part ?? null, models: used(modelId, r) },
       }).catch((e) => {
         console.error('hub learn: teach job not recorded', String(e).slice(0, 80));
         return null;
       });
       const line: LineKey = (fin?.line as LineKey | null) ?? (out.status === 'refused' ? refusalLine(out.reason) : 'failed');
       lines.push(line);
-      const buttons = ['saved', 'saved_both', 'revised'].includes(line) && fin?.card_id ? confirmButtons(String(fin.card_id), (fin.scope ?? j.scope) as Scope, !!fin.owner) : undefined;
-      if (j.from && j.to) await replyToColleague(call, j, learnLine(line, fin?.vars ?? {}), opts, buttons);
+      const buttons = ['saved', 'saved_both', 'revised', 'rule_saved', 'rule_saved_part'].includes(line) && fin?.card_id ? confirmButtons(String(fin.card_id), (fin.scope ?? j.scope) as Scope, !!fin.owner) : undefined;
+      if (j.from && j.to) await replyToColleague(call, j, learnLine(line, { part: o.part ?? '', ...(fin?.vars ?? {}) }), opts, buttons);
       console.log('hub learn: teach', out.status, line);
       done++;
     }
@@ -94,7 +96,7 @@ export async function runReplyJobs(call: Call, model: ModelFn, opts: RunOpts): P
     const c = await call<Json>('hub_card_job_claim', { p_limit: 3 }).catch(() => null);
     const jobs = (c?.jobs ?? []) as Json[];
     if (!jobs.length) break;
-    const modelId = String(c?.models?.draft_card ?? 'claude-sonnet-5-5');
+    const modelId = String(c?.models?.staff ?? c?.models?.draft_card ?? 'claude-opus-5-5');
     const topics = (c.topics ?? []) as { key: string; label_en: string; label_ar: string }[];
     const cards = (c.cards ?? []) as { key: string; branch: Scope; title: string; text: string }[];
     for (const j of jobs) {
