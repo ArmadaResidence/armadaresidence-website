@@ -172,7 +172,7 @@ for (const [role, perms] of ROLES) {
       await page.goto(`${BASE}/knowledge`, { waitUntil: 'load' });
       await page.locator('[data-page="knowledge"] [data-card]').first().waitFor({ timeout: 30000 });
       const tabs = await page.$$eval('[data-page="knowledge"] [role="tab"]', (a) => a.map((x) => x.getAttribute('data-tab')));
-      check(tabs.join() === 'cards,queue,faq,expiring', `${tag}: the four tabs — ${tabs.join()}`);
+      check(tabs.join() === 'cards,queue,decisions,faq,expiring', `${tag}: the five tabs (H9 fix 3: «يحتاج قرارك») — ${tabs.join()}`);
       check((await page.locator('[data-count="queue"]').textContent())?.trim() === '1', `${tag}: «لم أعرف الإجابة» carries its count badge`);
       const states = await page.$$eval('[data-card]', (a) => a.map((x) => x.getAttribute('data-card-state')));
       check(states.join() === 'published,draft,published', `${tag}: the cards not archived by default — ${states.join()}`);

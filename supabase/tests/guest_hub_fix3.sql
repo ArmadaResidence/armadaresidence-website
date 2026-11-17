@@ -83,6 +83,7 @@ alter table public.settings enable trigger user;
 insert into _ids select 'unit', id from public.hub_units where key = 'airport-road';
 insert into _ids select 'ch', c.id from public.hub_channels c where c.unit_id = pg_temp._id('unit') order by c.created_at limit 1;
 update public.hub_channels set verified_at = now(), sending_enabled = true where id = pg_temp._id('ch');
+select pg_temp._save('chaddr', (select to_jsonb(address) from public.hub_channels where id = pg_temp._id('ch')));
 
 -- ══ M — the models ══
 select pg_temp._check('M1 understand / tag / translate / vision on claude-sonnet-5-5; compose stays claude-sonnet-5-5; the staff path claude-opus-5-5',
@@ -228,15 +229,16 @@ select pg_temp._as('mgr');
 select pg_temp._save('tg3', public.hub_team_get());
 select pg_temp._root();
 select pg_temp._check('T7 … and to nobody else', jsonb_array_length(pg_temp._j('tg3') -> 'test_numbers') = 0);
+insert into _ids select 'tn1', id from public.hub_test_numbers where phone = '+15550170201';
 select pg_temp._as('admin');
-select pg_temp._save('t8', public.hub_test_number_delete((select id from public.hub_test_numbers where phone = '+15550170201')));
+select pg_temp._save('t8', public.hub_test_number_delete(pg_temp._id('tn1')));
 select pg_temp._root();
 select pg_temp._check('T8 removed: no longer a test guest; the answer carries it back for «تراجع»', not internal.hub_test_guest('+15550170201') and pg_temp._j('t8') #>> '{previous,phone}' = '+15550170201');
 
 -- ══ V — staff voice notes and «الفريق» ══
 select pg_temp._service();
-select pg_temp._save('v1', public.hub_staff_voice_gate((select address from public.hub_channels where id = pg_temp._id('ch'))));
-select public.hub_staff_voice_add((select address from public.hub_channels where id = pg_temp._id('ch')), 60, false);
+select pg_temp._save('v1', public.hub_staff_voice_gate((pg_temp._j('chaddr') #>> '{}')));
+select public.hub_staff_voice_add((pg_temp._j('chaddr') #>> '{}'), 60, false);
 select pg_temp._root();
 select pg_temp._check('V1 the gate: the unit and the seconds left today', (pg_temp._j('v1') ->> 'ok')::boolean and (pg_temp._j('v1') ->> 'left_seconds')::numeric > 0, pg_temp._j('v1')::text);
 select pg_temp._check('V2 a staff minute counts toward the unit''s daily cap', (internal.hub_voice_state(pg_temp._id('unit')) ->> 'used_seconds')::numeric >= 60);
