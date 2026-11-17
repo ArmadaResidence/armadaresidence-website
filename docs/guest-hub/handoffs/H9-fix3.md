@@ -31,7 +31,7 @@ Before the release: main `009e6ce`, wa-automation 20, hub-agent 23, hub-admin 23
 
 ## Production lab
 
-160 / 160 passed, then stopped by the session (58 skipped, USD 5.69 by the database's count) because finishing would have taken the session past Ahmed's approved USD 10 — the conversation items cost about USD 0.05 each with the stronger models, the single questions about USD 0.028. A cancelled run counts for no gate: Shafa Road's gate stays green (the H9 fix 2 run), Airport Road's stays red until a full run passes (about 160 items, roughly USD 7–9) — Ahmed's call. Released: main 18c3b2a, wa-automation 21, hub-agent 24, hub-admin 24.
+160 / 160 passed, then stopped by the session (58 skipped, USD 5.69 by the database's count) because finishing would have taken the session past Ahmed's approved USD 10 — the conversation items cost about USD 0.05 each with the stronger models, the single questions about USD 0.028. A cancelled run counts for no gate: Shafa Road's gate stays green (the H9 fix 2 run), Airport Road's stays red until a full run passes (about 160 items, roughly USD 7–9) — Ahmed's call. Then, with Ahmed's OK (about USD 7–9), a full Airport Road run: 160 / 160 passed, verdict pass, USD 5.50 — both readiness gates green (Airport Road and Shafa Road). Session spend ≈ USD 14.7 (local banks 3.54, the stopped run 5.69, the Airport Road run 5.50). Released: main 18c3b2a, wa-automation 21, hub-agent 24, hub-admin 24.
 
 ## Costs
 
