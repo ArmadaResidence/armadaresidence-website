@@ -79,7 +79,12 @@ insert into public.hub_unit_members (unit_id, staff_id) select u.id, pg_temp._id
 update public.settings set value = 'true' where key = 'hub_inbox_on';
 alter table public.settings disable trigger user;
 update public.settings set value = 'true' where key = 'hub_assistant_on';
+update public.settings set value = '20' where key = 'hub_budget_daily_usd';
+update public.settings set value = '200' where key = 'hub_budget_monthly_usd';
 alter table public.settings enable trigger user;
+alter table public.hub_units disable trigger user;
+update public.hub_units set assistant_mode = 'licensed' where key = 'airport-road';
+alter table public.hub_units enable trigger user;
 insert into _ids select 'unit', id from public.hub_units where key = 'airport-road';
 insert into _ids select 'ch', c.id from public.hub_channels c where c.unit_id = pg_temp._id('unit') order by c.created_at limit 1;
 update public.hub_channels set verified_at = now(), sending_enabled = true where id = pg_temp._id('ch');
