@@ -288,7 +288,7 @@ async function optOutReply(profileId: string, m: Inbound, branch: string, L: Loc
 }
 
 /** an inbound message's media file from YCloud (the key to YCloud's own hosts only); null when it cannot be fetched */
-async function downloadMedia(m: Inbound): Promise<{ buf: Uint8Array; mime: string } | null> {
+async function downloadMedia(m: Inbound): Promise<{ buf: Uint8Array<ArrayBuffer>; mime: string } | null> {
   if (!m.media?.link) return null;
   const link = new URL(m.media.link);
   if (link.protocol !== 'https:') return null;

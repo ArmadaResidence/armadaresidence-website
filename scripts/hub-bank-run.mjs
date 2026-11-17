@@ -81,7 +81,7 @@ const counted = (call) => live(call).then((r) => {
   return r;
 });
 
-const NATURAL = `You review one WhatsApp reply written by the front desk of Armada Residence, a hotel in Taif, to a guest. The system adds its own first line before the reply (the welcome «مرحبًا بك في …» on the first message, «وعليكم السلام» to a salaam); it is NOT shown to you. FAIL the reply only for a CLEAR violation of one of these:
+const NATURAL = `You review one WhatsApp reply written by the front desk of Armada Residence, a hotel in Taif, to a guest. The system adds its own first line before the reply (the welcome «مرحبًا بك في …» on the first message, «وعليكم السلام» to a salaam, «نعتذر عن سوء الفهم.» to an annoyed guest); it is NOT shown to you. The system resolves the guest's own date words («الخميس الجاي», «بكرة», «ليلتين») into full dates (weekday, Gregorian, Hijri) and hands them to the writer: such dates are the guest's own, never invented. FAIL the reply only for a CLEAR violation of one of these:
 (1) it is long-winded or robotic where a front-desk agent would write one or two short sentences;
 (2) it is rude, cold, or does not fit what the guest just said;
 (3) Arabic replies: an obviously dialect word (e.g. «وش», «أبغى», «زين», «الحين», «هلا», «أبشر», «ليش», «عشان»); common MSA phrasing such as «متى ما», «على راحتك», «حفظك الله», «جاهزًا» is fine;
@@ -381,7 +381,8 @@ async function learnOne(q) {
         content: CONTENT, longDate: (iso, Lg) => longDate(CONTENT, iso, Lg), sarText: (x, Lg) => sarText(x, Lg),
       };
       const run = await runItem(ctx, item, deps);
-  guestMessages += (q.messages ?? []).filter(isGuestLine).length;
+      guestMessages += item.messages.filter(isGuestLine).length;
+
       const g = grade(item, run.outcome, { fees: liveFees(), cards: {}, skills: ctx.unit.skills });
       reasons.push(...g.reasons.map((x) => x.replace(/^s1/, tag)));
       const s0 = run.outcome.steps?.[0];
@@ -415,6 +416,7 @@ async function one(q) {
     content: CONTENT, longDate: (iso, L) => longDate(CONTENT, iso, L), sarText: (n, L) => sarText(n, L),
   };
   const run = await runItem(ctx, item, deps);
+  guestMessages += (q.messages ?? []).filter(isGuestLine).length;
   // the bank's {fee:*} expectations read the fees of Settings at run time (content/fees.generated.json — the build's read)
   const g = grade(item, run.outcome, { fees: liveFees(), cards: {}, skills: ctx.unit.skills });
   const reasons = [...g.reasons];

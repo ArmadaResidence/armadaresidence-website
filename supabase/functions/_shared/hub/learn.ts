@@ -597,5 +597,8 @@ export function intentAction(t: TeachTurn, r: { intent: Intent; fact: string; bo
   }
   if (r.intent === 'teach' || r.intent === 'revise') return { kind: 'teach', body: body(r.fact), scope: scopeOf(body(r.fact), r.both), revises: null };
   if (r.intent === 'unsure') return prefixed ? { kind: 'teach', body: body(r.fact), scope: scopeOf(body(r.fact), r.both), revises: null } : { kind: 'ask', body: body(r.fact), scope: scopeOf(body(r.fact), r.both) };
+  // H9 fix 3: a message that starts with «تعلّم» is always a teaching — the teaching itself decides a fact, a reply rule
+  // or an explained refusal (Ahmed's «تعلّم: … قوله إنك موظف» must get «مش هقدر أطبّقها», never silence)
+  if (prefixed) return { kind: 'teach', body: body(r.fact), scope: scopeOf(body(r.fact), r.both), revises: null };
   return { kind: 'chat' };
 }

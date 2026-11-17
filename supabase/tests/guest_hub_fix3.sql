@@ -203,8 +203,9 @@ select pg_temp._check('R4 off: no reminder for that branch; the answer carries t
   not internal.hub_departures_in_use('shafa-road', now(), false) and pg_temp._j('r4') -> 'previous' = '{"remind_on": true}'::jsonb
   and exists (select 1 from jsonb_array_elements(pg_temp._j('r5') -> 'branches') b where b ->> 'branch' = 'shafa-road' and not (b ->> 'remind_on')::boolean), pg_temp._j('r4')::text);
 select pg_temp._check('R5 audited', exists (select 1 from public.audit_log a where a.entity = 'hub_departure_config' and a.new ->> 'branch_slug' = 'shafa-road' and not (a.new ->> 'remind_on')::boolean));
+select pg_temp._save('t705', to_jsonb(((internal.riyadh_today())::timestamp + time '07:05') at time zone 'Asia/Riyadh'));
 select pg_temp._service();
-select pg_temp._save('r6', public.hub_departures_tick(((internal.riyadh_today())::timestamp + time '07:05') at time zone 'Asia/Riyadh', true));
+select pg_temp._save('r6', public.hub_departures_tick((pg_temp._j('t705') #>> '{}')::timestamptz, true));
 select pg_temp._root();
 select pg_temp._check('R6 07:05, switches off, no upload: the tick queues a test reminder round for Airport Road, none for Shafa Road (its reminder switch off)',
   exists (select 1 from public.hub_upload_reminders r where r.branch_slug = 'airport-road' and r.is_test and r.round = 'r1')

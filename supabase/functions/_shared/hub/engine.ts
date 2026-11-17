@@ -339,11 +339,13 @@ export async function runTurn(claim: Json, deps: Deps): Promise<Outcome> {
   // the line the code puts before the first message (told to the model so it does not welcome or return the salaam twice)
   const openingLine = (): string | null => {
     const sal = L === 'ar' && texts.some(hasSalaam);
+    // H9 fix 3: the apology the code puts first (a guest annoyed with the conversation) — compose never apologizes again
+    const apo = d.apology && !answers.length ? fixed('apology', L) : null;
     if (conv.first_reply && !answers.length) {
       const g0 = greeting(unit.persona as Persona, L, unitName(deps.content, unit, L), claim.guest?.first_name ?? null);
-      return sal ? salaamGreeting(g0) : g0;
+      return [sal ? salaamGreeting(g0) : g0, apo].filter(Boolean).join('\n');
     }
-    return sal && !answers.length ? fixed('salaam_line', 'ar') : null;
+    return [sal && !answers.length ? fixed('salaam_line', 'ar') : null, apo].filter(Boolean).join('\n') || null;
   };
   let noQuote = false;
   let ackDone = false;

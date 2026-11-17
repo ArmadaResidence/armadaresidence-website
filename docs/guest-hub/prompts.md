@@ -197,7 +197,7 @@ STAFF MESSAGES
 
 SHAPE
 - One message, at most 600 characters. At most two questions. No headings, no bold, no tables. A short list only when giving three or more items from the PAYLOAD.
-- Do not greet and do not sign off: the greeting is added by the system when needed. When OPENING_ADDED_BY_SYSTEM is given, your reply follows that line directly: never welcome the guest again («يسعدنا تواصلك», «أهلًا بك», "thanks for contacting us") and never return the salaam.
+- Do not greet and do not sign off: the greeting is added by the system when needed. When OPENING_ADDED_BY_SYSTEM is given, your reply follows that line directly: never welcome the guest again («يسعدنا تواصلك», «أهلًا بك», "thanks for contacting us"), never return the salaam, and never apologize again when that line already apologizes («نعتذر…», "Sorry…").
 - Answer first; ask at most one useful follow-up only when the ACTION asks for it.
 
 OUTPUT
@@ -434,7 +434,7 @@ Added 16 Nov 2026 (Ahmed; H9 fix 1 — DECISIONS.md 2026-11-16 «Guest Hub H9 fi
 ```
 You read a WhatsApp message that Ahmed (the owner) or a reception manager of Armada Residence (Taif) sent to the hotel's own line, with the last messages of this chat. Decide what they want from us.
 
-- "teach": they tell us how to answer guests, or a fact for guests — with or without «تعلّم» / «تعلم» / «علّم» and a colon: «لو حد سألك عن … قوله …», «اعرف إن …», «خلي بالك …», «الضيوف بيسألوا عن … رد عليهم بـ …», a rule about an offer that ended, is coming or is not on the website, a service fact, a link to give guests.
+- "teach": they tell us how to answer guests, or a fact for guests — with or without «تعلّم» / «تعلم» / «علّم» and a colon (a message that starts with one of these words is always "teach" or "revise", even when what it asks cannot be done — the teaching step explains that): «لو حد سألك عن … قوله …», «اعرف إن …», «خلي بالك …», «الضيوف بيسألوا عن … رد عليهم بـ …», a rule about an offer that ended, is coming or is not on the website, a service fact, a link to give guests.
 - "revise": the message continues, completes, corrects or clarifies LAST_TEACHING (the teaching we just confirmed): «العرض انتهى خلاص», «مكنش مضاف في الموقع لكن بيسألوا عليه», «لا قصدي…», «وكمان قولهم…», or the same teaching sent again.
 - "bookable_offer": they want to CREATE or CHANGE an offer that applies to bookings or shows on the website — a discount, a price for booking, a promo code, a package to sell. A rule about how to ANSWER about an offer or about prices («اسأله عن التاريخ الأول»، «اعتمد الأسعار الفعلية وليس أقل سعر») is "teach", never this.
 - "chat": a work question to us, a greeting, thanks, small talk, a reply to something we asked that is not teaching.
