@@ -178,6 +178,17 @@ def url_path(p: Path) -> str:
     return "/" + rel
 
 
+# old URLs Search Console still sees (Ahmed, 17 Nov 2026): exact path → the page its redirect page must send to, and
+# prefixes 404.html must send on (redirects.json holds the entries; this pins what each must do)
+OLD_URL_REDIRECTS = {
+    "/accommodation/executive-suite/": "/airport-road/",
+    "/accommodation/two-bedroom-apartment/": "/airport-road/two-bedroom-suite/",
+}
+OLD_URL_PREFIXES = {
+    "/accommodation/two-bedroom-apartment/": "/airport-road/two-bedroom-suite/",
+}
+
+
 def exists(path: str) -> bool:
     path = path.split("#")[0].split("?")[0]
     if path.endswith("/"):
@@ -980,6 +991,32 @@ def main() -> int:
                 rep.f("old urls", f"{gp} is listed as a real 404 (redirects.json → gone) but the build answers it")
     except Exception as e:  # noqa: BLE001
         rep.f("old urls", f"redirects.json gone invalid: {e}")
+
+    # ---- old URLs Search Console still sees (Ahmed, 17 Nov 2026 — DECISIONS.md «Old URLs from Search Console»): each
+    # exact path is a redirect page to its own target (Astro's redirect page: meta refresh, robots noindex, canonical
+    # to the target), out of the sitemap, the target a real page; the wildcard goes through 404.html
+    sm_text = "".join(f.read_text(encoding="utf-8") for f in DIST.glob("sitemap-*.xml"))
+    for old, want in OLD_URL_REDIRECTS.items():
+        f = DIST / old.strip("/") / "index.html"
+        if not f.is_file():
+            rep.f("old urls", f"{old}: no redirect page in dist/")
+            continue
+        html = f.read_text(encoding="utf-8")
+        m = re.search(r'http-equiv="refresh" content="0;url=([^"]+)"', html)
+        if not m or m.group(1) != want:
+            rep.f("old urls", f"{old}: redirects to {m.group(1) if m else '(nothing)'}, expected {want}")
+        if not re.search(r'<meta name="robots" content="noindex"', html):
+            rep.f("old urls", f"{old}: the redirect page is not noindex")
+        if f"<loc>{site}{old}" in sm_text:
+            rep.f("old urls", f"{old}: in the sitemap")
+        if want not in pages:
+            rep.f("old urls", f"{old} → {want}: the target is not a built page")
+    nf = (DIST / "404.html").read_text(encoding="utf-8") if (DIST / "404.html").is_file() else ""
+    for prefix, want in OLD_URL_PREFIXES.items():
+        if not re.search(re.escape(f"p.indexOf('{prefix}') !== -1) location.replace('{want}')"), nf):
+            rep.f("old urls", f"{prefix}*: 404.html does not send it to {want}")
+        if want not in pages:
+            rep.f("old urls", f"{prefix}* → {want}: the target is not a built page")
 
     # ---- no soft 404 (9 Nov 2026): only 404.html may carry the not-found title; every other page that says "not found"
     # with a 200 would be a soft 404 for Search Console

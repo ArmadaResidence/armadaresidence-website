@@ -80,6 +80,21 @@
       "to": "/"
     },
     {
+      "from": "/accommodation/executive-suite",
+      "to": "/airport-road/",
+      "_why": "Search Console (Ahmed, 17 Nov 2026): an earlier WordPress room page; the executive suite is not on the site, so the Airport Road page"
+    },
+    {
+      "from": "/accommodation/two-bedroom-apartment",
+      "to": "/airport-road/two-bedroom-suite/",
+      "_why": "Search Console (Ahmed, 17 Nov 2026): an earlier WordPress room page → the Airport Road two-bedroom suite; anything under it through 404.html (next entry)"
+    },
+    {
+      "from": "/accommodation/two-bedroom-apartment/*",
+      "to": "/airport-road/two-bedroom-suite/",
+      "via": "404"
+    },
+    {
       "from": "/restaurant",
       "to": "/dining/",
       "else": "/airport-road/#dining",
@@ -129,10 +144,6 @@
     {
       "path": "/branches/2",
       "why": "numeric ID unknown to the old site map — not matched (no guess)"
-    },
-    {
-      "path": "/accommodation/executive-suite",
-      "why": "WordPress hotel-theme demo room; no Armada room type of that name"
     },
     {
       "path": "/accommodation-facility/work-desk",

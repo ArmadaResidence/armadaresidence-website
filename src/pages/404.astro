@@ -24,7 +24,10 @@ const galleryHome = !galleryLive && sectionVisible('gallery');
     // sign-in, an unknown /offers/<id> → /offers/, an unknown /blog/<slug> → /blog/.
     (function () {
       var p = location.pathname;
-      if (/\/branches(\/|$)/.test(p)) location.replace('/');
+      // 17 Nov 2026 (Search Console): anything under the old WordPress room page → the Airport Road two-bedroom suite
+      // (the exact path has its own redirect page; redirects.json `/accommodation/two-bedroom-apartment/*`)
+      if (p.indexOf('/accommodation/two-bedroom-apartment/') !== -1) location.replace('/airport-road/two-bedroom-suite/');
+      else if (/\/branches(\/|$)/.test(p)) location.replace('/');
       else if (/\/admin(\/|$)/.test(p)) location.replace('https://admin.armadaresidence.com/');
       // 9 Nov 2026: the WhatsApp offer button (https://armadaresidence.com/offers/{{1}} — a fixed Meta template) opens
       // /offers/en/… for English members → /en/offers/; the query (utm) and the #offer-<slug> anchor are kept
