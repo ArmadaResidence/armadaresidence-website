@@ -11,7 +11,7 @@
 import { readdirSync, readFileSync, existsSync } from 'node:fs';
 import { runTurn } from '../supabase/functions/_shared/hub/engine.ts';
 import { guard } from '../supabase/functions/_shared/hub/guard.ts';
-import { understandUser } from '../supabase/functions/_shared/hub/understand.ts';
+import { understandStatic } from '../supabase/functions/_shared/hub/understand.ts';
 import { longDate } from '../supabase/functions/booking-request/email.ts';
 import { sarText } from '../supabase/functions/booking-request/rules.ts';
 import { BANK, CONTENT, FORBIDDEN, claimFor, h5Expect, knowledgeFor, outcomeKind, useRecordedFees } from './hub-fixtures-lib.mjs';
@@ -33,8 +33,8 @@ if (!files.length) {
 // prompts.md §0: understand gets the topics WITH their labels (the recorded fixtures were made with them; the claim
 // carries label_ar since 20261114300000)
 {
-  const u = understandUser('{}', { topics: ['eyab'], topic_labels: { eyab: { en: 'Eyab', ar: '«إياب»' } }, room_types: [] },
-    { today: '2026-11-14', unit: 'airport-road', state: 'new', draft: null, history: [], turn: ['x'] });
+  // H9 fix 3: the lists sit in the cached prefix (understandStatic), after the system block
+  const u = understandStatic('{}', { topics: ['eyab'], topic_labels: { eyab: { en: 'Eyab', ar: '«إياب»' } }, room_types: [] });
   check(u.includes('eyab: Eyab / «إياب»'), 'understand lists each topic with its English and Arabic labels');
   const mig = readFileSync(new URL('../supabase/migrations/20261114300000_guest_hub_topic_labels.sql', import.meta.url), 'utf8');
   check(/'label_en', x\.label_en, 'label_ar', x\.label_ar/.test(mig), 'hub_turn_claim hands the engine both labels');

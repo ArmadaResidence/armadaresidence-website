@@ -35,11 +35,33 @@ export interface StandbyInput {
   kind: 'reply' | 'tag';
 }
 
+/** H9 fix 3 (Ahmed, 17 Nov 2026): why a turn waited or not — the twin of internal.hub_standby_reason (shown in «المحادثات»
+ *  and «المحاكي»); `engaged` counts only while the exchange is open (a message in the last 30 minutes) */
+export type StandbyReason = 'waiting' | 'off' | 'no_shift' | 'engaged' | 'tap' | 'tag';
+export const EXCHANGE_MINUTES = 30;
+export function standbyReason(x: StandbyInput): StandbyReason {
+  if (x.kind !== 'reply') return 'tag';
+  if (x.tap) return 'tap';
+  const m = Math.trunc(Number(x.minutes));
+  if (!x.on || !(m >= STANDBY_MIN && m <= STANDBY_MAX)) return 'off';
+  if (x.engaged) return 'engaged';
+  if (!x.onShift) return 'no_shift';
+  return 'waiting';
+}
 /** the minutes to wait, or null = no wait (today's behaviour) */
 export function standbyMinutes(x: StandbyInput): number | null {
-  if (!x.on || x.kind !== 'reply' || x.tap || x.engaged || !x.onShift) return null;
-  const m = Math.trunc(Number(x.minutes));
-  return m >= STANDBY_MIN && m <= STANDBY_MAX ? m : null;
+  return standbyReason(x) === 'waiting' ? Math.trunc(Number(x.minutes)) : null;
+}
+/** the line «المحادثات» and «المحاكي» show: «ينتظر رد الفريق — m:ss» / «لم ينتظر: …» (the dashboard's twin: lib/inbox.ts) */
+export const STANDBY_REASON_TEXT: Record<Exclude<StandbyReason, 'waiting'>, string> = {
+  off: 'لم ينتظر: وضع الاستعداد متوقف',
+  no_shift: 'لم ينتظر: لا يوجد موظف في الوردية الآن',
+  engaged: 'لم ينتظر: المحادثة جارية مع المساعد',
+  tap: 'لم ينتظر: ضغطة على زر من أزرارنا',
+  tag: 'لم ينتظر: المحادثة مع الفريق',
+};
+export function standbyReasonText(r: StandbyReason, msLeft = 0): string {
+  return r === 'waiting' ? `ينتظر رد الفريق — ${countdownText(msLeft)}` : STANDBY_REASON_TEXT[r];
 }
 
 /** «m:ss» with Western digits; never below 0:00 */
@@ -72,6 +94,8 @@ export function simulateStandby(cfg: { on: boolean; minutes: number; shift: (at:
   const res: SimResult = { waits: [], immediate: [], routed: [], reads: [] };
   let engaged = false;
   let lastStaff: number | null = null;
+  // H9 fix 3: the exchange with the assistant ends after 30 minutes without a message
+  let lastAt: number | null = null;
   let open: SimResult['waits'][number] | null = null;
   const resume = cfg.resumeMinutes ?? 15;
   const close = (at: number) => {
@@ -80,11 +104,14 @@ export function simulateStandby(cfg: { on: boolean; minutes: number; shift: (at:
       open.ended_at = open.until;
       res.reads.push(open.until);
       engaged = true;
+      lastAt = Math.max(lastAt ?? 0, open.until);
       open = null;
     }
   };
   for (const e of [...events].sort((a, b) => a.at - b.at)) {
     close(e.at);
+    if (lastAt !== null && e.at - lastAt > EXCHANGE_MINUTES) engaged = false;
+    lastAt = e.at;
     if (e.kind === 'optout') {
       res.routed.push('optout');
       continue;

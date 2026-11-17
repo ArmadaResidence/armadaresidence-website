@@ -227,3 +227,14 @@ export function daysUntil(today: string, iso: string): number {
 export function riyadhDay(ts: string): string {
   return new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Riyadh', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(ts));
 }
+
+/** H9 fix 3 (Ahmed, 17 Nov 2026): «يحتاج قرارك» in one place — the staff replies that were not learned (a price, a
+ *  contradiction), each with «اعتماد كمعلومة» (a card made from it) or «تجاهل»; the daily report's link opens it */
+export interface Decision {
+  id: string; kind: 'price' | 'contradiction'; at: string; unit: string; branch: string; topic_key: string | null; unanswered_id: string;
+  question: string | null; reply: string | null; staff: string; conflicts: { key: string; title_ar: string; text_ar: string }[];
+}
+export const decisions = async () => (await rpc<{ rows: Decision[] }>('hub_decisions_list')).rows;
+export const decide = (id: string, decided: 'approved' | 'dismissed', card: string | null = null) =>
+  rpc<{ ok: boolean; previous: { decided: string | null } }>('hub_decision_set', { p_job: id, p_decided: decided, p_card: card });
+export const DECISION_KIND: Record<Decision['kind'], string> = { price: 'سعر في رد الفريق', contradiction: 'يتعارض مع معلومة مسجّلة' };

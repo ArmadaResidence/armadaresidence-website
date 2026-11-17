@@ -196,7 +196,7 @@ check(fixed('departure_leave', 'en') === 'Thank you for staying with us, and we 
   const TXT = JSON.parse(read('supabase/functions/_shared/hub/text.generated.json')).prompts;
   check(/^### 1\.3 The departure check/m.test(PR) && /^DEPARTURE CHECK:/.test(TXT.understand_departure) && /"departure": "leave" \| "extend" \| "late" \| null/.test(TXT.understand_departure),
     'C3 prompts.md §1.3: the departure block and its field');
-  check(!/departure|DEPARTURE/.test(TXT.understand_system) && !/departure/.test(TXT.understand_schema), 'C4 §1.1 and §1.2 unchanged for every other turn (no departure rule, no field)');
+  check(!/DEPARTURE CHECK|"departure"\s*:|leave as planned/.test(TXT.understand_system) && !/"departure"\s*:/.test(TXT.understand_schema), 'C4 §1.1 and §1.2 unchanged for every other turn (no departure rule, no field)');
   const base = { today: '2026-11-16', unit: 'airport-road', state: 'new', draft: null, history: [], turn: ['بمدد يومين'] };
   check(/DEPARTURE CHECK/.test(understandUser('{}', { topics: [], room_types: [] }, { ...base, departure: TXT.understand_departure })) && !/DEPARTURE CHECK/.test(understandUser('{}', { topics: [], room_types: [] }, base)),
     'C5 the block only while a check waits');

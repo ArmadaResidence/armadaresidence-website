@@ -6,6 +6,7 @@
  * as missing. Nothing here calls the model or logs the understanding (guest text).
  */
 import { addDays, nightsBetween, riyadhToday, validIsoDate } from '../../booking-request/rules.ts';
+import { resolveStay, type StayRead } from './dates.ts';
 
 export const INTENTS = [
   'greeting', 'stay_booking', 'price_question', 'availability_question', 'offer_question', 'facility_question', 'policy_question',
@@ -61,6 +62,15 @@ export interface Understanding {
   confidence: Record<string, number>;
   /** set by code: the dates the guest gave did not pass the booking form's rules */
   dates_invalid?: boolean;
+  /** H9 fix 3 (Ahmed, 17 Nov 2026): the guest's own date words — the arrival's, the departure's — copied as written; code
+   *  resolves them (dates.ts), the model never computes a date */
+  arrival_text?: string | null;
+  departure_text?: string | null;
+  /** H9 fix 3: annoyance with THIS conversation («لا تضحك علي»، «أقول لك…», repeating oneself) — a correction, never a
+   *  complaint and never a hand-off: one short apology and the misunderstanding fixed */
+  frustrated?: boolean;
+  /** set by code: what the resolver made of the date words (the status decides whether a question is asked) */
+  dates_read?: StayRead | null;
 }
 
 export interface Lists {
@@ -111,6 +121,8 @@ export function validateUnderstanding(raw: unknown, lists: Lists): { ok: true; v
   if (!nullOr<string>(o.layout, (x) => typeof x === 'string' && x.length <= 60)) e.push('layout');
   if (!nullOr<boolean>(o.coffee_break, (x) => typeof x === 'boolean')) e.push('coffee_break');
   if (!nullOr<string>(o.departure, (x) => ['leave', 'extend', 'late'].includes(String(x)))) e.push('departure');
+  for (const k of ['arrival_text', 'departure_text']) if (!nullOr<string>(o[k], (x) => typeof x === 'string' && x.length <= 200)) e.push(k);
+  if (!nullOr<boolean>(o.frustrated, (x) => typeof x === 'boolean')) e.push('frustrated');
   if (typeof o.language !== 'string' || !/^(ar|en|other:[a-z]{2,3})$/.test(o.language)) e.push('language');
   if (typeof o.complaint !== 'boolean') e.push('complaint');
   if (!nullOr<string>(o.kind, (x) => (KINDS as readonly string[]).includes(String(x)))) e.push('kind');
@@ -129,6 +141,7 @@ export function validateUnderstanding(raw: unknown, lists: Lists): { ok: true; v
       room_type: o.room_type ?? null, breakfast: o.breakfast ?? null, adults: o.adults ?? null, children: o.children ?? null, child_ages: o.child_ages ?? null,
       extra_beds: o.extra_beds ?? null, rooms_count: o.rooms_count ?? null, guest_name: o.guest_name ?? null, booking_ref: o.booking_ref ?? null,
       organisation: o.organisation ?? null, layout: o.layout ?? null, coffee_break: o.coffee_break ?? null, departure: o.departure ?? null,
+      arrival_text: o.arrival_text ?? null, departure_text: o.departure_text ?? null, frustrated: o.frustrated === true,
       language: o.language, complaint: o.complaint, confidence: conf as Record<string, number>,
     },
   };
@@ -180,6 +193,36 @@ export function recheckDates(u: Understanding, today: string = riyadhToday()): U
   return out;
 }
 
+/** H9 fix 3 (Ahmed, 17 Nov 2026): the stay's dates from the guest's date WORDS, resolved by code against today in
+ *  Asia/Riyadh (dates.ts) — the model's own ISO dates are never used. `prev`: the open draft's dates (a correction keeps the
+ *  stay's length). Then the booking form's rules (no past date, departure after arrival, up to 31 Dec of next year). The
+ *  resolver's status travels as dates_read: anything but 'exact' is asked about (copy.md §2), never guessed. */
+export function applyDates(u: Understanding, today: string = riyadhToday(), prev: { check_in?: unknown; check_out?: unknown } | null = null): Understanding {
+  const out: Understanding = { ...u, check_in: null, check_out: null, dates_invalid: undefined };
+  const words = !!(u.arrival_text || u.departure_text || u.dates_text);
+  const p = prev && typeof prev.check_in === 'string' ? { check_in: String(prev.check_in), check_out: typeof prev.check_out === 'string' ? String(prev.check_out) : null } : null;
+  if (!words && !u.nights) return { ...out, dates_read: null };
+  // a time of day only («أوصل الساعة 11») is no date (prompts.md §1 rule 21)
+  const timeOnly = !u.arrival_text && !u.departure_text && !!u.dates_text && /(?:الساعه|الساعة|ساعه|ساعة|\bat\s*\d|\d\s*(?:am|pm)|الصبح|الظهر|العصر|المغرب|العشا|بالليل|مساء|صباحا)/i.test(u.dates_text)
+    && !/(?:يوم|بكر|غد|خميس|جمع|سبت|احد|اثنين|ثلاث|اربع|نوفمبر|ديسمبر|يناير|\d{1,2}\s*[/-])/.test(u.dates_text);
+  if (timeOnly) return { ...out, nights: u.nights, dates_read: null };
+  const r = resolveStay({ arrival_text: u.arrival_text, departure_text: u.departure_text, dates_text: u.arrival_text || u.departure_text ? null : u.dates_text, nights: u.nights }, today, p);
+  out.dates_read = r;
+  out.nights = r.nights ?? u.nights ?? null;
+  if (r.hijri) out.dates_calendar = 'hijri';
+  if (r.status === 'exact' || r.status === 'confirm') {
+    const maxDate = `${Number(today.slice(0, 4)) + 1}-12-31`;
+    const bad = (d: string | null) => d !== null && (!validIsoDate(d) || d < today || d > maxDate);
+    if (bad(r.check_in) || bad(r.check_out)) return { ...out, dates_invalid: true, dates_read: { ...r, status: r.check_in && r.check_in < today ? 'past' : 'ambiguous', why: 'range' } };
+    if (r.status === 'exact') {
+      out.check_in = r.check_in;
+      out.check_out = r.check_out;
+      if (out.check_in && out.check_out) out.nights = nightsBetween(out.check_in, out.check_out);
+    }
+  }
+  return out;
+}
+
 export interface TurnInput {
   today: string;
   unit: string;
@@ -195,18 +238,13 @@ export interface TurnInput {
 /** a guest's words to the model: phone, card and ID numbers taken out (prompts.md §0 — no phone numbers) */
 export const scrub = (s: string) => String(s ?? '').replace(/\+?\d[\d\s-]{7,}\d/g, '[number]').slice(0, 2000);
 
-/** the user message of «understand» (prompts.md §0 and §1.2): the schema with the closed lists, today, the state, the
- *  draft's fields, the last 6 messages and the turn — built by code */
-export function understandUser(schema: string, lists: Lists, t: TurnInput): string {
+/** H9 fix 3 (Ahmed, 17 Nov 2026 — understanding on claude-sonnet-5-5, prompt caching kept): the parts of «understand» that
+ *  are the same on every call — the closed lists (intents, topics with their labels, the room types of both branches) and
+ *  the schema — follow the system block, so they sit inside the cached prefix; the turn's own parts are the user message */
+export function understandStatic(schema: string, lists: Lists, intents?: readonly string[]): string {
   const rooms = lists.room_types.map((r) => `${r.key} (${r.branch}): ${r.name_ar} / ${r.name_en}`).join('\n');
   return [
-    `TODAY (Asia/Riyadh): ${t.today}`,
-    `UNIT: ${t.unit}`,
-    `CONVERSATION STATE: ${t.state}`,
-    `OPEN DRAFT: ${t.draft ? JSON.stringify(t.draft) : 'none'}`,
-    // H9: only while a departure check waits for its answer (prompts.md §1.3)
-    ...(t.departure ? [String(t.departure)] : []),
-    `INTENTS (choose only from): ${(t.intents ?? INTENTS).join(', ')}`,
+    `INTENTS (choose only from): ${(intents ?? INTENTS).join(', ')}`,
     `TOPICS (choose only from; key: English label / Arabic label):\n${lists.topics.map((k) => {
       const l = lists.topic_labels?.[k];
       const names = [l?.en, l?.ar].filter((x) => x && String(x).trim()).join(' / ');
@@ -214,6 +252,19 @@ export function understandUser(schema: string, lists: Lists, t: TurnInput): stri
     }).join('\n')}`,
     `ROOM TYPES (key (branch): Arabic / English):\n${rooms}`,
     `SCHEMA:\n${schema}`,
+  ].join('\n\n');
+}
+
+/** the user message of «understand» (prompts.md §0 and §1.2): today, the state, the draft's fields, the last messages and the
+ *  turn — built by code; the closed lists and the schema are understandStatic (the cached prefix) */
+export function understandUser(schema: string, lists: Lists, t: TurnInput): string {
+  return [
+    `TODAY (Asia/Riyadh): ${t.today} (${['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][new Date(`${t.today}T00:00:00Z`).getUTCDay()] ?? ''})`,
+    `UNIT: ${t.unit}`,
+    `CONVERSATION STATE: ${t.state}`,
+    `OPEN DRAFT: ${t.draft ? JSON.stringify(t.draft) : 'none'}`,
+    // H9: only while a departure check waits for its answer (prompts.md §1.3)
+    ...(t.departure ? [String(t.departure)] : []),
     `LAST MESSAGES (oldest first):\n${t.history.map((h) => `${h.author}: ${scrub(h.body).slice(0, 500)}`).join('\n') || '(none)'}`,
     `GUEST TURN:\n${t.turn.map(scrub).join('\n')}`,
   ].join('\n\n');

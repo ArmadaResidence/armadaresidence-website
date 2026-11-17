@@ -127,6 +127,8 @@ export function cardBody(c: QuoteCard, f: Record<string, unknown>, L: Lang, fmt:
     }
     out.push(fill(line, {
       room_name: L === 'en' ? c.name_en : c.name_ar, breakfast_text: breakfastText(f.breakfast, L), nights_text: nightsText(nightsOf(f), L),
+      // H9 fix 3: the stay's dates on every card (weekday, Gregorian, Hijri — fmt.longDate)
+      check_in: fmt.longDate(String(f.check_in), L), check_out: fmt.longDate(String(f.check_out), L),
       total, badge: badge(fmt.content, c, L, fmt.limits),
     }));
     if (line.includes('{total}') && c.offer) out.push(c.offer);

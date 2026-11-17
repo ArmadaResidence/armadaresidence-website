@@ -11,7 +11,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import DateField from '../components/DateField';
 import { CancelButton, Confirm, DirtyScope, Empty, ErrorBox, Field, Loading, Modal, NumberField, Segmented, Spinner, useToast } from '../components/ui';
-import { addDays, BRANCH_NAMES, longDate, minutesWord, riyadhDateTime, riyadhToday } from '../lib/format';
+import { addDays, BRANCH_NAMES, longDate, minutesWord, riyadhDateTime, riyadhToday, west } from '../lib/format';
 import * as T from '../lib/team';
 import * as D from '../lib/departures';
 
@@ -104,13 +104,29 @@ function DeparturesTab() {
       setBusy(false);
     }
   };
+  // H9 fix 3: «تذكير رفع القائمة» — at once, with «تراجع»
+  const remind = async (branch: string, on: boolean) => {
+    setBusy(true);
+    try {
+      const r = await D.remindSet(branch, on);
+      await load();
+      toast.undo(`${on ? 'شُغّل' : 'أُوقف'} «تذكير رفع القائمة» لـ${BRANCH_NAMES[branch]}.`, async () => {
+        await D.remindSet(branch, r.previous.remind_on);
+        await load();
+      });
+    } catch (e) {
+      toast((e as Error).message, 'error');
+    } finally {
+      setBusy(false);
+    }
+  };
   if (error) return <ErrorBox error={error} />;
   if (!o) return <Loading />;
   return (
     <div className="grid gap-4" data-tour="team-departures">
       <p className="text-sm text-ink-muted max-w-3xl">
-        كل صباح قبل الساعة 7:00 يرفع الاستقبال من نزيل قائمة المغادرة لليوم لكل فرع في <Link className="link-bronze" to="/departures">«قائمة المغادرين»</Link>. المفتاحان لكل فرع يشغّلهما مدير النظام وحده، وهما متوقفان
-        افتراضيًا؛ وما داما متوقفين تعرض القائمة ما كان سيُرسل ومتى دون إرسال.
+        كل صباح قبل الساعة 7:00 يرفع الاستقبال من نزيل قائمة المغادرة لليوم لكل فرع في <Link className="link-bronze" to="/departures">«قائمة المغادرين»</Link>. مفتاحا الإرسال لكل فرع يشغّلهما مدير النظام وحده، وهما متوقفان
+        افتراضيًا؛ وما داما متوقفين تعرض القائمة ما كان سيُرسل ومتى دون إرسال. «تذكير رفع القائمة» مفتاح مستقل يعمل افتراضيًا.
       </p>
       {o.branches.map((b) => (
         <div key={b.branch} className="card p-4 grid gap-3" data-dep-branch={b.branch}>
@@ -120,6 +136,18 @@ function DeparturesTab() {
               {b.last_upload ? `آخر قائمة: ${longDate(b.last_upload.date)} — ${b.last_upload.kept} ${b.last_upload.kept === 1 ? 'ضيف' : 'ضيوف'}` : 'لم تُرفع قائمة بعد'}
               {b.today_uploaded ? ' · قائمة اليوم مرفوعة' : ' · قائمة اليوم لم تُرفع'}
             </span>
+          </div>
+          <div className="flex flex-wrap items-center justify-between gap-3" data-switch="remind">
+            <div>
+              <p className="font-medium">تذكير رفع القائمة</p>
+              <p className="text-sm text-ink-muted">{b.remind_on !== false ? 'يعمل — تذكير المناوبين 7:00 و8:00، ومدير الاستقبال و«التنبيهات» 8:30، حتى لو كان مفتاحا الإرسال متوقفين' : 'متوقف — لا تذكير ولا تنبيه لهذا الفرع'}</p>
+            </div>
+            {o.system_admin ? (
+              <button type="button" className={`btn btn-sm ${b.remind_on !== false ? 'btn-ghost' : 'btn-primary'}`} disabled={busy} onClick={() => remind(b.branch, b.remind_on === false)}
+                data-action={b.remind_on !== false ? 'remind-off' : 'remind-on'} aria-label={`${b.remind_on !== false ? 'إيقاف' : 'تشغيل'} «تذكير رفع القائمة» لـ${BRANCH_NAMES[b.branch]}`}>
+                {b.remind_on !== false ? 'إيقاف' : 'تشغيل'}
+              </button>
+            ) : <span className="text-xs text-ink-muted">لمدير النظام وحده</span>}
           </div>
           {(['check', 'review'] as const).map((k) => {
             const on = k === 'check' ? b.check_on : b.review_on;
@@ -294,6 +322,11 @@ function BranchCard({ b, reload, first }: { b: T.TeamBranch; reload: () => Promi
           <h3 className="font-semibold">وضع الاستعداد</h3>
           <span className={`chip ${b.standby_on ? 'chip-confirmed' : 'chip-request'}`} data-chip="standby">{b.standby_on ? `مفعّل · ${minutesWord(b.standby_minutes)}` : 'متوقف'}</span>
         </div>
+        {b.standby_now && (
+          <p className={`text-sm ${b.standby_now.reason === 'waiting' ? 'text-bronze-text font-semibold' : 'text-ink-muted'}`} role="status" data-standby-now={b.standby_now.reason}>
+            {T.standbyNowText(b.standby_now)} <span className="text-xs text-ink-muted">· بتوقيت الرياض <span className="num">{b.standby_now.riyadh}</span></span>
+          </p>
+        )}
         <label className="flex items-start gap-2 text-sm font-semibold">
           <input type="checkbox" className="mt-1 size-4 accent-bronze-deep" checked={standbyOn} onChange={(e) => setStandbyOn(e.target.checked)} disabled={!b.can_edit || busy} data-field="standby-on" />
           <span>وضع الاستعداد: انتظر رد الفريق قبل رد المساعد</span>
@@ -438,6 +471,7 @@ function ReportsTab({ data, reload, day, onDay }: { data: T.TeamData; reload: ()
   const admin = data.is_system_admin;
   return (
     <div className="grid gap-4">
+      {admin && <TestNumbers data={data} reload={reload} />}
       {admin ? <ReportSettings data={data} reload={reload} /> : (
         <section className="card p-4 grid gap-2" data-report-readonly>
           <h2 className="text-lg font-bold">مستلمو التقرير</h2>
@@ -448,6 +482,79 @@ function ReportsTab({ data, reload, day, onDay }: { data: T.TeamData; reload: ()
       <LearningSection />
       <ReportView day={day} onDay={onDay} />
     </div>
+  );
+}
+
+/** H9 fix 3 (Ahmed, 17 Nov 2026): «أرقام التجربة» — up to 5 numbers (the system admin's) that go through the GUEST path
+ *  but book only TEST reservations; each change at once, removing one with «تراجع» */
+function TestNumbers({ data, reload }: { data: T.TeamData; reload: () => Promise<void> }) {
+  const toast = useToast();
+  const [phone, setPhone] = useState('');
+  const [label, setLabel] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+  const list = data.test_numbers ?? [];
+  async function add() {
+    setBusy(true);
+    setErr(null);
+    try {
+      await T.testNumberSave(west(phone).replace(/[\s-]/g, ''), label.trim());
+      setPhone('');
+      setLabel('');
+      await reload();
+      toast('أُضيف رقم التجربة.');
+    } catch (e) {
+      const m = (e as Error).message;
+      setErr(Object.entries(T.TEST_NUMBER_ERRORS).find(([k]) => m.includes(k))?.[1] ?? m);
+    } finally {
+      setBusy(false);
+    }
+  }
+  async function remove(n: T.TestNumber) {
+    setBusy(true);
+    try {
+      const r = await T.testNumberDelete(n.id);
+      await reload();
+      toast.undo('حُذف رقم التجربة', async () => {
+        await T.testNumberSave(r.previous.phone, r.previous.label);
+        await reload();
+      });
+    } catch (e) {
+      toast((e as Error).message, 'error');
+    } finally {
+      setBusy(false);
+    }
+  }
+  return (
+    <section className="card p-4 grid gap-3" aria-labelledby="tn-h" data-test-numbers>
+      <div>
+        <h2 id="tn-h" className="text-lg font-bold">أرقام التجربة</h2>
+        <p className="text-sm text-ink-muted mt-1">أرقام تمر بمسار الضيف كاملًا، لكن حجوزاتها من المحادثة حجوزات تجربة فقط: لا تحجز غرفة، ولا تصل للاستقبال، وتُلغى وحدها بعد ساعة. خمسة أرقام على الأكثر، ولمدير النظام وحده.</p>
+      </div>
+      {list.length > 0 && (
+        <ul className="grid gap-1 text-sm" data-test-number-list>
+          {list.map((n) => (
+            <li key={n.id} className="flex flex-wrap items-center gap-2" data-test-number={n.id}>
+              <span className="latin num" dir="ltr">{n.phone}</span>
+              {n.label && <span className="chip">{n.label}</span>}
+              <button type="button" className="btn btn-ghost btn-sm" onClick={() => remove(n)} disabled={busy} aria-label={`حذف رقم التجربة ${n.label || ''}`.trim()} data-action="test-number-delete">حذف الرقم</button>
+            </li>
+          ))}
+        </ul>
+      )}
+      {list.length < T.TEST_NUMBERS_MAX && (
+        <div className="flex flex-wrap items-end gap-2">
+          <Field label="الرقم (بالصيغة الدولية)" id="tn-phone">
+            <input id="tn-phone" className="field latin" dir="ltr" inputMode="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+9665…" data-no-dirty data-field="test-number-phone" />
+          </Field>
+          <Field label="وصف قصير (اختياري)" id="tn-label">
+            <input id="tn-label" className="field" maxLength={40} value={label} onChange={(e) => setLabel(e.target.value)} data-no-dirty data-field="test-number-label" />
+          </Field>
+          <button type="button" className="btn btn-primary" disabled={busy || !west(phone).trim()} onClick={add} data-action="test-number-add">{busy && <Spinner />} إضافة رقم تجربة</button>
+        </div>
+      )}
+      {err && <p className="text-sm text-error" role="alert" data-test-number-error>{err}</p>}
+    </section>
   );
 }
 

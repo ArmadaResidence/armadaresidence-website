@@ -16,7 +16,7 @@ import { anthropicModel, costOf } from '../supabase/functions/_shared/hub/model.
 import { dashboardAdapter } from '../supabase/functions/_shared/hub/adapter/index.ts';
 import { longDate } from '../supabase/functions/booking-request/email.ts';
 import { sarText } from '../supabase/functions/booking-request/rules.ts';
-import { CONTENT, FORBIDDEN, PRICES, claimFor, engineItems, knowledgeFor, liveFees, SEED, TOPICS as TOPICS_ALL } from './hub-fixtures-lib.mjs';
+import { CONTENT, FORBIDDEN, MODELS, PRICES, claimFor, engineItems, knowledgeFor, liveFees, SEED, TOPICS as TOPICS_ALL } from './hub-fixtures-lib.mjs';
 import * as L from '../supabase/functions/_shared/hub/learn.ts';
 import { gradeStandby } from '../supabase/functions/_shared/hub/standby.ts';
 
@@ -40,10 +40,12 @@ const CONV = [...jsonl('tests/hub-bank/conversations.jsonl'), ...jsonl('tests/hu
 const LEARN = jsonl('tests/hub-bank/conversations-learn.jsonl');
 // H9 fix 2 (16 Nov 2026): «وضع الاستعداد» — guest conversations («[burst]», «[held]») and the wait's timelines (kind standby, in code)
 const STANDBY = jsonl('tests/hub-bank/conversations-standby.jsonl');
+// H9 fix 3 (17 Nov 2026): prices by date, dates in code with Hijri, corrections, frustration vs complaints, the singular
+const FIX3 = jsonl('tests/hub-bank/conversations-fix3.jsonl');
 const items = [
   // q032 / q068 are retired on production (the Airport Road laundry, H6 pass 3)
   ...(['conversations', 'learning'].includes(bank) ? [] : engineItems().filter((q) => !['q032', 'q068'].includes(q.id))),
-  ...(['questions', 'learning'].includes(bank) ? [] : [...CONV, ...STANDBY]),
+  ...(['questions', 'learning'].includes(bank) ? [] : [...CONV, ...STANDBY, ...FIX3]),
   ...(['questions', 'conversations'].includes(bank) ? [] : LEARN),
   // --extra <file.jsonl>: more single questions (e.g. the production bank's own items)
   ...(arg('--extra') ? readFileSync(arg('--extra'), 'utf8').split(/\r?\n/).filter((l) => l.trim()).map((l) => JSON.parse(l)).map((q) => ({ ...q, extra: true })) : []),
@@ -67,8 +69,15 @@ const fees = (() => {
 
 const live = anthropicModel(KEY);
 let spent = 0;
+// H9 fix 3: the guest engine's own cost (understand, compose, the alert line, images) apart from the grader's and the
+// learning calls — «the measured cost per guest message»; the cache reads priced as billed
+let guestSpent = 0;
+let guestMessages = 0;
+const GUEST_LAYERS = new Set(['understand', 'tag', 'compose', 'summary', 'vision', 'suggest', 'translate']);
 const counted = (call) => live(call).then((r) => {
-  spent += costOf(PRICES, call.model, r.input_tokens, r.output_tokens);
+  const c = costOf(PRICES, call.model, r.input_tokens, r.output_tokens, r.cache_read_tokens ?? 0, r.cache_write_tokens ?? 0);
+  spent += c;
+  if (GUEST_LAYERS.has(call.layer) && !call.grader) guestSpent += c;
   return r;
 });
 
@@ -81,7 +90,7 @@ const NATURAL = `You review one WhatsApp reply written by the front desk of Arma
 (6) for an off-topic message: it answers or discusses the off-topic content instead of offering help with stays, bookings and hotel services.
 The GUEST may write in dialect; judge only the words of the REPLY. When in doubt, PASS. Short replies such as «كيف نساعدك؟» or «العفو، يسعدنا خدمتك.» are natural. Return exactly one JSON object, the reason first: {"why": "<at most 15 English words>", "pass": true|false}.`;
 async function natural(guest, history, reply, tries = 2) {
-  const r = await counted({ layer: 'compose', model: 'claude-haiku-5-5', system: NATURAL, user: `RECENT CONVERSATION:\n${history.map((h) => `${h.author}: ${h.body}`).join('\n') || '(none)'}\n\nGUEST: ${guest}\n\nREPLY: ${reply}` });
+  const r = await counted({ layer: 'compose', model: 'claude-haiku-5-5', grader: true, system: NATURAL, user: `RECENT CONVERSATION:\n${history.map((h) => `${h.author}: ${h.body}`).join('\n') || '(none)'}\n\nGUEST: ${guest}\n\nREPLY: ${reply}` });
   try {
     if (!r.ok) return { pass: true, why: 'grader unavailable' };
     const s = r.text.slice(r.text.indexOf('{'), r.text.lastIndexOf('}') + 1);
@@ -110,7 +119,7 @@ async function staffOne(q) {
   const reasons = [];
   let reply = '';
   for (let i = 0; i < 2 && !reply; i++) {
-    const r = await counted({ layer: 'staff_chat', model: 'claude-sonnet-5-5', system, user });
+    const r = await counted({ layer: 'staff_chat', model: MODELS.staff ?? 'claude-opus-5-5', system, user });
     if (!r.ok) {
       reasons.push(`model:${r.error}`);
       break;
@@ -124,7 +133,7 @@ async function staffOne(q) {
     for (const w of e.must_not_include ?? []) if (reply.includes(w)) reasons.push(`must_not_include:${w}`);
     if (e.must_include_any && !e.must_include_any.some((w) => reply.includes(w))) reasons.push('must_include_any');
     const check = Object.keys(CHECKS).filter((k) => e[k]).map((k) => CHECKS[k]).join('; ');
-    const r = await counted({ layer: 'compose', model: 'claude-haiku-5-5', system: STAFF_TONE, user: `COLLEAGUE_KIND: ${q.who === 'report' ? 'management' : 'staff'}\nCHECK: ${check || '(none)'}\nCOLLEAGUE: ${msg}\nREPLY: ${reply}` });
+    const r = await counted({ layer: 'compose', model: 'claude-haiku-5-5', grader: true, system: STAFF_TONE, user: `COLLEAGUE_KIND: ${q.who === 'report' ? 'management' : 'staff'}\nCHECK: ${check || '(none)'}\nCOLLEAGUE: ${msg}\nREPLY: ${reply}` });
     let v = { pass: true, why: 'grader unavailable' };
     try {
       if (r.ok) v = JSON.parse(r.text.slice(r.text.indexOf('{'), r.text.lastIndexOf('}') + 1));
@@ -171,7 +180,7 @@ async function learnOne(q) {
     text_ar: card.text_ar, text_en: card.text_en, short: card.short_ar, expires_on: card.expires_on ?? null, scope });
   const learnCall = async (mode, scope, fields, prices) => {
     const cards = live().filter((c) => c.key !== fields.revising?.key);
-    const r = await counted({ layer: 'compose', model: 'claude-sonnet-5-5', system: L.learnSystem(), user: L.learnUser({ mode, scope, today: riyadhToday, topics: LEARN_TOPICS, cards, links: LINKS, ...fields }) });
+    const r = await counted({ layer: 'compose', model: MODELS.staff ?? 'claude-opus-5-5', grader: true, system: L.learnSystem(), user: L.learnUser({ mode, scope, today: riyadhToday, topics: LEARN_TOPICS, cards, links: LINKS, ...fields }) });
     if (!r.ok) return { ok: false, reason: `model:${r.error}` };
     return L.checkFacts(r.text, { mode, topics: LEARN_TOPICS.map((t) => t.key), cards: cards.map((c) => c.key), forbidden: FORBIDDEN, prices,
       links: [...Object.values(LINKS), ...L.linksOf(fields.text ?? fields.reply ?? '')], today: riyadhToday });
@@ -216,8 +225,18 @@ async function learnOne(q) {
       if (e.conflicts && !e.conflicts.every((k) => out.conflicts.includes(k))) reasons.push(`${tag}:conflicts:${out.conflicts.join('|')}`);
       return { got: 'ask_replace', reply: L.learnLine('ask_replace', { wording: out.card.text_ar, old: (SEED.find((c) => c.id === out.conflicts[0]) ?? cardOf(out.conflicts[0]))?.text_ar }) };
     }
+    // H9 fix 3: a reply rule — the owner's only (the SQL hub_teach_finish's twin); stored apart from the facts
+    if (out.status === 'rule') {
+      if (!t.owner) return { got: 'rule_owner', reply: L.learnLine('rule_owner') };
+      const c = { ...toCard(out.card, scope), card_kind: 'rule' };
+      mem.cards.push(c);
+      mem.last = c.id;
+      mem.lastSent = { kind: 'confirm', card_id: c.id };
+      const got = out.part ? 'rule_saved_part' : 'rule_saved';
+      return { got, reply: L.learnLine(got, { wording: c.text_ar, part: out.part }), buttons: L.confirmButtons(c.id, scope, t.owner).map((b) => b.title) };
+    }
     const got = out.status === 'refused' ? L.refusalLine(out.reason) : 'failed';
-    return { got, reply: L.learnLine(got, { link: L.OFFERS_LINK }) };
+    return { got, reply: L.learnLine(got, { link: L.OFFERS_LINK, part: out.part ?? '' }) };
   };
   /** one colleague message (the staff path of wa-automation) */
   const staffMsg = async (who, text, button, channel, tag, e) => {
@@ -285,7 +304,7 @@ async function learnOne(q) {
         mem.pending = null;
         res = { got: 'replaced', reply: L.learnLine('replaced', { wording: c.text_ar }) };
       } else if (route.kind === 'classify') {
-        const r = await counted({ layer: 'staff_chat', model: 'claude-haiku-5-5', system: L.intentSystem(),
+        const r = await counted({ layer: 'staff_chat', model: MODELS.staff ?? 'claude-opus-5-5', system: L.intentSystem(),
           user: L.intentUser({ branch: channel, teacher: t.owner ? 'owner' : 'manager', message: text, last_teaching: last?.text_ar ?? null, history: mem.history, starts_with_teach_word: L.isTeach(text) }) });
         const act = L.intentAction(turn, r.ok ? L.parseIntent(r.text) : null);
         if (act.kind === 'teach') res = await doTeach(t, act.body, act.scope, act.revises, tag, e);
@@ -362,6 +381,7 @@ async function learnOne(q) {
         content: CONTENT, longDate: (iso, Lg) => longDate(CONTENT, iso, Lg), sarText: (x, Lg) => sarText(x, Lg),
       };
       const run = await runItem(ctx, item, deps);
+  guestMessages += (q.messages ?? []).filter(isGuestLine).length;
       const g = grade(item, run.outcome, { fees: liveFees(), cards: {}, skills: ctx.unit.skills });
       reasons.push(...g.reasons.map((x) => x.replace(/^s1/, tag)));
       const s0 = run.outcome.steps?.[0];
@@ -445,6 +465,7 @@ const sum = (bk, u) => {
   return `${r.filter((x) => x.pass).length}/${r.length}`;
 };
 console.log(`questions: airport-road ${sum('questions', 'airport-road')}, shafa-road ${sum('questions', 'shafa-road')} · conversations: airport-road ${sum('conversations', 'airport-road')}, shafa-road ${sum('conversations', 'shafa-road')} · learning ${sum('learning')} · $${spent.toFixed(3)}`);
+console.log(`models: understand ${MODELS.understand}, compose ${MODELS.compose}, staff ${MODELS.staff ?? '—'} · guest engine $${guestSpent.toFixed(4)} for ${guestMessages} guest messages = $${(guestMessages ? guestSpent / guestMessages : 0).toFixed(5)} a guest message (cache reads as billed)`);
 const out = arg('--out');
-if (out) writeFileSync(out, JSON.stringify({ at: new Date().toISOString(), spent_usd: Number(spent.toFixed(4)), results }, null, 2));
+if (out) writeFileSync(out, JSON.stringify({ at: new Date().toISOString(), spent_usd: Number(spent.toFixed(4)), models: MODELS, guest_spent_usd: Number(guestSpent.toFixed(5)), guest_messages: guestMessages, results }, null, 2));
 process.exit(results.every((x) => x.pass) ? 0 : 1);

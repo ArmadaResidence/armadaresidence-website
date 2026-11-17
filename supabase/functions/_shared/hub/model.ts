@@ -1,8 +1,9 @@
 /**
  * Guest Hub — the model calls (session H5, 14 Nov 2026; spec §2.11, §7.3). The Anthropic Messages API from the Edge
  * Functions (the same key and the same call shape as label-suggest: ANTHROPIC_API_KEY, Supabase only — never a local
- * copy of it). claude-haiku-5-5 for understanding, tagging and translation; claude-sonnet-5-5 for composing and the
- * suggested replies (Settings hub_models). Per-layer ceilings on the input and the output; the cheapest settings each
+ * copy of it). Since H9 fix 3 (Ahmed, 17 Nov 2026): claude-sonnet-5-5 for understanding, tagging, translation, images and
+ * composing; claude-opus-5-5 for the staff path (the colleague chat, teaching, reply rules, the reminders) — Settings
+ * hub_models. Per-layer ceilings on the input and the output; the cheapest settings each
  * model accepts (effort low; no thinking — Haiku {type: disabled}, Sonnet 5.5 {type: between_tools}, which with no tool
  * is none). A refused thinking field retries once without it. An answer that the credit balance is too low is reported
  * as `credit` (the engine then hands every conversation to staff and opens the api_credit alert).
@@ -28,6 +29,9 @@ export interface ModelResult {
   input_tokens: number;
   output_tokens: number;
   latency_ms: number;
+  /** H9 fix 3: of input_tokens, the ones read from the prompt cache / written to it (costOf prices them as billed) */
+  cache_read_tokens?: number;
+  cache_write_tokens?: number;
   error?: 'credit' | 'rate_limit' | 'overloaded' | 'network' | 'timeout' | 'refusal' | 'bad_request' | 'not_configured' | 'max_tokens' | 'other';
 }
 export type ModelFn = (c: ModelCall) => Promise<ModelResult>;
@@ -66,8 +70,12 @@ export function requestBody(c: ModelCall, thinking = true): Record<string, unkno
       : userText,
   });
   const system = c.system.length >= CACHE_MIN_CHARS ? [{ type: 'text', text: c.system, cache_control: cache }] : c.system;
-  const body: Record<string, unknown> = { model: c.model, max_tokens: ceil.max_tokens, system, messages: msgs, output_config: { effort: 'low' } };
-  if (thinking) body.thinking = /sonnet/.test(c.model) ? { type: 'between_tools' } : { type: 'disabled' };
+  // H9 fix 3 (17 Nov 2026): claude-opus-5-5 (the staff path) always thinks — its thinking field is left out (adaptive) and
+  // the output ceiling raised so a short thought never cuts the reply; Sonnet 5.5 turns thinking off with between_tools,
+  // Haiku with disabled
+  const opus = /opus/.test(c.model);
+  const body: Record<string, unknown> = { model: c.model, max_tokens: opus ? ceil.max_tokens * 4 : ceil.max_tokens, system, messages: msgs, output_config: { effort: 'low' } };
+  if (thinking && !opus) body.thinking = /sonnet/.test(c.model) ? { type: 'between_tools' } : { type: 'disabled' };
   return body;
 }
 
@@ -154,7 +162,8 @@ function callOnce(key: string, fetchFn: typeof fetch, timeoutMs: number) {
     } catch {
       return { ok: false, text: '', input_tokens: 0, output_tokens: 0, latency_ms: latency, error: 'other' };
     }
-    const usage = { input_tokens: Number(m.usage?.input_tokens ?? 0) + Number(m.usage?.cache_read_input_tokens ?? 0) + Number(m.usage?.cache_creation_input_tokens ?? 0), output_tokens: Number(m.usage?.output_tokens ?? 0) };
+    const usage = { input_tokens: Number(m.usage?.input_tokens ?? 0) + Number(m.usage?.cache_read_input_tokens ?? 0) + Number(m.usage?.cache_creation_input_tokens ?? 0), output_tokens: Number(m.usage?.output_tokens ?? 0),
+      cache_read_tokens: Number(m.usage?.cache_read_input_tokens ?? 0), cache_write_tokens: Number(m.usage?.cache_creation_input_tokens ?? 0) };
     const text = (Array.isArray(m.content) ? m.content : []).filter((b: { type: string }) => b.type === 'text').map((b: { text: string }) => b.text).join('');
     if (m.stop_reason === 'refusal') return { ok: false, text: '', ...usage, latency_ms: latency, error: 'refusal' };
     if (m.stop_reason === 'max_tokens') return { ok: false, text, ...usage, latency_ms: latency, error: 'max_tokens' };
@@ -164,13 +173,18 @@ function callOnce(key: string, fetchFn: typeof fetch, timeoutMs: number) {
 
 /** USD of one call at hub_model_prices — the formula of internal.hub_model_cost (Haiku's long-prompt prices included) */
 // deno-lint-ignore no-explicit-any
-export function costOf(prices: any, model: string, input: number, output: number): number {
+export function costOf(prices: any, model: string, input: number, output: number, cacheRead = 0, cacheWrite = 0): number {
   const p = prices?.[model];
   if (!p || typeof p.input !== 'number' || typeof p.output !== 'number') return 0;
   const long = typeof p.long_from === 'number' && input > p.long_from;
   const cin = long ? p.long_input : p.input;
   const cout = long ? p.long_output : p.output;
-  return Math.round(((input * cin) / 1e6 + (output * cout) / 1e6) * 1e6) / 1e6;
+  // H9 fix 3: cache reads at the cache price (Anthropic: 10 % of the input price unless the table names one), cache writes
+  // at 1.25 × the input price; without the split (the database's formula) every input token is priced as input
+  const cr = Math.max(0, Math.min(cacheRead, input));
+  const cw = Math.max(0, Math.min(cacheWrite, input - cr));
+  const crp = typeof p.cache_read === 'number' ? p.cache_read : cin * 0.1;
+  return Math.round((((input - cr - cw) * cin + cr * crp + cw * cin * 1.25) / 1e6 + (output * cout) / 1e6) * 1e6) / 1e6;
 }
 
 /** replays recorded answers (tests/hub-fixtures): the key is the layer + a hash of the user message */

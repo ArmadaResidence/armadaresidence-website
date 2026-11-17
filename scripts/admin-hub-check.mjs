@@ -27,3 +27,6 @@ await import('../admin/tests/hub-now-ui-check.mjs');
 // H9 (16 Nov 2026): «قائمة المغادرين» (the upload read in the browser, the preview, «استبعاد» / «تمديد» with «تراجع», the dry run),
 // the switches in «الفريق والتقارير» — offline too (admin/tests/hub-departures-ui-check.mjs).
 await import('../admin/tests/hub-departures-ui-check.mjs');
+// H9 fix 3 (17 Nov 2026): the standby live line, «أرقام التجربة», «تذكير رفع القائمة», «المحادثات» → «الفريق», «يحتاج
+// قرارك» in «قاعدة المعرفة» — offline too (admin/tests/hub-fix3-ui-check.mjs).
+await import('../admin/tests/hub-fix3-ui-check.mjs');

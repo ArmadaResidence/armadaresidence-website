@@ -93,6 +93,8 @@ Go ahead and type your question.
 
 ## 2. Dates
 
+**Dates are resolved by code** [مقرر — أحمد، 17 نوفمبر 2026, H9 fix 3]: the understanding copies the guest's date words; `_shared/hub/dates.ts` turns them into dates against today in Asia/Riyadh — «اليوم»، «بكرة»، «بعد بكرة»، a weekday with «الجاي» / «اللي جاي» / «القادم» (the coming one; today's weekday → next week's), «الأسبوع الجاي»، «الويكند» (Thursday → Saturday), «ليلة الجمعة» (check-in Thursday), «أول الشهر الجاي»، a day and a month, spoken numbers («تسعتاشر»)، Arabic-Indic or Western digits, nights, and Hijri dates (Umm al-Qura). Every stay date the guest reads shows the weekday, the Gregorian date and the Hijri date: «الخميس 19 نوفمبر 2026 (9 جمادى الآخرة 1448)». Anything the code cannot settle is asked back with the candidate(s) — 2.1 or 2.3 — never guessed.
+
 **2.1 Confirming dates the code understood from words** («الخميس الجاي»)
 
 ```
@@ -103,7 +105,7 @@ Do you mean arriving on {check_in} and leaving on {check_out}?
 ```
 Buttons: «نعم» · «تواريخ أخرى» / “Yes” · “Other dates”.
 
-**2.2 A Hijri date**
+**2.2 A Hijri date** — no longer sent since H9 fix 3 (17 Nov 2026): Hijri dates are read and answered like Gregorian ones; the line stays for the record.
 
 ```
 نتعامل مع التواريخ بالتقويم الميلادي. اكتب لنا تاريخي الوصول والمغادرة بالميلادي من فضلك.
@@ -111,6 +113,19 @@ Buttons: «نعم» · «تواريخ أخرى» / “Yes” · “Other dates�
 ```
 We work with Gregorian dates. Please send us your arrival and departure dates in the Gregorian calendar.
 ```
+
+**2.3 Date questions and the apology** [H9 fix 3 — Ahmed, 17 Nov 2026; the wording is the session's, for Ahmed's review]. `{check_in}`, `{date}`, `{date_a}`, `{date_b}` are stay dates as above (weekday, Gregorian, Hijri). One question at a time; the buttons of 2.1 go with the confirm lines.
+
+| Case | Arabic | English |
+|---|---|---|
+| Confirm an arrival only (a day that has passed this month → next month's; «أول الشهر») | «هل تقصد الوصول يوم {check_in}؟» | “Do you mean arriving on {check_in}?” |
+| A weekday that does not match the day | «هل تقصد يوم {date_a} أم يوم {date_b}؟» | “Do you mean {date_a} or {date_b}?” |
+| A date that has passed | «يوم {date} قد مضى. ما تاريخ وصولك؟» | “{date} has already passed. When will you arrive?” |
+| A departure on or before the arrival | «يكون تاريخ المغادرة بعد الوصول يوم {check_in}. ما تاريخ مغادرتك، أو كم ليلة ستقيم؟» | “The departure comes after your arrival on {check_in}. When will you leave, or how many nights will you stay?” |
+| «الأسبوع الجاي» without a day | «في أي يوم من الأسبوع القادم تصل؟ يبدأ الأسبوع القادم يوم {date}.» | “Which day next week will you arrive? Next week starts on {date}.” |
+| Dates that cannot be read | «اكتب لنا من فضلك يوم الوصول ويوم المغادرة، مثل: الخميس 19 نوفمبر.» | “Please tell us your arrival and departure days, for example: Thursday 19 November.” |
+| The apology (a guest annoyed with the conversation — one line before the fix, never a hand-off) | «نعتذر عن سوء الفهم.» | “Sorry for the misunderstanding.” |
+| A room price asked again without dates (never a price; the website's link) | «تختلف أسعار الغرف حسب تواريخ الإقامة، ويسعدنا أن نتحقق لك من أي تاريخ تختاره: اكتب لنا يوم الوصول وعدد الليالي. ويمكنك كذلك الاطلاع على الأسعار والحجز من الموقع: {booking_url}» | “Room prices depend on the dates of your stay, and we’d be glad to check any dates for you: tell us your arrival day and the number of nights. You can also see the prices and book on our website: {booking_url}” |
 
 ---
 
@@ -121,6 +136,7 @@ One interactive message per room type: the room's published cover as the header 
 ```
 {room_name}
 {size_m2} م² · {beds}
+من {check_in} إلى {check_out}
 {breakfast_text} · {nights_text}
 الإجمالي: {total} شامل الضريبة
 {badge}
@@ -128,12 +144,14 @@ One interactive message per room type: the room's published cover as the header 
 ```
 {room_name}
 {size_m2} m² · {beds}
+{check_in} to {check_out}
 {breakfast_text} · {nights_text}
 Total: {total} incl. VAT
 {badge}
 ```
 
 - With an offer the total line reads «الإجمالي: ~{base_total}~ {total} شامل الضريبة» and the next line is `{offer_name}` (WhatsApp shows `~…~` struck through).
+- `{check_in}` / `{check_out}`: the stay's dates with the weekday and the Hijri date (§2, H9 fix 3 — Ahmed, 17 Nov 2026).
 - `{breakfast_text}`: «مع الإفطار» / «بدون إفطار» — “With breakfast” / “Without breakfast”.
 - `{badge}`: the booking form's own labels, reused from `ui.json` — «تأكيد فوري» or «طلب حجز — يؤكده الاستقبال».
 - Button: «احجز» / “Book”.
@@ -246,6 +264,7 @@ The model asks for what is missing (prompts.md §2, ACTION ask) — the branch, 
 | Breakfast question | «هل تريد الإقامة مع الإفطار أو بدونه؟» | “Would you like your stay with breakfast or without?” |
 | Children's ages question | «كم عمر كل طفل؟ نحتاج الأعمار لحساب الإفطار فقط.» | “How old is each child? We need the ages only to price breakfast.” |
 | Full name question | «ما الاسم الكامل للحجز؟» | “What is the full name for the booking?” |
+| Departure question (the arrival known — H9 fix 3) | «وصولك يوم {check_in}. كم ليلة ستقيم، أو ما تاريخ مغادرتك؟» | “You arrive on {check_in}. How many nights will you stay, or when will you leave?” |
 | Change question | «ما الذي تريد تغييره في حجزك؟» | “What would you like to change in your booking?” |
 | Instant line | «يتأكد حجزك فورًا عند الضغط على «تأكيد الحجز».» | “Your booking is confirmed instantly when you tap “Confirm booking”.” |
 | Request line | «هذا طلب حجز يراجعه الاستقبال ويؤكده لك. السبب: {reason}» | “This is a booking request that reception reviews and confirms with you. Reason: {reason}” |
@@ -278,7 +297,7 @@ The model asks for what is missing (prompts.md §2, ACTION ask) — the branch, 
 | Menu link | «تجد قائمة {venue_name} وأسعارها هنا، ويمكنك إرسال طلبك منها مباشرة: {menu_url}» | “You’ll find the {venue_name} menu and its prices here, and you can send your order straight from it: {menu_url}” |
 | Booking status (same phone only) | «حجزك رقم {ref} في {branch_name} من {check_in} إلى {check_out}: {status_text}.» — «مؤكد» / «طلب يراجعه الاستقبال» / «ملغي» | “Booking {ref} at {branch_name}, {check_in} to {check_out}: {status_text}.” — “confirmed” / “a request under review by reception” / “cancelled” |
 | Outside Armada's services | «نستطيع مساعدتك هنا في الحجز والإقامة وخدمات أرمادا ريزيدنس فقط.» | “Here we can help only with bookings, stays and Armada Residence services.” |
-| A third language (both lines sent) | «نستطيع مساعدتك بالعربية أو الإنجليزية، وسيطّلع الفريق على رسالتك أيضًا.» | “We can help you in Arabic or English, and the team will also see your message.” |
+| A third language (both lines sent) | «نستطيع مساعدتك بالعربية أو الإنجليزية، وسيطّلع الفريق على رسالتك.» | “We can help you in Arabic or English, and our team will see your message.” |
 | Added to a waiting hand-off (the fallback of the model-written line) | «أضفنا ذلك إلى طلبك لدى الفريق، وسيكمل معك أحدهم في هذه المحادثة.» | “We’ve added that to your request with the team; one of them will continue with you in this chat.” |
 | Departure check — leaving as planned (H9, Ahmed 16 Nov 2026: «سأغادر في موعدي» or the same answer typed) | «شكرًا لك على إقامتك معنا، ونتمنى لك طريقًا آمنًا.» | “Thank you for staying with us, and we wish you a safe journey.” |
 | Departure check — extending the stay (H9, Ahmed 16 Nov 2026: «أرغب في التمديد» or the same answer typed; then the hand-off tagged «تمديد») | «يسعدنا ذلك. سيكمل معك فريق الاستقبال في هذه المحادثة لإتمام التمديد.» | “We’d be glad to. Our reception team will continue with you in this chat to arrange the extension.” |
@@ -416,5 +435,10 @@ Who may teach: Ahmed (his number in «التقارير», linked to his dashboar
 | empty | «تعلّم:» with nothing after it | «اكتب المعلومة بعد «تعلّم:» 🙂 مثال: تعلّم: فيه ميكروويف في لوبي الفرع.» |
 | teach_off | «التعليم بـ تعلّم:» switched off in «الفريق والتقارير» | «التعليم بـ «تعلّم:» متوقف دلوقتي من اللوحة.» |
 | failed | the model or the store failed | «معرفتش أسجلها دلوقتي 😅 جرّب تاني بعد شوية.» |
+| rule_saved | H9 fix 3: a reply rule from Ahmed — how to answer a topic, stored as «قاعدة رد — أحمد — {date}», with the three quick replies | «اتسجلت قاعدة رد ✅ هرد كده: «{wording}». لو فيها غلط اضغط «عدّل» أو «امسح».» |
+| rule_saved_part | H9 fix 3: a reply rule stored without the part a safety rule does not allow | «اتسجلت قاعدة رد ✅ هرد كده: «{wording}». بس الجزء ده مش هقدر أطبّقه: «{part}» 🙏» |
+| rule_conflict | H9 fix 3: a reply rule that cannot apply at all (it breaks a safety rule) — nothing stored | «القاعدة دي مش هقدر أطبّقها لأنها بتخالف قاعدة ثابتة: «{part}» 🙏» |
+| rule_owner | H9 fix 3: a reply rule from a reception manager — reply rules are Ahmed's | «قواعد طريقة الرد بيحددها أحمد بس 🙏 لو عندك معلومة للضيوف ابعتها وأنا أسجّلها.» |
+| voice_failed | H9 fix 3: a staff or management voice note that could not be transcribed | «معرفتش أسمع الفويس كويس 😅 ممكن تكتبهولي؟» |
 
 **Learned from a staff reply** (no message to anyone): the fact is active at once for that branch, its source «رد الفريق — {name} — {date}», numbered in the next daily report («بطاقات معرفة جديدة: 2: 1) … · 2) …»); a price or a contradiction is not learned — «يحتاج قرارك» in the report and the staff wording in «لم أعرف الإجابة».

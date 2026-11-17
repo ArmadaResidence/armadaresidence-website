@@ -144,6 +144,8 @@ export interface Thread {
     window_expires_at: string | null;
     waiting_since: string | null;
     standby_until?: string | null;
+    /** H9 fix 3: why the last reply turn waited or not (internal.hub_standby_last) */
+    standby_last?: { reason: StandbyReason | null; until: string | null; outcome: string | null; at: string } | null;
     last_guest_at: string | null;
     last_staff_at: string | null;
     tags: string[];
@@ -425,3 +427,26 @@ export function countdownText(ms: number): string {
   return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
 }
 export const standbyText = (ms: number) => `المساعد يرد بعد ${countdownText(ms)}`;
+
+/** H9 fix 3 (Ahmed, 17 Nov 2026): why a turn waited for a staff reply or not — the twin of _shared/hub/standby.ts →
+ *  standbyReasonText: «ينتظر رد الفريق — m:ss» / «لم ينتظر: …» */
+export type StandbyReason = 'waiting' | 'off' | 'no_shift' | 'engaged' | 'tap' | 'tag';
+export const STANDBY_REASON_TEXT: Record<Exclude<StandbyReason, 'waiting'>, string> = {
+  off: 'لم ينتظر: وضع الاستعداد متوقف',
+  no_shift: 'لم ينتظر: لا يوجد موظف في الوردية الآن',
+  engaged: 'لم ينتظر: المحادثة جارية مع المساعد',
+  tap: 'لم ينتظر: ضغطة على زر من أزرارنا',
+  tag: 'لم ينتظر: المحادثة مع الفريق',
+};
+export function standbyReasonText(r: StandbyReason, msLeft = 0): string {
+  return r === 'waiting' ? `ينتظر رد الفريق — ${countdownText(msLeft)}` : STANDBY_REASON_TEXT[r];
+}
+
+/** H9 fix 3: «المحادثات» → «الفريق» — the staff and management numbers' conversations with the line (30 days) */
+export interface StaffThreadRow { who: string; kind: 'staff' | 'report'; branch: string; unit: string; name: string; role: string; last_at: string; count: number; teachings: number; cards: number }
+export interface StaffThreadMsg {
+  id: string; direction: 'in' | 'out'; kind: 'text' | 'audio' | 'button'; body: string | null; status: string | null; audio_seconds: number | null; at: string;
+  teach: { status: string; reason: string | null; card: { id: string; key: string; kind: 'fact' | 'rule'; text_ar: string; status: string; source: string } | null } | null;
+}
+export const staffThreads = async () => (await rpc<{ rows: StaffThreadRow[] }>('hub_staff_threads')).rows;
+export const staffThread = async (who: string, unit: string) => (await rpc<{ messages: StaffThreadMsg[] }>('hub_staff_thread', { p_who: who, p_unit: unit })).messages;

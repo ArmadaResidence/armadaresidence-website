@@ -157,8 +157,9 @@ export async function emailReports(call: Call, content: Json, mail: (to: string[
  *  yes / no after «أستبدل القديمة؟»; a teacher's other message read for its meaning first (prompts.md §9.2) — never a
  *  request to resend in a format. Returns what happened (codes only). */
 export async function staffChat(call: Call, content: Json, model: ModelFn,
-  m: { from: string; to: string; text: string; id: string; sentAt: string | null; kind: string; buttonId?: string | null }, test: boolean): Promise<Record<string, unknown>> {
-  const ctx = await call<Json>('hub_staff_chat_begin', { p: { phone: m.from, channel: m.to, text: m.text || null, provider_id: m.id, is_test: test } });
+  m: { from: string; to: string; text: string; id: string; sentAt: string | null; kind: string; buttonId?: string | null; audioSeconds?: number | null; voiceFailed?: boolean }, test: boolean): Promise<Record<string, unknown>> {
+  const ctx = await call<Json>('hub_staff_chat_begin', { p: { phone: m.from, channel: m.to, text: m.text || null, provider_id: m.id, is_test: test, kind: m.kind,
+    ...(m.audioSeconds ? { audio_seconds: m.audioSeconds } : {}) } });
   if (!ctx?.staff) return { staff: false, test_as_guest: !!ctx?.test_as_guest };
   if (!ctx.ok) return { staff: true, reason: ctx.reason ?? 'not_ok' };
   if (!ctx.gate) return { staff: true, reason: 'assistant_off' };
@@ -200,6 +201,8 @@ export async function staffChat(call: Call, content: Json, model: ModelFn,
     return { staff: true, kind: ctx.kind, learn: line, sent };
   };
 
+  // H9 fix 3: a voice note that could not be heard — the colleague line «اكتبها لي», nothing else
+  if (m.voiceFailed) return { staff: true, kind: ctx.kind, voice: 'failed', sent: await reply(learnLine('voice_failed')) };
   // H9 fix 1: teaching v2 — the context of this number (who may teach, what waits, the last teaching)
   const tc = text || m.buttonId ? await call<Json>('hub_teach_context', { p_phone: m.from }).catch(() => null) : null;
   const turn: TeachTurn = {
@@ -230,7 +233,8 @@ export async function staffChat(call: Call, content: Json, model: ModelFn,
   }
   if (route.kind === 'classify') {
     const owner = !!turn.teacher?.owner;
-    const modelId = String(models.understand ?? 'claude-haiku-5-5');
+    // H9 fix 3 (Ahmed, 17 Nov 2026): the staff path on hub_models.staff (claude-opus-5-5)
+    const modelId = String(models.staff ?? models.understand ?? 'claude-opus-5-5');
     const r = await model({ layer: 'staff_chat', model: modelId, system: intentSystem(),
       user: intentUser({ branch, teacher: owner ? 'owner' : 'manager', message: text, last_teaching: turn.last?.text_ar ?? null,
         history: (ctx.history ?? []) as { author: 'colleague' | 'us'; body: string }[], starts_with_teach_word: isTeach(text) }) });
@@ -248,8 +252,8 @@ export async function staffChat(call: Call, content: Json, model: ModelFn,
     }
   }
 
-  // the colleague chat
-  const modelId = String(models.compose ?? 'claude-sonnet-5-5');
+  // the colleague chat (H9 fix 3: hub_models.staff — claude-opus-5-5)
+  const modelId = String(models.staff ?? models.compose ?? 'claude-opus-5-5');
   let out = '';
   if (!text) out = staffFallback(text);
   else {
@@ -295,7 +299,7 @@ export async function drainReminders(call: Call, content: Json, model: ModelFn, 
         if (!it.sending_enabled && !it.is_test) code = 'sending_off';
         else if (it.window_expires_at) {
           mode = 'session';
-          const modelId = String(it.models?.compose ?? 'claude-sonnet-5-5');
+          const modelId = String(it.models?.staff ?? it.models?.compose ?? 'claude-opus-5-5');
           const kind = it.round === 'thanks' ? 'thanks' : 'reminder';
           const user = [`KIND: ${kind}`, `ROUND: ${String(it.round).replace(/^r/, '') || '1'}`, `BRANCH: ${branchShort(bname)}`, `FIRST_NAME: ${it.first_name ?? ''}`,
             `ROLE: ${it.role === 'manager' ? 'manager' : 'staff'}`, `LINK: ${it.link}`,

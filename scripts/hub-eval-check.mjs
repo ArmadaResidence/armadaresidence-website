@@ -84,11 +84,11 @@ check(expectedAction(item({ action: 'ask' }), SK).action === 'ask' && expectedAc
   && expectedAction(item({ action: 'ask' }, { note: 'hall_request' }), SK).action === 'ask', 'G 15 Nov: a stay, a group and a hall request are all collected in the chat (graded as written)');
 check(expectedAction(item({ action: 'refuse' }), SK).action === 'redirect' && expectedAction(item({ action: 'greeting' }), SK).action === 'reply', 'G pass 5: refuse = the redirect, a greeting = a reply');
 check(expectedAction(item({ action: 'send_summary' }), SK).action === 'quote', 'G pass 5: a summary expectation before H8 = the quote with the website link');
-check(expectedAction(item({ action: 'ask' }, { note: 'Hijri date → copy.md §2.2' }), SK).action === 'fixed' && expectedAction(item({ action: 'ask' }, { note: 'may give «يبدأ من»' }), SK).action === 'answer',
-  'G the bank’s notes: a Hijri date gets the fixed reply, a price without dates «يبدأ من»');
+check(expectedAction(item({ action: 'ask' }, { note: 'Hijri date → copy.md §2.2' }), SK).action === 'ask' && expectedAction(item({ action: 'ask' }, { note: 'may give «يبدأ من»' }), SK).action === 'ask',
+  'G H9 fix 3: a Hijri date and a price without dates are graded as the bank writes them (ask — no «يبدأ من», no Gregorian-only reply)');
 const NOTE = read('supabase/migrations/20261114500000_guest_hub_lab_note.sql');
 check(/'expect', i\.expect, 'note', i\.note\)/.test(NOTE) && /create or replace function public\.hub_eval_claim/.test(NOTE), 'the claim hands the grading each question’s note (the follow-up migration)');
-check(grade(item({ action: 'ask' }, { note: 'may give «يبدأ من»' }), out({ kind: 'answer', state: 'inquiry', replies: [] }), ctx).pass, 'G a mapped item: only the mapped action and state apply');
+check(!grade(item({ action: 'ask' }, { note: 'may give «يبدأ من»' }), out({ kind: 'answer', state: 'inquiry', replies: [] }), ctx).pass, 'G H9 fix 3: a price question answered with prices (no dates asked) fails');
 {
   // the conversation bank (H6 pass 5): every step graded
   const conv = { key: 'c900', unit_key: 'airport-road', language: 'ar', messages: ['السلام عليكم', 'أحبك', 'كم نجمة؟'], expect: { action: 'conversation', steps: [{ outcome: 'reply', salaam: true }, { outcome: 'redirect' }, { outcome: 'handoff', gap: true }] } };

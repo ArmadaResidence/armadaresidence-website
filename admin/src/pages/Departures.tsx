@@ -199,7 +199,7 @@ export default function Departures() {
         </p>
       </div>
 
-      {date === today && data && !data.uploads.length && ob && (ob.check_on || ob.review_on || ob.last_upload) && (
+      {date === today && data && !data.uploads.length && ob && ob.remind_on !== false && (
         <div className="card p-4 border-s-4 border-bronze" role="status" data-missing-today>
           <p className="font-semibold">لم تُرفع قائمة اليوم لفرع {BRANCH_NAMES[branch]} بعد</p>
           <p className="text-sm mt-1">رسالة الخروج تُرسل الساعة 9:30، ولا تُرسل بعد 11:00. نذكّر الموظفين المناوبين الساعة 7:00 و8:00، ومدير الاستقبال الساعة 8:30.</p>
