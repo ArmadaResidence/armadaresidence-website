@@ -516,7 +516,8 @@ export async function runTurn(claim: Json, deps: Deps): Promise<Outcome> {
               if (!a.nogap) gap();
               break;
             }
-            const c = await compose(askFor ? { ...payload, quote: stayKnown(dec) ?? payload.quote } : payload, 'answer', askFor);
+            // the guest's own stay details (H8; H9 fix 3: also without ASK_FOR) so a repeated date or count is never refused
+            const c = await compose({ ...payload, quote: stayKnown(dec) ?? payload.quote }, 'answer', askFor);
             if (askFor && c !== 'credit' && c !== 'guard' && c !== 'error' && c.reply) skipAsk = true;
             if (c === 'credit') return null;
             if (c === 'guard' || c === 'error') break;

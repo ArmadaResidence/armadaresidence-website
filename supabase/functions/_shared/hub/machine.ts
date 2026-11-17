@@ -753,7 +753,9 @@ function stayIntent(input: DecideInput, state: State, t: string[], out: Out, u: 
   else if (state === 'quoted' || state === 'awaiting_confirmation') t.push('T10');
   // a question asked with the stay («أبغى غرفة فيها مطبخ») is answered first, in the same reply that asks what is missing
   // (a topic the message only FILLS — breakfast given as «بدون إفطار», the children, an extra bed — is no question)
-  const filled = new Set([...(u?.breakfast ? ['breakfast'] : []), ...(u?.children || u?.child_ages ? ['children'] : []), ...(u?.extra_beds ? ['extra_bed'] : [])]);
+  const filled = new Set([...(u?.breakfast ? ['breakfast'] : []), ...(u?.children || u?.child_ages ? ['children'] : []), ...(u?.extra_beds ? ['extra_bed'] : []),
+    // H9 fix 3: a room type named fills the room slot («غرفة كينج») — no answer about room types beside the booking
+    ...(u?.room_type ? ['room_types'] : [])]);
   const topics = u ? answerTopics(u).filter((k) => !filled.has(k)) : [];
   const asks = !!u && topics.length > 0 && (u.intents.some((i) => QUESTION_ONLY.includes(i)) || state === 'new' || state === 'inquiry');
   const first: Action[] = asks ? [{ type: 'answer', topics, intents: u!.intents, branch: u!.branch, mixed: true, nogap: true }] : [];
