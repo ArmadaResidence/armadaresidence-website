@@ -119,7 +119,7 @@ select pg_temp._check('S8 … and hub_voice_usage (numbers only)', (public.hub_v
 select pg_temp._root();
 select pg_temp._check('T1 hub_voice_daily_minutes = 60, a hub key', (select value = '60'::jsonb from public.settings where key = 'hub_voice_daily_minutes')
   and 'hub_voice_daily_minutes' = any (internal.hub_setting_keys()));
-select pg_temp._check('T2 hub_models: transcribe = gpt-transcribe, vision = claude-haiku-5-5', (select value ->> 'transcribe' = 'gpt-transcribe' and value ->> 'vision' = 'claude-haiku-5-5'
+select pg_temp._check('T2 hub_models: transcribe = gpt-transcribe, vision = claude-sonnet-5-5 (H9 fix 3)', (select value ->> 'transcribe' = 'gpt-transcribe' and value ->> 'vision' = 'claude-sonnet-5-5'
   from public.settings where key = 'hub_models'));
 select pg_temp._check('T3 hub_model_prices: gpt-transcribe USD 0.0045 a minute, with its source and date', (select (value -> 'gpt-transcribe' ->> 'per_minute')::numeric = 0.0045
   and value -> 'gpt-transcribe' ->> 'read_at' = '2026-11-15' from public.settings where key = 'hub_model_prices'));

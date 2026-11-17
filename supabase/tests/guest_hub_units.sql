@@ -174,7 +174,7 @@ select pg_temp._check('S1 defaults: switches off, timers and limits as listed',
     "hub_rate_replies_hour": 20, "hub_portfolio_limit": 2000, "hub_portfolio_reserve": 300, "hub_wave_size": 200, "hub_wave_pause_min": 10,
     "hub_offer_expiry_alert_days": 7, "hub_card_expiry_alert_days": 14, "hub_retention_months": 12, "hub_media_retention_days": 90,
     "hub_spike_factor": 3, "hub_spike_min": 5,
-    "hub_models": {"understand": "claude-haiku-5-5", "tag": "claude-haiku-5-5", "translate": "claude-haiku-5-5", "compose": "claude-sonnet-5-5"}}'::jsonb);
+    "hub_models": {"understand": "claude-sonnet-5-5", "tag": "claude-sonnet-5-5", "translate": "claude-sonnet-5-5", "compose": "claude-sonnet-5-5", "staff": "claude-opus-5-5"}}'::jsonb);
 -- H5 (14 Nov 2026, Ahmed): USD 20 a day and USD 200 a month; the prices read from Anthropic's page with their date
 select pg_temp._check('S1 the budgets (20 a day, 200 a month) and the model prices with the date read',
   (select value = '20' from public.settings where key = 'hub_budget_daily_usd') and (select value = '200' from public.settings where key = 'hub_budget_monthly_usd')
