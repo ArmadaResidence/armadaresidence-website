@@ -265,7 +265,8 @@ insert into public.hub_messages (conversation_id, channel_id, direction, author,
 values (pg_temp._id('c1'), pg_temp._id('ch'), 'out', 'staff', 'text', 'الغسيل 15 ريالًا للقطعة', 'qa-fix3:staff1', 'sent', now(), false, pg_temp._id('admin'));
 insert into _ids select 'sm', id from public.hub_messages where idempotency_key = 'qa-fix3:staff1';
 insert into public.hub_card_jobs (unanswered_id, cluster_id, conversation_id, unit_id, staff_message_id, status, decision, finished_at)
-values (pg_temp._id('un'), pg_temp._id('un'), pg_temp._id('c1'), pg_temp._id('unit'), pg_temp._id('sm'), 'decision', '{"kind": "price", "conflicts": []}', now());
+values (pg_temp._id('un'), pg_temp._id('un'), pg_temp._id('c1'), pg_temp._id('unit'), pg_temp._id('sm'), 'decision', '{"kind": "price", "conflicts": []}', now())
+on conflict (staff_message_id) do update set status = 'decision', decision = excluded.decision, finished_at = excluded.finished_at;
 insert into _ids select 'dj', id from public.hub_card_jobs where staff_message_id = pg_temp._id('sm');
 select pg_temp._as('admin');
 select pg_temp._save('d1', public.hub_decisions_list());
