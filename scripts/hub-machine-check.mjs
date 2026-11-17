@@ -181,10 +181,10 @@ check(d.next === 'collecting' && d.actions[0].type === 'ask' && d.draft_patch?.k
 d = run('new', guest(U({ intents: ['stay_booking'], dates_calendar: 'hijri', check_in: '2026-11-19', dates_read: { status: 'exact', check_in: '2026-11-19' } })), { skills: H8 });
 check(!acts(d).includes('fixed') && d.draft_patch.fields.check_in === '2026-11-19', 'fix 3: a Hijri date is used like any date (no «نتعامل بالميلادي»)', JSON.stringify(d.actions));
 d = run('new', guest(U({ intents: ['stay_booking'], dates_read: { status: 'confirm', check_in: '2026-11-19', check_out: '2026-11-21', candidates: ['2026-11-19', '2026-11-21'], why: 'weekend' } })), { skills: H8 });
-check(has(d, 'T41') && d.actions[0].type === 'dates_question' && d.actions[0].pending.check_in === '2026-11-19' && d.draft_patch.fields._dates_pending.check_out === '2026-11-21', 'fix 3: «الويكند» → the confirm question with the dates pending');
+check(has(d, 'T41') && d.actions[0].type === 'dates_question' && d.actions[0].pending.check_in === '2026-11-19' && d.draft_patch.fields._dates_pending.check_out === '2026-11-21', 'T41: «الويكند» → the confirm question with the dates pending');
 const PEND = { id: 'w1', kind: 'stay', version: 1, fields: { branch: 'airport-road', adults: 2, _dates_pending: { check_in: '2026-11-19', check_out: '2026-11-21' } } };
 d = run('collecting', guest(null, { kind: 'button', button_id: 'hubd:yes' }), { skills: H8 }, PEND);
-check(has(d, 'T42') && d.draft_patch.fields.check_in === '2026-11-19' && d.draft_patch.fields.check_out === '2026-11-21' && d.draft_patch.fields._dates_pending === null, 'fix 3: «نعم» (the button) → the dates shown, the booking continues', JSON.stringify(d.draft_patch));
+check(has(d, 'T42') && d.draft_patch.fields.check_in === '2026-11-19' && d.draft_patch.fields.check_out === '2026-11-21' && d.draft_patch.fields._dates_pending === null, 'T42: «نعم» (the button) → the dates shown, the booking continues', JSON.stringify(d.draft_patch));
 d = run('collecting', guest(U({ intents: ['thanks_or_closing'], kind: 'small_talk', ack_only: true }), { affirm: true }), { skills: H8 }, PEND);
 check(has(d, 'T42') && d.draft_patch.fields.check_in === '2026-11-19', 'fix 3: a typed «نعم» → the same');
 d = run('collecting', guest(null, { kind: 'button', button_id: 'hubd:other' }), { skills: H8 }, PEND);
