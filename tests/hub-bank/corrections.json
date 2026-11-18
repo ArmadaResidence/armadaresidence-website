@@ -199,6 +199,42 @@
           }
         ]
       }
+    },
+    "h10-23": {
+      "date": "2026-11-18",
+      "migration": "20261118400000_guest_hub_h10c.sql",
+      "bank": "conversations-h10.jsonl",
+      "why": "the production lab of 18 Nov 2026: the right answer «يخضع للتوافر» was graded a miss because «التوافر» was matched letter for letter — the stem «توافر» holds «للتوافر» and «حسب التوافر» alike",
+      "old": {
+        "action": "conversation",
+        "steps": [
+          {
+            "outcome": [
+              "ask",
+              "answer",
+              "handoff"
+            ],
+            "must_include": [
+              "التوافر"
+            ]
+          }
+        ]
+      },
+      "expect": {
+        "action": "conversation",
+        "steps": [
+          {
+            "outcome": [
+              "ask",
+              "answer",
+              "handoff"
+            ],
+            "must_include": [
+              "توافر"
+            ]
+          }
+        ]
+      }
     }
   }
 }
