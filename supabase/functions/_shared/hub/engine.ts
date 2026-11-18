@@ -153,13 +153,11 @@ const branchName = (c: Json, slug: string, L: Lang) => {
   return String(b ? (L === 'en' ? b.name_en : b.name_ar) : slug);
 };
 
-/** H10: the people a unit must hold — the adults and the children; an infant under 2 is not counted when the ages are known */
+/** H10 (Ahmed's decision of 23 Oct 2026 — policies; Armada_Website_Facts §1.3, §6.3): the guests a type is limited by are
+ *  the ADULTS — its beds (2 in rooms, studios and one-bedroom suites, 4 in two-bedroom suites) and one extra bed where the
+ *  type accepts it; children are not counted and have no limit per room */
 export function partySize(f: Record<string, unknown>): number {
-  const adults = Math.max(1, Number(f.adults ?? 1));
-  const children = Math.max(0, Number(f.children ?? 0));
-  const ages = Array.isArray(f.child_ages) ? (f.child_ages as unknown[]).map(Number) : null;
-  const counted = ages && ages.length === children ? ages.filter((a) => !(a < 2)).length : children;
-  return adults + counted;
+  return Math.max(1, Number(f.adults ?? 1));
 }
 
 /** H9 fix 3: a plain yes to a question we asked («نعم», «إيه», «صح», «تمام», "yes") — accepts dates waiting for a confirm */
@@ -403,9 +401,8 @@ export async function runTurn(claim: Json, deps: Deps): Promise<Outcome> {
     const adults = Math.max(1, Number(f.adults ?? 1));
     const asked = Math.max(0, Number(f.extra_beds ?? 0));
     const picked = f.room_type && f.room_type !== 'any' ? String(f.room_type) : null;
-    // H10 (bd27baf4 — 2 adults and 5 children were shown rooms for two, three times): a type is offered only when it can
-    // hold the whole party — the adults and the children (an infant under 2, when the ages are known, is not counted) within
-    // the type's capacity and its extra beds; the guest's own type too
+    // H10 (Ahmed, 18 Nov 2026 — the decision of 23 Oct 2026): the cards are filtered by the ADULTS only (the type's beds and
+    // its one extra bed); children are never counted; the type the guest names is always honoured and comes first
     const people = partySize(f);
     const one = async (pickedOnly: boolean): Promise<QuoteCard[]> => {
       const cand = rooms.filter((r) => people <= r.capacity + r.extra_beds_max && (!pickedOnly || r.key === picked));
@@ -432,10 +429,15 @@ export async function runTurn(claim: Json, deps: Deps): Promise<Outcome> {
     let cards = picked ? await one(true) : [];
     // a named type that cannot take this stay: every type that can
     if (!cards.length) cards = await one(false);
-    // D1 (Ahmed, 18 Nov 2026): only the types the engine shows available; none available → every quoted one, as a request
+    // D1 (Ahmed, 18 Nov 2026): only the types the engine shows available; none available → every quoted one, as a request;
+    // the type the guest named is kept whatever the dashboard inventory says (reception confirms the request)
     if (CHAT_REQUEST_ONLY) {
-      const avail = cards.filter(shownAvailable);
+      const avail = cards.filter((c) => shownAvailable(c) || c.room === picked);
       if (avail.length) cards = avail;
+    }
+    if (picked && cards.some((c) => c.room === picked)) {
+      const ordered = orderCards(cards.filter((c) => c.room !== picked), lastRoom && lastRoom.branch === branch ? String(lastRoom.room ?? '') : null);
+      return [...cards.filter((c) => c.room === picked), ...ordered];
     }
     return orderCards(cards, lastRoom && lastRoom.branch === branch ? String(lastRoom.room ?? '') : null);
   };
@@ -652,8 +654,8 @@ export async function runTurn(claim: Json, deps: Deps): Promise<Outcome> {
             const f = fieldsOf(dec);
             const cards = await quoteCards(f, a.exclude ?? []);
             if (!cards.length) {
-              // H10 (bd27baf4): no single unit holds the party — more than one unit is a request reception arranges (the
-              // 2–4 rooms hand-off of copy.md §5), never rooms for two shown again
+              // H10: no single type takes this many ADULTS (its beds and its one extra bed) — more than one unit is a request
+              // reception arranges (the 2–4 rooms hand-off of copy.md §5); children are never counted
               const types = (await deps.adapter.roomTypes(String(f.branch ?? unit.branch)).catch(() => [])).filter((r) => r.bookable);
               if (types.length && types.every((r) => partySize(f) > r.capacity + r.extra_beds_max)) {
                 t2('T45');

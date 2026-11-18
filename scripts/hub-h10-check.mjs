@@ -27,6 +27,7 @@ import { longDate } from '../supabase/functions/booking-request/email.ts';
 import { sarText } from '../supabase/functions/booking-request/rules.ts';
 import { CONTENT, claimFor, knowledgeFor } from './hub-fixtures-lib.mjs';
 import { migration, OUT_PATH, h10BankItems } from './hub-h10-migration.mjs';
+import { migration as migrationB, OUT_PATH as OUT_B, h10bBankItems } from './hub-h10b-migration.mjs';
 
 let n = 0;
 const fails = [];
@@ -176,14 +177,22 @@ check(CHAT_REQUEST_ONLY === true, '1 D1: chat bookings are requests (booking.ts 
 
 // ── 4. the party ──
 {
-  check(partySize({ adults: 2, children: 5 }) === 7 && partySize({ adults: 2, children: 2, child_ages: [1, 8] }) === 3, '4 the party: adults + children, an infant under 2 not counted');
-  const u = U({ kind: 'booking', intents: ['stay_booking'], topics: ['booking_new'], arrival_text: '10 ديسمبر', departure_text: '14 ديسمبر', adults: 2, children: 5, breakfast: 'without' });
-  const o = await run('أبغى أحجز من 10 إلى 14 ديسمبر أنا وزوجتي و5 أطفال بدون إفطار', {}, u);
-  check(o.finish.state === 'human' && o.finish.reason === 'multi_room' && !o.finish.messages.some((m) => m.payload?.room_card) && o.finish.decision.transitions.includes('T45'), `4 two adults and five children → reception (T45), never rooms for two (${o.finish.reason})`);
-  const u3 = U({ kind: 'booking', intents: ['stay_booking'], topics: ['booking_new'], arrival_text: '10 ديسمبر', departure_text: '12 ديسمبر', adults: 2, children: 1, breakfast: 'without' });
-  const o3 = await run('x', {}, u3);
+  // Ahmed's decision of 23 Oct 2026 (18 Nov 2026 — replaces the session's infant rule): the adults only; children never counted
+  check(partySize({ adults: 2, children: 5 }) === 2 && partySize({ adults: 3, children: 2, child_ages: [1, 8] }) === 3, '4 the party a type is limited by: the adults only (children never counted)');
+  const st = { kind: 'booking', intents: ['stay_booking'], topics: ['booking_new'], arrival_text: '10 ديسمبر', departure_text: '14 ديسمبر', breakfast: 'without' };
+  const o = await run('أبغى أحجز من 10 إلى 14 ديسمبر أنا وزوجتي و5 أطفال بدون إفطار', {}, U({ ...st, adults: 2, children: 5 }));
+  const r0 = o.finish.messages.filter((m) => m.payload?.room_card).map((m) => m.payload.room_card);
+  check(o.finish.state !== 'human' && r0.length > 0, `4 two adults and five children → the cards (children have no limit per room) — ${o.finish.reason} ${r0}`);
+  const named = await run('أبغى شقة غرفتين وصالة', {}, U({ ...st, adults: 2, children: 5, room_type: 'two-bedroom-suite' }));
+  const r1 = named.finish.messages.filter((m) => m.payload?.room_card).map((m) => m.payload.room_card);
+  check(r1[0] === 'two-bedroom-suite', `4 bd27baf4: the type the guest names (a two-bedroom suite) comes first (${r1})`);
+  const soldNamed = await run('x', {}, U({ ...st, adults: 2, room_type: 'two-bedroom-suite' }), adapter({ sold: ['two-bedroom-suite'] }));
+  check(soldNamed.finish.messages.find((m) => m.payload?.room_card)?.payload.room_card === 'two-bedroom-suite', '4 … honoured even when the dashboard inventory shows it full (a request reception confirms)');
+  const o3 = await run('x', {}, U({ ...st, adults: 3, children: 4 }));
   const rooms = o3.finish.messages.filter((m) => m.payload?.room_card).map((m) => m.payload.room_card);
-  check(rooms.length && !rooms.includes('twin-room') && !rooms.includes('king-room'), `4 two adults and a child → only the types that hold three (${rooms})`);
+  check(rooms.length && !rooms.includes('twin-room') && !rooms.includes('king-room') && rooms.includes('one-bedroom-suite'), `4 three adults → only the types whose beds and one extra bed take them (${rooms})`);
+  const o6 = await run('x', {}, U({ ...st, adults: 6, children: 0 }));
+  check(o6.finish.state === 'human' && o6.finish.reason === 'multi_room' && o6.finish.decision.transitions.includes('T45'), `4 six adults → no single type takes them: reception (T45) — ${o6.finish.reason}`);
 }
 
 // ── 5. repetition and the notice ──
@@ -268,6 +277,9 @@ check(CHAT_REQUEST_ONLY === true, '1 D1: chat bookings are requests (booking.ts 
   check(/count\(distinct m\.turn_id\)/.test(MIG), '8 the rate limit counts replies by turn');
   const items = h10BankItems();
   check(items.length >= 25 && MIG.includes(JSON.stringify(items)), `8 the H10 conversations seeded as lab items (${items.length})`);
+  // H10b: the bank's correction of h10-11 and the new case, by their own migration
+  const MB = read(OUT_B);
+  check(MB === migrationB() && MB.includes(JSON.stringify(h10bBankItems())) && /where key = 'h10-11' and expect = /.test(MB) && !/\+?9665\d{8}/.test(MB), `8 ${OUT_B} = scripts/hub-h10b-migration.mjs (h10-11 corrected, h10-27 seeded)`);
   const bank = read('tests/hub-bank/conversations-h10.jsonl');
   check(!/\+?9665\d{8}|\b05\d{8}\b/.test(bank) && !/AR-2026111[4-8]-[A-Z0-9]{4}(?!X)/.test(bank.replace(/AR-20261118-AB12/g, '')), '8 the bank holds no guest data (no phone, no real reference)');
 }

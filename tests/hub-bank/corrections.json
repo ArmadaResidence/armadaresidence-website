@@ -156,6 +156,49 @@
           }
         ]
       }
+    },
+    "h10-11": {
+      "date": "2026-11-18",
+      "migration": "20261118300000_guest_hub_h10b.sql",
+      "bank": "conversations-h10.jsonl",
+      "why": "Ahmed, 18 Nov 2026 (his decision of 23 Oct 2026): children are not counted and have no limit per room — two adults and five children get the cards, never reception for the children",
+      "old": {
+        "action": "conversation",
+        "steps": [
+          {
+            "outcome": [
+              "ask"
+            ]
+          },
+          {
+            "outcome": "handoff",
+            "must_include": [
+              "أكثر من غرفة"
+            ],
+            "must_not_include": [
+              "غرفة بسرير كينج",
+              "غرفة سريرين"
+            ]
+          }
+        ]
+      },
+      "expect": {
+        "action": "conversation",
+        "steps": [
+          {
+            "outcome": [
+              "ask"
+            ]
+          },
+          {
+            "outcome": "quote",
+            "cards": [
+              1,
+              3
+            ]
+          }
+        ]
+      }
     }
   }
 }

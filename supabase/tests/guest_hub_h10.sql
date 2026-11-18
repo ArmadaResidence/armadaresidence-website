@@ -178,6 +178,10 @@ select pg_temp._check('G3 … both pass the cards'' own check', (select bool_and
 select pg_temp._check('H1 q022 and q023 (payment) now expect the team', (select bool_and(expect ->> 'action' = 'handoff') from public.hub_test_items where key in ('q022', 'q023')) and (select count(*) = 2 from public.hub_test_items where key in ('q022', 'q023')));
 select pg_temp._check('H2 c048 allows the silence of a waiting hand-off', exists (select 1 from public.hub_test_items where key = 'c048' and expect -> 'steps' -> 1 -> 'outcome' ? 'none'));
 select pg_temp._check('H3 the H10 conversations are lab items', (select count(*) >= 25 from public.hub_test_items where key like 'h10-%'));
+-- H10b (Ahmed, 18 Nov 2026 — his decision of 23 Oct 2026): children never counted
+select pg_temp._check('H4 h10-11 expects the cards for two adults and five children; h10-27 (a two-bedroom suite named) is a lab item',
+  exists (select 1 from public.hub_test_items where key = 'h10-11' and expect #>> '{steps,1,outcome}' = 'quote')
+  and exists (select 1 from public.hub_test_items where key = 'h10-27' and expect -> 'steps' -> 1 -> 'must_include' ? 'بغرفتي نوم'));
 
 select n, test, ok, detail from _r order by n;
 rollback;
