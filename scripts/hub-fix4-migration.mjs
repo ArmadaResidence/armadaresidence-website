@@ -42,23 +42,23 @@ begin
 `, `  f public.hub_teach_followups;
   v_id uuid := nullif(p ->> 'id', '')::uuid;
   -- H9 fix 4: a quick reply by its own id
-  b public.hub_staff_buttons;
+  v_btn public.hub_staff_buttons;
 begin
   select * into ch from public.hub_channels where address = p ->> 'channel' order by created_at limit 1;
   -- H9 fix 4 (Ahmed, 18 Nov 2026): a tap on a staff quick reply acts once — by its id only (never its title, never a model)
   if v_cmd = 'tap' then
-    select * into b from public.hub_staff_buttons x where x.id = p ->> 'button' for update;
-    if b.id is null or b.who is distinct from v_who or b.created_at < now() - interval '24 hours' then
+    select * into v_btn from public.hub_staff_buttons x where x.id = p ->> 'button' for update;
+    if v_btn.id is null or v_btn.who is distinct from v_who or v_btn.created_at < now() - interval '24 hours' then
       return jsonb_build_object('handled', true, 'line', 'tap_expired');
     end if;
     -- the same button again, or another button of the same message already acted on
-    if b.used_at is not null or exists (select 1 from public.hub_staff_buttons y where y.staff_message_id is not distinct from b.staff_message_id
-                                          and y.item = b.item and y.id <> b.id and y.used_at is not null) then
+    if v_btn.used_at is not null or exists (select 1 from public.hub_staff_buttons y where y.staff_message_id is not distinct from v_btn.staff_message_id
+                                          and y.item = v_btn.item and y.id <> v_btn.id and y.used_at is not null) then
       return jsonb_build_object('handled', true, 'line', 'tap_already');
     end if;
-    update public.hub_staff_buttons x set used_at = now() where x.id = b.id;
-    v_cmd := case b.action when 'ok' then 'btn_ok' when 'both' then 'btn_both' when 'edit' then 'btn_edit' when 'del' then 'btn_del' when 'save' then 'intent_yes' else 'intent_no' end;
-    v_id := b.item;
+    update public.hub_staff_buttons x set used_at = now() where x.id = v_btn.id;
+    v_cmd := case v_btn.action when 'ok' then 'btn_ok' when 'both' then 'btn_both' when 'edit' then 'btn_edit' when 'del' then 'btn_del' when 'save' then 'intent_yes' else 'intent_no' end;
+    v_id := v_btn.item;
   end if;
 `);
   lc = edit(lc, 'learn_command btn state', `    if c.id is null or c.status <> 'published' then

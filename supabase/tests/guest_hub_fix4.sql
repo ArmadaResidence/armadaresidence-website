@@ -94,7 +94,7 @@ select s.user_id, x.key, (x.presets ->> s.role::text)::public.perm_level from pu
 update public.hub_channels set verified_at = now(), sending_enabled = true where address in ('+966536622277', '+966536663030');
 insert into public.hub_report_recipients (position, name, phone, staff_user_id, consent_at) values (1, 'أحمد', '+15550400001', pg_temp._id('admin'), now());
 insert into public.hub_staff_slots (branch_slug, position, name, phone, role, days, start_time, end_time, consent_at) values
-  ('airport-road', 1, 'نادر', '+15550400005', 'manager', '{0,1,2,3,4,5,6}', '00:00', '00:00', now());
+  ('airport-road', 1, 'نادر', '+15550400005', 'manager', '{0,1,2,3,4,5,6}', '00:00', '23:59', now());
 
 -- ══ B — quick replies by id ══
 insert into _ids select 'rule1', pg_temp._card('rule', 'اسأل الضيف عن تواريخ الإقامة أولًا ثم اذكر سعر تلك الليالي.', 'airport-road');
