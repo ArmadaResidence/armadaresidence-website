@@ -167,7 +167,8 @@ select pg_temp._check('P4 the site manifest lists it with its packages',
   exists (select 1 from jsonb_array_elements(public.offers_site_manifest() -> 'offers') e
            where e ->> 'slug' = 'qa-celebrations' and jsonb_array_length(e -> 'packages') = 2 and (e ->> 'show_celebrations')::boolean and e ->> 'promo_code' is null));
 select pg_temp._check('P4 the offers published before keep their snapshot (nothing turns «غير منشور»)',
-  (select bool_and(not internal.offer_pending(o) and o.live = pg_temp._j('seed_before') -> o.slug and not (o.live ? 'show_celebrations') and not (o.live ? 'packages'))
+  (select bool_and(not internal.offer_pending(o) and o.live = pg_temp._j('seed_before') -> o.slug
+                    and (o.kind = 'packages' or (not (o.live ? 'show_celebrations') and not (o.live ? 'packages'))))
      from public.offers o where o.slug in (select jsonb_object_keys(pg_temp._j('seed_before')))));
 
 -- ── P5 the price engine is unchanged by a live packages offer ──
