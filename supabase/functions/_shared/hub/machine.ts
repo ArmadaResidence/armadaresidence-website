@@ -16,7 +16,7 @@
  */
 import { deriveKind, type Understanding } from './understand.ts';
 import type { NoticeKey } from './copy.ts';
-import { quoteKey, type DraftQuote, type TapButton } from './booking.ts';
+import { CHAT_REQUEST_ONLY, quoteKey, type DraftQuote, type TapButton } from './booking.ts';
 
 export type State = 'none' | 'new' | 'inquiry' | 'collecting' | 'quoted' | 'awaiting_confirmation' | 'booked' | 'awaiting_payment' | 'human' | 'closed';
 export const ASSISTANT_STATES: State[] = ['new', 'inquiry', 'collecting', 'quoted', 'awaiting_confirmation', 'booked'];
@@ -33,7 +33,7 @@ export interface Draft {
 export type Action =
   /** mixed: the sourced question of a message that is also a stay / hall / group request — answered first, then the
    *  hand-off that follows it in the same decision takes the request (H6 gaps, Ahmed 14 Nov 2026) */
-  | { type: 'answer'; topics: string[]; intents: string[]; branch: string | null; mixed?: boolean; nogap?: boolean }
+  | { type: 'answer'; topics: string[]; intents: string[]; branch: string | null; mixed?: boolean; nogap?: boolean; discount?: boolean }
   | { type: 'ask'; slots: string[] }
   /** H6 pass 5 (Ahmed, 15 Nov 2026): a reply the model writes with no fact — small talk, one clarifying question, or the
    *  polite redirect for a message outside Armada's services; `buttons: 'quick'` adds the greeting's quick replies */
@@ -64,6 +64,11 @@ export type Action =
   /** H9 (16 Nov 2026): the guest's answer to the departure check — recorded on «قائمة المغادرين» (leave → the review
    *  request at 19:00; extend → no review), then the fixed reply of copy.md §5 */
   | { type: 'departure'; choice: 'leave' | 'extend' }
+  /** H10 (Ahmed, 18 Nov 2026): «لماذا أُلغي حجزي؟» — the recorded reason's guest phrase with one apology (copy.md §4.4) */
+  | { type: 'cancel_reason'; ref: string }
+  /** H10: the alternatives of a cancelled stay — the same dates at the same property as cards, then the other property,
+   *  then other dates (the engine only) */
+  | { type: 'alternatives' }
   | { type: 'tag_order' }
   | { type: 'close' }
   | { type: 'noop' };
@@ -75,7 +80,9 @@ export type Event =
       affirm?: boolean;
       /** H7: a voice note or an image that did not become text (media.ts → MediaRoute); absent = the media notice (a video, a
        *  file, a location, a contact, or a voice note / image while its switch is off) */
-      media?: { reason: string; priority?: 'high'; ack?: boolean } | null }
+      media?: { reason: string; priority?: 'high'; ack?: boolean } | null;
+      /** H10 (18 Nov 2026): what code reads in the guest's own words (engine.ts → turnFlags) */
+      flags?: TurnFlags | null }
   | { type: 'tap'; button: TapButton; draft_id: string; version: number; room?: string; page?: number }
   | { type: 'book_result'; result: 'confirmed' | 'request' | 'price_changed' | 'sold_out' | 'not_bookable' | 'already' | 'stale' | 'limit' | 'incomplete' | 'error'; others?: boolean; room?: string }
   | { type: 'answer_result'; ok: boolean; partial?: boolean }
@@ -91,6 +98,41 @@ export type Event =
   | { type: 'cancel_word'; active_booking: boolean }
   | { type: 'cancel_answer'; choice: 'offers' | 'booking' }
   | { type: 'cancel_timeout' };
+
+/** H10: read by code from the guest's words (engine.ts → turnFlags), never by the model alone */
+export interface TurnFlags {
+  /** a payment question: method, bank transfer, account details, refunds, deposits, payment confirmation */
+  payment?: boolean;
+  /** an invoice or receipt */
+  invoice?: boolean;
+  /** a message that is only a link */
+  link_only?: boolean;
+  /** why a booking or request was cancelled */
+  cancel_why?: boolean;
+  /** a discount question */
+  discount?: boolean;
+  /** a room's price asked among other questions («كم سعر الغرفة لشخصين؟ والبوفيه شامل؟») */
+  room_price?: boolean;
+  /** the guest's short answer to a departure question: leaving («خروج», «خرجت», «طالع», «بمشي») or extending («تمديد») */
+  departure_word?: 'leave' | 'extend' | null;
+  /** the message holds a question (a question mark, or a question word) */
+  question?: boolean;
+}
+/** H10: a booking the guest's phone holds, with what the claim knows of it (the context of every reply) */
+export interface GuestBooking {
+  ref: string;
+  status: string;
+  branch: string;
+  check_in: string;
+  check_out: string;
+  room?: string | null;
+  adults?: number | null;
+  children?: number | null;
+  breakfast?: string | null;
+  cancel_reason_code?: string | null;
+  cancelled_at?: string | null;
+  source?: string | null;
+}
 
 export interface Context {
   unit_kind: 'branch' | 'dining';
@@ -109,7 +151,13 @@ export interface Context {
   licences: Record<string, string>;
   always_handoff: string[];
   /** the guest's own bookings (same phone) */
-  bookings: { ref: string; status: string; branch: string; check_in: string; check_out: string }[];
+  bookings: GuestBooking[];
+  /** H10: a confirmed booking whose check-out is today or later (the only time an appointment line may be written) */
+  confirmed_upcoming?: boolean;
+  /** H10: the latest booking cancelled in the last 7 days whose check-in is today or later */
+  recent_cancel?: GuestBooking | null;
+  /** H10: a staff or phone message in the last 3 hours asked about leaving or extending («خروج ولا تمديد؟») */
+  staff_departure_q?: boolean;
   /** the first outbound message of the episode */
   first_reply: boolean;
   /** H6 pass 5: the episode's last message is ours (a bare acknowledgement after it needs no reply) */
@@ -163,7 +211,9 @@ const QUESTION_INTENTS = ['facility_question', 'policy_question', 'location_ques
   'dining_menu', 'price_question', 'other', 'booking_status'];
 
 /** topics a stay, hall or group hand-off takes with it: what is left of the message is a question with a source */
-const REQUEST_TOPICS = new Set(['booking_new', 'price', 'availability', 'groups_corporate', 'umrah', 'extension', 'early_late', 'booking_status', 'greeting', 'thanks_closing',
+// H10 (77c66f9e): early_late is no longer taken by the request — «أحجز اليوم والدخول بدري؟» answers the early check-in from
+// its card in the same reply that asks for what the stay still needs
+const REQUEST_TOPICS = new Set(['booking_new', 'price', 'availability', 'groups_corporate', 'umrah', 'extension', 'booking_status', 'greeting', 'thanks_closing',
   'occupancy']);
 /** topics a staff request's sourced answer leaves out (H6 pass 5) */
 const STAFF_SKIP = new Set(['booking_new', 'price', 'availability', 'booking_status', 'greeting', 'thanks_closing', 'occupancy', 'complaint']);
@@ -273,9 +323,12 @@ export function departureButton(id: string | null | undefined): 'leave' | 'exten
 /** the answer of this turn to a waiting departure check: a tapped button, or the understanding's leave / extend (a late
  *  check-out question is an ordinary question — prompts.md §1 rule 36) */
 export function departureChoice(ev: Event, ctx: Context): 'leave' | 'extend' | null {
-  if (!ctx.departure || ev.type !== 'guest') return null;
-  const b = departureButton(ev.button_id);
+  if ((!ctx.departure && !ctx.staff_departure_q) || ev.type !== 'guest') return null;
+  const b = ctx.departure ? departureButton(ev.button_id) : null;
   if (b) return b;
+  // H10 (18 Nov 2026 — 5fb7aac4): «خروج», «خرجت», «طالع», «بمشي» to a departure check or a staff question = leaving
+  const w = ev.flags?.departure_word;
+  if (w === 'leave' || w === 'extend') return w;
   const d = ev.understanding?.departure;
   return d === 'leave' || d === 'extend' ? d : null;
 }
@@ -355,6 +408,17 @@ function decideCore(input: DecideInput): Decision {
     t.push('T1');
     state = 'new';
   }
+  // H10: the alternatives offer sent after reception cancelled a chat booking for no availability (copy.md §4.4) — its two
+  // buttons by id, answered whoever holds the conversation (the offer itself came from us)
+  if (ev.type === 'guest' && ev.kind === 'button' && (ev.button_id === 'hubx:alts' || ev.button_id === 'hubx:no')) {
+    const resumed = state === 'human';
+    t.push('T43');
+    if (ev.button_id === 'hubx:no') {
+      return out({ next: resumed || state === 'new' ? 'inquiry' : state, actions: [{ type: 'fixed', key: 'thanks_after_cancel' }], failed: 'reset', resumed });
+    }
+    if (!ctx.recent_cancel) return out({ next: 'collecting', actions: [{ type: 'ask', slots: ['dates'] }], failed: 'reset', resumed });
+    return out({ next: 'quoted', actions: [{ type: 'alternatives' }], failed: 'reset', resumed, draft_replace: !!input.draft });
+  }
   // «مع الفريق» (H6c, Ahmed 15 Nov 2026): «بانتظار موظف» — the assistant keeps answering what it can, and a second thing it
   // cannot answer joins the same hand-off (T36 / T37); after a staff reply it is silent («مع موظف») until the branch's
   // «عودة المساعد» minutes of staff silence, then the guest's message resumes it (T38); otherwise fully silent (tagging)
@@ -384,13 +448,18 @@ function decideCore(input: DecideInput): Decision {
   const dep = departureChoice(ev, ctx);
   if (dep === 'extend') {
     t.push('T39');
-    return out({ next: 'human', actions: [{ type: 'departure', choice: 'extend' }, { type: 'fixed', key: 'departure_extend' },
+    return out({ next: 'human', actions: [...(ctx.departure ? [{ type: 'departure', choice: 'extend' } as Action] : []), { type: 'fixed', key: 'departure_extend' },
       handoff('extension', null, { intent: 'extension', slots: ctx.departure ? { nazeel_ref: ctx.departure.ref } : {}, stopped: stopped(state) })],
       reason: 'extension', tags_add: ['تمديد'] });
   }
   if (dep === 'leave') {
     t.push('T40');
-    return out({ next: state === 'new' ? 'inquiry' : state, actions: [{ type: 'departure', choice: 'leave' }, { type: 'fixed', key: 'departure_leave' }], failed: 'reset' });
+    return out({ next: state === 'new' ? 'inquiry' : state, actions: [...(ctx.departure ? [{ type: 'departure', choice: 'leave' } as Action] : []), { type: 'fixed', key: 'departure_leave' }], failed: 'reset' });
+  }
+  // H10: a message that is only a link — what the guest needs about it, never a hand-off for «another language»
+  if (ev.flags?.link_only && ev.kind === 'text') {
+    t.push(state === 'new' ? 'T4' : 'T6');
+    return out({ next: state === 'new' ? 'inquiry' : state, actions: [{ type: 'fixed', key: 'link_only' }], failed: 'reset' });
   }
   // a /menu/ cart message on a dining number (T31): the café team, nothing to the guest
   if (ev.cart && ctx.unit_kind === 'dining') {
@@ -459,6 +528,11 @@ function decideCore(input: DecideInput): Decision {
       t.push('T30');
       return out({ next: 'human', actions: [handoff('failed_understanding', 'handoff', { intent: 'unknown', slots: {}, stopped: state })], failed: 'inc', reason: 'failed_understanding' });
     }
+    // H10 (a155d63b): a message that holds a question is never answered with «كيف نساعدك؟» alone — the team takes it
+    if (ev.flags?.question) {
+      t.push(state === 'new' ? 'T2' : 'T30');
+      return out({ next: 'human', actions: [handoff('failed_understanding', 'handoff', { intent: 'question', slots: {}, stopped: state })], failed: 'inc', reason: 'failed_understanding' });
+    }
     // the first failure: the plain question back («كيف نساعدك؟»), the counter raised
     return out({ next: state === 'new' ? 'inquiry' : state, actions: [{ type: 'fixed', key: 'how_help' }], failed: 'inc' });
   }
@@ -471,7 +545,8 @@ function decideCore(input: DecideInput): Decision {
 
   const kind = u.kind ?? deriveKind(u.intents);
   // a third language: the fixed bilingual reply, then the team (spec §2.8)
-  if (u.language.startsWith('other:')) {
+  // H10: a short greeting or an acknowledgement in another language is answered as small talk, never handed off
+  if (u.language.startsWith('other:') && !(kind === 'small_talk' || u.ack_only)) {
     t.push(state === 'new' ? 'T2' : 'T21');
     return out({ next: 'human', actions: [{ type: 'fixed', key: 'third_language' }, handoff('third_language', null, note('other_language'))], reason: 'third_language', failed: 'reset' });
   }
@@ -489,6 +564,17 @@ function decideCore(input: DecideInput): Decision {
     return stayIntent(input, state, t, out, null, { fields: { ...input.draft!.fields, check_in: pend.check_in, check_out: pend.check_out ?? input.draft!.fields.check_out ?? null, _dates_pending: null } });
   }
   if (has('compensation_request')) return H('compensation', 'handoff', 'compensation_request', 'high');
+  // H10 (Ahmed, 18 Nov 2026): a payment question — method, bank transfer, account details, refunds, deposits, payment
+  // confirmation — goes to the team at once with the hand-off notice; no payment policy is ever stated without a card
+  if (ev.flags?.payment || has('payment_question') || u.topics.includes('payment') || u.topics.includes('deposit')) return H('payment', 'handoff', 'payment_question');
+  // an invoice or receipt of a stay → the team
+  if (ev.flags?.invoice) return H('invoice', 'handoff', 'invoice');
+  // «لماذا أُلغي حجزي؟» (41e1a3fb): the recorded reason with one apology, then the alternatives — the engine only; a
+  // dispute or a compensation request goes to the team (above)
+  if (ev.flags?.cancel_why && ctx.recent_cancel) {
+    t.push('T44');
+    return out({ next: 'quoted', actions: [{ type: 'cancel_reason', ref: ctx.recent_cancel.ref }, { type: 'alternatives' }], failed: 'reset', draft_replace: !!input.draft });
+  }
   // H8: «غيّر التواريخ» while the booking is still being made in this chat (a stay draft, not booked) changes the draft,
   // never an existing booking (the understanding may call it booking_change)
   if (has('booking_change') && !has('booking_cancel') && input.draft?.kind === 'stay' && ['collecting', 'quoted', 'awaiting_confirmation'].includes(state)
@@ -504,6 +590,10 @@ function decideCore(input: DecideInput): Decision {
     // a bare acknowledgement right after our answer: no reply (never «لم أعرف الإجابة»)
     if (u.ack_only && ctx.last_from_us) return out({ next: state === 'new' ? 'inquiry' : state, actions: [{ type: 'noop' }], reason: 'ack', failed: 'reset' });
     t.push('T4');
+    // H10 (41e1a3fb): thanks after a cancellation, with no confirmed booking ahead — the plain approved line (copy.md §4.4)
+    if (u.intents.includes('thanks_or_closing') && !ctx.confirmed_upcoming && ctx.recent_cancel) {
+      return out({ next: state === 'new' ? 'inquiry' : state, actions: [{ type: 'fixed', key: 'thanks_after_cancel' }], failed: 'reset' });
+    }
     const greet = u.intents.includes('greeting') && !u.intents.includes('thanks_or_closing') && !u.ack_only;
     return out({ next: state === 'new' ? 'inquiry' : state, actions: [{ type: 'chat', mode: 'chat', buttons: greet && ctx.unit_kind === 'branch' && !['collecting', 'quoted'].includes(state) ? 'quick' : null }], failed: 'reset' });
   }
@@ -570,7 +660,15 @@ function decideCore(input: DecideInput): Decision {
     if (state === 'booked') t.push('T19');
     return stayIntent(input, state, t, out, u);
   }
-  const roomPrice = u.topics.every((k) => ROOM_PRICE_TOPICS.has(k)) && !has('dining_menu') && !has('eyab_question');
+  // H10 (83b51d0b): a discount question is answered from «العروض» only — the offers that apply, or «السعر المعروض هو السعر
+  // الحالي لهذه التواريخ» — never an invented discount or «لا يوجد خصم»; the stay flow continues
+  if (ev.flags?.discount && !STAY_INTENTS.some(has)) {
+    t.push(state === 'new' ? 'T5' : 'T6');
+    return out({ next: state === 'new' ? 'inquiry' : state, actions: [{ type: 'answer', topics: ['offers'], intents: ['offer_question'], branch: u.branch, discount: true }], failed: 'reset' });
+  }
+  // H10 (a155d63b): a room's price asked among other questions — the other parts answered from their sources and the dates
+  // asked in the same reply (stayIntent's answer), never the room price dropped
+  const roomPrice = (u.topics.every((k) => ROOM_PRICE_TOPICS.has(k)) || ev.flags?.room_price === true) && !has('dining_menu') && !has('eyab_question');
   if (has('price_question') && !u.check_in && !u.check_out && roomPrice) {
     // H9 fix 3 (Ahmed, 17 Nov 2026): a room price only for dates — the dates and the guests asked, then the real total of
     // those nights from the website's engine (quote_stay, the room cards); never «يبدأ من» or a lowest price. A hidden
@@ -729,9 +827,16 @@ function datesQuestion(u: Understanding | null, prev: Record<string, unknown>, c
   if (!r || r.status === 'exact' || r.status === 'none') return null;
   const fields = mergeFields(prev, { ...u!, check_in: null, check_out: null, nights: null } as Understanding, ctx.unit_branch, ctx.unit_kind);
   const pending = r.status === 'confirm' && r.check_in ? { check_in: r.check_in, check_out: r.check_out } : null;
+  // H10 (89fa56da — the same date question five times): the same question is never asked twice; the second time the team
+  const sig = `${r.status}:${r.why ?? ''}:${(r.candidates ?? []).join(',')}`;
+  if (prev._dq === sig) {
+    t.push('T21');
+    return out({ next: 'human', actions: [handoff('dates_unclear', 'handoff', { intent: 'stay_booking', slots: noteSlots(u), stopped: 'collecting' })],
+      draft_patch: { kind: 'stay', fields: { ...prev, _dq: null } }, reason: 'dates_unclear', failed: 'reset' });
+  }
   t.push('T41');
   return out({ next: 'collecting', actions: [{ type: 'dates_question', why: r.why ?? r.status, status: r.status, candidates: r.candidates, pending }],
-    draft_patch: { kind: 'stay', fields: { ...fields, _dates_pending: pending } }, draft_replace: replace, failed: 'reset' });
+    draft_patch: { kind: 'stay', fields: { ...fields, _dates_pending: pending, _dq: sig } }, draft_replace: replace, failed: 'reset' });
 }
 
 function stayIntent(input: DecideInput, state: State, t: string[], out: Out, u: Understanding | null, opts: StayOpts = {}): Decision {
@@ -864,8 +969,12 @@ function tap(input: DecideInput, state: State, t: string[], out: Out): Decision 
       ? [{ type: 'fixed', key: 'result_older_summary' }, { type: 'send_summary', version: d.version }]
       : [{ type: 'fixed', key: 'how_help' }] });
   }
+  // H10 (bd27baf4): «احجز» on a card of the CURRENT quote whose version moved only because the name was asked (a second
+  // tap on the same card) — the room pick stands; never the cards again
+  const dq = (d.quote ?? null) as DraftQuote | null;
+  const sameQuote = !!dq && Array.isArray(dq.cards) && dq.key === quoteKey(d.fields) && dq.cards.some((c) => c.room === ev.room);
   // a card or «غرف أخرى» from an older quote (the stay changed since): the quote refreshed, the first cards again
-  if ((ev.button === 'room' || ev.button === 'more' || ev.button === 'request') && ev.version < d.version) {
+  if ((ev.button === 'room' || ev.button === 'more' || ev.button === 'request') && ev.version < d.version && !(ev.button === 'room' && sameQuote)) {
     t.push('T10');
     const fields = { ...d.fields, room_type: 'any' };
     return out({ next: 'quoted', actions: [{ type: 'fixed', key: 'result_refreshed' }, { type: 'quote' }, { type: 'send_room_cards', page: 0 }], draft_patch: { kind: 'stay', fields } });
@@ -921,7 +1030,8 @@ function bookResult(input: DecideInput, state: State, t: string[], out: Out): De
       return out({ next: 'booked', actions: [{ type: 'fixed', key: 'result_confirmed' }], draft_close: 'confirmed', reason: 'booked' });
     case 'request':
       t.push('T12');
-      return out({ next: 'booked', actions: [{ type: 'fixed', key: 'result_request' }], draft_close: 'confirmed', reason: 'booked' });
+      // D1 (Ahmed, 18 Nov 2026): «وصل طلب حجزك رقم {ref}، وسيؤكده لك فريق الاستقبال هنا خلال دقائق.»
+      return out({ next: 'booked', actions: [{ type: 'fixed', key: CHAT_REQUEST_ONLY ? 'result_chat_request' : 'result_request' }], draft_close: 'confirmed', reason: 'booked' });
     case 'already':
       t.push('T12');
       return out({ next: 'booked', actions: [{ type: 'fixed', key: 'result_second_tap' }], reason: 'already' });
@@ -970,6 +1080,8 @@ export const INTENT_LABELS: Record<string, string> = {
   group_request: 'طلب مجموعة', hall_request: 'طلب القاعة', other_language: 'لغة أخرى', out_of_scope: 'خارج خدمات أرمادا', question: 'سؤال',
   dining_order: 'طلب طعام', order_status: 'حالة طلب', table_booking: 'حجز طاولة', booking_status: 'حالة حجز', stay_service_request: 'خدمة أثناء الإقامة',
   other: 'سؤال', always_handoff: 'موضوع للفريق دائمًا', abuse: 'إساءة أو تهديد',
+  // H10 (18 Nov 2026)
+  payment_question: 'سؤال عن الدفع', invoice: 'فاتورة', dates_unclear: 'تواريخ لم تتضح',
   // H9: the answer «أرغب في التمديد» to the departure check
   extension: 'تمديد الإقامة',
 };

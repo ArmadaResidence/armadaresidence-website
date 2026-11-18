@@ -17,7 +17,7 @@ export const FAQ = JSON.parse(read('content/faq.json')).items;
 /** the bank as it stands on production: seed.jsonl with tests/hub-bank/corrections.json applied */
 export const CORRECTIONS = JSON.parse(read('tests/hub-bank/corrections.json')).items;
 export const BANK = read('tests/hub-bank/seed.jsonl').split('\n').filter((l) => l.trim()).map((l) => JSON.parse(l))
-  .map((q) => (CORRECTIONS[q.id] ? { ...q, expect: CORRECTIONS[q.id].expect } : q));
+  .map((q) => (CORRECTIONS[q.id] && !CORRECTIONS[q.id].bank ? { ...q, expect: (CORRECTIONS[q.id].then ?? []).at(-1)?.expect ?? CORRECTIONS[q.id].expect } : q));
 export const CONTENT = JSON.parse(read('supabase/functions/booking-request/content.generated.json'));
 const MIG4 = read('supabase/migrations/20261114100000_guest_hub_knowledge.sql');
 const fdef = MIG4.slice(MIG4.indexOf('create function internal.hub_forbidden_terms()'), MIG4.indexOf('$$;', MIG4.indexOf('create function internal.hub_forbidden_terms()')));

@@ -126,6 +126,30 @@ const prm = readFileSync(new URL('../docs/guest-hub/prompts.md', import.meta.url
 check(/resolveStay/.test(und) && /applyDates/.test(eng), 'understand.ts resolves the dates in code (applyDates → resolveStay), the engine calls it');
 check(/arrival_text/.test(prm) && /Never compute/i.test(prm), 'prompts.md §1: the model returns the date words (arrival_text / departure_text) and never computes a date');
 
+// ── H10 (18 Nov 2026): the brief's cases, today = Wednesday 18 Nov 2026 (Asia/Riyadh); the Hijri shown beside each from
+// the same Umm al-Qura table. On 18 Nov «2026/12/2» was read as 12 Feb 2027 and «1448/6/22» as 22 Jun 2027. ──
+const WED = '2026-11-18';
+const H10 = [
+  ['2 ديسمبر', '2026-12-02'], ['5 ديسمبر', '2026-12-05'], ['٢ ديسمبر', '2026-12-02'], ['2/12', '2026-12-02'], ['Dec 2', '2026-12-02'],
+  ['8 جمادى الآخرة', '2026-11-18'], ['10 جمادى الآخرة 1448', '2026-11-20'],
+  ['2026/12/2', '2026-12-02'], ['٢٠٢٦/١٢/٢', '2026-12-02'], ['2026-12-05', '2026-12-05'], ['يوم الاربعاء 2026/12/2', '2026-12-02'],
+  ['2/12/2026', '2026-12-02'], ['١٤٤٨/٦/٨', '2026-11-18'], ['1448/6/10', '2026-11-20'], ['10/6/1448', '2026-11-20'],
+];
+for (const [w, iso] of H10) check(eq(R(w, WED), iso), `H10: «${w}» → ${iso} (got ${JSON.stringify(R(w, WED))})`);
+check(hijriText('2026-11-18', 'ar') === '8 جمادى الآخرة 1448', 'H10: 18 Nov 2026 = 8 جمادى الآخرة 1448');
+check(hijriText('2026-11-20', 'ar') === '10 جمادى الآخرة 1448', 'H10: 20 Nov 2026 = 10 جمادى الآخرة 1448');
+check(hijriText('2026-12-02', 'ar') === '22 جمادى الآخرة 1448', `H10: 2 Dec 2026 = 22 جمادى الآخرة 1448 (got ${hijriText('2026-12-02', 'ar')})`);
+{
+  const r = resolveStay({ arrival_text: 'يوم الاربعاء 2026/12/2', departure_text: 'يوم السبت 2026/12/5' }, WED);
+  check(eq(r, '2026-12-02', '2026-12-05'), `H10: «الدخول 2026/12/2 والخروج 2026/12/5» → 2–5 Dec (got ${JSON.stringify(r)})`);
+  const t = resolveStay({ dates_text: 'الدخول يوم الاربعاء 2026/12/2 والخروج يوم السبت 2026/12/5' }, WED);
+  check(eq(t, '2026-12-02', '2026-12-05'), `H10: the same in one text (got ${JSON.stringify(t)})`);
+  const h = resolveStay({ arrival_text: '١٤٤٨/٦/٨', departure_text: '١٤٤٨/٦/١٠' }, '2026-11-17');
+  check(eq(h, '2026-11-18', '2026-11-20'), `H10: a Hijri range «١٤٤٨/٦/٨ — ١٤٤٨/٦/١٠» is read, never refused (got ${JSON.stringify(h)})`);
+  const typo = resolveStay({ arrival_text: '2026/12/2', departure_text: '2026/11/5' }, WED);
+  check(typo.status === 'order' && typo.check_in === '2026-12-02', 'H10: a departure before the arrival → ONE order question');
+}
+
 if (fails.length) {
   console.error(`hub-dates-check: ${fails.length} of ${n} failed`);
   for (const f of fails) console.error(`  ✗ ${f}`);

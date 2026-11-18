@@ -275,6 +275,28 @@ The model asks for what is missing (prompts.md §2, ACTION ask) — the branch, 
 - After «تأكيد الحجز» the guest gets exactly what a website booking sends: the official template `booking_confirmed_v2` or `booking_request_received` first, then the result line of 4.2; a second tap answers «حجزك مسجّل برقم {ref}.» and sends nothing else.
 - A number with «يُعامَل كضيف للتجربة» on books a TEST reservation: the same messages and the same template reach the phone; it never takes a room, no reception email, and it is cancelled by itself after one hour without any message.
 
+**4.4 Chat bookings are requests; cancellations and alternatives** [مقرر — أحمد، 18 نوفمبر 2026, H10 — D1: until the dashboard inventory matches real occupancy, every booking made in the chat is a booking request that reception confirms; the website is unchanged. The footer, the button, the sent line, the thanks after a cancellation, the alternatives offer and its buttons and the waiting line are Ahmed's; the other lines are the session's, for Ahmed's review]
+
+The room cards carry no badge (never «تأكيد فوري») and show only the types the engine shows available (all of them as requests when none is); the summary's `{instant_line}` is the request footer below and its first button is «إرسال طلب الحجز».
+
+| Case | Arabic | English |
+|---|---|---|
+| Chat request footer | «سيصل طلبك إلى فريق الاستقبال ليؤكده لك هنا خلال دقائق.» | “Your request will reach our reception team, who will confirm it with you here within minutes.” |
+| Send request button | «إرسال طلب الحجز» | “Send booking request” |
+| Chat request sent (after the official request template) | «وصل طلب حجزك رقم {ref}، وسيؤكده لك فريق الاستقبال هنا خلال دقائق.» | “Your booking request {ref} has arrived; our reception team will confirm it with you here within minutes.” |
+| Thanks after a cancellation (no confirmed upcoming booking) | «العفو، يسعدنا خدمتك في أي وقت.» | “You’re welcome; we’re glad to help any time.” |
+| Alternatives offer (once, right after reception cancels a chat booking or request for no availability, inside the 24-hour window) | «يمكنني أن أعرض لك الغرف المتاحة في التواريخ نفسها أو في فرعنا الآخر. هل ترغب في ذلك؟» — buttons «اعرض البدائل» · «لا، شكرًا» | “We can show you the rooms available on the same dates or at our other property. Would you like that?” — “Show alternatives” · “No, thanks” |
+| Why a booking was cancelled (the recorded reason's guest phrase, `policies.json → cancellation_reasons`) | «نعتذر لك، أُلغي حجزك رقم {ref} {reason}.» | “We’re sorry: your booking {ref} was cancelled. Reason: {reason}.” |
+| Alternatives — the same property | «هذه الغرف المتاحة في التواريخ نفسها:» | “These rooms are available for the same dates:” |
+| Alternatives — the other property | «لا تتوفر غرفة في {branch_name} لهذه التواريخ، وهذه الغرف المتاحة في {other_branch}:» | “No room is available at {branch_name} for these dates; these rooms are available at {other_branch}:” |
+| Alternatives — nothing on these dates | «لا تتوفر غرف في الفرعين لهذه التواريخ. ما التواريخ الأخرى التي تناسبك؟» | “No rooms are available at either property for these dates. Which other dates suit you?” |
+| Still with reception (at most every 30 minutes while a hand-off waits; the staff on shift alerted again) | «ما زال طلبك مع فريق الاستقبال، وسيردّون عليك هنا.» | “Your request is still with our reception team; they will reply to you here.” |
+| The same cards asked about again | «البطاقات أعلاه تعرض الغرف المناسبة لإقامتك وإجمالي كل منها. اضغط زر الحجز تحت الغرفة التي تناسبك، أو اكتب اسمها.» | “The cards above show the rooms that suit your stay and the total for each. Tap the book button under the room you like, or type its name.” |
+| A link with no text | «وصلنا الرابط. ما الذي تحتاجه بخصوصه؟» | “We’ve received the link. What do you need about it?” |
+| A discount asked and no offer applies | «السعر المعروض هو السعر الحالي لهذه التواريخ.» | “The price shown is the current price for these dates.” |
+
+The staff alert lines (`hub_staff_alert` {{5}}, staff-facing): «تأكيد طلب حجز» (at creation, to the slots on shift) and «طلب حجز لم يُؤكَّد بعد 15 دقيقة» (to the branch's «مدير الاستقبال» slots, with an alert in «التنبيهات»). A payment question (method, transfer, account, refund, deposit, payment confirmation) → the hand-off notice of §5 at once.
+
 ---
 
 ## 5. Notices and other fixed replies

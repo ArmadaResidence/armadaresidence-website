@@ -125,7 +125,8 @@ update public.hub_channels set verified_at = now() where address in ('+966536622
 select pg_temp._check('K1 the 37 committed cards, every one published with its source, date and both languages',
   (select count(*) = 37 and bool_and(status = 'published' and live is not null and btrim(source) <> '' and source_date is not null
                                      and title_ar <> '' and title_en <> '' and text_ar <> '' and text_en <> '' and first_published_at is not null)
-     from public.hub_knowledge_cards where not is_test),
+     -- H10 (18 Nov 2026): the two cards of Ahmed's D3 / D4 are not of the committed seed
+     from public.hub_knowledge_cards where not is_test and key not in ('k-ac-heat-cool', 'k-breakfast-offer-ended')),
   (select count(*)::text from public.hub_knowledge_cards));
 select pg_temp._check('K2 no Wi-Fi password card in the committed seed (the two live on production only)',
   not exists (select 1 from public.hub_knowledge_cards where key like 'k-wifi-password%') and exists (select 1 from public.hub_knowledge_cards where key = 'k-wifi-public'));

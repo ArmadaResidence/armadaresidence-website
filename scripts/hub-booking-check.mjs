@@ -114,7 +114,7 @@ const buttonsOf = (f) => f.messages.flatMap((m) => m.payload?.buttons ?? []).map
   check(f[2]?.state === 'quoted' && c1.length === 3, `1 breakfast given → exactly three photo cards (${c1.length})`);
   check(c1.every((x) => x.kind === 'interactive' && /^https:\/\/armadaresidence\.com\/.+\.og\.jpg$/.test(x.payload.header_image ?? '')), '1 every card carries its published cover as the image header');
   check(c1.every((x) => (x.payload.buttons ?? []).length === 1 && /^hub:book:[a-z0-9-]+:[a-z0-9-]+:\d+$/.test(x.payload.buttons[0].id) && x.payload.buttons[0].title === 'احجز'), '1 each card has ONE «احجز» button (hub:book:<draft>:<type>:<version>)');
-  check(c1.every((x) => /الإجمالي: .+ شامل الضريبة/.test(x.body) && /تأكيد فوري|طلب حجز/.test(x.body) && /م²/.test(x.body) && /بدون إفطار/.test(x.body) && /ليلتان/.test(x.body)), '1 a card: the name, size and beds, breakfast and nights, the total, the badge');
+  check(c1.every((x) => /الإجمالي: .+ شامل الضريبة/.test(x.body) && !/تأكيد فوري/.test(x.body) && /م²/.test(x.body) && /بدون إفطار/.test(x.body) && /ليلتان/.test(x.body)), '1 a card: the name, size and beds, breakfast and nights, the total, no badge (D1, 18 Nov 2026)');
   const more = f[2]?.messages.find((x) => (x.payload?.buttons ?? []).some((b) => b.id.startsWith('hub:more:')));
   check(!!more && more.body === 'لدينا غرف أخرى تناسب إقامتك.' && more.payload.buttons[0].title === 'غرف أخرى', '1 more types fit → the line with «غرف أخرى»');
   const c2 = cardsOf(f[3] ?? { messages: [] });
@@ -127,11 +127,11 @@ const buttonsOf = (f) => f.messages.flatMap((m) => m.payload?.buttons ?? []).map
   check(f[5]?.state === 'awaiting_confirmation' && !!sum, '1 the name → the summary, «بانتظار تأكيد الضيف»');
   const cancel = String(CONTENT.cancellation_line.ar);
   check(!!sum && sum.body.includes(cancel) && sum.body.includes('الدفع عند الوصول إلى الفندق.') && sum.body.includes('الاسم: محمد أحمد') && sum.body.includes('الإفطار: بدون إفطار')
-    && sum.body.includes('الضيوف: بالغان') && sum.body.includes('يتأكد حجزك فورًا') && !sum.body.includes('السرير الإضافي'), '1 the summary: the cancellation sentence exactly, «الدفع عند الوصول», the name, breakfast, guests, the instant line, no extra-bed line');
-  check(!!sum && sum.payload.buttons.map((b) => b.title).join('|') === 'تأكيد الحجز|تعديل|ليس الآن', '1 the summary\'s three buttons');
+    && sum.body.includes('الضيوف: بالغان') && sum.body.includes('سيصل طلبك إلى فريق الاستقبال ليؤكده لك هنا خلال دقائق.') && !sum.body.includes('يتأكد حجزك فورًا') && !sum.body.includes('السرير الإضافي'), '1 the summary: the cancellation sentence exactly, «الدفع عند الوصول», the name, breakfast, guests, the chat-request footer (D1), no extra-bed line');
+  check(!!sum && sum.payload.buttons.map((b) => b.title).join('|') === 'إرسال طلب الحجز|تعديل|ليس الآن', '1 the summary\'s three buttons («إرسال طلب الحجز», D1)');
   const v = sum ? Number(sum.payload.buttons[0].id.split(':')[3]) : 0;
   check(v >= 2, `1 the summary carries the draft's current version (${v})`);
-  check(f[6]?.state === 'booked' && /AR-\d{8}-/.test(f[6].messages.map((x) => x.body).join(' ')) && f[6].messages.some((x) => x.body.startsWith('تم تأكيد حجزك رقم')), '1 «تأكيد الحجز» → booked, the result line with the reference');
+  check(f[6]?.state === 'booked' && /AR-\d{8}-/.test(f[6].messages.map((x) => x.body).join(' ')) && f[6].messages.some((x) => x.body.startsWith('وصل طلب حجزك رقم') && x.body.includes('وسيؤكده لك فريق الاستقبال هنا خلال دقائق.')), '1 «إرسال طلب الحجز» → booked as a request (D1), the result line with the reference');
   check(!a.calls.some((c) => c[0] === 'book'), '1 the test lab never books (the step is simulated)');
   check(f[6] && !f[6].booking, '1 … and hands nothing to the notifications');
 }
@@ -142,7 +142,7 @@ const buttonsOf = (f) => f.messages.flatMap((m) => m.payload?.buttons ?? []).map
   const run = await runItem(CTX(), item(['x', 'y'], {}), deps(a, model([U({ ...D, adults: 3, breakfast: 'without' }), U()])));
   const c = cardsOf(run.finishes[0]);
   check(c[0]?.payload.room_card === 'two-bedroom-suite' && c[1]?.payload.room_card === 'two-bedroom-jacuzzi-suite', `2 three adults → the types that fit first (${c.map((x) => x.payload.room_card)})`);
-  check(c.length === 3 && /طلب حجز/.test(c[2].body) && /سرير إضافي واحد/.test(c[2].body) && /الأسرّة الإضافية/.test(c[2].body), '2 a type that needs an extra bed: its card says so, a request with the booking form\'s reason');
+  check(c.length === 3 && /سرير إضافي واحد/.test(c[2].body) && !/طلب حجز —|تأكيد فوري/.test(c[2].body), '2 a type that needs an extra bed: its card says so, no badge (D1)');
   check(!c.some((x) => ['king-room', 'jacuzzi-studio', 'accessible-room'].includes(x.payload.room_card)), '2 a type that cannot take the party (no extra bed) is never offered');
 }
 {
@@ -176,8 +176,7 @@ const buttonsOf = (f) => f.messages.flatMap((m) => m.payload?.buttons ?? []).map
   check(/armadaresidence\.com\/booking\//.test(r2.finishes[0].messages.map((x) => x.body).join('\n')) && r2.finishes[0].state === 'collecting', '3 nothing can be quoted → the link with «التحدث مع موظف»');
   const r3 = await runItem(CTX(), item(['x', '[tap:request]']), deps(adapter({ allRequest: true }), model([U({ ...D, adults: 2, breakfast: 'without' })])));
   const ids = buttonsOf(r3.finishes[0]);
-  check(ids.some((x) => x.startsWith('hub:request:')) && ids.some((x) => x.startsWith('hub:otherdates:')) && !cardsOf(r3.finishes[0]).length, '3 no type instant → «سجّل طلب حجز» / «تواريخ أخرى»');
-  check(cardsOf(r3.finishes[1] ?? { messages: [] }).length === 3, '3 «سجّل طلب حجز» → the cards with their request badges');
+  check(!ids.some((x) => x.startsWith('hub:request:')) && cardsOf(r3.finishes[0]).length === 3, '3 D1: no type instant → the cards at once (every chat booking is a request), never «سجّل طلب حجز»');
 }
 
 // ── 4. group D: the live booking (the adapter's book stubbed) ──
@@ -237,16 +236,21 @@ const live = (ctx, msg, st, draft) => {
   const card = { room: 'x', name_ar: 'غرفة', name_en: 'Room', size_m2: null, bed_ar: null, bed_en: null, capacity: 2, extra_beds: 0, total: 400, base_total: null, instant: true, reason: null, offer: null, promo_code: null, fits: true, sort: 1 };
   const fmt = { sarText, longDate: (i, L) => longDate(CONTENT, i, L), content: CONTENT, limits: { max_nights: 90, same_day_cutoff: '23:45' } };
   const f = { ...D, adults: 2, breakfast: 'without', guest_name: 'Sara Ali', branch: 'shafa-road' };
-  check(!/m²|م²/.test(cardBody(card, f, 'ar', fmt)) && cardBody(card, f, 'ar', fmt).split('\n').length === 5, 'card: no size and no beds → that line left out (H9 fix 3: the dates line kept)');
+  check(!/m²|م²/.test(cardBody(card, f, 'ar', fmt)) && cardBody(card, f, 'ar', fmt).split('\n').length === 4, 'card: no size and no beds → that line left out (H9 fix 3: the dates line kept; D1: no badge line)');
   const req = { ...card, instant: false, reason: 'too_long', extra_beds: 1 };
   const en = summaryBody(req, f, 'en', fmt, 'Shafa Road');
-  check(en.includes('Extra bed: 1 extra bed') && en.includes('Stays longer than 90 nights are confirmed by the reception.') && en.includes(String(CONTENT.cancellation_line.en)) && en.includes('Payment on arrival at the hotel.'), 'summary (en): the extra-bed line, the request reason with its limit, the cancellation sentence, payment on arrival');
+  check(en.includes('Extra bed: 1 extra bed') && en.includes('Your request will reach our reception team, who will confirm it with you here within minutes.') && en.includes(String(CONTENT.cancellation_line.en)) && en.includes('Payment on arrival at the hotel.'), 'summary (en): the extra-bed line, the chat-request footer (D1), the cancellation sentence, payment on arrival');
   check(orderCards([{ ...card, room: 'b', fits: false, sort: 1 }, { ...card, room: 'a', fits: true, instant: false, sort: 2 }, { ...card, room: 'c', fits: true, sort: 3 }], 'b').map((x) => x.room).join() === 'b,c,a', 'order: the previous room, then the types that fit (instant first)');
   // the machine (spec T7–T14 with the skill on)
   const ctx = { unit_kind: 'branch', unit_branch: 'shafa-road', skills: ['room_booking'], show_prices: true, instant_booking: true, window_open: true, failed_understandings: 0, failed_max: 2, out_of_scope: 0, out_of_scope_max: 3, group_min_rooms: 5, licences: {}, always_handoff: [], bookings: [], first_reply: false };
   const dq = quoted(3);
-  let x = decide({ state: 'quoted', event: { type: 'tap', button: 'room', draft_id: dq.id, version: 2, room: 'king-room' }, draft: dq, ctx });
+  // the stay changed since those cards (another arrival): the older card refreshes the quote
+  const moved = { ...dq, fields: { ...dq.fields, check_in: '2026-12-21' } };
+  let x = decide({ state: 'quoted', event: { type: 'tap', button: 'room', draft_id: dq.id, version: 2, room: 'king-room' }, draft: moved, ctx });
   check(x.actions.map((y) => y.type).join() === 'fixed,quote,send_room_cards' && x.actions[0].key === 'result_refreshed', 'T10: a card of an older quote → refreshed, the cards again');
+  // H10 (bd27baf4): the same card tapped twice while the name is asked — the pick stands, never the cards again
+  const x2 = decide({ state: 'collecting', event: { type: 'tap', button: 'room', draft_id: dq.id, version: 2, room: 'king-room' }, draft: dq, ctx });
+  check(!x2.actions.some((y) => y.type === 'send_room_cards') && (x2.transitions.includes('T11b') || x2.transitions.includes('T11')), `H10: a second «احجز» on the current quote → the name or the summary, never the cards (${x2.actions.map((y) => y.type)})`);
   x = decide({ state: 'quoted', event: { type: 'tap', button: 'more', draft_id: dq.id, version: 3, page: 1 }, draft: dq, ctx });
   check(x.actions[0].type === 'send_room_cards' && x.actions[0].page === 1 && !x.draft_patch, '«غرف أخرى» → the next page, the draft unchanged');
   x = decide({ state: 'quoted', event: { type: 'tap', button: 'other_dates', draft_id: dq.id, version: 3 }, draft: dq, ctx });

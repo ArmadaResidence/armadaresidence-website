@@ -259,7 +259,8 @@
         "no_rate": "لم تُحدَّد أسعار بعض الليالي بعد.",
         "closed": "بعض الليالي غير متاحة للحجز الفوري.",
         "sold_out": "لا تتبقى غرف من هذا النوع في بعض الليالي.",
-        "needs_ages": "أعمار الأطفال مطلوبة لحساب الإفطار."
+        "needs_ages": "أعمار الأطفال مطلوبة لحساب الإفطار.",
+        "chat_request": "حجوزات المحادثة يؤكدها فريق الاستقبال حاليًا."
       }
     },
     "datepicker": {
@@ -1169,7 +1170,8 @@
         "no_rate": "Some nights have no price yet.",
         "closed": "Some nights are not open for instant booking.",
         "sold_out": "No room of this type is left on some nights.",
-        "needs_ages": "The children's ages are needed to price breakfast."
+        "needs_ages": "The children's ages are needed to price breakfast.",
+        "chat_request": "Bookings made in the chat are confirmed by our reception team for now."
       }
     },
     "datepicker": {

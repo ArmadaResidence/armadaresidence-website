@@ -112,11 +112,14 @@ insert into _ids values ('d1', pg_temp._draft(pg_temp._id('c'), 20, (pg_temp._j(
 select pg_temp._service();
 select pg_temp._save('b1', public.hub_book_draft(pg_temp._id('d1'), 2, 'AR-20991231-HB01'));
 select pg_temp._root();
-select pg_temp._check('D1 the current version books: confirmed, the ref, source assistant_whatsapp, not test', pg_temp._j('b1') ->> 'status' = 'confirmed'
-  and exists (select 1 from public.reservations r where r.ref = 'AR-20991231-HB01' and r.booking_source = 'assistant_whatsapp' and not r.is_test and r.status = 'confirmed'), pg_temp._j('b1')::text);
-select pg_temp._check('D1 … the room taken from the inventory and the nights stored',
-  (select sum(booked) = 2 and sum(rooms_to_sell) = 0 from public.inventory_days where room_type_id = pg_temp._id('rt') and night in (pg_temp._d(20), pg_temp._d(21)))
-  and (select count(*) = 2 from public.reservation_nights n join public.reservations r on r.id = n.reservation_id where r.ref = 'AR-20991231-HB01'));
+-- H10 (D1, Ahmed 18 Nov 2026): every chat booking is a REQUEST reception confirms (reason chat_request) — the inventory
+-- untouched until reception confirms it
+select pg_temp._check('D1 the current version books ONE request: the ref, source assistant_whatsapp, reason chat_request, not test', pg_temp._j('b1') ->> 'status' = 'request'
+  and exists (select 1 from public.reservations r where r.ref = 'AR-20991231-HB01' and r.booking_source = 'assistant_whatsapp' and not r.is_test and r.status = 'request'
+                and r.fallback_reason = 'chat_request'), pg_temp._j('b1')::text);
+select pg_temp._check('D1 … the inventory untouched (a request takes no room) and the setting cleared',
+  (select sum(booked) = 0 from public.inventory_days where room_type_id = pg_temp._id('rt') and night in (pg_temp._d(20), pg_temp._d(21)))
+  and coalesce(current_setting('app.hub_chat_request', true), '') = '');
 select pg_temp._check('D1 … the draft confirmed and linked, one booking event',
   (select status = 'confirmed' and reservation_id is not null from public.hub_drafts where id = pg_temp._id('d1'))
   and (select count(*) = 1 from public.hub_conversation_events where conversation_id = pg_temp._id('c') and kind = 'booking'));
@@ -132,23 +135,22 @@ select pg_temp._save('b3', public.hub_book_draft(pg_temp._id('d2'), 2, 'AR-20991
 select pg_temp._save('b4', public.hub_book_draft(pg_temp._id('d2'), 3, 'AR-20991231-HB04'));
 select pg_temp._root();
 select pg_temp._check('D3 an older version → stale, nothing stored', pg_temp._j('b3') ->> 'status' = 'stale' and not exists (select 1 from public.reservations where ref = 'AR-20991231-HB03'));
-select pg_temp._check('D4 the same stay on other dates books with its own version', pg_temp._j('b4') ->> 'status' = 'confirmed', pg_temp._j('b4')::text);
+select pg_temp._check('D4 the same stay on other dates books with its own version (a request, D1)', pg_temp._j('b4') ->> 'status' = 'request', pg_temp._j('b4')::text);
 insert into _ids values ('d3', pg_temp._draft(pg_temp._id('c'), 28, 1, true));
 select pg_temp._service();
 select pg_temp._save('b5', public.hub_book_draft(pg_temp._id('d3'), 2, 'AR-20991231-HB05'));
 select pg_temp._root();
-select pg_temp._check('D5 a quoted total that is not the price → price_changed with the new total, nothing stored',
-  pg_temp._j('b5') ->> 'status' = 'price_changed' and (pg_temp._j('b5') ->> 'new_total')::numeric > 1 and not exists (select 1 from public.reservations where ref = 'AR-20991231-HB05')
-  and (select status = 'open' from public.hub_drafts where id = pg_temp._id('d3')), pg_temp._j('b5')::text);
-update public.hub_drafts set status = 'abandoned' where id = pg_temp._id('d3');
+-- D1: a request is stored with the price computed now; reception confirms it (staff_confirm_reservation re-prices)
+select pg_temp._check('D5 a request never answers price_changed (D1): stored as a request with the current total',
+  pg_temp._j('b5') ->> 'status' = 'request' and exists (select 1 from public.reservations where ref = 'AR-20991231-HB05' and status = 'request' and total > 1), pg_temp._j('b5')::text);
 -- the last room taken in parallel (the site sold it) after an instant quote
 update public.inventory_days set rooms_to_sell = 0, booked = 1 where room_type_id = pg_temp._id('rt') and night = pg_temp._d(33);
 insert into _ids values ('d4', pg_temp._draft(pg_temp._id('c'), 32, (pg_temp._j('q') -> 'quote' ->> 'total')::numeric, true));
 select pg_temp._service();
 select pg_temp._save('b6', public.hub_book_draft(pg_temp._id('d4'), 2, 'AR-20991231-HB06'));
 select pg_temp._root();
-select pg_temp._check('D6 the last room gone since an instant quote → sold_out, never a silent request', pg_temp._j('b6') ->> 'status' = 'sold_out'
-  and not exists (select 1 from public.reservations where ref = 'AR-20991231-HB06') and (select status = 'open' from public.hub_drafts where id = pg_temp._id('d4')), pg_temp._j('b6')::text);
+select pg_temp._check('D6 the last room gone (the dashboard inventory) → still a request (D1: reception confirms), never sold_out', pg_temp._j('b6') ->> 'status' = 'request'
+  and exists (select 1 from public.reservations where ref = 'AR-20991231-HB06' and status = 'request'), pg_temp._j('b6')::text);
 select pg_temp._as('admin');
 select pg_temp._fails('D7 service role only', format('select public.hub_book_draft(%L, 2, %L)', pg_temp._id('d4'), 'AR-20991231-HB07'), '42501');
 select pg_temp._root();
@@ -174,7 +176,7 @@ select pg_temp._check('T5 after an hour: cancelled (test_booking), its history r
   and exists (select 1 from public.reservation_status_history h join public.reservations r on r.id = h.reservation_id where r.ref = 'AR-20991231-HB08' and h.to_status = 'cancelled'));
 select pg_temp._check('T6 … the inventory still untouched, and a real booking is never cancelled by the tick',
   (select jsonb_agg(jsonb_build_array(rooms_to_sell, booked) order by night) from public.inventory_days where room_type_id = pg_temp._id('rt') and night in (pg_temp._d(36), pg_temp._d(37))) = pg_temp._j('inv0')
-  and (select status = 'confirmed' from public.reservations where ref = 'AR-20991231-HB01'));
+  and (select status = 'request' from public.reservations where ref = 'AR-20991231-HB01'));
 select pg_temp._check('T7 the job is scheduled every five minutes', exists (select 1 from cron.job where jobname = 'hub-test-bookings' and schedule = '*/5 * * * *'));
 
 -- ══ N — «الآن» ══
@@ -205,7 +207,7 @@ select pg_temp._as('admin');
 select pg_temp._save('r1', public.report_hub(null, pg_temp._d(-1), pg_temp._d(0)));
 select pg_temp._root();
 select pg_temp._check('R1 the report: units, the assistant''s bookings, sales requests, topics, the WhatsApp estimate',
-  pg_temp._j('r1') ? 'units' and (pg_temp._j('r1') -> 'bookings' ->> 'instant')::int >= 2 and pg_temp._j('r1') ? 'sales_requests' and pg_temp._j('r1') ? 'topics' and pg_temp._j('r1') ? 'whatsapp'
+  pg_temp._j('r1') ? 'units' and (pg_temp._j('r1') -> 'bookings' ->> 'request')::int >= 2 and pg_temp._j('r1') ? 'sales_requests' and pg_temp._j('r1') ? 'topics' and pg_temp._j('r1') ? 'whatsapp'
   and pg_temp._j('r1') -> 'bookings' ? 'revenue', pg_temp._j('r1')::text);
 select pg_temp._as('nofin');
 select pg_temp._save('r2', public.report_hub(null, pg_temp._d(-1), pg_temp._d(0)));

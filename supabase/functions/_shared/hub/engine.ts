@@ -19,9 +19,10 @@ import { costOf, type Layer, type ModelFn, type ModelResult } from './model.ts';
 import { isCartMessage, usableSkills } from './skills/index.ts';
 import type { AdapterResult, InventoryAdapter, Stay } from './adapter/index.ts';
 import {
-  bookButton, cardBody, hasMore, moreButton, nothingInstantButtons, orderCards, pageOf, parseTap, quoteKey, summaryBody, summaryButtons, typedSummaryButton,
-  type DraftQuote, type Fmt, type QuoteCard,
+  bookButton, cardBody, CHAT_REQUEST_ONLY, hasMore, moreButton, nothingInstantButtons, orderCards, pageOf, parseTap, quoteKey, shownAvailable, summaryBody, summaryButtons,
+  typedSummaryButton, type DraftQuote, type Fmt, type QuoteCard,
 } from './booking.ts';
+import { confirmedUpcoming, guestBookings, nearSame, reasonPhrase, recentCancel, sentLines, turnFlags } from './context.ts';
 import { makeRef } from '../ref.ts';
 import {
   SENSITIVE, TRANSCRIBE_MODEL, TRANSCRIBE_PROMPT, VOICE_LANGUAGES, VOICE_MAX_SECONDS, audioSeconds, imageLine, mediaGate, mediaLine, parseVision, problemLineOk,
@@ -117,6 +118,8 @@ export interface Finish {
   booking?: { status: 'confirmed' | 'request'; ref: string; data: Record<string, unknown> } | null;
   /** H8: the room types quoted without a published cover (their cards went without an image) */
   no_cover?: string[];
+  /** H10: «ما زال طلبك مع فريق الاستقبال…» went — the staff on shift are alerted again (hub_turn_finish) */
+  realert?: boolean;
 }
 export interface Outcome {
   finish: Finish;
@@ -149,6 +152,15 @@ const branchName = (c: Json, slug: string, L: Lang) => {
   const b = (c.branches as Json[]).find((x) => x.slug === slug);
   return String(b ? (L === 'en' ? b.name_en : b.name_ar) : slug);
 };
+
+/** H10: the people a unit must hold — the adults and the children; an infant under 2 is not counted when the ages are known */
+export function partySize(f: Record<string, unknown>): number {
+  const adults = Math.max(1, Number(f.adults ?? 1));
+  const children = Math.max(0, Number(f.children ?? 0));
+  const ages = Array.isArray(f.child_ages) ? (f.child_ages as unknown[]).map(Number) : null;
+  const counted = ages && ages.length === children ? ages.filter((a) => !(a < 2)).length : children;
+  return adults + counted;
+}
 
 /** H9 fix 3: a plain yes to a question we asked («نعم», «إيه», «صح», «تمام», "yes") — accepts dates waiting for a confirm */
 export const isYes = (t: string): boolean => /^(?:نعم|ايوه|ايوا|ايو|اي|ايه|اه|صح|صحيح|بالضبط|مضبوط|تمام|اكيد|طيب|اوكي|ok|okay|yes|yeah|yep|correct|right)(?:\s+(?:نعم|صح|تمام|كذا|هيك))?$/.test(normDates(t));
@@ -198,8 +210,15 @@ export async function runTurn(claim: Json, deps: Deps): Promise<Outcome> {
       finish.decision = { actions: ['noop'], reason: 'repeated' };
       return out;
     }
-    // a rate limit: no model call — never silence: the general hand-off notice and the team
+    // a rate limit: no model call — never silence: the general hand-off notice and the team. H10 (bd27baf4 — the notice
+    // five times after the limit): ONCE per hand-off; while the conversation waits with that notice sent, nothing more
     if (claim.rate && (claim.rate.phone_hour >= claim.rate.phone_max || claim.rate.replies_hour >= claim.rate.replies_max)) {
+      if (conv.state === 'human' && (conv.human_reason === 'rate_limit' || claim.handoff?.notice_open)) {
+        finish.status = 'skipped';
+        finish.error = 'rate_limit_quiet';
+        finish.decision = { actions: ['noop'], reason: 'rate_limit_quiet' };
+        return out;
+      }
       finish.state = 'human';
       finish.reason = 'rate_limit';
       finish.messages = [{ seq: 1, kind: 'text', body: fixed('handoff', L), payload: {}, source_card_ids: [], notice: true }];
@@ -249,7 +268,8 @@ export async function runTurn(claim: Json, deps: Deps): Promise<Outcome> {
     const model = String(models[layer] ?? models.understand ?? 'claude-sonnet-5-5');
     const user = understandUser(understandSchema(), lists, {
       today: claim.today, unit: unit.key, state: conv.state, draft: claim.draft?.fields ?? null, history: claim.history ?? [], turn: texts,
-      departure: claim.departure ? understandDeparture() : null,
+      // H10: also while a staff message of the last 3 hours asked «خروج ولا تمديد؟»
+      departure: claim.departure || claim.staff_departure_q ? understandDeparture() : null,
     });
     let note = '';
     let down: string | null = null;
@@ -310,6 +330,10 @@ export async function runTurn(claim: Json, deps: Deps): Promise<Outcome> {
     window_open: !!conv.window_expires_at && Date.parse(conv.window_expires_at) > Date.now(), failed_understandings: Number(conv.failed_understandings ?? 0),
     failed_max: Number(set.failed_max ?? 2), out_of_scope: Number(conv.out_of_scope ?? 0), out_of_scope_max: 3, group_min_rooms: Number(set.group_min_rooms ?? 5),
     licences: claim.licences ?? {}, always_handoff: always, bookings: claim.bookings ?? [], first_reply: !!conv.first_reply,
+    // H10: the guest's bookings as they stand now (a reply never contradicts a cancellation the guest just received)
+    confirmed_upcoming: confirmedUpcoming(claim.bookings ?? [], claim.today),
+    recent_cancel: recentCancel(claim.bookings ?? [], claim.today),
+    staff_departure_q: claim.staff_departure_q === true,
     last_from_us: ((claim.history ?? []) as Json[]).slice(-1)[0]?.author === 'us',
     state_before_human: (conv.state_before_human ?? null) as State | null,
     human_phase: phase,
@@ -321,6 +345,7 @@ export async function runTurn(claim: Json, deps: Deps): Promise<Outcome> {
     ? { type: 'tap', button: tapped.button, draft_id: tapped.draft_id, version: tapped.version, ...(tapped.room ? { room: tapped.room } : {}), ...(tapped.page !== undefined ? { page: tapped.page } : {}) }
     : { type: 'guest', understanding: u, kind: silent ? 'reaction' : media ? 'media' : sticker ? 'sticker' : buttonId ? 'button' : 'text', button_id: buttonId, cart,
         affirm: texts.length === 1 && isYes(texts[0]),
+        flags: texts.length ? turnFlags(texts) : null,
         media: prep.route ? { reason: prep.route.reason, ...(prep.route.priority ? { priority: prep.route.priority } : {}), ...(prep.route.ack ? { ack: true } : {}) } : null };
   // a problem photo's acknowledgement reads the photo's staff line with the caption (never an identity or payment image)
   if (prep.route?.reason === 'problem_photo') texts = [...prep.captions, L === 'en' ? `[A photo of a problem: ${prep.route.summary}]` : `[صورة لمشكلة: ${prep.route.summary}]`];
@@ -348,6 +373,7 @@ export async function runTurn(claim: Json, deps: Deps): Promise<Outcome> {
     return [sal && !answers.length ? fixed('salaam_line', 'ar') : null, apo].filter(Boolean).join('\n') || null;
   };
   let noQuote = false;
+  let noQuoteReason = 'no_quote';
   let ackDone = false;
   // ── H8: the booking in the chat — the draft's id and version the buttons carry, the quote, the reservation ──
   let newDraftId: string | null = null;
@@ -377,8 +403,12 @@ export async function runTurn(claim: Json, deps: Deps): Promise<Outcome> {
     const adults = Math.max(1, Number(f.adults ?? 1));
     const asked = Math.max(0, Number(f.extra_beds ?? 0));
     const picked = f.room_type && f.room_type !== 'any' ? String(f.room_type) : null;
+    // H10 (bd27baf4 — 2 adults and 5 children were shown rooms for two, three times): a type is offered only when it can
+    // hold the whole party — the adults and the children (an infant under 2, when the ages are known, is not counted) within
+    // the type's capacity and its extra beds; the guest's own type too
+    const people = partySize(f);
     const one = async (pickedOnly: boolean): Promise<QuoteCard[]> => {
-      const cand = rooms.filter((r) => (pickedOnly ? r.key === picked : adults <= r.capacity + r.extra_beds_max));
+      const cand = rooms.filter((r) => people <= r.capacity + r.extra_beds_max && (!pickedOnly || r.key === picked));
       const out = await Promise.all(cand.map(async (r): Promise<QuoteCard | null> => {
         const beds = Math.min(r.extra_beds_max, Math.max(adults - r.capacity, asked, 0));
         const stay: Stay = { branch, room_type: r.key, check_in: String(f.check_in), check_out: String(f.check_out), adults, children: Number(f.children ?? 0),
@@ -402,6 +432,11 @@ export async function runTurn(claim: Json, deps: Deps): Promise<Outcome> {
     let cards = picked ? await one(true) : [];
     // a named type that cannot take this stay: every type that can
     if (!cards.length) cards = await one(false);
+    // D1 (Ahmed, 18 Nov 2026): only the types the engine shows available; none available → every quoted one, as a request
+    if (CHAT_REQUEST_ONLY) {
+      const avail = cards.filter(shownAvailable);
+      if (avail.length) cards = avail;
+    }
     return orderCards(cards, lastRoom && lastRoom.branch === branch ? String(lastRoom.room ?? '') : null);
   };
   const t2 = (x: string) => d.transitions.push(x);
@@ -434,8 +469,18 @@ export async function runTurn(claim: Json, deps: Deps): Promise<Outcome> {
     if (lastGuest && !unanswered.includes(lastGuest) && msgs.some((m) => m.id === lastGuest && m.kind === 'text')) unanswered.push(lastGuest);
   };
 
+  // H10 (Ahmed, 18 Nov 2026): the hand-off notice ONCE per hand-off episode; while it waits with no staff reply, at most one
+  // line every 30 minutes («ما زال طلبك مع فريق الاستقبال…») and the staff on shift alerted again
+  const noticeOpen = claim.handoff?.notice_open === true;
+  const waitingLine = (): boolean => {
+    if (claim.handoff?.waiting_line_due !== true || finish.realert) return false;
+    push(fixed('still_waiting', L), { notice: true, handoff: true });
+    finish.realert = true;
+    return true;
+  };
   const doHandoff = (a: Extract<Action, { type: 'handoff' }>) => {
-    if (a.notice) push(fixed(a.notice, L), { notice: true, handoff: true });
+    if (a.notice && noticeOpen) waitingLine();
+    else if (a.notice) push(fixed(a.notice, L), { notice: true, handoff: true });
     note = handoffNote(a.note, lastAction);
     if (a.reason === 'complaint') out.complaint = true;
     if (a.reason === 'no_source') gap();
@@ -447,7 +492,7 @@ export async function runTurn(claim: Json, deps: Deps): Promise<Outcome> {
       switch (a.type) {
         case 'fixed': {
           if (a.key === 'third_language') push(thirdLanguage(), { notice: true });
-          else if (['result_confirmed', 'result_request', 'result_second_tap'].includes(a.key)) {
+          else if (['result_confirmed', 'result_request', 'result_chat_request', 'result_second_tap'].includes(a.key)) {
             // the result line after the official template (copy.md §4.2): the booking's reference
             const ref = lastBook && 'ref' in lastBook ? String(lastBook.ref) : '';
             push(fixed(a.key, L, { ref }));
@@ -503,7 +548,18 @@ export async function runTurn(claim: Json, deps: Deps): Promise<Outcome> {
         case 'answer': {
           const k = await deps.knowledge(unit.key, a.topics.length ? a.topics : [], L, a.branch && a.branch !== 'both' ? a.branch : null).catch(() => ({ cards: [], faq: [] }));
           const wantOffers = a.intents.includes('offer_question') || a.topics.includes('offers');
-          const offers = wantOffers ? offersFor(await offersP, unit.branch, L, claim.today) : null;
+          let offers = wantOffers ? offersFor(await offersP, unit.branch, L, claim.today) : null;
+          // H10 (83b51d0b): a discount question — the individuals' offers that apply, else «السعر المعروض هو السعر الحالي
+          // لهذه التواريخ»; never an invented discount, never «لا يوجد خصم»
+          if (a.discount) {
+            offers = (offers ?? []).filter((o) => o.category === 'individuals');
+            if (!offers.length) {
+              push(fixed('no_discount', L));
+              answered = true;
+              lastAction = 'أُجيب عن سؤال الخصم';
+              break;
+            }
+          }
           const venue = unit.kind === 'dining' && unit.venue ? { name: L === 'en' ? unit.venue.name_en : unit.venue.name_ar, menu_url: unit.venue.menu ?? null } : null;
           const payload: Payload = buildPayload(k, { offers, venue, first_name: claim.guest?.first_name ?? null, cancellation: String(deps.content.cancellation_line[L]) });
           // a mixed message (H6 gaps): the hand-off after this answer happens whatever the answer gives; a question it could
@@ -596,6 +652,17 @@ export async function runTurn(claim: Json, deps: Deps): Promise<Outcome> {
             const f = fieldsOf(dec);
             const cards = await quoteCards(f, a.exclude ?? []);
             if (!cards.length) {
+              // H10 (bd27baf4): no single unit holds the party — more than one unit is a request reception arranges (the
+              // 2–4 rooms hand-off of copy.md §5), never rooms for two shown again
+              const types = (await deps.adapter.roomTypes(String(f.branch ?? unit.branch)).catch(() => [])).filter((r) => r.bookable);
+              if (types.length && types.every((r) => partySize(f) > r.capacity + r.extra_beds_max)) {
+                t2('T45');
+                doHandoff({ type: 'handoff', reason: 'multi_room', notice: 'multi_room', note: { intent: 'stay_booking', slots: publicFields(f), stopped: 'collecting' } });
+                noQuote = true;
+                noQuoteReason = 'multi_room';
+                lastAction = 'الضيوف أكثر من سعة وحدة واحدة';
+                break;
+              }
               const link = bookingUrl(await deps.knowledge(unit.key, ['website'], L, null).catch(() => ({ cards: [], faq: [] })), L);
               push(fixed('booking_link', L, { booking_url: link }), { kind: 'interactive', payload: { buttons: quickReplies(unit.kind, L).filter((b) => b.id === 'hubq:team') } });
               noCardsLink = true;
@@ -636,14 +703,24 @@ export async function runTurn(claim: Json, deps: Deps): Promise<Outcome> {
           if (noCardsLink) break;
           const q = draftQuote;
           if (!q || !q.cards.length) break;
+          let page = Math.max(0, a.page ?? 0);
+          if (!pageOf(q.cards, page).length) page = 0;
+          // H10 (bd27baf4 — the same three cards three times): the same card set is never sent twice for the guest's words
+          // («مافهمت هالصور»): one line explains them instead; a tap («غرف أخرى», a refresh) sends what it asks
+          const setKey = `${q.key}|${page}|${pageOf(q.cards, page).map((c) => c.room).join(',')}`;
+          const f0 = fieldsOf(dec);
+          if (ev.type === 'guest' && f0._cards_key === setKey) {
+            push(fixed('cards_again', L));
+            lastAction = 'شرح بطاقات الغرف';
+            break;
+          }
+          dec.draft_patch = { kind: 'stay', fields: { ...f0, _cards_key: setKey } };
           const f = fieldsOf(dec);
           const id = draftIdFor(dec);
           const v = versionFor(dec);
-          let page = Math.max(0, a.page ?? 0);
-          if (!pageOf(q.cards, page).length) page = 0;
           // no type can be confirmed instantly (and the guest named none): «سجّل طلب حجز» / «تواريخ أخرى» first
           const named = !!f.room_type && f.room_type !== 'any';
-          if (!a.all && page === 0 && !named && !q.cards.some((c) => c.instant)) {
+          if (!CHAT_REQUEST_ONLY && !a.all && page === 0 && !named && !q.cards.some((c) => c.instant)) {
             push(fixed('result_nothing_instant', L), { kind: 'interactive', payload: { buttons: nothingInstantButtons(id, v, L) } });
             lastAction = 'لا غرفة للحجز الفوري';
             break;
@@ -711,7 +788,8 @@ export async function runTurn(claim: Json, deps: Deps): Promise<Outcome> {
           if (claim.turn.mode === 'test') {
             const ch = draftQuote?.chosen;
             r = !draft || draft.id !== a.draft_id ? { kind: 'stale' } : !ch ? { kind: 'incomplete' }
-              : ch.instant ? { kind: 'confirmed', ref: makeRef(), total: ch.total } : { kind: 'request', ref: makeRef(), total: ch.total, reason: ch.reason ?? 'request' };
+              // D1: a chat booking is always a request (the database stores it so: hub_book_draft → app.hub_chat_request)
+              : ch.instant && !CHAT_REQUEST_ONLY ? { kind: 'confirmed', ref: makeRef(), total: ch.total } : { kind: 'request', ref: makeRef(), total: ch.total, reason: CHAT_REQUEST_ONLY ? 'chat_request' : ch.reason ?? 'request' };
           } else {
             r = await deps.adapter.book({ id: a.draft_id, version: a.version, ref: makeRef() }).catch((): AdapterResult => ({ kind: 'error', error: 'book' }));
           }
@@ -732,13 +810,10 @@ export async function runTurn(claim: Json, deps: Deps): Promise<Outcome> {
           // fixed notice again), a note line for the team, no new staff alert
           // a problem photo's acknowledgement was just written: no second line (H7)
           // a group request routed once with its details (15 Nov 2026): its own fixed line — never «أيضًا»
+          // H10 (Ahmed, 18 Nov 2026 — c14aece0, bd27baf4): the notice went once; no acknowledgement each time — at most one
+          // line every 30 minutes, the staff on shift alerted again
           if (!ackDone && a.note.slots?._routed) push(fixed('multi_room', L), { handoff: true });
-          else if (!ackDone) {
-            const c = await compose(emptyPayload(), 'handoff_ack');
-            if (c === 'credit') return null;
-            const body = c === 'guard' || c === 'error' || !c.reply ? fixed('handoff_added', L) : stripOpening(c.reply) || fixed('handoff_added', L);
-            push(body, { handoff: true });
-          }
+          else if (!ackDone) waitingLine();
           note = `إضافة إلى التحويل — ${handoffNote(a.note, lastAction)}`;
           if (a.reason === 'complaint') out.complaint = true;
           if (a.reason === 'no_source') gap();
@@ -771,6 +846,60 @@ export async function runTurn(claim: Json, deps: Deps): Promise<Outcome> {
           if (ctx.departure) finish.departure = { id: ctx.departure.id, choice: a.choice, via: buttonId ? 'button' : 'typed' };
           lastAction = a.choice === 'extend' ? 'طلب تمديد الإقامة' : 'أكّد المغادرة في موعده';
           break;
+        case 'cancel_reason': {
+          // H10 (41e1a3fb): the recorded reason's guest phrase, one apology (copy.md §4.4); the alternatives follow
+          const b = ((claim.bookings ?? []) as Json[]).find((x) => x.ref === a.ref);
+          const phrase = reasonPhrase(deps.content, b?.cancel_reason_code ?? null, L);
+          push(fixed('cancel_reason', L, { ref: a.ref, reason: phrase }));
+          lastAction = 'أُرسل سبب الإلغاء';
+          break;
+        }
+        case 'alternatives': {
+          // H10: the cancelled stay's dates at the same property as cards (the cancelled type left out), then the other
+          // property, then other dates — the engine's quote only, never a promise
+          const rc = ctx.recent_cancel;
+          if (!rc) {
+            push(fixed('alt_none', L));
+            overrideNext = 'collecting';
+            break;
+          }
+          const base: Record<string, unknown> = {
+            branch: rc.branch, check_in: rc.check_in, check_out: rc.check_out, adults: rc.adults ?? 1, children: rc.children ?? 0,
+            breakfast: rc.breakfast === 'with' ? 'with' : 'without', room_type: 'any',
+          };
+          let f = base;
+          // the types the engine shows available only (never the cancelled stay's sold-out rooms again)
+          let cards = (await quoteCards(base, rc.room ? [String(rc.room)] : [])).filter(shownAvailable);
+          let head = fixed('alt_same', L);
+          if (!cards.length) {
+            const other = rc.branch === 'airport-road' ? 'shafa-road' : 'airport-road';
+            f = { ...base, branch: other };
+            cards = (await quoteCards(f, [])).filter(shownAvailable);
+            head = fixed('alt_other', L, { branch_name: branchName(deps.content, rc.branch, L), other_branch: branchName(deps.content, other, L) });
+          }
+          if (!cards.length) {
+            push(fixed('alt_none', L));
+            dec.draft_patch = { kind: 'stay', fields: { ...base, check_in: null, check_out: null } };
+            overrideNext = 'collecting';
+            lastAction = 'لا بدائل في التواريخ نفسها';
+            break;
+          }
+          dec.draft_patch = { kind: 'stay', fields: f };
+          draftQuote = { at: new Date().toISOString(), key: quoteKey(f), cards, chosen: null };
+          quoteChanged = true;
+          push(head);
+          const id = draftIdFor(dec);
+          const v = versionFor(dec);
+          const cv = await covers();
+          for (const c of pageOf(cards, 0)) {
+            const img = cv[`${String(f.branch)}/${c.room}`];
+            push(cardBody(c, f, L, fmt), { kind: 'interactive', payload: { buttons: bookButton(id, c.room, v, L), room_card: c.room, ...(img ? { header_image: img } : {}) } });
+          }
+          if (hasMore(cards, 0)) push(fixed('cards_more', L), { kind: 'interactive', payload: { buttons: moreButton(id, 1, v, L) } });
+          overrideNext = 'quoted';
+          lastAction = 'أُرسلت بدائل الحجز الملغي';
+          break;
+        }
         case 'tag_order':
         case 'noop':
         case 'close':
@@ -798,8 +927,10 @@ export async function runTurn(claim: Json, deps: Deps): Promise<Outcome> {
       const rr = (await rulesP).map((c) => ({ id: String(c.id), title: String(c.title ?? ''), text: String(c.text ?? '') })).filter((r) => r.text);
       if (rr.length) payload = { ...payload, rules: rr.slice(0, 5) };
     }
-    const user = composeUser({ action, ask_for: askFor, branch: unit.branch, turn: texts, history: claim.history ?? [], payload, opening: openingLine() });
-    const gp = guardPayload(payload);
+    // H10: what was sent outside the chat's text and every booking of this phone with its status (prompts.md §2.1)
+    const user = composeUser({ action, ask_for: askFor, branch: unit.branch, turn: texts, history: claim.history ?? [], payload, opening: openingLine(),
+      sent: sentLines(claim.sent ?? [], deps.content, L), guest_bookings: guestBookings(claim.bookings ?? [], deps.content, L) });
+    const gp = { ...guardPayload(payload), confirmed_upcoming: ctx.confirmed_upcoming === true };
     let reason = '';
     for (let attempt = 0; attempt < 2; attempt++) {
       const r = await deps.model({ layer: 'compose', model, system, user: reason ? `${user}\n\nYOUR PREVIOUS REPLY WAS REFUSED: ${reason}` : user, examples: composeExamples() });
@@ -852,7 +983,7 @@ export async function runTurn(claim: Json, deps: Deps): Promise<Outcome> {
     d = { ...next, transitions: [...final.transitions, ...next.transitions] };
     final = d;
   }
-  if (noQuote && final) final = { ...final, next: 'human', reason: 'no_quote' };
+  if (noQuote && final) final = { ...final, next: 'human', reason: noQuoteReason };
   if (overrideNext && final && final.next !== 'human') final = { ...final, next: overrideNext };
   if (out.credit === 'exhausted' || final === null) {
     finish.state = 'human';
@@ -875,6 +1006,24 @@ export async function runTurn(claim: Json, deps: Deps): Promise<Outcome> {
     }
   }
 
+  // H10 (Ahmed, 18 Nov 2026 — the price list three times, the Wi-Fi four times): never the same or nearly the same text as
+  // one of the assistant's last three replies. A repeated message is dropped; when nothing new is left to say, the team
+  // once (the notice, or nothing more when it already went)
+  {
+    const prevUs = ((claim.history ?? []) as Json[]).filter((h) => h.author === 'us').slice(-3).map((h) => String(h.body ?? ''));
+    const before = answers.length;
+    // small talk («شكرًا» twice) may repeat its courtesy; a reply of substance never repeats
+    const chatTurn = final.actions.some((a) => a.type === 'chat' || (a.type === 'fixed' && ['thanks', 'thanks_after_cancel', 'departure_leave', 'how_help', 'ask_question'].includes(a.key)));
+    const keep = chatTurn ? answers : answers.filter((m) => m.kind !== 'text' || m.notice || m.handoff || [...m.body].length < 40 || !prevUs.some((p) => nearSame(p, m.body)));
+    if (keep.length < before) {
+      answers.splice(0, answers.length, ...keep);
+      if (!answers.length && final.next !== 'human') {
+        if (!noticeOpen) answers.push({ seq: 1, kind: 'text', body: fixed('handoff', L), payload: {}, source_card_ids: [], notice: true });
+        note = note ?? handoffNote({ intent: 'question', slots: {}, stopped: final.next }, 'ردّ مكرر — للفريق');
+        final = { ...final, next: 'human', reason: 'repeat', transitions: [...final.transitions, 'T46'] };
+      }
+    }
+  }
   // an answer followed by the hand-off notice is ONE message (H6 gaps, Ahmed 14 Nov 2026): the answer, then the notice
   for (let i = 0; i + 1 < answers.length; i++) {
     const a = answers[i];
@@ -923,7 +1072,8 @@ export async function runTurn(claim: Json, deps: Deps): Promise<Outcome> {
   finish.note = note;
   finish.unanswered = unanswered;
   // H6c: «مع الفريق» split in two — the flow under a waiting hand-off, a resumed turn, an addition to the hand-off
-  finish.resumed = phase === 'resume';
+  // H10: a tap on the alternatives offer resumes the assistant too (the offer came from us)
+  finish.resumed = phase === 'resume' || final.resumed === true;
   finish.resume_state = final.resume_state ?? null;
   finish.handoff_add = handoffAdd;
   if (phase === 'resume' && final.next !== 'human') finish.reason = final.reason ?? 'resume';

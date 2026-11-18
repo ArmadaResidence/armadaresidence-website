@@ -41,12 +41,32 @@ check(seed.length === 102 && JSON.stringify(seed) === JSON.stringify(bankItems()
 // a correction of the bank after it was seeded: its migration updates exactly that row, from the seeded expect to the new one
 const CORR = JSON.parse(read('tests/hub-bank/corrections.json')).items;
 for (const [id, c] of Object.entries(CORR)) {
+  const sql = (o) => JSON.stringify(o).replace(/":/g, '": ').replace(/,"/g, ', "');
+  const q = (o) => sql(o).replace(/'/g, "''");
+  // H10: the update a later correction migration writes (scripts/hub-h10-migration.mjs)
+  const upd = (mig, id2, from, to) => read(`supabase/migrations/${mig}`).includes(`set expect = '${q(to)}'::jsonb\n where key = '${id2}' and expect = '${q(from)}'::jsonb;`);
+  if (c.bank) {
+    // an item of another bank file (seeded by a later migration): the file holds the new expect, the migration updates
+    // exactly that row from the old one
+    const line = read(`tests/hub-bank/${c.bank}`).split('\n').filter((l) => l.trim()).map((l) => JSON.parse(l)).find((x) => x.id === id);
+    check(!!line && JSON.stringify(line.expect) === JSON.stringify(c.expect), `correction ${id}: ${c.bank} holds the new expect`);
+    check(upd(c.migration, id, c.old, c.expect), `correction ${id}: ${c.migration} updates that row only (old → new)`);
+    check(typeof c.why === 'string' && c.why.length > 20, `correction ${id}: says why`);
+    continue;
+  }
   const s = seed.find((x) => x.id === id);
   check(!!s && JSON.stringify(s.expect) === JSON.stringify(c.old), `correction ${id}: "old" = the seeded expect`);
   const later = read(`supabase/migrations/${c.migration}`);
-  const sql = (o) => JSON.stringify(o).replace(/":/g, '": ').replace(/,"/g, ', "');
-  check(later.includes(`set expect = '${sql(c.expect)}'::jsonb\n where key = '${id}' and added_from = 'seed' and expect = '${sql(c.old)}'::jsonb;`), `correction ${id}: ${c.migration} updates the seeded row only (old → new)`);
+  check(later.includes(`set expect = '${sql(c.expect)}'::jsonb\n where key = '${id}' and added_from = 'seed' and expect = '${sql(c.old)}'::jsonb;`) || upd(c.migration, id, c.old, c.expect),
+    `correction ${id}: ${c.migration} updates the seeded row only (old → new)`);
   check(typeof c.why === 'string' && c.why.length > 20, `correction ${id}: says why`);
+  // H10: a later correction of the same item — each step updates the row from the step before
+  let prev = c.expect;
+  for (const t of c.then ?? []) {
+    check(upd(t.migration, id, prev, t.expect), `correction ${id} (${t.date}): ${t.migration} updates the row from the previous correction`);
+    check(typeof t.why === 'string' && t.why.length > 20, `correction ${id} (${t.date}): says why`);
+    prev = t.expect;
+  }
 }
 check(!/k-wifi-password-[a-z]+\b[^}]{0,3}"(text|title)/.test(MIG) && !/كلمة (المرور|السر)\s*[:：]\s*\S/.test(MIG), 'no Wi-Fi password text in the migration (only {card:} placeholders)');
 const evalFn = knowledgeForEval();

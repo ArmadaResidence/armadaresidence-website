@@ -42,10 +42,12 @@ const LEARN = jsonl('tests/hub-bank/conversations-learn.jsonl');
 const STANDBY = jsonl('tests/hub-bank/conversations-standby.jsonl');
 // H9 fix 3 (17 Nov 2026): prices by date, dates in code with Hijri, corrections, frustration vs complaints, the singular
 const FIX3 = jsonl('tests/hub-bank/conversations-fix3.jsonl');
+// H10 (18 Nov 2026): the live review's cases (D1 requests, the context, payment, dates, the party, repetition, the notice)
+const H10 = jsonl('tests/hub-bank/conversations-h10.jsonl');
 const items = [
   // q032 / q068 are retired on production (the Airport Road laundry, H6 pass 3)
   ...(['conversations', 'learning'].includes(bank) ? [] : engineItems().filter((q) => !['q032', 'q068'].includes(q.id))),
-  ...(['questions', 'learning'].includes(bank) ? [] : [...CONV, ...STANDBY, ...FIX3]),
+  ...(['questions', 'learning'].includes(bank) ? [] : [...CONV, ...STANDBY, ...FIX3, ...H10]),
   ...(['questions', 'conversations'].includes(bank) ? [] : LEARN),
   // --extra <file.jsonl>: more single questions (e.g. the production bank's own items)
   ...(arg('--extra') ? readFileSync(arg('--extra'), 'utf8').split(/\r?\n/).filter((l) => l.trim()).map((l) => JSON.parse(l)).map((q) => ({ ...q, extra: true })) : []),

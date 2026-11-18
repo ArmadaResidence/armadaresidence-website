@@ -187,6 +187,28 @@ d = run('collecting', guest(null, { kind: 'button', button_id: 'hubd:yes' }), { 
 check(has(d, 'T42') && d.draft_patch.fields.check_in === '2026-11-19' && d.draft_patch.fields.check_out === '2026-11-21' && d.draft_patch.fields._dates_pending === null, 'T42: «نعم» (the button) → the dates shown, the booking continues', JSON.stringify(d.draft_patch));
 d = run('collecting', guest(U({ intents: ['thanks_or_closing'], kind: 'small_talk', ack_only: true }), { affirm: true }), { skills: H8 }, PEND);
 check(has(d, 'T42') && d.draft_patch.fields.check_in === '2026-11-19', 'fix 3: a typed «نعم» → the same');
+// H10 (18 Nov 2026): the alternatives offer's buttons (T43) and «لماذا أُلغي؟» (T44)
+{
+  const RC = { ref: 'AR-20261118-AB12', status: 'cancelled', branch: 'airport-road', check_in: '2026-12-08', check_out: '2026-12-10', room: 'king-room', adults: 2, cancel_reason_code: 'no_availability' };
+  let x = run('human', guest(null, { kind: 'button', button_id: 'hubx:alts' }), { skills: H8, recent_cancel: RC, human_phase: null });
+  check(has(x, 'T43') && acts(x).includes('alternatives') && x.resumed === true && x.next === 'quoted', 'T43: «اعرض البدائل» — even with the team — the alternatives, the assistant resumed', JSON.stringify(x));
+  x = run('booked', guest(null, { kind: 'button', button_id: 'hubx:no' }), { skills: H8, recent_cancel: RC });
+  check(has(x, 'T43') && x.actions[0].key === 'thanks_after_cancel', 'T43: «لا، شكرًا» → the plain courtesy');
+  x = run('booked', guest(U({ intents: ['booking_cancel'] }), { flags: { cancel_why: true } }), { skills: H8, recent_cancel: RC, bookings: [RC] });
+  check(has(x, 'T44') && x.actions[0].type === 'cancel_reason' && x.actions[1].type === 'alternatives' && x.next !== 'human', 'T44: «لماذا أُلغي؟» → the reason, then the alternatives (never «تعديل الحجز أو إلغاؤه…»)');
+  x = run('booked', guest(U({ intents: ['booking_cancel'] }), { flags: { cancel_why: true } }), { skills: H8, recent_cancel: null });
+  check(x.next === 'human', 'T44: no recorded cancellation → the team as before');
+  x = run('inquiry', guest(U({ intents: ['other'] }), { flags: { payment: true } }));
+  check(x.next === 'human' && x.reason === 'payment', 'H10: a payment question → the team at once');
+  x = run('inquiry', guest(null, { flags: { question: true } }));
+  check(x.next === 'human' && !x.actions.some((a) => a.type === 'fixed' && a.key === 'how_help'), 'H10: a failed understanding of a question → never «كيف نساعدك؟» alone');
+  x = run('inquiry', guest(U({ intents: ['thanks_or_closing'], kind: 'small_talk' })), { recent_cancel: RC, confirmed_upcoming: false });
+  check(x.actions[0]?.key === 'thanks_after_cancel', 'H10: thanks after a cancellation → «العفو، يسعدنا خدمتك في أي وقت.»');
+  const sig = 'order::2026-12-02,2026-11-05';
+  x = run('collecting', guest(U({ intents: ['stay_booking'], dates_read: { status: 'order', check_in: '2026-12-02', check_out: '2026-11-05', candidates: ['2026-12-02', '2026-11-05'], why: null } })), { skills: H8 },
+    { id: 'w2', kind: 'stay', version: 1, fields: { branch: 'airport-road', _dq: sig } });
+  check(x.next === 'human' && x.reason === 'dates_unclear', 'H10: the same date question is never asked twice (89fa56da) → the team', JSON.stringify(x.actions));
+}
 d = run('collecting', guest(null, { kind: 'button', button_id: 'hubd:other' }), { skills: H8 }, PEND);
 check(d.actions[0].type === 'ask' && d.actions[0].slots.join() === 'dates' && d.draft_patch.fields.check_in === null, 'fix 3: «تواريخ أخرى» → the dates asked again');
 d = run('awaiting_confirmation', guest(U({ intents: ['stay_booking'], kind: 'booking', dates_read: { status: 'confirm', check_in: '2026-12-15', candidates: ['2026-12-15'], why: 'day_passed' } })), { skills: H8 }, DRAFT);

@@ -148,6 +148,9 @@ export function outcomeKind(finish: Json): string {
   if (finish.state === 'human' && finish.decision?.answered === true && REQUEST_REASONS[finish.reason ?? '']) return 'answer_handoff';
   if (finish.state === 'human') return finish.reason === 'third_language' ? 'third_language' : finish.reason === 'out_of_scope' ? 'out_of_scope' : 'handoff';
   if (acts.includes('booking_status')) return 'booking_status';
+  // H10: the alternatives of a cancelled stay are a quote (cards), or a question for other dates; the offer's «لا، شكرًا» a reply
+  if (acts.includes('alternatives')) return finish.state === 'collecting' ? 'ask' : 'quote';
+  if (tr.includes('T43') && acts.includes('fixed')) return 'reply';
   // H6 pass 5: the model-written replies with no fact, and a turn that needs none (a bare acknowledgement, a reaction)
   const chat = finish.decision?.chat;
   if (chat === 'redirect') return 'redirect';
