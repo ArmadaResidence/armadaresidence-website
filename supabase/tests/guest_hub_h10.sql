@@ -52,8 +52,8 @@ insert into _ids select 'ch', c.id from public.hub_channels c where c.unit_id = 
 with g as (insert into public.guest_profiles (phone, is_test) values ('+15551000101', false) returning id) insert into _ids select 'g', id from g;
 delete from public.hub_staff_slots where branch_slug = 'airport-road';
 insert into public.hub_staff_slots (branch_slug, position, name, phone, role, days, start_time, end_time, active, test_as_guest, consent_at)
-values ('airport-road', 1, 'QA H10 manager', '+15551000191', 'manager', '{}', '00:00', '00:00', true, false, now()),
-       ('airport-road', 2, 'QA H10 desk', '+15551000192', 'staff', '{0,1,2,3,4,5,6}', '00:00', '00:00', true, false, now());
+values ('airport-road', 1, 'QA H10 manager', '+15551000191', 'manager', '{0,1,2,3,4,5,6}', '00:00', '23:59', true, false, now()),
+       ('airport-road', 2, 'QA H10 desk', '+15551000192', 'staff', '{0,1,2,3,4,5,6}', '00:00', '23:59', true, false, now());
 with c as (insert into public.hub_conversations (unit_id, channel_id, guest_profile_id, state, window_expires_at, is_test)
            values (pg_temp._id('unit'), pg_temp._id('ch'), pg_temp._id('g'), 'awaiting_confirmation', now() + interval '20 hours', false) returning id) insert into _ids select 'c', id from c;
 with d as (insert into public.hub_drafts (conversation_id, kind, status, version, fields, quote, is_test)
