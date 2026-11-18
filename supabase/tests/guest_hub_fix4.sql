@@ -171,13 +171,14 @@ select pg_temp._check('M4 the stage times are closed to the dashboard roles and 
   and not exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'hub_staff_timings' and column_name ~ '(body|text|phone|name)'));
 
 -- ══ S — the template store ══
+insert into _ids select 'ch_air', internal.hub_branch_channel('airport-road');
 select pg_temp._service();
-select pg_temp._save('tpl', public.hub_template_read_store(internal.hub_branch_channel('airport-road'),
+select pg_temp._save('tpl', public.hub_template_read_store(pg_temp._id('ch_air'),
   jsonb_build_object('name', 'hub_staff_alert', 'language', 'ar', 'status', 'APPROVED', 'category', 'UTILITY', 'body', 'نص القالب')));
 select pg_temp._root();
 select pg_temp._check('S1 a template read is stored again (the repetition count PostgreSQL refused is gone)', (pg_temp._j('tpl') ->> 'ok')::boolean, pg_temp._j('tpl')::text);
 select pg_temp._service();
-select pg_temp._fails('S2 a name with other letters is still refused', format('select public.hub_template_read_store(%L::uuid, %L::jsonb)', internal.hub_branch_channel('airport-road'),
+select pg_temp._fails('S2 a name with other letters is still refused', format('select public.hub_template_read_store(%L::uuid, %L::jsonb)', pg_temp._id('ch_air'),
   jsonb_build_object('name', 'Hub-Alert', 'language', 'ar', 'status', 'APPROVED')::text), '22023');
 select pg_temp._root();
 
