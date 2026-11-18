@@ -15,7 +15,7 @@ import { staffSystem } from './compose/index.ts';
 import hubText from './text.generated.json' with { type: 'json' };
 import type { ModelFn } from './model.ts';
 import { costOf, withFallback } from './model.ts';
-import { alertPayload, branchShort, HUB_UPLOAD_REMINDER, isTeach, stamp, timedModel, timingSummary, type StaffTiming, reminderFallback, reportPayload, reportVars, staffFallback, staffGuard, staffSystemFor, staffUser, templateNeedsRead, templateReady, uploadReminderPayload } from './staff.ts';
+import { alertPayload, branchShort, HUB_UPLOAD_REMINDER, isTeach, staffRetryNote, stamp, timedModel, timingSummary, type StaffTiming, reminderFallback, reportPayload, reportVars, staffFallback, staffGuard, staffSystemFor, staffUser, templateNeedsRead, templateReady, uploadReminderPayload } from './staff.ts';
 import { pageOf, templateRows, templatesUrl, type TemplateItem } from '../../hub-admin/ycloud.ts';
 import { CONFIRM_LINES, confirmButtons, intentAction, parseTapId, stampButtons, intentButtons, intentSystem, intentUser, learnLine, parseIntent, teachRoute, teachScope, yesNo, type Branch, type Followup, type LastTeaching, type LearnButton, type LineKey, type Scope, type Teacher, type TeachTurn } from './learn.ts';
 /** prompts.md §9.3 as written */
@@ -321,7 +321,11 @@ export async function staffChat(call: Call, content: Json, rawModel: ModelFn,
       if (!r.ok) break;
       const g = staffGuard(r.text, ctx.facts ?? {}, text, String(ctx.now ?? ''));
       if (g.ok) out = r.text.trim();
-      else note = `it held ${g.reasons.join(', ')} — no phone number, no email, no link or number outside FACTS`;
+      else {
+        // H9 fix 4: never sent — one regeneration with the reason, then the fixed fallback (logged by its codes only)
+        note = staffRetryNote(g.reasons);
+        console.warn('hub staff: chat answer refused', attempt === 0 ? 'regenerating' : 'fallback', g.reasons.join(','));
+      }
     }
     if (!out) out = staffFallback(text);
   }

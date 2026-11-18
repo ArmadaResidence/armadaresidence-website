@@ -15,6 +15,7 @@ import defs from './hub-templates.json' with { type: 'json' };
 import text from './text.generated.json' with { type: 'json' };
 import { isTeach as teachCommand, learnedLine } from './learn.ts';
 import { departureFaults, departuresText } from './departures.ts';
+import { AR_DIGITS, metaText } from './guard.ts';
 
 // deno-lint-ignore no-explicit-any
 type Json = any;
@@ -79,6 +80,8 @@ export function summaryOk(line: string, sources: string[], forbidden: string[] =
   if (!s || s.length > 120 || /[\r\n]/.test(s)) return false;
   if (!/[؀-ۿ]/.test(s)) return false;
   if (/https?:|www\.|@|\.com\b/i.test(s)) return false;
+  // H9 fix 4: Western digits only, no leaked reasoning or meta text (the guest guard's rules)
+  if (AR_DIGITS.test(s) || metaText(s)) return false;
   const src = westDigits(sources.join(' '));
   for (const d of westDigits(s).match(DIGITS) ?? []) if (!src.includes(d)) return false;
   const low = s.toLowerCase();
@@ -335,7 +338,24 @@ export function staffGuard(reply: string, facts: Json, message: string, now = ''
   for (const d of westDigits(withoutLinks).match(DIGITS) ?? []) if (!allowed.has(d)) r.push('number');
   const low = s.toLowerCase();
   if (BRAND_FORBIDDEN.some((w) => low.includes(w))) r.push('forbidden');
+  // H9 fix 4 (Ahmed, 18 Nov 2026 — two Opus replies of the lab carried leaked reasoning and «٤»): Western digits only, no
+  // reasoning or meta text — the guest guard's rules; a refusal → one regeneration, then the fixed fallback
+  if (AR_DIGITS.test(s)) r.push('digits');
+  // the guest guard's markdown rule: WhatsApp shows ** / __ / a heading as raw marks
+  if (/^\s*#/m.test(s) || /\*\*|__/.test(s)) r.push('markdown');
+  const meta = metaText(s, message);
+  if (meta) r.push(`meta_${meta}`);
   return { ok: r.length === 0, reasons: [...new Set(r)] };
+}
+/** the reason handed back on the one regeneration (English, short) */
+export function staffRetryNote(reasons: string[]): string {
+  const say: Record<string, string> = {
+    digits: 'use Western digits (0-9) only, never Arabic-Indic digits',
+    phone: 'no phone number', email: 'no email', link: 'no link outside FACTS', number: 'no number outside FACTS', length: 'keep it under 500 characters',
+    forbidden: 'no forbidden term', empty: 'it was empty', markdown: 'no ** or __ and no headings (plain WhatsApp text)',
+  };
+  const out = reasons.map((x) => (x.startsWith('meta_') ? 'write ONLY the message itself — no tags or angle brackets (such as <message>), no reasoning, no notes, no labels, no English explanation, no field names' : say[x] ?? x));
+  return [...new Set(out)].join('; ');
 }
 export const staffFallback = (message: string): string => (/[؀-ۿ]/.test(message) || !/[a-z]/i.test(message) ? STAFF_COPY.fallback.ar : STAFF_COPY.fallback.en);
 

@@ -25,7 +25,28 @@ export interface GuardOptions {
   emoji_allowed?: boolean;
 }
 
-const AR_DIGITS = /[٠-٩۰-۹]/;
+export const AR_DIGITS = /[٠-٩۰-۹]/;
+/**
+ * H9 fix 4 (Ahmed, 18 Nov 2026): leaked reasoning or meta text in a model's reply — never sent. A tag (<thinking>, <reply>),
+ * (any tag — <message>, <no_reasoning>, <creative> were seen), a prompt field name (FACTS, LAST_MESSAGES, BRANCH_OF_THIS_NUMBER …), a line that starts as a thought or a label («The user
+ * …», "I should …", "Let me …", "Draft:", «الرد:», «ملاحظة:», «التفكير:»), or a run of four English words in a reply to an
+ * Arabic message. Returns what it found (a short code) or null. Used by the staff path's guard (staffGuard, summaryOk).
+ */
+export const META_LINE_EN = /^\s*[("'*_-]*\s*(?:the (?:user|colleague|guest|message|sender|staff member)\b|i (?:should|need to|must)\b|let me (?:think|check the|reply|answer|write)\b|okay,? so\b|hmm\b|thinking\b|reasoning\b|analysis\b|draft\s*:|reply\s*:|response\s*:|answer\s*:|output\s*:|note\s*:|final\s*:)/im;
+export const META_LINE_AR = /^\s*[(«"*_-]*\s*(?:الرد|ردي|المسودة|التفكير|التحليل|ملاحظة|ملاحظه|الملاحظة|الجواب|الإجابة)\s*[:：]/m;
+// any tag at all (the lab of 18 Nov 2026: Opus wrapped replies in <message>, <no_reasoning>, <creative>)
+const META_TAG = /<\/?\s*[A-Za-z_][\w:-]*(?:\s[^<>]*)?\/?>/;
+const META_FIELD = /\b(?:FACTS|LAST_MESSAGES|HISTORY|SENDER|MESSAGE|BRANCH_OF_THIS_NUMBER|STARTS_WITH_TEACH_WORD|LAST_TEACHING|FIRST_NAME|NOW|KIND|PAYLOAD)\b|\b[A-Z]{2,}_[A-Z_]{2,}\b/;
+export function metaText(reply: string, message = ''): string | null {
+  const s = String(reply ?? '');
+  if (META_TAG.test(s)) return 'tag';
+  if (META_FIELD.test(s)) return 'field';
+  if (META_LINE_EN.test(s) || META_LINE_AR.test(s)) return 'line';
+  // a reply to an Arabic message that carries an English passage (four English words in a row, links left out)
+  const arabicMessage = /[ء-ي]/.test(message) && !/[A-Za-z]{3,}/.test(String(message).replace(/https?:\/\/\S+/g, ''));
+  if (arabicMessage && /(?:\b[A-Za-z][A-Za-z'’]*\b[\s,]+){3}\b[A-Za-z][A-Za-z'’]*\b/.test(s.replace(/https?:\/\/\S+/g, ' '))) return 'english';
+  return null;
+}
 const URL_RE = /\b(?:https?:\/\/|www\.)[^\s<>()«»"“”]+|\b[a-z0-9.-]+\.(?:com|sa|net|org|gl|page)(?:\/[^\s<>()«»"“”]*)?/gi;
 const EMOJI_RE = /\p{Extended_Pictographic}/u;
 
