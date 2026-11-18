@@ -69,9 +69,13 @@ export const FROM_PRICE_RE: RegExp[] = [
 /** H10 (Ahmed, 18 Nov 2026 — b3ae2a56: "We do not take bank transfers in advance", then staff accepted a transfer): a
  *  payment or transfer policy (how, when, by transfer, cash or card, prepayment, refunds) — refused unless a knowledge card
  *  in the payload states it; the question itself is always handed to the team (machine.ts) */
+// (lab, 18 Nov 2026 — q075: "children up to 12 pay SAR 12.50" is a price, not a payment policy): the means and the timing
+// of a payment only — never a bare «يدفع» / "pay" before an amount
 export const PAYMENT_POLICY_RE: RegExp[] = [
-  /(?:^|[^ء-ي])(?:و|ف|ب|ل)?(?:ال)?(?:دفع|سداد|تسديد|يدفع|يُدفع|ندفع|تدفع|يسدد|يُسدَّد|يُسدد|تحويل|حواله|حوالة|دفعه مسبقه|دفعة مسبقة|استرداد|استرجاع المبلغ|ايبان|آيبان|مدى|فيزا|نقدا|نقدًا|كاش)(?![ء-ي])/u,
-  /\b(?:pay|pays|paid|paying|payment|payments|prepay|prepayment|prepaid|transfer|transfers|bank|cash|mada|visa|mastercard|card|cards|refund|refunds|iban)\b/i,
+  /(?:^|[^ء-ي])(?:و|ف|ب|ل)?(?:ال)?(?:سداد|تسديد|يسدد|يُسدَّد|يُسدد|تحويل|تحويل بنكي|حواله|حوالة|دفعه مسبقه|دفعة مسبقة|استرداد|استرجاع المبلغ|ايبان|آيبان|مدى|فيزا|نقدا|نقدًا|كاش|حساب بنكي|مقدمًا|مقدما)(?![ء-ي])/u,
+  /(?:^|[^ء-ي])(?:و|ف|ب|ل)?(?:ال)?(?:دفع|يدفع|يُدفع|ندفع|تدفع)\s+(?:عند|في|مسبق|مقدم|قبل|اونلاين|أونلاين|إلكتروني|الكتروني|بالبطاق|نقد|كاش|عبر|بواسطة|من خلال)/u,
+  /\b(?:prepay|prepayment|prepaid|bank transfers?|wire transfers?|transfers? (?:to|in advance)|iban|cash|credit cards?|debit cards?|mada|visa|mastercard|apple pay|refunds?|online payment)\b/i,
+  /\b(?:pay|pays|paid|paying|payment)\s+(?:is\s+|are\s+)?(?:made\s+)?(?:at|on|upon|in advance|online|by|via|before|when you arrive|through)\b|\bno (?:pre)?payment\b|\bpayment (?:method|methods|is|on)\b/i,
 ];
 export const paymentPolicy = (s: string): boolean => PAYMENT_POLICY_RE.some((re) => re.test(String(s ?? '')));
 /** H10: an appointment line («بانتظارك في الموعد», "we look forward to hosting you") — only with a confirmed upcoming booking
