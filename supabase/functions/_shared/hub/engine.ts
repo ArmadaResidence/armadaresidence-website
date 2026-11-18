@@ -153,6 +153,16 @@ const branchName = (c: Json, slug: string, L: Lang) => {
   return String(b ? (L === 'en' ? b.name_en : b.name_ar) : slug);
 };
 
+/** H10: the counts the guest gave in this turn (adults, children, the children's ages, nights, rooms) — a reply may repeat
+ *  them; prices never come from here */
+export function guestGave(u: Understanding | null): Record<string, unknown> | null {
+  if (!u) return null;
+  const k: Record<string, unknown> = {};
+  for (const x of ['adults', 'children', 'nights', 'rooms_count'] as const) if (typeof u[x] === 'number') k[x] = u[x];
+  if (Array.isArray(u.child_ages) && u.child_ages.length) k.child_ages = u.child_ages;
+  return Object.keys(k).length ? { guest_gave: k } : null;
+}
+
 /** H10 (Ahmed's decision of 23 Oct 2026 — policies; Armada_Website_Facts §1.3, §6.3): the guests a type is limited by are
  *  the ADULTS — its beds (2 in rooms, studios and one-bedroom suites, 4 in two-bedroom suites) and one extra bed where the
  *  type accepts it; children are not counted and have no limit per room */
@@ -590,7 +600,9 @@ export async function runTurn(claim: Json, deps: Deps): Promise<Outcome> {
             break;
           }
           if (!hasSource(payload)) return decide({ state: dec.next, event: { type: 'answer_result', ok: false }, draft, ctx });
-          const composed = await compose(payload);
+          // H10 (lab, 18 Nov 2026 — q028): the guest's own counts and children's ages may be repeated in the answer («لطفليك
+          // بعمر 4 و9…») — handed over as what the guest gave, never as a price
+          const composed = await compose({ ...payload, quote: payload.quote ?? guestGave(u) });
           if (composed === 'credit') return null;
           if (composed === 'guard') return decide({ state: dec.next, event: { type: 'guard_failed' }, draft, ctx });
           if (composed === 'error' || !composed.reply) return decide({ state: dec.next, event: { type: 'answer_result', ok: false }, draft, ctx });

@@ -196,6 +196,8 @@ check(has(d, 'T42') && d.draft_patch.fields.check_in === '2026-11-19', 'fix 3: a
   check(has(x, 'T43') && x.actions[0].key === 'thanks_after_cancel', 'T43: «لا، شكرًا» → the plain courtesy');
   x = run('booked', guest(U({ intents: ['booking_cancel'] }), { flags: { cancel_why: true } }), { skills: H8, recent_cancel: RC, bookings: [RC] });
   check(has(x, 'T44') && x.actions[0].type === 'cancel_reason' && x.actions[1].type === 'alternatives' && x.next !== 'human', 'T44: «لماذا أُلغي؟» → the reason, then the alternatives (never «تعديل الحجز أو إلغاؤه…»)');
+  x = run('booked', guest(U({ intents: ['booking_cancel', 'complaint'], complaint: true }), { flags: { cancel_why: true } }), { skills: H8, recent_cancel: RC, bookings: [RC] });
+  check(has(x, 'T44') && x.actions[0].type === 'cancel_reason', 'T44: «لماذا أُلغي؟» read as a complaint too → still the reason and the alternatives (lab h10-03)');
   x = run('booked', guest(U({ intents: ['booking_cancel'] }), { flags: { cancel_why: true } }), { skills: H8, recent_cancel: null });
   check(x.next === 'human', 'T44: no recorded cancellation → the team as before');
   x = run('inquiry', guest(U({ intents: ['other'] }), { flags: { payment: true } }));

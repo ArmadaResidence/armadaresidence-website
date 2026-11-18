@@ -170,6 +170,11 @@ check(CHAT_REQUEST_ONLY === true, '1 D1: chat bookings are requests (booking.ts 
   check(guard('We do not take bank transfers in advance: payment is made at reception.', { text: 'parking is free', cancellation_sentence: '', cards_text: 'parking is free' }, r).reasons.includes('payment'), '3 the guard refuses a payment policy without a card (b3ae2a56)');
   check(guard('You pay at reception on arrival.', { text: 'Payment at reception on arrival.', cancellation_sentence: '', cards_text: 'Payment at reception on arrival.' }, r).ok, '3 … allowed when a card states it');
   check(guard('حسب التوافر عند الاستقبال.', { text: '', cancellation_sentence: '' }, { ...r, language: 'ar' }).ok, '3 … other replies untouched');
+  // the lab's q075: a price verb is not a payment policy
+  const fq = 'Breakfast is optional, at SAR 25 per person per day; children up to 12 pay SAR 12.50.';
+  check(guard(fq, { text: fq, cancellation_sentence: '' }, r).ok, '3 q075: "children … pay SAR 12.50" (a price) is no payment policy');
+  for (const t of ['You can pay at reception when you arrive.', 'We accept cash and mada.', 'No prepayment is required.', 'يمكنك الدفع عند الوصول.', 'نقبل التحويل البنكي.'])
+    check(!guard(t, { text: '', cancellation_sentence: '', cards_text: '' }, { ...r, language: /[ء-ي]/.test(t) ? 'ar' : 'en' }).ok, `3 the payment policy refused: «${t}»`);
   check(turnFlags(['فاتورة إقامتي']).invoice, '3 an invoice is read');
   const inv = await run('أحتاج فاتورة إقامتي السابقة', {}, U());
   check(inv.finish.state === 'human' && inv.finish.reason === 'invoice', '3 an invoice → the team');
@@ -235,12 +240,22 @@ check(CHAT_REQUEST_ONLY === true, '1 D1: chat bookings are requests (booking.ts 
   check(bodies(link).includes('وصلنا الرابط') && link.finish.state !== 'human', '6 a link alone → what the guest needs, never «another language»');
   const hi = await run('Bonjour', {}, U({ kind: 'small_talk', intents: ['greeting'], language: 'other:fr' }), adapter(), 'أهلًا بك.');
   check(hi.finish.state !== 'human', '6 a short greeting in another language → small talk, no hand-off');
-  check(turnFlags(['ما في خصم في السعر؟']).discount, '6 a discount question');
+  check(turnFlags(['ما في خصم في السعر؟']).discount && turnFlags(['Any discount?']).discount, '6 a discount question');
+  check(!turnFlags(['لو ألغيت الحجز يخصمون على شي']).discount, '6 lab c111: «يخصمون» (deducting on a cancellation) is no discount question');
   const disc = await run('فيه خصم؟', {}, U({ intents: ['offer_question'], topics: ['offers'] }));
   check(bodies(disc) === 'السعر المعروض هو السعر الحالي لهذه التواريخ.', `6 a discount with no individuals' offer → the current price line (${bodies(disc)})`);
   const early = decide({ state: 'inquiry', event: { type: 'guest', kind: 'text', understanding: U({ kind: 'booking', intents: ['stay_booking'], topics: ['booking_new', 'early_late'], arrival_text: 'اليوم' }) },
     draft: null, ctx: { unit_kind: 'branch', unit_branch: 'shafa-road', skills: ['room_booking'], show_prices: true, instant_booking: true, window_open: true, failed_understandings: 0, failed_max: 2, out_of_scope: 0, out_of_scope_max: 3, group_min_rooms: 5, licences: {}, always_handoff: [], bookings: [], first_reply: false } });
   check(early.actions.some((a) => a.type === 'answer' && a.topics.includes('early_late')), '6 an early check-in inside a stay is answered from its card with the stay\'s question (77c66f9e)');
+}
+
+// ── 6b. the lab's q028: the guest's own ages repeated in an answer ──
+{
+  const o = await run('عندي طفلين أعمارهم 4 و9، الإفطار عليهم كم؟', {}, U({ intents: ['price_question'], topics: ['breakfast', 'children'], children: 2, child_ages: [4, 9] }), adapter(),
+    'الإفطار مجاني لطفلك بعمر 4 سنوات، ولطفلك بعمر 9 سنوات 12.50 ريال في اليوم.');
+  check(o.finish.state !== 'human' && !o.finish.guard_refusals.length, `6b q028: the guest's own ages (4, 9) may be repeated — never refused as numbers (${o.finish.state} ${JSON.stringify(o.finish.guard_refusals)})`);
+  const p = await run('كم سعر الإفطار؟', {}, U({ intents: ['price_question'], topics: ['breakfast'] }), adapter(), 'الإفطار 99 ريالًا.');
+  check(p.finish.guard_refusals.some((r) => r.includes('number')), '6b … a number from nowhere is still refused');
 }
 
 // ── 7. departures ──

@@ -556,6 +556,12 @@ function decideCore(input: DecideInput): Decision {
   const frustrated = u.frustrated === true;
   if (kind === 'sensitive' && u.sensitive === 'abuse' && !frustrated) return H('abuse', 'handoff', 'abuse', 'high');
   if (has('human_request') || (kind === 'sensitive' && !frustrated)) return H('human_request', 'handoff', 'human_request');
+  // H10 (lab h10-03): «لماذا أُلغي حجزي؟» about a recorded cancellation is answered from the reason before any complaint
+  // reading — only a dispute or a compensation request goes to the team
+  if (ev.flags?.cancel_why && ctx.recent_cancel && !has('compensation_request')) {
+    t.push('T44');
+    return out({ next: 'quoted', actions: [{ type: 'cancel_reason', ref: ctx.recent_cancel.ref }, { type: 'alternatives' }], failed: 'reset', draft_replace: !!input.draft });
+  }
   if ((u.complaint || has('complaint')) && !frustrated) return H('complaint', 'complaint', 'complaint', 'high');
   // a plain «نعم» to a dates confirm question: the dates shown
   const pend = pendingDates(input.draft);

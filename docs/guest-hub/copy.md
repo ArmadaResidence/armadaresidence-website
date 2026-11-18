@@ -281,7 +281,7 @@ The room cards carry no badge (never «تأكيد فوري») and show only the 
 
 | Case | Arabic | English |
 |---|---|---|
-| Chat request footer | «سيصل طلبك إلى فريق الاستقبال ليؤكده لك هنا خلال دقائق.» | “Your request will reach our reception team, who will confirm it with you here within minutes.” |
+| Chat request footer | «سيصل طلبك إلى فريق الاستقبال ليؤكده لك هنا خلال دقائق.» | “Your booking request will reach our reception team, who will confirm it with you here within minutes.” |
 | Send request button | «إرسال طلب الحجز» | “Send booking request” |
 | Chat request sent (after the official request template) | «وصل طلب حجزك رقم {ref}، وسيؤكده لك فريق الاستقبال هنا خلال دقائق.» | “Your booking request {ref} has arrived; our reception team will confirm it with you here within minutes.” |
 | Thanks after a cancellation (no confirmed upcoming booking) | «العفو، يسعدنا خدمتك في أي وقت.» | “You’re welcome; we’re glad to help any time.” |

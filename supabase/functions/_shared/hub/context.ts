@@ -107,7 +107,9 @@ const PAY_EN = /\b(?:pay|paid|paying|payment|payments|prepay|prepayment|transfer
 const INVOICE = /فاتوره|فواتير|ايصال|invoice|receipt/i;
 const WHY = W('لماذا|ليش|ليه|لما|سبب|وش السبب|ايش السبب|وش صار|ايش صار');
 const CANCELLED = /الغا|الغي|انلغ|ملغ|الغيت|ينلغي|cancel/;
-const DISCOUNT = /خصم|تخفيض|تخفيظ|ارخص|اقل من كذا|عرض خاص|discount|cheaper|lower price|best price|deal/i;
+// whole words (the lab's c111: «يخصمون على شي» — deducting on a cancellation — is no discount question)
+const DISCOUNT_AR = W('خصم|خصومات|تخفيض|تخفيظ|تخفيضات|ارخص|عرض خاص');
+const DISCOUNT_EN = /\b(?:discounts?|cheaper|lower price|best price|deals?)\b/i;
 const PRICE_WORD = /سعر|اسعار|بكم|تكلف|كم الغرفه|كم الليله|كم الجناح|كم الشقه|price|cost|how much|rate/i;
 const ROOM_WORD = W('غرفه|غرف|الغرفه|ليله|الليله|جناح|شقه|وحده|room|rooms|night|suite|apartment');
 const LEAVE = /^(?:خروج|الخروج|خرجت|خرجنا|طالع|طالعين|بطلع|بنطلع|راح اطلع|مغادره|مغادر|بغادر|اغادر|سنغادر|بمشي|بنمشي|ماشي|ماشين|مشينا|leaving|check ?out|checking out|checkout)(?:\s+(?:ان شاء الله|انشاءالله|اليوم|الحين|بس|فقط|شكرا|today|now|thanks|thank you))*$/i;
@@ -127,7 +129,7 @@ export function turnFlags(texts: string[]): TurnFlags {
     invoice: INVOICE.test(t),
     link_only: linkOnly,
     cancel_why: WHY.test(t) && CANCELLED.test(t),
-    discount: DISCOUNT.test(t),
+    discount: DISCOUNT_AR.test(t) || DISCOUNT_EN.test(raw),
     room_price: PRICE_WORD.test(t) && ROOM_WORD.test(t),
     departure_word: short && LEAVE.test(tl) ? 'leave' : short && EXTEND.test(tl) ? 'extend' : null,
     question: /[?؟]/.test(raw) || texts.some((x) => QWORD.test(normalize(x))),
