@@ -155,13 +155,14 @@ insert into public.hub_knowledge_cards (key, unit_keys, topic_keys, title_ar, ti
 values
   ('k-ac-heat-cool', '{airport-road,shafa-road}', '{room_amenities}', 'التكييف يبرّد ويدفّي', 'Air conditioning cools and heats',
    'التكييف في وحدات الفرعين يبرّد ويدفّي.', 'The air conditioning in the units of both properties cools and heats.',
-   'أحمد — 18 نوفمبر 2026', '2026-11-18', now(), 'published', 900, 'fact'),
+   'أحمد — 18 نوفمبر 2026', '2026-11-18', now(), 'draft', 900, 'fact'),
   ('k-breakfast-offer-ended', '{airport-road,shafa-road}', '{breakfast,offers}', 'انتهاء عرض الإفطار', 'The breakfast offer ended',
    'انتهى عرض الإفطار بـ10 ريالات في 15 نوفمبر 2026.', 'The SAR 10 breakfast offer ended on 15 November 2026.',
-   'أحمد — 18 نوفمبر 2026', '2026-11-18', now(), 'published', 901, 'fact')
+   'أحمد — 18 نوفمبر 2026', '2026-11-18', now(), 'draft', 901, 'fact')
 on conflict (key) do nothing;
-update public.hub_knowledge_cards k set live = internal.hub_card_snapshot(k), published_at = now(), first_published_at = coalesce(k.first_published_at, now())
- where k.key in ('k-ac-heat-cool', 'k-breakfast-offer-ended') and k.live is null;
+-- published with their snapshot (a published card always carries its live copy)
+update public.hub_knowledge_cards k set live = internal.hub_card_snapshot(k), status = 'published', published_at = now(), first_published_at = coalesce(k.first_published_at, now())
+ where k.key in ('k-ac-heat-cool', 'k-breakfast-offer-ended') and k.live is null and k.status = 'draft';
 
 
 -- ───────────────────────────────────────────── 4. the functions it edits ─────────────────────────────────────────────
