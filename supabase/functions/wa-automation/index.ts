@@ -62,7 +62,9 @@ import {
   parseStatus, route, type Inbound,
 } from '../_shared/hub/webhook.ts';
 import { autoPayload, cleanParam, replyLocale, verifySignature, type AutoMessage, type AutoTemplate, type Locale, type OfferVars } from './templates.ts';
-import { drainReminders, drainStaff, emailReports, ensureTemplate, refreshDueTemplates, staffChat, type Call } from '../_shared/hub/staff-send.ts';
+import { drainReminders, drainStaff, emailReports, ensureTemplate, recordTiming, refreshDueTemplates, staffChat, type Call } from '../_shared/hub/staff-send.ts';
+import { newTiming, stamp, timingKind } from '../_shared/hub/staff.ts';
+import { typingUrl } from '../_shared/hub/send.ts';
 import { staffVoiceText } from '../_shared/hub/staff-voice.ts';
 import { openaiTranscribe } from '../_shared/hub/media.ts';
 import { anthropicModel } from '../_shared/hub/model.ts';
@@ -407,8 +409,29 @@ async function staffQueue(): Promise<Record<string, unknown>> {
   return { ...d, reminders, emails, templates };
 }
 
+/** an ISO time from YCloud's field, or null */
+const isoOf = (v: unknown): string | null => {
+  const t = Date.parse(String(v ?? ''));
+  return Number.isFinite(t) && v ? new Date(t).toISOString() : null;
+};
+
+/** H9 fix 4: YCloud's typing indicator for a colleague's message (it marks it read) — at once, best effort */
+async function staffTyping(id: string | null | undefined): Promise<boolean> {
+  const key = Deno.env.get('YCLOUD_API_KEY');
+  if (!id || !key) return false;
+  try {
+    const res = await fetch(typingUrl(id), { method: 'POST', headers: { 'X-API-Key': key, Accept: 'application/json' }, signal: AbortSignal.timeout(4000) });
+    if (!res.ok) console.warn('wa-automation: staff typing refused', res.status);
+    return res.ok;
+  } catch {
+    console.warn('wa-automation: staff typing unreachable');
+    return false;
+  }
+}
+
 // deno-lint-ignore no-explicit-any
-async function handleInbound(ev: any, test: boolean): Promise<Record<string, unknown>> {
+async function handleInbound(ev: any, test: boolean, meta: HookMeta): Promise<Record<string, unknown>> {
+  const picked = new Date();
   const m = parseInbound(ev?.whatsappInboundMessage);
   if (m.referral) console.log('wa-automation: referral', describe(ev));
   // H6c (Ahmed, 15 Nov 2026): a number in «فريق الاستقبال» or the report list is never a guest — no episode, no opt-out
@@ -417,6 +440,11 @@ async function handleInbound(ev: any, test: boolean): Promise<Record<string, unk
     const who = await rpc<{ kind: string; test_as_guest: boolean } | null>('hub_staff_number', { p_phone: m.from });
     if (!who.ok) console.error('wa-automation: staff lookup failed', who.status);
     else if (who.data && !who.data.test_as_guest) {
+      // H9 fix 4 (Ahmed, 18 Nov 2026): the stage times of this message (times and ids only), and «يكتب…» at once
+      const T = newTiming(timingKind(m.kind), isoOf(ev?.whatsappInboundMessage?.sendTime), isoOf(ev?.createTime), meta.received_at);
+      stamp(T, 'picked', picked);
+      stamp(T, 'lookup');
+      const typed = !test && m.id ? staffTyping(m.id).then((ok) => { if (ok) stamp(T, 'typing'); }) : Promise.resolve();
       // H9 fix 3 (Ahmed, 17 Nov 2026): a staff or management voice note — transcribed (the unit's daily minutes), then its
       // transcript is the colleague's text on the staff path; one that cannot be heard gets «اكتبها لي»
       let voice: { text: string; seconds: number } | null = null;
@@ -430,13 +458,17 @@ async function handleInbound(ev: any, test: boolean): Promise<Record<string, unk
         if (v.ok) voice = { text: v.text, seconds: v.seconds };
         else voiceFailed = true;
         console.log('wa-automation: staff voice', v.ok ? 'transcribed' : v.reason);
+        stamp(T, 'voice');
       } else if (m.kind !== 'text' && m.kind !== 'interactive' && m.kind !== 'button_reply') return { kind: 'staff', handled: false, message_kind: m.kind };
       const model = anthropicModel(Deno.env.get('ANTHROPIC_API_KEY') ?? '');
       const r = await staffChat(call, content, model, { from: m.from, to: m.to, text: voice ? voice.text : m.text, id: m.id ?? '', sentAt: m.sentAt, kind: m.kind, buttonId: m.buttonId,
-        audioSeconds: voice?.seconds ?? null, voiceFailed }, test).catch((e) => {
+        audioSeconds: voice?.seconds ?? null, voiceFailed, timing: T }, test).catch((e) => {
         console.error('wa-automation: staff chat failed', String(e).slice(0, 120));
         return { staff: true, error: true };
       });
+      await typed;
+      if (meta.ack_at) T.stages.ack = meta.ack_at;
+      await recordTiming(call, T, test);
       return { kind: 'staff', ...r };
     }
   }
@@ -661,21 +693,29 @@ async function handleQuality(raw: any, test: boolean, at: string | null): Promis
 }
 
 // deno-lint-ignore no-explicit-any
-async function handleEvent(ev: any, test: boolean): Promise<Record<string, unknown>> {
+async function handleEvent(ev: any, test: boolean, meta?: HookMeta): Promise<Record<string, unknown>> {
   const type = String(ev?.type ?? '');
   if (type === EVENT_STATUS) {
     const s = parseStatus(ev.whatsappMessage);
     const r = await rpc<number>('wa_status_update', { p_ycloud_id: s.id ?? '', p_status: s.status, p_price: s.price, p_currency: s.currency, p_error_code: s.errorCode });
+    // H9 fix 4: a reply to a colleague is in no message log — its delivered / read time goes to the staff path's stage times
+    if (r.ok && !r.data && s.id && (s.status === 'delivered' || s.status === 'read')) {
+      await rpc('hub_staff_timing_status', { p_ycloud_id: s.id, p_status: s.status, p_at: isoOf(ev?.createTime) });
+    }
     return { kind: 'status', status: s.status, updated: r.ok ? r.data : 0 };
   }
-  if (type === EVENT_INBOUND) return await handleInbound(ev, test);
+  if (type === EVENT_INBOUND) return await handleInbound(ev, test, meta ?? { received_at: new Date().toISOString(), ack_at: null });
   if (type === EVENT_ECHO) return await handleEcho(ev.whatsappMessage, test);
   if (type === EVENT_QUALITY) return await handleQuality(ev.whatsappPhoneNumber, test, ev.createTime ?? null);
   console.log('wa-automation: event acknowledged', describe(ev));
   return { kind: 'ignored' };
 }
 
+/** H9 fix 4: when our webhook got the request and when it answered 2xx (the staff path's first two stages) */
+interface HookMeta { received_at: string; ack_at: string | null }
+
 async function webhook(req: Request, token: string): Promise<Response> {
+  const meta: HookMeta = { received_at: new Date().toISOString(), ack_at: null };
   const raw = await req.text();
   const v = await rpc<{ ok: boolean; secret: string | null }>('wa_hook_verify', { p_token: token });
   if (!v.ok || !v.data?.ok) return new Response('', { status: 404 });
@@ -686,7 +726,7 @@ async function webhook(req: Request, token: string): Promise<Response> {
   // 200 at once (spec §3.7); the event is handled after the answer
   const work = (async () => {
     try {
-      await handleEvent(JSON.parse(raw), false);
+      await handleEvent(JSON.parse(raw), false, meta);
     } catch (e) {
       console.error('wa-automation: webhook event failed', String(e).slice(0, 200));
     }
@@ -695,6 +735,7 @@ async function webhook(req: Request, token: string): Promise<Response> {
   const rt = (globalThis as any).EdgeRuntime;
   if (rt && typeof rt.waitUntil === 'function') rt.waitUntil(work);
   else await work;
+  meta.ack_at = new Date().toISOString();
   return new Response('{"ok":true}', { status: 200, headers: { 'Content-Type': 'application/json' } });
 }
 

@@ -251,7 +251,9 @@ async function learnOne(q) {
       if (route.action === 'ok') res = { got: 'ok_ack', reply: L.learnLine('ok_ack') };
       else if (route.action === 'del') {
         if (card) mem.cards = mem.cards.filter((x) => x.id !== card.id);
-        res = { got: card ? 'removed' : 'remove_none', reply: L.learnLine(card ? 'removed' : 'remove_none', { wording: card?.text_ar }) };
+        // H9 fix 4: a reply rule removed is «مش هطبّقها تاني»
+        const k = !card ? 'remove_none' : card.card_kind === 'rule' ? 'rule_removed' : 'removed';
+        res = { got: k, reply: L.learnLine(k, { wording: card?.text_ar }) };
       } else if (route.action === 'edit') {
         mem.followup = card ? { id: 'fe', kind: 'edit', card_id: card.id, body: card.text_ar, scope: card.scope } : null;
         res = { got: 'edit_ask', reply: L.learnLine('edit_ask') };
@@ -260,7 +262,8 @@ async function learnOne(q) {
         else {
           card.unit_keys = [];
           card.scope = 'both';
-          res = { got: 'saved_both', reply: L.learnLine('saved_both', { wording: card.text_ar, expiry: card.expires_on }) };
+          const k = card.card_kind === 'rule' ? 'rule_saved_both' : 'saved_both';
+          res = { got: k, reply: L.learnLine(k, { wording: card.text_ar, expiry: card.expires_on }) };
         }
       } else if (route.action === 'save') {
         const f = mem.followup;
@@ -337,6 +340,9 @@ async function learnOne(q) {
       if (e.line && got !== e.line) reasons.push(`${tag}:line:${e.line}:${got}`);
       if (e.line_any && !e.line_any.includes(got)) reasons.push(`${tag}:line_any:${e.line_any.join('|')}:${got}`);
       if (e.buttons && JSON.stringify(r.buttons ?? []) !== JSON.stringify(e.buttons)) reasons.push(`${tag}:buttons:${(r.buttons ?? []).join('|')}`);
+      // H9 fix 4: the confirmation's wording (a reply rule «هطبّقها كده:», a fact «هقولها للضيوف كده»)
+      if (e.reply_includes && !String(reply).includes(e.reply_includes)) reasons.push(`${tag}:reply_includes:${e.reply_includes}`);
+      if (e.reply_excludes && String(reply).includes(e.reply_excludes)) reasons.push(`${tag}:reply_excludes:${e.reply_excludes}`);
       if (e.expires && !(mem.cards.find((c) => c.id === mem.last)?.expires_on)) reasons.push(`${tag}:no_expiry`);
     } else if (st.staff_reply) {
       const pre = L.textRefusal(st.staff_reply.reply, 'staff_reply', false);

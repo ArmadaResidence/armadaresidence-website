@@ -196,9 +196,22 @@ async function rpc<T>(fn: string, args: Record<string, unknown> = {}): Promise<T
   if (error) api.fail(error, fn);
   return data as T;
 }
+/** H9 fix 4 (18 Nov 2026): the server's tabs only — «الفريق» (?tab=team, H9 fix 3) or a link with an unknown tab reads the
+ *  list as «بانتظار الرد» (the red bar «القيمة غير صالحة.» came from tab=team reaching hub_inbox_list) */
+export const SERVER_TABS = ['waiting', 'assistant', 'drafts', 'all', 'closed'] as const;
+export const listTab = (t: string | null | undefined): Tab => (t === 'orders' || (SERVER_TABS as readonly string[]).includes(String(t)) ? (t as Tab) : 'waiting');
+/** H9 fix 4: the page's own words when the list or a conversation cannot be loaded — what failed and what to do */
+export function loadError(what: 'list' | 'thread' | 'team', message: string): string {
+  const head = what === 'list' ? 'تعذّر تحميل قائمة المحادثات.' : what === 'thread' ? 'تعذّر فتح هذه المحادثة.' : 'تعذّر تحميل محادثات الفريق.';
+  const bare = /^القيمة غير صالحة/.test(message) || !message;
+  const reason = bare ? 'أحد عوامل التصفية في الرابط غير معروف.' : message;
+  const todo = bare ? 'اضغط «مسح عوامل التصفية» أو افتح «المحادثات» من القائمة الجانبية.' : 'حدّث الصفحة وأعد المحاولة؛ وإن تكرر فأبلغ مدير النظام.';
+  return `${head} ${reason} ${todo}`.replace(/\s+/g, ' ').trim();
+}
 export const list = (f: Filters, before?: string) => {
-  const p: Record<string, unknown> = { tab: f.tab === 'orders' ? 'all' : f.tab };
-  if (f.tab === 'orders') p.tag = 'order';
+  const tab = listTab(f.tab);
+  const p: Record<string, unknown> = { tab: tab === 'orders' ? 'all' : tab };
+  if (tab === 'orders') p.tag = 'order';
   for (const k of ['unit', 'state', 'owner', 'channel', 'language'] as const) if (f[k]) p[k] = f[k];
   if (f.q?.trim()) p.q = f.q.trim();
   if (f.blocked) p.blocked = true;

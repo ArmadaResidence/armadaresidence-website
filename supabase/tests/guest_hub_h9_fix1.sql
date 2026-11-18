@@ -212,7 +212,7 @@ select pg_temp._cmd('both', '+15550300001', '+966536663030', 'للفرعين', j
 select pg_temp._check('T14 «للفرعين» by Ahmed: the card for both branches, saved_both quoted again', pg_temp._j('both') ->> 'line' = 'saved_both'
   and (select learn_scope = 'both' and unit_keys = '{}'::text[] and live ->> 'text_ar' = text_ar from public.hub_knowledge_cards where id = pg_temp._id('card2')), pg_temp._j('both')::text);
 select pg_temp._cmd('mboth', '+15550300003', '+966536663030', 'للفرعين', jsonb_build_object('command', 'btn_both', 'id', pg_temp._id('card2')));
-select pg_temp._check('T15 a manager''s «للفرعين» on someone else''s card changes nothing', pg_temp._j('mboth') ->> 'line' in ('remove_none', 'other_branch', 'not_allowed')
+select pg_temp._check('T15 a manager''s «للفرعين» on someone else''s card changes nothing', pg_temp._j('mboth') ->> 'line' in ('remove_none', 'other_branch', 'not_allowed', 'tap_expired')
   and (select learn_scope = 'both' from public.hub_knowledge_cards where id = pg_temp._id('card2')), pg_temp._j('mboth')::text);
 -- T16: «تمام» / «امسح» / «لا»
 select pg_temp._cmd('ok', '+15550300001', '+966536663030', 'تمام', jsonb_build_object('command', 'btn_ok', 'id', pg_temp._id('card2')));

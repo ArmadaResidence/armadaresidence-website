@@ -28,7 +28,7 @@ import tplDefs from '../../../supabase/functions/_shared/hub/hub-templates.json'
 import {
   stateText, ACTIONS, DRAFT_ACTIONS, LANGUAGE_FILTERS, MARKS, OWNER_FILTERS, REJECT_REASONS, SHORTCUTS, STATE_LABELS, TABS, TAB_LABELS, TAG_LABELS, TEMPLATE_LABELS, approve, assign, assistError, banner,
   block, close, eventText, list, markUnanswered, mediaUrl, needsTranslation, newKey, ownerText, pauseUnit, reject, release, retry, send, sendError, sendSuggestion, statusText, suggest, takeOver,
-  standbyReasonText, standbyText, thread, timerTone, transfer, translate, waitingText, windowState, addNote,
+  standbyReasonText, standbyText, thread, timerTone, transfer, translate, waitingText, windowState, addNote, listTab, loadError,
   type Filters, type HubState, type InboxList, type InboxRow, type Msg, type RejectReason, type Tab, type Thread,
 } from '../lib/inbox';
 import { CancelButton, Confirm, DirtyScope, ErrorBox, Field, Loading, Modal, Spinner, useToast } from '../components/ui';
@@ -44,7 +44,8 @@ export default function Inbox() {
   const toast = useToast();
   const [sp, setSp] = useSearchParams();
   const filters: Filters = useMemo(() => ({
-    tab: (sp.get('tab') as Tab) || 'waiting',
+    // H9 fix 4: only a tab the list knows (?tab=team is «الفريق», read apart; an unknown value reads «بانتظار الرد»)
+    tab: listTab(sp.get('tab')),
     unit: sp.get('unit') ?? '',
     state: sp.get('state') ?? '',
     owner: sp.get('owner') ?? '',
@@ -88,7 +89,7 @@ export default function Inbox() {
       setRows(d.rows);
       setError(null);
     } catch (e) {
-      setError((e as Error).message);
+      setError(loadError('list', (e as Error).message));
     }
   }, [filters]);
   const loadThread = useCallback(async () => {
@@ -103,7 +104,7 @@ export default function Inbox() {
       setTError(null);
     } catch (e) {
       setT(null);
-      setTError((e as Error).message);
+      setTError(loadError('thread', (e as Error).message));
     }
   }, [selected]);
   useEffect(() => void loadList(), [loadList]);
@@ -204,7 +205,7 @@ export default function Inbox() {
       {tabs.map((k) => {
         const n = k === 'orders' ? null : data?.counts[k as keyof InboxList['counts']];
         return (
-          <button key={k} type="button" role="tab" aria-selected={filters.tab === k} className={`inbox-tab ${filters.tab === k ? 'is-on' : ''}`}
+          <button key={k} type="button" role="tab" aria-selected={!teamOn && filters.tab === k} className={`inbox-tab ${!teamOn && filters.tab === k ? 'is-on' : ''}`}
             onClick={() => setParam({ tab: k === 'waiting' ? null : k })} data-tab={k}>
             {TAB_LABELS[k]}{n !== null && n !== undefined ? <span className="num inbox-count" data-count={k}>{n}</span> : null}
           </button>
@@ -235,6 +236,11 @@ export default function Inbox() {
         <p className="note-amber text-sm" role="note" data-inbox-off>«تخزين المحادثات» متوقف: لا تُحفظ الرسائل الجديدة ولا يُرسل شيء من هنا حتى يُشغَّل من «إعدادات المساعد».</p>
       )}
       <ErrorBox error={error} />
+      {error && (
+        <p className="text-sm" data-error-reset>
+          <button type="button" className="btn btn-ghost" onClick={() => setSp(new URLSearchParams(), { replace: true })}>مسح عوامل التصفية</button>
+        </p>
+      )}
 
       {teamOn ? (
         <div className="grid gap-2" data-team-tab>

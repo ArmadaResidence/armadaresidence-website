@@ -435,10 +435,15 @@ Who may teach: Ahmed (his number in «التقارير», linked to his dashboar
 | empty | «تعلّم:» with nothing after it | «اكتب المعلومة بعد «تعلّم:» 🙂 مثال: تعلّم: فيه ميكروويف في لوبي الفرع.» |
 | teach_off | «التعليم بـ تعلّم:» switched off in «الفريق والتقارير» | «التعليم بـ «تعلّم:» متوقف دلوقتي من اللوحة.» |
 | failed | the model or the store failed | «معرفتش أسجلها دلوقتي 😅 جرّب تاني بعد شوية.» |
-| rule_saved | H9 fix 3: a reply rule from Ahmed — how to answer a topic, stored as «قاعدة رد — أحمد — {date}», with the three quick replies | «اتسجلت قاعدة رد ✅ هرد كده: «{wording}». لو فيها غلط اضغط «عدّل» أو «امسح».» |
-| rule_saved_part | H9 fix 3: a reply rule stored without the part a safety rule does not allow | «اتسجلت قاعدة رد ✅ هرد كده: «{wording}». بس الجزء ده مش هقدر أطبّقه: «{part}» 🙏» |
+| rule_saved | H9 fix 3: a reply rule from Ahmed — how to answer a topic, stored as «قاعدة رد — أحمد — {date}», with the three quick replies (H9 fix 4, Ahmed 18 Nov 2026: «هطبّقها كده:» — «هقولها للضيوف كده» is for facts only) | «اتسجلت قاعدة رد ✅ هطبّقها كده: «{wording}». لو فيها غلط اضغط «عدّل» أو «امسح».» |
+| rule_saved_both | H9 fix 4: a reply rule moved to both branches («للفرعين») | «اتسجلت قاعدة رد للفرعين ✅ هطبّقها كده: «{wording}». لو فيها غلط اضغط «عدّل» أو «امسح».» |
+| rule_saved_part | H9 fix 3: a reply rule stored without the part a safety rule does not allow | «اتسجلت قاعدة رد ✅ هطبّقها كده: «{wording}». بس الجزء ده مش هقدر أطبّقه: «{part}» 🙏» |
+| rule_removed | H9 fix 4: «امسح» on a reply rule | «اتمسحت القاعدة ✅ مش هطبّقها تاني: «{wording}».» |
+| rule_removed_n | H9 fix 4: «امسح N» on a reply rule | «اتمسحت رقم {n} ✅ مش هطبّقها تاني: «{wording}».» |
 | rule_conflict | H9 fix 3: a reply rule that cannot apply at all (it breaks a safety rule) — nothing stored | «القاعدة دي مش هقدر أطبّقها لأنها بتخالف قاعدة ثابتة: «{part}» 🙏» |
 | rule_owner | H9 fix 3: a reply rule from a reception manager — reply rules are Ahmed's | «قواعد طريقة الرد بيحددها أحمد بس 🙏 لو عندك معلومة للضيوف ابعتها وأنا أسجّلها.» |
 | voice_failed | H9 fix 3: a staff or management voice note that could not be transcribed | «معرفتش أسمع الفويس كويس 😅 ممكن تكتبهولي؟» |
+| tap_already | H9 fix 4 (Ahmed, 18 Nov 2026): a second tap on the same quick reply, or on another of the same message, or on an item already applied | «تم تطبيقها من قبل.» |
+| tap_expired | H9 fix 4 (Ahmed, 18 Nov 2026): a quick reply whose item is gone, older than a day, or not this colleague's | «انتهت صلاحية هذا الطلب، أرسله من جديد.» |
 
 **Learned from a staff reply** (no message to anyone): the fact is active at once for that branch, its source «رد الفريق — {name} — {date}», numbered in the next daily report («بطاقات معرفة جديدة: 2: 1) … · 2) …»); a price or a contradiction is not learned — «يحتاج قرارك» in the report and the staff wording in «لم أعرف الإجابة».

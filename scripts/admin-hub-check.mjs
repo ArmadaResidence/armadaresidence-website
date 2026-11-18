@@ -30,3 +30,6 @@ await import('../admin/tests/hub-departures-ui-check.mjs');
 // H9 fix 3 (17 Nov 2026): the standby live line, «أرقام التجربة», «تذكير رفع القائمة», «المحادثات» → «الفريق», «يحتاج
 // قرارك» in «قاعدة المعرفة» — offline too (admin/tests/hub-fix3-ui-check.mjs).
 await import('../admin/tests/hub-fix3-ui-check.mjs');
+// H9 fix 4 (18 Nov 2026): «المحادثات» with every tab, state, owner, language, unit and link — the stub refuses what the
+// server refuses (the red bar «القيمة غير صالحة.» of ?tab=team) — offline too (admin/tests/hub-inbox-filters-check.mjs).
+await import('../admin/tests/hub-inbox-filters-check.mjs');

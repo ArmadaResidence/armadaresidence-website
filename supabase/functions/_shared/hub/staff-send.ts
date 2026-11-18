@@ -14,10 +14,10 @@ import { hubDailyMail } from '../../booking-request/email.ts';
 import { staffSystem } from './compose/index.ts';
 import hubText from './text.generated.json' with { type: 'json' };
 import type { ModelFn } from './model.ts';
-import { costOf } from './model.ts';
-import { alertPayload, branchShort, HUB_UPLOAD_REMINDER, isTeach, reminderFallback, reportPayload, reportVars, staffFallback, staffGuard, staffSystemFor, staffUser, templateNeedsRead, templateReady, uploadReminderPayload } from './staff.ts';
+import { costOf, withFallback } from './model.ts';
+import { alertPayload, branchShort, HUB_UPLOAD_REMINDER, isTeach, stamp, timedModel, timingSummary, type StaffTiming, reminderFallback, reportPayload, reportVars, staffFallback, staffGuard, staffSystemFor, staffUser, templateNeedsRead, templateReady, uploadReminderPayload } from './staff.ts';
 import { pageOf, templateRows, templatesUrl, type TemplateItem } from '../../hub-admin/ycloud.ts';
-import { confirmButtons, intentAction, intentButtons, intentSystem, intentUser, learnLine, parseIntent, teachRoute, teachScope, yesNo, type Branch, type Followup, type LastTeaching, type LearnButton, type LineKey, type Scope, type Teacher, type TeachTurn } from './learn.ts';
+import { CONFIRM_LINES, confirmButtons, intentAction, parseTapId, stampButtons, intentButtons, intentSystem, intentUser, learnLine, parseIntent, teachRoute, teachScope, yesNo, type Branch, type Followup, type LastTeaching, type LearnButton, type LineKey, type Scope, type Teacher, type TeachTurn } from './learn.ts';
 /** prompts.md §9.3 as written */
 const reminderSystem = (): string => (hubText as Json).prompts.reminder_system;
 
@@ -156,10 +156,43 @@ export async function emailReports(call: Call, content: Json, mail: (to: string[
  *  guest's path. Teaching (H9 fix 1, 16 Nov 2026): a quick reply by its id, «امسح» / «امسح N», a follow-up waiting, the
  *  yes / no after «أستبدل القديمة؟»; a teacher's other message read for its meaning first (prompts.md §9.2) — never a
  *  request to resend in a format. Returns what happened (codes only). */
-export async function staffChat(call: Call, content: Json, model: ModelFn,
-  m: { from: string; to: string; text: string; id: string; sentAt: string | null; kind: string; buttonId?: string | null; audioSeconds?: number | null; voiceFailed?: boolean }, test: boolean): Promise<Record<string, unknown>> {
+/**
+ * H9 fix 4 (Ahmed, 18 Nov 2026): the staff path's stage times — one row per message (public.hub_staff_timings) and one log
+ * line of numbers (no text, name or number). Never fails the reply.
+ */
+export async function recordTiming(call: Call, t: StaffTiming | null | undefined, test: boolean): Promise<void> {
+  if (!t?.message_id) return;
+  await call('hub_staff_timing_record', { p: { message_id: t.message_id, kind: t.kind, provider_sent_at: t.provider_sent_at, event_created_at: t.event_created_at,
+    received_at: t.received_at, stages: t.stages, models: t.models, reply_provider_id: t.reply_provider_id ?? null, reply_accepted_at: t.reply_accepted_at ?? null,
+    fallback: !!t.fallback, is_test: test } }).catch((e) => console.warn('hub staff: timing not recorded', String(e).slice(0, 80)));
+  console.log('hub staff timing', JSON.stringify({ message: String(t.message_id).slice(0, 8), ...timingSummary(t) }));
+}
+
+/** H9 fix 4: the quick replies get their own ids (registered before the send, so a tap always finds them); when the
+ *  registration fails the message keeps the earlier ids (hubl:…), which still work */
+export async function registeredButtons(call: Call, phone: string, messageId: string, buttons: { id: string; title: string }[] | undefined, test: boolean):
+  Promise<{ id: string; title: string }[] | undefined> {
+  if (!buttons?.length) return buttons;
+  const st = stampButtons(buttons);
+  if (!st.register.length) return buttons;
+  const ok = await call<Json>('hub_staff_buttons_add', { p_phone: phone, p_message: messageId, p_buttons: st.register, p_test: test })
+    .then((r) => !!r?.ok).catch((e) => {
+      console.warn('hub staff: buttons not registered', String(e).slice(0, 80));
+      return false;
+    });
+  return ok ? st.buttons : buttons;
+}
+
+export async function staffChat(call: Call, content: Json, rawModel: ModelFn,
+  m: { from: string; to: string; text: string; id: string; sentAt: string | null; kind: string; buttonId?: string | null; audioSeconds?: number | null; voiceFailed?: boolean;
+       timing?: StaffTiming | null }, test: boolean): Promise<Record<string, unknown>> {
+  // H9 fix 4: Opus stays the staff model; a call not back within 25 seconds is answered by Sonnet (logged as a fallback)
+  const model = withFallback(rawModel);
+  const T = m.timing ?? null;
   const ctx = await call<Json>('hub_staff_chat_begin', { p: { phone: m.from, channel: m.to, text: m.text || null, provider_id: m.id, is_test: test, kind: m.kind,
     ...(m.audioSeconds ? { audio_seconds: m.audioSeconds } : {}) } });
+  if (T && ctx?.message_id) T.message_id = String(ctx.message_id);
+  stamp(T, 'stored');
   if (!ctx?.staff) return { staff: false, test_as_guest: !!ctx?.test_as_guest };
   if (!ctx.ok) return { staff: true, reason: ctx.reason ?? 'not_ok' };
   if (!ctx.gate) return { staff: true, reason: 'assistant_off' };
@@ -172,10 +205,17 @@ export async function staffChat(call: Call, content: Json, model: ModelFn,
   const reply = async (body: string, buttons?: { id: string; title: string }[]): Promise<string> => {
     let sent: { accepted: boolean; status: string; messageId: string | null; errorCode: string | null };
     try {
-      const payload = buttons?.length && body.length <= 1000 ? buttonsPayload(m.to, m.from, body, buttons, ctx.message_id) : textPayload(m.to, m.from, body, ctx.message_id);
+      const withButtons = buttons?.length && body.length <= 1000 ? await registeredButtons(call, m.from, ctx.message_id, buttons, test) : undefined;
+      const payload = withButtons?.length ? buttonsPayload(m.to, m.from, body, withButtons, ctx.message_id) : textPayload(m.to, m.from, body, ctx.message_id);
+      stamp(T, 'send_request');
       sent = await sendSession({ payload, windowExpiresAt: windowAt, test, log: null });
     } catch {
       sent = { accepted: false, status: 'failed', messageId: null, errorCode: 'payload' };
+    }
+    stamp(T, 'send_done');
+    if (T) {
+      T.reply_provider_id = sent.messageId;
+      if (sent.accepted) T.reply_accepted_at = new Date().toISOString();
     }
     await call('hub_staff_chat_finish', { p_message: ctx.message_id, p: { body, status: sent.accepted ? sent.status : 'failed', provider_id: sent.messageId, error_code: sent.errorCode, models: used } })
       .catch((e) => console.error('hub learn: answer not recorded', String(e).slice(0, 80)));
@@ -189,6 +229,7 @@ export async function staffChat(call: Call, content: Json, model: ModelFn,
     });
     if (!lc?.handled) return null;
     if (lc.queued !== undefined) {
+      stamp(T, 'queued');
       // queued for hub-agent (it replies); the model call of the intent into the budget
       if (used.length) await call('hub_staff_chat_finish', { p_message: ctx.message_id, p: { body: '', models: used } }).catch(() => null);
       return { staff: true, kind: ctx.kind, learn: lc.queued ? 'queued' : 'duplicate' };
@@ -196,13 +237,20 @@ export async function staffChat(call: Call, content: Json, model: ModelFn,
     const line = (lc.line ?? 'failed') as LineKey;
     const body = learnLine(line, lc.vars ?? {});
     const buttons = line === 'intent_ask' && lc.followup_id ? intentButtons(String(lc.followup_id))
-      : (line === 'saved_both' || line === 'saved' || line === 'revised') && lc.card_id ? confirmButtons(String(lc.card_id), (lc.scope ?? 'both') as Scope, false) : undefined;
+      : CONFIRM_LINES.includes(line) && lc.card_id ? confirmButtons(String(lc.card_id), (lc.scope ?? 'both') as Scope, false) : undefined;
     const sent = await reply(body, buttons);
     return { staff: true, kind: ctx.kind, learn: line, sent };
   };
 
   // H9 fix 3: a voice note that could not be heard — the colleague line «اكتبها لي», nothing else
   if (m.voiceFailed) return { staff: true, kind: ctx.kind, voice: 'failed', sent: await reply(learnLine('voice_failed')) };
+  // H9 fix 4 (Ahmed, 18 Nov 2026): a quick reply sent since fix 4 — routed by its id at once (no context read, no model);
+  // the database acts on it once («تم تطبيقها من قبل.» / «انتهت صلاحية هذا الطلب، أرسله من جديد.»)
+  const tapId = parseTapId(m.buttonId);
+  if (tapId) {
+    const r = await command({ command: 'tap', button: tapId });
+    if (r) return { ...r, tap: true };
+  }
   // H9 fix 1: teaching v2 — the context of this number (who may teach, what waits, the last teaching)
   const tc = text || m.buttonId ? await call<Json>('hub_teach_context', { p_phone: m.from }).catch(() => null) : null;
   const turn: TeachTurn = {
@@ -238,7 +286,10 @@ export async function staffChat(call: Call, content: Json, model: ModelFn,
     const r = await model({ layer: 'staff_chat', model: modelId, system: intentSystem(),
       user: intentUser({ branch, teacher: owner ? 'owner' : 'manager', message: text, last_teaching: turn.last?.text_ar ?? null,
         history: (ctx.history ?? []) as { author: 'colleague' | 'us'; body: string }[], starts_with_teach_word: isTeach(text) }) });
-    used.push({ model: modelId, input_tokens: r.input_tokens, output_tokens: r.output_tokens, cost_usd: costOf(ctx.prices ?? {}, modelId, r.input_tokens, r.output_tokens) });
+    const asked = String(r.model_used ?? modelId);
+    used.push({ model: asked, input_tokens: r.input_tokens, output_tokens: r.output_tokens, cost_usd: costOf(ctx.prices ?? {}, asked, r.input_tokens, r.output_tokens) });
+    timedModel(T, 'intent', r, modelId);
+    if (r.fallback) console.warn('hub staff: opus fallback', 'intent');
     const act = intentAction(turn, r.ok ? parseIntent(r.text) : null);
     console.log('hub learn: intent', act.kind);
     if (act.kind === 'teach') {
@@ -263,7 +314,10 @@ export async function staffChat(call: Call, content: Json, model: ModelFn,
     let note = '';
     for (let attempt = 0; attempt < 2 && !out; attempt++) {
       const r = await model({ layer: 'staff_chat', model: modelId, system, user: note ? `${user}\n\nYOUR PREVIOUS REPLY WAS REFUSED: ${note}. Write it again without that.` : user });
-      used.push({ model: modelId, input_tokens: r.input_tokens, output_tokens: r.output_tokens, cost_usd: costOf(ctx.prices ?? {}, modelId, r.input_tokens, r.output_tokens) });
+      const asked = String(r.model_used ?? modelId);
+      used.push({ model: asked, input_tokens: r.input_tokens, output_tokens: r.output_tokens, cost_usd: costOf(ctx.prices ?? {}, asked, r.input_tokens, r.output_tokens) });
+      timedModel(T, 'chat', r, modelId);
+      if (r.fallback) console.warn('hub staff: opus fallback', 'chat');
       if (!r.ok) break;
       const g = staffGuard(r.text, ctx.facts ?? {}, text, String(ctx.now ?? ''));
       if (g.ok) out = r.text.trim();
@@ -283,7 +337,9 @@ export async function staffChat(call: Call, content: Json, model: ModelFn,
  * templates.md §7; otherwise nothing is sent and the reason is recorded (the dashboard shows the missing list and, at
  * 08:30, «التنبيهات»). The thank-you only inside the window. Test rows: built and recorded `test`, never sent.
  */
-export async function drainReminders(call: Call, content: Json, model: ModelFn, opts: { test?: boolean; collect?: (kind: string, payload: Json) => void } = {}): Promise<{ sent: number; skipped: number; failed: number }> {
+export async function drainReminders(call: Call, content: Json, rawModel: ModelFn, opts: { test?: boolean; collect?: (kind: string, payload: Json) => void } = {}): Promise<{ sent: number; skipped: number; failed: number }> {
+  // H9 fix 4: the staff model (Opus) with the 25-second fallback to Sonnet
+  const model = withFallback(rawModel);
   let sent = 0, skipped = 0, failed = 0;
   for (let round = 0; round < 3; round++) {
     const items = await call<Json[]>('hub_upload_reminders_claim', { p_limit: 20, p_test: !!opts.test }).catch((e) => {
@@ -308,7 +364,7 @@ export async function drainReminders(call: Call, content: Json, model: ModelFn, 
           const facts = kind === 'reminder' ? { link: it.link } : {};
           for (let attempt = 0; attempt < 2 && !body; attempt++) {
             const r = await model({ layer: 'staff_chat', model: modelId, system: reminderSystem(), user });
-            used.push({ model: modelId, input_tokens: r.input_tokens, output_tokens: r.output_tokens });
+            used.push({ model: String(r.model_used ?? modelId), input_tokens: r.input_tokens, output_tokens: r.output_tokens });
             if (!r.ok) break;
             const g = staffGuard(r.text, facts, '', '9:30');
             if (g.ok && (kind === 'thanks' || r.text.includes(it.link))) body = r.text.trim();

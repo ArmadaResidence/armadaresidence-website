@@ -384,3 +384,57 @@ export function routeNumber(lookup: { kind?: string; test_as_guest?: boolean } |
   if (!lookup || lookup.test_as_guest) return 'guest';
   return lookup.kind === 'report' ? 'report' : 'staff';
 }
+
+// ═══ H9 fix 4 (Ahmed, 18 Nov 2026): the staff path's stage times — times, ids and token counts only ═══
+export type TimingKind = 'text' | 'voice' | 'tap' | 'other';
+export interface StaffTiming {
+  kind: TimingKind;
+  /** WhatsApp's own time of the colleague's message (YCloud sendTime) */
+  provider_sent_at: string | null;
+  /** YCloud's event time */
+  event_created_at: string | null;
+  /** our webhook got the request */
+  received_at: string | null;
+  /** each stage as an ISO time: ack, picked, lookup, typing, voice, stored, queued, agent_picked, send_request, send_done */
+  stages: Record<string, string>;
+  models: { layer: string; model: string; input_tokens: number; output_tokens: number; ms: number; fallback: boolean }[];
+  reply_provider_id?: string | null;
+  reply_accepted_at?: string | null;
+  fallback?: boolean;
+  message_id?: string | null;
+}
+export const timingKind = (messageKind: string): TimingKind =>
+  messageKind === 'audio' ? 'voice' : messageKind === 'interactive' || messageKind === 'button_reply' ? 'tap' : messageKind === 'text' ? 'text' : 'other';
+export function newTiming(kind: TimingKind, providerSentAt: string | null, eventCreatedAt: string | null, receivedAt: string | null): StaffTiming {
+  return { kind, provider_sent_at: providerSentAt, event_created_at: eventCreatedAt, received_at: receivedAt, stages: {}, models: [] };
+}
+/** a stage reached now (the first time only) */
+export function stamp(t: StaffTiming | null | undefined, stage: string, at: Date = new Date()): void {
+  if (t && !t.stages[stage]) t.stages[stage] = at.toISOString();
+}
+/** one model call into the timing (the model that answered, its tokens and time) */
+export function timedModel(t: StaffTiming | null | undefined, layer: string, r: { model_used?: string; input_tokens: number; output_tokens: number; latency_ms: number; fallback?: boolean }, asked: string): void {
+  if (!t) return;
+  t.models.push({ layer, model: String(r.model_used ?? asked), input_tokens: r.input_tokens, output_tokens: r.output_tokens, ms: r.latency_ms, fallback: !!r.fallback });
+  if (r.fallback) t.fallback = true;
+}
+const ms = (a: string | null | undefined, b: string | null | undefined): number | null => {
+  const x = Date.parse(String(a ?? '')), y = Date.parse(String(b ?? ''));
+  return Number.isFinite(x) && Number.isFinite(y) ? y - x : null;
+};
+/** the log line's numbers (ms): WhatsApp → us, us → 2xx, → typing, → the reply accepted by YCloud; the model time; fallback */
+export function timingSummary(t: StaffTiming): Record<string, number | string | boolean | null> {
+  const from = t.received_at;
+  return {
+    kind: t.kind,
+    whatsapp_to_us_ms: ms(t.provider_sent_at, from),
+    ycloud_to_us_ms: ms(t.event_created_at, from),
+    ack_ms: ms(from, t.stages.ack),
+    typing_ms: ms(from, t.stages.typing),
+    stored_ms: ms(from, t.stages.stored),
+    reply_ms: ms(from, t.reply_accepted_at ?? t.stages.send_done),
+    model_ms: t.models.reduce((a, m) => a + (m.ms || 0), 0),
+    models: t.models.length,
+    fallback: !!t.fallback,
+  };
+}

@@ -100,7 +100,17 @@ check(JSON.stringify(seeded) === JSON.stringify(standbyBankItems()) && seeded.le
 // ── E. the wiring: nothing read during a wait ──
 const WA = read('supabase/functions/wa-automation/index.ts');
 const AG = read('supabase/functions/hub-agent/index.ts');
-check(!/typingUrl|\/typing/.test(WA), 'E1 the router never calls YCloud\'s typing (read) call');
+// H9 fix 4 (18 Nov 2026): «يكتب…» for a STAFF or management number at once (staffTyping, inside the staff branch only —
+// a colleague never waits); a guest's message is never marked read by the router
+{
+  const guestPath = WA.slice(WA.indexOf('// 0. storage'));
+  const def = WA.indexOf('async function staffTyping(');
+  const branch = [WA.indexOf("'hub_staff_number', { p_phone: m.from }"), WA.indexOf('// 0. storage')];
+  const uses = [...WA.matchAll(/staffTyping\(/g)].map((x) => x.index).filter((i) => i !== def + 'async function '.length);
+  check(!/typingUrl|\/typing|staffTyping/.test(guestPath) && (WA.match(/typingUrl\(/g) ?? []).length === 1 && def > 0
+    && uses.length === 1 && uses.every((i) => i > branch[0] && i < branch[1]),
+    'E1 the router never calls YCloud\'s typing (read) call for a guest — only staffTyping, inside the staff-number branch');
+}
 const qt = WA.slice(WA.indexOf('async function queueTurn'), WA.indexOf('/** H6c: a database call'));
 check(qt.indexOf("if (q.data.standby_until) return 'standby';") > 0 && qt.indexOf("if (q.data.standby_until) return 'standby';") < qt.indexOf("functions/v1/hub-agent"), 'E2 a waiting turn is left to pg_cron hub-standby (no call to hub-agent now)');
 check(/\(q\.data\.joined && !q\.data\.woke\)/.test(qt), 'E3 a tap that ended a wait runs now');

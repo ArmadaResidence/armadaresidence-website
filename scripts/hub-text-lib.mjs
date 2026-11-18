@@ -306,7 +306,9 @@ export function parseMediaLines(md = read('docs/guest-hub/copy.md')) {
 /** H7b: the fixed lines of teaching and removing by WhatsApp (copy.md §9.1 — staff-facing): {key: line} */
 export const LEARN_LINE_KEYS = ['saved', 'saved_both', 'ask_replace', 'replaced', 'kept', 'removed', 'removed_n', 'remove_none', 'remove_n_none', 'remove_n_other',
   'not_allowed', 'other_branch', 'conflict_shared', 'room_price', 'offer', 'service_price', 'guest_detail', 'one_off', 'not_a_fact', 'empty', 'teach_off', 'failed',
-  'revised', 'intent_ask', 'intent_no', 'ok_ack', 'edit_ask', 'link_ask', 'rule_saved', 'rule_saved_part', 'rule_conflict', 'rule_owner', 'voice_failed'];
+  'revised', 'intent_ask', 'intent_no', 'ok_ack', 'edit_ask', 'link_ask', 'rule_saved', 'rule_saved_part', 'rule_conflict', 'rule_owner', 'voice_failed',
+  // H9 fix 4 (18 Nov 2026): the reply rules' own lines and the quick replies acting once
+  'rule_saved_both', 'rule_removed', 'rule_removed_n', 'tap_already', 'tap_expired'];
 export function parseLearnLines(md = read('docs/guest-hub/copy.md')) {
   const s = section(md, '### 9.1 Teaching and removing by WhatsApp');
   const out = {};

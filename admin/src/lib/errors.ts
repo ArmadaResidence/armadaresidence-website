@@ -207,6 +207,8 @@ const KNOWN: [RegExp, string][] = [
   [/^popup_live/, 'هذا التصميم ظهر على الموقع؛ أوقفه وانشره بدل حذفه.'],
   // «إعدادات المساعد» (13 Nov 2026, Guest Hub H1)
   [/^hub_not_ready/, 'لا يُشغَّل هذا الآن: ينقصه ما تذكره الصفحة قبل التشغيل.'],
+  // H9 fix 4 (18 Nov 2026): an inbox link whose tab the list does not know (the red bar of 18 Nov — ?tab=team)
+  [/^hub_tab/, 'تبويب غير معروف في رابط «المحادثات».'],
   [/^unit_hidden/, 'الوحدة المخفية لا تُشغَّل أبدًا.'],
   [/^hub_unit_name_venue/, 'اسم وحدة المطعم أو المقهى يُعدَّل من «المطاعم والمقاهي».'],
   [/^hub_unit_locked/, 'مفتاح الوحدة وفرعها ثابتان.'],
