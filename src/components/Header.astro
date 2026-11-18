@@ -197,8 +197,9 @@ const propertiesActive = properties.some((b) => path.startsWith(b.path));
       </div>
     </div>
 
-    <nav id="mobile-nav" class="lg:hidden hidden border-t border-line bg-white" aria-label={t.nav.menu}>
-      <ul class="px-5 py-2">
+    <nav id="mobile-nav" class="lg:hidden hidden border-t border-line bg-white overflow-y-auto overscroll-contain" aria-label={t.nav.menu}>
+      {/* pb-24: the last link can scroll clear of the floating WhatsApp button */}
+      <ul class="px-5 pt-2 pb-24">
         {
           lead.map((n) => (
             <li>

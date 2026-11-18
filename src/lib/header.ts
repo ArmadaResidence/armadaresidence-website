@@ -41,6 +41,9 @@ onPageLoad(() => {
       const open = btn.getAttribute('aria-expanded') === 'true';
       btn.setAttribute('aria-expanded', String(!open));
       nav.classList.toggle('hidden', open);
+      // the open menu stays inside the screen and scrolls on its own (18 Nov 2026: with the announcement bar above the
+      // header, its last links fell below the screen and under the floating WhatsApp button on a phone)
+      nav.style.maxHeight = open ? '' : `${Math.max(240, window.innerHeight - nav.getBoundingClientRect().top)}px`;
       btn.querySelector('.icon-open')?.classList.toggle('hidden', !open);
       btn.querySelector('.icon-close')?.classList.toggle('hidden', open);
     });
