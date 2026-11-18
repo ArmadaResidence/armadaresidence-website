@@ -7,9 +7,27 @@
  * dataLayer: offer_view / offer_click (src/lib/offers.ts) — slug, category and placement only.
  */
 import Icon from './Icon.astro';
+import OfferPattern from './OfferPattern.astro';
+import OfferWhatsApp from './OfferWhatsApp.astro';
 import Photo from './Photo.astro';
-import { localePath, photoProps, type Locale } from '@lib/content';
-import { diningOfferPrice, offerAnchor, offerCover, offerCta, offerHasRuntimePrice, offersText, offerText, offerTitle, offerValidity, type Offer } from '@lib/offers-data';
+import { localePath, offersPageLive, photoProps, type Locale } from '@lib/content';
+import {
+  celebrationsLive,
+  diningOfferPrice,
+  isPackages,
+  offerAnchor,
+  offerCover,
+  offerCta,
+  offerHasRuntimePrice,
+  offerShort,
+  offersText,
+  offerText,
+  offerTitle,
+  offerValidity,
+  packageName,
+  packagePrice,
+  type Offer,
+} from '@lib/offers-data';
 
 interface Props {
   locale: Locale;
@@ -29,6 +47,17 @@ const validity = offerValidity(locale, o);
 const price = diningOfferPrice(locale, o);
 const terms = offerText(locale, o, 'terms');
 const Heading = level === 2 ? 'h2' : 'h3';
+// «باقات بسعر خاص» (18 Nov 2026), the compact card of the home and branch pages: the short text, each package's name and
+// price (the «بدلًا من» price struck through, and in the screen-reader text), «راسلنا على واتساب» and «تفاصيل الباقات» —
+// to its card on /celebrations/ while it is listed there, else on /offers/; the brand pattern when it has no cover
+const pk = isPackages(o);
+const details = !pk
+  ? null
+  : celebrationsLive && o.show_celebrations && placement !== 'celebrations'
+    ? `${localePath(locale, '/celebrations/')}#${offerAnchor(o)}`
+    : offersPageLive && o.show_offers && placement !== 'offers'
+      ? `${localePath(locale, '/offers/')}#${offerAnchor(o)}`
+      : null;
 ---
 
 <article
@@ -37,12 +66,37 @@ const Heading = level === 2 ? 'h2' : 'h3';
   data-offer={o.slug}
   data-offer-category={o.category}
   data-offer-placement={placement}
+  data-offer-kind={pk ? 'packages' : undefined}
   data-offer-until={o.valid_to ?? undefined}
 >
   {cover && <Photo {...photoProps(locale, cover)} sizes="(min-width: 1024px) 380px, (min-width: 768px) 50vw, 100vw" imgClass="w-full h-auto" />}
+  {!cover && pk && <OfferPattern class="aspect-[3/2]" />}
   <div class="p-6 flex flex-col gap-3 flex-1">
     <Heading class="text-xl font-bold text-midnight">{offerTitle(locale, o)}</Heading>
-    <p class="text-ink-muted leading-relaxed">{offerText(locale, o, 'description')}</p>
+    <p class="text-ink-muted leading-relaxed">{pk ? offerShort(locale, o) : offerText(locale, o, 'description')}</p>
+    {
+      pk && (
+        <ul class="space-y-1 text-sm" aria-label={t.packages_label} data-offer-packages>
+          {(o.packages ?? []).filter((p) => p.price != null).map((p) => {
+            const pr = packagePrice(locale, p)!;
+            return (
+              <li class="flex flex-wrap items-baseline justify-between gap-x-3" data-package>
+                <span class="font-semibold text-midnight">{packageName(locale, p)}</span>
+                <span class="flex items-baseline gap-2" data-package-price>
+                  <span class="font-bold text-midnight">{pr.price}</span>
+                  {pr.was && (
+                    <>
+                      <s class="text-ink-muted" aria-hidden="true">{pr.was}</s>
+                      <span class="sr-only">{pr.wasLine}</span>
+                    </>
+                  )}
+                </span>
+              </li>
+            );
+          })}
+        </ul>
+      )
+    }
     {offerHasRuntimePrice(o) && <p class="text-sm font-semibold text-midnight min-h-5" data-offer-price={o.slug} data-template={t.from_line} aria-live="polite"></p>}
     {price && <p class="text-sm font-semibold text-midnight" data-offer-dining-price>{price}</p>}
     {validity && <p class="text-sm text-ink-muted">{validity}</p>}
@@ -67,6 +121,19 @@ const Heading = level === 2 ? 'h2' : 'h3';
           <summary class="cursor-pointer font-semibold text-midnight">{t.terms}</summary>
           <p class="mt-2 whitespace-pre-line leading-relaxed">{terms}</p>
         </details>
+      )
+    }
+    {
+      pk && (
+        <div class="mt-auto flex flex-wrap items-center gap-x-5 gap-y-3 pt-1">
+          {o.cta === 'whatsapp' && <OfferWhatsApp locale={locale} offer={o} placement={placement} />}
+          {details && (
+            <a href={details} class="inline-flex items-center gap-2 text-sm font-semibold link-bronze" data-offer-details>
+              <span>{t.package_details}</span>
+              <Icon name="arrow" size={14} class="icon-arrow rtl:rotate-180" />
+            </a>
+          )}
+        </div>
       )
     }
     {

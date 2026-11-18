@@ -9,8 +9,8 @@ import { JOB_COLS, fail, withRunLinks, type MediaJob, type Saved } from './api';
 import { west } from './format.ts';
 
 export type OfferCategory = 'individuals' | 'b2b' | 'dining';
-export type OfferKind = 'none' | 'percent' | 'fixed_price' | 'free_breakfast' | 'stay_pay';
-export type OfferCta = 'book' | 'quote' | 'menu' | 'none';
+export type OfferKind = 'none' | 'percent' | 'fixed_price' | 'free_breakfast' | 'stay_pay' | 'packages';
+export type OfferCta = 'book' | 'quote' | 'menu' | 'whatsapp' | 'none';
 export type OfferState = 'draft' | 'published' | 'scheduled' | 'expired' | 'archived';
 export type QuoteRequest = 'b2b-rates' | 'umrah-group' | 'corporate' | 'event';
 
@@ -49,16 +49,44 @@ export interface OfferFields {
   show_partners: boolean;
   show_menu: boolean;
   show_bar: boolean;
+  /** «يظهر في المناسبات» (18 Nov 2026): /celebrations/ — every category */
+  show_celebrations: boolean;
+  /** «باقات بسعر خاص» (18 Nov 2026): the short text, 1–4 packages, the common note (a packages offer only) */
+  short_ar: string;
+  short_en: string;
+  packages: OfferPackage[];
+  note_ar: string;
+  note_en: string;
   /** «للأعضاء فقط» (3 Nov 2026): set through offer_set_audience after a save */
   audience?: 'all' | 'members';
 }
+/** one package of a «باقات بسعر خاص» offer: its own price (SAR, VAT included) and the optional «بدلًا من» price */
+export interface OfferPackage {
+  name_ar: string;
+  name_en: string;
+  price: number | null;
+  was_price: number | null;
+  items_ar: string[];
+  items_en: string[];
+  choice_ar: string;
+  choice_en: string;
+}
+export const PACKAGES_MAX = 4;
+export const PACKAGE_ITEMS_MAX = 12;
+export const blankPackage = (): OfferPackage => ({ name_ar: '', name_en: '', price: null, was_price: null, items_ar: [], items_en: [], choice_ar: '', choice_en: '' });
+/** the items as the form edits them: one per line */
+export const itemsText = (a: string[]): string => (a ?? []).join('\n');
+export const textItems = (t: string): string[] => t.split('\n').map((x) => x.trim()).filter(Boolean);
 export type StayPayMode = 'per_booking' | 'per_n';
 export const STAY_PAY_MODE_LABELS: Record<StayPayMode, string> = { per_booking: 'ليلة واحدة لكل حجز', per_n: 'ليلة لكل N ليالٍ' };
 export interface OfferMissing {
   code: 'title_ar' | 'title_en' | 'description_ar' | 'description_en' | 'cover' | 'percent' | 'fixed_price' | 'stay_nights' | 'venue'
-    | 'expired' | 'prices_off' | 'bar_taken' | 'code_taken';
+    | 'expired' | 'prices_off' | 'bar_taken' | 'code_taken' | 'short_ar' | 'short_en' | 'packages' | 'package' | 'note';
   branch?: string;
   title_ar?: string;
+  /** a package's missing part: its number (from 1) and the field */
+  index?: number;
+  field?: 'name_ar' | 'name_en' | 'price' | 'items_ar' | 'items_en' | 'choice';
 }
 export interface Offer extends OfferFields {
   id: string;
@@ -121,15 +149,16 @@ export const CATEGORY_LABELS: Record<OfferCategory, string> = { individuals: 'ع
 export const STATE_LABELS: Record<OfferState, string> = { draft: 'مسودة', published: 'منشور', scheduled: 'مجدول', expired: 'منتهٍ', archived: 'مؤرشف' };
 export const STATE_CHIP: Record<OfferState, string> = { draft: 'chip-request', published: 'chip-confirmed', scheduled: 'chip-request', expired: 'chip-test', archived: 'chip-flag' };
 /** the type select of an individuals offer: «كود خصم» = a promo code with a percent or fixed-price effect */
-export type TypeChoice = 'percent' | 'fixed_price' | 'free_breakfast' | 'stay_pay' | 'code';
+export type TypeChoice = 'percent' | 'fixed_price' | 'free_breakfast' | 'stay_pay' | 'code' | 'packages';
 export const TYPE_LABELS: Record<TypeChoice, string> = {
   percent: 'خصم بنسبة',
   fixed_price: 'سعر ثابت لليلة',
   free_breakfast: 'إفطار مجاني',
   stay_pay: 'ليلة مجانية (أقم N وادفع N−1)',
   code: 'كود خصم',
+  packages: 'باقات بسعر خاص',
 };
-export const CTA_LABELS: Record<OfferCta, string> = { book: 'احجز في الفرع', quote: 'اطلب عرض سعر', menu: 'افتح المنيو', none: 'بلا زر' };
+export const CTA_LABELS: Record<OfferCta, string> = { book: 'احجز في الفرع', quote: 'اطلب عرض سعر', menu: 'افتح المنيو', whatsapp: 'راسلنا على واتساب', none: 'بلا زر' };
 export const QUOTE_LABELS: Record<QuoteRequest, string> = {
   'b2b-rates': 'أسعار الشركات',
   'umrah-group': 'العمرة والمجموعات',
@@ -142,6 +171,7 @@ export const PLACEMENTS: { key: keyof OfferFields; label: string; cats: OfferCat
   { key: 'show_branch', label: 'صفحة الفرع (وقسم المطعم)', cats: ['individuals', 'dining'] },
   { key: 'show_partners', label: 'صفحات الشركاء /partners/', cats: ['b2b'] },
   { key: 'show_menu', label: 'المنيو /menu/', cats: ['dining'] },
+  { key: 'show_celebrations', label: 'صفحة المناسبات /celebrations/', cats: ['individuals', 'b2b', 'dining'] },
   // the announcement bar is one system since 3 Nov 2026: «المحتوى» → «شريط الإعلان» (an offer can be featured there)
 ];
 export const MISSING_LABELS: Record<OfferMissing['code'], string> = {
@@ -158,7 +188,25 @@ export const MISSING_LABELS: Record<OfferMissing['code'], string> = {
   prices_off: 'إظهار الأسعار مطفأ في الفرع (الخصم يُعرض بجانب السعر الأساسي)',
   bar_taken: 'شريط الإعلان محجوز لعرض آخر',
   code_taken: 'الكود مستخدم في عرض آخر',
+  short_ar: 'النص المختصر بالعربية',
+  short_en: 'النص المختصر بالإنجليزية',
+  packages: 'باقة واحدة على الأقل',
+  package: 'باقة',
+  note: 'الملاحظة العامة باللغتين (أو اتركها فارغة في الاثنتين)',
 };
+const PACKAGE_FIELD: Record<NonNullable<OfferMissing['field']>, string> = {
+  name_ar: 'الاسم بالعربية',
+  name_en: 'الاسم بالإنجليزية',
+  price: 'السعر',
+  items_ar: 'المحتويات بالعربية',
+  items_en: 'المحتويات بالإنجليزية',
+  choice: 'ملاحظة الاختيار باللغتين',
+};
+/** one missing part in Arabic (a package's part names its number) */
+export function missingText(m: OfferMissing): string {
+  if (m.code === 'package') return `الباقة ${m.index ?? ''}: ${m.field ? PACKAGE_FIELD[m.field] : ''}`;
+  return MISSING_LABELS[m.code];
+}
 export const WARNING_LABELS: Record<string, string> = {
   no_placement: 'العرض على الموقع لكن لم تُختر صفحة يظهر فيها.',
   no_terms: 'عرض بخصم بلا شروط بالعربية والإنجليزية.',
@@ -193,6 +241,7 @@ export const PAGE_LABELS: Record<Exclude<PopupPage, 'all'>, string> = {
 export function effectText(o: Pick<OfferFields, 'category' | 'kind' | 'percent' | 'fixed_price' | 'stay_nights' | 'stay_pay_mode' | 'promo_code' | 'dining_price'>, sar: (n: number) => string): string {
   if (o.category === 'b2b') return 'بلا أسعار';
   if (o.category === 'dining') return o.dining_price ? `السعر ${sar(o.dining_price)}` : 'بلا سعر';
+  if (o.kind === 'packages') return 'باقات بسعر خاص · لا تغيّر سعر الغرفة';
   const code = o.promo_code ? ` · بالكود ${o.promo_code}` : '';
   switch (o.kind) {
     case 'percent': return `خصم ${o.percent}٪${code}`;
@@ -216,7 +265,8 @@ export const blankOffer = (category: OfferCategory, branches: string[]): OfferFi
   stay_pay_mode: 'per_booking', promo_code: null, room_types: [], min_nights: 1, dining_price: null,
   cta: category === 'individuals' ? 'book' : category === 'b2b' ? 'quote' : 'menu', quote_request: null, whatsapp: category === 'b2b',
   whatsapp_prefill_ar: '', whatsapp_prefill_en: '', show_site: true, show_home: false, show_offers: category !== 'dining', show_branch: category === 'dining',
-  show_partners: false, show_menu: category === 'dining', show_bar: false,
+  show_partners: false, show_menu: category === 'dining', show_bar: false, show_celebrations: false,
+  short_ar: '', short_en: '', packages: [], note_ar: '', note_en: '',
 });
 export const blankPopup = (offerId: string): PopupFields => ({
   offer_id: offerId, name: '', show_image: true, title_ar: '', title_en: '', text_ar: '', text_en: '', button_ar: '', button_en: '',

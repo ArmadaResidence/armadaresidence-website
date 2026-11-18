@@ -19,10 +19,10 @@ import { execFileSync } from 'node:child_process';
 import { pathToFileURL } from 'node:url';
 
 // the suite, in the order check-all runs it
-export const STATIC_CHECKS = ['typecheck', 'admin-digits-check', 'admin-format-check', 'admin-sidebar-check', 'admin-audit-check', 'admin-rooms-check', 'admin-hub-check', 'auth-emails-check', 'whatsapp-check', 'email-print-check', 'offers-engine-check', 'turnstile-check', 'deploy-alert-check', 'wa-automation-check', 'storage-backup-check', 'hub-controls-check', 'hub-webhook-check', 'hub-privacy-check', 'hub-email-check', 'hub-retrieval-check', 'hub-seed-check', 'hub-machine-check', 'hub-guard-check', 'hub-copy-check', 'hub-adapter-check', 'hub-fixtures-check', 'hub-eval-check', 'hub-licence-check', 'hub-learn-check', 'hub-speed-check', 'hub-failure-check', 'hub-team-check', 'hub-media-check', 'hub-send-watch-check', 'hub-booking-check', 'hub-departures-check', 'hub-standby-check', 'hub-dates-check', 'hub-fix3-check', 'hub-fix4-check', 'hub-h10-check'];
-export const BROWSER_CHECKS = ['booking-nav-check', 'drawer-check', 'booking-whatsapp-check', 'datepicker-check', 'click-id-check', 'team-device-check', 'motion-check', 'booking-instant-check', 'partners-form-check', 'careers-form-check', 'dining-site-check', 'gallery-site-check', 'offers-site-check', 'blog-site-check', 'faq-site-check', 'content-site-check', 'club-site-check', 'home-sections-check', 'consent-check', 'partners-button-check', 'theme-check', 'hero-video-check', 'hero-slides-check', 'mobile-forms-check', 'a11y-check'];
+export const STATIC_CHECKS = ['typecheck', 'admin-digits-check', 'admin-format-check', 'admin-sidebar-check', 'admin-audit-check', 'admin-rooms-check', 'admin-offers-check', 'admin-hub-check', 'auth-emails-check', 'whatsapp-check', 'email-print-check', 'offers-engine-check', 'turnstile-check', 'deploy-alert-check', 'wa-automation-check', 'storage-backup-check', 'hub-controls-check', 'hub-webhook-check', 'hub-privacy-check', 'hub-email-check', 'hub-retrieval-check', 'hub-seed-check', 'hub-machine-check', 'hub-guard-check', 'hub-copy-check', 'hub-adapter-check', 'hub-fixtures-check', 'hub-eval-check', 'hub-licence-check', 'hub-learn-check', 'hub-speed-check', 'hub-failure-check', 'hub-team-check', 'hub-media-check', 'hub-send-watch-check', 'hub-booking-check', 'hub-departures-check', 'hub-standby-check', 'hub-dates-check', 'hub-fix3-check', 'hub-fix4-check', 'hub-h10-check', 'hub-packages-check'];
+export const BROWSER_CHECKS = ['booking-nav-check', 'drawer-check', 'booking-whatsapp-check', 'datepicker-check', 'click-id-check', 'team-device-check', 'motion-check', 'booking-instant-check', 'partners-form-check', 'careers-form-check', 'dining-site-check', 'gallery-site-check', 'offers-site-check', 'celebrations-site-check', 'blog-site-check', 'faq-site-check', 'content-site-check', 'club-site-check', 'home-sections-check', 'consent-check', 'partners-button-check', 'theme-check', 'hero-video-check', 'hero-slides-check', 'mobile-forms-check', 'a11y-check'];
 // the static checks that open a browser (the dashboard's sidebar and «السجل» pages, the emails' print layout): CI only
-export const STATIC_BROWSER_CHECKS = ['admin-sidebar-check', 'admin-audit-check', 'admin-rooms-check', 'admin-hub-check', 'email-print-check'];
+export const STATIC_BROWSER_CHECKS = ['admin-sidebar-check', 'admin-audit-check', 'admin-rooms-check', 'admin-offers-check', 'admin-hub-check', 'email-print-check'];
 // measured with the reader's system fonts (the emails name 'Segoe UI', Tahoma, Arial after IBM Plex Sans Arabic, which
 // readers do not have): in CI on a Windows runner, as on the developer's machine — Linux has none of those fonts
 export const CI_WINDOWS_CHECKS = ['email-print-check'];
@@ -34,7 +34,7 @@ export const FAST_CHECKS = STATIC_CHECKS.filter((c) => !STATIC_BROWSER_CHECKS.in
 export const CI_SHARDS = {
   'booking-1': ['booking-nav-check', 'drawer-check', 'dining-site-check', 'gallery-site-check', 'blog-site-check', 'faq-site-check', 'content-site-check'],
   'booking-2': ['booking-whatsapp-check', 'datepicker-check', 'click-id-check', 'team-device-check'],
-  'motion-offers': ['motion-check', 'booking-instant-check', 'offers-site-check'],
+  'motion-offers': ['motion-check', 'booking-instant-check', 'offers-site-check', 'celebrations-site-check'],
   'forms': ['partners-form-check', 'careers-form-check', 'club-site-check', 'consent-check', 'partners-button-check'],
   'home-phones': ['home-sections-check', 'theme-check', 'hero-video-check', 'hero-slides-check', 'mobile-forms-check'],
   'a11y': ['a11y-check'],
@@ -137,11 +137,12 @@ const RULES = [
     name: 'offers',
     sampleQa: true,
     test: (f) =>
-      comp(['OfferCard', 'OfferList', 'OffersSection', 'OfferBar', 'OfferPopup', 'Header', 'BookingForm']).test(f) ||
+      comp(['OfferCard', 'OfferList', 'OffersSection', 'OfferBar', 'OfferPopup', 'OfferPackages', 'OfferPattern', 'OfferWhatsApp', 'Header', 'BookingForm']).test(f) ||
       lib(['offers', 'offers-data', 'popup', 'drawer', 'prices']).test(f) ||
       f === 'src/pages/[...lang]/offers.astro' ||
+      f === 'src/pages/[...lang]/celebrations.astro' ||
       f === 'src/layouts/Base.astro',
-    checks: ['offers-site-check'],
+    checks: ['offers-site-check', 'celebrations-site-check'],
   },
   {
     // «المدونة» on the site (3 Nov 2026): the list, the article page, the RSS feed, the article library and its

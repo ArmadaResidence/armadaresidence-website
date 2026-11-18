@@ -2,7 +2,7 @@
 import { bookingPath, branches, contact, localePath, offersPageLive, otherLocale, siteName, ui, type BookingContext, type Locale } from '@lib/content';
 import Icon from './Icon.astro';
 import { galleryLive } from '@lib/gallery';
-import { siteBar } from '@lib/offers-data';
+import { celebrationsLive, siteBar } from '@lib/offers-data';
 import OfferBar from './OfferBar.astro';
 
 interface Props {
@@ -31,6 +31,8 @@ const nav: { key: keyof typeof t.nav; path: string }[] = [
   { key: 'discover-taif', path: '/discover-taif/' },
   { key: 'blog', path: '/blog/' },
   ...(offersPageLive ? [{ key: 'offers' as const, path: '/offers/' }] : []),
+  // «المناسبات» (Ahmed, 18 Nov 2026): next to «العروض», only while /celebrations/ lists a live offer
+  ...(celebrationsLive ? [{ key: 'celebrations' as const, path: '/celebrations/' }] : []),
   { key: 'contact', path: '/contact/' },
   { key: 'policies', path: '/policies/' },
 ];

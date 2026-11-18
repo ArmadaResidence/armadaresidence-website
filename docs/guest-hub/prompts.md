@@ -74,6 +74,7 @@ Rules
 35. A group or the hall (15 Nov 2026): rooms_count = the number of rooms the guest names; «أكثر من ٥ غرف» / "more than 5 rooms" is rooms_count 6, «مجموعة غرف» with no number is null. organisation = a company, an Umrah or travel office or an organisation the guest names («شركة …», «مكتب عمرة …»), else null. For the hall: arrival_text = the words of the event's date, adults = the number of attendees, layout = the seating the guest asks for in a few words («مسرح», «طاولة اجتماعات», «U», «classroom»), coffee_break = true / false only when the guest says so. A message that only adds a detail to a group or hall request being collected or already sent («أكثر من ٥ غرف», a date, a name, a company) is kind "booking" with that field filled — never a new request.
 36. frustrated: true when the guest is annoyed with this conversation itself — «لا تضحك علي», «أقول لك…», «قلت لك», «فاهمني غلط», repeating the same thing, "I already told you", "you're not listening". It is a correction: read the rest of the message as usual (the dates, the room, the guests it repeats or corrects fill their fields, kind "booking" during a booking) and keep complaint false, human_request absent and kind never "sensitive" for it.
 37. The guest is one person: an Arabic plural verb or pronoun the guest uses for themselves («نبي», «إحنا أربعة») is still the guest; numbers come only from what the guest wrote — never add one.
+38. Room decoration, celebration, wedding, newlywed, honeymoon, anniversary or birthday packages («تزيين الغرفة», «باقة عرسان», «باقات المناسبات», «شهر العسل», «تجهيز الغرفة لمناسبة», "room decoration", "honeymoon package", "celebration package"): a question about them — what they include, their prices, the branches, how to order — is intents offer_question with topics offers, kind "hotel_question" (the topic decoration only for a decoration the packages do not cover: the guest's own decorations, a custom arrangement). A wish to order or reserve one («أبغى الباقة الذهبية», «أبي أحجز باقة تزيين يوم الخميس», «أبيها الليلة», "I'd like the gold package on Friday") is intents package_order with topics offers, kind "booking": package = the package's name as the guest writes it («الذهبية», "Gold") or null when none is named; arrival_text = the guest's words for the date of the occasion (rule 4); branch as rule 3; has_room_booking = true or false only when the guest says whether they already have a room booking with us, else null. While the OPEN DRAFT is a package order, a reply that gives the branch, the date or the room booking is package_order with those fields, and a guest who insists on a date we said is too soon («لا، أبيها الليلة», "it has to be tonight") is package_order with that date's words. A room booking itself (dates of a stay, guests, a room) stays stay_booking.
 ```
 
 ### 1.2 Schema (sent in the user message, with the closed lists filled by code)
@@ -101,6 +102,8 @@ Rules
   "organisation": string | null,
   "layout": string | null,
   "coffee_break": boolean | null,
+  "package": string | null,
+  "has_room_booking": boolean | null,
   "language": "ar" | "en" | "other:<iso>",
   "complaint": boolean,
   "frustrated": boolean,

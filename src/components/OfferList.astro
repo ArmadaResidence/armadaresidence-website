@@ -5,8 +5,9 @@
  * live in src/lib/offers.ts (loaded only on pages that show an offer).
  */
 import OfferCard from './OfferCard.astro';
+import OfferPackages from './OfferPackages.astro';
 import type { Locale } from '@lib/content';
-import type { Offer } from '@lib/offers-data';
+import { isPackages, type Offer } from '@lib/offers-data';
 
 interface Props {
   locale: Locale;
@@ -17,9 +18,11 @@ interface Props {
   anchors?: boolean;
   /** two columns at most (a list inside a page column) */
   narrow?: boolean;
+  /** a «باقات بسعر خاص» offer in full, across the whole row (/offers/, /celebrations/ — 18 Nov 2026) */
+  full?: boolean;
   class?: string;
 }
-const { locale, offers, placement, level = 3, anchors = false, narrow = false, class: className = '' } = Astro.props;
+const { locale, offers, placement, level = 3, anchors = false, narrow = false, full = false, class: className = '' } = Astro.props;
 const endpoint = import.meta.env.PUBLIC_BOOKING_ENDPOINT ?? '';
 const supaUrl = (() => {
   try {
@@ -34,11 +37,17 @@ const supaKey = import.meta.env.PUBLIC_SUPABASE_ANON_KEY ?? '';
 {
   offers.length > 0 && (
     <ul class:list={[narrow ? 'grid gap-6 sm:grid-cols-2' : 'grid gap-6 md:grid-cols-2 lg:grid-cols-3', className]} data-offer-list data-supa-url={supaUrl || undefined} data-supa-key={supaKey || undefined}>
-      {offers.map((o) => (
-        <li class="flex">
-          <OfferCard locale={locale} offer={o} placement={placement} level={level} anchor={anchors} />
-        </li>
-      ))}
+      {offers.map((o) =>
+        full && isPackages(o) ? (
+          <li class:list={['flex', narrow ? 'sm:col-span-2' : 'md:col-span-2 lg:col-span-3']}>
+            <OfferPackages locale={locale} offer={o} placement={placement} level={level} anchor={anchors} />
+          </li>
+        ) : (
+          <li class="flex">
+            <OfferCard locale={locale} offer={o} placement={placement} level={level} anchor={anchors} />
+          </li>
+        ),
+      )}
     </ul>
   )
 }

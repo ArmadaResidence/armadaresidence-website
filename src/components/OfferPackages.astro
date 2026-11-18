@@ -1,0 +1,115 @@
+---
+/**
+ * A «باقات بسعر خاص» offer in full (18 Nov 2026 — /celebrations/ and /offers/): the cover (or the brand pattern, never a
+ * broken image), the title, the short text, the validity, then the packages as columns on desktop and stacked on a
+ * phone — each with its name, its price (Western digits, through the riyal formatter) and the «بدلًا من» price struck
+ * through beside it (also in the screen-reader text), its items and its choice note — then the common note, the terms
+ * and «راسلنا على واتساب» (the branch chooser of the offer's branches). No booking, no room price: it never touches one.
+ * dataLayer: offer_view / offer_click (src/lib/offers.ts) — slug, category, placement, cta.
+ */
+import Icon from './Icon.astro';
+import OfferPattern from './OfferPattern.astro';
+import OfferWhatsApp from './OfferWhatsApp.astro';
+import Photo from './Photo.astro';
+import { photoProps, type Locale } from '@lib/content';
+import {
+  offerAnchor,
+  offerCover,
+  offerNote,
+  offerShort,
+  offersText,
+  offerText,
+  offerTitle,
+  offerValidity,
+  packageChoice,
+  packageItems,
+  packageName,
+  packagePrice,
+  type Offer,
+} from '@lib/offers-data';
+
+interface Props {
+  locale: Locale;
+  offer: Offer;
+  placement: string;
+  level?: 2 | 3;
+  anchor?: boolean;
+}
+const { locale, offer: o, placement, level = 2, anchor = false } = Astro.props;
+const t = offersText(locale);
+const cover = offerCover(o);
+const packages = (o.packages ?? []).filter((p) => p.price != null);
+const note = offerNote(locale, o);
+const terms = offerText(locale, o, 'terms');
+const validity = offerValidity(locale, o);
+const Heading = level === 2 ? 'h2' : 'h3';
+const Sub = level === 2 ? 'h3' : 'h4';
+const cols = packages.length >= 4 ? 'lg:grid-cols-4 md:grid-cols-2' : packages.length === 3 ? 'md:grid-cols-3' : packages.length === 2 ? 'md:grid-cols-2' : '';
+---
+
+<article
+  id={anchor ? offerAnchor(o) : undefined}
+  class="offer-card offer-packages w-full bg-white border border-line rounded-card overflow-hidden scroll-mt-28"
+  data-offer={o.slug}
+  data-offer-category={o.category}
+  data-offer-kind="packages"
+  data-offer-placement={placement}
+  data-offer-until={o.valid_to ?? undefined}
+>
+  {
+    cover ? (
+      <Photo {...photoProps(locale, cover)} sizes="(min-width: 1152px) 1152px, 100vw" imgClass="w-full h-44 md:h-64 object-cover" />
+    ) : (
+      <OfferPattern class="h-44 md:h-64" />
+    )
+  }
+  <div class="p-6 md:p-8">
+    <Heading class="text-2xl md:text-3xl font-bold text-midnight">{offerTitle(locale, o)}</Heading>
+    <p class="mt-3 text-ink-muted leading-relaxed md:text-lg">{offerShort(locale, o)}</p>
+    {validity && <p class="mt-2 text-sm text-ink-muted">{validity}</p>}
+
+    <ul class:list={['mt-8 grid gap-5', cols]} aria-label={t.packages_label} data-offer-packages>
+      {
+        packages.map((p) => {
+          const pr = packagePrice(locale, p)!;
+          const choice = packageChoice(locale, p);
+          return (
+            <li class="flex flex-col rounded-card border border-line bg-porcelain p-5" data-package>
+              <Sub class="text-lg font-bold text-midnight">{packageName(locale, p)}</Sub>
+              <p class="mt-2 flex flex-wrap items-baseline gap-x-3 gap-y-1" data-package-price>
+                <span class="text-2xl font-bold text-midnight">{pr.price}</span>
+                {pr.was && (
+                  <>
+                    <s class="text-ink-muted" aria-hidden="true">{pr.was}</s>
+                    <span class="sr-only">{pr.wasLine}</span>
+                  </>
+                )}
+              </p>
+              <ul class="mt-4 space-y-2 text-sm text-ink leading-relaxed">
+                {packageItems(locale, p).map((item) => (
+                  <li class="flex items-start gap-2">
+                    <Icon name="check" size={16} class="mt-1 shrink-0 text-bronze" />
+                    <span>{item}</span>
+                  </li>
+                ))}
+              </ul>
+              {choice && <p class="mt-4 border-t border-line pt-3 text-sm text-ink-muted leading-relaxed">{choice}</p>}
+            </li>
+          );
+        })
+      }
+    </ul>
+
+    {note && <p class="mt-6 whitespace-pre-line text-sm text-ink-muted leading-relaxed" data-offer-note>{note}</p>}
+    {
+      terms && (
+        <details class="mt-4 text-sm text-ink-muted">
+          <summary class="cursor-pointer font-semibold text-midnight">{t.terms}</summary>
+          <p class="mt-2 whitespace-pre-line leading-relaxed">{terms}</p>
+        </details>
+      )
+    }
+    {o.cta === 'whatsapp' && <div class="mt-6"><OfferWhatsApp locale={locale} offer={o} placement={placement} block /></div>}
+  </div>
+</article>
+

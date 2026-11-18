@@ -205,6 +205,10 @@ select pg_temp._check('P9 an ended packages offer leaves the manifest',
   not exists (select 1 from jsonb_array_elements(public.offers_site_manifest() -> 'offers') e where e ->> 'slug' = 'qa-celebrations')
   and (select internal.offer_state(o) = 'expired' from public.offers o where id = pg_temp._id('pk')));
 
+-- ── P10 the Guest Hub's package-order draft (migration 20261118600000) ──
+select pg_temp._root();
+select pg_temp._check('P10 hub_drafts takes the kind package', (select pg_get_constraintdef(c.oid) like '%''package''%' from pg_constraint c where c.conname = 'hub_drafts_kind_check'));
+
 select pg_temp._root();
 select n, test, ok, detail from _r order by n;
 rollback;

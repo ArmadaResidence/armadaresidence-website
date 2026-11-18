@@ -69,6 +69,14 @@ const COPY_CASES = {
   // H9 (16 Nov 2026): the two fixed replies of the departure check (stay_checkout_check)
   'Departure check — leaving as planned (H9, Ahmed 16 Nov 2026: «سأغادر في موعدي» or the same answer typed)': 'departure_leave',
   'Departure check — extending the stay (H9, Ahmed 16 Nov 2026: «أرغب في التمديد» or the same answer typed; then the hand-off tagged «تمديد»)': 'departure_extend',
+  // 18 Nov 2026 (Ahmed): a celebration package ordered in the chat
+  'Package order — the lead (18 Nov 2026, Ahmed: «باقات بسعر خاص» ordered in the chat; the questions below follow it in the same message, only the missing ones)': 'package_ask_lead',
+  'Package order — the lead with no package named': 'package_ask_lead_any',
+  'Package order — the branch': 'package_ask_branch',
+  'Package order — the date': 'package_ask_date',
+  'Package order — the room booking': 'package_ask_booking',
+  'Package order — less than 24 hours away (the team only if the guest insists)': 'package_notice',
+  'Package order — sent to reception (the hand-off notice of the order)': 'package_handed',
   // copy.md §4.2
   'Confirmed (after the official template)': 'result_confirmed',
   'Request (after the official template)': 'result_request',

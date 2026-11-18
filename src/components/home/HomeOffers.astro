@@ -8,10 +8,12 @@
  * /partners/* and the hall page (CLAUDE.md §5). The runtime per-night line, offer_view / offer_click: src/lib/offers.ts.
  */
 import Icon from '../Icon.astro';
+import OfferPattern from '../OfferPattern.astro';
+import OfferWhatsApp from '../OfferWhatsApp.astro';
 import Photo from '../Photo.astro';
 import SectionHead from './SectionHead.astro';
 import { branchContact, branchShort, fill, localePath, offersPageLive, photoProps, ui, waHref, type Locale } from '@lib/content';
-import { offerCover, offerCta, offerHasRuntimePrice, offersFor, offersText, offerText, offerTitle } from '@lib/offers-data';
+import { celebrationsLive, isPackages, offerAnchor, offerCover, offerCta, offerHasRuntimePrice, offersFor, offerShort, offersText, offerText, offerTitle, packageName, packagePrice } from '@lib/offers-data';
 
 interface Props {
   locale: Locale;
@@ -42,20 +44,57 @@ const supaKey = import.meta.env.PUBLIC_SUPABASE_ANON_KEY ?? '';
           const one = o.branches.length === 1 ? o.branches[0] : null;
           const wa = o.whatsapp && o.category !== 'b2b';
           const prefill = offerText(locale, o, 'whatsapp_prefill') || fill(cta.whatsapp_prefill_branch, { branch: one ? branchShort(locale, one) : '' });
+          // «باقات بسعر خاص» (18 Nov 2026): the short text, each package's price («بدلًا من» struck through), «راسلنا على
+          // واتساب» (the chooser of its branches) and «تفاصيل الباقات»; the brand pattern without a cover
+          const pk = isPackages(o);
+          const details = pk ? (celebrationsLive && o.show_celebrations ? `${localePath(locale, '/celebrations/')}#${offerAnchor(o)}` : offersPageLive && o.show_offers ? `${localePath(locale, '/offers/')}#${offerAnchor(o)}` : null) : null;
           return (
             <li class="flex">
-              <article class="w-full bg-white border border-line rounded-card overflow-hidden flex flex-col md:flex-row" data-offer={o.slug} data-offer-category={o.category} data-offer-placement="home" data-offer-until={o.valid_to ?? undefined}>
+              <article class="w-full bg-white border border-line rounded-card overflow-hidden flex flex-col md:flex-row" data-offer={o.slug} data-offer-category={o.category} data-offer-placement="home" data-offer-kind={pk ? 'packages' : undefined} data-offer-until={o.valid_to ?? undefined}>
                 {cover && (
                   <div class="md:w-2/5 shrink-0">
                     <Photo {...photoProps(locale, cover)} sizes="(min-width: 1024px) 230px, (min-width: 768px) 20vw, 100vw" class="block aspect-[3/2] md:aspect-auto md:h-full" imgClass="w-full h-full object-cover" />
                   </div>
                 )}
+                {!cover && pk && (
+                  <div class="md:w-2/5 shrink-0">
+                    <OfferPattern class="aspect-[3/2] md:aspect-auto md:h-full" />
+                  </div>
+                )}
                 <div class="p-6 flex flex-col gap-3 flex-1">
                   <p><span class="inline-block text-xs font-semibold bg-porcelain text-bronze-text px-2.5 py-1 rounded">{t.home_label}</span></p>
                   <h3 class="text-xl font-bold text-midnight">{offerTitle(locale, o)}</h3>
-                  <p class="text-ink-muted leading-relaxed">{offerText(locale, o, 'description')}</p>
+                  <p class="text-ink-muted leading-relaxed">{pk ? offerShort(locale, o) : offerText(locale, o, 'description')}</p>
+                  {pk && (
+                    <ul class="space-y-1 text-sm" aria-label={t.packages_label} data-offer-packages>
+                      {(o.packages ?? []).filter((x) => x.price != null).map((x) => {
+                        const pr = packagePrice(locale, x)!;
+                        return (
+                          <li class="flex flex-wrap items-baseline justify-between gap-x-3" data-package>
+                            <span class="font-semibold text-midnight">{packageName(locale, x)}</span>
+                            <span class="flex items-baseline gap-2" data-package-price>
+                              <span class="font-bold text-midnight">{pr.price}</span>
+                              {pr.was && (
+                                <>
+                                  <s class="text-ink-muted" aria-hidden="true">{pr.was}</s>
+                                  <span class="sr-only">{pr.wasLine}</span>
+                                </>
+                              )}
+                            </span>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  )}
                   {offerHasRuntimePrice(o) && <p class="text-sm font-semibold text-midnight min-h-5" data-offer-price={o.slug} data-template={t.from_line} aria-live="polite"></p>}
-                  <div class="mt-auto pt-2 flex flex-wrap gap-3">
+                  <div class="mt-auto pt-2 flex flex-wrap items-center gap-3">
+                    {pk && o.cta === 'whatsapp' && <OfferWhatsApp locale={locale} offer={o} placement="home" />}
+                    {details && (
+                      <a href={details} class="inline-flex items-center gap-2 text-sm font-semibold link-bronze" data-offer-details>
+                        <span>{t.package_details}</span>
+                        <Icon name="arrow" size={14} class="icon-arrow rtl:rotate-180" />
+                      </a>
+                    )}
                     {button && (
                       <a href={button.href} class="inline-flex items-center gap-2 bg-bronze-deep text-white! font-semibold px-5 py-3 rounded hover:bg-bronze-text transition-colors" data-offer-cta={o.cta} rel={/^https?:/.test(button.href) ? 'noopener' : undefined} target={/^https?:/.test(button.href) ? '_blank' : undefined}>
                         <span>{button.label}</span>

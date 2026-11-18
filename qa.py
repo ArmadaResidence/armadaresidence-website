@@ -719,6 +719,8 @@ def main() -> int:
                     "CollectionPage": ["name", "url", "image", "inLanguage"],
                     # «من نحن» (6 Nov 2026): the page whose subject is the Organization (legalName)
                     "AboutPage": ["name", "url", "inLanguage", "mainEntity"],
+                    # «المناسبات» (18 Nov 2026): a plain WebPage, never an Offer
+                    "WebPage": ["name", "url", "inLanguage", "isPartOf"],
                 }.get(t_)
                 if req is None:
                     rep.f("json-ld", f"{path}: unexpected @type {t_}")
@@ -1559,6 +1561,18 @@ def offer_price_lines(ui: dict) -> list[str]:
         if o.get("category") == "dining" and o.get("dining_price") is not None:
             for loc in ("ar", "en"):
                 out.append(ui[loc]["offers"]["dining_price"].replace("{price}", sar_text(float(o["dining_price"]), loc)))
+        # «باقات بسعر خاص» (18 Nov 2026): each package's own price and its «بدلًا من» line (offers-data.ts → packagePrice),
+        # the «بدلًا من» line first so the bare amount inside it is removed with it; never a room price
+        if o.get("kind") == "packages":
+            for pk in o.get("packages") or []:
+                if pk.get("price") is None:
+                    continue
+                for loc in ("ar", "en"):
+                    if pk.get("was_price") is not None and float(pk["was_price"]) > float(pk["price"]):
+                        was = sar_text(float(pk["was_price"]), loc)
+                        out.append(ui[loc]["offers"]["package_instead"].replace("{price}", was))
+                        out.append(was)
+                    out.append(sar_text(float(pk["price"]), loc))
     return out
 
 

@@ -44,10 +44,15 @@ const STANDBY = jsonl('tests/hub-bank/conversations-standby.jsonl');
 const FIX3 = jsonl('tests/hub-bank/conversations-fix3.jsonl');
 // H10 (18 Nov 2026): the live review's cases (D1 requests, the context, payment, dates, the party, repetition, the notice)
 const H10 = [...jsonl('tests/hub-bank/conversations-h10.jsonl'), ...jsonl('tests/hub-bank/conversations-h10b.jsonl')];
+// 18 Nov 2026: «باقات بسعر خاص» — each item carries the offer as published («offers», or "@<id>" for another item's)
+const PACKAGES = (() => {
+  const list = jsonl('tests/hub-bank/conversations-packages.jsonl');
+  return list.map((q) => (typeof q.offers === 'string' && q.offers.startsWith('@') ? { ...q, offers: list.find((x) => x.id === q.offers.slice(1))?.offers ?? [] } : q));
+})();
 const items = [
   // q032 / q068 are retired on production (the Airport Road laundry, H6 pass 3)
   ...(['conversations', 'learning'].includes(bank) ? [] : engineItems().filter((q) => !['q032', 'q068'].includes(q.id))),
-  ...(['questions', 'learning'].includes(bank) ? [] : [...CONV, ...STANDBY, ...FIX3, ...H10]),
+  ...(['questions', 'learning'].includes(bank) ? [] : [...CONV, ...STANDBY, ...FIX3, ...H10, ...PACKAGES]),
   ...(['questions', 'conversations'].includes(bank) ? [] : LEARN),
   // --extra <file.jsonl>: more single questions (e.g. the production bank's own items)
   ...(arg('--extra') ? readFileSync(arg('--extra'), 'utf8').split(/\r?\n/).filter((l) => l.trim()).map((l) => JSON.parse(l)).map((q) => ({ ...q, extra: true })) : []),
@@ -431,7 +436,7 @@ async function one(q) {
   };
   const item = { key: q.id, unit_key: q.unit, language: q.language === 'en' ? 'en' : 'ar', messages: q.messages, context: q.context ?? {}, expect: q.expect, note: q.note ?? null };
   const deps = {
-    model: counted, knowledge: async (u, t, L, b) => knowledgeFor(u, t, L, b), offers: async () => [], adapter,
+    model: counted, knowledge: async (u, t, L, b) => knowledgeFor(u, t, L, b), offers: async () => q.offers ?? [], adapter,
     content: CONTENT, longDate: (iso, L) => longDate(CONTENT, iso, L), sarText: (n, L) => sarText(n, L),
   };
   const run = await runItem(ctx, item, deps);

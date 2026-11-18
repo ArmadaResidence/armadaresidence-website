@@ -5,7 +5,7 @@
  * (once per card and page, when half of it is seen) / offer_click — slug, category, placement and the button kind only.
  * The tabs of /offers/ (roving tabindex, arrows follow the reading direction).
  */
-import { bindOnce, onPageLoad } from './client';
+import { bindOnce, onOutsidePress, onPageLoad } from './client';
 import { money } from './prices';
 
 type DL = { dataLayer?: unknown[] };
@@ -124,7 +124,48 @@ function initTabs(root: HTMLElement) {
   document.addEventListener('astro:before-swap', () => window.removeEventListener('hashchange', fromHash), { once: true });
 }
 
+/** «راسلنا على واتساب» of a packages offer (18 Nov 2026): the branch chooser of the offer's branches — the same behaviour
+ *  as the sticky button's (whatsapp-button.ts): the first link takes the focus, Esc and × of the page close it with the
+ *  focus back on the button, a press that starts and ends outside closes it, a choice closes it behind the new tab */
+function initWa(root: HTMLElement) {
+  const btn = root.querySelector<HTMLButtonElement>('[data-offer-wa-toggle]');
+  const panel = root.querySelector<HTMLElement>('[data-offer-wa-panel]');
+  if (!btn || !panel) return;
+  const isOpen = () => btn.getAttribute('aria-expanded') === 'true';
+  const open = () => {
+    document.querySelectorAll<HTMLElement>('[data-offer-wa]').forEach((r) => r !== root && r.dispatchEvent(new CustomEvent('offer-wa-close')));
+    btn.setAttribute('aria-expanded', 'true');
+    panel.classList.remove('hidden');
+    panel.querySelector<HTMLElement>('a')?.focus();
+  };
+  const close = (refocus = false) => {
+    if (!isOpen()) return;
+    btn.setAttribute('aria-expanded', 'false');
+    panel.classList.add('hidden');
+    if (refocus) btn.focus();
+  };
+  root.addEventListener('offer-wa-close', () => close());
+  btn.addEventListener('click', () => (isOpen() ? close(true) : open()));
+  panel.addEventListener('click', (e) => {
+    if ((e.target as HTMLElement).closest('[data-wa-link]')) close();
+  });
+  const ac = new AbortController();
+  document.addEventListener('astro:before-swap', () => ac.abort(), { once: true });
+  document.addEventListener(
+    'keydown',
+    (e) => {
+      if (e.key === 'Escape' && isOpen()) {
+        e.preventDefault();
+        close(true);
+      }
+    },
+    { signal: ac.signal },
+  );
+  onOutsidePress(() => [root], () => close(), { signal: ac.signal, active: () => root.isConnected && isOpen() });
+}
+
 onPageLoad(() => {
+  document.querySelectorAll<HTMLElement>('[data-offer-wa]').forEach((r) => bindOnce(r, 'wa-bound') && initWa(r));
   document.querySelectorAll<HTMLElement>('[data-offer-list]').forEach((l) => bindOnce(l, 'offers-bound') && initList(l));
   document.querySelectorAll<HTMLElement>('[data-offer-tabs]').forEach((t) => bindOnce(t, 'tabs-bound') && initTabs(t));
 });

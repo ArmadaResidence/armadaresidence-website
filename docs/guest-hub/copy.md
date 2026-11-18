@@ -323,6 +323,13 @@ The staff alert lines (`hub_staff_alert` {{5}}, staff-facing): «تأكيد طل
 | Added to a waiting hand-off (the fallback of the model-written line) | «أضفنا ذلك إلى طلبك لدى الفريق، وسيكمل معك أحدهم في هذه المحادثة.» | “We’ve added that to your request with the team; one of them will continue with you in this chat.” |
 | Departure check — leaving as planned (H9, Ahmed 16 Nov 2026: «سأغادر في موعدي» or the same answer typed) | «شكرًا لك على إقامتك معنا، ونتمنى لك طريقًا آمنًا.» | “Thank you for staying with us, and we wish you a safe journey.” |
 | Departure check — extending the stay (H9, Ahmed 16 Nov 2026: «أرغب في التمديد» or the same answer typed; then the hand-off tagged «تمديد») | «يسعدنا ذلك. سيكمل معك فريق الاستقبال في هذه المحادثة لإتمام التمديد.» | “We’d be glad to. Our reception team will continue with you in this chat to arrange the extension.” |
+| Package order — the lead (18 Nov 2026, Ahmed: «باقات بسعر خاص» ordered in the chat; the questions below follow it in the same message, only the missing ones) | «يسعدنا ترتيب {package} لك.» | “We’d be glad to arrange the {package} for you.” |
+| Package order — the lead with no package named | «يسعدنا ترتيب الباقة لك.» | “We’d be glad to arrange the package for you.” |
+| Package order — the branch | «في أي فرع: طريق المطار أم طريق الشفا؟» | “Which branch: Airport Road or Shafa Road?” |
+| Package order — the date | «ما تاريخ مناسبتك؟» | “What is the date of your occasion?” |
+| Package order — the room booking | «وهل لديك حجز غرفة لدينا؟» | “And do you already have a room booking with us?” |
+| Package order — less than 24 hours away (the team only if the guest insists) | «نحتاج إلى طلب الباقة قبل موعد المناسبة بـ24 ساعة على الأقل، وأقرب موعد متاح هو {date}. هل يناسبك؟» | “The package needs to be ordered at least 24 hours before the occasion; the earliest date available is {date}. Would that suit you?” |
+| Package order — sent to reception (the hand-off notice of the order) | «وصل طلبك إلى فريق الاستقبال، وسيكمل معك أحدهم في هذه المحادثة لتأكيد التفاصيل.» | “Your request has reached our reception team; one of them will continue with you in this chat to confirm the details.” |
 | Colleague chat fallback (a staff or report number; the model's reply refused or unreachable) | «وصلت رسالتك 👍 للمحادثات المنتظرة افتح «المحادثات» في لوحة التحكم.» | “Got your message 👍 For the waiting chats, open «المحادثات» in the dashboard.” |
 
 `{menu_url}`: `https://armadaresidence.com/menu/` (Arabic) or `https://armadaresidence.com/en/menu/` (English) for the lobby café — from `dining_venues`.

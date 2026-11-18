@@ -22,7 +22,8 @@
       "careers": "انضم إلى فريقنا",
       "club": "إياب — عضوية أرمادا ريزيدنس",
       "about": "من نحن",
-      "faq": "الأسئلة الشائعة"
+      "faq": "الأسئلة الشائعة",
+      "celebrations": "المناسبات"
     },
     "home": {
       "branches_heading": "فرعانا في الطائف",
@@ -196,7 +197,19 @@
       "bar_label": "إعلان عرض",
       "bar_details": "التفاصيل",
       "bar_dismiss": "إخفاء الإعلان",
-      "popup_close": "إغلاق"
+      "popup_close": "إغلاق",
+      "package_instead": "بدلًا من {price}",
+      "package_prefill": "أرغب في الاستفسار عن {title}.",
+      "whatsapp_us": "راسلنا على واتساب",
+      "whatsapp_choose": "اختر الفرع للمراسلة على واتساب",
+      "package_details": "تفاصيل الباقات",
+      "packages_label": "الباقات"
+    },
+    "celebrations": {
+      "h1": "المناسبات",
+      "intro": "لمناسبة تبقى في الذاكرة، اختر ما يناسبك من باقاتنا في فرعي طريق المطار وطريق الشفا.",
+      "empty": "لا توجد باقات للمناسبات حاليًا.",
+      "empty_link": "تصفّح العروض"
     },
     "faq": {
       "heading": "الأسئلة الشائعة",
@@ -934,7 +947,8 @@
       "careers": "Join our team",
       "club": "Eyab — Armada Residence membership",
       "about": "About us",
-      "faq": "FAQ"
+      "faq": "FAQ",
+      "celebrations": "Celebrations"
     },
     "home": {
       "branches_heading": "Our two properties in Taif",
@@ -1107,7 +1121,19 @@
       "bar_label": "Offer announcement",
       "bar_details": "Details",
       "bar_dismiss": "Dismiss the announcement",
-      "popup_close": "Close"
+      "popup_close": "Close",
+      "package_instead": "instead of {price}",
+      "package_prefill": "I'd like to ask about {title}.",
+      "whatsapp_us": "Message us on WhatsApp",
+      "whatsapp_choose": "Choose the branch to message on WhatsApp",
+      "package_details": "Package details",
+      "packages_label": "Packages"
+    },
+    "celebrations": {
+      "h1": "Celebrations",
+      "intro": "For an occasion to remember, choose from our packages at the Airport Road and Shafa Road branches.",
+      "empty": "There are no celebration packages right now.",
+      "empty_link": "See our offers"
     },
     "faq": {
       "heading": "Frequently asked questions",
