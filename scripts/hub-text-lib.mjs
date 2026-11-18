@@ -110,6 +110,23 @@ const BOOKING_CASES = {
   'Total line': 'total_line',
 };
 
+// copy.md §4.4 (H10, 18 Nov 2026): chat bookings are requests; cancellations and alternatives
+const H10_CASES = {
+  'Chat request footer': 'chat_request_footer',
+  'Send request button': 'btn_send_request',
+  'Chat request sent (after the official request template)': 'result_chat_request',
+  'Thanks after a cancellation (no confirmed upcoming booking)': 'thanks_after_cancel',
+  'Alternatives offer (once, right after reception cancels a chat booking or request for no availability, inside the 24-hour window)': 'alt_offer',
+  "Why a booking was cancelled (the recorded reason's guest phrase, `policies.json → cancellation_reasons`)": 'cancel_reason',
+  'Alternatives — the same property': 'alt_same',
+  'Alternatives — the other property': 'alt_other',
+  'Alternatives — nothing on these dates': 'alt_none',
+  'Still with reception (at most every 30 minutes while a hand-off waits; the staff on shift alerted again)': 'still_waiting',
+  'The same cards asked about again': 'cards_again',
+  'A link with no text': 'link_only',
+  'A discount asked and no offer applies': 'no_discount',
+};
+
 /** the fixed guest messages of copy.md: {key: {ar, en, extra?}} */
 export function parseCopy(md = read('docs/guest-hub/copy.md')) {
   const out = {};
@@ -206,6 +223,19 @@ export function parseCopy(md = read('docs/guest-hub/copy.md')) {
       if (ar.length > 1) out[key].extra = { ar: ar.slice(1), en: en.slice(1) };
     }
     for (const k of Object.values(BOOKING_CASES)) if (!out[k]) throw new Error(`copy.md §4.3: the line ${k} is missing`);
+  }
+  {
+    const s44 = md.slice(md.indexOf('**4.4 Chat bookings are requests'), md.indexOf('## 5. Notices'));
+    for (const r of tableRows(s44)) {
+      const key = H10_CASES[r[0]];
+      if (!key) continue;
+      const ar = allQuoted(r[1], '«', '»');
+      const en = allQuoted(r[2], '“', '”');
+      if (!ar.length || !en.length) throw new Error(`copy.md §4.4: ${r[0]} has no quoted text`);
+      out[key] = { ar: ar[0], en: en[0] };
+      if (ar.length > 1) out[key].extra = { ar: ar.slice(1), en: en.slice(1) };
+    }
+    for (const k of Object.values(H10_CASES)) if (!out[k]) throw new Error(`copy.md §4.4: the line ${k} is missing`);
   }
   const s7 = section(md, '## 7. Staff emails');
   const credit = tableRows(s7).find((r) => r[0].startsWith('Claude API credit exhausted'));

@@ -34,7 +34,7 @@ import { typingUrl } from '../_shared/hub/send.ts';
 import { runTurn, type Deps, type Outcome } from '../_shared/hub/engine.ts';
 import { anthropicModel, type ModelCall, type ModelFn } from '../_shared/hub/model.ts';
 import { dashboardAdapter } from '../_shared/hub/adapter/index.ts';
-import { fixed } from '../_shared/hub/copy.ts';
+import { COPY, fixed } from '../_shared/hub/copy.ts';
 import { claimOf, engineVersion, freshState, runItem } from '../_shared/hub/eval.ts';
 import { grade, type Item } from '../_shared/hub/grade.ts';
 import { runReplyJobs, runTeachJobs } from '../_shared/hub/learn-run.ts';
@@ -200,6 +200,26 @@ async function sendAll(fin: Json, typedAlready = false): Promise<number> {
     }
     if (r.accepted) sent++;
   }
+  return sent;
+}
+
+/** H10 (Ahmed, 18 Nov 2026): the alternatives offer (copy.md §4.4) after reception cancelled a chat booking or request for
+ *  no availability — ONE message inside the 24-hour window, its two buttons by id (hubx:alts / hubx:no); never a backfill */
+async function altOffers(): Promise<number> {
+  const text = Object.fromEntries((['ar', 'en'] as const).map((L) => [L, {
+    body: fixed('alt_offer', L),
+    buttons: [{ id: 'hubx:alts', title: String(COPY.alt_offer.extra[L][0]) }, { id: 'hubx:no', title: String(COPY.alt_offer.extra[L][1]) }],
+  }]));
+  let r: Json;
+  try {
+    r = await rpc('hub_alt_offers_claim', { p_text: text });
+  } catch (e) {
+    console.error('hub-agent: alternatives claim failed', String(e).slice(0, 80));
+    return 0;
+  }
+  let sent = 0;
+  for (const o of (r?.offers ?? []) as Json[]) sent += await sendAll(o);
+  if ((r?.offers ?? []).length) console.log('hub-agent: alternatives offer', `sent=${sent}`);
   return sent;
 }
 
@@ -540,8 +560,9 @@ Deno.serve(async (req) => {
       if (Date.now() > deadline) break;
       done.push(await process(id, model, deadline).catch(() => 'error'));
     }
-    // a guest's turn first; then the alerts, the learning jobs and the test lab with the time that is left
+    // a guest's turn first; then the alerts, the alternatives offers, the learning jobs and the test lab with the time left
     await labAlerts();
+    await altOffers().catch(() => 0);
     const cards = await learnJobs(model, deadline).catch(() => 0);
     const lab = await evalStep(model, deadline).catch(() => 0);
     return json(200, { ok: true, due: (due ?? []).length, done: done.length, cards, lab });

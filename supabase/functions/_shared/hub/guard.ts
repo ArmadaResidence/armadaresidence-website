@@ -16,6 +16,10 @@ export interface GuardPayload {
   cancellation_sentence: string;
   /** a percent / fixed offer appears in the payload with its base price */
   offers?: { base?: number | null; price?: number | null }[];
+  /** H10 (18 Nov 2026): the knowledge cards' own text — a payment or transfer policy may be stated only when a CARD states it */
+  cards_text?: string;
+  /** H10: the guest has a confirmed upcoming booking — the only time an appointment line («بانتظارك في الموعد») may be written */
+  confirmed_upcoming?: boolean;
 }
 export interface GuardOptions {
   language: 'ar' | 'en';
@@ -62,6 +66,18 @@ export const FROM_PRICE_RE: RegExp[] = [
   /(?:أقل|اقل|أدنى|ادنى|أرخص|ارخص)\s+(?:سعر|الأسعار|الاسعار|الأسعار)/u,
   /\b(?:starting (?:at|from)|as low as|from)\s+sar\s*\d|\b(?:starting (?:at|from)|as low as)\s+\d[\d,.]*\s*(?:sar|riyals?)|\b(?:lowest|cheapest) (?:price|rate)s?\b/i,
 ];
+/** H10 (Ahmed, 18 Nov 2026 — b3ae2a56: "We do not take bank transfers in advance", then staff accepted a transfer): a
+ *  payment or transfer policy (how, when, by transfer, cash or card, prepayment, refunds) — refused unless a knowledge card
+ *  in the payload states it; the question itself is always handed to the team (machine.ts) */
+export const PAYMENT_POLICY_RE: RegExp[] = [
+  /(?:^|[^ء-ي])(?:و|ف|ب|ل)?(?:ال)?(?:دفع|سداد|تسديد|يدفع|يُدفع|ندفع|تدفع|يسدد|يُسدَّد|يُسدد|تحويل|حواله|حوالة|دفعه مسبقه|دفعة مسبقة|استرداد|استرجاع المبلغ|ايبان|آيبان|مدى|فيزا|نقدا|نقدًا|كاش)(?![ء-ي])/u,
+  /\b(?:pay|pays|paid|paying|payment|payments|prepay|prepayment|prepaid|transfer|transfers|bank|cash|mada|visa|mastercard|card|cards|refund|refunds|iban)\b/i,
+];
+export const paymentPolicy = (s: string): boolean => PAYMENT_POLICY_RE.some((re) => re.test(String(s ?? '')));
+/** H10: an appointment line («بانتظارك في الموعد», "we look forward to hosting you") — only with a confirmed upcoming booking
+ *  (41e1a3fb: written right after reception had cancelled the booking) */
+export const APPOINTMENT_RE = /بانتظارك|في انتظارك|ننتظرك|ننتظر وصولك|بانتظار وصولك|نراك|نلقاك|نتطلع (?:إلى|الى) (?:استقبالك|لقائك|رؤيتك|وصولك)|موعد وصولك|look(?:ing)? forward to (?:hosting|welcoming|seeing|having) you|see you (?:soon|then|on|there)|we(?:'ll| will)? await you|until your arrival/i;
+
 /** the first plural-address word of a text (named in the retry) */
 export function pluralWord(text: string): string | null {
   for (const w of PLURAL_ADDRESS) if (has(text, w)) return w;
@@ -206,6 +222,9 @@ export function guard(reply: string, p: GuardPayload, o: GuardOptions): GuardRes
   if (plural) r.push('plural_address');
   // H9 fix 3: no «يبدأ من» / lowest price
   if (FROM_PRICE_RE.some((re) => re.test(text))) r.push('from_price');
+  // H10: a payment or transfer policy only from a card; an appointment line only with a confirmed upcoming booking
+  if (paymentPolicy(text) && !paymentPolicy(p.cards_text ?? '')) r.push('payment');
+  if (APPOINTMENT_RE.test(text) && !p.confirmed_upcoming) r.push('appointment');
   for (const w of DEPOSIT_WORDS) if (has(text, w)) {
     r.push('deposit');
     break;
@@ -275,6 +294,8 @@ export const RETRY_REASONS: Record<string, string> = {
   self_description: 'Never describe yourself and never use the words assistant, bot, AI, automated, or I. Speak as the property in the plural.',
   cancellation: 'Quote the PAYLOAD cancellation_sentence word for word, or do not mention cancellation.',
   non_answer: 'Delete every sentence about what the PAYLOAD does not cover, about what you cannot confirm, or about who will tell the guest later (e.g. «لا تتوفر لدينا معلومة…», «سيوافيك الاستقبال…»). Keep only the facts the PAYLOAD gives and list the rest in "unanswered" — the system adds the hand-off notice after your reply.',
+  payment: 'Never state how, when or by what means payment is made (transfer, cash, card, prepayment, refunds): the PAYLOAD cards do not state it. Leave the payment part out and list it in "unanswered".',
+  appointment: 'The guest has no confirmed upcoming booking: never write an appointment line («بانتظارك في الموعد», "we look forward to hosting you"). End the reply without it.',
   first_person: 'Speak as the property in the first person plural («نستطيع», «نؤكد», «لدينا»), never the singular («أستطيع», «أؤكد», «أنا»). Do not mention what you cannot answer.',
 };
 export const retryReason = (reasons: string[], detail?: Record<string, string>) =>

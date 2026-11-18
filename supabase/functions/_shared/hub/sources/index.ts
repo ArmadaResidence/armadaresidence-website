@@ -92,6 +92,7 @@ export function guardPayload(p: Payload): GuardPayload {
     ].join('\n'),
     cancellation_sentence: p.cancellation_sentence,
     offers: [],
+    cards_text: p.cards.map((c) => `${c.title}\n${c.text}`).join('\n'),
   };
 }
 

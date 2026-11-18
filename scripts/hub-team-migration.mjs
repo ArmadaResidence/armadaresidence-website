@@ -157,7 +157,12 @@ export function replaced() {
 export function teamBankItems() {
   return read('tests/hub-bank/conversations-team.jsonl').split(String.fromCharCode(10)).filter((l) => l.trim()).map((l) => JSON.parse(l))
     .filter((x) => !x._header && (x.kind ?? 'guest') === 'guest')
-    .map((x) => ({ id: x.id, unit: x.unit, language: x.language, messages: x.messages, expect: x.expect, note: x.note ?? null, tags: x.tags }));
+    // as seeded: an item a later migration corrected (tests/hub-bank/corrections.json, bank = this file) keeps its old expect
+    .map((x) => ({ id: x.id, unit: x.unit, language: x.language, messages: x.messages, expect: seededExpect(x), note: x.note ?? null, tags: x.tags }));
+}
+function seededExpect(x) {
+  const c = JSON.parse(read('tests/hub-bank/corrections.json')).items[x.id];
+  return c && c.bank === 'conversations-team.jsonl' ? c.old : x.expect;
 }
 export function migration() {
   const src = read('scripts/hub-team-migration.src.sql');

@@ -18,8 +18,8 @@ type Json = any;
 /** the engine's version a run is judged with: the instructions of prompts.md and copy.md as loaded, + this module */
 export async function engineVersion(): Promise<string> {
   // the leading code marks a change of the engine's code that the texts do not show: e2 = the H6 gaps (mixed messages,
-  // the room-only «يبدأ من», the guard's phones, emails and first person); e3 = H6 pass 3 (replyLicence; the workspace usage limit read as the credit); e4 = H6 pass 5 (the natural-conversation policy: kinds, chat / clarify / redirect, the booking conversation, no drafts in «يرد تلقائيًا»); e5 = no second quote when nothing it depends on changed; the guard graded per turn; e6 = H6c «بانتظار موظف» / «مع موظف» and the alert line; e7 = H7 voice notes and images; e8 = H8 booking in the chat (cards, summary, book); e9 = H9 the departure check's answers; e10 = H9 fix 3 (dates in code with Hijri, prices only by date, corrections, frustration, reply rules, Sonnet understanding with its lists cached) — bump it with any such change
-  const data = new TextEncoder().encode(`e10|${JSON.stringify((text as Json).prompts)}|${JSON.stringify((text as Json).copy)}`);
+  // the room-only «يبدأ من», the guard's phones, emails and first person); e3 = H6 pass 3 (replyLicence; the workspace usage limit read as the credit); e4 = H6 pass 5 (the natural-conversation policy: kinds, chat / clarify / redirect, the booking conversation, no drafts in «يرد تلقائيًا»); e5 = no second quote when nothing it depends on changed; the guard graded per turn; e6 = H6c «بانتظار موظف» / «مع موظف» and the alert line; e7 = H7 voice notes and images; e8 = H8 booking in the chat (cards, summary, book); e9 = H9 the departure check's answers; e10 = H9 fix 3 (dates in code with Hijri, prices only by date, corrections, frustration, reply rules, Sonnet understanding with its lists cached); e11 = H10 (chat bookings as requests, the context of what was sent and the bookings, payment to the team, no repetition, the notice once, alternatives) — bump it with any such change
+  const data = new TextEncoder().encode(`e11|${JSON.stringify((text as Json).prompts)}|${JSON.stringify((text as Json).copy)}`);
   const h = new Uint8Array(await crypto.subtle.digest('SHA-256', data));
   return `h6-${[...h.slice(0, 6)].map((b) => b.toString(16).padStart(2, '0')).join('')}`;
 }
@@ -39,8 +39,26 @@ export interface SimState {
   staff_at: number | null;
   /** H8: the room cards of the last cards message (their order) and the draft version they carry — a «[tap:book:N]» line */
   cards?: string[];
+  /** H10: the hand-off notice went since the hand-off (no staff reply since), and when our last message went (sim ms) */
+  notice_sent?: boolean;
+  last_us_at?: number | null;
 }
-export const freshState = (): SimState => ({ state: 'new', first_reply: true, history: [], draft: null, failed_understandings: 0, out_of_scope: 0, human_phase: null, state_before_human: null, clock: 0, staff_at: null, cards: [] });
+export const freshState = (): SimState => ({ state: 'new', first_reply: true, history: [], draft: null, failed_understandings: 0, out_of_scope: 0, human_phase: null, state_before_human: null, clock: 0, staff_at: null, cards: [], notice_sent: false, last_us_at: null });
+
+/** H10: the bank's bookings of the guest's phone (context.bookings) — dates in days from today, «cancelled_at: now» */
+export function bankBookings(c: Json, today: string, clock: number): Json[] {
+  const iso = (n: number) => new Date(Date.parse(`${today}T00:00:00Z`) + n * 86_400_000).toISOString().slice(0, 10);
+  const out: Json[] = [];
+  if (c.reservation_on_same_phone) out.push({ ref: 'AR-20991231-EVAL', status: 'confirmed', branch: c.branch ?? 'airport-road', check_in: '2099-12-01', check_out: '2099-12-03' });
+  for (const [i, b] of ((Array.isArray(c.bookings) ? c.bookings : []) as Json[]).entries()) {
+    const ci = iso(Number(b.in_days ?? 10));
+    out.push({ ref: b.ref ?? `AR-20991230-EV${i}X`, status: b.status ?? 'confirmed', branch: b.branch ?? 'airport-road', check_in: ci, check_out: iso(Number(b.in_days ?? 10) + Number(b.nights ?? 2)),
+      room: b.room ?? null, adults: b.adults ?? 2, children: b.children ?? 0, breakfast: b.breakfast ?? 'without', cancel_reason_code: b.cancel_reason_code ?? null,
+      cancelled_at: b.status === 'cancelled' ? new Date(Date.parse(`${today}T09:00:00Z`) + clock).toISOString() : null, source: b.source ?? 'assistant_whatsapp' });
+  }
+  return out;
+}
+const DEPARTURE_Q = /(خروج|تمديد|مغادر|تطلع|تغادر|تمدد|check ?out|extend|leaving)/i;
 
 /** H8: a booking button of the bank — «[tap:book:N]» (the Nth room card shown), «[tap:confirm]», «[tap:change]»,
  *  «[tap:notnow]», «[tap:more]», «[tap:request]» — resolved to the hub's own button id from the button the engine last sent */
@@ -141,7 +159,7 @@ export function claimOf(ctx: Json, item: Pick<Item, 'key' | 'language' | 'contex
   return {
     claimed: true,
     turn: { id: `eval-${item.key}-${n}`, kind: 'reply', mode: 'test', attempts: 1, is_test: true },
-    conversation: { id: `eval-${item.key}`, state: st.state, real_state: 'human', language: L, window_expires_at: '2099-01-01T00:00:00Z',
+    conversation: { id: `eval-${item.key}`, state: st.state, real_state: 'human', human_reason: st.state === 'human' ? 'handoff' : null, language: L, window_expires_at: '2099-01-01T00:00:00Z',
       failed_understandings: st.failed_understandings, priority: 'normal', topics: [], tags: [], out_of_scope: st.out_of_scope, first_reply: st.first_reply, is_test: true,
       human_phase: st.state === 'human' ? st.human_phase : null, state_before_human: st.state_before_human },
     // H7: the test lab and «المحاكي» read voice notes and images whatever the unit's switches say (they are tested before
@@ -164,8 +182,15 @@ export function claimOf(ctx: Json, item: Pick<Item, 'key' | 'language' | 'contex
       : kind === 'text' ? { id: `m-${item.key}-${n}`, kind: 'text', body: message, payload: {} } : { id: `m-${item.key}-${n}`, kind, body: null, payload: { media_id: 'eval' } }],
     history: st.history.slice(-12),
     draft: st.draft,
-    // a booking on the same phone (the bank's context): a synthetic one, for the booking-status answer
-    bookings: c.reservation_on_same_phone ? [{ ref: 'AR-20991231-EVAL', status: 'confirmed', branch: ctx.unit?.branch ?? 'airport-road', check_in: '2099-12-01', check_out: '2099-12-03' }] : [],
+    // a booking on the same phone (the bank's context): a synthetic one, for the booking-status answer; H10: the bank's own
+    // bookings (a cancelled chat request, a confirmed stay) and the templates sent outside the chat's text
+    bookings: bankBookings({ ...c, branch: c.branch ?? ctx.unit?.branch }, ctx.today, st.clock),
+    sent: Array.isArray(c.sent) ? c.sent : [],
+    // H10: the hand-off notice once per episode; «ما زال طلبك…» 30 minutes after our last message
+    handoff: st.state === 'human' && st.human_phase === 'waiting'
+      ? { notice_open: !!st.notice_sent, waiting_line_due: st.last_us_at !== null && st.last_us_at !== undefined && st.clock - st.last_us_at >= 30 * 60_000 }
+      : null,
+    staff_departure_q: st.staff_at !== null && st.clock - st.staff_at <= 3 * 3_600_000 && DEPARTURE_Q.test(String([...st.history].reverse().find((h) => h.author === 'staff')?.body ?? '')),
     licences: ctx.licences ?? {},
     topics: ctx.topics ?? [],
     settings: ctx.settings ?? {},
@@ -201,6 +226,9 @@ export function nextState(st: SimState, message: string, f: Finish): SimState {
     })(),
     failed_understandings: f.failed === 'reset' ? 0 : f.failed === 'inc' ? st.failed_understandings + 1 : st.failed_understandings,
     out_of_scope: st.out_of_scope + (f.out_of_scope_inc ? 1 : 0),
+    // H10: the notice of this hand-off went (kept while it waits; a staff reply or the assistant's own state clears it)
+    notice_sent: to === 'human' && ((st.state === 'human' && !!st.notice_sent) || f.messages.some((m) => !!m.notice || m.payload?.handoff === true)),
+    last_us_at: replies.length ? st.clock : st.last_us_at ?? null,
   };
 }
 
@@ -239,7 +267,7 @@ export async function runItem(ctx: Json, item: Item, deps: Deps, persona: Json |
     if (staff) {
       // a staff reply: «مع موظف» (the assistant silent) from now on, until the branch's minutes of staff silence
       st = { ...st, history: [...st.history, { author: 'staff' as const, body: staff[1].trim() }].slice(-12), state: 'human',
-        human_phase: null, staff_at: st.clock, state_before_human: st.state === 'human' ? st.state_before_human : st.state };
+        human_phase: null, staff_at: st.clock, state_before_human: st.state === 'human' ? st.state_before_human : st.state, notice_sent: false };
       continue;
     }
     if (wait) {

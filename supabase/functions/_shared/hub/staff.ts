@@ -172,6 +172,18 @@ const n = (x: unknown) => (Number.isFinite(Number(x)) ? Math.max(0, Math.round(N
 /** «المطار X · الشفا Y» */
 export const perBranch = (data: Json, key: string, fmt: (v: unknown) => string = (v) => String(n(v))): string =>
   BR.map((b) => `${SHORT[b]} ${fmt(data?.branches?.[b]?.[key])}`).join(' · ');
+/** H10 (D1, Ahmed 18 Nov 2026): {{6}} «حجوزات من المحادثة» per branch with what became of them, as they stand —
+ *  «المطار 4 (3 مؤكدة، 1 ملغاة) · الشفا 0»; a request still waiting adds «N بانتظار التأكيد» */
+export function bookingsText(data: Json): string {
+  return BR.map((b) => {
+    const x = data?.branches?.[b] ?? {};
+    const all = n(x.bookings);
+    if (!all) return `${SHORT[b]} 0`;
+    const parts = [[n(x.bookings_confirmed), 'مؤكدة'], [n(x.bookings_cancelled), 'ملغاة'], [n(x.bookings_waiting), 'بانتظار التأكيد']]
+      .filter(([k]) => Number(k) > 0).map(([k, w]) => `${k} ${w}`);
+    return `${SHORT[b]} ${all}${parts.length ? ` (${parts.join('، ')})` : ''}`;
+  }).join(' · ');
+}
 /** a count of minutes in Arabic (Western digits): «دقيقة واحدة» · «دقيقتان» · «3 دقائق» · «12 دقيقة»; none → «—» */
 export function minutesText(v: unknown): string {
   if (v === null || v === undefined || v === '' || !Number.isFinite(Number(v))) return '—';
@@ -217,7 +229,8 @@ export function reportVars(day: string, data: Json): string[] {
     perBranch(data, 'assistant'),
     perBranch(data, 'handed'),
     perBranch(data, 'reply_avg_min', minutesText),
-    perBranch(data, 'bookings'),
+    // H10 (D1): with the outcome — «4 (3 مؤكدة، 1 ملغاة)»
+    bookingsText(data),
     // H9: «الخروج أو التمديد» — per branch «خروج X · تمديد Y · لم يرد Z», or «لم يُفعَّل بعد»
     departuresText(data),
     perBranch(data, 'reviews'),

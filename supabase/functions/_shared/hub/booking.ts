@@ -13,6 +13,15 @@ type Json = any;
 
 export const CARDS_PER_PAGE = 3;
 
+/** D1 (Ahmed, 18 Nov 2026 — DECISIONS.md «Guest Hub H10»): until the dashboard inventory matches real occupancy (Nazeel or a
+ *  reliable inventory), every booking made in the chat is a booking REQUEST that reception confirms — the cards carry no
+ *  badge (never «تأكيد فوري»), the summary's footer is copy.md §4.4's and its first button «إرسال طلب الحجز»; the database
+ *  stores it as a request (hub_book_draft → app.hub_chat_request). The website flow is unchanged. */
+export const CHAT_REQUEST_ONLY = true;
+
+/** a card the engine shows available (never a type sold out or closed for these nights) */
+export const shownAvailable = (c: Pick<QuoteCard, 'instant' | 'reason'>): boolean => c.instant || !['sold_out', 'closed', 'no_rate'].includes(String(c.reason ?? ''));
+
 /** one room type quoted for the guest's stay (the adapter's quote + the catalog) */
 export interface QuoteCard {
   room: string;
@@ -99,6 +108,7 @@ export function reasonText(content: Json, reason: string | null, L: Lang, limits
   return String(r).replace('{n}', String(limits?.max_nights ?? 30)).replace('{time}', String(limits?.same_day_cutoff ?? '20:00'));
 }
 export function badge(content: Json, c: Pick<QuoteCard, 'instant' | 'reason'>, L: Lang, limits: Json = null): string {
+  if (CHAT_REQUEST_ONLY) return '';
   const q = content?.quote?.[L] ?? {};
   return c.instant ? String(q.instant_badge ?? '') : `${q.request_badge ?? ''}\n${reasonText(content, c.reason, L, limits)}`;
 }
@@ -131,6 +141,8 @@ export function cardBody(c: QuoteCard, f: Record<string, unknown>, L: Lang, fmt:
       check_in: fmt.longDate(String(f.check_in), L), check_out: fmt.longDate(String(f.check_out), L),
       total, badge: badge(fmt.content, c, L, fmt.limits),
     }));
+    // D1: no badge line at all (the line held only {badge})
+    if (line.trim() === '{badge}' && !out[out.length - 1]) out.pop();
     if (line.includes('{total}') && c.offer) out.push(c.offer);
   }
   return out.join('\n');
@@ -142,7 +154,7 @@ export function summaryBody(c: QuoteCard, f: Record<string, unknown>, L: Lang, f
   const children = Number(f.children ?? 0);
   const discount = c.base_total && c.base_total > c.total ? Math.round((c.base_total - c.total) * 100) / 100 : 0;
   const total = discount ? `~${fmt.sarText(c.base_total!, L)}~ ${fmt.sarText(c.total, L)}` : fmt.sarText(c.total, L);
-  const instant = c.instant ? COPY.instant_line[L] : fill(COPY.request_line[L], { reason: reasonText(fmt.content, c.reason, L, fmt.limits) });
+  const instant = CHAT_REQUEST_ONLY ? COPY.chat_request_footer[L] : c.instant ? COPY.instant_line[L] : fill(COPY.request_line[L], { reason: reasonText(fmt.content, c.reason, L, fmt.limits) });
   const vars: Record<string, string> = {
     branch_name: branchName, check_in: fmt.longDate(String(f.check_in), L), check_out: fmt.longDate(String(f.check_out), L), nights_text: nightsText(nightsOf(f), L),
     room_name: L === 'en' ? c.name_en : c.name_ar, guests_text: guestsText(adults, children, L), extra_beds_text: bedsText(c.extra_beds, L),
@@ -195,7 +207,7 @@ export function parseTap(id: string | null | undefined): Tap | null {
 /** the summary's three buttons, the more-rooms button, the nothing-instant buttons (copy.md §4.2, §4.3) */
 export function summaryButtons(draft: string, v: number, L: Lang): { id: string; title: string }[] {
   const b = COPY.btn_summary;
-  return [{ id: btnId.confirm(draft, v), title: b[L] }, { id: btnId.change(draft, v), title: b.extra[L][0] }, { id: btnId.notNow(draft, v), title: b.extra[L][1] }];
+  return [{ id: btnId.confirm(draft, v), title: CHAT_REQUEST_ONLY ? COPY.btn_send_request[L] : b[L] }, { id: btnId.change(draft, v), title: b.extra[L][0] }, { id: btnId.notNow(draft, v), title: b.extra[L][1] }];
 }
 export const bookButton = (draft: string, room: string, v: number, L: Lang) => [{ id: btnId.book(draft, room, v), title: COPY.btn_book[L] as string }];
 export const moreButton = (draft: string, page: number, v: number, L: Lang) => [{ id: btnId.more(draft, page, v), title: COPY.btn_more[L] as string }];
@@ -208,7 +220,7 @@ export function typedSummaryButton(text: string): 'confirm' | 'change' | 'not_no
   const k = String(text ?? '').replace(/[«»“”".!،,]/g, '').replace(/\s+/g, ' ').trim().toLowerCase();
   for (const L of ['ar', 'en'] as const) {
     const b = COPY.btn_summary;
-    if (k === String(b[L]).toLowerCase()) return 'confirm';
+    if (k === String(b[L]).toLowerCase() || k === String(COPY.btn_send_request[L]).toLowerCase()) return 'confirm';
     if (k === String(b.extra[L][0]).toLowerCase()) return 'change';
     if (k === String(b.extra[L][1]).toLowerCase()) return 'not_now';
   }

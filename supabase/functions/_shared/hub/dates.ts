@@ -173,12 +173,18 @@ export function readOne(raw: string, today: string, after: string | null = null)
   if (!s) return null;
   const year = Number(today.slice(0, 4));
 
-  // ISO or numeric day/month(/year): Saudi order d/m; m/d only when the first part cannot be a month
-  let m = /(\d{4})-(\d{1,2})-(\d{1,2})/.exec(s);
+  // year first, any separator («2026/12/2», «2026-12-02», «1448/6/22»): a 14xx year is Hijri (Umm al-Qura), a 20xx year
+  // Gregorian (H10, 18 Nov 2026 — «2026/12/2» was read as 12 Feb 2027: the day/month rule caught «12/2» inside it)
+  let m = /(?<!\d)(\d{4})\s*[/\-.]\s*(\d{1,2})\s*[/\-.]\s*(\d{1,2})(?!\d)/.exec(s);
   if (m) {
-    const iso = isoOf(Number(m[1]), Number(m[2]), Number(m[3]));
+    const y = Number(m[1]);
+    if (y >= 1400 && y < 1500) return hijriDay(Number(m[3]), Number(m[2]), y, today);
+    const iso = isoOf(y, Number(m[2]), Number(m[3]));
     return iso ? (iso < today ? { iso: null, past: iso } : { iso }) : null;
   }
+  // day/month/year with a four-digit year last («2/12/2026», «22/6/1448»)
+  m = /(?<!\d)(\d{1,2})\s*[/\-.]\s*(\d{1,2})\s*[/\-.]\s*(\d{4})(?!\d)/.exec(s);
+  if (m && Number(m[3]) >= 1400 && Number(m[3]) < 1500) return hijriDay(Number(m[1]), Number(m[2]), Number(m[3]), today);
   m = /(?<!\d)(\d{1,2})\s*[/\-.]\s*(\d{1,2})(?:\s*[/\-.]\s*(\d{2,4}))?(?!\d)/.exec(s);
   if (m) {
     let d = Number(m[1]);
@@ -265,6 +271,14 @@ export function readOne(raw: string, today: string, after: string | null = null)
   // a bare day: «يوم 19», «يوم تسعتاشر», «ال19»
   if (dayNum && Number(dayNum[1]) >= 1 && Number(dayNum[1]) <= 31) return bareDay(Number(dayNum[1]), today, after);
   return null;
+}
+
+/** a numeric Hijri date (day, month, year) → its Gregorian day (Umm al-Qura); a past one is 'past' */
+function hijriDay(d: number, mo: number, y: number, today: string): One {
+  if (mo < 1 || mo > 12 || d < 1 || d > 30) return { iso: null, hijri: true, confirm: 'hijri_unclear' };
+  const iso = fromHijri(d, mo, y, addDaysIso(today, -400));
+  if (!iso) return { iso: null, hijri: true, confirm: 'hijri_unclear' };
+  return iso < today ? { iso: null, past: iso, hijri: true } : { iso, hijri: true };
 }
 
 function dayMonth(d: number, mo: number, y: number | null, today: string): One | null {

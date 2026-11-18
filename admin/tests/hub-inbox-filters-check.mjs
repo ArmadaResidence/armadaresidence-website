@@ -90,6 +90,11 @@ async function context(browser, w, h, scheme, opts = {}) {
       if (!SERVER_TABS.includes(tab)) return refuse('hub_tab');
       if (body?.p?.limit !== undefined && !Number.isInteger(Number(body.p.limit))) return refuse('invalid input syntax for type integer', '22P02');
       if (body?.p?.before !== undefined && !Number.isFinite(Date.parse(body.p.before))) return refuse('invalid input syntax for type timestamp', '22007');
+      // H10: «عرض المزيد» — 50 rows and more, then the next page by the cursor
+      if (opts.paged) {
+        if (!body?.p?.before) return ok({ ...LIST(), rows: Array.from({ length: 50 }, (_, i) => ({ ...ROW, id: id(1000 + i), name: `Guest ${i + 1}`, last_at: ago(3 + i) })), more: true });
+        return ok({ ...LIST(), rows: Array.from({ length: 7 }, (_, i) => ({ ...ROW, id: id(2000 + i), name: `Guest page2 ${i + 1}`, last_at: ago(60 + i) })), more: false });
+      }
       return ok(LIST());
     }
     if (fn === 'hub_thread') return ok(null);
@@ -162,6 +167,22 @@ for (const [w, scheme] of [[1440, 'light'], [375, 'dark']]) {
   await page.locator('[data-error-reset] button').click();
   await page.waitForTimeout(300);
   check(!new URL(page.url()).search, `${w} ${scheme}: «مسح عوامل التصفية» clears the link's filters`);
+  check(!errors.length, `${w} ${scheme}: no page error — ${errors.join(' | ').slice(0, 300)}`);
+  await ctx.close();
+}
+
+// H10 (Ahmed, 18 Nov 2026): «عرض المزيد» after 50 rows — the next page by the server's cursor, appended, then gone
+for (const [w, scheme] of [[1440, 'light'], [1440, 'dark'], [375, 'light'], [375, 'dark']]) {
+  const { ctx, page, calls, errors } = await context(browser, w, w === 375 ? 812 : 900, scheme, { paged: true });
+  await page.goto(`${BASE}/inbox?tab=all`, { waitUntil: 'load' });
+  await page.locator('[data-conv-row]').first().waitFor({ timeout: 30000 });
+  check((await page.locator('[data-conv-row]').count()) === 50 && (await page.locator('[data-more]').count()) === 1, `${w} ${scheme}: 50 rows, then «عرض المزيد»`);
+  await page.locator('[data-more]').click();
+  await page.waitForFunction(() => document.querySelectorAll('[data-conv-row]').length === 57, null, { timeout: 15000 }).catch(() => null);
+  check((await page.locator('[data-conv-row]').count()) === 57 && (await page.locator('[data-more]').count()) === 0, `${w} ${scheme}: the next page appended, «عرض المزيد» gone at the end`);
+  const pages = calls.filter((c) => c.fn === 'hub_inbox_list' && c.body?.p?.before);
+  check(pages.length === 1 && pages[0].body.p.tab === 'all', `${w} ${scheme}: the next page asked with the cursor and the same tab`);
+  check(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1), `${w} ${scheme}: no horizontal page scroll with «عرض المزيد»`);
   check(!errors.length, `${w} ${scheme}: no page error — ${errors.join(' | ').slice(0, 300)}`);
   await ctx.close();
 }

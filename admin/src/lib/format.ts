@@ -32,6 +32,8 @@ export const REASON_LABELS: Record<string, string> = {
   closed: 'ليلة مغلقة',
   sold_out: 'لا غرف متبقية',
   needs_ages: 'أعمار الأطفال ناقصة',
+  // H10 (D1, 18 Nov 2026): every booking made in the WhatsApp chat is a request reception confirms
+  chat_request: 'حجز من المحادثة — يؤكده الاستقبال',
 };
 
 // WhatsApp messages to the guest (task 5 A, 28 Oct 2026; booking_cancelled 29 Oct 2026): the template names, the per-attempt status and the reason a

@@ -22,7 +22,17 @@
         "must_include": [
           "arriv"
         ]
-      }
+      },
+      "then": [
+        {
+          "date": "2026-11-18",
+          "migration": "20261118200000_guest_hub_h10.sql",
+          "why": "H10 (Ahmed, 18 Nov 2026): a payment question — method, transfer, online payment, refund, deposit, confirmation — goes to the team at once; no payment policy is stated without a knowledge card (b3ae2a56)",
+          "expect": {
+            "action": "handoff"
+          }
+        }
+      ]
     },
     "q100": {
       "date": "2026-11-14",
@@ -78,6 +88,73 @@
       "expect": {
         "action": "ask",
         "state": "collecting"
+      }
+    },
+    "q022": {
+      "date": "2026-11-18",
+      "migration": "20261118200000_guest_hub_h10.sql",
+      "why": "H10 (Ahmed, 18 Nov 2026): «إيش طرق الدفع؟» is a payment question — the team at once, never a payment policy without a knowledge card",
+      "old": {
+        "action": "answer",
+        "faq": [
+          "payment"
+        ],
+        "must_include": [
+          "مدى",
+          "فيزا"
+        ]
+      },
+      "expect": {
+        "action": "handoff"
+      }
+    },
+    "c048": {
+      "date": "2026-11-18",
+      "migration": "20261118200000_guest_hub_h10.sql",
+      "bank": "conversations-team.jsonl",
+      "why": "H10 (Ahmed, 18 Nov 2026): the hand-off notice once per episode; while it waits, a further request the assistant cannot answer gets nothing new — at most one «ما زال طلبك…» every 30 minutes (c14aece0, bd27baf4)",
+      "old": {
+        "action": "conversation",
+        "steps": [
+          {
+            "outcome": "handoff",
+            "gap": true
+          },
+          {
+            "outcome": [
+              "handoff_add",
+              "answer"
+            ],
+            "must_not_include": [
+              "سيكمل معك أحد أفراد فريقنا في هذه المحادثة"
+            ]
+          },
+          {
+            "outcome": "reply"
+          }
+        ]
+      },
+      "expect": {
+        "action": "conversation",
+        "steps": [
+          {
+            "outcome": "handoff",
+            "gap": true
+          },
+          {
+            "outcome": [
+              "handoff_add",
+              "answer",
+              "none"
+            ],
+            "must_not_include": [
+              "سيكمل معك أحد أفراد فريقنا في هذه المحادثة"
+            ]
+          },
+          {
+            "outcome": "reply"
+          }
+        ]
       }
     }
   }

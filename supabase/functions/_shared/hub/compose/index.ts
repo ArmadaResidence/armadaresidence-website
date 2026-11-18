@@ -49,6 +49,10 @@ export interface ComposeInput {
   payload: Payload;
   /** H6 pass 5: the line the system puts before the reply (the greeting of copy.md §1, «وعليكم السلام»), or null */
   opening?: string | null;
+  /** H10 (18 Nov 2026): the messages we sent outside the chat's text (booking templates, the departure check, the review
+   *  request), each rendered; and every booking of this phone with its current status (prompts.md §2.1) */
+  sent?: string[];
+  guest_bookings?: Record<string, unknown>[];
 }
 
 /** the user message of compose (prompts.md §2.2), built by code */
@@ -61,6 +65,9 @@ export function composeUser(i: ComposeInput): string {
     `OPENING_ADDED_BY_SYSTEM: ${i.opening ? JSON.stringify(i.opening) : 'none'}`,
     `GUEST_TURN: ${i.turn.map(scrub).join('\n')}`,
     `LAST_MESSAGES: ${i.history.map((h) => `${h.author}: ${scrub(h.body).slice(0, 500)}`).join('\n') || '(none)'}`,
+    // H10: only when there is something (no change to other turns)
+    ...(i.sent?.length ? [`SENT_TO_GUEST: ${i.sent.map((x) => scrub(x).slice(0, 400)).join('\n')}`] : []),
+    ...(i.guest_bookings?.length ? [`GUEST_BOOKINGS: ${JSON.stringify(i.guest_bookings)}`] : []),
     'PAYLOAD:',
     `  cards: ${JSON.stringify(p.cards.map((c) => ({ id: c.key, branch: c.branch, title: c.title, text: c.text })))}`,
     `  faq: ${JSON.stringify(p.faq)}`,

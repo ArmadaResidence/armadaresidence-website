@@ -56,6 +56,10 @@ export default function Inbox() {
   const selected = sp.get('c');
   const [data, setData] = useState<InboxList | null>(null);
   const [rows, setRows] = useState<InboxRow[]>([]);
+  // H10 (Ahmed, 18 Nov 2026): «عرض المزيد» — the rows after the first 50 of a filter (the server's cursor `before`)
+  const [extra, setExtra] = useState<InboxRow[]>([]);
+  const [more, setMore] = useState(false);
+  const [moreBusy, setMoreBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [t, setT] = useState<Thread | null>(null);
   const [tError, setTError] = useState<string | null>(null);
@@ -87,11 +91,36 @@ export default function Inbox() {
       const d = await list(filters);
       setData(d);
       setRows(d.rows);
+      setExtra((x) => {
+        const kept = x.filter((r) => !d.rows.some((y) => y.id === r.id));
+        if (!kept.length) setMore(d.more);
+        return kept;
+      });
       setError(null);
     } catch (e) {
       setError(loadError('list', (e as Error).message));
     }
   }, [filters]);
+  // a new filter starts from its first page
+  useEffect(() => {
+    setExtra([]);
+    setMore(false);
+  }, [filters]);
+  const loadMore = useCallback(async () => {
+    const all = [...rows, ...extra];
+    const last = all[all.length - 1];
+    if (!last) return;
+    setMoreBusy(true);
+    try {
+      const d = await list(filters, last.last_at);
+      setExtra((x) => [...x, ...d.rows.filter((r) => !all.some((y) => y.id === r.id))]);
+      setMore(d.more);
+    } catch (e) {
+      setError(loadError('list', (e as Error).message));
+    } finally {
+      setMoreBusy(false);
+    }
+  }, [filters, rows, extra]);
   const loadThread = useCallback(async () => {
     if (!selected) {
       setT(null);
@@ -279,7 +308,7 @@ export default function Inbox() {
           <ul className="inbox-rows" data-rows>
             {!data && !error && <li className="p-4"><Loading /></li>}
             {data && rows.length === 0 && <li className="p-4 text-sm text-ink-muted" data-empty>لا محادثات هنا.</li>}
-            {rows.map((r) => {
+            {[...rows, ...extra].map((r) => {
               const tone = r.state === 'human' ? timerTone(r.waiting_since, data!.timers, now) : null;
               return (
                 <li key={r.id}>
@@ -305,6 +334,13 @@ export default function Inbox() {
                 </li>
               );
             })}
+            {more && (
+              <li className="p-3 text-center">
+                <button type="button" className="btn btn-ghost btn-sm" onClick={() => void loadMore()} disabled={moreBusy} data-more aria-busy={moreBusy || undefined}>
+                  {moreBusy ? 'جارٍ التحميل…' : 'عرض المزيد'}
+                </button>
+              </li>
+            )}
           </ul>
         </section>
 
