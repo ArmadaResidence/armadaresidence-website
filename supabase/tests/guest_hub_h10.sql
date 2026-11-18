@@ -152,9 +152,11 @@ select pg_temp._check('D2 the claim''s function text: replies by turn, the hand-
 update public.hub_team_branches set resume_minutes = 45 where branch_slug = 'airport-road';
 update public.hub_conversations set state = 'human', owner_kind = 'phone', last_staff_at = now() - interval '20 minutes', staff_active_at = now() - interval '20 minutes',
        human_reason = 'phone_reply' where id = pg_temp._id('c');
+-- (the team trigger stamps staff_active_at = now() when last_staff_at changes: the time set apart)
+update public.hub_conversations set staff_active_at = now() - interval '20 minutes' where id = pg_temp._id('c');
 select pg_temp._check('E1 no staff message in 15 minutes → the assistant (even with «عودة المساعد» longer)',
   (select internal.hub_human_phase(c, u) = 'resume' from public.hub_conversations c, public.hub_units u where c.id = pg_temp._id('c') and u.id = c.unit_id));
-update public.hub_conversations set last_staff_at = now() - interval '5 minutes', staff_active_at = now() - interval '5 minutes' where id = pg_temp._id('c');
+update public.hub_conversations set staff_active_at = now() - interval '5 minutes' where id = pg_temp._id('c');
 select pg_temp._check('E2 a staff message 5 minutes ago → silent (the team on it)',
   (select internal.hub_human_phase(c, u) is null from public.hub_conversations c, public.hub_units u where c.id = pg_temp._id('c') and u.id = c.unit_id));
 select pg_temp._check('E3 a tap on the alternatives offer is a reply turn whoever holds the conversation',
