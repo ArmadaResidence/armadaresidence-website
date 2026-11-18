@@ -43,7 +43,7 @@ const STANDBY = jsonl('tests/hub-bank/conversations-standby.jsonl');
 // H9 fix 3 (17 Nov 2026): prices by date, dates in code with Hijri, corrections, frustration vs complaints, the singular
 const FIX3 = jsonl('tests/hub-bank/conversations-fix3.jsonl');
 // H10 (18 Nov 2026): the live review's cases (D1 requests, the context, payment, dates, the party, repetition, the notice)
-const H10 = jsonl('tests/hub-bank/conversations-h10.jsonl');
+const H10 = [...jsonl('tests/hub-bank/conversations-h10.jsonl'), ...jsonl('tests/hub-bank/conversations-h10b.jsonl')];
 const items = [
   // q032 / q068 are retired on production (the Airport Road laundry, H6 pass 3)
   ...(['conversations', 'learning'].includes(bank) ? [] : engineItems().filter((q) => !['q032', 'q068'].includes(q.id))),

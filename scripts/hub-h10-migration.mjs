@@ -53,7 +53,12 @@ const HEAD = `-- Guest Hub H10 (18 Nov 2026, Ahmed â€” DECISIONS.md 2026-11-18 Â
 export function h10BankItems() {
   return read('tests/hub-bank/conversations-h10.jsonl').split('\n').filter((l) => l.trim()).map((l) => JSON.parse(l))
     .filter((x) => !x._header && (x.kind ?? 'guest') === 'guest')
-    .map((x) => ({ key: x.id, unit: x.unit, language: x.language, messages: x.messages, expect: x.expect, note: x.note ?? null, tags: x.tags, context: x.context ?? {} }));
+    // as seeded: an item a later migration corrected (corrections.json, bank = this file) keeps its old expect
+    .map((x) => ({ key: x.id, unit: x.unit, language: x.language, messages: x.messages, expect: seededH10(x), note: x.note ?? null, tags: x.tags, context: x.context ?? {} }));
+}
+function seededH10(x) {
+  const c = JSON.parse(read('tests/hub-bank/corrections.json')).items[x.id];
+  return c && c.bank === 'conversations-h10.jsonl' ? c.old : x.expect;
 }
 /** the corrections of earlier bank items this migration applies (tests/hub-bank/corrections.json, migration = this one) */
 export function h10Corrections() {
