@@ -76,7 +76,8 @@ end $$;
 create function pg_temp._card(p_kind text, p_text text, p_scope text) returns uuid language plpgsql as $$
 declare v jsonb;
 begin
-  perform pg_temp._service();
+  -- internal.* is not granted to the API roles: the store's own insert, as the database owner
+  perform pg_temp._root();
   v := internal.hub_learn_insert('teach', p_scope, 'recipient:' || (select id from public.hub_report_recipients where phone = '+15550400001'), 'أحمد', pg_temp._id('admin'),
          jsonb_build_object('title_ar', 'قاعدة الأسعار', 'title_en', 'Price rule', 'text_ar', p_text, 'text_en', 'Ask the dates first, then quote the stay.',
                             'short_ar', 'اسأل عن التواريخ', 'topic_keys', '["price"]'::jsonb, 'card_kind', p_kind), '{}', false);
