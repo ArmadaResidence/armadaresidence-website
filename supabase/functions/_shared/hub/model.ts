@@ -22,6 +22,8 @@ export interface ModelCall {
   examples?: { user: string; assistant: string }[];
   /** H7: images sent before the user text (the vision layer only) — base64, never logged */
   images?: { media_type: string; data: string }[];
+  /** H9 fix 4: the caller's abort (the staff path's 25-second fallback); an aborted call is never retried */
+  signal?: AbortSignal;
 }
 export interface ModelResult {
   ok: boolean;
@@ -33,6 +35,9 @@ export interface ModelResult {
   cache_read_tokens?: number;
   cache_write_tokens?: number;
   error?: 'credit' | 'rate_limit' | 'overloaded' | 'network' | 'timeout' | 'refusal' | 'bad_request' | 'not_configured' | 'max_tokens' | 'other';
+  /** H9 fix 4: the model that answered (withFallback) and whether it was the fallback */
+  model_used?: string;
+  fallback?: boolean;
 }
 export type ModelFn = (c: ModelCall) => Promise<ModelResult>;
 
@@ -117,6 +122,7 @@ export function anthropicModel(key: string, fetchFn: typeof fetch = fetch, timeo
     let timeouts = r.error === 'timeout' ? 1 : 0;
     for (let n = 0; n < retries && !r.ok && r.retry !== undefined; n++) {
       if (r.error === 'timeout' && timeouts > 1) break;
+      if (c.signal?.aborted) break;
       await sleep(backoffMs(n, r.retry, retry));
       r = await once(c);
       if (r.error === 'timeout') timeouts++;
@@ -136,7 +142,7 @@ function callOnce(key: string, fetchFn: typeof fetch, timeoutMs: number) {
         method: 'POST',
         headers: { 'x-api-key': key, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' },
         body: JSON.stringify(requestBody(c, thinking)),
-        signal: AbortSignal.timeout(timeoutMs),
+        signal: c.signal ? AbortSignal.any([AbortSignal.timeout(timeoutMs), c.signal]) : AbortSignal.timeout(timeoutMs),
       });
     let res: Response;
     try {
@@ -146,6 +152,8 @@ function callOnce(key: string, fetchFn: typeof fetch, timeoutMs: number) {
         if (/thinking/i.test(t) && !/credit/i.test(t)) res = await send(false);
       }
     } catch (e) {
+      // aborted by the caller (the fallback took over): never retried
+      if (c.signal?.aborted) return { ok: false, text: '', input_tokens: 0, output_tokens: 0, latency_ms: Date.now() - t0, error: 'timeout' };
       return { ok: false, text: '', input_tokens: 0, output_tokens: 0, latency_ms: Date.now() - t0, error: (e as Error)?.name === 'TimeoutError' ? 'timeout' : 'network', retry: '' };
     }
     const raw = await res.text();
@@ -168,6 +176,32 @@ function callOnce(key: string, fetchFn: typeof fetch, timeoutMs: number) {
     if (m.stop_reason === 'refusal') return { ok: false, text: '', ...usage, latency_ms: latency, error: 'refusal' };
     if (m.stop_reason === 'max_tokens') return { ok: false, text, ...usage, latency_ms: latency, error: 'max_tokens' };
     return { ok: true, text, ...usage, latency_ms: latency };
+  };
+}
+
+/**
+ * H9 fix 4 (Ahmed, 18 Nov 2026): the staff path keeps claude-opus-5-5; as a safety net only, an Opus call that has not
+ * returned within 25 seconds is aborted and the same call is made with claude-sonnet-5-5 (logged as a fallback by the
+ * caller — ModelResult.fallback). Any other model, or an Opus call that returns in time (even with an error), is unchanged.
+ */
+export const STAFF_FALLBACK_MS = 25_000;
+export const STAFF_FALLBACK_MODEL = 'claude-sonnet-5-5';
+export function withFallback(model: ModelFn, o: { afterMs?: number; fallback?: string } = {}): ModelFn {
+  const after = o.afterMs ?? STAFF_FALLBACK_MS;
+  const fb = o.fallback ?? STAFF_FALLBACK_MODEL;
+  return async (c) => {
+    if (!/opus/.test(c.model) || c.model === fb) return { ...(await model(c)), model_used: c.model };
+    const ctl = new AbortController();
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const late = new Promise<null>((res) => {
+      timer = setTimeout(() => res(null), after);
+    });
+    const first = await Promise.race([model({ ...c, signal: ctl.signal }), late]);
+    clearTimeout(timer);
+    if (first) return { ...first, model_used: c.model };
+    ctl.abort();
+    const r = await model({ ...c, model: fb, signal: undefined });
+    return { ...r, model_used: fb, fallback: true };
   };
 }
 

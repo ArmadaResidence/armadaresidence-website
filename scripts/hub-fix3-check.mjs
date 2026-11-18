@@ -71,7 +71,7 @@ check(L.learnLine('rule_saved', { wording: 'اسأل عن التواريخ' }).i
   && L.learnLine('rule_owner').includes('أحمد'), 'C10 the confirmation lines (copy.md §9.1)');
 check(/A REPLY RULE \(teach only/.test(PROMPTS) && /never "room_price" and never "offer"/.test(PROMPTS) && /REPLY RULES \(H9 fix 3/.test(PROMPTS), 'C11 prompts.md §7 and §2: the reply rule');
 const RUN = read('supabase/functions/_shared/hub/learn-run.ts');
-check(/part: o\.part \?\? null/.test(RUN) && /'rule_saved', 'rule_saved_part'/.test(RUN), 'C12 hub-agent sends the rule and its part, the rule lines get «تمام» / «عدّل» / «امسح»');
+check(/part: o\.part \?\? null/.test(RUN) && /CONFIRM_LINES\.includes\(line\)/.test(RUN) && ['rule_saved', 'rule_saved_part'].every((k) => L.CONFIRM_LINES.includes(k)), 'C12 hub-agent sends the rule and its part, the rule lines get «تمام» / «عدّل» / «امسح»');
 
 // ── D · the models ──
 const opus = requestBody({ layer: 'staff_chat', model: 'claude-opus-5-5', system: 's', user: 'u' });

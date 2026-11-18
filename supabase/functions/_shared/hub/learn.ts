@@ -386,7 +386,9 @@ export function cardScope(unitKeys: string[] | null | undefined): Scope {
 export type LineKey = 'saved' | 'saved_both' | 'revised' | 'intent_ask' | 'intent_no' | 'ok_ack' | 'edit_ask' | 'link_ask' | 'ask_replace' | 'replaced' | 'kept' | 'removed' | 'removed_n' | 'remove_none' | 'remove_n_none' | 'remove_n_other'
   | 'not_allowed' | 'other_branch' | 'room_price' | 'offer' | 'service_price' | 'guest_detail' | 'one_off' | 'not_a_fact' | 'empty' | 'teach_off' | 'failed' | 'conflict_shared'
   // H9 fix 3: the reply rules and a staff voice note that could not be heard
-  | 'rule_saved' | 'rule_saved_part' | 'rule_conflict' | 'rule_owner' | 'voice_failed';
+  | 'rule_saved' | 'rule_saved_part' | 'rule_conflict' | 'rule_owner' | 'voice_failed'
+  // H9 fix 4: a reply rule moved to both branches or removed, a quick reply already applied or expired
+  | 'rule_saved_both' | 'rule_removed' | 'rule_removed_n' | 'tap_already' | 'tap_expired';
 export const LINES = (text as Json).learn_lines as Record<LineKey, string>;
 export const OFFERS_LINK = 'https://admin.armadaresidence.com/offers';
 export const BRANCH_NAMES: Record<Branch, string> = { 'airport-road': 'فرع طريق المطار', 'shafa-road': 'فرع طريق الشفا' };
@@ -484,6 +486,25 @@ export function confirmButtons(cardId: string, scope: Scope, owner: boolean): { 
   const first: LearnButton = owner && scope !== 'both' ? 'both' : 'ok';
   return ([first, 'edit', 'del'] as LearnButton[]).map((b) => ({ id: learnButtonId(b, cardId), title: LEARN_BUTTONS[b] }));
 }
+/** H9 fix 4 (Ahmed, 18 Nov 2026): every quick reply sent to a staff or management number gets its own id «hubk:<20 letters>»,
+ *  bound in public.hub_staff_buttons to its action and pending item; a tap is routed by that id only and acts once */
+const TAP_ID = /^hubk:[a-z0-9]{20}$/;
+export const parseTapId = (id: string | null | undefined): string | null => (TAP_ID.test(String(id ?? '')) ? String(id) : null);
+const TAP_LETTERS = 'abcdefghijklmnopqrstuvwxyz0123456789';
+export function stampButtons(bs: { id: string; title: string }[], rand: (n: number) => Uint8Array = (n) => crypto.getRandomValues(new Uint8Array(n))):
+  { buttons: { id: string; title: string }[]; register: { id: string; action: LearnButton; item: string }[] } {
+  const register: { id: string; action: LearnButton; item: string }[] = [];
+  const buttons = bs.map((b) => {
+    const p = parseLearnButton(b.id);
+    if (!p) return b;
+    const id = `hubk:${Array.from(rand(20), (x) => TAP_LETTERS[x % TAP_LETTERS.length]).join('')}`;
+    register.push({ id, action: p.action, item: p.id });
+    return { id, title: b.title };
+  });
+  return { buttons, register };
+}
+/** the lines whose message carries the card's quick replies */
+export const CONFIRM_LINES: LineKey[] = ['saved', 'saved_both', 'revised', 'rule_saved', 'rule_saved_both', 'rule_saved_part'];
 export const intentButtons = (followupId: string) => [{ id: learnButtonId('save', followupId), title: LEARN_BUTTONS.save }, { id: learnButtonId('no', followupId), title: LEARN_BUTTONS.no }];
 /** the buttons' titles typed out — read only while that confirmation or question is the last thing we sent */
 export function typedButton(raw: string): LearnButton | null {
@@ -552,6 +573,8 @@ export interface TeachTurn {
   lastSent: { kind: 'confirm'; card_id: string } | { kind: 'intent'; followup_id: string } | null;
 }
 export type TeachAction =
+  /** H9 fix 4: a quick reply sent since fix 4 — by its own id, acted on once by the database */
+  | { kind: 'tap'; id: string }
   | { kind: 'button'; action: LearnButton; id: string }
   | { kind: 'command'; command: Command }
   | { kind: 'teach'; body: string; scope: Scope; revises: string | null; followup?: string | null }
@@ -562,6 +585,9 @@ export type TeachAction =
  *  waiting (a correction after «عدّل», a link that was asked for); a teacher's other message → classify (the model);
  *  «تعلّم» from someone who may not teach → not_allowed; anything else → the colleague chat */
 export function teachRoute(t: TeachTurn): TeachAction {
+  const tap = parseTapId(t.buttonId);
+  if (tap) return { kind: 'tap', id: tap };
+  // the quick replies sent before fix 4 (hubl:<action>:<item>) keep the earlier matching
   const btn = parseLearnButton(t.buttonId);
   if (btn) return { kind: 'button', ...btn };
   const may = mayTeach(t.teacher);

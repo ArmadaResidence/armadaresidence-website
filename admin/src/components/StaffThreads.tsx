@@ -4,7 +4,7 @@
 // edit sees the branches in scope (public.hub_staff_threads / hub_staff_thread decide). Read-only; nothing is sent from here.
 import { useEffect, useState } from 'react';
 import { ErrorBox, Loading } from './ui';
-import { staffThread, staffThreads, type StaffThreadMsg, type StaffThreadRow } from '../lib/inbox';
+import { loadError, staffThread, staffThreads, type StaffThreadMsg, type StaffThreadRow } from '../lib/inbox';
 import { riyadhDateTime } from '../lib/format';
 
 const TEACH_STATUS: Record<string, string> = {
@@ -18,12 +18,12 @@ export default function StaffThreads() {
   const [open, setOpen] = useState<StaffThreadRow | null>(null);
   const [msgs, setMsgs] = useState<StaffThreadMsg[] | null>(null);
   useEffect(() => {
-    staffThreads().then((r) => setRows(r)).catch((e) => setError((e as Error).message));
+    staffThreads().then((r) => setRows(r)).catch((e) => setError(loadError('team', (e as Error).message)));
   }, []);
   useEffect(() => {
     if (!open) return;
     setMsgs(null);
-    staffThread(open.who, open.unit).then(setMsgs).catch((e) => setError((e as Error).message));
+    staffThread(open.who, open.unit).then(setMsgs).catch((e) => setError(loadError('team', (e as Error).message)));
   }, [open]);
   return (
     <div className="grid gap-3 lg:grid-cols-[19rem_minmax(0,1fr)]" data-staff-threads>

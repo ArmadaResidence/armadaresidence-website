@@ -24,13 +24,14 @@ on:
       - 'content/team.json'
       - 'scripts/sql-test-run.mjs'
       - 'scripts/booking-source-server-check.mjs'
+      - 'scripts/hub-staff-path-local.mjs'
       - '.github/workflows/server-checks.yml'
   workflow_dispatch:
     inputs:
       files:
         description: SQL test files of supabase/tests (space-separated)
         required: false
-        default: booking-source.sql guest_hub_units.sql guest_hub_ingest.sql guest_hub_retention.sql guest_hub_inbox.sql guest_hub_knowledge.sql guest_hub_assistant.sql guest_hub_lab.sql guest_hub_radar.sql guest_hub_pass4.sql guest_hub_team.sql guest_hub_media.sql guest_hub_send_watch.sql guest_hub_learning.sql guest_hub_booking.sql guest_hub_departures.sql guest_hub_h9_fix1.sql guest_hub_standby.sql breakfast-fees.sql wa-automation.sql
+        default: booking-source.sql guest_hub_units.sql guest_hub_ingest.sql guest_hub_retention.sql guest_hub_inbox.sql guest_hub_knowledge.sql guest_hub_assistant.sql guest_hub_lab.sql guest_hub_radar.sql guest_hub_pass4.sql guest_hub_team.sql guest_hub_media.sql guest_hub_send_watch.sql guest_hub_learning.sql guest_hub_booking.sql guest_hub_departures.sql guest_hub_h9_fix1.sql guest_hub_standby.sql guest_hub_fix3.sql guest_hub_fix4.sql breakfast-fees.sql wa-automation.sql
 
 permissions:
   contents: read
@@ -55,7 +56,7 @@ jobs:
       - name: The local database (every migration of this commit)
         run: supabase db start
       - name: The SQL tests
-        run: node scripts/sql-test-run.mjs ${{ inputs.files || 'booking-source.sql guest_hub_units.sql guest_hub_ingest.sql guest_hub_retention.sql guest_hub_inbox.sql guest_hub_knowledge.sql guest_hub_assistant.sql guest_hub_lab.sql guest_hub_radar.sql guest_hub_pass4.sql guest_hub_team.sql guest_hub_media.sql guest_hub_send_watch.sql guest_hub_learning.sql guest_hub_booking.sql guest_hub_departures.sql guest_hub_h9_fix1.sql guest_hub_standby.sql breakfast-fees.sql wa-automation.sql' }}
+        run: node scripts/sql-test-run.mjs ${{ inputs.files || 'booking-source.sql guest_hub_units.sql guest_hub_ingest.sql guest_hub_retention.sql guest_hub_inbox.sql guest_hub_knowledge.sql guest_hub_assistant.sql guest_hub_lab.sql guest_hub_radar.sql guest_hub_pass4.sql guest_hub_team.sql guest_hub_media.sql guest_hub_send_watch.sql guest_hub_learning.sql guest_hub_booking.sql guest_hub_departures.sql guest_hub_h9_fix1.sql guest_hub_standby.sql guest_hub_fix3.sql guest_hub_fix4.sql breakfast-fees.sql wa-automation.sql' }}
 
   function:
     name: server · functions (Deno — hub type-check, booking-request on a stub database)
@@ -80,3 +81,39 @@ jobs:
         env:
           TEAM_DEVICE_TOKEN: ${{ secrets.TEAM_DEVICE_TOKEN }}
         run: node scripts/booking-source-server-check.mjs
+
+  # Guest Hub H9 fix 4 (Ahmed, 18 Nov 2026): the staff path's stage times, end to end on the runner — every migration of this
+  # commit, wa-automation served as written, signed YCloud events (scripts/hub-staff-path-local.mjs). No YCloud and no model
+  # key exist here: the time measured is OUR part, up to the moment a reply would go to YCloud.
+  staff-path:
+    name: server · the staff path (local stack, signed events)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 26
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: '3.12'
+      - uses: supabase/setup-cli@689adcfb80d947100a1eab127289b97d1fb07b13 # v3.2.0
+        with:
+          version: 2.120.0
+      - name: The function's generated content
+        run: python build.py --content-only
+      - name: The local stack (every migration of this commit)
+        run: supabase start -x studio,imgproxy,logflare,vector
+      - name: wa-automation served
+        run: |
+          nohup supabase functions serve wa-automation --no-verify-jwt > "$RUNNER_TEMP/functions.log" 2>&1 &
+          for i in $(seq 1 60); do
+            code=$(curl -s -o /dev/null -w '%{http_code}' -X POST "http://127.0.0.1:54321/functions/v1/wa-automation" -H 'Content-Type: application/json' -d '{}' || true)
+            if [ "$code" != "000" ] && [ "$code" != "502" ] && [ "$code" != "503" ]; then echo "served ($code)"; break; fi
+            sleep 2
+          done
+      - name: The staff path's stage times
+        run: node scripts/hub-staff-path-local.mjs
+      - name: The function's own timing lines (numbers only)
+        if: always()
+        run: grep -E "hub staff timing|staff typing|wa-automation:" "$RUNNER_TEMP/functions.log" | tail -40 || true

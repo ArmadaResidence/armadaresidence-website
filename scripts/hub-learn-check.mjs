@@ -169,7 +169,7 @@ check(L.learnLine('intent_ask', {}) === 'أسجّلها معلومة للضيو�
 check(!/تعلّم:|بصيغة|من أول/.test(L.learnLine('not_a_fact', {})), 'no line asks to resend in a format (not_a_fact)');
 check(L.learnLine('offer', {}).includes('https://admin.armadaresidence.com/offers') && L.learnLine('room_price', {}).includes('https://admin.armadaresidence.com/offers'), 'the offers and room-price lines carry the «العروض» link');
 check(L.learnLine('other_branch', { branch: 'airport-road' }).includes('فرع طريق المطار') && L.learnLine('removed_n', { n: 2, wording: 'x' }).includes('رقم 2'), 'the branch name and the number filled');
-check(Object.values(L.LINES).every((t) => t.length <= 400 && !/[٠-٩]/.test(t)) && Object.keys(L.LINES).length === 33, 'every line ≤ 400 characters, Western digits, 33 lines (H9 fix 3: the reply rules and the staff voice)');
+check(Object.values(L.LINES).every((t) => t.length <= 400 && !/[٠-٩]/.test(t)) && Object.keys(L.LINES).length === 38, 'every line ≤ 400 characters, Western digits, 38 lines (H9 fix 3: the reply rules and the staff voice; H9 fix 4: the rules moved / removed, the quick replies once)');
 check(!/\{(?!wording|old|n|branch|link|expiry|name|part)[a-z_]+\}/.test(Object.values(L.LINES).join('')), 'no unknown placeholder in the lines');
 
 // ── the report's {{10}} ──
