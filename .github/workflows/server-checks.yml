@@ -109,7 +109,8 @@ jobs:
           nohup supabase functions serve wa-automation --no-verify-jwt > "$RUNNER_TEMP/functions.log" 2>&1 &
           for i in $(seq 1 60); do
             code=$(curl -s -o /dev/null -w '%{http_code}' -X POST "http://127.0.0.1:54321/functions/v1/wa-automation" -H 'Content-Type: application/json' -d '{}' || true)
-            if [ "$code" != "000" ] && [ "$code" != "502" ] && [ "$code" != "503" ]; then echo "served ($code)"; break; fi
+            # the function's own answer to an unsigned call (401) — never the gateway's while it boots (000 / 404 / 5xx)
+            if [ "$code" = "401" ] || [ "$code" = "400" ]; then echo "served ($code)"; break; fi
             sleep 2
           done
       - name: The staff path's stage times

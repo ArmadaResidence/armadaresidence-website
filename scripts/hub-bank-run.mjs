@@ -9,7 +9,7 @@
 //   node scripts/hub-bank-run.mjs [--bank questions|conversations|learning|both] [--only c001,q014] [--unit airport-road] [--out <file>]
 import { readFileSync, writeFileSync } from 'node:fs';
 import { isGuestLine, runItem } from '../supabase/functions/_shared/hub/eval.ts';
-import { alertTargets, escalationTargets, humanPhase, routeNumber, staffGuard, staffSystemFor, staffUser } from '../supabase/functions/_shared/hub/staff.ts';
+import { alertTargets, escalationTargets, humanPhase, routeNumber, staffFallback, staffGuard, staffRetryNote, staffSystemFor, staffUser } from '../supabase/functions/_shared/hub/staff.ts';
 import { staffSystem } from '../supabase/functions/_shared/hub/compose/index.ts';
 import { grade } from '../supabase/functions/_shared/hub/grade.ts';
 import { anthropicModel, costOf } from '../supabase/functions/_shared/hub/model.ts';
@@ -104,7 +104,7 @@ async function natural(guest, history, reply, tries = 2) {
   }
 }
 
-const STAFF_TONE = `You review one WhatsApp reply written by the WhatsApp line of a hotel's reception team (Armada Residence, Taif) to a COLLEAGUE — not a guest. COLLEAGUE_KIND staff = a reception colleague: the reply should be friendly, short (one or two lines), may tease lightly and use one or two emoji, may use the colleague's dialect, and must steer back to work. COLLEAGUE_KIND management = a manager: respectful, warm, short, no teasing. FAIL only for a CLEAR violation: (1) rude, cold or long-winded; (2) for management: teasing or joking at the manager; (3) a joke about religion, nationality, origin, appearance or family; (4) it does an off-work task it was asked (writes a poem, answers general knowledge, writes code) instead of refusing with a joke; (5) it writes a guest's name or phone number; (6) CHECK, when given, is not met. When in doubt, PASS. Return exactly one JSON object, the reason first: {"why": "<at most 15 English words>", "pass": true|false}.`;
+const STAFF_TONE = `You review one WhatsApp reply written by the WhatsApp line of a hotel's reception team (Armada Residence, Taif) to a COLLEAGUE — not a guest. COLLEAGUE_KIND staff = a reception colleague: the reply should be friendly, short (one or two lines), may tease lightly and use one or two emoji, may use the colleague's dialect, and must steer back to work. COLLEAGUE_KIND management = a manager: respectful, warm, short, no teasing. FAIL only for a CLEAR violation: (1) rude, cold or long-winded; (2) for management: teasing or joking at the manager; (3) a joke about religion, nationality, origin, appearance or family; (4) it does an off-work task it was asked (writes a poem, answers general knowledge, writes code) instead of refusing with a joke; (5) it writes a guest's name or phone number; (6) CHECK, when given, is not met; (7) it contains reasoning, notes, labels or an explanation about the reply instead of only the message itself, or an Arabic-Indic digit (٠-٩). When in doubt, PASS. Return exactly one JSON object, the reason first: {"why": "<at most 15 English words>", "pass": true|false}.`;
 const CHECKS = {
   back_to_work: 'it steers back to work (waiting conversations, the shift, or how it can help with work)',
   refuses_off_work: 'it refuses the off-work request (no poem written) with a light joke and steers back to work',
@@ -118,16 +118,27 @@ async function staffOne(q) {
   const user = staffUser({ branch: q.unit, kind: q.who === 'report' ? 'report' : 'staff', first_name: q.name ?? '', now: '10:30', facts, history: [], message: msg });
   const reasons = [];
   let reply = '';
+  // as production (staff-send.ts → staffChat, H9 fix 4): a reply the guard refuses is never sent — one regeneration with
+  // the reason, then the fixed fallback; every refusal is printed (a regeneration is reported, never hidden)
+  let note = '';
+  const refused = [];
   for (let i = 0; i < 2 && !reply; i++) {
-    const r = await counted({ layer: 'staff_chat', model: MODELS.staff ?? 'claude-opus-5-5', system, user });
+    const r = await counted({ layer: 'staff_chat', model: MODELS.staff ?? 'claude-opus-5-5', system, user: note ? `${user}\n\nYOUR PREVIOUS REPLY WAS REFUSED: ${note}. Write it again without that.` : user });
     if (!r.ok) {
       reasons.push(`model:${r.error}`);
       break;
     }
     const g = staffGuard(r.text, facts, msg, '10:30');
     if (g.ok) reply = r.text.trim();
-    else if (i === 1) reasons.push(`guard:${g.reasons.join('+')}`);
+    else {
+      refused.push(g.reasons.join('+'));
+      note = staffRetryNote(g.reasons);
+    }
   }
+  if (refused.length) console.log(`  ↻ ${q.id}: ${refused.length === 2 ? 'refused twice → the fixed fallback' : 'regenerated once'} (${refused.join(' / ')})`);
+  if (!reply && refused.length === 2) reply = staffFallback(msg);
+  const guardOk = !reply || staffGuard(reply, facts, msg, '10:30').ok || reply === staffFallback(msg);
+  if (!guardOk) reasons.push('sent_reply_refused');
   const e = q.expect ?? {};
   if (reply) {
     for (const w of e.must_not_include ?? []) if (reply.includes(w)) reasons.push(`must_not_include:${w}`);

@@ -224,6 +224,70 @@ async function run(m, answers = {}) {
   check(/m\.created_at < now\(\) - interval '10 minutes'/.test(code) && /reason = 'stale'/.test(code), 'G8 on deploy: a teaching still waiting more than 10 minutes closed without a reply');
 }
 
+// ── H · every staff-path reply through the guest guard's rules (Ahmed, 18 Nov 2026: Opus once leaked reasoning and «٤») ──
+{
+  const G = await import('../supabase/functions/_shared/hub/guard.ts');
+  const facts = { 'shafa-road': { waiting_for_staff: 0, today: { conversations: 4 } } };
+  const bad = [
+    ['ههه يا خالد، الشعر مش تخصصي 😄 عندنا اليوم ٤ محادثات.', 'digits'],
+    ['The user wants a poem. I should refuse with a joke.\nههه يا خالد 😄', 'meta_line'],
+    ['<thinking>refuse it</thinking> ههه يا خالد 😄', 'meta_tag'],
+    ['<message>ههه يا خالد 😄 نرجع للشغل؟</message>', 'meta_tag'],
+    ['<no_reasoning>ههه يا خالد 😄</no_reasoning>', 'meta_tag'],
+    ['<creative>ههه قصيدة؟ 😄 مافي محادثات</creative>', 'meta_tag'],
+    ['اليوم جانا **4** محادثات يا خالد 😄', 'markdown'],
+    ['الرد: ههه يا خالد، مش وقته 😄', 'meta_line'],
+    ['ملاحظة: لا أكتب شعرًا. ههه 😄', 'meta_line'],
+    ['ههه، حسب FACTS مفيش محادثات مستنية', 'meta_field'],
+    ['ههه يا خالد 😄 I will refuse this politely and go back to work', 'meta_english'],
+  ];
+  for (const [r, why] of bad) {
+    const g = S.staffGuard(r, facts, 'اكتب لي قصيدة عن الطائف', '10:30');
+    check(!g.ok && g.reasons.includes(why), `H1 refused (${why}): ${r.slice(0, 40)}`, JSON.stringify(g));
+  }
+  for (const r of ['ههه يا خالد، الشعر مش تخصصي 😄 عندنا اليوم 4 محادثات، ومفيش حد مستني دلوقتي.', 'تمام يا أحمد، ولا محادثة مستنية حاليًا 🙏']) {
+    check(S.staffGuard(r, facts, 'اكتب لي قصيدة عن الطائف', '10:30').ok, `H2 a clean twin passes: ${r.slice(0, 40)}`, JSON.stringify(S.staffGuard(r, facts, 'اكتب لي قصيدة', '10:30')));
+  }
+  check(S.staffGuard('Sure, there are 4 conversations today and none waiting.', facts, 'how many conversations today?', '10:30').ok, 'H3 an English reply to an English message passes');
+  check(G.AR_DIGITS.test('٤') && G.metaText('ههه') === null && G.metaText('Let me think about this') === 'line', 'H4 the shared rules: guard.ts → AR_DIGITS, metaText');
+  check(!S.summaryOk('الضيف يسأل عن ٤ غرف', ['4']) && !S.summaryOk('The user asks about rooms — الضيف يسأل', []) && S.summaryOk('الضيف يسأل عن موقف السيارات', []),
+    'H5 the staff alert line: Western digits only, no meta text');
+  check(/use Western digits/.test(S.staffRetryNote(['digits'])) && /no reasoning/.test(S.staffRetryNote(['meta_line'])), 'H6 the regeneration names what to fix');
+  // staffChat on stubs: leaked first → regenerated once, the clean one sent; leaked twice → the fixed fallback
+  const answers = [];
+  const runChat = async (texts) => {
+    answers.length = 0;
+    const calls = [];
+    let i = 0;
+    const call = async (name, args) => {
+      calls.push({ name, args });
+      if (name === 'hub_staff_chat_begin') return { staff: true, ok: true, gate: true, message_id: '00000000-0000-4000-8000-0000000000c1', kind: 'staff', unit: { branch: 'shafa-road' }, models: { staff: 'claude-opus-5-5' }, prices: {}, history: [], facts, now: '10:30', name: 'خالد' };
+      if (name === 'hub_teach_context') return { teacher: null, followup: null, last: null, last_sent: null };
+      if (name === 'hub_learn_command') return { handled: false };
+      return { ok: true };
+    };
+    const model = async (c) => {
+      answers.push(c.user);
+      return { ok: true, text: texts[Math.min(i++, texts.length - 1)], input_tokens: 5, output_tokens: 3, latency_ms: 3 };
+    };
+    const log = console.log, warn = console.warn;
+    console.log = () => {};
+    console.warn = () => {};
+    await SS.staffChat(call, CONTENT, model, { from: '+15550400002', to: '+966536663030', text: 'اكتب لي قصيدة عن الطائف', id: 'wamid-h', sentAt: new Date().toISOString(), kind: 'text' }, true);
+    console.log = log;
+    console.warn = warn;
+    return calls.find((c) => c.name === 'hub_staff_chat_finish')?.args.p.body ?? '';
+  };
+  const clean = 'ههه يا خالد، الشعر مش تخصصي 😄 نرجع للشغل؟';
+  const b1 = await runChat(['The user wants a poem.\nههه ٤', clean]);
+  check(b1 === clean && answers.length === 2 && /YOUR PREVIOUS REPLY WAS REFUSED: .*no reasoning/.test(answers[1]), 'H7 a leaked reply is regenerated once with the reason; the clean one is sent', `${b1} · ${answers.length}`);
+  const b2 = await runChat(['<thinking>x</thinking> ههه', 'الرد: ههه ٤']);
+  check(b2 === S.staffFallback('اكتب لي قصيدة عن الطائف') && answers.length === 2, 'H8 refused twice → the fixed fallback, never the leaked text', b2);
+  check(/Western digits \(0–9\) only, never Arabic-Indic digits/.test(read('docs/guest-hub/prompts.md')) && /no tags or angle brackets \(never <message> or any other\), no reasoning, notes, labels, field names or explanation/.test(read('docs/guest-hub/prompts.md')), 'H9 prompts.md §9 states both rules');
+  const team = read('tests/hub-bank/conversations-team.jsonl');
+  check(/"id": "t015"/.test(team) && /"id": "t016"/.test(team), 'H10 the staff bank holds the refused poem from management (t015) and the count question (t016)');
+}
+
 console.log = quiet;
 console.log(fails.length ? `hub-fix4-check: ${fails.length} of ${n} failed` : `✓ hub-fix4-check: ${n} checks`);
 process.exit(fails.length ? 1 : 0);

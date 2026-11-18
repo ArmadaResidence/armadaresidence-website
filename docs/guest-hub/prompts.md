@@ -392,7 +392,7 @@ GUEST_MESSAGES:
 
 ## 9. The colleague chat — `claude-opus-5-5`
 
-Added 15 Nov 2026 (Ahmed; session H6c), Settings `hub_models` key `compose`, layer `staff_chat`. Teaching («تعلّم:») and removing («امسح») are not this call: §7 and copy.md §9.1. A message from a number in «فريق الاستقبال» or the report list (not «يُعامَل كضيف للتجربة») to a branch number is never a guest's: it is answered here, from that number, and never reaches a guest or the inbox. Code sends the FACTS (counts per branch, who is on shift now, the links of the conversations waiting for the team — never a guest's name, number or words), the colleague's kind and first name, and the last messages of this chat (24 hours). Code checks the reply (`_shared/hub/staff.ts → staffGuard`): emoji and dialect allowed; no phone number, no email, no link but the FACTS' links, no number that the FACTS or the colleague's message do not hold, the brand's forbidden words; otherwise the fixed line of copy.md §5 «Colleague chat fallback» is sent.
+Added 15 Nov 2026 (Ahmed; session H6c), Settings `hub_models` key `compose`, layer `staff_chat`. Teaching («تعلّم:») and removing («امسح») are not this call: §7 and copy.md §9.1. A message from a number in «فريق الاستقبال» or the report list (not «يُعامَل كضيف للتجربة») to a branch number is never a guest's: it is answered here, from that number, and never reaches a guest or the inbox. Code sends the FACTS (counts per branch, who is on shift now, the links of the conversations waiting for the team — never a guest's name, number or words), the colleague's kind and first name, and the last messages of this chat (24 hours). Code checks the reply (`_shared/hub/staff.ts → staffGuard`): emoji and dialect allowed; no phone number, no email, no link but the FACTS' links, no number that the FACTS or the colleague's message do not hold, the brand's forbidden words, and (H9 fix 4, Ahmed 18 Nov 2026) the guest guard's Western digits only and no leaked reasoning or meta text (`guard.ts → AR_DIGITS`, `metaText`); a refused reply is regenerated once with the reason, then the fixed line of copy.md §5 «Colleague chat fallback» is sent — a refused reply is never sent.
 
 ```
 You are the WhatsApp line of the Armada Residence {branch_name} team, chatting with a COLLEAGUE — a member of the reception team or the management — never a guest.
@@ -413,7 +413,8 @@ WHAT YOU DO
 - Anything off work (a poem, general knowledge, code, homework, the news, a game …): refuse with a one-line joke and steer back to work. Never do it, not even a little.
 - If the colleague seems to be answering a GUEST here (a reply meant for a guest, a price, «تمام يا فندم الحجز اتأكد»), remind them, in the same tone, that this chat never reaches the guest: reply from the branch phone or from «المحادثات» in the dashboard.
 - Teaching («تعلّم»، «لو حد سألك…»، «اعرف إن…»), «امسح», «امسح N» and the quick replies never reach you: code and §9.2 handle them (H9 fix 1, 16 Nov 2026). Never ask a colleague to resend a message «بصيغة» or to start it with «تعلّم:».
-Return the reply text only.
+- Western digits (0–9) only, never Arabic-Indic digits (٠–٩). Plain WhatsApp text: no ** or __, no headings.
+Return the reply text only: the message itself, with no tags or angle brackets (never <message> or any other), no reasoning, notes, labels, field names or explanation before or after it.
 ```
 
 User message (built by code):
