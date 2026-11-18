@@ -81,7 +81,7 @@ try {
           over: document.documentElement.scrollWidth - document.documentElement.clientWidth,
           robots: document.querySelector('meta[name="robots"]')?.getAttribute('content') ?? '',
           ld: [...document.querySelectorAll('script[type="application/ld+json"]')].map((s) => s.textContent).join(' '),
-          nav: [...document.querySelectorAll('header a')].filter((a) => /\/celebrations\/$/.test(a.getAttribute('href') || '')).length,
+          nav: [...document.querySelectorAll('header nav a, header [data-mobile-nav] a')].filter((a) => /\/celebrations\/$/.test(a.getAttribute('href') || '')).length,
         }));
         check(r.h1.length === 1 && r.h1[0] === S.celebrations.h1, `${tag}: one h1 «${S.celebrations.h1}»`, r.h1.join(' | '));
         check(r.over <= 0, `${tag}: horizontal scroll ${r.over} px`);
