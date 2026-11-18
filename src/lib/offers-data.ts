@@ -6,7 +6,7 @@
  */
 import offersJson from '../../content/offers.json';
 import { sarText } from '../../supabase/functions/booking-request/rules.ts';
-import { branches, contentGen, diningLive, fill, localePath, media, partnersPath, ui, venuePath, venues, type Announcement, type Locale, type SitePhoto } from './content';
+import { branchContact, branches, contentGen, diningLive, fill, localePath, media, partnersPath, ui, venuePath, venues, waHref, type Announcement, type Locale, type SitePhoto } from './content';
 
 export type OfferCategory = 'individuals' | 'b2b' | 'dining';
 /** One live offer, the shape of the manifest. */
@@ -24,7 +24,7 @@ export interface Offer {
   terms_en: string;
   valid_from: string | null;
   valid_to: string | null;
-  kind: 'none' | 'percent' | 'fixed_price' | 'free_breakfast' | 'stay_pay';
+  kind: 'none' | 'percent' | 'fixed_price' | 'free_breakfast' | 'stay_pay' | 'packages';
   percent: number | null;
   fixed_price: number | null;
   stay_nights: number | null;
@@ -34,7 +34,7 @@ export interface Offer {
   room_types: string[];
   min_nights: number;
   dining_price: number | null;
-  cta: 'book' | 'quote' | 'menu' | 'none';
+  cta: 'book' | 'quote' | 'menu' | 'whatsapp' | 'none';
   quote_request: string | null;
   whatsapp: boolean;
   whatsapp_prefill_ar: string;
@@ -46,9 +46,28 @@ export interface Offer {
   show_partners: boolean;
   show_menu: boolean;
   show_bar: boolean;
+  /** «يظهر في المناسبات» (18 Nov 2026): listed on /celebrations/ — in the snapshot only when on */
+  show_celebrations?: boolean;
+  /** «باقات بسعر خاص» (18 Nov 2026): only on a packages offer */
+  short_ar?: string;
+  short_en?: string;
+  packages?: OfferPackage[];
+  note_ar?: string;
+  note_en?: string;
   sort: number;
   /** a fixture's own cover (checks); a published one comes from «الصور» (media.offers) */
   cover?: SitePhoto;
+}
+/** One package of a «باقات بسعر خاص» offer (18 Nov 2026): its own price (SAR, VAT included) and the optional «بدلًا من» */
+export interface OfferPackage {
+  name_ar: string;
+  name_en: string;
+  price: number | null;
+  was_price: number | null;
+  items_ar: string[];
+  items_en: string[];
+  choice_ar: string;
+  choice_en: string;
 }
 /** The live pop-up; the browser checks its schedule, frequency, pages and device again. */
 export interface OfferPopup {
@@ -112,9 +131,13 @@ export const siteOffers: Offer[] = live
 /** the promo-code field exists only while a code can be used (a live individuals offer with a code that has not
  *  ended, shown on the site or not) — no empty field when there is no code */
 export const promoCodesLive: boolean = live.some((o) => o.category === 'individuals' && (!!o.promo_code || !!o.members) && (!o.valid_to || o.valid_to >= offersToday));
-export type Placement = 'show_home' | 'show_offers' | 'show_branch' | 'show_partners' | 'show_menu';
+export type Placement = 'show_home' | 'show_offers' | 'show_branch' | 'show_partners' | 'show_menu' | 'show_celebrations';
 export const offersFor = (placement: Placement, category?: OfferCategory, branch?: string): Offer[] =>
   siteOffers.filter((o) => o[placement] && (!category || o.category === category) && (!branch || o.branches.includes(branch)));
+/** «المناسبات» (Ahmed, 18 Nov 2026): every live offer whose «يظهر في المناسبات» is on — the page lists them, its menu
+ *  item and its sitemap entry exist only while there is one (astro.config.mjs reads the same file and rule) */
+export const celebrationsOffers: Offer[] = offersFor('show_celebrations');
+export const celebrationsLive: boolean = celebrationsOffers.length > 0;
 /** the announcement bar — one system since 3 Nov 2026 («المحتوى والظهور» → «شريط الإعلان»; the offers' own bar
  *  placement is retired): today's published announcement (Riyadh, this build's day), either a featured offer — shown as
  *  before, its title and «التفاصيل» — or a custom text with an optional link. `id` keys the visitor's dismissal (an
@@ -185,3 +208,30 @@ export function diningOfferPrice(locale: Locale, o: Offer): string {
 export const offerHasRuntimePrice = (o: Offer): boolean => o.category === 'individuals' && (o.kind === 'percent' || o.kind === 'fixed_price');
 /** ui.json → offers in a page language */
 export const offersText = T;
+
+/** a «باقات بسعر خاص» offer (18 Nov 2026) — it never touches a booking: its own prices, the WhatsApp chooser */
+export const isPackages = (o: Offer): boolean => o.kind === 'packages';
+export const offerShort = (locale: Locale, o: Offer): string => (locale === 'en' ? o.short_en : o.short_ar) ?? '';
+export const offerNote = (locale: Locale, o: Offer): string => (locale === 'en' ? o.note_en : o.note_ar) ?? '';
+export const packageName = (locale: Locale, p: OfferPackage): string => (locale === 'en' ? p.name_en : p.name_ar);
+export const packageItems = (locale: Locale, p: OfferPackage): string[] => (locale === 'en' ? p.items_en : p.items_ar) ?? [];
+export const packageChoice = (locale: Locale, p: OfferPackage): string => (locale === 'en' ? p.choice_en : p.choice_ar) ?? '';
+/** a package's price lines through the riyal formatter (Western digits): the price, and «بدلًا من {was}» — the one other
+ *  static price an offer may carry; qa.py removes exactly these strings before its price rules (offer_price_lines) */
+export function packagePrice(locale: Locale, p: OfferPackage): { price: string; was: string; wasLine: string } | null {
+  if (p.price == null) return null;
+  const was = p.was_price != null && Number(p.was_price) > Number(p.price) ? sarText(Number(p.was_price), locale) : '';
+  return { price: sarText(Number(p.price), locale), was, wasLine: was ? fill(T(locale).package_instead, { price: was }) : '' };
+}
+/** the offer's WhatsApp message (its prefill, else «أرغب في الاستفسار عن {title}.») and one destination per branch of the
+ *  offer (numbers from content/contact.json, names from branches.json) — the chooser opens only these */
+export function offerWhatsApp(locale: Locale, o: Offer): { branch: string; label: string; href: string; phone: string }[] {
+  const text = offerText(locale, o, 'whatsapp_prefill') || fill(T(locale).package_prefill, { title: offerTitle(locale, o) });
+  return branches
+    .filter((b) => o.branches.includes(b.slug))
+    .map((b) => {
+      const c = branchContact(b.slug);
+      const name = locale === 'en' ? b.name_en : b.name_ar;
+      return { branch: b.slug, label: fill(ui(locale).cta.whatsapp_branch, { branch: name }), href: waHref(c.whatsapp, text), phone: c.phone_display };
+    });
+}

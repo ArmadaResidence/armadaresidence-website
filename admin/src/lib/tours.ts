@@ -87,6 +87,15 @@ export const PAGE_TOURS: Record<string, Tour> = {
       { target: [t('cal-grid')], needs: (me) => canEdit(me, 'rates'), title: 'تنبيه السعر', text: 'إذا كان السعر بعيدًا عن المعتاد ستظهر لك رسالة للتأكد قبل الحفظ.' },
     ],
   },
+  // «العروض» (18 Nov 2026): the packages offer type and «يظهر في المناسبات» — the steps open a new offer's form
+  '/offers': {
+    id: 'offers',
+    steps: [
+      { target: [t('offer-add')], needs: (me) => canEdit(me, 'offers'), title: 'إضافة عرض', text: 'أضف عرضًا في التبويب الذي أنت فيه: الأفراد أو الشركات أو المطعم والمقهى. يبقى مسودة لا تظهر على الموقع حتى «نشر».' },
+      { target: [t('offer-type')], open: t('offer-add'), needs: (me) => canEdit(me, 'offers'), title: 'باقات بسعر خاص', text: 'نوع للأفراد لا يغيّر سعر الغرفة ولا الحجز: حتى أربع باقات، لكل باقة اسمها وسعرها و«بدلًا من» اختياريًا ومحتوياتها سطرًا سطرًا، ثم ملاحظة عامة وزر «راسلنا على واتساب» لفروع العرض فقط. الصورة اختيارية لهذا النوع وحده.' },
+      { target: [t('offer-celebrations')], open: t('offer-add'), needs: (me) => canEdit(me, 'offers'), title: 'يظهر في المناسبات', text: 'شغّله ليظهر العرض في صفحة «المناسبات» على الموقع، في أي تبويب. تظهر الصفحة ورابطها في القائمة ما دام فيها عرض منشور.' },
+    ],
+  },
   '/partners': {
     id: 'partners',
     steps: [

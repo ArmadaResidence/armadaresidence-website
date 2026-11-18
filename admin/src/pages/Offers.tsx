@@ -24,9 +24,9 @@ import { BRANCH_NAMES, countWord, longDate, riyadhDateTime, sar, type CountNoun 
 import { JOB_STATUS, previewUrls } from '../lib/media';
 import { TIMES } from '../lib/dining';
 import {
-  blankOffer, blankPopup, CATEGORY_LABELS, CODE, COLOR_LABELS, CTA_LABELS, effectText, ENTRANCE_LABELS, MISSING_LABELS, PAGE_LABELS, PLACEMENTS,
+  blankOffer, blankPackage, blankPopup, CATEGORY_LABELS, CODE, COLOR_LABELS, CTA_LABELS, effectText, ENTRANCE_LABELS, missingText, PAGE_LABELS, PACKAGE_ITEMS_MAX, PACKAGES_MAX, PLACEMENTS,
   POPUP_MISSING, QUOTE_LABELS, riyadhParts, riyadhStamp, SHAPE_LABELS, SLUG, slugify, STATE_CHIP, STATE_LABELS, STAY_PAY_MODE_LABELS, TYPE_LABELS, WARNING_LABELS,
-  type Offer, type OfferCategory, type OfferFields, type OfferPublishResult, type Popup, type PopupFields, type PopupPage, type QuoteRequest, type StayPayMode, type TypeChoice,
+  type Offer, type OfferCategory, type OfferFields, type OfferPackage, type OfferPublishResult, type Popup, type PopupFields, type PopupPage, type QuoteRequest, type StayPayMode, type TypeChoice,
 } from '../lib/offers';
 import * as off from '../lib/offers';
 import LabelPair from '../components/LabelPair';
@@ -245,7 +245,7 @@ export default function Offers() {
                 <input type="checkbox" className="size-4 accent-bronze-deep" checked={archived} onChange={(e) => setArchived(e.target.checked)} data-no-dirty data-archive-toggle />
                 الأرشيف
               </label>
-              {editable && !archived && <button type="button" className="btn btn-ghost" onClick={() => setEditing('new')} data-action="offer-add">إضافة عرض</button>}
+              {editable && !archived && <button type="button" className="btn btn-ghost" onClick={() => setEditing('new')} data-action="offer-add" data-tour="offer-add">إضافة عرض</button>}
             </div>
             {!items.length ? (
               <Empty text={archived ? 'لا عروض مؤرشفة في هذه الفئة.' : 'لا عروض في هذه الفئة بعد.'} />
@@ -269,7 +269,7 @@ export default function Offers() {
                           {o.show_bar && <span className="chip chip-request">شريط الإعلان</span>}
                           {o.pending && <span className="chip chip-request" data-pending>تعديلات غير منشورة</span>}
                           {o.state !== 'archived' && o.check.missing.length > 0 && (
-                            <span className="chip chip-test" data-missing>ينقص: {o.check.missing.map((m) => MISSING_LABELS[m.code]).join('، ')}</span>
+                            <span className="chip chip-test" data-missing>ينقص: {o.check.missing.map((m) => missingText(m)).join('، ')}</span>
                           )}
                           {o.state !== 'archived' && o.check.warnings.map((w) => <span key={w.code} className="chip chip-flag" data-warning={w.code}>{WARNING_LABELS[w.code]}</span>)}
                         </div>
@@ -355,7 +355,7 @@ export default function Offers() {
                   <ul className="list-disc ps-5 text-ink-muted">
                     {x.missing.map((m, i) => (
                       <li key={`${m.code}-${i}`} data-missing-code={m.code}>
-                        {MISSING_LABELS[m.code]}{m.branch ? `: ${BRANCH_NAMES[m.branch] ?? m.branch}` : ''}{m.title_ar ? `: «${m.title_ar}»` : ''}
+                        {missingText(m)}{m.branch ? `: ${BRANCH_NAMES[m.branch] ?? m.branch}` : ''}{m.title_ar ? `: «${m.title_ar}»` : ''}
                       </li>
                     ))}
                   </ul>
@@ -494,7 +494,14 @@ function OfferForm({ offer, category, branches, rooms, venues, editable, seesMed
   const toast = useToast();
   const scoped = me?.branch ?? null;
   const [f, setF] = useState<OfferFields>(() => (offer ? pick(offer) : blankOffer(category, [scoped ?? branches[0]?.slug ?? 'airport-road'])));
-  const [type, setType] = useState<TypeChoice>(() => (f.promo_code ? 'code' : f.kind === 'none' ? 'percent' : (f.kind as TypeChoice)));
+  const [type, setTypeRaw] = useState<TypeChoice>(() => (f.promo_code ? 'code' : f.kind === 'none' ? 'percent' : (f.kind as TypeChoice)));
+  // «باقات بسعر خاص» (18 Nov 2026) has its own button («راسلنا على واتساب» or none); the other types «احجز في الفرع» or none
+  const setType = (v: TypeChoice) => {
+    setTypeRaw(v);
+    setF((x) => ({ ...x, cta: v === 'packages' ? (x.cta === 'none' ? 'none' : 'whatsapp') : x.cta === 'whatsapp' ? 'book' : x.cta }));
+  };
+  const pk = category === 'individuals' && type === 'packages';
+  const setPackage = (i: number, patch: Partial<OfferPackage>) => setF((x) => ({ ...x, packages: x.packages.map((p, j) => (j === i ? { ...p, ...patch } : p)) }));
   const [codeEffect, setCodeEffect] = useState<'percent' | 'fixed_price'>(() => (f.kind === 'fixed_price' ? 'fixed_price' : 'percent'));
   // «للأعضاء فقط» (3 Nov 2026): a coded individuals offer whose code never reaches the site
   const [members, setMembers] = useState(offer?.audience === 'members');
@@ -533,17 +540,36 @@ function OfferForm({ offer, category, branches, rooms, venues, editable, seesMed
     }
     if (category === 'dining' && !f.venue) return setError('اختر المطعم أو المقهى.');
     if (members && (category !== 'individuals' || type !== 'code')) return setError('العرض للأعضاء فقط يحتاج كودًا.');
+    // the packages as the database takes them: trimmed lines, no empty item (the textarea keeps them while typing)
+    const packages = pk
+      ? f.packages.map((p) => ({ ...p, name_ar: p.name_ar.trim(), name_en: p.name_en.trim(), choice_ar: p.choice_ar.trim(), choice_en: p.choice_en.trim(),
+          items_ar: p.items_ar.map((x) => x.trim()).filter(Boolean), items_en: p.items_en.map((x) => x.trim()).filter(Boolean) }))
+      : [];
+    if (pk) {
+      for (const [i, p] of packages.entries()) {
+        if (p.price === null || p.price <= 0) return setError(`أدخل سعر الباقة ${i + 1}.`);
+        if (p.was_price !== null && p.was_price <= p.price) return setError(`سعر «بدلًا من» في الباقة ${i + 1} يجب أن يكون أعلى من سعرها.`);
+        if (p.items_ar.length > PACKAGE_ITEMS_MAX || p.items_en.length > PACKAGE_ITEMS_MAX) return setError(`الباقة ${i + 1}: ${PACKAGE_ITEMS_MAX} بندًا على الأكثر في كل لغة.`);
+      }
+    }
     const payload: OfferFields = {
       ...f,
       slug,
       kind: category === 'individuals' ? effect : 'none',
+      packages,
+      short_ar: pk ? f.short_ar : '',
+      short_en: pk ? f.short_en : '',
+      note_ar: pk ? f.note_ar : '',
+      note_en: pk ? f.note_en : '',
       promo_code: code || null,
       percent: category === 'individuals' && effect === 'percent' ? f.percent : null,
       fixed_price: category === 'individuals' && effect === 'fixed_price' ? f.fixed_price : null,
       stay_nights: category === 'individuals' && effect === 'stay_pay' ? f.stay_nights : null,
       stay_pay_mode: category === 'individuals' && effect === 'stay_pay' ? f.stay_pay_mode ?? 'per_booking' : 'per_booking',
-      room_types: category === 'individuals' ? f.room_types : [],
-      min_nights: category === 'individuals' ? f.min_nights || 1 : 1,
+      room_types: category === 'individuals' && !pk ? f.room_types : [],
+      min_nights: category === 'individuals' && !pk ? f.min_nights || 1 : 1,
+      whatsapp_prefill_ar: category === 'b2b' || pk ? f.whatsapp_prefill_ar : '',
+      whatsapp_prefill_en: category === 'b2b' || pk ? f.whatsapp_prefill_en : '',
       venue: category === 'dining' ? f.venue : null,
       dining_price: category === 'dining' ? f.dining_price : null,
     };
@@ -561,7 +587,7 @@ function OfferForm({ offer, category, branches, rooms, venues, editable, seesMed
     }
   }
 
-  const ctas = (category === 'individuals' ? ['book', 'none'] : category === 'b2b' ? ['quote', 'none'] : ['menu', 'none']) as OfferFields['cta'][];
+  const ctas = (category === 'individuals' ? (pk ? ['whatsapp', 'none'] : ['book', 'none']) : category === 'b2b' ? ['quote', 'none'] : ['menu', 'none']) as OfferFields['cta'][];
   return (
     <div className="grid gap-4" data-offer-form data-category={category}>
       {offer?.live && offer.pending && <p className="note-amber text-sm" role="status">فيه تعديلات لم تُنشر بعد؛ الموقع يعرض آخر نسخة منشورة.</p>}
@@ -590,10 +616,12 @@ function OfferForm({ offer, category, branches, rooms, venues, editable, seesMed
         labels={{ ar: 'العنوان بالعربية', en: 'العنوان بالإنجليزية' }}
         disabled={dis}
       />
-      <LabelPair kind="text" max={400} rows={3} ar={f.description_ar} en={f.description_en} onChange={(a, e) => setF((x) => ({ ...x, description_ar: a, description_en: e }))} ids={{ ar: 'o-desc-ar', en: 'o-desc-en' }} labels={{ ar: 'الوصف بالعربية', en: 'الوصف بالإنجليزية' }} hints={{ ar: 'ما يحصل عليه الضيف فعلًا؛ حتى 400 حرف. لا تكتب الأسعار هنا: يعرضها الموقع من التقويم.' }} disabled={dis} />
+      {!pk && (
+        <LabelPair kind="text" max={400} rows={3} ar={f.description_ar} en={f.description_en} onChange={(a, e) => setF((x) => ({ ...x, description_ar: a, description_en: e }))} ids={{ ar: 'o-desc-ar', en: 'o-desc-en' }} labels={{ ar: 'الوصف بالعربية', en: 'الوصف بالإنجليزية' }} hints={{ ar: 'ما يحصل عليه الضيف فعلًا؛ حتى 400 حرف. لا تكتب الأسعار هنا: يعرضها الموقع من التقويم.' }} disabled={dis} />
+      )}
 
       {category === 'individuals' && (
-        <fieldset className="grid gap-3">
+        <fieldset className="grid gap-3" data-tour="offer-type">
           <legend className="label">نوع العرض</legend>
           <Segmented value={type} onChange={(v) => setType(v)} label="نوع العرض" disabled={dis} options={(Object.keys(TYPE_LABELS) as TypeChoice[]).map((k) => ({ value: k, label: TYPE_LABELS[k] }))} />
           {type === 'code' && (
@@ -613,7 +641,8 @@ function OfferForm({ offer, category, branches, rooms, venues, editable, seesMed
               </label>
             </div>
           )}
-          <div className="grid sm:grid-cols-3 gap-3">
+          {pk && <p className="text-xs text-ink-muted" data-packages-hint>باقات بأسعارها الخاصة (حتى {PACKAGES_MAX})، لا تغيّر سعر الغرفة ولا الحجز: بلا كود ولا أنواع غرف ولا حد أدنى للإقامة. يطلبها الضيف عبر «راسلنا على واتساب».</p>}
+          {!pk && <div className="grid sm:grid-cols-3 gap-3">
             {effect === 'percent' && (
               <Field label="نسبة الخصم ٪" id="o-percent" hint="من 1 إلى 90، على كل ليلة مؤهلة.">
                 <NumberField id="o-percent" value={f.percent} onChange={(v) => set('percent', v)} decimal min={0} max={90} className="w-28" />
@@ -639,9 +668,9 @@ function OfferForm({ offer, category, branches, rooms, venues, editable, seesMed
             <Field label="الحد الأدنى للإقامة (ليالٍ)" id="o-min" hint="1 = بلا حد أدنى.">
               <NumberField id="o-min" value={f.min_nights} onChange={(v) => set('min_nights', v ?? 1)} min={1} max={60} className="w-24" />
             </Field>
-          </div>
+          </div>}
           {effect === 'free_breakfast' && <p className="text-xs text-ink-muted">يصبح الإفطار مجانيًا في الليالي المؤهلة لمن يختار «مع الإفطار».</p>}
-          <div>
+          {!pk && <div>
             <span className="label" id="o-rooms-label">أنواع الغرف</span>
             <div className="flex flex-wrap gap-1.5" role="group" aria-labelledby="o-rooms-label" data-rooms>
               {branchRooms.map((r) => (
@@ -651,9 +680,11 @@ function OfferForm({ offer, category, branches, rooms, venues, editable, seesMed
               ))}
             </div>
             <p className="text-xs text-ink-muted mt-1">{f.room_types.length ? 'العرض لهذه الأنواع فقط.' : 'بلا اختيار: كل أنواع الغرف في فروع العرض.'}</p>
-          </div>
+          </div>}
         </fieldset>
       )}
+
+      {pk && <PackagesEditor f={f} dis={dis} setF={setF} setPackage={setPackage} />}
 
       {category === 'b2b' && (
         <div className="grid gap-3">
@@ -697,13 +728,13 @@ function OfferForm({ offer, category, branches, rooms, venues, editable, seesMed
         <Segmented value={f.cta} onChange={(v) => set('cta', v)} label="زر الإجراء" disabled={dis} options={ctas.map((c) => ({ value: c, label: CTA_LABELS[c] }))} />
       </div>
 
-      <fieldset className="grid gap-2">
+      <fieldset className="grid gap-2" data-tour="offer-placements">
         <legend className="label">أين يظهر</legend>
         <Check label="يظهر على الموقع" checked={f.show_site} onChange={(v) => set('show_site', v)} disabled={dis} data-field="show_site" hint={category === 'individuals' ? 'إن أطفأته لا يظهر العرض في أي صفحة؛ ويبقى كوده (إن وُجد) صالحًا في نموذج الحجز.' : 'إن أطفأته لا يظهر العرض في أي صفحة.'} />
         {f.show_site && (
           <div className="flex flex-wrap gap-1.5" data-placements>
             {PLACEMENTS.filter((p) => p.cats.includes(category)).map((p) => (
-              <Chip key={p.key} on={!!f[p.key]} onClick={() => set(p.key, !f[p.key] as never)} disabled={dis} data-placement={p.key}>{p.label}</Chip>
+              <Chip key={p.key} on={!!f[p.key]} onClick={() => set(p.key, !f[p.key] as never)} disabled={dis} data-placement={p.key} data-tour={p.key === 'show_celebrations' ? 'offer-celebrations' : undefined}>{p.label}</Chip>
             ))}
           </div>
         )}
@@ -712,7 +743,9 @@ function OfferForm({ offer, category, branches, rooms, venues, editable, seesMed
 
       <div className="card p-3 grid gap-1 text-sm" data-photo-state={noCover ? 'missing' : 'ready'}>
         <span className="font-semibold">صورة العرض</span>
-        {!offer ? (
+        {pk ? (
+          <span className="text-ink-muted" data-cover-optional>اختيارية لهذا النوع: بدونها تظهر البطاقة بنقش الهوية. أضفها متى شئت في «الصور» (3:2، يُفضّل 2560 × 1707) ثم «نشر».</span>
+        ) : !offer ? (
           <span className="text-ink-muted">احفظ العرض أولًا، ثم ارفع صورته في «الصور» (مطلوبة للنشر).</span>
         ) : noCover ? (
           <span className="text-ink-muted">لا صورة بعد؛ مطلوبة للنشر وتُنشر مع العرض.</span>
@@ -732,6 +765,90 @@ function OfferForm({ offer, category, branches, rooms, venues, editable, seesMed
         )}
       </div>
     </div>
+  );
+}
+
+/** «باقات بسعر خاص» (18 Nov 2026): the short text, up to four packages (name, price, «بدلًا من», items one per line,
+ *  a choice note), the common note, the WhatsApp message — and a live preview of the card as the site draws it */
+function PackagesEditor({ f, dis, setF, setPackage }: {
+  f: OfferFields; dis: boolean; setF: React.Dispatch<React.SetStateAction<OfferFields>>; setPackage: (i: number, patch: Partial<OfferPackage>) => void;
+}) {
+  const items = (a: string[]) => a.join('\n');
+  return (
+    <div className="grid gap-4" data-packages-editor data-tour="offer-packages">
+      <LabelPair kind="text" max={200} rows={2} ar={f.short_ar} en={f.short_en} onChange={(a, e) => setF((x) => ({ ...x, short_ar: a, short_en: e }))} ids={{ ar: 'o-short-ar', en: 'o-short-en' }} labels={{ ar: 'النص المختصر بالعربية', en: 'النص المختصر بالإنجليزية' }} hints={{ ar: 'يظهر تحت العنوان؛ حتى 200 حرف.' }} disabled={dis} />
+      <div className="grid gap-3" role="group" aria-label="الباقات">
+        {f.packages.map((p, i) => (
+          <fieldset key={i} className="card p-3 grid gap-3" data-package-row={i + 1}>
+            <legend className="font-semibold text-sm px-1">الباقة {i + 1}</legend>
+            <div className="grid sm:grid-cols-2 gap-3">
+              <Field label="الاسم بالعربية" id={`o-pk${i}-name-ar`}>
+                <input id={`o-pk${i}-name-ar`} className="field" value={p.name_ar} maxLength={60} onChange={(e) => setPackage(i, { name_ar: e.target.value })} disabled={dis} data-field="package-name-ar" />
+              </Field>
+              <Field label="الاسم بالإنجليزية" id={`o-pk${i}-name-en`}>
+                <input id={`o-pk${i}-name-en`} className="field latin" dir="ltr" value={p.name_en} maxLength={60} onChange={(e) => setPackage(i, { name_en: e.target.value })} disabled={dis} data-field="package-name-en" />
+              </Field>
+              <Field label="السعر (ريال، شامل الضريبة)" id={`o-pk${i}-price`}>
+                <NumberField id={`o-pk${i}-price`} value={p.price} onChange={(v) => setPackage(i, { price: v })} decimal min={0} className="w-32" />
+              </Field>
+              <Field label="بدلًا من (اختياري)" id={`o-pk${i}-was`} hint="يظهر مشطوبًا بجانب السعر، ويجب أن يكون أعلى منه.">
+                <NumberField id={`o-pk${i}-was`} value={p.was_price} onChange={(v) => setPackage(i, { was_price: v })} decimal min={0} className="w-32" />
+              </Field>
+              <Field label="المحتويات بالعربية" id={`o-pk${i}-items-ar`} hint={`بند في كل سطر؛ حتى ${PACKAGE_ITEMS_MAX}.`}>
+                <textarea id={`o-pk${i}-items-ar`} className="field" rows={5} value={items(p.items_ar)} onChange={(e) => setPackage(i, { items_ar: e.target.value.split('\n') })} disabled={dis} data-field="package-items-ar" />
+              </Field>
+              <Field label="المحتويات بالإنجليزية" id={`o-pk${i}-items-en`} hint="One item per line.">
+                <textarea id={`o-pk${i}-items-en`} className="field latin" dir="ltr" rows={5} value={items(p.items_en)} onChange={(e) => setPackage(i, { items_en: e.target.value.split('\n') })} disabled={dis} data-field="package-items-en" />
+              </Field>
+              <Field label="ملاحظة الاختيار بالعربية (اختيارية)" id={`o-pk${i}-choice-ar`}>
+                <input id={`o-pk${i}-choice-ar`} className="field" value={p.choice_ar} maxLength={200} onChange={(e) => setPackage(i, { choice_ar: e.target.value })} disabled={dis} data-field="package-choice-ar" />
+              </Field>
+              <Field label="ملاحظة الاختيار بالإنجليزية" id={`o-pk${i}-choice-en`}>
+                <input id={`o-pk${i}-choice-en`} className="field latin" dir="ltr" value={p.choice_en} maxLength={200} onChange={(e) => setPackage(i, { choice_en: e.target.value })} disabled={dis} data-field="package-choice-en" />
+              </Field>
+            </div>
+            {!dis && (
+              <button type="button" className="btn btn-ghost btn-sm justify-self-start" onClick={() => setF((x) => ({ ...x, packages: x.packages.filter((_, j) => j !== i) }))} data-action="package-remove">حذف الباقة {i + 1}</button>
+            )}
+          </fieldset>
+        ))}
+        {!dis && f.packages.length < PACKAGES_MAX && (
+          <button type="button" className="btn btn-ghost justify-self-start" onClick={() => setF((x) => ({ ...x, packages: [...x.packages, blankPackage()] }))} data-action="package-add">إضافة باقة</button>
+        )}
+      </div>
+      <LabelPair kind="text" max={400} rows={3} ar={f.note_ar} en={f.note_en} onChange={(a, e) => setF((x) => ({ ...x, note_ar: a, note_en: e }))} ids={{ ar: 'o-note-ar', en: 'o-note-en' }} labels={{ ar: 'الملاحظة العامة بالعربية', en: 'الملاحظة العامة بالإنجليزية' }} hints={{ ar: 'تظهر تحت الباقات؛ حتى 400 حرف.' }} disabled={dis} />
+      <LabelPair kind="text" max={300} rows={2} ar={f.whatsapp_prefill_ar} en={f.whatsapp_prefill_en} onChange={(a, e) => setF((x) => ({ ...x, whatsapp_prefill_ar: a, whatsapp_prefill_en: e }))} ids={{ ar: 'o-wa-ar', en: 'o-wa-en' }} labels={{ ar: 'رسالة واتساب الجاهزة بالعربية', en: 'رسالة واتساب الجاهزة بالإنجليزية' }} hints={{ ar: 'يختار الزائر الفرع (من فروع العرض فقط) وتُفتح المحادثة بهذه الرسالة. الأرقام من بيانات الفروع.' }} disabled={dis} />
+      <PackagesPreview f={f} />
+    </div>
+  );
+}
+
+/** the packages card as the site draws it (Arabic), updated while typing */
+function PackagesPreview({ f }: { f: OfferFields }) {
+  const list = f.packages.filter((p) => p.price !== null && p.price > 0);
+  return (
+    <section className="card p-4 grid gap-3" aria-label="معاينة البطاقة" data-packages-preview>
+      <p className="text-xs text-ink-muted">معاينة البطاقة كما تظهر على الموقع</p>
+      <h4 className="text-lg font-bold">{f.title_ar || 'العنوان'}</h4>
+      {f.short_ar && <p className="text-sm text-ink-muted">{f.short_ar}</p>}
+      <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        {list.map((p, i) => (
+          <li key={i} className="rounded-lg border border-line p-3 grid gap-1 content-start" data-preview-package>
+            <strong>{p.name_ar || `الباقة ${i + 1}`}</strong>
+            <span className="num">
+              <b>{sar(p.price ?? 0)}</b>
+              {p.was_price !== null && p.was_price > (p.price ?? 0) && <s className="text-ink-muted ms-2">{sar(p.was_price)}</s>}
+            </span>
+            <ul className="text-xs grid gap-0.5">
+              {p.items_ar.filter((x) => x.trim()).map((x, j) => <li key={j}>✓ {x}</li>)}
+            </ul>
+            {p.choice_ar && <p className="text-xs text-ink-muted">{p.choice_ar}</p>}
+          </li>
+        ))}
+      </ul>
+      {f.note_ar && <p className="text-xs text-ink-muted whitespace-pre-line">{f.note_ar}</p>}
+      {f.cta === 'whatsapp' && <span className="btn btn-primary btn-sm justify-self-start" aria-hidden="true">{CTA_LABELS.whatsapp}</span>}
+    </section>
   );
 }
 

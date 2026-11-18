@@ -49,6 +49,22 @@
       "show_site": true, "show_home": true, "show_offers": true, "show_branch": true, "show_partners": false, "show_menu": false, "show_bar": false, "sort": 3
     },
     {
+      "id": "00000000-0000-4000-8000-000000000009", "slug": "qa-celebrations", "category": "individuals", "branches": ["airport-road", "shafa-road"], "venue": null,
+      "title_ar": "باقات العرسان والمناسبات", "title_en": "Wedding & Celebration Packages",
+      "description_ar": "", "description_en": "", "terms_ar": "", "terms_en": "",
+      "valid_from": null, "valid_to": "2099-12-31", "kind": "packages", "percent": null, "fixed_price": null, "stay_nights": null, "promo_code": null,
+      "room_types": [], "min_nights": 1, "dining_price": null, "cta": "whatsapp", "quote_request": null, "whatsapp": false,
+      "whatsapp_prefill_ar": "أرغب في الاستفسار عن باقات العرسان والمناسبات.", "whatsapp_prefill_en": "I'd like to ask about the Wedding & Celebration Packages.",
+      "show_site": true, "show_home": true, "show_offers": true, "show_branch": true, "show_partners": false, "show_menu": false, "show_bar": false, "show_celebrations": true, "sort": 4,
+      "short_ar": "تزيين الغرف لمناسبة تبقى في الذاكرة. ثلاث باقات في فرعي طريق المطار وطريق الشفا.", "short_en": "Room decoration for an occasion to remember. Three packages at our Airport Road and Shafa Road branches.",
+      "note_ar": "الأسعار شاملة الضريبة ولا تشمل سعر الغرفة. اطلب الباقة قبل موعد مناسبتك بـ24 ساعة على الأقل.", "note_en": "Prices include VAT and do not include the room rate. Order your package at least 24 hours before your occasion.",
+      "packages": [
+        { "name_ar": "الباقة الفضية", "name_en": "Silver Package", "price": 299, "was_price": 450, "items_ar": ["تزيين السرير بالورود الطبيعية", "عصير لشخصين", "إفطار صباحي لشخصين في اليوم التالي"], "items_en": ["Bed decorated with fresh roses", "Juice for two", "Breakfast for two the next morning"], "choice_ar": "", "choice_en": "" },
+        { "name_ar": "الباقة الذهبية", "name_en": "Gold Package", "price": 450, "was_price": 600, "items_ar": ["تورتة خاصة للعروسين", "بوكس شوكولاتة راقٍ"], "items_en": ["Special cake for the couple", "Elegant chocolate box"], "choice_ar": "", "choice_en": "" },
+        { "name_ar": "الباقة البلاتينية", "name_en": "Platinum Package", "price": 799, "was_price": 1200, "items_ar": ["تورتة خاصة للعروسين"], "items_en": ["Special cake for the couple"], "choice_ar": "عشاء فاخر داخل الغرفة، اختيار واحد: مشويات مشكلة مع المقبلات، أو بحريات مشكلة مع المقبلات", "choice_en": "Fine in-room dinner, one choice: mixed grill with starters, or mixed seafood with starters" }
+      ]
+    },
+    {
       "id": "00000000-0000-4000-8000-000000000010", "slug": "umrah-groups", "category": "b2b", "branches": ["airport-road", "shafa-road"], "venue": null,
       "title_ar": "أسعار خاصة لشركات العمرة والمجموعات", "title_en": "Special rates for Umrah operators and groups",
       "description_ar": "نقدّم أسعارًا خاصة لشركات العمرة والمجموعات في فرعي طريق المطار وطريق الشفا. أرسل عدد الغرف وتواريخ الإقامة وعدد الأشخاص إلى فريق المبيعات، ليصلك عرض سعر مكتوب.",
@@ -70,7 +86,7 @@
       "title_ar": "عرض اختبار للمقهى", "title_en": "Test café offer", "description_ar": "نص اختبار لعرض المطعم والمقهى.", "description_en": "Test copy for a restaurant & café offer.",
       "terms_ar": "", "terms_en": "", "valid_from": null, "valid_to": "2099-12-31", "kind": "none", "percent": null, "fixed_price": null, "stay_nights": null, "promo_code": null,
       "room_types": [], "min_nights": 1, "dining_price": 45, "cta": "menu", "quote_request": null, "whatsapp": false, "whatsapp_prefill_ar": "", "whatsapp_prefill_en": "",
-      "show_site": true, "show_home": true, "show_offers": false, "show_branch": true, "show_partners": false, "show_menu": true, "show_bar": false, "sort": 0
+      "show_site": true, "show_home": true, "show_offers": false, "show_branch": true, "show_partners": false, "show_menu": true, "show_bar": false, "show_celebrations": true, "sort": 0
     }
   ],
   "popup": {

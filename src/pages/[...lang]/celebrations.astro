@@ -1,0 +1,62 @@
+---
+/**
+ * «المناسبات» / Celebrations (Ahmed, 18 Nov 2026 — DECISIONS.md 2026-11-18 «Celebrations…»): every live offer whose
+ * «يظهر في المناسبات» is on, each in its own card design — a «باقات بسعر خاص» offer in full (its packages as columns on
+ * desktop, stacked on a phone, the common note and «راسلنا على واتساب» under them), any other offer as its usual card.
+ * Titles: seo.json → pages.celebrations; the heading and the intro: ui.json → celebrations. JSON-LD: WebPage +
+ * BreadcrumbList only (no Offer markup — decision of 11 Nov 2026). og:image: the first offer's cover, else the default.
+ * With no such offer the page keeps one line with a link to /offers/ and is noindex and out of the sitemap
+ * (astro.config.mjs applies the same rule); the menu item exists only while it lists one (Header.astro).
+ * The hall is a business venue and is never part of this page.
+ */
+import Base from '@layouts/Base.astro';
+import Icon from '@components/Icon.astro';
+import OfferList from '@components/OfferList.astro';
+import { langPaths } from '@lib/paths';
+import { breadcrumbs, webPage } from '@lib/jsonld';
+import { localePath, offersPageLive, pageSeo, ui, type Locale } from '@lib/content';
+import { celebrationsOffers, offerCover } from '@lib/offers-data';
+
+export const getStaticPaths = langPaths;
+
+interface Props {
+  locale: Locale;
+}
+const { locale } = Astro.props;
+const t = ui(locale);
+const c = t.celebrations;
+const s = pageSeo(locale, 'celebrations');
+const offers = celebrationsOffers;
+const empty = offers.length === 0;
+const cover = offers.map((o) => offerCover(o)).find((x) => !!x);
+const ogImage = cover ? `${cover.base}-${Math.max(...cover.widths)}.webp` : undefined;
+const jsonld = [
+  webPage(locale, s.title, s.description, '/celebrations/'),
+  breadcrumbs([
+    { name: t.nav.home, path: localePath(locale, '/') },
+    { name: c.h1, path: localePath(locale, '/celebrations/') },
+  ]),
+];
+---
+
+<Base locale={locale} path="/celebrations/" title={s.title} description={s.description} ogImage={ogImage} jsonld={jsonld} noindex={empty}>
+  <section class="mx-auto max-w-6xl px-4 pt-10 pb-14" data-celebrations-page data-empty={empty ? '' : undefined}>
+    <h1 class="text-3xl md:text-4xl font-bold text-midnight">{c.h1}</h1>
+    {
+      empty ? (
+        <p class="mt-6 text-ink-muted" data-celebrations-empty>
+          <span>{c.empty}</span>
+          <a href={localePath(locale, offersPageLive ? '/offers/' : '/')} class="ms-1 inline-flex items-center gap-1 font-semibold link-bronze">
+            <span>{c.empty_link}</span>
+            <Icon name="arrow" size={14} class="icon-arrow rtl:rotate-180" />
+          </a>
+        </p>
+      ) : (
+        <>
+          <p class="mt-4 max-w-3xl text-ink-muted leading-relaxed md:text-lg">{c.intro}</p>
+          <OfferList locale={locale} offers={offers} placement="celebrations" level={2} anchors full class="mt-10" />
+        </>
+      )
+    }
+  </section>
+</Base>

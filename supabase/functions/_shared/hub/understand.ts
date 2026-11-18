@@ -13,6 +13,8 @@ export const INTENTS = [
   'location_question', 'stay_service_request', 'booking_status', 'booking_change', 'booking_cancel', 'dining_menu', 'dining_order',
   'order_status', 'table_booking', 'hall_request', 'group_request', 'eyab_question', 'complaint', 'compensation_request', 'human_request',
   'payment_question', 'thanks_or_closing', 'out_of_scope', 'other',
+  // 18 Nov 2026: ordering a celebration package («باقات بسعر خاص») — collected in the chat, then the reception
+  'package_order',
 ] as const;
 export type Intent = (typeof INTENTS)[number];
 
@@ -57,6 +59,10 @@ export interface Understanding {
   /** H9 (16 Nov 2026): the answer to the departure check of this morning — only while one waits (TurnInput.departure, prompts.md §1.3);
    *  leave = as planned, extend = longer, late = a late check-out question (an ordinary question) */
   departure?: 'leave' | 'extend' | 'late' | null;
+  /** 18 Nov 2026 (a package order, prompts.md §1 rule 38): the package the guest names, and whether they say they
+   *  already have a room booking with us */
+  package?: string | null;
+  has_room_booking?: boolean | null;
   language: string;
   complaint: boolean;
   confidence: Record<string, number>;
@@ -123,6 +129,8 @@ export function validateUnderstanding(raw: unknown, lists: Lists): { ok: true; v
   if (!nullOr<string>(o.departure, (x) => ['leave', 'extend', 'late'].includes(String(x)))) e.push('departure');
   for (const k of ['arrival_text', 'departure_text']) if (!nullOr<string>(o[k], (x) => typeof x === 'string' && x.length <= 200)) e.push(k);
   if (!nullOr<boolean>(o.frustrated, (x) => typeof x === 'boolean')) e.push('frustrated');
+  if (!nullOr<string>(o.package, (x) => typeof x === 'string' && x.length <= 60 && !/\d{5,}/.test(x))) e.push('package');
+  if (!nullOr<boolean>(o.has_room_booking, (x) => typeof x === 'boolean')) e.push('has_room_booking');
   if (typeof o.language !== 'string' || !/^(ar|en|other:[a-z]{2,3})$/.test(o.language)) e.push('language');
   if (typeof o.complaint !== 'boolean') e.push('complaint');
   if (!nullOr<string>(o.kind, (x) => (KINDS as readonly string[]).includes(String(x)))) e.push('kind');
@@ -142,6 +150,7 @@ export function validateUnderstanding(raw: unknown, lists: Lists): { ok: true; v
       extra_beds: o.extra_beds ?? null, rooms_count: o.rooms_count ?? null, guest_name: o.guest_name ?? null, booking_ref: o.booking_ref ?? null,
       organisation: o.organisation ?? null, layout: o.layout ?? null, coffee_break: o.coffee_break ?? null, departure: o.departure ?? null,
       arrival_text: o.arrival_text ?? null, departure_text: o.departure_text ?? null, frustrated: o.frustrated === true,
+      package: o.package ?? null, has_room_booking: o.has_room_booking ?? null,
       language: o.language, complaint: o.complaint, confidence: conf as Record<string, number>,
     },
   };

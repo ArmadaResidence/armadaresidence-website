@@ -53,7 +53,7 @@ const tabs = individuals.length > 0 && b2b.length > 0;
     {
       individuals.length > 0 && (
         <div id="offers-panel-individuals" role={tabs ? 'tabpanel' : undefined} aria-labelledby={tabs ? 'offers-tab-individuals' : undefined} tabindex={tabs ? 0 : undefined}>
-          <OfferList locale={locale} offers={individuals} placement="offers" level={2} anchors class="mt-8" />
+          <OfferList locale={locale} offers={individuals} placement="offers" level={2} anchors full class="mt-8" />
         </div>
       )
     }

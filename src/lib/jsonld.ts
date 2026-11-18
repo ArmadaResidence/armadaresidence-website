@@ -288,6 +288,19 @@ export function aboutPage(locale: Locale, name: string, description: string) {
   };
 }
 
+/** a plain content page (18 Nov 2026 — «المناسبات»): WebPage of the site, never an Offer */
+export function webPage(locale: Locale, name: string, description: string, path: string) {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'WebPage',
+    name,
+    description,
+    url: absoluteUrl(localePath(locale, path)),
+    inLanguage: locale,
+    isPartOf: { '@type': 'WebSite', name: siteName(locale), url: absoluteUrl(localePath(locale, '/')) },
+  };
+}
+
 export function breadcrumbs(items: { name: string; path: string }[]) {
   return {
     '@context': 'https://schema.org',

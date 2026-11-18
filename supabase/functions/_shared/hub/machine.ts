@@ -23,7 +23,8 @@ export const ASSISTANT_STATES: State[] = ['new', 'inquiry', 'collecting', 'quote
 
 export interface Draft {
   id: string;
-  kind: 'stay' | 'hall' | 'group' | 'table';
+  /** package (18 Nov 2026): a celebration package ordered in the chat — the branch, the occasion's date, the room booking */
+  kind: 'stay' | 'hall' | 'group' | 'table' | 'package';
   version: number;
   fields: Record<string, unknown>;
   quote?: Record<string, unknown> | null;
@@ -55,6 +56,11 @@ export type Action =
    *  (copy.md §2); `pending` = the dates a «نعم» / «hubd:yes» accepts */
   | { type: 'dates_question'; why: string; status: string; candidates: string[]; pending?: { check_in: string | null; check_out: string | null } | null }
   | { type: 'fixed'; key: string; buttons?: 'quick' | 'dates' | 'team' | null; vars?: Record<string, string | number> }
+  /** «باقات بسعر خاص» (Ahmed, 18 Nov 2026): the details of a package order still missing — asked in ONE fixed message
+   *  (copy.md §5: the lead, then the branch, the occasion's date, the room booking) */
+  | { type: 'package_ask'; missing: ('branch' | 'date' | 'booking')[]; package: string | null }
+  /** a date less than 24 hours away: the notice and the earliest date (copy.md §5) — the team only if the guest insists */
+  | { type: 'package_notice'; date: string }
   | { type: 'booking_status'; ref: string }
   | { type: 'handoff'; reason: string; notice: NoticeKey | null; priority?: 'high'; note: { intent: string; slots: Record<string, unknown>; stopped: string } }
   /** H6c (Ahmed, 15 Nov 2026): «بانتظار موظف» — a second thing the assistant cannot answer joins the SAME waiting hand-off:
@@ -171,6 +177,8 @@ export interface Context {
   draft_open?: boolean;
   /** H9: a departure check (stay_checkout_check) sent this morning and not answered yet — its row and Nazeel number */
   departure?: { id: string; ref: string } | null;
+  /** today in Asia/Riyadh (YYYY-MM-DD) — the 24-hour notice of a package order; the clock's day when absent */
+  today?: string;
 }
 
 export interface DecideInput {
@@ -581,6 +589,14 @@ function decideCore(input: DecideInput): Decision {
     t.push('T44');
     return out({ next: 'quoted', actions: [{ type: 'cancel_reason', ref: ctx.recent_cancel.ref }, { type: 'alternatives' }], failed: 'reset', draft_replace: !!input.draft });
   }
+  // «باقات بسعر خاص» (Ahmed, 18 Nov 2026): an order of a celebration package is collected in the chat — the branch, the
+  // occasion's date, whether the guest already has a room booking — then handed to reception with them (T48); a date
+  // less than 24 hours away gets the notice and the earliest date (T47), the team only when the guest insists (T49)
+  const pkOpen = input.draft?.kind === 'package' && !input.draft.fields._routed;
+  if (has('package_order') || (pkOpen && !has('booking_cancel') && (kind === 'booking' || has('stay_booking') || !!u.check_in || !!u.dates_read?.check_in
+      || u.dates_read?.status === 'past' || u.branch === 'airport-road' || u.branch === 'shafa-road' || typeof u.has_room_booking === 'boolean' || !!u.package || ev.affirm === true))) {
+    return packageOrder(input, state, t, out, u, ev.affirm === true);
+  }
   // H8: «غيّر التواريخ» while the booking is still being made in this chat (a stay draft, not booked) changes the draft,
   // never an existing booking (the understanding may call it booking_change)
   if (has('booking_change') && !has('booking_cancel') && input.draft?.kind === 'stay' && ['collecting', 'quoted', 'awaiting_confirmation'].includes(state)
@@ -752,6 +768,71 @@ function humanTurn(input: DecideInput, t: string[]): Decision {
     resume_state: inner.next === 'human' || inner.next === 'closed' ? base : inner.next,
     reason: added ? inner.reason : 'waiting',
   };
+}
+
+/** the day after `iso` (YYYY-MM-DD) */
+const nextDay = (iso: string): string => new Date(Date.parse(`${iso}T00:00:00Z`) + 86400000).toISOString().slice(0, 10);
+const clockToday = (): string => new Date(Date.now() + 3 * 3600_000).toISOString().slice(0, 10);
+/** «باقات بسعر خاص» (Ahmed, 18 Nov 2026): the earliest occasion date a package can be ordered for — at least 24 hours
+ *  ahead, so tomorrow (the occasion's time is never asked: today is always less than 24 hours away) */
+export const packageEarliest = (today: string): string => nextDay(today);
+
+/** a package order (Ahmed, 18 Nov 2026): the branch (named, else the guest's own booking on that date), the occasion's
+ *  date (resolved by code, dates.ts) and whether the guest has a room booking — asked together at most twice, then ONE
+ *  hand-off to reception with them; a date less than 24 hours away → the notice with the earliest date; a plain «نعم»
+ *  takes that date; the same too-soon date again → the team (the guest insists) */
+function packageOrder(input: DecideInput, state: State, t: string[], out: Out, u: Understanding, affirm: boolean): Decision {
+  const ctx = input.ctx;
+  const prev = input.draft?.kind === 'package' ? input.draft.fields : {};
+  const replace = !!input.draft && input.draft.kind !== 'package';
+  const f: Record<string, unknown> = { ...prev };
+  if (u.package) f.package = String(u.package).slice(0, 60);
+  if (u.branch === 'airport-road' || u.branch === 'shafa-road') f.branch = u.branch;
+  if (typeof u.has_room_booking === 'boolean') f.has_room_booking = u.has_room_booking;
+  const today = ctx.today ?? clockToday();
+  const earliest = packageEarliest(today);
+  const said = u.check_in ?? u.dates_read?.check_in ?? (u.dates_read?.status === 'past' ? u.dates_read.candidates[0] ?? today : null);
+  // a question asked with the order («كم سعر الذهبية؟ أبيها الخميس») is answered first, from the offers
+  const first: Action[] = u.intents.includes('offer_question' as never) || u.intents.includes('price_question' as never)
+    ? [{ type: 'answer', topics: ['offers'], intents: ['offer_question'], branch: u.branch === 'both' ? null : u.branch, mixed: true }] : [];
+  const routed = (fields: Record<string, unknown>, transition: string): Decision => {
+    t.push(transition);
+    const slots = Object.fromEntries(Object.entries(fields).filter(([k, v]) => !k.startsWith('_') && v !== null && v !== undefined && v !== ''));
+    return out({ next: 'human', actions: [...first, handoff('package_order', 'package_handed', { intent: 'package_order', slots, stopped: state })],
+      draft_patch: { kind: 'package', fields: { ...fields, _routed: true } }, draft_replace: replace, reason: 'package_order', failed: 'reset' });
+  };
+  if (said && said < earliest) {
+    // the same too-soon date after the notice: the guest insists → the team, with the date asked for
+    if (prev._notice) return routed({ ...f, date: said, insists: true, _notice: null }, 'T49');
+    t.push('T47');
+    return out({ next: 'collecting', actions: [...first, { type: 'package_notice', date: earliest }], draft_patch: { kind: 'package', fields: { ...f, date: null, _notice: true, _notice_date: earliest } },
+      draft_replace: replace, failed: 'reset' });
+  }
+  if (said) {
+    f.date = said;
+    f._notice = null;
+  } else if (affirm && prev._notice && typeof prev._notice_date === 'string') {
+    // «نعم» to the earliest date offered
+    f.date = prev._notice_date;
+    f._notice = null;
+  }
+  // the guest's own booking on that date tells the branch and that there is a room booking
+  const own = ctx.bookings.filter((b) => b.status !== 'cancelled' && (typeof f.date === 'string' ? b.check_in <= f.date && f.date <= b.check_out : b.check_out >= today));
+  if (own.length === 1) {
+    if (!f.branch) f.branch = own[0].branch;
+    if (typeof f.has_room_booking !== 'boolean' && typeof f.date === 'string' && own[0].branch === f.branch) f.has_room_booking = true;
+  }
+  const missing: ('branch' | 'date' | 'booking')[] = [];
+  if (!f.branch) missing.push('branch');
+  if (!f.date) missing.push('date');
+  if (typeof f.has_room_booking !== 'boolean') missing.push('booking');
+  const asked = Number(prev._asks ?? 0);
+  if (missing.length && asked < 2) {
+    t.push('T47');
+    return out({ next: 'collecting', actions: [...first, { type: 'package_ask', missing, package: typeof f.package === 'string' ? f.package : null }],
+      draft_patch: { kind: 'package', fields: { ...f, _asks: asked + 1 } }, draft_replace: replace, failed: 'reset' });
+  }
+  return routed(f, 'T48');
 }
 
 function groupOrHall(input: DecideInput, state: State, t: string[], out: Out, u: Understanding, kind: 'hall' | 'group'): Decision {
@@ -1090,6 +1171,8 @@ export const INTENT_LABELS: Record<string, string> = {
   payment_question: 'سؤال عن الدفع', invoice: 'فاتورة', dates_unclear: 'تواريخ لم تتضح',
   // H9: the answer «أرغب في التمديد» to the departure check
   extension: 'تمديد الإقامة',
+  // 18 Nov 2026: a celebration package ordered in the chat
+  package_order: 'طلب باقة مناسبات',
 };
 const SLOT_LABELS: Record<string, string> = {
   branch: 'الفرع', check_in: 'الوصول', check_out: 'المغادرة', nights: 'الليالي', room_type: 'الغرفة', adults: 'البالغون', children: 'الأطفال',
@@ -1097,12 +1180,14 @@ const SLOT_LABELS: Record<string, string> = {
   // 15 Nov 2026: the group / hall details the assistant collected
   guest_name: 'الاسم', organisation: 'الجهة', layout: 'ترتيب القاعة', coffee_break: 'استراحة قهوة',
   nazeel_ref: 'رقم الحجز في نزيل',
+  // 18 Nov 2026: a package order's details
+  package: 'الباقة', date: 'تاريخ المناسبة', has_room_booking: 'حجز غرفة', insists: 'يصرّ على موعد قبل 24 ساعة',
 };
 const BRANCH_AR: Record<string, string> = { 'airport-road': 'طريق المطار', 'shafa-road': 'طريق الشفا', both: 'الفرعان' };
 export function handoffNote(note: { intent: string; slots: Record<string, unknown>; stopped: string }, lastAction: string): string {
   const slots = Object.entries(note.slots)
     .filter(([k]) => SLOT_LABELS[k])
-    .map(([k, v]) => `${SLOT_LABELS[k]}: ${k === 'branch' ? BRANCH_AR[String(v)] ?? v : k === 'breakfast' ? (v === 'with' ? 'مع الإفطار' : 'بدون إفطار') : k === 'coffee_break' ? (v ? 'نعم' : 'لا') : Array.isArray(v) ? v.join('، ') : v}`)
+    .map(([k, v]) => `${SLOT_LABELS[k]}: ${k === 'branch' ? BRANCH_AR[String(v)] ?? v : k === 'breakfast' ? (v === 'with' ? 'مع الإفطار' : 'بدون إفطار') : k === 'coffee_break' || k === 'has_room_booking' || k === 'insists' ? (v ? 'نعم' : 'لا') : Array.isArray(v) ? v.join('، ') : v}`)
     .join(' · ');
   return `يريد: ${INTENT_LABELS[note.intent] ?? note.intent}${slots ? ` — ${slots}` : ''}\nتوقف عند: ${STATE_LABELS[note.stopped] ?? note.stopped} — ${lastAction}`;
 }

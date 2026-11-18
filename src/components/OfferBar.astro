@@ -11,7 +11,7 @@
  */
 import Icon from './Icon.astro';
 import type { Locale } from '@lib/content';
-import { offerAnchor, offerCta, offersText, offerTitle, siteBar } from '@lib/offers-data';
+import { celebrationsLive, offerAnchor, offerCta, offersText, offerTitle, siteBar } from '@lib/offers-data';
 import { localePath, offersPageLive } from '@lib/content';
 
 interface Props {
@@ -21,7 +21,14 @@ const { locale } = Astro.props;
 const bar = siteBar;
 const t = offersText(locale);
 const o = bar?.kind === 'offer' ? bar.offer : null;
-const offerHref = o ? (offersPageLive && o.show_offers && o.category !== 'dining' ? `${localePath(locale, '/offers/')}#${offerAnchor(o)}` : offerCta(locale, o)?.href ?? null) : null;
+// an offer on «المناسبات» (18 Nov 2026) leads to that page in the visitor's language; else its card on /offers/, else its own link
+const offerHref = o
+  ? celebrationsLive && o.show_celebrations
+    ? localePath(locale, '/celebrations/')
+    : offersPageLive && o.show_offers && o.category !== 'dining'
+      ? `${localePath(locale, '/offers/')}#${offerAnchor(o)}`
+      : (offerCta(locale, o)?.href ?? null)
+  : null;
 const custom = bar?.kind === 'custom' ? bar : null;
 const customHref = custom?.link ? (custom.link.startsWith('/') && locale === 'en' && !custom.link.startsWith('/en/') ? `/en${custom.link}` : custom.link) : null;
 const external = !!customHref && customHref.startsWith('https://');

@@ -40,11 +40,16 @@ const check = (ok, msg, detail = '') => {
 const read = (p) => (existsSync(join(DIST, p)) ? readFileSync(join(DIST, p), 'utf8') : '');
 const offersHtml = read('offers/index.html');
 const homeHtml = read('index.html');
-const published = /data-offer-category="individuals"/.test(offersHtml);
+// the sample (OFFERS_FIXTURE) is the «published offers» mode; a build from the dashboard (the deploy build) is judged like
+// the seed, plus the offers it really holds (18 Nov 2026: the packages offer «باقات العرسان والمناسبات» is a live
+// individuals offer — the sample's own slugs must never be expected of it)
+const gen = existsSync('content/offers.generated.json') ? JSON.parse(readFileSync('content/offers.generated.json', 'utf8')) : { source: 'none' };
+const published = gen.source === 'fixture' && /data-offer-category="individuals"/.test(offersHtml);
+const realIndividuals = !published && /data-offer-category="individuals"/.test(offersHtml);
 const hasBar = /data-offer-bar=/.test(homeHtml);
 const hasPopup = /<dialog[^>]*data-offer-popup/.test(homeHtml);
 const hasPromo = /name="promo_code"/.test(read('booking/index.html'));
-console.log(`offers-site-check: ${BASE} (${published ? 'published offers' : 'the seed only'}${hasBar ? ', bar' : ''}${hasPopup ? ', pop-up' : ''}${hasPromo ? ', promo field' : ''})`);
+console.log(`offers-site-check: ${BASE} (${published ? 'published offers (the sample)' : realIndividuals ? 'the dashboard offers' : 'the seed only'}${hasBar ? ', bar' : ''}${hasPopup ? ', pop-up' : ''}${hasPromo ? ', promo field' : ''})`);
 
 const riyadhToday = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Riyadh', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
 const addDays = (iso, n) => new Date(Date.parse(iso + 'T00:00:00Z') + n * 86400000).toISOString().slice(0, 10);
@@ -124,7 +129,7 @@ try {
         await layout(page, `${tag} /offers/`);
         const b2b = page.locator('[data-offer-category="b2b"][data-offer-placement="offers"]');
         if (!published) {
-          check((await page.locator('[role="tablist"]').count()) === 0, `${tag} /offers/: no tabs with the seed only`);
+          check((await page.locator('[role="tablist"]').count()) === (realIndividuals ? 1 : 0), `${tag} /offers/: ${realIndividuals ? 'the tabs with live individuals offers' : 'no tabs with the seed only'}`);
           check((await b2b.count()) === 2, `${tag} /offers/: the two sales sections`, String(await b2b.count()));
           check((await b2b.nth(0).getAttribute('id')) === 'offer-umrah-groups' && (await b2b.nth(1).getAttribute('id')) === 'offer-corporate-long-stays', `${tag} /offers/: groups first, corporate second`);
           check(/\bbg-midnight\b/.test(await b2b.nth(0).getAttribute('class')) && /\bbg-white\b/.test(await b2b.nth(1).getAttribute('class')), `${tag} /offers/: midnight then white, as before`);
@@ -134,8 +139,8 @@ try {
           check((await b2b.nth(1).locator(`a[href="${PRE}${lang === 'en' ? '/en' : ''}/partners/"]`).count()) === 1, `${tag} /offers/: the partners link under the last section`);
           if (theme === 'light') await axe(page, `${tag} /offers/`);
           await page.goto(`${pre}/`, { waitUntil: 'networkidle' });
-          check((await page.locator('[data-offer-bar]').count()) === 0, `${tag} home: no announcement bar without a bar offer`);
-          check((await page.locator('dialog[data-offer-popup]').count()) === 0, `${tag} home: no pop-up without a live pop-up`);
+          check((await page.locator('[data-offer-bar]').count()) === (hasBar ? 1 : 0), `${tag} home: the announcement bar exactly when the build has one`);
+          check((await page.locator('dialog[data-offer-popup]').count()) === (hasPopup ? 1 : 0), `${tag} home: the pop-up exactly when the build has one`);
           await page.goto(`${pre}/booking/`, { waitUntil: 'networkidle' });
           check((await page.locator('input[name="promo_code"]').count()) === 0, `${tag} /booking/: no promo-code field without a live code`);
           await ctx.close();

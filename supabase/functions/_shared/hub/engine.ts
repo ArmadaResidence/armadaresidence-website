@@ -13,7 +13,7 @@ import { normalize as normDates, stayDateText } from './dates.ts';
 import { buttonForText, COPY, fixed, greeting, hasSalaam, quickReplies, salaamGreeting, statusText, stripOpening, thirdLanguage, type Lang, type Persona } from './copy.ts';
 import { composeExamples, composeSystem, composeUser, parseComposed, summarySystem, understandDeparture, understandSchema, understandSystem, withGreeting } from './compose/index.ts';
 import { cleanSummary, refOrRoom, summaryOk, summaryUser } from './staff.ts';
-import { buildPayload, cardIds, guardPayload, hasSource, offersFor, type Payload } from './sources/index.ts';
+import { buildPayload, cardIds, guardPayload, hasSource, offersFor, packagesLive, type Payload } from './sources/index.ts';
 import { guard, retryReason } from './guard.ts';
 import { costOf, type Layer, type ModelFn, type ModelResult } from './model.ts';
 import { isCartMessage, usableSkills } from './skills/index.ts';
@@ -316,6 +316,12 @@ export async function runTurn(claim: Json, deps: Deps): Promise<Outcome> {
     if (!u && down) return modelDown(down);
     // a message with no letters (an emoji, «؟») is never a third language (H6 pass 5 — «👍» got the bilingual reply)
     if (u && u.language.startsWith('other:') && !/\p{L}/u.test(texts.join(''))) u = { ...u, language: L };
+    // «باقات بسعر خاص» (Ahmed, 18 Nov 2026): while a packages offer of this branch is live, a question about the packages
+    // or an order of one is the offers topic (answered from the offer, the order collected and handed to reception);
+    // «التزيين والمناسبات» (always the team) keeps what the packages do not cover (the guest's own decorations, a request)
+    if (u && u.topics.includes('decoration') && u.intents.some((i) => PACKAGE_INTENTS.has(i)) && packagesLive(await offersP, unit.branch, claim.today)) {
+      u = { ...u, topics: [...new Set(u.topics.map((k) => (k === 'decoration' ? 'offers' : k)))] };
+    }
     if (u) {
       finish.topics = u.topics;
       finish.understanding = u;
@@ -347,6 +353,8 @@ export async function runTurn(claim: Json, deps: Deps): Promise<Outcome> {
     human_phase: phase,
     // H9: a departure check sent this morning and not answered yet
     departure: claim.departure && typeof claim.departure.id === 'string' ? { id: String(claim.departure.id), ref: String(claim.departure.ref ?? '') } : null,
+    // 18 Nov 2026: the 24-hour notice of a package order counts from today in Asia/Riyadh
+    today: claim.today,
   };
   const draft: Draft | null = claim.draft ? { id: claim.draft.id, kind: claim.draft.kind, version: claim.draft.version, fields: claim.draft.fields ?? {}, quote: claim.draft.quote } : null;
   const ev: Event = tapped
@@ -636,6 +644,22 @@ export async function runTurn(claim: Json, deps: Deps): Promise<Outcome> {
           if (a.buttons === 'quick') push(body, { kind: 'interactive', payload: { buttons: quickReplies(unit.kind, L) } });
           else push(body);
           lastAction = a.mode === 'redirect' ? 'أُرسل رد خارج الخدمات' : a.mode === 'clarify' ? 'سؤال توضيحي' : 'رد على المحادثة';
+          break;
+        }
+        case 'package_ask': {
+          // «باقات بسعر خاص» (18 Nov 2026): the lead, then only the missing questions, in ONE fixed message (copy.md §5)
+          // «الذهبية» / «ذهبية» → «الباقة الذهبية»; «باقة …» / «الباقة …» and an English name as the guest wrote them
+          const named = a.package && L === 'ar' && /^[ء-ي]/.test(a.package) && !/^(?:ال)?باق/.test(a.package) ? `الباقة ال${a.package.replace(/^ال/, '')}` : a.package;
+          const parts = [named ? fixed('package_ask_lead', L, { package: named }) : fixed('package_ask_lead_any', L)];
+          for (const m of a.missing) parts.push(fixed(m === 'branch' ? 'package_ask_branch' : m === 'date' ? 'package_ask_date' : 'package_ask_booking', L));
+          push(parts.join(' '));
+          lastAction = 'سؤال عن تفاصيل طلب الباقة';
+          break;
+        }
+        case 'package_notice': {
+          // a date less than 24 hours away: the notice and the earliest date (weekday, Gregorian and Hijri — dates.ts)
+          push(fixed('package_notice', L, { date: deps.longDate(a.date, L) }));
+          lastAction = 'تنبيه مهلة الـ24 ساعة للباقة';
           break;
         }
         case 'ask': {
@@ -1104,6 +1128,10 @@ export async function runTurn(claim: Json, deps: Deps): Promise<Outcome> {
       // H9: the extension's staff alert — «يطلب تمديد الإقامة» and the Nazeel booking number (no model call)
       finish.handoff_summary = 'يطلب تمديد الإقامة';
       finish.handoff_ref = ctx.departure.ref ? `نزيل ${ctx.departure.ref}`.slice(0, 40) : finish.handoff_ref;
+    } else if (final.reason === 'package_order') {
+      // 18 Nov 2026: a package order's staff alert — the package, the branch and the occasion's date (no model call)
+      const f = (final.draft_patch?.kind === 'package' ? final.draft_patch.fields : {}) as Record<string, unknown>;
+      finish.handoff_summary = packageAlertLine(f);
     } else if (!prep.route && newHandoff && texts.length && line) {
       const model = String(models.understand ?? 'claude-haiku-5-5');
       const r = await deps.model({ layer: 'summary', model, system: summarySystem(), user: summaryUser(line, texts) });
@@ -1114,6 +1142,22 @@ export async function runTurn(claim: Json, deps: Deps): Promise<Outcome> {
   // answered: a composed answer went into the reply (a mixed message's answer included); gap: «لم أعرف الإجابة» was fed
   finish.decision = { actions: final.actions.map((a) => a.type), chat: (final.actions.find((a) => a.type === 'chat') as Extract<Action, { type: 'chat' }> | undefined)?.mode ?? null, next: final.next, reason: final.reason ?? null, transitions: final.transitions, answered, gap: unanswered.length > 0, ...(phase ? { phase } : {}) };
   return out;
+}
+
+/** the intents a package question or order comes with (18 Nov 2026) */
+const PACKAGE_INTENTS = new Set<string>(['offer_question', 'package_order', 'price_question', 'facility_question']);
+const BRANCH_LINE: Record<string, string> = { 'airport-road': 'طريق المطار', 'shafa-road': 'طريق الشفا' };
+/** the staff alert line of a package order (hub_staff_alert {{5}} «المطلوب», ≤ 120): the package, the branch, the date in
+ *  Western digits, the room booking — from the order's fields, never the guest's words */
+export function packageAlertLine(f: Record<string, unknown>): string {
+  const pk = typeof f.package === 'string' && f.package.trim() ? f.package.trim().slice(0, 30) : 'باقة مناسبات';
+  const parts = [`طلب ${/^(?:ال)?باق/.test(pk) ? pk : `الباقة ${pk}`}`];
+  parts.push(typeof f.branch === 'string' && BRANCH_LINE[f.branch] ? `فرع ${BRANCH_LINE[f.branch]}` : 'الفرع لم يُحدد');
+  parts.push(typeof f.date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(f.date) ? `بتاريخ ${f.date}` : 'التاريخ لم يُحدد');
+  if (f.has_room_booking === true) parts.push('لديه حجز غرفة');
+  else if (f.has_room_booking === false) parts.push('بلا حجز غرفة');
+  if (f.insists === true) parts.push('يصرّ على موعد قبل 24 ساعة');
+  return parts.join(' — ').slice(0, 120);
 }
 
 /** a request's details without the machine's own keys (_asks, _routed, _route, _ref, _umrah) */

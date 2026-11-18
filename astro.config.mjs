@@ -64,6 +64,18 @@ const canonicalElsewhere = (() => {
   }
   return out;
 })();
+/** «المناسبات» (18 Nov 2026): without a live offer whose «يظهر في المناسبات» is on, /celebrations/ is one line, noindex
+ *  and out of the sitemap — the same rule as src/lib/offers-data.ts → celebrationsOffers (show_site, running on the
+ *  build's Riyadh day; the seed fallback has none) */
+const celebrationsEmpty = (() => {
+  const f = new URL('./content/offers.generated.json', import.meta.url);
+  if (!existsSync(f)) return true;
+  const d = JSON.parse(readFileSync(f, 'utf8'));
+  if (d.source === 'none') return true;
+  const today = d.today || new Date(Date.now() + 3 * 3600_000).toISOString().slice(0, 10);
+  return !(d.offers ?? []).some((o) => o.show_site && o.show_celebrations && (!o.valid_from || o.valid_from <= today) && (!o.valid_to || o.valid_to >= today));
+})();
+if (celebrationsEmpty) noindexPaths.push('/celebrations/');
 const isNoindex = (page) => {
   const full = new URL(page).pathname;
   if (canonicalElsewhere.includes(full)) return true;

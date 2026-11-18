@@ -47,7 +47,7 @@ function busy(self: HTMLDialogElement): boolean {
   if (document.documentElement.classList.contains('drawer-open')) return true;
   // the cookie banner first (7 Nov 2026): the pop-up waits until a choice is made
   if (document.documentElement.hasAttribute('data-consent-open')) return true;
-  if (document.querySelector('[data-wa-toggle][aria-expanded="true"]')) return true;
+  if (document.querySelector('[data-wa-toggle][aria-expanded="true"], [data-offer-wa-toggle][aria-expanded="true"]')) return true;
   if (Array.from(document.querySelectorAll('dialog[open]')).some((d) => d !== self)) return true;
   const a = document.activeElement;
   return !!a && a.matches('input, select, textarea, [contenteditable="true"]');
