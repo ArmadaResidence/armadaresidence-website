@@ -6,14 +6,15 @@
 //     package price and the price it replaces passes the number and discount rules; a made-up price does not;
 //   - the order (machine.ts → packageOrder): the branch, the occasion's date and the room booking asked together in ONE
 //     fixed message (only the missing parts), at most twice, then ONE hand-off to reception (T48) with them in the note
-//     and the staff alert line (engine.ts → packageAlertLine); a date less than 24 hours away (today) → the notice with
-//     tomorrow (T47); «نعم» takes tomorrow; the same too-soon date again → the team (T49, «يصرّ»); the guest's own booking
-//     on that date gives the branch and the room booking; a question asked with the order is answered first;
+//     and the staff alert line (engine.ts → packageAlertLine); the lead time is one day (Ahmed, 19 Nov 2026): tomorrow or
+//     later accepted, an occasion today → reception at once with «package_same_day» and «طلب باقة لنفس اليوم» (T49), a
+//     past date asked again (T41), no 24-hour notice anywhere; the guest's own booking on that date gives the branch and
+//     the room booking; a question asked with the order is answered first;
 //   - the copy (copy.md §5 → text.generated.json): the seven package lines in both languages, singular, no automated
 //     wording; the understanding takes package_order, package and has_room_booking (understand.ts, prompts.md rule 38).
 //   node scripts/hub-packages-check.mjs
 import { readFileSync } from 'node:fs';
-import { decide, handoffNote, packageEarliest } from '../supabase/functions/_shared/hub/machine.ts';
+import { decide, handoffNote } from '../supabase/functions/_shared/hub/machine.ts';
 import { buildPayload, guardPayload, offersFor, packagesItem } from '../supabase/functions/_shared/hub/sources/index.ts';
 import { guard } from '../supabase/functions/_shared/hub/guard.ts';
 import { fixed } from '../supabase/functions/_shared/hub/copy.ts';
@@ -33,7 +34,7 @@ const OFFER = {
   slug: 'celebration-packages', category: 'individuals', kind: 'packages', branches: ['airport-road', 'shafa-road'], valid_from: '2026-11-18', valid_to: '2026-12-31',
   title_ar: 'باقات العرسان والمناسبات', title_en: 'Wedding & Celebration Packages', description_ar: '', description_en: '', show_celebrations: true,
   short_ar: 'تزيين الغرف لمناسبة تبقى في الذاكرة.', short_en: 'Room decoration for an occasion to remember.',
-  note_ar: 'الأسعار شاملة الضريبة ولا تشمل سعر الغرفة. اطلب الباقة قبل موعد مناسبتك بـ24 ساعة على الأقل.', note_en: 'Prices include VAT and do not include the room rate. Order your package at least 24 hours before your occasion.',
+  note_ar: 'الأسعار شاملة الضريبة ولا تشمل سعر الغرفة. اطلب الباقة قبل موعد مناسبتك بيوم على الأقل.', note_en: 'Prices include VAT and do not include the room rate. Order your package at least one day before your occasion.',
   packages: [
     { name_ar: 'الباقة الفضية', name_en: 'Silver Package', price: 299, was_price: 450, items_ar: ['تزيين السرير بالورود الطبيعية', 'عصير لشخصين'], items_en: ['Bed decorated with fresh roses', 'Juice for two'], choice_ar: '', choice_en: '' },
     { name_ar: 'الباقة البلاتينية', name_en: 'Platinum Package', price: 799, was_price: 1200, items_ar: ['تورتة خاصة للعروسين'], items_en: ['Special cake for the couple'], choice_ar: 'عشاء فاخر داخل الغرفة، اختيار واحد', choice_en: 'Fine in-room dinner, one choice' },
@@ -71,7 +72,6 @@ check(!validateUnderstanding({ ...base, has_room_booking: 'yes' }, LISTS).ok, 'u
 
 // ── the order ──
 const TODAY = '2026-11-18';
-check(packageEarliest(TODAY) === '2026-11-19', 'the earliest date is tomorrow (24 hours ahead)');
 const U = (o = {}) => ({ intents: ['package_order'], topics: ['offers'], new_topic_hint: null, branch: null, check_in: null, check_out: null, nights: null, dates_text: null,
   dates_calendar: null, room_type: null, breakfast: null, adults: null, children: null, child_ages: null, extra_beds: null, rooms_count: null, guest_name: null, booking_ref: null,
   language: 'ar', complaint: false, kind: 'booking', confidence: {}, ...o });
@@ -116,17 +116,31 @@ check(packageAlertLine({}) === 'طلب باقة مناسبات — الفرع ل
 // asked twice: the third reply routes with what is known
 d = run('collecting', U({ intents: ['other'], kind: 'booking', branch: 'airport-road' }), pd({ _asks: 2 }));
 check(d.transitions.includes('T48') && d.next === 'human', 'order: never asked a third time — routed with what is known');
-// the 24-hour rule
-d = run('inquiry', U({ check_in: TODAY, branch: 'airport-road', has_room_booking: true }));
-check(d.transitions.includes('T47') && d.actions[0].type === 'package_notice' && d.actions[0].date === '2026-11-19' && d.next === 'collecting' && d.draft_patch.fields._notice === true,
-  'order: today → the 24-hour notice with tomorrow (T47), no hand-off');
-d = run('collecting', U({ intents: ['other'], kind: 'small_talk' }), pd({ branch: 'airport-road', has_room_booking: true, _notice: true, _notice_date: '2026-11-19' }), {}, { affirm: true });
-check(d.transitions.includes('T48') && d.draft_patch.fields.date === '2026-11-19', '24 hours: «نعم» takes tomorrow and the order goes to reception');
-d = run('collecting', U({ check_in: TODAY }), pd({ branch: 'airport-road', has_room_booking: true, _notice: true, _notice_date: '2026-11-19' }));
-check(d.transitions.includes('T49') && d.next === 'human' && d.draft_patch.fields.insists === true && packageAlertLine(d.draft_patch.fields).includes('يصرّ'),
-  'order: the same too-soon date again → the team, «يصرّ على موعد قبل 24 ساعة» (T49)');
+// the lead time (Ahmed, 19 Nov 2026): one day, never a strict 24 hours
+d = run('inquiry', U({ package: 'الذهبية', check_in: '2026-11-19', has_room_booking: true }));
+check(d.transitions.includes('T48') && d.next === 'human' && d.actions[0].notice === 'package_handed' && d.draft_patch.fields.date === '2026-11-19' && !d.draft_patch.fields.same_day,
+  'lead time: tomorrow (an order at 11 pm included — the hour is never read) → accepted and handed to reception, no notice');
+d = run('collecting', U({ intents: ['other'], check_in: '2026-11-19', kind: 'booking' }), pd({ package: 'الذهبية', branch: 'airport-road', _branch_src: 'number', _asks: 1 }));
+check(d.actions[0].type === 'package_ask' && JSON.stringify(d.actions[0].missing) === '["booking"]' && d.draft_patch.fields.date === '2026-11-19', 'lead time: tomorrow in an open order → kept, only the room booking asked');
+d = run('inquiry', U({ package: 'الفضية', check_in: '2026-11-25', has_room_booking: false }));
+check(d.transitions.includes('T48') && d.draft_patch.fields.date === '2026-11-25', 'lead time: a date next week → accepted');
+d = run('inquiry', U({ package: 'الفضية', check_in: TODAY }));
+const sdh = d.actions.find((a) => a.type === 'handoff');
+check(d.transitions.includes('T49') && d.next === 'human' && sdh?.notice === 'package_same_day' && sdh.reason === 'package_order' && d.draft_patch.fields.same_day === true
+  && d.draft_patch.fields.branch === 'airport-road' && d.draft_patch.fields.date === TODAY && !d.actions.some((a) => a.type === 'package_ask'),
+  `lead time: today → never refused, reception at once with the same-day line (T49), nothing asked first — ${JSON.stringify(d.actions)}`);
+const sdl = packageAlertLine(d.draft_patch.fields);
+check(sdl === `طلب باقة لنفس اليوم: الباقة الفضية — فرع طريق المطار — بتاريخ ${TODAY}` && sdl.length <= 120, `lead time: the staff alert says same day, the package, the branch, the date — ${sdl}`);
+check(handoffNote(sdh.note, 'x').includes('لنفس اليوم: نعم'), 'lead time: the hand-off note says «لنفس اليوم»');
+d = run('collecting', U({ intents: ['other'], check_in: TODAY, kind: 'booking' }), pd({ package: 'الذهبية', branch: 'shafa-road', _branch_src: 'guest', _asks: 1 }));
+check(d.transitions.includes('T49') && d.actions.find((a) => a.type === 'handoff')?.notice === 'package_same_day' && d.draft_patch.fields.branch === 'shafa-road', 'lead time: today given in an open order → the same-day hand-off with its branch');
+d = run('collecting', U({ intents: ['other'], check_in: '2026-11-20', kind: 'booking' }), pd({ package: 'الذهبية', branch: 'airport-road', has_room_booking: true, _notice: true, _notice_date: '2026-11-19', insists: true, _asks: 1 }));
+check(d.transitions.includes('T48') && !('insists' in d.draft_patch.fields) && !('_notice' in d.draft_patch.fields), 'lead time: a draft of the retired notice drops its keys');
 d = run('inquiry', U({ dates_read: { status: 'past', check_in: null, check_out: null, nights: null, candidates: ['2026-11-10'], why: 'past', hijri: false } }));
-check(d.actions[0].type === 'package_notice', 'order: a past date → the notice too, never a past occasion');
+check(d.transitions.includes('T41') && d.actions[0].type === 'dates_question' && d.actions[0].status === 'past' && d.actions[0].candidates[0] === '2026-11-10' && d.next === 'collecting',
+  'lead time: a past date → asked again as for any booking (dates_past), never a past occasion');
+d = run('inquiry', U({ check_in: '2026-11-10' }));
+check(d.actions[0].type === 'dates_question' && d.actions[0].status === 'past', 'lead time: a past check_in → asked again');
 // the guest's own booking gives the branch and the room booking
 d = run('inquiry', U({ check_in: '2026-11-21' }), null, { bookings: [{ ref: 'AR-1', status: 'confirmed', branch: 'shafa-road', check_in: '2026-11-20', check_out: '2026-11-22' }] });
 check(d.transitions.includes('T48') && d.draft_patch.fields.branch === 'shafa-road' && d.draft_patch.fields.has_room_booking === true, 'order: the guest\'s booking on that date → the branch and «لديه حجز غرفة», routed at once');
@@ -140,8 +154,7 @@ check(!d.actions.some((a) => a.type === 'package_ask' || a.type === 'package_not
 // ── the copy ──
 for (const L of ['ar', 'en']) {
   const lead = fixed('package_ask_lead', L, { package: L === 'ar' ? 'الباقة الذهبية' : 'Gold Package' });
-  const notice = fixed('package_notice', L, { date: 'x' });
-  check(lead && fixed('package_ask_branch', L) && fixed('package_ask_date', L) && fixed('package_ask_booking', L) && fixed('package_handed', L) && notice.includes('24'), `copy ${L}: the seven package lines`);
+  check(lead && fixed('package_ask_branch', L) && fixed('package_ask_date', L) && fixed('package_ask_booking', L) && fixed('package_handed', L) && fixed('package_same_day', L), `copy ${L}: the package lines`);
 }
 for (const L of ['ar', 'en']) {
   const b = fixed('package_ask_date_branch', L, { branch_name: 'B' }) + fixed('package_ask_booking_branch', L, { branch_name: 'B' }) + fixed('package_ask_other_branch', L, { other_branch: 'O' });
@@ -156,7 +169,7 @@ check(/p ->> 'handoff_branch'/.test(mig) && mig.includes('update public.hub_conv
   "migration: hub_turn_finish moves the conversation to the named branch's unit before the hand-off");
 const { migration } = await import('./hub-pkgbranch-migration.mjs');
 check(mig.replace(/\r\n/g, '\n') === migration(), 'migration: = its generator');
-check(fixed('package_ask_booking', 'ar').includes('لديك') && !/لديكم|تريدون/.test(['package_ask_lead', 'package_ask_branch', 'package_ask_date', 'package_ask_booking', 'package_notice', 'package_handed'].map((k) => fixed(k, 'ar', { package: 'ب', date: 'ت' })).join(' ')),
+check(fixed('package_ask_booking', 'ar').includes('لديك') && !/لديكم|تريدون/.test(['package_ask_lead', 'package_ask_branch', 'package_ask_date', 'package_ask_booking', 'package_same_day', 'package_handed'].map((k) => fixed(k, 'ar', { package: 'ب', date: 'ت' })).join(' ')),
   'copy: the singular address');
 const prompts = readFileSync('docs/guest-hub/prompts.md', 'utf8');
 check(/38\. Room decoration, celebration/.test(prompts) && prompts.includes('"has_room_booking": boolean | null'), 'prompts.md: rule 38 and the schema fields');
@@ -173,8 +186,12 @@ check(packageLabel('الذهبية', [{ live: GOLD }], 'ar') === 'الباقة �
 check(packageLabel('الماسية', [{ live: GOLD }], 'ar') === 'الباقة الماسية', '{package}: no offer match → «الباقة …» as before');
 check(/^السبت 21 نوفمبر 2026 \(\d+ جمادى الآخرة 1448\)$/.test(sd('ar')) && sd('en') === 'Sat, 21 Nov 2026 (11 Jumada al-Akhirah 1448)', `{date}: weekday, day, month, year and Hijri — ${sd('ar')} / ${sd('en')}`);
 check(fixed('package_ask_branch', 'ar') === 'في أي فرع تفضّل: طريق المطار أم طريق الشفا؟' && fixed('package_ask_branch', 'en') === 'Which branch would you prefer: Airport Road or Shafa Road?', 'copy: the branch question (19 Nov 2026)');
-check(fixed('package_notice', 'ar', { date: 'D' }) === 'تُطلب الباقة قبل موعد المناسبة بـ24 ساعة على الأقل، وأقرب موعد ممكن هو D. هل يناسبك؟'
-  && fixed('package_notice', 'en', { date: 'D' }) === 'Packages must be ordered at least 24 hours before the occasion, so the earliest possible date is D. Would that suit you?', 'copy: the 24-hour notice (19 Nov 2026)');
+check(fixed('package_same_day', 'ar') === 'سنتحقق مع فريق الاستقبال من إمكانية ترتيبها اليوم، وسيكمل معك أحدهم في هذه المحادثة.'
+  && fixed('package_same_day', 'en') === "We'll check with our reception team whether it can be arranged today; one of them will continue with you in this chat.", 'copy: the same-day line (19 Nov 2026, Ahmed)');
+const TEXT = JSON.parse(readFileSync('supabase/functions/_shared/hub/text.generated.json', 'utf8'));
+const COPYMD = readFileSync('docs/guest-hub/copy.md', 'utf8');
+check(!('package_notice' in TEXT.copy) && !/package_notice/.test(eng) && !COPYMD.includes('بـ24 ساعة') && !/24 hours before the occasion/.test(COPYMD), 'copy: the 24-hour notice is gone (copy.md, the generated keys, the engine)');
+check(!/24 ساعة|24 hours|too soon/.test(prompts.split('\n').find((l) => l.startsWith('38.')) ?? 'x'), 'prompts.md rule 38: no 24-hour rule');
 check(fixed('package_handed_summary', 'ar', { package: 'الباقة الذهبية', branch_name: branchLabel(CONTENT, 'shafa-road', 'ar'), date: sd('ar') }) === `وصل طلبك إلى فريق الاستقبال: الباقة الذهبية في فرع طريق الشفا بتاريخ ${sd('ar')}. سيكمل معك أحدهم في هذه المحادثة لتأكيد التفاصيل.`, 'copy: the hand-off with its summary, ar');
 check(fixed('package_handed_summary', 'en', { package: 'Gold Package', branch_name: branchLabel(CONTENT, 'shafa-road', 'en'), date: sd('en') }) === `Your request has reached our reception team: Gold Package at our Shafa Road branch on ${sd('en')}. One of them will continue with you in this chat to confirm the details.`, 'copy: the hand-off with its summary, en');
 check(fixed('package_handed', 'ar') === 'وصل طلبك إلى فريق الاستقبال، وسيكمل معك أحدهم في هذه المحادثة لتأكيد التفاصيل.', 'copy: the hand-off without the summary unchanged');
@@ -185,8 +202,8 @@ for (const L of ['ar', 'en']) {
     : ['What is the date of your occasion at our Airport Road branch?', 'And do you already have a room booking with us at our Airport Road branch?', 'If you would prefer our Shafa Road branch, just let us know.'];
   check(JSON.stringify(lines) === JSON.stringify(want), `copy ${L}: every §5 line with {branch_name} / {other_branch} reads right — ${lines.join(' | ')}`);
 }
-check(/package_handed'\) push\(packageHanded\(a\.note\.slots\)/.test(eng) && /'package_notice', L, \{ date: stayDate\(a\.date, L\) \}/.test(eng) && /booking_status', L, \{ ref: b\.ref, branch_name: branchLabel/.test(eng),
-  'engine: the hand-off summary, the notice\'s full date and booking_status\'s branch label');
+check(/package_handed'\) push\(packageHanded\(a\.note\.slots\)/.test(eng) && /booking_status', L, \{ ref: b\.ref, branch_name: branchLabel/.test(eng),
+  'engine: the hand-off summary and booking_status\'s branch label');
 
 console.log(`hub-packages-check: ${n - fails.length}/${n} checks passed`);
 if (fails.length) {

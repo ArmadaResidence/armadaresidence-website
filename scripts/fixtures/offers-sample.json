@@ -57,7 +57,7 @@
       "whatsapp_prefill_ar": "أرغب في الاستفسار عن باقات العرسان والمناسبات.", "whatsapp_prefill_en": "I'd like to ask about the Wedding & Celebration Packages.",
       "show_site": true, "show_home": true, "show_offers": true, "show_branch": true, "show_partners": false, "show_menu": false, "show_bar": false, "show_celebrations": true, "sort": 4,
       "short_ar": "تزيين الغرف لمناسبة تبقى في الذاكرة. ثلاث باقات في فرعي طريق المطار وطريق الشفا.", "short_en": "Room decoration for an occasion to remember. Three packages at our Airport Road and Shafa Road branches.",
-      "note_ar": "الأسعار شاملة الضريبة ولا تشمل سعر الغرفة. اطلب الباقة قبل موعد مناسبتك بـ24 ساعة على الأقل.", "note_en": "Prices include VAT and do not include the room rate. Order your package at least 24 hours before your occasion.",
+      "note_ar": "الأسعار شاملة الضريبة ولا تشمل سعر الغرفة. اطلب الباقة قبل موعد مناسبتك بيوم على الأقل.", "note_en": "Prices include VAT and do not include the room rate. Order your package at least one day before your occasion.",
       "packages": [
         { "name_ar": "الباقة الفضية", "name_en": "Silver Package", "price": 299, "was_price": 450, "items_ar": ["تزيين السرير بالورود الطبيعية", "عصير لشخصين", "إفطار صباحي لشخصين في اليوم التالي"], "items_en": ["Bed decorated with fresh roses", "Juice for two", "Breakfast for two the next morning"], "choice_ar": "", "choice_en": "" },
         { "name_ar": "الباقة الذهبية", "name_en": "Gold Package", "price": 450, "was_price": 600, "items_ar": ["تورتة خاصة للعروسين", "بوكس شوكولاتة راقٍ"], "items_en": ["Special cake for the couple", "Elegant chocolate box"], "choice_ar": "", "choice_en": "" },

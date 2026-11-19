@@ -708,12 +708,6 @@ export async function runTurn(claim: Json, deps: Deps): Promise<Outcome> {
           lastAction = 'سؤال عن تفاصيل طلب الباقة';
           break;
         }
-        case 'package_notice': {
-          // a date less than 24 hours away: the notice and the earliest date (weekday, Gregorian and Hijri — dates.ts)
-          push(fixed('package_notice', L, { date: stayDate(a.date, L) }));
-          lastAction = 'تنبيه مهلة الـ24 ساعة للباقة';
-          break;
-        }
         case 'ask': {
           // the booking conversation before H8 (copy.md §4.0): the model asks for the dates and the guests
           if (skipAsk) {
@@ -1210,12 +1204,12 @@ const BRANCH_LINE: Record<string, string> = { 'airport-road': 'طريق المط
  *  Western digits, the room booking — from the order's fields, never the guest's words */
 export function packageAlertLine(f: Record<string, unknown>): string {
   const pk = typeof f.package === 'string' && f.package.trim() ? f.package.trim().slice(0, 30) : 'باقة مناسبات';
-  const parts = [`طلب ${/^(?:ال)?باق/.test(pk) ? pk : `الباقة ${pk}`}`];
+  // 19 Nov 2026 (Ahmed): an occasion today is said first — reception checks whether it can be arranged today
+  const parts = [`${f.same_day === true ? 'طلب باقة لنفس اليوم: ' : 'طلب '}${/^(?:ال)?باق/.test(pk) ? pk : `الباقة ${pk}`}`];
   parts.push(typeof f.branch === 'string' && BRANCH_LINE[f.branch] ? `فرع ${BRANCH_LINE[f.branch]}` : 'الفرع لم يُحدد');
   parts.push(typeof f.date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(f.date) ? `بتاريخ ${f.date}` : 'التاريخ لم يُحدد');
   if (f.has_room_booking === true) parts.push('لديه حجز غرفة');
   else if (f.has_room_booking === false) parts.push('بلا حجز غرفة');
-  if (f.insists === true) parts.push('يصرّ على موعد قبل 24 ساعة');
   return parts.join(' — ').slice(0, 120);
 }
 

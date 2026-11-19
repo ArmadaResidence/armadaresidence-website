@@ -16,7 +16,7 @@ export const COPY: any = C;
 /** the keys of the fixed notices and replies */
 export type NoticeKey =
   | 'handoff' | 'no_source' | 'complaint' | 'change_cancel' | 'multi_room' | 'early_extension' | 'media' | 'hall_group_ack' | 'out_of_scope'
-  | 'third_language' | 'package_handed';
+  | 'third_language' | 'package_handed' | 'package_same_day';
 
 /** {name} → its value; a placeholder left unfilled is a bug, never sent */
 export function fill(tpl: string, vars: Record<string, string | number> = {}): string {

@@ -172,7 +172,7 @@ export function outcomeKind(finish: Json): string {
   // H9 fix 3: a question about the dates (copy.md §2.3) and «the price depends on the dates» are the booking's own asks
   if (acts.includes('dates_question')) return 'ask';
   // 18 Nov 2026: a package order's details and its 24-hour notice are the order's own asks
-  if (acts.includes('package_ask') || acts.includes('package_notice')) return 'ask';
+  if (acts.includes('package_ask')) return 'ask';
   if (acts.includes('fixed') && finish.state === 'collecting') return 'ask';
   if (acts.includes('fixed') && tr.includes('T4')) return 'reply';
   if (acts.includes('fixed') && finish.messages?.length && finish.out_of_scope_inc) return 'out_of_scope';

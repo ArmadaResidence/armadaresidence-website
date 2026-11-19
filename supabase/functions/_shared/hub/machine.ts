@@ -59,8 +59,6 @@ export type Action =
   /** «باقات بسعر خاص» (Ahmed, 18 Nov 2026): the details of a package order still missing — asked in ONE fixed message
    *  (copy.md §5: the lead, then the branch, the occasion's date, the room booking) */
   | { type: 'package_ask'; missing: ('branch' | 'date' | 'booking')[]; package: string | null; branch_default?: string | null }
-  /** a date less than 24 hours away: the notice and the earliest date (copy.md §5) — the team only if the guest insists */
-  | { type: 'package_notice'; date: string }
   | { type: 'booking_status'; ref: string }
   | { type: 'handoff'; reason: string; notice: NoticeKey | null; priority?: 'high'; note: { intent: string; slots: Record<string, unknown>; stopped: string } }
   /** H6c (Ahmed, 15 Nov 2026): «بانتظار موظف» — a second thing the assistant cannot answer joins the SAME waiting hand-off:
@@ -590,8 +588,9 @@ function decideCore(input: DecideInput): Decision {
     return out({ next: 'quoted', actions: [{ type: 'cancel_reason', ref: ctx.recent_cancel.ref }, { type: 'alternatives' }], failed: 'reset', draft_replace: !!input.draft });
   }
   // «باقات بسعر خاص» (Ahmed, 18 Nov 2026): an order of a celebration package is collected in the chat — the branch, the
-  // occasion's date, whether the guest already has a room booking — then handed to reception with them (T48); a date
-  // less than 24 hours away gets the notice and the earliest date (T47), the team only when the guest insists (T49)
+  // occasion's date, whether the guest already has a room booking — then handed to reception with them (T48); the lead
+  // time (Ahmed, 19 Nov 2026) is one day, not 24 hours: tomorrow or later is accepted at any hour, an occasion today goes
+  // to reception at once to check whether it can be arranged today (T49), a past date is asked again (T41)
   const pkOpen = input.draft?.kind === 'package' && !input.draft.fields._routed;
   if (has('package_order') || (pkOpen && !has('booking_cancel') && (kind === 'booking' || has('stay_booking') || !!u.check_in || !!u.dates_read?.check_in
       || u.dates_read?.status === 'past' || u.branch === 'airport-road' || u.branch === 'shafa-road' || u.branch === 'both' || typeof u.has_room_booking === 'boolean' || !!u.package || ev.affirm === true))) {
@@ -770,22 +769,22 @@ function humanTurn(input: DecideInput, t: string[]): Decision {
   };
 }
 
-/** the day after `iso` (YYYY-MM-DD) */
-const nextDay = (iso: string): string => new Date(Date.parse(`${iso}T00:00:00Z`) + 86400000).toISOString().slice(0, 10);
 const clockToday = (): string => new Date(Date.now() + 3 * 3600_000).toISOString().slice(0, 10);
-/** «باقات بسعر خاص» (Ahmed, 18 Nov 2026): the earliest occasion date a package can be ordered for — at least 24 hours
- *  ahead, so tomorrow (the occasion's time is never asked: today is always less than 24 hours away) */
-export const packageEarliest = (today: string): string => nextDay(today);
-
-/** a package order (Ahmed, 18 Nov 2026): the branch (named, else the guest's own booking on that date), the occasion's
- *  date (resolved by code, dates.ts) and whether the guest has a room booking — asked together at most twice, then ONE
- *  hand-off to reception with them; a date less than 24 hours away → the notice with the earliest date; a plain «نعم»
- *  takes that date; the same too-soon date again → the team (the guest insists) */
-function packageOrder(input: DecideInput, state: State, t: string[], out: Out, u: Understanding, affirm: boolean): Decision {
+/** a package order (Ahmed, 18 Nov 2026): the branch (named, else the guest's own booking on that date, else the number's),
+ *  the occasion's date (resolved by code, dates.ts) and whether the guest has a room booking — asked together at most
+ *  twice, then ONE hand-off to reception with them. The lead time (Ahmed, 19 Nov 2026): one day, never a strict 24 hours —
+ *  an occasion tomorrow or later is accepted at any hour (11 pm for tomorrow included); an occasion TODAY is never refused:
+ *  it goes to reception at once to check whether it can be arranged today («لنفس اليوم», T49); a past date is asked again
+ *  as for any booking (T41) */
+function packageOrder(input: DecideInput, state: State, t: string[], out: Out, u: Understanding, _affirm: boolean): Decision {
   const ctx = input.ctx;
   const prev = input.draft?.kind === 'package' ? input.draft.fields : {};
   const replace = !!input.draft && input.draft.kind !== 'package';
   const f: Record<string, unknown> = { ...prev };
+  // the keys of the retired 24-hour notice (a draft opened before 19 Nov 2026) are dropped
+  delete f._notice;
+  delete f._notice_date;
+  delete f.insists;
   if (u.package) f.package = String(u.package).slice(0, 60);
   // the branch (Ahmed, 19 Nov 2026): the one the guest names; «الفرعين» → asked; else the guest's own booking on that date;
   // else the branch of the number the guest wrote to (named in the next question, so the guest can change it)
@@ -798,31 +797,26 @@ function packageOrder(input: DecideInput, state: State, t: string[], out: Out, u
   }
   if (typeof u.has_room_booking === 'boolean') f.has_room_booking = u.has_room_booking;
   const today = ctx.today ?? clockToday();
-  const earliest = packageEarliest(today);
-  const said = u.check_in ?? u.dates_read?.check_in ?? (u.dates_read?.status === 'past' ? u.dates_read.candidates[0] ?? today : null);
+  const said = u.check_in ?? u.dates_read?.check_in ?? null;
+  const past = !said && u.dates_read?.status === 'past' ? u.dates_read.candidates[0] ?? null : (said && said < today ? said : null);
   // a question asked with the order («كم سعر الذهبية؟ أبيها الخميس») is answered first, from the offers
   const first: Action[] = u.intents.includes('offer_question' as never) || u.intents.includes('price_question' as never)
     ? [{ type: 'answer', topics: ['offers'], intents: ['offer_question'], branch: u.branch === 'both' ? null : u.branch, mixed: true }] : [];
-  const routed = (fields: Record<string, unknown>, transition: string): Decision => {
+  const routed = (fields: Record<string, unknown>, transition: string, notice: NoticeKey = 'package_handed'): Decision => {
     t.push(transition);
     const slots = Object.fromEntries(Object.entries(fields).filter(([k, v]) => !k.startsWith('_') && v !== null && v !== undefined && v !== ''));
-    return out({ next: 'human', actions: [...first, handoff('package_order', 'package_handed', { intent: 'package_order', slots, stopped: state })],
+    return out({ next: 'human', actions: [...first, handoff('package_order', notice, { intent: 'package_order', slots, stopped: state })],
       draft_patch: { kind: 'package', fields: { ...fields, _routed: true } }, draft_replace: replace, reason: 'package_order', failed: 'reset' });
   };
-  if (said && said < earliest) {
-    // the same too-soon date after the notice: the guest insists → the team, with the date asked for
-    if (prev._notice) return routed({ ...f, date: said, insists: true, _notice: null }, 'T49');
-    t.push('T47');
-    return out({ next: 'collecting', actions: [...first, { type: 'package_notice', date: earliest }], draft_patch: { kind: 'package', fields: { ...f, date: null, _notice: true, _notice_date: earliest } },
-      draft_replace: replace, failed: 'reset' });
+  if (past) {
+    // a past date: asked again, as for any booking (copy.md §2 «dates_past»)
+    t.push('T41');
+    return out({ next: 'collecting', actions: [...first, { type: 'dates_question', why: 'past', status: 'past', candidates: [past], pending: null }],
+      draft_patch: { kind: 'package', fields: { ...f, date: null } }, draft_replace: replace, failed: 'reset' });
   }
   if (said) {
     f.date = said;
-    f._notice = null;
-  } else if (affirm && prev._notice && typeof prev._notice_date === 'string') {
-    // «نعم» to the earliest date offered
-    f.date = prev._notice_date;
-    f._notice = null;
+    f.same_day = said === today ? true : null;
   }
   // the guest's own booking on that date tells the branch and that there is a room booking
   const own = ctx.bookings.filter((b) => b.status !== 'cancelled' && (typeof f.date === 'string' ? b.check_in <= f.date && f.date <= b.check_out : b.check_out >= today));
@@ -837,6 +831,9 @@ function packageOrder(input: DecideInput, state: State, t: string[], out: Out, u
     f.branch = ctx.unit_branch;
     f._branch_src = 'number';
   }
+  // an occasion today: never refused — reception checks at once whether it can be arranged today (copy.md §5)
+  if (f.same_day === true && f.date === today) return routed(f, 'T49', 'package_same_day');
+  if (f.same_day === true) f.same_day = null;
   const missing: ('branch' | 'date' | 'booking')[] = [];
   if (!f.branch) missing.push('branch');
   if (!f.date) missing.push('date');
@@ -1197,13 +1194,13 @@ const SLOT_LABELS: Record<string, string> = {
   guest_name: 'الاسم', organisation: 'الجهة', layout: 'ترتيب القاعة', coffee_break: 'استراحة قهوة',
   nazeel_ref: 'رقم الحجز في نزيل',
   // 18 Nov 2026: a package order's details
-  package: 'الباقة', date: 'تاريخ المناسبة', has_room_booking: 'حجز غرفة', insists: 'يصرّ على موعد قبل 24 ساعة',
+  package: 'الباقة', date: 'تاريخ المناسبة', has_room_booking: 'حجز غرفة', same_day: 'لنفس اليوم',
 };
 const BRANCH_AR: Record<string, string> = { 'airport-road': 'طريق المطار', 'shafa-road': 'طريق الشفا', both: 'الفرعان' };
 export function handoffNote(note: { intent: string; slots: Record<string, unknown>; stopped: string }, lastAction: string): string {
   const slots = Object.entries(note.slots)
     .filter(([k]) => SLOT_LABELS[k])
-    .map(([k, v]) => `${SLOT_LABELS[k]}: ${k === 'branch' ? BRANCH_AR[String(v)] ?? v : k === 'breakfast' ? (v === 'with' ? 'مع الإفطار' : 'بدون إفطار') : k === 'coffee_break' || k === 'has_room_booking' || k === 'insists' ? (v ? 'نعم' : 'لا') : Array.isArray(v) ? v.join('، ') : v}`)
+    .map(([k, v]) => `${SLOT_LABELS[k]}: ${k === 'branch' ? BRANCH_AR[String(v)] ?? v : k === 'breakfast' ? (v === 'with' ? 'مع الإفطار' : 'بدون إفطار') : k === 'coffee_break' || k === 'has_room_booking' || k === 'same_day' ? (v ? 'نعم' : 'لا') : Array.isArray(v) ? v.join('، ') : v}`)
     .join(' · ');
   return `يريد: ${INTENT_LABELS[note.intent] ?? note.intent}${slots ? ` — ${slots}` : ''}\nتوقف عند: ${STATE_LABELS[note.stopped] ?? note.stopped} — ${lastAction}`;
 }
