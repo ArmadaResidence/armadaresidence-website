@@ -97,6 +97,23 @@ const tapDel = `hubk:${'d'.repeat(10)}${randomBytes(5).toString('hex')}`;
 sql(`select public.hub_staff_buttons_add('${OWNER}', '${mid}', '[{"id":"${tap}","action":"both","item":"${card}"},{"id":"${tapDel}","action":"del","item":"${card}"}]'::jsonb, false)`);
 check(/^[0-9a-f-]{36}$/.test(card) && /^[0-9a-f-]{36}$/.test(mid), 'setup: a learned card and its confirmation\'s buttons');
 
+// warm-up (19 Nov 2026): the first signed request after the function booted was once dropped (no timing line, the next
+// one acted) — one harmless signed event first (a status update of a message that does not exist: nothing changes), until
+// the function answers it 2xx; never counted as a check
+{
+  const t0 = Date.now();
+  let status = 0;
+  for (let i = 0; i < 15 && !(status >= 200 && status < 300); i++) {
+    if (i) await new Promise((r) => setTimeout(r, 2000));
+    const raw = JSON.stringify({ id: `evt_warm${randomUUID().slice(0, 8)}`, type: 'whatsapp.message.updated', apiVersion: 'v2', createTime: new Date().toISOString(),
+      whatsappMessage: { id: `qawarm${randomUUID().slice(0, 12)}`, wamid: 'wamid.qawarm', status: 'delivered', from: NUM, to: OWNER, wabaId: 'qa' } });
+    status = await fetch(`${FN}/wa-automation?hook=${encodeURIComponent(hookToken)}`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'ycloud-signature': sign(raw) }, body: raw })
+      .then((r) => r.status).catch(() => 0);
+  }
+  await new Promise((r) => setTimeout(r, 1500));
+  console.log(`warm-up: ${status} after ${Date.now() - t0} ms`);
+}
+
 const results = [];
 // 1. the tap «للفرعين» by its id
 {

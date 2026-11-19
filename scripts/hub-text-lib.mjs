@@ -78,8 +78,9 @@ const COPY_CASES = {
   'Package order — the room booking': 'package_ask_booking',
   "Package order — the room booking at the number's branch (19 Nov 2026: when the date is already known, the branch is named here instead)": 'package_ask_booking_branch',
   'Package order — the other branch (19 Nov 2026: after the questions, whenever the branch of the number was named in one of them)': 'package_ask_other_branch',
-  'Package order — less than 24 hours away (the team only if the guest insists)': 'package_notice',
-  'Package order — sent to reception (the hand-off notice of the order)': 'package_handed',
+  'Package order — less than 24 hours away (the team only if the guest insists; 19 Nov 2026, Ahmed: the wording)': 'package_notice',
+  'Package order — sent to reception, with the summary (19 Nov 2026, Ahmed: when the package, the branch and the date are known)': 'package_handed_summary',
+  'Package order — sent to reception (the hand-off notice of the order; without the summary when the package or the date is not known)': 'package_handed',
   // copy.md §4.2
   'Confirmed (after the official template)': 'result_confirmed',
   'Request (after the official template)': 'result_request',

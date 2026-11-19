@@ -18,7 +18,9 @@ import { buildPayload, guardPayload, offersFor, packagesItem } from '../supabase
 import { guard } from '../supabase/functions/_shared/hub/guard.ts';
 import { fixed } from '../supabase/functions/_shared/hub/copy.ts';
 import { INTENTS, validateUnderstanding } from '../supabase/functions/_shared/hub/understand.ts';
-import { packageAlertLine } from '../supabase/functions/_shared/hub/engine.ts';
+import { branchLabel, packageAlertLine, packageLabel } from '../supabase/functions/_shared/hub/engine.ts';
+import { longDate } from '../supabase/functions/booking-request/email.ts';
+import { stayDateText } from '../supabase/functions/_shared/hub/dates.ts';
 
 let n = 0;
 const fails = [];
@@ -158,6 +160,33 @@ check(fixed('package_ask_booking', 'ar').includes('لديك') && !/لديكم|ت
   'copy: the singular address');
 const prompts = readFileSync('docs/guest-hub/prompts.md', 'utf8');
 check(/38\. Room decoration, celebration/.test(prompts) && prompts.includes('"has_room_booking": boolean | null'), 'prompts.md: rule 38 and the schema fields');
+
+// ── the wording of 19 Nov 2026 (Ahmed): the branch question, the notice, the hand-off with its summary ──
+const CONTENT = JSON.parse(readFileSync('supabase/functions/booking-request/content.generated.json', 'utf8'));
+const GOLD = { ...OFFER, packages: [...OFFER.packages, { name_ar: 'الباقة الذهبية', name_en: 'Gold Package', price: 499, was_price: 700, items_ar: ['ورود'], items_en: ['Roses'], choice_ar: '', choice_en: '' }] };
+const DATE = '2026-11-21';
+const sd = (L) => stayDateText((iso, LL) => longDate(CONTENT, iso, LL), DATE, L);
+check(branchLabel(CONTENT, 'shafa-road', 'ar') === 'فرع طريق الشفا' && branchLabel(CONTENT, 'airport-road', 'ar') === 'فرع طريق المطار', `{branch_name} ar: «فرع …» — ${branchLabel(CONTENT, 'shafa-road', 'ar')}`);
+check(branchLabel(CONTENT, 'shafa-road', 'en') === 'our Shafa Road branch' && branchLabel(CONTENT, 'airport-road', 'en') === 'our Airport Road branch', `{branch_name} en: "our … branch" — ${branchLabel(CONTENT, 'shafa-road', 'en')}`);
+check(packageLabel('الذهبية', [{ live: GOLD }], 'ar') === 'الباقة الذهبية' && packageLabel('gold', [{ live: GOLD }], 'en') === 'Gold Package' && packageLabel('الباقه الذهبيه', [{ live: GOLD }], 'en') === 'Gold Package',
+  '{package}: the offer\'s name in the guest\'s language');
+check(packageLabel('الماسية', [{ live: GOLD }], 'ar') === 'الباقة الماسية', '{package}: no offer match → «الباقة …» as before');
+check(/^السبت 21 نوفمبر 2026 \(\d+ جمادى الآخرة 1448\)$/.test(sd('ar')) && sd('en') === 'Sat, 21 Nov 2026 (11 Jumada al-Akhirah 1448)', `{date}: weekday, day, month, year and Hijri — ${sd('ar')} / ${sd('en')}`);
+check(fixed('package_ask_branch', 'ar') === 'في أي فرع تفضّل: طريق المطار أم طريق الشفا؟' && fixed('package_ask_branch', 'en') === 'Which branch would you prefer: Airport Road or Shafa Road?', 'copy: the branch question (19 Nov 2026)');
+check(fixed('package_notice', 'ar', { date: 'D' }) === 'تُطلب الباقة قبل موعد المناسبة بـ24 ساعة على الأقل، وأقرب موعد ممكن هو D. هل يناسبك؟'
+  && fixed('package_notice', 'en', { date: 'D' }) === 'Packages must be ordered at least 24 hours before the occasion, so the earliest possible date is D. Would that suit you?', 'copy: the 24-hour notice (19 Nov 2026)');
+check(fixed('package_handed_summary', 'ar', { package: 'الباقة الذهبية', branch_name: branchLabel(CONTENT, 'shafa-road', 'ar'), date: sd('ar') }) === `وصل طلبك إلى فريق الاستقبال: الباقة الذهبية في فرع طريق الشفا بتاريخ ${sd('ar')}. سيكمل معك أحدهم في هذه المحادثة لتأكيد التفاصيل.`, 'copy: the hand-off with its summary, ar');
+check(fixed('package_handed_summary', 'en', { package: 'Gold Package', branch_name: branchLabel(CONTENT, 'shafa-road', 'en'), date: sd('en') }) === `Your request has reached our reception team: Gold Package at our Shafa Road branch on ${sd('en')}. One of them will continue with you in this chat to confirm the details.`, 'copy: the hand-off with its summary, en');
+check(fixed('package_handed', 'ar') === 'وصل طلبك إلى فريق الاستقبال، وسيكمل معك أحدهم في هذه المحادثة لتأكيد التفاصيل.', 'copy: the hand-off without the summary unchanged');
+for (const L of ['ar', 'en']) {
+  const lines = [fixed('package_ask_date_branch', L, { branch_name: branchLabel(CONTENT, 'airport-road', L) }), fixed('package_ask_booking_branch', L, { branch_name: branchLabel(CONTENT, 'airport-road', L) }),
+    fixed('package_ask_other_branch', L, { other_branch: branchLabel(CONTENT, 'shafa-road', L) })];
+  const want = L === 'ar' ? ['ما تاريخ مناسبتك في فرع طريق المطار؟', 'وهل لديك حجز غرفة لدينا في فرع طريق المطار؟', 'وإن كنت تفضّل فرع طريق الشفا فأخبرنا بذلك.']
+    : ['What is the date of your occasion at our Airport Road branch?', 'And do you already have a room booking with us at our Airport Road branch?', 'If you would prefer our Shafa Road branch, just let us know.'];
+  check(JSON.stringify(lines) === JSON.stringify(want), `copy ${L}: every §5 line with {branch_name} / {other_branch} reads right — ${lines.join(' | ')}`);
+}
+check(/package_handed'\) push\(packageHanded\(a\.note\.slots\)/.test(eng) && /'package_notice', L, \{ date: stayDate\(a\.date, L\) \}/.test(eng) && /booking_status', L, \{ ref: b\.ref, branch_name: branchLabel/.test(eng),
+  'engine: the hand-off summary, the notice\'s full date and booking_status\'s branch label');
 
 console.log(`hub-packages-check: ${n - fails.length}/${n} checks passed`);
 if (fails.length) {

@@ -266,8 +266,8 @@
    "en": "We’d be glad to arrange the package for you."
   },
   "package_ask_branch": {
-   "ar": "في أي فرع: طريق المطار أم طريق الشفا؟",
-   "en": "Which branch: Airport Road or Shafa Road?"
+   "ar": "في أي فرع تفضّل: طريق المطار أم طريق الشفا؟",
+   "en": "Which branch would you prefer: Airport Road or Shafa Road?"
   },
   "package_ask_date": {
    "ar": "ما تاريخ مناسبتك؟",
@@ -290,8 +290,12 @@
    "en": "If you would prefer {other_branch}, just let us know."
   },
   "package_notice": {
-   "ar": "نحتاج إلى طلب الباقة قبل موعد المناسبة بـ24 ساعة على الأقل، وأقرب موعد متاح هو {date}. هل يناسبك؟",
-   "en": "The package needs to be ordered at least 24 hours before the occasion; the earliest date available is {date}. Would that suit you?"
+   "ar": "تُطلب الباقة قبل موعد المناسبة بـ24 ساعة على الأقل، وأقرب موعد ممكن هو {date}. هل يناسبك؟",
+   "en": "Packages must be ordered at least 24 hours before the occasion, so the earliest possible date is {date}. Would that suit you?"
+  },
+  "package_handed_summary": {
+   "ar": "وصل طلبك إلى فريق الاستقبال: {package} في {branch_name} بتاريخ {date}. سيكمل معك أحدهم في هذه المحادثة لتأكيد التفاصيل.",
+   "en": "Your request has reached our reception team: {package} at {branch_name} on {date}. One of them will continue with you in this chat to confirm the details."
   },
   "package_handed": {
    "ar": "وصل طلبك إلى فريق الاستقبال، وسيكمل معك أحدهم في هذه المحادثة لتأكيد التفاصيل.",

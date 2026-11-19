@@ -154,6 +154,33 @@ const branchName = (c: Json, slug: string, L: Lang) => {
   const b = (c.branches as Json[]).find((x) => x.slug === slug);
   return String(b ? (L === 'en' ? b.name_en : b.name_ar) : slug);
 };
+/** {branch_name} / {other_branch} in copy.md §5 (Ahmed, 19 Nov 2026): «فرع طريق المطار» / "our Airport Road branch" — the
+ *  branch's own name after «أرمادا ريزيدنس –» */
+export const branchLabel = (c: Json, slug: string, L: Lang): string => {
+  const short = branchName(c, slug, L).split(/\s+[–-]\s+/).pop()!.trim();
+  return L === 'en' ? `our ${short} branch` : `فرع ${short}`;
+};
+/** {package} (19 Nov 2026): the package's name in a live packages offer when the guest's word names one («الذهبية» /
+ *  "gold" → «الباقة الذهبية» / "Gold Package"); else the guest's word as a package («الباقة …») */
+export function packageLabel(raw: string, rows: Json[], L: Lang): string {
+  const norm = (x: string) => x.toLowerCase().replace(/[أإآ]/g, 'ا').replace(/ة/g, 'ه').replace(/[ً-ْـ]/g, '')
+    .replace(/(^|\s)(ال)?باق(ه|ات)(?=\s|$)/g, ' ').replace(/packages?/g, ' ').replace(/(^|\s)ال/g, '$1').replace(/\s+/g, ' ').trim();
+  const core = norm(raw);
+  if (core.length >= 2) {
+    for (const r of rows ?? []) {
+      const o = r?.live ?? r;
+      if (!o || o.kind !== 'packages' || !Array.isArray(o.packages)) continue;
+      for (const p of o.packages as Json[]) {
+        const names = [p?.name_ar, p?.name_en].filter((x) => typeof x === 'string' && x.trim()).map((x) => norm(String(x)));
+        if (names.some((n) => n === core || n.split(' ').includes(core) || core.split(' ').includes(n))) {
+          const own = String((L === 'en' ? p.name_en : p.name_ar) ?? '').trim();
+          if (own) return own;
+        }
+      }
+    }
+  }
+  return L === 'ar' && /^[ء-ي]/.test(raw) && !/^(?:ال)?باق/.test(raw) ? `الباقة ال${raw.replace(/^ال/, '')}` : raw;
+}
 
 /** H10: the counts the guest gave in this turn (adults, children, the children's ages, nights, rooms) — a reply may repeat
  *  them; prices never come from here */
@@ -502,14 +529,27 @@ export async function runTurn(claim: Json, deps: Deps): Promise<Outcome> {
   };
   const doHandoff = (a: Extract<Action, { type: 'handoff' }>) => {
     if (a.notice && noticeOpen) waitingLine();
+    else if (a.notice === 'package_handed') push(packageHanded(a.note.slots), { notice: true, handoff: true });
     else if (a.notice) push(fixed(a.notice, L), { notice: true, handoff: true });
     note = handoffNote(a.note, lastAction);
     if (a.reason === 'complaint') out.complaint = true;
     if (a.reason === 'no_source') gap();
   };
 
+  // 19 Nov 2026 (Ahmed): a package order's hand-off names the package, the branch and the date when all three are known
+  let pkRows: Json[] = [];
+  const packageHanded = (sl: Record<string, unknown>): string => {
+    const pk = typeof sl.package === 'string' ? sl.package.trim() : '';
+    const br = sl.branch === 'airport-road' || sl.branch === 'shafa-road' ? sl.branch : null;
+    const dt = typeof sl.date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(sl.date) ? sl.date : null;
+    return pk && br && dt
+      ? fixed('package_handed_summary', L, { package: packageLabel(pk, pkRows, L), branch_name: branchLabel(deps.content, br, L), date: stayDate(dt, L) })
+      : fixed('package_handed', L);
+  };
+
   let noCardsLink = false;
   const execute = async (dec: Decision): Promise<Decision | null> => {
+    if (dec.actions.some((a) => a.type === 'package_ask' || (a.type === 'handoff' && a.notice === 'package_handed'))) pkRows = await offersP;
     for (const a of dec.actions) {
       switch (a.type) {
         case 'fixed': {
@@ -544,7 +584,7 @@ export async function runTurn(claim: Json, deps: Deps): Promise<Outcome> {
         case 'booking_status': {
           const b = (claim.bookings as Json[]).find((x) => x.ref === a.ref);
           if (!b) return decide({ state: dec.next, event: { type: 'answer_result', ok: false }, draft, ctx });
-          push(fixed('booking_status', L, { ref: b.ref, branch_name: branchName(deps.content, b.branch, L), check_in: deps.longDate(b.check_in, L), check_out: deps.longDate(b.check_out, L), status_text: statusText(b.status, L) }));
+          push(fixed('booking_status', L, { ref: b.ref, branch_name: branchLabel(deps.content, b.branch, L), check_in: deps.longDate(b.check_in, L), check_out: deps.longDate(b.check_out, L), status_text: statusText(b.status, L) }));
           lastAction = 'أُرسلت حالة الحجز';
           break;
         }
@@ -651,26 +691,26 @@ export async function runTurn(claim: Json, deps: Deps): Promise<Outcome> {
         case 'package_ask': {
           // «باقات بسعر خاص» (18 Nov 2026): the lead, then only the missing questions, in ONE fixed message (copy.md §5)
           // «الذهبية» / «ذهبية» → «الباقة الذهبية»; «باقة …» / «الباقة …» and an English name as the guest wrote them
-          const named = a.package && L === 'ar' && /^[ء-ي]/.test(a.package) && !/^(?:ال)?باق/.test(a.package) ? `الباقة ال${a.package.replace(/^ال/, '')}` : a.package;
+          const named = a.package ? packageLabel(a.package, pkRows, L) : '';
           const parts = [named ? fixed('package_ask_lead', L, { package: named }) : fixed('package_ask_lead_any', L)];
           // 19 Nov 2026 (Ahmed): the branch of the number by default — named in the date question (else the room-booking
           // question), then one line inviting the other branch
           const bd = a.branch_default === 'airport-road' || a.branch_default === 'shafa-road' ? a.branch_default : null;
-          const bName = bd ? branchName(deps.content, bd, L) : '';
+          const bName = bd ? branchLabel(deps.content, bd, L) : '';
           const withBranch = bd ? (a.missing.includes('date') ? 'date' : a.missing.includes('booking') ? 'booking' : null) : null;
           for (const m of a.missing) {
             if (m === 'branch') parts.push(fixed('package_ask_branch', L));
             else if (m === 'date') parts.push(withBranch === 'date' ? fixed('package_ask_date_branch', L, { branch_name: bName }) : fixed('package_ask_date', L));
             else parts.push(withBranch === 'booking' ? fixed('package_ask_booking_branch', L, { branch_name: bName }) : fixed('package_ask_booking', L));
           }
-          if (bd && withBranch) parts.push(fixed('package_ask_other_branch', L, { other_branch: branchName(deps.content, bd === 'airport-road' ? 'shafa-road' : 'airport-road', L) }));
+          if (bd && withBranch) parts.push(fixed('package_ask_other_branch', L, { other_branch: branchLabel(deps.content, bd === 'airport-road' ? 'shafa-road' : 'airport-road', L) }));
           push(parts.join(' '));
           lastAction = 'سؤال عن تفاصيل طلب الباقة';
           break;
         }
         case 'package_notice': {
           // a date less than 24 hours away: the notice and the earliest date (weekday, Gregorian and Hijri — dates.ts)
-          push(fixed('package_notice', L, { date: deps.longDate(a.date, L) }));
+          push(fixed('package_notice', L, { date: stayDate(a.date, L) }));
           lastAction = 'تنبيه مهلة الـ24 ساعة للباقة';
           break;
         }
