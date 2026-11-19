@@ -223,10 +223,23 @@ export function packagePrice(locale: Locale, p: OfferPackage): { price: string; 
   const was = p.was_price != null && Number(p.was_price) > Number(p.price) ? sarText(Number(p.was_price), locale) : '';
   return { price: sarText(Number(p.price), locale), was, wasLine: was ? fill(T(locale).package_instead, { price: was }) : '' };
 }
+/** a package's tracking key (19 Nov 2026 — whatsapp_click { package }): silver / gold / platinum by its English name,
+ *  else the English name as a slug; 'none' for no package */
+export function packageKey(p: OfferPackage | null | undefined): string {
+  if (!p) return 'none';
+  const en = (p.name_en || '').toLowerCase();
+  const tier = en.match(/\b(silver|gold|platinum)\b/);
+  if (tier) return tier[1];
+  return en.replace(/\bpackage\b/g, '').trim().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'none';
+}
+
 /** the offer's WhatsApp message (its prefill, else «أرغب في الاستفسار عن {title}.») and one destination per branch of the
- *  offer (numbers from content/contact.json, names from branches.json) — the chooser opens only these */
-export function offerWhatsApp(locale: Locale, o: Offer): { branch: string; label: string; href: string; phone: string }[] {
-  const text = offerText(locale, o, 'whatsapp_prefill') || fill(T(locale).package_prefill, { title: offerTitle(locale, o) });
+ *  offer (numbers from content/contact.json, names from branches.json) — the chooser opens only these. With a package
+ *  (19 Nov 2026, /celebrations/): the message names the package («أرغب في طلب {package} من عرض {title}.») */
+export function offerWhatsApp(locale: Locale, o: Offer, pkg?: OfferPackage): { branch: string; label: string; href: string; phone: string }[] {
+  const text = pkg
+    ? fill(T(locale).package_whatsapp_prefill, { package: packageName(locale, pkg), title: offerTitle(locale, o) })
+    : offerText(locale, o, 'whatsapp_prefill') || fill(T(locale).package_prefill, { title: offerTitle(locale, o) });
   return branches
     .filter((b) => o.branches.includes(b.slug))
     .map((b) => {

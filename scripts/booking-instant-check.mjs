@@ -86,12 +86,12 @@ async function run(width, lang) {
   const mode = { prices: true, reason: null, submit: 'confirmed', wa: true, offer: false };
   const rpcCalls = [];
   const submits = [];
-  await page.route(/\/rest\/v1\/rpc\/quote_stay/, async (route) => {
+  await ctx.route(/\/rest\/v1\/rpc\/quote_stay/, async (route) => {
     const args = route.request().postDataJSON();
     rpcCalls.push(args);
     await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(quoteFor(args, mode)) });
   });
-  await page.route(/\/rest\/v1\/rpc\/room_from_prices/, (route) =>
+  await ctx.route(/\/rest\/v1\/rpc\/room_from_prices/, (route) =>
     route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([{ branch: 'airport-road', room_slug: 'king-room', from_price: 185 }]) }),
   );
   // room availability (phase 2a.1, dashboard «الغرف»): the dashboard turned the Shafa jacuzzi studio OFF and the Airport
@@ -101,8 +101,8 @@ async function run(width, lang) {
     { branch: 'airport-road', slug: 'accessible-room', name_ar: 'غرفة مهيأة لذوي الاحتياجات الخاصة', name_en: 'Accessible Room', bookable: true, capacity: 2, extra_beds_max: 0 },
     { branch: 'airport-road', slug: 'king-room', name_ar: 'غرفة بسرير كينج', name_en: 'King Room', bookable: true, capacity: 2, extra_beds_max: 0 },
   ];
-  await page.route(/\/rest\/v1\/rpc\/site_room_types/, (route) => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(SITE_ROOMS) }));
-  await page.route(/\/functions\/v1\/booking-request/, async (route) => {
+  await ctx.route(/\/rest\/v1\/rpc\/site_room_types/, (route) => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(SITE_ROOMS) }));
+  await ctx.route(/\/functions\/v1\/booking-request/, async (route) => {
     const body = route.request().postDataJSON();
     submits.push(body);
     noteTurnstile(body);
@@ -128,22 +128,25 @@ async function run(width, lang) {
   });
   // the club function (the success page's «انضم إلى إياب» card): recorded, never sent
   const clubCalls = [];
-  await page.route(/\/functions\/v1\/club/, async (route) => {
+  await ctx.route(/\/functions\/v1\/club/, async (route) => {
     const body = route.request().postDataJSON();
     clubCalls.push(body);
     if (body.consent !== true) return route.fulfill({ status: 422, contentType: 'application/json', body: JSON.stringify({ ok: false, error: 'invalid', fields: { consent: 'consent' } }) });
     return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true }) });
   });
   // GTM and wa.me never leave the machine
-  await page.route(/googletagmanager\.com|wa\.me/, (route) => route.fulfill({ status: 204, body: '' }));
-  await stubTurnstile(page);
+  await ctx.route(/googletagmanager\.com|wa\.me/, (route) => route.fulfill({ status: 204, body: '' }));
+  await stubTurnstile(ctx);
   // a local build has no PUBLIC_BOOKING_ENDPOINT, so the page carries no Supabase origin and would never call the
   // RPCs: give the built HTML a stub origin (the stubs above catch every request to it). A build with a real origin
   // is left as is — the stubs match the paths whatever the host.
   const STUB = 'https://stub.supabase.invalid';
-  await page.route((u) => u.origin === new URL(BASE).origin, async (route) => {
-    if (route.request().resourceType() !== 'document') return route.continue();
+  await ctx.route((u) => u.origin === new URL(BASE).origin, async (route) => {
+    // the documents, and the pages the view-transition router fetches (19 Nov 2026: the ad flow navigates in the page)
+    const rt = route.request().resourceType();
+    if (rt !== 'document' && rt !== 'fetch') return route.continue();
     const res = await route.fetch();
+    if (!/text\/html/.test(res.headers()['content-type'] || '')) return route.fulfill({ response: res });
     let body = await res.text();
     body = body
       .replace(/"supabaseUrl":""/g, `"supabaseUrl":"${STUB}"`)
@@ -201,7 +204,10 @@ async function run(width, lang) {
   await pickRange(page, form, CI, CO);
   await page.waitForTimeout(500);
   check((await quoteBox.isVisible()) && (await form.locator('[data-quote-note]').textContent()) === S.quote.pick_room, `${tag} quote: «أي غرفة متاحة» → pick-room hint, no price`);
-  check(rpcCalls.length === 0, `${tag} quote: no RPC without a room type`);
+  // «أي غرفة متاحة» quotes nothing for the guest; the availability check behind it (no_availability, 19 Nov 2026)
+  // asks each room type of the branch by name — never a quote without one
+  check(rpcCalls.every((c) => c.p_room), `${tag} quote: no quote without a room type`, JSON.stringify(rpcCalls.map((c) => c.p_room)));
+  rpcCalls.length = 0;
   await form.locator('select[name="room"]').selectOption('king-room');
   const breakfast = (f, v) => f.locator(`label:has(input[name="breakfast"][value="${v}"])`).click();
   await breakfast(form, 'without');
@@ -394,8 +400,81 @@ async function run(width, lang) {
   await page.goto(`${BASE}${pre}/booking/success/?ref=AR-20991231-WANO&branch=airport-road&s=confirmed`, { waitUntil: 'networkidle' });
   check(!(await page.locator('[data-steps]').textContent()).includes(S.success.whatsapp_sent_confirmed) && (await page.locator('[data-steps] li').count()) === S.success.confirmed_steps.length, `${tag} whatsapp: confirmed, not accepted → steps unchanged`);
 
+  // ── an ad landing → «قبول الكل» → an internal navigation → the language switch → an instant booking (19 Nov 2026 —
+  // DECISIONS.md 2026-11-19 «Tracking for the December campaigns»); then a sold-out search (no_availability) ──
+  {
+    const p2 = await ctx.newPage();
+    p2.on('pageerror', (e) => fails.push(`${tag} ad flow page error: ${e.message}`));
+    await p2.addInitScript(() => {
+      try { localStorage.setItem('armada-consent-test', '1'); } catch { /* */ }
+    });
+    const other = lang === 'en' ? '' : '/en';
+    const AD = '?utm_source=meta&utm_medium=paid_social&utm_campaign=dec26_bookings_airport&utm_content=qa1&fbclid=FBIQA';
+    await p2.goto(`${BASE}${pre}/airport-road/${AD}`, { waitUntil: 'load' });
+    await p2.evaluate(() => localStorage.removeItem('armada-consent'));
+    await p2.reload({ waitUntil: 'load' });
+    check(await p2.locator('[data-cookie-accept]').isVisible(), `${tag} ad flow: the banner on the landing`);
+    await p2.click('[data-cookie-accept]');
+    const g = await p2.evaluate(() => (window.dataLayer || []).filter((e) => e.event === 'consent_granted'));
+    check(g.length === 1 && g[0].consent_new === 'analytics,ads', `${tag} ad flow: «قبول الكل» → consent_granted`, JSON.stringify(g));
+    await p2.locator('main a[href$="/airport-road/king-room/"]').first().click();
+    await p2.waitForURL(/king-room/);
+    await p2.waitForTimeout(300);
+    const vpv = await p2.evaluate(() => (window.dataLayer || []).filter((e) => e.event === 'virtual_page_view').map((e) => e.page_view_id));
+    check(JSON.stringify(vpv) === '[2]', `${tag} ad flow: the room page → virtual_page_view { page_view_id: 2 }`, JSON.stringify(vpv));
+    await p2.locator(`header a[hreflang="${lang === 'en' ? 'ar' : 'en'}"]`).first().click();
+    await p2.waitForURL((u) => u.pathname.startsWith(`${PRE}${other}/airport-road/king-room/`));
+    await p2.waitForLoadState('load');
+    const visit = await p2.evaluate(() => JSON.parse(sessionStorage.getItem('armada-visit') || 'null'));
+    check(visit?.utm_source === 'meta' && visit?.utm_campaign === 'dec26_bookings_airport' && visit?.fbclid === true && visit?.landing === `${PRE}${pre}/airport-road/`, `${tag} ad flow: the first-touch source survives the navigation and the language switch`, JSON.stringify(visit));
+    const S2 = ui[lang === 'en' ? 'ar' : 'en'];
+    await p2.locator(`main a[href="${PRE}${other}/booking/?branch=airport-road&room=king-room"]`).first().click();
+    await p2.waitForSelector('form[data-booking-ready]', { timeout: 10000 });
+    const f3 = p2.locator('form[data-booking-form]:visible').first();
+    await pickRange(p2, f3, CI, CO);
+    await f3.locator('label:has(input[name="breakfast"][value="without"])').click();
+    await p2.waitForFunction((t) => [...document.querySelectorAll('[data-quote-badge]')].some((b) => !b.classList.contains('hidden') && b.textContent === t), S2.quote.instant_badge, { timeout: 8000 });
+    await f3.locator('input[name="name"]').fill('تجربة النظام');
+    await f3.locator('[data-phone-input]').fill('0500000000');
+    mode.submit = 'confirmed';
+    mode.wa = true;
+    await f3.locator('[data-submit]').click();
+    await p2.waitForURL(/\/booking\/success\//, { timeout: 15000 });
+    const sent = submits.at(-1) ?? {};
+    check(sent.visit?.utm_source === 'meta' && sent.visit?.utm_medium === 'paid_social' && sent.visit?.utm_campaign === 'dec26_bookings_airport' && sent.visit?.fbclid === true && !JSON.stringify(sent.visit).includes('FBIQA'), `${tag} ad flow: the booking carries the campaign source (booleans for the click IDs, never the ID)`, JSON.stringify(sent.visit));
+    await p2.waitForSelector('[data-heading]');
+    const conf = await p2.evaluate(() => (window.dataLayer || []).filter((e) => e.event === 'booking_confirmed'));
+    check(conf.length === 1 && conf[0].value > 0, `${tag} ad flow: one booking_confirmed on the success page`, JSON.stringify(conf));
+    const fbc = (await ctx.cookies()).find((k) => k.name === '_fbc');
+    check(!!fbc && fbc.value.endsWith('.FBIQA'), `${tag} ad flow: _fbc kept to the booking`, fbc?.value);
+    check(!new URL(p2.url()).searchParams.has('fbclid'), `${tag} ad flow: ads consent granted → the success URL is plain`, p2.url());
+
+    // sold out: the chosen type on a night of the stay, then every type («أي غرفة متاحة»)
+    await p2.evaluate(() => localStorage.removeItem('armada-consent'));
+    await p2.goto(`${BASE}${pre}/booking/?branch=airport-road&room=king-room`, { waitUntil: 'networkidle' });
+    await p2.waitForSelector('form[data-booking-ready]');
+    const f4 = p2.locator('form[data-booking-form]').first();
+    mode.reason = 'sold_out';
+    await pickRange(p2, f4, CI, CO);
+    await f4.locator('label:has(input[name="breakfast"][value="without"])').click();
+    await p2.waitForFunction((t) => document.querySelector('[data-quote-badge]')?.textContent?.includes(t), S.quote.reasons.sold_out, { timeout: 8000 });
+    let na = await p2.evaluate(() => (window.dataLayer || []).filter((e) => e.event === 'no_availability'));
+    check(na.length === 1 && na[0].property === 'airport-road' && na[0].room_type === 'king-room' && na[0].check_in === CI && na[0].nights === 2 && na[0].utm_source === 'meta' && na[0].utm_campaign === 'dec26_bookings_airport', `${tag} no_availability: the room type sold out → one event`, JSON.stringify(na));
+    check(na.every((e) => Object.keys(e).sort().join() === 'check_in,event,nights,property,room_type,utm_campaign,utm_source'), `${tag} no_availability: no personal data`, JSON.stringify(na[0] ?? {}));
+    await f4.locator('select[name="room"]').selectOption('');
+    await p2.waitForFunction(() => (window.dataLayer || []).filter((e) => e.event === 'no_availability').length >= 2, null, { timeout: 8000 }).catch(() => {});
+    na = await p2.evaluate(() => (window.dataLayer || []).filter((e) => e.event === 'no_availability'));
+    check(na.length === 2 && na[1].room_type === 'any' && na[1].property === 'airport-road', `${tag} no_availability: «أي غرفة متاحة» with every type sold out → room_type any`, JSON.stringify(na));
+    mode.reason = null;
+    await f4.locator('select[name="room"]').selectOption('king-room');
+    await p2.waitForFunction((t) => { const b = document.querySelector('[data-quote-badge]'); return b && !b.classList.contains('hidden') && b.textContent === t; }, S.quote.instant_badge, { timeout: 8000 });
+    check((await p2.evaluate(() => (window.dataLayer || []).filter((e) => e.event === 'no_availability').length)) === 2, `${tag} no_availability: an available search pushes nothing`);
+    await p2.close();
+  }
+
   await browser.close();
 }
+
 
 const t0 = Date.now();
 for (const width of [1440, 375]) for (const lang of ['ar', 'en']) {

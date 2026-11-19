@@ -241,6 +241,122 @@ for (const lang of ['ar', 'en']) {
     await c.close();
   }
 }
+// consent_granted and the ad click IDs (19 Nov 2026 — DECISIONS.md 2026-11-19 «Tracking for the December campaigns»):
+// a first visit from an ad link keeps the click IDs + UTMs in sessionStorage only (no cookie); «قبول الكل» → one
+// consent_granted { consent_types, consent_new } right after consent_update, the Meta _fbc cookie, ttclid / ScCid put
+// back on a URL that lost them, then an internal navigation → virtual_page_view with page_view_id 2 and no second
+// consent_granted; «الضروري فقط» → nothing stored, no cookie, no consent_granted, no request to an ad platform, and a
+// later landing is not stored either; analytics only → consent_granted { analytics }, the click IDs deleted, then
+// «قبول الكل» from the footer → consent_granted { consent_new: ads } once.
+{
+  const AD = '?utm_source=meta&utm_medium=paid_social&utm_campaign=dec26_rooms_airport&utm_content=c1&fbclid=FBQA1&ttclid=TTQA1&ScCid=SCQA1&gclid=GQA1';
+  const AD_HOSTS = /facebook\.(com|net)|tiktok\.com|snapchat\.com|sc-static\.net|clarity\.ms|google-analytics\.com|googleadservices\.com|doubleclick\.net/;
+  const store = (page) => page.evaluate(() => JSON.parse(sessionStorage.getItem('armada-ad-click') || 'null'));
+  const cookies = async (c) => (await c.cookies()).map((k) => `${k.name}=${k.value}`);
+  for (const lang of ['ar', 'en']) {
+    // «قبول الكل» on the landing page
+    {
+      const c = await ctx(FORMS[1], 'light', null);
+      let adReq = 0;
+      c.on('request', (r) => AD_HOSTS.test(r.url()) && adReq++);
+      const page = await c.newPage();
+      await page.goto(path(lang, `/airport-road/${AD}`), { waitUntil: 'load' });
+      const s0 = await store(page);
+      check(s0 && s0.ids.fbclid === 'FBQA1' && s0.ids.ttclid === 'TTQA1' && s0.ids.ScCid === 'SCQA1' && s0.ids.gclid === 'GQA1' && s0.utm.utm_campaign === 'dec26_rooms_airport' && s0.handed === false, `${lang}: a landing from an ad keeps the click IDs and UTMs in sessionStorage`, JSON.stringify(s0));
+      check(!(await page.evaluate(() => Object.keys(localStorage).some((k) => /ad-click|fbclid|ttclid/i.test(k + localStorage.getItem(k))))), `${lang}: no click ID in localStorage`);
+      check(!(await cookies(c)).some((k) => /^_fbc=|QA1/.test(k)), `${lang}: no ad cookie before consent`, (await cookies(c)).join('; '));
+      await page.click('[data-cookie-accept]');
+      const d = await dl(page);
+      const iUpd = d.findIndex((x) => x.event === 'consent_update');
+      const granted = d.filter((x) => x.event === 'consent_granted');
+      check(granted.length === 1 && granted[0].consent_types === 'analytics,ads' && granted[0].consent_new === 'analytics,ads' && d.indexOf(granted[0]) === iUpd + 1, `${lang}: «قبول الكل» → one consent_granted { analytics,ads } right after consent_update`, JSON.stringify(granted));
+      check(Object.keys(granted[0] ?? {}).sort().join() === 'consent_ads,consent_analytics,consent_new,consent_types,event', `${lang}: consent_granted carries only the consent types`);
+      const fbc = (await c.cookies()).find((k) => k.name === '_fbc');
+      check(!!fbc && /^fb\.1\.\d{13}\.FBQA1$/.test(fbc.value) && fbc.path === '/', `${lang}: _fbc = fb.1.<landing ms>.<fbclid> after «قبول الكل»`, fbc?.value);
+      check((await store(page))?.handed === true, `${lang}: the click IDs handed over once`);
+      await page.locator(`main a[href$="/airport-road/king-room/"]`).first().click();
+      await page.waitForURL(/king-room/);
+      await page.waitForTimeout(400);
+      const d2 = await dl(page);
+      const vpv = d2.filter((x) => x.event === 'virtual_page_view');
+      check(vpv.length === 1 && vpv[0].page_view_id === 2 && (await page.evaluate(() => window.armadaPageViewId)) === 2, `${lang}: the internal navigation → virtual_page_view { page_view_id: 2 }`, JSON.stringify(vpv));
+      check(d2.filter((x) => x.event === 'consent_granted').length === 1, `${lang}: no second consent_granted after the navigation`);
+      check(!/fbclid|ttclid|ScCid/.test(page.url()), `${lang}: after consent the internal links are plain (Google keeps url passthrough)`, page.url());
+      check(adReq === 0, `${lang}: GTM stubbed — no request reached an ad platform`, String(adReq));
+      await c.close();
+    }
+    // a link decorated before consent carries the click IDs without the UTMs: the stored landing stays whole
+    {
+      const c = await ctx(FORMS[1], 'light', null);
+      const page = await c.newPage();
+      await page.goto(path(lang, `/airport-road/${AD}`), { waitUntil: 'load' });
+      const s0 = await store(page);
+      await page.locator('main a[href$="/airport-road/king-room/"]').first().click();
+      await page.waitForURL(/king-room\/\?.*fbclid=FBQA1/);
+      await page.waitForTimeout(300);
+      const s1 = await store(page);
+      check(s1?.utm.utm_campaign === 'dec26_rooms_airport' && s1?.t === s0?.t && s1?.ids.fbclid === 'FBQA1', `${lang}: a decorated internal link keeps the stored UTMs and landing time`, JSON.stringify(s1));
+      await c.close();
+    }
+    // a URL that lost the click IDs before «قبول الكل»: TikTok's and Snap's put back
+    {
+      const c = await ctx(FORMS[1], 'light', null);
+      const page = await c.newPage();
+      await page.goto(path(lang, `/airport-road/${AD}`), { waitUntil: 'load' });
+      await page.evaluate(() => history.replaceState(history.state, '', location.pathname));
+      await page.click('[data-cookie-accept]');
+      const q = new URL(page.url()).searchParams;
+      check(q.get('ttclid') === 'TTQA1' && q.get('ScCid') === 'SCQA1' && !q.has('fbclid'), `${lang}: ttclid and ScCid back on the URL at consent (fbclid goes in _fbc)`, page.url());
+      await c.close();
+    }
+    // «الضروري فقط»
+    {
+      const c = await ctx(FORMS[1], 'light', null);
+      let adReq = 0;
+      c.on('request', (r) => AD_HOSTS.test(r.url()) && adReq++);
+      const page = await c.newPage();
+      await page.goto(path(lang, `/airport-road/${AD}`), { waitUntil: 'load' });
+      await page.click('[data-cookie-essential]');
+      check((await store(page)) === null, `${lang}: «الضروري فقط» deletes the stored click IDs`);
+      check(!(await cookies(c)).some((k) => /^_fbc=|^_fbp=|QA1/.test(k)), `${lang}: «الضروري فقط» → no ad cookie`, (await cookies(c)).join('; '));
+      check(!(await dl(page)).some((x) => x.event === 'consent_granted'), `${lang}: «الضروري فقط» → no consent_granted`);
+      await page.goto(path(lang, `/shafa-road/${AD.replace('QA1', 'QA2')}`), { waitUntil: 'load' });
+      check((await store(page)) === null, `${lang}: a later landing after «الضروري فقط» is not stored`);
+      check(adReq === 0, `${lang}: «الضروري فقط» → no request to an ad platform`, String(adReq));
+      await c.close();
+    }
+    // analytics only, then «قبول الكل» from the footer link
+    {
+      const c = await ctx(FORMS[1], 'light', null);
+      const page = await c.newPage();
+      await page.goto(path(lang, `/airport-road/${AD}`), { waitUntil: 'load' });
+      await page.click('[data-cookie-customize]');
+      await page.locator('[data-cookie-cat="analytics"]').check();
+      await page.click('[data-cookie-save]');
+      let g = (await dl(page)).filter((x) => x.event === 'consent_granted');
+      check(g.length === 1 && g[0].consent_types === 'analytics' && g[0].consent_new === 'analytics', `${lang}: analytics only → consent_granted { analytics }`, JSON.stringify(g));
+      check((await store(page)) === null, `${lang}: a choice without ads deletes the click IDs`);
+      await page.locator('[data-cookie-settings]').first().click();
+      await page.click('[data-cookie-accept]');
+      g = (await dl(page)).filter((x) => x.event === 'consent_granted');
+      check(g.length === 2 && g[1].consent_types === 'analytics,ads' && g[1].consent_new === 'ads', `${lang}: then «قبول الكل» → consent_granted { consent_new: ads }`, JSON.stringify(g));
+      await page.locator('[data-cookie-settings]').first().click();
+      await page.click('[data-cookie-accept]');
+      check((await dl(page)).filter((x) => x.event === 'consent_granted').length === 2, `${lang}: the same choice again pushes nothing new`);
+      await c.close();
+    }
+    // a stored «قبول الكل» from an earlier visit: no consent_granted on load (the first engagement starts the pixels)
+    {
+      const c = await ctx(FORMS[1], 'light', JSON.stringify({ v: VERSION, t: Date.now(), analytics: true, ads: true }));
+      const page = await c.newPage();
+      await page.goto(path(lang, `/airport-road/${AD}`), { waitUntil: 'load' });
+      check(!(await dl(page)).some((x) => x.event === 'consent_granted'), `${lang}: a stored choice → no consent_granted on load`);
+      const fbc = (await c.cookies()).find((k) => k.name === '_fbc');
+      check(!!fbc && fbc.value.endsWith('.FBQA1') && (await store(page))?.handed === true, `${lang}: a stored «قبول الكل» hands the new click IDs over at load`, fbc?.value);
+      await c.close();
+    }
+  }
+}
 // GTM only on the real domain (9 Nov 2026): the container script is requested there, and nowhere else
 {
   const real = ['armadaresidence.com', 'www.armadaresidence.com'].includes(new URL(BASE).hostname);

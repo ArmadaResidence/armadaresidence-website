@@ -14,7 +14,8 @@ import BookingDrawer from '@components/BookingDrawer.astro';
 import OfferPopupDialog from '@components/OfferPopup.astro';
 import { offerPopup, siteBar } from '@lib/offers-data';
 import CookieConsent from '@components/CookieConsent.astro';
-import { cookieConsent } from '@lib/content';
+import { contact, cookieConsent, venues } from '@lib/content';
+import { waKey } from '@lib/wa-track';
 
 interface Props {
   locale: Locale;
@@ -98,6 +99,15 @@ const legacy = path === '/discover-taif/' || path.startsWith('/partners/');
 // phone on every page (the header's «للشركاء والوكالات» and the first call to action are 600, the header's «English»
 // is Latin). Discovered only once the page's first layout asks for them, they were requested last, at the highest
 // priority, behind the whole first layout — and the paint waited for them; preloaded, they arrive with the others.
+// whatsapp_click { destination } (19 Nov 2026, src/lib/wa-track.ts): each WhatsApp number of the site → its destination,
+// keyed by a short hash of its digits (no page carries a number it does not show)
+const waDest: [string, string][] = [
+  ...Object.entries(contact.branches as Record<string, { whatsapp: string }>).map(([slug, c]) => [c.whatsapp, slug] as [string, string]),
+  [contact.sales.whatsapp, 'sales'],
+  [contact.cafe.whatsapp, 'cafe'],
+  ...venues.filter((v) => v.whatsapp).map((v) => [v.whatsapp as string, 'cafe'] as [string, string]),
+];
+const waMeta = [...new Map(waDest.map(([n, d]) => [waKey(n.replace(/\D/g, '')), d])).entries()].map(([k, d]) => `${k}:${d}`).join(',');
 const preloadFonts = locale === 'ar' ? (path === '/' ? [fontAr400, fontAr600, fontAr700, fontEn] : [fontAr400, fontAr600, fontEn]) : [fontEn];
 ---
 
@@ -108,6 +118,7 @@ const preloadFonts = locale === 'ar' ? (path === '/' ? [fontAr400, fontAr600, fo
     {turnstileKey && <meta name="armada-turnstile" content={turnstileKey} />}
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="armada-build" content={buildId} />
+    <meta name="armada-wa" content={waMeta} />
     <meta name="color-scheme" content="light" />
     <meta name="theme-color" content="#F3EFE7" data-theme-color />
     <script is:inline>
@@ -367,11 +378,16 @@ const preloadFonts = locale === 'ar' ? (path === '/' ? [fontAr400, fontAr600, fo
         }
         if (d.readyState === 'complete') afterLoad();
         else w.addEventListener('load', afterLoad, { once: true });
-        // client-side navigations (view transitions) → one virtual page view per page; GTM needs a trigger on this event
+        // client-side navigations (view transitions) → one virtual page view per page; GTM needs a trigger on this event.
+        // armadaPageViewId (19 Nov 2026): 1 for the page loaded, +1 for each client-side navigation — the ad pixels' base
+        // tags send their page view once per id (GTM variable «JS - page view id»), whether consent comes at the first
+        // engagement, at «قبول الكل» on this page or at a later navigation
         var first = true;
+        w.armadaPageViewId = 1;
         d.addEventListener('astro:page-load', function () {
           if (first) { first = false; return; }
-          w[l].push({ event: 'virtual_page_view', page_path: location.pathname, page_location: location.href, page_title: d.title });
+          w.armadaPageViewId = (w.armadaPageViewId || 1) + 1;
+          w[l].push({ event: 'virtual_page_view', page_path: location.pathname, page_location: location.href, page_title: d.title, page_view_id: w.armadaPageViewId });
         });
       })(window, document, 'dataLayer', GTM_ID, GTM_HOSTS, CLICK_IDS);
     </script>
@@ -402,6 +418,8 @@ const preloadFonts = locale === 'ar' ? (path === '/' ? [fontAr400, fontAr600, fo
       // the visit's first-touch source (3 Nov 2026, part G): kept in sessionStorage until a booking is sent
       import { captureVisit } from '@lib/visit';
       captureVisit();
+      // the ad click IDs + UTMs of the landing (19 Nov 2026): sessionStorage only, handed to the pixels after ads consent
+      import '@lib/ad-click';
       import '@lib/reveal';
       import '@lib/counters';
       import '@lib/carousel';

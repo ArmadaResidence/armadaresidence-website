@@ -7,6 +7,7 @@
 import { firstTouch } from '@lib/visit';
 import { hashedUserData } from '@lib/user-data';
 import { withClickIds } from '@lib/click-ids';
+import { pushWhatsAppClick } from '@lib/wa-track';
 import { turnstileToken } from '@lib/turnstile';
 import { bindOnce } from '@lib/client';
 import { teamToken } from '@lib/team';
@@ -661,7 +662,11 @@ function initForm(form: HTMLFormElement) {
     const p = quoteParams();
     const n = nightsNow();
     if (!supa.url || !supa.key || !p.branch || !n) return hideQuote();
-    if (!p.room) return hideQuote(Q.pick_room);
+    if (!p.room) {
+      hideQuote(Q.pick_room);
+      quoteTimer = setTimeout(checkProperty, 600);
+      return;
+    }
     if (p.adults < 1) return hideQuote();
     quoteTimer = setTimeout(runQuote, 300);
   }
@@ -677,8 +682,45 @@ function initForm(form: HTMLFormElement) {
     if (seq !== quoteSeq) return;
     renderQuote(r);
   }
+  // ── no_availability (19 Nov 2026 — DECISIONS.md 2026-11-19 «Tracking for the December campaigns»): a search that
+  // finds no room — the chosen type sold out or closed on a night of the stay, or (with «أي غرفة متاحة») every type of
+  // the branch — pushes { property, room_type ('any' for the whole property), check_in, nights, utm_source,
+  // utm_campaign } once per search. No personal data.
+  let lastNoAvail = '';
+  const NO_ROOM = ['sold_out', 'closed'];
+  function pushNoAvailability(room: string) {
+    const p = quoteParams();
+    const nights = nightsNow();
+    const key = `${p.branch}|${room}|${p.check_in}|${nights}`;
+    if (!p.branch || !p.check_in || !nights || key === lastNoAvail) return;
+    lastNoAvail = key;
+    const v = firstTouch();
+    const w = window as unknown as { dataLayer?: unknown[] };
+    w.dataLayer = w.dataLayer || [];
+    w.dataLayer.push({
+      event: 'no_availability',
+      property: p.branch,
+      room_type: room || 'any',
+      check_in: p.check_in,
+      nights,
+      utm_source: v?.utm_source ?? '(none)',
+      utm_campaign: v?.utm_campaign ?? '(none)',
+    });
+  }
+  let propertySeq = 0;
+  /** «أي غرفة متاحة» with both dates: every room type of the branch asked; none left → no_availability (property) */
+  async function checkProperty() {
+    const p = quoteParams();
+    const seq = ++propertySeq;
+    const rooms = Array.from(roomSel.options).filter((o) => o.value && !o.disabled && (!o.dataset.branch || o.dataset.branch === p.branch)).map((o) => o.value);
+    if (!rooms.length || p.room) return;
+    const res = await Promise.all(rooms.map((room) => quoteStay(supa, { ...p, room, adults: Math.max(1, p.adults), promo_code: '' })));
+    if (seq !== propertySeq || roomSel.value) return;
+    if (res.every((r) => r && r.ok && r.reason && NO_ROOM.includes(r.reason))) pushNoAvailability('');
+  }
   function renderQuote(r: QuoteResult | null) {
     qChanged.classList.add('hidden');
+    if (r && r.ok && r.reason && NO_ROOM.includes(r.reason)) pushNoAvailability(quoteParams().room);
     promoOffer = r?.quote?.offer?.slug ?? '';
     showPromo(r?.promo, r?.quote?.offer ? (L === 'en' ? r.quote.offer.title_en : r.quote.offer.title_ar) : '');
     if (!r || !r.ok || !r.prices || !r.quote) {
@@ -803,9 +845,7 @@ function initForm(form: HTMLFormElement) {
     if (!validateFilled()) return;
     const p = collect();
     window.open(whatsappUrl(p), '_blank', 'noopener');
-    const w = window as unknown as { dataLayer?: unknown[] };
-    w.dataLayer = w.dataLayer || [];
-    w.dataLayer.push({ event: 'whatsapp_click', destination: p.branch, source: 'booking_form', page_path: location.pathname, page_location: location.href });
+    pushWhatsAppClick(p.branch || 'other', 'none', { source: 'booking_form' });
   });
   function showFallback(msg: string) {
     formError.textContent = msg;

@@ -4,11 +4,15 @@
  * offer's branches — one branch opens its number at once, several open a small chooser (the same look and behaviour as
  * the sticky button's: Esc, a press that starts and ends outside, focus back to the button). Every link carries the
  * offer's prefilled message; numbers come from content/contact.json (offers-data.ts → offerWhatsApp), never from the
- * offer. dataLayer: offer_click { cta: 'whatsapp' } on the button (src/lib/offers.ts) and whatsapp_click on each link.
+ * offer. dataLayer: offer_click { cta: 'whatsapp' } on the button (src/lib/offers.ts) and whatsapp_click on each link
+ * (src/lib/wa-track.ts, { destination, page_path, package }).
+ * With `pkg` (19 Nov 2026, /celebrations/): one per package — «اطلب {package} على واتساب», the message names the
+ * package, and every link carries data-wa-package (silver / gold / platinum).
  */
 import Icon from './Icon.astro';
 import type { Locale } from '@lib/content';
-import { offersText, offerWhatsApp, type Offer } from '@lib/offers-data';
+import { offersText, offerWhatsApp, packageKey, packageName, type Offer, type OfferPackage } from '@lib/offers-data';
+import { fill } from '@lib/content';
 
 interface Props {
   locale: Locale;
@@ -17,10 +21,14 @@ interface Props {
   placement: string;
   /** a full-width button (the phone layout of the packages card) */
   block?: boolean;
+  /** one package of a «باقات بسعر خاص» offer: its own button and message */
+  pkg?: OfferPackage;
 }
-const { locale, offer: o, placement, block = false } = Astro.props;
+const { locale, offer: o, placement, block = false, pkg } = Astro.props;
 const t = offersText(locale);
-const dests = offerWhatsApp(locale, o);
+const dests = offerWhatsApp(locale, o, pkg);
+const pkgKey = packageKey(pkg);
+const label = pkg ? fill(t.package_whatsapp, { package: packageName(locale, pkg) }) : t.whatsapp_us;
 const panelId = `offer-wa-${o.slug}-${placement}`;
 const btnClass = [
   'inline-flex items-center justify-center gap-2 bg-bronze-deep text-white! font-semibold px-5 py-3 rounded hover:bg-bronze-text transition-colors',
@@ -30,16 +38,16 @@ const btnClass = [
 
 {
   dests.length === 1 ? (
-    <a href={dests[0].href} class={btnClass} rel="noopener" target="_blank" data-offer-cta="whatsapp" data-wa-link data-wa-destination={dests[0].branch}>
+    <a href={dests[0].href} class={btnClass} rel="noopener" target="_blank" data-offer-cta="whatsapp" data-wa-link data-wa-destination={dests[0].branch} data-wa-package={pkgKey}>
       <Icon name="whatsapp" size={18} />
-      <span>{t.whatsapp_us}</span>
+      <span>{label}</span>
     </a>
   ) : (
     dests.length > 1 && (
-      <div class:list={['relative inline-block', block ? 'w-full sm:w-auto' : '']} data-offer-wa>
+      <div class:list={['relative inline-block', block ? 'w-full sm:w-auto' : '']} data-offer-wa data-wa-package={pkgKey}>
         <button type="button" class={btnClass} aria-expanded="false" aria-haspopup="dialog" aria-controls={panelId} data-offer-cta="whatsapp" data-offer-wa-toggle>
           <Icon name="whatsapp" size={18} />
-          <span>{t.whatsapp_us}</span>
+          <span>{label}</span>
         </button>
         <div
           id={panelId}
@@ -60,6 +68,7 @@ const btnClass = [
                   target="_blank"
                   data-wa-link
                   data-wa-destination={d.branch}
+                  data-wa-package={pkgKey}
                 >
                   <span class="text-sm font-medium">{d.label}</span>
                   <span class="latin text-xs whitespace-nowrap" dir="ltr">

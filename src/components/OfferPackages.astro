@@ -6,6 +6,9 @@
  * through beside it (also in the screen-reader text), its items and its choice note — then the common note, the terms
  * and «راسلنا على واتساب» (the branch chooser of the offer's branches). No booking, no room price: it never touches one.
  * dataLayer: offer_view / offer_click (src/lib/offers.ts) — slug, category, placement, cta.
+ * On /celebrations/ (19 Nov 2026 — DECISIONS.md 2026-11-19 «Tracking for the December campaigns») each package carries
+ * its own «اطلب {package} على واتساب» (the same branch numbers, a message naming the package, whatsapp_click
+ * { package: silver | gold | platinum }); the common «راسلنا على واتساب» stays below them.
  */
 import Icon from './Icon.astro';
 import OfferPattern from './OfferPattern.astro';
@@ -24,6 +27,7 @@ import {
   packageChoice,
   packageItems,
   packageName,
+  packageKey,
   packagePrice,
   type Offer,
 } from '@lib/offers-data';
@@ -44,6 +48,7 @@ const terms = offerText(locale, o, 'terms');
 const validity = offerValidity(locale, o);
 const Heading = level === 2 ? 'h2' : 'h3';
 const Sub = level === 2 ? 'h3' : 'h4';
+const perPackage = o.cta === 'whatsapp' && placement === 'celebrations';
 const cols = packages.length >= 4 ? 'lg:grid-cols-4 md:grid-cols-2' : packages.length === 3 ? 'md:grid-cols-3' : packages.length === 2 ? 'md:grid-cols-2' : '';
 ---
 
@@ -94,6 +99,11 @@ const cols = packages.length >= 4 ? 'lg:grid-cols-4 md:grid-cols-2' : packages.l
                 ))}
               </ul>
               {choice && <p class="mt-4 border-t border-line pt-3 text-sm text-ink-muted leading-relaxed">{choice}</p>}
+              {perPackage && (
+                <div class="mt-auto pt-5" data-package-wa>
+                  <OfferWhatsApp locale={locale} offer={o} placement={`${placement}-${packageKey(p)}`} pkg={p} block />
+                </div>
+              )}
             </li>
           );
         })
@@ -109,7 +119,7 @@ const cols = packages.length >= 4 ? 'lg:grid-cols-4 md:grid-cols-2' : packages.l
         </details>
       )
     }
-    {o.cta === 'whatsapp' && <div class="mt-6"><OfferWhatsApp locale={locale} offer={o} placement={placement} block /></div>}
+    {o.cta === 'whatsapp' && <div class="mt-6" data-offer-wa-common><OfferWhatsApp locale={locale} offer={o} placement={placement} block /></div>}
   </div>
 </article>
 

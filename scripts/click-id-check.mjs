@@ -15,7 +15,7 @@
 //              tel: and mailto: links never change; analytics granted but ads not → still carried; ads granted → links
 //              stay plain
 //   nothing  — no ad cookie (_gcl*, _ga*, _gid, _fbp, _fbc, _ttp, _scid, _uet*, …) after landing and clicking with
-//              consent denied, and the click ID's value nowhere in localStorage / sessionStorage
+//              consent denied, and the click ID's value in no storage but sessionStorage armada-ad-click (19 Nov 2026)
 //   node scripts/click-id-check.mjs [BASE_URL]
 import { chromium } from 'playwright';
 import { readFileSync } from 'node:fs';
@@ -179,8 +179,14 @@ for (const lang of ['ar', 'en']) {
   });
   check(ext.length > 0 && ext.every(([a, b]) => a === b), `${lang}: tel:, mailto: and outside links never change`, JSON.stringify(ext.filter(([a, b]) => a !== b).slice(0, 3)));
   // nothing stored, no ad cookie
-  const stored = await page.evaluate((t) => [...Object.keys(localStorage).map((k) => localStorage.getItem(k)), ...Object.keys(sessionStorage).map((k) => sessionStorage.getItem(k))].some((v) => (v || '').includes(t)), TOKEN);
-  check(!stored, `${lang}: the click ID's value is nowhere in localStorage / sessionStorage`);
+  // 19 Nov 2026 (DECISIONS.md «Tracking for the December campaigns»): the landing's click IDs are kept for the visit in
+  // sessionStorage `armada-ad-click` only (src/lib/ad-click.ts) — never in localStorage, any other key or a cookie
+  const stored = await page.evaluate((t) => ({
+    local: Object.keys(localStorage).some((k) => (localStorage.getItem(k) || '').includes(t)),
+    other: Object.keys(sessionStorage).filter((k) => k !== 'armada-ad-click' && (sessionStorage.getItem(k) || '').includes(t)),
+    own: (sessionStorage.getItem('armada-ad-click') || '').includes(t),
+  }), TOKEN);
+  check(!stored.local && stored.other.length === 0 && stored.own, `${lang}: the click ID's value only in sessionStorage armada-ad-click (never localStorage, another key or a cookie)`, JSON.stringify(stored));
   const cookies = (await c.cookies()).filter((k) => AD_COOKIE.test(k.name));
   const docCookies = await page.evaluate(() => document.cookie);
   check(cookies.length === 0 && !AD_COOKIE.test(docCookies.split(/;\s*/).map((x) => x.split('=')[0]).join(' ')), `${lang}: no ad cookie before consent`, JSON.stringify(cookies.map((k) => k.name)));

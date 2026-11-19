@@ -4,20 +4,10 @@
  * 9 Nov 2026 (mobile LCP) and imported by Base.astro's script, so it is not a separate request before the first paint.
  */
 import { bindOnce, onOutsidePress, onPageLoad } from './client';
+import './wa-track';
 
-/** GTM: one event per WhatsApp open, whatever the page type. */
-function track(destination: string) {
-  const w = window as unknown as { dataLayer?: unknown[] };
-  w.dataLayer = w.dataLayer || [];
-  w.dataLayer.push({ event: 'whatsapp_click', destination, page_path: location.pathname, page_location: location.href });
-}
-
+// whatsapp_click: src/lib/wa-track.ts counts every WhatsApp link of the site (19 Nov 2026), these included
 onPageLoad(() => {
-  document.querySelectorAll<HTMLAnchorElement>('[data-wa-link]').forEach((a) => {
-    if (!bindOnce(a)) return;
-    a.addEventListener('click', () => track(a.dataset.waDestination || ''));
-  });
-
   const root = document.querySelector<HTMLElement>('[data-wa-chooser]');
   const btn = root?.querySelector<HTMLButtonElement>('[data-wa-toggle]');
   const panel = root?.querySelector<HTMLElement>('[data-wa-panel]');

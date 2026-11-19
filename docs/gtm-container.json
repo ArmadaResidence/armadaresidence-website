@@ -1,12 +1,12 @@
 {
     "exportFormatVersion": 2,
-    "exportTime": "2026-11-19 17:12:36",
+    "exportTime": "2026-11-19 12:00:00",
     "containerVersion": {
         "path": "accounts/6382086279/containers/266900186/versions/10",
         "accountId": "6382086279",
         "containerId": "266900186",
         "containerVersionId": "10",
-        "name": "url passthrough",
+        "name": "December campaigns tracking (19 Nov 2026)",
         "container": {
             "path": "accounts/6382086279/containers/266900186",
             "accountId": "6382086279",
@@ -49,12 +49,12 @@
                     "type": "INTEGER",
                     "value": "10"
                 },
-                "notes": "Delete after import if the container already loads the Meta base pixel.",
+                "notes": "Fires on first_engagement, consent_granted, virtual_page_view and the conversions (setup tag). Init once per document, one page view per {{JS - page view id}} (19 Nov 2026).",
                 "parameter": [
                     {
                         "type": "TEMPLATE",
                         "key": "html",
-                        "value": "<script>!function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window,document,'script','https://connect.facebook.net/en_US/fbevents.js');\nvar am = {}; if ({{DL - ud email}}) am.em = {{DL - ud email}}; if ({{DL - ud phone}}) am.ph = {{DL - ud phone}};\nfbq('init', '{{Meta Pixel ID}}', am); fbq('track', 'PageView');</script>"
+                        "value": "<script>(function(w){\nif(!w.fbq){!function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window,document,'script','https://connect.facebook.net/en_US/fbevents.js');\nw.fbq.disablePushState=true;w.fbq.allowDuplicatePageViews=true;}\nif(!w.__armadaMetaInit){w.__armadaMetaInit=1;\nvar am = {}; if ({{DL - ud email}}) am.em = {{DL - ud email}}; if ({{DL - ud phone}}) am.ph = {{DL - ud phone}};\nfbq('init', '{{Meta Pixel ID}}', am);}\nvar k={{JS - page view id}};\nif(w.__armadaMetaPv!==k){w.__armadaMetaPv=k;fbq('track', 'PageView');}\n})(window);</script>"
                     },
                     {
                         "type": "BOOLEAN",
@@ -62,13 +62,14 @@
                         "value": "false"
                     }
                 ],
-                "fingerprint": "1794304224062",
                 "firingTriggerId": [
                     "38",
                     "14",
-                    "32"
+                    "32",
+                    "79",
+                    "8"
                 ],
-                "tagFiringOption": "ONCE_PER_LOAD",
+                "tagFiringOption": "ONCE_PER_EVENT",
                 "monitoringMetadata": {
                     "type": "MAP"
                 },
@@ -680,7 +681,7 @@
                     {
                         "type": "TEMPLATE",
                         "key": "html",
-                        "value": "<script>(function(e,t,n){if(e.snaptr)return;var a=e.snaptr=function(){a.handleRequest?a.handleRequest.apply(a,arguments):a.queue.push(arguments)};a.queue=[];var s='script';r=t.createElement(s);r.async=!0;r.src=n;var u=t.getElementsByTagName(s)[0];u.parentNode.insertBefore(r,u);})(window,document,'https://sc-static.net/scevent.min.js');\nvar su = {}; if ({{DL - ud email}}) su.user_hashed_email = {{DL - ud email}}; if ({{DL - ud phone}}) su.user_hashed_phone_number = {{DL - ud phone}};\nsnaptr('init', '{{Snap Pixel ID}}', su); snaptr('track','PAGE_VIEW');</script>"
+                        "value": "<script>(function(e,t,n){if(e.snaptr)return;var a=e.snaptr=function(){a.handleRequest?a.handleRequest.apply(a,arguments):a.queue.push(arguments)};a.queue=[];var s='script';r=t.createElement(s);r.async=!0;r.src=n;var u=t.getElementsByTagName(s)[0];u.parentNode.insertBefore(r,u);})(window,document,'https://sc-static.net/scevent.min.js');\nif(!window.__armadaSnapInit){window.__armadaSnapInit=1;\nvar su = {}; if ({{DL - ud email}}) su.user_hashed_email = {{DL - ud email}}; if ({{DL - ud phone}}) su.user_hashed_phone_number = {{DL - ud phone}};\nsnaptr('init', '{{Snap Pixel ID}}', su);}\nvar k={{JS - page view id}};\nif(window.__armadaSnapPv!==k){window.__armadaSnapPv=k;snaptr('track','PAGE_VIEW');}</script>"
                     },
                     {
                         "type": "BOOLEAN",
@@ -688,13 +689,14 @@
                         "value": "false"
                     }
                 ],
-                "fingerprint": "1794304727690",
                 "firingTriggerId": [
                     "14",
                     "38",
-                    "32"
+                    "32",
+                    "79",
+                    "8"
                 ],
-                "tagFiringOption": "ONCE_PER_LOAD",
+                "tagFiringOption": "ONCE_PER_EVENT",
                 "monitoringMetadata": {
                     "type": "MAP"
                 },
@@ -709,7 +711,8 @@
                             }
                         ]
                     }
-                }
+                },
+                "notes": "Fires on first_engagement, consent_granted, virtual_page_view and the conversions (setup tag). Init once per document, one page view per {{JS - page view id}} (19 Nov 2026)."
             },
             {
                 "accountId": "6382086279",
@@ -721,12 +724,12 @@
                     "type": "INTEGER",
                     "value": "10"
                 },
-                "notes": "Delete after import if the container already loads the TikTok base pixel.",
+                "notes": "Fires on first_engagement, consent_granted, virtual_page_view and the conversions (setup tag). Init once per document, one page view per {{JS - page view id}} (19 Nov 2026).",
                 "parameter": [
                     {
                         "type": "TEMPLATE",
                         "key": "html",
-                        "value": "<script>!function(w,d,t){w.TiktokAnalyticsObject=t;var ttq=w[t]=w[t]||[];ttq.methods=[\"page\",\"track\",\"identify\",\"instances\",\"debug\",\"on\",\"off\",\"once\",\"ready\",\"alias\",\"group\",\"enableCookie\",\"disableCookie\"],ttq.setAndDefer=function(t,e){t[e]=function(){t.push([e].concat(Array.prototype.slice.call(arguments,0)))}};for(var i=0;i<ttq.methods.length;i++)ttq.setAndDefer(ttq,ttq.methods[i]);ttq.instance=function(t){for(var e=ttq._i[t]||[],n=0;n<ttq.methods.length;n++)ttq.setAndDefer(e,ttq.methods[n]);return e};ttq.load=function(e,n){var i=\"https://analytics.tiktok.com/i18n/pixel/events.js\";ttq._i=ttq._i||{},ttq._i[e]=[],ttq._i[e]._u=i,ttq._t=ttq._t||{},ttq._t[e]=+new Date,ttq._o=ttq._o||{},ttq._o[e]=n||{};var o=document.createElement(\"script\");o.type=\"text/javascript\",o.async=!0,o.src=i+\"?sdkid=\"+e+\"&lib=\"+t;var a=document.getElementsByTagName(\"script\")[0];a.parentNode.insertBefore(o,a)};ttq.load('{{TikTok Pixel ID}}');ttq.page();}(window,document,'ttq');</script>"
+                        "value": "<script>(function(w){\nif(!w.__armadaTtLoaded){w.__armadaTtLoaded=1;\n!function(w,d,t){w.TiktokAnalyticsObject=t;var ttq=w[t]=w[t]||[];ttq.methods=[\"page\",\"track\",\"identify\",\"instances\",\"debug\",\"on\",\"off\",\"once\",\"ready\",\"alias\",\"group\",\"enableCookie\",\"disableCookie\"],ttq.setAndDefer=function(t,e){t[e]=function(){t.push([e].concat(Array.prototype.slice.call(arguments,0)))}};for(var i=0;i<ttq.methods.length;i++)ttq.setAndDefer(ttq,ttq.methods[i]);ttq.instance=function(t){for(var e=ttq._i[t]||[],n=0;n<ttq.methods.length;n++)ttq.setAndDefer(e,ttq.methods[n]);return e};ttq.load=function(e,n){var i=\"https://analytics.tiktok.com/i18n/pixel/events.js\";ttq._i=ttq._i||{},ttq._i[e]=[],ttq._i[e]._u=i,ttq._t=ttq._t||{},ttq._t[e]=+new Date,ttq._o=ttq._o||{},ttq._o[e]=n||{};var o=document.createElement(\"script\");o.type=\"text/javascript\",o.async=!0,o.src=i+\"?sdkid=\"+e+\"&lib=\"+t;var a=document.getElementsByTagName(\"script\")[0];a.parentNode.insertBefore(o,a)};ttq.load('{{TikTok Pixel ID}}');}(window,document,'ttq');}\nvar k={{JS - page view id}};\nif(w.__armadaTtPv!==k){w.__armadaTtPv=k;w.ttq.page();}\n})(window);</script>"
                     },
                     {
                         "type": "BOOLEAN",
@@ -734,13 +737,14 @@
                         "value": "false"
                     }
                 ],
-                "fingerprint": "1794065698577",
                 "firingTriggerId": [
                     "14",
                     "38",
-                    "32"
+                    "32",
+                    "79",
+                    "8"
                 ],
-                "tagFiringOption": "ONCE_PER_LOAD",
+                "tagFiringOption": "ONCE_PER_EVENT",
                 "monitoringMetadata": {
                     "type": "MAP"
                 },
@@ -1164,9 +1168,9 @@
                         "value": "zawy5ld6k1"
                     }
                 ],
-                "fingerprint": "1794228789118",
                 "firingTriggerId": [
-                    "2147479553"
+                    "2147479553",
+                    "80"
                 ],
                 "tagFiringOption": "ONCE_PER_EVENT",
                 "monitoringMetadata": {
@@ -1694,6 +1698,493 @@
                 "consentSettings": {
                     "consentStatus": "NOT_NEEDED"
                 }
+            },
+            {
+                "accountId": "6382086279",
+                "containerId": "266900186",
+                "tagId": "85",
+                "name": "GA4 - whatsapp_click",
+                "type": "gaawe",
+                "parameter": [
+                    {
+                        "type": "BOOLEAN",
+                        "key": "sendEcommerceData",
+                        "value": "false"
+                    },
+                    {
+                        "type": "LIST",
+                        "key": "eventSettingsTable",
+                        "list": [
+                            {
+                                "type": "MAP",
+                                "map": [
+                                    {
+                                        "type": "TEMPLATE",
+                                        "key": "parameter",
+                                        "value": "destination"
+                                    },
+                                    {
+                                        "type": "TEMPLATE",
+                                        "key": "parameterValue",
+                                        "value": "{{DL - destination}}"
+                                    }
+                                ]
+                            },
+                            {
+                                "type": "MAP",
+                                "map": [
+                                    {
+                                        "type": "TEMPLATE",
+                                        "key": "parameter",
+                                        "value": "page_path"
+                                    },
+                                    {
+                                        "type": "TEMPLATE",
+                                        "key": "parameterValue",
+                                        "value": "{{DL - page_path}}"
+                                    }
+                                ]
+                            },
+                            {
+                                "type": "MAP",
+                                "map": [
+                                    {
+                                        "type": "TEMPLATE",
+                                        "key": "parameter",
+                                        "value": "package"
+                                    },
+                                    {
+                                        "type": "TEMPLATE",
+                                        "key": "parameterValue",
+                                        "value": "{{DL - package}}"
+                                    }
+                                ]
+                            }
+                        ]
+                    },
+                    {
+                        "type": "TEMPLATE",
+                        "key": "eventName",
+                        "value": "whatsapp_click"
+                    },
+                    {
+                        "type": "TEMPLATE",
+                        "key": "measurementIdOverride",
+                        "value": "{{GA4 Measurement ID}}"
+                    }
+                ],
+                "tagFiringOption": "ONCE_PER_EVENT",
+                "consentSettings": {
+                    "consentStatus": "NOT_NEEDED"
+                },
+                "firingTriggerId": [
+                    "81"
+                ],
+                "monitoringMetadata": {
+                    "type": "MAP"
+                }
+            },
+            {
+                "accountId": "6382086279",
+                "containerId": "266900186",
+                "tagId": "86",
+                "name": "Meta Pixel - Contact on whatsapp_click",
+                "type": "html",
+                "parameter": [
+                    {
+                        "type": "TEMPLATE",
+                        "key": "html",
+                        "value": "<script>if (window.fbq) { fbq('track', 'Contact', { content_name: 'whatsapp', content_category: {{DL - destination}}, package: {{DL - package}} }); }</script>"
+                    },
+                    {
+                        "type": "BOOLEAN",
+                        "key": "supportDocumentWrite",
+                        "value": "false"
+                    }
+                ],
+                "firingTriggerId": [
+                    "81"
+                ],
+                "tagFiringOption": "ONCE_PER_EVENT",
+                "setupTag": [
+                    {
+                        "tagName": "Meta Pixel - base"
+                    }
+                ],
+                "consentSettings": {
+                    "consentStatus": "NEEDED",
+                    "consentType": {
+                        "type": "LIST",
+                        "list": [
+                            {
+                                "type": "TEMPLATE",
+                                "value": "ad_storage"
+                            }
+                        ]
+                    }
+                },
+                "monitoringMetadata": {
+                    "type": "MAP"
+                }
+            },
+            {
+                "accountId": "6382086279",
+                "containerId": "266900186",
+                "tagId": "87",
+                "name": "TikTok Pixel - Contact on whatsapp_click",
+                "type": "html",
+                "parameter": [
+                    {
+                        "type": "TEMPLATE",
+                        "key": "html",
+                        "value": "<script>if (window.ttq) { ttq.track('Contact', { content_name: 'whatsapp', content_category: {{DL - destination}}, description: {{DL - package}} }); }</script>"
+                    },
+                    {
+                        "type": "BOOLEAN",
+                        "key": "supportDocumentWrite",
+                        "value": "false"
+                    }
+                ],
+                "firingTriggerId": [
+                    "81"
+                ],
+                "tagFiringOption": "ONCE_PER_EVENT",
+                "setupTag": [
+                    {
+                        "tagName": "TikTok Pixel - base"
+                    }
+                ],
+                "consentSettings": {
+                    "consentStatus": "NEEDED",
+                    "consentType": {
+                        "type": "LIST",
+                        "list": [
+                            {
+                                "type": "TEMPLATE",
+                                "value": "ad_storage"
+                            }
+                        ]
+                    }
+                },
+                "monitoringMetadata": {
+                    "type": "MAP"
+                }
+            },
+            {
+                "accountId": "6382086279",
+                "containerId": "266900186",
+                "tagId": "88",
+                "name": "Snap Pixel - CUSTOM_EVENT_1 on whatsapp_click",
+                "type": "html",
+                "parameter": [
+                    {
+                        "type": "TEMPLATE",
+                        "key": "html",
+                        "value": "<script>if (window.snaptr) { snaptr('track', 'CUSTOM_EVENT_1', { description: 'whatsapp_click:' + {{DL - destination}} + ':' + {{DL - package}} }); }</script>"
+                    },
+                    {
+                        "type": "BOOLEAN",
+                        "key": "supportDocumentWrite",
+                        "value": "false"
+                    }
+                ],
+                "firingTriggerId": [
+                    "81"
+                ],
+                "tagFiringOption": "ONCE_PER_EVENT",
+                "setupTag": [
+                    {
+                        "tagName": "Snap Pixel - base"
+                    }
+                ],
+                "consentSettings": {
+                    "consentStatus": "NEEDED",
+                    "consentType": {
+                        "type": "LIST",
+                        "list": [
+                            {
+                                "type": "TEMPLATE",
+                                "value": "ad_storage"
+                            }
+                        ]
+                    }
+                },
+                "monitoringMetadata": {
+                    "type": "MAP"
+                }
+            },
+            {
+                "accountId": "6382086279",
+                "containerId": "266900186",
+                "tagId": "89",
+                "name": "Google Ads - WhatsApp click",
+                "type": "awct",
+                "notes": "Secondary conversion action «WhatsApp click» (count one, no value). Blocked while its label constant is empty.",
+                "parameter": [
+                    {
+                        "type": "BOOLEAN",
+                        "key": "enableNewCustomerReporting",
+                        "value": "false"
+                    },
+                    {
+                        "type": "BOOLEAN",
+                        "key": "enableConversionLinker",
+                        "value": "true"
+                    },
+                    {
+                        "type": "BOOLEAN",
+                        "key": "enableProductReporting",
+                        "value": "false"
+                    },
+                    {
+                        "type": "BOOLEAN",
+                        "key": "enableShippingData",
+                        "value": "false"
+                    },
+                    {
+                        "type": "TEMPLATE",
+                        "key": "conversionId",
+                        "value": "18253894939"
+                    },
+                    {
+                        "type": "TEMPLATE",
+                        "key": "conversionLabel",
+                        "value": "{{Google Ads - WhatsApp click label}}"
+                    },
+                    {
+                        "type": "BOOLEAN",
+                        "key": "rdp",
+                        "value": "false"
+                    }
+                ],
+                "firingTriggerId": [
+                    "81"
+                ],
+                "blockingTriggerId": [
+                    "82"
+                ],
+                "tagFiringOption": "ONCE_PER_EVENT",
+                "consentSettings": {
+                    "consentStatus": "NOT_NEEDED"
+                },
+                "monitoringMetadata": {
+                    "type": "MAP"
+                }
+            },
+            {
+                "accountId": "6382086279",
+                "containerId": "266900186",
+                "tagId": "90",
+                "name": "GA4 - offer_view",
+                "type": "gaawe",
+                "parameter": [
+                    {
+                        "type": "BOOLEAN",
+                        "key": "sendEcommerceData",
+                        "value": "false"
+                    },
+                    {
+                        "type": "LIST",
+                        "key": "eventSettingsTable",
+                        "list": [
+                            {
+                                "type": "MAP",
+                                "map": [
+                                    {
+                                        "type": "TEMPLATE",
+                                        "key": "parameter",
+                                        "value": "offer_id"
+                                    },
+                                    {
+                                        "type": "TEMPLATE",
+                                        "key": "parameterValue",
+                                        "value": "{{DL - offer_id}}"
+                                    }
+                                ]
+                            },
+                            {
+                                "type": "MAP",
+                                "map": [
+                                    {
+                                        "type": "TEMPLATE",
+                                        "key": "parameter",
+                                        "value": "offer_category"
+                                    },
+                                    {
+                                        "type": "TEMPLATE",
+                                        "key": "parameterValue",
+                                        "value": "{{DL - category}}"
+                                    }
+                                ]
+                            },
+                            {
+                                "type": "MAP",
+                                "map": [
+                                    {
+                                        "type": "TEMPLATE",
+                                        "key": "parameter",
+                                        "value": "placement"
+                                    },
+                                    {
+                                        "type": "TEMPLATE",
+                                        "key": "parameterValue",
+                                        "value": "{{DL - placement}}"
+                                    }
+                                ]
+                            }
+                        ]
+                    },
+                    {
+                        "type": "TEMPLATE",
+                        "key": "eventName",
+                        "value": "offer_view"
+                    },
+                    {
+                        "type": "TEMPLATE",
+                        "key": "measurementIdOverride",
+                        "value": "{{GA4 Measurement ID}}"
+                    }
+                ],
+                "tagFiringOption": "ONCE_PER_EVENT",
+                "consentSettings": {
+                    "consentStatus": "NOT_NEEDED"
+                },
+                "firingTriggerId": [
+                    "83"
+                ],
+                "monitoringMetadata": {
+                    "type": "MAP"
+                }
+            },
+            {
+                "accountId": "6382086279",
+                "containerId": "266900186",
+                "tagId": "91",
+                "name": "GA4 - no_availability",
+                "type": "gaawe",
+                "parameter": [
+                    {
+                        "type": "BOOLEAN",
+                        "key": "sendEcommerceData",
+                        "value": "false"
+                    },
+                    {
+                        "type": "LIST",
+                        "key": "eventSettingsTable",
+                        "list": [
+                            {
+                                "type": "MAP",
+                                "map": [
+                                    {
+                                        "type": "TEMPLATE",
+                                        "key": "parameter",
+                                        "value": "property"
+                                    },
+                                    {
+                                        "type": "TEMPLATE",
+                                        "key": "parameterValue",
+                                        "value": "{{DL - property}}"
+                                    }
+                                ]
+                            },
+                            {
+                                "type": "MAP",
+                                "map": [
+                                    {
+                                        "type": "TEMPLATE",
+                                        "key": "parameter",
+                                        "value": "room_type"
+                                    },
+                                    {
+                                        "type": "TEMPLATE",
+                                        "key": "parameterValue",
+                                        "value": "{{DL - room_type}}"
+                                    }
+                                ]
+                            },
+                            {
+                                "type": "MAP",
+                                "map": [
+                                    {
+                                        "type": "TEMPLATE",
+                                        "key": "parameter",
+                                        "value": "check_in"
+                                    },
+                                    {
+                                        "type": "TEMPLATE",
+                                        "key": "parameterValue",
+                                        "value": "{{DL - check_in}}"
+                                    }
+                                ]
+                            },
+                            {
+                                "type": "MAP",
+                                "map": [
+                                    {
+                                        "type": "TEMPLATE",
+                                        "key": "parameter",
+                                        "value": "nights"
+                                    },
+                                    {
+                                        "type": "TEMPLATE",
+                                        "key": "parameterValue",
+                                        "value": "{{DL - nights}}"
+                                    }
+                                ]
+                            },
+                            {
+                                "type": "MAP",
+                                "map": [
+                                    {
+                                        "type": "TEMPLATE",
+                                        "key": "parameter",
+                                        "value": "utm_source"
+                                    },
+                                    {
+                                        "type": "TEMPLATE",
+                                        "key": "parameterValue",
+                                        "value": "{{DL - utm_source}}"
+                                    }
+                                ]
+                            },
+                            {
+                                "type": "MAP",
+                                "map": [
+                                    {
+                                        "type": "TEMPLATE",
+                                        "key": "parameter",
+                                        "value": "utm_campaign"
+                                    },
+                                    {
+                                        "type": "TEMPLATE",
+                                        "key": "parameterValue",
+                                        "value": "{{DL - utm_campaign}}"
+                                    }
+                                ]
+                            }
+                        ]
+                    },
+                    {
+                        "type": "TEMPLATE",
+                        "key": "eventName",
+                        "value": "no_availability"
+                    },
+                    {
+                        "type": "TEMPLATE",
+                        "key": "measurementIdOverride",
+                        "value": "{{GA4 Measurement ID}}"
+                    }
+                ],
+                "tagFiringOption": "ONCE_PER_EVENT",
+                "consentSettings": {
+                    "consentStatus": "NOT_NEEDED"
+                },
+                "firingTriggerId": [
+                    "84"
+                ],
+                "monitoringMetadata": {
+                    "type": "MAP"
+                }
             }
         ],
         "trigger": [
@@ -1871,6 +2362,184 @@
                     }
                 ],
                 "fingerprint": "1794226716642"
+            },
+            {
+                "accountId": "6382086279",
+                "containerId": "266900186",
+                "triggerId": "79",
+                "name": "CE - consent_granted",
+                "type": "CUSTOM_EVENT",
+                "customEventFilter": [
+                    {
+                        "type": "EQUALS",
+                        "parameter": [
+                            {
+                                "type": "TEMPLATE",
+                                "key": "arg0",
+                                "value": "{{_event}}"
+                            },
+                            {
+                                "type": "TEMPLATE",
+                                "key": "arg1",
+                                "value": "consent_granted"
+                            }
+                        ]
+                    }
+                ]
+            },
+            {
+                "accountId": "6382086279",
+                "containerId": "266900186",
+                "triggerId": "80",
+                "name": "CE - consent_granted (analytics)",
+                "type": "CUSTOM_EVENT",
+                "customEventFilter": [
+                    {
+                        "type": "EQUALS",
+                        "parameter": [
+                            {
+                                "type": "TEMPLATE",
+                                "key": "arg0",
+                                "value": "{{_event}}"
+                            },
+                            {
+                                "type": "TEMPLATE",
+                                "key": "arg1",
+                                "value": "consent_granted"
+                            }
+                        ]
+                    }
+                ],
+                "filter": [
+                    {
+                        "type": "CONTAINS",
+                        "parameter": [
+                            {
+                                "type": "TEMPLATE",
+                                "key": "arg0",
+                                "value": "{{DL - consent_new}}"
+                            },
+                            {
+                                "type": "TEMPLATE",
+                                "key": "arg1",
+                                "value": "analytics"
+                            }
+                        ]
+                    }
+                ]
+            },
+            {
+                "accountId": "6382086279",
+                "containerId": "266900186",
+                "triggerId": "81",
+                "name": "CE - whatsapp_click",
+                "type": "CUSTOM_EVENT",
+                "customEventFilter": [
+                    {
+                        "type": "EQUALS",
+                        "parameter": [
+                            {
+                                "type": "TEMPLATE",
+                                "key": "arg0",
+                                "value": "{{_event}}"
+                            },
+                            {
+                                "type": "TEMPLATE",
+                                "key": "arg1",
+                                "value": "whatsapp_click"
+                            }
+                        ]
+                    }
+                ]
+            },
+            {
+                "accountId": "6382086279",
+                "containerId": "266900186",
+                "triggerId": "82",
+                "name": "CE - whatsapp_click (no Ads label)",
+                "type": "CUSTOM_EVENT",
+                "customEventFilter": [
+                    {
+                        "type": "EQUALS",
+                        "parameter": [
+                            {
+                                "type": "TEMPLATE",
+                                "key": "arg0",
+                                "value": "{{_event}}"
+                            },
+                            {
+                                "type": "TEMPLATE",
+                                "key": "arg1",
+                                "value": "whatsapp_click"
+                            }
+                        ]
+                    }
+                ],
+                "filter": [
+                    {
+                        "type": "MATCH_REGEX",
+                        "parameter": [
+                            {
+                                "type": "TEMPLATE",
+                                "key": "arg0",
+                                "value": "{{Google Ads - WhatsApp click label}}"
+                            },
+                            {
+                                "type": "TEMPLATE",
+                                "key": "arg1",
+                                "value": "^\\s*$"
+                            }
+                        ]
+                    }
+                ]
+            },
+            {
+                "accountId": "6382086279",
+                "containerId": "266900186",
+                "triggerId": "83",
+                "name": "CE - offer_view",
+                "type": "CUSTOM_EVENT",
+                "customEventFilter": [
+                    {
+                        "type": "EQUALS",
+                        "parameter": [
+                            {
+                                "type": "TEMPLATE",
+                                "key": "arg0",
+                                "value": "{{_event}}"
+                            },
+                            {
+                                "type": "TEMPLATE",
+                                "key": "arg1",
+                                "value": "offer_view"
+                            }
+                        ]
+                    }
+                ]
+            },
+            {
+                "accountId": "6382086279",
+                "containerId": "266900186",
+                "triggerId": "84",
+                "name": "CE - no_availability",
+                "type": "CUSTOM_EVENT",
+                "customEventFilter": [
+                    {
+                        "type": "EQUALS",
+                        "parameter": [
+                            {
+                                "type": "TEMPLATE",
+                                "key": "arg0",
+                                "value": "{{_event}}"
+                            },
+                            {
+                                "type": "TEMPLATE",
+                                "key": "arg1",
+                                "value": "no_availability"
+                            }
+                        ]
+                    }
+                ]
             }
         ],
         "variable": [
@@ -2409,6 +3078,276 @@
                 ],
                 "fingerprint": "1794304142786",
                 "formatValue": {}
+            },
+            {
+                "accountId": "6382086279",
+                "containerId": "266900186",
+                "variableId": "67",
+                "name": "JS - page view id",
+                "type": "jsm",
+                "notes": "Base.astro: window.armadaPageViewId — 1 for the page loaded, +1 per client-side navigation. The base pixels send their page view once per value.",
+                "parameter": [
+                    {
+                        "type": "TEMPLATE",
+                        "key": "javascript",
+                        "value": "function () {\n  return window.armadaPageViewId || 1;\n}"
+                    }
+                ]
+            },
+            {
+                "accountId": "6382086279",
+                "containerId": "266900186",
+                "variableId": "68",
+                "name": "DL - consent_new",
+                "type": "v",
+                "parameter": [
+                    {
+                        "type": "INTEGER",
+                        "key": "dataLayerVersion",
+                        "value": "2"
+                    },
+                    {
+                        "type": "BOOLEAN",
+                        "key": "setDefaultValue",
+                        "value": "false"
+                    },
+                    {
+                        "type": "TEMPLATE",
+                        "key": "name",
+                        "value": "consent_new"
+                    }
+                ]
+            },
+            {
+                "accountId": "6382086279",
+                "containerId": "266900186",
+                "variableId": "69",
+                "name": "DL - destination",
+                "type": "v",
+                "parameter": [
+                    {
+                        "type": "INTEGER",
+                        "key": "dataLayerVersion",
+                        "value": "2"
+                    },
+                    {
+                        "type": "BOOLEAN",
+                        "key": "setDefaultValue",
+                        "value": "false"
+                    },
+                    {
+                        "type": "TEMPLATE",
+                        "key": "name",
+                        "value": "destination"
+                    }
+                ]
+            },
+            {
+                "accountId": "6382086279",
+                "containerId": "266900186",
+                "variableId": "70",
+                "name": "DL - package",
+                "type": "v",
+                "parameter": [
+                    {
+                        "type": "INTEGER",
+                        "key": "dataLayerVersion",
+                        "value": "2"
+                    },
+                    {
+                        "type": "BOOLEAN",
+                        "key": "setDefaultValue",
+                        "value": "false"
+                    },
+                    {
+                        "type": "TEMPLATE",
+                        "key": "name",
+                        "value": "package"
+                    }
+                ]
+            },
+            {
+                "accountId": "6382086279",
+                "containerId": "266900186",
+                "variableId": "71",
+                "name": "DL - offer_id",
+                "type": "v",
+                "parameter": [
+                    {
+                        "type": "INTEGER",
+                        "key": "dataLayerVersion",
+                        "value": "2"
+                    },
+                    {
+                        "type": "BOOLEAN",
+                        "key": "setDefaultValue",
+                        "value": "false"
+                    },
+                    {
+                        "type": "TEMPLATE",
+                        "key": "name",
+                        "value": "offer_id"
+                    }
+                ]
+            },
+            {
+                "accountId": "6382086279",
+                "containerId": "266900186",
+                "variableId": "72",
+                "name": "DL - category",
+                "type": "v",
+                "parameter": [
+                    {
+                        "type": "INTEGER",
+                        "key": "dataLayerVersion",
+                        "value": "2"
+                    },
+                    {
+                        "type": "BOOLEAN",
+                        "key": "setDefaultValue",
+                        "value": "false"
+                    },
+                    {
+                        "type": "TEMPLATE",
+                        "key": "name",
+                        "value": "category"
+                    }
+                ]
+            },
+            {
+                "accountId": "6382086279",
+                "containerId": "266900186",
+                "variableId": "73",
+                "name": "DL - placement",
+                "type": "v",
+                "parameter": [
+                    {
+                        "type": "INTEGER",
+                        "key": "dataLayerVersion",
+                        "value": "2"
+                    },
+                    {
+                        "type": "BOOLEAN",
+                        "key": "setDefaultValue",
+                        "value": "false"
+                    },
+                    {
+                        "type": "TEMPLATE",
+                        "key": "name",
+                        "value": "placement"
+                    }
+                ]
+            },
+            {
+                "accountId": "6382086279",
+                "containerId": "266900186",
+                "variableId": "74",
+                "name": "DL - property",
+                "type": "v",
+                "parameter": [
+                    {
+                        "type": "INTEGER",
+                        "key": "dataLayerVersion",
+                        "value": "2"
+                    },
+                    {
+                        "type": "BOOLEAN",
+                        "key": "setDefaultValue",
+                        "value": "false"
+                    },
+                    {
+                        "type": "TEMPLATE",
+                        "key": "name",
+                        "value": "property"
+                    }
+                ]
+            },
+            {
+                "accountId": "6382086279",
+                "containerId": "266900186",
+                "variableId": "75",
+                "name": "DL - check_in",
+                "type": "v",
+                "parameter": [
+                    {
+                        "type": "INTEGER",
+                        "key": "dataLayerVersion",
+                        "value": "2"
+                    },
+                    {
+                        "type": "BOOLEAN",
+                        "key": "setDefaultValue",
+                        "value": "false"
+                    },
+                    {
+                        "type": "TEMPLATE",
+                        "key": "name",
+                        "value": "check_in"
+                    }
+                ]
+            },
+            {
+                "accountId": "6382086279",
+                "containerId": "266900186",
+                "variableId": "76",
+                "name": "DL - utm_source",
+                "type": "v",
+                "parameter": [
+                    {
+                        "type": "INTEGER",
+                        "key": "dataLayerVersion",
+                        "value": "2"
+                    },
+                    {
+                        "type": "BOOLEAN",
+                        "key": "setDefaultValue",
+                        "value": "false"
+                    },
+                    {
+                        "type": "TEMPLATE",
+                        "key": "name",
+                        "value": "utm_source"
+                    }
+                ]
+            },
+            {
+                "accountId": "6382086279",
+                "containerId": "266900186",
+                "variableId": "77",
+                "name": "DL - utm_campaign",
+                "type": "v",
+                "parameter": [
+                    {
+                        "type": "INTEGER",
+                        "key": "dataLayerVersion",
+                        "value": "2"
+                    },
+                    {
+                        "type": "BOOLEAN",
+                        "key": "setDefaultValue",
+                        "value": "false"
+                    },
+                    {
+                        "type": "TEMPLATE",
+                        "key": "name",
+                        "value": "utm_campaign"
+                    }
+                ]
+            },
+            {
+                "accountId": "6382086279",
+                "containerId": "266900186",
+                "variableId": "78",
+                "name": "Google Ads - WhatsApp click label",
+                "type": "c",
+                "notes": "The conversion label of the Google Ads action «WhatsApp click» (secondary, count one, no value). Empty until the action exists — the tag is blocked while it is empty.",
+                "parameter": [
+                    {
+                        "type": "TEMPLATE",
+                        "key": "value",
+                        "value": ""
+                    }
+                ]
             }
         ],
         "builtInVariable": [
@@ -2527,6 +3466,7 @@
                 ],
                 "fingerprint": "1794403242355"
             }
-        ]
+        ],
+        "description": "v10 + consent_granted (base pixels + Clarity after «قبول الكل» on the same page, one page view per page and per virtual page view), whatsapp_click (GA4, Meta Contact, TikTok Contact, Snap CUSTOM_EVENT_1, Google Ads «WhatsApp click»), offer_view and no_availability in GA4. Import: Merge → Overwrite conflicting. docs/gtm-changes-2026-11-19.md"
     }
 }

@@ -158,7 +158,7 @@ for (const vp of [{ width: 1440, height: 900 }, { width: 375, height: 812, mobil
         if (st.url !== startUrl || !st.noReload) fails.push(`${tag} ${label}: the current page navigated (${st.url})`);
         if (!st.open) fails.push(`${tag} ${label}: the booking form closed`);
         const ev = st.dl[st.dl.length - 1];
-        if (!ev || ev.destination !== branch || ev.source !== 'booking_form') fails.push(`${tag} ${label}: whatsapp_click ${JSON.stringify(ev)}`);
+        if (!ev || ev.destination !== branch || ev.source !== 'booking_form' || ev.package !== 'none' || !ev.page_path) fails.push(`${tag} ${label}: whatsapp_click ${JSON.stringify(ev)}`);
         await list[0].close();
       };
 
@@ -178,6 +178,48 @@ for (const vp of [{ width: 1440, height: 900 }, { width: 375, height: 812, mobil
     await ctx.close();
   }
 }
+// Every WhatsApp link of the site (19 Nov 2026 — DECISIONS.md 2026-11-19 «Tracking for the December campaigns»): a
+// click on each wa.me link of these pages (hidden ones included — the chooser's) pushes ONE whatsapp_click
+// { destination, page_path, package } — destination by the number it opens (airport-road / shafa-road / sales / cafe),
+// package from data-wa-package or 'none' — and nothing personal (the prefilled text is never in it).
+const DEST = new Map([...Object.entries(contact.branches).map(([b, c]) => [c.whatsapp.replace(/\D/g, ''), b]), [contact.sales.whatsapp.replace(/\D/g, ''), 'sales'], [contact.cafe.whatsapp.replace(/\D/g, ''), 'cafe']]);
+let linkCount = 0;
+{
+  const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+  await ctx.route(/googletagmanager|google-analytics|wa\.me|supabase\.(co|invalid)/, (r) => r.fulfill({ status: 204, body: '' }));
+  const page = await ctx.newPage();
+  for (const pre of ['', '/en']) {
+    for (const path of ['/', '/airport-road/', '/shafa-road/', '/airport-road/king-room/', '/contact/', '/offers/', '/celebrations/', '/partners/', '/airport-road/hall/', '/blog/where-to-stay-in-taif/']) {
+      const res = await page.goto(`${BASE}${pre}${path}`, { waitUntil: 'load' });
+      if (!res || res.status() >= 400) continue;
+      const got = await page.evaluate(() => {
+        window.addEventListener('click', (e) => e.preventDefault(), true);
+        const out = [];
+        for (const a of document.querySelectorAll('a[href*="wa.me/"]')) {
+          const before = (window.dataLayer || []).length;
+          a.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
+          const evs = (window.dataLayer || []).slice(before).filter((x) => x && x.event === 'whatsapp_click');
+          out.push({ href: a.getAttribute('href'), pkg: a.closest('[data-wa-package]')?.getAttribute('data-wa-package') ?? 'none', evs });
+        }
+        return { out, path: location.pathname };
+      });
+      for (const l of got.out) {
+        checks++;
+        linkCount++;
+        const num = (l.href.match(/wa\.me\/(\d+)/) ?? [])[1];
+        const want = DEST.get(num) ?? 'cafe';
+        const e = l.evs[0];
+        const where = `${pre}${path} ${l.href.slice(0, 40)}`;
+        if (l.evs.length !== 1) fails.push(`${where}: ${l.evs.length} whatsapp_click, expected 1`);
+        else if (e.destination !== want || e.package !== l.pkg || e.page_path !== got.path) fails.push(`${where}: whatsapp_click ${JSON.stringify(e)} (expected ${want}, ${l.pkg})`);
+        else if (Object.keys(e).sort().join() !== 'destination,event,package,page_location,page_path') fails.push(`${where}: whatsapp_click keys ${Object.keys(e).join(',')}`);
+      }
+    }
+  }
+  await ctx.close();
+  checks++;
+  if (linkCount < 20) fails.push(`only ${linkCount} WhatsApp links found on the sample pages`);
+}
 await browser.close();
 
 if (fails.length) {
@@ -185,4 +227,4 @@ if (fails.length) {
   for (const f of [...new Set(fails)]) console.log('  - ' + f);
   process.exit(1);
 }
-console.log(`✓ WhatsApp hand-off: ${checks} checks on ${CASES.length} pages × 2 viewports (AR + EN), incl. after a failed submit`);
+console.log(`✓ WhatsApp hand-off: ${checks} checks on ${CASES.length} pages × 2 viewports (AR + EN), incl. after a failed submit; whatsapp_click on ${linkCount} WhatsApp links`);

@@ -19,6 +19,7 @@ import { loadPhoneLib, phoneToE164 } from './phone';
 import { initCountrySelect, type CountrySelect } from './country-select';
 import { turnstileToken } from './turnstile';
 import { hashedUserData } from './user-data';
+import { pushWhatsAppClick } from './wa-track';
 
 export const DRAFT_KEY = 'armada_b2b_enquiry_v2';
 const OLD_DRAFT_KEYS = ['armada_b2b_enquiry_v1'];
@@ -298,6 +299,7 @@ export function initEnquiry(): void {
     const msg = buildMessage();
     if (channel === 'wa') {
       window.open(`https://wa.me/${CFG.phone}?text=${encodeURIComponent(msg)}`, '_blank');
+      pushWhatsAppClick('sales', 'none', { source: 'partners_form' });
     } else {
       const subj = `${T.waIntro || 'B2B enquiry'} — ${readableValue('company')}`;
       location.href = `mailto:${CFG.sales}?subject=${encodeURIComponent(subj)}&body=${encodeURIComponent(msg)}`;

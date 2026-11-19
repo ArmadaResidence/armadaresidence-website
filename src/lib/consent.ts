@@ -8,14 +8,26 @@
  *   - the footer's «إعدادات ملفات تعريف الارتباط» ([data-cookie-settings]) reopens the banner on the customize view with
  *     the stored choice; Esc then closes it unchanged, and focus goes back to the link.
  * While it is shown, <html data-consent-open> and --consent-h (its height) let the WhatsApp button rise above it.
+ *
+ * consent_granted (Ahmed, 19 Nov 2026 — DECISIONS.md 2026-11-19 «Tracking for the December campaigns»): a choice that
+ * grants analytics or ads not granted before on this page pushes ONE more event, right after consent_update:
+ *   { event: 'consent_granted', consent_types: 'analytics,ads', consent_new: 'ads', consent_analytics, consent_ads }
+ * (consent_types = everything granted now, consent_new = what this choice added). GTM fires the Meta / TikTok / Snap
+ * base tags and Clarity on it (their earlier triggers kept), so a first visit that accepts on the page it landed on is
+ * tracked from that page. The baseline is the stored choice applied at load, so re-saving the same choice pushes nothing.
+ * Ad click IDs (src/lib/ad-click.ts): a choice that grants ads hands them to the pixels first (before the event); a
+ * choice that denies ads deletes them.
  */
 import { onPageLeave, onPageLoad } from './client';
+import { clearAdClick, handOffAdClick } from './ad-click';
 
 const KEY = 'armada-consent';
 type Choice = { v: string; t: number; analytics: boolean; ads: boolean };
 type W = Window & { dataLayer?: unknown[]; gtag?: (...a: unknown[]) => void };
 
 let ro: ResizeObserver | null = null;
+/** what is granted on this page so far (the stored choice at load, then each choice) — consent_granted pushes only news */
+let granted: { analytics: boolean; ads: boolean } | null = null;
 let returnTo: HTMLElement | null = null;
 
 function stored(version: string, days: number): Choice | null {
@@ -55,8 +67,17 @@ function decide(banner: HTMLElement, analytics: boolean, ads: boolean): void {
     w.dataLayer!.push(arguments);
   };
   w.gtag('consent', 'update', { analytics_storage: a, ad_storage: m, ad_user_data: m, ad_personalization: m });
-  const granted = ['essential', ...(analytics ? ['analytics'] : []), ...(ads ? ['ads'] : [])].join(',');
-  w.dataLayer.push({ event: 'consent_update', consent_analytics: a, consent_ads: m, consent_granted: granted });
+  const grantedList = ['essential', ...(analytics ? ['analytics'] : []), ...(ads ? ['ads'] : [])].join(',');
+  w.dataLayer.push({ event: 'consent_update', consent_analytics: a, consent_ads: m, consent_granted: grantedList });
+  if (ads) handOffAdClick();
+  else clearAdClick();
+  const before = granted ?? { analytics: false, ads: false };
+  const added = [...(analytics && !before.analytics ? ['analytics'] : []), ...(ads && !before.ads ? ['ads'] : [])];
+  granted = { analytics, ads };
+  if (added.length) {
+    const now = [...(analytics ? ['analytics'] : []), ...(ads ? ['ads'] : [])].join(',');
+    w.dataLayer.push({ event: 'consent_granted', consent_types: now, consent_new: added.join(','), consent_analytics: a, consent_ads: m });
+  }
   try {
     localStorage.setItem(KEY, JSON.stringify({ v: banner.dataset.version || '', t: Date.now(), analytics, ads } satisfies Choice));
   } catch {
@@ -71,6 +92,10 @@ function init(): void {
   banner.dataset.bound = '1';
   const version = banner.dataset.version || '';
   const days = Number(banner.dataset.days) || 365;
+  if (!granted) {
+    const c = stored(version, days);
+    granted = { analytics: !!c?.analytics, ads: !!c?.ads };
+  }
   const prefs = banner.querySelector<HTMLElement>('[data-cookie-prefs]')!;
   const customize = banner.querySelector<HTMLButtonElement>('[data-cookie-customize]')!;
   const save = banner.querySelector<HTMLButtonElement>('[data-cookie-save]')!;

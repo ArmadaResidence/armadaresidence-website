@@ -4010,3 +4010,61 @@ Built:
 - **The offer on the site** (`celebration-packages`, the common note, both languages; nothing else in the offer changed): «اطلب الباقة قبل موعد مناسبتك بـ24 ساعة على الأقل.» → «اطلب الباقة قبل موعد مناسبتك بيوم على الأقل.»; "Order your package at least 24 hours before your occasion." → "Order your package at least one day before your occasion." Written by the reviewed data migration `20261119200000_celebration_packages_lead_time` (Ahmed's approved path for production data since 14 Nov 2026 — a session never borrows a staff session for the dashboard's RPCs): the draft as `offers_save` stores it, `internal.offer_check`, then `live = internal.offer_snapshot` as `offers_publish` publishes it; audited (actor «migration», one batch); it stops if the sentence is not there exactly once or the draft has unpublished changes. The bank's copy of the offer and the dashboard sample fixture carry the same sentence.
 - **Checks:** fast `hub-packages-check` 65 (tomorrow accepted, also in an open order; next week accepted; today → the same-day hand-off with its branch, the alert line and the note; a past date asked again; a retired notice's keys dropped; the line word for word; no 24-hour notice in copy.md, the generated keys, the engine or rule 38); `hub-machine-check`, `hub-copy-check`. The bank `conversations-packages.jsonl` (packages-3): pk-04 an order for tonight → the same-day line and Shafa Road's reception; pk-05 an order at 11 pm for tomorrow → the hand-off with its summary; pk-09 an order for next week → the hand-off with its summary — pk-01…pk-09 9/9 on the first try with real model calls (USD 0.174). A second run after the bank's offer took the new sentence: 8/9 — pk-03 (unchanged by this decision; the same fixed messages) failed only on the naturalness grader, whose own reason called the reply acceptable; not re-run (USD 0.068).
 - **Released (19 Nov 2026):** main `d063226`; server checks on the branch green on the first try (SQL with the new migration, Deno, the staff path); hub-agent 32 → 33, hub-admin 32 → 33 (rollback: 32 / 32); wa-automation 26 untouched (its import graph holds none of the changed code). `20261119200000_celebration_packages_lead_time` was first refused by the session's permission check, then applied with Ahmed's approval (09:06 UTC): the draft and the live snapshot carry the new sentence, nothing pending, two audit rows (actor «migration», one batch). The site was rebuilt by the queued deploy of main `17c9117` (built 09:09 UTC, every check before publishing green). Live: /celebrations/, /en/celebrations/, /offers/, /en/offers/ show the one-day sentence and no 24-hour one; the announcement bar (the offer's title + «التفاصيل» / “Details” → /celebrations/) on every page in both languages. The live checks after the deploy failed once on two jobs (a11y, motion-offers) because GitHub Pages' CDN answered HTTP 503 (Varnish) on two pages — live-guard «foreign page», not an assertion; in the same run celebrations-site-check 466/466 and offers-site-check passed; that failure sent the admins the automatic «فحص ما بعد النشر فشل» email; the failed jobs passed on one re-run. Anthropic spend USD 0.242.
+
+## 2026-11-19 — Tracking for the December campaigns (Ahmed, 19 Nov 2026)
+
+Paid campaigns 20 Nov – 10 Dec 2026 on Google Ads, Meta, TikTok and Snapchat; three (Meta bookings Airport Road and
+Shafa Road, optimising for Purchase; Snapchat packages) wait for this. Brief: Ahmed's Marketing project, 19 Nov 2026.
+Instant booking keeps its limit of 3 units per room type per night (unchanged).
+
+- **Baseline:** the published GTM version 10 «url passthrough» (11 Nov 2026), exported by Ahmed on 19 Nov 2026 (the two
+  copies in Downloads differ only in `exportTime`). `docs/gtm-container.json` was an October partial import file; it is now
+  exactly v10 (commit `8aafd36`), and `docs/gtm-container-v10.json` keeps it frozen. The December file is built from it by
+  `scripts/gtm-container-build.mjs` and held to its change list by `scripts/gtm-container-check.mjs` (FAST_CHECKS).
+  Change list: `docs/gtm-changes-2026-11-19.md`. Import: a new workspace from v10, Merge → **Overwrite conflicting**
+  (Rename would keep a second copy of each base pixel); expected preview 25 added, 4 modified, 0 deleted. Ahmed publishes.
+- **Finding 1 confirmed and wider than stated** (`scripts/gtm-probe.mjs`: the published container on a local build, every
+  hit aborted): after «قبول الكل» on the landing page v10 sends nothing to Meta, TikTok, Snap or Clarity for the rest of
+  that page — booking_request / booking_confirmed pushed on it included. The base tags were *once per page*, fired on
+  first_engagement, which on a first visit comes before the click on the banner; consent blocks them and GTM counts a
+  blocked once-per-page tag as used. Fix: the site pushes `consent_granted` { consent_types, consent_new } when a choice
+  grants something new on the page (`src/lib/consent.ts`); the base tags become *once per event*, keep their triggers and
+  add consent_granted and virtual_page_view, and guard themselves: library and init once per document, one page view per
+  `window.armadaPageViewId` (Base.astro: 1, then +1 per client-side navigation; `virtual_page_view` carries
+  `page_view_id`); Meta's own history page views off (`disablePushState`). Clarity also on the analytics grant.
+- **Also found:** every internal navigation sends two GA4 page_views — our virtual_page_view tag and GA4's enhanced
+  measurement «page changes based on browser history events». That is a GA4 setting (Ahmed's); the checklist asks to
+  switch it off.
+- **Click IDs (replaces «never storage» of 2026-11-11):** fbclid, ttclid, ScCid, gclid, gbraid, wbraid and utm_* of the
+  landing are kept in sessionStorage `armada-ad-click` only (`src/lib/ad-click.ts`), not written when the stored choice
+  denies ads, deleted by any choice that denies ads («الضروري فقط», or «تخصيص» without ads). Handed over once when
+  ad_storage is granted: `_fbc` = `fb.1.<landing ms>.<fbclid>` when missing (90 days, .armadaresidence.com), and ttclid /
+  ScCid put back on the current URL when it lost them — TikTok and Snap document only URL capture for their pixels (no
+  pixel API takes the ID), so the pixels store their own cookies from it. Google keeps url passthrough. The first-touch
+  source saved with each booking (`src/lib/visit.ts`) is unchanged.
+- **WhatsApp:** one listener counts every WhatsApp link (`src/lib/wa-track.ts`): whatsapp_click { destination:
+  airport-road | shafa-road | sales | cafe | other — by the link's number through a hashed map in `<meta name=armada-wa>`
+  so no page carries a number it does not show —, page_path, package, page_location }; the booking and partners forms'
+  hand-offs push the same. On /celebrations/ each package has its own «اطلب {package} على واتساب» (the offer's branch
+  numbers, «أرغب في طلب {package} من عرض {title}.»; package = silver / gold / platinum from the English name); the common
+  «راسلنا على واتساب» stays (package none). Tags: GA4 whatsapp_click, Meta Contact, TikTok Contact, Snap CUSTOM_EVENT_1,
+  Google Ads «WhatsApp click» (secondary, count one, no value) — its label constant is empty until the import prompt
+  creates the action, and a blocking trigger holds the tag while it is empty. The label goes back into
+  `scripts/gtm-container-build.mjs` when Ahmed sends it.
+- **offer_view** and **no_availability** (property, room_type — `any` when every type of the branch is sold out or
+  closed for «أي غرفة متاحة» —, check_in, nights, utm_source, utm_campaign) as GA4 events. The «أي غرفة متاحة» check asks
+  `quote_stay` once per room type of the branch (anon, read-only); the form still shows no price without a room type.
+- **Finding 3 (GA4 event named G-675Y7W0H1T):** not in the site (no measurement ID in src/, public/, content/, dist/) and
+  not produced by v10 in any flow the probe ran; the read-only prompt reads GA4's create / modify event rules, the
+  Google tag settings, the events' hostname / platform / stream and Clarity's GA integration. Nothing removed yet — the
+  source is outside the repo and the container.
+- **Findings 5–7:** Snap PAGE_VIEW comes only from «Snap Pixel - base», and the once-per-page problem above starved it;
+  the only Meta pixel anywhere is 1902071377169884 (no second dataset in the site, the container, the legacy sites or
+  the subdomains — discovertaif. and club. redirect, b2b. still serves the old B2B site with no tracker); the container's
+  booking conversions are «Google Ads - Booking» (booking_confirmed, E3BICM6nqLYdEJuqkYBE) and «Google Ads - Booking
+  request» (booking_request, TYC_CMXwrpsdEJuqkYBE). Read-only prompt: `docs/ads-accounts-readonly-2026-11-19.md`
+  (recommended primary: the website «Booking» action; a GA4-imported purchase secondary; «Booking request» out of the
+  Purchases category). Import prompt: `docs/gtm-import-2026-11-19.md`. Checklist: `docs/gtm-test-checklist-2026-11-19.md`.
+- **Checks:** consent-check (consent_granted, the click IDs, «الضروري فقط»), booking-instant-check (ad landing → consent →
+  navigation → language switch → instant booking; no_availability), booking-whatsapp-check (every WhatsApp link),
+  celebrations-site-check (per-package links), click-id-check (sessionStorage only), gtm-container-check (FAST).

@@ -8,7 +8,10 @@
 //     price struck through and in the screen-reader text, its items, the common note; the brand pattern when it has no
 //     cover — never a broken image); «راسلنا على واتساب» opens the chooser of the offer's branches only, each link the
 //     branch's number from contact.json with the offer's prefill, Esc closes it with the focus back, a press outside
-//     closes it; offer_view / offer_click { placement: celebrations, cta: whatsapp } without personal data; WebPage +
+//     closes it; offer_view / offer_click { placement: celebrations, cta: whatsapp } without personal data; each package
+//     its own «اطلب {package} على واتساب» (19 Nov 2026): the same branch numbers, a message naming the package, and a
+//     click pushes whatsapp_click { destination: the branch, page_path, package: silver | gold | platinum } and nothing
+//     personal; WebPage +
 //     BreadcrumbList JSON-LD and no Offer; a packages offer elsewhere (home, branch, /offers/) by its switches; the
 //     announcement bar set to such an offer links /celebrations/ in the page language.
 // Every page: AR + EN × 375 (touch) + 1440 × light + dark — no horizontal scroll; axe: no serious / critical violation
@@ -127,14 +130,15 @@ try {
           const imgs = await card.locator('img').evaluateAll((e) => e.map((i) => i.complete && i.naturalWidth > 0));
           check(imgs.every(Boolean) && (imgs.length > 0 || (await card.locator('[data-offer-pattern]').count()) === 1), `${tag} ${o.slug}: a cover or the brand pattern — never a broken image`);
           // the chooser
-          const toggle = card.locator('[data-offer-wa-toggle]');
-          const direct = card.locator('a[data-offer-cta="whatsapp"]');
+          const common = card.locator('[data-offer-wa-common]');
+          const toggle = common.locator('[data-offer-wa-toggle]');
+          const direct = common.locator('a[data-offer-cta="whatsapp"]');
           const prefill = (L === 'en' ? o.whatsapp_prefill_en : o.whatsapp_prefill_ar) || S.offers.package_prefill.replace('{title}', L === 'en' ? o.title_en : o.title_ar);
           const want = o.branches.map((b) => `https://wa.me/${contact.branches[b].whatsapp.replace(/\D/g, '')}?text=${prefill}`);
           if (o.branches.length > 1) {
             await toggle.scrollIntoViewIfNeeded();
             await toggle.click();
-            const links = await card.locator('[data-offer-wa-panel] a').evaluateAll((e) => e.map((a) => decodeURIComponent(a.href)));
+            const links = await common.locator('[data-offer-wa-panel] a').evaluateAll((e) => e.map((a) => decodeURIComponent(a.href)));
             check((await toggle.getAttribute('aria-expanded')) === 'true' && JSON.stringify(links) === JSON.stringify(want), `${tag} ${o.slug}: the chooser of the offer's branches with the prefill`, links.join(' '));
             check(await page.evaluate(() => !!document.activeElement?.closest('[data-offer-wa-panel]')), `${tag} ${o.slug}: the focus goes into the chooser`);
             if (form.name === '1440' && theme === 'light') {
@@ -149,6 +153,49 @@ try {
             check((await toggle.getAttribute('aria-expanded')) === 'false', `${tag} ${o.slug}: a press outside closes it`);
           } else if (o.branches.length === 1) {
             check(decodeURIComponent((await direct.getAttribute('href')) || '') === want[0], `${tag} ${o.slug}: one branch opens its number directly`);
+          }
+          // one WhatsApp link per package (19 Nov 2026): the package named in the message, whatsapp_click { package }
+          await page.evaluate(() => {
+            if (window.__waNoNav) return;
+            window.__waNoNav = 1;
+            window.addEventListener('click', (e) => { if (e.target.closest?.('a[href*="wa.me/"]')) e.preventDefault(); }, true);
+          });
+          for (const [i, p] of o.packages.filter((x) => x.price != null).entries()) {
+            const key = (p.name_en.toLowerCase().match(/\b(silver|gold|platinum)\b/) ?? [])[1];
+            const c = cards.nth(i).locator('[data-package-wa]');
+            const name = L === 'en' ? p.name_en : p.name_ar;
+            const pText = S.offers.package_whatsapp_prefill.replace('{package}', name).replace('{title}', L === 'en' ? o.title_en : o.title_ar);
+            const pWant = o.branches.map((b) => `https://wa.me/${contact.branches[b].whatsapp.replace(/\D/g, '')}?text=${pText}`);
+            check((await c.count()) === 1 && norm(await c.textContent()).includes(S.offers.package_whatsapp.replace('{package}', name)), `${tag} ${o.slug} #${i + 1}: «${S.offers.package_whatsapp.replace('{package}', name)}»`);
+            check(!!key, `${tag} ${o.slug} #${i + 1}: the package is silver / gold / platinum by its English name`, p.name_en);
+            const before = (await events(page, 'whatsapp_click')).length;
+            let link;
+            if (o.branches.length > 1) {
+              const tg = c.locator('[data-offer-wa-toggle]');
+              await tg.scrollIntoViewIfNeeded();
+              await tg.click();
+              const links = await c.locator('[data-offer-wa-panel] a').evaluateAll((e) => e.map((a) => decodeURIComponent(a.href)));
+              check(JSON.stringify(links) === JSON.stringify(pWant), `${tag} ${o.slug} #${i + 1}: the branches' numbers with the package's message`, links.join(' '));
+              link = c.locator('[data-offer-wa-panel] a').first();
+            } else {
+              link = c.locator('a[data-offer-cta="whatsapp"]');
+              check(decodeURIComponent((await link.getAttribute('href')) || '') === pWant[0], `${tag} ${o.slug} #${i + 1}: the branch's number with the package's message`);
+            }
+            check((await link.getAttribute('data-wa-package')) === key, `${tag} ${o.slug} #${i + 1}: data-wa-package=${key}`);
+            await link.click();
+            const wa = (await events(page, 'whatsapp_click')).slice(before);
+            check(wa.length === 1 && wa[0].package === key && wa[0].destination === o.branches[0] && wa[0].page_path === `${PRE}${L === 'en' ? '/en' : ''}/celebrations/`, `${tag} ${o.slug} #${i + 1}: one whatsapp_click { destination, page_path, package: ${key} }`, JSON.stringify(wa));
+            check(wa.every((e) => Object.keys(e).sort().join() === 'destination,event,package,page_location,page_path'), `${tag} ${o.slug} #${i + 1}: whatsapp_click carries no personal data`, JSON.stringify(wa[0] ?? {}));
+            if (o.branches.length > 1) await page.keyboard.press('Escape');
+          }
+          // the common button stays: package none
+          if (o.branches.length > 1) {
+            await toggle.click();
+            const before = (await events(page, 'whatsapp_click')).length;
+            await common.locator('[data-offer-wa-panel] a').first().click();
+            const wa = (await events(page, 'whatsapp_click')).slice(before);
+            check(wa.length === 1 && wa[0].package === 'none', `${tag} ${o.slug}: «راسلنا على واتساب» → whatsapp_click { package: none }`, JSON.stringify(wa));
+            await page.keyboard.press('Escape');
           }
           const clicks = await events(page, 'offer_click');
           check(o.branches.length === 1 || clicks.some((e) => e.offer_id === o.slug && e.placement === 'celebrations' && e.cta === 'whatsapp'), `${tag} ${o.slug}: offer_click { placement: celebrations, cta: whatsapp }`, JSON.stringify(clicks));
