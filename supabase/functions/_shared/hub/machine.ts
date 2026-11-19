@@ -58,7 +58,7 @@ export type Action =
   | { type: 'fixed'; key: string; buttons?: 'quick' | 'dates' | 'team' | null; vars?: Record<string, string | number> }
   /** «باقات بسعر خاص» (Ahmed, 18 Nov 2026): the details of a package order still missing — asked in ONE fixed message
    *  (copy.md §5: the lead, then the branch, the occasion's date, the room booking) */
-  | { type: 'package_ask'; missing: ('branch' | 'date' | 'booking')[]; package: string | null }
+  | { type: 'package_ask'; missing: ('branch' | 'date' | 'booking')[]; package: string | null; branch_default?: string | null }
   /** a date less than 24 hours away: the notice and the earliest date (copy.md §5) — the team only if the guest insists */
   | { type: 'package_notice'; date: string }
   | { type: 'booking_status'; ref: string }
@@ -594,7 +594,7 @@ function decideCore(input: DecideInput): Decision {
   // less than 24 hours away gets the notice and the earliest date (T47), the team only when the guest insists (T49)
   const pkOpen = input.draft?.kind === 'package' && !input.draft.fields._routed;
   if (has('package_order') || (pkOpen && !has('booking_cancel') && (kind === 'booking' || has('stay_booking') || !!u.check_in || !!u.dates_read?.check_in
-      || u.dates_read?.status === 'past' || u.branch === 'airport-road' || u.branch === 'shafa-road' || typeof u.has_room_booking === 'boolean' || !!u.package || ev.affirm === true))) {
+      || u.dates_read?.status === 'past' || u.branch === 'airport-road' || u.branch === 'shafa-road' || u.branch === 'both' || typeof u.has_room_booking === 'boolean' || !!u.package || ev.affirm === true))) {
     return packageOrder(input, state, t, out, u, ev.affirm === true);
   }
   // H8: «غيّر التواريخ» while the booking is still being made in this chat (a stay draft, not booked) changes the draft,
@@ -787,7 +787,15 @@ function packageOrder(input: DecideInput, state: State, t: string[], out: Out, u
   const replace = !!input.draft && input.draft.kind !== 'package';
   const f: Record<string, unknown> = { ...prev };
   if (u.package) f.package = String(u.package).slice(0, 60);
-  if (u.branch === 'airport-road' || u.branch === 'shafa-road') f.branch = u.branch;
+  // the branch (Ahmed, 19 Nov 2026): the one the guest names; «الفرعين» → asked; else the guest's own booking on that date;
+  // else the branch of the number the guest wrote to (named in the next question, so the guest can change it)
+  if (u.branch === 'airport-road' || u.branch === 'shafa-road') {
+    f.branch = u.branch;
+    f._branch_src = 'guest';
+  } else if (u.branch === 'both') {
+    f.branch = null;
+    f._branch_src = 'both';
+  }
   if (typeof u.has_room_booking === 'boolean') f.has_room_booking = u.has_room_booking;
   const today = ctx.today ?? clockToday();
   const earliest = packageEarliest(today);
@@ -819,8 +827,15 @@ function packageOrder(input: DecideInput, state: State, t: string[], out: Out, u
   // the guest's own booking on that date tells the branch and that there is a room booking
   const own = ctx.bookings.filter((b) => b.status !== 'cancelled' && (typeof f.date === 'string' ? b.check_in <= f.date && f.date <= b.check_out : b.check_out >= today));
   if (own.length === 1) {
-    if (!f.branch) f.branch = own[0].branch;
+    if (!f.branch || f._branch_src === 'number') {
+      f.branch = own[0].branch;
+      f._branch_src = 'booking';
+    }
     if (typeof f.has_room_booking !== 'boolean' && typeof f.date === 'string' && own[0].branch === f.branch) f.has_room_booking = true;
+  }
+  if (!f.branch && f._branch_src !== 'both' && ctx.unit_kind === 'branch' && (ctx.unit_branch === 'airport-road' || ctx.unit_branch === 'shafa-road')) {
+    f.branch = ctx.unit_branch;
+    f._branch_src = 'number';
   }
   const missing: ('branch' | 'date' | 'booking')[] = [];
   if (!f.branch) missing.push('branch');
@@ -829,7 +844,8 @@ function packageOrder(input: DecideInput, state: State, t: string[], out: Out, u
   const asked = Number(prev._asks ?? 0);
   if (missing.length && asked < 2) {
     t.push('T47');
-    return out({ next: 'collecting', actions: [...first, { type: 'package_ask', missing, package: typeof f.package === 'string' ? f.package : null }],
+    const branchDefault = f._branch_src === 'number' && typeof f.branch === 'string' ? f.branch : null;
+    return out({ next: 'collecting', actions: [...first, { type: 'package_ask', missing, package: typeof f.package === 'string' ? f.package : null, branch_default: branchDefault }],
       draft_patch: { kind: 'package', fields: { ...f, _asks: asked + 1 } }, draft_replace: replace, failed: 'reset' });
   }
   return routed(f, 'T48');

@@ -80,8 +80,24 @@ const run = (state, u, draft = null, ctx = {}, ev = {}) => decide({ state, event
 const pd = (fields) => ({ id: 'p1', kind: 'package', version: 1, fields });
 
 let d = run('inquiry', U({ package: 'الذهبية' }));
-check(d.transitions.includes('T47') && d.next === 'collecting' && d.actions[0].type === 'package_ask' && JSON.stringify(d.actions[0].missing) === '["branch","date","booking"]'
-  && d.actions[0].package === 'الذهبية' && d.draft_patch?.kind === 'package', `order: nothing known → ONE question for the branch, the date and the room booking — ${JSON.stringify(d.actions)}`);
+check(d.transitions.includes('T47') && d.next === 'collecting' && d.actions[0].type === 'package_ask' && JSON.stringify(d.actions[0].missing) === '["date","booking"]'
+  && d.actions[0].package === 'الذهبية' && d.actions[0].branch_default === 'airport-road' && d.draft_patch?.kind === 'package' && d.draft_patch.fields.branch === 'airport-road',
+  `order: nothing known on a branch number → the number's branch by default, ONE question for the date and the room booking — ${JSON.stringify(d.actions)}`);
+// 19 Nov 2026 (Ahmed): the branch of the number by default; asked only for «الفرعين» or a number that is not a branch's
+d = run('inquiry', U({ package: 'الذهبية' }), null, { unit_branch: 'shafa-road' });
+check(d.actions[0].branch_default === 'shafa-road' && !d.actions[0].missing.includes('branch') && d.draft_patch.fields.branch === 'shafa-road', 'branch: the Shafa Road number → Shafa Road, no branch question');
+d = run('inquiry', U({ package: 'الذهبية' }), null, { unit_kind: 'dining' });
+check(JSON.stringify(d.actions[0].missing) === '["branch","date","booking"]' && !d.actions[0].branch_default, "branch: a number that is not a branch's → the branch asked");
+d = run('inquiry', U({ package: 'الذهبية', branch: 'both' }));
+check(d.actions[0].missing[0] === 'branch' && !d.actions[0].branch_default && !d.draft_patch.fields.branch, "branch: «الفرعين» → the branch asked, never the number's");
+d = run('collecting', U({ intents: ['other'], branch: 'shafa-road', kind: 'booking' }), pd({ package: 'الذهبية', branch: 'airport-road', _branch_src: 'number', _asks: 1 }));
+check(d.draft_patch.fields.branch === 'shafa-road' && !d.actions[0].branch_default, 'branch: the guest changes the default → the branch named, no longer mentioned');
+d = run('inquiry', U({ package: 'الفضية', branch: 'shafa-road', check_in: '2026-12-27', has_room_booking: true }));
+check(d.transitions.includes('T48') && d.draft_patch.fields.branch === 'shafa-road' && packageAlertLine(d.draft_patch.fields).includes('طريق الشفا'), 'branch: the other branch named on the Airport Road number → routed with it');
+d = run('inquiry', U({ package: 'الفضية', check_in: '2026-12-27', has_room_booking: false }), null, { unit_branch: 'shafa-road' });
+check(d.transitions.includes('T48') && d.draft_patch.fields.branch === 'shafa-road', 'branch: everything known on the Shafa Road number → routed to Shafa Road, no question');
+d = run('collecting', U({ intents: ['other'], check_in: '2026-11-25', kind: 'booking' }), pd({ package: 'الذهبية', branch: 'airport-road', _branch_src: 'number', _asks: 1 }));
+check(d.actions[0].type === 'package_ask' && JSON.stringify(d.actions[0].missing) === '["booking"]' && d.actions[0].branch_default === 'airport-road', 'branch: the date known → the branch named in the room-booking question');
 d = run('collecting', U({ intents: ['other'], branch: 'shafa-road', check_in: '2026-11-25', kind: 'booking' }), pd({ package: 'الذهبية', _asks: 1 }));
 check(d.actions[0].type === 'package_ask' && JSON.stringify(d.actions[0].missing) === '["booking"]' && d.draft_patch.fields.branch === 'shafa-road' && d.draft_patch.fields.date === '2026-11-25',
   'order: a reply in the open order fills it; only the room booking is asked');
@@ -125,6 +141,19 @@ for (const L of ['ar', 'en']) {
   const notice = fixed('package_notice', L, { date: 'x' });
   check(lead && fixed('package_ask_branch', L) && fixed('package_ask_date', L) && fixed('package_ask_booking', L) && fixed('package_handed', L) && notice.includes('24'), `copy ${L}: the seven package lines`);
 }
+for (const L of ['ar', 'en']) {
+  const b = fixed('package_ask_date_branch', L, { branch_name: 'B' }) + fixed('package_ask_booking_branch', L, { branch_name: 'B' }) + fixed('package_ask_other_branch', L, { other_branch: 'O' });
+  check(b.split('B').length === 3 && b.includes('O'), `copy ${L}: the three branch lines name the branch / the other one`);
+}
+check(!/لديكم|تفضّلون|أخبرونا|كنتم/.test(['package_ask_date_branch', 'package_ask_booking_branch', 'package_ask_other_branch'].map((k) => fixed(k, 'ar', { branch_name: 'ب', other_branch: 'ت' })).join(' ')), 'copy: the branch lines in the singular');
+// the engine: the lines filled from the action; another branch's order → finish.handoff_branch (also in a test run)
+const eng = readFileSync('supabase/functions/_shared/hub/engine.ts', 'utf8');
+check(eng.includes("'package_ask_date_branch'") && eng.includes("'package_ask_other_branch'") && /finish\.handoff_branch = f\.branch/.test(eng), 'engine: the branch lines and handoff_branch');
+const mig = readFileSync('supabase/migrations/20261119100000_guest_hub_package_branch.sql', 'utf8');
+check(/p ->> 'handoff_branch'/.test(mig) && mig.includes('update public.hub_conversations set unit_id = v_move.id where id = c.id;') && mig.includes("'transfer', v_here.key, v_move.key, 'package_branch'"),
+  "migration: hub_turn_finish moves the conversation to the named branch's unit before the hand-off");
+const { migration } = await import('./hub-pkgbranch-migration.mjs');
+check(mig.replace(/\r\n/g, '\n') === migration(), 'migration: = its generator');
 check(fixed('package_ask_booking', 'ar').includes('لديك') && !/لديكم|تريدون/.test(['package_ask_lead', 'package_ask_branch', 'package_ask_date', 'package_ask_booking', 'package_notice', 'package_handed'].map((k) => fixed(k, 'ar', { package: 'ب', date: 'ت' })).join(' ')),
   'copy: the singular address');
 const prompts = readFileSync('docs/guest-hub/prompts.md', 'utf8');

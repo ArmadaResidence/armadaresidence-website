@@ -38,6 +38,8 @@ export interface StepExpect {
   priority?: string;
   /** H7: words the staff alert's «المطلوب» line must hold */
   summary_includes?: string;
+  /** 19 Nov 2026: the branch whose reception the hand-off reaches (airport-road | shafa-road) */
+  handoff_branch?: string;
 }
 export interface Expect {
   action: string;
@@ -87,6 +89,8 @@ export interface StepOutcome {
   categories?: string[];
   priority?: string | null;
   summary?: string | null;
+  /** 19 Nov 2026: the branch a package order was handed to when it is not the number's (null = the number's own) */
+  handoff_branch?: string | null;
   /** H8: the room cards this step sent */
   cards?: number;
 }
@@ -270,6 +274,8 @@ export function gradeConversation(item: Item, o: Outcome): Grade {
     if (e.category && !(g.categories ?? []).includes(e.category)) reasons.push(`s${i + 1}:category:${e.category}`);
     if (e.priority && (g.priority ?? null) !== e.priority) reasons.push(`s${i + 1}:priority:${e.priority}:${g.priority ?? 'none'}`);
     if (e.summary_includes && !norm(g.summary ?? '').includes(norm(e.summary_includes))) reasons.push(`s${i + 1}:summary`);
+    // 19 Nov 2026: the reception a hand-off reaches — the number's own branch unless the order named another
+    if (e.handoff_branch && (g.handoff_branch ?? item.unit_key) !== e.handoff_branch) reasons.push(`s${i + 1}:handoff_branch:${e.handoff_branch}:${g.handoff_branch ?? item.unit_key}`.slice(0, 80));
     if (e.cards && !((g.cards ?? 0) >= e.cards[0] && (g.cards ?? 0) <= e.cards[1])) reasons.push(`s${i + 1}:cards:${e.cards.join('-')}:${g.cards ?? 0}`);
     const said = g.replies.filter((x) => !x.notice).map((x) => x.body).join('\n');
     GLOBAL_MUST_NOT.forEach((p, j) => {

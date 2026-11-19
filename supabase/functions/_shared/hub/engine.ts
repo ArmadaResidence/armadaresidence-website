@@ -103,6 +103,8 @@ export interface Finish {
   handoff_add?: boolean;
   /** H6c: the staff alert's «المطلوب» line (the model's, checked) and the booking ref or room the guest gave */
   handoff_summary?: string | null;
+  /** 19 Nov 2026: a package order for another branch — the branch whose reception takes the new hand-off */
+  handoff_branch?: string | null;
   handoff_ref?: string | null;
   /** H7: what each voice note / image of the turn became (stored on hub_messages; never a screenshot's reading) */
   media?: MediaResult[];
@@ -651,7 +653,17 @@ export async function runTurn(claim: Json, deps: Deps): Promise<Outcome> {
           // «الذهبية» / «ذهبية» → «الباقة الذهبية»; «باقة …» / «الباقة …» and an English name as the guest wrote them
           const named = a.package && L === 'ar' && /^[ء-ي]/.test(a.package) && !/^(?:ال)?باق/.test(a.package) ? `الباقة ال${a.package.replace(/^ال/, '')}` : a.package;
           const parts = [named ? fixed('package_ask_lead', L, { package: named }) : fixed('package_ask_lead_any', L)];
-          for (const m of a.missing) parts.push(fixed(m === 'branch' ? 'package_ask_branch' : m === 'date' ? 'package_ask_date' : 'package_ask_booking', L));
+          // 19 Nov 2026 (Ahmed): the branch of the number by default — named in the date question (else the room-booking
+          // question), then one line inviting the other branch
+          const bd = a.branch_default === 'airport-road' || a.branch_default === 'shafa-road' ? a.branch_default : null;
+          const bName = bd ? branchName(deps.content, bd, L) : '';
+          const withBranch = bd ? (a.missing.includes('date') ? 'date' : a.missing.includes('booking') ? 'booking' : null) : null;
+          for (const m of a.missing) {
+            if (m === 'branch') parts.push(fixed('package_ask_branch', L));
+            else if (m === 'date') parts.push(withBranch === 'date' ? fixed('package_ask_date_branch', L, { branch_name: bName }) : fixed('package_ask_date', L));
+            else parts.push(withBranch === 'booking' ? fixed('package_ask_booking_branch', L, { branch_name: bName }) : fixed('package_ask_booking', L));
+          }
+          if (bd && withBranch) parts.push(fixed('package_ask_other_branch', L, { other_branch: branchName(deps.content, bd === 'airport-road' ? 'shafa-road' : 'airport-road', L) }));
           push(parts.join(' '));
           lastAction = 'سؤال عن تفاصيل طلب الباقة';
           break;
@@ -1120,6 +1132,13 @@ export async function runTurn(claim: Json, deps: Deps): Promise<Outcome> {
   // H7: a media hand-off's line is the code's (copy.md §5.2) or the problem photo's checked line — no model call, also in a
   // test run (the lab grades it; no alert reaches a team in test mode)
   if (final.next === 'human' && prep.route) finish.handoff_summary = prep.route.summary;
+  // 19 Nov 2026 (Ahmed): a package order for the other branch goes to that branch's reception — hub_turn_finish moves the
+  // conversation to that branch's unit before the NEW hand-off (never in a test run); the replies still leave from the
+  // number the guest wrote to. Also in a test run, so the lab grades it.
+  if (final.next === 'human' && final.reason === 'package_order' && (conv.state !== 'human' || phase === 'resume')) {
+    const f = (final.draft_patch?.kind === 'package' ? final.draft_patch.fields : {}) as Record<string, unknown>;
+    if ((f.branch === 'airport-road' || f.branch === 'shafa-road') && (unit.kind !== 'branch' || unit.branch !== f.branch)) finish.handoff_branch = f.branch;
+  }
   if (final.next === 'human' && claim.turn.mode !== 'test') {
     finish.handoff_ref = refOrRoom(u?.booking_ref ?? null, texts);
     const newHandoff = conv.state !== 'human' || phase === 'resume';

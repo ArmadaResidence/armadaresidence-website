@@ -273,9 +273,21 @@
    "ar": "ما تاريخ مناسبتك؟",
    "en": "What is the date of your occasion?"
   },
+  "package_ask_date_branch": {
+   "ar": "ما تاريخ مناسبتك في {branch_name}؟",
+   "en": "What is the date of your occasion at {branch_name}?"
+  },
   "package_ask_booking": {
    "ar": "وهل لديك حجز غرفة لدينا؟",
    "en": "And do you already have a room booking with us?"
+  },
+  "package_ask_booking_branch": {
+   "ar": "وهل لديك حجز غرفة لدينا في {branch_name}؟",
+   "en": "And do you already have a room booking with us at {branch_name}?"
+  },
+  "package_ask_other_branch": {
+   "ar": "وإن كنت تفضّل {other_branch} فأخبرنا بذلك.",
+   "en": "If you would prefer {other_branch}, just let us know."
   },
   "package_notice": {
    "ar": "نحتاج إلى طلب الباقة قبل موعد المناسبة بـ24 ساعة على الأقل، وأقرب موعد متاح هو {date}. هل يناسبك؟",

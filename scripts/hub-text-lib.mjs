@@ -72,9 +72,12 @@ const COPY_CASES = {
   // 18 Nov 2026 (Ahmed): a celebration package ordered in the chat
   'Package order — the lead (18 Nov 2026, Ahmed: «باقات بسعر خاص» ordered in the chat; the questions below follow it in the same message, only the missing ones)': 'package_ask_lead',
   'Package order — the lead with no package named': 'package_ask_lead_any',
-  'Package order — the branch': 'package_ask_branch',
+  "Package order — the branch (19 Nov 2026, Ahmed: asked only when the guest names both branches or the number is not a branch's; otherwise the branch of the number, named in the next question)": 'package_ask_branch',
   'Package order — the date': 'package_ask_date',
+  "Package order — the date at the number's branch (19 Nov 2026, Ahmed: the branch of the number the guest wrote to, by default)": 'package_ask_date_branch',
   'Package order — the room booking': 'package_ask_booking',
+  "Package order — the room booking at the number's branch (19 Nov 2026: when the date is already known, the branch is named here instead)": 'package_ask_booking_branch',
+  'Package order — the other branch (19 Nov 2026: after the questions, whenever the branch of the number was named in one of them)': 'package_ask_other_branch',
   'Package order — less than 24 hours away (the team only if the guest insists)': 'package_notice',
   'Package order — sent to reception (the hand-off notice of the order)': 'package_handed',
   // copy.md §4.2
