@@ -16,6 +16,8 @@
 //   number (../booking-request/whatsapp-send.ts; never blocks, logged in public.whatsapp_messages).
 //   cancel (29 Oct 2026) → after the emails (or none, without a guest email), booking_cancelled the same way — a
 //   request or a confirmed booking alike; a repeated cancel (already) sends nothing.
+//   reinstate (20 Nov 2026) → public.admin_reinstate_reservation AS THE CALLER (the system admin, or the service role
+//   for an approved fix): a booking cancelled by mistake back to confirmed, then exactly the confirm notifications.
 //   whatsapp-resend → public.staff_whatsapp_resend AS THE USER (bookings:edit + branch scope; only a template whose
 //   last attempt failed) claims a new attempt, then this function sends it. Test bookings: built and logged, not sent.
 // A notification that cannot go out after the status changed (the reservation read fails, a confirmed booking has no
@@ -207,13 +209,45 @@ async function sendEmail(kind: string, ref: string, env: { from: string; to: str
   }
 }
 
+/** After a confirmation (the dashboard's confirm, or a reinstatement): the reception, guest and low-inventory emails, then
+ * the guest's WhatsApp — the same for both. `claimedId`: the WhatsApp attempt the reinstatement RPC claimed. */
+async function notifyConfirmed(req: Request, id: string, out: { ref?: string; low?: { night: string; left: number }[] }, force: string, what: string, claimedId?: string, extra: Record<string, unknown> = {}): Promise<Response> {
+  const res = force === 'fail-read' ? null : await loadReservation(id);
+  if (!res || !res.pricing) {
+    console.error(`${what}: notifications not sent`, out.ref ?? id, !res ? 'reservation read failed' : 'no price snapshot');
+    return json(req, 200, { ...extra, ok: true, ref: out.ref, low: out.low ?? [], emails: null, notify_failed: true });
+  }
+  const bm = { ref: res.ref, locale: res.locale, branch: res.branch, room: res.room_slug ?? '', roomName: res.roomName, check_in: res.check_in, check_out: res.check_out, nights: res.nights, adults: res.adults, children: res.children, extraBeds: res.extra_beds, extraBedFee: Number(res.extra_bed_fee_per_night ?? content.extra_bed_fee), needsCoordination: res.needs_coordination, capacity: res.capacity_at_request ?? 0, breakfast: res.breakfast, name: res.guest_name, phone: res.phone, email: res.email ?? '', notes: res.notes ?? '', receivedAt: riyadhNow(), quote: res.pricing, confirmedBy: res.confirmed_by_label ?? 'staff', eyabInvite: null as { ar: string; en: string } | null };
+  // «انضم إلى إياب» (9 Nov 2026): the guest email's one line when the guest is not a member (the database decides)
+  if (res.email) bm.eyabInvite = (await eyabInvite(url(), serviceKey(), res.id, String(content.live_url ?? content.site_url)))?.links ?? null;
+  const rows = await loadRecipients(res.ref);
+  const { to, cc, primary, central } = route(rows, res.branch);
+  const fail = force === 'fail-send';
+  const lowDue = Boolean(out.low && out.low.length);
+  const hotelMail = confirmedNotification(content, bm);
+  const guestMail = res.email ? bookingConfirmed(content, bm) : null;
+  const [n, g, l] = await Promise.all([
+    sendEmail('confirmed-notification', res.ref, { from: FROM_RECEPTION, to, cc, replyTo: res.email ? [res.email] : [] }, hotelMail, res.is_test, fail),
+    guestMail ? sendEmail('guest-confirmed', res.ref, { from: FROM_GUEST, to: [res.email], replyTo: primary.length ? primary : [addressOf(FROM_GUEST)] }, guestMail, res.is_test, fail) : Promise.resolve(null),
+    lowDue ? sendEmail('low-inventory', res.ref, { from: FROM_RECEPTION, to: central.length ? central : to }, lowInventoryAlert(content, { ref: res.ref, branch: res.branch, room: res.room_slug ?? '', roomName: res.roomName, nights: out.low! }), res.is_test, fail) : Promise.resolve(null),
+  ]);
+  const missed = [!n && 'reception', res.email && !g && 'guest', lowDue && !l && 'low-inventory'].filter(Boolean);
+  if (missed.length) console.error(`${what}: notifications not sent`, res.ref, missed.join(','));
+  // after the emails: the guest's WhatsApp confirmation (one per ref — an instant confirmation never reaches here; a
+  // reinstatement sends the attempt its RPC claimed)
+  const wa = await sendWhatsApp(content, { template: 'booking_confirmed', booking: waBooking(res), reservationId: res.id, test: res.is_test, simulateFail: force === 'fail-wa', claimedId, trigger: claimedId ? 'reinstate' : undefined });
+  // test bookings only: the emails' text and the WhatsApp parameters as sent (booking-request/test-echo.ts)
+  const echo = res.is_test ? { test_echo: testEcho(content, { notification: hotelMail, confirmation: guestMail }, { template: 'booking_confirmed', booking: waBooking(res) }) } : {};
+  return json(req, 200, { ...extra, ok: true, ref: res.ref, low: out.low ?? [], emails: { notification: n, guest: g, low_inventory: l }, notify_failed: missed.length > 0, whatsapp: waOut(wa), ...echo });
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return preflight(req);
   if (req.method !== 'POST') return json(req, 405, { ok: false, error: 'method not allowed' });
   const jwt = (req.headers.get('authorization') ?? '').replace(/^Bearer\s+/i, '');
   if (!jwt) return json(req, 401, { ok: false, error: 'sign in' });
 
-  let body: { action?: string; id?: string; room_type_id?: string | null; reason_code?: string; note?: string; template?: string; test_notify?: string };
+  let body: { action?: string; id?: string; ref?: string; room_type_id?: string | null; reason_code?: string; note?: string; template?: string; test_notify?: string };
   try {
     body = await req.json();
   } catch {
@@ -228,32 +262,19 @@ Deno.serve(async (req) => {
     const out = r.body as { ok: boolean; ref?: string; is_test?: boolean; reason?: string; nights?: unknown; low?: { night: string; left: number }[] };
     if (!out.ok) return json(req, 200, out);
     const force = out.is_test === true ? String(body.test_notify ?? '') : '';
-    const res = force === 'fail-read' ? null : await loadReservation(id);
-    if (!res || !res.pricing) {
-      console.error('confirm: notifications not sent', out.ref ?? id, !res ? 'reservation read failed' : 'no price snapshot');
-      return json(req, 200, { ok: true, ref: out.ref, low: out.low ?? [], emails: null, notify_failed: true });
-    }
-    const bm = { ref: res.ref, locale: res.locale, branch: res.branch, room: res.room_slug ?? '', roomName: res.roomName, check_in: res.check_in, check_out: res.check_out, nights: res.nights, adults: res.adults, children: res.children, extraBeds: res.extra_beds, extraBedFee: Number(res.extra_bed_fee_per_night ?? content.extra_bed_fee), needsCoordination: res.needs_coordination, capacity: res.capacity_at_request ?? 0, breakfast: res.breakfast, name: res.guest_name, phone: res.phone, email: res.email ?? '', notes: res.notes ?? '', receivedAt: riyadhNow(), quote: res.pricing, confirmedBy: res.confirmed_by_label ?? 'staff', eyabInvite: null as { ar: string; en: string } | null };
-    // «انضم إلى إياب» (9 Nov 2026): the guest email's one line when the guest is not a member (the database decides)
-    if (res.email) bm.eyabInvite = (await eyabInvite(url(), serviceKey(), res.id, String(content.live_url ?? content.site_url)))?.links ?? null;
-    const rows = await loadRecipients(res.ref);
-    const { to, cc, primary, central } = route(rows, res.branch);
-    const fail = force === 'fail-send';
-    const lowDue = Boolean(out.low && out.low.length);
-    const hotelMail = confirmedNotification(content, bm);
-    const guestMail = res.email ? bookingConfirmed(content, bm) : null;
-    const [n, g, l] = await Promise.all([
-      sendEmail('confirmed-notification', res.ref, { from: FROM_RECEPTION, to, cc, replyTo: res.email ? [res.email] : [] }, hotelMail, res.is_test, fail),
-      guestMail ? sendEmail('guest-confirmed', res.ref, { from: FROM_GUEST, to: [res.email], replyTo: primary.length ? primary : [addressOf(FROM_GUEST)] }, guestMail, res.is_test, fail) : Promise.resolve(null),
-      lowDue ? sendEmail('low-inventory', res.ref, { from: FROM_RECEPTION, to: central.length ? central : to }, lowInventoryAlert(content, { ref: res.ref, branch: res.branch, room: res.room_slug ?? '', roomName: res.roomName, nights: out.low! }), res.is_test, fail) : Promise.resolve(null),
-    ]);
-    const missed = [!n && 'reception', res.email && !g && 'guest', lowDue && !l && 'low-inventory'].filter(Boolean);
-    if (missed.length) console.error('confirm: notifications not sent', res.ref, missed.join(','));
-    // after the emails: the guest's WhatsApp confirmation (one per ref — an instant confirmation never reaches here)
-    const wa = await sendWhatsApp(content, { template: 'booking_confirmed', booking: waBooking(res), reservationId: res.id, test: res.is_test, simulateFail: force === 'fail-wa' });
-    // test bookings only: the emails' text and the WhatsApp parameters as sent (booking-request/test-echo.ts)
-    const echo = res.is_test ? { test_echo: testEcho(content, { notification: hotelMail, confirmation: guestMail }, { template: 'booking_confirmed', booking: waBooking(res) }) } : {};
-    return json(req, 200, { ok: true, ref: res.ref, low: out.low ?? [], emails: { notification: n, guest: g, low_inventory: l }, notify_failed: missed.length > 0, whatsapp: waOut(wa), ...echo });
+    return await notifyConfirmed(req, id, out, force, 'confirm');
+  }
+
+  // reinstate (20 Nov 2026 — DECISIONS.md «Reinstating a cancelled booking»): a booking cancelled by mistake back to
+  // confirmed. public.admin_reinstate_reservation runs AS THE CALLER — the system admin, or the service role for a fix
+  // Ahmed approved — and decides everything (the typed-back ref, the nights still free, never an overbooking); then the
+  // same notifications as a confirmation, the WhatsApp through the attempt it claimed.
+  if (body.action === 'reinstate') {
+    const r = await rpcAsUser(jwt, 'admin_reinstate_reservation', { p_id: id, p_ref: String(body.ref ?? '') });
+    if (!r.ok) return json(req, r.status === 401 || r.status === 403 ? 403 : 400, { ok: false, error: (r.body as { message?: string })?.message ?? 'reinstate failed' });
+    const out = r.body as { ok: boolean; ref?: string; reason?: string; nights?: unknown; low?: { night: string; left: number }[]; message_id?: string | null; batch_id?: string };
+    if (!out.ok) return json(req, 200, out);
+    return await notifyConfirmed(req, id, out, '', 'reinstate', out.message_id ?? undefined, { reinstated: true, batch_id: out.batch_id });
   }
 
   if (body.action === 'cancel') {

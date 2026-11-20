@@ -47,7 +47,7 @@ export interface WaSend {
   simulateFail?: boolean | 'primary';
   /** QA only (preview 'wa-send'): the primary template is refused before YCloud, the fallback is REALLY sent */
   qaFailPrimary?: boolean;
-  trigger?: 'auto' | 'resend' | 'qa';
+  trigger?: 'auto' | 'resend' | 'qa' | 'reinstate';
   /** a row already claimed by public.staff_whatsapp_resend */
   claimedId?: string;
   /** QA only (preview 'wa-send'): a REAL send whose log row is marked is_test */
