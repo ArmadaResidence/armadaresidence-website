@@ -4167,3 +4167,45 @@ Instant booking keeps its limit of 3 units per room type per night (unchanged).
   container: Tag Assistant does, after the import.
 - **Until Ahmed imports and publishes**, the live container is version 11 and the pixels still load on /careers/ for a
   visitor who granted ads consent; the site half is live with this deploy.
+
+## 2026-11-20 — Reinstating a cancelled booking: AR-20261114-5SY4 (Ahmed, 20 Nov 2026)
+
+- **The case.** AR-20261114-5SY4 (Airport Road, two-bedroom suite with living room, 24 → 26 Nov 2026, 2 nights,
+  4 adults, no breakfast, SAR 600 incl. VAT, confirmed instantly on the site on 14 Nov) was cancelled from the dashboard
+  on 20 Nov 2026 at 10:48 Riyadh with the reason no_availability; the guest got booking_cancelled_v2. The room was in
+  fact free. Ahmed approved reinstating it as confirmed, through an audited path, notifying the guest exactly as a
+  dashboard confirmation does.
+- **Inventory first (read before any change):** both nights `rooms_to_sell` 2, `booked` 0, `stop_sell` false.
+- **The path (migration `20261120100000_reinstate_reservation`).** No RPC allowed cancelled → confirmed, so
+  `public.admin_reinstate_reservation(id, ref)`: the system admin (`internal.is_system_admin()`) or the service role
+  only; the ref typed back; never a test booking; in ONE transaction the nights locked in night order and checked open
+  with a room to sell (closed / sold_out → nothing changes — never an overbooking; a missing current rate does not block:
+  the booking keeps its own price snapshot), one room taken on each night (`internal.take_stay`), status confirmed with
+  the ref, totals, pricing, nights, offer and the original confirmation time unchanged, the cancellation fields cleared
+  (the audit keeps the old values), a status-history row with «إعادة تأكيد بطلب الإدارة بعد إلغاء غير صحيح», the
+  reservation and inventory audited in one batch (never undoable — `revert_batch` refuses booking status changes), and
+  the guest's WhatsApp confirmation claimed in the same transaction. `whatsapp_messages_once` (one live attempt per ref
+  + template) now leaves out rows with `trigger = 'reinstate'` (a new allowed trigger value) — the first
+  booking_confirmed of the ref had been sent; a reinstatement claims at most one, since it runs only from cancelled.
+- **The notifications.** booking-admin gains the action `reinstate` (the caller's token forwarded; the database decides)
+  and sends what a dashboard confirm sends, through the same code (`notifyConfirmed`, shared with `confirm`): the
+  reception «حجز مؤكد» email, the guest confirmation email, the low-inventory alert when a night is now at 1 or 0, then
+  booking_confirmed_v2 from the branch's number through the claimed attempt. A booking-admin type error found by the
+  first `deno check` of it was fixed (`to: [res.email ?? '']`); server-checks now type-checks booking-admin and runs
+  `reinstate.sql`.
+- **Tests.** `supabase/tests/reinstate.sql` (29 checks: who, refusals, sold out / closed, the reinstatement, history,
+  audit, the WhatsApp claim, no second reinstatement, never undone, the service role) — CI local database 29/29 and a
+  preview branch (`reinstate-5sy4`, Ahmed's OK for its cost, ≈ 10 minutes, deleted) 29/29; on the same branch
+  `scripts/reinstate-branch-check.mjs` 14/14 through the deployed function (anon refused, a wrong ref refused, the
+  reinstatement, the inventory, history, audit, the claimed WhatsApp row, a second call refused; no Resend / YCloud key
+  there, so nothing left the branch).
+- **Production (20 Nov 2026).** The dry run listed only the new migration; applied; booking-admin deployed (v27 → the
+  next version; rollback v27). `node scripts/reinstate-booking.mjs --ref AR-20261114-5SY4 --production` (the service key
+  from the CLI in memory only): confirmed again, SAR 600, the original confirmation time kept, both nights now
+  `rooms_to_sell` 1 / `booked` 1, the history row by «الإدارة», the audit batch 8b22da8f-… (the reservation + both
+  nights), and every notification accepted — the reception email, the guest email, the low-inventory alert (Resend ids
+  in the run's output) and booking_confirmed_v2 in Arabic from the Airport Road number (YCloud status accepted).
+- **Known edge, not changed:** if this booking is cancelled again, its booking_cancelled WhatsApp would be refused as a
+  duplicate of the 20 Nov one (the one-per-ref rule); the cancellation email still goes. Fix only if it ever happens.
+- **A dashboard button** «إعادة تأكيد الحجز» (system admin, on a cancelled booking, typed-ref confirm, the result
+  shown like a confirm, a tour step and its offline UI check) is about two to three hours of work; not built (Ahmed).
