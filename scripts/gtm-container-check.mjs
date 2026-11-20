@@ -1,26 +1,26 @@
-// The GTM import file, checked (19 Nov 2026 — DECISIONS.md 2026-11-19 «Tracking for the December campaigns»). Offline,
-// FAST_CHECKS:
-//   - docs/gtm-container-v10.json is the published version 10 (28 tags, 7 triggers);
+// The GTM import file, checked (19 Nov 2026; rebased on the published version 11 on 20 Nov 2026 — DECISIONS.md
+// 2026-11-20 «Careers privacy»). Offline, FAST_CHECKS:
+//   - docs/gtm-container-v11.json is Ahmed's export of version 11 «December campaigns tracking» — 90 items: 35 tags,
+//     12 triggers, 35 variables + 5 built-in, 2 Google tag settings, 1 template;
 //   - docs/gtm-container.json is exactly scripts/gtm-container-build.mjs's output;
 //   - IDs unique (tags, triggers, variables, templates — one ID space), every trigger, blocking trigger, setup /
 //     teardown tag, template and {{variable}} a tag, trigger or variable uses exists;
-//   - the diff against v10 by name = CHANGES (added / modified, nothing deleted) — the import preview counts;
-//   - the rules of the change: base pixels ONCE_PER_EVENT on first_engagement + consent_granted + virtual_page_view +
-//     the conversions, one page view per page id, Meta's own SPA page views off; every pixel tag needs ad_storage;
-//     Clarity needs analytics_storage and fires on the analytics grant; whatsapp_click / offer_view / no_availability
-//     carry only their listed parameters; the Google Ads «WhatsApp click» carries its label (20 Nov 2026);
-//   - GTM's own shape (20 Nov 2026 — GTM refused the first file with «File format is invalid»): every new or changed
-//     item has the field set, field order, field types, parameter keys / types / order of the v10 items of its kind and
-//     type (no extra field but a trigger's `filter`, nothing missing), a fingerprint on every item, the version's fields
-//     exactly v10's (no description), no BOM, no CR, every Custom HTML / Custom JavaScript parses;
-//   - the three partial files hold exactly the new and modified items between them, each only its own, every reference
-//     resolving inside the part or in v10, never to another part's new item;
+//   - the diff against v11 by name = CHANGES (added / modified, nothing deleted) — the import preview counts;
+//   - the standing rules (held since the December change): base pixels ONCE_PER_EVENT on first_engagement +
+//     consent_granted + virtual_page_view + the conversions, one page view per page id, Meta's own SPA page views off;
+//     every pixel tag needs ad_storage; Clarity needs analytics_storage and fires on the analytics grant;
+//     whatsapp_click / offer_view / no_availability carry only their listed parameters; the Google Ads «WhatsApp click»
+//     carries its label;
+//   - GTM's own shape: every new or changed item has the field set, field order, field types, parameter keys / types /
+//     order of the v11 items of its kind and type (no extra field but a tag's blockingTriggerId and a trigger's
+//     filter, nothing missing), a fingerprint on every item, the version's fields exactly v11's, no BOM, no CR, every
+//     Custom HTML / Custom JavaScript parses;
 //   - every custom event the container listens to is one the site pushes (src/), and every whatsapp_click the site
 //     pushes carries destination, page_path and package.
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import vm from 'node:vm';
-import { CHANGES, OUT, PARTS, PART_FILES, V10, WHATSAPP_LABEL, build, buildParts, render } from './gtm-container-build.mjs';
+import { BASE, CHANGES, OUT, WHATSAPP_LABEL, build, render } from './gtm-container-build.mjs';
 
 let pass = 0;
 const fails = [];
@@ -30,20 +30,21 @@ const check = (ok, label, detail = '') => {
   return Boolean(ok);
 };
 
-const v10 = JSON.parse(readFileSync(V10, 'utf8'));
+const base = JSON.parse(readFileSync(BASE, 'utf8'));
 const file = readFileSync(OUT, 'utf8');
 const doc = JSON.parse(file);
-const A = v10.containerVersion;
+const A = base.containerVersion;
 const B = doc.containerVersion;
-const built = build(v10);
+const built = build(base);
 
-check(A.containerVersionId === '10' && A.name === 'url passthrough', 'baseline: version 10 «url passthrough»', `${A.containerVersionId} ${A.name}`);
-check(A.tag.length === 28 && A.trigger.length === 7, 'baseline: 28 tags and 7 triggers', `${A.tag.length} tags, ${A.trigger.length} triggers`);
+check(A.containerVersionId === '11' && A.name === 'December campaigns tracking', 'baseline: version 11 «December campaigns tracking»', `${A.containerVersionId} ${A.name}`);
+const counts = { tags: A.tag.length, triggers: A.trigger.length, variables: A.variable.length, builtIn: A.builtInVariable.length, settings: A.gtagConfig.length, templates: A.customTemplate.length };
+check(JSON.stringify(counts) === '{"tags":35,"triggers":12,"variables":35,"builtIn":5,"settings":2,"templates":1}', 'baseline: 35 tags, 12 triggers, 35 + 5 variables, 2 settings, 1 template (90 items)', JSON.stringify(counts));
 check(A.container?.publicId === 'GTM-5JVH7R37', 'baseline: container GTM-5JVH7R37', A.container?.publicId);
 check(file === render(built), 'docs/gtm-container.json = scripts/gtm-container-build.mjs output (run it after an edit)');
-check(B.container?.publicId === A.container?.publicId && B.accountId === A.accountId, 'same account and container as v10');
+check(B.container?.publicId === A.container?.publicId && B.accountId === A.accountId, 'same account and container as v11');
 
-// ── GTM's own shape, against the v10 export ──
+// ── GTM's own shape, against the v11 export ──
 const typeOf = (x) => (Array.isArray(x) ? 'array' : x === null ? 'null' : typeof x);
 const rawOk = (name, text) => {
   check(text.charCodeAt(0) !== 0xfeff, `${name}: UTF-8 without BOM`);
@@ -51,12 +52,11 @@ const rawOk = (name, text) => {
   check(!text.endsWith('\n') && text.startsWith('{\n    "exportFormatVersion"'), `${name}: written as GTM writes an export (4-space indent, no final newline)`);
 };
 rawOk('docs/gtm-container.json', file);
-check(JSON.stringify(Object.keys(doc)) === JSON.stringify(Object.keys(v10)), 'the file: top-level fields = v10 export', Object.keys(doc).join(', '));
-check(doc.exportFormatVersion === v10.exportFormatVersion && /^\d{4}-\d\d-\d\d \d\d:\d\d:\d\d$/.test(doc.exportTime), 'the file: exportFormatVersion 2, exportTime as GTM writes it', doc.exportTime);
-check(JSON.stringify(Object.keys(B)) === JSON.stringify(Object.keys(A)), 'containerVersion: exactly the fields of the v10 export (no description)', Object.keys(B).join(', '));
-check(!('description' in B), 'containerVersion: no description');
+check(JSON.stringify(Object.keys(doc)) === JSON.stringify(Object.keys(base)), 'the file: top-level fields = v11 export', Object.keys(doc).join(', '));
+check(doc.exportFormatVersion === base.exportFormatVersion && /^\d{4}-\d\d-\d\d \d\d:\d\d:\d\d$/.test(doc.exportTime), 'the file: exportFormatVersion 2, exportTime as GTM writes it', doc.exportTime);
+check(JSON.stringify(Object.keys(B)) === JSON.stringify(Object.keys(A)), 'containerVersion: exactly the fields of the v11 export', Object.keys(B).join(', '));
 
-// per kind × type: the fields, their types and orders, the parameter keys / types / orders of the v10 items
+// per kind × type: the fields, their types and orders, the parameter keys / types / orders of the v11 items
 const KINDS = ['tag', 'trigger', 'variable'];
 const ref = {};
 for (const kind of KINDS) {
@@ -71,13 +71,13 @@ for (const kind of KINDS) {
     for (const p of x.parameter ?? []) r.paramTypes.set(p.key, p.type);
   }
 }
-/** GTM fields v10 happens not to use, allowed here: a trigger's extra conditions, right after its event condition */
-const EXTRA = { trigger: { CUSTOM_EVENT: { filter: 'array' } } };
+/** GTM fields v11 happens not to use, allowed here: a tag's exception triggers, a trigger's extra conditions */
+const EXTRA = { tag: Object.fromEntries(['html', 'cvt_MQDKZ'].map((t) => [t, { blockingTriggerId: 'array' }])), trigger: { CUSTOM_EVENT: { filter: 'array' } } };
 const orderClash = (keys, orders) => {
   for (const o of orders) {
     const mine = keys.filter((k) => o.includes(k));
     const theirs = o.filter((k) => mine.includes(k));
-    if (mine.join() !== theirs.join()) return `${mine.join(',')} vs v10 ${theirs.join(',')}`;
+    if (mine.join() !== theirs.join()) return `${mine.join(',')} vs v11 ${theirs.join(',')}`;
   }
   return '';
 };
@@ -104,8 +104,8 @@ function paramProblems(list, where = '') {
   }
   return out;
 }
-const v10Consent = new Set(A.tag.map((t) => JSON.stringify(t.consentSettings)));
-const v10Firing = new Set(A.tag.map((t) => t.tagFiringOption).filter(Boolean));
+const baseConsent = new Set(A.tag.map((t) => JSON.stringify(t.consentSettings)));
+const baseFiring = new Set(A.tag.map((t) => t.tagFiringOption).filter(Boolean));
 const CONDITIONS = new Set(['EQUALS', 'CONTAINS', 'STARTS_WITH', 'ENDS_WITH', 'MATCH_REGEX', 'GREATER', 'LESS']);
 const changedNames = {
   tag: new Set([...CHANGES.tags.added, ...CHANGES.tags.modified]),
@@ -117,15 +117,15 @@ for (const kind of KINDS)
     check(/^\d{13}$/.test(x.fingerprint ?? ''), `${kind} «${x.name}»: a fingerprint (a millisecond timestamp string)`, String(x.fingerprint));
     if (!changedNames[kind].has(x.name)) continue;
     const r = ref[kind][x.type];
-    if (!check(r, `${kind} «${x.name}»: v10 has a ${kind} of type ${x.type} to copy its shape from`)) continue;
+    if (!check(r, `${kind} «${x.name}»: v11 has a ${kind} of type ${x.type} to copy its shape from`)) continue;
     const extra = EXTRA[kind]?.[x.type] ?? {};
     const keys = Object.keys(x);
     const unknown = keys.filter((k) => !r.fields.has(k) && !(k in extra));
-    check(!unknown.length, `${kind} «${x.name}»: no field v10 never exports for a ${x.type} ${kind}`, unknown.join(', '));
+    check(!unknown.length, `${kind} «${x.name}»: no field v11 never exports for a ${x.type} ${kind}`, unknown.join(', '));
     const missing = [...r.required].filter((k) => !keys.includes(k));
-    check(!missing.length, `${kind} «${x.name}»: every field each v10 ${x.type} ${kind} carries`, missing.join(', '));
+    check(!missing.length, `${kind} «${x.name}»: every field each v11 ${x.type} ${kind} carries`, missing.join(', '));
     const wrong = keys.filter((k) => (r.fields.get(k) ?? extra[k]) !== typeOf(x[k]));
-    check(!wrong.length, `${kind} «${x.name}»: field types as v10`, wrong.map((k) => `${k}=${typeOf(x[k])}`).join(', '));
+    check(!wrong.length, `${kind} «${x.name}»: field types as v11`, wrong.map((k) => `${k}=${typeOf(x[k])}`).join(', '));
     const clash = orderClash(keys.filter((k) => !(k in extra)), r.orders);
     check(!clash, `${kind} «${x.name}»: fields in GTM's export order`, clash);
     if ('filter' in x) check(keys.indexOf('filter') === keys.indexOf('customEventFilter') + 1, `${kind} «${x.name}»: filter right after customEventFilter`);
@@ -136,23 +136,22 @@ for (const kind of KINDS)
     const pclash = orderClash(pk, r.paramOrders);
     check(!pclash, `${kind} «${x.name}»: parameters in GTM's order`, pclash);
     const ptype = (x.parameter ?? []).filter((p) => r.paramTypes.has(p.key) && r.paramTypes.get(p.key) !== p.type);
-    check(!ptype.length, `${kind} «${x.name}»: parameter types as v10`, ptype.map((p) => `${p.key}=${p.type}`).join(', '));
+    check(!ptype.length, `${kind} «${x.name}»: parameter types as v11`, ptype.map((p) => `${p.key}=${p.type}`).join(', '));
     const probs = paramProblems(x.parameter);
     check(!probs.length, `${kind} «${x.name}»: parameters well formed (no empty value GTM would omit)`, probs.join('; '));
     if (kind === 'tag') {
       check(JSON.stringify(x.monitoringMetadata) === '{"type":"MAP"}', `tag «${x.name}»: monitoringMetadata as GTM exports it`);
-      check(v10Consent.has(JSON.stringify(x.consentSettings)), `tag «${x.name}»: consentSettings in a shape v10 uses`, JSON.stringify(x.consentSettings));
-      check(v10Firing.has(x.tagFiringOption), `tag «${x.name}»: tagFiringOption as v10`, x.tagFiringOption);
-      for (const s of x.setupTag ?? []) check(JSON.stringify(Object.keys(s)) === '["tagName"]', `tag «${x.name}»: setupTag entry { tagName } as v10`);
-      check(!x.blockingTriggerId, `tag «${x.name}»: no blocking trigger (the label is set)`);
-      if (x.priority) check(JSON.stringify(Object.keys(x.priority)) === '["type","value"]' && x.priority.type === 'INTEGER', `tag «${x.name}»: priority as v10`);
+      check(baseConsent.has(JSON.stringify(x.consentSettings)), `tag «${x.name}»: consentSettings in a shape v11 uses`, JSON.stringify(x.consentSettings));
+      check(baseFiring.has(x.tagFiringOption), `tag «${x.name}»: tagFiringOption as v11`, x.tagFiringOption);
+      for (const s of x.setupTag ?? []) check(JSON.stringify(Object.keys(s)) === '["tagName"]', `tag «${x.name}»: setupTag entry { tagName } as v11`);
+      if (x.priority) check(JSON.stringify(Object.keys(x.priority)) === '["type","value"]' && x.priority.type === 'INTEGER', `tag «${x.name}»: priority as v11`);
     }
     if (kind === 'trigger')
       for (const cond of [...(x.customEventFilter ?? []), ...(x.filter ?? [])]) {
         const args = (cond.parameter ?? []).map((p) => `${p.type}:${p.key}`).join();
         check(CONDITIONS.has(cond.type) && args === 'TEMPLATE:arg0,TEMPLATE:arg1' && JSON.stringify(Object.keys(cond)) === '["type","parameter"]', `trigger «${x.name}»: condition ${cond.type} as GTM writes one`, args);
       }
-    if (kind === 'variable' && x.formatValue) check(JSON.stringify(x.formatValue) === '{}', `variable «${x.name}»: formatValue {} as v10`);
+    if (kind === 'variable' && x.formatValue) check(JSON.stringify(x.formatValue) === '{}', `variable «${x.name}»: formatValue {} as v11`);
   }
 // every Custom HTML and Custom JavaScript parses (variables replaced by null, as GTM inlines a value)
 const js = (code) => code.replace(/\{\{[^}]+\}\}/g, 'null');
@@ -201,7 +200,7 @@ for (const t of B.tag) {
 const refs = (x) => [...JSON.stringify(x).matchAll(/\{\{([^}]+)\}\}/g)].map((m) => m[1]);
 for (const x of [...B.tag, ...B.trigger, ...B.variable]) for (const r of refs(x)) check(varNames.has(r), `«${x.name}»: variable {{${r}}} exists`);
 
-// ── the diff against v10, by name ──
+// ── the diff against v11, by name ──
 function diff(kind) {
   const a = new Map(A[kind].map((x) => [x.name, x]));
   const b = new Map(B[kind].map((x) => [x.name, x]));
@@ -228,7 +227,7 @@ for (const [kind, key] of [['tag', 'tags'], ['trigger', 'triggers'], ['variable'
   for (const x of A[kind]) {
     if (CHANGES[key].modified.includes(x.name)) continue;
     const y = B[kind].find((z) => z.name === x.name);
-    check(y && JSON.stringify(y) === JSON.stringify(x), `${kind} «${x.name}» unchanged from v10 (its ID and fingerprint too)`);
+    check(y && JSON.stringify(y) === JSON.stringify(x), `${kind} «${x.name}» unchanged from v11 (its ID and fingerprint too)`);
   }
 
 // ── the rules of the change ──
@@ -283,68 +282,6 @@ check(!B.trigger.some((t) => /no Ads label/.test(t.name)), 'no «no Ads label» 
 const purchaseLabels = B.tag.filter((t) => t.type === 'awct').map((t) => `${t.name}=${p(t, 'conversionLabel')}`);
 check(purchaseLabels.length === 3, 'three Google Ads conversion tags (Booking, Booking request, WhatsApp click)', purchaseLabels.join(' · '));
 
-// ── the three partial import files (the fallback when GTM refuses the full one) ──
-const EXPECT_PARTS = {
-  a: { added: { tag: 0, trigger: 2, variable: 2 }, modified: { tag: 4, trigger: 0, variable: 0 } },
-  b: { added: { tag: 5, trigger: 1, variable: 3 }, modified: { tag: 0, trigger: 0, variable: 0 } },
-  c: { added: { tag: 2, trigger: 2, variable: 7 }, modified: { tag: 0, trigger: 0, variable: 0 } },
-};
-const partsBuilt = buildParts(built);
-const seen = { tag: new Map(), trigger: new Map(), variable: new Map() };
-const newIds = { trigger: new Map(), variable: new Map() };
-for (const [k, p] of Object.entries(partsBuilt)) for (const x of p.containerVersion.trigger) newIds.trigger.set(x.triggerId, k);
-for (const [k, p] of Object.entries(partsBuilt)) for (const x of p.containerVersion.variable) if (!A.variable.some((y) => y.name === x.name)) newIds.variable.set(x.name, k);
-const v10Trig = new Set(A.trigger.map((t) => t.triggerId));
-const v10Tags = new Set(A.tag.map((t) => t.name));
-const v10Vars = new Set([...A.variable.map((v) => v.name), ...A.builtInVariable.map((v) => v.name), '_event']);
-for (const [k, part] of Object.entries(partsBuilt)) {
-  const name = `part ${k.toUpperCase()}`;
-  let text = '';
-  try {
-    text = readFileSync(PART_FILES[k], 'utf8');
-  } catch {
-    /* missing */
-  }
-  check(text === render(part), `${name}: ${PART_FILES[k].split(/[\\/]/).pop()} = the build output`);
-  if (text) rawOk(name, text);
-  const c = part.containerVersion;
-  check(JSON.stringify(Object.keys(part)) === JSON.stringify(Object.keys(v10)), `${name}: top-level fields = v10 export`);
-  const av = Object.keys(A);
-  const cv = Object.keys(c);
-  check(cv.every((x) => av.includes(x)) && cv.join() === av.filter((x) => cv.includes(x)).join() && ['tag', 'trigger', 'variable'].every((x) => cv.includes(x)), `${name}: containerVersion fields = v10's, in its order`, cv.join(', '));
-  check(!('description' in c) && !('gtagConfig' in c), `${name}: no description, no Google tag settings`);
-  check(JSON.stringify(c.builtInVariable) === JSON.stringify(A.builtInVariable), `${name}: built-in variables as v10`);
-  if (c.customTemplate) check(JSON.stringify(c.customTemplate) === JSON.stringify(A.customTemplate), `${name}: the template as v10`);
-  check(!c.tag.some((t) => t.type.startsWith('cvt_')) || Boolean(c.customTemplate), `${name}: a template its tags use travels with it`);
-  for (const kind of KINDS) {
-    const mine = PARTS[k][`${kind}s`];
-    check(JSON.stringify(c[kind].map((x) => x.name)) === JSON.stringify(mine), `${name}: its ${kind}s = PARTS.${k}`);
-    for (const x of c[kind]) {
-      check(JSON.stringify(x) === JSON.stringify(B[kind].find((y) => y.name === x.name)), `${name}: ${kind} «${x.name}» identical to the full file`);
-      check(changedNames[kind].has(x.name), `${name}: ${kind} «${x.name}» is a new or modified item (never an unchanged v10 one)`);
-      check(!seen[kind].has(x.name), `${name}: ${kind} «${x.name}» in one part only`, seen[kind].get(x.name));
-      seen[kind].set(x.name, k);
-    }
-    const added = c[kind].filter((x) => !A[kind].some((y) => y.name === x.name)).length;
-    const modified = c[kind].length - added;
-    check(added === EXPECT_PARTS[k].added[kind] && modified === EXPECT_PARTS[k].modified[kind], `${name}: ${kind}s added ${EXPECT_PARTS[k].added[kind]}, modified ${EXPECT_PARTS[k].modified[kind]}`, `${added} / ${modified}`);
-  }
-  // every reference resolves in this part or in v10 — never in another part's new items
-  const pTrig = new Set(c.trigger.map((t) => t.triggerId));
-  const pTags = new Set(c.tag.map((t) => t.name));
-  const pVars = new Set(c.variable.map((v) => v.name));
-  for (const t of c.tag) {
-    for (const id of [...(t.firingTriggerId ?? []), ...(t.blockingTriggerId ?? [])]) {
-      const ok = pTrig.has(id) || v10Trig.has(id) || BUILT_IN_TRIGGERS.has(id);
-      check(ok && (!newIds.trigger.has(id) || newIds.trigger.get(id) === k), `${name}: «${t.name}» trigger ${id} is in the part or in v10`);
-    }
-    for (const s of t.setupTag ?? []) check(pTags.has(s.tagName) || v10Tags.has(s.tagName), `${name}: «${t.name}» setup tag «${s.tagName}» is in the part or in v10`);
-  }
-  for (const x of [...c.tag, ...c.trigger, ...c.variable])
-    for (const r of refs(x)) check((pVars.has(r) || v10Vars.has(r)) && (!newIds.variable.has(r) || newIds.variable.get(r) === k), `${name}: «${x.name}» {{${r}}} is in the part or in v10`);
-}
-for (const kind of KINDS) check(seen[kind].size === changedNames[kind].size, `the three parts together = every new and modified ${kind}`, `${seen[kind].size} of ${changedNames[kind].size}`);
-
 // ── the site and the container agree ──
 function walk(dir, out = []) {
   for (const f of readdirSync(dir)) {
@@ -372,5 +309,5 @@ if (fails.length) {
 }
 const d = { tags: diff('tag'), triggers: diff('trigger'), variables: diff('variable') };
 console.log(
-  `gtm-container-check: ${pass} checks passed — import preview vs v10: added ${d.tags.added.length} tags / ${d.triggers.added.length} triggers / ${d.variables.added.length} variables, modified ${d.tags.modified.length} tags / ${d.triggers.modified.length} triggers / ${d.variables.modified.length} variables, deleted 0`,
+  `gtm-container-check: ${pass} checks passed — import preview vs v11: added ${d.tags.added.length} tags / ${d.triggers.added.length} triggers / ${d.variables.added.length} variables, modified ${d.tags.modified.length} tags / ${d.triggers.modified.length} triggers / ${d.variables.modified.length} variables, deleted 0`,
 );
