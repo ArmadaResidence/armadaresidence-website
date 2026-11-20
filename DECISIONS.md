@@ -4118,6 +4118,6 @@ Instant booking keeps its limit of 3 units per room type per night (unchanged).
   Analytics; like every Google tag it obeys Consent Mode itself — cookieless pings while analytics is denied — exactly
   as the other GA4 event tags, which are marked «No additional consent required»). Neither sends data to a vendor
   without a consent check; the warning is the label only. Clearing it = setting both to «No additional consent required»
-  (no change in behaviour) — waits for Ahmed's decision and for the version 11 export as the new baseline.
+  (no change in behaviour). **Ahmed, 20 Nov 2026: leave them as they are** — the warning stays, nothing changes.
 - **Breakfast (checked):** the decision of 15 Nov 2026 (adult SAR 25; children free up to 6, SAR 12.50 up to 12, the adult
   price above) has been on the site since commit `75b73df` (15 Nov 2026); live /policies/ (ar + en) shows it on 20 Nov.
