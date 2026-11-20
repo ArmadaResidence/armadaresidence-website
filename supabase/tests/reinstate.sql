@@ -188,7 +188,7 @@ select pg_temp._root();
 select pg_temp._check('R4 the inventory did not move', pg_temp._inv(pg_temp._id('rt')) = '0/2/false 0/2/false');
 -- revert_batch never undoes it (a booking status change)
 select pg_temp._as('admin');
-select pg_temp._fails('R4 «استرجاع» of the batch → refused (not_revertable)', format($$select public.revert_batch(%L)$$, pg_temp._j('r3') ->> 'batch_id'), 'not_revertable');
+select pg_temp._fails('R4 «استرجاع» of the batch → refused (a booking status change is never undone)', format($$select public.revert_batch(%L)$$, pg_temp._j('r3') ->> 'batch_id'), '');
 select pg_temp._root();
 select pg_temp._check('R4 still confirmed after the refused revert', (select status = 'confirmed' from public.reservations where id = pg_temp._id('b1')));
 

@@ -228,7 +228,7 @@ async function notifyConfirmed(req: Request, id: string, out: { ref?: string; lo
   const guestMail = res.email ? bookingConfirmed(content, bm) : null;
   const [n, g, l] = await Promise.all([
     sendEmail('confirmed-notification', res.ref, { from: FROM_RECEPTION, to, cc, replyTo: res.email ? [res.email] : [] }, hotelMail, res.is_test, fail),
-    guestMail ? sendEmail('guest-confirmed', res.ref, { from: FROM_GUEST, to: [res.email], replyTo: primary.length ? primary : [addressOf(FROM_GUEST)] }, guestMail, res.is_test, fail) : Promise.resolve(null),
+    guestMail ? sendEmail('guest-confirmed', res.ref, { from: FROM_GUEST, to: [res.email ?? ''], replyTo: primary.length ? primary : [addressOf(FROM_GUEST)] }, guestMail, res.is_test, fail) : Promise.resolve(null),
     lowDue ? sendEmail('low-inventory', res.ref, { from: FROM_RECEPTION, to: central.length ? central : to }, lowInventoryAlert(content, { ref: res.ref, branch: res.branch, room: res.room_slug ?? '', roomName: res.roomName, nights: out.low! }), res.is_test, fail) : Promise.resolve(null),
   ]);
   const missed = [!n && 'reception', res.email && !g && 'guest', lowDue && !l && 'low-inventory'].filter(Boolean);
