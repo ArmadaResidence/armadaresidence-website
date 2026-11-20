@@ -4097,3 +4097,27 @@ Instant booking keeps its limit of 3 units per room type per night (unchanged).
 - **Import prompt** (`docs/gtm-import-2026-11-19.md`) for the current state: cancel an open Import dialog; confirm the
   Ads action (never create it again); reuse the workspace with 0 changes; the full file first, the parts A, B, C only if
   it is refused; the label checked, not typed; Tag Assistant; stop before publishing.
+
+## 2026-11-20 — GTM version 11 live; GA4 and Google Ads settings (Ahmed, 20 Nov 2026)
+
+- **Published:** GTM-5JVH7R37 version 11 «December campaigns tracking», 20 Nov 2026 13:35, by the Armada Residence Google
+  account: the full `docs/gtm-container.json` (commit `3fa75d9`) imported into the workspace «December campaigns
+  tracking» with Merge → Overwrite conflicting. Preview: added 24, modified 6 — the four tags of the change list (Meta /
+  TikTok / Snap base, Clarity) and the two Google tag settings «Allow user-provided data capabilities» and «Manage
+  automatic event detection» (identical to v10: the file carries v10's `gtagConfig` as exported), deleted 0. Every Tag
+  Assistant step of `docs/gtm-import-2026-11-19.md` passed. The partial files A / B / C were not used. The repo's
+  baseline stays `docs/gtm-container-v10.json` until Ahmed exports version 11; a later change starts from that export.
+- **Google Ads:** «WhatsApp click» — Contact, Secondary, count One, value 1 SAR, label `JeZBCMeP3bsdEJuqkYBE`. Purchases:
+  one primary «Website booking» (Purchase); «Booking request» secondary — finding 7 (double counting) is not present.
+- **GA4** (property 541626231, stream G-675Y7W0H1T): enhanced measurement «Page changes based on browser history
+  events» OFF — an internal navigation is now counted once, by «GA4 - page_view (virtual, view transitions)».
+- **The consent warning on publish** («You have tags that have not been configured for consent (2)»): the two tags whose
+  consent setting is «not set», both unchanged since v10 — `Engagement - first interaction or 5 s` (Custom HTML on All
+  Pages: listens for the first scroll / pointer / touch / key or 5 s and pushes `first_engagement` to the page's own
+  dataLayer; no request, no cookie, no vendor) and `GA4 - club_join` (a GA4 event `club_join` { source } to Google
+  Analytics; like every Google tag it obeys Consent Mode itself — cookieless pings while analytics is denied — exactly
+  as the other GA4 event tags, which are marked «No additional consent required»). Neither sends data to a vendor
+  without a consent check; the warning is the label only. Clearing it = setting both to «No additional consent required»
+  (no change in behaviour) — waits for Ahmed's decision and for the version 11 export as the new baseline.
+- **Breakfast (checked):** the decision of 15 Nov 2026 (adult SAR 25; children free up to 6, SAR 12.50 up to 12, the adult
+  price above) has been on the site since commit `75b73df` (15 Nov 2026); live /policies/ (ar + en) shows it on 20 Nov.

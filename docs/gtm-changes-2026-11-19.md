@@ -10,6 +10,8 @@ for the December campaigns».
 The file is v10 plus these changes, so only the four modified tags conflict; «Rename conflicting» would leave a second
 copy of each base pixel and every page view would be sent twice. Nothing is deleted.
 
+**Live (20 Nov 2026):** published as **version 11 «December campaigns tracking»** at 13:35 by Ahmed, from the full file with Merge → Overwrite conflicting. The preview showed added 24, modified **6** — the 4 tags below plus the two Google tag settings («Allow user-provided data capabilities», «Manage automatic event detection»; the file carries v10's `gtagConfig` unchanged and GTM lists them as overwritten), deleted 0. Every Tag Assistant step passed. The parts A / B / C were not needed. On publish GTM warned «You have tags that have not been configured for consent (2)»: `Engagement - first interaction or 5 s` and `GA4 - club_join` (both v10, unchanged — see DECISIONS.md 2026-11-20). GA4: «Page changes based on browser history events» switched off the same day, so the double page_view of the audit is gone.
+
 **Expected import preview:** added **24** (7 tags, 5 triggers, 12 variables), modified **4** (4 tags), deleted **0**.
 
 **20 Nov 2026 — the first file was refused** («File format is invalid», nothing imported). It was valid JSON with every
