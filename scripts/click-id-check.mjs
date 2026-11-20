@@ -16,9 +16,19 @@
 //              stay plain
 //   nothing  — no ad cookie (_gcl*, _ga*, _gid, _fbp, _fbc, _ttp, _scid, _uet*, …) after landing and clicking with
 //              consent denied, and the click ID's value in no storage but sessionStorage armada-ad-click (19 Nov 2026)
+//   careers  — careers privacy (20 Nov 2026 — DECISIONS.md 2026-11-20 «Careers privacy»): gtm.js is the emulator of
+//              docs/gtm-container.json (scripts/gtm-emulator.mjs — the container's own triggers, exception triggers and
+//              consent run against the dataLayer the site pushes; a Meta / TikTok / Snapchat / Clarity tag that fires
+//              sends one request to its platform, aborted and counted). Ads and analytics granted: a landing on
+//              /careers/ (with and without a query string, and «قبول الكل» given there) sends none; from the home page,
+//              with the pixels already loaded, the footer link to /careers/ is a full page load (the page's own state
+//              gone, no router on it) and sends none either; every other page still sends its page views — a landing
+//              on each sample page, and the home page's client-side navigation to /airport-road/ (Meta, TikTok and
+//              Snapchat once more on virtual_page_view); leaving /careers/ for the home page brings them back
 //   node scripts/click-id-check.mjs [BASE_URL]
 import { chromium } from 'playwright';
 import { readFileSync } from 'node:fs';
+import { EMULATOR_HOSTS, emulatorScript } from './gtm-emulator.mjs';
 
 const BASE = (process.argv[2] || 'http://127.0.0.1:4330').replace(/\/$/, '');
 const PRE = new URL(BASE).pathname.replace(/\/$/, '');
@@ -39,13 +49,23 @@ const path = (lang, p) => `${BASE}${lang === 'en' ? '/en' : ''}${p}`;
 const browser = await chromium.launch({ channel: 'chrome' });
 
 /** a context with GTM stubbed and every gtm.js request recorded with its time */
-async function ctx({ phone = false, flag = true, consent = null } = {}) {
+const EMULATOR = emulatorScript();
+async function ctx({ phone = false, flag = true, consent = null, emulate = false } = {}) {
   const c = await browser.newContext({ viewport: phone ? { width: 375, height: 812 } : { width: 1440, height: 900 }, isMobile: phone, hasTouch: phone });
   const gtm = [];
+  const ads = [];
   await c.route(/googletagmanager\.com/, (r) => {
-    if (/\/gtm\.js/.test(r.request().url())) gtm.push(Date.now());
-    return r.fulfill({ status: 200, contentType: 'text/javascript', body: '' });
+    const isGtm = /\/gtm\.js/.test(r.request().url());
+    if (isGtm) gtm.push(Date.now());
+    return r.fulfill({ status: 200, contentType: 'text/javascript', body: emulate && isGtm ? EMULATOR : '' });
   });
+  // a pixel the emulated container fires: counted with its tag, event and page, then aborted (nothing reaches a platform)
+  c.on('request', (r) => {
+    if (!EMULATOR_HOSTS.test(r.url())) return;
+    const q = new URL(r.url()).searchParams;
+    ads.push({ host: new URL(r.url()).hostname, tag: q.get('tag'), event: q.get('event'), path: q.get('path') });
+  });
+  await c.route(EMULATOR_HOSTS, (r) => r.abort());
   // the pixels' and Google's own endpoints are never reached (nothing loads them while gtm.js is a stub; belt and braces)
   await c.route(/(google-analytics\.com|doubleclick\.net|googleadservices\.com|facebook\.(com|net)|tiktok\.com|snapchat\.com|sc-static\.net|bing\.com)/, (r) => r.abort());
   await c.route('https://wa.me/**', (r) => r.fulfill({ status: 200, contentType: 'text/html', body: '<title>wa</title>' }));
@@ -59,7 +79,7 @@ async function ctx({ phone = false, flag = true, consent = null } = {}) {
     },
     { flag, consent },
   );
-  return { c, gtm };
+  return { c, gtm, ads };
 }
 
 /** goto and the time of the load event (Node clock, like the gtm.js request times) */
@@ -213,6 +233,102 @@ for (const [consent, carried, label] of [
   const h = await hrefAfterPress(page, internal('ar'));
   check(h === `${PRE}/contact/`, 'ar: no click ID on the page → links stay as they are', String(h));
   await c.close();
+}
+
+// ── careers: no ad pixel and no Clarity on /careers/, the page views everywhere else (20 Nov 2026) ──
+{
+  const ALL = { v: VERSION, analytics: true, ads: true };
+  const engage = async (page) => {
+    await page.waitForFunction(() => !!window.__gtmEmulator, null, { timeout: 8000 });
+    await page.mouse.move(700, 500);
+    await page.mouse.down();
+    await page.mouse.up();
+    await page.waitForTimeout(600);
+  };
+  const platforms = (list) => [...new Set(list.map((x) => x.host))].sort().join(', ');
+  const EVERY = ['analytics.tiktok.com', 'connect.facebook.net', 'tr.snapchat.com', 'www.clarity.ms'].join(', ');
+  const pv = (list) => list.filter((x) => / - base$/.test(x.tag)).length;
+  const home = (lang) => `${PRE}${lang === 'en' ? '/en' : ''}/`;
+  for (const lang of ['ar', 'en']) {
+    // a landing on /careers/ with the choice stored, with and without a query string (a click ID loads GTM at once)
+    for (const q of ['', '?utm_source=meta&utm_campaign=jobs', '?gclid=careers-test']) {
+      const { c, ads } = await ctx({ consent: ALL, emulate: true });
+      const page = await c.newPage();
+      await land(page, `${path(lang, '/careers/')}${q}`);
+      await engage(page);
+      await page.waitForTimeout(q ? 300 : 4500); // past the 5 s timer of first_engagement as well
+      const fired = await page.evaluate(() => window.__gtmEmulator.fired.map((x) => x.tag));
+      const d = await page.evaluate(() => (window.dataLayer || []).filter((x) => x && x.event).map((x) => x.event));
+      check(d.includes('gtm.js') && d.includes('first_engagement'), `${lang}: /careers/${q} — the emulated container ran (gtm.js, first_engagement)`, d.join(', '));
+      check(ads.length === 0 && !fired.some((t) => /Pixel|Clarity/.test(t)), `${lang}: /careers/${q} with ads + analytics granted → no request to Meta, TikTok, Snapchat or Clarity`, JSON.stringify(ads));
+      await c.close();
+    }
+    // a first visit on /careers/: «قبول الكل» there (consent_granted) and the engagement → still nothing
+    {
+      const { c, ads } = await ctx({ emulate: true });
+      await c.addInitScript(() => {
+        try {
+          localStorage.setItem('armada-consent-test', '1');
+        } catch {}
+      });
+      const page = await c.newPage();
+      await land(page, path(lang, '/careers/'));
+      await engage(page);
+      await page.click('[data-cookie-accept]');
+      await page.waitForTimeout(600);
+      const d = await page.evaluate(() => (window.dataLayer || []).filter((x) => x && x.event).map((x) => x.event));
+      check(d.includes('consent_granted'), `${lang}: «قبول الكل» on /careers/ pushes consent_granted`, d.join(', '));
+      check(ads.length === 0, `${lang}: «قبول الكل» on /careers/ → no request to Meta, TikTok, Snapchat or Clarity`, JSON.stringify(ads));
+      await c.close();
+    }
+    // from the home page, the pixels loaded, to /careers/ by the footer link: a full page load, and nothing there
+    {
+      const { c, ads } = await ctx({ consent: ALL, emulate: true });
+      const page = await c.newPage();
+      await land(page, path(lang, '/'));
+      await engage(page);
+      check(platforms(ads) === EVERY, `${lang}: the home page with ads + analytics granted → Meta, TikTok, Snapchat and Clarity`, platforms(ads));
+      // a client-side navigation first: the page views still follow it
+      const before = pv(ads);
+      await page.locator(`main a[href="${home(lang)}airport-road/"]`).filter({ visible: true }).first().click();
+      await page.waitForURL(/\/airport-road\/$/, { timeout: 10000 });
+      await page.waitForTimeout(600);
+      const routed = await page.evaluate(() => window.armadaPageViewId);
+      check(routed === 2 && pv(ads) - before === 3, `${lang}: home → /airport-road/ (client-side) → one more Meta, TikTok and Snapchat page view`, `page view id ${routed}, base tags +${pv(ads) - before}`);
+      await page.evaluate(() => (window.__armadaCareersMark = 1));
+      const n = ads.length;
+      const link = page.locator(`footer a[href="${home(lang)}careers/"]`).first();
+      await link.scrollIntoViewIfNeeded();
+      await link.click();
+      await page.waitForURL(/\/careers\/$/, { timeout: 10000 });
+      await page.waitForLoadState('load');
+      const st = await page.evaluate(() => ({
+        mark: window.__armadaCareersMark === 1,
+        nav: performance.getEntriesByType('navigation')[0]?.type,
+        router: !!document.querySelector('meta[name="astro-view-transitions-enabled"]'),
+        pvid: window.armadaPageViewId || 1,
+      }));
+      check(!st.mark && st.nav === 'navigate' && !st.router && st.pvid === 1, `${lang}: the link to /careers/ is a full page load (nothing of the earlier page left, no router on /careers/)`, JSON.stringify(st));
+      await engage(page);
+      await page.waitForTimeout(4500);
+      check(ads.length === n, `${lang}: /careers/ after the home page (pixels loaded there) → no request to Meta, TikTok, Snapchat or Clarity`, JSON.stringify(ads.slice(n)));
+      // leaving /careers/ for the home page: the page views come back
+      await page.locator(`header a[href="${home(lang)}"]`).filter({ visible: true }).first().click();
+      await page.waitForURL((u) => u.pathname === home(lang), { timeout: 10000 });
+      await engage(page);
+      check(platforms(ads.slice(n)) === EVERY, `${lang}: back on the home page → Meta, TikTok, Snapchat and Clarity again`, platforms(ads.slice(n)));
+      await c.close();
+    }
+  }
+  // every other page: a landing with ads + analytics granted sends the four platforms' page views as before
+  for (const [lang, p] of [['ar', '/airport-road/'], ['ar', '/club/'], ['ar', '/booking/'], ['ar', '/policies/'], ['ar', '/partners/enquiry/'], ['en', '/'], ['en', '/shafa-road/'], ['en', '/contact/']]) {
+    const { c, ads } = await ctx({ consent: ALL, emulate: true });
+    const page = await c.newPage();
+    await land(page, path(lang, p));
+    await engage(page);
+    check(platforms(ads) === EVERY && pv(ads) === 3, `${lang}: ${p} → Meta, TikTok and Snapchat page views and Clarity`, `${platforms(ads)}; base tags ${pv(ads)}`);
+    await c.close();
+  }
 }
 
 await browser.close();

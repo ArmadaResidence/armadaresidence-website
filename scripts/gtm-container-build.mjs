@@ -34,15 +34,83 @@ const ordered = (o, order) => {
   if (unknown.length) throw new Error(`«${o.name}»: fields GTM does not export here: ${unknown.join(', ')}`);
   return Object.fromEntries(order.filter((k) => k in o).map((k) => [k, o[k]]));
 };
+// ── Careers privacy (Ahmed, 20 Nov 2026 — DECISIONS.md 2026-11-20 «Careers privacy») ─────────────────────────────
+// Meta and TikTok automatic advanced matching read email / phone fields on any page their pixel runs on; the careers
+// notice (approved by the legal advisor) names no ad platform. So no Meta, TikTok or Snapchat tag and no Clarity runs
+// on /careers/ or /en/careers/: one exception trigger — every event (regex .*, so gtm.js too: it blocks All Pages
+// as well as the custom events) whose Page Path is a careers page — on every such tag. Page Path never carries the
+// query string, so ?utm=… is covered. GA4 and the Google Ads tags are untouched (job_application carries nothing
+// personal; the Google tag's user-provided data is manual only, never read from forms). The site half: /careers/ is
+// always a full page load (Base.astro), so a pixel loaded on an earlier page is never in memory there.
+export const CAREERS_TRIGGER = 'Exception - careers pages';
+export const CAREERS_PATH = String.raw`^/(en/)?careers(/|/index\.html)?$`;
+/** the tags the exception covers: every Meta, TikTok and Snapchat tag (Custom HTML calling their pixel) and Clarity */
+export const isPrivacyTag = (t) => (t.type === 'html' && /fbq|ttq|snaptr/.test(JSON.stringify(t.parameter))) || t.name === 'Clarity';
+
 /** The change list on top of version 11: before → after, by name (the names are GTM's identity across the import). */
 export const CHANGES = {
   variables: { added: [], modified: [] },
-  triggers: { added: [], modified: [] },
-  tags: { added: [], modified: [] },
+  triggers: { added: [CAREERS_TRIGGER], modified: [] },
+  tags: {
+    added: [],
+    modified: [
+      'Meta Pixel - base',
+      'Meta Pixel - Lead on booking_request',
+      'Meta Pixel - Purchase on booking_confirmed',
+      'Meta Pixel - Lead on partner_enquiry',
+      'Meta Pixel - CompleteRegistration on club_join',
+      'Meta Pixel - Contact on whatsapp_click',
+      'TikTok Pixel - base',
+      'TikTok Pixel - SubmitForm on booking_request',
+      'TikTok Pixel - Purchase on booking_confirmed',
+      'TikTok Pixel - SubmitForm on partner_enquiry',
+      'TikTok Pixel - CompleteRegistration on club_join',
+      'TikTok Pixel - Contact on whatsapp_click',
+      'Snap Pixel - base',
+      'Snap Pixel - SIGN_UP on booking_request',
+      'Snap Pixel - PURCHASE on booking_confirmed',
+      'Snap Pixel - SIGN_UP on partner_enquiry',
+      'Snap Pixel - SIGN_UP on club_join',
+      'Snap Pixel - CUSTOM_EVENT_1 on whatsapp_click',
+      'Clarity',
+    ],
+  },
 };
 
+const cond = (type, arg0, arg1) => ({ type, parameter: [{ type: 'TEMPLATE', key: 'arg0', value: arg0 }, { type: 'TEMPLATE', key: 'arg1', value: arg1 }] });
+
 export function build(base) {
-  return structuredClone(base);
+  const doc = structuredClone(base);
+  const c = doc.containerVersion;
+  const acct = { accountId: c.accountId, containerId: c.containerId };
+  doc.exportTime = '2026-11-20 21:00:00';
+  c.name = 'Careers privacy';
+  c.description = '20 Nov 2026 — no Meta, TikTok, Snapchat or Clarity tag on /careers/ and /en/careers/ (one exception trigger)';
+  // one fingerprint per new or changed item, a millisecond timestamp as GTM writes it (deterministic: the build is checked)
+  let fp = Date.UTC(2026, 10, 20, 18, 0, 0);
+  const fingerprint = () => String(fp++);
+  const used = [...c.tag, ...c.trigger, ...c.variable, ...(c.customTemplate ?? [])].map((x) => Number(x.tagId ?? x.triggerId ?? x.variableId ?? x.templateId));
+  const triggerId = String(Math.max(...used) + 1);
+
+  c.trigger.push(
+    ordered(
+      {
+        ...acct,
+        triggerId,
+        name: CAREERS_TRIGGER,
+        type: 'CUSTOM_EVENT',
+        customEventFilter: [cond('MATCH_REGEX', '{{_event}}', '.*')],
+        filter: [cond('MATCH_REGEX', '{{Page Path}}', CAREERS_PATH)],
+        fingerprint: fingerprint(),
+      },
+      TRIGGER_ORDER,
+    ),
+  );
+  for (const t of c.tag.filter(isPrivacyTag)) {
+    const out = ordered({ ...t, blockingTriggerId: [triggerId], fingerprint: fingerprint() }, TAG_ORDER);
+    c.tag[c.tag.indexOf(t)] = out;
+  }
+  return doc;
 }
 
 // as GTM writes an export: 4-space indent, UTF-8 without BOM, no final newline

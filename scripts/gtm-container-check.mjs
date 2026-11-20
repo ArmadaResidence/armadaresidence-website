@@ -15,12 +15,15 @@
 //     order of the v11 items of its kind and type (no extra field but a tag's blockingTriggerId and a trigger's
 //     filter, nothing missing), a fingerprint on every item, the version's fields exactly v11's, no BOM, no CR, every
 //     Custom HTML / Custom JavaScript parses;
+//   - careers privacy (20 Nov 2026): one exception trigger «Exception - careers pages» (every event, Page Path =
+//     /careers/ or /en/careers/) on every Meta, TikTok and Snapchat tag and on Clarity — 19 tags, nothing else changed
+//     on them; no other tag blocked; GA4 and Google Ads as in v11; the path rule matches the careers pages only;
 //   - every custom event the container listens to is one the site pushes (src/), and every whatsapp_click the site
 //     pushes carries destination, page_path and package.
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import vm from 'node:vm';
-import { BASE, CHANGES, OUT, WHATSAPP_LABEL, build, render } from './gtm-container-build.mjs';
+import { BASE, CAREERS_PATH, CAREERS_TRIGGER, CHANGES, OUT, WHATSAPP_LABEL, build, isPrivacyTag, render } from './gtm-container-build.mjs';
 
 let pass = 0;
 const fails = [];
@@ -282,6 +285,39 @@ check(!B.trigger.some((t) => /no Ads label/.test(t.name)), 'no «no Ads label» 
 const purchaseLabels = B.tag.filter((t) => t.type === 'awct').map((t) => `${t.name}=${p(t, 'conversionLabel')}`);
 check(purchaseLabels.length === 3, 'three Google Ads conversion tags (Booking, Booking request, WhatsApp click)', purchaseLabels.join(' · '));
 
+// ── careers privacy (20 Nov 2026) ──
+{
+  const ex = B.trigger.filter((t) => t.name === CAREERS_TRIGGER);
+  const t = ex[0];
+  check(ex.length === 1, `one trigger «${CAREERS_TRIGGER}»`);
+  if (t) {
+    const c0 = t.customEventFilter ?? [];
+    const f0 = t.filter ?? [];
+    const arg = (c, k) => c.parameter.find((p) => p.key === k)?.value;
+    check(t.type === 'CUSTOM_EVENT' && c0.length === 1 && c0[0].type === 'MATCH_REGEX' && arg(c0[0], 'arg0') === '{{_event}}' && arg(c0[0], 'arg1') === '.*', 'the careers exception fires on every event (regex .*, gtm.js included)');
+    check(f0.length === 1 && f0[0].type === 'MATCH_REGEX' && arg(f0[0], 'arg0') === '{{Page Path}}' && arg(f0[0], 'arg1') === CAREERS_PATH, 'the careers exception: Page Path matches the careers pages', JSON.stringify(f0));
+    check(B.builtInVariable.some((v) => v.type === 'PAGE_PATH' && v.name === 'Page Path'), 'the built-in variable Page Path is enabled');
+    const re = new RegExp(CAREERS_PATH);
+    for (const p of ['/careers/', '/en/careers/', '/careers', '/en/careers', '/careers/index.html', '/en/careers/index.html']) check(re.test(p), `the careers rule matches ${p}`);
+    for (const p of ['/', '/en/', '/airport-road/', '/partners/enquiry/', '/club/', '/booking/', '/careers-x/', '/en/careers/apply/', '/blog/careers/', '/dining/lario/', '/policies/'])
+      check(!re.test(p), `the careers rule leaves ${p} alone`);
+    const covered = B.tag.filter(isPrivacyTag);
+    check(same(covered.map((x) => x.name), CHANGES.tags.modified), 'the tags covered = the change list (every Meta / TikTok / Snapchat tag + Clarity)', covered.map((x) => x.name).join(', '));
+    const vendor = (re) => covered.filter((x) => re.test(JSON.stringify(x.parameter))).length;
+    check(covered.length === 19 && vendor(/fbq\(/) === 6 && vendor(/ttq\./) === 6 && vendor(/snaptr\(/) === 6, '19 tags: 6 Meta, 6 TikTok, 6 Snapchat, Clarity', `${covered.length}: ${vendor(/fbq\(/)} / ${vendor(/ttq\./)} / ${vendor(/snaptr\(/)}`);
+    for (const x of covered) {
+      check(JSON.stringify(x.blockingTriggerId) === JSON.stringify([t.triggerId]), `«${x.name}»: blocked on the careers pages`, JSON.stringify(x.blockingTriggerId));
+      const before = A.tag.find((y) => y.name === x.name);
+      const { fingerprint: _a, blockingTriggerId: _b, ...rest } = x;
+      const { fingerprint: _c, ...restBefore } = before ?? {};
+      check(before && JSON.stringify(rest) === JSON.stringify(restBefore), `«${x.name}»: nothing else changed (ID, code, triggers, consent as v11)`);
+    }
+    const others = B.tag.filter((x) => !isPrivacyTag(x));
+    check(others.every((x) => !x.blockingTriggerId), 'no other tag has an exception (GA4, Google Ads, the engagement timer as v11)', others.filter((x) => x.blockingTriggerId).map((x) => x.name).join(', '));
+    check(B.tag.filter((x) => /fbq|ttq|snaptr|clarity/i.test(JSON.stringify(x))).every(isPrivacyTag), 'no Meta / TikTok / Snapchat / Clarity code outside the covered tags');
+  }
+}
+
 // ── the site and the container agree ──
 function walk(dir, out = []) {
   for (const f of readdirSync(dir)) {
@@ -293,7 +329,7 @@ function walk(dir, out = []) {
 }
 const src = walk(resolve('src')).join('\n') + readFileSync(resolve('src/layouts/Base.astro'), 'utf8');
 const pushed = new Set([...src.matchAll(/event:\s*([^,\n}]+)/g)].flatMap((m) => [...m[1].matchAll(/'([a-z_]+)'/g)].map((x) => x[1])));
-for (const t of B.trigger.filter((x) => x.type === 'CUSTOM_EVENT')) {
+for (const t of B.trigger.filter((x) => x.type === 'CUSTOM_EVENT' && x.customEventFilter[0].type === 'EQUALS')) {
   const ev = t.customEventFilter[0].parameter.find((x) => x.key === 'arg1').value;
   check(pushed.has(ev) || (ev === 'first_engagement' && /first_engagement/.test(htmlOf(tag('Engagement - first interaction or 5 s')))), `«${t.name}»: the site pushes ${ev}`);
 }

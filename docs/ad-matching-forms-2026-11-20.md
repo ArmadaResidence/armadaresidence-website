@@ -1,6 +1,6 @@
 # Automatic advanced matching and the site's forms (20 Nov 2026)
 
-Report only — nothing on the site or in GTM changed. Context: Meta and TikTok automatic advanced matching (AAM) are
+Report only — nothing on the site or in GTM changed. **Decided the same day: option B, widened to every Meta, TikTok and Snapchat tag and Clarity — built in `docs/gtm-import-careers-privacy.md` (DECISIONS.md 2026-11-20 «Careers privacy»).** Context: Meta and TikTok automatic advanced matching (AAM) are
 ON with every field (Ahmed, checked in the ad accounts on 20 Nov 2026). With AAM the pixel looks for recognisable form
 fields on the page it runs on (email, phone, name, city, country), hashes them in the browser and sends them with the
 events it fires — the GTM tags' own events and the pixel's automatic events (Meta's button-click event, which is on by

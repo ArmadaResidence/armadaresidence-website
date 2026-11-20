@@ -89,6 +89,11 @@ const ld = jsonld.map((j) => JSON.stringify(j).replace(/</g, '\\u003c'));
 // shared room media, header kept still). The legacy sections keep full page loads so their markup and scripts are
 // untouched: a page without the router falls back to a normal navigation in both directions.
 const legacy = path === '/discover-taif/' || path.startsWith('/partners/');
+// Careers privacy (Ahmed, 20 Nov 2026 — DECISIONS.md 2026-11-20 «Careers privacy»): /careers/ has no router either, so
+// every way in is a full page load (the router fetches it, finds no router and loads it for real) — an ad pixel loaded
+// on an earlier page is never in memory there; GTM blocks every Meta / TikTok / Snapchat tag and Clarity on it.
+// Leaving it is a full load too. Its booking drawer and everything else stay as on any site page.
+const fullLoad = legacy || path === '/careers/';
 // Font preload (performance pass, 30 Oct 2026): only the weight the LCP text uses — the body 400 on every Arabic page
 // (home, branch, room, /offers/, /careers/ measured), the one variable Manrope file on English pages. Preloading 400 +
 // 600 + 700 (11 Oct) put three fonts ahead of the stylesheet on a slow connection; the other weights are fetched when
@@ -196,7 +201,7 @@ const preloadFonts = locale === 'ar' ? (path === '/' ? [fontAr400, fontAr600, fo
     <link rel="apple-touch-icon" href={icons.apple} sizes="180x180" />
     <link rel="manifest" href="/site.webmanifest" />
     <link rel="sitemap" href="/sitemap-index.xml" />
-    {!legacy && <ClientRouter fallback="animate" />}
+    {!fullLoad && <ClientRouter fallback="animate" />}
     <slot name="head" />
     {ld.map((json) => <script type="application/ld+json" set:html={json} />)}
     <script is:inline define:vars={{ consentVersion: cookieConsent.version, consentDays: cookieConsent.max_age_days }}>

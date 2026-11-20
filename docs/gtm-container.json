@@ -1,13 +1,13 @@
 {
     "exportFormatVersion": 2,
-    "exportTime": "2026-11-20 17:37:20",
+    "exportTime": "2026-11-20 21:00:00",
     "containerVersion": {
         "path": "accounts/6382086279/containers/266900186/versions/11",
         "accountId": "6382086279",
         "containerId": "266900186",
         "containerVersionId": "11",
-        "name": "December campaigns tracking",
-        "description": "20 Nov 2026 — pixels fire after consent, click IDs, whatsapp_click (GA4, Meta, TikTok, Snap, Google Ads), offer_view, no_availability",
+        "name": "Careers privacy",
+        "description": "20 Nov 2026 — no Meta, TikTok, Snapchat or Clarity tag on /careers/ and /en/careers/ (one exception trigger)",
         "container": {
             "path": "accounts/6382086279/containers/266900186",
             "accountId": "6382086279",
@@ -63,13 +63,16 @@
                         "value": "false"
                     }
                 ],
-                "fingerprint": "1795168952052",
+                "fingerprint": "1795197600001",
                 "firingTriggerId": [
                     "38",
                     "14",
                     "32",
                     "73",
                     "8"
+                ],
+                "blockingTriggerId": [
+                    "93"
                 ],
                 "tagFiringOption": "ONCE_PER_EVENT",
                 "monitoringMetadata": {
@@ -279,9 +282,12 @@
                         "value": "false"
                     }
                 ],
-                "fingerprint": "1794304305117",
+                "fingerprint": "1795197600002",
                 "firingTriggerId": [
                     "14"
+                ],
+                "blockingTriggerId": [
+                    "93"
                 ],
                 "setupTag": [
                     {
@@ -481,9 +487,12 @@
                         "value": "false"
                     }
                 ],
-                "fingerprint": "1794313603139",
+                "fingerprint": "1795197600003",
                 "firingTriggerId": [
                     "14"
+                ],
+                "blockingTriggerId": [
+                    "93"
                 ],
                 "setupTag": [
                     {
@@ -692,13 +701,16 @@
                         "value": "false"
                     }
                 ],
-                "fingerprint": "1795168952052",
+                "fingerprint": "1795197600004",
                 "firingTriggerId": [
                     "14",
                     "38",
                     "32",
                     "73",
                     "8"
+                ],
+                "blockingTriggerId": [
+                    "93"
                 ],
                 "tagFiringOption": "ONCE_PER_EVENT",
                 "monitoringMetadata": {
@@ -740,13 +752,16 @@
                         "value": "false"
                     }
                 ],
-                "fingerprint": "1795168952051",
+                "fingerprint": "1795197600005",
                 "firingTriggerId": [
                     "14",
                     "38",
                     "32",
                     "73",
                     "8"
+                ],
+                "blockingTriggerId": [
+                    "93"
                 ],
                 "tagFiringOption": "ONCE_PER_EVENT",
                 "monitoringMetadata": {
@@ -783,9 +798,12 @@
                         "value": "false"
                     }
                 ],
-                "fingerprint": "1794313676864",
+                "fingerprint": "1795197600006",
                 "firingTriggerId": [
                     "14"
+                ],
+                "blockingTriggerId": [
+                    "93"
                 ],
                 "setupTag": [
                     {
@@ -958,9 +976,12 @@
                         "value": "false"
                     }
                 ],
-                "fingerprint": "1794304265183",
+                "fingerprint": "1795197600007",
                 "firingTriggerId": [
                     "32"
+                ],
+                "blockingTriggerId": [
+                    "93"
                 ],
                 "setupTag": [
                     {
@@ -1002,9 +1023,12 @@
                         "value": "false"
                     }
                 ],
-                "fingerprint": "1794313642922",
+                "fingerprint": "1795197600008",
                 "firingTriggerId": [
                     "32"
+                ],
+                "blockingTriggerId": [
+                    "93"
                 ],
                 "setupTag": [
                     {
@@ -1046,9 +1070,12 @@
                         "value": "false"
                     }
                 ],
-                "fingerprint": "1794313569376",
+                "fingerprint": "1795197600009",
                 "firingTriggerId": [
                     "32"
+                ],
+                "blockingTriggerId": [
+                    "93"
                 ],
                 "setupTag": [
                     {
@@ -1172,10 +1199,13 @@
                         "value": "zawy5ld6k1"
                     }
                 ],
-                "fingerprint": "1795168952050",
+                "fingerprint": "1795197600010",
                 "firingTriggerId": [
                     "2147479553",
                     "83"
+                ],
+                "blockingTriggerId": [
+                    "93"
                 ],
                 "tagFiringOption": "ONCE_PER_EVENT",
                 "monitoringMetadata": {
@@ -1212,9 +1242,12 @@
                         "value": "false"
                     }
                 ],
-                "fingerprint": "1794304408790",
+                "fingerprint": "1795197600011",
                 "firingTriggerId": [
                     "19"
+                ],
+                "blockingTriggerId": [
+                    "93"
                 ],
                 "setupTag": [
                     {
@@ -1256,9 +1289,12 @@
                         "value": "false"
                     }
                 ],
-                "fingerprint": "1794304484941",
+                "fingerprint": "1795197600012",
                 "firingTriggerId": [
                     "41"
+                ],
+                "blockingTriggerId": [
+                    "93"
                 ],
                 "setupTag": [
                     {
@@ -1300,9 +1336,12 @@
                         "value": "false"
                     }
                 ],
-                "fingerprint": "1794304643233",
+                "fingerprint": "1795197600013",
                 "firingTriggerId": [
                     "19"
+                ],
+                "blockingTriggerId": [
+                    "93"
                 ],
                 "setupTag": [
                     {
@@ -1344,9 +1383,12 @@
                         "value": "false"
                     }
                 ],
-                "fingerprint": "1794304699033",
+                "fingerprint": "1795197600014",
                 "firingTriggerId": [
                     "41"
+                ],
+                "blockingTriggerId": [
+                    "93"
                 ],
                 "setupTag": [
                     {
@@ -1388,9 +1430,12 @@
                         "value": "false"
                     }
                 ],
-                "fingerprint": "1794304828723",
+                "fingerprint": "1795197600015",
                 "firingTriggerId": [
                     "19"
+                ],
+                "blockingTriggerId": [
+                    "93"
                 ],
                 "setupTag": [
                     {
@@ -1432,9 +1477,12 @@
                         "value": "false"
                     }
                 ],
-                "fingerprint": "1794304878094",
+                "fingerprint": "1795197600016",
                 "firingTriggerId": [
                     "41"
+                ],
+                "blockingTriggerId": [
+                    "93"
                 ],
                 "setupTag": [
                     {
@@ -1722,9 +1770,12 @@
                         "value": "false"
                     }
                 ],
-                "fingerprint": "1795168951967",
+                "fingerprint": "1795197600017",
                 "firingTriggerId": [
                     "75"
+                ],
+                "blockingTriggerId": [
+                    "93"
                 ],
                 "setupTag": [
                     {
@@ -1952,9 +2003,12 @@
                         "value": "false"
                     }
                 ],
-                "fingerprint": "1795168951968",
+                "fingerprint": "1795197600018",
                 "firingTriggerId": [
                     "75"
+                ],
+                "blockingTriggerId": [
+                    "93"
                 ],
                 "setupTag": [
                     {
@@ -2082,9 +2136,12 @@
                         "value": "false"
                     }
                 ],
-                "fingerprint": "1795168951969",
+                "fingerprint": "1795197600019",
                 "firingTriggerId": [
                     "75"
+                ],
+                "blockingTriggerId": [
+                    "93"
                 ],
                 "setupTag": [
                     {
@@ -2512,6 +2569,48 @@
                     }
                 ],
                 "fingerprint": "1795168951969"
+            },
+            {
+                "accountId": "6382086279",
+                "containerId": "266900186",
+                "triggerId": "93",
+                "name": "Exception - careers pages",
+                "type": "CUSTOM_EVENT",
+                "customEventFilter": [
+                    {
+                        "type": "MATCH_REGEX",
+                        "parameter": [
+                            {
+                                "type": "TEMPLATE",
+                                "key": "arg0",
+                                "value": "{{_event}}"
+                            },
+                            {
+                                "type": "TEMPLATE",
+                                "key": "arg1",
+                                "value": ".*"
+                            }
+                        ]
+                    }
+                ],
+                "filter": [
+                    {
+                        "type": "MATCH_REGEX",
+                        "parameter": [
+                            {
+                                "type": "TEMPLATE",
+                                "key": "arg0",
+                                "value": "{{Page Path}}"
+                            },
+                            {
+                                "type": "TEMPLATE",
+                                "key": "arg1",
+                                "value": "^/(en/)?careers(/|/index\\.html)?$"
+                            }
+                        ]
+                    }
+                ],
+                "fingerprint": "1795197600000"
             }
         ],
         "variable": [

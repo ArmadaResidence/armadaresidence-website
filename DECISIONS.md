@@ -4132,3 +4132,38 @@ Instant booking keeps its limit of 3 units per room type per night (unchanged).
   `docs/ad-matching-forms-2026-11-20.md`. Recommended: an exception trigger in GTM on the three base pixel tags for
   /careers/ **and** /careers/ always a full page load (out of `ClientRouter`). Waiting for Ahmed; nothing changed on
   the site or in GTM.
+
+## 2026-11-20 — Careers privacy: no ad pixel and no Clarity on /careers/; version 11 the GTM base (Ahmed, 20 Nov 2026)
+
+- **Why.** Meta and TikTok automatic advanced matching are ON with every field, so their pixels read the email and phone
+  typed into a form on any page they run on. The careers privacy notice (the legal advisor's, 29 Oct 2026) names no ad
+  platform. Ahmed chose option B of `docs/ad-matching-forms-2026-11-20.md`, widened: every Meta, TikTok and Snapchat
+  tag and Clarity, not only the base tags.
+- **Version 11 is the base.** Ahmed's export of the live version 11 «December campaigns tracking» (Downloads,
+  `GTM-5JVH7R37_v11.json`, 20 Nov 2026) holds 90 items: 35 tags, 12 triggers, 35 variables + 5 built-in, 2 Google tag
+  settings, 1 template — confirmed. It is `docs/gtm-container-v11.json` (never edited); the repo container was made
+  exactly v11 in its own commit (`479dd25`); `scripts/gtm-container-build.mjs` builds from it and
+  `gtm-container-check` holds the counts and the standing rules against it. v10 and the three v10-based partial files
+  are history (the partial files removed).
+- **GTM (built, not imported).** One trigger «Exception - careers pages»: Custom Event, event name `.*` with regex
+  matching (every event, gtm.js too, so it also blocks All Pages), condition `Page Path` matches
+  `^/(en/)?careers(/|/index\.html)?$` — the path never carries the query string. It is the exception on 19 tags: the
+  6 Meta, 6 TikTok and 6 Snapchat tags (base, conversions, leads, registrations, WhatsApp Contact) and Clarity; nothing
+  else on them changes. GA4 stays (job_application carries nothing personal) and Google Ads too — the Google tag's
+  user-provided data setting (`ogt_1p_data_v2`) is on with automatic detection off, so it never reads forms. Import
+  preview: added 1 (the trigger), modified 19 (the tags), deleted 0; the workspace then shows 20 changes. The import
+  and Tag Assistant prompt: `docs/gtm-import-careers-privacy.md` (workspace «careers privacy» from version 11, Merge →
+  Overwrite conflicting, stop before publishing).
+- **Site.** `/careers/` and `/en/careers/` have no ClientRouter (`Base.astro → fullLoad`, as `/partners/*`): the router
+  fetches the page, finds no router on it and loads it for real, so a pixel loaded on an earlier page is never in memory
+  there. Leaving it is a full load too. Nothing visible changes.
+- **Tests.** `click-id-check` gains a careers section: gtm.js is `scripts/gtm-emulator.mjs`, which runs
+  `docs/gtm-container.json`'s own triggers, exceptions and consent against the dataLayer the real site pushes (a Meta,
+  TikTok, Snapchat or Clarity tag that fires sends one request to its host, aborted and counted). With ads + analytics
+  granted: a landing on /careers/ (plain, with utm, with gclid, and «قبول الكل» given there) sends none; home → the
+  footer link → /careers/ is a full page load and sends none; home → /airport-road/ (client-side), back from /careers/
+  and a landing on 8 sample pages send the page views as before. With the v11 container the section fails (10
+  failures) — it catches a missing exception. The emulator does not prove Google's compiler or the published
+  container: Tag Assistant does, after the import.
+- **Until Ahmed imports and publishes**, the live container is version 11 and the pixels still load on /careers/ for a
+  visitor who granted ads consent; the site half is live with this deploy.
