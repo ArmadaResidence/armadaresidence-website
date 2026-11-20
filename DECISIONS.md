@@ -4121,3 +4121,14 @@ Instant booking keeps its limit of 3 units per room type per night (unchanged).
   (no change in behaviour). **Ahmed, 20 Nov 2026: leave them as they are** — the warning stays, nothing changes.
 - **Breakfast (checked):** the decision of 15 Nov 2026 (adult SAR 25; children free up to 6, SAR 12.50 up to 12, the adult
   price above) has been on the site since commit `75b73df` (15 Nov 2026); live /policies/ (ar + en) shows it on 20 Nov.
+
+## 2026-11-20 — Advanced matching and the forms: the review (20 Nov 2026)
+
+- Meta and TikTok automatic advanced matching are ON with every field (Ahmed, checked in the ad accounts today).
+- The privacy sentence approved on 9 Nov 2026 (the hashed email and mobile shared with ad platforms, with advertising
+  consent) is already live in `policies.json → page.sections[cookies]`, both languages, word for word (commit
+  `4b98a3d`); nothing added.
+- The review of the forms against the published container (version 11) and the options for /careers/ are in
+  `docs/ad-matching-forms-2026-11-20.md`. Recommended: an exception trigger in GTM on the three base pixel tags for
+  /careers/ **and** /careers/ always a full page load (out of `ClientRouter`). Waiting for Ahmed; nothing changed on
+  the site or in GTM.
