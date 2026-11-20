@@ -4068,3 +4068,32 @@ Instant booking keeps its limit of 3 units per room type per night (unchanged).
 - **Checks:** consent-check (consent_granted, the click IDs, «الضروري فقط»), booking-instant-check (ad landing → consent →
   navigation → language switch → instant booking; no_availability), booking-whatsapp-check (every WhatsApp link),
   celebrations-site-check (per-package links), click-id-check (sessionStorage only), gtm-container-check (FAST).
+
+## 2026-11-20 — The GTM import file in GTM's export shape; the WhatsApp label (Ahmed, 20 Nov 2026)
+
+- **Refused:** GTM refused `docs/gtm-container.json` on import with «File format is invalid» (no line, nothing
+  imported; the workspace «December campaigns tracking» kept 0 changes). Claude in Chrome found it valid JSON with
+  every reference resolving; it differed from a real export in shape — no fingerprint on the 29 new or changed items, a
+  `description` on the version. The build also gave variables `notes` (v10 has none) and wrote a final newline.
+- **Fix:** `scripts/gtm-container-build.mjs` writes every new or changed item in the field set and order GTM exports for
+  its kind (v10 as the reference: `TAG_ORDER`, `TRIGGER_ORDER`, `VARIABLE_ORDER`), a millisecond-timestamp fingerprint
+  on each (deterministic, from 20 Nov 2026 06:00 UTC), `formatValue: {}` on new data-layer and JavaScript variables as
+  the newer v10 items carry, no variable notes, no version description, 4-space indent, no BOM, no final newline.
+  `scripts/gtm-container-check.mjs` now compares each new or changed item with the v10 items of its kind and type —
+  extra, missing or differently typed fields, field and parameter order, parameter keys and types, no empty parameter
+  value, monitoringMetadata, consentSettings and setupTag shapes, trigger conditions —, requires a fingerprint on every
+  item and parses every Custom HTML and Custom JavaScript (`node:vm`). The one field v10 does not use that the file
+  needs is a trigger's `filter` (CE - consent_granted (analytics)).
+- **Label:** the Google Ads action «WhatsApp click» exists (secondary, Contact): Conversion ID 18253894939, label
+  `JeZBCMeP3bsdEJuqkYBE` — now the constant's value (`WHATSAPP_LABEL`), so the import needs no manual step. Its
+  blocking trigger «CE - whatsapp_click (no Ads label)» is removed (nothing to block once the label is set). Expected
+  preview: added 24 (7 tags, 5 triggers, 12 variables), modified 4 tags, deleted 0.
+- **Fallback:** three partial import files beside it — part A consent (the 4 base / Clarity tags, 2 triggers, 2
+  variables, the Clarity template unchanged), part B WhatsApp (5 tags, 1 trigger, 3 variables incl. the label), part C
+  offer_view + no_availability (2 tags, 2 triggers, 7 variables). Each holds only its own new or modified items (never an
+  unchanged v10 item, so Merge → Overwrite of one part cannot revert another); references to v10 stay by ID / name; none
+  points at another part's new item; order A → B → C (B's setup tags are the base tags A modifies). The check holds the
+  parts to the full file and to their preview counts.
+- **Import prompt** (`docs/gtm-import-2026-11-19.md`) for the current state: cancel an open Import dialog; confirm the
+  Ads action (never create it again); reuse the workspace with 0 changes; the full file first, the parts A, B, C only if
+  it is refused; the label checked, not typed; Tag Assistant; stop before publishing.

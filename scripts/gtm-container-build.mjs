@@ -8,6 +8,13 @@
 // edited. CHANGES (below) is the change list docs/gtm-changes-2026-11-19.md describes and scripts/gtm-container-check.mjs
 // holds the result to. Import: Merge → Overwrite conflicting (the file is v10 + these changes, so only the modified
 // entities conflict); nothing is deleted.
+//
+// Every new or changed item has exactly the shape GTM itself exports for its type (20 Nov 2026 — GTM refused the first
+// file with «File format is invalid»): v10's field set and order per kind (TAG_ORDER, TRIGGER_ORDER, VARIABLE_ORDER),
+// a fingerprint (a millisecond timestamp string) on every item, no field v10 never carries but the trigger `filter`,
+// no description on the version, written like the export (4-space indent, no BOM, no final newline). PARTS: the same
+// items split into three import files (consent · WhatsApp · offer_view + no_availability), each holding only its own
+// items — the fallback if GTM still refuses the full file.
 import { readFileSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
@@ -16,7 +23,23 @@ const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 export const V10 = resolve(ROOT, 'docs/gtm-container-v10.json');
 export const OUT = resolve(ROOT, 'docs/gtm-container.json');
 
-const ALL_PAGES = '2147479553';
+export const PART_FILES = {
+  a: resolve(ROOT, 'docs/gtm-container-part-a-consent.json'),
+  b: resolve(ROOT, 'docs/gtm-container-part-b-whatsapp.json'),
+  c: resolve(ROOT, 'docs/gtm-container-part-c-offers-availability.json'),
+};
+/** The Google Ads «WhatsApp click» conversion label (Ahmed, 20 Nov 2026: the action exists — secondary, Contact) */
+export const WHATSAPP_LABEL = 'JeZBCMeP3bsdEJuqkYBE';
+
+// GTM's export order per kind (v10), plus the GTM fields v10 happens not to use (blockingTriggerId, teardownTag, filter)
+export const TAG_ORDER = ['accountId', 'containerId', 'tagId', 'name', 'type', 'priority', 'notes', 'parameter', 'fingerprint', 'firingTriggerId', 'blockingTriggerId', 'setupTag', 'teardownTag', 'tagFiringOption', 'monitoringMetadata', 'consentSettings'];
+export const TRIGGER_ORDER = ['accountId', 'containerId', 'triggerId', 'name', 'type', 'customEventFilter', 'filter', 'fingerprint'];
+export const VARIABLE_ORDER = ['accountId', 'containerId', 'variableId', 'name', 'type', 'parameter', 'fingerprint', 'formatValue'];
+const ordered = (o, order) => {
+  const unknown = Object.keys(o).filter((k) => !order.includes(k));
+  if (unknown.length) throw new Error(`«${o.name}»: fields GTM does not export here: ${unknown.join(', ')}`);
+  return Object.fromEntries(order.filter((k) => k in o).map((k) => [k, o[k]]));
+};
 const AD = { consentStatus: 'NEEDED', consentType: { type: 'LIST', list: [{ type: 'TEMPLATE', value: 'ad_storage' }] } };
 const NOT_NEEDED = { consentStatus: 'NOT_NEEDED' };
 
@@ -28,6 +51,7 @@ const dlVar = (name, key) => ({
     { type: 'BOOLEAN', key: 'setDefaultValue', value: 'false' },
     { type: 'TEMPLATE', key: 'name', value: key },
   ],
+  formatValue: {},
 });
 const eventIs = (name) => [
   { type: 'EQUALS', parameter: [{ type: 'TEMPLATE', key: 'arg0', value: '{{_event}}' }, { type: 'TEMPLATE', key: 'arg1', value: name }] },
@@ -100,7 +124,7 @@ export const CHANGES = {
     modified: [],
   },
   triggers: {
-    added: ['CE - consent_granted', 'CE - consent_granted (analytics)', 'CE - whatsapp_click', 'CE - whatsapp_click (no Ads label)', 'CE - offer_view', 'CE - no_availability'],
+    added: ['CE - consent_granted', 'CE - consent_granted (analytics)', 'CE - whatsapp_click', 'CE - offer_view', 'CE - no_availability'],
     modified: [],
   },
   tags: {
@@ -121,10 +145,12 @@ export function build(v10) {
   const doc = structuredClone(v10);
   const c = doc.containerVersion;
   const acct = { accountId: c.accountId ?? c.container?.accountId, containerId: c.containerId ?? c.container?.containerId };
-  doc.exportTime = '2026-11-19 12:00:00';
-  c.name = 'December campaigns tracking (19 Nov 2026)';
-  c.description =
-    'v10 + consent_granted (base pixels + Clarity after «قبول الكل» on the same page, one page view per page and per virtual page view), whatsapp_click (GA4, Meta Contact, TikTok Contact, Snap CUSTOM_EVENT_1, Google Ads «WhatsApp click»), offer_view and no_availability in GA4. Import: Merge → Overwrite conflicting. docs/gtm-changes-2026-11-19.md';
+  doc.exportTime = '2026-11-20 09:00:00';
+  c.name = 'December campaigns tracking';
+  delete c.description;
+  // one fingerprint per new or changed item, a millisecond timestamp as GTM writes it (deterministic: the build is checked)
+  let fp = Date.UTC(2026, 10, 20, 6, 0, 0);
+  const fingerprint = () => String(fp++);
 
   const used = new Set([...c.tag, ...c.trigger, ...c.variable, ...(c.customTemplate ?? [])].map((x) => Number(x.tagId ?? x.triggerId ?? x.variableId ?? x.templateId)));
   let next = Math.max(...used) + 1;
@@ -132,15 +158,16 @@ export function build(v10) {
 
   // variables
   const addVar = (v) => {
-    const out = { ...acct, variableId: id(), ...v };
+    const out = ordered({ ...acct, variableId: id(), ...v, fingerprint: fingerprint() }, VARIABLE_ORDER);
     c.variable.push(out);
     return out;
   };
+  // Base.astro: window.armadaPageViewId — 1 for the page loaded, +1 per client-side navigation
   addVar({
     name: 'JS - page view id',
     type: 'jsm',
-    notes: 'Base.astro: window.armadaPageViewId — 1 for the page loaded, +1 per client-side navigation. The base pixels send their page view once per value.',
     parameter: [{ type: 'TEMPLATE', key: 'javascript', value: 'function () {\n  return window.armadaPageViewId || 1;\n}' }],
+    formatValue: {},
   });
   for (const [n, k] of [
     ['DL - consent_new', 'consent_new'],
@@ -155,17 +182,13 @@ export function build(v10) {
     ['DL - utm_campaign', 'utm_campaign'],
   ])
     addVar(dlVar(n, k));
-  addVar({
-    name: 'Google Ads - WhatsApp click label',
-    type: 'c',
-    notes: 'The conversion label of the Google Ads action «WhatsApp click» (secondary, count one, no value). Empty until the action exists — the tag is blocked while it is empty.',
-    parameter: [{ type: 'TEMPLATE', key: 'value', value: '' }],
-  });
+  // the conversion label of the Google Ads action «WhatsApp click» (secondary, Contact, count one)
+  addVar({ name: 'Google Ads - WhatsApp click label', type: 'c', parameter: [{ type: 'TEMPLATE', key: 'value', value: WHATSAPP_LABEL }] });
 
   // triggers
   const trg = {};
   const addTrg = (t) => {
-    const out = { ...acct, triggerId: id(), ...t };
+    const out = ordered({ ...acct, triggerId: id(), ...t, fingerprint: fingerprint() }, TRIGGER_ORDER);
     c.trigger.push(out);
     trg[t.name] = out.triggerId;
     return out;
@@ -177,11 +200,6 @@ export function build(v10) {
     ]),
   );
   addTrg(ce('CE - whatsapp_click', 'whatsapp_click'));
-  addTrg(
-    ce('CE - whatsapp_click (no Ads label)', 'whatsapp_click', [
-      { type: 'MATCH_REGEX', parameter: [{ type: 'TEMPLATE', key: 'arg0', value: '{{Google Ads - WhatsApp click label}}' }, { type: 'TEMPLATE', key: 'arg1', value: '^\\s*$' }] },
-    ]),
-  );
   addTrg(ce('CE - offer_view', 'offer_view'));
   addTrg(ce('CE - no_availability', 'no_availability'));
 
@@ -195,9 +213,9 @@ export function build(v10) {
     if (!t) throw new Error(`no trigger «${n}»`);
     return t.triggerId;
   };
-  const setHtml = (t, code) => {
-    t.parameter = html(code);
-    delete t.fingerprint;
+  // a changed v10 tag: a new fingerprint, GTM's field order
+  const reshape = (t) => {
+    c.tag[c.tag.indexOf(t)] = ordered({ ...t, fingerprint: fingerprint() }, TAG_ORDER);
   };
 
   // modified: the base pixels
@@ -207,18 +225,19 @@ export function build(v10) {
     ['Snap Pixel - base', SNAP_BASE],
   ]) {
     const t = byName(n);
-    setHtml(t, code);
+    t.parameter = html(code);
     t.tagFiringOption = 'ONCE_PER_EVENT';
     t.firingTriggerId = [...new Set([...t.firingTriggerId, trg['CE - consent_granted'], trgId('CE - virtual_page_view')])];
-    t.notes = 'Fires on first_engagement, consent_granted, virtual_page_view and the conversions (setup tag). Init once per document, one page view per {{JS - page view id}} (19 Nov 2026).';
+    t.notes = 'Fires on first_engagement, consent_granted, virtual_page_view and the conversions (setup tag). Init once per document, one page view per page view id (19 Nov 2026).';
+    reshape(t);
   }
   // modified: Clarity — also when analytics is granted on this page
   const clarity = byName('Clarity');
   clarity.firingTriggerId = [...new Set([...clarity.firingTriggerId, trg['CE - consent_granted (analytics)']])];
-  delete clarity.fingerprint;
+  reshape(clarity);
 
   // added tags
-  const addTag = (t) => c.tag.push({ ...acct, tagId: id(), ...t, monitoringMetadata: { type: 'MAP' } });
+  const addTag = (t) => c.tag.push(ordered({ ...acct, tagId: id(), ...t, fingerprint: fingerprint(), monitoringMetadata: { type: 'MAP' } }, TAG_ORDER));
   addTag({
     ...ga4('GA4 - whatsapp_click', 'whatsapp_click', [
       ['destination', '{{DL - destination}}'],
@@ -260,7 +279,6 @@ export function build(v10) {
   addTag({
     name: 'Google Ads - WhatsApp click',
     type: 'awct',
-    notes: 'Secondary conversion action «WhatsApp click» (count one, no value). Blocked while its label constant is empty.',
     parameter: [
       { type: 'BOOLEAN', key: 'enableNewCustomerReporting', value: 'false' },
       { type: 'BOOLEAN', key: 'enableConversionLinker', value: 'true' },
@@ -271,7 +289,6 @@ export function build(v10) {
       { type: 'BOOLEAN', key: 'rdp', value: 'false' },
     ],
     firingTriggerId: [trg['CE - whatsapp_click']],
-    blockingTriggerId: [trg['CE - whatsapp_click (no Ads label)']],
     tagFiringOption: 'ONCE_PER_EVENT',
     consentSettings: NOT_NEEDED,
   });
@@ -294,23 +311,77 @@ export function build(v10) {
     ]),
     firingTriggerId: [trg['CE - no_availability']],
   });
-  void ALL_PAGES;
   return doc;
 }
 
-export const render = (doc) => `${JSON.stringify(doc, null, 4)}\n`;
+/** the three partial import files: each holds only its own new or modified items (never an unchanged v10 item) */
+export const PARTS = {
+  a: {
+    title: 'consent',
+    tags: ['Meta Pixel - base', 'TikTok Pixel - base', 'Snap Pixel - base', 'Clarity'],
+    triggers: ['CE - consent_granted', 'CE - consent_granted (analytics)'],
+    variables: ['JS - page view id', 'DL - consent_new'],
+  },
+  b: {
+    title: 'WhatsApp',
+    tags: ['GA4 - whatsapp_click', 'Meta Pixel - Contact on whatsapp_click', 'TikTok Pixel - Contact on whatsapp_click', 'Snap Pixel - CUSTOM_EVENT_1 on whatsapp_click', 'Google Ads - WhatsApp click'],
+    triggers: ['CE - whatsapp_click'],
+    variables: ['DL - destination', 'DL - package', 'Google Ads - WhatsApp click label'],
+  },
+  c: {
+    title: 'offer_view and no_availability',
+    tags: ['GA4 - offer_view', 'GA4 - no_availability'],
+    triggers: ['CE - offer_view', 'CE - no_availability'],
+    variables: ['DL - offer_id', 'DL - category', 'DL - placement', 'DL - property', 'DL - check_in', 'DL - utm_source', 'DL - utm_campaign'],
+  },
+};
+
+export function buildParts(doc) {
+  const out = {};
+  for (const [key, p] of Object.entries(PARTS)) {
+    const d = structuredClone(doc);
+    const c = d.containerVersion;
+    const pick = (list, names) =>
+      names.map((n) => {
+        const x = list.find((y) => y.name === n);
+        if (!x) throw new Error(`part ${key}: no «${n}»`);
+        return x;
+      });
+    c.name = `December campaigns tracking - part ${key.toUpperCase()} (${p.title})`;
+    c.tag = pick(c.tag, p.tags);
+    c.trigger = pick(c.trigger, p.triggers);
+    c.variable = pick(c.variable, p.variables);
+    // the Clarity tag's template travels with it (identical to v10); the Google tag settings never do
+    if (!c.tag.some((t) => t.type.startsWith('cvt_'))) delete c.customTemplate;
+    delete c.gtagConfig;
+    out[key] = d;
+  }
+  return out;
+}
+
+// as GTM writes an export: 4-space indent, UTF-8 without BOM, no final newline
+export const render = (doc) => JSON.stringify(doc, null, 4);
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
-  const out = render(build(JSON.parse(readFileSync(V10, 'utf8'))));
+  const doc = build(JSON.parse(readFileSync(V10, 'utf8')));
+  const parts = buildParts(doc);
+  const files = [[OUT, render(doc)], ...Object.entries(parts).map(([k, d]) => [PART_FILES[k], render(d)])];
+  const rel = (f) => f.slice(ROOT.length + 1).replace(/\\/g, '/');
   if (process.argv.includes('--check')) {
-    const now = readFileSync(OUT, 'utf8');
-    if (now !== out) {
-      console.error('✗ docs/gtm-container.json is not the output of scripts/gtm-container-build.mjs — run it and commit the file');
+    const stale = files.filter(([f, text]) => {
+      try {
+        return readFileSync(f, 'utf8') !== text;
+      } catch {
+        return true;
+      }
+    });
+    if (stale.length) {
+      console.error(`✗ not the output of scripts/gtm-container-build.mjs: ${stale.map(([f]) => rel(f)).join(', ')} — run it and commit the files`);
       process.exit(1);
     }
-    console.log('✓ docs/gtm-container.json = the build from version 10');
+    console.log('✓ docs/gtm-container.json and the three parts = the build from version 10');
   } else {
-    writeFileSync(OUT, out);
-    console.log('✓ wrote docs/gtm-container.json');
+    for (const [f, text] of files) writeFileSync(f, text);
+    console.log(`✓ wrote ${files.map(([f]) => rel(f)).join(', ')}`);
   }
 }

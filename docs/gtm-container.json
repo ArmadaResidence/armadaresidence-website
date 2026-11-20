@@ -1,12 +1,12 @@
 {
     "exportFormatVersion": 2,
-    "exportTime": "2026-11-19 12:00:00",
+    "exportTime": "2026-11-20 09:00:00",
     "containerVersion": {
         "path": "accounts/6382086279/containers/266900186/versions/10",
         "accountId": "6382086279",
         "containerId": "266900186",
         "containerVersionId": "10",
-        "name": "December campaigns tracking (19 Nov 2026)",
+        "name": "December campaigns tracking",
         "container": {
             "path": "accounts/6382086279/containers/266900186",
             "accountId": "6382086279",
@@ -49,7 +49,7 @@
                     "type": "INTEGER",
                     "value": "10"
                 },
-                "notes": "Fires on first_engagement, consent_granted, virtual_page_view and the conversions (setup tag). Init once per document, one page view per {{JS - page view id}} (19 Nov 2026).",
+                "notes": "Fires on first_engagement, consent_granted, virtual_page_view and the conversions (setup tag). Init once per document, one page view per page view id (19 Nov 2026).",
                 "parameter": [
                     {
                         "type": "TEMPLATE",
@@ -62,6 +62,7 @@
                         "value": "false"
                     }
                 ],
+                "fingerprint": "1795154400017",
                 "firingTriggerId": [
                     "38",
                     "14",
@@ -677,6 +678,7 @@
                     "type": "INTEGER",
                     "value": "10"
                 },
+                "notes": "Fires on first_engagement, consent_granted, virtual_page_view and the conversions (setup tag). Init once per document, one page view per page view id (19 Nov 2026).",
                 "parameter": [
                     {
                         "type": "TEMPLATE",
@@ -689,6 +691,7 @@
                         "value": "false"
                     }
                 ],
+                "fingerprint": "1795154400019",
                 "firingTriggerId": [
                     "14",
                     "38",
@@ -711,8 +714,7 @@
                             }
                         ]
                     }
-                },
-                "notes": "Fires on first_engagement, consent_granted, virtual_page_view and the conversions (setup tag). Init once per document, one page view per {{JS - page view id}} (19 Nov 2026)."
+                }
             },
             {
                 "accountId": "6382086279",
@@ -724,7 +726,7 @@
                     "type": "INTEGER",
                     "value": "10"
                 },
-                "notes": "Fires on first_engagement, consent_granted, virtual_page_view and the conversions (setup tag). Init once per document, one page view per {{JS - page view id}} (19 Nov 2026).",
+                "notes": "Fires on first_engagement, consent_granted, virtual_page_view and the conversions (setup tag). Init once per document, one page view per page view id (19 Nov 2026).",
                 "parameter": [
                     {
                         "type": "TEMPLATE",
@@ -737,6 +739,7 @@
                         "value": "false"
                     }
                 ],
+                "fingerprint": "1795154400018",
                 "firingTriggerId": [
                     "14",
                     "38",
@@ -1168,6 +1171,7 @@
                         "value": "zawy5ld6k1"
                     }
                 ],
+                "fingerprint": "1795154400020",
                 "firingTriggerId": [
                     "2147479553",
                     "80"
@@ -1702,7 +1706,7 @@
             {
                 "accountId": "6382086279",
                 "containerId": "266900186",
-                "tagId": "85",
+                "tagId": "84",
                 "name": "GA4 - whatsapp_click",
                 "type": "gaawe",
                 "parameter": [
@@ -1773,21 +1777,22 @@
                         "value": "{{GA4 Measurement ID}}"
                     }
                 ],
-                "tagFiringOption": "ONCE_PER_EVENT",
-                "consentSettings": {
-                    "consentStatus": "NOT_NEEDED"
-                },
+                "fingerprint": "1795154400021",
                 "firingTriggerId": [
                     "81"
                 ],
+                "tagFiringOption": "ONCE_PER_EVENT",
                 "monitoringMetadata": {
                     "type": "MAP"
+                },
+                "consentSettings": {
+                    "consentStatus": "NOT_NEEDED"
                 }
             },
             {
                 "accountId": "6382086279",
                 "containerId": "266900186",
-                "tagId": "86",
+                "tagId": "85",
                 "name": "Meta Pixel - Contact on whatsapp_click",
                 "type": "html",
                 "parameter": [
@@ -1802,15 +1807,19 @@
                         "value": "false"
                     }
                 ],
+                "fingerprint": "1795154400022",
                 "firingTriggerId": [
                     "81"
                 ],
-                "tagFiringOption": "ONCE_PER_EVENT",
                 "setupTag": [
                     {
                         "tagName": "Meta Pixel - base"
                     }
                 ],
+                "tagFiringOption": "ONCE_PER_EVENT",
+                "monitoringMetadata": {
+                    "type": "MAP"
+                },
                 "consentSettings": {
                     "consentStatus": "NEEDED",
                     "consentType": {
@@ -1822,15 +1831,12 @@
                             }
                         ]
                     }
-                },
-                "monitoringMetadata": {
-                    "type": "MAP"
                 }
             },
             {
                 "accountId": "6382086279",
                 "containerId": "266900186",
-                "tagId": "87",
+                "tagId": "86",
                 "name": "TikTok Pixel - Contact on whatsapp_click",
                 "type": "html",
                 "parameter": [
@@ -1845,15 +1851,19 @@
                         "value": "false"
                     }
                 ],
+                "fingerprint": "1795154400023",
                 "firingTriggerId": [
                     "81"
                 ],
-                "tagFiringOption": "ONCE_PER_EVENT",
                 "setupTag": [
                     {
                         "tagName": "TikTok Pixel - base"
                     }
                 ],
+                "tagFiringOption": "ONCE_PER_EVENT",
+                "monitoringMetadata": {
+                    "type": "MAP"
+                },
                 "consentSettings": {
                     "consentStatus": "NEEDED",
                     "consentType": {
@@ -1865,15 +1875,12 @@
                             }
                         ]
                     }
-                },
-                "monitoringMetadata": {
-                    "type": "MAP"
                 }
             },
             {
                 "accountId": "6382086279",
                 "containerId": "266900186",
-                "tagId": "88",
+                "tagId": "87",
                 "name": "Snap Pixel - CUSTOM_EVENT_1 on whatsapp_click",
                 "type": "html",
                 "parameter": [
@@ -1888,15 +1895,19 @@
                         "value": "false"
                     }
                 ],
+                "fingerprint": "1795154400024",
                 "firingTriggerId": [
                     "81"
                 ],
-                "tagFiringOption": "ONCE_PER_EVENT",
                 "setupTag": [
                     {
                         "tagName": "Snap Pixel - base"
                     }
                 ],
+                "tagFiringOption": "ONCE_PER_EVENT",
+                "monitoringMetadata": {
+                    "type": "MAP"
+                },
                 "consentSettings": {
                     "consentStatus": "NEEDED",
                     "consentType": {
@@ -1908,18 +1919,14 @@
                             }
                         ]
                     }
-                },
-                "monitoringMetadata": {
-                    "type": "MAP"
                 }
             },
             {
                 "accountId": "6382086279",
                 "containerId": "266900186",
-                "tagId": "89",
+                "tagId": "88",
                 "name": "Google Ads - WhatsApp click",
                 "type": "awct",
-                "notes": "Secondary conversion action «WhatsApp click» (count one, no value). Blocked while its label constant is empty.",
                 "parameter": [
                     {
                         "type": "BOOLEAN",
@@ -1957,24 +1964,22 @@
                         "value": "false"
                     }
                 ],
+                "fingerprint": "1795154400025",
                 "firingTriggerId": [
                     "81"
                 ],
-                "blockingTriggerId": [
-                    "82"
-                ],
                 "tagFiringOption": "ONCE_PER_EVENT",
-                "consentSettings": {
-                    "consentStatus": "NOT_NEEDED"
-                },
                 "monitoringMetadata": {
                     "type": "MAP"
+                },
+                "consentSettings": {
+                    "consentStatus": "NOT_NEEDED"
                 }
             },
             {
                 "accountId": "6382086279",
                 "containerId": "266900186",
-                "tagId": "90",
+                "tagId": "89",
                 "name": "GA4 - offer_view",
                 "type": "gaawe",
                 "parameter": [
@@ -2045,21 +2050,22 @@
                         "value": "{{GA4 Measurement ID}}"
                     }
                 ],
-                "tagFiringOption": "ONCE_PER_EVENT",
-                "consentSettings": {
-                    "consentStatus": "NOT_NEEDED"
-                },
+                "fingerprint": "1795154400026",
                 "firingTriggerId": [
-                    "83"
+                    "82"
                 ],
+                "tagFiringOption": "ONCE_PER_EVENT",
                 "monitoringMetadata": {
                     "type": "MAP"
+                },
+                "consentSettings": {
+                    "consentStatus": "NOT_NEEDED"
                 }
             },
             {
                 "accountId": "6382086279",
                 "containerId": "266900186",
-                "tagId": "91",
+                "tagId": "90",
                 "name": "GA4 - no_availability",
                 "type": "gaawe",
                 "parameter": [
@@ -2175,15 +2181,16 @@
                         "value": "{{GA4 Measurement ID}}"
                     }
                 ],
-                "tagFiringOption": "ONCE_PER_EVENT",
-                "consentSettings": {
-                    "consentStatus": "NOT_NEEDED"
-                },
+                "fingerprint": "1795154400027",
                 "firingTriggerId": [
-                    "84"
+                    "83"
                 ],
+                "tagFiringOption": "ONCE_PER_EVENT",
                 "monitoringMetadata": {
                     "type": "MAP"
+                },
+                "consentSettings": {
+                    "consentStatus": "NOT_NEEDED"
                 }
             }
         ],
@@ -2385,7 +2392,8 @@
                             }
                         ]
                     }
-                ]
+                ],
+                "fingerprint": "1795154400012"
             },
             {
                 "accountId": "6382086279",
@@ -2426,7 +2434,8 @@
                             }
                         ]
                     }
-                ]
+                ],
+                "fingerprint": "1795154400013"
             },
             {
                 "accountId": "6382086279",
@@ -2450,53 +2459,13 @@
                             }
                         ]
                     }
-                ]
+                ],
+                "fingerprint": "1795154400014"
             },
             {
                 "accountId": "6382086279",
                 "containerId": "266900186",
                 "triggerId": "82",
-                "name": "CE - whatsapp_click (no Ads label)",
-                "type": "CUSTOM_EVENT",
-                "customEventFilter": [
-                    {
-                        "type": "EQUALS",
-                        "parameter": [
-                            {
-                                "type": "TEMPLATE",
-                                "key": "arg0",
-                                "value": "{{_event}}"
-                            },
-                            {
-                                "type": "TEMPLATE",
-                                "key": "arg1",
-                                "value": "whatsapp_click"
-                            }
-                        ]
-                    }
-                ],
-                "filter": [
-                    {
-                        "type": "MATCH_REGEX",
-                        "parameter": [
-                            {
-                                "type": "TEMPLATE",
-                                "key": "arg0",
-                                "value": "{{Google Ads - WhatsApp click label}}"
-                            },
-                            {
-                                "type": "TEMPLATE",
-                                "key": "arg1",
-                                "value": "^\\s*$"
-                            }
-                        ]
-                    }
-                ]
-            },
-            {
-                "accountId": "6382086279",
-                "containerId": "266900186",
-                "triggerId": "83",
                 "name": "CE - offer_view",
                 "type": "CUSTOM_EVENT",
                 "customEventFilter": [
@@ -2515,12 +2484,13 @@
                             }
                         ]
                     }
-                ]
+                ],
+                "fingerprint": "1795154400015"
             },
             {
                 "accountId": "6382086279",
                 "containerId": "266900186",
-                "triggerId": "84",
+                "triggerId": "83",
                 "name": "CE - no_availability",
                 "type": "CUSTOM_EVENT",
                 "customEventFilter": [
@@ -2539,7 +2509,8 @@
                             }
                         ]
                     }
-                ]
+                ],
+                "fingerprint": "1795154400016"
             }
         ],
         "variable": [
@@ -3085,14 +3056,15 @@
                 "variableId": "67",
                 "name": "JS - page view id",
                 "type": "jsm",
-                "notes": "Base.astro: window.armadaPageViewId — 1 for the page loaded, +1 per client-side navigation. The base pixels send their page view once per value.",
                 "parameter": [
                     {
                         "type": "TEMPLATE",
                         "key": "javascript",
                         "value": "function () {\n  return window.armadaPageViewId || 1;\n}"
                     }
-                ]
+                ],
+                "fingerprint": "1795154400000",
+                "formatValue": {}
             },
             {
                 "accountId": "6382086279",
@@ -3116,7 +3088,9 @@
                         "key": "name",
                         "value": "consent_new"
                     }
-                ]
+                ],
+                "fingerprint": "1795154400001",
+                "formatValue": {}
             },
             {
                 "accountId": "6382086279",
@@ -3140,7 +3114,9 @@
                         "key": "name",
                         "value": "destination"
                     }
-                ]
+                ],
+                "fingerprint": "1795154400002",
+                "formatValue": {}
             },
             {
                 "accountId": "6382086279",
@@ -3164,7 +3140,9 @@
                         "key": "name",
                         "value": "package"
                     }
-                ]
+                ],
+                "fingerprint": "1795154400003",
+                "formatValue": {}
             },
             {
                 "accountId": "6382086279",
@@ -3188,7 +3166,9 @@
                         "key": "name",
                         "value": "offer_id"
                     }
-                ]
+                ],
+                "fingerprint": "1795154400004",
+                "formatValue": {}
             },
             {
                 "accountId": "6382086279",
@@ -3212,7 +3192,9 @@
                         "key": "name",
                         "value": "category"
                     }
-                ]
+                ],
+                "fingerprint": "1795154400005",
+                "formatValue": {}
             },
             {
                 "accountId": "6382086279",
@@ -3236,7 +3218,9 @@
                         "key": "name",
                         "value": "placement"
                     }
-                ]
+                ],
+                "fingerprint": "1795154400006",
+                "formatValue": {}
             },
             {
                 "accountId": "6382086279",
@@ -3260,7 +3244,9 @@
                         "key": "name",
                         "value": "property"
                     }
-                ]
+                ],
+                "fingerprint": "1795154400007",
+                "formatValue": {}
             },
             {
                 "accountId": "6382086279",
@@ -3284,7 +3270,9 @@
                         "key": "name",
                         "value": "check_in"
                     }
-                ]
+                ],
+                "fingerprint": "1795154400008",
+                "formatValue": {}
             },
             {
                 "accountId": "6382086279",
@@ -3308,7 +3296,9 @@
                         "key": "name",
                         "value": "utm_source"
                     }
-                ]
+                ],
+                "fingerprint": "1795154400009",
+                "formatValue": {}
             },
             {
                 "accountId": "6382086279",
@@ -3332,7 +3322,9 @@
                         "key": "name",
                         "value": "utm_campaign"
                     }
-                ]
+                ],
+                "fingerprint": "1795154400010",
+                "formatValue": {}
             },
             {
                 "accountId": "6382086279",
@@ -3340,14 +3332,14 @@
                 "variableId": "78",
                 "name": "Google Ads - WhatsApp click label",
                 "type": "c",
-                "notes": "The conversion label of the Google Ads action «WhatsApp click» (secondary, count one, no value). Empty until the action exists — the tag is blocked while it is empty.",
                 "parameter": [
                     {
                         "type": "TEMPLATE",
                         "key": "value",
-                        "value": ""
+                        "value": "JeZBCMeP3bsdEJuqkYBE"
                     }
-                ]
+                ],
+                "fingerprint": "1795154400011"
             }
         ],
         "builtInVariable": [
@@ -3466,7 +3458,6 @@
                 ],
                 "fingerprint": "1794403242355"
             }
-        ],
-        "description": "v10 + consent_granted (base pixels + Clarity after «قبول الكل» on the same page, one page view per page and per virtual page view), whatsapp_click (GA4, Meta Contact, TikTok Contact, Snap CUSTOM_EVENT_1, Google Ads «WhatsApp click»), offer_view and no_availability in GA4. Import: Merge → Overwrite conflicting. docs/gtm-changes-2026-11-19.md"
+        ]
     }
 }

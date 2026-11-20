@@ -10,7 +10,27 @@ for the December campaigns».
 The file is v10 plus these changes, so only the four modified tags conflict; «Rename conflicting» would leave a second
 copy of each base pixel and every page view would be sent twice. Nothing is deleted.
 
-**Expected import preview:** added **25** (7 tags, 6 triggers, 12 variables), modified **4** (4 tags), deleted **0**.
+**Expected import preview:** added **24** (7 tags, 5 triggers, 12 variables), modified **4** (4 tags), deleted **0**.
+
+**20 Nov 2026 — the first file was refused** («File format is invalid», nothing imported). It was valid JSON with every
+reference resolving; it differed from a real export in shape: no fingerprint on the 29 new or changed items, a
+`description` on the version, `notes` on variables (v10 has none), a final newline. The build now writes every item in
+the exact field set and order GTM exports for its kind and type (v10 as the reference), a millisecond-timestamp
+fingerprint on each, no version description, no BOM, no final newline; `gtm-container-check` compares every new or
+changed item with the v10 items of its type and fails on any extra, missing or differently typed field. With the label
+now known, its blocking trigger «CE - whatsapp_click (no Ads label)» is gone (one trigger fewer).
+
+**Fallback — three partial files** (if GTM still refuses the full one), imported in this order into the same workspace,
+each with Merge → Overwrite conflicting. Each holds only its own new or modified items (never an unchanged v10 item, so
+one part can never revert another); references to v10 items stay by ID / name and resolve in the workspace:
+
+| file | holds | expected preview |
+| --- | --- | --- |
+| `docs/gtm-container-part-a-consent.json` | the 4 base / Clarity tags, CE - consent_granted, CE - consent_granted (analytics), JS - page view id, DL - consent_new (+ the Clarity template, unchanged) | added 4 (0 tags, 2 triggers, 2 variables), modified 4 (4 tags), deleted 0 |
+| `docs/gtm-container-part-b-whatsapp.json` | the 5 WhatsApp tags, CE - whatsapp_click, DL - destination, DL - package, Google Ads - WhatsApp click label | added 9 (5 tags, 1 trigger, 3 variables), modified 0, deleted 0 |
+| `docs/gtm-container-part-c-offers-availability.json` | GA4 - offer_view, GA4 - no_availability, their 2 triggers and 7 variables | added 11 (2 tags, 2 triggers, 7 variables), modified 0, deleted 0 |
+
+Part B's pixel tags name their base tag as setup tag (by name — the base tags are v10's, modified by part A).
 
 ## What the audit found (read-only, 19 Nov 2026)
 
@@ -40,7 +60,7 @@ on All Pages (`gtm.js`), before any consent.
 | Meta Pixel - Contact on whatsapp_click | — | **new** · `fbq('track','Contact', { content_name: 'whatsapp', content_category: destination, package })` · setup tag Meta Pixel - base · ad_storage |
 | TikTok Pixel - Contact on whatsapp_click | — | **new** · `ttq.track('Contact', { content_name: 'whatsapp', content_category: destination, description: package })` · setup TikTok Pixel - base · ad_storage |
 | Snap Pixel - CUSTOM_EVENT_1 on whatsapp_click | — | **new** · `snaptr('track','CUSTOM_EVENT_1', { description: 'whatsapp_click:<destination>:<package>' })` · setup Snap Pixel - base · ad_storage |
-| Google Ads - WhatsApp click | — | **new** · conversion AW-18253894939 / `{{Google Ads - WhatsApp click label}}`, no value, no order id · CE - whatsapp_click · **blocked by CE - whatsapp_click (no Ads label)** while the label is empty |
+| Google Ads - WhatsApp click | — | **new** · conversion AW-18253894939 / `{{Google Ads - WhatsApp click label}}`, no value, no order id · CE - whatsapp_click (label `JeZBCMeP3bsdEJuqkYBE`, set 20 Nov 2026 — nothing blocks it) |
 | GA4 - offer_view | — | **new** · GA4 event `offer_view` { offer_id, offer_category, placement } · CE - offer_view |
 | GA4 - no_availability | — | **new** · GA4 event `no_availability` { property, room_type, check_in, nights, utm_source, utm_campaign } · CE - no_availability |
 
@@ -54,7 +74,6 @@ as setup tag; with the base tag now *once per event* and self-guarded, a convers
 | CE - consent_granted | `consent_granted` |
 | CE - consent_granted (analytics) | `consent_granted` where `{{DL - consent_new}}` contains `analytics` |
 | CE - whatsapp_click | `whatsapp_click` |
-| CE - whatsapp_click (no Ads label) | `whatsapp_click` where `{{Google Ads - WhatsApp click label}}` matches `^\s*$` (blocking only) |
 | CE - offer_view | `offer_view` |
 | CE - no_availability | `no_availability` |
 
@@ -62,8 +81,8 @@ as setup tag; with the base tag now *once per event* and self-guarded, a convers
 
 `JS - page view id` (custom JavaScript: `window.armadaPageViewId || 1`); data-layer variables `DL - consent_new`,
 `DL - destination`, `DL - package`, `DL - offer_id`, `DL - category`, `DL - placement`, `DL - property`,
-`DL - check_in`, `DL - utm_source`, `DL - utm_campaign`; the constant `Google Ads - WhatsApp click label` (empty — the
-import prompt fills it in the new workspace; the label is then pasted back here, into
+`DL - check_in`, `DL - utm_source`, `DL - utm_campaign`; the constant `Google Ads - WhatsApp click label` = `JeZBCMeP3bsdEJuqkYBE`
+(the «WhatsApp click» action created by Ahmed on 20 Nov 2026 — secondary, Contact; `WHATSAPP_LABEL` in
 `scripts/gtm-container-build.mjs`).
 
 ## What the site pushes (the other half of this change)

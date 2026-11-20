@@ -79,7 +79,6 @@ https://armadaresidence.com/airport-road/?utm_source=meta&utm_medium=paid_social
 ## بعد ما كله يعدّي
 
 - [ ] Submit → Publish من مساحة العمل «December campaigns tracking» (قرارك).
-- [ ] ابعتلي الـ Conversion label بتاع «WhatsApp click» عشان أحطه في الريبو.
 - [ ] GA4 → Admin → Data streams → الويب → Enhanced measurement → Page views → Show advanced settings → اقفل
       «Page changes based on browser history events» (عشان `virtual_page_view` بيبعت الصفحة مرة واحدة).
 - [ ] شغّل الحملات المتوقفة الثلاثة (Meta حجوزات المطار والشفا، Snapchat الباقات).

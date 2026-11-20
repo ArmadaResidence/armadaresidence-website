@@ -1,0 +1,447 @@
+{
+    "exportFormatVersion": 2,
+    "exportTime": "2026-11-20 09:00:00",
+    "containerVersion": {
+        "path": "accounts/6382086279/containers/266900186/versions/10",
+        "accountId": "6382086279",
+        "containerId": "266900186",
+        "containerVersionId": "10",
+        "name": "December campaigns tracking - part B (WhatsApp)",
+        "container": {
+            "path": "accounts/6382086279/containers/266900186",
+            "accountId": "6382086279",
+            "containerId": "266900186",
+            "name": "armadaresidence.com",
+            "publicId": "GTM-5JVH7R37",
+            "usageContext": [
+                "WEB"
+            ],
+            "fingerprint": "1794305249964",
+            "tagManagerUrl": "https://tagmanager.google.com/#/container/accounts/6382086279/containers/266900186/workspaces?apiLink=container",
+            "features": {
+                "supportUserPermissions": true,
+                "supportEnvironments": true,
+                "supportWorkspaces": true,
+                "supportGtagConfigs": false,
+                "supportBuiltInVariables": true,
+                "supportClients": false,
+                "supportFolders": true,
+                "supportTags": true,
+                "supportTemplates": true,
+                "supportTriggers": true,
+                "supportVariables": true,
+                "supportVersions": true,
+                "supportZones": true,
+                "supportTransformations": false
+            },
+            "tagIds": [
+                "GTM-5JVH7R37"
+            ]
+        },
+        "tag": [
+            {
+                "accountId": "6382086279",
+                "containerId": "266900186",
+                "tagId": "84",
+                "name": "GA4 - whatsapp_click",
+                "type": "gaawe",
+                "parameter": [
+                    {
+                        "type": "BOOLEAN",
+                        "key": "sendEcommerceData",
+                        "value": "false"
+                    },
+                    {
+                        "type": "LIST",
+                        "key": "eventSettingsTable",
+                        "list": [
+                            {
+                                "type": "MAP",
+                                "map": [
+                                    {
+                                        "type": "TEMPLATE",
+                                        "key": "parameter",
+                                        "value": "destination"
+                                    },
+                                    {
+                                        "type": "TEMPLATE",
+                                        "key": "parameterValue",
+                                        "value": "{{DL - destination}}"
+                                    }
+                                ]
+                            },
+                            {
+                                "type": "MAP",
+                                "map": [
+                                    {
+                                        "type": "TEMPLATE",
+                                        "key": "parameter",
+                                        "value": "page_path"
+                                    },
+                                    {
+                                        "type": "TEMPLATE",
+                                        "key": "parameterValue",
+                                        "value": "{{DL - page_path}}"
+                                    }
+                                ]
+                            },
+                            {
+                                "type": "MAP",
+                                "map": [
+                                    {
+                                        "type": "TEMPLATE",
+                                        "key": "parameter",
+                                        "value": "package"
+                                    },
+                                    {
+                                        "type": "TEMPLATE",
+                                        "key": "parameterValue",
+                                        "value": "{{DL - package}}"
+                                    }
+                                ]
+                            }
+                        ]
+                    },
+                    {
+                        "type": "TEMPLATE",
+                        "key": "eventName",
+                        "value": "whatsapp_click"
+                    },
+                    {
+                        "type": "TEMPLATE",
+                        "key": "measurementIdOverride",
+                        "value": "{{GA4 Measurement ID}}"
+                    }
+                ],
+                "fingerprint": "1795154400021",
+                "firingTriggerId": [
+                    "81"
+                ],
+                "tagFiringOption": "ONCE_PER_EVENT",
+                "monitoringMetadata": {
+                    "type": "MAP"
+                },
+                "consentSettings": {
+                    "consentStatus": "NOT_NEEDED"
+                }
+            },
+            {
+                "accountId": "6382086279",
+                "containerId": "266900186",
+                "tagId": "85",
+                "name": "Meta Pixel - Contact on whatsapp_click",
+                "type": "html",
+                "parameter": [
+                    {
+                        "type": "TEMPLATE",
+                        "key": "html",
+                        "value": "<script>if (window.fbq) { fbq('track', 'Contact', { content_name: 'whatsapp', content_category: {{DL - destination}}, package: {{DL - package}} }); }</script>"
+                    },
+                    {
+                        "type": "BOOLEAN",
+                        "key": "supportDocumentWrite",
+                        "value": "false"
+                    }
+                ],
+                "fingerprint": "1795154400022",
+                "firingTriggerId": [
+                    "81"
+                ],
+                "setupTag": [
+                    {
+                        "tagName": "Meta Pixel - base"
+                    }
+                ],
+                "tagFiringOption": "ONCE_PER_EVENT",
+                "monitoringMetadata": {
+                    "type": "MAP"
+                },
+                "consentSettings": {
+                    "consentStatus": "NEEDED",
+                    "consentType": {
+                        "type": "LIST",
+                        "list": [
+                            {
+                                "type": "TEMPLATE",
+                                "value": "ad_storage"
+                            }
+                        ]
+                    }
+                }
+            },
+            {
+                "accountId": "6382086279",
+                "containerId": "266900186",
+                "tagId": "86",
+                "name": "TikTok Pixel - Contact on whatsapp_click",
+                "type": "html",
+                "parameter": [
+                    {
+                        "type": "TEMPLATE",
+                        "key": "html",
+                        "value": "<script>if (window.ttq) { ttq.track('Contact', { content_name: 'whatsapp', content_category: {{DL - destination}}, description: {{DL - package}} }); }</script>"
+                    },
+                    {
+                        "type": "BOOLEAN",
+                        "key": "supportDocumentWrite",
+                        "value": "false"
+                    }
+                ],
+                "fingerprint": "1795154400023",
+                "firingTriggerId": [
+                    "81"
+                ],
+                "setupTag": [
+                    {
+                        "tagName": "TikTok Pixel - base"
+                    }
+                ],
+                "tagFiringOption": "ONCE_PER_EVENT",
+                "monitoringMetadata": {
+                    "type": "MAP"
+                },
+                "consentSettings": {
+                    "consentStatus": "NEEDED",
+                    "consentType": {
+                        "type": "LIST",
+                        "list": [
+                            {
+                                "type": "TEMPLATE",
+                                "value": "ad_storage"
+                            }
+                        ]
+                    }
+                }
+            },
+            {
+                "accountId": "6382086279",
+                "containerId": "266900186",
+                "tagId": "87",
+                "name": "Snap Pixel - CUSTOM_EVENT_1 on whatsapp_click",
+                "type": "html",
+                "parameter": [
+                    {
+                        "type": "TEMPLATE",
+                        "key": "html",
+                        "value": "<script>if (window.snaptr) { snaptr('track', 'CUSTOM_EVENT_1', { description: 'whatsapp_click:' + {{DL - destination}} + ':' + {{DL - package}} }); }</script>"
+                    },
+                    {
+                        "type": "BOOLEAN",
+                        "key": "supportDocumentWrite",
+                        "value": "false"
+                    }
+                ],
+                "fingerprint": "1795154400024",
+                "firingTriggerId": [
+                    "81"
+                ],
+                "setupTag": [
+                    {
+                        "tagName": "Snap Pixel - base"
+                    }
+                ],
+                "tagFiringOption": "ONCE_PER_EVENT",
+                "monitoringMetadata": {
+                    "type": "MAP"
+                },
+                "consentSettings": {
+                    "consentStatus": "NEEDED",
+                    "consentType": {
+                        "type": "LIST",
+                        "list": [
+                            {
+                                "type": "TEMPLATE",
+                                "value": "ad_storage"
+                            }
+                        ]
+                    }
+                }
+            },
+            {
+                "accountId": "6382086279",
+                "containerId": "266900186",
+                "tagId": "88",
+                "name": "Google Ads - WhatsApp click",
+                "type": "awct",
+                "parameter": [
+                    {
+                        "type": "BOOLEAN",
+                        "key": "enableNewCustomerReporting",
+                        "value": "false"
+                    },
+                    {
+                        "type": "BOOLEAN",
+                        "key": "enableConversionLinker",
+                        "value": "true"
+                    },
+                    {
+                        "type": "BOOLEAN",
+                        "key": "enableProductReporting",
+                        "value": "false"
+                    },
+                    {
+                        "type": "BOOLEAN",
+                        "key": "enableShippingData",
+                        "value": "false"
+                    },
+                    {
+                        "type": "TEMPLATE",
+                        "key": "conversionId",
+                        "value": "18253894939"
+                    },
+                    {
+                        "type": "TEMPLATE",
+                        "key": "conversionLabel",
+                        "value": "{{Google Ads - WhatsApp click label}}"
+                    },
+                    {
+                        "type": "BOOLEAN",
+                        "key": "rdp",
+                        "value": "false"
+                    }
+                ],
+                "fingerprint": "1795154400025",
+                "firingTriggerId": [
+                    "81"
+                ],
+                "tagFiringOption": "ONCE_PER_EVENT",
+                "monitoringMetadata": {
+                    "type": "MAP"
+                },
+                "consentSettings": {
+                    "consentStatus": "NOT_NEEDED"
+                }
+            }
+        ],
+        "trigger": [
+            {
+                "accountId": "6382086279",
+                "containerId": "266900186",
+                "triggerId": "81",
+                "name": "CE - whatsapp_click",
+                "type": "CUSTOM_EVENT",
+                "customEventFilter": [
+                    {
+                        "type": "EQUALS",
+                        "parameter": [
+                            {
+                                "type": "TEMPLATE",
+                                "key": "arg0",
+                                "value": "{{_event}}"
+                            },
+                            {
+                                "type": "TEMPLATE",
+                                "key": "arg1",
+                                "value": "whatsapp_click"
+                            }
+                        ]
+                    }
+                ],
+                "fingerprint": "1795154400014"
+            }
+        ],
+        "variable": [
+            {
+                "accountId": "6382086279",
+                "containerId": "266900186",
+                "variableId": "69",
+                "name": "DL - destination",
+                "type": "v",
+                "parameter": [
+                    {
+                        "type": "INTEGER",
+                        "key": "dataLayerVersion",
+                        "value": "2"
+                    },
+                    {
+                        "type": "BOOLEAN",
+                        "key": "setDefaultValue",
+                        "value": "false"
+                    },
+                    {
+                        "type": "TEMPLATE",
+                        "key": "name",
+                        "value": "destination"
+                    }
+                ],
+                "fingerprint": "1795154400002",
+                "formatValue": {}
+            },
+            {
+                "accountId": "6382086279",
+                "containerId": "266900186",
+                "variableId": "70",
+                "name": "DL - package",
+                "type": "v",
+                "parameter": [
+                    {
+                        "type": "INTEGER",
+                        "key": "dataLayerVersion",
+                        "value": "2"
+                    },
+                    {
+                        "type": "BOOLEAN",
+                        "key": "setDefaultValue",
+                        "value": "false"
+                    },
+                    {
+                        "type": "TEMPLATE",
+                        "key": "name",
+                        "value": "package"
+                    }
+                ],
+                "fingerprint": "1795154400003",
+                "formatValue": {}
+            },
+            {
+                "accountId": "6382086279",
+                "containerId": "266900186",
+                "variableId": "78",
+                "name": "Google Ads - WhatsApp click label",
+                "type": "c",
+                "parameter": [
+                    {
+                        "type": "TEMPLATE",
+                        "key": "value",
+                        "value": "JeZBCMeP3bsdEJuqkYBE"
+                    }
+                ],
+                "fingerprint": "1795154400011"
+            }
+        ],
+        "builtInVariable": [
+            {
+                "accountId": "6382086279",
+                "containerId": "266900186",
+                "type": "PAGE_URL",
+                "name": "Page URL"
+            },
+            {
+                "accountId": "6382086279",
+                "containerId": "266900186",
+                "type": "PAGE_HOSTNAME",
+                "name": "Page Hostname"
+            },
+            {
+                "accountId": "6382086279",
+                "containerId": "266900186",
+                "type": "PAGE_PATH",
+                "name": "Page Path"
+            },
+            {
+                "accountId": "6382086279",
+                "containerId": "266900186",
+                "type": "REFERRER",
+                "name": "Referrer"
+            },
+            {
+                "accountId": "6382086279",
+                "containerId": "266900186",
+                "type": "EVENT",
+                "name": "Event"
+            }
+        ],
+        "fingerprint": "1794419942061",
+        "tagManagerUrl": "https://tagmanager.google.com/#/versions/accounts/6382086279/containers/266900186/versions/10?apiLink=version"
+    }
+}
