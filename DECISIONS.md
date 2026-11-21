@@ -4313,3 +4313,19 @@ Instant booking keeps its limit of 3 units per room type per night (unchanged).
   no Google click-ID cookie is written on a careers page, so an ad click landing there with every cookie accepted is
   not carried to a later booking in that visit (no Google Ads conversion fires on a careers page anyway). Google
   signals stay on the careers pages with GA4 (Ahmed: GA4 unchanged there).
+
+## 2026-11-21 — GTM version 14 live: no Conversion Linker on the careers pages (21 Nov 2026)
+
+- **Version 14 «Careers: no Conversion Linker»** was published by Ahmed on 21 Nov 2026 at 19:31 Riyadh: the one change
+  of `docs/gtm-container.json` as it stood (the exception «Exception - careers pages» on the tag «Conversion
+  Linker»). In Tag Assistant: no ccm request and no request containing 18253894939 on /careers/ or /en/careers/, GA4
+  still sending there, /airport-road/ unchanged. The published gtm.js reads `"version":"14"` and its careers blocking
+  rule now also blocks the gclidw tag. `docs/gtm-container-v14.json` = that imported file byte for byte (the base of
+  the next import); `docs/gtm-container-v13.json` stays as history.
+- **The live probe** (`node scripts/gtm-probe.mjs --careers --base https://armadaresidence.com`, «قبول الكل» + a scroll,
+  every hit aborted — nothing reached a platform): on /careers/ and /en/careers/ 0 ccm requests, 0
+  `set_partitioned_cookie`, nothing naming 18253894939, nothing to Meta, TikTok, Snapchat or Clarity; GA4 page_view
+  and offer_view sent (with GA4's own Google signals requests to `stats.g.doubleclick.net/g/collect` tid=G-675Y7W0H1T
+  and `www.google.com.sa/ads/ga-audiences`, unchanged). On /airport-road/ as before: the Conversion Linker's ccm
+  collect / ccm/s/collect / set_partitioned_cookie, the Google Ads tag's viewthroughconversion and rmkt collect for
+  18253894939 and ccm collect tid=AW-18253894939, Meta, TikTok, Snapchat and Clarity.
