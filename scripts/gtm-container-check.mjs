@@ -25,10 +25,14 @@
 //     version 12); docs/gtm-container.json = v12 + the careers exception on «Google Ads AW-18253894939» (nothing else
 //     changed on it), docs/gtm-container-ads-fallback.json = v12 + «Initialization - except careers» (gtm.init, Page Path
 //     not a careers page) as that tag's only firing trigger; each one's diff against v12 = CHANGES_V12 (the preview).
+//   - version 13 and the Conversion Linker (21 Nov 2026): docs/gtm-container-v13.json = the exception file published
+//     as version 13 (its diff against v12 = CHANGES_V12.exception); docs/gtm-container.json = v13 + the careers
+//     exception on «Conversion Linker» (gclidw, All Pages, URL passthrough — nothing else changed on it); its diff
+//     against v13 = CHANGES_V13 (added 0, modified 1, deleted 0).
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import vm from 'node:vm';
-import { ADS_INIT_TRIGGER, ADS_TAG, BASE, CAREERS_PATH, CAREERS_TAGS, CAREERS_TRIGGER, CHANGES, CHANGES_V12, FALLBACK, OUT, V12, WHATSAPP_LABEL, build, buildV12, isPrivacyTag, render } from './gtm-container-build.mjs';
+import { ADS_INIT_TRIGGER, ADS_TAG, BASE, CAREERS_PATH, CAREERS_TAGS, CAREERS_TRIGGER, CHANGES, CHANGES_V12, CHANGES_V13, FALLBACK, LINKER_TAG, OUT, V12, V13, WHATSAPP_LABEL, build, buildAds, buildV12, buildV13, isPrivacyTag, render } from './gtm-container-build.mjs';
 
 let pass = 0;
 const fails = [];
@@ -80,7 +84,7 @@ for (const kind of KINDS) {
   }
 }
 /** GTM fields v11 happens not to use, allowed here: a tag's exception triggers, a trigger's extra conditions */
-const EXTRA = { tag: Object.fromEntries(['html', 'cvt_MQDKZ', 'dest_aw'].map((t) => [t, { blockingTriggerId: 'array' }])), trigger: { CUSTOM_EVENT: { filter: 'array' } } };
+const EXTRA = { tag: Object.fromEntries(['html', 'cvt_MQDKZ', 'dest_aw', 'gclidw'].map((t) => [t, { blockingTriggerId: 'array' }])), trigger: { CUSTOM_EVENT: { filter: 'array' } } };
 const orderClash = (keys, orders) => {
   for (const o of orders) {
     const mine = keys.filter((k) => o.includes(k));
@@ -318,7 +322,7 @@ check(purchaseLabels.length === 3, 'three Google Ads conversion tags (Booking, B
       const { fingerprint: _c, ...restBefore } = before ?? {};
       check(before && JSON.stringify(rest) === JSON.stringify(restBefore), `«${x.name}»: nothing else changed (ID, code, triggers, consent as v11)`);
     }
-    const others = B.tag.filter((x) => !isPrivacyTag(x) && x.name !== ADS_TAG);
+    const others = B.tag.filter((x) => !isPrivacyTag(x) && x.name !== ADS_TAG && x.name !== LINKER_TAG);
     check(others.every((x) => !x.blockingTriggerId), 'no other tag has an exception (GA4, the Google Ads conversions, the engagement timer as v11)', others.filter((x) => x.blockingTriggerId).map((x) => x.name).join(', '));
     // Google Ads off the careers pages (21 Nov 2026): the same exception on its Google tag, nothing else changed on it
     const adsTag = tag(ADS_TAG);
@@ -329,6 +333,16 @@ check(purchaseLabels.length === 3, 'three Google Ads conversion tags (Booking, B
       const { fingerprint: _c, ...restBefore } = adsBefore ?? {};
       check(adsBefore && JSON.stringify(rest) === JSON.stringify(restBefore) && JSON.stringify(adsTag.firingTriggerId) === '["2147479573"]', `«${ADS_TAG}»: nothing else changed (Initialization, AW-18253894939, consent as v11)`);
     }
+    // the Conversion Linker off the careers pages (21 Nov 2026): the same exception, nothing else changed on it
+    const lk = B.tag.filter((x) => x.type === 'gclidw');
+    const lkBefore = A.tag.find((y) => y.name === LINKER_TAG);
+    check(lk.length === 1 && lk[0].name === LINKER_TAG && JSON.stringify(lk[0].blockingTriggerId) === JSON.stringify([t.triggerId]), `«${LINKER_TAG}»: the one Conversion Linker, blocked on the careers pages`, JSON.stringify(lk.map((x) => [x.name, x.blockingTriggerId])));
+    {
+      const { fingerprint: _a, blockingTriggerId: _b, ...rest } = lk[0] ?? {};
+      const { fingerprint: _c, ...restBefore } = lkBefore ?? {};
+      const pv = (k) => lk[0]?.parameter.find((x) => x.key === k)?.value;
+      check(lkBefore && JSON.stringify(rest) === JSON.stringify(restBefore) && JSON.stringify(lk[0].firingTriggerId) === '["2147479553"]' && pv('enableUrlPassthrough') === 'true', `«${LINKER_TAG}»: nothing else changed (All Pages, URL passthrough on, consent as v11)`);
+    }
     check(B.tag.some((x) => x.type === 'googtag'), 'the GA4 Google tag is there');
     check(B.tag.filter((x) => x.type === 'awct' || x.type === 'gaawe' || x.type === 'googtag').every((x) => !x.blockingTriggerId), 'GA4, its events and the Google Ads conversion tags: no exception');
     check(B.tag.filter((x) => /fbq|ttq|snaptr|clarity/i.test(JSON.stringify(x))).every(isPrivacyTag), 'no Meta / TikTok / Snapchat / Clarity code outside the covered tags');
@@ -338,20 +352,32 @@ check(purchaseLabels.length === 3, 'three Google Ads conversion tags (Booking, B
 // ── version 12 and the two Google Ads files (21 Nov 2026): each one's import preview against version 12 ──
 {
   const v12Text = readFileSync(V12, 'utf8');
+  const v13Text = readFileSync(V13, 'utf8');
   const fbText = readFileSync(FALLBACK, 'utf8');
   rawOk('docs/gtm-container-v12.json', v12Text);
+  rawOk('docs/gtm-container-v13.json', v13Text);
   rawOk('docs/gtm-container-ads-fallback.json', fbText);
   check(v12Text === render(buildV12(base)), 'docs/gtm-container-v12.json = version 11 + the careers exception (the file published as version 12)');
-  check(fbText === render(build(base, 'init')), 'docs/gtm-container-ads-fallback.json = scripts/gtm-container-build.mjs output');
+  check(v13Text === render(buildV13(base)), 'docs/gtm-container-v13.json = version 12 + the exception on the Google Ads Google tag (the file published as version 13)');
+  check(fbText === render(buildAds(base, 'init')), 'docs/gtm-container-ads-fallback.json = scripts/gtm-container-build.mjs output (history: version 13 took the exception)');
   const V = JSON.parse(v12Text).containerVersion;
+  const V13C = JSON.parse(v13Text).containerVersion;
   const F = JSON.parse(fbText).containerVersion;
+  const counts13 = `${V13C.tag.length} tags, ${V13C.trigger.length} triggers, ${V13C.variable.length} variables`;
+  check(counts13 === '35 tags, 13 triggers, 35 variables', 'version 13: 35 tags, 13 triggers, 35 variables', counts13);
+  check(!V13C.tag.find((x) => x.name === LINKER_TAG)?.blockingTriggerId, 'version 13: the Conversion Linker without an exception (as published)');
   const counts12 = `${V.tag.length} tags, ${V.trigger.length} triggers, ${V.variable.length} variables`;
   check(counts12 === '35 tags, 13 triggers, 35 variables', 'version 12: 35 tags, 13 triggers, 35 variables (as published)', counts12);
-  for (const [label, to, want] of [['docs/gtm-container.json', B, CHANGES_V12.exception], ['docs/gtm-container-ads-fallback.json', F, CHANGES_V12.init]])
+  for (const [label, from, fromLabel, to, want] of [
+    ['docs/gtm-container-v13.json', V, 'version 12', V13C, CHANGES_V12.exception],
+    ['docs/gtm-container-ads-fallback.json', V, 'version 12', F, CHANGES_V12.init],
+    ['docs/gtm-container.json', V13C, 'version 13', B, CHANGES_V13],
+  ])
     for (const [kind, key] of [['tag', 'tags'], ['trigger', 'triggers'], ['variable', 'variables']]) {
-      const d = diff(kind, V, to);
-      check(d.deleted.length === 0 && same(d.added, want[key].added) && same(d.modified, want[key].modified), `${label} vs version 12, ${key}: added ${want[key].added.length}, modified ${want[key].modified.length}, deleted 0`, JSON.stringify(d));
+      const d = diff(kind, from, to);
+      check(d.deleted.length === 0 && same(d.added, want[key].added) && same(d.modified, want[key].modified), `${label} vs ${fromLabel}, ${key}: added ${want[key].added.length}, modified ${want[key].modified.length}, deleted 0`, JSON.stringify(d));
     }
+  for (const x of V13C.tag.filter((y) => y.name !== LINKER_TAG)) check(JSON.stringify(B.tag.find((y) => y.name === x.name)) === JSON.stringify(x), `tag «${x.name}» exactly as in version 13`);
   // the fallback: a Custom Event on gtm.init whose Page Path does not match the careers rule, the tag's only trigger
   const fb = F.trigger.find((x) => x.name === ADS_INIT_TRIGGER);
   const arg = (c, k) => c?.parameter.find((p) => p.key === k)?.value;
@@ -402,5 +428,5 @@ if (fails.length) {
 }
 const d = { tags: diff('tag'), triggers: diff('trigger'), variables: diff('variable') };
 console.log(
-  `gtm-container-check: ${pass} checks passed — import preview vs version 12: docs/gtm-container.json modified 1 tag («${ADS_TAG}»); the fallback added 1 trigger, modified 1 tag (vs v11: added ${d.triggers.added.length} trigger, modified ${d.tags.modified.length} tags)`,
+  `gtm-container-check: ${pass} checks passed — import preview vs version 13: docs/gtm-container.json modified 1 tag («${LINKER_TAG}») (vs v11: added ${d.triggers.added.length} trigger, modified ${d.tags.modified.length} tags)`,
 );

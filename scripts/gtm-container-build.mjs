@@ -1,7 +1,8 @@
 // The GTM import file, built from the published container so every change is code and checked:
 //
-//   node scripts/gtm-container-build.mjs            writes docs/gtm-container.json, docs/gtm-container-ads-fallback.json
-//                                                   and docs/gtm-container-v12.json from docs/gtm-container-v11.json
+//   node scripts/gtm-container-build.mjs            writes docs/gtm-container.json, docs/gtm-container-v13.json,
+//                                                   docs/gtm-container-v12.json and docs/gtm-container-ads-fallback.json
+//                                                   from docs/gtm-container-v11.json
 //   node scripts/gtm-container-build.mjs --check    exits 1 when any of them is not exactly that output
 //
 // Version 12 (21 Nov 2026 — DECISIONS.md 2026-11-21 «GTM version 12 live»): v11 + the careers privacy change below was
@@ -11,6 +12,15 @@
 // Google tag «Google Ads AW-18253894939» (type dest_aw); docs/gtm-container-ads-fallback.json is the fallback when GTM
 // does not take an exception on that tag — its firing trigger Initialization replaced by a Custom Event on gtm.init
 // whose Page Path is not a careers page. The import preview of either is against version 12 (CHANGES_V12).
+//
+// Version 13 (21 Nov 2026 — DECISIONS.md 2026-11-21 «GTM version 13 live; the ccm requests of the careers pages»):
+// Ahmed imported the exception file (GTM kept the exception on the dest_aw tag) and published it as version 13
+// «Careers: no Google Ads tag»; docs/gtm-container-v13.json is that file (buildV13 = buildAds 'exception'), and the
+// fallback is history. The next change: docs/gtm-container.json puts the same exception on the «Conversion Linker»
+// (type gclidw, All Pages, URL passthrough on) — the tag that sends Google's ccm requests (www.google.com/ccm/collect,
+// pagead2.googlesyndication.com/ccm/collect, ad.doubleclick.net/ccm/s/collect, pagead/set_partitioned_cookie) on
+// every page, the careers pages included (proved with scripts/gtm-probe.mjs against a patched gtm.js). Its import
+// preview is against version 13 (CHANGES_V13): added 0, modified 1.
 //
 // The base (20 Nov 2026 — DECISIONS.md 2026-11-20 «Careers privacy»): docs/gtm-container-v11.json is Ahmed's export of
 // GTM-5JVH7R37 version 11 «December campaigns tracking» (published 20 Nov 2026; 35 tags, 12 triggers, 35 variables +
@@ -32,6 +42,7 @@ export const BASE = resolve(ROOT, 'docs/gtm-container-v11.json');
 export const OUT = resolve(ROOT, 'docs/gtm-container.json');
 export const FALLBACK = resolve(ROOT, 'docs/gtm-container-ads-fallback.json');
 export const V12 = resolve(ROOT, 'docs/gtm-container-v12.json');
+export const V13 = resolve(ROOT, 'docs/gtm-container-v13.json');
 
 /** The Google Ads «WhatsApp click» conversion label (Ahmed, 20 Nov 2026: the action exists — secondary, Contact; in v11) */
 export const WHATSAPP_LABEL = 'JeZBCMeP3bsdEJuqkYBE';
@@ -89,12 +100,20 @@ export const CAREERS_TAGS = [
 export const ADS_TAG = 'Google Ads AW-18253894939';
 export const ADS_INIT_TRIGGER = 'Initialization - except careers';
 
-/** The change list on top of version 11 (this file = v12 + the Google Ads exception): by name — GTM's identity. */
+// ── The Conversion Linker off the careers pages (21 Nov 2026, built — not imported) ───────────────────────────────
+// With URL passthrough on, the Conversion Linker sends Google Ads' ccm requests (the page view and the consent update,
+// with the Google Ads user id auid and the click ID) on every page it runs on — still on the careers pages after
+// version 13, since it is a separate tag from the Google Ads Google tag. The same careers exception on it; GA4 untouched.
+export const LINKER_TAG = 'Conversion Linker';
+
+/** The change list on top of version 11 (this file = v13 + the Conversion Linker exception): by name — GTM's identity. */
 export const CHANGES = {
   variables: { added: [], modified: [] },
   triggers: { added: [CAREERS_TRIGGER], modified: [] },
-  tags: { added: [], modified: [...CAREERS_TAGS, ADS_TAG] },
+  tags: { added: [], modified: [...CAREERS_TAGS, ADS_TAG, LINKER_TAG] },
 };
+/** The import preview of docs/gtm-container.json against version 13 */
+export const CHANGES_V13 = { variables: { added: [], modified: [] }, triggers: { added: [], modified: [] }, tags: { added: [], modified: [LINKER_TAG] } };
 /** The import preview against version 12, per file: the exception (docs/gtm-container.json) or the fallback */
 export const CHANGES_V12 = {
   exception: { variables: { added: [], modified: [] }, triggers: { added: [], modified: [] }, tags: { added: [], modified: [ADS_TAG] } },
@@ -138,8 +157,8 @@ export function buildV12(base) {
   return doc;
 }
 
-/** the import file: version 12 + Google Ads off the careers pages — variant 'exception' (the file) or 'init' (fallback) */
-export function build(base, variant = 'exception') {
+/** version 12 + Google Ads off the careers pages — variant 'exception' (published as version 13) or 'init' (fallback) */
+export function buildAds(base, variant = 'exception') {
   const doc = buildV12(base);
   const c = doc.containerVersion;
   const acct = { accountId: c.accountId, containerId: c.containerId };
@@ -180,14 +199,34 @@ export function build(base, variant = 'exception') {
   return doc;
 }
 
+/** version 13 «Careers: no Google Ads tag» = the exception file Ahmed imported and published (21 Nov 2026 17:59) */
+export const buildV13 = (base) => buildAds(base, 'exception');
+
+/** the import file: version 13 + the careers exception on the Conversion Linker */
+export function build(base) {
+  const doc = buildV13(base);
+  const c = doc.containerVersion;
+  doc.exportTime = '2026-11-21 19:00:00';
+  c.name = 'Careers - no Conversion Linker';
+  c.description = '21 Nov 2026 — the careers exception also on the Conversion Linker (no Google ccm requests on /careers/ and /en/careers/)';
+  let fp = Date.UTC(2026, 10, 21, 16, 0, 0);
+  const fingerprint = () => String(fp++);
+  const careers = c.trigger.find((t) => t.name === CAREERS_TRIGGER);
+  const at = c.tag.findIndex((t) => t.name === LINKER_TAG);
+  if (at < 0 || !careers || c.tag[at].type !== 'gclidw') throw new Error('version 13 has no Conversion Linker or careers exception');
+  c.tag[at] = ordered({ ...c.tag[at], blockingTriggerId: [careers.triggerId], fingerprint: fingerprint() }, TAG_ORDER);
+  return doc;
+}
+
 // as GTM writes an export: 4-space indent, UTF-8 without BOM, no final newline
 export const render = (doc) => JSON.stringify(doc, null, 4);
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   const v11 = JSON.parse(readFileSync(BASE, 'utf8'));
   const files = [
-    [OUT, render(build(v11, 'exception'))],
-    [FALLBACK, render(build(v11, 'init'))],
+    [OUT, render(build(v11))],
+    [V13, render(buildV13(v11))],
+    [FALLBACK, render(buildAds(v11, 'init'))],
     [V12, render(buildV12(v11))],
   ];
   const short = (f) => relative(ROOT, f).split(sep).join('/');

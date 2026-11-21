@@ -1,13 +1,13 @@
 {
     "exportFormatVersion": 2,
-    "exportTime": "2026-11-21 15:00:00",
+    "exportTime": "2026-11-21 19:00:00",
     "containerVersion": {
         "path": "accounts/6382086279/containers/266900186/versions/11",
         "accountId": "6382086279",
         "containerId": "266900186",
         "containerVersionId": "11",
-        "name": "Careers privacy - Google Ads",
-        "description": "21 Nov 2026 — the careers exception also on the Google Ads Google tag (no Google Ads on /careers/ and /en/careers/)",
+        "name": "Careers - no Conversion Linker",
+        "description": "21 Nov 2026 — the careers exception also on the Conversion Linker (no Google ccm requests on /careers/ and /en/careers/)",
         "container": {
             "path": "accounts/6382086279/containers/266900186",
             "accountId": "6382086279",
@@ -1529,9 +1529,12 @@
                         "value": "false"
                     }
                 ],
-                "fingerprint": "1794419689102",
+                "fingerprint": "1795276800000",
                 "firingTriggerId": [
                     "2147479553"
+                ],
+                "blockingTriggerId": [
+                    "93"
                 ],
                 "tagFiringOption": "ONCE_PER_EVENT",
                 "monitoringMetadata": {

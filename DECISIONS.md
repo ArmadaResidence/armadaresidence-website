@@ -4276,3 +4276,40 @@ Instant booking keeps its limit of 3 units per room type per night (unchanged).
 - **The prompt** also registers the offer_view parameters in GA4 property 541626231 as event-scoped custom
   dimensions (Offer placement `placement`, Offer ID `offer_id`, Offer category `offer_category`) when missing. Nothing
   is published.
+
+## 2026-11-21 — GTM version 13 live; the ccm requests of the careers pages (21 Nov 2026)
+
+- **Version 13 «Careers: no Google Ads tag»** was published by Ahmed on 21 Nov 2026 at 17:59 Riyadh: the one change of
+  `docs/gtm-container.json` as it stood (the careers exception on the Google tag «Google Ads AW-18253894939»; GTM kept
+  the exception on the dest_aw tag, so the fallback was not needed). In Tag Assistant: no request with 18253894939 on
+  /careers/ or /en/careers/, the tag still fires on /airport-road/. The published gtm.js reads `"version":"13"` and
+  blocks the dest_aw tag with the careers rule. `docs/gtm-container-v13.json` = that imported file byte for byte (the
+  base of the next import); `docs/gtm-container-ads-fallback.json` stays as history.
+- **GA4 property 541626231** has three event-scoped custom dimensions since that day: `placement`, `offer_id`,
+  `offer_category` (the offer_view / offer_click parameters; not retroactive).
+- **The live probe** (`node scripts/gtm-probe.mjs --careers --base https://armadaresidence.com`, «قبول الكل» + a scroll,
+  every hit aborted — nothing reached a platform): no hit naming 18253894939 on /careers/ or /en/careers/; on
+  /airport-road/ six (viewthroughconversion and rmkt collect for 18253894939, ccm collect with tid=AW-18253894939, each
+  twice), with Meta, TikTok, Snapchat and Clarity as before. What stays on the careers pages: GA4 (g/collect for
+  page_view, offer_view, user_engagement), GA4's Google signals (`stats.g.doubleclick.net/g/collect`,
+  `www.google.com.sa/ads/ga-audiences`) and the Google Ads ccm requests below.
+- **The source of the two ccm requests: the Conversion Linker** (tag 61, type gclidw, All Pages, «Enable URL
+  passthrough» on) — not GA4 and not the Google Ads Google tag. Each sends, per page: before consent
+  `pagead2.googlesyndication.com/ccm/collect` (en=page_view, ae=g, cookieless), after consent
+  `www.google.com/ccm/collect` (en=page_view / consent_update, ae=g, ep.ads_data_redaction=1, auid, the click ID),
+  `www.googleadservices.com/pagead/set_partitioned_cookie` and `ad.doubleclick.net/ccm/s/collect` (auid). Their `gtm`
+  parameter names the GTM container's own code (`v9266900186`), every GA4 hit the GA4 Google tag (`v9255823380`).
+  Proved, not reasoned: a scratch variant of the probe served a patched gtm.js / gtag.js to the live site — the
+  Conversion Linker taken out of the All Pages rule → 0 ccm requests and every GA4 request unchanged; the AW Google
+  tag's remote settings (`__rep`) out → all 8 stay; GA4's «Google Ads link» step out → all 8 stay (only the Google
+  signals requests go); `allow_google_signals` or `allow_ad_personalization_signals` false on the GA4 Google tag →
+  all 8 stay.
+- **The proposed fix (built, not imported):** the same «Exception - careers pages» on «Conversion Linker» —
+  `docs/gtm-container.json` = version 13 + that exception (import preview vs v13: added 0, modified 1, deleted 0);
+  the probe with exactly that rule compiled into gtm.js: 0 ccm requests on /careers/ and /en/careers/, GA4 unchanged
+  there, and on /airport-road/ every request as published (the AW ones included). Prompt:
+  `docs/gtm-import-careers-linker.md` (stops before publish). `scripts/gtm-container-build.mjs` writes
+  `docs/gtm-container-v13.json` too; `gtm-container-check` holds the preview against v13 (1001 checks). Side effect:
+  no Google click-ID cookie is written on a careers page, so an ad click landing there with every cookie accepted is
+  not carried to a later booking in that visit (no Google Ads conversion fires on a careers page anyway). Google
+  signals stay on the careers pages with GA4 (Ahmed: GA4 unchanged there).
