@@ -68,6 +68,7 @@ const external = !!customHref && customHref.startsWith('https://');
 
 <script>
   import { bindOnce, onPageLoad } from '@lib/client';
+  import { firstOfferView } from '@lib/offer-views';
 
   const KEY = 'armada-offer-bar';
   onPageLoad(() => {
@@ -82,7 +83,8 @@ const external = !!customHref && customHref.startsWith('https://');
       if (custom) w.dataLayer.push({ event: `announcement_${event}`, announcement_id: slug });
       else w.dataLayer.push({ event: `offer_${event}`, offer_id: slug, category: bar.dataset.offerCategory, placement: 'bar', ...(event === 'click' ? { cta: 'details' } : {}) });
     };
-    if (!document.documentElement.hasAttribute('data-offer-bar-off')) push('view');
+    // a featured offer's view once per visit (21 Nov 2026 — the bar is on every page); a custom announcement's per page
+    if (!document.documentElement.hasAttribute('data-offer-bar-off') && (custom || firstOfferView(slug, 'bar'))) push('view');
     bar.querySelector('[data-offer-bar-link]')?.addEventListener('click', () => push('click'));
     bar.querySelector('[data-offer-bar-close]')?.addEventListener('click', () => {
       try {

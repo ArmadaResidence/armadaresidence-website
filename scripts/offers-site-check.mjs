@@ -47,6 +47,8 @@ const gen = existsSync('content/offers.generated.json') ? JSON.parse(readFileSyn
 const published = gen.source === 'fixture' && /data-offer-category="individuals"/.test(offersHtml);
 const realIndividuals = !published && /data-offer-category="individuals"/.test(offersHtml);
 const hasBar = /data-offer-bar=/.test(homeHtml);
+// the bar's featured offer (a custom announcement sends announcement_view instead)
+const barOffer = homeHtml.match(/data-offer-bar="([^"]+)"[^>]*data-bar-kind="offer"/)?.[1] ?? null;
 const hasPopup = /<dialog[^>]*data-offer-popup/.test(homeHtml);
 const hasPromo = /name="promo_code"/.test(read('booking/index.html'));
 console.log(`offers-site-check: ${BASE} (${published ? 'published offers (the sample)' : realIndividuals ? 'the dashboard offers' : 'the seed only'}${hasBar ? ', bar' : ''}${hasPopup ? ', pop-up' : ''}${hasPromo ? ', promo field' : ''})`);
@@ -138,8 +140,12 @@ try {
           check((await page.locator('main a[data-wa-destination="sales"]').count()) === 2, `${tag} /offers/: the two sales WhatsApp buttons`);
           check((await b2b.nth(1).locator(`a[href="${PRE}${lang === 'en' ? '/en' : ''}/partners/"]`).count()) === 1, `${tag} /offers/: the partners link under the last section`);
           if (theme === 'light') await axe(page, `${tag} /offers/`);
+          // a featured offer in the bar (the deploy build's own data): its offer_view once per visit (21 Nov 2026)
+          const barViews = async () => (await events(page, 'offer_view')).filter((e) => e.placement === 'bar');
+          if (barOffer) check((await barViews()).length === 1 && (await barViews())[0].offer_id === barOffer, `${tag} bar: its offer_view once on the visit's first page`, JSON.stringify(await barViews()));
           await page.goto(`${pre}/`, { waitUntil: 'networkidle' });
           check((await page.locator('[data-offer-bar]').count()) === (hasBar ? 1 : 0), `${tag} home: the announcement bar exactly when the build has one`);
+          if (barOffer) check((await barViews()).length === 0 && (await page.locator('[data-offer-bar]').isVisible()), `${tag} bar: shown on the next page, no second offer_view in the visit`, JSON.stringify(await barViews()));
           check((await page.locator('dialog[data-offer-popup]').count()) === (hasPopup ? 1 : 0), `${tag} home: the pop-up exactly when the build has one`);
           await page.goto(`${pre}/booking/`, { waitUntil: 'networkidle' });
           check((await page.locator('input[name="promo_code"]').count()) === 0, `${tag} /booking/: no promo-code field without a live code`);
@@ -178,6 +184,8 @@ try {
         await page.waitForTimeout(400);
         const views = await events(page, 'offer_view');
         check(views.some((e) => e.offer_id === 'qa-autumn-stay' && e.category === 'individuals' && e.placement === 'offers') && views.every((e) => Object.keys(e).sort().join() === 'category,event,offer_id,placement'), `${tag} dataLayer: offer_view with slug, category, placement only`, JSON.stringify(views[0] ?? null));
+        // the bar's offer_view once per visit (21 Nov 2026): the first page of this visit sends it once, beside the card's
+        if (hasBar) check(views.filter((e) => e.offer_id === 'qa-autumn-stay' && e.placement === 'bar').length === 1, `${tag} dataLayer: the bar's offer_view once on the visit's first page, beside the card's`, JSON.stringify(views.map((e) => `${e.offer_id}|${e.placement}`)));
         if (theme === 'light') await axe(page, `${tag} /offers/ (tabs)`);
         // the offer's button: the drawer, prefilled
         await page.locator('#offer-qa-weekend-code [data-offer-cta]').click();
@@ -200,6 +208,16 @@ try {
         check((await page.locator('[data-offers-section="home"] [data-offer="qa-weekend-code"]').count()) === 0, `${tag} home: an offer not marked for it is absent`);
         if (hasBar) {
           const bar = page.locator('[data-offer-bar]');
+          // a later page of the same visit: no second bar view, while the same offer's home card still sends its own
+          await page.locator('[data-offers-section="home"] [data-offer="qa-autumn-stay"]').scrollIntoViewIfNeeded();
+          await page.waitForTimeout(600);
+          const homeViews = await events(page, 'offer_view');
+          check(!homeViews.some((e) => e.placement === 'bar'), `${tag} bar: no second offer_view later in the visit`, JSON.stringify(homeViews.map((e) => `${e.offer_id}|${e.placement}`)));
+          check(homeViews.some((e) => e.offer_id === 'qa-autumn-stay' && e.placement === 'home'), `${tag} bar: the same offer's home card still sends its offer_view`, JSON.stringify(homeViews.map((e) => `${e.offer_id}|${e.placement}`)));
+          const stored = await page.evaluate(() => sessionStorage.getItem('armada-offer-views'));
+          check(JSON.stringify(JSON.parse(stored || '[]')) === JSON.stringify(['qa-autumn-stay|bar']), `${tag} bar: sessionStorage holds the offer and placement only`, String(stored));
+          await page.evaluate(() => window.scrollTo({ top: 0, behavior: 'instant' }));
+          await page.waitForTimeout(300);
           check((await bar.boundingBox())?.y === 0, `${tag} bar: at the very top`);
           check((await bar.getAttribute('aria-label')) === O.bar_label && (await bar.locator('[data-offer-bar-close]').getAttribute('aria-label')) === O.bar_dismiss, `${tag} bar: labelled, the × labelled`);
           check(((await bar.locator('[data-offer-bar-link]').getAttribute('href')) || '').endsWith('/offers/#offer-qa-autumn-stay'), `${tag} bar: «${O.bar_details}» leads to the offer`);
