@@ -1,13 +1,13 @@
 {
     "exportFormatVersion": 2,
-    "exportTime": "2026-11-20 21:00:00",
+    "exportTime": "2026-11-21 15:00:00",
     "containerVersion": {
         "path": "accounts/6382086279/containers/266900186/versions/11",
         "accountId": "6382086279",
         "containerId": "266900186",
         "containerVersionId": "11",
-        "name": "Careers privacy",
-        "description": "20 Nov 2026 — no Meta, TikTok, Snapchat or Clarity tag on /careers/ and /en/careers/ (one exception trigger)",
+        "name": "Careers privacy - Google Ads",
+        "description": "21 Nov 2026 — the careers exception also on the Google Ads Google tag (no Google Ads on /careers/ and /en/careers/)",
         "container": {
             "path": "accounts/6382086279/containers/266900186",
             "accountId": "6382086279",
@@ -1650,9 +1650,12 @@
                         "value": "AW-18253894939"
                     }
                 ],
-                "fingerprint": "1794402249634",
+                "fingerprint": "1795262400000",
                 "firingTriggerId": [
                     "2147479573"
+                ],
+                "blockingTriggerId": [
+                    "93"
                 ],
                 "monitoringMetadata": {
                     "type": "MAP"

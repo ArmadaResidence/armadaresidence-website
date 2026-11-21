@@ -4238,3 +4238,41 @@ Instant booking keeps its limit of 3 units per room type per night (unchanged).
   half a card is seen. So since GA4 - offer_view went live (version 11, 20 Nov 2026 13:35) every offer_view with
   placement bar is a bar impression, about one per page view — on every page, not only careers. Card views are right.
   The fix depends on what the bar's view should count; asked of Ahmed, nothing changed.
+
+## 2026-11-21 — offer_view of the bar once per visit; Google Ads off the careers pages (built, not imported) (Ahmed, 21 Nov 2026)
+
+- **offer_view of the announcement bar: once per visit** (Ahmed's answer to the review above). The key is the offer AND
+  the placement (`<slug>|bar`), so the bar's view of an offer never suppresses a card's view of the same offer; the
+  cards keep theirs (once per card and page, half of it seen). `src/lib/offer-views.ts` → `firstOfferView(slug,
+  placement)`: sessionStorage `armada-offer-views` (the keys only — a slug and a placement, nothing personal, at most
+  50), and the module's own set (client-side navigations, no storage → once per full page load). A custom
+  announcement's `announcement_view` is unchanged (per page). `offers-site-check`: the sample — the bar's view once on
+  the visit's first page beside the card's, none on the next page while the same offer's home card still sends its
+  own, the stored keys; the deploy build — its featured offer's bar view once on the first page, none on the next.
+  **The data:** from GA4 - offer_view's start (version 11, 20 Nov 2026 13:35 Riyadh) to this deploy, every offer_view
+  with placement bar is one per page view without a dismissal (the featured offer «celebration-packages» since
+  18 Nov 2026 23:31); card views are right. GA4 can split them only by `placement`, which is not registered as a
+  custom dimension (registration is not retroactive) — the prompt below registers it.
+- **Google Ads off the careers pages — built, not imported.** Measured with the published version 12
+  (`node scripts/gtm-probe.mjs --careers`, every hit aborted): «قبول الكل» on a careers page sends 13 Google Ads hits
+  (view-through conversion, rmkt collect and ccm collect for AW-18253894939). The careers notice names no advertising
+  tool, and the Google tag of AW-18253894939 detects user-provided data automatically. The change: the existing
+  «Exception - careers pages» on the Google tag «Google Ads AW-18253894939» (type `dest_aw`, Initialization) —
+  `docs/gtm-container.json`, preview vs v12: added 0, modified 1, deleted 0. GTM's handling of an exception on a
+  `dest_aw` tag is not documented, so the prompt checks it in the import preview and on the tag; if it does not hold,
+  `docs/gtm-container-ads-fallback.json` replaces the tag's Initialization with «Initialization - except careers» (a
+  Custom Event on gtm.init, Page Path does not match the careers rule — GTM's `negate` parameter): added 1, modified 1.
+  `scripts/gtm-container-build.mjs` now writes three files (`docs/gtm-container-v12.json` = version 12, the base; the
+  file; the fallback); `gtm-container-check` holds both previews against v12 (943 checks). `scripts/gtm-emulator.mjs`
+  runs the Google Ads Google tag (on gtm.init) and negated conditions; `click-id-check` asserts no Google Ads request
+  on /careers/ and /en/careers/ and one on every other full load — 77/77 with each file, and fails on version 12 (the
+  control). The real check is Tag Assistant in the prompt (`docs/gtm-import-careers-ads.md`) and, after a publish,
+  `gtm-probe --careers` again (expected: no hit naming 18253894939 on the careers pages; the GA4 ones stay, including
+  GA4's own Google signals requests to stats.g.doubleclick.net and google.com.sa/ads/ga-audiences).
+- **GA4's own Google tag (found, not changed — Ahmed's instruction).** The published settings of G-675Y7W0H1T carry
+  «automatically detect user-provided data» on (email, phone, address: `__ogt_1p_data_v2` isAutoEnabled true), with
+  its GA4 destination set not to accept automatically detected data (`__ccd_add_1p_data` acceptAutomatic false). The
+  Google Ads tag AW-18253894939 has the same detection on and accepts it (acceptAutomatic true, on form submits).
+- **The prompt** also registers the offer_view parameters in GA4 property 541626231 as event-scoped custom
+  dimensions (Offer placement `placement`, Offer ID `offer_id`, Offer category `offer_category`) when missing. Nothing
+  is published.

@@ -1,0 +1,3610 @@
+{
+    "exportFormatVersion": 2,
+    "exportTime": "2026-11-21 15:01:00",
+    "containerVersion": {
+        "path": "accounts/6382086279/containers/266900186/versions/11",
+        "accountId": "6382086279",
+        "containerId": "266900186",
+        "containerVersionId": "11",
+        "name": "Careers privacy - Google Ads",
+        "description": "21 Nov 2026 — the Google Ads Google tag fires on Initialization except on /careers/ and /en/careers/ (fallback)",
+        "container": {
+            "path": "accounts/6382086279/containers/266900186",
+            "accountId": "6382086279",
+            "containerId": "266900186",
+            "name": "armadaresidence.com",
+            "publicId": "GTM-5JVH7R37",
+            "usageContext": [
+                "WEB"
+            ],
+            "fingerprint": "1794305249964",
+            "tagManagerUrl": "https://tagmanager.google.com/#/container/accounts/6382086279/containers/266900186/workspaces?apiLink=container",
+            "features": {
+                "supportUserPermissions": true,
+                "supportEnvironments": true,
+                "supportWorkspaces": true,
+                "supportGtagConfigs": false,
+                "supportBuiltInVariables": true,
+                "supportClients": false,
+                "supportFolders": true,
+                "supportTags": true,
+                "supportTemplates": true,
+                "supportTriggers": true,
+                "supportVariables": true,
+                "supportVersions": true,
+                "supportZones": true,
+                "supportTransformations": false
+            },
+            "tagIds": [
+                "GTM-5JVH7R37"
+            ]
+        },
+        "tag": [
+            {
+                "accountId": "6382086279",
+                "containerId": "266900186",
+                "tagId": "4",
+                "name": "Meta Pixel - base",
+                "type": "html",
+                "priority": {
+                    "type": "INTEGER",
+                    "value": "10"
+                },
+                "notes": "Fires on first_engagement, consent_granted, virtual_page_view and the conversions (setup tag). Init once per document, one page view per page view id (19 Nov 2026).",
+                "parameter": [
+                    {
+                        "type": "TEMPLATE",
+                        "key": "html",
+                        "value": "<script>(function(w){\nif(!w.fbq){!function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window,document,'script','https://connect.facebook.net/en_US/fbevents.js');\nw.fbq.disablePushState=true;w.fbq.allowDuplicatePageViews=true;}\nif(!w.__armadaMetaInit){w.__armadaMetaInit=1;\nvar am = {}; if ({{DL - ud email}}) am.em = {{DL - ud email}}; if ({{DL - ud phone}}) am.ph = {{DL - ud phone}};\nfbq('init', '{{Meta Pixel ID}}', am);}\nvar k={{JS - page view id}};\nif(w.__armadaMetaPv!==k){w.__armadaMetaPv=k;fbq('track', 'PageView');}\n})(window);</script>"
+                    },
+                    {
+                        "type": "BOOLEAN",
+                        "key": "supportDocumentWrite",
+                        "value": "false"
+                    }
+                ],
+                "fingerprint": "1795197600001",
+                "firingTriggerId": [
+                    "38",
+                    "14",
+                    "32",
+                    "73",
+                    "8"
+                ],
+                "blockingTriggerId": [
+                    "93"
+                ],
+                "tagFiringOption": "ONCE_PER_EVENT",
+                "monitoringMetadata": {
+                    "type": "MAP"
+                },
+                "consentSettings": {
+                    "consentStatus": "NEEDED",
+                    "consentType": {
+                        "type": "LIST",
+                        "list": [
+                            {
+                                "type": "TEMPLATE",
+                                "value": "ad_storage"
+                            }
+                        ]
+                    }
+                }
+            },
+            {
+                "accountId": "6382086279",
+                "containerId": "266900186",
+                "tagId": "12",
+                "name": "GA4 - page_view (virtual, view transitions)",
+                "type": "gaawe",
+                "notes": "Client-side navigations (Astro ClientRouter) push virtual_page_view; the first page of a session is counted by the config tag.",
+                "parameter": [
+                    {
+                        "type": "BOOLEAN",
+                        "key": "sendEcommerceData",
+                        "value": "false"
+                    },
+                    {
+                        "type": "LIST",
+                        "key": "eventSettingsTable",
+                        "list": [
+                            {
+                                "type": "MAP",
+                                "map": [
+                                    {
+                                        "type": "TEMPLATE",
+                                        "key": "parameter",
+                                        "value": "page_location"
+                                    },
+                                    {
+                                        "type": "TEMPLATE",
+                                        "key": "parameterValue",
+                                        "value": "{{DL - page_location}}"
+                                    }
+                                ]
+                            },
+                            {
+                                "type": "MAP",
+                                "map": [
+                                    {
+                                        "type": "TEMPLATE",
+                                        "key": "parameter",
+                                        "value": "page_path"
+                                    },
+                                    {
+                                        "type": "TEMPLATE",
+                                        "key": "parameterValue",
+                                        "value": "{{DL - page_path}}"
+                                    }
+                                ]
+                            },
+                            {
+                                "type": "MAP",
+                                "map": [
+                                    {
+                                        "type": "TEMPLATE",
+                                        "key": "parameter",
+                                        "value": "page_title"
+                                    },
+                                    {
+                                        "type": "TEMPLATE",
+                                        "key": "parameterValue",
+                                        "value": "{{DL - page_title}}"
+                                    }
+                                ]
+                            }
+                        ]
+                    },
+                    {
+                        "type": "TEMPLATE",
+                        "key": "eventName",
+                        "value": "page_view"
+                    },
+                    {
+                        "type": "TEMPLATE",
+                        "key": "measurementIdOverride",
+                        "value": "{{GA4 Measurement ID}}"
+                    }
+                ],
+                "fingerprint": "1794305199405",
+                "firingTriggerId": [
+                    "8"
+                ],
+                "tagFiringOption": "ONCE_PER_EVENT",
+                "monitoringMetadata": {
+                    "type": "MAP"
+                },
+                "consentSettings": {
+                    "consentStatus": "NOT_NEEDED"
+                }
+            },
+            {
+                "accountId": "6382086279",
+                "containerId": "266900186",
+                "tagId": "16",
+                "name": "GA4 - booking_drawer_open",
+                "type": "gaawe",
+                "parameter": [
+                    {
+                        "type": "BOOLEAN",
+                        "key": "sendEcommerceData",
+                        "value": "false"
+                    },
+                    {
+                        "type": "LIST",
+                        "key": "eventSettingsTable",
+                        "list": [
+                            {
+                                "type": "MAP",
+                                "map": [
+                                    {
+                                        "type": "TEMPLATE",
+                                        "key": "parameter",
+                                        "value": "branch"
+                                    },
+                                    {
+                                        "type": "TEMPLATE",
+                                        "key": "parameterValue",
+                                        "value": "{{DL - branch}}"
+                                    }
+                                ]
+                            },
+                            {
+                                "type": "MAP",
+                                "map": [
+                                    {
+                                        "type": "TEMPLATE",
+                                        "key": "parameter",
+                                        "value": "room_type"
+                                    },
+                                    {
+                                        "type": "TEMPLATE",
+                                        "key": "parameterValue",
+                                        "value": "{{DL - room_type}}"
+                                    }
+                                ]
+                            },
+                            {
+                                "type": "MAP",
+                                "map": [
+                                    {
+                                        "type": "TEMPLATE",
+                                        "key": "parameter",
+                                        "value": "page_path"
+                                    },
+                                    {
+                                        "type": "TEMPLATE",
+                                        "key": "parameterValue",
+                                        "value": "{{DL - page_path}}"
+                                    }
+                                ]
+                            }
+                        ]
+                    },
+                    {
+                        "type": "TEMPLATE",
+                        "key": "eventName",
+                        "value": "booking_drawer_open"
+                    },
+                    {
+                        "type": "TEMPLATE",
+                        "key": "measurementIdOverride",
+                        "value": "{{GA4 Measurement ID}}"
+                    }
+                ],
+                "fingerprint": "1794305174863",
+                "firingTriggerId": [
+                    "13"
+                ],
+                "tagFiringOption": "ONCE_PER_EVENT",
+                "monitoringMetadata": {
+                    "type": "MAP"
+                },
+                "consentSettings": {
+                    "consentStatus": "NOT_NEEDED"
+                }
+            },
+            {
+                "accountId": "6382086279",
+                "containerId": "266900186",
+                "tagId": "17",
+                "name": "Meta Pixel - Lead on booking_request",
+                "type": "html",
+                "parameter": [
+                    {
+                        "type": "TEMPLATE",
+                        "key": "html",
+                        "value": "<script>if (window.fbq) { var p = { content_name: 'booking_request', content_category: {{DL - branch}},\n  lead_type: {{DL - lead_type}}, currency: {{DL - currency}} || 'SAR' }; if ({{DL - value}}) p.value = Number({{DL - value}});\n  fbq('track', 'Lead', p, { eventID: {{DL - event_id}} }); }</script>"
+                    },
+                    {
+                        "type": "BOOLEAN",
+                        "key": "supportDocumentWrite",
+                        "value": "false"
+                    }
+                ],
+                "fingerprint": "1795197600002",
+                "firingTriggerId": [
+                    "14"
+                ],
+                "blockingTriggerId": [
+                    "93"
+                ],
+                "setupTag": [
+                    {
+                        "tagName": "Meta Pixel - base"
+                    }
+                ],
+                "tagFiringOption": "ONCE_PER_EVENT",
+                "monitoringMetadata": {
+                    "type": "MAP"
+                },
+                "consentSettings": {
+                    "consentStatus": "NEEDED",
+                    "consentType": {
+                        "type": "LIST",
+                        "list": [
+                            {
+                                "type": "TEMPLATE",
+                                "value": "ad_storage"
+                            }
+                        ]
+                    }
+                }
+            },
+            {
+                "accountId": "6382086279",
+                "containerId": "266900186",
+                "tagId": "18",
+                "name": "Google tag - GA4 config",
+                "type": "googtag",
+                "notes": "Delete after import if the container already has a GA4 configuration tag for this ID.",
+                "parameter": [
+                    {
+                        "type": "TEMPLATE",
+                        "key": "tagId",
+                        "value": "{{GA4 Measurement ID}}"
+                    }
+                ],
+                "fingerprint": "1794305222453",
+                "firingTriggerId": [
+                    "2147479553"
+                ],
+                "tagFiringOption": "ONCE_PER_EVENT",
+                "monitoringMetadata": {
+                    "type": "MAP"
+                },
+                "consentSettings": {
+                    "consentStatus": "NOT_NEEDED"
+                }
+            },
+            {
+                "accountId": "6382086279",
+                "containerId": "266900186",
+                "tagId": "22",
+                "name": "GA4 - partner_enquiry",
+                "type": "gaawe",
+                "notes": "Pushed by the /partners/enquiry/ form (b2b-rates | umrah-group | corporate | event).",
+                "parameter": [
+                    {
+                        "type": "BOOLEAN",
+                        "key": "sendEcommerceData",
+                        "value": "false"
+                    },
+                    {
+                        "type": "LIST",
+                        "key": "eventSettingsTable",
+                        "list": [
+                            {
+                                "type": "MAP",
+                                "map": [
+                                    {
+                                        "type": "TEMPLATE",
+                                        "key": "parameter",
+                                        "value": "request_type"
+                                    },
+                                    {
+                                        "type": "TEMPLATE",
+                                        "key": "parameterValue",
+                                        "value": "{{DL - request_type}}"
+                                    }
+                                ]
+                            },
+                            {
+                                "type": "MAP",
+                                "map": [
+                                    {
+                                        "type": "TEMPLATE",
+                                        "key": "parameter",
+                                        "value": "branch"
+                                    },
+                                    {
+                                        "type": "TEMPLATE",
+                                        "key": "parameterValue",
+                                        "value": "{{DL - branch}}"
+                                    }
+                                ]
+                            },
+                            {
+                                "type": "MAP",
+                                "map": [
+                                    {
+                                        "type": "TEMPLATE",
+                                        "key": "parameter",
+                                        "value": "booking_ref"
+                                    },
+                                    {
+                                        "type": "TEMPLATE",
+                                        "key": "parameterValue",
+                                        "value": "{{DL - booking_ref}}"
+                                    }
+                                ]
+                            },
+                            {
+                                "type": "MAP",
+                                "map": [
+                                    {
+                                        "type": "TEMPLATE",
+                                        "key": "parameter",
+                                        "value": "lead_type"
+                                    },
+                                    {
+                                        "type": "TEMPLATE",
+                                        "key": "parameterValue",
+                                        "value": "{{DL - lead_type}}"
+                                    }
+                                ]
+                            },
+                            {
+                                "type": "MAP",
+                                "map": [
+                                    {
+                                        "type": "TEMPLATE",
+                                        "key": "parameter",
+                                        "value": "currency"
+                                    },
+                                    {
+                                        "type": "TEMPLATE",
+                                        "key": "parameterValue",
+                                        "value": "{{DL - currency}}"
+                                    }
+                                ]
+                            },
+                            {
+                                "type": "MAP",
+                                "map": [
+                                    {
+                                        "type": "TEMPLATE",
+                                        "key": "parameter",
+                                        "value": "user_data"
+                                    },
+                                    {
+                                        "type": "TEMPLATE",
+                                        "key": "parameterValue",
+                                        "value": "{{UPD - google user data}}"
+                                    }
+                                ]
+                            }
+                        ]
+                    },
+                    {
+                        "type": "TEMPLATE",
+                        "key": "eventName",
+                        "value": "partner_enquiry"
+                    },
+                    {
+                        "type": "TEMPLATE",
+                        "key": "measurementIdOverride",
+                        "value": "{{GA4 Measurement ID}}"
+                    }
+                ],
+                "fingerprint": "1794305144028",
+                "firingTriggerId": [
+                    "19"
+                ],
+                "tagFiringOption": "ONCE_PER_EVENT",
+                "monitoringMetadata": {
+                    "type": "MAP"
+                },
+                "consentSettings": {
+                    "consentStatus": "NOT_NEEDED"
+                }
+            },
+            {
+                "accountId": "6382086279",
+                "containerId": "266900186",
+                "tagId": "23",
+                "name": "Snap Pixel - SIGN_UP on booking_request",
+                "type": "html",
+                "parameter": [
+                    {
+                        "type": "TEMPLATE",
+                        "key": "html",
+                        "value": "<script>if (window.snaptr) {\n  var p = { currency: {{DL - currency}} || 'SAR', description: {{DL - lead_type}}, client_dedup_id: {{DL - event_id}} };\n  if ({{DL - value}}) p.price = Number({{DL - value}});\n  snaptr('track', 'SIGN_UP', p);\n}</script>"
+                    },
+                    {
+                        "type": "BOOLEAN",
+                        "key": "supportDocumentWrite",
+                        "value": "false"
+                    }
+                ],
+                "fingerprint": "1795197600003",
+                "firingTriggerId": [
+                    "14"
+                ],
+                "blockingTriggerId": [
+                    "93"
+                ],
+                "setupTag": [
+                    {
+                        "tagName": "Snap Pixel - base"
+                    }
+                ],
+                "tagFiringOption": "ONCE_PER_EVENT",
+                "monitoringMetadata": {
+                    "type": "MAP"
+                },
+                "consentSettings": {
+                    "consentStatus": "NEEDED",
+                    "consentType": {
+                        "type": "LIST",
+                        "list": [
+                            {
+                                "type": "TEMPLATE",
+                                "value": "ad_storage"
+                            }
+                        ]
+                    }
+                }
+            },
+            {
+                "accountId": "6382086279",
+                "containerId": "266900186",
+                "tagId": "25",
+                "name": "GA4 - booking_request",
+                "type": "gaawe",
+                "notes": "CLAUDE.md §8 step 5 — pushed once per request on /booking/success/. Mark as a key event (conversion) in GA4.",
+                "parameter": [
+                    {
+                        "type": "BOOLEAN",
+                        "key": "sendEcommerceData",
+                        "value": "false"
+                    },
+                    {
+                        "type": "LIST",
+                        "key": "eventSettingsTable",
+                        "list": [
+                            {
+                                "type": "MAP",
+                                "map": [
+                                    {
+                                        "type": "TEMPLATE",
+                                        "key": "parameter",
+                                        "value": "branch"
+                                    },
+                                    {
+                                        "type": "TEMPLATE",
+                                        "key": "parameterValue",
+                                        "value": "{{DL - branch}}"
+                                    }
+                                ]
+                            },
+                            {
+                                "type": "MAP",
+                                "map": [
+                                    {
+                                        "type": "TEMPLATE",
+                                        "key": "parameter",
+                                        "value": "room_type"
+                                    },
+                                    {
+                                        "type": "TEMPLATE",
+                                        "key": "parameterValue",
+                                        "value": "{{DL - room_type}}"
+                                    }
+                                ]
+                            },
+                            {
+                                "type": "MAP",
+                                "map": [
+                                    {
+                                        "type": "TEMPLATE",
+                                        "key": "parameter",
+                                        "value": "nights"
+                                    },
+                                    {
+                                        "type": "TEMPLATE",
+                                        "key": "parameterValue",
+                                        "value": "{{DL - nights}}"
+                                    }
+                                ]
+                            },
+                            {
+                                "type": "MAP",
+                                "map": [
+                                    {
+                                        "type": "TEMPLATE",
+                                        "key": "parameter",
+                                        "value": "booking_ref"
+                                    },
+                                    {
+                                        "type": "TEMPLATE",
+                                        "key": "parameterValue",
+                                        "value": "{{DL - booking_ref}}"
+                                    }
+                                ]
+                            },
+                            {
+                                "type": "MAP",
+                                "map": [
+                                    {
+                                        "type": "TEMPLATE",
+                                        "key": "parameter",
+                                        "value": "lead_type"
+                                    },
+                                    {
+                                        "type": "TEMPLATE",
+                                        "key": "parameterValue",
+                                        "value": "{{DL - lead_type}}"
+                                    }
+                                ]
+                            },
+                            {
+                                "type": "MAP",
+                                "map": [
+                                    {
+                                        "type": "TEMPLATE",
+                                        "key": "parameter",
+                                        "value": "currency"
+                                    },
+                                    {
+                                        "type": "TEMPLATE",
+                                        "key": "parameterValue",
+                                        "value": "{{DL - currency}}"
+                                    }
+                                ]
+                            },
+                            {
+                                "type": "MAP",
+                                "map": [
+                                    {
+                                        "type": "TEMPLATE",
+                                        "key": "parameter",
+                                        "value": "value"
+                                    },
+                                    {
+                                        "type": "TEMPLATE",
+                                        "key": "parameterValue",
+                                        "value": "{{DL - value}}"
+                                    }
+                                ]
+                            },
+                            {
+                                "type": "MAP",
+                                "map": [
+                                    {
+                                        "type": "TEMPLATE",
+                                        "key": "parameter",
+                                        "value": "user_data"
+                                    },
+                                    {
+                                        "type": "TEMPLATE",
+                                        "key": "parameterValue",
+                                        "value": "{{UPD - google user data}}"
+                                    }
+                                ]
+                            }
+                        ]
+                    },
+                    {
+                        "type": "TEMPLATE",
+                        "key": "eventName",
+                        "value": "booking_request"
+                    },
+                    {
+                        "type": "TEMPLATE",
+                        "key": "measurementIdOverride",
+                        "value": "{{GA4 Measurement ID}}"
+                    }
+                ],
+                "fingerprint": "1794305076456",
+                "firingTriggerId": [
+                    "14"
+                ],
+                "tagFiringOption": "ONCE_PER_EVENT",
+                "monitoringMetadata": {
+                    "type": "MAP"
+                },
+                "consentSettings": {
+                    "consentStatus": "NOT_NEEDED"
+                }
+            },
+            {
+                "accountId": "6382086279",
+                "containerId": "266900186",
+                "tagId": "26",
+                "name": "Snap Pixel - base",
+                "type": "html",
+                "priority": {
+                    "type": "INTEGER",
+                    "value": "10"
+                },
+                "notes": "Fires on first_engagement, consent_granted, virtual_page_view and the conversions (setup tag). Init once per document, one page view per page view id (19 Nov 2026).",
+                "parameter": [
+                    {
+                        "type": "TEMPLATE",
+                        "key": "html",
+                        "value": "<script>(function(e,t,n){if(e.snaptr)return;var a=e.snaptr=function(){a.handleRequest?a.handleRequest.apply(a,arguments):a.queue.push(arguments)};a.queue=[];var s='script';r=t.createElement(s);r.async=!0;r.src=n;var u=t.getElementsByTagName(s)[0];u.parentNode.insertBefore(r,u);})(window,document,'https://sc-static.net/scevent.min.js');\nif(!window.__armadaSnapInit){window.__armadaSnapInit=1;\nvar su = {}; if ({{DL - ud email}}) su.user_hashed_email = {{DL - ud email}}; if ({{DL - ud phone}}) su.user_hashed_phone_number = {{DL - ud phone}};\nsnaptr('init', '{{Snap Pixel ID}}', su);}\nvar k={{JS - page view id}};\nif(window.__armadaSnapPv!==k){window.__armadaSnapPv=k;snaptr('track','PAGE_VIEW');}</script>"
+                    },
+                    {
+                        "type": "BOOLEAN",
+                        "key": "supportDocumentWrite",
+                        "value": "false"
+                    }
+                ],
+                "fingerprint": "1795197600004",
+                "firingTriggerId": [
+                    "14",
+                    "38",
+                    "32",
+                    "73",
+                    "8"
+                ],
+                "blockingTriggerId": [
+                    "93"
+                ],
+                "tagFiringOption": "ONCE_PER_EVENT",
+                "monitoringMetadata": {
+                    "type": "MAP"
+                },
+                "consentSettings": {
+                    "consentStatus": "NEEDED",
+                    "consentType": {
+                        "type": "LIST",
+                        "list": [
+                            {
+                                "type": "TEMPLATE",
+                                "value": "ad_storage"
+                            }
+                        ]
+                    }
+                }
+            },
+            {
+                "accountId": "6382086279",
+                "containerId": "266900186",
+                "tagId": "28",
+                "name": "TikTok Pixel - base",
+                "type": "html",
+                "priority": {
+                    "type": "INTEGER",
+                    "value": "10"
+                },
+                "notes": "Fires on first_engagement, consent_granted, virtual_page_view and the conversions (setup tag). Init once per document, one page view per page view id (19 Nov 2026).",
+                "parameter": [
+                    {
+                        "type": "TEMPLATE",
+                        "key": "html",
+                        "value": "<script>(function(w){\nif(!w.__armadaTtLoaded){w.__armadaTtLoaded=1;\n!function(w,d,t){w.TiktokAnalyticsObject=t;var ttq=w[t]=w[t]||[];ttq.methods=[\"page\",\"track\",\"identify\",\"instances\",\"debug\",\"on\",\"off\",\"once\",\"ready\",\"alias\",\"group\",\"enableCookie\",\"disableCookie\"],ttq.setAndDefer=function(t,e){t[e]=function(){t.push([e].concat(Array.prototype.slice.call(arguments,0)))}};for(var i=0;i<ttq.methods.length;i++)ttq.setAndDefer(ttq,ttq.methods[i]);ttq.instance=function(t){for(var e=ttq._i[t]||[],n=0;n<ttq.methods.length;n++)ttq.setAndDefer(e,ttq.methods[n]);return e};ttq.load=function(e,n){var i=\"https://analytics.tiktok.com/i18n/pixel/events.js\";ttq._i=ttq._i||{},ttq._i[e]=[],ttq._i[e]._u=i,ttq._t=ttq._t||{},ttq._t[e]=+new Date,ttq._o=ttq._o||{},ttq._o[e]=n||{};var o=document.createElement(\"script\");o.type=\"text/javascript\",o.async=!0,o.src=i+\"?sdkid=\"+e+\"&lib=\"+t;var a=document.getElementsByTagName(\"script\")[0];a.parentNode.insertBefore(o,a)};ttq.load('{{TikTok Pixel ID}}');}(window,document,'ttq');}\nvar k={{JS - page view id}};\nif(w.__armadaTtPv!==k){w.__armadaTtPv=k;w.ttq.page();}\n})(window);</script>"
+                    },
+                    {
+                        "type": "BOOLEAN",
+                        "key": "supportDocumentWrite",
+                        "value": "false"
+                    }
+                ],
+                "fingerprint": "1795197600005",
+                "firingTriggerId": [
+                    "14",
+                    "38",
+                    "32",
+                    "73",
+                    "8"
+                ],
+                "blockingTriggerId": [
+                    "93"
+                ],
+                "tagFiringOption": "ONCE_PER_EVENT",
+                "monitoringMetadata": {
+                    "type": "MAP"
+                },
+                "consentSettings": {
+                    "consentStatus": "NEEDED",
+                    "consentType": {
+                        "type": "LIST",
+                        "list": [
+                            {
+                                "type": "TEMPLATE",
+                                "value": "ad_storage"
+                            }
+                        ]
+                    }
+                }
+            },
+            {
+                "accountId": "6382086279",
+                "containerId": "266900186",
+                "tagId": "29",
+                "name": "TikTok Pixel - SubmitForm on booking_request",
+                "type": "html",
+                "parameter": [
+                    {
+                        "type": "TEMPLATE",
+                        "key": "html",
+                        "value": "<script>if (window.ttq) {\n  var id = {}; if ({{DL - ud email}}) id.sha256_email = {{DL - ud email}};\n  if ({{DL - ud phone e164}}) id.sha256_phone_number = {{DL - ud phone e164}};\n  if (id.sha256_email || id.sha256_phone_number) ttq.identify(id);\n  var p = { content_name: 'booking_request', content_category: {{DL - branch}},\n    lead_type: {{DL - lead_type}}, currency: {{DL - currency}} || 'SAR' };\n  if ({{DL - value}}) p.value = Number({{DL - value}});\n  ttq.track('SubmitForm', p, { event_id: {{DL - event_id}} });\n}</script>"
+                    },
+                    {
+                        "type": "BOOLEAN",
+                        "key": "supportDocumentWrite",
+                        "value": "false"
+                    }
+                ],
+                "fingerprint": "1795197600006",
+                "firingTriggerId": [
+                    "14"
+                ],
+                "blockingTriggerId": [
+                    "93"
+                ],
+                "setupTag": [
+                    {
+                        "tagName": "TikTok Pixel - base"
+                    }
+                ],
+                "tagFiringOption": "ONCE_PER_EVENT",
+                "monitoringMetadata": {
+                    "type": "MAP"
+                },
+                "consentSettings": {
+                    "consentStatus": "NEEDED",
+                    "consentType": {
+                        "type": "LIST",
+                        "list": [
+                            {
+                                "type": "TEMPLATE",
+                                "value": "ad_storage"
+                            }
+                        ]
+                    }
+                }
+            },
+            {
+                "accountId": "6382086279",
+                "containerId": "266900186",
+                "tagId": "33",
+                "name": "GA4 - purchase on booking_confirmed",
+                "type": "gaawe",
+                "parameter": [
+                    {
+                        "type": "BOOLEAN",
+                        "key": "sendEcommerceData",
+                        "value": "false"
+                    },
+                    {
+                        "type": "LIST",
+                        "key": "eventSettingsTable",
+                        "list": [
+                            {
+                                "type": "MAP",
+                                "map": [
+                                    {
+                                        "type": "TEMPLATE",
+                                        "key": "parameter",
+                                        "value": "transaction_id"
+                                    },
+                                    {
+                                        "type": "TEMPLATE",
+                                        "key": "parameterValue",
+                                        "value": "{{DL - transaction_id}}"
+                                    }
+                                ]
+                            },
+                            {
+                                "type": "MAP",
+                                "map": [
+                                    {
+                                        "type": "TEMPLATE",
+                                        "key": "parameter",
+                                        "value": "value"
+                                    },
+                                    {
+                                        "type": "TEMPLATE",
+                                        "key": "parameterValue",
+                                        "value": "{{DL - value}}"
+                                    }
+                                ]
+                            },
+                            {
+                                "type": "MAP",
+                                "map": [
+                                    {
+                                        "type": "TEMPLATE",
+                                        "key": "parameter",
+                                        "value": "currency"
+                                    },
+                                    {
+                                        "type": "TEMPLATE",
+                                        "key": "parameterValue",
+                                        "value": "{{DL - currency}}"
+                                    }
+                                ]
+                            },
+                            {
+                                "type": "MAP",
+                                "map": [
+                                    {
+                                        "type": "TEMPLATE",
+                                        "key": "parameter",
+                                        "value": "branch"
+                                    },
+                                    {
+                                        "type": "TEMPLATE",
+                                        "key": "parameterValue",
+                                        "value": "{{DL - branch}}"
+                                    }
+                                ]
+                            },
+                            {
+                                "type": "MAP",
+                                "map": [
+                                    {
+                                        "type": "TEMPLATE",
+                                        "key": "parameter",
+                                        "value": "room_type"
+                                    },
+                                    {
+                                        "type": "TEMPLATE",
+                                        "key": "parameterValue",
+                                        "value": "{{DL - room_type}}"
+                                    }
+                                ]
+                            },
+                            {
+                                "type": "MAP",
+                                "map": [
+                                    {
+                                        "type": "TEMPLATE",
+                                        "key": "parameter",
+                                        "value": "user_data"
+                                    },
+                                    {
+                                        "type": "TEMPLATE",
+                                        "key": "parameterValue",
+                                        "value": "{{UPD - google user data}}"
+                                    }
+                                ]
+                            }
+                        ]
+                    },
+                    {
+                        "type": "TEMPLATE",
+                        "key": "eventName",
+                        "value": "purchase"
+                    },
+                    {
+                        "type": "TEMPLATE",
+                        "key": "measurementIdOverride",
+                        "value": "{{GA4 Measurement ID}}"
+                    }
+                ],
+                "fingerprint": "1794304978499",
+                "firingTriggerId": [
+                    "32"
+                ],
+                "tagFiringOption": "ONCE_PER_EVENT",
+                "monitoringMetadata": {
+                    "type": "MAP"
+                },
+                "consentSettings": {
+                    "consentStatus": "NOT_NEEDED"
+                }
+            },
+            {
+                "accountId": "6382086279",
+                "containerId": "266900186",
+                "tagId": "34",
+                "name": "Meta Pixel - Purchase on booking_confirmed",
+                "type": "html",
+                "parameter": [
+                    {
+                        "type": "TEMPLATE",
+                        "key": "html",
+                        "value": "<script>if (window.fbq && {{DL - value}}) {\n  fbq('track', 'Purchase',\n    { value: Number({{DL - value}}) || 0, currency: {{DL - currency}} || 'SAR', content_type: 'hotel',\n      content_ids: [{{DL - branch}}] },\n    { eventID: {{DL - event_id}} });\n}</script>"
+                    },
+                    {
+                        "type": "BOOLEAN",
+                        "key": "supportDocumentWrite",
+                        "value": "false"
+                    }
+                ],
+                "fingerprint": "1795197600007",
+                "firingTriggerId": [
+                    "32"
+                ],
+                "blockingTriggerId": [
+                    "93"
+                ],
+                "setupTag": [
+                    {
+                        "tagName": "Meta Pixel - base"
+                    }
+                ],
+                "tagFiringOption": "ONCE_PER_EVENT",
+                "monitoringMetadata": {
+                    "type": "MAP"
+                },
+                "consentSettings": {
+                    "consentStatus": "NEEDED",
+                    "consentType": {
+                        "type": "LIST",
+                        "list": [
+                            {
+                                "type": "TEMPLATE",
+                                "value": "ad_storage"
+                            }
+                        ]
+                    }
+                }
+            },
+            {
+                "accountId": "6382086279",
+                "containerId": "266900186",
+                "tagId": "35",
+                "name": "TikTok Pixel - Purchase on booking_confirmed",
+                "type": "html",
+                "parameter": [
+                    {
+                        "type": "TEMPLATE",
+                        "key": "html",
+                        "value": "<script>if (window.ttq) {\n  var id = {}; if ({{DL - ud email}}) id.sha256_email = {{DL - ud email}};\n  if ({{DL - ud phone e164}}) id.sha256_phone_number = {{DL - ud phone e164}};\n  if (id.sha256_email || id.sha256_phone_number) ttq.identify(id);\n  ttq.track('Purchase', { value: Number({{DL - value}}) || 0, currency: {{DL - currency}} || 'SAR',\n    content_type: 'product', content_id: {{DL - branch}} }, { event_id: {{DL - event_id}} });\n}</script>"
+                    },
+                    {
+                        "type": "BOOLEAN",
+                        "key": "supportDocumentWrite",
+                        "value": "false"
+                    }
+                ],
+                "fingerprint": "1795197600008",
+                "firingTriggerId": [
+                    "32"
+                ],
+                "blockingTriggerId": [
+                    "93"
+                ],
+                "setupTag": [
+                    {
+                        "tagName": "TikTok Pixel - base"
+                    }
+                ],
+                "tagFiringOption": "ONCE_PER_EVENT",
+                "monitoringMetadata": {
+                    "type": "MAP"
+                },
+                "consentSettings": {
+                    "consentStatus": "NEEDED",
+                    "consentType": {
+                        "type": "LIST",
+                        "list": [
+                            {
+                                "type": "TEMPLATE",
+                                "value": "ad_storage"
+                            }
+                        ]
+                    }
+                }
+            },
+            {
+                "accountId": "6382086279",
+                "containerId": "266900186",
+                "tagId": "36",
+                "name": "Snap Pixel - PURCHASE on booking_confirmed",
+                "type": "html",
+                "parameter": [
+                    {
+                        "type": "TEMPLATE",
+                        "key": "html",
+                        "value": "<script>if (window.snaptr) {\n  snaptr('track', 'PURCHASE', { price: Number({{DL - value}}) || 0, currency: {{DL - currency}} || 'SAR',\n    transaction_id: {{DL - transaction_id}}, client_dedup_id: {{DL - event_id}} });\n}</script>"
+                    },
+                    {
+                        "type": "BOOLEAN",
+                        "key": "supportDocumentWrite",
+                        "value": "false"
+                    }
+                ],
+                "fingerprint": "1795197600009",
+                "firingTriggerId": [
+                    "32"
+                ],
+                "blockingTriggerId": [
+                    "93"
+                ],
+                "setupTag": [
+                    {
+                        "tagName": "Snap Pixel - base"
+                    }
+                ],
+                "tagFiringOption": "ONCE_PER_EVENT",
+                "monitoringMetadata": {
+                    "type": "MAP"
+                },
+                "consentSettings": {
+                    "consentStatus": "NEEDED",
+                    "consentType": {
+                        "type": "LIST",
+                        "list": [
+                            {
+                                "type": "TEMPLATE",
+                                "value": "ad_storage"
+                            }
+                        ]
+                    }
+                }
+            },
+            {
+                "accountId": "6382086279",
+                "containerId": "266900186",
+                "tagId": "39",
+                "name": "Engagement - first interaction or 5 s",
+                "type": "html",
+                "parameter": [
+                    {
+                        "type": "TEMPLATE",
+                        "key": "html",
+                        "value": "<script>(function(){if(window.__armadaEngaged)return;window.__armadaEngaged=1;var done=false,t,ev=['scroll','pointerdown','touchstart','keydown'];function fire(kind){if(done)return;done=true;clearTimeout(t);for(var i=0;i<ev.length;i++)window.removeEventListener(ev[i],h,true);window.dataLayer=window.dataLayer||[];window.dataLayer.push({event:'first_engagement',engagement:kind});}function h(e){fire(e.type);}for(var i=0;i<ev.length;i++)window.addEventListener(ev[i],h,{capture:true,passive:true});t=setTimeout(function(){fire('timer_5s');},5000);})();</script>"
+                    },
+                    {
+                        "type": "BOOLEAN",
+                        "key": "supportDocumentWrite",
+                        "value": "false"
+                    }
+                ],
+                "fingerprint": "1793978900453",
+                "firingTriggerId": [
+                    "2147479553"
+                ],
+                "tagFiringOption": "ONCE_PER_LOAD",
+                "monitoringMetadata": {
+                    "type": "MAP"
+                },
+                "consentSettings": {
+                    "consentStatus": "NOT_SET"
+                }
+            },
+            {
+                "accountId": "6382086279",
+                "containerId": "266900186",
+                "tagId": "43",
+                "name": "GA4 - club_join",
+                "type": "gaawe",
+                "notes": "Fires on dataLayer event club_join; sends source (booking-page / booking-email / club) from DL - source. Consent settings copied from GA4 - booking_request.",
+                "parameter": [
+                    {
+                        "type": "BOOLEAN",
+                        "key": "sendEcommerceData",
+                        "value": "false"
+                    },
+                    {
+                        "type": "LIST",
+                        "key": "eventSettingsTable",
+                        "list": [
+                            {
+                                "type": "MAP",
+                                "map": [
+                                    {
+                                        "type": "TEMPLATE",
+                                        "key": "parameter",
+                                        "value": "source"
+                                    },
+                                    {
+                                        "type": "TEMPLATE",
+                                        "key": "parameterValue",
+                                        "value": "{{DL - source}}"
+                                    }
+                                ]
+                            }
+                        ]
+                    },
+                    {
+                        "type": "TEMPLATE",
+                        "key": "eventName",
+                        "value": "club_join"
+                    },
+                    {
+                        "type": "TEMPLATE",
+                        "key": "measurementIdOverride",
+                        "value": "{{GA4 Measurement ID}}"
+                    }
+                ],
+                "fingerprint": "1794226918749",
+                "firingTriggerId": [
+                    "41"
+                ],
+                "tagFiringOption": "ONCE_PER_EVENT",
+                "monitoringMetadata": {
+                    "type": "MAP"
+                },
+                "consentSettings": {
+                    "consentStatus": "NOT_SET"
+                }
+            },
+            {
+                "accountId": "6382086279",
+                "containerId": "266900186",
+                "tagId": "45",
+                "name": "Clarity",
+                "type": "cvt_MQDKZ",
+                "parameter": [
+                    {
+                        "type": "TEMPLATE",
+                        "key": "projectId",
+                        "value": "zawy5ld6k1"
+                    }
+                ],
+                "fingerprint": "1795197600010",
+                "firingTriggerId": [
+                    "2147479553",
+                    "83"
+                ],
+                "blockingTriggerId": [
+                    "93"
+                ],
+                "tagFiringOption": "ONCE_PER_EVENT",
+                "monitoringMetadata": {
+                    "type": "MAP"
+                },
+                "consentSettings": {
+                    "consentStatus": "NEEDED",
+                    "consentType": {
+                        "type": "LIST",
+                        "list": [
+                            {
+                                "type": "TEMPLATE",
+                                "value": "analytics_storage"
+                            }
+                        ]
+                    }
+                }
+            },
+            {
+                "accountId": "6382086279",
+                "containerId": "266900186",
+                "tagId": "54",
+                "name": "Meta Pixel - Lead on partner_enquiry",
+                "type": "html",
+                "parameter": [
+                    {
+                        "type": "TEMPLATE",
+                        "key": "html",
+                        "value": "<script>if (window.fbq) { var p = { content_name: 'partner_enquiry', content_category: {{DL - request_type}},\n  lead_type: {{DL - lead_type}}, currency: {{DL - currency}} || 'SAR' }; if ({{DL - value}}) p.value = Number({{DL - value}});\n  fbq('track', 'Lead', p, { eventID: {{DL - event_id}} }); }</script>"
+                    },
+                    {
+                        "type": "BOOLEAN",
+                        "key": "supportDocumentWrite",
+                        "value": "false"
+                    }
+                ],
+                "fingerprint": "1795197600011",
+                "firingTriggerId": [
+                    "19"
+                ],
+                "blockingTriggerId": [
+                    "93"
+                ],
+                "setupTag": [
+                    {
+                        "tagName": "Meta Pixel - base"
+                    }
+                ],
+                "tagFiringOption": "ONCE_PER_EVENT",
+                "monitoringMetadata": {
+                    "type": "MAP"
+                },
+                "consentSettings": {
+                    "consentStatus": "NEEDED",
+                    "consentType": {
+                        "type": "LIST",
+                        "list": [
+                            {
+                                "type": "TEMPLATE",
+                                "value": "ad_storage"
+                            }
+                        ]
+                    }
+                }
+            },
+            {
+                "accountId": "6382086279",
+                "containerId": "266900186",
+                "tagId": "55",
+                "name": "Meta Pixel - CompleteRegistration on club_join",
+                "type": "html",
+                "parameter": [
+                    {
+                        "type": "TEMPLATE",
+                        "key": "html",
+                        "value": "<script>if (window.fbq) { fbq('track', 'CompleteRegistration', { content_name: 'eyab',\n  status: {{DL - source}}, currency: {{DL - currency}} || 'SAR' }); }</script>"
+                    },
+                    {
+                        "type": "BOOLEAN",
+                        "key": "supportDocumentWrite",
+                        "value": "false"
+                    }
+                ],
+                "fingerprint": "1795197600012",
+                "firingTriggerId": [
+                    "41"
+                ],
+                "blockingTriggerId": [
+                    "93"
+                ],
+                "setupTag": [
+                    {
+                        "tagName": "Meta Pixel - base"
+                    }
+                ],
+                "tagFiringOption": "ONCE_PER_EVENT",
+                "monitoringMetadata": {
+                    "type": "MAP"
+                },
+                "consentSettings": {
+                    "consentStatus": "NEEDED",
+                    "consentType": {
+                        "type": "LIST",
+                        "list": [
+                            {
+                                "type": "TEMPLATE",
+                                "value": "ad_storage"
+                            }
+                        ]
+                    }
+                }
+            },
+            {
+                "accountId": "6382086279",
+                "containerId": "266900186",
+                "tagId": "56",
+                "name": "TikTok Pixel - SubmitForm on partner_enquiry",
+                "type": "html",
+                "parameter": [
+                    {
+                        "type": "TEMPLATE",
+                        "key": "html",
+                        "value": "<script>if (window.ttq) {\n  var id = {}; if ({{DL - ud email}}) id.sha256_email = {{DL - ud email}};\n  if ({{DL - ud phone e164}}) id.sha256_phone_number = {{DL - ud phone e164}};\n  if (id.sha256_email || id.sha256_phone_number) ttq.identify(id);\n  ttq.track('SubmitForm', { content_name: 'partner_enquiry', content_category: {{DL - request_type}},\n    lead_type: {{DL - lead_type}} }, { event_id: {{DL - event_id}} });\n}</script>"
+                    },
+                    {
+                        "type": "BOOLEAN",
+                        "key": "supportDocumentWrite",
+                        "value": "false"
+                    }
+                ],
+                "fingerprint": "1795197600013",
+                "firingTriggerId": [
+                    "19"
+                ],
+                "blockingTriggerId": [
+                    "93"
+                ],
+                "setupTag": [
+                    {
+                        "tagName": "TikTok Pixel - base"
+                    }
+                ],
+                "tagFiringOption": "ONCE_PER_EVENT",
+                "monitoringMetadata": {
+                    "type": "MAP"
+                },
+                "consentSettings": {
+                    "consentStatus": "NEEDED",
+                    "consentType": {
+                        "type": "LIST",
+                        "list": [
+                            {
+                                "type": "TEMPLATE",
+                                "value": "ad_storage"
+                            }
+                        ]
+                    }
+                }
+            },
+            {
+                "accountId": "6382086279",
+                "containerId": "266900186",
+                "tagId": "57",
+                "name": "TikTok Pixel - CompleteRegistration on club_join",
+                "type": "html",
+                "parameter": [
+                    {
+                        "type": "TEMPLATE",
+                        "key": "html",
+                        "value": "<script>if (window.ttq) {\n  var id = {}; if ({{DL - ud email}}) id.sha256_email = {{DL - ud email}};\n  if ({{DL - ud phone e164}}) id.sha256_phone_number = {{DL - ud phone e164}};\n  if (id.sha256_email || id.sha256_phone_number) ttq.identify(id);\n  ttq.track('CompleteRegistration', { content_name: 'eyab', currency: 'SAR' });\n}</script>"
+                    },
+                    {
+                        "type": "BOOLEAN",
+                        "key": "supportDocumentWrite",
+                        "value": "false"
+                    }
+                ],
+                "fingerprint": "1795197600014",
+                "firingTriggerId": [
+                    "41"
+                ],
+                "blockingTriggerId": [
+                    "93"
+                ],
+                "setupTag": [
+                    {
+                        "tagName": "TikTok Pixel - base"
+                    }
+                ],
+                "tagFiringOption": "ONCE_PER_EVENT",
+                "monitoringMetadata": {
+                    "type": "MAP"
+                },
+                "consentSettings": {
+                    "consentStatus": "NEEDED",
+                    "consentType": {
+                        "type": "LIST",
+                        "list": [
+                            {
+                                "type": "TEMPLATE",
+                                "value": "ad_storage"
+                            }
+                        ]
+                    }
+                }
+            },
+            {
+                "accountId": "6382086279",
+                "containerId": "266900186",
+                "tagId": "58",
+                "name": "Snap Pixel - SIGN_UP on partner_enquiry",
+                "type": "html",
+                "parameter": [
+                    {
+                        "type": "TEMPLATE",
+                        "key": "html",
+                        "value": "<script>if (window.snaptr) {\n  snaptr('track', 'SIGN_UP', { description: {{DL - lead_type}}, client_dedup_id: {{DL - event_id}} });\n}</script>"
+                    },
+                    {
+                        "type": "BOOLEAN",
+                        "key": "supportDocumentWrite",
+                        "value": "false"
+                    }
+                ],
+                "fingerprint": "1795197600015",
+                "firingTriggerId": [
+                    "19"
+                ],
+                "blockingTriggerId": [
+                    "93"
+                ],
+                "setupTag": [
+                    {
+                        "tagName": "Snap Pixel - base"
+                    }
+                ],
+                "tagFiringOption": "ONCE_PER_EVENT",
+                "monitoringMetadata": {
+                    "type": "MAP"
+                },
+                "consentSettings": {
+                    "consentStatus": "NEEDED",
+                    "consentType": {
+                        "type": "LIST",
+                        "list": [
+                            {
+                                "type": "TEMPLATE",
+                                "value": "ad_storage"
+                            }
+                        ]
+                    }
+                }
+            },
+            {
+                "accountId": "6382086279",
+                "containerId": "266900186",
+                "tagId": "59",
+                "name": "Snap Pixel - SIGN_UP on club_join",
+                "type": "html",
+                "parameter": [
+                    {
+                        "type": "TEMPLATE",
+                        "key": "html",
+                        "value": "<script>if (window.snaptr) {\n  snaptr('track', 'SIGN_UP', { description: 'eyab' });\n}</script>"
+                    },
+                    {
+                        "type": "BOOLEAN",
+                        "key": "supportDocumentWrite",
+                        "value": "false"
+                    }
+                ],
+                "fingerprint": "1795197600016",
+                "firingTriggerId": [
+                    "41"
+                ],
+                "blockingTriggerId": [
+                    "93"
+                ],
+                "setupTag": [
+                    {
+                        "tagName": "Snap Pixel - base"
+                    }
+                ],
+                "tagFiringOption": "ONCE_PER_EVENT",
+                "monitoringMetadata": {
+                    "type": "MAP"
+                },
+                "consentSettings": {
+                    "consentStatus": "NEEDED",
+                    "consentType": {
+                        "type": "LIST",
+                        "list": [
+                            {
+                                "type": "TEMPLATE",
+                                "value": "ad_storage"
+                            }
+                        ]
+                    }
+                }
+            },
+            {
+                "accountId": "6382086279",
+                "containerId": "266900186",
+                "tagId": "61",
+                "name": "Conversion Linker",
+                "type": "gclidw",
+                "parameter": [
+                    {
+                        "type": "BOOLEAN",
+                        "key": "enableCrossDomain",
+                        "value": "false"
+                    },
+                    {
+                        "type": "BOOLEAN",
+                        "key": "enableUrlPassthrough",
+                        "value": "true"
+                    },
+                    {
+                        "type": "BOOLEAN",
+                        "key": "enableCookieOverrides",
+                        "value": "false"
+                    }
+                ],
+                "fingerprint": "1794419689102",
+                "firingTriggerId": [
+                    "2147479553"
+                ],
+                "tagFiringOption": "ONCE_PER_EVENT",
+                "monitoringMetadata": {
+                    "type": "MAP"
+                },
+                "consentSettings": {
+                    "consentStatus": "NOT_NEEDED"
+                }
+            },
+            {
+                "accountId": "6382086279",
+                "containerId": "266900186",
+                "tagId": "62",
+                "name": "Google Ads - Booking",
+                "type": "awct",
+                "parameter": [
+                    {
+                        "type": "BOOLEAN",
+                        "key": "enableNewCustomerReporting",
+                        "value": "false"
+                    },
+                    {
+                        "type": "BOOLEAN",
+                        "key": "enableConversionLinker",
+                        "value": "true"
+                    },
+                    {
+                        "type": "TEMPLATE",
+                        "key": "orderId",
+                        "value": "{{DL - transaction_id}}"
+                    },
+                    {
+                        "type": "BOOLEAN",
+                        "key": "enableProductReporting",
+                        "value": "false"
+                    },
+                    {
+                        "type": "TEMPLATE",
+                        "key": "conversionValue",
+                        "value": "{{DL - value}}"
+                    },
+                    {
+                        "type": "LIST",
+                        "key": "eventSettingsTable",
+                        "list": [
+                            {
+                                "type": "MAP",
+                                "map": [
+                                    {
+                                        "type": "TEMPLATE",
+                                        "key": "parameter",
+                                        "value": "user_data"
+                                    },
+                                    {
+                                        "type": "TEMPLATE",
+                                        "key": "parameterValue",
+                                        "value": "{{UPD - google user data}}"
+                                    }
+                                ]
+                            }
+                        ]
+                    },
+                    {
+                        "type": "BOOLEAN",
+                        "key": "enableShippingData",
+                        "value": "false"
+                    },
+                    {
+                        "type": "TEMPLATE",
+                        "key": "conversionId",
+                        "value": "18253894939"
+                    },
+                    {
+                        "type": "TEMPLATE",
+                        "key": "currencyCode",
+                        "value": "{{DL - currency}}"
+                    },
+                    {
+                        "type": "TEMPLATE",
+                        "key": "conversionLabel",
+                        "value": "E3BICM6nqLYdEJuqkYBE"
+                    },
+                    {
+                        "type": "BOOLEAN",
+                        "key": "rdp",
+                        "value": "false"
+                    }
+                ],
+                "fingerprint": "1794401940886",
+                "firingTriggerId": [
+                    "32"
+                ],
+                "tagFiringOption": "ONCE_PER_EVENT",
+                "monitoringMetadata": {
+                    "type": "MAP"
+                },
+                "consentSettings": {
+                    "consentStatus": "NOT_NEEDED"
+                }
+            },
+            {
+                "accountId": "6382086279",
+                "containerId": "266900186",
+                "tagId": "63",
+                "name": "Google Ads AW-18253894939",
+                "type": "dest_aw",
+                "parameter": [
+                    {
+                        "type": "BOOLEAN",
+                        "key": "ignoreDupeGtagConfigCalls",
+                        "value": "true"
+                    },
+                    {
+                        "type": "TEMPLATE",
+                        "key": "destinationId",
+                        "value": "AW-18253894939"
+                    }
+                ],
+                "fingerprint": "1795262400101",
+                "firingTriggerId": [
+                    "94"
+                ],
+                "monitoringMetadata": {
+                    "type": "MAP"
+                },
+                "consentSettings": {
+                    "consentStatus": "NOT_NEEDED"
+                }
+            },
+            {
+                "accountId": "6382086279",
+                "containerId": "266900186",
+                "tagId": "66",
+                "name": "Google Ads - Booking request",
+                "type": "awct",
+                "parameter": [
+                    {
+                        "type": "BOOLEAN",
+                        "key": "enableNewCustomerReporting",
+                        "value": "false"
+                    },
+                    {
+                        "type": "BOOLEAN",
+                        "key": "enableConversionLinker",
+                        "value": "true"
+                    },
+                    {
+                        "type": "TEMPLATE",
+                        "key": "orderId",
+                        "value": "{{DL - event_id}}"
+                    },
+                    {
+                        "type": "BOOLEAN",
+                        "key": "enableProductReporting",
+                        "value": "false"
+                    },
+                    {
+                        "type": "TEMPLATE",
+                        "key": "conversionValue",
+                        "value": "{{DL - value}}"
+                    },
+                    {
+                        "type": "LIST",
+                        "key": "eventSettingsTable",
+                        "list": [
+                            {
+                                "type": "MAP",
+                                "map": [
+                                    {
+                                        "type": "TEMPLATE",
+                                        "key": "parameter",
+                                        "value": "user_data"
+                                    },
+                                    {
+                                        "type": "TEMPLATE",
+                                        "key": "parameterValue",
+                                        "value": "{{UPD - google user data}}"
+                                    }
+                                ]
+                            }
+                        ]
+                    },
+                    {
+                        "type": "BOOLEAN",
+                        "key": "enableShippingData",
+                        "value": "false"
+                    },
+                    {
+                        "type": "TEMPLATE",
+                        "key": "conversionId",
+                        "value": "18253894939"
+                    },
+                    {
+                        "type": "TEMPLATE",
+                        "key": "currencyCode",
+                        "value": "{{DL - currency}}"
+                    },
+                    {
+                        "type": "TEMPLATE",
+                        "key": "conversionLabel",
+                        "value": "TYC_CMXwrpsdEJuqkYBE"
+                    },
+                    {
+                        "type": "BOOLEAN",
+                        "key": "rdp",
+                        "value": "false"
+                    }
+                ],
+                "fingerprint": "1794402041776",
+                "firingTriggerId": [
+                    "14"
+                ],
+                "tagFiringOption": "ONCE_PER_EVENT",
+                "monitoringMetadata": {
+                    "type": "MAP"
+                },
+                "consentSettings": {
+                    "consentStatus": "NOT_NEEDED"
+                }
+            },
+            {
+                "accountId": "6382086279",
+                "containerId": "266900186",
+                "tagId": "76",
+                "name": "TikTok Pixel - Contact on whatsapp_click",
+                "type": "html",
+                "parameter": [
+                    {
+                        "type": "TEMPLATE",
+                        "key": "html",
+                        "value": "<script>if (window.ttq) { ttq.track('Contact', { content_name: 'whatsapp', content_category: {{DL - destination}}, description: {{DL - package}} }); }</script>"
+                    },
+                    {
+                        "type": "BOOLEAN",
+                        "key": "supportDocumentWrite",
+                        "value": "false"
+                    }
+                ],
+                "fingerprint": "1795197600017",
+                "firingTriggerId": [
+                    "75"
+                ],
+                "blockingTriggerId": [
+                    "93"
+                ],
+                "setupTag": [
+                    {
+                        "tagName": "TikTok Pixel - base"
+                    }
+                ],
+                "tagFiringOption": "ONCE_PER_EVENT",
+                "monitoringMetadata": {
+                    "type": "MAP"
+                },
+                "consentSettings": {
+                    "consentStatus": "NEEDED",
+                    "consentType": {
+                        "type": "LIST",
+                        "list": [
+                            {
+                                "type": "TEMPLATE",
+                                "value": "ad_storage"
+                            }
+                        ]
+                    }
+                }
+            },
+            {
+                "accountId": "6382086279",
+                "containerId": "266900186",
+                "tagId": "81",
+                "name": "Google Ads - WhatsApp click",
+                "type": "awct",
+                "parameter": [
+                    {
+                        "type": "BOOLEAN",
+                        "key": "enableNewCustomerReporting",
+                        "value": "false"
+                    },
+                    {
+                        "type": "BOOLEAN",
+                        "key": "enableConversionLinker",
+                        "value": "true"
+                    },
+                    {
+                        "type": "BOOLEAN",
+                        "key": "enableProductReporting",
+                        "value": "false"
+                    },
+                    {
+                        "type": "BOOLEAN",
+                        "key": "enableShippingData",
+                        "value": "false"
+                    },
+                    {
+                        "type": "TEMPLATE",
+                        "key": "conversionId",
+                        "value": "18253894939"
+                    },
+                    {
+                        "type": "TEMPLATE",
+                        "key": "conversionLabel",
+                        "value": "{{Google Ads - WhatsApp click label}}"
+                    },
+                    {
+                        "type": "BOOLEAN",
+                        "key": "rdp",
+                        "value": "false"
+                    }
+                ],
+                "fingerprint": "1795168951968",
+                "firingTriggerId": [
+                    "75"
+                ],
+                "tagFiringOption": "ONCE_PER_EVENT",
+                "monitoringMetadata": {
+                    "type": "MAP"
+                },
+                "consentSettings": {
+                    "consentStatus": "NOT_NEEDED"
+                }
+            },
+            {
+                "accountId": "6382086279",
+                "containerId": "266900186",
+                "tagId": "85",
+                "name": "GA4 - no_availability",
+                "type": "gaawe",
+                "parameter": [
+                    {
+                        "type": "BOOLEAN",
+                        "key": "sendEcommerceData",
+                        "value": "false"
+                    },
+                    {
+                        "type": "LIST",
+                        "key": "eventSettingsTable",
+                        "list": [
+                            {
+                                "type": "MAP",
+                                "map": [
+                                    {
+                                        "type": "TEMPLATE",
+                                        "key": "parameter",
+                                        "value": "property"
+                                    },
+                                    {
+                                        "type": "TEMPLATE",
+                                        "key": "parameterValue",
+                                        "value": "{{DL - property}}"
+                                    }
+                                ]
+                            },
+                            {
+                                "type": "MAP",
+                                "map": [
+                                    {
+                                        "type": "TEMPLATE",
+                                        "key": "parameter",
+                                        "value": "room_type"
+                                    },
+                                    {
+                                        "type": "TEMPLATE",
+                                        "key": "parameterValue",
+                                        "value": "{{DL - room_type}}"
+                                    }
+                                ]
+                            },
+                            {
+                                "type": "MAP",
+                                "map": [
+                                    {
+                                        "type": "TEMPLATE",
+                                        "key": "parameter",
+                                        "value": "check_in"
+                                    },
+                                    {
+                                        "type": "TEMPLATE",
+                                        "key": "parameterValue",
+                                        "value": "{{DL - check_in}}"
+                                    }
+                                ]
+                            },
+                            {
+                                "type": "MAP",
+                                "map": [
+                                    {
+                                        "type": "TEMPLATE",
+                                        "key": "parameter",
+                                        "value": "nights"
+                                    },
+                                    {
+                                        "type": "TEMPLATE",
+                                        "key": "parameterValue",
+                                        "value": "{{DL - nights}}"
+                                    }
+                                ]
+                            },
+                            {
+                                "type": "MAP",
+                                "map": [
+                                    {
+                                        "type": "TEMPLATE",
+                                        "key": "parameter",
+                                        "value": "utm_source"
+                                    },
+                                    {
+                                        "type": "TEMPLATE",
+                                        "key": "parameterValue",
+                                        "value": "{{DL - utm_source}}"
+                                    }
+                                ]
+                            },
+                            {
+                                "type": "MAP",
+                                "map": [
+                                    {
+                                        "type": "TEMPLATE",
+                                        "key": "parameter",
+                                        "value": "utm_campaign"
+                                    },
+                                    {
+                                        "type": "TEMPLATE",
+                                        "key": "parameterValue",
+                                        "value": "{{DL - utm_campaign}}"
+                                    }
+                                ]
+                            }
+                        ]
+                    },
+                    {
+                        "type": "TEMPLATE",
+                        "key": "eventName",
+                        "value": "no_availability"
+                    },
+                    {
+                        "type": "TEMPLATE",
+                        "key": "measurementIdOverride",
+                        "value": "{{GA4 Measurement ID}}"
+                    }
+                ],
+                "fingerprint": "1795168951968",
+                "firingTriggerId": [
+                    "77"
+                ],
+                "tagFiringOption": "ONCE_PER_EVENT",
+                "monitoringMetadata": {
+                    "type": "MAP"
+                },
+                "consentSettings": {
+                    "consentStatus": "NOT_NEEDED"
+                }
+            },
+            {
+                "accountId": "6382086279",
+                "containerId": "266900186",
+                "tagId": "86",
+                "name": "Snap Pixel - CUSTOM_EVENT_1 on whatsapp_click",
+                "type": "html",
+                "parameter": [
+                    {
+                        "type": "TEMPLATE",
+                        "key": "html",
+                        "value": "<script>if (window.snaptr) { snaptr('track', 'CUSTOM_EVENT_1', { description: 'whatsapp_click:' + {{DL - destination}} + ':' + {{DL - package}} }); }</script>"
+                    },
+                    {
+                        "type": "BOOLEAN",
+                        "key": "supportDocumentWrite",
+                        "value": "false"
+                    }
+                ],
+                "fingerprint": "1795197600018",
+                "firingTriggerId": [
+                    "75"
+                ],
+                "blockingTriggerId": [
+                    "93"
+                ],
+                "setupTag": [
+                    {
+                        "tagName": "Snap Pixel - base"
+                    }
+                ],
+                "tagFiringOption": "ONCE_PER_EVENT",
+                "monitoringMetadata": {
+                    "type": "MAP"
+                },
+                "consentSettings": {
+                    "consentStatus": "NEEDED",
+                    "consentType": {
+                        "type": "LIST",
+                        "list": [
+                            {
+                                "type": "TEMPLATE",
+                                "value": "ad_storage"
+                            }
+                        ]
+                    }
+                }
+            },
+            {
+                "accountId": "6382086279",
+                "containerId": "266900186",
+                "tagId": "90",
+                "name": "GA4 - offer_view",
+                "type": "gaawe",
+                "parameter": [
+                    {
+                        "type": "BOOLEAN",
+                        "key": "sendEcommerceData",
+                        "value": "false"
+                    },
+                    {
+                        "type": "LIST",
+                        "key": "eventSettingsTable",
+                        "list": [
+                            {
+                                "type": "MAP",
+                                "map": [
+                                    {
+                                        "type": "TEMPLATE",
+                                        "key": "parameter",
+                                        "value": "offer_id"
+                                    },
+                                    {
+                                        "type": "TEMPLATE",
+                                        "key": "parameterValue",
+                                        "value": "{{DL - offer_id}}"
+                                    }
+                                ]
+                            },
+                            {
+                                "type": "MAP",
+                                "map": [
+                                    {
+                                        "type": "TEMPLATE",
+                                        "key": "parameter",
+                                        "value": "offer_category"
+                                    },
+                                    {
+                                        "type": "TEMPLATE",
+                                        "key": "parameterValue",
+                                        "value": "{{DL - category}}"
+                                    }
+                                ]
+                            },
+                            {
+                                "type": "MAP",
+                                "map": [
+                                    {
+                                        "type": "TEMPLATE",
+                                        "key": "parameter",
+                                        "value": "placement"
+                                    },
+                                    {
+                                        "type": "TEMPLATE",
+                                        "key": "parameterValue",
+                                        "value": "{{DL - placement}}"
+                                    }
+                                ]
+                            }
+                        ]
+                    },
+                    {
+                        "type": "TEMPLATE",
+                        "key": "eventName",
+                        "value": "offer_view"
+                    },
+                    {
+                        "type": "TEMPLATE",
+                        "key": "measurementIdOverride",
+                        "value": "{{GA4 Measurement ID}}"
+                    }
+                ],
+                "fingerprint": "1795168951969",
+                "firingTriggerId": [
+                    "88"
+                ],
+                "tagFiringOption": "ONCE_PER_EVENT",
+                "monitoringMetadata": {
+                    "type": "MAP"
+                },
+                "consentSettings": {
+                    "consentStatus": "NOT_NEEDED"
+                }
+            },
+            {
+                "accountId": "6382086279",
+                "containerId": "266900186",
+                "tagId": "91",
+                "name": "Meta Pixel - Contact on whatsapp_click",
+                "type": "html",
+                "parameter": [
+                    {
+                        "type": "TEMPLATE",
+                        "key": "html",
+                        "value": "<script>if (window.fbq) { fbq('track', 'Contact', { content_name: 'whatsapp', content_category: {{DL - destination}}, package: {{DL - package}} }); }</script>"
+                    },
+                    {
+                        "type": "BOOLEAN",
+                        "key": "supportDocumentWrite",
+                        "value": "false"
+                    }
+                ],
+                "fingerprint": "1795197600019",
+                "firingTriggerId": [
+                    "75"
+                ],
+                "blockingTriggerId": [
+                    "93"
+                ],
+                "setupTag": [
+                    {
+                        "tagName": "Meta Pixel - base"
+                    }
+                ],
+                "tagFiringOption": "ONCE_PER_EVENT",
+                "monitoringMetadata": {
+                    "type": "MAP"
+                },
+                "consentSettings": {
+                    "consentStatus": "NEEDED",
+                    "consentType": {
+                        "type": "LIST",
+                        "list": [
+                            {
+                                "type": "TEMPLATE",
+                                "value": "ad_storage"
+                            }
+                        ]
+                    }
+                }
+            },
+            {
+                "accountId": "6382086279",
+                "containerId": "266900186",
+                "tagId": "92",
+                "name": "GA4 - whatsapp_click",
+                "type": "gaawe",
+                "parameter": [
+                    {
+                        "type": "BOOLEAN",
+                        "key": "sendEcommerceData",
+                        "value": "false"
+                    },
+                    {
+                        "type": "LIST",
+                        "key": "eventSettingsTable",
+                        "list": [
+                            {
+                                "type": "MAP",
+                                "map": [
+                                    {
+                                        "type": "TEMPLATE",
+                                        "key": "parameter",
+                                        "value": "destination"
+                                    },
+                                    {
+                                        "type": "TEMPLATE",
+                                        "key": "parameterValue",
+                                        "value": "{{DL - destination}}"
+                                    }
+                                ]
+                            },
+                            {
+                                "type": "MAP",
+                                "map": [
+                                    {
+                                        "type": "TEMPLATE",
+                                        "key": "parameter",
+                                        "value": "page_path"
+                                    },
+                                    {
+                                        "type": "TEMPLATE",
+                                        "key": "parameterValue",
+                                        "value": "{{DL - page_path}}"
+                                    }
+                                ]
+                            },
+                            {
+                                "type": "MAP",
+                                "map": [
+                                    {
+                                        "type": "TEMPLATE",
+                                        "key": "parameter",
+                                        "value": "package"
+                                    },
+                                    {
+                                        "type": "TEMPLATE",
+                                        "key": "parameterValue",
+                                        "value": "{{DL - package}}"
+                                    }
+                                ]
+                            }
+                        ]
+                    },
+                    {
+                        "type": "TEMPLATE",
+                        "key": "eventName",
+                        "value": "whatsapp_click"
+                    },
+                    {
+                        "type": "TEMPLATE",
+                        "key": "measurementIdOverride",
+                        "value": "{{GA4 Measurement ID}}"
+                    }
+                ],
+                "fingerprint": "1795168951969",
+                "firingTriggerId": [
+                    "75"
+                ],
+                "tagFiringOption": "ONCE_PER_EVENT",
+                "monitoringMetadata": {
+                    "type": "MAP"
+                },
+                "consentSettings": {
+                    "consentStatus": "NOT_NEEDED"
+                }
+            }
+        ],
+        "trigger": [
+            {
+                "accountId": "6382086279",
+                "containerId": "266900186",
+                "triggerId": "8",
+                "name": "CE - virtual_page_view",
+                "type": "CUSTOM_EVENT",
+                "customEventFilter": [
+                    {
+                        "type": "EQUALS",
+                        "parameter": [
+                            {
+                                "type": "TEMPLATE",
+                                "key": "arg0",
+                                "value": "{{_event}}"
+                            },
+                            {
+                                "type": "TEMPLATE",
+                                "key": "arg1",
+                                "value": "virtual_page_view"
+                            }
+                        ]
+                    }
+                ],
+                "fingerprint": "1791890868542"
+            },
+            {
+                "accountId": "6382086279",
+                "containerId": "266900186",
+                "triggerId": "13",
+                "name": "CE - booking_drawer_open",
+                "type": "CUSTOM_EVENT",
+                "customEventFilter": [
+                    {
+                        "type": "EQUALS",
+                        "parameter": [
+                            {
+                                "type": "TEMPLATE",
+                                "key": "arg0",
+                                "value": "{{_event}}"
+                            },
+                            {
+                                "type": "TEMPLATE",
+                                "key": "arg1",
+                                "value": "booking_drawer_open"
+                            }
+                        ]
+                    }
+                ],
+                "fingerprint": "1791890868542"
+            },
+            {
+                "accountId": "6382086279",
+                "containerId": "266900186",
+                "triggerId": "14",
+                "name": "CE - booking_request",
+                "type": "CUSTOM_EVENT",
+                "customEventFilter": [
+                    {
+                        "type": "EQUALS",
+                        "parameter": [
+                            {
+                                "type": "TEMPLATE",
+                                "key": "arg0",
+                                "value": "{{_event}}"
+                            },
+                            {
+                                "type": "TEMPLATE",
+                                "key": "arg1",
+                                "value": "booking_request"
+                            }
+                        ]
+                    }
+                ],
+                "fingerprint": "1791890868542"
+            },
+            {
+                "accountId": "6382086279",
+                "containerId": "266900186",
+                "triggerId": "19",
+                "name": "CE - partner_enquiry",
+                "type": "CUSTOM_EVENT",
+                "customEventFilter": [
+                    {
+                        "type": "EQUALS",
+                        "parameter": [
+                            {
+                                "type": "TEMPLATE",
+                                "key": "arg0",
+                                "value": "{{_event}}"
+                            },
+                            {
+                                "type": "TEMPLATE",
+                                "key": "arg1",
+                                "value": "partner_enquiry"
+                            }
+                        ]
+                    }
+                ],
+                "fingerprint": "1791890868542"
+            },
+            {
+                "accountId": "6382086279",
+                "containerId": "266900186",
+                "triggerId": "32",
+                "name": "CE - booking_confirmed",
+                "type": "CUSTOM_EVENT",
+                "customEventFilter": [
+                    {
+                        "type": "EQUALS",
+                        "parameter": [
+                            {
+                                "type": "TEMPLATE",
+                                "key": "arg0",
+                                "value": "{{_event}}"
+                            },
+                            {
+                                "type": "TEMPLATE",
+                                "key": "arg1",
+                                "value": "booking_confirmed"
+                            }
+                        ]
+                    }
+                ],
+                "fingerprint": "1793357499732"
+            },
+            {
+                "accountId": "6382086279",
+                "containerId": "266900186",
+                "triggerId": "38",
+                "name": "CE - first_engagement",
+                "type": "CUSTOM_EVENT",
+                "customEventFilter": [
+                    {
+                        "type": "EQUALS",
+                        "parameter": [
+                            {
+                                "type": "TEMPLATE",
+                                "key": "arg0",
+                                "value": "{{_event}}"
+                            },
+                            {
+                                "type": "TEMPLATE",
+                                "key": "arg1",
+                                "value": "first_engagement"
+                            }
+                        ]
+                    }
+                ],
+                "fingerprint": "1793978772904"
+            },
+            {
+                "accountId": "6382086279",
+                "containerId": "266900186",
+                "triggerId": "41",
+                "name": "CE - club_join",
+                "type": "CUSTOM_EVENT",
+                "customEventFilter": [
+                    {
+                        "type": "EQUALS",
+                        "parameter": [
+                            {
+                                "type": "TEMPLATE",
+                                "key": "arg0",
+                                "value": "{{_event}}"
+                            },
+                            {
+                                "type": "TEMPLATE",
+                                "key": "arg1",
+                                "value": "club_join"
+                            }
+                        ]
+                    }
+                ],
+                "fingerprint": "1794226716642"
+            },
+            {
+                "accountId": "6382086279",
+                "containerId": "266900186",
+                "triggerId": "73",
+                "name": "CE - consent_granted",
+                "type": "CUSTOM_EVENT",
+                "customEventFilter": [
+                    {
+                        "type": "EQUALS",
+                        "parameter": [
+                            {
+                                "type": "TEMPLATE",
+                                "key": "arg0",
+                                "value": "{{_event}}"
+                            },
+                            {
+                                "type": "TEMPLATE",
+                                "key": "arg1",
+                                "value": "consent_granted"
+                            }
+                        ]
+                    }
+                ],
+                "fingerprint": "1795168951967"
+            },
+            {
+                "accountId": "6382086279",
+                "containerId": "266900186",
+                "triggerId": "75",
+                "name": "CE - whatsapp_click",
+                "type": "CUSTOM_EVENT",
+                "customEventFilter": [
+                    {
+                        "type": "EQUALS",
+                        "parameter": [
+                            {
+                                "type": "TEMPLATE",
+                                "key": "arg0",
+                                "value": "{{_event}}"
+                            },
+                            {
+                                "type": "TEMPLATE",
+                                "key": "arg1",
+                                "value": "whatsapp_click"
+                            }
+                        ]
+                    }
+                ],
+                "fingerprint": "1795168951967"
+            },
+            {
+                "accountId": "6382086279",
+                "containerId": "266900186",
+                "triggerId": "77",
+                "name": "CE - no_availability",
+                "type": "CUSTOM_EVENT",
+                "customEventFilter": [
+                    {
+                        "type": "EQUALS",
+                        "parameter": [
+                            {
+                                "type": "TEMPLATE",
+                                "key": "arg0",
+                                "value": "{{_event}}"
+                            },
+                            {
+                                "type": "TEMPLATE",
+                                "key": "arg1",
+                                "value": "no_availability"
+                            }
+                        ]
+                    }
+                ],
+                "fingerprint": "1795168951967"
+            },
+            {
+                "accountId": "6382086279",
+                "containerId": "266900186",
+                "triggerId": "83",
+                "name": "CE - consent_granted (analytics)",
+                "type": "CUSTOM_EVENT",
+                "customEventFilter": [
+                    {
+                        "type": "EQUALS",
+                        "parameter": [
+                            {
+                                "type": "TEMPLATE",
+                                "key": "arg0",
+                                "value": "{{_event}}"
+                            },
+                            {
+                                "type": "TEMPLATE",
+                                "key": "arg1",
+                                "value": "consent_granted"
+                            }
+                        ]
+                    }
+                ],
+                "filter": [
+                    {
+                        "type": "CONTAINS",
+                        "parameter": [
+                            {
+                                "type": "TEMPLATE",
+                                "key": "arg0",
+                                "value": "{{DL - consent_new}}"
+                            },
+                            {
+                                "type": "TEMPLATE",
+                                "key": "arg1",
+                                "value": "analytics"
+                            }
+                        ]
+                    }
+                ],
+                "fingerprint": "1795168951968"
+            },
+            {
+                "accountId": "6382086279",
+                "containerId": "266900186",
+                "triggerId": "88",
+                "name": "CE - offer_view",
+                "type": "CUSTOM_EVENT",
+                "customEventFilter": [
+                    {
+                        "type": "EQUALS",
+                        "parameter": [
+                            {
+                                "type": "TEMPLATE",
+                                "key": "arg0",
+                                "value": "{{_event}}"
+                            },
+                            {
+                                "type": "TEMPLATE",
+                                "key": "arg1",
+                                "value": "offer_view"
+                            }
+                        ]
+                    }
+                ],
+                "fingerprint": "1795168951969"
+            },
+            {
+                "accountId": "6382086279",
+                "containerId": "266900186",
+                "triggerId": "93",
+                "name": "Exception - careers pages",
+                "type": "CUSTOM_EVENT",
+                "customEventFilter": [
+                    {
+                        "type": "MATCH_REGEX",
+                        "parameter": [
+                            {
+                                "type": "TEMPLATE",
+                                "key": "arg0",
+                                "value": "{{_event}}"
+                            },
+                            {
+                                "type": "TEMPLATE",
+                                "key": "arg1",
+                                "value": ".*"
+                            }
+                        ]
+                    }
+                ],
+                "filter": [
+                    {
+                        "type": "MATCH_REGEX",
+                        "parameter": [
+                            {
+                                "type": "TEMPLATE",
+                                "key": "arg0",
+                                "value": "{{Page Path}}"
+                            },
+                            {
+                                "type": "TEMPLATE",
+                                "key": "arg1",
+                                "value": "^/(en/)?careers(/|/index\\.html)?$"
+                            }
+                        ]
+                    }
+                ],
+                "fingerprint": "1795197600000"
+            },
+            {
+                "accountId": "6382086279",
+                "containerId": "266900186",
+                "triggerId": "94",
+                "name": "Initialization - except careers",
+                "type": "CUSTOM_EVENT",
+                "customEventFilter": [
+                    {
+                        "type": "EQUALS",
+                        "parameter": [
+                            {
+                                "type": "TEMPLATE",
+                                "key": "arg0",
+                                "value": "{{_event}}"
+                            },
+                            {
+                                "type": "TEMPLATE",
+                                "key": "arg1",
+                                "value": "gtm.init"
+                            }
+                        ]
+                    }
+                ],
+                "filter": [
+                    {
+                        "type": "MATCH_REGEX",
+                        "parameter": [
+                            {
+                                "type": "TEMPLATE",
+                                "key": "arg0",
+                                "value": "{{Page Path}}"
+                            },
+                            {
+                                "type": "TEMPLATE",
+                                "key": "arg1",
+                                "value": "^/(en/)?careers(/|/index\\.html)?$"
+                            },
+                            {
+                                "type": "BOOLEAN",
+                                "key": "negate",
+                                "value": "true"
+                            }
+                        ]
+                    }
+                ],
+                "fingerprint": "1795262400100"
+            }
+        ],
+        "variable": [
+            {
+                "accountId": "6382086279",
+                "containerId": "266900186",
+                "variableId": "3",
+                "name": "Meta Pixel ID",
+                "type": "c",
+                "parameter": [
+                    {
+                        "type": "TEMPLATE",
+                        "key": "value",
+                        "value": "1902071377169884"
+                    }
+                ],
+                "fingerprint": "1791890868541"
+            },
+            {
+                "accountId": "6382086279",
+                "containerId": "266900186",
+                "variableId": "5",
+                "name": "Snap Pixel ID",
+                "type": "c",
+                "parameter": [
+                    {
+                        "type": "TEMPLATE",
+                        "key": "value",
+                        "value": "a5b03844-9eb8-4811-9f0f-e5598b39d43a"
+                    }
+                ],
+                "fingerprint": "1791890868542"
+            },
+            {
+                "accountId": "6382086279",
+                "containerId": "266900186",
+                "variableId": "6",
+                "name": "DL - branch",
+                "type": "v",
+                "parameter": [
+                    {
+                        "type": "INTEGER",
+                        "key": "dataLayerVersion",
+                        "value": "2"
+                    },
+                    {
+                        "type": "BOOLEAN",
+                        "key": "setDefaultValue",
+                        "value": "false"
+                    },
+                    {
+                        "type": "TEMPLATE",
+                        "key": "name",
+                        "value": "branch"
+                    }
+                ],
+                "fingerprint": "1791890868542"
+            },
+            {
+                "accountId": "6382086279",
+                "containerId": "266900186",
+                "variableId": "7",
+                "name": "DL - page_title",
+                "type": "v",
+                "parameter": [
+                    {
+                        "type": "INTEGER",
+                        "key": "dataLayerVersion",
+                        "value": "2"
+                    },
+                    {
+                        "type": "BOOLEAN",
+                        "key": "setDefaultValue",
+                        "value": "false"
+                    },
+                    {
+                        "type": "TEMPLATE",
+                        "key": "name",
+                        "value": "page_title"
+                    }
+                ],
+                "fingerprint": "1791890868542"
+            },
+            {
+                "accountId": "6382086279",
+                "containerId": "266900186",
+                "variableId": "9",
+                "name": "DL - page_location",
+                "type": "v",
+                "parameter": [
+                    {
+                        "type": "INTEGER",
+                        "key": "dataLayerVersion",
+                        "value": "2"
+                    },
+                    {
+                        "type": "BOOLEAN",
+                        "key": "setDefaultValue",
+                        "value": "false"
+                    },
+                    {
+                        "type": "TEMPLATE",
+                        "key": "name",
+                        "value": "page_location"
+                    }
+                ],
+                "fingerprint": "1791890868542"
+            },
+            {
+                "accountId": "6382086279",
+                "containerId": "266900186",
+                "variableId": "10",
+                "name": "DL - page_path",
+                "type": "v",
+                "parameter": [
+                    {
+                        "type": "INTEGER",
+                        "key": "dataLayerVersion",
+                        "value": "2"
+                    },
+                    {
+                        "type": "BOOLEAN",
+                        "key": "setDefaultValue",
+                        "value": "false"
+                    },
+                    {
+                        "type": "TEMPLATE",
+                        "key": "name",
+                        "value": "page_path"
+                    }
+                ],
+                "fingerprint": "1791890868542"
+            },
+            {
+                "accountId": "6382086279",
+                "containerId": "266900186",
+                "variableId": "11",
+                "name": "GA4 Measurement ID",
+                "type": "c",
+                "parameter": [
+                    {
+                        "type": "TEMPLATE",
+                        "key": "value",
+                        "value": "G-675Y7W0H1T"
+                    }
+                ],
+                "fingerprint": "1791890868542"
+            },
+            {
+                "accountId": "6382086279",
+                "containerId": "266900186",
+                "variableId": "15",
+                "name": "DL - room_type",
+                "type": "v",
+                "parameter": [
+                    {
+                        "type": "INTEGER",
+                        "key": "dataLayerVersion",
+                        "value": "2"
+                    },
+                    {
+                        "type": "BOOLEAN",
+                        "key": "setDefaultValue",
+                        "value": "false"
+                    },
+                    {
+                        "type": "TEMPLATE",
+                        "key": "name",
+                        "value": "room_type"
+                    }
+                ],
+                "fingerprint": "1791890868542"
+            },
+            {
+                "accountId": "6382086279",
+                "containerId": "266900186",
+                "variableId": "20",
+                "name": "DL - booking_ref",
+                "type": "v",
+                "parameter": [
+                    {
+                        "type": "INTEGER",
+                        "key": "dataLayerVersion",
+                        "value": "2"
+                    },
+                    {
+                        "type": "BOOLEAN",
+                        "key": "setDefaultValue",
+                        "value": "false"
+                    },
+                    {
+                        "type": "TEMPLATE",
+                        "key": "name",
+                        "value": "booking_ref"
+                    }
+                ],
+                "fingerprint": "1791890868543"
+            },
+            {
+                "accountId": "6382086279",
+                "containerId": "266900186",
+                "variableId": "21",
+                "name": "DL - request_type",
+                "type": "v",
+                "parameter": [
+                    {
+                        "type": "INTEGER",
+                        "key": "dataLayerVersion",
+                        "value": "2"
+                    },
+                    {
+                        "type": "BOOLEAN",
+                        "key": "setDefaultValue",
+                        "value": "false"
+                    },
+                    {
+                        "type": "TEMPLATE",
+                        "key": "name",
+                        "value": "request_type"
+                    }
+                ],
+                "fingerprint": "1791890868543"
+            },
+            {
+                "accountId": "6382086279",
+                "containerId": "266900186",
+                "variableId": "24",
+                "name": "DL - nights",
+                "type": "v",
+                "parameter": [
+                    {
+                        "type": "INTEGER",
+                        "key": "dataLayerVersion",
+                        "value": "2"
+                    },
+                    {
+                        "type": "BOOLEAN",
+                        "key": "setDefaultValue",
+                        "value": "false"
+                    },
+                    {
+                        "type": "TEMPLATE",
+                        "key": "name",
+                        "value": "nights"
+                    }
+                ],
+                "fingerprint": "1791890868543"
+            },
+            {
+                "accountId": "6382086279",
+                "containerId": "266900186",
+                "variableId": "27",
+                "name": "TikTok Pixel ID",
+                "type": "c",
+                "parameter": [
+                    {
+                        "type": "TEMPLATE",
+                        "key": "value",
+                        "value": "D86BR0BC77UBE9T94V7G"
+                    }
+                ],
+                "fingerprint": "1791890868543"
+            },
+            {
+                "accountId": "6382086279",
+                "containerId": "266900186",
+                "variableId": "30",
+                "name": "DL - value",
+                "type": "v",
+                "parameter": [
+                    {
+                        "type": "INTEGER",
+                        "key": "dataLayerVersion",
+                        "value": "2"
+                    },
+                    {
+                        "type": "BOOLEAN",
+                        "key": "setDefaultValue",
+                        "value": "false"
+                    },
+                    {
+                        "type": "TEMPLATE",
+                        "key": "name",
+                        "value": "value"
+                    }
+                ],
+                "fingerprint": "1793357412016",
+                "formatValue": {}
+            },
+            {
+                "accountId": "6382086279",
+                "containerId": "266900186",
+                "variableId": "31",
+                "name": "DL - currency",
+                "type": "v",
+                "parameter": [
+                    {
+                        "type": "INTEGER",
+                        "key": "dataLayerVersion",
+                        "value": "2"
+                    },
+                    {
+                        "type": "BOOLEAN",
+                        "key": "setDefaultValue",
+                        "value": "true"
+                    },
+                    {
+                        "type": "TEMPLATE",
+                        "key": "defaultValue",
+                        "value": "SAR"
+                    },
+                    {
+                        "type": "TEMPLATE",
+                        "key": "name",
+                        "value": "currency"
+                    }
+                ],
+                "fingerprint": "1794313507693",
+                "formatValue": {}
+            },
+            {
+                "accountId": "6382086279",
+                "containerId": "266900186",
+                "variableId": "42",
+                "name": "DL - source",
+                "type": "v",
+                "parameter": [
+                    {
+                        "type": "INTEGER",
+                        "key": "dataLayerVersion",
+                        "value": "2"
+                    },
+                    {
+                        "type": "BOOLEAN",
+                        "key": "setDefaultValue",
+                        "value": "false"
+                    },
+                    {
+                        "type": "TEMPLATE",
+                        "key": "name",
+                        "value": "source"
+                    }
+                ],
+                "fingerprint": "1794226774501",
+                "formatValue": {}
+            },
+            {
+                "accountId": "6382086279",
+                "containerId": "266900186",
+                "variableId": "46",
+                "name": "DL - transaction_id",
+                "type": "v",
+                "parameter": [
+                    {
+                        "type": "INTEGER",
+                        "key": "dataLayerVersion",
+                        "value": "2"
+                    },
+                    {
+                        "type": "BOOLEAN",
+                        "key": "setDefaultValue",
+                        "value": "false"
+                    },
+                    {
+                        "type": "TEMPLATE",
+                        "key": "name",
+                        "value": "transaction_id"
+                    }
+                ],
+                "fingerprint": "1794303714573",
+                "formatValue": {}
+            },
+            {
+                "accountId": "6382086279",
+                "containerId": "266900186",
+                "variableId": "47",
+                "name": "DL - event_id",
+                "type": "v",
+                "parameter": [
+                    {
+                        "type": "INTEGER",
+                        "key": "dataLayerVersion",
+                        "value": "2"
+                    },
+                    {
+                        "type": "BOOLEAN",
+                        "key": "setDefaultValue",
+                        "value": "false"
+                    },
+                    {
+                        "type": "TEMPLATE",
+                        "key": "name",
+                        "value": "event_id"
+                    }
+                ],
+                "fingerprint": "1794303748662",
+                "formatValue": {}
+            },
+            {
+                "accountId": "6382086279",
+                "containerId": "266900186",
+                "variableId": "48",
+                "name": "DL - lead_type",
+                "type": "v",
+                "parameter": [
+                    {
+                        "type": "INTEGER",
+                        "key": "dataLayerVersion",
+                        "value": "2"
+                    },
+                    {
+                        "type": "BOOLEAN",
+                        "key": "setDefaultValue",
+                        "value": "false"
+                    },
+                    {
+                        "type": "TEMPLATE",
+                        "key": "name",
+                        "value": "lead_type"
+                    }
+                ],
+                "fingerprint": "1794303768718",
+                "formatValue": {}
+            },
+            {
+                "accountId": "6382086279",
+                "containerId": "266900186",
+                "variableId": "49",
+                "name": "DL - ud email",
+                "type": "v",
+                "parameter": [
+                    {
+                        "type": "INTEGER",
+                        "key": "dataLayerVersion",
+                        "value": "2"
+                    },
+                    {
+                        "type": "BOOLEAN",
+                        "key": "setDefaultValue",
+                        "value": "false"
+                    },
+                    {
+                        "type": "TEMPLATE",
+                        "key": "name",
+                        "value": "user_data.email_sha256"
+                    }
+                ],
+                "fingerprint": "1794303789114",
+                "formatValue": {}
+            },
+            {
+                "accountId": "6382086279",
+                "containerId": "266900186",
+                "variableId": "50",
+                "name": "DL - ud phone",
+                "type": "v",
+                "parameter": [
+                    {
+                        "type": "INTEGER",
+                        "key": "dataLayerVersion",
+                        "value": "2"
+                    },
+                    {
+                        "type": "BOOLEAN",
+                        "key": "setDefaultValue",
+                        "value": "false"
+                    },
+                    {
+                        "type": "TEMPLATE",
+                        "key": "name",
+                        "value": "user_data.phone_sha256"
+                    }
+                ],
+                "fingerprint": "1794303902374",
+                "formatValue": {}
+            },
+            {
+                "accountId": "6382086279",
+                "containerId": "266900186",
+                "variableId": "51",
+                "name": "DL - ud phone e164",
+                "type": "v",
+                "parameter": [
+                    {
+                        "type": "INTEGER",
+                        "key": "dataLayerVersion",
+                        "value": "2"
+                    },
+                    {
+                        "type": "BOOLEAN",
+                        "key": "setDefaultValue",
+                        "value": "false"
+                    },
+                    {
+                        "type": "TEMPLATE",
+                        "key": "name",
+                        "value": "user_data.phone_e164_sha256"
+                    }
+                ],
+                "fingerprint": "1794304001647",
+                "formatValue": {}
+            },
+            {
+                "accountId": "6382086279",
+                "containerId": "266900186",
+                "variableId": "52",
+                "name": "JS - google user data",
+                "type": "jsm",
+                "parameter": [
+                    {
+                        "type": "TEMPLATE",
+                        "key": "javascript",
+                        "value": "function () {\n  var e = {{DL - ud email}}, p = {{DL - ud phone e164}}, o = {};\n  if (e) o.sha256_email_address = e;\n  if (p) o.sha256_phone_number = p;\n  return (e || p) ? o : undefined;\n}"
+                    }
+                ],
+                "fingerprint": "1794304057171",
+                "formatValue": {}
+            },
+            {
+                "accountId": "6382086279",
+                "containerId": "266900186",
+                "variableId": "53",
+                "name": "UPD - google user data",
+                "type": "awec",
+                "parameter": [
+                    {
+                        "type": "TEMPLATE",
+                        "key": "mode",
+                        "value": "CODE"
+                    },
+                    {
+                        "type": "TEMPLATE",
+                        "key": "dataSource",
+                        "value": "{{JS - google user data}}"
+                    }
+                ],
+                "fingerprint": "1794304142786",
+                "formatValue": {}
+            },
+            {
+                "accountId": "6382086279",
+                "containerId": "266900186",
+                "variableId": "69",
+                "name": "Google Ads - WhatsApp click label",
+                "type": "c",
+                "parameter": [
+                    {
+                        "type": "TEMPLATE",
+                        "key": "value",
+                        "value": "JeZBCMeP3bsdEJuqkYBE"
+                    }
+                ],
+                "fingerprint": "1795168951965"
+            },
+            {
+                "accountId": "6382086279",
+                "containerId": "266900186",
+                "variableId": "70",
+                "name": "DL - property",
+                "type": "v",
+                "parameter": [
+                    {
+                        "type": "INTEGER",
+                        "key": "dataLayerVersion",
+                        "value": "2"
+                    },
+                    {
+                        "type": "BOOLEAN",
+                        "key": "setDefaultValue",
+                        "value": "false"
+                    },
+                    {
+                        "type": "TEMPLATE",
+                        "key": "name",
+                        "value": "property"
+                    }
+                ],
+                "fingerprint": "1795168951966",
+                "formatValue": {}
+            },
+            {
+                "accountId": "6382086279",
+                "containerId": "266900186",
+                "variableId": "71",
+                "name": "DL - package",
+                "type": "v",
+                "parameter": [
+                    {
+                        "type": "INTEGER",
+                        "key": "dataLayerVersion",
+                        "value": "2"
+                    },
+                    {
+                        "type": "BOOLEAN",
+                        "key": "setDefaultValue",
+                        "value": "false"
+                    },
+                    {
+                        "type": "TEMPLATE",
+                        "key": "name",
+                        "value": "package"
+                    }
+                ],
+                "fingerprint": "1795168951966",
+                "formatValue": {}
+            },
+            {
+                "accountId": "6382086279",
+                "containerId": "266900186",
+                "variableId": "72",
+                "name": "JS - page view id",
+                "type": "jsm",
+                "parameter": [
+                    {
+                        "type": "TEMPLATE",
+                        "key": "javascript",
+                        "value": "function () {\n  return window.armadaPageViewId || 1;\n}"
+                    }
+                ],
+                "fingerprint": "1795168951966",
+                "formatValue": {}
+            },
+            {
+                "accountId": "6382086279",
+                "containerId": "266900186",
+                "variableId": "74",
+                "name": "DL - destination",
+                "type": "v",
+                "parameter": [
+                    {
+                        "type": "INTEGER",
+                        "key": "dataLayerVersion",
+                        "value": "2"
+                    },
+                    {
+                        "type": "BOOLEAN",
+                        "key": "setDefaultValue",
+                        "value": "false"
+                    },
+                    {
+                        "type": "TEMPLATE",
+                        "key": "name",
+                        "value": "destination"
+                    }
+                ],
+                "fingerprint": "1795168951967",
+                "formatValue": {}
+            },
+            {
+                "accountId": "6382086279",
+                "containerId": "266900186",
+                "variableId": "78",
+                "name": "DL - utm_campaign",
+                "type": "v",
+                "parameter": [
+                    {
+                        "type": "INTEGER",
+                        "key": "dataLayerVersion",
+                        "value": "2"
+                    },
+                    {
+                        "type": "BOOLEAN",
+                        "key": "setDefaultValue",
+                        "value": "false"
+                    },
+                    {
+                        "type": "TEMPLATE",
+                        "key": "name",
+                        "value": "utm_campaign"
+                    }
+                ],
+                "fingerprint": "1795168951967",
+                "formatValue": {}
+            },
+            {
+                "accountId": "6382086279",
+                "containerId": "266900186",
+                "variableId": "79",
+                "name": "DL - utm_source",
+                "type": "v",
+                "parameter": [
+                    {
+                        "type": "INTEGER",
+                        "key": "dataLayerVersion",
+                        "value": "2"
+                    },
+                    {
+                        "type": "BOOLEAN",
+                        "key": "setDefaultValue",
+                        "value": "false"
+                    },
+                    {
+                        "type": "TEMPLATE",
+                        "key": "name",
+                        "value": "utm_source"
+                    }
+                ],
+                "fingerprint": "1795168951967",
+                "formatValue": {}
+            },
+            {
+                "accountId": "6382086279",
+                "containerId": "266900186",
+                "variableId": "80",
+                "name": "DL - offer_id",
+                "type": "v",
+                "parameter": [
+                    {
+                        "type": "INTEGER",
+                        "key": "dataLayerVersion",
+                        "value": "2"
+                    },
+                    {
+                        "type": "BOOLEAN",
+                        "key": "setDefaultValue",
+                        "value": "false"
+                    },
+                    {
+                        "type": "TEMPLATE",
+                        "key": "name",
+                        "value": "offer_id"
+                    }
+                ],
+                "fingerprint": "1795168951967",
+                "formatValue": {}
+            },
+            {
+                "accountId": "6382086279",
+                "containerId": "266900186",
+                "variableId": "82",
+                "name": "DL - consent_new",
+                "type": "v",
+                "parameter": [
+                    {
+                        "type": "INTEGER",
+                        "key": "dataLayerVersion",
+                        "value": "2"
+                    },
+                    {
+                        "type": "BOOLEAN",
+                        "key": "setDefaultValue",
+                        "value": "false"
+                    },
+                    {
+                        "type": "TEMPLATE",
+                        "key": "name",
+                        "value": "consent_new"
+                    }
+                ],
+                "fingerprint": "1795168951968",
+                "formatValue": {}
+            },
+            {
+                "accountId": "6382086279",
+                "containerId": "266900186",
+                "variableId": "84",
+                "name": "DL - check_in",
+                "type": "v",
+                "parameter": [
+                    {
+                        "type": "INTEGER",
+                        "key": "dataLayerVersion",
+                        "value": "2"
+                    },
+                    {
+                        "type": "BOOLEAN",
+                        "key": "setDefaultValue",
+                        "value": "false"
+                    },
+                    {
+                        "type": "TEMPLATE",
+                        "key": "name",
+                        "value": "check_in"
+                    }
+                ],
+                "fingerprint": "1795168951968",
+                "formatValue": {}
+            },
+            {
+                "accountId": "6382086279",
+                "containerId": "266900186",
+                "variableId": "87",
+                "name": "DL - placement",
+                "type": "v",
+                "parameter": [
+                    {
+                        "type": "INTEGER",
+                        "key": "dataLayerVersion",
+                        "value": "2"
+                    },
+                    {
+                        "type": "BOOLEAN",
+                        "key": "setDefaultValue",
+                        "value": "false"
+                    },
+                    {
+                        "type": "TEMPLATE",
+                        "key": "name",
+                        "value": "placement"
+                    }
+                ],
+                "fingerprint": "1795168951968",
+                "formatValue": {}
+            },
+            {
+                "accountId": "6382086279",
+                "containerId": "266900186",
+                "variableId": "89",
+                "name": "DL - category",
+                "type": "v",
+                "parameter": [
+                    {
+                        "type": "INTEGER",
+                        "key": "dataLayerVersion",
+                        "value": "2"
+                    },
+                    {
+                        "type": "BOOLEAN",
+                        "key": "setDefaultValue",
+                        "value": "false"
+                    },
+                    {
+                        "type": "TEMPLATE",
+                        "key": "name",
+                        "value": "category"
+                    }
+                ],
+                "fingerprint": "1795168951969",
+                "formatValue": {}
+            }
+        ],
+        "builtInVariable": [
+            {
+                "accountId": "6382086279",
+                "containerId": "266900186",
+                "type": "PAGE_URL",
+                "name": "Page URL"
+            },
+            {
+                "accountId": "6382086279",
+                "containerId": "266900186",
+                "type": "PAGE_HOSTNAME",
+                "name": "Page Hostname"
+            },
+            {
+                "accountId": "6382086279",
+                "containerId": "266900186",
+                "type": "PAGE_PATH",
+                "name": "Page Path"
+            },
+            {
+                "accountId": "6382086279",
+                "containerId": "266900186",
+                "type": "REFERRER",
+                "name": "Referrer"
+            },
+            {
+                "accountId": "6382086279",
+                "containerId": "266900186",
+                "type": "EVENT",
+                "name": "Event"
+            }
+        ],
+        "fingerprint": "1795170902893",
+        "tagManagerUrl": "https://tagmanager.google.com/#/versions/accounts/6382086279/containers/266900186/versions/11?apiLink=version",
+        "customTemplate": [
+            {
+                "accountId": "6382086279",
+                "containerId": "266900186",
+                "templateId": "44",
+                "name": "Microsoft Clarity - Official",
+                "fingerprint": "1794228720029",
+                "templateData": "___TERMS_OF_SERVICE___\n\nBy creating or modifying this file you agree to Google Tag Manager's Community\nTemplate Gallery Developer Terms of Service available at\nhttps://developers.google.com/tag-manager/gallery-tos (or such other URL as\nGoogle may provide), as modified from time to time.\n\n\n___INFO___\n\n{\n  \"type\": \"TAG\",\n  \"id\": \"cvt_MQDKZ\",\n  \"version\": 1,\n  \"displayName\": \"Microsoft Clarity - Official\",\n  \"categories\": [\n    \"ANALYTICS\",\n    \"HEAT_MAP\",\n    \"SESSION_RECORDING\"\n  ],\n  \"brand\": {\n    \"id\": \"github.com_microsoft\",\n    \"displayName\": \"microsoft\",\n    \"thumbnail\": \"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAIAAAACABAMAAAAxEHz4AAAABGdBTUEAALGPC/xhBQAAACBjSFJNAAB6JgAAgIQAAPoAAACA6AAAdTAAAOpgAAA6mAAAF3CculE8AAAAElBMVEUAAADyUCJ/ugAApO//uQD///8951e2AAAAAXRSTlMAQObYZgAAAAFiS0dEBfhv6ccAAAAHdElNRQfkCgUWITsZUDiiAAAAS0lEQVRo3u3MQQ3AIAAEsMuCAGZhCkiwgH9NOLj3Hq2A5q1m8nxVBAKBQCAQCAQCgUAgEPSAP9jVSsapBAKBQCAQCAQCgUAgEPTgAruK0CdlWNSzAAAAJXRFWHRkYXRlOmNyZWF0ZQAyMDIwLTEwLTA1VDIyOjMzOjU5KzAwOjAwPT1n8QAAACV0RVh0ZGF0ZTptb2RpZnkAMjAyMC0xMC0wNVQyMjozMzo1OSswMDowMExg300AAAAASUVORK5CYII\\u003d\"\n  },\n  \"description\": \"Clarity is a user behavior analytics tool, which helps you understand how users are interacting with your website. Supported features include:\\nSession Recordings\\nHeatmaps\\nML Insights\",\n  \"containerContexts\": [\n    \"WEB\"\n  ]\n}\n\n\n___TEMPLATE_PARAMETERS___\n\n[\n  {\n    \"type\": \"TEXT\",\n    \"name\": \"projectId\",\n    \"displayName\": \"Clarity Project Id\",\n    \"simpleValueType\": true,\n    \"help\": \"Copy your clarity project Id here. You can find it in the project Url from the browser. Example: https://clarity.microsoft.com/projects/view/\\\"projectId\\\"/\",\n    \"valueValidators\": [\n      {\n        \"type\": \"NON_EMPTY\",\n        \"errorMessage\": \"You must provide a clarity project Id\"\n      },\n      {\n        \"type\": \"REGEX\",\n        \"args\": [\n          \"[0-9a-z]+\"\n        ],\n        \"errorMessage\": \"Incorrect project Id. You can find it in the project Url from the browser. Example: https://clarity.microsoft.com/projects/view/\\\"projectId\\\"/\"\n      }\n    ]\n  },\n  {\n    \"type\": \"GROUP\",\n    \"name\": \"advanced\",\n    \"displayName\": \"Custom Options\",\n    \"groupStyle\": \"ZIPPY_CLOSED\",\n    \"subParams\": [\n      {\n        \"type\": \"GROUP\",\n        \"name\": \"custom_id\",\n        \"displayName\": \"Custom Identifiers\",\n        \"groupStyle\": \"NO_ZIPPY\",\n        \"subParams\": [\n          {\n            \"type\": \"TEXT\",\n            \"name\": \"userId\",\n            \"displayName\": \"Custom Id\",\n            \"simpleValueType\": true,\n            \"help\": \"Custom id such as an email, can help you view the user journey across browsers and devices\",\n            \"valueHint\": \"user@domain.com\"\n          },\n          {\n            \"type\": \"TEXT\",\n            \"name\": \"sessionId\",\n            \"displayName\": \"Session Id\",\n            \"simpleValueType\": true,\n            \"help\": \"Custom session id to help you filter for this session later\",\n            \"enablingConditions\": [\n              {\n                \"paramName\": \"userId\",\n                \"paramValue\": \"\",\n                \"type\": \"PRESENT\"\n              }\n            ],\n            \"valueHint\": \"custom-session-id\"\n          },\n          {\n            \"type\": \"TEXT\",\n            \"name\": \"pageId\",\n            \"displayName\": \"Page Id\",\n            \"simpleValueType\": true,\n            \"help\": \"Custom page id to help you filter for this page later\",\n            \"enablingConditions\": [\n              {\n                \"paramName\": \"userId\",\n                \"paramValue\": \"\",\n                \"type\": \"PRESENT\"\n              }\n            ],\n            \"valueHint\": \"custom-page-id\"\n          },\n          {\n            \"type\": \"TEXT\",\n            \"name\": \"friendlyName\",\n            \"displayName\": \"Friendly Name\",\n            \"simpleValueType\": true,\n            \"help\": \"Friendly name for the user\",\n            \"enablingConditions\": [\n              {\n                \"paramName\": \"userId\",\n                \"paramValue\": \"\",\n                \"type\": \"PRESENT\"\n              }\n            ],\n            \"valueHint\": \"Mona\"\n          }\n        ],\n        \"help\": \"Custom Identifiers are informational data values about site visitors\",\n        \"enablingConditions\": []\n      },\n      {\n        \"type\": \"SIMPLE_TABLE\",\n        \"name\": \"custom_tag\",\n        \"displayName\": \"Custom Tag\",\n        \"simpleTableColumns\": [\n          {\n            \"defaultValue\": \"\",\n            \"displayName\": \"Key\",\n            \"name\": \"key\",\n            \"type\": \"TEXT\",\n            \"valueHint\": \"\"\n          },\n          {\n            \"defaultValue\": \"\",\n            \"displayName\": \"Value\",\n            \"name\": \"value\",\n            \"type\": \"TEXT\",\n            \"valueValidators\": [\n              {\n                \"type\": \"STRING_LENGTH\",\n                \"args\": [\n                  1,\n                  255\n                ]\n              }\n            ],\n            \"valueHint\": \"\"\n          }\n        ],\n        \"help\": \"Custom tags are customizable filters that allow you to analyze recordings and heatmaps in different directions\",\n        \"valueValidators\": []\n      }\n    ]\n  }\n]\n\n\n___SANDBOXED_JS_FOR_WEB_TEMPLATE___\n\n// Require the necessary APIs\nconst injectScript = require('injectScript');\nconst queryPermission = require('queryPermission');\nconst createArgumentsQueue = require('createArgumentsQueue');\nconst encodeUri = require('encodeUri');\nconst addEventCallback = require('addEventCallback');\nconst copyFromDataLayer = require('copyFromDataLayer');\n//const log = require('logToConsole');\n\n// Create clarity const\nconst clarity = createArgumentsQueue('clarity', 'clarity.q');\n\nconst customTags = data.custom_tag || [];\n\n// Reconstruct customer clarity script URL\nconst url = \"https://www.clarity.ms/tag/\"+encodeUri(data.projectId)+\"?ref=gtm\";\n\nconst runClarityIdentify = () => {\n  const friendlyName = data.friendlyName || '';\n  const sessionId = data.sessionId || '';\n  const pageId = data.pageId || '';\n  if (data.userId) {\n    clarity(\n      \"identify\",\n      data.userId,\n      sessionId,\n      pageId,\n      friendlyName\n    );\n  }\n};\n\n// Handle Success\nconst onCustomerSuccess = () => {\n  data.gtmOnSuccess();\n};\n\n// Handle Failure\nconst onCustomerFailure = () => {\n  data.gtmOnFailure();\n};\n\n\n// If the URL input by the user matches the permissions set for the template,\n// inject the script with the onSuccess and onFailure methods as callbacks.\nif (queryPermission('inject_script', \"https://www.clarity.ms\")) {\n  for (var i = 0; i < customTags.length; i++) {\n    if (customTags[i].value) {\n      clarity('set', customTags[i].key, customTags[i].value);\n    }\n  }\n\n  if (data.userId) {\n    runClarityIdentify();\n  } else {\n    // Otherwise wait for Window Loaded event\n    addEventCallback(function(containerId, eventData) {\n      const event = copyFromDataLayer('event');\n      if (event === 'gtm.load') {\n        runClarityIdentify();\n      }\n    });\n  }\n \n  injectScript(url, onCustomerSuccess, onCustomerFailure);\n  \n} else {\n  data.gtmOnFailure();\n}\n\n\n___WEB_PERMISSIONS___\n\n[\n  {\n    \"instance\": {\n      \"key\": {\n        \"publicId\": \"inject_script\",\n        \"versionId\": \"1\"\n      },\n      \"param\": [\n        {\n          \"key\": \"urls\",\n          \"value\": {\n            \"type\": 2,\n            \"listItem\": [\n              {\n                \"type\": 1,\n                \"string\": \"https://www.clarity.ms/*\"\n              }\n            ]\n          }\n        }\n      ]\n    },\n    \"clientAnnotations\": {\n      \"isEditedByUser\": true\n    },\n    \"isRequired\": true\n  },\n  {\n    \"instance\": {\n      \"key\": {\n        \"publicId\": \"access_globals\",\n        \"versionId\": \"1\"\n      },\n      \"param\": [\n        {\n          \"key\": \"keys\",\n          \"value\": {\n            \"type\": 2,\n            \"listItem\": [\n              {\n                \"type\": 3,\n                \"mapKey\": [\n                  {\n                    \"type\": 1,\n                    \"string\": \"key\"\n                  },\n                  {\n                    \"type\": 1,\n                    \"string\": \"read\"\n                  },\n                  {\n                    \"type\": 1,\n                    \"string\": \"write\"\n                  },\n                  {\n                    \"type\": 1,\n                    \"string\": \"execute\"\n                  }\n                ],\n                \"mapValue\": [\n                  {\n                    \"type\": 1,\n                    \"string\": \"clarity\"\n                  },\n                  {\n                    \"type\": 8,\n                    \"boolean\": true\n                  },\n                  {\n                    \"type\": 8,\n                    \"boolean\": true\n                  },\n                  {\n                    \"type\": 8,\n                    \"boolean\": true\n                  }\n                ]\n              },\n              {\n                \"type\": 3,\n                \"mapKey\": [\n                  {\n                    \"type\": 1,\n                    \"string\": \"key\"\n                  },\n                  {\n                    \"type\": 1,\n                    \"string\": \"read\"\n                  },\n                  {\n                    \"type\": 1,\n                    \"string\": \"write\"\n                  },\n                  {\n                    \"type\": 1,\n                    \"string\": \"execute\"\n                  }\n                ],\n                \"mapValue\": [\n                  {\n                    \"type\": 1,\n                    \"string\": \"clarity.q\"\n                  },\n                  {\n                    \"type\": 8,\n                    \"boolean\": true\n                  },\n                  {\n                    \"type\": 8,\n                    \"boolean\": true\n                  },\n                  {\n                    \"type\": 8,\n                    \"boolean\": true\n                  }\n                ]\n              }\n            ]\n          }\n        }\n      ]\n    },\n    \"clientAnnotations\": {\n      \"isEditedByUser\": true\n    },\n    \"isRequired\": true\n  },\n  {\n    \"instance\": {\n      \"key\": {\n        \"publicId\": \"read_event_metadata\",\n        \"versionId\": \"1\"\n      },\n      \"param\": []\n    },\n    \"isRequired\": true\n  },\n  {\n    \"instance\": {\n      \"key\": {\n        \"publicId\": \"read_data_layer\",\n        \"versionId\": \"1\"\n      },\n      \"param\": [\n        {\n          \"key\": \"allowedKeys\",\n          \"value\": {\n            \"type\": 1,\n            \"string\": \"specific\"\n          }\n        },\n        {\n          \"key\": \"keyPatterns\",\n          \"value\": {\n            \"type\": 2,\n            \"listItem\": [\n              {\n                \"type\": 1,\n                \"string\": \"event\"\n              }\n            ]\n          }\n        }\n      ]\n    },\n    \"clientAnnotations\": {\n      \"isEditedByUser\": true\n    },\n    \"isRequired\": true\n  }\n]\n\n\n___TESTS___\n\nscenarios: []\n\n\n___NOTES___\n\nCreated on 2/2/2021, 12:41:15 PM\n\n\n",
+                "galleryReference": {
+                    "host": "github.com",
+                    "owner": "microsoft",
+                    "repository": "clarity-gtm-template",
+                    "version": "a4013e4a6b1ae135d6acd80cdb7dd803d849dc54",
+                    "signature": "005e0c847e851bd85c268486f2194c0774337b596daeeaae5c10020c059a9472",
+                    "galleryTemplateId": "MQDKZ"
+                }
+            }
+        ],
+        "gtagConfig": [
+            {
+                "accountId": "6382086279",
+                "containerId": "266900186",
+                "gtagConfigId": "64",
+                "type": "ogt_auto_events",
+                "parameter": [
+                    {
+                        "type": "BOOLEAN",
+                        "key": "enableOutboundClick",
+                        "value": "false"
+                    },
+                    {
+                        "type": "BOOLEAN",
+                        "key": "enableScroll",
+                        "value": "false"
+                    },
+                    {
+                        "type": "BOOLEAN",
+                        "key": "enableDownload",
+                        "value": "false"
+                    },
+                    {
+                        "type": "BOOLEAN",
+                        "key": "enableHistoryEvents",
+                        "value": "false"
+                    },
+                    {
+                        "type": "BOOLEAN",
+                        "key": "enableForm",
+                        "value": "false"
+                    },
+                    {
+                        "type": "BOOLEAN",
+                        "key": "enableVideo",
+                        "value": "false"
+                    }
+                ],
+                "fingerprint": "1795168952052"
+            },
+            {
+                "accountId": "6382086279",
+                "containerId": "266900186",
+                "gtagConfigId": "65",
+                "type": "ogt_1p_data_v2",
+                "parameter": [
+                    {
+                        "type": "BOOLEAN",
+                        "key": "isAutoEnabled",
+                        "value": "false"
+                    },
+                    {
+                        "type": "BOOLEAN",
+                        "key": "isManualEnabled",
+                        "value": "false"
+                    },
+                    {
+                        "type": "BOOLEAN",
+                        "key": "isEnabled",
+                        "value": "true"
+                    }
+                ],
+                "fingerprint": "1795168952051"
+            }
+        ]
+    }
+}

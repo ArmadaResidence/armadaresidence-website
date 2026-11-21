@@ -1,6 +1,6 @@
 // Probe the PUBLISHED GTM container on a local build — nothing is sent anywhere (19 Nov 2026).
 //
-//   node scripts/gtm-probe.mjs [--base URL] [--json out.json]
+//   node scripts/gtm-probe.mjs [--base URL] [--json out.json] [--careers]
 //
 // It serves dist/ (or uses --base), loads the real gtm.js of content/contact.json → gtm_container (an automated browser
 // with localStorage armada-gtm-test = 1 — Base.astro's one exception to the hosts) and lets the tag libraries load
@@ -61,7 +61,8 @@ function events(p, u, body) {
   if (p === 'meta') return { events: [q.get('ev')], id: q.get('id'), fbc: q.get('fbc'), dl: q.get('dl') };
   if (p === 'snap') return { events: [q.get('ev') || (body || '').match(/"event_type":"([A-Z_]+)"/)?.[1] || '?'] };
   if (p === 'tiktok') return { events: [(body || '').match(/"event":"([^"]+)"/)?.[1] || '?'], ttclid: /ttclid/.test(body || '') };
-  if (p === 'google-ads') return { events: [url.pathname.split('/').slice(0, 4).join('/')], label: q.get('label') };
+  // the destination a Google hit names (tid on /ccm and /g/collect, the conversion ID in the /pagead and /rmkt paths)
+  if (p === 'google-ads') return { events: [url.host + url.pathname.split('/').slice(0, 4).join('/')], label: q.get('label'), tid: q.get('tid') || url.pathname.match(/\/(\d{8,})/)?.[1] || null, keys: [...q.keys()].join(',') };
   return { events: [url.host + url.pathname] };
 }
 
@@ -96,9 +97,34 @@ async function scenario(name, run) {
   );
   report[name] = { hits: hits.map((h) => ({ ...h, t: h.t - t0 })), dataLayer: dl };
   console.log(`\n=== ${name}`);
-  for (const h of hits) console.log(`${String(h.t - t0).padStart(6)} ms  ${h.platform.padEnd(10)} ${h.events.join(', ')}${h.label ? ` label=${h.label}` : ''}${h.fbc ? ` fbc=${h.fbc}` : ''}`);
+  for (const h of hits) console.log(`${String(h.t - t0).padStart(6)} ms  ${h.platform.padEnd(10)} ${h.events.join(', ')}${h.label ? ` label=${h.label}` : ''}${h.tid ? ` tid=${h.tid}` : ''}${h.fbc ? ` fbc=${h.fbc}` : ''}`);
   console.log('dataLayer:', dl.join(' | '));
   await ctx.close();
+}
+
+// --careers (21 Nov 2026): only the careers pages and one other page, «قبول الكل» + a scroll, so each page's hits by
+// platform are visible — no Meta / TikTok / Snap / Clarity there since version 12, and Google Ads after its change.
+if (args.includes('--careers')) {
+  const count = (name) => {
+    const by = {};
+    for (const h of report[name].hits) if (!['lib', 'step'].includes(h.platform)) by[h.platform] = (by[h.platform] || 0) + 1;
+    return by;
+  };
+  for (const path of ['/careers/', '/en/careers/', '/airport-road/']) {
+    const name = `careers probe ${path}`;
+    await scenario(name, async (page, mark) => {
+      await page.goto(`${base}${path}?utm_source=probe&gclid=PROBEGCLID`, { waitUntil: 'load' });
+      mark('click «قبول الكل»');
+      await page.click('[data-cookie-accept]');
+      await page.mouse.wheel(0, 600);
+      await page.waitForTimeout(6500);
+    });
+    console.log(`hits by platform on ${path}:`, JSON.stringify(count(name)));
+  }
+  await browser.close();
+  server?.close();
+  if (out) writeFileSync(out, JSON.stringify(report, null, 2));
+  process.exit(0);
 }
 
 const landing = `${base}/airport-road/?utm_source=meta&utm_medium=paid_social&utm_campaign=dec26_probe_airport&utm_content=probe&fbclid=PROBEFBCLID&gclid=PROBEGCLID`;

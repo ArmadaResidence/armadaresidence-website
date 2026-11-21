@@ -6,8 +6,11 @@
 //     MATCH_REGEX conditions on {{_event}}, {{Page Path}} and the container's Data Layer variables;
 //   - a tag fires on an event when one of its firing triggers matches, none of its exception (blocking) triggers
 //     matches and every consent type it needs is granted;
-//   - a Meta, TikTok, Snapchat or Clarity tag that fires sends ONE request to its platform's host
-//     (https://<host>/__gtm-emulator?tag=…&event=…) — the check aborts and counts them; nothing reaches a platform;
+//   - a Meta, TikTok, Snapchat or Clarity tag — or the Google Ads Google tag (dest_aw, 21 Nov 2026) — that fires sends
+//     ONE request to its platform's host (https://<host>/__gtm-emulator?tag=…&event=…) — the check aborts and counts
+//     them; nothing reaches a platform;
+//   - Initialization (the built-in trigger, and a Custom Event on gtm.init): the emulator handles gtm.init_consent and
+//     gtm.init before the dataLayer's own events, as gtm.js does (nothing is pushed);
 //   - any other Custom HTML tag without a platform (the «first interaction or 5 s» engagement timer) runs its own code.
 // What it does not prove: Google's own compiler and the published container. Tag Assistant does that after the import
 // (docs/gtm-import-careers-privacy.md).
@@ -16,19 +19,20 @@ import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-export const HOSTS = { meta: 'connect.facebook.net', tiktok: 'analytics.tiktok.com', snap: 'tr.snapchat.com', clarity: 'www.clarity.ms' };
+export const HOSTS = { meta: 'connect.facebook.net', tiktok: 'analytics.tiktok.com', snap: 'tr.snapchat.com', clarity: 'www.clarity.ms', googleads: 'googleads.g.doubleclick.net' };
 export const EMULATOR_HOSTS = new RegExp(Object.values(HOSTS).map((h) => h.replace(/\./g, '\\.')).join('|'));
 
-export function emulatorScript(file = resolve(ROOT, 'docs/gtm-container.json')) {
+export function emulatorScript(file = resolve(ROOT, process.env.GTM_EMULATOR_FILE || 'docs/gtm-container.json')) {
   const c = JSON.parse(readFileSync(file, 'utf8')).containerVersion;
   const arg = (x, k) => x.parameter.find((p) => p.key === k)?.value ?? '';
-  const conds = (list) => (list ?? []).map((x) => ({ t: x.type, a: arg(x, 'arg0'), b: arg(x, 'arg1') }));
+  // a condition's «does not …» form is GTM's BOOLEAN parameter negate = true (21 Nov 2026)
+  const conds = (list) => (list ?? []).map((x) => ({ t: x.type, a: arg(x, 'arg0'), b: arg(x, 'arg1'), n: arg(x, 'negate') === 'true' }));
   const triggers = Object.fromEntries(c.trigger.map((t) => [t.triggerId, { type: t.type, ce: conds(t.customEventFilter), f: conds(t.filter) }]));
   const vars = Object.fromEntries(c.variable.filter((v) => v.type === 'v').map((v) => [v.name, arg(v, 'name')]));
   const tags = [];
   for (const t of c.tag) {
     const code = t.type === 'html' ? arg(t, 'html') : '';
-    const platform = /fbq/.test(code) ? 'meta' : /ttq/.test(code) ? 'tiktok' : /snaptr/.test(code) ? 'snap' : t.name === 'Clarity' ? 'clarity' : '';
+    const platform = t.type === 'dest_aw' ? 'googleads' : /fbq/.test(code) ? 'meta' : /ttq/.test(code) ? 'tiktok' : /snaptr/.test(code) ? 'snap' : t.name === 'Clarity' ? 'clarity' : '';
     if (!platform && !(t.type === 'html' && t.consentSettings?.consentStatus !== 'NEEDED')) continue;
     tags.push({
       name: t.name,
@@ -51,6 +55,9 @@ export function emulatorScript(file = resolve(ROOT, 'docs/gtm-container.json')) 
     return C.vars[n] ? model[C.vars[n]] : undefined;
   }
   function ok(c) {
+    return c.n ? !test(c) : test(c);
+  }
+  function test(c) {
     var a = val(c.a);
     a = a == null ? '' : String(a);
     if (c.t === 'EQUALS') return a === c.b;
@@ -62,6 +69,7 @@ export function emulatorScript(file = resolve(ROOT, 'docs/gtm-container.json')) 
   }
   function on(id) {
     if (id === '2147479553') return ev === 'gtm.js';
+    if (id === '2147479573') return ev === 'gtm.init';
     var t = C.triggers[id];
     return !!t && t.ce.every(ok) && t.f.every(ok);
   }
@@ -96,6 +104,8 @@ export function emulatorScript(file = resolve(ROOT, 'docs/gtm-container.json')) 
     for (var i = 0; i < arguments.length; i++) handle(arguments[i]);
     return r;
   };
+  handle({ event: 'gtm.init_consent' });
+  handle({ event: 'gtm.init' });
   queued.forEach(handle);
 })(${config});`;
 }

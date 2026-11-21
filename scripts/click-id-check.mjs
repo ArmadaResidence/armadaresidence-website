@@ -24,7 +24,10 @@
 //              with the pixels already loaded, the footer link to /careers/ is a full page load (the page's own state
 //              gone, no router on it) and sends none either; every other page still sends its page views — a landing
 //              on each sample page, and the home page's client-side navigation to /airport-road/ (Meta, TikTok and
-//              Snapchat once more on virtual_page_view); leaving /careers/ for the home page brings them back
+//              Snapchat once more on virtual_page_view); leaving /careers/ for the home page brings them back.
+//              Since 21 Nov 2026 the Google Ads Google tag (AW-18253894939, on Initialization) counts as well: never on
+//              /careers/, once on every other full page load. GTM_EMULATOR_FILE=docs/gtm-container-ads-fallback.json
+//              runs the same with the fallback file
 //   node scripts/click-id-check.mjs [BASE_URL]
 import { chromium } from 'playwright';
 import { readFileSync } from 'node:fs';
@@ -246,7 +249,8 @@ for (const [consent, carried, label] of [
     await page.waitForTimeout(600);
   };
   const platforms = (list) => [...new Set(list.map((x) => x.host))].sort().join(', ');
-  const EVERY = ['analytics.tiktok.com', 'connect.facebook.net', 'tr.snapchat.com', 'www.clarity.ms'].join(', ');
+  const EVERY = ['analytics.tiktok.com', 'connect.facebook.net', 'googleads.g.doubleclick.net', 'tr.snapchat.com', 'www.clarity.ms'].join(', ');
+  const ADS = (list) => list.filter((x) => x.host === 'googleads.g.doubleclick.net');
   const pv = (list) => list.filter((x) => / - base$/.test(x.tag)).length;
   const home = (lang) => `${PRE}${lang === 'en' ? '/en' : ''}/`;
   for (const lang of ['ar', 'en']) {
@@ -260,7 +264,7 @@ for (const [consent, carried, label] of [
       const fired = await page.evaluate(() => window.__gtmEmulator.fired.map((x) => x.tag));
       const d = await page.evaluate(() => (window.dataLayer || []).filter((x) => x && x.event).map((x) => x.event));
       check(d.includes('gtm.js') && d.includes('first_engagement'), `${lang}: /careers/${q} — the emulated container ran (gtm.js, first_engagement)`, d.join(', '));
-      check(ads.length === 0 && !fired.some((t) => /Pixel|Clarity/.test(t)), `${lang}: /careers/${q} with ads + analytics granted → no request to Meta, TikTok, Snapchat or Clarity`, JSON.stringify(ads));
+      check(ads.length === 0 && !fired.some((t) => /Pixel|Clarity|Google Ads AW-/.test(t)), `${lang}: /careers/${q} with ads + analytics granted → no request to Meta, TikTok, Snapchat, Clarity or the Google Ads destination AW-18253894939`, JSON.stringify(ads));
       await c.close();
     }
     // a first visit on /careers/: «قبول الكل» there (consent_granted) and the engagement → still nothing
@@ -278,7 +282,7 @@ for (const [consent, carried, label] of [
       await page.waitForTimeout(600);
       const d = await page.evaluate(() => (window.dataLayer || []).filter((x) => x && x.event).map((x) => x.event));
       check(d.includes('consent_granted'), `${lang}: «قبول الكل» on /careers/ pushes consent_granted`, d.join(', '));
-      check(ads.length === 0, `${lang}: «قبول الكل» on /careers/ → no request to Meta, TikTok, Snapchat or Clarity`, JSON.stringify(ads));
+      check(ads.length === 0, `${lang}: «قبول الكل» on /careers/ → no request to Meta, TikTok, Snapchat, Clarity or Google Ads`, JSON.stringify(ads));
       await c.close();
     }
     // from the home page, the pixels loaded, to /careers/ by the footer link: a full page load, and nothing there
@@ -287,7 +291,7 @@ for (const [consent, carried, label] of [
       const page = await c.newPage();
       await land(page, path(lang, '/'));
       await engage(page);
-      check(platforms(ads) === EVERY, `${lang}: the home page with ads + analytics granted → Meta, TikTok, Snapchat and Clarity`, platforms(ads));
+      check(platforms(ads) === EVERY && ADS(ads).length === 1, `${lang}: the home page with ads + analytics granted → Meta, TikTok, Snapchat, Clarity and Google Ads (once, on Initialization)`, platforms(ads));
       // a client-side navigation first: the page views still follow it
       const before = pv(ads);
       await page.locator(`main a[href="${home(lang)}airport-road/"]`).filter({ visible: true }).first().click();
@@ -311,12 +315,12 @@ for (const [consent, carried, label] of [
       check(!st.mark && st.nav === 'navigate' && !st.router && st.pvid === 1, `${lang}: the link to /careers/ is a full page load (nothing of the earlier page left, no router on /careers/)`, JSON.stringify(st));
       await engage(page);
       await page.waitForTimeout(4500);
-      check(ads.length === n, `${lang}: /careers/ after the home page (pixels loaded there) → no request to Meta, TikTok, Snapchat or Clarity`, JSON.stringify(ads.slice(n)));
+      check(ads.length === n, `${lang}: /careers/ after the home page (pixels loaded there) → no request to Meta, TikTok, Snapchat, Clarity or Google Ads`, JSON.stringify(ads.slice(n)));
       // leaving /careers/ for the home page: the page views come back
       await page.locator(`header a[href="${home(lang)}"]`).filter({ visible: true }).first().click();
       await page.waitForURL((u) => u.pathname === home(lang), { timeout: 10000 });
       await engage(page);
-      check(platforms(ads.slice(n)) === EVERY, `${lang}: back on the home page → Meta, TikTok, Snapchat and Clarity again`, platforms(ads.slice(n)));
+      check(platforms(ads.slice(n)) === EVERY, `${lang}: back on the home page → Meta, TikTok, Snapchat, Clarity and Google Ads again`, platforms(ads.slice(n)));
       await c.close();
     }
   }
@@ -326,13 +330,13 @@ for (const [consent, carried, label] of [
     const page = await c.newPage();
     await land(page, path(lang, p));
     await engage(page);
-    check(platforms(ads) === EVERY && pv(ads) === 3, `${lang}: ${p} → Meta, TikTok and Snapchat page views and Clarity`, `${platforms(ads)}; base tags ${pv(ads)}`);
+    check(platforms(ads) === EVERY && pv(ads) === 3 && ADS(ads).length === 1, `${lang}: ${p} → Meta, TikTok and Snapchat page views, Clarity and Google Ads`, `${platforms(ads)}; base tags ${pv(ads)}; Google Ads ${ADS(ads).length}`);
     await c.close();
   }
 }
 
 await browser.close();
-console.log(`click-id-check (${ORIGIN}${REAL ? ', the real domain' : ''}): ${checks - fails.length}/${checks} checks passed`);
+console.log(`click-id-check (${ORIGIN}${REAL ? ', the real domain' : ''}${process.env.GTM_EMULATOR_FILE ? `, container ${process.env.GTM_EMULATOR_FILE}` : ''}): ${checks - fails.length}/${checks} checks passed`);
 if (fails.length) {
   for (const f of fails) console.error(`  ✗ ${f}`);
   process.exit(1);

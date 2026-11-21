@@ -17,13 +17,18 @@
 //     Custom HTML / Custom JavaScript parses;
 //   - careers privacy (20 Nov 2026): one exception trigger «Exception - careers pages» (every event, Page Path =
 //     /careers/ or /en/careers/) on every Meta, TikTok and Snapchat tag and on Clarity — 19 tags, nothing else changed
-//     on them; no other tag blocked; GA4 and Google Ads as in v11; the path rule matches the careers pages only;
+//     on them, and (21 Nov 2026) on the Google Ads Google tag; no other tag blocked; GA4 and the Google Ads conversion
+//     tags as in v11; the path rule matches the careers pages only;
 //   - every custom event the container listens to is one the site pushes (src/), and every whatsapp_click the site
-//     pushes carries destination, page_path and package.
+//     pushes carries destination, page_path and package;
+//   - version 12 and Google Ads (21 Nov 2026): docs/gtm-container-v12.json = v11 + the careers exception (published as
+//     version 12); docs/gtm-container.json = v12 + the careers exception on «Google Ads AW-18253894939» (nothing else
+//     changed on it), docs/gtm-container-ads-fallback.json = v12 + «Initialization - except careers» (gtm.init, Page Path
+//     not a careers page) as that tag's only firing trigger; each one's diff against v12 = CHANGES_V12 (the preview).
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import vm from 'node:vm';
-import { BASE, CAREERS_PATH, CAREERS_TRIGGER, CHANGES, OUT, WHATSAPP_LABEL, build, isPrivacyTag, render } from './gtm-container-build.mjs';
+import { ADS_INIT_TRIGGER, ADS_TAG, BASE, CAREERS_PATH, CAREERS_TAGS, CAREERS_TRIGGER, CHANGES, CHANGES_V12, FALLBACK, OUT, V12, WHATSAPP_LABEL, build, buildV12, isPrivacyTag, render } from './gtm-container-build.mjs';
 
 let pass = 0;
 const fails = [];
@@ -75,7 +80,7 @@ for (const kind of KINDS) {
   }
 }
 /** GTM fields v11 happens not to use, allowed here: a tag's exception triggers, a trigger's extra conditions */
-const EXTRA = { tag: Object.fromEntries(['html', 'cvt_MQDKZ'].map((t) => [t, { blockingTriggerId: 'array' }])), trigger: { CUSTOM_EVENT: { filter: 'array' } } };
+const EXTRA = { tag: Object.fromEntries(['html', 'cvt_MQDKZ', 'dest_aw'].map((t) => [t, { blockingTriggerId: 'array' }])), trigger: { CUSTOM_EVENT: { filter: 'array' } } };
 const orderClash = (keys, orders) => {
   for (const o of orders) {
     const mine = keys.filter((k) => o.includes(k));
@@ -145,7 +150,8 @@ for (const kind of KINDS)
     if (kind === 'tag') {
       check(JSON.stringify(x.monitoringMetadata) === '{"type":"MAP"}', `tag «${x.name}»: monitoringMetadata as GTM exports it`);
       check(baseConsent.has(JSON.stringify(x.consentSettings)), `tag «${x.name}»: consentSettings in a shape v11 uses`, JSON.stringify(x.consentSettings));
-      check(baseFiring.has(x.tagFiringOption), `tag «${x.name}»: tagFiringOption as v11`, x.tagFiringOption);
+      // a Google tag destination (dest_aw) carries no tagFiringOption in v11 — none is added
+      check(baseFiring.has(x.tagFiringOption) || (x.tagFiringOption === undefined && !r.fields.has('tagFiringOption')), `tag «${x.name}»: tagFiringOption as v11`, x.tagFiringOption);
       for (const s of x.setupTag ?? []) check(JSON.stringify(Object.keys(s)) === '["tagName"]', `tag «${x.name}»: setupTag entry { tagName } as v11`);
       if (x.priority) check(JSON.stringify(Object.keys(x.priority)) === '["type","value"]' && x.priority.type === 'INTEGER', `tag «${x.name}»: priority as v11`);
     }
@@ -204,9 +210,9 @@ const refs = (x) => [...JSON.stringify(x).matchAll(/\{\{([^}]+)\}\}/g)].map((m) 
 for (const x of [...B.tag, ...B.trigger, ...B.variable]) for (const r of refs(x)) check(varNames.has(r), `«${x.name}»: variable {{${r}}} exists`);
 
 // ── the diff against v11, by name ──
-function diff(kind) {
-  const a = new Map(A[kind].map((x) => [x.name, x]));
-  const b = new Map(B[kind].map((x) => [x.name, x]));
+function diff(kind, from = A, to = B) {
+  const a = new Map(from[kind].map((x) => [x.name, x]));
+  const b = new Map(to[kind].map((x) => [x.name, x]));
   const strip = (x) => {
     const { fingerprint, notes, ...rest } = x;
     void fingerprint;
@@ -302,7 +308,7 @@ check(purchaseLabels.length === 3, 'three Google Ads conversion tags (Booking, B
     for (const p of ['/', '/en/', '/airport-road/', '/partners/enquiry/', '/club/', '/booking/', '/careers-x/', '/en/careers/apply/', '/blog/careers/', '/dining/lario/', '/policies/'])
       check(!re.test(p), `the careers rule leaves ${p} alone`);
     const covered = B.tag.filter(isPrivacyTag);
-    check(same(covered.map((x) => x.name), CHANGES.tags.modified), 'the tags covered = the change list (every Meta / TikTok / Snapchat tag + Clarity)', covered.map((x) => x.name).join(', '));
+    check(same(covered.map((x) => x.name), CAREERS_TAGS), 'the tags covered = the change list (every Meta / TikTok / Snapchat tag + Clarity)', covered.map((x) => x.name).join(', '));
     const vendor = (re) => covered.filter((x) => re.test(JSON.stringify(x.parameter))).length;
     check(covered.length === 19 && vendor(/fbq\(/) === 6 && vendor(/ttq\./) === 6 && vendor(/snaptr\(/) === 6, '19 tags: 6 Meta, 6 TikTok, 6 Snapchat, Clarity', `${covered.length}: ${vendor(/fbq\(/)} / ${vendor(/ttq\./)} / ${vendor(/snaptr\(/)}`);
     for (const x of covered) {
@@ -312,10 +318,61 @@ check(purchaseLabels.length === 3, 'three Google Ads conversion tags (Booking, B
       const { fingerprint: _c, ...restBefore } = before ?? {};
       check(before && JSON.stringify(rest) === JSON.stringify(restBefore), `«${x.name}»: nothing else changed (ID, code, triggers, consent as v11)`);
     }
-    const others = B.tag.filter((x) => !isPrivacyTag(x));
-    check(others.every((x) => !x.blockingTriggerId), 'no other tag has an exception (GA4, Google Ads, the engagement timer as v11)', others.filter((x) => x.blockingTriggerId).map((x) => x.name).join(', '));
+    const others = B.tag.filter((x) => !isPrivacyTag(x) && x.name !== ADS_TAG);
+    check(others.every((x) => !x.blockingTriggerId), 'no other tag has an exception (GA4, the Google Ads conversions, the engagement timer as v11)', others.filter((x) => x.blockingTriggerId).map((x) => x.name).join(', '));
+    // Google Ads off the careers pages (21 Nov 2026): the same exception on its Google tag, nothing else changed on it
+    const adsTag = tag(ADS_TAG);
+    const adsBefore = A.tag.find((y) => y.name === ADS_TAG);
+    check(adsTag?.type === 'dest_aw' && JSON.stringify(adsTag.blockingTriggerId) === JSON.stringify([t.triggerId]), `«${ADS_TAG}»: the Google Ads Google tag blocked on the careers pages`, JSON.stringify(adsTag?.blockingTriggerId));
+    {
+      const { fingerprint: _a, blockingTriggerId: _b, ...rest } = adsTag ?? {};
+      const { fingerprint: _c, ...restBefore } = adsBefore ?? {};
+      check(adsBefore && JSON.stringify(rest) === JSON.stringify(restBefore) && JSON.stringify(adsTag.firingTriggerId) === '["2147479573"]', `«${ADS_TAG}»: nothing else changed (Initialization, AW-18253894939, consent as v11)`);
+    }
+    check(B.tag.some((x) => x.type === 'googtag'), 'the GA4 Google tag is there');
+    check(B.tag.filter((x) => x.type === 'awct' || x.type === 'gaawe' || x.type === 'googtag').every((x) => !x.blockingTriggerId), 'GA4, its events and the Google Ads conversion tags: no exception');
     check(B.tag.filter((x) => /fbq|ttq|snaptr|clarity/i.test(JSON.stringify(x))).every(isPrivacyTag), 'no Meta / TikTok / Snapchat / Clarity code outside the covered tags');
   }
+}
+
+// ── version 12 and the two Google Ads files (21 Nov 2026): each one's import preview against version 12 ──
+{
+  const v12Text = readFileSync(V12, 'utf8');
+  const fbText = readFileSync(FALLBACK, 'utf8');
+  rawOk('docs/gtm-container-v12.json', v12Text);
+  rawOk('docs/gtm-container-ads-fallback.json', fbText);
+  check(v12Text === render(buildV12(base)), 'docs/gtm-container-v12.json = version 11 + the careers exception (the file published as version 12)');
+  check(fbText === render(build(base, 'init')), 'docs/gtm-container-ads-fallback.json = scripts/gtm-container-build.mjs output');
+  const V = JSON.parse(v12Text).containerVersion;
+  const F = JSON.parse(fbText).containerVersion;
+  const counts12 = `${V.tag.length} tags, ${V.trigger.length} triggers, ${V.variable.length} variables`;
+  check(counts12 === '35 tags, 13 triggers, 35 variables', 'version 12: 35 tags, 13 triggers, 35 variables (as published)', counts12);
+  for (const [label, to, want] of [['docs/gtm-container.json', B, CHANGES_V12.exception], ['docs/gtm-container-ads-fallback.json', F, CHANGES_V12.init]])
+    for (const [kind, key] of [['tag', 'tags'], ['trigger', 'triggers'], ['variable', 'variables']]) {
+      const d = diff(kind, V, to);
+      check(d.deleted.length === 0 && same(d.added, want[key].added) && same(d.modified, want[key].modified), `${label} vs version 12, ${key}: added ${want[key].added.length}, modified ${want[key].modified.length}, deleted 0`, JSON.stringify(d));
+    }
+  // the fallback: a Custom Event on gtm.init whose Page Path does not match the careers rule, the tag's only trigger
+  const fb = F.trigger.find((x) => x.name === ADS_INIT_TRIGGER);
+  const arg = (c, k) => c?.parameter.find((p) => p.key === k)?.value;
+  check(fb && JSON.stringify(Object.keys(fb)) === JSON.stringify(Object.keys(F.trigger.find((x) => x.name === CAREERS_TRIGGER))), `«${ADS_INIT_TRIGGER}»: the fields of a Custom Event trigger with a filter, in GTM's order`);
+  const ce = fb?.customEventFilter ?? [];
+  const fl = fb?.filter ?? [];
+  check(fb?.type === 'CUSTOM_EVENT' && ce.length === 1 && ce[0].type === 'EQUALS' && arg(ce[0], 'arg0') === '{{_event}}' && arg(ce[0], 'arg1') === 'gtm.init', `«${ADS_INIT_TRIGGER}»: event gtm.init (the Initialization event)`);
+  check(
+    fl.length === 1 && fl[0].type === 'MATCH_REGEX' && arg(fl[0], 'arg0') === '{{Page Path}}' && arg(fl[0], 'arg1') === CAREERS_PATH && arg(fl[0], 'negate') === 'true' && (fl[0].parameter ?? []).map((p) => `${p.type}:${p.key}`).join() === 'TEMPLATE:arg0,TEMPLATE:arg1,BOOLEAN:negate',
+    `«${ADS_INIT_TRIGGER}»: Page Path does not match the careers rule (GTM's negate parameter)`,
+    JSON.stringify(fl),
+  );
+  const fa = F.tag.find((x) => x.name === ADS_TAG);
+  const va = V.tag.find((x) => x.name === ADS_TAG);
+  {
+    const { fingerprint: _a, firingTriggerId: _b, ...rest } = fa ?? {};
+    const { fingerprint: _c, firingTriggerId: _d, ...restBefore } = va ?? {};
+    check(fa && JSON.stringify(fa.firingTriggerId) === JSON.stringify([fb?.triggerId]) && !fa.blockingTriggerId && JSON.stringify(rest) === JSON.stringify(restBefore), `fallback «${ADS_TAG}»: fires on «${ADS_INIT_TRIGGER}» only, nothing else changed`);
+  }
+  check(new Set([...F.tag.map((t) => t.tagId), ...F.trigger.map((t) => t.triggerId), ...F.variable.map((v) => v.variableId), ...(F.customTemplate ?? []).map((t) => t.templateId)]).size === F.tag.length + F.trigger.length + F.variable.length + (F.customTemplate ?? []).length, 'fallback: IDs unique');
+  check(/^\d{13}$/.test(fb?.fingerprint ?? '') && /^\d{13}$/.test(fa?.fingerprint ?? ''), 'fallback: fingerprints on the new trigger and the changed tag');
 }
 
 // ── the site and the container agree ──
@@ -345,5 +402,5 @@ if (fails.length) {
 }
 const d = { tags: diff('tag'), triggers: diff('trigger'), variables: diff('variable') };
 console.log(
-  `gtm-container-check: ${pass} checks passed — import preview vs v11: added ${d.tags.added.length} tags / ${d.triggers.added.length} triggers / ${d.variables.added.length} variables, modified ${d.tags.modified.length} tags / ${d.triggers.modified.length} triggers / ${d.variables.modified.length} variables, deleted 0`,
+  `gtm-container-check: ${pass} checks passed — import preview vs version 12: docs/gtm-container.json modified 1 tag («${ADS_TAG}»); the fallback added 1 trigger, modified 1 tag (vs v11: added ${d.triggers.added.length} trigger, modified ${d.tags.modified.length} tags)`,
 );
