@@ -4209,3 +4209,32 @@ Instant booking keeps its limit of 3 units per room type per night (unchanged).
   duplicate of the 20 Nov one (the one-per-ref rule); the cancellation email still goes. Fix only if it ever happens.
 - **A dashboard button** «إعادة تأكيد الحجز» (system admin, on a cancelled booking, typed-ref confirm, the result
   shown like a confirm, a tour step and its offline UI check) is about two to three hours of work; not built (Ahmed).
+
+## 2026-11-21 — GTM version 12 live; Google Ads and offer_view on the careers pages: the review (21 Nov 2026)
+
+- **Version 12 «Careers privacy exception»** was published by Ahmed on 21 Nov 2026 at 13:47 Riyadh and checked live by
+  him: no Meta, TikTok, Snapchat or Clarity request on /careers/ or /en/careers/; all four still load on /airport-road/.
+  35 tags, 13 triggers, 35 variables.
+- **The repository = version 12.** The published container script (`gtm.js?id=GTM-5JVH7R37`, `"version":"12"`, read
+  21 Nov 2026) was compared with `docs/gtm-container.json`: the same 35 tags by ID (the 9 others in the script are the
+  ones Google adds for the Google tag's own settings), every tag on the same firing events, the same 19 tags blocked by
+  one rule, and that rule's Page Path regex `^/(en/)?careers(/|/index\.html)?$` = `CAREERS_PATH`. So
+  `docs/gtm-container.json` is the version 12 baseline: the next GTM change is built on it (the build stays
+  `docs/gtm-container-v11.json` + the careers change = version 12; a version 12 export from Ahmed can replace that base
+  byte for byte whenever he exports one).
+- **Google Ads on the careers pages (review, nothing built).** The careers notice (`policies.json → page.sections[jobs]`)
+  names who reads an application, the purposes, the retention, technology providers outside the Kingdom and the rights;
+  it names no analytics and no advertising tool. The site's cookie section covers analytics and advertising cookies with
+  consent, for the whole site. The Google tag of AW-18253894939 (tag 63, type `dest_aw`, Initialization - All Pages)
+  carries Google's user-provided-data settings (`__ccd_pre_auto_pii`, `__ccd_em_form`, `__ccd_add_1p_data` with
+  automatic detection accepted, on form submits) — the Google counterpart of advanced matching, on a page whose form asks
+  for an email and a phone. The smallest change: the existing «Exception - careers pages» on that one tag (import
+  preview: added 0, modified 1, deleted 0). GA4 (tag 18) unchanged. To confirm in GTM before building: that the
+  destination tag accepts an exception; if not, an Initialization trigger «not careers» on it (added 1, modified 1).
+- **offer_view on the careers pages (finding).** Nothing in GTM is wrong (GA4 - offer_view fires on CE - offer_view
+  only). The site sends it: the announcement bar (`OfferBar.astro`) shows the featured offer «celebration-packages» at
+  the top of every page — careers included — since 18 Nov 2026 23:31 Riyadh, and pushes `offer_view`
+  { placement: bar } on every page load where it is not dismissed. The cards (`src/lib/offers.ts`) send theirs only when
+  half a card is seen. So since GA4 - offer_view went live (version 11, 20 Nov 2026 13:35) every offer_view with
+  placement bar is a bar impression, about one per page view — on every page, not only careers. Card views are right.
+  The fix depends on what the bar's view should count; asked of Ahmed, nothing changed.
