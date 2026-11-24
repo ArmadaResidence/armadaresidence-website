@@ -401,6 +401,358 @@
           }
         ]
       }
+    },
+    "c131": {
+      "date": "2026-11-24",
+      "migration": "20261124200000_guest_hub_h11b.sql",
+      "bank": "conversations.jsonl",
+      "kept": true,
+      "why": "H11 (Ahmed, 24 Nov 2026): «أرغب في التمديد» asks the date first («حتى أي تاريخ ترغب في التمديد؟»), then hands off with it; a length or a date in the same message hands off at once («سجّلنا طلب التمديد حتى …»)",
+      "old": {
+        "action": "conversation",
+        "steps": [
+          {
+            "outcome": "departure_extend",
+            "must_include": [
+              "سيكمل معك فريق الاستقبال"
+            ]
+          }
+        ]
+      },
+      "expect": {
+        "action": "conversation",
+        "steps": [
+          {
+            "outcome": "departure_extend",
+            "must_include": [
+              "حتى أي تاريخ"
+            ]
+          }
+        ]
+      }
+    },
+    "c132": {
+      "date": "2026-11-24",
+      "migration": "20261124200000_guest_hub_h11b.sql",
+      "bank": "conversations.jsonl",
+      "kept": true,
+      "why": "H11 (Ahmed, 24 Nov 2026): «أرغب في التمديد» asks the date first («حتى أي تاريخ ترغب في التمديد؟»), then hands off with it; a length or a date in the same message hands off at once («سجّلنا طلب التمديد حتى …»)",
+      "old": {
+        "action": "conversation",
+        "steps": [
+          {
+            "outcome": "departure_extend",
+            "must_include": [
+              "لإتمام التمديد"
+            ]
+          }
+        ]
+      },
+      "expect": {
+        "action": "conversation",
+        "steps": [
+          {
+            "outcome": "departure_extend",
+            "must_include": [
+              "سجّلنا طلب التمديد حتى"
+            ]
+          }
+        ]
+      }
+    },
+    "c136": {
+      "date": "2026-11-24",
+      "migration": "20261124200000_guest_hub_h11b.sql",
+      "bank": "conversations.jsonl",
+      "kept": true,
+      "why": "H11 (Ahmed, 24 Nov 2026): «أرغب في التمديد» asks the date first («حتى أي تاريخ ترغب في التمديد؟»), then hands off with it; a length or a date in the same message hands off at once («سجّلنا طلب التمديد حتى …»)",
+      "old": {
+        "action": "conversation",
+        "steps": [
+          {
+            "outcome": "departure_extend",
+            "must_include": [
+              "arrange the extension"
+            ]
+          }
+        ]
+      },
+      "expect": {
+        "action": "conversation",
+        "steps": [
+          {
+            "outcome": "departure_extend",
+            "must_include": [
+              "noted your extension request"
+            ]
+          }
+        ]
+      }
+    },
+    "c146": {
+      "date": "2026-11-24",
+      "migration": "20261124200000_guest_hub_h11b.sql",
+      "bank": "conversations-fix3.jsonl",
+      "kept": true,
+      "why": "H11 (Ahmed, 24 Nov 2026 — 882141b2): the summary is sent again only when something in it changed; a correction that changes nothing points to the summary above («ملخص حجزك أعلاه جاهز…»)",
+      "old": {
+        "action": "conversation",
+        "steps": [
+          {
+            "outcome": [
+              "ask",
+              "answer"
+            ],
+            "media": "transcribed",
+            "salaam": true,
+            "must_not_include": [
+              "يبدأ من"
+            ]
+          },
+          {
+            "outcome": [
+              "quote",
+              "ask"
+            ],
+            "must_include": [
+              "نعتذر"
+            ],
+            "must_not_include": [
+              "أيضًا",
+              "سيكمل معك"
+            ]
+          },
+          {
+            "outcome": "ask"
+          },
+          {
+            "outcome": "summary",
+            "must_include": [
+              "الخميس",
+              "ليلة واحدة",
+              "جمادى"
+            ]
+          },
+          {
+            "outcome": [
+              "summary",
+              "quote"
+            ],
+            "must_include": [
+              "الخميس",
+              "الجمعة",
+              "جمادى"
+            ],
+            "must_not_include": [
+              "أيضًا"
+            ]
+          }
+        ]
+      },
+      "expect": {
+        "action": "conversation",
+        "steps": [
+          {
+            "outcome": [
+              "ask",
+              "answer"
+            ],
+            "media": "transcribed",
+            "salaam": true,
+            "must_not_include": [
+              "يبدأ من"
+            ]
+          },
+          {
+            "outcome": [
+              "quote",
+              "ask"
+            ],
+            "must_include": [
+              "نعتذر"
+            ],
+            "must_not_include": [
+              "أيضًا",
+              "سيكمل معك"
+            ]
+          },
+          {
+            "outcome": "ask"
+          },
+          {
+            "outcome": "summary",
+            "must_include": [
+              "الخميس",
+              "ليلة واحدة",
+              "جمادى"
+            ]
+          },
+          {
+            "outcome": [
+              "summary",
+              "quote"
+            ],
+            "must_include": [
+              "ملخص حجزك"
+            ],
+            "must_not_include": [
+              "أيضًا"
+            ]
+          }
+        ]
+      }
+    },
+    "q067": {
+      "date": "2026-11-24",
+      "migration": "20261124200000_guest_hub_h11b.sql",
+      "why": "expected the team (seeded on 14 Nov 2026, before «باقات العرسان والمناسبات» were published on 18 Nov); Ahmed decided on 18 Nov 2026 that package questions are answered from the packages offer",
+      "old": {
+        "action": "handoff"
+      },
+      "expect": {
+        "action": "answer",
+        "must_include": [
+          "الفضية"
+        ]
+      }
+    },
+    "h11-02": {
+      "date": "2026-11-24",
+      "migration": "20261124200000_guest_hub_h11b.sql",
+      "bank": "conversations-h11.jsonl",
+      "kept": true,
+      "why": "the reply may say «الفطور» as well as «الإفطار» (both MSA); the step is graded by its outcome (the breakfast question) and by what it must not ask again",
+      "old": {
+        "action": "conversation",
+        "steps": [
+          {
+            "outcome": "ask",
+            "must_include": [
+              "الإفطار"
+            ],
+            "must_not_include": [
+              "ما تاريخ وصولك",
+              "متى موعد وصولك"
+            ]
+          }
+        ]
+      },
+      "expect": {
+        "action": "conversation",
+        "steps": [
+          {
+            "outcome": "ask",
+            "must_not_include": [
+              "ما تاريخ وصولك",
+              "متى موعد وصولك"
+            ]
+          }
+        ]
+      }
+    },
+    "h11-09": {
+      "date": "2026-11-24",
+      "migration": "20261124200000_guest_hub_h11b.sql",
+      "bank": "conversations-h11.jsonl",
+      "kept": true,
+      "why": "the reply may say «الفطور» as well as «الإفطار» (both MSA); the step is graded by its outcome (the breakfast question) and by what it must not ask again",
+      "old": {
+        "action": "conversation",
+        "steps": [
+          {
+            "outcome": "ask",
+            "must_include": [
+              "الإفطار"
+            ],
+            "must_not_include": [
+              "سيكمل معك"
+            ]
+          }
+        ]
+      },
+      "expect": {
+        "action": "conversation",
+        "steps": [
+          {
+            "outcome": "ask",
+            "must_not_include": [
+              "سيكمل معك"
+            ]
+          }
+        ]
+      }
+    },
+    "h11-19": {
+      "date": "2026-11-24",
+      "migration": "20261124200000_guest_hub_h11b.sql",
+      "bank": "conversations-h11.jsonl",
+      "kept": true,
+      "why": "the reply may say «الفطور» as well as «الإفطار» (both MSA); the step is graded by its outcome (the breakfast question) and by what it must not ask again",
+      "old": {
+        "action": "conversation",
+        "steps": [
+          {
+            "outcome": "ask"
+          },
+          {
+            "outcome": "ask",
+            "must_include": [
+              "الإفطار"
+            ],
+            "must_not_include": [
+              "الثلاثاء 1 ديسمبر",
+              "هل تقصد"
+            ]
+          }
+        ]
+      },
+      "expect": {
+        "action": "conversation",
+        "steps": [
+          {
+            "outcome": "ask"
+          },
+          {
+            "outcome": "ask",
+            "must_not_include": [
+              "الثلاثاء 1 ديسمبر",
+              "هل تقصد"
+            ]
+          }
+        ]
+      }
+    },
+    "h11-20": {
+      "date": "2026-11-24",
+      "migration": "20261124200000_guest_hub_h11b.sql",
+      "bank": "conversations-h11.jsonl",
+      "kept": true,
+      "why": "the reply may say «الفطور» as well as «الإفطار» (both MSA); the step is graded by its outcome (the breakfast question) and by what it must not ask again",
+      "old": {
+        "action": "conversation",
+        "steps": [
+          {
+            "outcome": "ask",
+            "must_include": [
+              "الإفطار"
+            ],
+            "must_not_include": [
+              "ما تاريخ وصولك"
+            ]
+          }
+        ]
+      },
+      "expect": {
+        "action": "conversation",
+        "steps": [
+          {
+            "outcome": "ask",
+            "must_not_include": [
+              "ما تاريخ وصولك"
+            ]
+          }
+        ]
+      }
     }
   }
 }

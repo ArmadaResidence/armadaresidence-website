@@ -49,7 +49,8 @@ for (const [id, c] of Object.entries(CORR)) {
     // an item of another bank file (seeded by a later migration): the file holds the new expect, the migration updates
     // exactly that row from the old one
     const line = read(`tests/hub-bank/${c.bank}`).split('\n').filter((l) => l.trim()).map((l) => JSON.parse(l)).find((x) => x.id === id);
-    check(!!line && JSON.stringify(line.expect) === JSON.stringify(c.expect), `correction ${id}: ${c.bank} holds the new expect`);
+    // H11b (24 Nov 2026): "kept" — the file stays as its migration seeded it (old), the correction migration updates the row
+    check(!!line && JSON.stringify(line.expect) === JSON.stringify(c.kept ? c.old : c.expect), `correction ${id}: ${c.bank} holds the ${c.kept ? 'seeded' : 'new'} expect`);
     check(upd(c.migration, id, c.old, c.expect), `correction ${id}: ${c.migration} updates that row only (old → new)`);
     check(typeof c.why === 'string' && c.why.length > 20, `correction ${id}: says why`);
     continue;

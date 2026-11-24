@@ -666,7 +666,8 @@ export async function runTurn(claim: Json, deps: Deps): Promise<Outcome> {
           // H10 (83b51d0b): a discount question — the individuals' offers that apply, else «السعر المعروض هو السعر الحالي
           // لهذه التواريخ»; never an invented discount, never «لا يوجد خصم»
           if (a.discount) {
-            offers = (offers ?? []).filter((o) => o.category === 'individuals');
+            // H11b (the lab — h10-20): the celebration packages are no discount on the stay
+            offers = (offers ?? []).filter((o) => o.category === 'individuals' && !o.packages);
             if (!offers.length) {
               push(fixed('no_discount', L));
               answered = true;
@@ -1296,7 +1297,7 @@ export async function runTurn(claim: Json, deps: Deps): Promise<Outcome> {
     const line = (note ?? '').split(String.fromCharCode(10))[0];
     if (final.reason === 'extension' && (finish.handoff_summary ?? '').startsWith('تمديد')) {
       // H11: the extension with its date (no model call) and the Nazeel booking number
-      const nz = draft?.kind === 'extend' && draft.fields.nazeel_ref ? String(draft.fields.nazeel_ref) : null;
+      const nz = draft?.kind === 'extend' && draft.fields.nazeel_ref ? String(draft.fields.nazeel_ref) : ctx.departure?.ref ? String(ctx.departure.ref) : null;
       if (nz) finish.handoff_ref = `نزيل ${nz}`.slice(0, 40);
     } else if (departureTurn && ctx.departure) {
       // H9: the extension's staff alert — «يطلب تمديد الإقامة» and the Nazeel booking number (no model call)

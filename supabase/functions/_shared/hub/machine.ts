@@ -129,6 +129,8 @@ export interface TurnFlags {
   photos?: boolean;
   /** H11: the guest wants only a room — no packages offered */
   room_only?: boolean;
+  /** H11: a room-phone extension asked */
+  room_phone?: boolean;
   /** the message holds a question (a question mark, or a question word) */
   question?: boolean;
 }
@@ -470,6 +472,21 @@ function decideCore(input: DecideInput): Decision {
   if (input.draft?.kind === 'extend' && dep !== 'leave') return extendDate(input, state, t, out);
   if (dep === 'extend') {
     t.push('T39');
+    // H11 (the lab, 24 Nov 2026 — «بمدد يومين», "two more nights"): the length or the date already in the message — the
+    // hand-off at once with the date (the departure day is today)
+    {
+      const today = ctx.today ?? '';
+      const u0 = ev.understanding;
+      const plus = (n: number) => new Date(Date.parse(`${today}T00:00:00Z`) + n * 86_400_000).toISOString().slice(0, 10);
+      const said = [u0?.check_out, u0?.dates_read?.check_out, u0?.check_in, u0?.dates_read?.check_in]
+        .find((x): x is string => typeof x === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(x) && x > today)
+        ?? (today && u0?.nights && u0.nights > 0 && u0.nights <= 60 ? plus(u0.nights) : null);
+      if (said && today) {
+        return out({ next: 'human', actions: [...(ctx.departure ? [{ type: 'departure', choice: 'extend' } as Action] : []), { type: 'extend_handed', until: said },
+          handoff('extension', null, { intent: 'extension', slots: { nazeel_ref: ctx.departure?.ref ?? null, extend_until: said }, stopped: stopped(state) })],
+          reason: 'extension', tags_add: ['تمديد'] });
+      }
+    }
     return out({ next: 'collecting', actions: [...(ctx.departure ? [{ type: 'departure', choice: 'extend' } as Action] : []), { type: 'fixed', key: 'extend_ask_date' }],
       draft_patch: { kind: 'extend', fields: { nazeel_ref: ctx.departure?.ref ?? null, check_in: ctx.today ?? null, _asked: 1 } }, draft_replace: !!input.draft,
       reason: 'extension', tags_add: ['تمديد'], failed: 'reset' });
@@ -607,6 +624,9 @@ function decideCore(input: DecideInput): Decision {
     t.push('T50');
     return stayIntent(input, state, t, out, null, { fields: { ...input.draft!.fields, branch: offerBranch, _offer_branch: null } });
   }
+  // H11 (Ahmed, 24 Nov 2026): the Shafa Road room phones are unknown — an extension asked on that number (and not about
+  // Airport Road) goes to the team, never an answer invented from the landline card
+  if (ev.flags?.room_phone && ctx.unit_kind === 'branch' && ctx.unit_branch === 'shafa-road' && u.branch !== 'airport-road') return H('room_phone', 'handoff', 'question');
   if (has('compensation_request')) return H('compensation', 'handoff', 'compensation_request', 'high');
   // H10 (Ahmed, 18 Nov 2026): a payment question — method, bank transfer, account details, refunds, deposits, payment
   // confirmation — goes to the team at once with the hand-off notice; no payment policy is ever stated without a card
@@ -731,7 +751,8 @@ function decideCore(input: DecideInput): Decision {
   }
   // H10 (83b51d0b): a discount question is answered from «العروض» only — the offers that apply, or «السعر المعروض هو السعر
   // الحالي لهذه التواريخ» — never an invented discount or «لا يوجد خصم»; the stay flow continues
-  if (ev.flags?.discount && !STAY_INTENTS.some(has)) {
+  // H11 (the lab — h10-20): also right after the quote, when the message gives no new dates
+  if (ev.flags?.discount && (!STAY_INTENTS.some(has) || (['quoted', 'awaiting_confirmation'].includes(state) && !(u.dates_read && u.dates_read.status !== 'none')))) {
     t.push(state === 'new' ? 'T5' : 'T6');
     return out({ next: state === 'new' ? 'inquiry' : state, actions: [{ type: 'answer', topics: ['offers'], intents: ['offer_question'], branch: u.branch, discount: true }], failed: 'reset' });
   }

@@ -112,5 +112,16 @@ select pg_temp._check('E1 the H11 conversations are lab items', (select count(*)
 select pg_temp._check('E2 h10-01 / h10-02 now expect «في أقرب وقت» / "as soon as possible"',
   (select expect::text like '%في أقرب وقت%' from public.hub_test_items where key = 'h10-01') and (select expect::text like '%as soon as possible%' from public.hub_test_items where key = 'h10-02'));
 
+-- ══ F — H11b: the reception extension read only on its branch's number ══
+select pg_temp._check('F1 «اضغط 0» on the Airport Road number, never on Shafa Road''s (unless the guest names Airport Road)',
+  exists (select 1 from jsonb_array_elements(public.hub_knowledge_for('airport-road', '{reception_contact}', 'ar', null) -> 'cards') c where c ->> 'key' = 'k-reception-room-phone')
+  and not exists (select 1 from jsonb_array_elements(public.hub_knowledge_for('shafa-road', '{reception_contact}', 'ar', null) -> 'cards') c where c ->> 'key' = 'k-reception-room-phone')
+  and not exists (select 1 from jsonb_array_elements(public.hub_knowledge_for('shafa-road', '{reception_contact}', 'ar', 'both') -> 'cards') c where c ->> 'key' = 'k-reception-room-phone'),
+  (public.hub_knowledge_for('shafa-road', '{reception_contact}', 'ar', null) -> 'cards')::text);
+select pg_temp._check('F2 the bank: q067 answered from the packages offer; c131 / c132 / c136 the extension; c146 the summary',
+  (select expect ->> 'action' = 'answer' from public.hub_test_items where key = 'q067')
+  and (select expect::text like '%حتى أي تاريخ%' from public.hub_test_items where key = 'c131')
+  and (select expect::text like '%ملخص حجزك%' from public.hub_test_items where key = 'c146'));
+
 select n, test, ok, detail from _r order by n;
 rollback;

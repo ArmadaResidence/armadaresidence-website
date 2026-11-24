@@ -90,8 +90,10 @@ check(!SEED.some((c) => c.unit_keys.includes('rooftop')), 'no seed card is tagge
 
 // ── 5. the café: its menu and ordering cards reach another branch's number only when the guest named Airport Road ──
 check(keys('airport-road', ['menu']).includes('k-cafe-menu'), 'the café menu card on airport-road');
-check(JSON.stringify(BRANCH_ONLY) === JSON.stringify(['k-cafe-menu', 'k-cafe-phone', 'k-cafe-breakfast-menu']), "the branch-only cards = Ahmed's list of 14 Nov 2026");
-for (const k of BRANCH_ONLY) check(SEED.some((c) => c.id === k && JSON.stringify(c.unit_keys) === '["airport-road"]'), `${k} exists, tagged airport-road`);
+// H11 (24 Nov 2026): + the reception from the room phone (Airport Road's «اضغط 0»; a card of the H11 migration, not of the seed)
+check(JSON.stringify(BRANCH_ONLY) === JSON.stringify(['k-cafe-menu', 'k-cafe-phone', 'k-cafe-breakfast-menu', 'k-reception-room-phone']), "the branch-only cards = Ahmed's list of 14 Nov 2026 + the reception extension (24 Nov 2026)");
+for (const k of BRANCH_ONLY.filter((x) => x !== 'k-reception-room-phone')) check(SEED.some((c) => c.id === k && JSON.stringify(c.unit_keys) === '["airport-road"]'), `${k} exists, tagged airport-road`);
+check(read('supabase/migrations/20261124100000_guest_hub_h11.sql').includes(`('k-reception-room-phone', '{airport-road}'`), 'k-reception-room-phone exists (the H11 migration), tagged airport-road');
 for (const t of [['menu'], ['menu', 'cafe_ordering'], ['cafe_restaurant'], ['breakfast', 'menu'], TOPICS.map((x) => x.key)]) {
   const label = t.length > 3 ? 'every topic' : t.join(',');
   const s = keys('shafa-road', t, cards);
@@ -109,7 +111,8 @@ check(SEED.filter((c) => c.id.startsWith('k-cafe-')).every((c) => JSON.stringify
 // ── 6. the SQL function (the H5 migration) states the same rule ──
 const MIG5 = read('supabase/migrations/20261114200000_guest_hub_assistant.sql');
 {
-  const m = MIG5.match(/function internal\.hub_branch_only_cards\(\)[^$]*\$\$ select array\[([^\]]*)\] \$\$/);
+  // H11b (24 Nov 2026): the latest definition of the list
+  const m = read('supabase/migrations/20261124200000_guest_hub_h11b.sql').match(/function internal\.hub_branch_only_cards\(\)[^$]*\$\$ select array\[([^\]]*)\] \$\$/);
   const sql = m ? [...m[1].matchAll(/'([^']+)'/g)].map((x) => x[1]) : null;
   check(JSON.stringify(sql) === JSON.stringify(BRANCH_ONLY), `the SQL list internal.hub_branch_only_cards() = retrieval.ts BRANCH_ONLY — ${sql}`);
 }

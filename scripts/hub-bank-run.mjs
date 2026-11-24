@@ -34,7 +34,9 @@ const bank = arg('--bank') ?? 'both';
 const only = arg('--only')?.split(',') ?? null;
 const unitOnly = arg('--unit');
 const read = (p) => readFileSync(new URL(`../${p}`, import.meta.url), 'utf8');
-const jsonl = (f) => read(f).split(/\r?\n/).filter((l) => l.trim()).map((l) => JSON.parse(l)).filter((x) => !x._header);
+const KEPT = Object.fromEntries(Object.entries(JSON.parse(read('tests/hub-bank/corrections.json')).items).filter(([, c]) => c.kept && c.bank).map(([k, c]) => [k, c.expect]));
+// H11b: a "kept" correction (the file stays as seeded) — the corrected expect for a local run
+const jsonl = (f) => read(f).split(/\r?\n/).filter((l) => l.trim()).map((l) => JSON.parse(l)).filter((x) => !x._header).map((x) => (KEPT[x.id] ? { ...x, expect: KEPT[x.id] } : x));
 // H6c (15 Nov 2026): the team bank — guest conversations with «[staff] …» / «[wait:N]», the colleague chat, the alert rules
 const CONV = [...jsonl('tests/hub-bank/conversations.jsonl'), ...jsonl('tests/hub-bank/conversations-team.jsonl')];
 const LEARN = jsonl('tests/hub-bank/conversations-learn.jsonl');
@@ -51,6 +53,10 @@ const PACKAGES = (() => {
   const list = jsonl('tests/hub-bank/conversations-packages.jsonl');
   return list.map((q) => (typeof q.offers === 'string' && q.offers.startsWith('@') ? { ...q, offers: list.find((x) => x.id === q.offers.slice(1))?.offers ?? [] } : q));
 })();
+// H11b (24 Nov 2026): --cards <file.json> — more knowledge cards (the production cards, never a Wi-Fi password card) for every
+// item; --offers-from <id> — the offers of that packages-bank item for every item that carries none
+const EXTRA_CARDS = arg('--cards') ? JSON.parse(readFileSync(arg('--cards'), 'utf8')).filter((c) => !/^k-wifi-password/.test(c.id)) : [];
+const EXTRA_OFFERS = arg('--offers-from') ? (PACKAGES.find((x) => x.id === arg('--offers-from'))?.offers ?? []) : [];
 const items = [
   // q032 / q068 are retired on production (the Airport Road laundry, H6 pass 3)
   ...(['conversations', 'learning'].includes(bank) ? [] : engineItems().filter((q) => !['q032', 'q068'].includes(q.id))),
@@ -438,7 +444,7 @@ async function one(q) {
   };
   const item = { key: q.id, unit_key: q.unit, language: q.language === 'en' ? 'en' : 'ar', messages: q.messages, context: q.context ?? {}, expect: q.expect, note: q.note ?? null };
   const deps = {
-    model: counted, knowledge: async (u, t, L, b) => knowledgeFor(u, t, L, b), offers: async () => q.offers ?? [], adapter,
+    model: counted, knowledge: async (u, t, L, b) => knowledgeFor(u, t, L, b, { cards: EXTRA_CARDS, removed: [] }), offers: async () => q.offers ?? EXTRA_OFFERS, adapter,
     content: CONTENT, longDate: (iso, L) => longDate(CONTENT, iso, L), sarText: (n, L) => sarText(n, L),
   };
   const run = await runItem(ctx, item, deps);

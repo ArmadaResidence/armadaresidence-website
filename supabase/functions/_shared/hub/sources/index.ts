@@ -23,6 +23,8 @@ export interface FaqItem {
 export interface OfferItem {
   id: string;
   category: string;
+  /** H11b: a «باقات بسعر خاص» offer — never a discount on the stay */
+  packages?: boolean;
   title: string;
   text: string;
   valid_to: string | null;
@@ -93,7 +95,7 @@ export function packagesItem(o: Json, L: 'ar' | 'en'): OfferItem {
   if (branches.length) lines.push(L === 'en' ? `Branches: ${branches.join(' and ')}.` : `الفروع: ${branches.join(' و')}.`);
   if (o.show_celebrations) lines.push(L === 'en' ? 'Details: https://armadaresidence.com/en/celebrations/' : 'التفاصيل: https://armadaresidence.com/celebrations/');
   return {
-    id: `offer:${o.slug}`, category: String(o.category ?? ''), title: String((L === 'en' ? o.title_en : o.title_ar) ?? ''),
+    id: `offer:${o.slug}`, category: String(o.category ?? ''), packages: true, title: String((L === 'en' ? o.title_en : o.title_ar) ?? ''),
     text: lines.filter(Boolean).join('\n').slice(0, 2000), valid_to: o.valid_to ?? null,
     bases: pk.map((p: Json) => (p.was_price != null ? num(p.was_price) : null)).filter((x: number | null): x is number => typeof x === 'number'),
   };

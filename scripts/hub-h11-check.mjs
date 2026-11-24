@@ -21,6 +21,8 @@ import { longDate } from '../supabase/functions/booking-request/email.ts';
 import { sarText } from '../supabase/functions/booking-request/rules.ts';
 import { CONTENT, claimFor, knowledgeFor } from './hub-fixtures-lib.mjs';
 import { migration, OUT_PATH, h11BankItems } from './hub-h11-migration.mjs';
+import { migration as migrationB, OUT_PATH as OUT_B, BRANCH_ONLY_SQL } from './hub-h11b-migration.mjs';
+import { BRANCH_ONLY } from '../supabase/functions/_shared/hub/retrieval.ts';
 
 let n = 0;
 const fails = [];
@@ -154,6 +156,9 @@ const ago = (s) => new Date(Date.now() - s * 1000).toISOString();
   const ctxDep = { id: 'row-1', ref: '26013966' };
   const a = await run('تمديد', { departure: ctxDep }, U({ departure: 'extend' }));
   check(bodies(a) === fixed('extend_ask_date', 'ar') && a.finish.state === 'collecting' && a.finish.draft?.kind === 'extend', `4 «تمديد» → the date first (${bodies(a)})`);
+  const g = await run('بمدد يومين', { departure: ctxDep }, U({ departure: 'extend', nights: 2 }));
+  check(g.finish.state === 'human' && bodies(g).startsWith('سجّلنا طلب التمديد حتى') && /الخميس 26 نوفمبر 2026/.test(bodies(g)) && g.finish.handoff_ref === 'نزيل 26013966',
+    `4 «بمدد يومين»: the length in the message → the hand-off at once with the date (${bodies(g)} ${g.finish.handoff_ref})`);
   const d = { id: 'd-ext', kind: 'extend', version: 1, fields: { nazeel_ref: '26013966', check_in: TODAY, _asked: 1 } };
   const b = await run('إلى بعد بكرة', { draft: d, state: 'collecting' }, U({ departure_text: 'بعد بكرة' }));
   check(b.finish.state === 'human' && bodies(b).startsWith('سجّلنا طلب التمديد حتى') && /الخميس 26 نوفمبر 2026/.test(bodies(b)), `4 the date → «سجّلنا طلب التمديد حتى …» and the team (${bodies(b)})`);
@@ -247,6 +252,26 @@ const ago = (s) => new Date(Date.now() - s * 1000).toISOString();
   check(guard('حجزك رقم AR-20261120-GLD9 طلب يراجعه الاستقبال.', { text: '' }, o).reasons.includes('ref'), '7 a booking reference not in the PAYLOAD is refused (rule 1b)');
   check(!guard('حجزك رقم AR-20261120-GLD9 طلب يراجعه الاستقبال.', { text: 'ref AR-20261120-GLD9' }, o).reasons.includes('ref'), '7 … the PAYLOAD\'s own reference passes');
   check(faultsText({ branches: { 'airport-road': { requests_late: 2 }, 'shafa-road': {} } }).includes('طلبات حجز لم تُؤكَّد خلال 15 دقيقة 2'), '3 the faults line counts the requests left more than 15 minutes');
+}
+
+// ── H11b (after the full production lab) ──
+{
+  const o = { forbidden: [], language: 'ar', max_chars: 900, emoji_allowed: false };
+  check(guard('نعم، التكييف متوفر. أما كونه يدفّئ فلم يتوفر لدينا ما يؤكده.', { text: '' }, o).reasons.includes('non_answer'), 'H11b «فلم يتوفر لدينا ما يؤكده» is a non-answer line (h10-21)');
+  check(JSON.stringify(BRANCH_ONLY) === JSON.stringify(BRANCH_ONLY_SQL) && BRANCH_ONLY.includes('k-reception-room-phone'), 'H11b the reception extension is a branch-only card (retrieval.ts = the SQL list)');
+  check(read(OUT_B) === migrationB(), `${OUT_B} = scripts/hub-h11b-migration.mjs`);
+  const all = JSON.parse(read('tests/hub-bank/corrections.json')).items;
+  check(['q067', 'c131', 'c132', 'c136', 'c146', 'h11-02', 'h11-09', 'h11-19', 'h11-20'].every((k) => all[k]?.migration === '20261124200000_guest_hub_h11b.sql'), 'H11b the nine bank corrections');
+  check(turnFlags(['كم رقم تحويلة الاستقبال من تلفون الغرفة؟']).room_phone === true && turnFlags(['What is the extension for reception?']).room_phone === true
+    && !turnFlags(['حولت لكم المبلغ']).room_phone && !turnFlags(['عندكم تحويل للمطار؟']).room_phone, 'H11b a room-phone extension question is read (a bank transfer is not)');
+  const sh = await run('كم رقم تحويلة الاستقبال من تلفون الغرفة؟', { unit: 'shafa-road' }, U({ intents: ['facility_question'], topics: ['reception_contact'] }), adapter(), 'لا توجد تحويلة.');
+  check(sh.finish.state === 'human' && !bodies(sh).includes('لا توجد تحويلة'), 'H11b … on the Shafa Road number → the team, never an invented answer');
+  const ar = await run('كم رقم تحويلة الاستقبال من تلفون الغرفة؟', {}, U({ intents: ['facility_question'], topics: ['reception_contact'] }), adapter(), 'للاتصال بالاستقبال من هاتف الغرفة اضغط 0.');
+  check(ar.finish.state !== 'human', 'H11b … on the Airport Road number it is answered from the card');
+  const pk = { live: { kind: 'packages', slug: 'celebration-packages', category: 'individuals', title_ar: 'باقات', title_en: 'Packages', short_ar: 'باقات', short_en: 'Packages', branches: ['airport-road', 'shafa-road'], packages: [{ name_ar: 'الفضية', name_en: 'Silver', price: 299 }] } };
+  const dq = await runTurn(claim('فيه خصم على السعر؟', { state: 'quoted', draft: { id: 'd9', kind: 'stay', version: 2, fields: { branch: 'airport-road', check_in: iso(10), check_out: iso(12), adults: 2, breakfast: 'without' } } }),
+    deps(adapter(), model(U({ intents: ['offer_question', 'price_question'], topics: ['offers', 'price'] }), 'سعر الموقع أقل.'), { offers: async () => [pk] }));
+  check(bodies(dq).includes('السعر المعروض هو السعر الحالي لهذه التواريخ'), `H11b a discount question: the packages are no discount on the stay (h10-20) (${bodies(dq)})`);
 }
 
 // ── the migration and the bank ──

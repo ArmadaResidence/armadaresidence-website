@@ -122,6 +122,9 @@ export const NON_ANSWER_AR: RegExp[] = [
   /لا (?:نستطيع|يمكننا|نقدر)(?: ان)? (?:نؤكد|تاكيد|نجزم|الجزم|نحدد|تحديد)/u,
   /لا (?:تتوفر|يتوفر) (?:لدينا )?هنا/u,
   /سيوافيك|سيفيدك/u,
+  // H11 (the lab, 24 Nov 2026 — h10-21: «فلم يتوفر لدينا ما يؤكده»)
+  /(?:لم|لا) (?:يتوفر|تتوفر|يتوافر) (?:لدينا|عندنا) ما (?:يوكد|يؤكد|يوضح|يثبت)/u,
+  /لم (?:نتمكن|نستطع) من (?:تاكيد|التاكيد|تأكيد)/u,
 ];
 export const NON_ANSWER_EN = ["we don't have that information", "we don't have information", 'we do not have information', "we can't confirm", 'we cannot confirm', "i can't confirm",
   'the reception will let you know', 'the team will let you know'];
