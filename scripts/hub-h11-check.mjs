@@ -22,6 +22,7 @@ import { sarText } from '../supabase/functions/booking-request/rules.ts';
 import { CONTENT, claimFor, knowledgeFor } from './hub-fixtures-lib.mjs';
 import { migration, OUT_PATH, h11BankItems } from './hub-h11-migration.mjs';
 import { migration as migrationB, OUT_PATH as OUT_B, BRANCH_ONLY_SQL } from './hub-h11b-migration.mjs';
+import { migration as migrationC, OUT_PATH as OUT_C, BRANCH_ONLY_SQL as BRANCH_ONLY_C, h11cBankItems } from './hub-h11c-migration.mjs';
 import { BRANCH_ONLY } from '../supabase/functions/_shared/hub/retrieval.ts';
 
 let n = 0;
@@ -258,20 +259,42 @@ const ago = (s) => new Date(Date.now() - s * 1000).toISOString();
 {
   const o = { forbidden: [], language: 'ar', max_chars: 900, emoji_allowed: false };
   check(guard('نعم، التكييف متوفر. أما كونه يدفّئ فلم يتوفر لدينا ما يؤكده.', { text: '' }, o).reasons.includes('non_answer'), 'H11b «فلم يتوفر لدينا ما يؤكده» is a non-answer line (h10-21)');
-  check(JSON.stringify(BRANCH_ONLY) === JSON.stringify(BRANCH_ONLY_SQL) && BRANCH_ONLY.includes('k-reception-room-phone'), 'H11b the reception extension is a branch-only card (retrieval.ts = the SQL list)');
+  check(BRANCH_ONLY_SQL.includes('k-reception-room-phone'), 'H11b (history) the reception extension was a branch-only card — H11c makes it both branches\' card');
   check(read(OUT_B) === migrationB(), `${OUT_B} = scripts/hub-h11b-migration.mjs`);
   const all = JSON.parse(read('tests/hub-bank/corrections.json')).items;
   check(['q067', 'c131', 'c132', 'c136', 'c146', 'h11-02', 'h11-09', 'h11-19', 'h11-20'].every((k) => all[k]?.migration === '20261124200000_guest_hub_h11b.sql'), 'H11b the nine bank corrections');
   check(turnFlags(['كم رقم تحويلة الاستقبال من تلفون الغرفة؟']).room_phone === true && turnFlags(['What is the extension for reception?']).room_phone === true
     && !turnFlags(['حولت لكم المبلغ']).room_phone && !turnFlags(['عندكم تحويل للمطار؟']).room_phone, 'H11b a room-phone extension question is read (a bank transfer is not)');
-  const sh = await run('كم رقم تحويلة الاستقبال من تلفون الغرفة؟', { unit: 'shafa-road' }, U({ intents: ['facility_question'], topics: ['reception_contact'] }), adapter(), 'لا توجد تحويلة.');
-  check(sh.finish.state === 'human' && !bodies(sh).includes('لا توجد تحويلة'), 'H11b … on the Shafa Road number → the team, never an invented answer');
   const ar = await run('كم رقم تحويلة الاستقبال من تلفون الغرفة؟', {}, U({ intents: ['facility_question'], topics: ['reception_contact'] }), adapter(), 'للاتصال بالاستقبال من هاتف الغرفة اضغط 0.');
   check(ar.finish.state !== 'human', 'H11b … on the Airport Road number it is answered from the card');
   const pk = { live: { kind: 'packages', slug: 'celebration-packages', category: 'individuals', title_ar: 'باقات', title_en: 'Packages', short_ar: 'باقات', short_en: 'Packages', branches: ['airport-road', 'shafa-road'], packages: [{ name_ar: 'الفضية', name_en: 'Silver', price: 299 }] } };
   const dq = await runTurn(claim('فيه خصم على السعر؟', { state: 'quoted', draft: { id: 'd9', kind: 'stay', version: 2, fields: { branch: 'airport-road', check_in: iso(10), check_out: iso(12), adults: 2, breakfast: 'without' } } }),
     deps(adapter(), model(U({ intents: ['offer_question', 'price_question'], topics: ['offers', 'price'] }), 'سعر الموقع أقل.'), { offers: async () => [pk] }));
   check(bodies(dq).includes('السعر المعروض هو السعر الحالي لهذه التواريخ'), `H11b a discount question: the packages are no discount on the stay (h10-20) (${bodies(dq)})`);
+}
+
+// ── H11c (Ahmed, 24 Nov 2026): reception 0 from the room phone at BOTH branches; another department's extension → the team ──
+{
+  check(JSON.stringify(BRANCH_ONLY) === JSON.stringify(BRANCH_ONLY_C) && !BRANCH_ONLY.includes('k-reception-room-phone'), 'H11c the reception extension is no branch-only card (retrieval.ts = the SQL list)');
+  const MC = read(OUT_C);
+  check(MC === migrationC(), `${OUT_C} = scripts/hub-h11c-migration.mjs`);
+  check(MC.includes(`set unit_keys = '{airport-road,shafa-road}'`) && MC.includes(`where key = 'k-reception-room-phone' and status = 'published'`) && /live = internal\.hub_card_snapshot\(k\)[^;]*where k\.key = 'k-reception-room-phone'/.test(MC), 'H11c the one reception card tagged both branches, its live copy too');
+  check(MC.includes(`where key in ('k-811b0a03bd', 'k-c9ba44c369') and status = 'published' and learn_kind = 'teach'`), 'H11c the two taught copies stay archived');
+  check(MC.split(/;\s*\n/).filter((x) => /^\s*(?:--[^\n]*\n\s*)*update\b/i.test(x)).every((x) => /\bwhere\b/i.test(x)), 'H11c every UPDATE carries a WHERE');
+  check(JSON.parse(read('tests/hub-bank/corrections.json')).items['h11-16']?.migration === '20261124300000_guest_hub_h11c.sql' && /where key = 'h11-16' and expect = /.test(MC), 'H11c h11-16 corrected: «اضغط 0» on the Shafa Road number');
+  const items = h11cBankItems();
+  check(items.length === 3 && MC.includes(JSON.stringify(items)) && items.every((x) => x.messages.length === x.expect.steps.length), 'H11c the three new cases seeded as lab items');
+  const F = (s) => turnFlags([s]);
+  check(['كم تحويلة خدمة الغرف من تلفون الغرفة؟', 'رقم تحويلة الصيانة؟', 'What is the extension for housekeeping?', 'room service extension please', 'تحويلة المغسلة كم؟'].every((s) => F(s).other_extension === true),
+    'H11c another department\'s extension is read (room service, maintenance, housekeeping, laundry)');
+  check(['كم رقم تحويلة الاستقبال من تلفون الغرفة؟', 'كم تحويلة المطعم؟', 'What is the extension for reception?', 'عندكم خدمة غرف؟', 'كم التحويلة؟'].every((s) => !F(s).other_extension),
+    'H11c … never reception, the restaurant, or a question without an extension');
+  const sh = await run('كم رقم تحويلة الاستقبال من تلفون الغرفة؟', { unit: 'shafa-road' }, U({ intents: ['facility_question'], topics: ['reception_contact'] }), adapter(), 'للاتصال بالاستقبال من هاتف الغرفة اضغط 0.');
+  check(sh.finish.state !== 'human' && bodies(sh).includes('اضغط 0'), `H11c … on the Shafa Road number reception is answered from the card (${bodies(sh)})`);
+  for (const unit of ['airport-road', 'shafa-road']) {
+    const rs = await run('كم تحويلة خدمة الغرف من تلفون الغرفة؟', { unit }, U({ intents: ['facility_question'], topics: ['reception_contact'] }), adapter(), 'للاتصال بخدمة الغرف اضغط 0.');
+    check(rs.finish.state === 'human' && !bodies(rs).includes('اضغط 0'), `H11c … a room-service extension on ${unit} → the team, never an invented answer`);
+  }
 }
 
 // ── the migration and the bank ──

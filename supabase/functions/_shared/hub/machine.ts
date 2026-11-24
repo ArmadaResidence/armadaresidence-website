@@ -131,6 +131,7 @@ export interface TurnFlags {
   room_only?: boolean;
   /** H11: a room-phone extension asked */
   room_phone?: boolean;
+  other_extension?: boolean;
   /** the message holds a question (a question mark, or a question word) */
   question?: boolean;
 }
@@ -624,9 +625,9 @@ function decideCore(input: DecideInput): Decision {
     t.push('T50');
     return stayIntent(input, state, t, out, null, { fields: { ...input.draft!.fields, branch: offerBranch, _offer_branch: null } });
   }
-  // H11 (Ahmed, 24 Nov 2026): the Shafa Road room phones are unknown — an extension asked on that number (and not about
-  // Airport Road) goes to the team, never an answer invented from the landline card
-  if (ev.flags?.room_phone && ctx.unit_kind === 'branch' && ctx.unit_branch === 'shafa-road' && u.branch !== 'airport-road') return H('room_phone', 'handoff', 'question');
+  // H11c (Ahmed, 24 Nov 2026 — replaces the H11b Shafa Road rule: reception is 0 from the room phone at both branches):
+  // an extension of a department no card gives (room service, housekeeping, maintenance…) goes to the team, never invented
+  if (ev.flags?.other_extension) return H('room_phone', 'handoff', 'question');
   if (has('compensation_request')) return H('compensation', 'handoff', 'compensation_request', 'high');
   // H10 (Ahmed, 18 Nov 2026): a payment question — method, bank transfer, account details, refunds, deposits, payment
   // confirmation — goes to the team at once with the hand-off notice; no payment policy is ever stated without a card

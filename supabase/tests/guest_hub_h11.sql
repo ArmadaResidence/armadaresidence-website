@@ -103,7 +103,7 @@ select pg_temp._check('C1 a draft of kind «extend» is accepted', exists (selec
 select pg_temp._check('D1 the three cards of 24 Nov 2026 published, each passing the cards'' own check',
   (select count(*) = 3 and bool_and(status = 'published' and live is not null and jsonb_array_length(internal.hub_card_check(k) -> 'missing') = 0) from public.hub_knowledge_cards k
     where key in ('k-branches-taif-only', 'k-reception-room-phone', 'k-packages-no-jacuzzi')));
-select pg_temp._check('D2 reception from the room phone: Airport Road only', (select unit_keys = '{airport-road}' and text_ar = 'للاتصال بالاستقبال من هاتف الغرفة اضغط 0.' from public.hub_knowledge_cards where key = 'k-reception-room-phone'));
+select pg_temp._check('D2 reception from the room phone: both branches since H11c (Ahmed, 24 Nov 2026)', (select unit_keys = '{airport-road,shafa-road}' and live -> 'unit_keys' = '["airport-road", "shafa-road"]'::jsonb and text_ar = 'للاتصال بالاستقبال من هاتف الغرفة اضغط 0.' from public.hub_knowledge_cards where key = 'k-reception-room-phone'));
 select pg_temp._check('D3 the landline card in Ahmed''s wording, its live copy too',
   (select text_ar = 'لا يوجد للفندق خط هاتف أرضي خارجي، ويمكنك التواصل معنا هنا على واتساب على مدار الساعة.' and live ->> 'text_ar' = text_ar from public.hub_knowledge_cards where key = 'k-no-landline'));
 
@@ -112,12 +112,16 @@ select pg_temp._check('E1 the H11 conversations are lab items', (select count(*)
 select pg_temp._check('E2 h10-01 / h10-02 now expect «في أقرب وقت» / "as soon as possible"',
   (select expect::text like '%في أقرب وقت%' from public.hub_test_items where key = 'h10-01') and (select expect::text like '%as soon as possible%' from public.hub_test_items where key = 'h10-02'));
 
--- ══ F — H11b: the reception extension read only on its branch's number ══
-select pg_temp._check('F1 «اضغط 0» on the Airport Road number, never on Shafa Road''s (unless the guest names Airport Road)',
+-- ══ F — H11c (replaces H11b's branch-only reading): «اضغط 0» on both numbers; exactly one active reception-extension card ══
+select pg_temp._check('F1 «اضغط 0» on the Airport Road number and on Shafa Road''s; the two taught copies archived',
   exists (select 1 from jsonb_array_elements(public.hub_knowledge_for('airport-road', '{reception_contact}', 'ar', null) -> 'cards') c where c ->> 'key' = 'k-reception-room-phone')
-  and not exists (select 1 from jsonb_array_elements(public.hub_knowledge_for('shafa-road', '{reception_contact}', 'ar', null) -> 'cards') c where c ->> 'key' = 'k-reception-room-phone')
-  and not exists (select 1 from jsonb_array_elements(public.hub_knowledge_for('shafa-road', '{reception_contact}', 'ar', 'both') -> 'cards') c where c ->> 'key' = 'k-reception-room-phone'),
+  and exists (select 1 from jsonb_array_elements(public.hub_knowledge_for('shafa-road', '{reception_contact}', 'ar', null) -> 'cards') c where c ->> 'key' = 'k-reception-room-phone')
+  and not ('k-reception-room-phone' = any (internal.hub_branch_only_cards()))
+  and not exists (select 1 from public.hub_knowledge_cards where key in ('k-811b0a03bd', 'k-c9ba44c369') and status = 'published'),
   (public.hub_knowledge_for('shafa-road', '{reception_contact}', 'ar', null) -> 'cards')::text);
+select pg_temp._check('F1b the bank: h11-16 expects the answer; h11-22 / h11-23 / h11-24 are lab items',
+  (select expect::text like '%"answer"%' and expect::text not like '%handoff%' from public.hub_test_items where key = 'h11-16')
+  and (select count(*) = 3 from public.hub_test_items where key in ('h11-22', 'h11-23', 'h11-24') and 'h11c' = any (tags)));
 select pg_temp._check('F2 the bank: q067 answered from the packages offer; c131 / c132 / c136 the extension; c146 the summary',
   (select expect ->> 'action' = 'answer' from public.hub_test_items where key = 'q067')
   and (select expect::text like '%حتى أي تاريخ%' from public.hub_test_items where key = 'c131')

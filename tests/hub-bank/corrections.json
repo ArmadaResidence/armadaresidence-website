@@ -753,6 +753,43 @@
           }
         ]
       }
+    },
+    "h11-16": {
+      "date": "2026-11-24",
+      "migration": "20261124300000_guest_hub_h11c.sql",
+      "bank": "conversations-h11.jsonl",
+      "kept": true,
+      "why": "Ahmed, 24 Nov 2026 (later the same day): reception from the room phone is 0 at BOTH branches and Shafa Road rooms have phones — «اضغط 0» on the Shafa Road number is the answer, no longer a hand-off",
+      "old": {
+        "action": "conversation",
+        "steps": [
+          {
+            "outcome": [
+              "handoff",
+              "answer_handoff"
+            ],
+            "must_not_include": [
+              "اضغط 0",
+              "333"
+            ]
+          }
+        ]
+      },
+      "expect": {
+        "action": "conversation",
+        "steps": [
+          {
+            "outcome": "answer",
+            "must_include": [
+              "0"
+            ],
+            "must_not_include": [
+              "سيكمل معك",
+              "333"
+            ]
+          }
+        ]
+      }
     }
   }
 }

@@ -33,8 +33,8 @@ export interface RetrievalCard {
 }
 
 /** = internal.hub_branch_only_cards() */
-// H11 (24 Nov 2026): the reception from the room phone (Airport Road's «اضغط 0») too — Shafa Road's room phones are unknown
-export const BRANCH_ONLY = ['k-cafe-menu', 'k-cafe-phone', 'k-cafe-breakfast-menu', 'k-reception-room-phone'];
+// H11c (24 Nov 2026): the reception from the room phone («اضغط 0») is both branches' card again — reception is 0 at both
+export const BRANCH_ONLY = ['k-cafe-menu', 'k-cafe-phone', 'k-cafe-breakfast-menu'];
 
 /** the units of a branch (a branch unit with its venues) */
 export const branchUnits = (units: RetrievalUnit[], branch: string) => units.filter((x) => x.branch === branch).map((x) => x.key);

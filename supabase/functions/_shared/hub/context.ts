@@ -122,8 +122,12 @@ const CHANGE_WORDS = /اقدم|نقدم|تقديم|ااخر|اءخر|ناخر|ا
 // H11: photos or a video asked for (9 conversations) — never a hand-off for that alone
 const PHOTO_WORDS = /(?:ارسل|ارسلي|ارسلو|ارسلوا|ابي|ابغي|ابغا|ممكن|عندكم|فيه|وريني|ورني|اشوف|نشوف|شوف|اريد|اود|بدي|عايز|محتاج|ابغى)\s+(?:لي\s+)?(?:\S+\s+)?(?:صور|صوره|فيديو|فديو|مقطع)|(?:صور|صوره|فيديو|مقطع)\s+(?:لل|ال|ل)?(?:غرف|غرفه|جناح|اجنحه|شقه|شقق|باق|الباق|استديو|مكان|فندق|فرع|مطعم|قاعه|الغرف|الغرفه|الجناح|الشقه|الاستديو)|(?:الصور|الفيديو)\s+(?:غير|مو|ما|مب|مش)\s*(?:كافي|كافيه|واضح|واضحه)|\b(?:photos?|pictures?|pics|videos?)\s+of\b|\b(?:send|share|see|show)\b.{0,20}\b(?:photos?|pictures?|pics|videos?)\b|\bany (?:photos?|pictures?|videos?)\b/i;
 // H11 (4307a28e): a guest who wants only a room («أبغى غرفة بس») is never offered the packages
-// H11 (Ahmed, 24 Nov 2026): a room-phone extension asked — known only at Airport Road (reception 0, the restaurant 333)
+// H11 (Ahmed, 24 Nov 2026): a room-phone extension asked. Known (24 Nov 2026, later the same day): reception 0 at BOTH
+// branches, the restaurant 333 at Airport Road and 222 at Shafa Road (cards); any other department's extension is unknown
 const ROOM_PHONE = /(?:^|\s)(?:و|ف|ب|ل)?(?:ال)?(?:تحويله|تحويلات)(?=\s|$)|(?:هاتف|تلفون|تليفون|جوال)\s*(?:ال)?غرفه|\b(?:extension|room phone|phone in the room)\b/i;
+// H11c (Ahmed, 24 Nov 2026): an extension asked for a department whose number no card gives (room service, housekeeping,
+// maintenance, laundry, security, the management…) → the team, never an invented one (normalised text: ة→ه, أ→ا)
+const OTHER_DEPT = /(?:^|\s)(?:و|ف|ب|ل|لل)?(?:ال)?(?:خدمه\s*(?:ال)?غرف|روم\s*سي?رفس|تنظيف|نظافه|هاوس\s*كيبي?نج|صيانه|مغسله|غسيل|لاندري|امن|حراسه|اداره|مدير|كونسيرج)(?=\s|$)|\b(?:room service|housekeeping|cleaning|maintenance|laundry|security|manager|management|concierge)\b/i;
 const ROOM_ONLY = /(?:غرفه|غرفة|الغرفه|الغرفة|room)\s*(?:بس|فقط|only|just)|(?:just|only) (?:a )?room/i;
 
 /** what code reads in the guest's own words this turn */
@@ -147,6 +151,7 @@ export function turnFlags(texts: string[]): TurnFlags {
     photos: PHOTO_WORDS.test(t),
     room_only: ROOM_ONLY.test(t),
     room_phone: ROOM_PHONE.test(t),
+    other_extension: ROOM_PHONE.test(t) && OTHER_DEPT.test(t),
   };
 }
 
