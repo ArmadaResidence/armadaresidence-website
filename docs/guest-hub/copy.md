@@ -283,7 +283,7 @@ The room cards carry no badge (never «تأكيد فوري») and show only the 
 |---|---|---|
 | Chat request footer | «سيصل طلبك إلى فريق الاستقبال ليؤكده لك هنا في أقرب وقت.» | “Your booking request will reach our reception team, who will confirm it with you here as soon as possible.” |
 | Send request button | «إرسال طلب الحجز» | “Send booking request” |
-| Chat request sent (after the official request template) | «وصل طلب حجزك رقم {ref}، وسيؤكده لك فريق الاستقبال هنا في أقرب وقت.» | “Your booking request {ref} has arrived; our reception team will confirm it with you here as soon as possible.” |
+| Chat request sent (after the official request template) | «وصل طلب حجزك رقم {ref}، وسيؤكده لك فريق الاستقبال هنا في أقرب وقت.» | “We've received your booking request {ref}; our reception team will confirm it with you here as soon as possible.” |
 | Thanks after a cancellation (no confirmed upcoming booking) | «العفو، يسعدنا خدمتك في أي وقت.» | “You’re welcome; we’re glad to help any time.” |
 | Alternatives offer (once, right after reception cancels a chat booking or request for no availability, inside the 24-hour window) | «يمكنني أن أعرض لك الغرف المتاحة في التواريخ نفسها أو في فرعنا الآخر. هل ترغب في ذلك؟» — buttons «اعرض البدائل» · «لا، شكرًا» | “We can show you the rooms available on the same dates or at our other property. Would you like that?” — “Show alternatives” · “No, thanks” |
 | Why a booking was cancelled (the recorded reason's guest phrase, `policies.json → cancellation_reasons`) | «نعتذر لك، أُلغي حجزك رقم {ref} {reason}.» | “We’re sorry: your booking {ref} was cancelled. Reason: {reason}.” |
@@ -307,13 +307,13 @@ The staff alert lines (`hub_staff_alert` {{5}}, staff-facing): «تأكيد طل
 | A booking request still waiting (first in the reply when the guest writes again; the staff on shift alerted again) | «طلب حجزك لا يزال لدى فريق الاستقبال، وسيؤكده لك هنا في أقرب وقت.» | “Your booking request is still with our reception team, and they will confirm it here as soon as possible.” |
 | Extension — the date (after «أرغب في التمديد») | «يسعدنا ذلك. حتى أي تاريخ ترغب في التمديد؟» | “We'd be glad to. Until what date would you like to extend?” |
 | Extension — handed to reception with the date | «سجّلنا طلب التمديد حتى {date}، وسيكمل معك فريق الاستقبال في هذه المحادثة لتأكيده.» | “We've noted your extension request until {date}; our reception team will continue with you in this chat to confirm it.” |
-| A room type switched off here, on at the other branch | «نوع {room} غير متاح للحجز في {branch_name} حاليًا، ويتوفر في {other_branch}. هل ترغب أن نعرض لك أسعاره هناك؟» | “The {room} is not available for booking at {branch_name} at the moment; it is available at {other_branch}. Would you like us to show you its prices there?” |
-| A room type switched off at both branches (then the hand-off notice) | «نوع {room} غير متاح للحجز في {branch_name} حاليًا.» | “The {room} is not available for booking at {branch_name} at the moment.” |
-| The summary already sent and nothing changed | «ملخص حجزك أعلاه جاهز، اضغط زر إرسال طلب الحجز تحته لإرساله إلى فريق الاستقبال.» | “Your booking summary above is ready; tap the Send booking request button under it to send it to our reception team.” |
-| Photos of a room type (the caption of its published photo) | «{room} في {branch_name}، ومزيد من الصور والتفاصيل في صفحتها: {url}» | “The {room} at {branch_name}; more photos and details on its page: {url}” |
-| No published photo of the room type | «صور {room} والتفاصيل في صفحتها: {url}» | “Photos and details of the {room} are on its page: {url}” |
-| Photos of the packages | «صور الباقات وتفاصيلها في صفحة المناسبات: {url}» | “Photos and details of the packages are on our Celebrations page: {url}” |
-| Which room's photos (no type named yet) | «يسعدنا ذلك. صور كل نوع من الغرف في صفحات الفرع: {url}» | “With pleasure. Photos of every room type are on the branch's pages: {url}” |
+| A room type switched off here, on at the other branch | «الحجز غير متاح حاليًا لـ{room} في {branch_name}، ويمكنك حجز النوع نفسه في {other_branch}. هل تودّ أن نعرض لك الأسعار هناك؟» | “Booking isn't available for the {room} at {branch_name} at the moment, but you can book the same room type at {other_branch}. Would you like to see the prices there?” |
+| A room type switched off at both branches (then the hand-off notice) | «الحجز غير متاح حاليًا لـ{room} في {branch_name}.» | “Booking isn't available for the {room} at {branch_name} at the moment.” |
+| The summary already sent and nothing changed | «ملخص حجزك أعلاه جاهز. اضغط زر «إرسال طلب الحجز» تحته ليصل طلبك إلى فريق الاستقبال.» | “Your booking summary above is ready. Tap «Send booking request» under it to send your request to our reception team.” |
+| Photos of a room type (the caption of its published photo) | «{room} في {branch_name}. تجد مزيدًا من الصور والتفاصيل في هذه الصفحة: {url}» | “The {room} at {branch_name}. You'll find more photos and details on this page: {url}” |
+| No published photo of the room type | «تجد صور {room} وكل التفاصيل في هذه الصفحة: {url}» | “You'll find photos of the {room} and all the details on this page: {url}” |
+| Photos of the packages | «تجد صور الباقات وتفاصيلها في صفحة المناسبات: {url}» | “You'll find photos and details of the packages on our Celebrations page: {url}” |
+| Which room's photos (no type named yet) | «يسعدنا ذلك. تجد صور كل أنواع الغرف في صفحة الفرع: {url}» | “With pleasure. You'll find photos of every room type on the branch page: {url}” |
 
 ## 5. Notices and other fixed replies
 

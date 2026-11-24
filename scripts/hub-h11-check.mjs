@@ -190,9 +190,9 @@ const ago = (s) => new Date(Date.now() - s * 1000).toISOString();
   check(t('جناح غرفتين فيه جاكوزي', 'shafa-road').room_type === 'two-bedroom-jacuzzi-suite', '6 with a jacuzzi at Shafa Road');
   const f = { branch: 'airport-road', check_in: iso(10), check_out: iso(12), adults: 2, breakfast: 'without', room_type: 'accessible-room' };
   const r = await run('بدون إفطار', { draft: { id: 'd1', kind: 'stay', version: 1, fields: f }, state: 'collecting' }, U({ kind: 'booking', intents: ['stay_booking'], breakfast: 'without' }), adapter({ off: { 'airport-road': ['accessible-room'] } }));
-  check(bodies(r).includes('غير متاح للحجز') && bodies(r).includes('طريق الشفا') && !r.finish.messages.some((m) => m.payload?.room_card) && r.finish.state !== 'human', `6 a type switched off here, on there: offered there, never its card here (${bodies(r).slice(0, 90)})`);
+  check(bodies(r).includes('الحجز غير متاح حاليًا') && bodies(r).includes('طريق الشفا') && !r.finish.messages.some((m) => m.payload?.room_card) && r.finish.state !== 'human', `6 a type switched off here, on there: offered there, never its card here (${bodies(r).slice(0, 90)})`);
   const r2 = await run('بدون إفطار', { draft: { id: 'd1', kind: 'stay', version: 1, fields: f }, state: 'collecting' }, U({ kind: 'booking', intents: ['stay_booking'], breakfast: 'without' }), adapter({ off: { 'airport-road': ['accessible-room'], 'shafa-road': ['accessible-room'] } }));
-  check(r2.finish.state === 'human' && bodies(r2).includes('غير متاح للحجز'), '6 … switched off at both → the team');
+  check(r2.finish.state === 'human' && bodies(r2).includes('الحجز غير متاح حاليًا'), '6 … switched off at both → the team');
   const yes = decide({ state: 'collecting', event: { type: 'guest', understanding: U(), kind: 'text', affirm: true }, draft: { id: 'd1', kind: 'stay', version: 2, fields: { ...f, _offer_branch: 'shafa-road' } },
     ctx: { unit_kind: 'branch', unit_branch: 'airport-road', skills: ['room_booking'], show_prices: true, instant_booking: true, window_open: true, failed_understandings: 0, failed_max: 2, out_of_scope: 0, out_of_scope_max: 3, group_min_rooms: 5, licences: {}, always_handoff: [], today: TODAY } });
   check(yes.transitions.includes('T50') && yes.draft_patch?.fields.branch === 'shafa-road', '6 «نعم» → the other branch quoted');

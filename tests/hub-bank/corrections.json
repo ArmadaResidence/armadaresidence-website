@@ -790,6 +790,55 @@
           }
         ]
       }
+    },
+    "h11-08": {
+      "date": "2026-11-24",
+      "migration": "20261124400000_guest_hub_copy8.sql",
+      "bank": "conversations-h11.jsonl",
+      "kept": true,
+      "why": "Ahmed, 24 Nov 2026: the reworded room_off_other / room_off_here («الحجز غير متاح حاليًا لـ{room} في {branch_name}…») no longer hold «غير متاح للحجز»",
+      "old": {
+        "action": "conversation",
+        "steps": [
+          {
+            "outcome": [
+              "ask",
+              "answer"
+            ]
+          },
+          {
+            "outcome": [
+              "quote",
+              "ask"
+            ],
+            "must_include": [
+              "غير متاح للحجز",
+              "طريق الشفا"
+            ]
+          }
+        ]
+      },
+      "expect": {
+        "action": "conversation",
+        "steps": [
+          {
+            "outcome": [
+              "ask",
+              "answer"
+            ]
+          },
+          {
+            "outcome": [
+              "quote",
+              "ask"
+            ],
+            "must_include": [
+              "الحجز غير متاح حاليًا",
+              "طريق الشفا"
+            ]
+          }
+        ]
+      }
     }
   }
 }

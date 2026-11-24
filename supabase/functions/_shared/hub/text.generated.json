@@ -389,7 +389,7 @@
   },
   "result_chat_request": {
    "ar": "وصل طلب حجزك رقم {ref}، وسيؤكده لك فريق الاستقبال هنا في أقرب وقت.",
-   "en": "Your booking request {ref} has arrived; our reception team will confirm it with you here as soon as possible."
+   "en": "We've received your booking request {ref}; our reception team will confirm it with you here as soon as possible."
   },
   "thanks_after_cancel": {
    "ar": "العفو، يسعدنا خدمتك في أي وقت.",
@@ -458,32 +458,32 @@
    "en": "We've noted your extension request until {date}; our reception team will continue with you in this chat to confirm it."
   },
   "room_off_other": {
-   "ar": "نوع {room} غير متاح للحجز في {branch_name} حاليًا، ويتوفر في {other_branch}. هل ترغب أن نعرض لك أسعاره هناك؟",
-   "en": "The {room} is not available for booking at {branch_name} at the moment; it is available at {other_branch}. Would you like us to show you its prices there?"
+   "ar": "الحجز غير متاح حاليًا لـ{room} في {branch_name}، ويمكنك حجز النوع نفسه في {other_branch}. هل تودّ أن نعرض لك الأسعار هناك؟",
+   "en": "Booking isn't available for the {room} at {branch_name} at the moment, but you can book the same room type at {other_branch}. Would you like to see the prices there?"
   },
   "room_off_here": {
-   "ar": "نوع {room} غير متاح للحجز في {branch_name} حاليًا.",
-   "en": "The {room} is not available for booking at {branch_name} at the moment."
+   "ar": "الحجز غير متاح حاليًا لـ{room} في {branch_name}.",
+   "en": "Booking isn't available for the {room} at {branch_name} at the moment."
   },
   "summary_pending": {
-   "ar": "ملخص حجزك أعلاه جاهز، اضغط زر إرسال طلب الحجز تحته لإرساله إلى فريق الاستقبال.",
-   "en": "Your booking summary above is ready; tap the Send booking request button under it to send it to our reception team."
+   "ar": "ملخص حجزك أعلاه جاهز. اضغط زر «إرسال طلب الحجز» تحته ليصل طلبك إلى فريق الاستقبال.",
+   "en": "Your booking summary above is ready. Tap «Send booking request» under it to send your request to our reception team."
   },
   "photos_room": {
-   "ar": "{room} في {branch_name}، ومزيد من الصور والتفاصيل في صفحتها: {url}",
-   "en": "The {room} at {branch_name}; more photos and details on its page: {url}"
+   "ar": "{room} في {branch_name}. تجد مزيدًا من الصور والتفاصيل في هذه الصفحة: {url}",
+   "en": "The {room} at {branch_name}. You'll find more photos and details on this page: {url}"
   },
   "photos_room_link": {
-   "ar": "صور {room} والتفاصيل في صفحتها: {url}",
-   "en": "Photos and details of the {room} are on its page: {url}"
+   "ar": "تجد صور {room} وكل التفاصيل في هذه الصفحة: {url}",
+   "en": "You'll find photos of the {room} and all the details on this page: {url}"
   },
   "photos_packages": {
-   "ar": "صور الباقات وتفاصيلها في صفحة المناسبات: {url}",
-   "en": "Photos and details of the packages are on our Celebrations page: {url}"
+   "ar": "تجد صور الباقات وتفاصيلها في صفحة المناسبات: {url}",
+   "en": "You'll find photos and details of the packages on our Celebrations page: {url}"
   },
   "photos_which": {
-   "ar": "يسعدنا ذلك. صور كل نوع من الغرف في صفحات الفرع: {url}",
-   "en": "With pleasure. Photos of every room type are on the branch's pages: {url}"
+   "ar": "يسعدنا ذلك. تجد صور كل أنواع الغرف في صفحة الفرع: {url}",
+   "en": "With pleasure. You'll find photos of every room type on the branch page: {url}"
   },
   "email_api_credit": {
    "subject": "رصيد كلود انتهى — المساعد متوقف — AR-HUB-{yyyymmdd}",
