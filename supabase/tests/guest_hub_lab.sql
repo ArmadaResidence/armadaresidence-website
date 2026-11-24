@@ -140,7 +140,7 @@ select pg_temp._check('B1 … their expectations as in the file (q001 parking: t
   (select expect -> 'cards' ? 'k-parking-detail' and expect -> 'must_include' ? 'مجانية' and unit_key = 'airport-road' from public.hub_test_items where key = 'q001'));
 select pg_temp._check('B1 … the Wi-Fi passwords only as the {card:} placeholder (read at run time)', (select count(*) = 2 from public.hub_test_items where expect::text like '%{card:k-wifi-password-%'));
 select pg_temp._check('B2 the engine''s items: the router''s two (cancel word, opt-out) and the Wi-Fi two (production-only cards) left out',
-  (select count(*) from internal.hub_eval_items(array['airport-road', 'shafa-road'])) = 98 + 46 + 5 + 9 + 5 + 5 + 10 + 8 + 5 + 10 + 26 + 1
+  (select count(*) from internal.hub_eval_items(array['airport-road', 'shafa-road'])) = 98 + 46 + 5 + 9 + 5 + 5 + 10 + 8 + 5 + 10 + 26 + 1 + 21
   and not exists (select 1 from internal.hub_eval_items(array['airport-road', 'shafa-road']) i where i.key in ('q081', 'q082', 'q033', 'q034')),
   (select count(*)::text from internal.hub_eval_items(array['airport-road', 'shafa-road'])));
 
