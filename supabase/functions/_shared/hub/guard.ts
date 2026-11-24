@@ -208,6 +208,12 @@ export function guard(reply: string, p: GuardPayload, o: GuardOptions): GuardRes
     if (!(host === 'armadaresidence.com' || host === 'www.armadaresidence.com' || pay.includes(clean))) r.push('link');
   }
   const noUrls = rest.replace(URL_RE, ' ');
+  // 1b · H11 (882141b2, 20 Nov 2026 — «حجزك رقم AR-20261120-GLD9» matched no reservation): a booking reference only as the
+  // PAYLOAD writes it (the guest's own bookings, a reference the guest gave)
+  for (const ref of text.match(/AR-\d{8}-[A-Z0-9]{4}/g) ?? []) if (!pay.includes(ref)) {
+    r.push('ref');
+    break;
+  }
   // 1 · numbers: every one in the payload
   if (AR_DIGITS.test(text)) r.push('digits');
   const allowed = new Set(numberRuns(pay));
@@ -279,6 +285,7 @@ export const RETRY_REASONS: Record<string, string> = {
   empty: 'The reply was empty.',
   digits: 'Use Western digits (0-9) only.',
   number: 'A number in the reply is not in the PAYLOAD. Use only numbers written in the PAYLOAD.',
+  ref: 'A booking reference in the reply is not in the PAYLOAD. Never write a booking reference the PAYLOAD does not give.',
   phone: 'A phone number in the reply is not in the PAYLOAD. Give only the phone numbers written in the PAYLOAD.',
   email: 'An email address in the reply is not in the PAYLOAD. Give only the email addresses written in the PAYLOAD.',
   link: 'A link in the reply is not allowed. Use only links written in the PAYLOAD.',

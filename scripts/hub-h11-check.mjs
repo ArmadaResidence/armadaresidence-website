@@ -14,6 +14,8 @@ import { decide } from '../supabase/functions/_shared/hub/machine.ts';
 import { quoteKey } from '../supabase/functions/_shared/hub/booking.ts';
 import { turnFlags, roomWords } from '../supabase/functions/_shared/hub/context.ts';
 import { parseInbound } from '../supabase/functions/_shared/hub/webhook.ts';
+import { guard } from '../supabase/functions/_shared/hub/guard.ts';
+import { faultsText } from '../supabase/functions/_shared/hub/staff.ts';
 import { fixed } from '../supabase/functions/_shared/hub/copy.ts';
 import { longDate } from '../supabase/functions/booking-request/email.ts';
 import { sarText } from '../supabase/functions/booking-request/rules.ts';
@@ -237,6 +239,14 @@ const ago = (s) => new Date(Date.now() - s * 1000).toISOString();
   for (const stmt of M.split(/;\s*\n/)) if (/^\s*(update|delete)\b/im.test(stmt.trim()) && /^\s*(update|delete)\b/i.test(stmt.trim())) check(/\bwhere\b/i.test(stmt), `every UPDATE / DELETE carries a WHERE — ${stmt.trim().slice(0, 60)}`);
   const media = read('admin/src/pages/Media.tsx');
   check(media.includes('data-optional>اختيارية</span>') && media.includes(`current.target === 'offer' && s.slot === 'cover' && !it && !current.check.missing.some((m) => m.code === 'cover')`), '14 «الصور» → «العروض»: a packages offer\'s cover reads «اختيارية»');
+}
+
+// ── 882141b2: an invented booking reference; the report's fault line ──
+{
+  const o = { forbidden: [], language: 'ar', max_chars: 900, emoji_allowed: false };
+  check(guard('حجزك رقم AR-20261120-GLD9 طلب يراجعه الاستقبال.', { text: '' }, o).reasons.includes('ref'), '7 a booking reference not in the PAYLOAD is refused (rule 1b)');
+  check(!guard('حجزك رقم AR-20261120-GLD9 طلب يراجعه الاستقبال.', { text: 'ref AR-20261120-GLD9' }, o).reasons.includes('ref'), '7 … the PAYLOAD\'s own reference passes');
+  check(faultsText({ branches: { 'airport-road': { requests_late: 2 }, 'shafa-road': {} } }).includes('طلبات حجز لم تُؤكَّد خلال 15 دقيقة 2'), '3 the faults line counts the requests left more than 15 minutes');
 }
 
 // ── the migration and the bank ──

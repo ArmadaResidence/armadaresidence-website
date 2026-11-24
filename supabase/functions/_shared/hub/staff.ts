@@ -216,6 +216,9 @@ export function faultsText(data: Json): string {
   if (voice) parts.push(`فشل الصوت ${voice}`);
   if (image) parts.push(`فشل الصور ${image}`);
   if (refused) parts.push(`رسائل للفريق لم تُرسل ${refused}`);
+  // H11 (Ahmed, 24 Nov 2026): the chat booking requests left unconfirmed more than 15 minutes
+  const late = sum('requests_late');
+  if (late) parts.push(`طلبات حجز لم تُؤكَّد خلال 15 دقيقة ${late}`);
   if (budget) parts.push(`تنبيه الميزانية ${budget}`);
   // H9: a missing evening list, checks too late to send, sends held back by the shared limit
   parts.push(...departureFaults(data));
