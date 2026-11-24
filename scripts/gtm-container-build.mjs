@@ -1,9 +1,16 @@
 // The GTM import file, built from the published container so every change is code and checked:
 //
-//   node scripts/gtm-container-build.mjs            writes docs/gtm-container.json, docs/gtm-container-v13.json,
-//                                                   docs/gtm-container-v12.json and docs/gtm-container-ads-fallback.json
-//                                                   from docs/gtm-container-v11.json
+//   node scripts/gtm-container-build.mjs            writes docs/gtm-container.json from docs/gtm-container-v14.json
+//                                                   (the baseline), and the history files docs/gtm-container-v14.json,
+//                                                   -v13.json, -v12.json and -ads-fallback.json from -v11.json
 //   node scripts/gtm-container-build.mjs --check    exits 1 when any of them is not exactly that output
+//
+// THE BASELINE (24 Nov 2026 — DECISIONS.md 2026-11-24 «One GTM baseline: version 14»): docs/gtm-container-v14.json is
+// the file Ahmed imported and published as version 14 «Careers: no Conversion Linker» (21 Nov 2026 19:31, verified
+// live). It is never edited. The next GTM change is written in build(v14) below (today: no change), and
+// docs/gtm-container.json is its output — the import file; with no change pending it is byte for byte version 14.
+// Everything below about versions 11–13 is history: the chain that rebuilds v12, v13 and v14 from Ahmed's v11 export
+// and proves that v14 is exactly v11 + the careers changes (buildV14).
 //
 // Version 12 (21 Nov 2026 — DECISIONS.md 2026-11-21 «GTM version 12 live»): v11 + the careers privacy change below was
 // published by Ahmed as version 12 «Careers privacy exception»; docs/gtm-container-v12.json is that file (buildV12),
@@ -43,6 +50,8 @@ export const OUT = resolve(ROOT, 'docs/gtm-container.json');
 export const FALLBACK = resolve(ROOT, 'docs/gtm-container-ads-fallback.json');
 export const V12 = resolve(ROOT, 'docs/gtm-container-v12.json');
 export const V13 = resolve(ROOT, 'docs/gtm-container-v13.json');
+/** the baseline: version 14 as imported and published (21 Nov 2026) — the next change starts from this file */
+export const V14 = resolve(ROOT, 'docs/gtm-container-v14.json');
 
 /** The Google Ads «WhatsApp click» conversion label (Ahmed, 20 Nov 2026: the action exists — secondary, Contact; in v11) */
 export const WHATSAPP_LABEL = 'JeZBCMeP3bsdEJuqkYBE';
@@ -106,13 +115,15 @@ export const ADS_INIT_TRIGGER = 'Initialization - except careers';
 // version 13, since it is a separate tag from the Google Ads Google tag. The same careers exception on it; GA4 untouched.
 export const LINKER_TAG = 'Conversion Linker';
 
-/** The change list on top of version 11 (this file = v13 + the Conversion Linker exception): by name — GTM's identity. */
+/** Version 14 (= the import file while no change is pending) against version 11: by name — GTM's identity. */
 export const CHANGES = {
   variables: { added: [], modified: [] },
   triggers: { added: [CAREERS_TRIGGER], modified: [] },
   tags: { added: [], modified: [...CAREERS_TAGS, ADS_TAG, LINKER_TAG] },
 };
-/** The import preview of docs/gtm-container.json against version 13 */
+/** The import preview of docs/gtm-container.json against version 14, the baseline (no change pending) */
+export const CHANGES_NEXT = { variables: { added: [], modified: [] }, triggers: { added: [], modified: [] }, tags: { added: [], modified: [] } };
+/** The import preview of version 14 against version 13 (what Ahmed imported on 21 Nov 2026) */
 export const CHANGES_V13 = { variables: { added: [], modified: [] }, triggers: { added: [], modified: [] }, tags: { added: [], modified: [LINKER_TAG] } };
 /** The import preview against version 12, per file: the exception (docs/gtm-container.json) or the fallback */
 export const CHANGES_V12 = {
@@ -202,8 +213,8 @@ export function buildAds(base, variant = 'exception') {
 /** version 13 «Careers: no Google Ads tag» = the exception file Ahmed imported and published (21 Nov 2026 17:59) */
 export const buildV13 = (base) => buildAds(base, 'exception');
 
-/** the import file: version 13 + the careers exception on the Conversion Linker */
-export function build(base) {
+/** version 14 «Careers: no Conversion Linker» = version 13 + the careers exception on the Conversion Linker (published 21 Nov 2026 19:31) */
+export function buildV14(base) {
   const doc = buildV13(base);
   const c = doc.containerVersion;
   doc.exportTime = '2026-11-21 19:00:00';
@@ -218,13 +229,20 @@ export function build(base) {
   return doc;
 }
 
+/** the import file: the baseline version 14 (parsed docs/gtm-container-v14.json) + the next change — none today */
+export function build(v14) {
+  return structuredClone(v14);
+}
+
 // as GTM writes an export: 4-space indent, UTF-8 without BOM, no final newline
 export const render = (doc) => JSON.stringify(doc, null, 4);
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   const v11 = JSON.parse(readFileSync(BASE, 'utf8'));
+  const v14 = JSON.parse(readFileSync(V14, 'utf8'));
   const files = [
-    [OUT, render(build(v11))],
+    [OUT, render(build(v14))],
+    [V14, render(buildV14(v11))],
     [V13, render(buildV13(v11))],
     [FALLBACK, render(buildAds(v11, 'init'))],
     [V12, render(buildV12(v11))],
@@ -245,7 +263,7 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
       }
     }
     if (bad) process.exit(1);
-    console.log('✓ the GTM files = the build from version 11');
+    console.log('✓ the GTM files = the build (import file from version 14; history from version 11)');
   } else {
     for (const [f, text] of files) {
       writeFileSync(f, text);

@@ -1,5 +1,11 @@
 # GTM changes — session 22 (9 Nov 2026)
 
+> **The GTM baseline (24 Nov 2026 — DECISIONS.md 2026-11-24 «One GTM baseline: version 14»):** every future change to
+> GTM-5JVH7R37 starts from `docs/gtm-container-v14.json` — version 14 «Careers: no Conversion Linker», published
+> 21 Nov 2026 19:31 and verified live. `docs/gtm-container.json` is only the import file built on it by
+> `scripts/gtm-container-build.mjs` (today identical to v14: no change pending). Any other base or container file named
+> below is history.
+
 What the site sends since this session (DECISIONS.md 2026-11-09 «Conversion data»), and what to change in the live
 container `GTM-5JVH7R37` so the platforms receive it. The site side is done; nothing below is applied from the repo.
 

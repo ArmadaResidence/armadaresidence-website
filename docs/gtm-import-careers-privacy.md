@@ -1,9 +1,14 @@
 # Careers privacy — the GTM change and the Claude in Chrome import prompt (20 Nov 2026)
 
+> **The GTM baseline (24 Nov 2026 — DECISIONS.md 2026-11-24 «One GTM baseline: version 14»):** every future change to
+> GTM-5JVH7R37 starts from `docs/gtm-container-v14.json` — version 14 «Careers: no Conversion Linker», published
+> 21 Nov 2026 19:31 and verified live. `docs/gtm-container.json` is only the import file built on it by
+> `scripts/gtm-container-build.mjs` (today identical to v14: no change pending). Any other base or container file named
+> below is history.
+
 **Status (21 Nov 2026): imported and published by Ahmed as version 12 «Careers privacy exception» (13:47 Riyadh),
 verified live — no Meta, TikTok, Snapchat or Clarity request on /careers/ or /en/careers/, all four still on
-/airport-road/. That file is now `docs/gtm-container-v12.json` (the base of the next import, DECISIONS.md 2026-11-21);
-`docs/gtm-container.json` holds the next change (`docs/gtm-import-careers-ads.md`). The prompt below is history.**
+/airport-road/. That file is `docs/gtm-container-v12.json` (history — the baseline is v14). The prompt below is history.**
 
 Why (DECISIONS.md 2026-11-20 «Careers privacy»): Meta and TikTok automatic advanced matching read the email and phone
 typed into forms on any page their pixel runs on; the careers notice, approved by the company's legal advisor, names

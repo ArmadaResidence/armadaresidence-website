@@ -4329,3 +4329,29 @@ Instant booking keeps its limit of 3 units per room type per night (unchanged).
   and `www.google.com.sa/ads/ga-audiences`, unchanged). On /airport-road/ as before: the Conversion Linker's ccm
   collect / ccm/s/collect / set_partitioned_cookie, the Google Ads tag's viewthroughconversion and rmkt collect for
   18253894939 and ccm collect tid=AW-18253894939, Meta, TikTok, Snapchat and Clarity.
+
+## 2026-11-24 — One GTM baseline: version 14; the bar's offer_view verified live; GA4's user-provided data (24 Nov 2026)
+
+- **One baseline.** `docs/gtm-container-v14.json` (version 14 «Careers: no Conversion Linker», published by Ahmed
+  21 Nov 2026 19:31, verified live) is the ONE base of every future GTM change, named so in CLAUDE.md §2, the check
+  table and a banner on every `docs/gtm-*.md`. `docs/gtm-container.json` stays as the import file (the emulator,
+  `click-id-check` and `gtm-probe` read it) but is no longer a base: `scripts/gtm-container-build.mjs` now builds it
+  from the v14 file (`build(v14)` — today no change, so it is byte for byte v14) and keeps the history chain
+  (`buildV14` = v11 + the careers changes, compared with the v14 file). `gtm-container-check` (1009 checks): v14 =
+  that chain, v14 vs v13 = the Conversion Linker only, the import file vs v14 = no change (`CHANGES_NEXT`); a future
+  change edits `build()` and `CHANGES_NEXT`. Nothing in GTM changed.
+- **offer_view of the bar, verified on the live site** (commit 64df9df is live — `/version.json` b8d01cf; a Playwright
+  visit with every request outside armadaresidence.com aborted, so nothing reached GA4 or a pixel): /, /airport-road/,
+  /contact/, /offers/ in one visit → one `offer_view` { celebration-packages, placement bar } on the first page only
+  (sessionStorage `armada-offer-views` = `["celebration-packages|bar"]`); /offers/ still sent its card's view
+  (placement offers); in another visit the bar's view on /contact/, then the home card (≈ 2,700 px down) sent
+  `celebration-packages|home` only after it was scrolled into view.
+- **GA4's own user-provided data (report only, unchanged — Ahmed's instruction).** Read 24 Nov 2026 from the published
+  scripts: the GA4 configuration tag in GTM («Google tag - GA4 config») carries only its tag ID; the container's own
+  Google tag settings have automatic detection off (`__ogt_1p_data_v2` isAutoEnabled false). But the Google tag
+  G-675Y7W0H1T's own settings (gtag.js, set outside GTM) have automatic detection ON — email, phone and address —
+  while its GA4 destination does not accept automatically detected data (`__ccd_add_1p_data` acceptAutomatic false;
+  code and manual selectors accepted). The Google Ads tag AW-18253894939 has detection on and accepts it (blocked on
+  the careers pages since version 13).
+- **GA4 custom dimensions:** `placement`, `offer_id` and `offer_category` (the GA4 - offer_view parameters) are
+  registered event-scoped since 21 Nov 2026 (DECISIONS.md «GTM version 13 live»), so no new prompt was written.

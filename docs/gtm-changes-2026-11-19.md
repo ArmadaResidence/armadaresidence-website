@@ -1,5 +1,11 @@
 # GTM changes — December 2026 campaigns (19 Nov 2026)
 
+> **The GTM baseline (24 Nov 2026 — DECISIONS.md 2026-11-24 «One GTM baseline: version 14»):** every future change to
+> GTM-5JVH7R37 starts from `docs/gtm-container-v14.json` — version 14 «Careers: no Conversion Linker», published
+> 21 Nov 2026 19:31 and verified live. `docs/gtm-container.json` is only the import file built on it by
+> `scripts/gtm-container-build.mjs` (today identical to v14: no change pending). Any other base or container file named
+> below is history.
+
 Container `GTM-5JVH7R37`. Baseline: the published **version 10 «url passthrough»** (11 Nov 2026), exported by Ahmed
 on 19 Nov 2026 → `docs/gtm-container-v10.json` (never edited; 28 tags, 7 triggers, 23 variables, the Clarity template).
 The import file `docs/gtm-container.json` = v10 + the changes below, built by `node scripts/gtm-container-build.mjs` and

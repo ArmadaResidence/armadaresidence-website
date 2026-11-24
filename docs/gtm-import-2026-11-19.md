@@ -1,5 +1,11 @@
 # Claude in Chrome — import the December tracking into GTM (stop before publishing)
 
+> **The GTM baseline (24 Nov 2026 — DECISIONS.md 2026-11-24 «One GTM baseline: version 14»):** every future change to
+> GTM-5JVH7R37 starts from `docs/gtm-container-v14.json` — version 14 «Careers: no Conversion Linker», published
+> 21 Nov 2026 19:31 and verified live. `docs/gtm-container.json` is only the import file built on it by
+> `scripts/gtm-container-build.mjs` (today identical to v14: no change pending). Any other base or container file named
+> below is history.
+
 Paste everything below the line into Claude in Chrome. The files it imports are in `F:\Armada Website\docs\` (on
 `main`, built and checked by `scripts/gtm-container-build.mjs` / `gtm-container-check.mjs`): the full file
 `gtm-container.json`, and — only if GTM refuses it — the three parts `gtm-container-part-a-consent.json`,

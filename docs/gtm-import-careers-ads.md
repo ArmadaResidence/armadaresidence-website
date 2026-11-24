@@ -1,5 +1,15 @@
 # Google Ads off the careers pages — the GTM change and the Claude in Chrome import prompt (21 Nov 2026)
 
+> **The GTM baseline (24 Nov 2026 — DECISIONS.md 2026-11-24 «One GTM baseline: version 14»):** every future change to
+> GTM-5JVH7R37 starts from `docs/gtm-container-v14.json` — version 14 «Careers: no Conversion Linker», published
+> 21 Nov 2026 19:31 and verified live. `docs/gtm-container.json` is only the import file built on it by
+> `scripts/gtm-container-build.mjs` (today identical to v14: no change pending). Any other base or container file named
+> below is history.
+
+**Status (21 Nov 2026): imported with the exception and published by Ahmed as version 13 «Careers: no Google Ads tag»
+(17:59 Riyadh), verified live; `docs/gtm-container-v13.json` = that file (history — the baseline is v14). The fallback was
+not needed. The prompt below is history.**
+
 Why (DECISIONS.md 2026-11-21 «Google Ads off the careers pages»): the careers notice (`policies.json → page.sections[jobs]`)
 names no analytics and no advertising tool, and the Google tag of AW-18253894939 carries Google's automatic
 user-provided data detection (email, phone and address in forms, on submit). Version 12 already keeps Meta, TikTok,

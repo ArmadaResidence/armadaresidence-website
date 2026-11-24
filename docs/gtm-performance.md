@@ -1,5 +1,9 @@
 # تسريع الصفحة الرئيسية و /booking/ من GTM (4 نوفمبر 2026، عُدّل 6 نوفمبر 2026)
 
+> **أساس GTM (24 نوفمبر 2026 — DECISIONS.md 2026-11-24 «One GTM baseline: version 14»):** أي تغيير جاي في
+> GTM-5JVH7R37 يبدأ من `docs/gtm-container-v14.json` — الإصدار 14 المنشور والمتحقَّق منه على الموقع. `docs/gtm-container.json`
+> هو ملف الاستيراد المبني عليه فقط (حاليًا مطابق لـ v14). أي أساس أو ملف حاوية تاني مذكور تحت = تاريخ.
+
 > **الحالة (6 نوفمبر 2026): منشور.** نشر أحمد التغيير في الحاوية `GTM-5JVH7R37` باسم الإصدار **«pixels after engagement»**:
 > الوسم `Engagement - first interaction or 5 s` والمشغّل `CE - first_engagement`، والبكسلات الأساسية الثلاثة تعمل على
 > `CE - first_engagement` و`CE - booking_request` و`CE - booking_confirmed`، مرة واحدة في الصفحة، بأولوية 10. فحصا

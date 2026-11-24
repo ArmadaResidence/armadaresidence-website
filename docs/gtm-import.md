@@ -1,5 +1,9 @@
 # استيراد حاوية GTM (docs/gtm-container.json)
 
+> **أساس GTM (24 نوفمبر 2026 — DECISIONS.md 2026-11-24 «One GTM baseline: version 14»):** أي تغيير جاي في
+> GTM-5JVH7R37 يبدأ من `docs/gtm-container-v14.json` — الإصدار 14 المنشور والمتحقَّق منه على الموقع. `docs/gtm-container.json`
+> هو ملف الاستيراد المبني عليه فقط (حاليًا مطابق لـ v14). أي أساس أو ملف حاوية تاني مذكور تحت = تاريخ.
+
 ## الاستيراد الأول
 
 1. في Tag Manager افتح الحاوية الجديدة **`GTM-5JVH7R37`** (على حساب Google المملوك لأرمادا ريزيدنس — قرار 12 أكتوبر 2026؛ الحاوية القديمة `GTM-MFV9WL38` متروكة) → Admin → Import Container → اختر `docs/gtm-container.json`. الموقع يقرأ رقم الحاوية من `content/contact.json → gtm_container` وهو مضبوط بالفعل على `GTM-5JVH7R37`.
