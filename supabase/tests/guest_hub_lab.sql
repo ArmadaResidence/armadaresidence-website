@@ -150,10 +150,10 @@ select pg_temp._fails('E1 the plan is not the reception''s (assistant: none)', $
 select pg_temp._as('mgr');
 select pg_temp._save('e1', public.hub_eval_plan('manual', null, 'qa-e1'));
 select pg_temp._check('E1 the plan: the items and the estimated cost first (the H5 measure × 1.15 with no history), within the budget',
-  (pg_temp._j('e1') ->> 'items')::int = 249 and (pg_temp._j('e1') ->> 'est_cost_usd')::numeric = round(249 * 0.0066 * 1.15, 6)
+  (pg_temp._j('e1') ->> 'items')::int = 252 and (pg_temp._j('e1') ->> 'est_cost_usd')::numeric = round(252 * 0.0066 * 1.15, 6)
   and not (pg_temp._j('e1') ->> 'would_pass_cap')::boolean, pg_temp._j('e1')::text);
 select pg_temp._service();
-select pg_temp._check('E1 … the service role plans a full run too (scripts/hub-eval.mjs, the production baseline)', (public.hub_eval_plan('manual', null, 'qa-e1') ->> 'items')::int = 249);
+select pg_temp._check('E1 … the service role plans a full run too (scripts/hub-eval.mjs, the production baseline)', (public.hub_eval_plan('manual', null, 'qa-e1') ->> 'items')::int = 252);
 select pg_temp._root();
 update public.settings set value = '0.5' where key = 'hub_budget_daily_usd';
 select pg_temp._as('mgr');
@@ -165,9 +165,9 @@ select pg_temp._save('e3', public.hub_eval_start('manual', null, 'qa-e1'));
 insert into _ids values ('run1', (pg_temp._j('e3') ->> 'run_id')::uuid);
 select pg_temp._fails('E3 one run at a time', $$select public.hub_eval_start('manual', 'airport-road', 'qa-e1')$$, 'hub_eval_busy');
 select pg_temp._root();
-select pg_temp._check('E3 the run: queued, 249 live results pending (98 questions + 46 conversations + 5 of the H6c team bank + 9 of H7 + 10 of H7b + 10 of H8 + 8 of H9 + 5 of the standby bank + 10 of the fix-3 bank + 26 of the H10 bank + 1 of H10b), the estimate kept, by the user',
-  (select status = 'queued' and items_total = 249 and est_cost_usd > 0 and requested_by = pg_temp._id('mgr') and engine = 'qa-e1' from public.hub_eval_runs where id = pg_temp._id('run1'))
-  and (select count(*) = 249 and bool_and(status = 'pending' and config = 'live') from public.hub_eval_results where run_id = pg_temp._id('run1')));
+select pg_temp._check('E3 the run: queued, 252 live results pending (98 questions + 46 conversations + 5 of the H6c team bank + 9 of H7 + 10 of H7b + 10 of H8 + 8 of H9 + 5 of the standby bank + 10 of the fix-3 bank + 26 of the H10 bank + 1 of H10b + 3 of H11c), the estimate kept, by the user',
+  (select status = 'queued' and items_total = 252 and est_cost_usd > 0 and requested_by = pg_temp._id('mgr') and engine = 'qa-e1' from public.hub_eval_runs where id = pg_temp._id('run1'))
+  and (select count(*) = 252 and bool_and(status = 'pending' and config = 'live') from public.hub_eval_results where run_id = pg_temp._id('run1')));
 select pg_temp._service();
 select pg_temp._save('e4', public.hub_eval_claim(4));
 select pg_temp._check('E4 the claim: four items in the bank''s order (q001 first) with their question and expectation, running', jsonb_array_length(pg_temp._j('e4') -> 'items') = 4
@@ -191,7 +191,7 @@ select public.hub_eval_finish((x ->> 'result_id')::uuid, jsonb_build_object('sta
 select pg_temp._save('e6', jsonb_build_object('n', pg_temp._drain(array[(select key from public.hub_test_items where id = pg_temp._id('fail1'))], '{"q001": ["parking"], "q002": ["parking"]}')));
 select pg_temp._root();
 select pg_temp._check('E6 done: the verdict blocked by the item that failed twice (not a known gap); the counters',
-  (select status = 'done' and verdict = 'blocked' and passed = 248 and failed = 1 and finished_at is not null and items_done = 249
+  (select status = 'done' and verdict = 'blocked' and passed = 251 and failed = 1 and finished_at is not null and items_done = 252
           and blocked_items @> jsonb_build_array(jsonb_build_object('key', (select key from public.hub_test_items where id = pg_temp._id('fail1'))))
      from public.hub_eval_runs where id = pg_temp._id('run1')),
   (select row_to_json(r)::text from (select status, verdict, passed, failed, items_done, blocked_items from public.hub_eval_runs where id = pg_temp._id('run1')) r));
@@ -202,7 +202,7 @@ select pg_temp._as('mgr');
 select pg_temp._save('e7', public.hub_eval_runs_list(5));
 select pg_temp._save('e7d', public.hub_eval_run(pg_temp._id('run1')));
 select pg_temp._check('E7 the runs list and a run''s results (assistant: view)', (pg_temp._j('e7') #>> '{runs,0,id}')::uuid = pg_temp._id('run1')
-  and jsonb_array_length(pg_temp._j('e7d') -> 'results') = 249 and (pg_temp._j('e7d') #> '{results,0}') ? 'reasons');
+  and jsonb_array_length(pg_temp._j('e7d') -> 'results') = 252 and (pg_temp._j('e7d') #> '{results,0}') ? 'reasons');
 select pg_temp._check('E7 … the item cost now measured from the results', (pg_temp._j('e7') ->> 'item_cost_usd')::numeric <> 0.0066);
 
 -- ══ G — the knowledge gate ══
