@@ -458,11 +458,11 @@
    "en": "We've noted your extension request until {date}; our reception team will continue with you in this chat to confirm it."
   },
   "room_off_other": {
-   "ar": "{room} غير متاح للحجز في {branch_name} حاليًا، ويتوفر في {other_branch}. هل ترغب أن نعرض لك أسعاره هناك؟",
+   "ar": "نوع {room} غير متاح للحجز في {branch_name} حاليًا، ويتوفر في {other_branch}. هل ترغب أن نعرض لك أسعاره هناك؟",
    "en": "The {room} is not available for booking at {branch_name} at the moment; it is available at {other_branch}. Would you like us to show you its prices there?"
   },
   "room_off_here": {
-   "ar": "{room} غير متاح للحجز في {branch_name} حاليًا.",
+   "ar": "نوع {room} غير متاح للحجز في {branch_name} حاليًا.",
    "en": "The {room} is not available for booking at {branch_name} at the moment."
   },
   "summary_pending": {

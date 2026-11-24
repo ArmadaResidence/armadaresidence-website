@@ -127,7 +127,7 @@ export const NON_ANSWER_EN = ["we don't have that information", "we don't have i
   'the reception will let you know', 'the team will let you know'];
 /** dialect words (Modern Standard Arabic only — 13 Nov 2026; H6 pass 5: the model now writes small talk), as whole words;
  *  a word the payload itself holds passes (the «إياب» slogan «حيّاك دايم») */
-export const DIALECT_AR = ['وش', 'ايش', 'إيش', 'أبغى', 'ابغى', 'تبغى', 'تبي', 'أبي', 'زين', 'الحين', 'دحين', 'عشان', 'علشان', 'ليش', 'شلون', 'وايد', 'بس',
+export const DIALECT_AR = ['تمام', 'وش', 'ايش', 'إيش', 'أبغى', 'ابغى', 'تبغى', 'تبي', 'أبي', 'زين', 'الحين', 'دحين', 'عشان', 'علشان', 'ليش', 'شلون', 'وايد', 'بس',
   'هلا', 'هلا والله', 'مو', 'يعطيك العافية', 'يعطيكم العافية', 'أبشر', 'ابشر', 'تامر', 'تأمر', 'طال عمرك', 'ازيك', 'إزيك', 'كده', 'دلوقتي'];
 export const SELF_WORDS_EN = ['ai', 'a.i.', 'bot', 'chatbot', 'robot', 'automated', 'automatic', 'assistant', 'virtual', 'i', "i'm", 'my name', 'human', 'real person', 'language model'];
 
