@@ -24,7 +24,7 @@ export const ASSISTANT_STATES: State[] = ['new', 'inquiry', 'collecting', 'quote
 export interface Draft {
   id: string;
   /** package (18 Nov 2026): a celebration package ordered in the chat — the branch, the occasion's date, the room booking */
-  kind: 'stay' | 'hall' | 'group' | 'table' | 'package';
+  kind: 'stay' | 'hall' | 'group' | 'table' | 'package' | 'extend';
   version: number;
   fields: Record<string, unknown>;
   quote?: Record<string, unknown> | null;
@@ -32,6 +32,10 @@ export interface Draft {
 }
 
 export type Action =
+  /** H11: the extension handed to reception with its date («سجّلنا طلب التمديد حتى {date}…») */
+  | { type: 'extend_handed'; until: string }
+  /** H11: the published photo of a room type (or the packages' page) — never a hand-off for a photo request alone */
+  | { type: 'photos'; room: string | null; packages: boolean }
   /** mixed: the sourced question of a message that is also a stay / hall / group request — answered first, then the
    *  hand-off that follows it in the same decision takes the request (H6 gaps, Ahmed 14 Nov 2026) */
   | { type: 'answer'; topics: string[]; intents: string[]; branch: string | null; mixed?: boolean; nogap?: boolean; discount?: boolean }
@@ -79,7 +83,7 @@ export type Action =
 
 export type Event =
   /** the guest's turn: the understanding (null = failed), or a media / cart / button message */
-  | { type: 'guest'; understanding: Understanding | null; kind: 'text' | 'media' | 'button' | 'reaction' | 'sticker'; button_id?: string | null; cart?: boolean;
+  | { type: 'guest'; understanding: Understanding | null; kind: 'text' | 'media' | 'button' | 'reaction' | 'sticker' | 'unsupported'; button_id?: string | null; cart?: boolean;
       /** H9 fix 3: the message is a plain yes («نعم», «إيه», «صح», "yes") — accepts dates waiting for a confirm */
       affirm?: boolean;
       /** H7: a voice note or an image that did not become text (media.ts → MediaRoute); absent = the media notice (a video, a
@@ -119,6 +123,12 @@ export interface TurnFlags {
   room_price?: boolean;
   /** the guest's short answer to a departure question: leaving («خروج», «خرجت», «طالع», «بمشي») or extending («تمديد») */
   departure_word?: 'leave' | 'extend' | null;
+  /** H11: a change to a booking the guest already has («عندي حجز … أبي أقدّمه») — the team, never room cards */
+  change_existing?: boolean;
+  /** H11: photos or a video asked for */
+  photos?: boolean;
+  /** H11: the guest wants only a room — no packages offered */
+  room_only?: boolean;
   /** the message holds a question (a question mark, or a question word) */
   question?: boolean;
 }
@@ -140,6 +150,10 @@ export interface GuestBooking {
 
 export interface Context {
   unit_kind: 'branch' | 'dining';
+  /** H11: our last message was the unsupported-type question and the guest sent nothing readable since */
+  prev_unsupported?: boolean;
+  /** H11: the guest's booking request still waiting for reception (status request, not ended): its ref */
+  pending_request?: string | null;
   unit_branch: string;
   skills: string[];
   show_prices: boolean;
@@ -452,11 +466,13 @@ function decideCore(input: DecideInput): Decision {
   // H9: the answer to this morning's departure check (T39 extend → the team, tagged «تمديد», no review; T40 leave → thanks,
   // the review request at 19:00); one fixed reply each (copy.md §5), no greeting line
   const dep = departureChoice(ev, ctx);
+  // H11 (Ahmed, 24 Nov 2026 — 8da7c373): «أرغب في التمديد» → the date first («حتى أي تاريخ…؟»), then the hand-off with it
+  if (input.draft?.kind === 'extend' && dep !== 'leave') return extendDate(input, state, t, out);
   if (dep === 'extend') {
     t.push('T39');
-    return out({ next: 'human', actions: [...(ctx.departure ? [{ type: 'departure', choice: 'extend' } as Action] : []), { type: 'fixed', key: 'departure_extend' },
-      handoff('extension', null, { intent: 'extension', slots: ctx.departure ? { nazeel_ref: ctx.departure.ref } : {}, stopped: stopped(state) })],
-      reason: 'extension', tags_add: ['تمديد'] });
+    return out({ next: 'collecting', actions: [...(ctx.departure ? [{ type: 'departure', choice: 'extend' } as Action] : []), { type: 'fixed', key: 'extend_ask_date' }],
+      draft_patch: { kind: 'extend', fields: { nazeel_ref: ctx.departure?.ref ?? null, check_in: ctx.today ?? null, _asked: 1 } }, draft_replace: !!input.draft,
+      reason: 'extension', tags_add: ['تمديد'], failed: 'reset' });
   }
   if (dep === 'leave') {
     t.push('T40');
@@ -475,6 +491,16 @@ function decideCore(input: DecideInput): Decision {
   // a reaction or a message kind the router cannot read (H6 pass 5 — Ahmed's test of 14 Nov 22:27: it handed the
   // conversation to the team and every message after it went silent): nothing to answer, nobody to call
   if (ev.kind === 'reaction') return out({ next: state === 'new' ? 'inquiry' : state, actions: [{ type: 'noop' }], reason: 'reaction' });
+  // H11 (Ahmed, 24 Nov 2026 — 7eb95d07 and five more got no reply): a message type we cannot open — once the fixed
+  // question to type it as text; a second one in a row → the team
+  if (ev.kind === 'unsupported') {
+    if (ctx.prev_unsupported) {
+      t.push('T21');
+      return out({ next: 'human', actions: [handoff('unsupported', 'handoff', { intent: 'other', slots: {}, stopped: stopped(state) })], reason: 'unsupported' });
+    }
+    t.push(state === 'new' ? 'T2' : 'T6');
+    return out({ next: state === 'new' ? 'inquiry' : state, actions: [{ type: 'fixed', key: 'unsupported_media' }], reason: 'unsupported', failed: 'keep' });
+  }
   // H7 (Ahmed, 15 Nov 2026): a sticker alone is read like an emoji — no hand-off, never «لم أعرف الإجابة»; the first
   // message of an episode gets the short greeting reply, any later one nothing
   if (ev.kind === 'sticker') {
@@ -575,6 +601,12 @@ function decideCore(input: DecideInput): Decision {
     t.push('T42');
     return stayIntent(input, state, t, out, null, { fields: { ...input.draft!.fields, check_in: pend.check_in, check_out: pend.check_out ?? input.draft!.fields.check_out ?? null, _dates_pending: null } });
   }
+  // H11: «نعم» to «… يتوفر في فرع … هل ترغب أن نعرض لك أسعاره هناك؟» (a type switched off at this branch, on at the other)
+  const offerBranch = input.draft?.kind === 'stay' ? input.draft.fields._offer_branch : null;
+  if ((offerBranch === 'airport-road' || offerBranch === 'shafa-road') && ev.affirm && !u.branch) {
+    t.push('T50');
+    return stayIntent(input, state, t, out, null, { fields: { ...input.draft!.fields, branch: offerBranch, _offer_branch: null } });
+  }
   if (has('compensation_request')) return H('compensation', 'handoff', 'compensation_request', 'high');
   // H10 (Ahmed, 18 Nov 2026): a payment question — method, bank transfer, account details, refunds, deposits, payment
   // confirmation — goes to the team at once with the hand-off notice; no payment policy is ever stated without a card
@@ -591,10 +623,26 @@ function decideCore(input: DecideInput): Decision {
   // occasion's date, whether the guest already has a room booking — then handed to reception with them (T48); the lead
   // time (Ahmed, 19 Nov 2026) is one day, not 24 hours: tomorrow or later is accepted at any hour, an occasion today goes
   // to reception at once to check whether it can be arranged today (T49), a past date is asked again (T41)
+  // H11 (Ahmed, 24 Nov 2026 — 9 conversations handed off for a photo request): the published photo of the room type asked
+  // about (its card and page link), the packages' page for the packages; any other question of the message answered first
+  if (ev.flags?.photos && ev.kind === 'text' && !has('booking_change') && !has('booking_cancel') && !has('complaint')) {
+    const room = u.room_type ?? (input.draft?.kind === 'stay' && input.draft.fields.room_type && input.draft.fields.room_type !== 'any' ? String(input.draft.fields.room_type) : null);
+    const packages = !room && (u.topics.includes('offers') || u.topics.includes('decoration') || !!u.package || input.draft?.kind === 'package' || has('package_order'));
+    const rest = answerTopics(u).filter((k) => !['room_types', 'offers', 'decoration', 'booking_new', 'price', 'availability', 'greeting'].includes(k));
+    t.push(state === 'new' ? 'T4' : 'T6');
+    return out({ next: state === 'new' ? 'inquiry' : state, actions: [...(rest.length ? [{ type: 'answer', topics: rest, intents: u.intents, branch: u.branch, mixed: true, nogap: true } as Action] : []),
+      { type: 'photos', room, packages }], failed: 'reset' });
+  }
   const pkOpen = input.draft?.kind === 'package' && !input.draft.fields._routed;
   if (has('package_order') || (pkOpen && !has('booking_cancel') && (kind === 'booking' || has('stay_booking') || !!u.check_in || !!u.dates_read?.check_in
       || u.dates_read?.status === 'past' || u.branch === 'airport-road' || u.branch === 'shafa-road' || u.branch === 'both' || typeof u.has_room_booking === 'boolean' || !!u.package || ev.affirm === true))) {
     return packageOrder(input, state, t, out, u, ev.affirm === true);
+  }
+  // H11 (Ahmed, 24 Nov 2026 — bd27baf4): «عندي حجز … أبي أقدّمه / أأخّره / أغيّره» — a booking the guest already has: the
+  // change_cancel notice and the team, never room cards (a stay still being made in this chat is not «a booking I have»)
+  if (ev.flags?.change_existing && !(input.draft?.kind === 'stay' && ['collecting', 'quoted', 'awaiting_confirmation'].includes(state))) {
+    t.push('T20');
+    return out({ next: 'human', actions: [handoff('booking_change', 'change_cancel', note('booking_change'))], reason: 'booking_change', failed: 'reset' });
   }
   // H8: «غيّر التواريخ» while the booking is still being made in this chat (a stay draft, not booked) changes the draft,
   // never an existing booking (the understanding may call it booking_change)
@@ -984,6 +1032,13 @@ function stayIntent(input: DecideInput, state: State, t: string[], out: Out, u: 
   const same = !!dq && Array.isArray(dq.cards) && dq.key === quoteKey(fields) && (!picked || dq.cards.some((c) => c.room === picked));
   const version = d ? d.version + 1 : 1;
   if (same && picked) {
+    // H11 (882141b2 — the summary three times): the summary already sent and nothing in it changed («تمام», «أبي أتمم
+    // الحجز»): one line points to it; no new version, so its buttons still work
+    const SUMMARY_KEYS = ['branch', 'check_in', 'check_out', 'adults', 'children', 'child_ages', 'room_type', 'breakfast', 'extra_beds', 'guest_name'];
+    if (state === 'awaiting_confirmation' && SUMMARY_KEYS.every((k) => JSON.stringify(prev[k] ?? null) === JSON.stringify(fields[k] ?? null))) {
+      t.push('T11');
+      return out({ next: 'awaiting_confirmation', actions: [...first, { type: 'fixed', key: 'summary_pending' }], failed: 'reset' });
+    }
     if (!String(fields.guest_name ?? '').trim()) {
       // the room is picked (by name or «احجز»): the full name before the summary (T11b)
       t.push('T11b');
@@ -1052,6 +1107,32 @@ function liteStay(input: DecideInput, state: State, t: string[], out: Out, u: Un
   return out({ next: 'quoted', actions: [...first, { type: 'quote', lite: true }], draft_patch: { kind: 'stay', fields }, draft_replace: replace, failed: 'reset' });
 }
 
+/** H11: the guest's answer to «حتى أي تاريخ ترغب في التمديد؟» — the date (resolved by code) → «سجّلنا طلب التمديد حتى …» and the
+ *  team with the date in the staff alert; a date that cannot be read is asked once more, then the team without it */
+function extendDate(input: DecideInput, state: State, t: string[], out: Out): Decision {
+  const ev = input.event as Extract<Event, { type: 'guest' }>;
+  const u = ev.understanding;
+  const d = input.draft!;
+  const today = input.ctx.today ?? '';
+  const r = u?.dates_read ?? null;
+  const cands = [u?.check_out, r?.check_out, u?.check_in, r?.check_in, ...(r?.status === 'confirm' ? r.candidates ?? [] : [])]
+    .filter((x): x is string => typeof x === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(x) && x > today);
+  const until = cands[0] ?? null;
+  const slots: Record<string, unknown> = { nazeel_ref: d.fields.nazeel_ref ?? null, ...(until ? { extend_until: until } : {}) };
+  if (until) {
+    t.push('T39');
+    return out({ next: 'human', actions: [{ type: 'extend_handed', until }, handoff('extension', null, { intent: 'extension', slots, stopped: 'collecting' })],
+      draft_close: 'confirmed', reason: 'extension', tags_add: ['تمديد'] });
+  }
+  if (Number(d.fields._asked ?? 0) < 2 && ev.kind === 'text') {
+    t.push('T41');
+    return out({ next: 'collecting', actions: [{ type: 'fixed', key: 'extend_ask_date' }], draft_patch: { kind: 'extend', fields: { ...d.fields, _asked: Number(d.fields._asked ?? 0) + 1 } }, failed: 'reset' });
+  }
+  t.push('T21');
+  return out({ next: 'human', actions: [{ type: 'fixed', key: 'departure_extend' }, handoff('extension', null, { intent: 'extension', slots, stopped: 'collecting' })],
+    draft_close: 'abandoned', reason: 'extension', tags_add: ['تمديد'] });
+}
+
 function tap(input: DecideInput, state: State, t: string[], out: Out): Decision {
   const ev = input.event as Extract<Event, { type: 'tap' }>;
   const d = input.draft;
@@ -1098,6 +1179,14 @@ function tap(input: DecideInput, state: State, t: string[], out: Out): Decision 
     }
     t.push('T11');
     return out({ next: 'awaiting_confirmation', actions: [{ type: 'send_summary', version: d.version + 1 }], draft_patch: { kind: 'stay', fields } });
+  }
+  // H11 (882141b2): «إرسال طلب الحجز» on the CURRENT summary after «تعديل» with nothing changed since — the guest changed
+  // their mind about changing: it books (the summary they tapped is the one on file)
+  if (ev.button === 'confirm' && ev.version === d.version && state === 'collecting' && d.fields.room_type && d.fields.room_type !== 'any'
+      && String(d.fields.guest_name ?? '').trim() && d.fields.check_in && d.fields.check_out) {
+    if (!ctx.window_open) return out({ next: state, actions: [{ type: 'noop' }] });
+    t.push('T12');
+    return out({ next: 'awaiting_confirmation', actions: [{ type: 'book', draft_id: d.id, version: d.version }] });
   }
   if (state !== 'awaiting_confirmation') {
     // a summary button after the guest went back (a card, a change): the current step again, never silence

@@ -139,6 +139,21 @@ const H10_CASES = {
   'A discount asked and no offer applies': 'no_discount',
 };
 
+// copy.md §4.5 (H11, 24 Nov 2026): the weekly review's fixes
+const H11_CASES = {
+  'A message type we cannot open (once; a second one in a row → the team)': 'unsupported_media',
+  'A booking request still waiting (first in the reply when the guest writes again; the staff on shift alerted again)': 'request_pending',
+  'Extension — the date (after «أرغب في التمديد»)': 'extend_ask_date',
+  'Extension — handed to reception with the date': 'extend_handed',
+  'A room type switched off here, on at the other branch': 'room_off_other',
+  'A room type switched off at both branches (then the hand-off notice)': 'room_off_here',
+  'The summary already sent and nothing changed': 'summary_pending',
+  'Photos of a room type (the caption of its published photo)': 'photos_room',
+  'No published photo of the room type': 'photos_room_link',
+  'Photos of the packages': 'photos_packages',
+  "Which room's photos (no type named yet)": 'photos_which',
+};
+
 /** the fixed guest messages of copy.md: {key: {ar, en, extra?}} */
 export function parseCopy(md = read('docs/guest-hub/copy.md')) {
   const out = {};
@@ -248,6 +263,18 @@ export function parseCopy(md = read('docs/guest-hub/copy.md')) {
       if (ar.length > 1) out[key].extra = { ar: ar.slice(1), en: en.slice(1) };
     }
     for (const k of Object.values(H10_CASES)) if (!out[k]) throw new Error(`copy.md §4.4: the line ${k} is missing`);
+  }
+  {
+    const s45 = md.slice(md.indexOf('**4.5 Weekly review fixes**'), md.indexOf('## 5. Notices'));
+    for (const r of tableRows(s45)) {
+      const key = H11_CASES[r[0]];
+      if (!key) continue;
+      const ar = allQuoted(r[1], '«', '»');
+      const en = allQuoted(r[2], '“', '”');
+      if (!ar.length || !en.length) throw new Error(`copy.md §4.5: ${r[0]} has no quoted text`);
+      out[key] = { ar: ar[0], en: en[0] };
+    }
+    for (const k of Object.values(H11_CASES)) if (!out[k]) throw new Error(`copy.md §4.5: the line ${k} is missing`);
   }
   const s7 = section(md, '## 7. Staff emails');
   const credit = tableRows(s7).find((r) => r[0].startsWith('Claude API credit exhausted'));

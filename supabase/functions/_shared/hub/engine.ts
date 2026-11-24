@@ -22,7 +22,7 @@ import {
   bookButton, cardBody, CHAT_REQUEST_ONLY, hasMore, moreButton, nothingInstantButtons, orderCards, pageOf, parseTap, quoteKey, shownAvailable, summaryBody, summaryButtons,
   typedSummaryButton, type DraftQuote, type Fmt, type QuoteCard,
 } from './booking.ts';
-import { confirmedUpcoming, guestBookings, nearSame, reasonPhrase, recentCancel, sentLines, turnFlags } from './context.ts';
+import { confirmedUpcoming, guestBookings, nearSame, reasonPhrase, recentCancel, roomWords, sentLines, turnFlags } from './context.ts';
 import { makeRef } from '../ref.ts';
 import {
   SENSITIVE, TRANSCRIBE_MODEL, TRANSCRIBE_PROMPT, VOICE_LANGUAGES, VOICE_MAX_SECONDS, audioSeconds, imageLine, mediaGate, mediaLine, parseVision, problemLineOk,
@@ -122,6 +122,8 @@ export interface Finish {
   no_cover?: string[];
   /** H10: «ما زال طلبك مع فريق الاستقبال…» went — the staff on shift are alerted again (hub_turn_finish) */
   realert?: boolean;
+  /** H11: a booking request of this phone still waiting — the staff on shift alerted again (its ref) */
+  realert_request?: string | null;
 }
 export interface Outcome {
   finish: Finish;
@@ -141,7 +143,7 @@ export const MODEL_DOWN = new Set(['rate_limit', 'overloaded', 'network', 'timeo
 // team, never the failed-understanding path (H6 pass 4, 14 Nov 2026)
 const MEDIA = new Set(['image', 'audio', 'video', 'document', 'location', 'sticker', 'contacts']);
 /** a reaction, or a kind the router does not read: no reply and no hand-off (H6 pass 5 — Ahmed's test of 14 Nov 22:27) */
-const SILENT = new Set(['reaction', 'unsupported']);
+const SILENT = new Set(['reaction']);
 const NOTICE_KEYS = new Set(['third_language', 'departure_extend']);
 
 /** the unit's name in a guest message (copy.md §1: branches.json name, or the venue's) */
@@ -285,6 +287,8 @@ export async function runTurn(claim: Json, deps: Deps): Promise<Outcome> {
   const media = !!prep.route || (kinds.some((k) => MEDIA.has(k)) && !texts.length);
   const sticker = !media && prep.sticker && !texts.length;
   const silent = !media && !sticker && !texts.length && kinds.length > 0 && kinds.every((k) => SILENT.has(k));
+  // H11 (Ahmed, 24 Nov 2026): a kind we cannot open (a poll, a view-once photo, an unknown type) is answered — once
+  const unsupported = !media && !sticker && !silent && !texts.length && kinds.length > 0 && kinds.every((k) => k === 'unsupported' || SILENT.has(k));
   const cart = unit.kind === 'dining' && texts.some(isCartMessage);
 
   // ── 1. understand (also for tagging while the conversation is with staff) ──
@@ -326,7 +330,7 @@ export async function runTurn(claim: Json, deps: Deps): Promise<Outcome> {
       try {
         const v = validateUnderstanding(extractJson(r.text), lists);
         // H9 fix 3: the dates from the guest's words, resolved by code against today (the open draft's dates for a correction)
-        if (v.ok) u = applyDates(applyFloor(v.value, Number(set.confidence_floor ?? 0.7)), claim.today, claim.draft?.kind === 'stay' ? claim.draft.fields ?? null : null);
+        if (v.ok) u = roomWords(applyDates(applyFloor(v.value, Number(set.confidence_floor ?? 0.7)), claim.today, claim.draft?.kind === 'stay' || claim.draft?.kind === 'extend' ? claim.draft.fields ?? null : null, texts), texts, unit.branch);
         else note = `invalid fields: ${v.errors.join(', ')}`;
       } catch {
         note = 'not a JSON object';
@@ -350,6 +354,12 @@ export async function runTurn(claim: Json, deps: Deps): Promise<Outcome> {
     // «التزيين والمناسبات» (always the team) keeps what the packages do not cover (the guest's own decorations, a request)
     if (u && u.topics.includes('decoration') && u.intents.some((i) => PACKAGE_INTENTS.has(i)) && packagesLive(await offersP, unit.branch, claim.today)) {
       u = { ...u, topics: [...new Set(u.topics.map((k) => (k === 'decoration' ? 'offers' : k)))] };
+    }
+    // H11 (Ahmed, 24 Nov 2026 — 4307a28e: «أبغى غرفة بس، بكم؟» answered with the packages): a guest who wants only a room
+    // is never offered the celebration packages — the packages only when asked about or an occasion is named
+    if (u && turnFlags(texts).room_only) {
+      u = { ...u, topics: u.topics.filter((k) => k !== 'decoration' && k !== 'offers'), intents: u.intents.filter((i) => i !== 'package_order' && i !== 'offer_question') };
+      if (!u.intents.length) u = { ...u, intents: ['price_question'] };
     }
     if (u) {
       finish.topics = u.topics;
@@ -384,13 +394,21 @@ export async function runTurn(claim: Json, deps: Deps): Promise<Outcome> {
     departure: claim.departure && typeof claim.departure.id === 'string' ? { id: String(claim.departure.id), ref: String(claim.departure.ref ?? '') } : null,
     // 18 Nov 2026: the 24-hour notice of a package order counts from today in Asia/Riyadh
     today: claim.today,
+    // H11: our last message asked the guest to type an unopened message as text
+    prev_unsupported: (() => {
+      const last = ((claim.history ?? []) as Json[]).slice(-1)[0];
+      return !!last && last.author === 'us' && [fixed('unsupported_media', 'ar'), fixed('unsupported_media', 'en')].some((x) => String(last.body ?? '').includes(x));
+    })(),
+    // H11 (Ahmed, 24 Nov 2026 — 8fc92754): a booking request of this phone still with reception (not ended)
+    pending_request: (((claim.bookings ?? []) as Json[]).find((b) => b.status === 'request' && String(b.check_out ?? '') >= String(claim.today)) ?? null)?.ref ?? null,
   };
   const draft: Draft | null = claim.draft ? { id: claim.draft.id, kind: claim.draft.kind, version: claim.draft.version, fields: claim.draft.fields ?? {}, quote: claim.draft.quote } : null;
   const ev: Event = tapped
     ? { type: 'tap', button: tapped.button, draft_id: tapped.draft_id, version: tapped.version, ...(tapped.room ? { room: tapped.room } : {}), ...(tapped.page !== undefined ? { page: tapped.page } : {}) }
-    : { type: 'guest', understanding: u, kind: silent ? 'reaction' : media ? 'media' : sticker ? 'sticker' : buttonId ? 'button' : 'text', button_id: buttonId, cart,
+    : { type: 'guest', understanding: u, kind: silent ? 'reaction' : unsupported ? 'unsupported' : media ? 'media' : sticker ? 'sticker' : buttonId ? 'button' : 'text', button_id: buttonId, cart,
         affirm: texts.length === 1 && isYes(texts[0]),
-        flags: texts.length ? turnFlags(texts) : null,
+        // H11: a photo request is read from the guest's own words only — never from an image's reading
+        flags: texts.length ? { ...turnFlags(texts), ...(kinds.includes('image') ? { photos: false } : {}) } : null,
         media: prep.route ? { reason: prep.route.reason, ...(prep.route.priority ? { priority: prep.route.priority } : {}), ...(prep.route.ack ? { ack: true } : {}) } : null };
   // a problem photo's acknowledgement reads the photo's staff line with the caption (never an identity or payment image)
   if (prep.route?.reason === 'problem_photo') texts = [...prep.captions, L === 'en' ? `[A photo of a problem: ${prep.route.summary}]` : `[صورة لمشكلة: ${prep.route.summary}]`];
@@ -548,6 +566,7 @@ export async function runTurn(claim: Json, deps: Deps): Promise<Outcome> {
   };
 
   let noCardsLink = false;
+  let extendUntil: string | null = null;
   const execute = async (dec: Decision): Promise<Decision | null> => {
     if (dec.actions.some((a) => a.type === 'package_ask' || (a.type === 'handoff' && a.notice === 'package_handed'))) pkRows = await offersP;
     for (const a of dec.actions) {
@@ -588,6 +607,39 @@ export async function runTurn(claim: Json, deps: Deps): Promise<Outcome> {
           lastAction = 'أُرسلت حالة الحجز';
           break;
         }
+        case 'extend_handed': {
+          // H11 (Ahmed, 24 Nov 2026): the extension's date noted, then the team in this chat; the staff alert names the date
+          push(fixed('extend_handed', L, { date: stayDate(a.until, L) }), { handoff: true });
+          extendUntil = a.until;
+          lastAction = 'طلب تمديد بتاريخ';
+          break;
+        }
+        case 'photos': {
+          // H11 (Ahmed, 24 Nov 2026 — 9 conversations): the room type's published photo as a card with its page link; the
+          // packages' page; never a hand-off for a photo request alone
+          const site = L === 'en' ? 'https://armadaresidence.com/en' : 'https://armadaresidence.com';
+          const branch = String(unit.branch ?? 'airport-road');
+          if (a.packages) {
+            push(fixed('photos_packages', L, { url: `${site}/celebrations/` }));
+            lastAction = 'أُرسل رابط صور الباقات';
+            break;
+          }
+          if (!a.room) {
+            push(fixed('photos_which', L, { url: `${site}/${branch}/` }));
+            lastAction = 'أُرسل رابط صور الفرع';
+            break;
+          }
+          const row = (await deps.adapter.roomTypes(branch).catch(() => [])).find((r) => r.key === a.room);
+          const room = row ? (L === 'en' ? row.name_en : row.name_ar) : a.room;
+          const url = `${site}/${branch}/${a.room}/`;
+          const img = (await covers())[`${branch}/${a.room}`];
+          if (img) {
+            push(fixed('photos_room', L, { room, branch_name: branchLabel(deps.content, branch, L), url }),
+              { kind: 'interactive', payload: { buttons: quickReplies(unit.kind, L).filter((b) => b.id === 'hubq:book'), room_card: a.room, header_image: img } });
+          } else push(fixed('photos_room_link', L, { room, url }));
+          lastAction = 'أُرسلت صورة نوع الغرفة';
+          break;
+        }
         case 'dates_question': {
           // H9 fix 3: ONE short question showing the resolved candidate(s) (copy.md §2); a confirm with «نعم» / «تواريخ أخرى»
           const c0 = a.candidates[0] ? stayDate(a.candidates[0], L) : '';
@@ -595,10 +647,10 @@ export async function runTurn(claim: Json, deps: Deps): Promise<Outcome> {
           if (a.status === 'confirm' && a.pending?.check_in) {
             const body = a.pending.check_out
               ? fixed('dates_confirm', L, { check_in: stayDate(a.pending.check_in, L), check_out: stayDate(a.pending.check_out, L) })
-              : a.why === 'weekday_mismatch' && c1 ? fixed('dates_which', L, { date_a: c0, date_b: c1 })
+              : (a.why === 'weekday_mismatch' || a.why === 'calendar') && c1 ? fixed('dates_which', L, { date_a: c0, date_b: c1 })
               : fixed('dates_confirm_arrival', L, { check_in: stayDate(a.pending.check_in, L) });
             const titles = (L === 'en' ? COPY.dates_confirm.buttons.en : COPY.dates_confirm.buttons.ar) as string[];
-            if (a.why === 'weekday_mismatch' && c1 && !a.pending.check_out) push(body);
+            if ((a.why === 'weekday_mismatch' || a.why === 'calendar') && c1 && !a.pending.check_out) push(body);
             else push(body, { kind: 'interactive', payload: { buttons: [{ id: 'hubd:yes', title: titles[0] }, { id: 'hubd:other', title: titles[1] }] } });
           } else if (a.status === 'past' && c0) push(fixed('dates_past', L, { date: c0 }));
           else if (a.status === 'order' && c0) push(fixed('dates_order', L, { check_in: c0 }));
@@ -734,6 +786,37 @@ export async function runTurn(claim: Json, deps: Deps): Promise<Outcome> {
             // H8: the stay quoted for every type that can take it (copy.md §3); the engine cannot quote → the website's booking
             // link with «التحدث مع موظف» (copy.md §4.0, the fallback only)
             const f = fieldsOf(dec);
+            // H11 (Ahmed, 24 Nov 2026): a type switched off in «الغرف» is never offered — switched off is not full. The guest
+            // who names one hears it is not available at this branch now; the same type at the other branch when it is on
+            // there (asked first), else the team
+            {
+              const named = f.room_type && f.room_type !== 'any' ? String(f.room_type) : null;
+              const here = String(f.branch ?? unit.branch);
+              if (named && (here === 'airport-road' || here === 'shafa-road')) {
+                const all = await deps.adapter.roomTypes(here).catch(() => []);
+                const row = all.find((r) => r.key === named);
+                if (!row || !row.bookable) {
+                  const other = here === 'airport-road' ? 'shafa-road' : 'airport-road';
+                  const there = (await deps.adapter.roomTypes(other).catch(() => [])).find((r) => r.key === named && r.bookable);
+                  const nm = (x: { name_ar: string; name_en: string } | undefined) => (x ? (L === 'en' ? x.name_en : x.name_ar) : named);
+                  t2('T50');
+                  if (there && unit.kind === 'branch') {
+                    push(fixed('room_off_other', L, { room: nm(row ?? there), branch_name: branchLabel(deps.content, here, L), other_branch: branchLabel(deps.content, other, L) }));
+                    dec.draft_patch = { kind: 'stay', fields: { ...f, _offer_branch: other } };
+                    overrideNext = 'collecting';
+                    noCardsLink = true;
+                    lastAction = 'النوع غير متاح للحجز في هذا الفرع — عُرض الفرع الآخر';
+                    break;
+                  }
+                  push(fixed('room_off_here', L, { room: nm(row), branch_name: branchLabel(deps.content, here, L) }));
+                  doHandoff({ type: 'handoff', reason: 'room_off', notice: 'handoff', note: { intent: 'stay_booking', slots: publicFields(f), stopped: 'collecting' } });
+                  noQuote = true;
+                  noQuoteReason = 'room_off';
+                  lastAction = 'النوع غير متاح للحجز في الفرعين';
+                  break;
+                }
+              }
+            }
             const cards = await quoteCards(f, a.exclude ?? []);
             if (!cards.length) {
               // H10: no single type takes this many ADULTS (its beds and its one extra bed) — more than one unit is a request
@@ -1090,6 +1173,33 @@ export async function runTurn(claim: Json, deps: Deps): Promise<Outcome> {
     }
   }
 
+  // H11 (Ahmed, 24 Nov 2026 — 8fc92754): a guest whose booking request is still with reception writes again — the request
+  // first («طلب حجزك لا يزال لدى فريق الاستقبال…»), then the answer to anything else; the staff on shift alerted again. Once
+  // in 30 minutes (and not right after the request was sent: that line names it)
+  {
+    const ref = ctx.pending_request;
+    const hist = ((claim.history ?? []) as Json[]);
+    const since = Date.now() - 30 * 60_000;
+    const line = fixed('request_pending', L);
+    const recent = hist.some((h) => h.author === 'us' && (!h.at || Date.parse(String(h.at)) >= since) && (String(h.body ?? '').includes(line) || (!!ref && String(h.body ?? '').includes(ref))));
+    if (ref && ev.type === 'guest' && ev.kind !== 'reaction' && final.next !== 'booked' && !recent && !answers.some((m) => m.body.includes(ref))) {
+      const first = answers.find((m) => m.kind === 'text' && !m.notice);
+      if (first) first.body = `${line}\n${first.body}`;
+      else answers.unshift({ seq: 0, kind: 'text', body: line, payload: {}, source_card_ids: [], notice: true });
+      if (claim.turn.mode !== 'test') finish.realert_request = ref;
+    }
+  }
+  // H11 (Ahmed, 24 Nov 2026 — «تم، أضفنا ذلك إلى طلبك.» twice in 5 seconds): a text identical to one this conversation got in
+  // the last 2 minutes is dropped — and that alone never hands the guest off
+  {
+    const since = Date.now() - 2 * 60_000;
+    const recentUs = ((claim.history ?? []) as Json[]).filter((h) => h.author === 'us' && h.at && Date.parse(String(h.at)) >= since).map((h) => normDates(String(h.body ?? '')));
+    const kept = answers.filter((m) => m.kind !== 'text' || !recentUs.includes(normDates(m.body)));
+    if (kept.length < answers.length) {
+      answers.splice(0, answers.length, ...kept);
+
+    }
+  }
   // H10 (Ahmed, 18 Nov 2026 — the price list three times, the Wi-Fi four times): never the same or nearly the same text as
   // one of the assistant's last three replies. A repeated message is dropped; when nothing new is left to say, the team
   // once (the notice, or nothing more when it already went)
@@ -1101,7 +1211,9 @@ export async function runTurn(claim: Json, deps: Deps): Promise<Outcome> {
     const keep = chatTurn ? answers : answers.filter((m) => m.kind !== 'text' || m.notice || m.handoff || [...m.body].length < 40 || !prevUs.some((p) => nearSame(p, m.body)));
     if (keep.length < before) {
       answers.splice(0, answers.length, ...keep);
-      if (!answers.length && final.next !== 'human') {
+      // H11: the earlier one went in the last 2 minutes (two messages of the guest in a row) — nothing more, no hand-off
+      const fresh = ((claim.history ?? []) as Json[]).some((h) => h.author === 'us' && h.at && Date.parse(String(h.at)) >= Date.now() - 2 * 60_000);
+      if (!answers.length && final.next !== 'human' && !fresh) {
         if (!noticeOpen) answers.push({ seq: 1, kind: 'text', body: fixed('handoff', L), payload: {}, source_card_ids: [], notice: true });
         note = note ?? handoffNote({ intent: 'question', slots: {}, stopped: final.next }, 'ردّ مكرر — للفريق');
         final = { ...final, next: 'human', reason: 'repeat', transitions: [...final.transitions, 'T46'] };
@@ -1166,6 +1278,11 @@ export async function runTurn(claim: Json, deps: Deps): Promise<Outcome> {
   // H7: a media hand-off's line is the code's (copy.md §5.2) or the problem photo's checked line — no model call, also in a
   // test run (the lab grades it; no alert reaches a team in test mode)
   if (final.next === 'human' && prep.route) finish.handoff_summary = prep.route.summary;
+  // H11: the extension's staff alert «تمديد — الضيف في يوم المغادرة» with the date the guest gave
+  if (final.next === 'human' && final.reason === 'extension') {
+    const m = extendUntil ? /^(\d{4})-(\d{2})-(\d{2})$/.exec(extendUntil) : null;
+    finish.handoff_summary = `تمديد — الضيف في يوم المغادرة${m ? ` — حتى ${Number(m[3])}/${Number(m[2])}/${m[1]}` : ''}`;
+  }
   // 19 Nov 2026 (Ahmed): a package order for the other branch goes to that branch's reception — hub_turn_finish moves the
   // conversation to that branch's unit before the NEW hand-off (never in a test run); the replies still leave from the
   // number the guest wrote to. Also in a test run, so the lab grades it.
@@ -1177,7 +1294,11 @@ export async function runTurn(claim: Json, deps: Deps): Promise<Outcome> {
     finish.handoff_ref = refOrRoom(u?.booking_ref ?? null, texts);
     const newHandoff = conv.state !== 'human' || phase === 'resume';
     const line = (note ?? '').split(String.fromCharCode(10))[0];
-    if (departureTurn && ctx.departure) {
+    if (final.reason === 'extension' && (finish.handoff_summary ?? '').startsWith('تمديد')) {
+      // H11: the extension with its date (no model call) and the Nazeel booking number
+      const nz = draft?.kind === 'extend' && draft.fields.nazeel_ref ? String(draft.fields.nazeel_ref) : null;
+      if (nz) finish.handoff_ref = `نزيل ${nz}`.slice(0, 40);
+    } else if (departureTurn && ctx.departure) {
       // H9: the extension's staff alert — «يطلب تمديد الإقامة» and the Nazeel booking number (no model call)
       finish.handoff_summary = 'يطلب تمديد الإقامة';
       finish.handoff_ref = ctx.departure.ref ? `نزيل ${ctx.departure.ref}`.slice(0, 40) : finish.handoff_ref;

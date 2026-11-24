@@ -155,6 +155,13 @@ export function parseInbound(m: Json): Inbound {
   } else if (type === 'order') {
     kind = 'order';
   }
+  // H11 (24 Nov 2026 — 85 messages of 19–24 Nov stored as «unsupported» with nothing to tell which type they were): the type
+  // WhatsApp gave and its error code are kept (names and codes only, never content)
+  if (kind === 'unsupported') {
+    payload.type = str(type, 40) ?? 'unknown';
+    const ec = Array.isArray(m.errors) && m.errors[0] && typeof m.errors[0] === 'object' ? m.errors[0].code : null;
+    if (ec !== null && ec !== undefined) payload.error_code = String(ec).slice(0, 20);
+  }
   const referral = m.referral && typeof m.referral === 'object' && !Array.isArray(m.referral) ? (m.referral as Record<string, unknown>) : null;
   return {
     id: str(m.id, 200),

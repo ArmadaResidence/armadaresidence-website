@@ -176,6 +176,10 @@ export function outcomeKind(finish: Json): string {
   if (acts.includes('fixed') && finish.state === 'collecting') return 'ask';
   if (acts.includes('fixed') && tr.includes('T4')) return 'reply';
   if (acts.includes('fixed') && finish.messages?.length && finish.out_of_scope_inc) return 'out_of_scope';
+  // H11: a message type we cannot open asked as text; the published photos of a room type; the summary already sent
+  if (finish.decision?.reason === 'unsupported') return 'reply';
+  if (acts.includes('photos')) return 'photos';
+  if (acts.includes('fixed') && finish.state === 'awaiting_confirmation') return 'summary';
   if (acts.includes('from_price')) return 'answer';
   if (acts.includes('answer')) return 'answer';
   if (acts.includes('ask')) return 'ask';

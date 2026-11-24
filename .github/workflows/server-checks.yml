@@ -32,7 +32,7 @@ on:
       files:
         description: SQL test files of supabase/tests (space-separated)
         required: false
-        default: booking-source.sql guest_hub_units.sql guest_hub_ingest.sql guest_hub_retention.sql guest_hub_inbox.sql guest_hub_knowledge.sql guest_hub_assistant.sql guest_hub_lab.sql guest_hub_radar.sql guest_hub_pass4.sql guest_hub_team.sql guest_hub_media.sql guest_hub_send_watch.sql guest_hub_learning.sql guest_hub_booking.sql guest_hub_departures.sql guest_hub_h9_fix1.sql guest_hub_standby.sql guest_hub_fix3.sql guest_hub_fix4.sql guest_hub_h10.sql guest_hub_package_branch.sql offer-packages.sql breakfast-fees.sql wa-automation.sql reinstate.sql
+        default: booking-source.sql guest_hub_units.sql guest_hub_ingest.sql guest_hub_retention.sql guest_hub_inbox.sql guest_hub_knowledge.sql guest_hub_assistant.sql guest_hub_lab.sql guest_hub_radar.sql guest_hub_pass4.sql guest_hub_team.sql guest_hub_media.sql guest_hub_send_watch.sql guest_hub_learning.sql guest_hub_booking.sql guest_hub_departures.sql guest_hub_h9_fix1.sql guest_hub_standby.sql guest_hub_fix3.sql guest_hub_fix4.sql guest_hub_h10.sql guest_hub_h11.sql guest_hub_package_branch.sql offer-packages.sql breakfast-fees.sql wa-automation.sql reinstate.sql
 
 permissions:
   contents: read
@@ -57,7 +57,7 @@ jobs:
       - name: The local database (every migration of this commit)
         run: supabase db start
       - name: The SQL tests
-        run: node scripts/sql-test-run.mjs ${{ inputs.files || 'booking-source.sql guest_hub_units.sql guest_hub_ingest.sql guest_hub_retention.sql guest_hub_inbox.sql guest_hub_knowledge.sql guest_hub_assistant.sql guest_hub_lab.sql guest_hub_radar.sql guest_hub_pass4.sql guest_hub_team.sql guest_hub_media.sql guest_hub_send_watch.sql guest_hub_learning.sql guest_hub_booking.sql guest_hub_departures.sql guest_hub_h9_fix1.sql guest_hub_standby.sql guest_hub_fix3.sql guest_hub_fix4.sql guest_hub_h10.sql guest_hub_package_branch.sql offer-packages.sql breakfast-fees.sql wa-automation.sql reinstate.sql' }}
+        run: node scripts/sql-test-run.mjs ${{ inputs.files || 'booking-source.sql guest_hub_units.sql guest_hub_ingest.sql guest_hub_retention.sql guest_hub_inbox.sql guest_hub_knowledge.sql guest_hub_assistant.sql guest_hub_lab.sql guest_hub_radar.sql guest_hub_pass4.sql guest_hub_team.sql guest_hub_media.sql guest_hub_send_watch.sql guest_hub_learning.sql guest_hub_booking.sql guest_hub_departures.sql guest_hub_h9_fix1.sql guest_hub_standby.sql guest_hub_fix3.sql guest_hub_fix4.sql guest_hub_h10.sql guest_hub_h11.sql guest_hub_package_branch.sql offer-packages.sql breakfast-fees.sql wa-automation.sql reinstate.sql' }}
 
   function:
     name: server · functions (Deno — hub type-check, booking-request on a stub database)

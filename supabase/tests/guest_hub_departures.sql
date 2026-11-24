@@ -196,19 +196,20 @@ select pg_temp._check('C6 from 12:00 a check not sent is skipped (late)', (selec
 select pg_temp._service();
 select pg_temp._save('a1', public.hub_departure_answer('+15550100901', pg_temp._j('chaddr') #>> '{}', 'leave', 'button', (pg_temp._row('100901')).id, null, null, false));
 select pg_temp._save('a2', public.hub_departure_answer('+966500009911', pg_temp._j('chaddr') #>> '{}', 'extend', 'button', (pg_temp._row('100902')).id, pg_temp._id('cb'),
-  'يسعدنا ذلك. سيكمل معك فريق الاستقبال في هذه المحادثة لإتمام التمديد.', false));
+  'يسعدنا ذلك. حتى أي تاريخ ترغب في التمديد؟', false));
 select pg_temp._save('a3', public.hub_departure_answer('+15550100901', pg_temp._j('chaddr') #>> '{}', 'extend', 'button', null, null, null, false));
 select pg_temp._save('a4', public.hub_departure_answer('+15550100999', pg_temp._j('chaddr') #>> '{}', 'leave', 'button', null, null, null, false));
 select pg_temp._root();
 select pg_temp._check('A1 «سأغادر في موعدي» → the review request at 19:00 Riyadh (or 30 minutes after a later answer)',
   pg_temp._j('a1') ->> 'answer' = 'leave' and (select answer = 'leave' and answer_via = 'button' and review_due_at = greatest(pg_temp._at(0, '19:00'), answer_at + interval '30 minutes') from pg_temp._row('100901')), pg_temp._j('a1')::text);
 select pg_temp._check('A2 «أرغب في التمديد» → no review request', (select answer = 'extend' and review_state = 'cancelled' and review_code = 'extended' from pg_temp._row('100902')));
-select pg_temp._check('A3 … the conversation to the team, tagged «تمديد»', (select state = 'human' and human_reason = 'extension' and 'تمديد' = any (tags) from public.hub_conversations where id = pg_temp._id('cb')));
-select pg_temp._check('A4 … the hand-off: «يطلب تمديد الإقامة» and the Nazeel number; the staff alert queued',
-  exists (select 1 from public.hub_handoffs h where h.conversation_id = pg_temp._id('cb') and h.summary = 'يطلب تمديد الإقامة' and h.ref_text = 'نزيل 100902')
-  and exists (select 1 from public.hub_staff_sends s join public.hub_handoffs h on h.id = s.handoff_id where h.conversation_id = pg_temp._id('cb') and s.template = 'hub_staff_alert'));
-select pg_temp._check('A5 … the fixed reply logged in the conversation and the note for the team', exists (select 1 from public.hub_messages m where m.conversation_id = pg_temp._id('cb') and m.author = 'assistant'
-  and m.body like 'يسعدنا ذلك.%') and exists (select 1 from public.hub_messages m where m.conversation_id = pg_temp._id('cb') and m.kind = 'note' and m.body like 'يريد: تمديد الإقامة%'));
+-- H11 (Ahmed, 24 Nov 2026): «أرغب في التمديد» asks the date first — the hand-off follows with the date (the engine)
+select pg_temp._check('A3 … the date asked first: an open «extend» draft with the Nazeel number, the conversation collecting, tagged «تمديد»',
+  (select state = 'collecting' and 'تمديد' = any (tags) from public.hub_conversations where id = pg_temp._id('cb'))
+  and exists (select 1 from public.hub_drafts d where d.conversation_id = pg_temp._id('cb') and d.kind = 'extend' and d.status = 'open' and d.fields ->> 'nazeel_ref' = '100902'));
+select pg_temp._check('A4 … no hand-off yet (it follows the date)', not exists (select 1 from public.hub_handoffs h where h.conversation_id = pg_temp._id('cb') and not h.extra));
+select pg_temp._check('A5 … the question logged in the conversation, no notice', exists (select 1 from public.hub_messages m where m.conversation_id = pg_temp._id('cb') and m.author = 'assistant'
+  and m.body like 'يسعدنا ذلك. حتى أي تاريخ%' and not coalesce((m.payload ->> 'notice')::boolean, false)));
 select pg_temp._check('A6 once per stay: a second answer changes nothing', (pg_temp._j('a3') ->> 'already')::boolean and (select answer = 'leave' from pg_temp._row('100901')));
 select pg_temp._check('A7 a number with no check waiting matches nothing', not (pg_temp._j('a4') ->> 'matched')::boolean);
 -- the review of «سأغادر» queued at its time

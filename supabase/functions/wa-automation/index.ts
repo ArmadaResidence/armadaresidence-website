@@ -434,6 +434,14 @@ async function handleInbound(ev: any, test: boolean, meta: HookMeta): Promise<Re
   const picked = new Date();
   const m = parseInbound(ev?.whatsappInboundMessage);
   if (m.referral) console.log('wa-automation: referral', describe(ev));
+  // H11 (24 Nov 2026 — six messages of 20 Nov 21:03–21:07 Riyadh reached this endpoint 36.5 minutes after WhatsApp sent
+  // them, in order, on both numbers, while the database and every schedule ran): a late delivery is logged (minutes and the
+  // branch only), so the next one is seen the same day
+  if (m.sentAt) {
+    const lag = (picked.getTime() - Date.parse(m.sentAt)) / 60_000;
+    const lateAt = branchOfNumber(m.to ?? '') ?? 'unknown';
+    if (lag > 5) console.warn('wa-automation: inbound delivered late', Math.round(lag), 'min', lateAt);
+  }
   // H6c (Ahmed, 15 Nov 2026): a number in «فريق الاستقبال» or the report list is never a guest — no episode, no opt-out
   // words, no marketing: the colleague chat answers it (unless its «يُعامَل كضيف للتجربة» is on)
   if (m.from && m.to) {
@@ -565,7 +573,8 @@ async function handleInbound(ev: any, test: boolean, meta: HookMeta): Promise<Re
  *  the window the tap opened; null when no check waits for it */
 async function departureAnswer(m: Inbound, choice: 'leave' | 'extend', id: string | null, conversation: string | null, test: boolean): Promise<Record<string, unknown> | null> {
   const L: Locale = replyLocale(m.text);
-  const body = fixed(choice === 'extend' ? 'departure_extend' : 'departure_leave', L);
+  // H11 (Ahmed, 24 Nov 2026): «أرغب في التمديد» → the date first («حتى أي تاريخ ترغب في التمديد؟»); the engine hands off with it
+  const body = fixed(choice === 'extend' ? (conversation ? 'extend_ask_date' : 'departure_extend') : 'departure_leave', L);
   const a = await rpc<{ matched: boolean; already?: boolean; language?: Locale; message_id?: string | null; context?: { from: string; to: string; window_expires_at: string | null } | null;
                         handoff_id?: string | null }>('hub_departure_answer', {
     p_phone: m.from, p_channel: m.to, p_choice: choice, p_via: 'button', p_id: id, p_conversation: conversation, p_body: body, p_test: test,

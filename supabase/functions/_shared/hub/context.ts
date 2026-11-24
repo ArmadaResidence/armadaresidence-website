@@ -115,6 +115,14 @@ const ROOM_WORD = W('غرفه|غرف|الغرفه|ليله|الليله|جناح
 const LEAVE = /^(?:خروج|الخروج|خرجت|خرجنا|طالع|طالعين|بطلع|بنطلع|راح اطلع|مغادره|مغادر|بغادر|اغادر|سنغادر|بمشي|بنمشي|ماشي|ماشين|مشينا|leaving|check ?out|checking out|checkout)(?:\s+(?:ان شاء الله|انشاءالله|اليوم|الحين|بس|فقط|شكرا|today|now|thanks|thank you))*$/i;
 const EXTEND = /^(?:تمديد|التمديد|بمدد|ابي امدد|ابغى امدد|نمدد|امدد|ابي تمديد|extend|extension|extending)(?:\s+\S+){0,3}$/i;
 const QWORD = /^(?:هل|كم|متي|وين|فين|ليش|كيف|ايش|وش|شو|اي|ماذا|لماذا|متى|what|when|where|how|is|are|do|does|can|could|why|which)\b/i;
+// H11 (Ahmed, 24 Nov 2026 — bd27baf4 19 Nov 10:50): a change to a booking the guest ALREADY has («عندي حجز … أبي أقدّمه»)
+// is the team's (the change_cancel notice) — never room cards
+const HAVE_BOOKING = /(?:عندي|عندنا|لدي|لدينا|معي)\s*(?:حجز|حجوزات)|حجزي|حجزنا|حاجز|حاجزين|حجزت\s*(?:عندكم|لديكم|معكم)|\b(?:i|we) (?:have|had|made) (?:a |an )?(?:booking|reservation)|\bmy (?:booking|reservation)\b/i;
+const CHANGE_WORDS = /اقدم|نقدم|تقديم|ااخر|اءخر|ناخر|اخره|اخرها|تاخير|ااجل|اجله|ناجل|تاجيل|اغير|نغير|تغيير|اعدل|نعدل|تعديل|ابدل|نبدل|تبديل|\b(?:change|move|postpone|reschedule|modify|amend|bring forward|shift)\b/i;
+// H11: photos or a video asked for (9 conversations) — never a hand-off for that alone
+const PHOTO_WORDS = /(?:ارسل|ارسلي|ارسلو|ارسلوا|ابي|ابغي|ابغا|ممكن|عندكم|فيه|وريني|ورني|اشوف|نشوف|شوف|اريد|اود|بدي|عايز|محتاج|ابغى)\s+(?:لي\s+)?(?:\S+\s+)?(?:صور|صوره|فيديو|فديو|مقطع)|(?:صور|صوره|فيديو|مقطع)\s+(?:لل|ال|ل)?(?:غرف|غرفه|جناح|اجنحه|شقه|شقق|باق|الباق|استديو|مكان|فندق|فرع|مطعم|قاعه|الغرف|الغرفه|الجناح|الشقه|الاستديو)|(?:الصور|الفيديو)\s+(?:غير|مو|ما|مب|مش)\s*(?:كافي|كافيه|واضح|واضحه)|\b(?:photos?|pictures?|pics|videos?)\s+of\b|\b(?:send|share|see|show)\b.{0,20}\b(?:photos?|pictures?|pics|videos?)\b|\bany (?:photos?|pictures?|videos?)\b/i;
+// H11 (4307a28e): a guest who wants only a room («أبغى غرفة بس») is never offered the packages
+const ROOM_ONLY = /(?:غرفه|غرفة|الغرفه|الغرفة|room)\s*(?:بس|فقط|only|just)|(?:just|only) (?:a )?room/i;
 
 /** what code reads in the guest's own words this turn */
 export function turnFlags(texts: string[]): TurnFlags {
@@ -133,6 +141,9 @@ export function turnFlags(texts: string[]): TurnFlags {
     room_price: PRICE_WORD.test(t) && ROOM_WORD.test(t),
     departure_word: short && LEAVE.test(tl) ? 'leave' : short && EXTEND.test(tl) ? 'extend' : null,
     question: /[?؟]/.test(raw) || texts.some((x) => QWORD.test(normalize(x))),
+    change_existing: HAVE_BOOKING.test(t) && CHANGE_WORDS.test(t),
+    photos: PHOTO_WORDS.test(t),
+    room_only: ROOM_ONLY.test(t),
   };
 }
 
@@ -149,4 +160,17 @@ export function nearSame(a: string, b: string): boolean {
   let common = 0;
   for (const w of A) if (B.has(w)) common++;
   return common / Math.max(A.size, B.size) >= 0.85;
+}
+
+/** H11 (Ahmed, 24 Nov 2026 — 0fb68f52): «غرفتين وصالة», «شقة غرفتين», «جناح غرفتين» name ONE unit, the type «جناح بغرفتي نوم
+ *  وصالة» — never two one-bedroom suites, unless the guest clearly asks for two units («شقتين», «جناحين», «2 أجنحة»).
+ *  At Shafa Road a jacuzzi in the same words names «جناح بغرفتي نوم وجاكوزي». Code, so the model's reading never decides. */
+const TWO_BED = /(?<![\p{L}])(?:غرفتين|غرفتان|غرفتي نوم|غرفتين نوم)\s*(?:و\s*)?(?:صاله|صالون|مجلس)|(?:شقه|جناح|سويت)\s*(?:ب|من|فيه?ا?)?\s*(?:غرفتين|غرفتي نوم|غرفتان)|two[- ]bed(?:room)?s?\b|2[- ]bed(?:room)?s?\b|two rooms and a (?:living|sitting)/u;
+const TWO_UNITS = /(?<![\p{L}])(?:شقتين|جناحين|شقتان|جناحان|(?:2|اثنين|اتنين|ثنتين)\s*(?:شقق|شقه|اجنحه|جناح|وحدات|وحده))(?![\p{L}])|two (?:suites|apartments|units)|2 (?:suites|apartments|units)/u;
+export function roomWords<U extends { room_type: string | null; rooms_count: number | null; branch?: string | null }>(u: U, texts: string[], numberBranch: string | null): U {
+  const branch = u.branch === 'airport-road' || u.branch === 'shafa-road' ? u.branch : numberBranch;
+  const t = normalize(texts.join(' '));
+  if (!TWO_BED.test(t) || TWO_UNITS.test(t)) return u;
+  const jac = branch === 'shafa-road' && /جاكوزي|jacuzzi/.test(t);
+  return { ...u, room_type: jac ? 'two-bedroom-jacuzzi-suite' : 'two-bedroom-suite', rooms_count: u.rooms_count && u.rooms_count > 1 ? null : u.rooms_count };
 }

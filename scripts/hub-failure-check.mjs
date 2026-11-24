@@ -170,7 +170,8 @@ for (const kind of ['rate_limit', 'overloaded', 'timeout']) {
   const un = claim(Q('t-unsupported', ''), { conversation: { first_reply: false, state: 'inquiry' } });
   un.messages = [{ id: 'm-un', kind: 'unsupported', body: null, payload: {} }];
   const ou = await runTurn(un, deps(err('other')));
-  check(ou.finish.state !== 'human' && !bodies(ou).length && ou.finish.models.length === 0, `an unsupported message kind or a reaction: nothing, never the team (H6 pass 5) (${ou.finish.reason})`);
+  // H11 (Ahmed, 24 Nov 2026): an unsupported kind gets ONE fixed question to type it as text — no model call, not the team
+  check(ou.finish.state !== 'human' && bodies(ou).length === 1 && bodies(ou)[0].includes('لم نتمكن من فتحها') && ou.finish.models.length === 0, `an unsupported message kind: the one fixed question, never the team, no model call (${ou.finish.reason})`);
 }
 
 if (fails.length) {

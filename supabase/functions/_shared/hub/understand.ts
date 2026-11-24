@@ -6,7 +6,7 @@
  * as missing. Nothing here calls the model or logs the understanding (guest text).
  */
 import { addDays, nightsBetween, riyadhToday, validIsoDate } from '../../booking-request/rules.ts';
-import { resolveStay, type StayRead } from './dates.ts';
+import { dayRange, resolveStay, type StayRead } from './dates.ts';
 
 export const INTENTS = [
   'greeting', 'stay_booking', 'price_question', 'availability_question', 'offer_question', 'facility_question', 'policy_question',
@@ -206,7 +206,22 @@ export function recheckDates(u: Understanding, today: string = riyadhToday()): U
  *  Asia/Riyadh (dates.ts) — the model's own ISO dates are never used. `prev`: the open draft's dates (a correction keeps the
  *  stay's length). Then the booking form's rules (no past date, departure after arrival, up to 31 Dec of next year). The
  *  resolver's status travels as dates_read: anything but 'exact' is asked about (copy.md §2), never guessed. */
-export function applyDates(u: Understanding, today: string = riyadhToday(), prev: { check_in?: unknown; check_out?: unknown } | null = null): Understanding {
+export function applyDates(u: Understanding, today: string = riyadhToday(), prev: { check_in?: unknown; check_out?: unknown } | null = null, raw: string[] | null = null): Understanding {
+  // H11 (Ahmed, 24 Nov 2026 — b69f08cc, 4d9cf8aa, 2802a3b2): when the model returns no date words, or words the resolver
+  // cannot read, the guest's own message is read by the same resolver — dates already given are never asked again
+  const r0 = applyDatesWords(u, today, prev);
+  if (!raw || !raw.length) return r0;
+  const weak = !r0.dates_read || r0.dates_read.status === 'none' || (r0.dates_read.status === 'ambiguous' && r0.dates_read.why === 'unreadable');
+  if (!weak) return r0;
+  const joined = raw.join(' / ');
+  const dateish = !!dayRange(joined) || /(?:يوم|بكر|غد|اليوم|الليله|الليلة|خميس|جمع|سبت|احد|أحد|اثنين|ثلاث|اربع|أربع|نوفمبر|ديسمبر|يناير|فبراير|tomorrow|today|tonight|nov|dec|jan|feb|\d{1,2}\s*[/\-]\s*\d{1,2})/i.test(joined);
+  if (!dateish) return r0;
+  const alt = applyDatesWords({ ...u, arrival_text: null, departure_text: null, dates_text: joined }, today, prev);
+  const st = alt.dates_read?.status;
+  return st === 'exact' || st === 'confirm' || st === 'past' || st === 'order' ? alt : r0;
+}
+
+function applyDatesWords(u: Understanding, today: string, prev: { check_in?: unknown; check_out?: unknown } | null): Understanding {
   const out: Understanding = { ...u, check_in: null, check_out: null, dates_invalid: undefined };
   const words = !!(u.arrival_text || u.departure_text || u.dates_text);
   const p = prev && typeof prev.check_in === 'string' ? { check_in: String(prev.check_in), check_out: typeof prev.check_out === 'string' ? String(prev.check_out) : null } : null;

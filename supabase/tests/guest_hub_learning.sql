@@ -233,9 +233,10 @@ select pg_temp._check('D1 nothing learned; the question stays open with «يحت
   and not exists (select 1 from public.hub_knowledge_cards where learn_kind = 'staff_reply'), left(pg_temp._j('d3')::text, 400));
 
 -- ══ P — the daily report ══
--- H10 (18 Nov 2026): the two cards the H10 migration published today are not this test's (moved to an earlier day)
+-- H10 (18 Nov 2026): the two cards the H10 migration published today are not this test's (moved to an earlier day);
+-- H11 (24 Nov 2026): nor the three cards and the landline card of the H11 migration
 update public.hub_knowledge_cards set published_at = published_at - interval '3 days', first_published_at = first_published_at - interval '3 days'
- where key in ('k-ac-heat-cool', 'k-breakfast-offer-ended');
+ where key in ('k-ac-heat-cool', 'k-breakfast-offer-ended', 'k-branches-taif-only', 'k-reception-room-phone', 'k-packages-no-jacuzzi', 'k-no-landline');
 select pg_temp._save('p1', internal.hub_report_data(internal.riyadh_today(), now()));
 select pg_temp._check('P1 the report''s learned facts: numbered, still active only (the removed ones out), «يحتاج قرارك» 1, the dashboard''s cards apart',
   jsonb_array_length(pg_temp._j('p1') -> 'learned') = 0 and (pg_temp._j('p1') ->> 'decisions')::int = 1 and (pg_temp._j('p1') ->> 'cards')::int = 0, pg_temp._j('p1')::text);

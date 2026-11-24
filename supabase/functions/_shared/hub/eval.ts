@@ -177,6 +177,8 @@ export function claimOf(ctx: Json, item: Pick<Item, 'key' | 'language' | 'contex
     messages: [inline
       ? { id: `m-${item.key}-${n}`, kind: inline.kind, body: message || null, payload: { media_id: 'sim' }, inline: { mime: inline.mime, bytes: inline.bytes } }
       : bm ? { id: `m-${item.key}-${n}`, kind: bm.kind, body: bm.caption, payload: { media_id: 'eval' }, fixture: bm }
+      // H11: «[unsupported]» = a message type the router cannot open (a poll, a view-once photo)
+      : message === '[unsupported]' ? { id: `m-${item.key}-${n}`, kind: 'unsupported', body: null, payload: { type: 'unsupported' } }
       : /^\[button:(hub[a-z]?:[a-z0-9_:-]+)\]$/.test(message)
       ? { id: `m-${item.key}-${n}`, kind: 'button_reply', body: message, payload: { button_id: /^\[button:(.+)\]$/.exec(message)![1] } }
       : kind === 'text' ? { id: `m-${item.key}-${n}`, kind: 'text', body: message, payload: {} } : { id: `m-${item.key}-${n}`, kind, body: null, payload: { media_id: 'eval' } }],

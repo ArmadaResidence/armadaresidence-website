@@ -435,7 +435,11 @@ export default function Media() {
                   <div key={s.slot} className="card p-4 grid gap-3 sm:grid-cols-[minmax(0,14rem)_minmax(0,1fr)] items-start" data-slot={s.slot}>
                     <div className="grid gap-2">
                       <h3 className="font-bold">
-                        {SLOT_LABELS[s.slot]} {s.required && <span className={`chip ${it ? 'chip-request' : 'chip-test'}`} data-required>{it ? 'مطلوبة' : 'مطلوبة — ناقصة'}</span>}
+                        {SLOT_LABELS[s.slot]} {s.required && !(current.target === 'offer' && s.slot === 'cover' && !it && !current.check.missing.some((m) => m.code === 'cover'))
+                          && <span className={`chip ${it ? 'chip-request' : 'chip-test'}`} data-required>{it ? 'مطلوبة' : 'مطلوبة — ناقصة'}</span>}
+                        {/* H11 (24 Nov 2026): a packages offer's cover is optional (the server's check names no missing cover) */}
+                        {s.required && current.target === 'offer' && s.slot === 'cover' && !it && !current.check.missing.some((m) => m.code === 'cover')
+                          && <span className="chip chip-request" data-optional>اختيارية</span>}
                       </h3>
                       {s.hint && <p className="text-xs text-ink-muted">{s.hint}</p>}
                       <SizeGuide target={current.target} slot={s.slot} />

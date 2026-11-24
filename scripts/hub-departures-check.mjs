@@ -172,9 +172,10 @@ const CTX = (dep) => ({ unit_kind: 'branch', unit_branch: 'airport-road', skills
   first_reply: true, departure: dep ? { id: 'row-1', ref: '100902' } : null });
 {
   const d1 = decide({ state: 'new', event: { type: 'guest', understanding: null, kind: 'button', button_id: 'hubo:extend:row-1' }, draft: null, ctx: CTX(true) });
-  check(d1.transitions.includes('T39') && d1.next === 'human' && d1.reason === 'extension' && same(d1.tags_add, ['تمديد'])
-    && d1.actions.some((a) => a.type === 'departure' && a.choice === 'extend') && d1.actions.some((a) => a.type === 'fixed' && a.key === 'departure_extend')
-    && d1.actions.some((a) => a.type === 'handoff' && a.notice === null), 'M1 T39 «أرغب في التمديد»: the fixed reply, the hand-off tagged «تمديد», no second notice');
+  // H11 (Ahmed, 24 Nov 2026): «أرغب في التمديد» asks the date first; the hand-off follows with it
+  check(d1.transitions.includes('T39') && d1.next === 'collecting' && d1.reason === 'extension' && same(d1.tags_add, ['تمديد'])
+    && d1.actions.some((a) => a.type === 'departure' && a.choice === 'extend') && d1.actions.some((a) => a.type === 'fixed' && a.key === 'extend_ask_date')
+    && d1.draft_patch?.kind === 'extend' && !d1.actions.some((a) => a.type === 'handoff'), 'M1 T39 «أرغب في التمديد»: the date asked first (extend_ask_date), an extend draft, tagged «تمديد», no hand-off yet');
   const d2 = decide({ state: 'new', event: { type: 'guest', understanding: U({ departure: 'leave' }), kind: 'text' }, draft: null, ctx: CTX(true) });
   check(d2.transitions.includes('T40') && d2.next === 'inquiry' && d2.actions.some((a) => a.type === 'fixed' && a.key === 'departure_leave'), 'M2 T40 a typed «طالع الساعة 11» → the thanks');
   const d3 = decide({ state: 'new', event: { type: 'guest', understanding: U({ departure: 'extend' }), kind: 'text' }, draft: null, ctx: CTX(true) });

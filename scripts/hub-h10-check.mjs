@@ -105,9 +105,9 @@ check(CHAT_REQUEST_ONLY === true, '1 D1: chat bookings are requests (booking.ts 
   const cb = cardBody(card, f, 'ar', fmt);
   check(!/تأكيد فوري|طلب حجز —/.test(cb) && !/\n$/.test(cb), '1 a card carries no badge (never «تأكيد فوري»)');
   const sm = summaryBody(card, f, 'ar', fmt, 'أرمادا ريزيدنس – طريق المطار');
-  check(sm.includes('سيصل طلبك إلى فريق الاستقبال ليؤكده لك هنا خلال دقائق.') && !sm.includes('يتأكد حجزك فورًا'), '1 the summary footer (Ahmed\'s words)');
+  check(sm.includes('سيصل طلبك إلى فريق الاستقبال ليؤكده لك هنا في أقرب وقت.') && !sm.includes('يتأكد حجزك فورًا'), '1 the summary footer (Ahmed\'s words)');
   check(summaryButtons('d', 2, 'ar')[0].title === 'إرسال طلب الحجز' && summaryButtons('d', 2, 'en')[0].title.length <= 20, '1 the button «إرسال طلب الحجز» (≤ 20 characters in both languages)');
-  check(fixed('result_chat_request', 'ar', { ref: 'AR-1' }) === 'وصل طلب حجزك رقم AR-1، وسيؤكده لك فريق الاستقبال هنا خلال دقائق.', '1 the sent line, word for word');
+  check(fixed('result_chat_request', 'ar', { ref: 'AR-1' }) === 'وصل طلب حجزك رقم AR-1، وسيؤكده لك فريق الاستقبال هنا في أقرب وقت.', '1 the sent line, word for word');
   check(!shownAvailable({ instant: false, reason: 'sold_out' }) && shownAvailable({ instant: false, reason: 'extra_beds' }) && shownAvailable({ instant: true, reason: null }), '1 shownAvailable: sold out / closed / no rate are not available');
   const d = decide({ state: 'awaiting_confirmation', event: { type: 'book_result', result: 'request' }, draft: { id: 'd', kind: 'stay', version: 2, fields: f }, ctx: { skills: ['room_booking'], bookings: [] } });
   check(d.actions[0]?.key === 'result_chat_request', '1 a booked request → «وصل طلب حجزك رقم…»');

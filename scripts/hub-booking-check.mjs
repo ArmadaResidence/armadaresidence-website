@@ -127,11 +127,11 @@ const buttonsOf = (f) => f.messages.flatMap((m) => m.payload?.buttons ?? []).map
   check(f[5]?.state === 'awaiting_confirmation' && !!sum, '1 the name → the summary, «بانتظار تأكيد الضيف»');
   const cancel = String(CONTENT.cancellation_line.ar);
   check(!!sum && sum.body.includes(cancel) && sum.body.includes('الدفع عند الوصول إلى الفندق.') && sum.body.includes('الاسم: محمد أحمد') && sum.body.includes('الإفطار: بدون إفطار')
-    && sum.body.includes('الضيوف: بالغان') && sum.body.includes('سيصل طلبك إلى فريق الاستقبال ليؤكده لك هنا خلال دقائق.') && !sum.body.includes('يتأكد حجزك فورًا') && !sum.body.includes('السرير الإضافي'), '1 the summary: the cancellation sentence exactly, «الدفع عند الوصول», the name, breakfast, guests, the chat-request footer (D1), no extra-bed line');
+    && sum.body.includes('الضيوف: بالغان') && sum.body.includes('سيصل طلبك إلى فريق الاستقبال ليؤكده لك هنا في أقرب وقت.') && !sum.body.includes('يتأكد حجزك فورًا') && !sum.body.includes('السرير الإضافي'), '1 the summary: the cancellation sentence exactly, «الدفع عند الوصول», the name, breakfast, guests, the chat-request footer (D1), no extra-bed line');
   check(!!sum && sum.payload.buttons.map((b) => b.title).join('|') === 'إرسال طلب الحجز|تعديل|ليس الآن', '1 the summary\'s three buttons («إرسال طلب الحجز», D1)');
   const v = sum ? Number(sum.payload.buttons[0].id.split(':')[3]) : 0;
   check(v >= 2, `1 the summary carries the draft's current version (${v})`);
-  check(f[6]?.state === 'booked' && /AR-\d{8}-/.test(f[6].messages.map((x) => x.body).join(' ')) && f[6].messages.some((x) => x.body.startsWith('وصل طلب حجزك رقم') && x.body.includes('وسيؤكده لك فريق الاستقبال هنا خلال دقائق.')), '1 «إرسال طلب الحجز» → booked as a request (D1), the result line with the reference');
+  check(f[6]?.state === 'booked' && /AR-\d{8}-/.test(f[6].messages.map((x) => x.body).join(' ')) && f[6].messages.some((x) => x.body.startsWith('وصل طلب حجزك رقم') && x.body.includes('وسيؤكده لك فريق الاستقبال هنا في أقرب وقت.')), '1 «إرسال طلب الحجز» → booked as a request (D1), the result line with the reference');
   check(!a.calls.some((c) => c[0] === 'book'), '1 the test lab never books (the step is simulated)');
   check(f[6] && !f[6].booking, '1 … and hands nothing to the notifications');
 }
@@ -239,7 +239,7 @@ const live = (ctx, msg, st, draft) => {
   check(!/m²|م²/.test(cardBody(card, f, 'ar', fmt)) && cardBody(card, f, 'ar', fmt).split('\n').length === 4, 'card: no size and no beds → that line left out (H9 fix 3: the dates line kept; D1: no badge line)');
   const req = { ...card, instant: false, reason: 'too_long', extra_beds: 1 };
   const en = summaryBody(req, f, 'en', fmt, 'Shafa Road');
-  check(en.includes('Extra bed: 1 extra bed') && en.includes('Your booking request will reach our reception team, who will confirm it with you here within minutes.') && en.includes(String(CONTENT.cancellation_line.en)) && en.includes('Payment on arrival at the hotel.'), 'summary (en): the extra-bed line, the chat-request footer (D1), the cancellation sentence, payment on arrival');
+  check(en.includes('Extra bed: 1 extra bed') && en.includes('Your booking request will reach our reception team, who will confirm it with you here as soon as possible.') && en.includes(String(CONTENT.cancellation_line.en)) && en.includes('Payment on arrival at the hotel.'), 'summary (en): the extra-bed line, the chat-request footer (D1), the cancellation sentence, payment on arrival');
   check(orderCards([{ ...card, room: 'b', fits: false, sort: 1 }, { ...card, room: 'a', fits: true, instant: false, sort: 2 }, { ...card, room: 'c', fits: true, sort: 3 }], 'b').map((x) => x.room).join() === 'b,c,a', 'order: the previous room, then the types that fit (instant first)');
   // the machine (spec T7–T14 with the skill on)
   const ctx = { unit_kind: 'branch', unit_branch: 'shafa-road', skills: ['room_booking'], show_prices: true, instant_booking: true, window_open: true, failed_understandings: 0, failed_max: 2, out_of_scope: 0, out_of_scope_max: 3, group_min_rooms: 5, licences: {}, always_handoff: [], bookings: [], first_reply: false };

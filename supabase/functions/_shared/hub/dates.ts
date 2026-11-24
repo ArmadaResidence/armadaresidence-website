@@ -79,7 +79,9 @@ const rx = (s: string, f = 'gu') => new RegExp(s, f);
 
 /** spoken numbers → digits (the compounds first: «واحد وعشرين» = 21) */
 export function wordsToDigits(s: string): string {
-  let out = s;
+  // H11 (5aac4c87, 19 Nov 2026 — «يوم واحد» read as the 1st of next month): «يوم واحد» / «يوم وحده» is a length of stay,
+  // never a day of the month — unless a month follows («يوم واحد ديسمبر»)
+  let out = s.replace(/(?<![\p{L}])(?:يوم|ليله) (?:واحد|وحده|واحده)(?![\p{L}])(?!\s*(?:من\s*)?(?:شهر|ال?(?:يناير|فبراير|مارس|ابريل|مايو|يونيو|يوليو|اغسطس|سبتمبر|اكتوبر|نوفمبر|ديسمبر)))/gu, 'ليله واحده');
   for (const [tens, tv] of TENS.slice(0, 2)) {
     for (const [u, uv] of UNITS) out = out.replace(rx(`${B}(${u})\\s*و\\s*(${tens})${E}`), String(uv + tv));
   }
@@ -100,7 +102,7 @@ const WEEKDAYS: [string, number][] = [
 const G_MONTHS: [string, number][] = [
   ['يناير|جانفي|كانون الثاني|january|jan', 1], ['فبراير|فيفري|شباط|february|feb', 2], ['مارس|اذار|march|mar', 3], ['ابريل|افريل|نيسان|april|apr', 4],
   ['مايو|ايار|may', 5], ['يونيو|يونيه|جوان|حزيران|june|jun', 6], ['يوليو|يوليه|جويليه|تموز|july|jul', 7], ['اغسطس|اوت|august|aug', 8],
-  ['سبتمبر|ايلول|september|sept|sep', 9], ['اكتوبر|تشرين الاول|october|oct', 10], ['نوفمبر|نوفمبر|تشرين الثاني|november|nov', 11], ['ديسمبر|كانون الاول|december|dec', 12],
+  ['سبتمبر|ايلول|september|sept|sep', 9], ['اكتوبر|تشرين الاول|october|oct', 10], ['نوفمبر|نوفنمبر|نوفنبر|نوفمير|نوفبر|نوفيمبر|نوفمبير|تشرين الثاني|november|nov', 11], ['ديسمبر|ديسمير|ديسنبر|دسمبر|ديسيمبر|كانون الاول|december|dec', 12],
 ];
 const H_MONTHS: [string, number][] = [
   ['محرم', 1], ['صفر', 2], ['ربيع الاول|ربيع اول|ربيع 1', 3], ['ربيع الاخر|ربيع الثاني|ربيع ثاني|ربيع اخر|ربيع 2', 4],
@@ -189,9 +191,25 @@ export function readOne(raw: string, today: string, after: string | null = null)
   if (m) {
     let d = Number(m[1]);
     let mo = Number(m[2]);
+    // H11 (4d9cf8aa, b69f08cc — «٢١-٢٢», «٢٦ / ٣٠»): two days with no month (the second is no month) — a range of days
+    if (!m[3] && mo > 12 && mo <= 31 && d <= 31 && !findName(s, G_MONTHS) && !findName(s, H_MONTHS, false)) {
+      const a = bareDay(d, today, null);
+      const b = a.iso ? bareDay(mo, today, a.iso) : null;
+      return { ...a, until: b?.iso ?? null };
+    }
     if (mo > 12 && d <= 12) [d, mo] = [mo, d];
     const y = m[3] ? (m[3].length === 2 ? 2000 + Number(m[3]) : Number(m[3])) : null;
-    return dayMonth(d, mo, y, today);
+    const g = dayMonth(d, mo, y, today);
+    // H11 (4307a28e, 21 Nov 2026 — «22/6» read as 22 June 2027 on 21 Nov): a day/month whose month is this or next Hijri
+    // month and whose Gregorian reading is months away — the guest may mean the Hijri date: both shown, never a guess
+    if (!y && g?.iso && nightsOf(today, g.iso) > 75) {
+      const h = hijriOf(today);
+      if (mo === h.m || mo === (h.m % 12) + 1) {
+        const hi = fromHijri(d, mo, null, today);
+        if (hi && nightsOf(today, hi) <= 75) return { iso: hi, alt: [g.iso], confirm: 'calendar', hijri: true };
+      }
+    }
+    return g;
   }
 
   // Hijri: a day with a Hijri month (the calendar word optional)
@@ -327,7 +345,30 @@ export function readNights(raw: string | null | undefined): number | null {
 }
 
 /** words that start a departure inside one text («الخروج يوم 20», «إلى 22», "until") */
-const DEP_SPLIT = /\s(?:الخروج|خروج|المغادره|مغادره|اغادر|نغادر|اطلع|نطلع|بطلع|ونطلع|واطلع|والخروج|الي|الى|لين|لغايه|حتى|until|till|to|checkout|check out|leaving)\s/u;
+const DEP_SPLIT = /\s(?:و)?(?:الخروج|خروج|المغادره|مغادره|اغادر|نغادر|اطلع|نطلع|بطلع|ونطلع|واطلع|الي|الى|لين|لغايه|لحد|حتى|until|till|to|checkout|check out|leaving)\s/u;
+
+/** H11 (b69f08cc, 23 Nov 2026 — «26 لين 30», «الوصول ٢٦ / المغادرة ٣٠», «٢٦» then «٣٠» on the next line): two day numbers
+ *  and nothing that names a month — the arrival day and the departure day */
+const RANGE_WORDS = /(?:^|\s)(?:ال)?(?:وصول|دخول|خروج|مغادره|الوصول|الدخول|الخروج|المغادره|من|الي|الى|لين|لحد|حتى|يوم|تاريخ|بتاريخ|from|to|until|till|check ?in|check ?out|arrival|departure|arrive|leave|and|و)(?=\s|$)/gu;
+export function dayRange(raw: string): { arr: number; dep: number } | null {
+  const s = wordsToDigits(normalize(raw));
+  if (!s || findName(s, G_MONTHS) || findName(s, H_MONTHS, false) || findName(s, WEEKDAYS)) return null;
+  // «2/12», «5-7»: a day and a month (readOne) — a slash never joins a range, a dash only when the second is no month
+  if (s.includes('/')) return null;
+  const dash = /(\d{1,2})\s*[-–—]\s*(\d{1,2})/.exec(s);
+  if (dash && Number(dash[2]) <= 12) return null;
+  const rest = ` ${s} `.replace(/[-–—]/g, ' ').replace(RANGE_WORDS, ' ').replace(RANGE_WORDS, ' ').replace(/\s+/g, ' ').trim();
+  const m = /^(\d{1,2}) (\d{1,2})$/.exec(rest);
+  if (!m) return null;
+  const a = Number(m[1]);
+  const b = Number(m[2]);
+  return a >= 1 && a <= 31 && b >= 1 && b <= 31 && a !== b ? { arr: a, dep: b } : null;
+}
+/** a bare day number as written in an arrival or departure field («26», «٢٦», "26th") → «يوم 26» */
+const bareNumber = (s: string): string => {
+  const n = wordsToDigits(normalize(s)).replace(/^(?:ال)?(?:وصول|دخول|خروج|مغادره|الوصول|الدخول|الخروج|المغادره|من|الي|الى|لين|حتى|from|to|until)\s+/u, '');
+  return /^\d{1,2}$/.test(n) && Number(n) >= 1 && Number(n) <= 31 ? `يوم ${n}` : s;
+};
 
 export interface DateInput {
   arrival_text?: string | null;
@@ -343,6 +384,15 @@ export function resolveStay(inp: DateInput, today: string, prev: { check_in?: st
   let arr = String(inp.arrival_text ?? '').trim();
   let dep = String(inp.departure_text ?? '').trim();
   const all = String(inp.dates_text ?? '').trim();
+  // H11: two bare day numbers in one field («26 لين 30», «٢١-٢٢»), or one bare number in each field
+  const range = dayRange(!dep ? (arr || all) : '');
+  if (range) {
+    arr = `يوم ${range.arr}`;
+    dep = `يوم ${range.dep}`;
+  } else {
+    if (arr) arr = bareNumber(arr);
+    if (dep) dep = bareNumber(dep);
+  }
   if (!arr && !dep && all) {
     // one text: «من 20 إلى 22 ديسمبر», «الخميس يوم 19 والخروج يوم 20»
     const n = ` ${wordsToDigits(normalize(all))} `;
@@ -394,6 +444,8 @@ export function resolveStay(inp: DateInput, today: string, prev: { check_in?: st
   if (ci && co && co <= ci) return { ...read, check_in: ci, check_out: co, status: 'order', candidates: [ci, co], why: 'order' };
   if (ci && co && nightsOf(ci, co) > 60) return { ...read, status: 'ambiguous', candidates: [ci, co], why: 'too_long' };
   const out: StayRead = { ...read, check_in: ci, check_out: co, nights: ci && co ? nightsOf(ci, co) : nightsStated ?? null };
+  // H11: a Hijri / Gregorian reading of the same day — the two arrival dates to choose from (the departure waits)
+  if (a?.confirm === 'calendar') return { ...out, check_out: null, nights: nightsStated ?? null, status: 'confirm', candidates: [ci!, ...(a.alt ?? [])], why: 'calendar' };
   if (a?.confirm) return { ...out, status: 'confirm', candidates: [ci!, ...(co ? [co] : []), ...(a.alt ?? [])], why: a.confirm };
   return { ...out, status: ci ? 'exact' : 'none' };
 }
