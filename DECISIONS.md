@@ -4355,3 +4355,9 @@ Instant booking keeps its limit of 3 units per room type per night (unchanged).
   the careers pages since version 13).
 - **GA4 custom dimensions:** `placement`, `offer_id` and `offer_category` (the GA4 - offer_view parameters) are
   registered event-scoped since 21 Nov 2026 (DECISIONS.md «GTM version 13 live»), so no new prompt was written.
+- **GA4 «Collect automatically detected user-provided data» stays off (Ahmed, 24 Nov 2026).** In GA4 property
+  541626231 that option stays off, and nothing in GA4 or the Google tag changes. The Google tag G-675Y7W0H1T has
+  automatic detection on (email, phone, address), so turning the property option on would start collecting applicants'
+  email and phone from the careers form (`/careers/`, `/en/careers/` — GA4 still runs there), which the jobs privacy
+  notice (`policies.json → page.sections[jobs]`) does not cover. Before anyone turns it on, automatic detection must
+  first be switched off in the G-675Y7W0H1T tag settings.
