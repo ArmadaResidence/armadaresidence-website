@@ -12,6 +12,11 @@
 // الكل»; an internal navigation (view transition); and the same landing with «الضروري فقط».
 // Not part of the suite (it needs the network for the libraries); a diagnostic for finding / verifying container
 // behaviour before and after a publish.
+// Nothing leaves (Ahmed, 24 Nov 2026 — DECISIONS.md 2026-11-24 «Tags only on the production site»: Meta counted pixel
+// events from 127.0.0.1 and localhost): service workers are blocked, navigator.sendBeacon is replaced in the page by a
+// recorder that sends nothing (a beacon must never be the one request a route might not see), and the only requests
+// let out to an ad platform are its library files (fbevents.js and Meta's signals config / plugins, the TikTok and Snap
+// scripts, Clarity's tag) — every other request off this origin (each hit and pixel image) is aborted and recorded.
 import { readFileSync, writeFileSync } from 'node:fs';
 import { chromium } from 'playwright';
 import { serveDist } from './serve-dist.mjs';
@@ -29,7 +34,7 @@ const out = arg('--json');
 
 const LIBS = [
   /^https:\/\/www\.googletagmanager\.com\/(gtm\.js|gtag\/js|gtag\/destination)/,
-  /^https:\/\/connect\.facebook\.net\//,
+  /^https:\/\/connect\.facebook\.net\/(en_US\/fbevents\.js|signals\/(config|plugins)\/)/,
   /^https:\/\/analytics\.tiktok\.com\/i18n\/pixel\/(events\.js|static\/)/,
   /^https:\/\/sc-static\.net\/scevent\.min\.js/,
   /^https:\/\/www\.clarity\.ms\/tag\//,
@@ -70,11 +75,14 @@ const browser = await chromium.launch({ channel: 'chrome' });
 const report = {};
 
 async function scenario(name, run) {
-  const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 }, locale: 'ar-SA' });
+  const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 }, locale: 'ar-SA', serviceWorkers: 'block' });
   const hits = [];
   await ctx.addInitScript(() => {
     localStorage.setItem('armada-gtm-test', '1');
     localStorage.setItem('armada-consent-test', '1');
+    // a beacon is recorded, never sent
+    window.__probeBeacons = [];
+    Object.defineProperty(navigator, 'sendBeacon', { configurable: true, value: (u) => (window.__probeBeacons.push(String(u)), true) });
   });
   await ctx.route('**/*', async (r) => {
     const u = r.request().url();
@@ -92,6 +100,11 @@ async function scenario(name, run) {
   const mark = (label) => hits.push({ t: Date.now(), platform: 'step', events: [label] });
   await run(page, mark);
   await page.waitForTimeout(3000);
+  // recorded beacons count as hits of their platform (nothing was sent)
+  for (const u of await page.evaluate(() => window.__probeBeacons || []).catch(() => [])) {
+    const p = platform(u);
+    hits.push({ t: Date.now(), platform: p, beacon: true, ...events(p, u, '') });
+  }
   const dl = await page.evaluate(() =>
     (window.dataLayer || []).map((x) => (x && x.event ? x.event : Array.isArray(x) || (x && typeof x.length === 'number') ? `gtag:${x[0]}:${x[1]}` : '?')),
   );

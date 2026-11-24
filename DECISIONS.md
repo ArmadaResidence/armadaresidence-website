@@ -4361,3 +4361,46 @@ Instant booking keeps its limit of 3 units per room type per night (unchanged).
   email and phone from the careers form (`/careers/`, `/en/careers/` — GA4 still runs there), which the jobs privacy
   notice (`policies.json → page.sections[jobs]`) does not cover. Before anyone turns it on, automatic detection must
   first be switched off in the G-675Y7W0H1T tag settings.
+
+## 2026-11-24 — The deploys of 23–24 Nov: a check pinned to a room the dashboard switched off (24 Nov 2026)
+
+- **What failed.** Every deploy since the last success (23 Nov 2026 04:39 Riyadh — the scheduled build of b8d01cf)
+  failed in the same place: three runs on the same commit (23 Nov 09:56, 24 Nov 06:15 and 08:12 Riyadh — two
+  dispatches and the daily build), job `checks · browser (motion-offers)`, check `booking-instant-check`:
+  `locator.selectOption: Timeout 30000ms exceeded … option being selected is not enabled` at
+  `selectOption('two-bedroom-suite')`, AR + EN × 1440 + 375. The deploy waits for every check job, so nothing was
+  published and the dashboard's publishes since then are not live. Not one of email-print-check, mobile-forms-check or
+  team-device-check.
+- **Why.** In «الغرف» the Airport Road two-bedroom suite was switched off for booking on the site (`site_room_types`:
+  `bookable` false — read 24 Nov 2026). The build follows it (`_availability.json`: sold_out), so the booking form no
+  longer offers that type — correct. The check hard-coded that one room for its extra-bed, «no prices» and offer steps,
+  so it broke on a dashboard change, against the rule that a check judges the build by its own data. Reproduced
+  locally with the dashboard's data (the old check: the same 4 timeouts).
+- **Fix.** The check's `site_room_types` stub now declares the room types its quote steps use bookable, so the form
+  adds the suite at run time exactly as it adds a room turned on since the build (`booking-form.ts`) — the check no
+  longer depends on what «الغرف» holds on the day of the build; when the build already offers it the row changes
+  nothing. The site and the dashboard data are unchanged (the suite stays off until Ahmed switches it on).
+
+## 2026-11-24 — Tags only on the production site (Ahmed, 24 Nov 2026)
+
+- **Decision.** No ad or analytics tag runs anywhere but `armadaresidence.com` and `www.armadaresidence.com`: never on
+  localhost, 127.0.0.1, a check build, a preview or a scratch copy. `armadaresidence.github.io` is left as it is (the
+  café menu `armada-residence-menu` lives there, real guests; read 24 Nov 2026 — it loads no GTM, GA4 or pixel, and
+  this site's own github.io address is a 301 to the domain). Why: Meta Events Manager listed pixel events from
+  127.0.0.1 (87) and localhost (19) over the last 28 days.
+- **What was already true.** Since 9 Nov 2026 (DECISIONS.md «Session 22») `Base.astro` injects gtm.js only when
+  `location.hostname` is one of `GTM_HOSTS` (the domain and www); GA4, the pixels and Clarity live only inside the
+  container, and no page, the dashboard included, carries a tag of its own (`git grep` 24 Nov 2026). The one other way
+  in is the automated-browser test flag (`navigator.webdriver` + localStorage `armada-gtm-test`), and every check that
+  sets it serves an empty gtm.js (or the emulator) and aborts every pixel host. `click-id-check` already asserts that a
+  local build without the flag requests no gtm.js. So local runs before 9 Nov loaded the real container (most of the
+  28 days fall before it — Events Manager's daily view by domain shows the dates).
+- **What changed.** The only script that still runs the REAL published container on a local build,
+  `scripts/gtm-probe.mjs` (a diagnostic, never in the suite), could let a request through: it allowed every GET to
+  connect.facebook.net and relied on routing alone. Now service workers are blocked, `navigator.sendBeacon` is replaced
+  in the page by a recorder that sends nothing (recorded beacons are listed as hits), and only the library files go
+  out (fbevents.js, Meta's signals config / plugins, the TikTok / Snap / Clarity scripts); every other request off the
+  page's origin is aborted and listed.
+- **GTM.** No container change: GTM-5JVH7R37 runs only where the site injects it, and the site injects it only on the
+  two production hosts. A hostname exception on every tag would only matter for a copy of the pages served elsewhere;
+  it is not built (it would block nothing today and needs the emulator and gtm-container-check reworked for 35 tags).

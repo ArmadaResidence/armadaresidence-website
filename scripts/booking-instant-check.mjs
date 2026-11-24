@@ -95,8 +95,13 @@ async function run(width, lang) {
     route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([{ branch: 'airport-road', room_slug: 'king-room', from_price: 185 }]) }),
   );
   // room availability (phase 2a.1, dashboard «الغرف»): the dashboard turned the Shafa jacuzzi studio OFF and the Airport
-  // accessible room ON since the last build — the form must drop the first and offer the second
+  // accessible room ON since the last build — the form must drop the first and offer the second. The two room types the
+  // quote steps use (king-room, two-bedroom-suite) are declared bookable here too, so the check never depends on what
+  // «الغرف» holds on the day of the build (24 Nov 2026: the Airport two-bedroom suite was switched off in the dashboard,
+  // the build left it out of the form, and three deploys failed on selectOption('two-bedroom-suite') — DECISIONS.md
+  // 2026-11-24 «The deploys of 23–24 Nov»). When the build already offers it, the row changes nothing.
   const SITE_ROOMS = [
+    { branch: 'airport-road', slug: 'two-bedroom-suite', name_ar: 'جناح بغرفتي نوم وصالة', name_en: 'Two-Bedroom Suite', bookable: true, capacity: 4, extra_beds_max: 1 },
     { branch: 'shafa-road', slug: 'jacuzzi-studio', name_ar: 'استوديو جاكوزي', name_en: 'Jacuzzi Studio', bookable: false, capacity: 2, extra_beds_max: 0 },
     { branch: 'airport-road', slug: 'accessible-room', name_ar: 'غرفة مهيأة لذوي الاحتياجات الخاصة', name_en: 'Accessible Room', bookable: true, capacity: 2, extra_beds_max: 0 },
     { branch: 'airport-road', slug: 'king-room', name_ar: 'غرفة بسرير كينج', name_en: 'King Room', bookable: true, capacity: 2, extra_beds_max: 0 },
