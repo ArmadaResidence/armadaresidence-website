@@ -201,7 +201,8 @@ for (const [role, perms] of ROLES) {
       // ── «الشخصية» ──
       await page.goto(`${BASE}/assistant?tab=persona`, { waitUntil: 'load' });
       await page.locator('[data-hub-persona]').waitFor({ timeout: 30000 });
-      check((await page.locator('[data-tab]').count()) === 5, `${tag}: five tabs`);
+      // S1 (25 Nov 2026): + «السوشيال»
+      check((await page.locator('[data-tab]').count()) === 6 && (await page.locator('[data-tab="social"]').count()) === 1, `${tag}: six tabs («السوشيال» among them)`);
       check((await page.locator('[data-hub-persona] .segmented button, [data-hub-persona] [role="radio"]').count()) >= 5 || (await page.locator('[data-hub-persona]').innerText()).includes('دافئ ومهني'), `${tag}: the five tone steps («دافئ ومهني» among them)`);
       check((await page.locator('[data-hub-persona] input[data-field^="greeting_"]').count()) === 4 && (await page.locator('[data-field="greeting_new_ar"]').inputValue()) === 'مرحبًا بك في {unit_name}.', `${tag}: the four greetings, copy.md §1 by default`);
       check(!(await page.locator('[data-hub-persona]').innerText()).match(/اسم المساعد/), `${tag}: no name field`);
