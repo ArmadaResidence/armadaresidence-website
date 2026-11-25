@@ -317,7 +317,7 @@ begin
     v_out := v_out || jsonb_build_object('kind', r.kind, 'address', r.address);
   end loop;
   insert into public.audit_log (actor_id, actor_label, entity, entity_id, branch, action, old, new, batch_id)
-  values (p_actor, case when p_actor is null then 'meta' end, 'hub_channels', 'social', null, 'update', null, jsonb_build_object('channels', v_out), gen_random_uuid());
+  values (p_actor, coalesce((select st.full_name from public.staff st where st.user_id = p_actor), 'meta'), 'hub_channels', 'social', null, 'update', null, jsonb_build_object('channels', v_out), gen_random_uuid());
   return jsonb_build_object('ok', true, 'channels', v_out);
 end;
 $$;
@@ -405,7 +405,7 @@ begin
   update public.hub_social_identities set display_name = null, username = null where guest_profile_id = g.id and (display_name is not null or username is not null);
   update public.guest_profiles set wa_profile_name = null where id = g.id and wa_profile_name is not null;
   insert into public.audit_log (actor_id, actor_label, entity, entity_id, branch, action, old, new, batch_id)
-  values (auth.uid(), null, 'hub_data_delete', g.id::text, null, 'update', null,
+  values (auth.uid(), coalesce((select st.full_name from public.staff st where st.user_id = auth.uid()), 'system'), 'hub_data_delete', g.id::text, null, 'update', null,
           jsonb_build_object('conversations', cardinality(v_conv), 'messages', v_msgs, 'media', v_media, 'turns', v_turns, 'drafts', v_drafts, 'excerpts', v_excerpts), v_batch);
   update public.hub_data_deletions
      set status = 'done', done_at = now(), done_by = auth.uid(),
@@ -503,7 +503,7 @@ begin
          meta_human_agent = coalesce((p ->> 'human_agent')::boolean, meta_human_agent)
    where id = u.id;
   insert into public.audit_log (actor_id, actor_label, entity, entity_id, branch, action, old, new, batch_id)
-  values (auth.uid(), null, 'hub_units', u.key, null, 'update', v_old,
+  values (auth.uid(), coalesce((select st.full_name from public.staff st where st.user_id = auth.uid()), 'system'), 'hub_units', u.key, null, 'update', v_old,
           (select jsonb_build_object('social_mode', x.social_mode, 'standby_minutes', x.social_standby_minutes, 'human_agent', x.meta_human_agent) from public.hub_units x where x.id = u.id), v_batch);
   return jsonb_build_object('ok', true, 'batch_id', v_batch, 'before', v_old);
 end;
@@ -521,7 +521,7 @@ begin
   if i.id is null or p_on is null then raise exception 'hub_social_identity' using errcode = '22023'; end if;
   update public.hub_social_identities set tester = p_on, tester_set_by = auth.uid(), tester_set_at = now() where id = i.id;
   insert into public.audit_log (actor_id, actor_label, entity, entity_id, branch, action, old, new, batch_id)
-  values (auth.uid(), null, 'hub_social_identities', i.id::text, null, 'update', jsonb_build_object('tester', i.tester), jsonb_build_object('tester', p_on), v_batch);
+  values (auth.uid(), coalesce((select st.full_name from public.staff st where st.user_id = auth.uid()), 'system'), 'hub_social_identities', i.id::text, null, 'update', jsonb_build_object('tester', i.tester), jsonb_build_object('tester', p_on), v_batch);
   return jsonb_build_object('ok', true, 'batch_id', v_batch, 'before', i.tester);
 end;
 $$;
