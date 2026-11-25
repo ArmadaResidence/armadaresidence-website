@@ -108,11 +108,12 @@ select pg_temp._check('C3 an unknown account → unknown_channel; not a tester �
   and not (pg_temp._j('in1') ->> 'may_reply')::boolean);
 
 -- D. the audience
+insert into _ids select 'ident', i.id from public.hub_social_identities i where i.guest_profile_id = pg_temp._id('g1');
 select pg_temp._check('D1 «حسابات التجربة فقط»: a non-tester may not get a reply', not internal.hub_social_may_reply((select c from public.hub_conversations c where c.id = pg_temp._id('c1'))));
 select pg_temp._as('mgr');
-select pg_temp._fails('D2 «حساب تجربة» is the system admin''s', format($$select public.hub_social_tester_set(%L, true)$$, (select i.id from public.hub_social_identities i where i.guest_profile_id = pg_temp._id('g1'))), '42501');
+select pg_temp._fails('D2 «حساب تجربة» is the system admin''s', format($$select public.hub_social_tester_set(%L, true)$$, pg_temp._id('ident')), '42501');
 select pg_temp._as('admin');
-select pg_temp._save('tester', public.hub_social_tester_set((select i.id from public.hub_social_identities i where i.guest_profile_id = pg_temp._id('g1')), true));
+select pg_temp._save('tester', public.hub_social_tester_set(pg_temp._id('ident'), true));
 select pg_temp._root();
 select pg_temp._check('D3 marked a tester → may reply; audited', internal.hub_social_may_reply((select c from public.hub_conversations c where c.id = pg_temp._id('c1')))
   and exists (select 1 from public.audit_log a where a.entity = 'hub_social_identities' and a.batch_id = (pg_temp._j('tester') ->> 'batch_id')::uuid));

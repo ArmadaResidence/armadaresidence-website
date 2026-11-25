@@ -121,11 +121,12 @@ select pg_temp._check('A3 the single-branch editor holds assistant edit on Shafa
   and (select branch = 'shafa-road' from public.staff where user_id = pg_temp._id('mgmtS')));
 
 -- ══ U — the seeded units and channels ══
-select pg_temp._check('U1 four units: airport-road, shafa-road, lobby-cafe, rooftop',
-  (select array_agg(key order by sort) = array['airport-road', 'shafa-road', 'lobby-cafe', 'rooftop'] from public.hub_units where not is_test));
+-- S1 (25 Nov 2026): + «السوشيال» (the brand unit of Instagram and Messenger)
+select pg_temp._check('U1 five units: airport-road, shafa-road, lobby-cafe, rooftop, social',
+  (select array_agg(key order by sort) = array['airport-road', 'shafa-road', 'lobby-cafe', 'rooftop', 'social'] from public.hub_units where not is_test));
 select pg_temp._check('U1 every assistant_mode is off', (select bool_and(assistant_mode = 'off') from public.hub_units));
-select pg_temp._check('U1 the two branch units active, the two dining units hidden',
-  (select bool_and(status = case when kind = 'branch' then 'active' else 'hidden' end) from public.hub_units)
+select pg_temp._check('U1 the two branch units and «السوشيال» active, the two dining units hidden',
+  (select bool_and(status = case when kind in ('branch', 'brand') then 'active' else 'hidden' end) from public.hub_units)
   and (select count(*) = 2 from public.hub_units where kind = 'dining' and status = 'hidden'));
 select pg_temp._check('U1 the lobby café unit points at the lobby venue, the rooftop unit at the rooftop venue, both at Airport Road',
   (select d.location = 'lobby' from public.hub_units u join public.dining_venues d on d.id = u.dining_venue_id where u.key = 'lobby-cafe')
@@ -277,7 +278,7 @@ select pg_temp._check('T6 a Shafa Road editor sees the Shafa Road unit only in i
   (select array_agg(key) = array['shafa-road'] from public.hub_units) and (select jsonb_array_length(public.hub_assistant_overview() -> 'units') = 1));
 select pg_temp._check('T6 … and no morning-summary recipients (they are global)', (select public.hub_assistant_overview() -> 'recipients' = 'null'::jsonb));
 select pg_temp._as('mgmt');
-select pg_temp._check('T7 management (assistant view) sees the four units and the switches', (select jsonb_array_length(public.hub_assistant_overview() -> 'units') = 4
+select pg_temp._check('T7 management (assistant view) sees the five units (S1: «السوشيال») and the switches', (select jsonb_array_length(public.hub_assistant_overview() -> 'units') = 5
   and (public.hub_assistant_overview() -> 'can_edit') = 'false'::jsonb and (public.hub_assistant_overview() -> 'settings') ? 'hub_assistant_on'));
 select pg_temp._fails('T7 management cannot change a team', format('select public.hub_unit_members_set(%L, %L::uuid[])', pg_temp._unit('shafa-road'), array[pg_temp._id('mgmt')]), '42501');
 select pg_temp._fails('T8 no direct write for authenticated: units', $$update public.hub_units set name_ar = 'x' where key = 'shafa-road'$$, '42501');
