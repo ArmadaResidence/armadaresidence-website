@@ -59,7 +59,8 @@ export function retrieve(units: RetrievalUnit[], topics: RetrievalTopic[], cards
   const u = units.find((x) => x.key === unit);
   if (!u) throw new Error(`unknown unit ${unit}`);
   if (u.knowledge_hidden || !turn.length) return [];
-  const keys = branchUnits(units, u.branch);
+  // S2d (26 Nov 2026): a unit with no branch («السوشيال») is one of its own units
+  const keys = [...new Set([...branchUnits(units, u.branch), u.key])];
   const named = branch && branch !== 'both' && branch !== u.branch ? branchUnits(units, branch) : [];
   const focus = named.length ? named : keys;
   const hidden = units.filter((x) => x.knowledge_hidden).map((x) => x.key);

@@ -412,6 +412,13 @@ const check = (ok, what) => {
     && !en.branchDepends({ cards: [k.cards[0], k.cards[2]] }), 'H28 «السوشيال»: a card of both branches naming the guest word answers for both (no branch question); a general question still asks; a shared card is no branch own card');
 }
 
+{
+  const s2d = await import('./hub-s2d-migration.mjs');
+  const sql = s2d.migration();
+  check(read(s2d.OUT_PATH) === sql && (sql.match(/or x\.id = u\.id\);/g) ?? []).length === 2 && !/update public\.|delete from/.test(sql),
+    'H29 S2d: both knowledge reads count «السوشيال» among its own units (the migration = its generator; no UPDATE or DELETE)');
+}
+
 if (fails.length) {
   console.error(`hub-social-check: ${fails.length} of ${n} failed`);
   for (const f of fails) console.error('  ✗', f);

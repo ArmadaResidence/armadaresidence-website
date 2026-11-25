@@ -167,5 +167,10 @@ select pg_temp._check('F1 the bathroom amenities card: published, both branches 
      from public.hub_knowledge_cards where text_ar like '%شامبو%'));
 select pg_temp._check('F2 its two lab items on «السوشيال»', (select count(*) = 2 from public.hub_test_items where key in ('s2-01', 's2-02') and unit_key = 'social'));
 
+-- S2d (migration 20261126400000): «السوشيال» counts itself among its units — a card tagged with it ranks first
+select pg_temp._save('kn', public.hub_knowledge_for('social', '{room_amenities}', 'ar'));
+select pg_temp._check('F3 «السوشيال»: the bathroom amenities card is read first for «تجهيزات الغرف»',
+  pg_temp._j('kn') #>> '{cards,0,key}' = 'k-room-bath-amenities', pg_temp._j('kn')::text);
+
 select n, test, ok, detail from _r order by n;
 rollback;
