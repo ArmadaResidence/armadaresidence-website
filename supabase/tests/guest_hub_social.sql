@@ -174,9 +174,10 @@ select pg_temp._check('G1 the conversation''s branch and the waiting question (s
 insert into _ids select 'turn', gen_random_uuid();
 insert into public.hub_turns (id, conversation_id, unit_id, inbound_message_ids, first_inbound_id, kind, due_at, is_test)
 select pg_temp._id('turn'), pg_temp._id('c1'), pg_temp._id('unit'), array[(pg_temp._j('in2') ->> 'message_id')::uuid], (pg_temp._j('in2') ->> 'message_id')::uuid, 'reply', now() - interval '1 second', false;
-update public.settings set value = 'true' where key = 'hub_assistant_on';
--- the gates and the system admin are proved elsewhere (guest_hub_assistant.sql); here only the claim
+-- the gates and the system admin are proved elsewhere (guest_hub_assistant.sql); here only the claim (rolled back)
+alter table public.settings disable trigger settings_check;
 alter table public.hub_units disable trigger hub_units_mode_guard;
+update public.settings set value = 'true' where key = 'hub_assistant_on';
 update public.settings set value = '200' where key = 'hub_budget_monthly_usd' and value = 'null'::jsonb;
 update public.settings set value = '20' where key = 'hub_budget_daily_usd' and value = 'null'::jsonb;
 update public.hub_units set assistant_mode = 'licensed' where key = 'social';
