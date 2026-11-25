@@ -245,6 +245,10 @@ const check = (ok, what) => {
   check(/coalesce\(u\.branch_slug, c\.branch_slug, 'airport-road'\)/.test(sql), 'E34 a social chat booking request alerts a branch (it alerted nobody)');
   const ha = read('supabase/functions/hub-agent/index.ts');
   check(/early && claim\.channel\?\.provider !== 'meta' \? typing\(lastIn\)/.test(ha), 'E35 no YCloud typing call for a Meta channel (the 404s of 21:41)');
+  const en = read('supabase/functions/_shared/hub/engine.ts');
+  const add = en.slice(en.indexOf("case 'handoff_add': {"), en.indexOf("case 'partner_enquiry': {"));
+  check(/else if \(!ackDone && !noticeOpen\) push\(fixed\(/.test(add) && add.indexOf('!noticeOpen') < add.indexOf('waitingLine()'),
+    'E36 an addition to a hand-off whose notice never went sends the notice (the silent «شامبو» of 21:55)');
 }
 
 // ═══ F. the daily report's {{2}} ═══

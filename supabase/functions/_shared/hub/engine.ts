@@ -1036,6 +1036,9 @@ export async function runTurn(claim: Json, deps: Deps): Promise<Outcome> {
           // H10 (Ahmed, 18 Nov 2026 — c14aece0, bd27baf4): the notice went once; no acknowledgement each time — at most one
           // line every 30 minutes, the staff on shift alerted again
           if (!ackDone && a.note.slots?._routed) push(fixed('multi_room', L), { handoff: true });
+          // S1c (25 Nov 2026 — an Instagram test conversation that began while the unit was off): an episode whose notice
+          // never went (it reached the team without one) gets the notice now, once — never silence
+          else if (!ackDone && !noticeOpen) push(fixed(a.reason === 'no_source' ? 'no_source' : a.reason === 'complaint' ? 'complaint' : 'handoff', L), { notice: true, handoff: true });
           else if (!ackDone) waitingLine();
           note = `إضافة إلى التحويل — ${handoffNote(a.note, lastAction)}`;
           if (a.reason === 'complaint') out.complaint = true;
