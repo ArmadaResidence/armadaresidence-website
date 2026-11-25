@@ -207,6 +207,19 @@ const check = (ok, what) => {
   check(st.title_ar === 'طلب حذف البيانات' && st.title_en === 'Data deletion request' && st.ways_ar.length === 2 && st.ways_en[0] === 'Send «Delete my data» in the same conversation.', 'E21 the page copy = Ahmed\'s');
 }
 
+// ═══ E2. S1b — «السوشيال» by its own lab and licences ═══
+{
+  const s1b = await import('./hub-s1b-migration.mjs');
+  const sql = s1b.migration();
+  check(read(s1b.OUT_PATH) === sql, 'E22 the S1b migration = its generator');
+  check(!/kind = 'brand' then coalesce\(\(select bool_and/.test(sql) && !/most restrictive of the active branch units/.test(sql.split('-- S1b: every unit by its OWN licences')[1] ?? 'x'),
+    'E23 no brand special case left in the lab gate or the claim\'s licences');
+  check(!/insert into public\.hub_licences|update public\.hub_licences|assistant_mode\s*=/.test(sql), 'E24 S1b writes no licence and no mode');
+  const items = s1b.socialItems();
+  check(items.length === 8 && items.every((i) => i.unit === 'social' && i.expect?.action === 'conversation'), 'E25 the eight social engine conversations become lab items');
+  check(/'kind', ch\.kind, 'provider', ch\.provider/.test(sql), 'E26 the lab context carries the channel\'s kind and provider');
+}
+
 // ═══ F. the daily report's {{2}} ═══
 {
   const { conversationsText } = await import('../supabase/functions/_shared/hub/staff.ts');

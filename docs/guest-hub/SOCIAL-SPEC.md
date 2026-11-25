@@ -79,8 +79,10 @@ value for the webhook's GET challenge). `META_APP_ID` is optional (the public id
   accounts marked «حساب تجربة»; any other account's message goes to the team), `live` «الكل», `standby` «الكل مع وضع
   الاستعداد» (waits `social_standby_minutes` for a staff reply first; on shift = either branch's slots, or the
   conversation's branch once known).
-- **Licences:** the brand unit has none of its own — each topic takes the most restrictive of the active branch units'.
-  **Test lab gate:** both branch units' latest full runs.
+- **Licences (S1b, 25 Nov 2026):** «السوشيال» has its OWN licences in «التراخيص» (seeded «بموافقة الفريق», always-handoff
+  topics «للفريق دائمًا»); the system admin switches each on. **Test lab gate:** its OWN latest full run — the social
+  bank's engine conversations (`tests/hub-bank/conversations-social.jsonl`, unit `social`) — with no failure but a known gap.
+  (S1 first derived both from the branch units; Ahmed's reading of the gate on 25 Nov made them the unit's own.)
 - **Identity:** `hub_social_identities` (channel × PSID / IGSID → a guest profile with no phone; display name / username
   when Meta gives them). No phone unless the guest gives one.
 - **The branch:** unknown by default; asked («في أي فرع تقصد: طريق المطار أم طريق الشفا؟», the two branch names as quick
@@ -90,6 +92,14 @@ value for the webhook's GET challenge). `META_APP_ID` is optional (the public id
   the staff alert goes to Airport Road [مقترح — بانتظار اعتماد أحمد].
 - **Booking on Instagram / Messenger:** as on WhatsApp, then the mobile number before the summary (copy.md §4.6, T11c);
   the reservation carries it.
+
+## 5b. App Review list (for when the app goes Live — Ahmed's decision)
+
+- **Human Agent** (feature, a screencast per surface): staff replies up to 7 days after the guest's last message.
+- **Business Asset User Profile Access** (feature, Advanced Access): the Messenger user's name / profile picture through
+  the User Profile API. Seen 25 Nov 2026: in Development mode the Instagram tester's name came back, the Messenger
+  account's did not («حساب بلا اسم») — Meta returns an empty profile without this access. Nothing else depends on it.
+- Advanced Access to the seven permissions of §2 (any Meta user, not only app roles).
 
 ## 6. Data deletion (S6)
 

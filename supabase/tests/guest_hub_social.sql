@@ -184,17 +184,21 @@ update public.hub_units set assistant_mode = 'licensed' where key = 'social';
 select pg_temp._service();
 select pg_temp._save('claim', public.hub_turn_claim(pg_temp._id('turn')));
 select pg_temp._root();
-select pg_temp._check('G2 the claim: unit branch = the conversation''s (shafa-road), channel kind instagram, licences from the branch units',
+-- S1b (migration 20261125200000): «السوشيال» by its OWN licences and its OWN lab
+select pg_temp._check('G2 the claim: unit branch = the conversation''s (shafa-road), channel kind instagram, the unit''s own licences',
   (pg_temp._j('claim') ->> 'claimed')::boolean
   and (pg_temp._j('claim') -> 'unit' ->> 'branch' = 'shafa-road' and pg_temp._j('claim') -> 'channel' ->> 'kind' = 'instagram'
       and pg_temp._j('claim') -> 'conversation' ->> 'branch' = 'shafa-road'
       and (pg_temp._j('claim') -> 'licences' ->> 'price') is not distinct from
-          (select case when bool_or(l.mode = 'blocked') then 'blocked' when bool_or(l.mode = 'shadow') then 'shadow' else 'auto' end
-             from public.hub_licences l join public.hub_units b on b.id = l.unit_id where b.kind = 'branch' and b.status = 'active' and l.topic_key = 'price')),
+          (select l.mode from public.hub_licences l where l.unit_id = pg_temp._id('unit') and l.topic_key = 'price')),
   left(pg_temp._j('claim')::text, 400));
-select pg_temp._check('G3 the test lab gate of the brand unit is the two branch units''',
+select pg_temp._check('G3 the test lab gate of «السوشيال» is its own latest full run; its questions are lab items',
   internal.hub_test_lab_ready((select u from public.hub_units u where u.key = 'social'))
-  = coalesce((select bool_and(internal.hub_test_lab_ready(b)) from public.hub_units b where b.kind = 'branch' and b.status = 'active'), false));
+    = ((internal.hub_unit_lab((select u from public.hub_units u where u.key = 'social')) ->> 'run_id') is not null
+       and jsonb_array_length(coalesce(internal.hub_unit_lab((select u from public.hub_units u where u.key = 'social')) -> 'blocking', '[]'::jsonb)) = 0)
+  and (select count(*) = 8 from public.hub_test_items i where i.unit_key = 'social' and 'social' = any (i.tags)));
+select pg_temp._check('G4 the lab context of «السوشيال»: the channel''s kind and provider',
+  public.hub_eval_context('social') -> 'channel' ->> 'provider' = 'meta');
 
 -- H. the hand-off's branch
 update public.hub_turns set status = 'done' where id = pg_temp._id('turn');
