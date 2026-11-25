@@ -172,6 +172,15 @@ const n = (x: unknown) => (Number.isFinite(Number(x)) ? Math.max(0, Math.round(N
 /** «المطار X · الشفا Y» */
 export const perBranch = (data: Json, key: string, fmt: (v: unknown) => string = (v) => String(n(v))): string =>
   BR.map((b) => `${SHORT[b]} ${fmt(data?.branches?.[b]?.[key])}`).join(' · ');
+/** S1 (Ahmed, 25 Nov 2026): {{2}} «المحادثات» per branch, and — once Instagram or Messenger has a conversation that day — the
+ *  split by channel inside the same variable (the approved template is never edited): «المطار 20 · الشفا 5 (واتساب 25،
+ *  انستجرام 6، ماسنجر 3)» */
+export function conversationsText(data: Json): string {
+  const base = perBranch(data, 'conversations');
+  const ch = data?.channels;
+  if (!ch || !(n(ch.instagram) || n(ch.messenger))) return base;
+  return `${base} (واتساب ${n(ch.whatsapp)}، انستجرام ${n(ch.instagram)}، ماسنجر ${n(ch.messenger)})`;
+}
 /** H10 (D1, Ahmed 18 Nov 2026): {{6}} «حجوزات من المحادثة» per branch with what became of them, as they stand —
  *  «المطار 4 (3 مؤكدة، 1 ملغاة) · الشفا 0»; a request still waiting adds «N بانتظار التأكيد» */
 export function bookingsText(data: Json): string {
@@ -228,7 +237,7 @@ export function faultsText(data: Json): string {
 export function reportVars(day: string, data: Json): string[] {
   return [
     dayText(day),
-    perBranch(data, 'conversations'),
+    conversationsText(data),
     perBranch(data, 'assistant'),
     perBranch(data, 'handed'),
     perBranch(data, 'reply_avg_min', minutesText),

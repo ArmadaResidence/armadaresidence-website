@@ -25,6 +25,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { LabPanel, LicencesPanel, PersonaPanel, SimulatorPanel } from './AssistantLab';
+import { SocialPanel } from './AssistantSocial';
 import { phoneAutoList, phoneAutoRemove, type PhoneAutoRow } from '../lib/lab';
 import type { Persona } from '../lib/hub';
 import * as api from '../lib/api';
@@ -40,13 +41,15 @@ import { sendRefusalText } from '../lib/team';
 import { sendLimitStatus, type LimitStatus } from '../lib/hub';
 
 type Row = { id?: string; email: string; active: boolean; filter_confirmed: boolean };
-type Tab = 'settings' | 'persona' | 'licences' | 'lab' | 'sim';
+type Tab = 'settings' | 'persona' | 'licences' | 'lab' | 'sim' | 'social';
 const TABS: { key: Tab; label: string }[] = [
   { key: 'settings', label: 'الإعدادات' },
   { key: 'persona', label: 'الشخصية' },
   { key: 'licences', label: 'التراخيص' },
   { key: 'lab', label: 'مختبر الاختبار' },
   { key: 'sim', label: 'المحاكي' },
+  // S1 (25 Nov 2026): Instagram and Messenger, the test accounts, the data deletion requests
+  { key: 'social', label: 'السوشيال' },
 ];
 
 export default function Assistant() {
@@ -274,6 +277,7 @@ export default function Assistant() {
       </div>
       {tab === 'persona' && <PersonaPanel o={o} edit={edit} onChanged={load} onEditing={onEditing} />}
       {tab === 'licences' && <LicencesPanel o={o} />}
+      {tab === 'social' && <SocialPanel />}
       {tab === 'lab' && <LabPanel o={o} edit={edit} onChanged={load} />}
       {tab === 'sim' && (edit ? <SimulatorPanel o={o} editingPersona={editingPersona} /> : <p className="card p-4 text-sm text-ink-muted" data-sim-view-only>المحاكي لمن يملك صلاحية التعديل في «إعدادات المساعد».</p>)}
       {tab === 'settings' && (<>

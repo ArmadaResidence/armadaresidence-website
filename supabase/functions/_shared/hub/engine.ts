@@ -24,6 +24,7 @@ import {
 } from './booking.ts';
 import { confirmedUpcoming, guestBookings, nearSame, reasonPhrase, recentCancel, roomWords, sentLines, turnFlags } from './context.ts';
 import { makeRef } from '../ref.ts';
+import { phoneFromText } from './meta.ts';
 import {
   SENSITIVE, TRANSCRIBE_MODEL, TRANSCRIBE_PROMPT, VOICE_LANGUAGES, VOICE_MAX_SECONDS, audioSeconds, imageLine, mediaGate, mediaLine, parseVision, problemLineOk,
   transcriptVerdict, visionSystem, visionUser, type MediaResult, type MediaRoute, type TranscribeResult, type Vision,
@@ -124,6 +125,10 @@ export interface Finish {
   realert?: boolean;
   /** H11: a booking request of this phone still waiting — the staff on shift alerted again (its ref) */
   realert_request?: string | null;
+  /** S1: «السوشيال» — the branch the guest named (kept on the conversation), the question waiting for it, and that it was answered */
+  conversation_branch?: 'airport-road' | 'shafa-road' | null;
+  branch_pending?: { topics: string[]; intents: string[] } | null;
+  branch_pending_clear?: boolean;
 }
 export interface Outcome {
   finish: Finish;
@@ -150,7 +155,22 @@ const NOTICE_KEYS = new Set(['third_language', 'departure_extend']);
 export function unitName(c: Json, unit: Json, L: Lang): string {
   if (unit.kind === 'dining' && unit.venue) return String(L === 'en' ? unit.venue.name_en : unit.venue.name_ar);
   const b = (c.branches as Json[]).find((x) => x.slug === unit.branch);
+  // S1: «السوشيال» speaks as the brand until the guest names a branch
+  if (unit.kind === 'brand' && !b) return L === 'en' ? 'Armada Residence' : 'أرمادا ريزيدنس';
   return String(b ? (L === 'en' ? b.name_en : b.name_ar) : (L === 'en' ? unit.name_en : unit.name_ar));
+}
+/** S1: the facts of these cards differ by branch — both branches' own cards came back (a shared card answers for both) */
+export function branchDepends(k: Json): boolean {
+  const bs = new Set(((k?.cards ?? []) as Json[]).map((c) => c.branch).filter((b) => b === 'airport-road' || b === 'shafa-road'));
+  return bs.size >= 2;
+}
+/** S1: «في أي فرع تقصد…؟»'s quick replies — the branches' short names (after «أرمادا ريزيدنس –») */
+export function branchButtons(c: Json, L: Lang): { id: string; title: string }[] {
+  return ['airport-road', 'shafa-road'].map((slug) => {
+    const b = (c.branches as Json[]).find((x) => x.slug === slug);
+    const name = String(b ? (L === 'en' ? b.name_en : b.name_ar) : slug);
+    return { id: `hubb:${slug}`, title: name.split(/\s[–-]\s/).pop()!.trim().slice(0, 20) };
+  });
 }
 const branchName = (c: Json, slug: string, L: Lang) => {
   const b = (c.branches as Json[]).find((x) => x.slug === slug);
@@ -278,8 +298,9 @@ export async function runTurn(claim: Json, deps: Deps): Promise<Outcome> {
   // ── what kind of turn: media, a /menu/ cart message, our own button, or text ──
   const kinds = msgs.filter((m) => !prep.resolved.has(m.id)).map((m) => String(m.kind));
   // our own button by its id — or the guest typing a button's title (H6 pass 5: the same result)
-  const buttonId = msgs.map((m) => m.payload?.button_id).find((x) => typeof x === 'string' && x.startsWith('hub')) ??
-    (texts.length === 1 ? buttonForText(texts[0], unit.kind) : null);
+  // S1: «في أي فرع تقصد…؟»'s quick replies (hubb:<branch>) are read as the branch's name typed (the understanding)
+  const buttonId = msgs.map((m) => m.payload?.button_id).find((x) => typeof x === 'string' && x.startsWith('hub') && !x.startsWith('hubb:')) ??
+    (texts.length === 1 ? buttonForText(texts[0], unit.kind === 'dining' ? 'dining' : 'branch') : null);
   // H8: a booking button (a room card's «احجز», «غرف أخرى», the summary's three) by its id — or a summary button's title
   // typed while the summary waits for it
   const typed = !buttonId && conv.state === 'awaiting_confirmation' && claim.draft?.kind === 'stay' && texts.length === 1 ? typedSummaryButton(texts[0]) : null;
@@ -379,6 +400,8 @@ export async function runTurn(claim: Json, deps: Deps): Promise<Outcome> {
   const phase: 'waiting' | 'resume' | null = conv.human_phase === 'waiting' || conv.human_phase === 'resume' ? conv.human_phase : null;
   const ctx: Context = {
     unit_kind: unit.kind, unit_branch: unit.branch, skills: usableSkills(unit.skills ?? []), show_prices: showPrices,
+    // S1: a booking on Instagram / Messenger asks the mobile number before the summary
+    needs_phone: claim.channel?.provider === 'meta',
     instant_booking: set.instant_booking !== false,
     window_open: !!conv.window_expires_at && Date.parse(conv.window_expires_at) > Date.now(), failed_understandings: Number(conv.failed_understandings ?? 0),
     failed_max: Number(set.failed_max ?? 2), out_of_scope: Number(conv.out_of_scope ?? 0), out_of_scope_max: 3, group_min_rooms: Number(set.group_min_rooms ?? 5),
@@ -402,6 +425,23 @@ export async function runTurn(claim: Json, deps: Deps): Promise<Outcome> {
     // H11 (Ahmed, 24 Nov 2026 — 8fc92754): a booking request of this phone still with reception (not ended)
     pending_request: (((claim.bookings ?? []) as Json[]).find((b) => b.status === 'request' && String(b.check_out ?? '') >= String(claim.today)) ?? null)?.ref ?? null,
   };
+  // S1 (25 Nov 2026): «السوشيال» — the branch the guest named is kept on the conversation; a question that waited for it
+  // («في أي فرع تقصد…؟») is answered now when this message only names the branch
+  const metaChannel = claim.channel?.provider === 'meta';
+  if (unit.kind === 'brand' && u && (u.branch === 'airport-road' || u.branch === 'shafa-road')) {
+    finish.conversation_branch = u.branch;
+    const pend = conv.branch_pending;
+    if (pend && Array.isArray(pend.topics) && pend.topics.length && !u.topics.length) {
+      u = { ...u, topics: pend.topics, intents: (Array.isArray(pend.intents) && pend.intents.length ? pend.intents : u.intents) as Understanding['intents'],
+            kind: u.kind === 'small_talk' || u.kind === 'unclear' ? 'hotel_question' : u.kind };
+    }
+    if (pend) finish.branch_pending_clear = true;
+  }
+  // S1: on Instagram / Messenger no phone is known — the number the guest writes for the booking (copy.md §4.6)
+  if (metaChannel && u && texts.length) {
+    const ph = phoneFromText(texts.join(' '));
+    if (ph) u = { ...u, phone: ph } as Understanding;
+  }
   const draft: Draft | null = claim.draft ? { id: claim.draft.id, kind: claim.draft.kind, version: claim.draft.version, fields: claim.draft.fields ?? {}, quote: claim.draft.quote } : null;
   const ev: Event = tapped
     ? { type: 'tap', button: tapped.button, draft_id: tapped.draft_id, version: tapped.version, ...(tapped.room ? { room: tapped.room } : {}), ...(tapped.page !== undefined ? { page: tapped.page } : {}) }
@@ -660,7 +700,16 @@ export async function runTurn(claim: Json, deps: Deps): Promise<Outcome> {
           break;
         }
         case 'answer': {
-          const k = await deps.knowledge(unit.key, a.topics.length ? a.topics : [], L, a.branch && a.branch !== 'both' ? a.branch : null).catch(() => ({ cards: [], faq: [] }));
+          const k = await deps.knowledge(unit.key, a.topics.length ? a.topics : [], L, a.branch && a.branch !== 'both' ? a.branch : unit.branch ?? null).catch(() => ({ cards: [], faq: [] }));
+          // S1 (25 Nov 2026): «السوشيال» with no branch known — an answer whose facts differ by branch asks «في أي فرع تقصد…؟»
+          // first, with the two branches as quick replies; the question waits on the conversation (topics and intents only)
+          if (unit.kind === 'brand' && !unit.branch && !(a.branch === 'airport-road' || a.branch === 'shafa-road') && !a.mixed && branchDepends(k)) {
+            push(fixed('social_which_branch', L), { kind: 'interactive', payload: { buttons: branchButtons(deps.content, L) } });
+            finish.branch_pending = { topics: a.topics.slice(0, 8), intents: a.intents.slice(0, 6) };
+            answered = true;
+            lastAction = 'سؤال عن الفرع';
+            break;
+          }
           const wantOffers = a.intents.includes('offer_question') || a.topics.includes('offers');
           let offers = wantOffers ? offersFor(await offersP, unit.branch, L, claim.today) : null;
           // H10 (83b51d0b): a discount question — the individuals' offers that apply, else «السعر المعروض هو السعر الحالي
@@ -766,6 +815,12 @@ export async function runTurn(claim: Json, deps: Deps): Promise<Outcome> {
           if (skipAsk) {
             skipAsk = false;
             lastAction = 'سؤال عن تفاصيل الإقامة';
+            break;
+          }
+          // S1: the mobile number on Instagram / Messenger — a fixed question (copy.md §4.6), again when it could not be read
+          if (a.slots.length === 1 && a.slots[0] === 'phone') {
+            push(fixed(texts.join(' ').replace(/\D/g, '').length >= 7 ? 'phone_unclear' : 'ask_phone', L));
+            lastAction = 'سؤال عن رقم الجوال';
             break;
           }
           const c = await compose({ ...emptyPayload(), quote: stayKnown(dec) }, 'ask', a.slots);

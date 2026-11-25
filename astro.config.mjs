@@ -29,6 +29,8 @@ const availabilityOverride = (() => {
 const noindexPaths = [
   '/booking/success/',
   '/club/unsubscribe/',
+  // the data deletion request page (25 Nov 2026): linked only from the Meta app, never a sitemap entry
+  '/data-deletion/',
   '/404/',
   // the old Horizons paths rendered by src/pages/[legacy].astro are redirect pages, never sitemap entries (4 Nov 2026)
   ...redirects.redirects.filter((r) => r.via === 'page').map((r) => `${r.from}/`),

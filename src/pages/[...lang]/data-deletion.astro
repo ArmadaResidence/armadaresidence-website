@@ -1,0 +1,39 @@
+---
+/**
+ * «طلب حذف البيانات» / "Data deletion request" (Ahmed, 25 Nov 2026 — DECISIONS.md 2026-11-25 «Guest Hub S1»): the page the
+ * Meta app «Armada Guest Hub» names as its Data Deletion Instructions URL. Not in the menu or the footer, linked from no page
+ * of the site, noindex and out of the sitemap (astro.config.mjs → noindexPaths). The policies page is unchanged.
+ * Copy: site-texts.json → data_deletion; the address: contact.json → emails.info.
+ */
+import Base from '@layouts/Base.astro';
+import { langPaths } from '@lib/paths';
+import { contact, pageSeo, siteTexts, type Locale } from '@lib/content';
+
+export const getStaticPaths = langPaths;
+
+interface Props {
+  locale: Locale;
+}
+const { locale } = Astro.props;
+const t = siteTexts.data_deletion;
+const ar = locale === 'ar';
+const s = pageSeo(locale, 'data-deletion');
+const email = contact.emails.info;
+const ways: string[] = ar ? t.ways_ar : t.ways_en;
+---
+
+<Base locale={locale} path="/data-deletion/" title={s.title} description={s.description} noindex>
+  <section class="mx-auto max-w-2xl px-4 pt-10 pb-28 sm:pb-16">
+    <h1 class="text-3xl font-bold text-midnight">{ar ? t.title_ar : t.title_en}</h1>
+    <div class="mt-6 bg-white border border-line rounded-card p-6 text-midnight leading-relaxed">
+      <p>{ar ? t.intro_ar : t.intro_en}</p>
+      <ul class="mt-4 space-y-2 list-disc ps-6">
+        {ways.map((w) => <li>{w}</li>)}
+      </ul>
+      <p class="mt-4">{ar ? t.after_ar : t.after_en}</p>
+      <p class="mt-6">
+        <a href={`mailto:${email}`} class="link-bronze font-semibold underline underline-offset-2" dir="ltr" data-deletion-email>{email}</a>
+      </p>
+    </div>
+  </section>
+</Base>

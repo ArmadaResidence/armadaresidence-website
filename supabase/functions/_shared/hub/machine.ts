@@ -152,7 +152,10 @@ export interface GuestBooking {
 }
 
 export interface Context {
-  unit_kind: 'branch' | 'dining';
+  /** S1: 'brand' = «السوشيال» (both branches; the conversation's branch once named, else unit_branch is null) */
+  unit_kind: 'branch' | 'dining' | 'brand';
+  /** S1: Instagram / Messenger — no phone is known, the booking asks the mobile number before the summary */
+  needs_phone?: boolean;
   /** H11: our last message was the unsupported-type question and the guest sent nothing readable since */
   prev_unsupported?: boolean;
   /** H11: the guest's booking request still waiting for reception (status request, not ended): its ref */
@@ -298,9 +301,13 @@ export function missingSlots(fields: Record<string, unknown>): string[] {
   return m;
 }
 
-function mergeFields(f: Record<string, unknown>, u: Understanding, unitBranch: string, kind: 'branch' | 'dining'): Record<string, unknown> {
+function mergeFields(f: Record<string, unknown>, u: Understanding, unitBranch: string | null, kind: 'branch' | 'dining' | 'brand'): Record<string, unknown> {
   const out: Record<string, unknown> = { ...f };
-  if (!out.branch) out.branch = kind === 'branch' ? unitBranch : u.branch !== 'both' ? u.branch : null;
+  // S1: a brand unit takes the branch the guest names, else the conversation's (unitBranch), else asks
+  if (!out.branch) out.branch = kind === 'branch' ? unitBranch : u.branch && u.branch !== 'both' ? u.branch : kind === 'brand' ? unitBranch || null : null;
+  // S1: the mobile number the guest wrote on Instagram / Messenger (engine: phoneFromText)
+  const ph = (u as unknown as { phone?: string | null }).phone;
+  if (typeof ph === 'string' && /^\+[1-9][0-9]{7,14}$/.test(ph)) out.phone = ph;
   for (const k of ['check_in', 'check_out', 'nights', 'room_type', 'breakfast', 'adults', 'children', 'child_ages', 'extra_beds', 'guest_name', 'rooms_count',
                    'organisation', 'layout', 'coffee_break'] as const) {
     if (u[k] !== null && u[k] !== undefined) out[k] = u[k];
@@ -524,7 +531,7 @@ function decideCore(input: DecideInput): Decision {
   if (ev.kind === 'sticker') {
     if (!ctx.first_reply) return out({ next: state === 'new' ? 'inquiry' : state, actions: [{ type: 'noop' }], reason: 'sticker' });
     t.push('T4');
-    return out({ next: state === 'new' ? 'inquiry' : state, actions: [{ type: 'fixed', key: 'how_help', buttons: ctx.unit_kind === 'branch' ? 'quick' : null }], reason: 'sticker', failed: 'reset' });
+    return out({ next: state === 'new' ? 'inquiry' : state, actions: [{ type: 'fixed', key: 'how_help', buttons: ctx.unit_kind !== 'dining' ? 'quick' : null }], reason: 'sticker', failed: 'reset' });
   }
   if (ev.kind === 'media') {
     t.push(state === 'new' ? 'T2' : 'T21');
@@ -685,7 +692,7 @@ function decideCore(input: DecideInput): Decision {
       return out({ next: state === 'new' ? 'inquiry' : state, actions: [{ type: 'fixed', key: 'thanks_after_cancel' }], failed: 'reset' });
     }
     const greet = u.intents.includes('greeting') && !u.intents.includes('thanks_or_closing') && !u.ack_only;
-    return out({ next: state === 'new' ? 'inquiry' : state, actions: [{ type: 'chat', mode: 'chat', buttons: greet && ctx.unit_kind === 'branch' && !['collecting', 'quoted'].includes(state) ? 'quick' : null }], failed: 'reset' });
+    return out({ next: state === 'new' ? 'inquiry' : state, actions: [{ type: 'chat', mode: 'chat', buttons: greet && ctx.unit_kind !== 'dining' && !['collecting', 'quoted'].includes(state) ? 'quick' : null }], failed: 'reset' });
   }
   if (kind === 'out_of_scope') {
     // a short polite redirect — never a hand-off, never «لم أعرف الإجابة», whatever the count
@@ -779,7 +786,7 @@ function decideCore(input: DecideInput): Decision {
   // a greeting or thanks the understanding did not class as small talk: the same natural reply (never «لم أعرف الإجابة»)
   if (u.intents.every((i) => i === 'thanks_or_closing' || i === 'greeting')) {
     t.push('T4');
-    return out({ next: state === 'new' ? 'inquiry' : state, actions: [{ type: 'chat', mode: 'chat', buttons: u.intents.every((i) => i === 'greeting') && ctx.unit_kind === 'branch' ? 'quick' : null }], failed: 'reset' });
+    return out({ next: state === 'new' ? 'inquiry' : state, actions: [{ type: 'chat', mode: 'chat', buttons: u.intents.every((i) => i === 'greeting') && ctx.unit_kind !== 'dining' ? 'quick' : null }], failed: 'reset' });
   }
 
   // a question with a source (T5 / T6 / T18): compose answers from the payload; no source → T21 (answer_result)
@@ -969,9 +976,15 @@ function groupOrHall(input: DecideInput, state: State, t: string[], out: Out, u:
 
 /** H8: what a stay still needs before the quote, in the booking form's order — the branch (a dining number), the dates
  *  and the guests (asked together), breakfast (required, no default), the children's ages only with breakfast */
-export function bookingMissing(f: Record<string, unknown>, unitKind: 'branch' | 'dining' = 'branch'): string[] {
+/** S1: what the summary still needs about the guest — the full name, then (Instagram / Messenger) the mobile number */
+export function contactMissing(f: Record<string, unknown>, ctx: { needs_phone?: boolean }): 'guest_name' | 'phone' | null {
+  if (!String(f.guest_name ?? '').trim()) return 'guest_name';
+  if (ctx.needs_phone && !/^\+[1-9][0-9]{7,14}$/.test(String(f.phone ?? ''))) return 'phone';
+  return null;
+}
+export function bookingMissing(f: Record<string, unknown>, unitKind: 'branch' | 'dining' | 'brand' = 'branch'): string[] {
   const m: string[] = [];
-  if (!f.branch && unitKind === 'dining') m.push('branch');
+  if (!f.branch && unitKind !== 'branch') m.push('branch');
   // H9 fix 3: the arrival known, only the departure (or the nights) is asked
   if (!f.check_in) m.push('dates');
   else if (!f.check_out) m.push('departure');
@@ -1056,15 +1069,16 @@ function stayIntent(input: DecideInput, state: State, t: string[], out: Out, u: 
   if (same && picked) {
     // H11 (882141b2 — the summary three times): the summary already sent and nothing in it changed («تمام», «أبي أتمم
     // الحجز»): one line points to it; no new version, so its buttons still work
-    const SUMMARY_KEYS = ['branch', 'check_in', 'check_out', 'adults', 'children', 'child_ages', 'room_type', 'breakfast', 'extra_beds', 'guest_name'];
+    const SUMMARY_KEYS = ['branch', 'check_in', 'check_out', 'adults', 'children', 'child_ages', 'room_type', 'breakfast', 'extra_beds', 'guest_name', 'phone'];
     if (state === 'awaiting_confirmation' && SUMMARY_KEYS.every((k) => JSON.stringify(prev[k] ?? null) === JSON.stringify(fields[k] ?? null))) {
       t.push('T11');
       return out({ next: 'awaiting_confirmation', actions: [...first, { type: 'fixed', key: 'summary_pending' }], failed: 'reset' });
     }
-    if (!String(fields.guest_name ?? '').trim()) {
-      // the room is picked (by name or «احجز»): the full name before the summary (T11b)
-      t.push('T11b');
-      return out({ next: 'collecting', actions: [...first, { type: 'ask', slots: ['guest_name'] }], draft_patch: { kind: 'stay', fields }, failed: 'reset' });
+    if (contactMissing(fields, ctx)) {
+      // the room is picked (by name or «احجز»): the full name before the summary (T11b); on Instagram / Messenger then the
+      // mobile number (S1, T11c)
+      t.push(contactMissing(fields, ctx) === 'phone' ? 'T11c' : 'T11b');
+      return out({ next: 'collecting', actions: [...first, { type: 'ask', slots: [contactMissing(fields, ctx)!] }], draft_patch: { kind: 'stay', fields }, failed: 'reset' });
     }
     t.push('T11');
     return out({ next: 'awaiting_confirmation', actions: [...first, { type: 'send_summary', version }], draft_patch: { kind: 'stay', fields }, failed: 'reset' });
@@ -1074,7 +1088,7 @@ function stayIntent(input: DecideInput, state: State, t: string[], out: Out, u: 
     return out({ next: 'quoted', actions: [...first, { type: 'send_room_cards', page: 0 }], draft_patch: { kind: 'stay', fields }, failed: 'reset' });
   }
   t.push('T9');
-  const named = !!picked && !!String(fields.guest_name ?? '').trim();
+  const named = !!picked && !contactMissing(fields, ctx);
   return out({ next: named ? 'awaiting_confirmation' : 'quoted', actions: [...first, { type: 'quote' }, named ? { type: 'send_summary', version } : { type: 'send_room_cards', page: 0 }],
     draft_patch: { kind: 'stay', fields }, draft_replace: replace, failed: 'reset' });
 }
@@ -1195,9 +1209,9 @@ function tap(input: DecideInput, state: State, t: string[], out: Out): Decision 
   }
   if (ev.button === 'room') {
     const fields: Record<string, unknown> = { ...d.fields, room_type: ev.room ?? d.fields.room_type };
-    if (!String(fields.guest_name ?? '').trim()) {
-      t.push('T11b');
-      return out({ next: 'collecting', actions: [{ type: 'ask', slots: ['guest_name'] }], draft_patch: { kind: 'stay', fields } });
+    if (contactMissing(fields, ctx)) {
+      t.push(contactMissing(fields, ctx) === 'phone' ? 'T11c' : 'T11b');
+      return out({ next: 'collecting', actions: [{ type: 'ask', slots: [contactMissing(fields, ctx)!] }], draft_patch: { kind: 'stay', fields } });
     }
     t.push('T11');
     return out({ next: 'awaiting_confirmation', actions: [{ type: 'send_summary', version: d.version + 1 }], draft_patch: { kind: 'stay', fields } });
@@ -1205,7 +1219,7 @@ function tap(input: DecideInput, state: State, t: string[], out: Out): Decision 
   // H11 (882141b2): «إرسال طلب الحجز» on the CURRENT summary after «تعديل» with nothing changed since — the guest changed
   // their mind about changing: it books (the summary they tapped is the one on file)
   if (ev.button === 'confirm' && ev.version === d.version && state === 'collecting' && d.fields.room_type && d.fields.room_type !== 'any'
-      && String(d.fields.guest_name ?? '').trim() && d.fields.check_in && d.fields.check_out) {
+      && !contactMissing(d.fields, ctx) && d.fields.check_in && d.fields.check_out) {
     if (!ctx.window_open) return out({ next: state, actions: [{ type: 'noop' }] });
     t.push('T12');
     return out({ next: 'awaiting_confirmation', actions: [{ type: 'book', draft_id: d.id, version: d.version }] });
@@ -1263,9 +1277,9 @@ function bookResult(input: DecideInput, state: State, t: string[], out: Out): De
         draft_patch: d?.kind === 'stay' ? { kind: 'stay', fields } : null, reason: 'sold_out' });
     }
     case 'incomplete':
-      if (d && !String(d.fields.guest_name ?? '').trim()) {
-        t.push('T11b');
-        return out({ next: 'collecting', actions: [{ type: 'ask', slots: ['guest_name'] }] });
+      if (d && contactMissing(d.fields, ctx)) {
+        t.push(contactMissing(d.fields, ctx) === 'phone' ? 'T11c' : 'T11b');
+        return out({ next: 'collecting', actions: [{ type: 'ask', slots: [contactMissing(d.fields, ctx)!] }] });
       }
       t.push('T21');
       return out({ next: 'human', actions: [handoff('book_error', 'handoff', { intent: 'stay_booking', slots: d?.fields ?? {}, stopped: state })], reason: 'book_error' });
@@ -1302,7 +1316,7 @@ const SLOT_LABELS: Record<string, string> = {
   branch: 'الفرع', check_in: 'الوصول', check_out: 'المغادرة', nights: 'الليالي', room_type: 'الغرفة', adults: 'البالغون', children: 'الأطفال',
   child_ages: 'أعمار الأطفال', extra_beds: 'أسرّة إضافية', breakfast: 'الإفطار', rooms_count: 'الغرف', booking_ref: 'رقم الحجز',
   // 15 Nov 2026: the group / hall details the assistant collected
-  guest_name: 'الاسم', organisation: 'الجهة', layout: 'ترتيب القاعة', coffee_break: 'استراحة قهوة',
+  guest_name: 'الاسم', phone: 'رقم الجوال', organisation: 'الجهة', layout: 'ترتيب القاعة', coffee_break: 'استراحة قهوة',
   nazeel_ref: 'رقم الحجز في نزيل',
   // 18 Nov 2026: a package order's details
   package: 'الباقة', date: 'تاريخ المناسبة', has_room_booking: 'حجز غرفة', same_day: 'لنفس اليوم',

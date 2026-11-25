@@ -1529,6 +1529,35 @@ ${buttons(L, [button(L, url, M.button, 'bronze')])}`,
   return { subject, html, text };
 }
 
+// ══ Guest Hub S1 (25 Nov 2026): «طلب حذف بيانات» — to the active admins, Arabic only ══════════════════════════════════
+// copy.md §7 «Data deletion request»: the channel only — no guest words, no phone, no account name.
+export interface HubDataDeleteMail {
+  channel: 'whatsapp' | 'instagram' | 'messenger';
+  /** ISO time of the request */
+  at: string;
+  test?: boolean;
+}
+export function hubDataDeleteMail(c: Content, d: HubDataDeleteMail): Mail {
+  const L: Locale = 'ar';
+  const M = c.staff_email.ar.hub_data_delete;
+  const D = c.staff_email.ar.deploy_alert;
+  const day = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Riyadh', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(d.at)).replace(/-/g, '');
+  const channel = String(M.channels?.[d.channel] ?? d.channel);
+  const subject = `${d.test ? D.test_prefix : ''}${fill(M.subject, { channel, yyyymmdd: day })}`;
+  const lead = fill(M.lead, { channel });
+  const url = `${String(c.admin_url ?? 'https://admin.armadaresidence.com').replace(/\/$/, '')}/assistant?tab=social`;
+  const inner = section(
+    L,
+    `${headline(L, lead)}
+${para(L, M.meaning)}
+<div style="height:18px; line-height:18px; font-size:0;">&nbsp;</div>
+${buttons(L, [button(L, url, M.button, 'bronze')])}`,
+  );
+  const html = doc({ lang: 'ar', title: subject, preheader: lead, body: header(c, undefined, true) + card(inner) + footer(c, ['ar']), print: true });
+  const text = [lead, '', M.meaning, '', `${M.button}: ${url}`, '', legalText(c, 'ar')].join('\n');
+  return { subject, html, text };
+}
+
 // ══ Guest Hub H3 (13 Nov 2026): «محادثة بانتظار الرد» — to the branch's reception recipients, Arabic only ══════════════
 // copy.md §7 row 1: subject «محادثة بانتظار الرد — {unit_name} — AR-HUB-{id}»; «محادثة في {unit_name} تنتظر الرد منذ
 // {duration}.» · «الحالة: {state_label}» · «فتح المحادثة». No guest words and no phone number (spec §2.6, §5.9).

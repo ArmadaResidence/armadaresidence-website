@@ -105,6 +105,11 @@ file_size_limit = "300MiB"
 [functions.wa-automation]
 verify_jwt = false
 
+# Guest Hub S1 (25 Nov 2026): the Meta webhook of «Armada Guest Hub» (Instagram and Messenger direct messages) — its own
+# X-Hub-Signature-256 check (META_APP_SECRET), the GET challenge (META_VERIFY_TOKEN)
+[functions.social-inbound]
+verify_jwt = false
+
 # «مركز الضيوف» (14 Nov 2026, Guest Hub H5): hub-agent — the assistant's worker. Not a webhook: called by wa-automation
 # and pg_cron (hub-agent, every minute) with the Vault token hub_agent_token (header x-armada-agent)
 [functions.hub-agent]

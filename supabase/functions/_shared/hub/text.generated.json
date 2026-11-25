@@ -485,6 +485,26 @@
    "ar": "يسعدنا ذلك. تجد صور كل أنواع الغرف في صفحة الفرع: {url}",
    "en": "With pleasure. You'll find photos of every room type on the branch page: {url}"
   },
+  "data_delete_ack": {
+   "ar": "وصلنا طلبك لحذف بياناتك، وسنبلغك هنا عند الانتهاء.",
+   "en": "We've received your request to delete your data; we'll let you know here when it's done."
+  },
+  "data_delete_done": {
+   "ar": "تم حذف بيانات محادثاتك معنا.",
+   "en": "Your conversation data with us has been deleted."
+  },
+  "social_which_branch": {
+   "ar": "في أي فرع تقصد: طريق المطار أم طريق الشفا؟",
+   "en": "Which branch do you mean: Airport Road or Shafa Road?"
+  },
+  "ask_phone": {
+   "ar": "ما رقم جوالك الذي نسجّل به الحجز؟",
+   "en": "What mobile number should we put the booking under?"
+  },
+  "phone_unclear": {
+   "ar": "لم نتمكن من قراءة الرقم، اكتبه من فضلك كاملًا مع رمز الدولة.",
+   "en": "We couldn't read the number; please write it in full with the country code."
+  },
   "email_api_credit": {
    "subject": "رصيد كلود انتهى — المساعد متوقف — AR-HUB-{yyyymmdd}",
    "lines": [

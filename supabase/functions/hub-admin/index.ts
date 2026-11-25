@@ -48,6 +48,8 @@ import content from '../booking-request/content.generated.json' with { type: 'js
 import { sendSession, sendTemplate, textPayload, type WaResult } from '../booking-request/whatsapp-send.ts';
 import { hubReplyReadyPayload, typingUrl, type HubUnitRef } from '../_shared/hub/send.ts';
 import { buttonsPayload } from '../booking-request/whatsapp-send.ts';
+import { GRAPH as META_GRAPH, metaError, pageToken as metaPageToken, sendHub as metaSend, typing as metaTyping } from '../_shared/hub/meta.ts';
+import { fixed as fixedCopy } from '../_shared/hub/copy.ts';
 import { anthropicModel } from '../_shared/hub/model.ts';
 import { composeUser, parseSuggestions, suggestSystem, translateSystem } from '../_shared/hub/compose/index.ts';
 import { buildPayload, guardPayload, type Payload } from '../_shared/hub/sources/index.ts';
@@ -155,6 +157,10 @@ interface Begin {
   typing_id?: string | null;
   test?: boolean;
   unit?: HubUnitRef;
+  /** S1: Instagram / Messenger (to = the PSID / IGSID; page_id = the Page it is sent through) */
+  provider?: 'ycloud' | 'meta';
+  kind?: string;
+  page_id?: string | null;
 }
 
 /** YCloud's typing indicator for the guest's last message (it marks it read); best effort, never blocks a send */
@@ -170,6 +176,7 @@ async function typing(id: string, key: string): Promise<void> {
 /** the rows hub_send_begin / hub_send_retry handed back: each sent once, the outcome recorded */
 async function deliver(req: Request, b: Begin): Promise<Response> {
   if (b.existing) return json(req, 200, { ok: true, existing: true, results: b.messages.map((m) => ({ id: m.id, kind: m.kind, status: m.status ?? null })) });
+  if (b.provider === 'meta') return await deliverMeta(req, b);
   const key = Deno.env.get('YCLOUD_API_KEY') ?? '';
   const test = !!b.test;
   const results: { id: string; kind: string; status: string; error_code: string | null }[] = [];
@@ -200,6 +207,111 @@ async function deliver(req: Request, b: Begin): Promise<Response> {
     results.push({ id: m.id, kind: m.kind, status, error_code: r.errorCode });
   }
   return json(req, 200, { ok: results.every((x) => x.status !== 'failed'), results });
+}
+
+/** S1: the same rows on Instagram / Messenger — the Send API with the Page token (HUMAN_AGENT after the 24 hours, once
+ *  Meta approved «Human Agent» and the system admin switched it on — hub_send_begin decides and hands the tag) */
+async function deliverMeta(req: Request, b: Begin): Promise<Response> {
+  const test = !!b.test;
+  const tk = await metaPageToken(Deno.env.get('META_PAGE_TOKEN'), b.page_id ?? null);
+  const results: { id: string; kind: string; status: string; error_code: string | null }[] = [];
+  let typed = false;
+  for (const m of b.messages.filter((x) => x.send)) {
+    let r: { accepted: boolean; status: string; messageId: string | null; errorCode: string | null };
+    if (m.kind === 'template') {
+      r = { accepted: false, status: 'failed', messageId: null, errorCode: 'no_template' };
+    } else {
+      if (!typed && !test) {
+        typed = true;
+        await metaTyping(String(b.to), tk).catch(() => false);
+      }
+      const btns = m.kind === 'interactive' && Array.isArray(m.payload?.buttons) ? (m.payload!.buttons as { id: string; title: string }[]) : null;
+      r = await metaSend(String(b.to), { body: String(m.body ?? ''), buttons: btns, tag: (m as BeginMsg & { tag?: string | null }).tag ?? null }, tk, { test });
+    }
+    const status = r.accepted ? r.status : 'failed';
+    const f = await rpc<{ ok: boolean }>('hub_send_finish', { p_message: m.id, p_status: status, p_ycloud_id: r.messageId, p_error_code: r.errorCode }, null);
+    if (!f.ok) console.error('hub-admin: send outcome not recorded', m.kind, f.status);
+    results.push({ id: m.id, kind: m.kind, status, error_code: r.errorCode });
+  }
+  return json(req, 200, { ok: results.every((x) => x.status !== 'failed'), results });
+}
+
+/** S1 «ربط الصفحة وحساب انستجرام» (the system admin): the Page and its Instagram account from the system user's token, the
+ *  app's webhook subscriptions (object page and instagram → social-inbound), the Page subscribed to the app, then the two
+ *  channels stored verified. Messaging fields only — no comment or feed field (comments are S2). No token in the answer. */
+const PAGE_FIELDS = ['messages', 'messaging_postbacks', 'message_echoes', 'message_deliveries', 'message_reads'];
+const IG_FIELDS = ['messages', 'messaging_postbacks', 'messaging_seen'];
+// deno-lint-ignore no-explicit-any
+type AnyJ = any;
+async function metaSetup(req: Request, body: Record<string, unknown>, jwt: string): Promise<Response> {
+  const ov = await rpc<{ system_admin: boolean }>('hub_social_overview', {}, jwt);
+  if (!ov.ok || !ov.data?.system_admin) return json(req, 403, { ok: false, error: 'hub_system_admin_only' });
+  const sys = Deno.env.get('META_PAGE_TOKEN');
+  const secret = Deno.env.get('META_APP_SECRET');
+  const verify = Deno.env.get('META_VERIFY_TOKEN');
+  const appId = Deno.env.get('META_APP_ID') ?? '2403025080470166';
+  const missing = [!sys && 'META_PAGE_TOKEN', !secret && 'META_APP_SECRET', !verify && 'META_VERIFY_TOKEN'].filter(Boolean);
+  if (missing.length) return json(req, 200, { ok: false, error: 'hub_meta_secrets', missing });
+  const steps: { step: string; ok: boolean; code?: string | null }[] = [];
+  const graph = async (path: string, init: RequestInit = {}): Promise<{ ok: boolean; status: number; j: AnyJ }> => {
+    try {
+      const res = await fetch(`${META_GRAPH}${path}`, { ...init, signal: AbortSignal.timeout(20_000) });
+      const j = await res.json().catch(() => ({}));
+      return { ok: res.ok, status: res.status, j };
+    } catch {
+      return { ok: false, status: 0, j: {} };
+    }
+  };
+  const accounts = await graph('/me/accounts?fields=id,name,access_token,instagram_business_account%7Bid,username%7D&limit=100', { headers: { Authorization: `Bearer ${sys}` } });
+  const pages = (Array.isArray(accounts.j?.data) ? accounts.j.data : []) as AnyJ[];
+  const want = typeof body.page_id === 'string' && /^[0-9]{5,30}$/.test(body.page_id) ? body.page_id : null;
+  const page = want ? pages.find((p) => String(p.id) === want) : pages.length === 1 ? pages[0] : null;
+  steps.push({ step: 'pages', ok: !!page, code: page ? null : accounts.ok ? (pages.length ? 'several_pages' : 'no_page') : metaError(accounts.status, accounts.j) });
+  if (!page) return json(req, 200, { ok: false, error: 'hub_meta_page', steps, pages: pages.map((p) => ({ id: String(p.id), name: String(p.name ?? '') })) });
+  const pageTk = typeof page.access_token === 'string' ? page.access_token : sys!;
+  const ig = page.instagram_business_account ?? null;
+  const callback = `${url()}/functions/v1/social-inbound`;
+  for (const [object, fields] of [['page', PAGE_FIELDS], ['instagram', IG_FIELDS]] as const) {
+    const form = new URLSearchParams({ object, callback_url: callback, fields: fields.join(','), verify_token: verify!, include_values: 'true', access_token: `${appId}|${secret}` });
+    const r = await graph(`/${appId}/subscriptions`, { method: 'POST', body: form });
+    steps.push({ step: `app:${object}`, ok: r.ok && r.j?.success !== false, code: r.ok ? null : metaError(r.status, r.j) });
+  }
+  const sub = await graph(`/${page.id}/subscribed_apps`, { method: 'POST', body: new URLSearchParams({ subscribed_fields: PAGE_FIELDS.join(','), access_token: pageTk }) });
+  steps.push({ step: 'page', ok: sub.ok && sub.j?.success !== false, code: sub.ok ? null : metaError(sub.status, sub.j) });
+  if (!steps.every((s) => s.ok)) return json(req, 200, { ok: false, error: 'hub_meta_subscribe', steps });
+  const st = await rpc<Record<string, unknown>>('hub_social_channels_store', {
+    p: { page_id: String(page.id), page_name: String(page.name ?? ''), ig_id: ig?.id ? String(ig.id) : null, ig_username: ig?.username ? String(ig.username) : null }, p_actor: null,
+  }, null);
+  steps.push({ step: 'store', ok: st.ok });
+  console.log('hub-admin: meta setup', steps.map((s) => `${s.step}=${s.ok ? 'ok' : s.code ?? 'failed'}`).join(' '));
+  return json(req, 200, { ok: st.ok, steps, page: { id: String(page.id), name: String(page.name ?? '') }, instagram: ig?.id ? { id: String(ig.id), username: String(ig.username ?? '') } : null });
+}
+
+/** S6 «حذف بيانات المحادثات» (the system admin — the RPC decides): the texts and media gone; then «تم حذف بيانات محادثاتك
+ *  معنا.» to the guest when the window is open, on the channel of that conversation */
+async function dataDelete(req: Request, body: Record<string, unknown>, jwt: string): Promise<Response> {
+  const profile = String(body.profile ?? '');
+  if (!UUID.test(profile)) return json(req, 400, { ok: false, error: 'invalid body' });
+  const done = { ar: fixedCopy('data_delete_done', 'ar'), en: fixedCopy('data_delete_done', 'en') };
+  const r = await rpc<AnyJ>('hub_data_delete', { p_profile: profile, p_done_text: done }, jwt);
+  if (!r.ok) return refused(req, r);
+  const n = r.data?.notify;
+  let sent: string | null = null;
+  if (n?.id) {
+    let res: { accepted: boolean; status: string; messageId: string | null; errorCode: string | null };
+    if (n.provider === 'meta') {
+      res = await metaSend(String(n.to), { body: String(n.body) }, await metaPageToken(Deno.env.get('META_PAGE_TOKEN'), n.page_id ?? null), { test: !!n.test });
+    } else {
+      try {
+        res = await sendSession({ payload: textPayload(String(n.from), String(n.to), String(n.body), String(n.id)), windowExpiresAt: n.window_expires_at ?? null, test: !!n.test, log: null });
+      } catch {
+        res = { accepted: false, status: 'failed', messageId: null, errorCode: 'payload' };
+      }
+    }
+    await rpc('hub_send_finish', { p_message: n.id, p_status: res.accepted ? res.status : 'failed', p_ycloud_id: res.messageId, p_error_code: res.errorCode }, null);
+    sent = res.accepted ? res.status : 'failed';
+  }
+  return json(req, 200, { ok: true, batch_id: r.data?.batch_id, conversations: r.data?.conversations, messages: r.data?.messages, media: r.data?.media, notified: sent });
 }
 
 /** a refusal of an inbox RPC → its code for the dashboard (hub_window_closed, hub_sending_off …) */
@@ -310,6 +422,9 @@ Deno.serve(async (req) => {
     if (!b.ok) return refused(req, b);
     return await deliver(req, b.data);
   }
+  // S1: «ربط الصفحة وحساب انستجرام» and S6 «حذف بيانات المحادثات» (the system admin)
+  if (body.action === 'meta_setup') return await metaSetup(req, body, jwt);
+  if (body.action === 'data_delete') return await dataDelete(req, body, jwt);
   if (body.action === 'retry') {
     const id = String(body.message ?? '');
     if (!UUID.test(id)) return json(req, 400, { ok: false, error: 'invalid body' });

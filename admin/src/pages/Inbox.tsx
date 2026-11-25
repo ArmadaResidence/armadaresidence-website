@@ -28,7 +28,7 @@ import tplDefs from '../../../supabase/functions/_shared/hub/hub-templates.json'
 import {
   stateText, ACTIONS, DRAFT_ACTIONS, LANGUAGE_FILTERS, MARKS, OWNER_FILTERS, REJECT_REASONS, SHORTCUTS, STATE_LABELS, TABS, TAB_LABELS, TAG_LABELS, TEMPLATE_LABELS, approve, assign, assistError, banner,
   block, close, eventText, list, markUnanswered, mediaUrl, needsTranslation, newKey, ownerText, pauseUnit, reject, release, retry, send, sendError, sendSuggestion, statusText, suggest, takeOver,
-  standbyReasonText, standbyText, thread, timerTone, transfer, translate, waitingText, windowState, addNote, listTab, loadError,
+  standbyReasonText, standbyText, thread, timerTone, transfer, translate, waitingText, windowState, addNote, listTab, loadError, CHANNEL_FILTERS, channelLabel, metaWindow, dataDelete,
   type Filters, type HubState, type InboxList, type InboxRow, type Msg, type RejectReason, type Tab, type Thread,
 } from '../lib/inbox';
 import { CancelButton, Confirm, DirtyScope, ErrorBox, Field, Loading, Modal, Spinner, useToast } from '../components/ui';
@@ -50,6 +50,8 @@ export default function Inbox() {
     state: sp.get('state') ?? '',
     owner: sp.get('owner') ?? '',
     language: sp.get('language') ?? '',
+    // S1 (25 Nov 2026): واتساب / انستجرام / ماسنجر
+    channel: sp.get('channel') ?? '',
     q: sp.get('q') ?? '',
     blocked: sp.get('blocked') === '1',
   }), [sp]);
@@ -299,6 +301,9 @@ export default function Inbox() {
               <select className="field" aria-label="اللغة" value={filters.language} onChange={(e) => setParam({ language: e.target.value || null })} data-no-dirty data-filter="language">
                 {LANGUAGE_FILTERS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
               </select>
+              <select className="field" aria-label="القناة" value={filters.channel} onChange={(e) => setParam({ channel: e.target.value || null })} data-no-dirty data-filter="channel">
+                {CHANNEL_FILTERS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+              </select>
             </div>
             <label className="flex items-center gap-2 text-xs min-h-8">
               <input type="checkbox" className="size-4 accent-bronze-deep" checked={!!filters.blocked} onChange={(e) => setParam({ blocked: e.target.checked ? '1' : null })} data-no-dirty data-filter="blocked" />
@@ -319,7 +324,7 @@ export default function Inbox() {
                     </span>
                     <span className="flex flex-wrap items-center gap-1 text-xs">
                       <span className="inbox-chip" data-row-unit>{r.unit_name}</span>
-                      <span className="inbox-chip" title="واتساب">واتساب</span>
+                      <span className="inbox-chip" data-row-channel={r.channel_kind}><ChannelIcon kind={r.channel_kind} /> {channelLabel(r.channel_kind)}</span>
                       <span className="inbox-chip" data-row-state data-phase={r.state === 'human' ? (r.owner_kind === 'staff' || r.owner_kind === 'phone' ? 'staff' : 'waiting') : undefined}>{stateText(r.state, r.owner_kind)}</span>
                       {r.tags.map((g) => <span key={g} className="inbox-chip is-bronze">{TAG_LABELS[g] ?? g}</span>)}
                       {r.is_test && <span className="inbox-chip is-test">{MARKS.test}</span>}
@@ -532,7 +537,7 @@ function ThreadView({ t, now, edit, unitNames, composerRef, onBack, onPanel, onC
         <div className="min-w-0 grow">
           <h2 className="font-bold truncate" data-thread-name>{t.guest.label}</h2>
           <p className="text-xs text-ink-muted">
-            {c.unit_name} · <span data-thread-state>{stateText(c.state, c.owner_kind, c.human_reason)}</span> · {ownerText(c.owner_kind, c.owner_name)}{c.is_test ? ` · ${MARKS.test}` : ''}
+            <span data-thread-channel={c.channel_kind}><ChannelIcon kind={c.channel_kind} /> {channelLabel(c.channel_kind)}</span> · {c.unit_name} · <span data-thread-state>{stateText(c.state, c.owner_kind, c.human_reason)}</span> · {ownerText(c.owner_kind, c.owner_name)}{c.is_test ? ` · ${MARKS.test}` : ''}
           </p>
           {c.standby_until && <span className="text-xs text-bronze-text" data-standby-reason="waiting">ينتظر رد الفريق —</span>}
           {c.standby_until && <StandbyCountdown until={c.standby_until} className="text-xs font-semibold text-bronze-text" onEnd={() => window.setTimeout(() => void onChanged(), 12_000)} />}
@@ -667,7 +672,9 @@ function Composer({ t, now, composerRef, onSent, onTemplate }: { t: Thread; now:
   const [fromSuggestion, setFromSuggestion] = useState(false);
   const [sugs, setSugs] = useState<{ text: string; ok: boolean; reasons: string[] }[] | null>(null);
   const [sugBusy, setSugBusy] = useState(false);
-  const w = windowState(c.window_expires_at, now);
+  // S1: Instagram / Messenger — 24 hours, then «Human Agent» (7 days, once approved), then nothing can be sent (no template)
+  const meta = c.channel_provider === 'meta';
+  const w = meta ? metaWindow(c.window_expires_at, c.human_agent_until, now) : windowState(c.window_expires_at, now);
   async function getSuggestions() {
     if (sugBusy) return;
     setSugBusy(true);
@@ -681,7 +688,7 @@ function Composer({ t, now, composerRef, onSent, onTemplate }: { t: Thread; now:
       setSugBusy(false);
     }
   }
-  const blocker = t.guest.blocked ? 'hub_blocked' : !c.sending_enabled ? 'hub_sending_off' : null;
+  const blocker = t.guest.blocked ? 'hub_blocked' : !c.sending_enabled ? 'hub_sending_off' : meta && !w.open ? 'hub_window_meta' : null;
 
   async function go(mode: 'text' | 'held') {
     const body = text.trim();
@@ -714,7 +721,7 @@ function Composer({ t, now, composerRef, onSent, onTemplate }: { t: Thread; now:
       <p className={`text-xs ${w.open ? 'text-ink-muted' : 'text-error'}`} data-window>{w.text}</p>
       {blocker && <p className="note-amber text-xs" role="note" data-blocker={blocker}>{sendError(blocker)}</p>}
       <label className="sr-only" htmlFor={`reply-${c.id}`}>الرد</label>
-      <textarea id={`reply-${c.id}`} ref={composerRef} className="field" rows={3} maxLength={4096} value={text} disabled={busy || !!blocker}
+      <textarea id={`reply-${c.id}`} ref={composerRef} className="field" rows={3} maxLength={meta ? 1000 : 4096} value={text} disabled={busy || !!blocker}
         placeholder={w.open ? 'اكتب ردك…' : 'اكتب ردك؛ يُرسل عندما يكتب الضيف'} onChange={(e) => setText(e.target.value)}
         onKeyDown={(e) => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); void go(w.open ? 'text' : 'held'); } }} data-reply aria-keyshortcuts="Alt+R" />
       {sugs && (
@@ -732,7 +739,7 @@ function Composer({ t, now, composerRef, onSent, onTemplate }: { t: Thread; now:
       )}
       <div className="flex flex-wrap items-center justify-end gap-2">
         {w.open && <button type="button" className="btn btn-ghost btn-sm" onClick={() => void getSuggestions()} disabled={busy || sugBusy || !!blocker} data-action="suggestions" data-tour="inbox-suggestions">{sugBusy && <Spinner />} {ACTIONS.suggestions}</button>}
-        {!w.open && <button type="button" className="btn btn-ghost btn-sm" onClick={onTemplate} disabled={busy || !!blocker} data-action="template">{ACTIONS.template}</button>}
+        {!w.open && !meta && <button type="button" className="btn btn-ghost btn-sm" onClick={onTemplate} disabled={busy || !!blocker} data-action="template">{ACTIONS.template}</button>}
         {w.open
           ? <button type="button" className="btn btn-primary btn-sm" onClick={() => void go('text')} disabled={busy || !!blocker || !text.trim()} data-action="send">{busy && <Spinner />} {ACTIONS.send}</button>
           : <button type="button" className="btn btn-primary btn-sm" onClick={() => void go('held')} disabled={busy || !!blocker || !text.trim() || !c.templates_approved.length} data-action="held">{busy && <Spinner />} {ACTIONS.held}</button>}
@@ -863,13 +870,46 @@ function NoteDialog({ open, id, onClose, onDone }: { open: boolean; id: string; 
   );
 }
 
+/** S1: the channel's mark beside its name (decorative — the name is the label) */
+function ChannelIcon({ kind }: { kind: string }) {
+  const d = kind === 'instagram'
+    ? 'M7 3h10a4 4 0 0 1 4 4v10a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4V7a4 4 0 0 1 4-4Zm5 5a4 4 0 1 0 0 8 4 4 0 0 0 0-8Zm5.5-1.5h.01'
+    : kind === 'messenger'
+      ? 'M12 3C7 3 3 6.7 3 11.3c0 2.6 1.3 4.9 3.3 6.4V21l3-1.7c.9.3 1.8.4 2.7.4 5 0 9-3.7 9-8.3S17 3 12 3Zm-4 10 3-3.2 2 2 3-3.2'
+      : 'M12 3a9 9 0 0 0-7.8 13.5L3 21l4.6-1.2A9 9 0 1 0 12 3Zm-3 5.5c.3 2.6 3.3 5.6 6 6';
+  return <svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="inline-block align-[-1px]"><path d={d} /></svg>;
+}
+
 function GuestPanel({ t, edit, onBack, onOpen, onAssign }: { t: Thread; edit: boolean; onBack: () => void; onOpen: (id: string) => void; onAssign: (staff: string) => void }) {
   const g = t.guest;
   const c = t.conversation;
   const [owner, setOwner] = useState(c.owner_staff_id ?? '');
   useEffect(() => setOwner(c.owner_staff_id ?? ''), [c.owner_staff_id]);
+  // S6 (Ahmed, 25 Nov 2026): «حذف بيانات المحادثات» — the system admin only (the RPC decides); bookings and requests stay
+  const toast = useToast();
+  const sysAdmin = useSession().me?.role === 'admin';
+  const [delAsk, setDelAsk] = useState(false);
+  const [delBusy, setDelBusy] = useState(false);
+  async function doDelete() {
+    setDelBusy(true);
+    try {
+      const r = await dataDelete(g.id);
+      if (!r.ok) toast(sendError(r.error), 'error');
+      else {
+        setDelAsk(false);
+        toast(r.notified === 'failed' ? 'حُذفت بيانات المحادثات، لكن تعذّر إبلاغ الضيف.' : r.notified ? 'حُذفت بيانات المحادثات وأُبلغ الضيف.' : 'حُذفت بيانات المحادثات. نافذة الرد مغلقة، فلم يُرسل شيء للضيف.');
+      }
+    } catch (e) {
+      toast((e as Error).message, 'error');
+    } finally {
+      setDelBusy(false);
+    }
+  }
   return (
     <div className="grid gap-4 p-3" data-guest-panel>
+      <Confirm open={delAsk} title="حذف بيانات المحادثات" danger busy={delBusy} onClose={() => setDelAsk(false)} confirmLabel="حذف بيانات المحادثات" onConfirm={() => void doDelete()}>
+        <p>تُحذف نصوص كل محادثات هذا الضيف ووسائطها على كل القنوات، ولا يمكن استرجاعها. تبقى الحجوزات والطلبات كما هي، ويُبلغ الضيف إذا كانت نافذة الرد مفتوحة.</p>
+      </Confirm>
       <button type="button" className="btn btn-ghost btn-sm justify-self-start inbox-narrow" onClick={onBack} data-action="back-thread">رجوع إلى المحادثة</button>
       <section className="grid gap-1">
         <h2 className="font-bold">{g.label}</h2>
@@ -884,6 +924,7 @@ function GuestPanel({ t, edit, onBack, onOpen, onAssign }: { t: Thread; edit: bo
           <dt>آخر إقامة</dt><dd className="num">{g.last_stay ? shortDate(g.last_stay) : '—'}</dd>
           {g.blocked && <><dt>الرقم</dt><dd className="text-error" data-blocked>محظور</dd></>}
         </dl>
+        {sysAdmin && <button type="button" className="btn btn-ghost btn-sm text-error justify-self-start" onClick={() => setDelAsk(true)} data-action="data-delete">حذف بيانات المحادثات</button>}
       </section>
       {c.referral && (
         <section className="grid gap-1" data-referral>

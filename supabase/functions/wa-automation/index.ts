@@ -55,7 +55,7 @@
 import content from '../booking-request/content.generated.json' with { type: 'json' };
 import { waErrorCode } from '../booking-request/whatsapp.ts';
 import { buttonsPayload, sendSession, textPayload } from '../booking-request/whatsapp-send.ts';
-import { hubExpiryMail, hubQualityMail, hubWaitingMail } from '../booking-request/email.ts';
+import { hubDataDeleteMail, hubExpiryMail, hubQualityMail, hubWaitingMail } from '../booking-request/email.ts';
 import { allowedOrigins, ALLOWED_HEADERS } from '../_shared/cors.ts';
 import {
   EVENT_ECHO, EVENT_INBOUND, EVENT_QUALITY, EVENT_STATUS, HUB_EVENTS, MEDIA_MAX_BYTES, cancelQuestion, describe, e164, mediaExt, parseEcho, parseInbound, parseQuality,
@@ -511,6 +511,23 @@ async function handleInbound(ev: any, test: boolean, meta: HookMeta): Promise<Re
     const done = await departureAnswer(m, r.choice, r.id, convId, test);
     if (done) return { kind: 'departure_answer', choice: r.choice, stored, ...done };
     // nothing waits for that answer (an old check, another number): the message goes on as any other
+  }
+  // S6 (Ahmed, 25 Nov 2026): «احذف بياناتي» — the request (the stored conversation, or the phone while storage is off),
+  // the fixed acknowledgement (copy.md §4.6) from the number written to, ONE email to the admins; no assistant turn
+  if (r.kind === 'data_delete') {
+    if (!m.from || !m.to) return { kind: 'data_delete', created: false, stored };
+    const d = await rpc<{ created: boolean; request_id?: string; recipients?: string[]; reason?: string }>('hub_data_delete_request', {
+      p: convId ? { conversation: convId, kind: 'whatsapp', is_test: test } : { phone: m.from, kind: 'whatsapp', is_test: test },
+    });
+    const L = replyLocale(m.text);
+    const ack = await sendSession({ payload: textPayload(m.to, m.from, fixed('data_delete_ack', L)), windowExpiresAt: windowOf(m.sentAt), test, log: null })
+      .catch(() => ({ status: 'failed' }));
+    if (d.ok && d.data.created && !test) {
+      const ok = await sendAdminMail(d.data.recipients ?? [], hubDataDeleteMail(content, { channel: 'whatsapp', at: new Date().toISOString() }));
+      if (ok && d.data.request_id) await rpc('hub_data_delete_emailed', { p_request: d.data.request_id });
+    }
+    console.log('wa-automation: data deletion request', d.ok ? (d.data.created ? 'created' : d.data.reason) : 'failed', ack.status, test ? 'TEST' : '');
+    return { kind: 'data_delete', created: d.ok && d.data.created, stored };
   }
   if (r.kind === 'none' || r.kind === 'hub_button' || r.kind === 'departure_answer') {
     // the assistant's turn (H5): after the «إلغاء» handling above, only for a stored message, only while «المساعد يعمل»

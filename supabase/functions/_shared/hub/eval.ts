@@ -42,6 +42,9 @@ export interface SimState {
   /** H10: the hand-off notice went since the hand-off (no staff reply since), and when our last message went (sim ms) */
   notice_sent?: boolean;
   last_us_at?: number | null;
+  /** S1: «السوشيال» — the branch the guest named, and the question that waits for it */
+  branch?: string | null;
+  branch_pending?: Json | null;
 }
 export const freshState = (): SimState => ({ state: 'new', first_reply: true, history: [], draft: null, failed_understandings: 0, out_of_scope: 0, human_phase: null, state_before_human: null, clock: 0, staff_at: null, cards: [], notice_sent: false, last_us_at: null });
 
@@ -161,10 +164,13 @@ export function claimOf(ctx: Json, item: Pick<Item, 'key' | 'language' | 'contex
     turn: { id: `eval-${item.key}-${n}`, kind: 'reply', mode: 'test', attempts: 1, is_test: true },
     conversation: { id: `eval-${item.key}`, state: st.state, real_state: 'human', human_reason: st.state === 'human' ? 'handoff' : null, language: L, window_expires_at: '2099-01-01T00:00:00Z',
       failed_understandings: st.failed_understandings, priority: 'normal', topics: [], tags: [], out_of_scope: st.out_of_scope, first_reply: st.first_reply, is_test: true,
-      human_phase: st.state === 'human' ? st.human_phase : null, state_before_human: st.state_before_human },
+      human_phase: st.state === 'human' ? st.human_phase : null, state_before_human: st.state_before_human,
+      branch: st.branch ?? null, branch_pending: st.branch_pending ?? null },
     // H7: the test lab and «المحاكي» read voice notes and images whatever the unit's switches say (they are tested before
     // Ahmed switches them on); the daily minutes are a whole hour, or none for «[voice:capped]»
-    unit: { ...ctx.unit, mode: 'test', persona: persona ?? ctx.unit?.persona ?? null, media: { voice: true, images: true } },
+    unit: { ...ctx.unit, mode: 'test', persona: persona ?? ctx.unit?.persona ?? null, media: { voice: true, images: true },
+            // S1: a brand unit answers for the conversation's branch once named
+            ...(ctx.unit?.kind === 'brand' ? { branch: st.branch ?? null } : {}) },
     voice: { cap_seconds: bm?.voice === 'capped' ? 0 : 3600, used_seconds: 0 },
     channel: ctx.channel ?? { address: null, sending_enabled: false },
     guest: { first_name: typeof c.first_name === 'string' ? c.first_name : null, returning: !!c.returning_guest, language: L,
@@ -228,6 +234,8 @@ export function nextState(st: SimState, message: string, f: Finish): SimState {
     })(),
     failed_understandings: f.failed === 'reset' ? 0 : f.failed === 'inc' ? st.failed_understandings + 1 : st.failed_understandings,
     out_of_scope: st.out_of_scope + (f.out_of_scope_inc ? 1 : 0),
+    branch: f.conversation_branch ?? st.branch ?? null,
+    branch_pending: f.branch_pending ?? (f.branch_pending_clear ? null : st.branch_pending ?? null),
     // H10: the notice of this hand-off went (kept while it waits; a staff reply or the assistant's own state clears it)
     notice_sent: to === 'human' && ((st.state === 'human' && !!st.notice_sent) || f.messages.some((m) => !!m.notice || m.payload?.handoff === true)),
     last_us_at: replies.length ? st.clock : st.last_us_at ?? null,

@@ -19,6 +19,8 @@ import { sarText } from '../supabase/functions/booking-request/rules.ts';
 import { CONTENT, FORBIDDEN, MODELS, PRICES, claimFor, engineItems, knowledgeFor, liveFees, SEED, TOPICS as TOPICS_ALL } from './hub-fixtures-lib.mjs';
 import * as L from '../supabase/functions/_shared/hub/learn.ts';
 import { gradeStandby } from '../supabase/functions/_shared/hub/standby.ts';
+import { isDataDelete } from '../supabase/functions/_shared/hub/meta.ts';
+import { fixed } from '../supabase/functions/_shared/hub/copy.ts';
 
 const arg = (k) => {
   const i = process.argv.indexOf(k);
@@ -47,7 +49,9 @@ const FIX3 = jsonl('tests/hub-bank/conversations-fix3.jsonl');
 // H10 (18 Nov 2026): the live review's cases (D1 requests, the context, payment, dates, the party, repetition, the notice)
 const H10 = [...jsonl('tests/hub-bank/conversations-h10.jsonl'), ...jsonl('tests/hub-bank/conversations-h10b.jsonl'),
   // H11 (24 Nov 2026): the weekly review's cases
-  ...jsonl('tests/hub-bank/conversations-h11.jsonl'), ...jsonl('tests/hub-bank/conversations-h11c.jsonl')];
+  ...jsonl('tests/hub-bank/conversations-h11.jsonl'), ...jsonl('tests/hub-bank/conversations-h11c.jsonl'),
+  // S1 (25 Nov 2026): Instagram / Messenger on «السوشيال»
+  ...jsonl('tests/hub-bank/conversations-social.jsonl')];
 // 18 Nov 2026: «باقات بسعر خاص» — each item carries the offer as published («offers», or "@<id>" for another item's)
 const PACKAGES = (() => {
   const list = jsonl('tests/hub-bank/conversations-packages.jsonl');
@@ -431,6 +435,11 @@ async function one(q) {
   if (q.kind === 'learn') return learnOne(q);
   if (q.kind === 'staff_chat') return staffOne(q);
   if (q.kind === 'team') return teamOne(q);
+  // S1: «احذف بياناتي» is the router's, not an engine turn — the matcher and the fixed acknowledgement
+  if (q.kind === 'data_delete') {
+    const ok = isDataDelete(q.messages[0]) && !!fixed('data_delete_ack', q.language === 'en' ? 'en' : 'ar');
+    return { id: q.id, unit: q.unit, bank: 'conversations', pass: ok, reasons: ok ? [] : ['data_delete:not_matched'], steps: [], cost_usd: 0 };
+  }
   if (q.kind === 'standby') {
     const g = gradeStandby(q);
     return { id: q.id, unit: q.unit ?? 'airport-road', bank: 'conversations', pass: g.pass, reasons: g.reasons, steps: [], cost_usd: 0 };
@@ -438,7 +447,7 @@ async function one(q) {
   const claim = claimFor({ ...q, messages: ['x'] });
   // H8 (16 Nov 2026): the branch units as production has them — room_booking on, both switches on, the instant limits
   const ctx = {
-    unit: { ...claim.unit, persona: claim.unit.persona, skills: claim.unit.kind === 'branch' ? [...claim.unit.skills, 'room_booking'] : claim.unit.skills },
+    unit: { ...claim.unit, persona: claim.unit.persona, skills: claim.unit.kind !== 'dining' ? [...claim.unit.skills, 'room_booking'] : claim.unit.skills },
     channel: claim.channel, licences: Object.fromEntries(Object.entries(claim.licences).map(([k, v]) => [k, v === 'blocked' ? 'blocked' : 'auto'])),
     topics: claim.topics, settings: { ...claim.settings, instant_booking: true, limits: { max_nights: 90, same_day_cutoff: '23:45' } }, forbidden: claim.forbidden, today: riyadhToday,
   };
@@ -498,7 +507,7 @@ const sum = (bk, u) => {
   const r = results.filter((x) => x.bank === bk && (!u || x.unit === u));
   return `${r.filter((x) => x.pass).length}/${r.length}`;
 };
-console.log(`questions: airport-road ${sum('questions', 'airport-road')}, shafa-road ${sum('questions', 'shafa-road')} · conversations: airport-road ${sum('conversations', 'airport-road')}, shafa-road ${sum('conversations', 'shafa-road')} · learning ${sum('learning')} · $${spent.toFixed(3)}`);
+console.log(`questions: airport-road ${sum('questions', 'airport-road')}, shafa-road ${sum('questions', 'shafa-road')} · conversations: airport-road ${sum('conversations', 'airport-road')}, shafa-road ${sum('conversations', 'shafa-road')}, social ${sum('conversations', 'social')} · learning ${sum('learning')} · $${spent.toFixed(3)}`);
 console.log(`models: understand ${MODELS.understand}, compose ${MODELS.compose}, staff ${MODELS.staff ?? '—'} · guest engine $${guestSpent.toFixed(4)} for ${guestMessages} guest messages = $${(guestMessages ? guestSpent / guestMessages : 0).toFixed(5)} a guest message (cache reads as billed)`);
 const out = arg('--out');
 if (out) writeFileSync(out, JSON.stringify({ at: new Date().toISOString(), spent_usd: Number(spent.toFixed(4)), models: MODELS, guest_spent_usd: Number(guestSpent.toFixed(5)), guest_messages: guestMessages, results }, null, 2));

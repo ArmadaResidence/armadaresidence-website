@@ -315,6 +315,16 @@ The staff alert lines (`hub_staff_alert` {{5}}, staff-facing): «تأكيد طل
 | Photos of the packages | «تجد صور الباقات وتفاصيلها في صفحة المناسبات: {url}» | “You'll find photos and details of the packages on our Celebrations page: {url}” |
 | Which room's photos (no type named yet) | «يسعدنا ذلك. تجد صور كل أنواع الغرف في صفحة الفرع: {url}» | “With pleasure. You'll find photos of every room type on the branch page: {url}” |
 
+**4.6 Instagram and Messenger, and data deletion** [مقرر — أحمد، 25 نوفمبر 2026, S1: the two deletion lines are Ahmed's; the branch and mobile questions are the session's, for Ahmed's review]
+
+| Case | Arabic | English |
+|---|---|---|
+| Data deletion request received (any channel: «احذف بياناتي», “Delete my data” and close variants) | «وصلنا طلبك لحذف بياناتك، وسنبلغك هنا عند الانتهاء.» | “We've received your request to delete your data; we'll let you know here when it's done.” |
+| Data deletion done (sent only while the messaging window is open) | «تم حذف بيانات محادثاتك معنا.» | “Your conversation data with us has been deleted.” |
+| Which branch (Instagram / Messenger: only when the answer depends on the branch; the quick replies are the two branch names) | «في أي فرع تقصد: طريق المطار أم طريق الشفا؟» | “Which branch do you mean: Airport Road or Shafa Road?” |
+| Mobile number for a booking (Instagram / Messenger: no number is known on these channels) | «ما رقم جوالك الذي نسجّل به الحجز؟» | “What mobile number should we put the booking under?” |
+| A mobile number that cannot be read | «لم نتمكن من قراءة الرقم، اكتبه من فضلك كاملًا مع رمز الدولة.» | “We couldn't read the number; please write it in full with the country code.” |
+
 ## 5. Notices and other fixed replies
 
 | Case | Arabic | English |
@@ -423,6 +433,7 @@ Every subject carries an `AR-` token so the Hostinger filter «From contains no-
 | Complaint | the branch's reception recipients | «شكوى من ضيف — {unit_name} — AR-HUB-{id}» | «وصلت شكوى في محادثة على {unit_name}، وانتقلت المحادثة إلى الفريق.» · button «فتح المحادثة» |
 | Morning summary | the `hub_summary` recipients (info@armadaresidence.com + those added in Settings) | «ملخص مركز الضيوف — {date} — AR-HUB-{yyyymmdd}» | heading «أمس في مركز الضيوف»; per unit: «المحادثات» · «ردود المساعد» · «تحويلات للفريق» · «بانتظار الرد الآن» · «حجوزات المساعد (فوري / طلب)» · «طلبات القاعة والمجموعات» · «أكثر المواضيع سؤالًا» · «تكلفة المساعد والرسائل»; footer «للاستخدام الداخلي» |
 | Number quality dropped [مقرر — 13 نوفمبر 2026] | the active admins | «جودة رقم واتساب — {unit_name} — AR-HUB-{yyyymmdd}» | «انخفض تقييم جودة رقم واتساب {unit_name} إلى «{rating}» حسب ميتا.» · «راجع الرسائل والحملات الأخيرة المرسلة من هذا الرقم قبل بدء أي حملة جديدة.» · button «فتح إعدادات المساعد». `{rating}`: High «مرتفع» · Medium «متوسط» · Low «منخفض» |
+| Data deletion request [مقرر — Ahmed's S1 brief of 25 Nov 2026; the wording the session's, for Ahmed's review] | the active admins | «طلب حذف بيانات — {channel} — AR-HUB-{yyyymmdd}» | «طلب ضيف حذف بيانات محادثاته عبر {channel}.» · «افتح «طلبات حذف البيانات» في إعدادات المساعد، ثم اضغط «حذف بيانات المحادثات» لإتمام الطلب. تبقى الحجوزات والطلبات كما هي.» · button «فتح طلبات حذف البيانات». `{channel}`: «واتساب» · «انستجرام» · «ماسنجر» |
 | Claude API credit exhausted [مقرر — Ahmed's brief of 14 Nov 2026, session H5] | the active admins | «رصيد كلود انتهى — المساعد متوقف — AR-HUB-{yyyymmdd}» | «رفضت أنثروبيك طلبات المساعد لأن رصيد المطورين انتهى، فكل المحادثات الجديدة تذهب إلى الفريق حتى يعود الرصيد.» · «يعود الرصيد الشهري مع بداية دورة الاشتراك التالية، أو يمكن إضافة رصيد مدفوع من لوحة المطورين في أنثروبيك.» · button «فتح إعدادات المساعد». Once per exhausted period (the alert stays open until a model call succeeds) |
 | Budget alert [session H5 — wording for Ahmed's review] | the active admins | «ميزانية المساعد — {budget_label} — AR-HUB-{yyyymmdd}» | «بلغت تكلفة المساعد {spent} من {budget} ({pct}%) {period_label}.» · at 100 %: «بلغت التكلفة الحد، فكل المحادثات الجديدة تذهب إلى الفريق حتى تبدأ الفترة التالية أو تُرفع الميزانية.» · button «فتح إعدادات المساعد». Once per budget and period |
 | Voice minutes cap [session H7 — wording for Ahmed's review] | the active admins | «حد الرسائل الصوتية اليومي — {unit_name} — AR-HUB-{yyyymmdd}» | «بلغ تفريغ الرسائل الصوتية في {unit_name} حده اليومي ({minutes}).» · «تذهب الرسائل الصوتية الجديدة إلى الفريق دون تفريغ حتى نهاية اليوم، ويمكن رفع الحد من «الميزانية» في إعدادات المساعد.» · button «فتح إعدادات المساعد». Once per unit and Riyadh day (Settings `hub_voice_daily_minutes`) |

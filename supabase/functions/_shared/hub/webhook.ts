@@ -19,6 +19,7 @@
  * text, a name or a phone number.
  */
 import { isOptOut, normalizeReply } from '../../wa-automation/templates.ts';
+import { isDataDelete } from './meta.ts';
 
 export const EVENT_INBOUND = 'whatsapp.inbound_message.received';
 export const EVENT_STATUS = 'whatsapp.message.updated';
@@ -189,6 +190,8 @@ export type Route =
   | { kind: 'hub_button' }
   /** H9: a quick reply of the departure check (stay_checkout_check) — by its payload, or its title for a template reply */
   | { kind: 'departure_answer'; choice: 'leave' | 'extend'; id: string | null }
+  /** S6 (25 Nov 2026): «احذف بياناتي» / “Delete my data” — the request, the acknowledgement, the admins' email; no turn */
+  | { kind: 'data_delete' }
   /** an opt-out word or the templates' «إلغاء الاشتراك» button: today's immediate effect */
   | { kind: 'optout' }
   /** a TYPED «إلغاء» (any spelling the matcher accepts): the question when a booking is active, else today's opt-out */
@@ -218,6 +221,8 @@ export function route(m: Inbound, club: Json): Route {
     if (m.buttonId === CANCEL_BUTTON_IDS.booking) return { kind: 'cancel_answer', choice: 'booking', typed: false };
     if (m.buttonId.startsWith(HUB_BUTTON_PREFIX)) return { kind: 'hub_button' };
   }
+  // S6 (25 Nov 2026): a data deletion request — before the opt-out words (it is never one of them)
+  if (m.kind === 'text' && isDataDelete(m.text)) return { kind: 'data_delete' };
   if (isOptOut(m.text)) {
     return m.kind === 'text' && normalizeReply(m.text) === 'الغاء' ? { kind: 'cancel_word' } : { kind: 'optout' };
   }

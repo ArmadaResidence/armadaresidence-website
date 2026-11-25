@@ -28,6 +28,7 @@
 // Secrets: ANTHROPIC_API_KEY (label-suggest's), YCLOUD_API_KEY, RESEND_API_KEY; SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY.
 import content from '../booking-request/content.generated.json' with { type: 'json' };
 import { buttonsPayload, sendSession, textPayload, type WaResult } from '../booking-request/whatsapp-send.ts';
+import { pageToken as metaPageToken, sendHub as metaSend, typing as metaTyping } from '../_shared/hub/meta.ts';
 import { hubApiCreditMail, hubBudgetMail, hubComplaintMail, hubFlaggedMail, hubModelErrorMail, hubSpikeMail, hubVoiceCapMail, longDate, partnerNotification, type PartnerMail } from '../booking-request/email.ts';
 import { sarText } from '../booking-request/rules.ts';
 import { typingUrl } from '../_shared/hub/send.ts';
@@ -179,6 +180,28 @@ async function sendAll(fin: Json, typedAlready = false): Promise<number> {
   const ctx = fin.context;
   let sent = 0;
   let typed = typedAlready;
+  // S1: Instagram / Messenger — the Send API with the Page token (typing_on first; cards as generic templates, buttons as
+  // quick replies — _shared/hub/meta.ts)
+  if (ctx.provider === 'meta') {
+    const tk = await metaPageToken(Deno.env.get('META_PAGE_TOKEN'), ctx.page_id ?? null);
+    for (const m of fin.messages as Json[]) {
+      if (!typed && !ctx.test) {
+        typed = true;
+        await metaTyping(String(ctx.to), tk).catch(() => false);
+      }
+      const r = await metaSend(String(ctx.to), {
+        body: m.body, buttons: m.kind === 'interactive' && Array.isArray(m.payload?.buttons) ? m.payload.buttons : null,
+        header_image: typeof m.payload?.header_image === 'string' ? m.payload.header_image : null,
+      }, tk, { test: !!ctx.test });
+      try {
+        await rpc('hub_send_finish', { p_message: m.id, p_status: r.accepted ? r.status : 'failed', p_ycloud_id: r.messageId, p_error_code: r.errorCode });
+      } catch (e) {
+        console.error('hub-agent: send outcome not recorded', String(e).slice(0, 80));
+      }
+      if (r.accepted) sent++;
+    }
+    return sent;
+  }
   for (const m of fin.messages as Json[]) {
     let r: WaResult;
     try {
@@ -395,6 +418,12 @@ async function process(turnId: string, model: ModelFn, deadline: number): Promis
   // the booking's details stay out of the turn's record (hub_turn_finish never stores them)
   if (outcome.finish.booking) outcome.finish.booking = { status: outcome.finish.booking.status, ref: outcome.finish.booking.ref, data: {} };
   const fin = await rpc<Json>('hub_turn_finish', { p_turn: turnId, p: outcome.finish });
+  // S1 (25 Nov 2026): «السوشيال» — the branch the guest named, and the question that waits for it («في أي فرع تقصد…؟»)
+  const f1 = outcome.finish;
+  if (claim.conversation?.id && (f1.conversation_branch || f1.branch_pending || f1.branch_pending_clear)) {
+    await rpc('hub_social_branch_set', { p_conversation: claim.conversation.id, p_branch: f1.conversation_branch ?? null, p_pending: f1.branch_pending ?? null,
+                                         p_clear_pending: !!f1.branch_pending_clear && !f1.branch_pending }).catch((e) => console.error('hub-agent: branch not kept', String(e).slice(0, 80)));
+  }
   if (outcome.credit === 'exhausted') {
     const r = await rpc<Json>('hub_api_credit_mark', { p_exhausted: true }).catch(() => null);
     if (r?.new_alert) console.error('hub-agent: the Claude API credit is exhausted — every conversation goes to staff');

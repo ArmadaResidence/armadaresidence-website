@@ -49,11 +49,12 @@ export interface Payload {
 type Json = any;
 
 /** the live offers a reply may describe (spec §4.3): published, active on the Riyadh day, of this branch */
-export function offersFor(rows: Json[], branch: string, L: 'ar' | 'en', today: string): OfferItem[] {
+export function offersFor(rows: Json[], branch: string | null, L: 'ar' | 'en', today: string): OfferItem[] {
   return (rows ?? [])
     .map((r) => r?.live ?? r)
     .filter((o) => o && o.slug && (!o.valid_from || o.valid_from <= today) && (!o.valid_to || o.valid_to >= today))
-    .filter((o) => !Array.isArray(o.branches) || !o.branches.length || o.branches.includes(branch))
+    // S1: «السوشيال» with no branch known — every branch's offer (each names its branches)
+    .filter((o) => !branch || !Array.isArray(o.branches) || !o.branches.length || o.branches.includes(branch))
     .filter((o) => o.audience !== 'members')
     .map((o) => (o.kind === 'packages' ? packagesItem(o, L) : {
       id: `offer:${o.slug}`, category: String(o.category ?? ''), title: String((L === 'en' ? o.title_en : o.title_ar) ?? ''),
@@ -67,9 +68,9 @@ export function offersFor(rows: Json[], branch: string, L: 'ar' | 'en', today: s
 }
 
 /** a «باقات بسعر خاص» offer of this branch runs today (18 Nov 2026) */
-export function packagesLive(rows: Json[], branch: string, today: string): boolean {
+export function packagesLive(rows: Json[], branch: string | null, today: string): boolean {
   return (rows ?? []).map((r) => r?.live ?? r).some((o) => o && o.kind === 'packages' && (!o.valid_from || o.valid_from <= today) && (!o.valid_to || o.valid_to >= today)
-    && (!Array.isArray(o.branches) || o.branches.includes(branch)));
+    && (!branch || !Array.isArray(o.branches) || o.branches.includes(branch)));
 }
 
 const PK_BRANCH: Record<string, { ar: string; en: string }> = { 'airport-road': { ar: 'طريق المطار', en: 'Airport Road' }, 'shafa-road': { ar: 'طريق الشفا', en: 'Shafa Road' } };

@@ -169,6 +169,13 @@
       "description_en": "Unsubscribe from the offers of Eyab, the Armada Residence membership, by WhatsApp and email.",
       "noindex": true
     },
+    "data-deletion": {
+      "title_ar": "طلب حذف البيانات | أرمادا ريزيدنس",
+      "description_ar": "كيف تطلب حذف بيانات محادثاتك مع أرمادا ريزيدنس على انستجرام أو ماسنجر أو واتساب.",
+      "title_en": "Data deletion request | Armada Residence",
+      "description_en": "How to request the deletion of your conversation data with Armada Residence on Instagram, Messenger or WhatsApp.",
+      "noindex": true
+    },
     "careers": {
       "title_ar": "انضم إلى فريقنا | أرمادا ريزيدنس",
       "description_ar": "أرسل سيرتك الذاتية للعمل في أرمادا ريزيدنس بالطائف: شقق فندقية على طريق المطار وفندق على طريق الشفا.",

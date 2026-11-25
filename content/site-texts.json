@@ -84,5 +84,22 @@
     ]
   },
   "verified": true,
-  "pending": []
+  "pending": [],
+  "data_deletion": {
+    "_note": "The data deletion request page /data-deletion/ (Ahmed, 25 Nov 2026 — DECISIONS.md 2026-11-25 «Guest Hub S1»): linked only from the Meta app «Armada Guest Hub»; not in the menu, noindex, out of the sitemap. The email comes from contact.json → emails.info.",
+    "title_ar": "طلب حذف البيانات",
+    "title_en": "Data deletion request",
+    "intro_ar": "إذا تواصلت معنا عبر انستجرام أو ماسنجر أو واتساب وترغب في حذف بيانات محادثاتك معنا، يمكنك طلب ذلك بإحدى الطريقتين:",
+    "intro_en": "If you have contacted us on Instagram, Messenger or WhatsApp and would like your conversation data deleted, you can request it in either way:",
+    "ways_ar": [
+      "أرسل عبارة «احذف بياناتي» في المحادثة نفسها.",
+      "أو راسلنا على البريد الإلكتروني أدناه، واذكر اسم الحساب أو الرقم الذي تواصلت منه."
+    ],
+    "ways_en": [
+      "Send «Delete my data» in the same conversation.",
+      "Or email us at the address below with the account name or number you contacted us from."
+    ],
+    "after_ar": "نؤكد لك استلام الطلب، ثم نحذف بيانات المحادثات المرتبطة بحسابك، ونبلغك عند الانتهاء.",
+    "after_en": "We will confirm receipt, delete the conversation data linked to your account, and let you know when it is done."
+  }
 }

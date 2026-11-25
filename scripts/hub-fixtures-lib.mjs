@@ -43,6 +43,8 @@ export const UNITS = [
   { key: 'shafa-road', kind: 'branch', branch: 'shafa-road', knowledge_hidden: false, name_ar: 'فرع طريق الشفا', name_en: 'Shafa Road' },
   { key: 'lobby-cafe', kind: 'dining', branch: 'airport-road', knowledge_hidden: false },
   { key: 'rooftop', kind: 'dining', branch: 'airport-road', knowledge_hidden: true },
+  // S1 (25 Nov 2026): «السوشيال» — Instagram and Messenger, both branches (no branch of its own)
+  { key: 'social', kind: 'brand', branch: null, knowledge_hidden: false, name_ar: 'السوشيال', name_en: 'Social' },
 ];
 export const PERSONA = { tone: 2, emoji: false, greeting_new_ar: 'مرحبًا بك في {unit_name}.', greeting_new_en: 'Welcome to {unit_name}.', greeting_returning_ar: 'أهلًا بعودتك، {first_name}.', greeting_returning_en: 'Welcome back, {first_name}.' };
 // H9 fix 3 (Ahmed, 17 Nov 2026): understanding, tagging, translation and images on Sonnet 5.5, the staff path on Opus 5.5;
@@ -108,7 +110,8 @@ export function claimFor(q) {
     conversation: { id: `conv-${q.id}`, state: 'new', real_state: 'human', language: L, window_expires_at: '2099-01-01T00:00:00Z', failed_understandings: 0, priority: 'normal',
       topics: [], tags: [], out_of_scope: 0, first_reply: true, is_test: true },
     unit: { id: unit.key, key: unit.key, kind: unit.kind, branch: unit.branch, name_ar: unit.name_ar, name_en: unit.name_en, mode: 'test', skills: ['shared_knowledge', 'stay_services'], persona: PERSONA, venue: null },
-    channel: { address: unit.key === 'shafa-road' ? '+966536663030' : '+966536622277', sending_enabled: false },
+    channel: unit.kind === 'brand' ? { address: '17800000000000001', sending_enabled: false, kind: 'instagram', provider: 'meta' }
+      : { address: unit.key === 'shafa-road' ? '+966536663030' : '+966536622277', sending_enabled: false },
     guest: { first_name: null, returning: false, language: L },
     messages: q.messages.map((m, i) => (media ? { id: `m-${q.id}-${i}`, kind: m === '[image]' ? 'image' : 'audio', body: null, payload: { media_id: 'x' } } : { id: `m-${q.id}-${i}`, kind: 'text', body: m, payload: {} })),
     history: [],

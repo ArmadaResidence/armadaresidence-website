@@ -644,6 +644,14 @@
         "ratings": {"GREEN": "مرتفع", "HIGH": "مرتفع", "YELLOW": "متوسط", "MEDIUM": "متوسط", "RED": "منخفض", "LOW": "منخفض", "FLAGGED": "منخفض"},
         "button": "فتح إعدادات المساعد"
       },
+      "hub_data_delete": {
+        "_note": "Guest Hub S1 (25 Nov 2026, copy.md §7 «Data deletion request»): a guest asked to delete their conversation data («احذف بياناتي» / “Delete my data”) on WhatsApp, Instagram or Messenger. Arabic only; to the active admins; once per request. No guest words, no phone, no account name.",
+        "subject": "طلب حذف بيانات — {channel} — AR-HUB-{yyyymmdd}",
+        "lead": "طلب ضيف حذف بيانات محادثاته عبر {channel}.",
+        "meaning": "افتح «طلبات حذف البيانات» في إعدادات المساعد، ثم اضغط «حذف بيانات المحادثات» لإتمام الطلب. تبقى الحجوزات والطلبات كما هي.",
+        "channels": {"whatsapp": "واتساب", "instagram": "انستجرام", "messenger": "ماسنجر"},
+        "button": "فتح طلبات حذف البيانات"
+      },
       "hub_daily": {
         "_note": "Guest Hub H6c (15 Nov 2026, copy.md §7 «Morning summary» — the email archive of the daily WhatsApp report hub_daily_report, the same figures, never money): once a day after the report is sent, to the hub_summary recipients (filter confirmed). No guest words, no phone.",
         "subject": "ملخص مركز الضيوف — {date} — AR-HUB-{yyyymmdd}",

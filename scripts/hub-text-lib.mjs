@@ -154,6 +154,15 @@ const H11_CASES = {
   "Which room's photos (no type named yet)": 'photos_which',
 };
 
+// copy.md §4.6 (S1, 25 Nov 2026): Instagram and Messenger, and data deletion
+const S1_CASES = {
+  'Data deletion request received (any channel: «احذف بياناتي», “Delete my data” and close variants)': 'data_delete_ack',
+  'Data deletion done (sent only while the messaging window is open)': 'data_delete_done',
+  'Which branch (Instagram / Messenger: only when the answer depends on the branch; the quick replies are the two branch names)': 'social_which_branch',
+  'Mobile number for a booking (Instagram / Messenger: no number is known on these channels)': 'ask_phone',
+  'A mobile number that cannot be read': 'phone_unclear',
+};
+
 /** the fixed guest messages of copy.md: {key: {ar, en, extra?}} */
 export function parseCopy(md = read('docs/guest-hub/copy.md')) {
   const out = {};
@@ -265,7 +274,7 @@ export function parseCopy(md = read('docs/guest-hub/copy.md')) {
     for (const k of Object.values(H10_CASES)) if (!out[k]) throw new Error(`copy.md §4.4: the line ${k} is missing`);
   }
   {
-    const s45 = md.slice(md.indexOf('**4.5 Weekly review fixes**'), md.indexOf('## 5. Notices'));
+    const s45 = md.slice(md.indexOf('**4.5 Weekly review fixes**'), md.indexOf('**4.6 Instagram and Messenger'));
     for (const r of tableRows(s45)) {
       const key = H11_CASES[r[0]];
       if (!key) continue;
@@ -275,6 +284,18 @@ export function parseCopy(md = read('docs/guest-hub/copy.md')) {
       out[key] = { ar: ar[0], en: en[0] };
     }
     for (const k of Object.values(H11_CASES)) if (!out[k]) throw new Error(`copy.md §4.5: the line ${k} is missing`);
+  }
+  {
+    const s46 = md.slice(md.indexOf('**4.6 Instagram and Messenger'), md.indexOf('## 5. Notices'));
+    for (const r of tableRows(s46)) {
+      const key = S1_CASES[r[0]];
+      if (!key) continue;
+      const ar = allQuoted(r[1], '«', '»');
+      const en = allQuoted(r[2], '“', '”');
+      if (!ar.length || !en.length) throw new Error(`copy.md §4.6: ${r[0]} has no quoted text`);
+      out[key] = { ar: ar[0], en: en[0] };
+    }
+    for (const k of Object.values(S1_CASES)) if (!out[k]) throw new Error(`copy.md §4.6: the line ${k} is missing`);
   }
   const s7 = section(md, '## 7. Staff emails');
   const credit = tableRows(s7).find((r) => r[0].startsWith('Claude API credit exhausted'));

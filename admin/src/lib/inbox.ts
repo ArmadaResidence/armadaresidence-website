@@ -128,11 +128,17 @@ export interface Thread {
     id: string;
     unit_id: string;
     unit_key: string;
-    unit_kind: 'branch' | 'dining';
+    unit_kind: 'branch' | 'dining' | 'brand';
     branch: string;
     unit_name: string;
     channel_kind: string;
     channel_address: string;
+    /** S1: meta for Instagram / Messenger */
+    channel_provider?: string;
+    /** S1: «Human Agent» (once Meta approved it): staff text until the guest's last message + 7 days */
+    human_agent_until?: string | null;
+    /** S1: the branch named on «السوشيال» */
+    branch_named?: string | null;
     sending_enabled: boolean;
     state: HubState;
     owner_kind: InboxRow['owner_kind'];
@@ -241,6 +247,9 @@ export interface SendResult {
 export const send = (conversation: string, mode: 'text' | 'template' | 'held', body: string | null, key: string, language?: 'ar' | 'en') =>
   api.edge<SendResult>('hub-admin', { action: 'send', conversation, mode, body, key, ...(language ? { language } : {}) });
 export const retry = (message: string) => api.edge<SendResult>('hub-admin', { action: 'retry', message });
+/** S6: «حذف بيانات المحادثات» (the system admin) — the texts and media of the guest's conversations on every channel */
+export const dataDelete = (profile: string) =>
+  api.edge<{ ok: boolean; error?: string; conversations?: number; messages?: number; media?: number; notified?: string | null }>('hub-admin', { action: 'data_delete', profile });
 /** H5: a staff send of a suggested reply — the guard runs on it in hub-admin before it leaves */
 export const sendSuggestion = (conversation: string, body: string, key: string, language?: 'ar' | 'en') =>
   api.edge<SendResult & { reasons?: string[] }>('hub-admin', { action: 'send', conversation, mode: 'text', body, key, suggestion: true, ...(language ? { language } : {}) });
@@ -305,6 +314,19 @@ export function ownerText(kind: InboxRow['owner_kind'], name: string | null): st
 export const OWNER_FILTERS: { value: string; label: string }[] = [
   { value: '', label: 'كل المسؤولين' }, { value: 'me', label: 'أنا' }, { value: 'none', label: 'بلا مسؤول' }, { value: 'phone', label: 'الجوال' }, { value: 'assistant', label: 'المساعد' },
 ];
+/** S1 (25 Nov 2026): the channel of a conversation — its label in «المحادثات» and the filter */
+export const CHANNEL_LABELS: Record<string, string> = { whatsapp: 'واتساب', instagram: 'انستجرام', messenger: 'ماسنجر' };
+export const channelLabel = (k: string | null | undefined): string => CHANNEL_LABELS[String(k ?? '')] ?? String(k ?? '');
+export const CHANNEL_FILTERS: { value: string; label: string }[] = [{ value: '', label: 'كل القنوات' }, ...Object.entries(CHANNEL_LABELS).map(([value, label]) => ({ value, label }))];
+/** S1: the reply window of Instagram / Messenger — 24 hours from the guest's last message; then staff text only with
+ *  «Human Agent» (7 days, once approved); after that «انتهت نافذة الرد» and nothing can be sent */
+export function metaWindow(windowIso: string | null, agentIso: string | null | undefined, now = Date.now()): { open: boolean; agent: boolean; text: string } {
+  const w = windowState(windowIso, now);
+  if (w.open) return { open: true, agent: false, text: w.text };
+  const left = agentIso ? (Date.parse(agentIso) - now) / 60000 : -1;
+  if (left > 0) return { open: true, agent: true, text: `انتهت نافذة الـ24 ساعة؛ يمكن رد الفريق بوسم Human Agent خلال ${durationG(left)}` };
+  return { open: false, agent: false, text: 'انتهت نافذة الرد' };
+}
 export const LANGUAGE_FILTERS: { value: string; label: string }[] = [{ value: '', label: 'كل اللغات' }, { value: 'ar', label: 'العربية' }, { value: 'en', label: 'الإنجليزية' }];
 export const ACTIONS = {
   take_over: 'تولّي المحادثة', release: 'إعادة للمساعد', transfer: 'تحويل', close: 'إغلاق المحادثة', note: 'ملاحظة', template: 'إرسال قالب', held: 'إرسال عند رد الضيف',
@@ -348,6 +370,17 @@ export const SEND_ERRORS: Record<string, string> = {
   hub_closed: 'هذه المحادثة مغلقة.',
   hub_body: 'اكتب الرد (حتى 4096 حرفًا).',
   hub_no_phone: 'لا يوجد رقم صالح لهذا الضيف.',
+  // S1: Instagram / Messenger
+  hub_no_recipient: 'لا يوجد حساب انستجرام أو ماسنجر مرتبط بهذا الضيف.',
+  hub_window_meta: 'انتهت نافذة الرد: لا يُرسل شيء على انستجرام أو ماسنجر حتى يكتب الضيف من جديد.',
+  hub_system_admin_only: 'هذا الإجراء لمدير النظام فقط.',
+  no_token: 'مفتاح ميتا غير مضبوط على الخادم.',
+  token: 'رفضت ميتا مفتاح الصفحة. يحتاج مدير النظام إلى إنشاء مفتاح جديد.',
+  permission: 'ينقص تطبيق ميتا صلاحية لهذا الإرسال.',
+  unavailable: 'هذا الحساب لم يعد متاحًا على ميتا.',
+  rate_limit: 'تجاوزنا حد الإرسال لدى ميتا مؤقتًا. حاول بعد دقائق.',
+  meta_down: 'تعذّر الوصول إلى ميتا. حاول بعد قليل.',
+  no_template: 'لا توجد قوالب على انستجرام أو ماسنجر.',
   hub_retry: 'لا تُعاد إلا رسالة تعذّر إرسالها.',
   window_closed: 'انتهت نافذة الرد قبل الإرسال.',
   timeout: 'لم يرد YCloud في الوقت؛ قد تكون الرسالة وصلت. تحقّق قبل إعادة الإرسال.',
