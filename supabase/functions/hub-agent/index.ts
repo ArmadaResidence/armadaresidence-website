@@ -33,7 +33,7 @@ import { hubApiCreditMail, hubBudgetMail, hubComplaintMail, hubFlaggedMail, hubM
 import { sarText } from '../booking-request/rules.ts';
 import { typingUrl } from '../_shared/hub/send.ts';
 import { runTurn, type Deps, type Outcome } from '../_shared/hub/engine.ts';
-import { anthropicModel, type ModelCall, type ModelFn } from '../_shared/hub/model.ts';
+import { anthropicModel, costOf, type ModelCall, type ModelFn } from '../_shared/hub/model.ts';
 import { dashboardAdapter } from '../_shared/hub/adapter/index.ts';
 import { COPY, fixed } from '../_shared/hub/copy.ts';
 import { claimOf, engineVersion, freshState, runItem } from '../_shared/hub/eval.ts';
@@ -42,6 +42,8 @@ import { runReplyJobs, runTeachJobs } from '../_shared/hub/learn-run.ts';
 import { drainStaff } from '../_shared/hub/staff-send.ts';
 import { openaiTranscribe } from '../_shared/hub/media.ts';
 import { chatBooking, notifyChatBooking } from '../booking-request/notify.ts';
+import { gradeComment, labComment, type CommentExpect } from '../_shared/hub/comments.ts';
+import { runComment } from '../_shared/hub/comment-run.ts';
 
 const ALERT_FROM = 'لوحة أرمادا ريزيدنس <no-reply@armadaresidence.com>';
 const BUDGET_MS = 50_000;
@@ -339,6 +341,24 @@ async function evalStep(model: ModelFn, deadline: number): Promise<number> {
       try {
         if (!ctxs.has(item.unit_key)) ctxs.set(item.unit_key, await rpc<Json>('hub_eval_context', { p_unit: item.unit_key }));
         const ctx = ctxs.get(item.unit_key);
+        // S2: a comment item of «السوشيال» — the code rules, the classifier and the plan (nothing posted), graded by code
+        if ((item.expect as Json)?.action === 'comment') {
+          const m = String(ctx.settings?.models?.tag ?? 'claude-sonnet-5-5');
+          const r0 = await labComment(model, m, item, null);
+          const g = gradeComment(item.expect as unknown as CommentExpect, r0);
+          const res = r0.result;
+          await rpc('hub_eval_finish', {
+            p_result: r.result_id,
+            p: { status: g.pass ? 'pass' : 'fail', reasons: g.reasons, replies: [],
+                 outcome: { kind: 'comment', state: r0.plan?.state ?? (r0.skip ? 'skipped' : null), reason: r0.skip ?? r0.plan?.reason ?? null, transitions: [], topics: [],
+                            card_keys: [], faq_keys: [], guard_refusals: [], expected: 'comment', engine: ver, class: r0.class,
+                            plan: r0.plan ? { public: !!r0.plan.public, private: !!r0.plan.private, handoff: r0.plan.handoff } : null },
+                 models: res ? [{ layer: 'tag', model: m, input_tokens: res.input_tokens, output_tokens: res.output_tokens, latency_ms: res.latency_ms, ok: res.ok,
+                                  ...(res.error ? { error: res.error } : {}), cost_usd: costOf(ctx.settings?.prices, m, res.input_tokens, res.output_tokens) }] : [] },
+          });
+          done++;
+          return;
+        }
         const cards: string[] | null = r.config === 'candidate' && Array.isArray(r.cards) ? (r.cards as string[]) : null;
         const run = await runItem(ctx, item, deps(model, cards ?? []), r.config === 'candidate' && r.persona ? r.persona : null);
         const g = grade(item, run.outcome, { fees: ctx.fees, cards: ctx.cards, skills: ctx.unit?.skills ?? [] });
@@ -487,6 +507,9 @@ async function process(turnId: string, model: ModelFn, deadline: number): Promis
   return outcome.finish.status;
 }
 
+/** S2: one comment through the worker (comment-run.ts) */
+const comment = (id: string, model: ModelFn) => runComment(id, { rpc: (n, a) => rpc(n, a), model, token: (page) => metaPageToken(Deno.env.get('META_PAGE_TOKEN'), page) });
+
 /** a QA stub: each call answered by the text of its layer (preview branches only) */
 const stubModel = (stub: Record<string, string>): ModelFn => async (c: ModelCall) =>
   stub[c.layer] !== undefined
@@ -559,6 +582,13 @@ Deno.serve(async (req) => {
     if (body.action === 'qa-eval') return json(200, { ok: true, done: await evalStep(stubModel(body.stub ?? {}), Date.now() + BUDGET_MS) });
     if (body.action === 'qa-cards') return json(200, { ok: true, done: await learnJobs(stubModel(body.stub ?? {}), Date.now() + BUDGET_MS) });
     if (body.action === 'qa-voice') return json(200, await voiceAccuracy(body));
+    if (body.action === 'qa-comment' && typeof body.comment === 'string') {
+      // a test comment only (stored is_test by social-inbound's QA path): nothing is posted (comment-run sends in test mode)
+      const r = await fetch(`${url()}/rest/v1/hub_comments?select=is_test&id=eq.${encodeURIComponent(body.comment)}`, { headers: { apikey: serviceKey(), Authorization: `Bearer ${serviceKey()}` } });
+      const rows = r.ok ? ((await r.json()) as { is_test: boolean }[]) : [];
+      if (!rows[0]?.is_test) return json(403, { ok: false, error: 'test comments only' });
+      return json(200, { ok: true, state: await comment(body.comment, stubModel(body.stub ?? {})) });
+    }
     if (body.action !== 'qa-turn' || typeof body.turn !== 'string') return json(400, { ok: false });
     // a test conversation only: the turn must be is_test
     const r = await fetch(`${url()}/rest/v1/hub_turns?select=is_test&id=eq.${encodeURIComponent(body.turn)}`, { headers: { apikey: serviceKey(), Authorization: `Bearer ${serviceKey()}` } });
@@ -583,6 +613,18 @@ Deno.serve(async (req) => {
     await work;
     return json(200, { ok: true });
   }
+  if (body.action === 'comment' && typeof body.comment === 'string') {
+    // S2: social-inbound, right after a comment was stored
+    const work = comment(body.comment, model).catch((e) => console.error('hub-agent: comment', String(e).slice(0, 120)));
+    // deno-lint-ignore no-explicit-any
+    const rt = (globalThis as any).EdgeRuntime;
+    if (rt && typeof rt.waitUntil === 'function') {
+      rt.waitUntil(work);
+      return json(202, { ok: true, queued: true });
+    }
+    await work;
+    return json(200, { ok: true });
+  }
   if (body.action === 'sweep') {
     const due = await rpc<string[]>('hub_turns_due', { p_limit: 20 }).catch(() => []);
     const done: string[] = [];
@@ -590,7 +632,13 @@ Deno.serve(async (req) => {
       if (Date.now() > deadline) break;
       done.push(await process(id, model, deadline).catch(() => 'error'));
     }
-    // a guest's turn first; then the alerts, the alternatives offers, the learning jobs and the test lab with the time left
+    // a guest's turn first; then the comments the inbound call missed (S2); then the alerts, the alternatives offers, the
+    // learning jobs and the test lab with the time left
+    const cdue = await rpc<string[]>('hub_comments_due', { p_limit: 10 }).catch(() => []);
+    for (const id of cdue ?? []) {
+      if (Date.now() > deadline - 20_000) break;
+      await comment(id, model).catch(() => 'error');
+    }
     await labAlerts();
     await altOffers().catch(() => 0);
     const cards = await learnJobs(model, deadline).catch(() => 0);

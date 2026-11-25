@@ -50,6 +50,8 @@ import { hubReplyReadyPayload, typingUrl, type HubUnitRef } from '../_shared/hub
 import { buttonsPayload } from '../booking-request/whatsapp-send.ts';
 import { GRAPH as META_GRAPH, metaError, pageToken as metaPageToken, sendHub as metaSend, typing as metaTyping } from '../_shared/hub/meta.ts';
 import { fixed as fixedCopy } from '../_shared/hub/copy.ts';
+import { publicGuard, replyPrivate, replyPublic, type CommentKind } from '../_shared/hub/comments.ts';
+import { openDm } from '../_shared/hub/comment-run.ts';
 import { anthropicModel } from '../_shared/hub/model.ts';
 import { composeUser, parseSuggestions, suggestSystem, translateSystem } from '../_shared/hub/compose/index.ts';
 import { buildPayload, guardPayload, type Payload } from '../_shared/hub/sources/index.ts';
@@ -241,6 +243,10 @@ async function deliverMeta(req: Request, b: Begin): Promise<Response> {
  *  channels stored verified. Messaging fields only — no comment or feed field (comments are S2). No token in the answer. */
 const PAGE_FIELDS = ['messages', 'messaging_postbacks', 'message_echoes', 'message_deliveries', 'message_reads'];
 const IG_FIELDS = ['messages', 'messaging_postbacks', 'messaging_seen'];
+// S2 (26 Nov 2026): the comment fields — the Page's `feed` (its comments) and Instagram's `comments`; subscribed as their own
+// steps after the messaging ones, so a permission Meta has not granted yet shows ✗ on those steps and never on the DMs
+export const PAGE_COMMENT_FIELDS = ['feed'];
+export const IG_COMMENT_FIELDS = ['comments'];
 // deno-lint-ignore no-explicit-any
 type AnyJ = any;
 async function metaSetup(req: Request, body: Record<string, unknown>, jwt: string): Promise<Response> {
@@ -279,12 +285,63 @@ async function metaSetup(req: Request, body: Record<string, unknown>, jwt: strin
   const sub = await graph(`/${page.id}/subscribed_apps`, { method: 'POST', body: new URLSearchParams({ subscribed_fields: PAGE_FIELDS.join(','), access_token: pageTk }) });
   steps.push({ step: 'page', ok: sub.ok && sub.j?.success !== false, code: sub.ok ? null : metaError(sub.status, sub.j) });
   if (!steps.every((s) => s.ok)) return json(req, 200, { ok: false, error: 'hub_meta_subscribe', steps });
+  // S2: the comments — the whole list again with the comment fields (a refusal leaves the messaging list as it is)
+  for (const [object, fields, extra] of [['page', PAGE_FIELDS, PAGE_COMMENT_FIELDS], ['instagram', IG_FIELDS, IG_COMMENT_FIELDS]] as const) {
+    const form = new URLSearchParams({ object, callback_url: callback, fields: [...fields, ...extra].join(','), verify_token: verify!, include_values: 'true', access_token: `${appId}|${secret}` });
+    const r = await graph(`/${appId}/subscriptions`, { method: 'POST', body: form });
+    steps.push({ step: `app:${object}:comments`, ok: r.ok && r.j?.success !== false, code: r.ok ? null : metaError(r.status, r.j) });
+  }
+  const subC = await graph(`/${page.id}/subscribed_apps`, { method: 'POST', body: new URLSearchParams({ subscribed_fields: [...PAGE_FIELDS, ...PAGE_COMMENT_FIELDS].join(','), access_token: pageTk }) });
+  steps.push({ step: 'page:comments', ok: subC.ok && subC.j?.success !== false, code: subC.ok ? null : metaError(subC.status, subC.j) });
   const st = await rpc<Record<string, unknown>>('hub_social_channels_store', {
     p: { page_id: String(page.id), page_name: String(page.name ?? ''), ig_id: ig?.id ? String(ig.id) : null, ig_username: ig?.username ? String(ig.username) : null }, p_actor: null,
   }, null);
   steps.push({ step: 'store', ok: st.ok });
   console.log('hub-admin: meta setup', steps.map((s) => `${s.step}=${s.ok ? 'ok' : s.code ?? 'failed'}`).join(' '));
-  return json(req, 200, { ok: st.ok, steps, page: { id: String(page.id), name: String(page.name ?? '') }, instagram: ig?.id ? { id: String(ig.id), username: String(ig.username ?? '') } : null });
+  // ok = the DMs connected; the comment steps carry their own ✓ / ✗ (comments_ok)
+  return json(req, 200, { ok: st.ok, comments_ok: steps.filter((s) => s.step.endsWith(':comments')).every((s) => s.ok), steps, page: { id: String(page.id), name: String(page.name ?? '') }, instagram: ig?.id ? { id: String(ig.id), username: String(ig.username ?? '') } : null });
+}
+
+/** S2: a staff reply to a comment (inbox: edit, a member of «السوشيال» or of a branch unit — the RPC decides). Public: the
+ *  guard of S4 first (no digit, no currency, no «from» price, no link); private: once, within 7 days, and it opens the
+ *  commenter's DM. Never retried; the outcome recorded and shown — a failure is never silent. */
+async function commentReply(req: Request, body: Record<string, unknown>, jwt: string): Promise<Response> {
+  const id = String(body.comment ?? '');
+  const mode = body.mode === 'private' ? 'private' : body.mode === 'public' ? 'public' : null;
+  const text = typeof body.body === 'string' ? body.body.trim() : '';
+  if (!UUID.test(id) || !mode || !text || text.length > 1000) return json(req, 400, { ok: false, error: 'invalid body' });
+  if (mode === 'public') {
+    const g = publicGuard(text);
+    if (g) return json(req, 200, { ok: false, error: 'hub_comment_guard', reason: g });
+  }
+  const b = await rpc<AnyJ>('hub_comment_staff_begin', { p_id: id, p_mode: mode, p_body: text }, jwt);
+  if (!b.ok) return refused(req, b);
+  const kind: CommentKind = b.data.kind === 'facebook' ? 'facebook' : 'instagram';
+  const test = !!b.data.is_test;
+  const tk = test ? undefined : await metaPageToken(Deno.env.get('META_PAGE_TOKEN'), b.data.page_id ?? null);
+  let status = 'failed';
+  let error: string | null = null;
+  let provider: string | null = null;
+  let conversation: string | null = null;
+  if (mode === 'public') {
+    const r = await replyPublic(kind, String(b.data.comment_id), text, tk, { test });
+    status = r.ok ? (test ? 'test' : 'sent') : 'failed';
+    error = r.ok ? null : r.code;
+    provider = r.id;
+  } else {
+    const r = await replyPrivate(String(b.data.comment_id), text, tk, { test });
+    status = r.ok ? (test ? 'test' : 'sent') : 'failed';
+    error = r.ok ? null : r.code;
+    if (r.ok && r.recipient) {
+      const svc = <T = AnyJ>(n: string, a: Record<string, unknown>) => rpc<T>(n, a, null).then((x) => (x.ok ? x.data : null) as T);
+      conversation = await openDm(svc, kind, String(b.data.channel_address), r.recipient, { id, comment_id: b.data.comment_id, body: b.data.body, commented_at: b.data.commented_at ?? null }, text, r.id,
+        /[؀-ۿ]/.test(text) ? 'ar' : 'en', test);
+    }
+  }
+  const f = await rpc('hub_comment_staff_finish', { p_id: id, p_mode: mode, p: { body: text, status, error, provider_id: provider, conversation_id: conversation } }, jwt);
+  if (!f.ok) console.error('hub-admin: comment reply outcome not recorded', mode, f.status);
+  console.log('hub-admin: comment reply', mode, kind, status, error ?? '');
+  return json(req, 200, { ok: status !== 'failed', status, error_code: error });
 }
 
 /** S6 «حذف بيانات المحادثات» (the system admin — the RPC decides): the texts and media gone; then «تم حذف بيانات محادثاتك
@@ -424,6 +481,8 @@ Deno.serve(async (req) => {
   }
   // S1: «ربط الصفحة وحساب انستجرام» and S6 «حذف بيانات المحادثات» (the system admin)
   if (body.action === 'meta_setup') return await metaSetup(req, body, jwt);
+  // S2: a staff reply to a comment — in public (the guard of S4: no number, no currency) or the one private message
+  if (body.action === 'comment_reply') return await commentReply(req, body, jwt);
   if (body.action === 'data_delete') return await dataDelete(req, body, jwt);
   if (body.action === 'retry') {
     const id = String(body.message ?? '');

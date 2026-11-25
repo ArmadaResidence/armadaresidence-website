@@ -138,8 +138,12 @@ export function parseWebhook(body: Json): MetaEvent[] {
       }
       out.push({ type: 'other', kind, what: Object.keys(ev ?? {}).filter((k) => !['sender', 'recipient', 'timestamp'].includes(k)).join(',').slice(0, 60) || 'empty' });
     }
-    // Instagram's `changes` (comments, mentions) are not subscribed in S1 — logged by their field only
-    for (const ch of Array.isArray(entry?.changes) ? entry.changes : []) out.push({ type: 'other', kind, what: `change:${String(ch?.field ?? '').slice(0, 30)}` });
+    // S2: the comment changes (Instagram `comments`, the Page's `feed` comments) are comments.ts's; anything else by its field
+    for (const ch of Array.isArray(entry?.changes) ? entry.changes : []) {
+      const f = String(ch?.field ?? '');
+      if ((object === 'instagram' && (f === 'comments' || f === 'live_comments')) || (object === 'page' && f === 'feed' && ch?.value?.item === 'comment')) continue;
+      out.push({ type: 'other', kind, what: `change:${f.slice(0, 30)}` });
+    }
   }
   return out;
 }

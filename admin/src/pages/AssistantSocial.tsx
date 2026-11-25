@@ -12,6 +12,7 @@ import * as api from '../lib/api';
 import { riyadhDateTime, west } from '../lib/format';
 import { Confirm, ErrorBox, Loading, Spinner, useToast } from '../components/ui';
 import { channelLabel, dataDelete, sendError } from '../lib/inbox';
+import { KIND_LABELS, commentSettings, setSwitches, type CommentSettings } from '../lib/comments';
 
 type SocialMode = 'test' | 'live' | 'standby';
 interface Overview {
@@ -30,7 +31,11 @@ export const SOCIAL_MODES: { value: SocialMode; label: string; note: string }[] 
   { value: 'standby', label: 'الكل مع وضع الاستعداد', note: 'ينتظر المساعد رد الفريق دقائق قبل أن يرد.' },
 ];
 const MODE_LABELS: Record<string, string> = { off: 'متوقف', test: 'تجربة', shadow: 'بموافقة الفريق', licensed: 'يرد تلقائيًا' };
-const SETUP_STEPS: Record<string, string> = { pages: 'الصفحة', 'app:page': 'اشتراك ماسنجر', 'app:instagram': 'اشتراك انستجرام', page: 'ربط الصفحة بالتطبيق', store: 'حفظ القنوات' };
+const SETUP_STEPS: Record<string, string> = {
+  pages: 'الصفحة', 'app:page': 'اشتراك ماسنجر', 'app:instagram': 'اشتراك انستجرام', page: 'ربط الصفحة بالتطبيق', store: 'حفظ القنوات',
+  // S2: the comment subscriptions (their own steps — a missing Meta permission shows ✗ here and never stops the messages)
+  'app:page:comments': 'اشتراك تعليقات فيسبوك', 'app:instagram:comments': 'اشتراك تعليقات انستجرام', 'page:comments': 'ربط تعليقات الصفحة بالتطبيق',
+};
 
 async function rpc<T>(fn: string, args: Record<string, unknown> = {}): Promise<T> {
   const { data, error } = await supabase.rpc(fn, args);
@@ -99,9 +104,10 @@ export function SocialPanel() {
     setBusy('setup');
     setSteps(null);
     try {
-      const r = await api.edge<{ ok: boolean; error?: string; missing?: string[]; steps?: { step: string; ok: boolean; code?: string | null }[] }>('hub-admin', { action: 'meta_setup' });
+      const r = await api.edge<{ ok: boolean; comments_ok?: boolean; error?: string; missing?: string[]; steps?: { step: string; ok: boolean; code?: string | null }[] }>('hub-admin', { action: 'meta_setup' });
       setSteps(r.steps ?? null);
-      if (r.ok) toast('رُبطت الصفحة وحساب انستجرام بالتطبيق.');
+      if (r.ok && r.comments_ok === false) toast('رُبطت الرسائل، لكن اشتراك التعليقات لم يكتمل؛ راجع الخطوات أدناه.', 'error');
+      else if (r.ok) toast('رُبطت الصفحة وحساب انستجرام بالتطبيق.');
       else toast(r.error === 'hub_meta_secrets' ? `مفاتيح ميتا ناقصة على الخادم: ${(r.missing ?? []).join('، ')}` : r.error === 'hub_meta_page' ? 'لم نجد الصفحة في مفتاح مستخدم النظام.' : 'تعذّر الربط؛ راجع الخطوات أدناه.', 'error');
       await load();
     } catch (e) {
@@ -187,17 +193,19 @@ export function SocialPanel() {
         {!admin && <p className="text-xs text-ink-muted">يغيّر هذه الإعدادات مدير النظام فقط.</p>}
       </section>
 
+      <CommentSwitches />
       <section className="card p-4 grid gap-2" data-social-accounts>
         <h3 className="font-bold">حسابات التجربة</h3>
         <p className="text-xs text-ink-muted">الحسابات التي راسلت الصفحة أو حساب انستجرام. في «حسابات التجربة فقط» يرد المساعد على المعلَّمة منها وحدها.</p>
         {!o.accounts.length ? <p className="text-sm text-ink-muted">لم يراسل أحد بعد.</p> : (
           <ul className="grid gap-1 text-sm">
             {o.accounts.map((a) => (
-              <li key={a.id} className="flex flex-wrap items-center justify-between gap-2" data-account={a.id} data-tester={a.tester ? 'yes' : 'no'}>
-                <span className="min-w-0"><span className="inbox-chip">{channelLabel(a.kind)}</span> <span dir="auto">{a.name ?? a.username ?? 'حساب بلا اسم'}</span>
+              <li key={a.id} className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2" data-account={a.id} data-tester={a.tester ? 'yes' : 'no'}>
+                {/* S2a: the name wraps in its own column and the button keeps its place, on every row and every width */}
+                <span className="min-w-0 break-words"><span className="inbox-chip">{channelLabel(a.kind)}</span> <span dir="auto">{a.name ?? a.username ?? 'حساب بلا اسم'}</span>
                   <span className="text-xs text-ink-muted"> · {riyadhDateTime(a.last_seen_at)}</span></span>
                 {admin
-                  ? <button type="button" className="btn btn-ghost btn-sm" disabled={!!busy} onClick={() => void tester(a.id, !a.tester)} aria-pressed={a.tester} data-action="tester">{busy === `t:${a.id}` && <Spinner />} {a.tester ? '✓ حساب تجربة' : 'حساب تجربة'}</button>
+                  ? <button type="button" className="btn btn-ghost btn-sm whitespace-nowrap" disabled={!!busy} onClick={() => void tester(a.id, !a.tester)} aria-pressed={a.tester} data-action="tester">{busy === `t:${a.id}` && <Spinner />} {a.tester ? '✓ حساب تجربة' : 'حساب تجربة'}</button>
                   : <span className="text-xs">{a.tester ? 'حساب تجربة' : ''}</span>}
               </li>
             ))}
@@ -228,5 +236,72 @@ export function SocialPanel() {
         <p className="text-sm">تُحذف نصوص كل محادثات هذا الضيف ووسائطها على كل القنوات، ولا يمكن استرجاعها. تبقى الحجوزات والطلبات كما هي، ويُبلغ الضيف إذا كانت نافذة الرد مفتوحة.</p>
       </Confirm>
     </div>
+  );
+}
+
+/** S2 (26 Nov 2026): «التعليقات» and «الرسائل الخاصة» per account — both OFF; the system admin's, with «تراجع».
+ *  «التعليقات» cannot go on before Ahmed's approved public reply texts exist (SOCIAL-SPEC.md §8). */
+function CommentSwitches() {
+  const toast = useToast();
+  const [s, setS] = useState<CommentSettings | null>(null);
+  const [err, setErr] = useState<string | null>(null);
+  const [busy, setBusy] = useState<string | null>(null);
+  const load = useCallback(async () => {
+    try {
+      setS(await commentSettings());
+      setErr(null);
+    } catch (e) {
+      setErr((e as Error).message);
+    }
+  }, []);
+  useEffect(() => void load(), [load]);
+  if (err) return <ErrorBox error={err} />;
+  if (!s) return null;
+  async function flip(id: string, comments: boolean, priv: boolean, label: string) {
+    setBusy(id);
+    try {
+      const r = await setSwitches(id, comments, priv);
+      toast.undo(label, async () => {
+        await setSwitches(id, r.before.comments, r.before.private);
+        await load();
+      });
+      await load();
+    } catch (e) {
+      toast((e as Error).message, 'error');
+    } finally {
+      setBusy(null);
+    }
+  }
+  return (
+    <section className="card p-4 grid gap-3" data-comment-switches data-tour="social-comments">
+      <h3 className="font-bold">التعليقات</h3>
+      <p className="text-xs text-ink-muted">الرد على التعليقات العامة تحت منشورات انستجرام وفيسبوك: رد علني قصير بنص معتمد بلا أسعار، ورسالة خاصة واحدة للأسئلة، والشكاوى للفريق، والتعليقات المزعجة للمراجعة. لا يُخفى أو يُحذف شيء تلقائيًا. يتبع وضع الوحدة وجمهورها («حسابات التجربة فقط» الآن).</p>
+      {!s.texts_ready && (
+        <p className="note-amber text-sm" role="note" data-texts-missing>لم تُعتمد نصوص الردود العامة بعد، فلا يمكن تشغيل «التعليقات». الناقص: <span className="num">{s.texts_missing.length}</span></p>
+      )}
+      <ul className="grid gap-2 text-sm">
+        {s.channels.map((c) => (
+          <li key={c.id} className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2" data-comment-channel={c.kind}>
+            <span className="min-w-0 break-words"><span className="inbox-chip">{KIND_LABELS[c.kind]}</span> <span dir="auto">{c.name ?? ''}</span></span>
+            <span className="flex flex-wrap gap-2 justify-end">
+              {s.system_admin ? (
+                <>
+                  <button type="button" className="btn btn-ghost btn-sm whitespace-nowrap" aria-pressed={c.comments_on} disabled={!!busy || (!c.comments_on && !s.texts_ready)} data-action="comments-switch"
+                    onClick={() => void flip(c.id, !c.comments_on, c.comments_on ? false : c.private_on, c.comments_on ? 'أُوقفت التعليقات لهذا الحساب.' : 'شُغّلت التعليقات لهذا الحساب.')}>
+                    {busy === c.id && <Spinner />} {c.comments_on ? '✓ التعليقات' : 'التعليقات'}
+                  </button>
+                  <button type="button" className="btn btn-ghost btn-sm whitespace-nowrap" aria-pressed={c.private_on} disabled={!!busy || !c.comments_on} data-action="private-switch"
+                    onClick={() => void flip(c.id, c.comments_on, !c.private_on, c.private_on ? 'أُوقفت الرسائل الخاصة للمعلّقين.' : 'شُغّلت الرسائل الخاصة للمعلّقين.')}>
+                    {c.private_on ? '✓ الرسائل الخاصة' : 'الرسائل الخاصة'}
+                  </button>
+                </>
+              ) : (
+                <span className="text-xs" data-comment-state>{c.comments_on ? (c.private_on ? 'التعليقات والرسائل الخاصة تعمل' : 'التعليقات تعمل') : 'التعليقات متوقفة'}</span>
+              )}
+            </span>
+          </li>
+        ))}
+      </ul>
+    </section>
   );
 }

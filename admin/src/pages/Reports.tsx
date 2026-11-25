@@ -23,6 +23,7 @@ import { BranchSelect, ErrorBox, Field } from '../components/ui';
 import DateField from '../components/DateField';
 import { AnimatedNumber, Bars, ChartCard, DataTable, HBars, HowTip, Legend, Lines, useFirstLoad } from '../components/charts';
 import { Icon } from '../components/icons';
+import { CLASS_LABELS as COMMENT_CLASS_LABELS, STATE_LABELS as COMMENT_STATE_LABELS, commentCounts, type CommentCounts } from '../lib/comments';
 
 type Sect<T> = { data: T | null; error: string | null };
 /** the short branch name («طريق المطار») — the database's name_ar is the full «أرمادا ريزيدنس – …» */
@@ -163,6 +164,7 @@ export default function Reports() {
       <CancelSection s={can} first={first} />
       <ClubSection s={cp} first={first} />
       <HubSection s={hub} money={money} first={first} />
+      <CommentsSection from={period.from} to={period.to} />
       </td></tr></tbody>
       <tfoot className="report-print-foot" aria-hidden="true" data-print-foot><tr><td>
         <div className="report-print-foot-in">
@@ -514,4 +516,36 @@ function buildSheets(x: { perf: m.Performance | null; beh: m.Behaviour | null; s
     { title: 'أكثر المواضيع', rows: [['الموضوع', 'المرات'], ...h.topics.map((t) => [t.label_ar, t.count])] },
   ] });
   return sheets;
+}
+
+/** S2 (26 Nov 2026): the public comments of Instagram and Facebook in the period — by type and what became of them (no text) */
+function CommentsSection({ from, to }: { from: string; to: string }) {
+  const [d, setD] = useState<CommentCounts | null>(null);
+  const [err, setErr] = useState<string | null>(null);
+  useEffect(() => {
+    let live = true;
+    commentCounts(from, to).then((x) => live && (setD(x), setErr(null))).catch((e) => live && setErr((e as Error).message));
+    return () => {
+      live = false;
+    };
+  }, [from, to]);
+  const n = (x: number | undefined) => x ?? 0;
+  return (
+    <section id="comments" aria-labelledby="comments-h" className="grid gap-3 report-section" data-section="comments" data-tour="report-comments">
+      <SectionHead id="comments" title="التعليقات" />
+      <ErrorBox error={err} />
+      {d && (
+        <section className="card p-4" data-comment-counts>
+          <p className="text-sm text-ink-muted mb-3">تعليقات انستجرام وفيسبوك العامة في الفترة: <span className="num">{n(d.total)}</span> (انستجرام <span className="num">{n(d.by_kind?.instagram)}</span> · فيسبوك <span className="num">{n(d.by_kind?.facebook)}</span>) — أُرسلت <span className="num">{n(d.private_sent)}</span> رسالة خاصة.</p>
+          <DataTable caption="التعليقات حسب النوع"
+            data={{ head: ['النوع', 'العدد'], rows: (['question', 'price', 'complaint', 'praise', 'spam', 'other'] as const).map((k) => [COMMENT_CLASS_LABELS[k], n(d.by_class?.[k])]) }}
+            foot={[['الإجمالي', n(d.total)]]} />
+          <div className="mt-3">
+            <DataTable caption="ما حدث للتعليقات"
+              data={{ head: ['الحالة', 'العدد'], rows: (['replied', 'handed_off', 'review', 'skipped', 'test', 'failed'] as const).map((k) => [COMMENT_STATE_LABELS[k], n(d.by_state?.[k])]) }} />
+          </div>
+        </section>
+      )}
+    </section>
+  );
 }

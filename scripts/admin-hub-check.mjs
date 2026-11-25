@@ -33,3 +33,6 @@ await import('../admin/tests/hub-fix3-ui-check.mjs');
 // H9 fix 4 (18 Nov 2026): «المحادثات» with every tab, state, owner, language, unit and link — the stub refuses what the
 // server refuses (the red bar «القيمة غير صالحة.» of ?tab=team) — offline too (admin/tests/hub-inbox-filters-check.mjs).
 await import('../admin/tests/hub-inbox-filters-check.mjs');
+// S2 (26 Nov 2026): «المحادثات» → «التعليقات», the comment switches of «السوشيال» and the test-account rows at 375 (S2a) —
+// offline too (admin/tests/hub-comments-ui-check.mjs).
+await import('../admin/tests/hub-comments-ui-check.mjs');

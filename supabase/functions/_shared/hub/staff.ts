@@ -153,13 +153,19 @@ export interface AlertItem {
   reason: string | null;
   /** S1c: instagram | messenger — a social guest has no phone; the alert names the channel */
   channel_kind?: string | null;
+  /** S2a (Ahmed, 25 Nov 2026): a social hand-off with no known branch, alerted to both branches — {{1}} says so */
+  both?: boolean | null;
 }
+/** S2a: {{1}} of a hand-off alerted to both branches (the first to reply takes it) */
+export const BOTH_BRANCHES_NAME = 'أرمادا ريزيدنس — الفرعان (لم يُحدَّد الفرع بعد)';
 /** hub_staff_alert's five variables (templates.md §4), one line each */
 export function alertVars(a: AlertItem): string[] {
   return [
-    oneLine(a.branch_name, 80),
+    oneLine(a.both ? BOTH_BRANCHES_NAME : a.branch_name, 80),
     oneLine(a.guest_name || 'ضيف', 60),
-    a.channel_kind === 'instagram' ? 'حساب انستجرام' : a.channel_kind === 'messenger' ? 'حساب ماسنجر' : phoneText(a.guest_phone),
+    // S2: a complaint in a comment names the comment's channel
+    a.channel_kind === 'instagram' ? 'حساب انستجرام' : a.channel_kind === 'messenger' ? 'حساب ماسنجر' : a.channel_kind === 'instagram_comment' ? 'تعليق انستجرام'
+      : a.channel_kind === 'facebook_comment' ? 'تعليق فيسبوك' : phoneText(a.guest_phone),
     oneLine(a.ref || 'غير معروف', 40),
     oneLine(a.summary && cleanSummary(a.summary) ? cleanSummary(a.summary) : reasonLine(a.reason), 120),
   ];

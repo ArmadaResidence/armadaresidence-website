@@ -37,6 +37,7 @@ import { useSession } from '../lib/session';
 import { handoffSeen } from '../lib/team';
 import StaffThreads from '../components/StaffThreads';
 import { MEDIA_CATEGORY_LABELS, MEDIA_STATUS_LABELS } from '../lib/hub';
+import { CommentsTab } from './InboxComments';
 
 type View = 'list' | 'thread' | 'panel';
 
@@ -230,18 +231,21 @@ export default function Inbox() {
   const { me } = useSession();
   const staffTab = me?.role === 'admin' || canEdit(me, 'hub_team');
   const teamOn = staffTab && sp.get('tab') === 'team';
+  // S2 (26 Nov 2026): «التعليقات» — the public comments of Instagram and Facebook (the server decides who may see them)
+  const commentsOn = !teamOn && sp.get('tab') === 'comments';
 
   const tabBar = (
     <div className="inbox-tabs" role="tablist" aria-label="تبويبات المحادثات" data-tour="inbox-tabs">
       {tabs.map((k) => {
         const n = k === 'orders' ? null : data?.counts[k as keyof InboxList['counts']];
         return (
-          <button key={k} type="button" role="tab" aria-selected={!teamOn && filters.tab === k} className={`inbox-tab ${!teamOn && filters.tab === k ? 'is-on' : ''}`}
+          <button key={k} type="button" role="tab" aria-selected={!teamOn && !commentsOn && filters.tab === k} className={`inbox-tab ${!teamOn && !commentsOn && filters.tab === k ? 'is-on' : ''}`}
             onClick={() => setParam({ tab: k === 'waiting' ? null : k })} data-tab={k}>
             {TAB_LABELS[k]}{n !== null && n !== undefined ? <span className="num inbox-count" data-count={k}>{n}</span> : null}
           </button>
         );
       })}
+      <button type="button" role="tab" aria-selected={commentsOn} className={`inbox-tab ${commentsOn ? 'is-on' : ''}`} onClick={() => setParam({ tab: 'comments', c: null })} data-tab="comments" data-tour="inbox-comments">التعليقات</button>
       {staffTab && (
         <button type="button" role="tab" aria-selected={teamOn} className={`inbox-tab ${teamOn ? 'is-on' : ''}`} onClick={() => setParam({ tab: 'team', c: null })} data-tab="team">الفريق</button>
       )}
@@ -277,6 +281,11 @@ export default function Inbox() {
         <div className="grid gap-2" data-team-tab>
           <div className="card">{tabBar}</div>
           <StaffThreads />
+        </div>
+      ) : commentsOn ? (
+        <div className="grid gap-2" data-comments>
+          <div className="card">{tabBar}</div>
+          <CommentsTab />
         </div>
       ) : (
       <div className="inbox-grid">

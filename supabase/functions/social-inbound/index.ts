@@ -21,6 +21,7 @@ import { hubDataDeleteMail } from '../booking-request/email.ts';
 import { downloadAttachment, isDataDelete, pageToken, parseWebhook, safeEqual, sendHub, userProfile, verifyChallenge, verifySignature, type MetaEvent } from '../_shared/hub/meta.ts';
 import { MEDIA_MAX_BYTES, mediaExt } from '../_shared/hub/webhook.ts';
 import { fixed } from '../_shared/hub/copy.ts';
+import { codeSkip, parseComments, type CommentEvent } from '../_shared/hub/comments.ts';
 
 const ALERT_FROM = 'لوحة أرمادا ريزيدنس <no-reply@armadaresidence.com>';
 const url = () => Deno.env.get('SUPABASE_URL') ?? '';
@@ -193,8 +194,45 @@ export async function handleEvent(e: MetaEvent, test: boolean): Promise<Record<s
   return { kind: 'message', stored: true, turn, may_reply: !!ing.data.may_reply };
 }
 
+/** S2 (26 Nov 2026): a public comment — the code rules here, the switches and the audience in the database, then hub-agent
+ *  classifies and answers it (comment-run.ts); the minute sweep catches a missed call. Nothing of the comment is logged */
+async function handleComment(e: CommentEvent, test: boolean): Promise<Record<string, unknown>> {
+  if (e.verb !== 'add') return { kind: 'comment', verb: e.verb };
+  const skip = codeSkip(e);
+  const ing = await rpc<J>('hub_comment_ingest', {
+    p: { kind: e.kind, channel: e.channel, comment_id: e.comment_id, parent_id: e.parent_id, post_id: e.post_id, author_id: e.from_id, author_name: e.from_name,
+         body: e.text || null, commented_at: e.created_at, ad: e.ad, skip, is_test: test },
+  });
+  if (!ing.ok) {
+    console.error('social-inbound: comment ingest failed', ing.status, ing.message.slice(0, 120));
+    return { kind: 'comment', stored: false };
+  }
+  console.log('social-inbound: comment', e.kind, ing.data?.stored ? (ing.data.process ? 'queued' : `skipped:${ing.data.skip}`) : ing.data?.reason, test ? 'TEST' : '');
+  if (!ing.data?.stored || !ing.data.process || test) return { kind: 'comment', stored: !!ing.data?.stored, id: ing.data?.id ?? null, process: !!ing.data?.process, skip: ing.data?.skip ?? ing.data?.reason ?? null };
+  const tok = await rpc<string>('hub_agent_token', {});
+  if (tok.ok && tok.data) {
+    try {
+      await fetch(`${url()}/functions/v1/hub-agent`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json', 'x-armada-agent': tok.data },
+        body: JSON.stringify({ action: 'comment', comment: ing.data.id }), signal: AbortSignal.timeout(5000),
+      });
+    } catch {
+      // the sweep runs it
+    }
+  }
+  return { kind: 'comment', stored: true, id: ing.data.id, process: true };
+}
+
 async function handle(body: J, test: boolean): Promise<Record<string, unknown>[]> {
   const out: Record<string, unknown>[] = [];
+  for (const c of parseComments(body)) {
+    try {
+      out.push(await handleComment(c, test));
+    } catch (err) {
+      console.error('social-inbound: comment failed', String(err).slice(0, 120));
+      out.push({ kind: 'error' });
+    }
+  }
   for (const e of parseWebhook(body)) {
     try {
       out.push(await handleEvent(e, test));

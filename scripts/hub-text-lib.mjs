@@ -331,6 +331,8 @@ export function parsePrompts(md = read('docs/guest-hub/prompts.md')) {
   const s93 = section(md, '### 9.3 The upload reminder');
   // H7 (15 Nov 2026): the image's classification and reading
   const s10 = section(md, '## 10. The image');
+  // S2 (26 Nov 2026): a public comment's class
+  const s11c = section(md, '## 11. A comment');
   const one = (s, n) => {
     const b = codeBlocks(s);
     if (!b.length) throw new Error(`prompts.md: no block in ${n}`);
@@ -365,6 +367,7 @@ export function parsePrompts(md = read('docs/guest-hub/prompts.md')) {
     staff_intent_system: one(s92, '9.2'),
     reminder_system: one(s93, '9.3'),
     vision_system: one(s10, '10'),
+    comment_system: one(s11c, '11'),
     tones,
   };
 }

@@ -150,6 +150,8 @@ function HubLink({ token }: { token: string }) {
       .then((r) => {
         if (!live) return;
         if (r.allowed && r.conversation_id) navigate(`/inbox?c=${r.conversation_id}`, { replace: true });
+        // S2: a complaint in a comment has no conversation — «المحادثات» → «التعليقات» on that comment
+        else if (r.allowed && r.comment_id) navigate(`/inbox?tab=comments&cm=${r.comment_id}`, { replace: true });
         else setDenied(true);
       })
       .catch(() => live && setDenied(true));
