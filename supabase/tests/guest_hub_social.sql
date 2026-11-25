@@ -196,7 +196,7 @@ select pg_temp._check('G3 the test lab gate of «السوشيال» is its own l
   internal.hub_test_lab_ready((select u from public.hub_units u where u.key = 'social'))
     = ((internal.hub_unit_lab((select u from public.hub_units u where u.key = 'social')) ->> 'run_id') is not null
        and jsonb_array_length(coalesce(internal.hub_unit_lab((select u from public.hub_units u where u.key = 'social')) -> 'blocking', '[]'::jsonb)) = 0)
-  and (select count(*) = 10 from public.hub_test_items i where i.unit_key = 'social' and 'social' = any (i.tags)));
+  and (select count(*) = 26 from public.hub_test_items i where i.unit_key = 'social' and 'social' = any (i.tags)));  -- 10 of S1 + 2 of S2a + 14 comments of S2
 select pg_temp._check('G4 the lab context of «السوشيال»: the channel''s kind and provider',
   public.hub_eval_context('social') -> 'channel' ->> 'provider' = 'meta');
 

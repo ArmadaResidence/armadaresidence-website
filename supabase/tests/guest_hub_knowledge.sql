@@ -126,8 +126,8 @@ select pg_temp._check('K1 the 37 committed cards, every one published with its s
   (select count(*) = 37 and bool_and(status = 'published' and live is not null and btrim(source) <> '' and source_date is not null
                                      and title_ar <> '' and title_en <> '' and text_ar <> '' and text_en <> '' and first_published_at is not null)
      -- H10 (18 Nov 2026): the two cards of Ahmed's D3 / D4 are not of the committed seed
-     -- H11 (24 Nov 2026): nor the three of the weekly review
-     from public.hub_knowledge_cards where not is_test and key not in ('k-ac-heat-cool', 'k-breakfast-offer-ended', 'k-branches-taif-only', 'k-reception-room-phone', 'k-packages-no-jacuzzi')),
+     -- H11 (24 Nov 2026): nor the three of the weekly review; S2a (26 Nov 2026): nor Ahmed's bathroom amenities card
+     from public.hub_knowledge_cards where not is_test and key not in ('k-ac-heat-cool', 'k-breakfast-offer-ended', 'k-branches-taif-only', 'k-reception-room-phone', 'k-packages-no-jacuzzi', 'k-room-bath-amenities')),
   (select count(*)::text from public.hub_knowledge_cards));
 select pg_temp._check('K2 no Wi-Fi password card in the committed seed (the two live on production only)',
   not exists (select 1 from public.hub_knowledge_cards where key like 'k-wifi-password%') and exists (select 1 from public.hub_knowledge_cards where key = 'k-wifi-public'));

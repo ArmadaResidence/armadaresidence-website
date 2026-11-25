@@ -71,8 +71,8 @@ insert into public.hub_unit_members (unit_id, staff_id) select u.id, pg_temp._id
 -- «other» is no member of any unit (a reception login that was never added to its branch unit)
 delete from public.hub_unit_members where staff_id = pg_temp._id('other');
 insert into public.hub_staff_slots (branch_slug, position, name, phone, role, days, start_time, end_time, active, test_as_guest, consent_at) values
-  ('airport-road', 5, 'QA S2a desk A', '+15551199401', 'staff', '{0,1,2,3,4,5,6}', '00:00', '00:00', true, false, now()),
-  ('shafa-road', 5, 'QA S2a desk S', '+15551199402', 'staff', '{0,1,2,3,4,5,6}', '00:00', '00:00', true, false, now())
+  ('airport-road', 5, 'QA S2a desk A', '+15551199401', 'staff', '{0,1,2,3,4,5,6}', '00:00', '23:59', true, false, now()),
+  ('shafa-road', 5, 'QA S2a desk S', '+15551199402', 'staff', '{0,1,2,3,4,5,6}', '00:00', '23:59', true, false, now())
 on conflict do nothing;
 insert into public.booking_notification_recipients (scope, branch_slug, email, active) values
   ('branch', 'airport-road', 'desk-a@sql-hubs2a.qa.invalid', true), ('branch', 'shafa-road', 'desk-s@sql-hubs2a.qa.invalid', true);

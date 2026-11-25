@@ -99,7 +99,8 @@ select pg_temp._save('k1', public.hub_knowledge_for('airport-road', '{jacuzzi_ba
 select pg_temp._check('K1 a Shafa Road card is read on the Airport Road number', 'k-shafa-jacuzzi-balcony' = any (pg_temp._keys(pg_temp._j('k1'))), pg_temp._j('k1')::text);
 select pg_temp._save('k1b', public.hub_knowledge_for('shafa-road', '{kitchen,room_amenities}', 'ar'));
 select pg_temp._check('K1 … after the number''s own branch (the Shafa Road amenities before the Airport Road kitchen)',
-  array_position(pg_temp._keys(pg_temp._j('k1b')), 'k-shafa-amenities') < array_position(pg_temp._keys(pg_temp._j('k1b')), 'k-airport-kitchen'), pg_temp._j('k1b')::text);
+  -- S2a (26 Nov 2026): with the bathroom amenities card (both branches) the five may leave the Airport Road kitchen out
+  array_position(pg_temp._keys(pg_temp._j('k1b')), 'k-shafa-amenities') < coalesce(array_position(pg_temp._keys(pg_temp._j('k1b')), 'k-airport-kitchen'), 99), pg_temp._j('k1b')::text);
 select pg_temp._save('k2', public.hub_knowledge_for('shafa-road', '{menu,cafe_ordering}', 'ar'));
 select pg_temp._check('K2 the café menu card is not read on the Shafa Road number (no branch named)',
   not (pg_temp._keys(pg_temp._j('k2')) && '{k-cafe-menu,k-cafe-phone,k-cafe-breakfast-menu}'), pg_temp._j('k2')::text);

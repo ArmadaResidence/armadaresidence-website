@@ -67,8 +67,8 @@ insert into public.hub_unit_members (unit_id, staff_id) select u.id, pg_temp._id
 insert into public.hub_report_recipients (position, name, phone, staff_user_id, active, consent_at)
 values (3, 'QA S2 admin', '+15551199501', pg_temp._id('admin'), true, now()) on conflict do nothing;
 insert into public.hub_staff_slots (branch_slug, position, name, phone, role, days, start_time, end_time, active, test_as_guest, consent_at) values
-  ('airport-road', 5, 'QA S2 desk A', '+15551199502', 'staff', '{0,1,2,3,4,5,6}', '00:00', '00:00', true, false, now()),
-  ('shafa-road', 5, 'QA S2 desk S', '+15551199503', 'staff', '{0,1,2,3,4,5,6}', '00:00', '00:00', true, false, now())
+  ('airport-road', 5, 'QA S2 desk A', '+15551199502', 'staff', '{0,1,2,3,4,5,6}', '00:00', '23:59', true, false, now()),
+  ('shafa-road', 5, 'QA S2 desk S', '+15551199503', 'staff', '{0,1,2,3,4,5,6}', '00:00', '23:59', true, false, now())
 on conflict do nothing;
 select pg_temp._service();
 select pg_temp._save('store', public.hub_social_channels_store('{"page_id": "100000000000003", "page_name": "QA Page", "ig_id": "17800000000000003", "ig_username": "qa_ig3"}'::jsonb));

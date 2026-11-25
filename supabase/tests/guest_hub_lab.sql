@@ -133,7 +133,7 @@ on conflict do nothing;
 
 -- ══ B — the bank ══
 select pg_temp._root();
-select pg_temp._check('B1 the 102 seed questions are in the bank, active, from the seed', (select count(*) = 102 and bool_and(status = 'active' and added_from = 'seed') from public.hub_test_items where not ('conversation' = any (tags))));
+select pg_temp._check('B1 the 102 seed questions are in the bank, active, from the seed', (select count(*) = 102 and bool_and(status = 'active' and added_from = 'seed') from public.hub_test_items where not ('conversation' = any (tags)) and not ('comment' = any (tags))));
 -- H6 pass 5 (15 Nov 2026): the conversation bank (20261115100000) — 46 multi-turn items, graded per step
 select pg_temp._check('B1 … and the 46 conversations of tests/hub-bank/conversations.jsonl, active, tagged «conversation», one expectation per message', (select count(*) = 46 and bool_and(status = 'active' and expect ->> 'action' = 'conversation' and jsonb_array_length(expect -> 'steps') = jsonb_array_length(messages)) from public.hub_test_items where 'conversation' = any (tags) and not 'h6c' = any (tags) and not 'h7' = any (tags) and not 'h7b' = any (tags) and not 'h8' = any (tags) and not 'h9' = any (tags) and not 'standby' = any (tags) and not 'fix3' = any (tags) and not 'h10' = any (tags) and not 'h11' = any (tags) and not 'social' = any (tags)));
 select pg_temp._check('B1 … their expectations as in the file (q001 parking: the card, the FAQ and «مجانية»)',
