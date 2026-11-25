@@ -90,10 +90,10 @@ if (process.argv[1]?.endsWith('fn-release.mjs')) {
         for (const f of fns) if (!deployOne(f, dir)) throw new Error(`${f} failed`);
         const after = list();
         const e = record('rollback', full, fns, before, after);
-        const past = readFileSync(LOG, 'utf8').split('\n').filter(Boolean).map((l) => JSON.parse(l)).filter((x) => x.commit === full && x.kind === 'deploy');
+        const past = readFileSync(LOG, 'utf8').split('\n').filter(Boolean).map((l) => JSON.parse(l)).filter((x) => x.commit === full && (x.kind === 'deploy' || x.kind === 'baseline'));
         for (const f of e.functions) {
           const want = past.flatMap((x) => x.functions).find((x) => x.name === f.name)?.after?.sha;
-          console.log(`✓ ${f.name}: v${f.after?.version}, bundle ${f.after?.sha.slice(0, 12)}${want ? (want === f.after?.sha ? ' = the release of that commit' : ` ≠ the recorded ${want.slice(0, 12)}`) : ' (no release of that commit recorded)'}`);
+          console.log(`✓ ${f.name}: v${f.after?.version}, bundle ${f.after?.sha.slice(0, 12)}${want ? (f.after?.sha?.startsWith(want) ? ' = the release of that commit' : ` ≠ the recorded ${want.slice(0, 12)}`) : ' (no release of that commit recorded)'}`);
         }
       } finally {
         git('worktree', 'remove', '--force', dir);
