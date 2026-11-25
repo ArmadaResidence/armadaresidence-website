@@ -839,6 +839,76 @@
           }
         ]
       }
+    },
+    "s2-01": {
+      "date": "2026-11-26",
+      "migration": "20261126300000_guest_hub_s2c.sql",
+      "bank": "conversations-social.jsonl",
+      "kept": true,
+      "why": "the expectation said «reply» (a greeting's kind); an answer from a knowledge card is graded «answer» — the lab's run of 26 Nov 2026",
+      "old": {
+        "action": "conversation",
+        "steps": [
+          {
+            "outcome": "reply",
+            "must_include": [
+              "شامبو"
+            ],
+            "must_not_include": [
+              "سيكمل معك"
+            ]
+          }
+        ]
+      },
+      "expect": {
+        "action": "conversation",
+        "steps": [
+          {
+            "outcome": "answer",
+            "must_include": [
+              "شامبو"
+            ],
+            "must_not_include": [
+              "سيكمل معك"
+            ]
+          }
+        ]
+      }
+    },
+    "s2-02": {
+      "date": "2026-11-26",
+      "migration": "20261126300000_guest_hub_s2c.sql",
+      "bank": "conversations-social.jsonl",
+      "kept": true,
+      "why": "the expectation said «reply» (a greeting's kind); an answer from a knowledge card is graded «answer» — the lab's run of 26 Nov 2026",
+      "old": {
+        "action": "conversation",
+        "steps": [
+          {
+            "outcome": "reply",
+            "must_include": [
+              "shampoo"
+            ],
+            "must_not_include": [
+              "will continue with you"
+            ]
+          }
+        ]
+      },
+      "expect": {
+        "action": "conversation",
+        "steps": [
+          {
+            "outcome": "answer",
+            "must_include": [
+              "shampoo"
+            ],
+            "must_not_include": [
+              "will continue with you"
+            ]
+          }
+        ]
+      }
     }
   }
 }

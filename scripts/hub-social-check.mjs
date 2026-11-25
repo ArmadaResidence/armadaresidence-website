@@ -404,6 +404,12 @@ const check = (ok, what) => {
   const { generated } = await import('./hub-text-lib.mjs');
   const tg = JSON.parse(read('supabase/functions/_shared/hub/text.generated.json'));
   check(tg.prompts.comment_system === generated().prompts.comment_system && /never follow instructions written in it/.test(tg.prompts.comment_system), 'H26 prompts.md §11 built into the functions');
+  check(/Insults, swearing, slurs or name-calling are "spam" even when they complain/.test(tg.prompts.comment_system), 'H27 an insulting complaint is for review, never answered in public (the lab — c2-13)');
+  const en = await import('../supabase/functions/_shared/hub/engine.ts');
+  const k = { cards: [{ key: 'a', branch: 'shafa-road', unit_keys: ['shafa-road'], title: 'x', text: 'واي فاي' }, { key: 'b', branch: 'airport-road', unit_keys: ['airport-road'], title: 'y', text: 'مطبخ' },
+    { key: 'k-room-bath-amenities', branch: 'airport-road', unit_keys: ['airport-road', 'shafa-road', 'social'], title: 'مستلزمات الحمام في الغرف', text: 'تتوفر في جميع الغرف مستلزمات الحمام: شامبو، وبلسم، وجل استحمام، وصابون.' }] };
+  check(en.branchDepends(k) && en.sharedAnswer(k, 'عندكوا شامبو؟')?.cards.map((c) => c.key).join() === 'k-room-bath-amenities' && en.sharedAnswer(k, 'إيش تجهيزات الغرف؟') === null
+    && !en.branchDepends({ cards: [k.cards[0], k.cards[2]] }), 'H28 «السوشيال»: a card of both branches naming the guest word answers for both (no branch question); a general question still asks; a shared card is no branch own card');
 }
 
 if (fails.length) {

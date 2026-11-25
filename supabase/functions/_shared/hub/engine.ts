@@ -161,8 +161,27 @@ export function unitName(c: Json, unit: Json, L: Lang): string {
 }
 /** S1: the facts of these cards differ by branch — both branches' own cards came back (a shared card answers for both) */
 export function branchDepends(k: Json): boolean {
-  const bs = new Set(((k?.cards ?? []) as Json[]).map((c) => c.branch).filter((b) => b === 'airport-road' || b === 'shafa-road'));
+  // S2 (26 Nov 2026, the lab — s2-01): a card of BOTH branches is no branch's own (its `branch` reads airport-road)
+  const bs = new Set(((k?.cards ?? []) as Json[]).filter((c) => !sharedCard(c)).map((c) => c.branch).filter((b) => b === 'airport-road' || b === 'shafa-road'));
   return bs.size >= 2;
+}
+/** S2: a card tagged with both branches (or «السوشيال») holds for both — the same answer whichever the guest means */
+export const sharedCard = (c: Json): boolean => {
+  const u: string[] = Array.isArray(c?.unit_keys) ? c.unit_keys : [];
+  return (u.includes('airport-road') && u.includes('shafa-road')) || u.includes('social');
+};
+const SHARED_STOP = new Set(['عندكم', 'عندكوا', 'عندكو', 'عندك', 'فيه', 'في', 'هل', 'يوجد', 'موجود', 'متوفر', 'متوفره', 'غرف', 'الغرف', 'الغرفه', 'غرفه', 'الغرفة',
+  'تجهيزات', 'التجهيزات', 'ايش', 'وش', 'شو', 'ماذا', 'كيف', 'ممكن', 'لو', 'سمحت', 'الفندق', 'فندق',
+  'do', 'you', 'have', 'the', 'rooms', 'room', 'in', 'is', 'are', 'there', 'any', 'what', 'your', 'a', 'an', 'amenities', 'hotel', 'please']);
+const sharedNorm = (x: string) => String(x ?? '').toLowerCase().replace(/[أإآ]/g, 'ا').replace(/ة/g, 'ه').replace(/ى/g, 'ي').replace(/[ً-ْـ]/g, '');
+/** S2 (the lab — s2-01 «عندكوا شامبو؟» asked «في أي فرع تقصد…؟»): on «السوشيال» with no branch known, a card of both
+ *  branches that names the guest's own word answers for both — those cards only, no branch question. A general
+ *  question («إيش تجهيزات الغرف؟») names no such word, so it still asks the branch. */
+export function sharedAnswer(k: Json, guestText: string): Json | null {
+  const words = sharedNorm(guestText).replace(/[^\p{L}\p{N}\s]/gu, ' ').split(/\s+/).filter((w) => w.length >= 3 && !SHARED_STOP.has(w));
+  if (!words.length) return null;
+  const hit = ((k?.cards ?? []) as Json[]).filter((c) => sharedCard(c) && words.some((w) => sharedNorm(`${c.title ?? ''} ${c.text ?? ''}`).includes(w)));
+  return hit.length ? { ...k, cards: hit } : null;
 }
 /** S1: «في أي فرع تقصد…؟»'s quick replies — the branches' short names (after «أرمادا ريزيدنس –») */
 export function branchButtons(c: Json, L: Lang): { id: string; title: string }[] {
@@ -700,10 +719,13 @@ export async function runTurn(claim: Json, deps: Deps): Promise<Outcome> {
           break;
         }
         case 'answer': {
-          const k = await deps.knowledge(unit.key, a.topics.length ? a.topics : [], L, a.branch && a.branch !== 'both' ? a.branch : unit.branch ?? null).catch(() => ({ cards: [], faq: [] }));
+          let k = await deps.knowledge(unit.key, a.topics.length ? a.topics : [], L, a.branch && a.branch !== 'both' ? a.branch : unit.branch ?? null).catch(() => ({ cards: [], faq: [] }));
           // S1 (25 Nov 2026): «السوشيال» with no branch known — an answer whose facts differ by branch asks «في أي فرع تقصد…؟»
           // first, with the two branches as quick replies; the question waits on the conversation (topics and intents only)
-          if (unit.kind === 'brand' && !unit.branch && !(a.branch === 'airport-road' || a.branch === 'shafa-road') && !a.mixed && branchDepends(k)) {
+          // S2: a card of both branches that names the guest's own word answers for both (no branch question)
+          const shared = unit.kind === 'brand' && !unit.branch && !(a.branch === 'airport-road' || a.branch === 'shafa-road') ? sharedAnswer(k, texts.join(' ')) : null;
+          if (shared) k = shared;
+          if (!shared && unit.kind === 'brand' && !unit.branch && !(a.branch === 'airport-road' || a.branch === 'shafa-road') && !a.mixed && branchDepends(k)) {
             push(fixed('social_which_branch', L), { kind: 'interactive', payload: { buttons: branchButtons(deps.content, L) } });
             finish.branch_pending = { topics: a.topics.slice(0, 8), intents: a.intents.slice(0, 6) };
             answered = true;

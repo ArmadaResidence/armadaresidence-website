@@ -550,6 +550,7 @@ class — exactly one of:
 - "spam": spam, advertising another business, a link to elsewhere, abuse, insults, hate, sexual content, scams, or nonsense.
 - "other": anything else — a neutral remark, a tag of a friend alone, a comment not about the property.
 When a comment asks about a price and also complains, choose "complaint". When it praises and also asks a question, choose the question ("price" or "question").
+Insults, swearing, slurs or name-calling are "spam" even when they complain about the property: a person reviews them, and nothing is answered in public.
 
 language — the language the comment is written in: "ar" (any Arabic, any dialect), "en", or "other" for any other language. A comment of emoji only is "ar".
 
