@@ -1,4 +1,4 @@
-# Guest Hub — social channels (S1: Instagram and Messenger direct messages)
+# Guest Hub — social channels (S1: Instagram and Messenger direct messages; S2: comments)
 
 Decided by Ahmed, 21–25 Nov 2026 (DECISIONS.md 2026-11-25 «Guest Hub S1»). Built in session S1 (25 Nov 2026). This file
 is read with `GUEST-HUB-SPEC.md`, `copy.md` and `templates.md`; where it is silent, the spec holds.
@@ -89,7 +89,7 @@ value for the webhook's GET challenge). `META_APP_ID` is optional (the public id
   replies) only when the answer depends on it — both branches' own cards came back, a booking (the branch slot), a
   package order; kept on the conversation (`hub_conversations.branch_slug`), the waiting question in `branch_pending`
   (topics and intents only). A hand-off with the branch known moves the conversation to that branch's unit; with none,
-  the staff alert goes to Airport Road [مقترح — بانتظار اعتماد أحمد].
+  the staff alert goes to **both branches** — decision S6 of the S2 brief (Ahmed, 25 Nov 2026): the slots on shift of both, each from its own number; the first staff member to reply takes the conversation (their branch becomes its branch and the other branch loses it); an admin or management user leaves it unknown; a test account's still to the system admin only (S2a, 26 Nov 2026).
 - **Booking on Instagram / Messenger:** as on WhatsApp, then the mobile number before the summary (copy.md §4.6, T11c);
   the reservation carries it.
 
@@ -118,3 +118,109 @@ value for the webhook's GET challenge). `META_APP_ID` is optional (the public id
 
 The daily WhatsApp report's {{2}} keeps its approved template: «المطار X · الشفا Y (واتساب W، انستجرام I، ماسنجر M)» once a
 social conversation exists that day.
+
+## 8. Comments (session S2, 26 Nov 2026 — DECISIONS.md 2026-11-26 «Guest Hub S2 — comments»)
+
+Decisions S3 and S4 (§1) hold. The brief of 25 Nov 2026 points at «SOCIAL-SPEC §5–§8» for the action table, the dashboard,
+the lab cases and **the approved comment texts**; those sections were never in this file (the repository's copy ends at §7).
+So the action table below is S3 as written in §1, and **the public reply texts and the private messages are not here** —
+they wait for Ahmed (§8.4). Nothing can switch comments on until they exist.
+
+### 8.1 What happens to a comment
+
+| The comment | Code rule or class | Public reply | Private message (once, within 7 days) | Then |
+|---|---|---|---|---|
+| Our own comment | `own` | — | — | ignored; a reply of ours that is not one the assistant posted (the Instagram app, Business Suite) marks the thread **«رد عليه أحد الفريق»** and the assistant never answers that thread again |
+| A reply inside a thread (to our reply, or between users) | `thread` | — | — | ignored (no model call) |
+| Older than 7 days, a live video, edited / removed, empty | `too_old` · `live` · `not_new` · `empty` | — | — | ignored |
+| A question | `question` | one of Ahmed's variants, rotating | yes | «تم الرد» |
+| A price question | `price` | one of Ahmed's variants — **never a price** (S4) | yes | «تم الرد» |
+| A complaint | `complaint` | one of Ahmed's apology variants | only if Ahmed's texts include one | **«محوَّل للفريق»**: a hand-off of the comment, alerted to both branches (a test account's to the system admin only — S1c) |
+| Praise | `praise` | one of Ahmed's thanks variants | — | «تم الرد» |
+| Spam, abuse | `spam` | — | — | **«تعليقات تحتاج مراجعة»** — nothing posted, nothing hidden or deleted |
+| Anything else, an argument between commenters | `other` · `argument` | — | — | «تم تخطيه» |
+| Arabic or English | — | in the comment's language | in the comment's language | |
+| Any other language | — | **none** | **in English** | |
+
+- **Gates, in order:** the channel's «التعليقات» (comments_on) → the unit's mode (off = nothing; «تجربة» = the plan shown in
+  «التعليقات», nothing posted) → the audience («حسابات التجربة فقط»: only an account marked «حساب تجربة» — its DM identity,
+  the same Instagram username, or a commenter the system admin marked in «التعليقات») → the code rules → ONE model call
+  (prompts.md §11, layer `tag`) → the plan (`comments.ts → plan`).
+- **At most one public reply per comment**; the variants rotate in order per channel, class and language.
+- **The guard of the public reply** (`comments.ts → publicGuard`, the same rule in SQL for Ahmed's texts and in the dialog
+  for a staff reply): no digit of any script, no currency (ريال، ر.س، SAR، $، %…), no «يبدأ من» / "starting at", no link,
+  at most 300 characters. A word such as «الأسعار» alone passes.
+- **The private message** (`POST /me/messages`, `recipient.comment_id`) opens the commenter's DM: the comment becomes the
+  first guest message of a normal conversation (§4), our private message is recorded before its echo can arrive (S1d);
+  Meta lets the conversation continue only when the commenter answers.
+- **Nothing is hidden or deleted automatically**, and nothing on Meta is hidden or deleted from the dashboard either.
+- Stage times: `commented_at` (Meta's), `received_at`, `claimed_at`, `classified_at`, `public_at`, `private_at`, `done_at`; the
+  log line carries the class, the state, the outcome codes and the milliseconds — never a word or a name.
+
+### 8.2 The switches
+
+Per Meta channel (Instagram account, Facebook Page — the Messenger row), both **OFF**, the system admin's, audited, «تراجع»:
+«التعليقات» (`comments_on`) and «الرسائل الخاصة» (`comment_private_on`, needs «التعليقات»). «التعليقات» is refused
+(`hub_comment_texts`) while `public.hub_comment_texts` does not hold every text in both languages, each passing the guard.
+
+### 8.3 The dashboard
+
+- «المحادثات» → «التعليقات»: the post's picture and link, the comment, our public reply, the private message, the state;
+  filters «الكل» · «تعليقات تحتاج مراجعة» · «محوَّل للفريق» · «تم الرد» · «تم تخطيه» · «تعذّر الرد»; «رد علني» (the guard),
+  «رسالة خاصة» (once, 7 days), «تمت المراجعة», «حساب تجربة» (the system admin). Seen by inbox users who are members of
+  «السوشيال» or of a branch unit in their scope (the comments are public).
+- «إعدادات المساعد» → «السوشيال» → «التعليقات»: the two switches per account and, while Ahmed's texts are missing, the note.
+- «التقارير» → «التعليقات»: by type and by outcome, Instagram / Facebook, private messages sent (no text).
+- A complaint's alert link (`?hub_c=`) opens «التعليقات» on that comment.
+
+### 8.4 The approved texts — [بانتظار أحمد]
+
+`public.hub_comment_texts` (one row, written only by a migration, word for word):
+
+```
+{ "public":  { "question":  { "ar": [variants], "en": [variants] },
+               "price":     { "ar": [...], "en": [...] },
+               "complaint": { "ar": [...], "en": [...] },
+               "praise":    { "ar": [...], "en": [...] } },
+  "private": { "question": { "ar": "...", "en": "..." },
+               "price":    { "ar": "...", "en": "..." },
+               "complaint": { "ar": "...", "en": "..." }   ← optional
+               "other_language": { "en": "..." } } }
+```
+
+## 9. Meta's documentation for comments (read 26 Nov 2026)
+
+| Capability | Endpoint / field | Permission(s) | Development mode, app-role holders | Limits |
+|---|---|---|---|---|
+| Instagram comment webhook | object `instagram`, field `comments` (also `live_comments`, `mentions`) | `instagram_basic`, `instagram_manage_comments`, `pages_manage_metadata`, `pages_read_engagement`, `pages_show_list` | **Doubtful** — the Instagram webhooks page says the app "must be published or Live" and that `comments` needs **Advanced Access**; the general webhooks page says role holders receive them in development mode. Proven only by the live test | media owner public; no ad id for dynamic ads; possible duplicates on boosted posts |
+| Instagram public reply | `POST /{ig-comment-id}/replies` `message` | `instagram_manage_comments` (+ the above; `ads_read` / `ads_management` when the Page role comes through Business Manager — our system user) | Standard Access: our own account | top-level comments only; not hidden ones; not live video |
+| Instagram private reply | `POST /me/messages` (Page token) `recipient.comment_id` | `instagram_manage_comments` + `instagram_manage_messages` (one Meta page also names `pages_messaging`, Human Agent and Advanced Access — contradicted by another; tested live) | role holders | within 7 days; ONE message; more only after the commenter answers, within 24 h; 750 calls / hour |
+| Facebook Page comments webhook | object `page`, field `feed` (`item: comment`, `verb: add`) | `pages_manage_metadata`, `pages_show_list` (a Page token with MODERATE) | yes for a role holder's comment (the general rule) | ad posts: comments on them are sent |
+| Facebook public reply | `POST /{comment-id}/comments` `message` | `pages_manage_engagement` (+ `pages_read_user_content` to read comments) | role holders | `can_comment` |
+| Messenger private reply | `POST /me/messages` `recipient.comment_id` | `pages_messaging` | role holders | 7 days; one message; continues only after the person answers |
+| Ad comments | the same webhooks (Instagram: `media.ad_id`, `ad_title`) | `ads_read` (or `ads_management`) under the Business Manager condition | as above | dynamic ads: no ad id |
+| Post picture and link | `GET /{ig-media-id}?fields=permalink,media_url,thumbnail_url,media_type,media_product_type`; `GET /{post-id}?fields=permalink_url,full_picture` | `instagram_basic`, `pages_read_engagement` (Facebook: `pages_read_user_content`) | yes | `thumbnail_url` only on video |
+
+Sources: developers.facebook.com — documentation/instagram-platform/webhooks/setup, …/webhooks/fields, …/webhooks/examples,
+docs/instagram-platform/instagram-graph-api/reference/ig-comment/replies, documentation/instagram-platform/private-replies,
+documentation/business-messaging/instagram-messaging/features/private-replies, docs/graph-api/webhooks/reference/page,
+docs/graph-api/webhooks (development mode), docs/graph-api/reference/object/comments, docs/pages-api/comments-mentions,
+docs/messenger-platform/discovery/private-replies, docs/messenger-platform/overview/rate-limiting,
+documentation/ads-commerce/instagram/ads-api/guides/post-moderation, docs/instagram-platform/instagram-graph-api/reference/ig-media,
+docs/graph-api/reference/pagepost. The Creator account (armadar25): no comment-specific limitation is documented; `mentions`
+is sent for Business and Creator accounts; a Creator account's messaging webhooks needed one Conversations API call first
+(done — the DMs work).
+
+**Permissions to add at testing level:** `instagram_manage_comments`, `pages_manage_engagement`, `pages_read_user_content`,
+`ads_read` (the system user holds the Page through the business portfolio). **For App Review later (Ahmed's decision):** the
+same four with Advanced Access, besides §5b.
+
+## 10. The lab's comment cases
+
+`tests/hub-bank/comments-social.jsonl` (14, lab items `c2-01`…`c2-14` of «السوشيال», `expect.action: comment`): a question
+(Arabic / English), a price question (Arabic / English with a number), a complaint (Arabic / English), praise (Arabic /
+English), spam, an ad's price question, a reply in a thread (the code rule — no model call), another language (French: no
+public reply, the private message in English), abuse, an English question with an emoji. Graded by code
+(`comments.ts → gradeComment`: the class, whether a public reply / a private message / a hand-off / the review is planned,
+and the public text passes the guard). The gate of «السوشيال» is unchanged: its own latest full run, no failure but a known
+gap.

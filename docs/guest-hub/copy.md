@@ -509,3 +509,56 @@ Who may teach: Ahmed (his number in «التقارير», linked to his dashboar
 | tap_expired | H9 fix 4 (Ahmed, 18 Nov 2026): a quick reply whose item is gone, older than a day, or not this colleague's | «انتهت صلاحية هذا الطلب، أرسله من جديد.» |
 
 **Learned from a staff reply** (no message to anyone): the fact is active at once for that branch, its source «رد الفريق — {name} — {date}», numbered in the next daily report («بطاقات معرفة جديدة: 2: 1) … · 2) …»); a price or a contradiction is not learned — «يحتاج قرارك» in the report and the staff wording in «لم أعرف الإجابة».
+
+## 10. Comments — Instagram and Facebook [S2, 26 Nov 2026 — DECISIONS.md 2026-11-26 «Guest Hub S2 — comments»]
+
+**10.1 The public replies and the private messages — [بانتظار أحمد].** Ahmed's approved texts (SOCIAL-SPEC.md §8.4) are not in
+the repository yet; nothing guest-facing about comments is written by the session. They go, word for word, into
+`public.hub_comment_texts` by a migration; «التعليقات» cannot be switched on before.
+
+**10.2 Dashboard labels (staff-facing; the session's, for Ahmed's review)**
+
+| Where | Arabic |
+|---|---|
+| «المحادثات» tab | «التعليقات» |
+| Filters | «الكل» · «تعليقات تحتاج مراجعة» · «محوَّل للفريق» · «تم الرد» · «تم تخطيه» · «تعذّر الرد» |
+| States | «جديد» · «قيد المعالجة» · «تم الرد» · «محوَّل للفريق» · «تم تخطيه» · «يحتاج مراجعة» · «تمت المراجعة» · «تجربة» · «تعذّر الرد» |
+| Types | «سؤال» · «سؤال عن السعر» · «شكوى» · «إشادة» · «مزعج أو مسيء» · «أخرى» |
+| Why skipped | «تعليق من حسابنا» · «رد داخل سلسلة تعليقات» · «أقدم من 7 أيام» · «تعليق على بث مباشر» · «بلا نص» · «التعليقات متوقفة لهذا الحساب» · «وحدة «السوشيال» متوقفة» · «ليس حساب تجربة» · «رد عليه أحد الفريق» · «نقاش بين المعلّقين» · «لا يحتاج ردًا» · «لغة أخرى بلا رسالة خاصة» · «لم يُفهم التعليق» · «تعذّر تصنيف التعليق» |
+| A row | «إعلان» · «فتح المنشور» · «ردنا العام» · «الرسالة الخاصة» · «(تجربة — لم يُنشر)» · «(تجربة — لم تُرسل)» · «حساب بلا اسم» · «صورة المنشور» |
+| Buttons | «رد علني» · «رسالة خاصة» · «تمت المراجعة» · «إعادة للمراجعة» · «حساب تجربة» · «نشر الرد» · «إرسال الرسالة» |
+| Dialogs | «رد علني على التعليق» — «نص الرد (يظهر للجميع؛ بلا أرقام أو أسعار أو روابط)» · «رسالة خاصة للمعلّق» — «نص الرسالة (مرة واحدة فقط، وتفتح محادثة خاصة إذا رد المعلّق)» |
+| The tab's note | «لا يُخفى أي تعليق ولا يُحذف من هنا أو تلقائيًا. الرد العام بلا أرقام أو أسعار، والرسالة الخاصة مرة واحدة خلال 7 أيام من التعليق.» |
+| Empty | «لا تعليقات هنا بعد.» |
+| Toasts | «نُشر الرد تحت التعليق.» · «أُرسلت الرسالة الخاصة.» · «سُجّل الرد العام (تعليق تجربة، لم يُنشر).» · «سُجّلت الرسالة الخاصة (تجربة، لم تُرسل).» · «سُجّل أن التعليق تمت مراجعته.» · «أعيد التعليق إلى «يحتاج مراجعة».» · «أصبح المعلّق حساب تجربة.» · «لم يعد المعلّق حساب تجربة.» |
+| Errors | «لا يُكتب في الرد العام رقم أو سعر أو عملة أو رابط.» · «رُدّ على هذا التعليق علنًا من قبل.» · «أُرسلت الرسالة الخاصة لهذا التعليق من قبل؛ تُرسل مرة واحدة فقط.» · «مضى على التعليق أكثر من 7 أيام؛ لا تسمح ميتا برسالة خاصة بعدها.» · «هذا رد داخل سلسلة تعليقات؛ يُرد على التعليق الأصلي فقط.» · «لا تعمل التعليقات قبل اعتماد نصوص الردود العامة.» · «شغّل «التعليقات» أولًا لهذا الحساب.» · «رفضت ميتا الإرسال: الصلاحية غير ممنوحة للتطبيق بعد.» · «رفضت ميتا الإرسال: مفتاح الصفحة غير صالح.» · «رفضت ميتا الإرسال مؤقتًا لكثرة الطلبات؛ حاول بعد دقائق.» · «خدمة ميتا لا تستجيب الآن؛ حاول بعد دقائق.» · «لم تصل إجابة من ميتا في الوقت المحدد.» · «مفتاح الصفحة غير مضبوط على الخادم.» · «لا يوجد نص معتمد لهذا النوع من التعليقات.» · «لا تملك صلاحية التعليقات.» |
+| «السوشيال» → «التعليقات» | «التعليقات» · «الرسائل الخاصة» · «لم تُعتمد نصوص الردود العامة بعد، فلا يمكن تشغيل «التعليقات». الناقص: N» · «التعليقات متوقفة» / «التعليقات تعمل» / «التعليقات والرسائل الخاصة تعمل» · toasts «شُغّلت التعليقات لهذا الحساب.» / «أُوقفت التعليقات لهذا الحساب.» / «شُغّلت الرسائل الخاصة للمعلّقين.» / «أُوقفت الرسائل الخاصة للمعلّقين.» |
+| «ربط الصفحة وحساب انستجرام» steps | «اشتراك تعليقات فيسبوك» · «اشتراك تعليقات انستجرام» · «ربط تعليقات الصفحة بالتطبيق» · toast «رُبطت الرسائل، لكن اشتراك التعليقات لم يكتمل؛ راجع الخطوات أدناه.» |
+| «التقارير» | section «التعليقات»: «تعليقات انستجرام وفيسبوك العامة في الفترة: N (انستجرام N · فيسبوك N) — أُرسلت N رسالة خاصة.» · tables «التعليقات حسب النوع» / «ما حدث للتعليقات» |
+| The staff alert of a complaint (`hub_staff_alert`, approved template unchanged) | {{1}} «أرمادا ريزيدنس — الفرعان (لم يُحدَّد الفرع بعد)» · {{3}} «تعليق انستجرام» / «تعليق فيسبوك» · {{4}} «تعليق» · {{5}} «شكوى في تعليق على انستجرام» / «شكوى في تعليق على فيسبوك» |
+| The alert of a hand-off with no branch (S2a, any social hand-off) | {{1}} «أرمادا ريزيدنس — الفرعان (لم يُحدَّد الفرع بعد)» |
+| Tours | «التعليقات» (inbox) · «الرد على تعليق» · «التعليقات» («إعدادات المساعد») — texts in `admin/src/lib/tours.ts` |
+
+## 11. Every text added in S1–S2 (for Ahmed's review, 26 Nov 2026)
+
+Nothing below was changed by this listing; approved texts are marked so.
+
+| Session | Where | Arabic | English | Status |
+|---|---|---|---|---|
+| S1 | guest — any channel, «احذف بياناتي» | «وصلنا طلبك لحذف بياناتك، وسنبلغك هنا عند الانتهاء.» | “We've received your request to delete your data; we'll let you know here when it's done.” | Ahmed's |
+| S1 | guest — after the deletion (window open) | «تم حذف بيانات محادثاتك معنا.» | “Your conversation data with us has been deleted.” | Ahmed's |
+| S1 | guest — Instagram / Messenger, the branch | «في أي فرع تقصد: طريق المطار أم طريق الشفا؟» | “Which branch do you mean: Airport Road or Shafa Road?” | for review |
+| S1 | guest — Instagram / Messenger, booking | «ما رقم جوالك الذي نسجّل به الحجز؟» | “What mobile number should we put the booking under?” | for review |
+| S1 | guest — a number that cannot be read | «لم نتمكن من قراءة الرقم، اكتبه من فضلك كاملًا مع رمز الدولة.» | “We couldn't read the number; please write it in full with the country code.” | for review |
+| S1 | site — /data-deletion/ | title «طلب حذف البيانات»; intro, the two ways, after (`content/site-texts.json → data_deletion`) | the same in English | Ahmed's |
+| S1 | staff email | «طلب حذف بيانات — {channel} — AR-HUB-{yyyymmdd}» · «طلب ضيف حذف بيانات محادثاته عبر {channel}.» · «افتح «طلبات حذف البيانات» …» · «فتح طلبات حذف البيانات» | — | for review |
+| S1 | «إعدادات المساعد» → «السوشيال» | «انستجرام وماسنجر» · «ربط الصفحة وحساب انستجرام» · steps «الصفحة» / «اشتراك ماسنجر» / «اشتراك انستجرام» / «ربط الصفحة بالتطبيق» / «حفظ القنوات» · «جمهور الردود»: «حسابات التجربة فقط» / «الكل» / «الكل مع وضع الاستعداد» and their notes · «حسابات التجربة» and its note · «حساب تجربة» / «✓ حساب تجربة» · «حساب بلا اسم» · «لم يراسل أحد بعد.» · «طلبات حذف البيانات» · «حذف بيانات المحادثات» · toasts «رُبطت الصفحة وحساب انستجرام بالتطبيق.» / «مفاتيح ميتا ناقصة على الخادم: …» / «لم نجد الصفحة في مفتاح مستخدم النظام.» / «تعذّر الربط؛ راجع الخطوات أدناه.» / «أصبح الحساب حساب تجربة.» / «لم يعد الحساب حساب تجربة.» / «حُذفت بيانات المحادثات وأُبلغ الضيف.» / «حُذفت بيانات المحادثات.» | — | for review |
+| S1 | «المحادثات» | the channel chip «واتساب» / «انستجرام» / «ماسنجر» · «انتهت نافذة الرد» · «انتهت نافذة الـ24 ساعة؛ يمكن رد الفريق بوسم Human Agent خلال …» · «حذف بيانات المحادثات» (the guest panel) · «تعذّر الوصول إلى ميتا. حاول بعد قليل.» | — | for review |
+| S1c | the staff alert {{3}} of a social guest | «حساب انستجرام» / «حساب ماسنجر» | — | for review |
+| S2a | the staff alert {{1}} of a hand-off with no branch | «أرمادا ريزيدنس — الفرعان (لم يُحدَّد الفرع بعد)» | — | for review |
+| S2a | knowledge card «مستلزمات الحمام في الغرف» | «تتوفر في جميع الغرف مستلزمات الحمام: شامبو، وبلسم، وجل استحمام، وصابون.» | “All rooms have bathroom amenities: shampoo, conditioner, shower gel and soap.” | Ahmed's |
+| S2 | every staff-facing comments label | §10.2 above | — | for review |
+| S2 | the public replies and private messages | — | — | **Ahmed's, not received yet** (§10.1) |
+
+The toast «لم نجد الصفحة في مفتاح مستخدم النظام.» already reads «لم نجد» in the source and in the live dashboard bundle (read
+26 Nov 2026) — no change was needed.
