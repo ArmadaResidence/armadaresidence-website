@@ -226,6 +226,27 @@ const check = (ok, what) => {
     && /if v_n <> 46 then raise exception/.test(lic) && !/assistant_mode/.test(lic), 'E28 only the social unit\'s shadow rows, never an always-team topic, exactly 46, no mode change');
 }
 
+// ═══ E3. S1c — the Messenger greeting, test accounts' alerts ═══
+{
+  const { quickReplies } = await import('../supabase/functions/_shared/hub/copy.ts');
+  const { alertVars } = await import('../supabase/functions/_shared/hub/staff.ts');
+  const q = quickReplies('brand', 'ar');
+  check(Array.isArray(q) && q.length === 3 && q[0].id === 'hubq:book', 'E29 «السوشيال» (kind brand) gets the branch\'s three quick replies — the 21:41 crash');
+  const v = alertVars({ token: 't', branch_name: 'أرمادا ريزيدنس – طريق المطار', guest_name: null, guest_phone: null, ref: null, summary: null, reason: 'handoff', channel_kind: 'messenger' });
+  check(v[2] === 'حساب ماسنجر' && alertVars({ token: 't', branch_name: 'x', guest_name: null, guest_phone: '+966551234567', ref: null, summary: null, reason: 'handoff' })[2] === '+966 55 123 4567',
+    'E30 the staff alert names the channel for a social guest; a phone as before');
+  const s1c = await import('./hub-s1c-migration.mjs');
+  const sql = s1c.migration();
+  check(read(s1c.OUT_PATH) === sql, 'E31 the S1c migration = its generator');
+  const tq = sql.slice(sql.indexOf('create or replace function internal.hub_handoff_queue'), sql.indexOf('create or replace function internal.hub_extra_alert'));
+  check(tq.indexOf('hub_tester_conversation(h.conversation_id)') > 0 && tq.indexOf('hub_tester_conversation(h.conversation_id)') < tq.indexOf('from public.hub_staff_slots s')
+    && /return v_n;\n  end if;\n  if p_kind = 'alert' then/.test(tq), 'E32 a test account\'s hand-off alerts the system admin only — before any slot is read');
+  check(/if internal\.hub_tester_conversation\(r\.id\) then\n\s+v_to := array\(select u\.email from public\.staff s join auth\.users u/.test(sql), 'E33 its waiting email goes to the active admins only');
+  check(/coalesce\(u\.branch_slug, c\.branch_slug, 'airport-road'\)/.test(sql), 'E34 a social chat booking request alerts a branch (it alerted nobody)');
+  const ha = read('supabase/functions/hub-agent/index.ts');
+  check(/early && claim\.channel\?\.provider !== 'meta' \? typing\(lastIn\)/.test(ha), 'E35 no YCloud typing call for a Meta channel (the 404s of 21:41)');
+}
+
 // ═══ F. the daily report's {{2}} ═══
 {
   const { conversationsText } = await import('../supabase/functions/_shared/hub/staff.ts');

@@ -206,6 +206,26 @@ update public.hub_conversations set state = 'human', human_reason = 'handoff', o
 select pg_temp._check('H1 a hand-off on «السوشيال» goes to the conversation''s branch',
   exists (select 1 from public.hub_handoffs h where h.conversation_id = pg_temp._id('c1') and h.branch_slug = 'shafa-road'));
 
+-- H2. S1c (migration 20261125400000): a test account's conversation alerts only the system admin
+insert into public.hub_report_recipients (position, name, phone, staff_user_id, active, consent_at)
+values (3, 'QA S1 admin', '+15551199301', pg_temp._id('admin'), true, now()) on conflict do nothing;
+insert into public.hub_staff_slots (branch_slug, position, name, phone, role, days, start_time, end_time, active, test_as_guest, consent_at)
+values ('shafa-road', 5, 'QA S1 desk', '+15551199302', 'staff', '{0,1,2,3,4,5,6}', '00:00', '00:00', true, false, now()) on conflict do nothing;
+update public.hub_conversations set state = 'inquiry', owner_kind = null, human_reason = null where id = pg_temp._id('c1');
+update public.hub_conversations set state = 'human', human_reason = 'handoff', owner_kind = null where id = pg_temp._id('c1');
+select pg_temp._check('H2 a tester''s hand-off: ONE alert, to the system admin''s number of «التقارير», no reception slot',
+  (select count(*) = 1 and bool_and(s.recipient_id is not null and s.slot_id is null)
+     from public.hub_staff_sends s join public.hub_handoffs h on h.id = s.handoff_id where h.conversation_id = pg_temp._id('c1') and h.closed_at is null));
+select pg_temp._check('H3 a tester''s chat booking request alert: the system admin only',
+  (select count(*) = 1 and bool_and(s.recipient_id is not null and s.slot_id is null) from public.hub_staff_sends s
+    where s.handoff_id = internal.hub_extra_alert(pg_temp._id('c1'), 'booking_request', 'QA', null, false, null)));
+update public.hub_conversations set waiting_since = now() - interval '2 hours', escalated_at = null where id = pg_temp._id('c1');
+select pg_temp._save('esc', public.hub_escalations_claim(now(), 50));
+select pg_temp._check('H4 a tester''s waiting email goes to the active admins only',
+  (select e -> 'recipients' = to_jsonb(array(select u.email from public.staff st join auth.users u on u.id = st.user_id where st.active and st.role = 'admin' and u.email is not null order by u.email))
+     from jsonb_array_elements(pg_temp._j('esc')) e where e ->> 'id' = pg_temp._id('c1')::text));
+select pg_temp._check('H5 «السوشيال» quick replies for a greeting alone (the lab item s1-11 exists)', exists (select 1 from public.hub_test_items where key = 's1-11' and unit_key = 'social'));
+
 -- I. deletion
 select pg_temp._service();
 select pg_temp._save('del1', public.hub_data_delete_request(jsonb_build_object('conversation', pg_temp._id('c1'), 'kind', 'instagram')));

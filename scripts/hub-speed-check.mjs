@@ -33,7 +33,8 @@ check(/action: 'run', turn: q\.data\.turn_id/.test(q), 'the webhook asks hub-age
 
 const AG = read('supabase/functions/hub-agent/index.ts');
 const proc = AG.slice(AG.indexOf('async function process('));
-check(proc.indexOf('const typingP = early ? typing(lastIn)') > 0 && proc.indexOf('const typingP') < proc.indexOf('runTurn(claim'), '«يكتب…» starts before the turn runs, beside it');
+// S1c (25 Nov 2026): YCloud's call is WhatsApp's only — a Meta channel sends its own typing_on right before the reply
+check(/const typingP = early && claim\.channel\?\.provider !== 'meta' \? typing\(lastIn\)/.test(proc) && proc.indexOf('const typingP') < proc.indexOf('runTurn(claim'), '«يكتب…» starts before the turn runs, beside it (WhatsApp; Meta at the send)');
 check(/claim\.turn\?\.kind === 'reply' && claim\.turn\?\.mode === 'live' && !claim\.conversation\?\.is_test/.test(proc), '… only for a live reply turn (never a test, a draft or a tag-only turn)');
 check(/await sendAll\(fin, early\)/.test(proc) && /let typed = typedAlready;/.test(AG), '… and the send does not call it again');
 

@@ -111,7 +111,7 @@ export async function drainStaff(call: Call, content: Json, opts: { test?: boole
             const payload = it.handoff
               ? alertPayload(it.from, it.to, {
                 token: it.handoff.token, branch_name: branchName(content, it.handoff.branch, 'ar'), guest_name: it.handoff.guest_name ?? null,
-                guest_phone: it.handoff.guest_phone ?? null, ref: it.handoff.ref ?? null, summary: it.handoff.summary ?? null, reason: it.handoff.reason ?? null,
+                guest_phone: it.handoff.guest_phone ?? null, channel_kind: it.handoff.channel_kind ?? null, ref: it.handoff.ref ?? null, summary: it.handoff.summary ?? null, reason: it.handoff.reason ?? null,
               }, it.id)
               : reportPayload(it.from, it.to, String(it.report?.day ?? ''), it.report?.data ?? {}, it.id);
             // QA (a preview branch): the payload of a TEST row handed back for the e2e's assertions, never sent

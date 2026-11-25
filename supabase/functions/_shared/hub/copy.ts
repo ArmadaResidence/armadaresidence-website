@@ -68,7 +68,7 @@ export function hasSalaam(text: string | null | undefined): boolean {
 const looseKey = (t: string) => String(t ?? '').toLowerCase().replace(/[ً-ٰٟـ]/g, '').replace(/[أإآ]/g, 'ا').replace(/ة/g, 'ه').replace(/ى/g, 'ي')
   .replace(/[“”"«».,!?؟،]/g, '').replace(/\s+/g, ' ').trim();
 /** the guest typed one of our quick replies' titles (Ahmed, 15 Nov 2026: the same result as the button) — its id */
-export function buttonForText(text: string, kind: 'branch' | 'dining'): string | null {
+export function buttonForText(text: string, kind: 'branch' | 'dining' | 'brand'): string | null {
   const k = looseKey(text);
   if (!k) return null;
   for (const L of ['ar', 'en'] as const) for (const b of quickReplies(kind, L)) if (looseKey(b.title) === k) return b.id;
@@ -97,7 +97,10 @@ export const QUICK_IDS = {
 export const DATES_IDS = ['hubd:yes', 'hubd:other'] as const;
 
 /** the greeting's three quick replies (copy.md §1.4) */
-export function quickReplies(kind: 'branch' | 'dining', L: Lang): { id: string; title: string }[] {
+export function quickReplies(kind: 'branch' | 'dining' | 'brand', L: Lang): { id: string; title: string }[] {
+  // S1c (25 Nov 2026): «السوشيال» (kind brand) takes the branch's three — QUICK_IDS has no 'brand' (the Messenger greeting
+  // of 21:41 crashed on it)
+  kind = kind === 'dining' ? 'dining' : 'branch';
   const q = kind === 'dining' ? C.quick_dining : C.quick_branch;
   // deno-lint-ignore no-explicit-any
   const titles = (q as any)[L] as string[];

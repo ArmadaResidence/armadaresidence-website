@@ -151,13 +151,15 @@ export interface AlertItem {
   ref: string | null;
   summary: string | null;
   reason: string | null;
+  /** S1c: instagram | messenger — a social guest has no phone; the alert names the channel */
+  channel_kind?: string | null;
 }
 /** hub_staff_alert's five variables (templates.md §4), one line each */
 export function alertVars(a: AlertItem): string[] {
   return [
     oneLine(a.branch_name, 80),
     oneLine(a.guest_name || 'ضيف', 60),
-    phoneText(a.guest_phone),
+    a.channel_kind === 'instagram' ? 'حساب انستجرام' : a.channel_kind === 'messenger' ? 'حساب ماسنجر' : phoneText(a.guest_phone),
     oneLine(a.ref || 'غير معروف', 40),
     oneLine(a.summary && cleanSummary(a.summary) ? cleanSummary(a.summary) : reasonLine(a.reason), 120),
   ];

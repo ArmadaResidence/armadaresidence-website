@@ -33,7 +33,7 @@ const HEAD = `-- Guest Hub S1b (25 Nov 2026, Ahmed â€” DECISIONS.md 2026-11-25 Â
 /** the social bank's engine conversations (the deletion items are the router's, not engine turns) */
 export function socialItems() {
   return read('tests/hub-bank/conversations-social.jsonl').split('\n').filter((l) => l.trim()).map((l) => JSON.parse(l))
-    .filter((x) => !x._header && !x.kind)
+    .filter((x) => !x._header && !x.kind && /^s1-0[1-8]$/.test(x.id))
     .map((x) => ({ key: x.id, unit: x.unit, language: x.language, messages: x.messages, expect: x.expect, note: x.note ?? null, tags: x.tags, context: x.context ?? {},
                    ...(x.offers ? { offers: x.offers } : {}) }));
 }

@@ -394,7 +394,8 @@ async function process(turnId: string, model: ModelFn, deadline: number): Promis
   const lastIn = (claim.messages ?? []).at(-1)?.provider_message_id ?? null;
   const early = !!lastIn && claim.turn?.kind === 'reply' && claim.turn?.mode === 'live' && !claim.conversation?.is_test
     && claim.channel?.sending_enabled !== false && Date.parse(claim.conversation?.window_expires_at ?? '') > Date.now();
-  const typingP = early ? typing(lastIn) : Promise.resolve();
+  // S1c: YCloud's typing call is WhatsApp's only (a Meta channel sends its own typing_on right before the reply)
+  const typingP = early && claim.channel?.provider !== 'meta' ? typing(lastIn) : Promise.resolve();
   let outcome: Outcome;
   try {
     outcome = await runTurn(claim, deps(model));
