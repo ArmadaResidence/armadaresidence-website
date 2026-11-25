@@ -111,7 +111,8 @@ select pg_temp._as('recS');
 select pg_temp._save('thS', public.hub_thread(pg_temp._id('c1')));
 select pg_temp._save('listS', public.hub_inbox_list('{}'::jsonb));
 select pg_temp._root();
-select pg_temp._check('B1 both receptions open the thread and may answer', (pg_temp._j('thA') ->> 'can_edit')::boolean and (pg_temp._j('thS') ->> 'can_edit')::boolean);
+select pg_temp._check('B1 both receptions open the thread and may answer', (pg_temp._j('thA') #>> '{conversation,can_edit}')::boolean and (pg_temp._j('thS') #>> '{conversation,can_edit}')::boolean,
+  coalesce(pg_temp._j('thA') #>> '{conversation,can_edit}', 'null') || ' / ' || coalesce(pg_temp._j('thS') #>> '{conversation,can_edit}', 'null'));
 select pg_temp._check('B2 it is in the Shafa reception''s list, with «السوشيال» among its units',
   exists (select 1 from jsonb_array_elements(pg_temp._j('listS') -> 'rows') r where r ->> 'id' = pg_temp._id('c1')::text)
   and exists (select 1 from jsonb_array_elements(pg_temp._j('listS') -> 'units') u where u ->> 'key' = 'social'));
