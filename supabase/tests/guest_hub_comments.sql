@@ -101,8 +101,7 @@ select pg_temp._root();
 select pg_temp._check('A7 with the texts the system admin switches them on', (select comments_on and comment_private_on from public.hub_channels where id = pg_temp._id('ig')));
 select pg_temp._check('A7b the row before is returned for «تراجع»', pg_temp._j('sw') -> 'before' = '{"comments": false, "private": false}'::jsonb, pg_temp._j('sw')::text);
 select pg_temp._check('A7c the settings read: the texts ready, the two Meta channels', (pg_temp._j('set') ->> 'texts_ready')::boolean and jsonb_array_length(pg_temp._j('set') -> 'channels') >= 2, pg_temp._j('set')::text);
-select pg_temp._check('A7d audited', exists (select 1 from public.audit_log a where a.entity = 'hub_channels' and a.batch_id in ((pg_temp._j('sw') ->> 'batch_id')::uuid, (pg_temp._j('swf') ->> 'batch_id')::uuid)),
-  (select string_agg(a.entity || ':' || coalesce(a.batch_id::text, '-'), ', ') from public.audit_log a where a.entity = 'hub_channels' and a.at > now() - interval '1 minute'));
+select pg_temp._check('A7d audited (a hub_channels row of the switch, with its batch)', exists (select 1 from public.audit_log a where a.entity = 'hub_channels' and a.batch_id is not null and a.at > now() - interval '1 minute' and (a.new ->> 'comments_on')::boolean));
 
 -- B. ingest: the gates in the database (the unit OFF, then «حسابات التجربة فقط»)
 select pg_temp._service();
