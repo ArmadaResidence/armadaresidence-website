@@ -181,7 +181,8 @@ export function sharedAnswer(k: Json, guestText: string): Json | null {
   const words = sharedNorm(guestText).replace(/[^\p{L}\p{N}\s]/gu, ' ').split(/\s+/).filter((w) => w.length >= 3 && !SHARED_STOP.has(w));
   if (!words.length) return null;
   const hit = ((k?.cards ?? []) as Json[]).filter((c) => sharedCard(c) && words.some((w) => sharedNorm(`${c.title ?? ''} ${c.text ?? ''}`).includes(w)));
-  return hit.length ? { ...k, cards: hit } : null;
+  // its branch reads «both» in the payload (a both-branches card's `branch` is its first unit's — the lab's third run)
+  return hit.length ? { ...k, cards: hit.map((c) => ({ ...c, branch: 'both' })) } : null;
 }
 /** S1: «في أي فرع تقصد…؟»'s quick replies — the branches' short names (after «أرمادا ريزيدنس –») */
 export function branchButtons(c: Json, L: Lang): { id: string; title: string }[] {

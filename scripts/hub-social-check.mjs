@@ -408,7 +408,7 @@ const check = (ok, what) => {
   const en = await import('../supabase/functions/_shared/hub/engine.ts');
   const k = { cards: [{ key: 'a', branch: 'shafa-road', unit_keys: ['shafa-road'], title: 'x', text: 'واي فاي' }, { key: 'b', branch: 'airport-road', unit_keys: ['airport-road'], title: 'y', text: 'مطبخ' },
     { key: 'k-room-bath-amenities', branch: 'airport-road', unit_keys: ['airport-road', 'shafa-road', 'social'], title: 'مستلزمات الحمام في الغرف', text: 'تتوفر في جميع الغرف مستلزمات الحمام: شامبو، وبلسم، وجل استحمام، وصابون.' }] };
-  check(en.branchDepends(k) && en.sharedAnswer(k, 'عندكوا شامبو؟')?.cards.map((c) => c.key).join() === 'k-room-bath-amenities' && en.sharedAnswer(k, 'إيش تجهيزات الغرف؟') === null
+  check(en.branchDepends(k) && en.sharedAnswer(k, 'عندكوا شامبو؟')?.cards.map((c) => c.key + ':' + c.branch).join() === 'k-room-bath-amenities:both' && en.sharedAnswer(k, 'إيش تجهيزات الغرف؟') === null
     && !en.branchDepends({ cards: [k.cards[0], k.cards[2]] }), 'H28 «السوشيال»: a card of both branches naming the guest word answers for both (no branch question); a general question still asks; a shared card is no branch own card');
 }
 
