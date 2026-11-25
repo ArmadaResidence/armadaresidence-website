@@ -210,7 +210,7 @@ select pg_temp._check('H1 a hand-off on «السوشيال» goes to the convers
 insert into public.hub_report_recipients (position, name, phone, staff_user_id, active, consent_at)
 values (3, 'QA S1 admin', '+15551199301', pg_temp._id('admin'), true, now()) on conflict do nothing;
 insert into public.hub_staff_slots (branch_slug, position, name, phone, role, days, start_time, end_time, active, test_as_guest, consent_at)
-values ('shafa-road', 5, 'QA S1 desk', '+15551199302', 'staff', '{0,1,2,3,4,5,6}', '00:00', '00:00', true, false, now()) on conflict do nothing;
+values ('shafa-road', 5, 'QA S1 desk', '+15551199302', 'staff', '{0,1,2,3,4,5,6}', '00:00', '23:59', true, false, now()) on conflict do nothing;
 update public.hub_conversations set state = 'inquiry', owner_kind = null, human_reason = null where id = pg_temp._id('c1');
 update public.hub_conversations set state = 'human', human_reason = 'handoff', owner_kind = null where id = pg_temp._id('c1');
 select pg_temp._check('H2 a tester''s hand-off: ONE alert, to the system admin''s number of «التقارير», no reception slot',
