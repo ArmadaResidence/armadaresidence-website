@@ -465,6 +465,11 @@ begin
   if ch.comments_on = p_comments and ch.comment_private_on = p_private then raise exception 'nothing to change' using errcode = '22023'; end if;
   v_batch := internal.begin_batch();
   update public.hub_channels set comments_on = p_comments, comment_private_on = p_private where id = ch.id;
+  -- the channels' audit trigger names its columns (not these two): the change is written here, one row of the batch
+  insert into public.audit_log (actor_id, actor_label, entity, entity_id, branch, action, old, new, batch_id)
+  values (auth.uid(), coalesce((select st.full_name from public.staff st where st.user_id = auth.uid()), 'system'), 'hub_channels', ch.id::text, null, 'update',
+          jsonb_build_object('comments_on', ch.comments_on, 'comment_private_on', ch.comment_private_on),
+          jsonb_build_object('comments_on', p_comments, 'comment_private_on', p_private), v_batch);
   return jsonb_build_object('ok', true, 'batch_id', v_batch, 'before', jsonb_build_object('comments', ch.comments_on, 'private', ch.comment_private_on));
 end;
 $$;
