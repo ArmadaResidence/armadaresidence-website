@@ -69,7 +69,7 @@ select pg_temp._check('A1 «السوشيال» exists: brand, no branch, OFF, au
   (select u.kind = 'brand' and u.branch_slug is null and u.assistant_mode = 'off' and u.social_mode = 'test' and not u.meta_human_agent
           and u.skills = (select a.skills from public.hub_units a where a.key = 'airport-road') and u.persona_live is not distinct from (select a.persona_live from public.hub_units a where a.key = 'airport-road')
      from public.hub_units u where u.key = 'social'));
-select pg_temp._fails('A2 a branch unit keeps its branch (brand ⇔ no branch)', $$update public.hub_units set branch_slug = null where key = 'shafa-road'$$, '23514');
+select pg_temp._fails('A2 a branch unit keeps its branch (the key lock refuses it first)', $$update public.hub_units set branch_slug = null where key = 'shafa-road'$$, 'P0001');
 select pg_temp._fails('A3 a Meta channel needs a numeric address and its Page',
   $$insert into public.hub_channels (unit_id, provider, kind, address) select id, 'meta', 'instagram', 'abc12345' from public.hub_units where key = 'social'$$, '23514');
 
