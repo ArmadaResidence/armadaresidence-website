@@ -64,7 +64,7 @@ export function migration() {
   out.push(sc);
 
   let sb = get('public.hub_send_begin');
-  sb = edit(sb, 'send_begin', `  v_key text;\nbegin`, `  v_key text;\n  v_agent boolean;\nbegin`);
+  sb = edit(sb, 'send_begin', `  v_key text;\nbegin`, `  v_key text;\n  v_agent boolean;\n  v_max integer;\nbegin`);
   sb = edit(sb, 'send_begin', `  v_open := c.window_expires_at is not null and c.window_expires_at > now();`,
     `  v_open := c.window_expires_at is not null and c.window_expires_at > now();
   -- S1: a Meta channel after the 24 hours — staff text only with «Human Agent» (7 days), tagged HUMAN_AGENT
@@ -76,7 +76,9 @@ export function migration() {
     returning id into v_id;
     v_out := v_out || jsonb_build_object('id', v_id, 'kind', 'text', 'body', v_body, 'send', true);`,
     `    if not (v_open or v_agent) then raise exception 'hub_window_closed' using errcode = 'P0001'; end if;
-    if char_length(v_body) not between 1 and case when ctx ->> 'provider' = 'meta' then 1000 else 4096 end then raise exception 'hub_body' using errcode = '22023'; end if;
+    -- (the limit in a variable: the CLI's statement splitter breaks on «if … case … end then» — DECISIONS.md 2026-11-09)
+    v_max := case when ctx ->> 'provider' = 'meta' then 1000 else 4096 end;
+    if char_length(v_body) not between 1 and v_max then raise exception 'hub_body' using errcode = '22023'; end if;
     insert into public.hub_messages (conversation_id, channel_id, direction, author, staff_id, kind, body, payload, idempotency_key, status, sent_at, is_test)
     values (c.id, c.channel_id, 'out', 'staff', auth.uid(), 'text', v_body, case when v_agent then '{"tag": "HUMAN_AGENT"}'::jsonb else '{}'::jsonb end, v_key, 'queued', now(), c.is_test)
     returning id into v_id;

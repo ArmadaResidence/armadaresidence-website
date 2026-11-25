@@ -604,6 +604,7 @@ declare
   v_id uuid;
   v_key text;
   v_agent boolean;
+  v_max integer;
 begin
   c := internal.hub_conv_edit(p_conversation);
   if p_key is null or p_mode is null or p_mode not in ('text', 'template', 'held') then raise exception 'hub_send' using errcode = '22023'; end if;
@@ -622,7 +623,9 @@ begin
   select * into g from public.guest_profiles where id = c.guest_profile_id;
   if p_mode = 'text' then
     if not (v_open or v_agent) then raise exception 'hub_window_closed' using errcode = 'P0001'; end if;
-    if char_length(v_body) not between 1 and case when ctx ->> 'provider' = 'meta' then 1000 else 4096 end then raise exception 'hub_body' using errcode = '22023'; end if;
+    -- (the limit in a variable: the CLI's statement splitter breaks on «if … case … end then» — DECISIONS.md 2026-11-09)
+    v_max := case when ctx ->> 'provider' = 'meta' then 1000 else 4096 end;
+    if char_length(v_body) not between 1 and v_max then raise exception 'hub_body' using errcode = '22023'; end if;
     insert into public.hub_messages (conversation_id, channel_id, direction, author, staff_id, kind, body, payload, idempotency_key, status, sent_at, is_test)
     values (c.id, c.channel_id, 'out', 'staff', auth.uid(), 'text', v_body, case when v_agent then '{"tag": "HUMAN_AGENT"}'::jsonb else '{}'::jsonb end, v_key, 'queued', now(), c.is_test)
     returning id into v_id;

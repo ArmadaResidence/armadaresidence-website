@@ -1209,9 +1209,9 @@ function tap(input: DecideInput, state: State, t: string[], out: Out): Decision 
   }
   if (ev.button === 'room') {
     const fields: Record<string, unknown> = { ...d.fields, room_type: ev.room ?? d.fields.room_type };
-    if (contactMissing(fields, ctx)) {
-      t.push(contactMissing(fields, ctx) === 'phone' ? 'T11c' : 'T11b');
-      return out({ next: 'collecting', actions: [{ type: 'ask', slots: [contactMissing(fields, ctx)!] }], draft_patch: { kind: 'stay', fields } });
+    if (contactMissing(fields, input.ctx)) {
+      t.push(contactMissing(fields, input.ctx) === 'phone' ? 'T11c' : 'T11b');
+      return out({ next: 'collecting', actions: [{ type: 'ask', slots: [contactMissing(fields, input.ctx)!] }], draft_patch: { kind: 'stay', fields } });
     }
     t.push('T11');
     return out({ next: 'awaiting_confirmation', actions: [{ type: 'send_summary', version: d.version + 1 }], draft_patch: { kind: 'stay', fields } });
@@ -1219,7 +1219,7 @@ function tap(input: DecideInput, state: State, t: string[], out: Out): Decision 
   // H11 (882141b2): «إرسال طلب الحجز» on the CURRENT summary after «تعديل» with nothing changed since — the guest changed
   // their mind about changing: it books (the summary they tapped is the one on file)
   if (ev.button === 'confirm' && ev.version === d.version && state === 'collecting' && d.fields.room_type && d.fields.room_type !== 'any'
-      && !contactMissing(d.fields, ctx) && d.fields.check_in && d.fields.check_out) {
+      && !contactMissing(d.fields, input.ctx) && d.fields.check_in && d.fields.check_out) {
     if (!ctx.window_open) return out({ next: state, actions: [{ type: 'noop' }] });
     t.push('T12');
     return out({ next: 'awaiting_confirmation', actions: [{ type: 'book', draft_id: d.id, version: d.version }] });
@@ -1277,9 +1277,9 @@ function bookResult(input: DecideInput, state: State, t: string[], out: Out): De
         draft_patch: d?.kind === 'stay' ? { kind: 'stay', fields } : null, reason: 'sold_out' });
     }
     case 'incomplete':
-      if (d && contactMissing(d.fields, ctx)) {
-        t.push(contactMissing(d.fields, ctx) === 'phone' ? 'T11c' : 'T11b');
-        return out({ next: 'collecting', actions: [{ type: 'ask', slots: [contactMissing(d.fields, ctx)!] }] });
+      if (d && contactMissing(d.fields, input.ctx)) {
+        t.push(contactMissing(d.fields, input.ctx) === 'phone' ? 'T11c' : 'T11b');
+        return out({ next: 'collecting', actions: [{ type: 'ask', slots: [contactMissing(d.fields, input.ctx)!] }] });
       }
       t.push('T21');
       return out({ next: 'human', actions: [handoff('book_error', 'handoff', { intent: 'stay_booking', slots: d?.fields ?? {}, stopped: state })], reason: 'book_error' });
