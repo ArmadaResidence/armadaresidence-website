@@ -196,7 +196,7 @@ select pg_temp._check('G3 the test lab gate of «السوشيال» is its own l
   internal.hub_test_lab_ready((select u from public.hub_units u where u.key = 'social'))
     = ((internal.hub_unit_lab((select u from public.hub_units u where u.key = 'social')) ->> 'run_id') is not null
        and jsonb_array_length(coalesce(internal.hub_unit_lab((select u from public.hub_units u where u.key = 'social')) -> 'blocking', '[]'::jsonb)) = 0)
-  and (select count(*) = 8 from public.hub_test_items i where i.unit_key = 'social' and 'social' = any (i.tags)));
+  and (select count(*) = 10 from public.hub_test_items i where i.unit_key = 'social' and 'social' = any (i.tags)));
 select pg_temp._check('G4 the lab context of «السوشيال»: the channel''s kind and provider',
   public.hub_eval_context('social') -> 'channel' ->> 'provider' = 'meta');
 
@@ -216,9 +216,10 @@ update public.hub_conversations set state = 'human', human_reason = 'handoff', o
 select pg_temp._check('H2 a tester''s hand-off: ONE alert, to the system admin''s number of «التقارير», no reception slot',
   (select count(*) = 1 and bool_and(s.recipient_id is not null and s.slot_id is null)
      from public.hub_staff_sends s join public.hub_handoffs h on h.id = s.handoff_id where h.conversation_id = pg_temp._id('c1') and h.closed_at is null));
+select pg_temp._save('xa', to_jsonb(internal.hub_extra_alert(pg_temp._id('c1'), 'booking_request', 'QA', null, false, null)));
 select pg_temp._check('H3 a tester''s chat booking request alert: the system admin only',
   (select count(*) = 1 and bool_and(s.recipient_id is not null and s.slot_id is null) from public.hub_staff_sends s
-    where s.handoff_id = internal.hub_extra_alert(pg_temp._id('c1'), 'booking_request', 'QA', null, false, null)));
+    where s.handoff_id = (pg_temp._j('xa') #>> '{}')::uuid));
 update public.hub_conversations set waiting_since = now() - interval '2 hours', escalated_at = null where id = pg_temp._id('c1');
 select pg_temp._save('esc', public.hub_escalations_claim(now(), 50));
 select pg_temp._check('H4 a tester''s waiting email goes to the active admins only',
