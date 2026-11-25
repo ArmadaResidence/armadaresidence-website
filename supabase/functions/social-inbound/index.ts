@@ -91,8 +91,11 @@ async function nameOf(kind: 'instagram' | 'messenger', user: string, page: strin
 async function sendFixed(conversation: string, kind: 'instagram' | 'messenger', channel: string, user: string, key: string, L: 'ar' | 'en', test: boolean): Promise<string> {
   const body = fixed(key, L);
   const page = await pageOf(kind, channel);
+  // S1d (25 Nov 2026): recorded before the send — its echo (Instagram sends no app id) is ours, never a staff reply
+  const row = await rpc<string | null>('hub_social_fixed_begin', { p_conversation: conversation, p_key: key, p_body: body, p_language: L, p_is_test: test });
   const r = await sendHub(user, { body }, await token(page), { test });
-  console.log('social-inbound: fixed', key, kind, r.status, test ? 'TEST' : '');
+  if (row.ok && row.data) await rpc('hub_social_fixed_done', { p_message: row.data, p_status: r.accepted ? r.status : 'failed', p_mid: r.messageId, p_error: r.errorCode });
+  console.log('social-inbound: fixed', key, kind, r.status, row.ok && row.data ? 'recorded' : 'unrecorded', test ? 'TEST' : '');
   return r.status;
 }
 const langOf = (t: string): 'ar' | 'en' => (/[؀-ۿ]/.test(t) ? 'ar' : /[a-z]/i.test(t) ? 'en' : 'ar');

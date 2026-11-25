@@ -249,6 +249,22 @@ const check = (ok, what) => {
   const add = en.slice(en.indexOf("case 'handoff_add': {"), en.indexOf("case 'partner_enquiry': {"));
   check(/else if \(!ackDone && !noticeOpen\) push\(fixed\(/.test(add) && add.indexOf('!noticeOpen') < add.indexOf('waitingLine()'),
     'E36 an addition to a hand-off whose notice never went sends the notice (the silent «شامبو» of 21:55)');
+  // S1d (test message 7, 22:56): the acknowledgement's Instagram echo (no app id) was stored as a staff reply
+  const s1d = await import('./hub-s1d-migration.mjs');
+  const dsql = s1d.migration();
+  check(read(s1d.OUT_PATH) === dsql, 'E37 the S1d migration = its generator');
+  const si = read('supabase/functions/social-inbound/index.ts');
+  const sf = si.slice(si.indexOf('async function sendFixed('), si.indexOf('const langOf'));
+  check(sf.indexOf("'hub_social_fixed_begin'") > 0 && sf.indexOf("'hub_social_fixed_begin'") < sf.indexOf('sendHub(') && sf.indexOf("'hub_social_fixed_done'") > sf.indexOf('sendHub('),
+    'E38 a fixed social message is recorded before it is sent, its id after');
+  const echo = dsql.slice(dsql.indexOf('create or replace function public.hub_ingest_social_echo'), dsql.indexOf('create or replace function public.hub_data_delete'));
+  check(echo.indexOf("'reason', 'ours'") > 0 && echo.indexOf("'reason', 'ours'") < echo.indexOf("insert into public.hub_messages") && /x\.author <> 'phone' and x\.provider_message_id is null/.test(echo)
+    && /interval '2 minutes'/.test(echo), 'E39 an echo with our own text of the last 2 minutes (no id yet) is ours — before any staff row');
+  const dl = dsql.slice(dsql.indexOf('create or replace function public.hub_data_delete'));
+  check(/set state = 'closed'[\s\S]*?where guest_profile_id = g\.id and state <> 'closed';/.test(dl) && /'close', x\.state, 'closed', auth\.uid\(\), 'data_delete'/.test(dl)
+    && dl.indexOf("set state = 'closed'") > dl.indexOf("'delete:' || v_batch"), 'E40 «حذف بيانات المحادثات» closes the guest\'s open conversations (after the done line is queued)');
+  const ups = dsql.match(/\bupdate public\.[a-z_]+[\s\S]*?;/g) ?? [];
+  check(ups.length > 0 && ups.every((u) => /\bwhere\b/.test(u)) && !/\+9665\d{8}|\b05\d{8}\b/.test(dsql) && !/assistant_mode|hub_licences/.test(dsql), 'E41 S1d: every UPDATE with a WHERE, no phone, no mode or licence');
 }
 
 // ═══ F. the daily report's {{2}} ═══

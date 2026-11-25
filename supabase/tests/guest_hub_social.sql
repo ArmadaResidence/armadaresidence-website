@@ -227,6 +227,18 @@ select pg_temp._check('H4 a tester''s waiting email goes to the active admins on
      from jsonb_array_elements(pg_temp._j('esc')) e where e ->> 'id' = pg_temp._id('c1')::text));
 select pg_temp._check('H5 «السوشيال» quick replies for a greeting alone (the lab item s1-11 exists)', exists (select 1 from public.hub_test_items where key = 's1-11' and unit_key = 'social'));
 
+-- I0. S1d (migration 20261125500000): a fixed message is recorded before its send; its echo (no app id) is ours
+select pg_temp._save('fx', to_jsonb(public.hub_social_fixed_begin(pg_temp._id('c1'), 'data_delete_ack', 'وصلنا طلبك لحذف بياناتك، وسنبلغك هنا عند الانتهاء.', 'ar', false)));
+select pg_temp._save('fxe', public.hub_ingest_social_echo(jsonb_build_object('kind', 'instagram', 'channel', '17800000000000001', 'user', '9100000000000001',
+  'provider_id', 'mid.qa.fixed', 'kind_msg', 'text', 'body', 'وصلنا طلبك لحذف بياناتك، وسنبلغك هنا عند الانتهاء.')));
+select pg_temp._check('I0 the acknowledgement''s echo before its id was recorded: ours — no phone row, the id kept on our row',
+  pg_temp._j('fxe') ->> 'reason' = 'ours'
+  and not exists (select 1 from public.hub_messages m where m.provider_message_id = 'mid.qa.fixed' and m.author = 'phone')
+  and exists (select 1 from public.hub_messages m where m.id = (pg_temp._j('fx') #>> '{}')::uuid and m.author = 'system' and m.provider_message_id = 'mid.qa.fixed'));
+select public.hub_social_fixed_done((pg_temp._j('fx') #>> '{}')::uuid, 'accepted', 'mid.qa.fixed', null);
+select pg_temp._check('I0b fixed_done: accepted, the id unchanged',
+  exists (select 1 from public.hub_messages m where m.id = (pg_temp._j('fx') #>> '{}')::uuid and m.status = 'accepted' and m.provider_message_id = 'mid.qa.fixed'));
+
 -- I. deletion
 select pg_temp._service();
 select pg_temp._save('del1', public.hub_data_delete_request(jsonb_build_object('conversation', pg_temp._id('c1'), 'kind', 'instagram')));
@@ -252,6 +264,10 @@ select pg_temp._check('I3 texts gone, the media marked, the name cleared; the re
   left(pg_temp._j('del')::text, 300));
 select pg_temp._check('I4 the window is open → the «done» line queued in the guest''s language, to the IGSID',
   pg_temp._j('del') -> 'notify' ->> 'to' = '9100000000000001' and pg_temp._j('del') -> 'notify' ->> 'body' like 'تم حذف%');
+select pg_temp._check('I6 S1d: the guest''s conversations are closed after the deletion (nothing «بانتظار موظف»); the done line still queued',
+  not exists (select 1 from public.hub_conversations c where c.guest_profile_id = pg_temp._id('g1') and c.state <> 'closed')
+  and exists (select 1 from public.hub_conversation_events e where e.conversation_id = pg_temp._id('c1') and e.kind = 'close' and e.reason = 'data_delete')
+  and exists (select 1 from public.hub_messages m where m.id = (pg_temp._j('del') -> 'notify' ->> 'id')::uuid and m.status = 'queued'));
 select pg_temp._as('admin');
 select pg_temp._save('dlist', public.hub_data_deletions_list());
 select pg_temp._root();
