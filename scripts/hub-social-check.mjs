@@ -218,6 +218,12 @@ const check = (ok, what) => {
   const items = s1b.socialItems();
   check(items.length === 8 && items.every((i) => i.unit === 'social' && i.expect?.action === 'conversation'), 'E25 the eight social engine conversations become lab items');
   check(/'kind', ch\.kind, 'provider', ch\.provider/.test(sql), 'E26 the lab context carries the channel\'s kind and provider');
+  // Ahmed's licences of 25 Nov 2026: 46 auto, booking_status and wifi stay «بموافقة الفريق», the always-team topics untouched
+  const lic = read('supabase/migrations/20261125300000_guest_hub_social_licences.sql');
+  const keys = [...(lic.match(/v_keys text\[\] := array\[([\s\S]*?)\];/)?.[1] ?? '').matchAll(/'([a-z_]+)'/g)].map((m) => m[1]);
+  check(keys.length === 46 && new Set(keys).size === 46 && !keys.includes('booking_status') && !keys.includes('wifi'), 'E27 the social licences: 46 topics, never «حالة حجز» or «الواي فاي»');
+  check(/where l\.unit_id = v_unit and l\.mode = 'shadow'/.test(lic) && /not exists \(select 1 from public\.hub_topics t where t\.key = l\.topic_key and t\.always_handoff\)/.test(lic)
+    && /if v_n <> 46 then raise exception/.test(lic) && !/assistant_mode/.test(lic), 'E28 only the social unit\'s shadow rows, never an always-team topic, exactly 46, no mode change');
 }
 
 // ═══ F. the daily report's {{2}} ═══
