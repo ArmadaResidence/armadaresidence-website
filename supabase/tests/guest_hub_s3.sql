@@ -176,10 +176,11 @@ select pg_temp._check('C1 the booking request: Shafa Road''s (the reservation''s
 select pg_temp._check('C2 its alert → the Shafa Road slot on shift only',
   (select count(*) >= 1 and bool_and(sl.branch_slug = 'shafa-road') from public.hub_staff_sends s join public.hub_staff_slots sl on sl.id = s.slot_id where s.handoff_id = (pg_temp._j('br') #>> '{}')::uuid)
   and not exists (select 1 from public.hub_staff_sends s where s.handoff_id = (pg_temp._j('br') #>> '{}')::uuid and s.recipient_id is not null));
+select pg_temp._save('tok', to_jsonb((select token from public.hub_handoffs where id = (pg_temp._j('br') #>> '{}')::uuid)));
 select pg_temp._as('recS');
-select pg_temp._save('openS', public.hub_alert_open((select token from public.hub_handoffs where id = (pg_temp._j('br') #>> '{}')::uuid)));
+select pg_temp._save('openS', public.hub_alert_open(pg_temp._j('tok') #>> '{}'));
 select pg_temp._as('recA');
-select pg_temp._save('openA', public.hub_alert_open((select token from public.hub_handoffs where id = (pg_temp._j('br') #>> '{}')::uuid)));
+select pg_temp._save('openA', public.hub_alert_open(pg_temp._j('tok') #>> '{}'));
 select pg_temp._root();
 select pg_temp._check('C3 the Shafa Road reception''s link opens the booking (its ref), never the conversation',
   (pg_temp._j('openS') ->> 'allowed')::boolean and pg_temp._j('openS') ->> 'booking_ref' = 'AR-20991231-SS31' and pg_temp._j('openS') ->> 'conversation_id' is null, pg_temp._j('openS')::text);
