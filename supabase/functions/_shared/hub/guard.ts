@@ -131,7 +131,17 @@ export const NON_ANSWER_EN = ["we don't have that information", "we don't have i
 /** dialect words (Modern Standard Arabic only — 13 Nov 2026; H6 pass 5: the model now writes small talk), as whole words;
  *  a word the payload itself holds passes (the «إياب» slogan «حيّاك دايم») */
 export const DIALECT_AR = ['تمام', 'وش', 'ايش', 'إيش', 'أبغى', 'ابغى', 'تبغى', 'تبي', 'أبي', 'زين', 'الحين', 'دحين', 'عشان', 'علشان', 'ليش', 'شلون', 'وايد', 'بس',
-  'هلا', 'هلا والله', 'مو', 'يعطيك العافية', 'يعطيكم العافية', 'أبشر', 'ابشر', 'تامر', 'تأمر', 'طال عمرك', 'ازيك', 'إزيك', 'كده', 'دلوقتي'];
+  'هلا', 'هلا والله', 'مو', 'يعطيك العافية', 'يعطيكم العافية', 'أبشر', 'ابشر', 'تامر', 'تأمر', 'طال عمرك', 'ازيك', 'إزيك', 'كده', 'دلوقتي',
+  // S2e (26 Nov 2026, the lab's h11-19): the guest's own dialect echoed back («بكرة», «اليوم الجاي»)
+  'بكرة', 'بكره', 'الجاي', 'اللي جاي'];
+/** S2e: the Modern Standard Arabic the retry asks for in place of a dialect word (the ones a reply is likeliest to echo) */
+export const DIALECT_MSA: Record<string, string> = {
+  'تمام': 'حسنًا', 'بكرة': 'غدًا', 'بكره': 'غدًا', 'الجاي': 'القادم', 'اللي جاي': 'القادم', 'عشان': 'لأن / لكي', 'علشان': 'لأن / لكي', 'بس': 'فقط / لكن',
+  'الحين': 'الآن', 'دحين': 'الآن', 'ليش': 'لماذا', 'وش': 'ماذا', 'ايش': 'ماذا', 'إيش': 'ماذا', 'زين': 'جيد', 'مو': 'ليس', 'أبغى': 'أرغب', 'ابغى': 'أرغب',
+  'تبغى': 'ترغب', 'تبي': 'ترغب', 'أبي': 'أرغب', 'وايد': 'كثيرًا', 'شلون': 'كيف', 'كده': 'هكذا', 'دلوقتي': 'الآن', 'هلا': 'أهلًا بك', 'هلا والله': 'أهلًا بك',
+  'أبشر': 'بكل سرور', 'ابشر': 'بكل سرور', 'يعطيك العافية': 'شكرًا لك', 'يعطيكم العافية': 'شكرًا لك', 'تامر': 'بكل سرور', 'تأمر': 'بكل سرور',
+  'طال عمرك': 'حفظك الله', 'ازيك': 'كيف حالك', 'إزيك': 'كيف حالك',
+};
 export const SELF_WORDS_EN = ['ai', 'a.i.', 'bot', 'chatbot', 'robot', 'automated', 'automatic', 'assistant', 'virtual', 'i', "i'm", 'my name', 'human', 'real person', 'language model'];
 
 const lower = (s: string) => s.toLowerCase();
@@ -268,8 +278,11 @@ export function guard(reply: string, p: GuardPayload, o: GuardOptions): GuardRes
   if (!o.emoji_allowed && EMOJI_RE.test(text)) r.push('emoji');
   if ((text.match(/!/g) ?? []).length > 1) r.push('exclamation');
   // 6b · Modern Standard Arabic only (the payload's own words pass)
+  // S2e: the word found travels in `detail` (the retry names it, the turn records it)
+  let dialect: string | null = null;
   if (o.language === 'ar') for (const w of DIALECT_AR) if (arWord(text, w) && !arWord(pay, w)) {
     r.push('dialect');
+    dialect = w;
     break;
   }
   // 8 · no self-description, no claim to be a person («مساعدتك» passes — a whole word only)
@@ -280,7 +293,8 @@ export function guard(reply: string, p: GuardPayload, o: GuardOptions): GuardRes
   if (NON_ANSWER_AR.some((re) => re.test(unify(text))) || NON_ANSWER_EN.some((w) => text.toLowerCase().replace(/’/g, "'").includes(w))) r.push('non_answer');
   // 9 · the cancellation policy: the approved sentence, word for word
   if (/إلغاء|الإلغاء|cancel/i.test(text) && p.cancellation_sentence && !text.includes(p.cancellation_sentence)) r.push('cancellation');
-  return { ok: r.length === 0, reasons: [...new Set(r)], ...(plural ? { detail: { plural } } : {}) };
+  const detail: Record<string, string> = { ...(plural ? { plural } : {}), ...(dialect ? { dialect } : {}) };
+  return { ok: r.length === 0, reasons: [...new Set(r)], ...(Object.keys(detail).length ? { detail } : {}) };
 }
 
 /** the reason handed back to the model on the one retry (English, short) */
@@ -315,4 +329,6 @@ export const RETRY_REASONS: Record<string, string> = {
 export const retryReason = (reasons: string[], detail?: Record<string, string>) =>
   reasons.map((x) => (x.startsWith('forbidden:') ? 'A forbidden term was used; follow the WORDS rules.'
     : x === 'plural_address' && detail?.plural ? `${RETRY_REASONS[x]} The plural word «${detail.plural}» must become its singular form.`
+    // S2e: the exact dialect word and its Modern Standard Arabic (never the same word again)
+    : x === 'dialect' && detail?.dialect ? `${RETRY_REASONS[x]} The reply used the dialect word «${detail.dialect}»: remove it and write it in Modern Standard Arabic${DIALECT_MSA[detail.dialect] ? ` («${DIALECT_MSA[detail.dialect]}»)` : ''}. Never repeat a dialect word the guest wrote.`
     : RETRY_REASONS[x] ?? x)).join(' ');

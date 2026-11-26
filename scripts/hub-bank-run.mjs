@@ -49,7 +49,7 @@ const FIX3 = jsonl('tests/hub-bank/conversations-fix3.jsonl');
 // H10 (18 Nov 2026): the live review's cases (D1 requests, the context, payment, dates, the party, repetition, the notice)
 const H10 = [...jsonl('tests/hub-bank/conversations-h10.jsonl'), ...jsonl('tests/hub-bank/conversations-h10b.jsonl'),
   // H11 (24 Nov 2026): the weekly review's cases
-  ...jsonl('tests/hub-bank/conversations-h11.jsonl'), ...jsonl('tests/hub-bank/conversations-h11c.jsonl'),
+  ...jsonl('tests/hub-bank/conversations-h11.jsonl'), ...jsonl('tests/hub-bank/conversations-h11c.jsonl'), ...jsonl('tests/hub-bank/conversations-s2f.jsonl'),
   // S1 (25 Nov 2026): Instagram / Messenger on «السوشيال»
   ...jsonl('tests/hub-bank/conversations-social.jsonl')];
 // 18 Nov 2026: «باقات بسعر خاص» — each item carries the offer as published («offers», or "@<id>" for another item's)

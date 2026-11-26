@@ -5,7 +5,7 @@
 // word («مساعدتك» passes, «مساعد» does not).
 //   node scripts/hub-guard-check.mjs
 import { readFileSync } from 'node:fs';
-import { DIALECT_AR, guard, retryReason, SELF_WORDS_AR, SELF_WORDS_EN, PLURAL_ADDRESS, FACILITY_WORDS, DEPOSIT_WORDS, ROOFTOP_WORDS } from '../supabase/functions/_shared/hub/guard.ts';
+import { DIALECT_AR, RETRY_REASONS, guard, retryReason, SELF_WORDS_AR, SELF_WORDS_EN, PLURAL_ADDRESS, FACILITY_WORDS, DEPOSIT_WORDS, ROOFTOP_WORDS } from '../supabase/functions/_shared/hub/guard.ts';
 
 const read = (p) => readFileSync(new URL(`../${p}`, import.meta.url), 'utf8').replace(/\r\n/g, '\n');
 const MIG4 = read('supabase/migrations/20261114100000_guest_hub_knowledge.sql');
@@ -163,6 +163,24 @@ check(/if \(body\.suggestion === true && typeof body\.body === 'string'\) \{[\s\
   for (const t of ['أهلًا بك، كيف نساعدك؟', 'حفظك الله، نحن في خدمتك.', 'أهلًا بك، حياك الله.', 'شكرًا لك، يسعدنا خدمتك متى ما احتجت.']) check(!guard(t, P, O).reasons.includes('dialect'), `MSA passes: ${t}`);
   check(!guard('يسعدنا انضمامك: حيّاك دايم.', { text: 'حيّاك دايم', cancellation_sentence: '' }, O).reasons.includes('dialect') || true, 'a payload word passes');
   check(DIALECT_AR.length > 20 && !DIALECT_AR.includes('حياك'), 'the dialect list (and «حياك الله» is MSA)');
+  // S2e (26 Nov 2026, the lab's h11-19): the word found is named — in the turn's record and in the retry — with its MSA
+  {
+    const g1 = guard('تمام، ليلة واحدة. هل تريد الإقامة مع الإفطار أو بدونه؟', P, O);
+    check(g1.reasons.includes('dialect') && g1.detail?.dialect === 'تمام' && /«تمام»/.test(retryReason(g1.reasons, g1.detail)) && /«حسنًا»/.test(retryReason(g1.reasons, g1.detail)),
+      'S2e: a dialect refusal names its word and the MSA the retry asks for («تمام» → «حسنًا»)');
+    for (const [t, w, msa] of [['سعر الغرفة بكرة لشخصين يعتمد على تواريخك.', 'بكرة', 'غدًا'], ['نؤكد لك اليوم الجاي بعد اختيارك.', 'الجاي', 'القادم'], ['نسألك عشان نكمل الحجز.', 'عشان', 'لأن']]) {
+      const g = guard(t, P, O);
+      check(g.detail?.dialect === w && retryReason(g.reasons, g.detail).includes(`«${msa}`), `S2e: the guest's dialect echoed back is refused and named — «${w}» → «${msa}»`);
+    }
+    check(!guard('سعر الغرفة غدًا لشخصين يعتمد على تواريخك.', P, O).reasons.includes('dialect') && !guard('اليوم التالي متاح للحجز.', P, O).reasons.includes('dialect'),
+      'S2e: their MSA passes («غدًا», «اليوم التالي»)');
+    check(retryReason(['dialect']) === RETRY_REASONS.dialect, 'S2e: a dialect refusal without its word keeps the general reason');
+    const s2f = await import('./hub-s2f-migration.mjs');
+    const bank = readFileSync(new URL('../tests/hub-bank/conversations-s2f.jsonl', import.meta.url), 'utf8').split(/\r?\n/).filter((l) => l.trim()).map((l) => JSON.parse(l));
+    check(readFileSync(new URL(`../${s2f.OUT_PATH}`, import.meta.url), 'utf8').replace(/\r\n/g, '\n') === s2f.migration()
+      && JSON.stringify(bank.map((b) => [b.id, b.messages, b.expect])) === JSON.stringify(s2f.NEW_ITEMS.map((i) => [i.key, i.messages, i.expect]))
+      && !/update public\.|delete from/.test(s2f.migration()), 'S2f: the migration = its generator, its two lab cases = the bank file, no UPDATE or DELETE');
+  }
   check(guard('هل معكم أطفال؟', P, O).reasons.includes('plural_address'), 'the plural «معكم» is refused');
 }
 // ── H9 fix 3 (Ahmed, 17 Nov 2026): room prices only by date; the group plural forms named in the retry ──

@@ -1214,7 +1214,8 @@ export async function runTurn(claim: Json, deps: Deps): Promise<Outcome> {
       if (!c.reply) return c;
       const g = guard(c.reply, gp, { language: L, max_chars: Number(set.reply_max_chars ?? 600), forbidden: deps.forbidden ?? claim.forbidden ?? [], emoji_allowed: !!persona.emoji });
       if (g.ok) return c;
-      finish.guard_refusals.push(g.reasons);
+      // S2e: a dialect refusal records its word («dialect:<word>» — a word of the reply, never the guest's text alone)
+      finish.guard_refusals.push(g.detail?.dialect ? [...g.reasons, `dialect:${g.detail.dialect}`] : g.reasons);
       reason = retryReason(g.reasons, g.detail);
     }
     return 'guard';

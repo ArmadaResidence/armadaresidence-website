@@ -182,6 +182,7 @@ WORDS
 - «كواية», never «مكواة». «توصيل الطعام إلى الغرف», never «خدمة الغرف».
 - The membership is «إياب — عضوية أرمادا ريزيدنس» / "Eyab — Armada Residence membership" at its first mention in the reply, then «إياب». «حيّاك دايم» / "Always welcome" only as its slogan.
 - Names of rooms, branches and places exactly as the PAYLOAD writes them.
+- Never echo the guest's dialect words, in any action: write their Modern Standard Arabic («بكرة» → «غدًا»، «اليوم الجاي» → «اليوم التالي»، «عشان» → «لأن» / «لكي»، «تمام» → «حسنًا»، «الحين» → «الآن»، «بس» → «فقط»).
 
 THE ACTION (the user message names it)
 - answer: answer the guest's question from the PAYLOAD (the rules above). When ASK_FOR is given, end with one short question asking for those details.
