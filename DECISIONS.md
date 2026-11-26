@@ -4705,3 +4705,7 @@ Decided by Ahmed on 26 Nov 2026 (the S3 brief):
   `node scripts/fn-release.mjs --rollback eaf0de0 hub-agent hub-admin`).
 - «الجهة المشغّلة»'s two «المحتوى والظهور» fields moved from section 10 to 11 with their anchor (the new section is 9).
 
+- **The full «السوشيال» lab after the daily cap reset (27 Nov 2026, 00:14–00:20 Riyadh):** run `83647add`, engine
+  `h6-d6973f68293c` (e24, hub-agent 51), 32 items: **32 passed, 0 failed, 0 errors, no known gap**, verdict pass;
+  USD 0.67 (estimated 1.70). Started in SQL as the service role (`hub_eval_plan` first, `would_pass_cap` false). No mode,
+  audience, licence or switch changed.
