@@ -253,5 +253,20 @@ select pg_temp._check('F2 the four S3 lab items on «السوشيال»', (selec
 select pg_temp._check('F3 S3b: s3-02 asks the group details first, then the hand-off', (select jsonb_array_length(expect -> 'steps') = 2 and expect #>> '{steps,0,outcome}' = 'ask'
   from public.hub_test_items where key = 's3-02'));
 
+-- G. S3c: the purge every day, the comments' purge audited with counts, «الجهة المشغّلة» at section 11
+select pg_temp._check('G1 hub-retention and hub-comments-retention run every day',
+  exists (select 1 from cron.job where jobname = 'hub-retention' and schedule = '37 2 * * *')
+  and exists (select 1 from cron.job where jobname = 'hub-comments-retention' and schedule = '23 3 * * *'));
+insert into public.hub_comments (channel_id, kind, comment_id, author_id, author_name, body, commented_at, received_at, state, is_test)
+select ch.id, 'instagram', '18000000000000399', '17800000000000399', 'qa_old', 'تعليق قديم', now() - interval '13 months', now() - interval '13 months', 'skipped', false
+  from public.hub_channels ch where ch.provider = 'meta' and ch.kind = 'instagram' limit 1;
+select pg_temp._save('ret', to_jsonb(internal.hub_comments_retention()));
+select pg_temp._check('G2 the comments'' purge: the old comment''s words and name gone, ONE audit row of counts (no word)',
+  (pg_temp._j('ret') #>> '{}')::int >= 1
+  and (select body is null and author_name is null from public.hub_comments where comment_id = '18000000000000399')
+  and exists (select 1 from public.audit_log a where a.entity = 'hub_comments_retention' and (a.new ->> 'comments')::int >= 1 and a.new::text !~ 'تعليق قديم'));
+select pg_temp._check('G3 «الجهة المشغّلة» fields point at section 11 with their anchor',
+  (select bool_and(path_ar[3] = '11' and path_en[3] = '11' and anchor #>> '{0,path,2}' = '11') from public.content_fields where key like 'policy.operator.%'));
+
 select n, test, ok, detail from _r order by n;
 rollback;

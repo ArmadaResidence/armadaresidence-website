@@ -83,8 +83,8 @@
   "page": {
     "title_ar": "الشروط والسياسات",
     "title_en": "Terms & Policies",
-    "intro_ar": "تنطبق هذه الشروط على الحجوزات في فرعي أرمادا ريزيدنس بالطائف: طريق المطار وطريق الشفا. تاريخ آخر تحديث: 6 نوفمبر 2026.",
-    "intro_en": "These terms apply to bookings at both Armada Residence properties in Taif: Airport Road and Shafa Road. Last updated 6 November 2026.",
+    "intro_ar": "تنطبق هذه الشروط على الحجوزات في فرعي أرمادا ريزيدنس بالطائف: طريق المطار وطريق الشفا. تاريخ آخر تحديث: 26 نوفمبر 2026.",
+    "intro_en": "These terms apply to bookings at both Armada Residence properties in Taif: Airport Road and Shafa Road. Last updated 26 November 2026.",
     "sections": [
       {
         "id": "booking",
@@ -148,6 +148,13 @@
         "heading_en": "Eyab membership and marketing",
         "body_ar": "في إياب — عضوية أرمادا ريزيدنس، إذا وافقت على تلقي العروض والإعلانات، نستخدم اسمك ورقم جوالك وبريدك الإلكتروني لإرسال عروض أرمادا ريزيدنس إليك عبر الواتساب والبريد الإلكتروني، ونرفع رقم جوالك وبريدك الإلكتروني بصيغة مشفّرة إلى منصات الإعلان، مثل سناب شات وتيك توك وميتا وجوجل، لعرض إعلاناتنا لك، وقد تعالج هذه المنصات البيانات خارج المملكة. الموافقة اختيارية ولا تؤثر على الحجز، ويمكنك سحبها في أي وقت عبر رابط إلغاء الاشتراك أو بالتواصل معنا. نحذف بيانات أعضاء إياب الذين لم يحجزوا بعد 24 شهرًا من آخر نشاط.",
         "body_en": "In Eyab — Armada Residence membership, if you agree to receive offers and ads, we use your name, mobile number and email to send you Armada Residence offers by WhatsApp and email, and we upload your mobile number and email in hashed form to advertising platforms such as Snapchat, TikTok, Meta and Google to show you our ads; these platforms may process the data outside Saudi Arabia. The consent is optional and doesn't affect your booking, and you can withdraw it at any time through the unsubscribe link or by contacting us. We delete the data of Eyab members who haven't booked 24 months after their last activity."
+      },
+      {
+        "id": "messaging",
+        "heading_ar": "المراسلة عبر واتساب وانستجرام وماسنجر والتعليقات",
+        "heading_en": "Messaging us on WhatsApp, Instagram and Messenger, and comments",
+        "body_ar": "عند مراسلتك لنا عبر واتساب أو انستجرام أو ماسنجر، أو تعليقك على منشوراتنا وإعلاناتنا في انستجرام وفيسبوك، نستقبل اسم حسابك ومعرّفه على المنصة، ونص رسالتك أو تعليقك، وما ترسله من صور أو رسائل صوتية، ورقم جوالك إن أرسلته لنا. نستخدم هذه البيانات للرد عليك وتنفيذ ما تطلبه من حجز أو خدمة، ونحفظها في أنظمة أرمادا ريزيدنس ولدى مقدّمي الخدمات التقنية الذين نعتمد عليهم في تشغيل المحادثات، ولا نبيعها ولا نستخدمها للتسويق إلا بموافقتك. نحذف نصوص الرسائل بعد 12 شهرًا، والصور والرسائل الصوتية بعد 90 يومًا. التعليقات العامة يراها كل من يزور المنشور، ولا نخفيها أو نحذفها إلا إذا خالفت قواعد المنصة. لحذف بيانات محادثاتك اكتب لنا «احذف بياناتي» في المحادثة نفسها، أو اتبع الخطوات في صفحة «طلب حذف البيانات»، أو راسلنا على info@armadaresidence.com.",
+        "body_en": "When you message us on WhatsApp, Instagram or Messenger, or comment on our posts and ads on Instagram and Facebook, we receive your account name and its ID on the platform, the text of your message or comment, any photos or voice messages you send, and your mobile number if you give it to us. We use this data to reply to you and to carry out the booking or service you ask for. It is kept in Armada Residence's systems and with the technical service providers we rely on to run our conversations; it is never sold and is used for marketing only with your consent. Message texts are deleted after 12 months, photos and voice messages after 90 days. Public comments can be seen by anyone who views the post; we do not hide or delete them unless they break the platform's rules. To delete your conversation data, write \"Delete my data\" in the same chat, follow the steps on our \"Data deletion request\" page, or email info@armadaresidence.com."
       },
       {
         "id": "jobs",

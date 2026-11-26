@@ -552,6 +552,16 @@ const check = (ok, what) => {
   const s3b = await import('./hub-s3b-migration.mjs');
   check(read(s3b.OUT_PATH) === s3b.migration() && JSON.stringify(s3b.item().expect.steps.map((x) => x.outcome)) === '["ask","handoff"]',
     'J17 S3b = its generator: s3-02 asks the group details first, then the social team');
+  const s3c = await import('./hub-s3c-migration.mjs');
+  check(read(s3c.OUT_PATH) === s3c.migration() && /'hub-retention', '37 2 \* \* \*'/.test(s3c.migration()) && /'hub-comments-retention', '23 3 \* \* \*'/.test(s3c.migration()),
+    'J18 S3c = its generator: the purge the privacy section promises runs every day');
+  const pol = JSON.parse(read('content/policies.json'));
+  const ids = pol.page.sections.map((x) => x.id);
+  const msg = pol.page.sections.find((x) => x.id === 'messaging');
+  check(ids.indexOf('messaging') === ids.indexOf('club') + 1 && ids.indexOf('operator') === 11
+    && /12 شهرًا/.test(msg.body_ar) && /90 يومًا/.test(msg.body_ar) && /احذف بياناتي/.test(msg.body_ar) && /Delete my data/.test(msg.body_en)
+    && /26 نوفمبر 2026/.test(pol.page.intro_ar) && /26 November 2026/.test(pol.page.intro_en),
+    'J19 the policies page: the messaging section after «عضوية إياب والتسويق» (12 months / 90 days / «احذف بياناتي»), the operator at 11, updated 26 Nov 2026');
 }
 
 if (fails.length) {

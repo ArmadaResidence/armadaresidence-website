@@ -506,47 +506,47 @@
    "en": "We couldn't read the number; please write it in full with the country code."
   },
   "change_cancel_social": {
-   "ar": "تعديل الحجز أو إلغاؤه يتم مع فريقنا، وسيكمل معك أحدهم في هذه المحادثة.",
-   "en": "Changes and cancellations are handled by our team; one of them will continue with you in this chat."
+   "ar": "يتولى فريقنا تعديل الحجز وإلغاءه، وسيكمل معك أحد أفراده في هذه المحادثة.",
+   "en": "Our team handles booking changes and cancellations; a team member will continue with you in this chat."
   },
   "multi_room_social": {
-   "ar": "حجز أكثر من غرفة يرتّبه فريقنا، وسيكمل معك أحدهم في هذه المحادثة.",
-   "en": "Bookings for more than one room are arranged by our team; one of them will continue with you in this chat."
+   "ar": "يرتّب فريقنا حجز أكثر من غرفة، وسيكمل معك أحد أفراده في هذه المحادثة.",
+   "en": "Our team arranges bookings for more than one room; a team member will continue with you in this chat."
   },
   "early_extension_social": {
-   "ar": "الوصول المبكر وتمديد الإقامة حسب التوافر، ويؤكدهما فريقنا. سيكمل معك أحدهم في هذه المحادثة.",
-   "en": "Early check-in and extensions depend on availability and are confirmed by our team. One of them will continue with you in this chat."
+   "ar": "الوصول المبكر وتمديد الإقامة حسب التوافر، ويؤكدهما فريقنا. سيكمل معك أحد أفراده في هذه المحادثة.",
+   "en": "Early check-in and extensions depend on availability and are confirmed by our team. A team member will continue with you in this chat."
   },
   "still_waiting_social": {
-   "ar": "ما زال طلبك مع فريقنا، وسيردّون عليك هنا.",
-   "en": "Your request is still with our team; they will reply to you here."
+   "ar": "ما زال طلبك لدى فريقنا، وسيرد عليك أحد أفراده هنا.",
+   "en": "Your request is still with our team; a team member will reply to you here."
   },
   "extend_handed_social": {
    "ar": "سجّلنا طلب التمديد حتى {date}، وسيكمل معك فريقنا في هذه المحادثة لتأكيده.",
    "en": "We've noted your extension request until {date}; our team will continue with you in this chat to confirm it."
   },
   "package_same_day_social": {
-   "ar": "سنتحقق مع فريقنا من إمكانية ترتيبها اليوم، وسيكمل معك أحدهم في هذه المحادثة.",
-   "en": "We'll check with our team whether it can be arranged today; one of them will continue with you in this chat."
+   "ar": "سنتحقق مع فريقنا من إمكانية ترتيبها اليوم، وسيكمل معك أحد أفراده في هذه المحادثة.",
+   "en": "We'll check with our team whether it can be arranged today; a team member will continue with you in this chat."
   },
   "package_handed_summary_social": {
-   "ar": "وصل طلبك إلى فريقنا: {package} في {branch_name} بتاريخ {date}. سيكمل معك أحدهم في هذه المحادثة لتأكيد التفاصيل.",
-   "en": "Your request has reached our team: {package} at {branch_name} on {date}. One of them will continue with you in this chat to confirm the details."
+   "ar": "وصل طلبك إلى فريقنا: {package} في {branch_name} بتاريخ {date}. سيكمل معك أحد أفراده في هذه المحادثة لتأكيد التفاصيل.",
+   "en": "Your request has reached our team: {package} at {branch_name} on {date}. A team member will continue with you in this chat to confirm the details."
   },
   "package_handed_social": {
-   "ar": "وصل طلبك إلى فريقنا، وسيكمل معك أحدهم في هذه المحادثة لتأكيد التفاصيل.",
-   "en": "Your request has reached our team; one of them will continue with you in this chat to confirm the details."
+   "ar": "وصل طلبك إلى فريقنا، وسيكمل معك أحد أفراده في هذه المحادثة لتأكيد التفاصيل.",
+   "en": "Your request has reached our team; a team member will continue with you in this chat to confirm the details."
   },
   "chat_request_footer_social": {
-   "ar": "سيصل طلبك إلى فريق الاستقبال ليؤكده لك في أقرب وقت، ويصلك التأكيد على واتساب على رقمك.",
-   "en": "Your booking request will reach our reception team, who will confirm it as soon as possible; the confirmation reaches you on WhatsApp at your number."
+   "ar": "سيصل طلبك إلى فريق الاستقبال ليؤكده لك في أقرب وقت، ويصلك التأكيد عبر واتساب على رقم جوالك.",
+   "en": "Your booking request will reach our reception team, who will confirm it as soon as possible; the confirmation will reach you on WhatsApp at your mobile number."
   },
   "result_chat_request_social": {
-   "ar": "وصل طلب حجزك رقم {ref}، وسيؤكده لك فريق الاستقبال في أقرب وقت، ويصلك التأكيد على واتساب.",
-   "en": "We've received your booking request {ref}; our reception team will confirm it as soon as possible, and the confirmation reaches you on WhatsApp."
+   "ar": "وصل طلب حجزك رقم {ref}، وسيؤكده لك فريق الاستقبال في أقرب وقت، ويصلك التأكيد عبر واتساب.",
+   "en": "We've received your booking request {ref}; our reception team will confirm it as soon as possible, and the confirmation will reach you on WhatsApp."
   },
   "request_pending_social": {
-   "ar": "طلب حجزك لا يزال لدى فريق الاستقبال، ويصلك التأكيد على واتساب في أقرب وقت.",
+   "ar": "طلب حجزك لا يزال لدى فريق الاستقبال، وسيصلك التأكيد عبر واتساب في أقرب وقت.",
    "en": "Your booking request is still with our reception team; the confirmation will reach you on WhatsApp as soon as possible."
   },
   "email_api_credit": {
