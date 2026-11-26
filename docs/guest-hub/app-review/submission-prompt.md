@@ -30,7 +30,7 @@ the file "app-icon-1024.png" and upload it there. Ask Ahmed before filling any e
 STEP 2 — App Review → Permissions and Features. For each item in this list that Ahmed confirms (ask him once, listing them):
 pages_messaging, instagram_manage_messages, instagram_basic, pages_manage_metadata, pages_read_engagement, pages_show_list,
 instagram_manage_comments, pages_manage_engagement, pages_read_user_content, Human Agent (feature), Business Asset User
-Profile Access (feature) — and ads_read ONLY if Ahmed says to keep it (business_management is NOT requested) —
+Profile Access (feature), ads_read (kept — Ahmed, 26 Nov 2026). business_management is NOT requested —
 click "Request advanced access" (or "Request") and add it to the submission.
 
 STEP 3 — For each item, fill "Tell us how your app uses this permission/feature" with: the COMMON CONTEXT, a blank line, then
@@ -78,8 +78,11 @@ for staff review. Nothing is hidden or deleted automatically.
 Facebook Page's posts, and our staff can reply publicly from our dashboard.
 - pages_read_user_content: We read the comments guests leave on our own Page's posts so that our system and our staff can
 answer them.
-- ads_read (only if kept): Comments on our own ads arrive with their ad; our system user holds the Page through Business
-Manager, which Meta requires ads_read for when replying to comments. We read no ad insights.
+- ads_read: Guests also comment on our own Instagram and Facebook ads. Our app uses our business's system user, which holds our
+Page and Instagram account through Business Manager; Meta's IG Comment and IG Comment Replies references require ads_read (or
+ads_management) for reading and replying to comments when the Page role is granted via Business Manager. We use ads_read only
+for that: to read and answer comments on our own posts and ads (the same short approved public reply and one private reply).
+We read no ad insights, manage no ads and send no Conversions API events.
 - Human Agent: Some guest requests cannot be resolved within 24 hours: a booking change that reception must check, a lost
 item, a complaint. Our staff then reply personally, from our dashboard, up to 7 days after the guest's last message, with the
 HUMAN_AGENT tag. Our automated replies never use the tag; it is sent only for a reply a staff member writes, and never for

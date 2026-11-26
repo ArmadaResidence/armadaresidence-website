@@ -4646,3 +4646,33 @@ Decided by Ahmed on 26 Nov 2026 (the S3 brief):
   reaching only role holders — read as «Advanced Access needed for real guests». Meta's Messenger policy asks automated chats
   to disclose automation **where the law requires it**: a legal question for the company's advisor against S2.
 
+## 2026-11-26 — Guest Hub S3: the window test, and Ahmed's App Review decisions (Ahmed, 26 Nov 2026, evening)
+
+- **The window test (18:21–18:22 Riyadh):** no confirmation window appeared — the switches never had one. Ahmed pressed
+  «التعليقات» on the Instagram and Facebook rows: two `hub_comment_switch_set` requests answered 200 within about 0.1 s, each
+  audited (15:21:07.9 / 15:21:08.9 UTC — on, «الرسائل الخاصة» stayed off), then two more turned them off (15:22:49.7 /
+  15:22:50.5 UTC). Production read after: all four switches OFF (comments and private replies, both rows).
+- **The earlier silent presses (13:05–13:31 UTC):** the logs show the dashboard loading «السوشيال» at 13:04:55 and the connect
+  step at 13:05:03, then no request at all from that page until 13:31 — only token refreshes (13:06:58, and two one second
+  apart at 13:18:46–47, the mark of two dashboard tabs). The press never left the browser. **Not proven** that the unbounded
+  session read was the cause (it fits: a press waits on the session before any request), but it is the only place a press
+  could wait with nothing on screen; since S3 such a wait ends after 10 s with «تعذّر قراءة جلسة الدخول…», so a repeat will
+  show itself.
+- **S10 confirmed on production (a rolled-back transaction, nothing left):** a DM from a non-test account on Instagram and on
+  Messenger → stored, `record_only`, «تسجيل فقط», no turn, no hand-off, no alert, nobody waiting; a comment from a non-test
+  account → stored and skipped (`switch_off` with the switches off, `not_tester` with them on).
+- **Decisions (Ahmed):** (1) a «احذف بياناتي» from a real account while the audience is test-only keeps its acknowledgement and
+  the admins' email — as built. (2) `business_management` dropped from the review list; `ads_read` dropped only if Meta's
+  current pages confirm that comments on our ads reach the webhook and can be answered without it — they do not (Instagram:
+  the IG Comment / Replies references require `ads_read` or `ads_management` when the Page role comes through Business Manager,
+  our system user; Facebook: ad-post comments are sent, replies to them never confirmed), so **`ads_read` is kept** with its use
+  explained (`review-items.md` §3a, the pages cited). (3) S2 stays — no automation statement; Ahmed checks the legal position;
+  nothing changes in the code or the submission. (4) The app's contact email `marketing@armadaresidence.com`; category
+  «Business and pages». (5) **Publish the app (Live, Standard Access) before submitting the review**, so the comments video can
+  be recorded; before publishing Ahmed approves the privacy paragraph and the icon, and the session confirms S10 on production
+  (done above). The session never publishes: `docs/guest-hub/app-review/publish-prompt.md` (Claude in Chrome, stops before the
+  final button).
+- **The site deploy of `2a81dca` failed one static check:** `hub-social-check` read `admin/src/App.tsx`, the file is tracked as
+  `admin/src/app.tsx` (Windows ignores the case, the Linux runner does not); fixed. The full «السوشيال» lab runs tomorrow when
+  the daily cap resets (Ahmed).
+

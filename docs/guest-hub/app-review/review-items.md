@@ -56,9 +56,29 @@ Ahmed's test accounts (the Send API page that would confirm it did not render: *
 
 - **`business_management` — dropped** from the review list. It stays on the system user's token as it is today (nothing is
   changed on Meta); it is simply not requested for Advanced Access.
-- **`ads_read` — see §3a** (kept or dropped by what Meta's current pages say about comments on our own ads).
+- **`ads_read` — KEPT** (§3a): Meta's current pages do not confirm that comments on our own ads reach us and can be answered
+  without it — on Instagram they say the opposite for a Page role granted through Business Manager, which is our system user.
 
 Every other item is used by the hub today.
+
+### 3a. `ads_read` — what Meta's pages say (read 26 Nov 2026)
+
+| Page | What it says |
+|---|---|
+| IG Comment replies — developers.facebook.com/docs/instagram-platform/instagram-graph-api/reference/ig-comment/replies | needs instagram_basic, instagram_manage_comments, pages_show_list, pages_read_engagement; «If the token is from a User whose Page role was granted via the Business Manager» one of `ads_management`, `ads_read` is also required (reading replies too) |
+| IG Comment — …/reference/ig-comment | the same Business Manager rule (Facebook Login) |
+| IG Media comments — developers.facebook.com/documentation/instagram-platform/instagram-graph-api/reference/ig-media/comments | the same rule; ad comments «can be returned as well» through the ad's `effective_instagram_media_id` (from the Marketing API) |
+| Comment moderation — developers.facebook.com/documentation/instagram-platform/comment-moderation | Facebook Login with a Business Manager Page role: «your app will also need» `ads_management` and `ads_read`; webhooks carry `ad_id` / `ad_title` for a comment on an ad |
+| Private replies (Instagram Platform) — developers.facebook.com/documentation/instagram-platform/private-replies | Facebook Login: the same Business Manager rule |
+| Instagram Ads post-moderation — developers.facebook.com/documentation/ads-commerce/instagram/ads-api/guides/post-moderation | «Additional permissions are needed» to manage comments on Instagram ads (points to IG Media comments) |
+| Page webhooks, `feed` — developers.facebook.com/docs/graph-api/webhooks/reference/page/ | comments on ad posts ARE sent; `pages_manage_metadata`; no ads permission named |
+| Object comments — developers.facebook.com/docs/graph-api/reference/object/comments/ | `pages_manage_engagement` with a MODERATE Page token; no ads rule; ads not addressed |
+| Messenger private replies — developers.facebook.com/documentation/business-messaging/messenger-platform/discovery/private-replies | `pages_messaging`, a MESSAGING Page token; no ads rule; ads not addressed |
+
+**UNCONFIRMED on Meta's pages:** whether a system user counts as «a User whose Page role was granted via the Business
+Manager» (it fits literally: Pages are assigned to it inside Business Manager), and whether our token counts as «Facebook
+Login» or «Unified Login». On Facebook, ad-post comments are sent and no ads permission is named, but replies to ad comments
+are never confirmed either. So, by Ahmed's rule (drop it only if Meta confirms), **`ads_read` stays**, with its use explained.
 
 ## 4. Use descriptions and reviewer instructions (English, paste-ready)
 
@@ -111,8 +131,11 @@ Per item («Tell us how your app uses this permission»):
    our own Facebook Page's posts, and our staff can reply publicly from our dashboard."
 10. **pages_read_user_content** — "We read the comments guests leave on our own Page's posts so that our system and our staff
     can answer them."
-11. **ads_read** — (only if kept, §3) "Comments on our own ads arrive with their ad; our system user holds the Page through
-    Business Manager, which Meta requires ads_read for when replying to comments. We read no ad insights."
+11. **ads_read** — "Guests also comment on our own Instagram and Facebook ads. Our app uses our business's system user, which
+    holds our Page and Instagram account through Business Manager; Meta's IG Comment and IG Comment Replies references require
+    ads_read (or ads_management) for reading and replying to comments when the Page role is granted via Business Manager. We
+    use ads_read only for that: to read and answer comments on our own posts and ads (the same short approved public reply and
+    one private reply). We read no ad insights, manage no ads and send no Conversions API events."
 12. **Human Agent** — "Some guest requests cannot be resolved within 24 hours: a booking change that reception must check,
     a lost item, a complaint. Our staff then reply personally, from our dashboard, up to 7 days after the guest's last
     message, with the HUMAN_AGENT tag. Our automated replies never use the tag; it is sent only for a reply a staff member
