@@ -3,10 +3,11 @@
  * public comments under our Instagram posts and our Facebook Page's posts.
  *
  * Pure where it can be (scripts/hub-social-check.mjs runs it offline): the comment events of a webhook delivery, the code
- * rules that skip a comment before any model call, the classifier's answer, the plan (S3, Ahmed 25 Nov 2026: a question →
- * a short public reply + one private message; a price question → the same, never a price in public (S4); a complaint → a
- * public apology + the team; praise → thanks; spam / abuse → «تعليقات تحتاج مراجعة», nothing posted; nothing hidden or
- * deleted automatically), the rotation between the approved variants, the public reply's guard, and the Graph calls (the
+ * rules that skip a comment before any model call, the classifier's answer, the plan (SOCIAL-SPEC §5.3, Ahmed's approved
+ * table of 21 Nov 2026: a question → a short public reply + one private message = the assistant's normal answer; a price
+ * question → the same, never a price in public (S4), the private answer asks for the dates; a complaint → a public apology
+ * + the complaint hand-off notice in private + the team; praise → thanks; spam / abuse → «تعليقات تحتاج مراجعة», nothing
+ * posted; nothing hidden or deleted automatically), the rotation between the approved variants, the public reply's guard, and the Graph calls (the
  * caller hands in fetch and the Page token; no key, token or comment text is ever logged).
  *
  * Meta's documentation, read 26 Nov 2026 (SOCIAL-SPEC.md §9): Instagram object `instagram`, field `comments` — value
@@ -87,12 +88,14 @@ export function parseComments(body: Json): CommentEvent[] {
   return out;
 }
 
-/** the code rules, before any model call (the database applies the ones that need a row: a thread a staff member answered,
- *  a duplicate): our own comment, a reply in a thread (to our reply, or between users), older than 7 days, a live video */
+/** the code rules, before any model call (the database applies the ones that need a row: a thread a staff member answered
+ *  — «staff_thread» —, a duplicate): our own comment, older than 7 days, a live video. S2e (SOCIAL-SPEC §5.1 and §5.4,
+ *  Ahmed's approved sections of 21 Nov 2026): a reply inside a thread is NOT skipped by code — only a thread a staff member
+ *  answered is ignored; a reply to our own reply gets no public reply (`plan`, threadOurs) and an argument between users
+ *  is the classifier's (`argument`) */
 export function codeSkip(e: Pick<CommentEvent, 'channel' | 'from_id' | 'parent_id' | 'created_at' | 'live' | 'verb' | 'text'>, now = Date.now()): string | null {
   if (e.verb !== 'add') return 'not_new';
   if (e.from_id && e.from_id === e.channel) return 'own';
-  if (e.parent_id) return 'thread';
   if (e.live) return 'live';
   if (now - Date.parse(e.created_at) > PRIVATE_DAYS * 86_400_000) return 'too_old';
   if (!String(e.text ?? '').trim()) return 'empty';
@@ -113,21 +116,21 @@ export function parseClass(raw: string): { class: CommentClass; language: 'ar' |
 }
 
 export const commentSystem = (): string => (text as Json).prompts.comment_system as string;
-export const commentUser = (kind: CommentKind, ad: boolean, body: string): string =>
-  `CHANNEL: ${kind}\nPOST_IS_AD: ${ad ? 'yes' : 'no'}\nCOMMENT: ${JSON.stringify(String(body ?? '').replace(/\s+/g, ' ').trim().slice(0, 1500))}\nReturn the JSON object only.`;
+export const commentUser = (kind: CommentKind, ad: boolean, body: string, inThread = false): string =>
+  `CHANNEL: ${kind}\nPOST_IS_AD: ${ad ? 'yes' : 'no'}\nIN_THREAD: ${inThread ? 'yes' : 'no'}\nCOMMENT: ${JSON.stringify(String(body ?? '').replace(/\s+/g, ' ').trim().slice(0, 1500))}\nReturn the JSON object only.`;
 
-/** one classification (the `tag` layer) */
-export async function classify(model: ModelFn, modelName: string, kind: CommentKind, ad: boolean, body: string) {
-  const r = await model({ layer: 'tag', model: modelName, system: commentSystem(), user: commentUser(kind, ad, body) });
+/** one classification (the `tag` layer); `inThread` = the comment is a reply inside a thread (S2e) */
+export async function classify(model: ModelFn, modelName: string, kind: CommentKind, ad: boolean, body: string, inThread = false) {
+  const r = await model({ layer: 'tag', model: modelName, system: commentSystem(), user: commentUser(kind, ad, body, inThread) });
   return { result: r, parsed: r.ok ? parseClass(r.text) : null };
 }
 
-// ═══ the approved texts (SOCIAL-SPEC.md §8 — Ahmed's, never reworded) ═══
-/** settings hub_comment_texts: {public: {question|price|complaint|praise: {ar: [...], en: [...]}},
- *  private: {question|price|complaint: {ar: '...', en: '...'}, other_language: {en: '...'}}} */
+// ═══ the approved texts (SOCIAL-SPEC.md §8 — Ahmed's of 21 Nov 2026, never reworded) ═══
+/** public.hub_comment_texts: {public: {question|price|complaint|praise: {ar: [...], en: [...]}}}. S2e: there are no fixed
+ *  private texts — the private message is the assistant's normal answer (question / price), the complaint hand-off notice
+ *  (copy.md `complaint`), none for praise (SOCIAL-SPEC §5.3) */
 export interface CommentTexts {
   public: Partial<Record<'question' | 'price' | 'complaint' | 'praise', { ar?: string[]; en?: string[] }>>;
-  private: Partial<Record<'question' | 'price' | 'complaint' | 'other_language', { ar?: string; en?: string }>>;
 }
 
 /** S4 (Ahmed, 25 Nov 2026): never a price in a public comment — no digit of any script, no currency, no rate word */
@@ -143,8 +146,7 @@ export function publicGuard(t: string): string | null {
   return null;
 }
 
-/** the texts' problems (empty = ready): every public class with its variants in both languages, each passing the guard;
- *  the private messages of question / price, and the English one for another language */
+/** the texts' problems (empty = ready): every public class with its variants in both languages, each passing the guard */
 export function textsProblems(t: CommentTexts | null | undefined): string[] {
   const p: string[] = [];
   if (!t || typeof t !== 'object') return ['missing'];
@@ -155,35 +157,44 @@ export function textsProblems(t: CommentTexts | null | undefined): string[] {
       else v.forEach((x, i) => { const g = publicGuard(x); if (g) p.push(`public.${c}.${L}.${i}:${g}`); });
     }
   }
-  for (const c of ['question', 'price'] as const) for (const L of ['ar', 'en'] as const) if (!String(t.private?.[c]?.[L] ?? '').trim()) p.push(`private.${c}.${L}`);
-  if (!String(t.private?.other_language?.en ?? '').trim()) p.push('private.other_language.en');
   return p;
 }
 
 export interface Plan {
   state: 'replied' | 'handed_off' | 'review' | 'skipped' | 'test';
   public: { text: string | null; variant: number } | null;
-  private: { text: string | null } | null;
+  /** the private message: `answer` = the assistant's normal answer from its sources (comment-run.ts runs the engine; a
+   *  price question asks for the dates); `complaint` = the complaint hand-off notice (copy.md `complaint`); `language` =
+   *  the private message in English (another language) */
+  private: { source: 'answer' | 'complaint'; language: 'ar' | 'en'; text: string | null } | null;
   handoff: boolean;
   reason: string | null;
 }
-/** the plan of one classified comment. `used` = how many public replies of that class and language this channel posted
- *  (the rotation: the next variant in order). `privateOn` = the channel's «الرسائل الخاصة»; `test` = the unit in «تجربة»
- *  (nothing posted, the plan shown). Another language: no public reply, the private message in English. */
-export function plan(cls: CommentClass, language: 'ar' | 'en' | 'other', argument: boolean, texts: CommentTexts | null, used: number, privateOn: boolean, test: boolean): Plan {
+/** the complaint hand-off notice of copy.md (the private message of a complaint — SOCIAL-SPEC §5.3) */
+export const complaintNotice = (L: 'ar' | 'en'): string => String((text as Json).copy?.complaint?.[L] ?? '');
+/** the plan of one classified comment (SOCIAL-SPEC §5.3, Ahmed's approved table of 21 Nov 2026). `used` = how many public
+ *  replies of that class and language this channel posted (the rotation: the next variant in order). `privateOn` = the
+ *  channel's «الرسائل الخاصة»; `test` = the unit in «تجربة» (nothing posted, the plan shown); `threadOurs` = a reply
+ *  inside a thread under our own reply (never a public reply to our own reply — §5.4). Another language: no public reply,
+ *  the private message in English (§5.6). */
+export function plan(cls: CommentClass, language: 'ar' | 'en' | 'other', argument: boolean, texts: CommentTexts | null, used: number, privateOn: boolean, test: boolean,
+  threadOurs = false): Plan {
   if (cls === 'spam') return { state: 'review', public: null, private: null, handoff: false, reason: 'spam' };
   if (argument) return { state: 'skipped', public: null, private: null, handoff: false, reason: 'argument' };
   if (cls === 'other') return { state: 'skipped', public: null, private: null, handoff: false, reason: 'other' };
-  const L = language === 'other' ? null : language;
+  // S2e: every approved public text of a question, a price question or a complaint names the private message
+  // («أرسلنا لك… في رسالة خاصة»); with «الرسائل الخاصة» off none is posted — a question waits for a person
+  // («تعليقات تحتاج مراجعة»), a complaint still goes to the team
+  if (!privateOn && (cls === 'question' || cls === 'price')) return { state: 'review', public: null, private: null, handoff: false, reason: 'private_off' };
+  const L = language === 'other' || threadOurs || (!privateOn && cls === 'complaint') ? null : language;
   const variants = L ? texts?.public?.[cls]?.[L] ?? [] : [];
   const pub = L ? { text: variants.length ? variants[used % variants.length] : null, variant: variants.length ? used % variants.length : 0 } : null;
-  const wantsPrivate = cls === 'question' || cls === 'price' || (cls === 'complaint' && !!texts?.private?.complaint);
+  const PL: 'ar' | 'en' = language === 'ar' ? 'ar' : 'en';
   let priv: Plan['private'] = null;
-  if (privateOn && wantsPrivate) {
-    priv = { text: L ? (texts?.private?.[cls as 'question' | 'price' | 'complaint']?.[L] ?? null) : (texts?.private?.other_language?.en ?? null) };
-  }
+  if (privateOn && (cls === 'question' || cls === 'price')) priv = { source: 'answer', language: PL, text: null };
+  if (privateOn && cls === 'complaint') priv = { source: 'complaint', language: PL, text: complaintNotice(PL) || null };
   const handoff = cls === 'complaint';
-  if (!pub && !priv && !handoff) return { state: 'skipped', public: null, private: null, handoff: false, reason: 'language' };
+  if (!pub && !priv && !handoff) return { state: 'skipped', public: null, private: null, handoff: false, reason: threadOurs ? 'thread_ours' : 'language' };
   return { state: test ? 'test' : handoff ? 'handed_off' : 'replied', public: pub, private: priv, handoff, reason: null };
 }
 
@@ -259,15 +270,19 @@ export function gradeComment(e: CommentExpect, got: { class: CommentClass | null
   return { pass: !reasons.length, reasons };
 }
 
-/** one lab item of «السوشيال» (expect.action 'comment'): the code rules, then the classifier and the plan — nothing posted.
- *  The item's context: {kind: instagram | facebook, ad, parent, private_on (default true)} */
+/** one lab item of «السوشيال» (expect.action 'comment'): the code rules, then the classifier and the plan — nothing posted
+ *  (the private answer is planned, not composed). The item's context: {kind: instagram | facebook, ad, parent: user |
+ *  ours | staff (a reply inside a thread: under another user's comment, under our own reply, in a thread a staff member
+ *  answered — the database's rule «staff_thread»), private_on (default true)} */
 export async function labComment(model: ModelFn, modelName: string, item: { messages: string[]; context?: Json }, texts: CommentTexts | null) {
   const cx = item.context ?? {};
   const kind: CommentKind = cx.kind === 'facebook' ? 'facebook' : 'instagram';
   const body = String(item.messages?.[0] ?? '');
-  const skip = codeSkip({ channel: '1000001', from_id: '2000002', parent_id: cx.parent ? '3000003' : null, created_at: new Date().toISOString(), live: false, verb: 'add', text: body });
+  const parent = cx.parent === true ? 'user' : typeof cx.parent === 'string' ? cx.parent : null;
+  const skip = parent === 'staff' ? 'staff_thread'
+    : codeSkip({ channel: '1000001', from_id: '2000002', parent_id: parent ? '3000003' : null, created_at: new Date().toISOString(), live: false, verb: 'add', text: body });
   if (skip) return { skip, class: null, plan: null, result: null };
-  const { result, parsed } = await classify(model, modelName, kind, !!cx.ad, body);
+  const { result, parsed } = await classify(model, modelName, kind, !!cx.ad, body, !!parent);
   if (!parsed) return { skip: null, class: null, plan: null, result };
-  return { skip: null, class: parsed.class, plan: plan(parsed.class, parsed.language, parsed.argument, texts, 0, cx.private_on !== false, false), result };
+  return { skip: null, class: parsed.class, plan: plan(parsed.class, parsed.language, parsed.argument, texts, 0, cx.private_on !== false, false, parent === 'ours'), result };
 }

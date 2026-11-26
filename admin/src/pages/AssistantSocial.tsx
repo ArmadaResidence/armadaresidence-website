@@ -17,7 +17,9 @@ import { KIND_LABELS, commentSettings, setSwitches, type CommentSettings } from 
 type SocialMode = 'test' | 'live' | 'standby';
 interface Overview {
   unit: { id: string; key: string; name_ar: string; mode: string; social_mode: SocialMode; standby_minutes: number; human_agent: boolean; status: string } | null;
-  channels: { id: string; kind: string; address: string; display_name: string | null; connected: boolean; verified_at: string | null; sending_enabled: boolean }[];
+  channels: { id: string; kind: string; address: string; display_name: string | null; connected: boolean; verified_at: string | null; sending_enabled: boolean;
+    /** S2e: the channel's own audience (NULL = the unit's) and the one in force */
+    social_mode?: SocialMode | null; audience?: SocialMode }[];
   accounts: { id: string; kind: string; name: string | null; username: string | null; tester: boolean; last_seen_at: string }[];
   system_admin: boolean;
 }
@@ -30,6 +32,8 @@ export const SOCIAL_MODES: { value: SocialMode; label: string; note: string }[] 
   { value: 'live', label: 'الكل', note: 'يرد المساعد على كل من يراسل الصفحة أو حساب انستجرام.' },
   { value: 'standby', label: 'الكل مع وضع الاستعداد', note: 'ينتظر المساعد رد الفريق دقائق قبل أن يرد.' },
 ];
+const audienceError = (m: string) =>
+  /hub_system_admin_only/.test(m) ? 'يغيّر الجمهور مدير النظام فقط.' : /nothing to change/.test(m) ? 'لا تغيير: هذا هو الجمهور الحالي.' : /not_found/.test(m) ? 'لم نجد هذه القناة.' : 'تعذّر حفظ الجمهور.';
 const MODE_LABELS: Record<string, string> = { off: 'متوقف', test: 'تجربة', shadow: 'بموافقة الفريق', licensed: 'يرد تلقائيًا' };
 const SETUP_STEPS: Record<string, string> = {
   pages: 'الصفحة', 'app:page': 'اشتراك ماسنجر', 'app:instagram': 'اشتراك انستجرام', page: 'ربط الصفحة بالتطبيق', store: 'حفظ القنوات',
@@ -81,6 +85,22 @@ export function SocialPanel() {
       await load();
     } catch (e) {
       toast((e as Error).message, 'error');
+    } finally {
+      setBusy(null);
+    }
+  }
+  // S2e (Ahmed's §6 «Settings per channel»): a channel's own audience, or «مثل الوحدة»
+  async function audience(id: string, mode: SocialMode | null, before: SocialMode | null, label: string) {
+    setBusy(`a:${id}`);
+    try {
+      await rpc('hub_channel_audience_set', { p_channel: id, p_mode: mode });
+      toast.undo(label, async () => {
+        await rpc('hub_channel_audience_set', { p_channel: id, p_mode: before });
+        await load();
+      });
+      await load();
+    } catch (e) {
+      toast(audienceError((e as Error).message), 'error');
     } finally {
       setBusy(null);
     }
@@ -176,7 +196,31 @@ export function SocialPanel() {
             </label>
           ))}
         </div>
-        {u.social_mode === 'standby' && (
+        {!!o.channels.length && (
+          <div className="grid gap-2 border-t border-line pt-3" data-channel-audience>
+            <p className="text-sm font-semibold">جمهور كل قناة</p>
+            <p className="text-xs text-ink-muted">«مثل الوحدة» يتبع الاختيار أعلاه؛ أي اختيار آخر يخص هذه القناة وحدها.</p>
+            {o.channels.map((c) => {
+              const own = c.social_mode ?? null;
+              return (
+                <label key={c.id} className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2 text-sm" data-channel-audience-row={c.kind}>
+                  <span className="min-w-0 truncate">{channelLabel(c.kind)}{c.display_name ? ` — ${c.display_name}` : ''}</span>
+                  <select className="field min-h-11 w-56 max-w-full" value={own ?? 'unit'} disabled={!admin || !!busy} data-no-dirty data-channel-audience-select={c.kind}
+                    aria-label={`جمهور ${channelLabel(c.kind)}`}
+                    onChange={(e) => {
+                      const v = e.target.value === 'unit' ? null : (e.target.value as SocialMode);
+                      const lab = v ? SOCIAL_MODES.find((m) => m.value === v)?.label ?? v : 'مثل الوحدة';
+                      void audience(c.id, v, own, `جمهور ${channelLabel(c.kind)}: ${lab}`);
+                    }}>
+                    <option value="unit">مثل الوحدة ({SOCIAL_MODES.find((m) => m.value === u.social_mode)?.label ?? u.social_mode})</option>
+                    {SOCIAL_MODES.map((m) => <option key={m.value} value={m.value}>{m.label}</option>)}
+                  </select>
+                </label>
+              );
+            })}
+          </div>
+        )}
+        {(u.social_mode === 'standby' || o.channels.some((c) => c.audience === 'standby')) && (
           <div className="flex flex-wrap items-end gap-2">
             <label className="grid gap-1 text-sm">مدة الانتظار (دقائق)
               <input className="field w-24 num" inputMode="numeric" value={minutes} disabled={!admin || !!busy} onChange={(e) => setMinutes(west(e.target.value).trim())} data-no-dirty data-standby-minutes />

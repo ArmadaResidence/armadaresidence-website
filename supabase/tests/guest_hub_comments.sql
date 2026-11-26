@@ -76,7 +76,8 @@ select pg_temp._root();
 insert into _ids select 'ig', id from public.hub_channels where provider = 'meta' and kind = 'instagram' and address = '17800000000000003';
 insert into _ids select 'fb', id from public.hub_channels where provider = 'meta' and kind = 'messenger' and address = '100000000000003';
 
--- A. the switches: both OFF, the system admin's, «التعليقات» needs Ahmed's texts
+-- A. the switches: both OFF, the system admin's, «التعليقات» needs Ahmed's texts (S2e wrote them: emptied here to test the gate; rolled back)
+update public.hub_comment_texts set texts = null where id = 1;
 select pg_temp._check('A1 both switches OFF on every Meta channel', not exists (select 1 from public.hub_channels where provider = 'meta' and (comments_on or comment_private_on)));
 select pg_temp._check('A2 no approved text yet: the texts are not ready', not internal.hub_comment_texts_ready() and 'missing' = any(internal.hub_comment_texts_problems(null)));
 select pg_temp._as('mgr');
@@ -203,7 +204,7 @@ select pg_temp._save('ret', to_jsonb(internal.hub_comments_retention()));
 select pg_temp._check('E2 after 12 months the words and the name are gone, the row kept', (select body is null and author_name is null and private_body is null and class is null or true
   from public.hub_comments where id = (pg_temp._j('i1') ->> 'id')::uuid) and (pg_temp._j('ret') #>> '{}')::int >= 1
   and (select body is null from public.hub_comments where id = (pg_temp._j('i1') ->> 'id')::uuid));
-select pg_temp._check('E3 the comment items of the lab exist on «السوشيال»', (select count(*) = 14 from public.hub_test_items where key like 'c2-%' and unit_key = 'social'));
+select pg_temp._check('E3 the comment items of the lab exist on «السوشيال»', (select count(*) = 16 from public.hub_test_items where key like 'c2-%' and unit_key = 'social'));
 
 select n, test, ok, detail from _r order by n;
 rollback;

@@ -117,6 +117,8 @@ export interface HubReport {
   sales_requests: { hall: number; group: number };
   topics: { key: string; label_ar: string; count: number }[];
   whatsapp: { templates: number; estimate_usd: number };
+  /** S2e (Ahmed's §6): the conversations per channel */
+  by_channel?: { whatsapp: number; instagram: number; messenger: number };
 }
 /** «الآن» (Guest Hub H8 — public.hub_now): counts and times only; the page casts it to its NowData */
 export const hubNow = (branch: string) => rpc<unknown>('hub_now', { p_branch: b(branch) });

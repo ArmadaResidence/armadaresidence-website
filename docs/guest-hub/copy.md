@@ -512,9 +512,26 @@ Who may teach: Ahmed (his number in «التقارير», linked to his dashboar
 
 ## 10. Comments — Instagram and Facebook [S2, 26 Nov 2026 — DECISIONS.md 2026-11-26 «Guest Hub S2 — comments»]
 
-**10.1 The public replies and the private messages — [بانتظار أحمد].** Ahmed's approved texts (SOCIAL-SPEC.md §8.4) are not in
-the repository yet; nothing guest-facing about comments is written by the session. They go, word for word, into
-`public.hub_comment_texts` by a migration; «التعليقات» cannot be switched on before.
+**10.1 The public replies — Ahmed's, approved 21 Nov 2026 (SOCIAL-SPEC.md §11 §8, word for word; in
+`public.hub_comment_texts` since S2e, 26 Nov 2026).** They rotate in order per channel, class and language.
+
+| Type | Arabic | English |
+|---|---|---|
+| Question | «أهلًا بك، أرسلنا لك التفاصيل في رسالة خاصة.» | "Welcome! We've sent you the details in a private message." |
+| Question | «يسعدنا سؤالك، تجد التفاصيل في رسائلك الخاصة.» | "Thanks for asking. You'll find the details in your messages." |
+| Question | «تم الرد عليك في الخاص، ويسعدنا خدمتك.» | "We've replied to you privately. Happy to help." |
+| Price question | «الأسعار حسب تاريخ الإقامة، أرسلنا لك رسالة خاصة لنعرف تواريخك.» | "Prices depend on your dates. We've sent you a private message to ask for them." |
+| Price question | «يعتمد السعر على تواريخ إقامتك، تابع رسائلك الخاصة.» | "The price depends on your stay dates. Please check your messages." |
+| Complaint | «نأسف لما واجهته، تواصلنا معك في الخاص لمتابعة الأمر.» | "We're sorry about your experience. We've contacted you privately to follow up." |
+| Complaint | «نعتذر منك، أرسلنا لك رسالة خاصة ليتابع الفريق طلبك.» | "We apologise. We've sent you a private message so our team can follow up." |
+| Praise | «شكرًا لك على كلماتك الجميلة.» | "Thank you for your kind words." |
+| Praise | «شكرًا لك، يسعدنا ذلك كثيرًا.» | "Thank you, that means a lot to us." |
+| Praise | «سعداء برأيك، شكرًا لك.» | "We're glad to hear it. Thank you." |
+
+**The private message** has no fixed text (SOCIAL-SPEC §11 §5.3): a question or a price question gets the assistant's
+normal answer (§1–§4 of this file, the guard — a price question asks for the dates); a complaint gets §5's complaint
+hand-off notice («نأسف لما واجهته. أبلغنا الفريق، وسيكمل معك أحدهم في هذه المحادثة.»); another language gets §5's
+third-language line in English only ("We can help you in Arabic or English, and our team will see your message.").
 
 **10.2 Dashboard labels (staff-facing; the session's, for Ahmed's review)**
 
@@ -524,18 +541,19 @@ the repository yet; nothing guest-facing about comments is written by the sessio
 | Filters | «الكل» · «تعليقات تحتاج مراجعة» · «محوَّل للفريق» · «تم الرد» · «تم تخطيه» · «تعذّر الرد» |
 | States | «جديد» · «قيد المعالجة» · «تم الرد» · «محوَّل للفريق» · «تم تخطيه» · «يحتاج مراجعة» · «تمت المراجعة» · «تجربة» · «تعذّر الرد» |
 | Types | «سؤال» · «سؤال عن السعر» · «شكوى» · «إشادة» · «مزعج أو مسيء» · «أخرى» |
-| Why skipped | «تعليق من حسابنا» · «رد داخل سلسلة تعليقات» · «أقدم من 7 أيام» · «تعليق على بث مباشر» · «بلا نص» · «التعليقات متوقفة لهذا الحساب» · «وحدة «السوشيال» متوقفة» · «ليس حساب تجربة» · «رد عليه أحد الفريق» · «نقاش بين المعلّقين» · «لا يحتاج ردًا» · «لغة أخرى بلا رسالة خاصة» · «لم يُفهم التعليق» · «تعذّر تصنيف التعليق» |
+| Why skipped | «تعليق من حسابنا» · «رد داخل سلسلة تعليقات» · «رد داخل سلسلة رد عليها أحد الفريق» · «رد على ردّنا العلني» · «الرسائل الخاصة متوقفة: يحتاج ردًا من الفريق» (S2e) · «أقدم من 7 أيام» · «تعليق على بث مباشر» · «بلا نص» · «التعليقات متوقفة لهذا الحساب» · «وحدة «السوشيال» متوقفة» · «ليس حساب تجربة» · «رد عليه أحد الفريق» · «نقاش بين المعلّقين» · «لا يحتاج ردًا» · «لغة أخرى بلا رسالة خاصة» · «لم يُفهم التعليق» · «تعذّر تصنيف التعليق» |
 | A row | «إعلان» · «فتح المنشور» · «ردنا العام» · «الرسالة الخاصة» · «(تجربة — لم يُنشر)» · «(تجربة — لم تُرسل)» · «حساب بلا اسم» · «صورة المنشور» |
 | Buttons | «رد علني» · «رسالة خاصة» · «تمت المراجعة» · «إعادة للمراجعة» · «حساب تجربة» · «نشر الرد» · «إرسال الرسالة» |
 | Dialogs | «رد علني على التعليق» — «نص الرد (يظهر للجميع؛ بلا أرقام أو أسعار أو روابط)» · «رسالة خاصة للمعلّق» — «نص الرسالة (مرة واحدة فقط، وتفتح محادثة خاصة إذا رد المعلّق)» |
 | The tab's note | «لا يُخفى أي تعليق ولا يُحذف من هنا أو تلقائيًا. الرد العام بلا أرقام أو أسعار، والرسالة الخاصة مرة واحدة خلال 7 أيام من التعليق.» |
 | Empty | «لا تعليقات هنا بعد.» |
 | Toasts | «نُشر الرد تحت التعليق.» · «أُرسلت الرسالة الخاصة.» · «سُجّل الرد العام (تعليق تجربة، لم يُنشر).» · «سُجّلت الرسالة الخاصة (تجربة، لم تُرسل).» · «سُجّل أن التعليق تمت مراجعته.» · «أعيد التعليق إلى «يحتاج مراجعة».» · «أصبح المعلّق حساب تجربة.» · «لم يعد المعلّق حساب تجربة.» |
-| Errors | «لا يُكتب في الرد العام رقم أو سعر أو عملة أو رابط.» · «رُدّ على هذا التعليق علنًا من قبل.» · «أُرسلت الرسالة الخاصة لهذا التعليق من قبل؛ تُرسل مرة واحدة فقط.» · «مضى على التعليق أكثر من 7 أيام؛ لا تسمح ميتا برسالة خاصة بعدها.» · «هذا رد داخل سلسلة تعليقات؛ يُرد على التعليق الأصلي فقط.» · «لا تعمل التعليقات قبل اعتماد نصوص الردود العامة.» · «شغّل «التعليقات» أولًا لهذا الحساب.» · «رفضت ميتا الإرسال: الصلاحية غير ممنوحة للتطبيق بعد.» · «رفضت ميتا الإرسال: مفتاح الصفحة غير صالح.» · «رفضت ميتا الإرسال مؤقتًا لكثرة الطلبات؛ حاول بعد دقائق.» · «خدمة ميتا لا تستجيب الآن؛ حاول بعد دقائق.» · «لم تصل إجابة من ميتا في الوقت المحدد.» · «مفتاح الصفحة غير مضبوط على الخادم.» · «لا يوجد نص معتمد لهذا النوع من التعليقات.» · «لا تملك صلاحية التعليقات.» |
+| Errors | «لا يُكتب في الرد العام رقم أو سعر أو عملة أو رابط.» · «رُدّ على هذا التعليق علنًا من قبل.» · «أُرسلت الرسالة الخاصة لهذا التعليق من قبل؛ تُرسل مرة واحدة فقط.» · «مضى على التعليق أكثر من 7 أيام؛ لا تسمح ميتا برسالة خاصة بعدها.» · «هذا رد داخل سلسلة تعليقات؛ يُرد على التعليق الأصلي فقط.» · «لا تعمل التعليقات قبل اعتماد نصوص الردود العامة.» · «شغّل «التعليقات» أولًا لهذا الحساب.» · «رفضت ميتا الإرسال: الصلاحية غير ممنوحة للتطبيق بعد.» · «رفضت ميتا الإرسال: مفتاح الصفحة غير صالح.» · «رفضت ميتا الإرسال مؤقتًا لكثرة الطلبات؛ حاول بعد دقائق.» · «خدمة ميتا لا تستجيب الآن؛ حاول بعد دقائق.» · «لم تصل إجابة من ميتا في الوقت المحدد.» · «مفتاح الصفحة غير مضبوط على الخادم.» · «لا يوجد نص معتمد لهذا النوع من التعليقات.» · S2e: «لم يكتب المساعد إجابة لهذا التعليق.» · «تعذّر على المساعد كتابة الإجابة.» · «بلغت ميزانية المساعد حدها؛ لم تُرسل الرسالة الخاصة.» · «لا تملك صلاحية التعليقات.» |
 | «السوشيال» → «التعليقات» | «التعليقات» · «الرسائل الخاصة» · «لم تُعتمد نصوص الردود العامة بعد، فلا يمكن تشغيل «التعليقات». الناقص: N» · «التعليقات متوقفة» / «التعليقات تعمل» / «التعليقات والرسائل الخاصة تعمل» · toasts «شُغّلت التعليقات لهذا الحساب.» / «أُوقفت التعليقات لهذا الحساب.» / «شُغّلت الرسائل الخاصة للمعلّقين.» / «أُوقفت الرسائل الخاصة للمعلّقين.» |
+| «السوشيال» → «جمهور كل قناة» (S2e) | «جمهور كل قناة» · ««مثل الوحدة» يتبع الاختيار أعلاه؛ أي اختيار آخر يخص هذه القناة وحدها.» · «مثل الوحدة (…)» · toast «جمهور {القناة}: {الجمهور}» · errors «يغيّر الجمهور مدير النظام فقط.» / «لا تغيير: هذا هو الجمهور الحالي.» / «لم نجد هذه القناة.» / «تعذّر حفظ الجمهور.» |
 | «ربط الصفحة وحساب انستجرام» steps | «اشتراك تعليقات فيسبوك» · «اشتراك تعليقات انستجرام» · «ربط تعليقات الصفحة بالتطبيق» · toast «رُبطت الرسائل، لكن اشتراك التعليقات لم يكتمل؛ راجع الخطوات أدناه.» |
-| «التقارير» | section «التعليقات»: «تعليقات انستجرام وفيسبوك العامة في الفترة: N (انستجرام N · فيسبوك N) — أُرسلت N رسالة خاصة.» · tables «التعليقات حسب النوع» / «ما حدث للتعليقات» |
-| The staff alert of a complaint (`hub_staff_alert`, approved template unchanged) | {{1}} «أرمادا ريزيدنس — الفرعان (لم يُحدَّد الفرع بعد)» · {{3}} «تعليق انستجرام» / «تعليق فيسبوك» · {{4}} «تعليق» · {{5}} «شكوى في تعليق على انستجرام» / «شكوى في تعليق على فيسبوك» |
+| «التقارير» | «المحادثات والمساعد»: «المحادثات حسب القناة: واتساب N · انستجرام N · ماسنجر N» (S2e) · section «التعليقات»: «تعليقات انستجرام وفيسبوك العامة في الفترة: N (انستجرام N · فيسبوك N) — أُرسلت N رسالة خاصة.» · tables «التعليقات حسب النوع» / «ما حدث للتعليقات» |
+| The staff alert of a complaint (`hub_staff_alert`, approved template unchanged) | {{1}} «أرمادا ريزيدنس — الفرعان (لم يُحدَّد الفرع بعد)» · {{3}} «تعليق انستجرام» / «تعليق فيسبوك» · {{4}} «تعليق» · {{5}} «شكوى في تعليق على انستجرام» / «شكوى في تعليق على فيسبوك» — S2e, a question the assistant could not answer: «سؤال في تعليق على انستجرام يحتاج الفريق» / «سؤال في تعليق على فيسبوك يحتاج الفريق» |
 | The alert of a hand-off with no branch (S2a, any social hand-off) | {{1}} «أرمادا ريزيدنس — الفرعان (لم يُحدَّد الفرع بعد)» |
 | Tours | «التعليقات» (inbox) · «الرد على تعليق» · «التعليقات» («إعدادات المساعد») — texts in `admin/src/lib/tours.ts` |
 
@@ -558,7 +576,11 @@ Nothing below was changed by this listing; approved texts are marked so.
 | S2a | the staff alert {{1}} of a hand-off with no branch | «أرمادا ريزيدنس — الفرعان (لم يُحدَّد الفرع بعد)» | — | for review |
 | S2a | knowledge card «مستلزمات الحمام في الغرف» | «تتوفر في جميع الغرف مستلزمات الحمام: شامبو، وبلسم، وجل استحمام، وصابون.» | “All rooms have bathroom amenities: shampoo, conditioner, shower gel and soap.” | Ahmed's |
 | S2 | every staff-facing comments label | §10.2 above | — | for review |
-| S2 | the public replies and private messages | — | — | **Ahmed's, not received yet** (§10.1) |
+| S2 | the public replies (10 pairs) | §10.1 | §10.1 | **Ahmed's, 21 Nov 2026** (in force since S2e) |
+| S2e | the private message | the assistant's answer · §5 `complaint` · §5 `third_language` (English only) | the same | approved texts reused |
+| S2e | «السوشيال» → «جمهور كل قناة», the new reasons and errors, «المحادثات حسب القناة», the alert {{5}} of a question | §10.2 | — | for review |
 
 The toast «لم نجد الصفحة في مفتاح مستخدم النظام.» already reads «لم نجد» in the source and in the live dashboard bundle (read
-26 Nov 2026) — no change was needed.
+26 Nov 2026) — no change was needed. Searched again on 26 Nov 2026 after Ahmed's screenshot of 25 Nov 20:35 showing «لم تجد…»:
+no «لم تجد الصفحة» in any Edge Function, the dashboard's source, its git history (the toast reads «لم نجد» since its first
+commit, e0f4352) or the live bundle; the functions answer the code `hub_meta_page` and the dashboard writes the sentence.

@@ -27,7 +27,8 @@ export const CLASS_LABELS: Record<CommentClass, string> = {
   question: 'سؤال', price: 'سؤال عن السعر', complaint: 'شكوى', praise: 'إشادة', spam: 'مزعج أو مسيء', other: 'أخرى',
 };
 export const SKIP_LABELS: Record<string, string> = {
-  own: 'تعليق من حسابنا', thread: 'رد داخل سلسلة تعليقات', too_old: 'أقدم من 7 أيام', live: 'تعليق على بث مباشر', empty: 'بلا نص',
+  own: 'تعليق من حسابنا', thread: 'رد داخل سلسلة تعليقات', staff_thread: 'رد داخل سلسلة رد عليها أحد الفريق',
+  thread_ours: 'رد على ردّنا العلني', private_off: 'الرسائل الخاصة متوقفة: يحتاج ردًا من الفريق', too_old: 'أقدم من 7 أيام', live: 'تعليق على بث مباشر', empty: 'بلا نص',
   switch_off: 'التعليقات متوقفة لهذا الحساب', unit_off: 'وحدة «السوشيال» متوقفة', not_tester: 'ليس حساب تجربة', staff_answered: 'رد عليه أحد الفريق',
   argument: 'نقاش بين المعلّقين', other: 'لا يحتاج ردًا', language: 'لغة أخرى بلا رسالة خاصة', spam: 'مزعج أو مسيء', unclear: 'لم يُفهم التعليق', model_error: 'تعذّر تصنيف التعليق',
 };
@@ -58,6 +59,10 @@ export const COMMENT_ERRORS: Record<string, string> = {
   timeout: 'لم تصل إجابة من ميتا في الوقت المحدد.',
   no_token: 'مفتاح الصفحة غير مضبوط على الخادم.',
   no_text: 'لا يوجد نص معتمد لهذا النوع من التعليقات.',
+  no_answer: 'لم يكتب المساعد إجابة لهذا التعليق.',
+  empty: 'لم يكتب المساعد إجابة لهذا التعليق.',
+  engine: 'تعذّر على المساعد كتابة الإجابة.',
+  budget: 'بلغت ميزانية المساعد حدها؛ لم تُرسل الرسالة الخاصة.',
   payload: 'تعذّر تجهيز الرد.',
   'not allowed': 'لا تملك صلاحية التعليقات.',
 };

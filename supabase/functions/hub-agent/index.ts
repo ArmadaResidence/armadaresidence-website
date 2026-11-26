@@ -147,9 +147,10 @@ function deps(model: ModelFn, cards: string[] | null = null): Deps {
     // H7: voice notes (OpenAI gpt-transcribe — OPENAI_API_KEY, Supabase only) and images; each behind its unit switch
     media: { load: mediaFile, transcribe: openaiTranscribe(Deno.env.get('OPENAI_API_KEY') ?? '') },
     // a test-lab item judged on a candidate reads the candidate cards as their draft (hub_knowledge_for_eval)
-    knowledge: (unit, topics, lang, branch) => cards
-      ? rpc('hub_knowledge_for_eval', { p_unit: unit, p_topics: topics, p_language: lang, p_branch: branch, p_cards: cards })
-      : rpc('hub_knowledge_for', { p_unit: unit, p_topics: topics, p_language: lang, p_branch: branch }),
+    // S2e: the guest's own words rank the cards inside a topic (a matching card is never cut by the cap)
+    knowledge: (unit, topics, lang, branch, words) => cards
+      ? rpc('hub_knowledge_for_eval', { p_unit: unit, p_topics: topics, p_language: lang, p_branch: branch, p_cards: cards, p_text: words ?? null })
+      : rpc('hub_knowledge_for', { p_unit: unit, p_topics: topics, p_language: lang, p_branch: branch, p_text: words ?? null }),
     offers: async () => {
       const res = await fetch(`${url()}/rest/v1/offers?select=live&live=not.is.null&archived_at=is.null&is_test=eq.false`, {
         headers: { apikey: serviceKey(), Authorization: `Bearer ${serviceKey()}` },
@@ -507,8 +508,23 @@ async function process(turnId: string, model: ModelFn, deadline: number): Promis
   return outcome.finish.status;
 }
 
+/** S2e (SOCIAL-SPEC §5.3): the private message of a question / price comment = the assistant's normal answer — ONE turn of
+ *  the real engine on «السوشيال» in test mode (nothing stored, nothing sent; the calls counted on the comment), the text
+ *  messages joined; another language → the English third-language notice and the team (§5.6) */
+const commentAnswer = (unitKey: string, model: ModelFn) => async (body: string, L: 'ar' | 'en', other: boolean) => {
+  if (other) return { text: fixed('third_language', 'en'), handoff: true, models: [] };
+  const ctx = await rpc<Json>('hub_eval_context', { p_unit: unitKey });
+  const out = await runTurn(claimOf(ctx, { key: 'comment', language: L, context: {} }, body, freshState(), null, 0), deps(model));
+  const f = out.finish;
+  const models = f.models.map((m) => ({ layer: m.layer, model: m.model, input_tokens: m.input_tokens, output_tokens: m.output_tokens }));
+  if (f.reason === 'third_language') return { text: fixed('third_language', 'en'), handoff: true, models };
+  const text = f.messages.map((m) => String(m.body ?? '').trim()).filter(Boolean).join('\n\n');
+  return { text: text || null, handoff: f.state === 'human', models, error: text ? null : (f.status === 'failed' ? 'engine' : 'empty') };
+};
+
 /** S2: one comment through the worker (comment-run.ts) */
-const comment = (id: string, model: ModelFn) => runComment(id, { rpc: (n, a) => rpc(n, a), model, token: (page) => metaPageToken(Deno.env.get('META_PAGE_TOKEN'), page) });
+const comment = (id: string, model: ModelFn) => runComment(id, { rpc: (n, a) => rpc(n, a), model, token: (page) => metaPageToken(Deno.env.get('META_PAGE_TOKEN'), page),
+  answer: commentAnswer('social', model) });
 
 /** a QA stub: each call answered by the text of its layer (preview branches only) */
 const stubModel = (stub: Record<string, string>): ModelFn => async (c: ModelCall) =>

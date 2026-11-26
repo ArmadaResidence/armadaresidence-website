@@ -61,7 +61,10 @@ const OVERVIEW = (sysAdmin) => ({
   switch_gates: { hub_assistant_on: [], hub_inbox_on: [] }, recipients: [], templates: [], alerts: [],
 });
 const SOCIAL = { unit: { id: id(60), key: 'social', name_ar: 'السوشيال', mode: 'test', social_mode: 'test', standby_minutes: 5, human_agent: false, status: 'active' },
-  channels: [], system_admin: true,
+  // S2e: the two Meta channels with their own audience (NULL = the unit's)
+  channels: [{ id: id(61), kind: 'instagram', address: '17800000000000001', display_name: 'armada.qa', connected: true, verified_at: ago(60), sending_enabled: true, social_mode: null, audience: 'test' },
+             { id: id(62), kind: 'messenger', address: '100000000000001', display_name: 'Armada QA Page', connected: true, verified_at: ago(60), sending_enabled: true, social_mode: null, audience: 'test' }],
+  system_admin: true,
   // S2a (A3): an Instagram account with a long name and a Messenger account with none — the two rows must look the same
   accounts: [{ id: id(81), kind: 'instagram', name: 'أحمد محمد حلمي — حساب انستجرام للتجربة', username: 'qa.long.username', tester: true, last_seen_at: ago(30) },
              { id: id(82), kind: 'messenger', name: null, username: null, tester: true, last_seen_at: ago(40) }] };
@@ -127,9 +130,10 @@ for (const role of ['admin', 'management']) {
           return ok({ ok: true });
         }
         if (fn === 'hub_assistant_overview') return ok(OVERVIEW(sys));
-        if (fn === 'hub_social_overview') return ok(SOCIAL);
+        if (fn === 'hub_social_overview') return ok({ ...SOCIAL, system_admin: sys });
         if (fn === 'hub_data_deletions_list') return ok([]);
         if (fn === 'hub_comment_settings') return ok({ ...SETTINGS(ready, on), system_admin: sys });
+        if (fn === 'hub_channel_audience_set') return ok({ ok: true, batch_id: id(903), before: null });
         if (fn === 'hub_comment_switch_set') {
           const before = { comments: on, private: false };
           on = body.p_comments;
@@ -211,6 +215,18 @@ for (const role of ['admin', 'management']) {
       } else {
         check(await page.locator('[data-action="comments-switch"]').count() === 0 && /التعليقات متوقفة/.test(await page.locator('[data-comment-switches]').innerText()),
           `${tag}: anyone else reads the state, no switch`);
+      }
+      // S2e (Ahmed's §6 «Settings per channel»): each channel's own audience — the system admin's, «تراجع» the previous one
+      if (sys) {
+        check(await page.locator('[data-channel-audience-select]').count() === 2, `${tag}: «جمهور كل قناة» — one choice per channel`);
+        await page.locator('[data-channel-audience-select="instagram"]').selectOption('live');
+        await page.getByRole('button', { name: 'تراجع' }).first().click({ timeout: 10000 });
+        await page.waitForTimeout(300);
+        const aud = calls.filter((c) => c.fn === 'hub_channel_audience_set').map((c) => `${c.body.p_channel === id(61) ? 'ig' : '?'}:${c.body.p_mode}`);
+        check(aud.join() === 'ig:live,ig:null', `${tag}: Instagram on «الكل», then «تراجع» back to «مثل الوحدة» — ${aud.join()}`);
+      } else {
+        check(await page.locator('[data-channel-audience-select]').count() === 0 || await page.locator('[data-channel-audience-select="instagram"]').isDisabled(),
+          `${tag}: anyone else cannot change a channel's audience`);
       }
       // A3 (S2a): «حسابات التجربة» — every row's button keeps its place beside the name (the Instagram row wrapped under it at 375)
       if (sys) {

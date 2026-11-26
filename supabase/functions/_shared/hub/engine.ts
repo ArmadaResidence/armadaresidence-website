@@ -36,7 +36,8 @@ type Json = any;
 export interface Deps {
   model: ModelFn;
   /** public.hub_knowledge_for */
-  knowledge: (unit: string, topics: string[], lang: Lang, branch: string | null) => Promise<{ cards: Json[]; faq: Json[]; rules?: Json[] }>;
+  /** S2e: `words` = the guest's own words this turn — they rank the cards inside a topic (never cut by the cap) */
+  knowledge: (unit: string, topics: string[], lang: Lang, branch: string | null, words?: string) => Promise<{ cards: Json[]; faq: Json[]; rules?: Json[] }>;
   /** the offers' live snapshot rows */
   offers: () => Promise<Json[]>;
   adapter: InventoryAdapter;
@@ -720,7 +721,7 @@ export async function runTurn(claim: Json, deps: Deps): Promise<Outcome> {
           break;
         }
         case 'answer': {
-          let k = await deps.knowledge(unit.key, a.topics.length ? a.topics : [], L, a.branch && a.branch !== 'both' ? a.branch : unit.branch ?? null).catch(() => ({ cards: [], faq: [] }));
+          let k = await deps.knowledge(unit.key, a.topics.length ? a.topics : [], L, a.branch && a.branch !== 'both' ? a.branch : unit.branch ?? null, texts.join(' ')).catch(() => ({ cards: [], faq: [] }));
           // S1 (25 Nov 2026): «السوشيال» with no branch known — an answer whose facts differ by branch asks «في أي فرع تقصد…؟»
           // first, with the two branches as quick replies; the question waits on the conversation (topics and intents only)
           // S2: a card of both branches that names the guest's own word answers for both (no branch question)

@@ -121,29 +121,35 @@ social conversation exists that day.
 
 ## 8. Comments (session S2, 26 Nov 2026 — DECISIONS.md 2026-11-26 «Guest Hub S2 — comments»)
 
-Decisions S3 and S4 (§1) hold. The brief of 25 Nov 2026 points at «SOCIAL-SPEC §5–§8» for the action table, the dashboard,
-the lab cases and **the approved comment texts**; those sections were never in this file (the repository's copy ends at §7).
-So the action table below is S3 as written in §1, and **the public reply texts and the private messages are not here** —
-they wait for Ahmed (§8.4). Nothing can switch comments on until they exist.
+Decisions S3 and S4 (§1) hold. **Ahmed's approved comment sections (his spec §5–§8, the texts approved 21 Nov 2026) are
+§11 of this file, verbatim** — they reached the repository on 26 Nov 2026 (S2e); this section is how the build follows them.
+Where the two ever differ, §11 wins.
 
 ### 8.1 What happens to a comment
 
 | The comment | Code rule or class | Public reply | Private message (once, within 7 days) | Then |
 |---|---|---|---|---|
 | Our own comment | `own` | — | — | ignored; a reply of ours that is not one the assistant posted (the Instagram app, Business Suite) marks the thread **«رد عليه أحد الفريق»** and the assistant never answers that thread again |
-| A reply inside a thread (to our reply, or between users) | `thread` | — | — | ignored (no model call) |
+| A reply inside a thread a staff member answered | `staff_thread` | — | — | ignored (no model call) — §11 §5.1 |
+| A reply under our own public reply | classified (`IN_THREAD`) | **none** — never a reply to our own reply (§11 §5.4) | as for its class | |
+| A reply between users (an argument) | `argument` (the classifier sees `IN_THREAD`) | — | — | «تم تخطيه» |
 | Older than 7 days, a live video, edited / removed, empty | `too_old` · `live` · `not_new` · `empty` | — | — | ignored |
-| A question | `question` | one of Ahmed's variants, rotating | yes | «تم الرد» |
-| A price question | `price` | one of Ahmed's variants — **never a price** (S4) | yes | «تم الرد» |
-| A complaint | `complaint` | one of Ahmed's apology variants | only if Ahmed's texts include one | **«محوَّل للفريق»**: a hand-off of the comment, alerted to both branches (a test account's to the system admin only — S1c) |
+| A question | `question` | one of Ahmed's variants, rotating | **the assistant's normal answer** from its sources (one engine turn on «السوشيال»; an answer it hands off → the team too) | «تم الرد» |
+| A price question | `price` | one of Ahmed's variants — **never a price** (S4) | the assistant's answer — it asks for the dates (prices only by date) | «تم الرد» |
+| A complaint | `complaint` | one of Ahmed's apology variants | **the complaint hand-off notice** (copy.md `complaint`) | **«محوَّل للفريق»**: a hand-off of the comment, alerted to both branches (a test account's to the system admin only — S1c) |
 | Praise | `praise` | one of Ahmed's thanks variants | — | «تم الرد» |
 | Spam, abuse | `spam` | — | — | **«تعليقات تحتاج مراجعة»** — nothing posted, nothing hidden or deleted |
 | Anything else, an argument between commenters | `other` · `argument` | — | — | «تم تخطيه» |
 | Arabic or English | — | in the comment's language | in the comment's language | |
-| Any other language | — | **none** | **in English** | |
+| Any other language | — | **none** | **in English** (the English third-language notice of copy.md, and the team) | |
 
+- **The private message first (S2e):** every approved public text of a question, a price question or a complaint says a
+  private message was sent («أرسلنا لك… في رسالة خاصة»), so the public reply goes up only after the private message
+  reached the commenter; with «الرسائل الخاصة» off, a question waits in «تعليقات تحتاج مراجعة» («الرسائل الخاصة متوقفة») and
+  a complaint goes to the team with no public text; a private message that fails → «تعذّر الرد».
 - **Gates, in order:** the channel's «التعليقات» (comments_on) → the unit's mode (off = nothing; «تجربة» = the plan shown in
-  «التعليقات», nothing posted) → the audience («حسابات التجربة فقط»: only an account marked «حساب تجربة» — its DM identity,
+  «التعليقات», nothing posted) → the audience — the channel's own (§6 of §11, `hub_channels.social_mode`), else the unit's —
+  («حسابات التجربة فقط»: only an account marked «حساب تجربة» — its DM identity,
   the same Instagram username, or a commenter the system admin marked in «التعليقات») → the code rules → ONE model call
   (prompts.md §11, layer `tag`) → the plan (`comments.ts → plan`).
 - **At most one public reply per comment**; the variants rotate in order per channel, class and language.
@@ -169,24 +175,17 @@ Per Meta channel (Instagram account, Facebook Page — the Messenger row), both 
   filters «الكل» · «تعليقات تحتاج مراجعة» · «محوَّل للفريق» · «تم الرد» · «تم تخطيه» · «تعذّر الرد»; «رد علني» (the guard),
   «رسالة خاصة» (once, 7 days), «تمت المراجعة», «حساب تجربة» (the system admin). Seen by inbox users who are members of
   «السوشيال» or of a branch unit in their scope (the comments are public).
-- «إعدادات المساعد» → «السوشيال» → «التعليقات»: the two switches per account and, while Ahmed's texts are missing, the note.
-- «التقارير» → «التعليقات»: by type and by outcome, Instagram / Facebook, private messages sent (no text).
+- «إعدادات المساعد» → «السوشيال»: «جمهور كل قناة» («مثل الوحدة» or its own audience — the system admin's, audited, «تراجع»);
+  «التعليقات»: the two switches per account.
+- «التقارير» → «التعليقات»: by type and by outcome, Instagram / Facebook, private messages sent (no text); «المحادثات
+  والمساعد» → «المحادثات حسب القناة» (واتساب · انستجرام · ماسنجر).
 - A complaint's alert link (`?hub_c=`) opens «التعليقات» on that comment.
 
-### 8.4 The approved texts — [بانتظار أحمد]
+### 8.4 The approved texts — in force since S2e (26 Nov 2026)
 
-`public.hub_comment_texts` (one row, written only by a migration, word for word):
-
-```
-{ "public":  { "question":  { "ar": [variants], "en": [variants] },
-               "price":     { "ar": [...], "en": [...] },
-               "complaint": { "ar": [...], "en": [...] },
-               "praise":    { "ar": [...], "en": [...] } },
-  "private": { "question": { "ar": "...", "en": "..." },
-               "price":    { "ar": "...", "en": "..." },
-               "complaint": { "ar": "...", "en": "..." }   ← optional
-               "other_language": { "en": "..." } } }
-```
+`public.hub_comment_texts` (one row, written only by a migration, word for word — `20261126500000_guest_hub_s2e`, version
+`2026-11-21`): `{public: {question|price|complaint|praise: {ar: [variants], en: [variants]}}}` = §11 §8 below. There is no
+fixed private text (§11 §5.3). The variants rotate in order per channel, class and language.
 
 ## 9. Meta's documentation for comments (read 26 Nov 2026)
 
@@ -219,8 +218,61 @@ same four with Advanced Access, besides §5b.
 
 `tests/hub-bank/comments-social.jsonl` (14, lab items `c2-01`…`c2-14` of «السوشيال», `expect.action: comment`): a question
 (Arabic / English), a price question (Arabic / English with a number), a complaint (Arabic / English), praise (Arabic /
-English), spam, an ad's price question, a reply in a thread (the code rule — no model call), another language (French: no
-public reply, the private message in English), abuse, an English question with an emoji. Graded by code
+English), spam, an ad's price question, a reply between users in a thread (`argument` — nothing posted), another language
+(French: no public reply, the private message in English), abuse, an English question with an emoji; S2e adds c2-15 (a
+thread a staff member answered — the code rule, no model call) and c2-16 (a question under our own reply — no public
+reply, the private answer), and s2-03 / s2-04 (the bathroom amenities card on the branch numbers — the guest's own word
+ranks it inside the topic). Graded by code
 (`comments.ts → gradeComment`: the class, whether a public reply / a private message / a hand-off / the review is planned,
 and the public text passes the guard). The gate of «السوشيال» is unchanged: its own latest full run, no failure but a known
 gap.
+
+## 11. Ahmed's approved comment sections (his spec §5–§8; the texts approved 21 Nov 2026) — verbatim
+
+Added 26 Nov 2026 (S2e) exactly as Ahmed sent them; their numbers are his spec's (§5–§8), not this file's. «§4» in §5.8 is
+his spec's DM section (this file's §4–§5).
+
+### 5. Comments
+1. Every new comment on our posts, reels and ads arrives by webhook. Ignored: our own comments, replies inside a thread a staff member already answered, comments older than 7 days.
+2. Classification: question / complaint / praise / spam or abuse / other (only emojis, only a friend's tag, unclear).
+3. Action:
+| Type | Public reply | Private message (one, within 7 days of the comment) | Team |
+|---|---|---|---|
+| Question (price, booking, service, offer) | short text from §8, no price, no number | the assistant's normal answer, from sources; a price question asks for the dates | — |
+| Complaint | apology from §8 | the complaint hand-off notice | hand-off + staff alert |
+| Praise | thanks from §8 | none | — |
+| Spam or abuse | none | none | listed for staff |
+| Other | none | none | — |
+4. At most one public reply per comment, never a reply to our own reply, never a reply inside an argument between users.
+5. Public replies rotate between the approved variants so the same sentence is not repeated across comments.
+6. Language: Arabic (Modern Standard, the guest in the singular) or English, by the comment's language. Another language → no public reply; the private message in English.
+7. Nothing is hidden or deleted automatically. Spam and abuse go to a staff list in the dashboard («تعليقات تحتاج مراجعة»).
+8. A guest who answers the private message opens a normal DM conversation (§4).
+
+### 6. Dashboard
+- «المحادثات»: channel icon and filter; a tab «التعليقات» with the post thumbnail and link, the comment, our public reply, the private message sent, and the state (replied / handed off / skipped as spam / needs review). Staff can reply publicly or privately from there.
+- Settings per channel: on / off, test / live / standby, comments on / off, private replies on / off.
+- Reports page: counts per channel and comment counts by type.
+- Daily WhatsApp report: the approved template is never edited. Channel splits go inside the existing variables, for example «المحادثات: 34 (واتساب 25، انستجرام 6، ماسنجر 3)». A separate comments line needs a new template name, later.
+- Dashboard rules from CLAUDE.md apply to every new screen.
+
+### 7. Tests
+- Conversation bank: social DM cases (price by date, booking request, packages, complaint, off-topic, English) and comment cases (each type, Arabic and English, a price question, an ad comment, a reply thread, spam).
+- Live tests only from Ahmed's personal accounts (app roles), on an older post chosen by Ahmed; he deletes his test comments afterwards. Never test on real followers.
+- Full lab run before the social unit goes live.
+
+### 8. Guest-facing comment texts (approved by Ahmed, 21 Nov 2026)
+Question:
+- «أهلًا بك، أرسلنا لك التفاصيل في رسالة خاصة.» / "Welcome! We've sent you the details in a private message."
+- «يسعدنا سؤالك، تجد التفاصيل في رسائلك الخاصة.» / "Thanks for asking. You'll find the details in your messages."
+- «تم الرد عليك في الخاص، ويسعدنا خدمتك.» / "We've replied to you privately. Happy to help."
+Price question:
+- «الأسعار حسب تاريخ الإقامة، أرسلنا لك رسالة خاصة لنعرف تواريخك.» / "Prices depend on your dates. We've sent you a private message to ask for them."
+- «يعتمد السعر على تواريخ إقامتك، تابع رسائلك الخاصة.» / "The price depends on your stay dates. Please check your messages."
+Complaint:
+- «نأسف لما واجهته، تواصلنا معك في الخاص لمتابعة الأمر.» / "We're sorry about your experience. We've contacted you privately to follow up."
+- «نعتذر منك، أرسلنا لك رسالة خاصة ليتابع الفريق طلبك.» / "We apologise. We've sent you a private message so our team can follow up."
+Praise:
+- «شكرًا لك على كلماتك الجميلة.» / "Thank you for your kind words."
+- «شكرًا لك، يسعدنا ذلك كثيرًا.» / "Thank you, that means a lot to us."
+- «سعداء برأيك، شكرًا لك.» / "We're glad to hear it. Thank you."

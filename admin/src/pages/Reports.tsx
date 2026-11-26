@@ -419,6 +419,9 @@ function HubSection({ s, money, first }: { s: Sect<m.HubReport>; money: boolean;
             <Kpi k="hub-bookings" title="حجوزات المساعد" how={m.HOW.hubBookings} value={<span className="num-ar">فوري {d.bookings.instant} · طلب {d.bookings.request}</span>} />
             {money && d.bookings.revenue !== undefined && <Kpi k="hub-revenue" title="إيراد حجوزات المساعد" how={m.HOW.hubBookings} value={<AnimatedNumber value={d.bookings.revenue} first={first} format={(x) => sar(Math.round(x))} />} />}
           </div>
+          {d.by_channel && (
+            <p className="text-sm text-ink-muted" data-hub-channels>المحادثات حسب القناة: واتساب <span className="num">{d.by_channel.whatsapp}</span> · انستجرام <span className="num">{d.by_channel.instagram}</span> · ماسنجر <span className="num">{d.by_channel.messenger}</span></p>
+          )}
           <section className="card p-4" aria-labelledby="hub-units-h" data-hub-units>
             <div className="flex items-start gap-2 mb-3"><h3 id="hub-units-h" className="font-bold">حسب الوحدة</h3><HowTip text={m.HOW.hubFirstReply} /></div>
             <DataTable caption="المحادثات حسب الوحدة"

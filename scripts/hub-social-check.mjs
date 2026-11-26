@@ -326,9 +326,9 @@ const check = (ok, what) => {
   check(parseWebhook(ig).every((e) => e.type !== 'other' || !/change:comments/.test(e.what)) && parseWebhook(ig).some((e) => e.type === 'other' && e.what === 'change:mentions')
     && !parseWebhook(fb).some((e) => e.type === 'other' && /feed/.test(e.what ?? '') && false), 'H3 meta.ts leaves the comment changes to comments.ts (others logged by field)');
   const base = { channel: '17800000000000001', from_id: '5550001', parent_id: null, created_at: new Date().toISOString(), live: false, verb: 'add', text: 'سؤال' };
-  check(cm.codeSkip(base) === null && cm.codeSkip({ ...base, from_id: base.channel }) === 'own' && cm.codeSkip({ ...base, parent_id: '1234567' }) === 'thread'
+  check(cm.codeSkip(base) === null && cm.codeSkip({ ...base, from_id: base.channel }) === 'own' && cm.codeSkip({ ...base, parent_id: '1234567' }) === null
     && cm.codeSkip({ ...base, created_at: new Date(Date.now() - 8 * 86_400_000).toISOString() }) === 'too_old' && cm.codeSkip({ ...base, verb: 'edited' }) === 'not_new'
-    && cm.codeSkip({ ...base, live: true }) === 'live' && cm.codeSkip({ ...base, text: ' ' }) === 'empty', 'H4 the code rules: own, a thread (to us or between users), older than 7 days, edits, live, empty');
+    && cm.codeSkip({ ...base, live: true }) === 'live' && cm.codeSkip({ ...base, text: ' ' }) === 'empty', 'H4 the code rules: own, older than 7 days, edits, live, empty — a reply in a thread is not skipped by code (S2e, SOCIAL-SPEC §5.1)');
   check(cm.parseClass('{"class":"price","language":"ar","argument":false}')?.class === 'price' && cm.parseClass('{"class":"angry","language":"ar"}') === null
     && cm.parseClass('x') === null && cm.parseClass('{"class":"praise","language":"de"}') === null, 'H5 the classifier\'s answer: known classes and languages only');
   check(cm.publicGuard('سعدنا بسؤالك، أرسلنا لك التفاصيل في رسالة خاصة.') === null && cm.publicGuard('الليلة 250') === 'digit' && cm.publicGuard('الليلة ٢٥٠') === 'digit'
@@ -336,10 +336,9 @@ const check = (ok, what) => {
     && cm.publicGuard('يبدأ من') === 'price' && cm.publicGuard('www.x.com') === 'link' && cm.publicGuard('We sent you the prices in a message.') === null,
     'H6 S4 — the public reply\'s guard: no digit of any script, no currency, no «from» price, no link (the word «prices» alone passes)');
   const T = { public: { question: { ar: ['سؤال أ', 'سؤال ب'], en: ['question a'] }, price: { ar: ['سعر أ'], en: ['price a'] }, complaint: { ar: ['شكوى أ'], en: ['complaint a'] },
-                        praise: { ar: ['شكر أ', 'شكر ب', 'شكر ج'], en: ['thanks a'] } },
-              private: { question: { ar: 'خاص', en: 'private' }, price: { ar: 'خاص', en: 'private' }, other_language: { en: 'private en' } } };
+                        praise: { ar: ['شكر أ', 'شكر ب', 'شكر ج'], en: ['thanks a'] } } };
   check(cm.textsProblems(T).length === 0 && cm.textsProblems(null)[0] === 'missing' && cm.textsProblems({ ...T, public: { ...T.public, price: { ar: ['250 ريال'], en: ['p1'] } } }).some((x) => /price\.ar\.0:digit/.test(x)),
-    'H7 the texts\' readiness: every class in both languages, the guard on each variant, the private messages');
+    'H7 the texts\' readiness: every class in both languages, the guard on each variant (no fixed private text — S2e)');
   const q = cm.plan('question', 'ar', false, T, 0, true, false);
   const q2 = cm.plan('question', 'ar', false, T, 1, true, false);
   const pr = cm.plan('price', 'en', false, T, 0, true, false);
@@ -349,11 +348,18 @@ const check = (ok, what) => {
   const ot = cm.plan('price', 'other', false, T, 0, true, false);
   const off = cm.plan('question', 'ar', false, T, 0, false, false);
   const ts = cm.plan('question', 'ar', false, T, 0, true, true);
-  check(q.state === 'replied' && q.public.text === 'سؤال أ' && q.private.text === 'خاص' && !q.handoff && q2.public.text === 'سؤال ب', 'H8 a question → a public reply (rotating the variants) + the private message');
-  check(pr.public.text === 'price a' && pr.private.text === 'private' && co.state === 'handed_off' && co.handoff && co.public.text === 'شكوى أ' && !co.private
-    && pa.public.text === 'شكر ب' && !pa.private && sp.state === 'review' && !sp.public, 'H9 price → the same; complaint → the apology + the team; praise → thanks only; spam → review, nothing');
-  check(!ot.public && ot.private.text === 'private en' && !off.private && off.public && ts.state === 'test' && cm.plan('question', 'ar', true, T, 0, true, false).state === 'skipped'
-    && cm.plan('other', 'ar', false, T, 0, true, false).state === 'skipped', 'H10 another language → the private message in English only; private off → none; «تجربة» → planned; an argument / other → skipped');
+  const notice = (L) => JSON.parse(read('supabase/functions/_shared/hub/text.generated.json')).copy.complaint[L];
+  check(q.state === 'replied' && q.public.text === 'سؤال أ' && q.private.source === 'answer' && q.private.language === 'ar' && !q.private.text && !q.handoff && q2.public.text === 'سؤال ب',
+    'H8 a question → a public reply (rotating the variants) + the private message = the assistant answer (S2e, SOCIAL-SPEC §5.3)');
+  check(pr.public.text === 'price a' && pr.private.source === 'answer' && co.state === 'handed_off' && co.handoff && co.public.text === 'شكوى أ'
+    && co.private.source === 'complaint' && co.private.text === notice('ar')
+    && pa.public.text === 'شكر ب' && !pa.private && sp.state === 'review' && !sp.public, 'H9 price → the same; complaint → the apology + the hand-off notice in private + the team; praise → thanks only; spam → review, nothing');
+  const coOff = cm.plan('complaint', 'ar', false, T, 0, false, false);
+  const ours = cm.plan('question', 'ar', false, T, 0, true, false, true);
+  check(!ot.public && ot.private.source === 'answer' && ot.private.language === 'en' && off.state === 'review' && off.reason === 'private_off' && !off.public
+    && coOff.handoff && !coOff.public && !coOff.private && ts.state === 'test' && cm.plan('question', 'ar', true, T, 0, true, false).state === 'skipped'
+    && cm.plan('other', 'ar', false, T, 0, true, false).state === 'skipped' && !ours.public && ours.private.source === 'answer',
+    'H10 another language → the private answer in English only; private off → no public text naming a private message (a question to review, a complaint to the team); «تجربة» → planned; an argument / other → skipped; under our own reply → no public reply');
   check(cm.gradeComment({ action: 'comment', class: 'price', public: true, private: true, handoff: false }, { class: 'price', plan: pr }).pass
     && !cm.gradeComment({ action: 'comment', class: 'price' }, { class: 'question', plan: q }).pass && cm.gradeComment({ action: 'comment', skip: 'thread' }, { class: null, plan: null, skip: 'thread' }).pass
     && !cm.gradeComment({ action: 'comment', skip: 'thread' }, { class: 'other', plan: null, skip: null }).pass, 'H11 the lab\'s grading of a comment item');
@@ -417,6 +423,61 @@ const check = (ok, what) => {
   const sql = s2d.migration();
   check(read(s2d.OUT_PATH) === sql && (sql.match(/or x\.id = u\.id\);/g) ?? []).length === 2 && !/update public\.|delete from/.test(sql),
     'H29 S2d: both knowledge reads count «السوشيال» among its own units (the migration = its generator; no UPDATE or DELETE)');
+}
+
+// ═══ I. S2e (26 Nov 2026): Ahmed's approved comment sections (SOCIAL-SPEC.md §11) ═══
+{
+  const s2e = await import('./hub-s2e-migration.mjs');
+  const cm = await import('../supabase/functions/_shared/hub/comments.ts');
+  const rt = await import('../supabase/functions/_shared/hub/retrieval.ts');
+  const sql = s2e.migration();
+  check(read(s2e.OUT_PATH) === sql, 'I1 the S2e migration = its generator');
+  // the texts, word for word: every «…» / "…" pair of §11 §8, in its order, = what the migration writes
+  const spec = read('docs/guest-hub/SOCIAL-SPEC.md');
+  const s8 = spec.slice(spec.indexOf('### 8. Guest-facing comment texts (approved by Ahmed, 21 Nov 2026)'));
+  const pairs = [...s8.matchAll(/^- «(.+?)» \/ "(.+?)"$/gm)].map((m) => [m[1], m[2]]);
+  const T = s2e.TEXTS.public;
+  const flat = ['question', 'price', 'complaint', 'praise'].flatMap((c) => T[c].ar.map((a, i) => [a, T[c].en[i]]));
+  check(pairs.length === 10 && JSON.stringify(pairs) === JSON.stringify(flat), 'I2 the texts = SOCIAL-SPEC §11 §8 word for word, the punctuation kept (10 pairs: 3 question, 2 price, 2 complaint, 3 praise)');
+  check(sql.includes(JSON.stringify(s2e.TEXTS)) && /update public\.hub_comment_texts\n   set texts = /.test(sql) && /\n where id = 1;/.test(sql) && cm.textsProblems(s2e.TEXTS).length === 0
+    && /raise exception 's2e: the approved texts do not pass their own check'/.test(sql),
+    'I3 written by the migration (an UPDATE with its WHERE), passing the guard in TS and checked again in SQL');
+  const ups = [...sql.matchAll(/update public\.(\w+)\s+set ([^;]+?)(?: where|;)/g)].map((m) => `${m[1]}:${m[2]}`);
+  check(!ups.some((u) => /^(hub_units|hub_licences|settings):/.test(u)) && JSON.stringify(ups.filter((u) => /^hub_channels:/.test(u))) === '["hub_channels:social_mode = p_mode"]',
+    'I4 no switch, mode or audience is changed by the migration (the system admin\'s)');
+  check(/if not internal\.is_system_admin\(\) then raise exception 'hub_system_admin_only'/.test(sql.slice(sql.indexOf('function public.hub_channel_audience_set'))) && /coalesce\(ch\.social_mode, u\.social_mode\) = 'test'/.test(sql)
+    && /coalesce\(ch\.social_mode, cu\.social_mode\) in \('live', 'standby'\)/.test(sql) && /hub_channel_audience\(c\.channel_id\)/.test(sql),
+    'I5 the audience per channel (§11 §6): the system admin\'s, audited; the DM reply gate, standby and the comments follow it');
+  check(/v_skip := 'staff_thread'/.test(sql) && /'thread_ours', c\.parent_id is not null/.test(sql) && /'in_thread', c\.parent_id is not null/.test(sql),
+    'I6 threads (§11 §5.1 / §5.4): a thread a staff member answered ignored; under our own reply flagged; IN_THREAD for the classifier');
+  check(/'by_channel', \(select jsonb_build_object\('whatsapp'/.test(sql), 'I7 «التقارير»: the conversations per channel (§11 §6)');
+  const run = read('supabase/functions/_shared/hub/comment-run.ts');
+  check(run.indexOf('replyPrivate(cm.comment_id') < run.indexOf('replyPublic(kind, cm.comment_id') && /if \(pl\.public && privateOk\)/.test(run) && /deps\.answer\(/.test(run),
+    'I8 the private message first (the public texts name it), then the public reply; the private answer = the engine');
+  const agent = read('supabase/functions/hub-agent/index.ts');
+  check(/hub_eval_context', \{ p_unit: unitKey \}/.test(agent) && /fixed\('third_language', 'en'\)/.test(agent) && /answer: commentAnswer\('social', model\)/.test(agent),
+    'I9 hub-agent: the private answer is ONE engine turn on «السوشيال», nothing stored; another language → the English notice and the team');
+  // the guest's own words rank the cards inside a topic (Ahmed, 26 Nov 2026)
+  check(JSON.stringify(rt.STOP_WORDS) === JSON.stringify(s2e.STOP_WORDS) && JSON.stringify(rt.guestWords('عندكم الشامبو في الغرف؟')) === '["شامبو"]'
+    && JSON.stringify(rt.guestWords('Do you have SHAMPOO?')) === '["shampoo"]' && rt.guestWords('هل يوجد؟').length === 0,
+    'I10 guestWords = internal.hub_guest_words: the stop words, the article off a long word, punctuation and case away');
+  const units = [{ key: 'airport-road', kind: 'branch', branch: 'airport-road', knowledge_hidden: false }, { key: 'shafa-road', kind: 'branch', branch: 'shafa-road', knowledge_hidden: false },
+    { key: 'social', kind: 'brand', branch: null, knowledge_hidden: false }];
+  const card = (key, units_, sort, text) => ({ key, unit_keys: units_, topic_keys: ['room_amenities'], expires_on: null, sort, text });
+  const cards = [card('a1', ['airport-road'], 1, 'مكيف'), card('a2', ['airport-road'], 2, 'تلفاز'), card('a3', ['airport-road'], 3, 'مايكرويف'), card('a4', ['airport-road'], 4, 'غلاية'),
+    card('a5', ['airport-road'], 5, 'مجفف شعر'), card('bath', ['airport-road', 'shafa-road', 'social'], 913, 'تتوفر في جميع الغرف مستلزمات الحمام: شامبو، وبلسم'), card('s1', ['shafa-road'], 0, 'شامبو في الشفا')];
+  const plain = rt.retrieve(units, [], cards, 'airport-road', ['room_amenities'], '2026-11-26', 5).map((c) => c.key);
+  const named = rt.retrieve(units, [], cards, 'airport-road', ['room_amenities'], '2026-11-26', 5, null, 'عندكم شامبو؟').map((c) => c.key);
+  check(!plain.includes('bath') && named[0] === 'bath' && named.length === 5 && !named.includes('s1'),
+    'I11 the WhatsApp amenities gap: «عندكم شامبو؟» on Airport Road\'s number reads the shared bathroom card first (the cap kept at 5; another branch\'s own card never jumps ahead)');
+  check((sql.match(/v_words text\[\] := internal\.hub_guest_words\(p_text\);/g) ?? []).length === 2 && (sql.match(/order by word_first, rank_unit, words desc/g) ?? []).length === 2
+    && /drop function if exists public\.hub_knowledge_for\(text, text\[\], text, text\);/.test(sql) && /grant execute on function public\.hub_knowledge_for\(text, text\[\], text, text, text\)/.test(sql),
+    'I12 both knowledge reads rank by the guest\'s words (p_text), the old signatures dropped, the grants kept to the service role');
+  const eng = read('supabase/functions/_shared/hub/engine.ts');
+  check(/deps\.knowledge\(unit\.key, a\.topics\.length \? a\.topics : \[\], L, [^\n]+, texts\.join\(' '\)\)/.test(eng) && /p_text: words \?\? null/.test(agent),
+    'I13 the engine hands the guest\'s words to the knowledge read');
+  check(/IN_THREAD: yes \| no/.test(read('docs/guest-hub/prompts.md')) && /IN_THREAD: \$\{inThread \? 'yes' : 'no'\}/.test(read('supabase/functions/_shared/hub/comments.ts')),
+    'I14 the classifier\'s user message carries IN_THREAD (prompts.md §11 = comments.ts)');
 }
 
 if (fails.length) {

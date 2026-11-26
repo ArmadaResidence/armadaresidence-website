@@ -595,9 +595,9 @@ Deno.serve(async (req) => {
         load: async (m) => (m?.inline?.bytes ? { bytes: m.inline.bytes as Uint8Array, mime: String(m.inline.mime) } : null),
         transcribe,
       },
-      knowledge: async (u, t, L, b) => {
+      knowledge: async (u, t, L, b, w) => {
         const k = await rpc<any>(cards.length ? 'hub_knowledge_for_eval' : 'hub_knowledge_for',
-          cards.length ? { p_unit: u, p_topics: t, p_language: L, p_branch: b, p_cards: cards } : { p_unit: u, p_topics: t, p_language: L, p_branch: b }, null);
+          cards.length ? { p_unit: u, p_topics: t, p_language: L, p_branch: b, p_cards: cards, p_text: w ?? null } : { p_unit: u, p_topics: t, p_language: L, p_branch: b, p_text: w ?? null }, null);
         const v = k.ok ? k.data : { cards: [], faq: [] };
         read.push({ cards: v?.cards ?? [], faq: v?.faq ?? [] });
         return v;
