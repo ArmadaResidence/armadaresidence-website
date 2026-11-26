@@ -4623,4 +4623,26 @@ Decided by Ahmed on 26 Nov 2026 (the S3 brief):
 - Migration `20261126800000_guest_hub_s3` (`scripts/hub-s3-migration.mjs`); checks `hub-social-check` block J (FAST), SQL
   `supabase/tests/guest_hub_s3.sql` (the S2a routing checks moved there; the comments test's reception check reversed);
   lab items s3-01 … s3-04 on «السوشيال» (engine mark e24).
+- **Released (26 Nov 2026):** branch `s3-social-routing`, server checks green (every SQL file, `guest_hub_s3.sql` 34 / 34),
+  the dry run listed only S3, then only S3b; applied `20261126800000_guest_hub_s3` and `20261126900000_guest_hub_s3b`
+  (s3-02 corrected: 2–4 rooms collect the details first — 15 Nov rule — then the social team). Production read after the
+  apply: the social team = the system admin with his number of «التقارير»; no open both-branches hand-off; no social
+  conversation waiting; both comment switches OFF; the audience «حسابات التجربة فقط»; «السوشيال» still «يرد تلقائيًا في
+  المواضيع المفعّلة» (no mode, licence or switch touched). Functions through `fn-release.mjs`: **hub-agent 49 → 50, hub-admin
+  50 → 51, wa-automation 37 → 38, social-inbound 10 → 11** (rollback of all four: `node scripts/fn-release.mjs --rollback
+  bcb344b hub-agent hub-admin wa-automation social-inbound`); the dashboard deployed from the branch (admin run green).
+- **The lab (spend USD 0.16 of the 3 approved for the session):** the production lab refused a full «السوشيال» run — today's
+  lab cap was reached by the morning's branch labs (`would_pass_cap`; not touched). The targeted cases ran locally with the
+  real engine instead (`hub-bank-run.mjs --only s3-01,s3-02,s3-03,s3-04,s1-05`, USD 0.151, then s3-02 again after its fix,
+  USD 0.012): **5 / 5** — the change of a booking, three rooms (after the details), the cancellation in English and the
+  complaint name «فريقنا» / "our team", never reception; the booking summary ends «… ويصلك التأكيد على واتساب على رقمك.».
+  The full «السوشيال» lab (32 items, about USD 0.55–0.75) waits for the next day's cap — it is also step 3 of the publish-day
+  runbook.
+- **The App Review package** (`docs/guest-hub/app-review/`): `review-items.md` (the 13 items from Meta's pages, read 26 Nov:
+  one recording per item, no audio, the use texts and reviewer instructions, two permissions to decide — `business_management`,
+  `ads_read`), `screencasts.md` (three videos), `submission-prompt.md` (Claude in Chrome, stops before «Submit», never a
+  secret), `publish-day-runbook.md`, `privacy-draft.md` (one paragraph, for Ahmed — it reverses the 13 Nov «nothing new on
+  /policies/»), `app-icon-1024.png`. Meta's open contradiction: own-business apps «App Review not required» vs Standard Access
+  reaching only role holders — read as «Advanced Access needed for real guests». Meta's Messenger policy asks automated chats
+  to disclose automation **where the law requires it**: a legal question for the company's advisor against S2.
 

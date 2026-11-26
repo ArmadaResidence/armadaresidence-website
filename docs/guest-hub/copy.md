@@ -573,7 +573,7 @@ third-language line in English only ("We can help you in Arabic or English, and 
 | The alert of a hand-off with no branch (S2a, any social hand-off) | {{1}} «أرمادا ريزيدنس — الفرعان (لم يُحدَّد الفرع بعد)» |
 | Tours | «التعليقات» (inbox) · «الرد على تعليق» · «التعليقات» («إعدادات المساعد») — texts in `admin/src/lib/tours.ts` |
 
-## 11. Every text added in S1–S2 (for Ahmed's review, 26 Nov 2026)
+## 11. Every text added in S1–S3 (for Ahmed's review, 26 Nov 2026)
 
 Nothing below was changed by this listing; approved texts are marked so.
 
@@ -595,8 +595,16 @@ Nothing below was changed by this listing; approved texts are marked so.
 | S2 | the public replies (10 pairs) | §10.1 | §10.1 | **Ahmed's, 21 Nov 2026** (in force since S2e) |
 | S2e | the private message | the assistant's answer · §5 `complaint` · §5 `third_language` (English only) | the same | approved texts reused |
 | S2e | «السوشيال» → «جمهور كل قناة», the new reasons and errors, «المحادثات حسب القناة», the alert {{5}} of a question | §10.2 | — | for review |
+| S3 | guest — «السوشيال», the hand-off and booking-request lines (11 social twins) | §4.7 | §4.7 | for review |
+| S3 | the staff alert {{1}} of a social hand-off | «أرمادا ريزيدنس — السوشيال» (with « (طريق المطار)» / « (طريق الشفا)» when the guest named a branch) | — | for review |
+| S3 | the staff alert {{5}} of a comment for review | «تعليق على انستجرام يحتاج مراجعة» / «تعليق على فيسبوك يحتاج مراجعة» | — | for review |
+| S3 | «إعدادات المساعد» → «السوشيال» → «فريق السوشيال» | heading «فريق السوشيال» · note «تصلهم كل تحويلات انستجرام وماسنجر والتعليقات: تنبيه واتساب على رقمهم في «التقارير» وإيميل على بريد الدخول. لا يصل الاستقبال شيء منها؛ طلب الحجز وحده يصل استقبال الفرع الذي اختاره الضيف.» · «تنبيه واتساب وإيميل» / «إيميل فقط: لا رقم له في «التقارير»» · «لا أحد في الفريق: تصل الإيميلات لمدير النظام ولا يصل تنبيه واتساب.» · «تعديل الفريق» · dialog «فريق السوشيال» / «من أعضاء وحدة «السوشيال»، بلا حسابات الاستقبال.» / «(لا رقم في «التقارير»)» / «حفظ الفريق» · toast «حُفظ فريق السوشيال.» · errors «يغيّر فريق السوشيال مدير النظام فقط.» / «اختر عضوًا واحدًا على الأقل.» / «كل عضو يجب أن يكون من فريق وحدة «السوشيال» وليس حساب استقبال.» / «لا تغيير.» | — | for review |
+| S3 | «جمهور الردود» → «حسابات التجربة فقط» (its note) | «يرد المساعد على حسابات التجربة وحدها؛ رسائل غيرها وتعليقاتها تُسجَّل فقط: بلا رد ولا تنبيه ولا إيميل، ويرد عليها فريق السوشيال من Meta Business Suite.» | — | for review |
+| S3 | «المحادثات» — state and timeline | «تسجيل فقط» · «تسجيل فقط (حساب ليس حساب تجربة)» · «سمح الجمهور برد المساعد» | — | for review |
+| S3 | every dashboard request | «تعذّر قراءة جلسة الدخول خلال 10 ثوانٍ، فلم يُرسل الطلب ولم يُحفظ شيء. أعد تحميل الصفحة ثم حاول مرة أخرى.» | — | for review |
+| S3 | /policies/ — a paragraph on WhatsApp, Instagram, Messenger and comments | `docs/guest-hub/app-review/privacy-draft.md` | the same | **draft, not on the site** |
 
 The toast «لم نجد الصفحة في مفتاح مستخدم النظام.» already reads «لم نجد» in the source and in the live dashboard bundle (read
 26 Nov 2026) — no change was needed. Searched again on 26 Nov 2026 after Ahmed's screenshot of 25 Nov 20:35 showing «لم تجد…»:
 no «لم تجد الصفحة» in any Edge Function, the dashboard's source, its git history (the toast reads «لم نجد» since its first
-commit, e0f4352) or the live bundle; the functions answer the code `hub_meta_page` and the dashboard writes the sentence.
+commit, e0f4352) or the live bundle; the functions answer the code `hub_meta_page` and the dashboard writes the sentence. Read a third time in S3 (26 Nov 2026, the dashboard bundle deployed at 13:31 UTC): «لم نجد…» — nothing to fix.
