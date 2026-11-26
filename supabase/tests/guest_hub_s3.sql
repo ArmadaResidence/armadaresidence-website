@@ -77,8 +77,8 @@ insert into public.hub_unit_members (unit_id, staff_id) values (pg_temp._id('uni
 insert into public.hub_unit_members (unit_id, staff_id) select u.id, pg_temp._id('recA') from public.hub_units u where u.key = 'airport-road' on conflict do nothing;
 insert into public.hub_unit_members (unit_id, staff_id) select u.id, pg_temp._id('recS') from public.hub_units u where u.key = 'shafa-road' on conflict do nothing;
 insert into public.hub_staff_slots (branch_slug, position, name, phone, role, days, start_time, end_time, active, test_as_guest, consent_at) values
-  ('airport-road', 5, 'QA S3 desk A', '+15551199501', 'staff', '{0,1,2,3,4,5,6}', '00:00', '00:00', true, false, now()),
-  ('shafa-road', 5, 'QA S3 desk S', '+15551199502', 'staff', '{0,1,2,3,4,5,6}', '00:00', '00:00', true, false, now())
+  ('airport-road', 5, 'QA S3 desk A', '+15551199501', 'staff', '{0,1,2,3,4,5,6}', '00:00', '23:59', true, false, now()),
+  ('shafa-road', 5, 'QA S3 desk S', '+15551199502', 'staff', '{0,1,2,3,4,5,6}', '00:00', '23:59', true, false, now())
 on conflict do nothing;
 insert into public.hub_report_recipients (position, name, phone, staff_user_id, active, consent_at)
 values (3, 'QA S3 admin', '+15551199503', pg_temp._id('admin'), true, now()) on conflict do nothing;
