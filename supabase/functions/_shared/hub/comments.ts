@@ -88,6 +88,27 @@ export function parseComments(body: Json): CommentEvent[] {
   return out;
 }
 
+/** S2 (26 Nov 2026, Meta's dashboard test webhook): the comment changes parseComments could not read — each as
+ *  «<kind>:<reason>» (ids — a malformed or dummy comment / account id, e.g. Meta's sample with account «0»), never a word
+ *  or an id, so a dropped comment is never silent in the log */
+export function unreadComments(body: Json): string[] {
+  const object = body?.object;
+  if (object !== 'page' && object !== 'instagram') return [];
+  const out: string[] = [];
+  for (const entry of Array.isArray(body?.entry) ? body.entry : []) {
+    const account = String(entry?.id ?? '');
+    for (const ch of Array.isArray(entry?.changes) ? entry.changes : []) {
+      const v = ch?.value ?? {};
+      if (object === 'instagram' && (ch?.field === 'comments' || ch?.field === 'live_comments')) {
+        if (!ID.test(String(v.id ?? v.comment_id ?? '')) || !ID.test(account)) out.push('instagram:ids');
+      } else if (object === 'page' && ch?.field === 'feed' && v.item === 'comment') {
+        if (!ID.test(String(v.comment_id ?? '')) || !ID.test(account)) out.push('facebook:ids');
+      }
+    }
+  }
+  return out;
+}
+
 /** the code rules, before any model call (the database applies the ones that need a row: a thread a staff member answered
  *  — «staff_thread» —, a duplicate): our own comment, older than 7 days, a live video. S2e (SOCIAL-SPEC §5.1 and §5.4,
  *  Ahmed's approved sections of 21 Nov 2026): a reply inside a thread is NOT skipped by code — only a thread a staff member

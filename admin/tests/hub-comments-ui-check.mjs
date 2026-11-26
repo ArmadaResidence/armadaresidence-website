@@ -101,6 +101,7 @@ for (const role of ['admin', 'management']) {
       let ready = false;
       let on = false;
       let refuseNext = false;
+      let hang = false;
       const ctx = await browser.newContext({ viewport: { width: w, height: h }, locale: 'ar-SA', colorScheme: scheme });
       await ctx.route(`${STUB}/**`, async (r) => {
         const u = r.request().url();
@@ -134,6 +135,7 @@ for (const role of ['admin', 'management']) {
         if (fn === 'hub_data_deletions_list') return ok([]);
         if (fn === 'hub_comment_settings') return ok({ ...SETTINGS(ready, on), system_admin: sys });
         if (fn === 'hub_channel_audience_set') return ok({ ok: true, batch_id: id(903), before: null });
+        if (fn === 'hub_comment_switch_set' && hang) return new Promise(() => {}); // S2: a request that never answers
         if (fn === 'hub_comment_switch_set') {
           const before = { comments: on, private: false };
           on = body.p_comments;
@@ -227,6 +229,17 @@ for (const role of ['admin', 'management']) {
       } else {
         check(await page.locator('[data-channel-audience-select]').count() === 0 || await page.locator('[data-channel-audience-select="instagram"]').isDisabled(),
           `${tag}: anyone else cannot change a channel's audience`);
+      }
+      // S2 (26 Nov 2026, Ahmed: a press must never be silent): a switch request with no answer → the error after 20 s
+      if (sys && w === 1440 && scheme === 'light') {
+        hang = true;
+        await page.locator('[data-comment-channel="messenger"] [data-action="comments-switch"]').click();
+        await page.waitForTimeout(21_500);
+        const body = await page.locator('body').innerText();
+        check(/لم يصل رد من الخادم خلال 20 ثانية/.test(body) && await page.locator('[data-comment-channel="messenger"] [data-action="comments-switch"]').isEnabled(),
+          `${tag}: a switch request with no answer shows «لم يصل رد من الخادم…» after 20 s and frees the button`);
+        hang = false;
+        check(await page.locator('[data-private-note]').count() === 1, `${tag}: «الرسائل الخاصة» says it needs «التعليقات» first`);
       }
       // A3 (S2a): «حسابات التجربة» — every row's button keeps its place beside the name (the Instagram row wrapped under it at 375)
       if (sys) {

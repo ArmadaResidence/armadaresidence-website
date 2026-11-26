@@ -5,6 +5,15 @@
 
 export const CONNECTION = 'تعذّر الاتصال بالخادم — تحقق من الشبكة وأعد المحاولة.';
 export const SESSION_ENDED = 'انتهت الجلسة، سجّل الدخول مرة أخرى';
+/** S2 (26 Nov 2026, Ahmed: a press that never reached the server must never be silent): an action with no answer */
+export const NO_ANSWER = 'لم يصل رد من الخادم خلال 20 ثانية، ولم يُحفظ شيء. أعد تحميل الصفحة ثم حاول مرة أخرى.';
+/** an action's call, bounded: no answer in `ms` → the NO_ANSWER error (the screen says it; the call is never retried) */
+export function withTimeout<T>(p: Promise<T>, ms = 20_000): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const t = setTimeout(() => reject(new Error(NO_ANSWER)), ms);
+    p.then((v) => { clearTimeout(t); resolve(v); }, (e) => { clearTimeout(t); reject(e); });
+  });
+}
 export const GENERIC = 'تعذّر إكمال العملية، أعد المحاولة. إن تكرر الخطأ فتواصل مع مدير النظام.';
 const INVALID = 'القيمة غير صالحة.';
 

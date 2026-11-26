@@ -21,7 +21,7 @@ import { hubDataDeleteMail } from '../booking-request/email.ts';
 import { downloadAttachment, isDataDelete, pageToken, parseWebhook, safeEqual, sendHub, userProfile, verifyChallenge, verifySignature, type MetaEvent } from '../_shared/hub/meta.ts';
 import { MEDIA_MAX_BYTES, mediaExt } from '../_shared/hub/webhook.ts';
 import { fixed } from '../_shared/hub/copy.ts';
-import { codeSkip, parseComments, type CommentEvent } from '../_shared/hub/comments.ts';
+import { codeSkip, parseComments, unreadComments, type CommentEvent } from '../_shared/hub/comments.ts';
 
 const ALERT_FROM = 'لوحة أرمادا ريزيدنس <no-reply@armadaresidence.com>';
 const url = () => Deno.env.get('SUPABASE_URL') ?? '';
@@ -225,6 +225,8 @@ async function handleComment(e: CommentEvent, test: boolean): Promise<Record<str
 
 async function handle(body: J, test: boolean): Promise<Record<string, unknown>[]> {
   const out: Record<string, unknown>[] = [];
+  // S2: a comment change that could not be read is logged by its reason only (Meta's sample has a dummy account id)
+  for (const why of unreadComments(body)) console.log('social-inbound: comment not read', why, test ? 'TEST' : '');
   for (const c of parseComments(body)) {
     try {
       out.push(await handleComment(c, test));

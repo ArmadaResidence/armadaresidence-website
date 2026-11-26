@@ -400,6 +400,12 @@ const check = (ok, what) => {
   check(/step: `app:\$\{object\}:comments`/.test(adm) && /PAGE_COMMENT_FIELDS = \['feed'\]/.test(adm) && /IG_COMMENT_FIELDS = \['comments'\]/.test(adm)
     && adm.indexOf("if (!steps.every((s) => s.ok)) return json(req, 200, { ok: false, error: 'hub_meta_subscribe', steps });") < adm.indexOf('app:${object}:comments')
     && /const g = publicGuard\(text\);/.test(adm), 'H23 hub-admin: the comment subscriptions after the messaging ones (their own steps); a staff public reply through the guard');
+  {
+    // S2 (26 Nov 2026, Meta's dashboard test webhook): its sample (account «0») is dropped, but never silently
+    const igSample = { object: 'instagram', entry: [{ id: '0', time: 1, changes: [{ field: 'comments', value: { from: { id: '232323232', username: 'test' }, media: { id: '123123123' }, id: '17865799348089039', text: 'This is an example.' } }] }] };
+    check(cm.parseComments(igSample).length === 0 && JSON.stringify(cm.unreadComments(igSample)) === '["instagram:ids"]' && cm.unreadComments(ig).length === 0
+      && /comment not read', why/.test(read('supabase/functions/social-inbound/index.ts')), 'H31 a comment change that cannot be read is logged by its reason only (the Meta sample with account «0»)');
+  }
   // S2 (26 Nov 2026, Ahmed): the app-level comment fields are READ BACK — a step is ✓ only when Meta lists the field
   {
     const fnSrc = adm.slice(adm.indexOf('export function appFieldsListed'), adm.indexOf('async function metaSetup'));

@@ -12,6 +12,7 @@ import * as api from '../lib/api';
 import { riyadhDateTime, west } from '../lib/format';
 import { Confirm, ErrorBox, Loading, Spinner, useToast } from '../components/ui';
 import { channelLabel, dataDelete, sendError } from '../lib/inbox';
+import { withTimeout } from '../lib/errors';
 import { KIND_LABELS, commentSettings, setSwitches, type CommentSettings } from '../lib/comments';
 
 type SocialMode = 'test' | 'live' | 'standby';
@@ -42,7 +43,8 @@ const SETUP_STEPS: Record<string, string> = {
 };
 
 async function rpc<T>(fn: string, args: Record<string, unknown> = {}): Promise<T> {
-  const { data, error } = await supabase.rpc(fn, args);
+  // S2 (26 Nov 2026): never a silent press — no answer in 20 s is an error on the screen
+  const { data, error } = await withTimeout(Promise.resolve(supabase.rpc(fn, args)));
   if (error) throw new Error(sendError(/^(hub_[a-z_]+)/.exec(error.message)?.[1] ?? error.message));
   return data as T;
 }
@@ -140,7 +142,7 @@ export function SocialPanel() {
     if (!ask) return;
     setBusy('del');
     try {
-      const r = await dataDelete(ask.profile_id);
+      const r = await withTimeout(dataDelete(ask.profile_id));
       if (!r.ok) toast(sendError(r.error), 'error');
       else {
         toast(r.notified && r.notified !== 'failed' ? 'حُذفت بيانات المحادثات وأُبلغ الضيف.' : 'حُذفت بيانات المحادثات.');
@@ -301,8 +303,8 @@ function CommentSwitches() {
   useEffect(() => void load(), [load]);
   if (err) return <ErrorBox error={err} />;
   if (!s) return null;
-  async function flip(id: string, comments: boolean, priv: boolean, label: string) {
-    setBusy(id);
+  async function flip(id: string, comments: boolean, priv: boolean, label: string, which: 'c' | 'p' = 'c') {
+    setBusy(which === 'p' ? `${id}:p` : id);
     try {
       const r = await setSwitches(id, comments, priv);
       toast.undo(label, async () => {
@@ -335,8 +337,9 @@ function CommentSwitches() {
                     {busy === c.id && <Spinner />} {c.comments_on ? '✓ التعليقات' : 'التعليقات'}
                   </button>
                   <button type="button" className="btn btn-ghost btn-sm whitespace-nowrap" aria-pressed={c.private_on} disabled={!!busy || !c.comments_on} data-action="private-switch"
-                    onClick={() => void flip(c.id, c.comments_on, !c.private_on, c.private_on ? 'أُوقفت الرسائل الخاصة للمعلّقين.' : 'شُغّلت الرسائل الخاصة للمعلّقين.')}>
-                    {c.private_on ? '✓ الرسائل الخاصة' : 'الرسائل الخاصة'}
+                    title={!c.comments_on ? 'شغّل «التعليقات» أولًا لهذا الحساب.' : undefined}
+                    onClick={() => void flip(c.id, c.comments_on, !c.private_on, c.private_on ? 'أُوقفت الرسائل الخاصة للمعلّقين.' : 'شُغّلت الرسائل الخاصة للمعلّقين.', 'p')}>
+                    {busy === `${c.id}:p` && <Spinner />} {c.private_on ? '✓ الرسائل الخاصة' : 'الرسائل الخاصة'}
                   </button>
                 </>
               ) : (
@@ -346,6 +349,9 @@ function CommentSwitches() {
           </li>
         ))}
       </ul>
+      {s.system_admin && s.channels.some((c) => !c.comments_on) && (
+        <p className="text-xs text-ink-muted" data-private-note>«الرسائل الخاصة» تعمل بعد تشغيل «التعليقات» للحساب نفسه.</p>
+      )}
     </section>
   );
 }

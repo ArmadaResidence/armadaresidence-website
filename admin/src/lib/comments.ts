@@ -2,6 +2,7 @@
 // «المحادثات» → «التعليقات», the switches in «إعدادات المساعد» → «السوشيال» and the counts in «التقارير».
 // Every label is staff-facing Arabic (copy.md §6); the comments' own words are shown as written (dir="auto").
 import { supabase } from './supabase';
+import { withTimeout } from './errors';
 import * as api from './api';
 
 export type CommentState = 'new' | 'processing' | 'replied' | 'handed_off' | 'skipped' | 'review' | 'test' | 'failed';
@@ -69,7 +70,8 @@ export const COMMENT_ERRORS: Record<string, string> = {
 export const commentError = (code: string | null | undefined) => (code ? COMMENT_ERRORS[code] ?? (code.startsWith('guard_') ? COMMENT_ERRORS.hub_comment_guard : `تعذّر الرد (${code}).`) : 'تعذّر الرد.');
 
 async function rpc<T>(fn: string, args: Record<string, unknown> = {}): Promise<T> {
-  const { data, error } = await supabase.rpc(fn, args);
+  // S2: never a silent press — no answer in 20 s is an error on the screen
+  const { data, error } = await withTimeout(Promise.resolve(supabase.rpc(fn, args)));
   if (error) throw new Error(commentError(/^(hub_[a-z_]+|not allowed)/.exec(error.message)?.[1] ?? error.message));
   return data as T;
 }
