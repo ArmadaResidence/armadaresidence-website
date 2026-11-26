@@ -180,6 +180,11 @@ check(/if \(body\.suggestion === true && typeof body\.body === 'string'\) \{[\s\
     check(readFileSync(new URL(`../${s2f.OUT_PATH}`, import.meta.url), 'utf8').replace(/\r\n/g, '\n') === s2f.migration()
       && JSON.stringify(bank.map((b) => [b.id, b.messages, b.expect])) === JSON.stringify(s2f.NEW_ITEMS.map((i) => [i.key, i.messages, i.expect]))
       && !/update public\.|delete from/.test(s2f.migration()), 'S2f: the migration = its generator, its two lab cases = the bank file, no UPDATE or DELETE');
+    const s2g = await import('./hub-s2g-migration.mjs');
+    const g2 = s2g.migration();
+    check(readFileSync(new URL(`../${s2g.OUT_PATH}`, import.meta.url), 'utf8').replace(/\r\n/g, '\n') === g2 && (g2.match(/update public\./g) ?? []).length === 1
+      && /where key = 'h11-19' and known_gap_at is null;/.test(g2) && !/assistant_mode|hub_licences|delete from/.test(g2) && s2g.REASON.length <= 300,
+      'S2g: h11-19 marked «فجوة معروفة» by one UPDATE with its WHERE, its reason ≤ 300, no mode or licence touched');
   }
   check(guard('هل معكم أطفال؟', P, O).reasons.includes('plural_address'), 'the plural «معكم» is refused');
 }
