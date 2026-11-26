@@ -1,6 +1,6 @@
 # Privacy paragraph for Instagram, Messenger and comments — DRAFT for Ahmed's approval (S3, 26 Nov 2026)
 
-**Status: a draft. Nothing here is on the site.** The /policies/ page has no line on social messages today (its «الخصوصية»
+**Status: approved by Ahmed on 26 Nov 2026 and live on /policies/ (`policies.json → sections[messaging]`, after «عضوية إياب والتسويق»; DECISIONS.md «Guest Hub S3c»). The text below is the approved one.** The /policies/ page has no line on social messages today (its «الخصوصية»
 section covers booking requests, partner enquiries and the site's measurement tools only). Meta's App Review reads the
 privacy policy URL of the app, so a reviewer looking for Instagram / Messenger messages and comments finds nothing.
 

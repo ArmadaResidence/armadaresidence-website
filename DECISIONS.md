@@ -4676,3 +4676,32 @@ Decided by Ahmed on 26 Nov 2026 (the S3 brief):
   `admin/src/app.tsx` (Windows ignores the case, the Linux runner does not); fixed. The full «السوشيال» lab runs tomorrow when
   the daily cap resets (Ahmed).
 
+## 2026-11-26 — Guest Hub S3c: the app icon, the privacy section, the purge it promises, Ahmed's final social lines (Ahmed, 26 Nov 2026)
+
+- **The app icon is approved as it is** (`docs/guest-hub/app-review/app-icon-1024.png`: the brand symbol in Armada Bronze on
+  Armada Midnight, 1024 × 1024). It is **outside the brand guide on purpose** — guests never see it (only Meta's app
+  dashboard and review do); it is no precedent for any guest-facing asset.
+- **The privacy section is approved for /policies/ and /en/policies/** («المراسلة عبر واتساب وانستجرام وماسنجر والتعليقات» /
+  "Messaging us on WhatsApp, Instagram and Messenger, and comments", `content/policies.json → page.sections[messaging]`, after
+  «عضوية إياب والتسويق»). **It updates Ahmed's 13 Nov 2026 «no change to the policies page» for this one section only, because
+  Meta requires it.** The page's «تاريخ آخر تحديث» / "Last updated" is 26 November 2026.
+- **Its preconditions, checked before it went live:**
+  - (a) **Retention:** the purge already ran on production — `public.hub_retention()` (message texts, translations and
+    transcripts after `hub_retention_months` = 12; photos and voice messages marked after `hub_media_retention_days` = 90 and
+    deleted from `hub-media` by wa-automation `hub-media-purge`; one audit row of counts) and `internal.hub_comments_retention()`
+    (comments after 12 months) — but **monthly** (the 1st), so a text could stay up to 13 months and a photo about 120 days.
+    Migration `20261126950000_guest_hub_s3c` runs both **every day** (02:37 and 03:23 UTC) and audits the comments' purge with
+    counts only; tested (`guest_hub_s3.sql` G1–G3), applied, the schedules read back on production.
+  - (b) **«احذف بياناتي» on WhatsApp and "Delete my data" everywhere:** the same router decides on every WhatsApp number
+    (`webhook.ts → route`, before the opt-out words; the acknowledgement goes from the number the guest wrote to) and on
+    Instagram / Messenger (`social-inbound`); `isDataDelete` accepts «احذف بياناتي», «أبغى أحذف بياناتي», «امسحوا بياناتي»,
+    "Delete my data", "Please delete my data", "DELETE MY DATA", "Can you delete my data?" (read 26 Nov 2026); the database
+    side ran on production in a rolled-back transaction: the request created once, the second one answered «open», the admins'
+    email recipients found. **Never exercised by a real WhatsApp guest yet** (the one request so far came on Instagram); a staff
+    or management number never reaches it (the colleague chat comes first). A live test from the «أرقام التجربة» number on each
+    branch number is offered to Ahmed.
+  - (c) the last-updated date — done.
+- **The 11 social lines are Ahmed's final versions** (copy.md §4.7), live in hub-agent 51 and hub-admin 52 (rollback
+  `node scripts/fn-release.mjs --rollback eaf0de0 hub-agent hub-admin`).
+- «الجهة المشغّلة»'s two «المحتوى والظهور» fields moved from section 10 to 11 with their anchor (the new section is 9).
+
