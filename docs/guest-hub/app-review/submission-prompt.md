@@ -2,7 +2,7 @@
 
 Ahmed pastes the block below into Claude in Chrome, in his own Chrome, signed in to developers.facebook.com himself. The agent
 fills the forms and uploads the videos, and **stops before the final Submit**. Before pasting: the three videos are recorded
-(`screencasts.md`), the §3 decision of `review-items.md` is made, and the privacy paragraph is live or deliberately left out.
+(`screencasts.md`), the app is already published (`publish-prompt.md`), and the privacy paragraph is live.
 
 ```text
 You are helping Ahmed (Marketing Manager, Armada Residence) prepare a Meta App Review submission in his own Chrome. Reply to
@@ -24,12 +24,13 @@ THE APP: "Armada Guest Hub", App ID 2403025080470166, at https://developers.face
 STEP 1 — Settings → Basic. Check (do not change anything without asking Ahmed first) and report in Arabic what is there for:
 App icon, Privacy Policy URL (expected https://armadaresidence.com/policies/), Terms of Service URL, User Data Deletion
 (expected Data Deletion Instructions URL https://armadaresidence.com/data-deletion/), Category, Contact email, App Purpose.
-If the icon is missing, ask Ahmed for the file "app-icon-1024.png" and upload it there. Ask Ahmed before filling any empty field.
+Expected also: Category "Business and pages", Contact email marketing@armadaresidence.com. If the icon is missing, ask Ahmed for
+the file "app-icon-1024.png" and upload it there. Ask Ahmed before filling any empty field.
 
 STEP 2 — App Review → Permissions and Features. For each item in this list that Ahmed confirms (ask him once, listing them):
 pages_messaging, instagram_manage_messages, instagram_basic, pages_manage_metadata, pages_read_engagement, pages_show_list,
 instagram_manage_comments, pages_manage_engagement, pages_read_user_content, Human Agent (feature), Business Asset User
-Profile Access (feature) — and business_management and ads_read ONLY if Ahmed says to keep them —
+Profile Access (feature) — and ads_read ONLY if Ahmed says to keep it (business_management is NOT requested) —
 click "Request advanced access" (or "Request") and add it to the submission.
 
 STEP 3 — For each item, fill "Tell us how your app uses this permission/feature" with: the COMMON CONTEXT, a blank line, then
@@ -69,8 +70,6 @@ postbacks, echoes, deliveries, reads, and the Page feed for comments).
 information and the posts our guests comment on (the post's link and picture are shown next to the comment for our staff).
 - pages_show_list: A dependency of pages_messaging and pages_manage_metadata: we list the Pages our system user manages to read
 our own Page's access token.
-- business_management (only if kept): Our system user accesses our own business's Page and Instagram account through Business
-Manager; this permission lets the system user's token reach those assets.
 - instagram_manage_comments: Guests ask questions in comments under our posts and ads. We receive new comments on our own
 Instagram account, classify them, and: answer a question with ONE private reply (prices only for the guest's dates) and one
 short approved public reply with no prices; apologise publicly to a complaint and hand it to our team; thank praise; list spam

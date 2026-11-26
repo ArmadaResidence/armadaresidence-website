@@ -542,7 +542,7 @@ const check = (ok, what) => {
   const v = alertVars({ token: 't', branch_name: 'طريق المطار', guest_name: null, guest_phone: null, ref: null, summary: null, reason: 'handoff', channel_kind: 'instagram', social: true, social_branch_name: null });
   const v2 = alertVars({ token: 't', branch_name: 'طريق المطار', guest_name: null, guest_phone: null, ref: null, summary: null, reason: 'handoff', channel_kind: 'instagram', social: true, social_branch_name: 'طريق الشفا' });
   check(v[0] === SOCIAL_NAME && v2[0] === `${SOCIAL_NAME} (طريق الشفا)` && v[2] === 'حساب انستجرام', 'J13 the social team\'s alert {{1}} names «السوشيال» (the branch in brackets when known)');
-  const app = read('admin/src/App.tsx');
+  const app = read('admin/src/app.tsx');
   check(/r\.booking_ref\) navigate\(`\/bookings\?ref=\$\{encodeURIComponent\(r\.booking_ref\)\}`/.test(app) && /'booking_ref', v_ref/.test(sql),
     'J14 S9: the booking request\'s alert opens the booking (?ref=) for the chosen branch\'s reception');
   const soc = read('admin/src/pages/AssistantSocial.tsx');

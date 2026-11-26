@@ -39,7 +39,7 @@ Everything below was read on Meta's own pages on 26 Nov 2026 (sources in §7). A
 | 4 | `pages_manage_metadata` | permission | subscribe the Page to the webhooks | yes | yes — subscribing (our «ربط الصفحة وحساب انستجرام») | 3 |
 | 5 | `pages_read_engagement` | permission | dependency of 2; the comment webhooks | yes | yes — Page content read and shown in the app | 1, 2 |
 | 6 | `pages_show_list` | permission | list the Page to read its token | yes | yes — the Page listed (as a dependency: name the main permission) | 3 |
-| 7 | `business_management` | permission | the system user's access to the business's assets | yes | yes — Meta's listed steps describe ads performance; nothing ties it to messaging (see §3) | 3 |
+| 7 | ~~`business_management`~~ | — | **dropped (Ahmed, 26 Nov 2026)** — not requested | — | — | — |
 | 8 | `instagram_manage_comments` | permission | Instagram comments: the webhook, the public reply, the private reply | yes; `comments` notifications need Advanced Access | yes — Meta's page copies the content-publishing steps by mistake; show the comment handled end to end | 2 |
 | 9 | `pages_manage_engagement` | permission | the public reply on a Facebook Page comment | yes | yes — a comment published and shown on the Page | 2 |
 | 10 | `pages_read_user_content` | permission | read comments on the Page | yes | yes — a user comment read and shown in the app | 2 |
@@ -52,15 +52,11 @@ Whether the `HUMAN_AGENT` tag can be sent at all before approval (for the record
 reference says a feature works for role holders without approval — so the recording can be made in Development mode with
 Ahmed's test accounts (the Send API page that would confirm it did not render: **UNCONFIRMED**).
 
-## 3. Two permissions to decide (Ahmed)
+## 3. The two permissions — Ahmed's decisions (26 Nov 2026)
 
-- **`business_management`** — S1 added it because Meta names it as a dependency of `pages_messaging` / `pages_show_list` for
-  apps of one's own business; Meta's permission page itself ties it to ads and asset management only. **Proposal:** test once
-  without it (remove it from the system user's token, read `/me/accounts`, send one DM reply). If both still work, do not
-  request it.
-- **`ads_read`** — S2 added it for comment replies when the Page role comes through Business Manager (our system user), per
-  Meta's Instagram comment-reply reference. Meta's permission page ties it to ad insights only. **Proposal:** keep it only if a
-  public reply to an Instagram comment fails without it in the live test; otherwise do not request it.
+- **`business_management` — dropped** from the review list. It stays on the system user's token as it is today (nothing is
+  changed on Meta); it is simply not requested for Advanced Access.
+- **`ads_read` — see §3a** (kept or dropped by what Meta's current pages say about comments on our own ads).
 
 Every other item is used by the hub today.
 
@@ -125,17 +121,19 @@ Per item («Tell us how your app uses this permission»):
     that the staff member who takes over a conversation can greet the guest by name and recognise a returning guest. We do not
     use it for marketing or share it."
 
-## 5. The order (Ahmed's — never a session's)
+## 5. The order (Ahmed, 26 Nov 2026 — never a session's)
 
-1. Decide §3 (two permissions) and the privacy paragraph (`privacy-draft.md`).
-2. Record Video 1 and Video 3 now (Development mode works for role holders — the DMs, the Human Agent tag as a feature for
-   role holders, the connect step). Prepare a test conversation 1–6 days old for the Human Agent step.
-3. **Video 2 (comments) needs comment webhooks, which an unpublished app does not get** (seen 26 Nov 2026). Two ways, Ahmed's:
-   (a) publish the app first (Live with Standard Access — only role holders' comments arrive; real guests' messages and
-   comments, if any arrive, are only recorded: S10), record Video 2, then submit; or (b) submit the comment permissions with
-   a recording of our dashboard and the Graph API calls instead, and expect questions. (a) is the cleaner recording.
-4. Submit (the Claude in Chrome prompt in `submission-prompt.md` fills the forms and stops before the final «Submit»).
-5. After approval: `publish-day-runbook.md`.
+1. Ahmed approves the privacy paragraph (`privacy-draft.md`) and the icon (`app-icon-1024.png`); the paragraph goes live.
+2. **Done 26 Nov 2026:** the session confirmed on production that messages AND comments from non-test accounts are recorded
+   only (S10 — a rolled-back test: «تسجيل فقط», no turn, no hand-off, no alert, nobody waiting; comments `not_tester` with
+   the switches on, `switch_off` with them off).
+3. **Publish the app** (Live, Standard Access) — Ahmed, with `publish-prompt.md` (Claude in Chrome stops before the final
+   button). The session watches that real messages are recorded only.
+4. Record the three videos (`screencasts.md`): Video 2 (comments) now receives role holders' comments; Ahmed switches
+   «التعليقات» / «الرسائل الخاصة» on for the recording and off after it. Prepare a test conversation 1–6 days old for the
+   Human Agent step.
+5. Submit (`submission-prompt.md` fills the forms and stops before the final «Submit»).
+6. After approval: `publish-day-runbook.md` from its step 2 (the app is already Live).
 
 ## 6. Reviewer access to the dashboard — a proposal for Ahmed's decision
 
@@ -158,19 +156,19 @@ the Page or the Instagram account, and the staff dashboard is shown in the recor
 | App icon 1024 × 1024 | `docs/guest-hub/app-review/app-icon-1024.png` (the brand symbol, Armada Bronze on Armada Midnight; no Meta logo) | ready |
 | Privacy Policy URL | `https://armadaresidence.com/policies/` | live — **no line on social messages yet** (`privacy-draft.md`, for Ahmed's approval) |
 | Data Deletion Instructions URL | `https://armadaresidence.com/data-deletion/` (English `/en/data-deletion/`) | live (S6) |
-| Terms of Service URL (Live mode asks for it) | `https://armadaresidence.com/policies/` | Ahmed to confirm |
-| App Purpose | «Yourself or your own business» | Ahmed to confirm |
-| Category | «Business and Pages» (or «Messaging» if listed) | Ahmed to choose |
-| Contact email | an address Ahmed reads (review notices go there) | Ahmed to choose |
+| Terms of Service URL (Live mode asks for it) | `https://armadaresidence.com/policies/` | ready |
+| App Purpose | «Yourself or your own business» | ready |
+| Category | «Business and pages» (Ahmed, 26 Nov 2026) | decided |
+| Contact email | `marketing@armadaresidence.com` (Ahmed, 26 Nov 2026) | decided |
 | Website URL (Platform → Website) | `https://armadaresidence.com` | ready |
 | Business verification | «Armada Residence» verified | done |
 | Data handling questions (Advanced Access) | data processors, responsible entity (the company in `content/legal.json`), national security requests | Ahmed answers in the form |
 
-Missing today: the privacy paragraph (draft), the contact email and category choice, the §3 decision, the Video 2 order.
+Missing today: the privacy paragraph's approval (draft) and the icon's.
 
-**A policy point for Ahmed:** Meta's Messenger policy says automated chat experiences must disclose that a person is talking
-to an automated service **where the law requires it** (and recommends it everywhere). Our rule S2 is never to say it.
-Whether Saudi law requires it is a legal question for the company's advisor — not settled here.
+**Automation disclosure (Ahmed, 26 Nov 2026):** S2 stays — no statement that replies are automated, in the chats or in the
+submission. Meta's Messenger policy asks for a disclosure **where the law requires it**; Ahmed checks the legal position
+internally. Nothing changes in the code or the submission now.
 
 ## 8. Sources (Meta, read 26 Nov 2026)
 

@@ -14,7 +14,8 @@ report while he does it.
 
 ## The day, in order
 
-1. **Publish the app.** developers.facebook.com → the app → App settings → Basic: the Privacy Policy URL
+1. **Publish the app** — done BEFORE the review since Ahmed's order of 26 Nov 2026 (`publish-prompt.md`); after approval
+   skip to step 2. App settings → Basic: the Privacy Policy URL
    (`https://armadaresidence.com/policies/`), the Data Deletion Instructions URL (`https://armadaresidence.com/data-deletion/`),
    the icon (`app-icon-1024.png`), the category, the contact email → the «Publish» switch at the top (Development → Live).
 2. **Confirm the S10 silence (10 minutes).** From an account that is NOT marked «حساب تجربة» (a family member's, with their
