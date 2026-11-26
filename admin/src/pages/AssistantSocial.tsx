@@ -10,7 +10,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
 import * as api from '../lib/api';
 import { riyadhDateTime, west } from '../lib/format';
-import { Confirm, ErrorBox, Loading, Spinner, useToast } from '../components/ui';
+import { CancelButton, Confirm, ErrorBox, Loading, Modal, Spinner, useToast } from '../components/ui';
 import { channelLabel, dataDelete, sendError } from '../lib/inbox';
 import { withTimeout } from '../lib/errors';
 import { KIND_LABELS, commentSettings, setSwitches, type CommentSettings } from '../lib/comments';
@@ -29,7 +29,7 @@ interface Deletion {
   done_by_name: string | null; cleared: { messages?: number; media?: number }; notified_at: string | null; label: string; is_test: boolean;
 }
 export const SOCIAL_MODES: { value: SocialMode; label: string; note: string }[] = [
-  { value: 'test', label: 'حسابات التجربة فقط', note: 'يرد المساعد على حسابات التجربة وحدها؛ رسائل غيرها تذهب للفريق.' },
+  { value: 'test', label: 'حسابات التجربة فقط', note: 'يرد المساعد على حسابات التجربة وحدها؛ رسائل غيرها وتعليقاتها تُسجَّل فقط: بلا رد ولا تنبيه ولا إيميل، ويرد عليها فريق السوشيال من Meta Business Suite.' },
   { value: 'live', label: 'الكل', note: 'يرد المساعد على كل من يراسل الصفحة أو حساب انستجرام.' },
   { value: 'standby', label: 'الكل مع وضع الاستعداد', note: 'ينتظر المساعد رد الفريق دقائق قبل أن يرد.' },
 ];
@@ -239,6 +239,7 @@ export function SocialPanel() {
         {!admin && <p className="text-xs text-ink-muted">يغيّر هذه الإعدادات مدير النظام فقط.</p>}
       </section>
 
+      <SocialTeam />
       <CommentSwitches />
       <section className="card p-4 grid gap-2" data-social-accounts>
         <h3 className="font-bold">حسابات التجربة</h3>
@@ -352,6 +353,90 @@ function CommentSwitches() {
       {s.system_admin && s.channels.some((c) => !c.comments_on) && (
         <p className="text-xs text-ink-muted" data-private-note>«الرسائل الخاصة» تعمل بعد تشغيل «التعليقات» للحساب نفسه.</p>
       )}
+    </section>
+  );
+}
+
+type TeamMember = { id: string; name: string; has_number: boolean };
+type TeamView = { members: TeamMember[]; candidates: TeamMember[]; system_admin: boolean };
+const teamError = (m: string) =>
+  /hub_system_admin_only/.test(m) ? 'يغيّر فريق السوشيال مدير النظام فقط.' : /hub_social_team_empty/.test(m) ? 'اختر عضوًا واحدًا على الأقل.'
+    : /hub_social_team_member/.test(m) ? 'كل عضو يجب أن يكون من فريق وحدة «السوشيال» وليس حساب استقبال.' : /nothing to change/.test(m) ? 'لا تغيير.' : m;
+
+/** S3 (Ahmed, 26 Nov 2026 — S8): who gets the hand-offs of «السوشيال». Reception has no role in the social channels. */
+function SocialTeam() {
+  const toast = useToast();
+  const [t, setT] = useState<TeamView | null>(null);
+  const [err, setErr] = useState<string | null>(null);
+  const [open, setOpen] = useState(false);
+  const [pick, setPick] = useState<string[]>([]);
+  const [busy, setBusy] = useState(false);
+  const load = useCallback(async () => {
+    try {
+      setT(await rpc<TeamView>('hub_social_team_get'));
+      setErr(null);
+    } catch (e) {
+      setErr((e as Error).message);
+    }
+  }, []);
+  useEffect(() => void load(), [load]);
+  if (err) return <ErrorBox error={err} />;
+  if (!t) return null;
+  async function save() {
+    setBusy(true);
+    try {
+      const r = await rpc<{ before: string[] }>('hub_social_team_set', { p_staff: pick });
+      setOpen(false);
+      toast.undo('حُفظ فريق السوشيال.', async () => {
+        await rpc('hub_social_team_set', { p_staff: r.before });
+        await load();
+      });
+      await load();
+    } catch (e) {
+      toast(teamError((e as Error).message), 'error');
+    } finally {
+      setBusy(false);
+    }
+  }
+  return (
+    <section className="card p-4 grid gap-2" data-social-team data-tour="social-team">
+      <h3 className="font-bold">فريق السوشيال</h3>
+      <p className="text-xs text-ink-muted">تصلهم كل تحويلات انستجرام وماسنجر والتعليقات: تنبيه واتساب على رقمهم في «التقارير» وإيميل على بريد الدخول. لا يصل الاستقبال شيء منها؛ طلب الحجز وحده يصل استقبال الفرع الذي اختاره الضيف.</p>
+      {!t.members.length ? <p className="text-sm text-error" data-team-empty>لا أحد في الفريق: تصل الإيميلات لمدير النظام ولا يصل تنبيه واتساب.</p> : (
+        <ul className="grid gap-1 text-sm">
+          {t.members.map((m) => (
+            <li key={m.id} className="flex flex-wrap items-center gap-2" data-team-member>
+              <span dir="auto">{m.name}</span>
+              <span className={`text-xs ${m.has_number ? 'text-ink-muted' : 'text-error'}`}>{m.has_number ? 'تنبيه واتساب وإيميل' : 'إيميل فقط: لا رقم له في «التقارير»'}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+      {t.system_admin && (
+        <button type="button" className="btn btn-ghost btn-sm justify-self-start" disabled={busy} data-action="social-team-edit"
+          onClick={() => { setPick(t.members.map((m) => m.id)); setOpen(true); }}>تعديل الفريق</button>
+      )}
+      <Modal open={open} onClose={() => setOpen(false)} title="فريق السوشيال" busy={busy}>
+        <p className="text-sm text-ink-muted mb-3">من أعضاء وحدة «السوشيال»، بلا حسابات الاستقبال.</p>
+        <ul className="grid gap-2 text-sm">
+          {t.candidates.map((c) => (
+            <li key={c.id}>
+              <label className="flex items-center gap-2 min-h-11">
+                <input type="checkbox" className="size-4 accent-bronze-deep" checked={pick.includes(c.id)} data-team-pick={c.id}
+                  onChange={(e) => setPick((p) => (e.target.checked ? [...p, c.id] : p.filter((x) => x !== c.id)))} />
+                <span dir="auto">{c.name}</span>
+                {!c.has_number && <span className="text-xs text-ink-muted">(لا رقم في «التقارير»)</span>}
+              </label>
+            </li>
+          ))}
+        </ul>
+        <div className="flex gap-2 justify-end mt-5 dialog-actions">
+          <CancelButton disabled={busy} />
+          <button type="button" className="btn btn-primary" disabled={busy || !pick.length} onClick={() => void save()} data-action="confirm-go">
+            {busy ? <Spinner /> : null} حفظ الفريق
+          </button>
+        </div>
+      </Modal>
     </section>
   );
 }

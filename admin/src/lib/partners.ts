@@ -5,7 +5,7 @@
 // partner_enquiries_export (edit, audited).
 import { supabase, SUPABASE_URL } from './supabase';
 import { fail, type Saved } from './api';
-import { CONNECTION, SESSION_ENDED, arabicError } from './errors';
+import { CONNECTION, SESSION_ENDED, arabicError, sessionWithin } from './errors';
 import pages from '../../../content/partners-pages.json';
 
 export type EnquiryStatus = 'new' | 'contacted' | 'quoted' | 'confirmed' | 'lost' | 'archived';
@@ -118,7 +118,7 @@ export async function exportRows(f: EnquiryFilter): Promise<Enquiry[]> {
 
 /** the partners-admin function: one PDF (multipart) or a removal */
 async function adminCall<T>(body: FormData | { action: 'detach'; event: number }): Promise<T> {
-  const { data: s } = await supabase.auth.getSession();
+  const { data: s } = await sessionWithin(supabase.auth.getSession());
   const jwt = s.session?.access_token;
   if (!jwt) throw new Error(SESSION_ENDED);
   let res: Response;

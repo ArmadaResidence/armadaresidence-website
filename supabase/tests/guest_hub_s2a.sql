@@ -1,4 +1,5 @@
--- Guest Hub S2a (26 Nov 2026; migration 20261126100000_guest_hub_s2a — DECISIONS.md 2026-11-26 «Guest Hub S2a»): a social
+-- Guest Hub S2a (26 Nov 2026; migration 20261126100000_guest_hub_s2a — DECISIONS.md 2026-11-26 «Guest Hub S2a»). Since S3 only
+--   the card and its lab items are checked here (the routing below is superseded — guest_hub_s3.sql). Before S3: a social
 --   hand-off or chat booking request with no known branch alerts the staff on shift of BOTH branches, each from its own
 --   number; both receptions may open it; the first to take it gives it their branch and the other loses it; the escalation
 --   email goes to both branches' recipients; the bathroom amenities card and its two lab items.
@@ -88,78 +89,8 @@ insert into _ids select 'c2', (pg_temp._j('in2') ->> 'conversation_id')::uuid;
 select pg_temp._check('S0 both test conversations stored on «السوشيال»', pg_temp._id('c1') is not null and pg_temp._id('c2') is not null,
   pg_temp._j('in1')::text || ' / ' || pg_temp._j('in2')::text);
 
--- A. the hand-off with no branch → both branches
-update public.hub_conversations set state = 'inquiry', owner_kind = null, human_reason = null, branch_slug = null where id = pg_temp._id('c1');
-update public.hub_conversations set state = 'human', human_reason = 'handoff', owner_kind = null where id = pg_temp._id('c1');
-select pg_temp._check('A1 the hand-off is both branches'' (branch_slug the placeholder)',
-  exists (select 1 from public.hub_handoffs h where h.conversation_id = pg_temp._id('c1') and h.closed_at is null and h.both_branches and h.branch_slug = 'airport-road'));
-select pg_temp._check('A2 an alert to each branch''s slot on shift, each from its own branch number',
-  (select count(*) filter (where sl.branch_slug = 'airport-road') >= 1 and count(*) filter (where sl.branch_slug = 'shafa-road') >= 1
-      and bool_and(s.channel_id = internal.hub_branch_channel(sl.branch_slug))
-     from public.hub_staff_sends s join public.hub_staff_slots sl on sl.id = s.slot_id join public.hub_handoffs h on h.id = s.handoff_id
-    where h.conversation_id = pg_temp._id('c1') and s.kind = 'alert'));
-select pg_temp._service();
-select pg_temp._save('claim', public.hub_staff_sends_claim(50, false));
-select pg_temp._root();
-select pg_temp._check('A3 the claimed alert says «both» (its {{1}} names the two branches)',
-  exists (select 1 from jsonb_array_elements(pg_temp._j('claim')) e where (e #>> '{handoff,both}')::boolean));
-
--- B. both receptions may open it; a reception that is no member of a branch unit may not
-select pg_temp._as('recA');
-select pg_temp._save('thA', public.hub_thread(pg_temp._id('c1')));
-select pg_temp._as('recS');
-select pg_temp._save('thS', public.hub_thread(pg_temp._id('c1')));
-select pg_temp._save('listS', public.hub_inbox_list('{}'::jsonb));
-select pg_temp._root();
-select pg_temp._check('B1 both receptions open the thread and may answer', (pg_temp._j('thA') #>> '{conversation,can_edit}')::boolean and (pg_temp._j('thS') #>> '{conversation,can_edit}')::boolean,
-  coalesce(pg_temp._j('thA') #>> '{conversation,can_edit}', 'null') || ' / ' || coalesce(pg_temp._j('thS') #>> '{conversation,can_edit}', 'null'));
-select pg_temp._check('B2 it is in the Shafa reception''s list, with «السوشيال» among its units',
-  exists (select 1 from jsonb_array_elements(pg_temp._j('listS') -> 'rows') r where r ->> 'id' = pg_temp._id('c1')::text)
-  and exists (select 1 from jsonb_array_elements(pg_temp._j('listS') -> 'units') u where u ->> 'key' = 'social'));
-select pg_temp._as('other');
-select pg_temp._fails('B3 a reception who is no member of a branch unit cannot open it', format('select public.hub_thread(%L)', pg_temp._id('c1')), '42501');
-select pg_temp._as('recS');
-select pg_temp._save('rlsS', to_jsonb(exists (select 1 from public.hub_conversations where id = pg_temp._id('c1'))));
-select pg_temp._root();
-select pg_temp._check('B4 RLS: the Shafa reception reads the conversation row', (pg_temp._j('rlsS') #>> '{}')::boolean);
-
--- C. the first to take it gives it their branch; the other branch loses it
-select pg_temp._as('recS');
-select pg_temp._save('take', public.hub_take_over(pg_temp._id('c1')));
-select pg_temp._root();
-select pg_temp._check('C1 the Shafa reception took it: the conversation''s branch shafa-road, the hand-off Shafa Road''s alone',
-  (select branch_slug = 'shafa-road' and owner_staff_id = pg_temp._id('recS') from public.hub_conversations where id = pg_temp._id('c1'))
-  and exists (select 1 from public.hub_handoffs h where h.conversation_id = pg_temp._id('c1') and h.closed_at is null and not h.both_branches and h.branch_slug = 'shafa-road'));
-select pg_temp._as('recA');
-select pg_temp._fails('C2 the Airport Road reception can no longer open it', format('select public.hub_thread(%L)', pg_temp._id('c1')), '42501');
-select pg_temp._save('rlsA', to_jsonb(exists (select 1 from public.hub_conversations where id = pg_temp._id('c1'))));
-select pg_temp._root();
-select pg_temp._check('C3 … nor read its row', not (pg_temp._j('rlsA') #>> '{}')::boolean);
-
--- D. an admin taking a both-branches conversation leaves the branch unknown
-update public.hub_conversations set state = 'inquiry', owner_kind = null, human_reason = null, branch_slug = null where id = pg_temp._id('c2');
-update public.hub_conversations set state = 'human', human_reason = 'handoff', owner_kind = null where id = pg_temp._id('c2');
-select pg_temp._as('admin');
-select pg_temp._save('take2', public.hub_take_over(pg_temp._id('c2')));
-select pg_temp._root();
-select pg_temp._check('D1 an admin (every branch) takes it: the branch stays unknown, the hand-off both branches''',
-  (select branch_slug is null from public.hub_conversations where id = pg_temp._id('c2'))
-  and exists (select 1 from public.hub_handoffs h where h.conversation_id = pg_temp._id('c2') and h.closed_at is null and h.both_branches));
-
--- E. a chat booking request with no branch → both branches; the escalation email → both branches' recipients
-select pg_temp._save('xa', to_jsonb(internal.hub_extra_alert(pg_temp._id('c2'), 'booking_request', 'QA', null, false, null)));
-select pg_temp._check('E1 the chat booking request alert: both branches'' slots on shift',
-  (select h.both_branches from public.hub_handoffs h where h.id = (pg_temp._j('xa') #>> '{}')::uuid)
-  and (select count(distinct sl.branch_slug) = 2 from public.hub_staff_sends s join public.hub_staff_slots sl on sl.id = s.slot_id where s.handoff_id = (pg_temp._j('xa') #>> '{}')::uuid));
-update public.hub_conversations set waiting_since = now() - interval '2 hours', escalated_at = null where id = pg_temp._id('c2');
-select pg_temp._save('esc', public.hub_escalations_claim(now(), 50));
-select pg_temp._check('E2 the waiting email of a conversation with no branch goes to both branches'' recipients',
-  (select (e -> 'recipients') ? 'desk-a@sql-hubs2a.qa.invalid' and (e -> 'recipients') ? 'desk-s@sql-hubs2a.qa.invalid'
-     from jsonb_array_elements(pg_temp._j('esc')) e where e ->> 'id' = pg_temp._id('c2')::text));
--- the guest names the branch: the open both-branches hand-offs become that branch's
-update public.hub_conversations set branch_slug = 'airport-road' where id = pg_temp._id('c2');
-select pg_temp._check('E3 the branch now known: no open hand-off of the conversation is both branches'' any more',
-  not exists (select 1 from public.hub_handoffs h where h.conversation_id = pg_temp._id('c2') and h.closed_at is null and h.both_branches));
+-- A–E (both branches while the branch is unknown) were superseded by S3 (Ahmed, 26 Nov 2026 — S8: every social hand-off goes
+-- to the social team, never reception; A2: reception never sees a social conversation): guest_hub_s3.sql tests the routing.
 
 -- F. the card and the lab items
 select pg_temp._check('F1 the bathroom amenities card: published, both branches and «السوشيال», topic room_amenities, once',

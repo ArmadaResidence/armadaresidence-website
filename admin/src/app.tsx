@@ -152,6 +152,8 @@ function HubLink({ token }: { token: string }) {
         if (r.allowed && r.conversation_id) navigate(`/inbox?c=${r.conversation_id}`, { replace: true });
         // S2: a complaint in a comment has no conversation — «المحادثات» → «التعليقات» on that comment
         else if (r.allowed && r.comment_id) navigate(`/inbox?tab=comments&cm=${r.comment_id}`, { replace: true });
+        // S9 (Ahmed, 26 Nov 2026): a social chat booking request's alert opens the booking for the chosen branch's reception
+        else if (r.allowed && r.booking_ref) navigate(`/bookings?ref=${encodeURIComponent(r.booking_ref)}`, { replace: true });
         else setDenied(true);
       })
       .catch(() => live && setDenied(true));

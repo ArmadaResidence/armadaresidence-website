@@ -10,7 +10,7 @@
 import { decide, handoffNote, replyLicence, type Action, type Context, type Decision, type Draft, type Event, type State } from './machine.ts';
 import { applyDates, applyFloor, extractJson, understandStatic, understandUser, validateUnderstanding, type Lists, type Understanding } from './understand.ts';
 import { normalize as normDates, stayDateText } from './dates.ts';
-import { buttonForText, COPY, fixed, greeting, hasSalaam, quickReplies, salaamGreeting, statusText, stripOpening, thirdLanguage, type Lang, type Persona } from './copy.ts';
+import { buttonForText, COPY, fixed as fixedBase, greeting, hasSalaam, quickReplies, salaamGreeting, statusText, stripOpening, thirdLanguage, type Lang, type Persona } from './copy.ts';
 import { composeExamples, composeSystem, composeUser, parseComposed, summarySystem, understandDeparture, understandSchema, understandSystem, withGreeting } from './compose/index.ts';
 import { cleanSummary, refOrRoom, summaryOk, summaryUser } from './staff.ts';
 import { buildPayload, cardIds, guardPayload, hasSource, offersFor, packagesLive, type Payload } from './sources/index.ts';
@@ -248,6 +248,9 @@ export const isYes = (t: string): boolean => /^(?:نعم|ايوه|ايوا|اي�
 export async function runTurn(claim: Json, deps: Deps): Promise<Outcome> {
   const conv = claim.conversation;
   const unit = claim.unit;
+  // S3 (Ahmed, 26 Nov 2026): on «السوشيال» the fixed lines are their social twins (copy.md §4.7) — the social team, never
+  // reception; a booking request's confirmation by WhatsApp
+  const fixed = (k: string, l: Lang, v: Record<string, string | number> = {}) => fixedBase(k, l, v, unit?.kind === 'brand');
   const set = claim.settings;
   const models = set.models ?? {};
   const prices = set.prices ?? {};
@@ -514,7 +517,7 @@ export async function runTurn(claim: Json, deps: Deps): Promise<Outcome> {
   // H9 fix 3: every stay date the guest reads (the summary, the cards, a question) shows the weekday, the Gregorian date and
   // the Umm al-Qura date: «الخميس 19 نوفمبر 2026 (9 جمادى الآخرة 1448)»
   const stayDate = (iso: string, LL: Lang) => stayDateText(deps.longDate, iso, LL);
-  const fmt: Fmt = { sarText: deps.sarText, longDate: stayDate, content: deps.content, limits: set.limits ?? null };
+  const fmt: Fmt = { sarText: deps.sarText, longDate: stayDate, content: deps.content, limits: set.limits ?? null, brand: unit?.kind === 'brand' };
   let coversP: Promise<Record<string, string>> | null = null;
   const covers = (): Promise<Record<string, string>> => (coversP ??= (deps.covers ? deps.covers().catch((): Record<string, string> => ({})) : Promise.resolve({} as Record<string, string>)));
   const lastRoom = claim.guest?.last_room ?? null;

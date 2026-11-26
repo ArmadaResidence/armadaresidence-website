@@ -4,7 +4,7 @@
 // offers_publish / offers_unpublish / offers_archive / offers_restore and popup_save / popup_publish / popup_delete — one
 // audit batch each, never undoable. A publish creates a site job; the page then asks site-rebuild (reason offers).
 import { supabase, SUPABASE_URL } from './supabase';
-import { CONNECTION, SESSION_ENDED, arabicError } from './errors';
+import { CONNECTION, SESSION_ENDED, arabicError, sessionWithin } from './errors';
 import { JOB_COLS, fail, withRunLinks, type MediaJob, type Saved } from './api';
 import { west } from './format.ts';
 
@@ -308,7 +308,7 @@ export async function memberGate(id: string): Promise<MemberGate> {
 }
 /** «إرسال للأعضاء»: the club function previews, sends a test to the user's own address, or sends to the members */
 export async function memberSend(id: string, mode: 'preview' | 'test' | 'send'): Promise<{ ok: boolean; html?: string; subject?: string; sent?: number; failed?: number; recipients?: number; to?: string }> {
-  const { data: s } = await supabase.auth.getSession();
+  const { data: s } = await sessionWithin(supabase.auth.getSession());
   const jwt = s.session?.access_token;
   if (!jwt) throw new Error(SESSION_ENDED);
   let res: Response;

@@ -155,13 +155,20 @@ export interface AlertItem {
   channel_kind?: string | null;
   /** S2a (Ahmed, 25 Nov 2026): a social hand-off with no known branch, alerted to both branches — {{1}} says so */
   both?: boolean | null;
+  /** S3 (Ahmed, 26 Nov 2026, S8): a hand-off of «السوشيال» — the social team's; {{1}} names «السوشيال» */
+  social?: boolean | null;
+  /** the conversation's branch when the guest named one (else none — the alert's number only carries it) */
+  social_branch_name?: string | null;
 }
 /** S2a: {{1}} of a hand-off alerted to both branches (the first to reply takes it) */
 export const BOTH_BRANCHES_NAME = 'أرمادا ريزيدنس — الفرعان (لم يُحدَّد الفرع بعد)';
+/** S3 (S8): {{1}} of a social hand-off (the social team's) — the branch in brackets when the guest named one */
+export const SOCIAL_NAME = 'أرمادا ريزيدنس — السوشيال';
+export const socialName = (branchName: string | null | undefined) => (branchName ? `${SOCIAL_NAME} (${branchName})` : SOCIAL_NAME);
 /** hub_staff_alert's five variables (templates.md §4), one line each */
 export function alertVars(a: AlertItem): string[] {
   return [
-    oneLine(a.both ? BOTH_BRANCHES_NAME : a.branch_name, 80),
+    oneLine(a.social ? socialName(a.social_branch_name) : a.both ? BOTH_BRANCHES_NAME : a.branch_name, 80),
     oneLine(a.guest_name || 'ضيف', 60),
     // S2: a complaint in a comment names the comment's channel
     a.channel_kind === 'instagram' ? 'حساب انستجرام' : a.channel_kind === 'messenger' ? 'حساب ماسنجر' : a.channel_kind === 'instagram_comment' ? 'تعليق انستجرام'

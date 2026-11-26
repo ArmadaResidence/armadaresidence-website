@@ -118,6 +118,8 @@ export interface Fmt {
   longDate: (iso: string, L: Lang) => string;
   content: Json;
   limits?: Json;
+  /** S3 (26 Nov 2026): «السوشيال» — the request footer of copy.md §4.7 (the confirmation by WhatsApp) */
+  brand?: boolean;
 }
 const nightsOf = (f: Record<string, unknown>) => Math.max(1, Math.round((Date.parse(String(f.check_out)) - Date.parse(String(f.check_in))) / 86_400_000));
 
@@ -154,7 +156,7 @@ export function summaryBody(c: QuoteCard, f: Record<string, unknown>, L: Lang, f
   const children = Number(f.children ?? 0);
   const discount = c.base_total && c.base_total > c.total ? Math.round((c.base_total - c.total) * 100) / 100 : 0;
   const total = discount ? `~${fmt.sarText(c.base_total!, L)}~ ${fmt.sarText(c.total, L)}` : fmt.sarText(c.total, L);
-  const instant = CHAT_REQUEST_ONLY ? COPY.chat_request_footer[L] : c.instant ? COPY.instant_line[L] : fill(COPY.request_line[L], { reason: reasonText(fmt.content, c.reason, L, fmt.limits) });
+  const instant = CHAT_REQUEST_ONLY ? (fmt.brand ? COPY.chat_request_footer_social : COPY.chat_request_footer)[L] : c.instant ? COPY.instant_line[L] : fill(COPY.request_line[L], { reason: reasonText(fmt.content, c.reason, L, fmt.limits) });
   const vars: Record<string, string> = {
     branch_name: branchName, check_in: fmt.longDate(String(f.check_in), L), check_out: fmt.longDate(String(f.check_out), L), nights_text: nightsText(nightsOf(f), L),
     room_name: L === 'en' ? c.name_en : c.name_ar, guests_text: guestsText(adults, children, L), extra_beds_text: bedsText(c.extra_beds, L),

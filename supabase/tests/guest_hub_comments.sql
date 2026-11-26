@@ -170,10 +170,13 @@ select pg_temp._root();
 select pg_temp._check('C6 a staff reply from the Instagram app marks the thread answered', (select staff_answered_at is not null from public.hub_comments where id = (pg_temp._j('i3') ->> 'id')::uuid));
 
 -- D. «التعليقات»: who sees them, a staff reply, the review mark
+-- S3 (A2, Ahmed 26 Nov 2026): reception never sees the comments; a member of «السوشيال» does
 select pg_temp._as('recS');
+select pg_temp._fails('D1 a reception login never sees the comments (S3)', 'select public.hub_comments_list(''{}''::jsonb)', '42501');
+select pg_temp._as('admin');
 select pg_temp._save('lr', public.hub_comments_list('{}'::jsonb));
 select pg_temp._root();
-select pg_temp._check('D1 a reception member of a branch unit sees the comments and may answer', jsonb_array_length(pg_temp._j('lr') -> 'rows') >= 3 and (pg_temp._j('lr') ->> 'can_edit')::boolean
+select pg_temp._check('D1b a member of «السوشيال» sees them and may answer', jsonb_array_length(pg_temp._j('lr') -> 'rows') >= 3 and (pg_temp._j('lr') ->> 'can_edit')::boolean
   and pg_temp._j('lr')::text !~ '5550012');
 select pg_temp._as('admin');
 select pg_temp._save('pb', public.hub_comment_staff_begin((pg_temp._j('i1') ->> 'id')::uuid, 'private', 'مرحبًا'));

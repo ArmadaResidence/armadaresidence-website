@@ -26,9 +26,10 @@ export function fill(tpl: string, vars: Record<string, string | number> = {}): s
   return out;
 }
 
-/** one fixed message of copy.md in the guest's language */
-export function fixed(key: string, L: Lang, vars: Record<string, string | number> = {}): string {
-  const m = C[key];
+/** one fixed message of copy.md in the guest's language; on «السوشيال» (`brand`) its social twin when copy.md §4.7 has one
+ *  (S3, 26 Nov 2026: the social team, never reception; a booking request's confirmation by WhatsApp) */
+export function fixed(key: string, L: Lang, vars: Record<string, string | number> = {}, brand = false): string {
+  const m = (brand && C[`${key}_social`]) || C[key];
   if (!m) throw new Error(`hub copy: unknown message ${key}`);
   return fill(L === 'en' ? m.en : m.ar, vars);
 }

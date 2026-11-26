@@ -325,6 +325,22 @@ The staff alert lines (`hub_staff_alert` {{5}}, staff-facing): «تأكيد طل
 | Mobile number for a booking (Instagram / Messenger: no number is known on these channels) | «ما رقم جوالك الذي نسجّل به الحجز؟» | “What mobile number should we put the booking under?” |
 | A mobile number that cannot be read | «لم نتمكن من قراءة الرقم، اكتبه من فضلك كاملًا مع رمز الدولة.» | “We couldn't read the number; please write it in full with the country code.” |
 
+**4.7 «السوشيال» — the hand-off and booking-request lines on Instagram and Messenger** [مقرر — أحمد، 26 نوفمبر 2026, S3: S8 — reception has no role in the social channels, every social hand-off goes to the social team; S9 — a social chat booking request goes to the chosen branch's reception, who confirm it; the confirmation reaches the guest by WhatsApp at the number given. These lines replace their WhatsApp twins on «السوشيال» only (`copy.ts → fixed(…, brand)`); their wording is the session's, for Ahmed's review]
+
+| Case | Arabic | English |
+|---|---|---|
+| Social — change or cancel an existing booking | «تعديل الحجز أو إلغاؤه يتم مع فريقنا، وسيكمل معك أحدهم في هذه المحادثة.» | “Changes and cancellations are handled by our team; one of them will continue with you in this chat.” |
+| Social — 2 to 4 rooms | «حجز أكثر من غرفة يرتّبه فريقنا، وسيكمل معك أحدهم في هذه المحادثة.» | “Bookings for more than one room are arranged by our team; one of them will continue with you in this chat.” |
+| Social — early check-in or extension | «الوصول المبكر وتمديد الإقامة حسب التوافر، ويؤكدهما فريقنا. سيكمل معك أحدهم في هذه المحادثة.» | “Early check-in and extensions depend on availability and are confirmed by our team. One of them will continue with you in this chat.” |
+| Social — still with the team | «ما زال طلبك مع فريقنا، وسيردّون عليك هنا.» | “Your request is still with our team; they will reply to you here.” |
+| Social — extension handed with the date | «سجّلنا طلب التمديد حتى {date}، وسيكمل معك فريقنا في هذه المحادثة لتأكيده.» | “We've noted your extension request until {date}; our team will continue with you in this chat to confirm it.” |
+| Social — package order for today | «سنتحقق مع فريقنا من إمكانية ترتيبها اليوم، وسيكمل معك أحدهم في هذه المحادثة.» | “We'll check with our team whether it can be arranged today; one of them will continue with you in this chat.” |
+| Social — package order sent, with the summary | «وصل طلبك إلى فريقنا: {package} في {branch_name} بتاريخ {date}. سيكمل معك أحدهم في هذه المحادثة لتأكيد التفاصيل.» | “Your request has reached our team: {package} at {branch_name} on {date}. One of them will continue with you in this chat to confirm the details.” |
+| Social — package order sent | «وصل طلبك إلى فريقنا، وسيكمل معك أحدهم في هذه المحادثة لتأكيد التفاصيل.» | “Your request has reached our team; one of them will continue with you in this chat to confirm the details.” |
+| Social — chat request footer | «سيصل طلبك إلى فريق الاستقبال ليؤكده لك في أقرب وقت، ويصلك التأكيد على واتساب على رقمك.» | “Your booking request will reach our reception team, who will confirm it as soon as possible; the confirmation reaches you on WhatsApp at your number.” |
+| Social — chat request sent | «وصل طلب حجزك رقم {ref}، وسيؤكده لك فريق الاستقبال في أقرب وقت، ويصلك التأكيد على واتساب.» | “We've received your booking request {ref}; our reception team will confirm it as soon as possible, and the confirmation reaches you on WhatsApp.” |
+| Social — a booking request still waiting | «طلب حجزك لا يزال لدى فريق الاستقبال، ويصلك التأكيد على واتساب في أقرب وقت.» | “Your booking request is still with our reception team; the confirmation will reach you on WhatsApp as soon as possible.” |
+
 ## 5. Notices and other fixed replies
 
 | Case | Arabic | English |

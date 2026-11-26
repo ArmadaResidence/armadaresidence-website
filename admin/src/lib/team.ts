@@ -143,7 +143,7 @@ export interface Report {
 }
 export const reportGet = (day: string) => call<Report>('hub_report_get', { p_day: day });
 /** ?hub_c=<token> → the conversation of a staff alert, when this user may see it (the first opening recorded) */
-export const alertOpen = (token: string) => call<{ allowed: boolean; conversation_id?: string | null; comment_id?: string | null; reason?: string }>('hub_alert_open', { p_token: token });
+export const alertOpen = (token: string) => call<{ allowed: boolean; conversation_id?: string | null; comment_id?: string | null; booking_ref?: string | null; reason?: string }>('hub_alert_open', { p_token: token });
 /** a thread opened in «المحادثات»: its waiting hand-off counts as opened (the escalation then waits) */
 export const handoffSeen = (conversation: string) => call<void>('hub_handoff_seen', { p_conversation: conversation }).catch(() => undefined);
 

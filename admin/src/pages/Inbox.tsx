@@ -18,6 +18,7 @@
 //     guest message and «اقتراحات» (three replies; the guard runs on the one sent). «بطاقات الغرف» comes with H8.
 //   - Shortcuts (Alt + N / R / T / C), live updates (Realtime on hub_conversations / hub_messages under RLS, and
 //     dashboard_signals), Western digits, the shared dialogs and their dirty guard, light and dark, the page tour.
+import { withTimeout } from '../lib/errors';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
@@ -902,7 +903,8 @@ function GuestPanel({ t, edit, onBack, onOpen, onAssign }: { t: Thread; edit: bo
   async function doDelete() {
     setDelBusy(true);
     try {
-      const r = await dataDelete(g.id);
+      // S3: never a silent press — no answer in 20 s is an error on the screen
+      const r = await withTimeout(dataDelete(g.id));
       if (!r.ok) toast(sendError(r.error), 'error');
       else {
         setDelAsk(false);

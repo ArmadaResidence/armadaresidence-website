@@ -498,6 +498,59 @@ const check = (ok, what) => {
     'I14 the classifier\'s user message carries IN_THREAD (prompts.md §11 = comments.ts)');
 }
 
+// ═══ J. S3 (26 Nov 2026, Ahmed — S8–S10): the social team; reception never sees social; the booking request to its branch; record only ═══
+{
+  const s3 = await import('./hub-s3-migration.mjs');
+  const file = read(s3.OUT_PATH);
+  check(file === s3.migration(), 'J1 the S3 migration = its generator');
+  const sql = file.replace(/--[^\n]*/g, '');
+  check(!/insert into public\.hub_staff_sends[^;]*slot_id[^;]*;/.test(sql.slice(sql.indexOf('create or replace function internal.hub_social_alert'), sql.indexOf('create or replace function public.hub_social_team_get'))),
+    'J2 the social alert goes to the team\'s numbers of «التقارير» only — never a slot');
+  const hq = sql.slice(sql.indexOf('create or replace function internal.hub_handoff_queue'), sql.indexOf('create or replace function internal.hub_extra_alert'));
+  check(hq.indexOf('hub_tester_conversation(h.conversation_id)') > 0 && hq.indexOf('hub_tester_conversation(h.conversation_id)') < hq.indexOf('if h.social then')
+    && hq.indexOf('if h.social then') < hq.indexOf('if h.both_branches then') && hq.indexOf('if h.social then') < hq.indexOf('from public.hub_staff_slots s'),
+    'J3 a test account first (the system admin), then the social team, before any reception slot (S8)');
+  const xa = sql.slice(sql.indexOf('create or replace function internal.hub_extra_alert'), sql.indexOf('create or replace function public.hub_comment_done'));
+  check(/p_reason in \('booking_request', 'booking_request_late', 'booking_request_again'\)/.test(xa) && /select r\.branch from public\.reservations r where r\.id = p_reservation/.test(xa)
+    && /v_social := v_branch is null;/.test(xa) && /'pending',\s+false, v_social\);/.test(xa),
+    'J4 a social booking request → the reservation\'s branch (S9); no branch → the social team; never both branches');
+  const cc = sql.slice(sql.indexOf('create or replace function internal.can_conv'), sql.indexOf('create or replace function internal.hub_can_comments'));
+  check(/internal\.can_unit\(c\.unit_id, p_level\)/.test(cc) && /hub_is_reception\(\)/.test(cc) && !/hub_unit_members/.test(cc),
+    'J5 A2: a social conversation = the members of «السوشيال» only, never a reception login (no branch-member clause)');
+  check(/u\.kind = 'brand'\)/.test(sql.slice(sql.indexOf('create or replace function internal.hub_can_comments'))) && /not internal\.hub_is_reception\(\)/.test(sql)
+    && /h\.unit_id in \(select id from units\)\),/.test(sql), 'J6 A2: comments for «السوشيال» members only; «الآن» counts its own units\' hand-offs');
+  check(/'social_record_only'\)/.test(sql) && /return jsonb_build_object\('queued', false, 'reason', 'record_only'\)/.test(sql)
+    && /not internal\.hub_social_may_reply\(new\)/.test(sql) && /'social_audience'/.test(sql),
+    'J7 S10: a real account in «حسابات التجربة فقط» is recorded only (not alertable, never waits), released once it may reply');
+  check(/elsif r\.unit_kind = 'brand' then\s+v_to := internal\.hub_social_team_emails\(\);/.test(sql) && /else internal\.hub_social_team_emails\(\) end;/.test(sql),
+    'J8 the waiting and complaint emails of «السوشيال» → the social team\'s addresses');
+  const { generated } = await import('./hub-text-lib.mjs');
+  const copy = generated().copy;
+  const twins = ['change_cancel', 'multi_room', 'early_extension', 'still_waiting', 'extend_handed', 'package_same_day', 'package_handed_summary', 'package_handed'];
+  check(twins.every((k) => copy[`${k}_social`] && !/الاستقبال/.test(copy[`${k}_social`].ar) && !/reception/i.test(copy[`${k}_social`].en)),
+    'J9 every social hand-off twin names «فريقنا», never reception (copy.md §4.7)');
+  check(['chat_request_footer', 'result_chat_request', 'request_pending'].every((k) => /واتساب/.test(copy[`${k}_social`].ar) && /WhatsApp/.test(copy[`${k}_social`].en) && !/هنا/.test(copy[`${k}_social`].ar)),
+    'J10 the social booking-request lines: reception confirms, the confirmation by WhatsApp, never «here»');
+  const { fixed } = await import('../supabase/functions/_shared/hub/copy.ts');
+  check(fixed('multi_room', 'ar', {}, true) === copy.multi_room_social.ar && fixed('multi_room', 'ar') === copy.multi_room.ar && fixed('handoff', 'ar', {}, true) === copy.handoff.ar,
+    'J11 fixed(…, brand) takes the social twin when one exists, else the line itself');
+  const eng = read('supabase/functions/_shared/hub/engine.ts');
+  check(/const fixed = \(k: string, l: Lang, v: Record<string, string \| number> = \{\}\) => fixedBase\(k, l, v, unit\?\.kind === 'brand'\);/.test(eng) && /brand: unit\?\.kind === 'brand' \}/.test(eng)
+    && /fmt\.brand \? COPY\.chat_request_footer_social : COPY\.chat_request_footer/.test(read('supabase/functions/_shared/hub/booking.ts')),
+    'J12 the engine and the summary use the social twins on «السوشيال»');
+  const { alertVars, SOCIAL_NAME } = await import('../supabase/functions/_shared/hub/staff.ts');
+  const v = alertVars({ token: 't', branch_name: 'طريق المطار', guest_name: null, guest_phone: null, ref: null, summary: null, reason: 'handoff', channel_kind: 'instagram', social: true, social_branch_name: null });
+  const v2 = alertVars({ token: 't', branch_name: 'طريق المطار', guest_name: null, guest_phone: null, ref: null, summary: null, reason: 'handoff', channel_kind: 'instagram', social: true, social_branch_name: 'طريق الشفا' });
+  check(v[0] === SOCIAL_NAME && v2[0] === `${SOCIAL_NAME} (طريق الشفا)` && v[2] === 'حساب انستجرام', 'J13 the social team\'s alert {{1}} names «السوشيال» (the branch in brackets when known)');
+  const app = read('admin/src/App.tsx');
+  check(/r\.booking_ref\) navigate\(`\/bookings\?ref=\$\{encodeURIComponent\(r\.booking_ref\)\}`/.test(app) && /'booking_ref', v_ref/.test(sql),
+    'J14 S9: the booking request\'s alert opens the booking (?ref=) for the chosen branch\'s reception');
+  const soc = read('admin/src/pages/AssistantSocial.tsx');
+  check(/hub_social_team_set/.test(soc) && /data-social-team/.test(soc) && /hub_social_team_get/.test(soc), 'J15 «فريق السوشيال» in «إعدادات المساعد» → «السوشيال»');
+  const bank = read('tests/hub-bank/conversations-social.jsonl').trim().split('\n').map((l) => JSON.parse(l)).filter((x) => /^s3-/.test(x.id ?? ''));
+  check(bank.length === 4 && JSON.stringify(s3.newItems().map((x) => x.key)) === JSON.stringify(bank.map((x) => x.id)), 'J16 the four S3 lab items = the bank file');
+}
+
 if (fails.length) {
   console.error(`hub-social-check: ${fails.length} of ${n} failed`);
   for (const f of fails) console.error('  ✗', f);

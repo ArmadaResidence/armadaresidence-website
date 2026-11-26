@@ -14,6 +14,15 @@ export function withTimeout<T>(p: Promise<T>, ms = 20_000): Promise<T> {
     p.then((v) => { clearTimeout(t); resolve(v); }, (e) => { clearTimeout(t); reject(e); });
   });
 }
+/** S3 (26 Nov 2026 — the presses of 25 and 26 Nov that never reached the server): reading the sign-in session is bounded too;
+ *  a session that cannot be read in 10 s means nothing was sent */
+export const SESSION_STALLED = 'تعذّر قراءة جلسة الدخول خلال 10 ثوانٍ، فلم يُرسل الطلب ولم يُحفظ شيء. أعد تحميل الصفحة ثم حاول مرة أخرى.';
+export function sessionWithin<T>(p: Promise<T>, ms = 10_000): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const t = setTimeout(() => { console.error('[session] getSession() did not answer in 10 s — no request sent'); reject(new Error(SESSION_STALLED)); }, ms);
+    p.then((v) => { clearTimeout(t); resolve(v); }, (e) => { clearTimeout(t); reject(e); });
+  });
+}
 export const GENERIC = 'تعذّر إكمال العملية، أعد المحاولة. إن تكرر الخطأ فتواصل مع مدير النظام.';
 const INVALID = 'القيمة غير صالحة.';
 

@@ -4,7 +4,7 @@
 // through the Edge Functions, which forward the user's JWT.
 import { supabase, SUPABASE_URL } from './supabase';
 import type { RoomTypeAdmin } from './rooms';
-import { CONNECTION, SESSION_ENDED, arabicError } from './errors';
+import { CONNECTION, SESSION_ENDED, arabicError, sessionWithin } from './errors';
 import type { SiteDeploy } from './siteDeployText';
 
 export type Role = 'admin' | 'management' | 'sales' | 'reception';
@@ -395,7 +395,7 @@ export async function whatsappMessages(reservationId: string): Promise<WhatsAppM
 }
 
 export async function edge<T>(fn: string, body: unknown): Promise<T> {
-  const { data: s } = await supabase.auth.getSession();
+  const { data: s } = await sessionWithin(supabase.auth.getSession());
   const jwt = s.session?.access_token;
   if (!jwt) throw new Error(SESSION_ENDED);
   let res: Response;
@@ -508,7 +508,7 @@ export async function labelGlossary(): Promise<LabelPairRow[]> {
 /** the label-suggest function: a translation of a short label, or null (unavailable, refused, rate-limited, failed —
  *  the field shows nothing and no error); `signal` aborts (the dashboard gives it 4 s) */
 export async function labelSuggest(text: string, from: 'ar' | 'en', signal?: AbortSignal, kind: 'label' | 'alt' | 'text' = 'label'): Promise<string | null> {
-  const { data: s } = await supabase.auth.getSession();
+  const { data: s } = await sessionWithin(supabase.auth.getSession());
   const jwt = s.session?.access_token;
   if (!jwt) return null;
   try {
@@ -601,7 +601,7 @@ export interface CodeSend {
 /** login-code function: email a 6-digit code to the signed-in user. Answers its reason on 429 / 502 (never throws for
  * those); throws only for a lost session or the network. */
 export async function sendLoginCode(): Promise<CodeSend> {
-  const { data: s } = await supabase.auth.getSession();
+  const { data: s } = await sessionWithin(supabase.auth.getSession());
   const jwt = s.session?.access_token;
   if (!jwt) throw new Error(SESSION_ENDED);
   let res: Response;

@@ -4574,3 +4574,53 @@ Ahmed sent the comment sections of his spec (§5–§8, the texts approved 21 No
 - **Function versions move without a deploy:** between our releases hub-agent 48 → 49, hub-admin 49 → 50, wa-automation 36 → 37 and social-inbound 8 → 9 with **identical bundles** — the platform makes a new version of every function when a secret is set (Ahmed's `META_PAGE_TOKEN`), the cause of the S1c jumps as well. A version number is therefore no rollback point; the commit and the bundle hash in `docs/guest-hub/releases.jsonl` are.
 - **Final (26 Nov 2026):** hub-agent v49 (bundle of `daa0e1b`), hub-admin v50 (bundle of `703b5e7`), social-inbound v10 (`b63b2a3`), wa-automation v37 (bundle of `606654e`). Rollback points: before S2 `node scripts/fn-release.mjs --rollback aca6182 hub-agent hub-admin wa-automation social-inbound`; before S2f `--rollback 4ffcc7a hub-agent hub-admin`; before the connect read-back `--rollback 96bbd13 hub-admin`; before the comment log `--rollback 703b5e7 social-inbound`. Migrations of S2: `20261126100000_guest_hub_s2a` … `20261126700000_guest_hub_s2g` (seven). **Model spend of the session: USD 13.45** — the «السوشيال» labs 2.48, the branch labs 10.81 (USD 0.81 over the approved «about 10»), the targeted dialect runs 0.16. No other paid service.
 - **Open:** the live comment test (Facebook, then Instagram) after the app is published / App Review — Ahmed's; the comment switches stay OFF until then; what Ahmed saw after the switch press; the unanswered H11 bank item h11-19 is a known gap with its fix live.
+
+## 2026-11-26 — Guest Hub S3: social routing (S8–S11) and the confirmation windows (Ahmed, 26 Nov 2026)
+
+Decided by Ahmed on 26 Nov 2026 (the S3 brief):
+
+- **S8 — reception has no role in the social channels.** Every hand-off of «السوشيال» — a question the assistant could not
+  answer, a complaint (a DM or a comment), a comment for review («تعليقات تحتاج مراجعة»), «ما زال الضيف ينتظر» — goes to the
+  **social team**: a WhatsApp alert `hub_staff_alert` to each member's number in «التقارير» (`hub_report_recipients.staff_user_id`)
+  and the emails (the complaint email at once, «محادثة بانتظار الرد» after the escalation minutes) to their sign-in address.
+  They reply from the dashboard or from Meta Business Suite (echoes count as staff replies). **Never reception** — this
+  supersedes decision S6 of the S2 brief («both branches, the first to reply takes it», S2a) for social hand-offs. A test
+  account's still alerts only the system admin (S1c). The social team is a **setting**, not a person: `public.hub_social_team`
+  («إعدادات المساعد» → «السوشيال» → «فريق السوشيال», the system admin's, audited, «تراجع»; a member of «السوشيال», active,
+  never a reception login, at least one); seeded with the system admin (Ahmed). An empty team (the RPC never allows it)
+  would fall back to the active admins' email and no WhatsApp alert. No WhatsApp escalation for a social hand-off (the team
+  was alerted at once); standby on «السوشيال» waits for the team (no shifts).
+- **A2 — reception never sees social.** `internal.can_conv` is the unit's membership again (the S2a branch-member clause is
+  gone) and never a reception login for «السوشيال»; `internal.hub_can_comments` needs a member of «السوشيال» with every branch
+  in scope, never a reception login; «الآن» counts only the hand-offs of its own units (a social hand-off's Airport Road
+  placeholder was counted there). Reception sees only the booking request record (S9).
+- **S9 — a social chat booking request goes to the reception of the branch the guest chose** (the reservation's branch),
+  like any chat booking request: the slots on shift at once, «مدير الاستقبال» and «التنبيهات» after 15 minutes, the re-alerts,
+  the reception emails, the dashboard; its alert link opens the booking (`hub_alert_open → booking_ref` → «الحجوزات» `?ref=`)
+  for that branch's reception, never the conversation, which stays with the social team. No branch at all → the social team.
+  The guest-facing lines on «السوشيال» follow (copy.md §4.7, the session's wording for Ahmed's review): the hand-off lines
+  name «فريقنا», never «فريق الاستقبال»; the booking request's footer, sent line and waiting line say reception confirms and
+  the confirmation reaches the guest **on WhatsApp** at the number given (never «هنا»).
+- **S10 — after the app is published, while an audience is «حسابات التجربة فقط»:** a message from an account not marked
+  «حساب تجربة» is **recorded only** — with the team (`human_reason` `social_record_only`, shown «تسجيل فقط»), no hand-off, no
+  alert, no waiting email, no reply, no hand-off notice; the social team answers from Meta Business Suite. Its comments were
+  already only recorded (`not_tester`). When the audience lets the assistant reply, the guest's next message returns the
+  conversation to it. Go-live (audience «الكل») happens the same day, after a full social lab. Kept on purpose and flagged to
+  Ahmed: a data-deletion request («احذف بياناتي») from such an account is still acknowledged and emailed to the admins (a
+  legal request, not a hand-off).
+- **S11 — App Review includes Human Agent** (staff replies up to 7 days) **and Business Asset User Profile Access** (Messenger
+  names). The package is prepared only (`docs/guest-hub/app-review/`); the app is not published and nothing is submitted by a
+  session.
+- **The confirmation windows (25 Nov deletion, 26 Nov comment switches):** no request reached the server either time. The
+  comment switches never had a confirmation window in the code (a plain button → one RPC) and the deletion's window is the
+  shared `Confirm`; the offline checks press both. Hardened in S3: reading the sign-in session before a request
+  (`supabase.auth.getSession()` in `lib/api.ts`, `offers.ts`, `partners.ts`) had no bound — a stalled read sends nothing and
+  shows nothing; it is now bounded at 10 s with «تعذّر قراءة جلسة الدخول خلال 10 ثوانٍ، فلم يُرسل الطلب ولم يُحفظ شيء…»
+  (`errors.ts → sessionWithin`); the deletion from «المحادثات» → the guest panel is bounded at 20 s like «السوشيال»; every
+  `Confirm`'s buttons are sticky at the bottom of the dialog (`.dialog-actions`), so the confirm button is on screen at 375
+  and 1440 whatever the text. Windows still close only through × / «إلغاء». Ahmed's own press, watched live, is recorded below
+  when it happens.
+- Migration `20261126800000_guest_hub_s3` (`scripts/hub-s3-migration.mjs`); checks `hub-social-check` block J (FAST), SQL
+  `supabase/tests/guest_hub_s3.sql` (the S2a routing checks moved there; the comments test's reception check reversed);
+  lab items s3-01 … s3-04 on «السوشيال» (engine mark e24).
+

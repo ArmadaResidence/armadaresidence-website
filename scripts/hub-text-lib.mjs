@@ -163,6 +163,22 @@ const S1_CASES = {
   'A mobile number that cannot be read': 'phone_unclear',
 };
 
+// copy.md §4.7 (S3, 26 Nov 2026): «السوشيال» — the WhatsApp twins' social lines (S8: the social team; S9: reception confirms,
+// the confirmation by WhatsApp); key = <twin>_social, used by copy.ts → fixed(…, brand)
+const S3_CASES = {
+  'Social — change or cancel an existing booking': 'change_cancel_social',
+  'Social — 2 to 4 rooms': 'multi_room_social',
+  'Social — early check-in or extension': 'early_extension_social',
+  'Social — still with the team': 'still_waiting_social',
+  'Social — extension handed with the date': 'extend_handed_social',
+  'Social — package order for today': 'package_same_day_social',
+  'Social — package order sent, with the summary': 'package_handed_summary_social',
+  'Social — package order sent': 'package_handed_social',
+  'Social — chat request footer': 'chat_request_footer_social',
+  'Social — chat request sent': 'result_chat_request_social',
+  'Social — a booking request still waiting': 'request_pending_social',
+};
+
 /** the fixed guest messages of copy.md: {key: {ar, en, extra?}} */
 export function parseCopy(md = read('docs/guest-hub/copy.md')) {
   const out = {};
@@ -296,6 +312,18 @@ export function parseCopy(md = read('docs/guest-hub/copy.md')) {
       out[key] = { ar: ar[0], en: en[0] };
     }
     for (const k of Object.values(S1_CASES)) if (!out[k]) throw new Error(`copy.md §4.6: the line ${k} is missing`);
+  }
+  {
+    const s47 = md.slice(md.indexOf('**4.7 «السوشيال»'), md.indexOf('## 5. Notices'));
+    for (const r of tableRows(s47)) {
+      const key = S3_CASES[r[0]];
+      if (!key) continue;
+      const ar = allQuoted(r[1], '«', '»');
+      const en = allQuoted(r[2], '“', '”');
+      if (!ar.length || !en.length) throw new Error(`copy.md §4.7: ${r[0]} has no quoted text`);
+      out[key] = { ar: ar[0], en: en[0] };
+    }
+    for (const k of Object.values(S3_CASES)) if (!out[k]) throw new Error(`copy.md §4.7: the line ${k} is missing`);
   }
   const s7 = section(md, '## 7. Staff emails');
   const credit = tableRows(s7).find((r) => r[0].startsWith('Claude API credit exhausted'));

@@ -367,7 +367,8 @@ export function Confirm({ open, title, body, confirmLabel, danger, onConfirm, on
     <Modal open={open} onClose={onClose} title={title} busy={busy}>
       {body && <div className="text-sm text-ink-muted mb-4">{body}</div>}
       {children}
-      <div className="flex gap-2 justify-end mt-5">
+      {/* S3 (26 Nov 2026): the confirm button is always on screen — at 375 and 1440, however long the text above it */}
+      <div className="flex gap-2 justify-end mt-5 dialog-actions">
         <CancelButton disabled={busy} />
         <button type="button" className={`btn ${danger ? 'btn-danger' : 'btn-primary'}`} onClick={onConfirm} disabled={busy} data-action="confirm-go">
           {busy ? <Spinner /> : null}

@@ -300,6 +300,8 @@ export const STATE_LABELS: Record<HubState, string> = {
 export function stateText(state: HubState, owner_kind?: string | null, human_reason?: string | null): string {
   if (state !== 'human') return STATE_LABELS[state] ?? state;
   if (human_reason === 'test_mode' || human_reason === 'cart_order') return STATE_LABELS.human;
+  // S10 (Ahmed, 26 Nov 2026): a real account while the channel is «حسابات التجربة فقط» — recorded only, nobody waits
+  if (human_reason === 'social_record_only') return 'تسجيل فقط';
   return owner_kind === 'staff' || owner_kind === 'phone' ? 'مع موظف' : 'بانتظار موظف';
 }
 export const TAB_LABELS: Record<Tab, string> = { waiting: 'بانتظار موظف', assistant: 'مع المساعد', drafts: 'مسودات للموافقة', all: 'الكل', closed: 'مغلقة', orders: 'طلبات' };
@@ -406,6 +408,8 @@ const REASONS: Record<string, string> = {
   booking_change: 'تعديل حجز أو إلغاؤه', multi_room: 'أكثر من غرفة', early_extension: 'وصول مبكر أو تمديد', stay_booking: 'حجز إقامة', hall_request: 'طلب القاعة',
   group_request: 'طلب مجموعة', prices_hidden: 'الأسعار مخفية', always_handoff: 'موضوع للفريق دائمًا', dining_order: 'طلب طعام', cart_order: 'طلب من القائمة',
   order_status: 'حالة طلب', table_booking: 'حجز طاولة', booking_status: 'حالة حجز', assistant: 'المساعد', handoff: 'تحويل للفريق', unit_off: 'الوحدة متوقفة',
+  // S3 (26 Nov 2026): S10 — recorded only while the channel is «حسابات التجربة فقط»; back to the assistant once it may reply
+  social_record_only: 'تسجيل فقط (حساب ليس حساب تجربة)', social_audience: 'سمح الجمهور برد المساعد',
   wrong_info: 'معلومة غير صحيحة', tone: 'أسلوب غير مناسب', needs_team: 'يحتاج الفريق', other: 'سبب آخر', draft: 'مسودة المساعد',
 };
 export function eventText(e: HubEvent, units: Record<string, string> = {}): string {
