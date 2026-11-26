@@ -400,6 +400,18 @@ const check = (ok, what) => {
   check(/step: `app:\$\{object\}:comments`/.test(adm) && /PAGE_COMMENT_FIELDS = \['feed'\]/.test(adm) && /IG_COMMENT_FIELDS = \['comments'\]/.test(adm)
     && adm.indexOf("if (!steps.every((s) => s.ok)) return json(req, 200, { ok: false, error: 'hub_meta_subscribe', steps });") < adm.indexOf('app:${object}:comments')
     && /const g = publicGuard\(text\);/.test(adm), 'H23 hub-admin: the comment subscriptions after the messaging ones (their own steps); a staff public reply through the guard');
+  // S2 (26 Nov 2026, Ahmed): the app-level comment fields are READ BACK — a step is ✓ only when Meta lists the field
+  {
+    const fnSrc = adm.slice(adm.indexOf('export function appFieldsListed'), adm.indexOf('async function metaSetup'));
+    const appFieldsListed = new Function('j', 'object', 'callback', 'fields', fnSrc.slice(fnSrc.indexOf('{') + 1, fnSrc.lastIndexOf('}')).replace(/: AnyJ/g, ''));
+    const cb = 'https://x.supabase.co/functions/v1/social-inbound';
+    const J = { data: [{ object: 'page', callback_url: cb, active: true, fields: [{ name: 'messages', version: 'v27.0' }, { name: 'feed', version: 'v27.0' }] },
+      { object: 'instagram', callback_url: cb, active: true, fields: [{ name: 'messages', version: 'v27.0' }] }] };
+    check(appFieldsListed(J, 'page', cb, ['feed']) && !appFieldsListed(J, 'instagram', cb, ['comments']) && !appFieldsListed(J, 'page', cb + 'x', ['feed'])
+      && !appFieldsListed({ data: [{ ...J.data[0], active: false }] }, 'page', cb, ['feed']) && !appFieldsListed({}, 'page', cb, ['feed'])
+      && /appFieldsListed\(listed\.j, object, callback, extra\)/.test(adm) && /'not_listed'/.test(adm) && /not_listed/.test(read('admin/src/pages/AssistantSocial.tsx')),
+      'H30 the connect step reads the app subscriptions back: feed / comments ✓ only when listed, active, on our callback («not_listed» otherwise, in Arabic in the dashboard)');
+  }
   const { alertVars } = await import('../supabase/functions/_shared/hub/staff.ts');
   check(alertVars({ token: 't', branch_name: 'x', guest_name: 'qa', guest_phone: null, ref: 'تعليق', summary: null, reason: 'comment_complaint', channel_kind: 'facebook_comment', both: true })[2] === 'تعليق فيسبوك',
     'H24 the staff alert of a comment complaint names «تعليق فيسبوك» / «تعليق انستجرام»');

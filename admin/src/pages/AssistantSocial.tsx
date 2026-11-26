@@ -180,7 +180,7 @@ export function SocialPanel() {
         )}
         {steps && (
           <ul className="grid gap-1 text-xs" data-setup-steps>
-            {steps.map((s) => <li key={s.step} className={s.ok ? '' : 'text-error'}>{s.ok ? '✓' : '✗'} {SETUP_STEPS[s.step] ?? s.step}{s.code ? ` (${s.code})` : ''}</li>)}
+            {steps.map((s) => <li key={s.step} className={s.ok ? '' : 'text-error'}>{s.ok ? '✓' : '✗'} {SETUP_STEPS[s.step] ?? s.step}{s.code === 'not_listed' ? ' (لم يظهر الحقل في اشتراكات التطبيق لدى ميتا)' : s.code ? ` (${s.code})` : ''}</li>)}
           </ul>
         )}
       </section>

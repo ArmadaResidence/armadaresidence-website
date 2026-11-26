@@ -249,6 +249,13 @@ export const PAGE_COMMENT_FIELDS = ['feed'];
 export const IG_COMMENT_FIELDS = ['comments'];
 // deno-lint-ignore no-explicit-any
 type AnyJ = any;
+/** S2: the app's subscriptions (GET /{app-id}/subscriptions) list `fields` for `object`, active, on our callback */
+export function appFieldsListed(j: AnyJ, object: string, callback: string, fields: string[]): boolean {
+  const row = (Array.isArray(j?.data) ? j.data : []).find((x: AnyJ) => x?.object === object);
+  if (!row || row.active === false || (row.callback_url && String(row.callback_url) !== callback)) return false;
+  const names = new Set((Array.isArray(row.fields) ? row.fields : []).map((f: AnyJ) => String(typeof f === 'string' ? f : f?.name ?? '')));
+  return fields.every((f) => names.has(f));
+}
 async function metaSetup(req: Request, body: Record<string, unknown>, jwt: string): Promise<Response> {
   const ov = await rpc<{ system_admin: boolean }>('hub_social_overview', {}, jwt);
   if (!ov.ok || !ov.data?.system_admin) return json(req, 403, { ok: false, error: 'hub_system_admin_only' });
@@ -286,10 +293,19 @@ async function metaSetup(req: Request, body: Record<string, unknown>, jwt: strin
   steps.push({ step: 'page', ok: sub.ok && sub.j?.success !== false, code: sub.ok ? null : metaError(sub.status, sub.j) });
   if (!steps.every((s) => s.ok)) return json(req, 200, { ok: false, error: 'hub_meta_subscribe', steps });
   // S2: the comments — the whole list again with the comment fields (a refusal leaves the messaging list as it is)
+  // S2 (26 Nov 2026, Ahmed: «make sure the app-level fields feed and comments are subscribed»): Meta's «success» is not
+  // proof, so the app's subscriptions are read back and each comment step is ✓ only when its field is listed, active, on
+  // our callback (`not_listed` otherwise)
+  const posted: Record<string, { ok: boolean; code: string | null }> = {};
   for (const [object, fields, extra] of [['page', PAGE_FIELDS, PAGE_COMMENT_FIELDS], ['instagram', IG_FIELDS, IG_COMMENT_FIELDS]] as const) {
     const form = new URLSearchParams({ object, callback_url: callback, fields: [...fields, ...extra].join(','), verify_token: verify!, include_values: 'true', access_token: `${appId}|${secret}` });
     const r = await graph(`/${appId}/subscriptions`, { method: 'POST', body: form });
-    steps.push({ step: `app:${object}:comments`, ok: r.ok && r.j?.success !== false, code: r.ok ? null : metaError(r.status, r.j) });
+    posted[object] = { ok: r.ok && r.j?.success !== false, code: r.ok ? null : metaError(r.status, r.j) };
+  }
+  const listed = await graph(`/${appId}/subscriptions?access_token=${encodeURIComponent(`${appId}|${secret}`)}`);
+  for (const [object, extra] of [['page', PAGE_COMMENT_FIELDS], ['instagram', IG_COMMENT_FIELDS]] as const) {
+    const ok = posted[object].ok && appFieldsListed(listed.j, object, callback, extra);
+    steps.push({ step: `app:${object}:comments`, ok, code: !posted[object].ok ? posted[object].code : ok ? null : listed.ok ? 'not_listed' : metaError(listed.status, listed.j) });
   }
   const subC = await graph(`/${page.id}/subscribed_apps`, { method: 'POST', body: new URLSearchParams({ subscribed_fields: [...PAGE_FIELDS, ...PAGE_COMMENT_FIELDS].join(','), access_token: pageTk }) });
   steps.push({ step: 'page:comments', ok: subC.ok && subC.j?.success !== false, code: subC.ok ? null : metaError(subC.status, subC.j) });
