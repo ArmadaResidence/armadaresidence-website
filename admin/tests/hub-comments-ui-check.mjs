@@ -132,7 +132,10 @@ for (const role of ['admin', 'management']) {
         }
         if (fn === 'hub_assistant_overview') return ok(OVERVIEW(sys));
         if (fn === 'hub_social_overview') return ok({ ...SOCIAL, system_admin: sys });
-        if (fn === 'hub_data_deletions_list') return ok([]);
+        if (fn === 'hub_data_deletions_list') return ok(sys ? [{ id: id(950), status: 'open', label: 'حساب تجربة', channel_kind: 'instagram', via: 'guest', requested_at: '2026-11-26T10:00:00Z', profile_id: id(951), is_test: true }] : []);
+        // S3 (S8): «فريق السوشيال»
+        if (fn === 'hub_social_team_get') return ok({ members: [{ id: id(960), name: 'أحمد', has_number: true }], candidates: [{ id: id(960), name: 'أحمد', has_number: true }, { id: id(961), name: 'مدير', has_number: false }], system_admin: sys });
+        if (fn === 'hub_social_team_set') return ok({ ok: true, batch_id: id(962), before: [id(960)] });
         if (fn === 'hub_comment_settings') return ok({ ...SETTINGS(ready, on), system_admin: sys });
         if (fn === 'hub_channel_audience_set') return ok({ ok: true, batch_id: id(903), before: null });
         if (fn === 'hub_comment_switch_set' && hang) return new Promise(() => {}); // S2: a request that never answers
@@ -250,6 +253,29 @@ for (const role of ['admin', 'management']) {
         }));
         check(boxes.length === 2 && Math.abs(boxes[0].left - boxes[1].left) <= 1 && Math.abs(boxes[0].right - boxes[1].right) <= 1
           && boxes.every((x) => x.dTop <= x.h / 2), `${tag}: the two account rows place their button alike — ${JSON.stringify(boxes)}`);
+      }
+      // S3 (S8): «فريق السوشيال» — who gets the social hand-offs; the system admin edits it, «تراجع» the list before
+      check(await page.locator('[data-social-team] [data-team-member]').count() === 1 && /تنبيه واتساب وإيميل/.test(await page.locator('[data-social-team]').innerText()),
+        `${tag}: «فريق السوشيال» lists its member and how they are alerted`);
+      if (sys) {
+        await page.locator('[data-action="social-team-edit"]').click();
+        await page.locator(`[data-team-pick="${id(961)}"]`).check();
+        const go = page.locator('dialog[open] [data-action="confirm-go"]');
+        check(await go.isVisible() && await go.evaluate((b) => { const r = b.getBoundingClientRect(); return r.bottom <= innerHeight && r.top >= 0; }),
+          `${tag}: the team dialog's save button is on screen`);
+        await go.click();
+        await page.getByRole('button', { name: 'تراجع' }).first().click({ timeout: 10000 });
+        await page.waitForTimeout(300);
+        const sets = calls.filter((c) => c.fn === 'hub_social_team_set').map((c) => (c.body.p_staff ?? []).length);
+        check(sets.join() === '2,1', `${tag}: the team saved (two members), then «تراجع» the list before — ${sets.join()}`);
+        // S3 (B2): a confirmation's buttons are always on screen — «حذف بيانات المحادثات»
+        await page.locator('[data-deletions] [data-action="data-delete"]').click();
+        const del = page.locator('dialog[open] [data-action="confirm-go"]');
+        check(await del.isVisible() && await del.evaluate((b) => { const r = b.getBoundingClientRect(); return r.bottom <= innerHeight && r.top >= 0 && r.width > 0; }),
+          `${tag}: «حذف بيانات المحادثات» — the confirm button is on screen`);
+        await page.locator('dialog[open] [data-action="dialog-cancel"]').click();
+      } else {
+        check(await page.locator('[data-action="social-team-edit"]').count() === 0, `${tag}: only the system admin edits the social team`);
       }
       await sane(page, `${tag} switches`);
       check(!errors.length, `${tag}: no page error — ${errors.join(' ; ').slice(0, 200)}`);
