@@ -250,6 +250,8 @@ update public.hub_units set social_mode = 'standby' where key = 'social';
 select pg_temp._check('F1 standby: «no_shift» only while the social team is empty',
   internal.hub_standby_reason(pg_temp._id('c1'), (pg_temp._j('in1') ->> 'message_id')::uuid, 'reply') <> 'no_shift');
 select pg_temp._check('F2 the four S3 lab items on «السوشيال»', (select count(*) = 4 from public.hub_test_items where key like 's3-%' and unit_key = 'social'));
+select pg_temp._check('F3 S3b: s3-02 asks the group details first, then the hand-off', (select jsonb_array_length(expect -> 'steps') = 2 and expect #>> '{steps,0,outcome}' = 'ask'
+  from public.hub_test_items where key = 's3-02'));
 
 select n, test, ok, detail from _r order by n;
 rollback;

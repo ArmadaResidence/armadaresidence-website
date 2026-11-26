@@ -549,6 +549,9 @@ const check = (ok, what) => {
   check(/hub_social_team_set/.test(soc) && /data-social-team/.test(soc) && /hub_social_team_get/.test(soc), 'J15 «فريق السوشيال» in «إعدادات المساعد» → «السوشيال»');
   const bank = read('tests/hub-bank/conversations-social.jsonl').trim().split('\n').map((l) => JSON.parse(l)).filter((x) => /^s3-/.test(x.id ?? ''));
   check(bank.length === 4 && JSON.stringify(s3.newItems().map((x) => x.key)) === JSON.stringify(bank.map((x) => x.id)), 'J16 the four S3 lab items = the bank file');
+  const s3b = await import('./hub-s3b-migration.mjs');
+  check(read(s3b.OUT_PATH) === s3b.migration() && JSON.stringify(s3b.item().expect.steps.map((x) => x.outcome)) === '["ask","handoff"]',
+    'J17 S3b = its generator: s3-02 asks the group details first, then the social team');
 }
 
 if (fails.length) {

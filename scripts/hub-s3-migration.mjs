@@ -38,9 +38,14 @@ function latest(name) {
   throw new Error(`${name}: not found`);
 }
 
-/** the lab's S3 items (the bank file tests/hub-bank/conversations-social.jsonl holds the same rows) */
+/** s3-02 as this migration applied it (S3b, 20261126900000, corrected it in the bank: the details are collected first) */
+export const S3_02_AS_APPLIED = { id: 's3-02', unit: 'social', language: 'ar', messages: ['أبغى أحجز 3 غرف في طريق المطار من 10 ديسمبر إلى 12 ديسمبر'],
+  expect: { action: 'conversation', steps: [{ outcome: 'handoff', must_not_include: ['الاستقبال'] }] },
+  note: 'S8: 2–4 rooms on Messenger are arranged by the social team — never «فريق الاستقبال»', tags: ['conversation', 'social', 's3', 'handoff'], context: {} };
+/** the lab's S3 items (the bank file tests/hub-bank/conversations-social.jsonl holds the same rows; s3-02 as applied) */
 export function newItems() {
   return read('tests/hub-bank/conversations-social.jsonl').trim().split('\n').map((l) => JSON.parse(l)).filter((x) => /^s3-/.test(x.id ?? ''))
+    .map((x) => (x.id === 's3-02' ? S3_02_AS_APPLIED : x))
     .map((x) => ({ key: x.id, unit: x.unit, language: x.language, messages: x.messages, context: x.context ?? {}, expect: x.expect, note: x.note, tags: x.tags }));
 }
 
