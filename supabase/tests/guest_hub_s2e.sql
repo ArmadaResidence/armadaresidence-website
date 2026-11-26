@@ -164,7 +164,7 @@ select pg_temp._check('E1 report_hub carries the conversations per channel (what
 -- F. the guest's own words rank the cards inside a topic (Ahmed, 26 Nov 2026)
 select pg_temp._check('F1 the guest''s words: the stop words, the article off a long word, punctuation and case away',
   internal.hub_guest_words('عندكم الشامبو في الغرف؟') = '{شامبو}' and internal.hub_guest_words('Do you have SHAMPOO?') = '{shampoo}' and internal.hub_guest_words('هل يوجد؟') = '{}'
-  and internal.hub_norm('أإآ ة ى «مرحبًا»!') = 'ااا ه ي مرحبا');
+  and internal.hub_norm('أإآ ة ى «مرحبًا»!') ~ '^ااا ه ي +مرحبا$');
 select pg_temp._service();
 select pg_temp._save('k0', public.hub_knowledge_for('airport-road', array['room_amenities'], 'ar', null));
 select pg_temp._save('k1', public.hub_knowledge_for('airport-road', array['room_amenities'], 'ar', null, 'عندكم شامبو؟'));

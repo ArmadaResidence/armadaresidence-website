@@ -72,10 +72,10 @@ const NEW_ITEMS = [
     note: 'a question under our own public reply: never a public reply to our own reply (§5.4), the private answer as for any question', tags: ['comment', 'social', 'thread', 's2e'] },
   { key: 's2-03', unit: 'airport-road', language: 'ar', messages: ['عندكم شامبو في الغرف؟'], context: {},
     expect: { action: 'conversation', steps: [{ outcome: 'answer', must_include: ['شامبو'], must_not_include: ['سيكمل معك'] }] },
-    note: 'the bathroom amenities card on Airport Road\'s WhatsApp number: the guest\'s own word ranks it inside the topic (Ahmed, 26 Nov 2026)', tags: ['s2e', 'amenities'] },
+    note: 'the bathroom amenities card on Airport Road\'s WhatsApp number: the guest\'s own word ranks it inside the topic (Ahmed, 26 Nov 2026)', tags: ['conversation', 'social', 's2e', 'amenities'] },
   { key: 's2-04', unit: 'shafa-road', language: 'en', messages: ['Is there shampoo in the room?'], context: {},
     expect: { action: 'conversation', steps: [{ outcome: 'answer', must_include: ['shampoo'], must_not_include: ['will continue with you'] }] },
-    note: 'the same on Shafa Road\'s number, in English', tags: ['s2e', 'amenities'] },
+    note: 'the same on Shafa Road\'s number, in English', tags: ['conversation', 'social', 's2e', 'amenities'] },
 ];
 const C211 = { context: { kind: 'instagram', parent: 'user' },
   expect: { action: 'comment', public: false, private: false, handoff: false },
