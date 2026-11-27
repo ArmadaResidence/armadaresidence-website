@@ -27,9 +27,9 @@
 // No log line carries a text, a name, a phone number or the understanding.
 // Secrets: ANTHROPIC_API_KEY (label-suggest's), YCLOUD_API_KEY, RESEND_API_KEY; SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY.
 import content from '../booking-request/content.generated.json' with { type: 'json' };
-import { buttonsPayload, sendSession, textPayload, type WaResult } from '../booking-request/whatsapp-send.ts';
+import { interactivePayload, sendSession, textPayload, type WaResult } from '../booking-request/whatsapp-send.ts';
 import { pageToken as metaPageToken, sendHub as metaSend, typing as metaTyping } from '../_shared/hub/meta.ts';
-import { hubApiCreditMail, hubBudgetMail, hubComplaintMail, hubFlaggedMail, hubModelErrorMail, hubSpikeMail, hubVoiceCapMail, longDate, partnerNotification, type PartnerMail } from '../booking-request/email.ts';
+import { hubApiCreditMail, hubBudgetMail, hubComplaintMail, hubHandoffMail, hubFlaggedMail, hubModelErrorMail, hubSpikeMail, hubVoiceCapMail, longDate, partnerNotification, type PartnerMail } from '../booking-request/email.ts';
 import { sarText } from '../booking-request/rules.ts';
 import { typingUrl } from '../_shared/hub/send.ts';
 import { runTurn, type Deps, type Outcome } from '../_shared/hub/engine.ts';
@@ -209,7 +209,7 @@ async function sendAll(fin: Json, typedAlready = false): Promise<number> {
     let r: WaResult;
     try {
       const payload = m.kind === 'interactive' && Array.isArray(m.payload?.buttons)
-        ? buttonsPayload(ctx.from, ctx.to, m.body, m.payload.buttons, m.id, typeof m.payload?.header_image === 'string' ? m.payload.header_image : null)
+        ? interactivePayload(ctx.from, ctx.to, m.body, m.payload.buttons, m.id, typeof m.payload?.header_image === 'string' ? m.payload.header_image : null, typeof m.payload?.list_button === 'string' ? m.payload.list_button : null)
         : textPayload(ctx.from, ctx.to, m.body, m.id);
       if (!typed && !ctx.test) {
         typed = true;
@@ -247,6 +247,42 @@ async function altOffers(): Promise<number> {
   for (const o of (r?.offers ?? []) as Json[]) sent += await sendAll(o);
   if ((r?.offers ?? []).length) console.log('hub-agent: alternatives offer', `sent=${sent}`);
   return sent;
+}
+
+/** the package follow-up (Ahmed, 27 Nov 2026): ONE message 3 hours after the package question, inside the 24-hour window
+ *  only, never after the guest wrote, opted out or went to the team (public.hub_followups_claim decides) */
+async function followups(): Promise<number> {
+  const text = { ar: fixed('package_followup', 'ar'), en: fixed('package_followup', 'en') };
+  let r: Json;
+  try {
+    r = await rpc('hub_followups_claim', { p_text: text });
+  } catch (e) {
+    console.error('hub-agent: follow-ups claim failed', String(e).slice(0, 80));
+    return 0;
+  }
+  let sent = 0;
+  for (const o of (r?.followups ?? []) as Json[]) sent += await sendAll(o);
+  if ((r?.followups ?? []).length) console.log('hub-agent: package follow-ups', `sent=${sent}`);
+  return sent;
+}
+
+/** a transferred conversation with no written team reply after N minutes (Ahmed, 27 Nov 2026): ONE email per hand-off and
+ *  an alert in «إعدادات المساعد» (public.hub_handoffs_unanswered_claim); never a WhatsApp to staff from here */
+async function unanswered(): Promise<void> {
+  let r: Json;
+  try {
+    r = await rpc('hub_handoffs_unanswered_claim', {});
+  } catch (e) {
+    console.error('hub-agent: unanswered transfers claim failed', String(e).slice(0, 80));
+    return;
+  }
+  for (const x of (r?.items ?? []) as Json[]) {
+    const ok = await mail(r.recipients ?? [], hubHandoffMail(content, {
+      conversation_id: String(x.conversation_id), short: String(x.short ?? ''), branch: x.branch ?? null, unit_kind: String(x.unit_kind ?? ''),
+      unit_name: String(x.unit_name ?? ''), topic: x.topic ?? null, reason: x.reason ?? null, waiting_min: Number(x.waiting_min ?? 0), minutes: Number(x.minutes ?? 15),
+    }));
+    console.log('hub-agent: unanswered transfer email', ok ? 'sent' : 'not sent');
+  }
 }
 
 /** the budget and API-credit alerts that still need their email (once each) */
@@ -657,6 +693,8 @@ Deno.serve(async (req) => {
     }
     await labAlerts();
     await altOffers().catch(() => 0);
+    await followups().catch(() => 0);
+    await unanswered().catch(() => undefined);
     const cards = await learnJobs(model, deadline).catch(() => 0);
     const lab = await evalStep(model, deadline).catch(() => 0);
     return json(200, { ok: true, due: (due ?? []).length, done: done.length, cards, lab });

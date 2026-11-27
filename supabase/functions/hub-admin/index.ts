@@ -45,7 +45,7 @@
 //     persona applies. Answers the replies, the understanding, the decision, the sources, the guard's verdict and the cost.
 // Otherwise it never creates, edits or deletes anything in YCloud.
 import content from '../booking-request/content.generated.json' with { type: 'json' };
-import { sendSession, sendTemplate, textPayload, type WaResult } from '../booking-request/whatsapp-send.ts';
+import { interactivePayload, sendSession, sendTemplate, textPayload, type WaResult } from '../booking-request/whatsapp-send.ts';
 import { hubReplyReadyPayload, typingUrl, type HubUnitRef } from '../_shared/hub/send.ts';
 import { buttonsPayload } from '../booking-request/whatsapp-send.ts';
 import { GRAPH as META_GRAPH, metaError, pageToken as metaPageToken, sendHub as metaSend, typing as metaTyping } from '../_shared/hub/meta.ts';
@@ -143,7 +143,7 @@ async function listAll<T>(make: (page: number) => string, key: string): Promise<
 interface BeginMsg {
   id: string;
   kind: 'text' | 'template' | 'interactive';
-  payload?: { buttons?: unknown } | null;
+  payload?: { buttons?: unknown; header_image?: unknown; list_button?: unknown } | null;
   body?: string | null;
   language?: 'ar' | 'en' | null;
   send: boolean;
@@ -193,7 +193,7 @@ async function deliver(req: Request, b: Begin): Promise<Response> {
         }
         const btns = m.payload?.buttons;
         const payload = m.kind === 'interactive' && Array.isArray(btns)
-          ? buttonsPayload(b.from!, b.to!, String(m.body ?? ''), btns as { id: string; title: string }[], m.id)
+          ? interactivePayload(b.from!, b.to!, String(m.body ?? ''), btns as { id: string; title: string }[], m.id, typeof m.payload?.header_image === 'string' ? m.payload.header_image : null, typeof m.payload?.list_button === 'string' ? m.payload.list_button : null)
           : textPayload(b.from!, b.to!, String(m.body ?? ''), m.id);
         r = await sendSession({ payload, windowExpiresAt: b.window_expires_at ?? null, test, log: null });
       } else {

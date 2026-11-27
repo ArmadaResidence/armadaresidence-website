@@ -31,6 +31,8 @@ export interface OfferItem {
   price?: number | null;
   /** a «باقات بسعر خاص» offer (18 Nov 2026): the «بدلًا من» prices (the guard's base prices for a discount) */
   bases?: number[];
+  /** the package question's choices (Ahmed, 27 Nov 2026): hubp:<the English name's slug>, the package's name */
+  choices?: { id: string; title: string }[];
 }
 export interface Payload {
   cards: Card[];
@@ -99,6 +101,10 @@ export function packagesItem(o: Json, L: 'ar' | 'en'): OfferItem {
     id: `offer:${o.slug}`, category: String(o.category ?? ''), packages: true, title: String((L === 'en' ? o.title_en : o.title_ar) ?? ''),
     text: lines.filter(Boolean).join('\n').slice(0, 2000), valid_to: o.valid_to ?? null,
     bases: pk.map((p: Json) => (p.was_price != null ? num(p.was_price) : null)).filter((x: number | null): x is number => typeof x === 'number'),
+    choices: pk.map((p: Json, i: number) => {
+      const slug = String(p.name_en ?? '').toLowerCase().replace(/\bpackages?\b/g, ' ').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 40) || `p${i + 1}`;
+      return { id: `hubp:${slug}`, title: [...String((L === 'en' ? p.name_en : p.name_ar) ?? slug).trim()].slice(0, 20).join('') };
+    }).filter((c: { id: string; title: string }, i: number, all: { id: string }[]) => c.title && all.findIndex((x) => x.id === c.id) === i).slice(0, 10),
   };
 }
 

@@ -184,7 +184,9 @@ export interface SessionPayload {
   to: string;
   type: 'interactive' | 'text';
   externalId?: string;
-  interactive?: { type: 'button'; header?: { type: 'image'; image: { link: string } }; body: { text: string }; action: { buttons: { type: 'reply'; reply: { id: string; title: string } }[] } };
+  interactive?:
+    | { type: 'button'; header?: { type: 'image'; image: { link: string } }; body: { text: string }; action: { buttons: { type: 'reply'; reply: { id: string; title: string } }[] } }
+    | { type: 'list'; body: { text: string }; action: { button: string; sections: { rows: { id: string; title: string }[] }[] } };
   text?: { body: string };
 }
 
@@ -220,6 +222,36 @@ export function buttonsPayload(from: string, to: string, body: string, buttons: 
       action: { buttons: buttons.map((b) => ({ type: 'reply' as const, reply: { id: b.id, title: b.title.trim() } })) },
     },
   };
+}
+
+/** WhatsApp's list message (27 Nov 2026 — «السعر أولًا»'s four date choices, the package question): 1–10 rows, a row
+ *  title ≤ 24 characters, the button ≤ 20 */
+export const LIST_ROWS_MAX = 10;
+export const LIST_TITLE_MAX = 24;
+export function listPayload(from: string, to: string, body: string, rows: ReplyButton[], button: string, externalId?: string): SessionPayload {
+  if (!E164.test(from) || !E164.test(to)) throw new Error('list: from / to must be E.164');
+  const text = String(body ?? '').trim();
+  if (!text || text.length > SESSION_BODY_MAX) throw new Error('list: the body is empty or too long');
+  if (!rows.length || rows.length > LIST_ROWS_MAX) throw new Error(`list: 1–${LIST_ROWS_MAX} rows`);
+  const label = String(button ?? '').trim();
+  if (!label || [...label].length > BUTTON_TITLE_MAX) throw new Error(`list: a button of 1–${BUTTON_TITLE_MAX} characters`);
+  const ids = new Set<string>();
+  for (const r of rows) {
+    const t = String(r.title ?? '').trim();
+    if (!t || [...t].length > LIST_TITLE_MAX) throw new Error(`list: a row title of 1–${LIST_TITLE_MAX} characters («${t}»)`);
+    if (!/^[a-z0-9:_-]{1,200}$/.test(r.id) || ids.has(r.id)) throw new Error('list: ids are unique, [a-z0-9:_-]');
+    ids.add(r.id);
+  }
+  return {
+    from, to, type: 'interactive', ...(externalId ? { externalId } : {}),
+    interactive: { type: 'list', body: { text }, action: { button: label, sections: [{ rows: rows.map((r) => ({ id: r.id, title: r.title.trim() })) }] } },
+  };
+}
+/** reply buttons for up to three choices (with an optional image header), a list from four */
+export function interactivePayload(from: string, to: string, body: string, choices: ReplyButton[], externalId?: string, headerImage?: string | null, listButton?: string | null): SessionPayload {
+  return choices.length > BUTTONS_MAX
+    ? listPayload(from, to, body, choices, String(listButton ?? '').trim() || 'اختر', externalId)
+    : buttonsPayload(from, to, body, choices, externalId, headerImage);
 }
 
 /** the YCloud body of a plain session text */
@@ -261,7 +293,7 @@ async function finishLog(log: SessionSend['log'], r: WaResult, error: string | n
 /** One free-form send. Never throws, never retries. The console line names the kind and the outcome only. */
 export async function sendSession(s: SessionSend): Promise<WaResult> {
   const fail = (errorCode: string): WaResult => ({ accepted: false, status: 'failed', messageId: null, errorCode });
-  const kind = s.payload.type === 'interactive' ? 'buttons' : 'text';
+  const kind = s.payload.type === 'interactive' ? (s.payload.interactive?.type === 'list' ? 'list' : 'buttons') : 'text';
   const done = async (r: WaResult, error: string | null = null) => {
     await finishLog(s.log, r, error, s.payload.from);
     console.log(`whatsapp session ${kind} ${r.status}`, r.messageId ? `id=${r.messageId}` : '', r.errorCode ?? '', s.test ? 'TEST' : '');

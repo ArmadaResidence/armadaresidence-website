@@ -27,7 +27,7 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { LabPanel, LicencesPanel, PersonaPanel, SimulatorPanel } from './AssistantLab';
 import { SocialPanel } from './AssistantSocial';
 import { phoneAutoList, phoneAutoRemove, type PhoneAutoRow } from '../lib/lab';
-import type { Persona } from '../lib/hub';
+import type { GateCode, Persona } from '../lib/hub';
 import * as api from '../lib/api';
 import { BRANCH_NAMES, ROLE_LABELS, riyadhDateTime, west } from '../lib/format';
 import {
@@ -288,7 +288,7 @@ export default function Assistant() {
         <ul className="grid gap-3">
           {SWITCHES.map((s) => {
             const on = o.settings[s.key] === true;
-            const gates = o.switch_gates[s.key] ?? [];
+            const gates = (o.switch_gates as Record<string, GateCode[] | undefined>)[s.key] ?? [];
             return (
               <li key={s.key} className="grid gap-1 border-b border-line last:border-0 pb-3 last:pb-0" data-switch={s.key}>
                 <label className="flex items-center justify-between gap-3 min-h-11">
@@ -596,6 +596,17 @@ export default function Assistant() {
             {o.alerts.map((a) => (
               <li key={a.id} className="text-sm" data-alert={a.kind}>
                 {ALERT_LABELS[a.kind] ?? a.kind} — {unitName(a.unit)} <span className="text-xs text-ink-muted num-ar">{riyadhDateTime(a.created_at)}</span>
+                {/* 27 Nov 2026: a transfer with no written team reply — its branch, topic and the conversation */}
+                {a.kind === 'handoff_unanswered' && (() => {
+                  const p = (a.payload ?? {}) as Record<string, unknown>;
+                  const br = p.branch === 'airport-road' ? 'طريق المطار' : p.branch === 'shafa-road' ? 'طريق الشفا' : '';
+                  return (
+                    <span className="block text-xs text-ink-muted" data-alert-detail>
+                      {br && <>الفرع: {br} · </>}الموضوع: {String(p.topic ?? '') || 'غير محدد'} ·{' '}
+                      <a className="link-bronze" href={`${import.meta.env.BASE_URL}inbox?c=${encodeURIComponent(String(p.conversation_id ?? ''))}`}>فتح المحادثة</a>
+                    </span>
+                  );
+                })()}
                 {/* 15 Nov 2026: a staff send refused or failed — why, and how many since the alert opened */}
                 {a.kind === 'staff_send' && (
                   <span className="block text-xs text-ink-muted" data-alert-detail>

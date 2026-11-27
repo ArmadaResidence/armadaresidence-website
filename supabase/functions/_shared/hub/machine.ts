@@ -17,6 +17,7 @@
 import { deriveKind, type Understanding } from './understand.ts';
 import type { NoticeKey } from './copy.ts';
 import { CHAT_REQUEST_ONLY, quoteKey, type DraftQuote, type TapButton } from './booking.ts';
+import { addDaysIso } from './dates.ts';
 
 export type State = 'none' | 'new' | 'inquiry' | 'collecting' | 'quoted' | 'awaiting_confirmation' | 'booked' | 'awaiting_payment' | 'human' | 'closed';
 export const ASSISTANT_STATES: State[] = ['new', 'inquiry', 'collecting', 'quoted', 'awaiting_confirmation', 'booked'];
@@ -32,6 +33,10 @@ export interface Draft {
 }
 
 export type Action =
+  /** Ahmed, 27 Nov 2026 (the ads analysis — 36 guests stopped at the dates question): a room price asked without dates —
+   *  «يبدأ من» per room type of the branch from the dashboard rate calendar (the lowest open rate of the next 30 nights,
+   *  public.hub_from_prices; the code writes it, never the model), then the dates with four quick replies (hubt:…) */
+  | { type: 'price_from'; branch: string }
   /** H11: the extension handed to reception with its date («سجّلنا طلب التمديد حتى {date}…») */
   | { type: 'extend_handed'; until: string }
   /** H11: the published photo of a room type (or the packages' page) — never a hand-off for a photo request alone */
@@ -152,6 +157,8 @@ export interface GuestBooking {
 }
 
 export interface Context {
+  /** Ahmed, 27 Nov 2026: «السعر أولًا» (settings hub_price_first) — «يبدأ من» before the dates question */
+  price_first?: boolean;
   /** S1: 'brand' = «السوشيال» (both branches; the conversation's branch once named, else unit_branch is null) */
   unit_kind: 'branch' | 'dining' | 'brand';
   /** S1: Instagram / Messenger — no phone is known, the booking asks the mobile number before the summary */
@@ -564,6 +571,25 @@ function decideCore(input: DecideInput): Decision {
     }
     if (ev.button_id === 'hubq:book') {
       return stayIntent(input, state, t, out, null);
+    }
+    // «السعر أولًا» (Ahmed, 27 Nov 2026): the date quick replies after the «يبدأ من» lines — the dates set by code, then the
+    // stay flow asks what is still missing; «تاريخ آخر» asks the date in words
+    if (ev.button_id.startsWith('hubt:')) {
+      const base = input.draft?.kind === 'stay' && state !== 'booked' ? input.draft.fields : {};
+      const r = quickDates(ev.button_id.slice(5), ctx.today ?? clockToday());
+      if (!r) {
+        t.push('T15');
+        return out({ next: 'collecting', actions: [{ type: 'fixed', key: 'ask_dates_free' }], draft_patch: { kind: 'stay', fields: { ...base, check_in: null, check_out: null, nights: null, _dates_pending: null } }, failed: 'reset' });
+      }
+      t.push('T52');
+      return stayIntent(input, state, t, out, null, { fields: { ...base, ...r, _dates_pending: null } });
+    }
+    // the package question after the package list (Ahmed, 27 Nov 2026): a package tapped → the order collected as when the
+    // guest names it (the branch, the occasion's date, the room booking — package_ask)
+    if (ev.button_id.startsWith('hubp:') && ev.button_id.length > 5) {
+      const name = ev.button_id.slice(5).trim().slice(0, 60);
+      const pu = { intents: ['package_order'], topics: ['offers'], package: name, branch: null, check_in: null, check_out: null, dates_read: null, has_room_booking: null } as unknown as Understanding;
+      return packageOrder(input, state, t, out, pu, false);
     }
     // H9 fix 3: the dates confirm question (copy.md §2.1) — «نعم» takes the dates shown, «تواريخ أخرى» asks again
     const pend = pendingDates(input.draft);
@@ -1022,6 +1048,30 @@ function datesQuestion(u: Understanding | null, prev: Record<string, unknown>, c
     draft_patch: { kind: 'stay', fields: { ...fields, _dates_pending: pending, _dq: sig } }, draft_replace: replace, failed: 'reset' });
 }
 
+/** «السعر أولًا» (Ahmed, 27 Nov 2026): the first room-price question of a stay without its dates, on a branch whose prices
+ *  show, while the switch is on — once per draft (a second price question gets price_needs_dates, as before) */
+function priceFirst(opts: StayOpts, prev: Record<string, unknown>, fields: Record<string, unknown>, missing: string[], ctx: Context): Action | null {
+  if (!opts.price || !ctx.price_first || !ctx.show_prices || prev._from_sent || Number(prev._price_asks ?? 0) >= 1) return null;
+  if (!missing.includes('dates')) return null;
+  const b = fields.branch;
+  return b === 'airport-road' || b === 'shafa-road' ? { type: 'price_from', branch: b } : null;
+}
+
+/** the four date quick replies of «السعر أولًا» (hubt:tonight · tomorrow · weekend · other) → the stay's dates in Riyadh;
+ *  the weekend = Thursday → Saturday (as dates.ts: on a Thursday from today, on a Friday one night); «other» → null */
+export function quickDates(key: string, today: string): { check_in: string; check_out: string; nights: number } | null {
+  const day = (n: number) => addDaysIso(today, n);
+  if (key === 'tonight') return { check_in: today, check_out: day(1), nights: 1 };
+  if (key === 'tomorrow') return { check_in: day(1), check_out: day(2), nights: 1 };
+  if (key === 'weekend') {
+    const wd = new Date(`${today}T00:00:00Z`).getUTCDay();
+    if (wd === 5) return { check_in: today, check_out: day(1), nights: 1 };
+    const thu = wd === 4 ? today : addDaysIso(today, ((4 - wd + 7) % 7) || 7);
+    return { check_in: thu, check_out: addDaysIso(thu, 2), nights: 2 };
+  }
+  return null;
+}
+
 function stayIntent(input: DecideInput, state: State, t: string[], out: Out, u: Understanding | null, opts: StayOpts = {}): Decision {
   const ctx = input.ctx;
   if (!ctx.skills.includes('room_booking') || ctx.instant_booking === false) return liteStay(input, state, t, out, u, opts);
@@ -1052,6 +1102,11 @@ function stayIntent(input: DecideInput, state: State, t: string[], out: Out, u: 
     t.push('T8');
     // a guest who asks the price again without dates (H9 fix 3): the price depends on the dates — any date checked, and the
     // website's booking link; never a price
+    const pf = priceFirst(opts, prev, fields, missing, ctx);
+    if (pf) {
+      t.push('T51');
+      return out({ next: 'collecting', actions: [...first, pf], draft_patch: { kind: 'stay', fields: { ...fields, _from_sent: true } }, draft_replace: replace, failed: 'reset' });
+    }
     if (opts.price && Number(prev._price_asks ?? 0) >= 1 && (missing.includes('dates') || missing.includes('departure'))) {
       return out({ next: 'collecting', actions: [{ type: 'fixed', key: 'price_needs_dates' }], draft_patch: { kind: 'stay', fields }, draft_replace: replace, failed: 'reset' });
     }
@@ -1119,6 +1174,12 @@ function liteStay(input: DecideInput, state: State, t: string[], out: Out, u: Un
   else if (state === 'inquiry') t.push('T7');
   if (missing.length) {
     t.push('T8');
+    const pf = priceFirst(opts, prev, fields, missing, ctx);
+    if (pf) {
+      t.push('T51');
+      const lead: Action[] = asks ? [{ type: 'answer', topics, intents: u!.intents, branch: u!.branch, mixed: true, nogap: true }] : [];
+      return out({ next: 'collecting', actions: [...lead, pf], draft_patch: { kind: 'stay', fields: { ...fields, _from_sent: true } }, draft_replace: replace, failed: 'reset' });
+    }
     if (opts.price && Number(prev._price_asks ?? 0) >= 1 && (missing.includes('dates') || missing.includes('departure'))) {
       return out({ next: 'collecting', actions: [{ type: 'fixed', key: 'price_needs_dates' }], draft_patch: { kind: 'stay', fields }, draft_replace: replace, failed: 'reset' });
     }

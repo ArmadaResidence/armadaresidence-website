@@ -171,6 +171,8 @@ export function outcomeKind(finish: Json): string {
   if (finish.state === 'quoted' && acts.includes('fixed')) return 'quote';
   // H9 fix 3: a question about the dates (copy.md §2.3) and «the price depends on the dates» are the booking's own asks
   if (acts.includes('dates_question')) return 'ask';
+  // «السعر أولًا» (Ahmed, 27 Nov 2026): the «يبدأ من» lines are the dates question's own lead
+  if (acts.includes('price_from')) return 'ask';
   // 18 Nov 2026: a package order's details and its 24-hour notice are the order's own asks
   if (acts.includes('package_ask')) return 'ask';
   if (acts.includes('fixed') && finish.state === 'collecting') return 'ask';

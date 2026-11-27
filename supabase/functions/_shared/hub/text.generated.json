@@ -549,6 +549,54 @@
    "ar": "طلب حجزك لا يزال لدى فريق الاستقبال، وسيصلك التأكيد عبر واتساب في أقرب وقت.",
    "en": "Your booking request is still with our reception team; the confirmation will reach you on WhatsApp as soon as possible."
   },
+  "price_from_head": {
+   "ar": "أسعار الغرف في {branch_name} خلال الأيام الثلاثين القادمة:",
+   "en": "Room prices at {branch_name} over the next 30 days:"
+  },
+  "price_from_line": {
+   "ar": "{room}: يبدأ من {price} لليلة شامل الضريبة",
+   "en": "{room}: From {price} per night incl. VAT"
+  },
+  "price_from_ask": {
+   "ar": "يختلف السعر حسب تواريخ الإقامة. متى تنوي الإقامة؟",
+   "en": "The price depends on your dates. When would you like to stay?",
+   "extra": {
+    "ar": [
+     "الليلة",
+     "بكرة",
+     "نهاية الأسبوع",
+     "تاريخ آخر",
+     "اختر الموعد"
+    ],
+    "en": [
+     "Tonight",
+     "Tomorrow",
+     "This weekend",
+     "Another date",
+     "Choose"
+    ]
+   }
+  },
+  "ask_dates_free": {
+   "ar": "اكتب لنا تاريخ وصولك وعدد الليالي.",
+   "en": "Please write your arrival date and the number of nights."
+  },
+  "package_pick": {
+   "ar": "أي باقة تناسبك؟ اختر الباقة، واكتب لنا تاريخ مناسبتك.",
+   "en": "Which package suits you? Pick one and tell us the date of your occasion.",
+   "extra": {
+    "ar": [
+     "اختر الباقة"
+    ],
+    "en": [
+     "Choose"
+    ]
+   }
+  },
+  "package_followup": {
+   "ar": "ما زالت باقات المناسبات متاحة إن رغبت في إحداها. اختر الباقة واكتب لنا تاريخ مناسبتك، ونرتّب لك الباقي.",
+   "en": "Our occasion packages are still available if you’d like one. Pick a package and tell us the date of your occasion, and we’ll arrange the rest."
+  },
   "email_api_credit": {
    "subject": "رصيد كلود انتهى — المساعد متوقف — AR-HUB-{yyyymmdd}",
    "lines": [

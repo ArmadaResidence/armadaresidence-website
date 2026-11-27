@@ -909,6 +909,135 @@
           }
         ]
       }
+    },
+    "c143": {
+      "date": "2026-11-27",
+      "migration": "20261127400000_guest_hub_ads.sql",
+      "bank": "conversations-fix3.jsonl",
+      "kept": true,
+      "why": "Ahmed, 27 Nov 2026 (the ads analysis — 36 guests stopped at the dates question): «السعر أولًا» — a room price asked without dates now gets «يبدأ من» per room type from the dashboard rate calendar (30 nights, written by the code) before the dates; the second ask still gets the dates-and-link line",
+      "old": {
+        "action": "conversation",
+        "steps": [
+          {
+            "outcome": [
+              "ask",
+              "answer"
+            ],
+            "must_not_include": [
+              "يبدأ من",
+              "ابتداء",
+              "أقل سعر",
+              "ريال"
+            ]
+          },
+          {
+            "outcome": [
+              "quote",
+              "ask"
+            ],
+            "must_include": [
+              "الخميس",
+              "جمادى"
+            ],
+            "must_not_include": [
+              "يبدأ من"
+            ]
+          }
+        ]
+      },
+      "expect": {
+        "action": "conversation",
+        "steps": [
+          {
+            "outcome": [
+              "ask",
+              "answer"
+            ],
+            "must_include": [
+              "يبدأ من"
+            ],
+            "must_not_include": [
+              "أقل سعر"
+            ]
+          },
+          {
+            "outcome": [
+              "quote",
+              "ask"
+            ],
+            "must_include": [
+              "الخميس",
+              "جمادى"
+            ],
+            "must_not_include": [
+              "يبدأ من"
+            ]
+          }
+        ]
+      }
+    },
+    "c144": {
+      "date": "2026-11-27",
+      "migration": "20261127400000_guest_hub_ads.sql",
+      "bank": "conversations-fix3.jsonl",
+      "kept": true,
+      "why": "Ahmed, 27 Nov 2026 (the ads analysis — 36 guests stopped at the dates question): «السعر أولًا» — a room price asked without dates now gets «يبدأ من» per room type from the dashboard rate calendar (30 nights, written by the code) before the dates; the second ask still gets the dates-and-link line",
+      "old": {
+        "action": "conversation",
+        "steps": [
+          {
+            "outcome": [
+              "ask",
+              "answer"
+            ],
+            "must_not_include": [
+              "يبدأ من",
+              "ابتداء",
+              "ريال"
+            ]
+          },
+          {
+            "outcome": "ask",
+            "must_include": [
+              "حسب تواريخ",
+              "armadaresidence.com"
+            ],
+            "must_not_include": [
+              "يبدأ من",
+              "ريال"
+            ]
+          }
+        ]
+      },
+      "expect": {
+        "action": "conversation",
+        "steps": [
+          {
+            "outcome": [
+              "ask",
+              "answer"
+            ],
+            "must_include": [
+              "يبدأ من"
+            ],
+            "must_not_include": [
+              "أقل سعر"
+            ]
+          },
+          {
+            "outcome": "ask",
+            "must_include": [
+              "حسب تواريخ",
+              "armadaresidence.com"
+            ],
+            "must_not_include": [
+              "يبدأ من",
+              "ريال"
+            ]
+          }
+        ]
+      }
     }
   }
 }

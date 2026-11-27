@@ -13,7 +13,7 @@ import { normalize as normDates, stayDateText } from './dates.ts';
 import { buttonForText, COPY, fixed as fixedBase, greeting, hasSalaam, quickReplies, salaamGreeting, statusText, stripOpening, thirdLanguage, type Lang, type Persona } from './copy.ts';
 import { composeExamples, composeSystem, composeUser, parseComposed, summarySystem, understandDeparture, understandSchema, understandSystem, withGreeting } from './compose/index.ts';
 import { cleanSummary, refOrRoom, summaryOk, summaryUser } from './staff.ts';
-import { buildPayload, cardIds, guardPayload, hasSource, offersFor, packagesLive, type Payload } from './sources/index.ts';
+import { buildPayload, cardIds, guardPayload, hasSource, offersFor, packagesLive, type OfferItem, type Payload } from './sources/index.ts';
 import { guard, retryReason } from './guard.ts';
 import { costOf, type Layer, type ModelFn, type ModelResult } from './model.ts';
 import { isCartMessage, usableSkills } from './skills/index.ts';
@@ -424,6 +424,7 @@ export async function runTurn(claim: Json, deps: Deps): Promise<Outcome> {
   const phase: 'waiting' | 'resume' | null = conv.human_phase === 'waiting' || conv.human_phase === 'resume' ? conv.human_phase : null;
   const ctx: Context = {
     unit_kind: unit.kind, unit_branch: unit.branch, skills: usableSkills(unit.skills ?? []), show_prices: showPrices,
+    price_first: set.price_first === true,
     // S1: a booking on Instagram / Messenger asks the mobile number before the summary
     needs_phone: claim.channel?.provider === 'meta',
     instant_booking: set.instant_booking !== false,
@@ -630,6 +631,19 @@ export async function runTurn(claim: Json, deps: Deps): Promise<Outcome> {
   };
 
   let noCardsLink = false;
+  // the package question (Ahmed, 27 Nov 2026 — 32 guests stopped after the package list): ONE question with the packages as
+  // buttons right after a reply that listed them; once per conversation; its follow-up 3 hours later is the database's
+  // (hub_followups, from the message's package_question flag)
+  let pkAsked = false;
+  const packageQuestion = (items: OfferItem[] | null) => {
+    if (set.package_followup !== true || pkAsked || unit.kind === 'dining' || draft?.kind === 'package') return;
+    const pk = (items ?? []).find((o) => o.packages && (o.choices?.length ?? 0) > 0);
+    if (!pk) return;
+    const q = fixed('package_pick', L);
+    if (((claim.history ?? []) as Json[]).some((h) => h.author === 'us' && String(h.body ?? '').includes(q))) return;
+    pkAsked = true;
+    push(q, { kind: 'interactive', payload: { buttons: pk.choices!.slice(0, 10), list_button: String((COPY.package_pick.extra as Record<string, string[]>)[L][0]), package_question: true } });
+  };
   let extendUntil: string | null = null;
   const execute = async (dec: Decision): Promise<Decision | null> => {
     if (dec.actions.some((a) => a.type === 'package_ask' || (a.type === 'handoff' && a.notice === 'package_handed'))) pkRows = await offersP;
@@ -704,6 +718,25 @@ export async function runTurn(claim: Json, deps: Deps): Promise<Outcome> {
           lastAction = 'أُرسلت صورة نوع الغرفة';
           break;
         }
+        case 'price_from': {
+          // «السعر أولًا» (Ahmed, 27 Nov 2026): one line per room type shown on the site with its lowest open rate of the next
+          // 30 nights — the code writes every number (the guard keeps refusing «يبدأ من» from the model) — then the dates
+          // question with its four quick replies (a WhatsApp list); no rate at all → the dates question alone
+          const types = await deps.adapter.roomTypes(a.branch).catch(() => []);
+          const froms = deps.adapter.fromPrices ? await deps.adapter.fromPrices(a.branch, 30).catch(() => []) : [];
+          const lines = types.map((rt) => {
+            const p = froms.find((f) => f.key === rt.key);
+            return p ? fixed('price_from_line', L, { room: L === 'en' ? rt.name_en : rt.name_ar, price: deps.sarText(p.price, L) }) : null;
+          }).filter((x): x is string => !!x);
+          const ex = (COPY.price_from_ask.extra as Record<string, string[]>)[L];
+          const choices = (['tonight', 'tomorrow', 'weekend', 'other'] as const).map((k, i) => ({ id: `hubt:${k}`, title: ex[i] }));
+          const ask = fixed('price_from_ask', L);
+          const body = lines.length ? [fixed('price_from_head', L, { branch_name: branchLabel(deps.content, a.branch, L) }), ...lines, '', ask].join('\n') : ask;
+          push(body, { kind: 'interactive', payload: { buttons: choices, list_button: ex[4], price_from: true } });
+          answered = true;
+          lastAction = lines.length ? 'أُرسلت أسعار «يبدأ من» وسؤال المواعيد' : 'سؤال المواعيد';
+          break;
+        }
         case 'dates_question': {
           // H9 fix 3: ONE short question showing the resolved candidate(s) (copy.md §2); a confirm with «نعم» / «تواريخ أخرى»
           const c0 = a.candidates[0] ? stayDate(a.candidates[0], L) : '';
@@ -775,6 +808,7 @@ export async function runTurn(claim: Json, deps: Deps): Promise<Outcome> {
             push(c.reply, { source_card_ids: cardIds(payload, c.used_card_ids), used: c.used_card_ids });
             answered = true;
             lastAction = 'أُجيب عن سؤال';
+            packageQuestion(offers);
             if (c.unanswered.length && !a.nogap) gap();
             break;
           }
@@ -788,6 +822,7 @@ export async function runTurn(claim: Json, deps: Deps): Promise<Outcome> {
           push(composed.reply, { source_card_ids: cardIds(payload, composed.used_card_ids), used: composed.used_card_ids });
           answered = true;
           lastAction = 'أُجيب عن سؤال';
+          packageQuestion(offers);
           if (composed.unanswered.length) {
             // the answer goes; the part it could not answer goes to the team and into «لم أعرف الإجابة»
             return decide({ state: dec.next, event: { type: 'answer_result', ok: true, partial: true }, draft, ctx });

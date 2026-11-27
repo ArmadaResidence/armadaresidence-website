@@ -59,6 +59,9 @@ export interface InventoryAdapter {
   roomTypes(branch: string): Promise<RoomType[]>;
   /** the lowest open rate over the next 60 nights («يبدأ من»), null when none is published or prices are hidden */
   fromPrice(branch: string, type: string): Promise<number | null>;
+  /** «السعر أولًا» (Ahmed, 27 Nov 2026): every room type of the branch with its lowest open rate over the next `days`
+   *  nights (public.hub_from_prices — the dashboard rate calendar; a type with no open night is left out) */
+  fromPrices?(branch: string, days: number): Promise<{ key: string; price: number }[]>;
   quote(stay: Stay): Promise<AdapterResult>;
   book(draft: { id: string; version: number; ref: string }): Promise<AdapterResult>;
   modify?(ref: string): Promise<AdapterResult>;
@@ -101,6 +104,10 @@ export function dashboardAdapter(rpc: Rpc): InventoryAdapter {
       })();
       const v = (await froms).get(`${branch}/${type}`);
       return typeof v === 'number' && v > 0 ? v : null;
+    },
+    async fromPrices(branch, days) {
+      const rows = (await rpc('hub_from_prices', { p_branch: branch, p_days: days })) as Json[];
+      return (Array.isArray(rows) ? rows : []).filter((r) => r && Number(r.from_price) > 0).map((r) => ({ key: String(r.room_slug), price: Number(r.from_price) }));
     },
     async quote(s) {
       if (!(await all()).some((r) => r.branch === s.branch && r.key === s.room_type)) return { kind: 'not_bookable', reason: 'not_bookable' };

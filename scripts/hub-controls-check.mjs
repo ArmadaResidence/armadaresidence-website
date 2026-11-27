@@ -93,7 +93,7 @@ check(JSON.stringify(ycCalls) === JSON.stringify(['make:GET', 'typingUrl:POST', 
   `hub-admin's own YCloud calls: the typing indicator, the endpoint read, the lists, the one PATCH — ${ycCalls.join(', ')}`);
 check(!/sendDirectly|\/messages|rotateSecret|webhookEndpoints`|method: '(PUT|DELETE)'/.test(FN + YC) && !/fetch\(`?\$\{?YCLOUD/.test(FN),
   'hub-admin never calls YCloud\'s send route itself, never creates, replaces or deletes anything, never rotates the secret');
-check(/import \{ sendSession, sendTemplate, textPayload, type WaResult \} from '\.\.\/booking-request\/whatsapp-send\.ts';/.test(FN) && /await sendSession\(\{ payload(: textPayload\(|, windowExpiresAt)/.test(FN) && /await sendTemplate\(hubReplyReadyPayload\(/.test(FN),
+check(/import \{ (interactivePayload, )?sendSession, sendTemplate, textPayload, type WaResult \} from '\.\.\/booking-request\/whatsapp-send\.ts';/.test(FN) && /await sendSession\(\{ payload(: textPayload\(|, windowExpiresAt)/.test(FN) && /await sendTemplate\(hubReplyReadyPayload\(/.test(FN),
   'the staff sends go through the one sender (sendSession for text, sendTemplate for hub_reply_ready)');
 check((FN.match(/method: 'PATCH'/g) ?? []).length === 1 && /fetch\(webhookEndpointUrl\(id\.data\), \{\s+method: 'PATCH',[\s\S]{0,200}body: JSON\.stringify\(eventsPatchBody\(m\.events\)\)/.test(FN), 'the one write: a PATCH of the one endpoint with its events only');
 check(/rpc<\{ system_admin: boolean; registered: boolean; events: string\[\] \}>\('hub_webhook_status', \{\}, jwt\);\s+if \(!st\.ok \|\| !st\.data\?\.system_admin\) return json\(req, 403/.test(FN), 'update_webhook_events: the system admin only (judged as the user)');

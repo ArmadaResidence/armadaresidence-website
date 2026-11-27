@@ -1699,6 +1699,32 @@ export function hubComplaintMail(c: Content, d: HubComplaintMail): Mail {
   return hubPlainMail(c, subject, [fill(M.lead, { unit_name: d.unit_name })], hubAdmin(c, `/inbox?c=${encodeURIComponent(d.conversation_id)}`), M.button);
 }
 
+/** «تحويل بلا رد» (Ahmed, 27 Nov 2026 — copy.md §7): a transferred conversation with no written team reply after N
+ *  minutes — ONE email per hand-off; the branch, the topic (the conversation's topic labels, else the hand-off reason),
+ *  the conversation's link; no guest word, no phone in the subject or the body */
+export interface HubHandoffMail {
+  conversation_id: string;
+  short: string;
+  branch: string | null;
+  unit_kind: string;
+  unit_name: string;
+  topic: string | null;
+  reason: string | null;
+  waiting_min: number;
+  minutes: number;
+  test?: boolean;
+}
+export function hubHandoffMail(c: Content, d: HubHandoffMail): Mail {
+  const M = c.staff_email.ar.hub_handoff_unanswered;
+  const D = c.staff_email.ar.deploy_alert;
+  const B = M.branches as Record<string, string>;
+  const branch = d.unit_kind === 'brand' ? B.brand : (d.branch && B[d.branch]) || d.unit_name;
+  const topic = d.topic || (d.reason && (M.reasons as Record<string, string>)[d.reason]) || M.topic_none;
+  const subject = `${d.test ? D.test_prefix : ''}${fill(M.subject, { minutes: hubDuration(c, d.minutes), branch_name: branch, id: d.short })}`;
+  return hubPlainMail(c, subject, [fill(M.lead, { branch_name: branch, duration: hubDuration(c, d.waiting_min) }), fill(M.topic, { topic })],
+    hubAdmin(c, `/inbox?c=${encodeURIComponent(d.conversation_id)}`), M.button);
+}
+
 /** «رصيد كلود انتهى — المساعد متوقف» (copy.md §7, Ahmed's brief of 14 Nov 2026): ONE email to the active admins */
 export function hubApiCreditMail(c: Content, d: { at: string; test?: boolean }): Mail {
   const M = c.staff_email.ar.hub_api_credit;

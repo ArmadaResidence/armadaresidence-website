@@ -574,6 +574,16 @@
         "button": "افتح سجل التشغيل على GitHub",
         "foot": "يُرسَل هذا التنبيه مرة واحدة لكل تشغيل فاشل للنسخ الاحتياطي، إلى مديري النظام في لوحة أرمادا ريزيدنس."
       },
+      "hub_handoff_unanswered": {
+        "_note": "Guest Hub (Ahmed, 27 Nov 2026 — copy.md §7): a transferred conversation with no written team reply after hub_handoff_email_min minutes (15) — ONE email per hand-off to the hub_escalation recipients (else the hub_summary ones: info@armadaresidence.com), while «تنبيه التحويل بلا رد» is on. No guest words, no phone.",
+        "subject": "تحويل بلا رد خلال {minutes} — {branch_name} — AR-HUB-{id}",
+        "lead": "حُوّلت محادثة في {branch_name} إلى الفريق قبل {duration} ولم يصلها رد مكتوب.",
+        "topic": "الموضوع: {topic}",
+        "button": "فتح المحادثة",
+        "branches": {"airport-road": "طريق المطار", "shafa-road": "طريق الشفا", "brand": "السوشيال"},
+        "reasons": {"no_source": "سؤال لا يملك المساعد إجابته", "package_order": "طلب باقة", "multi_room": "حجز أكثر من غرفة", "human_request": "طلب التحدث مع موظف", "early_extension": "وصول مبكر أو تمديد", "complaint": "شكوى", "payment": "سؤال عن الدفع", "booking_change": "تعديل حجز أو إلغاؤه", "repeat": "رسالة متكررة", "unclear": "رسالة غير واضحة", "dates_unclear": "تواريخ غير واضحة", "media": "صورة أو رسالة صوتية", "failed_understanding": "رسالة لم تُفهم"},
+        "topic_none": "غير محدد"
+      },
       "hub_complaint": {
         "_note": "Guest Hub H5 (14 Nov 2026, copy.md §7 row 2): a complaint handed to the team — once per conversation, to the branch's reception recipients (the central ones when the branch has none). No guest words, no phone.",
         "subject": "شكوى من ضيف — {unit_name} — AR-HUB-{id}",

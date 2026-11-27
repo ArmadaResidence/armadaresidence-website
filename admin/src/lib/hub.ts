@@ -284,9 +284,13 @@ export const gateText = (g: string) => GATE_LABELS[g as GateCode] ?? g;
 export const KIND_LABELS: Record<HubUnit['kind'], string> = { branch: 'فرع', dining: 'مطعم أو مقهى' };
 export const STATUS_LABELS: Record<HubUnit['status'], string> = { active: 'ظاهرة', hidden: 'مخفية' };
 /** the switches of «المفاتيح العامة» (spec §7.1) */
-export const SWITCHES: { key: 'hub_assistant_on' | 'hub_inbox_on'; label: string; text: string }[] = [
+export const SWITCHES: { key: 'hub_assistant_on' | 'hub_inbox_on' | 'hub_price_first' | 'hub_package_followup' | 'hub_handoff_email'; label: string; text: string }[] = [
   { key: 'hub_assistant_on', label: 'المساعد يعمل', text: 'المفتاح العام: عند إيقافه لا يكتب المساعد شيئًا في أي وحدة، وتبقى الرسائل التلقائية الحالية كما هي.' },
   { key: 'hub_inbox_on', label: 'تخزين المحادثات', text: 'تخزين رسائل واتساب وعرضها في «المحادثات» (نص الرسالة يُحفظ 12 شهرًا والوسائط 90 يومًا).' },
+  // Ahmed, 27 Nov 2026 — from the ads analysis (docs/whatsapp-ads-analysis-2026-11-27.md)
+  { key: 'hub_price_first', label: 'السعر أولًا', text: 'عند السؤال عن سعر الغرفة بلا تواريخ: يرسل المساعد «يبدأ من» لكل نوع غرفة في الفرع من تقويم الأسعار (أقل سعر متاح في الثلاثين يومًا القادمة)، ثم يسأل عن الموعد بأزرار: الليلة، بكرة، نهاية الأسبوع، تاريخ آخر.' },
+  { key: 'hub_package_followup', label: 'سؤال الباقة ومتابعتها', text: 'بعد قائمة الباقات يسأل المساعد عن الباقة بأزرار وعن تاريخ المناسبة. إن لم يرد الضيف تُرسل متابعة واحدة بعد 3 ساعات داخل نافذة واتساب (24 ساعة) فقط، ولا تُرسل إن كتب الضيف أو ألغى الاشتراك أو كانت المحادثة مع الفريق.' },
+  { key: 'hub_handoff_email', label: 'تنبيه التحويل بلا رد', text: 'إن لم يصل محادثة محوّلة للفريق رد مكتوب خلال 15 دقيقة: إيميل واحد إلى بريد ملخص الصباح (info@armadaresidence.com) وتنبيه هنا في «التنبيهات»، فيهما الفرع والموضوع ورابط المحادثة، بلا رقم الضيف. لا رسائل واتساب للفريق من هذا التنبيه.' },
 ];
 export const NOT_YET = 'في «تجربة» لا يصل شيء للضيف وتبقى المحادثة مع الفريق. «بموافقة الفريق» يحتاج آخر تشغيل كامل لأسئلة الوحدة في «مختبر الاختبار» بلا سؤال راسب إلا «فجوة معروفة»، ثم ينتظر كل رد ضغطة من الفريق. «يرد تلقائيًا» يرسل وحده فقط في المواضيع التي فعّلها مدير النظام في «التراخيص».';
 
@@ -325,6 +329,7 @@ export const ALERT_LABELS: Record<string, string> = {
   staff_send: 'رسالة للفريق لم تُرسل (تنبيه أو تقرير)',
   departures_missing: 'لم تُرفع قائمة المغادرين اليوم حتى 8:30',
   send_limit: 'رسائل أُجّلت بسبب حد الإرسال المشترك',
+  handoff_unanswered: 'محادثة محوّلة لم يصلها رد مكتوب من الفريق',
 };
 export const VERIFY_ERRORS: Record<string, string> = {
   hub_channel_not_found: 'لم يُعثر على هذا الرقم في حساب واتساب للأعمال على YCloud.',

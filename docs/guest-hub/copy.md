@@ -341,6 +341,19 @@ The staff alert lines (`hub_staff_alert` {{5}}, staff-facing): «تأكيد طل
 | Social — chat request sent | «وصل طلب حجزك رقم {ref}، وسيؤكده لك فريق الاستقبال في أقرب وقت، ويصلك التأكيد عبر واتساب.» | “We've received your booking request {ref}; our reception team will confirm it as soon as possible, and the confirmation will reach you on WhatsApp.” |
 | Social — a booking request still waiting | «طلب حجزك لا يزال لدى فريق الاستقبال، وسيصلك التأكيد عبر واتساب في أقرب وقت.» | “Your booking request is still with our reception team; the confirmation will reach you on WhatsApp as soon as possible.” |
 
+**4.8 From the ads analysis — price first, the package question and its follow-up** [مقرر — أحمد، 27 نوفمبر 2026 (the ads analysis of 27 Nov 2026: 36 guests stopped at the dates question, 32 after the package list). Each behind its switch in «إعدادات المساعد» → «المفاتيح العامة» (`hub_price_first`, `hub_package_followup`). The buttons' labels are Ahmed's; the lines are the session's wording, for Ahmed's review]
+
+A room price asked without dates: the head, then one line per room type of the branch shown on the site (the lowest open rate of the next 30 nights in the dashboard rate calendar, `public.hub_from_prices`; written by the code, never the model), then the dates question with its four quick replies (WhatsApp: a list, «اختر الموعد»). A type with no open rate in those nights is left out; no type at all → the dates question alone.
+
+| Case | Arabic | English |
+|---|---|---|
+| Price first — the head | «أسعار الغرف في {branch_name} خلال الأيام الثلاثين القادمة:» | “Room prices at {branch_name} over the next 30 days:” |
+| Price first — a room line | «{room}: يبدأ من {price} لليلة شامل الضريبة» | “{room}: From {price} per night incl. VAT” |
+| Price first — the dates question | «يختلف السعر حسب تواريخ الإقامة. متى تنوي الإقامة؟» — buttons «الليلة» · «بكرة» · «نهاية الأسبوع» · «تاريخ آخر» · list button «اختر الموعد» | “The price depends on your dates. When would you like to stay?” — “Tonight” · “Tomorrow” · “This weekend” · “Another date” · “Choose” |
+| Price first — another date | «اكتب لنا تاريخ وصولك وعدد الليالي.» | “Please write your arrival date and the number of nights.” |
+| Package question (right after the package list) | «أي باقة تناسبك؟ اختر الباقة، واكتب لنا تاريخ مناسبتك.» — list button «اختر الباقة» | “Which package suits you? Pick one and tell us the date of your occasion.” — “Choose” |
+| Package follow-up (ONCE, 3 hours after the package question, only inside the 24-hour window; never when the guest wrote anything since, opted out or is with the team) | «ما زالت باقات المناسبات متاحة إن رغبت في إحداها. اختر الباقة واكتب لنا تاريخ مناسبتك، ونرتّب لك الباقي.» | “Our occasion packages are still available if you’d like one. Pick a package and tell us the date of your occasion, and we’ll arrange the rest.” |
+
 ## 5. Notices and other fixed replies
 
 | Case | Arabic | English |
@@ -446,6 +459,7 @@ Every subject carries an `AR-` token so the Hostinger filter «From contains no-
 | Email | To | Subject | Body |
 |---|---|---|---|
 | Conversation waiting | the branch's reception recipients | «محادثة بانتظار الرد — {unit_name} — AR-HUB-{id}» | «محادثة في {unit_name} تنتظر الرد منذ {duration}.» · «الحالة: {state_label}» · button «فتح المحادثة» |
+| A transferred conversation with no written team reply [مقرر — أحمد، 27 نوفمبر 2026; the wording the session's, for Ahmed's review] | the `hub_escalation` recipients (info@armadaresidence.com) | «تحويل بلا رد خلال {minutes} — {branch_name} — AR-HUB-{id}» | «حُوّلت محادثة في {branch_name} إلى الفريق قبل {duration} ولم يصلها رد مكتوب.» · «الموضوع: {topic}» · button «فتح المحادثة». Once per hand-off, {minutes} after it (15, Settings `hub_handoff_email_min`), while «تنبيه التحويل بلا رد» (`hub_handoff_email`) is on; also an alert in «إعدادات المساعد» → «التنبيهات» until a staff member replies. No guest words, no phone |
 | Complaint | the branch's reception recipients | «شكوى من ضيف — {unit_name} — AR-HUB-{id}» | «وصلت شكوى في محادثة على {unit_name}، وانتقلت المحادثة إلى الفريق.» · button «فتح المحادثة» |
 | Morning summary | the `hub_summary` recipients (info@armadaresidence.com + those added in Settings) | «ملخص مركز الضيوف — {date} — AR-HUB-{yyyymmdd}» | heading «أمس في مركز الضيوف»; per unit: «المحادثات» · «ردود المساعد» · «تحويلات للفريق» · «بانتظار الرد الآن» · «حجوزات المساعد (فوري / طلب)» · «طلبات القاعة والمجموعات» · «أكثر المواضيع سؤالًا» · «تكلفة المساعد والرسائل»; footer «للاستخدام الداخلي» |
 | Number quality dropped [مقرر — 13 نوفمبر 2026] | the active admins | «جودة رقم واتساب — {unit_name} — AR-HUB-{yyyymmdd}» | «انخفض تقييم جودة رقم واتساب {unit_name} إلى «{rating}» حسب ميتا.» · «راجع الرسائل والحملات الأخيرة المرسلة من هذا الرقم قبل بدء أي حملة جديدة.» · button «فتح إعدادات المساعد». `{rating}`: High «مرتفع» · Medium «متوسط» · Low «منخفض» |
