@@ -4836,3 +4836,25 @@ From the ads analysis (`docs/whatsapp-ads-analysis-2026-11-27.md`). Each change 
   steps in when needed." The second changes the 13 Nov 2026 rule «nothing tells the guest it is AI» for the policy page only
   (the chat itself stays as it is) — Ahmed's call.
 - Checks: fast `hub-ads-check` (FAST_CHECKS); SQL `supabase/tests/guest_hub_ads.sql` (server-checks).
+
+## 2026-11-27 — Switched on, the messaging privacy sentences published (Ahmed, 27 Nov 2026)
+
+- **The three switches ON** (Ahmed's request, after the checks passed and he applied `20261127400000_guest_hub_ads`):
+  `hub_price_first`, `hub_package_followup`, `hub_handoff_email` = true (production, 27 Nov 2026; dashboard redeployed with
+  them in «إعدادات المساعد» → «المفاتيح العامة»). «يبدأ من» verified on production prices (`hub_from_prices`, 30 nights):
+  Airport Road twin 185 · king 185 · one-bedroom suite 200 · two-bedroom suite 240 (the accessible room has no open night →
+  left out); Shafa Road king 185 · balcony 195 · jacuzzi studio 200 · one-bedroom suite 200 · two-bedroom suite 240 ·
+  two-bedroom jacuzzi suite 240 · accessible 185.
+- **The WhatsApp alert to staff at transfer time stays exactly as it is.** The «no WhatsApp» rule applies only to the new
+  15-minute unanswered-transfer escalation (email + dashboard alert) — this settles the open point of «Guest Hub: price
+  first…» above.
+- **Privacy, /policies/ → «المراسلة عبر واتساب وانستجرام وماسنجر والتعليقات» (approved by Ahmed, published):** the ad
+  sentence with his change — «وإذا بدأت المحادثة بالضغط على أحد إعلاناتنا، نحفظ معها بيانات الإعلان التي ترسلها المنصة
+  (رقم الإعلان وعنوانه ومعرّف النقرة)، ونربطها بحجزك إن حجزت من المحادثة، لنعرف أيّ إعلاناتنا أدّى إلى حجوزات، ولا نرسلها
+  إلى أي منصة إعلانية.» / "… so we know which of our ads led to bookings; we do not send them to any ad platform." — and
+  «وقد تصلك بعض الردود من مساعد آلي، ويتابع فريقنا المحادثة ويتدخل عند الحاجة.» / "Some replies may come from an automated
+  assistant; our team follows the conversation and steps in when needed."; «تاريخ آخر تحديث» 27 November 2026.
+- **The assistant-disclosure sentence changes the 13 Nov 2026 rule «nothing tells the guest it is AI» for the policy page
+  ONLY.** The chat is unchanged: no introduction, no automated wording, the guard as before.
+- The test booking AR-20991231-ARR1: Ahmed cancels («حجز تجريبي») and deletes it himself from the dashboard; sessions do
+  not try again.

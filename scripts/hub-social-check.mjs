@@ -560,8 +560,11 @@ const check = (ok, what) => {
   const msg = pol.page.sections.find((x) => x.id === 'messaging');
   check(ids.indexOf('messaging') === ids.indexOf('club') + 1 && ids.indexOf('operator') === 11
     && /12 شهرًا/.test(msg.body_ar) && /90 يومًا/.test(msg.body_ar) && /احذف بياناتي/.test(msg.body_ar) && /Delete my data/.test(msg.body_en)
-    && /26 نوفمبر 2026/.test(pol.page.intro_ar) && /26 November 2026/.test(pol.page.intro_en),
-    'J19 the policies page: the messaging section after «عضوية إياب والتسويق» (12 months / 90 days / «احذف بياناتي»), the operator at 11, updated 26 Nov 2026');
+    && /27 نوفمبر 2026/.test(pol.page.intro_ar) && /27 November 2026/.test(pol.page.intro_en)
+    // 27 Nov 2026 (Ahmed): the ad-referral and assistant sentences
+    && msg.body_ar.includes('لنعرف أيّ إعلاناتنا أدّى إلى حجوزات') && msg.body_en.includes('so we know which of our ads led to bookings')
+    && msg.body_ar.includes('وقد تصلك بعض الردود من مساعد آلي، ويتابع فريقنا المحادثة ويتدخل عند الحاجة.') && msg.body_en.includes('Some replies may come from an automated assistant'),
+    'J19 the policies page: the messaging section after «عضوية إياب والتسويق» (12 months / 90 days / «احذف بياناتي», the ad and assistant sentences), the operator at 11, updated 27 Nov 2026');
 }
 
 if (fails.length) {
