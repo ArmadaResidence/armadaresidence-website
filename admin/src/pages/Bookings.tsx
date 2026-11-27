@@ -608,13 +608,14 @@ function WaCancelLine({ m, all, locale }: { m: WhatsAppMessage; all: WhatsAppMes
 /** the visit's first-touch source (3 Nov 2026): utm values, the ad click ids present, the referrer, the landing page */
 function VisitLine({ v }: { v: NonNullable<Reservation['visit']> }) {
   const utm = [v.utm_source, v.utm_medium, v.utm_campaign, v.utm_content].filter(Boolean).join(' / ');
-  const clicks = ([['gclid', 'جوجل'], ['fbclid', 'ميتا'], ['ttclid', 'تيك توك'], ['sccid', 'سناب شات']] as const).filter(([k]) => v[k]).map(([, l]) => l);
+  const clicks = ([['gclid', 'جوجل'], ['gbraid', 'جوجل'], ['wbraid', 'جوجل'], ['fbclid', 'ميتا'], ['ttclid', 'تيك توك'], ['sccid', 'سناب شات']] as const).filter(([k]) => v[k]).map(([, l]) => l).filter((l, i, a) => a.indexOf(l) === i);
   return (
     <span className="grid gap-0.5">
       {utm && <span><span className="text-ink-muted">UTM: </span><span className="latin" dir="ltr">{utm}</span></span>}
       {clicks.length > 0 && <span><span className="text-ink-muted">نقرة إعلان: </span>{clicks.join('، ')}</span>}
       {v.referrer && <span><span className="text-ink-muted">جاء من: </span><span className="latin" dir="ltr">{v.referrer}</span></span>}
       {v.landing && <span><span className="text-ink-muted">أول صفحة: </span><span className="latin" dir="ltr">{v.landing}</span></span>}
+      {typeof v.ads_consent === 'boolean' && <span><span className="text-ink-muted">موافقة الإعلانات: </span>{v.ads_consent ? 'نعم' : 'لا'}</span>}
       {!utm && !clicks.length && !v.referrer && !v.landing && <span>—</span>}
     </span>
   );

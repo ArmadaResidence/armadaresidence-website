@@ -170,6 +170,8 @@ insert into _ids values ('a2', pg_temp._res_insert('AR-29991231-WA12', 'airport-
 insert into _ids values ('a3', pg_temp._res_insert('AR-29991231-WA13', 'airport-road', '+966500009013', 'علي', 'cancelled', 1, 3));
 insert into _ids values ('a4', pg_temp._res_insert('AR-29991231-WA14', 'airport-road', '+966500009014', 'هند', 'confirmed', 2, 4));
 insert into _ids values ('a5', pg_temp._res_insert('AR-29991231-WA15', 'shafa-road', '+966500009015', 'Omar', 'confirmed', 1, 2, 'en'));
+-- 27 Nov 2026: a reminder needs the booking confirmed before the send time (16:00 Riyadh) — these were confirmed yesterday
+update public.reservations set confirmed_at = now() - interval '2 days' where ref like 'AR-29991231-WA1%' and confirmed_at is not null;
 select pg_temp._service();
 select pg_temp._save('t0', public.wa_arrival_tick());
 select pg_temp._root();
@@ -188,6 +190,22 @@ select pg_temp._service();
 select public.wa_arrival_tick();
 select pg_temp._root();
 select pg_temp._check('A5 Shafa Road switched on: its English booking, in English', (select language = 'en' and branch = 'shafa-road' from public.whatsapp_messages where reservation_id = pg_temp._id('a5') and template = 'arrival_reminder'));
+-- 27 Nov 2026 (DECISIONS.md «Arrival reminder»): a booking confirmed after the day's send time is never reminded, even
+-- when the tick runs late; the tick stands for p_now
+insert into _ids values ('a6', pg_temp._res_insert('AR-29991231-WA16', 'airport-road', '+966500009016', 'فهد', 'confirmed', 1, 3));
+insert into _ids values ('a7', pg_temp._res_insert('AR-29991231-WA17', 'airport-road', '+966500009017', 'دانة', 'confirmed', 1, 3));
+update public.reservations set confirmed_at = ((internal.riyadh_today() + time '16:01') at time zone 'Asia/Riyadh') where id = pg_temp._id('a6');
+update public.reservations set confirmed_at = ((internal.riyadh_today() + time '15:59') at time zone 'Asia/Riyadh') where id = pg_temp._id('a7');
+select pg_temp._service();
+select pg_temp._save('t6', public.wa_arrival_tick(false, ((internal.riyadh_today() + time '18:30') at time zone 'Asia/Riyadh')));
+select pg_temp._root();
+select pg_temp._check('A6 confirmed at 16:01 → no reminder, even from a tick run at 18:30',
+  not exists (select 1 from public.whatsapp_messages where reservation_id = pg_temp._id('a6')) and (pg_temp._j('t6') ->> 'confirmed_after_send')::int >= 1, pg_temp._j('t6')::text);
+select pg_temp._check('A7 confirmed at 15:59 → reminded by the same late tick', exists (select 1 from public.whatsapp_messages where reservation_id = pg_temp._id('a7') and template = 'arrival_reminder'));
+select pg_temp._service();
+select pg_temp._save('t7', public.wa_arrival_tick(false, ((internal.riyadh_today() + time '11:00') at time zone 'Asia/Riyadh')));
+select pg_temp._root();
+select pg_temp._check('A8 a tick standing for 11:00 counts nothing confirmed later than 11:00', (pg_temp._j('t7') ->> 'queued')::int = 0 and pg_temp._j('t7') ->> 'day' = internal.riyadh_today()::text, pg_temp._j('t7')::text);
 
 -- ══ R — the review request ══
 insert into _ids values ('v1', pg_temp._res_insert('AR-29991231-WA21', 'airport-road', '+966500009021', 'ريم', 'confirmed', -3, -1));
@@ -345,6 +363,34 @@ select pg_temp._check('C12 a draft can be dropped', (select state = 'cancelled' 
 select pg_temp._as('mgmt');
 select pg_temp._fails('C13 management (none by default) cannot start a campaign', $$select public.eyab_send_begin(gen_random_uuid(), 1)$$, '42501');
 select pg_temp._root();
+
+-- ══ T — the end-to-end test path (27 Nov 2026) ══
+-- a TEST booking is ticked only with p_test; its reminder to the system admin's own number (a «التقارير» recipient) is
+-- handed out with send_real, every other test reminder stays «test», and a REAL booking on a staff number is still skipped
+insert into public.hub_report_recipients (position, name, phone, consent_at) values (1, 'QA owner', '+966500009031', now());
+insert into _ids values ('t1', pg_temp._res_insert('AR-29991231-WA31', 'airport-road', '+966500009031', 'أحمد', 'confirmed', 1, 2));
+insert into _ids values ('t2', pg_temp._res_insert('AR-29991231-WA32', 'airport-road', '+966500009032', 'تجربة', 'confirmed', 1, 2));
+insert into _ids values ('t3', pg_temp._res_insert('AR-29991231-WA33', 'airport-road', '+966500009031', 'أحمد', 'confirmed', 2, 3));
+update public.reservations set is_test = true, confirmed_at = now() - interval '1 hour' where id in (pg_temp._id('t1'), pg_temp._id('t2'));
+update public.reservations set check_in = internal.riyadh_today() + 1, confirmed_at = now() - interval '1 day' where id = pg_temp._id('t3');
+update public.whatsapp_messages set status = 'skipped', error_code = 'qa' where status in ('queued', 'pending') and template in ('arrival_reminder', 'stay_review');
+select pg_temp._service();
+select pg_temp._save('e0', public.wa_arrival_tick());
+select pg_temp._root();
+select pg_temp._check('T1 the cron tick never queues a test booking', not exists (select 1 from public.whatsapp_messages where reservation_id in (pg_temp._id('t1'), pg_temp._id('t2'))));
+select pg_temp._service();
+select pg_temp._save('e1', public.wa_arrival_tick(true, ((internal.riyadh_today() + time '15:00') at time zone 'Asia/Riyadh')));
+select pg_temp._save('e2', public.wa_claim(100));
+select pg_temp._root();
+select pg_temp._check('T2 the test tick queues both test bookings, as test rows', (select count(*) = 2 and bool_and(is_test) from public.whatsapp_messages where reservation_id in (pg_temp._id('t1'), pg_temp._id('t2')) and template = 'arrival_reminder'));
+select pg_temp._check('T3 the test reminder to the owner''s number is handed out with send_real',
+  exists (select 1 from jsonb_array_elements(pg_temp._j('e2')) e where e ->> 'ref' = 'AR-29991231-WA31' and (e ->> 'send_real')::boolean and (e ->> 'is_test')::boolean), pg_temp._j('e2')::text);
+select pg_temp._check('T4 any other test reminder is handed out without send_real (built, logged «test», never sent)',
+  exists (select 1 from jsonb_array_elements(pg_temp._j('e2')) e where e ->> 'ref' = 'AR-29991231-WA32' and not (e ->> 'send_real')::boolean));
+select pg_temp._check('T5 a REAL booking on a staff / report number is still skipped as staff_number',
+  (select status = 'skipped' and error_code = 'staff_number' from public.whatsapp_messages where reservation_id = pg_temp._id('t3') and template = 'arrival_reminder'));
+select pg_temp._check('T6 internal.wa_own_test_number: the report recipient yes, a guest no, empty no',
+  internal.wa_own_test_number('+966500009031') and not internal.wa_own_test_number('+966500009032') and not internal.wa_own_test_number(''));
 
 -- ══ G — grants ══
 select pg_temp._as('admin');

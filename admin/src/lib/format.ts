@@ -71,6 +71,9 @@ export const WA_ERRORS: Record<string, string> = {
   rejected: 'رفضت خدمة واتساب الرسالة.',
   not_confirmed: 'الحجز لم يعد مؤكدًا.',
   opted_out: 'أوقف الضيف رسائل العروض على واتساب.',
+  // 27 Nov 2026: the reasons a reminder / review request was not sent, shown on the booking
+  staff_number: 'رقم الحجز من أرقام الفريق، فلا تصله رسائل الضيوف.',
+  departure_review: 'وصل الضيف طلب التقييم من قائمة المغادرين.',
 };
 export const waError = (code: string | null | undefined) => WA_ERRORS[code ?? ''] ?? WA_ERRORS.rejected;
 

@@ -1,6 +1,6 @@
 // Probe the PUBLISHED GTM container on a local build — nothing is sent anywhere (19 Nov 2026).
 //
-//   node scripts/gtm-probe.mjs [--base URL] [--json out.json] [--careers]
+//   node scripts/gtm-probe.mjs [--base URL] [--json out.json] [--careers | --success]
 //
 // It serves dist/ (or uses --base), loads the real gtm.js of content/contact.json → gtm_container (an automated browser
 // with localStorage armada-gtm-test = 1 — Base.astro's one exception to the hosts) and lets the tag libraries load
@@ -63,7 +63,11 @@ function events(p, u, body) {
     }
     return { events: names, gcs: q.get('gcs'), dl: q.get('dl') };
   }
-  if (p === 'meta') return { events: [q.get('ev')], id: q.get('id'), fbc: q.get('fbc'), dl: q.get('dl') };
+  // Meta sends a GET image or a POST form; the event and fbc are read from either (27 Nov 2026)
+  if (p === 'meta') {
+    const f = (k) => q.get(k) || (body || '').match(new RegExp(`name="${k}"\r?\n\r?\n([^\r\n]+)`))?.[1] || (body || '').match(new RegExp(`(?:^|&)${k}=([^&]+)`))?.[1] || null;
+    return { events: [f('ev') || '?'], id: f('id'), fbc: f('fbc'), cd: f('cd[value]') ? `value=${decodeURIComponent(f('cd[value]'))}` : null, eid: f('eid') };
+  }
   if (p === 'snap') return { events: [q.get('ev') || (body || '').match(/"event_type":"([A-Z_]+)"/)?.[1] || '?'] };
   if (p === 'tiktok') return { events: [(body || '').match(/"event":"([^"]+)"/)?.[1] || '?'], ttclid: /ttclid/.test(body || '') };
   // the destination a Google hit names (tid on /ccm and /g/collect, the conversion ID in the /pagead and /rmkt paths)
@@ -71,11 +75,18 @@ function events(p, u, body) {
   return { events: [url.host + url.pathname] };
 }
 
-const browser = await chromium.launch({ channel: 'chrome' });
+const browser = await chromium.launch({ channel: 'chrome', args: ['--disable-blink-features=AutomationControlled'] });
 const report = {};
+// Meta's fbevents.js sends nothing from a browser whose user agent says HeadlessChrome (27 Nov 2026: the pixel inits,
+// sets _fbp / _fbc and stays silent) — the probe presents the same browser's ordinary Chrome user agent
+const UA = await browser.newPage().then(async (p) => {
+  const u = await p.evaluate(() => navigator.userAgent);
+  await p.close();
+  return u.replace('HeadlessChrome', 'Chrome');
+});
 
 async function scenario(name, run) {
-  const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 }, locale: 'ar-SA', serviceWorkers: 'block' });
+  const ctx = await browser.newContext({ userAgent: UA, viewport: { width: 1280, height: 900 }, locale: 'ar-SA', serviceWorkers: 'block' });
   const hits = [];
   await ctx.addInitScript(() => {
     localStorage.setItem('armada-gtm-test', '1');
@@ -133,6 +144,40 @@ if (args.includes('--careers')) {
       await page.waitForTimeout(6500);
     });
     console.log(`hits by platform on ${path}:`, JSON.stringify(count(name)));
+  }
+  await browser.close();
+  server?.close();
+  if (out) writeFileSync(out, JSON.stringify(report, null, 2));
+  process.exit(0);
+}
+
+// --success (27 Nov 2026 — DECISIONS.md 2026-11-27 «Ad conversions»): the REAL success page of an instant booking after an
+// ad click, in the same tab and session — the booking form's one-shot ticket is written by hand (no booking is made, the
+// ref is a fake AR-2099… one) and every hit is aborted, so what Google Ads / Meta would receive for a confirmed booking is
+// printed: the conversion label, value, transaction ID, and whether the click IDs travel. Once with «قبول الكل», once with
+// «الضروري فقط». Runs against the live domain with --base https://armadaresidence.com (GTM loads only there).
+if (args.includes('--success')) {
+  const ad = '?utm_source=google&utm_medium=cpc&utm_campaign=probe&gclid=PROBEGCLID&fbclid=PROBEFBCLID';
+  const detail = (name) => {
+    for (const h of report[name].hits) {
+      if (h.platform === 'google-ads' && /pagead|conversion|rmkt|ccm/.test(h.events[0])) console.log('  google-ads', h.events[0], `label=${h.label ?? '-'}`, h.keys);
+      if (h.platform === 'meta') console.log('  meta', h.events.join(','), `fbc=${h.fbc ? 'yes' : 'no'}`, h.cd ?? '', h.eid ? `eid=${h.eid}` : '');
+    }
+  };
+  for (const [label, button] of [['accept all', '[data-cookie-accept]'], ['essential only', '[data-cookie-essential]']]) {
+    const name = `ad landing → ${label} → confirmed booking success page`;
+    const ref = `AR-20991231-PRB${label === 'accept all' ? 'A' : 'E'}`;
+    await scenario(name, async (page, mark) => {
+      await page.goto(`${base}/airport-road/${ad}`, { waitUntil: 'load' });
+      mark(`click ${label}`);
+      await page.click(button);
+      await page.waitForTimeout(2500);
+      await page.evaluate((r) => sessionStorage.setItem(`armada_track_${r}`, JSON.stringify({ s: 'confirmed', value: 450 })), ref);
+      mark('success page (instant booking)');
+      await page.goto(`${base}/booking/success/?ref=${ref}&s=confirmed&branch=airport-road&room=king-room&nights=2&breakfast=without${label === 'accept all' ? '' : '&gclid=PROBEGCLID'}`, { waitUntil: 'load' });
+      await page.waitForTimeout(6000);
+    });
+    detail(name);
   }
   await browser.close();
   server?.close();

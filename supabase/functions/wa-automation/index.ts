@@ -158,12 +158,14 @@ async function ycloudSend(body: unknown): Promise<Outcome> {
   return { status: SENT.has(String(b.status)) ? String(b.status) : 'accepted', id: b.id ?? null, errorCode: null, error: null };
 }
 
-interface Claimed { table: 'whatsapp_messages' | 'eyab_messages'; id: string; template: AutoTemplate | 'optout_reply'; language: Locale; branch: string; ref?: string; name?: string; phone: string; is_test: boolean; vars?: OfferVars | null; campaign_id?: string | null }
+interface Claimed { table: 'whatsapp_messages' | 'eyab_messages'; id: string; template: AutoTemplate | 'optout_reply'; language: Locale; branch: string; ref?: string; name?: string; phone: string; is_test: boolean; vars?: OfferVars | null; campaign_id?: string | null;
+  /** 27 Nov 2026: a TEST booking's reminder to the system admin's own number (a report recipient or «أرقام التجربة») is really sent, logged test */
+  send_real?: boolean }
 
 const branchNumber = (slug: string): string | null => (content.branches as { slug: string; whatsapp: string }[]).find((b) => b.slug === slug)?.whatsapp ?? null;
 
-/** build → send (or, for a test row, only build) → record; never throws */
-async function deliver(item: Claimed, test = item.is_test): Promise<Outcome & { from: string | null }> {
+/** build → send (or, for a test row, only build — unless the claim says send_real) → record; never throws */
+async function deliver(item: Claimed, test = item.is_test && !item.send_real): Promise<Outcome & { from: string | null }> {
   let payload;
   try {
     if (item.template === 'optout_reply') {

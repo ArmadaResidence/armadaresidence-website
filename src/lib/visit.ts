@@ -4,6 +4,8 @@
  * (reservations.visit, through submit_booking → internal.clean_visit). No personal data: the utm_* values, whether the
  * landing URL carried a gclid / fbclid / ttclid / ScCid (true / false — never the id), the referrer's domain (another
  * site only) and the landing path (no query string). The first page of the session wins; later pages never overwrite.
+ * 27 Nov 2026 (DECISIONS.md «Ad conversions»): Google's iOS click IDs gbraid / wbraid are flagged the same way, and the
+ * booking adds ads_consent — whether advertising consent (ad_user_data) was granted when it was sent (booleans only).
  */
 export interface Visit {
   utm_source?: string;
@@ -11,11 +13,15 @@ export interface Visit {
   utm_campaign?: string;
   utm_content?: string;
   gclid: boolean;
+  gbraid?: boolean;
+  wbraid?: boolean;
   fbclid: boolean;
   ttclid: boolean;
   sccid: boolean;
   referrer?: string;
   landing: string;
+  /** set by the booking form when it sends (never captured on a page) */
+  ads_consent?: boolean;
 }
 const KEY = 'armada-visit';
 
@@ -24,7 +30,7 @@ export function captureVisit(): void {
   try {
     if (sessionStorage.getItem(KEY)) return;
     const q = new URLSearchParams(location.search);
-    const v: Visit = { gclid: q.has('gclid'), fbclid: q.has('fbclid'), ttclid: q.has('ttclid'), sccid: q.has('ScCid') || q.has('sccid'), landing: location.pathname.slice(0, 200) };
+    const v: Visit = { gclid: q.has('gclid'), gbraid: q.has('gbraid'), wbraid: q.has('wbraid'), fbclid: q.has('fbclid'), ttclid: q.has('ttclid'), sccid: q.has('ScCid') || q.has('sccid'), landing: location.pathname.slice(0, 200) };
     for (const k of ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content'] as const) {
       const x = (q.get(k) ?? '').trim().slice(0, 100);
       if (x) v[k] = x;

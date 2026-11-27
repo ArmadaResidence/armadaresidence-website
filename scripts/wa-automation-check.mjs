@@ -109,6 +109,18 @@ E('cron: the arrival reminder at 16:00 Riyadh (13:00 UTC)', mig.includes("cron.s
 E('cron: the review request at 10:00 Riyadh (07:00 UTC)', mig.includes("cron.schedule('wa-stay-review', '0 7 * * *'"));
 E('switches: the three automations OFF at both branches', ['wa_eyab_welcome', 'wa_arrival_reminder', 'wa_stay_review'].every((k) => mig.includes(`('${k}', '{"airport-road": false, "shafa-road": false}'::jsonb)`)));
 E('review request: confirmed only, departed yesterday, no satisfaction filter', /r\.status = 'confirmed' and r\.check_out = internal\.riyadh_today\(\) - 1/.test(mig) && !/rating|satisf/i.test(mig.split('wa_review_tick')[1].split('$$;')[0]));
+// 27 Nov 2026 (DECISIONS.md «Arrival reminder»): the tick's rules and the end-to-end test path
+const ar = read('../supabase/migrations/20261127200000_arrival_reminder.sql');
+const tick = ar.split('create function public.wa_arrival_tick')[1].split('$$;')[0];
+E('arrival reminder: confirmed bookings arriving the day after the send day, at a switched-on branch', tick.includes("r.status = 'confirmed' and r.check_in = v_day + 1") && tick.includes("internal.branch_switch('wa_arrival_reminder', r.branch)"));
+E('arrival reminder: no mobile → skipped', tick.includes("nullif(btrim(coalesce(r.phone, '')), '') is not null"));
+E('arrival reminder: a booking confirmed after 16:00 Riyadh of the send day is never reminded (a late or repeated tick too)', tick.includes("(v_day + time '16:00') at time zone 'Asia/Riyadh'") && tick.includes('coalesce(r.confirmed_at, r.created_at) <= least(v_send, coalesce(p_now, now()))'));
+E('arrival reminder: every booking source alike — no booking_source condition', !/booking_source/.test(tick));
+E('arrival reminder: the claim really sends only a TEST reminder to the owner number', ar.includes("'send_real', w.is_test and w.template = 'arrival_reminder' and internal.wa_own_test_number(w.phone)"));
+const idx = read('../supabase/functions/wa-automation/index.ts');
+E('wa-automation: deliver() sends a test row only with send_real', idx.includes('async function deliver(item: Claimed, test = item.is_test && !item.send_real)'));
+const gen = read('./arrival-reminder-migration.mjs');
+E('the arrival reminder migration names its generator', ar.includes('scripts/arrival-reminder-migration.mjs') && gen.includes('20261127200000_arrival_reminder.sql'));
 const cfg = read('../supabase/config.toml');
 E('config: wa-automation verify_jwt = false (cron, webhook)', /\[functions\.wa-automation\]\nverify_jwt = false/.test(cfg));
 

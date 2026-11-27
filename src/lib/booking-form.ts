@@ -5,7 +5,7 @@
  * (date picker, phone and country list, rules, prices) are no longer requested before the first paint.
  */
 import { firstTouch } from '@lib/visit';
-import { hashedUserData } from '@lib/user-data';
+import { adUserDataGranted, hashedUserData } from '@lib/user-data';
 import { withClickIds } from '@lib/click-ids';
 import { pushWhatsAppClick } from '@lib/wa-track';
 import { turnstileToken } from '@lib/turnstile';
@@ -917,7 +917,8 @@ function initForm(form: HTMLFormElement) {
         marketing_consent: marketing,
         ...(marketing ? { consent_version: data.consentVersion } : {}),
         // the visit's first-touch source (3 Nov 2026, part G): no personal data (src/lib/visit.ts)
-        ...(firstTouch() ? { visit: firstTouch() } : {}),
+        // + ads_consent (27 Nov 2026): whether advertising consent was granted at this moment (a boolean)
+        ...(firstTouch() ? { visit: { ...firstTouch(), ads_consent: adUserDataGranted() } } : {}),
         // «مصدر الحجز» + the device's team token — internal devices only (the server checks the token, 11 Nov 2026)
         ...(internal() ? { booking_source: d.booking_source, team_token: teamToken() } : {}),
       };
