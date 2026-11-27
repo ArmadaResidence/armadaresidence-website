@@ -96,27 +96,27 @@ begin
   values (pg_temp._id('unit'), pg_temp._id('ch'), g, p_state, now() + p_window, false) returning id into c;
   insert into _ids values (p_k, c), (p_k || '_g', g);
   -- the guest's message, then our package question
-  insert into public.hub_messages (conversation_id, channel_id, direction, author, kind, body, status, is_test, created_at)
-  values (c, pg_temp._id('ch'), 'in', 'guest', 'text', 'QA', 'received', false, now() - interval '4 hours');
-  insert into public.hub_messages (conversation_id, channel_id, direction, author, kind, body, payload, status, is_test, created_at)
+  insert into public.hub_messages (conversation_id, channel_id, direction, author, kind, body, status, is_test, created_at, idempotency_key)
+  values (c, pg_temp._id('ch'), 'in', 'guest', 'text', 'QA', 'received', false, now() - interval '4 hours', gen_random_uuid()::text);
+  insert into public.hub_messages (conversation_id, channel_id, direction, author, kind, body, payload, status, is_test, created_at, idempotency_key)
   values (c, pg_temp._id('ch'), 'out', 'assistant', 'interactive', 'QA package question',
           '{"buttons": [{"id": "hubp:silver", "title": "الفضية"}, {"id": "hubp:gold", "title": "الذهبية"}], "list_button": "اختر الباقة", "package_question": true}'::jsonb,
-          'sent', false, now() - interval '3 hours 5 minutes');
+          'sent', false, now() - interval '3 hours 5 minutes', gen_random_uuid()::text);
 end $$;
 select pg_temp._conv('f1', '+15551000201');
 select pg_temp._check('F1 the package question queues ONE follow-up 3 hours later',
   (select count(*) = 1 and bool_and(status = 'queued' and kind = 'package' and due_at > now() + interval '2 hours 50 minutes') from public.hub_followups where conversation_id = pg_temp._id('f1')));
 -- a second question in the same conversation queues nothing more
-insert into public.hub_messages (conversation_id, channel_id, direction, author, kind, body, payload, status, is_test)
-values (pg_temp._id('f1'), pg_temp._id('ch'), 'out', 'assistant', 'interactive', 'again', '{"package_question": true}'::jsonb, 'sent', false);
+insert into public.hub_messages (conversation_id, channel_id, direction, author, kind, body, payload, status, is_test, idempotency_key)
+values (pg_temp._id('f1'), pg_temp._id('ch'), 'out', 'assistant', 'interactive', 'again', '{"package_question": true}'::jsonb, 'sent', false, gen_random_uuid()::text);
 select pg_temp._check('F2 once per conversation', (select count(*) = 1 from public.hub_followups where conversation_id = pg_temp._id('f1')));
 select pg_temp._conv('f2', '+15551000202');
 select pg_temp._conv('f3', '+15551000203');
 select pg_temp._conv('f4', '+15551000204', 'human');
 select pg_temp._conv('f5', '+15551000205', 'inquiry', '-1 hour');
 -- f2: the guest wrote after the question; f3: opted out; f4: with the team; f5: the window closed
-insert into public.hub_messages (conversation_id, channel_id, direction, author, kind, body, status, is_test)
-values (pg_temp._id('f2'), pg_temp._id('ch'), 'in', 'guest', 'text', 'QA later', 'received', false);
+insert into public.hub_messages (conversation_id, channel_id, direction, author, kind, body, status, is_test, idempotency_key)
+values (pg_temp._id('f2'), pg_temp._id('ch'), 'in', 'guest', 'text', 'QA later', 'received', false, gen_random_uuid()::text);
 update public.guest_profiles set wa_opt_out_at = now() where id = pg_temp._id('f3_g');
 update public.hub_followups set due_at = now() - interval '1 minute' where conversation_id in (pg_temp._id('f2'), pg_temp._id('f3'), pg_temp._id('f4'), pg_temp._id('f5'));
 select pg_temp._service();
