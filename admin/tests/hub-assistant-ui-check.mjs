@@ -158,7 +158,7 @@ for (const [role, level] of [['admin', 'edit'], ['management', 'view']]) {
       check((await page.locator('[data-api-credit="ok"]').count()) === 1, `${tag}: the Claude credit «متاح»`);
       check((await page.locator('[data-action="budget-save"]').count()) === (role === 'admin' ? 1 : 0) && (await page.locator('[data-budget="daily"]').isDisabled()) === (role !== 'admin'),
         `${tag}: the budgets editable by the system admin only`);
-      check((await page.locator('[data-switch-input]').count()) === 2 && (await page.$$eval('[data-switch-input]', (a) => a.every((x) => !x.checked))), `${tag}: both global switches off`);
+      check((await page.locator('[data-switch-input]').count()) === 5 && (await page.$$eval('[data-switch-input="hub_assistant_on"], [data-switch-input="hub_inbox_on"]', (a) => a.length === 2 && a.every((x) => !x.checked))), `${tag}: both global switches off (and the three switches of 27 Nov 2026 listed)`);
       check((await page.locator('[data-template-status="APPROVED"]').count()) === 4 && (await page.locator('[data-templates] tbody').textContent()).includes('معتمد'), `${tag}: hub_reply_ready ar + en «معتمد» on both numbers`);
       check((await page.locator('[data-channel="+966536622277"]').textContent()).includes('+966 53 662 2277'), `${tag}: the Airport Road number spaced`);
       check(await page.locator('[data-alerts-empty]').isVisible(), `${tag}: «لا تنبيهات مفتوحة»`);
