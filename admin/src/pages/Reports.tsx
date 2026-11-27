@@ -62,6 +62,7 @@ export default function Reports() {
   const [beh, setBeh] = useState<Sect<m.Behaviour>>(empty);
   const [src, setSrc] = useState<Sect<m.SourcesReport>>(empty);
   const [bsrc, setBsrc] = useState<Sect<m.BookingSourcesReport>>(empty);
+  const [adr, setAdr] = useState<Sect<m.AdReferralsReport>>(empty);
   const [can, setCan] = useState<Sect<m.Cancellations>>(empty);
   const [cp, setCp] = useState<Sect<m.ClubPartners>>(empty);
   const [hub, setHub] = useState<Sect<m.HubReport>>(empty);
@@ -85,6 +86,7 @@ export default function Reports() {
       run(m.reportBehaviour(branch, period), setBeh),
       run(m.reportSources(branch, period), setSrc),
       run(m.reportBookingSources(branch, period), setBsrc),
+      run(m.reportAdReferrals(branch, period), setAdr),
       run(m.reportCancellations(branch, period), setCan),
       run(m.reportClubPartners(branch, period), setCp),
       run(m.reportHub(branch, period), setHub),
@@ -102,7 +104,7 @@ export default function Reports() {
   const cmpText = cmp ? dateRange(cmp.from, cmp.to) : null;
 
   function exportXlsx() {
-    const sheets = buildSheets({ perf: perf.data, beh: beh.data, src: src.data, bsrc: bsrc.data, can: can.data, cp: cp.data, hub: hub.data, money, scope, periodText, cmpText });
+    const sheets = buildSheets({ perf: perf.data, beh: beh.data, src: src.data, bsrc: bsrc.data, adr: adr.data, can: can.data, cp: cp.data, hub: hub.data, money, scope, periodText, cmpText });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(workbook(sheets));
     a.download = `armada-reports-${period.from}-${period.to}.xlsx`;
@@ -160,7 +162,7 @@ export default function Reports() {
       <p className="text-sm text-ink-muted note-scope" data-scope-note>كل الأرقام من الحجوزات المسجّلة في اللوحة. حجوزات المنصات الأخرى تدخل بعد ربط مدير القنوات.</p>
       <Performance s={perf} money={money} first={first} hasCmp={!!cmp} />
       <BehaviourSection s={beh} first={first} />
-      <SourcesSection s={src} bs={bsrc} money={money} first={first} />
+      <SourcesSection s={src} bs={bsrc} ad={adr} money={money} first={first} />
       <CancelSection s={can} first={first} />
       <ClubSection s={cp} first={first} />
       <HubSection s={hub} money={money} first={first} />
@@ -276,9 +278,10 @@ function BehaviourSection({ s, first }: { s: Sect<m.Behaviour>; first: boolean }
 }
 
 // ───────────────────────── المصادر والحملات ─────────────────────────
-function SourcesSection({ s, bs, money, first }: { s: Sect<m.SourcesReport>; bs: Sect<m.BookingSourcesReport>; money: boolean; first: boolean }) {
+function SourcesSection({ s, bs, ad, money, first }: { s: Sect<m.SourcesReport>; bs: Sect<m.BookingSourcesReport>; ad: Sect<m.AdReferralsReport>; money: boolean; first: boolean }) {
   const d = s.data;
   const e = bs.data;
+  const w = ad.data;
   return (
     <section id="sources" aria-labelledby="sources-h" className="grid gap-3 report-section" data-section="sources">
       <SectionHead id="sources" title="المصادر والحملات" />
@@ -309,9 +312,22 @@ function SourcesSection({ s, bs, money, first }: { s: Sect<m.SourcesReport>; bs:
           </section>
         </div>
       )}
+      <ErrorBox error={ad.error} />
+      {/* «حسب إعلان واتساب» (27 Nov 2026): click-to-WhatsApp ads — internal only, nothing is sent to an ad platform */}
+      {w && (
+        <section className="card p-4" aria-labelledby="wa-ads-h" data-wa-ads>
+          <div className="flex items-start gap-2 mb-3"><h3 id="wa-ads-h" className="font-bold">حسب إعلان واتساب</h3><HowTip text={m.HOW.adReferrals} /></div>
+          {w.ads.length === 0 ? <p className="text-sm text-ink-muted">لا محادثات بدأت من إعلان في الفترة.</p> : (
+            <DataTable caption="حسب إعلان واتساب" data={{ head: ['الحملة', 'الإعلان', 'المحادثات', 'الحجوزات', 'الليالي', ...(money ? ['الإيراد'] : [])], rows: w.ads.map((a) => [a.campaign ?? 'غير مسمّاة', adText(a), a.conversations, a.bookings, a.nights, ...(money ? [sar(a.revenue ?? 0)] : [])]) }} />
+          )}
+        </section>
+      )}
     </section>
   );
 }
+
+/** an ad's line: its headline and ID (Meta's referral carries no campaign name; ad_campaigns maps the ID) */
+const adText = (a: { ad_id: string; headline: string | null }) => (a.headline ? `${a.headline} · ${a.ad_id}` : a.ad_id);
 
 // ───────────────────────── الإلغاء والرد ─────────────────────────
 function CancelSection({ s, first }: { s: Sect<m.Cancellations>; first: boolean }) {
@@ -460,7 +476,7 @@ function HubSection({ s, money, first }: { s: Sect<m.HubReport>; money: boolean;
 }
 
 // ───────────────────────── Excel ─────────────────────────
-function buildSheets(x: { perf: m.Performance | null; beh: m.Behaviour | null; src: m.SourcesReport | null; bsrc: m.BookingSourcesReport | null; can: m.Cancellations | null; cp: m.ClubPartners | null; hub: m.HubReport | null; money: boolean; scope: string; periodText: string; cmpText: string | null }): Sheet[] {
+function buildSheets(x: { perf: m.Performance | null; beh: m.Behaviour | null; src: m.SourcesReport | null; bsrc: m.BookingSourcesReport | null; adr: m.AdReferralsReport | null; can: m.Cancellations | null; cp: m.ClubPartners | null; hub: m.HubReport | null; money: boolean; scope: string; periodText: string; cmpText: string | null }): Sheet[] {
   const head = `${x.scope} · ${x.periodText}${x.cmpText ? ` · المقارنة: ${x.cmpText}` : ''} · كل الأرقام من الحجوزات المسجّلة في اللوحة`;
   const sheets: Sheet[] = [];
   const p = x.perf;
@@ -495,6 +511,7 @@ function buildSheets(x: { perf: m.Performance | null; beh: m.Behaviour | null; s
     ...(bs ? [{ title: `حسب مصدر الحجز · ${head}`, rows: [['مصدر الحجز', 'الحجوزات', 'الليالي', ...(x.money ? ['الإيراد', 'حصة الإيراد (٪)'] : [])], ...bs.sources.map((r) => [bookingSourceLabel(r.key), r.bookings, r.nights, ...(x.money ? [num(r.revenue), num(r.revenue_share)] : [])])] }] : []),
     { title: head, rows: [['المصدر', 'الحجوزات', 'الليالي', ...(x.money ? ['الإيراد', 'حصة الإيراد (٪)'] : [])], ...s.sources.map((r) => [m.sourceLabel(r.key), r.bookings, r.nights, ...(x.money ? [num(r.revenue), num(r.revenue_share)] : [])])] },
     { title: 'الحملات', rows: [['الحملة', 'المنصة', 'الحجوزات', ...(x.money ? ['الإيراد', 'متوسط قيمة الحجز'] : [])], ...s.campaigns.map((c) => [c.campaign, m.sourceLabel(c.platform), c.bookings, ...(x.money ? [num(c.revenue), num(c.avg_value)] : [])])] },
+    ...(x.adr ? [{ title: 'حسب إعلان واتساب', rows: [['الحملة', 'الإعلان', 'المحادثات', 'الحجوزات', 'الليالي', ...(x.money ? ['الإيراد'] : [])], ...x.adr.ads.map((a) => [a.campaign ?? 'غير مسمّاة', adText(a), a.conversations, a.bookings, a.nights, ...(x.money ? [num(a.revenue)] : [])])] }] : []),
   ] });
   const c = x.can;
   if (c) sheets.push({ name: 'الإلغاء والرد', blocks: [

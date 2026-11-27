@@ -71,6 +71,12 @@ export interface BookingSourcesReport {
   bookings: number;
   sources: { key: string; bookings: number; nights: number; revenue?: number; revenue_share?: number | null }[];
 }
+/** «حسب إعلان واتساب» (27 Nov 2026 — public.report_ad_referrals): per campaign and ad, the WhatsApp conversations an ad
+ *  started in the period and the confirmed bookings made from them; revenue withheld without «الأرقام المالية» */
+export interface AdReferralsReport {
+  conversations: number; bookings: number;
+  ads: { ad_id: string; campaign: string | null; headline: string | null; conversations: number; bookings: number; nights: number; revenue?: number }[];
+}
 export interface Cancellations {
   confirmed: number; cancelled: number; rate: number | null; declined: number;
   buckets: Record<'0' | '1-3' | '4-7' | '8-30' | '30+', number>;
@@ -99,6 +105,7 @@ export const reportPerformance = (branch: string, p: Period, c: Period | null) =
 export const reportBehaviour = (branch: string, p: Period) => rpc<Behaviour>('report_behaviour', { p_branch: b(branch), p_from: p.from, p_to: p.to });
 export const reportSources = (branch: string, p: Period) => rpc<SourcesReport>('report_sources', { p_branch: b(branch), p_from: p.from, p_to: p.to });
 export const reportBookingSources = (branch: string, p: Period) => rpc<BookingSourcesReport>('report_booking_sources', { p_branch: b(branch), p_from: p.from, p_to: p.to });
+export const reportAdReferrals = (branch: string, p: Period) => rpc<AdReferralsReport>('report_ad_referrals', { p_branch: b(branch), p_from: p.from, p_to: p.to });
 export const reportCancellations = (branch: string, p: Period) => rpc<Cancellations>('report_cancellations', { p_branch: b(branch), p_from: p.from, p_to: p.to });
 export const reportClubPartners = (branch: string, p: Period) => rpc<ClubPartners>('report_club_partners', { p_branch: b(branch), p_from: p.from, p_to: p.to });
 /** «المحادثات والمساعد» (Guest Hub H8, 16 Nov 2026 — public.report_hub; spec §5.9): by unit, the assistant's bookings, the
@@ -258,6 +265,7 @@ export const HOW = {
   hubTopics: 'أكثر المواضيع في رسائل الضيوف في الفترة، دون التحية والشكر.',
   hubStandby: 'المرات التي انتظر فيها المساعد رد الفريق أولًا («وضع الاستعداد» في «الفريق والتقارير»): ردّ موظف خلال مدة الانتظار فتوقف المساعد، أو انتهت المدة دون رد فأجاب المساعد. محادثات الاختبار غير محسوبة.',
   hubCost: 'تكلفة نماذج المساعد للمحادثات الحقيقية (دون مختبر الاختبار والمحاكي) بالدولار، وتقدير رسائل واتساب بالقوالب حسب سعر الرسالة في الإعدادات.',
+  adReferrals: 'محادثات واتساب التي بدأت بالضغط على إعلان في الفترة، والحجوزات المؤكدة المسجّلة فيها من تلك المحادثات (أو من محادثة إعلان للضيف نفسه خلال 7 أيام قبلها) وإيراد غرفها. اسم الحملة من رقم الإعلان. للاستخدام الداخلي فقط، ولا يُرسل شيء منه إلى أي منصة إعلانية.',
   bookingSources: 'الحجوزات المؤكدة المسجّلة في الفترة حسب مصدر الحجز: «الموقع مباشرة» لحجوزات الزوّار، وما اختاره الفريق على الأجهزة الداخلية (انستجرام، واتساب…)، وإيراد غرفها كاملًا.',
   campaigns: 'الحجوزات المؤكدة التي حملت اسم حملة (utm_campaign)؛ متوسط قيمة الحجز = إيراد الغرف ÷ عدد الحجوزات.',
   cancelRate: 'الحجوزات التي أُلغيت بعد تأكيدها ÷ كل الحجوزات التي تأكدت، من الحجوزات المسجّلة في الفترة.',

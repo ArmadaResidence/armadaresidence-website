@@ -431,6 +431,7 @@ function Details({ r, roomTypes, editable, onClose, onChanged }: { r: Reservatio
         )}
         {!r.cancel_reason_code && r.cancel_reason && (<><dt className="text-ink-muted">سبب الإلغاء</dt><dd>{r.cancel_reason}</dd></>)}
         {r.visit && (<><dt className="text-ink-muted">مصدر الزيارة</dt><dd data-booking-visit><VisitLine v={r.visit} /></dd></>)}
+        {r.ad_referral && (<><dt className="text-ink-muted">مصدر الإعلان</dt><dd data-booking-ad><AdLine a={r.ad_referral} /></dd></>)}
       </dl>
 
       {r.total !== null && (
@@ -617,6 +618,20 @@ function VisitLine({ v }: { v: NonNullable<Reservation['visit']> }) {
       {v.landing && <span><span className="text-ink-muted">أول صفحة: </span><span className="latin" dir="ltr">{v.landing}</span></span>}
       {typeof v.ads_consent === 'boolean' && <span><span className="text-ink-muted">موافقة الإعلانات: </span>{v.ads_consent ? 'نعم' : 'لا'}</span>}
       {!utm && !clicks.length && !v.referrer && !v.landing && <span>—</span>}
+    </span>
+  );
+}
+
+const AD_PLATFORM: Record<string, string> = { facebook: 'فيسبوك', instagram: 'انستجرام', whatsapp_status: 'حالة واتساب', other: 'منصة أخرى' };
+/** «مصدر الإعلان» (27 Nov 2026): the WhatsApp ad the chat booking came from — internal only */
+function AdLine({ a }: { a: NonNullable<Reservation['ad_referral']> }) {
+  return (
+    <span className="grid gap-0.5">
+      <span><span className="text-ink-muted">الحملة: </span>{a.campaign ? <span className="latin" dir="ltr">{a.campaign}</span> : 'غير مسمّاة'}</span>
+      {a.headline && <span><span className="text-ink-muted">الإعلان: </span>{a.headline}</span>}
+      {a.ad_id && <span><span className="text-ink-muted">رقم الإعلان: </span><span className="latin" dir="ltr">{a.ad_id}</span></span>}
+      <span><span className="text-ink-muted">المنصة: </span>{AD_PLATFORM[a.platform ?? 'other'] ?? 'منصة أخرى'}{a.ctwa_clid ? ' · معرّف النقرة محفوظ' : ''}</span>
+      {a.via === 'earlier_conversation' && <span className="text-ink-muted">من محادثة إعلان سابقة للضيف خلال 7 أيام</span>}
     </span>
   );
 }

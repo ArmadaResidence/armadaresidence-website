@@ -4759,3 +4759,41 @@ Decided by Ahmed on 26 Nov 2026 (the S3 brief):
   التجربة»), which `wa_claim` hands out with `send_real` and the function really sends (still an is_test row). A real
   booking on a staff number is still skipped. SQL `supabase/tests/wa-automation.sql` A6–A8, T1–T6; offline
   `wa-automation-check`.
+- **End-to-end on production (27 Nov 2026, after Ahmed applied both migrations):** a TEST booking `AR-20991231-ARR1`
+  (Airport Road, arriving 28 Nov, the system admin's own number only) → `wa_arrival_tick(true)` at 13:49 Riyadh queued 1
+  (`confirmed_after_send` 0) → sent for real through `send_real`: YCloud accepted at 13:49:03, **delivered 13:49:14**.
+  The switch stays ON at both branches. Deleting the test booking was refused by the tool's permission check, so the row
+  is still there (is_test and confirmed — it was inserted without taking a room, is shown as a test booking, is out of every report, and its reminder cannot be
+  sent again: one row per ref + template); Ahmed removes it from the dashboard (cancel with «حجز تجريبي», then «حذف
+  نهائي») or approves the delete. The next real send: today 16:00 Riyadh, one confirmed booking arriving 28 Nov.
+
+## 2026-11-27 — WhatsApp ad referral on bookings («مصدر الإعلان»), internal only (Ahmed, 27 Nov 2026)
+
+- **Decision (b), internal only:** the click-to-WhatsApp ad's referral (Meta's ad ID, headline, link, ctwa_clid), already
+  kept on `hub_conversations.referral` since H2, is carried to any booking made from that conversation:
+  `reservations.ad_referral` {platform, ad_id, campaign, headline, source_url, ctwa_clid, conversation_at, via}, written
+  by a trigger when a chat draft gets its reservation (never overwritten). The session's addition, for Ahmed's review:
+  when the booking's own episode carries no referral, the guest's latest ad conversation on the same number within the 7
+  days before counts (`via: earlier_conversation`) — an episode closes after 72 h idle and the next one has no referral.
+- **Campaign names:** Meta's referral never carries the campaign name; `public.ad_campaigns` maps the ad ID (seeded with
+  the three December ads, matched by text, branch number and first conversation — 120251482356550224 packages,
+  120251549669200224 Airport Road, 120251548150440224 Shafa Road); a new ad = a new row by migration.
+- **Shown:** the booking details «مصدر الإعلان» (campaign, ad, ad ID, platform, «معرّف النقرة محفوظ»); «التقارير» →
+  «المصادر والحملات» → «حسب إعلان واتساب» (`public.report_ad_referrals`: per campaign and ad the conversations started
+  in the period, the confirmed bookings booked in it, nights and revenue — money only with «الأرقام المالية»; branch
+  scope; test rows never) + its Excel block. Migration `20261127300000_whatsapp_ad_referral`; SQL
+  `supabase/tests/ad-referral.sql`.
+- **Nothing is sent to Meta or Google.** The messaging section of /policies/ does not name ad metadata; a sentence is
+  proposed, NOT published: «وإذا بدأت المحادثة بالضغط على أحد إعلاناتنا، نحفظ معها بيانات الإعلان التي ترسلها المنصة
+  (رقم الإعلان وعنوانه ومعرّف النقرة)، ونربطها بحجزك إن حجزت من المحادثة، لنعرف أي إعلاناتنا أفاد ضيوفنا، ولا نرسلها
+  إلى أي منصة إعلانية.» / "If the conversation starts from one of our ads, we keep the ad details the platform sends with it
+  (the ad's ID and headline and the click ID) and link them to your booking if you book in the chat, so we know which of
+  our ads helped our guests; we do not send them to any ad platform."
+- **Decision (a) postponed:** server-side conversions to Google (offline upload) and Meta (Conversions API) wait until
+  after 10 Dec 2026; nothing of it is built.
+- **Google Ads «Booking request» → Primary:** Ahmed switches the conversion action «Booking request» (label
+  `TYC_CMXwrpsdEJuqkYBE`) to Primary himself through Claude in Chrome (27 Nov 2026); «Website booking» stays Primary. No
+  GTM change. Both count from then on as primary conversions — a request later confirmed counts once, as a request.
+- **The analysis of the 115 ad conversations (20 Nov → 27 Nov 11:13):** `docs/whatsapp-ads-analysis-2026-11-27.md` —
+  0 bookings; the main stops: the dates question (36), only the packages ad's ready message (32), hand-offs with no
+  written staff reply (10 of 15), the quote without a room picked (10).

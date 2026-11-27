@@ -132,6 +132,8 @@ export interface Reservation {
   internal_notes: string | null;
   /** the visit's first-touch source (3 Nov 2026): utm values, click-id presence, referrer domain, landing path — no personal data */
   visit?: { utm_source?: string; utm_medium?: string; utm_campaign?: string; utm_content?: string; gclid?: boolean; gbraid?: boolean; wbraid?: boolean; ads_consent?: boolean; fbclid?: boolean; ttclid?: boolean; sccid?: boolean; referrer?: string; landing?: string } | null;
+  /** «مصدر الإعلان» (27 Nov 2026): the WhatsApp click-to-chat ad a chat booking came from — internal only, never sent to an ad platform */
+  ad_referral?: { platform?: 'facebook' | 'instagram' | 'whatsapp_status' | 'other'; ad_id?: string; campaign?: string; headline?: string; source_url?: string; ctwa_clid?: string; conversation_at?: string; via?: 'conversation' | 'earlier_conversation' } | null;
   payment_status: string;
   is_test: boolean;
   created_at: string;
