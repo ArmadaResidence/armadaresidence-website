@@ -138,12 +138,14 @@ select pg_temp._check('B1 the booking carries its conversation''s ad',
   and pg_temp._j('b1') ->> 'via' = 'conversation' and pg_temp._j('b1') ? 'conversation_at' and pg_temp._j('b1') ->> 'headline' like 'QA ad %',
   coalesce(pg_temp._j('b1')::text, 'null'));
 
--- B2: never overwritten (another conversation's draft pointing at the same booking)
+-- B2: never overwritten (a booking that already carries an ad referral keeps it)
 insert into _ids values ('c2', pg_temp._conv('shafa-road', pg_temp._id('g2'), pg_temp._ad('120251548150440224', 'https://www.instagram.com/p/qa/'), now() - interval '1 hour', false));
 with x as (insert into public.hub_drafts (conversation_id, kind) values (pg_temp._id('c2'), 'stay') returning id) insert into _ids select 'd2', id from x;
-update public.hub_drafts set reservation_id = pg_temp._id('r1') where id = pg_temp._id('d2');
+insert into _ids values ('r2', pg_temp._res('AR-20991231-QAD2', 'shafa-road', 200, true));
+update public.reservations set ad_referral = '{"ad_id": "999999999", "via": "conversation"}'::jsonb where id = pg_temp._id('r2');
+update public.hub_drafts set reservation_id = pg_temp._id('r2') where id = pg_temp._id('d2');
 select pg_temp._check('B2 an ad referral already set is never overwritten',
-  (select ad_referral ->> 'ad_id' = '120251549669200224' from public.reservations where id = pg_temp._id('r1')));
+  (select ad_referral ->> 'ad_id' = '999999999' from public.reservations where id = pg_temp._id('r2')));
 
 -- B3: an earlier ad conversation of the same guest on the same number, 3 days before → via earlier_conversation
 insert into _ids values ('c3a', pg_temp._conv('shafa-road', pg_temp._id('g3'), pg_temp._ad('120251548150440224', 'https://www.instagram.com/p/qa/'), now() - interval '3 days', true));
