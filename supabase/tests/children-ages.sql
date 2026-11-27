@@ -138,7 +138,7 @@ select pg_temp._as('airport');
 select pg_temp._save('r1', public.staff_set_children_ages(pg_temp._id('r1'), '{3,9}'));
 select pg_temp._root();
 select pg_temp._check('R1 ok, the ref and a batch id', (pg_temp._j('r1') ->> 'ok')::boolean and pg_temp._j('r1') ->> 'ref' = 'AR-20991231-QA01' and pg_temp._j('r1') ->> 'batch_id' is not null, pg_temp._j('r1')::text);
-select pg_temp._check('R2 the ages stored', (select children_ages = '{3,9}'::int[] from public.reservations where id = pg_temp._id('r1')));
+select pg_temp._check('R2 the ages stored', (select children_ages::int[] = '{3,9}'::int[] from public.reservations where id = pg_temp._id('r1')));
 -- breakfast: (2 × 25 + 0 (age 3) + 12.50 (age 9)) × 2 nights = 125; room 2 × 300 = 600; total 725
 select pg_temp._check('R3 breakfast priced by the Settings tiers: 125', (select breakfast_total = 125 from public.reservations where id = pg_temp._id('r1')),
   (select breakfast_total::text from public.reservations where id = pg_temp._id('r1')));
@@ -157,7 +157,7 @@ select pg_temp._as('mgmt');
 select pg_temp._save('r4', public.staff_set_children_ages(pg_temp._id('r4'), '{0,17}'));
 select pg_temp._root();
 select pg_temp._check('R8 «أي غرفة متاحة»: the ages stored, nothing priced, reason any_room',
-  (select children_ages = '{0,17}'::int[] and total is null and fallback_reason = 'any_room' from public.reservations where id = pg_temp._id('r4')), pg_temp._j('r4')::text);
+  (select children_ages::int[] = '{0,17}'::int[] and total is null and fallback_reason = 'any_room' from public.reservations where id = pg_temp._id('r4')), pg_temp._j('r4')::text);
 
 -- ══ A — audit, never undone, then the confirm ══
 select pg_temp._check('A1 one audit row in the batch, with the ages and the breakfast total',
