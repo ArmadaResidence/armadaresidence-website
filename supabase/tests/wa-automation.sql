@@ -373,7 +373,9 @@ insert into public.hub_report_recipients (position, name, phone, consent_at) val
 insert into _ids values ('t1', pg_temp._res_insert('AR-29991231-WA31', 'airport-road', '+966500009031', 'أحمد', 'confirmed', 1, 2));
 insert into _ids values ('t2', pg_temp._res_insert('AR-29991231-WA32', 'airport-road', '+966500009032', 'تجربة', 'confirmed', 1, 2));
 insert into _ids values ('t3', pg_temp._res_insert('AR-29991231-WA33', 'airport-road', '+966500009031', 'أحمد', 'confirmed', 2, 3));
-update public.reservations set is_test = true, confirmed_at = now() - interval '1 hour' where id in (pg_temp._id('t1'), pg_temp._id('t2'));
+-- confirmed an hour before the simulated 15:00 tick (27 Nov 2026: «now() - 1 hour» fell after the tick once the run
+-- was past 16:00 Riyadh, and the rule «never a booking confirmed after that day's tick» left the test bookings out)
+update public.reservations set is_test = true, confirmed_at = (pg_temp._j('at15') ->> 'at')::timestamptz - interval '1 hour' where id in (pg_temp._id('t1'), pg_temp._id('t2'));
 update public.reservations set check_in = internal.riyadh_today() + 1, confirmed_at = now() - interval '1 day' where id = pg_temp._id('t3');
 update public.whatsapp_messages set status = 'skipped', error_code = 'qa' where status in ('queued', 'pending') and template in ('arrival_reminder', 'stay_review');
 select pg_temp._service();
