@@ -196,14 +196,16 @@ insert into _ids values ('a6', pg_temp._res_insert('AR-29991231-WA16', 'airport-
 insert into _ids values ('a7', pg_temp._res_insert('AR-29991231-WA17', 'airport-road', '+966500009017', 'دانة', 'confirmed', 1, 3));
 update public.reservations set confirmed_at = ((internal.riyadh_today() + time '16:01') at time zone 'Asia/Riyadh') where id = pg_temp._id('a6');
 update public.reservations set confirmed_at = ((internal.riyadh_today() + time '15:59') at time zone 'Asia/Riyadh') where id = pg_temp._id('a7');
+-- the moments the ticks stand for, computed as the superuser (service_role cannot call internal.riyadh_today)
+insert into _res select 'at' || left(h, 2), jsonb_build_object('at', (internal.riyadh_today() + h::time) at time zone 'Asia/Riyadh') from unnest(array['18:30', '11:00', '15:00']) h;
 select pg_temp._service();
-select pg_temp._save('t6', public.wa_arrival_tick(false, ((internal.riyadh_today() + time '18:30') at time zone 'Asia/Riyadh')));
+select pg_temp._save('t6', public.wa_arrival_tick(false, (pg_temp._j('at18') ->> 'at')::timestamptz));
 select pg_temp._root();
 select pg_temp._check('A6 confirmed at 16:01 → no reminder, even from a tick run at 18:30',
   not exists (select 1 from public.whatsapp_messages where reservation_id = pg_temp._id('a6')) and (pg_temp._j('t6') ->> 'confirmed_after_send')::int >= 1, pg_temp._j('t6')::text);
 select pg_temp._check('A7 confirmed at 15:59 → reminded by the same late tick', exists (select 1 from public.whatsapp_messages where reservation_id = pg_temp._id('a7') and template = 'arrival_reminder'));
 select pg_temp._service();
-select pg_temp._save('t7', public.wa_arrival_tick(false, ((internal.riyadh_today() + time '11:00') at time zone 'Asia/Riyadh')));
+select pg_temp._save('t7', public.wa_arrival_tick(false, (pg_temp._j('at11') ->> 'at')::timestamptz));
 select pg_temp._root();
 select pg_temp._check('A8 a tick standing for 11:00 counts nothing confirmed later than 11:00', (pg_temp._j('t7') ->> 'queued')::int = 0 and pg_temp._j('t7') ->> 'day' = internal.riyadh_today()::text, pg_temp._j('t7')::text);
 
@@ -379,7 +381,7 @@ select pg_temp._save('e0', public.wa_arrival_tick());
 select pg_temp._root();
 select pg_temp._check('T1 the cron tick never queues a test booking', not exists (select 1 from public.whatsapp_messages where reservation_id in (pg_temp._id('t1'), pg_temp._id('t2'))));
 select pg_temp._service();
-select pg_temp._save('e1', public.wa_arrival_tick(true, ((internal.riyadh_today() + time '15:00') at time zone 'Asia/Riyadh')));
+select pg_temp._save('e1', public.wa_arrival_tick(true, (pg_temp._j('at15') ->> 'at')::timestamptz));
 select pg_temp._save('e2', public.wa_claim(100));
 select pg_temp._root();
 select pg_temp._check('T2 the test tick queues both test bookings, as test rows', (select count(*) = 2 and bool_and(is_test) from public.whatsapp_messages where reservation_id in (pg_temp._id('t1'), pg_temp._id('t2')) and template = 'arrival_reminder'));
