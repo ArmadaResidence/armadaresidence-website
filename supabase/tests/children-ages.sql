@@ -98,7 +98,7 @@ begin
                                    children_ages, extra_beds, breakfast, guest_name, phone, locale, is_test, total, confirmed_at)
   values (p_ref, p_status::public.reservation_status, case when p_status = 'confirmed' then 'staff' end, case when p_status = 'request' then 'needs_ages' end,
           'website', 'airport-road', case when p_room then pg_temp._id('rt') end, pg_temp._d(300), pg_temp._d(302), 2, 2,
-          null, 0, p_breakfast::public.breakfast_choice, 'QA ages', '+966500000981', 'ar', false, null, case when p_status = 'confirmed' then now() end)
+          null, 0, p_breakfast::public.breakfast_choice, 'QA ages', '+966500000981', 'ar', false, case when p_status = 'confirmed' then 600 end, case when p_status = 'confirmed' then now() end)
   returning id into v;
   return v;
 end $$;
