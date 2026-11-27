@@ -176,5 +176,5 @@ select pg_temp._as('airport');
 select pg_temp._fails('A5 after the confirm the ages cannot be changed here', pg_temp._set('r1', '{4,9}'), 'not a request');
 select pg_temp._root();
 
-select test, ok, detail from _r order by n;
+select n, test, ok, detail from _r order by n;
 rollback;
