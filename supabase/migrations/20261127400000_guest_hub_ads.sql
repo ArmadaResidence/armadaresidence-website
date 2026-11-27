@@ -15,11 +15,6 @@
 --      «التنبيهات», closed when a staff member replies. No WhatsApp to staff from this path.
 -- All three switches start OFF here.
 
--- ── settings ──
-insert into public.settings (key, value) values
-  ('hub_price_first', 'false'::jsonb), ('hub_package_followup', 'false'::jsonb), ('hub_handoff_email', 'false'::jsonb), ('hub_handoff_email_min', '15'::jsonb)
-on conflict (key) do nothing;
-
 -- internal.hub_setting_keys (20261115400000_guest_hub_media.sql) + the four keys
 create or replace function internal.hub_setting_keys() returns text[]
 language sql immutable set search_path = '' as $$
@@ -112,6 +107,11 @@ begin
 end;
 $$;
 
+
+-- ── settings (after their check knows them) ──
+insert into public.settings (key, value) values
+  ('hub_price_first', 'false'::jsonb), ('hub_package_followup', 'false'::jsonb), ('hub_handoff_email', 'false'::jsonb), ('hub_handoff_email_min', '15'::jsonb)
+on conflict (key) do nothing;
 
 -- ── a. «يبدأ من» over the next N nights (service role: hub-agent's adapter) ──
 create function public.hub_from_prices(p_branch text, p_days integer default 30)
