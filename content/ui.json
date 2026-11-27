@@ -253,7 +253,7 @@
       "unavailable": "لا يتوفر سعر لهذه التواريخ على الموقع. أرسل طلبك وسيؤكده الاستقبال.",
       "price_changed": "تغيّر السعر منذ عرضه. راجع السعر الجديد ثم أكّد الحجز.",
       "ages_heading": "أعمار الأطفال",
-      "ages_hint": "نحتاج الأعمار لحساب الإفطار فقط؛ من دونها يصلك السعر من الاستقبال.",
+      "ages_hint": "سعر إفطار الأطفال يختلف حسب العمر، لذلك نحتاج عمر كل طفل لإتمام الحجز. إذا لا تحتاج الإفطار، اختر «بدون إفطار».",
       "age_label": "عمر الطفل {n}",
       "age_choose": "اختر العمر",
       "age_under1": "أقل من سنة",
@@ -345,7 +345,7 @@
         "breakfast": "اختر «مع الإفطار» أو «بدون إفطار».",
         "adults": "بالغ واحد على الأقل.",
         "extra_beds": "عدد الأسرّة الإضافية أكبر من المسموح لهذه الغرفة.",
-        "children_ages": "اختر عمر كل طفل (لحساب الإفطار فقط)."
+        "children_ages": "اختر عمر كل طفل لحساب الإفطار."
       },
       "whatsapp_fallback": "أرسل الطلب عبر واتساب",
       "whatsapp_message": "السلام عليكم، أرغب في طلب حجز.\nالفرع: {branch}\nنوع الغرفة: {room}\nتاريخ الوصول: {check_in}\nتاريخ المغادرة: {check_out}\nعدد الليالي: {nights}\nالبالغون: {adults}\nالأطفال: {children}\nأسرّة إضافية: {extra_beds}\nالإفطار: {breakfast}\nالاسم الكامل: {name}\nرقم الجوال: {phone}\nالبريد الإلكتروني: {email}\nكود العرض: {promo}\nملاحظات: {notes}",
@@ -1197,7 +1197,7 @@
       "unavailable": "No online price for these dates. Send your request and the reception will confirm it.",
       "price_changed": "The price changed since it was shown. Check the new price, then confirm.",
       "ages_heading": "Children's ages",
-      "ages_hint": "We only need the ages to price breakfast; without them the reception confirms the price.",
+      "ages_hint": "Children's breakfast is priced by age, so we need each child's age to complete your booking. If you don't need breakfast, choose “Without breakfast”.",
       "age_label": "Age of child {n}",
       "age_choose": "Choose age",
       "age_under1": "Under 1",
@@ -1289,7 +1289,7 @@
         "breakfast": "Choose “With breakfast” or “Without breakfast”.",
         "adults": "At least one adult.",
         "extra_beds": "More extra beds than this room allows.",
-        "children_ages": "Choose the age of each child (for breakfast pricing only)."
+        "children_ages": "Choose each child's age to price breakfast."
       },
       "whatsapp_fallback": "Send the request on WhatsApp",
       "whatsapp_message": "Hello, I would like to request a booking.\nProperty: {branch}\nRoom type: {room}\nCheck-in date: {check_in}\nCheck-out date: {check_out}\nNights: {nights}\nAdults: {adults}\nChildren: {children}\nExtra beds: {extra_beds}\nBreakfast: {breakfast}\nFull name: {name}\nMobile number: {phone}\nEmail: {email}\nPromo code: {promo}\nNotes: {notes}",

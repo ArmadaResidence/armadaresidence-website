@@ -20,6 +20,7 @@ import { chromium } from 'playwright';
 import { readFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { pickRange } from './datepicker-helpers.mjs';
+import { validateBooking } from '../supabase/functions/booking-request/rules.ts';
 import { noteTurnstile, stubTurnstile, turnstileProblem } from './turnstile-stub.mjs';
 
 const BASE = (process.argv[2] || 'http://127.0.0.1:4330').replace(/\/$/, '');
@@ -43,6 +44,36 @@ const check = (ok, label, detail = '') => {
   checks++;
   if (!ok) fails.push(`${label}${detail ? ` — ${detail}` : ''}`);
 };
+
+// ── children's ages required (27 Nov 2026 — DECISIONS.md «Children's ages required»): rules.ts, no browser ──
+{
+  const ctx = {
+    branches: ['airport-road'],
+    rooms: [{ slug: 'king-room', branch: 'airport-road', name: 'King', capacity: 2, extra_beds_max: 0, availability: 'available' }],
+    today: CI,
+    phone: () => '+966500000000',
+  };
+  const good = { branch: 'airport-road', room: 'king-room', check_in: CI, check_out: CO, adults: '2', children: '0', extra_beds: '0', breakfast: 'with', name: 'تجربة النظام', phone: '0500000000' };
+  const err = (p) => {
+    const r = validateBooking({ ...good, ...p }, ctx);
+    return r.ok ? 'ok' : r.errors.children_ages ?? `other:${Object.keys(r.errors).join(',')}`;
+  };
+  check(err({ children: '2' }) === 'required', 'rules: 2 children + breakfast + no ages → required', err({ children: '2' }));
+  check(err({ children: '2', children_ages: [] }) === 'required', 'rules: 2 children + breakfast + an empty list → required');
+  check(err({ children: '2', children_ages: ['5'] }) === 'required', 'rules: 2 children + one age → required', err({ children: '2', children_ages: ['5'] }));
+  check(err({ children: '2', children_ages: ['5', ''] }) === 'required', 'rules: 2 children + one age and an empty select → required');
+  check(err({ children: '2', children_ages: ['5', '11'] }) === 'ok', 'rules: 2 children + both ages → ok', err({ children: '2', children_ages: ['5', '11'] }));
+  check(err({ children: '2', children_ages: [0, 17] }) === 'ok', 'rules: ages 0 and 17 (numbers) → ok');
+  check(err({ children: '2', children_ages: ['5', '18'] }) === 'children_ages', 'rules: an age above 17 → children_ages');
+  check(err({ children: '2', children_ages: ['5', 'x'] }) === 'children_ages', 'rules: a non-number age → children_ages');
+  check(err({ children: '2', children_ages: ['5', '6', '7'] }) === 'children_ages', 'rules: more ages than children → children_ages');
+  check(err({ children: '2', breakfast: 'without' }) === 'ok', 'rules: 2 children + without breakfast + no ages → ok');
+  check(err({ children: '0', breakfast: 'with' }) === 'ok', 'rules: no children + breakfast → ok');
+  const okd = validateBooking({ ...good, children: '2', children_ages: ['5', '11'] }, ctx);
+  check(okd.ok && okd.data.children_ages.join() === '5,11', 'rules: the ages are kept as numbers', JSON.stringify(okd.ok ? okd.data.children_ages : okd.errors));
+  const nod = validateBooking({ ...good, children: '2', breakfast: 'without', children_ages: ['5', '11'] }, ctx);
+  check(nod.ok && nod.data.children_ages.length === 0, 'rules: without breakfast the ages are dropped');
+}
 
 /** quote_stay answer for the stub, from the request body (prices like the seed: king 185, two-bedroom 240). */
 function quoteFor(args, mode) {
@@ -119,6 +150,8 @@ async function run(width, lang) {
       q.total += 15 * q.count;
       return route.fulfill({ status: 409, contentType: 'application/json', body: JSON.stringify({ ok: false, error: 'price_changed', status: 'price_changed', quote: q }) });
     }
+    // an older page that sends no ages (27 Nov 2026): the server refuses with 422 fields.children_ages, nothing stored
+    if (mode.submit === 'ages_422') return route.fulfill({ status: 422, contentType: 'application/json', body: JSON.stringify({ ok: false, error: 'invalid', fields: { children_ages: 'required' } }) });
     if (mode.submit === 'sold_out') return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true, ref, stored: true, status: 'request', reason: 'sold_out', quote: null, whatsapp_sent: mode.wa, ...(body.marketing_consent ? {} : { eyab_invite: INVITE }) }) });
     // confirmed at exactly the quoted total (the real server refuses any other): the nightly rate follows it
     const q = quoteFor({ p_room: body.room, p_check_in: body.check_in, p_check_out: body.check_out, p_adults: Number(body.adults), p_children: Number(body.children), p_children_ages: body.children_ages?.map(Number), p_extra_beds: Number(body.extra_beds), p_breakfast: body.breakfast }, { prices: true }).quote;
@@ -230,8 +263,11 @@ async function run(width, lang) {
   await page.waitForTimeout(600);
   check(await form.locator('[data-ages]').isVisible(), `${tag} ages: asked with children + breakfast`);
   check((await form.locator('[data-ages] select').count()) === 1, `${tag} ages: one select per child`);
+  check((await form.locator('[data-ages-hint]').isVisible()) && (await form.locator('[data-ages-hint]').textContent()) === S.quote.ages_hint, `${tag} ages: the hint says why the ages are needed`);
+  check((await form.locator('[data-ages] select').first().evaluate((x) => x.required && (x.getAttribute('aria-describedby') || '').split(' ').every((id) => document.getElementById(id)))), `${tag} ages: the select is required and described by the hint and its error line`);
   await page.waitForFunction(() => document.querySelector('[data-quote-row="total"] td:nth-child(2)')?.textContent === '—', null, { timeout: 8000 });
   check((await form.locator('[data-submit-label]').textContent()) === S.form.submit, `${tag} ages: no instant without the ages`);
+  check(await form.locator('[data-quote-badge]').isHidden(), `${tag} ages: no badge (neither instant nor «طلب حجز») while an age is missing`);
   await form.locator('[data-ages] select').first().selectOption('8');
   await page.waitForFunction((t) => document.querySelector('[data-quote-row="total"] td:nth-child(2)')?.textContent === t, money(370 + (40 + 10) * 2), { timeout: 8000 });
   check(true, `${tag} ages: breakfast priced with the child tier (2 × 20 + 10) × 2`);
@@ -475,6 +511,53 @@ async function run(width, lang) {
     await p2.waitForFunction((t) => { const b = document.querySelector('[data-quote-badge]'); return b && !b.classList.contains('hidden') && b.textContent === t; }, S.quote.instant_badge, { timeout: 8000 });
     check((await p2.evaluate(() => (window.dataLayer || []).filter((e) => e.event === 'no_availability').length)) === 2, `${tag} no_availability: an available search pushes nothing`);
     await p2.close();
+  }
+
+  // ── children's ages required (27 Nov 2026): the submit is blocked on the first empty age; the server's 422 shows on the
+  // ages; complete ages → the normal (instant) decision ──
+  {
+    const p3 = await ctx.newPage();
+    p3.on('pageerror', (e) => fails.push(`${tag} ages page error: ${e.message}`));
+    await p3.goto(`${BASE}${pre}/booking/?branch=airport-road&room=king-room`, { waitUntil: 'networkidle' });
+    await p3.waitForSelector('form[data-booking-ready]');
+    const f5 = p3.locator('form[data-booking-form]').first();
+    await pickRange(p3, f5, CI, CO);
+    await f5.locator('input[name="children"]').fill('2');
+    await f5.locator('input[name="children"]').dispatchEvent('blur');
+    await f5.locator('label:has(input[name="breakfast"][value="with"])').click();
+    await f5.locator('input[name="name"]').fill('تجربة النظام');
+    await f5.locator('[data-phone-input]').fill('0500000000');
+    await p3.waitForFunction(() => document.querySelectorAll('form[data-booking-form] [data-ages] select').length === 2, null, { timeout: 8000 });
+    await p3.waitForFunction(() => document.querySelector('[data-quote-row="total"] td:nth-child(2)')?.textContent === '—', null, { timeout: 8000 });
+    check(await f5.locator('[data-quote-badge]').isHidden(), `${tag} ages required: no badge before the ages`);
+    const n0 = submits.length;
+    await f5.locator('[data-submit]').click();
+    await p3.waitForTimeout(400);
+    const ageErr = f5.locator('[data-error-for="children_ages"]');
+    check(submits.length === n0, `${tag} ages required: nothing sent without the ages`);
+    check((await p3.evaluate(() => document.activeElement?.getAttribute('name') === 'children_ages' && document.activeElement?.id.endsWith('-age-0'))), `${tag} ages required: focus on the first empty age`);
+    check((await ageErr.isVisible()) && (await ageErr.textContent()) === S.form.errors.children_ages, `${tag} ages required: the inline error`, await ageErr.textContent());
+    check((await f5.locator('[data-ages] select[aria-invalid="true"]').count()) === 2, `${tag} ages required: both empty ages marked aria-invalid`);
+    await f5.locator('[data-ages] select').first().selectOption('8');
+    await f5.locator('[data-submit]').click();
+    await p3.waitForTimeout(400);
+    check(submits.length === n0 && (await p3.evaluate(() => document.activeElement?.id.endsWith('-age-1'))), `${tag} ages required: one age left → focus on the second, nothing sent`);
+    check((await f5.locator('[data-ages] select[aria-invalid="true"]').count()) === 1, `${tag} ages required: only the empty age stays marked`);
+    await f5.locator('[data-ages] select').nth(1).selectOption('3');
+    await p3.waitForFunction((t) => { const b = document.querySelector('form[data-booking-form] [data-quote-badge]'); return b && !b.classList.contains('hidden') && b.textContent === t; }, S.quote.instant_badge, { timeout: 8000 });
+    check(await ageErr.isHidden(), `${tag} ages required: the error clears once every age is chosen`);
+    // the server refuses the ages (an older page's request, or a stale form): shown on the ages, nothing navigates
+    mode.submit = 'ages_422';
+    await f5.locator('[data-submit]').click();
+    await p3.waitForFunction(() => !document.querySelector('form[data-booking-form] [data-error-for="children_ages"]')?.classList.contains('hidden'), null, { timeout: 10000 });
+    check(p3.url().includes('/booking/') && (await ageErr.textContent()) === S.form.errors.children_ages, `${tag} ages required: the server's 422 shown inline on the ages`);
+    check(await p3.evaluate(() => document.activeElement?.getAttribute('name') === 'children_ages'), `${tag} ages required: focus moved to the ages after the 422`);
+    check(JSON.stringify(submits.at(-1)?.children_ages) === '["8","3"]', `${tag} ages required: the ages were sent`, JSON.stringify(submits.at(-1)?.children_ages));
+    mode.submit = 'confirmed';
+    await f5.locator('[data-submit]').click();
+    await p3.waitForURL(/\/booking\/success\//, { timeout: 15000 });
+    check(new URL(p3.url()).searchParams.get('s') === 'confirmed', `${tag} ages required: complete ages → instant booking`, p3.url());
+    await p3.close();
   }
 
   await browser.close();

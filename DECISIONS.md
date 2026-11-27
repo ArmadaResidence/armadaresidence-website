@@ -4858,3 +4858,43 @@ From the ads analysis (`docs/whatsapp-ads-analysis-2026-11-27.md`). Each change 
   ONLY.** The chat is unchanged: no introduction, no automated wording, the guard as before.
 - The test booking AR-20991231-ARR1: Ahmed cancels («حجز تجريبي») and deletes it himself from the dashboard; sessions do
   not try again.
+
+## 2026-11-27 — Children's ages required (Ahmed, 27 Nov 2026)
+
+- **Why:** the ages were optional. A guest who picked «مع الإفطار» with children and left them empty got a request with
+  reason `needs_ages`, and the dashboard refused to confirm it — reception could not accept these bookings.
+- **The rule (one place, `rules.ts → validateBooking`, the form and booking-request alike):** when `needsChildAges`
+  (children > 0 and breakfast = with), exactly one valid age (0–17) per child. None, fewer than the children or an empty
+  select → field error `required` on `children_ages`; more ages than children or an invalid value → `children_ages`. An
+  older page that sends no ages gets 422 `fields.children_ages` and nothing is stored. «بدون إفطار» or no children → no ages,
+  no requirement (as before).
+- **The form:** every age select shown is required (inline error on blur and submit, aria-invalid on each empty age,
+  aria-describedby = the hint + the error line — the old `${form.id}-children_ages-error` pointed nowhere; focus to the first
+  empty age); the hint under «أعمار الأطفال» (Ahmed's text, `ui.json → quote.ages_hint`): «سعر إفطار الأطفال يختلف حسب
+  العمر، لذلك نحتاج عمر كل طفل لإتمام الحجز. إذا لا تحتاج الإفطار، اختر «بدون إفطار».» / "Children's breakfast is priced
+  by age, so we need each child's age to complete your booking. If you don't need breakfast, choose “Without breakfast”.";
+  the error (`form.errors.children_ages`): «اختر عمر كل طفل لحساب الإفطار.» / "Choose each child's age to price breakfast."
+  No age band or price in either. While an age is missing the quote shows as before (breakfast and total «—») with NO badge —
+  neither «تأكيد فوري» nor «طلب حجز — أعمار الأطفال مطلوبة…»; once complete the normal decision applies. `collect()` sends the
+  shown selects as they are, so the shared rule blocks the submit. A 422 on the ages shows inline on them.
+- **The dashboard — «تسجيل أعمار الأطفال»:** in the booking details of a request with children, breakfast and no ages
+  (bookings: edit). The shared Modal (dirty guard, × / «إلغاء»), one select per child («أقل من سنة» … «17 سنة», Western
+  digits), «حفظ» → `public.staff_set_children_ages(p_id, p_ages)` (migration `20261127500000_children_ages_required`):
+  bookings: edit + branch scope (a test booking: admin), a request only, children with breakfast only, one age per child,
+  each 0–17; stores the ages, re-prices with `internal.price_stay_offer` exactly as the confirm does (its promo code,
+  creation date, test flag, offer snapshot), updates the totals and the snapshot, clears `needs_ages` (`no_rate` when a night
+  has no rate; `any_room` without a room type); no status, inventory or message change; one audit batch, never undoable
+  (`revert_batch` refuses reservations batches). The audit trigger on reservations now also keeps `children_ages` and
+  `breakfast_total`. The details stay open on the booking, read again. The confirm's needs_ages text: «أعمار الأطفال ناقصة.
+  سجّلها من «تسجيل أعمار الأطفال» ثم أكّد الحجز.»
+- **The Guest Hub:** already asks each child's age before a booking with breakfast (`machine.ts → bookingMissing` holds the
+  quote and the summary until `child_ages` has one per child; a change goes through it again), so no chat booking reaches
+  `hub_book_draft` without them. `hub_book_draft` itself does not check the ages (it would store a needs_ages request);
+  left unchanged — replacing that long function for a path the engine already closes is a risk without a gain. No template
+  touched.
+- **Production on 27 Nov 2026 (read-only, counts only):** 0 requests waiting with `needs_ages`; 2 bookings ever stored with
+  that reason, both cancelled.
+- **Checks:** `booking-instant-check` (the rule cases without a browser; the hint, no badge while an age is missing, the
+  submit blocked with focus on the first empty age, the server's 422 inline, complete ages → instant; AR + EN × 1440 + 375);
+  `booking-whatsapp-check` chooses the child's age before its submit; SQL `supabase/tests/children-ages.sql`
+  (server-checks); offline `admin/tests/children-ages-check.mjs` (inside `admin-audit-check`).

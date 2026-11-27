@@ -298,10 +298,9 @@ function initForm(form: HTMLFormElement) {
   const collect = (): BookingInput => {
     const fd = new FormData(form);
     const v = (k: string) => String(fd.get(k) ?? '').trim();
-    // ages (Q2): sent only when every shown select is chosen — they price breakfast and never block a request;
-    // without them the server stores a request with reason needs_ages (the quote badge says so)
-    const shown = agesWrap.classList.contains('hidden') ? [] : fd.getAll('children_ages').map((a) => String(a).trim());
-    const ages = shown.length && shown.every((a) => a !== '') ? shown : [];
+    // ages (Q2): required since 27 Nov 2026 — every shown select is sent as it is (an empty one included), so
+    // validateBooking (rules.ts) refuses a missing age here exactly as the server does
+    const ages = agesWrap.classList.contains('hidden') ? [] : fd.getAll('children_ages').map((a) => String(a).trim());
     return {
       branch: v('branch'),
       room: v('room'),
@@ -327,6 +326,7 @@ function initForm(form: HTMLFormElement) {
     if (code === 'extra_beds') return e.extra_beds;
     if (code === 'booking_source') return e.booking_source ?? e.required;
     if (code === 'required' && field === 'breakfast') return e.breakfast;
+    if (field === 'children_ages') return e.children_ages;
     const map: Partial<Record<FieldError, string>> = {
       required: e.required, branch: e.required, room: e.required, date_format: e.date_format, past: e.past, dates: e.dates,
       adults: e.adults, children: e.adults, extra_beds: e.extra_beds, children_ages: e.children_ages, breakfast: e.breakfast, name: e.name, phone: e.phone, email: e.email,
@@ -337,7 +337,10 @@ function initForm(form: HTMLFormElement) {
   function control(field: string): HTMLElement | null {
     if (field === 'breakfast') return form.querySelector<HTMLElement>('input[name="breakfast"]');
     if (field === 'phone') return phoneIn;
-    if (field === 'children_ages') return agesList.querySelector<HTMLSelectElement>('select:invalid, select') ?? null;
+    if (field === 'children_ages') {
+      const sels = Array.from(agesList.querySelectorAll<HTMLSelectElement>('select'));
+      return sels.find((x) => !x.value) ?? sels[0] ?? null;
+    }
     if (dateBtn[field]) return dateBtn[field];
     return form.elements.namedItem(field) as HTMLElement | null;
   }
@@ -353,6 +356,11 @@ function initForm(form: HTMLFormElement) {
     } else if (field === 'adults') {
       [adultsIn, childrenIn].forEach((i) => i.closest('.stepper')?.classList.toggle('is-invalid', !!msg));
       adultsIn.setAttribute('aria-invalid', msg ? 'true' : 'false');
+    } else if (field === 'children_ages') {
+      // every empty age is marked (all of them when the values themselves are wrong)
+      const sels = Array.from(agesList.querySelectorAll<HTMLSelectElement>('select'));
+      const empty = sels.some((x) => !x.value);
+      sels.forEach((x) => x.setAttribute('aria-invalid', msg && (!empty || !x.value) ? 'true' : 'false'));
     } else control(field)?.setAttribute('aria-invalid', msg ? 'true' : 'false');
   }
   const FIELDS = ['booking_source', 'branch', 'room', 'check_in', 'check_out', 'adults', 'extra_beds', 'breakfast', 'children_ages', ...(promoIn ? ['promo_code'] : []), 'name', 'phone', 'email'];
@@ -486,7 +494,12 @@ function initForm(form: HTMLFormElement) {
   function syncAges(kids: number, breakfast: string) {
     const show = needsChildAges(kids, breakfast);
     agesWrap.classList.toggle('hidden', !show);
-    if (!show) return;
+    if (!show) {
+      // no breakfast or no children: no ages asked, no requirement left behind
+      showError('children_ages', null);
+      touched.delete('children_ages');
+      return;
+    }
     const current = Array.from(agesList.querySelectorAll<HTMLSelectElement>('select'));
     for (let i = current.length; i < kids; i++) {
       const wrap = document.createElement('div');
@@ -495,8 +508,12 @@ function initForm(form: HTMLFormElement) {
       sel.name = 'children_ages';
       sel.id = `${form.id}-age-${i}`;
       sel.autocomplete = 'off';
+      sel.required = true;
       sel.className = 'field-input w-full border border-line rounded bg-white';
-      sel.setAttribute('aria-describedby', `${form.id}-children_ages-error`);
+      // the hint (why the ages are needed) and the one error line of the ages
+      const hintId = agesWrap.querySelector<HTMLElement>('[data-ages-hint]')?.id ?? '';
+      const errId = agesWrap.querySelector<HTMLElement>('[data-error-for="children_ages"]')?.id ?? '';
+      sel.setAttribute('aria-describedby', `${hintId} ${errId}`.trim());
       const first = document.createElement('option');
       first.value = '';
       first.textContent = Q.age_choose;
@@ -515,6 +532,10 @@ function initForm(form: HTMLFormElement) {
         touched.add('children_ages');
         validateField('children_ages');
         scheduleQuote();
+      });
+      sel.addEventListener('blur', () => {
+        touched.add('children_ages');
+        validateField('children_ages');
       });
       wrap.append(sel, label);
       agesList.append(wrap);
@@ -735,7 +756,7 @@ function initForm(form: HTMLFormElement) {
     const uniform = prices.every((x) => x === prices[0]);
     row('room').cells[1].textContent = q.room_total === null ? '—' : uniform ? `${n} × ${money(prices[0], L)} = ${money(q.room_total, L)}` : money(q.room_total, L);
     row('breakfast').classList.toggle('hidden', q.breakfast !== 'with');
-    row('breakfast').cells[1].textContent = q.breakfast_total === null ? Q.ages_hint : money(q.breakfast_total, L);
+    row('breakfast').cells[1].textContent = q.breakfast_total === null ? '—' : money(q.breakfast_total, L);
     row('beds').classList.toggle('hidden', !(q.extra_beds > 0));
     row('beds').cells[0].textContent = Q.extra_beds_line.replace('{beds}', String(q.extra_beds));
     row('beds').cells[1].textContent = money(q.extra_beds_total, L);
@@ -766,14 +787,14 @@ function initForm(form: HTMLFormElement) {
     qTable.classList.remove('hidden');
     qPay.classList.remove('hidden');
     qNote.classList.add('hidden');
-    // breakfast for children cannot be priced without their ages: no total, no instant, the ages block asks for them
+    // breakfast for children cannot be priced without their ages (required since 27 Nov 2026): no total and no badge at
+    // all — neither instant nor request — until every age is chosen; then the normal decision applies
     const inst = r.instant && q.total !== null && !q.needs_ages;
-    const reasonKey = q.needs_ages ? 'needs_ages' : r.reason;
     const lim = r.limits ?? {};
-    const reason = reasonKey ? (Q.reasons[reasonKey] ?? '').replace('{n}', String(lim.max_nights ?? '')).replace('{time}', time12(String(lim.same_day_cutoff ?? ''), L)) : '';
-    qBadge.textContent = inst ? Q.instant_badge : `${Q.request_badge}${reason ? ` — ${reason}` : ''}`;
+    const reason = r.reason ? (Q.reasons[r.reason] ?? '').replace('{n}', String(lim.max_nights ?? '')).replace('{time}', time12(String(lim.same_day_cutoff ?? ''), L)) : '';
+    qBadge.textContent = q.needs_ages ? '' : inst ? Q.instant_badge : `${Q.request_badge}${reason ? ` — ${reason}` : ''}`;
     qBadge.className = `text-xs font-semibold rounded-full px-2.5 py-1 ${inst ? 'bg-midnight text-white' : 'border border-line bg-white text-ink'}`;
-    qBadge.classList.remove('hidden');
+    qBadge.classList.toggle('hidden', !!q.needs_ages);
     quotedTotal = q.total;
     setInstant(inst);
     quoteBox.classList.remove('hidden');
@@ -933,6 +954,13 @@ function initForm(form: HTMLFormElement) {
         promoState = why;
         showError('promo_code', Q.promo[why] ?? Q.promo.unknown);
         promoIn.focus();
+        return;
+      }
+      if (res.status === 422 && json.fields?.children_ages && !agesWrap.classList.contains('hidden')) {
+        // the server refused the ages (27 Nov 2026: one age per child is required) — nothing was stored: say it on the ages
+        touched.add('children_ages');
+        showError('children_ages', message('children_ages', json.fields.children_ages as FieldError));
+        control('children_ages')?.focus();
         return;
       }
       if (res.status === 409 && json.status === 'price_changed') {

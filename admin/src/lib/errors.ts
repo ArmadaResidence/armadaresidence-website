@@ -65,6 +65,10 @@ const KNOWN: [RegExp, string][] = [
   [/^nothing to change/, 'لا تغيير لحفظه.'],
   [/^a reason is required/, 'اكتب سبب الإلغاء.'],
   [/^not a request/, 'تغيّرت حالة هذا الحجز؛ أعد فتحه.'],
+  // «تسجيل أعمار الأطفال» (27 Nov 2026)
+  [/^ages are asked only/, 'الأعمار تُسجَّل فقط لحجز فيه أطفال مع الإفطار.'],
+  [/^one age per child/, 'اختر عمرًا واحدًا لكل طفل.'],
+  [/^every age is 0/, 'العمر من أقل من سنة حتى 17 سنة.'],
   [/^choose a bookable room type/, 'اختر نوع غرفة متاحًا للحجز في هذا الفرع.'],
   [/^choose a room type/, 'اختر نوع الغرفة.'],
   [/^no such user/, 'لم يُعثر على هذا المستخدم.'],

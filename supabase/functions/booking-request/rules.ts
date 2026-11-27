@@ -290,14 +290,20 @@ export function validateBooking(p: BookingInput, ctx: RuleContext): { ok: true; 
   const breakfast = String(p.breakfast ?? '');
   if (!BREAKFAST.includes(breakfast as Breakfast)) errors.breakfast = breakfast ? 'breakfast' : 'required';
 
-  // Children's ages (Q2): needed only to price breakfast. When the client sends them they must be one valid age per
-  // child; when it sends none the booking is still valid — the database then prices nothing and stores a request
-  // (reason needs_ages), so an older form never breaks. The form itself asks for them before an instant booking.
+  // Children's ages (Q2): needed only to price breakfast. Required since 27 Nov 2026 (Ahmed — DECISIONS.md «Children's
+  // ages required»): with children and breakfast, exactly one valid age (0–17) per child. None, fewer than the children or
+  // an empty one → 'required'; more than the children or an invalid value → 'children_ages'. An older page that sends no
+  // ages is refused (422 fields.children_ages) and nothing is stored, so no new request waits on reason needs_ages.
   let ages: number[] = [];
-  if (children !== null && needsChildAges(children, breakfast) && Array.isArray(p.children_ages) && p.children_ages.length) {
-    const raw = p.children_ages;
-    ages = raw.map((a) => intIn(a, 0, CHILD_AGE_MAX)).filter((a): a is number => a !== null);
-    if (raw.length !== children || ages.length !== children) errors.children_ages = 'children_ages';
+  if (children !== null && needsChildAges(children, breakfast)) {
+    const raw = Array.isArray(p.children_ages) ? p.children_ages : [];
+    const given = raw.filter((a) => String(a ?? '').trim() !== '');
+    if (raw.length > children) errors.children_ages = 'children_ages';
+    else if (given.length < children) errors.children_ages = 'required';
+    else {
+      ages = raw.map((a) => intIn(a, 0, CHILD_AGE_MAX)).filter((a): a is number => a !== null);
+      if (ages.length !== children) errors.children_ages = 'children_ages';
+    }
   }
 
   const name = String(p.name ?? '').trim().replace(/\s+/g, ' ');

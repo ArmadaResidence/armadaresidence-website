@@ -13,7 +13,7 @@ import { supabase } from '../lib/supabase';
 import * as api from '../lib/api';
 import type { Reservation, RoomType, StatusHistory, CalendarCell, WhatsAppMessage } from '../lib/api';
 import { useSession } from '../lib/session';
-import { BOOKING_SOURCE_LABELS, BRANCH_FULL, BRANCH_NAMES, NOTIFY_FAILED, bookingSourceLabel, REASON_LABELS, STATUS_LABELS, WA_STATUS_LABELS, WA_TEMPLATE_LABELS, adultsWord, childrenWord, dateRange, longDate, nightsWord, riyadhDateTimeLong, roomsLeft, sar, toCsv, riyadhToday, waError, west } from '../lib/format';
+import { BOOKING_SOURCE_LABELS, BRANCH_FULL, BRANCH_NAMES, NOTIFY_FAILED, bookingSourceLabel, REASON_LABELS, STATUS_LABELS, WA_STATUS_LABELS, WA_TEMPLATE_LABELS, CHILD_AGE_MAX, adultsWord, childAgeLabel, childrenWord, needsAgesNow, dateRange, longDate, nightsWord, riyadhDateTimeLong, roomsLeft, sar, toCsv, riyadhToday, waError, west } from '../lib/format';
 import { BranchSelect, CancelButton, Confirm, Drawer, Empty, ErrorBox, Field, Loading, Modal, Spinner, useToast } from '../components/ui';
 import DateField from '../components/DateField';
 import { BookingGuestBadges } from './Guests';
@@ -83,9 +83,11 @@ export default function Bookings() {
       setError(null);
       const list = await api.reservations({ branch: branch || undefined, status: status || undefined, needsCoordination: coord, confirmation: kind || undefined, search: query, arriveOn: arriveOn || undefined, departOn: departOn || undefined, bookingSource: bookingSource || undefined, stayFrom: stayFrom || undefined, stayTo: stayTo || undefined, createdFrom: createdFrom || undefined, createdTo: createdTo || undefined });
       setRows(list);
+      return list;
     } catch (e) {
       setError((e as Error).message);
       setRows([]);
+      return null;
     }
   }, [branch, status, coord, kind, query, arriveOn, departOn, bookingSource, stayFrom, stayTo, createdFrom, createdTo]);
 
@@ -241,12 +243,20 @@ export default function Bookings() {
         </ul>
       )}
       {/* keyed by the booking: every open starts from the saved values (decision B — reopening shows the saved values) */}
-      <Details key={open?.id ?? 'none'} r={open} roomTypes={roomTypes} editable={editable} onClose={() => setOpen(null)} onChanged={(msg, kind) => { toast(msg, kind); load(); setOpen(null); }} />
+      <Details key={open?.id ?? 'none'} r={open} roomTypes={roomTypes} editable={editable} onClose={() => setOpen(null)} onChanged={(msg, kind) => { toast(msg, kind); load(); setOpen(null); }}
+        onRefresh={async (msg) => {
+          // the details stay open on the same booking, read again (its ages, the new price, no more «تسجيل أعمار الأطفال»)
+          toast(msg);
+          const id = open?.id;
+          const list = await load();
+          const again = list?.find((x) => x.id === id);
+          if (again) setOpen(again);
+        }} />
     </div>
   );
 }
 
-function Details({ r, roomTypes, editable, onClose, onChanged }: { r: Reservation | null; roomTypes: RoomType[]; editable: boolean; onClose: () => void; onChanged: (msg: string, kind?: 'ok' | 'error') => void }) {
+function Details({ r, roomTypes, editable, onClose, onChanged, onRefresh }: { r: Reservation | null; roomTypes: RoomType[]; editable: boolean; onClose: () => void; onChanged: (msg: string, kind?: 'ok' | 'error') => void; onRefresh: (msg: string) => void }) {
   const toast = useToast();
   const [history, setHistory] = useState<StatusHistory[]>([]);
   const [notes, setNotes] = useState(r?.internal_notes ?? '');
@@ -257,6 +267,9 @@ function Details({ r, roomTypes, editable, onClose, onChanged }: { r: Reservatio
   const [busy, setBusy] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [cancelOpen, setCancelOpen] = useState(false);
+  // «تسجيل أعمار الأطفال» (27 Nov 2026): a request with children + breakfast stored without the ages (reason needs_ages)
+  const [agesOpen, setAgesOpen] = useState(false);
+  const [ages, setAges] = useState<string[]>([]);
   // «حذف نهائي» (10 Nov 2026): the system admin only, a booking cancelled as «حجز تجريبي»; the ref typed back enables it
   const { me } = useSession();
   const [delOpen, setDelOpen] = useState(false);
@@ -297,7 +310,7 @@ function Details({ r, roomTypes, editable, onClose, onChanged }: { r: Reservatio
     try {
       const out = await api.confirmReservation(r!.id, pickRt || null);
       if (!out.ok) {
-        if (out.reason === 'needs_ages') setError('أعمار الأطفال ناقصة: لا يمكن حساب الإفطار. تواصل مع الضيف وسجّل الأعمار في الملاحظات ثم أكّد بدون إفطار أو أضف السعر يدويًا.');
+        if (out.reason === 'needs_ages') setError('أعمار الأطفال ناقصة. سجّلها من «تسجيل أعمار الأطفال» ثم أكّد الحجز.');
         else setNightIssues({ reason: out.reason ?? '', nights: out.nights ?? [] });
         return;
       }
@@ -305,6 +318,20 @@ function Details({ r, roomTypes, editable, onClose, onChanged }: { r: Reservatio
       // the booking is confirmed either way; a notification that did not go out is never silent
       if (out.notify_failed) onChanged(NOTIFY_FAILED.confirm, 'error');
       else onChanged(`تم تأكيد الحجز ${out.ref}${out.low?.length ? ' — وأُرسل تنبيه المخزون' : ''}`);
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+  async function doSaveAges() {
+    if (ages.length !== r!.children || ages.some((a) => a === '')) return setError('اختر عمر كل طفل.');
+    setBusy(true);
+    setError(null);
+    try {
+      const out = await api.setChildrenAges(r!.id, ages.map(Number));
+      setAgesOpen(false);
+      onRefresh(`سُجّلت أعمار الأطفال للحجز ${out.ref}${out.total !== null ? ` — الإجمالي ${sar(out.total)}` : ''}`);
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -459,7 +486,8 @@ function Details({ r, roomTypes, editable, onClose, onChanged }: { r: Reservatio
       )}
 
       <div className="flex flex-wrap gap-2 mb-1">
-        {editable && r.status === 'request' && <button type="button" className="btn btn-primary" onClick={() => { setPickRt(r.room_type_id ?? ''); setNightIssues(null); setError(null); setConfirmOpen(true); }} data-action="confirm" data-tour="booking-confirm">تأكيد الحجز</button>}
+        {editable && needsAgesNow(r) && <button type="button" className="btn btn-primary" onClick={() => { setAges(Array.from({ length: r.children }, () => '')); setError(null); setAgesOpen(true); }} data-action="set-ages">تسجيل أعمار الأطفال</button>}
+        {editable && r.status === 'request' && <button type="button" className={`btn ${needsAgesNow(r) ? 'btn-ghost' : 'btn-primary'}`} onClick={() => { setPickRt(r.room_type_id ?? ''); setNightIssues(null); setError(null); setConfirmOpen(true); }} data-action="confirm" data-tour="booking-confirm">تأكيد الحجز</button>}
         {editable && r.status !== 'cancelled' && <button type="button" className="btn btn-danger" onClick={() => { setReason(''); setCancelNote(''); setError(null); setCancelOpen(true); }} data-action="cancel">إلغاء الحجز</button>}
         <a className="btn btn-ghost" href={waTemplate()} target="_blank" rel="noopener">واتساب الضيف</a>
         <button type="button" className="btn btn-ghost" onClick={() => window.print()} data-action="print">طباعة</button>
@@ -546,6 +574,24 @@ function Details({ r, roomTypes, editable, onClose, onChanged }: { r: Reservatio
         </div>
       </Modal>
 
+      <Modal open={agesOpen} onClose={() => { setAgesOpen(false); setError(null); }} title="تسجيل أعمار الأطفال" draftKey={`ages:${r.ref}`} busy={busy}>
+        <p className="text-sm text-ink-muted mb-3">سعر إفطار الأطفال يختلف حسب العمر. اسأل الضيف عن عمر كل طفل، ثم احفظ لحساب الإفطار وإجمالي الحجز. لا يُرسَل شيء للضيف.</p>
+        <div className="grid gap-3 grid-cols-2" data-ages-dialog>
+          {ages.map((v, i) => (
+            <Field key={i} label={`عمر الطفل ${i + 1}`} id={`age-${i}`}>
+              <select id={`age-${i}`} className="field" value={v} onChange={(e) => { const next = [...ages]; next[i] = e.target.value; setAges(next); setError(null); }}>
+                <option value="">— اختر العمر —</option>
+                {Array.from({ length: CHILD_AGE_MAX + 1 }, (_, a) => <option key={a} value={String(a)}>{childAgeLabel(a)}</option>)}
+              </select>
+            </Field>
+          ))}
+        </div>
+        <ErrorBox error={error} />
+        <div className="flex gap-2 justify-end mt-5">
+          <CancelButton disabled={busy} />
+          <button type="button" className="btn btn-primary" onClick={doSaveAges} disabled={busy || ages.some((a) => a === '')} data-action="set-ages-go">{busy && <Spinner />} حفظ</button>
+        </div>
+      </Modal>
       <Confirm open={cancelOpen} onClose={() => { setCancelOpen(false); setError(null); }} title="إلغاء الحجز" confirmLabel="إلغاء الحجز" danger onConfirm={doCancel} busy={busy}
         body={r.status === 'confirmed' ? 'سيُعاد المخزون لكل ليلة، ويُرسَل الإلغاء للضيف بالبريد (إن وُجد) وواتساب. لا يمكن التراجع بعد الإرسال.' : 'سيُغلق الطلب، ويُرسَل الإلغاء للضيف بالبريد (إن وُجد) وواتساب. لا يمكن التراجع بعد الإرسال.'}>
         <Field label="سبب الإلغاء (إلزامي)" id="cancel-reason">

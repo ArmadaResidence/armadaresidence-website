@@ -236,6 +236,14 @@ export const ADULT: CountNoun = { zero: 'لا بالغين', one: 'بالغ وا
 export const CHILD: CountNoun = { zero: 'بلا أطفال', one: 'طفل واحد', two: 'طفلان', few: 'أطفال', many: 'طفلًا', gen: 'طفل' };
 export const adultsWord = (n: number) => countWord(n, ADULT);
 export const childrenWord = (n: number) => countWord(n, CHILD);
+/** a child's age as the booking form writes it (27 Nov 2026, «تسجيل أعمار الأطفال»): 0 «أقل من سنة», then «سنة واحدة»,
+ *  «سنتان», «3 سنوات» … «11 سنة» — content/ui.json → quote.age_under1 / age_years */
+export const AGE_YEAR: CountNoun = { zero: 'أقل من سنة', one: 'سنة واحدة', two: 'سنتان', few: 'سنوات', many: 'سنة', gen: 'سنة' };
+export const childAgeLabel = (n: number) => countWord(n, AGE_YEAR);
+export const CHILD_AGE_MAX = 17;
+/** a request still waiting for its children's ages (stored before 27 Nov 2026): children with breakfast and no ages */
+export const needsAgesNow = (r: { status: string; children: number; breakfast: string; children_ages: number[] | null }) =>
+  r.status === 'request' && r.children > 0 && r.breakfast === 'with' && (r.children_ages?.length ?? 0) !== r.children;
 /** «الأحد 2 نوفمبر → الخميس 6 نوفمبر 2026» (the arrow follows the reading direction) */
 export function dateRange(a: string, b: string): string {
   const da = new Date(a + 'T00:00:00Z');

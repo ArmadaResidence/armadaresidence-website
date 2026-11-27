@@ -8,3 +8,6 @@ await import('../admin/tests/test-delete-check.mjs');
 // 10 Nov 2026: the update bar keeps the site's last update and its GitHub link on screen for the system admin only
 // (admin/tests/deploy-bar-check.mjs — offline as well).
 await import('../admin/tests/deploy-bar-check.mjs');
+// 27 Nov 2026: «تسجيل أعمار الأطفال» in the booking details (admin/tests/children-ages-check.mjs — a request with children,
+// breakfast and no ages; the dialog, staff_set_children_ages, the confirm's new needs_ages text). Offline as well.
+await import('../admin/tests/children-ages-check.mjs');

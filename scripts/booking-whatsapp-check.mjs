@@ -165,7 +165,9 @@ for (const vp of [{ width: 1440, height: 900 }, { width: 375, height: 812, mobil
       // 5. valid → one popup, wa.me/<branch number>, every value in the text
       await verify('hand-off', await clickWa());
 
-      // 6. failed submit → error line, then the same button still hands off
+      // 6. failed submit → error line, then the same button still hands off. The hand-off above went without the
+      // child's age (WhatsApp never needs it); the submit does since 27 Nov 2026 (children + breakfast), so it is chosen
+      await form.locator('[data-ages] select').first().selectOption('5');
       await form.locator('[data-submit]').click();
       await page.waitForTimeout(1200);
       checks++;

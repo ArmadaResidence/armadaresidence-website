@@ -441,6 +441,11 @@ export const resendWhatsApp = (id: string, template: string) => edge<{ ok: boole
 /** 9 Nov 2026: a picked reason (required) + an optional internal note (never sent to the guest) */
 export const cancelReservation = (id: string, reasonCode: string, note: string) => edge<{ ok: boolean; already?: boolean; emails?: Record<string, string | null> | null; notify_failed?: boolean; guest_notified?: boolean; whatsapp?: { accepted: boolean; status: string; error_code: string | null; fallback?: boolean } | null }>('booking-admin', { action: 'cancel', id, reason_code: reasonCode, note });
 
+/** «تسجيل أعمار الأطفال» (27 Nov 2026): a request with children + breakfast stored without the ages (reason needs_ages).
+ *  public.staff_set_children_ages stores one age per child and re-prices the stay like the confirm; never undoable. */
+export const setChildrenAges = (id: string, ages: number[]) =>
+  rpc<{ ok: boolean; ref: string; batch_id: string; reason: string | null; total: number | null; breakfast_total: number | null }>('staff_set_children_ages', { p_id: id, p_ages: ages });
+
 /** «حذف نهائي» (10 Nov 2026): the system admin deletes a booking cancelled as «حجز تجريبي», after typing its ref back.
  *  public.admin_test_booking_delete archives the booking and every row it alone created first (deleted_test_bookings). */
 export async function deleteTestBooking(id: string, ref: string): Promise<{ ok: boolean; ref: string; batch_id: string; profile_deleted: boolean }> {
