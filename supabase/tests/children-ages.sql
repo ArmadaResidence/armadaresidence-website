@@ -164,7 +164,8 @@ select pg_temp._check('A1 one audit row in the batch, with the ages and the brea
   (select count(*) = 1 and bool_and(entity = 'reservations' and new -> 'children_ages' = '[3, 9]'::jsonb and (new ->> 'breakfast_total')::numeric = 125
                                      and old -> 'children_ages' = 'null'::jsonb and actor_id = pg_temp._id('airport'))
      from public.audit_log where batch_id = (pg_temp._j('r1') ->> 'batch_id')::uuid));
-select pg_temp._as('admin');
+-- management: bookings edit on every branch, so the refusal is the batch's own (never undoable), not a permission
+select pg_temp._as('mgmt');
 select pg_temp._fails('A2 revert_batch refuses it (never undoable)', format('select public.revert_batch(%L::uuid)', pg_temp._j('r1') ->> 'batch_id'), 'not_revertable');
 select pg_temp._as('airport');
 select pg_temp._save('a3', public.staff_confirm_reservation(pg_temp._id('r1'), null));
